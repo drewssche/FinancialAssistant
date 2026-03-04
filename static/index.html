@@ -153,8 +153,26 @@
           <input id="opAmount" type="number" step="0.01" placeholder="Сумма" required />
           <input id="opDate" type="date" required />
           <input id="opNote" type="text" placeholder="Комментарий" />
-          <button class="btn btn-primary" type="submit">Сохранить</button>
+          <button class="btn btn-primary" type="submit">Добавить</button>
         </form>
+
+        <div class="preview-panel">
+          <div class="preview-title">Превью строки в таблице</div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Дата</th>
+                  <th>Тип</th>
+                  <th>Сумма</th>
+                  <th>Комментарий</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="createPreviewBody"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 

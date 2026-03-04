@@ -40,6 +40,7 @@ const el = {
   closeCreateModalBtn: document.getElementById("closeCreateModalBtn"),
   createForm: document.getElementById("createOperationForm"),
   createKindSwitch: document.getElementById("createKindSwitch"),
+  createPreviewBody: document.getElementById("createPreviewBody"),
   opKind: document.getElementById("opKind"),
   editModal: document.getElementById("editModal"),
   closeEditModalBtn: document.getElementById("closeEditModalBtn"),
@@ -89,6 +90,7 @@ function closeAllMenus() {
 
 function openCreateModal() {
   setDefaultDate();
+  updateCreatePreview();
   el.createModal.classList.remove("hidden");
 }
 
@@ -119,6 +121,55 @@ function syncSegmentedActive(container, attr, value) {
   for (const btn of buttons) {
     btn.classList.toggle("active", btn.dataset[attr] === value);
   }
+}
+
+function formatAmount(value) {
+  const num = Number(value);
+  if (Number.isNaN(num)) {
+    return "0.00";
+  }
+  return num.toFixed(2);
+}
+
+function createOperationRow(item, options = {}) {
+  const preview = options.preview === true;
+  const row = document.createElement("tr");
+  row.innerHTML = `
+    <td>${item.operation_date}</td>
+    <td>${item.kind}</td>
+    <td>${item.amount}</td>
+    <td>${item.note || ""}</td>
+    <td>
+      <div class="actions">
+        <button class="btn btn-secondary" data-edit-id="${preview ? "" : item.id}" ${preview ? "disabled" : ""}>Редактировать</button>
+        <button class="btn btn-danger" data-delete-id="${preview ? "" : item.id}" ${preview ? "disabled" : ""}>Удалить</button>
+      </div>
+    </td>
+  `;
+  if (preview) {
+    row.classList.add("preview-row");
+  } else {
+    row.dataset.item = JSON.stringify(item);
+  }
+  return row;
+}
+
+function getCreateFormPreviewItem() {
+  return {
+    id: 0,
+    operation_date: document.getElementById("opDate").value || new Date().toISOString().slice(0, 10),
+    kind: el.opKind.value || "expense",
+    amount: formatAmount(document.getElementById("opAmount").value),
+    note: document.getElementById("opNote").value || "",
+  };
+}
+
+function updateCreatePreview() {
+  if (!el.createPreviewBody) {
+    return;
+  }
+  el.createPreviewBody.innerHTML = "";
+  el.createPreviewBody.appendChild(createOperationRow(getCreateFormPreviewItem(), { preview: true }));
 }
 
 async function requestJson(url, options = {}) {
@@ -249,20 +300,7 @@ function renderOperations(items) {
   }
 
   for (const item of items) {
-    const row = document.createElement("tr");
-    row.dataset.item = JSON.stringify(item);
-    row.innerHTML = `
-      <td>${item.operation_date}</td>
-      <td>${item.kind}</td>
-      <td>${item.amount}</td>
-      <td>${item.note || ""}</td>
-      <td>
-        <div class="actions">
-          <button class="btn btn-secondary" data-edit-id="${item.id}">Редактировать</button>
-          <button class="btn btn-danger" data-delete-id="${item.id}">Удалить</button>
-        </div>
-      </td>
-    `;
+    const row = createOperationRow(item);
     el.operationsBody.appendChild(row);
   }
 }
@@ -294,6 +332,7 @@ async function createOperation(event) {
 
   document.getElementById("opAmount").value = "";
   document.getElementById("opNote").value = "";
+  updateCreatePreview();
   state.page = 1;
 
   closeCreateModal();
@@ -449,6 +488,7 @@ el.createKindSwitch.addEventListener("click", (event) => {
 
   el.opKind.value = btn.dataset.kind;
   syncSegmentedActive(el.createKindSwitch, "kind", el.opKind.value);
+  updateCreatePreview();
 });
 
 el.editKindSwitch.addEventListener("click", (event) => {
@@ -511,6 +551,14 @@ document.addEventListener("click", (event) => {
     closeAllMenus();
   }
 });
+
+for (const id of ["opAmount", "opDate", "opNote"]) {
+  const node = document.getElementById(id);
+  if (node) {
+    node.addEventListener("input", updateCreatePreview);
+    node.addEventListener("change", updateCreatePreview);
+  }
+}
 
 if (state.token) {
   bootstrapApp().catch((err) => showLogin(String(err)));

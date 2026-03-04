@@ -444,6 +444,22 @@ input::placeholder {
   width: 220px;
 }
 
+.preview-panel {
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.preview-title {
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.preview-row {
+  opacity: 0.95;
+}
+
 .actions {
   display: flex;
   gap: 8px;
