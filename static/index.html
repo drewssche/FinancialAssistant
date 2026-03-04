@@ -10,19 +10,31 @@
     <div id="loginScreen" class="login-screen">
       <section class="login-card">
         <h1>Financial Assistant</h1>
-        <p>Локальный dev-вход для проверки интерфейса и API.</p>
-        <div class="row">
-          <input id="firstName" type="text" placeholder="First name" value="Dev" />
-          <input id="username" type="text" placeholder="Username" value="dev_user" />
+        <p>Локальный вход для проверки интерфейса и API.</p>
+
+        <div class="input-row">
+          <label class="field">
+            <span>First Name</span>
+            <input id="firstName" type="text" placeholder="Dev" value="Dev" />
+          </label>
+          <label class="field">
+            <span>Username</span>
+            <input id="username" type="text" placeholder="dev_user" value="dev_user" />
+          </label>
         </div>
-        <button id="devLoginBtn">Войти (Dev)</button>
-        <pre id="loginOutput">Готово к входу.</pre>
+
+        <div class="login-actions">
+          <button id="devLoginBtn" class="btn btn-primary">Войти (Dev)</button>
+        </div>
+
+        <pre id="loginOutput" class="status-box">Готово к входу.</pre>
       </section>
     </div>
 
     <div id="appShell" class="app-shell hidden">
       <aside class="sidebar">
         <div class="brand">FA</div>
+
         <nav class="nav">
           <button class="nav-btn active">Дашборд</button>
           <button class="nav-btn">Операции</button>
@@ -30,25 +42,35 @@
           <button class="nav-btn">Настройки</button>
         </nav>
 
-        <div class="user-block">
-          <div class="avatar" id="userAvatar">D</div>
-          <div class="meta">
-            <div id="userName">User</div>
-            <div id="userHandle">@user</div>
+        <div class="user-area">
+          <button id="userMenuToggle" class="user-block" type="button">
+            <div class="avatar" id="userAvatar">D</div>
+            <div class="meta">
+              <div id="userName">User</div>
+              <div id="userHandle">@user</div>
+            </div>
+            <div class="chevron">▾</div>
+          </button>
+
+          <div id="userMenu" class="user-menu hidden">
+            <button id="openSettingsBtn" class="menu-item" type="button">Настройки</button>
+            <button id="logoutBtn" class="menu-item danger" type="button">Выйти</button>
           </div>
-          <button id="logoutBtn" class="ghost">Выйти</button>
         </div>
       </aside>
 
       <main class="main">
         <header class="topbar">
-          <h2>Рабочая область</h2>
-          <div class="row">
+          <div>
+            <h2>Рабочая область</h2>
+            <p class="subtitle">Доходы, расходы и быстрый контроль баланса</p>
+          </div>
+          <div class="toolbar">
             <select id="dashboardPeriod">
               <option value="30d">30 дней</option>
               <option value="month">Текущий месяц</option>
             </select>
-            <button id="refreshBtn" class="secondary">Обновить</button>
+            <button id="refreshBtn" class="btn btn-secondary" type="button">Обновить</button>
           </div>
         </header>
 
@@ -68,7 +90,9 @@
         </section>
 
         <section class="panel">
-          <h3>Добавить операцию</h3>
+          <div class="panel-head">
+            <h3>Добавить операцию</h3>
+          </div>
           <form id="createOperationForm" class="form-grid">
             <select id="opKind" required>
               <option value="expense">Расход</option>
@@ -77,39 +101,68 @@
             <input id="opAmount" type="number" step="0.01" placeholder="Сумма" required />
             <input id="opDate" type="date" required />
             <input id="opNote" type="text" placeholder="Комментарий" />
-            <button type="submit">Добавить</button>
+            <button class="btn btn-primary" type="submit">Добавить</button>
           </form>
         </section>
 
         <section class="panel">
-          <div class="row between">
+          <div class="panel-head row between">
             <h3>Операции</h3>
-            <div class="row">
+            <div class="toolbar">
               <select id="filterKind">
                 <option value="">Все</option>
                 <option value="expense">Только расходы</option>
                 <option value="income">Только доходы</option>
               </select>
               <input id="filterQ" type="text" placeholder="Поиск по заметке" />
-              <button id="applyFilters" class="secondary">Применить</button>
+              <button id="applyFilters" class="btn btn-secondary" type="button">Применить</button>
             </div>
           </div>
 
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Дата</th>
-                <th>Тип</th>
-                <th>Сумма</th>
-                <th>Комментарий</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="operationsBody"></tbody>
-          </table>
-          <pre id="appOutput">Готово.</pre>
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Дата</th>
+                  <th>Тип</th>
+                  <th>Сумма</th>
+                  <th>Комментарий</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="operationsBody"></tbody>
+            </table>
+          </div>
+
+          <div class="pagination">
+            <button id="prevPageBtn" class="btn btn-secondary" type="button">Назад</button>
+            <span id="pageInfo">Страница 1</span>
+            <button id="nextPageBtn" class="btn btn-secondary" type="button">Вперёд</button>
+          </div>
+
+          <pre id="appOutput" class="status-box">Готово.</pre>
         </section>
       </main>
+    </div>
+
+    <div id="editModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+      <div class="modal-card">
+        <div class="panel-head row between">
+          <h3 id="editTitle">Редактировать операцию</h3>
+          <button id="closeEditModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+        </div>
+
+        <form id="editOperationForm" class="form-grid modal-grid">
+          <select id="editKind" required>
+            <option value="expense">Расход</option>
+            <option value="income">Доход</option>
+          </select>
+          <input id="editAmount" type="number" step="0.01" required />
+          <input id="editDate" type="date" required />
+          <input id="editNote" type="text" placeholder="Комментарий" />
+          <button class="btn btn-primary" type="submit">Сохранить</button>
+        </form>
+      </div>
     </div>
 
     <script src="/static/app.js"></script>
