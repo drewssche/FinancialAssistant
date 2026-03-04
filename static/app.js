@@ -131,13 +131,30 @@ function formatAmount(value) {
   return num.toFixed(2);
 }
 
+function formatDateRu(value) {
+  if (!value) {
+    return "";
+  }
+  const [year, month, day] = String(value).split("-");
+  if (!year || !month || !day) {
+    return String(value);
+  }
+  return `${day}.${month}.${year}`;
+}
+
+function kindLabel(kind) {
+  return kind === "income" ? "Доход" : "Расход";
+}
+
 function createOperationRow(item, options = {}) {
   const preview = options.preview === true;
+  const kindClass = item.kind === "income" ? "income" : "expense";
   const row = document.createElement("tr");
+  row.classList.add(`kind-row-${kindClass}`);
   row.innerHTML = `
-    <td>${item.operation_date}</td>
-    <td>${item.kind}</td>
-    <td>${item.amount}</td>
+    <td>${formatDateRu(item.operation_date)}</td>
+    <td><span class="kind-pill kind-pill-${kindClass}">${kindLabel(item.kind)}</span></td>
+    <td><span class="amount-${kindClass}">${item.amount}</span></td>
     <td>${item.note || ""}</td>
     <td>
       <div class="actions">
@@ -182,7 +199,7 @@ async function requestJson(url, options = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(data.detail || "Request failed");
+    throw new Error(data.detail || "Ошибка запроса");
   }
 
   return data;
@@ -206,10 +223,10 @@ async function devLogin() {
 
 async function loadMe() {
   const me = await requestJson("/api/v1/users/me", { headers: authHeaders() });
-  const name = me.display_name || "User";
+  const name = me.display_name || "Пользователь";
   el.userName.textContent = name;
   el.userHandle.textContent = `@${name.toLowerCase().replace(/\s+/g, "_")}`;
-  el.userAvatar.textContent = name[0]?.toUpperCase() || "U";
+  el.userAvatar.textContent = name[0]?.toUpperCase() || "П";
 }
 
 async function loadPreferences() {

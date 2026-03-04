@@ -276,12 +276,12 @@ p {
 
 .form-grid {
   display: grid;
-  grid-template-columns: 220px 140px 160px 1fr auto;
+  grid-template-columns: max-content minmax(130px, 160px) minmax(150px, 170px) minmax(220px, 1fr) auto;
   gap: 10px;
 }
 
 .modal-grid {
-  grid-template-columns: 220px 140px 160px 1fr auto;
+  grid-template-columns: max-content minmax(130px, 160px) minmax(150px, 170px) minmax(220px, 1fr) auto;
 }
 
 .row {
@@ -396,6 +396,7 @@ input::placeholder {
 
 .segmented {
   display: inline-flex;
+  width: max-content;
   background: #0f1729;
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -438,6 +439,45 @@ input::placeholder {
 .table th {
   color: var(--muted);
   font-weight: 500;
+}
+
+.kind-pill {
+  display: inline-flex;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.kind-pill-expense {
+  background: rgba(255, 111, 125, 0.18);
+  color: #ffc0c8;
+  border: 1px solid rgba(255, 111, 125, 0.35);
+}
+
+.kind-pill-income {
+  background: rgba(73, 190, 120, 0.2);
+  color: #b8efcb;
+  border: 1px solid rgba(73, 190, 120, 0.35);
+}
+
+.kind-row-expense {
+  background: linear-gradient(90deg, rgba(255, 111, 125, 0.08) 0%, rgba(255, 111, 125, 0) 42%);
+}
+
+.kind-row-income {
+  background: linear-gradient(90deg, rgba(73, 190, 120, 0.09) 0%, rgba(73, 190, 120, 0) 42%);
+}
+
+.amount-expense {
+  color: #ffb2bc;
+  font-weight: 700;
+}
+
+.amount-income {
+  color: #9ee8bc;
+  font-weight: 700;
 }
 
 .table td:last-child {
