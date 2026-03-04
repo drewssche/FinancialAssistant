@@ -5,6 +5,8 @@ const state = {
   pageSize: 10,
   total: 0,
   editOperationId: null,
+  period: "30d",
+  filterKind: "",
 };
 
 const el = {
@@ -13,16 +15,17 @@ const el = {
   loginOutput: document.getElementById("loginOutput"),
   appOutput: document.getElementById("appOutput"),
   devLoginBtn: document.getElementById("devLoginBtn"),
-  dashboardPeriod: document.getElementById("dashboardPeriod"),
+  periodTabs: document.getElementById("periodTabs"),
+  kindFilters: document.getElementById("kindFilters"),
   refreshBtn: document.getElementById("refreshBtn"),
-  createForm: document.getElementById("createOperationForm"),
   applyFiltersBtn: document.getElementById("applyFilters"),
+  filterQ: document.getElementById("filterQ"),
+  addOperationCta: document.getElementById("addOperationCta"),
+  batchOperationCta: document.getElementById("batchOperationCta"),
   operationsBody: document.getElementById("operationsBody"),
   pageInfo: document.getElementById("pageInfo"),
   prevPageBtn: document.getElementById("prevPageBtn"),
   nextPageBtn: document.getElementById("nextPageBtn"),
-  filterKind: document.getElementById("filterKind"),
-  filterQ: document.getElementById("filterQ"),
   incomeTotal: document.getElementById("incomeTotal"),
   expenseTotal: document.getElementById("expenseTotal"),
   balanceTotal: document.getElementById("balanceTotal"),
@@ -31,26 +34,33 @@ const el = {
   userHandle: document.getElementById("userHandle"),
   userMenuToggle: document.getElementById("userMenuToggle"),
   userMenu: document.getElementById("userMenu"),
-  logoutBtn: document.getElementById("logoutBtn"),
   openSettingsBtn: document.getElementById("openSettingsBtn"),
+  logoutBtn: document.getElementById("logoutBtn"),
+  createModal: document.getElementById("createModal"),
+  closeCreateModalBtn: document.getElementById("closeCreateModalBtn"),
+  createForm: document.getElementById("createOperationForm"),
+  createKindSwitch: document.getElementById("createKindSwitch"),
+  opKind: document.getElementById("opKind"),
   editModal: document.getElementById("editModal"),
   closeEditModalBtn: document.getElementById("closeEditModalBtn"),
-  editOperationForm: document.getElementById("editOperationForm"),
+  editForm: document.getElementById("editOperationForm"),
+  editKindSwitch: document.getElementById("editKindSwitch"),
+  editKind: document.getElementById("editKind"),
 };
 
-function setStatus(message, isLogin = false) {
-  if (isLogin) {
+function setStatus(message, forLogin = false) {
+  if (forLogin) {
     el.loginOutput.textContent = message;
-  } else {
-    el.appOutput.textContent = message;
+    return;
   }
+  el.appOutput.textContent = message;
 }
 
-function setDefaultDate() {
-  const dateInput = document.getElementById("opDate");
-  if (!dateInput.value) {
-    dateInput.value = new Date().toISOString().slice(0, 10);
-  }
+function authHeaders() {
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${state.token}`,
+  };
 }
 
 function showLogin(message = "") {
@@ -66,11 +76,49 @@ function showApp() {
   el.appShell.classList.remove("hidden");
 }
 
-function authHeaders() {
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${state.token}`,
-  };
+function setDefaultDate() {
+  const input = document.getElementById("opDate");
+  if (!input.value) {
+    input.value = new Date().toISOString().slice(0, 10);
+  }
+}
+
+function closeAllMenus() {
+  el.userMenu.classList.add("hidden");
+}
+
+function openCreateModal() {
+  setDefaultDate();
+  el.createModal.classList.remove("hidden");
+}
+
+function closeCreateModal() {
+  el.createModal.classList.add("hidden");
+}
+
+function openEditModal(item) {
+  state.editOperationId = item.id;
+  el.editKind.value = item.kind;
+  document.getElementById("editAmount").value = item.amount;
+  document.getElementById("editDate").value = item.operation_date;
+  document.getElementById("editNote").value = item.note || "";
+  syncSegmentedActive(el.editKindSwitch, "kind", item.kind);
+  el.editModal.classList.remove("hidden");
+}
+
+function closeEditModal() {
+  state.editOperationId = null;
+  el.editModal.classList.add("hidden");
+}
+
+function syncSegmentedActive(container, attr, value) {
+  if (!container) {
+    return;
+  }
+  const buttons = container.querySelectorAll(`button[data-${attr}]`);
+  for (const btn of buttons) {
+    btn.classList.toggle("active", btn.dataset[attr] === value);
+  }
 }
 
 async function requestJson(url, options = {}) {
@@ -89,29 +137,6 @@ async function requestJson(url, options = {}) {
   return data;
 }
 
-function toggleUserMenu(forceOpen) {
-  const open = typeof forceOpen === "boolean" ? forceOpen : !el.userMenu.classList.contains("hidden");
-  if (open) {
-    el.userMenu.classList.add("hidden");
-  } else {
-    el.userMenu.classList.remove("hidden");
-  }
-}
-
-function openEditModal(item) {
-  state.editOperationId = item.id;
-  document.getElementById("editKind").value = item.kind;
-  document.getElementById("editAmount").value = item.amount;
-  document.getElementById("editDate").value = item.operation_date;
-  document.getElementById("editNote").value = item.note || "";
-  el.editModal.classList.remove("hidden");
-}
-
-function closeEditModal() {
-  state.editOperationId = null;
-  el.editModal.classList.add("hidden");
-}
-
 async function devLogin() {
   const firstName = document.getElementById("firstName").value || "Dev";
   const username = document.getElementById("username").value || "dev_user";
@@ -123,7 +148,7 @@ async function devLogin() {
   });
 
   state.token = data.access_token;
-  localStorage.setItem("access_token", state.token);
+  localStorage.setItem("access_token", data.access_token);
   setStatus("Авторизация успешна", true);
   await bootstrapApp();
 }
@@ -140,12 +165,12 @@ async function loadPreferences() {
   const prefs = await requestJson("/api/v1/preferences", { headers: authHeaders() });
   state.preferences = prefs;
 
-  const period = prefs.data?.dashboard?.period || "30d";
-  el.dashboardPeriod.value = period;
+  state.period = prefs.data?.dashboard?.period || "30d";
+  state.filterKind = prefs.data?.operations?.filters?.kind || "";
+  el.filterQ.value = prefs.data?.operations?.filters?.q || "";
 
-  const opFilters = prefs.data?.operations?.filters || {};
-  el.filterKind.value = opFilters.kind || "";
-  el.filterQ.value = opFilters.q || "";
+  syncSegmentedActive(el.periodTabs, "period", state.period);
+  syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
 }
 
 async function savePreferences() {
@@ -159,13 +184,13 @@ async function savePreferences() {
       ...state.preferences.data,
       dashboard: {
         ...(state.preferences.data?.dashboard || {}),
-        period: el.dashboardPeriod.value,
+        period: state.period,
       },
       operations: {
         ...(state.preferences.data?.operations || {}),
         filters: {
-          kind: el.filterKind.value || "",
-          q: el.filterQ.value.trim() || "",
+          kind: state.filterKind,
+          q: el.filterQ.value.trim(),
         },
       },
     },
@@ -179,8 +204,9 @@ async function savePreferences() {
 }
 
 async function loadDashboard() {
-  const period = encodeURIComponent(el.dashboardPeriod.value);
-  const data = await requestJson(`/api/v1/dashboard/summary?period=${period}`, { headers: authHeaders() });
+  const data = await requestJson(`/api/v1/dashboard/summary?period=${encodeURIComponent(state.period)}`, {
+    headers: authHeaders(),
+  });
   el.incomeTotal.textContent = data.income_total;
   el.expenseTotal.textContent = data.expense_total;
   el.balanceTotal.textContent = data.balance;
@@ -193,14 +219,23 @@ function buildOperationsQuery() {
   params.set("sort_by", "operation_date");
   params.set("sort_dir", "desc");
 
-  if (el.filterKind.value) {
-    params.set("kind", el.filterKind.value);
+  if (state.filterKind) {
+    params.set("kind", state.filterKind);
   }
+
   const q = el.filterQ.value.trim();
   if (q) {
     params.set("q", q);
   }
+
   return params;
+}
+
+function renderPagination() {
+  const totalPages = Math.max(1, Math.ceil(state.total / state.pageSize));
+  el.pageInfo.textContent = `Страница ${state.page} из ${totalPages} (${state.total})`;
+  el.prevPageBtn.disabled = state.page <= 1;
+  el.nextPageBtn.disabled = state.page >= totalPages;
 }
 
 function renderOperations(items) {
@@ -215,6 +250,7 @@ function renderOperations(items) {
 
   for (const item of items) {
     const row = document.createElement("tr");
+    row.dataset.item = JSON.stringify(item);
     row.innerHTML = `
       <td>${item.operation_date}</td>
       <td>${item.kind}</td>
@@ -227,16 +263,8 @@ function renderOperations(items) {
         </div>
       </td>
     `;
-    row.dataset.item = JSON.stringify(item);
     el.operationsBody.appendChild(row);
   }
-}
-
-function renderPagination() {
-  const totalPages = Math.max(1, Math.ceil(state.total / state.pageSize));
-  el.pageInfo.textContent = `Страница ${state.page} из ${totalPages} (${state.total})`;
-  el.prevPageBtn.disabled = state.page <= 1;
-  el.nextPageBtn.disabled = state.page >= totalPages;
 }
 
 async function loadOperations() {
@@ -251,9 +279,8 @@ async function loadOperations() {
 
 async function createOperation(event) {
   event.preventDefault();
-
   const payload = {
-    kind: document.getElementById("opKind").value,
+    kind: el.opKind.value,
     amount: document.getElementById("opAmount").value,
     operation_date: document.getElementById("opDate").value,
     note: document.getElementById("opNote").value,
@@ -267,8 +294,9 @@ async function createOperation(event) {
 
   document.getElementById("opAmount").value = "";
   document.getElementById("opNote").value = "";
-
   state.page = 1;
+
+  closeCreateModal();
   await Promise.all([loadDashboard(), loadOperations()]);
   setStatus("Операция добавлена");
 }
@@ -280,7 +308,7 @@ async function updateOperation(event) {
   }
 
   const payload = {
-    kind: document.getElementById("editKind").value,
+    kind: el.editKind.value,
     amount: document.getElementById("editAmount").value,
     operation_date: document.getElementById("editDate").value,
     note: document.getElementById("editNote").value,
@@ -335,14 +363,14 @@ function logout(showMessage = true) {
   state.preferences = null;
   state.page = 1;
   state.total = 0;
+  closeCreateModal();
   closeEditModal();
-  toggleUserMenu(true);
+  closeAllMenus();
   showLogin(showMessage ? "Вы вышли" : "");
 }
 
 async function bootstrapApp() {
   showApp();
-  setDefaultDate();
   await loadMe();
   await loadPreferences();
   await Promise.all([loadDashboard(), loadOperations()]);
@@ -350,32 +378,93 @@ async function bootstrapApp() {
 }
 
 el.devLoginBtn.addEventListener("click", () => {
-  devLogin().catch((error) => setStatus(String(error), true));
+  devLogin().catch((err) => setStatus(String(err), true));
 });
 
-el.refreshBtn.addEventListener("click", () => {
-  refreshAll().catch((error) => setStatus(String(error)));
+el.addOperationCta.addEventListener("click", openCreateModal);
+el.batchOperationCta.addEventListener("click", () => {
+  setStatus("Массовое добавление будет следующим шагом");
 });
 
-el.dashboardPeriod.addEventListener("change", () => {
-  savePreferences()
-    .then(loadDashboard)
-    .then(() => setStatus("Период сохранен"))
-    .catch((error) => setStatus(String(error)));
+el.closeCreateModalBtn.addEventListener("click", closeCreateModal);
+el.createModal.addEventListener("click", (event) => {
+  if (event.target === el.createModal) {
+    closeCreateModal();
+  }
 });
 
-el.applyFiltersBtn.addEventListener("click", () => {
-  applyFilters().catch((error) => setStatus(String(error)));
+el.closeEditModalBtn.addEventListener("click", closeEditModal);
+el.editModal.addEventListener("click", (event) => {
+  if (event.target === el.editModal) {
+    closeEditModal();
+  }
 });
 
 el.createForm.addEventListener("submit", (event) => {
-  createOperation(event).catch((error) => setStatus(String(error)));
+  createOperation(event).catch((err) => setStatus(String(err)));
+});
+
+el.editForm.addEventListener("submit", (event) => {
+  updateOperation(event).catch((err) => setStatus(String(err)));
+});
+
+el.refreshBtn.addEventListener("click", () => {
+  refreshAll().catch((err) => setStatus(String(err)));
+});
+
+el.applyFiltersBtn.addEventListener("click", () => {
+  applyFilters().catch((err) => setStatus(String(err)));
+});
+
+el.periodTabs.addEventListener("click", (event) => {
+  const btn = event.target.closest("button[data-period]");
+  if (!btn) {
+    return;
+  }
+
+  state.period = btn.dataset.period;
+  syncSegmentedActive(el.periodTabs, "period", state.period);
+
+  savePreferences()
+    .then(loadDashboard)
+    .then(() => setStatus("Период сохранен"))
+    .catch((err) => setStatus(String(err)));
+});
+
+el.kindFilters.addEventListener("click", (event) => {
+  const btn = event.target.closest("button[data-kind]");
+  if (!btn) {
+    return;
+  }
+
+  state.filterKind = btn.dataset.kind;
+  syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
+});
+
+el.createKindSwitch.addEventListener("click", (event) => {
+  const btn = event.target.closest("button[data-kind]");
+  if (!btn) {
+    return;
+  }
+
+  el.opKind.value = btn.dataset.kind;
+  syncSegmentedActive(el.createKindSwitch, "kind", el.opKind.value);
+});
+
+el.editKindSwitch.addEventListener("click", (event) => {
+  const btn = event.target.closest("button[data-kind]");
+  if (!btn) {
+    return;
+  }
+
+  el.editKind.value = btn.dataset.kind;
+  syncSegmentedActive(el.editKindSwitch, "kind", el.editKind.value);
 });
 
 el.operationsBody.addEventListener("click", (event) => {
   const deleteBtn = event.target.closest("button[data-delete-id]");
   if (deleteBtn) {
-    deleteOperation(deleteBtn.dataset.deleteId).catch((error) => setStatus(String(error)));
+    deleteOperation(deleteBtn.dataset.deleteId).catch((err) => setStatus(String(err)));
     return;
   }
 
@@ -394,7 +483,7 @@ el.operationsBody.addEventListener("click", (event) => {
 el.prevPageBtn.addEventListener("click", () => {
   if (state.page > 1) {
     state.page -= 1;
-    loadOperations().catch((error) => setStatus(String(error)));
+    loadOperations().catch((err) => setStatus(String(err)));
   }
 });
 
@@ -402,35 +491,29 @@ el.nextPageBtn.addEventListener("click", () => {
   const totalPages = Math.max(1, Math.ceil(state.total / state.pageSize));
   if (state.page < totalPages) {
     state.page += 1;
-    loadOperations().catch((error) => setStatus(String(error)));
+    loadOperations().catch((err) => setStatus(String(err)));
   }
 });
 
-el.userMenuToggle.addEventListener("click", () => toggleUserMenu());
-el.logoutBtn.addEventListener("click", () => logout(true));
-el.openSettingsBtn.addEventListener("click", () => {
-  toggleUserMenu(true);
-  setStatus("Раздел настроек будет добавлен следующим шагом");
+el.userMenuToggle.addEventListener("click", () => {
+  el.userMenu.classList.toggle("hidden");
 });
+
+el.openSettingsBtn.addEventListener("click", () => {
+  closeAllMenus();
+  setStatus("Раздел настроек будет следующим шагом");
+});
+
+el.logoutBtn.addEventListener("click", () => logout(true));
 
 document.addEventListener("click", (event) => {
   if (!event.target.closest(".user-area")) {
-    toggleUserMenu(true);
-  }
-});
-
-el.closeEditModalBtn.addEventListener("click", closeEditModal);
-el.editOperationForm.addEventListener("submit", (event) => {
-  updateOperation(event).catch((error) => setStatus(String(error)));
-});
-el.editModal.addEventListener("click", (event) => {
-  if (event.target === el.editModal) {
-    closeEditModal();
+    closeAllMenus();
   }
 });
 
 if (state.token) {
-  bootstrapApp().catch((error) => showLogin(String(error)));
+  bootstrapApp().catch((err) => showLogin(String(err)));
 } else {
   showLogin();
 }
