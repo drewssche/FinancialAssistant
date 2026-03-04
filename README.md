@@ -11,10 +11,30 @@ Web-first financial assistant (income/expense tracking) with architecture ready 
 
 ## Quick Start
 1. Copy `.env.example` to `.env`
-2. Run `docker compose up --build`
+2. Run `docker compose up --build -d`
 3. Run migrations inside app container:
-   - `alembic upgrade head`
-4. Open API docs: `http://localhost:8000/docs`
+   - `docker compose exec app sh -lc 'cd /app && PYTHONPATH=/app alembic upgrade head'`
+4. Open API docs: `http://localhost:8001/docs`
+
+## Ports
+- App API: `8001 -> 8000` (container)
+- Postgres: `5433 -> 5432` (container)
+- Redis: `6380 -> 6379` (container)
+
+## Local Dev Login (Telegram Auth)
+If you need a quick local token without opening Telegram Mini App, use:
+
+1. `python3 scripts/dev_login.py`
+2. Copy token from output
+3. Call protected endpoint:
+   - `curl -H "Authorization: Bearer <TOKEN>" http://localhost:8001/api/v1/users/me`
+
+Optional args:
+- `--api-url http://localhost:8001`
+- `--telegram-id 100001`
+- `--first-name Dev`
+- `--username dev_user`
+- `--bot-token <TOKEN>`
 
 ## Current Scope
 - API scaffold and schema foundations
