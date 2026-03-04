@@ -34,3 +34,23 @@ class AuthService:
         user.last_login_at = datetime.now(timezone.utc)
         self.db.commit()
         return create_access_token({"sub": str(user.id)})
+
+    def login_dev(
+        self,
+        telegram_id: int,
+        first_name: str,
+        username: str,
+        avatar_url: str | None = None,
+    ) -> str:
+        user = self.user_repo.get_by_telegram_id(str(telegram_id))
+        if not user:
+            user = self.user_repo.create_with_telegram_identity(
+                telegram_id=str(telegram_id),
+                display_name=first_name,
+                username=username,
+                avatar_url=avatar_url,
+            )
+
+        user.last_login_at = datetime.now(timezone.utc)
+        self.db.commit()
+        return create_access_token({"sub": str(user.id)})

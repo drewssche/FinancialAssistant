@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Financial Assistant Dev Login</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="card">
+        <h1>Financial Assistant</h1>
+        <p>Dev-вход для локальной разработки.</p>
+
+        <div class="controls">
+          <label>
+            Telegram ID
+            <input id="telegramId" type="number" value="100001" />
+          </label>
+          <label>
+            First name
+            <input id="firstName" type="text" value="Dev" />
+          </label>
+          <label>
+            Username
+            <input id="username" type="text" value="dev_user" />
+          </label>
+        </div>
+
+        <div class="actions">
+          <button id="devLoginBtn">Войти (Dev)</button>
+          <button id="loadMeBtn" class="secondary">Проверить /users/me</button>
+        </div>
+
+        <pre id="output" class="output">Готово к входу.</pre>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

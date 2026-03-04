@@ -15,6 +15,7 @@ Web-first financial assistant (income/expense tracking) with architecture ready 
 3. Run migrations inside app container:
    - `docker compose exec app sh -lc 'cd /app && PYTHONPATH=/app alembic upgrade head'`
 4. Open API docs: `http://localhost:8001/docs`
+5. Open Dev UI: `http://localhost:8001/`
 
 ## Ports
 - App API: `8001 -> 8000` (container)
@@ -35,6 +36,10 @@ Optional args:
 - `--first-name Dev`
 - `--username dev_user`
 - `--bot-token <TOKEN>`
+
+### One-click Dev Button
+`http://localhost:8001/` includes a `Войти (Dev)` button using `POST /api/v1/auth/dev`.
+This endpoint is allowed only when `APP_ENV != production`.
 
 ## Current Scope
 - API scaffold and schema foundations
