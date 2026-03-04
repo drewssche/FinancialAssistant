@@ -3,38 +3,114 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Financial Assistant Dev Login</title>
+    <title>Financial Assistant</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
-    <main class="page">
-      <section class="card">
+    <div id="loginScreen" class="login-screen">
+      <section class="login-card">
         <h1>Financial Assistant</h1>
-        <p>Dev-вход для локальной разработки.</p>
-
-        <div class="controls">
-          <label>
-            Telegram ID
-            <input id="telegramId" type="number" value="100001" />
-          </label>
-          <label>
-            First name
-            <input id="firstName" type="text" value="Dev" />
-          </label>
-          <label>
-            Username
-            <input id="username" type="text" value="dev_user" />
-          </label>
+        <p>Локальный dev-вход для проверки интерфейса и API.</p>
+        <div class="row">
+          <input id="firstName" type="text" placeholder="First name" value="Dev" />
+          <input id="username" type="text" placeholder="Username" value="dev_user" />
         </div>
-
-        <div class="actions">
-          <button id="devLoginBtn">Войти (Dev)</button>
-          <button id="loadMeBtn" class="secondary">Проверить /users/me</button>
-        </div>
-
-        <pre id="output" class="output">Готово к входу.</pre>
+        <button id="devLoginBtn">Войти (Dev)</button>
+        <pre id="loginOutput">Готово к входу.</pre>
       </section>
-    </main>
+    </div>
+
+    <div id="appShell" class="app-shell hidden">
+      <aside class="sidebar">
+        <div class="brand">FA</div>
+        <nav class="nav">
+          <button class="nav-btn active">Дашборд</button>
+          <button class="nav-btn">Операции</button>
+          <button class="nav-btn">Категории</button>
+          <button class="nav-btn">Настройки</button>
+        </nav>
+
+        <div class="user-block">
+          <div class="avatar" id="userAvatar">D</div>
+          <div class="meta">
+            <div id="userName">User</div>
+            <div id="userHandle">@user</div>
+          </div>
+          <button id="logoutBtn" class="ghost">Выйти</button>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <h2>Рабочая область</h2>
+          <div class="row">
+            <select id="dashboardPeriod">
+              <option value="30d">30 дней</option>
+              <option value="month">Текущий месяц</option>
+            </select>
+            <button id="refreshBtn" class="secondary">Обновить</button>
+          </div>
+        </header>
+
+        <section class="kpi-grid">
+          <article class="kpi-card">
+            <h3>Доход</h3>
+            <p id="incomeTotal">0.00</p>
+          </article>
+          <article class="kpi-card">
+            <h3>Расход</h3>
+            <p id="expenseTotal">0.00</p>
+          </article>
+          <article class="kpi-card">
+            <h3>Баланс</h3>
+            <p id="balanceTotal">0.00</p>
+          </article>
+        </section>
+
+        <section class="panel">
+          <h3>Добавить операцию</h3>
+          <form id="createOperationForm" class="form-grid">
+            <select id="opKind" required>
+              <option value="expense">Расход</option>
+              <option value="income">Доход</option>
+            </select>
+            <input id="opAmount" type="number" step="0.01" placeholder="Сумма" required />
+            <input id="opDate" type="date" required />
+            <input id="opNote" type="text" placeholder="Комментарий" />
+            <button type="submit">Добавить</button>
+          </form>
+        </section>
+
+        <section class="panel">
+          <div class="row between">
+            <h3>Операции</h3>
+            <div class="row">
+              <select id="filterKind">
+                <option value="">Все</option>
+                <option value="expense">Только расходы</option>
+                <option value="income">Только доходы</option>
+              </select>
+              <input id="filterQ" type="text" placeholder="Поиск по заметке" />
+              <button id="applyFilters" class="secondary">Применить</button>
+            </div>
+          </div>
+
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Дата</th>
+                <th>Тип</th>
+                <th>Сумма</th>
+                <th>Комментарий</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="operationsBody"></tbody>
+          </table>
+          <pre id="appOutput">Готово.</pre>
+        </section>
+      </main>
+    </div>
 
     <script src="/static/app.js"></script>
   </body>
