@@ -19,6 +19,7 @@ Web-first financial assistant (income/expense tracking) with architecture ready 
 ## Current Scope
 - API scaffold and schema foundations
 - Telegram-first auth endpoint scaffold
+- Authenticated `GET /api/v1/users/me` profile endpoint
 - Dashboard, operations, categories, preferences endpoints
 - Documentation for product, architecture, UX and engineering rules
 

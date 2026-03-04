@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import auth, categories, dashboard, operations, preferences
+from app.api.v1 import auth, categories, dashboard, operations, preferences, users
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(auth.router)
@@ -8,3 +8,4 @@ api_router.include_router(categories.router)
 api_router.include_router(operations.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(preferences.router)
+api_router.include_router(users.router)
