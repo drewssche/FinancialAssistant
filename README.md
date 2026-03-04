@@ -23,4 +23,4 @@ Web-first financial assistant (income/expense tracking) with architecture ready 
 - Documentation for product, architecture, UX and engineering rules
 
 ## Notes
-Telegram payload signature validation is intentionally marked as TODO in service scaffold and must be hardened before production.
+Telegram `initData` signature and `auth_date` freshness validation are implemented in `app/core/telegram_auth.py`.

@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     redis_port: int = Field(default=6379, alias="REDIS_PORT")
 
     telegram_bot_token: str = Field(default="change_me", alias="TELEGRAM_BOT_TOKEN")
+    telegram_auth_max_age_seconds: int = Field(default=3600, alias="TELEGRAM_AUTH_MAX_AGE_SECONDS")
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
 
