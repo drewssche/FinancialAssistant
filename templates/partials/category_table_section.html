@@ -1,0 +1,21 @@
+<section class="card">
+  <div class="card-head">
+    <h2>{{ section_title }}</h2>
+  </div>
+  <div class="table-toolbar">
+    <input id="{{ table_key }}-search" type="text" placeholder="Поиск по категориям" />
+    <input id="{{ table_key }}-min" type="number" step="0.01" min="0" placeholder="Мин. сумма" />
+    <select id="{{ table_key }}-sort">
+      <option value="amount_desc">Сумма: по убыванию</option>
+      <option value="amount_asc">Сумма: по возрастанию</option>
+      <option value="name_asc">Категория: А-Я</option>
+      <option value="name_desc">Категория: Я-А</option>
+    </select>
+  </div>
+  <table>
+    <thead>
+      <tr><th>Категория</th><th>Сумма</th><th>Доля</th></tr>
+    </thead>
+    <tbody id="{{ table_key }}-rows"></tbody>
+  </table>
+</section>
