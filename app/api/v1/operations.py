@@ -1,36 +1,113 @@
-from fastapi import APIRouter, Depends, Query
+from datetime import date
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user_id
 from app.db.session import get_db
-from app.schemas.operation import OperationCreate, OperationOut
+from app.schemas.operation import OperationCreate, OperationListOut, OperationOut, OperationUpdate
 from app.services.operation_service import OperationService
 
 router = APIRouter(prefix="/operations", tags=["operations"])
 
 
-@router.get("", response_model=list[OperationOut])
+@router.get("", response_model=OperationListOut)
 def list_operations(
-    period_days: int = Query(default=30, ge=1, le=365),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    sort_by: str = Query(default="operation_date", pattern="^(operation_date|amount|created_at)$"),
+    sort_dir: str = Query(default="desc", pattern="^(asc|desc)$"),
+    kind: str | None = Query(default=None, pattern="^(income|expense)$"),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    category_id: int | None = Query(default=None),
+    q: str | None = Query(default=None, max_length=100),
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     service = OperationService(db)
-    return service.list_operations(user_id=user_id, period_days=period_days)
+    try:
+        items, total = service.list_operations(
+            user_id=user_id,
+            page=page,
+            page_size=page_size,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+            kind=kind,
+            date_from=date_from,
+            date_to=date_to,
+            category_id=category_id,
+            q=q,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    return OperationListOut(items=items, total=total, page=page, page_size=page_size)
 
 
-@router.post("", response_model=OperationOut)
+@router.post("", response_model=OperationOut, status_code=status.HTTP_201_CREATED)
 def create_operation(
     payload: OperationCreate,
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     service = OperationService(db)
-    return service.create_operation(
-        user_id=user_id,
-        kind=payload.kind,
-        amount=payload.amount,
-        operation_date=payload.operation_date,
-        category_id=payload.category_id,
-        note=payload.note,
-    )
+    try:
+        return service.create_operation(
+            user_id=user_id,
+            kind=payload.kind,
+            amount=payload.amount,
+            operation_date=payload.operation_date,
+            category_id=payload.category_id,
+            note=payload.note,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/{operation_id}", response_model=OperationOut)
+def get_operation(
+    operation_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = OperationService(db)
+    try:
+        return service.get_operation(user_id=user_id, operation_id=operation_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.patch("/{operation_id}", response_model=OperationOut)
+def update_operation(
+    operation_id: int,
+    payload: OperationUpdate,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    updates = payload.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields provided for update")
+
+    service = OperationService(db)
+    try:
+        return service.update_operation(user_id=user_id, operation_id=operation_id, updates=updates)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.delete("/{operation_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+def delete_operation(
+    operation_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = OperationService(db)
+    try:
+        service.delete_operation(user_id=user_id, operation_id=operation_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
