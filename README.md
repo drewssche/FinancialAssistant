@@ -41,6 +41,22 @@ Optional args:
 `http://localhost:8001/` includes a `Войти (Dev)` button using `POST /api/v1/auth/dev`.
 This endpoint is allowed only when `APP_ENV != production`.
 
+## UI E2E Regression Test (Chip Picker)
+Added browser regression test for category chip duplication in operation modal search:
+
+- `tests/e2e/test_chip_picker_no_duplicates_e2e.py`
+
+Run locally:
+
+1. `./.venv/bin/pip install -r requirements-e2e.txt`
+2. `./.venv/bin/python -m playwright install chromium`
+3. `./.venv/bin/pytest -q tests/e2e/test_chip_picker_no_duplicates_e2e.py`
+4. Shortcut: `./scripts/test_ui.sh`
+
+Notes:
+- Test uses mocked API responses via Playwright `route`, so it is deterministic and does not require running backend.
+- In CI/local environment without Playwright/Chromium it will be skipped with a clear reason.
+
 ## Current Scope
 - API scaffold and schema foundations
 - Telegram-first auth endpoint scaffold

@@ -1,0 +1,262 @@
+.login-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 30px;
+}
+
+.login-card {
+  width: min(780px, 100%);
+  background: linear-gradient(180deg, rgba(19, 26, 42, 0.96) 0%, rgba(13, 19, 32, 0.98) 100%);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 42px;
+  box-shadow: var(--shadow);
+}
+
+.login-card p {
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 22px;
+  line-height: 1.45;
+}
+
+.input-row {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.login-actions {
+  margin-top: 18px;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+}
+
+.sidebar {
+  border-right: 1px solid var(--border);
+  background: rgba(11, 15, 24, 0.88);
+  backdrop-filter: blur(10px);
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sidebar-today {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(18, 27, 43, 0.7);
+  padding: 10px 12px;
+}
+
+.main {
+  padding: 24px;
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.section-block {
+  display: grid;
+  gap: 12px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+
+.top-actions {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  justify-items: center;
+}
+
+.cta-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  width: 100%;
+}
+
+.cta-row-categories {
+  margin-bottom: 18px;
+}
+
+.category-groups-overview {
+  margin-bottom: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.category-name-row {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.panel-head {
+  margin-bottom: 14px;
+}
+
+.panel-controls {
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: max-content minmax(180px, 220px) minmax(130px, 160px) minmax(150px, 170px) minmax(220px, 1fr) auto;
+  gap: 10px;
+}
+
+.modal-grid {
+  grid-template-columns: max-content minmax(180px, 220px) minmax(130px, 160px) minmax(150px, 170px) minmax(220px, 1fr) auto;
+}
+
+.create-modal-grid {
+  grid-template-columns: max-content minmax(150px, 180px) minmax(170px, 210px) minmax(260px, 1fr);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.between {
+  justify-content: space-between;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.categories-toolbar {
+  margin-top: 10px;
+}
+
+.table-search-row {
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.table-search-row-single {
+  justify-content: flex-start;
+}
+
+.bulk-bar {
+  margin: 6px 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+#categoriesBulkBar {
+  margin-top: 14px;
+}
+
+.sticky-bar,
+.sticky-search {
+  position: sticky;
+  z-index: 5;
+  background: linear-gradient(180deg, rgba(20, 29, 45, 0.98) 0%, rgba(16, 24, 38, 0.98) 100%);
+  border: 1px solid rgba(39, 50, 72, 0.75);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.sticky-bar {
+  top: 12px;
+}
+
+.sticky-search {
+  top: 96px;
+}
+
+.category-form {
+  display: grid;
+  grid-template-columns: auto;
+  gap: 10px;
+  margin-bottom: 14px;
+  align-items: center;
+  justify-items: center;
+}
+
+.category-modal-form {
+  display: grid;
+  gap: 12px;
+}
+
+.operation-category-picker {
+  margin-top: 10px;
+  margin-bottom: 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.operation-category-picker-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.settings-form {
+  margin-top: 12px;
+  display: grid;
+  gap: 12px;
+  max-width: 420px;
+}
+
+.confirm-actions {
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}

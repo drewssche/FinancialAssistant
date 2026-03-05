@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, Query
+from datetime import date
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user_id
@@ -11,9 +13,14 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 @router.get("/summary", response_model=DashboardSummary)
 def get_summary(
-    period: str = Query(default="30d", pattern="^(30d|month)$"),
+    period: str = Query(default="month", pattern="^(day|week|month|year|custom)$"),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     service = DashboardService(db)
-    return service.get_summary(user_id=user_id, period=period)
+    try:
+        return service.get_summary(user_id=user_id, period=period, date_from=date_from, date_to=date_to)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

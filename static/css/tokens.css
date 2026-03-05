@@ -1,0 +1,35 @@
+:root {
+  --bg: #080b12;
+  --bg-soft: #101522;
+  --surface: #131a2a;
+  --surface-2: #1a2438;
+  --text: #e8edf8;
+  --muted: #95a4c4;
+  --border: #273248;
+  --accent: #ff7a18;
+  --accent-2: #ffb347;
+  --danger: #ff6f7d;
+  --shadow: 0 24px 42px rgba(0, 0, 0, 0.42);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--text);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  background: radial-gradient(circle at 20% 0%, #181f31 0%, var(--bg) 48%, #06080f 100%);
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+.hidden {
+  display: none !important;
+}

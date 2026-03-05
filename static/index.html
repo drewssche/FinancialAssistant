@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Financial Assistant</title>
+    <title>Финансовый Ассистент</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
     <div id="loginScreen" class="login-screen">
       <section class="login-card">
-        <h1>Financial Assistant</h1>
+        <h1>Финансовый Ассистент</h1>
         <p>Локальный вход для проверки интерфейса и API.</p>
 
         <div class="input-row">
@@ -34,19 +34,23 @@
     <div id="appShell" class="app-shell hidden">
       <aside class="sidebar">
         <div class="brand">FA</div>
+        <div class="sidebar-today">
+          <div id="todayWeekday" class="today-weekday">Сегодня</div>
+          <div id="todayDate" class="today-date">--</div>
+        </div>
 
-        <nav class="nav">
-          <button class="nav-btn active">Дашборд</button>
-          <button class="nav-btn">Операции</button>
-          <button class="nav-btn">Категории</button>
-          <button class="nav-btn">Настройки</button>
+        <nav class="nav" id="mainNav">
+          <button class="nav-btn active" data-section="dashboard">Дашборд</button>
+          <button class="nav-btn" data-section="operations">Операции</button>
+          <button class="nav-btn" data-section="categories">Категории</button>
+          <button class="nav-btn" data-section="settings">Настройки</button>
         </nav>
 
         <div class="user-area">
           <button id="userMenuToggle" class="user-block" type="button">
-            <div class="avatar" id="userAvatar">D</div>
+            <div class="avatar" id="userAvatar">П</div>
             <div class="meta">
-              <div id="userName">User</div>
+              <div id="userName">Пользователь</div>
               <div id="userHandle">@user</div>
             </div>
             <div class="chevron">▾</div>
@@ -62,78 +66,195 @@
       <main class="main">
         <header class="topbar">
           <div>
-            <h2>Рабочая область</h2>
-            <p class="subtitle">Доходы, расходы и быстрый контроль баланса</p>
+            <h2 id="sectionTitle">Дашборд</h2>
+            <p class="subtitle" id="sectionSubtitle">Доходы, расходы и быстрый контроль баланса</p>
           </div>
-
           <div class="top-actions">
-            <div class="segmented" id="periodTabs" role="tablist" aria-label="Период дашборда">
-              <button class="segmented-btn active" data-period="30d" type="button">30 дней</button>
-              <button class="segmented-btn" data-period="month" type="button">Месяц</button>
-            </div>
-
             <div class="cta-row">
               <button id="addOperationCta" class="btn btn-cta" type="button">+ Добавить операцию</button>
-              <button id="batchOperationCta" class="btn btn-cta-secondary" type="button" disabled>
-                + Массовое добавление (Скоро)
-              </button>
+              <button id="batchOperationCta" class="btn btn-cta" type="button">+ Массовое добавление</button>
             </div>
           </div>
         </header>
 
-        <section class="kpi-grid">
-          <article class="kpi-card">
-            <h3>Доход</h3>
-            <p id="incomeTotal">0.00</p>
-          </article>
-          <article class="kpi-card">
-            <h3>Расход</h3>
-            <p id="expenseTotal">0.00</p>
-          </article>
-          <article class="kpi-card">
-            <h3>Баланс</h3>
-            <p id="balanceTotal">0.00</p>
-          </article>
-        </section>
+        <section id="dashboardSection" class="section-block">
+          <section class="kpi-grid">
+            <article class="kpi-card">
+              <h3>Доход</h3>
+              <p id="incomeTotal">0.00</p>
+            </article>
+            <article class="kpi-card">
+              <h3>Расход</h3>
+              <p id="expenseTotal">0.00</p>
+            </article>
+            <article class="kpi-card">
+              <h3>Баланс</h3>
+              <p id="balanceTotal">0.00</p>
+            </article>
+          </section>
 
-        <section class="panel">
-          <div class="panel-head row between">
-            <h3>Операции</h3>
-            <div class="toolbar">
-              <div class="segmented" id="kindFilters" role="tablist" aria-label="Фильтр по типу">
-                <button class="segmented-btn active" data-kind="" type="button">Все</button>
-                <button class="segmented-btn" data-kind="expense" type="button">Расход</button>
-                <button class="segmented-btn" data-kind="income" type="button">Доход</button>
+          <section class="panel">
+            <div class="panel-head row between">
+              <div>
+                <h3>Операции за период</h3>
+                <p id="dashboardPeriodLabel" class="subtitle"></p>
               </div>
-              <input id="filterQ" type="text" placeholder="Поиск по заметке" />
-              <button id="applyFilters" class="btn btn-secondary" type="button">Применить</button>
-              <button id="refreshBtn" class="btn btn-secondary" type="button">Обновить</button>
+              <div class="panel-controls">
+                <div class="segmented" data-period-tabs role="tablist" aria-label="Период дашборда">
+                  <button class="segmented-btn active" data-period="day" type="button">День</button>
+                  <button class="segmented-btn" data-period="week" type="button">Неделя</button>
+                  <button class="segmented-btn" data-period="month" type="button">Месяц</button>
+                  <button class="segmented-btn" data-period="year" type="button">Год</button>
+                  <button class="segmented-btn" data-period="custom" type="button">Настроить</button>
+                </div>
+                <button id="openOperationsTabBtn" class="btn btn-secondary" type="button">Открыть раздел Операции</button>
+              </div>
             </div>
-          </div>
-
-          <div class="table-wrap">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Дата</th>
-                  <th>Тип</th>
-                  <th>Сумма</th>
-                  <th>Комментарий</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody id="operationsBody"></tbody>
-            </table>
-          </div>
-
-          <div class="pagination">
-            <button id="prevPageBtn" class="btn btn-secondary" type="button">Назад</button>
-            <span id="pageInfo">Страница 1</span>
-            <button id="nextPageBtn" class="btn btn-secondary" type="button">Вперёд</button>
-          </div>
-
-          <pre id="appOutput" class="status-box">Готово.</pre>
+            <div class="table-wrap">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Дата</th>
+                    <th>Тип</th>
+                    <th>Категория</th>
+                    <th>Сумма</th>
+                    <th>Комментарий</th>
+                  </tr>
+                </thead>
+                <tbody id="dashboardOperationsBody"></tbody>
+              </table>
+            </div>
+          </section>
         </section>
+
+        <section id="operationsSection" class="section-block hidden">
+          <section class="panel">
+            <div class="panel-head row between">
+              <div>
+                <p id="operationsPeriodLabel" class="subtitle"></p>
+              </div>
+              <div class="toolbar">
+                <div class="segmented" data-period-tabs role="tablist" aria-label="Период операций">
+                  <button class="segmented-btn active" data-period="day" type="button">День</button>
+                  <button class="segmented-btn" data-period="week" type="button">Неделя</button>
+                  <button class="segmented-btn" data-period="month" type="button">Месяц</button>
+                  <button class="segmented-btn" data-period="year" type="button">Год</button>
+                  <button class="segmented-btn" data-period="custom" type="button">Настроить</button>
+                </div>
+                <div class="segmented" id="kindFilters" role="tablist" aria-label="Фильтр по типу">
+                  <button class="segmented-btn active" data-kind="" type="button">Все</button>
+                  <button class="segmented-btn" data-kind="expense" type="button">Расход</button>
+                  <button class="segmented-btn" data-kind="income" type="button">Доход</button>
+                </div>
+              </div>
+            </div>
+            <div id="operationsBulkBar" class="bulk-bar sticky-bar">
+              <span id="operationsSelectedCount">Всего: 0</span>
+              <button id="bulkEditOperationsBtn" class="btn btn-secondary bulk-action hidden-action" type="button">Редактировать выбранные</button>
+              <button id="bulkDeleteOperationsBtn" class="btn btn-danger bulk-action hidden-action" type="button">Удалить выбранные</button>
+            </div>
+            <div class="table-search-row sticky-search">
+              <input id="filterQ" class="table-search-input" type="text" placeholder="Поиск" />
+              <button id="deleteAllOperationsBtn" class="btn btn-danger" type="button">Удалить все</button>
+            </div>
+
+            <div class="table-wrap">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th class="select-col"><input id="operationsSelectAll" class="table-checkbox" type="checkbox" /></th>
+                    <th>Дата</th>
+                    <th>Тип</th>
+                    <th>Категория</th>
+                    <th>Сумма</th>
+                    <th>Комментарий</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="operationsBody"></tbody>
+              </table>
+            </div>
+
+            <div class="pagination">
+              <button id="prevPageBtn" class="btn btn-secondary" type="button">Назад</button>
+              <span id="pageInfo">Страница 1</span>
+              <button id="nextPageBtn" class="btn btn-secondary" type="button">Вперёд</button>
+            </div>
+          </section>
+        </section>
+
+        <section id="categoriesSection" class="section-block hidden">
+          <section class="panel">
+            <div class="panel-head row between">
+              <div></div>
+              <div class="toolbar">
+                <div class="segmented" id="categoryKindTabs">
+                  <button class="segmented-btn active" data-cat-kind="all" type="button">Все</button>
+                  <button class="segmented-btn" data-cat-kind="expense" type="button">Расход</button>
+                  <button class="segmented-btn" data-cat-kind="income" type="button">Доход</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="cta-row cta-row-categories">
+              <button id="addGroupCta" class="btn btn-cta" type="button">+ Создать группу</button>
+              <button id="addCategoryCta" class="btn btn-cta" type="button">+ Создать категорию</button>
+            </div>
+
+            <div id="categoriesBulkBar" class="bulk-bar sticky-bar">
+              <span id="categoriesSelectedCount">Всего: 0</span>
+              <button id="bulkEditCategoriesBtn" class="btn btn-secondary bulk-action hidden-action" type="button">Редактировать выбранные</button>
+              <button id="bulkDeleteCategoriesBtn" class="btn btn-danger bulk-action hidden-action" type="button">Удалить выбранные</button>
+            </div>
+            <div class="table-search-row sticky-search">
+              <input id="categorySearchQ" class="table-search-input" type="text" placeholder="Поиск" />
+              <button id="deleteAllCategoriesBtn" class="btn btn-danger" type="button">Удалить все</button>
+            </div>
+
+            <div class="table-wrap">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th class="select-col"><input id="categoriesSelectAll" class="table-checkbox" type="checkbox" /></th>
+                    <th>Группа</th>
+                    <th>Название</th>
+                    <th>Тип</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="categoriesBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section id="settingsSection" class="section-block hidden">
+          <section class="panel">
+            <form id="settingsForm" class="settings-form">
+              <label class="field">
+                <span>Таймзона</span>
+                <select id="timezoneSelect">
+                  <option value="auto">Авто (из браузера)</option>
+                  <option value="Europe/Moscow">Europe/Moscow</option>
+                  <option value="Europe/Kaliningrad">Europe/Kaliningrad</option>
+                  <option value="Europe/Samara">Europe/Samara</option>
+                  <option value="Asia/Yekaterinburg">Asia/Yekaterinburg</option>
+                  <option value="Asia/Omsk">Asia/Omsk</option>
+                  <option value="Asia/Krasnoyarsk">Asia/Krasnoyarsk</option>
+                  <option value="Asia/Irkutsk">Asia/Irkutsk</option>
+                  <option value="Asia/Yakutsk">Asia/Yakutsk</option>
+                  <option value="Asia/Vladivostok">Asia/Vladivostok</option>
+                  <option value="Asia/Magadan">Asia/Magadan</option>
+                  <option value="Asia/Kamchatka">Asia/Kamchatka</option>
+                  <option value="UTC">UTC</option>
+                </select>
+              </label>
+              <button id="saveSettingsBtn" class="btn btn-primary" type="submit">Сохранить настройки</button>
+            </form>
+          </section>
+        </section>
+
+        <pre id="appOutput" class="status-box">Готово.</pre>
       </main>
     </div>
 
@@ -144,26 +265,39 @@
           <button id="closeCreateModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
         </div>
 
-        <form id="createOperationForm" class="form-grid modal-grid">
+        <form id="createOperationForm" class="form-grid modal-grid create-modal-grid">
           <div class="segmented" id="createKindSwitch" aria-label="Тип операции">
             <button class="segmented-btn active" data-kind="expense" type="button">Расход</button>
             <button class="segmented-btn" data-kind="income" type="button">Доход</button>
           </div>
           <input id="opKind" type="hidden" value="expense" />
+          <select id="opCategory" class="hidden"></select>
           <input id="opAmount" type="number" step="0.01" placeholder="Сумма" required />
           <input id="opDate" type="date" required />
           <input id="opNote" type="text" placeholder="Комментарий" />
-          <button class="btn btn-primary" type="submit">Добавить</button>
         </form>
+        <div class="operation-category-picker">
+          <input id="opCategorySearch" type="text" placeholder="Поиск категории" />
+          <div class="operation-category-picker-row">
+            <div id="opCategoryQuick" class="category-chip-list"></div>
+          </div>
+          <div id="opCategoryAll" class="category-chip-list hidden"></div>
+        </div>
+        <div class="modal-footer">
+          <button id="submitCreateOperationBtn" class="btn btn-cta modal-main-cta" type="submit" form="createOperationForm">
+            Добавить
+          </button>
+        </div>
 
         <div class="preview-panel">
           <div class="preview-title">Превью строки в таблице</div>
-          <div class="table-wrap">
-            <table class="table">
-              <thead>
+            <div class="table-wrap">
+              <table class="table table-hover">
+                <thead>
                 <tr>
                   <th>Дата</th>
                   <th>Тип</th>
+                  <th>Категория</th>
                   <th>Сумма</th>
                   <th>Комментарий</th>
                   <th></th>
@@ -172,6 +306,68 @@
               <tbody id="createPreviewBody"></tbody>
             </table>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="batchCreateModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="batchCreateTitle">
+      <div class="modal-card modal-small">
+        <div class="panel-head row between">
+          <h3 id="batchCreateTitle">Массовое добавление операций</h3>
+          <button id="closeBatchCreateModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+        </div>
+        <form id="batchCreateForm" class="category-modal-form">
+          <p class="subtitle">Одна строка: тип;сумма;дата;комментарий. Пример: <code>expense;150.50;2026-03-04;Такси</code></p>
+          <textarea id="batchCreateInput" rows="8" placeholder="income;1000;2026-03-04;Зарплата"></textarea>
+        </form>
+        <div class="modal-footer">
+          <button id="submitBatchCreateBtn" class="btn btn-cta modal-main-cta" type="submit" form="batchCreateForm">
+            Добавить пакет
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="bulkEditOperationsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="bulkEditOperationsTitle">
+      <div class="modal-card modal-small">
+        <div class="panel-head row between">
+          <h3 id="bulkEditOperationsTitle">Массовое редактирование операций</h3>
+          <button id="closeBulkEditOperationsModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+        </div>
+        <form id="bulkEditOperationsForm" class="category-modal-form">
+          <select id="bulkOpKind">
+            <option value="">Тип (не менять)</option>
+            <option value="expense">Расход</option>
+            <option value="income">Доход</option>
+          </select>
+          <select id="bulkOpCategory">
+            <option value="">Категория (не менять)</option>
+          </select>
+          <input id="bulkOpDate" type="date" />
+        </form>
+        <div class="modal-footer">
+          <button id="submitBulkEditOperationsBtn" class="btn btn-cta modal-main-cta" type="submit" form="bulkEditOperationsForm">
+            Применить изменения
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="bulkEditCategoriesModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="bulkEditCategoriesTitle">
+      <div class="modal-card modal-small">
+        <div class="panel-head row between">
+          <h3 id="bulkEditCategoriesTitle">Массовое редактирование категорий</h3>
+          <button id="closeBulkEditCategoriesModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+        </div>
+        <form id="bulkEditCategoriesForm" class="category-modal-form">
+          <select id="bulkCategoryGroup">
+            <option value="">Группа (не менять)</option>
+          </select>
+        </form>
+        <div class="modal-footer">
+          <button id="submitBulkEditCategoriesBtn" class="btn btn-cta modal-main-cta" type="submit" form="bulkEditCategoriesForm">
+            Применить изменения
+          </button>
         </div>
       </div>
     </div>
@@ -189,14 +385,206 @@
             <button class="segmented-btn" data-kind="income" type="button">Доход</button>
           </div>
           <input id="editKind" type="hidden" value="expense" />
+          <select id="editCategory"></select>
           <input id="editAmount" type="number" step="0.01" required />
           <input id="editDate" type="date" required />
           <input id="editNote" type="text" placeholder="Комментарий" />
-          <button class="btn btn-primary" type="submit">Сохранить</button>
         </form>
+        <div class="modal-footer">
+          <button id="submitEditOperationBtn" class="btn btn-cta modal-main-cta" type="submit" form="editOperationForm">
+            Сохранить
+          </button>
+        </div>
+
+        <div class="preview-panel">
+          <div class="preview-title">Превью строки в таблице</div>
+          <div class="table-wrap">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Дата</th>
+                  <th>Тип</th>
+                  <th>Категория</th>
+                  <th>Сумма</th>
+                  <th>Комментарий</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="editPreviewBody"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 
-    <script src="/static/app.js"></script>
+    <div id="createCategoryModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="createCategoryTitle">
+      <div class="modal-card modal-small">
+        <div class="panel-head row between">
+          <h3 id="createCategoryTitle">Новая категория</h3>
+          <button id="closeCreateCategoryModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+        </div>
+        <form id="categoryModalForm" class="category-modal-form">
+          <div class="category-name-row">
+            <div class="icon-select">
+              <input id="categoryIcon" type="hidden" value="" />
+              <button id="categoryIconToggle" class="btn btn-secondary icon-square-toggle" type="button" aria-label="Выбрать иконку">
+                +
+              </button>
+              <div id="categoryIconPopover" class="icon-popover hidden"></div>
+            </div>
+            <input id="categoryName" type="text" placeholder="Название категории" required />
+          </div>
+          <select id="categoryGroup">
+            <option value="">Без группы</option>
+          </select>
+          <div class="segmented" id="createCategoryKind">
+            <button class="segmented-btn active" data-cat-create-kind="expense" type="button">Расход</button>
+            <button class="segmented-btn" data-cat-create-kind="income" type="button">Доход</button>
+          </div>
+          <input id="categoryKind" type="hidden" value="expense" />
+        </form>
+        <div class="modal-footer">
+          <button id="submitCreateCategoryBtn" class="btn btn-cta modal-main-cta" type="submit" form="categoryModalForm">
+            Добавить категорию
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="createGroupModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="createGroupTitle">
+      <div class="modal-card modal-small">
+        <div class="panel-head row between">
+          <h3 id="createGroupTitle">Новая группа</h3>
+          <button id="closeCreateGroupModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+        </div>
+        <form id="groupModalForm" class="category-modal-form">
+          <input id="groupName" type="text" placeholder="Название группы" required />
+          <div class="color-picker-row">
+            <input id="groupAccentColor" type="color" value="#ff8a3d" />
+            <input id="groupAccentColorHex" type="text" value="#ff8a3d" />
+          </div>
+          <div class="segmented" id="createGroupKind">
+            <button class="segmented-btn active" data-group-create-kind="expense" type="button">Расход</button>
+            <button class="segmented-btn" data-group-create-kind="income" type="button">Доход</button>
+          </div>
+          <input id="groupKind" type="hidden" value="expense" />
+        </form>
+        <div class="modal-footer">
+          <button id="submitCreateGroupBtn" class="btn btn-cta modal-main-cta" type="submit" form="groupModalForm">
+            Создать группу
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="editGroupModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="editGroupTitle">
+      <div class="modal-card modal-small">
+        <div class="panel-head row between">
+          <h3 id="editGroupTitle">Редактировать группу</h3>
+          <button id="closeEditGroupModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+        </div>
+        <form id="editGroupForm" class="category-modal-form">
+          <input id="editGroupName" type="text" placeholder="Название группы" required />
+          <div class="color-picker-row">
+            <input id="editGroupAccentColor" type="color" value="#ff8a3d" />
+            <input id="editGroupAccentColorHex" type="text" value="#ff8a3d" />
+          </div>
+          <input id="editGroupId" type="hidden" value="" />
+        </form>
+        <div class="modal-footer">
+          <button id="submitEditGroupBtn" class="btn btn-cta modal-main-cta" type="submit" form="editGroupForm">
+            Сохранить
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="editCategoryModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="editCategoryTitle">
+      <div class="modal-card modal-small">
+        <div class="panel-head row between">
+          <h3 id="editCategoryTitle">Редактировать категорию</h3>
+          <button id="closeEditCategoryModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+        </div>
+        <form id="editCategoryForm" class="category-modal-form">
+          <div class="category-name-row">
+            <div class="icon-select">
+              <input id="editCategoryIcon" type="hidden" value="" />
+              <button id="editCategoryIconToggle" class="btn btn-secondary icon-square-toggle" type="button" aria-label="Выбрать иконку">
+                +
+              </button>
+              <div id="editCategoryIconPopover" class="icon-popover hidden"></div>
+            </div>
+            <input id="editCategoryName" type="text" placeholder="Название категории" required />
+          </div>
+          <select id="editCategoryGroup">
+            <option value="">Без группы</option>
+          </select>
+          <div class="segmented" id="editCategoryKindSwitch">
+            <button class="segmented-btn active" data-cat-edit-kind="expense" type="button">Расход</button>
+            <button class="segmented-btn" data-cat-edit-kind="income" type="button">Доход</button>
+          </div>
+          <input id="editCategoryKind" type="hidden" value="expense" />
+        </form>
+        <div class="modal-footer">
+          <button id="submitEditCategoryBtn" class="btn btn-cta modal-main-cta" type="submit" form="editCategoryForm">
+            Сохранить
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="periodCustomModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="periodCustomTitle">
+      <div class="modal-card modal-small">
+        <div class="panel-head row between">
+          <h3 id="periodCustomTitle">Настроить период</h3>
+          <button id="closePeriodCustomModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+        </div>
+        <form id="periodCustomForm" class="category-modal-form">
+          <input id="customDateFrom" type="date" required />
+          <input id="customDateTo" type="date" required />
+        </form>
+        <div class="modal-footer">
+          <button id="submitPeriodCustomBtn" class="btn btn-cta modal-main-cta" type="submit" form="periodCustomForm">
+            Применить период
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="confirmModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <div class="modal-card modal-small">
+        <div class="panel-head">
+          <h3 id="confirmTitle">Подтверждение удаления</h3>
+        </div>
+        <p id="confirmText" class="subtitle">Вы уверены, что хотите удалить объект?</p>
+        <div class="row confirm-actions">
+          <button id="confirmCancelBtn" class="btn btn-secondary" type="button">Отмена</button>
+          <button id="confirmDeleteBtn" class="btn btn-danger" type="button">Удалить</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toastArea" class="toast-area"></div>
+
+    <script src="/static/js/app-core.js"></script>
+    <script src="/static/js/app-core-actions.js"></script>
+    <script src="/static/js/app-renderers.js"></script>
+    <script src="/static/js/app-categories-ui.js"></script>
+    <script src="/static/js/app-categories-data.js"></script>
+    <script src="/static/js/app-categories.js"></script>
+    <script src="/static/js/app-section-ui.js"></script>
+    <script src="/static/js/app-features-operation-modal.js"></script>
+    <script src="/static/js/app-features-dashboard.js"></script>
+    <script src="/static/js/app-features-session.js"></script>
+    <script src="/static/js/app-features.js"></script>
+    <script src="/static/js/app-bulk-ui.js"></script>
+    <script src="/static/js/app-bulk-bindings-operations.js"></script>
+    <script src="/static/js/app-bulk-bindings-categories.js"></script>
+    <script src="/static/js/app-bulk-bindings.js"></script>
+    <script src="/static/js/app-bulk.js"></script>
+    <script src="/static/js/app-init-core.js"></script>
+    <script src="/static/js/app-init-features.js"></script>
+    <script src="/static/js/app-init-startup.js"></script>
+    <script src="/static/js/app-init.js"></script>
   </body>
 </html>

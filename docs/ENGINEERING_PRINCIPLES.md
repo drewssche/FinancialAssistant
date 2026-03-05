@@ -16,6 +16,13 @@
 - Soft file size target: 300-400 lines
 - Hard refactor threshold: over 500 lines
 - Avoid monolithic files and duplicate business logic
+- Frontend code must be split into modules (`core`, `ui`, `features`) when file grows over 500 lines
+- Shared UX behaviors (confirm, toast, undo, modal open/close) must be implemented as reusable helpers, not duplicated handlers
+
+## Localization and Formatting
+- Product UI language is Russian by default
+- Date display format in UI tables/cards is `DD.MM.YYYY`
+- Monetary and semantic statuses must use consistent meaning-based color patterns across all screens
 
 ## Reliability
 - DB constraints and indexes from day one

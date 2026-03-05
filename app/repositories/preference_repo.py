@@ -13,7 +13,7 @@ class PreferenceRepository:
         if item:
             return item
         item = UserPreference(user_id=user_id, preferences_version=1, data={
-            "dashboard": {"period": "30d"},
+            "dashboard": {"period": "day"},
             "operations": {"filters": {}, "sort": "operation_date:desc"},
         })
         self.db.add(item)
