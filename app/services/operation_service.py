@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
+from app.core.cache import invalidate_dashboard_summary_cache
 from app.repositories.operation_repo import OperationRepository
 
 
@@ -23,6 +24,7 @@ class OperationService:
         self._validate_kind(kind)
         item = self.repo.create(user_id, kind, amount, operation_date, category_id, note)
         self.db.commit()
+        invalidate_dashboard_summary_cache(user_id)
         self.db.refresh(item)
         return item
 
@@ -73,6 +75,7 @@ class OperationService:
 
         item = self.repo.update(item, updates)
         self.db.commit()
+        invalidate_dashboard_summary_cache(user_id)
         self.db.refresh(item)
         return item
 
@@ -83,6 +86,7 @@ class OperationService:
 
         self.repo.delete(item)
         self.db.commit()
+        invalidate_dashboard_summary_cache(user_id)
 
     @staticmethod
     def _validate_kind(kind: str) -> None:

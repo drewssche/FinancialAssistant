@@ -1,0 +1,211 @@
+(() => {
+  const CURRENCY_META = {
+    BYN: { symbol: "Br" },
+    RUB: { symbol: "₽" },
+    USD: { symbol: "$" },
+    EUR: { symbol: "€" },
+    GBP: { symbol: "£" },
+  };
+
+  function formatAmount(value) {
+    const num = Number(value);
+    if (Number.isNaN(num)) {
+      return "0.00";
+    }
+    return num.toFixed(2);
+  }
+
+  function getUiSettings(state) {
+    const ui = state.preferences?.data?.ui || {};
+    const scale = Number(ui.scale_percent || 100);
+    return {
+      currency: String(ui.currency || "BYN").toUpperCase(),
+      currencyPosition: ui.currency_position === "prefix" ? "prefix" : "suffix",
+      showDashboardDebts: ui.show_dashboard_debts !== false,
+      scalePercent: Number.isFinite(scale) ? Math.max(90, Math.min(115, Math.round(scale / 5) * 5)) : 100,
+    };
+  }
+
+  function resolveCurrencyConfig(currencyCode, positionValue) {
+    const code = String(currencyCode || "BYN").toUpperCase();
+    const position = positionValue === "prefix" ? "prefix" : "suffix";
+    const symbol = CURRENCY_META[code]?.symbol || code;
+    return {
+      code,
+      symbol,
+      position,
+    };
+  }
+
+  function getCurrencyConfig(state) {
+    const ui = getUiSettings(state);
+    return resolveCurrencyConfig(ui.currency, ui.currencyPosition);
+  }
+
+  function formatMoney(state, value, options = {}) {
+    const amount = Number(value || 0);
+    const safe = Number.isFinite(amount) ? amount : 0;
+    const formatted = new Intl.NumberFormat("ru-RU", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(safe);
+    if (options.withCurrency === false) {
+      return formatted;
+    }
+    const cfg = options.currency || options.position
+      ? resolveCurrencyConfig(options.currency, options.position)
+      : getCurrencyConfig(state);
+    return cfg.position === "prefix" ? `${cfg.symbol} ${formatted}` : `${formatted} ${cfg.symbol}`;
+  }
+
+  function applyUiScale(el, scalePercent) {
+    const normalized = Math.max(90, Math.min(115, Number(scalePercent || 100)));
+    document.documentElement.style.setProperty("--ui-scale", String(normalized / 100));
+    document.body.style.zoom = `${normalized}%`;
+    if (el.uiScaleRange) {
+      el.uiScaleRange.value = String(normalized);
+    }
+    if (el.uiScaleValue) {
+      el.uiScaleValue.textContent = `${normalized}%`;
+    }
+  }
+
+  function applyMoneyInputs(el, state, config = null) {
+    const cfg = config || getCurrencyConfig(state);
+    document.querySelectorAll("[data-money-input-wrap]").forEach((node) => {
+      node.dataset.currencySymbol = cfg.symbol;
+      node.classList.toggle("currency-prefix", cfg.position === "prefix");
+      node.classList.toggle("currency-suffix", cfg.position !== "prefix");
+    });
+    if (el.currencyPreview) {
+      el.currencyPreview.textContent = `Пример: ${formatMoney(state, 1234.56, { currency: cfg.code, position: cfg.position })}`;
+    }
+  }
+
+  function isDashboardDebtsVisible(state) {
+    return getUiSettings(state).showDashboardDebts;
+  }
+
+  function formatDateRu(value) {
+    if (!value) {
+      return "";
+    }
+    const [year, month, day] = String(value).split("-");
+    if (!year || !month || !day) {
+      return String(value);
+    }
+    return `${day}.${month}.${year}`;
+  }
+
+  function kindLabel(kind) {
+    return kind === "income" ? "Доход" : "Расход";
+  }
+
+  function formatPeriodLabel(dateFrom, dateTo) {
+    if (!dateFrom || !dateTo) {
+      return "";
+    }
+    if (dateFrom === dateTo) {
+      return formatDateRu(dateFrom);
+    }
+    return `${formatDateRu(dateFrom)} - ${formatDateRu(dateTo)}`;
+  }
+
+  function extractZonedDateParts(date, timeZone) {
+    const dtf = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      weekday: "short",
+    });
+    const parts = dtf.formatToParts(date);
+    const get = (type) => parts.find((item) => item.type === type)?.value || "";
+    const weekdayMap = {
+      Sun: 0,
+      Mon: 1,
+      Tue: 2,
+      Wed: 3,
+      Thu: 4,
+      Fri: 5,
+      Sat: 6,
+    };
+    return {
+      year: Number(get("year")),
+      month: Number(get("month")),
+      day: Number(get("day")),
+      weekday: weekdayMap[get("weekday")] ?? 0,
+    };
+  }
+
+  function formatIsoUtcDate(value) {
+    const year = value.getUTCFullYear();
+    const month = String(value.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(value.getUTCDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function getPreferenceTimeZone(state) {
+    const saved = state.preferences?.data?.ui?.timezone;
+    if (!saved || saved === "auto") {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    }
+    return saved;
+  }
+
+  function getPeriodBounds(state, period) {
+    const now = new Date();
+    const timeZone = getPreferenceTimeZone(state);
+    let zonedParts;
+    try {
+      zonedParts = extractZonedDateParts(now, timeZone);
+    } catch {
+      zonedParts = extractZonedDateParts(now, "UTC");
+    }
+    let start = new Date(Date.UTC(zonedParts.year, zonedParts.month - 1, zonedParts.day));
+    let end = new Date(start);
+
+    if (period === "day") {
+      end = new Date(start);
+    } else if (period === "week") {
+      const mondayOffset = zonedParts.weekday === 0 ? 6 : zonedParts.weekday - 1;
+      start = new Date(Date.UTC(zonedParts.year, zonedParts.month - 1, zonedParts.day));
+      start.setUTCDate(start.getUTCDate() - mondayOffset);
+      end = new Date(start);
+      end.setUTCDate(start.getUTCDate() + 6);
+    } else if (period === "month") {
+      start = new Date(Date.UTC(zonedParts.year, zonedParts.month - 1, 1));
+      end = new Date(Date.UTC(zonedParts.year, zonedParts.month, 0));
+    } else if (period === "year") {
+      start = new Date(Date.UTC(zonedParts.year, 0, 1));
+      end = new Date(Date.UTC(zonedParts.year, 11, 31));
+    } else if (period === "all_time") {
+      const fallbackToday = formatIsoUtcDate(start);
+      const first = String(state.firstOperationDate || "").trim();
+      return { dateFrom: first || fallbackToday, dateTo: formatIsoUtcDate(end) };
+    } else if (period === "custom" && state.customDateFrom && state.customDateTo) {
+      return { dateFrom: state.customDateFrom, dateTo: state.customDateTo };
+    } else {
+      start = new Date(Date.UTC(zonedParts.year, zonedParts.month - 1, zonedParts.day));
+      end = new Date(start);
+    }
+
+    return { dateFrom: formatIsoUtcDate(start), dateTo: formatIsoUtcDate(end) };
+  }
+
+  window.App.coreUtils = {
+    formatAmount,
+    getUiSettings,
+    resolveCurrencyConfig,
+    getCurrencyConfig,
+    formatMoney,
+    applyUiScale,
+    applyMoneyInputs,
+    isDashboardDebtsVisible,
+    formatDateRu,
+    kindLabel,
+    formatPeriodLabel,
+    getPreferenceTimeZone,
+    getPeriodBounds,
+  };
+})();

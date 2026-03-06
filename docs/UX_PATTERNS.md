@@ -79,7 +79,7 @@ Behavior:
 ## List Loading Pattern (Required)
 - Standard pattern for large lists/tables: initial load `20` rows, then incremental load by scroll (`+20` each batch).
 - UI keeps backend pagination semantics (page/cursor) internally, but hides classic numbered pagination controls.
-- Reuse this pattern in sections where list volume can grow (`Операции`, `Категории`, future debt/history lists).
+- Reuse this pattern in sections where list volume can grow (`Операции`, `Категории`, `Долги` cards, debt history timeline).
 - Keep virtualization as optional optimization if row count/performance requires it.
 
 ## Row Interaction
@@ -130,6 +130,7 @@ Behavior:
 - visual priority for overdue/near-due cards
 - non-blocking reminders in UI (toast/info badge), no forced modal interruptions
 - Search in debts uses the same reusable highlight pattern as operations search (`core.highlightText`)
+- Repayment quick presets (`25%`, `50%`, `Весь остаток`) are derived from current outstanding amount from state/API and must update amount input + delta hints in one click
 
 ## Responsive Behavior
 - Desktop: sidebar visible

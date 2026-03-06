@@ -1,10 +1,10 @@
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import Select, and_, asc, desc, func, select
+from sqlalchemy import Select, and_, asc, desc, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.db.models import Operation
+from app.db.models import Category, Operation
 
 
 class OperationRepository:
@@ -60,10 +60,40 @@ class OperationRepository:
         if category_id is not None:
             conditions.append(Operation.category_id == category_id)
         if q:
-            conditions.append(Operation.note.ilike(f"%{q}%"))
+            search = q.strip()
+            if search:
+                search_cf = search.casefold()
+                variants = {search}
+                variants.add(search.lower())
+                variants.add(search.upper())
+                variants.add(search[:1].upper() + search[1:])
+                search_clauses = []
+                for variant in variants:
+                    like = f"%{variant}%"
+                    search_clauses.extend(
+                        [
+                            Operation.note.like(like),
+                            Category.name.like(like),
+                            Operation.kind.ilike(like),
+                        ]
+                    )
+                if "доход".startswith(search_cf):
+                    search_clauses.append(Operation.kind == "income")
+                if "расход".startswith(search_cf):
+                    search_clauses.append(Operation.kind == "expense")
+                conditions.append(or_(*search_clauses))
 
-        base_stmt: Select[tuple[Operation]] = select(Operation).where(and_(*conditions))
-        count_stmt = select(func.count()).select_from(Operation).where(and_(*conditions))
+        base_stmt: Select[tuple[Operation]] = (
+            select(Operation)
+            .outerjoin(Category, Category.id == Operation.category_id)
+            .where(and_(*conditions))
+        )
+        count_stmt = (
+            select(func.count())
+            .select_from(Operation)
+            .outerjoin(Category, Category.id == Operation.category_id)
+            .where(and_(*conditions))
+        )
 
         sort_column = {
             "operation_date": Operation.operation_date,

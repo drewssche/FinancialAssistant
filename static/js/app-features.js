@@ -6,6 +6,9 @@
   const sessionFeatures = window.App.featureSession;
   const operationModal = window.App.operationModal;
   let operationsRawItems = [];
+  let operationsRequestController = null;
+  let operationsRequestSeq = 0;
+  const OPERATIONS_CACHE_TTL_MS = 15000;
   const getCategoryMetaById = operationModal.getCategoryMetaById;
   const trackCategoryUsage = operationModal.trackCategoryUsage;
   const getCreateFormPreviewItem = operationModal.getCreateFormPreviewItem;
@@ -51,10 +54,11 @@
   const openDebtHistoryModal = debtFeatures.openDebtHistoryModal;
   const closeDebtHistoryModal = debtFeatures.closeDebtHistoryModal;
   const setDebtStatusFilter = debtFeatures.setDebtStatusFilter;
+  const setDebtSortPreset = debtFeatures.setDebtSortPreset;
   const applyDebtSearch = debtFeatures.applyDebtSearch;
+  const loadMoreDebtCards = debtFeatures.loadMoreDebtCards;
+  const loadMoreDebtHistoryEvents = debtFeatures.loadMoreDebtHistoryEvents;
   const openEditDebtModal = debtFeatures.openEditDebtModal;
-  const closeEditDebtModal = debtFeatures.closeEditDebtModal;
-  const submitEditDebt = debtFeatures.submitEditDebt;
   const deleteDebtFlow = debtFeatures.deleteDebtFlow;
 
   function invalidateAllTimeAnchor() {
@@ -88,7 +92,7 @@
     const params = new URLSearchParams({
       page: String(page),
       page_size: String(state.pageSize),
-      sort_by: "operation_date",
+      sort_by: state.operationSortPreset === "amount" ? "amount" : "operation_date",
       sort_dir: "desc",
       date_from: dateFrom,
       date_to: dateTo,
@@ -96,6 +100,10 @@
 
     if (state.filterKind) {
       params.set("kind", state.filterKind);
+    }
+    const query = el.filterQ.value.trim();
+    if (query) {
+      params.set("q", query);
     }
     return params;
   }
@@ -107,6 +115,43 @@
     el.nextPageBtn.disabled = !state.operationsHasMore;
   }
 
+  function compareIsoDateDesc(a, b) {
+    const aDate = String(a || "");
+    const bDate = String(b || "");
+    return bDate.localeCompare(aDate);
+  }
+
+  function applyOperationsSort(items) {
+    const preset = state.operationSortPreset || "date";
+    const sorted = items.slice();
+    if (preset === "amount") {
+      sorted.sort((a, b) => {
+        const diff = Number(b.amount || 0) - Number(a.amount || 0);
+        if (diff !== 0) {
+          return diff;
+        }
+        return compareIsoDateDesc(a.operation_date, b.operation_date);
+      });
+      return sorted;
+    }
+    if (preset === "risk") {
+      sorted.sort((a, b) => {
+        const aExpense = a.kind === "expense" ? 0 : 1;
+        const bExpense = b.kind === "expense" ? 0 : 1;
+        if (aExpense !== bExpense) {
+          return aExpense - bExpense;
+        }
+        const amountDiff = Number(b.amount || 0) - Number(a.amount || 0);
+        if (amountDiff !== 0) {
+          return amountDiff;
+        }
+        return compareIsoDateDesc(a.operation_date, b.operation_date);
+      });
+      return sorted;
+    }
+    return sorted;
+  }
+
   function appendUniqueOperations(items) {
     const existing = new Set(operationsRawItems.map((item) => item.id));
     for (const item of items) {
@@ -116,42 +161,38 @@
     }
   }
 
-  function getCategoryNameById(categoryId) {
-    if (!categoryId) {
-      return "";
+  function applyOperationsPageData(data, reset, requestPage) {
+    state.total = data.total;
+    if (reset) {
+      operationsRawItems = data.items.slice();
+    } else {
+      appendUniqueOperations(data.items);
     }
-    const category = state.categories.find((item) => item.id === categoryId);
-    return category?.name || "";
-  }
-
-  function matchesRealtimeQuery(item, queryLower) {
-    if (!queryLower) {
-      return true;
+    if (data.items.length > 0) {
+      state.page = requestPage + 1;
     }
-    const kindRu = core.kindLabel(item.kind).toLowerCase();
-    const note = String(item.note || "").toLowerCase();
-    const categoryName = getCategoryNameById(item.category_id).toLowerCase();
-    return kindRu.includes(queryLower) || note.includes(queryLower) || categoryName.includes(queryLower);
+    state.operationsHasMore = operationsRawItems.length < state.total && data.items.length > 0;
+    renderOperations(operationsRawItems);
+    renderPagination();
   }
 
   function renderOperations(items) {
+    const sortedItems = applyOperationsSort(items);
     const query = el.filterQ.value.trim();
-    const queryLower = query.toLowerCase();
-    const filtered = items.filter((item) => matchesRealtimeQuery(item, queryLower));
-    const visibleIds = new Set(filtered.map((item) => item.id));
+    const visibleIds = new Set(sortedItems.map((item) => item.id));
     for (const id of Array.from(state.selectedOperationIds)) {
       if (!visibleIds.has(id)) {
         state.selectedOperationIds.delete(id);
       }
     }
     el.operationsBody.innerHTML = "";
-    if (!filtered.length) {
+    if (!sortedItems.length) {
       const row = document.createElement("tr");
       row.innerHTML = '<td colspan="7">Нет операций</td>';
       el.operationsBody.appendChild(row);
       return;
     }
-    for (const item of filtered) {
+    for (const item of sortedItems) {
       el.operationsBody.appendChild(
         core.createOperationRow(item, {
           searchQuery: query,
@@ -169,7 +210,10 @@
   async function loadOperations(options = {}) {
     await ensureAllTimeBounds();
     const reset = options.reset !== false;
-    if (state.operationsLoading) {
+    const force = options.force === true;
+    if (state.operationsLoading && reset && operationsRequestController) {
+      operationsRequestController.abort();
+    } else if (state.operationsLoading && !force) {
       return;
     }
     if (!reset && !state.operationsHasMore) {
@@ -183,26 +227,41 @@
       state.selectedOperationIds.clear();
     }
 
-    state.operationsLoading = true;
     const requestPage = state.page;
+    const params = buildOperationsQuery(requestPage);
+    const cacheKey = `operations:list:${params.toString()}`;
+    if (!force) {
+      const cached = core.getUiRequestCache(cacheKey, OPERATIONS_CACHE_TTL_MS);
+      if (cached) {
+        applyOperationsPageData(cached, reset, requestPage);
+        return;
+      }
+    }
+
+    state.operationsLoading = true;
+    const requestController = new AbortController();
+    operationsRequestController = requestController;
+    const requestSeq = ++operationsRequestSeq;
     try {
-      const data = await core.requestJson(`/api/v1/operations?${buildOperationsQuery(requestPage).toString()}`, {
+      const data = await core.requestJson(`/api/v1/operations?${params.toString()}`, {
         headers: core.authHeaders(),
+        signal: requestController.signal,
       });
-      state.total = data.total;
-      if (reset) {
-        operationsRawItems = data.items.slice();
-      } else {
-        appendUniqueOperations(data.items);
+      if (requestSeq !== operationsRequestSeq) {
+        return;
       }
-      if (data.items.length > 0) {
-        state.page = requestPage + 1;
+      core.setUiRequestCache(cacheKey, data);
+      applyOperationsPageData(data, reset, requestPage);
+    } catch (err) {
+      if (core.isAbortError && core.isAbortError(err)) {
+        return;
       }
-      state.operationsHasMore = operationsRawItems.length < state.total && data.items.length > 0;
-      renderOperations(operationsRawItems);
-      renderPagination();
+      throw err;
     } finally {
-      state.operationsLoading = false;
+      if (operationsRequestController === requestController) {
+        operationsRequestController = null;
+        state.operationsLoading = false;
+      }
     }
   }
 
@@ -228,6 +287,7 @@
         headers: core.authHeaders(),
         body: JSON.stringify(payload),
       });
+      core.invalidateUiRequestCache("debts");
       state.editDebtCreateId = null;
       closeCreateModal();
       await Promise.all([loadDebtsCards(), loadDashboard()]);
@@ -246,6 +306,7 @@
       headers: core.authHeaders(),
       body: JSON.stringify(payload),
     });
+    core.invalidateUiRequestCache("operations");
     invalidateAllTimeAnchor();
     trackCategoryUsage(payload.category_id);
 
@@ -279,6 +340,7 @@
       headers: core.authHeaders(),
       body: JSON.stringify(payload),
     });
+    core.invalidateUiRequestCache("operations");
     invalidateAllTimeAnchor();
     trackCategoryUsage(payload.category_id);
 
@@ -294,6 +356,7 @@
           method: "DELETE",
           headers: core.authHeaders(),
         });
+        core.invalidateUiRequestCache("operations");
         invalidateAllTimeAnchor();
       },
       onAfterDelete: async () => {
@@ -312,6 +375,7 @@
             note: item.note,
           }),
         });
+        core.invalidateUiRequestCache("operations");
         invalidateAllTimeAnchor();
         await Promise.all([loadDashboard(), loadOperations({ reset: true }), loadDashboardOperations()]);
         return "Операция восстановлена";
@@ -326,23 +390,36 @@
   }
 
   async function applyRealtimeSearch() {
-    renderOperations(operationsRawItems);
+    await loadOperations({ reset: true });
+    await savePreferences();
+  }
+
+  async function setOperationsSortPreset(value) {
+    state.operationSortPreset = value || "date";
+    core.syncSegmentedActive(el.operationsSortTabs, "op-sort", state.operationSortPreset);
+    await loadOperations({ reset: true });
     await savePreferences();
   }
 
   async function refreshAll() {
-    const results = await Promise.allSettled([
-      loadDashboard(),
-      loadOperations({ reset: true }),
-      loadDashboardOperations(),
-      categoryActions.loadCategories(),
-      loadDebtsCards(),
-    ]);
-    const rejected = results.filter((item) => item.status === "rejected");
-    if (rejected.length > 0) {
-      const firstError = rejected[0];
-      const message = firstError.reason instanceof Error ? firstError.reason.message : String(firstError.reason);
-      core.setStatus(`Часть данных не загружена: ${message}`);
+    const tasks = [
+      { label: "Дашборд", run: () => loadDashboard() },
+      { label: "Операции", run: () => loadOperations({ reset: true }) },
+      { label: "Операции (дашборд)", run: () => loadDashboardOperations() },
+      { label: "Категории", run: () => categoryActions.loadCategories() },
+      { label: "Долги", run: () => loadDebtsCards() },
+    ];
+    const results = await Promise.allSettled(tasks.map((task) => task.run()));
+    const failed = [];
+    for (let idx = 0; idx < results.length; idx += 1) {
+      const result = results[idx];
+      if (result.status !== "rejected") {
+        continue;
+      }
+      failed.push(`${tasks[idx].label}: ${core.errorMessage(result.reason)}`);
+    }
+    if (failed.length > 0) {
+      core.setStatus(`Часть данных не загружена (${failed.length}/${tasks.length}): ${failed.join("; ")}`);
     }
   }
 
@@ -403,10 +480,11 @@
     openDebtHistoryModal,
     closeDebtHistoryModal,
     setDebtStatusFilter,
+    setDebtSortPreset,
     applyDebtSearch,
+    loadMoreDebtCards,
+    loadMoreDebtHistoryEvents,
     openEditDebtModal,
-    closeEditDebtModal,
-    submitEditDebt,
     deleteDebtFlow,
     ensureAllTimeBounds,
     invalidateAllTimeAnchor,
@@ -451,6 +529,7 @@
     updateOperation,
     deleteOperationFlow,
     applyFilters,
+    setOperationsSortPreset,
     applyRealtimeSearch,
     refreshAll,
     logout,

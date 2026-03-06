@@ -13,12 +13,13 @@ router = APIRouter(prefix="/debts", tags=["debts"])
 @router.get("/cards", response_model=list[DebtCardOut])
 def list_debt_cards(
     include_closed: bool = Query(default=False),
+    q: str | None = Query(default=None, max_length=100),
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     service = DebtService(db)
     try:
-        return service.list_cards(user_id=user_id, include_closed=include_closed)
+        return service.list_cards(user_id=user_id, include_closed=include_closed, q=q)
     except ProgrammingError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

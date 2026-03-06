@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
+from app.core.cache import invalidate_dashboard_summary_cache
 from app.repositories.debt_repo import DebtRepository
 
 
@@ -28,6 +29,27 @@ class DebtService:
     def _validate_positive_amount(value: Decimal, field_name: str) -> None:
         if value is None or value <= 0:
             raise ValueError(f"{field_name} must be greater than 0")
+
+    @staticmethod
+    def _matches_search_token(text: str, token: str) -> bool:
+        return token in text.casefold()
+
+    def _debt_matches_query(self, debt: dict, query_token: str) -> bool:
+        direction = str(debt.get("direction") or "")
+        note = str(debt.get("note") or "")
+        terms = [
+            direction,
+            note,
+            "долг" if direction else "",
+            "lend" if direction == "lend" else "",
+            "borrow" if direction == "borrow" else "",
+            "дал" if direction == "lend" else "",
+            "взял" if direction == "borrow" else "",
+        ]
+        for term in terms:
+            if term and self._matches_search_token(term, query_token):
+                return True
+        return False
 
     def create_debt(
         self,
@@ -80,6 +102,7 @@ class DebtService:
             note=note,
         )
         self.db.commit()
+        invalidate_dashboard_summary_cache(user_id)
         self.db.refresh(debt)
         return debt, cp
 
@@ -146,6 +169,7 @@ class DebtService:
             )
 
         self.db.commit()
+        invalidate_dashboard_summary_cache(user_id)
         self.db.refresh(repayment)
         return repayment
 
@@ -204,6 +228,7 @@ class DebtService:
         if payload:
             debt = self.repo.update_debt(debt, payload)
             self.db.commit()
+            invalidate_dashboard_summary_cache(user_id)
             self.db.refresh(debt)
         return debt
 
@@ -213,8 +238,10 @@ class DebtService:
             raise LookupError("Debt not found")
         self.repo.delete_debt(debt)
         self.db.commit()
+        invalidate_dashboard_summary_cache(user_id)
 
-    def list_cards(self, user_id: int, include_closed: bool = False) -> list[dict]:
+    def list_cards(self, user_id: int, include_closed: bool = False, q: str | None = None) -> list[dict]:
+        query_token = " ".join((q or "").strip().split()).casefold()
         counterparties = self.repo.list_counterparties(user_id=user_id)
         if not counterparties:
             return []
@@ -252,6 +279,25 @@ class DebtService:
                 debt_issuances = issuances_by_debt.get(debt.id, [])
                 debt_repaid = sum((Decimal(item.amount) for item in debt_repayments), Decimal("0"))
                 debt_outstanding = Decimal(debt.principal) - debt_repaid
+                debt_item = {
+                    "id": debt.id,
+                    "counterparty_id": debt.counterparty_id,
+                    "direction": debt.direction,
+                    "principal": debt.principal,
+                    "repaid_total": debt_repaid,
+                    "outstanding_total": debt_outstanding,
+                    "start_date": debt.start_date,
+                    "due_date": debt.due_date,
+                    "note": debt.note,
+                    "created_at": debt.created_at,
+                    "repayments": debt_repayments,
+                    "issuances": debt_issuances,
+                }
+                cp_match = bool(query_token and self._matches_search_token(cp.name, query_token))
+                debt_match = bool(query_token and self._debt_matches_query(debt_item, query_token))
+                if query_token and not (cp_match or debt_match):
+                    continue
+
                 principal_total += Decimal(debt.principal)
                 if debt.direction == "lend":
                     principal_lend_total += Decimal(debt.principal)
@@ -262,23 +308,10 @@ class DebtService:
                 if debt_outstanding > 0 and debt.due_date:
                     if nearest_due_date is None or debt.due_date < nearest_due_date:
                         nearest_due_date = debt.due_date
+                debt_items.append(debt_item)
 
-                debt_items.append(
-                    {
-                        "id": debt.id,
-                        "counterparty_id": debt.counterparty_id,
-                        "direction": debt.direction,
-                        "principal": debt.principal,
-                        "repaid_total": debt_repaid,
-                        "outstanding_total": debt_outstanding,
-                        "start_date": debt.start_date,
-                        "due_date": debt.due_date,
-                        "note": debt.note,
-                        "created_at": debt.created_at,
-                        "repayments": debt_repayments,
-                        "issuances": debt_issuances,
-                    }
-                )
+            if query_token and not debt_items:
+                continue
 
             status = "active" if outstanding_total > 0 else "closed"
             if not include_closed and status == "closed":

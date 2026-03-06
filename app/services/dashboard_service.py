@@ -1,8 +1,11 @@
 from datetime import date, timedelta
 from decimal import Decimal
+from time import perf_counter
 
 from sqlalchemy.orm import Session
 
+from app.core.cache import build_dashboard_summary_cache_key, get_json, set_json
+from app.core.metrics import increment_counter, observe_latency_ms
 from app.repositories.operation_repo import OperationRepository
 from app.services.debt_service import DebtService
 
@@ -19,6 +22,22 @@ class DashboardService:
         date_from: date | None = None,
         date_to: date | None = None,
     ):
+        total_started = perf_counter()
+        cache_key = build_dashboard_summary_cache_key(
+            user_id=user_id,
+            period=period,
+            date_from=date_from,
+            date_to=date_to,
+        )
+        cached = get_json(cache_key)
+        if cached:
+            increment_counter("dashboard_summary_cache_hit_total")
+            observe_latency_ms("dashboard_summary_latency_total_ms", (perf_counter() - total_started) * 1000)
+            return cached
+
+        increment_counter("dashboard_summary_cache_miss_total")
+        miss_compute_started = perf_counter()
+
         base_date = date_to or date.today()
         resolved_date_to = base_date
 
@@ -63,7 +82,7 @@ class DashboardService:
                     debt_lend_outstanding += outstanding
                 else:
                     debt_borrow_outstanding += outstanding
-        return {
+        payload = {
             "income_total": income_total,
             "expense_total": expense_total,
             "balance": income_total - expense_total,
@@ -72,3 +91,7 @@ class DashboardService:
             "debt_net_position": debt_lend_outstanding - debt_borrow_outstanding,
             "active_debt_cards": len(debt_cards),
         }
+        set_json(cache_key, payload)
+        observe_latency_ms("dashboard_summary_latency_miss_compute_ms", (perf_counter() - miss_compute_started) * 1000)
+        observe_latency_ms("dashboard_summary_latency_total_ms", (perf_counter() - total_started) * 1000)
+        return payload

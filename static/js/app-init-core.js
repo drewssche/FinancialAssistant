@@ -127,16 +127,6 @@
         }
       });
     }
-    if (el.closeEditDebtModalBtn && actions.closeEditDebtModal) {
-      el.closeEditDebtModalBtn.addEventListener("click", actions.closeEditDebtModal);
-    }
-    if (el.editDebtModal && actions.closeEditDebtModal) {
-      el.editDebtModal.addEventListener("click", (event) => {
-        if (event.target === el.editDebtModal) {
-          actions.closeEditDebtModal();
-        }
-      });
-    }
     if (el.closeDebtHistoryModalBtn && actions.closeDebtHistoryModal) {
       el.closeDebtHistoryModalBtn.addEventListener("click", actions.closeDebtHistoryModal);
     }

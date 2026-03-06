@@ -196,6 +196,8 @@ def test_debts_merge_same_counterparty_direction_into_active_debt(client: TestCl
     assert second.json()["id"] == debt_id
     assert second.json()["principal"] == "350.00"
     assert len(second.json()["issuances"]) == 2
+    issuance_amounts = sorted([item["amount"] for item in second.json()["issuances"]])
+    assert issuance_amounts == ["100.00", "250.00"]
 
     cards = client.get("/api/v1/debts/cards", params={"include_closed": True})
     assert cards.status_code == 200
@@ -203,3 +205,38 @@ def test_debts_merge_same_counterparty_direction_into_active_debt(client: TestCl
     assert len(payload) == 1
     assert len(payload[0]["debts"]) == 1
     assert payload[0]["debts"][0]["principal"] == "350.00"
+
+
+def test_debts_cards_search_by_counterparty_note_and_direction(client: TestClient):
+    client.post(
+        "/api/v1/debts",
+        json={
+            "counterparty": "Олег",
+            "direction": "lend",
+            "principal": "200.00",
+            "start_date": "2026-03-01",
+            "note": "На ремонт кухни",
+        },
+    )
+    client.post(
+        "/api/v1/debts",
+        json={
+            "counterparty": "Марина",
+            "direction": "borrow",
+            "principal": "150.00",
+            "start_date": "2026-03-02",
+            "note": "Возврат за аренду",
+        },
+    )
+
+    by_name = client.get("/api/v1/debts/cards", params={"q": "олег", "include_closed": True})
+    assert by_name.status_code == 200
+    assert [item["counterparty"] for item in by_name.json()] == ["Олег"]
+
+    by_note = client.get("/api/v1/debts/cards", params={"q": "ремонт", "include_closed": True})
+    assert by_note.status_code == 200
+    assert [item["counterparty"] for item in by_note.json()] == ["Олег"]
+
+    by_direction = client.get("/api/v1/debts/cards", params={"q": "взял", "include_closed": True})
+    assert by_direction.status_code == 200
+    assert [item["counterparty"] for item in by_direction.json()] == ["Марина"]

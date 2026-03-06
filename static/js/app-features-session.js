@@ -65,6 +65,7 @@
   async function loadPreferences() {
     const prefs = await core.requestJson("/api/v1/preferences", { headers: core.authHeaders() });
     state.preferences = prefs;
+    core.invalidateUiRequestCache();
 
     const savedPeriod = prefs.data?.dashboard?.period || "day";
     state.period = ["day", "week", "month", "year", "all_time", "custom"].includes(savedPeriod) ? savedPeriod : "day";
@@ -74,11 +75,15 @@
       state.period = "day";
     }
     state.filterKind = prefs.data?.operations?.filters?.kind || "";
+    state.operationSortPreset = prefs.data?.operations?.sort_preset || "date";
+    state.debtSortPreset = prefs.data?.debts?.sort_preset || "priority";
     el.filterQ.value = prefs.data?.operations?.filters?.q || "";
     state.activeSection = prefs.data?.ui?.active_section || "dashboard";
 
     core.syncAllPeriodTabs(state.period);
     core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
+    core.syncSegmentedActive(el.operationsSortTabs, "op-sort", state.operationSortPreset);
+    core.syncSegmentedActive(el.debtSortTabs, "debt-sort", state.debtSortPreset);
     applyInterfaceSettingsUi();
     operationModal.applySettingsUi();
     if (window.App.actions.renderTodayLabel) {
@@ -103,10 +108,15 @@
         },
         operations: {
           ...(state.preferences.data?.operations || {}),
+          sort_preset: state.operationSortPreset || "date",
           filters: {
             kind: state.filterKind,
             q: el.filterQ.value.trim(),
           },
+        },
+        debts: {
+          ...(state.preferences.data?.debts || {}),
+          sort_preset: state.debtSortPreset || "priority",
         },
         ui: {
           ...(state.preferences.data?.ui || {}),
@@ -126,6 +136,7 @@
       headers: core.authHeaders(),
       body: JSON.stringify(payload),
     });
+    core.invalidateUiRequestCache();
   }
 
   async function saveSettings(event) {
@@ -164,6 +175,7 @@
     state.firstOperationDate = "";
     state.allTimeAnchorResolved = false;
     state.total = 0;
+    state.uiRequestCache.clear();
     operationModal.closeCreateModal();
     operationModal.closeEditModal();
     if (categoryActions.closeCreateCategoryModal) {

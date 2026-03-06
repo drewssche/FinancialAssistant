@@ -7,7 +7,6 @@
   function bindFeatureHandlers() {
     let filterDebounceId = null;
     let categorySearchDebounceId = null;
-    let debtSearchDebounceId = null;
 
     el.createForm.addEventListener("submit", (event) => {
       core.runAction({
@@ -130,6 +129,22 @@
         action: () => actions.applyFilters(),
       });
     });
+
+    if (el.operationsSortTabs && actions.setOperationsSortPreset) {
+      el.operationsSortTabs.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-op-sort]");
+        if (!btn) {
+          return;
+        }
+        if (btn.dataset.opSort === state.operationSortPreset) {
+          return;
+        }
+        core.runAction({
+          errorPrefix: "Ошибка сортировки операций",
+          action: () => actions.setOperationsSortPreset(btn.dataset.opSort),
+        });
+      });
+    }
 
     el.filterQ.addEventListener("input", () => {
       if (filterDebounceId) {
@@ -333,102 +348,6 @@
       }
     });
 
-    if (el.debtStatusTabs && actions.setDebtStatusFilter) {
-      el.debtStatusTabs.addEventListener("click", (event) => {
-        const btn = event.target.closest("button[data-debt-status]");
-        if (!btn) {
-          return;
-        }
-        actions.setDebtStatusFilter(btn.dataset.debtStatus);
-      });
-    }
-
-    if (el.debtSearchQ && actions.applyDebtSearch) {
-      el.debtSearchQ.addEventListener("input", () => {
-        if (debtSearchDebounceId) {
-          clearTimeout(debtSearchDebounceId);
-        }
-        debtSearchDebounceId = setTimeout(() => {
-          actions.applyDebtSearch().catch((err) => core.setStatus(String(err)));
-        }, 250);
-      });
-    }
-
-    if (el.debtsCards && actions.openDebtRepaymentModal) {
-      el.debtsCards.addEventListener("click", (event) => {
-        const editBtn = event.target.closest("button[data-edit-debt-id]");
-        if (editBtn && actions.openEditDebtModal) {
-          actions.openEditDebtModal(Number(editBtn.dataset.editDebtId || 0));
-          return;
-        }
-
-        const historyBtn = event.target.closest("button[data-history-debt-id]");
-        if (historyBtn && actions.openDebtHistoryModal) {
-          actions.openDebtHistoryModal(Number(historyBtn.dataset.historyDebtId || 0));
-          return;
-        }
-
-        const deleteBtn = event.target.closest("button[data-delete-debt-id]");
-        if (deleteBtn && actions.deleteDebtFlow) {
-          actions.deleteDebtFlow(Number(deleteBtn.dataset.deleteDebtId || 0));
-          return;
-        }
-
-        const btn = event.target.closest("button[data-repay-debt-id]");
-        if (!btn || btn.disabled) {
-          return;
-        }
-        actions.openDebtRepaymentModal(Number(btn.dataset.repayDebtId || 0));
-      });
-    }
-
-    if (el.debtRepaymentForm && actions.submitDebtRepayment) {
-      el.debtRepaymentForm.addEventListener("submit", (event) => {
-        core.runAction({
-          button: event.submitter || el.submitDebtRepaymentBtn,
-          pendingText: "Сохранение...",
-          successMessage: "Погашение добавлено",
-          errorPrefix: "Ошибка добавления погашения",
-          action: () => actions.submitDebtRepayment(event),
-        });
-      });
-    }
-
-    if (el.repaymentPresetRow && el.repaymentAmount) {
-      el.repaymentPresetRow.addEventListener("click", (event) => {
-        const btn = event.target.closest("button[data-repayment-preset]");
-        if (!btn) {
-          return;
-        }
-        const ratio = Number(btn.dataset.repaymentPreset || 0);
-        const outstanding = Number(el.repaymentOutstanding?.textContent || 0);
-        if (!Number.isFinite(ratio) || ratio <= 0 || !Number.isFinite(outstanding) || outstanding <= 0) {
-          return;
-        }
-        el.repaymentAmount.value = (outstanding * ratio).toFixed(2);
-        if (actions.updateRepaymentDeltaHint) {
-          actions.updateRepaymentDeltaHint();
-        }
-      });
-    }
-    if (el.repaymentAmount && actions.updateRepaymentDeltaHint) {
-      el.repaymentAmount.addEventListener("input", () => {
-        actions.updateRepaymentDeltaHint();
-      });
-    }
-
-    if (el.editDebtForm && actions.submitEditDebt) {
-      el.editDebtForm.addEventListener("submit", (event) => {
-        core.runAction({
-          button: event.submitter || el.submitEditDebtBtn,
-          pendingText: "Сохранение...",
-          successMessage: "Долг обновлен",
-          errorPrefix: "Ошибка обновления долга",
-          action: () => actions.submitEditDebt(event),
-        });
-      });
-    }
-
     el.toastArea.addEventListener("click", (event) => {
       const closeBtn = event.target.closest("button[data-toast-close]");
       if (closeBtn && core.dismissToast) {
@@ -442,156 +361,12 @@
       core.handleUndoClick(btn.dataset.toastUndo);
     });
 
-    for (const id of ["opAmount", "opDate", "opNote"]) {
-      const node = document.getElementById(id);
-      if (node) {
-        node.addEventListener("input", actions.updateCreatePreview);
-        node.addEventListener("change", actions.updateCreatePreview);
-      }
+    if (window.App.initFeatureDebts?.bindDebtFeatureHandlers) {
+      window.App.initFeatureDebts.bindDebtFeatureHandlers();
     }
-    for (const id of ["debtCounterparty", "debtPrincipal", "debtStartDate", "debtDueDate", "debtNote"]) {
-      const node = document.getElementById(id);
-      if (node) {
-        node.addEventListener("input", actions.updateCreatePreview);
-        node.addEventListener("change", actions.updateCreatePreview);
-      }
+    if (window.App.initFeaturePickers?.bindPickerFeatureHandlers) {
+      window.App.initFeaturePickers.bindPickerFeatureHandlers();
     }
-    if (actions.updateDebtDueHint) {
-      const dueNodes = [document.getElementById("debtStartDate"), document.getElementById("debtDueDate")];
-      for (const node of dueNodes) {
-        if (!node) {
-          continue;
-        }
-        node.addEventListener("input", actions.updateDebtDueHint);
-        node.addEventListener("change", actions.updateDebtDueHint);
-      }
-    }
-    for (const id of ["editAmount", "editDate", "editNote"]) {
-      const node = document.getElementById(id);
-      if (node) {
-        node.addEventListener("input", actions.updateEditPreview);
-        node.addEventListener("change", actions.updateEditPreview);
-      }
-    }
-    el.editCategory.addEventListener("change", () => {
-      if (actions.updateEditPreview) {
-        actions.updateEditPreview();
-      }
-    });
-
-    el.opCategorySearch.addEventListener("focus", () => {
-      if (actions.handleCreateCategorySearchFocus) {
-        actions.handleCreateCategorySearchFocus();
-      }
-    });
-    el.opCategorySearch.addEventListener("click", () => {
-      if (actions.handleCreateCategorySearchFocus) {
-        actions.handleCreateCategorySearchFocus();
-      }
-    });
-    el.opCategorySearch.addEventListener("input", () => {
-      if (actions.handleCreateCategorySearchInput) {
-        actions.handleCreateCategorySearchInput();
-      }
-    });
-    el.opCategorySearch.addEventListener("keydown", (event) => {
-      if (actions.handleCreateCategorySearchKeydown) {
-        actions.handleCreateCategorySearchKeydown(event);
-      }
-    });
-    if (el.opCategoryAll) {
-      el.opCategoryAll.addEventListener("click", (event) => {
-        if (actions.handleCreateCategoryPickerClick) {
-          actions.handleCreateCategoryPickerClick(event);
-        }
-      });
-    }
-
-    if (el.categoryGroupSearch) {
-      el.categoryGroupSearch.addEventListener("focus", () => {
-        if (actions.handleCreateGroupSearchFocus) {
-          actions.handleCreateGroupSearchFocus();
-        }
-      });
-      el.categoryGroupSearch.addEventListener("click", () => {
-        if (actions.handleCreateGroupSearchFocus) {
-          actions.handleCreateGroupSearchFocus();
-        }
-      });
-      el.categoryGroupSearch.addEventListener("input", () => {
-        if (actions.handleCreateGroupSearchInput) {
-          actions.handleCreateGroupSearchInput();
-        }
-      });
-      el.categoryGroupSearch.addEventListener("blur", () => {
-        if (actions.handleCreateGroupSearchBlur) {
-          actions.handleCreateGroupSearchBlur();
-        }
-      });
-      el.categoryGroupSearch.addEventListener("keydown", (event) => {
-        if (actions.handleCreateGroupSearchKeydown) {
-          actions.handleCreateGroupSearchKeydown(event);
-        }
-      });
-    }
-    if (el.categoryGroupAll) {
-      el.categoryGroupAll.addEventListener("click", (event) => {
-        if (actions.handleCreateGroupPickerClick) {
-          actions.handleCreateGroupPickerClick(event);
-        }
-      });
-    }
-    if (el.editCategoryGroupSearch) {
-      el.editCategoryGroupSearch.addEventListener("focus", () => {
-        if (actions.handleEditGroupSearchFocus) {
-          actions.handleEditGroupSearchFocus();
-        }
-      });
-      el.editCategoryGroupSearch.addEventListener("click", () => {
-        if (actions.handleEditGroupSearchFocus) {
-          actions.handleEditGroupSearchFocus();
-        }
-      });
-      el.editCategoryGroupSearch.addEventListener("input", () => {
-        if (actions.handleEditGroupSearchInput) {
-          actions.handleEditGroupSearchInput();
-        }
-      });
-      el.editCategoryGroupSearch.addEventListener("blur", () => {
-        if (actions.handleEditGroupSearchBlur) {
-          actions.handleEditGroupSearchBlur();
-        }
-      });
-      el.editCategoryGroupSearch.addEventListener("keydown", (event) => {
-        if (actions.handleEditGroupSearchKeydown) {
-          actions.handleEditGroupSearchKeydown(event);
-        }
-      });
-    }
-    if (el.editCategoryGroupAll) {
-      el.editCategoryGroupAll.addEventListener("click", (event) => {
-        if (actions.handleEditGroupPickerClick) {
-          actions.handleEditGroupPickerClick(event);
-        }
-      });
-    }
-
-    if (el.createPreviewBody) {
-      el.createPreviewBody.addEventListener("click", (event) => {
-        if (actions.handleCreatePreviewClick) {
-          actions.handleCreatePreviewClick(event);
-        }
-      });
-    }
-
-    document.addEventListener("pointerdown", (event) => {
-      if (actions.handleCreateCategoryOutsidePointer) {
-        actions.handleCreateCategoryOutsidePointer(event);
-      }
-      if (actions.handleCreateGroupOutsidePointer) {
-        actions.handleCreateGroupOutsidePointer(event);
-      }
-    });
   }
 
   function bindFeatureInit() {

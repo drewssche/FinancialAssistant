@@ -84,7 +84,10 @@
     state.activeSection = sectionId;
     applySectionUi();
     if (sectionId === "debts" && window.App.actions.loadDebtsCards) {
-      window.App.actions.loadDebtsCards().catch((err) => window.App.core.setStatus(String(err)));
+      window.App.actions.loadDebtsCards().catch((err) => {
+        const message = window.App.core.errorMessage ? window.App.core.errorMessage(err) : String(err);
+        window.App.core.setStatus(`Не удалось открыть раздел «Долги»: ${message}`);
+      });
     }
     await window.App.actions.savePreferences();
   }

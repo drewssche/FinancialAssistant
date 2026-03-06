@@ -1,26 +1,70 @@
 (() => {
   const { state, el, core } = window.App;
+  let categoriesRequestController = null;
+  let categoriesRequestSeq = 0;
+  const CATEGORIES_GROUPS_CACHE_TTL_MS = 60000;
+  const CATEGORIES_CATALOG_CACHE_TTL_MS = 60000;
+  const CATEGORIES_TABLE_CACHE_TTL_MS = 45000;
+
+  function getCategoriesTableCacheKey(params) {
+    return `categories:table:${params.toString()}`;
+  }
+
+  function applyCategoriesPageData(data, reset) {
+    const pageItems = Array.isArray(data) ? data : (data.items || []);
+    state.categoryTotal = Array.isArray(data) ? pageItems.length : Number(data.total || 0);
+    if (reset) {
+      state.categoryTableItems = pageItems.slice();
+    } else {
+      const existing = new Set(state.categoryTableItems.map((item) => item.id));
+      for (const item of pageItems) {
+        if (!existing.has(item.id)) {
+          state.categoryTableItems.push(item);
+        }
+      }
+    }
+    if (pageItems.length > 0) {
+      state.categoryPage += 1;
+    }
+    state.categoriesHasMore = state.categoryTableItems.length < state.categoryTotal && pageItems.length > 0;
+  }
 
   async function loadCategoryGroups() {
     const categoryUi = window.App.categoryUi;
-    try {
-      state.categoryGroups = await core.requestJson("/api/v1/categories/groups", { headers: core.authHeaders() });
-    } catch {
-      state.categoryGroups = [];
+    const cacheKey = "categories:groups";
+    const cached = core.getUiRequestCache(cacheKey, CATEGORIES_GROUPS_CACHE_TTL_MS);
+    if (cached) {
+      state.categoryGroups = cached;
+    } else {
+      try {
+        state.categoryGroups = await core.requestJson("/api/v1/categories/groups", { headers: core.authHeaders() });
+        core.setUiRequestCache(cacheKey, state.categoryGroups);
+      } catch {
+        state.categoryGroups = [];
+      }
     }
     categoryUi.fillGroupSelect(el.categoryGroup, el.categoryKind.value, "Без группы");
     categoryUi.fillGroupSelect(el.bulkCategoryGroup, "", "Группа (не менять)");
   }
 
   async function loadCategoryCatalog() {
+    const cacheKey = "categories:catalog";
+    const cached = core.getUiRequestCache(cacheKey, CATEGORIES_CATALOG_CACHE_TTL_MS);
+    if (cached) {
+      state.categories = cached;
+      return;
+    }
     state.categories = await core.requestJson("/api/v1/categories", { headers: core.authHeaders() });
+    core.setUiRequestCache(cacheKey, state.categories);
   }
 
   async function loadCategoriesTable(options = {}) {
     const categoryUi = window.App.categoryUi;
     const reset = options.reset !== false;
     const force = options.force === true;
-    if (state.categoriesLoading && !force) {
+    if (state.categoriesLoading && reset && categoriesRequestController) {
+      categoriesRequestController.abort();
+    } else if (state.categoriesLoading && !force) {
       return;
     }
     if (!reset && !state.categoriesHasMore) {
@@ -48,28 +92,41 @@
       params.set("q", query);
     }
 
+    const cacheKey = getCategoriesTableCacheKey(params);
+    if (!force) {
+      const cached = core.getUiRequestCache(cacheKey, CATEGORIES_TABLE_CACHE_TTL_MS);
+      if (cached) {
+        applyCategoriesPageData(cached, reset);
+        categoryUi.renderCategories();
+        return;
+      }
+    }
+
     state.categoriesLoading = true;
+    const requestController = new AbortController();
+    categoriesRequestController = requestController;
+    const requestSeq = ++categoriesRequestSeq;
     try {
-      const data = await core.requestJson(`/api/v1/categories?${params.toString()}`, { headers: core.authHeaders() });
-      const pageItems = Array.isArray(data) ? data : (data.items || []);
-      state.categoryTotal = Array.isArray(data) ? pageItems.length : Number(data.total || 0);
-      if (reset) {
-        state.categoryTableItems = pageItems.slice();
-      } else {
-        const existing = new Set(state.categoryTableItems.map((item) => item.id));
-        for (const item of pageItems) {
-          if (!existing.has(item.id)) {
-            state.categoryTableItems.push(item);
-          }
-        }
+      const data = await core.requestJson(`/api/v1/categories?${params.toString()}`, {
+        headers: core.authHeaders(),
+        signal: requestController.signal,
+      });
+      if (requestSeq !== categoriesRequestSeq) {
+        return;
       }
-      if (pageItems.length > 0) {
-        state.categoryPage += 1;
-      }
-      state.categoriesHasMore = state.categoryTableItems.length < state.categoryTotal && pageItems.length > 0;
+      core.setUiRequestCache(cacheKey, data);
+      applyCategoriesPageData(data, reset);
       categoryUi.renderCategories();
+    } catch (err) {
+      if (core.isAbortError && core.isAbortError(err)) {
+        return;
+      }
+      throw err;
     } finally {
-      state.categoriesLoading = false;
+      if (categoriesRequestController === requestController) {
+        categoriesRequestController = null;
+        state.categoriesLoading = false;
+      }
     }
   }
 
@@ -132,6 +189,8 @@
       headers: core.authHeaders(),
       body: JSON.stringify(payload),
     });
+    core.invalidateUiRequestCache("categories");
+    core.invalidateUiRequestCache("operations");
 
     el.categoryName.value = "";
     el.categoryGroup.value = "";
@@ -167,6 +226,8 @@
       headers: core.authHeaders(),
       body: JSON.stringify(payload),
     });
+    core.invalidateUiRequestCache("categories");
+    core.invalidateUiRequestCache("operations");
     categoryUi.closeEditCategoryModal();
     await loadCategories();
   }
@@ -187,6 +248,8 @@
       headers: core.authHeaders(),
       body: JSON.stringify(payload),
     });
+    core.invalidateUiRequestCache("categories");
+    core.invalidateUiRequestCache("operations");
     el.groupName.value = "";
     el.groupAccentColor.value = "#ff8a3d";
     el.groupAccentColorHex.value = "#ff8a3d";
@@ -212,6 +275,8 @@
       headers: core.authHeaders(),
       body: JSON.stringify({ name, accent_color: accentColor }),
     });
+    core.invalidateUiRequestCache("categories");
+    core.invalidateUiRequestCache("operations");
     categoryUi.closeEditGroupModal();
     await loadCategories();
   }
@@ -224,6 +289,8 @@
           method: "DELETE",
           headers: core.authHeaders(),
         });
+        core.invalidateUiRequestCache("categories");
+        core.invalidateUiRequestCache("operations");
       },
       onAfterDelete: loadCategories,
       toastMessage: `Группа «${group.name}» удалена`,
@@ -239,6 +306,8 @@
           method: "DELETE",
           headers: core.authHeaders(),
         });
+        core.invalidateUiRequestCache("categories");
+        core.invalidateUiRequestCache("operations");
       },
       onAfterDelete: loadCategories,
       toastMessage: `Категория «${item.name}» удалена`,
@@ -248,6 +317,8 @@
           headers: core.authHeaders(),
           body: JSON.stringify({ name: item.name, kind: item.kind, group_id: item.group_id }),
         });
+        core.invalidateUiRequestCache("categories");
+        core.invalidateUiRequestCache("operations");
         await loadCategories();
         return "Категория восстановлена";
       },
@@ -266,6 +337,8 @@
         headers: core.authHeaders(),
       });
     }
+    core.invalidateUiRequestCache("categories");
+    core.invalidateUiRequestCache("operations");
     state.selectedCategoryIds.clear();
     await loadCategories();
   }
@@ -277,6 +350,8 @@
         headers: core.authHeaders(),
       });
     }
+    core.invalidateUiRequestCache("categories");
+    core.invalidateUiRequestCache("operations");
     state.selectedGroupIds.clear();
     await loadCategories();
   }
@@ -294,6 +369,8 @@
         body: JSON.stringify({ group_id: groupId }),
       });
     }
+    core.invalidateUiRequestCache("categories");
+    core.invalidateUiRequestCache("operations");
     state.selectedCategoryIds.clear();
     await loadCategories();
   }

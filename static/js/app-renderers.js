@@ -147,6 +147,22 @@
     return { percent, tone: "lend-muted" };
   }
 
+  function debtDirectionActionLabel(direction) {
+    return direction === "borrow" ? "Я взял" : "Я дал";
+  }
+
+  function debtDirectionBalanceLabel(direction) {
+    return direction === "borrow" ? "Я должен" : "Мне должны";
+  }
+
+  function debtRepaymentEventLabel(direction) {
+    return direction === "borrow" ? "Погашение: я вернул" : "Погашение: мне вернули";
+  }
+
+  function debtIssuanceEventLabel(direction) {
+    return direction === "borrow" ? "Добавление: я взял в долг" : "Добавление: я дал в долг";
+  }
+
   function createOperationRow(item, options = {}) {
     const preview = options.preview === true;
     const compact = options.compact === true;
@@ -231,6 +247,10 @@
       debtDueProgress,
       debtDueDaysBadge,
       debtRepaymentProgress,
+      debtDirectionActionLabel,
+      debtDirectionBalanceLabel,
+      debtRepaymentEventLabel,
+      debtIssuanceEventLabel,
     },
   });
 })();

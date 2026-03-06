@@ -1,6 +1,32 @@
 (() => {
   const { state, el, core } = window.App;
 
+  function isAbortError(err) {
+    if (!err) {
+      return false;
+    }
+    if (err.name === "AbortError") {
+      return true;
+    }
+    return String(err).toLowerCase().includes("abort");
+  }
+
+  function errorMessage(err, fallback = "Неизвестная ошибка") {
+    if (err instanceof Error) {
+      return String(err.message || fallback).trim() || fallback;
+    }
+    if (typeof err === "string") {
+      const trimmed = err.trim();
+      return trimmed || fallback;
+    }
+    try {
+      const serialized = JSON.stringify(err);
+      return serialized && serialized !== "{}" ? serialized : fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
   function dismissToast(toastId) {
     const item = state.toasts.get(toastId);
     if (!item) {
@@ -75,6 +101,59 @@
     }
 
     return data;
+  }
+
+  function getUiRequestCache(cacheKey, maxAgeMs) {
+    const key = String(cacheKey || "").trim();
+    if (!key) {
+      return null;
+    }
+    const item = state.uiRequestCache.get(key);
+    if (!item) {
+      return null;
+    }
+    const ttl = Number(maxAgeMs || 0);
+    if (!Number.isFinite(ttl) || ttl <= 0) {
+      state.uiRequestCache.delete(key);
+      return null;
+    }
+    const age = Date.now() - Number(item.ts || 0);
+    if (age < 0 || age > ttl) {
+      state.uiRequestCache.delete(key);
+      return null;
+    }
+    return item.payload;
+  }
+
+  function setUiRequestCache(cacheKey, payload) {
+    const key = String(cacheKey || "").trim();
+    if (!key) {
+      return;
+    }
+    state.uiRequestCache.set(key, {
+      ts: Date.now(),
+      payload,
+    });
+    const maxEntries = 80;
+    if (state.uiRequestCache.size > maxEntries) {
+      const oldestKey = state.uiRequestCache.keys().next().value;
+      if (oldestKey) {
+        state.uiRequestCache.delete(oldestKey);
+      }
+    }
+  }
+
+  function invalidateUiRequestCache(prefix = "") {
+    const normalized = String(prefix || "").trim();
+    if (!normalized) {
+      state.uiRequestCache.clear();
+      return;
+    }
+    for (const key of Array.from(state.uiRequestCache.keys())) {
+      if (key.startsWith(`${normalized}:`)) {
+        state.uiRequestCache.delete(key);
+      }
+    }
   }
 
   function showConfirm(message, onConfirm) {
@@ -199,7 +278,10 @@
       }
       return result;
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      if (isAbortError(err)) {
+        return null;
+      }
+      const message = errorMessage(err);
       core.setStatus(errorPrefix ? `${errorPrefix}: ${message}` : message, forLogin);
       if (rethrow) {
         throw err;
@@ -211,9 +293,14 @@
   }
 
   Object.assign(core, {
+    isAbortError,
+    errorMessage,
     dismissToast,
     notify,
     requestJson,
+    getUiRequestCache,
+    setUiRequestCache,
+    invalidateUiRequestCache,
     showConfirm,
     closeConfirm,
     showUndoToast,

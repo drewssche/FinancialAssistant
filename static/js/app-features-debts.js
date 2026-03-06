@@ -5,83 +5,13 @@
   const parseAmount = debtUi.parseAmount;
   const parseIsoDate = debtUi.parseIsoDate;
   const parseIsoDateEnd = debtUi.parseIsoDateEnd;
-  const debtDueState = debtUi.debtDueState;
-  const debtDueProgress = debtUi.debtDueProgress;
-  const debtDueDaysBadge = debtUi.debtDueDaysBadge;
-  const debtRepaymentProgress = debtUi.debtRepaymentProgress;
+  const debtCardsRenderer = window.App.debtCardsRenderer;
+  let debtsRequestController = null;
+  let debtsRequestSeq = 0;
+  const DEBTS_CARDS_CACHE_TTL_MS = 20000;
 
-  function debtDueLabel(stateValue, dueDate) {
-    if (stateValue === "overdue") {
-      return "Просрочено";
-    }
-    if (stateValue === "soon") {
-      return `Скоро срок: ${core.formatDateRu(dueDate)}`;
-    }
-    if (stateValue === "future" && dueDate) {
-      return `Срок: ${core.formatDateRu(dueDate)}`;
-    }
-    if (stateValue === "closed") {
-      return "Закрыт";
-    }
-    return "Без срока";
-  }
-
-
-  function debtRepaidClass(debt) {
-    const direction = debt.direction === "borrow" ? "borrow" : "lend";
-    const repaid = Number(debt.repaid_total || 0);
-    const outstanding = Number(debt.outstanding_total || 0);
-    if (direction === "borrow") {
-      if (repaid <= 0) {
-        return "debt-amount-repaid-borrow-zero";
-      }
-      if (outstanding > 0) {
-        return "debt-amount-repaid-borrow-partial";
-      }
-      return "debt-amount-repaid-borrow-closed";
-    }
-    return "debt-amount-repaid-lend";
-  }
-
-  function debtPriorityRank(stateValue) {
-    if (stateValue === "overdue") {
-      return 0;
-    }
-    if (stateValue === "soon") {
-      return 1;
-    }
-    if (stateValue === "future") {
-      return 2;
-    }
-    if (stateValue === "none") {
-      return 3;
-    }
-    return 4;
-  }
-
-  function filterCards(cards) {
-    const query = String(el.debtSearchQ?.value || "").trim().toLowerCase();
-    const statusFilter = state.debtStatusFilter || "active";
-    const filtered = [];
-
-    for (const card of cards) {
-      if (statusFilter === "active" && card.status !== "active") {
-        continue;
-      }
-      if (statusFilter === "closed" && card.status !== "closed") {
-        continue;
-      }
-      if (!query) {
-        filtered.push(card);
-        continue;
-      }
-      const cpMatch = String(card.counterparty || "").toLowerCase().includes(query);
-      const debtMatch = (card.debts || []).some((item) => String(item.note || "").toLowerCase().includes(query));
-      if (cpMatch || debtMatch) {
-        filtered.push(card);
-      }
-    }
-    return filtered;
+  function resetDebtCardsPagination() {
+    state.debtCardsVisibleLimit = Number(state.debtCardsPageSize || 20);
   }
 
   async function refreshDebtViews() {
@@ -92,133 +22,64 @@
   }
 
   function renderDebtCards(cards) {
-    if (!el.debtsCards) {
+    if (!debtCardsRenderer?.renderDebtCards) {
       return;
     }
-    el.debtsCards.innerHTML = "";
-    const visibleCards = filterCards(cards);
-    const searchQuery = String(el.debtSearchQ?.value || "").trim();
-    if (!visibleCards.length) {
-      const empty = document.createElement("div");
-      empty.className = "muted-small";
-      empty.textContent = "Долги не найдены";
-      el.debtsCards.appendChild(empty);
-      return;
-    }
-
-    for (const card of visibleCards) {
-      const item = document.createElement("article");
-      item.className = "panel debt-card";
-      const now = new Date();
-      const sortedDebts = (card.debts || []).slice().sort((a, b) => {
-        const aState = debtDueState(a, now);
-        const bState = debtDueState(b, now);
-        const rankDiff = debtPriorityRank(aState) - debtPriorityRank(bState);
-        if (rankDiff !== 0) {
-          return rankDiff;
-        }
-        const aDue = parseIsoDateEnd(a.due_date);
-        const bDue = parseIsoDateEnd(b.due_date);
-        if (aDue && bDue) {
-          return aDue.getTime() - bDue.getTime();
-        }
-        if (aDue) {
-          return -1;
-        }
-        if (bDue) {
-          return 1;
-        }
-        return b.id - a.id;
-      });
-
-      const debtsRows = sortedDebts
-        .map((debt) => {
-          const dueState = debtDueState(debt, now);
-          const dueProgress = debtDueProgress(debt, dueState, now);
-          const dueDays = debtDueDaysBadge(debt, dueState, now);
-          const repayProgress = debtRepaymentProgress(debt);
-          const repayments = debt.repayments || [];
-          const issuances = debt.issuances || [];
-          const lastRepayment = repayments.length ? repayments[0].repayment_date : null;
-          const lastIssuance = issuances.length ? issuances[0].issuance_date : null;
-          const direction = debt.direction === "borrow" ? "borrow" : "lend";
-          const directionLabel = direction === "borrow" ? "Я взял" : "Я дал";
-          const repaidClass = debtRepaidClass(debt);
-          const noteText = debt.note ? core.highlightText(String(debt.note), searchQuery) : "";
-          return `<tr class="debt-row-${dueState} debt-row-${direction}">
-            <td>${core.formatDateRu(debt.start_date)}</td>
-            <td><span class="debt-direction-pill debt-direction-pill-${direction}">${directionLabel}</span></td>
-            <td><span class="debt-amount-principal debt-amount-principal-${direction}">${formatMoney(debt.principal)}</span></td>
-            <td><span class="debt-amount-repaid ${repaidClass}">${formatMoney(debt.repaid_total)}</span></td>
-            <td>
-              <span class="debt-amount-outstanding debt-amount-outstanding-${direction}">${formatMoney(debt.outstanding_total)}</span>
-              <div class="debt-repay-progress">
-                <div class="debt-repay-progress-track">
-                  <span class="debt-repay-progress-bar debt-repay-progress-bar-${repayProgress.tone}" style="width:${repayProgress.percent}%"></span>
-                </div>
-                <span class="muted-small">Погашено: ${repayProgress.percent}%</span>
-              </div>
-            </td>
-            <td>
-              <div class="row debt-due-head">
-                <span class="muted-small">${debtDueLabel(dueState, debt.due_date)}</span>
-                ${dueDays ? `<span class="debt-due-days-badge debt-due-days-badge-${dueState}">${dueDays}</span>` : ""}
-              </div>
-              ${
-                dueProgress
-                  ? `<div class="debt-due-progress"><div class="debt-due-progress-track"><span class="debt-due-progress-bar debt-due-progress-bar-${dueProgress.tone}" style="width:${dueProgress.percent}%"></span></div><span class="muted-small">Прогресс срока: ${dueProgress.percent}%</span></div>`
-                  : ""
-              }
-              <div class="muted-small">Добавлений: ${issuances.length}${lastIssuance ? ` • Последнее: ${core.formatDateRu(lastIssuance)}` : ""}</div>
-              <div class="muted-small">Платежей: ${repayments.length}${lastRepayment ? ` • Последний: ${core.formatDateRu(lastRepayment)}` : ""}</div>
-              ${noteText ? `<div class="muted-small">${noteText}</div>` : ""}
-            </td>
-            <td>
-              <div class="actions row-actions debt-actions-grid">
-                <button class="btn btn-repay btn-xs" type="button" data-repay-debt-id="${debt.id}" ${Number(debt.outstanding_total) <= 0 ? "disabled" : ""}>Погашение</button>
-                <button class="btn btn-secondary btn-xs" type="button" data-edit-debt-id="${debt.id}">Редактировать</button>
-                <button class="btn btn-secondary btn-xs" type="button" data-history-debt-id="${debt.id}">История</button>
-                <button class="btn btn-danger btn-xs" type="button" data-delete-debt-id="${debt.id}">Удалить</button>
-              </div>
-            </td>
-          </tr>`;
-        })
-        .join("");
-
-      item.innerHTML = `
-        <div class="row between">
-          <div>
-            <h3>${core.highlightText(card.counterparty, searchQuery)}</h3>
-            <p class="subtitle">Статус: <span class="debt-status debt-status-${card.status}">${card.status === "active" ? "Активный" : "Закрыт"}</span></p>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <table class="table table-hover">
-            <thead>
-              <tr>
-                <th>Дата</th>
-                <th>Направление</th>
-                <th>Сумма</th>
-                <th>Погашено</th>
-                <th>Остаток</th>
-                <th>Срок/История</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>${debtsRows}</tbody>
-          </table>
-        </div>
-      `;
-      el.debtsCards.appendChild(item);
-    }
+    debtCardsRenderer.renderDebtCards(cards);
   }
 
-  async function loadDebtsCards() {
+  function buildDebtsCardsCacheKey() {
+    const includeClosed = state.debtStatusFilter === "active" ? "false" : "true";
+    const query = String(el.debtSearchQ?.value || "").trim();
+    return `debts:cards:include_closed=${includeClosed}:q=${query.toLowerCase()}`;
+  }
+
+  async function loadDebtsCards(options = {}) {
+    const force = options.force === true;
+    const cacheKey = buildDebtsCardsCacheKey();
+    if (!force) {
+      const cached = core.getUiRequestCache(cacheKey, DEBTS_CARDS_CACHE_TTL_MS);
+      if (cached) {
+        state.debtCardsCache = cached;
+        resetDebtCardsPagination();
+        renderDebtCards(cached);
+        return;
+      }
+    }
+    if (debtsRequestController) {
+      debtsRequestController.abort();
+    }
+    const requestController = new AbortController();
+    debtsRequestController = requestController;
+    const requestSeq = ++debtsRequestSeq;
     const params = new URLSearchParams();
     params.set("include_closed", state.debtStatusFilter === "active" ? "false" : "true");
-    const cards = await core.requestJson(`/api/v1/debts/cards?${params.toString()}`, { headers: core.authHeaders() });
-    state.debtCardsCache = cards;
-    renderDebtCards(cards);
+    const query = String(el.debtSearchQ?.value || "").trim();
+    if (query) {
+      params.set("q", query);
+    }
+    try {
+      const cards = await core.requestJson(`/api/v1/debts/cards?${params.toString()}`, {
+        headers: core.authHeaders(),
+        signal: requestController.signal,
+      });
+      if (requestSeq !== debtsRequestSeq) {
+        return;
+      }
+      state.debtCardsCache = cards;
+      core.setUiRequestCache(cacheKey, cards);
+      resetDebtCardsPagination();
+      renderDebtCards(cards);
+    } catch (err) {
+      if (core.isAbortError && core.isAbortError(err)) {
+        return;
+      }
+      throw err;
+    } finally {
+      if (debtsRequestController === requestController) {
+        debtsRequestController = null;
+      }
+    }
   }
 
   function openDebtRepaymentModal(debtId) {
@@ -238,7 +99,7 @@
     }
     if (el.repaymentDirection) {
       const isBorrow = debt.direction === "borrow";
-      el.repaymentDirection.textContent = isBorrow ? "Я взял" : "Я дал";
+      el.repaymentDirection.textContent = debtUi.debtDirectionActionLabel(debt.direction);
       el.repaymentDirection.classList.remove("debt-direction-pill-lend", "debt-direction-pill-borrow");
       el.repaymentDirection.classList.add(isBorrow ? "debt-direction-pill-borrow" : "debt-direction-pill-lend");
     }
@@ -300,7 +161,7 @@
       return;
     }
     const overpay = entered - outstanding;
-    const reverseDirection = debt.direction === "lend" ? "Я взял" : "Я дал";
+    const reverseDirection = debtUi.debtDirectionActionLabel(debt.direction === "lend" ? "borrow" : "lend");
     if (el.repaymentAfterValue) {
       el.repaymentAfterValue.textContent = formatMoney(0);
     }
@@ -327,6 +188,7 @@
         note: el.repaymentNote.value || null,
       }),
     });
+    core.invalidateUiRequestCache("debts");
     closeDebtRepaymentModal();
     await refreshDebtViews();
   }
@@ -347,32 +209,24 @@
       el.debtHistoryCounterparty.textContent = card.counterparty || "Контрагент";
     }
     if (el.debtHistoryDirection) {
-      el.debtHistoryDirection.textContent = isBorrow ? "Я взял" : "Я дал";
+      el.debtHistoryDirection.textContent = debtUi.debtDirectionActionLabel(debt.direction);
       el.debtHistoryDirection.classList.remove("debt-direction-pill-lend", "debt-direction-pill-borrow");
       el.debtHistoryDirection.classList.add(isBorrow ? "debt-direction-pill-borrow" : "debt-direction-pill-lend");
     }
     if (el.debtHistoryOutstanding) {
       el.debtHistoryOutstanding.textContent = formatMoney(debt.outstanding_total);
     }
-    if (el.debtHistoryList) {
-      const issuancesDesc = debt.issuances || [];
-      const issuancesAsc = issuancesDesc.slice().sort((a, b) => {
-        const aTs = parseIsoDate(a.issuance_date)?.getTime() || 0;
-        const bTs = parseIsoDate(b.issuance_date)?.getTime() || 0;
-        if (aTs !== bTs) {
-          return aTs - bTs;
-        }
-        return Number(a.id || 0) - Number(b.id || 0);
-      });
-      const startIssuance = issuancesAsc[0] || null;
+    if (el.debtHistoryItems) {
+      const issuances = debt.issuances || [];
       const events = [];
-      for (const issuance of issuancesDesc) {
+      for (const issuance of issuances) {
         events.push({
           type: "issuance",
           date: issuance.issuance_date || "",
           amount: Number(issuance.amount || 0),
           note: issuance.note || "",
           id: Number(issuance.id || 0),
+          created_at: issuance.created_at || "",
         });
       }
       for (const repayment of debt.repayments || []) {
@@ -382,47 +236,84 @@
           amount: Number(repayment.amount || 0),
           note: repayment.note || "",
           id: Number(repayment.id || 0),
+          created_at: repayment.created_at || "",
         });
       }
       events.sort((a, b) => {
-        const aTs = parseIsoDateEnd(a.date)?.getTime() || 0;
-        const bTs = parseIsoDateEnd(b.date)?.getTime() || 0;
+        const aTs = parseIsoDate(a.date)?.getTime() || 0;
+        const bTs = parseIsoDate(b.date)?.getTime() || 0;
         if (aTs !== bTs) {
-          return bTs - aTs;
+          return aTs - bTs;
         }
-        return b.id - a.id;
+        const aCreated = Date.parse(a.created_at || "") || 0;
+        const bCreated = Date.parse(b.created_at || "") || 0;
+        if (aCreated !== bCreated) {
+          return aCreated - bCreated;
+        }
+        if (a.type !== b.type) {
+          return a.type === "issuance" ? -1 : 1;
+        }
+        return a.id - b.id;
       });
-      if (!events.length) {
-        el.debtHistoryList.innerHTML = '<div class="muted-small">Событий пока нет</div>';
-      } else {
-        const startTitle = isBorrow ? "Начало: я взял в долг" : "Начало: я дал в долг";
-        const startAmount = startIssuance ? Number(startIssuance.amount || 0) : Number(debt.principal || 0);
-        const startDate = startIssuance?.issuance_date || debt.start_date;
-        const startNote = startIssuance?.note || debt.note || "";
-        const startBlock = `<article class="debt-history-event debt-history-event-start">
-          <div class="row between">
-            <strong>${startTitle}</strong>
-            <span class="muted-small">${startDate ? core.formatDateRu(startDate) : "-"}</span>
-          </div>
-          <div class="debt-history-amount">${formatMoney(startAmount)}</div>
-          ${startNote ? `<div class="muted-small">${core.highlightText(startNote, "")}</div>` : ""}
-        </article>`;
-        const eventsHtml = events.map((event) => {
-            const eventClass = event.type === "repayment" ? "debt-history-event-repayment" : "debt-history-event-issuance";
-            const eventTitle = event.type === "repayment" ? "Погашение" : "Добавление";
-            return `<article class="debt-history-event ${eventClass}">
-              <div class="row between">
-                <strong>${eventTitle}</strong>
-                <span class="muted-small">${event.date ? core.formatDateRu(event.date) : "-"}</span>
-              </div>
-              <div class="debt-history-amount">${formatMoney(event.amount)}</div>
-              ${event.note ? `<div class="muted-small">${core.highlightText(event.note, "")}</div>` : ""}
-            </article>`;
-          }).join("");
-        el.debtHistoryList.innerHTML = `${startBlock}${eventsHtml}`;
-      }
+      state.debtHistoryEvents = events;
+      state.debtHistoryMeta = {
+        isBorrow,
+      };
+      state.debtHistoryVisibleLimit = Number(state.debtHistoryPageSize || 20);
+      renderDebtHistoryEvents();
     }
     el.debtHistoryModal.classList.remove("hidden");
+  }
+
+  function renderDebtHistoryEvents() {
+    if (!el.debtHistoryItems) {
+      return;
+    }
+    const events = state.debtHistoryEvents || [];
+    const pageSize = Number(state.debtHistoryPageSize || 20);
+    const visibleLimit = Number(state.debtHistoryVisibleLimit || pageSize);
+    const visibleEvents = events.slice(0, Math.max(pageSize, visibleLimit));
+    state.debtHistoryHasMore = visibleEvents.length < events.length;
+    if (el.debtHistoryInfiniteSentinel) {
+      el.debtHistoryInfiniteSentinel.classList.toggle("hidden", !state.debtHistoryHasMore);
+    }
+    if (!visibleEvents.length) {
+      el.debtHistoryItems.innerHTML = '<div class="muted-small">Событий пока нет</div>';
+      return;
+    }
+    const isBorrow = state.debtHistoryMeta?.isBorrow === true;
+    const firstEvent = events[0];
+    let runningOutstanding = 0;
+    const eventBlocks = [];
+    for (const event of visibleEvents) {
+      if (event.type === "issuance") {
+        runningOutstanding += Number(event.amount || 0);
+      } else {
+        runningOutstanding -= Number(event.amount || 0);
+      }
+      if (runningOutstanding < 0) {
+        runningOutstanding = 0;
+      }
+      const isStart = event.type === "issuance" && event.id === firstEvent.id && event.date === firstEvent.date;
+      const eventClass = isStart
+        ? "debt-history-event-start"
+        : (event.type === "repayment" ? "debt-history-event-repayment" : "debt-history-event-issuance");
+      const eventTitle = isStart
+        ? (isBorrow ? "Начальная сумма: я взял в долг" : "Начальная сумма: я дал в долг")
+        : (event.type === "repayment"
+          ? debtUi.debtRepaymentEventLabel(isBorrow ? "borrow" : "lend")
+          : debtUi.debtIssuanceEventLabel(isBorrow ? "borrow" : "lend"));
+      eventBlocks.push(`<article class="debt-history-event ${eventClass}">
+      <div class="row between">
+        <strong>${eventTitle}</strong>
+        <span class="muted-small">${event.date ? core.formatDateRu(event.date) : "-"}</span>
+      </div>
+      <div class="debt-history-amount">${formatMoney(event.amount)}</div>
+      <div class="muted-small">Остаток после шага: ${formatMoney(runningOutstanding)}</div>
+      ${event.note ? `<div class="muted-small">${core.highlightText(event.note, "")}</div>` : ""}
+    </article>`);
+    }
+    el.debtHistoryItems.innerHTML = eventBlocks.join("");
   }
 
   function closeDebtHistoryModal() {
@@ -430,19 +321,54 @@
       return;
     }
     el.debtHistoryModal.classList.add("hidden");
-    if (el.debtHistoryList) {
-      el.debtHistoryList.innerHTML = "";
+    state.debtHistoryEvents = [];
+    state.debtHistoryMeta = null;
+    state.debtHistoryVisibleLimit = Number(state.debtHistoryPageSize || 20);
+    state.debtHistoryHasMore = false;
+    if (el.debtHistoryItems) {
+      el.debtHistoryItems.innerHTML = "";
+    }
+    if (el.debtHistoryInfiniteSentinel) {
+      el.debtHistoryInfiniteSentinel.classList.add("hidden");
     }
   }
 
   function setDebtStatusFilter(filterValue) {
     state.debtStatusFilter = filterValue || "active";
     core.syncSegmentedActive(el.debtStatusTabs, "debt-status", state.debtStatusFilter);
+    resetDebtCardsPagination();
     loadDebtsCards().catch((err) => core.setStatus(String(err)));
   }
 
+  function setDebtSortPreset(sortValue) {
+    state.debtSortPreset = sortValue || "priority";
+    core.syncSegmentedActive(el.debtSortTabs, "debt-sort", state.debtSortPreset);
+    resetDebtCardsPagination();
+    renderDebtCards(state.debtCardsCache || []);
+    if (window.App.actions?.savePreferences) {
+      window.App.actions.savePreferences().catch(() => {});
+    }
+  }
+
   async function applyDebtSearch() {
+    resetDebtCardsPagination();
     await loadDebtsCards();
+  }
+
+  function loadMoreDebtCards() {
+    if (!state.debtCardsHasMore) {
+      return;
+    }
+    state.debtCardsVisibleLimit += Number(state.debtCardsPageSize || 20);
+    renderDebtCards(state.debtCardsCache || []);
+  }
+
+  function loadMoreDebtHistoryEvents() {
+    if (!state.debtHistoryHasMore) {
+      return;
+    }
+    state.debtHistoryVisibleLimit += Number(state.debtHistoryPageSize || 20);
+    renderDebtHistoryEvents();
   }
 
   function findDebtById(debtId) {
@@ -478,33 +404,6 @@
     core.setStatus("Редактирование долга недоступно");
   }
 
-  function closeEditDebtModal() {
-    el.editDebtModal.classList.add("hidden");
-    el.editDebtId.value = "";
-  }
-
-  async function submitEditDebt(event) {
-    event.preventDefault();
-    const debtId = Number(el.editDebtId.value || 0);
-    if (!debtId) {
-      return;
-    }
-    await core.requestJson(`/api/v1/debts/${debtId}`, {
-      method: "PATCH",
-      headers: core.authHeaders(),
-      body: JSON.stringify({
-        counterparty: el.editDebtCounterparty.value.trim(),
-        direction: el.editDebtDirection.value,
-        principal: el.editDebtPrincipal.value,
-        start_date: el.editDebtStartDate.value,
-        due_date: el.editDebtDueDate.value || null,
-        note: el.editDebtNote.value.trim() || null,
-      }),
-    });
-    closeEditDebtModal();
-    await refreshDebtViews();
-  }
-
   function deleteDebtFlow(debtId) {
     core.runDestructiveAction({
       confirmMessage: "Удалить долг?",
@@ -513,6 +412,7 @@
           method: "DELETE",
           headers: core.authHeaders(),
         });
+        core.invalidateUiRequestCache("debts");
       },
       onAfterDelete: async () => {
         await refreshDebtViews();
@@ -530,10 +430,11 @@
     openDebtHistoryModal,
     closeDebtHistoryModal,
     setDebtStatusFilter,
+    setDebtSortPreset,
     applyDebtSearch,
+    loadMoreDebtCards,
+    loadMoreDebtHistoryEvents,
     openEditDebtModal,
-    closeEditDebtModal,
-    submitEditDebt,
     deleteDebtFlow,
   };
 })();

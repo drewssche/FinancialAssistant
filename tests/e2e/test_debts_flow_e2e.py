@@ -81,6 +81,16 @@ def page_with_debts_api_mock():
                     "note": "Тест",
                     "created_at": "2026-03-05T10:00:00Z",
                     "repayments": [],
+                    "issuances": [
+                        {
+                            "id": 1,
+                            "debt_id": 9001,
+                            "amount": "100.00",
+                            "issuance_date": "2026-03-05",
+                            "note": "Тест",
+                            "created_at": "2026-03-05T10:00:00Z",
+                        }
+                    ],
                 }
             ],
         }
@@ -89,6 +99,71 @@ def page_with_debts_api_mock():
 
     def json_response(route, payload: dict | list, status: int = 200):
         route.fulfill(status=status, content_type="application/json", body=json.dumps(payload, ensure_ascii=False))
+
+    def normalize_name(value: str) -> str:
+        return " ".join((value or "").split()).casefold()
+
+    def fmt_amount(value: float) -> str:
+        return f"{value:.2f}"
+
+    def recalc_debt(debt: dict) -> None:
+        principal = float(debt.get("principal") or 0.0)
+        repaid = float(debt.get("repaid_total") or 0.0)
+        debt["outstanding_total"] = fmt_amount(max(0.0, principal - repaid))
+
+    def recalc_card(card: dict) -> None:
+        principal_total = 0.0
+        repaid_total = 0.0
+        outstanding_total = 0.0
+        nearest_due_date = None
+        for debt in card.get("debts", []):
+            recalc_debt(debt)
+            principal_total += float(debt.get("principal") or 0.0)
+            repaid_total += float(debt.get("repaid_total") or 0.0)
+            outstanding = float(debt.get("outstanding_total") or 0.0)
+            outstanding_total += outstanding
+            due_date = debt.get("due_date")
+            if outstanding > 0 and due_date:
+                nearest_due_date = due_date if nearest_due_date is None else min(nearest_due_date, due_date)
+        card["principal_total"] = fmt_amount(principal_total)
+        card["repaid_total"] = fmt_amount(repaid_total)
+        card["outstanding_total"] = fmt_amount(outstanding_total)
+        card["status"] = "active" if outstanding_total > 0 else "closed"
+        card["nearest_due_date"] = nearest_due_date
+
+    def find_card_by_counterparty(counterparty: str) -> dict | None:
+        wanted = normalize_name(counterparty)
+        for card in debt_cards:
+            if normalize_name(card.get("counterparty", "")) == wanted:
+                return card
+        return None
+
+    def find_debt(debt_id: int) -> tuple[dict, dict] | tuple[None, None]:
+        for card in debt_cards:
+            for debt in card.get("debts", []):
+                if debt.get("id") == debt_id:
+                    return card, debt
+        return None, None
+
+    def remove_empty_cards() -> None:
+        debt_cards[:] = [card for card in debt_cards if card.get("debts")]
+
+    def add_issuance(debt: dict, amount: float, issuance_date: str | None, note: str | None = None) -> None:
+        issuances = debt.setdefault("issuances", [])
+        issuances.insert(
+            0,
+            {
+                "id": len(issuances) + 1,
+                "debt_id": debt["id"],
+                "amount": fmt_amount(amount),
+                "issuance_date": issuance_date,
+                "note": note,
+                "created_at": "2026-03-05T10:00:00Z",
+            },
+        )
+
+    for seed_card in debt_cards:
+        recalc_card(seed_card)
 
     def handler(route, request):
         nonlocal next_debt_id
@@ -126,8 +201,68 @@ def page_with_debts_api_mock():
         if path == "/api/v1/operations" and method == "GET":
             return json_response(route, {"items": [], "total": 0, "page": 1, "page_size": 20})
 
+        if path == "/api/v1/test/seed-debts" and method == "POST":
+            payload = json.loads(request.post_data or "{}")
+            count = max(0, int(payload.get("count", 0)))
+            direction = payload.get("direction", "lend")
+            principal_amount = float(payload.get("principal", 100.0))
+            start_date = payload.get("start_date", "2026-03-05")
+            due_date = payload.get("due_date")
+            for idx in range(count):
+                counterparty = f"Контрагент {idx + 1:02d}"
+                principal = fmt_amount(principal_amount)
+                new_debt = {
+                    "id": next_debt_id,
+                    "counterparty_id": next_debt_id,
+                    "direction": direction,
+                    "principal": principal,
+                    "repaid_total": "0.00",
+                    "outstanding_total": principal,
+                    "start_date": start_date,
+                    "due_date": due_date,
+                    "note": f"seed debt {idx + 1}",
+                    "created_at": "2026-03-05T10:00:00Z",
+                    "repayments": [],
+                    "issuances": [],
+                }
+                add_issuance(new_debt, amount=principal_amount, issuance_date=start_date, note=new_debt["note"])
+                next_debt_id += 1
+                new_card = {
+                    "counterparty_id": new_debt["counterparty_id"],
+                    "counterparty": counterparty,
+                    "principal_total": principal,
+                    "repaid_total": "0.00",
+                    "outstanding_total": principal,
+                    "status": "active",
+                    "nearest_due_date": due_date,
+                    "debts": [new_debt],
+                }
+                recalc_card(new_card)
+                debt_cards.append(new_card)
+            return json_response(route, {"seeded": count}, status=201)
+
+        if path == "/api/v1/test/seed-debt-history" and method == "POST":
+            payload = json.loads(request.post_data or "{}")
+            debt_id = int(payload.get("debt_id", 0))
+            count = max(0, int(payload.get("count", 0)))
+            card, debt = find_debt(debt_id)
+            if not card or not debt:
+                return json_response(route, {"detail": "Debt not found"}, status=404)
+            base_idx = len(debt.get("issuances", []))
+            for idx in range(count):
+                add_issuance(
+                    debt,
+                    amount=10.0,
+                    issuance_date=f"2026-03-{(idx % 28) + 1:02d}",
+                    note=f"seed issuance {base_idx + idx + 1}",
+                )
+            recalc_card(card)
+            return json_response(route, {"seeded": count}, status=201)
+
         if path == "/api/v1/debts/cards" and method == "GET":
             include_closed = (query.get("include_closed") or ["false"])[0] == "true"
+            for card in debt_cards:
+                recalc_card(card)
             if include_closed:
                 return json_response(route, debt_cards)
             only_active = [item for item in debt_cards if item["status"] == "active"]
@@ -135,12 +270,28 @@ def page_with_debts_api_mock():
 
         if path == "/api/v1/debts" and method == "POST":
             payload = json.loads(request.post_data or "{}")
-            counterparty = payload["counterparty"]
-            principal = f"{float(payload['principal']):.2f}"
+            counterparty = " ".join(str(payload["counterparty"]).split())
+            direction = payload.get("direction", "lend")
+            principal_amount = float(payload["principal"])
+            principal = fmt_amount(principal_amount)
+            existing_card = find_card_by_counterparty(counterparty)
+            merge_target = None
+            if existing_card:
+                for debt in existing_card.get("debts", []):
+                    if debt.get("direction") == direction and float(debt.get("outstanding_total") or 0.0) > 0:
+                        merge_target = debt
+                        break
+            if merge_target:
+                merge_target["principal"] = fmt_amount(float(merge_target["principal"]) + principal_amount)
+                recalc_debt(merge_target)
+                add_issuance(merge_target, amount=principal_amount, issuance_date=payload.get("start_date"), note=payload.get("note"))
+                recalc_card(existing_card)
+                return json_response(route, merge_target, status=201)
+
             new_debt = {
                 "id": next_debt_id,
-                "counterparty_id": next_debt_id,
-                "direction": payload.get("direction", "lend"),
+                "counterparty_id": existing_card["counterparty_id"] if existing_card else next_debt_id,
+                "direction": direction,
                 "principal": principal,
                 "repaid_total": "0.00",
                 "outstanding_total": principal,
@@ -149,10 +300,15 @@ def page_with_debts_api_mock():
                 "note": payload.get("note"),
                 "created_at": "2026-03-05T10:00:00Z",
                 "repayments": [],
+                "issuances": [],
             }
+            add_issuance(new_debt, amount=principal_amount, issuance_date=payload.get("start_date"), note=payload.get("note"))
             next_debt_id += 1
-            debt_cards.append(
-                {
+            if existing_card:
+                existing_card["debts"].append(new_debt)
+                recalc_card(existing_card)
+            else:
+                new_card = {
                     "counterparty_id": new_debt["counterparty_id"],
                     "counterparty": counterparty,
                     "principal_total": principal,
@@ -162,65 +318,136 @@ def page_with_debts_api_mock():
                     "nearest_due_date": payload.get("due_date"),
                     "debts": [new_debt],
                 }
-            )
+                recalc_card(new_card)
+                debt_cards.append(new_card)
             return json_response(route, new_debt, status=201)
 
         if path.startswith("/api/v1/debts/") and path.endswith("/repayments") and method == "POST":
             payload = json.loads(request.post_data or "{}")
             debt_id = int(path.split("/")[-2])
             amount = float(payload["amount"])
-            for card in debt_cards:
-                for debt in card["debts"]:
-                    if debt["id"] != debt_id:
-                        continue
-                    repaid_total = float(debt["repaid_total"]) + amount
-                    principal = float(debt["principal"])
-                    outstanding = max(0.0, principal - repaid_total)
-                    debt["repaid_total"] = f"{repaid_total:.2f}"
-                    debt["outstanding_total"] = f"{outstanding:.2f}"
-                    debt.setdefault("repayments", []).insert(
-                        0,
-                        {
-                            "id": 1,
-                            "debt_id": debt_id,
-                            "amount": f"{amount:.2f}",
-                            "repayment_date": payload["repayment_date"],
-                            "note": payload.get("note"),
+            card, debt = find_debt(debt_id)
+            if card and debt:
+                principal = float(debt["principal"])
+                repaid_before = float(debt["repaid_total"])
+                outstanding_before = max(0.0, principal - repaid_before)
+                applied_amount = min(amount, outstanding_before)
+                debt["repaid_total"] = fmt_amount(repaid_before + applied_amount)
+                recalc_debt(debt)
+                repayments = debt.setdefault("repayments", [])
+                repayment_record = {
+                    "id": len(repayments) + 1,
+                    "debt_id": debt_id,
+                    "amount": fmt_amount(applied_amount),
+                    "repayment_date": payload["repayment_date"],
+                    "note": payload.get("note"),
+                    "created_at": "2026-03-05T10:00:00Z",
+                }
+                repayments.insert(0, repayment_record)
+
+                overpay = amount - applied_amount
+                if overpay > 0:
+                    reverse_direction = "borrow" if debt["direction"] == "lend" else "lend"
+                    reverse_debt = None
+                    for candidate in card.get("debts", []):
+                        if candidate["id"] == debt_id:
+                            continue
+                        if candidate.get("direction") == reverse_direction and float(candidate.get("outstanding_total") or 0.0) > 0:
+                            reverse_debt = candidate
+                            break
+                    if reverse_debt:
+                        reverse_debt["principal"] = fmt_amount(float(reverse_debt["principal"]) + overpay)
+                        recalc_debt(reverse_debt)
+                        add_issuance(
+                            reverse_debt,
+                            amount=overpay,
+                            issuance_date=payload.get("repayment_date"),
+                            note=f"Переплата по долгу #{debt_id}",
+                        )
+                    else:
+                        reverse_id = next_debt_id
+                        next_debt_id += 1
+                        reverse_debt = {
+                            "id": reverse_id,
+                            "counterparty_id": debt["counterparty_id"],
+                            "direction": reverse_direction,
+                            "principal": fmt_amount(overpay),
+                            "repaid_total": "0.00",
+                            "outstanding_total": fmt_amount(overpay),
+                            "start_date": payload.get("repayment_date"),
+                            "due_date": None,
+                            "note": f"Переплата по долгу #{debt_id}",
                             "created_at": "2026-03-05T10:00:00Z",
-                        },
-                    )
-                    card["repaid_total"] = debt["repaid_total"]
-                    card["outstanding_total"] = debt["outstanding_total"]
-                    if outstanding <= 0:
-                        card["status"] = "closed"
-                    return json_response(route, debt["repayments"][0], status=201)
+                            "repayments": [],
+                            "issuances": [],
+                        }
+                        add_issuance(
+                            reverse_debt,
+                            amount=overpay,
+                            issuance_date=payload.get("repayment_date"),
+                            note=reverse_debt["note"],
+                        )
+                        card["debts"].append(reverse_debt)
+                recalc_card(card)
+                return json_response(route, repayment_record, status=201)
             return json_response(route, {"detail": "Debt not found"}, status=404)
 
         if path.startswith("/api/v1/debts/") and method == "PATCH":
             debt_id = int(path.split("/")[-1])
             payload = json.loads(request.post_data or "{}")
-            for card in debt_cards:
-                for debt in card["debts"]:
-                    if debt["id"] != debt_id:
-                        continue
-                    if "counterparty" in payload:
-                        card["counterparty"] = payload["counterparty"]
-                    if "direction" in payload:
-                        debt["direction"] = payload["direction"]
-                    if "principal" in payload:
-                        debt["principal"] = f"{float(payload['principal']):.2f}"
-                    if "start_date" in payload:
-                        debt["start_date"] = payload["start_date"]
-                    if "due_date" in payload:
-                        debt["due_date"] = payload["due_date"]
-                    if "note" in payload:
-                        debt["note"] = payload["note"]
-                    repaid_total = float(debt["repaid_total"])
-                    principal = float(debt["principal"])
-                    debt["outstanding_total"] = f"{max(0.0, principal - repaid_total):.2f}"
-                    card["principal_total"] = debt["principal"]
-                    card["outstanding_total"] = debt["outstanding_total"]
+            source_card, debt = find_debt(debt_id)
+            if source_card and debt:
+                target_card = source_card
+                if "counterparty" in payload:
+                    normalized_counterparty = " ".join(str(payload["counterparty"]).split())
+                    matched_card = find_card_by_counterparty(normalized_counterparty)
+                    if matched_card and matched_card is not source_card:
+                        target_card = matched_card
+                    else:
+                        source_card["counterparty"] = normalized_counterparty
+
+                if "direction" in payload:
+                    debt["direction"] = payload["direction"]
+                if "principal" in payload:
+                    debt["principal"] = fmt_amount(float(payload["principal"]))
+                if "start_date" in payload:
+                    debt["start_date"] = payload["start_date"]
+                if "due_date" in payload:
+                    debt["due_date"] = payload["due_date"]
+                if "note" in payload:
+                    debt["note"] = payload["note"]
+                recalc_debt(debt)
+
+                if target_card is not source_card:
+                    merge_target = None
+                    for candidate in target_card.get("debts", []):
+                        if candidate["id"] == debt["id"]:
+                            continue
+                        if candidate.get("direction") == debt.get("direction") and float(candidate.get("outstanding_total") or 0.0) > 0:
+                            merge_target = candidate
+                            break
+                    if merge_target:
+                        merge_target["principal"] = fmt_amount(float(merge_target["principal"]) + float(debt["principal"]))
+                        merge_target["repaid_total"] = fmt_amount(float(merge_target["repaid_total"]) + float(debt["repaid_total"]))
+                        merge_target.setdefault("repayments", []).extend(debt.get("repayments", []))
+                        merge_target.setdefault("issuances", []).extend(debt.get("issuances", []))
+                        recalc_debt(merge_target)
+                        source_card["debts"] = [item for item in source_card.get("debts", []) if item["id"] != debt_id]
+                        recalc_card(target_card)
+                        recalc_card(source_card)
+                        remove_empty_cards()
+                        return json_response(route, merge_target)
+
+                    source_card["debts"] = [item for item in source_card.get("debts", []) if item["id"] != debt_id]
+                    debt["counterparty_id"] = target_card["counterparty_id"]
+                    target_card["debts"].append(debt)
+                    recalc_card(target_card)
+                    recalc_card(source_card)
+                    remove_empty_cards()
                     return json_response(route, debt)
+
+                recalc_card(source_card)
+                return json_response(route, debt)
             return json_response(route, {"detail": "Debt not found"}, status=404)
 
         if path.startswith("/api/v1/debts/") and method == "DELETE":
@@ -231,6 +458,7 @@ def page_with_debts_api_mock():
                 if len(rest) != len(debts):
                     if rest:
                         card["debts"] = rest
+                        recalc_card(card)
                     else:
                         debt_cards.pop(idx)
                     return json_response(route, {}, status=204)
@@ -303,6 +531,128 @@ def test_repayment_moves_debt_to_closed(static_server_url: str, page_with_debts_
 
 
 @pytest.mark.e2e
+def test_repayment_presets_fill_amount_from_current_outstanding(static_server_url: str, page_with_debts_api_mock):
+    page = page_with_debts_api_mock
+    page.goto(f"{static_server_url}/static/index.html")
+    page.click("#devLoginBtn")
+    page.wait_for_selector("#appShell:not(.hidden)")
+
+    page.click("button[data-section='debts']")
+    page.wait_for_selector("#debtsSection:not(.hidden)")
+    page.locator("tr:has(button[data-repay-debt-id='9001'])").hover()
+    page.click("button[data-repay-debt-id='9001']", force=True)
+    page.wait_for_selector("#debtRepaymentModal:not(.hidden)")
+
+    page.click("#repaymentPresetRow button[data-repayment-preset='0.25']")
+    assert page.locator("#repaymentAmount").input_value() == "25.00"
+
+    page.click("#repaymentPresetRow button[data-repayment-preset='0.5']")
+    assert page.locator("#repaymentAmount").input_value() == "50.00"
+
+    page.click("#repaymentPresetRow button[data-repayment-preset='1']")
+    assert page.locator("#repaymentAmount").input_value() == "100.00"
+
+
+@pytest.mark.e2e
+def test_debts_cards_infinite_scroll_loads_next_batch(static_server_url: str, page_with_debts_api_mock):
+    page = page_with_debts_api_mock
+    page.goto(f"{static_server_url}/static/index.html")
+    page.click("#devLoginBtn")
+    page.wait_for_selector("#appShell:not(.hidden)")
+
+    page.evaluate(
+        """
+        async () => {
+          const response = await fetch('/api/v1/test/seed-debts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ count: 54, direction: 'lend', principal: 120, start_date: '2026-03-05' }),
+          });
+          if (!response.ok) {
+            throw new Error('seed failed');
+          }
+        }
+        """
+    )
+
+    page.click("button[data-section='debts']")
+    page.wait_for_selector("#debtsSection:not(.hidden)")
+    page.evaluate("window.App.core.invalidateUiRequestCache('debts')")
+    page.evaluate("window.App.actions.loadDebtsCards({ force: true })")
+    initial_count = page.locator("#debtsCards .debt-card").count()
+    assert 20 <= initial_count < 55
+    page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+    page.wait_for_function(f"document.querySelectorAll('#debtsCards .debt-card').length > {initial_count}")
+
+
+@pytest.mark.e2e
+def test_debt_history_infinite_scroll_loads_next_batch(static_server_url: str, page_with_debts_api_mock):
+    page = page_with_debts_api_mock
+    page.goto(f"{static_server_url}/static/index.html")
+    page.click("#devLoginBtn")
+    page.wait_for_selector("#appShell:not(.hidden)")
+
+    page.evaluate(
+        """
+        async () => {
+          const response = await fetch('/api/v1/test/seed-debt-history', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ debt_id: 9001, count: 70 }),
+          });
+          if (!response.ok) {
+            throw new Error('seed history failed');
+          }
+        }
+        """
+    )
+
+    page.click("button[data-section='debts']")
+    page.wait_for_selector("#debtsSection:not(.hidden)")
+    page.evaluate("window.App.core.invalidateUiRequestCache('debts')")
+    page.evaluate("window.App.actions.loadDebtsCards({ force: true })")
+    page.locator("tr:has(button[data-history-debt-id='9001'])").hover()
+    page.click("button[data-history-debt-id='9001']", force=True)
+    page.wait_for_selector("#debtHistoryModal:not(.hidden)")
+    initial_count = page.locator("#debtHistoryItems .debt-history-event").count()
+    assert 20 <= initial_count < 71
+    page.evaluate(
+        """
+        () => {
+          const list = document.getElementById('debtHistoryList');
+          if (list) {
+            list.scrollTo(0, list.scrollHeight);
+          }
+        }
+        """
+    )
+    page.wait_for_function(f"document.querySelectorAll('#debtHistoryItems .debt-history-event').length > {initial_count}")
+
+
+@pytest.mark.e2e
+def test_debt_history_uses_directional_event_labels(static_server_url: str, page_with_debts_api_mock):
+    page = page_with_debts_api_mock
+    page.goto(f"{static_server_url}/static/index.html")
+    page.click("#devLoginBtn")
+    page.wait_for_selector("#appShell:not(.hidden)")
+
+    page.click("button[data-section='debts']")
+    page.wait_for_selector("#debtsSection:not(.hidden)")
+    page.locator("tr:has(button[data-repay-debt-id='9001'])").hover()
+    page.click("button[data-repay-debt-id='9001']", force=True)
+    page.wait_for_selector("#debtRepaymentModal:not(.hidden)")
+    page.fill("#repaymentAmount", "10")
+    page.fill("#repaymentDate", "2026-03-06")
+    page.click("#submitDebtRepaymentBtn")
+    page.wait_for_selector("#debtRepaymentModal", state="hidden")
+
+    page.locator("tr:has(button[data-history-debt-id='9001'])").hover()
+    page.click("button[data-history-debt-id='9001']", force=True)
+    page.wait_for_selector("#debtHistoryModal:not(.hidden)")
+    assert page.locator("#debtHistoryItems .debt-history-event strong", has_text="Погашение: мне вернули").count() >= 1
+
+
+@pytest.mark.e2e
 def test_edit_and_delete_debt(static_server_url: str, page_with_debts_api_mock):
     page = page_with_debts_api_mock
     page.goto(f"{static_server_url}/static/index.html")
@@ -325,3 +675,61 @@ def test_edit_and_delete_debt(static_server_url: str, page_with_debts_api_mock):
     page.click("#confirmDeleteBtn")
     page.wait_for_timeout(250)
     assert "Долги не найдены" in page.locator("#debtsCards").inner_text()
+
+
+@pytest.mark.e2e
+def test_overpay_creates_reverse_direction_debt(static_server_url: str, page_with_debts_api_mock):
+    page = page_with_debts_api_mock
+    page.goto(f"{static_server_url}/static/index.html")
+    page.click("#devLoginBtn")
+    page.wait_for_selector("#appShell:not(.hidden)")
+
+    page.click("button[data-section='debts']")
+    page.wait_for_selector("#debtsSection:not(.hidden)")
+    page.locator("tr:has(button[data-repay-debt-id='9001'])").hover()
+    page.click("button[data-repay-debt-id='9001']", force=True)
+    page.wait_for_selector("#debtRepaymentModal:not(.hidden)")
+    page.fill("#repaymentAmount", "120")
+    page.fill("#repaymentDate", "2026-03-06")
+    page.click("#submitDebtRepaymentBtn")
+    page.wait_for_selector("#debtRepaymentModal", state="hidden")
+
+    card = page.locator("#debtsCards .debt-card", has_text="Анна")
+    card.wait_for()
+    assert card.locator("tr:has-text('Я взял')").count() == 1
+    assert card.locator("tr:has-text('20,00 Br')").count() >= 1
+
+
+@pytest.mark.e2e
+def test_edit_counterparty_name_merges_with_existing_card(static_server_url: str, page_with_debts_api_mock):
+    page = page_with_debts_api_mock
+    page.goto(f"{static_server_url}/static/index.html")
+    page.click("#devLoginBtn")
+    page.wait_for_selector("#appShell:not(.hidden)")
+
+    page.click("button[data-section='debts']")
+    page.wait_for_selector("#debtsSection:not(.hidden)")
+    page.click("#addDebtCta")
+    page.wait_for_selector("#createModal:not(.hidden)")
+    page.click("#createEntryModeSwitch button[data-entry-mode='debt']")
+    page.fill("#debtCounterparty", "Борис")
+    page.click("#createDebtDirectionSwitch button[data-debt-direction='lend']")
+    page.fill("#debtPrincipal", "250")
+    page.fill("#debtStartDate", "2026-03-05")
+    page.click("#submitCreateOperationBtn")
+    page.wait_for_selector("#createModal", state="hidden")
+    assert page.locator("#debtsCards .debt-card h3", has_text="Борис").count() == 1
+
+    page.locator("#debtsCards .debt-card:has(h3:has-text('Анна')) tr:has(button[data-edit-debt-id='9001'])").hover()
+    page.click("button[data-edit-debt-id='9001']", force=True)
+    page.wait_for_selector("#createModal:not(.hidden)")
+    page.fill("#debtCounterparty", "борис")
+    page.click("#submitCreateOperationBtn")
+    page.wait_for_selector("#createModal", state="hidden")
+
+    page.wait_for_timeout(200)
+    assert page.locator("#debtsCards .debt-card h3", has_text="Анна").count() == 0
+    boris_card = page.locator("#debtsCards .debt-card", has_text="Борис")
+    assert boris_card.count() == 1
+    assert boris_card.locator("tbody tr").count() == 1
+    assert boris_card.locator("tbody tr:has-text('350,00 Br')").count() >= 1

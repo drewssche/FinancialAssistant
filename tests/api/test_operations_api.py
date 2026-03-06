@@ -106,3 +106,47 @@ def test_operations_reject_invalid_date_range(client: TestClient):
     )
     assert response.status_code == 400
     assert "date_from" in response.json()["detail"]
+
+
+def test_operations_search_by_note_category_and_kind_ru(client: TestClient):
+    category_resp = client.post("/api/v1/categories", json={"name": "Еда", "kind": "expense"})
+    assert category_resp.status_code == 200
+    category_id = category_resp.json()["id"]
+
+    created_income = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "amount": "1000.00",
+            "operation_date": "2026-03-01",
+            "note": "salary",
+        },
+    )
+    assert created_income.status_code == 201
+
+    created_expense = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "250.00",
+            "operation_date": "2026-03-02",
+            "note": "кофе и перекус",
+            "category_id": category_id,
+        },
+    )
+    assert created_expense.status_code == 201
+
+    by_note = client.get("/api/v1/operations", params={"q": "кофе", "page": 1, "page_size": 20})
+    assert by_note.status_code == 200
+    assert by_note.json()["total"] == 1
+    assert by_note.json()["items"][0]["kind"] == "expense"
+
+    by_category = client.get("/api/v1/operations", params={"q": "еда", "page": 1, "page_size": 20})
+    assert by_category.status_code == 200
+    assert by_category.json()["total"] == 1
+    assert by_category.json()["items"][0]["category_id"] == category_id
+
+    by_kind_ru = client.get("/api/v1/operations", params={"q": "расход", "page": 1, "page_size": 20})
+    assert by_kind_ru.status_code == 200
+    assert by_kind_ru.json()["total"] == 1
+    assert by_kind_ru.json()["items"][0]["kind"] == "expense"

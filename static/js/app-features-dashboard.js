@@ -105,10 +105,11 @@
           const rowsHtml = visibleDebts
             .map((debt) => {
               const principal = debtUi.parseAmount(debt.principal || 0);
+              const outstanding = debtUi.parseAmount(debt.outstanding_total || 0);
               const repaid = debtUi.parseAmount(debt.repaid_total || 0);
               const repayPercent = principal > 0 ? Math.max(0, Math.min(100, Math.round((repaid / principal) * 100))) : 0;
               const direction = debt.direction === "borrow" ? "borrow" : "lend";
-              const directionLabel = direction === "borrow" ? "Я должен" : "Мне должны";
+              const directionLabel = debtUi.debtDirectionBalanceLabel(direction);
               const repayTone = direction === "borrow" ? (repayPercent >= 100 ? "borrow-ok" : repayPercent >= 40 ? "borrow-warn" : "borrow-danger") : (repayPercent >= 100 ? "lend-ok" : "lend-warn");
               const dueState = debtUi.debtDueState(debt, now);
               const dueProgress = debtUi.debtDueProgress(debt, dueState, now);
@@ -117,7 +118,7 @@
                 <div class="dashboard-debt-row">
                   <div class="dashboard-debt-row-col">
                     <div class="muted-small">${directionLabel}</div>
-                    <div class="debt-amount-principal ${direction === "borrow" ? "debt-amount-principal-borrow" : "debt-amount-principal-lend"}">${debtUi.formatMoney(principal)}</div>
+                    <div class="debt-amount-principal ${direction === "borrow" ? "debt-amount-principal-borrow" : "debt-amount-principal-lend"}">${debtUi.formatMoney(outstanding)}</div>
                   </div>
                   <div class="dashboard-debt-row-col">
                     <div class="muted-small">Погашение</div>

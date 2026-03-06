@@ -76,6 +76,9 @@ At the bottom-left sidebar, show compact static user block:
 - `На срок`
 - `Комментарий`
 - Submit action creates debt record (not regular operation category flow)
+- Repayment modal quick presets:
+- `25%`, `50%`, `Весь остаток`
+- preset amount must be computed from current debt outstanding in state/API payload, not by parsing formatted UI string
 
 ## Debt Cards (Planned)
 - Debt cards are grouped by counterparty (one card per name)

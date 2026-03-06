@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import api_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
+from app.core.metrics import record_http_request
 
 settings = get_settings()
 configure_logging()
@@ -25,6 +26,13 @@ app.add_middleware(
 )
 app.include_router(api_router)
 app.mount("/static", StaticFiles(directory=str(static_dir), check_dir=False), name="static")
+
+
+@app.middleware("http")
+async def http_metrics_middleware(request, call_next):
+    response = await call_next(request)
+    record_http_request(path=request.url.path, method=request.method)
+    return response
 
 
 @app.get("/health")
