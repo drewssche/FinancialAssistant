@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.db.models import Category, CategoryGroup
@@ -26,6 +26,57 @@ class CategoryRepository:
             .order_by(Category.name)
         )
         return list(self.db.execute(stmt).mappings())
+
+    def list_for_user_paginated(
+        self,
+        user_id: int,
+        page: int,
+        page_size: int,
+        kind: str | None = None,
+        q: str | None = None,
+    ) -> tuple[list[dict], int]:
+        conditions = [((Category.user_id == user_id) | (Category.is_system.is_(True)))]
+        if kind:
+            conditions.append(Category.kind == kind)
+        if q:
+            search = q.strip()
+            variants = {search}
+            if search:
+                variants.add(search.lower())
+                variants.add(search.upper())
+                variants.add(search[:1].upper() + search[1:])
+            like_clauses = []
+            for variant in variants:
+                like = f"%{variant}%"
+                like_clauses.append(Category.name.like(like))
+                like_clauses.append(CategoryGroup.name.like(like))
+            conditions.append(or_(*like_clauses))
+
+        base_stmt = (
+            select(
+                Category.id,
+                Category.name,
+                Category.icon,
+                Category.kind,
+                Category.group_id,
+                Category.is_system,
+                CategoryGroup.name.label("group_name"),
+                CategoryGroup.icon.label("group_icon"),
+                CategoryGroup.accent_color.label("group_accent_color"),
+            )
+            .outerjoin(CategoryGroup, CategoryGroup.id == Category.group_id)
+            .where(and_(*conditions))
+        )
+        count_stmt = select(func.count()).select_from(Category).outerjoin(CategoryGroup, CategoryGroup.id == Category.group_id).where(and_(*conditions))
+        stmt = (
+            base_stmt
+            .order_by(Category.name, Category.id)
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        items = list(self.db.execute(stmt).mappings())
+        total = int(self.db.scalar(count_stmt) or 0)
+        return items, total
 
     def create(self, user_id: int, name: str, kind: str, group_id: int | None = None, icon: str | None = None) -> Category:
         category = Category(user_id=user_id, name=name, icon=icon, kind=kind, group_id=group_id, is_system=False)

@@ -1,6 +1,53 @@
 (() => {
   const { state, el, core } = window.App;
 
+  function dismissToast(toastId) {
+    const item = state.toasts.get(toastId);
+    if (!item) {
+      return;
+    }
+    clearTimeout(item.timeoutId);
+    item.toast.remove();
+    state.toasts.delete(toastId);
+  }
+
+  function showToast(message, options = {}) {
+    const type = options.type || "info";
+    const durationMs = options.durationMs ?? (type === "error" ? 6000 : 3200);
+    const id = `toast_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const toast = document.createElement("div");
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `
+      <div class="toast-header">
+        <div class="toast-text">${message}</div>
+        <button class="toast-close" type="button" data-toast-close="${id}" aria-label="Закрыть">×</button>
+      </div>
+      <div class="toast-progress"><div class="toast-progress-bar" style="animation-duration:${durationMs}ms"></div></div>
+    `;
+
+    el.toastArea.appendChild(toast);
+    const timeoutId = setTimeout(() => dismissToast(id), durationMs);
+    state.toasts.set(id, { toast, timeoutId, onUndo: null });
+    return id;
+  }
+
+  function notify(message, options = {}) {
+    const text = String(message || "").trim();
+    if (!text) {
+      return null;
+    }
+    const type = options.type || core.inferStatusType(text);
+    if (type === "error") {
+      const now = Date.now();
+      const prev = state.lastErrorToast || { message: "", ts: 0 };
+      if (prev.message === text && now - prev.ts < 3000) {
+        return null;
+      }
+      state.lastErrorToast = { message: text, ts: now };
+    }
+    return showToast(text, { ...options, type });
+  }
+
   async function requestJson(url, options = {}) {
     const response = await fetch(url, options);
     const data = await response.json().catch(() => ({}));
@@ -13,7 +60,18 @@
     }
 
     if (!response.ok) {
-      throw new Error(data.detail || "Ошибка запроса");
+      const path = (() => {
+        try {
+          return new URL(url, window.location.origin).pathname;
+        } catch {
+          return url;
+        }
+      })();
+      const detail = typeof data.detail === "string" ? data.detail.trim() : "";
+      if (detail) {
+        throw new Error(`Ошибка запроса [${response.status}] ${path}: ${detail}`);
+      }
+      throw new Error(`Ошибка запроса [${response.status}] ${path}`);
     }
 
     return data;
@@ -33,7 +91,7 @@
   function showUndoToast(message, onUndo, durationMs = 6000) {
     const id = `toast_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const toast = document.createElement("div");
-    toast.className = "toast";
+    toast.className = "toast toast-info";
     toast.innerHTML = `
       <div class="toast-header">
         <div class="toast-text">${message}</div>
@@ -57,9 +115,7 @@
       return;
     }
 
-    clearTimeout(item.timeoutId);
-    item.toast.remove();
-    state.toasts.delete(toastId);
+    dismissToast(toastId);
 
     item.onUndo()
       .then((message) => core.setStatus(message || "Изменение отменено"))
@@ -155,6 +211,8 @@
   }
 
   Object.assign(core, {
+    dismissToast,
+    notify,
     requestJson,
     showConfirm,
     closeConfirm,

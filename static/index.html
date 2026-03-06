@@ -10,7 +10,7 @@
     <div id="loginScreen" class="login-screen">
       <section class="login-card">
         <h1>Финансовый Ассистент</h1>
-        <p>Локальный вход для проверки интерфейса и API.</p>
+        <p>Войдите, чтобы продолжить работу.</p>
 
         <div class="input-row">
           <label class="field">
@@ -24,10 +24,9 @@
         </div>
 
         <div class="login-actions">
-          <button id="devLoginBtn" class="btn btn-primary">Войти (Dev)</button>
+          <button id="devLoginBtn" class="btn btn-primary">Войти</button>
         </div>
-
-        <pre id="loginOutput" class="status-box">Готово к входу.</pre>
+        <div id="loginAlert" class="login-alert hidden" role="status" aria-live="polite"></div>
       </section>
     </div>
 
@@ -42,23 +41,19 @@
         <nav class="nav" id="mainNav">
           <button class="nav-btn active" data-section="dashboard">Дашборд</button>
           <button class="nav-btn" data-section="operations">Операции</button>
+          <button class="nav-btn" data-section="debts">Долги</button>
           <button class="nav-btn" data-section="categories">Категории</button>
           <button class="nav-btn" data-section="settings">Настройки</button>
         </nav>
 
         <div class="user-area">
-          <button id="userMenuToggle" class="user-block" type="button">
+          <div class="user-block user-block-static">
             <div class="avatar" id="userAvatar">П</div>
             <div class="meta">
               <div id="userName">Пользователь</div>
               <div id="userHandle">@user</div>
             </div>
-            <div class="chevron">▾</div>
-          </button>
-
-          <div id="userMenu" class="user-menu hidden">
-            <button id="openSettingsBtn" class="menu-item" type="button">Настройки</button>
-            <button id="logoutBtn" class="menu-item danger" type="button">Выйти</button>
+            <button id="sidebarLogoutBtn" class="user-logout-icon-btn" type="button" title="Выйти" aria-label="Выйти">⎋</button>
           </div>
         </div>
       </aside>
@@ -72,7 +67,10 @@
           <div class="top-actions">
             <div class="cta-row">
               <button id="addOperationCta" class="btn btn-cta" type="button">+ Добавить операцию</button>
-              <button id="batchOperationCta" class="btn btn-cta" type="button">+ Массовое добавление</button>
+              <button id="batchOperationCta" class="btn btn-secondary" type="button">+ Массовое добавление</button>
+              <button id="addDebtCta" class="btn btn-cta hidden" type="button">+ Новый долг</button>
+              <button id="addCategoryCta" class="btn btn-cta hidden" type="button">+ Создать категорию</button>
+              <button id="addGroupCta" class="btn btn-secondary hidden" type="button">+ Создать группу</button>
             </div>
           </div>
         </header>
@@ -93,6 +91,32 @@
             </article>
           </section>
 
+          <section class="kpi-grid">
+            <article class="kpi-card">
+              <h3>Мне должны</h3>
+              <p id="debtLendTotal">0.00</p>
+            </article>
+            <article class="kpi-card">
+              <h3>Я должен</h3>
+              <p id="debtBorrowTotal">0.00</p>
+            </article>
+            <article class="kpi-card">
+              <h3>Чистая позиция по долгам</h3>
+              <p id="debtNetTotal">0.00</p>
+            </article>
+          </section>
+
+          <section id="dashboardDebtsPanel" class="panel">
+            <div class="panel-head row between">
+              <div>
+                <h3>Активные долги</h3>
+                <p class="subtitle">Краткий список по контрагентам</p>
+              </div>
+              <button id="openDebtsTabBtn" class="btn btn-secondary" type="button">Открыть раздел Долги</button>
+            </div>
+            <div id="dashboardDebtsList" class="debt-cards debt-cards-compact"></div>
+          </section>
+
           <section class="panel">
             <div class="panel-head row between">
               <div>
@@ -105,6 +129,7 @@
                   <button class="segmented-btn" data-period="week" type="button">Неделя</button>
                   <button class="segmented-btn" data-period="month" type="button">Месяц</button>
                   <button class="segmented-btn" data-period="year" type="button">Год</button>
+                  <button class="segmented-btn" data-period="all_time" type="button">За все время</button>
                   <button class="segmented-btn" data-period="custom" type="button">Настроить</button>
                 </div>
                 <button id="openOperationsTabBtn" class="btn btn-secondary" type="button">Открыть раздел Операции</button>
@@ -139,6 +164,7 @@
                   <button class="segmented-btn" data-period="week" type="button">Неделя</button>
                   <button class="segmented-btn" data-period="month" type="button">Месяц</button>
                   <button class="segmented-btn" data-period="year" type="button">Год</button>
+                  <button class="segmented-btn" data-period="all_time" type="button">За все время</button>
                   <button class="segmented-btn" data-period="custom" type="button">Настроить</button>
                 </div>
                 <div class="segmented" id="kindFilters" role="tablist" aria-label="Фильтр по типу">
@@ -175,7 +201,9 @@
               </table>
             </div>
 
-            <div class="pagination">
+            <div id="operationsInfiniteSentinel" class="infinite-sentinel" aria-hidden="true"></div>
+
+            <div class="pagination hidden" aria-hidden="true">
               <button id="prevPageBtn" class="btn btn-secondary" type="button">Назад</button>
               <span id="pageInfo">Страница 1</span>
               <button id="nextPageBtn" class="btn btn-secondary" type="button">Вперёд</button>
@@ -196,15 +224,12 @@
               </div>
             </div>
 
-            <div class="cta-row cta-row-categories">
-              <button id="addGroupCta" class="btn btn-cta" type="button">+ Создать группу</button>
-              <button id="addCategoryCta" class="btn btn-cta" type="button">+ Создать категорию</button>
-            </div>
-
             <div id="categoriesBulkBar" class="bulk-bar sticky-bar">
-              <span id="categoriesSelectedCount">Всего: 0</span>
-              <button id="bulkEditCategoriesBtn" class="btn btn-secondary bulk-action hidden-action" type="button">Редактировать выбранные</button>
-              <button id="bulkDeleteCategoriesBtn" class="btn btn-danger bulk-action hidden-action" type="button">Удалить выбранные</button>
+              <span id="categoriesSelectedCount" class="bulk-count-text">Ничего не выбрано</span>
+              <div class="bulk-actions-fixed">
+                <button id="bulkEditCategoriesBtn" class="btn btn-secondary bulk-action hidden-action" type="button">Редактировать выбранные</button>
+                <button id="bulkDeleteCategoriesBtn" class="btn btn-danger bulk-action hidden-action" type="button">Удалить выбранные</button>
+              </div>
             </div>
             <div class="table-search-row sticky-search">
               <input id="categorySearchQ" class="table-search-input" type="text" placeholder="Поиск" />
@@ -225,36 +250,103 @@
                 <tbody id="categoriesBody"></tbody>
               </table>
             </div>
+            <div id="categoriesInfiniteSentinel" class="infinite-sentinel" aria-hidden="true"></div>
+          </section>
+        </section>
+
+        <section id="debtsSection" class="section-block hidden">
+          <section class="panel">
+            <div class="panel-head row between">
+              <div>
+                <h3>Карточки долгов</h3>
+                <p class="subtitle">Активные долги по контрагентам</p>
+              </div>
+            </div>
+            <div class="table-search-row">
+              <input id="debtSearchQ" class="table-search-input" type="text" placeholder="Поиск по контрагенту/комментарию" />
+              <div class="segmented" id="debtStatusTabs" role="tablist" aria-label="Статус долгов">
+                <button class="segmented-btn active" data-debt-status="active" type="button">Активные</button>
+                <button class="segmented-btn" data-debt-status="all" type="button">Все</button>
+                <button class="segmented-btn" data-debt-status="closed" type="button">Закрытые</button>
+              </div>
+            </div>
+            <div id="debtsCards" class="debt-cards"></div>
           </section>
         </section>
 
         <section id="settingsSection" class="section-block hidden">
           <section class="panel">
             <form id="settingsForm" class="settings-form">
-              <label class="field">
-                <span>Таймзона</span>
-                <select id="timezoneSelect">
-                  <option value="auto">Авто (из браузера)</option>
-                  <option value="Europe/Moscow">Europe/Moscow</option>
-                  <option value="Europe/Kaliningrad">Europe/Kaliningrad</option>
-                  <option value="Europe/Samara">Europe/Samara</option>
-                  <option value="Asia/Yekaterinburg">Asia/Yekaterinburg</option>
-                  <option value="Asia/Omsk">Asia/Omsk</option>
-                  <option value="Asia/Krasnoyarsk">Asia/Krasnoyarsk</option>
-                  <option value="Asia/Irkutsk">Asia/Irkutsk</option>
-                  <option value="Asia/Yakutsk">Asia/Yakutsk</option>
-                  <option value="Asia/Vladivostok">Asia/Vladivostok</option>
-                  <option value="Asia/Magadan">Asia/Magadan</option>
-                  <option value="Asia/Kamchatka">Asia/Kamchatka</option>
-                  <option value="UTC">UTC</option>
-                </select>
-              </label>
-              <button id="saveSettingsBtn" class="btn btn-primary" type="submit">Сохранить настройки</button>
+              <section class="settings-block">
+                <h3>Регион</h3>
+                <label class="field">
+                  <span>Таймзона</span>
+                  <select id="timezoneSelect">
+                    <option value="auto">Авто (из браузера)</option>
+                    <option value="Europe/Moscow">Europe/Moscow</option>
+                    <option value="Europe/Kaliningrad">Europe/Kaliningrad</option>
+                    <option value="Europe/Samara">Europe/Samara</option>
+                    <option value="Asia/Yekaterinburg">Asia/Yekaterinburg</option>
+                    <option value="Asia/Omsk">Asia/Omsk</option>
+                    <option value="Asia/Krasnoyarsk">Asia/Krasnoyarsk</option>
+                    <option value="Asia/Irkutsk">Asia/Irkutsk</option>
+                    <option value="Asia/Yakutsk">Asia/Yakutsk</option>
+                    <option value="Asia/Vladivostok">Asia/Vladivostok</option>
+                    <option value="Asia/Magadan">Asia/Magadan</option>
+                    <option value="Asia/Kamchatka">Asia/Kamchatka</option>
+                    <option value="UTC">UTC</option>
+                  </select>
+                </label>
+              </section>
+              <section class="settings-block">
+                <h3>Интерфейс</h3>
+                <div class="settings-grid-2">
+                  <label class="field">
+                    <span>Валюта</span>
+                    <select id="currencySelect">
+                      <option value="BYN">BYN (Br)</option>
+                      <option value="RUB">RUB (₽)</option>
+                      <option value="USD">USD ($)</option>
+                      <option value="EUR">EUR (€)</option>
+                      <option value="GBP">GBP (£)</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Позиция символа</span>
+                    <select id="currencyPositionSelect">
+                      <option value="suffix">Справа</option>
+                      <option value="prefix">Слева</option>
+                    </select>
+                  </label>
+                </div>
+                <div id="currencyPreview" class="settings-preview">Пример: 1 234,56 Br</div>
+                <label class="settings-switch-row">
+                  <input id="showDashboardDebtsToggle" type="checkbox" checked />
+                  <span>Показывать карточки долгов на дашборде</span>
+                </label>
+                <div class="settings-scale-row">
+                  <label class="field">
+                    <span>Масштаб интерфейса: <strong id="uiScaleValue">100%</strong></span>
+                    <input id="uiScaleRange" type="range" min="90" max="115" step="5" value="100" />
+                  </label>
+                  <button id="resetUiScaleBtn" class="btn btn-secondary btn-xs" type="button">Сбросить 100%</button>
+                </div>
+              </section>
+              <div class="settings-actions">
+                <button id="saveSettingsBtn" class="btn btn-primary" type="submit">Сохранить настройки</button>
+              </div>
             </form>
+            <section class="panel danger-zone">
+              <h3>Danger Zone</h3>
+              <p class="subtitle">Удаление аккаунта удалит все операции, долги, категории и настройки без возможности восстановления.</p>
+              <div class="danger-zone-actions">
+                <input id="deleteMePhrase" type="text" placeholder="Введите УДАЛИТЬ для подтверждения" />
+                <button id="deleteMeBtn" class="btn btn-danger" type="button">Удалить меня</button>
+              </div>
+            </section>
           </section>
         </section>
 
-        <pre id="appOutput" class="status-box">Готово.</pre>
       </main>
     </div>
 
@@ -266,23 +358,49 @@
         </div>
 
         <form id="createOperationForm" class="form-grid modal-grid create-modal-grid">
+          <div class="segmented" id="createEntryModeSwitch" aria-label="Режим создания">
+            <button class="segmented-btn active" data-entry-mode="operation" type="button">Обычная операция</button>
+            <button class="segmented-btn" data-entry-mode="debt" type="button">Долг</button>
+          </div>
+          <input id="opEntryMode" type="hidden" value="operation" />
+          <input id="opDate" type="date" required />
           <div class="segmented" id="createKindSwitch" aria-label="Тип операции">
             <button class="segmented-btn active" data-kind="expense" type="button">Расход</button>
             <button class="segmented-btn" data-kind="income" type="button">Доход</button>
           </div>
           <input id="opKind" type="hidden" value="expense" />
           <select id="opCategory" class="hidden"></select>
-          <input id="opAmount" type="number" step="0.01" placeholder="Сумма" required />
-          <input id="opDate" type="date" required />
-          <input id="opNote" type="text" placeholder="Комментарий" />
-        </form>
-        <div class="operation-category-picker">
-          <input id="opCategorySearch" type="text" placeholder="Поиск категории" />
-          <div class="operation-category-picker-row">
-            <div id="opCategoryQuick" class="category-chip-list"></div>
+          <div id="createCategoryField" class="create-category-field">
+            <input id="opCategorySearch" type="text" placeholder="Категория" autocomplete="off" />
+            <div id="createCategoryPickerBlock" class="operation-category-picker hidden">
+              <div class="category-picker-block">
+                <div id="opCategoryAll" class="category-chip-list"></div>
+              </div>
+            </div>
           </div>
-          <div id="opCategoryAll" class="category-chip-list hidden"></div>
-        </div>
+          <div id="opAmountField" class="money-input-wrap" data-money-input-wrap>
+            <input id="opAmount" data-money-input type="number" step="0.01" placeholder="Сумма" required />
+          </div>
+          <input id="opNote" class="create-note-field" type="text" placeholder="Комментарий" />
+
+          <div id="createDebtFields" class="category-modal-form hidden">
+            <input id="debtStartDate" type="date" />
+            <div class="segmented" id="createDebtDirectionSwitch" aria-label="Направление долга">
+              <button class="segmented-btn active" data-debt-direction="lend" type="button">Я дал</button>
+              <button class="segmented-btn" data-debt-direction="borrow" type="button">Я взял</button>
+            </div>
+            <input id="debtDirection" type="hidden" value="lend" />
+            <input id="debtCounterparty" type="text" placeholder="Имя контрагента" />
+            <div id="debtPrincipalField" class="money-input-wrap" data-money-input-wrap>
+              <input id="debtPrincipal" data-money-input type="number" step="0.01" placeholder="Сумма" />
+            </div>
+            <div class="debt-due-field">
+              <input id="debtDueDate" type="date" />
+              <span id="debtDueHint" class="muted-small debt-due-inline-hint">Без срока</span>
+            </div>
+            <input id="debtNote" type="text" placeholder="Комментарий" class="create-note-field" />
+          </div>
+        </form>
         <div class="modal-footer">
           <button id="submitCreateOperationBtn" class="btn btn-cta modal-main-cta" type="submit" form="createOperationForm">
             Добавить
@@ -294,13 +412,20 @@
             <div class="table-wrap">
               <table class="table table-hover">
                 <thead>
-                <tr>
+                <tr id="createPreviewHeadOperation">
                   <th>Дата</th>
                   <th>Тип</th>
                   <th>Категория</th>
                   <th>Сумма</th>
                   <th>Комментарий</th>
-                  <th></th>
+                </tr>
+                <tr id="createPreviewHeadDebt" class="hidden">
+                  <th>Дата</th>
+                  <th>Направление</th>
+                  <th>Контрагент</th>
+                  <th>Сумма</th>
+                  <th>Срок</th>
+                  <th>Комментарий</th>
                 </tr>
               </thead>
               <tbody id="createPreviewBody"></tbody>
@@ -386,7 +511,9 @@
           </div>
           <input id="editKind" type="hidden" value="expense" />
           <select id="editCategory"></select>
-          <input id="editAmount" type="number" step="0.01" required />
+          <div id="editAmountField" class="money-input-wrap" data-money-input-wrap>
+            <input id="editAmount" data-money-input type="number" step="0.01" required />
+          </div>
           <input id="editDate" type="date" required />
           <input id="editNote" type="text" placeholder="Комментарий" />
         </form>
@@ -434,9 +561,17 @@
             </div>
             <input id="categoryName" type="text" placeholder="Название категории" required />
           </div>
-          <select id="categoryGroup">
+          <select id="categoryGroup" class="hidden">
             <option value="">Без группы</option>
           </select>
+          <div id="createCategoryGroupField" class="create-category-field">
+            <input id="categoryGroupSearch" type="text" placeholder="Без группы" autocomplete="off" />
+            <div id="createCategoryGroupPickerBlock" class="operation-category-picker hidden">
+              <div class="category-picker-block">
+                <div id="categoryGroupAll" class="category-chip-list"></div>
+              </div>
+            </div>
+          </div>
           <div class="segmented" id="createCategoryKind">
             <button class="segmented-btn active" data-cat-create-kind="expense" type="button">Расход</button>
             <button class="segmented-btn" data-cat-create-kind="income" type="button">Доход</button>
@@ -516,9 +651,17 @@
             </div>
             <input id="editCategoryName" type="text" placeholder="Название категории" required />
           </div>
-          <select id="editCategoryGroup">
+          <select id="editCategoryGroup" class="hidden">
             <option value="">Без группы</option>
           </select>
+          <div id="editCategoryGroupField" class="create-category-field">
+            <input id="editCategoryGroupSearch" type="text" placeholder="Без группы" autocomplete="off" />
+            <div id="editCategoryGroupPickerBlock" class="operation-category-picker hidden">
+              <div class="category-picker-block">
+                <div id="editCategoryGroupAll" class="category-chip-list"></div>
+              </div>
+            </div>
+          </div>
           <div class="segmented" id="editCategoryKindSwitch">
             <button class="segmented-btn active" data-cat-edit-kind="expense" type="button">Расход</button>
             <button class="segmented-btn" data-cat-edit-kind="income" type="button">Доход</button>
@@ -551,6 +694,98 @@
       </div>
     </div>
 
+    <div id="debtRepaymentModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="debtRepaymentTitle">
+      <div class="modal-card modal-small">
+        <div class="panel-head row between">
+          <h3 id="debtRepaymentTitle">Внести погашение</h3>
+          <button id="closeDebtRepaymentModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+        </div>
+        <form id="debtRepaymentForm" class="category-modal-form">
+          <input id="repaymentDebtId" type="hidden" />
+          <div class="repayment-card">
+            <div class="repayment-head row between">
+              <div>
+                <div id="repaymentCounterparty" class="repayment-counterparty">Контрагент</div>
+                <div id="repaymentDirection" class="debt-direction-pill debt-direction-pill-lend">Я дал</div>
+              </div>
+              <div class="repayment-outstanding">
+                <span class="muted-small">Остаток</span>
+                <strong id="repaymentOutstanding">0.00</strong>
+              </div>
+            </div>
+            <div class="repayment-progress">
+              <div id="repaymentProgressBar" class="repayment-progress-bar"></div>
+            </div>
+          </div>
+          <div id="repaymentPresetRow" class="repayment-preset-row">
+            <button class="btn btn-secondary btn-xs" type="button" data-repayment-preset="0.25">25%</button>
+            <button class="btn btn-secondary btn-xs" type="button" data-repayment-preset="0.5">50%</button>
+            <button class="btn btn-secondary btn-xs" type="button" data-repayment-preset="1">Весь остаток</button>
+          </div>
+          <div id="repaymentAmountField" class="money-input-wrap" data-money-input-wrap>
+            <input id="repaymentAmount" data-money-input type="number" step="0.01" placeholder="Сумма погашения" required />
+          </div>
+          <div class="repayment-delta-box">
+            <div class="muted-small">До: <span id="repaymentBeforeValue">0.00</span></div>
+            <div class="muted-small">После: <span id="repaymentAfterValue">0.00</span></div>
+            <div id="repaymentCarryRow" class="muted-small hidden">Перенос: <span id="repaymentCarryValue">0.00</span></div>
+          </div>
+          <input id="repaymentDate" type="date" required />
+          <input id="repaymentNote" type="text" placeholder="Комментарий" />
+        </form>
+        <div class="modal-footer">
+          <button id="submitDebtRepaymentBtn" class="btn btn-cta modal-main-cta" type="submit" form="debtRepaymentForm">
+            Сохранить погашение
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="editDebtModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="editDebtTitle">
+      <div class="modal-card modal-small">
+        <div class="panel-head row between">
+          <h3 id="editDebtTitle">Редактировать долг</h3>
+          <button id="closeEditDebtModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+        </div>
+        <form id="editDebtForm" class="category-modal-form">
+          <input id="editDebtId" type="hidden" />
+          <input id="editDebtCounterparty" type="text" placeholder="Кто/Кому" required />
+          <select id="editDebtDirection">
+            <option value="lend">Я дал</option>
+            <option value="borrow">Я взял</option>
+          </select>
+          <div id="editDebtPrincipalField" class="money-input-wrap" data-money-input-wrap>
+            <input id="editDebtPrincipal" data-money-input type="number" step="0.01" placeholder="Сумма" required />
+          </div>
+          <input id="editDebtStartDate" type="date" required />
+          <input id="editDebtDueDate" type="date" />
+          <input id="editDebtNote" type="text" placeholder="Комментарий" />
+        </form>
+        <div class="modal-footer">
+          <button id="submitEditDebtBtn" class="btn btn-cta modal-main-cta" type="submit" form="editDebtForm">
+            Сохранить долг
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="debtHistoryModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="debtHistoryTitle">
+      <div class="modal-card modal-small">
+        <div class="panel-head row between">
+          <h3 id="debtHistoryTitle">История долга</h3>
+          <button id="closeDebtHistoryModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+        </div>
+        <div class="debt-history-head">
+          <div class="row between">
+            <div id="debtHistoryCounterparty" class="repayment-counterparty">Контрагент</div>
+            <span id="debtHistoryDirection" class="debt-direction-pill debt-direction-pill-lend">Я дал</span>
+          </div>
+          <div class="subtitle">Остаток: <strong id="debtHistoryOutstanding">0.00</strong></div>
+        </div>
+        <div id="debtHistoryList" class="debt-history-list"></div>
+      </div>
+    </div>
+
     <div id="confirmModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
       <div class="modal-card modal-small">
         <div class="panel-head">
@@ -575,6 +810,7 @@
     <script src="/static/js/app-section-ui.js"></script>
     <script src="/static/js/app-features-operation-modal.js"></script>
     <script src="/static/js/app-features-dashboard.js"></script>
+    <script src="/static/js/app-features-debts.js"></script>
     <script src="/static/js/app-features-session.js"></script>
     <script src="/static/js/app-features.js"></script>
     <script src="/static/js/app-bulk-ui.js"></script>

@@ -12,10 +12,21 @@ class PreferenceRepository:
         item = self.db.scalar(select(UserPreference).where(UserPreference.user_id == user_id))
         if item:
             return item
-        item = UserPreference(user_id=user_id, preferences_version=1, data={
-            "dashboard": {"period": "day"},
-            "operations": {"filters": {}, "sort": "operation_date:desc"},
-        })
+        item = UserPreference(
+            user_id=user_id,
+            preferences_version=1,
+            data={
+                "dashboard": {"period": "day"},
+                "operations": {"filters": {}, "sort": "operation_date:desc"},
+                "ui": {
+                    "timezone": "auto",
+                    "currency": "BYN",
+                    "currency_position": "suffix",
+                    "show_dashboard_debts": True,
+                    "scale_percent": 100,
+                },
+            },
+        )
         self.db.add(item)
         self.db.flush()
         return item

@@ -2,6 +2,7 @@
   const { state, el, core } = window.App;
   const categoryActions = window.App.actions;
   const dashboardFeatures = window.App.featureDashboard;
+  const debtFeatures = window.App.featureDebts;
   const sessionFeatures = window.App.featureSession;
   const operationModal = window.App.operationModal;
   let operationsRawItems = [];
@@ -9,13 +10,22 @@
   const trackCategoryUsage = operationModal.trackCategoryUsage;
   const getCreateFormPreviewItem = operationModal.getCreateFormPreviewItem;
   const updateCreatePreview = operationModal.updateCreatePreview;
+  const updateDebtDueHint = operationModal.updateDebtDueHint;
   const updateEditPreview = operationModal.updateEditPreview;
   const renderCreateCategoryPicker = operationModal.renderCreateCategoryPicker;
   const handleCreateCategoryPickerClick = operationModal.handleCreateCategoryPickerClick;
+  const handleCreateCategorySearchFocus = operationModal.handleCreateCategorySearchFocus;
+  const handleCreateCategorySearchInput = operationModal.handleCreateCategorySearchInput;
+  const handleCreateCategorySearchKeydown = operationModal.handleCreateCategorySearchKeydown;
+  const handleCreateCategoryOutsidePointer = operationModal.handleCreateCategoryOutsidePointer;
   const onCategoryCreated = operationModal.onCategoryCreated;
   const selectCreateCategory = operationModal.selectCreateCategory;
+  const handleCreatePreviewClick = operationModal.handleCreatePreviewClick;
   const setOperationKind = operationModal.setOperationKind;
+  const setDebtDirection = operationModal.setDebtDirection;
+  const setCreateEntryMode = operationModal.setCreateEntryMode;
   const openCreateModal = operationModal.openCreateModal;
+  const openCreateModalForDebtEdit = operationModal.openCreateModalForDebtEdit;
   const closeCreateModal = operationModal.closeCreateModal;
   const openEditModal = operationModal.openEditModal;
   const closeEditModal = operationModal.closeEditModal;
@@ -25,17 +35,58 @@
   const loadPreferences = sessionFeatures.loadPreferences;
   const savePreferences = sessionFeatures.savePreferences;
   const saveSettings = sessionFeatures.saveSettings;
+  const applyInterfaceSettingsUi = sessionFeatures.applyInterfaceSettingsUi;
+  const previewInterfaceSettingsUi = sessionFeatures.previewInterfaceSettingsUi;
+  const deleteMe = sessionFeatures.deleteMe;
   const logout = sessionFeatures.logout;
   const devLogin = sessionFeatures.devLogin;
   const bootstrapApp = sessionFeatures.bootstrapApp;
   const loadDashboard = dashboardFeatures.loadDashboard;
   const loadDashboardOperations = dashboardFeatures.loadDashboardOperations;
+  const loadDebtsCards = debtFeatures.loadDebtsCards;
+  const openDebtRepaymentModal = debtFeatures.openDebtRepaymentModal;
+  const closeDebtRepaymentModal = debtFeatures.closeDebtRepaymentModal;
+  const submitDebtRepayment = debtFeatures.submitDebtRepayment;
+  const updateRepaymentDeltaHint = debtFeatures.updateRepaymentDeltaHint;
+  const openDebtHistoryModal = debtFeatures.openDebtHistoryModal;
+  const closeDebtHistoryModal = debtFeatures.closeDebtHistoryModal;
+  const setDebtStatusFilter = debtFeatures.setDebtStatusFilter;
+  const applyDebtSearch = debtFeatures.applyDebtSearch;
+  const openEditDebtModal = debtFeatures.openEditDebtModal;
+  const closeEditDebtModal = debtFeatures.closeEditDebtModal;
+  const submitEditDebt = debtFeatures.submitEditDebt;
+  const deleteDebtFlow = debtFeatures.deleteDebtFlow;
 
-  function buildOperationsQuery() {
+  function invalidateAllTimeAnchor() {
+    state.firstOperationDate = "";
+    state.allTimeAnchorResolved = false;
+  }
+
+  async function ensureAllTimeBounds(force = false) {
+    if (state.period !== "all_time") {
+      return;
+    }
+    if (state.allTimeAnchorResolved && !force) {
+      return;
+    }
+    const params = new URLSearchParams({
+      page: "1",
+      page_size: "1",
+      sort_by: "operation_date",
+      sort_dir: "asc",
+    });
+    const data = await core.requestJson(`/api/v1/operations?${params.toString()}`, {
+      headers: core.authHeaders(),
+    });
+    state.firstOperationDate = data.items?.[0]?.operation_date || "";
+    state.allTimeAnchorResolved = true;
+  }
+
+  function buildOperationsQuery(page) {
     const { dateFrom, dateTo } = core.getPeriodBounds(state.period);
     el.operationsPeriodLabel.textContent = core.formatPeriodLabel(dateFrom, dateTo);
     const params = new URLSearchParams({
-      page: String(state.page),
+      page: String(page),
       page_size: String(state.pageSize),
       sort_by: "operation_date",
       sort_dir: "desc",
@@ -50,10 +101,19 @@
   }
 
   function renderPagination() {
-    const totalPages = Math.max(1, Math.ceil(state.total / state.pageSize));
-    el.pageInfo.textContent = `Страница ${state.page} из ${totalPages} (${state.total})`;
-    el.prevPageBtn.disabled = state.page <= 1;
-    el.nextPageBtn.disabled = state.page >= totalPages;
+    const loaded = operationsRawItems.length;
+    el.pageInfo.textContent = `Загружено ${loaded} из ${state.total}`;
+    el.prevPageBtn.disabled = true;
+    el.nextPageBtn.disabled = !state.operationsHasMore;
+  }
+
+  function appendUniqueOperations(items) {
+    const existing = new Set(operationsRawItems.map((item) => item.id));
+    for (const item of items) {
+      if (!existing.has(item.id)) {
+        operationsRawItems.push(item);
+      }
+    }
   }
 
   function getCategoryNameById(categoryId) {
@@ -106,18 +166,73 @@
     }
   }
 
-  async function loadOperations() {
-    const data = await core.requestJson(`/api/v1/operations?${buildOperationsQuery().toString()}`, {
-      headers: core.authHeaders(),
-    });
-    state.total = data.total;
-    operationsRawItems = data.items;
-    renderOperations(operationsRawItems);
-    renderPagination();
+  async function loadOperations(options = {}) {
+    await ensureAllTimeBounds();
+    const reset = options.reset !== false;
+    if (state.operationsLoading) {
+      return;
+    }
+    if (!reset && !state.operationsHasMore) {
+      return;
+    }
+
+    if (reset) {
+      state.page = 1;
+      state.operationsHasMore = true;
+      operationsRawItems = [];
+      state.selectedOperationIds.clear();
+    }
+
+    state.operationsLoading = true;
+    const requestPage = state.page;
+    try {
+      const data = await core.requestJson(`/api/v1/operations?${buildOperationsQuery(requestPage).toString()}`, {
+        headers: core.authHeaders(),
+      });
+      state.total = data.total;
+      if (reset) {
+        operationsRawItems = data.items.slice();
+      } else {
+        appendUniqueOperations(data.items);
+      }
+      if (data.items.length > 0) {
+        state.page = requestPage + 1;
+      }
+      state.operationsHasMore = operationsRawItems.length < state.total && data.items.length > 0;
+      renderOperations(operationsRawItems);
+      renderPagination();
+    } finally {
+      state.operationsLoading = false;
+    }
+  }
+
+  async function loadMoreOperations() {
+    await loadOperations({ reset: false });
   }
 
   async function createOperation(event) {
     event.preventDefault();
+    if (el.opEntryMode.value === "debt") {
+      const payload = {
+        counterparty: el.debtCounterparty.value.trim(),
+        direction: el.debtDirection.value,
+        principal: el.debtPrincipal.value,
+        start_date: el.debtStartDate.value,
+        due_date: el.debtDueDate.value || null,
+        note: el.debtNote.value.trim() || null,
+      };
+      const isEditDebt = Number(state.editDebtCreateId || 0) > 0;
+      const url = isEditDebt ? `/api/v1/debts/${state.editDebtCreateId}` : "/api/v1/debts";
+      await core.requestJson(url, {
+        method: isEditDebt ? "PATCH" : "POST",
+        headers: core.authHeaders(),
+        body: JSON.stringify(payload),
+      });
+      state.editDebtCreateId = null;
+      closeCreateModal();
+      await Promise.all([loadDebtsCards(), loadDashboard()]);
+      return;
+    }
     const payload = {
       kind: el.opKind.value,
       category_id: el.opCategory.value ? Number(el.opCategory.value) : null,
@@ -131,19 +246,18 @@
       headers: core.authHeaders(),
       body: JSON.stringify(payload),
     });
+    invalidateAllTimeAnchor();
     trackCategoryUsage(payload.category_id);
 
     document.getElementById("opAmount").value = "";
     document.getElementById("opNote").value = "";
     el.opCategory.value = "";
     el.opCategorySearch.value = "";
-    state.createModalCategoryExpanded = false;
     renderCreateCategoryPicker();
     updateCreatePreview();
 
-    state.page = 1;
     closeCreateModal();
-    await Promise.all([loadDashboard(), loadOperations(), loadDashboardOperations()]);
+    await Promise.all([loadDashboard(), loadOperations({ reset: true }), loadDashboardOperations()]);
   }
 
   async function updateOperation(event) {
@@ -165,10 +279,11 @@
       headers: core.authHeaders(),
       body: JSON.stringify(payload),
     });
+    invalidateAllTimeAnchor();
     trackCategoryUsage(payload.category_id);
 
     closeEditModal();
-    await Promise.all([loadDashboard(), loadOperations(), loadDashboardOperations()]);
+    await Promise.all([loadDashboard(), loadOperations({ reset: true }), loadDashboardOperations()]);
   }
 
   async function deleteOperationFlow(item) {
@@ -179,13 +294,10 @@
           method: "DELETE",
           headers: core.authHeaders(),
         });
+        invalidateAllTimeAnchor();
       },
       onAfterDelete: async () => {
-        const totalPages = Math.max(1, Math.ceil((state.total - 1) / state.pageSize));
-        if (state.page > totalPages) {
-          state.page = totalPages;
-        }
-        await Promise.all([loadDashboard(), loadOperations(), loadDashboardOperations()]);
+        await Promise.all([loadDashboard(), loadOperations({ reset: true }), loadDashboardOperations()]);
       },
       toastMessage: "Операция удалена",
       undoAction: async () => {
@@ -200,7 +312,8 @@
             note: item.note,
           }),
         });
-        await Promise.all([loadDashboard(), loadOperations(), loadDashboardOperations()]);
+        invalidateAllTimeAnchor();
+        await Promise.all([loadDashboard(), loadOperations({ reset: true }), loadDashboardOperations()]);
         return "Операция восстановлена";
       },
       onDeleteError: "Не удалось удалить операцию",
@@ -208,9 +321,8 @@
   }
 
   async function applyFilters() {
-    state.page = 1;
     await savePreferences();
-    await loadOperations();
+    await loadOperations({ reset: true });
   }
 
   async function applyRealtimeSearch() {
@@ -221,9 +333,10 @@
   async function refreshAll() {
     const results = await Promise.allSettled([
       loadDashboard(),
-      loadOperations(),
+      loadOperations({ reset: true }),
       loadDashboardOperations(),
       categoryActions.loadCategories(),
+      loadDebtsCards(),
     ]);
     const rejected = results.filter((item) => item.status === "rejected");
     if (rejected.length > 0) {
@@ -247,13 +360,22 @@
     ...previousActions,
     getCreateFormPreviewItem,
     updateCreatePreview,
+    updateDebtDueHint,
     updateEditPreview,
     renderCreateCategoryPicker,
+    handleCreateCategorySearchFocus,
+    handleCreateCategorySearchInput,
+    handleCreateCategorySearchKeydown,
+    handleCreateCategoryOutsidePointer,
     handleCreateCategoryPickerClick,
     onCategoryCreated,
     selectCreateCategory,
+    handleCreatePreviewClick,
     setOperationKind,
+    setDebtDirection,
+    setCreateEntryMode,
     openCreateModal,
+    openCreateModalForDebtEdit,
     closeCreateModal,
     openEditModal,
     closeEditModal,
@@ -265,16 +387,49 @@
     loadPreferences,
     savePreferences,
     saveSettings,
+    applyInterfaceSettingsUi,
+    previewInterfaceSettingsUi,
+    deleteMe,
     applySectionUi: previousActions.applySectionUi,
     switchSection: previousActions.switchSection,
     renderTodayLabel: previousActions.renderTodayLabel,
     loadDashboard,
     loadDashboardOperations,
+    loadDebtsCards,
+    openDebtRepaymentModal,
+    closeDebtRepaymentModal,
+    submitDebtRepayment,
+    updateRepaymentDeltaHint,
+    openDebtHistoryModal,
+    closeDebtHistoryModal,
+    setDebtStatusFilter,
+    applyDebtSearch,
+    openEditDebtModal,
+    closeEditDebtModal,
+    submitEditDebt,
+    deleteDebtFlow,
+    ensureAllTimeBounds,
+    invalidateAllTimeAnchor,
     loadOperations,
+    loadMoreOperations,
     refreshOperationsView,
     getCurrentOperationItems,
     fillGroupSelect: categoryActions.fillGroupSelect,
     setCategoryKind: categoryActions.setCategoryKind,
+    renderCreateGroupPicker: categoryActions.renderCreateGroupPicker,
+    renderEditGroupPicker: categoryActions.renderEditGroupPicker,
+    handleCreateGroupSearchFocus: categoryActions.handleCreateGroupSearchFocus,
+    handleCreateGroupSearchInput: categoryActions.handleCreateGroupSearchInput,
+    handleCreateGroupSearchBlur: categoryActions.handleCreateGroupSearchBlur,
+    handleCreateGroupSearchKeydown: categoryActions.handleCreateGroupSearchKeydown,
+    handleEditGroupSearchFocus: categoryActions.handleEditGroupSearchFocus,
+    handleEditGroupSearchInput: categoryActions.handleEditGroupSearchInput,
+    handleEditGroupSearchBlur: categoryActions.handleEditGroupSearchBlur,
+    handleEditGroupSearchKeydown: categoryActions.handleEditGroupSearchKeydown,
+    handleCreateGroupPickerClick: categoryActions.handleCreateGroupPickerClick,
+    handleEditGroupPickerClick: categoryActions.handleEditGroupPickerClick,
+    handleCreateGroupOutsidePointer: categoryActions.handleCreateGroupOutsidePointer,
+    selectCreateGroup: categoryActions.selectCreateGroup,
     renderCategories: categoryActions.renderCategories,
     updateCategoriesBulkUi: categoryActions.updateCategoriesBulkUi,
     loadCategories: categoryActions.loadCategories,

@@ -12,19 +12,76 @@
     categoryUi.fillGroupSelect(el.bulkCategoryGroup, "", "Группа (не менять)");
   }
 
+  async function loadCategoryCatalog() {
+    state.categories = await core.requestJson("/api/v1/categories", { headers: core.authHeaders() });
+  }
+
+  async function loadCategoriesTable(options = {}) {
+    const categoryUi = window.App.categoryUi;
+    const reset = options.reset !== false;
+    const force = options.force === true;
+    if (state.categoriesLoading && !force) {
+      return;
+    }
+    if (!reset && !state.categoriesHasMore) {
+      return;
+    }
+
+    if (reset) {
+      state.categoryPage = 1;
+      state.categoryTotal = 0;
+      state.categoriesHasMore = true;
+      state.categoryTableItems = [];
+      state.selectedCategoryIds.clear();
+      state.selectedGroupIds.clear();
+    }
+
+    const params = new URLSearchParams({
+      page: String(state.categoryPage),
+      page_size: String(state.categoryPageSize),
+    });
+    if (state.categoryFilterKind && state.categoryFilterKind !== "all") {
+      params.set("kind", state.categoryFilterKind);
+    }
+    const query = el.categorySearchQ.value.trim();
+    if (query) {
+      params.set("q", query);
+    }
+
+    state.categoriesLoading = true;
+    try {
+      const data = await core.requestJson(`/api/v1/categories?${params.toString()}`, { headers: core.authHeaders() });
+      const pageItems = Array.isArray(data) ? data : (data.items || []);
+      state.categoryTotal = Array.isArray(data) ? pageItems.length : Number(data.total || 0);
+      if (reset) {
+        state.categoryTableItems = pageItems.slice();
+      } else {
+        const existing = new Set(state.categoryTableItems.map((item) => item.id));
+        for (const item of pageItems) {
+          if (!existing.has(item.id)) {
+            state.categoryTableItems.push(item);
+          }
+        }
+      }
+      if (pageItems.length > 0) {
+        state.categoryPage += 1;
+      }
+      state.categoriesHasMore = state.categoryTableItems.length < state.categoryTotal && pageItems.length > 0;
+      categoryUi.renderCategories();
+    } finally {
+      state.categoriesLoading = false;
+    }
+  }
+
+  async function loadMoreCategoriesTable() {
+    await loadCategoriesTable({ reset: false });
+  }
+
   async function loadCategories() {
     const categoryUi = window.App.categoryUi;
-
-    const [groupsResult, categoriesResult] = await Promise.allSettled([
-      core.requestJson("/api/v1/categories/groups", { headers: core.authHeaders() }),
-      core.requestJson("/api/v1/categories", { headers: core.authHeaders() }),
-    ]);
-
-    state.categoryGroups = groupsResult.status === "fulfilled" ? groupsResult.value : [];
-    if (categoriesResult.status !== "fulfilled") {
-      throw categoriesResult.reason;
-    }
-    state.categories = categoriesResult.value;
+    await loadCategoryGroups();
+    await loadCategoryCatalog();
+    await loadCategoriesTable({ reset: true });
 
     const liveCategoryIds = new Set(state.categories.map((item) => item.id));
     for (const id of Array.from(state.selectedCategoryIds)) {
@@ -47,7 +104,6 @@
     if (window.App.actions.renderCreateCategoryPicker) {
       window.App.actions.renderCreateCategoryPicker();
     }
-    categoryUi.renderCategories();
     if (window.App.actions.loadDashboardOperations) {
       window.App.actions.loadDashboardOperations().catch(() => {});
     }
@@ -244,6 +300,9 @@
 
   window.App.categoryData = {
     loadCategoryGroups,
+    loadCategoryCatalog,
+    loadCategoriesTable,
+    loadMoreCategoriesTable,
     loadCategories,
     createCategory,
     updateCategory,

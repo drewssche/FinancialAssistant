@@ -7,7 +7,7 @@ import sys
 import time
 import urllib.request
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
@@ -88,7 +88,9 @@ def page_with_api_mock():
         route.fulfill(status=status, content_type="application/json", body=json.dumps(payload, ensure_ascii=False))
 
     def handler(route, request):
-        path = urlparse(request.url).path
+        parsed = urlparse(request.url)
+        path = parsed.path
+        query = parse_qs(parsed.query)
         method = request.method.upper()
 
         if path == "/api/v1/auth/dev" and method == "POST":
@@ -110,13 +112,18 @@ def page_with_api_mock():
             return json_response(route, [])
 
         if path == "/api/v1/categories" and method == "GET":
+            if "page" in query and "page_size" in query:
+                return json_response(route, {"items": categories, "total": len(categories), "page": 1, "page_size": 20})
             return json_response(route, categories)
 
         if path == "/api/v1/dashboard/summary" and method == "GET":
             return json_response(route, {"income_total": "0.00", "expense_total": "0.00", "balance": "0.00"})
 
+        if path == "/api/v1/debts/cards" and method == "GET":
+            return json_response(route, [])
+
         if path == "/api/v1/operations" and method == "GET":
-            return json_response(route, {"items": [], "total": 0, "page": 1, "page_size": 10})
+            return json_response(route, {"items": [], "total": 0, "page": 1, "page_size": 20})
 
         return json_response(route, {"detail": f"Unhandled mock route: {method} {path}"}, status=404)
 

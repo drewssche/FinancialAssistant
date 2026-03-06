@@ -11,6 +11,24 @@ class CategoryService:
     def list_categories(self, user_id: int):
         return self.repo.list_for_user(user_id)
 
+    def list_categories_paginated(
+        self,
+        user_id: int,
+        page: int,
+        page_size: int,
+        kind: str | None = None,
+        q: str | None = None,
+    ) -> tuple[list, int]:
+        if kind and kind not in {"income", "expense"}:
+            raise ValueError("kind must be either 'income' or 'expense'")
+        return self.repo.list_for_user_paginated(
+            user_id=user_id,
+            page=page,
+            page_size=page_size,
+            kind=kind,
+            q=q,
+        )
+
     def create_category(self, user_id: int, name: str, kind: str, group_id: int | None = None, icon: str | None = None):
         if kind not in {"income", "expense"}:
             raise ValueError("kind must be either 'income' or 'expense'")

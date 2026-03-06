@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from pydantic import Field
 
 
 class CategoryCreate(BaseModel):
@@ -46,3 +47,10 @@ class CategoryOut(BaseModel):
     is_system: bool
 
     model_config = {"from_attributes": True}
+
+
+class CategoryListOut(BaseModel):
+    items: list[CategoryOut]
+    total: int
+    page: int = Field(ge=1)
+    page_size: int = Field(ge=1)

@@ -34,6 +34,119 @@
     return `<span class="category-chip"${style}>${icon}<span>${highlightText(category.name, searchQuery)}</span></span>`;
   }
 
+  function parseAmount(value) {
+    const amount = Number(value || 0);
+    return Number.isFinite(amount) ? amount : 0;
+  }
+
+  function formatMoney(value) {
+    return core.formatMoney(parseAmount(value));
+  }
+
+  function parseIsoDate(value) {
+    if (!value) {
+      return null;
+    }
+    const dt = new Date(`${value}T00:00:00`);
+    return Number.isNaN(dt.getTime()) ? null : dt;
+  }
+
+  function parseIsoDateEnd(value) {
+    if (!value) {
+      return null;
+    }
+    const dt = new Date(`${value}T23:59:59`);
+    return Number.isNaN(dt.getTime()) ? null : dt;
+  }
+
+  function debtDueState(debt, now = new Date()) {
+    const outstanding = parseAmount(debt?.outstanding_total);
+    if (outstanding <= 0) {
+      return "closed";
+    }
+    const due = parseIsoDateEnd(debt?.due_date);
+    if (!due) {
+      return "none";
+    }
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffDays = Math.floor((due.getTime() - todayStart.getTime()) / 86400000);
+    if (diffDays < 0) {
+      return "overdue";
+    }
+    if (diffDays <= 7) {
+      return "soon";
+    }
+    return "future";
+  }
+
+  function debtDueProgress(debt, dueState, now = new Date()) {
+    if (!debt?.due_date) {
+      return null;
+    }
+    const due = parseIsoDateEnd(debt.due_date);
+    const start = parseIsoDate(debt.start_date);
+    if (!due || !start) {
+      return null;
+    }
+    const totalMs = Math.max(86400000, due.getTime() - start.getTime());
+    const elapsedMs = Math.max(0, now.getTime() - start.getTime());
+    let percent = Math.round((elapsedMs / totalMs) * 100);
+    percent = Math.max(0, Math.min(100, percent));
+    let tone = "ok";
+    if (dueState === "overdue") {
+      tone = "danger";
+      percent = 100;
+    } else if (dueState === "soon" || percent >= 85) {
+      tone = "warn";
+    }
+    return { percent, tone };
+  }
+
+  function debtDueDaysBadge(debt, dueState, now = new Date()) {
+    if (!debt?.due_date) {
+      return "";
+    }
+    const due = parseIsoDateEnd(debt.due_date);
+    if (!due) {
+      return "";
+    }
+    const diff = due.getTime() - now.getTime();
+    const days = Math.ceil(diff / 86400000);
+    if (dueState === "overdue") {
+      return `Просрочено: ${Math.abs(days)} д.`;
+    }
+    if (dueState === "closed") {
+      return "Закрыт";
+    }
+    return `Осталось: ${Math.max(0, days)} д.`;
+  }
+
+  function debtRepaymentProgress(debt) {
+    const principal = parseAmount(debt?.principal);
+    const repaid = parseAmount(debt?.repaid_total);
+    const direction = debt?.direction === "borrow" ? "borrow" : "lend";
+    if (principal <= 0) {
+      return { percent: 0, tone: direction === "borrow" ? "borrow-danger" : "lend-ok" };
+    }
+    const percent = Math.max(0, Math.min(100, Math.round((repaid / principal) * 100)));
+    if (direction === "borrow") {
+      if (percent >= 100) {
+        return { percent, tone: "borrow-ok" };
+      }
+      if (percent >= 40) {
+        return { percent, tone: "borrow-warn" };
+      }
+      return { percent, tone: "borrow-danger" };
+    }
+    if (percent >= 100) {
+      return { percent, tone: "lend-ok" };
+    }
+    if (percent >= 40) {
+      return { percent, tone: "lend-warn" };
+    }
+    return { percent, tone: "lend-muted" };
+  }
+
   function createOperationRow(item, options = {}) {
     const preview = options.preview === true;
     const compact = options.compact === true;
@@ -56,7 +169,7 @@
         <td>${core.formatDateRu(item.operation_date)}</td>
         <td><span class="kind-pill kind-pill-${kindClass}">${highlightText(kindText, searchQuery)}</span></td>
         <td>${renderCategoryChip(category, searchQuery)}</td>
-        <td><span class="amount-${kindClass}">${item.amount}</span></td>
+        <td><span class="amount-${kindClass}">${core.formatMoney(item.amount)}</span></td>
         <td>${highlightText(noteText, searchQuery)}</td>
       `;
       return row;
@@ -67,7 +180,7 @@
         <td>${core.formatDateRu(item.operation_date)}</td>
         <td><span class="kind-pill kind-pill-${kindClass}">${highlightText(kindText, searchQuery)}</span></td>
         <td>${renderCategoryChip(category, searchQuery)}</td>
-        <td><span class="amount-${kindClass}">${item.amount}</span></td>
+        <td><span class="amount-${kindClass}">${core.formatMoney(item.amount)}</span></td>
         <td>${highlightText(noteText, searchQuery)}</td>
         <td>
           <div class="actions">
@@ -89,7 +202,7 @@
       <td>${core.formatDateRu(item.operation_date)}</td>
       <td><span class="kind-pill kind-pill-${kindClass}">${highlightText(kindText, searchQuery)}</span></td>
       <td>${renderCategoryChip(category, searchQuery)}</td>
-      <td><span class="amount-${kindClass}">${item.amount}</span></td>
+      <td><span class="amount-${kindClass}">${core.formatMoney(item.amount)}</span></td>
       <td>${highlightText(noteText, searchQuery)}</td>
       <td>
         <div class="actions row-actions">
@@ -109,5 +222,15 @@
     highlightText,
     renderCategoryChip,
     createOperationRow,
+    debtUi: {
+      parseAmount,
+      formatMoney,
+      parseIsoDate,
+      parseIsoDateEnd,
+      debtDueState,
+      debtDueProgress,
+      debtDueDaysBadge,
+      debtRepaymentProgress,
+    },
   });
 })();

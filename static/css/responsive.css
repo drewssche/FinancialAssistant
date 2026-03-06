@@ -22,6 +22,18 @@
   .category-form {
     grid-template-columns: 1fr;
   }
+
+  #createDebtFields {
+    grid-template-columns: 1fr;
+  }
+
+  #createDebtFields #debtStartDate,
+  #createDebtFields #createDebtDirectionSwitch,
+  #createDebtFields #debtCounterparty,
+  #createDebtFields #debtPrincipalField,
+  #createDebtFields .debt-due-field {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 900px) {
@@ -32,9 +44,19 @@
   .sidebar {
     border-right: none;
     border-bottom: 1px solid var(--border);
+    position: static;
+    top: auto;
+    height: auto;
+    overflow: visible;
   }
 
   .input-row {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-grid-2,
+  .settings-scale-row,
+  .danger-zone-actions {
     grid-template-columns: 1fr;
   }
 
@@ -47,5 +69,36 @@
   .sticky-search {
     position: static;
     top: auto;
+  }
+
+  .debt-summary-grid,
+  .debt-actions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .debt-card-compact-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .dashboard-debt-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .bulk-count-text {
+    font-size: 16px;
+    min-height: 30px;
+  }
+
+  #categoriesBulkBar {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .bulk-actions-fixed {
+    min-width: 0;
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 }

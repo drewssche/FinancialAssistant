@@ -146,6 +146,275 @@
     if (current && Array.from(selectNode.options).some((item) => item.value === current)) {
       selectNode.value = current;
     }
+    if (selectNode === el.categoryGroup) {
+      renderCreateGroupPicker();
+    }
+  }
+
+  function getCreateSelectedGroupId() {
+    return el.categoryGroup.value ? Number(el.categoryGroup.value) : null;
+  }
+
+  function getEditSelectedGroupId() {
+    return el.editCategoryGroup.value ? Number(el.editCategoryGroup.value) : null;
+  }
+
+  function getCreateGroupsSorted(kind, query = "") {
+    const normalizedQuery = query.trim().toLowerCase();
+    return state.categoryGroups
+      .filter((group) => !kind || group.kind === kind)
+      .filter((group) => {
+        if (!normalizedQuery) {
+          return true;
+        }
+        return String(group.name || "").toLowerCase().includes(normalizedQuery);
+      })
+      .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "ru"));
+  }
+
+  function openCreateGroupPopover() {
+    if (!el.createCategoryGroupPickerBlock) {
+      return;
+    }
+    el.createCategoryGroupPickerBlock.classList.remove("hidden");
+  }
+
+  function closeCreateGroupPopover() {
+    if (!el.createCategoryGroupPickerBlock) {
+      return;
+    }
+    el.createCategoryGroupPickerBlock.classList.add("hidden");
+  }
+
+  function openEditGroupPopover() {
+    if (!el.editCategoryGroupPickerBlock) {
+      return;
+    }
+    el.editCategoryGroupPickerBlock.classList.remove("hidden");
+  }
+
+  function closeEditGroupPopover() {
+    if (!el.editCategoryGroupPickerBlock) {
+      return;
+    }
+    el.editCategoryGroupPickerBlock.classList.add("hidden");
+  }
+
+  function renderCreateGroupPicker() {
+    if (!el.categoryGroupAll) {
+      return;
+    }
+    const kind = el.categoryKind.value || "expense";
+    const selectedId = getCreateSelectedGroupId();
+    const query = el.categoryGroupSearch?.value?.trim() || "";
+    const groups = getCreateGroupsSorted(kind, query);
+    el.categoryGroupAll.innerHTML = "";
+
+    const noneBtn = document.createElement("button");
+    noneBtn.type = "button";
+    noneBtn.className = "chip-btn";
+    if (!selectedId) {
+      noneBtn.classList.add("active");
+    }
+    noneBtn.dataset.groupId = "";
+    noneBtn.innerHTML = "<span class='muted-small'>Без группы</span>";
+    el.categoryGroupAll.appendChild(noneBtn);
+
+    for (const group of groups) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "chip-btn";
+      if (selectedId === group.id) {
+        btn.classList.add("active");
+      }
+      btn.dataset.groupId = String(group.id);
+      btn.innerHTML = core.renderCategoryChip({ name: group.name, icon: null, accent_color: group.accent_color || null }, query);
+      el.categoryGroupAll.appendChild(btn);
+    }
+
+    if (!groups.length && query) {
+      const empty = document.createElement("span");
+      empty.className = "muted-small";
+      empty.textContent = "Группы не найдены";
+      el.categoryGroupAll.appendChild(empty);
+    }
+  }
+
+  function renderEditGroupPicker() {
+    if (!el.editCategoryGroupAll) {
+      return;
+    }
+    const kind = el.editCategoryKind.value || "expense";
+    const selectedId = getEditSelectedGroupId();
+    const query = el.editCategoryGroupSearch?.value?.trim() || "";
+    const groups = getCreateGroupsSorted(kind, query);
+    el.editCategoryGroupAll.innerHTML = "";
+
+    const noneBtn = document.createElement("button");
+    noneBtn.type = "button";
+    noneBtn.className = "chip-btn";
+    if (!selectedId) {
+      noneBtn.classList.add("active");
+    }
+    noneBtn.dataset.groupId = "";
+    noneBtn.innerHTML = "<span class='muted-small'>Без группы</span>";
+    el.editCategoryGroupAll.appendChild(noneBtn);
+
+    for (const group of groups) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "chip-btn";
+      if (selectedId === group.id) {
+        btn.classList.add("active");
+      }
+      btn.dataset.groupId = String(group.id);
+      btn.innerHTML = core.renderCategoryChip({ name: group.name, icon: null, accent_color: group.accent_color || null }, query);
+      el.editCategoryGroupAll.appendChild(btn);
+    }
+
+    if (!groups.length && query) {
+      const empty = document.createElement("span");
+      empty.className = "muted-small";
+      empty.textContent = "Группы не найдены";
+      el.editCategoryGroupAll.appendChild(empty);
+    }
+  }
+
+  function selectCreateGroup(groupId, options = {}) {
+    const value = groupId ? String(groupId) : "";
+    el.categoryGroup.value = value;
+    const selected = state.categoryGroups.find((group) => String(group.id) === value);
+    if (!options.keepSearch && el.categoryGroupSearch) {
+      el.categoryGroupSearch.value = selected?.name || "";
+    }
+    renderCreateGroupPicker();
+    closeCreateGroupPopover();
+  }
+
+  function selectEditGroup(groupId, options = {}) {
+    const value = groupId ? String(groupId) : "";
+    el.editCategoryGroup.value = value;
+    const selected = state.categoryGroups.find((group) => String(group.id) === value);
+    if (!options.keepSearch && el.editCategoryGroupSearch) {
+      el.editCategoryGroupSearch.value = selected?.name || "";
+    }
+    renderEditGroupPicker();
+    closeEditGroupPopover();
+  }
+
+  function handleCreateGroupSearchFocus() {
+    openCreateGroupPopover();
+    renderCreateGroupPicker();
+  }
+
+  function handleCreateGroupSearchInput() {
+    if (el.categoryGroup.value) {
+      el.categoryGroup.value = "";
+    }
+    openCreateGroupPopover();
+    renderCreateGroupPicker();
+  }
+
+  function handleCreateGroupSearchBlur() {
+    window.setTimeout(() => {
+      const active = document.activeElement;
+      if (active && active.closest("#createCategoryGroupField")) {
+        return;
+      }
+      closeCreateGroupPopover();
+    }, 0);
+  }
+
+  function handleEditGroupSearchFocus() {
+    openEditGroupPopover();
+    renderEditGroupPicker();
+  }
+
+  function handleEditGroupSearchInput() {
+    if (el.editCategoryGroup.value) {
+      el.editCategoryGroup.value = "";
+    }
+    openEditGroupPopover();
+    renderEditGroupPicker();
+  }
+
+  function handleEditGroupSearchBlur() {
+    window.setTimeout(() => {
+      const active = document.activeElement;
+      if (active && active.closest("#editCategoryGroupField")) {
+        return;
+      }
+      closeEditGroupPopover();
+    }, 0);
+  }
+
+  function handleCreateGroupSearchKeydown(event) {
+    if (event.key === "Escape") {
+      closeCreateGroupPopover();
+      return;
+    }
+    if (event.key !== "Enter") {
+      return;
+    }
+    event.preventDefault();
+    const query = el.categoryGroupSearch.value.trim();
+    const kind = el.categoryKind.value || "expense";
+    const groups = getCreateGroupsSorted(kind, query);
+    if (groups.length) {
+      selectCreateGroup(groups[0].id);
+    }
+  }
+
+  function handleCreateGroupPickerClick(event) {
+    const btn = event.target.closest("button[data-group-id]");
+    if (!btn) {
+      return;
+    }
+    const groupId = btn.dataset.groupId ? Number(btn.dataset.groupId) : null;
+    selectCreateGroup(groupId);
+  }
+
+  function handleEditGroupSearchKeydown(event) {
+    if (event.key === "Escape") {
+      closeEditGroupPopover();
+      return;
+    }
+    if (event.key !== "Enter") {
+      return;
+    }
+    event.preventDefault();
+    const query = el.editCategoryGroupSearch.value.trim();
+    const kind = el.editCategoryKind.value || "expense";
+    const groups = getCreateGroupsSorted(kind, query);
+    if (groups.length) {
+      selectEditGroup(groups[0].id);
+    }
+  }
+
+  function handleEditGroupPickerClick(event) {
+    const btn = event.target.closest("button[data-group-id]");
+    if (!btn) {
+      return;
+    }
+    const groupId = btn.dataset.groupId ? Number(btn.dataset.groupId) : null;
+    selectEditGroup(groupId);
+  }
+
+  function handleCreateGroupOutsidePointer(event) {
+    if (
+      el.createCategoryGroupPickerBlock &&
+      !el.createCategoryGroupPickerBlock.classList.contains("hidden") &&
+      !event.target.closest("#createCategoryGroupField")
+    ) {
+      closeCreateGroupPopover();
+    }
+    if (
+      el.editCategoryGroupPickerBlock &&
+      !el.editCategoryGroupPickerBlock.classList.contains("hidden") &&
+      !event.target.closest("#editCategoryGroupField")
+    ) {
+      closeEditGroupPopover();
+    }
   }
 
   function setCategoryKind(mode, kind) {
@@ -153,12 +422,28 @@
       el.categoryKind.value = kind;
       core.syncSegmentedActive(el.createCategoryKind, "cat-create-kind", kind);
       fillGroupSelect(el.categoryGroup, kind, "Без группы");
+      const selected = state.categoryGroups.find((group) => String(group.id) === el.categoryGroup.value);
+      if (el.categoryGroup.value && (!selected || selected.kind !== kind)) {
+        el.categoryGroup.value = "";
+        if (el.categoryGroupSearch) {
+          el.categoryGroupSearch.value = "";
+        }
+      }
+      renderCreateGroupPicker();
       return;
     }
     if (mode === "edit") {
       el.editCategoryKind.value = kind;
       core.syncSegmentedActive(el.editCategoryKindSwitch, "cat-edit-kind", kind);
       fillGroupSelect(el.editCategoryGroup, kind, "Без группы");
+      const selected = state.categoryGroups.find((group) => String(group.id) === el.editCategoryGroup.value);
+      if (el.editCategoryGroup.value && (!selected || selected.kind !== kind)) {
+        el.editCategoryGroup.value = "";
+        if (el.editCategoryGroupSearch) {
+          el.editCategoryGroupSearch.value = "";
+        }
+      }
+      renderEditGroupPicker();
     }
   }
 
@@ -170,19 +455,25 @@
     if (resetForm) {
       el.categoryName.value = prefillName;
       el.categoryGroup.value = "";
+      if (el.categoryGroupSearch) {
+        el.categoryGroupSearch.value = "";
+      }
       el.categoryIcon.value = "";
       updateIconToggleLabel(el.categoryIconToggle, "");
       closeIconPopovers();
+      closeCreateGroupPopover();
     } else if (prefillName) {
       el.categoryName.value = prefillName;
     }
 
     setCategoryKind("create", kind);
+    renderCreateGroupPicker();
     el.createCategoryModal.classList.remove("hidden");
   }
 
   function closeCreateCategoryModal(clearPending = true) {
     closeIconPopovers();
+    closeCreateGroupPopover();
     el.createCategoryModal.classList.add("hidden");
     if (clearPending) {
       state.pendingCreateCategoryFromOperation = "";
@@ -217,14 +508,32 @@
     const selectedCategoryCount = categoryIds.filter((id) => state.selectedCategoryIds.has(id)).length;
     const selectedGroupCount = groupIds.filter((id) => state.selectedGroupIds.has(id)).length;
     const selectedVisibleCount = selectedCategoryCount + selectedGroupCount;
+    if (selectedVisibleCount === 0) {
+      el.categoriesSelectedCount.textContent = "Ничего не выбрано";
+    } else if (selectedGroupCount > 0 && selectedCategoryCount > 0) {
+      el.categoriesSelectedCount.textContent = `Выбрано: ${selectedVisibleCount} (группы: ${selectedGroupCount}, категории: ${selectedCategoryCount})`;
+    } else if (selectedGroupCount > 0) {
+      el.categoriesSelectedCount.textContent = `Выбрано: ${selectedVisibleCount} (группы: ${selectedGroupCount})`;
+    } else {
+      el.categoriesSelectedCount.textContent = `Выбрано: ${selectedVisibleCount} (категории: ${selectedCategoryCount})`;
+    }
+    const hasSelection = selectedVisibleCount > 0;
+    const canBulkEdit = selectedCategoryCount > 0 && selectedGroupCount === 0;
+
+    // Keep action zone width stable when nothing is selected to avoid sticky-bar jumps.
+    if (!hasSelection) {
+      el.bulkEditCategoriesBtn.classList.remove("hidden-action");
+      el.bulkDeleteCategoriesBtn.classList.remove("hidden-action");
+      el.bulkEditCategoriesBtn.classList.add("is-reserved-hidden");
+      el.bulkDeleteCategoriesBtn.classList.add("is-reserved-hidden");
+    } else {
+      el.bulkEditCategoriesBtn.classList.remove("is-reserved-hidden");
+      el.bulkDeleteCategoriesBtn.classList.remove("is-reserved-hidden");
+      el.bulkEditCategoriesBtn.classList.toggle("hidden-action", !canBulkEdit);
+      el.bulkDeleteCategoriesBtn.classList.remove("hidden-action");
+    }
+
     const totalCount = categoryIds.length + groupIds.length;
-    const baseSummary = `Групп: ${groupIds.length} • Категорий: ${categoryIds.length} • Всего: ${totalCount}`;
-    el.categoriesSelectedCount.textContent =
-      selectedVisibleCount > 0
-        ? `Выбрано: ${selectedVisibleCount} из ${totalCount} • ${baseSummary}`
-        : baseSummary;
-    el.bulkEditCategoriesBtn.classList.toggle("hidden-action", selectedCategoryCount === 0 || selectedGroupCount > 0);
-    el.bulkDeleteCategoriesBtn.classList.toggle("hidden-action", selectedVisibleCount === 0);
     el.categoriesSelectAll.checked = totalCount > 0 && selectedVisibleCount === totalCount;
     el.categoriesSelectAll.indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < totalCount;
   }
@@ -254,17 +563,23 @@
     closeIconPopovers();
     setCategoryKind("edit", item.kind || "expense");
     el.editCategoryGroup.value = item.group_id ? String(item.group_id) : "";
+    const selected = state.categoryGroups.find((group) => String(group.id) === el.editCategoryGroup.value);
+    if (el.editCategoryGroupSearch) {
+      el.editCategoryGroupSearch.value = selected?.name || "";
+    }
+    renderEditGroupPicker();
     el.editCategoryModal.classList.remove("hidden");
   }
 
   function closeEditCategoryModal() {
     state.editCategoryId = null;
     closeIconPopovers();
+    closeEditGroupPopover();
     el.editCategoryModal.classList.add("hidden");
   }
 
   function groupCategoryIds(groupId) {
-    return state.categories.filter((item) => item.group_id === groupId && !item.is_system).map((item) => item.id);
+    return state.categoryTableItems.filter((item) => item.group_id === groupId && !item.is_system).map((item) => item.id);
   }
 
   function renderCategoryRow(item, query, options = {}) {
@@ -285,10 +600,17 @@
       ? "<span class='muted-small'>Защищено</span>"
       : `<div class='actions row-actions'><button class='btn btn-secondary' data-edit-category-id='${item.id}'>Редактировать</button><button class='btn btn-danger' data-delete-category-id='${item.id}'>Удалить</button></div>`;
     const leftBorderColor = options.groupAccentColor || "rgba(77, 98, 130, 0.45)";
+    const groupCell = options.groupName
+      ? `<div class="group-cell-inline"><span class='muted-small category-tree-mark'>↳</span>${core.renderCategoryChip(
+          { name: options.groupName, icon: null, accent_color: options.groupAccentColor || null },
+          query,
+        )}</div>`
+      : options.groupLabel || "<span class='muted-small'>Без группы</span>";
+    const nameCell = core.renderCategoryChip({ name: item.name, icon: item.icon || item.group_icon, accent_color: item.group_accent_color }, query);
     tr.innerHTML = `
       <td class="select-col" style="border-left: 3px solid ${leftBorderColor};"><input class="table-checkbox" type="checkbox" data-select-category-id="${item.id}" data-category-group-id="${options.groupId || ""}" ${state.selectedCategoryIds.has(item.id) ? "checked" : ""} ${item.is_system ? "disabled" : ""} /></td>
-      <td>${options.groupLabel || "<span class='muted-small'>Без группы</span>"}</td>
-      <td>${core.renderCategoryChip({ name: item.name, icon: item.icon || item.group_icon, accent_color: item.group_accent_color }, query)}</td>
+      <td>${groupCell}</td>
+      <td>${nameCell}</td>
       <td><span class="kind-pill kind-pill-${kindClass}">${core.highlightText(core.kindLabel(item.kind), query)}</span></td>
       <td>${actionCell}</td>
     `;
@@ -317,10 +639,7 @@
 
   function renderCategories() {
     const query = el.categorySearchQ.value.trim().toLowerCase();
-    const rows = state.categories.filter((item) => {
-      if (state.categoryFilterKind !== "all" && item.kind !== state.categoryFilterKind) {
-        return false;
-      }
+    const rows = state.categoryTableItems.filter((item) => {
       if (!query) {
         return true;
       }
@@ -332,20 +651,17 @@
       );
     });
 
-    el.categoriesBody.innerHTML = "";
-    if (!rows.length) {
-      const row = document.createElement("tr");
-      row.innerHTML = '<td colspan="5">Категории не найдены</td>';
-      el.categoriesBody.appendChild(row);
-      return;
-    }
-
     const displayQuery = el.categorySearchQ.value.trim();
+    const allRows = [];
+    const pushRow = (node) => {
+      allRows.push(node);
+    };
+
     const ungrouped = rows
       .filter((item) => !item.group_id)
       .sort((a, b) => a.name.localeCompare(b.name, "ru"));
     for (const item of ungrouped) {
-      el.categoriesBody.appendChild(renderCategoryRow(item, displayQuery));
+      pushRow(renderCategoryRow(item, displayQuery));
     }
 
     const groups = state.categoryGroups
@@ -353,23 +669,38 @@
       .sort((a, b) => a.name.localeCompare(b.name, "ru"));
 
     for (const group of groups) {
-      const children = rows
+      const groupMatchesQuery = query ? group.name.toLowerCase().includes(query) : false;
+      const childrenSource = groupMatchesQuery ? state.categoryTableItems : rows;
+      const children = childrenSource
         .filter((item) => item.group_id === group.id)
         .sort((a, b) => a.name.localeCompare(b.name, "ru"));
-      if (!children.length && query && !group.name.toLowerCase().includes(query)) {
+      if (!children.length && query && !groupMatchesQuery) {
         continue;
       }
-      el.categoriesBody.appendChild(renderGroupRow(group, displayQuery));
+      pushRow(renderGroupRow(group, displayQuery));
       for (const child of children) {
         const groupLabel = "<span class='muted-small category-tree-mark'>↳</span>";
-        el.categoriesBody.appendChild(
+        pushRow(
           renderCategoryRow(child, displayQuery, {
             groupId: group.id,
             groupLabel,
+            groupName: group.name,
             groupAccentColor: group.accent_color || null,
           }),
         );
       }
+    }
+
+    el.categoriesBody.innerHTML = "";
+    if (!allRows.length) {
+      const row = document.createElement("tr");
+      row.innerHTML = '<td colspan="5">Категории не найдены</td>';
+      el.categoriesBody.appendChild(row);
+      updateCategoriesBulkUi();
+      return;
+    }
+    for (const rowNode of allRows) {
+      el.categoriesBody.appendChild(rowNode);
     }
     updateCategoriesBulkUi();
   }
@@ -383,6 +714,21 @@
     fillGroupSelect,
     setCategoryKind,
     populateCategorySelect,
+    renderCreateGroupPicker,
+    renderEditGroupPicker,
+    handleCreateGroupSearchFocus,
+    handleCreateGroupSearchInput,
+    handleCreateGroupSearchBlur,
+    handleCreateGroupSearchKeydown,
+    handleEditGroupSearchFocus,
+    handleEditGroupSearchInput,
+    handleEditGroupSearchBlur,
+    handleEditGroupSearchKeydown,
+    handleCreateGroupPickerClick,
+    handleEditGroupPickerClick,
+    handleCreateGroupOutsidePointer,
+    selectCreateGroup,
+    selectEditGroup,
     updateCategoriesBulkUi,
     openEditGroupModal,
     closeEditGroupModal,

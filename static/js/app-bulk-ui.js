@@ -78,11 +78,8 @@
     }
     const categoryIds = actions.groupCategoryIds ? actions.groupCategoryIds(groupId) : [];
     const selectedCount = categoryIds.filter((id) => state.selectedCategoryIds.has(id)).length;
-    const allSelected = categoryIds.length > 0 && selectedCount === categoryIds.length;
-    const someSelected = selectedCount > 0 && selectedCount < categoryIds.length;
-    groupCheckbox.checked = allSelected;
-    groupCheckbox.indeterminate = someSelected;
-    state.selectedGroupIds[groupCheckbox.checked ? "add" : "delete"](groupId);
+    groupCheckbox.checked = false;
+    groupCheckbox.indeterminate = selectedCount > 0;
   }
 
   function updateOperationsBulkUi() {

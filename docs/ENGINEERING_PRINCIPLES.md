@@ -4,6 +4,7 @@
 - API-first architecture for maximum reuse between Web and Telegram Mini App
 - Reuse business logic through service and repository layers
 - Push filtering/pagination/sorting to server side
+- Client list rendering baseline for large datasets: initial `20` rows + incremental `+20` on scroll (infinite scroll UI over server pagination)
 - Cache stable reference data when useful (categories, user preferences)
 
 ## Scalability Baseline

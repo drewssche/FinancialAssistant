@@ -31,6 +31,9 @@
     }
     el.batchCreateInput.value = "";
     bulkUi.closeBatchCreateModal();
+    if (actions.invalidateAllTimeAnchor) {
+      actions.invalidateAllTimeAnchor();
+    }
     await Promise.all([actions.loadDashboard(), actions.loadDashboardOperations(), actions.loadOperations()]);
   }
 
@@ -40,6 +43,9 @@
         method: "DELETE",
         headers: core.authHeaders(),
       });
+    }
+    if (actions.invalidateAllTimeAnchor) {
+      actions.invalidateAllTimeAnchor();
     }
     state.selectedOperationIds.clear();
     await Promise.all([actions.loadDashboard(), actions.loadDashboardOperations(), actions.loadOperations()]);
@@ -71,6 +77,9 @@
         headers: core.authHeaders(),
         body: JSON.stringify(updates),
       });
+    }
+    if (actions.invalidateAllTimeAnchor) {
+      actions.invalidateAllTimeAnchor();
     }
     bulkUi.closeBulkEditOperationsModal();
     state.selectedOperationIds.clear();
@@ -186,7 +195,7 @@
     el.deleteAllOperationsBtn.addEventListener("click", () => {
       const ids = actions.getCurrentOperationItems().map((item) => item.id);
       core.runDestructiveAction({
-        confirmMessage: `Удалить все операции на текущей странице (${ids.length})?`,
+        confirmMessage: `Удалить все загруженные операции (${ids.length})?`,
         doDelete: async () => bulkDeleteOperations(ids),
         onDeleteError: "Не удалось удалить операции",
       });

@@ -5,7 +5,18 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import get_settings
 from app.db.base import Base
-from app.db.models import auth_identity, category, category_group, operation, user, user_preference
+from app.db.models import (
+    auth_identity,
+    category,
+    category_group,
+    debt,
+    debt_counterparty,
+    debt_issuance,
+    debt_repayment,
+    operation,
+    user,
+    user_preference,
+)
 
 config = context.config
 settings = get_settings()

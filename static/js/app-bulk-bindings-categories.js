@@ -84,6 +84,7 @@
       }
       const groupId = Number(checkbox.dataset.categoryGroupId || 0);
       if (groupId) {
+        state.selectedGroupIds.delete(groupId);
         bulkUi.syncGroupCheckboxState(groupId);
       }
       const row = checkbox.closest("tr");

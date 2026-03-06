@@ -1,22 +1,51 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user_id
 from app.db.session import get_db
-from app.schemas.category import CategoryCreate, CategoryGroupCreate, CategoryGroupOut, CategoryGroupUpdate, CategoryOut, CategoryUpdate
+from app.schemas.category import (
+    CategoryCreate,
+    CategoryGroupCreate,
+    CategoryGroupOut,
+    CategoryGroupUpdate,
+    CategoryListOut,
+    CategoryOut,
+    CategoryUpdate,
+)
 from app.services.category_service import CategoryService
 
 router = APIRouter(prefix="/categories", tags=["categories"])
 
 
-@router.get("", response_model=list[CategoryOut])
+@router.get("", response_model=CategoryListOut | list[CategoryOut])
 def list_categories(
+    page: int | None = Query(default=None, ge=1),
+    page_size: int | None = Query(default=None, ge=1, le=100),
+    kind: str | None = Query(default=None, pattern="^(income|expense)$"),
+    q: str | None = Query(default=None, max_length=100),
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     service = CategoryService(db)
-    rows = service.list_categories(user_id)
-    return [CategoryOut(**row) for row in rows]
+    if page is None and page_size is None:
+        rows = service.list_categories(user_id)
+        return [CategoryOut(**row) for row in rows]
+    if page is None or page_size is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="page and page_size must be provided together")
+
+    rows, total = service.list_categories_paginated(
+        user_id=user_id,
+        page=page,
+        page_size=page_size,
+        kind=kind,
+        q=q,
+    )
+    return CategoryListOut(
+        items=[CategoryOut(**row) for row in rows],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.post("", response_model=CategoryOut)

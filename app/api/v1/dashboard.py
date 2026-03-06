@@ -13,7 +13,7 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 @router.get("/summary", response_model=DashboardSummary)
 def get_summary(
-    period: str = Query(default="month", pattern="^(day|week|month|year|custom)$"),
+    period: str = Query(default="month", pattern="^(day|week|month|year|all_time|custom)$"),
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
     user_id: int = Depends(get_current_user_id),

@@ -67,3 +67,40 @@ def test_categories_create_list_delete(client: TestClient):
 def test_categories_reject_bad_kind(client: TestClient):
     response = client.post("/api/v1/categories", json={"name": "Некорректно", "kind": "other"})
     assert response.status_code == 400
+
+
+def test_categories_list_paginated(client: TestClient):
+    client.post("/api/v1/categories", json={"name": "Еда", "kind": "expense"})
+    client.post("/api/v1/categories", json={"name": "Кафе", "kind": "expense"})
+    client.post("/api/v1/categories", json={"name": "Зарплата", "kind": "income"})
+
+    listed = client.get("/api/v1/categories", params={"page": 1, "page_size": 2})
+    assert listed.status_code == 200
+    payload = listed.json()
+    assert payload["page"] == 1
+    assert payload["page_size"] == 2
+    assert payload["total"] >= 3
+    assert len(payload["items"]) == 2
+
+
+def test_categories_list_pagination_requires_pair(client: TestClient):
+    response = client.get("/api/v1/categories", params={"page": 1})
+    assert response.status_code == 400
+
+
+def test_categories_list_paginated_search_by_group_name_returns_group_children(client: TestClient):
+    created_group = client.post("/api/v1/categories/groups", json={"name": "Продукты", "kind": "expense", "accent_color": "#ffd166"})
+    assert created_group.status_code == 200
+    group_id = created_group.json()["id"]
+
+    in_group = client.post("/api/v1/categories", json={"name": "Еда", "kind": "expense", "group_id": group_id})
+    assert in_group.status_code == 200
+    out_group = client.post("/api/v1/categories", json={"name": "Такси", "kind": "expense"})
+    assert out_group.status_code == 200
+
+    listed = client.get("/api/v1/categories", params={"page": 1, "page_size": 20, "q": "проду"})
+    assert listed.status_code == 200
+    payload = listed.json()
+    names = [item["name"] for item in payload["items"]]
+    assert "Еда" in names
+    assert "Такси" not in names

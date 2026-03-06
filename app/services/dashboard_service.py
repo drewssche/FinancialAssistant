@@ -1,8 +1,10 @@
 from datetime import date, timedelta
+from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
 from app.repositories.operation_repo import OperationRepository
+from app.services.debt_service import DebtService
 
 
 class DashboardService:
@@ -35,6 +37,10 @@ class DashboardService:
         elif period == "year":
             resolved_date_from = base_date.replace(month=1, day=1)
             resolved_date_to = base_date.replace(month=12, day=31)
+        elif period == "all_time":
+            first_date = self.repo.first_operation_date(user_id)
+            resolved_date_from = first_date or base_date
+            resolved_date_to = base_date
         elif period == "custom":
             raise ValueError("date_from is required for custom period")
         else:
@@ -44,8 +50,25 @@ class DashboardService:
             raise ValueError("date_from must be less than or equal to date_to")
 
         income_total, expense_total = self.repo.summary_for_period(user_id, resolved_date_from, resolved_date_to)
+        debt_service = DebtService(self.db)
+        debt_cards = debt_service.list_cards(user_id=user_id, include_closed=False)
+        debt_lend_outstanding = Decimal("0")
+        debt_borrow_outstanding = Decimal("0")
+        for card in debt_cards:
+            for debt in card.get("debts", []):
+                outstanding = Decimal(debt.get("outstanding_total") or 0)
+                if outstanding <= 0:
+                    continue
+                if debt.get("direction") == "lend":
+                    debt_lend_outstanding += outstanding
+                else:
+                    debt_borrow_outstanding += outstanding
         return {
             "income_total": income_total,
             "expense_total": expense_total,
             "balance": income_total - expense_total,
+            "debt_lend_outstanding": debt_lend_outstanding,
+            "debt_borrow_outstanding": debt_borrow_outstanding,
+            "debt_net_position": debt_lend_outstanding - debt_borrow_outstanding,
+            "active_debt_cards": len(debt_cards),
         }

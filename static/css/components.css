@@ -54,7 +54,30 @@
   gap: 10px;
   align-items: center;
   padding: 9px;
+  cursor: default;
+}
+
+.user-block-static {
+  grid-template-columns: 40px 1fr auto;
+}
+
+.user-logout-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(17, 28, 45, 0.9);
+  color: #c9d6f0;
+  display: grid;
+  place-items: center;
   cursor: pointer;
+  padding: 0;
+  font-size: 16px;
+}
+
+.user-logout-icon-btn:hover {
+  background: rgba(31, 45, 70, 0.95);
+  color: #f0f6ff;
 }
 
 .avatar {
@@ -88,6 +111,40 @@
   color: var(--muted);
   font-size: 12px;
   padding-right: 4px;
+}
+
+.money-input-wrap {
+  position: relative;
+}
+
+.money-input-wrap input[data-money-input] {
+  width: 100%;
+}
+
+.money-input-wrap::after {
+  content: attr(data-currency-symbol);
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #8fa2c7;
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.money-input-wrap.currency-suffix::after {
+  right: 12px;
+}
+
+.money-input-wrap.currency-prefix::after {
+  left: 12px;
+}
+
+.money-input-wrap.currency-suffix input[data-money-input] {
+  padding-right: 44px;
+}
+
+.money-input-wrap.currency-prefix input[data-money-input] {
+  padding-left: 44px;
 }
 
 .kpi-grid {
@@ -185,6 +242,17 @@ textarea {
 
 .btn-danger:hover {
   background: #362137;
+}
+
+.btn-repay {
+  background: linear-gradient(135deg, #ff9f41, #ffbf7a);
+  border-color: transparent;
+  color: #311900;
+  font-weight: 700;
+}
+
+.btn-repay:hover {
+  filter: saturate(1.06);
 }
 
 .btn-cta {
@@ -304,6 +372,45 @@ textarea {
   font-weight: 500;
 }
 
+.preview-cell-btn {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 6px 8px;
+}
+
+.preview-cell-btn:hover {
+  border-color: rgba(78, 99, 138, 0.6);
+  background: rgba(22, 34, 56, 0.75);
+}
+
+.preview-cell-note {
+  color: var(--muted);
+}
+
+.amount-field {
+  position: relative;
+}
+
+.amount-field input {
+  width: 100%;
+  padding-right: 32px;
+}
+
+.input-suffix {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 13px;
+  pointer-events: none;
+}
+
 .kind-pill {
   display: inline-flex;
   padding: 4px 10px;
@@ -372,6 +479,13 @@ textarea {
   font-size: 12px;
 }
 
+.group-cell-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .chip-btn {
   border: 1px solid transparent;
   border-radius: 999px;
@@ -392,6 +506,11 @@ textarea {
 .chip-btn.active .category-chip {
   border-color: rgba(255, 179, 71, 0.75);
   box-shadow: 0 0 0 1px rgba(255, 179, 71, 0.35);
+}
+
+.category-picker-block {
+  display: grid;
+  gap: 6px;
 }
 
 .chip-btn-create {
@@ -466,10 +585,32 @@ textarea {
   opacity: 0.42;
 }
 
-.bulk-action.hidden-action {
+.bulk-count-text {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.1px;
+  line-height: 1.2;
+}
+
+.bulk-actions-fixed {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-height: 40px;
+  min-width: 440px;
+}
+
+.bulk-action.is-reserved-hidden {
   visibility: hidden;
-  opacity: 0;
   pointer-events: none;
+}
+
+.bulk-action.hidden-action {
+  display: none;
 }
 
 .sidebar-today {
@@ -632,6 +773,28 @@ textarea {
   pointer-events: auto;
 }
 
+.row-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  line-height: 1;
+  min-height: 42px;
+}
+
+.debt-actions-grid {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(130px, 1fr));
+  gap: 6px;
+}
+
+.debt-actions-grid .btn {
+  min-height: 36px;
+}
+
 .amount-expense {
   color: #ffb2bc;
   font-weight: 700;
@@ -688,6 +851,64 @@ textarea {
   margin-top: 4px;
   font-size: 12px;
   color: var(--muted);
+}
+
+.repayment-card {
+  border: 1px solid rgba(61, 83, 122, 0.8);
+  border-radius: 12px;
+  background: rgba(12, 20, 35, 0.92);
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.repayment-counterparty {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.repayment-outstanding {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+
+.repayment-outstanding strong {
+  color: #f3d2b3;
+  font-size: 20px;
+}
+
+.repayment-progress {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.repayment-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #36b37e, #8ce8bf);
+  transition: width 0.2s ease;
+}
+
+.repayment-preset-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.repayment-delta-box {
+  border: 1px solid rgba(61, 83, 122, 0.75);
+  border-radius: 10px;
+  background: rgba(15, 25, 42, 0.7);
+  padding: 8px 10px;
+  display: grid;
+  gap: 4px;
+}
+
+#repaymentCarryRow {
+  color: #f3c887;
 }
 
 .search-highlight {

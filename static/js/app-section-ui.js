@@ -6,8 +6,9 @@
     const sections = [
       { id: "dashboard", node: el.dashboardSection, title: "Дашборд", subtitle: "Доходы, расходы и операции за выбранный период" },
       { id: "operations", node: el.operationsSection, title: "Операции", subtitle: "Полный список операций" },
+      { id: "debts", node: el.debtsSection, title: "Долги", subtitle: "Карточки задолженностей и погашения" },
       { id: "categories", node: el.categoriesSection, title: "Категории", subtitle: "Управление категориями доходов и расходов" },
-      { id: "settings", node: el.settingsSection, title: "Настройки", subtitle: "Параметры интерфейса и профиля" },
+      { id: "settings", node: el.settingsSection, title: "Настройки", subtitle: "Параметры интерфейса и безопасности" },
     ];
 
     for (const section of sections) {
@@ -22,8 +23,22 @@
       }
     }
 
-    const showTopActions = state.activeSection === "dashboard" || state.activeSection === "operations";
+    const showTopActions =
+      state.activeSection === "dashboard" ||
+      state.activeSection === "operations" ||
+      state.activeSection === "debts" ||
+      state.activeSection === "categories";
     el.topActions.classList.toggle("hidden", !showTopActions);
+    if (el.addOperationCta && el.batchOperationCta && el.addDebtCta && el.addCategoryCta && el.addGroupCta) {
+      const showOps = state.activeSection === "dashboard" || state.activeSection === "operations";
+      const showDebts = state.activeSection === "debts";
+      const showCategories = state.activeSection === "categories";
+      el.addOperationCta.classList.toggle("hidden", !showOps);
+      el.batchOperationCta.classList.toggle("hidden", !showOps);
+      el.addDebtCta.classList.toggle("hidden", !showDebts);
+      el.addCategoryCta.classList.toggle("hidden", !showCategories);
+      el.addGroupCta.classList.toggle("hidden", !showCategories);
+    }
   }
 
   function renderTodayLabel() {
@@ -68,6 +83,9 @@
   async function switchSection(sectionId) {
     state.activeSection = sectionId;
     applySectionUi();
+    if (sectionId === "debts" && window.App.actions.loadDebtsCards) {
+      window.App.actions.loadDebtsCards().catch((err) => window.App.core.setStatus(String(err)));
+    }
     await window.App.actions.savePreferences();
   }
 

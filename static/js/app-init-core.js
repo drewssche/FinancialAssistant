@@ -24,30 +24,33 @@
     el.openOperationsTabBtn.addEventListener("click", () => {
       actions.switchSection("operations").catch((err) => core.setStatus(String(err)));
     });
+    if (el.openDebtsTabBtn) {
+      el.openDebtsTabBtn.addEventListener("click", () => {
+        actions.switchSection("debts").catch((err) => core.setStatus(String(err)));
+      });
+    }
 
-    el.userMenuToggle.addEventListener("click", () => {
-      el.userMenu.classList.toggle("hidden");
-    });
-
-    el.openSettingsBtn.addEventListener("click", () => {
-      core.closeAllMenus();
-      actions.switchSection("settings").catch((err) => core.setStatus(String(err)));
-    });
-
-    el.logoutBtn.addEventListener("click", () => actions.logout(true));
+    if (el.sidebarLogoutBtn) {
+      el.sidebarLogoutBtn.addEventListener("click", () => actions.logout(true));
+    }
 
     document.addEventListener("click", (event) => {
       if (!event.target.closest(".icon-select") && !event.target.closest(".color-select") && actions.closeIconPopovers) {
         actions.closeIconPopovers();
-      }
-      if (!event.target.closest(".user-area")) {
-        core.closeAllMenus();
       }
     });
   }
 
   function bindModalHandlers() {
     el.addOperationCta.addEventListener("click", actions.openCreateModal);
+    if (el.addDebtCta) {
+      el.addDebtCta.addEventListener("click", () => {
+        actions.openCreateModal();
+        if (actions.setCreateEntryMode) {
+          actions.setCreateEntryMode("debt");
+        }
+      });
+    }
     el.batchOperationCta.addEventListener("click", () => {
       if (actions.openBatchCreateModal) {
         actions.openBatchCreateModal();
@@ -114,15 +117,93 @@
       }
     });
 
+    if (el.closeDebtRepaymentModalBtn && actions.closeDebtRepaymentModal) {
+      el.closeDebtRepaymentModalBtn.addEventListener("click", actions.closeDebtRepaymentModal);
+    }
+    if (el.debtRepaymentModal && actions.closeDebtRepaymentModal) {
+      el.debtRepaymentModal.addEventListener("click", (event) => {
+        if (event.target === el.debtRepaymentModal) {
+          actions.closeDebtRepaymentModal();
+        }
+      });
+    }
+    if (el.closeEditDebtModalBtn && actions.closeEditDebtModal) {
+      el.closeEditDebtModalBtn.addEventListener("click", actions.closeEditDebtModal);
+    }
+    if (el.editDebtModal && actions.closeEditDebtModal) {
+      el.editDebtModal.addEventListener("click", (event) => {
+        if (event.target === el.editDebtModal) {
+          actions.closeEditDebtModal();
+        }
+      });
+    }
+    if (el.closeDebtHistoryModalBtn && actions.closeDebtHistoryModal) {
+      el.closeDebtHistoryModalBtn.addEventListener("click", actions.closeDebtHistoryModal);
+    }
+    if (el.debtHistoryModal && actions.closeDebtHistoryModal) {
+      el.debtHistoryModal.addEventListener("click", (event) => {
+        if (event.target === el.debtHistoryModal) {
+          actions.closeDebtHistoryModal();
+        }
+      });
+    }
+
     el.settingsForm.addEventListener("submit", (event) => {
       core.runAction({
         button: el.saveSettingsBtn,
         pendingText: "Сохранение...",
-        successMessage: "Настройки сохранены",
         errorPrefix: "Ошибка сохранения настроек",
         action: () => actions.saveSettings(event),
       });
     });
+    if (el.currencySelect) {
+      el.currencySelect.addEventListener("change", () => {
+        if (actions.previewInterfaceSettingsUi) {
+          actions.previewInterfaceSettingsUi();
+        }
+      });
+    }
+    if (el.currencyPositionSelect) {
+      el.currencyPositionSelect.addEventListener("change", () => {
+        if (actions.previewInterfaceSettingsUi) {
+          actions.previewInterfaceSettingsUi();
+        }
+      });
+    }
+    if (el.showDashboardDebtsToggle) {
+      el.showDashboardDebtsToggle.addEventListener("change", () => {
+        if (actions.previewInterfaceSettingsUi) {
+          actions.previewInterfaceSettingsUi();
+        }
+      });
+    }
+    if (el.uiScaleRange) {
+      el.uiScaleRange.addEventListener("input", () => {
+        if (actions.previewInterfaceSettingsUi) {
+          actions.previewInterfaceSettingsUi();
+        }
+      });
+    }
+    if (el.resetUiScaleBtn) {
+      el.resetUiScaleBtn.addEventListener("click", () => {
+        if (el.uiScaleRange) {
+          el.uiScaleRange.value = "100";
+        }
+        if (actions.previewInterfaceSettingsUi) {
+          actions.previewInterfaceSettingsUi();
+        }
+      });
+    }
+    if (el.deleteMeBtn) {
+      el.deleteMeBtn.addEventListener("click", () => {
+        core.runAction({
+          button: el.deleteMeBtn,
+          pendingText: "Удаление...",
+          errorPrefix: "Ошибка удаления аккаунта",
+          action: () => actions.deleteMe(),
+        });
+      });
+    }
 
     el.confirmCancelBtn.addEventListener("click", core.closeConfirm);
     el.confirmDeleteBtn.addEventListener("click", () => {
