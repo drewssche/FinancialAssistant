@@ -143,6 +143,9 @@
   function renderOperations(items) {
     const sortedItems = applyOperationsSort(items);
     const query = el.filterQ.value.trim();
+    if (el.deleteAllOperationsBtn) {
+      el.deleteAllOperationsBtn.disabled = sortedItems.length === 0;
+    }
     const visibleIds = new Set(sortedItems.map((item) => item.id));
     for (const id of Array.from(state.selectedOperationIds)) {
       if (!visibleIds.has(id)) {

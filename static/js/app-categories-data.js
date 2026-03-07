@@ -311,8 +311,10 @@
 
   async function bulkDeleteCategories(ids) {
     for (const id of ids) {
-      const category = state.categories.find((item) => item.id === id);
-      if (!category || category.is_system) {
+      const category = state.categoryTableItems.find((item) => item.id === id)
+        || state.categories.find((item) => item.id === id)
+        || null;
+      if (category?.is_system) {
         continue;
       }
       await core.requestJson(`/api/v1/categories/${id}`, {

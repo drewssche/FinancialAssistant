@@ -103,19 +103,38 @@
       while (parts.length > 6 && parts[parts.length - 1] === "") {
         parts.pop();
       }
-      if (parts.length < 5 || parts.length > 6) {
+      if (parts.length < 4 || parts.length > 6) {
         row.statusText = "Неверный формат";
         row.statusClass = "bulk-import-status-error";
         rows.push(row);
         errorCount += 1;
         continue;
       }
-      const hasGroupColumn = parts.length >= 6;
-      const [dateRaw, kindRaw, groupRawOrCategoryRaw, categoryRawOrAmountRaw, amountRawOrNoteRaw, noteRaw = ""] = parts;
-      const groupRaw = hasGroupColumn ? groupRawOrCategoryRaw : "";
-      const categoryRaw = hasGroupColumn ? categoryRawOrAmountRaw : groupRawOrCategoryRaw;
-      const amountRaw = hasGroupColumn ? amountRawOrNoteRaw : categoryRawOrAmountRaw;
-      const noteValue = hasGroupColumn ? noteRaw : amountRawOrNoteRaw || "";
+      let dateRaw = "";
+      let kindRaw = "";
+      let groupRaw = "";
+      let categoryRaw = "";
+      let amountRaw = "";
+      let noteValue = "";
+
+      if (parts.length === 6) {
+        [dateRaw, kindRaw, groupRaw, categoryRaw, amountRaw, noteValue = ""] = parts;
+      } else if (parts.length === 5) {
+        const [p0, p1, p2, p3, p4] = parts;
+        const p3AsAmount = bulkUtils.normalizeAmount(p3).valid;
+        const p4AsAmount = bulkUtils.normalizeAmount(p4).valid;
+        if (!p3AsAmount && p4AsAmount) {
+          [dateRaw, kindRaw, groupRaw, categoryRaw, amountRaw] = parts;
+          noteValue = "";
+        } else {
+          [dateRaw, kindRaw, categoryRaw, amountRaw, noteValue = ""] = parts;
+          groupRaw = "";
+        }
+      } else {
+        [dateRaw, kindRaw, categoryRaw, amountRaw] = parts;
+        groupRaw = "";
+        noteValue = "";
+      }
       const parsedDate = bulkUtils.parseFlexibleDate(dateRaw);
       row.date = core.formatDateRu(parsedDate || dateRaw);
       row.kindLabel = kindRaw;
@@ -408,7 +427,13 @@
     });
 
     el.deleteAllOperationsBtn.addEventListener("click", () => {
+      if (el.deleteAllOperationsBtn.disabled) {
+        return;
+      }
       const ids = actions.getCurrentOperationItems().map((item) => item.id);
+      if (!ids.length) {
+        return;
+      }
       core.runDestructiveAction({
         confirmMessage: `Удалить все загруженные операции (${ids.length})?`,
         doDelete: async () => bulkDeleteOperations(ids),

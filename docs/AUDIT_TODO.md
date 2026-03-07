@@ -666,6 +666,10 @@
 - Follow-up pass:
   - operations bulk import now also supports empty category with preserved column order:
     `дата;тип;[группа];[категория];сумма;комментарий`
+  - 5-column operation rows without comment are now parsed correctly as
+    `дата;тип;группа;категория;сумма` instead of collapsing group into category
   - catalog item price history deduplicates unchanged prices instead of appending same-price rows
   - source groups in item catalog now support edit/delete flows and global cleanup via `Удалить все`
   - mobile categories/cards compacted so group/category action buttons stay aligned on narrow screens
+  - list-level `Удалить все` buttons are now disabled on empty sections, and category cleanup deletes
+    categories + groups in one pass instead of leaving categories in `Без группы`

@@ -77,13 +77,13 @@ def test_batch_create_modal_submits_multiple_operations(page):
                 route.fulfill(
                     status=200,
                     content_type="application/json",
-                    body='{"items":[{"id":10,"name":"Такси","icon":null,"kind":"expense","group_id":null,"group_name":null,"group_icon":null,"group_accent_color":null,"is_system":false},{"id":11,"name":"Зарплата","icon":null,"kind":"income","group_id":5,"group_name":"Работа","group_icon":null,"group_accent_color":"#49be78","is_system":false}],"total":2,"page":1,"page_size":20}',
+                    body='{"items":[{"id":10,"name":"Такси","icon":null,"kind":"expense","group_id":null,"group_name":null,"group_icon":null,"group_accent_color":null,"is_system":false},{"id":11,"name":"Зарплата","icon":null,"kind":"income","group_id":5,"group_name":"Работа","group_icon":null,"group_accent_color":"#49be78","is_system":false},{"id":12,"name":"Снеки/сладости/фастфуд","icon":null,"kind":"expense","group_id":6,"group_name":"Еда","group_icon":null,"group_accent_color":"#ff8a3d","is_system":false}],"total":3,"page":1,"page_size":20}',
                 )
                 return
             route.fulfill(
                 status=200,
                 content_type="application/json",
-                body='[{"id":10,"name":"Такси","icon":null,"kind":"expense","group_id":null,"group_name":null,"group_icon":null,"group_accent_color":null,"is_system":false},{"id":11,"name":"Зарплата","icon":null,"kind":"income","group_id":5,"group_name":"Работа","group_icon":null,"group_accent_color":"#49be78","is_system":false}]',
+                body='[{"id":10,"name":"Такси","icon":null,"kind":"expense","group_id":null,"group_name":null,"group_icon":null,"group_accent_color":null,"is_system":false},{"id":11,"name":"Зарплата","icon":null,"kind":"income","group_id":5,"group_name":"Работа","group_icon":null,"group_accent_color":"#49be78","is_system":false},{"id":12,"name":"Снеки/сладости/фастфуд","icon":null,"kind":"expense","group_id":6,"group_name":"Еда","group_icon":null,"group_accent_color":"#ff8a3d","is_system":false}]',
             )
             return
 
@@ -109,14 +109,15 @@ def test_batch_create_modal_submits_multiple_operations(page):
     page.locator("#batchCreateInput").fill(
         "04.03.2026;Расход;;Такси;150,50;Поездка\n"
         "05.03.2026;Доход;Работа;Зарплата;1000;\n"
-        "06.03.2026;Расход;;;50;Без категории"
+        "06.03.2026;Расход;;;50;Без категории\n"
+        "07.03.2026;Расход;Еда;Снеки/сладости/фастфуд;4,28"
     )
     page.get_by_role("button", name="Проверить строки").click()
-    page.get_by_role("button", name="Импортировать 3 строк").click()
+    page.get_by_role("button", name="Импортировать 4 строк").click()
 
     page.wait_for_timeout(300)
 
-    assert len(operations_created) == 3
+    assert len(operations_created) == 4
     assert operations_created[0]["kind"] == "expense"
     assert operations_created[0]["amount"] == "150.50"
     assert operations_created[0]["operation_date"] == "2026-03-04"
@@ -132,6 +133,11 @@ def test_batch_create_modal_submits_multiple_operations(page):
     assert operations_created[2]["operation_date"] == "2026-03-06"
     assert operations_created[2]["category_id"] is None
     assert operations_created[2]["note"] == "Без категории"
+    assert operations_created[3]["kind"] == "expense"
+    assert operations_created[3]["amount"] == "4.28"
+    assert operations_created[3]["operation_date"] == "2026-03-07"
+    assert operations_created[3]["category_id"] == 12
+    assert operations_created[3]["note"] == ""
 
 
 @pytest.mark.e2e

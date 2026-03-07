@@ -73,7 +73,13 @@
   }
 
   function updateCategoriesBulkUi() {
-    // Categories table no longer supports bulk selection; keep hook for callers.
+    if (!el.deleteAllCategoriesBtn) {
+      return;
+    }
+    const hasRows = Boolean(
+      el.categoriesBody?.querySelector("tr[data-item-type='group'], tr[data-item-type='category']"),
+    );
+    el.deleteAllCategoriesBtn.disabled = !hasRows;
   }
 
   function openEditGroupModal(group) {
