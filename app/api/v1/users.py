@@ -15,10 +15,16 @@ def get_me(
     current_user: User = Depends(get_current_user),
     is_admin: bool = Depends(get_current_user_is_admin),
 ):
+    telegram_identity = next(
+        (identity for identity in (current_user.identities or []) if identity.provider == "telegram"),
+        None,
+    )
     return {
         "id": current_user.id,
         "display_name": current_user.display_name,
         "avatar_url": current_user.avatar_url,
+        "username": telegram_identity.username if telegram_identity else None,
+        "telegram_id": telegram_identity.provider_user_id if telegram_identity else None,
         "status": current_user.status,
         "is_admin": is_admin,
         "created_at": current_user.created_at,

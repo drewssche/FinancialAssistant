@@ -65,6 +65,8 @@ def test_admin_telegram_id_is_auto_approved_and_marked_admin(client_and_sessionm
     me = me_response.json()
     assert me["status"] == "approved"
     assert me["is_admin"] is True
+    assert me["username"] == "owner_admin"
+    assert me["telegram_id"] == "281896361"
 
     db = testing_session()
     user = db.scalar(select(User).where(User.display_name == "Owner Admin"))

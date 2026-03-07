@@ -163,8 +163,9 @@
     state.isAdmin = me.is_admin === true;
     state.accessStatus = me.status || "pending";
     const name = me.display_name || "Пользователь";
+    const username = String(me.username || "").trim();
     el.userName.textContent = name;
-    el.userHandle.textContent = `@${name.toLowerCase().replace(/\s+/g, "_")}`;
+    el.userHandle.textContent = username ? `@${username}` : "Без username";
     el.userAvatar.textContent = name[0]?.toUpperCase() || "П";
     if (!state.isAdmin && state.accessStatus !== "approved" && state.accessStatus !== "active") {
       const reason = state.accessStatus === "rejected"

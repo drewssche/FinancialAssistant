@@ -72,6 +72,8 @@ def test_browser_telegram_auth_creates_approved_admin(monkeypatch):
     me = me_response.json()
     assert me["status"] == "approved"
     assert me["is_admin"] is True
+    assert me["username"] == "owner_admin"
+    assert me["telegram_id"] == "281896361"
 
     db = testing_session()
     user = db.scalar(select(User).where(User.display_name == "Owner Admin"))
