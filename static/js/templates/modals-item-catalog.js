@@ -7,7 +7,9 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="itemTemplateModalTitle">Новая позиция</h3>
-          <button id="closeItemTemplateModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+          <button id="closeItemTemplateModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
         </div>
         <form id="itemTemplateForm" class="category-modal-form">
           <input id="itemTemplateSource" type="hidden" />
@@ -51,7 +53,9 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="sourceGroupTitle">Новый источник</h3>
-          <button id="closeSourceGroupModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+          <button id="closeSourceGroupModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
         </div>
         <form id="sourceGroupForm" class="category-modal-form">
           <input id="sourceGroupName" type="text" placeholder="Название источника" required />
@@ -84,7 +88,9 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="itemTemplateHistoryTitle">История цен</h3>
-          <button id="closeItemTemplateHistoryModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+          <button id="closeItemTemplateHistoryModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
         </div>
         <div id="itemTemplateHistoryMeta" class="subtitle item-template-history-meta">—</div>
         <div class="table-wrap">

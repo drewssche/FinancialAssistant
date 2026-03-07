@@ -666,6 +666,24 @@ textarea {
   justify-self: center;
 }
 
+.modal-close-btn {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-3);
+}
+
+.modal-close-btn > span[aria-hidden="true"] {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.modal-close-label {
+  white-space: nowrap;
+}
+
 @keyframes ctaPulse {
   0%,
   100% {

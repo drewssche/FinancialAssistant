@@ -318,14 +318,19 @@
 
   .modal-card .panel-head {
     position: sticky;
-    top: calc(var(--space-3) * -1);
+    top: calc(var(--space-2) * -1);
     z-index: 3;
     margin-inline: calc(var(--space-3) * -1);
-    margin-top: calc(var(--space-3) * -1);
-    padding: var(--space-3);
+    margin-top: calc(var(--space-2) * -1);
+    padding: var(--space-1) var(--space-3) var(--space-2);
     background: linear-gradient(180deg, rgba(16, 24, 38, 0.98) 0%, rgba(14, 21, 34, 0.94) 100%);
     border-bottom: 1px solid rgba(39, 50, 72, 0.48);
     backdrop-filter: blur(10px);
+  }
+
+  .modal-card .panel-head h3 {
+    font-size: 1rem;
+    line-height: 1.2;
   }
 
   .modal-card .panel-head.row.between,
@@ -339,7 +344,18 @@
     width: auto;
     min-width: 0;
     align-self: flex-end;
-    padding-inline: var(--space-3);
+    padding-inline: var(--space-1);
+  }
+
+  .modal-card .panel-head .modal-close-btn {
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border-radius: 999px;
+  }
+
+  .modal-card .panel-head .modal-close-label {
+    display: none;
   }
 
   .table-wrap {
@@ -481,6 +497,32 @@
     display: none;
   }
 
+  .create-modal-grid,
+  .edit-modal-grid,
+  .category-modal-form {
+    gap: var(--space-2);
+  }
+
+  .modal-card form {
+    margin-top: var(--space-1);
+  }
+
+  .receipt-block,
+  .repayment-card,
+  .debt-history-head,
+  .settings-block {
+    padding: var(--space-2);
+  }
+
+  .receipt-summary {
+    gap: var(--space-2);
+    align-items: stretch;
+  }
+
+  .receipt-summary .btn {
+    width: 100%;
+  }
+
   .category-name-row {
     grid-template-columns: 1fr;
   }
@@ -530,6 +572,48 @@
   .create-modal-grid,
   .edit-modal-grid {
     grid-template-columns: 1fr;
+  }
+
+  .create-modal-grid,
+  .edit-modal-grid,
+  .category-modal-form,
+  #createDebtFields {
+    gap: var(--space-2);
+  }
+
+  .create-modal-grid .segmented,
+  .edit-modal-grid .segmented,
+  #createDebtFields .segmented,
+  .category-modal-form .segmented {
+    padding: 4px;
+    gap: 4px;
+  }
+
+  .create-modal-grid .segmented-btn,
+  .edit-modal-grid .segmented-btn,
+  #createDebtFields .segmented-btn,
+  .category-modal-form .segmented-btn {
+    min-height: 2.75rem;
+    padding: var(--space-2);
+  }
+
+  .create-category-field input,
+  .category-modal-form input,
+  .category-modal-form textarea,
+  .category-modal-form select,
+  .create-modal-grid input,
+  .edit-modal-grid input,
+  .edit-modal-grid select {
+    min-height: 3rem;
+  }
+
+  .category-modal-form textarea,
+  #batchCreateInput {
+    min-height: 10rem;
+  }
+
+  .modal-card .subtitle {
+    margin-bottom: var(--space-1);
   }
 
   .create-modal-grid #opDate,
@@ -595,5 +679,11 @@
 
   .debt-history-list {
     max-height: min(46dvh, 360px);
+  }
+
+  .modal-card #createDebtFields,
+  .modal-card #opReceiptFields,
+  .modal-card #editReceiptFields {
+    margin-top: var(--space-1);
   }
 }

@@ -7,7 +7,9 @@
       <div class="modal-card">
         <div class="panel-head row between">
           <h3 id="createTitle">Новая операция</h3>
-          <button id="closeCreateModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+          <button id="closeCreateModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
         </div>
 
         <form id="createOperationForm" class="form-grid modal-grid create-modal-grid">
@@ -107,7 +109,9 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="batchCreateTitle">Массовое добавление операций</h3>
-          <button id="closeBatchCreateModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+          <button id="closeBatchCreateModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
         </div>
         <form id="batchCreateForm" class="category-modal-form">
           <p class="subtitle">Одна строка: тип;сумма;дата;комментарий. Пример: <code>expense;150.50;2026-03-04;Такси</code></p>
@@ -125,7 +129,9 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="bulkEditOperationsTitle">Массовое редактирование операций</h3>
-          <button id="closeBulkEditOperationsModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+          <button id="closeBulkEditOperationsModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
         </div>
         <form id="bulkEditOperationsForm" class="category-modal-form">
           <select id="bulkOpKind">
@@ -150,7 +156,9 @@
       <div class="modal-card">
         <div class="panel-head row between">
           <h3 id="editTitle">Редактировать операцию</h3>
-          <button id="closeEditModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+          <button id="closeEditModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
         </div>
 
         <form id="editOperationForm" class="form-grid modal-grid edit-modal-grid">
@@ -220,7 +228,9 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="createCategoryTitle">Новая категория</h3>
-          <button id="closeCreateCategoryModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+          <button id="closeCreateCategoryModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
         </div>
         <form id="categoryModalForm" class="category-modal-form">
           <div class="category-name-row">
@@ -262,7 +272,9 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="createGroupTitle">Новая группа</h3>
-          <button id="closeCreateGroupModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+          <button id="closeCreateGroupModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
         </div>
         <form id="groupModalForm" class="category-modal-form">
           <input id="groupName" type="text" placeholder="Название группы" required />
@@ -288,7 +300,9 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="editGroupTitle">Редактировать группу</h3>
-          <button id="closeEditGroupModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+          <button id="closeEditGroupModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
         </div>
         <form id="editGroupForm" class="category-modal-form">
           <input id="editGroupName" type="text" placeholder="Название группы" required />
@@ -310,7 +324,9 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="editCategoryTitle">Редактировать категорию</h3>
-          <button id="closeEditCategoryModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+          <button id="closeEditCategoryModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
         </div>
         <form id="editCategoryForm" class="category-modal-form">
           <div class="category-name-row">
@@ -352,7 +368,9 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="periodCustomTitle">Настроить период</h3>
-          <button id="closePeriodCustomModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+          <button id="closePeriodCustomModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
         </div>
         <form id="periodCustomForm" class="category-modal-form">
           <input id="customDateFrom" type="date" required />
@@ -370,7 +388,9 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="debtRepaymentTitle">Внести погашение</h3>
-          <button id="closeDebtRepaymentModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+          <button id="closeDebtRepaymentModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
         </div>
         <form id="debtRepaymentForm" class="category-modal-form">
           <input id="repaymentDebtId" type="hidden" />
@@ -417,7 +437,9 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="debtHistoryTitle">История долга</h3>
-          <button id="closeDebtHistoryModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+          <button id="closeDebtHistoryModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
         </div>
         <div class="debt-history-head">
           <div class="row between">
@@ -437,7 +459,9 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="operationReceiptTitle">Позиции чека</h3>
-          <button id="closeOperationReceiptModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+          <button id="closeOperationReceiptModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
         </div>
         <div id="operationReceiptMeta" class="subtitle">—</div>
         <div id="operationReceiptItems" class="operation-receipt-items"></div>

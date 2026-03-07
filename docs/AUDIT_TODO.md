@@ -10,6 +10,7 @@
 - safe-area-aware modal and toast baseline added for Mini App-sized screens
 - Telegram WebApp runtime adapter added (`ready`, `expand`, viewport sync, `BackButton` / `MainButton` baseline)
 - admin notification bot track re-enabled for pending-access alerts with inline `Approve / Reject`
+- Telegram `MainButton` is intentionally suppressed for modal flows because sticky in-app CTA already exists and duplicate CTA hurts Mini App UX
 - Remaining:
 - verify every section against real Telegram viewport widths (`320-430px`)
 - replace remaining hover-dependent table actions with always-reachable mobile affordances
@@ -23,6 +24,8 @@
 - mobile create/edit flows now suppress desktop preview tables to keep forms and CTA visible on phone
 - sticky modal CTA now reserves extra bottom scroll space so the last content block is not hidden behind the action bar
 - modal headers, close actions, repayment/history blocks and icon pickers were tightened for Mini App sheet behavior
+- modal sheet polish added: compact header spacing, drag-handle and denser form rhythm for phone screens
+- operation, category and debt sheets now use tighter mobile spacing so long forms stay readable without oversized header chrome
 - Remaining:
 - review nested scroll areas in analytics calendar and long settings/admin blocks on real devices
 - verify keyboard-open behavior for all form-heavy modals

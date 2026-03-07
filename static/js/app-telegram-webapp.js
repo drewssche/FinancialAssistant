@@ -44,22 +44,10 @@
   }
 
   function getMainButtonTarget() {
-    const { el } = window.App;
-    const candidates = [
-      el?.submitDebtRepaymentBtn,
-      document.getElementById("submitCreateOperationBtn"),
-      document.getElementById("submitEditOperationBtn"),
-      document.getElementById("submitCreateCategoryBtn"),
-      document.getElementById("submitEditCategoryBtn"),
-      document.getElementById("submitCreateGroupBtn"),
-      document.getElementById("submitEditGroupBtn"),
-      document.getElementById("submitItemTemplateBtn"),
-      document.getElementById("submitSourceGroupBtn"),
-      document.getElementById("submitPeriodCustomBtn"),
-      document.getElementById("submitBatchCreateBtn"),
-      document.getElementById("submitBulkEditOperationsBtn"),
-    ];
-    return candidates.find((button) => button && !button.disabled && button.offsetParent !== null) || null;
+    if (getVisibleModalAction()) {
+      return null;
+    }
+    return null;
   }
 
   function syncBackButton() {
