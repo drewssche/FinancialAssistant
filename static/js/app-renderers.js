@@ -179,15 +179,15 @@
 
     if (compact) {
       const selectCell = selectable
-        ? `<td class="select-col"><input class="table-checkbox" type="checkbox" data-select-operation-id="${item.id}" ${selected ? "checked" : ""} /></td>`
+        ? `<td class="select-col" data-label="Выбор"><input class="table-checkbox" type="checkbox" data-select-operation-id="${item.id}" ${selected ? "checked" : ""} /></td>`
         : "";
       row.innerHTML = `
         ${selectCell}
-        <td>${core.formatDateRu(item.operation_date)}</td>
-        <td><span class="kind-pill kind-pill-${kindClass}">${highlightText(kindText, searchQuery)}</span></td>
-        <td>${renderCategoryChip(category, searchQuery)}</td>
-        <td><span class="amount-${kindClass}">${core.formatMoney(item.amount)}</span></td>
-        <td>${highlightText(noteText, searchQuery)}</td>
+        <td data-label="Дата">${core.formatDateRu(item.operation_date)}</td>
+        <td data-label="Тип"><span class="kind-pill kind-pill-${kindClass}">${highlightText(kindText, searchQuery)}</span></td>
+        <td data-label="Категория">${renderCategoryChip(category, searchQuery)}</td>
+        <td data-label="Сумма"><span class="amount-${kindClass}">${core.formatMoney(item.amount)}</span></td>
+        <td class="mobile-note-cell" data-label="Комментарий">${highlightText(noteText, searchQuery)}</td>
       `;
       return row;
     }
@@ -211,17 +211,17 @@
     }
 
     const selectCell = selectable
-      ? `<td class="select-col"><input class="table-checkbox" type="checkbox" data-select-operation-id="${item.id}" ${selected ? "checked" : ""} /></td>`
+      ? `<td class="select-col" data-label="Выбор"><input class="table-checkbox" type="checkbox" data-select-operation-id="${item.id}" ${selected ? "checked" : ""} /></td>`
       : "";
 
     row.innerHTML = `
       ${selectCell}
-      <td>${core.formatDateRu(item.operation_date)}</td>
-      <td><span class="kind-pill kind-pill-${kindClass}">${highlightText(kindText, searchQuery)}</span></td>
-      <td>${renderCategoryChip(category, searchQuery)}</td>
-      <td><span class="amount-${kindClass}">${core.formatMoney(item.amount)}</span></td>
-      <td>${highlightText(noteText, searchQuery)}</td>
-      <td>
+      <td data-label="Дата">${core.formatDateRu(item.operation_date)}</td>
+      <td data-label="Тип"><span class="kind-pill kind-pill-${kindClass}">${highlightText(kindText, searchQuery)}</span></td>
+      <td data-label="Категория">${renderCategoryChip(category, searchQuery)}</td>
+      <td data-label="Сумма"><span class="amount-${kindClass}">${core.formatMoney(item.amount)}</span></td>
+      <td class="mobile-note-cell" data-label="Комментарий">${highlightText(noteText, searchQuery)}</td>
+      <td class="mobile-actions-cell" data-label="Действия">
         <div class="actions row-actions">
           ${hasReceiptItems ? `<button class="btn btn-secondary" data-receipt-view-id="${item.id}">Позиции</button>` : ""}
           <button class="btn btn-secondary" data-edit-id="${item.id}">Редактировать</button>

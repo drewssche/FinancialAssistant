@@ -66,6 +66,10 @@
 }
 
 @media (max-width: 900px) {
+  body {
+    background-attachment: scroll;
+  }
+
   .app-shell {
     grid-template-columns: 1fr;
   }
@@ -81,7 +85,7 @@
     top: 0;
     left: 0;
     width: min(86vw, 340px);
-    height: 100vh;
+    height: 100dvh;
     max-width: 100%;
     overflow-y: auto;
     z-index: 80;
@@ -133,8 +137,27 @@
   }
 
   .cta-row .btn,
-  .toolbar .btn {
+  .toolbar .btn,
+  .actions .btn,
+  .settings-actions .btn,
+  .confirm-actions .btn {
     width: 100%;
+  }
+
+  .actions,
+  .settings-actions,
+  .confirm-actions {
+    justify-content: stretch;
+  }
+
+  .row-actions {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  .row-actions .btn {
+    min-height: 2.5rem;
   }
 
   .table-wrap {
@@ -160,6 +183,14 @@
   .table-search-input {
     min-width: 0;
     width: 100%;
+  }
+
+  .operation-category-picker-row,
+  .debt-due-head,
+  .operation-receipt-head,
+  .item-template-history-meta {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .sticky-bar,
@@ -211,6 +242,36 @@
     display: grid;
     grid-template-columns: 1fr;
   }
+
+  .analytics-switch-group,
+  .analytics-switch-group .segmented,
+  .analytics-switch-group .toolbar,
+  #adminUserStatusTabs {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .analytics-insight-head,
+  .settings-switch-row {
+    align-items: flex-start;
+  }
+
+  .dashboard-analytics-grid,
+  .dashboard-debt-row {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-debt-due-cell {
+    min-width: 0;
+  }
+
+  .table td .actions.row-actions {
+    justify-content: flex-start;
+  }
+
+  .debt-history-list {
+    max-height: min(50dvh, 420px);
+  }
 }
 
 @media (max-width: 640px) {
@@ -230,6 +291,167 @@
   .modal-card,
   .kpi-card {
     padding: var(--space-3);
+  }
+
+  .main {
+    padding: var(--space-3);
+  }
+
+  .topbar-title-block #sectionTitle {
+    font-size: 22px;
+  }
+
+  .btn-cta,
+  .btn-cta-secondary,
+  .modal-main-cta {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .table-wrap {
+    margin-inline: calc(var(--space-3) * -0.5);
+    padding-inline: calc(var(--space-3) * 0.5);
+  }
+
+  .table-search-row,
+  .topbar,
+  .panel-head,
+  .panel-controls,
+  .top-actions,
+  .cta-row,
+  .toolbar,
+  .bulk-bar,
+  #categoriesBulkBar {
+    gap: var(--space-2);
+  }
+
+  .mobile-card-table thead {
+    display: none;
+  }
+
+  .mobile-card-table,
+  .mobile-card-table tbody,
+  .mobile-card-table tr,
+  .mobile-card-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .mobile-card-table tbody {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .mobile-card-table tr {
+    border: 1px solid rgba(39, 50, 72, 0.75);
+    border-radius: var(--radius-md);
+    background: rgba(14, 22, 36, 0.52);
+    padding: var(--space-3);
+  }
+
+  .mobile-card-table tr.hidden {
+    display: none !important;
+  }
+
+  .mobile-card-table td {
+    border-bottom: none;
+    padding: 0;
+  }
+
+  .mobile-card-table td + td {
+    margin-top: var(--space-2);
+  }
+
+  .mobile-card-table td[data-label] {
+    display: grid;
+    grid-template-columns: minmax(92px, 0.8fr) minmax(0, 1fr);
+    gap: var(--space-2);
+    align-items: start;
+    min-width: 0;
+  }
+
+  .mobile-card-table td[data-label]::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .mobile-card-table td.select-col,
+  .mobile-card-table td.mobile-actions-cell,
+  .mobile-card-table td.mobile-note-cell,
+  .mobile-card-table .category-table-group-row td {
+    grid-template-columns: 1fr;
+  }
+
+  .mobile-card-table td.select-col::before,
+  .mobile-card-table td.mobile-actions-cell::before,
+  .mobile-card-table td.mobile-note-cell::before,
+  .mobile-card-table .category-table-group-row td::before {
+    display: none;
+  }
+
+  .mobile-card-table td.select-col {
+    margin-bottom: var(--space-1);
+  }
+
+  .mobile-card-table td.select-col .table-checkbox {
+    width: 20px;
+    height: 20px;
+  }
+
+  .mobile-card-table .category-table-group-row {
+    padding: var(--space-2);
+  }
+
+  .mobile-card-table .category-table-group-row td {
+    margin-top: 0;
+  }
+
+  .mobile-card-table .category-table-group-wrap {
+    gap: var(--space-2);
+  }
+
+  .mobile-card-table .category-table-group-btn {
+    width: 100%;
+  }
+
+  .mobile-card-table .admin-row-actions,
+  .mobile-card-table td .actions.row-actions {
+    justify-content: stretch;
+  }
+
+  .analytics-switch-group {
+    padding: var(--space-2);
+  }
+
+  .analytics-insight-head {
+    flex-direction: column;
+  }
+
+  .analytics-kpi-card strong,
+  .dashboard-analytics-kpi strong {
+    font-size: 16px;
+  }
+
+  .analytics-trend-chart-wrap,
+  .dashboard-analytics-chart-wrap {
+    padding: var(--space-2);
+  }
+
+  .analytics-trend-chart {
+    min-height: 13rem;
+  }
+
+  .preview-panel {
+    display: none;
+  }
+
+  .settings-form,
+  .settings-block,
+  .danger-zone,
+  .status-box {
+    min-width: 0;
   }
 
   .create-modal-grid,
@@ -255,5 +477,46 @@
 
   .analytics-day-btn {
     padding: var(--space-1);
+  }
+
+  .analytics-day-date,
+  .analytics-day-money,
+  .analytics-kpi-chip,
+  .preview-title {
+    font-size: 11px;
+  }
+
+  .receipt-item-row {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+    padding: var(--space-2);
+    border: 1px solid rgba(39, 50, 72, 0.75);
+    border-radius: var(--radius-md);
+    background: rgba(14, 22, 36, 0.46);
+  }
+
+  .receipt-item-row .receipt-shop-cell,
+  .receipt-item-row .receipt-name-cell,
+  .receipt-item-row .receipt-line-total {
+    grid-column: 1 / -1;
+  }
+
+  .receipt-item-row .receipt-line-total {
+    justify-items: start;
+  }
+
+  .receipt-item-row .btn.receipt-remove-btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .operation-category-picker,
+  .receipt-shop-picker,
+  .receipt-name-picker {
+    max-height: min(38dvh, 320px);
+  }
+
+  .debt-history-list {
+    max-height: min(46dvh, 360px);
   }
 }

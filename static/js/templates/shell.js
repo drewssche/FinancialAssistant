@@ -157,7 +157,7 @@
               </div>
             </div>
             <div class="table-wrap">
-              <table class="table table-hover">
+              <table class="table table-hover mobile-card-table dashboard-operations-table">
                 <thead>
                   <tr>
                     <th>Дата</th>
@@ -397,7 +397,7 @@
             </div>
 
             <div class="table-wrap">
-              <table class="table table-hover">
+              <table class="table table-hover mobile-card-table operations-table">
                 <thead>
                   <tr>
                     <th class="select-col"><input id="operationsSelectAll" class="table-checkbox" type="checkbox" /></th>
@@ -446,7 +446,7 @@
             </div>
 
             <div class="table-wrap">
-              <table class="table table-hover">
+              <table class="table table-hover mobile-card-table categories-table">
                 <thead>
                   <tr>
                     <th>Группа</th>
@@ -646,7 +646,7 @@
               <button class="segmented-btn" data-admin-user-status="all" type="button">Все</button>
             </div>
             <div class="table-wrap">
-              <table class="table table-hover">
+              <table class="table table-hover mobile-card-table admin-users-table">
                 <thead>
                   <tr>
                     <th>ID</th>

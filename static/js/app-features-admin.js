@@ -58,14 +58,14 @@
         const canReject = status !== "rejected";
         return `
           <tr>
-            <td>${user.id}</td>
-            <td>${escapeHtml(user.display_name || "Без имени")}<div class="muted-small">@${escapeHtml(user.username || "—")}</div></td>
-            <td>${escapeHtml(user.telegram_id || "—")}</td>
-            <td><span class="debt-status ${statusBadgeClass(status)}">${statusLabel(status)}</span></td>
-            <td>${formatDateTimeRu(user.created_at)}</td>
-            <td>${formatDateTimeRu(user.last_login_at)}</td>
-            <td>
-              <div class="row">
+            <td data-label="ID">${user.id}</td>
+            <td data-label="Пользователь">${escapeHtml(user.display_name || "Без имени")}<div class="muted-small">@${escapeHtml(user.username || "—")}</div></td>
+            <td data-label="Telegram">${escapeHtml(user.telegram_id || "—")}</td>
+            <td data-label="Статус"><span class="debt-status ${statusBadgeClass(status)}">${statusLabel(status)}</span></td>
+            <td data-label="Создан">${formatDateTimeRu(user.created_at)}</td>
+            <td data-label="Последний вход">${formatDateTimeRu(user.last_login_at)}</td>
+            <td class="mobile-actions-cell" data-label="Действия">
+              <div class="actions row-actions admin-row-actions">
                 ${canApprove ? `<button class="btn btn-secondary btn-xs" data-admin-approve-id="${user.id}" type="button">Approve</button>` : ""}
                 ${canReject ? `<button class="btn btn-secondary btn-xs" data-admin-reject-id="${user.id}" type="button">Reject</button>` : ""}
                 <button class="btn btn-danger btn-xs" data-admin-delete-id="${user.id}" type="button">Удалить</button>

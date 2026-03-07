@@ -172,6 +172,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: var(--space-4);
+  min-width: 0;
 }
 
 .kpi-card h3 {
@@ -230,6 +231,7 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--space-3);
+  min-width: 0;
 }
 
 .dashboard-analytics-kpi {

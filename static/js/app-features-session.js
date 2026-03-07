@@ -77,7 +77,7 @@
       el.loginTelegramHint.textContent = hasInitData
         ? "Обнаружен Telegram WebApp. Нажмите «Войти через Telegram» или дождитесь авто-входа."
         : state.telegramBotUsername
-          ? "В браузере доступен вход через Telegram. Используйте виджет ниже."
+          ? "В браузере доступен вход через Telegram. Используйте виджет выше."
           : "Для входа в браузере настройте TELEGRAM_BOT_USERNAME или откройте приложение внутри Telegram Mini App.";
     }
   }

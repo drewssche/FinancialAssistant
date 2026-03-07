@@ -212,10 +212,10 @@
       queryRaw,
     );
     tr.innerHTML = `
-      <td class="category-group-accent-cell">${groupCell}</td>
-      <td>${nameCell}</td>
-      <td><span class="kind-pill kind-pill-${kindClass}">${core.highlightText(core.kindLabel(item.kind), queryRaw)}</span></td>
-      <td>${actionCell}</td>
+      <td class="category-group-accent-cell" data-label="Группа">${groupCell}</td>
+      <td data-label="Название">${nameCell}</td>
+      <td data-label="Тип"><span class="kind-pill kind-pill-${kindClass}">${core.highlightText(core.kindLabel(item.kind), queryRaw)}</span></td>
+      <td class="mobile-actions-cell" data-label="Действия">${actionCell}</td>
     `;
     return tr;
   }

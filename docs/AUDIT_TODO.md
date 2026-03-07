@@ -1,5 +1,41 @@
 # Audit TODO
 
+## Mobile Adaptation Progress
+
+1. Shell and navigation adaptation
+- Status: in progress (updated 2026-03-07)
+- Done:
+- mobile drawer sidebar with overlay/close interactions is in place
+- topbar and CTA rows stack on tablet/mobile widths
+- safe-area-aware modal and toast baseline added for Mini App-sized screens
+- Remaining:
+- verify every section against real Telegram viewport widths (`320-430px`)
+- replace remaining hover-dependent table actions with always-reachable mobile affordances
+
+2. Scroll and overflow hardening
+- Status: in progress (updated 2026-03-07)
+- Done:
+- disabled fixed background behavior on mobile widths to avoid scroll jank
+- strengthened `min-width: 0` / overflow guards on shell panels, sticky bars, toolbars, actions and table wrappers
+- mobile modal cards now open as bottom-sheet/fullscreen variants with internal scrolling
+- mobile create/edit flows now suppress desktop preview tables to keep forms and CTA visible on phone
+- Remaining:
+- review nested scroll areas in analytics calendar and long settings/admin blocks on real devices
+- verify keyboard-open behavior for all form-heavy modals
+
+3. Wide content reduction
+- Status: in progress (updated 2026-03-07)
+- Done:
+- receipt item rows now collapse into stacked mobile cards instead of six-column rows
+- debt headers, receipt headers, picker rows and dashboard debt rows now stack on narrow screens
+- table action groups and confirmation actions wrap and stretch to full width on phones
+- hover-only row actions are force-exposed on tablet/mobile widths so edit/delete remains reachable without hover
+- `operations`, `dashboard operations`, `categories` and `admin users` tables now have card-style mobile rows with field labels
+- analytics switch groups, trend/chart blocks and settings sections were tightened for narrow screens
+- Remaining:
+- audit operations/categories/admin tables for mobile-specific action entry points
+- decide where table-to-card conversion is needed instead of horizontal scroll
+
 ## Post-Audit Priority Queue
 
 1. Fix stale category chip in Dashboard operations table
