@@ -44,7 +44,6 @@
       }
     }
     categoryUi.fillGroupSelect(el.categoryGroup, el.categoryKind.value, "Без группы");
-    categoryUi.fillGroupSelect(el.bulkCategoryGroup, "", "Группа (не менять)");
   }
 
   async function loadCategoryCatalog() {
@@ -76,8 +75,6 @@
       state.categoryTotal = 0;
       state.categoriesHasMore = true;
       state.categoryTableItems = [];
-      state.selectedCategoryIds.clear();
-      state.selectedGroupIds.clear();
     }
 
     const params = new URLSearchParams({
@@ -140,28 +137,14 @@
     await loadCategoryCatalog();
     await loadCategoriesTable({ reset: true });
 
-    const liveCategoryIds = new Set(state.categories.map((item) => item.id));
-    for (const id of Array.from(state.selectedCategoryIds)) {
-      if (!liveCategoryIds.has(id)) {
-        state.selectedCategoryIds.delete(id);
-      }
-    }
-    const liveGroupIds = new Set(state.categoryGroups.map((item) => item.id));
-    for (const id of Array.from(state.selectedGroupIds)) {
-      if (!liveGroupIds.has(id)) {
-        state.selectedGroupIds.delete(id);
-      }
-    }
-
     categoryUi.fillGroupSelect(el.categoryGroup, el.categoryKind.value, "Без группы");
-    categoryUi.fillGroupSelect(el.bulkCategoryGroup, "", "Группа (не менять)");
     categoryUi.populateCategorySelect(el.opCategory, el.opCategory.value, el.opKind.value);
     categoryUi.populateCategorySelect(el.editCategory, el.editCategory.value, el.editKind.value || "expense");
 
     if (window.App.actions.renderCreateCategoryPicker) {
       window.App.actions.renderCreateCategoryPicker();
     }
-    if (window.App.actions.loadDashboardOperations) {
+    if (state.activeSection === "dashboard" && window.App.actions.loadDashboardOperations) {
       window.App.actions.loadDashboardOperations().catch(() => {});
     }
     if (window.App.actions.refreshOperationsView) {
@@ -339,7 +322,6 @@
     }
     core.invalidateUiRequestCache("categories");
     core.invalidateUiRequestCache("operations");
-    state.selectedCategoryIds.clear();
     await loadCategories();
   }
 
@@ -352,26 +334,6 @@
     }
     core.invalidateUiRequestCache("categories");
     core.invalidateUiRequestCache("operations");
-    state.selectedGroupIds.clear();
-    await loadCategories();
-  }
-
-  async function bulkUpdateCategories(ids, groupIdValue) {
-    const groupId = groupIdValue ? Number(groupIdValue) : null;
-    for (const categoryId of ids) {
-      const category = state.categories.find((item) => item.id === categoryId);
-      if (!category || category.is_system) {
-        continue;
-      }
-      await core.requestJson(`/api/v1/categories/${category.id}`, {
-        method: "PATCH",
-        headers: core.authHeaders(),
-        body: JSON.stringify({ group_id: groupId }),
-      });
-    }
-    core.invalidateUiRequestCache("categories");
-    core.invalidateUiRequestCache("operations");
-    state.selectedCategoryIds.clear();
     await loadCategories();
   }
 
@@ -389,6 +351,5 @@
     deleteCategoryFlow,
     bulkDeleteCategories,
     bulkDeleteGroups,
-    bulkUpdateCategories,
   };
 })();

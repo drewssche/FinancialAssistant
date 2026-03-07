@@ -36,6 +36,21 @@
           </div>
           <input id="opNote" class="create-note-field" type="text" placeholder="Комментарий" />
 
+          <div id="opReceiptBlock" class="receipt-block">
+            <label class="receipt-toggle-row">
+              <input id="opReceiptEnabled" type="checkbox" />
+              <span>Добавить чек (позиции)</span>
+            </label>
+            <div id="opReceiptFields" class="hidden">
+              <div id="receiptItemsList" class="receipt-items-list"></div>
+              <div class="receipt-summary">
+                <div class="muted-small">Сумма чека: <strong id="receiptTotalValue">0.00</strong></div>
+                <div class="muted-small">Расхождение: <strong id="receiptDiffValue">0.00</strong></div>
+                <button id="pullReceiptTotalBtn" class="btn btn-secondary" type="button">Подтянуть сумму из чека</button>
+              </div>
+            </div>
+          </div>
+
           <div id="createDebtFields" class="category-modal-form hidden">
             <input id="debtStartDate" type="date" />
             <div class="segmented" id="createDebtDirectionSwitch" aria-label="Направление долга">
@@ -131,25 +146,6 @@
       </div>
     </div>
 
-    <div id="bulkEditCategoriesModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="bulkEditCategoriesTitle">
-      <div class="modal-card modal-small">
-        <div class="panel-head row between">
-          <h3 id="bulkEditCategoriesTitle">Массовое редактирование категорий</h3>
-          <button id="closeBulkEditCategoriesModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
-        </div>
-        <form id="bulkEditCategoriesForm" class="category-modal-form">
-          <select id="bulkCategoryGroup">
-            <option value="">Группа (не менять)</option>
-          </select>
-        </form>
-        <div class="modal-footer">
-          <button id="submitBulkEditCategoriesBtn" class="btn btn-cta modal-main-cta" type="submit" form="bulkEditCategoriesForm">
-            Применить изменения
-          </button>
-        </div>
-      </div>
-    </div>
-
     <div id="editModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="editTitle">
       <div class="modal-card">
         <div class="panel-head row between">
@@ -157,7 +153,8 @@
           <button id="closeEditModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
         </div>
 
-        <form id="editOperationForm" class="form-grid modal-grid">
+        <form id="editOperationForm" class="form-grid modal-grid edit-modal-grid">
+          <input id="editDate" type="date" required />
           <div class="segmented" id="editKindSwitch" aria-label="Тип операции">
             <button class="segmented-btn active" data-kind="expense" type="button">Расход</button>
             <button class="segmented-btn" data-kind="income" type="button">Доход</button>
@@ -167,8 +164,22 @@
           <div id="editAmountField" class="money-input-wrap" data-money-input-wrap>
             <input id="editAmount" data-money-input type="number" step="0.01" required />
           </div>
-          <input id="editDate" type="date" required />
-          <input id="editNote" type="text" placeholder="Комментарий" />
+          <input id="editNote" class="create-note-field" type="text" placeholder="Комментарий" />
+
+          <div id="editReceiptBlock" class="receipt-block">
+            <label class="receipt-toggle-row">
+              <input id="editReceiptEnabled" type="checkbox" />
+              <span>Добавить чек (позиции)</span>
+            </label>
+            <div id="editReceiptFields" class="hidden">
+              <div id="editReceiptItemsList" class="receipt-items-list"></div>
+              <div class="receipt-summary">
+                <div class="muted-small">Сумма чека: <strong id="editReceiptTotalValue">0.00</strong></div>
+                <div class="muted-small">Расхождение: <strong id="editReceiptDiffValue">0.00</strong></div>
+                <button id="editPullReceiptTotalBtn" class="btn btn-secondary" type="button" data-receipt-mode="edit">Подтянуть сумму из чека</button>
+              </div>
+            </div>
+          </div>
         </form>
         <div class="modal-footer">
           <button id="submitEditOperationBtn" class="btn btn-cta modal-main-cta" type="submit" form="editOperationForm">
@@ -410,6 +421,115 @@
         <div id="debtHistoryList" class="debt-history-list">
           <div id="debtHistoryItems" class="debt-history-items"></div>
           <div id="debtHistoryInfiniteSentinel" class="infinite-sentinel" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="operationReceiptModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="operationReceiptTitle">
+      <div class="modal-card modal-small">
+        <div class="panel-head row between">
+          <h3 id="operationReceiptTitle">Позиции чека</h3>
+          <button id="closeOperationReceiptModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+        </div>
+        <div id="operationReceiptMeta" class="subtitle">—</div>
+        <div id="operationReceiptItems" class="operation-receipt-items"></div>
+      </div>
+    </div>
+
+    <div id="itemTemplateModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="itemTemplateModalTitle">
+      <div class="modal-card modal-small">
+        <div class="panel-head row between">
+          <h3 id="itemTemplateModalTitle">Новая позиция</h3>
+          <button id="closeItemTemplateModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+        </div>
+        <form id="itemTemplateForm" class="category-modal-form">
+          <input id="itemTemplateSource" type="hidden" />
+          <div id="itemTemplateSourceField" class="create-category-field">
+            <input id="itemTemplateSourceSearch" type="text" placeholder="Источник" autocomplete="off" />
+            <div id="itemTemplateSourcePickerBlock" class="operation-category-picker hidden">
+              <div class="category-picker-block">
+                <div id="itemTemplateSourceAll" class="category-chip-list"></div>
+              </div>
+            </div>
+          </div>
+          <input id="itemTemplateName" type="text" placeholder="Позиция" required />
+          <div class="money-input-wrap" data-money-input-wrap>
+            <input id="itemTemplatePrice" data-money-input type="number" step="0.01" placeholder="Последняя цена (опционально)" />
+          </div>
+        </form>
+        <div class="modal-footer">
+          <button id="submitItemTemplateBtn" class="btn btn-cta modal-main-cta" type="submit" form="itemTemplateForm">
+            Сохранить
+          </button>
+        </div>
+        <div class="preview-panel">
+          <div class="preview-title">Превью строки в каталоге</div>
+          <div class="table-wrap">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Источник</th>
+                  <th>Позиция</th>
+                  <th>Последняя цена</th>
+                </tr>
+              </thead>
+              <tbody id="itemTemplatePreviewBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="sourceGroupModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="sourceGroupTitle">
+      <div class="modal-card modal-small">
+        <div class="panel-head row between">
+          <h3 id="sourceGroupTitle">Новый источник</h3>
+          <button id="closeSourceGroupModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+        </div>
+        <form id="sourceGroupForm" class="category-modal-form">
+          <input id="sourceGroupName" type="text" placeholder="Название источника" required />
+        </form>
+        <div class="modal-footer">
+          <button id="submitSourceGroupBtn" class="btn btn-cta modal-main-cta" type="submit" form="sourceGroupForm">
+            Создать источник
+          </button>
+        </div>
+        <div class="preview-panel">
+          <div class="preview-title">Превью группы в каталоге</div>
+          <div class="table-wrap">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Источник</th>
+                  <th>Позиции</th>
+                  <th>Использования</th>
+                  <th>Ср. цена</th>
+                </tr>
+              </thead>
+              <tbody id="sourceGroupPreviewBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="itemTemplateHistoryModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="itemTemplateHistoryTitle">
+      <div class="modal-card modal-small">
+        <div class="panel-head row between">
+          <h3 id="itemTemplateHistoryTitle">История цен</h3>
+          <button id="closeItemTemplateHistoryModalBtn" class="btn btn-secondary" type="button">Закрыть</button>
+        </div>
+        <div id="itemTemplateHistoryMeta" class="subtitle item-template-history-meta">—</div>
+        <div class="table-wrap">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Дата</th>
+                <th>Цена</th>
+              </tr>
+            </thead>
+            <tbody id="itemTemplateHistoryBody"></tbody>
+          </table>
         </div>
       </div>
     </div>

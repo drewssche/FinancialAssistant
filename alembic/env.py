@@ -14,6 +14,9 @@ from app.db.models import (
     debt_issuance,
     debt_repayment,
     operation,
+    operation_item_price,
+    operation_item_template,
+    operation_receipt_item,
     user,
     user_preference,
 )

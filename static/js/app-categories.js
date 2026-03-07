@@ -28,6 +28,9 @@
     groupCategoryIds: categoryUi.groupCategoryIds,
     updateCategoriesBulkUi: categoryUi.updateCategoriesBulkUi,
     renderCategories: categoryUi.renderCategories,
+    handleCategoriesGroupToggleClick: categoryUi.handleCategoriesGroupToggleClick,
+    collapseAllCategoryGroups: categoryUi.collapseAllCategoryGroups,
+    expandAllCategoryGroups: categoryUi.expandAllCategoryGroups,
 
     loadCategoryGroups: categoryData.loadCategoryGroups,
     loadCategoryCatalog: categoryData.loadCategoryCatalog,
@@ -42,7 +45,6 @@
     deleteCategoryFlow: categoryData.deleteCategoryFlow,
     bulkDeleteCategories: categoryData.bulkDeleteCategories,
     bulkDeleteGroups: categoryData.bulkDeleteGroups,
-    bulkUpdateCategories: categoryData.bulkUpdateCategories,
 
     openEditCategoryModal: categoryUi.openEditCategoryModal,
     closeEditCategoryModal: categoryUi.closeEditCategoryModal,

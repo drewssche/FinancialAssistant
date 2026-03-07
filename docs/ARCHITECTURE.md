@@ -24,6 +24,18 @@
 One API serves both Web and Telegram Mini App clients.
 Client-specific logic stays at UI layer; domain logic stays in backend services.
 
+## Operations Receipt Extension (MVP)
+- Add receipt-detail entities linked to operation:
+- `operation_receipt_items` (snapshot line items inside operation)
+- `operation_item_templates` (reusable chip catalog per user)
+- `operation_item_prices` (immutable price history per template)
+- Service-level rules:
+- operation amount is source-of-truth for totals, but receipt total/discrepancy are computed and exposed
+- save is allowed with discrepancy (warning use-case)
+- template price history appends on each use; old prices are preserved
+- template resolution for receipt items is batch-oriented (prefetch by `(name_ci, source_ci)` + bulk price inserts) to avoid N+1 query growth on long receipts
+- category-at-line-item is out of current MVP scope
+
 ## Debt Module (Planned Architecture)
 - Add dedicated domain objects (separate from category semantics):
 - debt counterparty card (`debt_counterparties`)

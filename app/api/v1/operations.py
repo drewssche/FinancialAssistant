@@ -5,7 +5,18 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user_id
 from app.db.session import get_db
-from app.schemas.operation import OperationCreate, OperationListOut, OperationOut, OperationUpdate
+from app.schemas.operation import (
+    OperationCreate,
+    OperationItemTemplateCreate,
+    OperationItemTemplateDeleteAllOut,
+    OperationItemPriceOut,
+    OperationItemTemplateListOut,
+    OperationItemTemplateOut,
+    OperationItemTemplateUpdate,
+    OperationListOut,
+    OperationOut,
+    OperationUpdate,
+)
 from app.services.operation_service import OperationService
 
 router = APIRouter(prefix="/operations", tags=["operations"])
@@ -60,9 +71,116 @@ def create_operation(
             operation_date=payload.operation_date,
             category_id=payload.category_id,
             note=payload.note,
+            receipt_items=[item.model_dump() for item in payload.receipt_items],
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/item-templates", response_model=OperationItemTemplateListOut)
+def list_operation_item_templates(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    q: str | None = Query(default=None, max_length=120),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = OperationService(db)
+    items, total = service.list_item_templates(
+        user_id=user_id,
+        page=page,
+        page_size=page_size,
+        q=q,
+    )
+    return OperationItemTemplateListOut(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/item-templates/{template_id}/prices", response_model=list[OperationItemPriceOut])
+def list_operation_item_template_prices(
+    template_id: int,
+    limit: int = Query(default=200, ge=1, le=1000),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = OperationService(db)
+    try:
+        return service.list_item_template_prices(
+            user_id=user_id,
+            template_id=template_id,
+            limit=limit,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.post("/item-templates", response_model=OperationItemTemplateOut, status_code=status.HTTP_201_CREATED)
+def create_operation_item_template(
+    payload: OperationItemTemplateCreate,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = OperationService(db)
+    try:
+        return service.create_item_template(
+            user_id=user_id,
+            shop_name=payload.shop_name,
+            name=payload.name,
+            latest_unit_price=payload.latest_unit_price,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.patch("/item-templates/{template_id}", response_model=OperationItemTemplateOut)
+def update_operation_item_template(
+    template_id: int,
+    payload: OperationItemTemplateUpdate,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    updates = payload.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields provided for update")
+    service = OperationService(db)
+    try:
+        return service.update_item_template(
+            user_id=user_id,
+            template_id=template_id,
+            updates=updates,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.delete("/item-templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+def delete_operation_item_template(
+    template_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = OperationService(db)
+    try:
+        service.delete_item_template(user_id=user_id, template_id=template_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.delete("/item-templates", response_model=OperationItemTemplateDeleteAllOut)
+def delete_all_operation_item_templates(
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = OperationService(db)
+    deleted = service.delete_all_item_templates(user_id=user_id)
+    return OperationItemTemplateDeleteAllOut(deleted=deleted)
 
 
 @router.get("/{operation_id}", response_model=OperationOut)
@@ -88,6 +206,8 @@ def update_operation(
     updates = payload.model_dump(exclude_unset=True)
     if not updates:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields provided for update")
+    if "receipt_items" in updates and updates["receipt_items"] is not None:
+        updates["receipt_items"] = [item.model_dump() if hasattr(item, "model_dump") else item for item in updates["receipt_items"]]
 
     service = OperationService(db)
     try:

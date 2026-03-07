@@ -27,29 +27,9 @@
     el.bulkEditOperationsModal.classList.add("hidden");
   }
 
-  function openBulkEditCategoriesModal() {
-    el.bulkEditCategoriesModal.classList.remove("hidden");
-  }
-
-  function closeBulkEditCategoriesModal() {
-    el.bulkEditCategoriesModal.classList.add("hidden");
-  }
-
   function visibleOperationIds() {
     return Array.from(el.operationsBody.querySelectorAll("input[data-select-operation-id]"))
       .map((node) => Number(node.dataset.selectOperationId));
-  }
-
-  function visibleCategoryIds() {
-    return Array.from(el.categoriesBody.querySelectorAll("input[data-select-category-id]"))
-      .filter((node) => !node.disabled)
-      .map((node) => Number(node.dataset.selectCategoryId));
-  }
-
-  function visibleGroupIds() {
-    return Array.from(el.categoriesBody.querySelectorAll("input[data-select-group-id]"))
-      .filter((node) => !node.disabled)
-      .map((node) => Number(node.dataset.selectGroupId));
   }
 
   function syncOperationSelectAll() {
@@ -57,29 +37,6 @@
     const selectedCount = operationIds.filter((id) => state.selectedOperationIds.has(id)).length;
     el.operationsSelectAll.checked = operationIds.length > 0 && selectedCount === operationIds.length;
     el.operationsSelectAll.indeterminate = selectedCount > 0 && selectedCount < operationIds.length;
-  }
-
-  function syncCategorySelectAll() {
-    const categoryIds = visibleCategoryIds();
-    const groupIds = visibleGroupIds();
-    const selectedCategoryCount = categoryIds.filter((id) => state.selectedCategoryIds.has(id)).length;
-    const selectedGroupCount = groupIds.filter((id) => state.selectedGroupIds.has(id)).length;
-    const total = categoryIds.length + groupIds.length;
-    const selected = selectedCategoryCount + selectedGroupCount;
-    el.categoriesSelectAll.checked = total > 0 && selected === total;
-    el.categoriesSelectAll.indeterminate = selected > 0 && selected < total;
-  }
-
-  function syncGroupCheckboxState(groupId) {
-    const actions = window.App.actions;
-    const groupCheckbox = el.categoriesBody.querySelector(`input[data-select-group-id="${groupId}"]`);
-    if (!groupCheckbox) {
-      return;
-    }
-    const categoryIds = actions.groupCategoryIds ? actions.groupCategoryIds(groupId) : [];
-    const selectedCount = categoryIds.filter((id) => state.selectedCategoryIds.has(id)).length;
-    groupCheckbox.checked = false;
-    groupCheckbox.indeterminate = selectedCount > 0;
   }
 
   function updateOperationsBulkUi() {
@@ -111,14 +68,8 @@
     closeCreateGroupModal,
     openBulkEditOperationsModal,
     closeBulkEditOperationsModal,
-    openBulkEditCategoriesModal,
-    closeBulkEditCategoriesModal,
     visibleOperationIds,
-    visibleCategoryIds,
-    visibleGroupIds,
     syncOperationSelectAll,
-    syncCategorySelectAll,
-    syncGroupCheckboxState,
     updateOperationsBulkUi,
     fillBulkOperationCategorySelect,
   };

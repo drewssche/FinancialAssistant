@@ -83,13 +83,28 @@
     }
 
     function getCreateFormPreviewItem() {
+      const receiptItems = (Array.isArray(state.createReceiptItems) ? state.createReceiptItems : [])
+        .filter((item) => Number(item?.quantity || 0) > 0 && Number(item?.unit_price || 0) > 0 && String(item?.name || "").trim());
+      const receiptTotal = receiptItems.reduce((acc, item) => {
+        const qty = Number(item.quantity || 0);
+        const price = Number(item.unit_price || 0);
+        if (!Number.isFinite(qty) || !Number.isFinite(price)) {
+          return acc;
+        }
+        return acc + qty * price;
+      }, 0);
+      const amountRaw = document.getElementById("opAmount").value;
+      const amountResolved = String(amountRaw || "").trim()
+        ? amountRaw
+        : (el.opReceiptEnabled?.checked && receiptTotal > 0 ? receiptTotal : 0);
+      const noteRaw = document.getElementById("opNote").value || "";
       return {
         id: 0,
         operation_date: document.getElementById("opDate").value || new Date().toISOString().slice(0, 10),
         kind: el.opKind.value || "expense",
         category_id: getSelectedCreateCategoryId(),
-        amount: core.formatAmount(document.getElementById("opAmount").value),
-        note: document.getElementById("opNote").value || "",
+        amount: core.formatAmount(amountResolved),
+        note: noteRaw,
       };
     }
 

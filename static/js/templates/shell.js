@@ -16,6 +16,7 @@
           <button class="nav-btn" data-section="operations">Операции</button>
           <button class="nav-btn" data-section="debts">Долги</button>
           <button class="nav-btn" data-section="categories">Категории</button>
+          <button class="nav-btn" data-section="item_catalog">Каталог позиций</button>
           <button class="nav-btn" data-section="settings">Настройки</button>
         </nav>
 
@@ -44,6 +45,8 @@
               <button id="addDebtCta" class="btn btn-cta hidden" type="button">+ Новый долг</button>
               <button id="addCategoryCta" class="btn btn-cta hidden" type="button">+ Создать категорию</button>
               <button id="addGroupCta" class="btn btn-secondary hidden" type="button">+ Создать группу</button>
+              <button id="addItemTemplateCta" class="btn btn-cta hidden" type="button">+ Создать позицию</button>
+              <button id="addItemSourceCta" class="btn btn-secondary hidden" type="button">+ Создать источник</button>
             </div>
           </div>
         </header>
@@ -202,15 +205,12 @@
               </div>
             </div>
 
-            <div id="categoriesBulkBar" class="bulk-bar sticky-bar">
-              <span id="categoriesSelectedCount" class="bulk-count-text">Ничего не выбрано</span>
-              <div class="bulk-actions-fixed">
-                <button id="bulkEditCategoriesBtn" class="btn btn-secondary bulk-action hidden-action" type="button">Редактировать выбранные</button>
-                <button id="bulkDeleteCategoriesBtn" class="btn btn-danger bulk-action hidden-action" type="button">Удалить выбранные</button>
-              </div>
-            </div>
-            <div class="table-search-row sticky-search">
+            <div class="table-search-row sticky-search categories-search-row">
               <input id="categorySearchQ" class="table-search-input" type="text" placeholder="Поиск" />
+              <div class="toolbar category-group-controls">
+                <button id="categoriesCollapseAllBtn" class="btn btn-secondary btn-xs" type="button">Свернуть все</button>
+                <button id="categoriesExpandAllBtn" class="btn btn-secondary btn-xs" type="button">Развернуть все</button>
+              </div>
               <button id="deleteAllCategoriesBtn" class="btn btn-danger" type="button">Удалить все</button>
             </div>
 
@@ -218,7 +218,6 @@
               <table class="table table-hover">
                 <thead>
                   <tr>
-                    <th class="select-col"><input id="categoriesSelectAll" class="table-checkbox" type="checkbox" /></th>
                     <th>Группа</th>
                     <th>Название</th>
                     <th>Тип</th>
@@ -257,6 +256,37 @@
             </div>
             <div id="debtsCards" class="debt-cards"></div>
             <div id="debtsInfiniteSentinel" class="infinite-sentinel" aria-hidden="true"></div>
+          </section>
+        </section>
+
+        <section id="itemCatalogSection" class="section-block hidden">
+          <section class="panel">
+            <div class="table-search-row">
+              <input id="itemCatalogSearchQ" class="table-search-input" type="text" placeholder="Поиск по источнику и позиции" />
+              <div class="toolbar item-catalog-controls">
+                <div class="segmented" id="itemCatalogSortTabs" role="tablist" aria-label="Сортировка каталога позиций">
+                  <button class="segmented-btn active" data-item-sort="usage" type="button">Частота</button>
+                  <button class="segmented-btn" data-item-sort="recent" type="button">Недавние</button>
+                  <button class="segmented-btn" data-item-sort="name" type="button">Имя</button>
+                </div>
+                <button id="itemCatalogCollapseAllBtn" class="btn btn-secondary btn-xs" type="button">Свернуть все</button>
+                <button id="itemCatalogExpandAllBtn" class="btn btn-secondary btn-xs" type="button">Развернуть все</button>
+              </div>
+              <button id="deleteAllItemTemplatesBtn" class="btn btn-danger" type="button">Удалить все</button>
+            </div>
+            <div class="table-wrap">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Источник</th>
+                    <th>Позиция</th>
+                    <th>Последняя цена</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="itemCatalogBody"></tbody>
+              </table>
+            </div>
           </section>
         </section>
 

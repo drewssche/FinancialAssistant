@@ -436,6 +436,25 @@
     }
   }
 
+  function handleCategoriesGroupToggleClick(event) {
+    if (window.App.categoryTableUi?.handleCategoriesGroupToggleClick) {
+      return window.App.categoryTableUi.handleCategoriesGroupToggleClick(event);
+    }
+    return false;
+  }
+
+  function collapseAllCategoryGroups() {
+    if (window.App.categoryTableUi?.collapseAllCategoryGroups) {
+      window.App.categoryTableUi.collapseAllCategoryGroups();
+    }
+  }
+
+  function expandAllCategoryGroups() {
+    if (window.App.categoryTableUi?.expandAllCategoryGroups) {
+      window.App.categoryTableUi.expandAllCategoryGroups();
+    }
+  }
+
   window.App.categoryUi = {
     updateIconToggleLabel,
     closeIconPopovers,
@@ -467,5 +486,8 @@
     closeEditCategoryModal,
     groupCategoryIds,
     renderCategories,
+    handleCategoriesGroupToggleClick,
+    collapseAllCategoryGroups,
+    expandAllCategoryGroups,
   };
 })();

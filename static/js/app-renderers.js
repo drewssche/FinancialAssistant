@@ -173,6 +173,7 @@
     const kindClass = item.kind === "income" ? "income" : "expense";
     const kindText = core.kindLabel(item.kind);
     const noteText = item.note || "";
+    const hasReceiptItems = Array.isArray(item.receipt_items) && item.receipt_items.length > 0;
     const row = document.createElement("tr");
     row.classList.add(`kind-row-${kindClass}`);
 
@@ -222,6 +223,7 @@
       <td>${highlightText(noteText, searchQuery)}</td>
       <td>
         <div class="actions row-actions">
+          ${hasReceiptItems ? `<button class="btn btn-secondary" data-receipt-view-id="${item.id}">Позиции</button>` : ""}
           <button class="btn btn-secondary" data-edit-id="${item.id}">Редактировать</button>
           <button class="btn btn-danger" data-delete-id="${item.id}">Удалить</button>
         </div>

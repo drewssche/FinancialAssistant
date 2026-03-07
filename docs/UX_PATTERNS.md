@@ -23,11 +23,14 @@ Behavior:
 - Provide clear `Reset filters` action
 
 ## Action Hierarchy
-- Primary CTA is defined at screen-zone level, not as strict single-button rule.
-- Canonical paired-primary zones:
-- top actions in `Dashboard`/`Operations`: `+ Добавить операцию` and `+ Массовое добавление`
-- categories CTA row: `+ Создать группу` and `+ Создать категорию`
-- Secondary actions grouped nearby
+- Primary CTA is defined at screen-zone level and remains single per active section.
+- Secondary CTA is allowed in the same zone when it is part of the same scenario.
+- Canonical mapping (current baseline):
+- `Dashboard`/`Operations`: primary `+ Добавить операцию`, secondary `+ Массовое добавление`
+- `Categories`: primary `+ Создать категорию`, secondary `+ Создать группу`
+- `Debts`: primary `+ Новый долг`
+- `Item Catalog`: primary `+ Создать позицию`, secondary `+ Создать источник`
+- Secondary actions must stay grouped near primary in shared top actions zone
 - Destructive actions require explicit confirmation
 - Submit actions (create/update/apply) use one reusable loading flow:
 - disable button while request in progress
@@ -36,6 +39,19 @@ Behavior:
 - Sidebar user area is not a navigation menu:
 - static identity block + dedicated logout icon action
 
+## Position Catalog Consistency
+- `+ Создать источник` is placed next to `+ Создать позицию` in section-level top CTA zone.
+- In create/edit position modal, field `Источник` reuses chip-picker interaction from operation modal/category flow:
+- trigger input + popover suggestions
+- realtime search
+- create-if-missing chip action
+- deterministic close on outside click / `Esc` / chip selection
+- Source creation modal keeps simple text input flow (without chip-picker popover).
+- Create/edit source-position flows include live preview of resulting table element.
+- Position history modal matches `Позиции чека` interaction style and renders source as chip.
+- Item Catalog interaction settings (`sort`, `collapsed groups`, source-group create) persist with debounce to avoid noisy `preferences` writes.
+- Item Catalog search should prefer local filtering when full catalog snapshot is already loaded; server search is fallback when local snapshot is incomplete.
+
 ## Destructive Actions and Undo
 - Delete actions must show explicit confirmation before execution
 - After delete, show bottom session-level toast with undo action
@@ -43,6 +59,7 @@ Behavior:
 - Toast must persist while user switches tabs in current session
 - Destructive flow must use one reusable handler, not per-screen copy-paste logic
 - Account removal (`Удалить меня`) is a separate destructive flow in Settings `Danger Zone` (explicit confirmation, no undo)
+- Post-mutation refresh should be section-aware: refresh active section data first; avoid unconditional cross-section reloads
 
 ## Money Formatting
 - All money values must use one shared formatter driven by user settings
@@ -73,8 +90,11 @@ Behavior:
 ## Realtime Search
 - Search input for tables/lists is placed in a dedicated row directly above the table
 - Operations search is realtime with debounce (no explicit apply button)
+- Operations realtime search persists filters with debounced preferences write (typing burst should not trigger one `PUT` per keystroke)
 - Search targets: operation kind, category name, comment
 - Matching text is highlighted with a reusable contrast mark style
+- Position catalog search targets both source names and position names
+- For grouped tables (source -> positions), active search temporarily auto-expands matched groups
 
 ## List Loading Pattern (Required)
 - Standard pattern for large lists/tables: initial load `20` rows, then incremental load by scroll (`+20` each batch).
@@ -83,18 +103,16 @@ Behavior:
 - Keep virtualization as optional optimization if row count/performance requires it.
 
 ## Row Interaction
-- Selecting row via checkbox applies persistent selected highlight
-- Clicking row body toggles checkbox selection (except clicks on controls)
 - Inline row actions appear on hover and for selected row
-- Bulk counter in operations is always visible:
-- no selection: `Всего: N`
-- with selection: `Выбрано: M из N`
-- In categories hierarchical table:
-- selecting group checkbox selects group and all nested categories
-- selecting category checkbox does not auto-select group checkbox
-- partial nested selection puts group checkbox in indeterminate state
-- selection summary keeps stable typography/spacing between `Ничего не выбрано` and `Выбрано: ...` states
+- Operations table supports checkbox selection and bulk actions.
+- Categories table does not use checkbox-based bulk selection; actions are row-level and section-level (`Удалить все`).
 - categories search matches both category names and group names
+- grouped table interaction baseline (introduced in Position Catalog):
+- parent/group row can be collapsed/expanded with chevron control
+- collapsed state persists in user preferences
+- when search is active, manual collapse is disabled and matched groups stay expanded
+- grouped table can expose explicit group actions (`Свернуть все` / `Развернуть все` / `Сброс`) near search
+- grouped table can expose local sort presets; active sort preset must persist in user preferences
 
 ## Category Inputs
 - Group color is chosen via color picker with synchronized hex value
@@ -110,6 +128,29 @@ Behavior:
 - group chips filtered by selected kind
 - popover closes on outside click / `Esc` / chip selection
 - outside click close must also work for clicks in modal area outside picker
+
+## Receipt Line Items (MVP)
+- Receipt details are optional inside operation create/edit flow.
+- Receipt item picker reuses chip-picker mechanics (search, debounce, single list, create-if-missing).
+- Receipt row has two linked pickers:
+- `Источник` (source chips)
+- `Позиция` (item chips filtered by selected source when source is set)
+- Editing rule:
+- on chip insert, prefill name + latest known price, both editable
+- user edits must not overwrite historical prices; new price is appended to history
+- if user creates a missing position from picker (`+ Создать позицию`), it must be available in subsequent receipt rows immediately (optimistic local template list update before operation save)
+- Amount/discrepancy rule:
+- save is allowed when operation amount and receipt total differ
+- discrepancy must be visually explicit before submit
+- quick action should exist to copy receipt total into operation amount
+- Picker close rule (required):
+- popover closes deterministically on first outside click, on `Esc`, and on chip selection
+- no repeated outside clicks required to close
+- Operations table note/comment column must show only user note text (no auto-appended receipt suffix like `Чек: N поз.`).
+- If operation has receipt items, row hover actions should include `Позиции` button that opens read-only receipt item list.
+- Scope guard:
+- no per-item category in MVP
+- no item-level analytics in MVP (backlog)
 
 ## Debt UX Rules (Planned)
 - Debt creation flow must be explicit and separate from category logic.

@@ -6,6 +6,9 @@ from app.db.models.debt_counterparty import DebtCounterparty
 from app.db.models.debt_issuance import DebtIssuance
 from app.db.models.debt_repayment import DebtRepayment
 from app.db.models.operation import Operation
+from app.db.models.operation_item_price import OperationItemPrice
+from app.db.models.operation_item_template import OperationItemTemplate
+from app.db.models.operation_receipt_item import OperationReceiptItem
 from app.db.models.user import User
 from app.db.models.user_preference import UserPreference
 
@@ -15,6 +18,9 @@ __all__ = [
     "CategoryGroup",
     "Category",
     "Operation",
+    "OperationItemTemplate",
+    "OperationItemPrice",
+    "OperationReceiptItem",
     "UserPreference",
     "DebtCounterparty",
     "Debt",

@@ -13,6 +13,10 @@
       if (node) {
         node.addEventListener("input", actions.updateCreatePreview);
         node.addEventListener("change", actions.updateCreatePreview);
+        if (id === "opAmount" && actions.renderReceiptSummary) {
+          node.addEventListener("input", actions.renderReceiptSummary);
+          node.addEventListener("change", actions.renderReceiptSummary);
+        }
       }
     }
     for (const id of ["debtCounterparty", "debtPrincipal", "debtStartDate", "debtDueDate", "debtNote"]) {
@@ -37,6 +41,10 @@
       if (node) {
         node.addEventListener("input", actions.updateEditPreview);
         node.addEventListener("change", actions.updateEditPreview);
+        if (id === "editAmount" && actions.renderReceiptSummary) {
+          node.addEventListener("input", () => actions.renderReceiptSummary("edit"));
+          node.addEventListener("change", () => actions.renderReceiptSummary("edit"));
+        }
       }
     }
     el.editCategory.addEventListener("change", () => {
@@ -69,6 +77,71 @@
       el.opCategoryAll.addEventListener("click", (event) => {
         if (actions.handleCreateCategoryPickerClick) {
           actions.handleCreateCategoryPickerClick(event);
+        }
+      });
+    }
+
+    if (el.opReceiptEnabled && actions.setReceiptEnabled) {
+      el.opReceiptEnabled.addEventListener("change", () => {
+        actions.setReceiptEnabled(el.opReceiptEnabled.checked);
+      });
+    }
+    if (el.pullReceiptTotalBtn && actions.handlePullReceiptTotal) {
+      el.pullReceiptTotalBtn.addEventListener("click", () => {
+        actions.handlePullReceiptTotal("create");
+      });
+    }
+    if (el.receiptItemsList) {
+      el.receiptItemsList.addEventListener("input", (event) => {
+        if (actions.handleReceiptItemsListInput) {
+          actions.handleReceiptItemsListInput(event);
+        }
+      });
+      el.receiptItemsList.addEventListener("focusin", (event) => {
+        if (actions.handleReceiptItemsListFocusIn) {
+          actions.handleReceiptItemsListFocusIn(event);
+        }
+      });
+      el.receiptItemsList.addEventListener("keydown", (event) => {
+        if (actions.handleReceiptItemsListKeydown) {
+          actions.handleReceiptItemsListKeydown(event);
+        }
+      });
+      el.receiptItemsList.addEventListener("click", (event) => {
+        if (actions.handleReceiptItemsListClick) {
+          actions.handleReceiptItemsListClick(event);
+        }
+      });
+    }
+    if (el.editPullReceiptTotalBtn && actions.handlePullReceiptTotal) {
+      el.editPullReceiptTotalBtn.addEventListener("click", (event) => {
+        actions.handlePullReceiptTotal(event);
+      });
+    }
+    if (el.editReceiptEnabled && actions.setReceiptEnabled) {
+      el.editReceiptEnabled.addEventListener("change", () => {
+        actions.setReceiptEnabled(el.editReceiptEnabled.checked, "edit");
+      });
+    }
+    if (el.editReceiptItemsList) {
+      el.editReceiptItemsList.addEventListener("input", (event) => {
+        if (actions.handleReceiptItemsListInput) {
+          actions.handleReceiptItemsListInput(event);
+        }
+      });
+      el.editReceiptItemsList.addEventListener("focusin", (event) => {
+        if (actions.handleReceiptItemsListFocusIn) {
+          actions.handleReceiptItemsListFocusIn(event);
+        }
+      });
+      el.editReceiptItemsList.addEventListener("keydown", (event) => {
+        if (actions.handleReceiptItemsListKeydown) {
+          actions.handleReceiptItemsListKeydown(event);
+        }
+      });
+      el.editReceiptItemsList.addEventListener("click", (event) => {
+        if (actions.handleReceiptItemsListClick) {
+          actions.handleReceiptItemsListClick(event);
         }
       });
     }
@@ -150,14 +223,76 @@
       });
     }
 
+    if (el.itemTemplateSourceSearch && actions.updateItemTemplatePreview) {
+      for (const eventName of ["input", "change"]) {
+        el.itemTemplateSourceSearch.addEventListener(eventName, actions.updateItemTemplatePreview);
+      }
+    }
+    if (el.itemTemplateName && actions.updateItemTemplatePreview) {
+      for (const eventName of ["input", "change"]) {
+        el.itemTemplateName.addEventListener(eventName, actions.updateItemTemplatePreview);
+      }
+    }
+    if (el.itemTemplatePrice && actions.updateItemTemplatePreview) {
+      for (const eventName of ["input", "change"]) {
+        el.itemTemplatePrice.addEventListener(eventName, actions.updateItemTemplatePreview);
+      }
+    }
+
+    if (el.itemTemplateSourceSearch) {
+      el.itemTemplateSourceSearch.addEventListener("focus", () => {
+        if (actions.handleItemTemplateSourceSearchFocus) {
+          actions.handleItemTemplateSourceSearchFocus();
+        }
+      });
+      el.itemTemplateSourceSearch.addEventListener("click", () => {
+        if (actions.handleItemTemplateSourceSearchFocus) {
+          actions.handleItemTemplateSourceSearchFocus();
+        }
+      });
+      el.itemTemplateSourceSearch.addEventListener("input", () => {
+        if (actions.handleItemTemplateSourceSearchInput) {
+          actions.handleItemTemplateSourceSearchInput();
+        }
+      });
+      el.itemTemplateSourceSearch.addEventListener("keydown", (event) => {
+        if (actions.handleItemTemplateSourceSearchKeydown) {
+          actions.handleItemTemplateSourceSearchKeydown(event);
+        }
+      });
+      el.itemTemplateSourceSearch.addEventListener("focusout", (event) => {
+        if (actions.handleItemTemplateSourceSearchFocusOut) {
+          actions.handleItemTemplateSourceSearchFocusOut(event);
+        }
+      });
+    }
+    if (el.itemTemplateSourceAll) {
+      el.itemTemplateSourceAll.addEventListener("click", (event) => {
+        if (actions.handleItemTemplateSourcePickerClick) {
+          actions.handleItemTemplateSourcePickerClick(event);
+        }
+      });
+    }
+    if (el.sourceGroupName && actions.updateSourceGroupPreview) {
+      for (const eventName of ["input", "change"]) {
+        el.sourceGroupName.addEventListener(eventName, actions.updateSourceGroupPreview);
+      }
+    }
+
     document.addEventListener("pointerdown", (event) => {
       if (actions.handleCreateCategoryOutsidePointer) {
         actions.handleCreateCategoryOutsidePointer(event);
       }
+      if (actions.handleReceiptOutsidePointer) {
+        actions.handleReceiptOutsidePointer(event);
+      }
       if (actions.handleCreateGroupOutsidePointer) {
         actions.handleCreateGroupOutsidePointer(event);
       }
-    });
+      if (actions.handleItemTemplateSourceOutsidePointer) {
+        actions.handleItemTemplateSourceOutsidePointer(event);
+      }
+    }, true);
   }
 
   window.App.initFeaturePickers = {

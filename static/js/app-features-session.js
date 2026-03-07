@@ -2,6 +2,7 @@
   const { state, el, core } = window.App;
   const categoryActions = window.App.actions;
   const operationModal = window.App.operationModal;
+  let preferencesSaveDebounceId = null;
   const DEFAULT_UI_PREFS = {
     timezone: "auto",
     currency: "BYN",
@@ -77,6 +78,7 @@
     state.filterKind = prefs.data?.operations?.filters?.kind || "";
     state.operationSortPreset = prefs.data?.operations?.sort_preset || "date";
     state.debtSortPreset = prefs.data?.debts?.sort_preset || "priority";
+    state.itemCatalogSortPreset = prefs.data?.ui?.item_catalog_sort_preset || "usage";
     el.filterQ.value = prefs.data?.operations?.filters?.q || "";
     state.activeSection = prefs.data?.ui?.active_section || "dashboard";
 
@@ -84,6 +86,7 @@
     core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
     core.syncSegmentedActive(el.operationsSortTabs, "op-sort", state.operationSortPreset);
     core.syncSegmentedActive(el.debtSortTabs, "debt-sort", state.debtSortPreset);
+    core.syncSegmentedActive(el.itemCatalogSortTabs, "item-sort", state.itemCatalogSortPreset);
     applyInterfaceSettingsUi();
     operationModal.applySettingsUi();
     if (window.App.actions.renderTodayLabel) {
@@ -127,6 +130,7 @@
           currency_position: el.currencyPositionSelect ? el.currencyPositionSelect.value : getMergedUiPrefs().currency_position,
           show_dashboard_debts: el.showDashboardDebtsToggle ? el.showDashboardDebtsToggle.checked : getMergedUiPrefs().show_dashboard_debts,
           scale_percent: el.uiScaleRange ? Number(el.uiScaleRange.value || 100) : getMergedUiPrefs().scale_percent,
+          item_catalog_sort_preset: state.itemCatalogSortPreset || "usage",
         },
       },
     };
@@ -137,6 +141,26 @@
       body: JSON.stringify(payload),
     });
     core.invalidateUiRequestCache();
+  }
+
+  function savePreferencesDebounced(delayMs = 450) {
+    const delay = Number(delayMs || 0);
+    const normalizedDelay = Number.isFinite(delay) && delay > 0 ? delay : 450;
+    if (preferencesSaveDebounceId) {
+      clearTimeout(preferencesSaveDebounceId);
+    }
+    preferencesSaveDebounceId = setTimeout(() => {
+      preferencesSaveDebounceId = null;
+      savePreferences().catch(() => {});
+    }, normalizedDelay);
+  }
+
+  function cancelDebouncedPreferencesSave() {
+    if (!preferencesSaveDebounceId) {
+      return;
+    }
+    clearTimeout(preferencesSaveDebounceId);
+    preferencesSaveDebounceId = null;
   }
 
   async function saveSettings(event) {
@@ -166,6 +190,7 @@
   }
 
   function logout(showMessage = true) {
+    cancelDebouncedPreferencesSave();
     localStorage.removeItem("access_token");
     state.token = "";
     state.preferences = null;
@@ -230,6 +255,8 @@
     loadMe,
     loadPreferences,
     savePreferences,
+    savePreferencesDebounced,
+    cancelDebouncedPreferencesSave,
     saveSettings,
     applyInterfaceSettingsUi,
     previewInterfaceSettingsUi,

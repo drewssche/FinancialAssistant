@@ -62,6 +62,55 @@ At the bottom-left sidebar, show compact static user block:
 - Chips reuse the same category chip component styles as tables/lists
 - While search query is active, picker shows one result list only (no duplicated chips across quick/full rows)
 
+## Operation Receipt Pattern (MVP)
+- Operation modal supports optional `Чек (позиции)` block.
+- Receipt line item fields:
+- `Источник` (chip/template picker style, source chips)
+- `Позиция` (chip/template picker style, same mechanics as category chip picker)
+- `Кол-во`
+- `Цена`
+- `Сумма позиции` (auto)
+- `Комментарий` (optional)
+- Amount modes:
+- manual operation amount
+- auto-from-receipt (fill amount from receipt total)
+- If manual amount differs from receipt total, show non-blocking discrepancy warning.
+- Saving with discrepancy is allowed.
+- Picker behavior contract:
+- popover closes on first outside click / `Esc` / chip selection
+- `+ Создать позицию «...` adds position into local picker source immediately for next rows (optimistic UI), DB persistence remains on operation save
+- source chips act as grouping filter for position chips inside the same row (`Источник` -> filtered `Позиция`)
+- Operation rows with receipt items expose separate hover action `Позиции` (read-only modal with item list); note column is not auto-augmented by receipt metadata
+- Category per receipt line item is not supported in MVP.
+- Position-level analytics UI is not included in MVP (backlog).
+
+## Position Catalog (MVP)
+- Separate catalog view/modal for reusable receipt positions:
+- item name
+- usage frequency
+- last used timestamp
+- price history timeline
+- Catalog data drives template chips in receipt editor.
+- Current table pattern for position catalog is grouped by source with collapsible group rows:
+- group row: chevron + source title + compact aggregates (`позиции`, `исп`, `ср`, `посл`)
+- child rows: positions inside selected source group
+- search behavior: realtime across `source + position`, matching groups auto-expanded while query is active
+- search loading strategy: use local filtering when full catalog snapshot is available; fallback to API query when snapshot is partial/outdated
+- table controls:
+- sort presets (`Частота`, `Недавние`, `Имя`)
+- group actions (`Свернуть все`, `Развернуть все`)
+- sort preset is persisted in preferences (`ui.item_catalog_sort_preset`)
+- persist writes for sort/collapse/source-group ui state must be debounced
+- item rows expose hover actions (`Редактировать`, `Удалить`)
+- current section actions:
+- top CTA: primary `+ Создать позицию`, secondary `+ Создать источник`
+- search-row controls: sort/group controls and `Удалить все`
+- in create/edit position modal, source field reuses chip-picker mechanics from operation/category flows (search, suggestions, create-if-missing)
+- source create modal keeps simple text input (without chip-picker popover)
+- source/position create flows include live preview of resulting table row
+- price history modal is visually/interaction-consistent with receipt positions modal and includes source chip in meta
+- This grouped-table pattern is reused in `Categories` table structure for consistency.
+
 ## Debt Modal Pattern (Planned)
 - Operation modal supports two modes:
 - `Обычная операция`
@@ -114,6 +163,7 @@ At the bottom-left sidebar, show compact static user block:
 - `Dashboard/Operations`: primary `+ Добавить операцию`, secondary `+ Массовое добавление`
 - `Debts`: primary `+ Новый долг`
 - `Categories`: primary `+ Создать категорию`, secondary `+ Создать группу`
+- `Item Catalog`: primary `+ Создать позицию`, secondary `+ Создать источник`
 
 ## Segmented Controls
 - Period and type filters should use segmented tabs instead of native selects where interaction frequency is high
@@ -129,28 +179,22 @@ At the bottom-left sidebar, show compact static user block:
 - ungrouped categories first
 - then group row and nested category rows
 - Group row supports inline actions: `Редактировать`, `Удалить`
-- Tables/lists support checkbox selection and reusable bulk action bar:
+- Operations tables support checkbox selection and reusable bulk action bar:
 - `Редактировать выбранные`
 - `Удалить выбранные`
-- `Удалить все`
-- `Удалить все` is placed in the table-search row (right side), while selected-item actions stay in bulk bar
-- Categories bulk counter text is compact:
-- no selection: `Ничего не выбрано`
-- with selection: `Выбрано: N (...)`
-- Bulk counter container keeps fixed typography/spacing between empty and selected states to avoid layout jumps
-- Hidden bulk actions are removed from layout flow (`display: none`) to avoid floating gaps in action row
+- Categories section uses row-level actions and section-level `Удалить все` without checkbox bulk-select.
 
 ## Table Interaction Pattern
 - For data rows, inline actions (`Редактировать`, `Удалить`) are hidden by default and shown on row hover
-- If a row is selected, inline actions stay visible even without hover
-- Selected row has stronger persistent highlight than hover state
+- In operations tables, if a row is selected, inline actions stay visible even without hover
+- In operations tables, selected row has stronger persistent highlight than hover state
 - Row hover animation is reused in both dashboard operation table and operations list table
 - In categories table, row actions include both `Редактировать` and `Удалить` for user categories
-- In categories table, selecting child category does not auto-select parent group checkbox
 - Categories search matches both category names and group names
+- Operations realtime search uses debounced preferences persistence to avoid one server write per keystroke
 - Large list/table loading standard: `20` initial rows, then `+20` per scroll batch (infinite scroll), without numbered pagination controls.
+- After create/update/delete actions, data refresh is section-aware (active section first) to avoid unnecessary cross-section request bursts
 - Categories table layout follows the same structural zones as operations table:
 - panel header with title/subtitle and tabs on the right
-- bulk row (`Всего/Выбрано` + selected-actions)
-- search row (search left, `Удалить все` right)
+- search row (`Поиск` left, `Свернуть/Развернуть все` center, `Удалить все` right)
 - then table body

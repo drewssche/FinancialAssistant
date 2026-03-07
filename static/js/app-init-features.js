@@ -7,6 +7,7 @@
   function bindFeatureHandlers() {
     let filterDebounceId = null;
     let categorySearchDebounceId = null;
+    let itemCatalogSearchDebounceId = null;
 
     el.createForm.addEventListener("submit", (event) => {
       core.runAction({
@@ -57,6 +58,29 @@
         action: () => actions.updateGroup(event),
       });
     });
+
+    if (el.itemTemplateForm && actions.submitItemTemplateForm) {
+      el.itemTemplateForm.addEventListener("submit", (event) => {
+        core.runAction({
+          button: event.submitter || document.getElementById("submitItemTemplateBtn"),
+          pendingText: "Сохранение...",
+          successMessage: "Позиция сохранена",
+          errorPrefix: "Ошибка сохранения позиции",
+          action: () => actions.submitItemTemplateForm(event),
+        });
+      });
+    }
+    if (el.sourceGroupForm && actions.submitSourceGroupForm) {
+      el.sourceGroupForm.addEventListener("submit", (event) => {
+        core.runAction({
+          button: event.submitter || document.getElementById("submitSourceGroupBtn"),
+          pendingText: "Сохранение...",
+          successMessage: "Источник создан",
+          errorPrefix: "Ошибка создания источника",
+          action: () => actions.submitSourceGroupForm(event),
+        });
+      });
+    }
 
     for (const container of el.periodTabGroups) {
       container.addEventListener("click", (event) => {
@@ -158,6 +182,79 @@
       }, 300);
     });
 
+    if (el.itemCatalogSearchQ && actions.loadItemCatalog) {
+      el.itemCatalogSearchQ.addEventListener("input", () => {
+        if (itemCatalogSearchDebounceId) {
+          clearTimeout(itemCatalogSearchDebounceId);
+        }
+        itemCatalogSearchDebounceId = setTimeout(() => {
+          core.runAction({
+            errorPrefix: "Ошибка поиска по каталогу позиций",
+            action: () => actions.loadItemCatalog(),
+          });
+        }, 250);
+      });
+    }
+    if (el.itemCatalogSortTabs && actions.setItemCatalogSortPreset) {
+      el.itemCatalogSortTabs.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-item-sort]");
+        if (!btn) {
+          return;
+        }
+        if (btn.dataset.itemSort === state.itemCatalogSortPreset) {
+          return;
+        }
+        actions.setItemCatalogSortPreset(btn.dataset.itemSort);
+      });
+    }
+    if (el.itemCatalogCollapseAllBtn && actions.collapseAllItemCatalogGroups) {
+      el.itemCatalogCollapseAllBtn.addEventListener("click", () => {
+        actions.collapseAllItemCatalogGroups();
+      });
+    }
+    if (el.itemCatalogExpandAllBtn && actions.expandAllItemCatalogGroups) {
+      el.itemCatalogExpandAllBtn.addEventListener("click", () => {
+        actions.expandAllItemCatalogGroups();
+      });
+    }
+    if (el.deleteAllItemTemplatesBtn && actions.deleteAllItemTemplatesFlow) {
+      el.deleteAllItemTemplatesBtn.addEventListener("click", () => {
+        actions.deleteAllItemTemplatesFlow().catch((err) => core.setStatus(String(err)));
+      });
+    }
+    if (el.itemCatalogBody && actions.handleItemCatalogBodyClick) {
+      el.itemCatalogBody.addEventListener("click", (event) => {
+        const deleteBtn = event.target.closest("button[data-delete-item-template-id]");
+        if (deleteBtn) {
+          const row = deleteBtn.closest("tr");
+          const item = row ? JSON.parse(row.dataset.itemTemplate || "{}") : null;
+          if (item?.id && actions.deleteItemTemplateFlow) {
+            actions.deleteItemTemplateFlow(item).catch((err) => core.setStatus(String(err)));
+          }
+          return;
+        }
+        const editBtn = event.target.closest("button[data-edit-item-template-id]");
+        if (editBtn) {
+          const row = editBtn.closest("tr");
+          const item = row ? JSON.parse(row.dataset.itemTemplate || "{}") : null;
+          if (item?.id && actions.openItemTemplateModal) {
+            actions.openItemTemplateModal(item);
+          }
+          return;
+        }
+        const historyBtn = event.target.closest("button[data-item-template-history-id]");
+        if (historyBtn) {
+          const row = historyBtn.closest("tr");
+          const item = row ? JSON.parse(row.dataset.itemTemplate || "{}") : null;
+          if (item?.id && actions.openItemTemplateHistoryModal) {
+            actions.openItemTemplateHistoryModal(item).catch((err) => core.setStatus(String(err)));
+          }
+          return;
+        }
+        actions.handleItemCatalogBodyClick(event);
+      });
+    }
+
     el.createKindSwitch.addEventListener("click", (event) => {
       const btn = event.target.closest("button[data-kind]");
       if (!btn) {
@@ -195,6 +292,16 @@
     });
 
     el.operationsBody.addEventListener("click", (event) => {
+      const receiptBtn = event.target.closest("button[data-receipt-view-id]");
+      if (receiptBtn) {
+        const row = receiptBtn.closest("tr");
+        const item = row ? JSON.parse(row.dataset.item || "{}") : null;
+        if (item?.id && actions.openOperationReceiptModal) {
+          actions.openOperationReceiptModal(item);
+        }
+        return;
+      }
+
       const deleteBtn = event.target.closest("button[data-delete-id]");
       if (deleteBtn) {
         const row = deleteBtn.closest("tr");
@@ -308,6 +415,10 @@
     });
 
     el.categoriesBody.addEventListener("click", (event) => {
+      if (actions.handleCategoriesGroupToggleClick && actions.handleCategoriesGroupToggleClick(event)) {
+        return;
+      }
+
       const editGroupBtn = event.target.closest("button[data-edit-group-id]");
       if (editGroupBtn) {
         const id = Number(editGroupBtn.dataset.editGroupId);
@@ -347,6 +458,17 @@
         }
       }
     });
+
+    if (el.categoriesCollapseAllBtn && actions.collapseAllCategoryGroups) {
+      el.categoriesCollapseAllBtn.addEventListener("click", () => {
+        actions.collapseAllCategoryGroups();
+      });
+    }
+    if (el.categoriesExpandAllBtn && actions.expandAllCategoryGroups) {
+      el.categoriesExpandAllBtn.addEventListener("click", () => {
+        actions.expandAllCategoryGroups();
+      });
+    }
 
     el.toastArea.addEventListener("click", (event) => {
       const closeBtn = event.target.closest("button[data-toast-close]");

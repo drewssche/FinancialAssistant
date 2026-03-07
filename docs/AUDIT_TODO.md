@@ -32,9 +32,9 @@
 - Direction: move prefill logic into categories module and keep cross-module calls declarative.
 
 5. Split oversized frontend modules (rule compliance)
-- Status: done (updated 2026-03-06)
+- Status: in progress (updated 2026-03-07)
 - Files above hard threshold:
-- `static/js/app-features.js` (reduced: moved operation modal/picker logic to `static/js/app-features-operation-modal.js`; moved dashboard/session to `static/js/app-features-dashboard.js` and `static/js/app-features-session.js`)
+- `static/js/app-features.js` (reduced: moved operation modal/picker logic to `static/js/app-features-operation-modal.js`; moved dashboard/session to `static/js/app-features-dashboard.js` and `static/js/app-features-session.js`; moved Item Catalog feature block to `static/js/app-features-item-catalog.js`; moved operations flow to `static/js/app-features-operations.js`)
 - `static/js/app-core.js` (reduced: moved network/action helpers to `static/js/app-core-actions.js`)
 - `static/js/app-categories.js` (decomposed into `static/js/app-categories-ui.js` + `static/js/app-categories-data.js`, kept as thin actions facade)
 - `static/js/app-bulk.js` (decomposed into `static/js/app-bulk-ui.js` + `static/js/app-bulk-bindings.js`, kept as thin actions facade)
@@ -48,10 +48,14 @@
 - `static/index.html` reduced to thin shell (from 831 to 69 lines) via template modules
 - Expected: keep modules under soft 300-400 lines; hard threshold 500.
 - Direction:
-- split `app-features.js` into `operations`, `dashboard`, `session/preferences`
+- split `app-features.js` into `operations`, `dashboard`, `session/preferences`, `item-catalog`
 - split `app-core.js` into `state`, `dom`, `utils/net`.
 - Remaining files over 500:
-- none
+- `static/js/app-features-operation-modal.js` (`1338`)
+- `static/js/app-features-operations.js` (`496`)
+- `static/js/app-features-item-catalog.js` (`821`)
+- `static/js/templates/modals.js` (`550`)
+- `static/js/app-init-features.js` (`505`)
 
 6. Add focused regression tests
 - Status: done (2026-03-05)
@@ -365,3 +369,62 @@
 - Guardrails:
 - do not regress keyboard accessibility/focus behavior
 - add/update focused e2e checks for changed controls
+
+21. Operations receipt line-items and position catalog (2026-03-06)
+- Status: in progress
+- Scope decisions (agreed):
+- add optional receipt line-items inside operation create/edit flow
+- operation amount can be manual or derived from receipt total
+- allow save on discrepancy with explicit warning
+- source-grouped reusable position templates with immutable price history
+- add separate position catalog view/API (history + usage frequency)
+- Explicitly out of MVP:
+- no category per line-item
+- no position-level analytics (moved to future backlog)
+- Implemented (backend foundation, 2026-03-06):
+- DB models/migration:
+- `operation_receipt_items`
+- `operation_item_templates`
+- `operation_item_prices`
+- operations API extended with receipt payload support (`receipt_items`)
+- operation output includes `receipt_total` and `receipt_discrepancy`
+- receipt line item price is persisted on operation save:
+- in operation receipt snapshot (`unit_price`)
+- in reusable template price history (`operation_item_prices`)
+- new API:
+- `GET /api/v1/operations/item-templates`
+- `GET /api/v1/operations/item-templates/{template_id}/prices`
+- Implemented (frontend MVP slice, 2026-03-06):
+- create operation modal now has optional `Чек (позиции)` block
+- receipt rows use inline fields in one line (`позиция`, `цена`, `кол-во`)
+- next empty row is auto-added when `позиция` is filled; large manual `+ добавить позицию` CTA removed as redundant
+- line items support inline quantity/price editing and auto line totals
+- receipt summary shows `Сумма чека` and non-blocking `Расхождение`
+- quick action `Подтянуть сумму из чека` fills operation amount field
+- interactive position picker moved to chip-style popover (same UX family as category picker)
+- Added fix pass (2026-03-06):
+- `+ Создать позицию` now performs optimistic local template upsert, so next rows can reuse it immediately before operation save
+- receipt position popover close now uses deterministic rule (`outside active name cell/picker` closes on first click)
+- local template list is merged with server hints to keep newly created local suggestions available during current modal session
+- receipt rows now support optional `источник` picker; source chips are used as grouping filter for position chips in the same row
+- receipt read-only modal now shows source chip per item when available
+- Added QA/e2e pass (2026-03-06):
+- `tests/e2e/test_receipt_picker_store_scope_e2e.py` covers:
+- source-scoped receipt position chips in picker
+- optimistic `+ Создать позицию` reuse in next rows
+- outside-click close behavior for receipt name popover
+- Added UX follow-up (2026-03-06):
+- sidebar now includes dedicated `Каталог позиций` section under `Категории`
+- edit operation modal now has full receipt block (`источник/позиция/цена/кол-во`) with same picker mechanics as create modal
+- edit operation `PATCH` now sends `receipt_items` payload, so receipt rows can be edited in-place
+- position catalog table switched to grouped source view with collapsible groups and compact group aggregates
+- grouped table behavior (collapse persistence + search auto-expand) marked as reusable pattern for future `Категории` table migration
+- Added table controls follow-up (2026-03-06):
+- position catalog now has explicit sort presets (`Частота`, `Недавние`, `Имя`)
+- sort preset is persisted in user preferences (`ui.item_catalog_sort_preset`)
+- added group actions (`Свернуть все`, `Развернуть все`)
+- group actions are disabled during active search to preserve deterministic auto-expand behavior
+- item rows now have hover actions (`Редактировать`, `Удалить`)
+- catalog has dedicated actions: top CTA `+ Создать позицию`, section-level `Удалить все`, backend CRUD endpoints for templates
+- Next done criteria for #21:
+- position catalog screen/API follow-up (history + usage frequency) as separate increment

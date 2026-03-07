@@ -51,6 +51,16 @@
         }
       });
     }
+    if (el.addItemTemplateCta && actions.openItemTemplateModal) {
+      el.addItemTemplateCta.addEventListener("click", () => {
+        actions.openItemTemplateModal();
+      });
+    }
+    if (el.addItemSourceCta && actions.openSourceGroupModal) {
+      el.addItemSourceCta.addEventListener("click", () => {
+        actions.openSourceGroupModal();
+      });
+    }
     el.batchOperationCta.addEventListener("click", () => {
       if (actions.openBatchCreateModal) {
         actions.openBatchCreateModal();
@@ -134,6 +144,46 @@
       el.debtHistoryModal.addEventListener("click", (event) => {
         if (event.target === el.debtHistoryModal) {
           actions.closeDebtHistoryModal();
+        }
+      });
+    }
+    if (el.closeOperationReceiptModalBtn && actions.closeOperationReceiptModal) {
+      el.closeOperationReceiptModalBtn.addEventListener("click", actions.closeOperationReceiptModal);
+    }
+    if (el.operationReceiptModal && actions.closeOperationReceiptModal) {
+      el.operationReceiptModal.addEventListener("click", (event) => {
+        if (event.target === el.operationReceiptModal) {
+          actions.closeOperationReceiptModal();
+        }
+      });
+    }
+    if (el.closeItemTemplateModalBtn && actions.closeItemTemplateModal) {
+      el.closeItemTemplateModalBtn.addEventListener("click", actions.closeItemTemplateModal);
+    }
+    if (el.itemTemplateModal && actions.closeItemTemplateModal) {
+      el.itemTemplateModal.addEventListener("click", (event) => {
+        if (event.target === el.itemTemplateModal) {
+          actions.closeItemTemplateModal();
+        }
+      });
+    }
+    if (el.closeSourceGroupModalBtn && actions.closeSourceGroupModal) {
+      el.closeSourceGroupModalBtn.addEventListener("click", actions.closeSourceGroupModal);
+    }
+    if (el.sourceGroupModal && actions.closeSourceGroupModal) {
+      el.sourceGroupModal.addEventListener("click", (event) => {
+        if (event.target === el.sourceGroupModal) {
+          actions.closeSourceGroupModal();
+        }
+      });
+    }
+    if (el.closeItemTemplateHistoryModalBtn && actions.closeItemTemplateHistoryModal) {
+      el.closeItemTemplateHistoryModalBtn.addEventListener("click", actions.closeItemTemplateHistoryModal);
+    }
+    if (el.itemTemplateHistoryModal && actions.closeItemTemplateHistoryModal) {
+      el.itemTemplateHistoryModal.addEventListener("click", (event) => {
+        if (event.target === el.itemTemplateHistoryModal) {
+          actions.closeItemTemplateHistoryModal();
         }
       });
     }

@@ -12,8 +12,6 @@
     closeCreateGroupModal: bulkUi.closeCreateGroupModal,
     openBulkEditOperationsModal: bulkUi.openBulkEditOperationsModal,
     closeBulkEditOperationsModal: bulkUi.closeBulkEditOperationsModal,
-    openBulkEditCategoriesModal: bulkUi.openBulkEditCategoriesModal,
-    closeBulkEditCategoriesModal: bulkUi.closeBulkEditCategoriesModal,
     updateOperationsBulkUi: bulkUi.updateOperationsBulkUi,
   });
 })();

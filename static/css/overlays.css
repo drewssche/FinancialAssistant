@@ -39,12 +39,22 @@
   display: grid;
   place-items: center;
   padding: 20px;
+  overflow-y: auto;
   z-index: 40;
 }
 
 .modal-card {
   width: min(940px, 100%);
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   box-shadow: var(--shadow);
+}
+
+@supports not (height: 100dvh) {
+  .modal-card {
+    max-height: calc(100vh - 40px);
+  }
 }
 
 .modal-small {
