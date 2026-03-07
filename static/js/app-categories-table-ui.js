@@ -2,6 +2,10 @@
   const { state, el, core } = window.App;
   const CATEGORY_UNGROUPED_KEY = "ungrouped";
   const DEFAULT_GROUP_ACCENT = "#4d6282";
+  const DEFAULT_GROUP_ACCENT_BY_KIND = {
+    expense: "#ff8a3d",
+    income: "#49be78",
+  };
 
   function normalizeHexColor(value) {
     const raw = String(value || "").trim();
@@ -27,8 +31,10 @@
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
 
-  function resolveGroupAccent(colorValue) {
-    const accent = normalizeHexColor(colorValue) || DEFAULT_GROUP_ACCENT;
+  function resolveGroupAccent(colorValue, kind = "") {
+    const accent = normalizeHexColor(colorValue)
+      || DEFAULT_GROUP_ACCENT_BY_KIND[String(kind || "").toLowerCase()]
+      || DEFAULT_GROUP_ACCENT;
     return {
       accent,
       soft: hexToRgba(accent, 0.2),
@@ -200,7 +206,7 @@
     if (options.isCollapsed) {
       tr.classList.add("hidden");
     }
-    const accent = resolveGroupAccent(options.groupAccentColor);
+    const accent = resolveGroupAccent(options.groupAccentColor, item.kind);
     tr.style.setProperty("--category-group-accent", accent.accent);
     tr.style.setProperty("--category-group-accent-soft", accent.soft);
     const actionCell = item.is_system
@@ -208,7 +214,7 @@
       : `<div class='actions row-actions'><button class='btn btn-secondary' data-edit-category-id='${item.id}'>Редактировать</button><button class='btn btn-danger' data-delete-category-id='${item.id}'>Удалить</button></div>`;
     const groupCell = options.groupLabel || "<span class='muted-small'>Без группы</span>";
     const nameCell = core.renderCategoryChip(
-      { name: item.name, icon: item.icon || item.group_icon, accent_color: item.group_accent_color },
+      { name: item.name, icon: item.icon || item.group_icon, accent_color: item.group_accent_color || accent.accent },
       queryRaw,
     );
     tr.innerHTML = `
@@ -228,13 +234,13 @@
     if (group.id) {
       tr.dataset.groupId = String(group.id);
     }
-    const accent = resolveGroupAccent(group.accentColor);
+    const accent = resolveGroupAccent(group.accentColor, group.kind);
     tr.style.setProperty("--category-group-accent", accent.accent);
     tr.style.setProperty("--category-group-accent-soft", accent.soft);
     const chevron = group.isUngrouped ? "•" : (isCollapsed ? "▸" : "▾");
     const groupName = group.isUngrouped
       ? `<span class="muted-small">${core.highlightText(group.name, queryRaw)}</span>`
-      : core.renderCategoryChip({ name: group.name, icon: null, accent_color: group.accentColor }, queryRaw);
+      : core.renderCategoryChip({ name: group.name, icon: null, accent_color: group.accentColor || accent.accent }, queryRaw);
     const kindMeta = group.kind ? `<span class="item-catalog-group-meta">${core.highlightText(core.kindLabel(group.kind), queryRaw)}</span>` : "";
     const toggleDisabled = queryActive || group.isUngrouped;
     const groupActions = group.id
