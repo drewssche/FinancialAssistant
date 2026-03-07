@@ -259,18 +259,20 @@
 
     async function deleteAllItemTemplatesFlow() {
       core.runDestructiveAction({
-        confirmMessage: "Удалить все позиции из каталога?",
+        confirmMessage: "Удалить все позиции и очистить список источников?",
         doDelete: async () => {
           await core.requestJson("/api/v1/operations/item-templates", {
             method: "DELETE",
             headers: core.authHeaders(),
           });
+          writeItemCatalogSourceGroups([]);
           core.invalidateUiRequestCache("item-catalog");
         },
         onAfterDelete: async () => {
           await loadItemCatalog({ force: true });
+          savePreferencesDebounced(450);
         },
-        toastMessage: "Каталог позиций очищен",
+        toastMessage: "Каталог позиций и источники очищены",
         onDeleteError: "Не удалось удалить позиции",
       });
     }
@@ -279,7 +281,17 @@
       if (!el.sourceGroupModal || !el.sourceGroupForm) {
         return;
       }
+      state.editItemSourceName = "";
       el.sourceGroupForm.reset();
+      if (el.sourceGroupOriginalName) {
+        el.sourceGroupOriginalName.value = "";
+      }
+      if (el.sourceGroupTitle) {
+        el.sourceGroupTitle.textContent = "Новый источник";
+      }
+      if (el.submitSourceGroupBtn) {
+        el.submitSourceGroupBtn.textContent = "Создать источник";
+      }
       updateSourceGroupPreview();
       el.sourceGroupModal.classList.remove("hidden");
       setTimeout(() => {
@@ -290,9 +302,39 @@
     }
 
     function closeSourceGroupModal() {
+      state.editItemSourceName = "";
       if (el.sourceGroupModal) {
         el.sourceGroupModal.classList.add("hidden");
       }
+    }
+
+    function openEditSourceGroupModal(sourceName) {
+      const normalized = normalizeItemCatalogShopName(sourceName || "");
+      if (!normalized || !el.sourceGroupModal || !el.sourceGroupForm) {
+        return;
+      }
+      state.editItemSourceName = normalized;
+      el.sourceGroupForm.reset();
+      if (el.sourceGroupOriginalName) {
+        el.sourceGroupOriginalName.value = normalized;
+      }
+      if (el.sourceGroupName) {
+        el.sourceGroupName.value = normalized;
+      }
+      if (el.sourceGroupTitle) {
+        el.sourceGroupTitle.textContent = "Редактировать источник";
+      }
+      if (el.submitSourceGroupBtn) {
+        el.submitSourceGroupBtn.textContent = "Сохранить источник";
+      }
+      updateSourceGroupPreview();
+      el.sourceGroupModal.classList.remove("hidden");
+      setTimeout(() => {
+        if (el.sourceGroupName) {
+          el.sourceGroupName.focus();
+          el.sourceGroupName.select();
+        }
+      }, 0);
     }
 
     function updateSourceGroupPreview() {
@@ -328,17 +370,77 @@
         core.setStatus("Введите название источника");
         return;
       }
+      const originalName = normalizeItemCatalogShopName(state.editItemSourceName || el.sourceGroupOriginalName?.value || "");
       const groups = readItemCatalogSourceGroups();
       const exists = groups.some((name) => getItemCatalogShopKey(name) === getItemCatalogShopKey(sourceName));
-      if (exists) {
+      if (!originalName && exists) {
         closeSourceGroupModal();
         renderItemCatalog(state.itemCatalogItems);
+        return;
+      }
+      if (originalName) {
+        if (getItemCatalogShopKey(originalName) === getItemCatalogShopKey(sourceName)) {
+          closeSourceGroupModal();
+          renderItemCatalog(state.itemCatalogItems);
+          return;
+        }
+        if (getItemCatalogShopKey(originalName) !== getItemCatalogShopKey(sourceName) && exists) {
+          core.setStatus("Источник с таким названием уже существует");
+          return;
+        }
+        const matchedItems = (state.itemCatalogItems || []).filter((item) => getItemCatalogShopKey(item.shop_name || "") === getItemCatalogShopKey(originalName));
+        for (const item of matchedItems) {
+          await core.requestJson(`/api/v1/operations/item-templates/${item.id}`, {
+            method: "PATCH",
+            headers: core.authHeaders(),
+            body: JSON.stringify({ shop_name: sourceName || null }),
+          });
+        }
+        writeItemCatalogSourceGroups(
+          groups
+            .map((name) => (getItemCatalogShopKey(name) === getItemCatalogShopKey(originalName) ? sourceName : name))
+            .filter((name, idx, arr) => name && arr.findIndex((item) => getItemCatalogShopKey(item) === getItemCatalogShopKey(name)) === idx),
+        );
+        core.invalidateUiRequestCache("item-catalog");
+        closeSourceGroupModal();
+        await loadItemCatalog({ force: true });
+        savePreferencesDebounced(450);
         return;
       }
       writeItemCatalogSourceGroups([...groups, sourceName]);
       closeSourceGroupModal();
       renderItemCatalog(state.itemCatalogItems);
       savePreferencesDebounced(450);
+    }
+
+    async function deleteItemSourceFlow(sourceName) {
+      const normalized = normalizeItemCatalogShopName(sourceName || "");
+      if (!normalized) {
+        return;
+      }
+      core.runDestructiveAction({
+        confirmMessage: `Удалить источник «${normalized}»? Позиции останутся, но перейдут в «Без источника».`,
+        doDelete: async () => {
+          const matchedItems = (state.itemCatalogItems || []).filter((item) => getItemCatalogShopKey(item.shop_name || "") === getItemCatalogShopKey(normalized));
+          for (const item of matchedItems) {
+            await core.requestJson(`/api/v1/operations/item-templates/${item.id}`, {
+              method: "PATCH",
+              headers: core.authHeaders(),
+              body: JSON.stringify({ shop_name: null }),
+            });
+          }
+          writeItemCatalogSourceGroups(
+            readItemCatalogSourceGroups().filter((name) => getItemCatalogShopKey(name) !== getItemCatalogShopKey(normalized)),
+          );
+          core.invalidateUiRequestCache("item-catalog");
+        },
+        onAfterDelete: async () => {
+          await loadItemCatalog({ force: true });
+          savePreferencesDebounced(450);
+        },
+        toastMessage: "Источник удален",
+        onDeleteError: "Не удалось удалить источник",
+      });
     }
 
     async function openItemTemplateHistoryModal(item) {
@@ -386,8 +488,10 @@
       deleteItemTemplateFlow,
       deleteAllItemTemplatesFlow,
       openSourceGroupModal,
+      openEditSourceGroupModal,
       closeSourceGroupModal,
       submitSourceGroupForm,
+      deleteItemSourceFlow,
       updateSourceGroupPreview,
       updateItemTemplatePreview,
       handleItemTemplateSourceSearchFocus,

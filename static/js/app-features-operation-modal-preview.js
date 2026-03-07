@@ -27,8 +27,12 @@
       if (!dueDateValue) {
         return "Без срока";
       }
+      const dueIso = core.parseDateInputValue(dueDateValue);
+      if (!dueIso) {
+        return "Без срока";
+      }
       const now = new Date();
-      const due = new Date(`${dueDateValue}T23:59:59`);
+      const due = new Date(`${dueIso}T23:59:59`);
       if (Number.isNaN(due.getTime())) {
         return "Без срока";
       }
@@ -98,9 +102,10 @@
         ? amountRaw
         : (el.opReceiptEnabled?.checked && receiptTotal > 0 ? receiptTotal : 0);
       const noteRaw = document.getElementById("opNote").value || "";
+      const operationDate = core.parseDateInputValue(document.getElementById("opDate").value) || core.getTodayIso();
       return {
         id: 0,
-        operation_date: document.getElementById("opDate").value || new Date().toISOString().slice(0, 10),
+        operation_date: operationDate,
         kind: el.opKind.value || "expense",
         category_id: getSelectedCreateCategoryId(),
         amount: core.formatAmount(amountResolved),
@@ -109,9 +114,10 @@
     }
 
     function getEditFormPreviewItem() {
+      const operationDate = core.parseDateInputValue(document.getElementById("editDate").value) || core.getTodayIso();
       return {
         id: state.editOperationId || 0,
-        operation_date: document.getElementById("editDate").value || new Date().toISOString().slice(0, 10),
+        operation_date: operationDate,
         kind: el.editKind.value || "expense",
         category_id: el.editCategory.value ? Number(el.editCategory.value) : null,
         amount: core.formatAmount(document.getElementById("editAmount").value),
@@ -126,8 +132,8 @@
         const direction = el.debtDirection.value === "borrow" ? "borrow" : "lend";
         const directionLabel = core.debtUi.debtDirectionActionLabel(direction);
         const directionClass = direction === "borrow" ? "expense" : "income";
-        const debtDate = el.debtStartDate.value || new Date().toISOString().slice(0, 10);
-        const debtDueDate = el.debtDueDate.value || "";
+        const debtDate = core.parseDateInputValue(el.debtStartDate.value) || core.getTodayIso();
+        const debtDueDate = core.parseDateInputValue(el.debtDueDate.value) || "";
         const debtCounterparty = (el.debtCounterparty.value || "").trim();
         const debtPrincipal = core.formatMoney(el.debtPrincipal.value || 0);
         const debtNote = (el.debtNote.value || "").trim();

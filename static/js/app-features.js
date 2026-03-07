@@ -110,8 +110,10 @@
   const deleteItemTemplateFlow = itemCatalogFeatures.deleteItemTemplateFlow;
   const deleteAllItemTemplatesFlow = itemCatalogFeatures.deleteAllItemTemplatesFlow;
   const openSourceGroupModal = itemCatalogFeatures.openSourceGroupModal;
+  const openEditSourceGroupModal = itemCatalogFeatures.openEditSourceGroupModal;
   const closeSourceGroupModal = itemCatalogFeatures.closeSourceGroupModal;
   const submitSourceGroupForm = itemCatalogFeatures.submitSourceGroupForm;
+  const deleteItemSourceFlow = itemCatalogFeatures.deleteItemSourceFlow;
   const updateSourceGroupPreview = itemCatalogFeatures.updateSourceGroupPreview;
   const updateItemTemplatePreview = itemCatalogFeatures.updateItemTemplatePreview;
   const handleItemTemplateSourceSearchFocus = itemCatalogFeatures.handleItemTemplateSourceSearchFocus;
@@ -253,8 +255,10 @@
     deleteItemTemplateFlow,
     deleteAllItemTemplatesFlow,
     openSourceGroupModal,
+    openEditSourceGroupModal,
     closeSourceGroupModal,
     submitSourceGroupForm,
+    deleteItemSourceFlow,
     updateSourceGroupPreview,
     updateItemTemplatePreview,
     handleItemTemplateSourceSearchFocus,

@@ -508,7 +508,7 @@
               <button id="deleteAllItemTemplatesBtn" class="btn btn-danger" type="button">Удалить все</button>
             </div>
             <div class="table-wrap">
-              <table class="table table-hover">
+              <table class="table table-hover mobile-card-table item-catalog-table">
                 <thead>
                   <tr>
                     <th>Источник</th>

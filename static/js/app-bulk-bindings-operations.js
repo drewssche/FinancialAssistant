@@ -13,12 +13,19 @@
     return Promise.resolve();
   }
 
-  function buildOperationCategoryMap() {
-    const map = new Map();
+  function buildOperationCategoryMaps() {
+    const scoped = new Map();
+    const generic = new Map();
     for (const category of state.categories || []) {
-      map.set(bulkUtils.keyify(category.kind, category.name), category);
+      const groupName = bulkUtils.normalizeCell(category.group_name || "");
+      const scopedKey = bulkUtils.keyify(category.kind, groupName, category.name);
+      scoped.set(scopedKey, category);
+      const genericKey = bulkUtils.keyify(category.kind, category.name);
+      const bucket = generic.get(genericKey) || [];
+      bucket.push(category);
+      generic.set(genericKey, bucket);
     }
-    return map;
+    return { scoped, generic };
   }
 
   function renderOperationFeedback(plan) {
@@ -45,6 +52,7 @@
         <td data-label="#">${row.index}</td>
         <td data-label="Дата">${row.date || "—"}</td>
         <td data-label="Тип">${row.kindLabel || "—"}</td>
+        <td data-label="Группа">${row.group || "—"}</td>
         <td data-label="Категория">${row.category || "—"}</td>
         <td data-label="Сумма">${row.amount || "—"}</td>
         <td data-label="Комментарий">${row.note || "—"}</td>
@@ -74,7 +82,7 @@
       throw new Error("Добавь хотя бы одну строку");
     }
 
-    const categoriesByKey = buildOperationCategoryMap();
+    const categoryMaps = buildOperationCategoryMaps();
     const rows = [];
     const validRows = [];
     let errorCount = 0;
@@ -84,29 +92,40 @@
         index: idx + 1,
         date: "",
         kindLabel: "",
+        group: "",
         category: "",
         amount: "",
         note: "",
         statusText: "Готово",
         statusClass: "bulk-import-status-ok",
       };
-      const parts = bulkUtils.splitStrict(line, 4, 5);
-      if (!parts) {
+      const parts = String(line || "").split(";").map((part) => bulkUtils.normalizeCell(part));
+      while (parts.length > 6 && parts[parts.length - 1] === "") {
+        parts.pop();
+      }
+      if (parts.length < 5 || parts.length > 6) {
         row.statusText = "Неверный формат";
         row.statusClass = "bulk-import-status-error";
         rows.push(row);
         errorCount += 1;
         continue;
       }
-      const [dateRaw, kindRaw, categoryRaw, amountRaw, noteRaw = ""] = parts;
-      row.date = dateRaw;
+      const hasGroupColumn = parts.length >= 6;
+      const [dateRaw, kindRaw, groupRawOrCategoryRaw, categoryRawOrAmountRaw, amountRawOrNoteRaw, noteRaw = ""] = parts;
+      const groupRaw = hasGroupColumn ? groupRawOrCategoryRaw : "";
+      const categoryRaw = hasGroupColumn ? categoryRawOrAmountRaw : groupRawOrCategoryRaw;
+      const amountRaw = hasGroupColumn ? amountRawOrNoteRaw : categoryRawOrAmountRaw;
+      const noteValue = hasGroupColumn ? noteRaw : amountRawOrNoteRaw || "";
+      const parsedDate = bulkUtils.parseFlexibleDate(dateRaw);
+      row.date = core.formatDateRu(parsedDate || dateRaw);
       row.kindLabel = kindRaw;
+      row.group = groupRaw;
       row.category = categoryRaw;
       row.amount = amountRaw;
-      row.note = noteRaw || "";
+      row.note = noteValue || "";
 
       const kind = bulkUtils.normalizeKind(kindRaw);
-      if (!bulkUtils.isIsoDate(dateRaw)) {
+      if (!parsedDate) {
         row.statusText = "Неверная дата";
         row.statusClass = "bulk-import-status-error";
         rows.push(row);
@@ -120,12 +139,35 @@
         errorCount += 1;
         continue;
       }
+      const normalizedGroup = bulkUtils.normalizeCell(groupRaw);
       const normalizedCategory = bulkUtils.normalizeCell(categoryRaw);
-      const category = categoriesByKey.get(bulkUtils.keyify(kind, normalizedCategory));
-      if (!category) {
+      let category = null;
+      if (!normalizedCategory) {
         row.kindLabel = core.kindLabel(kind);
+        row.group = normalizedGroup || "—";
+        row.category = "Без категории";
+      } else if (normalizedGroup) {
+        category = categoryMaps.scoped.get(bulkUtils.keyify(kind, normalizedGroup, normalizedCategory)) || null;
+      } else {
+        const bucket = categoryMaps.generic.get(bulkUtils.keyify(kind, normalizedCategory)) || [];
+        if (bucket.length === 1) {
+          [category] = bucket;
+        } else if (bucket.length > 1) {
+          row.kindLabel = core.kindLabel(kind);
+          row.group = "—";
+          row.category = normalizedCategory || "—";
+          row.statusText = "Уточни группу";
+          row.statusClass = "bulk-import-status-error";
+          rows.push(row);
+          errorCount += 1;
+          continue;
+        }
+      }
+      if (normalizedCategory && !category) {
+        row.kindLabel = core.kindLabel(kind);
+        row.group = normalizedGroup || "—";
         row.category = normalizedCategory || "—";
-        row.statusText = "Категория не найдена";
+        row.statusText = normalizedGroup ? "Категория/группа не найдены" : "Категория не найдена";
         row.statusClass = "bulk-import-status-error";
         rows.push(row);
         errorCount += 1;
@@ -142,16 +184,17 @@
         continue;
       }
 
-      const note = bulkUtils.normalizeCell(noteRaw || "");
+      const note = bulkUtils.normalizeCell(noteValue || "");
       row.kindLabel = core.kindLabel(kind);
-      row.category = normalizedCategory;
+      row.group = normalizedCategory ? bulkUtils.normalizeCell(category?.group_name || normalizedGroup || "") : (normalizedGroup || "");
+      row.category = normalizedCategory || "Без категории";
       row.amount = amount.value;
       row.note = note;
       rows.push(row);
       validRows.push({
         kind,
-        operation_date: dateRaw,
-        category_id: Number(category.id),
+        operation_date: parsedDate,
+        category_id: category ? Number(category.id) : null,
         amount: amount.value,
         note,
       });
@@ -223,7 +266,12 @@
       updates.category_id = Number(el.bulkOpCategory.value);
     }
     if (el.bulkOpDate.value) {
-      updates.operation_date = el.bulkOpDate.value;
+      const parsedDate = core.parseDateInputValue(el.bulkOpDate.value);
+      if (!parsedDate) {
+        core.setStatus("Проверь дату массового редактирования");
+        return;
+      }
+      updates.operation_date = parsedDate;
     }
     if (!Object.keys(updates).length) {
       core.setStatus("Заполни хотя бы одно поле для редактирования");

@@ -640,3 +640,32 @@
 - Added e2e regression:
   - `tests/e2e/test_debts_flow_e2e.py::test_dashboard_debts_toggle_applies_without_page_reload`
   - `tests/e2e/test_sort_preset_persistence_e2e.py::test_interface_currency_and_scale_persist_after_reload`
+
+28. Unified display-date input + bulk operation group support (2026-03-07)
+- Status: done (2026-03-07)
+- Implemented:
+- all user-facing date inputs in modals use `ДД.ММ.ГГГГ` placeholder/input format instead of native browser `type="date"`
+- added shared date helpers in `static/js/app-core-utils.js`:
+  - normalize display input
+  - parse `ДД.ММ.ГГГГ` or ISO into backend ISO
+  - format today/default values consistently
+- submit flows now validate and convert display dates before API requests:
+  - create/edit operation
+  - create/edit debt
+  - repayment modal
+  - custom period modal
+  - bulk edit operations date field
+- bulk operation import now supports optional group column:
+  - `дата;тип;[группа];категория;сумма;комментарий`
+  - empty group supported via `;;`
+  - date accepts `ДД.ММ.ГГГГ`
+  - ambiguous category names without group now return `Уточни группу`
+- Added e2e coverage:
+  - `tests/e2e/test_batch_create_operations_e2e.py::test_batch_create_modal_submits_multiple_operations`
+  - `tests/e2e/test_batch_create_operations_e2e.py::test_create_debt_modal_accepts_display_date_format`
+- Follow-up pass:
+  - operations bulk import now also supports empty category with preserved column order:
+    `дата;тип;[группа];[категория];сумма;комментарий`
+  - catalog item price history deduplicates unchanged prices instead of appending same-price rows
+  - source groups in item catalog now support edit/delete flows and global cleanup via `Удалить все`
+  - mobile categories/cards compacted so group/category action buttons stay aligned on narrow screens

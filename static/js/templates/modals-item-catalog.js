@@ -58,6 +58,7 @@
           </button>
         </div>
         <form id="sourceGroupForm" class="category-modal-form">
+          <input id="sourceGroupOriginalName" type="hidden" />
           <input id="sourceGroupName" type="text" placeholder="Название источника" required />
         </form>
         <div class="modal-footer">

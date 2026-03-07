@@ -89,15 +89,88 @@
     return getUiSettings(state).showDashboardDebts;
   }
 
+  function isIsoDate(value) {
+    const raw = String(value || "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      return false;
+    }
+    const date = new Date(`${raw}T00:00:00Z`);
+    return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === raw;
+  }
+
   function formatDateRu(value) {
     if (!value) {
       return "";
     }
-    const [year, month, day] = String(value).split("-");
+    const raw = String(value).trim();
+    if (/^\d{2}\.\d{2}\.\d{4}$/.test(raw)) {
+      return raw;
+    }
+    const [year, month, day] = raw.split("-");
     if (!year || !month || !day) {
-      return String(value);
+      return raw;
     }
     return `${day}.${month}.${year}`;
+  }
+
+  function isValidDisplayDateValue(value) {
+    if (!/^\d{2}\.\d{2}\.\d{4}$/.test(value)) {
+      return false;
+    }
+    const [day, month, year] = value.split(".");
+    const iso = `${year}-${month}-${day}`;
+    return isIsoDate(iso);
+  }
+
+  function isDisplayDate(value) {
+    const raw = normalizeDateInputValue(value);
+    return isValidDisplayDateValue(raw);
+  }
+
+  function parseDateInputValue(value) {
+    const raw = String(value || "").trim();
+    if (!raw) {
+      return "";
+    }
+    if (isIsoDate(raw)) {
+      return raw;
+    }
+    const normalized = normalizeDateInputValue(raw);
+    if (!/^\d{2}\.\d{2}\.\d{4}$/.test(normalized)) {
+      return "";
+    }
+    const [day, month, year] = normalized.split(".");
+    const iso = `${year}-${month}-${day}`;
+    return isIsoDate(iso) ? iso : "";
+  }
+
+  function normalizeDateInputValue(value) {
+    const raw = String(value || "").trim();
+    if (!raw) {
+      return "";
+    }
+    if (isIsoDate(raw)) {
+      return formatDateRu(raw);
+    }
+    const digitsOnly = raw.replace(/[^\d]/g, "");
+    if (digitsOnly.length === 8) {
+      const day = digitsOnly.slice(0, 2);
+      const month = digitsOnly.slice(2, 4);
+      const year = digitsOnly.slice(4, 8);
+      const normalized = `${day}.${month}.${year}`;
+      return isValidDisplayDateValue(normalized) ? normalized : raw;
+    }
+    const dotted = raw.replace(/[-/]/g, ".");
+    if (/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(dotted)) {
+      const [dayRaw, monthRaw, year] = dotted.split(".");
+      const normalized = `${dayRaw.padStart(2, "0")}.${monthRaw.padStart(2, "0")}.${year}`;
+      return isValidDisplayDateValue(normalized) ? normalized : raw;
+    }
+    return raw;
+  }
+
+  function getTodayIso() {
+    return new Date().toISOString().slice(0, 10);
   }
 
   function kindLabel(kind) {
@@ -206,6 +279,10 @@
     applyMoneyInputs,
     isDashboardDebtsVisible,
     formatDateRu,
+    isDisplayDate,
+    parseDateInputValue,
+    normalizeDateInputValue,
+    getTodayIso,
     kindLabel,
     formatPeriodLabel,
     getPreferenceTimeZone,

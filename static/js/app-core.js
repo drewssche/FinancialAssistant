@@ -57,6 +57,7 @@
     itemCatalogItems: [],
     itemCatalogSortPreset: "usage",
     editItemTemplateId: null,
+    editItemSourceName: "",
     analyticsMonthAnchor: "",
     analyticsTab: "overview",
     analyticsCalendarView: "month",
@@ -408,6 +409,9 @@
     itemTemplateHistoryTitle: document.getElementById("itemTemplateHistoryTitle"),
     itemTemplateHistoryMeta: document.getElementById("itemTemplateHistoryMeta"),
     itemTemplateHistoryBody: document.getElementById("itemTemplateHistoryBody"),
+    sourceGroupTitle: document.getElementById("sourceGroupTitle"),
+    sourceGroupOriginalName: document.getElementById("sourceGroupOriginalName"),
+    submitSourceGroupBtn: document.getElementById("submitSourceGroupBtn"),
     batchItemTemplateModal: document.getElementById("batchItemTemplateModal"),
     closeBatchItemTemplateModalBtn: document.getElementById("closeBatchItemTemplateModalBtn"),
     batchItemTemplateForm: document.getElementById("batchItemTemplateForm"),
@@ -609,6 +613,18 @@
     return getCoreUtils().formatDateRu(value);
   }
 
+  function parseDateInputValue(value) {
+    return getCoreUtils().parseDateInputValue(value);
+  }
+
+  function normalizeDateInputValue(value) {
+    return getCoreUtils().normalizeDateInputValue(value);
+  }
+
+  function getTodayIso() {
+    return getCoreUtils().getTodayIso();
+  }
+
   function kindLabel(kind) {
     return getCoreUtils().kindLabel(kind);
   }
@@ -646,6 +662,9 @@
       formatAmount,
       formatMoney,
       formatDateRu,
+      parseDateInputValue,
+      normalizeDateInputValue,
+      getTodayIso,
       kindLabel,
       formatPeriodLabel,
       getPreferenceTimeZone,

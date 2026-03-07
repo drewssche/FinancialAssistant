@@ -233,12 +233,16 @@ class OperationService:
                 item.name_ci = name_ci
             self.db.flush()
         if latest_unit_price is not None:
-            self.repo.add_item_template_price(
-                template_id=int(item.id),
-                unit_price=self._money(latest_unit_price),
-                recorded_at=date.today(),
-                source_operation_id=None,
-            )
+            next_price = self._money(latest_unit_price)
+            latest_map = self.repo.get_latest_prices_for_templates(template_ids=[int(item.id)])
+            latest = latest_map.get(int(item.id))
+            if not latest or self._money(latest.unit_price) != next_price:
+                self.repo.add_item_template_price(
+                    template_id=int(item.id),
+                    unit_price=next_price,
+                    recorded_at=date.today(),
+                    source_operation_id=None,
+                )
         self.db.commit()
         return self._serialize_item_template(item)
 
@@ -274,12 +278,16 @@ class OperationService:
 
         latest_unit_price = updates.get("latest_unit_price")
         if latest_unit_price is not None:
-            self.repo.add_item_template_price(
-                template_id=int(item.id),
-                unit_price=self._money(latest_unit_price),
-                recorded_at=date.today(),
-                source_operation_id=None,
-            )
+            next_price = self._money(latest_unit_price)
+            latest_map = self.repo.get_latest_prices_for_templates(template_ids=[int(item.id)])
+            latest = latest_map.get(int(item.id))
+            if not latest or self._money(latest.unit_price) != next_price:
+                self.repo.add_item_template_price(
+                    template_id=int(item.id),
+                    unit_price=next_price,
+                    recorded_at=date.today(),
+                    source_operation_id=None,
+                )
         self.db.commit()
         return self._serialize_item_template(item)
 
@@ -345,6 +353,13 @@ class OperationService:
         if created_templates:
             self.db.flush()
 
+        latest_price_rows = self.repo.get_latest_prices_for_templates(
+            template_ids=[int(template.id) for template in template_by_key.values()],
+        )
+        latest_price_by_template: dict[int, Decimal] = {
+            int(template_id): self._money(row.unit_price)
+            for template_id, row in latest_price_rows.items()
+        }
         price_rows: list[dict] = []
         for item in normalized_items:
             shop_name = item.get("shop_name")
@@ -360,18 +375,22 @@ class OperationService:
                 template.shop_name = shop_name
                 template.shop_name_ci = shop_name_ci
             self.repo.touch_item_template(item=template, last_category_id=category_id, flush=False)
-            price_rows.append(
-                {
-                    "template_id": int(template.id),
-                    "unit_price": item["unit_price"],
-                    "recorded_at": operation_date,
-                    "source_operation_id": operation_id,
-                }
-            )
+            template_id = int(template.id)
+            unit_price = self._money(item["unit_price"])
+            if latest_price_by_template.get(template_id) != unit_price:
+                price_rows.append(
+                    {
+                        "template_id": template_id,
+                        "unit_price": unit_price,
+                        "recorded_at": operation_date,
+                        "source_operation_id": operation_id,
+                    }
+                )
+                latest_price_by_template[template_id] = unit_price
             storage_items.append(
                 {
                     **item,
-                    "template_id": int(template.id),
+                    "template_id": template_id,
                 }
             )
         if price_rows:

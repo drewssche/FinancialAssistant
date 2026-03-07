@@ -297,9 +297,9 @@
       const chevron = isCollapsed ? "▸" : "▾";
       const childRows = group.items.map((item) => `
         <tr class="item-catalog-item-row ${isCollapsed ? "hidden" : ""}" data-item-template-row="1">
-          <td></td>
-          <td>${core.highlightText(item.name || "—", query)}</td>
-          <td>${core.formatMoney(item.latest_unit_price || 0)}</td>
+          <td data-label="Источник">${core.highlightText(group.shopName, query)}</td>
+          <td data-label="Позиция">${core.highlightText(item.name || "—", query)}</td>
+          <td data-label="Цена">${core.formatMoney(item.latest_unit_price || 0)}</td>
           <td class="mobile-actions-cell" data-label="Действия">
             <div class="actions row-actions">
               <button class="btn btn-secondary btn-xs" data-item-template-history-id="${item.id}" type="button">История</button>
@@ -310,21 +310,27 @@
         </tr>
       `).join("");
       const emptyRow = !group.items.length && !isCollapsed
-        ? '<tr class="item-catalog-item-row"><td></td><td colspan="3" class="muted-small">Позиции в источнике пока не добавлены</td></tr>'
+        ? `<tr class="item-catalog-item-row"><td data-label="Источник">${core.highlightText(group.shopName, query)}</td><td data-label="Позиция" colspan="3" class="muted-small">Позиции в источнике пока не добавлены</td></tr>`
         : "";
       return `
         <tr class="item-catalog-group-row">
           <td colspan="4" class="item-catalog-group-cell">
-            <button type="button" class="item-catalog-group-btn" data-item-catalog-shop-key="${encodeURIComponent(group.shopKey)}" ${queryActive ? "disabled" : ""}>
-              <span class="item-catalog-group-chevron">${chevron}</span>
-              <span class="item-catalog-group-name">${core.highlightText(group.shopName, query)}</span>
-              <span class="item-catalog-group-metas">
-                <span class="item-catalog-group-meta">${group.items.length} поз.</span>
-                <span class="item-catalog-group-meta">исп: ${group.useCountTotal}</span>
-                <span class="item-catalog-group-meta">ср: ${group.avgPrice !== null ? core.formatMoney(group.avgPrice, { withCurrency: false }) : "—"}</span>
-                <span class="item-catalog-group-meta">посл: ${group.lastUsedLabel}</span>
-              </span>
-            </button>
+            <div class="category-table-group-wrap item-catalog-source-wrap">
+              <button type="button" class="item-catalog-group-btn" data-item-catalog-shop-key="${encodeURIComponent(group.shopKey)}" ${queryActive ? "disabled" : ""}>
+                <span class="item-catalog-group-chevron">${chevron}</span>
+                <span class="item-catalog-group-name">${core.highlightText(group.shopName, query)}</span>
+                <span class="item-catalog-group-metas">
+                  <span class="item-catalog-group-meta">${group.items.length} поз.</span>
+                  <span class="item-catalog-group-meta">исп: ${group.useCountTotal}</span>
+                  <span class="item-catalog-group-meta">ср: ${group.avgPrice !== null ? core.formatMoney(group.avgPrice, { withCurrency: false }) : "—"}</span>
+                  <span class="item-catalog-group-meta">посл: ${group.lastUsedLabel}</span>
+                </span>
+              </button>
+              ${group.shopKey !== ITEM_CATALOG_NO_SHOP_KEY ? `<div class="actions row-actions item-catalog-source-actions">
+                <button class="btn btn-secondary btn-xs" data-edit-item-source-name="${escapeHtml(group.shopName)}" type="button">Редактировать</button>
+                <button class="btn btn-danger btn-xs" data-delete-item-source-name="${escapeHtml(group.shopName)}" type="button">Удалить</button>
+              </div>` : ""}
+            </div>
           </td>
         </tr>
         ${childRows}
@@ -459,8 +465,10 @@
     deleteItemTemplateFlow: itemCatalogModal.deleteItemTemplateFlow,
     deleteAllItemTemplatesFlow: itemCatalogModal.deleteAllItemTemplatesFlow,
     openSourceGroupModal: itemCatalogModal.openSourceGroupModal,
+    openEditSourceGroupModal: itemCatalogModal.openEditSourceGroupModal,
     closeSourceGroupModal: itemCatalogModal.closeSourceGroupModal,
     submitSourceGroupForm: itemCatalogModal.submitSourceGroupForm,
+    deleteItemSourceFlow: itemCatalogModal.deleteItemSourceFlow,
     updateSourceGroupPreview: itemCatalogModal.updateSourceGroupPreview,
     updateItemTemplatePreview: itemCatalogModal.updateItemTemplatePreview,
     handleItemTemplateSourceSearchFocus: itemCatalogModal.handleItemTemplateSourceSearchFocus,

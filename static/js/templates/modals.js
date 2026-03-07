@@ -18,7 +18,7 @@
             <button class="segmented-btn" data-entry-mode="debt" type="button">Долг</button>
           </div>
           <input id="opEntryMode" type="hidden" value="operation" />
-          <input id="opDate" type="date" required />
+          <input id="opDate" type="text" inputmode="numeric" placeholder="ДД.ММ.ГГГГ" required />
           <div class="segmented" id="createKindSwitch" aria-label="Тип операции">
             <button class="segmented-btn active" data-kind="expense" type="button">Расход</button>
             <button class="segmented-btn" data-kind="income" type="button">Доход</button>
@@ -54,7 +54,7 @@
           </div>
 
           <div id="createDebtFields" class="category-modal-form hidden">
-            <input id="debtStartDate" type="date" />
+            <input id="debtStartDate" type="text" inputmode="numeric" placeholder="ДД.ММ.ГГГГ" />
             <div class="segmented" id="createDebtDirectionSwitch" aria-label="Направление долга">
               <button class="segmented-btn active" data-debt-direction="lend" type="button">Я дал</button>
               <button class="segmented-btn" data-debt-direction="borrow" type="button">Я взял</button>
@@ -65,7 +65,7 @@
               <input id="debtPrincipal" data-money-input type="number" step="0.01" placeholder="Сумма" />
             </div>
             <div class="debt-due-field">
-              <input id="debtDueDate" type="date" />
+              <input id="debtDueDate" type="text" inputmode="numeric" placeholder="ДД.ММ.ГГГГ" />
               <span id="debtDueHint" class="muted-small debt-due-inline-hint">Без срока</span>
             </div>
             <input id="debtNote" type="text" placeholder="Комментарий" class="create-note-field" />
@@ -114,9 +114,9 @@
           </button>
         </div>
         <form id="batchCreateForm" class="category-modal-form">
-          <p class="subtitle">Одна строка: <code>дата;тип;категория;сумма;комментарий</code>.</p>
-          <p id="batchCreateHint" class="muted-small">Тип: расход/доход или expense/income. Сумма: <code>01,23</code> или <code>01.23</code>. Комментарий опционален и не должен содержать <code>;</code>.</p>
-          <textarea id="batchCreateInput" rows="8" placeholder="2026-03-04;Расход;Такси;150,50;Поездка"></textarea>
+          <p class="subtitle">Одна строка: <code>дата;тип;[группа];[категория];сумма;комментарий</code>.</p>
+          <p id="batchCreateHint" class="muted-small">Дата: <code>ДД.ММ.ГГГГ</code>. Тип: расход/доход или expense/income. Группа и категория опциональны, пустые значения можно оставить как <code>;;</code>. Сумма: <code>01,23</code> или <code>01.23</code>. Комментарий опционален и не должен содержать <code>;</code>.</p>
+          <textarea id="batchCreateInput" rows="8" placeholder="04.03.2026;Расход;Транспорт;Такси;150,50;Поездка&#10;05.03.2026;Доход;;;1000;Аванс"></textarea>
           <div id="batchCreateFeedback" class="status-box hidden"></div>
           <div id="batchCreatePreview" class="bulk-import-preview hidden">
             <div class="preview-title">Предпросмотр строк</div>
@@ -127,6 +127,7 @@
                     <th>#</th>
                     <th>Дата</th>
                     <th>Тип</th>
+                    <th>Группа</th>
                     <th>Категория</th>
                     <th>Сумма</th>
                     <th>Комментарий</th>
@@ -212,7 +213,7 @@
           <select id="bulkOpCategory">
             <option value="">Категория (не менять)</option>
           </select>
-          <input id="bulkOpDate" type="date" />
+          <input id="bulkOpDate" type="text" inputmode="numeric" placeholder="Дата (ДД.ММ.ГГГГ)" />
         </form>
         <div class="modal-footer">
           <button id="submitBulkEditOperationsBtn" class="btn btn-cta modal-main-cta" type="submit" form="bulkEditOperationsForm">
@@ -232,7 +233,7 @@
         </div>
 
         <form id="editOperationForm" class="form-grid modal-grid edit-modal-grid">
-          <input id="editDate" type="date" required />
+          <input id="editDate" type="text" inputmode="numeric" placeholder="ДД.ММ.ГГГГ" required />
           <div class="segmented" id="editKindSwitch" aria-label="Тип операции">
             <button class="segmented-btn active" data-kind="expense" type="button">Расход</button>
             <button class="segmented-btn" data-kind="income" type="button">Доход</button>
@@ -443,8 +444,8 @@
           </button>
         </div>
         <form id="periodCustomForm" class="category-modal-form">
-          <input id="customDateFrom" type="date" required />
-          <input id="customDateTo" type="date" required />
+          <input id="customDateFrom" type="text" inputmode="numeric" placeholder="С (ДД.ММ.ГГГГ)" required />
+          <input id="customDateTo" type="text" inputmode="numeric" placeholder="По (ДД.ММ.ГГГГ)" required />
         </form>
         <div class="modal-footer">
           <button id="submitPeriodCustomBtn" class="btn btn-cta modal-main-cta" type="submit" form="periodCustomForm">
@@ -492,7 +493,7 @@
             <div class="muted-small">После: <span id="repaymentAfterValue">0.00</span></div>
             <div id="repaymentCarryRow" class="muted-small hidden">Перенос: <span id="repaymentCarryValue">0.00</span></div>
           </div>
-          <input id="repaymentDate" type="date" required />
+          <input id="repaymentDate" type="text" inputmode="numeric" placeholder="ДД.ММ.ГГГГ" required />
           <input id="repaymentNote" type="text" placeholder="Комментарий" />
         </form>
         <div class="modal-footer">

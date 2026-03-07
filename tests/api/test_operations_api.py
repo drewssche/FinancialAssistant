@@ -236,6 +236,45 @@ def test_operation_receipt_item_templates_and_price_history(client: TestClient):
     assert history_payload[1]["unit_price"] == "6.60"
 
 
+def test_operation_receipt_item_templates_skip_duplicate_price_history(client: TestClient):
+    first = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "66.00",
+            "operation_date": "2026-03-05",
+            "receipt_items": [
+                {"shop_name": "Корона", "name": "Пачка Rothmans", "quantity": "10", "unit_price": "6.60"},
+            ],
+        },
+    )
+    assert first.status_code == 201
+
+    second = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "66.00",
+            "operation_date": "2026-03-06",
+            "receipt_items": [
+                {"shop_name": "Корона", "name": "Пачка Rothmans", "quantity": "10", "unit_price": "6.60"},
+            ],
+        },
+    )
+    assert second.status_code == 201
+
+    templates = client.get("/api/v1/operations/item-templates", params={"page": 1, "page_size": 20})
+    assert templates.status_code == 200
+    template_id = templates.json()["items"][0]["id"]
+
+    history = client.get(f"/api/v1/operations/item-templates/{template_id}/prices")
+    assert history.status_code == 200
+    history_payload = history.json()
+    assert len(history_payload) == 1
+    assert history_payload[0]["unit_price"] == "6.60"
+    assert history_payload[0]["recorded_at"] == "2026-03-05"
+
+
 def test_operation_rejects_missing_amount_when_receipt_is_empty(client: TestClient):
     response = client.post(
         "/api/v1/operations",
@@ -327,6 +366,20 @@ def test_operation_item_templates_crud(client: TestClient):
 
     missing = client.get(f"/api/v1/operations/item-templates/{template_id}/prices")
     assert missing.status_code == 404
+
+
+def test_operation_item_template_create_without_price_or_source(client: TestClient):
+    created = client.post(
+        "/api/v1/operations/item-templates",
+        json={
+            "name": "USB кабель",
+        },
+    )
+    assert created.status_code == 201
+    payload = created.json()
+    assert payload["shop_name"] is None
+    assert payload["name"] == "USB кабель"
+    assert payload["latest_unit_price"] is None
 
 
 def test_operation_item_templates_delete_all(client: TestClient):

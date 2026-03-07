@@ -1,6 +1,21 @@
 (() => {
-  const { el, actions } = window.App;
+  const { el, actions, core } = window.App;
   let bound = false;
+
+  function bindDateField(id, onChange = null) {
+    const node = document.getElementById(id);
+    if (!node) {
+      return;
+    }
+    const normalize = () => {
+      node.value = core.normalizeDateInputValue(node.value);
+      if (typeof onChange === "function") {
+        onChange();
+      }
+    };
+    node.addEventListener("blur", normalize);
+    node.addEventListener("change", normalize);
+  }
 
   function bindPickerFeatureHandlers() {
     if (bound) {
@@ -19,6 +34,7 @@
         }
       }
     }
+    bindDateField("opDate", actions.updateCreatePreview);
     for (const id of ["debtCounterparty", "debtPrincipal", "debtStartDate", "debtDueDate", "debtNote"]) {
       const node = document.getElementById(id);
       if (node) {
@@ -26,6 +42,8 @@
         node.addEventListener("change", actions.updateCreatePreview);
       }
     }
+    bindDateField("debtStartDate", actions.updateCreatePreview);
+    bindDateField("debtDueDate", actions.updateCreatePreview);
     if (actions.updateDebtDueHint) {
       const dueNodes = [document.getElementById("debtStartDate"), document.getElementById("debtDueDate")];
       for (const node of dueNodes) {
@@ -47,6 +65,11 @@
         }
       }
     }
+    bindDateField("editDate", actions.updateEditPreview);
+    bindDateField("bulkOpDate");
+    bindDateField("customDateFrom");
+    bindDateField("customDateTo");
+    bindDateField("repaymentDate");
     if (el.editCategorySearch) {
       el.editCategorySearch.addEventListener("focus", () => {
         if (actions.handleEditCategorySearchFocus) {

@@ -116,8 +116,8 @@
 
     el.periodCustomForm.addEventListener("submit", (event) => {
       event.preventDefault();
-      const from = el.customDateFrom.value;
-      const to = el.customDateTo.value;
+      const from = core.parseDateInputValue(el.customDateFrom.value);
+      const to = core.parseDateInputValue(el.customDateTo.value);
       if (!from || !to || from > to) {
         core.setStatus("Проверь диапазон дат");
         return;
@@ -248,6 +248,20 @@
     }
     if (el.itemCatalogBody && actions.handleItemCatalogBodyClick) {
       el.itemCatalogBody.addEventListener("click", (event) => {
+        const deleteSourceBtn = event.target.closest("button[data-delete-item-source-name]");
+        if (deleteSourceBtn) {
+          if (actions.deleteItemSourceFlow) {
+            actions.deleteItemSourceFlow(deleteSourceBtn.dataset.deleteItemSourceName || "").catch((err) => core.setStatus(String(err)));
+          }
+          return;
+        }
+        const editSourceBtn = event.target.closest("button[data-edit-item-source-name]");
+        if (editSourceBtn) {
+          if (actions.openEditSourceGroupModal) {
+            actions.openEditSourceGroupModal(editSourceBtn.dataset.editItemSourceName || "");
+          }
+          return;
+        }
         const deleteBtn = event.target.closest("button[data-delete-item-template-id]");
         if (deleteBtn) {
           const row = deleteBtn.closest("tr");

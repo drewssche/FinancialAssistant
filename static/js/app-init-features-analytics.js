@@ -69,8 +69,8 @@
         const selected = btn.dataset.analyticsSummaryPeriod;
         if (selected === "custom") {
           state.analyticsSummaryPendingCustom = true;
-          el.customDateFrom.value = state.analyticsSummaryDateFrom || "";
-          el.customDateTo.value = state.analyticsSummaryDateTo || "";
+          el.customDateFrom.value = core.normalizeDateInputValue(state.analyticsSummaryDateFrom || "");
+          el.customDateTo.value = core.normalizeDateInputValue(state.analyticsSummaryDateTo || "");
           actions.openPeriodCustomModal();
           return;
         }

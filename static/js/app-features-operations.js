@@ -273,12 +273,22 @@
   async function createOperation(event) {
     event.preventDefault();
     if (el.opEntryMode.value === "debt") {
+      const startDate = core.parseDateInputValue(el.debtStartDate.value);
+      const dueDate = core.parseDateInputValue(el.debtDueDate.value);
+      if (!startDate) {
+        core.setStatus("Проверь дату долга");
+        return;
+      }
+      if (el.debtDueDate.value && !dueDate) {
+        core.setStatus("Проверь срок долга");
+        return;
+      }
       const payload = {
         counterparty: el.debtCounterparty.value.trim(),
         direction: el.debtDirection.value,
         principal: el.debtPrincipal.value,
-        start_date: el.debtStartDate.value,
-        due_date: el.debtDueDate.value || null,
+        start_date: startDate,
+        due_date: dueDate || null,
         note: el.debtNote.value.trim() || null,
       };
       const isEditDebt = Number(state.editDebtCreateId || 0) > 0;
@@ -294,11 +304,16 @@
       await refreshAfterDebtMutation();
       return;
     }
+    const operationDate = core.parseDateInputValue(document.getElementById("opDate").value);
+    if (!operationDate) {
+      core.setStatus("Проверь дату операции");
+      return;
+    }
     const payload = {
       kind: el.opKind.value,
       category_id: el.opCategory.value ? Number(el.opCategory.value) : null,
       amount: String(document.getElementById("opAmount").value || "").trim() || null,
-      operation_date: document.getElementById("opDate").value,
+      operation_date: operationDate,
       note: document.getElementById("opNote").value,
       receipt_items: getCreateReceiptPayload ? getCreateReceiptPayload() : [],
     };
@@ -328,12 +343,16 @@
     if (!state.editOperationId) {
       return;
     }
-
+    const operationDate = core.parseDateInputValue(document.getElementById("editDate").value);
+    if (!operationDate) {
+      core.setStatus("Проверь дату операции");
+      return;
+    }
     const payload = {
       kind: el.editKind.value,
       category_id: el.editCategory.value ? Number(el.editCategory.value) : null,
       amount: document.getElementById("editAmount").value,
-      operation_date: document.getElementById("editDate").value,
+      operation_date: operationDate,
       note: document.getElementById("editNote").value,
       receipt_items: getEditReceiptPayload ? getEditReceiptPayload() : [],
     };

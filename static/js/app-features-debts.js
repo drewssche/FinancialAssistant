@@ -110,7 +110,7 @@
       el.repaymentProgressBar.style.width = `${progress}%`;
     }
     if (!el.repaymentDate.value) {
-      el.repaymentDate.value = new Date().toISOString().slice(0, 10);
+      el.repaymentDate.value = core.normalizeDateInputValue(core.getTodayIso());
     }
     el.repaymentAmount.value = "";
     el.repaymentNote.value = "";
@@ -179,12 +179,17 @@
     if (!debtId) {
       return;
     }
+    const repaymentDate = core.parseDateInputValue(el.repaymentDate.value);
+    if (!repaymentDate) {
+      core.setStatus("Проверь дату платежа");
+      return;
+    }
     await core.requestJson(`/api/v1/debts/${debtId}/repayments`, {
       method: "POST",
       headers: core.authHeaders(),
       body: JSON.stringify({
         amount: el.repaymentAmount.value,
-        repayment_date: el.repaymentDate.value,
+        repayment_date: repaymentDate,
         note: el.repaymentNote.value || null,
       }),
     });
