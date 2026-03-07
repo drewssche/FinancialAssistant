@@ -20,6 +20,7 @@ Web-first financial assistant (income/expense tracking) with architecture ready 
 For production auth mode set `APP_ENV=production` and configure:
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_BOT_USERNAME`
+- `TELEGRAM_BOT_POLL_TIMEOUT_SECONDS` (optional; default `25`)
 - `ADMIN_TELEGRAM_IDS` (comma-separated Telegram IDs of admins; these IDs are auto-approved on first login)
 
 ## Ports
@@ -53,6 +54,12 @@ Telegram Mini App readiness is broader than responsive layout only. In addition 
 - In Telegram Mini App, login uses Telegram WebApp `initData`.
 - In a regular browser, login can use Telegram Login Widget when `TELEGRAM_BOT_USERNAME` is configured.
 - Both browser and Mini App login paths resolve to the same backend user model and access rules.
+
+## Admin Access Notifications
+- New non-admin users are created with `pending` status.
+- If bot polling service is running, admins from `ADMIN_TELEGRAM_IDS` receive compact Telegram notifications for new pending users.
+- Notification message includes inline `Approve` / `Reject` buttons.
+- Admin must open the bot and press `Start` once, otherwise Telegram may reject outbound bot messages to that admin chat.
 
 ## Domain and HTTPS Basics
 - Yes, you can prepare the domain yourself on your VPS.

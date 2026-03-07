@@ -316,6 +316,32 @@
     min-width: 0;
   }
 
+  .modal-card .panel-head {
+    position: sticky;
+    top: calc(var(--space-3) * -1);
+    z-index: 3;
+    margin-inline: calc(var(--space-3) * -1);
+    margin-top: calc(var(--space-3) * -1);
+    padding: var(--space-3);
+    background: linear-gradient(180deg, rgba(16, 24, 38, 0.98) 0%, rgba(14, 21, 34, 0.94) 100%);
+    border-bottom: 1px solid rgba(39, 50, 72, 0.48);
+    backdrop-filter: blur(10px);
+  }
+
+  .modal-card .panel-head.row.between,
+  .modal-card .repayment-head.row.between,
+  .modal-card .debt-history-head .row.between {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .modal-card .panel-head .btn.btn-secondary {
+    width: auto;
+    min-width: 0;
+    align-self: flex-end;
+    padding-inline: var(--space-3);
+  }
+
   .table-wrap {
     margin-inline: calc(var(--space-3) * -0.5);
     padding-inline: calc(var(--space-3) * 0.5);
@@ -455,6 +481,45 @@
     display: none;
   }
 
+  .category-name-row {
+    grid-template-columns: 1fr;
+  }
+
+  .icon-square-toggle {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .icon-popover {
+    width: 100%;
+    max-width: 100%;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .repayment-outstanding {
+    justify-items: start;
+  }
+
+  .repayment-preset-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .repayment-preset-row .btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .debt-history-head,
+  .repayment-card {
+    gap: var(--space-2);
+  }
+
+  #operationReceiptMeta,
+  #itemTemplateHistoryMeta {
+    margin-top: var(--space-2);
+  }
+
   .settings-form,
   .settings-block,
   .danger-zone,
@@ -492,6 +557,10 @@
   .analytics-kpi-chip,
   .preview-title {
     font-size: 11px;
+  }
+
+  .confirm-actions {
+    gap: var(--space-2);
   }
 
   .receipt-item-row {

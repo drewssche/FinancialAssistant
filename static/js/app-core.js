@@ -3,6 +3,8 @@
     token: localStorage.getItem("access_token") || "",
     mobileNavOpen: false,
     telegramBotUsername: "",
+    telegramWebAppReady: false,
+    telegramWebAppAvailable: false,
     browserTelegramLoginReady: false,
     preferences: null,
     page: 1,
@@ -604,6 +606,9 @@
     toggleMobileNav,
     closeMobileNav,
     isMobileViewport,
+    isTelegramWebApp() {
+      return state.telegramWebAppAvailable === true;
+    },
     syncSegmentedActive,
       syncAllPeriodTabs,
       formatAmount,

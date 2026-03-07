@@ -8,6 +8,7 @@ from app.core.telegram_auth import (
     verify_and_extract_telegram_login_widget_user,
     verify_and_extract_telegram_user,
 )
+from app.services.telegram_admin_notifier import notify_new_pending_user
 from app.repositories.user_repo import UserRepository
 
 
@@ -29,9 +30,11 @@ class AuthService:
 
     def _upsert_telegram_user(self, telegram_user: dict) -> str:
         telegram_id = telegram_user["telegram_id"]
+        created = False
 
         user = self.user_repo.get_by_telegram_id(telegram_id)
         if not user:
+            created = True
             user = self.user_repo.create_with_telegram_identity(
                 telegram_id=telegram_id,
                 display_name=telegram_user.get("display_name"),
@@ -43,6 +46,14 @@ class AuthService:
 
         user.last_login_at = datetime.now(timezone.utc)
         self.db.commit()
+        if created and user.status == "pending":
+            notify_new_pending_user(
+                user_id=user.id,
+                display_name=user.display_name,
+                username=telegram_user.get("username"),
+                telegram_id=telegram_id,
+                created_at=user.created_at,
+            )
         return create_access_token({"sub": str(user.id)})
 
     def login_with_telegram(self, init_data: str) -> str:

@@ -21,6 +21,10 @@
   }
 
   async function startApp() {
+    if (window.App.telegramWebApp?.init) {
+      window.App.telegramWebApp.init();
+    }
+
     if (actions.setupCategoryIconPickers) {
       actions.setupCategoryIconPickers();
     }

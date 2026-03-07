@@ -24,6 +24,27 @@ services:
         max-file: "3"
     command: sh -lc "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
+  bot:
+    build: .
+    container_name: financial_assistant_bot
+    restart: unless-stopped
+    init: true
+    env_file:
+      - .env
+    environment:
+      PYTHONPATH: /app
+    depends_on:
+      app:
+        condition: service_started
+    mem_limit: 192m
+    cpus: 0.15
+    stop_grace_period: 20s
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+    command: python scripts/run_telegram_admin_bot.py
+
   db:
     image: postgres:16-alpine
     container_name: financial_assistant_db
