@@ -21,6 +21,7 @@
     } catch {
       state.telegramBotUsername = "";
     }
+    applyTelegramLoginUi();
     return state.telegramBotUsername;
   }
 
