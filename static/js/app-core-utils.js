@@ -18,11 +18,15 @@
   function getUiSettings(state) {
     const ui = state.preferences?.data?.ui || {};
     const scale = Number(ui.scale_percent || 100);
+    const dashboardOpsLimit = Number(ui.dashboard_operations_limit || 8);
     return {
       currency: String(ui.currency || "BYN").toUpperCase(),
       currencyPosition: ui.currency_position === "prefix" ? "prefix" : "suffix",
+      showDashboardAnalytics: ui.show_dashboard_analytics !== false,
+      showDashboardOperations: ui.show_dashboard_operations !== false,
       showDashboardDebts: ui.show_dashboard_debts !== false,
-      scalePercent: Number.isFinite(scale) ? Math.max(90, Math.min(115, Math.round(scale / 5) * 5)) : 100,
+      dashboardOperationsLimit: [5, 8, 12].includes(dashboardOpsLimit) ? dashboardOpsLimit : 8,
+      scalePercent: Number.isFinite(scale) ? Math.max(85, Math.min(115, Math.round(scale))) : 100,
     };
   }
 
@@ -59,9 +63,8 @@
   }
 
   function applyUiScale(el, scalePercent) {
-    const normalized = Math.max(90, Math.min(115, Number(scalePercent || 100)));
+    const normalized = Math.max(85, Math.min(115, Number(scalePercent || 100)));
     document.documentElement.style.setProperty("--ui-scale", String(normalized / 100));
-    document.body.style.zoom = `${normalized}%`;
     if (el.uiScaleRange) {
       el.uiScaleRange.value = String(normalized);
     }

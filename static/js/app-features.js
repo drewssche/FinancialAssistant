@@ -1,6 +1,8 @@
 (() => {
   const categoryActions = window.App.actions;
   const dashboardFeatures = window.App.featureDashboard;
+  const analyticsFeatures = window.App.featureAnalytics;
+  const adminFeatures = window.App.featureAdmin;
   const debtFeatures = window.App.featureDebts;
   const sessionFeatures = window.App.featureSession;
   const itemCatalogFeatures = window.App.featureItemCatalog;
@@ -12,11 +14,17 @@
   const updateDebtDueHint = operationModal.updateDebtDueHint;
   const updateEditPreview = operationModal.updateEditPreview;
   const renderCreateCategoryPicker = operationModal.renderCreateCategoryPicker;
+  const renderEditCategoryPicker = operationModal.renderEditCategoryPicker;
   const handleCreateCategoryPickerClick = operationModal.handleCreateCategoryPickerClick;
+  const handleEditCategoryPickerClick = operationModal.handleEditCategoryPickerClick;
   const handleCreateCategorySearchFocus = operationModal.handleCreateCategorySearchFocus;
   const handleCreateCategorySearchInput = operationModal.handleCreateCategorySearchInput;
   const handleCreateCategorySearchKeydown = operationModal.handleCreateCategorySearchKeydown;
+  const handleEditCategorySearchFocus = operationModal.handleEditCategorySearchFocus;
+  const handleEditCategorySearchInput = operationModal.handleEditCategorySearchInput;
+  const handleEditCategorySearchKeydown = operationModal.handleEditCategorySearchKeydown;
   const handleCreateCategoryOutsidePointer = operationModal.handleCreateCategoryOutsidePointer;
+  const handleEditCategoryOutsidePointer = operationModal.handleEditCategoryOutsidePointer;
   const handleReceiptOutsidePointer = operationModal.handleReceiptOutsidePointer;
   const handleReceiptItemsListInput = operationModal.handleReceiptItemsListInput;
   const handleReceiptItemsListFocusIn = operationModal.handleReceiptItemsListFocusIn;
@@ -42,16 +50,39 @@
   const loadMe = sessionFeatures.loadMe;
   const loadPreferences = sessionFeatures.loadPreferences;
   const savePreferences = sessionFeatures.savePreferences;
+  const savePreferencesDebounced = sessionFeatures.savePreferencesDebounced;
+  const cancelDebouncedPreferencesSave = sessionFeatures.cancelDebouncedPreferencesSave;
   const saveSettings = sessionFeatures.saveSettings;
   const applyInterfaceSettingsUi = sessionFeatures.applyInterfaceSettingsUi;
   const previewInterfaceSettingsUi = sessionFeatures.previewInterfaceSettingsUi;
   const deleteMe = sessionFeatures.deleteMe;
   const logout = sessionFeatures.logout;
-  const devLogin = sessionFeatures.devLogin;
   const bootstrapApp = sessionFeatures.bootstrapApp;
+  const telegramLogin = sessionFeatures.telegramLogin;
+  const telegramBrowserLogin = sessionFeatures.telegramBrowserLogin;
+  const loadTelegramLoginConfig = sessionFeatures.loadTelegramLoginConfig;
+  const tryAutoTelegramLogin = sessionFeatures.tryAutoTelegramLogin;
 
   const loadDashboard = dashboardFeatures.loadDashboard;
   const loadDashboardOperations = dashboardFeatures.loadDashboardOperations;
+  const loadAnalyticsCalendar = analyticsFeatures.loadAnalyticsCalendar;
+  const loadAnalyticsTrend = analyticsFeatures.loadAnalyticsTrend;
+  const loadDashboardAnalyticsPreview = analyticsFeatures.loadDashboardAnalyticsPreview;
+  const loadAnalyticsSection = analyticsFeatures.loadAnalyticsSection;
+  const loadAnalyticsHighlights = analyticsFeatures.loadAnalyticsHighlights;
+  const shiftAnalyticsMonth = analyticsFeatures.shiftAnalyticsMonth;
+  const resetAnalyticsMonth = analyticsFeatures.resetAnalyticsMonth;
+  const applyAnalyticsTabUi = analyticsFeatures.applyAnalyticsTabUi;
+  const setAnalyticsTab = analyticsFeatures.setAnalyticsTab;
+  const setAnalyticsCalendarView = analyticsFeatures.setAnalyticsCalendarView;
+  const openAnalyticsMonth = analyticsFeatures.openAnalyticsMonth;
+  const openOperationsForAnalyticsDate = analyticsFeatures.openOperationsForAnalyticsDate;
+  const openOperationsForAnalyticsRange = analyticsFeatures.openOperationsForAnalyticsRange;
+  const loadAdminUsers = adminFeatures.loadAdminUsers;
+  const setAdminUserStatusFilter = adminFeatures.setAdminUserStatusFilter;
+  const approveAdminUser = adminFeatures.approveAdminUser;
+  const rejectAdminUser = adminFeatures.rejectAdminUser;
+  const deleteAdminUser = adminFeatures.deleteAdminUser;
 
   const loadDebtsCards = debtFeatures.loadDebtsCards;
   const openDebtRepaymentModal = debtFeatures.openDebtRepaymentModal;
@@ -125,10 +156,15 @@
     updateDebtDueHint,
     updateEditPreview,
     renderCreateCategoryPicker,
+    renderEditCategoryPicker,
     handleCreateCategorySearchFocus,
     handleCreateCategorySearchInput,
     handleCreateCategorySearchKeydown,
+    handleEditCategorySearchFocus,
+    handleEditCategorySearchInput,
+    handleEditCategorySearchKeydown,
     handleCreateCategoryOutsidePointer,
+    handleEditCategoryOutsidePointer,
     handleReceiptOutsidePointer,
     handleReceiptItemsListInput,
     handleReceiptItemsListFocusIn,
@@ -136,6 +172,7 @@
     handleReceiptItemsListClick,
     handlePullReceiptTotal,
     handleCreateCategoryPickerClick,
+    handleEditCategoryPickerClick,
     setReceiptEnabled,
     renderReceiptSummary,
     onCategoryCreated,
@@ -158,6 +195,8 @@
     loadMe,
     loadPreferences,
     savePreferences,
+    savePreferencesDebounced,
+    cancelDebouncedPreferencesSave,
     saveSettings,
     applyInterfaceSettingsUi,
     previewInterfaceSettingsUi,
@@ -167,6 +206,24 @@
     renderTodayLabel: previousActions.renderTodayLabel,
     loadDashboard,
     loadDashboardOperations,
+    loadAnalyticsCalendar,
+    loadAnalyticsTrend,
+    loadAnalyticsHighlights,
+    loadDashboardAnalyticsPreview,
+    loadAnalyticsSection,
+    shiftAnalyticsMonth,
+    resetAnalyticsMonth,
+    applyAnalyticsTabUi,
+    setAnalyticsTab,
+    setAnalyticsCalendarView,
+    openAnalyticsMonth,
+    openOperationsForAnalyticsDate,
+    openOperationsForAnalyticsRange,
+    loadAdminUsers,
+    setAdminUserStatusFilter,
+    approveAdminUser,
+    rejectAdminUser,
+    deleteAdminUser,
     loadDebtsCards,
     openDebtRepaymentModal,
     closeDebtRepaymentModal,
@@ -253,7 +310,10 @@
     applyRealtimeSearch,
     refreshAll,
     logout: logoutWithCatalogCleanup,
-    devLogin,
+    telegramLogin,
+    telegramBrowserLogin,
+    loadTelegramLoginConfig,
+    tryAutoTelegramLogin,
     bootstrapApp,
   };
 })();

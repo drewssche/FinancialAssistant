@@ -5,6 +5,10 @@ Financial Assistant is a web-first personal finance tracker for income and expen
 - Web application (primary UI)
 - Telegram Mini App client (secondary UI)
 
+Current delivery direction:
+- near-term goal is controlled transition to production with Telegram-first authentication
+- Telegram Mini App adaptation is not limited to responsive layout; it also includes Telegram WebApp runtime behavior and mobile-first interaction rules
+
 ## Core Jobs To Be Done
 - Track income and expense operations quickly
 - Optionally store receipt line-item details inside operation (`чек`) with discrepancy visibility
@@ -47,7 +51,7 @@ Financial Assistant is a web-first personal finance tracker for income and expen
 - This keeps edit/delete auditability and avoids data loss, while still allowing fast trend calculations.
 - Position-level analytics is explicitly deferred to backlog and not part of current MVP.
 
-## Debt Domain (Planned)
+## Debt Domain (Implemented MVP Baseline)
 - Debt records are not expense/income categories; they are a separate workflow with dedicated fields:
 - counterparty (`кому`/`кто`)
 - principal amount
@@ -59,7 +63,34 @@ Financial Assistant is a web-first personal finance tracker for income and expen
 - Fully repaid cards are hidden from dashboard debt widget by default (kept in Debt section history/filter).
 
 ## Authentication Scope
-MVP-1 uses Telegram-only sign in. Google auth is planned as provider #2 without changing core user model.
+MVP-1 production mode uses Telegram sign in only:
+- Telegram WebApp `initData` inside Mini App
+- Telegram Login Widget in regular browser when `TELEGRAM_BOT_USERNAME` is configured
+- Google auth is planned as provider #2 without changing core user model.
+
+## Production Scope (Current)
+- first production target is a small controlled audience with admin-approved access
+- release quality is defined by:
+- stable Telegram auth
+- predictable access governance (`pending/approved/rejected`)
+- release checklist compliance
+- acceptable request budgets and health-check metrics
+
+## Telegram Mini App Scope (Current)
+- Mini App is treated as a first-class client runtime, not just a resized desktop web UI
+- required adaptation areas:
+- narrow mobile screens
+- touch-first navigation and actions
+- Telegram WebApp container specifics (`initData`, viewport/safe-area, in-app browser constraints)
+- API/domain logic remains shared with web client; Telegram-specific adjustments stay in UI/runtime layer
+
+## Access Governance
+- Product access is admin-governed:
+- new users -> `pending`
+- allowed users -> `approved`
+- denied users -> `rejected`
+- Admin identities are configured via env (`ADMIN_TELEGRAM_IDS`) and are auto-approved on login.
+- Admin can remove user completely with all related DB data.
 
 ## Data Minimization
 We store only the minimum profile data required for product operation:

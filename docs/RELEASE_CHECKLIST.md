@@ -67,3 +67,27 @@ Expected:
 - `/health` is `ok`
 - `dashboard/summary` and `dashboard/summary/metrics` are reachable
 - threshold checks in script pass (`p95`, `cache_hit_ratio`, optional request-total cap)
+
+## 4. Production Config Gate
+Before any production deploy, verify:
+- `APP_ENV=production`
+- `TELEGRAM_BOT_TOKEN` is set correctly
+- `ADMIN_TELEGRAM_IDS` contains actual admin Telegram IDs and owner/admin IDs are expected to auto-approve
+- no alternative non-Telegram login entrypoints remain enabled
+
+Expected:
+- Telegram auth is the only active sign-in path in production
+- admin approval flow works for a newly created `pending` user
+- non-approved users cannot access workspace sections
+
+## 5. Telegram Mini App Readiness Gate
+Before exposing the app inside Telegram WebApp, verify:
+- login works from Telegram Mini App container, not only from standalone browser
+- key screens are usable on narrow mobile viewport (`320-430px`)
+- no critical action depends on hover-only UI
+- main forms remain usable with mobile keyboard open
+- safe-area/viewport shifts do not hide primary CTA or break layout
+
+Expected:
+- app is usable end-to-end on a real phone or equivalent mobile emulation
+- auth/session restore behaves correctly after reopening the Mini App

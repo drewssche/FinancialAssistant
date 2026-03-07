@@ -126,10 +126,10 @@ def page_with_sort_prefs_api_mock():
         query = parse_qs(parsed.query)
         method = request.method.upper()
 
-        if path == "/api/v1/auth/dev" and method == "POST":
+        if path == "/api/v1/auth/telegram" and method == "POST":
             return json_response(route, {"access_token": "e2e-token", "token_type": "bearer"})
         if path == "/api/v1/users/me" and method == "GET":
-            return json_response(route, {"id": 1, "display_name": "Sort User", "username": "sort_user"})
+            return json_response(route, {"id": 1, "display_name": "Sort User", "username": "sort_user", "status": "approved", "is_admin": False})
         if path == "/api/v1/preferences":
             if method == "GET":
                 return json_response(route, preferences)
@@ -162,6 +162,17 @@ def page_with_sort_prefs_api_mock():
         except Exception as exc:  # pragma: no cover
             pytest.skip(f"Chromium is not available for Playwright: {exc}")
         page = browser.new_page()
+        page.add_init_script(
+            """
+            window.Telegram = {
+              WebApp: {
+                initData: "mock-init-data",
+                ready() {},
+                expand() {},
+              }
+            };
+            """
+        )
         page.route("**/api/v1/**", handler)
         try:
             yield page
@@ -171,8 +182,22 @@ def page_with_sort_prefs_api_mock():
 
 def _open_app(page, static_server_url: str):
     page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
     if page.locator("#loginScreen:not(.hidden)").count():
-        page.click("#devLoginBtn")
+        page.click("#telegramLoginBtn")
     page.wait_for_selector("#appShell:not(.hidden)")
 
 
@@ -240,3 +265,35 @@ def test_debts_sort_preset_persists_after_reload(static_server_url: str, page_wi
     )
     first_after_reload = page.locator("#debtsCards .debt-card h3").first.inner_text()
     assert first_after_reload == "Алина"
+
+
+@pytest.mark.e2e
+def test_interface_currency_and_scale_persist_after_reload(static_server_url: str, page_with_sort_prefs_api_mock):
+    page = page_with_sort_prefs_api_mock
+    _open_app(page, static_server_url)
+    page.click("button[data-section='settings']")
+    page.wait_for_selector("#settingsSection:not(.hidden)")
+
+    page.select_option("#currencySelect", "USD")
+    page.select_option("#currencyPositionSelect", "prefix")
+    page.evaluate(
+        """
+        () => {
+          const scale = document.getElementById('uiScaleRange');
+          scale.value = '92';
+          scale.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        """
+    )
+    page.wait_for_timeout(900)
+
+    page.reload()
+    _open_app(page, static_server_url)
+    page.click("button[data-section='settings']")
+    page.wait_for_selector("#settingsSection:not(.hidden)")
+
+    assert page.locator("#currencySelect").input_value() == "USD"
+    assert page.locator("#currencyPositionSelect").input_value() == "prefix"
+    assert page.locator("#uiScaleRange").input_value() == "92"
+    assert "$" in page.locator("#currencyPreview").inner_text()
+    assert "92%" in page.locator("#uiScaleValue").inner_text()

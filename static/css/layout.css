@@ -2,15 +2,15 @@
   min-height: 100vh;
   display: grid;
   place-items: center;
-  padding: 30px;
+  padding: var(--space-8);
 }
 
 .login-card {
   width: min(780px, 100%);
   background: linear-gradient(180deg, rgba(19, 26, 42, 0.96) 0%, rgba(13, 19, 32, 0.98) 100%);
   border: 1px solid var(--border);
-  border-radius: 24px;
-  padding: 42px;
+  border-radius: var(--radius-xl);
+  padding: calc(var(--space-8) + var(--space-2));
   box-shadow: var(--shadow);
 }
 
@@ -22,15 +22,15 @@
 }
 
 .input-row {
-  margin-top: 28px;
+  margin-top: var(--space-7);
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: var(--space-3);
 }
 
 .field {
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .field span {
@@ -39,18 +39,28 @@
 }
 
 .login-actions {
-  margin-top: 18px;
+  margin-top: calc(var(--space-4) + var(--space-1));
   display: flex;
   justify-content: center;
 }
 
+.telegram-browser-login {
+  margin-top: var(--space-3);
+  display: flex;
+  justify-content: center;
+}
+
+.telegram-browser-login-widget {
+  min-height: 50px;
+}
+
 .login-alert {
-  margin-top: 14px;
+  margin-top: var(--space-3);
   border: 1px solid #7a3948;
   background: rgba(69, 28, 39, 0.45);
   color: #ffc4cf;
-  border-radius: 12px;
-  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-3);
   font-size: 14px;
   line-height: 1.35;
   text-align: center;
@@ -72,33 +82,65 @@
   min-height: 100vh;
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
+  position: relative;
 }
 
 .sidebar {
   border-right: 1px solid var(--border);
   background: rgba(11, 15, 24, 0.88);
   backdrop-filter: blur(10px);
-  padding: 20px 16px;
+  padding: var(--space-5) var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
   position: sticky;
   top: 0;
   height: 100vh;
   overflow-y: auto;
 }
 
+.sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.mobile-nav-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 8, 15, 0.62);
+  backdrop-filter: blur(4px);
+  z-index: 70;
+}
+
+.mobile-nav-toggle,
+.mobile-nav-close {
+  display: none;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: rgba(17, 28, 45, 0.9);
+  color: #f0f6ff;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  font-size: 22px;
+  line-height: 1;
+}
+
 .sidebar-today {
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: rgba(18, 27, 43, 0.7);
-  padding: 10px 12px;
+  padding: var(--space-3) var(--space-3);
 }
 
 .main {
-  padding: 24px;
+  padding: var(--space-6);
   display: grid;
-  gap: 16px;
+  gap: var(--space-4);
   align-content: start;
   min-width: 0;
   overflow-x: hidden;
@@ -106,50 +148,57 @@
 
 .section-block {
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .topbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 20px;
+  gap: var(--space-5);
+}
+
+.topbar-title-block {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
 }
 
 .top-actions {
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
   width: 100%;
   justify-items: end;
 }
 
 .cta-row {
   display: flex;
-  gap: 10px;
+  gap: var(--space-3);
   justify-content: flex-end;
   width: 100%;
 }
 
 .category-groups-overview {
-  margin-bottom: 14px;
+  margin-bottom: var(--space-3);
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .category-name-row {
   display: grid;
   grid-template-columns: 52px minmax(0, 1fr);
-  gap: 10px;
+  gap: var(--space-3);
   align-items: center;
 }
 
 .panel-head {
-  margin-bottom: 14px;
+  margin-bottom: var(--space-3);
 }
 
 .panel-controls {
   display: grid;
-  gap: 10px;
+  gap: var(--space-3);
   justify-items: end;
 }
 
@@ -166,7 +215,7 @@
 .create-modal-grid {
   grid-template-columns: repeat(12, minmax(0, 1fr));
   align-items: start;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .create-modal-grid #createEntryModeSwitch {
@@ -217,7 +266,7 @@
 .edit-modal-grid {
   grid-template-columns: repeat(12, minmax(0, 1fr));
   align-items: start;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .edit-modal-grid #editDate {
@@ -234,7 +283,7 @@
   flex: 1;
 }
 
-.edit-modal-grid #editCategory {
+.edit-modal-grid #editCategoryField {
   grid-column: span 4;
   width: 100%;
 }
@@ -247,7 +296,7 @@
 .row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
 }
 
 .between {
@@ -257,20 +306,20 @@
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 
 .categories-toolbar {
-  margin-top: 10px;
+  margin-top: var(--space-3);
 }
 
 .table-search-row {
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 
@@ -279,20 +328,20 @@
 }
 
 .bulk-bar {
-  margin: 6px 0 12px;
+  margin: var(--space-2) 0 var(--space-3);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 
 #categoriesBulkBar {
-  margin-top: 14px;
+  margin-top: var(--space-3);
   display: grid;
   grid-template-columns: minmax(260px, 1fr) auto;
   align-items: center;
-  gap: 12px;
-  min-height: 64px;
+  gap: var(--space-3);
+  min-height: 4rem;
 }
 
 .sticky-bar,
@@ -301,52 +350,52 @@
   z-index: 5;
   background: linear-gradient(180deg, rgba(20, 29, 45, 0.98) 0%, rgba(16, 24, 38, 0.98) 100%);
   border: 1px solid rgba(39, 50, 72, 0.75);
-  border-radius: 12px;
-  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-3);
 }
 
 .sticky-bar {
-  top: 12px;
+  top: var(--space-3);
 }
 
 .sticky-search {
-  top: 96px;
+  top: 6rem;
 }
 
 .category-form {
   display: grid;
   grid-template-columns: auto;
-  gap: 10px;
-  margin-bottom: 14px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
   align-items: center;
   justify-items: center;
 }
 
 .category-modal-form {
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .operation-category-picker {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + var(--space-2));
   left: 0;
   right: 0;
   z-index: 12;
   border: 1px solid rgba(52, 69, 101, 0.9);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: rgba(12, 20, 35, 0.98);
-  box-shadow: 0 12px 24px rgba(4, 8, 15, 0.5);
-  padding: 10px;
+  box-shadow: 0 0.75rem 1.5rem rgba(4, 8, 15, 0.5);
+  padding: var(--space-3);
   display: grid;
-  gap: 10px;
+  gap: var(--space-3);
   max-height: min(42vh, 320px);
   overflow-y: auto;
 }
 
 .operation-category-picker-row {
   display: flex;
-  gap: 10px;
+  gap: var(--space-3);
   align-items: center;
   flex-wrap: wrap;
 }
@@ -354,7 +403,7 @@
 #createDebtFields {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 #createDebtFields #debtStartDate {
@@ -388,11 +437,11 @@
 
 .debt-due-field {
   display: grid;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .debt-due-inline-hint {
-  padding-left: 2px;
+  padding-left: var(--space-1);
 }
 
 .debt-due-inline-soon {
@@ -404,25 +453,25 @@
 }
 
 .settings-form {
-  margin-top: 12px;
+  margin-top: var(--space-3);
   display: grid;
-  gap: 14px;
+  gap: var(--space-3);
   max-width: 760px;
 }
 
 .settings-block {
   border: 1px solid rgba(47, 64, 93, 0.75);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: rgba(14, 22, 36, 0.55);
-  padding: 12px;
+  padding: var(--space-3);
   display: grid;
-  gap: 10px;
+  gap: var(--space-3);
 }
 
 .settings-grid-2 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--space-3);
 }
 
 .settings-preview {
@@ -433,19 +482,19 @@
 .settings-switch-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   color: var(--text);
 }
 
 .settings-switch-row input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
+  width: 1.125rem;
+  height: 1.125rem;
 }
 
 .settings-scale-row {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 10px;
+  gap: var(--space-3);
   align-items: end;
 }
 
@@ -510,6 +559,7 @@
 
 .table-wrap {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .actions {
@@ -520,11 +570,11 @@
 
 .debt-cards {
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .debt-cards-compact .debt-card-compact {
-  padding: 14px;
+  padding: var(--space-3);
 }
 
 .debt-cards-compact .debt-card-compact h3 {
@@ -534,7 +584,7 @@
 .debt-card-compact-grid {
   display: grid;
   grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1.2fr);
-  gap: 16px;
+  gap: var(--space-4);
   align-items: start;
 }
 
@@ -543,22 +593,22 @@
 }
 
 .debt-card-compact-main .subtitle {
-  margin-top: 8px;
+  margin-top: var(--space-2);
 }
 
 .debt-card-compact-rows {
   display: grid;
-  gap: 10px;
+  gap: var(--space-3);
 }
 
 .dashboard-debt-row {
   border: 1px solid rgba(56, 77, 111, 0.45);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: rgba(14, 22, 36, 0.52);
-  padding: 10px;
+  padding: var(--space-3);
   display: grid;
   grid-template-columns: minmax(120px, 0.65fr) minmax(220px, 1fr) minmax(260px, 1fr);
-  gap: 12px;
+  gap: var(--space-3);
   align-items: start;
 }
 
@@ -575,8 +625,8 @@
 .debt-status {
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
-  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) calc(var(--space-2) + 0.0625rem);
   font-size: 12px;
   border: 1px solid var(--border);
 }
@@ -612,8 +662,8 @@
 .debt-direction-pill {
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
-  padding: 3px 12px;
+  border-radius: var(--radius-pill);
+  padding: calc(var(--space-1) + 0.0625rem) var(--space-3);
   border: 1px solid var(--border);
   font-size: 14px;
   font-weight: 700;
@@ -678,16 +728,16 @@
 }
 
 .debt-repay-progress {
-  margin-top: 6px;
+  margin-top: var(--space-2);
   max-width: 170px;
 }
 
 .debt-repay-progress-track {
-  height: 6px;
-  border-radius: 999px;
+  height: 0.375rem;
+  border-radius: var(--radius-pill);
   background: rgba(114, 130, 162, 0.26);
   overflow: hidden;
-  margin-bottom: 3px;
+  margin-bottom: var(--space-1);
 }
 
 .debt-repay-progress-bar {
@@ -722,7 +772,7 @@
 }
 
 .debt-due-progress {
-  margin: 6px 0 4px;
+  margin: var(--space-2) 0 var(--space-1);
   max-width: 220px;
 }
 
@@ -730,14 +780,14 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .debt-due-days-badge {
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
-  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-2);
   border: 1px solid var(--border);
   font-size: 11px;
 }
@@ -773,11 +823,11 @@
 }
 
 .debt-due-progress-track {
-  height: 7px;
-  border-radius: 999px;
+  height: 0.4375rem;
+  border-radius: var(--radius-pill);
   background: rgba(114, 130, 162, 0.28);
   overflow: hidden;
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
 }
 
 .debt-due-progress-bar {
@@ -804,16 +854,16 @@
 }
 
 .dashboard-debt-progress-stack {
-  margin-top: 8px;
+  margin-top: var(--space-2);
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .dashboard-debt-due-label {
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
-  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) calc(var(--space-2) + 0.0625rem);
   font-size: 12px;
   border: 1px solid var(--border);
 }
@@ -843,28 +893,28 @@
 }
 
 .debt-history-head {
-  margin: 4px 0 10px;
-  padding: 12px;
+  margin: var(--space-1) 0 var(--space-3);
+  padding: var(--space-3);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: rgba(20, 31, 52, 0.65);
 }
 
 .debt-history-list {
   max-height: 360px;
   overflow: auto;
-  padding-right: 2px;
+  padding-right: var(--space-1);
 }
 
 .debt-history-items {
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .debt-history-event {
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px;
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
   background: rgba(17, 25, 39, 0.75);
 }
 
@@ -882,21 +932,21 @@
 }
 
 .debt-history-amount {
-  margin: 4px 0;
+  margin: var(--space-1) 0;
   font-size: 18px;
   font-weight: 700;
 }
 
 .operation-receipt-items {
-  margin-top: 10px;
+  margin-top: var(--space-3);
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .operation-receipt-item {
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px;
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
   background: rgba(17, 25, 39, 0.75);
 }
 
@@ -904,15 +954,15 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-3);
 }
 
 .operation-receipt-meta {
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
 .operation-receipt-shop {
-  margin-top: 6px;
+  margin-top: var(--space-2);
 }
 
 .item-template-history-meta {
@@ -930,8 +980,8 @@
 .receipt-block {
   grid-column: 1 / -1;
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 10px;
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
   background: rgba(17, 25, 39, 0.45);
 }
 
@@ -942,7 +992,7 @@
 .receipt-toggle-row {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   font-weight: 600;
 }
 
@@ -955,7 +1005,7 @@
 }
 
 #opReceiptFields:not(.hidden) {
-  margin-top: 8px;
+  margin-top: var(--space-2);
   max-height: 520px;
   overflow: visible;
   opacity: 1;
@@ -964,14 +1014,14 @@
 
 .receipt-items-list {
   display: grid;
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
 }
 
 .receipt-item-row {
   display: grid;
   grid-template-columns: minmax(140px, 0.75fr) minmax(0, 1.25fr) 120px 95px 100px 40px;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
 }
 
@@ -991,18 +1041,18 @@
 .receipt-shop-picker {
   position: absolute;
   z-index: 14;
-  top: calc(100% + 6px);
+  top: calc(100% + var(--space-2));
   left: 0;
   right: 0;
   border: 1px solid rgba(52, 69, 101, 0.9);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: rgba(12, 20, 35, 0.98);
-  box-shadow: 0 12px 24px rgba(4, 8, 15, 0.5);
-  padding: 8px;
+  box-shadow: 0 0.75rem 1.5rem rgba(4, 8, 15, 0.5);
+  padding: var(--space-2);
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: 8px;
+  gap: var(--space-2);
   max-height: 200px;
   overflow-y: auto;
 }
@@ -1015,7 +1065,7 @@
 .receipt-name-cell {
   position: relative;
   min-width: 0;
-  padding-left: 2px;
+  padding-left: var(--space-1);
 }
 
 .receipt-name-cell > input {
@@ -1025,18 +1075,18 @@
 .receipt-name-picker {
   position: absolute;
   z-index: 14;
-  top: calc(100% + 6px);
-  left: 2px;
+  top: calc(100% + var(--space-2));
+  left: var(--space-1);
   right: 0;
   border: 1px solid rgba(52, 69, 101, 0.9);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: rgba(12, 20, 35, 0.98);
-  box-shadow: 0 12px 24px rgba(4, 8, 15, 0.5);
-  padding: 8px;
+  box-shadow: 0 0.75rem 1.5rem rgba(4, 8, 15, 0.5);
+  padding: var(--space-2);
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: 8px;
+  gap: var(--space-2);
   max-height: 200px;
   overflow-y: auto;
 }
@@ -1047,13 +1097,13 @@
 }
 
 .receipt-name-picker .chip-btn-create {
-  padding: 4px 10px;
+  padding: var(--space-1) calc(var(--space-2) + 0.125rem);
   font-size: 12px;
   font-weight: 600;
 }
 
 .receipt-shop-picker .chip-btn-create {
-  padding: 4px 10px;
+  padding: var(--space-1) calc(var(--space-2) + 0.125rem);
   font-size: 12px;
   font-weight: 600;
 }

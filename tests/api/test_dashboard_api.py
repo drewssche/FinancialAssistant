@@ -230,3 +230,193 @@ def test_dashboard_summary_cache_is_invalidated_after_debt_mutations(client: Tes
     assert after_delete.status_code == 200
     assert after_delete.json()["debt_lend_outstanding"] in ("0", "0.00")
     assert after_delete.json()["active_debt_cards"] == 0
+
+
+def test_dashboard_analytics_calendar_returns_week_rows_and_day_cells(client: TestClient):
+    client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "amount": "300.00",
+            "operation_date": "2026-03-02",
+            "note": "salary",
+        },
+    )
+    client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "120.00",
+            "operation_date": "2026-03-03",
+            "note": "food",
+        },
+    )
+    client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "80.00",
+            "operation_date": "2026-03-03",
+            "note": "taxi",
+        },
+    )
+
+    response = client.get("/api/v1/dashboard/analytics/calendar", params={"month": "2026-03"})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["month"] == "2026-03"
+    assert payload["income_total"] == "300.00"
+    assert payload["expense_total"] == "200.00"
+    assert payload["operations_count"] == 3
+    assert len(payload["weeks"]) >= 4
+    assert all(len(week["days"]) == 7 for week in payload["weeks"])
+    assert any(day["date"] == "2026-03-03" and day["operations_count"] == 2 for week in payload["weeks"] for day in week["days"])
+
+
+def test_dashboard_analytics_trend_returns_points_and_deltas(client: TestClient):
+    client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "amount": "100.00",
+            "operation_date": "2026-03-01",
+            "note": "A",
+        },
+    )
+    client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "30.00",
+            "operation_date": "2026-03-02",
+            "note": "B",
+        },
+    )
+    client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "amount": "70.00",
+            "operation_date": "2026-03-03",
+            "note": "C",
+        },
+    )
+
+    response = client.get(
+        "/api/v1/dashboard/analytics/trend",
+        params={
+            "period": "custom",
+            "date_from": "2026-03-01",
+            "date_to": "2026-03-03",
+            "granularity": "day",
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["date_from"] == "2026-03-01"
+    assert payload["date_to"] == "2026-03-03"
+    assert payload["income_total"] == "170.00"
+    assert payload["expense_total"] == "30.00"
+    assert payload["balance"] == "140.00"
+    assert payload["operations_count"] == 3
+    assert len(payload["points"]) == 3
+    assert payload["points"][0]["bucket_start"] == "2026-03-01"
+
+
+def test_dashboard_analytics_calendar_year_returns_month_cells(client: TestClient):
+    client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "amount": "100.00",
+            "operation_date": "2026-01-05",
+            "note": "jan",
+        },
+    )
+    client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "40.00",
+            "operation_date": "2026-03-10",
+            "note": "mar",
+        },
+    )
+
+    response = client.get("/api/v1/dashboard/analytics/calendar/year", params={"year": 2026})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["year"] == 2026
+    assert payload["income_total"] == "100.00"
+    assert payload["expense_total"] == "40.00"
+    assert payload["operations_count"] == 2
+    assert len(payload["months"]) == 12
+    jan = next(item for item in payload["months"] if item["month"] == "2026-01")
+    mar = next(item for item in payload["months"] if item["month"] == "2026-03")
+    assert jan["income_total"] == "100.00"
+    assert mar["expense_total"] == "40.00"
+
+
+def test_dashboard_analytics_highlights_returns_kpis_and_top_blocks(client: TestClient):
+    previous_month = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "40.00",
+            "operation_date": "2026-02-10",
+            "note": "prev-month",
+            "receipt_items": [
+                {"shop_name": "Store", "name": "Milk", "quantity": "1", "unit_price": "2.00"},
+            ],
+        },
+    )
+    assert previous_month.status_code == 201
+
+    first = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "120.00",
+            "operation_date": "2026-03-10",
+            "note": "big-expense",
+            "receipt_items": [
+                {"shop_name": "Store", "name": "Milk", "quantity": "1", "unit_price": "2.40"},
+                {"shop_name": "Store", "name": "Steak", "quantity": "1", "unit_price": "25.00"},
+            ],
+        },
+    )
+    assert first.status_code == 201
+    second = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "amount": "300.00",
+            "operation_date": "2026-03-11",
+            "note": "salary",
+        },
+    )
+    assert second.status_code == 201
+
+    response = client.get("/api/v1/dashboard/analytics/highlights", params={"month": "2026-03"})
+    assert response.status_code == 200
+    payload = response.json()
+
+    assert payload["period"] == "month"
+    assert payload["date_from"] == "2026-03-01"
+    assert payload["date_to"] == "2026-03-31"
+    assert payload["month"] == "2026-03"
+    assert payload["income_total"] == "300.00"
+    assert payload["expense_total"] == "120.00"
+    assert payload["surplus_total"] == "180.00"
+    assert payload["deficit_total"] == "0"
+    assert payload["operations_count"] == 2
+    assert payload["max_expense_day_date"] == "2026-03-10"
+    assert payload["max_expense_day_total"] == "120.00"
+    assert len(payload["top_operations"]) == 1
+    assert payload["top_operations"][0]["amount"] == "120.00"
+    assert len(payload["top_categories"]) == 1
+    assert payload["top_categories"][0]["total_expense"] == "120.00"
+    assert len(payload["anomalies"]) == 0
+    assert len(payload["top_positions"]) >= 2
+    assert payload["top_positions"][0]["name"] == "Steak"
+    assert any(item["name"] == "Milk" for item in payload["price_increases"])

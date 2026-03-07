@@ -64,3 +64,59 @@ def verify_and_extract_telegram_user(
         "username": user.get("username"),
         "avatar_url": user.get("photo_url"),
     }
+
+
+def verify_and_extract_telegram_login_widget_user(
+    auth_data: dict,
+    bot_token: str,
+    max_age_seconds: int,
+) -> dict:
+    if not auth_data:
+        raise ValueError("Invalid Telegram login payload: empty body")
+
+    provided_hash = str(auth_data.get("hash") or "").strip()
+    if not provided_hash:
+        raise ValueError("Invalid Telegram login payload: missing hash")
+
+    auth_date_raw = auth_data.get("auth_date")
+    if auth_date_raw in (None, ""):
+        raise ValueError("Invalid Telegram login payload: missing auth_date")
+
+    try:
+        auth_date = int(auth_date_raw)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Invalid Telegram login payload: bad auth_date") from exc
+
+    now_ts = int(time.time())
+    if auth_date > now_ts + 30:
+        raise ValueError("Invalid Telegram login payload: auth_date is in the future")
+    if now_ts - auth_date > max_age_seconds:
+        raise ValueError("Invalid Telegram login payload: auth_date expired")
+
+    telegram_id = auth_data.get("id")
+    if telegram_id in (None, ""):
+        raise ValueError("Invalid Telegram login payload: missing user id")
+
+    pairs = []
+    for key, value in auth_data.items():
+        if key == "hash" or value in (None, ""):
+            continue
+        pairs.append((str(key), str(value)))
+
+    data_check_string = "\n".join(f"{key}={value}" for key, value in sorted(pairs))
+    secret_key = hashlib.sha256(bot_token.encode("utf-8")).digest()
+    expected_hash = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
+
+    if not hmac.compare_digest(expected_hash, provided_hash):
+        raise ValueError("Invalid Telegram login payload: hash mismatch")
+
+    first_name = str(auth_data.get("first_name") or "").strip()
+    last_name = str(auth_data.get("last_name") or "").strip()
+    display_name = " ".join(part for part in [first_name, last_name] if part).strip() or first_name or None
+
+    return {
+        "telegram_id": str(telegram_id),
+        "display_name": display_name,
+        "username": auth_data.get("username"),
+        "avatar_url": auth_data.get("photo_url"),
+    }

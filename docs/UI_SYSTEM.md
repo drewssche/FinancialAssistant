@@ -7,15 +7,42 @@
 - Dashboard period tabs are placed in the operations table panel header, next to the table title/actions
 - Sidebar contains persistent day/date block (large typography) visible across sections
 
+## Mobile-First Baseline
+- Telegram Mini App/mobile layout is a required target, not an optional afterthought
+- desktop layout may stay richer, but all core flows must remain fully usable on narrow screens first
+- target baseline widths:
+- `320px` minimum supported flow
+- `360-430px` primary Telegram phone range
+- horizontal overflow in critical screens is not acceptable unless interaction is intentionally scrollable
+- primary actions must stay reachable without hover and without precision cursor behavior
+
+## Telegram Mini App Runtime UX
+- UI must account for Telegram WebApp container behavior:
+- safe-area insets
+- dynamic viewport height changes
+- in-app browser chrome and keyboard overlap
+- when beneficial, use Telegram-native affordances for shell-level actions:
+- `BackButton` for section/modal navigation
+- `MainButton` for strongest current action on mobile-focused flows
+- Telegram-specific runtime hooks must not leak into shared domain logic
+
 ## Sidebar Navigation
 Primary items:
 - Dashboard
+- Analytics
 - Operations
 - Categories
 - Debts
 - Reports (post-MVP)
 - Budgets (post-MVP)
 - Settings
+
+Sidebar grouping baseline (when section groups are introduced):
+- `Обзор`: Dashboard, Analytics
+- `Учет`: Operations, Categories, Item Catalog, Debts
+- `Планирование`: Budgets, Reports
+- `Система`: Admin (only for admins), Settings
+- Dashboard is always first and default active on first open/session reset.
 
 ## Settings
 - Settings section includes timezone selector
@@ -28,6 +55,20 @@ Primary items:
 - UI scale slider (user-specific)
 - All money outputs and amount inputs reuse one currency formatting rule from preferences
 - Settings include red `Danger Zone` with `Удалить меня` action (full user data removal)
+
+## Access Control UI
+- Login mode is environment-driven:
+- production: Telegram auth
+- inside Mini App: Telegram WebApp auth (`initData`)
+- in browser: Telegram Login Widget / browser Telegram auth payload
+- For non-approved users:
+- `pending`: informative waiting state
+- `rejected`: informative denied state
+- main workspace is not available until approval
+- Admin section is rendered only for admin users.
+- Admin section baseline:
+- status filters (`pending/approved/rejected/all`)
+- actions (`Approve`, `Reject`, `Delete user`)
 
 ## Category Modals
 - Group creation uses: name + accent color picker + kind (no group icon field)
@@ -53,8 +94,18 @@ At the bottom-left sidebar, show compact static user block:
 - Modal dialogs: create/edit operations and categories
 - Status views: loading, empty, error
 
+## Mobile Interaction Rules
+- critical actions must not rely on row hover
+- inline row actions need mobile-safe alternative access:
+- always-visible compact action button
+- swipe/menu/sheet trigger
+- stacked action area inside card/list row
+- large modal flows should be reviewed for mobile replacement with bottom-sheet or full-screen form where appropriate
+- sticky footer CTA is preferred for long mobile forms
+- tap target size should be comfortable for touch-first use
+
 ## Operation Modal Category Picker
-- Create operation modal uses chip-based category picker instead of plain select control
+- Create/edit operation modals use chip-based category picker instead of plain select control
 - Picker layout:
 - search input
 - one chip list sorted by usage frequency (no duplicate quick/full blocks)
@@ -111,7 +162,7 @@ At the bottom-left sidebar, show compact static user block:
 - price history modal is visually/interaction-consistent with receipt positions modal and includes source chip in meta
 - This grouped-table pattern is reused in `Categories` table structure for consistency.
 
-## Debt Modal Pattern (Planned)
+## Debt Modal Pattern (Implemented MVP Baseline)
 - Operation modal supports two modes:
 - `Обычная операция`
 - `Долг`
@@ -129,7 +180,7 @@ At the bottom-left sidebar, show compact static user block:
 - `25%`, `50%`, `Весь остаток`
 - preset amount must be computed from current debt outstanding in state/API payload, not by parsing formatted UI string
 
-## Debt Cards (Planned)
+## Debt Cards (Implemented MVP Baseline)
 - Debt cards are grouped by counterparty (one card per name)
 - Card content:
 - counterparty name
@@ -153,6 +204,20 @@ At the bottom-left sidebar, show compact static user block:
 - due-date chip + days-left chip + due-progress bar
 - Debt KPIs are displayed separately from cash-flow KPI (`Доход/Расход/Баланс`) to avoid semantic mixing
 - Dashboard debt cards block can be hidden by user interface preference
+
+## Dashboard Analytics Preview (Planned)
+- Dashboard includes compact analytics preview widget:
+- mini trend sparkline for selected period
+- short deltas vs previous period (`Доход`, `Расход`, `Баланс`)
+- CTA `Открыть аналитику`
+- This block is summary-only and does not replace full analytics section.
+
+## Dashboard Operations Block Review (Planned)
+- Operations block on dashboard is treated as optional context, not core workspace.
+- Baseline direction:
+- keep compact recent operations subset on dashboard
+- full operations list/edit flows remain in `Операции`
+- visibility can be preference-driven to reduce dashboard overload
 
 ## CTA Patterns
 - Primary create action in modal must be placed in modal footer, centered, visually dominant
@@ -198,3 +263,51 @@ At the bottom-left sidebar, show compact static user block:
 - panel header with title/subtitle and tabs on the right
 - search row (`Поиск` left, `Свернуть/Развернуть все` center, `Удалить все` right)
 - then table body
+
+## Analytics Section (Planned MVP Baseline)
+- Main layout:
+- top tab row inside analytics section:
+- `Общий`
+- `Календарь`
+- `Операции`
+- `Тренды`
+- each tab has focused content to reduce visual overload
+- positions insights are placed inside `Операции` tab
+- Calendar monthly grid:
+- calendar tab has one control zone for grid only:
+- `Сетка`: view (`Месяц`/`Год`) + grid navigation (`←`, `Текущий`, `→`)
+- 7 columns (`Пн..Вс`) and 5-6 week rows
+- each day cell shows income, expense, operations count
+- right side of each week row shows weekly totals (`доход/расход/операции`)
+- year grid mode:
+- 12 month cards (`Янв..Дек`) instead of day rows
+- each month card shows income/expense/ops/balance
+- calendar summary block uses KPI cards instead of plain text footer:
+- primary cards only: income / expense / balance / operations count
+- secondary compact row: single result (`Профицит`/`Дефицит`/`Нулевой баланс`)
+- `Общий` tab contains period-level KPI controls (`Неделя`/`Месяц`/`Год`/`Настроить`) and expanded summary chips
+
+## Settings: Dashboard + Analytics
+- Dashboard block visibility is preference-driven:
+- `show_dashboard_analytics`
+- `show_dashboard_operations`
+- `show_dashboard_debts`
+- Dashboard operations block supports configurable row count (`5/8/12`) via `ui.dashboard_operations_limit`.
+- Analytics insight limits are user-configurable:
+- `analytics.top_operations_limit` (`3/5/10`)
+- `analytics.top_positions_limit` (`5/10/20`)
+
+## Interface Scale
+- UI scale slider range: `85%..115%`, step `1%`, with reset to `100%`.
+- Background must remain visually continuous for low/high scale values (no hard seams or repeat artifacts).
+- Known optimization direction:
+- avoid `body zoom` for long-term stability
+- migrate to token-based scaling (`font-size/spacing/control-height`) to reduce rendering artifacts
+- Trend charts:
+- combo chart baseline: income+expense bars and balance line
+- chart click can drill down to operations list filtered by bucket/date
+- Analytics `Operations` tab includes:
+- top heavy operations
+- top categories
+- anomaly block
+- expensive positions and price-increase highlights

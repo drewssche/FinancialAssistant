@@ -24,9 +24,15 @@ class Settings(BaseSettings):
     redis_port: int = Field(default=6379, alias="REDIS_PORT")
 
     telegram_bot_token: str = Field(default="change_me", alias="TELEGRAM_BOT_TOKEN")
+    telegram_bot_username: str = Field(default="", alias="TELEGRAM_BOT_USERNAME")
     telegram_auth_max_age_seconds: int = Field(default=3600, alias="TELEGRAM_AUTH_MAX_AGE_SECONDS")
+    admin_telegram_ids: str = Field(default="", alias="ADMIN_TELEGRAM_IDS")
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env.strip().lower() == "production"
 
     @property
     def database_url(self) -> str:
@@ -38,6 +44,14 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> List[str]:
         return [origin.strip() for origin in self.app_cors_origins.split(",") if origin.strip()]
+
+    @property
+    def admin_telegram_id_set(self) -> set[str]:
+        return {
+            item.strip()
+            for item in self.admin_telegram_ids.split(",")
+            if item.strip()
+        }
 
 
 @lru_cache

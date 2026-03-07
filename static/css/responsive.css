@@ -8,6 +8,10 @@
     align-items: stretch;
   }
 
+  .topbar-title-block {
+    align-items: center;
+  }
+
   .top-actions {
     justify-items: stretch;
   }
@@ -19,8 +23,33 @@
   .kpi-grid,
   .form-grid,
   .modal-grid,
-  .category-form {
+  .category-form,
+  .dashboard-analytics-grid,
+  .analytics-trend-deltas,
+  .analytics-kpi-grid,
+  .analytics-positions-grid {
     grid-template-columns: 1fr;
+  }
+
+  .analytics-year-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .analytics-switch-group .toolbar {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .segmented {
+    width: 100%;
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .segmented-btn {
+    flex: 1 1 auto;
+    text-align: center;
   }
 
   #createDebtFields {
@@ -41,13 +70,81 @@
     grid-template-columns: 1fr;
   }
 
+  body.nav-open {
+    overflow: hidden;
+  }
+
   .sidebar {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-    position: static;
-    top: auto;
-    height: auto;
-    overflow: visible;
+    border-right: 1px solid var(--border);
+    border-bottom: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: min(86vw, 340px);
+    height: 100vh;
+    max-width: 100%;
+    overflow-y: auto;
+    z-index: 80;
+    transform: translateX(-100%);
+    transition: transform 220ms ease;
+    box-shadow: 0 22px 50px rgba(0, 0, 0, 0.38);
+  }
+
+  .app-shell.mobile-nav-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .mobile-nav-toggle,
+  .mobile-nav-close {
+    display: inline-grid;
+  }
+
+  .main {
+    padding: var(--space-4);
+    gap: var(--space-3);
+  }
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    padding: var(--space-2) 0 var(--space-1);
+    background: linear-gradient(180deg, rgba(8, 12, 20, 0.98) 0%, rgba(8, 12, 20, 0.86) 78%, rgba(8, 12, 20, 0) 100%);
+    backdrop-filter: blur(10px);
+  }
+
+  .topbar-title-block {
+    width: 100%;
+  }
+
+  .topbar-title-block > div {
+    min-width: 0;
+  }
+
+  .topbar-title-block #sectionTitle {
+    font-size: 24px;
+  }
+
+  .cta-row,
+  .toolbar,
+  .panel-controls,
+  .category-group-controls {
+    width: 100%;
+  }
+
+  .cta-row .btn,
+  .toolbar .btn {
+    width: 100%;
+  }
+
+  .table-wrap {
+    margin-inline: calc(var(--space-4) * -0.4);
+    padding-inline: calc(var(--space-4) * 0.4);
+  }
+
+  .table th,
+  .table td {
+    white-space: nowrap;
   }
 
   .input-row {
@@ -100,5 +197,63 @@
     min-width: 0;
     justify-content: flex-start;
     flex-wrap: wrap;
+  }
+
+  .analytics-trend-legend {
+    flex-wrap: wrap;
+  }
+
+  .analytics-year-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-kpi-secondary {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .login-screen {
+    padding: var(--space-4);
+  }
+
+  .login-card {
+    padding: var(--space-5);
+  }
+
+  .kpi-card p {
+    font-size: 26px;
+  }
+
+  .panel,
+  .modal-card,
+  .kpi-card {
+    padding: var(--space-3);
+  }
+
+  .create-modal-grid,
+  .edit-modal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .create-modal-grid #opDate,
+  .create-modal-grid #createKindSwitch,
+  .create-modal-grid #createCategoryField,
+  .create-modal-grid #opAmountField,
+  .edit-modal-grid #editDate,
+  .edit-modal-grid #editKindSwitch,
+  .edit-modal-grid #editCategoryField,
+  .edit-modal-grid #editAmountField {
+    grid-column: 1 / -1;
+  }
+
+  .analytics-day-cell {
+    min-width: 92px;
+    padding: var(--space-1);
+  }
+
+  .analytics-day-btn {
+    padding: var(--space-1);
   }
 }

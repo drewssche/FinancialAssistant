@@ -8,6 +8,7 @@ class UserOut(BaseModel):
     display_name: str | None
     avatar_url: str | None
     status: str
+    is_admin: bool = False
     created_at: datetime
 
     model_config = {"from_attributes": True}

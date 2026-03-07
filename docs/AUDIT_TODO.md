@@ -35,12 +35,18 @@
 - Status: in progress (updated 2026-03-07)
 - Files above hard threshold:
 - `static/js/app-features.js` (reduced: moved operation modal/picker logic to `static/js/app-features-operation-modal.js`; moved dashboard/session to `static/js/app-features-dashboard.js` and `static/js/app-features-session.js`; moved Item Catalog feature block to `static/js/app-features-item-catalog.js`; moved operations flow to `static/js/app-features-operations.js`)
+- `static/js/app-features-item-catalog.js` (further reduced by extracting modal/source-picker/history block to `static/js/app-features-item-catalog-modal.js`)
+- `static/js/app-features-operation-modal.js` (further reduced by extracting receipt lifecycle/pickers/payload to `static/js/app-features-operation-modal-receipt.js`)
+- `static/js/app-features-operation-modal-receipt.js` (further reduced by extracting receipt interactions/pickers/handlers to `static/js/app-features-operation-modal-receipt-interactions.js`)
+- receipt template hints loading now uses in-flight dedupe + TTL freshness guard to avoid duplicate requests on repeated modal openings
 - `static/js/app-core.js` (reduced: moved network/action helpers to `static/js/app-core-actions.js`)
 - `static/js/app-categories.js` (decomposed into `static/js/app-categories-ui.js` + `static/js/app-categories-data.js`, kept as thin actions facade)
 - `static/js/app-bulk.js` (decomposed into `static/js/app-bulk-ui.js` + `static/js/app-bulk-bindings.js`, kept as thin actions facade)
 - `static/js/app-init.js` (decomposed into `static/js/app-init-core.js` + `static/js/app-init-features.js` + `static/js/app-init-startup.js`, kept as thin bootstrap facade)
 - `static/js/app-bulk-bindings.js` (decomposed into `static/js/app-bulk-bindings-operations.js` + `static/js/app-bulk-bindings-categories.js`, kept as thin binding coordinator)
 - `static/js/app-init-features.js` (reduced from 608 to 367 by extracting debt/picker bindings)
+- `static/js/app-init-features.js` (further reduced by extracting analytics/admin bindings to `static/js/app-init-features-analytics.js` and `static/js/app-init-features-admin.js`)
+- `static/js/app-features-analytics.js` (decomposed into `static/js/app-features-analytics-calendar.js` + `static/js/app-features-analytics-trend.js` + `static/js/app-features-analytics-highlights.js`, kept as thin orchestrator)
 - `static/js/app-categories-ui.js` (reduced from 740 to 471 by extracting icon/table ui modules)
 - `static/js/app-core.js` (reduced from 575 to 430 by extracting shared utils)
 - `static/js/app-features-debts.js` (reduced from 539 to 347 by extracting debt cards renderer)
@@ -51,11 +57,7 @@
 - split `app-features.js` into `operations`, `dashboard`, `session/preferences`, `item-catalog`
 - split `app-core.js` into `state`, `dom`, `utils/net`.
 - Remaining files over 500:
-- `static/js/app-features-operation-modal.js` (`1338`)
-- `static/js/app-features-operations.js` (`496`)
-- `static/js/app-features-item-catalog.js` (`821`)
-- `static/js/templates/modals.js` (`550`)
-- `static/js/app-init-features.js` (`505`)
+- none
 
 6. Add focused regression tests
 - Status: done (2026-03-05)
@@ -199,6 +201,7 @@
 - Introduced template layer:
 - `static/js/templates/shell.js`
 - `static/js/templates/modals.js`
+- `static/js/templates/modals-item-catalog.js`
 - `static/js/app-templates.js`
 - `static/index.html` now contains only login block + template roots + script includes
 - Risk note:
@@ -362,16 +365,19 @@
 - repeated section revisit read load reduced by ~50% for measured endpoints
 
 20. UI controls modernization track (post-audit UX backlog)
-- Status: pending
+- Status: in progress (updated 2026-03-07)
 - Scope:
 - replace remaining native `select` controls in high-frequency user flows with unified segmented/chips/popover/custom pickers
 - keep visual/interaction patterns aligned with `docs/UI_SYSTEM.md` and `docs/UX_PATTERNS.md`
 - Guardrails:
 - do not regress keyboard accessibility/focus behavior
 - add/update focused e2e checks for changed controls
+- Implemented (2026-03-07):
+- operation edit modal category input migrated from native `select` to chip-picker pattern (`search + chips + Enter/Esc + outside-click close`)
+- edit/create operation modals now use one interaction family for category picking
 
 21. Operations receipt line-items and position catalog (2026-03-06)
-- Status: in progress
+- Status: done (updated 2026-03-07)
 - Scope decisions (agreed):
 - add optional receipt line-items inside operation create/edit flow
 - operation amount can be manual or derived from receipt total
@@ -426,5 +432,144 @@
 - group actions are disabled during active search to preserve deterministic auto-expand behavior
 - item rows now have hover actions (`Редактировать`, `Удалить`)
 - catalog has dedicated actions: top CTA `+ Создать позицию`, section-level `Удалить все`, backend CRUD endpoints for templates
-- Next done criteria for #21:
-- position catalog screen/API follow-up (history + usage frequency) as separate increment
+- Follow-up backlog (separate increment):
+- deepen position catalog history/usage analytics API and UI without changing MVP baseline behavior
+
+22. Analytics section (`Аналитика`) foundation track (2026-03-07)
+- Status: in progress (updated 2026-03-07)
+- Product decisions fixed:
+- new first-level section name: `Аналитика`
+- `Dashboard` remains default and first-open section
+- sidebar may use semantic grouped blocks, but dashboard priority must stay unchanged
+- Scope (baseline):
+- month calendar grid (`Пн..Вс`) with per-day `доход/расход/кол-во операций`
+- right-side weekly totals per calendar row
+- month totals footer
+- trend charts for `доход/расход/баланс` with `day/week/month/year/custom` granularity
+- dashboard analytics preview widget (compact sparkline + deltas + CTA to analytics)
+- dashboard operations block review (compact/optional vs full block)
+- Technical direction:
+- add analytics aggregate endpoints (calendar + trends) in backend service layer
+- add frontend section shell and rendering modules separated from existing dashboard/operations files
+- persist analytics ui state in preferences (period/granularity/month anchor)
+- Done criteria (phase 1):
+- analytics section is navigable from sidebar
+- monthly calendar with weekly totals is functional
+- trend chart baseline is rendered from API data
+- dashboard has compact analytics preview with navigation link
+- focused API/UI tests for calendar aggregation and section navigation
+- Implemented (phase 1 baseline, 2026-03-07):
+- new sidebar section `Аналитика` + semantic nav groups, while keeping `Дашборд` first/default
+- backend analytics endpoints:
+- `GET /api/v1/dashboard/analytics/calendar?month=YYYY-MM`
+- `GET /api/v1/dashboard/analytics/trend?period=...&granularity=...`
+- analytics month calendar UI:
+- day cells (`доход/расход/операции`)
+- week-row totals on the right
+- month totals footer
+- analytics trend panel:
+- period + granularity segmented controls
+- svg chart lines for `доход/расход/баланс`
+- period-over-period delta indicators
+- dashboard analytics preview panel:
+- compact sparkline + deltas + CTA to analytics section
+- preferences persistence for analytics state (`month_anchor`, `period`, `granularity`)
+- API tests:
+- `tests/api/test_dashboard_api.py::test_dashboard_analytics_calendar_returns_week_rows_and_day_cells`
+- `tests/api/test_dashboard_api.py::test_dashboard_analytics_trend_returns_points_and_deltas`
+
+23. Access governance and admin control (2026-03-07)
+- Status: done (baseline implemented)
+- Implemented:
+- user statuses: `pending`, `approved`, `rejected`
+- admin-only section with status filtering and actions (`Approve`, `Reject`, `Delete user`)
+- admin identity from env (`ADMIN_TELEGRAM_IDS`)
+- centralized hard-delete service for user + all related data
+- Notes:
+- data-access dependencies now require approved user (admin bypass)
+- admin endpoints are guarded server-side (`403` for non-admin)
+
+24. Frontend modularity debt after fast feature growth (2026-03-07)
+- Status: pending
+- Problem:
+- multiple frontend files are again above hard threshold due rapid analytics/admin additions
+- Current heavy files:
+- `static/js/app-init-features.js` (~780)
+- `static/js/app-features-analytics.js` (~778)
+- `static/js/app-features-operation-modal.js` (~620)
+- `static/js/app-features-operation-modal-receipt-interactions.js` (~510)
+- `static/js/app-features-operations.js` (~510)
+- Direction:
+- split analytics by concern (`calendar`, `highlights`, `trend`, `dashboard-preview`)
+- split init bindings into section-focused binders (`analytics`, `admin`, `operations`)
+- keep hard cap <= 500 per file
+
+25. Admin list performance and scaling (2026-03-07)
+- Status: pending
+- Problem:
+- admin users list may degrade with growth due full-list fetch and identity traversal
+- Direction:
+- repository query with explicit eager load of telegram identity (avoid N+1)
+- add pagination and optional search in `/api/v1/admin/users`
+- add lightweight counters in admin response (`pending_count`, `approved_count`, `rejected_count`)
+
+26. UI scale technical debt (2026-03-07)
+- Status: done (2026-03-07)
+- Problem:
+- current scale mechanism still relies on `body zoom`, which can cause cross-browser rendering artifacts
+- Direction:
+- migrate to token-based scaling strategy (`font-size`, spacing, control sizes)
+- add visual regression check matrix for scale extremes (`85`, `100`, `115`) on dashboard/analytics/modals
+- Implemented (phase 1):
+- removed runtime `body zoom` from `applyUiScale` to avoid background/render artifacts
+- scale now uses CSS token path (`--ui-scale`) with root font-size binding in `tokens.css`
+- Implemented (phase 2):
+- introduced scale-aware spacing/radius/control tokens in `static/css/tokens.css`
+- migrated key shell/layout/control surfaces to tokenized sizes:
+  - login card/shell/sidebar/main/topbar spacing in `layout.css`
+  - nav/user/kpi/panel/dashboard-analytics/button/segmented/table core blocks in `components.css`
+- removed remaining runtime `zoom` assignment from `applyUiScale` (scale fully token-driven)
+- extended token migration to analytics and debt/modals high-impact blocks:
+  - analytics calendar/trend/kpi/cards/chips/switch/year/insight sizing in `components.css`
+  - debt cards/history and operation receipt modal spacing/radius in `layout.css`
+- additional phase-2 pass in `components.css`:
+  - category chips, picker controls, bulk bar, checkboxes, icon popover, debt action grid, preview/status boxes, repayment cards
+  - converted key spacing/radius/heights from fixed `px` to shared tokens
+- additional phase-2 pass in `layout.css`:
+  - settings/search/bulk/sticky bars and receipt pickers/chips/modal spacing converted to shared tokens
+- Done criteria validated:
+  - runtime `zoom` is fully removed from scale flow
+  - UI scale driven via `--ui-scale` + root font-size binding
+  - persistence + core user flows are green under e2e smoke after migration
+- Accepted residual `px` (intentional):
+  - typography sizes, icon glyph sizes, and narrow visual affordances
+  - border widths / stroke-like decorative effects
+  - viewport-constraint breakpoints and fixed grid column tracks where product layout requires them
+- regression check:
+  - e2e suites `test_debts_flow_e2e.py` and `test_sort_preset_persistence_e2e.py` pass after migration
+
+27. Dashboard debt cards visibility refresh after settings toggle (2026-03-07)
+- Status: done (2026-03-07)
+- Problem:
+- when `Показывать карточки долгов` is toggled in settings and user immediately navigates to `Дашборд`, debt cards may not appear until full page reload.
+- Expected:
+- dashboard must react instantly to updated settings without manual refresh.
+- Direction:
+- trigger immediate dashboard widget visibility re-apply and `loadDashboard()` refresh after settings save
+- add frontend regression test for flow: toggle setting -> switch to dashboard -> cards visible/hidden without reload
+- Implemented:
+- `core.getUiSettings()` now respects current settings-form values (draft/live), so dashboard loads use up-to-date toggles without page reload
+- settings change handlers now trigger section-local refresh when user is already on dashboard:
+  - debts toggle -> `loadDashboard()`
+  - analytics toggle -> `loadDashboardAnalyticsPreview({ force: true })`
+  - operations toggle / operations limit -> `loadDashboardOperations()`
+- added debounced auto-save (`300ms`) for quick settings:
+  - dashboard toggles (`show_dashboard_debts`, `show_dashboard_analytics`, `show_dashboard_operations`)
+  - dashboard operations limit
+  - analytics top limits (`top_operations_limit`, `top_positions_limit`)
+- extended auto-save for interface-only controls:
+  - `currency`, `currency_position` (`350ms`)
+  - `scale_percent` slider/reset (`600ms`/`300ms`)
+- Added e2e regression:
+  - `tests/e2e/test_debts_flow_e2e.py::test_dashboard_debts_toggle_applies_without_page_reload`
+  - `tests/e2e/test_sort_preset_persistence_e2e.py::test_interface_currency_and_scale_persist_after_reload`

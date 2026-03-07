@@ -18,11 +18,21 @@ class PreferenceRepository:
             data={
                 "dashboard": {"period": "day"},
                 "operations": {"filters": {}, "sort": "operation_date:desc"},
+                "analytics": {
+                    "top_operations_limit": 5,
+                    "top_positions_limit": 10,
+                },
+                "admin": {
+                    "user_status_filter": "pending",
+                },
                 "ui": {
                     "timezone": "auto",
                     "currency": "BYN",
                     "currency_position": "suffix",
+                    "show_dashboard_analytics": True,
+                    "show_dashboard_operations": True,
                     "show_dashboard_debts": True,
+                    "dashboard_operations_limit": 8,
                     "scale_percent": 100,
                 },
             },

@@ -3,10 +3,20 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.db.session import get_db
-from app.schemas.auth import DevAuthRequest, TelegramAuthRequest, TokenResponse
+from app.schemas.auth import AuthPublicConfig, TelegramAuthRequest, TelegramBrowserAuthRequest, TokenResponse
 from app.services.auth_service import AuthService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.get("/public-config", response_model=AuthPublicConfig)
+def get_auth_public_config():
+    settings = get_settings()
+    username = (settings.telegram_bot_username or "").strip() or None
+    return AuthPublicConfig(
+        telegram_bot_username=username,
+        browser_login_available=bool(username),
+    )
 
 
 @router.post("/telegram", response_model=TokenResponse)
@@ -19,17 +29,11 @@ def auth_telegram(payload: TelegramAuthRequest, db: Session = Depends(get_db)):
     return TokenResponse(access_token=token)
 
 
-@router.post("/dev", response_model=TokenResponse)
-def auth_dev(payload: DevAuthRequest, db: Session = Depends(get_db)):
-    settings = get_settings()
-    if settings.app_env.lower() == "production":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Dev auth is disabled in production")
-
+@router.post("/telegram/browser", response_model=TokenResponse)
+def auth_telegram_browser(payload: TelegramBrowserAuthRequest, db: Session = Depends(get_db)):
     service = AuthService(db)
-    token = service.login_dev(
-        telegram_id=payload.telegram_id,
-        first_name=payload.first_name,
-        username=payload.username,
-        avatar_url=payload.avatar_url,
-    )
+    try:
+        token = service.login_with_telegram_browser(payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return TokenResponse(access_token=token)

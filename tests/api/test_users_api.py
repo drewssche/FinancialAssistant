@@ -6,15 +6,15 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.api.deps import get_current_user_id
+from app.api.deps import get_current_user
 from app.db.base import Base
 from app.db.models import Operation, User
 from app.db.session import get_db
 from app.main import app
 
 
-def _override_current_user_id() -> int:
-    return 1
+def _override_current_user():
+    return User(id=1, display_name="Tester", status="approved")
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def client_and_sessionmaker():
             db.close()
 
     app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[get_current_user_id] = _override_current_user_id
+    app.dependency_overrides[get_current_user] = _override_current_user
 
     db = testing_session()
     db.add(User(id=1, display_name="Tester", status="active"))

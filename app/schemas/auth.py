@@ -5,11 +5,19 @@ class TelegramAuthRequest(BaseModel):
     init_data: str
 
 
-class DevAuthRequest(BaseModel):
-    telegram_id: int = 100001
-    first_name: str = "Dev"
-    username: str = "dev_user"
-    avatar_url: str | None = None
+class TelegramBrowserAuthRequest(BaseModel):
+    id: int
+    first_name: str | None = None
+    last_name: str | None = None
+    username: str | None = None
+    photo_url: str | None = None
+    auth_date: int
+    hash: str
+
+
+class AuthPublicConfig(BaseModel):
+    telegram_bot_username: str | None = None
+    browser_login_available: bool = False
 
 
 class TokenResponse(BaseModel):

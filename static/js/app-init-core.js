@@ -3,21 +3,33 @@
   let bound = false;
 
   function bindCoreHandlers() {
-    el.devLoginBtn.addEventListener("click", () => {
-      core.runAction({
-        button: el.devLoginBtn,
-        pendingText: "Вход...",
-        errorPrefix: "Ошибка входа",
-        forLogin: true,
-        action: () => actions.devLogin(),
+    if (el.mobileNavToggleBtn) {
+      el.mobileNavToggleBtn.addEventListener("click", () => core.toggleMobileNav());
+    }
+    if (el.mobileNavCloseBtn) {
+      el.mobileNavCloseBtn.addEventListener("click", () => core.closeMobileNav());
+    }
+    if (el.mobileNavOverlay) {
+      el.mobileNavOverlay.addEventListener("click", () => core.closeMobileNav());
+    }
+    if (el.telegramLoginBtn && actions.telegramLogin) {
+      el.telegramLoginBtn.addEventListener("click", () => {
+        core.runAction({
+          button: el.telegramLoginBtn,
+          pendingText: "Вход...",
+          errorPrefix: "Ошибка входа",
+          forLogin: true,
+          action: () => actions.telegramLogin(),
+        });
       });
-    });
+    }
 
     el.mainNav.addEventListener("click", (event) => {
       const btn = event.target.closest("button[data-section]");
       if (!btn) {
         return;
       }
+      core.closeMobileNav();
       actions.switchSection(btn.dataset.section).catch((err) => core.setStatus(String(err)));
     });
 
@@ -29,6 +41,11 @@
         actions.switchSection("debts").catch((err) => core.setStatus(String(err)));
       });
     }
+    if (el.openAnalyticsTabBtn) {
+      el.openAnalyticsTabBtn.addEventListener("click", () => {
+        actions.switchSection("analytics").catch((err) => core.setStatus(String(err)));
+      });
+    }
 
     if (el.sidebarLogoutBtn) {
       el.sidebarLogoutBtn.addEventListener("click", () => actions.logout(true));
@@ -37,6 +54,18 @@
     document.addEventListener("click", (event) => {
       if (!event.target.closest(".icon-select") && !event.target.closest(".color-select") && actions.closeIconPopovers) {
         actions.closeIconPopovers();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        core.closeMobileNav();
+      }
+    });
+
+    window.addEventListener("resize", () => {
+      if (!core.isMobileViewport()) {
+        core.closeMobileNav();
       }
     });
   }
@@ -120,9 +149,13 @@
       }
     });
 
-    el.closePeriodCustomModalBtn.addEventListener("click", actions.closePeriodCustomModal);
+    el.closePeriodCustomModalBtn.addEventListener("click", () => {
+      state.analyticsSummaryPendingCustom = false;
+      actions.closePeriodCustomModal();
+    });
     el.periodCustomModal.addEventListener("click", (event) => {
       if (event.target === el.periodCustomModal) {
+        state.analyticsSummaryPendingCustom = false;
         actions.closePeriodCustomModal();
       }
     });
@@ -201,12 +234,18 @@
         if (actions.previewInterfaceSettingsUi) {
           actions.previewInterfaceSettingsUi();
         }
+        if (actions.savePreferencesDebounced) {
+          actions.savePreferencesDebounced(350);
+        }
       });
     }
     if (el.currencyPositionSelect) {
       el.currencyPositionSelect.addEventListener("change", () => {
         if (actions.previewInterfaceSettingsUi) {
           actions.previewInterfaceSettingsUi();
+        }
+        if (actions.savePreferencesDebounced) {
+          actions.savePreferencesDebounced(350);
         }
       });
     }
@@ -215,12 +254,82 @@
         if (actions.previewInterfaceSettingsUi) {
           actions.previewInterfaceSettingsUi();
         }
+        if (actions.savePreferencesDebounced) {
+          actions.savePreferencesDebounced(300);
+        }
+        if (state.activeSection === "dashboard" && actions.loadDashboard) {
+          actions.loadDashboard().catch((err) => core.setStatus(String(err)));
+        }
+      });
+    }
+    if (el.showDashboardAnalyticsToggle) {
+      el.showDashboardAnalyticsToggle.addEventListener("change", () => {
+        if (actions.previewInterfaceSettingsUi) {
+          actions.previewInterfaceSettingsUi();
+        }
+        if (actions.savePreferencesDebounced) {
+          actions.savePreferencesDebounced(300);
+        }
+        if (state.activeSection === "dashboard" && actions.loadDashboardAnalyticsPreview) {
+          actions.loadDashboardAnalyticsPreview({ force: true }).catch((err) => core.setStatus(String(err)));
+        }
+      });
+    }
+    if (el.showDashboardOperationsToggle) {
+      el.showDashboardOperationsToggle.addEventListener("change", () => {
+        if (actions.previewInterfaceSettingsUi) {
+          actions.previewInterfaceSettingsUi();
+        }
+        if (actions.savePreferencesDebounced) {
+          actions.savePreferencesDebounced(300);
+        }
+        if (state.activeSection === "dashboard" && actions.loadDashboardOperations) {
+          actions.loadDashboardOperations().catch((err) => core.setStatus(String(err)));
+        }
+      });
+    }
+    if (el.dashboardOperationsLimitSelect) {
+      el.dashboardOperationsLimitSelect.addEventListener("change", () => {
+        if (actions.previewInterfaceSettingsUi) {
+          actions.previewInterfaceSettingsUi();
+        }
+        if (actions.savePreferencesDebounced) {
+          actions.savePreferencesDebounced(300);
+        }
+        if (state.activeSection === "dashboard" && actions.loadDashboardOperations) {
+          actions.loadDashboardOperations().catch((err) => core.setStatus(String(err)));
+        }
+      });
+    }
+    if (el.analyticsTopOperationsLimitSelect) {
+      el.analyticsTopOperationsLimitSelect.addEventListener("change", () => {
+        state.analyticsTopOperationsLimit = Number(el.analyticsTopOperationsLimitSelect.value || 5);
+        if (actions.savePreferencesDebounced) {
+          actions.savePreferencesDebounced(300);
+        }
+        if (state.activeSection === "analytics" && actions.loadAnalyticsHighlights) {
+          actions.loadAnalyticsHighlights({ force: true }).catch((err) => core.setStatus(String(err)));
+        }
+      });
+    }
+    if (el.analyticsTopPositionsLimitSelect) {
+      el.analyticsTopPositionsLimitSelect.addEventListener("change", () => {
+        state.analyticsTopPositionsLimit = Number(el.analyticsTopPositionsLimitSelect.value || 10);
+        if (actions.savePreferencesDebounced) {
+          actions.savePreferencesDebounced(300);
+        }
+        if (state.activeSection === "analytics" && actions.loadAnalyticsHighlights) {
+          actions.loadAnalyticsHighlights({ force: true }).catch((err) => core.setStatus(String(err)));
+        }
       });
     }
     if (el.uiScaleRange) {
       el.uiScaleRange.addEventListener("input", () => {
         if (actions.previewInterfaceSettingsUi) {
           actions.previewInterfaceSettingsUi();
+        }
+        if (actions.savePreferencesDebounced) {
+          actions.savePreferencesDebounced(600);
         }
       });
     }
@@ -231,6 +340,9 @@
         }
         if (actions.previewInterfaceSettingsUi) {
           actions.previewInterfaceSettingsUi();
+        }
+        if (actions.savePreferencesDebounced) {
+          actions.savePreferencesDebounced(300);
         }
       });
     }

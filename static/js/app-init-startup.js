@@ -20,7 +20,7 @@
     });
   }
 
-  function startApp() {
+  async function startApp() {
     if (actions.setupCategoryIconPickers) {
       actions.setupCategoryIconPickers();
     }
@@ -28,6 +28,10 @@
 
     if (window.App.actions.renderTodayLabel) {
       window.App.actions.renderTodayLabel();
+    }
+
+    if (actions.loadTelegramLoginConfig) {
+      await actions.loadTelegramLoginConfig();
     }
 
     if (state.token) {
@@ -41,6 +45,18 @@
         core.setStatus(`Ошибка загрузки: ${message}`);
       });
       return;
+    }
+
+    if (actions.tryAutoTelegramLogin) {
+      try {
+        const loggedIn = await actions.tryAutoTelegramLogin();
+        if (loggedIn) {
+          return;
+        }
+      } catch (err) {
+        core.showLogin(err instanceof Error ? err.message : String(err));
+        return;
+      }
     }
 
     core.showLogin();

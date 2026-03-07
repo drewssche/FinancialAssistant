@@ -88,16 +88,13 @@
         if (!btn) {
           return;
         }
-
         if (btn.dataset.period === "custom") {
           actions.openPeriodCustomModal();
           return;
         }
-
         if (btn.dataset.period === state.period) {
           return;
         }
-
         state.period = btn.dataset.period;
         core.syncAllPeriodTabs(state.period);
         core.runAction({
@@ -107,7 +104,11 @@
               await actions.ensureAllTimeBounds();
             }
             await actions.savePreferences();
-            await Promise.all([actions.loadDashboard(), actions.loadDashboardOperations(), actions.loadOperations()]);
+            const jobs = [actions.loadDashboard(), actions.loadDashboardOperations(), actions.loadOperations()];
+            if (actions.loadDashboardAnalyticsPreview) {
+              jobs.push(actions.loadDashboardAnalyticsPreview({ force: true }));
+            }
+            await Promise.all(jobs);
           },
         });
       });
@@ -121,7 +122,26 @@
         core.setStatus("Проверь диапазон дат");
         return;
       }
-
+      if (state.analyticsSummaryPendingCustom && state.activeSection === "analytics") {
+        state.analyticsSummaryPendingCustom = false;
+        state.analyticsSummaryPeriod = "custom";
+        state.analyticsSummaryDateFrom = from;
+        state.analyticsSummaryDateTo = to;
+        core.syncSegmentedActive(el.analyticsSummaryPeriodTabs, "analytics-summary-period", state.analyticsSummaryPeriod);
+        core.runAction({
+          button: event.submitter || document.getElementById("submitPeriodCustomBtn"),
+          pendingText: "Применение...",
+          errorPrefix: "Ошибка сохранения периода",
+          action: async () => {
+            if (actions.loadAnalyticsHighlights) {
+              await actions.loadAnalyticsHighlights({ force: true });
+            }
+            await actions.savePreferences();
+            actions.closePeriodCustomModal();
+          },
+        });
+        return;
+      }
       state.customDateFrom = from;
       state.customDateTo = to;
       state.period = "custom";
@@ -135,7 +155,11 @@
         errorPrefix: "Ошибка сохранения периода",
         action: async () => {
           await actions.savePreferences();
-          await Promise.all([actions.loadDashboard(), actions.loadDashboardOperations(), actions.loadOperations()]);
+          const jobs = [actions.loadDashboard(), actions.loadDashboardOperations(), actions.loadOperations()];
+          if (actions.loadDashboardAnalyticsPreview) {
+            jobs.push(actions.loadDashboardAnalyticsPreview({ force: true }));
+          }
+          await Promise.all(jobs);
           actions.closePeriodCustomModal();
         },
       });
@@ -301,7 +325,6 @@
         }
         return;
       }
-
       const deleteBtn = event.target.closest("button[data-delete-id]");
       if (deleteBtn) {
         const row = deleteBtn.closest("tr");
@@ -418,7 +441,6 @@
       if (actions.handleCategoriesGroupToggleClick && actions.handleCategoriesGroupToggleClick(event)) {
         return;
       }
-
       const editGroupBtn = event.target.closest("button[data-edit-group-id]");
       if (editGroupBtn) {
         const id = Number(editGroupBtn.dataset.editGroupId);
@@ -428,7 +450,6 @@
         }
         return;
       }
-
       const deleteGroupBtn = event.target.closest("button[data-delete-group-id]");
       if (deleteGroupBtn) {
         const id = Number(deleteGroupBtn.dataset.deleteGroupId);
@@ -438,7 +459,6 @@
         }
         return;
       }
-
       const deleteBtn = event.target.closest("button[data-delete-category-id]");
       if (deleteBtn) {
         const row = deleteBtn.closest("tr");
@@ -448,7 +468,6 @@
         }
         return;
       }
-
       const editBtn = event.target.closest("button[data-edit-category-id]");
       if (editBtn) {
         const row = editBtn.closest("tr");
@@ -468,6 +487,13 @@
       el.categoriesExpandAllBtn.addEventListener("click", () => {
         actions.expandAllCategoryGroups();
       });
+    }
+
+    if (window.App.initFeatureAnalytics?.bindAnalyticsFeatureHandlers) {
+      window.App.initFeatureAnalytics.bindAnalyticsFeatureHandlers();
+    }
+    if (window.App.initFeatureAdmin?.bindAdminFeatureHandlers) {
+      window.App.initFeatureAdmin.bindAdminFeatureHandlers();
     }
 
     el.toastArea.addEventListener("click", (event) => {
@@ -492,9 +518,7 @@
   }
 
   function bindFeatureInit() {
-    if (bound) {
-      return;
-    }
+    if (bound) return;
     bound = true;
     bindFeatureHandlers();
   }

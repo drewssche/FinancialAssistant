@@ -35,6 +35,16 @@
 
 
   async function loadDashboard() {
+    const ui = core.getUiSettings ? core.getUiSettings() : null;
+    if (el.dashboardAnalyticsPanel && ui) {
+      el.dashboardAnalyticsPanel.classList.toggle("hidden", ui.showDashboardAnalytics === false);
+    }
+    if (el.dashboardOperationsPanel && ui) {
+      el.dashboardOperationsPanel.classList.toggle("hidden", ui.showDashboardOperations === false);
+    }
+    if (el.dashboardDebtsPanel && ui) {
+      el.dashboardDebtsPanel.classList.toggle("hidden", ui.showDashboardDebts === false);
+    }
     if (window.App.actions.ensureAllTimeBounds) {
       await window.App.actions.ensureAllTimeBounds();
     }
@@ -61,9 +71,6 @@
       el.debtNetTotal.textContent = core.formatMoney(data.debt_net_position);
     }
 
-    if (el.dashboardDebtsPanel) {
-      el.dashboardDebtsPanel.classList.toggle("hidden", !core.isDashboardDebtsVisible());
-    }
     if (!core.isDashboardDebtsVisible()) {
       return;
     }
@@ -162,14 +169,19 @@
   }
 
   async function loadDashboardOperations() {
+    const ui = core.getUiSettings ? core.getUiSettings() : null;
+    if (ui && ui.showDashboardOperations === false) {
+      return;
+    }
     if (window.App.actions.ensureAllTimeBounds) {
       await window.App.actions.ensureAllTimeBounds();
     }
     const { dateFrom, dateTo } = core.getPeriodBounds(state.period);
     el.dashboardPeriodLabel.textContent = core.formatPeriodLabel(dateFrom, dateTo);
+    const pageSize = ui?.dashboardOperationsLimit || 8;
     const params = new URLSearchParams({
       page: "1",
-      page_size: "8",
+      page_size: String(pageSize),
       sort_by: "operation_date",
       sort_dir: "desc",
       date_from: dateFrom,

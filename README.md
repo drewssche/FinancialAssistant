@@ -15,31 +15,61 @@ Web-first financial assistant (income/expense tracking) with architecture ready 
 3. Run migrations inside app container:
    - `docker compose exec app sh -lc 'cd /app && PYTHONPATH=/app alembic upgrade head'`
 4. Open API docs: `http://localhost:8001/docs`
-5. Open Dev UI: `http://localhost:8001/`
+5. Open Web UI: `http://localhost:8001/`
+
+For production auth mode set `APP_ENV=production` and configure:
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_BOT_USERNAME`
+- `ADMIN_TELEGRAM_IDS` (comma-separated Telegram IDs of admins; these IDs are auto-approved on first login)
 
 ## Ports
 - App API: `8001 -> 8000` (container)
 - Postgres: `5433 -> 5432` (container)
 - Redis: `6380 -> 6379` (container)
 
-## Local Dev Login (Telegram Auth)
-If you need a quick local token without opening Telegram Mini App, use:
+## Access Approval
+- New users are created with `pending` status.
+- Only `approved` users can access data sections.
+- `rejected` users cannot use the service until status is changed by admin.
+- Users from `ADMIN_TELEGRAM_IDS` are approved automatically and see the admin section immediately after Telegram login.
 
-1. `python3 scripts/dev_login.py`
-2. Copy token from output
-3. Call protected endpoint:
-   - `curl -H "Authorization: Bearer <TOKEN>" http://localhost:8001/api/v1/users/me`
+## First Use (Production Mode)
+1. Start services and run migrations.
+2. Open app from Telegram Mini App (WebApp) so `initData` is available.
+3. Login via Telegram.
+4. Admin opens `Админ` section:
+   - `Ожидают` -> `Approve` for allowed users
+   - optional `Reject` or `Удалить` (deletes user with all DB data)
+5. Approved users re-login and can use the app.
 
-Optional args:
-- `--api-url http://localhost:8001`
-- `--telegram-id 100001`
-- `--first-name Dev`
-- `--username dev_user`
-- `--bot-token <TOKEN>`
+## Telegram Mini App Note
+Telegram Mini App readiness is broader than responsive layout only. In addition to mobile screen adaptation, production-ready Mini App support requires:
+- Telegram WebApp auth/runtime handling (`initData`, viewport behavior)
+- touch-first interactions without hover dependency
+- safe-area and mobile keyboard-safe layouts
 
-### One-click Dev Button
-`http://localhost:8001/` includes a `Войти (Dev)` button using `POST /api/v1/auth/dev`.
-This endpoint is allowed only when `APP_ENV != production`.
+## Browser Use
+- The app UI can be opened in a regular browser.
+- In Telegram Mini App, login uses Telegram WebApp `initData`.
+- In a regular browser, login can use Telegram Login Widget when `TELEGRAM_BOT_USERNAME` is configured.
+- Both browser and Mini App login paths resolve to the same backend user model and access rules.
+
+## Domain and HTTPS Basics
+- Yes, you can prepare the domain yourself on your VPS.
+- Typical setup is:
+  1. buy or use an existing domain
+  2. create an `A` record pointing the domain/subdomain to your VPS public IP
+  3. run a reverse proxy (`nginx`)
+  4. issue a free TLS certificate with `Let's Encrypt`
+- Telegram Mini App in production should be opened over `https://`, so valid HTTPS is effectively required.
+- If you do not want to buy a domain yet, the practical alternative is a free hostname/subdomain service that points to your VPS. A bare VPS IP alone is not a good production path for Telegram login + HTTPS.
+
+## VPS Baseline
+For a small production rollout (`up to ~5 users`), a VPS with `1 vCPU / 2 GB RAM` is sufficient for this project when running:
+- app with one Uvicorn process
+- PostgreSQL with conservative memory settings
+- Redis as lightweight cache only
+- Docker Compose without dev reload/watch mode
 
 ## UI E2E Regression Test (Chip Picker)
 Added browser regression test for category chip duplication in operation modal search:
@@ -58,11 +88,13 @@ Notes:
 - In CI/local environment without Playwright/Chromium it will be skipped with a clear reason.
 
 ## Current Scope
-- API scaffold and schema foundations
-- Telegram-first auth endpoint scaffold
-- Authenticated `GET /api/v1/users/me` profile endpoint
-- Dashboard, operations, categories, preferences endpoints
-- Documentation for product, architecture, UX and engineering rules
+- Telegram auth flow
+- Full CRUD for operations, categories/groups, debts
+- Dashboard summary (including debt KPI fields) + summary metrics endpoint
+- Receipt line items in operations (`receipt_items`, discrepancy support)
+- Reusable item templates catalog + price history endpoints
+- Persisted user preferences (server + local fallback)
+- API and UI regression suite (API + Playwright e2e)
 
 ## Notes
 Telegram `initData` signature and `auth_date` freshness validation are implemented in `app/core/telegram_auth.py`.

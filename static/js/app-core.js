@@ -1,6 +1,9 @@
 (() => {
   const state = {
     token: localStorage.getItem("access_token") || "",
+    mobileNavOpen: false,
+    telegramBotUsername: "",
+    browserTelegramLoginReady: false,
     preferences: null,
     page: 1,
     pageSize: 20,
@@ -52,14 +55,36 @@
     itemCatalogItems: [],
     itemCatalogSortPreset: "usage",
     editItemTemplateId: null,
+    analyticsMonthAnchor: "",
+    analyticsTab: "overview",
+    analyticsCalendarView: "month",
+    analyticsSummaryPeriod: "month",
+    analyticsSummaryDateFrom: "",
+    analyticsSummaryDateTo: "",
+    analyticsSummaryPendingCustom: false,
+    analyticsPeriod: "month",
+    analyticsGranularity: "day",
+    analyticsTopOperationsLimit: 5,
+    analyticsTopPositionsLimit: 10,
+    isAdmin: false,
+    accessStatus: "pending",
+    adminUserStatusFilter: "pending",
   };
 
   const el = {
     loginScreen: document.getElementById("loginScreen"),
     appShell: document.getElementById("appShell"),
     loginAlert: document.getElementById("loginAlert"),
-    devLoginBtn: document.getElementById("devLoginBtn"),
+    loginTelegramHint: document.getElementById("loginTelegramHint"),
+    telegramBrowserLoginWrap: document.getElementById("telegramBrowserLoginWrap"),
+    telegramBrowserLogin: document.getElementById("telegramBrowserLogin"),
+    mobileNavToggleBtn: document.getElementById("mobileNavToggleBtn"),
+    mobileNavCloseBtn: document.getElementById("mobileNavCloseBtn"),
+    mobileNavOverlay: document.getElementById("mobileNavOverlay"),
+    sidebarNav: document.getElementById("sidebarNav"),
+    telegramLoginBtn: document.getElementById("telegramLoginBtn"),
     mainNav: document.getElementById("mainNav"),
+    adminNavBtn: document.getElementById("adminNavBtn"),
     sectionTitle: document.getElementById("sectionTitle"),
     sectionSubtitle: document.getElementById("sectionSubtitle"),
     todayWeekday: document.getElementById("todayWeekday"),
@@ -78,10 +103,22 @@
     batchOperationCta: document.getElementById("batchOperationCta"),
     openOperationsTabBtn: document.getElementById("openOperationsTabBtn"),
     openDebtsTabBtn: document.getElementById("openDebtsTabBtn"),
+    openAnalyticsTabBtn: document.getElementById("openAnalyticsTabBtn"),
     operationsBody: document.getElementById("operationsBody"),
     dashboardOperationsBody: document.getElementById("dashboardOperationsBody"),
     dashboardDebtsPanel: document.getElementById("dashboardDebtsPanel"),
     dashboardDebtsList: document.getElementById("dashboardDebtsList"),
+    dashboardAnalyticsPanel: document.getElementById("dashboardAnalyticsPanel"),
+    dashboardOperationsPanel: document.getElementById("dashboardOperationsPanel"),
+    dashboardAnalyticsChartWrap: document.getElementById("dashboardAnalyticsChartWrap"),
+    dashboardAnalyticsSparkline: document.getElementById("dashboardAnalyticsSparkline"),
+    dashboardAnalyticsEmpty: document.getElementById("dashboardAnalyticsEmpty"),
+    dashboardAnalyticsIncomeDelta: document.getElementById("dashboardAnalyticsIncomeDelta"),
+    dashboardAnalyticsIncomeMeta: document.getElementById("dashboardAnalyticsIncomeMeta"),
+    dashboardAnalyticsExpenseDelta: document.getElementById("dashboardAnalyticsExpenseDelta"),
+    dashboardAnalyticsExpenseMeta: document.getElementById("dashboardAnalyticsExpenseMeta"),
+    dashboardAnalyticsBalanceDelta: document.getElementById("dashboardAnalyticsBalanceDelta"),
+    dashboardAnalyticsBalanceMeta: document.getElementById("dashboardAnalyticsBalanceMeta"),
     operationsSelectAll: document.getElementById("operationsSelectAll"),
     dashboardPeriodLabel: document.getElementById("dashboardPeriodLabel"),
     operationsPeriodLabel: document.getElementById("operationsPeriodLabel"),
@@ -106,17 +143,24 @@
     userHandle: document.getElementById("userHandle"),
     sidebarLogoutBtn: document.getElementById("sidebarLogoutBtn"),
     dashboardSection: document.getElementById("dashboardSection"),
+    analyticsSection: document.getElementById("analyticsSection"),
     operationsSection: document.getElementById("operationsSection"),
     debtsSection: document.getElementById("debtsSection"),
     categoriesSection: document.getElementById("categoriesSection"),
     itemCatalogSection: document.getElementById("itemCatalogSection"),
     settingsSection: document.getElementById("settingsSection"),
+    adminSection: document.getElementById("adminSection"),
     settingsForm: document.getElementById("settingsForm"),
     timezoneSelect: document.getElementById("timezoneSelect"),
     currencySelect: document.getElementById("currencySelect"),
     currencyPositionSelect: document.getElementById("currencyPositionSelect"),
     currencyPreview: document.getElementById("currencyPreview"),
+    showDashboardAnalyticsToggle: document.getElementById("showDashboardAnalyticsToggle"),
+    showDashboardOperationsToggle: document.getElementById("showDashboardOperationsToggle"),
     showDashboardDebtsToggle: document.getElementById("showDashboardDebtsToggle"),
+    dashboardOperationsLimitSelect: document.getElementById("dashboardOperationsLimitSelect"),
+    analyticsTopOperationsLimitSelect: document.getElementById("analyticsTopOperationsLimitSelect"),
+    analyticsTopPositionsLimitSelect: document.getElementById("analyticsTopPositionsLimitSelect"),
     uiScaleRange: document.getElementById("uiScaleRange"),
     uiScaleValue: document.getElementById("uiScaleValue"),
     resetUiScaleBtn: document.getElementById("resetUiScaleBtn"),
@@ -145,6 +189,43 @@
     debtSortTabs: document.getElementById("debtSortTabs"),
     debtsCards: document.getElementById("debtsCards"),
     debtsInfiniteSentinel: document.getElementById("debtsInfiniteSentinel"),
+    analyticsMonthLabel: document.getElementById("analyticsMonthLabel"),
+    analyticsCalendarViewTabs: document.getElementById("analyticsCalendarViewTabs"),
+    analyticsPrevGridBtn: document.getElementById("analyticsPrevGridBtn"),
+    analyticsTodayGridBtn: document.getElementById("analyticsTodayGridBtn"),
+    analyticsNextGridBtn: document.getElementById("analyticsNextGridBtn"),
+    analyticsViewTabs: document.getElementById("analyticsViewTabs"),
+    analyticsOverviewPanel: document.getElementById("analyticsOverviewPanel"),
+    analyticsCalendarPanel: document.getElementById("analyticsCalendarPanel"),
+    analyticsOperationsPanel: document.getElementById("analyticsOperationsPanel"),
+    analyticsTrendsPanel: document.getElementById("analyticsTrendsPanel"),
+    analyticsSummaryRangeLabel: document.getElementById("analyticsSummaryRangeLabel"),
+    analyticsSummaryPeriodTabs: document.getElementById("analyticsSummaryPeriodTabs"),
+    analyticsKpiPrimary: document.getElementById("analyticsKpiPrimary"),
+    analyticsKpiSecondary: document.getElementById("analyticsKpiSecondary"),
+    analyticsCalendarTotalsTitle: document.getElementById("analyticsCalendarTotalsTitle"),
+    analyticsCalendarTotalsRangeLabel: document.getElementById("analyticsCalendarTotalsRangeLabel"),
+    analyticsCalendarTotals: document.getElementById("analyticsCalendarTotals"),
+    analyticsCalendarTotalsSecondary: document.getElementById("analyticsCalendarTotalsSecondary"),
+    analyticsTopOperationsList: document.getElementById("analyticsTopOperationsList"),
+    analyticsTopCategoriesList: document.getElementById("analyticsTopCategoriesList"),
+    analyticsAnomaliesList: document.getElementById("analyticsAnomaliesList"),
+    analyticsTopPositionsList: document.getElementById("analyticsTopPositionsList"),
+    analyticsPriceIncreasesList: document.getElementById("analyticsPriceIncreasesList"),
+    analyticsCalendarBody: document.getElementById("analyticsCalendarBody"),
+    analyticsMonthGridWrap: document.getElementById("analyticsMonthGridWrap"),
+    analyticsYearGridWrap: document.getElementById("analyticsYearGridWrap"),
+    analyticsYearGrid: document.getElementById("analyticsYearGrid"),
+    analyticsPeriodTabs: document.getElementById("analyticsPeriodTabs"),
+    analyticsGranularityTabs: document.getElementById("analyticsGranularityTabs"),
+    analyticsTrendRangeLabel: document.getElementById("analyticsTrendRangeLabel"),
+    analyticsTrendChart: document.getElementById("analyticsTrendChart"),
+    analyticsIncomeDelta: document.getElementById("analyticsIncomeDelta"),
+    analyticsExpenseDelta: document.getElementById("analyticsExpenseDelta"),
+    analyticsBalanceDelta: document.getElementById("analyticsBalanceDelta"),
+    analyticsOpsDelta: document.getElementById("analyticsOpsDelta"),
+    adminUserStatusTabs: document.getElementById("adminUserStatusTabs"),
+    adminUsersBody: document.getElementById("adminUsersBody"),
     createCategoryModal: document.getElementById("createCategoryModal"),
     closeCreateCategoryModalBtn: document.getElementById("closeCreateCategoryModalBtn"),
     categoryModalForm: document.getElementById("categoryModalForm"),
@@ -232,6 +313,10 @@
     editKindSwitch: document.getElementById("editKindSwitch"),
     editKind: document.getElementById("editKind"),
     editCategory: document.getElementById("editCategory"),
+    editCategoryField: document.getElementById("editCategoryField"),
+    editCategorySearch: document.getElementById("editCategorySearch"),
+    editCategoryPickerBlock: document.getElementById("editCategoryPickerBlock"),
+    editCategoryAll: document.getElementById("editCategoryAll"),
     editPreviewBody: document.getElementById("editPreviewBody"),
     batchCreateModal: document.getElementById("batchCreateModal"),
     closeBatchCreateModalBtn: document.getElementById("closeBatchCreateModalBtn"),
@@ -358,6 +443,7 @@
   }
 
   function showLogin(message = "") {
+    setMobileNavOpen(false);
     el.loginScreen.classList.remove("hidden");
     el.appShell.classList.add("hidden");
     if (message) {
@@ -370,11 +456,38 @@
   function showApp() {
     el.loginScreen.classList.add("hidden");
     el.appShell.classList.remove("hidden");
+    setMobileNavOpen(false);
     hideLoginAlert();
   }
 
   function closeAllMenus() {
     // user dropdown is intentionally removed; keep API for backward compatibility
+    setMobileNavOpen(false);
+  }
+
+  function isMobileViewport() {
+    return window.matchMedia("(max-width: 900px)").matches;
+  }
+
+  function setMobileNavOpen(isOpen) {
+    const next = Boolean(isOpen) && isMobileViewport();
+    state.mobileNavOpen = next;
+    document.body.classList.toggle("nav-open", next);
+    el.appShell?.classList.toggle("mobile-nav-open", next);
+    if (el.mobileNavOverlay) {
+      el.mobileNavOverlay.classList.toggle("hidden", !next);
+    }
+    if (el.mobileNavToggleBtn) {
+      el.mobileNavToggleBtn.setAttribute("aria-expanded", next ? "true" : "false");
+    }
+  }
+
+  function toggleMobileNav() {
+    setMobileNavOpen(!state.mobileNavOpen);
+  }
+
+  function closeMobileNav() {
+    setMobileNavOpen(false);
   }
 
   function syncSegmentedActive(container, attr, value) {
@@ -403,7 +516,34 @@
   }
 
   function getUiSettings() {
-    return getCoreUtils().getUiSettings(state);
+    const base = getCoreUtils().getUiSettings(state);
+    const next = { ...base };
+
+    if (el.currencySelect?.value) {
+      next.currency = String(el.currencySelect.value || "BYN").toUpperCase();
+    }
+    if (el.currencyPositionSelect?.value) {
+      next.currencyPosition = el.currencyPositionSelect.value === "prefix" ? "prefix" : "suffix";
+    }
+    if (el.showDashboardAnalyticsToggle) {
+      next.showDashboardAnalytics = Boolean(el.showDashboardAnalyticsToggle.checked);
+    }
+    if (el.showDashboardOperationsToggle) {
+      next.showDashboardOperations = Boolean(el.showDashboardOperationsToggle.checked);
+    }
+    if (el.showDashboardDebtsToggle) {
+      next.showDashboardDebts = Boolean(el.showDashboardDebtsToggle.checked);
+    }
+    if (el.dashboardOperationsLimitSelect?.value) {
+      const opsLimit = Number(el.dashboardOperationsLimitSelect.value || 8);
+      next.dashboardOperationsLimit = [5, 8, 12].includes(opsLimit) ? opsLimit : 8;
+    }
+    if (el.uiScaleRange?.value) {
+      const scale = Number(el.uiScaleRange.value || 100);
+      next.scalePercent = Number.isFinite(scale) ? Math.max(85, Math.min(115, Math.round(scale))) : 100;
+    }
+
+    return next;
   }
 
   function resolveCurrencyConfig(currencyCode, positionValue) {
@@ -411,7 +551,8 @@
   }
 
   function getCurrencyConfig() {
-    return getCoreUtils().getCurrencyConfig(state);
+    const ui = getUiSettings();
+    return resolveCurrencyConfig(ui.currency, ui.currencyPosition);
   }
 
   function formatMoney(value, options = {}) {
@@ -427,7 +568,7 @@
   }
 
   function isDashboardDebtsVisible() {
-    return getCoreUtils().isDashboardDebtsVisible(state);
+    return getUiSettings().showDashboardDebts;
   }
 
   function formatDateRu(value) {
@@ -458,8 +599,12 @@
       authHeaders,
       showLogin,
       showApp,
-      closeAllMenus,
-      syncSegmentedActive,
+    closeAllMenus,
+    setMobileNavOpen,
+    toggleMobileNav,
+    closeMobileNav,
+    isMobileViewport,
+    syncSegmentedActive,
       syncAllPeriodTabs,
       formatAmount,
       formatMoney,

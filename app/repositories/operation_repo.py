@@ -415,6 +415,20 @@ class OperationRepository:
         expense_total = self.db.scalar(expense_stmt)
         return income_total, expense_total
 
+    def list_for_period(self, user_id: int, date_from: date, date_to: date) -> list[Operation]:
+        stmt = (
+            select(Operation)
+            .where(
+                and_(
+                    Operation.user_id == user_id,
+                    Operation.operation_date >= date_from,
+                    Operation.operation_date <= date_to,
+                )
+            )
+            .order_by(Operation.operation_date.asc(), Operation.id.asc())
+        )
+        return list(self.db.scalars(stmt))
+
     def first_operation_date(self, user_id: int) -> date | None:
         stmt = select(func.min(Operation.operation_date)).where(Operation.user_id == user_id)
         return self.db.scalar(stmt)

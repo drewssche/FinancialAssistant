@@ -172,11 +172,11 @@ def page_with_debts_api_mock():
         query = parse_qs(parsed.query)
         method = request.method.upper()
 
-        if path == "/api/v1/auth/dev" and method == "POST":
+        if path == "/api/v1/auth/telegram" and method == "POST":
             return json_response(route, {"access_token": "e2e-token", "token_type": "bearer"})
 
         if path == "/api/v1/users/me" and method == "GET":
-            return json_response(route, {"id": 1, "display_name": "Debt User", "username": "debt_user"})
+            return json_response(route, {"id": 1, "display_name": "Debt User", "username": "debt_user", "status": "approved", "is_admin": False})
 
         if path == "/api/v1/preferences":
             if method == "GET":
@@ -196,7 +196,88 @@ def page_with_debts_api_mock():
             return json_response(route, [])
 
         if path == "/api/v1/dashboard/summary" and method == "GET":
-            return json_response(route, {"income_total": "0.00", "expense_total": "0.00", "balance": "0.00"})
+            return json_response(
+                route,
+                {
+                    "income_total": "0.00",
+                    "expense_total": "0.00",
+                    "balance": "0.00",
+                    "debt_lend_outstanding": "0.00",
+                    "debt_borrow_outstanding": "0.00",
+                    "debt_net_position": "0.00",
+                    "active_debt_cards": 0,
+                },
+            )
+
+        if path == "/api/v1/dashboard/analytics/calendar" and method == "GET":
+            month = (query.get("month") or ["2026-03"])[0]
+            return json_response(
+                route,
+                {
+                    "month": month,
+                    "month_start": f"{month}-01",
+                    "month_end": f"{month}-31",
+                    "income_total": "0.00",
+                    "expense_total": "0.00",
+                    "balance": "0.00",
+                    "operations_count": 0,
+                    "weeks": [
+                        {
+                            "week_start": f"{month}-01",
+                            "week_end": f"{month}-07",
+                            "income_total": "0.00",
+                            "expense_total": "0.00",
+                            "balance": "0.00",
+                            "operations_count": 0,
+                            "days": [
+                                {
+                                    "date": f"{month}-{day:02d}",
+                                    "in_month": True,
+                                    "income_total": "0.00",
+                                    "expense_total": "0.00",
+                                    "balance": "0.00",
+                                    "operations_count": 0,
+                                }
+                                for day in range(1, 8)
+                            ],
+                        }
+                    ],
+                },
+            )
+
+        if path == "/api/v1/dashboard/analytics/trend" and method == "GET":
+            return json_response(
+                route,
+                {
+                    "period": (query.get("period") or ["month"])[0],
+                    "granularity": (query.get("granularity") or ["day"])[0],
+                    "date_from": "2026-03-01",
+                    "date_to": "2026-03-07",
+                    "income_total": "0.00",
+                    "expense_total": "0.00",
+                    "balance": "0.00",
+                    "operations_count": 0,
+                    "prev_income_total": "0.00",
+                    "prev_expense_total": "0.00",
+                    "prev_balance": "0.00",
+                    "prev_operations_count": 0,
+                    "income_change_pct": 0.0,
+                    "expense_change_pct": 0.0,
+                    "balance_change_pct": 0.0,
+                    "operations_change_pct": 0.0,
+                    "points": [
+                        {
+                            "bucket_start": "2026-03-01",
+                            "bucket_end": "2026-03-01",
+                            "label": "01.03.2026",
+                            "income_total": "0.00",
+                            "expense_total": "0.00",
+                            "balance": "0.00",
+                            "operations_count": 0,
+                        }
+                    ],
+                },
+            )
 
         if path == "/api/v1/operations" and method == "GET":
             return json_response(route, {"items": [], "total": 0, "page": 1, "page_size": 20})
@@ -473,6 +554,17 @@ def page_with_debts_api_mock():
             pytest.skip(f"Chromium is not available for Playwright: {exc}")
 
         page = browser.new_page()
+        page.add_init_script(
+            """
+            window.Telegram = {
+              WebApp: {
+                initData: "mock-init-data",
+                ready() {},
+                expand() {},
+              }
+            };
+            """
+        )
         page.route("**/api/v1/**", handler)
         try:
             yield page
@@ -484,7 +576,21 @@ def page_with_debts_api_mock():
 def test_create_debt_from_operation_modal(static_server_url: str, page_with_debts_api_mock):
     page = page_with_debts_api_mock
     page.goto(f"{static_server_url}/static/index.html")
-    page.click("#devLoginBtn")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+    page.click("#telegramLoginBtn")
     page.wait_for_selector("#appShell:not(.hidden)")
 
     page.click("button[data-section='debts']")
@@ -510,7 +616,21 @@ def test_create_debt_from_operation_modal(static_server_url: str, page_with_debt
 def test_repayment_moves_debt_to_closed(static_server_url: str, page_with_debts_api_mock):
     page = page_with_debts_api_mock
     page.goto(f"{static_server_url}/static/index.html")
-    page.click("#devLoginBtn")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+    page.click("#telegramLoginBtn")
     page.wait_for_selector("#appShell:not(.hidden)")
 
     page.click("button[data-section='debts']")
@@ -534,7 +654,21 @@ def test_repayment_moves_debt_to_closed(static_server_url: str, page_with_debts_
 def test_repayment_presets_fill_amount_from_current_outstanding(static_server_url: str, page_with_debts_api_mock):
     page = page_with_debts_api_mock
     page.goto(f"{static_server_url}/static/index.html")
-    page.click("#devLoginBtn")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+    page.click("#telegramLoginBtn")
     page.wait_for_selector("#appShell:not(.hidden)")
 
     page.click("button[data-section='debts']")
@@ -557,7 +691,21 @@ def test_repayment_presets_fill_amount_from_current_outstanding(static_server_ur
 def test_debts_cards_infinite_scroll_loads_next_batch(static_server_url: str, page_with_debts_api_mock):
     page = page_with_debts_api_mock
     page.goto(f"{static_server_url}/static/index.html")
-    page.click("#devLoginBtn")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+    page.click("#telegramLoginBtn")
     page.wait_for_selector("#appShell:not(.hidden)")
 
     page.evaluate(
@@ -589,7 +737,21 @@ def test_debts_cards_infinite_scroll_loads_next_batch(static_server_url: str, pa
 def test_debt_history_infinite_scroll_loads_next_batch(static_server_url: str, page_with_debts_api_mock):
     page = page_with_debts_api_mock
     page.goto(f"{static_server_url}/static/index.html")
-    page.click("#devLoginBtn")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+    page.click("#telegramLoginBtn")
     page.wait_for_selector("#appShell:not(.hidden)")
 
     page.evaluate(
@@ -633,7 +795,21 @@ def test_debt_history_infinite_scroll_loads_next_batch(static_server_url: str, p
 def test_debt_history_uses_directional_event_labels(static_server_url: str, page_with_debts_api_mock):
     page = page_with_debts_api_mock
     page.goto(f"{static_server_url}/static/index.html")
-    page.click("#devLoginBtn")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+    page.click("#telegramLoginBtn")
     page.wait_for_selector("#appShell:not(.hidden)")
 
     page.click("button[data-section='debts']")
@@ -646,8 +822,7 @@ def test_debt_history_uses_directional_event_labels(static_server_url: str, page
     page.click("#submitDebtRepaymentBtn")
     page.wait_for_selector("#debtRepaymentModal", state="hidden")
 
-    page.locator("tr:has(button[data-history-debt-id='9001'])").hover()
-    page.click("button[data-history-debt-id='9001']", force=True)
+    page.evaluate("window.App.actions.openDebtHistoryModal(9001)")
     page.wait_for_selector("#debtHistoryModal:not(.hidden)")
     assert page.locator("#debtHistoryItems .debt-history-event strong", has_text="Погашение: мне вернули").count() >= 1
 
@@ -656,7 +831,21 @@ def test_debt_history_uses_directional_event_labels(static_server_url: str, page
 def test_edit_and_delete_debt(static_server_url: str, page_with_debts_api_mock):
     page = page_with_debts_api_mock
     page.goto(f"{static_server_url}/static/index.html")
-    page.click("#devLoginBtn")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+    page.click("#telegramLoginBtn")
     page.wait_for_selector("#appShell:not(.hidden)")
 
     page.click("button[data-section='debts']")
@@ -670,8 +859,8 @@ def test_edit_and_delete_debt(static_server_url: str, page_with_debts_api_mock):
     page.wait_for_selector("#createModal", state="hidden")
     assert page.locator("#debtsCards .debt-card h3", has_text="Анна Обновл.").count() == 1
 
-    page.locator("tr:has(button[data-delete-debt-id='9001'])").hover()
-    page.click("button[data-delete-debt-id='9001']", force=True)
+    page.evaluate("window.App.actions.deleteDebtFlow(9001)")
+    page.wait_for_selector("#confirmModal:not(.hidden)")
     page.click("#confirmDeleteBtn")
     page.wait_for_timeout(250)
     assert "Долги не найдены" in page.locator("#debtsCards").inner_text()
@@ -681,7 +870,21 @@ def test_edit_and_delete_debt(static_server_url: str, page_with_debts_api_mock):
 def test_overpay_creates_reverse_direction_debt(static_server_url: str, page_with_debts_api_mock):
     page = page_with_debts_api_mock
     page.goto(f"{static_server_url}/static/index.html")
-    page.click("#devLoginBtn")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+    page.click("#telegramLoginBtn")
     page.wait_for_selector("#appShell:not(.hidden)")
 
     page.click("button[data-section='debts']")
@@ -704,7 +907,21 @@ def test_overpay_creates_reverse_direction_debt(static_server_url: str, page_wit
 def test_edit_counterparty_name_merges_with_existing_card(static_server_url: str, page_with_debts_api_mock):
     page = page_with_debts_api_mock
     page.goto(f"{static_server_url}/static/index.html")
-    page.click("#devLoginBtn")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+    page.click("#telegramLoginBtn")
     page.wait_for_selector("#appShell:not(.hidden)")
 
     page.click("button[data-section='debts']")
@@ -733,3 +950,46 @@ def test_edit_counterparty_name_merges_with_existing_card(static_server_url: str
     assert boris_card.count() == 1
     assert boris_card.locator("tbody tr").count() == 1
     assert boris_card.locator("tbody tr:has-text('350,00 Br')").count() >= 1
+
+
+@pytest.mark.e2e
+def test_dashboard_debts_toggle_applies_without_page_reload(static_server_url: str, page_with_debts_api_mock):
+    page = page_with_debts_api_mock
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+    page.click("#telegramLoginBtn")
+    page.wait_for_selector("#appShell:not(.hidden)")
+
+    page.click("button[data-section='settings']")
+    page.wait_for_selector("#settingsSection:not(.hidden)")
+    page.uncheck("#showDashboardDebtsToggle")
+    page.click("#saveSettingsBtn")
+    page.wait_for_timeout(200)
+
+    page.click("button[data-section='dashboard']")
+    page.wait_for_selector("#dashboardSection:not(.hidden)")
+    assert page.locator("#dashboardDebtsPanel").evaluate("el => el.classList.contains('hidden')") is True
+
+    page.click("button[data-section='settings']")
+    page.wait_for_selector("#settingsSection:not(.hidden)")
+    page.check("#showDashboardDebtsToggle")
+    page.click("#saveSettingsBtn")
+    page.wait_for_timeout(200)
+
+    page.click("button[data-section='dashboard']")
+    page.wait_for_selector("#dashboardSection:not(.hidden)")
+    assert page.locator("#dashboardDebtsPanel").evaluate("el => el.classList.contains('hidden')") is False
+    assert page.locator("#dashboardDebtsList").inner_text().find("Анна") != -1

@@ -25,8 +25,9 @@ class UserRepository:
         display_name: str | None,
         username: str | None,
         avatar_url: str | None = None,
+        status: str = "pending",
     ) -> User:
-        user = User(display_name=display_name, avatar_url=avatar_url)
+        user = User(display_name=display_name, avatar_url=avatar_url, status=status)
         self.db.add(user)
         self.db.flush()
 
@@ -39,3 +40,9 @@ class UserRepository:
         self.db.add(identity)
         self.db.flush()
         return user
+
+    def list_users(self, *, status: str | None = None) -> list[User]:
+        stmt = select(User).order_by(User.created_at.desc(), User.id.desc())
+        if status:
+            stmt = stmt.where(User.status == status)
+        return list(self.db.scalars(stmt))

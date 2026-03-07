@@ -240,6 +240,12 @@
     const tasks = [loadOperations({ reset: true })];
     if (isSectionVisible("dashboard")) {
       tasks.push(loadDashboard(), loadDashboardOperations());
+      if (window.App.actions.loadDashboardAnalyticsPreview) {
+        tasks.push(window.App.actions.loadDashboardAnalyticsPreview({ force: true }));
+      }
+    }
+    if (isSectionVisible("analytics") && window.App.actions.loadAnalyticsSection) {
+      tasks.push(window.App.actions.loadAnalyticsSection({ force: true }));
     }
     await Promise.all(tasks);
   }
@@ -251,6 +257,12 @@
     }
     if (isSectionVisible("dashboard")) {
       tasks.push(loadDashboard());
+      if (window.App.actions.loadDashboardAnalyticsPreview) {
+        tasks.push(window.App.actions.loadDashboardAnalyticsPreview({ force: true }));
+      }
+    }
+    if (isSectionVisible("analytics") && window.App.actions.loadAnalyticsSection) {
+      tasks.push(window.App.actions.loadAnalyticsSection({ force: true }));
     }
     if (!tasks.length) {
       return;
@@ -395,8 +407,10 @@
   async function refreshAll() {
     const tasks = [
       { label: "Дашборд", run: () => loadDashboard() },
+      { label: "Аналитика (дашборд)", run: () => (window.App.actions.loadDashboardAnalyticsPreview ? window.App.actions.loadDashboardAnalyticsPreview({ force: true }) : Promise.resolve()) },
       { label: "Операции", run: () => loadOperations({ reset: true }) },
       { label: "Операции (дашборд)", run: () => loadDashboardOperations() },
+      { label: "Аналитика", run: () => (window.App.actions.loadAnalyticsSection ? window.App.actions.loadAnalyticsSection({ force: true }) : Promise.resolve()) },
       { label: "Категории", run: () => categoryActions.loadCategories() },
       { label: "Долги", run: () => loadDebtsCards() },
       { label: "Каталог позиций", run: () => loadItemCatalog({ force: true }) },

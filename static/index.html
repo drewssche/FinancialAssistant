@@ -12,20 +12,13 @@
         <h1>Финансовый Ассистент</h1>
         <p>Войдите, чтобы продолжить работу.</p>
 
-        <div class="input-row">
-          <label class="field">
-            <span>Имя</span>
-            <input id="firstName" type="text" placeholder="Dev" value="Dev" />
-          </label>
-          <label class="field">
-            <span>Логин</span>
-            <input id="username" type="text" placeholder="dev_user" value="dev_user" />
-          </label>
-        </div>
-
         <div class="login-actions">
-          <button id="devLoginBtn" class="btn btn-primary">Войти</button>
+          <button id="telegramLoginBtn" class="btn btn-primary">Войти через Telegram</button>
         </div>
+        <div id="telegramBrowserLoginWrap" class="telegram-browser-login hidden">
+          <div id="telegramBrowserLogin" class="telegram-browser-login-widget"></div>
+        </div>
+        <div id="loginTelegramHint" class="login-alert is-info hidden" role="status" aria-live="polite"></div>
         <div id="loginAlert" class="login-alert hidden" role="status" aria-live="polite"></div>
       </section>
     </div>
@@ -36,7 +29,9 @@
 
     <div id="toastArea" class="toast-area"></div>
 
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="/static/js/templates/shell.js"></script>
+    <script src="/static/js/templates/modals-item-catalog.js"></script>
     <script src="/static/js/templates/modals.js"></script>
     <script src="/static/js/app-templates.js"></script>
     <script src="/static/js/app-core.js"></script>
@@ -50,11 +45,19 @@
     <script src="/static/js/app-categories.js"></script>
     <script src="/static/js/app-section-ui.js"></script>
     <script src="/static/js/app-features-operation-modal-preview.js"></script>
+    <script src="/static/js/app-features-operation-modal-receipt-interactions.js"></script>
+    <script src="/static/js/app-features-operation-modal-receipt.js"></script>
     <script src="/static/js/app-features-operation-modal.js"></script>
     <script src="/static/js/app-features-dashboard.js"></script>
+    <script src="/static/js/app-features-analytics-calendar.js"></script>
+    <script src="/static/js/app-features-analytics-trend.js"></script>
+    <script src="/static/js/app-features-analytics-highlights.js"></script>
+    <script src="/static/js/app-features-analytics.js"></script>
+    <script src="/static/js/app-features-admin.js"></script>
     <script src="/static/js/app-features-debts-render.js"></script>
     <script src="/static/js/app-features-debts.js"></script>
     <script src="/static/js/app-features-session.js"></script>
+    <script src="/static/js/app-features-item-catalog-modal.js"></script>
     <script src="/static/js/app-features-item-catalog.js"></script>
     <script src="/static/js/app-features-operations.js"></script>
     <script src="/static/js/app-features.js"></script>
@@ -66,6 +69,8 @@
     <script src="/static/js/app-init-core.js"></script>
     <script src="/static/js/app-init-features-debts.js"></script>
     <script src="/static/js/app-init-features-pickers.js"></script>
+    <script src="/static/js/app-init-features-analytics.js"></script>
+    <script src="/static/js/app-init-features-admin.js"></script>
     <script src="/static/js/app-init-features.js"></script>
     <script src="/static/js/app-init-startup.js"></script>
     <script src="/static/js/app-init.js"></script>

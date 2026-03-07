@@ -47,11 +47,35 @@
         }
       }
     }
-    el.editCategory.addEventListener("change", () => {
-      if (actions.updateEditPreview) {
-        actions.updateEditPreview();
-      }
-    });
+    if (el.editCategorySearch) {
+      el.editCategorySearch.addEventListener("focus", () => {
+        if (actions.handleEditCategorySearchFocus) {
+          actions.handleEditCategorySearchFocus();
+        }
+      });
+      el.editCategorySearch.addEventListener("click", () => {
+        if (actions.handleEditCategorySearchFocus) {
+          actions.handleEditCategorySearchFocus();
+        }
+      });
+      el.editCategorySearch.addEventListener("input", () => {
+        if (actions.handleEditCategorySearchInput) {
+          actions.handleEditCategorySearchInput();
+        }
+      });
+      el.editCategorySearch.addEventListener("keydown", (event) => {
+        if (actions.handleEditCategorySearchKeydown) {
+          actions.handleEditCategorySearchKeydown(event);
+        }
+      });
+    }
+    if (el.editCategoryAll) {
+      el.editCategoryAll.addEventListener("click", (event) => {
+        if (actions.handleEditCategoryPickerClick) {
+          actions.handleEditCategoryPickerClick(event);
+        }
+      });
+    }
 
     el.opCategorySearch.addEventListener("focus", () => {
       if (actions.handleCreateCategorySearchFocus) {
@@ -282,6 +306,9 @@
     document.addEventListener("pointerdown", (event) => {
       if (actions.handleCreateCategoryOutsidePointer) {
         actions.handleCreateCategoryOutsidePointer(event);
+      }
+      if (actions.handleEditCategoryOutsidePointer) {
+        actions.handleEditCategoryOutsidePointer(event);
       }
       if (actions.handleReceiptOutsidePointer) {
         actions.handleReceiptOutsidePointer(event);

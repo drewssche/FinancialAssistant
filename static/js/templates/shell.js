@@ -4,19 +4,28 @@
   window.App.templates.shell = `
 
     <div id="appShell" class="app-shell hidden">
-      <aside class="sidebar">
-        <div class="brand">FA</div>
+      <div id="mobileNavOverlay" class="mobile-nav-overlay hidden"></div>
+      <aside class="sidebar" id="sidebarNav">
+        <div class="sidebar-head">
+          <div class="brand">FA</div>
+          <button id="mobileNavCloseBtn" class="mobile-nav-close" type="button" aria-label="Закрыть меню">×</button>
+        </div>
         <div class="sidebar-today">
           <div id="todayWeekday" class="today-weekday">Сегодня</div>
           <div id="todayDate" class="today-date">--</div>
         </div>
 
         <nav class="nav" id="mainNav">
+          <div class="nav-group-title">Обзор</div>
           <button class="nav-btn active" data-section="dashboard">Дашборд</button>
+          <button class="nav-btn" data-section="analytics">Аналитика</button>
+          <div class="nav-group-title">Учет</div>
           <button class="nav-btn" data-section="operations">Операции</button>
           <button class="nav-btn" data-section="debts">Долги</button>
           <button class="nav-btn" data-section="categories">Категории</button>
           <button class="nav-btn" data-section="item_catalog">Каталог позиций</button>
+          <div class="nav-group-title">Система</div>
+          <button id="adminNavBtn" class="nav-btn hidden" data-section="admin">Админ</button>
           <button class="nav-btn" data-section="settings">Настройки</button>
         </nav>
 
@@ -34,9 +43,12 @@
 
       <main class="main">
         <header class="topbar">
-          <div>
+          <div class="topbar-title-block">
+            <button id="mobileNavToggleBtn" class="mobile-nav-toggle" type="button" aria-label="Открыть меню" aria-expanded="false">☰</button>
+            <div>
             <h2 id="sectionTitle">Дашборд</h2>
             <p class="subtitle" id="sectionSubtitle">Доходы, расходы и быстрый контроль баланса</p>
+            </div>
           </div>
           <div class="top-actions">
             <div class="cta-row">
@@ -67,6 +79,39 @@
             </article>
           </section>
 
+          <section id="dashboardAnalyticsPanel" class="panel">
+            <div class="panel-head row between">
+              <div>
+                <h3>Аналитика периода</h3>
+                <p class="subtitle">Краткий тренд и динамика к прошлому периоду</p>
+              </div>
+              <button id="openAnalyticsTabBtn" class="btn btn-secondary" type="button">Открыть Аналитику</button>
+            </div>
+            <div class="dashboard-analytics-grid">
+              <div id="dashboardAnalyticsChartWrap" class="dashboard-analytics-chart-wrap">
+                <svg id="dashboardAnalyticsSparkline" viewBox="0 0 420 110" preserveAspectRatio="none" class="dashboard-analytics-sparkline" aria-label="График доходов и расходов"></svg>
+                <div id="dashboardAnalyticsEmpty" class="dashboard-analytics-empty hidden"></div>
+              </div>
+              <div class="dashboard-analytics-kpis">
+                <div class="dashboard-analytics-kpi dashboard-analytics-kpi-income">
+                  <span class="muted-small">Доход</span>
+                  <strong id="dashboardAnalyticsIncomeDelta">0</strong>
+                  <span id="dashboardAnalyticsIncomeMeta" class="muted-small">-</span>
+                </div>
+                <div class="dashboard-analytics-kpi dashboard-analytics-kpi-expense">
+                  <span class="muted-small">Расход</span>
+                  <strong id="dashboardAnalyticsExpenseDelta">0</strong>
+                  <span id="dashboardAnalyticsExpenseMeta" class="muted-small">-</span>
+                </div>
+                <div class="dashboard-analytics-kpi dashboard-analytics-kpi-balance">
+                  <span class="muted-small">Баланс</span>
+                  <strong id="dashboardAnalyticsBalanceDelta">0</strong>
+                  <span id="dashboardAnalyticsBalanceMeta" class="muted-small">-</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
           <section class="kpi-grid">
             <article class="kpi-card">
               <h3>Мне должны</h3>
@@ -93,7 +138,7 @@
             <div id="dashboardDebtsList" class="debt-cards debt-cards-compact"></div>
           </section>
 
-          <section class="panel">
+          <section id="dashboardOperationsPanel" class="panel">
             <div class="panel-head row between">
               <div>
                 <h3>Операции за период</h3>
@@ -124,6 +169,192 @@
                 </thead>
                 <tbody id="dashboardOperationsBody"></tbody>
               </table>
+            </div>
+          </section>
+        </section>
+
+        <section id="analyticsSection" class="section-block hidden">
+          <section class="panel">
+            <div class="segmented" id="analyticsViewTabs" role="tablist" aria-label="Вкладки аналитики">
+              <button class="segmented-btn active" data-analytics-tab="overview" type="button">Общий</button>
+              <button class="segmented-btn" data-analytics-tab="calendar" type="button">Календарь</button>
+              <button class="segmented-btn" data-analytics-tab="operations" type="button">Операции</button>
+              <button class="segmented-btn" data-analytics-tab="trends" type="button">Тренды</button>
+            </div>
+          </section>
+
+          <section id="analyticsOverviewPanel" class="panel analytics-tab-panel">
+            <div class="panel-head row between">
+              <div>
+                <h3>Итоги периода</h3>
+                <p id="analyticsSummaryRangeLabel" class="subtitle"></p>
+              </div>
+              <div class="toolbar">
+                <div class="segmented" id="analyticsSummaryPeriodTabs" role="tablist" aria-label="Период KPI аналитики">
+                  <button class="segmented-btn" data-analytics-summary-period="week" type="button">Неделя</button>
+                  <button class="segmented-btn active" data-analytics-summary-period="month" type="button">Месяц</button>
+                  <button class="segmented-btn" data-analytics-summary-period="year" type="button">Год</button>
+                  <button class="segmented-btn" data-analytics-summary-period="custom" type="button">Настроить</button>
+                </div>
+              </div>
+            </div>
+            <div id="analyticsKpiPrimary" class="analytics-kpi-grid"></div>
+            <div id="analyticsKpiSecondary" class="analytics-kpi-secondary"></div>
+          </section>
+
+          <section id="analyticsCalendarPanel" class="panel analytics-tab-panel hidden">
+            <div class="panel-head row between">
+              <div>
+                <h3>Календарная сетка</h3>
+                <p id="analyticsMonthLabel" class="subtitle"></p>
+              </div>
+              <div class="toolbar">
+                <div class="analytics-switch-group">
+                  <span class="muted-small">Вид сетки</span>
+                  <div class="segmented" id="analyticsCalendarViewTabs" role="tablist" aria-label="Вид календарной сетки">
+                    <button class="segmented-btn active" data-analytics-calendar-view="month" type="button">Месяц</button>
+                    <button class="segmented-btn" data-analytics-calendar-view="year" type="button">Год</button>
+                  </div>
+                </div>
+                <div class="analytics-switch-group">
+                  <span class="muted-small">Листать сетку</span>
+                  <div class="toolbar">
+                    <button id="analyticsPrevGridBtn" class="btn btn-secondary" type="button">←</button>
+                    <button id="analyticsTodayGridBtn" class="btn btn-secondary" type="button">Текущий</button>
+                    <button id="analyticsNextGridBtn" class="btn btn-secondary" type="button">→</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="panel-head row between">
+              <div>
+                <h3 id="analyticsCalendarTotalsTitle">Итоги сетки</h3>
+                <p id="analyticsCalendarTotalsRangeLabel" class="subtitle"></p>
+              </div>
+            </div>
+            <div id="analyticsCalendarTotals" class="analytics-kpi-grid"></div>
+            <div id="analyticsCalendarTotalsSecondary" class="analytics-kpi-secondary"></div>
+            <div class="table-wrap">
+              <div id="analyticsMonthGridWrap">
+                <table class="table table-hover analytics-calendar-table">
+                  <thead>
+                    <tr>
+                      <th>Пн</th>
+                      <th>Вт</th>
+                      <th>Ср</th>
+                      <th>Чт</th>
+                      <th>Пт</th>
+                      <th>Сб</th>
+                      <th>Вс</th>
+                      <th>Итог доход</th>
+                      <th>Итог расход</th>
+                      <th>Операций</th>
+                    </tr>
+                  </thead>
+                  <tbody id="analyticsCalendarBody"></tbody>
+                </table>
+              </div>
+              <div id="analyticsYearGridWrap" class="hidden">
+                <div id="analyticsYearGrid" class="analytics-year-grid"></div>
+              </div>
+            </div>
+          </section>
+
+          <section id="analyticsOperationsPanel" class="panel analytics-tab-panel hidden">
+            <div class="panel-head row between">
+              <div>
+                <h3>Инсайты по операциям</h3>
+                <p class="subtitle">Крупные траты, категории, аномалии и позиции</p>
+              </div>
+            </div>
+            <div class="analytics-positions-grid">
+              <div>
+                <div class="panel-head row between">
+                  <div>
+                    <h3>Тяжелые операции</h3>
+                    <p class="subtitle">Топ-5 расходов периода</p>
+                  </div>
+                </div>
+                <div id="analyticsTopOperationsList" class="analytics-insight-list"></div>
+              </div>
+              <div>
+                <div class="panel-head row between">
+                  <div>
+                    <h3>Категории расходов</h3>
+                    <p class="subtitle">Топ-5 с долей в расходах</p>
+                  </div>
+                </div>
+                <div id="analyticsTopCategoriesList" class="analytics-insight-list"></div>
+              </div>
+              <div>
+                <div class="panel-head row between">
+                  <div>
+                    <h3>Аномалии чеков</h3>
+                    <p class="subtitle">Нетипично высокие расходы</p>
+                  </div>
+                </div>
+                <div id="analyticsAnomaliesList" class="analytics-insight-list"></div>
+              </div>
+              <div>
+                <div class="panel-head row between">
+                  <div>
+                    <h3>Дорогие позиции</h3>
+                    <p class="subtitle">Топ-10 по цене и общим тратам</p>
+                  </div>
+                </div>
+                <div id="analyticsTopPositionsList" class="analytics-insight-list"></div>
+              </div>
+              <div>
+                <div class="panel-head row between">
+                  <div>
+                    <h3>Подорожания позиций</h3>
+                    <p class="subtitle">Что выросло к прошлому периоду</p>
+                  </div>
+                </div>
+                <div id="analyticsPriceIncreasesList" class="analytics-insight-list"></div>
+              </div>
+            </div>
+          </section>
+
+          <section id="analyticsTrendsPanel" class="panel analytics-tab-panel hidden">
+            <div class="panel-head row between">
+              <div>
+                <h3>Тренды доходов и расходов</h3>
+                <p id="analyticsTrendRangeLabel" class="subtitle"></p>
+              </div>
+              <div class="toolbar">
+                <div class="analytics-switch-group">
+                  <span class="muted-small">Окно</span>
+                  <div class="segmented" id="analyticsPeriodTabs" role="tablist" aria-label="Окно анализа">
+                    <button class="segmented-btn" data-analytics-period="week" type="button">Неделя</button>
+                    <button class="segmented-btn active" data-analytics-period="month" type="button">Месяц</button>
+                    <button class="segmented-btn" data-analytics-period="year" type="button">Год</button>
+                    <button class="segmented-btn" data-analytics-period="all_time" type="button">За все</button>
+                  </div>
+                </div>
+                <div class="analytics-switch-group">
+                  <span class="muted-small">Шаг</span>
+                  <div class="segmented" id="analyticsGranularityTabs" role="tablist" aria-label="Шаг графика">
+                    <button class="segmented-btn active" data-analytics-granularity="day" type="button">День</button>
+                    <button class="segmented-btn" data-analytics-granularity="week" type="button">Неделя</button>
+                    <button class="segmented-btn" data-analytics-granularity="month" type="button">Месяц</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="analytics-trend-chart-wrap">
+              <svg id="analyticsTrendChart" class="analytics-trend-chart" viewBox="0 0 980 280" preserveAspectRatio="none" aria-label="Тренд доходов расходов баланса"></svg>
+            </div>
+            <div class="analytics-trend-legend">
+              <span><i class="legend-dot legend-income"></i>Доход</span>
+              <span><i class="legend-dot legend-expense"></i>Расход</span>
+              <span><i class="legend-dot legend-balance"></i>Баланс</span>
+            </div>
+            <div class="analytics-trend-deltas">
+              <div>Доход: <strong id="analyticsIncomeDelta">0%</strong></div>
+              <div>Расход: <strong id="analyticsExpenseDelta">0%</strong></div>
+              <div>Баланс: <strong id="analyticsBalanceDelta">0%</strong></div>
+              <div>Операции: <strong id="analyticsOpsDelta">0%</strong></div>
             </div>
           </section>
         </section>
@@ -337,15 +568,52 @@
                 </div>
                 <div id="currencyPreview" class="settings-preview">Пример: 1 234,56 Br</div>
                 <label class="settings-switch-row">
+                  <input id="showDashboardAnalyticsToggle" type="checkbox" checked />
+                  <span>Показывать блок аналитики на дашборде</span>
+                </label>
+                <label class="settings-switch-row">
+                  <input id="showDashboardOperationsToggle" type="checkbox" checked />
+                  <span>Показывать блок операций на дашборде</span>
+                </label>
+                <label class="settings-switch-row">
                   <input id="showDashboardDebtsToggle" type="checkbox" checked />
                   <span>Показывать карточки долгов на дашборде</span>
+                </label>
+                <label class="field">
+                  <span>Строк операций на дашборде</span>
+                  <select id="dashboardOperationsLimitSelect">
+                    <option value="5">5</option>
+                    <option value="8">8</option>
+                    <option value="12">12</option>
+                  </select>
                 </label>
                 <div class="settings-scale-row">
                   <label class="field">
                     <span>Масштаб интерфейса: <strong id="uiScaleValue">100%</strong></span>
-                    <input id="uiScaleRange" type="range" min="90" max="115" step="5" value="100" />
+                    <input id="uiScaleRange" type="range" min="85" max="115" step="1" value="100" />
                   </label>
                   <button id="resetUiScaleBtn" class="btn btn-secondary btn-xs" type="button">Сбросить 100%</button>
+                </div>
+              </section>
+              <section class="settings-block">
+                <h3>Аналитика</h3>
+                <div class="settings-grid-2">
+                  <label class="field">
+                    <span>Топ операций</span>
+                    <select id="analyticsTopOperationsLimitSelect">
+                      <option value="3">3</option>
+                      <option value="5">5</option>
+                      <option value="10">10</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Топ позиций</span>
+                    <select id="analyticsTopPositionsLimitSelect">
+                      <option value="5">5</option>
+                      <option value="10">10</option>
+                      <option value="20">20</option>
+                    </select>
+                  </label>
                 </div>
               </section>
               <div class="settings-actions">
@@ -360,6 +628,39 @@
                 <button id="deleteMeBtn" class="btn btn-danger" type="button">Удалить меня</button>
               </div>
             </section>
+          </section>
+        </section>
+
+        <section id="adminSection" class="section-block hidden">
+          <section class="panel">
+            <div class="panel-head row between">
+              <div>
+                <h3>Управление доступом</h3>
+                <p class="subtitle">Апрув, отклонение и удаление пользователей</p>
+              </div>
+            </div>
+            <div class="segmented" id="adminUserStatusTabs" role="tablist" aria-label="Статус пользователей">
+              <button class="segmented-btn active" data-admin-user-status="pending" type="button">Ожидают</button>
+              <button class="segmented-btn" data-admin-user-status="approved" type="button">Одобрены</button>
+              <button class="segmented-btn" data-admin-user-status="rejected" type="button">Отклонены</button>
+              <button class="segmented-btn" data-admin-user-status="all" type="button">Все</button>
+            </div>
+            <div class="table-wrap">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Пользователь</th>
+                    <th>Telegram</th>
+                    <th>Статус</th>
+                    <th>Создан</th>
+                    <th>Последний вход</th>
+                    <th>Действия</th>
+                  </tr>
+                </thead>
+                <tbody id="adminUsersBody"></tbody>
+              </table>
+            </div>
           </section>
         </section>
 

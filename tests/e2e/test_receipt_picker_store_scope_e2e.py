@@ -97,10 +97,10 @@ def page_with_receipt_api_mock():
         query = parse_qs(parsed.query)
         method = request.method.upper()
 
-        if path == "/api/v1/auth/dev" and method == "POST":
+        if path == "/api/v1/auth/telegram" and method == "POST":
             return json_response(route, {"access_token": "e2e-token", "token_type": "bearer"})
         if path == "/api/v1/users/me" and method == "GET":
-            return json_response(route, {"id": 1, "display_name": "Receipt User", "username": "receipt_user"})
+            return json_response(route, {"id": 1, "display_name": "Receipt User", "username": "receipt_user", "status": "approved", "is_admin": False})
         if path == "/api/v1/preferences":
             if method == "GET":
                 return json_response(route, preferences)
@@ -140,6 +140,17 @@ def page_with_receipt_api_mock():
         except Exception as exc:  # pragma: no cover
             pytest.skip(f"Chromium is not available for Playwright: {exc}")
         page = browser.new_page()
+        page.add_init_script(
+            """
+            window.Telegram = {
+              WebApp: {
+                initData: "mock-init-data",
+                ready() {},
+                expand() {},
+              }
+            };
+            """
+        )
         page.route("**/api/v1/**", handler)
         try:
             yield page
@@ -151,8 +162,22 @@ def page_with_receipt_api_mock():
 def test_receipt_picker_store_scoped_and_optimistic_create(static_server_url: str, page_with_receipt_api_mock):
     page = page_with_receipt_api_mock
     page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
 
-    page.click("#devLoginBtn")
+    page.click("#telegramLoginBtn")
     page.wait_for_selector("#appShell:not(.hidden)")
     page.click("#addOperationCta")
     page.wait_for_selector("#createModal:not(.hidden)")

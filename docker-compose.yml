@@ -2,8 +2,12 @@ services:
   app:
     build: .
     container_name: financial_assistant_app
+    restart: unless-stopped
+    init: true
     env_file:
       - .env
+    environment:
+      PYTHONPATH: /app
     ports:
       - "8001:8000"
     depends_on:
@@ -11,21 +15,40 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./:/app
-    command: sh -lc "PYTHONPATH=/app alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    mem_limit: 512m
+    cpus: 0.50
+    stop_grace_period: 20s
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+    command: sh -lc "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
   db:
     image: postgres:16-alpine
     container_name: financial_assistant_db
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - "5433:5432"
+    command: >
+      postgres
+      -c shared_buffers=128MB
+      -c work_mem=4MB
+      -c maintenance_work_mem=64MB
+      -c effective_cache_size=512MB
+      -c max_connections=30
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    mem_limit: 768m
+    cpus: 0.35
+    shm_size: 128m
+    stop_grace_period: 30s
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -35,8 +58,15 @@ services:
   redis:
     image: redis:7-alpine
     container_name: financial_assistant_redis
-    ports:
-      - "6380:6379"
+    restart: unless-stopped
+    command: redis-server --save "" --appendonly no --maxmemory 96mb --maxmemory-policy allkeys-lru
+    mem_limit: 128m
+    cpus: 0.10
+    stop_grace_period: 20s
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s

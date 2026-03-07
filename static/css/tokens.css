@@ -1,4 +1,21 @@
 :root {
+  --ui-scale: 1;
+  --ui-font-base: 16px;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-7: 1.75rem;
+  --space-8: 2rem;
+  --radius-sm: 0.625rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-pill: 9999px;
+  --control-height: 2.75rem;
+  --control-height-lg: 3rem;
   --bg: #080b12;
   --bg-soft: #101522;
   --surface: #131a2a;
@@ -12,6 +29,10 @@
   --shadow: 0 24px 42px rgba(0, 0, 0, 0.42);
 }
 
+html {
+  font-size: calc(var(--ui-font-base) * var(--ui-scale));
+}
+
 * {
   box-sizing: border-box;
 }
@@ -21,6 +42,9 @@ body {
   color: var(--text);
   font-family: "Segoe UI", Tahoma, sans-serif;
   background: radial-gradient(circle at 20% 0%, #181f31 0%, var(--bg) 48%, #06080f 100%);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-attachment: fixed;
 }
 
 h1,

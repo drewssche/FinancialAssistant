@@ -17,6 +17,12 @@
 - Budgets/limits
 - richer reports/charts
 - export/import options
+- Analytics section baseline (`Аналитика`):
+- month calendar grid (`Mon..Sun`) with per-day income/expense/operations count
+- week-row totals near calendar rows
+- day/week/month/year trend charts for income/expense/balance
+
+## Delivered in MVP-1.x (already implemented)
 - Operations receipt detail:
 - optional receipt line items in operation
 - reusable position catalog (chips/templates)
@@ -27,35 +33,140 @@
 - debt create flow (`дал`/`взял`)
 - repayment flow (`вернули`/`вернул`)
 - outstanding progress and due-date tracking
+- Access governance baseline:
+- user statuses (`pending/approved/rejected`)
+- admin-only section for approve/reject/delete user
+- admin identity from env (`ADMIN_TELEGRAM_IDS`)
 
-## Feature Draft: Debts (Design Approved, Implementation Pending)
+## Feature Status: Debts (Implemented MVP Baseline)
 1. Navigation and information architecture
-- New sidebar section: `Долги`
-- Dashboard keeps debt widget compact (only active/high-priority debt cards), full list stays in `Долги`
+- Implemented: sidebar section `Долги`
+- Implemented: dashboard debt widget stays compact; full list is in `Долги`
 
 2. Operation modal integration
-- Operation modal adds mode switch: `Обычная операция` / `Долг`
+- Implemented: operation modal mode switch `Обычная операция` / `Долг`
 - In `Долг` mode:
 - hide categories/tags inputs
 - show debt-specific fields (`Кто/Кому`, `Сумма`, `Когда`, `До какого числа`, `Комментарий`)
 
 3. Counterparty reuse and anti-duplication
-- Counterparty input uses suggestions from existing debt cards
-- New debt with existing counterparty updates that card (adds new debt row), not a duplicate card
+- Implemented: counterparty input reuses existing cards
+- Implemented: new debt with existing counterparty appends into existing card without duplicate card
 
 4. Repayment mechanics
-- Debt card stores:
+- Implemented:
 - principal total
 - repaid total
 - outstanding total
-- Debt card is active while outstanding > 0
-- When outstanding becomes 0, card is hidden from dashboard widget and marked closed in debts history
+- debt card is active while outstanding > 0
+- when outstanding becomes 0, card is hidden from dashboard widget and marked closed in debts history
 
 ## MVP-3
 - deeper Telegram Mini App optimization
 - async jobs and notifications
 - advanced analytics and recommendations
 - optional position-level analytics (backlog candidate, depends on product demand)
+
+## Production Transition Track (Near-Term)
+1. Production hardening
+- disable or fully isolate dev-only auth flows in production runtime
+- verify Telegram WebApp auth path end-to-end (`initData`, freshness, admin approval, rejected/pending states)
+- make release checklist mandatory before deploy
+- add/keep explicit regression coverage for access states and admin actions
+
+2. Mobile-first adaptation
+- adapt all core flows for narrow mobile viewports first (`320-430px` baseline)
+- remove dependency on hover-only actions in critical flows
+- review modal-heavy desktop interactions and replace with sheet/full-screen mobile patterns where needed
+- validate tap targets, spacing, keyboard overlap, and sticky CTA behavior on mobile
+
+3. Telegram Mini App integration polish
+- support Telegram WebApp viewport specifics (`safe-area`, header chrome, expand behavior)
+- align critical actions with Telegram interaction model (`BackButton`, `MainButton`) where useful
+- optimize startup/render path for mobile device constraints and in-app browser runtime
+- keep backend contracts shared; Telegram-specific behavior stays in client layer
+
+## Execution Steps (Current Sprint)
+1. Production auth cleanup
+- remove dev-only login flow from backend, frontend, and scripts
+- keep Telegram WebApp as the single supported auth path
+- keep `ADMIN_TELEGRAM_IDS` as immediate auto-approve/admin access list
+
+2. VPS deployment baseline
+- run app without bind-mounted source code and without `--reload`
+- keep one application process for `1 vCPU`
+- cap service resources for `app`, `db`, and `redis` to fit `2 GB RAM`
+
+3. Mini App readiness implementation
+- mobile-first shell and safe-area support
+- no critical hover-only actions
+- Telegram WebApp adapter for viewport/back button/main button
+
+## Feature Draft: Analytics (Agreed, Next Delivery Track)
+1. New section and IA
+- New sidebar section: `Аналитика`
+- `Dashboard` stays first and default-open section on app start
+- Analytics is deep-dive section; dashboard keeps compact KPI highlights
+- Analytics uses internal tabs to avoid one overloaded page:
+- `Общий`
+- `Календарь`
+- `Операции`
+- `Тренды`
+- `Позиции` insights are merged into `Операции` tab (not separate tab)
+
+2. Calendar-first monthly view
+- main view is month grid with week starting Monday (`Пн..Вс`)
+- calendar grid has explicit view switch:
+- `Месяц` (day cells)
+- `Год` (12 month cells with aggregated income/expense/ops/balance)
+- grid navigation controls are scoped to grid only (prev/current/next for month or year)
+- each day cell shows:
+- income total
+- expense total
+- operations count
+- each week row shows right-side totals:
+- week income total
+- week expense total
+- week operations count
+- calendar tab summary is rendered as grid-context KPI strip/cards (for current view month/year):
+- primary KPI cards: income/expense/balance/operations
+- secondary compact chip: single period result (`Профицит`/`Дефицит`/`Нулевой баланс`)
+- detailed period KPI controls are shown in `Общий` tab (`week/month/year/custom`)
+
+3. Trends and charts
+- period switch supports `day/week/month/year/custom`
+- trend charts include:
+- income and expense bars
+- balance line on top
+- first extension after baseline:
+- moving average
+- period-over-period delta
+- top expense categories
+
+4. Insights blocks (priority after baseline tabs)
+- top-5 heavy operations in selected month/period
+- top categories by expense share
+- anomaly checks for unusually large expense operations
+- top-10 expensive receipt positions
+- temporary `price increased` highlight for positions with meaningful price jump
+- position-level mini trends (price and purchase frequency) in `Операции` tab
+
+4. Dashboard integration strategy
+- dashboard keeps lightweight analytics preview widget:
+- mini trend sparkline for current period
+- short deltas vs previous period
+- primary action `Открыть аналитику`
+- operations table on dashboard should be reviewed as optional:
+- keep only compact recent rows (or hide via preference)
+- full operations work stays in `Операции`
+- dashboard widget visibility and density are preference-driven:
+- show/hide analytics block
+- show/hide operations block
+- show/hide debts block
+- operations row count (`5/8/12`)
+- analytics insight density is preference-driven:
+- top operations limit (`3/5/10`)
+- top positions limit (`5/10/20`)
 
 ## Audit Plan (Current)
 1. Stabilize shared UI mechanics
@@ -65,9 +176,12 @@
 2. Reduce module size and coupling
 - continue splitting `static/js/app-features.js` into focused modules (`operations`, `dashboard`, `preferences`, `item-catalog`)
 - done: Item Catalog extracted to `static/js/app-features-item-catalog.js`
+- done: Item Catalog modal/source-picker/history extracted to `static/js/app-features-item-catalog-modal.js`
 - done: operations flow extracted to `static/js/app-features-operations.js`
+- done: operation modal receipt flow extracted to `static/js/app-features-operation-modal-receipt.js`
+- done: operation modal receipt interactions extracted to `static/js/app-features-operation-modal-receipt-interactions.js`
 - split `static/js/app-core.js` into `state`, `dom-refs`, `format/helpers`
-- keep each module under soft 300-400 lines, hard cap 500; current heavy modules above hard cap: `app-features-operation-modal.js`, `app-features-item-catalog.js`, `app-features-operations.js`, `templates/modals.js`, `app-init-features.js`
+- keep each module under soft 300-400 lines, hard cap 500; current heavy modules above hard cap: none
 
 3. Complete modal/category reuse
 - use single entrypoint for category modal open from different contexts
@@ -91,5 +205,36 @@
 7. Section-aware refresh strategy
 - after operation/debt/category mutations, refresh active-section datasets first
 - avoid unconditional dashboard/operations/debts simultaneous reload when section is not visible
+
+## Optimization Focus (Next)
+1. Frontend module size normalization
+- split high-volume files still above hard threshold:
+- `static/js/app-init-features.js`
+- `static/js/app-features-analytics.js`
+- `static/js/app-features-operation-modal.js`
+- `static/js/app-features-operation-modal-receipt-interactions.js`
+- `static/js/app-features-operations.js`
+
+2. Auth/access hardening
+- remove or fully isolate dev-auth fallback path for production deployments
+- add explicit regression tests for pending/rejected UX states in web app
+
+3. Admin list performance
+- avoid potential relationship N+1 in admin users listing (eager load telegram identity)
+- add pagination for admin users list when user count grows
+
+4. Scaling UX technical debt
+- migrate away from `body zoom` to token-based scaling model
+- lock visual regression checks for scale extremes (`85/115`)
+
+5. Production readiness
+- add a deploy-oriented checklist for env/config correctness (`APP_ENV`, `TELEGRAM_BOT_TOKEN`, `ADMIN_TELEGRAM_IDS`)
+- verify structured logging/request tracing baseline before first real users
+- document rollback path for schema migrations and release failures
+
+6. Telegram Mini App readiness
+- audit all main sections against mobile-first layout rules
+- replace hover-only row actions with always-reachable mobile actions
+- validate auth/session restore inside Telegram WebApp container, not only in desktop browser
 
 See detailed execution queue: `docs/AUDIT_TODO.md`

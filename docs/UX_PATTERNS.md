@@ -11,7 +11,13 @@ MVP-1 persisted items:
 - ui timezone
 - ui currency + symbol position
 - ui scale
+- dashboard analytics block visibility
 - dashboard debt-cards visibility
+- dashboard operations block visibility
+- dashboard operations row limit (`5/8/12`)
+- analytics period/granularity and calendar month anchor
+- analytics top insight limits (`top operations`, `top positions`)
+- admin users filter in admin section (`pending/approved/rejected/all`)
 
 Persistence strategy:
 - Source of truth: server-side `user_preferences`
@@ -21,6 +27,28 @@ Behavior:
 - Save changes with debounce to avoid noisy writes
 - Restore last state on next open/session
 - Provide clear `Reset filters` action
+
+Settings UX additions:
+- dashboard visibility toggles should preview in-place without full page reload
+- analytics top limits are applied to insight lists after save/apply
+- scale slider uses fine step (`1%`) and must not break page background continuity
+
+## Access Approval UX
+- Authorization and product access are separated:
+- user can authenticate, but usage access depends on status
+- statuses:
+- `pending` -> show waiting message, hide workspace
+- `approved` -> normal workflow
+- `rejected` -> show denied message, hide workspace
+- Admin workflow:
+- pending queue should be first default filter
+- status change actions require immediate list refresh
+- destructive action `Delete user` requires explicit confirmation
+
+## Navigation Priority
+- Default landing section is always `Dashboard` for first open/session reset.
+- Sidebar should support semantic grouped blocks with headers when item count grows.
+- `Analytics` is a first-level section, but not the startup override for Dashboard.
 
 ## Action Hierarchy
 - Primary CTA is defined at screen-zone level and remains single per active section.
@@ -81,6 +109,24 @@ Behavior:
 - for `День`: `DD.MM.YYYY`
 - for other ranges: `DD.MM.YYYY - DD.MM.YYYY`
 
+## Analytics Calendar Pattern (Planned Baseline)
+- Calendar tab keeps only grid controls:
+- `Grid controls`: calendar view (`Месяц`/`Год`) + prev/current/next navigation for grid only
+- Monthly view uses calendar grid with Monday-first week (`Пн..Вс`).
+- Each day cell includes:
+- income total
+- expense total
+- operations count
+- Each week row has right-side totals:
+- week income
+- week expense
+- week operations count
+- Calendar summary is KPI-style cards (not plain sentence text) and follows selected grid view (month/year):
+- primary KPI cards: income/expense/balance/operations
+- secondary compact metric: single period result (`Профицит`/`Дефицит`/`Нулевой баланс`)
+- Year view uses month cards (`12` cells) with the same metrics at month granularity.
+- Empty days are rendered as explicit zero values for visual continuity.
+
 ## Date Header
 - Day/date block is always visible in sidebar (all sections), without `Сегодня:` prefix
 - Day/date use `ru-RU` formatting and selected user timezone (fallback to browser timezone)
@@ -95,6 +141,26 @@ Behavior:
 - Matching text is highlighted with a reusable contrast mark style
 - Position catalog search targets both source names and position names
 - For grouped tables (source -> positions), active search temporarily auto-expands matched groups
+
+## Analytics Trends Pattern (Planned Baseline)
+- Trend panel supports `day/week/month/year/custom` granularity.
+- Trend controls must be semantically separated:
+- `Окно` (analysis window/range)
+- `Шаг` (bucket size)
+- Baseline visual:
+- income and expense as bars
+- balance as line
+- Trend panel should show period-over-period delta near chart headline.
+- Clicking chart bucket should open or focus `Операции` with matching date filter.
+
+## Analytics Information Architecture
+- Analytics section uses internal tabs to keep information density manageable.
+- Baseline tabs:
+- `Общий`: period KPI controls and compact period summary
+- `Календарь`: month/year matrix + week totals + grid-view totals
+- `Операции`: top operations, categories, anomalies, positions insights
+- `Тренды`: expanded charts and period-over-period comparisons
+- Dashboard remains default landing section; analytics is deep-dive only.
 
 ## List Loading Pattern (Required)
 - Standard pattern for large lists/tables: initial load `20` rows, then incremental load by scroll (`+20` each batch).
@@ -117,7 +183,7 @@ Behavior:
 ## Category Inputs
 - Group color is chosen via color picker with synchronized hex value
 - Category icon is selected from a predefined icon popover, not free text input
-- In create operation modal, category is selected via reusable chip-picker flow:
+- In create/edit operation modals, category is selected via reusable chip-picker flow:
 - search input (realtime filter)
 - single result list sorted by usage frequency (frequent categories first)
 - when search has no match, show chip action `Создать категорию «...»` and open category modal prefilled
@@ -152,7 +218,7 @@ Behavior:
 - no per-item category in MVP
 - no item-level analytics in MVP (backlog)
 
-## Debt UX Rules (Planned)
+## Debt UX Rules (Implemented Baseline)
 - Debt creation flow must be explicit and separate from category logic.
 - Suggested interaction:
 - mode switch in operation modal (`Обычная операция` / `Долг`)
@@ -172,6 +238,11 @@ Behavior:
 - non-blocking reminders in UI (toast/info badge), no forced modal interruptions
 - Search in debts uses the same reusable highlight pattern as operations search (`core.highlightText`)
 - Repayment quick presets (`25%`, `50%`, `Весь остаток`) are derived from current outstanding amount from state/API and must update amount input + delta hints in one click
+
+## Dashboard Content Strategy
+- Dashboard is overview-first and must stay lighter than dedicated working sections.
+- Keep debt cards and analytics preview compact; deep drill-down belongs to `Долги` and `Аналитика`.
+- Operations block on dashboard should be limited to recent/context rows; main operations workflow remains in `Операции`.
 
 ## Responsive Behavior
 - Desktop: sidebar visible
