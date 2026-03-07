@@ -1,12 +1,115 @@
 (() => {
   const { state, el, core } = window.App;
 
+  function resetBatchCreateState() {
+    state.batchOperationPlan = null;
+    if (el.batchCreateForm) {
+      el.batchCreateForm.reset();
+    }
+    if (el.batchCreateInput) {
+      el.batchCreateInput.value = "";
+    }
+    if (el.batchCreateFeedback) {
+      el.batchCreateFeedback.textContent = "";
+      el.batchCreateFeedback.classList.add("hidden");
+    }
+    if (el.batchCreatePreview) {
+      el.batchCreatePreview.classList.add("hidden");
+    }
+    if (el.batchCreatePreviewBody) {
+      el.batchCreatePreviewBody.innerHTML = "";
+    }
+    if (el.confirmBatchCreateBtn) {
+      el.confirmBatchCreateBtn.textContent = "Импортировать 0 строк";
+      el.confirmBatchCreateBtn.disabled = true;
+      el.confirmBatchCreateBtn.classList.add("hidden");
+    }
+  }
+
+  function resetBatchCategoryState() {
+    state.batchCategoryPlan = null;
+    if (el.batchCategoryForm) {
+      el.batchCategoryForm.reset();
+    }
+    if (el.batchCategoryMode) {
+      el.batchCategoryMode.value = "categories";
+    }
+    if (el.batchCategoryModeTabs) {
+      core.syncSegmentedActive(el.batchCategoryModeTabs, "batch-category-mode", "categories");
+    }
+    if (el.batchCategoryHint) {
+      el.batchCategoryHint.innerHTML = 'Категории: <code>тип;название;группа</code>. Пустая группа = «Без группы».';
+    }
+    if (el.batchCategoryInput) {
+      el.batchCategoryInput.value = "";
+    }
+    if (el.batchCategoryFeedback) {
+      el.batchCategoryFeedback.textContent = "";
+      el.batchCategoryFeedback.classList.add("hidden");
+    }
+    if (el.batchCategoryPreview) {
+      el.batchCategoryPreview.classList.add("hidden");
+    }
+    if (el.batchCategoryPreviewBody) {
+      el.batchCategoryPreviewBody.innerHTML = "";
+    }
+    if (el.confirmBatchCategoryBtn) {
+      el.confirmBatchCategoryBtn.textContent = "Импортировать 0 строк";
+      el.confirmBatchCategoryBtn.disabled = true;
+      el.confirmBatchCategoryBtn.classList.add("hidden");
+    }
+  }
+
+  function resetBatchItemTemplateState() {
+    state.batchItemTemplatePlan = null;
+    if (el.batchItemTemplateForm) {
+      el.batchItemTemplateForm.reset();
+    }
+    if (el.batchItemTemplateInput) {
+      el.batchItemTemplateInput.value = "";
+    }
+    if (el.batchItemTemplateFeedback) {
+      el.batchItemTemplateFeedback.textContent = "";
+      el.batchItemTemplateFeedback.classList.add("hidden");
+    }
+    if (el.batchItemTemplatePreview) {
+      el.batchItemTemplatePreview.classList.add("hidden");
+    }
+    if (el.batchItemTemplatePreviewBody) {
+      el.batchItemTemplatePreviewBody.innerHTML = "";
+    }
+    if (el.confirmBatchItemTemplateBtn) {
+      el.confirmBatchItemTemplateBtn.textContent = "Импортировать 0 строк";
+      el.confirmBatchItemTemplateBtn.disabled = true;
+      el.confirmBatchItemTemplateBtn.classList.add("hidden");
+    }
+  }
+
   function openBatchCreateModal() {
+    resetBatchCreateState();
     el.batchCreateModal.classList.remove("hidden");
   }
 
   function closeBatchCreateModal() {
     el.batchCreateModal.classList.add("hidden");
+  }
+
+  function openBatchCategoryModal() {
+    resetBatchCategoryState();
+    el.batchCategoryModal.classList.remove("hidden");
+  }
+
+  function closeBatchCategoryModal() {
+    el.batchCategoryModal.classList.add("hidden");
+  }
+
+  function openBatchItemTemplateModal() {
+    resetBatchItemTemplateState();
+    el.batchItemTemplateModal.classList.remove("hidden");
+  }
+
+  function closeBatchItemTemplateModal() {
+    el.batchItemTemplateModal.classList.add("hidden");
   }
 
   function openCreateGroupModal() {
@@ -64,6 +167,10 @@
   window.App.bulkUi = {
     openBatchCreateModal,
     closeBatchCreateModal,
+    openBatchCategoryModal,
+    closeBatchCategoryModal,
+    openBatchItemTemplateModal,
+    closeBatchItemTemplateModal,
     openCreateGroupModal,
     closeCreateGroupModal,
     openBulkEditOperationsModal,
@@ -72,5 +179,8 @@
     syncOperationSelectAll,
     updateOperationsBulkUi,
     fillBulkOperationCategorySelect,
+    resetBatchCreateState,
+    resetBatchCategoryState,
+    resetBatchItemTemplateState,
   };
 })();

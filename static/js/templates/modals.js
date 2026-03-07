@@ -114,12 +114,82 @@
           </button>
         </div>
         <form id="batchCreateForm" class="category-modal-form">
-          <p class="subtitle">Одна строка: тип;сумма;дата;комментарий. Пример: <code>expense;150.50;2026-03-04;Такси</code></p>
-          <textarea id="batchCreateInput" rows="8" placeholder="income;1000;2026-03-04;Зарплата"></textarea>
+          <p class="subtitle">Одна строка: <code>дата;тип;категория;сумма;комментарий</code>.</p>
+          <p id="batchCreateHint" class="muted-small">Тип: расход/доход или expense/income. Сумма: <code>01,23</code> или <code>01.23</code>. Комментарий опционален и не должен содержать <code>;</code>.</p>
+          <textarea id="batchCreateInput" rows="8" placeholder="2026-03-04;Расход;Такси;150,50;Поездка"></textarea>
+          <div id="batchCreateFeedback" class="status-box hidden"></div>
+          <div id="batchCreatePreview" class="bulk-import-preview hidden">
+            <div class="preview-title">Предпросмотр строк</div>
+            <div class="table-wrap">
+              <table class="table table-hover mobile-card-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Дата</th>
+                    <th>Тип</th>
+                    <th>Категория</th>
+                    <th>Сумма</th>
+                    <th>Комментарий</th>
+                    <th>Статус</th>
+                  </tr>
+                </thead>
+                <tbody id="batchCreatePreviewBody"></tbody>
+              </table>
+            </div>
+          </div>
         </form>
         <div class="modal-footer">
-          <button id="submitBatchCreateBtn" class="btn btn-cta modal-main-cta" type="submit" form="batchCreateForm">
-            Добавить пакет
+          <button id="previewBatchCreateBtn" class="btn btn-secondary" type="submit" form="batchCreateForm">
+            Проверить строки
+          </button>
+          <button id="confirmBatchCreateBtn" class="btn btn-cta modal-main-cta hidden" type="button">
+            Импортировать 0 строк
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="batchCategoryModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="batchCategoryTitle">
+      <div class="modal-card modal-small">
+        <div class="panel-head row between">
+          <h3 id="batchCategoryTitle">Массовое добавление категорий и групп</h3>
+          <button id="closeBatchCategoryModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
+        </div>
+        <form id="batchCategoryForm" class="category-modal-form">
+          <div class="segmented" id="batchCategoryModeTabs" aria-label="Режим массового добавления категорий">
+            <button class="segmented-btn active" data-batch-category-mode="categories" type="button">Категории</button>
+            <button class="segmented-btn" data-batch-category-mode="groups" type="button">Группы</button>
+          </div>
+          <input id="batchCategoryMode" type="hidden" value="categories" />
+          <p id="batchCategoryHint" class="subtitle">Категории: <code>тип;название;группа</code>. Пустая группа = «Без группы».</p>
+          <textarea id="batchCategoryInput" rows="8" placeholder="Расход;Такси;Транспорт&#10;Доход;Подработка;"></textarea>
+          <div id="batchCategoryFeedback" class="status-box hidden"></div>
+          <div id="batchCategoryPreview" class="bulk-import-preview hidden">
+            <div class="preview-title">Предпросмотр строк</div>
+            <div class="table-wrap">
+              <table class="table table-hover mobile-card-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Тип</th>
+                    <th>Название</th>
+                    <th>Группа</th>
+                    <th>Статус</th>
+                  </tr>
+                </thead>
+                <tbody id="batchCategoryPreviewBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </form>
+        <div class="modal-footer">
+          <button id="previewBatchCategoryBtn" class="btn btn-secondary" type="submit" form="batchCategoryForm">
+            Проверить строки
+          </button>
+          <button id="confirmBatchCategoryBtn" class="btn btn-cta modal-main-cta hidden" type="button">
+            Импортировать 0 строк
           </button>
         </div>
       </div>

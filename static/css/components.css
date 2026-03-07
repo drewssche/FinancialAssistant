@@ -1288,6 +1288,27 @@ textarea {
   min-height: 2.625rem;
 }
 
+@media (min-width: 901px) {
+  .table td.mobile-actions-cell {
+    width: 1%;
+    white-space: nowrap;
+  }
+
+  .table td.mobile-actions-cell .actions.row-actions:not(.debt-actions-grid),
+  .category-table-group-wrap .actions.row-actions {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .table td.mobile-actions-cell .row-actions .btn,
+  .category-table-group-wrap .row-actions .btn {
+    width: auto;
+    min-width: 0;
+  }
+}
+
 .debt-actions-grid {
   opacity: 1;
   transform: none;
@@ -1319,6 +1340,30 @@ textarea {
   margin-top: var(--space-3);
   border-top: 1px solid var(--border);
   padding-top: var(--space-3);
+}
+
+.bulk-import-preview {
+  margin-top: var(--space-3);
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-3);
+}
+
+.bulk-import-preview .table td:last-child,
+.bulk-import-preview .table th:last-child {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.bulk-import-status-ok {
+  color: #9ee8bc;
+}
+
+.bulk-import-status-warn {
+  color: #ffd07a;
+}
+
+.bulk-import-status-error {
+  color: #ffb2bc;
 }
 
 .preview-title {

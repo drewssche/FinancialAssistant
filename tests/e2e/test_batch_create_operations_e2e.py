@@ -66,14 +66,25 @@ def test_batch_create_modal_submits_multiple_operations(page):
                 content_type="application/json",
                 body=(
                     f'{{"id":{idx},"kind":"{payload["kind"]}","amount":"{payload["amount"]}",'
-                    f'"operation_date":"{payload["operation_date"]}","category_id":null,'
+                    f'"operation_date":"{payload["operation_date"]}","category_id":{payload["category_id"]},'
                     f'"note":"{payload.get("note", "")}","receipt_items":[],"receipt_total":null,"receipt_discrepancy":null}}'
                 ),
             )
             return
 
-        if "/api/v1/categories" in url:
-            route.fulfill(status=200, content_type="application/json", body='{"items":[],"total":0,"page":1,"page_size":20}')
+        if "/api/v1/categories" in url and method == "GET":
+            if "page=" in url and "page_size=" in url:
+                route.fulfill(
+                    status=200,
+                    content_type="application/json",
+                    body='{"items":[{"id":10,"name":"Такси","icon":null,"kind":"expense","group_id":null,"group_name":null,"group_icon":null,"group_accent_color":null,"is_system":false},{"id":11,"name":"Зарплата","icon":null,"kind":"income","group_id":null,"group_name":null,"group_icon":null,"group_accent_color":null,"is_system":false}],"total":2,"page":1,"page_size":20}',
+                )
+                return
+            route.fulfill(
+                status=200,
+                content_type="application/json",
+                body='[{"id":10,"name":"Такси","icon":null,"kind":"expense","group_id":null,"group_name":null,"group_icon":null,"group_accent_color":null,"is_system":false},{"id":11,"name":"Зарплата","icon":null,"kind":"income","group_id":null,"group_name":null,"group_icon":null,"group_accent_color":null,"is_system":false}]',
+            )
             return
 
         if "/api/v1/debts" in url:
@@ -96,10 +107,11 @@ def test_batch_create_modal_submits_multiple_operations(page):
     page.goto("http://127.0.0.1:8001/", wait_until="networkidle")
     page.get_by_role("button", name="+ Массовое добавление").click()
     page.locator("#batchCreateInput").fill(
-        "expense;150.50;2026-03-04;Такси\n"
-        "income;1000;2026-03-05;Зарплата"
+        "2026-03-04;Расход;Такси;150,50;Поездка\n"
+        "2026-03-05;Доход;Зарплата;1000;"
     )
-    page.get_by_role("button", name="Добавить пакет").click()
+    page.get_by_role("button", name="Проверить строки").click()
+    page.get_by_role("button", name="Импортировать 2 строк").click()
 
     page.wait_for_timeout(300)
 
@@ -107,8 +119,10 @@ def test_batch_create_modal_submits_multiple_operations(page):
     assert operations_created[0]["kind"] == "expense"
     assert operations_created[0]["amount"] == "150.50"
     assert operations_created[0]["operation_date"] == "2026-03-04"
-    assert operations_created[0]["note"] == "Такси"
+    assert operations_created[0]["category_id"] == 10
+    assert operations_created[0]["note"] == "Поездка"
     assert operations_created[1]["kind"] == "income"
-    assert operations_created[1]["amount"] == "1000"
+    assert operations_created[1]["amount"] == "1000.00"
     assert operations_created[1]["operation_date"] == "2026-03-05"
-    assert operations_created[1]["note"] == "Зарплата"
+    assert operations_created[1]["category_id"] == 11
+    assert operations_created[1]["note"] == ""

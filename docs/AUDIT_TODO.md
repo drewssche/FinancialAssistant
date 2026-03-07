@@ -219,6 +219,30 @@
 - operations: `По дате` / `По сумме` / `Риск`
 - debts: `Приоритет` / `По сумме` / `По имени`
 - operations presets are persisted in preferences (`operations.sort_preset`) and applied in list query/render flow
+
+12. Bulk import flows for operations/categories/item catalog
+- Status: done (updated 2026-03-07)
+- Implemented:
+- operations bulk import now uses preview/validation before submit
+- operations format updated to `date;kind;category;amount;comment`
+- kinds accept `expense/income` and `расход/доход`
+- amounts accept both comma and dot decimal separators
+- comment is optional
+- unknown operation category blocks that row with validation error
+- categories bulk import added with mode switch:
+- `categories`: `kind;name;group`
+- `groups`: `kind;name`
+- empty category group imports into `Без группы`
+- unknown category group imports into `Без группы` with warning
+- duplicate groups/categories inside preview are skipped before import
+- item catalog bulk import added with preview/validation:
+- format `source;name;price`
+- source auto-creates on import path
+- duplicate rows inside one import batch are skipped
+- result summary is shown after import for all three bulk flows
+- Added e2e regression:
+- `tests/e2e/test_batch_create_operations_e2e.py`
+- `tests/e2e/test_bulk_import_sections_e2e.py`
 - debts presets are persisted in preferences (`debts.sort_preset`) and applied in card renderer
 - Added e2e regression:
 - `tests/e2e/test_sort_preset_persistence_e2e.py::test_operations_sort_preset_persists_after_reload`

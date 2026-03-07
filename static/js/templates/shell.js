@@ -57,8 +57,10 @@
               <button id="addDebtCta" class="btn btn-cta hidden" type="button">+ Новый долг</button>
               <button id="addCategoryCta" class="btn btn-cta hidden" type="button">+ Создать категорию</button>
               <button id="addGroupCta" class="btn btn-secondary hidden" type="button">+ Создать группу</button>
+              <button id="batchCategoryCta" class="btn btn-secondary hidden" type="button">+ Массовое добавление</button>
               <button id="addItemTemplateCta" class="btn btn-cta hidden" type="button">+ Создать позицию</button>
               <button id="addItemSourceCta" class="btn btn-secondary hidden" type="button">+ Создать источник</button>
+              <button id="batchItemCatalogCta" class="btn btn-secondary hidden" type="button">+ Массовое добавление</button>
             </div>
           </div>
         </header>

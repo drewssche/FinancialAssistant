@@ -8,6 +8,10 @@
   Object.assign(actions, {
     openBatchCreateModal: bulkUi.openBatchCreateModal,
     closeBatchCreateModal: bulkUi.closeBatchCreateModal,
+    openBatchCategoryModal: bulkUi.openBatchCategoryModal,
+    closeBatchCategoryModal: bulkUi.closeBatchCategoryModal,
+    openBatchItemTemplateModal: bulkUi.openBatchItemTemplateModal,
+    closeBatchItemTemplateModal: bulkUi.closeBatchItemTemplateModal,
     openCreateGroupModal: bulkUi.openCreateGroupModal,
     closeCreateGroupModal: bulkUi.closeCreateGroupModal,
     openBulkEditOperationsModal: bulkUi.openBulkEditOperationsModal,

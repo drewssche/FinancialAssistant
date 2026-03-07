@@ -49,8 +49,10 @@
       && el.addDebtCta
       && el.addCategoryCta
       && el.addGroupCta
+      && el.batchCategoryCta
       && el.addItemTemplateCta
       && el.addItemSourceCta
+      && el.batchItemCatalogCta
     ) {
       const showOps = state.activeSection === "dashboard" || state.activeSection === "operations";
       const showDebts = state.activeSection === "debts";
@@ -61,8 +63,10 @@
       el.addDebtCta.classList.toggle("hidden", !showDebts);
       el.addCategoryCta.classList.toggle("hidden", !showCategories);
       el.addGroupCta.classList.toggle("hidden", !showCategories);
+      el.batchCategoryCta.classList.toggle("hidden", !showCategories);
       el.addItemTemplateCta.classList.toggle("hidden", !showItemCatalog);
       el.addItemSourceCta.classList.toggle("hidden", !showItemCatalog);
+      el.batchItemCatalogCta.classList.toggle("hidden", !showItemCatalog);
     }
   }
 

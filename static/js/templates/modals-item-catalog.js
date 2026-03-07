@@ -106,5 +106,47 @@
         </div>
       </div>
     </div>
+
+    <div id="batchItemTemplateModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="batchItemTemplateTitle">
+      <div class="modal-card modal-small">
+        <div class="panel-head row between">
+          <h3 id="batchItemTemplateTitle">Массовое добавление позиций</h3>
+          <button id="closeBatchItemTemplateModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
+        </div>
+        <form id="batchItemTemplateForm" class="category-modal-form">
+          <p class="subtitle">Одна строка: <code>источник;позиция;цена</code>. Цена опциональна.</p>
+          <p class="muted-small">Новый источник будет создан автоматически. Сумма поддерживает <code>01,23</code> и <code>01.23</code>.</p>
+          <textarea id="batchItemTemplateInput" rows="8" placeholder="Евроопт;Сигареты Rothmans;9,40&#10;WB;USB кабель;12.99"></textarea>
+          <div id="batchItemTemplateFeedback" class="status-box hidden"></div>
+          <div id="batchItemTemplatePreview" class="bulk-import-preview hidden">
+            <div class="preview-title">Предпросмотр строк</div>
+            <div class="table-wrap">
+              <table class="table table-hover mobile-card-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Источник</th>
+                    <th>Позиция</th>
+                    <th>Цена</th>
+                    <th>Статус</th>
+                  </tr>
+                </thead>
+                <tbody id="batchItemTemplatePreviewBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </form>
+        <div class="modal-footer">
+          <button id="previewBatchItemTemplateBtn" class="btn btn-secondary" type="submit" form="batchItemTemplateForm">
+            Проверить строки
+          </button>
+          <button id="confirmBatchItemTemplateBtn" class="btn btn-cta modal-main-cta hidden" type="button">
+            Импортировать 0 строк
+          </button>
+        </div>
+      </div>
+    </div>
 `;
 })();

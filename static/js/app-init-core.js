@@ -95,6 +95,16 @@
         actions.openBatchCreateModal();
       }
     });
+    if (el.batchCategoryCta && actions.openBatchCategoryModal) {
+      el.batchCategoryCta.addEventListener("click", () => {
+        actions.openBatchCategoryModal();
+      });
+    }
+    if (el.batchItemCatalogCta && actions.openBatchItemTemplateModal) {
+      el.batchItemCatalogCta.addEventListener("click", () => {
+        actions.openBatchItemTemplateModal();
+      });
+    }
 
     el.closeCreateModalBtn.addEventListener("click", actions.closeCreateModal);
     el.createModal.addEventListener("click", (event) => {

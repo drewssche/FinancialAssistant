@@ -300,7 +300,7 @@
           <td></td>
           <td>${core.highlightText(item.name || "—", query)}</td>
           <td>${core.formatMoney(item.latest_unit_price || 0)}</td>
-          <td>
+          <td class="mobile-actions-cell" data-label="Действия">
             <div class="actions row-actions">
               <button class="btn btn-secondary btn-xs" data-item-template-history-id="${item.id}" type="button">История</button>
               <button class="btn btn-secondary btn-xs" data-edit-item-template-id="${item.id}" type="button">Редактировать</button>

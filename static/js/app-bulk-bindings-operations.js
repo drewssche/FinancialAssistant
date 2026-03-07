@@ -1,40 +1,198 @@
 (() => {
   const { state, el, core, actions } = window.App;
   const bulkUi = window.App.bulkUi;
+  const bulkUtils = window.App.bulkImportUtils;
 
-  async function batchCreateOperations(event) {
-    event.preventDefault();
-    const lines = el.batchCreateInput.value
+  function ensureOperationCategoryCatalogLoaded() {
+    if (state.categories.length) {
+      return Promise.resolve();
+    }
+    if (actions.loadCategories) {
+      return actions.loadCategories();
+    }
+    return Promise.resolve();
+  }
+
+  function buildOperationCategoryMap() {
+    const map = new Map();
+    for (const category of state.categories || []) {
+      map.set(bulkUtils.keyify(category.kind, category.name), category);
+    }
+    return map;
+  }
+
+  function renderOperationFeedback(plan) {
+    if (!el.batchCreateFeedback) {
+      return;
+    }
+    const parts = [];
+    if (plan.validRows.length) {
+      parts.push(`Готово к импорту: ${plan.validRows.length}`);
+    }
+    if (plan.errorCount) {
+      parts.push(`Ошибок: ${plan.errorCount}`);
+    }
+    el.batchCreateFeedback.textContent = parts.join(" • ") || "Нет строк для импорта";
+    el.batchCreateFeedback.classList.remove("hidden");
+  }
+
+  function renderOperationPreview(plan) {
+    if (!el.batchCreatePreviewBody || !el.batchCreatePreview) {
+      return;
+    }
+    el.batchCreatePreviewBody.innerHTML = plan.rows.map((row) => `
+      <tr>
+        <td data-label="#">${row.index}</td>
+        <td data-label="Дата">${row.date || "—"}</td>
+        <td data-label="Тип">${row.kindLabel || "—"}</td>
+        <td data-label="Категория">${row.category || "—"}</td>
+        <td data-label="Сумма">${row.amount || "—"}</td>
+        <td data-label="Комментарий">${row.note || "—"}</td>
+        <td data-label="Статус"><span class="${row.statusClass}">${row.statusText}</span></td>
+      </tr>
+    `).join("");
+    el.batchCreatePreview.classList.remove("hidden");
+  }
+
+  function applyOperationPlan(plan) {
+    state.batchOperationPlan = plan;
+    renderOperationFeedback(plan);
+    renderOperationPreview(plan);
+    if (el.confirmBatchCreateBtn) {
+      el.confirmBatchCreateBtn.textContent = `Импортировать ${plan.validRows.length} строк`;
+      el.confirmBatchCreateBtn.disabled = plan.validRows.length === 0;
+      el.confirmBatchCreateBtn.classList.toggle("hidden", plan.validRows.length === 0);
+    }
+  }
+
+  function buildOperationPlan() {
+    const lines = String(el.batchCreateInput?.value || "")
       .split("\n")
       .map((line) => line.trim())
       .filter(Boolean);
     if (!lines.length) {
-      core.setStatus("Добавь хотя бы одну строку");
+      throw new Error("Добавь хотя бы одну строку");
+    }
+
+    const categoriesByKey = buildOperationCategoryMap();
+    const rows = [];
+    const validRows = [];
+    let errorCount = 0;
+
+    for (const [idx, line] of lines.entries()) {
+      const row = {
+        index: idx + 1,
+        date: "",
+        kindLabel: "",
+        category: "",
+        amount: "",
+        note: "",
+        statusText: "Готово",
+        statusClass: "bulk-import-status-ok",
+      };
+      const parts = bulkUtils.splitStrict(line, 4, 5);
+      if (!parts) {
+        row.statusText = "Неверный формат";
+        row.statusClass = "bulk-import-status-error";
+        rows.push(row);
+        errorCount += 1;
+        continue;
+      }
+      const [dateRaw, kindRaw, categoryRaw, amountRaw, noteRaw = ""] = parts;
+      row.date = dateRaw;
+      row.kindLabel = kindRaw;
+      row.category = categoryRaw;
+      row.amount = amountRaw;
+      row.note = noteRaw || "";
+
+      const kind = bulkUtils.normalizeKind(kindRaw);
+      if (!bulkUtils.isIsoDate(dateRaw)) {
+        row.statusText = "Неверная дата";
+        row.statusClass = "bulk-import-status-error";
+        rows.push(row);
+        errorCount += 1;
+        continue;
+      }
+      if (!kind) {
+        row.statusText = "Неверный тип";
+        row.statusClass = "bulk-import-status-error";
+        rows.push(row);
+        errorCount += 1;
+        continue;
+      }
+      const normalizedCategory = bulkUtils.normalizeCell(categoryRaw);
+      const category = categoriesByKey.get(bulkUtils.keyify(kind, normalizedCategory));
+      if (!category) {
+        row.kindLabel = core.kindLabel(kind);
+        row.category = normalizedCategory || "—";
+        row.statusText = "Категория не найдена";
+        row.statusClass = "bulk-import-status-error";
+        rows.push(row);
+        errorCount += 1;
+        continue;
+      }
+      const amount = bulkUtils.normalizeAmount(amountRaw);
+      if (!amount.valid) {
+        row.kindLabel = core.kindLabel(kind);
+        row.category = normalizedCategory;
+        row.statusText = "Неверная сумма";
+        row.statusClass = "bulk-import-status-error";
+        rows.push(row);
+        errorCount += 1;
+        continue;
+      }
+
+      const note = bulkUtils.normalizeCell(noteRaw || "");
+      row.kindLabel = core.kindLabel(kind);
+      row.category = normalizedCategory;
+      row.amount = amount.value;
+      row.note = note;
+      rows.push(row);
+      validRows.push({
+        kind,
+        operation_date: dateRaw,
+        category_id: Number(category.id),
+        amount: amount.value,
+        note,
+      });
+    }
+
+    return { rows, validRows, errorCount };
+  }
+
+  async function previewBatchCreateOperations(event) {
+    event.preventDefault();
+    await ensureOperationCategoryCatalogLoaded();
+    applyOperationPlan(buildOperationPlan());
+  }
+
+  async function importBatchCreateOperations() {
+    const plan = state.batchOperationPlan;
+    if (!plan?.validRows?.length) {
+      core.setStatus("Сначала проверь строки и дождись валидного предпросмотра");
       return;
     }
-    for (const line of lines) {
-      const [kind, amount, operationDate, note = ""] = line.split(";").map((part) => part.trim());
-      if (!kind || !amount || !operationDate) {
-        throw new Error(`Неверный формат строки: ${line}`);
-      }
+    let created = 0;
+    for (const payload of plan.validRows) {
       await core.requestJson("/api/v1/operations", {
         method: "POST",
         headers: core.authHeaders(),
-        body: JSON.stringify({
-          kind,
-          amount,
-          operation_date: operationDate,
-          note,
-          category_id: null,
-        }),
+        body: JSON.stringify(payload),
       });
+      created += 1;
     }
-    el.batchCreateInput.value = "";
-    bulkUi.closeBatchCreateModal();
     if (actions.invalidateAllTimeAnchor) {
       actions.invalidateAllTimeAnchor();
     }
+    if (el.batchCreateFeedback) {
+      el.batchCreateFeedback.textContent = `Импорт завершен: создано ${created}, ошибок в предпросмотре ${plan.errorCount}`;
+      el.batchCreateFeedback.classList.remove("hidden");
+    }
+    if (el.confirmBatchCreateBtn) {
+      el.confirmBatchCreateBtn.disabled = true;
+    }
     await Promise.all([actions.loadDashboard(), actions.loadDashboardOperations(), actions.loadOperations()]);
+    core.setStatus(`Импорт операций завершен: создано ${created}`);
   }
 
   async function bulkDeleteOperations(ids) {
@@ -95,13 +253,22 @@
     });
     el.batchCreateForm.addEventListener("submit", (event) => {
       core.runAction({
-        button: event.submitter || document.getElementById("submitBatchCreateBtn"),
-        pendingText: "Добавление...",
-        successMessage: "Пакет операций добавлен",
-        errorPrefix: "Ошибка массового добавления",
-        action: () => batchCreateOperations(event),
+        button: event.submitter || el.previewBatchCreateBtn,
+        pendingText: "Проверка...",
+        errorPrefix: "Ошибка проверки пакета операций",
+        action: () => previewBatchCreateOperations(event),
       });
     });
+    if (el.confirmBatchCreateBtn) {
+      el.confirmBatchCreateBtn.addEventListener("click", () => {
+        core.runAction({
+          button: el.confirmBatchCreateBtn,
+          pendingText: "Импорт...",
+          errorPrefix: "Ошибка импорта операций",
+          action: () => importBatchCreateOperations(),
+        });
+      });
+    }
 
     el.operationsBody.addEventListener("change", (event) => {
       const checkbox = event.target.closest("input[data-select-operation-id]");
