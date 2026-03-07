@@ -1061,6 +1061,7 @@ textarea {
 
 .item-catalog-group-name {
   font-weight: 700;
+  margin-left: 4px;
 }
 
 .item-catalog-group-metas {
