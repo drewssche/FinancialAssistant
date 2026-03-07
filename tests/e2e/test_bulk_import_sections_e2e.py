@@ -71,6 +71,72 @@ def test_batch_category_modal_imports_categories_with_group_fallback(page):
 
 
 @pytest.mark.e2e
+def test_batch_category_groups_mode_accepts_trailing_semicolon(page):
+    created_groups = []
+
+    def handle_request(route):
+        request = route.request
+        url = request.url
+        method = request.method
+
+        if url.endswith("/api/v1/auth/public-config"):
+            route.fulfill(status=200, content_type="application/json", body='{"telegram_bot_username":"FinanceWeaselBot","browser_login_available":true}')
+            return
+        if url.endswith("/api/v1/users/me"):
+            route.fulfill(status=200, content_type="application/json", body='{"id":1,"display_name":"Admin","status":"approved","is_admin":true,"username":"owner_admin","telegram_id":"281896361"}')
+            return
+        if "/api/v1/preferences" in url:
+            route.fulfill(status=200, content_type="application/json", body='{"data":{"ui":{}}}')
+            return
+        if "/api/v1/dashboard/summary" in url:
+            route.fulfill(status=200, content_type="application/json", body='{"income_total":"0.00","expense_total":"0.00","balance":"0.00","debt_lend_total":"0.00","debt_borrow_total":"0.00","debt_net_total":"0.00"}')
+            return
+        if "/api/v1/dashboard/operations" in url or "/api/v1/dashboard/analytics" in url:
+            route.fulfill(status=200, content_type="application/json", body='{"items":[],"total":0,"page":1,"page_size":20}')
+            return
+        if "/api/v1/operations?" in url or "/api/v1/debts" in url:
+            route.fulfill(status=200, content_type="application/json", body='{"items":[],"total":0,"page":1,"page_size":20}')
+            return
+        if url.endswith("/api/v1/categories/groups") and method == "GET":
+            route.fulfill(status=200, content_type="application/json", body="[]")
+            return
+        if url.endswith("/api/v1/categories/groups") and method == "POST":
+            payload = request.post_data_json
+            created_groups.append(payload)
+            route.fulfill(status=200, content_type="application/json", body=json.dumps({"id": len(created_groups), **payload}))
+            return
+        if "/api/v1/categories" in url and method == "GET":
+            if "page=" in url and "page_size=" in url:
+                route.fulfill(status=200, content_type="application/json", body='{"items":[],"total":0,"page":1,"page_size":20}')
+                return
+            route.fulfill(status=200, content_type="application/json", body="[]")
+            return
+        route.fulfill(status=200, content_type="application/json", body="{}")
+
+    page.route("**/api/**", handle_request)
+    page.add_init_script("""window.localStorage.setItem("access_token", "test-token");""")
+
+    page.goto("http://127.0.0.1:8001/", wait_until="networkidle")
+    page.get_by_role("button", name="Категории").click()
+    page.get_by_role("button", name="+ Массовое добавление").click()
+    page.get_by_role("button", name="Группы").click()
+    page.locator("#batchCategoryInput").fill(
+        "Расход;Еда;\n"
+        "Доход;Зарплата;"
+    )
+    page.get_by_role("button", name="Проверить строки").click()
+    page.get_by_role("button", name="Импортировать 2 строк").click()
+
+    page.wait_for_timeout(300)
+
+    assert len(created_groups) == 2
+    assert created_groups[0]["kind"] == "expense"
+    assert created_groups[0]["name"] == "Еда"
+    assert created_groups[1]["kind"] == "income"
+    assert created_groups[1]["name"] == "Зарплата"
+
+
+@pytest.mark.e2e
 def test_batch_item_template_modal_imports_multiple_rows(page):
     created_templates = []
 

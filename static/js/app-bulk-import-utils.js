@@ -46,6 +46,9 @@
 
   function splitStrict(line, minParts, maxParts) {
     const parts = String(line || "").split(";").map((part) => normalizeCell(part));
+    while (parts.length > minParts && parts[parts.length - 1] === "") {
+      parts.pop();
+    }
     if (parts.length < minParts || parts.length > maxParts) {
       return null;
     }
