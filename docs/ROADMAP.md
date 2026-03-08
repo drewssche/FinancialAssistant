@@ -79,6 +79,9 @@
 - remove dependency on hover-only actions in critical flows
 - review modal-heavy desktop interactions and replace with sheet/full-screen mobile patterns where needed
 - validate tap targets, spacing, keyboard overlap, and sticky CTA behavior on mobile
+- status update (2026-03-08):
+- core mobile auth/navigation, operation/debt/category/item-catalog modals, batch modals and analytics calendar flows now have targeted e2e regression coverage
+- remaining work is primarily real-device release validation, not baseline UI mechanics
 
 3. Telegram Mini App integration polish
 - support Telegram WebApp viewport specifics (`safe-area`, header chrome, expand behavior)

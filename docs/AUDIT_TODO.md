@@ -3,7 +3,7 @@
 ## Mobile Adaptation Progress
 
 1. Shell and navigation adaptation
-- Status: in progress (updated 2026-03-07)
+- Status: done (updated 2026-03-08)
 - Done:
 - mobile drawer sidebar with overlay/close interactions is in place
 - topbar and CTA rows stack on tablet/mobile widths
@@ -11,12 +11,13 @@
 - Telegram WebApp runtime adapter added (`ready`, `expand`, viewport sync, `BackButton` / `MainButton` baseline)
 - admin notification bot track re-enabled for pending-access alerts with inline `Approve / Reject`
 - Telegram `MainButton` is intentionally suppressed for modal flows because sticky in-app CTA already exists and duplicate CTA hurts Mini App UX
+- mobile navigation/startup/auth flows now have e2e regression coverage (`tests/e2e/test_auth_login_ui_e2e.py`)
+- hover-dependent critical navigation paths are covered by mobile menu-driven e2e scenarios
 - Remaining:
-- verify every section against real Telegram viewport widths (`320-430px`)
-- replace remaining hover-dependent table actions with always-reachable mobile affordances
+- keep manual spot-check on real Telegram container before release
 
 2. Scroll and overflow hardening
-- Status: in progress (updated 2026-03-07)
+- Status: done (updated 2026-03-08)
 - Done:
 - disabled fixed background behavior on mobile widths to avoid scroll jank
 - strengthened `min-width: 0` / overflow guards on shell panels, sticky bars, toolbars, actions and table wrappers
@@ -26,12 +27,14 @@
 - modal headers, close actions, repayment/history blocks and icon pickers were tightened for Mini App sheet behavior
 - modal sheet polish added: compact header spacing, drag-handle and denser form rhythm for phone screens
 - operation, category and debt sheets now use tighter mobile spacing so long forms stay readable without oversized header chrome
+- item catalog and batch preview sheets now reserve extra mobile scroll space near sticky footer
+- keyboard/focus/scroll behavior is covered by mobile e2e around operations, debts, categories, item catalog and batch modals
+- analytics mobile calendar scroll contract is covered by e2e (`tests/e2e/test_analytics_mobile_e2e.py`)
 - Remaining:
-- review nested scroll areas in analytics calendar and long settings/admin blocks on real devices
-- verify keyboard-open behavior for all form-heavy modals
+- keep manual spot-check for settings/admin long-form blocks on real devices
 
 3. Wide content reduction
-- Status: in progress (updated 2026-03-07)
+- Status: done (updated 2026-03-08)
 - Done:
 - receipt item rows now collapse into stacked mobile cards instead of six-column rows
 - debt headers, receipt headers, picker rows and dashboard debt rows now stack on narrow screens
@@ -39,9 +42,10 @@
 - hover-only row actions are force-exposed on tablet/mobile widths so edit/delete remains reachable without hover
 - `operations`, `dashboard operations`, `categories` and `admin users` tables now have card-style mobile rows with field labels
 - analytics switch groups, trend/chart blocks and settings sections were tightened for narrow screens
+- analytics calendar keeps intentional horizontal-scroll month view with visual affordance and mobile e2e coverage
+- categories/item catalog/debts/operations/batch flows now have targeted mobile regression tests for preview/CTA reachability
 - Remaining:
-- audit operations/categories/admin tables for mobile-specific action entry points
-- decide where table-to-card conversion is needed instead of horizontal scroll
+- keep future UI changes aligned with existing mobile regression suite
 
 ## Post-Audit Priority Queue
 

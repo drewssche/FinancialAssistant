@@ -167,8 +167,8 @@
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
-    padding-bottom: calc(var(--control-height-lg) + var(--space-8) + env(safe-area-inset-bottom));
-    scroll-padding-bottom: calc(var(--control-height-lg) + var(--space-8) + env(safe-area-inset-bottom));
+    padding-bottom: calc(var(--control-height-lg) + var(--space-10, 2.5rem) + env(safe-area-inset-bottom));
+    scroll-padding-bottom: calc(var(--control-height-lg) + var(--space-10, 2.5rem) + env(safe-area-inset-bottom));
     position: relative;
   }
 

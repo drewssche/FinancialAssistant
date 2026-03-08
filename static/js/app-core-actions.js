@@ -262,6 +262,7 @@
       pendingText = "Сохранение...",
       successMessage = "",
       errorPrefix = "",
+      shouldPrefixError = null,
       forLogin = false,
       rethrow = false,
     } = config;
@@ -282,7 +283,10 @@
         return null;
       }
       const message = errorMessage(err);
-      core.setStatus(errorPrefix ? `${errorPrefix}: ${message}` : message, forLogin);
+      const prefixAllowed = typeof shouldPrefixError === "function"
+        ? shouldPrefixError(message, err) !== false
+        : true;
+      core.setStatus(errorPrefix && prefixAllowed ? `${errorPrefix}: ${message}` : message, forLogin);
       if (rethrow) {
         throw err;
       }

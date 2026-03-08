@@ -12,10 +12,10 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.get("/public-config", response_model=AuthPublicConfig)
 def get_auth_public_config():
     settings = get_settings()
-    username = (settings.telegram_bot_username or "").strip() or None
+    username = settings.normalized_telegram_bot_username or None
     return AuthPublicConfig(
         telegram_bot_username=username,
-        browser_login_available=bool(username),
+        browser_login_available=settings.browser_telegram_login_enabled,
     )
 
 
@@ -31,6 +31,12 @@ def auth_telegram(payload: TelegramAuthRequest, db: Session = Depends(get_db)):
 
 @router.post("/telegram/browser", response_model=TokenResponse)
 def auth_telegram_browser(payload: TelegramBrowserAuthRequest, db: Session = Depends(get_db)):
+    settings = get_settings()
+    if not settings.browser_telegram_login_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Browser Telegram login is not configured",
+        )
     service = AuthService(db)
     try:
         token = service.login_with_telegram_browser(payload.model_dump())

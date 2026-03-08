@@ -263,6 +263,10 @@
   vertical-align: top;
 }
 
+.analytics-calendar-scroll-wrap {
+  position: relative;
+}
+
 .analytics-day-cell {
   padding: var(--space-2);
   min-width: 120px;
@@ -1341,12 +1345,14 @@ textarea {
   margin-top: var(--space-3);
   border-top: 1px solid var(--border);
   padding-top: var(--space-3);
+  scroll-margin-bottom: calc(var(--control-height-lg) + var(--space-8) + env(safe-area-inset-bottom));
 }
 
 .bulk-import-preview {
   margin-top: var(--space-3);
   border-top: 1px solid var(--border);
   padding-top: var(--space-3);
+  scroll-margin-bottom: calc(var(--control-height-lg) + var(--space-8) + env(safe-area-inset-bottom));
 }
 
 .bulk-import-preview .table td:last-child,

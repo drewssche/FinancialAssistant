@@ -11,6 +11,7 @@ from app.core.logging import configure_logging
 from app.core.metrics import record_http_request
 
 settings = get_settings()
+settings.validate_runtime_requirements()
 configure_logging()
 base_dir = Path(__file__).resolve().parents[1]
 static_dir = base_dir / "static"

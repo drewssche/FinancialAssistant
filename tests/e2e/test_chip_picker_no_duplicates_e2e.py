@@ -59,16 +59,25 @@ def page_with_api_mock():
         },
     }
 
+    category_groups = [
+        {
+            "id": 201,
+            "name": "Базовые траты",
+            "kind": "expense",
+            "accent_color": "#ff8a3d",
+        },
+    ]
+
     categories = [
         {
             "id": 101,
             "name": "Еда",
             "icon": "🍔",
             "kind": "expense",
-            "group_id": None,
-            "group_name": None,
+            "group_id": 201,
+            "group_name": "Базовые траты",
             "group_icon": None,
-            "group_accent_color": None,
+            "group_accent_color": "#ff8a3d",
             "is_system": False,
         },
         {
@@ -109,7 +118,7 @@ def page_with_api_mock():
                 return json_response(route, preferences)
 
         if path == "/api/v1/categories/groups" and method == "GET":
-            return json_response(route, [])
+            return json_response(route, category_groups)
 
         if path == "/api/v1/categories" and method == "GET":
             if "page" in query and "page_size" in query:
@@ -183,3 +192,124 @@ def test_operation_category_search_renders_single_chip_without_duplicates(static
     chips = page.locator("#opCategoryQuick button[data-category-id], #opCategoryAll button[data-category-id]")
     assert chips.count() == 1
     assert "Еда" in chips.first.inner_text()
+
+
+@pytest.mark.e2e
+def test_mobile_create_category_modal_keeps_kind_switch_above_sticky_cta(static_server_url: str, page_with_api_mock):
+    page = page_with_api_mock
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+
+    page.click("#telegramLoginBtn")
+    page.wait_for_selector("#appShell:not(.hidden)")
+
+    page.click("#mobileNavToggleBtn")
+    page.click("button[data-section='categories']")
+    page.wait_for_selector("#categoriesSection:not(.hidden)")
+    page.click("#addCategoryCta")
+    page.wait_for_selector("#createCategoryModal:not(.hidden)")
+    page.fill("#categoryName", "Продукты")
+    page.focus("#categoryGroupSearch")
+    page.wait_for_timeout(150)
+
+    geometry = page.evaluate(
+        """
+        () => {
+          const kindSwitch = document.querySelector('#createCategoryKind');
+          const footer = document.querySelector('#createCategoryModal .modal-footer');
+          const modalCard = document.querySelector('#createCategoryModal .modal-card');
+          if (!kindSwitch || !footer || !modalCard) {
+            return null;
+          }
+          const kindRect = kindSwitch.getBoundingClientRect();
+          const footerRect = footer.getBoundingClientRect();
+          const modalRect = modalCard.getBoundingClientRect();
+          return {
+            kindTop: kindRect.top,
+            kindBottom: kindRect.bottom,
+            footerTop: footerRect.top,
+            footerBottom: footerRect.bottom,
+            modalBottom: modalRect.bottom,
+          };
+        }
+        """
+    )
+
+    assert geometry is not None
+    assert geometry["kindTop"] >= 0
+    assert geometry["kindBottom"] <= geometry["footerTop"] + 2
+    assert geometry["footerBottom"] <= geometry["modalBottom"] + 2
+
+
+@pytest.mark.e2e
+def test_mobile_edit_category_modal_keeps_group_field_above_sticky_cta(static_server_url: str, page_with_api_mock):
+    page = page_with_api_mock
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+
+    page.click("#telegramLoginBtn")
+    page.wait_for_selector("#appShell:not(.hidden)")
+
+    page.click("#mobileNavToggleBtn")
+    page.click("button[data-section='categories']")
+    page.wait_for_selector("#categoriesSection:not(.hidden)")
+    page.click("button[data-edit-category-id='101']")
+    page.wait_for_selector("#editCategoryModal:not(.hidden)")
+    page.focus("#editCategoryGroupSearch")
+    page.wait_for_timeout(150)
+
+    geometry = page.evaluate(
+        """
+        () => {
+          const groupField = document.querySelector('#editCategoryGroupField');
+          const footer = document.querySelector('#editCategoryModal .modal-footer');
+          const modalCard = document.querySelector('#editCategoryModal .modal-card');
+          if (!groupField || !footer || !modalCard) {
+            return null;
+          }
+          const groupRect = groupField.getBoundingClientRect();
+          const footerRect = footer.getBoundingClientRect();
+          const modalRect = modalCard.getBoundingClientRect();
+          return {
+            groupTop: groupRect.top,
+            groupBottom: groupRect.bottom,
+            footerTop: footerRect.top,
+            footerBottom: footerRect.bottom,
+            modalBottom: modalRect.bottom,
+          };
+        }
+        """
+    )
+
+    assert geometry is not None
+    assert geometry["groupTop"] >= 0
+    assert geometry["groupBottom"] <= geometry["footerTop"] + 2
+    assert geometry["footerBottom"] <= geometry["modalBottom"] + 2

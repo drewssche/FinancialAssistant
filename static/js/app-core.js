@@ -3,6 +3,7 @@
     token: localStorage.getItem("access_token") || "",
     mobileNavOpen: false,
     telegramBotUsername: "",
+    browserTelegramLoginAvailable: false,
     telegramWebAppReady: false,
     telegramWebAppAvailable: false,
     browserTelegramLoginReady: false,

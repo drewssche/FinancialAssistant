@@ -12,8 +12,7 @@ Web-first financial assistant (income/expense tracking) with architecture ready 
 ## Quick Start
 1. Copy `.env.example` to `.env`
 2. Run `docker compose up --build -d`
-3. Run migrations inside app container:
-   - `docker compose exec app sh -lc 'cd /app && PYTHONPATH=/app alembic upgrade head'`
+3. App container applies migrations automatically on startup (`alembic upgrade head`)
 4. Open API docs: `http://localhost:8001/docs`
 5. Open Web UI: `http://localhost:8001/`
 
@@ -23,10 +22,14 @@ For production auth mode set `APP_ENV=production` and configure:
 - `TELEGRAM_BOT_POLL_TIMEOUT_SECONDS` (optional; default `25`)
 - `ADMIN_TELEGRAM_IDS` (comma-separated Telegram IDs of admins; these IDs are auto-approved on first login)
 
+Production startup fails fast if critical config is unsafe or incomplete:
+- `APP_SECRET_KEY` must not stay `change_me`
+- `TELEGRAM_BOT_TOKEN` must not stay `change_me`
+- `ADMIN_TELEGRAM_IDS` must include at least one admin
+
 ## Ports
 - App API: `8001 -> 8000` (container)
-- Postgres: `5433 -> 5432` (container)
-- Redis: `6380 -> 6379` (container)
+- Postgres and Redis are internal-only in current Compose setup and are not published to the host by default
 
 ## Access Approval
 - New users are created with `pending` status.
@@ -54,6 +57,7 @@ Telegram Mini App readiness is broader than responsive layout only. In addition 
 - In Telegram Mini App, login uses Telegram WebApp `initData`.
 - In a regular browser, login can use Telegram Login Widget when `TELEGRAM_BOT_USERNAME` is configured.
 - Both browser and Mini App login paths resolve to the same backend user model and access rules.
+- Browser widget login also requires the correct domain/hostname to be configured for the bot on Telegram side; this must be verified manually during production setup.
 
 ## Admin Access Notifications
 - New non-admin users are created with `pending` status.

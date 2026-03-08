@@ -26,11 +26,6 @@
             <input id="itemTemplatePrice" data-money-input type="number" step="0.01" placeholder="Последняя цена (опционально)" />
           </div>
         </form>
-        <div class="modal-footer">
-          <button id="submitItemTemplateBtn" class="btn btn-cta modal-main-cta" type="submit" form="itemTemplateForm">
-            Сохранить
-          </button>
-        </div>
         <div class="preview-panel">
           <div class="preview-title">Превью строки в каталоге</div>
           <div class="table-wrap">
@@ -45,6 +40,11 @@
               <tbody id="itemTemplatePreviewBody"></tbody>
             </table>
           </div>
+        </div>
+        <div class="modal-footer">
+          <button id="submitItemTemplateBtn" class="btn btn-cta modal-main-cta" type="submit" form="itemTemplateForm">
+            Сохранить
+          </button>
         </div>
       </div>
     </div>
@@ -61,11 +61,6 @@
           <input id="sourceGroupOriginalName" type="hidden" />
           <input id="sourceGroupName" type="text" placeholder="Название источника" required />
         </form>
-        <div class="modal-footer">
-          <button id="submitSourceGroupBtn" class="btn btn-cta modal-main-cta" type="submit" form="sourceGroupForm">
-            Создать источник
-          </button>
-        </div>
         <div class="preview-panel">
           <div class="preview-title">Превью группы в каталоге</div>
           <div class="table-wrap">
@@ -81,6 +76,11 @@
               <tbody id="sourceGroupPreviewBody"></tbody>
             </table>
           </div>
+        </div>
+        <div class="modal-footer">
+          <button id="submitSourceGroupBtn" class="btn btn-cta modal-main-cta" type="submit" form="sourceGroupForm">
+            Создать источник
+          </button>
         </div>
       </div>
     </div>

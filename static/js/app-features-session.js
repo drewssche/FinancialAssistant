@@ -18,8 +18,10 @@
     try {
       const data = await core.requestJson("/api/v1/auth/public-config");
       state.telegramBotUsername = String(data.telegram_bot_username || "").trim();
+      state.browserTelegramLoginAvailable = data.browser_login_available === true;
     } catch {
       state.telegramBotUsername = "";
+      state.browserTelegramLoginAvailable = false;
     }
     applyTelegramLoginUi();
     return state.telegramBotUsername;
@@ -37,7 +39,12 @@
   }
 
   function ensureBrowserTelegramWidget() {
-    if (!el.telegramBrowserLogin || state.browserTelegramLoginReady || !state.telegramBotUsername) {
+    if (
+      !el.telegramBrowserLogin
+      || state.browserTelegramLoginReady
+      || !state.telegramBotUsername
+      || state.browserTelegramLoginAvailable !== true
+    ) {
       return;
     }
     window.onTelegramAuth = (user) => {
@@ -64,10 +71,17 @@
     if (el.loginTelegramHint) {
       const hasInitData = Boolean(window.Telegram?.WebApp?.initData);
       if (el.telegramLoginBtn) {
+        el.telegramLoginBtn.textContent = hasInitData
+          ? "Войти через Telegram Mini App"
+          : "Войти через Telegram";
         el.telegramLoginBtn.classList.toggle("hidden", !hasInitData);
       }
       if (el.telegramBrowserLoginWrap) {
-        const showBrowserWidget = !hasInitData && Boolean(state.telegramBotUsername);
+        const showBrowserWidget = (
+          !hasInitData
+          && Boolean(state.telegramBotUsername)
+          && state.browserTelegramLoginAvailable === true
+        );
         el.telegramBrowserLoginWrap.classList.toggle("hidden", !showBrowserWidget);
         if (showBrowserWidget) {
           ensureBrowserTelegramWidget();
@@ -75,10 +89,10 @@
       }
       el.loginTelegramHint.classList.remove("hidden");
       el.loginTelegramHint.textContent = hasInitData
-        ? "Обнаружен Telegram WebApp. Нажмите «Войти через Telegram» или дождитесь авто-входа."
-        : state.telegramBotUsername
+        ? "Обнаружен Telegram Mini App. Нажмите «Войти через Telegram Mini App» или дождитесь авто-входа."
+        : state.browserTelegramLoginAvailable === true
           ? "В браузере доступен вход через Telegram. Используйте виджет выше."
-          : "Для входа в браузере настройте TELEGRAM_BOT_USERNAME или откройте приложение внутри Telegram Mini App.";
+          : "Вход без Telegram Mini App сейчас недоступен. Откройте приложение внутри Telegram или настройте TELEGRAM_BOT_USERNAME для browser login.";
     }
   }
 
@@ -164,8 +178,9 @@
     state.accessStatus = me.status || "pending";
     const name = me.display_name || "Пользователь";
     const username = String(me.username || "").trim();
+    const telegramId = String(me.telegram_id || "").trim();
     el.userName.textContent = name;
-    el.userHandle.textContent = username ? `@${username}` : "Без username";
+    el.userHandle.textContent = username ? `@${username}` : (telegramId ? `ID ${telegramId}` : "Telegram");
     el.userAvatar.textContent = name[0]?.toUpperCase() || "П";
     if (!state.isAdmin && state.accessStatus !== "approved" && state.accessStatus !== "active") {
       const reason = state.accessStatus === "rejected"

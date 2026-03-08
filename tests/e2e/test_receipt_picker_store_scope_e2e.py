@@ -214,3 +214,304 @@ def test_receipt_picker_store_scoped_and_optimistic_create(static_server_url: st
     page.wait_for_selector('.receipt-item-row:nth-child(2) .receipt-name-picker:not(.hidden)')
     assert second_name_picker.locator('.chip-btn:has-text("Хлеб")').first.is_visible()
     assert second_name_picker.locator('.chip-btn:has-text("Чипсы Лейс")').count() == 0
+
+
+@pytest.mark.e2e
+def test_mobile_create_modal_preview_stays_above_sticky_cta(static_server_url: str, page_with_receipt_api_mock):
+    page = page_with_receipt_api_mock
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+
+    page.click("#telegramLoginBtn")
+    page.wait_for_selector("#appShell:not(.hidden)")
+    page.click("#addOperationCta")
+    page.wait_for_selector("#createModal:not(.hidden)")
+
+    page.fill("#opDate", "08.03.2026")
+    page.fill("#opAmount", "123.45")
+    page.fill("#opNote", "Мобильная проверка превью")
+    page.check("#opReceiptEnabled")
+    page.wait_for_selector("#opReceiptFields:not(.hidden)")
+
+    first_row = page.locator(".receipt-item-row").first
+    first_row.locator('[data-receipt-field="shop_name"]').fill("Соседи")
+    first_row.locator('[data-receipt-field="name"]').fill("Длинная тестовая позиция")
+    first_row.locator('[data-receipt-field="quantity"]').fill("2")
+    first_row.locator('[data-receipt-field="unit_price"]').fill("11.20")
+    page.wait_for_timeout(150)
+
+    page.evaluate(
+        """
+        () => {
+          const modalCard = document.querySelector('#createModal .modal-card');
+          if (modalCard) {
+            modalCard.scrollTop = modalCard.scrollHeight;
+          }
+        }
+        """
+    )
+    page.wait_for_timeout(200)
+
+    geometry = page.evaluate(
+        """
+        () => {
+          const previewRow = document.querySelector('#createPreviewBody .preview-row');
+          const previewPanel = document.querySelector('#createModal .preview-panel');
+          const footer = document.querySelector('#createModal .modal-footer');
+          if (!previewRow || !previewPanel || !footer) {
+            return null;
+          }
+          const previewRowRect = previewRow.getBoundingClientRect();
+          const previewPanelRect = previewPanel.getBoundingClientRect();
+          const footerRect = footer.getBoundingClientRect();
+          return {
+            previewRowTop: previewRowRect.top,
+            previewRowBottom: previewRowRect.bottom,
+            previewPanelTop: previewPanelRect.top,
+            footerTop: footerRect.top,
+            footerBottom: footerRect.bottom,
+            viewportHeight: window.innerHeight,
+          };
+        }
+        """
+    )
+
+    assert geometry is not None
+    assert geometry["previewPanelTop"] < geometry["footerTop"]
+    assert geometry["previewRowTop"] < geometry["footerTop"]
+    assert geometry["previewRowBottom"] <= geometry["footerTop"] + 2
+
+
+@pytest.mark.e2e
+def test_mobile_edit_modal_preview_stays_above_sticky_cta(static_server_url: str, page_with_receipt_api_mock):
+    page = page_with_receipt_api_mock
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+
+    page.click("#telegramLoginBtn")
+    page.wait_for_selector("#appShell:not(.hidden)")
+
+    page.evaluate(
+        """
+        () => {
+          window.App.actions.openEditModal({
+            id: 77,
+            kind: "expense",
+            category_id: 101,
+            amount: "88.40",
+            operation_date: "2026-03-08",
+            note: "Редактирование на мобиле",
+            receipt_items: [
+              {
+                template_id: 1,
+                shop_name: "Соседи",
+                name: "Большая тестовая позиция для проверки нижнего блока",
+                quantity: "2",
+                unit_price: "14.20",
+                note: ""
+              },
+              {
+                template_id: 2,
+                shop_name: "Евроопт",
+                name: "Еще одна позиция",
+                quantity: "1",
+                unit_price: "60.00",
+                note: ""
+              }
+            ]
+          });
+        }
+        """
+    )
+    page.wait_for_selector("#editModal:not(.hidden)")
+    page.wait_for_selector("#editReceiptFields:not(.hidden)")
+
+    page.evaluate(
+        """
+        () => {
+          const modalCard = document.querySelector('#editModal .modal-card');
+          if (modalCard) {
+            modalCard.scrollTop = modalCard.scrollHeight;
+          }
+        }
+        """
+    )
+    page.wait_for_timeout(200)
+
+    geometry = page.evaluate(
+        """
+        () => {
+          const previewRow = document.querySelector('#editPreviewBody .preview-row');
+          const previewPanel = document.querySelector('#editModal .preview-panel');
+          const footer = document.querySelector('#editModal .modal-footer');
+          if (!previewRow || !previewPanel || !footer) {
+            return null;
+          }
+          const previewRowRect = previewRow.getBoundingClientRect();
+          const previewPanelRect = previewPanel.getBoundingClientRect();
+          const footerRect = footer.getBoundingClientRect();
+          return {
+            previewRowTop: previewRowRect.top,
+            previewRowBottom: previewRowRect.bottom,
+            previewPanelTop: previewPanelRect.top,
+            footerTop: footerRect.top,
+            footerBottom: footerRect.bottom,
+          };
+        }
+        """
+    )
+
+    assert geometry is not None
+    assert geometry["previewPanelTop"] < geometry["footerTop"]
+    assert geometry["previewRowTop"] < geometry["footerTop"]
+    assert geometry["previewRowBottom"] <= geometry["footerTop"] + 2
+
+
+@pytest.mark.e2e
+def test_mobile_item_template_modal_preview_stays_above_sticky_cta(static_server_url: str, page_with_receipt_api_mock):
+    page = page_with_receipt_api_mock
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+
+    page.click("#telegramLoginBtn")
+    page.wait_for_selector("#appShell:not(.hidden)")
+    page.click("#mobileNavToggleBtn")
+    page.click("button[data-section='item_catalog']")
+    page.wait_for_selector("#itemCatalogSection:not(.hidden)")
+    page.click("#addItemTemplateCta")
+    page.wait_for_selector("#itemTemplateModal:not(.hidden)")
+
+    page.fill("#itemTemplateSourceSearch", "Соседи")
+    page.fill("#itemTemplateName", "Мобильная позиция")
+    page.fill("#itemTemplatePrice", "15.40")
+    page.wait_for_timeout(150)
+
+    geometry = page.evaluate(
+        """
+        () => {
+          const previewRow = document.querySelector('#itemTemplatePreviewBody tr');
+          const previewPanel = document.querySelector('#itemTemplateModal .preview-panel');
+          const footer = document.querySelector('#itemTemplateModal .modal-footer');
+          if (!previewRow || !previewPanel || !footer) {
+            return null;
+          }
+          const previewRowRect = previewRow.getBoundingClientRect();
+          const previewPanelRect = previewPanel.getBoundingClientRect();
+          const footerRect = footer.getBoundingClientRect();
+          return {
+            previewRowTop: previewRowRect.top,
+            previewRowBottom: previewRowRect.bottom,
+            previewPanelTop: previewPanelRect.top,
+            footerTop: footerRect.top,
+            footerBottom: footerRect.bottom,
+          };
+        }
+        """
+    )
+
+    assert geometry is not None
+    assert geometry["previewPanelTop"] < geometry["footerTop"]
+    assert geometry["previewRowTop"] < geometry["footerTop"]
+    assert geometry["previewRowBottom"] <= geometry["footerTop"] + 2
+
+
+@pytest.mark.e2e
+def test_mobile_source_group_modal_preview_stays_above_sticky_cta(static_server_url: str, page_with_receipt_api_mock):
+    page = page_with_receipt_api_mock
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+
+    page.click("#telegramLoginBtn")
+    page.wait_for_selector("#appShell:not(.hidden)")
+    page.click("#mobileNavToggleBtn")
+    page.click("button[data-section='item_catalog']")
+    page.wait_for_selector("#itemCatalogSection:not(.hidden)")
+    page.click("#addItemSourceCta")
+    page.wait_for_selector("#sourceGroupModal:not(.hidden)")
+
+    page.fill("#sourceGroupName", "Новый источник на мобиле")
+    page.wait_for_timeout(150)
+
+    geometry = page.evaluate(
+        """
+        () => {
+          const previewRow = document.querySelector('#sourceGroupPreviewBody tr');
+          const previewPanel = document.querySelector('#sourceGroupModal .preview-panel');
+          const footer = document.querySelector('#sourceGroupModal .modal-footer');
+          if (!previewRow || !previewPanel || !footer) {
+            return null;
+          }
+          const previewRowRect = previewRow.getBoundingClientRect();
+          const previewPanelRect = previewPanel.getBoundingClientRect();
+          const footerRect = footer.getBoundingClientRect();
+          return {
+            previewRowTop: previewRowRect.top,
+            previewRowBottom: previewRowRect.bottom,
+            previewPanelTop: previewPanelRect.top,
+            footerTop: footerRect.top,
+            footerBottom: footerRect.bottom,
+          };
+        }
+        """
+    )
+
+    assert geometry is not None
+    assert geometry["previewPanelTop"] < geometry["footerTop"]
+    assert geometry["previewRowTop"] < geometry["footerTop"]
+    assert geometry["previewRowBottom"] <= geometry["footerTop"] + 2

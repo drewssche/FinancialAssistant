@@ -277,3 +277,186 @@ def test_batch_item_template_modal_imports_multiple_rows(page):
     assert created_templates[1]["shop_name"] == "WB"
     assert created_templates[1]["name"] == "USB кабель"
     assert created_templates[1]["latest_unit_price"] is None
+
+
+@pytest.mark.e2e
+def test_mobile_batch_category_modal_preview_stays_above_sticky_cta(page):
+    def handle_request(route):
+        request = route.request
+        url = request.url
+        method = request.method
+
+        if url.endswith("/api/v1/auth/public-config"):
+            route.fulfill(status=200, content_type="application/json", body='{"telegram_bot_username":"FinanceWeaselBot","browser_login_available":true}')
+            return
+        if url.endswith("/api/v1/users/me"):
+            route.fulfill(status=200, content_type="application/json", body='{"id":1,"display_name":"Admin","status":"approved","is_admin":true,"username":"owner_admin","telegram_id":"281896361"}')
+            return
+        if "/api/v1/preferences" in url:
+            route.fulfill(status=200, content_type="application/json", body='{"data":{"ui":{}}}')
+            return
+        if "/api/v1/dashboard/summary" in url:
+            route.fulfill(status=200, content_type="application/json", body='{"income_total":"0.00","expense_total":"0.00","balance":"0.00","debt_lend_total":"0.00","debt_borrow_total":"0.00","debt_net_total":"0.00"}')
+            return
+        if "/api/v1/dashboard/operations" in url or "/api/v1/dashboard/analytics" in url:
+            route.fulfill(status=200, content_type="application/json", body='{"items":[],"total":0,"page":1,"page_size":20}')
+            return
+        if "/api/v1/operations?" in url or "/api/v1/debts" in url:
+            route.fulfill(status=200, content_type="application/json", body='{"items":[],"total":0,"page":1,"page_size":20}')
+            return
+        if url.endswith("/api/v1/categories/groups") and method == "GET":
+            route.fulfill(status=200, content_type="application/json", body='[{"id":7,"name":"Транспорт","kind":"expense","accent_color":"#ff8a3d"}]')
+            return
+        if "/api/v1/categories" in url and method == "GET":
+            if "page=" in url and "page_size=" in url:
+                route.fulfill(status=200, content_type="application/json", body='{"items":[],"total":0,"page":1,"page_size":20}')
+                return
+            route.fulfill(status=200, content_type="application/json", body="[]")
+            return
+        route.fulfill(status=200, content_type="application/json", body="{}")
+
+    page.route("**/api/**", handle_request)
+    page.add_init_script("""window.localStorage.setItem("access_token", "test-token");""")
+    page.set_viewport_size({"width": 390, "height": 844})
+
+    page.goto("http://127.0.0.1:8001/", wait_until="networkidle")
+    page.click("#mobileNavToggleBtn")
+    page.get_by_role("button", name="Категории").click()
+    page.get_by_role("button", name="+ Массовое добавление").click()
+    page.locator("#batchCategoryInput").fill(
+        "Расход;Такси;Транспорт\n"
+        "Доход;Подработка;Неизвестная группа"
+    )
+    page.get_by_role("button", name="Проверить строки").click()
+    page.wait_for_selector("#batchCategoryPreview:not(.hidden)")
+    page.evaluate(
+        """
+        () => {
+          const modalCard = document.querySelector('#batchCategoryModal .modal-card');
+          if (modalCard) {
+            modalCard.scrollTop = modalCard.scrollHeight;
+          }
+        }
+        """
+    )
+    page.wait_for_timeout(150)
+
+    geometry = page.evaluate(
+        """
+        () => {
+          const previewRow = document.querySelector('#batchCategoryPreviewBody tr:last-child');
+          const previewPanel = document.querySelector('#batchCategoryPreview');
+          const footer = document.querySelector('#batchCategoryModal .modal-footer');
+          if (!previewRow || !previewPanel || !footer) {
+            return null;
+          }
+          const previewRowRect = previewRow.getBoundingClientRect();
+          const previewPanelRect = previewPanel.getBoundingClientRect();
+          const footerRect = footer.getBoundingClientRect();
+          return {
+            previewRowTop: previewRowRect.top,
+            previewRowBottom: previewRowRect.bottom,
+            previewPanelTop: previewPanelRect.top,
+            footerTop: footerRect.top,
+          };
+        }
+        """
+    )
+
+    assert geometry is not None
+    assert geometry["previewPanelTop"] < geometry["footerTop"]
+    assert geometry["previewRowTop"] < geometry["footerTop"]
+    assert geometry["previewRowBottom"] <= geometry["footerTop"] + 2
+
+
+@pytest.mark.e2e
+def test_mobile_batch_item_template_modal_preview_stays_above_sticky_cta(page):
+    def handle_request(route):
+        request = route.request
+        url = request.url
+        method = request.method
+
+        if url.endswith("/api/v1/auth/public-config"):
+            route.fulfill(status=200, content_type="application/json", body='{"telegram_bot_username":"FinanceWeaselBot","browser_login_available":true}')
+            return
+        if url.endswith("/api/v1/users/me"):
+            route.fulfill(status=200, content_type="application/json", body='{"id":1,"display_name":"Admin","status":"approved","is_admin":true,"username":"owner_admin","telegram_id":"281896361"}')
+            return
+        if "/api/v1/preferences" in url:
+            route.fulfill(status=200, content_type="application/json", body='{"data":{"ui":{}}}')
+            return
+        if "/api/v1/dashboard/summary" in url:
+            route.fulfill(status=200, content_type="application/json", body='{"income_total":"0.00","expense_total":"0.00","balance":"0.00","debt_lend_total":"0.00","debt_borrow_total":"0.00","debt_net_total":"0.00"}')
+            return
+        if "/api/v1/dashboard/operations" in url or "/api/v1/dashboard/analytics" in url:
+            route.fulfill(status=200, content_type="application/json", body='{"items":[],"total":0,"page":1,"page_size":20}')
+            return
+        if "/api/v1/operations?" in url or "/api/v1/debts" in url:
+            route.fulfill(status=200, content_type="application/json", body='{"items":[],"total":0,"page":1,"page_size":20}')
+            return
+        if "/api/v1/categories/groups" in url:
+            route.fulfill(status=200, content_type="application/json", body="[]")
+            return
+        if "/api/v1/categories" in url and method == "GET":
+            if "page=" in url and "page_size=" in url:
+                route.fulfill(status=200, content_type="application/json", body='{"items":[],"total":0,"page":1,"page_size":20}')
+                return
+            route.fulfill(status=200, content_type="application/json", body="[]")
+            return
+        if "/api/v1/operations/item-templates" in url and method == "GET":
+            route.fulfill(status=200, content_type="application/json", body='{"items":[],"total":0,"page":1,"page_size":100}')
+            return
+        route.fulfill(status=200, content_type="application/json", body="{}")
+
+    page.route("**/api/**", handle_request)
+    page.add_init_script("""window.localStorage.setItem("access_token", "test-token");""")
+    page.set_viewport_size({"width": 390, "height": 844})
+
+    page.goto("http://127.0.0.1:8001/", wait_until="networkidle")
+    page.click("#mobileNavToggleBtn")
+    page.get_by_role("button", name="Каталог позиций").click()
+    page.get_by_role("button", name="+ Массовое добавление").click()
+    page.locator("#batchItemTemplateInput").fill(
+        "Евроопт;Сигареты Rothmans;9,40\n"
+        "WB;USB кабель;"
+    )
+    page.get_by_role("button", name="Проверить строки").click()
+    page.wait_for_selector("#batchItemTemplatePreview:not(.hidden)")
+    page.evaluate(
+        """
+        () => {
+          const modalCard = document.querySelector('#batchItemTemplateModal .modal-card');
+          if (modalCard) {
+            modalCard.scrollTop = modalCard.scrollHeight;
+          }
+        }
+        """
+    )
+    page.wait_for_timeout(150)
+
+    geometry = page.evaluate(
+        """
+        () => {
+          const previewRow = document.querySelector('#batchItemTemplatePreviewBody tr:last-child');
+          const previewPanel = document.querySelector('#batchItemTemplatePreview');
+          const footer = document.querySelector('#batchItemTemplateModal .modal-footer');
+          if (!previewRow || !previewPanel || !footer) {
+            return null;
+          }
+          const previewRowRect = previewRow.getBoundingClientRect();
+          const previewPanelRect = previewPanel.getBoundingClientRect();
+          const footerRect = footer.getBoundingClientRect();
+          return {
+            previewRowTop: previewRowRect.top,
+            previewRowBottom: previewRowRect.bottom,
+            previewPanelTop: previewPanelRect.top,
+            footerTop: footerRect.top,
+          };
+        }
+        """
+    )
+
+    assert geometry is not None
+    assert geometry["previewPanelTop"] < geometry["footerTop"]
+    assert geometry["previewRowTop"] < geometry["footerTop"]
+    assert geometry["previewRowBottom"] <= geometry["footerTop"] + 2

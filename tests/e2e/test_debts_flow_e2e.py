@@ -688,6 +688,63 @@ def test_repayment_presets_fill_amount_from_current_outstanding(static_server_ur
 
 
 @pytest.mark.e2e
+def test_mobile_repayment_modal_keeps_amount_field_above_sticky_cta(static_server_url: str, page_with_debts_api_mock):
+    page = page_with_debts_api_mock
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+    page.click("#telegramLoginBtn")
+    page.wait_for_selector("#appShell:not(.hidden)")
+
+    page.click("#mobileNavToggleBtn")
+    page.click("button[data-section='debts']")
+    page.wait_for_selector("#debtsSection:not(.hidden)")
+    page.evaluate("window.App.actions.openDebtRepaymentModal(9001)")
+    page.wait_for_selector("#debtRepaymentModal:not(.hidden)")
+    page.fill("#repaymentAmount", "50")
+    page.fill("#repaymentDate", "2026-03-06")
+    page.fill("#repaymentNote", "Мобильная проверка")
+    page.wait_for_timeout(200)
+
+    geometry = page.evaluate(
+        """
+        () => {
+          const amountField = document.querySelector('#repaymentAmountField');
+          const footer = document.querySelector('#debtRepaymentModal .modal-footer');
+          if (!amountField || !footer) {
+            return null;
+          }
+          const amountRect = amountField.getBoundingClientRect();
+          const footerRect = footer.getBoundingClientRect();
+          return {
+            amountTop: amountRect.top,
+            amountBottom: amountRect.bottom,
+            footerTop: footerRect.top,
+            footerBottom: footerRect.bottom,
+          };
+        }
+        """
+    )
+
+    assert geometry is not None
+    assert geometry["amountTop"] < geometry["footerTop"]
+    assert geometry["amountBottom"] <= geometry["footerTop"] + 2
+
+
+@pytest.mark.e2e
 def test_debts_cards_infinite_scroll_loads_next_batch(static_server_url: str, page_with_debts_api_mock):
     page = page_with_debts_api_mock
     page.goto(f"{static_server_url}/static/index.html")
@@ -789,6 +846,83 @@ def test_debt_history_infinite_scroll_loads_next_batch(static_server_url: str, p
         """
     )
     page.wait_for_function(f"document.querySelectorAll('#debtHistoryItems .debt-history-event').length > {initial_count}")
+
+
+@pytest.mark.e2e
+def test_mobile_debt_history_modal_keeps_scroll_region_visible(static_server_url: str, page_with_debts_api_mock):
+    page = page_with_debts_api_mock
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+    page.click("#telegramLoginBtn")
+    page.wait_for_selector("#appShell:not(.hidden)")
+
+    page.evaluate(
+        """
+        async () => {
+          const response = await fetch('/api/v1/test/seed-debt-history', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ debt_id: 9001, count: 40 }),
+          });
+          if (!response.ok) {
+            throw new Error('seed history failed');
+          }
+        }
+        """
+    )
+
+    page.click("#mobileNavToggleBtn")
+    page.click("button[data-section='debts']")
+    page.wait_for_selector("#debtsSection:not(.hidden)")
+    page.evaluate("window.App.core.invalidateUiRequestCache('debts')")
+    page.evaluate("window.App.actions.loadDebtsCards({ force: true })")
+    page.evaluate("window.App.actions.openDebtHistoryModal(9001)")
+    page.wait_for_selector("#debtHistoryModal:not(.hidden)")
+    page.wait_for_timeout(150)
+
+    geometry = page.evaluate(
+        """
+        () => {
+          const list = document.querySelector('#debtHistoryList');
+          const modalCard = document.querySelector('#debtHistoryModal .modal-card');
+          const items = document.querySelectorAll('#debtHistoryItems .debt-history-event');
+          if (!list || !modalCard || !items.length) {
+            return null;
+          }
+          const listRect = list.getBoundingClientRect();
+          const modalRect = modalCard.getBoundingClientRect();
+          return {
+            listTop: listRect.top,
+            listBottom: listRect.bottom,
+            modalTop: modalRect.top,
+            modalBottom: modalRect.bottom,
+            itemsCount: items.length,
+            scrollHeight: list.scrollHeight,
+            clientHeight: list.clientHeight,
+          };
+        }
+        """
+    )
+
+    assert geometry is not None
+    assert geometry["itemsCount"] > 0
+    assert geometry["listTop"] >= geometry["modalTop"]
+    assert geometry["listBottom"] <= geometry["modalBottom"] + 2
+    assert geometry["scrollHeight"] >= geometry["clientHeight"]
 
 
 @pytest.mark.e2e

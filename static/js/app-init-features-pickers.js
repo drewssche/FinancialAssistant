@@ -2,6 +2,36 @@
   const { el, actions, core } = window.App;
   let bound = false;
 
+  function isCompactModalViewport() {
+    return window.matchMedia("(max-width: 640px)").matches;
+  }
+
+  function scrollFocusedModalFieldIntoView(event) {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+    if (!isCompactModalViewport()) {
+      return;
+    }
+    if (!target.matches("input, textarea, select")) {
+      return;
+    }
+    const modalCard = target.closest(".modal-card");
+    const modal = target.closest(".modal");
+    if (!modalCard || !modal || modal.classList.contains("hidden")) {
+      return;
+    }
+    const scrollTarget = target.closest(
+      ".receipt-item-row, .money-input-wrap, .create-category-field, .debt-due-field, .receipt-summary, .preview-panel, .bulk-import-preview, .field",
+    ) || target;
+    window.requestAnimationFrame(() => {
+      window.setTimeout(() => {
+        scrollTarget.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+      }, 120);
+    });
+  }
+
   function bindDateField(id, onChange = null) {
     const node = document.getElementById(id);
     if (!node) {
@@ -22,6 +52,7 @@
       return;
     }
     bound = true;
+    document.addEventListener("focusin", scrollFocusedModalFieldIntoView);
 
     for (const id of ["opAmount", "opDate", "opNote"]) {
       const node = document.getElementById(id);

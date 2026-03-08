@@ -34,7 +34,7 @@
             <div class="avatar" id="userAvatar">П</div>
             <div class="meta">
               <div id="userName">Пользователь</div>
-              <div id="userHandle">@user</div>
+              <div id="userHandle">Telegram</div>
             </div>
             <button id="sidebarLogoutBtn" class="user-logout-icon-btn" type="button" title="Выйти" aria-label="Выйти">⎋</button>
           </div>
@@ -236,7 +236,7 @@
             </div>
             <div id="analyticsCalendarTotals" class="analytics-kpi-grid"></div>
             <div id="analyticsCalendarTotalsSecondary" class="analytics-kpi-secondary"></div>
-            <div class="table-wrap">
+            <div class="table-wrap analytics-calendar-scroll-wrap">
               <div id="analyticsMonthGridWrap">
                 <table class="table table-hover analytics-calendar-table">
                   <thead>

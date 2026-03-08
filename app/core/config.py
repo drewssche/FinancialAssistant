@@ -54,6 +54,34 @@ class Settings(BaseSettings):
             if item.strip()
         }
 
+    @property
+    def normalized_telegram_bot_username(self) -> str:
+        return self.telegram_bot_username.strip()
+
+    @property
+    def browser_telegram_login_enabled(self) -> bool:
+        return bool(self.normalized_telegram_bot_username)
+
+    def production_config_errors(self) -> list[str]:
+        if not self.is_production:
+            return []
+
+        errors: list[str] = []
+        if not self.app_secret_key.strip() or self.app_secret_key.strip() == "change_me":
+            errors.append("APP_SECRET_KEY must be set to a non-default value in production")
+        if not self.telegram_bot_token.strip() or self.telegram_bot_token.strip() == "change_me":
+            errors.append("TELEGRAM_BOT_TOKEN must be set to a non-default value in production")
+        if not self.admin_telegram_id_set:
+            errors.append("ADMIN_TELEGRAM_IDS must include at least one admin Telegram ID in production")
+        return errors
+
+    def validate_runtime_requirements(self) -> None:
+        errors = self.production_config_errors()
+        if not errors:
+            return
+        joined = "; ".join(errors)
+        raise RuntimeError(f"Invalid production configuration: {joined}")
+
 
 @lru_cache
 def get_settings() -> Settings:

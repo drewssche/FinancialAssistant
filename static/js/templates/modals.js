@@ -71,12 +71,6 @@
             <input id="debtNote" type="text" placeholder="Комментарий" class="create-note-field" />
           </div>
         </form>
-        <div class="modal-footer">
-          <button id="submitCreateOperationBtn" class="btn btn-cta modal-main-cta" type="submit" form="createOperationForm">
-            Добавить
-          </button>
-        </div>
-
         <div class="preview-panel">
           <div class="preview-title">Превью строки в таблице</div>
             <div class="table-wrap">
@@ -101,6 +95,12 @@
               <tbody id="createPreviewBody"></tbody>
             </table>
           </div>
+        </div>
+
+        <div class="modal-footer">
+          <button id="submitCreateOperationBtn" class="btn btn-cta modal-main-cta" type="submit" form="createOperationForm">
+            Добавить
+          </button>
         </div>
       </div>
     </div>
@@ -268,12 +268,6 @@
             </div>
           </div>
         </form>
-        <div class="modal-footer">
-          <button id="submitEditOperationBtn" class="btn btn-cta modal-main-cta" type="submit" form="editOperationForm">
-            Сохранить
-          </button>
-        </div>
-
         <div class="preview-panel">
           <div class="preview-title">Превью строки в таблице</div>
           <div class="table-wrap">
@@ -291,6 +285,12 @@
               <tbody id="editPreviewBody"></tbody>
             </table>
           </div>
+        </div>
+
+        <div class="modal-footer">
+          <button id="submitEditOperationBtn" class="btn btn-cta modal-main-cta" type="submit" form="editOperationForm">
+            Сохранить
+          </button>
         </div>
       </div>
     </div>

@@ -71,6 +71,7 @@ Expected:
 ## 4. Production Config Gate
 Before any production deploy, verify:
 - `APP_ENV=production`
+- `APP_SECRET_KEY` is set and is not the default placeholder
 - `TELEGRAM_BOT_TOKEN` is set correctly
 - `ADMIN_TELEGRAM_IDS` contains actual admin Telegram IDs and owner/admin IDs are expected to auto-approve
 - no alternative non-Telegram login entrypoints remain enabled
@@ -87,7 +88,16 @@ Before exposing the app inside Telegram WebApp, verify:
 - no critical action depends on hover-only UI
 - main forms remain usable with mobile keyboard open
 - safe-area/viewport shifts do not hide primary CTA or break layout
+- targeted mobile e2e regression suite passes:
+  - `tests/e2e/test_auth_login_ui_e2e.py`
+  - `tests/e2e/test_receipt_picker_store_scope_e2e.py`
+  - `tests/e2e/test_debts_flow_e2e.py`
+  - `tests/e2e/test_chip_picker_no_duplicates_e2e.py`
+  - `tests/e2e/test_batch_create_operations_e2e.py`
+  - `tests/e2e/test_bulk_import_sections_e2e.py`
+  - `tests/e2e/test_analytics_mobile_e2e.py`
 
 Expected:
 - app is usable end-to-end on a real phone or equivalent mobile emulation
 - auth/session restore behaves correctly after reopening the Mini App
+- regression suite covers auth/access states, modal CTA reachability, batch preview reachability and analytics mobile navigation

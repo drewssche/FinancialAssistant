@@ -18,6 +18,10 @@
           button: el.telegramLoginBtn,
           pendingText: "Вход...",
           errorPrefix: "Ошибка входа",
+          shouldPrefixError: (message) => !(
+            message === "Заявка отправлена. Ожидайте одобрения администратора"
+            || message === "Доступ отклонен администратором"
+          ),
           forLogin: true,
           action: () => actions.telegramLogin(),
         });

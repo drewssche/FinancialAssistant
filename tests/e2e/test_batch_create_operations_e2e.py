@@ -226,3 +226,134 @@ def test_create_debt_modal_accepts_display_date_format(page):
     assert len(debt_payloads) == 1
     assert debt_payloads[0]["start_date"] == "2026-03-07"
     assert debt_payloads[0]["due_date"] == "2026-03-20"
+
+
+@pytest.mark.e2e
+def test_mobile_batch_create_modal_preview_stays_above_sticky_cta(page):
+    def handle_request(route):
+        request = route.request
+        url = request.url
+        method = request.method
+
+        if url.endswith("/api/v1/auth/public-config"):
+            route.fulfill(
+                status=200,
+                content_type="application/json",
+                body='{"telegram_bot_username":"FinanceWeaselBot","browser_login_available":true}',
+            )
+            return
+
+        if url.endswith("/api/v1/users/me"):
+            route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=(
+                    '{"id":1,"display_name":"Admin","status":"approved","is_admin":true,'
+                    '"username":"owner_admin","telegram_id":"281896361"}'
+                ),
+            )
+            return
+
+        if "/api/v1/dashboard/summary" in url:
+            route.fulfill(
+                status=200,
+                content_type="application/json",
+                body='{"income_total":"0.00","expense_total":"0.00","balance":"0.00","debt_lend_total":"0.00","debt_borrow_total":"0.00","debt_net_total":"0.00"}',
+            )
+            return
+
+        if "/api/v1/dashboard/operations" in url:
+            route.fulfill(
+                status=200,
+                content_type="application/json",
+                body='{"items":[],"total":0,"page":1,"page_size":20}',
+            )
+            return
+
+        if "/api/v1/dashboard/analytics" in url:
+            route.fulfill(status=200, content_type="application/json", body='{"points":[],"summary":{}}')
+            return
+
+        if "/api/v1/operations?" in url and method == "GET":
+            route.fulfill(
+                status=200,
+                content_type="application/json",
+                body='{"items":[],"total":0,"page":1,"page_size":20}',
+            )
+            return
+
+        if "/api/v1/categories" in url and method == "GET":
+            if "page=" in url and "page_size=" in url:
+                route.fulfill(
+                    status=200,
+                    content_type="application/json",
+                    body='{"items":[{"id":10,"name":"Такси","icon":null,"kind":"expense","group_id":null,"group_name":null,"group_icon":null,"group_accent_color":null,"is_system":false},{"id":11,"name":"Зарплата","icon":null,"kind":"income","group_id":5,"group_name":"Работа","group_icon":null,"group_accent_color":"#49be78","is_system":false}],"total":2,"page":1,"page_size":20}',
+                )
+                return
+            route.fulfill(
+                status=200,
+                content_type="application/json",
+                body='[{"id":10,"name":"Такси","icon":null,"kind":"expense","group_id":null,"group_name":null,"group_icon":null,"group_accent_color":null,"is_system":false},{"id":11,"name":"Зарплата","icon":null,"kind":"income","group_id":5,"group_name":"Работа","group_icon":null,"group_accent_color":"#49be78","is_system":false}]',
+            )
+            return
+
+        if "/api/v1/debts" in url:
+            route.fulfill(status=200, content_type="application/json", body='{"items":[],"total":0}')
+            return
+
+        if "/api/v1/preferences" in url:
+            route.fulfill(status=200, content_type="application/json", body='{"data":{"ui":{}}}')
+            return
+
+        route.fulfill(status=200, content_type="application/json", body="{}")
+
+    page.route("**/api/**", handle_request)
+    page.add_init_script("""window.localStorage.setItem("access_token", "test-token");""")
+    page.set_viewport_size({"width": 390, "height": 844})
+
+    page.goto("http://127.0.0.1:8001/", wait_until="networkidle")
+    page.get_by_role("button", name="+ Массовое добавление").click()
+    page.locator("#batchCreateInput").fill(
+        "04.03.2026;Расход;;Такси;150,50;Поездка\n"
+        "05.03.2026;Доход;;Зарплата;1000;Аванс"
+    )
+    page.get_by_role("button", name="Проверить строки").click()
+    page.wait_for_selector("#batchCreatePreview:not(.hidden)")
+    page.evaluate(
+        """
+        () => {
+          const modalCard = document.querySelector('#batchCreateModal .modal-card');
+          if (modalCard) {
+            modalCard.scrollTop = modalCard.scrollHeight;
+          }
+        }
+        """
+    )
+    page.wait_for_timeout(150)
+
+    geometry = page.evaluate(
+        """
+        () => {
+          const previewRow = document.querySelector('#batchCreatePreviewBody tr:last-child');
+          const previewPanel = document.querySelector('#batchCreatePreview');
+          const footer = document.querySelector('#batchCreateModal .modal-footer');
+          if (!previewRow || !previewPanel || !footer) {
+            return null;
+          }
+          const previewRowRect = previewRow.getBoundingClientRect();
+          const previewPanelRect = previewPanel.getBoundingClientRect();
+          const footerRect = footer.getBoundingClientRect();
+          return {
+            previewRowTop: previewRowRect.top,
+            previewRowBottom: previewRowRect.bottom,
+            previewPanelTop: previewPanelRect.top,
+            footerTop: footerRect.top,
+          };
+        }
+        """
+    )
+
+    assert geometry is not None
+    assert geometry["previewPanelTop"] < geometry["footerTop"]
+    assert geometry["previewRowTop"] < geometry["footerTop"]
+    assert geometry["previewRowBottom"] <= geometry["footerTop"] + 2
