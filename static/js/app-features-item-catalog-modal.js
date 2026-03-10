@@ -85,7 +85,7 @@
       const source = normalizeItemCatalogShopName(el.itemTemplateSource?.value || el.itemTemplateSourceSearch?.value || "") || "Без источника";
       const name = String(el.itemTemplateName?.value || "").trim() || "—";
       const parsedPrice = core.resolveMoneyInput(el.itemTemplatePrice?.value || 0);
-      const validPrice = parsedPrice.valid && parsedPrice.value > 0 ? parsedPrice.value : 0;
+      const validPrice = !parsedPrice.empty && parsedPrice.previewValue > 0 ? parsedPrice.previewValue : 0;
       el.itemTemplatePreviewBody.innerHTML = `
         <tr class="preview-row">
           <td>${escapeHtml(source)}</td>

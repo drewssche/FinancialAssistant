@@ -141,31 +141,52 @@
 
   function resolveMoneyInput(value, fallback = 0) {
     const raw = String(value || "").trim();
+    const fallbackValue = Number(fallback) || 0;
     if (!raw) {
       return {
         raw,
         empty: true,
         valid: false,
-        value: Number(fallback) || 0,
-        formatted: formatAmount(fallback),
+        value: fallbackValue,
+        previewValue: fallbackValue,
+        formatted: formatAmount(fallbackValue),
+        previewFormatted: formatAmount(fallbackValue),
       };
     }
     const evaluated = evaluateMathExpression(raw);
-    if (!evaluated.ok) {
+    if (evaluated.ok) {
       return {
         raw,
         empty: false,
-        valid: false,
-        value: Number(fallback) || 0,
-        formatted: formatAmount(fallback),
+        valid: true,
+        value: evaluated.value,
+        previewValue: evaluated.value,
+        formatted: formatAmount(evaluated.value),
+        previewFormatted: formatAmount(evaluated.value),
       };
     }
+
+    let previewValue = fallbackValue;
+    for (let i = raw.length - 1; i > 0; i -= 1) {
+      const candidate = raw.slice(0, i).trim();
+      if (!candidate) {
+        continue;
+      }
+      const partial = evaluateMathExpression(candidate);
+      if (partial.ok) {
+        previewValue = partial.value;
+        break;
+      }
+    }
+
     return {
       raw,
       empty: false,
-      valid: true,
-      value: evaluated.value,
-      formatted: formatAmount(evaluated.value),
+      valid: false,
+      value: fallbackValue,
+      previewValue,
+      formatted: formatAmount(fallbackValue),
+      previewFormatted: formatAmount(previewValue),
     };
   }
 

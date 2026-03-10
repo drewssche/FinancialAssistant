@@ -99,8 +99,8 @@
       }, 0);
       const amountRaw = document.getElementById("opAmount").value;
       const parsedAmount = core.resolveMoneyInput(amountRaw);
-      const amountResolved = !parsedAmount.empty && parsedAmount.valid
-        ? parsedAmount.value
+      const amountResolved = !parsedAmount.empty
+        ? parsedAmount.previewValue
         : (el.opReceiptEnabled?.checked && receiptTotal > 0 ? receiptTotal : 0);
       const noteRaw = document.getElementById("opNote").value || "";
       const operationDate = core.parseDateInputValue(document.getElementById("opDate").value) || core.getTodayIso();
@@ -122,7 +122,7 @@
         operation_date: operationDate,
         kind: el.editKind.value || "expense",
         category_id: el.editCategory.value ? Number(el.editCategory.value) : null,
-        amount: amountResolved.formatted,
+        amount: amountResolved.previewFormatted,
         note: document.getElementById("editNote").value || "",
       };
     }
@@ -137,7 +137,7 @@
         const debtDate = core.parseDateInputValue(el.debtStartDate.value) || core.getTodayIso();
         const debtDueDate = core.parseDateInputValue(el.debtDueDate.value) || "";
         const debtCounterparty = (el.debtCounterparty.value || "").trim();
-        const debtPrincipal = core.formatMoney(core.resolveMoneyInput(el.debtPrincipal.value || 0).value);
+        const debtPrincipal = core.formatMoney(core.resolveMoneyInput(el.debtPrincipal.value || 0).previewValue);
         const debtNote = (el.debtNote.value || "").trim();
         row.classList.add("preview-row", `kind-row-${directionClass}`);
         row.appendChild(createPreviewCellButton("Дата", core.formatDateRu(debtDate), "debtStartDate"));

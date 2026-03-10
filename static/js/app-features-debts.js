@@ -125,7 +125,7 @@
   function updateRepaymentDeltaHint() {
     const debtId = Number(el.repaymentDebtId.value || 0);
     const enteredState = core.resolveMoneyInput(el.repaymentAmount?.value || 0);
-    const entered = enteredState.valid ? enteredState.value : 0;
+    const entered = !enteredState.empty ? enteredState.previewValue : 0;
     const found = debtId ? findDebtById(debtId) : null;
     if (!found) {
       if (el.repaymentBeforeValue) {
