@@ -238,6 +238,49 @@
 - `groups`: `kind;name`
 - empty category group imports into `Без группы`
 - unknown category group imports into `Без группы` with warning
+
+13. Analytics IA and dashboard summary rework
+- Status: in progress (updated 2026-03-10)
+- Delivered in current pass:
+- dashboard top KPI cards now use all-time summary regardless of dashboard period controls
+- dashboard analytics widget now has its own local mini period switcher
+- analytics period switcher moved to one global control above analytics tabs
+- `Общий` KPI cards now show previous-period comparison with absolute previous values
+- analytics calendar now has month/year picker controls and weekly result chips
+- analytics overview now has category breakdown with type switcher (`Расход/Доход/Все`) and visual donut + ranked list
+- Still pending / follow-up:
+- deeper information-architecture cleanup for `Операции` analytics tab
+- possible drill-down from category rows into filtered operations
+- Analytics section:
+- move one global period switcher above analytics internal tabs so selected period clearly scopes the whole section
+- keep local controls only where they represent view mode, not period:
+- calendar: `Месяц/Год` + grid date picker/navigation
+- trends: bucket size (`По дням/По неделям/По месяцам`)
+- category breakdown: type filter (`Расход/Доход/Все`)
+- improve `Общий` KPI cards:
+- replace ambiguous bare percentages with explicit comparison to previous period
+- show previous absolute values next to delta (`было -> стало`)
+- add category breakdown block for selected period:
+- visual share chart + ranked list
+- filters: reuse global period + local type (`Расход/Доход/Все`)
+- list rows should show amount, share, operations count, change vs previous period
+- improve `Календарь` tab:
+- add explicit month/year picker for grid
+- add contextual weekly result chips (`Профицит/Дефицит/Ноль`) near week totals
+- consider drill-down from week/day cell into filtered operations list
+- rework `Операции` analytics tab information hierarchy:
+- prioritize categories first
+- group large operations / anomalies separately
+- isolate receipt-position insights as lower-priority block or separate future sub-view
+- Dashboard section:
+- top KPI cards (`Доход/Расход/Баланс`) should always show all-time totals regardless of dashboard period controls
+- dashboard period controls should affect only contextual widgets (analytics preview, recent operations list, similar scoped blocks), not all-time KPIs
+- revisit dashboard analytics widget:
+- current period-trend block is weak when data is sparse and semantically overlaps full analytics section
+- evaluate redesign toward all-time overview with local mini-switcher inside widget (`Сегодня/Неделя/Месяц/Год`) or lightweight all-time summary + quick links into full analytics
+- clarify dashboard wording so user can distinguish:
+- permanent all-time KPIs
+- period-scoped widgets
 - duplicate groups/categories inside preview are skipped before import
 - item catalog bulk import added with preview/validation:
 - format `source;name;price`

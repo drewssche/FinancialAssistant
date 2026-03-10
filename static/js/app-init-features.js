@@ -122,19 +122,19 @@
         core.setStatus("Проверь диапазон дат");
         return;
       }
-      if (state.analyticsSummaryPendingCustom && state.activeSection === "analytics") {
-        state.analyticsSummaryPendingCustom = false;
-        state.analyticsSummaryPeriod = "custom";
-        state.analyticsSummaryDateFrom = from;
-        state.analyticsSummaryDateTo = to;
-        core.syncSegmentedActive(el.analyticsSummaryPeriodTabs, "analytics-summary-period", state.analyticsSummaryPeriod);
+      if (state.analyticsGlobalPendingCustom && state.activeSection === "analytics") {
+        state.analyticsGlobalPendingCustom = false;
+        state.analyticsGlobalPeriod = "custom";
+        state.analyticsGlobalDateFrom = from;
+        state.analyticsGlobalDateTo = to;
+        core.syncSegmentedActive(el.analyticsGlobalPeriodTabs, "analytics-global-period", state.analyticsGlobalPeriod);
         core.runAction({
           button: event.submitter || document.getElementById("submitPeriodCustomBtn"),
           pendingText: "Применение...",
           errorPrefix: "Ошибка сохранения периода",
           action: async () => {
-            if (actions.loadAnalyticsHighlights) {
-              await actions.loadAnalyticsHighlights({ force: true });
+            if (actions.loadAnalyticsSection) {
+              await actions.loadAnalyticsSection({ force: true });
             }
             await actions.savePreferences();
             actions.closePeriodCustomModal();
@@ -177,6 +177,15 @@
         action: () => actions.applyFilters(),
       });
     });
+
+    if (el.clearOperationsCategoryFilterBtn && actions.clearOperationsCategoryFilter) {
+      el.clearOperationsCategoryFilterBtn.addEventListener("click", () => {
+        core.runAction({
+          errorPrefix: "Ошибка сброса фильтра категории",
+          action: () => actions.clearOperationsCategoryFilter(),
+        });
+      });
+    }
 
     if (el.operationsSortTabs && actions.setOperationsSortPreset) {
       el.operationsSortTabs.addEventListener("click", (event) => {

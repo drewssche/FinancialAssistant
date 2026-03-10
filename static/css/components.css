@@ -259,6 +259,10 @@
   color: #8fb7ff;
 }
 
+.compact-input {
+  min-width: 9rem;
+}
+
 .analytics-calendar-table td {
   vertical-align: top;
 }
@@ -316,6 +320,7 @@
   text-align: right;
   white-space: nowrap;
   font-weight: 700;
+  vertical-align: middle;
 }
 
 .analytics-trend-legend {
@@ -396,6 +401,69 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+.analytics-category-breakdown-grid {
+  margin-top: var(--space-3);
+  display: grid;
+  grid-template-columns: minmax(15rem, 22rem) minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.analytics-category-breakdown-chart-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: rgba(18, 27, 43, 0.72);
+  padding: var(--space-4);
+  display: grid;
+  place-items: center;
+  min-height: 20rem;
+}
+
+.analytics-category-donut {
+  width: min(18rem, 100%);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+.analytics-category-donut-hole {
+  width: 58%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: rgba(9, 18, 33, 0.94);
+  border: 1px solid rgba(122, 138, 170, 0.2);
+  display: grid;
+  place-content: center;
+  gap: var(--space-1);
+  text-align: center;
+  padding: var(--space-3);
+}
+
+.analytics-category-donut-hole strong {
+  font-size: 1.1rem;
+  line-height: 1.1;
+}
+
+.analytics-category-donut-empty {
+  opacity: 0.75;
+}
+
+.analytics-category-row-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.analytics-category-color {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: var(--radius-pill);
+  flex: 0 0 auto;
 }
 
 #analyticsCalendarTotalsSecondary {
@@ -500,8 +568,13 @@
   cursor: pointer;
 }
 
-.analytics-insight-item[data-analytics-date]:hover {
+.analytics-insight-item[data-analytics-date]:hover,
+.analytics-insight-item[data-analytics-category-id]:hover {
   border-color: rgba(255, 179, 71, 0.45);
+}
+
+.analytics-insight-item[data-analytics-category-id] {
+  cursor: pointer;
 }
 
 .analytics-insight-head {
@@ -525,6 +598,16 @@
   color: #ff9b9b;
   font-size: 12px;
   font-weight: 700;
+}
+
+.analytics-operations-layout {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.analytics-operations-group {
+  display: grid;
+  gap: var(--space-3);
 }
 
 .analytics-trend-hitbox {
@@ -1339,6 +1422,21 @@ textarea {
 
 .table td:last-child {
   width: 220px;
+}
+
+@media (max-width: 900px) {
+  .analytics-category-breakdown-grid,
+  .dashboard-analytics-grid,
+  .analytics-kpi-grid,
+  .analytics-trend-deltas,
+  .analytics-positions-grid,
+  .analytics-year-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-category-breakdown-chart-card {
+    min-height: 15rem;
+  }
 }
 
 .preview-panel {

@@ -204,6 +204,8 @@
       state.period = "day";
     }
     state.filterKind = prefs.data?.operations?.filters?.kind || "";
+    state.operationsCategoryFilterId = prefs.data?.operations?.filters?.category_id ?? null;
+    state.operationsCategoryFilterName = prefs.data?.operations?.filters?.category_name || "";
     state.operationSortPreset = prefs.data?.operations?.sort_preset || "date";
     state.debtSortPreset = prefs.data?.debts?.sort_preset || "priority";
     state.itemCatalogSortPreset = prefs.data?.ui?.item_catalog_sort_preset || "usage";
@@ -216,17 +218,21 @@
       state.analyticsTab = "overview";
     }
     state.analyticsCalendarView = prefs.data?.analytics?.calendar_view || "month";
-    state.analyticsSummaryPeriod = prefs.data?.analytics?.summary_period || "month";
-    state.analyticsSummaryDateFrom = prefs.data?.analytics?.summary_date_from || "";
-    state.analyticsSummaryDateTo = prefs.data?.analytics?.summary_date_to || "";
-    state.analyticsPeriod = prefs.data?.analytics?.period || "month";
+    state.analyticsGlobalPeriod = prefs.data?.analytics?.global_period || prefs.data?.analytics?.summary_period || prefs.data?.analytics?.period || "month";
+    state.analyticsGlobalDateFrom = prefs.data?.analytics?.global_date_from || prefs.data?.analytics?.summary_date_from || "";
+    state.analyticsGlobalDateTo = prefs.data?.analytics?.global_date_to || prefs.data?.analytics?.summary_date_to || "";
+    state.analyticsCategoryKind = prefs.data?.analytics?.category_kind || "expense";
     state.analyticsGranularity = prefs.data?.analytics?.granularity || "day";
+    if ((state.analyticsGlobalPeriod === "year" || state.analyticsGlobalPeriod === "all_time") && state.analyticsGranularity === "day") {
+      state.analyticsGranularity = "week";
+    }
     state.analyticsTopOperationsLimit = [3, 5, 10].includes(Number(prefs.data?.analytics?.top_operations_limit))
       ? Number(prefs.data?.analytics?.top_operations_limit)
       : 5;
     state.analyticsTopPositionsLimit = [5, 10, 20].includes(Number(prefs.data?.analytics?.top_positions_limit))
       ? Number(prefs.data?.analytics?.top_positions_limit)
       : 10;
+    state.dashboardAnalyticsPeriod = prefs.data?.dashboard?.analytics_period || "month";
     state.adminUserStatusFilter = prefs.data?.admin?.user_status_filter || "pending";
     el.filterQ.value = prefs.data?.operations?.filters?.q || "";
     state.activeSection = prefs.data?.ui?.active_section || "dashboard";
@@ -238,9 +244,10 @@
     core.syncSegmentedActive(el.itemCatalogSortTabs, "item-sort", state.itemCatalogSortPreset);
     core.syncSegmentedActive(el.analyticsViewTabs, "analytics-tab", state.analyticsTab);
     core.syncSegmentedActive(el.analyticsCalendarViewTabs, "analytics-calendar-view", state.analyticsCalendarView);
-    core.syncSegmentedActive(el.analyticsSummaryPeriodTabs, "analytics-summary-period", state.analyticsSummaryPeriod);
-    core.syncSegmentedActive(el.analyticsPeriodTabs, "analytics-period", state.analyticsPeriod);
+    core.syncSegmentedActive(el.analyticsGlobalPeriodTabs, "analytics-global-period", state.analyticsGlobalPeriod);
+    core.syncSegmentedActive(el.analyticsCategoryKindTabs, "analytics-category-kind", state.analyticsCategoryKind);
     core.syncSegmentedActive(el.analyticsGranularityTabs, "analytics-granularity", state.analyticsGranularity);
+    core.syncSegmentedActive(el.dashboardAnalyticsPeriodTabs, "dashboard-analytics-period", state.dashboardAnalyticsPeriod);
     core.syncSegmentedActive(el.adminUserStatusTabs, "admin-user-status", state.adminUserStatusFilter);
     if (window.App.actions.applyAnalyticsTabUi) {
       window.App.actions.applyAnalyticsTabUi();
@@ -266,12 +273,15 @@
           period: state.period,
           custom_date_from: state.customDateFrom || "",
           custom_date_to: state.customDateTo || "",
+          analytics_period: state.dashboardAnalyticsPeriod || "month",
         },
         operations: {
           ...(state.preferences.data?.operations || {}),
           sort_preset: state.operationSortPreset || "date",
           filters: {
             kind: state.filterKind,
+            category_id: state.operationsCategoryFilterId,
+            category_name: state.operationsCategoryFilterName || "",
             q: el.filterQ.value.trim(),
           },
         },
@@ -284,10 +294,10 @@
           month_anchor: state.analyticsMonthAnchor || "",
           tab: state.analyticsTab || "overview",
           calendar_view: state.analyticsCalendarView || "month",
-          summary_period: state.analyticsSummaryPeriod || "month",
-          summary_date_from: state.analyticsSummaryDateFrom || "",
-          summary_date_to: state.analyticsSummaryDateTo || "",
-          period: state.analyticsPeriod || "month",
+          global_period: state.analyticsGlobalPeriod || "month",
+          global_date_from: state.analyticsGlobalDateFrom || "",
+          global_date_to: state.analyticsGlobalDateTo || "",
+          category_kind: state.analyticsCategoryKind || "expense",
           granularity: state.analyticsGranularity || "day",
           top_operations_limit: state.analyticsTopOperationsLimit || 5,
           top_positions_limit: state.analyticsTopPositionsLimit || 10,

@@ -61,6 +61,23 @@
     if (el.analyticsYearGridWrap) {
       el.analyticsYearGridWrap.classList.toggle("hidden", view !== "year");
     }
+    if (el.analyticsGridMonthPicker) {
+      el.analyticsGridMonthPicker.classList.toggle("hidden", view !== "month");
+    }
+    if (el.analyticsGridYearPicker) {
+      el.analyticsGridYearPicker.classList.toggle("hidden", view !== "year");
+    }
+    syncGridPickers();
+  }
+
+  function syncGridPickers() {
+    const anchor = currentAnchorDate();
+    if (el.analyticsGridMonthPicker) {
+      el.analyticsGridMonthPicker.value = serializeMonthAnchor(anchor);
+    }
+    if (el.analyticsGridYearPicker) {
+      el.analyticsGridYearPicker.value = String(anchor.getUTCFullYear());
+    }
   }
 
   function describeResult(balanceRaw) {
@@ -152,6 +169,11 @@
         <td class="analytics-week-total analytics-income">${core.formatMoney(week.income_total)}</td>
         <td class="analytics-week-total analytics-expense">${core.formatMoney(week.expense_total)}</td>
         <td class="analytics-week-total">${week.operations_count}</td>
+        <td class="analytics-week-total">
+          <span class="analytics-kpi-chip analytics-kpi-chip-${Number(week.balance || 0) > 0 ? "positive" : Number(week.balance || 0) < 0 ? "negative" : "neutral"}">
+            ${Number(week.balance || 0) > 0 ? "Профицит" : Number(week.balance || 0) < 0 ? "Дефицит" : "Ноль"}: ${core.formatMoney(Math.abs(Number(week.balance || 0)))}
+          </span>
+        </td>
       `;
       el.analyticsCalendarBody.appendChild(tr);
     }
@@ -273,6 +295,28 @@
     await loadAnalyticsCalendar({ force: true });
   }
 
+  async function setAnalyticsGridMonthAnchor(monthValue) {
+    const parsed = parseMonthAnchor(monthValue);
+    if (!parsed) {
+      return;
+    }
+    state.analyticsMonthAnchor = serializeMonthAnchor(parsed);
+    await loadAnalyticsCalendar({ force: true });
+  }
+
+  async function setAnalyticsGridYearAnchor(yearValue) {
+    const year = Number(yearValue || 0);
+    if (!Number.isFinite(year) || year < 1970 || year > 2100) {
+      return;
+    }
+    state.analyticsMonthAnchor = `${year}-01`;
+    if (state.analyticsCalendarView !== "year") {
+      state.analyticsCalendarView = "year";
+      applyCalendarViewUi();
+    }
+    await loadAnalyticsCalendar({ force: true });
+  }
+
   window.App.featureAnalyticsModules = window.App.featureAnalyticsModules || {};
   window.App.featureAnalyticsModules.calendar = {
     parseMonthAnchor,
@@ -284,5 +328,7 @@
     resetAnalyticsMonth,
     openAnalyticsMonth,
     setAnalyticsCalendarView,
+    setAnalyticsGridMonthAnchor,
+    setAnalyticsGridYearAnchor,
   };
 })();

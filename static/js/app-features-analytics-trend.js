@@ -117,12 +117,12 @@
 
   function trendQueryParams() {
     const params = new URLSearchParams();
-    const period = state.analyticsPeriod || "month";
+    const period = state.analyticsGlobalPeriod || "month";
     params.set("period", period);
     params.set("granularity", state.analyticsGranularity || "day");
-    if (period === "custom" && state.customDateFrom && state.customDateTo) {
-      params.set("date_from", state.customDateFrom);
-      params.set("date_to", state.customDateTo);
+    if (period === "custom" && state.analyticsGlobalDateFrom && state.analyticsGlobalDateTo) {
+      params.set("date_from", state.analyticsGlobalDateFrom);
+      params.set("date_to", state.analyticsGlobalDateTo);
     }
     return params;
   }
@@ -130,20 +130,20 @@
   function renderAnalyticsTrend(data) {
     renderTrendChart(el.analyticsTrendChart, data, false);
     if (el.analyticsTrendRangeLabel) {
-      const stepLabel = data.granularity === "day" ? "День" : data.granularity === "week" ? "Неделя" : "Месяц";
+      const stepLabel = data.granularity === "day" ? "По дням" : data.granularity === "week" ? "По неделям" : data.granularity === "month" ? "По месяцам" : "По годам";
       el.analyticsTrendRangeLabel.textContent = `Окно: ${core.formatDateRu(data.date_from)} - ${core.formatDateRu(data.date_to)} · Шаг: ${stepLabel}`;
     }
     if (el.analyticsIncomeDelta) {
-      el.analyticsIncomeDelta.textContent = formatPct(data.income_change_pct);
+      el.analyticsIncomeDelta.textContent = `${formatPct(data.income_change_pct)} · ${core.formatMoney(data.prev_income_total || 0)} -> ${core.formatMoney(data.income_total || 0)}`;
     }
     if (el.analyticsExpenseDelta) {
-      el.analyticsExpenseDelta.textContent = formatPct(data.expense_change_pct);
+      el.analyticsExpenseDelta.textContent = `${formatPct(data.expense_change_pct)} · ${core.formatMoney(data.prev_expense_total || 0)} -> ${core.formatMoney(data.expense_total || 0)}`;
     }
     if (el.analyticsBalanceDelta) {
-      el.analyticsBalanceDelta.textContent = formatPct(data.balance_change_pct);
+      el.analyticsBalanceDelta.textContent = `${formatPct(data.balance_change_pct)} · ${core.formatMoney(data.prev_balance || 0)} -> ${core.formatMoney(data.balance || 0)}`;
     }
     if (el.analyticsOpsDelta) {
-      el.analyticsOpsDelta.textContent = formatPct(data.operations_change_pct);
+      el.analyticsOpsDelta.textContent = `${formatPct(data.operations_change_pct)} · ${data.prev_operations_count || 0} -> ${data.operations_count || 0}`;
     }
   }
 
@@ -185,12 +185,15 @@
         el.dashboardAnalyticsEmpty.classList.toggle("hidden", hasEnoughData);
         if (!hasEnoughData) {
           const periodLabelMap = { day: "день", week: "неделю", month: "месяц", year: "год", all_time: "все время", custom: "период" };
-          const periodLabel = periodLabelMap[state.period || "month"] || "период";
+          const periodLabel = periodLabelMap[state.dashboardAnalyticsPeriod || "month"] || "период";
           el.dashboardAnalyticsEmpty.innerHTML = `
             <strong>Пока мало данных для тренда</strong>
             <span class="muted-small">Операций за ${periodLabel}: ${operationsCount}</span>
           `;
         }
+      }
+      if (el.dashboardAnalyticsPeriodLabel) {
+        el.dashboardAnalyticsPeriodLabel.textContent = `${core.formatDateRu(data.date_from)} - ${core.formatDateRu(data.date_to)}`;
       }
 
       if (el.dashboardAnalyticsIncomeDelta) {
@@ -207,18 +210,24 @@
       const expenseDelta = formatPct(data.expense_change_pct);
       const balanceDelta = formatPct(data.balance_change_pct);
       if (el.dashboardAnalyticsIncomeMeta) {
-        el.dashboardAnalyticsIncomeMeta.textContent = incomeDelta === "нет базы" ? "без сравнения" : `к прошлому: ${incomeDelta}`;
+        el.dashboardAnalyticsIncomeMeta.textContent = incomeDelta === "нет базы"
+          ? `было: ${core.formatMoney(data.prev_income_total || 0)}`
+          : `к прошлому: ${incomeDelta} · было ${core.formatMoney(data.prev_income_total || 0)}`;
       }
       if (el.dashboardAnalyticsExpenseMeta) {
-        el.dashboardAnalyticsExpenseMeta.textContent = expenseDelta === "нет базы" ? "без сравнения" : `к прошлому: ${expenseDelta}`;
+        el.dashboardAnalyticsExpenseMeta.textContent = expenseDelta === "нет базы"
+          ? `было: ${core.formatMoney(data.prev_expense_total || 0)}`
+          : `к прошлому: ${expenseDelta} · было ${core.formatMoney(data.prev_expense_total || 0)}`;
       }
       if (el.dashboardAnalyticsBalanceMeta) {
-        el.dashboardAnalyticsBalanceMeta.textContent = balanceDelta === "нет базы" ? "без сравнения" : `к прошлому: ${balanceDelta}`;
+        el.dashboardAnalyticsBalanceMeta.textContent = balanceDelta === "нет базы"
+          ? `было: ${core.formatMoney(data.prev_balance || 0)}`
+          : `к прошлому: ${balanceDelta} · было ${core.formatMoney(data.prev_balance || 0)}`;
       }
     };
 
     const force = options.force === true;
-    const period = state.period || "month";
+    const period = state.dashboardAnalyticsPeriod || "month";
     const granularity = period === "year" ? "month" : period === "all_time" ? "month" : "day";
     const cacheKey = `analytics:preview:period=${period}:granularity=${granularity}`;
     if (!force) {

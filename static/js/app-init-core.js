@@ -164,12 +164,12 @@
     });
 
     el.closePeriodCustomModalBtn.addEventListener("click", () => {
-      state.analyticsSummaryPendingCustom = false;
+      state.analyticsGlobalPendingCustom = false;
       actions.closePeriodCustomModal();
     });
     el.periodCustomModal.addEventListener("click", (event) => {
       if (event.target === el.periodCustomModal) {
-        state.analyticsSummaryPendingCustom = false;
+        state.analyticsGlobalPendingCustom = false;
         actions.closePeriodCustomModal();
       }
     });

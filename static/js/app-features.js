@@ -78,6 +78,7 @@
   const openAnalyticsMonth = analyticsFeatures.openAnalyticsMonth;
   const openOperationsForAnalyticsDate = analyticsFeatures.openOperationsForAnalyticsDate;
   const openOperationsForAnalyticsRange = analyticsFeatures.openOperationsForAnalyticsRange;
+  const openOperationsForAnalyticsCategory = analyticsFeatures.openOperationsForAnalyticsCategory;
   const loadAdminUsers = adminFeatures.loadAdminUsers;
   const setAdminUserStatusFilter = adminFeatures.setAdminUserStatusFilter;
   const approveAdminUser = adminFeatures.approveAdminUser;
@@ -139,6 +140,7 @@
   const refreshAll = operationsFeatures.refreshAll;
   const refreshOperationsView = operationsFeatures.refreshOperationsView;
   const getCurrentOperationItems = operationsFeatures.getCurrentOperationItems;
+  const clearOperationsCategoryFilter = operationsFeatures.clearOperationsCategoryFilter;
   const openOperationReceiptModal = operationsFeatures.openOperationReceiptModal;
   const closeOperationReceiptModal = operationsFeatures.closeOperationReceiptModal;
   const cleanupOperationsRuntime = operationsFeatures.cleanupOperationsRuntime;
@@ -221,6 +223,7 @@
     openAnalyticsMonth,
     openOperationsForAnalyticsDate,
     openOperationsForAnalyticsRange,
+    openOperationsForAnalyticsCategory,
     loadAdminUsers,
     setAdminUserStatusFilter,
     approveAdminUser,
@@ -271,6 +274,7 @@
     closeItemTemplateHistoryModal,
     refreshOperationsView,
     getCurrentOperationItems,
+    clearOperationsCategoryFilter,
     fillGroupSelect: categoryActions.fillGroupSelect,
     setCategoryKind: categoryActions.setCategoryKind,
     renderCreateGroupPicker: categoryActions.renderCreateGroupPicker,

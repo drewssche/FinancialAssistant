@@ -60,34 +60,110 @@
         });
       });
     }
-    if (el.analyticsSummaryPeriodTabs && actions.loadAnalyticsHighlights) {
-      el.analyticsSummaryPeriodTabs.addEventListener("click", (event) => {
-        const btn = event.target.closest("button[data-analytics-summary-period]");
+    if (el.analyticsGlobalPeriodTabs && actions.loadAnalyticsSection) {
+      el.analyticsGlobalPeriodTabs.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-analytics-global-period]");
         if (!btn) {
           return;
         }
-        const selected = btn.dataset.analyticsSummaryPeriod;
+        const selected = btn.dataset.analyticsGlobalPeriod;
         if (selected === "custom") {
-          state.analyticsSummaryPendingCustom = true;
-          el.customDateFrom.value = core.normalizeDateInputValue(state.analyticsSummaryDateFrom || "");
-          el.customDateTo.value = core.normalizeDateInputValue(state.analyticsSummaryDateTo || "");
+          state.analyticsGlobalPendingCustom = true;
+          el.customDateFrom.value = core.normalizeDateInputValue(state.analyticsGlobalDateFrom || "");
+          el.customDateTo.value = core.normalizeDateInputValue(state.analyticsGlobalDateTo || "");
           actions.openPeriodCustomModal();
           return;
         }
-        if (state.analyticsSummaryPeriod === selected) {
+        if (state.analyticsGlobalPeriod === selected) {
           return;
         }
-        state.analyticsSummaryPendingCustom = false;
-        state.analyticsSummaryPeriod = selected;
+        state.analyticsGlobalPendingCustom = false;
+        state.analyticsGlobalPeriod = selected;
         if (selected !== "custom") {
-          state.analyticsSummaryDateFrom = "";
-          state.analyticsSummaryDateTo = "";
+          state.analyticsGlobalDateFrom = "";
+          state.analyticsGlobalDateTo = "";
         }
-        core.syncSegmentedActive(el.analyticsSummaryPeriodTabs, "analytics-summary-period", state.analyticsSummaryPeriod);
+        if ((state.analyticsGlobalPeriod === "year" || state.analyticsGlobalPeriod === "all_time") && state.analyticsGranularity === "day") {
+          state.analyticsGranularity = "week";
+          core.syncSegmentedActive(el.analyticsGranularityTabs, "analytics-granularity", state.analyticsGranularity);
+        }
+        core.syncSegmentedActive(el.analyticsGlobalPeriodTabs, "analytics-global-period", state.analyticsGlobalPeriod);
         core.runAction({
-          errorPrefix: "Ошибка загрузки KPI",
+          errorPrefix: "Ошибка загрузки аналитики",
           action: async () => {
-            await actions.loadAnalyticsHighlights({ force: true });
+            await actions.loadAnalyticsSection({ force: true });
+            await actions.savePreferences();
+          },
+        });
+      });
+    }
+    if (el.dashboardAnalyticsPeriodTabs && actions.loadDashboardAnalyticsPreview) {
+      el.dashboardAnalyticsPeriodTabs.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-dashboard-analytics-period]");
+        if (!btn) {
+          return;
+        }
+        const selected = btn.dataset.dashboardAnalyticsPeriod;
+        if (state.dashboardAnalyticsPeriod === selected) {
+          return;
+        }
+        state.dashboardAnalyticsPeriod = selected;
+        core.syncSegmentedActive(el.dashboardAnalyticsPeriodTabs, "dashboard-analytics-period", state.dashboardAnalyticsPeriod);
+        core.runAction({
+          errorPrefix: "Ошибка загрузки аналитики дашборда",
+          action: async () => {
+            await actions.loadDashboardAnalyticsPreview({ force: true });
+            await actions.savePreferences();
+          },
+        });
+      });
+    }
+    if (el.analyticsCategoryKindTabs && actions.loadAnalyticsSection) {
+      el.analyticsCategoryKindTabs.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-analytics-category-kind]");
+        if (!btn) {
+          return;
+        }
+        const selected = btn.dataset.analyticsCategoryKind;
+        if (state.analyticsCategoryKind === selected) {
+          return;
+        }
+        state.analyticsCategoryKind = selected;
+        core.syncSegmentedActive(el.analyticsCategoryKindTabs, "analytics-category-kind", state.analyticsCategoryKind);
+        core.runAction({
+          errorPrefix: "Ошибка загрузки структуры категорий",
+          action: async () => {
+            await actions.loadAnalyticsSection({ force: true });
+            await actions.savePreferences();
+          },
+        });
+      });
+    }
+    if (el.analyticsGridMonthPicker && actions.setAnalyticsGridMonthAnchor) {
+      el.analyticsGridMonthPicker.addEventListener("change", () => {
+        const nextValue = String(el.analyticsGridMonthPicker.value || "").trim();
+        if (!nextValue) {
+          return;
+        }
+        core.runAction({
+          errorPrefix: "Ошибка загрузки календаря",
+          action: async () => {
+            await actions.setAnalyticsGridMonthAnchor(nextValue);
+            await actions.savePreferences();
+          },
+        });
+      });
+    }
+    if (el.analyticsGridYearPicker && actions.setAnalyticsGridYearAnchor) {
+      el.analyticsGridYearPicker.addEventListener("change", () => {
+        const nextYear = String(el.analyticsGridYearPicker.value || "").trim();
+        if (!nextYear) {
+          return;
+        }
+        core.runAction({
+          errorPrefix: "Ошибка загрузки календаря",
+          action: async () => {
+            await actions.setAnalyticsGridYearAnchor(nextYear);
             await actions.savePreferences();
           },
         });
@@ -144,6 +220,33 @@
         });
       });
     }
+    if (actions.openOperationsForAnalyticsCategory) {
+      const bindCategoryDrilldown = (container) => {
+        if (!container) {
+          return;
+        }
+        container.addEventListener("click", (event) => {
+          const card = event.target.closest("[data-analytics-category-id]");
+          if (!card) {
+            return;
+          }
+          const categoryId = String(card.dataset.analyticsCategoryId || "").trim();
+          if (!categoryId) {
+            return;
+          }
+          core.runAction({
+            errorPrefix: "Ошибка перехода в операции",
+            action: () => actions.openOperationsForAnalyticsCategory(
+              categoryId,
+              card.dataset.analyticsCategoryName || "",
+              card.dataset.analyticsCategoryKind || "",
+            ),
+          });
+        });
+      };
+      bindCategoryDrilldown(el.analyticsCategoryBreakdownList);
+      bindCategoryDrilldown(el.analyticsTopCategoriesList);
+    }
     if (el.analyticsTrendChart && actions.openOperationsForAnalyticsRange) {
       el.analyticsTrendChart.addEventListener("click", (event) => {
         const node = event.target.closest("[data-analytics-bucket-start][data-analytics-bucket-end]");
@@ -169,30 +272,6 @@
         core.runAction({
           errorPrefix: "Ошибка сохранения аналитики",
           action: () => actions.savePreferences(),
-        });
-      });
-    }
-    if (el.analyticsPeriodTabs && actions.loadAnalyticsTrend) {
-      el.analyticsPeriodTabs.addEventListener("click", (event) => {
-        const btn = event.target.closest("button[data-analytics-period]");
-        if (!btn) {
-          return;
-        }
-        if (state.analyticsPeriod === btn.dataset.analyticsPeriod) {
-          return;
-        }
-        state.analyticsPeriod = btn.dataset.analyticsPeriod;
-        if ((state.analyticsPeriod === "year" || state.analyticsPeriod === "all_time") && state.analyticsGranularity === "day") {
-          state.analyticsGranularity = "week";
-          core.syncSegmentedActive(el.analyticsGranularityTabs, "analytics-granularity", state.analyticsGranularity);
-        }
-        core.syncSegmentedActive(el.analyticsPeriodTabs, "analytics-period", state.analyticsPeriod);
-        core.runAction({
-          errorPrefix: "Ошибка загрузки тренда",
-          action: async () => {
-            await actions.loadAnalyticsTrend({ force: true });
-            await actions.savePreferences();
-          },
         });
       });
     }

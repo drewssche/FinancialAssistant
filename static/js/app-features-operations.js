@@ -65,11 +65,27 @@
     if (state.filterKind) {
       params.set("kind", state.filterKind);
     }
+    if (state.operationsCategoryFilterId !== null && state.operationsCategoryFilterId !== undefined && state.operationsCategoryFilterId !== "") {
+      params.set("category_id", String(state.operationsCategoryFilterId));
+    }
     const query = el.filterQ.value.trim();
     if (query) {
       params.set("q", query);
     }
     return params;
+  }
+
+  function renderOperationsActiveFilters() {
+    if (!el.operationsActiveFilters || !el.operationsCategoryFilterChip || !el.clearOperationsCategoryFilterBtn) {
+      return;
+    }
+    const hasCategory = state.operationsCategoryFilterId !== null && state.operationsCategoryFilterId !== undefined && state.operationsCategoryFilterId !== "";
+    el.operationsActiveFilters.classList.toggle("hidden", !hasCategory);
+    el.operationsCategoryFilterChip.classList.toggle("hidden", !hasCategory);
+    el.clearOperationsCategoryFilterBtn.classList.toggle("hidden", !hasCategory);
+    el.operationsCategoryFilterChip.textContent = hasCategory
+      ? `Категория: ${state.operationsCategoryFilterName || `#${state.operationsCategoryFilterId}`}`
+      : "";
   }
 
   function renderPagination() {
@@ -143,6 +159,7 @@
   function renderOperations(items) {
     const sortedItems = applyOperationsSort(items);
     const query = el.filterQ.value.trim();
+    renderOperationsActiveFilters();
     if (el.deleteAllOperationsBtn) {
       el.deleteAllOperationsBtn.disabled = sortedItems.length === 0;
     }
@@ -176,6 +193,7 @@
 
   async function loadOperations(options = {}) {
     await ensureAllTimeBounds();
+    renderOperationsActiveFilters();
     const reset = options.reset !== false;
     const force = options.force === true;
     if (state.operationsLoading && reset && operationsRequestController) {
@@ -234,6 +252,14 @@
 
   async function loadMoreOperations() {
     await loadOperations({ reset: false });
+  }
+
+  async function clearOperationsCategoryFilter() {
+    state.operationsCategoryFilterId = null;
+    state.operationsCategoryFilterName = "";
+    renderOperationsActiveFilters();
+    await loadOperations({ reset: true, force: true });
+    await savePreferences();
   }
   function isSectionVisible(section) {
     return state.activeSection === section;
@@ -540,6 +566,7 @@
     refreshAll,
     refreshOperationsView,
     getCurrentOperationItems,
+    clearOperationsCategoryFilter,
     openOperationReceiptModal,
     closeOperationReceiptModal,
     cleanupOperationsRuntime,

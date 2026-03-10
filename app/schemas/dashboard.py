@@ -134,6 +134,8 @@ class AnalyticsTopPosition(BaseModel):
 class AnalyticsTopCategory(BaseModel):
     category_id: int | None
     category_name: str
+    category_kind: str
+    total_amount: Decimal
     total_expense: Decimal
     share_pct: float
     change_pct: float | None
@@ -159,6 +161,7 @@ class AnalyticsPriceIncrease(BaseModel):
 
 class AnalyticsHighlightsOut(BaseModel):
     period: str
+    category_breakdown_kind: str
     date_from: str
     date_to: str
     month: str
@@ -167,6 +170,10 @@ class AnalyticsHighlightsOut(BaseModel):
     income_total: Decimal
     expense_total: Decimal
     balance: Decimal
+    prev_income_total: Decimal
+    prev_expense_total: Decimal
+    prev_balance: Decimal
+    prev_operations_count: int
     surplus_total: Decimal
     deficit_total: Decimal
     operations_count: int
@@ -177,6 +184,7 @@ class AnalyticsHighlightsOut(BaseModel):
     expense_change_pct: float | None
     balance_change_pct: float | None
     operations_change_pct: float | None
+    category_breakdown: list[AnalyticsTopCategory]
     top_operations: list[AnalyticsTopOperation]
     top_categories: list[AnalyticsTopCategory]
     anomalies: list[AnalyticsOperationAnomaly]

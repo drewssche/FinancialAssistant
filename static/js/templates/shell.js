@@ -66,6 +66,12 @@
         </header>
 
         <section id="dashboardSection" class="section-block">
+          <div class="panel-head">
+            <div>
+              <h3>Ключевые показатели</h3>
+              <p class="subtitle">Суммарно за все время</p>
+            </div>
+          </div>
           <section class="kpi-grid">
             <article class="kpi-card">
               <h3>Доход</h3>
@@ -85,9 +91,17 @@
             <div class="panel-head row between">
               <div>
                 <h3>Аналитика периода</h3>
-                <p class="subtitle">Краткий тренд и динамика к прошлому периоду</p>
+                <p id="dashboardAnalyticsPeriodLabel" class="subtitle">Краткий тренд и динамика к прошлому периоду</p>
               </div>
-              <button id="openAnalyticsTabBtn" class="btn btn-secondary" type="button">Открыть Аналитику</button>
+              <div class="toolbar">
+                <div class="segmented" id="dashboardAnalyticsPeriodTabs" role="tablist" aria-label="Период аналитики дашборда">
+                  <button class="segmented-btn" data-dashboard-analytics-period="day" type="button">Сегодня</button>
+                  <button class="segmented-btn" data-dashboard-analytics-period="week" type="button">Эта неделя</button>
+                  <button class="segmented-btn active" data-dashboard-analytics-period="month" type="button">Этот месяц</button>
+                  <button class="segmented-btn" data-dashboard-analytics-period="year" type="button">Этот год</button>
+                </div>
+                <button id="openAnalyticsTabBtn" class="btn btn-secondary" type="button">Открыть Аналитику</button>
+              </div>
             </div>
             <div class="dashboard-analytics-grid">
               <div id="dashboardAnalyticsChartWrap" class="dashboard-analytics-chart-wrap">
@@ -148,11 +162,11 @@
               </div>
               <div class="panel-controls">
                 <div class="segmented" data-period-tabs role="tablist" aria-label="Период дашборда">
-                  <button class="segmented-btn active" data-period="day" type="button">День</button>
-                  <button class="segmented-btn" data-period="week" type="button">Неделя</button>
-                  <button class="segmented-btn" data-period="month" type="button">Месяц</button>
-                  <button class="segmented-btn" data-period="year" type="button">Год</button>
-                  <button class="segmented-btn" data-period="all_time" type="button">За все время</button>
+                  <button class="segmented-btn active" data-period="day" type="button">Сегодня</button>
+                  <button class="segmented-btn" data-period="week" type="button">Эта неделя</button>
+                  <button class="segmented-btn" data-period="month" type="button">Этот месяц</button>
+                  <button class="segmented-btn" data-period="year" type="button">Этот год</button>
+                  <button class="segmented-btn" data-period="all_time" type="button">Все время</button>
                   <button class="segmented-btn" data-period="custom" type="button">Настроить</button>
                 </div>
                 <button id="openOperationsTabBtn" class="btn btn-secondary" type="button">Открыть раздел Операции</button>
@@ -176,6 +190,24 @@
         </section>
 
         <section id="analyticsSection" class="section-block hidden">
+          <section id="analyticsGlobalScopePanel" class="panel">
+            <div class="panel-head row between">
+              <div>
+                <h3>Период аналитики</h3>
+                <p id="analyticsGlobalRangeLabel" class="subtitle"></p>
+              </div>
+              <div class="toolbar">
+                <div class="segmented" id="analyticsGlobalPeriodTabs" role="tablist" aria-label="Глобальный период аналитики">
+                  <button class="segmented-btn" data-analytics-global-period="week" type="button">Эта неделя</button>
+                  <button class="segmented-btn active" data-analytics-global-period="month" type="button">Этот месяц</button>
+                  <button class="segmented-btn" data-analytics-global-period="year" type="button">Этот год</button>
+                  <button class="segmented-btn" data-analytics-global-period="all_time" type="button">Все время</button>
+                  <button class="segmented-btn" data-analytics-global-period="custom" type="button">Настроить</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
           <section class="panel">
             <div class="segmented" id="analyticsViewTabs" role="tablist" aria-label="Вкладки аналитики">
               <button class="segmented-btn active" data-analytics-tab="overview" type="button">Общий</button>
@@ -191,17 +223,33 @@
                 <h3>Итоги периода</h3>
                 <p id="analyticsSummaryRangeLabel" class="subtitle"></p>
               </div>
-              <div class="toolbar">
-                <div class="segmented" id="analyticsSummaryPeriodTabs" role="tablist" aria-label="Период KPI аналитики">
-                  <button class="segmented-btn" data-analytics-summary-period="week" type="button">Неделя</button>
-                  <button class="segmented-btn active" data-analytics-summary-period="month" type="button">Месяц</button>
-                  <button class="segmented-btn" data-analytics-summary-period="year" type="button">Год</button>
-                  <button class="segmented-btn" data-analytics-summary-period="custom" type="button">Настроить</button>
-                </div>
-              </div>
             </div>
             <div id="analyticsKpiPrimary" class="analytics-kpi-grid"></div>
             <div id="analyticsKpiSecondary" class="analytics-kpi-secondary"></div>
+            <div class="panel-head row between">
+              <div>
+                <h3>Структура по категориям</h3>
+                <p id="analyticsCategoryBreakdownLabel" class="subtitle">Распределение по суммам внутри выбранного периода</p>
+              </div>
+              <div class="toolbar">
+                <div class="segmented" id="analyticsCategoryKindTabs" role="tablist" aria-label="Тип категорий">
+                  <button class="segmented-btn active" data-analytics-category-kind="expense" type="button">Расход</button>
+                  <button class="segmented-btn" data-analytics-category-kind="income" type="button">Доход</button>
+                  <button class="segmented-btn" data-analytics-category-kind="all" type="button">Все</button>
+                </div>
+              </div>
+            </div>
+            <div class="analytics-category-breakdown-grid">
+              <div class="analytics-category-breakdown-chart-card">
+                <div id="analyticsCategoryBreakdownChart" class="analytics-category-donut" aria-hidden="true">
+                  <div class="analytics-category-donut-hole">
+                    <strong id="analyticsCategoryBreakdownChartValue">0</strong>
+                    <span id="analyticsCategoryBreakdownChartMeta" class="muted-small">Нет данных</span>
+                  </div>
+                </div>
+              </div>
+              <div id="analyticsCategoryBreakdownList" class="analytics-insight-list"></div>
+            </div>
           </section>
 
           <section id="analyticsCalendarPanel" class="panel analytics-tab-panel hidden">
@@ -216,6 +264,13 @@
                   <div class="segmented" id="analyticsCalendarViewTabs" role="tablist" aria-label="Вид календарной сетки">
                     <button class="segmented-btn active" data-analytics-calendar-view="month" type="button">Месяц</button>
                     <button class="segmented-btn" data-analytics-calendar-view="year" type="button">Год</button>
+                  </div>
+                </div>
+                <div class="analytics-switch-group">
+                  <span class="muted-small">Выбор периода сетки</span>
+                  <div class="toolbar">
+                    <input id="analyticsGridMonthPicker" class="input compact-input" type="month" />
+                    <input id="analyticsGridYearPicker" class="input compact-input hidden" type="number" min="1970" max="2100" step="1" placeholder="Год" />
                   </div>
                 </div>
                 <div class="analytics-switch-group">
@@ -251,6 +306,7 @@
                       <th>Итог доход</th>
                       <th>Итог расход</th>
                       <th>Операций</th>
+                      <th>Результат</th>
                     </tr>
                   </thead>
                   <tbody id="analyticsCalendarBody"></tbody>
@@ -265,56 +321,88 @@
           <section id="analyticsOperationsPanel" class="panel analytics-tab-panel hidden">
             <div class="panel-head row between">
               <div>
-                <h3>Инсайты по операциям</h3>
-                <p class="subtitle">Крупные траты, категории, аномалии и позиции</p>
+                <h3>Разбор операций</h3>
+                <p class="subtitle">Категории, крупные траты и чековые инсайты за выбранный период</p>
               </div>
             </div>
-            <div class="analytics-positions-grid">
-              <div>
-                <div class="panel-head row between">
+            <div class="analytics-operations-layout">
+              <section class="analytics-operations-group">
+                <div class="panel-head">
                   <div>
-                    <h3>Тяжелые операции</h3>
-                    <p class="subtitle">Топ-5 расходов периода</p>
+                    <h3>Категории</h3>
+                    <p class="subtitle">Главная структура периода по сумме и числу операций</p>
                   </div>
                 </div>
-                <div id="analyticsTopOperationsList" class="analytics-insight-list"></div>
-              </div>
-              <div>
-                <div class="panel-head row between">
+                <div class="analytics-positions-grid">
                   <div>
-                    <h3>Категории расходов</h3>
-                    <p class="subtitle">Топ-5 с долей в расходах</p>
+                    <div class="panel-head row between">
+                      <div>
+                        <h3 id="analyticsTopCategoriesTitle">Категории периода</h3>
+                        <p id="analyticsTopCategoriesSubtitle" class="subtitle">Топ-5 с долей в структуре</p>
+                      </div>
+                    </div>
+                    <div id="analyticsTopCategoriesList" class="analytics-insight-list"></div>
                   </div>
                 </div>
-                <div id="analyticsTopCategoriesList" class="analytics-insight-list"></div>
-              </div>
-              <div>
-                <div class="panel-head row between">
+              </section>
+
+              <section class="analytics-operations-group">
+                <div class="panel-head">
                   <div>
-                    <h3>Аномалии чеков</h3>
-                    <p class="subtitle">Нетипично высокие расходы</p>
+                    <h3>Крупные операции</h3>
+                    <p class="subtitle">Самые большие траты и аномальные расходы</p>
                   </div>
                 </div>
-                <div id="analyticsAnomaliesList" class="analytics-insight-list"></div>
-              </div>
-              <div>
-                <div class="panel-head row between">
+                <div class="analytics-positions-grid">
                   <div>
-                    <h3>Дорогие позиции</h3>
-                    <p class="subtitle">Топ-10 по цене и общим тратам</p>
+                    <div class="panel-head row between">
+                      <div>
+                        <h3>Тяжелые операции</h3>
+                        <p class="subtitle">Топ-5 расходов периода</p>
+                      </div>
+                    </div>
+                    <div id="analyticsTopOperationsList" class="analytics-insight-list"></div>
+                  </div>
+                  <div>
+                    <div class="panel-head row between">
+                      <div>
+                        <h3>Аномалии чеков</h3>
+                        <p class="subtitle">Нетипично высокие расходы</p>
+                      </div>
+                    </div>
+                    <div id="analyticsAnomaliesList" class="analytics-insight-list"></div>
                   </div>
                 </div>
-                <div id="analyticsTopPositionsList" class="analytics-insight-list"></div>
-              </div>
-              <div>
-                <div class="panel-head row between">
+              </section>
+
+              <section class="analytics-operations-group">
+                <div class="panel-head">
                   <div>
-                    <h3>Подорожания позиций</h3>
-                    <p class="subtitle">Что выросло к прошлому периоду</p>
+                    <h3>Позиции из чеков</h3>
+                    <p class="subtitle">Что дороже всего и что заметно подорожало</p>
                   </div>
                 </div>
-                <div id="analyticsPriceIncreasesList" class="analytics-insight-list"></div>
-              </div>
+                <div class="analytics-positions-grid">
+                  <div>
+                    <div class="panel-head row between">
+                      <div>
+                        <h3>Дорогие позиции</h3>
+                        <p class="subtitle">Топ-10 по цене и общим тратам</p>
+                      </div>
+                    </div>
+                    <div id="analyticsTopPositionsList" class="analytics-insight-list"></div>
+                  </div>
+                  <div>
+                    <div class="panel-head row between">
+                      <div>
+                        <h3>Подорожания позиций</h3>
+                        <p class="subtitle">Что выросло к прошлому периоду</p>
+                      </div>
+                    </div>
+                    <div id="analyticsPriceIncreasesList" class="analytics-insight-list"></div>
+                  </div>
+                </div>
+              </section>
             </div>
           </section>
 
@@ -326,20 +414,11 @@
               </div>
               <div class="toolbar">
                 <div class="analytics-switch-group">
-                  <span class="muted-small">Окно</span>
-                  <div class="segmented" id="analyticsPeriodTabs" role="tablist" aria-label="Окно анализа">
-                    <button class="segmented-btn" data-analytics-period="week" type="button">Неделя</button>
-                    <button class="segmented-btn active" data-analytics-period="month" type="button">Месяц</button>
-                    <button class="segmented-btn" data-analytics-period="year" type="button">Год</button>
-                    <button class="segmented-btn" data-analytics-period="all_time" type="button">За все</button>
-                  </div>
-                </div>
-                <div class="analytics-switch-group">
                   <span class="muted-small">Шаг</span>
                   <div class="segmented" id="analyticsGranularityTabs" role="tablist" aria-label="Шаг графика">
-                    <button class="segmented-btn active" data-analytics-granularity="day" type="button">День</button>
-                    <button class="segmented-btn" data-analytics-granularity="week" type="button">Неделя</button>
-                    <button class="segmented-btn" data-analytics-granularity="month" type="button">Месяц</button>
+                    <button class="segmented-btn active" data-analytics-granularity="day" type="button">По дням</button>
+                    <button class="segmented-btn" data-analytics-granularity="week" type="button">По неделям</button>
+                    <button class="segmented-btn" data-analytics-granularity="month" type="button">По месяцам</button>
                   </div>
                 </div>
               </div>
@@ -366,14 +445,18 @@
             <div class="panel-head row between">
               <div>
                 <p id="operationsPeriodLabel" class="subtitle"></p>
+                <div id="operationsActiveFilters" class="analytics-kpi-secondary hidden">
+                  <span id="operationsCategoryFilterChip" class="analytics-kpi-chip analytics-kpi-chip-neutral hidden"></span>
+                  <button id="clearOperationsCategoryFilterBtn" class="btn btn-secondary hidden" type="button">Сбросить фильтр</button>
+                </div>
               </div>
               <div class="toolbar">
                 <div class="segmented" data-period-tabs role="tablist" aria-label="Период операций">
-                  <button class="segmented-btn active" data-period="day" type="button">День</button>
-                  <button class="segmented-btn" data-period="week" type="button">Неделя</button>
-                  <button class="segmented-btn" data-period="month" type="button">Месяц</button>
-                  <button class="segmented-btn" data-period="year" type="button">Год</button>
-                  <button class="segmented-btn" data-period="all_time" type="button">За все время</button>
+                  <button class="segmented-btn active" data-period="day" type="button">Сегодня</button>
+                  <button class="segmented-btn" data-period="week" type="button">Эта неделя</button>
+                  <button class="segmented-btn" data-period="month" type="button">Этот месяц</button>
+                  <button class="segmented-btn" data-period="year" type="button">Этот год</button>
+                  <button class="segmented-btn" data-period="all_time" type="button">Все время</button>
                   <button class="segmented-btn" data-period="custom" type="button">Настроить</button>
                 </div>
                 <div class="segmented" id="kindFilters" role="tablist" aria-label="Фильтр по типу">

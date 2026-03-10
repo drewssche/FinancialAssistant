@@ -149,6 +149,7 @@ def page_with_analytics_api_mock(page):
     def highlights_payload(month: str) -> dict:
         return {
             "period": "month",
+            "category_breakdown_kind": "expense",
             "date_from": f"{month}-01",
             "date_to": f"{month}-31",
             "month": month,
@@ -157,6 +158,10 @@ def page_with_analytics_api_mock(page):
             "income_total": "1840.00",
             "expense_total": "1210.00",
             "balance": "630.00",
+            "prev_income_total": "1700.00",
+            "prev_expense_total": "1247.00",
+            "prev_balance": "453.00",
+            "prev_operations_count": 16,
             "operations_count": 18,
             "avg_daily_expense": "39.03",
             "max_expense_day_date": f"{month}-14",
@@ -165,11 +170,32 @@ def page_with_analytics_api_mock(page):
             "expense_change_pct": -3.0,
             "balance_change_pct": 15.0,
             "operations_change_pct": 5.0,
+            "category_breakdown": [
+                {
+                    "category_id": 1,
+                    "category_name": "Еда",
+                    "category_kind": "expense",
+                    "total_amount": "540.00",
+                    "total_expense": "540.00",
+                    "share_pct": 44.6,
+                    "operations_count": 6,
+                    "change_pct": 12.0,
+                }
+            ],
             "top_operations": [
                 {"amount": "250.00", "operation_date": f"{month}-14", "kind": "expense", "note": "Крупная покупка"}
             ],
             "top_categories": [
-                {"category_name": "Еда", "total_expense": "540.00", "share_pct": 44.6, "operations_count": 6, "change_pct": 12.0}
+                {
+                    "category_id": 1,
+                    "category_name": "Еда",
+                    "category_kind": "expense",
+                    "total_amount": "540.00",
+                    "total_expense": "540.00",
+                    "share_pct": 44.6,
+                    "operations_count": 6,
+                    "change_pct": 12.0,
+                }
             ],
             "anomalies": [
                 {"amount": "250.00", "operation_date": f"{month}-14", "category_name": "Еда", "ratio_to_median": 2.8, "note": "Аномалия"}

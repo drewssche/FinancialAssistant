@@ -402,6 +402,7 @@ def test_dashboard_analytics_highlights_returns_kpis_and_top_blocks(client: Test
     payload = response.json()
 
     assert payload["period"] == "month"
+    assert payload["category_breakdown_kind"] == "expense"
     assert payload["date_from"] == "2026-03-01"
     assert payload["date_to"] == "2026-03-31"
     assert payload["month"] == "2026-03"
@@ -416,7 +417,63 @@ def test_dashboard_analytics_highlights_returns_kpis_and_top_blocks(client: Test
     assert payload["top_operations"][0]["amount"] == "120.00"
     assert len(payload["top_categories"]) == 1
     assert payload["top_categories"][0]["total_expense"] == "120.00"
+    assert payload["category_breakdown"][0]["total_amount"] == "120.00"
     assert len(payload["anomalies"]) == 0
     assert len(payload["top_positions"]) >= 2
     assert payload["top_positions"][0]["name"] == "Steak"
     assert any(item["name"] == "Milk" for item in payload["price_increases"])
+
+
+def test_dashboard_analytics_highlights_category_breakdown_respects_kind_filter(client: TestClient):
+    food = client.post(
+        "/api/v1/categories",
+        json={"name": "Еда", "kind": "expense"},
+    )
+    salary = client.post(
+        "/api/v1/categories",
+        json={"name": "Зарплата", "kind": "income"},
+    )
+    assert food.status_code == 200
+    assert salary.status_code == 200
+
+    expense = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "category_id": food.json()["id"],
+            "amount": "120.00",
+            "operation_date": "2026-03-10",
+        },
+    )
+    income = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "category_id": salary.json()["id"],
+            "amount": "300.00",
+            "operation_date": "2026-03-11",
+        },
+    )
+    assert expense.status_code == 201
+    assert income.status_code == 201
+
+    income_breakdown = client.get(
+        "/api/v1/dashboard/analytics/highlights",
+        params={"month": "2026-03", "category_kind": "income"},
+    )
+    assert income_breakdown.status_code == 200
+    income_payload = income_breakdown.json()
+    assert income_payload["category_breakdown_kind"] == "income"
+    assert len(income_payload["category_breakdown"]) == 1
+    assert income_payload["category_breakdown"][0]["category_name"] == "Зарплата"
+    assert income_payload["category_breakdown"][0]["total_amount"] == "300.00"
+
+    all_breakdown = client.get(
+        "/api/v1/dashboard/analytics/highlights",
+        params={"month": "2026-03", "category_kind": "all"},
+    )
+    assert all_breakdown.status_code == 200
+    all_payload = all_breakdown.json()
+    assert all_payload["category_breakdown_kind"] == "all"
+    assert len(all_payload["category_breakdown"]) == 2
+    assert {item["category_name"] for item in all_payload["category_breakdown"]} == {"Еда", "Зарплата"}

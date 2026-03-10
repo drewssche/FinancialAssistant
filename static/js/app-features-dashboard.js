@@ -48,9 +48,9 @@
     if (window.App.actions.ensureAllTimeBounds) {
       await window.App.actions.ensureAllTimeBounds();
     }
-    const { dateFrom, dateTo } = core.getPeriodBounds(state.period);
+    const { dateFrom, dateTo } = core.getPeriodBounds("all_time");
     const params = new URLSearchParams();
-    params.set("period", state.period);
+    params.set("period", "all_time");
     params.set("date_from", dateFrom);
     params.set("date_to", dateTo);
 
