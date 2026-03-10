@@ -382,6 +382,80 @@ def test_operation_item_template_create_without_price_or_source(client: TestClie
     assert payload["latest_unit_price"] is None
 
 
+def test_operation_item_template_create_reactivates_archived_duplicate(client: TestClient):
+    created = client.post(
+        "/api/v1/operations/item-templates",
+        json={
+            "shop_name": "Легаси",
+            "name": "Ротманс",
+            "latest_unit_price": "9.40",
+        },
+    )
+    assert created.status_code == 201
+    template_id = created.json()["id"]
+
+    deleted = client.delete(f"/api/v1/operations/item-templates/{template_id}")
+    assert deleted.status_code == 204
+
+    recreated = client.post(
+        "/api/v1/operations/item-templates",
+        json={
+            "shop_name": "Легаси",
+            "name": "Ротманс",
+            "latest_unit_price": "9.50",
+        },
+    )
+    assert recreated.status_code == 201
+    payload = recreated.json()
+    assert payload["id"] == template_id
+    assert payload["shop_name"] == "Легаси"
+    assert payload["name"] == "Ротманс"
+    assert payload["latest_unit_price"] == "9.50"
+
+    templates = client.get("/api/v1/operations/item-templates", params={"page": 1, "page_size": 20, "q": "Ротманс"})
+    assert templates.status_code == 200
+    list_payload = templates.json()
+    assert list_payload["total"] == 1
+    assert list_payload["items"][0]["id"] == template_id
+
+
+def test_operation_receipt_item_template_reactivates_archived_duplicate(client: TestClient):
+    created = client.post(
+        "/api/v1/operations/item-templates",
+        json={
+            "shop_name": "Легаси",
+            "name": "Ротманс",
+            "latest_unit_price": "9.40",
+        },
+    )
+    assert created.status_code == 201
+    template_id = created.json()["id"]
+
+    deleted = client.delete(f"/api/v1/operations/item-templates/{template_id}")
+    assert deleted.status_code == 204
+
+    operation = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "9.50",
+            "operation_date": "2026-03-07",
+            "receipt_items": [
+                {"shop_name": "Легаси", "name": "Ротманс", "quantity": "1", "unit_price": "9.50"},
+            ],
+        },
+    )
+    assert operation.status_code == 201
+
+    templates = client.get("/api/v1/operations/item-templates", params={"page": 1, "page_size": 20, "q": "Ротманс"})
+    assert templates.status_code == 200
+    list_payload = templates.json()
+    assert list_payload["total"] == 1
+    assert list_payload["items"][0]["id"] == template_id
+    assert list_payload["items"][0]["shop_name"] == "Легаси"
+    assert list_payload["items"][0]["latest_unit_price"] == "9.50"
+
+
 def test_operation_item_templates_delete_all(client: TestClient):
     one = client.post(
         "/api/v1/operations/item-templates",

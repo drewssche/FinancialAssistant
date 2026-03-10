@@ -98,8 +98,9 @@
         return acc + qty * price;
       }, 0);
       const amountRaw = document.getElementById("opAmount").value;
-      const amountResolved = String(amountRaw || "").trim()
-        ? amountRaw
+      const parsedAmount = core.resolveMoneyInput(amountRaw);
+      const amountResolved = !parsedAmount.empty && parsedAmount.valid
+        ? parsedAmount.value
         : (el.opReceiptEnabled?.checked && receiptTotal > 0 ? receiptTotal : 0);
       const noteRaw = document.getElementById("opNote").value || "";
       const operationDate = core.parseDateInputValue(document.getElementById("opDate").value) || core.getTodayIso();
@@ -115,12 +116,13 @@
 
     function getEditFormPreviewItem() {
       const operationDate = core.parseDateInputValue(document.getElementById("editDate").value) || core.getTodayIso();
+      const amountResolved = core.resolveMoneyInput(document.getElementById("editAmount").value);
       return {
         id: state.editOperationId || 0,
         operation_date: operationDate,
         kind: el.editKind.value || "expense",
         category_id: el.editCategory.value ? Number(el.editCategory.value) : null,
-        amount: core.formatAmount(document.getElementById("editAmount").value),
+        amount: amountResolved.formatted,
         note: document.getElementById("editNote").value || "",
       };
     }
@@ -135,7 +137,7 @@
         const debtDate = core.parseDateInputValue(el.debtStartDate.value) || core.getTodayIso();
         const debtDueDate = core.parseDateInputValue(el.debtDueDate.value) || "";
         const debtCounterparty = (el.debtCounterparty.value || "").trim();
-        const debtPrincipal = core.formatMoney(el.debtPrincipal.value || 0);
+        const debtPrincipal = core.formatMoney(core.resolveMoneyInput(el.debtPrincipal.value || 0).value);
         const debtNote = (el.debtNote.value || "").trim();
         row.classList.add("preview-row", `kind-row-${directionClass}`);
         row.appendChild(createPreviewCellButton("Дата", core.formatDateRu(debtDate), "debtStartDate"));

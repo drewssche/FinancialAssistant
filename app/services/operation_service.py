@@ -213,6 +213,7 @@ class OperationService:
             user_id=user_id,
             name_ci=name_ci,
             shop_name_ci=shop_name_ci,
+            include_archived=True,
         )
         item = existing
         if not item:
@@ -225,6 +226,7 @@ class OperationService:
                 last_category_id=None,
             )
         else:
+            item.is_archived = False
             if item.shop_name != normalized_shop:
                 item.shop_name = normalized_shop
                 item.shop_name_ci = shop_name_ci
@@ -266,6 +268,7 @@ class OperationService:
             user_id=user_id,
             name_ci=name_ci,
             shop_name_ci=shop_name_ci,
+            include_archived=True,
         )
         if duplicate and int(duplicate.id) != int(item.id):
             raise ValueError("Template with same source and name already exists")
@@ -326,6 +329,7 @@ class OperationService:
         existing_templates = self.repo.list_item_templates_for_names_ci(
             user_id=user_id,
             names_ci=[name_ci for name_ci, _ in key_order],
+            include_archived=True,
         )
         template_by_key: dict[tuple[str, str | None], object] = {}
         for template in existing_templates:
@@ -369,6 +373,7 @@ class OperationService:
             template = template_by_key.get((name_ci, shop_name_ci))
             if not template:
                 continue
+            template.is_archived = False
             if template.name != name:
                 template.name = name
             if template.shop_name != shop_name:

@@ -186,18 +186,21 @@ class OperationRepository:
         user_id: int,
         name_ci: str,
         shop_name_ci: str | None,
+        include_archived: bool = False,
     ) -> OperationItemTemplate | None:
         shop_condition = (
             OperationItemTemplate.shop_name_ci.is_(None)
             if shop_name_ci is None
             else OperationItemTemplate.shop_name_ci == shop_name_ci
         )
-        stmt = select(OperationItemTemplate).where(
+        conditions = [
             OperationItemTemplate.user_id == user_id,
             OperationItemTemplate.name_ci == name_ci,
             shop_condition,
-            OperationItemTemplate.is_archived.is_(False),
-        )
+        ]
+        if not include_archived:
+            conditions.append(OperationItemTemplate.is_archived.is_(False))
+        stmt = select(OperationItemTemplate).where(*conditions)
         return self.db.scalar(stmt)
 
     def create_item_template(
@@ -280,14 +283,17 @@ class OperationRepository:
         *,
         user_id: int,
         names_ci: list[str],
+        include_archived: bool = False,
     ) -> list[OperationItemTemplate]:
         if not names_ci:
             return []
-        stmt = select(OperationItemTemplate).where(
+        conditions = [
             OperationItemTemplate.user_id == user_id,
-            OperationItemTemplate.is_archived.is_(False),
             OperationItemTemplate.name_ci.in_(names_ci),
-        )
+        ]
+        if not include_archived:
+            conditions.append(OperationItemTemplate.is_archived.is_(False))
+        stmt = select(OperationItemTemplate).where(*conditions)
         return list(self.db.scalars(stmt))
 
     def list_item_templates(

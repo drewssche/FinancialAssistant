@@ -286,10 +286,15 @@
         core.setStatus("Проверь срок долга");
         return;
       }
+      const principal = core.resolveMoneyInput(el.debtPrincipal.value);
+      if (!principal.valid || principal.value <= 0) {
+        core.setStatus("Проверь сумму долга");
+        return;
+      }
       const payload = {
         counterparty: el.debtCounterparty.value.trim(),
         direction: el.debtDirection.value,
-        principal: el.debtPrincipal.value,
+        principal: principal.formatted,
         start_date: startDate,
         due_date: dueDate || null,
         note: el.debtNote.value.trim() || null,
@@ -312,10 +317,15 @@
       core.setStatus("Проверь дату операции");
       return;
     }
+    const amount = core.resolveMoneyInput(document.getElementById("opAmount").value);
+    if (!amount.valid || amount.value <= 0) {
+      core.setStatus("Проверь сумму операции");
+      return;
+    }
     const payload = {
       kind: el.opKind.value,
       category_id: el.opCategory.value ? Number(el.opCategory.value) : null,
-      amount: String(document.getElementById("opAmount").value || "").trim() || null,
+      amount: amount.formatted,
       operation_date: operationDate,
       note: document.getElementById("opNote").value,
       receipt_items: getCreateReceiptPayload ? getCreateReceiptPayload() : [],
@@ -351,10 +361,15 @@
       core.setStatus("Проверь дату операции");
       return;
     }
+    const amount = core.resolveMoneyInput(document.getElementById("editAmount").value);
+    if (!amount.valid || amount.value <= 0) {
+      core.setStatus("Проверь сумму операции");
+      return;
+    }
     const payload = {
       kind: el.editKind.value,
       category_id: el.editCategory.value ? Number(el.editCategory.value) : null,
-      amount: document.getElementById("editAmount").value,
+      amount: amount.formatted,
       operation_date: operationDate,
       note: document.getElementById("editNote").value,
       receipt_items: getEditReceiptPayload ? getEditReceiptPayload() : [],

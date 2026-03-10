@@ -598,6 +598,14 @@
     return getCoreUtils().formatMoney(state, value, options);
   }
 
+  function evaluateMathExpression(value) {
+    return getCoreUtils().evaluateMathExpression(value);
+  }
+
+  function resolveMoneyInput(value, fallback = 0) {
+    return getCoreUtils().resolveMoneyInput(value, fallback);
+  }
+
   function applyUiScale(scalePercent) {
     getCoreUtils().applyUiScale(el, scalePercent);
   }
@@ -662,6 +670,8 @@
       syncAllPeriodTabs,
       formatAmount,
       formatMoney,
+      evaluateMathExpression,
+      resolveMoneyInput,
       formatDateRu,
       parseDateInputValue,
       normalizeDateInputValue,

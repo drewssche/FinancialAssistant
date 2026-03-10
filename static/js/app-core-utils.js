@@ -15,6 +15,160 @@
     return num.toFixed(2);
   }
 
+  function evaluateMathExpression(value) {
+    const raw = String(value || "").trim();
+    if (!raw) {
+      return { ok: false, value: 0, expression: "", reason: "empty" };
+    }
+    const expression = raw
+      .replace(/\s+/g, "")
+      .replace(/,/g, ".");
+    if (!expression) {
+      return { ok: false, value: 0, expression: "", reason: "empty" };
+    }
+    if (/[^0-9+\-*/().]/.test(expression)) {
+      return { ok: false, value: 0, expression, reason: "invalid_char" };
+    }
+
+    let index = 0;
+
+    function skipUnary() {
+      while (expression[index] === "+") {
+        index += 1;
+      }
+    }
+
+    function parseNumber() {
+      const start = index;
+      let sawDigit = false;
+      let sawDot = false;
+      while (index < expression.length) {
+        const ch = expression[index];
+        if (ch >= "0" && ch <= "9") {
+          sawDigit = true;
+          index += 1;
+          continue;
+        }
+        if (ch === "." && !sawDot) {
+          sawDot = true;
+          index += 1;
+          continue;
+        }
+        break;
+      }
+      if (!sawDigit) {
+        throw new Error("Expected number");
+      }
+      const token = expression.slice(start, index);
+      const num = Number(token);
+      if (!Number.isFinite(num)) {
+        throw new Error("Invalid number");
+      }
+      return num;
+    }
+
+    function parseFactor() {
+      skipUnary();
+      if (expression[index] === "-") {
+        index += 1;
+        return -parseFactor();
+      }
+      if (expression[index] === "(") {
+        index += 1;
+        const nested = parseExpression();
+        if (expression[index] !== ")") {
+          throw new Error("Unclosed parenthesis");
+        }
+        index += 1;
+        return nested;
+      }
+      return parseNumber();
+    }
+
+    function parseTerm() {
+      let left = parseFactor();
+      while (index < expression.length) {
+        const op = expression[index];
+        if (op !== "*" && op !== "/") {
+          break;
+        }
+        index += 1;
+        const right = parseFactor();
+        if (op === "*") {
+          left *= right;
+        } else {
+          if (Math.abs(right) < Number.EPSILON) {
+            throw new Error("Division by zero");
+          }
+          left /= right;
+        }
+      }
+      return left;
+    }
+
+    function parseExpression() {
+      let left = parseTerm();
+      while (index < expression.length) {
+        const op = expression[index];
+        if (op !== "+" && op !== "-") {
+          break;
+        }
+        index += 1;
+        const right = parseTerm();
+        if (op === "+") {
+          left += right;
+        } else {
+          left -= right;
+        }
+      }
+      return left;
+    }
+
+    try {
+      const result = parseExpression();
+      if (index !== expression.length) {
+        return { ok: false, value: 0, expression, reason: "trailing_token" };
+      }
+      const rounded = Math.round(result * 100) / 100;
+      if (!Number.isFinite(rounded)) {
+        return { ok: false, value: 0, expression, reason: "non_finite" };
+      }
+      return { ok: true, value: rounded, expression, reason: "" };
+    } catch {
+      return { ok: false, value: 0, expression, reason: "parse_error" };
+    }
+  }
+
+  function resolveMoneyInput(value, fallback = 0) {
+    const raw = String(value || "").trim();
+    if (!raw) {
+      return {
+        raw,
+        empty: true,
+        valid: false,
+        value: Number(fallback) || 0,
+        formatted: formatAmount(fallback),
+      };
+    }
+    const evaluated = evaluateMathExpression(raw);
+    if (!evaluated.ok) {
+      return {
+        raw,
+        empty: false,
+        valid: false,
+        value: Number(fallback) || 0,
+        formatted: formatAmount(fallback),
+      };
+    }
+    return {
+      raw,
+      empty: false,
+      valid: true,
+      value: evaluated.value,
+      formatted: formatAmount(evaluated.value),
+    };
+  }
+
   function getUiSettings(state) {
     const ui = state.preferences?.data?.ui || {};
     const scale = Number(ui.scale_percent || 100);
@@ -271,6 +425,8 @@
 
   window.App.coreUtils = {
     formatAmount,
+    evaluateMathExpression,
+    resolveMoneyInput,
     getUiSettings,
     resolveCurrencyConfig,
     getCurrencyConfig,

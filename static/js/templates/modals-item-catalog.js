@@ -23,7 +23,7 @@
           </div>
           <input id="itemTemplateName" type="text" placeholder="Позиция" required />
           <div class="money-input-wrap" data-money-input-wrap>
-            <input id="itemTemplatePrice" data-money-input type="number" step="0.01" placeholder="Последняя цена (опционально)" />
+            <input id="itemTemplatePrice" data-money-input type="text" inputmode="decimal" placeholder="Последняя цена или выражение" title="Можно вводить выражения: 1000+250/2" />
           </div>
         </form>
         <div class="preview-panel">

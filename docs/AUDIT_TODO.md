@@ -242,6 +242,58 @@
 - item catalog bulk import added with preview/validation:
 - format `source;name;price`
 - source auto-creates on import path
+
+13. Section coherence and analytics UX review (2026-03-08)
+- Status: planned
+- Goal:
+- align sections with the job users expect from them, reduce control inconsistency, and make "what changed because of this toggle" immediately obvious
+- Key findings:
+- analytics currently has useful lists (`top categories`, `top operations`, `anomalies`, `positions`), but category spend structure is only textual; for share-of-spend questions users expect visual distribution first
+- analytics period controls are split into multiple local switch groups (`summary period`, `calendar view`, `trend window`, `trend step`) and are not always aligned with dashboard/operations period model
+- dashboard and operations reuse shared period tabs including `all_time`, while analytics overview period lacks `all_time`; this breaks mental consistency
+- some controls are spatially detached from the content they affect, especially in analytics where a switch can sit in panel header while changed data is rendered farther below
+- terminology and tab semantics in analytics are not fully intuitive:
+- `Общий` is really "KPI summary"
+- `Операции` is really "Insights / structure / anomalies / positions"
+- `Тренды` is the only place where time-series controls include `all_time`
+- Recommendations:
+- add category distribution chart to analytics:
+- default candidate: donut / ring chart for expense share by category
+- place it in analytics section near `Категории расходов`, not as separate detached widget
+- add local switchers for chart mode:
+- `Расходы / Доходы / Нетто`
+- `Топ-5 / Топ-10 / Все прочие`
+- optional second switch: `Сумма / Доля`
+- unify period language across dashboard, operations, analytics summary and trends:
+- same canonical set where semantically valid: `День / Неделя / Месяц / Год / За все время / Настроить`
+- if a section intentionally does not support one option, explain it by section logic instead of silently diverging
+- bring controls physically closer to the data they mutate:
+- each analytics block should own its local switch row directly above the changed chart/list/grid
+- avoid one header control updating multiple distant sub-blocks unless it is clearly labeled as global-for-tab
+- reconsider analytics IA:
+- rename `Общий` -> `Сводка`
+- rename `Операции` -> `Структура` or `Разбор`
+- keep `Календарь`
+- keep `Тренды`
+- this makes tabs task-oriented rather than implementation-oriented
+- split analytics `Операции` content into clearer sub-blocks:
+- category structure
+- heavy operations
+- anomalies
+- positions / price changes
+- prefer one dominant visual per block before auxiliary text lists
+- audit all segmented controls for reuse opportunities:
+- period tabs should be one shared pattern and order everywhere
+- sort/status/type segmented controls should keep consistent label length and information density
+- avoid introducing special-case analytics switch styling when shared segmented component is already sufficient
+- add "scope label" or microcopy where one control affects a non-obvious block:
+- example: `Период сводки`, `Окно тренда`, `Вид календаря`
+- remove or simplify controls whose impact is too indirect or low-value
+- Candidate implementation order:
+- 1. category distribution chart + local switches in analytics
+- 2. analytics tab rename/reframing
+- 3. period-control unification across dashboard/operations/analytics
+- 4. control-to-data locality cleanup in analytics panels
 - duplicate rows inside one import batch are skipped
 - result summary is shown after import for all three bulk flows
 - Added e2e regression:

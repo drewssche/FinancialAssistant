@@ -34,7 +34,7 @@
             </div>
           </div>
           <div id="opAmountField" class="money-input-wrap" data-money-input-wrap>
-            <input id="opAmount" data-money-input type="number" step="0.01" placeholder="Сумма" required />
+            <input id="opAmount" data-money-input type="text" inputmode="decimal" placeholder="Сумма или выражение" title="Можно вводить выражения: 1000+250/2" required />
           </div>
           <input id="opNote" class="create-note-field" type="text" placeholder="Комментарий" />
 
@@ -62,7 +62,7 @@
             <input id="debtDirection" type="hidden" value="lend" />
             <input id="debtCounterparty" type="text" placeholder="Имя контрагента" />
             <div id="debtPrincipalField" class="money-input-wrap" data-money-input-wrap>
-              <input id="debtPrincipal" data-money-input type="number" step="0.01" placeholder="Сумма" />
+              <input id="debtPrincipal" data-money-input type="text" inputmode="decimal" placeholder="Сумма или выражение" title="Можно вводить выражения: 1000+250/2" />
             </div>
             <div class="debt-due-field">
               <input id="debtDueDate" type="text" inputmode="numeric" placeholder="ДД.ММ.ГГГГ" />
@@ -249,7 +249,7 @@
             </div>
           </div>
           <div id="editAmountField" class="money-input-wrap" data-money-input-wrap>
-            <input id="editAmount" data-money-input type="number" step="0.01" required />
+            <input id="editAmount" data-money-input type="text" inputmode="decimal" placeholder="Сумма или выражение" title="Можно вводить выражения: 1000+250/2" required />
           </div>
           <input id="editNote" class="create-note-field" type="text" placeholder="Комментарий" />
 
@@ -486,7 +486,7 @@
             <button class="btn btn-secondary btn-xs" type="button" data-repayment-preset="1">Весь остаток</button>
           </div>
           <div id="repaymentAmountField" class="money-input-wrap" data-money-input-wrap>
-            <input id="repaymentAmount" data-money-input type="number" step="0.01" placeholder="Сумма погашения" required />
+            <input id="repaymentAmount" data-money-input type="text" inputmode="decimal" placeholder="Сумма погашения или выражение" title="Можно вводить выражения: 1000+250/2" required />
           </div>
           <div class="repayment-delta-box">
             <div class="muted-small">До: <span id="repaymentBeforeValue">0.00</span></div>

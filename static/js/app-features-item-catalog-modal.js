@@ -84,8 +84,8 @@
       }
       const source = normalizeItemCatalogShopName(el.itemTemplateSource?.value || el.itemTemplateSourceSearch?.value || "") || "Без источника";
       const name = String(el.itemTemplateName?.value || "").trim() || "—";
-      const price = Number(el.itemTemplatePrice?.value || 0);
-      const validPrice = Number.isFinite(price) && price > 0 ? price : 0;
+      const parsedPrice = core.resolveMoneyInput(el.itemTemplatePrice?.value || 0);
+      const validPrice = parsedPrice.valid && parsedPrice.value > 0 ? parsedPrice.value : 0;
       el.itemTemplatePreviewBody.innerHTML = `
         <tr class="preview-row">
           <td>${escapeHtml(source)}</td>
@@ -104,7 +104,12 @@
       };
       const priceRaw = String(el.itemTemplatePrice?.value || "").trim();
       if (priceRaw) {
-        payload.latest_unit_price = priceRaw;
+        const price = core.resolveMoneyInput(priceRaw);
+        if (!price.valid || price.value <= 0) {
+          core.setStatus("Проверь цену позиции");
+          return;
+        }
+        payload.latest_unit_price = price.formatted;
       }
       if (!payload.name) {
         core.setStatus("Введите название позиции");

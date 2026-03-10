@@ -200,11 +200,10 @@
       }
       const total = getReceiptTotal(mode);
       ctx.totalNode.textContent = core.formatMoney(total);
-      const amount = asMoney(ctx.amountNode?.value || 0);
-      const hasAmount = String(ctx.amountNode?.value || "").trim() !== "";
-      const diff = hasAmount ? asMoney(amount - total) : 0;
+      const resolvedAmount = core.resolveMoneyInput(ctx.amountNode?.value || 0);
+      const diff = resolvedAmount.valid ? asMoney(resolvedAmount.value - total) : 0;
       ctx.diffNode.textContent = core.formatMoney(diff, { withCurrency: false });
-      ctx.diffNode.classList.toggle("receipt-diff-warn", Math.abs(diff) >= 0.01);
+      ctx.diffNode.classList.toggle("receipt-diff-warn", resolvedAmount.valid && Math.abs(diff) >= 0.01);
     }
 
     function removeReceiptItem(draftId, mode = "create") {

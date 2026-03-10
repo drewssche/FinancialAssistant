@@ -2,7 +2,6 @@
   const { state, el, core } = window.App;
   const debtUi = core.debtUi;
   const formatMoney = debtUi.formatMoney;
-  const parseAmount = debtUi.parseAmount;
   const parseIsoDate = debtUi.parseIsoDate;
   const parseIsoDateEnd = debtUi.parseIsoDateEnd;
   const debtCardsRenderer = window.App.debtCardsRenderer;
@@ -125,7 +124,8 @@
 
   function updateRepaymentDeltaHint() {
     const debtId = Number(el.repaymentDebtId.value || 0);
-    const entered = parseAmount(el.repaymentAmount?.value || 0);
+    const enteredState = core.resolveMoneyInput(el.repaymentAmount?.value || 0);
+    const entered = enteredState.valid ? enteredState.value : 0;
     const found = debtId ? findDebtById(debtId) : null;
     if (!found) {
       if (el.repaymentBeforeValue) {
@@ -184,11 +184,16 @@
       core.setStatus("Проверь дату платежа");
       return;
     }
+    const amount = core.resolveMoneyInput(el.repaymentAmount.value);
+    if (!amount.valid || amount.value <= 0) {
+      core.setStatus("Проверь сумму погашения");
+      return;
+    }
     await core.requestJson(`/api/v1/debts/${debtId}/repayments`, {
       method: "POST",
       headers: core.authHeaders(),
       body: JSON.stringify({
-        amount: el.repaymentAmount.value,
+        amount: amount.formatted,
         repayment_date: repaymentDate,
         note: el.repaymentNote.value || null,
       }),

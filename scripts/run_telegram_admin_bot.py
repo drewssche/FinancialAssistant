@@ -19,7 +19,16 @@ class TelegramBotClient:
     def __init__(self, token: str, timeout_seconds: int) -> None:
         self.base_url = f"https://api.telegram.org/bot{token}"
         self.timeout_seconds = max(10, int(timeout_seconds))
-        self.http = httpx.AsyncClient(timeout=self.timeout_seconds + 5)
+        # Long polling keeps the connection open on Telegram's side, so the read timeout
+        # needs a larger cushion than connect/write operations.
+        self.http = httpx.AsyncClient(
+            timeout=httpx.Timeout(
+                connect=10.0,
+                write=10.0,
+                pool=10.0,
+                read=self.timeout_seconds + 15.0,
+            )
+        )
 
     async def close(self) -> None:
         await self.http.aclose()
@@ -135,14 +144,25 @@ async def run() -> None:
     logger.info("telegram admin bot started")
     try:
         while True:
-            data = await client.call(
-                "getUpdates",
-                {
-                    "offset": offset,
-                    "timeout": settings.telegram_bot_poll_timeout_seconds,
-                    "allowed_updates": ["message", "callback_query"],
-                },
-            )
+            try:
+                data = await client.call(
+                    "getUpdates",
+                    {
+                        "offset": offset,
+                        "timeout": settings.telegram_bot_poll_timeout_seconds,
+                        "allowed_updates": ["message", "callback_query"],
+                    },
+                )
+            except httpx.ReadTimeout:
+                logger.warning(
+                    "telegram getUpdates read timeout after %ss, retrying",
+                    settings.telegram_bot_poll_timeout_seconds,
+                )
+                continue
+            except httpx.RequestError as exc:
+                logger.warning("telegram getUpdates request failed, retrying: %s", exc)
+                await asyncio.sleep(2)
+                continue
             for item in data.get("result", []):
                 offset = max(offset, int(item["update_id"]) + 1)
                 if item.get("message"):
