@@ -1,6 +1,15 @@
 (() => {
   const { state, el, core } = window.App;
   const HIGHLIGHTS_CACHE_TTL_MS = 20000;
+  const BREAKDOWN_PALETTE = ["#ff8f6b", "#5fd3bc", "#7aa8ff", "#ffd166", "#c084fc", "#5eead4", "#fb7185", "#93c5fd", "#a3e635"];
+  let activeBreakdown = {
+    items: [],
+    kind: "expense",
+    total: 0,
+    totalOps: 0,
+    defaultIndex: null,
+    hoveredIndex: null,
+  };
 
   function escapeHtml(value) {
     return String(value ?? "")
@@ -47,27 +56,114 @@
     return kind === "income" ? "Доход" : kind === "all" ? "Все" : "Расход";
   }
 
+  function polarToCartesian(cx, cy, radius, angleDeg) {
+    const angle = (angleDeg - 90) * (Math.PI / 180);
+    return {
+      x: cx + radius * Math.cos(angle),
+      y: cy + radius * Math.sin(angle),
+    };
+  }
+
+  function buildDonutSegmentPath(cx, cy, outerRadius, innerRadius, startAngle, endAngle) {
+    if (endAngle - startAngle >= 359.99) {
+      const rightOuter = cx + outerRadius;
+      const rightInner = cx + innerRadius;
+      const leftOuter = cx - outerRadius;
+      const leftInner = cx - innerRadius;
+      return [
+        `M ${rightOuter} ${cy}`,
+        `A ${outerRadius} ${outerRadius} 0 1 1 ${leftOuter} ${cy}`,
+        `A ${outerRadius} ${outerRadius} 0 1 1 ${rightOuter} ${cy}`,
+        `L ${rightInner} ${cy}`,
+        `A ${innerRadius} ${innerRadius} 0 1 0 ${leftInner} ${cy}`,
+        `A ${innerRadius} ${innerRadius} 0 1 0 ${rightInner} ${cy}`,
+        "Z",
+      ].join(" ");
+    }
+    const outerStart = polarToCartesian(cx, cy, outerRadius, startAngle);
+    const outerEnd = polarToCartesian(cx, cy, outerRadius, endAngle);
+    const innerEnd = polarToCartesian(cx, cy, innerRadius, endAngle);
+    const innerStart = polarToCartesian(cx, cy, innerRadius, startAngle);
+    const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
+    return [
+      `M ${outerStart.x} ${outerStart.y}`,
+      `A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 1 ${outerEnd.x} ${outerEnd.y}`,
+      `L ${innerEnd.x} ${innerEnd.y}`,
+      `A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${innerStart.x} ${innerStart.y}`,
+      "Z",
+    ].join(" ");
+  }
+
+  function applyCategoryBreakdownHover(index = null) {
+    activeBreakdown.hoveredIndex = Number.isInteger(index) ? index : null;
+    const resolvedIndex = activeBreakdown.hoveredIndex ?? activeBreakdown.defaultIndex;
+    const hasHover = activeBreakdown.hoveredIndex !== null;
+    const hasDefault = !hasHover && activeBreakdown.defaultIndex !== null;
+    if (el.analyticsCategoryBreakdownChart) {
+      el.analyticsCategoryBreakdownChart.classList.toggle("analytics-category-donut-has-hover", hasHover);
+      el.analyticsCategoryBreakdownChart.classList.toggle("analytics-category-donut-has-default", hasDefault);
+    }
+    document.querySelectorAll("[data-analytics-category-index]").forEach((node) => {
+      const nodeIndex = Number(node.dataset.analyticsCategoryIndex);
+      const isActive = hasHover && nodeIndex === resolvedIndex;
+      const isInactive = hasHover && nodeIndex !== resolvedIndex;
+      const isDefault = hasDefault && nodeIndex === resolvedIndex;
+      node.classList.toggle("is-active", isActive);
+      node.classList.toggle("is-inactive", isInactive);
+      node.classList.toggle("is-default", isDefault);
+    });
+
+    const hoveredItem = hasHover ? activeBreakdown.items[resolvedIndex] : null;
+    if (el.analyticsCategoryBreakdownChartTitle) {
+      el.analyticsCategoryBreakdownChartTitle.textContent = hoveredItem
+        ? String(hoveredItem.category_name || "Без категории")
+        : "Итог периода";
+    }
+    if (el.analyticsCategoryBreakdownChartValue) {
+      el.analyticsCategoryBreakdownChartValue.textContent = hoveredItem
+        ? core.formatMoney(hoveredItem.total_amount || 0)
+        : core.formatMoney(activeBreakdown.total);
+    }
+    if (el.analyticsCategoryBreakdownChartMeta) {
+      el.analyticsCategoryBreakdownChartMeta.textContent = hoveredItem
+        ? `${Number(hoveredItem.share_pct || 0).toFixed(1)}% · ${Number(hoveredItem.operations_count || 0)} опер.`
+        : activeBreakdown.items.length
+          ? `${activeBreakdown.items.length} кат. · ${activeBreakdown.totalOps} опер.`
+          : "Нет данных за период";
+    }
+  }
+
+  function setCategoryBreakdownHover(indexValue) {
+    const index = Number(indexValue);
+    if (!Number.isInteger(index) || index < 0 || index >= activeBreakdown.items.length) {
+      applyCategoryBreakdownHover(null);
+      return;
+    }
+    applyCategoryBreakdownHover(index);
+  }
+
+  function clearCategoryBreakdownHover() {
+    applyCategoryBreakdownHover(null);
+  }
+
+  function focusDefaultCategoryBreakdown() {
+    applyCategoryBreakdownHover(null);
+  }
+
   function renderCategoryBreakdown(data, formatPct) {
     const items = Array.isArray(data.category_breakdown) ? data.category_breakdown : [];
     const selectedKind = data.category_breakdown_kind || state.analyticsCategoryKind || "expense";
     const visibleItems = items.slice(0, 8);
     const chartTotal = items.reduce((acc, item) => acc + Number(item.total_amount || 0), 0);
     const totalOps = items.reduce((acc, item) => acc + Number(item.operations_count || 0), 0);
-    const palette = ["#ff8f6b", "#5fd3bc", "#7aa8ff", "#ffd166", "#c084fc", "#5eead4", "#fb7185", "#93c5fd", "#a3e635"];
-    let accShare = 0;
-    const gradientParts = visibleItems
-      .map((item, idx) => {
-        const share = Math.max(0, Number(item.share_pct || 0));
-        const start = accShare;
-        const end = Math.min(100, accShare + share);
-        accShare = end;
-        return `${palette[idx % palette.length]} ${start.toFixed(2)}% ${end.toFixed(2)}%`;
-      })
-      .filter(Boolean);
-    const remainder = Math.max(0, 100 - accShare);
-    if (remainder > 0.05) {
-      gradientParts.push(`rgba(116, 136, 173, 0.22) ${accShare.toFixed(2)}% 100%`);
-    }
+    activeBreakdown = {
+      items: visibleItems,
+      kind: selectedKind,
+      total: chartTotal,
+      totalOps,
+      defaultIndex: visibleItems.length ? 0 : null,
+      hoveredIndex: null,
+    };
 
     if (el.analyticsCategoryBreakdownLabel) {
       el.analyticsCategoryBreakdownLabel.textContent = `Доли по сумме для ${categoryKindLabel(selectedKind)} в выбранном периоде`;
@@ -84,32 +180,45 @@
     }
     core.syncSegmentedActive(el.analyticsCategoryKindTabs, "analytics-category-kind", selectedKind);
 
-    if (el.analyticsCategoryBreakdownChart) {
+    if (el.analyticsCategoryBreakdownSvg) {
       if (visibleItems.length) {
-        el.analyticsCategoryBreakdownChart.style.background = `conic-gradient(${gradientParts.join(", ")})`;
+        let accAngle = 0;
+        el.analyticsCategoryBreakdownSvg.innerHTML = visibleItems.map((item, idx) => {
+          const share = Math.max(0, Number(item.share_pct || 0));
+          const startAngle = accAngle;
+          const endAngle = Math.min(360, accAngle + (share / 100) * 360);
+          accAngle = endAngle;
+          return `
+            <path
+              class="analytics-category-slice"
+              d="${buildDonutSegmentPath(110, 110, 100, 54, startAngle, endAngle)}"
+              fill="${BREAKDOWN_PALETTE[idx % BREAKDOWN_PALETTE.length]}"
+              data-analytics-category-index="${idx}"
+              data-analytics-category-id="${item.category_id ?? ""}"
+              data-analytics-category-name="${escapeHtml(item.category_name || "Без категории")}"
+              data-analytics-category-kind="${item.category_kind || selectedKind}"
+            ></path>
+          `;
+        }).join("");
         el.analyticsCategoryBreakdownChart.classList.remove("analytics-category-donut-empty");
       } else {
-        el.analyticsCategoryBreakdownChart.style.background = "rgba(116, 136, 173, 0.18)";
+        el.analyticsCategoryBreakdownSvg.innerHTML = "";
         el.analyticsCategoryBreakdownChart.classList.add("analytics-category-donut-empty");
       }
     }
-    if (el.analyticsCategoryBreakdownChartValue) {
-      el.analyticsCategoryBreakdownChartValue.textContent = core.formatMoney(chartTotal);
-    }
-    if (el.analyticsCategoryBreakdownChartMeta) {
-      el.analyticsCategoryBreakdownChartMeta.textContent = visibleItems.length
-        ? `${visibleItems.length} кат. · ${totalOps} опер.`
-        : "Нет данных за период";
+    if (el.analyticsCategoryBreakdownChart) {
+      el.analyticsCategoryBreakdownChart.style.background = visibleItems.length ? "transparent" : "rgba(116, 136, 173, 0.18)";
+      el.analyticsCategoryBreakdownChart.classList.remove("analytics-category-donut-has-hover");
     }
 
     renderInsightList(
       el.analyticsCategoryBreakdownList,
       visibleItems,
       (item, idx) => `
-        <article class="analytics-insight-item" data-analytics-category-id="${item.category_id ?? ""}" data-analytics-category-name="${escapeHtml(item.category_name || "Без категории")}" data-analytics-category-kind="${item.category_kind || selectedKind}">
+        <article class="analytics-insight-item analytics-category-breakdown-item" data-analytics-category-index="${idx}" data-analytics-category-id="${item.category_id ?? ""}" data-analytics-category-name="${escapeHtml(item.category_name || "Без категории")}" data-analytics-category-kind="${item.category_kind || selectedKind}">
           <div class="analytics-insight-head">
             <div class="analytics-category-row-title">
-              <span class="analytics-category-color" style="background:${palette[idx % palette.length]}"></span>
+              <span class="analytics-category-color" style="background:${BREAKDOWN_PALETTE[idx % BREAKDOWN_PALETTE.length]}"></span>
               <strong>${escapeHtml(item.category_name || "Без категории")}</strong>
             </div>
             <span class="muted-small">${core.formatMoney(item.total_amount || 0)}</span>
@@ -119,10 +228,15 @@
             ${selectedKind === "all" ? ` · Тип: ${categoryKindShort(item.category_kind)}` : ""}
           </div>
           <div class="muted-small">Изм. к прошлому: ${formatPct(item.change_pct)}</div>
+          <div class="analytics-insight-actions">
+            <span class="muted-small">Перейти к операциям этой категории</span>
+            <button class="btn btn-secondary" type="button">Открыть операции</button>
+          </div>
         </article>
       `,
       "Нет категорий за выбранный период",
     );
+    focusDefaultCategoryBreakdown();
   }
 
   function renderAnalyticsHighlights(data) {
@@ -237,6 +351,10 @@
             ${(data.category_breakdown_kind || "expense") === "all" ? ` · Тип: ${categoryKindShort(item.category_kind)}` : ""}
           </div>
           <div class="muted-small">Изм. к прошлому: ${formatPct(item.change_pct)}</div>
+          <div class="analytics-insight-actions">
+            <span class="muted-small">Перейти к операциям этой категории</span>
+            <button class="btn btn-secondary" type="button">Открыть операции</button>
+          </div>
         </article>
       `,
       "Нет категорий за выбранный период",
@@ -369,5 +487,8 @@
   window.App.featureAnalyticsModules = window.App.featureAnalyticsModules || {};
   window.App.featureAnalyticsModules.highlights = {
     loadAnalyticsHighlights,
+    setCategoryBreakdownHover,
+    clearCategoryBreakdownHover,
+    focusDefaultCategoryBreakdown,
   };
 })();

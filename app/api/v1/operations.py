@@ -15,6 +15,7 @@ from app.schemas.operation import (
     OperationItemTemplateUpdate,
     OperationListOut,
     OperationOut,
+    OperationSummaryOut,
     OperationUpdate,
 )
 from app.services.operation_service import OperationService
@@ -33,6 +34,7 @@ def list_operations(
     date_to: date | None = Query(default=None),
     category_id: int | None = Query(default=None),
     q: str | None = Query(default=None, max_length=100),
+    quick_view: str | None = Query(default=None, pattern="^(all|receipt|large|uncategorized)$"),
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
@@ -49,11 +51,38 @@ def list_operations(
             date_to=date_to,
             category_id=category_id,
             q=q,
+            quick_view=quick_view,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     return OperationListOut(items=items, total=total, page=page, page_size=page_size)
+
+
+@router.get("/summary", response_model=OperationSummaryOut)
+def summarize_operations(
+    kind: str | None = Query(default=None, pattern="^(income|expense)$"),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    category_id: int | None = Query(default=None),
+    q: str | None = Query(default=None, max_length=100),
+    quick_view: str | None = Query(default=None, pattern="^(all|receipt|large|uncategorized)$"),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = OperationService(db)
+    try:
+        return service.summarize_operations(
+            user_id=user_id,
+            kind=kind,
+            date_from=date_from,
+            date_to=date_to,
+            category_id=category_id,
+            q=q,
+            quick_view=quick_view,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.post("", response_model=OperationOut, status_code=status.HTTP_201_CREATED)
@@ -131,6 +160,7 @@ def create_operation_item_template(
             shop_name=payload.shop_name,
             name=payload.name,
             latest_unit_price=payload.latest_unit_price,
+            latest_price_date=payload.latest_price_date,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

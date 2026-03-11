@@ -186,6 +186,60 @@
         });
       });
     }
+    if (el.resetOperationsFiltersBtn && actions.resetOperationsFilters) {
+      el.resetOperationsFiltersBtn.addEventListener("click", () => {
+        core.runAction({
+          errorPrefix: "Ошибка сброса фильтров",
+          action: () => actions.resetOperationsFilters(),
+        });
+      });
+    }
+    if (el.operationsQuickViewTabs && actions.setOperationsQuickView) {
+      el.operationsQuickViewTabs.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-operations-quick-view]");
+        if (!btn) {
+          return;
+        }
+        if (state.operationsQuickView === btn.dataset.operationsQuickView) {
+          return;
+        }
+        core.runAction({
+          errorPrefix: "Ошибка применения быстрого среза",
+          action: () => actions.setOperationsQuickView(btn.dataset.operationsQuickView),
+        });
+      });
+    }
+    if (el.selectVisibleOperationsBtn && actions.selectVisibleOperations) {
+      el.selectVisibleOperationsBtn.addEventListener("click", () => {
+        actions.selectVisibleOperations();
+      });
+    }
+    if (el.clearVisibleOperationsSelectionBtn && actions.clearVisibleOperationsSelection) {
+      el.clearVisibleOperationsSelectionBtn.addEventListener("click", () => {
+        actions.clearVisibleOperationsSelection();
+      });
+    }
+    if (el.quickFilterExpenseBtn && actions.setOperationsKindFilter) {
+      el.quickFilterExpenseBtn.addEventListener("click", () => {
+        core.runAction({
+          errorPrefix: "Ошибка применения фильтра расходов",
+          action: () => actions.setOperationsKindFilter("expense"),
+        });
+      });
+    }
+    if (el.quickFilterIncomeBtn && actions.setOperationsKindFilter) {
+      el.quickFilterIncomeBtn.addEventListener("click", () => {
+        core.runAction({
+          errorPrefix: "Ошибка применения фильтра доходов",
+          action: () => actions.setOperationsKindFilter("income"),
+        });
+      });
+    }
+    if (el.quickCustomRangeBtn && actions.openPeriodCustomModal) {
+      el.quickCustomRangeBtn.addEventListener("click", () => {
+        actions.openPeriodCustomModal();
+      });
+    }
 
     if (el.operationsSortTabs && actions.setOperationsSortPreset) {
       el.operationsSortTabs.addEventListener("click", (event) => {

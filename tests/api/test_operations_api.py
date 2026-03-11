@@ -152,6 +152,91 @@ def test_operations_search_by_note_category_and_kind_ru(client: TestClient):
     assert by_kind_ru.json()["items"][0]["kind"] == "expense"
 
 
+def test_operations_summary_respects_filters(client: TestClient):
+    category_resp = client.post("/api/v1/categories", json={"name": "Еда", "kind": "expense"})
+    assert category_resp.status_code == 200
+    category_id = category_resp.json()["id"]
+
+    assert client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "amount": "1000.00",
+            "operation_date": "2026-03-01",
+            "note": "salary",
+        },
+    ).status_code == 201
+    assert client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "250.00",
+            "operation_date": "2026-03-02",
+            "note": "кофе и перекус",
+            "category_id": category_id,
+        },
+    ).status_code == 201
+
+    summary = client.get("/api/v1/operations/summary", params={"q": "еда"})
+    assert summary.status_code == 200
+    payload = summary.json()
+    assert payload["income_total"] == "0"
+    assert payload["expense_total"] == "250.00"
+    assert payload["balance"] == "-250.00"
+    assert payload["total"] == 1
+
+
+def test_operations_quick_views_filter_list_and_summary(client: TestClient):
+    uncategorized = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "25.00",
+            "operation_date": "2026-03-01",
+            "note": "без категории",
+        },
+    )
+    with_receipt = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "60.00",
+            "operation_date": "2026-03-02",
+            "note": "с чеком",
+            "receipt_items": [
+                {"shop_name": "Store", "name": "Milk", "quantity": "1", "unit_price": "60.00"},
+            ],
+        },
+    )
+    large = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "150.00",
+            "operation_date": "2026-03-03",
+            "note": "крупная покупка",
+        },
+    )
+    assert uncategorized.status_code == 201
+    assert with_receipt.status_code == 201
+    assert large.status_code == 201
+
+    receipt_list = client.get("/api/v1/operations", params={"quick_view": "receipt", "page": 1, "page_size": 20})
+    assert receipt_list.status_code == 200
+    assert receipt_list.json()["total"] == 1
+    assert receipt_list.json()["items"][0]["note"] == "с чеком"
+
+    large_summary = client.get("/api/v1/operations/summary", params={"quick_view": "large"})
+    assert large_summary.status_code == 200
+    assert large_summary.json()["expense_total"] == "150.00"
+    assert large_summary.json()["total"] == 1
+
+    uncategorized_summary = client.get("/api/v1/operations/summary", params={"quick_view": "uncategorized"})
+    assert uncategorized_summary.status_code == 200
+    assert uncategorized_summary.json()["expense_total"] == "235.00"
+    assert uncategorized_summary.json()["total"] == 3
+
+
 def test_operation_receipt_items_autofill_amount_and_discrepancy(client: TestClient):
     created = client.post(
         "/api/v1/operations",
@@ -331,6 +416,7 @@ def test_operation_item_templates_crud(client: TestClient):
             "shop_name": "Соседи",
             "name": "Ротманс",
             "latest_unit_price": "6.60",
+            "latest_price_date": "2026-03-05",
         },
     )
     assert created.status_code == 201
@@ -339,6 +425,7 @@ def test_operation_item_templates_crud(client: TestClient):
     assert created_payload["shop_name"] == "Соседи"
     assert created_payload["name"] == "Ротманс"
     assert created_payload["latest_unit_price"] == "6.60"
+    assert created_payload["latest_price_date"] == "2026-03-05"
 
     updated = client.patch(
         f"/api/v1/operations/item-templates/{template_id}",
@@ -346,6 +433,7 @@ def test_operation_item_templates_crud(client: TestClient):
             "shop_name": "Кафе",
             "name": "Ротманс синий",
             "latest_unit_price": "6.90",
+            "latest_price_date": "2026-03-06",
         },
     )
     assert updated.status_code == 200
@@ -353,13 +441,77 @@ def test_operation_item_templates_crud(client: TestClient):
     assert updated_payload["shop_name"] == "Кафе"
     assert updated_payload["name"] == "Ротманс синий"
     assert updated_payload["latest_unit_price"] == "6.90"
+    assert updated_payload["latest_price_date"] == "2026-03-06"
 
     history = client.get(f"/api/v1/operations/item-templates/{template_id}/prices")
     assert history.status_code == 200
     history_payload = history.json()
     assert len(history_payload) == 2
+    assert history_payload[0]["recorded_at"] == "2026-03-06"
     assert history_payload[0]["unit_price"] == "6.90"
     assert history_payload[1]["unit_price"] == "6.60"
+
+
+def test_operation_item_template_history_skips_duplicate_manual_price(client: TestClient):
+    created = client.post(
+        "/api/v1/operations/item-templates",
+        json={
+            "shop_name": "Соседи",
+            "name": "Ротманс",
+            "latest_unit_price": "6.60",
+            "latest_price_date": "2026-03-05",
+        },
+    )
+    assert created.status_code == 201
+    template_id = created.json()["id"]
+
+    updated = client.patch(
+        f"/api/v1/operations/item-templates/{template_id}",
+        json={
+            "latest_unit_price": "6.60",
+            "latest_price_date": "2026-03-07",
+        },
+    )
+    assert updated.status_code == 200
+
+    history = client.get(f"/api/v1/operations/item-templates/{template_id}/prices")
+    assert history.status_code == 200
+    history_payload = history.json()
+    assert len(history_payload) == 1
+    assert history_payload[0]["unit_price"] == "6.60"
+    assert history_payload[0]["recorded_at"] == "2026-03-05"
+
+
+def test_operation_item_template_latest_price_uses_latest_recorded_date(client: TestClient):
+    created = client.post(
+        "/api/v1/operations/item-templates",
+        json={
+            "shop_name": "Соседи",
+            "name": "Ротманс",
+            "latest_unit_price": "6.60",
+            "latest_price_date": "2026-03-05",
+        },
+    )
+    assert created.status_code == 201
+    template_id = created.json()["id"]
+
+    older = client.patch(
+        f"/api/v1/operations/item-templates/{template_id}",
+        json={
+            "latest_unit_price": "5.30",
+            "latest_price_date": "2024-04-13",
+        },
+    )
+    assert older.status_code == 200
+    older_payload = older.json()
+    assert older_payload["latest_unit_price"] == "6.60"
+    assert older_payload["latest_price_date"] == "2026-03-05"
+
+    history = client.get(f"/api/v1/operations/item-templates/{template_id}/prices")
+    assert history.status_code == 200
+    history_payload = history.json()
+    assert history_payload[0]["recorded_at"] == "2026-03-05"
+    assert history_payload[1]["recorded_at"] == "2024-04-13"
 
     deleted = client.delete(f"/api/v1/operations/item-templates/{template_id}")
     assert deleted.status_code == 204
@@ -389,6 +541,7 @@ def test_operation_item_template_create_reactivates_archived_duplicate(client: T
             "shop_name": "Легаси",
             "name": "Ротманс",
             "latest_unit_price": "9.40",
+            "latest_price_date": "2026-03-01",
         },
     )
     assert created.status_code == 201
@@ -426,6 +579,7 @@ def test_operation_receipt_item_template_reactivates_archived_duplicate(client: 
             "shop_name": "Легаси",
             "name": "Ротманс",
             "latest_unit_price": "9.40",
+            "latest_price_date": "2026-03-01",
         },
     )
     assert created.status_code == 201

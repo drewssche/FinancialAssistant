@@ -18,7 +18,10 @@
             <button class="segmented-btn" data-entry-mode="debt" type="button">Долг</button>
           </div>
           <input id="opEntryMode" type="hidden" value="operation" />
-          <input id="opDate" type="text" inputmode="numeric" placeholder="ДД.ММ.ГГГГ" required />
+          <div id="opDateField" class="date-input-wrap">
+            <input id="opDate" class="input" type="date" aria-label="Дата операции" required />
+            <button class="date-input-trigger" type="button" data-date-picker-trigger="opDate" aria-label="Открыть календарь"></button>
+          </div>
           <div class="segmented" id="createKindSwitch" aria-label="Тип операции">
             <button class="segmented-btn active" data-kind="expense" type="button">Расход</button>
             <button class="segmented-btn" data-kind="income" type="button">Доход</button>
@@ -34,7 +37,7 @@
             </div>
           </div>
           <div id="opAmountField" class="money-input-wrap" data-money-input-wrap>
-            <input id="opAmount" data-money-input type="text" inputmode="decimal" placeholder="Сумма или выражение" title="Можно вводить выражения: 1000+250/2" required />
+            <input id="opAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма или выражение" title="Можно вводить выражения: 1000+250/2" required />
           </div>
           <input id="opNote" class="create-note-field" type="text" placeholder="Комментарий" />
 
@@ -54,7 +57,10 @@
           </div>
 
           <div id="createDebtFields" class="category-modal-form hidden">
-            <input id="debtStartDate" type="text" inputmode="numeric" placeholder="ДД.ММ.ГГГГ" />
+            <div class="date-input-wrap">
+              <input id="debtStartDate" class="input" type="date" aria-label="Дата начала долга" />
+              <button class="date-input-trigger" type="button" data-date-picker-trigger="debtStartDate" aria-label="Открыть календарь"></button>
+            </div>
             <div class="segmented" id="createDebtDirectionSwitch" aria-label="Направление долга">
               <button class="segmented-btn active" data-debt-direction="lend" type="button">Я дал</button>
               <button class="segmented-btn" data-debt-direction="borrow" type="button">Я взял</button>
@@ -62,10 +68,13 @@
             <input id="debtDirection" type="hidden" value="lend" />
             <input id="debtCounterparty" type="text" placeholder="Имя контрагента" />
             <div id="debtPrincipalField" class="money-input-wrap" data-money-input-wrap>
-              <input id="debtPrincipal" data-money-input type="text" inputmode="decimal" placeholder="Сумма или выражение" title="Можно вводить выражения: 1000+250/2" />
+              <input id="debtPrincipal" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма или выражение" title="Можно вводить выражения: 1000+250/2" />
             </div>
             <div class="debt-due-field">
-              <input id="debtDueDate" type="text" inputmode="numeric" placeholder="ДД.ММ.ГГГГ" />
+              <div class="date-input-wrap">
+                <input id="debtDueDate" class="input" type="date" aria-label="Срок долга" />
+                <button class="date-input-trigger" type="button" data-date-picker-trigger="debtDueDate" aria-label="Открыть календарь"></button>
+              </div>
               <span id="debtDueHint" class="muted-small debt-due-inline-hint">Без срока</span>
             </div>
             <input id="debtNote" type="text" placeholder="Комментарий" class="create-note-field" />
@@ -213,7 +222,10 @@
           <select id="bulkOpCategory">
             <option value="">Категория (не менять)</option>
           </select>
-          <input id="bulkOpDate" type="text" inputmode="numeric" placeholder="Дата (ДД.ММ.ГГГГ)" />
+          <div id="bulkOpDateField" class="date-input-wrap">
+            <input id="bulkOpDate" class="input" type="date" aria-label="Дата операций" />
+            <button class="date-input-trigger" type="button" data-date-picker-trigger="bulkOpDate" aria-label="Открыть календарь"></button>
+          </div>
         </form>
         <div class="modal-footer">
           <button id="submitBulkEditOperationsBtn" class="btn btn-cta modal-main-cta" type="submit" form="bulkEditOperationsForm">
@@ -233,7 +245,10 @@
         </div>
 
         <form id="editOperationForm" class="form-grid modal-grid edit-modal-grid">
-          <input id="editDate" type="text" inputmode="numeric" placeholder="ДД.ММ.ГГГГ" required />
+          <div id="editDateField" class="date-input-wrap">
+            <input id="editDate" class="input" type="date" aria-label="Дата операции" required />
+            <button class="date-input-trigger" type="button" data-date-picker-trigger="editDate" aria-label="Открыть календарь"></button>
+          </div>
           <div class="segmented" id="editKindSwitch" aria-label="Тип операции">
             <button class="segmented-btn active" data-kind="expense" type="button">Расход</button>
             <button class="segmented-btn" data-kind="income" type="button">Доход</button>
@@ -249,7 +264,7 @@
             </div>
           </div>
           <div id="editAmountField" class="money-input-wrap" data-money-input-wrap>
-            <input id="editAmount" data-money-input type="text" inputmode="decimal" placeholder="Сумма или выражение" title="Можно вводить выражения: 1000+250/2" required />
+            <input id="editAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма или выражение" title="Можно вводить выражения: 1000+250/2" required />
           </div>
           <input id="editNote" class="create-note-field" type="text" placeholder="Комментарий" />
 
@@ -444,8 +459,14 @@
           </button>
         </div>
         <form id="periodCustomForm" class="category-modal-form">
-          <input id="customDateFrom" type="text" inputmode="numeric" placeholder="С (ДД.ММ.ГГГГ)" required />
-          <input id="customDateTo" type="text" inputmode="numeric" placeholder="По (ДД.ММ.ГГГГ)" required />
+          <div class="date-input-wrap">
+            <input id="customDateFrom" class="input" type="date" aria-label="Дата начала периода" required />
+            <button class="date-input-trigger" type="button" data-date-picker-trigger="customDateFrom" aria-label="Открыть календарь"></button>
+          </div>
+          <div class="date-input-wrap">
+            <input id="customDateTo" class="input" type="date" aria-label="Дата окончания периода" required />
+            <button class="date-input-trigger" type="button" data-date-picker-trigger="customDateTo" aria-label="Открыть календарь"></button>
+          </div>
         </form>
         <div class="modal-footer">
           <button id="submitPeriodCustomBtn" class="btn btn-cta modal-main-cta" type="submit" form="periodCustomForm">
@@ -486,14 +507,17 @@
             <button class="btn btn-secondary btn-xs" type="button" data-repayment-preset="1">Весь остаток</button>
           </div>
           <div id="repaymentAmountField" class="money-input-wrap" data-money-input-wrap>
-            <input id="repaymentAmount" data-money-input type="text" inputmode="decimal" placeholder="Сумма погашения или выражение" title="Можно вводить выражения: 1000+250/2" required />
+            <input id="repaymentAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма погашения или выражение" title="Можно вводить выражения: 1000+250/2" required />
           </div>
           <div class="repayment-delta-box">
             <div class="muted-small">До: <span id="repaymentBeforeValue">0.00</span></div>
             <div class="muted-small">После: <span id="repaymentAfterValue">0.00</span></div>
             <div id="repaymentCarryRow" class="muted-small hidden">Перенос: <span id="repaymentCarryValue">0.00</span></div>
           </div>
-          <input id="repaymentDate" type="text" inputmode="numeric" placeholder="ДД.ММ.ГГГГ" required />
+          <div class="date-input-wrap">
+            <input id="repaymentDate" class="input" type="date" aria-label="Дата погашения" required />
+            <button class="date-input-trigger" type="button" data-date-picker-trigger="repaymentDate" aria-label="Открыть календарь"></button>
+          </div>
           <input id="repaymentNote" type="text" placeholder="Комментарий" />
         </form>
         <div class="modal-footer">

@@ -12,6 +12,11 @@
     if (el.mobileNavOverlay) {
       el.mobileNavOverlay.addEventListener("click", () => core.closeMobileNav());
     }
+    if (el.sectionBackBtn && actions.navigateSectionBack) {
+      el.sectionBackBtn.addEventListener("click", () => {
+        actions.navigateSectionBack().catch((err) => core.setStatus(String(err)));
+      });
+    }
     if (el.telegramLoginBtn && actions.telegramLogin) {
       el.telegramLoginBtn.addEventListener("click", () => {
         core.runAction({

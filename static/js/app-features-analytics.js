@@ -5,6 +5,7 @@
     const tab = state.analyticsTab || "overview";
     const panels = [
       { id: "overview", node: el.analyticsOverviewPanel },
+      { id: "structure", node: el.analyticsStructurePanel },
       { id: "calendar", node: el.analyticsCalendarPanel },
       { id: "operations", node: el.analyticsOperationsPanel },
       { id: "trends", node: el.analyticsTrendsPanel },
@@ -22,9 +23,12 @@
   }
 
   function setAnalyticsTab(tab) {
-    const allowed = new Set(["overview", "calendar", "operations", "trends"]);
+    const allowed = new Set(["overview", "structure", "calendar", "operations", "trends"]);
     state.analyticsTab = allowed.has(tab) ? tab : "overview";
     applyAnalyticsTabUi();
+    if (state.analyticsTab === "structure") {
+      highlights?.focusDefaultCategoryBreakdown?.();
+    }
   }
 
   async function loadAnalyticsSection(options = {}) {
@@ -45,10 +49,13 @@
     if (!dayIso || !window.App.actions.switchSection) {
       return;
     }
+    window.App.actions.pushSectionBackContext?.();
     state.operationsCategoryFilterId = null;
     state.operationsCategoryFilterName = "";
     state.filterKind = "";
+    state.operationsQuickView = "all";
     core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
+    core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
     if (el.filterQ) {
       el.filterQ.value = "";
     }
@@ -63,10 +70,13 @@
     if (!dateFrom || !dateTo || !window.App.actions.switchSection) {
       return;
     }
+    window.App.actions.pushSectionBackContext?.();
     state.operationsCategoryFilterId = null;
     state.operationsCategoryFilterName = "";
     state.filterKind = "";
+    state.operationsQuickView = "all";
     core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
+    core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
     if (el.filterQ) {
       el.filterQ.value = "";
     }
@@ -101,7 +111,10 @@
     if (!window.App.actions.switchSection || !categoryId) {
       return;
     }
+    window.App.actions.pushSectionBackContext?.();
     applyAnalyticsScopeToOperations();
+    state.operationsQuickView = "all";
+    core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
     state.operationsCategoryFilterId = Number(categoryId);
     state.operationsCategoryFilterName = String(categoryName || "").trim();
     if (el.filterQ) {
@@ -133,5 +146,8 @@
     openOperationsForAnalyticsDate,
     openOperationsForAnalyticsRange,
     openOperationsForAnalyticsCategory,
+    setCategoryBreakdownHover: highlights.setCategoryBreakdownHover,
+    clearCategoryBreakdownHover: highlights.clearCategoryBreakdownHover,
+    focusDefaultCategoryBreakdown: highlights.focusDefaultCategoryBreakdown,
   };
 })();

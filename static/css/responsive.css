@@ -41,6 +41,32 @@
     flex-wrap: wrap;
   }
 
+  .analytics-tab-panel .panel-head {
+    gap: var(--space-2);
+  }
+
+  .analytics-tab-panel .panel-head > .toolbar {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+
+  .analytics-switch-group {
+    min-width: 0;
+  }
+
+  .analytics-switch-group .toolbar .btn {
+    width: auto;
+    flex: 1 1 auto;
+  }
+
+  .analytics-switch-group .toolbar .compact-input,
+  .analytics-switch-group .toolbar .date-input-wrap.compact-input {
+    min-width: min(100%, 12rem);
+  }
+
   .segmented {
     width: 100%;
     max-width: 100%;
@@ -265,6 +291,23 @@
   #adminUserStatusTabs {
     width: 100%;
     max-width: 100%;
+  }
+
+  .analytics-tab-panel .panel-head > .toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-switch-group .toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .analytics-switch-group .toolbar .btn,
+  .analytics-switch-group .toolbar .compact-input,
+  .analytics-switch-group .toolbar .date-input-wrap.compact-input {
+    width: 100%;
+    min-width: 0;
   }
 
   .analytics-insight-head,
@@ -596,6 +639,14 @@
     padding: var(--space-2);
   }
 
+  .analytics-tab-panel .panel-head > .toolbar {
+    gap: var(--space-2);
+  }
+
+  .analytics-switch-group .segmented-btn {
+    min-height: 2.625rem;
+  }
+
   .analytics-insight-head {
     flex-direction: column;
   }
@@ -752,11 +803,11 @@
     margin-bottom: var(--space-1);
   }
 
-  .create-modal-grid #opDate,
+  .create-modal-grid #opDateField,
   .create-modal-grid #createKindSwitch,
   .create-modal-grid #createCategoryField,
   .create-modal-grid #opAmountField,
-  .edit-modal-grid #editDate,
+  .edit-modal-grid #editDateField,
   .edit-modal-grid #editKindSwitch,
   .edit-modal-grid #editCategoryField,
   .edit-modal-grid #editAmountField {
@@ -836,6 +887,8 @@
     width: 18px;
     pointer-events: none;
     z-index: 2;
+    opacity: 0;
+    transition: opacity 0.18s ease;
   }
 
   .analytics-calendar-scroll-wrap::before {
@@ -846,6 +899,11 @@
   .analytics-calendar-scroll-wrap::after {
     right: 0;
     background: linear-gradient(270deg, rgba(10, 15, 24, 0.92) 0%, rgba(10, 15, 24, 0) 100%);
+  }
+
+  .analytics-calendar-scroll-wrap.has-left-fade::before,
+  .analytics-calendar-scroll-wrap.has-right-fade::after {
+    opacity: 1;
   }
 
   .analytics-calendar-scroll-wrap .table-wrap {

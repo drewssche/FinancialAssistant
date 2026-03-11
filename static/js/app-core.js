@@ -2,6 +2,7 @@
   const state = {
     token: localStorage.getItem("access_token") || "",
     mobileNavOpen: false,
+    sectionBackStack: [],
     telegramBotUsername: "",
     browserTelegramLoginAvailable: false,
     telegramWebAppReady: false,
@@ -40,6 +41,7 @@
     customDateFrom: "",
     customDateTo: "",
     filterKind: "",
+    operationsQuickView: "all",
     operationsCategoryFilterId: null,
     operationsCategoryFilterName: "",
     operationSortPreset: "date",
@@ -89,6 +91,8 @@
     telegramBrowserLoginWrap: document.getElementById("telegramBrowserLoginWrap"),
     telegramBrowserLogin: document.getElementById("telegramBrowserLogin"),
     mobileNavToggleBtn: document.getElementById("mobileNavToggleBtn"),
+    sectionBackBtn: document.getElementById("sectionBackBtn"),
+    sectionBackLabel: document.getElementById("sectionBackLabel"),
     mobileNavCloseBtn: document.getElementById("mobileNavCloseBtn"),
     mobileNavOverlay: document.getElementById("mobileNavOverlay"),
     sidebarNav: document.getElementById("sidebarNav"),
@@ -107,6 +111,7 @@
     customDateFrom: document.getElementById("customDateFrom"),
     customDateTo: document.getElementById("customDateTo"),
     kindFilters: document.getElementById("kindFilters"),
+    operationsQuickViewTabs: document.getElementById("operationsQuickViewTabs"),
     operationsSortTabs: document.getElementById("operationsSortTabs"),
     filterQ: document.getElementById("filterQ"),
     addOperationCta: document.getElementById("addOperationCta"),
@@ -134,7 +139,18 @@
     operationsSelectAll: document.getElementById("operationsSelectAll"),
     dashboardPeriodLabel: document.getElementById("dashboardPeriodLabel"),
     operationsPeriodLabel: document.getElementById("operationsPeriodLabel"),
+    operationsSummaryGrid: document.getElementById("operationsSummaryGrid"),
+    operationsIncomeTotal: document.getElementById("operationsIncomeTotal"),
+    operationsExpenseTotal: document.getElementById("operationsExpenseTotal"),
+    operationsBalanceTotal: document.getElementById("operationsBalanceTotal"),
+    operationsTotalCount: document.getElementById("operationsTotalCount"),
+    selectVisibleOperationsBtn: document.getElementById("selectVisibleOperationsBtn"),
+    clearVisibleOperationsSelectionBtn: document.getElementById("clearVisibleOperationsSelectionBtn"),
+    quickFilterExpenseBtn: document.getElementById("quickFilterExpenseBtn"),
+    quickFilterIncomeBtn: document.getElementById("quickFilterIncomeBtn"),
+    quickCustomRangeBtn: document.getElementById("quickCustomRangeBtn"),
     operationsBulkBar: document.getElementById("operationsBulkBar"),
+    resetOperationsFiltersBtn: document.getElementById("resetOperationsFiltersBtn"),
     operationsSelectedCount: document.getElementById("operationsSelectedCount"),
     bulkEditOperationsBtn: document.getElementById("bulkEditOperationsBtn"),
     bulkDeleteOperationsBtn: document.getElementById("bulkDeleteOperationsBtn"),
@@ -213,6 +229,7 @@
     analyticsGlobalRangeLabel: document.getElementById("analyticsGlobalRangeLabel"),
     analyticsGlobalPeriodTabs: document.getElementById("analyticsGlobalPeriodTabs"),
     analyticsOverviewPanel: document.getElementById("analyticsOverviewPanel"),
+    analyticsStructurePanel: document.getElementById("analyticsStructurePanel"),
     analyticsCalendarPanel: document.getElementById("analyticsCalendarPanel"),
     analyticsOperationsPanel: document.getElementById("analyticsOperationsPanel"),
     analyticsTrendsPanel: document.getElementById("analyticsTrendsPanel"),
@@ -222,6 +239,8 @@
     analyticsCategoryKindTabs: document.getElementById("analyticsCategoryKindTabs"),
     analyticsCategoryBreakdownLabel: document.getElementById("analyticsCategoryBreakdownLabel"),
     analyticsCategoryBreakdownChart: document.getElementById("analyticsCategoryBreakdownChart"),
+    analyticsCategoryBreakdownSvg: document.getElementById("analyticsCategoryBreakdownSvg"),
+    analyticsCategoryBreakdownChartTitle: document.getElementById("analyticsCategoryBreakdownChartTitle"),
     analyticsCategoryBreakdownChartValue: document.getElementById("analyticsCategoryBreakdownChartValue"),
     analyticsCategoryBreakdownChartMeta: document.getElementById("analyticsCategoryBreakdownChartMeta"),
     analyticsCategoryBreakdownList: document.getElementById("analyticsCategoryBreakdownList"),
@@ -237,12 +256,16 @@
     analyticsTopPositionsList: document.getElementById("analyticsTopPositionsList"),
     analyticsPriceIncreasesList: document.getElementById("analyticsPriceIncreasesList"),
     operationsActiveFilters: document.getElementById("operationsActiveFilters"),
+    operationsKindFilterChip: document.getElementById("operationsKindFilterChip"),
+    operationsQuickViewChip: document.getElementById("operationsQuickViewChip"),
     operationsCategoryFilterChip: document.getElementById("operationsCategoryFilterChip"),
     clearOperationsCategoryFilterBtn: document.getElementById("clearOperationsCategoryFilterBtn"),
     analyticsCalendarBody: document.getElementById("analyticsCalendarBody"),
+    analyticsCalendarScrollWrap: document.getElementById("analyticsCalendarScrollWrap"),
     analyticsMonthGridWrap: document.getElementById("analyticsMonthGridWrap"),
     analyticsYearGridWrap: document.getElementById("analyticsYearGridWrap"),
     analyticsYearGrid: document.getElementById("analyticsYearGrid"),
+    analyticsGridMonthPickerWrap: document.getElementById("analyticsGridMonthPickerWrap"),
     analyticsGridMonthPicker: document.getElementById("analyticsGridMonthPicker"),
     analyticsGridYearPicker: document.getElementById("analyticsGridYearPicker"),
     analyticsGranularityTabs: document.getElementById("analyticsGranularityTabs"),
@@ -418,6 +441,7 @@
     itemTemplateSourceAll: document.getElementById("itemTemplateSourceAll"),
     itemTemplateName: document.getElementById("itemTemplateName"),
     itemTemplatePrice: document.getElementById("itemTemplatePrice"),
+    itemTemplatePriceDate: document.getElementById("itemTemplatePriceDate"),
     itemTemplatePreviewBody: document.getElementById("itemTemplatePreviewBody"),
     sourceGroupModal: document.getElementById("sourceGroupModal"),
     closeSourceGroupModalBtn: document.getElementById("closeSourceGroupModalBtn"),
@@ -649,6 +673,14 @@
     return getCoreUtils().normalizeDateInputValue(value);
   }
 
+  function normalizeDateFieldValue(value, inputType = "text") {
+    return getCoreUtils().normalizeDateFieldValue(value, inputType);
+  }
+
+  function syncDateFieldValue(node, value) {
+    return getCoreUtils().syncDateFieldValue(node, value);
+  }
+
   function getTodayIso() {
     return getCoreUtils().getTodayIso();
   }
@@ -694,6 +726,8 @@
       formatDateRu,
       parseDateInputValue,
       normalizeDateInputValue,
+      normalizeDateFieldValue,
+      syncDateFieldValue,
       getTodayIso,
       kindLabel,
       formatPeriodLabel,

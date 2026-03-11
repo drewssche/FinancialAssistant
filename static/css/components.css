@@ -159,6 +159,58 @@
   padding-left: 44px;
 }
 
+.date-input-wrap {
+  position: relative;
+}
+
+.date-input-wrap > input[type="date"] {
+  width: 100%;
+  padding-right: 44px;
+}
+
+.date-input-wrap > input[type="month"] {
+  width: 100%;
+  padding-right: 44px;
+}
+
+.date-input-wrap > input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  cursor: pointer;
+}
+
+.date-input-wrap > input[type="month"]::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  cursor: pointer;
+}
+
+.date-input-trigger {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0;
+  transform: translateY(-50%);
+  border: 1px solid rgba(81, 101, 136, 0.55);
+  border-radius: calc(var(--radius-sm) - 2px);
+  background-color: rgba(22, 33, 53, 0.96);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none'%3E%3Crect x='1.25' y='2.25' width='11.5' height='10.5' rx='2' stroke='%23C9D6F0' stroke-width='1.2'/%3E%3Cpath d='M4 1.5V4' stroke='%23C9D6F0' stroke-width='1.2' stroke-linecap='round'/%3E%3Cpath d='M10 1.5V4' stroke='%23C9D6F0' stroke-width='1.2' stroke-linecap='round'/%3E%3Cpath d='M1.75 5.25H12.25' stroke='%23C9D6F0' stroke-width='1.2'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 14px 14px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+
+.date-input-trigger:hover {
+  background-color: rgba(31, 45, 70, 0.98);
+  border-color: rgba(255, 179, 71, 0.35);
+}
+
+.date-input-wrap:focus-within .date-input-trigger {
+  border-color: rgba(255, 179, 71, 0.45);
+}
+
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -364,6 +416,31 @@
   gap: var(--space-3);
 }
 
+.operations-summary-grid {
+  margin-bottom: var(--space-3);
+}
+
+.operations-summary-grid .analytics-kpi-card {
+  min-height: 0;
+}
+
+.operations-quickviews-row {
+  margin-bottom: var(--space-3);
+}
+
+.operations-quickviews-group {
+  width: 100%;
+}
+
+.operations-workflow-row {
+  margin-bottom: var(--space-3);
+}
+
+.operations-workflow-actions {
+  width: 100%;
+  flex-wrap: wrap;
+}
+
 .analytics-kpi-card {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -427,7 +504,41 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
+  position: relative;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+.analytics-category-donut-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.analytics-category-slice {
+  cursor: pointer;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition:
+    opacity 0.18s ease,
+    filter 0.18s ease,
+    transform 0.18s ease;
+}
+
+.analytics-category-donut-has-hover .analytics-category-slice.is-inactive {
+  opacity: 0.24;
+  filter: saturate(0.6) brightness(0.82);
+}
+
+.analytics-category-slice.is-active {
+  filter: saturate(1.08) brightness(1.08);
+  transform: scale(1.02);
+}
+
+.analytics-category-donut-has-default .analytics-category-slice.is-default {
+  filter: saturate(1.03) brightness(1.03);
+  transform: scale(1.012);
 }
 
 .analytics-category-donut-hole {
@@ -443,9 +554,19 @@
   padding: var(--space-3);
 }
 
+.analytics-category-donut-title {
+  max-width: 100%;
+  color: #d7e2f7;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .analytics-category-donut-hole strong {
-  font-size: 1.1rem;
-  line-height: 1.1;
+  font-size: 1.18rem;
+  line-height: 1.05;
 }
 
 .analytics-category-donut-empty {
@@ -514,6 +635,20 @@
   letter-spacing: 0.04em;
 }
 
+.analytics-tab-panel .panel-head > .toolbar {
+  align-items: stretch;
+}
+
+.analytics-switch-group .toolbar {
+  gap: var(--space-2);
+}
+
+.analytics-switch-group .toolbar .btn,
+.analytics-switch-group .toolbar .input,
+.analytics-switch-group .toolbar .date-input-wrap {
+  min-width: 0;
+}
+
 .analytics-year-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -577,11 +712,47 @@
   cursor: pointer;
 }
 
+.analytics-category-breakdown-item {
+  transition:
+    opacity 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.analytics-category-breakdown-item.is-active {
+  border-color: rgba(255, 179, 71, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(255, 179, 71, 0.16);
+  transform: translateY(-1px);
+}
+
+.analytics-category-breakdown-item.is-inactive {
+  opacity: 0.45;
+}
+
+.analytics-category-breakdown-item.is-default {
+  border-color: rgba(255, 179, 71, 0.28);
+  box-shadow: inset 0 0 0 1px rgba(255, 179, 71, 0.08);
+}
+
 .analytics-insight-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: var(--space-2);
+}
+
+.analytics-insight-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.analytics-insight-actions .btn {
+  min-height: 2.25rem;
+  padding-inline: var(--space-2);
 }
 
 .analytics-insight-alert {
@@ -612,6 +783,41 @@
 
 .analytics-trend-hitbox {
   cursor: pointer;
+}
+
+.trend-bucket {
+  cursor: pointer;
+}
+
+.trend-bar,
+.trend-balance-marker,
+.trend-bucket-band {
+  transition:
+    transform 0.18s ease,
+    opacity 0.18s ease,
+    filter 0.18s ease,
+    fill-opacity 0.18s ease;
+}
+
+.trend-bucket-band {
+  opacity: 0;
+}
+
+.analytics-trend-chart .trend-bucket:hover .trend-bucket-band,
+.dashboard-analytics-sparkline .trend-bucket:hover .trend-bucket-band {
+  opacity: 1;
+}
+
+.analytics-trend-chart .trend-bucket:hover .trend-bar,
+.dashboard-analytics-sparkline .trend-bucket:hover .trend-bar {
+  transform: translateY(-3px);
+  filter: saturate(1.1) brightness(1.08);
+}
+
+.analytics-trend-chart .trend-bucket:hover .trend-balance-marker,
+.dashboard-analytics-sparkline .trend-bucket:hover .trend-balance-marker {
+  transform: scale(1.3);
+  filter: brightness(1.18);
 }
 
 input,
@@ -1436,6 +1642,11 @@ textarea {
 
   .analytics-category-breakdown-chart-card {
     min-height: 15rem;
+  }
+
+  .analytics-insight-actions {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 

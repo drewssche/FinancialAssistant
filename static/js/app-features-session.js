@@ -204,6 +204,7 @@
       state.period = "day";
     }
     state.filterKind = prefs.data?.operations?.filters?.kind || "";
+    state.operationsQuickView = prefs.data?.operations?.filters?.quick_view || "all";
     state.operationsCategoryFilterId = prefs.data?.operations?.filters?.category_id ?? null;
     state.operationsCategoryFilterName = prefs.data?.operations?.filters?.category_name || "";
     state.operationSortPreset = prefs.data?.operations?.sort_preset || "date";
@@ -214,7 +215,7 @@
     if (state.analyticsTab === "positions") {
       state.analyticsTab = "operations";
     }
-    if (!["overview", "calendar", "operations", "trends"].includes(state.analyticsTab)) {
+    if (!["overview", "structure", "calendar", "operations", "trends"].includes(state.analyticsTab)) {
       state.analyticsTab = "overview";
     }
     state.analyticsCalendarView = prefs.data?.analytics?.calendar_view || "month";
@@ -239,6 +240,7 @@
 
     core.syncAllPeriodTabs(state.period);
     core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
+    core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
     core.syncSegmentedActive(el.operationsSortTabs, "op-sort", state.operationSortPreset);
     core.syncSegmentedActive(el.debtSortTabs, "debt-sort", state.debtSortPreset);
     core.syncSegmentedActive(el.itemCatalogSortTabs, "item-sort", state.itemCatalogSortPreset);
@@ -280,6 +282,7 @@
           sort_preset: state.operationSortPreset || "date",
           filters: {
             kind: state.filterKind,
+            quick_view: state.operationsQuickView || "all",
             category_id: state.operationsCategoryFilterId,
             category_name: state.operationsCategoryFilterName || "",
             q: el.filterQ.value.trim(),

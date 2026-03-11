@@ -24,6 +24,30 @@
   const loadDashboardOperations = dashboardFeatures.loadDashboardOperations;
   const loadDebtsCards = debtFeatures.loadDebtsCards;
   const loadItemCatalog = itemCatalogFeatures.loadItemCatalog;
+  const OPERATIONS_SUMMARY_CACHE_TTL_MS = 15000;
+
+  function operationsQuickViewLabel(value) {
+    if (value === "receipt") {
+      return "Срез: Только с чеком";
+    }
+    if (value === "large") {
+      return "Срез: Крупные от 100 Br";
+    }
+    if (value === "uncategorized") {
+      return "Срез: Без категории";
+    }
+    return "";
+  }
+
+  function operationsKindLabel(value) {
+    if (value === "expense") {
+      return "Тип: Только расходы";
+    }
+    if (value === "income") {
+      return "Тип: Только доходы";
+    }
+    return "";
+  }
 
   function invalidateAllTimeAnchor() {
     state.firstOperationDate = "";
@@ -65,6 +89,9 @@
     if (state.filterKind) {
       params.set("kind", state.filterKind);
     }
+    if ((state.operationsQuickView || "all") !== "all") {
+      params.set("quick_view", state.operationsQuickView);
+    }
     if (state.operationsCategoryFilterId !== null && state.operationsCategoryFilterId !== undefined && state.operationsCategoryFilterId !== "") {
       params.set("category_id", String(state.operationsCategoryFilterId));
     }
@@ -80,12 +107,79 @@
       return;
     }
     const hasCategory = state.operationsCategoryFilterId !== null && state.operationsCategoryFilterId !== undefined && state.operationsCategoryFilterId !== "";
-    el.operationsActiveFilters.classList.toggle("hidden", !hasCategory);
+    const quickViewLabel = operationsQuickViewLabel(state.operationsQuickView || "all");
+    const kindLabel = operationsKindLabel(state.filterKind || "");
+    const hasQuickView = Boolean(quickViewLabel);
+    const hasKind = Boolean(kindLabel);
+    el.operationsActiveFilters.classList.toggle("hidden", !hasCategory && !hasQuickView && !hasKind);
+    if (el.operationsKindFilterChip) {
+      el.operationsKindFilterChip.classList.toggle("hidden", !hasKind);
+      el.operationsKindFilterChip.textContent = kindLabel;
+    }
+    if (el.operationsQuickViewChip) {
+      el.operationsQuickViewChip.classList.toggle("hidden", !hasQuickView);
+      el.operationsQuickViewChip.textContent = quickViewLabel;
+    }
     el.operationsCategoryFilterChip.classList.toggle("hidden", !hasCategory);
     el.clearOperationsCategoryFilterBtn.classList.toggle("hidden", !hasCategory);
     el.operationsCategoryFilterChip.textContent = hasCategory
       ? `Категория: ${state.operationsCategoryFilterName || `#${state.operationsCategoryFilterId}`}`
       : "";
+    if (el.resetOperationsFiltersBtn) {
+      const hasQuery = Boolean(el.filterQ?.value.trim());
+      el.resetOperationsFiltersBtn.disabled = !hasCategory && !hasQuery && !hasKind && !hasQuickView;
+    }
+  }
+
+  function renderOperationsSummary(data) {
+    if (el.operationsIncomeTotal) {
+      el.operationsIncomeTotal.textContent = core.formatMoney(data?.income_total || 0);
+    }
+    if (el.operationsExpenseTotal) {
+      el.operationsExpenseTotal.textContent = core.formatMoney(data?.expense_total || 0);
+    }
+    if (el.operationsBalanceTotal) {
+      el.operationsBalanceTotal.textContent = core.formatMoney(data?.balance || 0);
+    }
+    if (el.operationsTotalCount) {
+      el.operationsTotalCount.textContent = String(data?.total || 0);
+    }
+  }
+
+  async function loadOperationsSummary(options = {}) {
+    const force = options.force === true;
+    const { dateFrom, dateTo } = core.getPeriodBounds(state.period);
+    const params = new URLSearchParams({
+      date_from: dateFrom,
+      date_to: dateTo,
+    });
+    if (state.filterKind) {
+      params.set("kind", state.filterKind);
+    }
+    if ((state.operationsQuickView || "all") !== "all") {
+      params.set("quick_view", state.operationsQuickView);
+    }
+    if (state.operationsCategoryFilterId !== null && state.operationsCategoryFilterId !== undefined && state.operationsCategoryFilterId !== "") {
+      params.set("category_id", String(state.operationsCategoryFilterId));
+    }
+    const query = el.filterQ.value.trim();
+    if (query) {
+      params.set("q", query);
+    }
+    const cacheKey = `operations:summary:${params.toString()}`;
+    if (!force) {
+      const cached = core.getUiRequestCache(cacheKey, OPERATIONS_SUMMARY_CACHE_TTL_MS);
+      if (cached) {
+        renderOperationsSummary(cached);
+        return cached;
+      }
+    }
+    const data = await core.requestJson(`/api/v1/operations/summary?${params.toString()}`, {
+      headers: core.authHeaders(),
+    });
+    core.setUiRequestCache(cacheKey, data);
+    renderOperationsSummary(data);
+    return data;
   }
 
   function renderPagination() {
@@ -219,6 +313,7 @@
       const cached = core.getUiRequestCache(cacheKey, OPERATIONS_CACHE_TTL_MS);
       if (cached) {
         applyOperationsPageData(cached, reset, requestPage);
+        await loadOperationsSummary({ force: false });
         return;
       }
     }
@@ -237,6 +332,7 @@
       }
       core.setUiRequestCache(cacheKey, data);
       applyOperationsPageData(data, reset, requestPage);
+      await loadOperationsSummary({ force });
     } catch (err) {
       if (core.isAbortError && core.isAbortError(err)) {
         return;
@@ -257,6 +353,65 @@
   async function clearOperationsCategoryFilter() {
     state.operationsCategoryFilterId = null;
     state.operationsCategoryFilterName = "";
+    renderOperationsActiveFilters();
+    await loadOperations({ reset: true, force: true });
+    await savePreferences();
+  }
+
+  async function resetOperationsFilters() {
+    state.filterKind = "";
+    state.operationsQuickView = "all";
+    state.operationsCategoryFilterId = null;
+    state.operationsCategoryFilterName = "";
+    if (el.filterQ) {
+      el.filterQ.value = "";
+    }
+    core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
+    core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
+    renderOperationsActiveFilters();
+    await loadOperations({ reset: true, force: true });
+    await savePreferences();
+  }
+
+  async function setOperationsQuickView(value) {
+    state.operationsQuickView = value || "all";
+    core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
+    renderOperationsActiveFilters();
+    await loadOperations({ reset: true, force: true });
+    await savePreferences();
+  }
+
+  function selectVisibleOperations() {
+    const checkboxes = Array.from(el.operationsBody?.querySelectorAll("input[data-select-operation-id]") || []);
+    for (const checkbox of checkboxes) {
+      const id = Number(checkbox.dataset.selectOperationId);
+      state.selectedOperationIds.add(id);
+      checkbox.checked = true;
+      const row = checkbox.closest("tr[data-item]");
+      if (row) {
+        row.classList.add("row-selected");
+      }
+    }
+    window.App.bulkUi?.updateOperationsBulkUi?.();
+  }
+
+  function clearVisibleOperationsSelection() {
+    const checkboxes = Array.from(el.operationsBody?.querySelectorAll("input[data-select-operation-id]") || []);
+    for (const checkbox of checkboxes) {
+      const id = Number(checkbox.dataset.selectOperationId);
+      state.selectedOperationIds.delete(id);
+      checkbox.checked = false;
+      const row = checkbox.closest("tr[data-item]");
+      if (row) {
+        row.classList.remove("row-selected");
+      }
+    }
+    window.App.bulkUi?.updateOperationsBulkUi?.();
+  }
+
+  async function setOperationsKindFilter(value) {
+    state.filterKind = value || "";
+    core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
     renderOperationsActiveFilters();
     await loadOperations({ reset: true, force: true });
     await savePreferences();
@@ -567,6 +722,12 @@
     refreshOperationsView,
     getCurrentOperationItems,
     clearOperationsCategoryFilter,
+    resetOperationsFilters,
+    setOperationsQuickView,
+    selectVisibleOperations,
+    clearVisibleOperationsSelection,
+    setOperationsKindFilter,
+    loadOperationsSummary,
     openOperationReceiptModal,
     closeOperationReceiptModal,
     cleanupOperationsRuntime,

@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import Select, and_, asc, delete, desc, func, or_, select, update
+from sqlalchemy import Select, and_, asc, case, delete, desc, func, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.db.models import (
@@ -16,6 +16,67 @@ from app.db.models import (
 class OperationRepository:
     def __init__(self, db: Session):
         self.db = db
+
+    def _build_list_conditions(
+        self,
+        *,
+        user_id: int,
+        kind: str | None,
+        date_from: date | None,
+        date_to: date | None,
+        category_id: int | None,
+        q: str | None,
+        receipt_only: bool = False,
+        uncategorized_only: bool = False,
+        min_amount: Decimal | None = None,
+    ) -> list:
+        conditions = [Operation.user_id == user_id]
+
+        if kind:
+            conditions.append(Operation.kind == kind)
+        if date_from:
+            conditions.append(Operation.operation_date >= date_from)
+        if date_to:
+            conditions.append(Operation.operation_date <= date_to)
+        if category_id is not None:
+            conditions.append(Operation.category_id == category_id)
+        if uncategorized_only:
+            conditions.append(Operation.category_id.is_(None))
+        if min_amount is not None:
+            conditions.append(Operation.amount >= min_amount)
+        if receipt_only:
+            conditions.append(
+                select(OperationReceiptItem.id)
+                .where(
+                    OperationReceiptItem.user_id == user_id,
+                    OperationReceiptItem.operation_id == Operation.id,
+                )
+                .exists()
+            )
+        if q:
+            search = q.strip()
+            if search:
+                search_cf = search.casefold()
+                variants = {search}
+                variants.add(search.lower())
+                variants.add(search.upper())
+                variants.add(search[:1].upper() + search[1:])
+                search_clauses = []
+                for variant in variants:
+                    like = f"%{variant}%"
+                    search_clauses.extend(
+                        [
+                            Operation.note.like(like),
+                            Category.name.like(like),
+                            Operation.kind.ilike(like),
+                        ]
+                    )
+                if "доход".startswith(search_cf):
+                    search_clauses.append(Operation.kind == "income")
+                if "расход".startswith(search_cf):
+                    search_clauses.append(Operation.kind == "expense")
+                conditions.append(or_(*search_clauses))
+        return conditions
 
     def create(
         self,
@@ -54,40 +115,21 @@ class OperationRepository:
         date_to: date | None,
         category_id: int | None,
         q: str | None,
+        receipt_only: bool = False,
+        uncategorized_only: bool = False,
+        min_amount: Decimal | None = None,
     ) -> tuple[list[Operation], int]:
-        conditions = [Operation.user_id == user_id]
-
-        if kind:
-            conditions.append(Operation.kind == kind)
-        if date_from:
-            conditions.append(Operation.operation_date >= date_from)
-        if date_to:
-            conditions.append(Operation.operation_date <= date_to)
-        if category_id is not None:
-            conditions.append(Operation.category_id == category_id)
-        if q:
-            search = q.strip()
-            if search:
-                search_cf = search.casefold()
-                variants = {search}
-                variants.add(search.lower())
-                variants.add(search.upper())
-                variants.add(search[:1].upper() + search[1:])
-                search_clauses = []
-                for variant in variants:
-                    like = f"%{variant}%"
-                    search_clauses.extend(
-                        [
-                            Operation.note.like(like),
-                            Category.name.like(like),
-                            Operation.kind.ilike(like),
-                        ]
-                    )
-                if "доход".startswith(search_cf):
-                    search_clauses.append(Operation.kind == "income")
-                if "расход".startswith(search_cf):
-                    search_clauses.append(Operation.kind == "expense")
-                conditions.append(or_(*search_clauses))
+        conditions = self._build_list_conditions(
+            user_id=user_id,
+            kind=kind,
+            date_from=date_from,
+            date_to=date_to,
+            category_id=category_id,
+            q=q,
+            receipt_only=receipt_only,
+            uncategorized_only=uncategorized_only,
+            min_amount=min_amount,
+        )
 
         base_stmt: Select[tuple[Operation]] = (
             select(Operation)
@@ -116,6 +158,43 @@ class OperationRepository:
         items = list(self.db.scalars(stmt))
         total = int(self.db.scalar(count_stmt) or 0)
         return items, total
+
+    def summary_filtered(
+        self,
+        *,
+        user_id: int,
+        kind: str | None,
+        date_from: date | None,
+        date_to: date | None,
+        category_id: int | None,
+        q: str | None,
+        receipt_only: bool = False,
+        uncategorized_only: bool = False,
+        min_amount: Decimal | None = None,
+    ) -> tuple[Decimal, Decimal, int]:
+        conditions = self._build_list_conditions(
+            user_id=user_id,
+            kind=kind,
+            date_from=date_from,
+            date_to=date_to,
+            category_id=category_id,
+            q=q,
+            receipt_only=receipt_only,
+            uncategorized_only=uncategorized_only,
+            min_amount=min_amount,
+        )
+        stmt = (
+            select(
+                func.coalesce(func.sum(case((Operation.kind == "income", Operation.amount), else_=0)), 0),
+                func.coalesce(func.sum(case((Operation.kind == "expense", Operation.amount), else_=0)), 0),
+                func.count(),
+            )
+            .select_from(Operation)
+            .outerjoin(Category, Category.id == Operation.category_id)
+            .where(and_(*conditions))
+        )
+        income_total, expense_total, total = self.db.execute(stmt).one()
+        return Decimal(income_total or 0), Decimal(expense_total or 0), int(total or 0)
 
     def update(self, operation: Operation, updates: dict) -> Operation:
         for key, value in updates.items():
@@ -278,6 +357,13 @@ class OperationRepository:
         self.db.add_all(payload)
         self.db.flush()
 
+    def has_item_template_price(self, *, template_id: int, unit_price: Decimal) -> bool:
+        stmt = select(OperationItemPrice.id).where(
+            OperationItemPrice.template_id == template_id,
+            OperationItemPrice.unit_price == unit_price,
+        ).limit(1)
+        return self.db.scalar(stmt) is not None
+
     def list_item_templates_for_names_ci(
         self,
         *,
@@ -384,21 +470,22 @@ class OperationRepository:
     def get_latest_prices_for_templates(self, *, template_ids: list[int]) -> dict[int, OperationItemPrice]:
         if not template_ids:
             return {}
-        latest_id_subq = (
-            select(
-                OperationItemPrice.template_id.label("template_id"),
-                func.max(OperationItemPrice.id).label("latest_id"),
-            )
-            .where(OperationItemPrice.template_id.in_(template_ids))
-            .group_by(OperationItemPrice.template_id)
-            .subquery()
-        )
         stmt = (
             select(OperationItemPrice)
-            .join(latest_id_subq, OperationItemPrice.id == latest_id_subq.c.latest_id)
+            .where(OperationItemPrice.template_id.in_(template_ids))
+            .order_by(
+                OperationItemPrice.template_id.asc(),
+                OperationItemPrice.recorded_at.desc(),
+                OperationItemPrice.id.desc(),
+            )
         )
         rows = list(self.db.scalars(stmt))
-        return {int(row.template_id): row for row in rows}
+        latest_by_template: dict[int, OperationItemPrice] = {}
+        for row in rows:
+            key = int(row.template_id)
+            if key not in latest_by_template:
+                latest_by_template[key] = row
+        return latest_by_template
 
     def summary_for_period(self, user_id: int, date_from: date, date_to: date):
         income_stmt = select(func.coalesce(func.sum(Operation.amount), 0)).where(

@@ -69,8 +69,8 @@
         const selected = btn.dataset.analyticsGlobalPeriod;
         if (selected === "custom") {
           state.analyticsGlobalPendingCustom = true;
-          el.customDateFrom.value = core.normalizeDateInputValue(state.analyticsGlobalDateFrom || "");
-          el.customDateTo.value = core.normalizeDateInputValue(state.analyticsGlobalDateTo || "");
+          core.syncDateFieldValue(el.customDateFrom, state.analyticsGlobalDateFrom || "");
+          core.syncDateFieldValue(el.customDateTo, state.analyticsGlobalDateTo || "");
           actions.openPeriodCustomModal();
           return;
         }
@@ -140,7 +140,7 @@
       });
     }
     if (el.analyticsGridMonthPicker && actions.setAnalyticsGridMonthAnchor) {
-      el.analyticsGridMonthPicker.addEventListener("change", () => {
+      const handleMonthPickerChange = () => {
         const nextValue = String(el.analyticsGridMonthPicker.value || "").trim();
         if (!nextValue) {
           return;
@@ -152,10 +152,12 @@
             await actions.savePreferences();
           },
         });
-      });
+      };
+      el.analyticsGridMonthPicker.addEventListener("input", handleMonthPickerChange);
+      el.analyticsGridMonthPicker.addEventListener("change", handleMonthPickerChange);
     }
     if (el.analyticsGridYearPicker && actions.setAnalyticsGridYearAnchor) {
-      el.analyticsGridYearPicker.addEventListener("change", () => {
+      const handleYearPickerChange = () => {
         const nextYear = String(el.analyticsGridYearPicker.value || "").trim();
         if (!nextYear) {
           return;
@@ -167,7 +169,9 @@
             await actions.savePreferences();
           },
         });
-      });
+      };
+      el.analyticsGridYearPicker.addEventListener("input", handleYearPickerChange);
+      el.analyticsGridYearPicker.addEventListener("change", handleYearPickerChange);
     }
     if (el.analyticsCalendarBody && actions.openOperationsForAnalyticsDate) {
       el.analyticsCalendarBody.addEventListener("click", (event) => {
@@ -244,8 +248,51 @@
           });
         });
       };
+      bindCategoryDrilldown(el.analyticsCategoryBreakdownChart);
       bindCategoryDrilldown(el.analyticsCategoryBreakdownList);
       bindCategoryDrilldown(el.analyticsTopCategoriesList);
+    }
+    if (actions.setCategoryBreakdownHover && actions.clearCategoryBreakdownHover) {
+      const bindCategoryHover = (container) => {
+        if (!container) {
+          return;
+        }
+        container.addEventListener("mouseover", (event) => {
+          const node = event.target.closest("[data-analytics-category-index]");
+          if (!node) {
+            return;
+          }
+          actions.setCategoryBreakdownHover(node.dataset.analyticsCategoryIndex);
+        });
+        container.addEventListener("focusin", (event) => {
+          const node = event.target.closest("[data-analytics-category-index]");
+          if (!node) {
+            return;
+          }
+          actions.setCategoryBreakdownHover(node.dataset.analyticsCategoryIndex);
+        });
+        container.addEventListener("mouseout", (event) => {
+          const related = event.relatedTarget instanceof Element ? event.relatedTarget.closest("[data-analytics-category-index]") : null;
+          const current = event.target.closest("[data-analytics-category-index]");
+          if (!current || (related && related.dataset.analyticsCategoryIndex === current.dataset.analyticsCategoryIndex)) {
+            return;
+          }
+          if (!container.contains(event.relatedTarget)) {
+            actions.clearCategoryBreakdownHover();
+          }
+        });
+        container.addEventListener("focusout", (event) => {
+          if (container.contains(event.relatedTarget)) {
+            return;
+          }
+          actions.clearCategoryBreakdownHover();
+        });
+        container.addEventListener("mouseleave", () => {
+          actions.clearCategoryBreakdownHover();
+        });
+      };
+      bindCategoryHover(el.analyticsCategoryBreakdownChart);
+      bindCategoryHover(el.analyticsCategoryBreakdownList);
     }
     if (el.analyticsTrendChart && actions.openOperationsForAnalyticsRange) {
       el.analyticsTrendChart.addEventListener("click", (event) => {

@@ -134,6 +134,42 @@
   line-height: 1;
 }
 
+.section-back-btn {
+  height: 42px;
+  min-width: 42px;
+  max-width: 220px;
+  width: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: rgba(17, 28, 45, 0.9);
+  color: #f0f6ff;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.section-back-btn:hover {
+  background: rgba(31, 45, 70, 0.95);
+}
+
+.section-back-btn-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.section-back-btn-label {
+  font-size: 13px;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .sidebar-today {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -231,7 +267,7 @@
   grid-column: 1 / -1;
 }
 
-.create-modal-grid #opDate {
+.create-modal-grid #opDateField {
   grid-column: span 3;
   width: 100%;
 }
@@ -278,7 +314,7 @@
   gap: var(--space-3);
 }
 
-.edit-modal-grid #editDate {
+.edit-modal-grid #editDateField {
   grid-column: span 3;
   width: 100%;
 }

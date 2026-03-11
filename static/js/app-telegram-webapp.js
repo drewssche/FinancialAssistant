@@ -59,7 +59,8 @@
     }
     const { core, state } = window.App;
     const hasModal = Boolean(getVisibleModalAction());
-    const shouldShow = Boolean(state?.mobileNavOpen) || hasModal || state?.activeSection !== "dashboard";
+    const hasSectionBack = Array.isArray(state?.sectionBackStack) && state.sectionBackStack.length > 0;
+    const shouldShow = Boolean(state?.mobileNavOpen) || hasModal || hasSectionBack || state?.activeSection !== "dashboard";
     if (shouldShow) {
       webApp.BackButton.show();
     } else {
@@ -79,6 +80,11 @@
         modalAction[1]();
         syncBackButton();
         syncMainButton();
+        return;
+      }
+      if (hasSectionBack && window.App.actions?.navigateSectionBack) {
+        await window.App.actions.navigateSectionBack();
+        syncBackButton();
         return;
       }
       if (state?.activeSection && state.activeSection !== "dashboard" && window.App.actions?.switchSection) {

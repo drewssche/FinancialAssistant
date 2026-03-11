@@ -62,6 +62,13 @@ class OperationListOut(BaseModel):
     page_size: int = Field(ge=1)
 
 
+class OperationSummaryOut(BaseModel):
+    income_total: Decimal
+    expense_total: Decimal
+    balance: Decimal
+    total: int
+
+
 class OperationItemTemplateOut(BaseModel):
     id: int
     shop_name: str | None = None
@@ -70,6 +77,7 @@ class OperationItemTemplateOut(BaseModel):
     last_used_at: datetime | None = None
     last_category_id: int | None = None
     latest_unit_price: Decimal | None = None
+    latest_price_date: date | None = None
 
     model_config = {"extra": "allow"}
 
@@ -78,12 +86,14 @@ class OperationItemTemplateCreate(BaseModel):
     shop_name: str | None = Field(default=None, max_length=160)
     name: str = Field(min_length=1, max_length=160)
     latest_unit_price: Decimal | None = Field(default=None, gt=0)
+    latest_price_date: date | None = None
 
 
 class OperationItemTemplateUpdate(BaseModel):
     shop_name: str | None = Field(default=None, max_length=160)
     name: str | None = Field(default=None, min_length=1, max_length=160)
     latest_unit_price: Decimal | None = Field(default=None, gt=0)
+    latest_price_date: date | None = None
 
 
 class OperationItemTemplateDeleteAllOut(BaseModel):

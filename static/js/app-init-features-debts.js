@@ -69,6 +69,20 @@
         actions.openDebtRepaymentModal(Number(btn.dataset.repayDebtId || 0));
       });
     }
+    if (actions.openDebtRepaymentModal) {
+      document.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-repay-debt-id]");
+        if (!btn || btn.disabled) {
+          return;
+        }
+        if (!btn.closest("#debtsCards")) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        actions.openDebtRepaymentModal(Number(btn.dataset.repayDebtId || 0));
+      }, true);
+    }
 
     if (el.debtRepaymentForm && actions.submitDebtRepayment) {
       el.debtRepaymentForm.addEventListener("submit", (event) => {

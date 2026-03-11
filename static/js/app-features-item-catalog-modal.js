@@ -40,6 +40,9 @@
       if (el.itemTemplatePrice) {
         el.itemTemplatePrice.value = item?.latest_unit_price || "";
       }
+      if (el.itemTemplatePriceDate) {
+        core.syncDateFieldValue(el.itemTemplatePriceDate, item?.latest_price_date || core.getTodayIso());
+      }
       if (el.itemTemplatePreviewBody) {
         updateItemTemplatePreview();
       }
@@ -86,11 +89,12 @@
       const name = String(el.itemTemplateName?.value || "").trim() || "—";
       const parsedPrice = core.resolveMoneyInput(el.itemTemplatePrice?.value || 0);
       const validPrice = !parsedPrice.empty && parsedPrice.previewValue > 0 ? parsedPrice.previewValue : 0;
+      const priceDate = core.parseDateInputValue(el.itemTemplatePriceDate?.value || "") || null;
       el.itemTemplatePreviewBody.innerHTML = `
         <tr class="preview-row">
           <td>${escapeHtml(source)}</td>
           <td>${escapeHtml(name)}</td>
-          <td>${core.formatMoney(validPrice)}</td>
+          <td>${core.formatMoney(validPrice)}${priceDate ? `<div class="muted-small">${core.formatDateRu(priceDate)}</div>` : ""}</td>
         </tr>
       `;
     }
@@ -109,7 +113,13 @@
           core.setStatus("Проверь цену позиции");
           return;
         }
+        const priceDate = core.parseDateInputValue(el.itemTemplatePriceDate?.value || "");
+        if (!priceDate) {
+          core.setStatus("Проверь дату цены");
+          return;
+        }
         payload.latest_unit_price = price.formatted;
+        payload.latest_price_date = priceDate;
       }
       if (!payload.name) {
         core.setStatus("Введите название позиции");

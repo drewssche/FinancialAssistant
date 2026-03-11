@@ -12,9 +12,22 @@ QTY_Q = Decimal("0.001")
 
 
 class OperationService:
+    LARGE_OPERATION_THRESHOLD = Decimal("100")
+
     def __init__(self, db: Session):
         self.db = db
         self.repo = OperationRepository(db)
+
+    @classmethod
+    def _resolve_quick_view_filters(cls, quick_view: str | None) -> dict:
+        view = (quick_view or "all").strip()
+        if view == "receipt":
+            return {"receipt_only": True, "uncategorized_only": False, "min_amount": None}
+        if view == "large":
+            return {"receipt_only": False, "uncategorized_only": False, "min_amount": cls.LARGE_OPERATION_THRESHOLD}
+        if view == "uncategorized":
+            return {"receipt_only": False, "uncategorized_only": True, "min_amount": None}
+        return {"receipt_only": False, "uncategorized_only": False, "min_amount": None}
 
     def create_operation(
         self,
@@ -57,11 +70,13 @@ class OperationService:
         date_to: date | None,
         category_id: int | None,
         q: str | None,
+        quick_view: str | None = None,
     ) -> tuple[list, int]:
         if date_from and date_to and date_from > date_to:
             raise ValueError("date_from must be less than or equal to date_to")
         if kind:
             self._validate_kind(kind)
+        quick_view_filters = self._resolve_quick_view_filters(quick_view)
 
         items, total = self.repo.list_filtered(
             user_id=user_id,
@@ -74,6 +89,9 @@ class OperationService:
             date_to=date_to,
             category_id=category_id,
             q=q,
+            receipt_only=quick_view_filters["receipt_only"],
+            uncategorized_only=quick_view_filters["uncategorized_only"],
+            min_amount=quick_view_filters["min_amount"],
         )
         operation_ids = [int(item.id) for item in items]
         receipt_by_operation = self.repo.list_receipt_items_for_operations(
@@ -89,6 +107,40 @@ class OperationService:
             for item in items
         ]
         return result, total
+
+    def summarize_operations(
+        self,
+        *,
+        user_id: int,
+        kind: str | None,
+        date_from: date | None,
+        date_to: date | None,
+        category_id: int | None,
+        q: str | None,
+        quick_view: str | None = None,
+    ) -> dict:
+        if date_from and date_to and date_from > date_to:
+            raise ValueError("date_from must be less than or equal to date_to")
+        if kind:
+            self._validate_kind(kind)
+        quick_view_filters = self._resolve_quick_view_filters(quick_view)
+        income_total, expense_total, total = self.repo.summary_filtered(
+            user_id=user_id,
+            kind=kind,
+            date_from=date_from,
+            date_to=date_to,
+            category_id=category_id,
+            q=q,
+            receipt_only=quick_view_filters["receipt_only"],
+            uncategorized_only=quick_view_filters["uncategorized_only"],
+            min_amount=quick_view_filters["min_amount"],
+        )
+        return {
+            "income_total": income_total,
+            "expense_total": expense_total,
+            "balance": income_total - expense_total,
+            "total": total,
+        }
 
     def get_operation(self, user_id: int, operation_id: int):
         item = self.repo.get_by_id(user_id=user_id, operation_id=operation_id)
@@ -173,6 +225,7 @@ class OperationService:
                     "last_used_at": item.last_used_at,
                     "last_category_id": item.last_category_id,
                     "latest_unit_price": self._money(latest.unit_price) if latest else None,
+                    "latest_price_date": latest.recorded_at if latest else None,
                 }
             )
         return payload, total
@@ -205,6 +258,7 @@ class OperationService:
         shop_name: str | None,
         name: str,
         latest_unit_price: Decimal | None,
+        latest_price_date: date | None = None,
     ) -> dict:
         normalized_shop, normalized_name = self._normalize_item_template_fields(shop_name=shop_name, name=name)
         shop_name_ci = normalized_shop.casefold() if normalized_shop else None
@@ -236,13 +290,12 @@ class OperationService:
             self.db.flush()
         if latest_unit_price is not None:
             next_price = self._money(latest_unit_price)
-            latest_map = self.repo.get_latest_prices_for_templates(template_ids=[int(item.id)])
-            latest = latest_map.get(int(item.id))
-            if not latest or self._money(latest.unit_price) != next_price:
+            recorded_at = latest_price_date or date.today()
+            if not self.repo.has_item_template_price(template_id=int(item.id), unit_price=next_price):
                 self.repo.add_item_template_price(
                     template_id=int(item.id),
                     unit_price=next_price,
-                    recorded_at=date.today(),
+                    recorded_at=recorded_at,
                     source_operation_id=None,
                 )
         self.db.commit()
@@ -282,13 +335,12 @@ class OperationService:
         latest_unit_price = updates.get("latest_unit_price")
         if latest_unit_price is not None:
             next_price = self._money(latest_unit_price)
-            latest_map = self.repo.get_latest_prices_for_templates(template_ids=[int(item.id)])
-            latest = latest_map.get(int(item.id))
-            if not latest or self._money(latest.unit_price) != next_price:
+            recorded_at = updates.get("latest_price_date") or date.today()
+            if not self.repo.has_item_template_price(template_id=int(item.id), unit_price=next_price):
                 self.repo.add_item_template_price(
                     template_id=int(item.id),
                     unit_price=next_price,
-                    recorded_at=date.today(),
+                    recorded_at=recorded_at,
                     source_operation_id=None,
                 )
         self.db.commit()
@@ -364,6 +416,13 @@ class OperationService:
             int(template_id): self._money(row.unit_price)
             for template_id, row in latest_price_rows.items()
         }
+        existing_price_values: dict[int, set[Decimal]] = {}
+        for template in template_by_key.values():
+            template_id = int(template.id)
+            existing_price_values[template_id] = {
+                self._money(row.unit_price)
+                for row in self.repo.list_item_prices(template_id=template_id, limit=500)
+            }
         price_rows: list[dict] = []
         for item in normalized_items:
             shop_name = item.get("shop_name")
@@ -382,7 +441,7 @@ class OperationService:
             self.repo.touch_item_template(item=template, last_category_id=category_id, flush=False)
             template_id = int(template.id)
             unit_price = self._money(item["unit_price"])
-            if latest_price_by_template.get(template_id) != unit_price:
+            if unit_price not in existing_price_values.setdefault(template_id, set()):
                 price_rows.append(
                     {
                         "template_id": template_id,
@@ -391,6 +450,7 @@ class OperationService:
                         "source_operation_id": operation_id,
                     }
                 )
+                existing_price_values[template_id].add(unit_price)
                 latest_price_by_template[template_id] = unit_price
             storage_items.append(
                 {
@@ -455,6 +515,7 @@ class OperationService:
             "last_used_at": item.last_used_at,
             "last_category_id": item.last_category_id,
             "latest_unit_price": self._money(latest.unit_price) if latest else None,
+            "latest_price_date": latest.recorded_at if latest else None,
         }
 
     def _normalize_receipt_items(self, receipt_items: list[dict]) -> tuple[list[dict], Decimal | None]:

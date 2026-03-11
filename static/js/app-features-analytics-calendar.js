@@ -1,6 +1,28 @@
 (() => {
   const { state, el, core } = window.App;
   const CALENDAR_CACHE_TTL_MS = 20000;
+  let calendarScrollUiBound = false;
+
+  function syncCalendarScrollFade() {
+    if (!el.analyticsCalendarScrollWrap) {
+      return;
+    }
+    const node = el.analyticsCalendarScrollWrap;
+    const maxScrollLeft = Math.max(0, node.scrollWidth - node.clientWidth);
+    const scrollLeft = Math.max(0, node.scrollLeft || 0);
+    const edgeTolerance = 2;
+    node.classList.toggle("has-left-fade", scrollLeft > edgeTolerance);
+    node.classList.toggle("has-right-fade", scrollLeft < maxScrollLeft - edgeTolerance);
+  }
+
+  function bindCalendarScrollUi() {
+    if (calendarScrollUiBound || !el.analyticsCalendarScrollWrap) {
+      return;
+    }
+    calendarScrollUiBound = true;
+    el.analyticsCalendarScrollWrap.addEventListener("scroll", syncCalendarScrollFade, { passive: true });
+    window.addEventListener("resize", syncCalendarScrollFade);
+  }
 
   function parseMonthAnchor(rawValue) {
     const raw = String(rawValue || "").trim();
@@ -61,7 +83,9 @@
     if (el.analyticsYearGridWrap) {
       el.analyticsYearGridWrap.classList.toggle("hidden", view !== "year");
     }
-    if (el.analyticsGridMonthPicker) {
+    if (el.analyticsGridMonthPickerWrap) {
+      el.analyticsGridMonthPickerWrap.classList.toggle("hidden", view !== "month");
+    } else if (el.analyticsGridMonthPicker) {
       el.analyticsGridMonthPicker.classList.toggle("hidden", view !== "month");
     }
     if (el.analyticsGridYearPicker) {
@@ -177,6 +201,7 @@
       `;
       el.analyticsCalendarBody.appendChild(tr);
     }
+    window.requestAnimationFrame(syncCalendarScrollFade);
   }
 
   function renderAnalyticsCalendarYear(data) {
@@ -204,9 +229,11 @@
         `;
       })
       .join("");
+    window.requestAnimationFrame(syncCalendarScrollFade);
   }
 
   async function loadAnalyticsCalendar(options = {}) {
+    bindCalendarScrollUi();
     const force = options.force === true;
     if (!state.analyticsMonthAnchor) {
       const now = new Date();
@@ -225,6 +252,7 @@
         if (cached) {
           renderAnalyticsCalendarYear(cached);
           renderCalendarTotals(cached, "year");
+          window.requestAnimationFrame(syncCalendarScrollFade);
           return cached;
         }
       }
@@ -234,6 +262,7 @@
       core.setUiRequestCache(cacheKey, data);
       renderAnalyticsCalendarYear(data);
       renderCalendarTotals(data, "year");
+      window.requestAnimationFrame(syncCalendarScrollFade);
       return data;
     }
 
@@ -243,6 +272,7 @@
       if (cached) {
         renderAnalyticsCalendarMonth(cached);
         renderCalendarTotals(cached, "month");
+        window.requestAnimationFrame(syncCalendarScrollFade);
         return cached;
       }
     }
@@ -252,6 +282,7 @@
     core.setUiRequestCache(cacheKey, data);
     renderAnalyticsCalendarMonth(data);
     renderCalendarTotals(data, "month");
+    window.requestAnimationFrame(syncCalendarScrollFade);
     return data;
   }
 
@@ -301,6 +332,8 @@
       return;
     }
     state.analyticsMonthAnchor = serializeMonthAnchor(parsed);
+    syncGridPickers();
+    syncMonthLabelByView(parsed, "month");
     await loadAnalyticsCalendar({ force: true });
   }
 
@@ -314,6 +347,8 @@
       state.analyticsCalendarView = "year";
       applyCalendarViewUi();
     }
+    syncGridPickers();
+    syncMonthLabelByView(new Date(Date.UTC(year, 0, 1)), "year");
     await loadAnalyticsCalendar({ force: true });
   }
 
@@ -330,5 +365,6 @@
     setAnalyticsCalendarView,
     setAnalyticsGridMonthAnchor,
     setAnalyticsGridYearAnchor,
+    syncCalendarScrollFade,
   };
 })();

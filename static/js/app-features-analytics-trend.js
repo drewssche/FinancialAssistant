@@ -56,62 +56,81 @@
       return Math.max(0, Math.min(height, y));
     };
 
-    if (compact) {
-      const incomeLine = pointsToPolyline(points, (p) => p.income_total, width, height, minValue, maxValue);
-      const expenseLine = pointsToPolyline(points, (p) => p.expense_total, width, height, minValue, maxValue);
-      const balanceLine = pointsToPolyline(points, (p) => p.balance, width, height, minValue, maxValue);
-      svgNode.innerHTML = `
-        <polyline points="${incomeLine}" fill="none" stroke="#3bc47b" stroke-width="2" stroke-linecap="round" />
-        <polyline points="${expenseLine}" fill="none" stroke="#ff7a7a" stroke-width="2" stroke-linecap="round" />
-        <polyline points="${balanceLine}" fill="none" stroke="#6ca7ff" stroke-width="2" stroke-linecap="round" />
-      `;
-      return;
-    }
-
     const bucketWidth = points.length > 0 ? width / points.length : width;
-    const barWidth = Math.max(6, bucketWidth * 0.34);
+    const barWidth = Math.max(compact ? 4 : 6, bucketWidth * (compact ? 0.24 : 0.34));
     const zeroY = mapY(0);
-    const barsIncome = [];
-    const barsExpense = [];
-    const hitboxes = [];
+    const bucketGroups = [];
 
     for (let idx = 0; idx < points.length; idx += 1) {
       const point = points[idx];
       const baseX = idx * bucketWidth + bucketWidth / 2;
       const incomeY = mapY(point.income_total);
       const expenseY = mapY(point.expense_total);
+      const balanceY = mapY(point.balance);
       const incomeHeight = Math.max(1, Math.abs(zeroY - incomeY));
       const expenseHeight = Math.max(1, Math.abs(zeroY - expenseY));
-      barsIncome.push(
-        `<rect x="${(baseX - barWidth - 1).toFixed(2)}" y="${Math.min(incomeY, zeroY).toFixed(2)}" width="${barWidth.toFixed(2)}" height="${incomeHeight.toFixed(2)}" rx="2" fill="#3bc47b" fill-opacity="0.45" />`,
-      );
-      barsExpense.push(
-        `<rect x="${(baseX + 1).toFixed(2)}" y="${Math.min(expenseY, zeroY).toFixed(2)}" width="${barWidth.toFixed(2)}" height="${expenseHeight.toFixed(2)}" rx="2" fill="#ff7a7a" fill-opacity="0.52" />`,
-      );
       const hint = `${point.label}: Доход ${core.formatMoney(point.income_total)}, Расход ${core.formatMoney(point.expense_total)}, Баланс ${core.formatMoney(point.balance)}`;
-      hitboxes.push(`
-        <rect
-          class="analytics-trend-hitbox"
-          x="${(idx * bucketWidth).toFixed(2)}"
-          y="0"
-          width="${bucketWidth.toFixed(2)}"
-          height="${height}"
-          fill="transparent"
+      bucketGroups.push(`
+        <g
+          class="trend-bucket"
           data-analytics-bucket-start="${point.bucket_start}"
           data-analytics-bucket-end="${point.bucket_end}"
         >
-          <title>${escapeHtml(hint)}</title>
-        </rect>
+          <rect
+            class="trend-bucket-band"
+            x="${(idx * bucketWidth).toFixed(2)}"
+            y="0"
+            width="${bucketWidth.toFixed(2)}"
+            height="${height}"
+            rx="${compact ? 8 : 10}"
+            fill="rgba(108, 167, 255, 0.12)"
+          ></rect>
+          <rect
+            class="trend-bar trend-bar-income"
+            x="${(baseX - barWidth - 1).toFixed(2)}"
+            y="${Math.min(incomeY, zeroY).toFixed(2)}"
+            width="${barWidth.toFixed(2)}"
+            height="${incomeHeight.toFixed(2)}"
+            rx="2"
+            fill="#3bc47b"
+            fill-opacity="${compact ? "0.62" : "0.45"}"
+          />
+          <rect
+            class="trend-bar trend-bar-expense"
+            x="${(baseX + 1).toFixed(2)}"
+            y="${Math.min(expenseY, zeroY).toFixed(2)}"
+            width="${barWidth.toFixed(2)}"
+            height="${expenseHeight.toFixed(2)}"
+            rx="2"
+            fill="#ff7a7a"
+            fill-opacity="${compact ? "0.68" : "0.52"}"
+          />
+          <circle
+            class="trend-balance-marker"
+            cx="${baseX.toFixed(2)}"
+            cy="${balanceY.toFixed(2)}"
+            r="${compact ? "2.8" : "4.2"}"
+            fill="#6ca7ff"
+          />
+          <rect
+            class="analytics-trend-hitbox"
+            x="${(idx * bucketWidth).toFixed(2)}"
+            y="0"
+            width="${bucketWidth.toFixed(2)}"
+            height="${height}"
+            fill="transparent"
+          >
+            <title>${escapeHtml(hint)}</title>
+          </rect>
+        </g>
       `);
     }
 
     const balanceLine = pointsToPolyline(points, (p) => p.balance, width, height, minValue, maxValue);
     svgNode.innerHTML = `
       <line x1="0" y1="${zeroY.toFixed(2)}" x2="${width}" y2="${zeroY.toFixed(2)}" stroke="rgba(141,160,190,0.45)" stroke-width="1" />
-      ${barsIncome.join("")}
-      ${barsExpense.join("")}
-      <polyline points="${balanceLine}" fill="none" stroke="#6ca7ff" stroke-width="3" stroke-linecap="round" />
-      ${hitboxes.join("")}
+      <polyline points="${balanceLine}" fill="none" stroke="#6ca7ff" stroke-width="${compact ? "2.4" : "3"}" stroke-linecap="round" />
+      ${bucketGroups.join("")}
     `;
   }
 

@@ -413,7 +413,7 @@
     const submit = document.getElementById("submitCreateOperationBtn");
     if (isDebt) {
       if (!el.debtStartDate.value) {
-        el.debtStartDate.value = core.normalizeDateInputValue(core.getTodayIso());
+        core.syncDateFieldValue(el.debtStartDate, core.getTodayIso());
       }
       if (submit) {
         submit.textContent = state.editDebtCreateId ? "Сохранить долг" : "Создать долг";
@@ -461,7 +461,7 @@
     }
     const dateInput = document.getElementById("opDate");
     if (!dateInput.value) {
-      dateInput.value = core.normalizeDateInputValue(core.getTodayIso());
+      core.syncDateFieldValue(dateInput, core.getTodayIso());
     }
     setOperationKind("create", el.opKind.value || "expense");
     el.opCategory.value = "";
@@ -511,8 +511,8 @@
     }
     el.debtCounterparty.value = payload.counterparty || "";
     el.debtPrincipal.value = payload.principal || "";
-    el.debtStartDate.value = core.normalizeDateInputValue(payload.start_date || core.getTodayIso());
-    el.debtDueDate.value = core.normalizeDateInputValue(payload.due_date || "");
+    core.syncDateFieldValue(el.debtStartDate, payload.start_date || core.getTodayIso());
+    core.syncDateFieldValue(el.debtDueDate, payload.due_date || "");
     el.debtNote.value = payload.note || "";
     setDebtDirection(payload.direction || "lend");
     setCreateEntryMode("debt");
@@ -522,7 +522,7 @@
   function openEditModal(item) {
     state.editOperationId = item.id;
     document.getElementById("editAmount").value = item.amount;
-    document.getElementById("editDate").value = core.normalizeDateInputValue(item.operation_date);
+    core.syncDateFieldValue(document.getElementById("editDate"), item.operation_date);
     document.getElementById("editNote").value = item.note || "";
     clearReceiptItems("edit");
     if (typeof createReceiptDraft === "function") {
@@ -565,8 +565,8 @@
   }
   function openPeriodCustomModal() {
     const today = core.getTodayIso();
-    el.customDateTo.value = core.normalizeDateInputValue(state.customDateTo || today);
-    el.customDateFrom.value = core.normalizeDateInputValue(state.customDateFrom || today);
+    core.syncDateFieldValue(el.customDateTo, state.customDateTo || today);
+    core.syncDateFieldValue(el.customDateFrom, state.customDateFrom || today);
     el.periodCustomModal.classList.remove("hidden");
   }
   function closePeriodCustomModal() {

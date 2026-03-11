@@ -2,11 +2,120 @@
   const { state, el } = window.App;
   let todayTimerId = null;
 
+  function cloneNavigationState() {
+    return {
+      activeSection: state.activeSection,
+      period: state.period,
+      customDateFrom: state.customDateFrom,
+      customDateTo: state.customDateTo,
+      filterKind: state.filterKind,
+      operationsQuickView: state.operationsQuickView,
+      operationsCategoryFilterId: state.operationsCategoryFilterId,
+      operationsCategoryFilterName: state.operationsCategoryFilterName,
+      analyticsTab: state.analyticsTab,
+      analyticsCalendarView: state.analyticsCalendarView,
+      analyticsGlobalPeriod: state.analyticsGlobalPeriod,
+      analyticsGlobalDateFrom: state.analyticsGlobalDateFrom,
+      analyticsGlobalDateTo: state.analyticsGlobalDateTo,
+      analyticsCategoryKind: state.analyticsCategoryKind,
+      analyticsGranularity: state.analyticsGranularity,
+      analyticsMonthAnchor: state.analyticsMonthAnchor,
+      dashboardAnalyticsPeriod: state.dashboardAnalyticsPeriod,
+      filterQ: String(el.filterQ?.value || ""),
+    };
+  }
+
+  function restoreNavigationState(snapshot) {
+    if (!snapshot) {
+      return;
+    }
+    state.period = snapshot.period || "day";
+    state.customDateFrom = snapshot.customDateFrom || "";
+    state.customDateTo = snapshot.customDateTo || "";
+    state.filterKind = snapshot.filterKind || "";
+    state.operationsQuickView = snapshot.operationsQuickView || "all";
+    state.operationsCategoryFilterId = snapshot.operationsCategoryFilterId ?? null;
+    state.operationsCategoryFilterName = snapshot.operationsCategoryFilterName || "";
+    state.analyticsTab = snapshot.analyticsTab || "overview";
+    state.analyticsCalendarView = snapshot.analyticsCalendarView || "month";
+    state.analyticsGlobalPeriod = snapshot.analyticsGlobalPeriod || "month";
+    state.analyticsGlobalDateFrom = snapshot.analyticsGlobalDateFrom || "";
+    state.analyticsGlobalDateTo = snapshot.analyticsGlobalDateTo || "";
+    state.analyticsCategoryKind = snapshot.analyticsCategoryKind || "expense";
+    state.analyticsGranularity = snapshot.analyticsGranularity || "day";
+    state.analyticsMonthAnchor = snapshot.analyticsMonthAnchor || "";
+    state.dashboardAnalyticsPeriod = snapshot.dashboardAnalyticsPeriod || "month";
+    if (el.filterQ) {
+      el.filterQ.value = snapshot.filterQ || "";
+    }
+    window.App.core.syncAllPeriodTabs(state.period);
+    window.App.core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
+    window.App.core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
+    window.App.core.syncSegmentedActive(el.analyticsViewTabs, "analytics-tab", state.analyticsTab);
+    window.App.core.syncSegmentedActive(el.analyticsCalendarViewTabs, "analytics-calendar-view", state.analyticsCalendarView);
+    window.App.core.syncSegmentedActive(el.analyticsGlobalPeriodTabs, "analytics-global-period", state.analyticsGlobalPeriod);
+    window.App.core.syncSegmentedActive(el.analyticsCategoryKindTabs, "analytics-category-kind", state.analyticsCategoryKind);
+    window.App.core.syncSegmentedActive(el.analyticsGranularityTabs, "analytics-granularity", state.analyticsGranularity);
+    window.App.core.syncSegmentedActive(el.dashboardAnalyticsPeriodTabs, "dashboard-analytics-period", state.dashboardAnalyticsPeriod);
+  }
+
+  function updateSectionBackUi() {
+    if (!el.sectionBackBtn) {
+      return;
+    }
+    const stack = Array.isArray(state.sectionBackStack) ? state.sectionBackStack : [];
+    const last = stack[stack.length - 1] || null;
+    const isVisible = Boolean(last);
+    el.sectionBackBtn.classList.toggle("hidden", !isVisible);
+    if (el.sectionBackLabel) {
+      const sectionLabelMap = {
+        dashboard: "к Дашборду",
+        analytics: last?.analyticsTab === "calendar"
+          ? "к Календарю"
+          : last?.analyticsTab === "overview"
+            ? "к КПИ"
+            : last?.analyticsTab === "structure"
+              ? "к Структуре"
+              : last?.analyticsTab === "operations"
+                ? "к Операциям"
+                : last?.analyticsTab === "trends"
+                  ? "к Трендам"
+                  : "к Аналитике",
+        operations: "к Операциям",
+        debts: "к Долгам",
+        categories: "к Категориям",
+        item_catalog: "к Каталогу",
+        settings: "к Настройкам",
+        admin: "к Админу",
+      };
+      el.sectionBackLabel.textContent = isVisible ? (sectionLabelMap[last.activeSection] || "Назад") : "Назад";
+    }
+  }
+
+  function pushSectionBackContext() {
+    state.sectionBackStack = Array.isArray(state.sectionBackStack) ? state.sectionBackStack : [];
+    state.sectionBackStack.push(cloneNavigationState());
+    if (state.sectionBackStack.length > 12) {
+      state.sectionBackStack = state.sectionBackStack.slice(-12);
+    }
+    updateSectionBackUi();
+  }
+
+  async function navigateSectionBack() {
+    if (!Array.isArray(state.sectionBackStack) || !state.sectionBackStack.length) {
+      return;
+    }
+    const snapshot = state.sectionBackStack.pop();
+    restoreNavigationState(snapshot);
+    updateSectionBackUi();
+    await switchSection(snapshot.activeSection || "dashboard", { preserveBackStack: true });
+  }
+
   function applySectionUi() {
     const sections = [
       { id: "dashboard", node: el.dashboardSection, title: "Дашборд", subtitle: "Доходы, расходы и операции за выбранный период" },
       { id: "analytics", node: el.analyticsSection, title: "Аналитика", subtitle: "Календарь, тренды и динамика расходов/доходов" },
-      { id: "operations", node: el.operationsSection, title: "Операции", subtitle: "Полный список операций" },
+      { id: "operations", node: el.operationsSection, title: "Операции", subtitle: "Рабочий список операций, фильтры и массовые действия" },
       { id: "debts", node: el.debtsSection, title: "Долги", subtitle: "Карточки задолженностей и погашения" },
       { id: "categories", node: el.categoriesSection, title: "Категории", subtitle: "Управление категориями доходов и расходов" },
       { id: "item_catalog", node: el.itemCatalogSection, title: "Каталог позиций", subtitle: "Справочник позиций чеков по источникам" },
@@ -35,6 +144,7 @@
         el.sectionSubtitle.textContent = section.subtitle;
       }
     }
+    updateSectionBackUi();
 
     const showTopActions =
       state.activeSection === "dashboard" ||
@@ -109,12 +219,16 @@
     todayTimerId = setTimeout(renderTodayLabel, Math.max(1000, tomorrow.getTime() - now.getTime()));
   }
 
-  async function switchSection(sectionId) {
+  async function switchSection(sectionId, options = {}) {
+    const preserveBackStack = options.preserveBackStack === true;
     if (sectionId === "admin" && !state.isAdmin) {
       return;
     }
     if (window.App.core?.closeMobileNav) {
       window.App.core.closeMobileNav();
+    }
+    if (!preserveBackStack && state.activeSection !== sectionId) {
+      state.sectionBackStack = [];
     }
     state.activeSection = sectionId;
     applySectionUi();
@@ -171,5 +285,8 @@
     applySectionUi,
     renderTodayLabel,
     switchSection,
+    pushSectionBackContext,
+    navigateSectionBack,
+    updateSectionBackUi,
   });
 })();

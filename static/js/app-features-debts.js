@@ -2,6 +2,7 @@
   const { state, el, core } = window.App;
   const debtUi = core.debtUi;
   const formatMoney = debtUi.formatMoney;
+  const parseAmount = debtUi.parseAmount;
   const parseIsoDate = debtUi.parseIsoDate;
   const parseIsoDateEnd = debtUi.parseIsoDateEnd;
   const debtCardsRenderer = window.App.debtCardsRenderer;
@@ -109,7 +110,7 @@
       el.repaymentProgressBar.style.width = `${progress}%`;
     }
     if (!el.repaymentDate.value) {
-      el.repaymentDate.value = core.normalizeDateInputValue(core.getTodayIso());
+      core.syncDateFieldValue(el.repaymentDate, core.getTodayIso());
     }
     el.repaymentAmount.value = "";
     el.repaymentNote.value = "";

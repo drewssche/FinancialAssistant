@@ -141,6 +141,12 @@
   const refreshOperationsView = operationsFeatures.refreshOperationsView;
   const getCurrentOperationItems = operationsFeatures.getCurrentOperationItems;
   const clearOperationsCategoryFilter = operationsFeatures.clearOperationsCategoryFilter;
+  const resetOperationsFilters = operationsFeatures.resetOperationsFilters;
+  const setOperationsQuickView = operationsFeatures.setOperationsQuickView;
+  const selectVisibleOperations = operationsFeatures.selectVisibleOperations;
+  const clearVisibleOperationsSelection = operationsFeatures.clearVisibleOperationsSelection;
+  const setOperationsKindFilter = operationsFeatures.setOperationsKindFilter;
+  const loadOperationsSummary = operationsFeatures.loadOperationsSummary;
   const openOperationReceiptModal = operationsFeatures.openOperationReceiptModal;
   const closeOperationReceiptModal = operationsFeatures.closeOperationReceiptModal;
   const cleanupOperationsRuntime = operationsFeatures.cleanupOperationsRuntime;
@@ -275,6 +281,12 @@
     refreshOperationsView,
     getCurrentOperationItems,
     clearOperationsCategoryFilter,
+    resetOperationsFilters,
+    setOperationsQuickView,
+    selectVisibleOperations,
+    clearVisibleOperationsSelection,
+    setOperationsKindFilter,
+    loadOperationsSummary,
     fillGroupSelect: categoryActions.fillGroupSelect,
     setCategoryKind: categoryActions.setCategoryKind,
     renderCreateGroupPicker: categoryActions.renderCreateGroupPicker,

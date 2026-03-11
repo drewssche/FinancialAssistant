@@ -38,11 +38,14 @@
       return;
     }
     const normalize = () => {
-      node.value = core.normalizeDateInputValue(node.value);
+      core.syncDateFieldValue(node, node.value);
       if (typeof onChange === "function") {
         onChange();
       }
     };
+    if (node.type === "date") {
+      node.addEventListener("input", normalize);
+    }
     node.addEventListener("blur", normalize);
     node.addEventListener("change", normalize);
   }
@@ -53,6 +56,24 @@
     }
     bound = true;
     document.addEventListener("focusin", scrollFocusedModalFieldIntoView);
+    document.addEventListener("click", (event) => {
+      const trigger = event.target.closest("[data-date-picker-trigger]");
+      if (!trigger) {
+        return;
+      }
+      const targetId = String(trigger.dataset.datePickerTrigger || "").trim();
+      if (!targetId) {
+        return;
+      }
+      const input = document.getElementById(targetId);
+      if (!(input instanceof HTMLInputElement) || input.disabled || input.readOnly) {
+        return;
+      }
+      input.focus({ preventScroll: true });
+      if (typeof input.showPicker === "function") {
+        input.showPicker();
+      }
+    });
 
     for (const id of ["opAmount", "opDate", "opNote"]) {
       const node = document.getElementById(id);
@@ -314,6 +335,11 @@
     if (el.itemTemplatePrice && actions.updateItemTemplatePreview) {
       for (const eventName of ["input", "change"]) {
         el.itemTemplatePrice.addEventListener(eventName, actions.updateItemTemplatePreview);
+      }
+    }
+    if (el.itemTemplatePriceDate && actions.updateItemTemplatePreview) {
+      for (const eventName of ["input", "change"]) {
+        el.itemTemplatePriceDate.addEventListener(eventName, actions.updateItemTemplatePreview);
       }
     }
 

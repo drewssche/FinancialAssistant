@@ -1,6 +1,6 @@
 (() => {
   const CURRENCY_META = {
-    BYN: { symbol: "Br" },
+    BYN: { symbol: "Ƀ" },
     RUB: { symbol: "₽" },
     USD: { symbol: "$" },
     EUR: { symbol: "€" },
@@ -344,6 +344,24 @@
     return raw;
   }
 
+  function normalizeDateFieldValue(value, inputType = "text") {
+    const type = String(inputType || "text").toLowerCase();
+    const iso = parseDateInputValue(value);
+    if (type === "date") {
+      return iso || "";
+    }
+    return iso ? formatDateRu(iso) : normalizeDateInputValue(value);
+  }
+
+  function syncDateFieldValue(node, value) {
+    if (!node) {
+      return "";
+    }
+    const normalized = normalizeDateFieldValue(value, node.type || "text");
+    node.value = normalized;
+    return normalized;
+  }
+
   function getTodayIso() {
     return new Date().toISOString().slice(0, 10);
   }
@@ -459,6 +477,8 @@
     isDisplayDate,
     parseDateInputValue,
     normalizeDateInputValue,
+    normalizeDateFieldValue,
+    syncDateFieldValue,
     getTodayIso,
     kindLabel,
     formatPeriodLabel,

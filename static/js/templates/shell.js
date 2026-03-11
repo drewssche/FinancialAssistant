@@ -45,6 +45,10 @@
         <header class="topbar">
           <div class="topbar-title-block">
             <button id="mobileNavToggleBtn" class="mobile-nav-toggle" type="button" aria-label="Открыть меню" aria-expanded="false">☰</button>
+            <button id="sectionBackBtn" class="section-back-btn hidden" type="button" aria-label="Назад" title="Назад">
+              <span class="section-back-btn-icon" aria-hidden="true">←</span>
+              <span id="sectionBackLabel" class="section-back-btn-label">Назад</span>
+            </button>
             <div>
             <h2 id="sectionTitle">Дашборд</h2>
             <p class="subtitle" id="sectionSubtitle">Доходы, расходы и быстрый контроль баланса</p>
@@ -210,8 +214,9 @@
 
           <section class="panel">
             <div class="segmented" id="analyticsViewTabs" role="tablist" aria-label="Вкладки аналитики">
-              <button class="segmented-btn active" data-analytics-tab="overview" type="button">Общий</button>
               <button class="segmented-btn" data-analytics-tab="calendar" type="button">Календарь</button>
+              <button class="segmented-btn active" data-analytics-tab="overview" type="button">КПИ</button>
+              <button class="segmented-btn" data-analytics-tab="structure" type="button">Структура</button>
               <button class="segmented-btn" data-analytics-tab="operations" type="button">Операции</button>
               <button class="segmented-btn" data-analytics-tab="trends" type="button">Тренды</button>
             </div>
@@ -226,6 +231,9 @@
             </div>
             <div id="analyticsKpiPrimary" class="analytics-kpi-grid"></div>
             <div id="analyticsKpiSecondary" class="analytics-kpi-secondary"></div>
+          </section>
+
+          <section id="analyticsStructurePanel" class="panel analytics-tab-panel hidden">
             <div class="panel-head row between">
               <div>
                 <h3>Структура по категориям</h3>
@@ -242,7 +250,9 @@
             <div class="analytics-category-breakdown-grid">
               <div class="analytics-category-breakdown-chart-card">
                 <div id="analyticsCategoryBreakdownChart" class="analytics-category-donut" aria-hidden="true">
+                  <svg id="analyticsCategoryBreakdownSvg" class="analytics-category-donut-svg" viewBox="0 0 220 220" aria-hidden="true"></svg>
                   <div class="analytics-category-donut-hole">
+                    <span id="analyticsCategoryBreakdownChartTitle" class="analytics-category-donut-title muted-small">Итог периода</span>
                     <strong id="analyticsCategoryBreakdownChartValue">0</strong>
                     <span id="analyticsCategoryBreakdownChartMeta" class="muted-small">Нет данных</span>
                   </div>
@@ -269,7 +279,10 @@
                 <div class="analytics-switch-group">
                   <span class="muted-small">Выбор периода сетки</span>
                   <div class="toolbar">
-                    <input id="analyticsGridMonthPicker" class="input compact-input" type="month" />
+                    <div id="analyticsGridMonthPickerWrap" class="date-input-wrap compact-input">
+                      <input id="analyticsGridMonthPicker" class="input compact-input" type="month" aria-label="Выбор месяца сетки" />
+                      <button class="date-input-trigger" type="button" data-date-picker-trigger="analyticsGridMonthPicker" aria-label="Открыть выбор месяца"></button>
+                    </div>
                     <input id="analyticsGridYearPicker" class="input compact-input hidden" type="number" min="1970" max="2100" step="1" placeholder="Год" />
                   </div>
                 </div>
@@ -291,7 +304,7 @@
             </div>
             <div id="analyticsCalendarTotals" class="analytics-kpi-grid"></div>
             <div id="analyticsCalendarTotalsSecondary" class="analytics-kpi-secondary"></div>
-            <div class="table-wrap analytics-calendar-scroll-wrap">
+            <div id="analyticsCalendarScrollWrap" class="table-wrap analytics-calendar-scroll-wrap">
               <div id="analyticsMonthGridWrap">
                 <table class="table table-hover analytics-calendar-table">
                   <thead>
@@ -446,6 +459,8 @@
               <div>
                 <p id="operationsPeriodLabel" class="subtitle"></p>
                 <div id="operationsActiveFilters" class="analytics-kpi-secondary hidden">
+                  <span id="operationsKindFilterChip" class="analytics-kpi-chip analytics-kpi-chip-neutral hidden"></span>
+                  <span id="operationsQuickViewChip" class="analytics-kpi-chip analytics-kpi-chip-neutral hidden"></span>
                   <span id="operationsCategoryFilterChip" class="analytics-kpi-chip analytics-kpi-chip-neutral hidden"></span>
                   <button id="clearOperationsCategoryFilterBtn" class="btn btn-secondary hidden" type="button">Сбросить фильтр</button>
                 </div>
@@ -471,6 +486,47 @@
                 </div>
               </div>
             </div>
+            <div class="table-search-row operations-quickviews-row">
+              <div class="analytics-switch-group operations-quickviews-group">
+                <span class="muted-small">Быстрые срезы</span>
+                <div class="segmented" id="operationsQuickViewTabs" role="tablist" aria-label="Быстрые срезы операций">
+                  <button class="segmented-btn active" data-operations-quick-view="all" type="button">Все</button>
+                  <button class="segmented-btn" data-operations-quick-view="receipt" type="button">С чеком</button>
+                  <button class="segmented-btn" data-operations-quick-view="large" type="button">Крупные</button>
+                  <button class="segmented-btn" data-operations-quick-view="uncategorized" type="button">Без категории</button>
+                </div>
+              </div>
+            </div>
+            <div class="table-search-row operations-workflow-row">
+              <div class="analytics-switch-group operations-quickviews-group">
+                <span class="muted-small">Быстрые действия</span>
+                <div class="toolbar operations-workflow-actions">
+                  <button id="selectVisibleOperationsBtn" class="btn btn-secondary" type="button">Выделить видимое</button>
+                  <button id="clearVisibleOperationsSelectionBtn" class="btn btn-secondary" type="button">Снять выделение</button>
+                  <button id="quickFilterExpenseBtn" class="btn btn-secondary" type="button">Только расходы</button>
+                  <button id="quickFilterIncomeBtn" class="btn btn-secondary" type="button">Только доходы</button>
+                  <button id="quickCustomRangeBtn" class="btn btn-secondary" type="button">Настроить период</button>
+                </div>
+              </div>
+            </div>
+            <div id="operationsSummaryGrid" class="analytics-kpi-grid operations-summary-grid">
+              <article class="analytics-kpi-card analytics-kpi-income">
+                <div class="muted-small">Доход по выборке</div>
+                <strong id="operationsIncomeTotal">0</strong>
+              </article>
+              <article class="analytics-kpi-card analytics-kpi-expense">
+                <div class="muted-small">Расход по выборке</div>
+                <strong id="operationsExpenseTotal">0</strong>
+              </article>
+              <article class="analytics-kpi-card analytics-kpi-balance">
+                <div class="muted-small">Баланс по выборке</div>
+                <strong id="operationsBalanceTotal">0</strong>
+              </article>
+              <article class="analytics-kpi-card analytics-kpi-neutral">
+                <div class="muted-small">Операций найдено</div>
+                <strong id="operationsTotalCount">0</strong>
+              </article>
+            </div>
             <div id="operationsBulkBar" class="bulk-bar sticky-bar">
               <span id="operationsSelectedCount">Всего: 0</span>
               <button id="bulkEditOperationsBtn" class="btn btn-secondary bulk-action hidden-action" type="button">Редактировать выбранные</button>
@@ -478,6 +534,7 @@
             </div>
             <div class="table-search-row sticky-search">
               <input id="filterQ" class="table-search-input" type="text" placeholder="Поиск" />
+              <button id="resetOperationsFiltersBtn" class="btn btn-secondary" type="button">Сбросить фильтры</button>
               <button id="deleteAllOperationsBtn" class="btn btn-danger" type="button">Удалить все</button>
             </div>
 
@@ -636,9 +693,9 @@
                   <label class="field">
                     <span>Валюта</span>
                     <select id="currencySelect">
-                      <option value="BYN">BYN (Br)</option>
+                      <option value="BYN">BYN (Ƀ)</option>
                       <option value="RUB">RUB (₽)</option>
-                      <option value="USD">USD (\\$)</option>
+                      <option value="USD">USD ($)</option>
                       <option value="EUR">EUR (€)</option>
                       <option value="GBP">GBP (£)</option>
                     </select>
@@ -651,7 +708,7 @@
                     </select>
                   </label>
                 </div>
-                <div id="currencyPreview" class="settings-preview">Пример: 1 234,56 Br</div>
+                <div id="currencyPreview" class="settings-preview">Пример: 1 234,56 Ƀ</div>
                 <label class="settings-switch-row">
                   <input id="showDashboardAnalyticsToggle" type="checkbox" checked />
                   <span>Показывать блок аналитики на дашборде</span>
