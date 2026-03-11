@@ -101,6 +101,7 @@
     adminNavBtn: document.getElementById("adminNavBtn"),
     sectionTitle: document.getElementById("sectionTitle"),
     sectionSubtitle: document.getElementById("sectionSubtitle"),
+    dashboardKpiPeriodLabel: document.getElementById("dashboardKpiPeriodLabel"),
     todayWeekday: document.getElementById("todayWeekday"),
     todayDate: document.getElementById("todayDate"),
     topActions: document.querySelector(".top-actions"),
@@ -541,6 +542,8 @@
     el.appShell.classList.remove("hidden");
     setMobileNavOpen(false);
     hideLoginAlert();
+    startCurrencyIconObserver(el.appShell);
+    decorateCurrencyIcons(el.appShell);
   }
 
   function closeAllMenus() {
@@ -658,6 +661,14 @@
     getCoreUtils().applyMoneyInputs(el, state, config);
   }
 
+  function decorateCurrencyIcons(root = null) {
+    return getCoreUtils().decorateCurrencyIcons(root || document.body);
+  }
+
+  function startCurrencyIconObserver(root = null) {
+    return getCoreUtils().startCurrencyIconObserver(root || document.body);
+  }
+
   function isDashboardDebtsVisible() {
     return getUiSettings().showDashboardDebts;
   }
@@ -738,6 +749,8 @@
       getUiSettings,
       applyUiScale,
       applyMoneyInputs,
+      decorateCurrencyIcons,
+      startCurrencyIconObserver,
       isDashboardDebtsVisible,
       getPeriodBounds,
       hideLoginAlert,

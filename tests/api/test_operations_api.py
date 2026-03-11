@@ -482,6 +482,36 @@ def test_operation_item_template_history_skips_duplicate_manual_price(client: Te
     assert history_payload[0]["recorded_at"] == "2026-03-05"
 
 
+def test_operation_item_template_history_cleans_existing_same_day_duplicate_rows(client: TestClient):
+    created = client.post(
+        "/api/v1/operations/item-templates",
+        json={
+            "shop_name": "Соседи",
+            "name": "Ротманс",
+            "latest_unit_price": "6.60",
+            "latest_price_date": "2026-03-05",
+        },
+    )
+    assert created.status_code == 201
+    template_id = created.json()["id"]
+
+    duplicated = client.patch(
+        f"/api/v1/operations/item-templates/{template_id}",
+        json={
+            "latest_unit_price": "6.60",
+            "latest_price_date": "2026-03-05",
+        },
+    )
+    assert duplicated.status_code == 200
+
+    history = client.get(f"/api/v1/operations/item-templates/{template_id}/prices")
+    assert history.status_code == 200
+    history_payload = history.json()
+    assert len(history_payload) == 1
+    assert history_payload[0]["unit_price"] == "6.60"
+    assert history_payload[0]["recorded_at"] == "2026-03-05"
+
+
 def test_operation_item_template_latest_price_uses_latest_recorded_date(client: TestClient):
     created = client.post(
         "/api/v1/operations/item-templates",

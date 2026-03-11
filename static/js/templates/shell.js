@@ -73,7 +73,7 @@
           <div class="panel-head">
             <div>
               <h3>Ключевые показатели</h3>
-              <p class="subtitle">Суммарно за все время</p>
+              <p id="dashboardKpiPeriodLabel" class="subtitle">Суммарно за все время</p>
             </div>
           </div>
           <section class="kpi-grid">
@@ -705,7 +705,7 @@
                   <label class="field">
                     <span>Валюта</span>
                     <select id="currencySelect">
-                      <option value="BYN">BYN (Б̵)</option>
+                      <option value="BYN">BYN</option>
                       <option value="RUB">RUB (₽)</option>
                       <option value="USD">USD ($)</option>
                       <option value="EUR">EUR (€)</option>
@@ -720,7 +720,7 @@
                     </select>
                   </label>
                 </div>
-                <div id="currencyPreview" class="settings-preview">Пример: 1 234,56 Б̵</div>
+                <div id="currencyPreview" class="settings-preview">Пример: 1 234,56 Б̶</div>
                 <label class="settings-switch-row">
                   <input id="showDashboardAnalyticsToggle" type="checkbox" checked />
                   <span>Показывать блок аналитики на дашборде</span>

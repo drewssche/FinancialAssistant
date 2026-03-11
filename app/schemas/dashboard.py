@@ -4,6 +4,8 @@ from pydantic import BaseModel
 
 
 class DashboardSummary(BaseModel):
+    date_from: str
+    date_to: str
     income_total: Decimal
     expense_total: Decimal
     balance: Decimal

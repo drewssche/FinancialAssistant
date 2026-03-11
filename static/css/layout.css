@@ -528,6 +528,8 @@
 .settings-preview {
   color: var(--muted);
   font-size: 13px;
+  font-family: var(--money-font-family);
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .settings-switch-row {
@@ -745,6 +747,8 @@
 .debt-amount-principal {
   color: #c9d5ef;
   font-weight: 700;
+  font-family: var(--money-font-family);
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .debt-amount-principal-lend {
@@ -757,6 +761,8 @@
 
 .debt-amount-repaid {
   font-weight: 700;
+  font-family: var(--money-font-family);
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .debt-amount-repaid-lend {
@@ -778,6 +784,8 @@
 .debt-amount-outstanding {
   color: #f0d1b6;
   font-weight: 700;
+  font-family: var(--money-font-family);
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .debt-amount-outstanding-lend {

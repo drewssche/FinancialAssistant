@@ -364,6 +364,21 @@ class OperationRepository:
         ).limit(1)
         return self.db.scalar(stmt) is not None
 
+    def cleanup_duplicate_item_template_prices(self, *, template_id: int) -> int:
+        rows = self.list_item_prices(template_id=template_id, limit=10000)
+        seen: set[tuple[date, Decimal]] = set()
+        deleted = 0
+        for row in rows:
+          key = (row.recorded_at, row.unit_price)
+          if key in seen:
+              self.db.delete(row)
+              deleted += 1
+              continue
+          seen.add(key)
+        if deleted:
+            self.db.flush()
+        return deleted
+
     def list_item_templates_for_names_ci(
         self,
         *,

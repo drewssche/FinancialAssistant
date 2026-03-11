@@ -32,6 +32,7 @@
   --scrollbar-track-border: rgba(39, 50, 72, 0.72);
   --scrollbar-thumb: linear-gradient(180deg, rgba(255, 122, 24, 0.82) 0%, rgba(255, 179, 71, 0.82) 100%);
   --scrollbar-thumb-hover: linear-gradient(180deg, rgba(255, 145, 52, 0.95) 0%, rgba(255, 194, 112, 0.95) 100%);
+  --money-font-family: "Noto Sans", "DejaVu Sans", "Segoe UI Symbol", "Segoe UI", Tahoma, sans-serif;
 }
 
 html {

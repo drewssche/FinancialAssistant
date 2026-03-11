@@ -115,6 +115,8 @@ class DashboardService:
                 else:
                     debt_borrow_outstanding += outstanding
         payload = {
+            "date_from": resolved_date_from.isoformat(),
+            "date_to": resolved_date_to.isoformat(),
             "income_total": income_total,
             "expense_total": expense_total,
             "balance": income_total - expense_total,

@@ -102,9 +102,17 @@
     const resolvedIndex = activeBreakdown.hoveredIndex ?? activeBreakdown.defaultIndex;
     const hasHover = activeBreakdown.hoveredIndex !== null;
     const hasDefault = !hasHover && activeBreakdown.defaultIndex !== null;
+    const resolvedColor = Number.isInteger(resolvedIndex)
+      ? BREAKDOWN_PALETTE[resolvedIndex % BREAKDOWN_PALETTE.length]
+      : "";
     if (el.analyticsCategoryBreakdownChart) {
       el.analyticsCategoryBreakdownChart.classList.toggle("analytics-category-donut-has-hover", hasHover);
       el.analyticsCategoryBreakdownChart.classList.toggle("analytics-category-donut-has-default", hasDefault);
+      if (resolvedColor) {
+        el.analyticsCategoryBreakdownChart.style.setProperty("--active-slice-color", resolvedColor);
+      } else {
+        el.analyticsCategoryBreakdownChart.style.removeProperty("--active-slice-color");
+      }
     }
     document.querySelectorAll("[data-analytics-category-index]").forEach((node) => {
       const nodeIndex = Number(node.dataset.analyticsCategoryIndex);
@@ -190,12 +198,16 @@
           const share = Math.max(0, Number(item.share_pct || 0));
           const startAngle = accAngle;
           const endAngle = Math.min(360, accAngle + (share / 100) * 360);
+          const midAngle = startAngle + ((endAngle - startAngle) / 2);
+          const shiftX = Math.cos((midAngle - 90) * (Math.PI / 180)) * 10;
+          const shiftY = Math.sin((midAngle - 90) * (Math.PI / 180)) * 10;
           accAngle = endAngle;
           return `
             <path
               class="analytics-category-slice"
               d="${buildDonutSegmentPath(DONUT_CENTER, DONUT_CENTER, DONUT_OUTER_RADIUS, DONUT_INNER_RADIUS, startAngle, endAngle)}"
               fill="${BREAKDOWN_PALETTE[idx % BREAKDOWN_PALETTE.length]}"
+              style="--slice-shift-x:${shiftX.toFixed(2)}px; --slice-shift-y:${shiftY.toFixed(2)}px;"
               data-analytics-category-index="${idx}"
               data-analytics-category-id="${item.category_id ?? ""}"
               data-analytics-category-name="${escapeHtml(item.category_name || "Без категории")}"

@@ -240,6 +240,8 @@ class OperationService:
         template = self.repo.get_item_template_by_id(user_id=user_id, template_id=template_id)
         if not template:
             raise LookupError("Item template not found")
+        self.repo.cleanup_duplicate_item_template_prices(template_id=template_id)
+        self.db.commit()
         rows = self.repo.list_item_prices(template_id=template_id, limit=limit)
         return [
             {

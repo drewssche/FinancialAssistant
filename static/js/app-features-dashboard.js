@@ -51,6 +51,11 @@
     const data = await core.requestJson(`/api/v1/dashboard/summary?${params.toString()}`, {
       headers: core.authHeaders(),
     });
+    if (el.dashboardKpiPeriodLabel) {
+      el.dashboardKpiPeriodLabel.textContent = data.date_from && data.date_to
+        ? `Суммарно: ${core.formatDateRu(data.date_from)} - ${core.formatDateRu(data.date_to)}`
+        : "Суммарно за все время";
+    }
 
     el.incomeTotal.textContent = core.formatMoney(data.income_total);
     el.expenseTotal.textContent = core.formatMoney(data.expense_total);

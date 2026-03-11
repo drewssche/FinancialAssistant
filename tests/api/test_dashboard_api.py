@@ -62,6 +62,8 @@ def test_dashboard_all_time_empty(client: TestClient):
     summary = client.get("/api/v1/dashboard/summary", params={"period": "all_time"})
     assert summary.status_code == 200
     payload = summary.json()
+    assert "date_from" in payload
+    assert "date_to" in payload
     assert payload["income_total"] in ("0", "0.00")
     assert payload["expense_total"] in ("0", "0.00")
     assert payload["balance"] in ("0", "0.00")
@@ -93,6 +95,7 @@ def test_dashboard_all_time_uses_first_operation_date(client: TestClient):
     summary = client.get("/api/v1/dashboard/summary", params={"period": "all_time"})
     assert summary.status_code == 200
     payload = summary.json()
+    assert payload["date_from"] == "2026-01-10"
     assert payload["income_total"] == "250.00"
     assert payload["expense_total"] == "100.00"
     assert payload["balance"] == "150.00"
