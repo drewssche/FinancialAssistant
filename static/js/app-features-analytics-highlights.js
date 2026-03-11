@@ -275,13 +275,6 @@
     const trendModule = window.App.featureAnalyticsModules?.trend;
     const formatPct = trendModule?.formatPct || ((v) => String(v ?? "нет базы"));
 
-    const topOperationsLimit = [3, 5, 10].includes(Number(state.analyticsTopOperationsLimit))
-      ? Number(state.analyticsTopOperationsLimit)
-      : 5;
-    const topPositionsLimit = [5, 10, 20].includes(Number(state.analyticsTopPositionsLimit))
-      ? Number(state.analyticsTopPositionsLimit)
-      : 10;
-
     if (el.analyticsSummaryRangeLabel) {
       const periodLabelMap = { week: "Эта неделя", month: "Этот месяц", year: "Этот год", all_time: "Все время", custom: "Период" };
       const label = periodLabelMap[data.period] || "Период";
@@ -353,93 +346,6 @@
 
     renderCategoryBreakdown(data, formatPct);
 
-    renderInsightList(
-      el.analyticsTopOperationsList,
-      (data.top_operations || []).slice(0, topOperationsLimit),
-      (item) => `
-        <article class="analytics-insight-item" data-analytics-date="${item.operation_date}">
-          <div class="analytics-insight-head">
-            <strong>${core.formatMoney(item.amount)}</strong>
-            <span class="muted-small">${core.formatDateRu(item.operation_date)}</span>
-          </div>
-          <div class="muted-small">${item.kind === "income" ? "Доход" : "Расход"}</div>
-          <div>${escapeHtml(item.note || "Без комментария")}</div>
-        </article>
-      `,
-      "Нет операций за выбранный период",
-    );
-
-    renderInsightList(
-      el.analyticsTopCategoriesList,
-      data.top_categories,
-      (item) => `
-        <article class="analytics-insight-item" data-analytics-category-id="${item.category_id ?? ""}" data-analytics-category-name="${escapeHtml(item.category_name || "Без категории")}" data-analytics-category-kind="${item.category_kind || data.category_breakdown_kind || "expense"}">
-          <div class="analytics-insight-head">
-            <strong>${escapeHtml(item.category_name || "Без категории")}</strong>
-            <span class="muted-small">${core.formatMoney(item.total_amount || item.total_expense || 0)}</span>
-          </div>
-          <div class="muted-small">
-            Доля: ${Number(item.share_pct || 0).toFixed(1)}% · Операций: ${item.operations_count}
-            ${(data.category_breakdown_kind || "expense") === "all" ? ` · Тип: ${categoryKindShort(item.category_kind)}` : ""}
-          </div>
-          <div class="muted-small">Изм. к прошлому: ${formatPct(item.change_pct)}</div>
-          <div class="analytics-insight-actions">
-            <span class="muted-small">Перейти к операциям этой категории</span>
-            <button class="btn btn-secondary" type="button">Открыть операции</button>
-          </div>
-        </article>
-      `,
-      "Нет категорий за выбранный период",
-    );
-
-    renderInsightList(
-      el.analyticsAnomaliesList,
-      data.anomalies,
-      (item) => `
-        <article class="analytics-insight-item analytics-insight-alert" data-analytics-date="${item.operation_date}">
-          <div class="analytics-insight-head">
-            <strong>${core.formatMoney(item.amount)}</strong>
-            <span class="muted-small">${core.formatDateRu(item.operation_date)}</span>
-          </div>
-          <div class="muted-small">${escapeHtml(item.category_name)}</div>
-          <div class="muted-small">Выше медианы в ${Number(item.ratio_to_median || 0).toFixed(1)}x</div>
-          <div>${escapeHtml(item.note || "Без комментария")}</div>
-        </article>
-      `,
-      "Явных аномалий не найдено",
-    );
-
-    renderInsightList(
-      el.analyticsTopPositionsList,
-      (data.top_positions || []).slice(0, topPositionsLimit),
-      (item) => `
-        <article class="analytics-insight-item">
-          <div class="analytics-insight-head">
-            <strong>${escapeHtml(item.name)}</strong>
-            <span class="muted-small">${core.formatMoney(item.max_unit_price)}</span>
-          </div>
-          <div class="muted-small">${escapeHtml(item.shop_name || "Без источника")}</div>
-          <div class="muted-small">Покупок: ${item.purchases_count} · Потрачено: ${core.formatMoney(item.total_spent)} · Средняя: ${core.formatMoney(item.avg_unit_price)}</div>
-        </article>
-      `,
-      "Нет позиций за выбранный период",
-    );
-
-    renderInsightList(
-      el.analyticsPriceIncreasesList,
-      data.price_increases,
-      (item) => `
-        <article class="analytics-insight-item analytics-insight-alert">
-          <div class="analytics-insight-head">
-            <strong>${escapeHtml(item.name)}</strong>
-            <span class="analytics-badge-up">↑ ${formatPct(item.change_pct)}</span>
-          </div>
-          <div class="muted-small">${escapeHtml(item.shop_name || "Без источника")}</div>
-          <div class="muted-small">${core.formatMoney(item.previous_avg_unit_price)} → ${core.formatMoney(item.current_avg_unit_price)}</div>
-        </article>
-      `,
-      "Рост цен не обнаружен",
-    );
   }
 
   function buildHighlightsParams(month) {

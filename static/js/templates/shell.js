@@ -217,7 +217,6 @@
               <button class="segmented-btn" data-analytics-tab="calendar" type="button">Календарь</button>
               <button class="segmented-btn active" data-analytics-tab="overview" type="button">КПИ</button>
               <button class="segmented-btn" data-analytics-tab="structure" type="button">Структура</button>
-              <button class="segmented-btn" data-analytics-tab="operations" type="button">Операции</button>
               <button class="segmented-btn" data-analytics-tab="trends" type="button">Тренды</button>
             </div>
           </section>
@@ -328,94 +327,6 @@
               <div id="analyticsYearGridWrap" class="hidden">
                 <div id="analyticsYearGrid" class="analytics-year-grid"></div>
               </div>
-            </div>
-          </section>
-
-          <section id="analyticsOperationsPanel" class="panel analytics-tab-panel hidden">
-            <div class="panel-head row between">
-              <div>
-                <h3>Разбор операций</h3>
-                <p class="subtitle">Категории, крупные траты и чековые инсайты за выбранный период</p>
-              </div>
-            </div>
-            <div class="analytics-operations-layout">
-              <section class="analytics-operations-group">
-                <div class="panel-head">
-                  <div>
-                    <h3>Категории</h3>
-                    <p class="subtitle">Главная структура периода по сумме и числу операций</p>
-                  </div>
-                </div>
-                <div class="analytics-positions-grid">
-                  <div>
-                    <div class="panel-head row between">
-                      <div>
-                        <h3 id="analyticsTopCategoriesTitle">Категории периода</h3>
-                        <p id="analyticsTopCategoriesSubtitle" class="subtitle">Топ-5 с долей в структуре</p>
-                      </div>
-                    </div>
-                    <div id="analyticsTopCategoriesList" class="analytics-insight-list"></div>
-                  </div>
-                </div>
-              </section>
-
-              <section class="analytics-operations-group">
-                <div class="panel-head">
-                  <div>
-                    <h3>Крупные операции</h3>
-                    <p class="subtitle">Самые большие траты и аномальные расходы</p>
-                  </div>
-                </div>
-                <div class="analytics-positions-grid">
-                  <div>
-                    <div class="panel-head row between">
-                      <div>
-                        <h3>Тяжелые операции</h3>
-                        <p class="subtitle">Топ-5 расходов периода</p>
-                      </div>
-                    </div>
-                    <div id="analyticsTopOperationsList" class="analytics-insight-list"></div>
-                  </div>
-                  <div>
-                    <div class="panel-head row between">
-                      <div>
-                        <h3>Аномалии чеков</h3>
-                        <p class="subtitle">Нетипично высокие расходы</p>
-                      </div>
-                    </div>
-                    <div id="analyticsAnomaliesList" class="analytics-insight-list"></div>
-                  </div>
-                </div>
-              </section>
-
-              <section class="analytics-operations-group">
-                <div class="panel-head">
-                  <div>
-                    <h3>Позиции из чеков</h3>
-                    <p class="subtitle">Что дороже всего и что заметно подорожало</p>
-                  </div>
-                </div>
-                <div class="analytics-positions-grid">
-                  <div>
-                    <div class="panel-head row between">
-                      <div>
-                        <h3>Дорогие позиции</h3>
-                        <p class="subtitle">Топ-10 по цене и общим тратам</p>
-                      </div>
-                    </div>
-                    <div id="analyticsTopPositionsList" class="analytics-insight-list"></div>
-                  </div>
-                  <div>
-                    <div class="panel-head row between">
-                      <div>
-                        <h3>Подорожания позиций</h3>
-                        <p class="subtitle">Что выросло к прошлому периоду</p>
-                      </div>
-                    </div>
-                    <div id="analyticsPriceIncreasesList" class="analytics-insight-list"></div>
-                  </div>
-                </div>
-              </section>
             </div>
           </section>
 

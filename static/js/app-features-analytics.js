@@ -7,7 +7,6 @@
       { id: "overview", node: el.analyticsOverviewPanel },
       { id: "structure", node: el.analyticsStructurePanel },
       { id: "calendar", node: el.analyticsCalendarPanel },
-      { id: "operations", node: el.analyticsOperationsPanel },
       { id: "trends", node: el.analyticsTrendsPanel },
     ];
     for (const item of panels) {
@@ -23,7 +22,7 @@
   }
 
   function setAnalyticsTab(tab) {
-    const allowed = new Set(["overview", "structure", "calendar", "operations", "trends"]);
+    const allowed = new Set(["overview", "structure", "calendar", "trends"]);
     state.analyticsTab = allowed.has(tab) ? tab : "overview";
     applyAnalyticsTabUi();
     if (state.analyticsTab === "structure") {

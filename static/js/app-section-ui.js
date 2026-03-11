@@ -76,9 +76,7 @@
             ? "к КПИ"
             : last?.analyticsTab === "structure"
               ? "к Структуре"
-              : last?.analyticsTab === "operations"
-                ? "к Операциям"
-                : last?.analyticsTab === "trends"
+              : last?.analyticsTab === "trends"
                   ? "к Трендам"
                   : "к Аналитике",
         operations: "к Операциям",

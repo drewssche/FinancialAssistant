@@ -560,13 +560,13 @@
 }
 
 .analytics-category-donut-has-hover .analytics-category-slice.is-inactive {
-  opacity: 0.1;
-  filter: saturate(0.22) brightness(0.42);
+  opacity: 0.5;
+  filter: saturate(0.72) brightness(0.84);
 }
 
 .analytics-category-slice.is-active {
-  filter: saturate(1.22) brightness(1.14) drop-shadow(0 0 14px color-mix(in srgb, var(--active-slice-color) 55%, transparent));
-  transform: translate(calc(var(--slice-shift-x, 0px) * 1.35), calc(var(--slice-shift-y, 0px) * 1.35)) scale(1.045);
+  filter: saturate(1.18) brightness(1.12) drop-shadow(0 0 16px color-mix(in srgb, var(--active-slice-color) 48%, transparent));
+  transform: translate(calc(var(--slice-shift-x, 0px) * 1.28), calc(var(--slice-shift-y, 0px) * 1.28)) scale(1.038);
   stroke: rgba(255, 255, 255, 0.48);
   stroke-width: 3;
 }

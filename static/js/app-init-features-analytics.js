@@ -200,30 +200,6 @@
         });
       });
     }
-    if (el.analyticsTopOperationsList && actions.openOperationsForAnalyticsDate) {
-      el.analyticsTopOperationsList.addEventListener("click", (event) => {
-        const card = event.target.closest("[data-analytics-date]");
-        if (!card) {
-          return;
-        }
-        core.runAction({
-          errorPrefix: "Ошибка перехода в операции",
-          action: () => actions.openOperationsForAnalyticsDate(card.dataset.analyticsDate),
-        });
-      });
-    }
-    if (el.analyticsAnomaliesList && actions.openOperationsForAnalyticsDate) {
-      el.analyticsAnomaliesList.addEventListener("click", (event) => {
-        const card = event.target.closest("[data-analytics-date]");
-        if (!card) {
-          return;
-        }
-        core.runAction({
-          errorPrefix: "Ошибка перехода в операции",
-          action: () => actions.openOperationsForAnalyticsDate(card.dataset.analyticsDate),
-        });
-      });
-    }
     if (actions.openOperationsForAnalyticsCategory) {
       const bindCategoryDrilldown = (container) => {
         if (!container) {
@@ -250,7 +226,6 @@
       };
       bindCategoryDrilldown(el.analyticsCategoryBreakdownChart);
       bindCategoryDrilldown(el.analyticsCategoryBreakdownList);
-      bindCategoryDrilldown(el.analyticsTopCategoriesList);
     }
     if (actions.setCategoryBreakdownHover && actions.clearCategoryBreakdownHover) {
       const bindCategoryHover = (container) => {

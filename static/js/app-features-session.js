@@ -212,10 +212,10 @@
     state.itemCatalogSortPreset = prefs.data?.ui?.item_catalog_sort_preset || "usage";
     state.analyticsMonthAnchor = prefs.data?.analytics?.month_anchor || "";
     state.analyticsTab = prefs.data?.analytics?.tab || "overview";
-    if (state.analyticsTab === "positions") {
-      state.analyticsTab = "operations";
+    if (state.analyticsTab === "positions" || state.analyticsTab === "operations") {
+      state.analyticsTab = "overview";
     }
-    if (!["overview", "structure", "calendar", "operations", "trends"].includes(state.analyticsTab)) {
+    if (!["overview", "structure", "calendar", "trends"].includes(state.analyticsTab)) {
       state.analyticsTab = "overview";
     }
     state.analyticsCalendarView = prefs.data?.analytics?.calendar_view || "month";
