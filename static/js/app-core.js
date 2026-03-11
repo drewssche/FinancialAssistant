@@ -166,6 +166,7 @@
     debtLendTotal: document.getElementById("debtLendTotal"),
     debtBorrowTotal: document.getElementById("debtBorrowTotal"),
     debtNetTotal: document.getElementById("debtNetTotal"),
+    dashboardDebtKpiGrid: document.getElementById("dashboardDebtKpiGrid"),
     userAvatar: document.getElementById("userAvatar"),
     userName: document.getElementById("userName"),
     userHandle: document.getElementById("userHandle"),

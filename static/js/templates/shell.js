@@ -132,7 +132,7 @@
             </div>
           </section>
 
-          <section class="kpi-grid">
+          <section id="dashboardDebtKpiGrid" class="kpi-grid">
             <article class="kpi-card">
               <h3>Мне должны</h3>
               <p id="debtLendTotal">0.00</p>
@@ -250,7 +250,7 @@
             <div class="analytics-category-breakdown-grid">
               <div class="analytics-category-breakdown-chart-card">
                 <div id="analyticsCategoryBreakdownChart" class="analytics-category-donut" aria-hidden="true">
-                  <svg id="analyticsCategoryBreakdownSvg" class="analytics-category-donut-svg" viewBox="0 0 220 220" aria-hidden="true"></svg>
+                  <svg id="analyticsCategoryBreakdownSvg" class="analytics-category-donut-svg" viewBox="0 0 260 260" aria-hidden="true"></svg>
                   <div class="analytics-category-donut-hole">
                     <span id="analyticsCategoryBreakdownChartTitle" class="analytics-category-donut-title muted-small">Итог периода</span>
                     <strong id="analyticsCategoryBreakdownChartValue">0</strong>
@@ -444,11 +444,23 @@
               <span><i class="legend-dot legend-expense"></i>Расход</span>
               <span><i class="legend-dot legend-balance"></i>Баланс</span>
             </div>
-            <div class="analytics-trend-deltas">
-              <div>Доход: <strong id="analyticsIncomeDelta">0%</strong></div>
-              <div>Расход: <strong id="analyticsExpenseDelta">0%</strong></div>
-              <div>Баланс: <strong id="analyticsBalanceDelta">0%</strong></div>
-              <div>Операции: <strong id="analyticsOpsDelta">0%</strong></div>
+            <div class="analytics-trend-kpis analytics-kpi-grid">
+              <article class="analytics-kpi-card analytics-kpi-income">
+                <div class="muted-small">Доход</div>
+                <strong id="analyticsIncomeDelta">0%</strong>
+              </article>
+              <article class="analytics-kpi-card analytics-kpi-expense">
+                <div class="muted-small">Расход</div>
+                <strong id="analyticsExpenseDelta">0%</strong>
+              </article>
+              <article class="analytics-kpi-card analytics-kpi-balance">
+                <div class="muted-small">Баланс</div>
+                <strong id="analyticsBalanceDelta">0%</strong>
+              </article>
+              <article class="analytics-kpi-card analytics-kpi-neutral">
+                <div class="muted-small">Операции</div>
+                <strong id="analyticsOpsDelta">0%</strong>
+              </article>
             </div>
           </section>
         </section>
@@ -693,7 +705,7 @@
                   <label class="field">
                     <span>Валюта</span>
                     <select id="currencySelect">
-                      <option value="BYN">BYN (Ƀ)</option>
+                      <option value="BYN">BYN (Б̵)</option>
                       <option value="RUB">RUB (₽)</option>
                       <option value="USD">USD ($)</option>
                       <option value="EUR">EUR (€)</option>
@@ -708,7 +720,7 @@
                     </select>
                   </label>
                 </div>
-                <div id="currencyPreview" class="settings-preview">Пример: 1 234,56 Ƀ</div>
+                <div id="currencyPreview" class="settings-preview">Пример: 1 234,56 Б̵</div>
                 <label class="settings-switch-row">
                   <input id="showDashboardAnalyticsToggle" type="checkbox" checked />
                   <span>Показывать блок аналитики на дашборде</span>

@@ -31,7 +31,7 @@
       return "Срез: Только с чеком";
     }
     if (value === "large") {
-      return "Срез: Крупные от 100 Br";
+      return `Срез: Крупные от ${core.formatMoney(100)}`;
     }
     if (value === "uncategorized") {
       return "Срез: Без категории";

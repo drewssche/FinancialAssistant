@@ -75,12 +75,21 @@
         if (!btn || btn.disabled) {
           return;
         }
-        if (!btn.closest("#debtsCards")) {
+        if (!btn.closest("#debtsCards") && !btn.closest("#dashboardDebtsList")) {
           return;
         }
         event.preventDefault();
         event.stopPropagation();
         actions.openDebtRepaymentModal(Number(btn.dataset.repayDebtId || 0));
+      }, true);
+      document.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-dashboard-repay-debt-id]");
+        if (!btn || btn.disabled) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        actions.openDebtRepaymentModal(Number(btn.dataset.dashboardRepayDebtId || 0));
       }, true);
     }
 

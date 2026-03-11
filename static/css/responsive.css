@@ -26,6 +26,7 @@
   .category-form,
   .dashboard-analytics-grid,
   .analytics-trend-deltas,
+  .analytics-trend-kpis,
   .analytics-kpi-grid,
   .analytics-positions-grid {
     grid-template-columns: 1fr;

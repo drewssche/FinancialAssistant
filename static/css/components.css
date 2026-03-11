@@ -252,6 +252,7 @@
   border-radius: var(--radius-md);
   background: rgba(16, 24, 39, 0.85);
   padding: var(--space-2);
+  position: relative;
 }
 
 .dashboard-analytics-chart-wrap {
@@ -403,11 +404,17 @@
   background: #6ca7ff;
 }
 
-.analytics-trend-deltas {
+.analytics-trend-deltas,
+.analytics-trend-kpis {
   margin-top: var(--space-3);
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-3);
+}
+
+.analytics-trend-kpis .analytics-kpi-card strong {
+  line-height: 1.35;
+  font-size: 1rem;
 }
 
 .analytics-kpi-grid {
@@ -483,7 +490,7 @@
 .analytics-category-breakdown-grid {
   margin-top: var(--space-3);
   display: grid;
-  grid-template-columns: minmax(15rem, 22rem) minmax(0, 1fr);
+  grid-template-columns: minmax(18rem, 27rem) minmax(0, 1fr);
   gap: var(--space-3);
   align-items: start;
 }
@@ -495,11 +502,11 @@
   padding: var(--space-4);
   display: grid;
   place-items: center;
-  min-height: 20rem;
+  min-height: 24rem;
 }
 
 .analytics-category-donut {
-  width: min(18rem, 100%);
+  width: min(24rem, 100%);
   aspect-ratio: 1;
   border-radius: 50%;
   display: grid;
@@ -523,22 +530,32 @@
   transition:
     opacity 0.18s ease,
     filter 0.18s ease,
-    transform 0.18s ease;
+    transform 0.18s ease,
+    stroke-width 0.18s ease;
+  stroke: rgba(9, 18, 33, 0.28);
+  stroke-width: 1.5;
 }
 
 .analytics-category-donut-has-hover .analytics-category-slice.is-inactive {
-  opacity: 0.24;
-  filter: saturate(0.6) brightness(0.82);
+  opacity: 0.16;
+  filter: saturate(0.35) brightness(0.52);
 }
 
 .analytics-category-slice.is-active {
-  filter: saturate(1.08) brightness(1.08);
-  transform: scale(1.02);
+  filter: saturate(1.16) brightness(1.12) drop-shadow(0 0 10px rgba(255, 255, 255, 0.12));
+  transform: scale(1.06);
+  stroke: rgba(255, 255, 255, 0.48);
+  stroke-width: 2.5;
 }
 
 .analytics-category-donut-has-default .analytics-category-slice.is-default {
   filter: saturate(1.03) brightness(1.03);
   transform: scale(1.012);
+}
+
+.analytics-category-donut-has-data.analytics-category-donut-has-hover .analytics-category-donut-hole {
+  border-color: rgba(255, 197, 111, 0.28);
+  box-shadow: 0 0 0 1px rgba(255, 197, 111, 0.08);
 }
 
 .analytics-category-donut-hole {
@@ -818,6 +835,90 @@
 .dashboard-analytics-sparkline .trend-bucket:hover .trend-balance-marker {
   transform: scale(1.3);
   filter: brightness(1.18);
+}
+
+.analytics-chart-tooltip {
+  position: absolute;
+  z-index: 4;
+  min-width: 12rem;
+  max-width: min(18rem, calc(100% - 1rem));
+  pointer-events: none;
+  border: 1px solid rgba(118, 144, 188, 0.34);
+  border-radius: var(--radius-sm);
+  background: rgba(10, 17, 29, 0.96);
+  box-shadow: 0 16px 36px rgba(4, 10, 18, 0.38);
+  padding: var(--space-2) var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  transform: translateY(0);
+}
+
+.analytics-chart-tooltip.hidden {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.analytics-chart-tooltip-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #e7efff;
+}
+
+.analytics-chart-tooltip-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 10px;
+  font-size: 12px;
+}
+
+.analytics-chart-tooltip-grid-compact {
+  grid-template-columns: 1fr;
+}
+
+.analytics-chart-tooltip-income {
+  color: #8de0aa;
+}
+
+.analytics-chart-tooltip-expense {
+  color: #ffb2b2;
+}
+
+.analytics-chart-tooltip-balance {
+  color: #9fc2ff;
+}
+
+.analytics-chart-tooltip-ops {
+  color: #c4d3ef;
+}
+
+.analytics-chart-tooltip-compare {
+  display: grid;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(118, 144, 188, 0.18);
+}
+
+.analytics-chart-tooltip-compare-row {
+  display: grid;
+  grid-template-columns: minmax(0, 56px) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 11px;
+}
+
+.analytics-chart-tooltip-label {
+  color: #91a6cc;
+}
+
+.analytics-chart-tooltip-compare-row strong {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.analytics-chart-tooltip-delta {
+  color: #d6e1f6;
+  white-space: nowrap;
 }
 
 input,

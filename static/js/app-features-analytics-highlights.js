@@ -2,6 +2,9 @@
   const { state, el, core } = window.App;
   const HIGHLIGHTS_CACHE_TTL_MS = 20000;
   const BREAKDOWN_PALETTE = ["#ff8f6b", "#5fd3bc", "#7aa8ff", "#ffd166", "#c084fc", "#5eead4", "#fb7185", "#93c5fd", "#a3e635"];
+  const DONUT_CENTER = 130;
+  const DONUT_OUTER_RADIUS = 118;
+  const DONUT_INNER_RADIUS = 62;
   let activeBreakdown = {
     items: [],
     kind: "expense",
@@ -191,7 +194,7 @@
           return `
             <path
               class="analytics-category-slice"
-              d="${buildDonutSegmentPath(110, 110, 100, 54, startAngle, endAngle)}"
+              d="${buildDonutSegmentPath(DONUT_CENTER, DONUT_CENTER, DONUT_OUTER_RADIUS, DONUT_INNER_RADIUS, startAngle, endAngle)}"
               fill="${BREAKDOWN_PALETTE[idx % BREAKDOWN_PALETTE.length]}"
               data-analytics-category-index="${idx}"
               data-analytics-category-id="${item.category_id ?? ""}"
@@ -209,6 +212,7 @@
     if (el.analyticsCategoryBreakdownChart) {
       el.analyticsCategoryBreakdownChart.style.background = visibleItems.length ? "transparent" : "rgba(116, 136, 173, 0.18)";
       el.analyticsCategoryBreakdownChart.classList.remove("analytics-category-donut-has-hover");
+      el.analyticsCategoryBreakdownChart.classList.toggle("analytics-category-donut-has-data", visibleItems.length > 0);
     }
 
     renderInsightList(

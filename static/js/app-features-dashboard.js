@@ -45,14 +45,8 @@
     if (el.dashboardDebtsPanel && ui) {
       el.dashboardDebtsPanel.classList.toggle("hidden", ui.showDashboardDebts === false);
     }
-    if (window.App.actions.ensureAllTimeBounds) {
-      await window.App.actions.ensureAllTimeBounds();
-    }
-    const { dateFrom, dateTo } = core.getPeriodBounds("all_time");
     const params = new URLSearchParams();
     params.set("period", "all_time");
-    params.set("date_from", dateFrom);
-    params.set("date_to", dateTo);
 
     const data = await core.requestJson(`/api/v1/dashboard/summary?${params.toString()}`, {
       headers: core.authHeaders(),
@@ -69,6 +63,13 @@
     }
     if (el.debtNetTotal) {
       el.debtNetTotal.textContent = core.formatMoney(data.debt_net_position);
+    }
+    if (el.dashboardDebtKpiGrid) {
+      const lendTotal = Number(data.debt_lend_outstanding || 0);
+      const borrowTotal = Number(data.debt_borrow_outstanding || 0);
+      const netTotal = Number(data.debt_net_position || 0);
+      const hasDebtKpi = Math.abs(lendTotal) > 0.000001 || Math.abs(borrowTotal) > 0.000001 || Math.abs(netTotal) > 0.000001;
+      el.dashboardDebtKpiGrid.classList.toggle("hidden", !hasDebtKpi);
     }
 
     if (!core.isDashboardDebtsVisible()) {
@@ -146,6 +147,9 @@
                         ? `<div class="debt-due-progress"><div class="debt-due-progress-track"><span class="debt-due-progress-bar debt-due-progress-bar-${dueProgress.tone}" style="width:${dueProgress.percent}%"></span></div><span class="muted-small">Срок: ${dueProgress.percent}%</span></div>`
                         : `<span class="muted-small">Срок не задан</span>`
                     }
+                    <div class="dashboard-debt-actions">
+                      <button class="btn btn-repay btn-xs" type="button" data-dashboard-repay-debt-id="${debt.id}" ${outstanding <= 0 ? "disabled" : ""}>Погашение</button>
+                    </div>
                   </div>
                 </div>
               `;

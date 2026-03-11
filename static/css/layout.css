@@ -671,6 +671,12 @@
   min-width: 0;
 }
 
+.dashboard-debt-actions {
+  margin-top: var(--space-2);
+  display: flex;
+  justify-content: flex-start;
+}
+
 
 .debt-card h3 {
   margin: 0;

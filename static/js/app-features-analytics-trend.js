@@ -36,6 +36,115 @@
     return `${sign}${num.toFixed(1)}%`;
   }
 
+  function formatChangeArrow(previous, current, formatter = (value) => String(value)) {
+    return `${formatter(previous)} -> ${formatter(current)}`;
+  }
+
+  function formatBucketDelta(current, previous, formatter = (value) => String(value)) {
+    const currentNum = Number(current || 0);
+    const previousNum = Number(previous || 0);
+    const diff = currentNum - previousNum;
+    const sign = diff > 0 ? "+" : "";
+    return `${sign}${formatter(diff)}`;
+  }
+
+  function createTrendTooltipHost(svgNode) {
+    const wrapper = svgNode?.parentElement;
+    if (!wrapper) {
+      return null;
+    }
+    let tooltip = wrapper.querySelector(".analytics-chart-tooltip");
+    if (!tooltip) {
+      tooltip = document.createElement("div");
+      tooltip.className = "analytics-chart-tooltip hidden";
+      wrapper.appendChild(tooltip);
+    }
+    return tooltip;
+  }
+
+  function positionTrendTooltip(svgNode, tooltip, clientX, clientY) {
+    if (!svgNode || !tooltip) {
+      return;
+    }
+    const rect = svgNode.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const left = Math.max(8, Math.min(rect.width - tooltipRect.width - 8, clientX - rect.left + 12));
+    const top = Math.max(8, Math.min(rect.height - tooltipRect.height - 8, clientY - rect.top - tooltipRect.height - 10));
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+  }
+
+  function renderTrendTooltip(point, previousPoint = null, compact = false) {
+    const ops = Number(point.operations_count || 0);
+    const hasPrevious = Boolean(previousPoint);
+    return `
+      <div class="analytics-chart-tooltip-title">${escapeHtml(point.label || "")}</div>
+      <div class="analytics-chart-tooltip-grid${compact ? " analytics-chart-tooltip-grid-compact" : ""}">
+        <span class="analytics-chart-tooltip-income">Доход: ${escapeHtml(core.formatMoney(point.income_total || 0))}</span>
+        <span class="analytics-chart-tooltip-expense">Расход: ${escapeHtml(core.formatMoney(point.expense_total || 0))}</span>
+        <span class="analytics-chart-tooltip-balance">Баланс: ${escapeHtml(core.formatMoney(point.balance || 0))}</span>
+        <span class="analytics-chart-tooltip-ops">Операций: ${ops}</span>
+      </div>
+      ${
+        hasPrevious
+          ? `
+        <div class="analytics-chart-tooltip-compare">
+          <div class="analytics-chart-tooltip-compare-row">
+            <span class="analytics-chart-tooltip-label">Доход</span>
+            <strong class="analytics-chart-tooltip-income">${escapeHtml(formatChangeArrow(previousPoint.income_total || 0, point.income_total || 0, (v) => core.formatMoney(v)))}</strong>
+            <span class="analytics-chart-tooltip-delta">${escapeHtml(formatBucketDelta(point.income_total || 0, previousPoint.income_total || 0, (v) => core.formatMoney(v)))}</span>
+          </div>
+          <div class="analytics-chart-tooltip-compare-row">
+            <span class="analytics-chart-tooltip-label">Расход</span>
+            <strong class="analytics-chart-tooltip-expense">${escapeHtml(formatChangeArrow(previousPoint.expense_total || 0, point.expense_total || 0, (v) => core.formatMoney(v)))}</strong>
+            <span class="analytics-chart-tooltip-delta">${escapeHtml(formatBucketDelta(point.expense_total || 0, previousPoint.expense_total || 0, (v) => core.formatMoney(v)))}</span>
+          </div>
+          <div class="analytics-chart-tooltip-compare-row">
+            <span class="analytics-chart-tooltip-label">Баланс</span>
+            <strong class="analytics-chart-tooltip-balance">${escapeHtml(formatChangeArrow(previousPoint.balance || 0, point.balance || 0, (v) => core.formatMoney(v)))}</strong>
+            <span class="analytics-chart-tooltip-delta">${escapeHtml(formatBucketDelta(point.balance || 0, previousPoint.balance || 0, (v) => core.formatMoney(v)))}</span>
+          </div>
+          <div class="analytics-chart-tooltip-compare-row">
+            <span class="analytics-chart-tooltip-label">Операции</span>
+            <strong class="analytics-chart-tooltip-ops">${escapeHtml(formatChangeArrow(previousPoint.operations_count || 0, point.operations_count || 0))}</strong>
+            <span class="analytics-chart-tooltip-delta">${escapeHtml(formatBucketDelta(point.operations_count || 0, previousPoint.operations_count || 0))}</span>
+          </div>
+        </div>
+      `
+          : ""
+      }
+    `;
+  }
+
+  function bindTrendTooltip(svgNode, points, compact = false) {
+    if (!svgNode) {
+      return;
+    }
+    const tooltip = createTrendTooltipHost(svgNode);
+    if (!tooltip) {
+      return;
+    }
+    svgNode.onmousemove = (event) => {
+      const bucket = event.target.closest(".trend-bucket");
+      if (!bucket) {
+        tooltip.classList.add("hidden");
+        return;
+      }
+      const index = Number(bucket.dataset.analyticsBucketIndex || -1);
+      const point = points[index];
+      if (!point) {
+        tooltip.classList.add("hidden");
+        return;
+      }
+      tooltip.innerHTML = renderTrendTooltip(point, index > 0 ? points[index - 1] : null, compact);
+      tooltip.classList.remove("hidden");
+      positionTrendTooltip(svgNode, tooltip, event.clientX, event.clientY);
+    };
+    svgNode.onmouseleave = () => {
+      tooltip.classList.add("hidden");
+    };
+  }
+
   function renderTrendChart(svgNode, data, compact = false) {
     if (!svgNode) {
       return;
@@ -69,10 +178,10 @@
       const balanceY = mapY(point.balance);
       const incomeHeight = Math.max(1, Math.abs(zeroY - incomeY));
       const expenseHeight = Math.max(1, Math.abs(zeroY - expenseY));
-      const hint = `${point.label}: Доход ${core.formatMoney(point.income_total)}, Расход ${core.formatMoney(point.expense_total)}, Баланс ${core.formatMoney(point.balance)}`;
       bucketGroups.push(`
         <g
           class="trend-bucket"
+          data-analytics-bucket-index="${idx}"
           data-analytics-bucket-start="${point.bucket_start}"
           data-analytics-bucket-end="${point.bucket_end}"
         >
@@ -119,9 +228,7 @@
             width="${bucketWidth.toFixed(2)}"
             height="${height}"
             fill="transparent"
-          >
-            <title>${escapeHtml(hint)}</title>
-          </rect>
+          ></rect>
         </g>
       `);
     }
@@ -132,6 +239,7 @@
       <polyline points="${balanceLine}" fill="none" stroke="#6ca7ff" stroke-width="${compact ? "2.4" : "3"}" stroke-linecap="round" />
       ${bucketGroups.join("")}
     `;
+    bindTrendTooltip(svgNode, points, compact);
   }
 
   function trendQueryParams() {
