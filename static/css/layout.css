@@ -423,6 +423,27 @@
 .category-modal-form {
   display: grid;
   gap: var(--space-3);
+  min-width: 0;
+}
+
+.category-modal-form > * {
+  min-width: 0;
+}
+
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 190px);
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.item-template-price-grid {
+  width: 100%;
+}
+
+.item-template-price-grid #itemTemplatePriceField,
+.item-template-price-grid #itemTemplatePriceDateField {
+  width: 100%;
 }
 
 .operation-category-picker {
@@ -455,8 +476,9 @@
   gap: var(--space-3);
 }
 
-#createDebtFields #debtStartDate {
+#createDebtFields #debtStartDateField {
   grid-column: span 3;
+  width: 100%;
 }
 
 #createDebtFields #createDebtDirectionSwitch {
@@ -474,19 +496,23 @@
 
 #createDebtFields #debtPrincipalField {
   grid-column: span 2;
+  width: 100%;
 }
 
-#createDebtFields .debt-due-field {
+#createDebtFields #debtDueField {
   grid-column: span 3;
+  width: 100%;
 }
 
 #createDebtFields #debtNote {
   grid-column: 1 / -1;
+  width: 100%;
 }
 
 .debt-due-field {
   display: grid;
   gap: var(--space-1);
+  min-width: 0;
 }
 
 .debt-due-inline-hint {

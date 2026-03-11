@@ -83,11 +83,11 @@
     grid-template-columns: 1fr;
   }
 
-  #createDebtFields #debtStartDate,
+  #createDebtFields #debtStartDateField,
   #createDebtFields #createDebtDirectionSwitch,
   #createDebtFields #debtCounterparty,
   #createDebtFields #debtPrincipalField,
-  #createDebtFields .debt-due-field {
+  #createDebtFields #debtDueField {
     grid-column: 1 / -1;
   }
 }
@@ -691,6 +691,10 @@
     gap: var(--space-2);
   }
 
+  .form-grid-2 {
+    grid-template-columns: 1fr;
+  }
+
   .modal-card form {
     margin-top: var(--space-1);
   }
@@ -811,7 +815,15 @@
   .edit-modal-grid #editDateField,
   .edit-modal-grid #editKindSwitch,
   .edit-modal-grid #editCategoryField,
-  .edit-modal-grid #editAmountField {
+  .edit-modal-grid #editAmountField,
+  #createDebtFields #debtStartDateField,
+  #createDebtFields #createDebtDirectionSwitch,
+  #createDebtFields #debtCounterparty,
+  #createDebtFields #debtPrincipalField,
+  #createDebtFields #debtDueField,
+  #createDebtFields #debtNote,
+  .item-template-price-grid #itemTemplatePriceField,
+  .item-template-price-grid #itemTemplatePriceDateField {
     grid-column: 1 / -1;
   }
 

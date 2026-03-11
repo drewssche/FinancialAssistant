@@ -145,15 +145,6 @@
   font-variant-numeric: tabular-nums lining-nums;
 }
 
-.money-input-wrap.currency-byn::after {
-  content: "";
-  width: 0.72em;
-  height: 0.92em;
-  background: currentColor;
-  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 96'><rect x='18' y='4' width='14' height='88' fill='black'/><rect x='18' y='4' width='50' height='10' fill='black'/><rect x='4' y='34' width='64' height='10' fill='black'/><path d='M18 54H44.5C58.8 54 70 61.2 70 72.8C70 84.7 58.7 92 44.5 92H18V80H42.8C52.7 80 58.8 77.1 58.8 72.4C58.8 67.8 52.7 64.8 42.8 64.8H18V54Z' fill='black'/></svg>") center / contain no-repeat;
-  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 96'><rect x='18' y='4' width='14' height='88' fill='black'/><rect x='18' y='4' width='50' height='10' fill='black'/><rect x='4' y='34' width='64' height='10' fill='black'/><path d='M18 54H44.5C58.8 54 70 61.2 70 72.8C70 84.7 58.7 92 44.5 92H18V80H42.8C52.7 80 58.8 77.1 58.8 72.4C58.8 67.8 52.7 64.8 42.8 64.8H18V54Z' fill='black'/></svg>") center / contain no-repeat;
-}
-
 .money-input-wrap.currency-suffix::after {
   right: 12px;
 }
@@ -163,7 +154,7 @@
 }
 
 .money-input-wrap.currency-suffix input[data-money-input] {
-  padding-right: 44px;
+  padding-right: 58px;
 }
 
 .money-input-wrap.currency-prefix input[data-money-input] {

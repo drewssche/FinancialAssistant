@@ -631,7 +631,7 @@
                     </select>
                   </label>
                 </div>
-                <div id="currencyPreview" class="settings-preview">Пример: 1 234,56 Б̶</div>
+                <div id="currencyPreview" class="settings-preview">Пример: 1 234,56 руб.</div>
                 <label class="settings-switch-row">
                   <input id="showDashboardAnalyticsToggle" type="checkbox" checked />
                   <span>Показывать блок аналитики на дашборде</span>

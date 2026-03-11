@@ -22,11 +22,11 @@
             </div>
           </div>
           <input id="itemTemplateName" type="text" placeholder="Позиция" required />
-          <div class="form-grid form-grid-2">
-            <div class="money-input-wrap" data-money-input-wrap>
+          <div class="form-grid form-grid-2 item-template-price-grid">
+            <div id="itemTemplatePriceField" class="money-input-wrap" data-money-input-wrap>
               <input id="itemTemplatePrice" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Последняя цена или выражение" title="Можно вводить выражения: 1000+250/2" />
             </div>
-            <div class="date-input-wrap">
+            <div id="itemTemplatePriceDateField" class="date-input-wrap">
               <input id="itemTemplatePriceDate" class="input" type="date" aria-label="Дата цены" />
               <button class="date-input-trigger" type="button" data-date-picker-trigger="itemTemplatePriceDate" aria-label="Открыть календарь"></button>
             </div>

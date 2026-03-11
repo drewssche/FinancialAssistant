@@ -57,7 +57,7 @@
           </div>
 
           <div id="createDebtFields" class="category-modal-form hidden">
-            <div class="date-input-wrap">
+            <div id="debtStartDateField" class="date-input-wrap">
               <input id="debtStartDate" class="input" type="date" aria-label="Дата начала долга" />
               <button class="date-input-trigger" type="button" data-date-picker-trigger="debtStartDate" aria-label="Открыть календарь"></button>
             </div>
@@ -70,8 +70,8 @@
             <div id="debtPrincipalField" class="money-input-wrap" data-money-input-wrap>
               <input id="debtPrincipal" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма или выражение" title="Можно вводить выражения: 1000+250/2" />
             </div>
-            <div class="debt-due-field">
-              <div class="date-input-wrap">
+            <div id="debtDueField" class="debt-due-field">
+              <div id="debtDueDateField" class="date-input-wrap">
                 <input id="debtDueDate" class="input" type="date" aria-label="Срок долга" />
                 <button class="date-input-trigger" type="button" data-date-picker-trigger="debtDueDate" aria-label="Открыть календарь"></button>
               </div>

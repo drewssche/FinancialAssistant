@@ -1,123 +1,14 @@
 (() => {
   const CURRENCY_META = {
-    BYN: { symbol: "Б̶" },
+    BYN: { symbol: "руб." },
     RUB: { symbol: "₽" },
     USD: { symbol: "$" },
     EUR: { symbol: "€" },
     GBP: { symbol: "£" },
   };
-  const BYN_SVG_ICON = `
-    <svg viewBox="0 0 80 96" aria-hidden="true" focusable="false">
-      <rect x="16" y="4" width="14" height="88" fill="currentColor"></rect>
-      <rect x="16" y="4" width="52" height="10" fill="currentColor"></rect>
-      <rect x="2" y="34" width="66" height="10" fill="currentColor"></rect>
-      <path d="M16 56H45.5C60.8 56 72 63.4 72 76.8C72 88.9 61.3 96 45.2 96H16V84H42.7C54.5 84 60.8 81.2 60.8 76.4C60.8 71.5 54.5 68.6 42.7 68.6H16V56Z" fill="currentColor"></path>
-    </svg>
-  `.trim();
-  let currencyObserver = null;
-  let currencyDecorating = false;
+  function decorateCurrencyIcons() {}
 
-  function createBynCurrencyIconNode(doc) {
-    const wrap = doc.createElement("span");
-    wrap.className = "currency-icon-wrap currency-icon-wrap-byn";
-    wrap.dataset.currencyDecorated = "true";
-
-    const icon = doc.createElement("span");
-    icon.className = "currency-icon currency-icon-byn";
-    icon.setAttribute("aria-hidden", "true");
-    icon.innerHTML = BYN_SVG_ICON;
-
-    const fallback = doc.createElement("span");
-    fallback.className = "currency-icon-fallback";
-    fallback.textContent = "Б̶";
-
-    wrap.appendChild(icon);
-    wrap.appendChild(fallback);
-    return wrap;
-  }
-
-  function decorateCurrencyTextNode(textNode) {
-    if (!(textNode instanceof Text) || !textNode.parentElement) {
-      return;
-    }
-    if (!textNode.nodeValue || !textNode.nodeValue.includes("Б̶")) {
-      return;
-    }
-    if (textNode.parentElement.closest(".currency-icon-wrap")) {
-      return;
-    }
-    const tagName = textNode.parentElement.tagName;
-    if (["SCRIPT", "STYLE", "TEXTAREA", "INPUT", "OPTION", "SELECT"].includes(tagName)) {
-      return;
-    }
-    const doc = textNode.ownerDocument;
-    const parts = String(textNode.nodeValue).split("Б̶");
-    if (parts.length <= 1) {
-      return;
-    }
-    const fragment = doc.createDocumentFragment();
-    parts.forEach((part, index) => {
-      if (part) {
-        fragment.appendChild(doc.createTextNode(part));
-      }
-      if (index < parts.length - 1) {
-        fragment.appendChild(createBynCurrencyIconNode(doc));
-      }
-    });
-    textNode.replaceWith(fragment);
-  }
-
-  function decorateCurrencyIcons(root = document.body) {
-    if (!root || currencyDecorating) {
-      return;
-    }
-    currencyDecorating = true;
-    try {
-      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-      const targets = [];
-      let current = walker.nextNode();
-      while (current) {
-        if (current.nodeValue && current.nodeValue.includes("Б̶")) {
-          targets.push(current);
-        }
-        current = walker.nextNode();
-      }
-      targets.forEach(decorateCurrencyTextNode);
-    } finally {
-      currencyDecorating = false;
-    }
-  }
-
-  function startCurrencyIconObserver(root = document.body) {
-    if (!root || currencyObserver) {
-      decorateCurrencyIcons(root);
-      return;
-    }
-    decorateCurrencyIcons(root);
-    currencyObserver = new MutationObserver((mutations) => {
-      if (currencyDecorating) {
-        return;
-      }
-      for (const mutation of mutations) {
-        if (mutation.type === "characterData") {
-          decorateCurrencyTextNode(mutation.target);
-          continue;
-        }
-        mutation.addedNodes.forEach((node) => {
-          if (node instanceof Text) {
-            decorateCurrencyTextNode(node);
-          } else if (node instanceof HTMLElement) {
-            decorateCurrencyIcons(node);
-          }
-        });
-      }
-    });
-    currencyObserver.observe(root, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-    });
-  }
+  function startCurrencyIconObserver() {}
 
   function formatAmount(value) {
     const num = Number(value);
