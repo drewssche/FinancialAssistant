@@ -161,6 +161,21 @@
     applyCategoryBreakdownHover(null);
   }
 
+  function bindCategoryBreakdownChartHover() {
+    if (!el.analyticsCategoryBreakdownSvg) {
+      return;
+    }
+    el.analyticsCategoryBreakdownSvg.querySelectorAll(".analytics-category-slice").forEach((node) => {
+      node.addEventListener("pointerenter", () => {
+        setCategoryBreakdownHover(node.dataset.analyticsCategoryIndex);
+      });
+      node.addEventListener("focus", () => {
+        setCategoryBreakdownHover(node.dataset.analyticsCategoryIndex);
+      });
+    });
+    el.analyticsCategoryBreakdownSvg.addEventListener("pointerleave", clearCategoryBreakdownHover);
+  }
+
   function renderCategoryBreakdown(data, formatPct) {
     const items = Array.isArray(data.category_breakdown) ? data.category_breakdown : [];
     const selectedKind = data.category_breakdown_kind || state.analyticsCategoryKind || "expense";
@@ -215,6 +230,7 @@
             ></path>
           `;
         }).join("");
+        bindCategoryBreakdownChartHover();
         el.analyticsCategoryBreakdownChart.classList.remove("analytics-category-donut-empty");
       } else {
         el.analyticsCategoryBreakdownSvg.innerHTML = "";

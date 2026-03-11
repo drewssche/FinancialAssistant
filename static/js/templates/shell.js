@@ -249,8 +249,8 @@
             </div>
             <div class="analytics-category-breakdown-grid">
               <div class="analytics-category-breakdown-chart-card">
-                <div id="analyticsCategoryBreakdownChart" class="analytics-category-donut" aria-hidden="true">
-                  <svg id="analyticsCategoryBreakdownSvg" class="analytics-category-donut-svg" viewBox="0 0 260 260" aria-hidden="true"></svg>
+                <div id="analyticsCategoryBreakdownChart" class="analytics-category-donut">
+                  <svg id="analyticsCategoryBreakdownSvg" class="analytics-category-donut-svg" viewBox="0 0 260 260"></svg>
                   <div class="analytics-category-donut-hole">
                     <span id="analyticsCategoryBreakdownChartTitle" class="analytics-category-donut-title muted-small">Итог периода</span>
                     <strong id="analyticsCategoryBreakdownChartValue">0</strong>
