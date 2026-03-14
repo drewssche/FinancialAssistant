@@ -147,5 +147,7 @@
     setCategoryBreakdownHover: highlights.setCategoryBreakdownHover,
     clearCategoryBreakdownHover: highlights.clearCategoryBreakdownHover,
     focusDefaultCategoryBreakdown: highlights.focusDefaultCategoryBreakdown,
+    toggleCategoryBreakdownVisibility: highlights.toggleCategoryBreakdownVisibility,
+    showAllCategoryBreakdownItems: highlights.showAllCategoryBreakdownItems,
   };
 })();

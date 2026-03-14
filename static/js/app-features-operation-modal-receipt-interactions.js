@@ -110,6 +110,7 @@
         shop_name_ci: shopNameCi || "",
         name: normalizedName,
         name_ci: nameCi,
+        last_category_id: null,
         latest_unit_price: Number(latestUnitPrice || 0) || 0,
       };
       state.receiptTemplateHints = [created, ...(state.receiptTemplateHints || [])];
@@ -241,6 +242,7 @@
         shop_name_ci: normalizeReceiptName(item.shop_name || "").toLowerCase(),
         name: normalizeReceiptName(item.name || ""),
         name_ci: normalizeReceiptName(item.name || "").toLowerCase(),
+        last_category_id: item.last_category_id ? Number(item.last_category_id) : null,
         latest_unit_price: Number(item.latest_unit_price || 0) || 0,
       }));
       const merged = [...serverTemplates];
@@ -287,15 +289,18 @@
       if (!updated?.item) {
         return;
       }
-      if (field === "name") {
-        const token = normalizeReceiptName(event.target.value).toLowerCase();
-        const matched = getReceiptTemplateMatch(token, updated.item.shop_name || "");
-        if (matched) {
-          updated.item.template_id = matched.id;
-          updated.item.shop_name = normalizeReceiptName(matched.shop_name || updated.item.shop_name || "");
-          if (!updated.item.unit_price || Number(updated.item.unit_price) <= 0) {
-            updated.item.unit_price = matched.latest_unit_price || 0;
-            const rowPriceInput = row.querySelector('[data-receipt-field="unit_price"]');
+        if (field === "name") {
+          const token = normalizeReceiptName(event.target.value).toLowerCase();
+          const matched = getReceiptTemplateMatch(token, updated.item.shop_name || "");
+          if (matched) {
+            updated.item.template_id = matched.id;
+            updated.item.shop_name = normalizeReceiptName(matched.shop_name || updated.item.shop_name || "");
+            if (!updated.item.category_id && matched.last_category_id) {
+              updated.item.category_id = Number(matched.last_category_id);
+            }
+            if (!updated.item.unit_price || Number(updated.item.unit_price) <= 0) {
+              updated.item.unit_price = matched.latest_unit_price || 0;
+              const rowPriceInput = row.querySelector('[data-receipt-field="unit_price"]');
             if (rowPriceInput) {
               rowPriceInput.value = core.formatAmount(updated.item.unit_price);
             }
@@ -408,6 +413,9 @@
         rowItem.name = first.name;
         rowItem.template_id = first.id;
         rowItem.shop_name = normalizeReceiptName(first.shop_name || rowItem.shop_name || "");
+        if (!rowItem.category_id && first.last_category_id) {
+          rowItem.category_id = Number(first.last_category_id);
+        }
         if (!rowItem.unit_price || Number(rowItem.unit_price) <= 0) {
           rowItem.unit_price = first.latest_unit_price || 0;
         }
@@ -450,6 +458,9 @@
           rowItem.shop_name = normalizeReceiptName(template.shop_name || rowItem.shop_name || "");
           rowItem.name = template.name;
           rowItem.template_id = template.id;
+          if (!rowItem.category_id && template.last_category_id) {
+            rowItem.category_id = Number(template.last_category_id);
+          }
           if (!rowItem.unit_price || Number(rowItem.unit_price) <= 0) {
             rowItem.unit_price = template.latest_unit_price || 0;
           }

@@ -185,11 +185,6 @@
       });
     }
 
-    if (el.opReceiptEnabled && actions.setReceiptEnabled) {
-      el.opReceiptEnabled.addEventListener("change", () => {
-        actions.setReceiptEnabled(el.opReceiptEnabled.checked);
-      });
-    }
     if (el.pullReceiptTotalBtn && actions.handlePullReceiptTotal) {
       el.pullReceiptTotalBtn.addEventListener("click", () => {
         actions.handlePullReceiptTotal("create");
@@ -220,11 +215,6 @@
     if (el.editPullReceiptTotalBtn && actions.handlePullReceiptTotal) {
       el.editPullReceiptTotalBtn.addEventListener("click", (event) => {
         actions.handlePullReceiptTotal(event);
-      });
-    }
-    if (el.editReceiptEnabled && actions.setReceiptEnabled) {
-      el.editReceiptEnabled.addEventListener("change", () => {
-        actions.setReceiptEnabled(el.editReceiptEnabled.checked, "edit");
       });
     }
     if (el.editReceiptItemsList) {

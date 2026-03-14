@@ -83,6 +83,29 @@
   const handlePullReceiptTotal = receipt.handlePullReceiptTotal || (() => {});
   const getCreateReceiptPayload = receipt.getCreateReceiptPayload || (() => []);
   const getEditReceiptPayload = receipt.getEditReceiptPayload || (() => []);
+  const syncReceiptCategoriesToKind = receipt.syncReceiptCategoriesToKind || (() => {});
+
+  function isCreateReceiptMode() {
+    return el.opOperationMode?.value === "receipt";
+  }
+
+  function isEditReceiptMode() {
+    return el.editOperationMode?.value === "receipt";
+  }
+
+  function updateCreateCategoryFieldUi() {
+    if (!el.opCategorySearch) {
+      return;
+    }
+    el.opCategorySearch.placeholder = isCreateReceiptMode() ? "Категория по умолчанию" : "Категория";
+  }
+
+  function updateEditCategoryFieldUi() {
+    if (!el.editCategorySearch) {
+      return;
+    }
+    el.editCategorySearch.placeholder = isEditReceiptMode() ? "Категория по умолчанию" : "Категория";
+  }
   function openCreateCategoryPopover() {
     if (el.opEntryMode.value === "debt") {
       return;
@@ -226,6 +249,34 @@
   }
   function applyDebtCurrencyUi() {
     core.applyMoneyInputs();
+  }
+  function setCreateOperationMode(mode) {
+    const nextMode = mode === "receipt" ? "receipt" : "common";
+    if (el.opOperationMode) {
+      el.opOperationMode.value = nextMode;
+    }
+    if (el.createOperationModeSwitch) {
+      core.syncSegmentedActive(el.createOperationModeSwitch, "operation-mode", nextMode);
+    }
+    el.opReceiptBlock?.classList.toggle("hidden", el.opEntryMode?.value === "debt" || nextMode !== "receipt");
+    setReceiptEnabled(nextMode === "receipt", "create");
+    updateCreateCategoryFieldUi();
+    renderCreateCategoryPicker();
+    updateCreatePreview();
+  }
+  function setEditOperationMode(mode) {
+    const nextMode = mode === "receipt" ? "receipt" : "common";
+    if (el.editOperationMode) {
+      el.editOperationMode.value = nextMode;
+    }
+    if (el.editOperationModeSwitch) {
+      core.syncSegmentedActive(el.editOperationModeSwitch, "operation-mode", nextMode);
+    }
+    el.editReceiptBlock?.classList.toggle("hidden", nextMode !== "receipt");
+    setReceiptEnabled(nextMode === "receipt", "edit");
+    updateEditCategoryFieldUi();
+    renderEditCategoryPicker();
+    updateEditPreview();
   }
   function selectCreateCategory(categoryId, options = {}) {
     const value = categoryId ? String(categoryId) : "";
@@ -376,8 +427,9 @@
     core.syncSegmentedActive(el.createEntryModeSwitch, "entry-mode", nextMode);
     const isDebt = nextMode === "debt";
     el.createKindSwitch.classList.toggle("hidden", isDebt);
+    el.createOperationModeSwitch?.classList.toggle("hidden", isDebt);
     el.createCategoryField.classList.toggle("hidden", isDebt);
-    el.opReceiptBlock?.classList.toggle("hidden", isDebt);
+    el.opReceiptBlock?.classList.toggle("hidden", isDebt || !isCreateReceiptMode());
     const opAmountField = document.getElementById("opAmountField");
     const opAmount = document.getElementById("opAmount");
     const opDate = document.getElementById("opDate");
@@ -387,7 +439,7 @@
     }
     if (opAmount) {
       opAmount.required = !isDebt;
-      if (!isDebt && el.opReceiptEnabled?.checked) {
+      if (!isDebt && isCreateReceiptMode()) {
         opAmount.required = false;
       }
     }
@@ -421,6 +473,9 @@
     } else if (submit) {
       submit.textContent = "Добавить";
     }
+    if (!isDebt) {
+      updateCreateCategoryFieldUi();
+    }
     updateCreatePreview();
   }
   function setOperationKind(mode, kind) {
@@ -433,6 +488,7 @@
         el.opCategorySearch.value = "";
       }
       renderCreateCategoryPicker();
+      syncReceiptCategoriesToKind("create");
       updateCreatePreview();
       return;
     }
@@ -447,6 +503,7 @@
         }
       }
       renderEditCategoryPicker();
+      syncReceiptCategoriesToKind("edit");
       updateEditPreview();
     }
   }
@@ -466,11 +523,8 @@
     setOperationKind("create", el.opKind.value || "expense");
     el.opCategory.value = "";
     el.opCategorySearch.value = "";
-    if (el.opReceiptEnabled) {
-      el.opReceiptEnabled.checked = false;
-    }
     clearReceiptItems("create");
-    setReceiptEnabled(false, "create");
+    setCreateOperationMode("common");
     closeCreateCategoryPopover();
     el.debtCounterparty.value = "";
     el.debtPrincipal.value = "";
@@ -528,6 +582,7 @@
     if (typeof createReceiptDraft === "function") {
       state.editReceiptItems = (Array.isArray(item.receipt_items) ? item.receipt_items : []).map((row) => createReceiptDraft({
         template_id: row.template_id || null,
+        category_id: row.category_id || null,
         shop_name: row.shop_name || "",
         name: row.name || "",
         quantity: row.quantity || 0,
@@ -538,20 +593,17 @@
       state.editReceiptItems = [];
     }
     const hasReceipt = state.editReceiptItems.length > 0;
-    if (el.editReceiptEnabled) {
-      el.editReceiptEnabled.checked = hasReceipt;
-    }
-    setReceiptEnabled(hasReceipt, "edit");
     el.editCategory.value = item.category_id ? String(item.category_id) : "";
     setOperationKind("edit", item.kind);
     selectEditCategory(item.category_id ? Number(item.category_id) : null);
+    setEditOperationMode(hasReceipt ? "receipt" : "common");
     updateEditPreview();
     el.editModal.classList.remove("hidden");
   }
   function closeEditModal() {
     state.editOperationId = null;
     clearReceiptItems("edit");
-    setReceiptEnabled(false, "edit");
+    setEditOperationMode("common");
     closeEditCategoryPopover();
     el.editModal.classList.add("hidden");
   }
@@ -611,6 +663,8 @@
     setDebtDirection,
     setOperationKind,
     setCreateEntryMode,
+    setCreateOperationMode,
+    setEditOperationMode,
     updateDebtDueHint,
     openCreateModal,
     openCreateModalForDebtEdit,

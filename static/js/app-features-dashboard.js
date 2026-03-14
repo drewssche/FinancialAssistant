@@ -179,7 +179,7 @@
     if (window.App.actions.ensureAllTimeBounds) {
       await window.App.actions.ensureAllTimeBounds();
     }
-    const { dateFrom, dateTo } = core.getPeriodBounds(state.dashboardAnalyticsPeriod || "month");
+    const { dateFrom, dateTo } = core.getPeriodBounds(state.period);
     el.dashboardPeriodLabel.textContent = core.formatPeriodLabel(dateFrom, dateTo);
     const pageSize = ui?.dashboardOperationsLimit || 8;
     const params = new URLSearchParams({

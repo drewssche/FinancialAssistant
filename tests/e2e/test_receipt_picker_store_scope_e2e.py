@@ -182,7 +182,7 @@ def test_receipt_picker_store_scoped_and_optimistic_create(static_server_url: st
     page.click("#addOperationCta")
     page.wait_for_selector("#createModal:not(.hidden)")
 
-    page.check("#opReceiptEnabled")
+    page.locator('#createOperationModeSwitch button[data-operation-mode="receipt"]').click()
     page.wait_for_selector("#opReceiptFields:not(.hidden)")
 
     first_row = page.locator(".receipt-item-row").first
@@ -241,10 +241,10 @@ def test_mobile_create_modal_preview_stays_above_sticky_cta(static_server_url: s
     page.click("#addOperationCta")
     page.wait_for_selector("#createModal:not(.hidden)")
 
-    page.fill("#opDate", "08.03.2026")
+    page.fill("#opDate", "2026-03-08")
     page.fill("#opAmount", "123.45")
     page.fill("#opNote", "Мобильная проверка превью")
-    page.check("#opReceiptEnabled")
+    page.locator('#createOperationModeSwitch button[data-operation-mode="receipt"]').click()
     page.wait_for_selector("#opReceiptFields:not(.hidden)")
 
     first_row = page.locator(".receipt-item-row").first

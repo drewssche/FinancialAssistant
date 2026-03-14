@@ -470,6 +470,50 @@ def test_dashboard_analytics_highlights_category_breakdown_respects_kind_filter(
     assert len(income_payload["category_breakdown"]) == 1
 
 
+def test_dashboard_analytics_highlights_uses_receipt_item_categories_for_structure(client: TestClient):
+    food = client.post("/api/v1/categories", json={"name": "Еда", "kind": "expense"})
+    transport = client.post("/api/v1/categories", json={"name": "Транспорт", "kind": "expense"})
+    misc = client.post("/api/v1/categories", json={"name": "Прочее", "kind": "expense"})
+    assert food.status_code == 200
+    assert transport.status_code == 200
+    assert misc.status_code == 200
+
+    created = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "category_id": misc.json()["id"],
+            "amount": "120.00",
+            "operation_date": "2026-03-12",
+            "note": "mixed receipt",
+            "receipt_items": [
+                {
+                    "name": "Обед",
+                    "quantity": "1",
+                    "unit_price": "30.00",
+                    "category_id": food.json()["id"],
+                },
+                {
+                    "name": "Такси",
+                    "quantity": "1",
+                    "unit_price": "70.00",
+                    "category_id": transport.json()["id"],
+                },
+            ],
+        },
+    )
+    assert created.status_code == 201
+
+    response = client.get("/api/v1/dashboard/analytics/highlights", params={"month": "2026-03"})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["expense_total"] == "120.00"
+    breakdown = {item["category_name"]: item for item in payload["category_breakdown"]}
+    assert breakdown["Транспорт"]["total_amount"] == "70.00"
+    assert breakdown["Еда"]["total_amount"] == "30.00"
+    assert breakdown["Прочее"]["total_amount"] == "20.00"
+
+
 def test_dashboard_analytics_ignores_category_statistics_flag(client: TestClient):
     hidden = client.post(
         "/api/v1/categories",

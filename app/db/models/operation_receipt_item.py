@@ -21,6 +21,11 @@ class OperationReceiptItem(Base):
         nullable=True,
         index=True,
     )
+    category_id: Mapped[int | None] = mapped_column(
+        ForeignKey("categories.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     shop_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     name: Mapped[str] = mapped_column(Text)
     quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3))

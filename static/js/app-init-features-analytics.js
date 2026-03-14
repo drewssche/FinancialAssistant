@@ -104,9 +104,17 @@
           return;
         }
         const selected = btn.dataset.dashboardAnalyticsPeriod;
+        if (selected === "custom") {
+          state.dashboardAnalyticsPendingCustom = true;
+          core.syncDateFieldValue(el.customDateFrom, state.dashboardAnalyticsDateFrom || "");
+          core.syncDateFieldValue(el.customDateTo, state.dashboardAnalyticsDateTo || "");
+          actions.openPeriodCustomModal();
+          return;
+        }
         if (state.dashboardAnalyticsPeriod === selected) {
           return;
         }
+        state.dashboardAnalyticsPendingCustom = false;
         state.dashboardAnalyticsPeriod = selected;
         core.syncSegmentedActive(el.dashboardAnalyticsPeriodTabs, "dashboard-analytics-period", state.dashboardAnalyticsPeriod);
         core.runAction({
@@ -350,6 +358,38 @@
       };
       bindCategoryHover(el.analyticsCategoryBreakdownChart);
       bindCategoryHover(el.analyticsCategoryBreakdownList);
+    }
+    if (el.dashboardCategoryBreakdownList && actions.loadDashboardAnalyticsPreview) {
+      const bindDashboardBreakdownHover = (container) => {
+        if (!container) {
+          return;
+        }
+        container.addEventListener("mouseover", (event) => {
+          const node = event.target.closest("[data-dashboard-category-index]");
+          if (!node || !window.App.featureAnalyticsModules?.highlights?.setDashboardBreakdownHover) {
+            return;
+          }
+          window.App.featureAnalyticsModules.highlights.setDashboardBreakdownHover(node.dataset.dashboardCategoryIndex);
+        });
+        container.addEventListener("focusin", (event) => {
+          const node = event.target.closest("[data-dashboard-category-index]");
+          if (!node || !window.App.featureAnalyticsModules?.highlights?.setDashboardBreakdownHover) {
+            return;
+          }
+          window.App.featureAnalyticsModules.highlights.setDashboardBreakdownHover(node.dataset.dashboardCategoryIndex);
+        });
+        container.addEventListener("mouseleave", () => {
+          window.App.featureAnalyticsModules?.highlights?.clearDashboardBreakdownHover?.();
+        });
+        container.addEventListener("focusout", (event) => {
+          if (container.contains(event.relatedTarget)) {
+            return;
+          }
+          window.App.featureAnalyticsModules?.highlights?.clearDashboardBreakdownHover?.();
+        });
+      };
+      bindDashboardBreakdownHover(el.dashboardCategoryBreakdownChart);
+      bindDashboardBreakdownHover(el.dashboardCategoryBreakdownList);
     }
     if (el.analyticsTrendChart && actions.openOperationsForAnalyticsRange) {
       el.analyticsTrendChart.addEventListener("click", (event) => {

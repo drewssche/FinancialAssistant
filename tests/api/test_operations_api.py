@@ -258,6 +258,44 @@ def test_operation_receipt_items_autofill_amount_and_discrepancy(client: TestCli
     assert len(payload["receipt_items"]) == 2
     assert payload["receipt_items"][0]["shop_name"] == "Корона"
 
+
+def test_operations_filter_by_receipt_item_category(client: TestClient):
+    food_category = client.post("/api/v1/categories", json={"name": "Еда", "kind": "expense"})
+    assert food_category.status_code == 200
+    food_category_id = food_category.json()["id"]
+
+    transport_category = client.post("/api/v1/categories", json={"name": "Транспорт", "kind": "expense"})
+    assert transport_category.status_code == 200
+    transport_category_id = transport_category.json()["id"]
+
+    created = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "100.00",
+            "operation_date": "2026-03-08",
+            "receipt_items": [
+                {"name": "Обед", "quantity": "1", "unit_price": "30.00", "category_id": food_category_id},
+                {"name": "Такси", "quantity": "1", "unit_price": "70.00", "category_id": transport_category_id},
+            ],
+        },
+    )
+    assert created.status_code == 201
+    payload = created.json()
+    assert payload["receipt_items"][0]["category_id"] == food_category_id
+    assert payload["receipt_items"][1]["category_id"] == transport_category_id
+
+    filtered = client.get(
+        "/api/v1/operations",
+        params={"category_id": transport_category_id, "page": 1, "page_size": 10},
+    )
+    assert filtered.status_code == 200
+    assert filtered.json()["total"] == 1
+
+    summary = client.get("/api/v1/operations/summary", params={"category_id": food_category_id})
+    assert summary.status_code == 200
+    assert summary.json()["expense_total"] == "100.00"
+
     operation_id = payload["id"]
     updated = client.patch(
         f"/api/v1/operations/{operation_id}",

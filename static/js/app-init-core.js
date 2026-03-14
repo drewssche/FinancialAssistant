@@ -173,11 +173,13 @@
 
     el.closePeriodCustomModalBtn.addEventListener("click", () => {
       state.analyticsGlobalPendingCustom = false;
+      state.dashboardAnalyticsPendingCustom = false;
       actions.closePeriodCustomModal();
     });
     el.periodCustomModal.addEventListener("click", (event) => {
       if (event.target === el.periodCustomModal) {
         state.analyticsGlobalPendingCustom = false;
+        state.dashboardAnalyticsPendingCustom = false;
         actions.closePeriodCustomModal();
       }
     });

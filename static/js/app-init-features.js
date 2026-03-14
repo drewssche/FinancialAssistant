@@ -9,12 +9,30 @@
     let categorySearchDebounceId = null;
     let itemCatalogSearchDebounceId = null;
 
+    function getCreateFormActionMeta() {
+      const isDebt = el.opEntryMode?.value === "debt";
+      if (!isDebt) {
+        return {
+          pendingText: "Добавление...",
+          successMessage: "Операция добавлена",
+          errorPrefix: "Ошибка добавления операции",
+        };
+      }
+      const isDebtEdit = Number(state.editDebtCreateId || 0) > 0;
+      return {
+        pendingText: isDebtEdit ? "Сохранение..." : "Добавление...",
+        successMessage: isDebtEdit ? "Долг обновлён" : "Долг создан",
+        errorPrefix: isDebtEdit ? "Ошибка сохранения долга" : "Ошибка создания долга",
+      };
+    }
+
     el.createForm.addEventListener("submit", (event) => {
+      const meta = getCreateFormActionMeta();
       core.runAction({
         button: event.submitter || document.getElementById("submitCreateOperationBtn"),
-        pendingText: "Добавление...",
-        successMessage: "Операция добавлена",
-        errorPrefix: "Ошибка добавления операции",
+        pendingText: meta.pendingText,
+        successMessage: meta.successMessage,
+        errorPrefix: meta.errorPrefix,
         action: () => actions.createOperation(event),
       });
     });
@@ -135,6 +153,29 @@
           action: async () => {
             if (actions.loadAnalyticsSection) {
               await actions.loadAnalyticsSection({ force: true });
+            }
+            await actions.savePreferences();
+            actions.closePeriodCustomModal();
+          },
+        });
+        return;
+      }
+      if (state.dashboardAnalyticsPendingCustom && state.activeSection === "dashboard") {
+        state.dashboardAnalyticsPendingCustom = false;
+        state.dashboardAnalyticsPeriod = "custom";
+        state.dashboardAnalyticsDateFrom = from;
+        state.dashboardAnalyticsDateTo = to;
+        core.syncSegmentedActive(el.dashboardAnalyticsPeriodTabs, "dashboard-analytics-period", state.dashboardAnalyticsPeriod);
+        core.runAction({
+          button: event.submitter || document.getElementById("submitPeriodCustomBtn"),
+          pendingText: "Применение...",
+          errorPrefix: "Ошибка сохранения периода",
+          action: async () => {
+            if (actions.loadDashboardAnalyticsPreview) {
+              await actions.loadDashboardAnalyticsPreview({ force: true });
+            }
+            if (actions.loadDashboardOperations) {
+              await actions.loadDashboardOperations();
             }
             await actions.savePreferences();
             actions.closePeriodCustomModal();
@@ -374,6 +415,16 @@
       });
     }
 
+    if (el.createOperationModeSwitch) {
+      el.createOperationModeSwitch.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-operation-mode]");
+        if (!btn || !actions.setCreateOperationMode) {
+          return;
+        }
+        actions.setCreateOperationMode(btn.dataset.operationMode);
+      });
+    }
+
     if (el.createDebtDirectionSwitch) {
       el.createDebtDirectionSwitch.addEventListener("click", (event) => {
         const btn = event.target.closest("button[data-debt-direction]");
@@ -391,6 +442,16 @@
       }
       actions.setOperationKind("edit", btn.dataset.kind);
     });
+
+    if (el.editOperationModeSwitch) {
+      el.editOperationModeSwitch.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-operation-mode]");
+        if (!btn || !actions.setEditOperationMode) {
+          return;
+        }
+        actions.setEditOperationMode(btn.dataset.operationMode);
+      });
+    }
 
     el.operationsBody.addEventListener("click", (event) => {
       const receiptBtn = event.target.closest("button[data-receipt-view-id]");

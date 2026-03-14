@@ -267,6 +267,10 @@
   grid-column: 1 / -1;
 }
 
+.create-modal-grid #createOperationModeSwitch {
+  grid-column: 1 / -1;
+}
+
 .create-modal-grid #opDateField {
   grid-column: span 3;
   width: 100%;
@@ -316,6 +320,11 @@
 
 .edit-modal-grid #editDateField {
   grid-column: span 3;
+  width: 100%;
+}
+
+.edit-modal-grid #editOperationModeSwitch {
+  grid-column: 1 / -1;
   width: 100%;
 }
 
@@ -1109,6 +1118,31 @@
   transform: translateY(0);
 }
 
+.operation-category-stack {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(120, 140, 170, 0.35);
+  background: rgba(33, 44, 62, 0.82);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.meta-chip-neutral {
+  border-color: rgba(120, 140, 170, 0.35);
+}
+
 .receipt-items-list {
   display: grid;
   gap: var(--space-2);
@@ -1117,7 +1151,7 @@
 
 .receipt-item-row {
   display: grid;
-  grid-template-columns: minmax(140px, 0.75fr) minmax(0, 1.25fr) 120px 95px 100px 40px;
+  grid-template-columns: minmax(128px, 0.7fr) minmax(0, 1.15fr) minmax(150px, 0.95fr) 112px 92px 100px 40px;
   gap: var(--space-2);
   align-items: center;
   min-width: 0;
@@ -1168,6 +1202,11 @@
 
 .receipt-name-cell > input {
   width: 100%;
+}
+
+.receipt-item-row select[data-receipt-field="category_id"] {
+  width: 100%;
+  min-width: 0;
 }
 
 .receipt-name-picker {
@@ -1270,7 +1309,7 @@
 
 @media (max-width: 900px) {
   .receipt-item-row {
-    grid-template-columns: minmax(120px, 0.65fr) minmax(0, 1fr) 96px 84px 86px 32px;
+    grid-template-columns: minmax(120px, 0.65fr) minmax(0, 1fr) minmax(140px, 0.9fr) 96px 84px 86px 32px;
     gap: 6px;
   }
 

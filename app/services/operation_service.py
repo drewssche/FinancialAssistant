@@ -151,8 +151,6 @@ class OperationService:
     def update_operation(self, user_id: int, operation_id: int, updates: dict):
         if "kind" in updates and updates["kind"] is not None:
             self._validate_kind(updates["kind"])
-        if "amount" in updates and updates["amount"] is None:
-            raise ValueError("amount must not be null")
 
         item = self.repo.get_by_id(user_id=user_id, operation_id=operation_id)
         if not item:
@@ -164,8 +162,13 @@ class OperationService:
         if receipt_items_input is not None:
             normalized_items, receipt_total = self._normalize_receipt_items(receipt_items_input)
 
-        if "amount" in updates and updates["amount"] is not None:
-            updates["amount"] = self._money(updates["amount"])
+        if "amount" in updates:
+            if updates["amount"] is None:
+                if receipt_items_input is None:
+                    raise ValueError("amount must not be null")
+                updates["amount"] = self._resolve_operation_amount(amount=None, receipt_total=receipt_total)
+            else:
+                updates["amount"] = self._money(updates["amount"])
 
         item = self.repo.update(item, updates)
 
@@ -403,7 +406,7 @@ class OperationService:
                 shop_name_ci=shop_name_ci,
                 name=matched_item["name"],
                 name_ci=name_ci,
-                last_category_id=category_id,
+                last_category_id=matched_item.get("category_id", category_id),
                 flush=False,
             )
             template_by_key[key] = template
@@ -440,7 +443,11 @@ class OperationService:
             if template.shop_name != shop_name:
                 template.shop_name = shop_name
                 template.shop_name_ci = shop_name_ci
-            self.repo.touch_item_template(item=template, last_category_id=category_id, flush=False)
+            self.repo.touch_item_template(
+                item=template,
+                last_category_id=item.get("category_id", category_id),
+                flush=False,
+            )
             template_id = int(template.id)
             unit_price = self._money(item["unit_price"])
             if unit_price not in existing_price_values.setdefault(template_id, set()):
@@ -483,6 +490,7 @@ class OperationService:
                 {
                     "id": int(row.id),
                     "template_id": row.template_id,
+                    "category_id": row.category_id,
                     "shop_name": row.shop_name,
                     "name": row.name,
                     "quantity": self._qty(row.quantity),
@@ -539,6 +547,7 @@ class OperationService:
             note = item.get("note")
             normalized.append(
                 {
+                    "category_id": item.get("category_id"),
                     "shop_name": shop_name,
                     "name": name,
                     "quantity": quantity,

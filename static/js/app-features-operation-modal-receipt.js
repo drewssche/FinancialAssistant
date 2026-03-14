@@ -48,7 +48,6 @@
         mode,
         itemsKey: isEdit ? "editReceiptItems" : "createReceiptItems",
         seqKey: isEdit ? "editReceiptSeq" : "createReceiptSeq",
-        enabledNode: isEdit ? el.editReceiptEnabled : el.opReceiptEnabled,
         fieldsNode: isEdit ? el.editReceiptFields : el.opReceiptFields,
         listNode: isEdit ? el.editReceiptItemsList : el.receiptItemsList,
         totalNode: isEdit ? el.editReceiptTotalValue : el.receiptTotalValue,
@@ -67,7 +66,36 @@
       if (!Array.isArray(state[ctx.itemsKey])) {
         state[ctx.itemsKey] = [];
       }
-      return state[ctx.itemsKey];
+        return state[ctx.itemsKey];
+      }
+
+    function getReceiptOperationKind(mode = "create") {
+      return mode === "edit" ? (el.editKind?.value || "expense") : (el.opKind?.value || "expense");
+    }
+
+    function isReceiptModeEnabled(mode = "create") {
+      return mode === "edit"
+        ? el.editOperationMode?.value === "receipt"
+        : el.opOperationMode?.value === "receipt";
+    }
+
+    function getReceiptCategoryOptions(mode = "create") {
+      const kind = getReceiptOperationKind(mode);
+      return (state.categories || [])
+        .filter((item) => item.kind === kind)
+        .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "ru"));
+    }
+
+    function renderReceiptCategoryOptions(mode = "create", selectedCategoryId = null) {
+      const options = getReceiptCategoryOptions(mode);
+      const normalizedSelected = selectedCategoryId ? Number(selectedCategoryId) : null;
+      const base = [`<option value="">Без категории</option>`];
+      for (const option of options) {
+        base.push(
+          `<option value="${option.id}" ${normalizedSelected === Number(option.id) ? "selected" : ""}>${String(option.name || "")}</option>`,
+        );
+      }
+      return base.join("");
     }
 
     function createReceiptDraft(seed = {}, mode = "create") {
@@ -78,6 +106,7 @@
       return {
         draft_id: state[ctx.seqKey],
         template_id: seed.template_id || null,
+        category_id: seed.category_id ? Number(seed.category_id) : null,
         shop_name: normalizeReceiptName(seed.shop_name || ""),
         name: normalizeReceiptName(seed.name || ""),
         quantity: hasQuantity ? asQty(seed.quantity) : 0,
@@ -107,6 +136,8 @@
       } else if (key === "name") {
         item.name = normalizeReceiptName(value);
         item.template_id = null;
+      } else if (key === "category_id") {
+        item.category_id = value ? Number(value) : null;
       } else if (key === "note") {
         item.note = value || "";
       }
@@ -169,6 +200,7 @@
         const total = receiptLineTotal(item);
         const isLast = idx === rows.length - 1;
         const removeHidden = isLast && isReceiptRowEmpty(item);
+        const categoryOptions = renderReceiptCategoryOptions(mode, item.category_id);
         return `
           <div class="receipt-item-row" data-receipt-mode="${mode}" data-receipt-item-id="${item.draft_id}">
             <div class="receipt-shop-cell">
@@ -180,6 +212,9 @@
               <span class="receipt-new-badge ${item.name && !item.template_id ? "" : "hidden"}">Новая позиция</span>
               <div class="receipt-name-picker ${Number(receiptUiState.activePicker?.draft_id || 0) === Number(item.draft_id) && receiptUiState.activePicker?.field === "name" && (receiptUiState.activePicker?.mode || "create") === mode ? "" : "hidden"}"></div>
             </div>
+            <select data-receipt-field="category_id" aria-label="Категория позиции">
+              ${categoryOptions}
+            </select>
             <input type="number" step="0.01" min="0" data-receipt-field="unit_price" value="${item.unit_price || ""}" placeholder="Цена" />
             <input type="number" step="0.001" min="0" data-receipt-field="quantity" value="${item.quantity || ""}" placeholder="Кол-во" />
             <div class="receipt-line-total"><span>Итого</span><strong>${core.formatMoney(total, { withCurrency: false })}</strong></div>
@@ -276,9 +311,6 @@
     function setReceiptEnabled(enabled, mode = "create") {
       const ctx = getReceiptContext(mode);
       const isEnabled = enabled === true;
-      if (ctx.enabledNode) {
-        ctx.enabledNode.checked = isEnabled;
-      }
       if (ctx.fieldsNode) {
         ctx.fieldsNode.classList.toggle("hidden", !isEnabled);
       }
@@ -309,12 +341,25 @@
       renderReceiptSummary(mode);
     }
 
+    function syncReceiptCategoriesToKind(mode = "create") {
+      const allowedIds = new Set(getReceiptCategoryOptions(mode).map((item) => Number(item.id)));
+      for (const item of getReceiptItems(mode)) {
+        if (item.category_id && !allowedIds.has(Number(item.category_id))) {
+          item.category_id = null;
+        }
+      }
+      renderReceiptItems(mode);
+      renderReceiptSummary(mode);
+    }
+
     function getCreateReceiptPayload() {
-      if (!el.opReceiptEnabled?.checked) {
+      if (!isReceiptModeEnabled("create")) {
         return [];
       }
+      const defaultCategoryId = el.opCategory?.value ? Number(el.opCategory.value) : null;
       return getReceiptItems("create")
         .map((item) => ({
+          category_id: item.category_id ? Number(item.category_id) : defaultCategoryId,
           shop_name: normalizeReceiptName(item.shop_name || "") || null,
           name: normalizeReceiptName(item.name),
           quantity: String(asQty(item.quantity || 0)),
@@ -324,11 +369,13 @@
     }
 
     function getEditReceiptPayload() {
-      if (!el.editReceiptEnabled?.checked) {
+      if (!isReceiptModeEnabled("edit")) {
         return [];
       }
+      const defaultCategoryId = el.editCategory?.value ? Number(el.editCategory.value) : null;
       return getReceiptItems("edit")
         .map((item) => ({
+          category_id: item.category_id ? Number(item.category_id) : defaultCategoryId,
           shop_name: normalizeReceiptName(item.shop_name || "") || null,
           name: normalizeReceiptName(item.name),
           quantity: String(asQty(item.quantity || 0)),
@@ -352,6 +399,7 @@
       handlePullReceiptTotal,
       getCreateReceiptPayload,
       getEditReceiptPayload,
+      syncReceiptCategoriesToKind,
     };
   }
 

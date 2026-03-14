@@ -2,6 +2,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import Select, and_, asc, case, delete, desc, func, or_, select, update
+from sqlalchemy.orm import aliased
 from sqlalchemy.orm import Session
 
 from app.db.models import (
@@ -39,9 +40,31 @@ class OperationRepository:
         if date_to:
             conditions.append(Operation.operation_date <= date_to)
         if category_id is not None:
-            conditions.append(Operation.category_id == category_id)
+            conditions.append(
+                or_(
+                    Operation.category_id == category_id,
+                    select(OperationReceiptItem.id)
+                    .where(
+                        OperationReceiptItem.user_id == user_id,
+                        OperationReceiptItem.operation_id == Operation.id,
+                        OperationReceiptItem.category_id == category_id,
+                    )
+                    .exists(),
+                )
+            )
         if uncategorized_only:
-            conditions.append(Operation.category_id.is_(None))
+            conditions.append(
+                and_(
+                    Operation.category_id.is_(None),
+                    ~select(OperationReceiptItem.id)
+                    .where(
+                        OperationReceiptItem.user_id == user_id,
+                        OperationReceiptItem.operation_id == Operation.id,
+                        OperationReceiptItem.category_id.is_not(None),
+                    )
+                    .exists(),
+                )
+            )
         if min_amount is not None:
             conditions.append(Operation.amount >= min_amount)
         if receipt_only:
@@ -62,6 +85,7 @@ class OperationRepository:
                 variants.add(search.upper())
                 variants.add(search[:1].upper() + search[1:])
                 search_clauses = []
+                receipt_category = aliased(Category)
                 for variant in variants:
                     like = f"%{variant}%"
                     search_clauses.extend(
@@ -69,6 +93,14 @@ class OperationRepository:
                             Operation.note.like(like),
                             Category.name.like(like),
                             Operation.kind.ilike(like),
+                            select(OperationReceiptItem.id)
+                            .join(receipt_category, receipt_category.id == OperationReceiptItem.category_id)
+                            .where(
+                                OperationReceiptItem.user_id == user_id,
+                                OperationReceiptItem.operation_id == Operation.id,
+                                receipt_category.name.like(like),
+                            )
+                            .exists(),
                         ]
                     )
                 if "доход".startswith(search_cf):
@@ -225,6 +257,7 @@ class OperationRepository:
                 operation_id=operation_id,
                 user_id=user_id,
                 template_id=payload.get("template_id"),
+                category_id=payload.get("category_id"),
                 shop_name=payload.get("shop_name"),
                 name=payload["name"],
                 quantity=payload["quantity"],

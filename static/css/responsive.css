@@ -809,10 +809,12 @@
   }
 
   .create-modal-grid #opDateField,
+  .create-modal-grid #createOperationModeSwitch,
   .create-modal-grid #createKindSwitch,
   .create-modal-grid #createCategoryField,
   .create-modal-grid #opAmountField,
   .edit-modal-grid #editDateField,
+  .edit-modal-grid #editOperationModeSwitch,
   .edit-modal-grid #editKindSwitch,
   .edit-modal-grid #editCategoryField,
   .edit-modal-grid #editAmountField,
@@ -858,6 +860,7 @@
 
   .receipt-item-row .receipt-shop-cell,
   .receipt-item-row .receipt-name-cell,
+  .receipt-item-row select[data-receipt-field="category_id"],
   .receipt-item-row .receipt-line-total {
     grid-column: 1 / -1;
   }

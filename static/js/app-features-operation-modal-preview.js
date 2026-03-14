@@ -6,6 +6,21 @@
     getSelectedCreateCategoryId,
     getCategoryMetaById,
   }) {
+    function getReceiptSummaryCategory(receiptItems, fallbackCategoryId = null) {
+      const categoryIds = Array.from(new Set(
+        (Array.isArray(receiptItems) ? receiptItems : [])
+          .map((item) => Number(item?.category_id || 0))
+          .filter((value) => value > 0),
+      ));
+      if (categoryIds.length === 1) {
+        return getCategoryMetaById(categoryIds[0]);
+      }
+      if (categoryIds.length > 1) {
+        return { name: "Несколько категорий", icon: null, accent_color: null };
+      }
+      return getCategoryMetaById(fallbackCategoryId);
+    }
+
     function focusCreateField(targetId) {
       const target = document.getElementById(targetId);
       if (!target) {
@@ -88,7 +103,13 @@
 
     function getCreateFormPreviewItem() {
       const receiptItems = (Array.isArray(state.createReceiptItems) ? state.createReceiptItems : [])
-        .filter((item) => Number(item?.quantity || 0) > 0 && Number(item?.unit_price || 0) > 0 && String(item?.name || "").trim());
+        .filter((item) => Number(item?.quantity || 0) > 0 && Number(item?.unit_price || 0) > 0 && String(item?.name || "").trim())
+        .map((item) => ({
+          category_id: item.category_id ? Number(item.category_id) : null,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          name: item.name,
+        }));
       const receiptTotal = receiptItems.reduce((acc, item) => {
         const qty = Number(item.quantity || 0);
         const price = Number(item.unit_price || 0);
@@ -101,7 +122,7 @@
       const parsedAmount = core.resolveMoneyInput(amountRaw);
       const amountResolved = !parsedAmount.empty
         ? parsedAmount.previewValue
-        : (el.opReceiptEnabled?.checked && receiptTotal > 0 ? receiptTotal : 0);
+        : (el.opOperationMode?.value === "receipt" && receiptTotal > 0 ? receiptTotal : 0);
       const noteRaw = document.getElementById("opNote").value || "";
       const operationDate = core.parseDateInputValue(document.getElementById("opDate").value) || core.getTodayIso();
       return {
@@ -111,6 +132,7 @@
         category_id: getSelectedCreateCategoryId(),
         amount: core.formatAmount(amountResolved),
         note: noteRaw,
+        receipt_items: el.opOperationMode?.value === "receipt" ? receiptItems : [],
       };
     }
 
@@ -124,6 +146,7 @@
         category_id: el.editCategory.value ? Number(el.editCategory.value) : null,
         amount: amountResolved.previewFormatted,
         note: document.getElementById("editNote").value || "",
+        receipt_items: el.editOperationMode?.value === "receipt" ? (state.editReceiptItems || []) : [],
       };
     }
 
@@ -157,7 +180,9 @@
         return;
       }
       const previewItem = getCreateFormPreviewItem();
-      const category = getCategoryMetaById(previewItem.category_id);
+      const category = el.opOperationMode?.value === "receipt"
+        ? getReceiptSummaryCategory(previewItem.receipt_items, previewItem.category_id)
+        : getCategoryMetaById(previewItem.category_id);
       const row = document.createElement("tr");
       const kindClass = previewItem.kind === "income" ? "income" : "expense";
       const categoryHtml = core.renderCategoryChip(category);
@@ -183,10 +208,13 @@
       }
       const item = getEditFormPreviewItem();
       el.editPreviewBody.innerHTML = "";
+      const category = el.editOperationMode?.value === "receipt"
+        ? getReceiptSummaryCategory(item.receipt_items, item.category_id)
+        : getCategoryMetaById(item.category_id);
       el.editPreviewBody.appendChild(
         core.createOperationRow(item, {
           preview: true,
-          category: getCategoryMetaById(item.category_id),
+          category,
         }),
       );
     }

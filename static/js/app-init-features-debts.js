@@ -92,6 +92,34 @@
         actions.openDebtRepaymentModal(Number(btn.dataset.dashboardRepayDebtId || 0));
       }, true);
     }
+    if (actions.openEditDebtModal) {
+      document.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-edit-debt-id]");
+        if (!btn) {
+          return;
+        }
+        if (!btn.closest("#debtsCards")) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        actions.openEditDebtModal(Number(btn.dataset.editDebtId || 0));
+      }, true);
+    }
+    if (actions.openDebtHistoryModal) {
+      document.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-history-debt-id]");
+        if (!btn) {
+          return;
+        }
+        if (!btn.closest("#debtsCards")) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        actions.openDebtHistoryModal(Number(btn.dataset.historyDebtId || 0));
+      }, true);
+    }
 
     if (el.debtRepaymentForm && actions.submitDebtRepayment) {
       el.debtRepaymentForm.addEventListener("submit", (event) => {

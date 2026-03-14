@@ -37,6 +37,8 @@
   const selectCreateCategory = operationModal.selectCreateCategory;
   const handleCreatePreviewClick = operationModal.handleCreatePreviewClick;
   const setOperationKind = operationModal.setOperationKind;
+  const setCreateOperationMode = operationModal.setCreateOperationMode;
+  const setEditOperationMode = operationModal.setEditOperationMode;
   const setDebtDirection = operationModal.setDebtDirection;
   const setCreateEntryMode = operationModal.setCreateEntryMode;
   const openCreateModal = operationModal.openCreateModal;
@@ -79,6 +81,8 @@
   const openOperationsForAnalyticsDate = analyticsFeatures.openOperationsForAnalyticsDate;
   const openOperationsForAnalyticsRange = analyticsFeatures.openOperationsForAnalyticsRange;
   const openOperationsForAnalyticsCategory = analyticsFeatures.openOperationsForAnalyticsCategory;
+  const toggleCategoryBreakdownVisibility = analyticsFeatures.toggleCategoryBreakdownVisibility;
+  const showAllCategoryBreakdownItems = analyticsFeatures.showAllCategoryBreakdownItems;
   const loadAdminUsers = adminFeatures.loadAdminUsers;
   const setAdminUserStatusFilter = adminFeatures.setAdminUserStatusFilter;
   const approveAdminUser = adminFeatures.approveAdminUser;
@@ -189,6 +193,8 @@
     selectCreateCategory,
     handleCreatePreviewClick,
     setOperationKind,
+    setCreateOperationMode,
+    setEditOperationMode,
     setDebtDirection,
     setCreateEntryMode,
     openCreateModal,
@@ -230,6 +236,8 @@
     openOperationsForAnalyticsDate,
     openOperationsForAnalyticsRange,
     openOperationsForAnalyticsCategory,
+    toggleCategoryBreakdownVisibility,
+    showAllCategoryBreakdownItems,
     loadAdminUsers,
     setAdminUserStatusFilter,
     approveAdminUser,

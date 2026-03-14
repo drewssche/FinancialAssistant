@@ -34,6 +34,96 @@ class DashboardService:
             if item.category_id is None or visibility_map.get(int(item.category_id), True)
         ]
 
+    def _build_category_amount_allocations(
+        self,
+        *,
+        operations: list,
+        receipt_items_by_operation: dict[int, list] | None = None,
+    ) -> list[dict]:
+        grouped_receipt_items = receipt_items_by_operation or {}
+        allocations: list[dict] = []
+        for item in operations:
+            operation_id = int(item.id)
+            amount = Decimal(item.amount or 0)
+            receipt_rows = grouped_receipt_items.get(operation_id, []) or []
+            if not receipt_rows:
+                allocations.append(
+                    {
+                        "operation_id": operation_id,
+                        "operation_date": item.operation_date,
+                        "kind": item.kind,
+                        "category_id": int(item.category_id) if item.category_id is not None else None,
+                        "amount": amount,
+                    }
+                )
+                continue
+
+            receipt_total = Decimal("0")
+            effective_receipt_category_ids: set[int | None] = set()
+            for row in receipt_rows:
+                line_total = Decimal(row.line_total or 0)
+                receipt_total += line_total
+                effective_category_id = (
+                    int(row.category_id)
+                    if row.category_id is not None
+                    else (int(item.category_id) if item.category_id is not None else None)
+                )
+                effective_receipt_category_ids.add(effective_category_id)
+                allocations.append(
+                    {
+                        "operation_id": operation_id,
+                        "operation_date": item.operation_date,
+                        "kind": item.kind,
+                        "category_id": effective_category_id,
+                        "amount": line_total,
+                    }
+                )
+
+            discrepancy = amount - receipt_total
+            if discrepancy != 0:
+                fallback_category_id: int | None
+                if item.category_id is not None:
+                    fallback_category_id = int(item.category_id)
+                elif len(effective_receipt_category_ids) == 1:
+                    fallback_category_id = next(iter(effective_receipt_category_ids))
+                else:
+                    fallback_category_id = None
+                allocations.append(
+                    {
+                        "operation_id": operation_id,
+                        "operation_date": item.operation_date,
+                        "kind": item.kind,
+                        "category_id": fallback_category_id,
+                        "amount": discrepancy,
+                    }
+                )
+        return allocations
+
+    def _load_category_maps_for_allocations(self, allocations: list[dict]) -> tuple[dict[int, str], dict[int, str], dict[int, int | None], dict[int, str | None]]:
+        category_ids = {
+            int(item["category_id"])
+            for item in allocations
+            if item.get("category_id") is not None
+        }
+        if not category_ids:
+            return {}, {}, {}, {}
+        rows = self.db.execute(
+            select(Category.id, Category.name, Category.kind, Category.group_id, CategoryGroup.name)
+            .outerjoin(CategoryGroup, Category.group_id == CategoryGroup.id)
+            .where(Category.id.in_(category_ids))
+        ).all()
+        category_name_map = {int(row[0]): str(row[1]) for row in rows}
+        category_kind_map = {int(row[0]): str(row[2] or "expense") for row in rows}
+        category_group_id_map = {
+            int(row[0]): (int(row[3]) if row[3] is not None else None)
+            for row in rows
+        }
+        category_group_name_map = {
+            int(row[0]): (str(row[4]) if row[4] is not None else None)
+            for row in rows
+        }
+        return category_name_map, category_kind_map, category_group_id_map, category_group_name_map
+
     @staticmethod
     def _percent_change(current: Decimal, previous: Decimal) -> float | None:
         if previous == 0:
@@ -452,6 +542,14 @@ class DashboardService:
 
         operations = self.repo.list_for_period(user_id=user_id, date_from=resolved_from, date_to=resolved_to)
         prev_operations = self.repo.list_for_period(user_id=user_id, date_from=prev_from, date_to=prev_to)
+        current_receipt_items = self.repo.list_receipt_items_for_operations(
+            user_id=user_id,
+            operation_ids=[int(item.id) for item in operations],
+        )
+        previous_receipt_items = self.repo.list_receipt_items_for_operations(
+            user_id=user_id,
+            operation_ids=[int(item.id) for item in prev_operations],
+        )
 
         income_total = Decimal("0")
         expense_total = Decimal("0")
@@ -483,31 +581,20 @@ class DashboardService:
 
         avg_daily_expense = (expense_total / Decimal(span_days)) if span_days > 0 else Decimal("0")
 
-        category_ids = {
-            int(item.category_id)
-            for item in [*operations, *prev_operations]
-            if item.category_id is not None
-        }
-        category_name_map: dict[int, str] = {}
-        category_kind_map: dict[int, str] = {}
-        category_group_id_map: dict[int, int | None] = {}
-        category_group_name_map: dict[int, str | None] = {}
-        if category_ids:
-            rows = self.db.execute(
-                select(Category.id, Category.name, Category.kind, Category.group_id, CategoryGroup.name)
-                .outerjoin(CategoryGroup, Category.group_id == CategoryGroup.id)
-                .where(Category.id.in_(category_ids))
-            ).all()
-            category_name_map = {int(row[0]): str(row[1]) for row in rows}
-            category_kind_map = {int(row[0]): str(row[2] or "expense") for row in rows}
-            category_group_id_map = {
-                int(row[0]): (int(row[3]) if row[3] is not None else None)
-                for row in rows
-            }
-            category_group_name_map = {
-                int(row[0]): (str(row[4]) if row[4] is not None else None)
-                for row in rows
-            }
+        current_category_allocations = self._build_category_amount_allocations(
+            operations=operations,
+            receipt_items_by_operation=current_receipt_items,
+        )
+        previous_category_allocations = self._build_category_amount_allocations(
+            operations=prev_operations,
+            receipt_items_by_operation=previous_receipt_items,
+        )
+        (
+            category_name_map,
+            category_kind_map,
+            category_group_id_map,
+            category_group_name_map,
+        ) = self._load_category_maps_for_allocations([*current_category_allocations, *previous_category_allocations])
 
         heavy_candidates = [item for item in operations if item.kind == "expense"] or operations
         top_operations = sorted(
@@ -541,15 +628,16 @@ class DashboardService:
                 return ("group", category_group_id_map.get(category_id))
             return ("category", category_id)
 
-        for item in operations:
-            if not include_category_item(item.kind):
+        for allocation in current_category_allocations:
+            if not include_category_item(allocation["kind"]):
                 continue
-            category_id = int(item.category_id) if item.category_id is not None else None
+            category_id = allocation["category_id"]
             key = breakdown_key(category_id)
             bucket = current_category_totals[key]
-            bucket["total_amount"] += Decimal(item.amount or 0)
-            bucket["operations_count"] += 1
-            bucket["category_kind"] = item.kind
+            bucket["total_amount"] += Decimal(allocation["amount"] or 0)
+            bucket.setdefault("operation_ids", set()).add(int(allocation["operation_id"]))
+            bucket["operations_count"] = len(bucket["operation_ids"])
+            bucket["category_kind"] = allocation["kind"]
             if category_breakdown_level == "group":
                 bucket["group_id"] = key[1]
                 bucket["group_name"] = (
@@ -568,12 +656,12 @@ class DashboardService:
                 )
                 bucket["group_id"] = category_group_id_map.get(category_id) if category_id is not None else None
                 bucket["group_name"] = category_group_name_map.get(category_id) if category_id is not None else None
-        for item in prev_operations:
-            if not include_category_item(item.kind):
+        for allocation in previous_category_allocations:
+            if not include_category_item(allocation["kind"]):
                 continue
-            category_id = int(item.category_id) if item.category_id is not None else None
+            category_id = allocation["category_id"]
             key = breakdown_key(category_id)
-            previous_category_totals[key] += Decimal(item.amount or 0)
+            previous_category_totals[key] += Decimal(allocation["amount"] or 0)
 
         category_breakdown_total = sum(
             (bucket["total_amount"] for bucket in current_category_totals.values()),
@@ -620,15 +708,6 @@ class DashboardService:
                     }
                 )
         anomalies.sort(key=lambda item: item["amount"], reverse=True)
-
-        current_receipt_items = self.repo.list_receipt_items_for_operations(
-            user_id=user_id,
-            operation_ids=[int(item.id) for item in operations],
-        )
-        previous_receipt_items = self.repo.list_receipt_items_for_operations(
-            user_id=user_id,
-            operation_ids=[int(item.id) for item in prev_operations],
-        )
 
         def build_position_stats(grouped_items: dict[int, list]) -> dict[tuple[str, str | None], dict]:
             stats: dict[tuple[str, str | None], dict] = defaultdict(

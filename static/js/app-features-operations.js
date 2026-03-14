@@ -271,10 +271,28 @@
       return;
     }
     for (const item of sortedItems) {
+      const hasReceiptItems = Array.isArray(item.receipt_items) && item.receipt_items.length > 0;
+      const receiptCategoryIds = hasReceiptItems
+        ? Array.from(new Set(
+          item.receipt_items
+            .map((row) => Number(row.category_id || 0))
+            .filter((value) => value > 0),
+        ))
+        : [];
+      let categoryMeta = getCategoryMetaById(item.category_id);
+      if (hasReceiptItems) {
+        if (receiptCategoryIds.length === 1) {
+          categoryMeta = getCategoryMetaById(receiptCategoryIds[0]);
+        } else if (receiptCategoryIds.length > 1) {
+          categoryMeta = { name: "Несколько категорий", icon: null, accent_color: null };
+        } else if (!categoryMeta) {
+          categoryMeta = null;
+        }
+      }
       el.operationsBody.appendChild(
         core.createOperationRow(item, {
           searchQuery: query,
-          category: getCategoryMetaById(item.category_id),
+          category: categoryMeta,
           selectable: true,
           selected: state.selectedOperationIds.has(item.id),
         }),
@@ -454,23 +472,64 @@
     await Promise.all(tasks);
   }
 
+  function getValidatedCreateOperationPayload() {
+    const operationDate = core.parseDateInputValue(document.getElementById("opDate").value);
+    if (!operationDate) {
+      throw new Error("Проверь дату операции");
+    }
+    const receiptItems = getCreateReceiptPayload ? getCreateReceiptPayload() : [];
+    const amount = core.resolveMoneyInput(document.getElementById("opAmount").value);
+    const hasReceiptItems = receiptItems.length > 0;
+    const canDeriveAmountFromReceipt = hasReceiptItems && amount.empty;
+    if (!canDeriveAmountFromReceipt && (!amount.valid || amount.value <= 0)) {
+      throw new Error("Проверь сумму операции");
+    }
+    return {
+      kind: el.opKind.value,
+      category_id: el.opCategory.value ? Number(el.opCategory.value) : null,
+      amount: canDeriveAmountFromReceipt ? null : amount.formatted,
+      operation_date: operationDate,
+      note: document.getElementById("opNote").value,
+      receipt_items: receiptItems,
+    };
+  }
+
+  function getValidatedUpdateOperationPayload() {
+    const operationDate = core.parseDateInputValue(document.getElementById("editDate").value);
+    if (!operationDate) {
+      throw new Error("Проверь дату операции");
+    }
+    const receiptItems = getEditReceiptPayload ? getEditReceiptPayload() : [];
+    const amount = core.resolveMoneyInput(document.getElementById("editAmount").value);
+    const hasReceiptItems = receiptItems.length > 0;
+    const canDeriveAmountFromReceipt = hasReceiptItems && amount.empty;
+    if (!canDeriveAmountFromReceipt && (!amount.valid || amount.value <= 0)) {
+      throw new Error("Проверь сумму операции");
+    }
+    return {
+      kind: el.editKind.value,
+      category_id: el.editCategory.value ? Number(el.editCategory.value) : null,
+      amount: canDeriveAmountFromReceipt ? null : amount.formatted,
+      operation_date: operationDate,
+      note: document.getElementById("editNote").value,
+      receipt_items: receiptItems,
+    };
+  }
+
   async function createOperation(event) {
     event.preventDefault();
     if (el.opEntryMode.value === "debt") {
       const startDate = core.parseDateInputValue(el.debtStartDate.value);
       const dueDate = core.parseDateInputValue(el.debtDueDate.value);
       if (!startDate) {
-        core.setStatus("Проверь дату долга");
-        return;
+        throw new Error("Проверь дату долга");
       }
       if (el.debtDueDate.value && !dueDate) {
-        core.setStatus("Проверь срок долга");
-        return;
+        throw new Error("Проверь срок долга");
       }
       const principal = core.resolveMoneyInput(el.debtPrincipal.value);
       if (!principal.valid || principal.value <= 0) {
-        core.setStatus("Проверь сумму долга");
-        return;
+        throw new Error("Проверь сумму долга");
       }
       const payload = {
         counterparty: el.debtCounterparty.value.trim(),
@@ -493,24 +552,7 @@
       await refreshAfterDebtMutation();
       return;
     }
-    const operationDate = core.parseDateInputValue(document.getElementById("opDate").value);
-    if (!operationDate) {
-      core.setStatus("Проверь дату операции");
-      return;
-    }
-    const amount = core.resolveMoneyInput(document.getElementById("opAmount").value);
-    if (!amount.valid || amount.value <= 0) {
-      core.setStatus("Проверь сумму операции");
-      return;
-    }
-    const payload = {
-      kind: el.opKind.value,
-      category_id: el.opCategory.value ? Number(el.opCategory.value) : null,
-      amount: amount.formatted,
-      operation_date: operationDate,
-      note: document.getElementById("opNote").value,
-      receipt_items: getCreateReceiptPayload ? getCreateReceiptPayload() : [],
-    };
+    const payload = getValidatedCreateOperationPayload();
 
     await core.requestJson("/api/v1/operations", {
       method: "POST",
@@ -537,24 +579,7 @@
     if (!state.editOperationId) {
       return;
     }
-    const operationDate = core.parseDateInputValue(document.getElementById("editDate").value);
-    if (!operationDate) {
-      core.setStatus("Проверь дату операции");
-      return;
-    }
-    const amount = core.resolveMoneyInput(document.getElementById("editAmount").value);
-    if (!amount.valid || amount.value <= 0) {
-      core.setStatus("Проверь сумму операции");
-      return;
-    }
-    const payload = {
-      kind: el.editKind.value,
-      category_id: el.editCategory.value ? Number(el.editCategory.value) : null,
-      amount: amount.formatted,
-      operation_date: operationDate,
-      note: document.getElementById("editNote").value,
-      receipt_items: getEditReceiptPayload ? getEditReceiptPayload() : [],
-    };
+    const payload = getValidatedUpdateOperationPayload();
 
     await core.requestJson(`/api/v1/operations/${state.editOperationId}`, {
       method: "PATCH",
@@ -678,6 +703,9 @@
       const shopChip = row.shop_name
         ? `<div class="operation-receipt-shop">${core.renderCategoryChip({ name: row.shop_name, icon: null, accent_color: null }, "")}</div>`
         : "";
+      const categoryChip = row.category_id
+        ? `<div class="operation-receipt-shop">${core.renderCategoryChip(getCategoryMetaById(row.category_id), "")}</div>`
+        : "";
       return `
         <article class="operation-receipt-item">
           <div class="operation-receipt-head">
@@ -685,6 +713,7 @@
             <span class="muted-small">${core.formatMoney(total)}</span>
           </div>
           ${shopChip}
+          ${categoryChip}
           <div class="operation-receipt-meta muted-small">
             ${esc(core.formatAmount(qty))} × ${core.formatMoney(price)}
           </div>

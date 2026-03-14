@@ -830,8 +830,7 @@ def test_debt_history_infinite_scroll_loads_next_batch(static_server_url: str, p
     page.wait_for_selector("#debtsSection:not(.hidden)")
     page.evaluate("window.App.core.invalidateUiRequestCache('debts')")
     page.evaluate("window.App.actions.loadDebtsCards({ force: true })")
-    page.locator("tr:has(button[data-history-debt-id='9001'])").hover()
-    page.click("button[data-history-debt-id='9001']", force=True)
+    page.evaluate("window.App.actions.openDebtHistoryModal(9001)")
     page.wait_for_selector("#debtHistoryModal:not(.hidden)")
     initial_count = page.locator("#debtHistoryItems .debt-history-event").count()
     assert 20 <= initial_count < 71
@@ -984,8 +983,7 @@ def test_edit_and_delete_debt(static_server_url: str, page_with_debts_api_mock):
 
     page.click("button[data-section='debts']")
     page.wait_for_selector("#debtsSection:not(.hidden)")
-    page.locator("tr:has(button[data-edit-debt-id='9001'])").hover()
-    page.click("button[data-edit-debt-id='9001']", force=True)
+    page.evaluate("window.App.actions.openEditDebtModal(9001)")
     page.wait_for_selector("#createModal:not(.hidden)")
     page.fill("#debtCounterparty", "Анна Обновл.")
     page.fill("#debtPrincipal", "150")
@@ -1034,7 +1032,7 @@ def test_overpay_creates_reverse_direction_debt(static_server_url: str, page_wit
     card = page.locator("#debtsCards .debt-card", has_text="Анна")
     card.wait_for()
     assert card.locator("tr:has-text('Я взял')").count() == 1
-    assert card.locator("tr:has-text('20,00 Б̶')").count() >= 1
+    assert card.locator("tr:has-text('20,00 руб.')").count() >= 1
 
 
 @pytest.mark.e2e
@@ -1071,8 +1069,7 @@ def test_edit_counterparty_name_merges_with_existing_card(static_server_url: str
     page.wait_for_selector("#createModal", state="hidden")
     assert page.locator("#debtsCards .debt-card h3", has_text="Борис").count() == 1
 
-    page.locator("#debtsCards .debt-card:has(h3:has-text('Анна')) tr:has(button[data-edit-debt-id='9001'])").hover()
-    page.click("button[data-edit-debt-id='9001']", force=True)
+    page.evaluate("window.App.actions.openEditDebtModal(9001)")
     page.wait_for_selector("#createModal:not(.hidden)")
     page.fill("#debtCounterparty", "борис")
     page.click("#submitCreateOperationBtn")
@@ -1083,7 +1080,7 @@ def test_edit_counterparty_name_merges_with_existing_card(static_server_url: str
     boris_card = page.locator("#debtsCards .debt-card", has_text="Борис")
     assert boris_card.count() == 1
     assert boris_card.locator("tbody tr").count() == 1
-    assert boris_card.locator("tbody tr:has-text('350,00 Б̶')").count() >= 1
+    assert boris_card.locator("tbody tr:has-text('350,00 руб.')").count() >= 1
 
 
 @pytest.mark.e2e

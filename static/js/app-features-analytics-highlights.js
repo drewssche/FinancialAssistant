@@ -15,6 +15,15 @@
     defaultIndex: null,
     hoveredIndex: null,
   };
+  let activeDashboardBreakdown = {
+    items: [],
+    kind: "expense",
+    level: "category",
+    total: 0,
+    totalOps: 0,
+    defaultIndex: null,
+    hoveredIndex: null,
+  };
 
   function escapeHtml(value) {
     return String(value ?? "")
@@ -260,6 +269,86 @@
     applyCategoryBreakdownHover(null);
   }
 
+  function applyDashboardBreakdownHover(index = null) {
+    activeDashboardBreakdown.hoveredIndex = Number.isInteger(index) ? index : null;
+    const resolvedIndex = activeDashboardBreakdown.hoveredIndex ?? activeDashboardBreakdown.defaultIndex;
+    const hasHover = activeDashboardBreakdown.hoveredIndex !== null;
+    const hasDefault = !hasHover && activeDashboardBreakdown.defaultIndex !== null;
+    const resolvedColor = Number.isInteger(resolvedIndex)
+      ? BREAKDOWN_PALETTE[resolvedIndex % BREAKDOWN_PALETTE.length]
+      : "";
+    if (el.dashboardCategoryBreakdownChart) {
+      el.dashboardCategoryBreakdownChart.classList.toggle("analytics-category-donut-has-hover", hasHover);
+      el.dashboardCategoryBreakdownChart.classList.toggle("analytics-category-donut-has-default", hasDefault);
+      if (resolvedColor) {
+        el.dashboardCategoryBreakdownChart.style.setProperty("--active-slice-color", resolvedColor);
+      } else {
+        el.dashboardCategoryBreakdownChart.style.removeProperty("--active-slice-color");
+      }
+    }
+    document.querySelectorAll("[data-dashboard-category-index]").forEach((node) => {
+      const nodeIndex = Number(node.dataset.dashboardCategoryIndex);
+      const isActive = hasHover && nodeIndex === resolvedIndex;
+      const isInactive = hasHover && nodeIndex !== resolvedIndex;
+      const isDefault = hasDefault && nodeIndex === resolvedIndex;
+      node.classList.toggle("is-active", isActive);
+      node.classList.toggle("is-inactive", isInactive);
+      node.classList.toggle("is-default", isDefault);
+    });
+    const hoveredItem = Number.isInteger(resolvedIndex) ? activeDashboardBreakdown.items[resolvedIndex] : null;
+    if (el.dashboardCategoryBreakdownChartTitle) {
+      el.dashboardCategoryBreakdownChartTitle.textContent = hoveredItem
+        ? String(hoveredItem.category_name || "Без категории")
+        : "Итог периода";
+    }
+    if (el.dashboardCategoryBreakdownChartValue) {
+      el.dashboardCategoryBreakdownChartValue.textContent = hoveredItem
+        ? core.formatMoney(hoveredItem.total_amount || 0)
+        : core.formatMoney(activeDashboardBreakdown.total);
+    }
+    if (el.dashboardCategoryBreakdownChartMeta) {
+      el.dashboardCategoryBreakdownChartMeta.textContent = hoveredItem
+        ? `${Number(hoveredItem.share_pct || 0).toFixed(1)}% · ${Number(hoveredItem.operations_count || 0)} опер.`
+        : activeDashboardBreakdown.items.length
+          ? `${activeDashboardBreakdown.items.length} ${breakdownEntityCountLabel(activeDashboardBreakdown.level)} · ${activeDashboardBreakdown.totalOps} опер.`
+          : "Нет данных за период";
+    }
+  }
+
+  function setDashboardBreakdownHover(indexValue) {
+    const index = Number(indexValue);
+    if (!Number.isInteger(index) || index < 0 || index >= activeDashboardBreakdown.items.length) {
+      applyDashboardBreakdownHover(null);
+      return;
+    }
+    applyDashboardBreakdownHover(index);
+  }
+
+  function clearDashboardBreakdownHover() {
+    applyDashboardBreakdownHover(null);
+  }
+
+  function bindDashboardBreakdownChartHover() {
+    if (!el.dashboardCategoryBreakdownSvg) {
+      return;
+    }
+    el.dashboardCategoryBreakdownSvg.querySelectorAll(".analytics-category-slice").forEach((node) => {
+      node.addEventListener("pointerenter", () => {
+        setDashboardBreakdownHover(node.dataset.dashboardCategoryIndex);
+      });
+      node.addEventListener("focus", () => {
+        setDashboardBreakdownHover(node.dataset.dashboardCategoryIndex);
+      });
+    });
+    el.dashboardCategoryBreakdownSvg.addEventListener("pointerleave", clearDashboardBreakdownHover);
+    el.dashboardCategoryBreakdownSvg.addEventListener("focusout", (event) => {
+      if (el.dashboardCategoryBreakdownSvg.contains(event.relatedTarget)) {
+        return;
+      }
+      clearDashboardBreakdownHover();
+    });
+  }
+
   function toggleCategoryBreakdownVisibility(key) {
     const level = activeBreakdown.level || "category";
     const kind = activeBreakdown.kind || "expense";
@@ -284,6 +373,14 @@
       renderCategoryBreakdown(activeBreakdown.payload, activeBreakdown.formatPct);
     }
     window.App.actions?.savePreferencesDebounced?.();
+  }
+
+  function getDashboardPeriodBounds() {
+    const period = state.dashboardAnalyticsPeriod || "month";
+    if (period === "custom" && state.dashboardAnalyticsDateFrom && state.dashboardAnalyticsDateTo) {
+      return { dateFrom: state.dashboardAnalyticsDateFrom, dateTo: state.dashboardAnalyticsDateTo };
+    }
+    return core.getPeriodBounds(period);
   }
 
   function focusDefaultCategoryBreakdown() {
@@ -433,7 +530,10 @@
           </div>
           <div class="muted-small">Изм. к прошлому: ${formatPct(item.change_pct)}</div>
           <div class="analytics-insight-actions">
-            <button class="btn btn-secondary" type="button" data-analytics-breakdown-toggle="${item.breakdown_key}">${item.is_visible_in_chart ? "Выкл" : "Вкл"}</button>
+            <button class="analytics-visibility-toggle ${item.is_visible_in_chart ? "is-on" : "is-off"}" type="button" aria-pressed="${item.is_visible_in_chart ? "true" : "false"}" data-analytics-breakdown-toggle="${item.breakdown_key}">
+              <span class="analytics-visibility-toggle-track"><span class="analytics-visibility-toggle-thumb"></span></span>
+              <span class="analytics-visibility-toggle-label">${item.is_visible_in_chart ? "Вкл" : "Выкл"}</span>
+            </button>
             <span class="muted-small">${canDrilldown ? "Перейти к операциям этой категории" : "Агрегация по группе без drilldown"}</span>
             ${canDrilldown ? '<button class="btn btn-secondary" type="button">Открыть операции</button>' : ""}
           </div>
@@ -457,11 +557,20 @@
 
   function renderDashboardBreakdown(data) {
     const items = Array.isArray(data.category_breakdown) ? data.category_breakdown : [];
-    const visibleItems = items.slice(0, 8);
+    const visibleItems = items;
     const total = items.reduce((acc, item) => acc + Number(item.total_amount || 0), 0);
     const totalOps = items.reduce((acc, item) => acc + Number(item.operations_count || 0), 0);
     const selectedKind = data.category_breakdown_kind || state.dashboardCategoryKind || "expense";
     const selectedLevel = data.category_breakdown_level || state.dashboardBreakdownLevel || "category";
+    activeDashboardBreakdown = {
+      items: visibleItems,
+      kind: selectedKind,
+      level: selectedLevel,
+      total,
+      totalOps,
+      defaultIndex: visibleItems.length ? 0 : null,
+      hoveredIndex: null,
+    };
 
     if (el.dashboardStructurePeriodLabel) {
       el.dashboardStructurePeriodLabel.textContent = `Структура ${categoryKindLabel(selectedKind)} по ${breakdownEntityLabel(selectedLevel)}: ${core.formatDateRu(data.date_from)} - ${core.formatDateRu(data.date_to)}`;
@@ -486,26 +595,34 @@
           const share = Math.max(0, Number(item.share_pct || 0));
           const startAngle = accAngle;
           const endAngle = Math.min(360, accAngle + (share / 100) * 360);
+          const midAngle = startAngle + ((endAngle - startAngle) / 2);
+          const shiftX = Math.cos((midAngle - 90) * (Math.PI / 180)) * 10;
+          const shiftY = Math.sin((midAngle - 90) * (Math.PI / 180)) * 10;
           accAngle = endAngle;
           return `
             <path
               class="analytics-category-slice"
               d="${buildDonutSegmentPath(DONUT_CENTER, DONUT_CENTER, DONUT_OUTER_RADIUS, DONUT_INNER_RADIUS, startAngle, endAngle)}"
               fill="${BREAKDOWN_PALETTE[idx % BREAKDOWN_PALETTE.length]}"
+              style="--slice-shift-x:${shiftX.toFixed(2)}px; --slice-shift-y:${shiftY.toFixed(2)}px;"
+              data-dashboard-category-index="${idx}"
             ></path>
           `;
         }).join("");
+        bindDashboardBreakdownChartHover();
         el.dashboardCategoryBreakdownChart?.classList.remove("analytics-category-donut-empty");
+        el.dashboardCategoryBreakdownChart?.classList.add("analytics-category-donut-has-data");
       } else {
         el.dashboardCategoryBreakdownSvg.innerHTML = "";
         el.dashboardCategoryBreakdownChart?.classList.add("analytics-category-donut-empty");
+        el.dashboardCategoryBreakdownChart?.classList.remove("analytics-category-donut-has-data");
       }
     }
     renderInsightList(
       el.dashboardCategoryBreakdownList,
-      items.slice(0, 5),
+      items,
       (item, idx) => `
-        <article class="analytics-insight-item analytics-category-breakdown-item">
+        <article class="analytics-insight-item analytics-category-breakdown-item" data-dashboard-category-index="${idx}">
           <div class="analytics-insight-head">
             <div class="analytics-category-row-title">
               <span class="analytics-category-color" style="background:${BREAKDOWN_PALETTE[idx % BREAKDOWN_PALETTE.length]}"></span>
@@ -518,6 +635,7 @@
       `,
       selectedLevel === "group" ? "Нет групп за выбранный период" : "Нет категорий за выбранный период",
     );
+    applyDashboardBreakdownHover(null);
   }
 
   async function loadDashboardAnalyticsPreview(options = {}) {
@@ -530,7 +648,7 @@
     }
     const force = options.force === true;
     const period = state.dashboardAnalyticsPeriod || "month";
-    const { dateFrom, dateTo } = core.getPeriodBounds(period);
+    const { dateFrom, dateTo } = getDashboardPeriodBounds();
     const params = new URLSearchParams({
       period,
       date_from: dateFrom,
@@ -644,8 +762,11 @@
     loadDashboardAnalyticsPreview,
     setCategoryBreakdownHover,
     clearCategoryBreakdownHover,
+    setDashboardBreakdownHover,
+    clearDashboardBreakdownHover,
     focusDefaultCategoryBreakdown,
     toggleCategoryBreakdownVisibility,
     showAllCategoryBreakdownItems,
+    getDashboardPeriodBounds,
   };
 })();

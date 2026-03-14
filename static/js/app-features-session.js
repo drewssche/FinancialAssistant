@@ -259,6 +259,11 @@
       ? Number(prefs.data?.analytics?.top_positions_limit)
       : 10;
     state.dashboardAnalyticsPeriod = prefs.data?.dashboard?.analytics_period || "month";
+    state.dashboardAnalyticsDateFrom = prefs.data?.dashboard?.analytics_date_from || "";
+    state.dashboardAnalyticsDateTo = prefs.data?.dashboard?.analytics_date_to || "";
+    if (state.dashboardAnalyticsPeriod === "custom" && (!state.dashboardAnalyticsDateFrom || !state.dashboardAnalyticsDateTo)) {
+      state.dashboardAnalyticsPeriod = "month";
+    }
     state.dashboardBreakdownLevel = ["category", "group"].includes(prefs.data?.dashboard?.breakdown_level)
       ? prefs.data.dashboard.breakdown_level
       : "category";
@@ -310,6 +315,8 @@
           custom_date_from: state.customDateFrom || "",
           custom_date_to: state.customDateTo || "",
           analytics_period: state.dashboardAnalyticsPeriod || "month",
+          analytics_date_from: state.dashboardAnalyticsDateFrom || "",
+          analytics_date_to: state.dashboardAnalyticsDateTo || "",
           breakdown_level: state.dashboardBreakdownLevel || "category",
           category_kind: state.dashboardCategoryKind || "expense",
         },

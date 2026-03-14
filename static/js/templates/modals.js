@@ -18,6 +18,11 @@
             <button class="segmented-btn" data-entry-mode="debt" type="button">Долг</button>
           </div>
           <input id="opEntryMode" type="hidden" value="operation" />
+          <div class="segmented" id="createOperationModeSwitch" aria-label="Формат операции">
+            <button class="segmented-btn active" data-operation-mode="common" type="button">Общая</button>
+            <button class="segmented-btn" data-operation-mode="receipt" type="button">Чек</button>
+          </div>
+          <input id="opOperationMode" type="hidden" value="common" />
           <div id="opDateField" class="date-input-wrap">
             <input id="opDate" class="input" type="date" aria-label="Дата операции" required />
             <button class="date-input-trigger" type="button" data-date-picker-trigger="opDate" aria-label="Открыть календарь"></button>
@@ -42,10 +47,6 @@
           <input id="opNote" class="create-note-field" type="text" placeholder="Комментарий" />
 
           <div id="opReceiptBlock" class="receipt-block">
-            <label class="receipt-toggle-row">
-              <input id="opReceiptEnabled" type="checkbox" />
-              <span>Добавить чек (позиции)</span>
-            </label>
             <div id="opReceiptFields" class="hidden">
               <div id="receiptItemsList" class="receipt-items-list"></div>
               <div class="receipt-summary">
@@ -245,6 +246,11 @@
         </div>
 
         <form id="editOperationForm" class="form-grid modal-grid edit-modal-grid">
+          <div class="segmented" id="editOperationModeSwitch" aria-label="Формат операции">
+            <button class="segmented-btn active" data-operation-mode="common" type="button">Общая</button>
+            <button class="segmented-btn" data-operation-mode="receipt" type="button">Чек</button>
+          </div>
+          <input id="editOperationMode" type="hidden" value="common" />
           <div id="editDateField" class="date-input-wrap">
             <input id="editDate" class="input" type="date" aria-label="Дата операции" required />
             <button class="date-input-trigger" type="button" data-date-picker-trigger="editDate" aria-label="Открыть календарь"></button>
@@ -269,10 +275,6 @@
           <input id="editNote" class="create-note-field" type="text" placeholder="Комментарий" />
 
           <div id="editReceiptBlock" class="receipt-block">
-            <label class="receipt-toggle-row">
-              <input id="editReceiptEnabled" type="checkbox" />
-              <span>Добавить чек (позиции)</span>
-            </label>
             <div id="editReceiptFields" class="hidden">
               <div id="editReceiptItemsList" class="receipt-items-list"></div>
               <div class="receipt-summary">

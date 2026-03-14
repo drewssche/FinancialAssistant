@@ -83,6 +83,7 @@
                   <button class="segmented-btn active" data-dashboard-analytics-period="month" type="button">Этот месяц</button>
                   <button class="segmented-btn" data-dashboard-analytics-period="year" type="button">Этот год</button>
                   <button class="segmented-btn" data-dashboard-analytics-period="all_time" type="button">Все время</button>
+                  <button class="segmented-btn" data-dashboard-analytics-period="custom" type="button">Настроить</button>
                 </div>
               </div>
             </div>
@@ -157,6 +158,14 @@
                 <p id="dashboardPeriodLabel" class="subtitle"></p>
               </div>
               <div class="panel-controls">
+                <div class="segmented" data-period-tabs role="tablist" aria-label="Период списка операций на дашборде">
+                  <button class="segmented-btn active" data-period="day" type="button">Сегодня</button>
+                  <button class="segmented-btn" data-period="week" type="button">Эта неделя</button>
+                  <button class="segmented-btn" data-period="month" type="button">Этот месяц</button>
+                  <button class="segmented-btn" data-period="year" type="button">Этот год</button>
+                  <button class="segmented-btn" data-period="all_time" type="button">Все время</button>
+                  <button class="segmented-btn" data-period="custom" type="button">Настроить</button>
+                </div>
                 <button id="openOperationsTabBtn" class="btn btn-secondary" type="button">Открыть раздел Операции</button>
               </div>
             </div>

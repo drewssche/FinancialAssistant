@@ -21,6 +21,8 @@
       analyticsGranularity: state.analyticsGranularity,
       analyticsMonthAnchor: state.analyticsMonthAnchor,
       dashboardAnalyticsPeriod: state.dashboardAnalyticsPeriod,
+      dashboardAnalyticsDateFrom: state.dashboardAnalyticsDateFrom,
+      dashboardAnalyticsDateTo: state.dashboardAnalyticsDateTo,
       dashboardBreakdownLevel: state.dashboardBreakdownLevel,
       dashboardCategoryKind: state.dashboardCategoryKind,
       filterQ: String(el.filterQ?.value || ""),
@@ -47,6 +49,8 @@
     state.analyticsGranularity = snapshot.analyticsGranularity || "day";
     state.analyticsMonthAnchor = snapshot.analyticsMonthAnchor || "";
     state.dashboardAnalyticsPeriod = snapshot.dashboardAnalyticsPeriod || "month";
+    state.dashboardAnalyticsDateFrom = snapshot.dashboardAnalyticsDateFrom || "";
+    state.dashboardAnalyticsDateTo = snapshot.dashboardAnalyticsDateTo || "";
     state.dashboardBreakdownLevel = snapshot.dashboardBreakdownLevel || "category";
     state.dashboardCategoryKind = snapshot.dashboardCategoryKind || "expense";
     if (el.filterQ) {

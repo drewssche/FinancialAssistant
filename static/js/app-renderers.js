@@ -34,6 +34,10 @@
     return `<span class="category-chip"${style}>${icon}<span>${highlightText(category.name, searchQuery)}</span></span>`;
   }
 
+  function renderMetaChip(label, tone = "neutral") {
+    return `<span class="meta-chip meta-chip-${escapeHtml(tone)}">${escapeHtml(label)}</span>`;
+  }
+
   function parseAmount(value) {
     const amount = Number(value || 0);
     return Number.isFinite(amount) ? amount : 0;
@@ -174,6 +178,10 @@
     const kindText = core.kindLabel(item.kind);
     const noteText = item.note || "";
     const hasReceiptItems = Array.isArray(item.receipt_items) && item.receipt_items.length > 0;
+    const categoryHtml = renderCategoryChip(category, searchQuery);
+    const categoryCellHtml = hasReceiptItems
+      ? `<div class="operation-category-stack">${categoryHtml}${renderMetaChip("Чек")}</div>`
+      : categoryHtml;
     const row = document.createElement("tr");
     row.classList.add(`kind-row-${kindClass}`);
 
@@ -185,7 +193,7 @@
         ${selectCell}
         <td data-label="Дата">${core.formatDateRu(item.operation_date)}</td>
         <td data-label="Тип"><span class="kind-pill kind-pill-${kindClass}">${highlightText(kindText, searchQuery)}</span></td>
-        <td data-label="Категория">${renderCategoryChip(category, searchQuery)}</td>
+        <td data-label="Категория">${categoryCellHtml}</td>
         <td data-label="Сумма"><span class="amount-${kindClass}">${core.formatMoney(item.amount)}</span></td>
         <td class="mobile-note-cell" data-label="Комментарий">${highlightText(noteText, searchQuery)}</td>
       `;
@@ -196,7 +204,7 @@
       row.innerHTML = `
         <td>${core.formatDateRu(item.operation_date)}</td>
         <td><span class="kind-pill kind-pill-${kindClass}">${highlightText(kindText, searchQuery)}</span></td>
-        <td>${renderCategoryChip(category, searchQuery)}</td>
+        <td>${categoryCellHtml}</td>
         <td><span class="amount-${kindClass}">${core.formatMoney(item.amount)}</span></td>
         <td>${highlightText(noteText, searchQuery)}</td>
         <td>
@@ -218,7 +226,7 @@
       ${selectCell}
       <td data-label="Дата">${core.formatDateRu(item.operation_date)}</td>
       <td data-label="Тип"><span class="kind-pill kind-pill-${kindClass}">${highlightText(kindText, searchQuery)}</span></td>
-      <td data-label="Категория">${renderCategoryChip(category, searchQuery)}</td>
+      <td data-label="Категория">${categoryCellHtml}</td>
       <td data-label="Сумма"><span class="amount-${kindClass}">${core.formatMoney(item.amount)}</span></td>
       <td class="mobile-note-cell" data-label="Комментарий">${highlightText(noteText, searchQuery)}</td>
       <td class="mobile-actions-cell" data-label="Действия">
@@ -239,6 +247,7 @@
   Object.assign(core, {
     highlightText,
     renderCategoryChip,
+    renderMetaChip,
     createOperationRow,
     debtUi: {
       parseAmount,

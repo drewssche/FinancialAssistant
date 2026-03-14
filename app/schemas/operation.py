@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 
 class OperationReceiptItemIn(BaseModel):
+    category_id: int | None = None
     shop_name: str | None = Field(default=None, max_length=160)
     name: str = Field(min_length=1, max_length=160)
     quantity: Decimal = Field(default=Decimal("1"), gt=0)
@@ -15,6 +16,7 @@ class OperationReceiptItemIn(BaseModel):
 class OperationReceiptItemOut(BaseModel):
     id: int
     template_id: int | None
+    category_id: int | None
     shop_name: str | None
     name: str
     quantity: Decimal
