@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.cache import build_dashboard_summary_cache_key, get_json, set_json
 from app.core.metrics import increment_counter, observe_latency_ms
-from app.db.models import Category
+from app.db.models import Category, CategoryGroup
 from app.repositories.operation_repo import OperationRepository
 from app.services.debt_service import DebtService
 
@@ -17,6 +17,22 @@ class DashboardService:
     def __init__(self, db: Session):
         self.db = db
         self.repo = OperationRepository(db)
+
+    def _statistics_visibility_map(self, operations: list) -> dict[int, bool]:
+        category_ids = {int(item.category_id) for item in operations if item.category_id is not None}
+        if not category_ids:
+            return {}
+        rows = self.db.execute(
+            select(Category.id, Category.include_in_statistics).where(Category.id.in_(category_ids))
+        ).all()
+        return {int(row[0]): bool(row[1]) for row in rows}
+
+    def _filter_statistics_operations(self, operations: list) -> list:
+        visibility_map = self._statistics_visibility_map(operations)
+        return [
+            item for item in operations
+            if item.category_id is None or visibility_map.get(int(item.category_id), True)
+        ]
 
     @staticmethod
     def _percent_change(current: Decimal, previous: Decimal) -> float | None:
@@ -100,7 +116,15 @@ class DashboardService:
             date_to=date_to,
         )
 
-        income_total, expense_total = self.repo.summary_for_period(user_id, resolved_date_from, resolved_date_to)
+        operations = self.repo.list_for_period(user_id=user_id, date_from=resolved_date_from, date_to=resolved_date_to)
+        income_total = Decimal("0.00")
+        expense_total = Decimal("0.00")
+        for item in operations:
+            amount = Decimal(item.amount or 0)
+            if item.kind == "income":
+                income_total += amount
+            else:
+                expense_total += amount
         debt_service = DebtService(self.db)
         debt_cards = debt_service.list_cards(user_id=user_id, include_closed=False)
         debt_lend_outstanding = Decimal("0")
@@ -367,8 +391,16 @@ class DashboardService:
         span_days = (resolved_to - resolved_from).days + 1
         prev_to = resolved_from - timedelta(days=1)
         prev_from = prev_to - timedelta(days=max(0, span_days - 1))
-        prev_income, prev_expense = self.repo.summary_for_period(user_id=user_id, date_from=prev_from, date_to=prev_to)
-        prev_operations = len(self.repo.list_for_period(user_id=user_id, date_from=prev_from, date_to=prev_to))
+        previous_ops = self.repo.list_for_period(user_id=user_id, date_from=prev_from, date_to=prev_to)
+        prev_income = Decimal("0")
+        prev_expense = Decimal("0")
+        for item in previous_ops:
+            amount = Decimal(item.amount or 0)
+            if item.kind == "income":
+                prev_income += amount
+            else:
+                prev_expense += amount
+        prev_operations = len(previous_ops)
 
         current_balance = current_income - current_expense
         prev_balance = Decimal(prev_income or 0) - Decimal(prev_expense or 0)
@@ -398,6 +430,7 @@ class DashboardService:
         user_id: int,
         period: str = "month",
         category_kind: str = "expense",
+        category_breakdown_level: str = "category",
         date_from: date | None = None,
         date_to: date | None = None,
         month_anchor: date | None = None,
@@ -450,15 +483,31 @@ class DashboardService:
 
         avg_daily_expense = (expense_total / Decimal(span_days)) if span_days > 0 else Decimal("0")
 
-        category_ids = {int(item.category_id) for item in operations if item.category_id is not None}
+        category_ids = {
+            int(item.category_id)
+            for item in [*operations, *prev_operations]
+            if item.category_id is not None
+        }
         category_name_map: dict[int, str] = {}
         category_kind_map: dict[int, str] = {}
+        category_group_id_map: dict[int, int | None] = {}
+        category_group_name_map: dict[int, str | None] = {}
         if category_ids:
             rows = self.db.execute(
-                select(Category.id, Category.name, Category.kind).where(Category.id.in_(category_ids))
+                select(Category.id, Category.name, Category.kind, Category.group_id, CategoryGroup.name)
+                .outerjoin(CategoryGroup, Category.group_id == CategoryGroup.id)
+                .where(Category.id.in_(category_ids))
             ).all()
             category_name_map = {int(row[0]): str(row[1]) for row in rows}
             category_kind_map = {int(row[0]): str(row[2] or "expense") for row in rows}
+            category_group_id_map = {
+                int(row[0]): (int(row[3]) if row[3] is not None else None)
+                for row in rows
+            }
+            category_group_name_map = {
+                int(row[0]): (str(row[4]) if row[4] is not None else None)
+                for row in rows
+            }
 
         heavy_candidates = [item for item in operations if item.kind == "expense"] or operations
         top_operations = sorted(
@@ -472,26 +521,58 @@ class DashboardService:
                 return item_kind in {"income", "expense"}
             return item_kind == category_kind
 
-        current_category_totals: dict[int | None, dict] = defaultdict(
+        current_category_totals: dict[tuple[str, int | None], dict] = defaultdict(
             lambda: {
                 "total_amount": Decimal("0"),
                 "operations_count": 0,
                 "category_kind": "expense",
+                "category_id": None,
+                "category_name": "Без категории",
+                "group_id": None,
+                "group_name": None,
             }
         )
-        previous_category_totals: dict[int | None, Decimal] = defaultdict(lambda: Decimal("0"))
+        previous_category_totals: dict[tuple[str, int | None], Decimal] = defaultdict(lambda: Decimal("0"))
+
+        def breakdown_key(category_id: int | None) -> tuple[str, int | None]:
+            if category_breakdown_level == "group":
+                if category_id is None:
+                    return ("group", None)
+                return ("group", category_group_id_map.get(category_id))
+            return ("category", category_id)
+
         for item in operations:
             if not include_category_item(item.kind):
                 continue
-            key = int(item.category_id) if item.category_id is not None else None
+            category_id = int(item.category_id) if item.category_id is not None else None
+            key = breakdown_key(category_id)
             bucket = current_category_totals[key]
             bucket["total_amount"] += Decimal(item.amount or 0)
             bucket["operations_count"] += 1
             bucket["category_kind"] = item.kind
+            if category_breakdown_level == "group":
+                bucket["group_id"] = key[1]
+                bucket["group_name"] = (
+                    category_group_name_map.get(category_id)
+                    if category_id is not None
+                    else None
+                ) or "Без группы"
+                bucket["category_id"] = None
+                bucket["category_name"] = bucket["group_name"]
+            else:
+                bucket["category_id"] = category_id
+                bucket["category_name"] = (
+                    category_name_map.get(category_id, "Без категории")
+                    if category_id is not None
+                    else "Без категории"
+                )
+                bucket["group_id"] = category_group_id_map.get(category_id) if category_id is not None else None
+                bucket["group_name"] = category_group_name_map.get(category_id) if category_id is not None else None
         for item in prev_operations:
             if not include_category_item(item.kind):
                 continue
-            key = int(item.category_id) if item.category_id is not None else None
+            category_id = int(item.category_id) if item.category_id is not None else None
+            key = breakdown_key(category_id)
             previous_category_totals[key] += Decimal(item.amount or 0)
 
         category_breakdown_total = sum(
@@ -622,6 +703,7 @@ class DashboardService:
         return {
             "period": period,
             "category_breakdown_kind": category_kind,
+            "category_breakdown_level": category_breakdown_level,
             "date_from": resolved_from.isoformat(),
             "date_to": resolved_to.isoformat(),
             "month": month_start.strftime("%Y-%m"),
@@ -646,15 +728,13 @@ class DashboardService:
             "operations_change_pct": self._percent_change(Decimal(len(operations)), Decimal(len(prev_operations))),
             "category_breakdown": [
                 {
-                    "category_id": category_id,
-                    "category_name": (
-                        category_name_map.get(category_id, "Без категории")
-                        if category_id is not None
-                        else "Без категории"
-                    ),
+                    "category_id": bucket["category_id"],
+                    "category_name": bucket["category_name"],
+                    "group_id": bucket["group_id"],
+                    "group_name": bucket["group_name"],
                     "category_kind": (
-                        category_kind_map.get(category_id, bucket["category_kind"])
-                        if category_id is not None
+                        category_kind_map.get(bucket["category_id"], bucket["category_kind"])
+                        if bucket["category_id"] is not None
                         else bucket["category_kind"]
                     ),
                     "total_amount": bucket["total_amount"],
@@ -664,10 +744,10 @@ class DashboardService:
                         if category_breakdown_total > 0
                         else 0.0
                     ),
-                    "change_pct": self._percent_change(bucket["total_amount"], previous_category_totals[category_id]),
+                    "change_pct": self._percent_change(bucket["total_amount"], previous_category_totals[key]),
                     "operations_count": int(bucket["operations_count"]),
                 }
-                for category_id, bucket in sorted_categories
+                for key, bucket in sorted_categories
             ],
             "top_operations": [
                 {
@@ -681,15 +761,13 @@ class DashboardService:
             ],
             "top_categories": [
                 {
-                    "category_id": category_id,
-                    "category_name": (
-                        category_name_map.get(category_id, "Без категории")
-                        if category_id is not None
-                        else "Без категории"
-                    ),
+                    "category_id": bucket["category_id"],
+                    "category_name": bucket["category_name"],
+                    "group_id": bucket["group_id"],
+                    "group_name": bucket["group_name"],
                     "category_kind": (
-                        category_kind_map.get(category_id, bucket["category_kind"])
-                        if category_id is not None
+                        category_kind_map.get(bucket["category_id"], bucket["category_kind"])
+                        if bucket["category_id"] is not None
                         else bucket["category_kind"]
                     ),
                     "total_amount": bucket["total_amount"],
@@ -699,10 +777,10 @@ class DashboardService:
                         if category_breakdown_total > 0
                         else 0.0
                     ),
-                    "change_pct": self._percent_change(bucket["total_amount"], previous_category_totals[category_id]),
+                    "change_pct": self._percent_change(bucket["total_amount"], previous_category_totals[key]),
                     "operations_count": int(bucket["operations_count"]),
                 }
-                for category_id, bucket in top_categories
+                for key, bucket in top_categories
             ],
             "anomalies": anomalies[:5],
             "top_positions": [

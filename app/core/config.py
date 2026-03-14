@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     postgres_db: str = Field(default="financial_assistant", alias="POSTGRES_DB")
     postgres_host: str = Field(default="db", alias="POSTGRES_HOST")
     postgres_port: int = Field(default=5432, alias="POSTGRES_PORT")
+    db_pool_size: int = Field(default=3, alias="DB_POOL_SIZE")
+    db_max_overflow: int = Field(default=2, alias="DB_MAX_OVERFLOW")
+    db_pool_timeout_seconds: int = Field(default=15, alias="DB_POOL_TIMEOUT_SECONDS")
+    db_pool_recycle_seconds: int = Field(default=1800, alias="DB_POOL_RECYCLE_SECONDS")
 
     redis_host: str = Field(default="redis", alias="REDIS_HOST")
     redis_port: int = Field(default=6379, alias="REDIS_PORT")

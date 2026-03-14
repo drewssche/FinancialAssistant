@@ -61,6 +61,7 @@
       if (!trigger) {
         return;
       }
+      event.preventDefault();
       const targetId = String(trigger.dataset.datePickerTrigger || "").trim();
       if (!targetId) {
         return;
@@ -69,10 +70,14 @@
       if (!(input instanceof HTMLInputElement) || input.disabled || input.readOnly) {
         return;
       }
-      input.focus({ preventScroll: true });
       if (typeof input.showPicker === "function") {
-        input.showPicker();
+        try {
+          input.showPicker();
+          return;
+        } catch {}
       }
+      input.focus({ preventScroll: true });
+      input.click();
     });
 
     for (const id of ["opAmount", "opDate", "opNote"]) {

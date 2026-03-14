@@ -37,7 +37,7 @@
             </div>
           </div>
           <div id="opAmountField" class="money-input-wrap" data-money-input-wrap>
-            <input id="opAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма или выражение" title="Можно вводить выражения: 1000+250/2" required />
+            <input id="opAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" required />
           </div>
           <input id="opNote" class="create-note-field" type="text" placeholder="Комментарий" />
 
@@ -68,7 +68,7 @@
             <input id="debtDirection" type="hidden" value="lend" />
             <input id="debtCounterparty" type="text" placeholder="Имя контрагента" />
             <div id="debtPrincipalField" class="money-input-wrap" data-money-input-wrap>
-              <input id="debtPrincipal" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма или выражение" title="Можно вводить выражения: 1000+250/2" />
+              <input id="debtPrincipal" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" />
             </div>
             <div id="debtDueField" class="debt-due-field">
               <div id="debtDueDateField" class="date-input-wrap">
@@ -264,7 +264,7 @@
             </div>
           </div>
           <div id="editAmountField" class="money-input-wrap" data-money-input-wrap>
-            <input id="editAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма или выражение" title="Можно вводить выражения: 1000+250/2" required />
+            <input id="editAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" required />
           </div>
           <input id="editNote" class="create-note-field" type="text" placeholder="Комментарий" />
 
@@ -507,7 +507,7 @@
             <button class="btn btn-secondary btn-xs" type="button" data-repayment-preset="1">Весь остаток</button>
           </div>
           <div id="repaymentAmountField" class="money-input-wrap" data-money-input-wrap>
-            <input id="repaymentAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма погашения или выражение" title="Можно вводить выражения: 1000+250/2" required />
+            <input id="repaymentAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" required />
           </div>
           <div class="repayment-delta-box">
             <div class="muted-small">До: <span id="repaymentBeforeValue">0.00</span></div>

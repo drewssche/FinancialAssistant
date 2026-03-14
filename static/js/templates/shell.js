@@ -70,32 +70,11 @@
         </header>
 
         <section id="dashboardSection" class="section-block">
-          <div class="panel-head">
-            <div>
-              <h3>Ключевые показатели</h3>
-              <p id="dashboardKpiPeriodLabel" class="subtitle">Суммарно за все время</p>
-            </div>
-          </div>
-          <section class="kpi-grid">
-            <article class="kpi-card">
-              <h3>Доход</h3>
-              <p id="incomeTotal">0.00</p>
-            </article>
-            <article class="kpi-card">
-              <h3>Расход</h3>
-              <p id="expenseTotal">0.00</p>
-            </article>
-            <article class="kpi-card">
-              <h3>Баланс</h3>
-              <p id="balanceTotal">0.00</p>
-            </article>
-          </section>
-
           <section id="dashboardAnalyticsPanel" class="panel">
             <div class="panel-head row between">
               <div>
-                <h3>Аналитика периода</h3>
-                <p id="dashboardAnalyticsPeriodLabel" class="subtitle">Краткий тренд и динамика к прошлому периоду</p>
+                <h3>КПИ периода</h3>
+                <p id="dashboardAnalyticsPeriodLabel" class="subtitle">Показатели за выбранный период</p>
               </div>
               <div class="toolbar">
                 <div class="segmented" id="dashboardAnalyticsPeriodTabs" role="tablist" aria-label="Период аналитики дашборда">
@@ -103,32 +82,45 @@
                   <button class="segmented-btn" data-dashboard-analytics-period="week" type="button">Эта неделя</button>
                   <button class="segmented-btn active" data-dashboard-analytics-period="month" type="button">Этот месяц</button>
                   <button class="segmented-btn" data-dashboard-analytics-period="year" type="button">Этот год</button>
+                  <button class="segmented-btn" data-dashboard-analytics-period="all_time" type="button">Все время</button>
+                </div>
+              </div>
+            </div>
+            <div id="dashboardKpiPrimary" class="analytics-kpi-grid"></div>
+            <div id="dashboardKpiSecondary" class="analytics-kpi-secondary"></div>
+          </section>
+
+          <section id="dashboardStructurePanel" class="panel">
+            <div class="panel-head row between">
+              <div>
+                <h3>Структура периода</h3>
+                <p id="dashboardStructurePeriodLabel" class="subtitle">Распределение расходов в выбранном периоде</p>
+              </div>
+              <div class="toolbar">
+                <div class="segmented" id="dashboardBreakdownLevelTabs" role="tablist" aria-label="Уровень структуры дашборда">
+                  <button class="segmented-btn active" data-dashboard-breakdown-level="category" type="button">Категории</button>
+                  <button class="segmented-btn" data-dashboard-breakdown-level="group" type="button">Группы</button>
+                </div>
+                <div class="segmented" id="dashboardCategoryKindTabs" role="tablist" aria-label="Тип структуры дашборда">
+                  <button class="segmented-btn active" data-dashboard-category-kind="expense" type="button">Расход</button>
+                  <button class="segmented-btn" data-dashboard-category-kind="income" type="button">Доход</button>
+                  <button class="segmented-btn" data-dashboard-category-kind="all" type="button">Все</button>
                 </div>
                 <button id="openAnalyticsTabBtn" class="btn btn-secondary" type="button">Открыть Аналитику</button>
               </div>
             </div>
-            <div class="dashboard-analytics-grid">
-              <div id="dashboardAnalyticsChartWrap" class="dashboard-analytics-chart-wrap">
-                <svg id="dashboardAnalyticsSparkline" viewBox="0 0 420 110" preserveAspectRatio="none" class="dashboard-analytics-sparkline" aria-label="График доходов и расходов"></svg>
-                <div id="dashboardAnalyticsEmpty" class="dashboard-analytics-empty hidden"></div>
-              </div>
-              <div class="dashboard-analytics-kpis">
-                <div class="dashboard-analytics-kpi dashboard-analytics-kpi-income">
-                  <span class="muted-small">Доход</span>
-                  <strong id="dashboardAnalyticsIncomeDelta">0</strong>
-                  <span id="dashboardAnalyticsIncomeMeta" class="muted-small">-</span>
-                </div>
-                <div class="dashboard-analytics-kpi dashboard-analytics-kpi-expense">
-                  <span class="muted-small">Расход</span>
-                  <strong id="dashboardAnalyticsExpenseDelta">0</strong>
-                  <span id="dashboardAnalyticsExpenseMeta" class="muted-small">-</span>
-                </div>
-                <div class="dashboard-analytics-kpi dashboard-analytics-kpi-balance">
-                  <span class="muted-small">Баланс</span>
-                  <strong id="dashboardAnalyticsBalanceDelta">0</strong>
-                  <span id="dashboardAnalyticsBalanceMeta" class="muted-small">-</span>
+            <div class="analytics-category-breakdown-grid dashboard-structure-grid">
+              <div class="analytics-category-breakdown-chart-card">
+                <div id="dashboardCategoryBreakdownChart" class="analytics-category-donut dashboard-category-donut">
+                  <svg id="dashboardCategoryBreakdownSvg" class="analytics-category-donut-svg" viewBox="0 0 260 260"></svg>
+                  <div class="analytics-category-donut-hole">
+                    <span id="dashboardCategoryBreakdownChartTitle" class="analytics-category-donut-title muted-small">Итог периода</span>
+                    <strong id="dashboardCategoryBreakdownChartValue">0</strong>
+                    <span id="dashboardCategoryBreakdownChartMeta" class="muted-small">Нет данных</span>
+                  </div>
                 </div>
               </div>
+              <div id="dashboardCategoryBreakdownList" class="analytics-insight-list"></div>
             </div>
           </section>
 
@@ -165,14 +157,6 @@
                 <p id="dashboardPeriodLabel" class="subtitle"></p>
               </div>
               <div class="panel-controls">
-                <div class="segmented" data-period-tabs role="tablist" aria-label="Период дашборда">
-                  <button class="segmented-btn active" data-period="day" type="button">Сегодня</button>
-                  <button class="segmented-btn" data-period="week" type="button">Эта неделя</button>
-                  <button class="segmented-btn" data-period="month" type="button">Этот месяц</button>
-                  <button class="segmented-btn" data-period="year" type="button">Этот год</button>
-                  <button class="segmented-btn" data-period="all_time" type="button">Все время</button>
-                  <button class="segmented-btn" data-period="custom" type="button">Настроить</button>
-                </div>
                 <button id="openOperationsTabBtn" class="btn btn-secondary" type="button">Открыть раздел Операции</button>
               </div>
             </div>
@@ -215,30 +199,23 @@
           <section class="panel">
             <div class="segmented" id="analyticsViewTabs" role="tablist" aria-label="Вкладки аналитики">
               <button class="segmented-btn" data-analytics-tab="calendar" type="button">Календарь</button>
-              <button class="segmented-btn active" data-analytics-tab="overview" type="button">КПИ</button>
-              <button class="segmented-btn" data-analytics-tab="structure" type="button">Структура</button>
+              <button class="segmented-btn active" data-analytics-tab="structure" type="button">Структура</button>
               <button class="segmented-btn" data-analytics-tab="trends" type="button">Тренды</button>
             </div>
           </section>
 
-          <section id="analyticsOverviewPanel" class="panel analytics-tab-panel">
-            <div class="panel-head row between">
-              <div>
-                <h3>Итоги периода</h3>
-                <p id="analyticsSummaryRangeLabel" class="subtitle"></p>
-              </div>
-            </div>
-            <div id="analyticsKpiPrimary" class="analytics-kpi-grid"></div>
-            <div id="analyticsKpiSecondary" class="analytics-kpi-secondary"></div>
-          </section>
-
-          <section id="analyticsStructurePanel" class="panel analytics-tab-panel hidden">
+          <section id="analyticsStructurePanel" class="panel analytics-tab-panel">
             <div class="panel-head row between">
               <div>
                 <h3>Структура по категориям</h3>
                 <p id="analyticsCategoryBreakdownLabel" class="subtitle">Распределение по суммам внутри выбранного периода</p>
               </div>
               <div class="toolbar">
+                <button id="analyticsBreakdownShowAllBtn" class="btn btn-secondary" type="button">Показать все</button>
+                <div class="segmented" id="analyticsBreakdownLevelTabs" role="tablist" aria-label="Уровень структуры">
+                  <button class="segmented-btn active" data-analytics-breakdown-level="category" type="button">Категории</button>
+                  <button class="segmented-btn" data-analytics-breakdown-level="group" type="button">Группы</button>
+                </div>
                 <div class="segmented" id="analyticsCategoryKindTabs" role="tablist" aria-label="Тип категорий">
                   <button class="segmented-btn active" data-analytics-category-kind="expense" type="button">Расход</button>
                   <button class="segmented-btn" data-analytics-category-kind="income" type="button">Доход</button>

@@ -458,6 +458,37 @@
 - Automated budget gate extended:
 - `tests/api/test_request_budgets_api.py::test_request_budget_section_switch_no_front_cache`
 - `tests/api/test_request_budgets_api.py::test_request_budget_section_switch_front_cache_ttl`
+
+19. Small-VPS runtime tuning for 1-5 users (2026-03-08)
+- Status: done
+- Context:
+- target host profile is `1 vCPU / 2 GB RAM`
+- expected steady load is one permanent user with occasional growth to `4-5` users
+- Goal:
+- reduce constant memory pressure and unnecessary idle DB connections without changing product behavior
+- Implemented:
+- tightened SQLAlchemy pool defaults in runtime config:
+  - `DB_POOL_SIZE=3`
+  - `DB_MAX_OVERFLOW=2`
+  - `DB_POOL_TIMEOUT_SECONDS=15`
+  - `DB_POOL_RECYCLE_SECONDS=1800`
+- applied engine pooling knobs in `app/db/session.py` with `pool_use_lifo=True` to keep fewer hot idle connections
+- reduced PostgreSQL container/runtime footprint in compose:
+  - `shared_buffers=64MB`
+  - `work_mem=2MB`
+  - `maintenance_work_mem=32MB`
+  - `effective_cache_size=256MB`
+  - `max_connections=20`
+  - container `mem_limit=512m`, `shm_size=64m`
+- reduced Redis cache ceiling from `96mb` to `64mb`
+- reduced default Item Catalog initial snapshot from `100` to `50` rows to lower payload/DB work on weak VPS
+- Expected effect:
+- lower idle RSS on the host
+- fewer open Postgres backends from app pool
+- lower memory spike risk during small concurrent bursts
+- smaller initial catalog read on section open
+- Follow-up verification:
+- on VPS, compare `docker stats`, `free -h`, `psql show max_connections`, and `GET /api/v1/dashboard/summary/metrics` before/after deploy
 - guard verifies request-count delta for section-switch flow (`operations/debts/categories`) with and without frontend TTL cache reuse
 - canonical budget source is now centralized in:
 - `docs/REQUEST_BUDGETS.md` (JSON block + table), consumed directly by `tests/api/test_request_budgets_api.py`

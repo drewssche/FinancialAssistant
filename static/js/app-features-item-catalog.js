@@ -372,7 +372,7 @@
     }
     const params = new URLSearchParams({
       page: "1",
-      page_size: "100",
+      page_size: "50",
     });
     if (query) {
       params.set("q", query);

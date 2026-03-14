@@ -51,6 +51,7 @@ def test_categories_create_list_delete(client: TestClient):
     created = client.post("/api/v1/categories", json={"name": "Еда", "kind": "expense"})
     assert created.status_code == 200
     category_id = created.json()["id"]
+    assert created.json()["include_in_statistics"] is True
 
     listed = client.get("/api/v1/categories")
     assert listed.status_code == 200
@@ -104,3 +105,20 @@ def test_categories_list_paginated_search_by_group_name_returns_group_children(c
     names = [item["name"] for item in payload["items"]]
     assert "Еда" in names
     assert "Такси" not in names
+
+
+def test_categories_can_disable_statistics_flag(client: TestClient):
+    created = client.post(
+        "/api/v1/categories",
+        json={"name": "Скрытая", "kind": "expense", "include_in_statistics": False},
+    )
+    assert created.status_code == 200
+    assert created.json()["include_in_statistics"] is False
+
+    category_id = created.json()["id"]
+    updated = client.patch(
+        f"/api/v1/categories/{category_id}",
+        json={"include_in_statistics": True},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["include_in_statistics"] is True

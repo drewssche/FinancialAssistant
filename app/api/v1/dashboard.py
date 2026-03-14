@@ -92,6 +92,7 @@ def get_analytics_calendar_year(
 def get_analytics_highlights(
     period: str = Query(default="month", pattern="^(week|month|year|all_time|custom)$"),
     category_kind: str = Query(default="expense", pattern="^(expense|income|all)$"),
+    category_breakdown_level: str = Query(default="category", pattern="^(category|group)$"),
     month: str | None = Query(default=None, pattern=r"^\d{4}-\d{2}$"),
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
@@ -110,6 +111,7 @@ def get_analytics_highlights(
             user_id=user_id,
             period=period,
             category_kind=category_kind,
+            category_breakdown_level=category_breakdown_level,
             date_from=date_from,
             date_to=date_to,
             month_anchor=month_anchor,

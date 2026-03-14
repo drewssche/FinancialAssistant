@@ -137,6 +137,8 @@ class AnalyticsTopCategory(BaseModel):
     category_id: int | None
     category_name: str
     category_kind: str
+    group_id: int | None = None
+    group_name: str | None = None
     total_amount: Decimal
     total_expense: Decimal
     share_pct: float
@@ -164,6 +166,7 @@ class AnalyticsPriceIncrease(BaseModel):
 class AnalyticsHighlightsOut(BaseModel):
     period: str
     category_breakdown_kind: str
+    category_breakdown_level: str = "category"
     date_from: str
     date_to: str
     month: str

@@ -2,9 +2,8 @@
   const { state, el, core } = window.App;
 
   function applyAnalyticsTabUi() {
-    const tab = state.analyticsTab || "overview";
+    const tab = state.analyticsTab || "calendar";
     const panels = [
-      { id: "overview", node: el.analyticsOverviewPanel },
       { id: "structure", node: el.analyticsStructurePanel },
       { id: "calendar", node: el.analyticsCalendarPanel },
       { id: "trends", node: el.analyticsTrendsPanel },
@@ -22,8 +21,8 @@
   }
 
   function setAnalyticsTab(tab) {
-    const allowed = new Set(["overview", "structure", "calendar", "trends"]);
-    state.analyticsTab = allowed.has(tab) ? tab : "overview";
+    const allowed = new Set(["structure", "calendar", "trends"]);
+    state.analyticsTab = allowed.has(tab) ? tab : "calendar";
     applyAnalyticsTabUi();
     if (state.analyticsTab === "structure") {
       highlights?.focusDefaultCategoryBreakdown?.();
@@ -132,7 +131,7 @@
     loadAnalyticsCalendar: calendar.loadAnalyticsCalendar,
     loadAnalyticsTrend: trend.loadAnalyticsTrend,
     loadAnalyticsHighlights: highlights.loadAnalyticsHighlights,
-    loadDashboardAnalyticsPreview: trend.loadDashboardAnalyticsPreview,
+    loadDashboardAnalyticsPreview: highlights.loadDashboardAnalyticsPreview,
     loadAnalyticsSection,
     shiftAnalyticsMonth: calendar.shiftAnalyticsMonth,
     resetAnalyticsMonth: calendar.resetAnalyticsMonth,

@@ -39,6 +39,9 @@
     if (el.dashboardAnalyticsPanel && ui) {
       el.dashboardAnalyticsPanel.classList.toggle("hidden", ui.showDashboardAnalytics === false);
     }
+    if (el.dashboardStructurePanel && ui) {
+      el.dashboardStructurePanel.classList.toggle("hidden", ui.showDashboardAnalytics === false);
+    }
     if (el.dashboardOperationsPanel && ui) {
       el.dashboardOperationsPanel.classList.toggle("hidden", ui.showDashboardOperations === false);
     }
@@ -51,15 +54,6 @@
     const data = await core.requestJson(`/api/v1/dashboard/summary?${params.toString()}`, {
       headers: core.authHeaders(),
     });
-    if (el.dashboardKpiPeriodLabel) {
-      el.dashboardKpiPeriodLabel.textContent = data.date_from && data.date_to
-        ? `Суммарно: ${core.formatDateRu(data.date_from)} - ${core.formatDateRu(data.date_to)}`
-        : "Суммарно за все время";
-    }
-
-    el.incomeTotal.textContent = core.formatMoney(data.income_total);
-    el.expenseTotal.textContent = core.formatMoney(data.expense_total);
-    el.balanceTotal.textContent = core.formatMoney(data.balance);
     if (el.debtLendTotal) {
       el.debtLendTotal.textContent = core.formatMoney(data.debt_lend_outstanding);
     }
@@ -185,7 +179,7 @@
     if (window.App.actions.ensureAllTimeBounds) {
       await window.App.actions.ensureAllTimeBounds();
     }
-    const { dateFrom, dateTo } = core.getPeriodBounds(state.period);
+    const { dateFrom, dateTo } = core.getPeriodBounds(state.dashboardAnalyticsPeriod || "month");
     el.dashboardPeriodLabel.textContent = core.formatPeriodLabel(dateFrom, dateTo);
     const pageSize = ui?.dashboardOperationsLimit || 8;
     const params = new URLSearchParams({

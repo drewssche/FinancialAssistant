@@ -62,12 +62,14 @@ def create_category(
             kind=payload.kind,
             group_id=payload.group_id,
             icon=payload.icon,
+            include_in_statistics=payload.include_in_statistics,
         )
         return CategoryOut(
             id=created.id,
             name=created.name,
             icon=created.icon,
             kind=created.kind,
+            include_in_statistics=created.include_in_statistics,
             group_id=created.group_id,
             is_system=created.is_system,
         )
@@ -168,6 +170,7 @@ def update_category(
             name=updated.name,
             icon=updated.icon,
             kind=updated.kind,
+            include_in_statistics=updated.include_in_statistics,
             group_id=updated.group_id,
             is_system=updated.is_system,
         )

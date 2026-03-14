@@ -118,6 +118,48 @@
         });
       });
     }
+    if (el.dashboardCategoryKindTabs && actions.loadDashboardAnalyticsPreview) {
+      el.dashboardCategoryKindTabs.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-dashboard-category-kind]");
+        if (!btn) {
+          return;
+        }
+        const selected = btn.dataset.dashboardCategoryKind;
+        if (state.dashboardCategoryKind === selected) {
+          return;
+        }
+        state.dashboardCategoryKind = selected;
+        core.syncSegmentedActive(el.dashboardCategoryKindTabs, "dashboard-category-kind", state.dashboardCategoryKind);
+        core.runAction({
+          errorPrefix: "Ошибка загрузки структуры дашборда",
+          action: async () => {
+            await actions.loadDashboardAnalyticsPreview({ force: true });
+            await actions.savePreferences();
+          },
+        });
+      });
+    }
+    if (el.dashboardBreakdownLevelTabs && actions.loadDashboardAnalyticsPreview) {
+      el.dashboardBreakdownLevelTabs.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-dashboard-breakdown-level]");
+        if (!btn) {
+          return;
+        }
+        const selected = btn.dataset.dashboardBreakdownLevel;
+        if (state.dashboardBreakdownLevel === selected) {
+          return;
+        }
+        state.dashboardBreakdownLevel = selected;
+        core.syncSegmentedActive(el.dashboardBreakdownLevelTabs, "dashboard-breakdown-level", state.dashboardBreakdownLevel);
+        core.runAction({
+          errorPrefix: "Ошибка загрузки структуры дашборда",
+          action: async () => {
+            await actions.loadDashboardAnalyticsPreview({ force: true });
+            await actions.savePreferences();
+          },
+        });
+      });
+    }
     if (el.analyticsCategoryKindTabs && actions.loadAnalyticsSection) {
       el.analyticsCategoryKindTabs.addEventListener("click", (event) => {
         const btn = event.target.closest("button[data-analytics-category-kind]");
@@ -132,6 +174,27 @@
         core.syncSegmentedActive(el.analyticsCategoryKindTabs, "analytics-category-kind", state.analyticsCategoryKind);
         core.runAction({
           errorPrefix: "Ошибка загрузки структуры категорий",
+          action: async () => {
+            await actions.loadAnalyticsSection({ force: true });
+            await actions.savePreferences();
+          },
+        });
+      });
+    }
+    if (el.analyticsBreakdownLevelTabs && actions.loadAnalyticsSection) {
+      el.analyticsBreakdownLevelTabs.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-analytics-breakdown-level]");
+        if (!btn) {
+          return;
+        }
+        const selected = btn.dataset.analyticsBreakdownLevel;
+        if (state.analyticsBreakdownLevel === selected) {
+          return;
+        }
+        state.analyticsBreakdownLevel = selected;
+        core.syncSegmentedActive(el.analyticsBreakdownLevelTabs, "analytics-breakdown-level", state.analyticsBreakdownLevel);
+        core.runAction({
+          errorPrefix: "Ошибка загрузки структуры",
           action: async () => {
             await actions.loadAnalyticsSection({ force: true });
             await actions.savePreferences();
@@ -206,6 +269,9 @@
           return;
         }
         container.addEventListener("click", (event) => {
+          if (event.target.closest("[data-analytics-breakdown-toggle]")) {
+            return;
+          }
           const card = event.target.closest("[data-analytics-category-id]");
           if (!card) {
             return;
@@ -226,6 +292,22 @@
       };
       bindCategoryDrilldown(el.analyticsCategoryBreakdownChart);
       bindCategoryDrilldown(el.analyticsCategoryBreakdownList);
+    }
+    if (actions.toggleCategoryBreakdownVisibility && el.analyticsCategoryBreakdownList) {
+      el.analyticsCategoryBreakdownList.addEventListener("click", (event) => {
+        const btn = event.target.closest("[data-analytics-breakdown-toggle]");
+        if (!btn) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        actions.toggleCategoryBreakdownVisibility(String(btn.dataset.analyticsBreakdownToggle || ""));
+      });
+    }
+    if (actions.showAllCategoryBreakdownItems && el.analyticsBreakdownShowAllBtn) {
+      el.analyticsBreakdownShowAllBtn.addEventListener("click", () => {
+        actions.showAllCategoryBreakdownItems();
+      });
     }
     if (actions.setCategoryBreakdownHover && actions.clearCategoryBreakdownHover) {
       const bindCategoryHover = (container) => {

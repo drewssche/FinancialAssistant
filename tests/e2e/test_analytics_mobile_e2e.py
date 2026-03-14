@@ -56,7 +56,7 @@ def page_with_analytics_api_mock(page):
             "dashboard": {"period": "day", "custom_date_from": "", "custom_date_to": ""},
             "operations": {"filters": {"kind": "", "q": ""}},
             "analytics": {
-                "tab": "overview",
+                "tab": "calendar",
                 "calendar_view": "month",
                 "month_anchor": "2026-03",
                 "summary_period": "month",

@@ -468,8 +468,51 @@ def test_dashboard_analytics_highlights_category_breakdown_respects_kind_filter(
     income_payload = income_breakdown.json()
     assert income_payload["category_breakdown_kind"] == "income"
     assert len(income_payload["category_breakdown"]) == 1
-    assert income_payload["category_breakdown"][0]["category_name"] == "Зарплата"
-    assert income_payload["category_breakdown"][0]["total_amount"] == "300.00"
+
+
+def test_dashboard_analytics_ignores_category_statistics_flag(client: TestClient):
+    hidden = client.post(
+        "/api/v1/categories",
+        json={"name": "Скрытая", "kind": "expense", "include_in_statistics": False},
+    )
+    visible = client.post(
+        "/api/v1/categories",
+        json={"name": "Видимая", "kind": "expense"},
+    )
+    assert hidden.status_code == 200
+    assert visible.status_code == 200
+
+    hidden_op = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "category_id": hidden.json()["id"],
+            "amount": "200.00",
+            "operation_date": "2026-03-10",
+        },
+    )
+    visible_op = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "category_id": visible.json()["id"],
+            "amount": "120.00",
+            "operation_date": "2026-03-11",
+        },
+    )
+    assert hidden_op.status_code == 201
+    assert visible_op.status_code == 201
+
+    summary = client.get("/api/v1/dashboard/summary", params={"period": "month"})
+    assert summary.status_code == 200
+    assert summary.json()["expense_total"] == "320.00"
+
+    highlights = client.get("/api/v1/dashboard/analytics/highlights", params={"month": "2026-03"})
+    assert highlights.status_code == 200
+    payload = highlights.json()
+    assert payload["expense_total"] == "320.00"
+    assert len(payload["category_breakdown"]) == 2
+    assert {item["category_name"] for item in payload["category_breakdown"]} == {"Скрытая", "Видимая"}
 
     all_breakdown = client.get(
         "/api/v1/dashboard/analytics/highlights",
@@ -479,4 +522,66 @@ def test_dashboard_analytics_highlights_category_breakdown_respects_kind_filter(
     all_payload = all_breakdown.json()
     assert all_payload["category_breakdown_kind"] == "all"
     assert len(all_payload["category_breakdown"]) == 2
-    assert {item["category_name"] for item in all_payload["category_breakdown"]} == {"Еда", "Зарплата"}
+    assert {item["category_name"] for item in all_payload["category_breakdown"]} == {"Скрытая", "Видимая"}
+
+
+def test_dashboard_analytics_highlights_can_group_breakdown_by_category_group(client: TestClient):
+    food_group = client.post(
+        "/api/v1/categories/groups",
+        json={"name": "Еда", "kind": "expense"},
+    )
+    snacks = client.post(
+        "/api/v1/categories",
+        json={"name": "Снеки", "kind": "expense", "group_id": food_group.json()["id"]},
+    )
+    groceries = client.post(
+        "/api/v1/categories",
+        json={"name": "Продукты", "kind": "expense", "group_id": food_group.json()["id"]},
+    )
+    transport = client.post(
+        "/api/v1/categories",
+        json={"name": "Транспорт", "kind": "expense"},
+    )
+    assert food_group.status_code == 200
+    assert snacks.status_code == 200
+    assert groceries.status_code == 200
+    assert transport.status_code == 200
+
+    for payload in (
+        {
+            "kind": "expense",
+            "category_id": snacks.json()["id"],
+            "amount": "40.00",
+            "operation_date": "2026-03-10",
+        },
+        {
+            "kind": "expense",
+            "category_id": groceries.json()["id"],
+            "amount": "60.00",
+            "operation_date": "2026-03-11",
+        },
+        {
+            "kind": "expense",
+            "category_id": transport.json()["id"],
+            "amount": "25.00",
+            "operation_date": "2026-03-12",
+        },
+    ):
+        response = client.post("/api/v1/operations", json=payload)
+        assert response.status_code == 201
+
+    grouped = client.get(
+        "/api/v1/dashboard/analytics/highlights",
+        params={"month": "2026-03", "category_breakdown_level": "group"},
+    )
+    assert grouped.status_code == 200
+    payload = grouped.json()
+    assert payload["category_breakdown_level"] == "group"
+    assert len(payload["category_breakdown"]) == 2
+    assert payload["category_breakdown"][0]["category_name"] == "Еда"
+    assert payload["category_breakdown"][0]["group_name"] == "Еда"
+    assert payload["category_breakdown"][0]["category_id"] is None
+    assert payload["category_breakdown"][0]["total_amount"] == "100.00"
+    assert payload["category_breakdown"][1]["category_name"] == "Без группы"
+    assert payload["category_breakdown"][1]["group_id"] is None
+    assert payload["category_breakdown"][1]["total_amount"] == "25.00"

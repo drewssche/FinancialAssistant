@@ -14,6 +14,21 @@
     scale_percent: 100,
   };
 
+  function normalizeStructureHidden(raw) {
+    const normalized = {
+      category: { expense: [], income: [], all: [] },
+      group: { expense: [], income: [], all: [] },
+    };
+    for (const level of ["category", "group"]) {
+      const sourceLevel = raw && typeof raw === "object" ? raw[level] : null;
+      for (const kind of ["expense", "income", "all"]) {
+        const source = sourceLevel && Array.isArray(sourceLevel[kind]) ? sourceLevel[kind] : [];
+        normalized[level][kind] = source.map((item) => String(item)).filter(Boolean);
+      }
+    }
+    return normalized;
+  }
+
   async function loadTelegramLoginConfig() {
     try {
       const data = await core.requestJson("/api/v1/auth/public-config");
@@ -138,6 +153,9 @@
     if (el.dashboardAnalyticsPanel) {
       el.dashboardAnalyticsPanel.classList.toggle("hidden", ui.show_dashboard_analytics === false);
     }
+    if (el.dashboardStructurePanel) {
+      el.dashboardStructurePanel.classList.toggle("hidden", ui.show_dashboard_analytics === false);
+    }
     if (el.dashboardOperationsPanel) {
       el.dashboardOperationsPanel.classList.toggle("hidden", ui.show_dashboard_operations === false);
     }
@@ -166,6 +184,9 @@
     }
     if (el.dashboardAnalyticsPanel && el.showDashboardAnalyticsToggle) {
       el.dashboardAnalyticsPanel.classList.toggle("hidden", !el.showDashboardAnalyticsToggle.checked);
+    }
+    if (el.dashboardStructurePanel && el.showDashboardAnalyticsToggle) {
+      el.dashboardStructurePanel.classList.toggle("hidden", !el.showDashboardAnalyticsToggle.checked);
     }
     if (el.dashboardOperationsPanel && el.showDashboardOperationsToggle) {
       el.dashboardOperationsPanel.classList.toggle("hidden", !el.showDashboardOperationsToggle.checked);
@@ -211,18 +232,22 @@
     state.debtSortPreset = prefs.data?.debts?.sort_preset || "priority";
     state.itemCatalogSortPreset = prefs.data?.ui?.item_catalog_sort_preset || "usage";
     state.analyticsMonthAnchor = prefs.data?.analytics?.month_anchor || "";
-    state.analyticsTab = prefs.data?.analytics?.tab || "overview";
-    if (state.analyticsTab === "positions" || state.analyticsTab === "operations") {
-      state.analyticsTab = "overview";
+    state.analyticsTab = prefs.data?.analytics?.tab || "calendar";
+    if (state.analyticsTab === "positions" || state.analyticsTab === "operations" || state.analyticsTab === "overview") {
+      state.analyticsTab = "calendar";
     }
-    if (!["overview", "structure", "calendar", "trends"].includes(state.analyticsTab)) {
-      state.analyticsTab = "overview";
+    if (!["structure", "calendar", "trends"].includes(state.analyticsTab)) {
+      state.analyticsTab = "calendar";
     }
     state.analyticsCalendarView = prefs.data?.analytics?.calendar_view || "month";
     state.analyticsGlobalPeriod = prefs.data?.analytics?.global_period || prefs.data?.analytics?.summary_period || prefs.data?.analytics?.period || "month";
     state.analyticsGlobalDateFrom = prefs.data?.analytics?.global_date_from || prefs.data?.analytics?.summary_date_from || "";
     state.analyticsGlobalDateTo = prefs.data?.analytics?.global_date_to || prefs.data?.analytics?.summary_date_to || "";
     state.analyticsCategoryKind = prefs.data?.analytics?.category_kind || "expense";
+    state.analyticsBreakdownLevel = ["category", "group"].includes(prefs.data?.analytics?.breakdown_level)
+      ? prefs.data.analytics.breakdown_level
+      : "category";
+    state.analyticsStructureHidden = normalizeStructureHidden(prefs.data?.analytics?.structure_hidden);
     state.analyticsGranularity = prefs.data?.analytics?.granularity || "day";
     if ((state.analyticsGlobalPeriod === "year" || state.analyticsGlobalPeriod === "all_time") && state.analyticsGranularity === "day") {
       state.analyticsGranularity = "week";
@@ -234,6 +259,12 @@
       ? Number(prefs.data?.analytics?.top_positions_limit)
       : 10;
     state.dashboardAnalyticsPeriod = prefs.data?.dashboard?.analytics_period || "month";
+    state.dashboardBreakdownLevel = ["category", "group"].includes(prefs.data?.dashboard?.breakdown_level)
+      ? prefs.data.dashboard.breakdown_level
+      : "category";
+    state.dashboardCategoryKind = ["expense", "income", "all"].includes(prefs.data?.dashboard?.category_kind)
+      ? prefs.data.dashboard.category_kind
+      : "expense";
     state.adminUserStatusFilter = prefs.data?.admin?.user_status_filter || "pending";
     el.filterQ.value = prefs.data?.operations?.filters?.q || "";
     state.activeSection = prefs.data?.ui?.active_section || "dashboard";
@@ -247,9 +278,12 @@
     core.syncSegmentedActive(el.analyticsViewTabs, "analytics-tab", state.analyticsTab);
     core.syncSegmentedActive(el.analyticsCalendarViewTabs, "analytics-calendar-view", state.analyticsCalendarView);
     core.syncSegmentedActive(el.analyticsGlobalPeriodTabs, "analytics-global-period", state.analyticsGlobalPeriod);
+    core.syncSegmentedActive(el.analyticsBreakdownLevelTabs, "analytics-breakdown-level", state.analyticsBreakdownLevel);
     core.syncSegmentedActive(el.analyticsCategoryKindTabs, "analytics-category-kind", state.analyticsCategoryKind);
     core.syncSegmentedActive(el.analyticsGranularityTabs, "analytics-granularity", state.analyticsGranularity);
     core.syncSegmentedActive(el.dashboardAnalyticsPeriodTabs, "dashboard-analytics-period", state.dashboardAnalyticsPeriod);
+    core.syncSegmentedActive(el.dashboardBreakdownLevelTabs, "dashboard-breakdown-level", state.dashboardBreakdownLevel);
+    core.syncSegmentedActive(el.dashboardCategoryKindTabs, "dashboard-category-kind", state.dashboardCategoryKind);
     core.syncSegmentedActive(el.adminUserStatusTabs, "admin-user-status", state.adminUserStatusFilter);
     if (window.App.actions.applyAnalyticsTabUi) {
       window.App.actions.applyAnalyticsTabUi();
@@ -276,6 +310,8 @@
           custom_date_from: state.customDateFrom || "",
           custom_date_to: state.customDateTo || "",
           analytics_period: state.dashboardAnalyticsPeriod || "month",
+          breakdown_level: state.dashboardBreakdownLevel || "category",
+          category_kind: state.dashboardCategoryKind || "expense",
         },
         operations: {
           ...(state.preferences.data?.operations || {}),
@@ -295,11 +331,13 @@
         analytics: {
           ...(state.preferences.data?.analytics || {}),
           month_anchor: state.analyticsMonthAnchor || "",
-          tab: state.analyticsTab || "overview",
+          tab: state.analyticsTab || "calendar",
           calendar_view: state.analyticsCalendarView || "month",
           global_period: state.analyticsGlobalPeriod || "month",
           global_date_from: state.analyticsGlobalDateFrom || "",
           global_date_to: state.analyticsGlobalDateTo || "",
+          breakdown_level: state.analyticsBreakdownLevel || "category",
+          structure_hidden: normalizeStructureHidden(state.analyticsStructureHidden),
           category_kind: state.analyticsCategoryKind || "expense",
           granularity: state.analyticsGranularity || "day",
           top_operations_limit: state.analyticsTopOperationsLimit || 5,

@@ -15,6 +15,7 @@ class CategoryRepository:
                 Category.name,
                 Category.icon,
                 Category.kind,
+                Category.include_in_statistics,
                 Category.group_id,
                 Category.is_system,
                 CategoryGroup.name.label("group_name"),
@@ -58,6 +59,7 @@ class CategoryRepository:
                 Category.name,
                 Category.icon,
                 Category.kind,
+                Category.include_in_statistics,
                 Category.group_id,
                 Category.is_system,
                 CategoryGroup.name.label("group_name"),
@@ -78,8 +80,24 @@ class CategoryRepository:
         total = int(self.db.scalar(count_stmt) or 0)
         return items, total
 
-    def create(self, user_id: int, name: str, kind: str, group_id: int | None = None, icon: str | None = None) -> Category:
-        category = Category(user_id=user_id, name=name, icon=icon, kind=kind, group_id=group_id, is_system=False)
+    def create(
+        self,
+        user_id: int,
+        name: str,
+        kind: str,
+        group_id: int | None = None,
+        icon: str | None = None,
+        include_in_statistics: bool = True,
+    ) -> Category:
+        category = Category(
+            user_id=user_id,
+            name=name,
+            icon=icon,
+            kind=kind,
+            group_id=group_id,
+            is_system=False,
+            include_in_statistics=include_in_statistics,
+        )
         self.db.add(category)
         self.db.flush()
         return category

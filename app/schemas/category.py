@@ -7,6 +7,7 @@ class CategoryCreate(BaseModel):
     kind: str
     group_id: int | None = None
     icon: str | None = None
+    include_in_statistics: bool = True
 
 
 class CategoryUpdate(BaseModel):
@@ -14,6 +15,7 @@ class CategoryUpdate(BaseModel):
     kind: str | None = None
     group_id: int | None = None
     icon: str | None = None
+    include_in_statistics: bool | None = None
 
 
 class CategoryGroupCreate(BaseModel):
@@ -40,6 +42,7 @@ class CategoryOut(BaseModel):
     name: str
     icon: str | None = None
     kind: str
+    include_in_statistics: bool = True
     group_id: int | None
     group_name: str | None = None
     group_icon: str | None = None

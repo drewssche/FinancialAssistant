@@ -21,6 +21,8 @@
       analyticsGranularity: state.analyticsGranularity,
       analyticsMonthAnchor: state.analyticsMonthAnchor,
       dashboardAnalyticsPeriod: state.dashboardAnalyticsPeriod,
+      dashboardBreakdownLevel: state.dashboardBreakdownLevel,
+      dashboardCategoryKind: state.dashboardCategoryKind,
       filterQ: String(el.filterQ?.value || ""),
     };
   }
@@ -36,7 +38,7 @@
     state.operationsQuickView = snapshot.operationsQuickView || "all";
     state.operationsCategoryFilterId = snapshot.operationsCategoryFilterId ?? null;
     state.operationsCategoryFilterName = snapshot.operationsCategoryFilterName || "";
-    state.analyticsTab = snapshot.analyticsTab || "overview";
+    state.analyticsTab = snapshot.analyticsTab || "calendar";
     state.analyticsCalendarView = snapshot.analyticsCalendarView || "month";
     state.analyticsGlobalPeriod = snapshot.analyticsGlobalPeriod || "month";
     state.analyticsGlobalDateFrom = snapshot.analyticsGlobalDateFrom || "";
@@ -45,6 +47,8 @@
     state.analyticsGranularity = snapshot.analyticsGranularity || "day";
     state.analyticsMonthAnchor = snapshot.analyticsMonthAnchor || "";
     state.dashboardAnalyticsPeriod = snapshot.dashboardAnalyticsPeriod || "month";
+    state.dashboardBreakdownLevel = snapshot.dashboardBreakdownLevel || "category";
+    state.dashboardCategoryKind = snapshot.dashboardCategoryKind || "expense";
     if (el.filterQ) {
       el.filterQ.value = snapshot.filterQ || "";
     }
@@ -57,6 +61,8 @@
     window.App.core.syncSegmentedActive(el.analyticsCategoryKindTabs, "analytics-category-kind", state.analyticsCategoryKind);
     window.App.core.syncSegmentedActive(el.analyticsGranularityTabs, "analytics-granularity", state.analyticsGranularity);
     window.App.core.syncSegmentedActive(el.dashboardAnalyticsPeriodTabs, "dashboard-analytics-period", state.dashboardAnalyticsPeriod);
+    window.App.core.syncSegmentedActive(el.dashboardBreakdownLevelTabs, "dashboard-breakdown-level", state.dashboardBreakdownLevel);
+    window.App.core.syncSegmentedActive(el.dashboardCategoryKindTabs, "dashboard-category-kind", state.dashboardCategoryKind);
   }
 
   function updateSectionBackUi() {
@@ -72,9 +78,7 @@
         dashboard: "к Дашборду",
         analytics: last?.analyticsTab === "calendar"
           ? "к Календарю"
-          : last?.analyticsTab === "overview"
-            ? "к КПИ"
-            : last?.analyticsTab === "structure"
+          : last?.analyticsTab === "structure"
               ? "к Структуре"
               : last?.analyticsTab === "trends"
                   ? "к Трендам"

@@ -52,6 +52,9 @@
     }
     if (el.openAnalyticsTabBtn) {
       el.openAnalyticsTabBtn.addEventListener("click", () => {
+        if (actions.setAnalyticsTab) {
+          actions.setAnalyticsTab("structure");
+        }
         actions.switchSection("analytics").catch((err) => core.setStatus(String(err)));
       });
     }

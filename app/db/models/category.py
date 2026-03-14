@@ -16,4 +16,5 @@ class Category(Base):
     icon: Mapped[str | None] = mapped_column(String(50), nullable=True)
     kind: Mapped[str] = mapped_column(String(20), index=True)  # income|expense
     is_system: Mapped[bool] = mapped_column(Boolean, default=False)
+    include_in_statistics: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

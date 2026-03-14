@@ -29,7 +29,15 @@ class CategoryService:
             q=q,
         )
 
-    def create_category(self, user_id: int, name: str, kind: str, group_id: int | None = None, icon: str | None = None):
+    def create_category(
+        self,
+        user_id: int,
+        name: str,
+        kind: str,
+        group_id: int | None = None,
+        icon: str | None = None,
+        include_in_statistics: bool = True,
+    ):
         if kind not in {"income", "expense"}:
             raise ValueError("kind must be either 'income' or 'expense'")
         if group_id is not None:
@@ -38,7 +46,14 @@ class CategoryService:
                 raise ValueError("Group not found")
             if group.kind != kind:
                 raise ValueError("Group kind must match category kind")
-        category = self.repo.create(user_id=user_id, name=name, kind=kind, group_id=group_id, icon=icon)
+        category = self.repo.create(
+            user_id=user_id,
+            name=name,
+            kind=kind,
+            group_id=group_id,
+            icon=icon,
+            include_in_statistics=include_in_statistics,
+        )
         self.db.commit()
         self.db.refresh(category)
         return category
