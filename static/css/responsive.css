@@ -85,7 +85,7 @@
 
   #createDebtFields #debtStartDateField,
   #createDebtFields #createDebtDirectionSwitch,
-  #createDebtFields #debtCounterparty,
+  #createDebtFields #debtCounterpartyField,
   #createDebtFields #debtPrincipalField,
   #createDebtFields #debtDueField {
     grid-column: 1 / -1;
@@ -823,7 +823,7 @@
   .edit-modal-grid #editAmountField,
   #createDebtFields #debtStartDateField,
   #createDebtFields #createDebtDirectionSwitch,
-  #createDebtFields #debtCounterparty,
+  #createDebtFields #debtCounterpartyField,
   #createDebtFields #debtPrincipalField,
   #createDebtFields #debtDueField,
   #createDebtFields #debtNote,

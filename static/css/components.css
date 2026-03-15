@@ -502,7 +502,7 @@
 .analytics-category-breakdown-grid {
   margin-top: var(--space-3);
   display: grid;
-  grid-template-columns: minmax(26rem, 1fr) minmax(34rem, 1.12fr);
+  grid-template-columns: minmax(30rem, 1.14fr) minmax(34rem, 0.96fr);
   gap: var(--space-3);
   align-items: stretch;
 }
@@ -743,7 +743,7 @@
 }
 
 .dashboard-structure-grid {
-  grid-template-columns: minmax(0, 0.96fr) minmax(34rem, 1.1fr);
+  grid-template-columns: minmax(0, 1.12fr) minmax(34rem, 0.92fr);
   align-items: start;
 }
 

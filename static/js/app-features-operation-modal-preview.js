@@ -5,6 +5,7 @@
     core,
     getSelectedCreateCategoryId,
     getCategoryMetaById,
+    getDebtPreviewSnapshot,
   }) {
     function getReceiptSummaryCategory(receiptItems, fallbackCategoryId = null) {
       const categoryIds = Array.from(new Set(
@@ -154,14 +155,15 @@
       el.createPreviewBody.innerHTML = "";
       if (el.opEntryMode.value === "debt") {
         const row = document.createElement("tr");
-        const direction = el.debtDirection.value === "borrow" ? "borrow" : "lend";
+        const snapshot = typeof getDebtPreviewSnapshot === "function" ? getDebtPreviewSnapshot() : null;
+        const direction = snapshot?.direction === "borrow" ? "borrow" : "lend";
         const directionLabel = core.debtUi.debtDirectionActionLabel(direction);
         const directionClass = direction === "borrow" ? "expense" : "income";
-        const debtDate = core.parseDateInputValue(el.debtStartDate.value) || core.getTodayIso();
-        const debtDueDate = core.parseDateInputValue(el.debtDueDate.value) || "";
-        const debtCounterparty = (el.debtCounterparty.value || "").trim();
-        const debtPrincipal = core.formatMoney(core.resolveMoneyInput(el.debtPrincipal.value || 0).previewValue);
-        const debtNote = (el.debtNote.value || "").trim();
+        const debtDate = snapshot?.startDate || core.parseDateInputValue(el.debtStartDate.value) || core.getTodayIso();
+        const debtDueDate = snapshot?.dueDate || core.parseDateInputValue(el.debtDueDate.value) || "";
+        const debtCounterparty = snapshot?.counterparty || (el.debtCounterparty.value || "").trim();
+        const debtPrincipal = core.formatMoney(snapshot?.principalValue ?? core.resolveMoneyInput(el.debtPrincipal.value || 0).previewValue);
+        const debtNote = snapshot?.note ?? (el.debtNote.value || "").trim();
         row.classList.add("preview-row", `kind-row-${directionClass}`);
         row.appendChild(createPreviewCellButton("Дата", core.formatDateRu(debtDate), "debtStartDate"));
         row.appendChild(

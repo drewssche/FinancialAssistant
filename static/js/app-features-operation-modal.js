@@ -21,6 +21,7 @@
       group_name: category.group_name || "",
     };
   }
+  let getDebtPreviewSnapshot = null;
   const previewModule = window.App.operationModalPreview;
   const preview = previewModule?.build({
     state,
@@ -28,6 +29,7 @@
     core,
     getSelectedCreateCategoryId,
     getCategoryMetaById,
+    getDebtPreviewSnapshot: () => (typeof getDebtPreviewSnapshot === "function" ? getDebtPreviewSnapshot() : null),
   });
   const updateDebtDueHint = preview?.updateDebtDueHint || (() => {});
   const getCreateFormPreviewItem = preview?.getCreateFormPreviewItem || (() => ({}));
@@ -59,6 +61,7 @@
   const getCreateReceiptPayload = receipt.getCreateReceiptPayload || (() => []);
   const getEditReceiptPayload = receipt.getEditReceiptPayload || (() => []);
   const syncReceiptCategoriesToKind = receipt.syncReceiptCategoriesToKind || (() => {});
+  const createOperationModalDebtCounterpartyFeature = window.App.createOperationModalDebtCounterpartyFeature;
 
   function isCreateReceiptMode() {
     return el.opOperationMode?.value === "receipt";
@@ -76,6 +79,24 @@
   function applyDebtCurrencyUi() {
     core.applyMoneyInputs();
   }
+  const debtCounterpartyFeature = createOperationModalDebtCounterpartyFeature
+    ? createOperationModalDebtCounterpartyFeature({
+      state,
+      el,
+      core,
+      getCurrentDebtEditId: () => Number(state.editDebtCreateId || 0),
+      getCurrentDebtDirection: () => (el.debtDirection?.value === "borrow" ? "borrow" : "lend"),
+      getCurrentDebtPrincipalValue: () => {
+        const resolved = core.resolveMoneyInput(el.debtPrincipal?.value || 0);
+        return Number(resolved.previewValue || 0);
+      },
+      getCurrentDebtStartDate: () => core.parseDateInputValue(el.debtStartDate?.value || "") || core.getTodayIso(),
+      getCurrentDebtDueDate: () => core.parseDateInputValue(el.debtDueDate?.value || "") || "",
+      getCurrentDebtNote: () => String(el.debtNote?.value || "").trim(),
+      updateCreatePreview,
+    })
+    : {};
+  getDebtPreviewSnapshot = debtCounterpartyFeature.getDebtPreviewSnapshot || null;
   function setCreateOperationMode(mode) {
     const nextMode = mode === "receipt" ? "receipt" : "common";
     if (el.opOperationMode) {
@@ -88,6 +109,7 @@
     setReceiptEnabled(nextMode === "receipt", "create");
     updateCreateCategoryFieldUi();
     renderCreateCategoryPicker();
+    renderDebtCounterpartyPicker();
     updateCreatePreview();
   }
   function setEditOperationMode(mode) {
@@ -141,6 +163,7 @@
     }
     if (isDebt) {
       closeCreateCategoryPopover();
+      closeDebtCounterpartyPopover();
     }
     el.debtCounterparty.required = isDebt;
     el.debtPrincipal.required = isDebt;
@@ -150,6 +173,7 @@
       if (!el.debtStartDate.value) {
         core.syncDateFieldValue(el.debtStartDate, core.getTodayIso());
       }
+      renderDebtCounterpartyPicker();
       if (submit) {
         submit.textContent = state.editDebtCreateId ? "Сохранить долг" : "Создать долг";
       }
@@ -209,6 +233,7 @@
     clearReceiptItems("create");
     setCreateOperationMode("common");
     closeCreateCategoryPopover();
+    closeDebtCounterpartyPopover();
     el.debtCounterparty.value = "";
     el.debtPrincipal.value = "";
     el.debtStartDate.value = "";
@@ -219,6 +244,7 @@
     updateDebtDueHint();
     setCreateEntryMode("operation");
     renderCreateCategoryPicker();
+    renderDebtCounterpartyPicker();
     loadReceiptTemplateHints().catch(() => {});
     renderReceiptItems();
     renderReceiptSummary();
@@ -246,7 +272,7 @@
     if (createTitle) {
       createTitle.textContent = "Редактировать долг";
     }
-    el.debtCounterparty.value = payload.counterparty || "";
+    selectDebtCounterparty(payload.counterparty || "", { keepOpen: false });
     el.debtPrincipal.value = payload.principal || "";
     core.syncDateFieldValue(el.debtStartDate, payload.start_date || core.getTodayIso());
     core.syncDateFieldValue(el.debtDueDate, payload.due_date || "");
@@ -254,6 +280,7 @@
     setDebtDirection(payload.direction || "lend");
     setCreateEntryMode("debt");
     updateDebtDueHint();
+    renderDebtCounterpartyPicker();
     updateCreatePreview();
   }
   function openEditModal(item) {
@@ -336,15 +363,21 @@
   const handleCreateCategorySearchFocus = categoryFeature.handleCreateCategorySearchFocus || (() => {});
   const handleCreateCategorySearchInput = categoryFeature.handleCreateCategorySearchInput || (() => {});
   const handleCreateCategorySearchKeydown = categoryFeature.handleCreateCategorySearchKeydown || (() => {});
+  const handleDebtCounterpartySearchFocus = debtCounterpartyFeature.handleDebtCounterpartySearchFocus || (() => {});
+  const handleDebtCounterpartySearchInput = debtCounterpartyFeature.handleDebtCounterpartySearchInput || (() => {});
+  const handleDebtCounterpartySearchKeydown = debtCounterpartyFeature.handleDebtCounterpartySearchKeydown || (() => {});
   const handleEditCategorySearchFocus = categoryFeature.handleEditCategorySearchFocus || (() => {});
   const handleEditCategorySearchInput = categoryFeature.handleEditCategorySearchInput || (() => {});
   const handleEditCategorySearchKeydown = categoryFeature.handleEditCategorySearchKeydown || (() => {});
   const handleCreateCategoryOutsidePointer = categoryFeature.handleCreateCategoryOutsidePointer || (() => {});
+  const handleDebtCounterpartyOutsidePointer = debtCounterpartyFeature.handleDebtCounterpartyOutsidePointer || (() => {});
   const handleEditCategoryOutsidePointer = categoryFeature.handleEditCategoryOutsidePointer || (() => {});
   const handleCreateCategoryPickerClick = categoryFeature.handleCreateCategoryPickerClick || (() => {});
+  const handleDebtCounterpartyPickerClick = debtCounterpartyFeature.handleDebtCounterpartyPickerClick || (() => {});
   const handleEditCategoryPickerClick = categoryFeature.handleEditCategoryPickerClick || (() => {});
   const onCategoryCreated = categoryFeature.onCategoryCreated || (() => {});
   const selectCreateCategory = categoryFeature.selectCreateCategory || (() => {});
+  const selectDebtCounterparty = debtCounterpartyFeature.selectDebtCounterparty || (() => {});
   const selectEditCategory = categoryFeature.selectEditCategory || (() => {});
   window.App.operationModal = {
     trackCategoryUsage,
@@ -353,20 +386,28 @@
     updateCreatePreview,
     updateEditPreview,
     renderCreateCategoryPicker,
+    renderDebtCounterpartyPicker,
     renderEditCategoryPicker,
     openCreateCategoryPopover,
     closeCreateCategoryPopover,
+    openDebtCounterpartyPopover,
+    closeDebtCounterpartyPopover,
     openEditCategoryPopover,
     closeEditCategoryPopover,
     handleCreateCategoryPickerClick,
+    handleDebtCounterpartyPickerClick,
     handleEditCategoryPickerClick,
     handleCreateCategorySearchFocus,
     handleCreateCategorySearchInput,
     handleCreateCategorySearchKeydown,
+    handleDebtCounterpartySearchFocus,
+    handleDebtCounterpartySearchInput,
+    handleDebtCounterpartySearchKeydown,
     handleEditCategorySearchFocus,
     handleEditCategorySearchInput,
     handleEditCategorySearchKeydown,
     handleCreateCategoryOutsidePointer,
+    handleDebtCounterpartyOutsidePointer,
     handleEditCategoryOutsidePointer,
     handleReceiptItemsListInput,
     handleReceiptItemsListFocusIn,
@@ -380,6 +421,7 @@
     renderReceiptSummary,
     onCategoryCreated,
     selectCreateCategory,
+    selectDebtCounterparty,
     selectEditCategory,
     handleCreatePreviewClick,
     setDebtDirection,

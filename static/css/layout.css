@@ -503,8 +503,13 @@
   flex: 1;
 }
 
-#createDebtFields #debtCounterparty {
+#createDebtFields #debtCounterpartyField {
   grid-column: span 4;
+  width: 100%;
+}
+
+#createDebtFields #debtCounterparty {
+  width: 100%;
 }
 
 #createDebtFields #debtPrincipalField {

@@ -16,14 +16,19 @@
   const renderCreateCategoryPicker = operationModal.renderCreateCategoryPicker;
   const renderEditCategoryPicker = operationModal.renderEditCategoryPicker;
   const handleCreateCategoryPickerClick = operationModal.handleCreateCategoryPickerClick;
+  const handleDebtCounterpartyPickerClick = operationModal.handleDebtCounterpartyPickerClick;
   const handleEditCategoryPickerClick = operationModal.handleEditCategoryPickerClick;
   const handleCreateCategorySearchFocus = operationModal.handleCreateCategorySearchFocus;
   const handleCreateCategorySearchInput = operationModal.handleCreateCategorySearchInput;
   const handleCreateCategorySearchKeydown = operationModal.handleCreateCategorySearchKeydown;
+  const handleDebtCounterpartySearchFocus = operationModal.handleDebtCounterpartySearchFocus;
+  const handleDebtCounterpartySearchInput = operationModal.handleDebtCounterpartySearchInput;
+  const handleDebtCounterpartySearchKeydown = operationModal.handleDebtCounterpartySearchKeydown;
   const handleEditCategorySearchFocus = operationModal.handleEditCategorySearchFocus;
   const handleEditCategorySearchInput = operationModal.handleEditCategorySearchInput;
   const handleEditCategorySearchKeydown = operationModal.handleEditCategorySearchKeydown;
   const handleCreateCategoryOutsidePointer = operationModal.handleCreateCategoryOutsidePointer;
+  const handleDebtCounterpartyOutsidePointer = operationModal.handleDebtCounterpartyOutsidePointer;
   const handleEditCategoryOutsidePointer = operationModal.handleEditCategoryOutsidePointer;
   const handleReceiptOutsidePointer = operationModal.handleReceiptOutsidePointer;
   const handleReceiptItemsListInput = operationModal.handleReceiptItemsListInput;
@@ -174,10 +179,14 @@
     handleCreateCategorySearchFocus,
     handleCreateCategorySearchInput,
     handleCreateCategorySearchKeydown,
+    handleDebtCounterpartySearchFocus,
+    handleDebtCounterpartySearchInput,
+    handleDebtCounterpartySearchKeydown,
     handleEditCategorySearchFocus,
     handleEditCategorySearchInput,
     handleEditCategorySearchKeydown,
     handleCreateCategoryOutsidePointer,
+    handleDebtCounterpartyOutsidePointer,
     handleEditCategoryOutsidePointer,
     handleReceiptOutsidePointer,
     handleReceiptItemsListInput,
@@ -186,6 +195,7 @@
     handleReceiptItemsListClick,
     handlePullReceiptTotal,
     handleCreateCategoryPickerClick,
+    handleDebtCounterpartyPickerClick,
     handleEditCategoryPickerClick,
     setReceiptEnabled,
     renderReceiptSummary,

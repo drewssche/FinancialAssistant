@@ -67,7 +67,14 @@
               <button class="segmented-btn" data-debt-direction="borrow" type="button">Я взял</button>
             </div>
             <input id="debtDirection" type="hidden" value="lend" />
-            <input id="debtCounterparty" type="text" placeholder="Имя контрагента" />
+            <div id="debtCounterpartyField" class="create-category-field">
+              <input id="debtCounterparty" type="text" placeholder="Имя контрагента" autocomplete="off" />
+              <div id="debtCounterpartyPickerBlock" class="operation-category-picker app-popover hidden">
+                <div class="category-picker-block">
+                  <div id="debtCounterpartyAll" class="category-chip-list"></div>
+                </div>
+              </div>
+            </div>
             <div id="debtPrincipalField" class="money-input-wrap" data-money-input-wrap>
               <input id="debtPrincipal" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" />
             </div>

@@ -101,6 +101,35 @@
     }
     bindDateField("debtStartDate", actions.updateCreatePreview);
     bindDateField("debtDueDate", actions.updateCreatePreview);
+    if (el.debtCounterparty) {
+      el.debtCounterparty.addEventListener("focus", () => {
+        if (actions.handleDebtCounterpartySearchFocus) {
+          actions.handleDebtCounterpartySearchFocus();
+        }
+      });
+      el.debtCounterparty.addEventListener("click", () => {
+        if (actions.handleDebtCounterpartySearchFocus) {
+          actions.handleDebtCounterpartySearchFocus();
+        }
+      });
+      el.debtCounterparty.addEventListener("input", () => {
+        if (actions.handleDebtCounterpartySearchInput) {
+          actions.handleDebtCounterpartySearchInput();
+        }
+      });
+      el.debtCounterparty.addEventListener("keydown", (event) => {
+        if (actions.handleDebtCounterpartySearchKeydown) {
+          actions.handleDebtCounterpartySearchKeydown(event);
+        }
+      });
+    }
+    if (el.debtCounterpartyAll) {
+      el.debtCounterpartyAll.addEventListener("click", (event) => {
+        if (actions.handleDebtCounterpartyPickerClick) {
+          actions.handleDebtCounterpartyPickerClick(event);
+        }
+      });
+    }
     if (actions.updateDebtDueHint) {
       const dueNodes = [document.getElementById("debtStartDate"), document.getElementById("debtDueDate")];
       for (const node of dueNodes) {
@@ -384,6 +413,9 @@
       }
       if (actions.handleEditCategoryOutsidePointer) {
         actions.handleEditCategoryOutsidePointer(event);
+      }
+      if (actions.handleDebtCounterpartyOutsidePointer) {
+        actions.handleDebtCounterpartyOutsidePointer(event);
       }
       if (actions.handleReceiptOutsidePointer) {
         actions.handleReceiptOutsidePointer(event);
