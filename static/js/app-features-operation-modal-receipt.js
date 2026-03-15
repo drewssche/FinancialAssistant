@@ -187,6 +187,13 @@
         const total = receiptLineTotal(item);
         const isLast = idx === rows.length - 1;
         const removeHidden = isLast && isReceiptRowEmpty(item);
+        const pickerMode = receiptUiState.activePicker?.mode || "create";
+        const activeDraftId = Number(receiptUiState.activePicker?.draft_id || 0);
+        const activeField = receiptUiState.activePicker?.field || "";
+        const shopPickerOpen = activeDraftId === Number(item.draft_id) && activeField === "shop_name" && pickerMode === mode;
+        const namePickerOpen = activeDraftId === Number(item.draft_id) && activeField === "name" && pickerMode === mode;
+        const categoryPickerOpen = activeDraftId === Number(item.draft_id) && activeField === "category_id" && pickerMode === mode;
+        const hasOpenPicker = shopPickerOpen || namePickerOpen || categoryPickerOpen;
         const explicitCategoryId = item.category_id ? Number(item.category_id) : null;
         const effectiveCategoryId = explicitCategoryId || getReceiptDefaultCategoryId(mode);
         const categoryMeta = effectiveCategoryId
@@ -194,17 +201,17 @@
           : null;
         const categorySource = explicitCategoryId ? "explicit" : (categoryMeta ? "default" : "none");
         return `
-          <div class="receipt-item-row" data-receipt-mode="${mode}" data-receipt-item-id="${item.draft_id}">
-            <div class="receipt-shop-cell">
+          <div class="receipt-item-row ${hasOpenPicker ? "has-open-popover" : ""}" data-receipt-mode="${mode}" data-receipt-item-id="${item.draft_id}">
+            <div class="receipt-shop-cell ${shopPickerOpen ? "has-open-popover" : ""}">
               <input type="text" data-receipt-field="shop_name" value="${esc(item.shop_name || "")}" placeholder="Источник" />
-              <div class="receipt-shop-picker app-popover ${Number(receiptUiState.activePicker?.draft_id || 0) === Number(item.draft_id) && receiptUiState.activePicker?.field === "shop_name" && (receiptUiState.activePicker?.mode || "create") === mode ? "" : "hidden"}"></div>
+              <div class="receipt-shop-picker app-popover ${shopPickerOpen ? "" : "hidden"}"></div>
             </div>
-            <div class="receipt-name-cell">
+            <div class="receipt-name-cell ${namePickerOpen ? "has-open-popover" : ""}">
               <input type="text" data-receipt-field="name" value="${esc(item.name)}" placeholder="Позиция" />
               <span class="receipt-new-badge ${item.name && !item.template_id ? "" : "hidden"}">Новая позиция</span>
-              <div class="receipt-name-picker app-popover ${Number(receiptUiState.activePicker?.draft_id || 0) === Number(item.draft_id) && receiptUiState.activePicker?.field === "name" && (receiptUiState.activePicker?.mode || "create") === mode ? "" : "hidden"}"></div>
+              <div class="receipt-name-picker app-popover ${namePickerOpen ? "" : "hidden"}"></div>
             </div>
-            <div class="receipt-category-cell">
+            <div class="receipt-category-cell ${categoryPickerOpen ? "has-open-popover" : ""}">
               <span class="receipt-category-badge ${categorySource === "default" ? "" : "hidden"}">По умолчанию</span>
               <input
                 type="text"
@@ -215,7 +222,7 @@
                 placeholder="Категория"
                 autocomplete="off"
               />
-              <div class="receipt-category-picker app-popover ${Number(receiptUiState.activePicker?.draft_id || 0) === Number(item.draft_id) && receiptUiState.activePicker?.field === "category_id" && (receiptUiState.activePicker?.mode || "create") === mode ? "" : "hidden"}"></div>
+              <div class="receipt-category-picker app-popover ${categoryPickerOpen ? "" : "hidden"}"></div>
             </div>
             <input type="number" step="0.01" min="0" data-receipt-field="unit_price" value="${item.unit_price || ""}" placeholder="Цена" />
             <input type="number" step="0.001" min="0" data-receipt-field="quantity" value="${item.quantity || ""}" placeholder="Кол-во" />
