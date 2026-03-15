@@ -380,7 +380,6 @@
                 <span class="analytics-visibility-toggle-track"><span class="analytics-visibility-toggle-thumb"></span></span>
                 <span class="analytics-visibility-toggle-label">${item.is_visible_in_chart ? "Вкл" : "Выкл"}</span>
               </button>
-              <span class="muted-small">${canDrilldown ? "Перейти к операциям этой категории" : "Агрегация по группе без drilldown"}</span>
               ${canDrilldown ? '<button class="btn btn-secondary" type="button">Открыть операции</button>' : ""}
             </div>
           </article>

@@ -298,6 +298,11 @@
 .create-category-field {
   position: relative;
   min-width: 0;
+  z-index: 0;
+}
+
+.create-category-field:focus-within {
+  z-index: 18;
 }
 
 .create-category-field #opCategorySearch {
@@ -1166,6 +1171,11 @@
 .receipt-shop-cell {
   position: relative;
   min-width: 0;
+  z-index: 0;
+}
+
+.receipt-shop-cell:focus-within {
+  z-index: 18;
 }
 
 .receipt-shop-cell > input {
@@ -1202,6 +1212,11 @@
   position: relative;
   min-width: 0;
   padding-left: var(--space-1);
+  z-index: 0;
+}
+
+.receipt-name-cell:focus-within {
+  z-index: 18;
 }
 
 .receipt-name-cell > input {
@@ -1211,6 +1226,11 @@
 .receipt-category-cell {
   position: relative;
   min-width: 0;
+  z-index: 0;
+}
+
+.receipt-category-cell:focus-within {
+  z-index: 18;
 }
 
 .receipt-category-cell > input {

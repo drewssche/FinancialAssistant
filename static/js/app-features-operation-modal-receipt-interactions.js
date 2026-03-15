@@ -84,6 +84,18 @@
       );
       return btn;
     }
+
+    function createReceiptNoCategoryChipButton(selected) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "chip-btn chip-btn-meta";
+      if (selected) {
+        btn.classList.add("active");
+      }
+      btn.dataset.receiptCategoryId = "";
+      btn.innerHTML = core.renderMetaChip("Без категории");
+      return btn;
+    }
     function getReceiptTemplateMatch(token, shopName = "") {
       const normalizedToken = normalizeReceiptName(token).toLowerCase();
       if (!normalizedToken) {
@@ -298,15 +310,7 @@
       const normalizedQuery = displayedCategory && rawQuery.toLowerCase() === displayedCategory.name.toLowerCase() ? "" : rawQuery;
       const categories = getReceiptCategoriesSorted(kind, normalizedQuery);
       picker.innerHTML = "";
-      const clearBtn = document.createElement("button");
-      clearBtn.type = "button";
-      clearBtn.className = "chip-btn";
-      clearBtn.dataset.receiptCategoryId = "";
-      if (!selectedId && !effectiveCategoryId) {
-        clearBtn.classList.add("active");
-      }
-      clearBtn.textContent = "Без категории";
-      picker.appendChild(clearBtn);
+      picker.appendChild(createReceiptNoCategoryChipButton(!selectedId && !effectiveCategoryId));
       for (const item of categories) {
         const isActive = selectedId
           ? selectedId === Number(item.id)

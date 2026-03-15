@@ -815,7 +815,7 @@
 .analytics-insight-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: var(--space-2);
   margin-top: var(--space-1);
   min-width: 0;
@@ -826,7 +826,6 @@
   min-height: 2.25rem;
   padding-inline: var(--space-2);
   flex: 0 0 auto;
-  margin-left: auto;
 }
 
 .analytics-insight-actions .muted-small {
@@ -1428,6 +1427,10 @@ textarea {
   pointer-events: none;
 }
 
+.chip-btn .meta-chip {
+  pointer-events: none;
+}
+
 .chip-btn:hover {
   transform: translateY(-1px);
 }
@@ -1435,6 +1438,17 @@ textarea {
 .chip-btn.active .category-chip {
   border-color: rgba(255, 179, 71, 0.75);
   box-shadow: 0 0 0 1px rgba(255, 179, 71, 0.35);
+}
+
+.chip-btn.active .meta-chip {
+  border-color: rgba(255, 179, 71, 0.75);
+  box-shadow: 0 0 0 1px rgba(255, 179, 71, 0.35);
+  color: #f0d4aa;
+}
+
+.chip-btn-meta .meta-chip {
+  background: rgba(24, 36, 58, 0.78);
+  color: #cfdcf4;
 }
 
 .category-picker-block {
@@ -1918,7 +1932,7 @@ textarea {
   }
 
   .analytics-insight-actions .btn {
-    margin-left: 0;
+    width: 100%;
   }
 }
 

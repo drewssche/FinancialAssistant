@@ -127,6 +127,18 @@
       return btn;
     }
 
+    function createNoCategoryChipButton(selected) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "chip-btn chip-btn-meta";
+      if (selected) {
+        btn.classList.add("active");
+      }
+      btn.dataset.categoryId = "";
+      btn.innerHTML = core.renderMetaChip("Без категории");
+      return btn;
+    }
+
     function renderCategoryPicker(options = {}) {
       const {
         kind,
@@ -143,6 +155,7 @@
       const query = selectedCategory && rawQuery.toLowerCase() === selectedCategory.name.toLowerCase() ? "" : rawQuery;
       const categories = getCategoriesSorted(kind, query);
       targetNode.innerHTML = "";
+      targetNode.appendChild(createNoCategoryChipButton(!selectedId));
       for (const item of categories) {
         targetNode.appendChild(createCategoryChipButton(item, selectedId === item.id, query));
       }

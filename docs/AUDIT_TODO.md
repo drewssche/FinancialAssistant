@@ -107,7 +107,7 @@
 - `static/css/components.css` (~2038)
 - `static/css/layout.css` (~1380)
 - `static/css/responsive.css` (~948)
-- `app/services/dashboard_service.py` (~881)
+- `app/services/dashboard_analytics.py` (~790)
 - `static/js/templates/shell.js` (~721)
 - `static/js/app-init-features.js` (~667)
 - `app/services/operation_service.py` (~592)
@@ -120,6 +120,7 @@
 - `static/js/app-core.js` reduced below threshold by extracting `static/js/app-core-state.js` and `static/js/app-core-elements.js`
 - `static/js/app-features-analytics-highlights.js` reduced below threshold by extracting `static/js/app-features-analytics-shared.js` and `static/js/app-features-analytics-highlights-ui.js`
 - `static/js/app-features-session.js` reduced below threshold by extracting `static/js/app-features-session-auth.js` and `static/js/app-features-session-preferences.js`
+- `app/services/dashboard_service.py` reduced below threshold by extracting analytics domain logic to `app/services/dashboard_analytics.py`
 - Priority direction:
 - first split high-churn JS modules with mixed responsibilities (`operation modal`, `operations`, `session`, `analytics highlights`)
 - then split backend read/write service hot spots (`dashboard_service`, `operation_service`, `operation_repo`)
