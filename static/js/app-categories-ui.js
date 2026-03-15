@@ -372,6 +372,7 @@
     el.createCategoryModal.classList.add("hidden");
     if (clearPending) {
       state.pendingCreateCategoryFromOperation = "";
+      state.pendingCreateCategoryFromReceipt = null;
     }
   }
 

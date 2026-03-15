@@ -504,7 +504,7 @@
   display: grid;
   grid-template-columns: minmax(32rem, 1.65fr) minmax(14rem, 0.5fr);
   gap: var(--space-3);
-  align-items: start;
+  align-items: stretch;
 }
 
 .analytics-category-breakdown-chart-card {
@@ -728,6 +728,12 @@
 .analytics-insight-list {
   display: grid;
   gap: var(--space-3);
+}
+
+#analyticsCategoryBreakdownList {
+  max-height: 34rem;
+  overflow-y: auto;
+  padding-right: 0.25rem;
 }
 
 .dashboard-structure-grid {

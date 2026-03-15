@@ -1,15 +1,9 @@
 (() => {
   const { state, el, core } = window.App;
+  const shared = window.App.analyticsShared || {};
   const TREND_CACHE_TTL_MS = 20000;
-
-  function escapeHtml(value) {
-    return String(value ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#39;");
-  }
+  const escapeHtml = shared.escapeHtml || ((value) => String(value ?? ""));
+  const sharedFormatPct = shared.formatPct || ((value) => String(value ?? ""));
 
   function pointsToPolyline(points, valueExtractor, width, height, minValue, maxValue) {
     if (!points.length) {
@@ -28,12 +22,7 @@
   }
 
   function formatPct(value) {
-    if (value === null || value === undefined || Number.isNaN(Number(value))) {
-      return "нет базы";
-    }
-    const num = Number(value);
-    const sign = num > 0 ? "+" : "";
-    return `${sign}${num.toFixed(1)}%`;
+    return sharedFormatPct(value);
   }
 
   function formatChangeArrow(previous, current, formatter = (value) => String(value)) {

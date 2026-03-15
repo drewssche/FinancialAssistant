@@ -245,6 +245,7 @@
   }
 
   Object.assign(core, {
+    escapeHtml,
     highlightText,
     renderCategoryChip,
     renderMetaChip,

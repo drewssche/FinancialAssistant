@@ -860,7 +860,7 @@
 
   .receipt-item-row .receipt-shop-cell,
   .receipt-item-row .receipt-name-cell,
-  .receipt-item-row select[data-receipt-field="category_id"],
+  .receipt-item-row .receipt-category-cell,
   .receipt-item-row .receipt-line-total {
     grid-column: 1 / -1;
   }
@@ -876,7 +876,8 @@
 
   .operation-category-picker,
   .receipt-shop-picker,
-  .receipt-name-picker {
+  .receipt-name-picker,
+  .receipt-category-picker {
     max-height: min(38dvh, 320px);
   }
 

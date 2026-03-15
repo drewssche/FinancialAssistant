@@ -36,7 +36,7 @@ services:
     depends_on:
       app:
         condition: service_started
-    mem_limit: 192m
+    mem_limit: 128m
     cpus: 0.15
     stop_grace_period: 20s
     logging:
@@ -55,16 +55,16 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     command: >
       postgres
-      -c shared_buffers=64MB
+      -c shared_buffers=32MB
       -c work_mem=2MB
-      -c maintenance_work_mem=32MB
-      -c effective_cache_size=256MB
-      -c max_connections=20
+      -c maintenance_work_mem=16MB
+      -c effective_cache_size=128MB
+      -c max_connections=10
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    mem_limit: 512m
-    cpus: 0.35
-    shm_size: 64m
+    mem_limit: 384m
+    cpus: 0.30
+    shm_size: 32m
     stop_grace_period: 30s
     logging:
       options:
@@ -80,8 +80,8 @@ services:
     image: redis:7-alpine
     container_name: financial_assistant_redis
     restart: unless-stopped
-    command: redis-server --save "" --appendonly no --maxmemory 64mb --maxmemory-policy allkeys-lru
-    mem_limit: 128m
+    command: redis-server --save "" --appendonly no --maxmemory 32mb --maxmemory-policy allkeys-lru
+    mem_limit: 64m
     cpus: 0.10
     stop_grace_period: 20s
     logging:

@@ -73,29 +73,16 @@
       return mode === "edit" ? (el.editKind?.value || "expense") : (el.opKind?.value || "expense");
     }
 
+    function getReceiptDefaultCategoryId(mode = "create") {
+      return mode === "edit"
+        ? (el.editCategory?.value ? Number(el.editCategory.value) : null)
+        : (el.opCategory?.value ? Number(el.opCategory.value) : null);
+    }
+
     function isReceiptModeEnabled(mode = "create") {
       return mode === "edit"
         ? el.editOperationMode?.value === "receipt"
         : el.opOperationMode?.value === "receipt";
-    }
-
-    function getReceiptCategoryOptions(mode = "create") {
-      const kind = getReceiptOperationKind(mode);
-      return (state.categories || [])
-        .filter((item) => item.kind === kind)
-        .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "ru"));
-    }
-
-    function renderReceiptCategoryOptions(mode = "create", selectedCategoryId = null) {
-      const options = getReceiptCategoryOptions(mode);
-      const normalizedSelected = selectedCategoryId ? Number(selectedCategoryId) : null;
-      const base = [`<option value="">Без категории</option>`];
-      for (const option of options) {
-        base.push(
-          `<option value="${option.id}" ${normalizedSelected === Number(option.id) ? "selected" : ""}>${String(option.name || "")}</option>`,
-        );
-      }
-      return base.join("");
     }
 
     function createReceiptDraft(seed = {}, mode = "create") {
@@ -200,7 +187,12 @@
         const total = receiptLineTotal(item);
         const isLast = idx === rows.length - 1;
         const removeHidden = isLast && isReceiptRowEmpty(item);
-        const categoryOptions = renderReceiptCategoryOptions(mode, item.category_id);
+        const explicitCategoryId = item.category_id ? Number(item.category_id) : null;
+        const effectiveCategoryId = explicitCategoryId || getReceiptDefaultCategoryId(mode);
+        const categoryMeta = effectiveCategoryId
+          ? (state.categories || []).find((entry) => Number(entry.id) === effectiveCategoryId)
+          : null;
+        const categorySource = explicitCategoryId ? "explicit" : (categoryMeta ? "default" : "none");
         return `
           <div class="receipt-item-row" data-receipt-mode="${mode}" data-receipt-item-id="${item.draft_id}">
             <div class="receipt-shop-cell">
@@ -212,9 +204,19 @@
               <span class="receipt-new-badge ${item.name && !item.template_id ? "" : "hidden"}">Новая позиция</span>
               <div class="receipt-name-picker ${Number(receiptUiState.activePicker?.draft_id || 0) === Number(item.draft_id) && receiptUiState.activePicker?.field === "name" && (receiptUiState.activePicker?.mode || "create") === mode ? "" : "hidden"}"></div>
             </div>
-            <select data-receipt-field="category_id" aria-label="Категория позиции">
-              ${categoryOptions}
-            </select>
+            <div class="receipt-category-cell">
+              <span class="receipt-category-badge ${categorySource === "default" ? "" : "hidden"}">По умолчанию</span>
+              <input
+                type="text"
+                data-receipt-field="category_search"
+                value="${esc(categoryMeta?.name || "")}"
+                data-receipt-category-source="${categorySource}"
+                data-receipt-effective-category-id="${effectiveCategoryId || ""}"
+                placeholder="Категория"
+                autocomplete="off"
+              />
+              <div class="receipt-category-picker ${Number(receiptUiState.activePicker?.draft_id || 0) === Number(item.draft_id) && receiptUiState.activePicker?.field === "category_id" && (receiptUiState.activePicker?.mode || "create") === mode ? "" : "hidden"}"></div>
+            </div>
             <input type="number" step="0.01" min="0" data-receipt-field="unit_price" value="${item.unit_price || ""}" placeholder="Цена" />
             <input type="number" step="0.001" min="0" data-receipt-field="quantity" value="${item.quantity || ""}" placeholder="Кол-во" />
             <div class="receipt-line-total"><span>Итого</span><strong>${core.formatMoney(total, { withCurrency: false })}</strong></div>
@@ -342,7 +344,12 @@
     }
 
     function syncReceiptCategoriesToKind(mode = "create") {
-      const allowedIds = new Set(getReceiptCategoryOptions(mode).map((item) => Number(item.id)));
+      const kind = getReceiptOperationKind(mode);
+      const allowedIds = new Set(
+        (state.categories || [])
+          .filter((item) => item.kind === kind)
+          .map((item) => Number(item.id)),
+      );
       for (const item of getReceiptItems(mode)) {
         if (item.category_id && !allowedIds.has(Number(item.category_id))) {
           item.category_id = null;

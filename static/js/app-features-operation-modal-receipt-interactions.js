@@ -19,6 +19,7 @@
       updateEditPreview,
       RECEIPT_TEMPLATES_CACHE_TTL_MS,
     } = deps;
+    const CATEGORY_USAGE_KEY = "fa_category_usage_v1";
     function escHtml(value) {
       return String(value ?? "")
         .replaceAll("&", "&amp;")
@@ -26,6 +27,62 @@
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#39;");
+    }
+    function readCategoryUsage() {
+      try {
+        const raw = localStorage.getItem(CATEGORY_USAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : {};
+        return parsed && typeof parsed === "object" ? parsed : {};
+      } catch {
+        return {};
+      }
+    }
+    function getReceiptCategoriesSorted(kind, query = "") {
+      const usage = readCategoryUsage();
+      const normalizedQuery = String(query || "").trim().toLowerCase();
+      return (state.categories || [])
+        .filter((item) => item.kind === kind)
+        .filter((item) => {
+          if (!normalizedQuery) {
+            return true;
+          }
+          return item.name.toLowerCase().includes(normalizedQuery) || (item.group_name || "").toLowerCase().includes(normalizedQuery);
+        })
+        .map((item) => ({ ...item, usage: Number(usage[String(item.id)] || 0) }))
+        .sort((a, b) => {
+          if (b.usage !== a.usage) {
+            return b.usage - a.usage;
+          }
+          const colorA = (a.group_accent_color || "~").toLowerCase();
+          const colorB = (b.group_accent_color || "~").toLowerCase();
+          if (colorA !== colorB) {
+            return colorA.localeCompare(colorB, "ru");
+          }
+          const groupA = (a.group_name || "~").toLowerCase();
+          const groupB = (b.group_name || "~").toLowerCase();
+          if (groupA !== groupB) {
+            return groupA.localeCompare(groupB, "ru");
+          }
+          return a.name.localeCompare(b.name, "ru");
+        });
+    }
+    function createReceiptCategoryChipButton(category, selected, searchQuery = "") {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "chip-btn";
+      if (selected) {
+        btn.classList.add("active");
+      }
+      btn.dataset.receiptCategoryId = String(category.id);
+      btn.innerHTML = core.renderCategoryChip(
+        {
+          name: category.name,
+          icon: category.icon || category.group_icon || null,
+          accent_color: category.group_accent_color || null,
+        },
+        searchQuery,
+      );
+      return btn;
     }
     function getReceiptTemplateMatch(token, shopName = "") {
       const normalizedToken = normalizeReceiptName(token).toLowerCase();
@@ -123,6 +180,7 @@
         }
         listNode.querySelectorAll(".receipt-shop-picker").forEach((node) => node.classList.add("hidden"));
         listNode.querySelectorAll(".receipt-name-picker").forEach((node) => node.classList.add("hidden"));
+        listNode.querySelectorAll(".receipt-category-picker").forEach((node) => node.classList.add("hidden"));
       }
       receiptUiState.activePicker = null;
     }
@@ -196,6 +254,82 @@
       picker.innerHTML = `${suggestionsHtml}${createHtml}` || "<span class='muted-small'>Нет совпадений</span>";
       picker.classList.remove("hidden");
       receiptUiState.activePicker = { draft_id: Number(rowItem.draft_id), field: "name", mode: getReceiptModeFromNode(rowNode) };
+    }
+    function openCreateCategoryFromReceipt(rowNode, rowItem, query) {
+      const trimmed = String(query || "").trim();
+      if (!trimmed) {
+        return;
+      }
+      const mode = getReceiptModeFromNode(rowNode);
+      const kind = mode === "edit" ? (el.editKind?.value || "expense") : (el.opKind?.value || "expense");
+      state.pendingCreateCategoryFromReceipt = {
+        draft_id: Number(rowItem.draft_id),
+        mode,
+        kind,
+        query: trimmed,
+      };
+      hideAllReceiptPickers();
+      if (window.App.actions?.openCreateCategoryModal) {
+        window.App.actions.openCreateCategoryModal({
+          kind,
+          prefillName: trimmed,
+          reset: true,
+        });
+      }
+    }
+    function renderReceiptCategoryPickerForRow(rowNode, rowItem, query) {
+      if (!rowNode || !rowItem) {
+        return;
+      }
+      const picker = rowNode.querySelector(".receipt-category-picker");
+      const input = rowNode.querySelector('[data-receipt-field="category_search"]');
+      if (!picker || !input) {
+        return;
+      }
+      hideAllReceiptPickers();
+      const mode = getReceiptModeFromNode(rowNode);
+      const kind = mode === "edit" ? (el.editKind?.value || "expense") : (el.opKind?.value || "expense");
+      const selectedId = rowItem.category_id ? Number(rowItem.category_id) : null;
+      const effectiveCategoryId = Number(input.dataset.receiptEffectiveCategoryId || 0) || null;
+      const displayedCategory = (state.categories || []).find((item) => (
+        Number(item.id) === Number(selectedId || effectiveCategoryId || 0) && item.kind === kind
+      ));
+      const rawQuery = String(query ?? input.value ?? "").trim();
+      const normalizedQuery = displayedCategory && rawQuery.toLowerCase() === displayedCategory.name.toLowerCase() ? "" : rawQuery;
+      const categories = getReceiptCategoriesSorted(kind, normalizedQuery);
+      picker.innerHTML = "";
+      const clearBtn = document.createElement("button");
+      clearBtn.type = "button";
+      clearBtn.className = "chip-btn";
+      clearBtn.dataset.receiptCategoryId = "";
+      if (!selectedId && !effectiveCategoryId) {
+        clearBtn.classList.add("active");
+      }
+      clearBtn.textContent = "Без категории";
+      picker.appendChild(clearBtn);
+      for (const item of categories) {
+        const isActive = selectedId
+          ? selectedId === Number(item.id)
+          : effectiveCategoryId === Number(item.id);
+        picker.appendChild(createReceiptCategoryChipButton(item, isActive, normalizedQuery));
+      }
+      if (!categories.length && normalizedQuery) {
+        const createChip = document.createElement("button");
+        createChip.type = "button";
+        createChip.className = "chip-btn chip-btn-create";
+        createChip.dataset.receiptCreateCategory = normalizedQuery;
+        createChip.dataset.receiptItemId = String(rowItem.draft_id);
+        createChip.textContent = `+ Создать категорию «${normalizedQuery}»`;
+        picker.appendChild(createChip);
+      }
+      if (!categories.length && !normalizedQuery) {
+        const empty = document.createElement("span");
+        empty.className = "muted-small";
+        empty.textContent = "Без категорий для выбранного типа";
+        picker.appendChild(empty);
+      }
+      picker.classList.remove("hidden");
+      receiptUiState.activePicker = { draft_id: Number(rowItem.draft_id), field: "category_id", mode };
     }
     async function loadReceiptTemplates(query = "") {
       const normalized = String(query || "").trim().toLowerCase();
@@ -289,18 +423,18 @@
       if (!updated?.item) {
         return;
       }
-        if (field === "name") {
-          const token = normalizeReceiptName(event.target.value).toLowerCase();
-          const matched = getReceiptTemplateMatch(token, updated.item.shop_name || "");
-          if (matched) {
-            updated.item.template_id = matched.id;
-            updated.item.shop_name = normalizeReceiptName(matched.shop_name || updated.item.shop_name || "");
-            if (!updated.item.category_id && matched.last_category_id) {
-              updated.item.category_id = Number(matched.last_category_id);
-            }
-            if (!updated.item.unit_price || Number(updated.item.unit_price) <= 0) {
-              updated.item.unit_price = matched.latest_unit_price || 0;
-              const rowPriceInput = row.querySelector('[data-receipt-field="unit_price"]');
+      if (field === "name") {
+        const token = normalizeReceiptName(event.target.value).toLowerCase();
+        const matched = getReceiptTemplateMatch(token, updated.item.shop_name || "");
+        if (matched) {
+          updated.item.template_id = matched.id;
+          updated.item.shop_name = normalizeReceiptName(matched.shop_name || updated.item.shop_name || "");
+          if (!updated.item.category_id && matched.last_category_id) {
+            updated.item.category_id = Number(matched.last_category_id);
+          }
+          if (!updated.item.unit_price || Number(updated.item.unit_price) <= 0) {
+            updated.item.unit_price = matched.latest_unit_price || 0;
+            const rowPriceInput = row.querySelector('[data-receipt-field="unit_price"]');
             if (rowPriceInput) {
               rowPriceInput.value = core.formatAmount(updated.item.unit_price);
             }
@@ -320,11 +454,17 @@
           totalCell.innerHTML = `<span>Итого</span><strong>${core.formatMoney(receiptLineTotal(updated.item), { withCurrency: false })}</strong>`;
         }
       }
+      if (field === "category_search") {
+        updated.item.category_id = null;
+      }
       if (field === "shop_name") {
         renderReceiptShopPickerForRow(row, updated.item, event.target.value);
       }
       if (field === "name") {
         renderReceiptNamePickerForRow(row, updated.item, event.target.value);
+      }
+      if (field === "category_search") {
+        renderReceiptCategoryPickerForRow(row, updated.item, event.target.value);
       }
       if (!structureChanged) {
         renderReceiptSummary(mode);
@@ -358,11 +498,18 @@
               renderReceiptNamePickerForRow(restoredRow, restoredItem, restoredInput.value);
             }
           }
+          if (field === "category_search") {
+            const restoredRow = restoredInput.closest("[data-receipt-item-id]");
+            const restoredItem = getReceiptItemByDraftId(draftId, mode);
+            if (restoredRow && restoredItem) {
+              renderReceiptCategoryPickerForRow(restoredRow, restoredItem, restoredInput.value);
+            }
+          }
         }
       }
     }
     function handleReceiptItemsListFocusIn(event) {
-      const input = event.target.closest('[data-receipt-field="name"], [data-receipt-field="shop_name"]');
+      const input = event.target.closest('[data-receipt-field="name"], [data-receipt-field="shop_name"], [data-receipt-field="category_search"]');
       if (!input) return;
       const row = input.closest("[data-receipt-item-id]");
       if (!row) return;
@@ -375,10 +522,14 @@
         renderReceiptShopPickerForRow(row, rowItem, input.value);
         return;
       }
+      if (field === "category_search") {
+        renderReceiptCategoryPickerForRow(row, rowItem, input.value);
+        return;
+      }
       renderReceiptNamePickerForRow(row, rowItem, input.value);
     }
     function handleReceiptItemsListKeydown(event) {
-      const input = event.target.closest('[data-receipt-field="name"], [data-receipt-field="shop_name"]');
+      const input = event.target.closest('[data-receipt-field="name"], [data-receipt-field="shop_name"], [data-receipt-field="category_search"]');
       if (!input) return;
       const row = input.closest("[data-receipt-item-id]");
       if (!row) return;
@@ -389,7 +540,9 @@
       if (event.key === "Escape") {
         const picker = input.dataset.receiptField === "shop_name"
           ? row.querySelector(".receipt-shop-picker")
-          : row.querySelector(".receipt-name-picker");
+          : input.dataset.receiptField === "category_search"
+            ? row.querySelector(".receipt-category-picker")
+            : row.querySelector(".receipt-name-picker");
         picker?.classList.add("hidden");
         receiptUiState.activePicker = null;
         return;
@@ -404,6 +557,20 @@
         const firstShop = shops[0] || query;
         rowItem.shop_name = normalizeReceiptName(firstShop);
         rowItem.template_id = null;
+        commitReceiptRowMutation(mode);
+        return;
+      }
+      if (field === "category_search") {
+        const categories = getReceiptCategoriesSorted(
+          mode === "edit" ? (el.editKind?.value || "expense") : (el.opKind?.value || "expense"),
+          query,
+        );
+        if (categories.length) {
+          rowItem.category_id = Number(categories[0].id);
+        } else {
+          openCreateCategoryFromReceipt(row, rowItem, query);
+          return;
+        }
         commitReceiptRowMutation(mode);
         return;
       }
@@ -491,6 +658,24 @@
         }
         return;
       }
+      const categoryBtn = event.target.closest("button[data-receipt-category-id], button[data-receipt-create-category]");
+      if (categoryBtn) {
+        const draftId = Number(categoryBtn.dataset.receiptItemId || 0) || Number(categoryBtn.closest("[data-receipt-item-id]")?.dataset.receiptItemId || 0);
+        const row = categoryBtn.closest("[data-receipt-item-id]");
+        const mode = getReceiptModeFromNode(row);
+        const rowItem = getReceiptItemByDraftId(draftId, mode);
+        if (!rowItem || !row) {
+          return;
+        }
+        if (categoryBtn.dataset.receiptCreateCategory) {
+          openCreateCategoryFromReceipt(row, rowItem, categoryBtn.dataset.receiptCreateCategory || "");
+          return;
+        }
+        rowItem.category_id = categoryBtn.dataset.receiptCategoryId ? Number(categoryBtn.dataset.receiptCategoryId) : null;
+        receiptUiState.activePicker = null;
+        commitReceiptRowMutation(mode);
+        return;
+      }
       const removeBtn = event.target.closest("button[data-receipt-remove-id]");
       if (!removeBtn) return;
       const row = removeBtn.closest("[data-receipt-item-id]");
@@ -502,7 +687,9 @@
       const insideShopPicker = event.target.closest(".receipt-shop-picker");
       const insideActiveNameCell = event.target.closest(".receipt-name-cell");
       const insidePicker = event.target.closest(".receipt-name-picker");
-      if (insideShopCell || insideShopPicker || insideActiveNameCell || insidePicker) {
+      const insideCategoryCell = event.target.closest(".receipt-category-cell");
+      const insideCategoryPicker = event.target.closest(".receipt-category-picker");
+      if (insideShopCell || insideShopPicker || insideActiveNameCell || insidePicker || insideCategoryCell || insideCategoryPicker) {
         return;
       }
       hideAllReceiptPickers();

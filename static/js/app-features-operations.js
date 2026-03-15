@@ -25,29 +25,8 @@
   const loadDebtsCards = debtFeatures.loadDebtsCards;
   const loadItemCatalog = itemCatalogFeatures.loadItemCatalog;
   const OPERATIONS_SUMMARY_CACHE_TTL_MS = 15000;
-
-  function operationsQuickViewLabel(value) {
-    if (value === "receipt") {
-      return "Срез: Только с чеком";
-    }
-    if (value === "large") {
-      return `Срез: Крупные от ${core.formatMoney(100)}`;
-    }
-    if (value === "uncategorized") {
-      return "Срез: Без категории";
-    }
-    return "";
-  }
-
-  function operationsKindLabel(value) {
-    if (value === "expense") {
-      return "Тип: Только расходы";
-    }
-    if (value === "income") {
-      return "Тип: Только доходы";
-    }
-    return "";
-  }
+  const createOperationsMutationFeature = window.App.createOperationsMutationFeature;
+  const createOperationsDisplayFeature = window.App.createOperationsDisplayFeature;
 
   function invalidateAllTimeAnchor() {
     state.firstOperationDate = "";
@@ -107,8 +86,18 @@
       return;
     }
     const hasCategory = state.operationsCategoryFilterId !== null && state.operationsCategoryFilterId !== undefined && state.operationsCategoryFilterId !== "";
-    const quickViewLabel = operationsQuickViewLabel(state.operationsQuickView || "all");
-    const kindLabel = operationsKindLabel(state.filterKind || "");
+    const quickViewLabel = state.operationsQuickView === "receipt"
+      ? "Срез: Только с чеком"
+      : state.operationsQuickView === "large"
+        ? `Срез: Крупные от ${core.formatMoney(100)}`
+        : state.operationsQuickView === "uncategorized"
+          ? "Срез: Без категории"
+          : "";
+    const kindLabel = state.filterKind === "expense"
+      ? "Тип: Только расходы"
+      : state.filterKind === "income"
+        ? "Тип: Только доходы"
+        : "";
     const hasQuickView = Boolean(quickViewLabel);
     const hasKind = Boolean(kindLabel);
     el.operationsActiveFilters.classList.toggle("hidden", !hasCategory && !hasQuickView && !hasKind);
@@ -271,28 +260,10 @@
       return;
     }
     for (const item of sortedItems) {
-      const hasReceiptItems = Array.isArray(item.receipt_items) && item.receipt_items.length > 0;
-      const receiptCategoryIds = hasReceiptItems
-        ? Array.from(new Set(
-          item.receipt_items
-            .map((row) => Number(row.category_id || 0))
-            .filter((value) => value > 0),
-        ))
-        : [];
-      let categoryMeta = getCategoryMetaById(item.category_id);
-      if (hasReceiptItems) {
-        if (receiptCategoryIds.length === 1) {
-          categoryMeta = getCategoryMetaById(receiptCategoryIds[0]);
-        } else if (receiptCategoryIds.length > 1) {
-          categoryMeta = { name: "Несколько категорий", icon: null, accent_color: null };
-        } else if (!categoryMeta) {
-          categoryMeta = null;
-        }
-      }
       el.operationsBody.appendChild(
         core.createOperationRow(item, {
           searchQuery: query,
-          category: categoryMeta,
+          category: getOperationDisplayCategory(item),
           selectable: true,
           selected: state.selectedOperationIds.has(item.id),
         }),
@@ -434,298 +405,12 @@
     await loadOperations({ reset: true, force: true });
     await savePreferences();
   }
-  function isSectionVisible(section) {
-    return state.activeSection === section;
-  }
-
-  async function refreshAfterOperationMutation() {
-    const tasks = [loadOperations({ reset: true })];
-    if (isSectionVisible("dashboard")) {
-      tasks.push(loadDashboard(), loadDashboardOperations());
-      if (window.App.actions.loadDashboardAnalyticsPreview) {
-        tasks.push(window.App.actions.loadDashboardAnalyticsPreview({ force: true }));
-      }
-    }
-    if (isSectionVisible("analytics") && window.App.actions.loadAnalyticsSection) {
-      tasks.push(window.App.actions.loadAnalyticsSection({ force: true }));
-    }
-    await Promise.all(tasks);
-  }
-
-  async function refreshAfterDebtMutation() {
-    const tasks = [];
-    if (isSectionVisible("debts") || isSectionVisible("dashboard")) {
-      tasks.push(loadDebtsCards());
-    }
-    if (isSectionVisible("dashboard")) {
-      tasks.push(loadDashboard());
-      if (window.App.actions.loadDashboardAnalyticsPreview) {
-        tasks.push(window.App.actions.loadDashboardAnalyticsPreview({ force: true }));
-      }
-    }
-    if (isSectionVisible("analytics") && window.App.actions.loadAnalyticsSection) {
-      tasks.push(window.App.actions.loadAnalyticsSection({ force: true }));
-    }
-    if (!tasks.length) {
-      return;
-    }
-    await Promise.all(tasks);
-  }
-
-  function getValidatedCreateOperationPayload() {
-    const operationDate = core.parseDateInputValue(document.getElementById("opDate").value);
-    if (!operationDate) {
-      throw new Error("Проверь дату операции");
-    }
-    const receiptItems = getCreateReceiptPayload ? getCreateReceiptPayload() : [];
-    const amount = core.resolveMoneyInput(document.getElementById("opAmount").value);
-    const hasReceiptItems = receiptItems.length > 0;
-    const canDeriveAmountFromReceipt = hasReceiptItems && amount.empty;
-    if (!canDeriveAmountFromReceipt && (!amount.valid || amount.value <= 0)) {
-      throw new Error("Проверь сумму операции");
-    }
-    return {
-      kind: el.opKind.value,
-      category_id: el.opCategory.value ? Number(el.opCategory.value) : null,
-      amount: canDeriveAmountFromReceipt ? null : amount.formatted,
-      operation_date: operationDate,
-      note: document.getElementById("opNote").value,
-      receipt_items: receiptItems,
-    };
-  }
-
-  function getValidatedUpdateOperationPayload() {
-    const operationDate = core.parseDateInputValue(document.getElementById("editDate").value);
-    if (!operationDate) {
-      throw new Error("Проверь дату операции");
-    }
-    const receiptItems = getEditReceiptPayload ? getEditReceiptPayload() : [];
-    const amount = core.resolveMoneyInput(document.getElementById("editAmount").value);
-    const hasReceiptItems = receiptItems.length > 0;
-    const canDeriveAmountFromReceipt = hasReceiptItems && amount.empty;
-    if (!canDeriveAmountFromReceipt && (!amount.valid || amount.value <= 0)) {
-      throw new Error("Проверь сумму операции");
-    }
-    return {
-      kind: el.editKind.value,
-      category_id: el.editCategory.value ? Number(el.editCategory.value) : null,
-      amount: canDeriveAmountFromReceipt ? null : amount.formatted,
-      operation_date: operationDate,
-      note: document.getElementById("editNote").value,
-      receipt_items: receiptItems,
-    };
-  }
-
-  async function createOperation(event) {
-    event.preventDefault();
-    if (el.opEntryMode.value === "debt") {
-      const startDate = core.parseDateInputValue(el.debtStartDate.value);
-      const dueDate = core.parseDateInputValue(el.debtDueDate.value);
-      if (!startDate) {
-        throw new Error("Проверь дату долга");
-      }
-      if (el.debtDueDate.value && !dueDate) {
-        throw new Error("Проверь срок долга");
-      }
-      const principal = core.resolveMoneyInput(el.debtPrincipal.value);
-      if (!principal.valid || principal.value <= 0) {
-        throw new Error("Проверь сумму долга");
-      }
-      const payload = {
-        counterparty: el.debtCounterparty.value.trim(),
-        direction: el.debtDirection.value,
-        principal: principal.formatted,
-        start_date: startDate,
-        due_date: dueDate || null,
-        note: el.debtNote.value.trim() || null,
-      };
-      const isEditDebt = Number(state.editDebtCreateId || 0) > 0;
-      const url = isEditDebt ? `/api/v1/debts/${state.editDebtCreateId}` : "/api/v1/debts";
-      await core.requestJson(url, {
-        method: isEditDebt ? "PATCH" : "POST",
-        headers: core.authHeaders(),
-        body: JSON.stringify(payload),
-      });
-      core.invalidateUiRequestCache("debts");
-      state.editDebtCreateId = null;
-      closeCreateModal();
-      await refreshAfterDebtMutation();
-      return;
-    }
-    const payload = getValidatedCreateOperationPayload();
-
-    await core.requestJson("/api/v1/operations", {
-      method: "POST",
-      headers: core.authHeaders(),
-      body: JSON.stringify(payload),
-    });
-    core.invalidateUiRequestCache("operations");
-    invalidateAllTimeAnchor();
-    trackCategoryUsage(payload.category_id);
-
-    document.getElementById("opAmount").value = "";
-    document.getElementById("opNote").value = "";
-    el.opCategory.value = "";
-    el.opCategorySearch.value = "";
-    renderCreateCategoryPicker();
-    updateCreatePreview();
-
-    closeCreateModal();
-    await refreshAfterOperationMutation();
-  }
-
-  async function updateOperation(event) {
-    event.preventDefault();
-    if (!state.editOperationId) {
-      return;
-    }
-    const payload = getValidatedUpdateOperationPayload();
-
-    await core.requestJson(`/api/v1/operations/${state.editOperationId}`, {
-      method: "PATCH",
-      headers: core.authHeaders(),
-      body: JSON.stringify(payload),
-    });
-    core.invalidateUiRequestCache("operations");
-    invalidateAllTimeAnchor();
-    trackCategoryUsage(payload.category_id);
-
-    closeEditModal();
-    await refreshAfterOperationMutation();
-  }
-
-  async function deleteOperationFlow(item) {
-    core.runDestructiveAction({
-      confirmMessage: "Удалить операцию?",
-      doDelete: async () => {
-        await core.requestJson(`/api/v1/operations/${item.id}`, {
-          method: "DELETE",
-          headers: core.authHeaders(),
-        });
-        core.invalidateUiRequestCache("operations");
-        invalidateAllTimeAnchor();
-      },
-      onAfterDelete: async () => {
-        await refreshAfterOperationMutation();
-      },
-      toastMessage: "Операция удалена",
-      undoAction: async () => {
-        await core.requestJson("/api/v1/operations", {
-          method: "POST",
-          headers: core.authHeaders(),
-          body: JSON.stringify({
-            kind: item.kind,
-            category_id: item.category_id,
-            amount: item.amount,
-            operation_date: item.operation_date,
-            note: item.note,
-          }),
-        });
-        core.invalidateUiRequestCache("operations");
-        invalidateAllTimeAnchor();
-        await refreshAfterOperationMutation();
-        return "Операция восстановлена";
-      },
-      onDeleteError: "Не удалось удалить операцию",
-    });
-  }
-
-  async function applyFilters() {
-    await savePreferences();
-    await loadOperations({ reset: true });
-  }
-
-  async function applyRealtimeSearch() {
-    await loadOperations({ reset: true });
-    savePreferencesDebounced(450);
-  }
-
-  async function setOperationsSortPreset(value) {
-    state.operationSortPreset = value || "date";
-    core.syncSegmentedActive(el.operationsSortTabs, "op-sort", state.operationSortPreset);
-    await loadOperations({ reset: true });
-    await savePreferences();
-  }
-
-  async function refreshAll() {
-    const tasks = [
-      { label: "Дашборд", run: () => loadDashboard() },
-      { label: "Аналитика (дашборд)", run: () => (window.App.actions.loadDashboardAnalyticsPreview ? window.App.actions.loadDashboardAnalyticsPreview({ force: true }) : Promise.resolve()) },
-      { label: "Операции", run: () => loadOperations({ reset: true }) },
-      { label: "Операции (дашборд)", run: () => loadDashboardOperations() },
-      { label: "Аналитика", run: () => (window.App.actions.loadAnalyticsSection ? window.App.actions.loadAnalyticsSection({ force: true }) : Promise.resolve()) },
-      { label: "Категории", run: () => categoryActions.loadCategories() },
-      { label: "Долги", run: () => loadDebtsCards() },
-      { label: "Каталог позиций", run: () => loadItemCatalog({ force: true }) },
-    ];
-    const results = await Promise.allSettled(tasks.map((task) => task.run()));
-    const failed = [];
-    for (let idx = 0; idx < results.length; idx += 1) {
-      const result = results[idx];
-      if (result.status !== "rejected") {
-        continue;
-      }
-      failed.push(`${tasks[idx].label}: ${core.errorMessage(result.reason)}`);
-    }
-    if (failed.length > 0) {
-      core.setStatus(`Часть данных не загружена (${failed.length}/${tasks.length}): ${failed.join("; ")}`);
-    }
-  }
-
   function refreshOperationsView() {
     renderOperations(operationsRawItems);
   }
 
   function getCurrentOperationItems() {
     return operationsRawItems.slice();
-  }
-  function openOperationReceiptModal(item) {
-    if (!item || !Array.isArray(item.receipt_items) || item.receipt_items.length === 0) {
-      return;
-    }
-    if (!el.operationReceiptModal || !el.operationReceiptItems) {
-      return;
-    }
-    const esc = (value) => String(value ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#39;");
-    if (el.operationReceiptMeta) {
-      const note = item.note ? ` · ${item.note}` : "";
-      el.operationReceiptMeta.textContent = `${core.formatDateRu(item.operation_date)} · ${core.formatMoney(item.amount)}${note}`;
-    }
-    el.operationReceiptItems.innerHTML = item.receipt_items.map((row) => {
-      const qty = Number(row.quantity || 0);
-      const price = Number(row.unit_price || 0);
-      const total = Number(row.line_total || qty * price || 0);
-      const shopChip = row.shop_name
-        ? `<div class="operation-receipt-shop">${core.renderCategoryChip({ name: row.shop_name, icon: null, accent_color: null }, "")}</div>`
-        : "";
-      const categoryChip = row.category_id
-        ? `<div class="operation-receipt-shop">${core.renderCategoryChip(getCategoryMetaById(row.category_id), "")}</div>`
-        : "";
-      return `
-        <article class="operation-receipt-item">
-          <div class="operation-receipt-head">
-            <strong>${esc(row.name || "Без названия")}</strong>
-            <span class="muted-small">${core.formatMoney(total)}</span>
-          </div>
-          ${shopChip}
-          ${categoryChip}
-          <div class="operation-receipt-meta muted-small">
-            ${esc(core.formatAmount(qty))} × ${core.formatMoney(price)}
-          </div>
-          ${row.note ? `<div class="muted-small">${esc(row.note)}</div>` : ""}
-        </article>
-      `;
-    }).join("");
-    el.operationReceiptModal.classList.remove("hidden");
-  }
-
-  function closeOperationReceiptModal() {
-    el.operationReceiptModal?.classList.add("hidden");
   }
   function cleanupOperationsRuntime() {
     if (operationsRequestController) {
@@ -736,6 +421,50 @@
     operationsRawItems = [];
     state.operationsLoading = false;
   }
+  const mutationFeature = createOperationsMutationFeature
+    ? createOperationsMutationFeature({
+      state,
+      el,
+      core,
+      categoryActions,
+      trackCategoryUsage,
+      renderCreateCategoryPicker,
+      updateCreatePreview,
+      getCreateReceiptPayload,
+      getEditReceiptPayload,
+      closeCreateModal,
+      closeEditModal,
+      loadOperations,
+      loadDashboard,
+      loadDashboardOperations,
+      loadDebtsCards,
+      loadItemCatalog,
+      invalidateAllTimeAnchor,
+    })
+    : {};
+  const createOperation = mutationFeature.createOperation || (async () => {});
+  const updateOperation = mutationFeature.updateOperation || (async () => {});
+  const deleteOperationFlow = mutationFeature.deleteOperationFlow || (async () => {});
+  const applyFilters = mutationFeature.applyFilters
+    ? () => mutationFeature.applyFilters(savePreferences)
+    : (async () => {});
+  const applyRealtimeSearch = mutationFeature.applyRealtimeSearch
+    ? () => mutationFeature.applyRealtimeSearch(savePreferencesDebounced)
+    : (async () => {});
+  const setOperationsSortPreset = mutationFeature.setOperationsSortPreset
+    ? (value) => mutationFeature.setOperationsSortPreset(value, savePreferences)
+    : (async () => {});
+  const refreshAll = mutationFeature.refreshAll || (async () => {});
+  const displayFeature = createOperationsDisplayFeature
+    ? createOperationsDisplayFeature({
+      el,
+      core,
+      getCategoryMetaById,
+    })
+    : {};
+  const getOperationDisplayCategory = displayFeature.getOperationDisplayCategory || (() => null);
+  const openOperationReceiptModal = displayFeature.openOperationReceiptModal || (() => {});
+  const closeOperationReceiptModal = displayFeature.closeOperationReceiptModal || (() => {});
   window.App.featureOperations = {
     ensureAllTimeBounds,
     invalidateAllTimeAnchor,

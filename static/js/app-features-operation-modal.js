@@ -1,28 +1,6 @@
 (() => {
   const { state, el, core } = window.App;
   const categoryActions = window.App.actions;
-  const CATEGORY_USAGE_KEY = "fa_category_usage_v1";
-  function readCategoryUsage() {
-    try {
-      const raw = localStorage.getItem(CATEGORY_USAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : {};
-      return parsed && typeof parsed === "object" ? parsed : {};
-    } catch {
-      return {};
-    }
-  }
-  function writeCategoryUsage(usage) {
-    localStorage.setItem(CATEGORY_USAGE_KEY, JSON.stringify(usage));
-  }
-  function trackCategoryUsage(categoryId) {
-    if (!categoryId) {
-      return;
-    }
-    const usage = readCategoryUsage();
-    const key = String(categoryId);
-    usage[key] = Number(usage[key] || 0) + 1;
-    writeCategoryUsage(usage);
-  }
   function getSelectedCreateCategoryId() {
     return el.opCategory.value ? Number(el.opCategory.value) : null;
   }
@@ -42,9 +20,6 @@
       kind: category.kind,
       group_name: category.group_name || "",
     };
-  }
-  function getCreateFormCategoryMeta() {
-    return getCategoryMetaById(getSelectedCreateCategoryId());
   }
   const previewModule = window.App.operationModalPreview;
   const preview = previewModule?.build({
@@ -92,155 +67,6 @@
   function isEditReceiptMode() {
     return el.editOperationMode?.value === "receipt";
   }
-
-  function updateCreateCategoryFieldUi() {
-    if (!el.opCategorySearch) {
-      return;
-    }
-    el.opCategorySearch.placeholder = isCreateReceiptMode() ? "Категория по умолчанию" : "Категория";
-  }
-
-  function updateEditCategoryFieldUi() {
-    if (!el.editCategorySearch) {
-      return;
-    }
-    el.editCategorySearch.placeholder = isEditReceiptMode() ? "Категория по умолчанию" : "Категория";
-  }
-  function openCreateCategoryPopover() {
-    if (el.opEntryMode.value === "debt") {
-      return;
-    }
-    el.createCategoryPickerBlock.classList.remove("hidden");
-  }
-  function closeCreateCategoryPopover() {
-    el.createCategoryPickerBlock.classList.add("hidden");
-  }
-  function openEditCategoryPopover() {
-    el.editCategoryPickerBlock?.classList.remove("hidden");
-  }
-  function closeEditCategoryPopover() {
-    el.editCategoryPickerBlock?.classList.add("hidden");
-  }
-  function getCreateCategoriesSorted(kind, query = "") {
-    const usage = readCategoryUsage();
-    const normalizedQuery = query.trim().toLowerCase();
-    return state.categories
-      .filter((item) => item.kind === kind)
-      .filter((item) => {
-        if (!normalizedQuery) {
-          return true;
-        }
-        return item.name.toLowerCase().includes(normalizedQuery) || (item.group_name || "").toLowerCase().includes(normalizedQuery);
-      })
-      .map((item) => ({ ...item, usage: Number(usage[String(item.id)] || 0) }))
-      .sort((a, b) => {
-        if (b.usage !== a.usage) {
-          return b.usage - a.usage;
-        }
-        const colorA = (a.group_accent_color || "~").toLowerCase();
-        const colorB = (b.group_accent_color || "~").toLowerCase();
-        if (colorA !== colorB) {
-          return colorA.localeCompare(colorB, "ru");
-        }
-        const groupA = (a.group_name || "~").toLowerCase();
-        const groupB = (b.group_name || "~").toLowerCase();
-        if (groupA !== groupB) {
-          return groupA.localeCompare(groupB, "ru");
-        }
-        return a.name.localeCompare(b.name, "ru");
-      });
-  }
-  function createCategoryChipButton(category, selected, searchQuery = "") {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "chip-btn";
-    if (selected) {
-      btn.classList.add("active");
-    }
-    btn.dataset.categoryId = String(category.id);
-    btn.innerHTML = core.renderCategoryChip(
-      {
-        name: category.name,
-        icon: category.icon || category.group_icon || null,
-        accent_color: category.group_accent_color || null,
-      },
-      searchQuery,
-    );
-    return btn;
-  }
-  function getEditCategoriesSorted(kind, query = "") {
-    const usage = readCategoryUsage();
-    const normalizedQuery = query.trim().toLowerCase();
-    return state.categories
-      .filter((item) => item.kind === kind)
-      .filter((item) => {
-        if (!normalizedQuery) {
-          return true;
-        }
-        return item.name.toLowerCase().includes(normalizedQuery) || (item.group_name || "").toLowerCase().includes(normalizedQuery);
-      })
-      .map((item) => ({ ...item, usage: Number(usage[String(item.id)] || 0) }))
-      .sort((a, b) => {
-        if (b.usage !== a.usage) {
-          return b.usage - a.usage;
-        }
-        const colorA = (a.group_accent_color || "~").toLowerCase();
-        const colorB = (b.group_accent_color || "~").toLowerCase();
-        if (colorA !== colorB) {
-          return colorA.localeCompare(colorB, "ru");
-        }
-        const groupA = (a.group_name || "~").toLowerCase();
-        const groupB = (b.group_name || "~").toLowerCase();
-        if (groupA !== groupB) {
-          return groupA.localeCompare(groupB, "ru");
-        }
-        return a.name.localeCompare(b.name, "ru");
-      });
-  }
-  function renderEditCategoryPicker() {
-    if (!el.editCategoryAll) {
-      return;
-    }
-    const kind = el.editKind.value || "expense";
-    const selectedId = el.editCategory.value ? Number(el.editCategory.value) : null;
-    const selectedCategory = state.categories.find((item) => item.id === selectedId && item.kind === kind);
-    const rawQuery = el.editCategorySearch?.value?.trim() || "";
-    const query = selectedCategory && rawQuery.toLowerCase() === selectedCategory.name.toLowerCase() ? "" : rawQuery;
-    const categories = getEditCategoriesSorted(kind, query);
-    el.editCategoryAll.innerHTML = "";
-    for (const item of categories) {
-      el.editCategoryAll.appendChild(createCategoryChipButton(item, selectedId === item.id, query));
-    }
-    if (!categories.length) {
-      el.editCategoryAll.innerHTML = query
-        ? "<span class='muted-small'>Ничего не найдено</span>"
-        : "<span class='muted-small'>Без категорий для выбранного типа</span>";
-    }
-  }
-  function renderCreateCategoryPicker() {
-    const kind = el.opKind.value || "expense";
-    const selectedId = getSelectedCreateCategoryId();
-    const selectedCategory = state.categories.find((item) => item.id === selectedId && item.kind === kind);
-    const rawQuery = el.opCategorySearch.value.trim();
-    const query = selectedCategory && rawQuery.toLowerCase() === selectedCategory.name.toLowerCase() ? "" : rawQuery;
-    const allCategories = getCreateCategoriesSorted(kind, query);
-    el.opCategoryAll.innerHTML = "";
-    for (const item of allCategories) {
-      const chip = createCategoryChipButton(item, selectedId === item.id, query);
-      el.opCategoryAll.appendChild(chip);
-    }
-    if (!allCategories.length && query) {
-      const createChip = document.createElement("button");
-      createChip.type = "button";
-      createChip.className = "chip-btn chip-btn-create";
-      createChip.dataset.createCategory = query;
-      createChip.textContent = `+ Создать категорию «${query}»`;
-      el.opCategoryAll.appendChild(createChip);
-    }
-    if (!allCategories.length && !query) {
-      el.opCategoryAll.innerHTML = "<span class='muted-small'>Без категорий для выбранного типа</span>";
-    }
-  }
   function setDebtDirection(direction) {
     const nextDirection = direction === "borrow" ? "borrow" : "lend";
     el.debtDirection.value = nextDirection;
@@ -277,149 +103,6 @@
     updateEditCategoryFieldUi();
     renderEditCategoryPicker();
     updateEditPreview();
-  }
-  function selectCreateCategory(categoryId, options = {}) {
-    const value = categoryId ? String(categoryId) : "";
-    el.opCategory.value = value;
-    const categoryMeta = getCreateFormCategoryMeta();
-    if (!options.keepSearch) {
-      el.opCategorySearch.value = categoryMeta?.name || "";
-    }
-    renderCreateCategoryPicker();
-    updateCreatePreview();
-    closeCreateCategoryPopover();
-  }
-  function selectEditCategory(categoryId, options = {}) {
-    const value = categoryId ? String(categoryId) : "";
-    el.editCategory.value = value;
-    const categoryMeta = getCategoryMetaById(categoryId);
-    if (!options.keepSearch && el.editCategorySearch) {
-      el.editCategorySearch.value = categoryMeta?.name || "";
-    }
-    renderEditCategoryPicker();
-    updateEditPreview();
-    closeEditCategoryPopover();
-  }
-  function handleCreateCategorySearchFocus() {
-    openCreateCategoryPopover();
-    renderCreateCategoryPicker();
-  }
-  function handleCreateCategorySearchInput() {
-    if (el.opCategory.value) {
-      el.opCategory.value = "";
-    }
-    openCreateCategoryPopover();
-    renderCreateCategoryPicker();
-    updateCreatePreview();
-  }
-  function handleCreateCategorySearchKeydown(event) {
-    if (event.key === "Escape") {
-      closeCreateCategoryPopover();
-      return;
-    }
-    if (event.key !== "Enter") {
-      return;
-    }
-    event.preventDefault();
-    const query = el.opCategorySearch.value.trim();
-    const matches = getCreateCategoriesSorted(el.opKind.value || "expense", query);
-    if (matches.length) {
-      selectCreateCategory(matches[0].id);
-      return;
-    }
-    if (query) {
-      openCreateCategoryFromOperation(query);
-    }
-  }
-  function handleEditCategorySearchFocus() {
-    openEditCategoryPopover();
-    renderEditCategoryPicker();
-  }
-  function handleEditCategorySearchInput() {
-    if (el.editCategory.value) {
-      el.editCategory.value = "";
-    }
-    openEditCategoryPopover();
-    renderEditCategoryPicker();
-    updateEditPreview();
-  }
-  function handleEditCategorySearchKeydown(event) {
-    if (event.key === "Escape") {
-      closeEditCategoryPopover();
-      return;
-    }
-    if (event.key !== "Enter") {
-      return;
-    }
-    event.preventDefault();
-    const query = el.editCategorySearch.value.trim();
-    const matches = getEditCategoriesSorted(el.editKind.value || "expense", query);
-    if (matches.length) {
-      selectEditCategory(matches[0].id);
-    }
-  }
-  function handleCreateCategoryOutsidePointer(event) {
-    if (el.createCategoryPickerBlock.classList.contains("hidden")) {
-      return;
-    }
-    if (event.target.closest("#createCategoryField")) {
-      return;
-    }
-    closeCreateCategoryPopover();
-  }
-  function handleEditCategoryOutsidePointer(event) {
-    if (el.editCategoryPickerBlock?.classList.contains("hidden")) {
-      return;
-    }
-    if (event.target.closest("#editCategoryField")) {
-      return;
-    }
-    closeEditCategoryPopover();
-  }
-  function openCreateCategoryFromOperation(searchText) {
-    const trimmed = searchText.trim();
-    state.pendingCreateCategoryFromOperation = trimmed;
-    closeCreateCategoryPopover();
-    if (categoryActions.openCreateCategoryModal) {
-      categoryActions.openCreateCategoryModal({
-        kind: el.opKind.value || "expense",
-        prefillName: trimmed,
-        reset: true,
-      });
-    }
-  }
-  function handleCreateCategoryPickerClick(event) {
-    const createBtn = event.target.closest("button[data-create-category]");
-    if (createBtn) {
-      openCreateCategoryFromOperation(createBtn.dataset.createCategory || "");
-      return;
-    }
-    const chipBtn = event.target.closest("button[data-category-id]");
-    if (!chipBtn) {
-      return;
-    }
-    selectCreateCategory(Number(chipBtn.dataset.categoryId || 0));
-  }
-  function handleEditCategoryPickerClick(event) {
-    const chipBtn = event.target.closest("button[data-category-id]");
-    if (!chipBtn) {
-      return;
-    }
-    selectEditCategory(Number(chipBtn.dataset.categoryId || 0));
-  }
-  function onCategoryCreated(createdCategory) {
-    if (!createdCategory) {
-      return;
-    }
-    const pending = (state.pendingCreateCategoryFromOperation || "").trim().toLowerCase();
-    const createdName = String(createdCategory.name || "").trim().toLowerCase();
-    const kindMatches = createdCategory.kind === (el.opKind.value || "expense");
-    if (!pending || pending !== createdName || !kindMatches) {
-      state.pendingCreateCategoryFromOperation = "";
-      return;
-    }
-    state.pendingCreateCategoryFromOperation = "";
-    selectCreateCategory(createdCategory.id);
   }
   function setCreateEntryMode(mode) {
     const nextMode = mode === "debt" ? "debt" : "operation";
@@ -624,6 +307,45 @@
   function closePeriodCustomModal() {
     el.periodCustomModal.classList.add("hidden");
   }
+  const createOperationModalCategoryFeature = window.App.createOperationModalCategoryFeature;
+  const categoryFeature = createOperationModalCategoryFeature
+    ? createOperationModalCategoryFeature({
+      state,
+      el,
+      core,
+      categoryActions,
+      renderReceiptItems,
+      renderReceiptSummary,
+      updateCreatePreview,
+      updateEditPreview,
+      isCreateReceiptMode,
+      isEditReceiptMode,
+      getSelectedCreateCategoryId,
+      getCategoryMetaById,
+    })
+    : {};
+  const trackCategoryUsage = categoryFeature.trackCategoryUsage || (() => {});
+  const updateCreateCategoryFieldUi = categoryFeature.updateCreateCategoryFieldUi || (() => {});
+  const updateEditCategoryFieldUi = categoryFeature.updateEditCategoryFieldUi || (() => {});
+  const openCreateCategoryPopover = categoryFeature.openCreateCategoryPopover || (() => {});
+  const closeCreateCategoryPopover = categoryFeature.closeCreateCategoryPopover || (() => {});
+  const openEditCategoryPopover = categoryFeature.openEditCategoryPopover || (() => {});
+  const closeEditCategoryPopover = categoryFeature.closeEditCategoryPopover || (() => {});
+  const renderCreateCategoryPicker = categoryFeature.renderCreateCategoryPicker || (() => {});
+  const renderEditCategoryPicker = categoryFeature.renderEditCategoryPicker || (() => {});
+  const handleCreateCategorySearchFocus = categoryFeature.handleCreateCategorySearchFocus || (() => {});
+  const handleCreateCategorySearchInput = categoryFeature.handleCreateCategorySearchInput || (() => {});
+  const handleCreateCategorySearchKeydown = categoryFeature.handleCreateCategorySearchKeydown || (() => {});
+  const handleEditCategorySearchFocus = categoryFeature.handleEditCategorySearchFocus || (() => {});
+  const handleEditCategorySearchInput = categoryFeature.handleEditCategorySearchInput || (() => {});
+  const handleEditCategorySearchKeydown = categoryFeature.handleEditCategorySearchKeydown || (() => {});
+  const handleCreateCategoryOutsidePointer = categoryFeature.handleCreateCategoryOutsidePointer || (() => {});
+  const handleEditCategoryOutsidePointer = categoryFeature.handleEditCategoryOutsidePointer || (() => {});
+  const handleCreateCategoryPickerClick = categoryFeature.handleCreateCategoryPickerClick || (() => {});
+  const handleEditCategoryPickerClick = categoryFeature.handleEditCategoryPickerClick || (() => {});
+  const onCategoryCreated = categoryFeature.onCategoryCreated || (() => {});
+  const selectCreateCategory = categoryFeature.selectCreateCategory || (() => {});
+  const selectEditCategory = categoryFeature.selectEditCategory || (() => {});
   window.App.operationModal = {
     trackCategoryUsage,
     getCategoryMetaById,

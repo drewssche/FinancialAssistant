@@ -71,6 +71,28 @@ def page_with_receipt_api_mock():
             "group_accent_color": None,
             "is_system": False,
         },
+        {
+            "id": 102,
+            "name": "Транспорт",
+            "icon": "🚌",
+            "kind": "expense",
+            "group_id": None,
+            "group_name": None,
+            "group_icon": None,
+            "group_accent_color": None,
+            "is_system": False,
+        },
+        {
+            "id": 103,
+            "name": "Кофе",
+            "icon": "☕",
+            "kind": "expense",
+            "group_id": None,
+            "group_name": None,
+            "group_icon": None,
+            "group_accent_color": None,
+            "is_system": False,
+        },
     ]
 
     templates = [
@@ -318,6 +340,7 @@ def test_mobile_edit_modal_preview_stays_above_sticky_cta(static_server_url: str
 
     page.click("#telegramLoginBtn")
     page.wait_for_selector("#appShell:not(.hidden)")
+    page.wait_for_function("() => (window.App?.state?.categories || []).length >= 3")
 
     page.evaluate(
         """
@@ -393,6 +416,104 @@ def test_mobile_edit_modal_preview_stays_above_sticky_cta(static_server_url: str
     assert geometry["previewPanelTop"] < geometry["footerTop"]
     assert geometry["previewRowTop"] < geometry["footerTop"]
     assert geometry["previewRowBottom"] <= geometry["footerTop"] + 2
+
+
+@pytest.mark.e2e
+def test_edit_receipt_mixed_categories_keep_inheritance_and_preview_summary(static_server_url: str, page_with_receipt_api_mock):
+    page = page_with_receipt_api_mock
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+
+    page.click("#telegramLoginBtn")
+    page.wait_for_selector("#appShell:not(.hidden)")
+    page.wait_for_function("() => (window.App?.state?.categories || []).length >= 3")
+
+    page.evaluate(
+        """
+        () => {
+          window.App.actions.openEditModal({
+            id: 91,
+            kind: "expense",
+            category_id: 101,
+            amount: "33.00",
+            operation_date: "2026-03-08",
+            note: "Mixed edit",
+            receipt_items: [
+              {
+                template_id: 1,
+                category_id: null,
+                shop_name: "Соседи",
+                name: "Булка",
+                quantity: "1",
+                unit_price: "8.00",
+                note: ""
+              },
+              {
+                template_id: 2,
+                category_id: 102,
+                shop_name: "Метро",
+                name: "Проезд",
+                quantity: "1",
+                unit_price: "25.00",
+                note: ""
+              }
+            ]
+          });
+        }
+        """
+    )
+    page.wait_for_selector("#editModal:not(.hidden)")
+    page.wait_for_selector("#editReceiptFields:not(.hidden)")
+
+    first_row = page.locator(".receipt-item-row").first
+    second_row = page.locator(".receipt-item-row").nth(1)
+
+    expect_badge_first = first_row.locator(".receipt-category-badge")
+    expect_badge_second = second_row.locator(".receipt-category-badge")
+    assert expect_badge_first.is_visible()
+    assert expect_badge_first.text_content().strip() == "По умолчанию"
+    assert not expect_badge_second.is_visible()
+    assert first_row.locator('[data-receipt-field="category_search"]').input_value() == "Еда"
+    assert second_row.locator('[data-receipt-field="category_search"]').input_value() == "Транспорт"
+    assert page.locator("#editPreviewBody").text_content().count("Несколько категорий") >= 1
+
+    first_row.locator('[data-receipt-field="category_search"]').click()
+    page.wait_for_selector('.receipt-item-row:first-child .receipt-category-picker:not(.hidden)')
+    first_active = first_row.locator(".receipt-category-picker .chip-btn.active").first
+    assert "Еда" in (first_active.text_content() or "")
+
+    page.click("#editCategorySearch")
+    page.wait_for_selector("#editCategoryPickerBlock:not(.hidden)")
+    page.locator('#editCategoryAll button[data-category-id="103"]').click()
+    page.wait_for_timeout(100)
+
+    assert first_row.locator('[data-receipt-field="category_search"]').input_value() == "Кофе"
+    assert second_row.locator('[data-receipt-field="category_search"]').input_value() == "Транспорт"
+    assert expect_badge_first.is_visible()
+    assert not expect_badge_second.is_visible()
+    assert page.locator("#editPreviewBody").text_content().count("Несколько категорий") >= 1
+
+    second_row.locator('[data-receipt-field="category_search"]').click()
+    page.wait_for_selector('.receipt-item-row:nth-child(2) .receipt-category-picker:not(.hidden)')
+    second_row.locator('button[data-receipt-category-id=""]').click()
+    page.wait_for_timeout(100)
+
+    assert second_row.locator('[data-receipt-field="category_search"]').input_value() == "Кофе"
+    assert expect_badge_second.is_visible()
+    assert page.locator("#editPreviewBody").text_content().count("Кофе") >= 1
 
 
 @pytest.mark.e2e

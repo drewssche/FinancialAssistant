@@ -9,7 +9,7 @@
     function getReceiptSummaryCategory(receiptItems, fallbackCategoryId = null) {
       const categoryIds = Array.from(new Set(
         (Array.isArray(receiptItems) ? receiptItems : [])
-          .map((item) => Number(item?.category_id || 0))
+          .map((item) => Number(item?.category_id || fallbackCategoryId || 0))
           .filter((value) => value > 0),
       ));
       if (categoryIds.length === 1) {

@@ -1,6 +1,18 @@
 (() => {
   const { state, el, core } = window.App;
+  const shared = window.App.analyticsShared || {};
   const CALENDAR_CACHE_TTL_MS = 20000;
+  const escapeHtml = shared.escapeHtml || ((value) => String(value ?? ""));
+  const describeResult = shared.describeResult || ((balanceRaw) => {
+    const balance = Number(balanceRaw || 0);
+    if (balance > 0) {
+      return { label: "Профицит", tone: "positive", amount: balance };
+    }
+    if (balance < 0) {
+      return { label: "Дефицит", tone: "negative", amount: Math.abs(balance) };
+    }
+    return { label: "Нулевой баланс", tone: "neutral", amount: 0 };
+  });
   let calendarScrollUiBound = false;
 
   function syncCalendarScrollFade() {
@@ -102,26 +114,6 @@
     if (el.analyticsGridYearPicker) {
       el.analyticsGridYearPicker.value = String(anchor.getUTCFullYear());
     }
-  }
-
-  function describeResult(balanceRaw) {
-    const balance = Number(balanceRaw || 0);
-    if (balance > 0) {
-      return { label: "Профицит", tone: "positive", amount: balance };
-    }
-    if (balance < 0) {
-      return { label: "Дефицит", tone: "negative", amount: Math.abs(balance) };
-    }
-    return { label: "Нулевой баланс", tone: "neutral", amount: 0 };
-  }
-
-  function escapeHtml(value) {
-    return String(value ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#39;");
   }
 
   function renderCalendarTotals(data, view) {

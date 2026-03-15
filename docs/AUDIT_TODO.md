@@ -79,7 +79,7 @@
 - Direction: move prefill logic into categories module and keep cross-module calls declarative.
 
 5. Split oversized frontend modules (rule compliance)
-- Status: in progress (updated 2026-03-07)
+- Status: in progress (updated 2026-03-15)
 - Files above hard threshold:
 - `static/js/app-features.js` (reduced: moved operation modal/picker logic to `static/js/app-features-operation-modal.js`; moved dashboard/session to `static/js/app-features-dashboard.js` and `static/js/app-features-session.js`; moved Item Catalog feature block to `static/js/app-features-item-catalog.js`; moved operations flow to `static/js/app-features-operations.js`)
 - `static/js/app-features-item-catalog.js` (further reduced by extracting modal/source-picker/history block to `static/js/app-features-item-catalog-modal.js`)
@@ -103,8 +103,27 @@
 - Direction:
 - split `app-features.js` into `operations`, `dashboard`, `session/preferences`, `item-catalog`
 - split `app-core.js` into `state`, `dom`, `utils/net`.
-- Remaining files over 500:
-- none
+- Current files over hard threshold (`500+`, production code only, excluding tests):
+- `static/css/components.css` (~2038)
+- `static/css/layout.css` (~1380)
+- `static/css/responsive.css` (~948)
+- `app/services/dashboard_service.py` (~881)
+- `static/js/templates/shell.js` (~721)
+- `static/js/app-init-features.js` (~667)
+- `app/services/operation_service.py` (~592)
+- `static/js/templates/modals.js` (~583)
+- `app/repositories/operation_repo.py` (~575)
+- `static/js/app-features-item-catalog-modal.js` (~525)
+- `static/js/app-features-session.js` (~524)
+- Completed on 2026-03-15:
+- `static/js/app-features-operation-modal.js` reduced below threshold by extracting `static/js/app-features-operation-modal-categories.js`
+- `static/js/app-features-operations.js` reduced below threshold by extracting `static/js/app-features-operations-mutations.js` and `static/js/app-features-operations-display.js`
+- `static/js/app-core.js` reduced below threshold by extracting `static/js/app-core-state.js` and `static/js/app-core-elements.js`
+- `static/js/app-features-analytics-highlights.js` reduced below threshold by extracting `static/js/app-features-analytics-shared.js` and `static/js/app-features-analytics-highlights-ui.js`
+- Priority direction:
+- first split high-churn JS modules with mixed responsibilities (`operation modal`, `operations`, `session`, `analytics highlights`)
+- then split backend read/write service hot spots (`dashboard_service`, `operation_service`, `operation_repo`)
+- CSS files should be modularized last by feature/layout buckets to avoid regressions during active UI work
 
 6. Add focused regression tests
 - Status: done (2026-03-05)
