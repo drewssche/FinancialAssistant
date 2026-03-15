@@ -725,8 +725,8 @@
   }
 
   .icon-popover {
-    width: min(max(100%, 18rem), calc(100vw - 1.5rem));
-    max-width: calc(100vw - 1.5rem);
+    width: min(max(100%, 20rem), calc(100vw - 1rem));
+    max-width: calc(100vw - 1rem);
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
@@ -877,9 +877,10 @@
   .operation-category-picker,
   .receipt-shop-picker,
   .receipt-name-picker,
-  .receipt-category-picker {
-    width: min(max(100%, 16rem), calc(100vw - 1.5rem));
-    max-width: calc(100vw - 1.5rem);
+  .receipt-category-picker,
+  .icon-popover {
+    width: min(max(100%, 20rem), calc(100vw - 1rem));
+    max-width: calc(100vw - 1rem);
     max-height: min(38dvh, 320px);
   }
 

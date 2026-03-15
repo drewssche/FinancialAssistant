@@ -443,8 +443,10 @@
             </div>
             <div class="table-search-row sticky-search">
               <input id="filterQ" class="table-search-input" type="text" placeholder="Поиск" />
-              <button id="resetOperationsFiltersBtn" class="btn btn-secondary" type="button">Сбросить фильтры</button>
-              <button id="deleteAllOperationsBtn" class="btn btn-danger" type="button">Удалить все</button>
+              <div class="toolbar table-search-actions operations-search-actions">
+                <button id="resetOperationsFiltersBtn" class="btn btn-secondary" type="button">Сбросить фильтры</button>
+                <button id="deleteAllOperationsBtn" class="btn btn-danger" type="button">Удалить все</button>
+              </div>
             </div>
 
             <div class="table-wrap">
@@ -523,7 +525,7 @@
             </div>
             <div class="table-search-row">
               <input id="debtSearchQ" class="table-search-input" type="text" placeholder="Поиск по контрагенту/комментарию" />
-              <div class="toolbar">
+              <div class="toolbar debt-toolbar">
                 <div class="segmented" id="debtStatusTabs" role="tablist" aria-label="Статус долгов">
                   <button class="segmented-btn active" data-debt-status="active" type="button">Активные</button>
                   <button class="segmented-btn" data-debt-status="all" type="button">Все</button>
@@ -534,6 +536,7 @@
                   <button class="segmented-btn" data-debt-sort="amount" type="button">По сумме</button>
                   <button class="segmented-btn" data-debt-sort="name" type="button">По имени</button>
                 </div>
+                <button id="deleteAllDebtsBtn" class="btn btn-danger" type="button">Удалить все</button>
               </div>
             </div>
             <div id="debtsCards" class="debt-cards"></div>
@@ -553,8 +556,8 @@
                 </div>
                 <button id="itemCatalogCollapseAllBtn" class="btn btn-secondary btn-xs" type="button">Свернуть все</button>
                 <button id="itemCatalogExpandAllBtn" class="btn btn-secondary btn-xs" type="button">Развернуть все</button>
+                <button id="deleteAllItemTemplatesBtn" class="btn btn-danger" type="button">Удалить все</button>
               </div>
-              <button id="deleteAllItemTemplatesBtn" class="btn btn-danger" type="button">Удалить все</button>
             </div>
             <div class="table-wrap">
               <table class="table table-hover mobile-card-table item-catalog-table">

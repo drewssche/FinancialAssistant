@@ -26,6 +26,31 @@
       return;
     }
     debtCardsRenderer.renderDebtCards(cards);
+    syncDebtsControls();
+  }
+
+  function getCurrentDebtIds() {
+    const cards = Array.isArray(state.debtCardsCache) ? state.debtCardsCache : [];
+    const statusFilter = state.debtStatusFilter || "active";
+    const filteredCards = cards.filter((card) => {
+      if (statusFilter === "active") {
+        return card?.status === "active";
+      }
+      if (statusFilter === "closed") {
+        return card?.status === "closed";
+      }
+      return true;
+    });
+    return filteredCards.flatMap((card) => (Array.isArray(card?.debts) ? card.debts : []))
+      .map((debt) => Number(debt?.id || 0))
+      .filter((id) => id > 0);
+  }
+
+  function syncDebtsControls() {
+    if (!el.deleteAllDebtsBtn) {
+      return;
+    }
+    el.deleteAllDebtsBtn.disabled = getCurrentDebtIds().length === 0;
   }
 
   function buildDebtsCardsCacheKey() {
@@ -432,6 +457,30 @@
     });
   }
 
+  function deleteAllDebtsFlow() {
+    const ids = getCurrentDebtIds();
+    if (!ids.length) {
+      syncDebtsControls();
+      return;
+    }
+    core.runDestructiveAction({
+      confirmMessage: `Удалить все долги в текущем списке (${ids.length})?`,
+      doDelete: async () => {
+        for (const id of ids) {
+          await core.requestJson(`/api/v1/debts/${id}`, {
+            method: "DELETE",
+            headers: core.authHeaders(),
+          });
+        }
+        core.invalidateUiRequestCache("debts");
+      },
+      onAfterDelete: async () => {
+        await refreshDebtViews();
+      },
+      onDeleteError: "Не удалось удалить долги",
+    });
+  }
+
   window.App.featureDebts = {
     loadDebtsCards,
     openDebtRepaymentModal,
@@ -447,5 +496,6 @@
     loadMoreDebtHistoryEvents,
     openEditDebtModal,
     deleteDebtFlow,
+    deleteAllDebtsFlow,
   };
 })();

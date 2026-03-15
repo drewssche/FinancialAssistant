@@ -42,6 +42,15 @@
       });
     }
 
+    if (el.deleteAllDebtsBtn && actions.deleteAllDebtsFlow) {
+      el.deleteAllDebtsBtn.addEventListener("click", () => {
+        if (el.deleteAllDebtsBtn.disabled) {
+          return;
+        }
+        actions.deleteAllDebtsFlow();
+      });
+    }
+
     if (el.debtsCards && actions.openDebtRepaymentModal) {
       el.debtsCards.addEventListener("click", (event) => {
         const editBtn = event.target.closest("button[data-edit-debt-id]");

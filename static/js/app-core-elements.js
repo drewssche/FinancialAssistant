@@ -135,6 +135,7 @@
       itemCatalogBody: document.getElementById("itemCatalogBody"),
       debtStatusTabs: document.getElementById("debtStatusTabs"),
       debtSortTabs: document.getElementById("debtSortTabs"),
+      deleteAllDebtsBtn: document.getElementById("deleteAllDebtsBtn"),
       debtsCards: document.getElementById("debtsCards"),
       debtsInfiniteSentinel: document.getElementById("debtsInfiniteSentinel"),
       analyticsMonthLabel: document.getElementById("analyticsMonthLabel"),

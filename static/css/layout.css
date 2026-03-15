@@ -302,7 +302,7 @@
 }
 
 .create-category-field:focus-within {
-  z-index: 18;
+  z-index: 40;
 }
 
 .create-category-field #opCategorySearch {
@@ -382,6 +382,11 @@
   gap: var(--space-3);
   flex-wrap: wrap;
   min-width: 0;
+}
+
+.table-search-actions {
+  margin-left: auto;
+  justify-content: flex-end;
 }
 
 .table-search-row-single {
@@ -465,17 +470,9 @@
   top: calc(100% + var(--space-2));
   left: 0;
   right: auto;
-  z-index: 12;
-  border: 1px solid rgba(52, 69, 101, 0.9);
-  border-radius: var(--radius-md);
-  background: rgba(12, 20, 35, 0.98);
-  box-shadow: 0 0.75rem 1.5rem rgba(4, 8, 15, 0.5);
   padding: var(--space-3);
   display: grid;
   gap: var(--space-3);
-  width: min(max(100%, 18rem), calc(100vw - 2rem));
-  max-width: min(26rem, calc(100vw - 2rem));
-  max-height: min(42vh, 320px);
   overflow-y: auto;
 }
 
@@ -1175,7 +1172,7 @@
 }
 
 .receipt-shop-cell:focus-within {
-  z-index: 18;
+  z-index: 40;
 }
 
 .receipt-shop-cell > input {
@@ -1184,22 +1181,14 @@
 
 .receipt-shop-picker {
   position: absolute;
-  z-index: 14;
   top: calc(100% + var(--space-2));
   left: 0;
   right: auto;
-  border: 1px solid rgba(52, 69, 101, 0.9);
-  border-radius: var(--radius-md);
-  background: rgba(12, 20, 35, 0.98);
-  box-shadow: 0 0.75rem 1.5rem rgba(4, 8, 15, 0.5);
   padding: var(--space-2);
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--space-2);
-  width: min(max(100%, 16rem), calc(100vw - 2rem));
-  max-width: min(24rem, calc(100vw - 2rem));
-  max-height: 200px;
   overflow-y: auto;
 }
 
@@ -1216,7 +1205,7 @@
 }
 
 .receipt-name-cell:focus-within {
-  z-index: 18;
+  z-index: 40;
 }
 
 .receipt-name-cell > input {
@@ -1230,7 +1219,7 @@
 }
 
 .receipt-category-cell:focus-within {
-  z-index: 18;
+  z-index: 40;
 }
 
 .receipt-category-cell > input {
@@ -1265,22 +1254,14 @@
 
 .receipt-name-picker {
   position: absolute;
-  z-index: 14;
   top: calc(100% + var(--space-2));
   left: var(--space-1);
   right: auto;
-  border: 1px solid rgba(52, 69, 101, 0.9);
-  border-radius: var(--radius-md);
-  background: rgba(12, 20, 35, 0.98);
-  box-shadow: 0 0.75rem 1.5rem rgba(4, 8, 15, 0.5);
   padding: var(--space-2);
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--space-2);
-  width: min(max(100%, 16rem), calc(100vw - 2rem));
-  max-width: min(24rem, calc(100vw - 2rem));
-  max-height: 200px;
   overflow-y: auto;
 }
 
@@ -1297,22 +1278,14 @@
 
 .receipt-category-picker {
   position: absolute;
-  z-index: 14;
   top: calc(100% + var(--space-2));
   left: 0;
   right: auto;
-  border: 1px solid rgba(52, 69, 101, 0.9);
-  border-radius: var(--radius-md);
-  background: rgba(12, 20, 35, 0.98);
-  box-shadow: 0 0.75rem 1.5rem rgba(4, 8, 15, 0.5);
   padding: var(--space-2);
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--space-2);
-  width: min(max(100%, 16rem), calc(100vw - 2rem));
-  max-width: min(24rem, calc(100vw - 2rem));
-  max-height: 200px;
   overflow-y: auto;
 }
 
