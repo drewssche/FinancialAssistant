@@ -35,7 +35,7 @@
           <select id="opCategory" class="hidden"></select>
           <div id="createCategoryField" class="create-category-field">
             <input id="opCategorySearch" type="text" placeholder="Категория" autocomplete="off" />
-            <div id="createCategoryPickerBlock" class="operation-category-picker hidden">
+            <div id="createCategoryPickerBlock" class="operation-category-picker app-popover hidden">
               <div class="category-picker-block">
                 <div id="opCategoryAll" class="category-chip-list"></div>
               </div>
@@ -263,7 +263,7 @@
           <select id="editCategory" class="hidden"></select>
           <div id="editCategoryField" class="create-category-field">
             <input id="editCategorySearch" type="text" placeholder="Категория" autocomplete="off" />
-            <div id="editCategoryPickerBlock" class="operation-category-picker hidden">
+            <div id="editCategoryPickerBlock" class="operation-category-picker app-popover hidden">
               <div class="category-picker-block">
                 <div id="editCategoryAll" class="category-chip-list"></div>
               </div>
@@ -327,7 +327,7 @@
               <button id="categoryIconToggle" class="btn btn-secondary icon-square-toggle" type="button" aria-label="Выбрать иконку">
                 +
               </button>
-              <div id="categoryIconPopover" class="icon-popover hidden"></div>
+              <div id="categoryIconPopover" class="icon-popover app-popover hidden"></div>
             </div>
             <input id="categoryName" type="text" placeholder="Название категории" required />
           </div>
@@ -336,7 +336,7 @@
           </select>
           <div id="createCategoryGroupField" class="create-category-field">
             <input id="categoryGroupSearch" type="text" placeholder="Без группы" autocomplete="off" />
-            <div id="createCategoryGroupPickerBlock" class="operation-category-picker hidden">
+            <div id="createCategoryGroupPickerBlock" class="operation-category-picker app-popover hidden">
               <div class="category-picker-block">
                 <div id="categoryGroupAll" class="category-chip-list"></div>
               </div>
@@ -423,7 +423,7 @@
               <button id="editCategoryIconToggle" class="btn btn-secondary icon-square-toggle" type="button" aria-label="Выбрать иконку">
                 +
               </button>
-              <div id="editCategoryIconPopover" class="icon-popover hidden"></div>
+              <div id="editCategoryIconPopover" class="icon-popover app-popover hidden"></div>
             </div>
             <input id="editCategoryName" type="text" placeholder="Название категории" required />
           </div>
@@ -432,7 +432,7 @@
           </select>
           <div id="editCategoryGroupField" class="create-category-field">
             <input id="editCategoryGroupSearch" type="text" placeholder="Без группы" autocomplete="off" />
-            <div id="editCategoryGroupPickerBlock" class="operation-category-picker hidden">
+            <div id="editCategoryGroupPickerBlock" class="operation-category-picker app-popover hidden">
               <div class="category-picker-block">
                 <div id="editCategoryGroupAll" class="category-chip-list"></div>
               </div>

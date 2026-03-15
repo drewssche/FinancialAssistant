@@ -15,7 +15,7 @@
           <input id="itemTemplateSource" type="hidden" />
           <div id="itemTemplateSourceField" class="create-category-field">
             <input id="itemTemplateSourceSearch" type="text" placeholder="Источник" autocomplete="off" />
-            <div id="itemTemplateSourcePickerBlock" class="operation-category-picker hidden">
+            <div id="itemTemplateSourcePickerBlock" class="operation-category-picker app-popover hidden">
               <div class="category-picker-block">
                 <div id="itemTemplateSourceAll" class="category-chip-list"></div>
               </div>
