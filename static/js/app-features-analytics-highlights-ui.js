@@ -188,6 +188,33 @@
     });
   }
 
+  function bindBreakdownListHover(container, attrName, hoverSetter, hoverClearer) {
+    if (!container) {
+      return;
+    }
+    container.querySelectorAll(`[data-${attrName}]`).forEach((node) => {
+      const attrValue = String(node.getAttribute(`data-${attrName}`) || "").trim();
+      if (!attrValue) {
+        return;
+      }
+      node.addEventListener("pointerenter", () => {
+        hoverSetter(attrValue);
+      });
+      node.addEventListener("pointerleave", () => {
+        hoverClearer();
+      });
+      node.addEventListener("focusin", () => {
+        hoverSetter(attrValue);
+      });
+      node.addEventListener("focusout", (event) => {
+        if (node.contains(event.relatedTarget)) {
+          return;
+        }
+        hoverClearer();
+      });
+    });
+  }
+
   function buildDonutMarkup(items, datasetBuilder) {
     let accAngle = 0;
     return items.map((item, idx) => {
@@ -361,6 +388,7 @@
       },
       selectedLevel === "group" ? "Нет групп за выбранный период" : "Нет категорий за выбранный период",
     );
+    bindBreakdownListHover(el.analyticsCategoryBreakdownList, "analytics-category-index", setCategoryBreakdownHover, clearCategoryBreakdownHover);
     focusDefaultCategoryBreakdown();
   }
 
@@ -434,6 +462,7 @@
       `,
       selectedLevel === "group" ? "Нет групп за выбранный период" : "Нет категорий за выбранный период",
     );
+    bindBreakdownListHover(el.dashboardCategoryBreakdownList, "dashboard-category-index", setDashboardBreakdownHover, clearDashboardBreakdownHover);
     applyDashboardBreakdownHover(null);
   }
 

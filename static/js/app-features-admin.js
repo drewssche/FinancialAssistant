@@ -1,15 +1,7 @@
 (() => {
   const { state, el, core } = window.App;
   const ADMIN_CACHE_TTL_MS = 15000;
-
-  function escapeHtml(value) {
-    return String(value ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#39;");
-  }
+  const escapeHtml = core.escapeHtml || ((value) => String(value ?? ""));
 
   function formatDateTimeRu(value) {
     if (!value) {

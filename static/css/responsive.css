@@ -725,8 +725,8 @@
   }
 
   .icon-popover {
-    width: 100%;
-    max-width: 100%;
+    width: min(max(100%, 18rem), calc(100vw - 1.5rem));
+    max-width: calc(100vw - 1.5rem);
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
@@ -878,6 +878,8 @@
   .receipt-shop-picker,
   .receipt-name-picker,
   .receipt-category-picker {
+    width: min(max(100%, 16rem), calc(100vw - 1.5rem));
+    max-width: calc(100vw - 1.5rem);
     max-height: min(38dvh, 320px);
   }
 

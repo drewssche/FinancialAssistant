@@ -3,6 +3,7 @@
   const sessionFeatures = window.App.featureSession;
   const savePreferencesDebounced = sessionFeatures.savePreferencesDebounced;
   const cancelDebouncedPreferencesSave = sessionFeatures.cancelDebouncedPreferencesSave;
+  const escapeHtml = core.escapeHtml || ((value) => String(value ?? ""));
 
   let itemCatalogRequestController = null;
   let itemCatalogRequestSeq = 0;
@@ -13,15 +14,6 @@
 
   function normalizeItemCatalogShopName(value) {
     return String(value || "").replace(/\s+/g, " ").trim();
-  }
-
-  function escapeHtml(value) {
-    return String(value ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#39;");
   }
 
   function getItemCatalogShopKey(value) {

@@ -114,12 +114,12 @@
 - `static/js/templates/modals.js` (~583)
 - `app/repositories/operation_repo.py` (~575)
 - `static/js/app-features-item-catalog-modal.js` (~525)
-- `static/js/app-features-session.js` (~524)
 - Completed on 2026-03-15:
 - `static/js/app-features-operation-modal.js` reduced below threshold by extracting `static/js/app-features-operation-modal-categories.js`
 - `static/js/app-features-operations.js` reduced below threshold by extracting `static/js/app-features-operations-mutations.js` and `static/js/app-features-operations-display.js`
 - `static/js/app-core.js` reduced below threshold by extracting `static/js/app-core-state.js` and `static/js/app-core-elements.js`
 - `static/js/app-features-analytics-highlights.js` reduced below threshold by extracting `static/js/app-features-analytics-shared.js` and `static/js/app-features-analytics-highlights-ui.js`
+- `static/js/app-features-session.js` reduced below threshold by extracting `static/js/app-features-session-auth.js` and `static/js/app-features-session-preferences.js`
 - Priority direction:
 - first split high-churn JS modules with mixed responsibilities (`operation modal`, `operations`, `session`, `analytics highlights`)
 - then split backend read/write service hot spots (`dashboard_service`, `operation_service`, `operation_repo`)
