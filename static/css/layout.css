@@ -655,6 +655,8 @@
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   max-width: 100%;
+  position: relative;
+  z-index: 0;
 }
 
 .actions {
