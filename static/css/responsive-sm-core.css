@@ -147,6 +147,8 @@
     display: grid;
     grid-template-columns: 1fr;
     gap: 4px;
+    justify-items: start;
+    text-align: left;
   }
 
   .mobile-card-table.categories-table .item-catalog-group-meta {
@@ -212,6 +214,13 @@
     padding-left: 10px;
   }
 
+  .mobile-card-table.categories-table .category-mobile-main,
+  .mobile-card-table.categories-table .category-mobile-group-card,
+  .mobile-card-table.categories-table .category-mobile-group-metas {
+    justify-items: start;
+    text-align: left;
+  }
+
   .mobile-card-table.categories-table td[data-label="Название"] .category-chip,
   .mobile-card-table.categories-table td[data-label="Тип"] .kind-pill {
     width: fit-content;
@@ -233,6 +242,18 @@
   .mobile-card-table.categories-table .category-mobile-actions .row-actions,
   .mobile-card-table.categories-table .category-mobile-group-actions {
     grid-template-columns: 1fr;
+  }
+
+  .mobile-card-table.operations-table .mobile-actions-cell .row-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    justify-items: stretch;
+  }
+
+  .mobile-card-table.operations-table .mobile-actions-cell .row-actions .btn {
+    width: 100%;
   }
 
   .mobile-card-table.item-catalog-table .category-table-group-wrap {
@@ -261,6 +282,8 @@
     display: grid;
     grid-template-columns: 1fr;
     gap: 4px;
+    justify-items: start;
+    text-align: left;
   }
 
   .mobile-card-table.item-catalog-table .item-catalog-group-meta {
@@ -312,6 +335,13 @@
   .mobile-card-table.item-catalog-table .item-catalog-mobile-group-card,
   .mobile-card-table.item-catalog-table .item-catalog-mobile-item-card {
     padding-left: 10px;
+  }
+
+  .mobile-card-table.item-catalog-table .item-catalog-mobile-group-card,
+  .mobile-card-table.item-catalog-table .item-catalog-mobile-item-main,
+  .mobile-card-table.item-catalog-table .item-catalog-mobile-group-metas {
+    justify-items: start;
+    text-align: left;
   }
 
   .mobile-card-table.item-catalog-table .table-hierarchy-parent-row {
@@ -384,6 +414,28 @@
   .analytics-kpi-card strong,
   .dashboard-analytics-kpi strong {
     font-size: 16px;
+  }
+
+  .analytics-category-donut {
+    width: min(22rem, 100%);
+  }
+
+  .analytics-category-donut-hole {
+    width: 62%;
+    padding: var(--space-3);
+    gap: 0.22rem;
+  }
+
+  .analytics-category-donut-title {
+    font-size: 0.62rem;
+  }
+
+  .analytics-category-donut-period {
+    font-size: 0.66rem;
+  }
+
+  .analytics-category-donut-hole strong {
+    font-size: 1.22rem;
   }
 
   .analytics-trend-chart-wrap,

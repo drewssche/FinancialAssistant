@@ -198,7 +198,7 @@
   .modal-footer {
     position: sticky;
     bottom: calc(env(safe-area-inset-bottom) * -1);
-    z-index: 12;
+    z-index: 160;
     margin-inline: calc(var(--space-3) * -1);
     margin-bottom: calc((var(--space-4) + env(safe-area-inset-bottom)) * -1);
     padding: var(--space-3);
@@ -208,6 +208,15 @@
     justify-items: stretch;
     align-items: stretch;
     isolation: isolate;
+  }
+
+  .modal-footer::before {
+    content: "";
+    position: absolute;
+    inset: -12px 0 0;
+    background: linear-gradient(180deg, rgba(20, 29, 45, 0.96) 0%, rgba(14, 21, 34, 1) 100%);
+    z-index: -1;
+    pointer-events: none;
   }
 
   .modal-card > form,

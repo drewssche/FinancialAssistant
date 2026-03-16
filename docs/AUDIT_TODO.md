@@ -102,6 +102,22 @@
 - analytics mobile e2e helper now tolerates Mini App auto-login path in addition to manual login button visibility
 - analytics section now force-loads the currently active tab on section open, and analytics tab switches trigger immediate data load instead of waiting for another control change
 - desktop action buttons were restored to compact desktop behavior; aggressive wrap/full-width action rules remain mobile-scoped
+- Final polish agreed 2026-03-16:
+- desktop row actions in `Operations` must stay right-aligned
+- desktop parent rows in `Categories` / `Item Catalog` need title/meta/actions rebalanced toward left-aligned content with actions pinned right
+- sticky modal CTA must visually sit above all lower form content/popovers; no text or picker surface should bleed through it
+- analytics donut on mobile needs safer center content sizing (slightly larger hole and/or smaller inner text)
+- mobile `Operations` cards should use full-width action buttons
+- `Categories` mobile should visually converge to the `Item Catalog` parent/child card pattern
+- `Item Catalog` mobile meta block should align to the left edge for clearer scanning
+- Final polish implemented 2026-03-16:
+- desktop row actions in `Operations`, `Categories` and `Item Catalog` are again right-aligned and compact
+- desktop parent rows in `Categories` / `Item Catalog` now keep title/meta content left-aligned while actions stay pinned right
+- mobile modal footer CTA now sits above lower content/popovers with stronger visual overlay behavior
+- analytics donut center content on mobile is reduced and the inner hole is enlarged for safer fit
+- mobile `Operations` cards now use full-width stacked action buttons
+- `Categories` mobile card alignment now follows the same left-aligned parent/child card rhythm as `Item Catalog`
+- `Item Catalog` mobile meta block is left-aligned for clearer scanning
 
 1. Fix stale category chip in Dashboard operations table
 - Status: done (2026-03-04)

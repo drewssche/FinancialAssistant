@@ -121,6 +121,16 @@ At the bottom-left sidebar, show compact static user block:
 - opening `Аналитика` must immediately load data for the active analytics tab/state without requiring any extra control toggle
 - switching analytics internal tabs must trigger the corresponding data load immediately
 - desktop action buttons should preserve compact horizontal sizing; wrap/full-width action behavior is mobile-only
+- desktop grouped-row contract:
+- parent row content (`title`, `metas`) stays left-aligned
+- row actions stay pinned to the right edge
+- mobile grouped-row contract:
+- `Categories` should mirror the clearer `Item Catalog` parent/child card pattern
+- `Operations` card actions should use full-width stacked buttons
+- analytics donut center content on mobile must stay safely inside the hole; prefer a larger hole and smaller secondary text over letting text approach the chart slices
+- sticky modal CTA overlay contract:
+- footer stays visually above lower content and popovers
+- content below must not bleed through the CTA surface
 
 ## Operation Modal Category Picker
 - Create/edit operation modals use chip-based category picker instead of plain select control
