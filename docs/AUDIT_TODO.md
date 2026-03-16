@@ -16,6 +16,42 @@
 - Remaining:
 - keep manual spot-check on real Telegram container before release
 
+## New Feature Track: Plans
+
+- Status: in progress (started 2026-03-16)
+- Agreed product contract:
+- new section `Планы` after `Операции`
+- dashboard block `Операции за период` is replaced by `Ближайшие планы`
+- plans are separate entities and do not affect fact/statistics before confirmation
+- there is no optional confirmation toggle; confirmation is mandatory by definition
+- plan form should reuse the operation-form contract where possible, excluding debt mode
+- baseline reusable fields:
+- `Расход / Доход`
+- дата / срок
+- категория
+- сумма
+- комментарий
+- чек / позиции
+- implemented now:
+- dedicated backend entities `plan_operations` and `plan_receipt_items`
+- `/api/v1/plans` CRUD + `/confirm` + `/skip`
+- create/edit plan via existing operation modal in `plan` mode
+- confirm plan -> immediate normal operation creation
+- recurring plan -> next due date is advanced on confirm/skip
+- dashboard block `Ближайшие планы` reads the same plans state/API
+- plans UI includes separate due/overdue/upcoming KPI and status filter
+- Telegram bot worker scans due/overdue plans and sends at most one reminder per local day
+- reminders are user-togglable via preferences `plans.reminders_enabled`
+- separate `plan_operation_events` stream records `confirmed / skipped / reminded`
+- `Планы -> История` now reads `/api/v1/plans/history` instead of inferring history from closed-plan statuses
+- `Планы -> История` now supports event-type filtering (`all / confirmed / skipped / reminded`) with persisted user preference
+- recurrence contract is extended with weekly multi-day schedules and monthly `last day of month`
+- daily recurrence also supports `only workdays`
+- dedicated `Plans` e2e coverage now validates UI create/confirm flows for weekly weekdays and monthly `last day of month`
+- `Plans` e2e also validates daily `only workdays` creation/confirm flow
+- remaining follow-up:
+- custom recurrence rules beyond `daily/weekly/monthly/yearly`
+
 2. Scroll and overflow hardening
 - Status: done (updated 2026-03-08)
 - Done:
@@ -346,6 +382,9 @@
 - updated 2026-03-16: Telegram/WebView startup cleanup
 - optional Telegram color APIs should be guarded by support/version checks to avoid console warnings on older Mini App containers
 - static shell should always expose a favicon placeholder to suppress repeated `favicon.ico` 404 noise during startup and manual QA
+- updated 2026-03-16: responsive renderer sync
+- active sections with dedicated mobile/desktop renderers must re-render on real breakpoint transitions (`>640px <-> <=640px`) without requiring manual refresh
+- the breakpoint sync path should reuse in-memory state/renderers and avoid new API calls; this closes the “desktop layout persists until reload after switching DevTools to mobile” regression class
 
 11. Sorting strategy unification for lists/tables (2026-03-05)
 - Status: done (updated 2026-03-06)

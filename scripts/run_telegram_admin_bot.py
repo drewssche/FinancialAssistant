@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from time import monotonic
 from typing import Any
 
 import httpx
@@ -9,6 +10,7 @@ import httpx
 from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.repositories.user_repo import UserRepository
+from app.services.plan_reminder_service import PlanReminderService
 
 
 logger = logging.getLogger("financial_assistant_admin_bot")
@@ -134,6 +136,28 @@ async def handle_callback_query(client: TelegramBotClient, query: dict[str, Any]
         db.close()
 
 
+async def process_plan_reminders(client: TelegramBotClient) -> None:
+    db = SessionLocal()
+    try:
+        service = PlanReminderService(db)
+        for payload in service.collect_due_reminders():
+            try:
+                await client.call(
+                    "sendMessage",
+                    {
+                        "chat_id": payload["chat_id"],
+                        "text": service.build_reminder_text(payload),
+                        "disable_web_page_preview": True,
+                    },
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("telegram plan reminder failed for user %s: %s", payload["user_id"], exc)
+                continue
+            service.mark_reminded_items([*payload.get("overdue_items", []), *payload.get("due_items", [])])
+    finally:
+        db.close()
+
+
 async def run() -> None:
     settings = get_settings()
     token = settings.telegram_bot_token.strip()
@@ -141,9 +165,17 @@ async def run() -> None:
         raise RuntimeError("TELEGRAM_BOT_TOKEN is not configured")
     client = TelegramBotClient(token=token, timeout_seconds=settings.telegram_bot_poll_timeout_seconds)
     offset = 0
+    last_plan_reminder_scan_at = 0.0
     logger.info("telegram admin bot started")
     try:
         while True:
+            now_mono = monotonic()
+            if now_mono - last_plan_reminder_scan_at >= 60.0:
+                try:
+                    await process_plan_reminders(client)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("telegram plan reminder scan failed: %s", exc)
+                last_plan_reminder_scan_at = now_mono
             try:
                 data = await client.call(
                     "getUpdates",

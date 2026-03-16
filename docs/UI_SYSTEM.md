@@ -39,10 +39,58 @@ Primary items:
 
 Sidebar grouping baseline (when section groups are introduced):
 - `Обзор`: Dashboard, Analytics
-- `Учет`: Operations, Categories, Item Catalog, Debts
+- `Учет`: Operations, Plans, Categories, Item Catalog, Debts
 - `Планирование`: Budgets, Reports
 - `Система`: Admin (only for admins), Settings
 - Dashboard is always first and default active on first open/session reset.
+
+## Plans Section
+- New first-level section: `Планы`
+- Placement in sidebar: immediately after `Операции`
+- Purpose: future operations/income records that are prepared in advance but do not affect fact/statistics until explicit confirmation
+- All plan entries require confirmation by default; there is no separate `requires confirmation` toggle
+- `План` is not a regular operation row with a flag; it is a separate entity and should stay outside normal operations/statistics until confirmed
+- `Подтвердить` should create a real operation immediately
+- `Редактировать` should edit the plan itself, not the resulting operation
+- plan form should reuse the existing operation form contract as much as possible, excluding debt mode
+- current implementation uses the existing create-operation modal in dedicated `plan` mode instead of a separate form
+- reusable fields baseline:
+- operation kind (`Расход` / `Доход`)
+- date / due date
+- category
+- amount
+- comment
+- optional receipt/positions flow
+- current recurrence contract:
+- toggle `Повторять план`
+- frequency: `daily | weekly | monthly | yearly`
+- interval step
+- daily plans can optionally run only on weekdays (`Пн-Пт`)
+- weekly plans may target multiple weekdays in one recurring cycle
+- monthly plans can be pinned to the last day of month
+- optional recurrence end date
+- current plan actions:
+- `Подтвердить` -> creates a normal operation immediately
+- `Редактировать` -> reopens the same modal in `plan` mode
+- `Пропустить` -> available for recurring plans and shifts next due date forward
+- `Удалить`
+- section-level plan monitoring UI:
+- KPI cards: `К подтверждению`, `Просрочено`, `Впереди`, `Потенциальный расход`, `Потенциальный доход`
+- status-scope filter: `Все сроки / Просрочено / Сегодня / Впереди`
+- initial dashboard strategy: replace the current recent operations block with `Ближайшие планы`
+- dashboard plans block should show pending/planned workload, not factual accounting data
+- backend storage baseline:
+- `plan_operations`
+- `plan_receipt_items`
+- `plan_operation_events`
+- plans are fetched via `/api/v1/plans` and confirmed via `/api/v1/plans/{id}/confirm`
+- plans history feed is fetched via `/api/v1/plans/history`
+- `История` tab is backed by real event rows (`confirmed`, `skipped`, `reminded`), not by a derived filter over closed plans
+- `История` tab also supports explicit event-type filtering (`all / confirmed / skipped / reminded`)
+- Telegram reminder baseline is implemented through the existing `bot` worker:
+- active due/overdue plans can generate one reminder per local day
+- reminder delivery is controlled by preferences toggle `plans.reminders_enabled`
+- local-day evaluation uses user timezone from preferences (`ui.timezone`)
 
 ## Settings
 - Settings section includes timezone selector
@@ -119,6 +167,8 @@ At the bottom-left sidebar, show compact static user block:
 - when a desktop table becomes unreadable on phone width, prefer a dedicated mobile renderer over `td[data-label]` fallback; `Categories` and `Item Catalog` should render as `parent card -> nested child cards`
 - sticky mobile modal footers must reserve matching bottom scroll space in the content area and stay above popovers/autocomplete surfaces so CTA never covers the last actionable field
 - mobile list/card action zones should default to full-width stacked buttons unless the feature explicitly benefits from a denser layout (`Debts` currently remains an exception)
+- responsive renderer contract: sections that choose different mobile/desktop DOM structures (`Operations`, `Categories`, `Item Catalog`, similar table/card surfaces) must re-render on breakpoint transition, not only on full page reload
+- breakpoint-driven re-render should reuse already loaded client state and must not trigger duplicate data requests just because DevTools/device mode or viewport width changed
 - section-specific action contracts must stay isolated:
 - `Operations`: desktop row actions stay compact and right-aligned for every row variant; mobile operation cards use full-width stacked actions
 - `Categories`: mobile layout should follow the same dedicated nested-card pattern as `Item Catalog`, not desktop `td[data-label]` table fallback

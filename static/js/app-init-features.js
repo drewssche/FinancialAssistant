@@ -6,6 +6,14 @@
 
   function bindFeatureHandlers() {
     function getCreateFormActionMeta() {
+      if (state.createFlowMode === "plan") {
+        const isEditPlan = Number(state.editPlanId || 0) > 0;
+        return {
+          pendingText: isEditPlan ? "Сохранение..." : "Добавление...",
+          successMessage: isEditPlan ? "План обновлён" : "План создан",
+          errorPrefix: isEditPlan ? "Ошибка сохранения плана" : "Ошибка создания плана",
+        };
+      }
       const isDebt = el.opEntryMode?.value === "debt";
       if (!isDebt) {
         return {
@@ -29,7 +37,7 @@
         pendingText: meta.pendingText,
         successMessage: meta.successMessage,
         errorPrefix: meta.errorPrefix,
-        action: () => actions.createOperation(event),
+        action: () => (state.createFlowMode === "plan" ? actions.submitPlanForm(event) : actions.createOperation(event)),
       });
     });
 

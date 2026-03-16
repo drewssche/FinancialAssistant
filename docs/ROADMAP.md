@@ -245,4 +245,40 @@
 - replace hover-only row actions with always-reachable mobile actions
 - validate auth/session restore inside Telegram WebApp container, not only in desktop browser
 
+## Feature Draft: Plans
+
+Agreed direction:
+- dedicated section `Планы` after `Операции` in sidebar
+- dashboard block `Операции за период` is replaced by `Ближайшие планы`
+- plans are separate entities and do not affect factual operations/statistics until explicit confirmation
+- no `requires confirmation` toggle: confirmation is mandatory by definition
+- plan form should reuse existing operation-form contract as much as possible, excluding debt mode
+- first-class scenarios:
+- one-off planned purchase / shopping preparation
+- recurring monthly bill / payment / income
+- dashboard KPI layer for potential spend/income and due confirmations
+
+MVP implementation sequence:
+1. Section shell + dashboard replacement + client-side state/render contract
+2. Plan create/edit form reusing operation form fields (`expense/income`, amount, category, comment, receipt items)
+3. Confirmation flow: `Подтвердить` creates a normal operation immediately
+4. Recurrence contract and due/upcoming plan instances
+5. Telegram reminder delivery for due recurring plans
+
+Current status:
+- implemented:
+- dedicated `Планы` section and dashboard replacement block `Ближайшие планы`
+- backend entity/API for plans
+- create/edit via existing create-operation modal in `plan` mode
+- one-off and recurring plans with confirm/skip/delete actions
+- confirm creates a normal operation immediately
+- due/overdue/upcoming KPI/filter layer in plans UI
+- Telegram reminder baseline via existing polling bot worker
+- recurring history/event log via `plan_operation_events` and `/api/v1/plans/history`
+- extended recurrence baseline: weekly multi-weekday schedules + monthly `last day of month`
+- daily recurrence now also supports `weekdays only`
+- plans history UI includes event-type filters for `confirmed / skipped / reminded`
+- not implemented yet:
+- custom recurrence rules beyond `daily/weekly/monthly/yearly`
+
 See detailed execution queue: `docs/AUDIT_TODO.md`

@@ -31,7 +31,7 @@
       button: () => el.currencyPositionPickerBtn,
     },
     dashboard_operations_limit: {
-      title: "Строк операций на дашборде",
+      title: "Строк планов на дашборде",
       select: () => el.dashboardOperationsLimitSelect,
       button: () => el.dashboardOperationsLimitPickerBtn,
     },
@@ -169,6 +169,9 @@
     if (el.showDashboardOperationsToggle) {
       el.showDashboardOperationsToggle.checked = ui.show_dashboard_operations !== false;
     }
+    if (el.plansRemindersToggle) {
+      el.plansRemindersToggle.checked = (state.preferences?.data?.plans?.reminders_enabled) !== false;
+    }
     if (el.dashboardOperationsLimitSelect) {
       const value = [5, 8, 12].includes(Number(ui.dashboard_operations_limit)) ? String(ui.dashboard_operations_limit) : "8";
       el.dashboardOperationsLimitSelect.value = value;
@@ -181,8 +184,8 @@
     if (el.dashboardStructurePanel) {
       el.dashboardStructurePanel.classList.toggle("hidden", ui.show_dashboard_analytics === false);
     }
-    if (el.dashboardOperationsPanel) {
-      el.dashboardOperationsPanel.classList.toggle("hidden", ui.show_dashboard_operations === false);
+    if (el.dashboardPlansPanel) {
+      el.dashboardPlansPanel.classList.toggle("hidden", ui.show_dashboard_operations === false);
     }
     if (el.dashboardDebtsPanel) {
       el.dashboardDebtsPanel.classList.toggle("hidden", ui.show_dashboard_debts === false);
@@ -214,8 +217,8 @@
     if (el.dashboardStructurePanel && el.showDashboardAnalyticsToggle) {
       el.dashboardStructurePanel.classList.toggle("hidden", !el.showDashboardAnalyticsToggle.checked);
     }
-    if (el.dashboardOperationsPanel && el.showDashboardOperationsToggle) {
-      el.dashboardOperationsPanel.classList.toggle("hidden", !el.showDashboardOperationsToggle.checked);
+    if (el.dashboardPlansPanel && el.showDashboardOperationsToggle) {
+      el.dashboardPlansPanel.classList.toggle("hidden", !el.showDashboardOperationsToggle.checked);
     }
     syncSettingsPickerButtons();
   }
@@ -279,6 +282,8 @@
       ? prefs.data.dashboard.category_kind
       : "expense";
     state.adminUserStatusFilter = prefs.data?.admin?.user_status_filter || "pending";
+    state.plansStatusFilter = prefs.data?.plans?.status_filter || "all";
+    state.plansHistoryEventFilter = prefs.data?.plans?.history_event_filter || "all";
     el.filterQ.value = prefs.data?.operations?.filters?.q || "";
     state.activeSection = prefs.data?.ui?.active_section || "dashboard";
 
@@ -298,6 +303,8 @@
     core.syncSegmentedActive(el.dashboardBreakdownLevelTabs, "dashboard-breakdown-level", state.dashboardBreakdownLevel);
     core.syncSegmentedActive(el.dashboardCategoryKindTabs, "dashboard-category-kind", state.dashboardCategoryKind);
     core.syncSegmentedActive(el.adminUserStatusTabs, "admin-user-status", state.adminUserStatusFilter);
+    core.syncSegmentedActive(el.plansStatusTabs, "plan-status", state.plansStatusFilter);
+    core.syncSegmentedActive(el.plansHistoryEventTabs, "plan-history-event", state.plansHistoryEventFilter);
     if (window.App.actions.applyAnalyticsTabUi) {
       window.App.actions.applyAnalyticsTabUi();
     }
@@ -357,6 +364,12 @@
         admin: {
           ...(state.preferences?.data?.admin || {}),
           user_status_filter: state.adminUserStatusFilter || "pending",
+        },
+        plans: {
+          ...(state.preferences?.data?.plans || {}),
+          status_filter: state.plansStatusFilter || "all",
+          history_event_filter: state.plansHistoryEventFilter || "all",
+          reminders_enabled: el.plansRemindersToggle ? el.plansRemindersToggle.checked : (state.preferences?.data?.plans?.reminders_enabled !== false),
         },
         ui: {
           ...(state.preferences?.data?.ui || {}),

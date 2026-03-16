@@ -1,6 +1,36 @@
 (() => {
   const { state, el, core, actions } = window.App;
   let bound = false;
+  let compactViewportQuery = null;
+
+  function isCompactMobileViewport() {
+    return window.matchMedia("(max-width: 640px)").matches;
+  }
+
+  function rerenderActiveSectionForViewportMode() {
+    switch (state.activeSection) {
+      case "operations":
+        actions.refreshOperationsView?.();
+        break;
+      case "categories":
+        actions.renderCategories?.();
+        break;
+      case "item_catalog":
+        actions.refreshItemCatalogView?.();
+        break;
+      default:
+        break;
+    }
+  }
+
+  function handleCompactViewportModeChange() {
+    const nextValue = isCompactMobileViewport();
+    if (state.isCompactMobileViewport === nextValue) {
+      return;
+    }
+    state.isCompactMobileViewport = nextValue;
+    rerenderActiveSectionForViewportMode();
+  }
 
   function bindCoreHandlers() {
     if (el.mobileNavToggleBtn) {
@@ -42,9 +72,16 @@
       actions.switchSection(btn.dataset.section).catch((err) => core.setStatus(String(err)));
     });
 
-    el.openOperationsTabBtn.addEventListener("click", () => {
-      actions.switchSection("operations").catch((err) => core.setStatus(String(err)));
-    });
+    if (el.openOperationsTabBtn) {
+      el.openOperationsTabBtn.addEventListener("click", () => {
+        actions.switchSection("operations").catch((err) => core.setStatus(String(err)));
+      });
+    }
+    if (el.openPlansTabBtn) {
+      el.openPlansTabBtn.addEventListener("click", () => {
+        actions.switchSection("plans").catch((err) => core.setStatus(String(err)));
+      });
+    }
     if (el.openDebtsTabBtn) {
       el.openDebtsTabBtn.addEventListener("click", () => {
         actions.switchSection("debts").catch((err) => core.setStatus(String(err)));
@@ -80,10 +117,17 @@
         core.closeMobileNav();
       }
     });
+
+    compactViewportQuery = window.matchMedia("(max-width: 640px)");
+    state.isCompactMobileViewport = compactViewportQuery.matches;
+    compactViewportQuery.addEventListener("change", handleCompactViewportModeChange);
   }
 
   function bindModalHandlers() {
     el.addOperationCta.addEventListener("click", actions.openCreateModal);
+    if (el.addPlanCta && actions.openCreatePlan) {
+      el.addPlanCta.addEventListener("click", actions.openCreatePlan);
+    }
     if (el.addDebtCta) {
       el.addDebtCta.addEventListener("click", () => {
         actions.openCreateModal();
@@ -434,6 +478,77 @@
         core.closeConfirm();
       }
     });
+
+    if (el.plansTabTabs && actions.setPlansTab) {
+      el.plansTabTabs.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-plan-tab]");
+        if (!btn) {
+          return;
+        }
+        actions.setPlansTab(btn.dataset.planTab || "").catch((err) => core.setStatus(String(err)));
+      });
+    }
+    if (el.plansKindTabs && actions.setPlansKindFilter) {
+      el.plansKindTabs.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-plan-kind]");
+        if (!btn) {
+          return;
+        }
+        actions.setPlansKindFilter(btn.dataset.planKind || "").catch((err) => core.setStatus(String(err)));
+      });
+    }
+    if (el.plansStatusTabs && actions.setPlansStatusFilter) {
+      el.plansStatusTabs.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-plan-status]");
+        if (!btn) {
+          return;
+        }
+        actions.setPlansStatusFilter(btn.dataset.planStatus || "").catch((err) => core.setStatus(String(err)));
+      });
+    }
+    if (el.plansHistoryEventTabs && actions.setPlansHistoryEventFilter) {
+      el.plansHistoryEventTabs.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-plan-history-event]");
+        if (!btn) {
+          return;
+        }
+        actions.setPlansHistoryEventFilter(btn.dataset.planHistoryEvent || "").catch((err) => core.setStatus(String(err)));
+      });
+    }
+    if (el.plansSearchQ && actions.applyPlansSearch) {
+      el.plansSearchQ.addEventListener("input", () => {
+        actions.applyPlansSearch();
+      });
+    }
+    if (el.plansList && actions.handlePlanActionClick) {
+      el.plansList.addEventListener("click", (event) => {
+        actions.handlePlanActionClick(event);
+      });
+    }
+    if (el.dashboardPlansList && actions.handlePlanActionClick) {
+      el.dashboardPlansList.addEventListener("click", (event) => {
+        actions.handlePlanActionClick(event);
+      });
+    }
+    if (el.planRecurrenceEnabled && actions.syncPlanRecurrenceUi) {
+      el.planRecurrenceEnabled.addEventListener("change", () => {
+        actions.syncPlanRecurrenceUi();
+      });
+    }
+    if (el.planRecurrenceFrequency && actions.syncPlanRecurrenceUi) {
+      el.planRecurrenceFrequency.addEventListener("change", () => {
+        actions.syncPlanRecurrenceUi();
+      });
+    }
+    if (el.planRecurrenceWeekdays && actions.togglePlanWeekday) {
+      el.planRecurrenceWeekdays.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-plan-weekday]");
+        if (!btn) {
+          return;
+        }
+        actions.togglePlanWeekday(Number(btn.dataset.planWeekday || 0));
+      });
+    }
   }
 
   function bindCoreInit() {

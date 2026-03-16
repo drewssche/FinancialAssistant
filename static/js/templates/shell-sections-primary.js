@@ -85,37 +85,19 @@
             <div id="dashboardDebtsList" class="debt-cards debt-cards-compact"></div>
           </section>
 
-          <section id="dashboardOperationsPanel" class="panel">
+          <section id="dashboardPlansPanel" class="panel">
             <div class="panel-head row between">
               <div>
-                <h3>Операции за период</h3>
-                <p id="dashboardPeriodLabel" class="subtitle"></p>
+                <h3>Ближайшие планы</h3>
+                <p id="dashboardPlansLabel" class="subtitle">Запланированные операции без влияния на факт</p>
               </div>
               <div class="panel-controls">
-                <div class="segmented" data-period-tabs role="tablist" aria-label="Период списка операций на дашборде">
-                  <button class="segmented-btn active" data-period="day" type="button">Сегодня</button>
-                  <button class="segmented-btn" data-period="week" type="button">Эта неделя</button>
-                  <button class="segmented-btn" data-period="month" type="button">Этот месяц</button>
-                  <button class="segmented-btn" data-period="year" type="button">Этот год</button>
-                  <button class="segmented-btn" data-period="all_time" type="button">Все время</button>
-                  <button class="segmented-btn" data-period="custom" type="button">Настроить</button>
-                </div>
-                <button id="openOperationsTabBtn" class="btn btn-secondary" type="button">Открыть раздел Операции</button>
+                <button id="openPlansTabBtn" class="btn btn-secondary" type="button">Открыть раздел Планы</button>
               </div>
             </div>
-            <div class="table-wrap">
-              <table class="table table-hover mobile-card-table dashboard-operations-table">
-                <thead>
-                  <tr>
-                    <th>Дата</th>
-                    <th>Тип</th>
-                    <th>Категория</th>
-                    <th>Сумма</th>
-                    <th>Комментарий</th>
-                  </tr>
-                </thead>
-                <tbody id="dashboardOperationsBody"></tbody>
-              </table>
+            <div id="dashboardPlansKpi" class="analytics-kpi-secondary dashboard-plans-kpi"></div>
+            <div id="dashboardPlansList" class="plans-list dashboard-plans-list">
+              <div class="muted-small">Планов пока нет</div>
             </div>
           </section>
         </section>

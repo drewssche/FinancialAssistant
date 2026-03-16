@@ -88,6 +88,7 @@
                   ? "к Трендам"
                   : "к Аналитике",
         operations: "к Операциям",
+        plans: "к Планам",
         debts: "к Долгам",
         categories: "к Категориям",
         item_catalog: "к Каталогу",
@@ -122,6 +123,7 @@
       { id: "dashboard", node: el.dashboardSection, title: "Дашборд", subtitle: "Доходы, расходы и операции за выбранный период" },
       { id: "analytics", node: el.analyticsSection, title: "Аналитика", subtitle: "Календарь, тренды и динамика расходов/доходов" },
       { id: "operations", node: el.operationsSection, title: "Операции", subtitle: "Рабочий список операций, фильтры и массовые действия" },
+      { id: "plans", node: el.plansSection, title: "Планы", subtitle: "Будущие операции и регулярные обязательства до подтверждения" },
       { id: "debts", node: el.debtsSection, title: "Долги", subtitle: "Карточки задолженностей и погашения" },
       { id: "categories", node: el.categoriesSection, title: "Категории", subtitle: "Управление категориями доходов и расходов" },
       { id: "item_catalog", node: el.itemCatalogSection, title: "Каталог позиций", subtitle: "Справочник позиций чеков по источникам" },
@@ -155,6 +157,7 @@
     const showTopActions =
       state.activeSection === "dashboard" ||
       state.activeSection === "operations" ||
+      state.activeSection === "plans" ||
       state.activeSection === "debts" ||
       state.activeSection === "categories" ||
       state.activeSection === "item_catalog";
@@ -162,6 +165,7 @@
     if (
       el.addOperationCta
       && el.batchOperationCta
+      && el.addPlanCta
       && el.addDebtCta
       && el.addCategoryCta
       && el.addGroupCta
@@ -171,11 +175,13 @@
       && el.batchItemCatalogCta
     ) {
       const showOps = state.activeSection === "dashboard" || state.activeSection === "operations";
+      const showPlans = state.activeSection === "plans";
       const showDebts = state.activeSection === "debts";
       const showCategories = state.activeSection === "categories";
       const showItemCatalog = state.activeSection === "item_catalog";
       el.addOperationCta.classList.toggle("hidden", !showOps);
       el.batchOperationCta.classList.toggle("hidden", !showOps);
+      el.addPlanCta.classList.toggle("hidden", !showPlans);
       el.addDebtCta.classList.toggle("hidden", !showDebts);
       el.addCategoryCta.classList.toggle("hidden", !showCategories);
       el.addGroupCta.classList.toggle("hidden", !showCategories);
@@ -259,6 +265,9 @@
     }
     if (sectionId === "operations" && window.App.actions.loadOperations) {
       await window.App.actions.loadOperations({ reset: true });
+    }
+    if (sectionId === "plans" && window.App.actions.loadPlans) {
+      await window.App.actions.loadPlans();
     }
     if (sectionId === "debts" && window.App.actions.loadDebtsCards) {
       window.App.actions.loadDebtsCards().catch((err) => {

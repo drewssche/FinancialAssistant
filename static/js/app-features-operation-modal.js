@@ -218,6 +218,8 @@
     }
   }
   function openCreateModal() {
+    state.createFlowMode = "operation";
+    state.editPlanId = null;
     state.editDebtCreateId = null;
     const createTitle = document.getElementById("createTitle");
     if (createTitle) {
@@ -242,6 +244,38 @@
     el.debtStartDate.value = "";
     el.debtDueDate.value = "";
     el.debtNote.value = "";
+    if (el.planRecurrenceBlock) {
+      el.planRecurrenceBlock.classList.add("hidden");
+    }
+    if (el.planRecurrenceEnabled) {
+      el.planRecurrenceEnabled.checked = false;
+    }
+    if (el.planRecurrenceFields) {
+      el.planRecurrenceFields.classList.add("hidden");
+    }
+    if (el.planRecurrenceFrequency) {
+      el.planRecurrenceFrequency.value = "monthly";
+    }
+    if (el.planRecurrenceInterval) {
+      el.planRecurrenceInterval.value = "1";
+    }
+    if (el.planRecurrenceWorkdaysOnly) {
+      el.planRecurrenceWorkdaysOnly.checked = false;
+    }
+    if (el.planRecurrenceMonthEnd) {
+      el.planRecurrenceMonthEnd.checked = false;
+    }
+    if (el.planRecurrenceEndDate) {
+      core.syncDateFieldValue(el.planRecurrenceEndDate, "");
+    }
+    if (el.planRecurrenceWeekdays) {
+      Array.from(el.planRecurrenceWeekdays.querySelectorAll("button[data-plan-weekday]")).forEach((button) => {
+        button.classList.remove("active");
+      });
+    }
+    el.planRecurrenceWeeklyBlock?.classList.add("hidden");
+    el.planRecurrenceWorkdaysWrap?.classList.add("hidden");
+    el.planRecurrenceMonthEndWrap?.classList.add("hidden");
     setDebtDirection("lend");
     applyDebtCurrencyUi();
     updateDebtDueHint();
@@ -255,6 +289,8 @@
     el.createModal.classList.remove("hidden");
   }
   function closeCreateModal() {
+    state.createFlowMode = "operation";
+    state.editPlanId = null;
     state.editDebtCreateId = null;
     const createTitle = document.getElementById("createTitle");
     if (createTitle) {
@@ -429,6 +465,9 @@
     selectCreateCategory,
     selectDebtCounterparty,
     selectEditCategory,
+    createReceiptDraft,
+    clearReceiptItems,
+    renderReceiptItems,
     handleCreatePreviewClick,
     setDebtDirection,
     setOperationKind,

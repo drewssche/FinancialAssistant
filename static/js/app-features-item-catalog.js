@@ -508,8 +508,13 @@
     itemCatalogBaseTotal = 0;
   }
 
+  function refreshItemCatalogView() {
+    renderItemCatalog(state.itemCatalogItems);
+  }
+
   window.App.featureItemCatalog = {
     loadItemCatalog,
+    refreshItemCatalogView,
     setItemCatalogSortPreset,
     collapseAllItemCatalogGroups,
     expandAllItemCatalogGroups,

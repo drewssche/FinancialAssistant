@@ -380,6 +380,21 @@
     word-break: break-word;
   }
 
+  .plan-card-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .plan-card-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .plan-card-actions .btn {
+    width: 100%;
+    min-width: 0;
+  }
+
   .analytics-switch-group {
     padding: var(--space-2);
   }

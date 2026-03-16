@@ -42,8 +42,8 @@
     if (el.dashboardStructurePanel && ui) {
       el.dashboardStructurePanel.classList.toggle("hidden", ui.showDashboardAnalytics === false);
     }
-    if (el.dashboardOperationsPanel && ui) {
-      el.dashboardOperationsPanel.classList.toggle("hidden", ui.showDashboardOperations === false);
+    if (el.dashboardPlansPanel && ui) {
+      el.dashboardPlansPanel.classList.toggle("hidden", ui.showDashboardOperations === false);
     }
     if (el.dashboardDebtsPanel && ui) {
       el.dashboardDebtsPanel.classList.toggle("hidden", ui.showDashboardDebts === false);
@@ -171,51 +171,21 @@
         }
       }
     }
+
+    window.App.featurePlans?.renderDashboardPlans?.();
   }
 
-  async function loadDashboardOperations() {
+  async function loadDashboardPlans() {
     const ui = core.getUiSettings ? core.getUiSettings() : null;
     if (ui && ui.showDashboardOperations === false) {
       return;
     }
-    if (window.App.actions.ensureAllTimeBounds) {
-      await window.App.actions.ensureAllTimeBounds();
-    }
-    const { dateFrom, dateTo } = core.getPeriodBounds(state.period);
-    el.dashboardPeriodLabel.textContent = core.formatPeriodLabel(dateFrom, dateTo);
-    const pageSize = ui?.dashboardOperationsLimit || 8;
-    const params = new URLSearchParams({
-      page: "1",
-      page_size: String(pageSize),
-      sort_by: "operation_date",
-      sort_dir: "desc",
-      date_from: dateFrom,
-      date_to: dateTo,
-    });
-
-    const data = await core.requestJson(`/api/v1/operations?${params.toString()}`, { headers: core.authHeaders() });
-    el.dashboardOperationsBody.innerHTML = "";
-
-    if (!data.items.length) {
-      const row = document.createElement("tr");
-      row.innerHTML = '<td colspan="5">Нет операций за выбранный период</td>';
-      el.dashboardOperationsBody.appendChild(row);
-      return;
-    }
-
-    for (const item of data.items) {
-      el.dashboardOperationsBody.appendChild(
-        core.createOperationRow(item, {
-          compact: true,
-          selectable: false,
-          category: getCategoryMetaById(item.category_id),
-        }),
-      );
-    }
+    await window.App.featurePlans?.loadPlans?.();
   }
 
   window.App.featureDashboard = {
     loadDashboard,
-    loadDashboardOperations,
+    loadDashboardOperations: loadDashboardPlans,
+    loadDashboardPlans,
   };
 })();

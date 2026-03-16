@@ -3,6 +3,68 @@
   window.App.templates = window.App.templates || {};
   window.App.templates.shellSectionsSecondary = `
 
+        <section id="plansSection" class="section-block hidden">
+          <section class="panel">
+            <div class="panel-head row between">
+              <div>
+                <h3>Плановые операции</h3>
+                <p class="subtitle">Разовые и регулярные планы без влияния на факт до подтверждения</p>
+              </div>
+            </div>
+            <div id="plansKpiGrid" class="analytics-kpi-grid plans-kpi-grid">
+              <article class="kpi-card">
+                <h3>К подтверждению</h3>
+                <p id="plansDueCount">0</p>
+              </article>
+              <article class="kpi-card">
+                <h3>Просрочено</h3>
+                <p id="plansOverdueCount">0</p>
+              </article>
+              <article class="kpi-card">
+                <h3>Впереди</h3>
+                <p id="plansUpcomingCount">0</p>
+              </article>
+              <article class="kpi-card">
+                <h3>Потенциальный расход</h3>
+                <p id="plansPotentialExpense">0,00 BYN</p>
+              </article>
+              <article class="kpi-card">
+                <h3>Потенциальный доход</h3>
+                <p id="plansPotentialIncome">0,00 BYN</p>
+              </article>
+            </div>
+            <div class="table-search-row">
+              <input id="plansSearchQ" class="table-search-input" type="text" placeholder="Поиск по категории/комментарию" />
+              <div class="toolbar section-action-toolbar search-toolbar">
+                <div class="segmented" id="plansTabTabs" role="tablist" aria-label="Вкладки планов">
+                  <button class="segmented-btn active" data-plan-tab="due" type="button">К подтверждению</button>
+                  <button class="segmented-btn" data-plan-tab="oneoff" type="button">Разовые</button>
+                  <button class="segmented-btn" data-plan-tab="recurring" type="button">Регулярные</button>
+                  <button class="segmented-btn" data-plan-tab="history" type="button">История</button>
+                </div>
+                <div class="segmented" id="plansKindTabs" role="tablist" aria-label="Тип планов">
+                  <button class="segmented-btn active" data-plan-kind="all" type="button">Все</button>
+                  <button class="segmented-btn" data-plan-kind="expense" type="button">Расход</button>
+                  <button class="segmented-btn" data-plan-kind="income" type="button">Доход</button>
+                </div>
+                <div class="segmented" id="plansStatusTabs" role="tablist" aria-label="Статус сроков планов">
+                  <button class="segmented-btn active" data-plan-status="all" type="button">Все сроки</button>
+                  <button class="segmented-btn" data-plan-status="overdue" type="button">Просрочено</button>
+                  <button class="segmented-btn" data-plan-status="due" type="button">Сегодня</button>
+                  <button class="segmented-btn" data-plan-status="upcoming" type="button">Впереди</button>
+                </div>
+                <div class="segmented hidden" id="plansHistoryEventTabs" role="tablist" aria-label="Тип событий истории планов">
+                  <button class="segmented-btn active" data-plan-history-event="all" type="button">Все события</button>
+                  <button class="segmented-btn" data-plan-history-event="confirmed" type="button">Подтверждения</button>
+                  <button class="segmented-btn" data-plan-history-event="skipped" type="button">Пропуски</button>
+                  <button class="segmented-btn" data-plan-history-event="reminded" type="button">Напоминания</button>
+                </div>
+              </div>
+            </div>
+            <div id="plansList" class="plans-list"></div>
+          </section>
+        </section>
+
         <section id="debtsSection" class="section-block hidden">
           <section class="panel">
             <div class="panel-head row between">
@@ -124,14 +186,18 @@
                 </label>
                 <label class="settings-switch-row">
                   <input id="showDashboardOperationsToggle" type="checkbox" checked />
-                  <span>Показывать блок операций на дашборде</span>
+                  <span>Показывать блок планов на дашборде</span>
                 </label>
                 <label class="settings-switch-row">
                   <input id="showDashboardDebtsToggle" type="checkbox" checked />
                   <span>Показывать карточки долгов на дашборде</span>
                 </label>
+                <label class="settings-switch-row">
+                  <input id="plansRemindersToggle" type="checkbox" checked />
+                  <span>Напоминать о планах в Telegram</span>
+                </label>
                 <label class="field">
-                  <span>Строк операций на дашборде</span>
+                  <span>Строк планов на дашборде</span>
                   <div class="settings-picker-field">
                     <select id="dashboardOperationsLimitSelect">
                       <option value="5">5</option>

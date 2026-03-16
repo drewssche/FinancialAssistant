@@ -36,6 +36,7 @@
       debtHistoryMeta: null,
       debtHistoryHasMore: false,
       editDebtCreateId: null,
+      editPlanId: null,
       editOperationId: null,
       editCategoryId: null,
       period: "day",
@@ -46,6 +47,12 @@
       operationsCategoryFilterId: null,
       operationsCategoryFilterName: "",
       operationSortPreset: "date",
+      plansItems: [],
+      plansHistoryItems: [],
+      plansTab: "due",
+      plansKindFilter: "all",
+      plansStatusFilter: "all",
+      plansHistoryEventFilter: "all",
       activeSection: "dashboard",
       categoryFilterKind: "all",
       categories: [],
@@ -93,6 +100,8 @@
       batchOperationPlan: null,
       batchCategoryPlan: null,
       batchItemTemplatePlan: null,
+      isCompactMobileViewport: false,
+      createFlowMode: "operation",
     };
   }
 

@@ -21,6 +21,7 @@
           <button class="nav-btn" data-section="analytics">Аналитика</button>
           <div class="nav-group-title">Учет</div>
           <button class="nav-btn" data-section="operations">Операции</button>
+          <button class="nav-btn" data-section="plans">Планы</button>
           <button class="nav-btn" data-section="debts">Долги</button>
           <button class="nav-btn" data-section="categories">Категории</button>
           <button class="nav-btn" data-section="item_catalog">Каталог позиций</button>
@@ -58,6 +59,7 @@
             <div class="cta-row">
               <button id="addOperationCta" class="btn btn-cta" type="button">+ Добавить операцию</button>
               <button id="batchOperationCta" class="btn btn-secondary" type="button">+ Массовое добавление</button>
+              <button id="addPlanCta" class="btn btn-cta hidden" type="button">+ Создать план</button>
               <button id="addDebtCta" class="btn btn-cta hidden" type="button">+ Новый долг</button>
               <button id="addCategoryCta" class="btn btn-cta hidden" type="button">+ Создать категорию</button>
               <button id="addGroupCta" class="btn btn-secondary hidden" type="button">+ Создать группу</button>

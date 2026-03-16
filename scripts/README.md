@@ -96,3 +96,4 @@ Optional env:
 Notes:
 - the same worker is started by the Compose `bot` service
 - admins must open the bot and press `Start` once before Telegram allows outbound notifications
+- the same worker also sends due/overdue plan reminders to users who enabled `plans.reminders_enabled`

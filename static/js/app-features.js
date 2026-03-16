@@ -4,6 +4,7 @@
   const analyticsFeatures = window.App.featureAnalytics;
   const adminFeatures = window.App.featureAdmin;
   const debtFeatures = window.App.featureDebts;
+  const plansFeatures = window.App.featurePlans;
   const sessionFeatures = window.App.featureSession;
   const itemCatalogFeatures = window.App.featureItemCatalog;
   const operationsFeatures = window.App.featureOperations;
@@ -105,7 +106,22 @@
   const openEditDebtModal = debtFeatures.openEditDebtModal;
   const deleteDebtFlow = debtFeatures.deleteDebtFlow;
 
+  const loadPlans = plansFeatures.loadPlans;
+  const renderPlansSection = plansFeatures.renderPlansSection;
+  const renderDashboardPlans = plansFeatures.renderDashboardPlans;
+  const setPlansTab = plansFeatures.setPlansTab;
+  const setPlansKindFilter = plansFeatures.setPlansKindFilter;
+  const setPlansStatusFilter = plansFeatures.setPlansStatusFilter;
+  const setPlansHistoryEventFilter = plansFeatures.setPlansHistoryEventFilter;
+  const applyPlansSearch = plansFeatures.applyPlansSearch;
+  const openCreatePlan = plansFeatures.openCreatePlan;
+  const submitPlanForm = plansFeatures.submitPlanForm;
+  const handlePlanActionClick = plansFeatures.handlePlanActionClick;
+  const syncPlanRecurrenceUi = plansFeatures.syncPlanRecurrenceUi;
+  const togglePlanWeekday = plansFeatures.togglePlanWeekday;
+
   const loadItemCatalog = itemCatalogFeatures.loadItemCatalog;
+  const refreshItemCatalogView = itemCatalogFeatures.refreshItemCatalogView;
   const setItemCatalogSortPreset = itemCatalogFeatures.setItemCatalogSortPreset;
   const collapseAllItemCatalogGroups = itemCatalogFeatures.collapseAllItemCatalogGroups;
   const expandAllItemCatalogGroups = itemCatalogFeatures.expandAllItemCatalogGroups;
@@ -245,6 +261,7 @@
     rejectAdminUser,
     deleteAdminUser,
     loadDebtsCards,
+    loadPlans,
     openDebtRepaymentModal,
     closeDebtRepaymentModal,
     submitDebtRepayment,
@@ -258,11 +275,24 @@
     loadMoreDebtHistoryEvents,
     openEditDebtModal,
     deleteDebtFlow,
+    renderPlansSection,
+    renderDashboardPlans,
+    setPlansTab,
+    setPlansKindFilter,
+    setPlansStatusFilter,
+    setPlansHistoryEventFilter,
+    applyPlansSearch,
+    openCreatePlan,
+    submitPlanForm,
+    handlePlanActionClick,
+    syncPlanRecurrenceUi,
+    togglePlanWeekday,
     ensureAllTimeBounds,
     invalidateAllTimeAnchor,
     loadOperations,
     loadMoreOperations,
     loadItemCatalog,
+    refreshItemCatalogView,
     setItemCatalogSortPreset,
     collapseAllItemCatalogGroups,
     expandAllItemCatalogGroups,

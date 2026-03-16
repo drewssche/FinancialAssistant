@@ -25,6 +25,10 @@ class PreferenceRepository:
                 "admin": {
                     "user_status_filter": "pending",
                 },
+                "plans": {
+                    "status_filter": "all",
+                    "reminders_enabled": True,
+                },
                 "ui": {
                     "timezone": "auto",
                     "currency": "BYN",
