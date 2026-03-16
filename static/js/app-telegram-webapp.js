@@ -5,6 +5,38 @@
     return window.Telegram?.WebApp || null;
   }
 
+  function getWebAppVersionParts(webApp) {
+    const raw = String(webApp?.version || "").trim();
+    const match = raw.match(/^(\d+)(?:\.(\d+))?/);
+    if (!match) {
+      return null;
+    }
+    return {
+      major: Number(match[1] || 0),
+      minor: Number(match[2] || 0),
+    };
+  }
+
+  function isVersionAtLeast(webApp, major, minor = 0) {
+    const parts = getWebAppVersionParts(webApp);
+    if (!parts) {
+      return false;
+    }
+    if (parts.major !== major) {
+      return parts.major > major;
+    }
+    return parts.minor >= minor;
+  }
+
+  function canUseThemeColorApi(webApp) {
+    return Boolean(
+      webApp
+      && typeof webApp.setHeaderColor === "function"
+      && typeof webApp.setBackgroundColor === "function"
+      && isVersionAtLeast(webApp, 6, 1),
+    );
+  }
+
   function setViewportVars(webApp) {
     const root = document.documentElement;
     const viewportHeight = Number(webApp?.viewportHeight || window.innerHeight || 0);
@@ -28,10 +60,8 @@
     try {
       webApp.ready();
       webApp.expand();
-      if (webApp.setHeaderColor) {
+      if (canUseThemeColorApi(webApp)) {
         webApp.setHeaderColor("#0a0f18");
-      }
-      if (webApp.setBackgroundColor) {
         webApp.setBackgroundColor("#080b12");
       }
     } catch {}

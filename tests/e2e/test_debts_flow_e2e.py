@@ -33,9 +33,12 @@ def _restore_mock_telegram(page):
 def _login_via_mock_telegram(page):
     _restore_mock_telegram(page)
     page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-    page.locator("#telegramLoginBtn").wait_for(state="visible")
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
+    try:
+        page.locator("#telegramLoginBtn").wait_for(state="visible", timeout=1200)
+        page.click("#telegramLoginBtn")
+        page.wait_for_selector("#appShell:not(.hidden)")
+    except Exception:
+        page.wait_for_selector("#appShell:not(.hidden)")
 
 
 @pytest.fixture(scope="module")

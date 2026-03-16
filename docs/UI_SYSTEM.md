@@ -24,6 +24,7 @@
 - current baseline intentionally does not depend on Telegram-native `BackButton` navigation
 - shell and modal navigation must stay fully handled by regular in-app controls even inside Telegram
 - Telegram-specific runtime hooks must not leak into shared domain logic
+- Telegram runtime should call optional WebApp APIs only after capability/version checks; cosmetic APIs like header/background color must not generate avoidable console warnings on older Telegram containers
 
 ## Sidebar Navigation
 Primary items:
@@ -97,6 +98,7 @@ At the bottom-left sidebar, show compact static user block:
 - Lists and tables: sortable headers where applicable
 - Modal dialogs: create/edit operations and categories
 - Status views: loading, empty, error
+- Static shell assets should include a favicon placeholder so browser/WebView startup does not generate repeated `favicon.ico` 404 noise
 
 ## Mobile Interaction Rules
 - critical actions must not rely on row hover

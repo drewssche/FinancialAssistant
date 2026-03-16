@@ -343,6 +343,9 @@
 - `Categories` mobile child cards now follow the same title/meta/actions structure as `Item Catalog`
 - debt history modal direction pill is mobile-safe (`nowrap` + minimum width)
 - `debts` e2e suite now uses the same mock Telegram/public-config startup contract as `analytics`, preventing hidden-login-button regressions from reappearing independently
+- updated 2026-03-16: Telegram/WebView startup cleanup
+- optional Telegram color APIs should be guarded by support/version checks to avoid console warnings on older Mini App containers
+- static shell should always expose a favicon placeholder to suppress repeated `favicon.ico` 404 noise during startup and manual QA
 
 11. Sorting strategy unification for lists/tables (2026-03-05)
 - Status: done (updated 2026-03-06)
