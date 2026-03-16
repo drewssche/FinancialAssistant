@@ -20,7 +20,15 @@
       return;
     }
     const node = el.analyticsCalendarScrollWrap;
+    if ((state.analyticsCalendarView || "month") !== "month") {
+      node.classList.remove("has-left-fade", "has-right-fade");
+      return;
+    }
     const maxScrollLeft = Math.max(0, node.scrollWidth - node.clientWidth);
+    if (maxScrollLeft <= 4) {
+      node.classList.remove("has-left-fade", "has-right-fade");
+      return;
+    }
     const scrollLeft = Math.max(0, node.scrollLeft || 0);
     const edgeTolerance = 2;
     node.classList.toggle("has-left-fade", scrollLeft > edgeTolerance);

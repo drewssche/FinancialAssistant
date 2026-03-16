@@ -505,6 +505,12 @@
   min-width: 12rem;
 }
 
+#analyticsCalendarPanel #analyticsGridMonthPickerWrap,
+#analyticsCalendarPanel #analyticsGridMonthPicker,
+#analyticsCalendarPanel #analyticsGridYearPicker {
+  width: 100%;
+}
+
 .analytics-switch-group .toolbar {
   gap: var(--space-2);
 }

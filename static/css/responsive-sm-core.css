@@ -74,14 +74,17 @@
     width: auto;
     min-width: 0;
     align-self: flex-end;
-    padding-inline: var(--space-1);
+    padding-inline: 0;
   }
 
   .modal-card .panel-head .modal-close-btn {
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 2.75rem;
+    height: 2.75rem;
     padding: 0;
     border-radius: 999px;
+    border-color: rgba(74, 94, 132, 0.72);
+    background: rgba(21, 31, 49, 0.96);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
   }
 
   .modal-card .panel-head .modal-close-label {
@@ -107,7 +110,7 @@
   }
 
   .mobile-card-table.categories-table td[data-label] {
-    grid-template-columns: minmax(68px, 0.62fr) minmax(0, 1fr);
+    grid-template-columns: minmax(58px, 0.5fr) minmax(0, 1fr);
     gap: var(--space-1);
   }
 
@@ -133,8 +136,8 @@
 
   .mobile-card-table.categories-table td.mobile-actions-cell .row-actions,
   .mobile-card-table.categories-table .category-table-group-wrap .row-actions {
-    width: min(128px, 100%);
-    margin-left: auto;
+    width: 100%;
+    margin-left: 0;
     display: grid;
     gap: 8px;
     justify-items: stretch;
@@ -167,7 +170,7 @@
   }
 
   .mobile-card-table.item-catalog-table td[data-label] {
-    grid-template-columns: minmax(64px, 0.58fr) minmax(0, 1fr);
+    grid-template-columns: minmax(58px, 0.48fr) minmax(0, 1fr);
     gap: var(--space-1);
   }
 
@@ -193,6 +196,26 @@
     justify-items: stretch;
   }
 
+  .mobile-card-table.dashboard-operations-table td[data-label] {
+    grid-template-columns: minmax(52px, 0.46fr) minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .mobile-card-table.dashboard-operations-table td[data-label="Категория"] {
+    align-items: start;
+  }
+
+  .mobile-card-table.dashboard-operations-table .operation-category-stack,
+  .mobile-card-table.dashboard-operations-table .category-chip-list {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .mobile-card-table.dashboard-operations-table .operation-category-stack .category-chip,
+  .mobile-card-table.dashboard-operations-table .operation-category-stack .meta-chip {
+    max-width: 100%;
+  }
+
   .mobile-card-table.item-catalog-table td.mobile-actions-cell .row-actions .btn,
   .mobile-card-table.item-catalog-table .item-catalog-source-actions .btn {
     min-height: 2.1rem;
@@ -206,6 +229,37 @@
 
   .analytics-tab-panel .panel-head > .toolbar {
     gap: var(--space-2);
+  }
+
+  #analyticsCalendarPanel > .panel-head > .toolbar {
+    width: 100%;
+    margin-left: 0;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+  }
+
+  #analyticsCalendarPanel .analytics-switch-group {
+    min-width: 0;
+    width: 100%;
+  }
+
+  #analyticsCalendarPanel .analytics-switch-group .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+
+  #analyticsCalendarPanel .analytics-switch-group .toolbar .btn,
+  #analyticsCalendarPanel .analytics-switch-group .toolbar .input,
+  #analyticsCalendarPanel .analytics-switch-group .toolbar .date-input-wrap,
+  #analyticsCalendarPanel .analytics-switch-group .toolbar .compact-input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  #analyticsCalendarPanel .analytics-switch-group .toolbar .btn {
+    justify-content: center;
   }
 
   .analytics-switch-group .segmented-btn {
@@ -257,6 +311,21 @@
 
   .form-grid-2 {
     grid-template-columns: 1fr;
+  }
+
+  .settings-grid-2,
+  .settings-scale-row,
+  .danger-zone-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-block input,
+  .settings-block select,
+  .danger-zone-actions input,
+  .danger-zone-actions .btn {
+    width: 100%;
+    min-width: 0;
+    font-size: 16px;
   }
 
   .modal-card form {

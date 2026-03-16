@@ -31,7 +31,7 @@
       ? ` style="border-color:${escapeHtml(category.accent_color)}66;background:${escapeHtml(category.accent_color)}22;"`
       : "";
     const icon = category.icon ? `<span class="category-chip-icon">${escapeHtml(category.icon)}</span>` : "";
-    return `<span class="category-chip"${style}>${icon}<span>${highlightText(category.name, searchQuery)}</span></span>`;
+    return `<span class="category-chip"${style}>${icon}<span class="category-chip-text">${highlightText(category.name, searchQuery)}</span></span>`;
   }
 
   function renderMetaChip(label, tone = "neutral") {

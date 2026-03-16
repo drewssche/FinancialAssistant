@@ -19,6 +19,10 @@
   color: #c59098;
 }
 
+.danger-zone-actions .btn {
+  min-width: 0;
+}
+
 .confirm-actions {
   justify-content: flex-end;
   margin-top: 14px;

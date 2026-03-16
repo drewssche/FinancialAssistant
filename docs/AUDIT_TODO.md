@@ -49,6 +49,22 @@
 
 ## Post-Audit Priority Queue
 
+0. Mobile UX follow-up pass
+- Status: in progress (started 2026-03-16)
+- Scope agreed for current pass:
+- dashboard operations mobile cards: prevent category/meta chips from overflowing card bounds
+- analytics calendar mobile toolbar: stack `view / period / navigation` controls and keep month picker inside panel width
+- analytics calendar month scroll: soften/fix side fade so dark edge does not remain visually stuck during horizontal scroll
+- modal headers on mobile: enlarge close-button hit area and visual balance
+- category create/edit mobile modal: keep square icon picker before category name field instead of full-width icon button
+- categories mobile hierarchy: make parent group and nested categories visually clearer, with stronger grouping contract and less broken action layout
+- item catalog mobile hierarchy: same parent/child contract for source -> positions, with cleaner aggregate metas and nested child rows
+- settings mobile form: stabilize select/input sizing and stack `Danger Zone` confirmation input/button vertically
+- Validation target:
+- no desktop regression
+- primary focus on `<=640px`
+- verify visually in Dashboard, Analytics, Categories, Item Catalog, Settings and all shared modals
+
 1. Fix stale category chip in Dashboard operations table
 - Status: done (2026-03-04)
 - Problem: after category/group update, `Dashboard -> Операции за период` may keep old category/group chip until full page reload.

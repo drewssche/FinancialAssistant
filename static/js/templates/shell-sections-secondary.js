@@ -166,7 +166,7 @@
               <h3>Danger Zone</h3>
               <p class="subtitle">Удаление аккаунта удалит все операции, долги, категории и настройки без возможности восстановления.</p>
               <div class="danger-zone-actions">
-                <input id="deleteMePhrase" type="text" placeholder="Введите УДАЛИТЬ для подтверждения" />
+                <input id="deleteMePhrase" type="text" placeholder="Введите УДАЛИТЬ" />
                 <button id="deleteMeBtn" class="btn btn-danger" type="button">Удалить меня</button>
               </div>
             </section>
