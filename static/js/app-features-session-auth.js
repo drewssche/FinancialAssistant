@@ -104,12 +104,13 @@
       const reason = state.accessStatus === "rejected"
         ? "Доступ отклонен администратором"
         : "Заявка отправлена. Ожидайте одобрения администратора";
-      logout(false);
+      logout(false, { preserveLoginAlert: true });
       throw new Error(reason);
     }
   }
 
-  function logout(showMessage = true) {
+  function logout(showMessage = true, options = {}) {
+    const preserveLoginAlert = options?.preserveLoginAlert === true;
     window.App.featureSessionPreferences?.cancelDebouncedPreferencesSave?.();
     localStorage.removeItem("access_token");
     state.token = "";
@@ -139,6 +140,10 @@
     state.toasts.clear();
     core.applyUiScale(100);
     core.applyMoneyInputs(core.resolveCurrencyConfig("BYN", "suffix"));
+    if (preserveLoginAlert) {
+      core.showLogin("", { preserveAlert: true });
+      return;
+    }
     core.showLogin(showMessage ? "Вы вышли" : "");
   }
 

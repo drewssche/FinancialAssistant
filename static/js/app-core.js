@@ -58,12 +58,16 @@
     };
   }
 
-  function showLogin(message = "") {
+  function showLogin(message = "", options = {}) {
+    const preserveAlert = options?.preserveAlert === true;
     setMobileNavOpen(false);
     el.loginScreen.classList.remove("hidden");
     el.appShell.classList.add("hidden");
     if (message) {
       setStatus(message, true);
+      return;
+    }
+    if (preserveAlert) {
       return;
     }
     hideLoginAlert();
