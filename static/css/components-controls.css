@@ -192,6 +192,22 @@ textarea {
   white-space: nowrap;
 }
 
+.settings-picker-btn {
+  width: 100%;
+  justify-content: space-between;
+  text-align: left;
+  font-size: 15px;
+  min-height: 2.875rem;
+  padding-inline: var(--space-3);
+}
+
+.settings-picker-btn::after {
+  content: "▾";
+  color: #c6d4ef;
+  font-size: 14px;
+  flex: 0 0 auto;
+}
+
 @keyframes ctaPulse {
   0%,
   100% {

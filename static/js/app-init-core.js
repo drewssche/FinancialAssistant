@@ -244,6 +244,38 @@
         }
       });
     }
+    if (el.closeSettingsPickerModalBtn && actions.closeSettingsPickerModal) {
+      el.closeSettingsPickerModalBtn.addEventListener("click", actions.closeSettingsPickerModal);
+    }
+    if (el.settingsPickerModal && actions.closeSettingsPickerModal) {
+      el.settingsPickerModal.addEventListener("click", (event) => {
+        if (event.target === el.settingsPickerModal) {
+          actions.closeSettingsPickerModal();
+        }
+      });
+    }
+    if (el.settingsPickerOptions && actions.applySettingsPickerValue) {
+      el.settingsPickerOptions.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-settings-picker-value]");
+        if (!btn) {
+          return;
+        }
+        actions.applySettingsPickerValue(btn.dataset.settingsPickerValue || "");
+      });
+    }
+    const pickerButtons = [
+      [el.timezonePickerBtn, "timezone"],
+      [el.currencyPickerBtn, "currency"],
+      [el.currencyPositionPickerBtn, "currency_position"],
+      [el.dashboardOperationsLimitPickerBtn, "dashboard_operations_limit"],
+      [el.analyticsTopOperationsLimitPickerBtn, "analytics_top_operations_limit"],
+      [el.analyticsTopPositionsLimitPickerBtn, "analytics_top_positions_limit"],
+    ];
+    for (const [buttonNode, pickerKey] of pickerButtons) {
+      if (buttonNode && actions.openSettingsPickerModal) {
+        buttonNode.addEventListener("click", () => actions.openSettingsPickerModal(pickerKey));
+      }
+    }
 
     el.settingsForm.addEventListener("submit", (event) => {
       core.runAction({
@@ -370,6 +402,14 @@
         }
       });
     }
+    window.addEventListener("resize", () => {
+      if (actions.syncSettingsPickerButtons) {
+        actions.syncSettingsPickerButtons();
+      }
+      if (!core.isMobileViewport() && actions.closeSettingsPickerModal) {
+        actions.closeSettingsPickerModal();
+      }
+    });
     if (el.deleteMeBtn) {
       el.deleteMeBtn.addEventListener("click", () => {
         core.runAction({

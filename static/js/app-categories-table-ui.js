@@ -234,7 +234,7 @@
       queryRaw,
     );
     tr.innerHTML = `
-      <td class="category-group-accent-cell" data-label="Группа">${groupCell}</td>
+      <td class="category-group-accent-cell category-group-context-cell" data-label="Группа">${groupCell}</td>
       <td data-label="Название">${nameCell}</td>
       <td data-label="Тип"><span class="kind-pill kind-pill-${kindClass}">${core.highlightText(core.kindLabel(item.kind), queryRaw)}</span></td>
       <td class="mobile-actions-cell" data-label="Действия">${actionCell}</td>
@@ -267,10 +267,12 @@
         <div class="category-table-group-wrap">
           <button type="button" class="item-catalog-group-btn category-table-group-btn" data-category-group-toggle-key="${group.key}" ${toggleDisabled ? "disabled" : ""}>
             <span class="item-catalog-group-chevron">${chevron}</span>
-            <span class="item-catalog-group-name">${groupName}</span>
-            <span class="item-catalog-group-metas">
-              <span class="item-catalog-group-meta">${group.children.length} кат.</span>
-              ${kindMeta}
+            <span class="item-catalog-group-main">
+              <span class="item-catalog-group-name">${groupName}</span>
+              <span class="item-catalog-group-metas">
+                <span class="item-catalog-group-meta">${group.children.length} кат.</span>
+                ${kindMeta}
+              </span>
             </span>
           </button>
           ${groupActions}

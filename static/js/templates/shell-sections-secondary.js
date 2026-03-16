@@ -70,21 +70,24 @@
                 <h3>Регион</h3>
                 <label class="field">
                   <span>Таймзона</span>
-                  <select id="timezoneSelect">
-                    <option value="auto">Авто (из браузера)</option>
-                    <option value="Europe/Moscow">Europe/Moscow</option>
-                    <option value="Europe/Kaliningrad">Europe/Kaliningrad</option>
-                    <option value="Europe/Samara">Europe/Samara</option>
-                    <option value="Asia/Yekaterinburg">Asia/Yekaterinburg</option>
-                    <option value="Asia/Omsk">Asia/Omsk</option>
-                    <option value="Asia/Krasnoyarsk">Asia/Krasnoyarsk</option>
-                    <option value="Asia/Irkutsk">Asia/Irkutsk</option>
-                    <option value="Asia/Yakutsk">Asia/Yakutsk</option>
-                    <option value="Asia/Vladivostok">Asia/Vladivostok</option>
-                    <option value="Asia/Magadan">Asia/Magadan</option>
-                    <option value="Asia/Kamchatka">Asia/Kamchatka</option>
-                    <option value="UTC">UTC</option>
-                  </select>
+                  <div class="settings-picker-field">
+                    <select id="timezoneSelect">
+                      <option value="auto">Авто (из браузера)</option>
+                      <option value="Europe/Moscow">Europe/Moscow</option>
+                      <option value="Europe/Kaliningrad">Europe/Kaliningrad</option>
+                      <option value="Europe/Samara">Europe/Samara</option>
+                      <option value="Asia/Yekaterinburg">Asia/Yekaterinburg</option>
+                      <option value="Asia/Omsk">Asia/Omsk</option>
+                      <option value="Asia/Krasnoyarsk">Asia/Krasnoyarsk</option>
+                      <option value="Asia/Irkutsk">Asia/Irkutsk</option>
+                      <option value="Asia/Yakutsk">Asia/Yakutsk</option>
+                      <option value="Asia/Vladivostok">Asia/Vladivostok</option>
+                      <option value="Asia/Magadan">Asia/Magadan</option>
+                      <option value="Asia/Kamchatka">Asia/Kamchatka</option>
+                      <option value="UTC">UTC</option>
+                    </select>
+                    <button id="timezonePickerBtn" class="btn btn-secondary settings-picker-btn hidden" type="button" aria-haspopup="dialog"></button>
+                  </div>
                 </label>
               </section>
               <section class="settings-block">
@@ -92,20 +95,26 @@
                 <div class="settings-grid-2">
                   <label class="field">
                     <span>Валюта</span>
-                    <select id="currencySelect">
-                      <option value="BYN">BYN</option>
-                      <option value="RUB">RUB (₽)</option>
-                      <option value="USD">USD ($)</option>
-                      <option value="EUR">EUR (€)</option>
-                      <option value="GBP">GBP (£)</option>
-                    </select>
+                    <div class="settings-picker-field">
+                      <select id="currencySelect">
+                        <option value="BYN">BYN</option>
+                        <option value="RUB">RUB (₽)</option>
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="GBP">GBP (£)</option>
+                      </select>
+                      <button id="currencyPickerBtn" class="btn btn-secondary settings-picker-btn hidden" type="button" aria-haspopup="dialog"></button>
+                    </div>
                   </label>
                   <label class="field">
                     <span>Позиция символа</span>
-                    <select id="currencyPositionSelect">
-                      <option value="suffix">Справа</option>
-                      <option value="prefix">Слева</option>
-                    </select>
+                    <div class="settings-picker-field">
+                      <select id="currencyPositionSelect">
+                        <option value="suffix">Справа</option>
+                        <option value="prefix">Слева</option>
+                      </select>
+                      <button id="currencyPositionPickerBtn" class="btn btn-secondary settings-picker-btn hidden" type="button" aria-haspopup="dialog"></button>
+                    </div>
                   </label>
                 </div>
                 <div id="currencyPreview" class="settings-preview">Пример: 1 234,56 руб.</div>
@@ -123,11 +132,14 @@
                 </label>
                 <label class="field">
                   <span>Строк операций на дашборде</span>
-                  <select id="dashboardOperationsLimitSelect">
-                    <option value="5">5</option>
-                    <option value="8">8</option>
-                    <option value="12">12</option>
-                  </select>
+                  <div class="settings-picker-field">
+                    <select id="dashboardOperationsLimitSelect">
+                      <option value="5">5</option>
+                      <option value="8">8</option>
+                      <option value="12">12</option>
+                    </select>
+                    <button id="dashboardOperationsLimitPickerBtn" class="btn btn-secondary settings-picker-btn hidden" type="button" aria-haspopup="dialog"></button>
+                  </div>
                 </label>
                 <div class="settings-scale-row">
                   <label class="field">
@@ -142,19 +154,25 @@
                 <div class="settings-grid-2">
                   <label class="field">
                     <span>Топ операций</span>
-                    <select id="analyticsTopOperationsLimitSelect">
-                      <option value="3">3</option>
-                      <option value="5">5</option>
-                      <option value="10">10</option>
-                    </select>
+                    <div class="settings-picker-field">
+                      <select id="analyticsTopOperationsLimitSelect">
+                        <option value="3">3</option>
+                        <option value="5">5</option>
+                        <option value="10">10</option>
+                      </select>
+                      <button id="analyticsTopOperationsLimitPickerBtn" class="btn btn-secondary settings-picker-btn hidden" type="button" aria-haspopup="dialog"></button>
+                    </div>
                   </label>
                   <label class="field">
                     <span>Топ позиций</span>
-                    <select id="analyticsTopPositionsLimitSelect">
-                      <option value="5">5</option>
-                      <option value="10">10</option>
-                      <option value="20">20</option>
-                    </select>
+                    <div class="settings-picker-field">
+                      <select id="analyticsTopPositionsLimitSelect">
+                        <option value="5">5</option>
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                      </select>
+                      <button id="analyticsTopPositionsLimitPickerBtn" class="btn btn-secondary settings-picker-btn hidden" type="button" aria-haspopup="dialog"></button>
+                    </div>
                   </label>
                 </div>
               </section>

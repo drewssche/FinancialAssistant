@@ -232,6 +232,12 @@
   font-variant-numeric: tabular-nums lining-nums;
 }
 
+.settings-picker-field {
+  position: relative;
+  display: grid;
+  gap: var(--space-2);
+}
+
 .settings-switch-row {
   display: flex;
   align-items: center;

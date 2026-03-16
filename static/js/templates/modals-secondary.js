@@ -128,5 +128,17 @@
         </div>
       </div>
     </div>
+
+    <div id="settingsPickerModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settingsPickerTitle">
+      <div class="modal-card modal-small">
+        <div class="panel-head row between">
+          <h3 id="settingsPickerTitle">Выбор значения</h3>
+          <button id="closeSettingsPickerModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
+        </div>
+        <div id="settingsPickerOptions" class="settings-picker-options"></div>
+      </div>
+    </div>
   `;
 })();

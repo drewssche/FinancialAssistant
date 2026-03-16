@@ -54,6 +54,10 @@
   const savePreferencesDebounced = sessionFeatures.savePreferencesDebounced;
   const saveSettings = sessionFeatures.saveSettings;
   const previewInterfaceSettingsUi = sessionFeatures.previewInterfaceSettingsUi;
+  const syncSettingsPickerButtons = sessionFeatures.syncSettingsPickerButtons;
+  const openSettingsPickerModal = sessionFeatures.openSettingsPickerModal;
+  const closeSettingsPickerModal = sessionFeatures.closeSettingsPickerModal;
+  const applySettingsPickerValue = sessionFeatures.applySettingsPickerValue;
   const deleteMe = sessionFeatures.deleteMe;
   const logout = sessionFeatures.logout;
   const bootstrapApp = sessionFeatures.bootstrapApp;
@@ -208,6 +212,10 @@
     savePreferencesDebounced,
     saveSettings,
     previewInterfaceSettingsUi,
+    syncSettingsPickerButtons,
+    openSettingsPickerModal,
+    closeSettingsPickerModal,
+    applySettingsPickerValue,
     deleteMe,
     applySectionUi: previousActions.applySectionUi,
     switchSection: previousActions.switchSection,

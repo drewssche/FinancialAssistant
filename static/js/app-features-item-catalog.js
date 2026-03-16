@@ -289,7 +289,7 @@
       const chevron = isCollapsed ? "▸" : "▾";
       const childRows = group.items.map((item) => `
         <tr class="item-catalog-item-row table-hierarchy-child-row ${isCollapsed ? "hidden" : ""}" data-item-template-row="1">
-          <td data-label="Источник"><span class="hierarchy-child-label">↳ ${core.highlightText(group.shopName, query)}</span></td>
+          <td class="item-catalog-source-context-cell" data-label="Источник"><span class="hierarchy-child-label">↳ ${core.highlightText(group.shopName, query)}</span></td>
           <td data-label="Позиция">${core.highlightText(item.name || "—", query)}</td>
           <td data-label="Цена">${core.formatMoney(item.latest_unit_price || 0)}</td>
           <td class="mobile-actions-cell" data-label="Действия">
@@ -310,12 +310,14 @@
             <div class="category-table-group-wrap item-catalog-source-wrap">
               <button type="button" class="item-catalog-group-btn" data-item-catalog-shop-key="${encodeURIComponent(group.shopKey)}" ${queryActive ? "disabled" : ""}>
                 <span class="item-catalog-group-chevron">${chevron}</span>
-                <span class="item-catalog-group-name">${core.highlightText(group.shopName, query)}</span>
-                <span class="item-catalog-group-metas">
-                  <span class="item-catalog-group-meta">${group.items.length} поз.</span>
-                  <span class="item-catalog-group-meta">исп: ${group.useCountTotal}</span>
-                  <span class="item-catalog-group-meta">ср: ${group.avgPrice !== null ? core.formatMoney(group.avgPrice, { withCurrency: false }) : "—"}</span>
-                  <span class="item-catalog-group-meta">посл: ${group.lastUsedLabel}</span>
+                <span class="item-catalog-group-main">
+                  <span class="item-catalog-group-name">${core.highlightText(group.shopName, query)}</span>
+                  <span class="item-catalog-group-metas">
+                    <span class="item-catalog-group-meta">${group.items.length} поз.</span>
+                    <span class="item-catalog-group-meta">исп: ${group.useCountTotal}</span>
+                    <span class="item-catalog-group-meta">ср: ${group.avgPrice !== null ? core.formatMoney(group.avgPrice, { withCurrency: false }) : "—"}</span>
+                    <span class="item-catalog-group-meta">посл: ${group.lastUsedLabel}</span>
+                  </span>
                 </span>
               </button>
               ${group.shopKey !== ITEM_CATALOG_NO_SHOP_KEY ? `<div class="actions row-actions item-catalog-source-actions">

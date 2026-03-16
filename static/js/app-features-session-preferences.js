@@ -12,6 +12,40 @@
     dashboard_operations_limit: 8,
     scale_percent: 100,
   };
+  let activeSettingsPickerKey = "";
+
+  const SETTINGS_PICKER_CONFIGS = {
+    timezone: {
+      title: "Таймзона",
+      select: () => el.timezoneSelect,
+      button: () => el.timezonePickerBtn,
+    },
+    currency: {
+      title: "Валюта",
+      select: () => el.currencySelect,
+      button: () => el.currencyPickerBtn,
+    },
+    currency_position: {
+      title: "Позиция символа",
+      select: () => el.currencyPositionSelect,
+      button: () => el.currencyPositionPickerBtn,
+    },
+    dashboard_operations_limit: {
+      title: "Строк операций на дашборде",
+      select: () => el.dashboardOperationsLimitSelect,
+      button: () => el.dashboardOperationsLimitPickerBtn,
+    },
+    analytics_top_operations_limit: {
+      title: "Топ операций",
+      select: () => el.analyticsTopOperationsLimitSelect,
+      button: () => el.analyticsTopOperationsLimitPickerBtn,
+    },
+    analytics_top_positions_limit: {
+      title: "Топ позиций",
+      select: () => el.analyticsTopPositionsLimitSelect,
+      button: () => el.analyticsTopPositionsLimitPickerBtn,
+    },
+  };
 
   function normalizeStructureHidden(raw) {
     const normalized = {
@@ -33,6 +67,84 @@
       ...DEFAULT_UI_PREFS,
       ...(state.preferences?.data?.ui || {}),
     };
+  }
+
+  function getSelectButtonLabel(selectNode) {
+    if (!selectNode) {
+      return "";
+    }
+    const option = selectNode.options?.[selectNode.selectedIndex] || null;
+    return option ? String(option.textContent || option.label || option.value || "").trim() : "";
+  }
+
+  function syncSettingsPickerButtons() {
+    for (const config of Object.values(SETTINGS_PICKER_CONFIGS)) {
+      const selectNode = config.select();
+      const buttonNode = config.button();
+      if (!selectNode || !buttonNode) {
+        continue;
+      }
+      buttonNode.textContent = getSelectButtonLabel(selectNode);
+      buttonNode.classList.toggle("hidden", !core.isMobileViewport());
+      buttonNode.setAttribute("aria-label", `${config.title}: ${buttonNode.textContent}`);
+    }
+  }
+
+  function closeSettingsPickerModal() {
+    activeSettingsPickerKey = "";
+    if (el.settingsPickerOptions) {
+      el.settingsPickerOptions.innerHTML = "";
+    }
+    if (el.settingsPickerModal) {
+      el.settingsPickerModal.classList.add("hidden");
+    }
+  }
+
+  function openSettingsPickerModal(key) {
+    if (!core.isMobileViewport()) {
+      return;
+    }
+    const config = SETTINGS_PICKER_CONFIGS[key];
+    const selectNode = config?.select?.();
+    if (!config || !selectNode || !el.settingsPickerModal || !el.settingsPickerOptions) {
+      return;
+    }
+    activeSettingsPickerKey = key;
+    if (el.settingsPickerTitle) {
+      el.settingsPickerTitle.textContent = config.title;
+    }
+    el.settingsPickerOptions.innerHTML = Array.from(selectNode.options || []).map((option) => {
+      const value = String(option.value || "");
+      const label = String(option.textContent || option.label || value).trim();
+      const active = value === String(selectNode.value || "");
+      return `
+        <button
+          class="btn btn-secondary settings-picker-option ${active ? "active" : ""}"
+          type="button"
+          data-settings-picker-value="${core.escapeHtml ? core.escapeHtml(value) : value}"
+        >${core.escapeHtml ? core.escapeHtml(label) : label}</button>
+      `;
+    }).join("");
+    el.settingsPickerModal.classList.remove("hidden");
+  }
+
+  function applySettingsPickerValue(value) {
+    const config = SETTINGS_PICKER_CONFIGS[activeSettingsPickerKey];
+    const selectNode = config?.select?.();
+    if (!config || !selectNode) {
+      closeSettingsPickerModal();
+      return;
+    }
+    const nextValue = String(value || "");
+    const hasOption = Array.from(selectNode.options || []).some((option) => String(option.value || "") === nextValue);
+    if (!hasOption) {
+      closeSettingsPickerModal();
+      return;
+    }
+    selectNode.value = nextValue;
+    selectNode.dispatchEvent(new Event("change", { bubbles: true }));
+    syncSettingsPickerButtons();
+    closeSettingsPickerModal();
   }
 
   function applyInterfaceSettingsUi() {
@@ -81,6 +193,7 @@
     if (el.analyticsTopPositionsLimitSelect) {
       el.analyticsTopPositionsLimitSelect.value = String(state.analyticsTopPositionsLimit || 10);
     }
+    syncSettingsPickerButtons();
   }
 
   function previewInterfaceSettingsUi() {
@@ -104,6 +217,7 @@
     if (el.dashboardOperationsPanel && el.showDashboardOperationsToggle) {
       el.dashboardOperationsPanel.classList.toggle("hidden", !el.showDashboardOperationsToggle.checked);
     }
+    syncSettingsPickerButtons();
   }
 
   async function loadPreferences() {
@@ -302,6 +416,10 @@
     getMergedUiPrefs,
     applyInterfaceSettingsUi,
     previewInterfaceSettingsUi,
+    syncSettingsPickerButtons,
+    openSettingsPickerModal,
+    closeSettingsPickerModal,
+    applySettingsPickerValue,
     loadPreferences,
     savePreferences,
     savePreferencesDebounced,

@@ -65,6 +65,25 @@
 - primary focus on `<=640px`
 - verify visually in Dashboard, Analytics, Categories, Item Catalog, Settings and all shared modals
 
+0.1 Mobile structural pass
+- Status: in progress (started 2026-03-16)
+- Current implementation plan:
+- replace narrow modal close affordance with fixed mobile header action slot (`44-48px` square target)
+- standardize long operation/category chips to one-line truncation with safe ellipsis and full title fallback
+- stop using native visible selects for mobile settings; use tappable setting rows that open a dedicated option sheet/modal
+- rework `Categories` mobile hierarchy from "table turned into cards" toward clearer `parent group card -> nested category items`
+- rework `Item Catalog` mobile hierarchy to the same `source card -> nested positions` contract, with metas on their own wrap row instead of colliding with title
+- keep desktop table layout unchanged; mobile refactor should be additive and screen-width scoped
+- Current startup/e2e contract:
+- mobile auth/startup tests that expect Mini App login must initialize `window.Telegram.WebApp.initData` before `goto`, mock `/api/v1/auth/public-config`, and wait for final visible login-state before clicking `#telegramLoginBtn`
+- analytics mobile e2e should reuse the same login bootstrap pattern as dedicated auth/login e2e to avoid false negatives before section assertions
+- Validation updated 2026-03-16:
+- `tests/e2e/test_analytics_mobile_e2e.py -m e2e` is green after aligning analytics startup helper with auth/login bootstrap rules
+- Additional mobile polish applied 2026-03-16:
+- modal close control uses a fixed square action slot in mobile headers
+- grouped mobile cards (`Categories`, `Item Catalog`) use larger stacked action buttons and wrapped meta rows instead of compressed inline layout
+- settings mobile picker buttons now match form-control height/legibility contract
+
 1. Fix stale category chip in Dashboard operations table
 - Status: done (2026-03-04)
 - Problem: after category/group update, `Dashboard -> Операции за период` may keep old category/group chip until full page reload.

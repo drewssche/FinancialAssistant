@@ -64,10 +64,24 @@
   }
 
   .modal-card .panel-head.row.between,
-  .modal-card .repayment-head.row.between,
   .modal-card .debt-history-head .row.between {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 3rem;
+    column-gap: var(--space-2);
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .modal-card .repayment-head.row.between {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .modal-card .panel-head.row.between > h3 {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-right: var(--space-2);
   }
 
   .modal-card .panel-head .btn.btn-secondary {
@@ -78,10 +92,13 @@
   }
 
   .modal-card .panel-head .modal-close-btn {
-    width: 2.75rem;
-    height: 2.75rem;
+    width: 3rem;
+    height: 3rem;
+    min-width: 3rem;
+    min-height: 3rem;
+    justify-self: end;
     padding: 0;
-    border-radius: 999px;
+    border-radius: 0.875rem;
     border-color: rgba(74, 94, 132, 0.72);
     background: rgba(21, 31, 49, 0.96);
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
@@ -110,7 +127,7 @@
   }
 
   .mobile-card-table.categories-table td[data-label] {
-    grid-template-columns: minmax(58px, 0.5fr) minmax(0, 1fr);
+    grid-template-columns: minmax(68px, 0.56fr) minmax(0, 1fr);
     gap: var(--space-1);
   }
 
@@ -127,11 +144,14 @@
 
   .mobile-card-table.categories-table .item-catalog-group-metas {
     margin-left: 0;
-    gap: 6px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, max-content));
+    gap: 6px 10px;
   }
 
   .mobile-card-table.categories-table .item-catalog-group-meta {
     font-size: 11px;
+    white-space: normal;
   }
 
   .mobile-card-table.categories-table td.mobile-actions-cell .row-actions,
@@ -145,9 +165,9 @@
 
   .mobile-card-table.categories-table td.mobile-actions-cell .row-actions .btn,
   .mobile-card-table.categories-table .category-table-group-wrap .row-actions .btn {
-    min-height: 2.1rem;
-    padding: 8px 10px;
-    font-size: 11px;
+    min-height: 2.5rem;
+    padding: 10px 12px;
+    font-size: 13px;
   }
 
   .mobile-card-table.categories-table .category-tree-mark {
@@ -156,6 +176,10 @@
 
   .mobile-card-table.categories-table .category-group-accent-cell {
     box-shadow: inset 2px 0 0 0 var(--category-group-accent);
+  }
+
+  .mobile-card-table.categories-table .category-group-context-cell {
+    display: none;
   }
 
   .mobile-card-table.item-catalog-table .category-table-group-wrap {
@@ -170,7 +194,7 @@
   }
 
   .mobile-card-table.item-catalog-table td[data-label] {
-    grid-template-columns: minmax(58px, 0.48fr) minmax(0, 1fr);
+    grid-template-columns: minmax(68px, 0.56fr) minmax(0, 1fr);
     gap: var(--space-1);
   }
 
@@ -181,11 +205,18 @@
 
   .mobile-card-table.item-catalog-table .item-catalog-group-metas {
     margin-left: 0;
-    gap: 6px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, max-content));
+    gap: 6px 10px;
   }
 
   .mobile-card-table.item-catalog-table .item-catalog-group-meta {
     font-size: 11px;
+    white-space: normal;
+  }
+
+  .mobile-card-table.item-catalog-table .item-catalog-source-context-cell {
+    display: none;
   }
 
   .mobile-card-table.item-catalog-table td.mobile-actions-cell .row-actions,
@@ -218,9 +249,9 @@
 
   .mobile-card-table.item-catalog-table td.mobile-actions-cell .row-actions .btn,
   .mobile-card-table.item-catalog-table .item-catalog-source-actions .btn {
-    min-height: 2.1rem;
-    padding: 8px 10px;
-    font-size: 11px;
+    min-height: 2.5rem;
+    padding: 10px 12px;
+    font-size: 13px;
   }
 
   .analytics-switch-group {
@@ -317,6 +348,24 @@
   .settings-scale-row,
   .danger-zone-actions {
     grid-template-columns: 1fr;
+  }
+
+  .settings-picker-field select {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .settings-picker-btn {
+    display: inline-flex;
+    min-height: 3rem;
+    font-size: 16px;
   }
 
   .settings-block input,

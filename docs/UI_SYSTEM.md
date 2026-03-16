@@ -55,12 +55,17 @@ Sidebar grouping baseline (when section groups are introduced):
 - UI scale slider (user-specific)
 - All money outputs and amount inputs reuse one currency formatting rule from preferences
 - Settings include red `Danger Zone` with `Удалить меня` action (full user data removal)
+- On mobile, settings choice fields should prefer sheet/modal pickers over native visible `select` dropdowns, because WebView/native popup positioning is inconsistent and often visually detached from the triggering control.
 
 ## Access Control UI
 - Login mode is environment-driven:
 - production: Telegram auth
 - inside Mini App: Telegram WebApp auth (`initData`)
 - in browser: Telegram Login Widget / browser Telegram auth payload
+- Frontend auth visibility contract:
+- `#telegramLoginBtn` is visible only when Mini App `initData` is present
+- browser login widget visibility depends on `/api/v1/auth/public-config` (`telegram_bot_username` + `browser_login_available`)
+- e2e scenarios must mock these two inputs consistently; otherwise startup can fail before reaching the target screen
 - For non-approved users:
 - `pending`: informative waiting state
 - `rejected`: informative denied state
@@ -103,6 +108,12 @@ At the bottom-left sidebar, show compact static user block:
 - large modal flows should be reviewed for mobile replacement with bottom-sheet or full-screen form where appropriate
 - sticky footer CTA is preferred for long mobile forms
 - tap target size should be comfortable for touch-first use
+- modal header close action should keep a stable square hit area (`44-48px`) and must not collapse into a visually narrow icon slot
+- mobile grouped tables/cards should not keep desktop inline metas/actions in one row:
+- parent/group metas wrap below title
+- nested child rows keep visible inset/guide
+- action buttons are always visible, full-width or stacked, and may wrap text instead of overflowing
+- dense mobile picker-like buttons (`settings`, `select` replacements) should use the same control height as primary form fields
 
 ## Operation Modal Category Picker
 - Create/edit operation modals use chip-based category picker instead of plain select control
@@ -166,6 +177,7 @@ At the bottom-left sidebar, show compact static user block:
 - price history modal is visually/interaction-consistent with receipt positions modal and includes source chip in meta
 - This grouped-table pattern is reused in `Categories` table structure for consistency.
 - The same visual parent/child contract should also be reused in debt-by-counterparty blocks where one parent card contains multiple debt records.
+- On mobile, parent/group metas should wrap onto their own row below title instead of competing with title width in one line.
 
 ## Debt Modal Pattern (Implemented MVP Baseline)
 - Operation modal supports two modes:
@@ -253,6 +265,7 @@ At the bottom-left sidebar, show compact static user block:
 - `Редактировать выбранные`
 - `Удалить выбранные`
 - Categories section uses row-level actions and section-level `Удалить все` without checkbox bulk-select.
+- In dense mobile rows, long chip text should truncate with ellipsis inside the chip instead of stretching the row/card beyond available width.
 
 ## Table Interaction Pattern
 - For data rows, inline actions (`Редактировать`, `Удалить`) are hidden by default and shown on row hover

@@ -14,6 +14,36 @@ import pytest
 sync_api = pytest.importorskip("playwright.sync_api", reason="playwright is not installed")
 
 
+def _set_mock_telegram(page):
+    page.add_init_script(
+        """
+        window.Telegram = {
+          WebApp: {
+            initData: "mock-init-data",
+            ready() {},
+            expand() {},
+          }
+        };
+        """
+    )
+
+
+def _restore_mock_telegram(page):
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+
+
 @pytest.fixture(scope="module")
 def static_server_url() -> str:
     repo_root = Path(__file__).resolve().parents[2]
@@ -331,17 +361,7 @@ def page_with_analytics_api_mock(page):
 
         return json_response(route, {"detail": f"Unhandled mock route: {method} {path}"}, status=404)
 
-    page.add_init_script(
-        """
-        window.Telegram = {
-          WebApp: {
-            initData: "mock-init-data",
-            ready() {},
-            expand() {},
-          }
-        };
-        """
-    )
+    _set_mock_telegram(page)
     page.route("**/api/v1/**", handler)
     yield page
 
@@ -349,20 +369,9 @@ def page_with_analytics_api_mock(page):
 def _open_mobile_analytics(page, static_server_url: str):
     page.set_viewport_size({"width": 390, "height": 844})
     page.goto(f"{static_server_url}/static/index.html")
-    page.evaluate(
-        """
-        () => {
-          window.Telegram = {
-            WebApp: {
-              initData: "mock-init-data",
-              ready() {},
-              expand() {},
-            }
-          };
-        }
-        """
-    )
+    _restore_mock_telegram(page)
     page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+    page.locator("#telegramLoginBtn").wait_for(state="visible")
     page.click("#telegramLoginBtn")
     page.wait_for_selector("#appShell:not(.hidden)")
     page.click("#mobileNavToggleBtn")
@@ -438,34 +447,12 @@ def test_opening_analytics_calendar_does_not_fail_when_other_tabs_endpoints_are_
             return json_response(route, {"detail": "trend unavailable"}, status=503)
         return json_response(route, {"detail": f"Unhandled mock route: {method} {path}"}, status=404)
 
-    page.add_init_script(
-        """
-        window.Telegram = {
-          WebApp: {
-            initData: "mock-init-data",
-            ready() {},
-            expand() {},
-          }
-        };
-        """
-    )
+    _set_mock_telegram(page)
     page.route("**/api/v1/**", handler)
     page.goto(f"{static_server_url}/static/index.html")
-    page.evaluate(
-        """
-        () => {
-          window.Telegram = {
-            WebApp: {
-              initData: "mock-init-data",
-              ready() {},
-              expand() {},
-            }
-          };
-        }
-        """
-    )
+    _restore_mock_telegram(page)
     page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-
+    page.locator("#telegramLoginBtn").wait_for(state="visible")
     page.click("#telegramLoginBtn")
     page.wait_for_selector("#appShell:not(.hidden)")
     page.click("button[data-section='analytics']")
