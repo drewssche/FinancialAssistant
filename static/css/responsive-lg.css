@@ -1,0 +1,94 @@
+@media (max-width: 1180px) {
+  .topbar,
+  .row.between,
+  .toolbar,
+  .table-search-row,
+  .cta-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .topbar-title-block {
+    align-items: center;
+  }
+
+  .top-actions {
+    justify-items: stretch;
+  }
+
+  .panel-controls {
+    justify-items: stretch;
+  }
+
+  .kpi-grid,
+  .form-grid,
+  .modal-grid,
+  .category-form,
+  .dashboard-analytics-grid,
+  .analytics-trend-deltas,
+  .analytics-trend-kpis,
+  .analytics-kpi-grid,
+  .analytics-positions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-year-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .analytics-switch-group .toolbar {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .analytics-tab-panel .panel-head {
+    gap: var(--space-2);
+  }
+
+  .analytics-tab-panel .panel-head > .toolbar {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+
+  .analytics-switch-group {
+    min-width: 0;
+  }
+
+  .analytics-switch-group .toolbar .btn {
+    width: auto;
+    flex: 1 1 auto;
+  }
+
+  .analytics-switch-group .toolbar .compact-input,
+  .analytics-switch-group .toolbar .date-input-wrap.compact-input {
+    min-width: min(100%, 12rem);
+  }
+
+  .segmented {
+    width: 100%;
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .segmented-btn {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+
+  #createDebtFields {
+    grid-template-columns: 1fr;
+  }
+
+  #createDebtFields #debtStartDateField,
+  #createDebtFields #createDebtDirectionSwitch,
+  #createDebtFields #debtCounterpartyField,
+  #createDebtFields #debtPrincipalField,
+  #createDebtFields #debtDueField {
+    grid-column: 1 / -1;
+  }
+}
+

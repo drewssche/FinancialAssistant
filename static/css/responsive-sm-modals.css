@@ -1,0 +1,250 @@
+
+  .receipt-block,
+  .repayment-card,
+  .debt-history-head,
+  .settings-block {
+    padding: var(--space-2);
+  }
+
+  .receipt-summary {
+    gap: var(--space-2);
+    align-items: stretch;
+  }
+
+  .receipt-summary .btn {
+    width: 100%;
+  }
+
+  .category-name-row {
+    grid-template-columns: 1fr;
+  }
+
+  .icon-square-toggle {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .app-popover {
+    width: min(max(100%, 20rem), calc(100vw - 1rem));
+    max-width: calc(100vw - 1rem);
+  }
+
+  .icon-popover {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .repayment-outstanding {
+    justify-items: start;
+  }
+
+  .repayment-preset-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .repayment-preset-row .btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .debt-history-head,
+  .repayment-card {
+    gap: var(--space-2);
+  }
+
+  #operationReceiptMeta,
+  #itemTemplateHistoryMeta {
+    margin-top: var(--space-2);
+  }
+
+  .settings-form,
+  .settings-block,
+  .danger-zone,
+  .status-box {
+    min-width: 0;
+  }
+
+  .create-modal-grid,
+  .edit-modal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .create-modal-grid,
+  .edit-modal-grid,
+  .category-modal-form,
+  #createDebtFields {
+    gap: var(--space-2);
+  }
+
+  .create-modal-grid .segmented,
+  .edit-modal-grid .segmented,
+  #createDebtFields .segmented,
+  .category-modal-form .segmented {
+    padding: 4px;
+    gap: 4px;
+  }
+
+  .create-modal-grid .segmented-btn,
+  .edit-modal-grid .segmented-btn,
+  #createDebtFields .segmented-btn,
+  .category-modal-form .segmented-btn {
+    min-height: 2.75rem;
+    padding: var(--space-2);
+  }
+
+  .create-category-field input,
+  .category-modal-form input,
+  .category-modal-form textarea,
+  .category-modal-form select,
+  .create-modal-grid input,
+  .edit-modal-grid input,
+  .edit-modal-grid select {
+    min-height: 3rem;
+  }
+
+  .category-modal-form textarea,
+  #batchCreateInput {
+    min-height: 10rem;
+  }
+
+  .modal-card .subtitle {
+    margin-bottom: var(--space-1);
+  }
+
+  .create-modal-grid #opDateField,
+  .create-modal-grid #createOperationModeSwitch,
+  .create-modal-grid #createKindSwitch,
+  .create-modal-grid #createCategoryField,
+  .create-modal-grid #opAmountField,
+  .edit-modal-grid #editDateField,
+  .edit-modal-grid #editOperationModeSwitch,
+  .edit-modal-grid #editKindSwitch,
+  .edit-modal-grid #editCategoryField,
+  .edit-modal-grid #editAmountField,
+  #createDebtFields #debtStartDateField,
+  #createDebtFields #createDebtDirectionSwitch,
+  #createDebtFields #debtCounterpartyField,
+  #createDebtFields #debtPrincipalField,
+  #createDebtFields #debtDueField,
+  #createDebtFields #debtNote,
+  .item-template-price-grid #itemTemplatePriceField,
+  .item-template-price-grid #itemTemplatePriceDateField {
+    grid-column: 1 / -1;
+  }
+
+  .analytics-day-cell {
+    min-width: 92px;
+    padding: var(--space-1);
+  }
+
+  .analytics-day-btn {
+    padding: var(--space-1);
+  }
+
+  .analytics-day-date,
+  .analytics-day-money,
+  .analytics-kpi-chip,
+  .preview-title {
+    font-size: 11px;
+  }
+
+  .confirm-actions {
+    gap: var(--space-2);
+  }
+
+  .receipt-item-row {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+    padding: var(--space-2);
+    border: 1px solid rgba(39, 50, 72, 0.75);
+    border-radius: var(--radius-md);
+    background: rgba(14, 22, 36, 0.46);
+  }
+
+  .receipt-item-row .receipt-shop-cell,
+  .receipt-item-row .receipt-name-cell,
+  .receipt-item-row .receipt-category-cell,
+  .receipt-item-row .receipt-line-total {
+    grid-column: 1 / -1;
+  }
+
+  .receipt-item-row .receipt-line-total {
+    justify-items: start;
+  }
+
+  .receipt-item-row .btn.receipt-remove-btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .app-popover {
+    width: min(max(100%, 20rem), calc(100vw - 1rem));
+    max-width: calc(100vw - 1rem);
+    max-height: min(38dvh, 320px);
+  }
+
+  .debt-history-list {
+    max-height: min(46dvh, 360px);
+  }
+
+  .modal-card #createDebtFields,
+  .modal-card #opReceiptFields,
+  .modal-card #editReceiptFields {
+    margin-top: var(--space-1);
+  }
+
+  .analytics-calendar-scroll-wrap {
+    position: relative;
+  }
+
+  .analytics-calendar-scroll-wrap::before,
+  .analytics-calendar-scroll-wrap::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 18px;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+  }
+
+  .analytics-calendar-scroll-wrap::before {
+    left: 0;
+    background: linear-gradient(90deg, rgba(10, 15, 24, 0.92) 0%, rgba(10, 15, 24, 0) 100%);
+  }
+
+  .analytics-calendar-scroll-wrap::after {
+    right: 0;
+    background: linear-gradient(270deg, rgba(10, 15, 24, 0.92) 0%, rgba(10, 15, 24, 0) 100%);
+  }
+
+  .analytics-calendar-scroll-wrap.has-left-fade::before,
+  .analytics-calendar-scroll-wrap.has-right-fade::after {
+    opacity: 1;
+  }
+
+  .analytics-calendar-scroll-wrap .table-wrap {
+    touch-action: pan-x pan-y;
+  }
+
+  .modal-card input,
+  .modal-card textarea,
+  .modal-card select,
+  .modal-card .segmented,
+  .modal-card .receipt-item-row,
+  .modal-card .preview-panel,
+  .modal-card .bulk-import-preview,
+  .modal-card .receipt-summary {
+    scroll-margin-bottom: calc(var(--control-height-lg) + var(--space-10, 2.5rem) + env(safe-area-inset-bottom));
+  }
+
+  .modal-card .bulk-import-preview {
+    padding-bottom: calc(var(--control-height-lg) + var(--space-6) + env(safe-area-inset-bottom));
+  }
+
+  .modal-card .bulk-import-preview .table-wrap {
+    padding-bottom: calc(var(--control-height-lg) + var(--space-4) + env(safe-area-inset-bottom));
+  }
+}

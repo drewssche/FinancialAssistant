@@ -1,0 +1,365 @@
+.login-screen {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding:
+    max(var(--space-8), env(safe-area-inset-top))
+    max(var(--space-8), env(safe-area-inset-right))
+    max(var(--space-8), env(safe-area-inset-bottom))
+    max(var(--space-8), env(safe-area-inset-left));
+}
+
+.login-card {
+  width: min(780px, 100%);
+  background: linear-gradient(180deg, rgba(19, 26, 42, 0.96) 0%, rgba(13, 19, 32, 0.98) 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: calc(var(--space-8) + var(--space-2));
+  box-shadow: var(--shadow);
+}
+
+.login-card p {
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 22px;
+  line-height: 1.45;
+}
+
+.input-row {
+  margin-top: var(--space-7);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.field span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.login-actions {
+  margin-top: calc(var(--space-4) + var(--space-1));
+  display: flex;
+  justify-content: center;
+}
+
+.telegram-browser-login {
+  margin-top: var(--space-3);
+  display: flex;
+  justify-content: center;
+}
+
+.telegram-browser-login-widget {
+  min-height: 50px;
+}
+
+.login-alert {
+  margin-top: var(--space-3);
+  border: 1px solid #7a3948;
+  background: rgba(69, 28, 39, 0.45);
+  color: #ffc4cf;
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-3);
+  font-size: 14px;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.login-alert.is-success {
+  border-color: #2f6c54;
+  background: rgba(27, 66, 51, 0.42);
+  color: #bff0d4;
+}
+
+.login-alert.is-info {
+  border-color: #2f4c7d;
+  background: rgba(28, 43, 70, 0.45);
+  color: #c6d7ff;
+}
+
+.app-shell {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  position: relative;
+}
+
+.sidebar {
+  border-right: 1px solid var(--border);
+  background: rgba(11, 15, 24, 0.88);
+  backdrop-filter: blur(10px);
+  padding: var(--space-5) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  overflow-y: auto;
+}
+
+.sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.mobile-nav-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 8, 15, 0.62);
+  backdrop-filter: blur(4px);
+  z-index: 70;
+}
+
+.mobile-nav-toggle,
+.mobile-nav-close {
+  display: none;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: rgba(17, 28, 45, 0.9);
+  color: #f0f6ff;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.section-back-btn {
+  height: 42px;
+  min-width: 42px;
+  max-width: 220px;
+  width: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: rgba(17, 28, 45, 0.9);
+  color: #f0f6ff;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.section-back-btn:hover {
+  background: rgba(31, 45, 70, 0.95);
+}
+
+.section-back-btn-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.section-back-btn-label {
+  font-size: 13px;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-today {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: rgba(18, 27, 43, 0.7);
+  padding: var(--space-3) var(--space-3);
+}
+
+.main {
+  padding: var(--space-6);
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.section-block {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.topbar-title-block {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.top-actions {
+  display: grid;
+  gap: var(--space-3);
+  width: 100%;
+  justify-items: end;
+  min-width: 0;
+}
+
+.cta-row {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  width: 100%;
+  min-width: 0;
+}
+
+.category-groups-overview {
+  margin-bottom: var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.category-name-row {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.panel-head {
+  margin-bottom: var(--space-3);
+}
+
+.panel-controls {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: end;
+  min-width: 0;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: max-content minmax(180px, 220px) minmax(130px, 160px) minmax(150px, 170px) minmax(220px, 1fr) auto;
+  gap: 10px;
+}
+
+.modal-grid {
+  grid-template-columns: max-content minmax(180px, 220px) minmax(130px, 160px) minmax(150px, 170px) minmax(220px, 1fr) auto;
+}
+
+.create-modal-grid {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-3);
+}
+
+.create-modal-grid #createEntryModeSwitch {
+  grid-column: 1 / -1;
+}
+
+.create-modal-grid #createOperationModeSwitch {
+  grid-column: 1 / -1;
+}
+
+.create-modal-grid #opDateField {
+  grid-column: span 3;
+  width: 100%;
+}
+
+.create-modal-grid #createKindSwitch {
+  grid-column: span 3;
+}
+
+.create-modal-grid #createCategoryField {
+  grid-column: span 4;
+  width: 100%;
+}
+
+.create-modal-grid #opAmountField {
+  grid-column: span 2;
+  width: 100%;
+}
+
+.create-note-field,
+#createDebtFields {
+  grid-column: 1 / -1;
+}
+
+.create-category-field {
+  position: relative;
+  min-width: 0;
+  z-index: 0;
+}
+
+.create-category-field:focus-within {
+  z-index: 40;
+}
+
+.create-category-field #opCategorySearch {
+  width: 100%;
+}
+
+.create-modal-grid #createKindSwitch {
+  width: 100%;
+}
+
+.create-modal-grid #createKindSwitch .segmented-btn {
+  flex: 1;
+}
+
+.edit-modal-grid {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-3);
+}
+
+.edit-modal-grid #editDateField {
+  grid-column: span 3;
+  width: 100%;
+}
+
+.edit-modal-grid #editOperationModeSwitch {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.edit-modal-grid #editKindSwitch {
+  grid-column: span 3;
+  width: 100%;
+}
+
+.edit-modal-grid #editKindSwitch .segmented-btn {
+  flex: 1;
+}
+
+.edit-modal-grid #editCategoryField {
+  grid-column: span 4;
+  width: 100%;
+}
+
+.edit-modal-grid #editAmountField {
+  grid-column: span 2;
+  width: 100%;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.between {
+  justify-content: space-between;
+}
+
+.toolbar {

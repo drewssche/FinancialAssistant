@@ -79,7 +79,7 @@
 - Direction: move prefill logic into categories module and keep cross-module calls declarative.
 
 5. Split oversized frontend modules (rule compliance)
-- Status: in progress (updated 2026-03-15)
+- Status: in progress (updated 2026-03-16)
 - Files above hard threshold:
 - `static/js/app-features.js` (reduced: moved operation modal/picker logic to `static/js/app-features-operation-modal.js`; moved dashboard/session to `static/js/app-features-dashboard.js` and `static/js/app-features-session.js`; moved Item Catalog feature block to `static/js/app-features-item-catalog.js`; moved operations flow to `static/js/app-features-operations.js`)
 - `static/js/app-features-item-catalog.js` (further reduced by extracting modal/source-picker/history block to `static/js/app-features-item-catalog-modal.js`)
@@ -93,6 +93,7 @@
 - `static/js/app-bulk-bindings.js` (decomposed into `static/js/app-bulk-bindings-operations.js` + `static/js/app-bulk-bindings-categories.js`, kept as thin binding coordinator)
 - `static/js/app-init-features.js` (reduced from 608 to 367 by extracting debt/picker bindings)
 - `static/js/app-init-features.js` (further reduced by extracting analytics/admin bindings to `static/js/app-init-features-analytics.js` and `static/js/app-init-features-admin.js`)
+- `static/js/app-init-features.js` (reduced below threshold by extracting operations bindings to `static/js/app-init-features-operations.js` and categories/item-catalog bindings to `static/js/app-init-features-catalog.js`)
 - `static/js/app-features-analytics.js` (decomposed into `static/js/app-features-analytics-calendar.js` + `static/js/app-features-analytics-trend.js` + `static/js/app-features-analytics-highlights.js`, kept as thin orchestrator)
 - `static/js/app-categories-ui.js` (reduced from 740 to 471 by extracting icon/table ui modules)
 - `static/js/app-core.js` (reduced from 575 to 430 by extracting shared utils)
@@ -103,17 +104,8 @@
 - Direction:
 - split `app-features.js` into `operations`, `dashboard`, `session/preferences`, `item-catalog`
 - split `app-core.js` into `state`, `dom`, `utils/net`.
-- Current files over hard threshold (`500+`, production code only, excluding tests):
-- `static/css/components.css` (~2038)
-- `static/css/layout.css` (~1380)
-- `static/css/responsive.css` (~948)
-- `app/services/dashboard_analytics.py` (~790)
-- `static/js/templates/shell.js` (~721)
-- `static/js/app-init-features.js` (~667)
-- `app/services/operation_service.py` (~592)
-- `static/js/templates/modals.js` (~583)
-- `app/repositories/operation_repo.py` (~575)
-- `static/js/app-features-item-catalog-modal.js` (~525)
+- Current files over hard threshold (`500+`, production code only, excluding tests; refreshed 2026-03-16):
+- none
 - Completed on 2026-03-15:
 - `static/js/app-features-operation-modal.js` reduced below threshold by extracting `static/js/app-features-operation-modal-categories.js`
 - `static/js/app-features-operations.js` reduced below threshold by extracting `static/js/app-features-operations-mutations.js` and `static/js/app-features-operations-display.js`
@@ -121,6 +113,19 @@
 - `static/js/app-features-analytics-highlights.js` reduced below threshold by extracting `static/js/app-features-analytics-shared.js` and `static/js/app-features-analytics-highlights-ui.js`
 - `static/js/app-features-session.js` reduced below threshold by extracting `static/js/app-features-session-auth.js` and `static/js/app-features-session-preferences.js`
 - `app/services/dashboard_service.py` reduced below threshold by extracting analytics domain logic to `app/services/dashboard_analytics.py`
+- `app/services/dashboard_analytics.py` reduced below threshold by extracting timeline/calendar/trend logic to `app/services/dashboard_analytics_timeline.py`
+- `app/services/operation_service.py` reduced below threshold by extracting item-template/catalog logic to `app/services/operation_item_template_service.py`
+- `app/repositories/operation_repo.py` reduced below threshold by extracting item-template persistence to `app/repositories/operation_item_template_repo.py`
+- `static/js/app-features-item-catalog-modal.js` reduced below threshold by extracting source-group/history flows to `static/js/app-features-item-catalog-sources.js`
+- `static/js/app-features-debts.js` reduced below threshold by extracting repayment/history/delete modal flows to `static/js/app-features-debts-modals.js`
+- `static/js/templates/shell-sections.js` reduced below threshold by splitting markup into `static/js/templates/shell-sections-primary.js` and `static/js/templates/shell-sections-secondary.js`
+- `static/js/app-features-operation-modal-receipt-interactions.js` reduced below threshold by extracting `static/js/app-features-operation-modal-receipt-pickers.js`
+- `static/js/templates/modals.js` reduced below threshold by extracting secondary dialog markup to `static/js/templates/modals-secondary.js`
+- `static/js/templates/shell.js` reduced below threshold by extracting section markup to `static/js/templates/shell-sections.js`
+- `static/js/app-init-features.js` reduced below threshold by extracting `static/js/app-init-features-operations.js` and `static/js/app-init-features-catalog.js`
+- `static/css/components.css` reduced below threshold by splitting styles into `static/css/components-core.css`, `static/css/components-analytics-summary.css`, `static/css/components-analytics-breakdown.css`, `static/css/components-controls.css`, `static/css/components-tables.css` and `static/css/components-overlays.css`
+- `static/css/layout.css` reduced below threshold by splitting styles into `static/css/layout-shell.css`, `static/css/layout-forms.css`, `static/css/layout-debts.css` and `static/css/layout-receipts.css`
+- `static/css/responsive.css` reduced below threshold by splitting styles into `static/css/responsive-lg.css`, `static/css/responsive-md.css`, `static/css/responsive-sm-core.css` and `static/css/responsive-sm-modals.css`
 - Priority direction:
 - first split high-churn JS modules with mixed responsibilities (`operation modal`, `operations`, `session`, `analytics highlights`)
 - then split backend read/write service hot spots (`dashboard_service`, `operation_service`, `operation_repo`)
@@ -743,16 +748,17 @@
 - Implemented (phase 2):
 - introduced scale-aware spacing/radius/control tokens in `static/css/tokens.css`
 - migrated key shell/layout/control surfaces to tokenized sizes:
-  - login card/shell/sidebar/main/topbar spacing in `layout.css`
-  - nav/user/kpi/panel/dashboard-analytics/button/segmented/table core blocks in `components.css`
+  - login card/shell/sidebar/main/topbar spacing in `layout-shell.css`
+  - nav/user/kpi/panel/dashboard-analytics/button/segmented/table core blocks in `components-core.css`, `components-controls.css` and `components-tables.css`
 - removed remaining runtime `zoom` assignment from `applyUiScale` (scale fully token-driven)
 - extended token migration to analytics and debt/modals high-impact blocks:
-  - analytics calendar/trend/kpi/cards/chips/switch/year/insight sizing in `components.css`
-  - debt cards/history and operation receipt modal spacing/radius in `layout.css`
-- additional phase-2 pass in `components.css`:
+  - analytics calendar/trend/kpi/cards/chips/switch/year/insight sizing in `components-analytics-summary.css` and `components-analytics-breakdown.css`
+  - debt cards/history spacing/radius in `layout-debts.css`
+  - operation receipt modal spacing/radius in `layout-receipts.css`
+- additional phase-2 pass in component CSS buckets:
   - category chips, picker controls, bulk bar, checkboxes, icon popover, debt action grid, preview/status boxes, repayment cards
   - converted key spacing/radius/heights from fixed `px` to shared tokens
-- additional phase-2 pass in `layout.css`:
+- additional phase-2 pass in layout CSS buckets:
   - settings/search/bulk/sticky bars and receipt pickers/chips/modal spacing converted to shared tokens
 - Done criteria validated:
   - runtime `zoom` is fully removed from scale flow

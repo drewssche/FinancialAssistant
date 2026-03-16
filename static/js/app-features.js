@@ -82,6 +82,8 @@
   const applyAnalyticsTabUi = analyticsFeatures.applyAnalyticsTabUi;
   const setAnalyticsTab = analyticsFeatures.setAnalyticsTab;
   const setAnalyticsCalendarView = analyticsFeatures.setAnalyticsCalendarView;
+  const setAnalyticsGridMonthAnchor = analyticsFeatures.setAnalyticsGridMonthAnchor;
+  const setAnalyticsGridYearAnchor = analyticsFeatures.setAnalyticsGridYearAnchor;
   const openAnalyticsMonth = analyticsFeatures.openAnalyticsMonth;
   const openOperationsForAnalyticsDate = analyticsFeatures.openOperationsForAnalyticsDate;
   const openOperationsForAnalyticsRange = analyticsFeatures.openOperationsForAnalyticsRange;
@@ -242,6 +244,8 @@
     applyAnalyticsTabUi,
     setAnalyticsTab,
     setAnalyticsCalendarView,
+    setAnalyticsGridMonthAnchor,
+    setAnalyticsGridYearAnchor,
     openAnalyticsMonth,
     openOperationsForAnalyticsDate,
     openOperationsForAnalyticsRange,
