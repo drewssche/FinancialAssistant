@@ -333,6 +333,16 @@
 - `tests/e2e/test_debts_flow_e2e.py::test_repayment_presets_fill_amount_from_current_outstanding`
 - `tests/e2e/test_debts_flow_e2e.py::test_debt_history_uses_directional_event_labels`
 - dashboard debt visibility delivered via debt-aware KPI cards and compact active-debts panel in dashboard
+- updated 2026-03-16: hardened section-level UI contracts after mobile/desktop regressions
+- `Operations` action layout is now treated as a section-specific contract; desktop rows must stay compact/right-aligned for both receipt and non-receipt variants, while mobile cards keep full-width stacked actions
+- `Categories` mobile renderer must match the proven `Item Catalog` pattern (`parent card -> nested child cards`) instead of inheriting generic `td[data-label]` fallback behavior
+- debt history modal direction pill must stay single-line and wide enough on narrow screens (`Я взял` was promoted to an explicit regression guard)
+- future button/chip fixes must prefer section-scoped selectors over broad shared `.row-actions` / `.kind-pill` overrides
+- implemented 2026-03-16:
+- `Operations` desktop action cell now forces right-aligned compact actions even for rows without receipt chips; mobile operation cards keep full-width buttons and content-sized `Тип` pill
+- `Categories` mobile child cards now follow the same title/meta/actions structure as `Item Catalog`
+- debt history modal direction pill is mobile-safe (`nowrap` + minimum width)
+- `debts` e2e suite now uses the same mock Telegram/public-config startup contract as `analytics`, preventing hidden-login-button regressions from reappearing independently
 
 11. Sorting strategy unification for lists/tables (2026-03-05)
 - Status: done (updated 2026-03-06)

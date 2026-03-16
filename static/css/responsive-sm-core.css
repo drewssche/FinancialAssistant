@@ -221,27 +221,36 @@
     text-align: left;
   }
 
-  .mobile-card-table.categories-table td[data-label="Название"] .category-chip,
-  .mobile-card-table.categories-table td[data-label="Тип"] .kind-pill {
+  .mobile-card-table.categories-table .category-mobile-item-title .category-chip,
+  .mobile-card-table.categories-table .category-mobile-item-meta .kind-pill {
+    justify-self: start;
     width: fit-content;
     max-width: 100%;
   }
 
-  .mobile-card-table.categories-table .category-mobile-title .category-chip,
-  .mobile-card-table.categories-table .category-mobile-meta .kind-pill {
-    width: fit-content;
-    max-width: 100%;
+  .mobile-card-table.categories-table .category-mobile-item-title,
+  .mobile-card-table.categories-table .category-mobile-item-meta,
+  .mobile-card-table.categories-table .category-mobile-item-actions,
+  .mobile-card-table.categories-table .category-mobile-group-actions {
+    width: 100%;
   }
 
-  .mobile-card-table.categories-table .mobile-actions-cell .btn,
-  .mobile-card-table.categories-table .category-table-group-wrap .row-actions .btn {
+  .mobile-card-table.categories-table .category-mobile-actions .row-actions,
+  .mobile-card-table.categories-table .category-mobile-item-actions .row-actions,
+  .mobile-card-table.categories-table .category-mobile-group-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .mobile-card-table.categories-table .category-mobile-item-actions .row-actions .btn,
+  .mobile-card-table.categories-table .category-mobile-group-actions .btn {
+    width: 100%;
+    min-width: 0;
     white-space: normal;
     word-break: break-word;
   }
 
-  .mobile-card-table.categories-table .category-mobile-actions .row-actions,
-  .mobile-card-table.categories-table .category-mobile-group-actions {
-    grid-template-columns: 1fr;
+  .mobile-card-table.operations-table td.mobile-actions-cell {
+    width: 100%;
   }
 
   .mobile-card-table.operations-table .mobile-actions-cell .row-actions {
@@ -254,6 +263,13 @@
 
   .mobile-card-table.operations-table .mobile-actions-cell .row-actions .btn {
     width: 100%;
+    min-width: 0;
+  }
+
+  .mobile-card-table.operations-table td[data-label="Тип"] .kind-pill {
+    justify-self: start;
+    width: fit-content;
+    max-width: 100%;
   }
 
   .mobile-card-table.item-catalog-table .category-table-group-wrap {

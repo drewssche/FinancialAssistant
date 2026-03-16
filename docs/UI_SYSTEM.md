@@ -117,6 +117,11 @@ At the bottom-left sidebar, show compact static user block:
 - when a desktop table becomes unreadable on phone width, prefer a dedicated mobile renderer over `td[data-label]` fallback; `Categories` and `Item Catalog` should render as `parent card -> nested child cards`
 - sticky mobile modal footers must reserve matching bottom scroll space in the content area and stay above popovers/autocomplete surfaces so CTA never covers the last actionable field
 - mobile list/card action zones should default to full-width stacked buttons unless the feature explicitly benefits from a denser layout (`Debts` currently remains an exception)
+- section-specific action contracts must stay isolated:
+- `Operations`: desktop row actions stay compact and right-aligned for every row variant; mobile operation cards use full-width stacked actions
+- `Categories`: mobile layout should follow the same dedicated nested-card pattern as `Item Catalog`, not desktop `td[data-label]` table fallback
+- `Debts History`: direction pill (`Я дал` / `Я взял`) must remain single-line on narrow screens
+- semantic pills/chips (`Тип`, debt direction, category/type pills) should size to content by default and must not stretch to the full row unless the component is explicitly designed as a segmented/full-width control
 - analytics section/tab contract:
 - opening `Аналитика` must immediately load data for the active analytics tab/state without requiring any extra control toggle
 - switching analytics internal tabs must trigger the corresponding data load immediately

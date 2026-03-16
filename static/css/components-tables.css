@@ -611,10 +611,22 @@
 }
 
 @media (min-width: 641px) {
+  .operations-table td.mobile-actions-cell {
+    text-align: right;
+  }
+
   .operations-table td.mobile-actions-cell .actions.row-actions,
   .categories-table .actions.row-actions,
   .item-catalog-table .actions.row-actions {
     justify-content: flex-end;
+  }
+
+  .operations-table td.mobile-actions-cell .actions.row-actions {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    margin-left: auto;
+    width: max-content;
   }
 
   .operations-table td.mobile-actions-cell .actions.row-actions .btn,
@@ -682,9 +694,23 @@
 
 .category-mobile-title,
 .category-mobile-meta,
+.category-mobile-item-title,
+.category-mobile-item-meta,
 .item-catalog-mobile-item-title,
 .item-catalog-mobile-item-meta {
   min-width: 0;
+}
+
+.category-mobile-item-title,
+.category-mobile-item-meta {
+  display: grid;
+  gap: 4px;
+}
+
+.category-mobile-item-title .category-chip,
+.category-mobile-item-meta .kind-pill {
+  width: fit-content;
+  max-width: 100%;
 }
 
 .item-catalog-mobile-item-title {

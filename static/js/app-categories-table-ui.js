@@ -232,10 +232,10 @@
       <td colspan="4" class="category-mobile-cell">
         <div class="category-mobile-card">
           <div class="category-mobile-main">
-            <div class="category-mobile-title">${nameCell}</div>
-            <div class="category-mobile-meta"><span class="kind-pill kind-pill-${kindClass}">${core.highlightText(core.kindLabel(item.kind), queryRaw)}</span></div>
+            <div class="category-mobile-item-title">${nameCell}</div>
+            <div class="category-mobile-item-meta"><span class="kind-pill kind-pill-${kindClass}">${core.highlightText(core.kindLabel(item.kind), queryRaw)}</span></div>
           </div>
-          <div class="mobile-actions-cell category-mobile-actions">${actionCell}</div>
+          <div class="mobile-actions-cell category-mobile-actions category-mobile-item-actions">${actionCell}</div>
         </div>
       </td>
     `;

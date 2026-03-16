@@ -14,6 +14,30 @@ import pytest
 sync_api = pytest.importorskip("playwright.sync_api", reason="playwright is not installed")
 
 
+def _restore_mock_telegram(page):
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+
+
+def _login_via_mock_telegram(page):
+    _restore_mock_telegram(page)
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+    page.locator("#telegramLoginBtn").wait_for(state="visible")
+    page.click("#telegramLoginBtn")
+    page.wait_for_selector("#appShell:not(.hidden)")
+
+
 @pytest.fixture(scope="module")
 def static_server_url() -> str:
     repo_root = Path(__file__).resolve().parents[2]
@@ -174,6 +198,9 @@ def page_with_debts_api_mock():
 
         if path == "/api/v1/auth/telegram" and method == "POST":
             return json_response(route, {"access_token": "e2e-token", "token_type": "bearer"})
+
+        if path == "/api/v1/auth/public-config" and method == "GET":
+            return json_response(route, {"telegram_bot_username": "FinanceWeaselBot", "browser_login_available": True})
 
         if path == "/api/v1/users/me" and method == "GET":
             return json_response(route, {"id": 1, "display_name": "Debt User", "username": "debt_user", "status": "approved", "is_admin": False})
@@ -576,22 +603,7 @@ def page_with_debts_api_mock():
 def test_create_debt_from_operation_modal(static_server_url: str, page_with_debts_api_mock):
     page = page_with_debts_api_mock
     page.goto(f"{static_server_url}/static/index.html")
-    page.evaluate(
-        """
-        () => {
-          window.Telegram = {
-            WebApp: {
-              initData: "mock-init-data",
-              ready() {},
-              expand() {},
-            }
-          };
-        }
-        """
-    )
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
+    _login_via_mock_telegram(page)
 
     page.click("button[data-section='debts']")
     page.wait_for_selector("#debtsSection:not(.hidden)")
@@ -616,22 +628,7 @@ def test_create_debt_from_operation_modal(static_server_url: str, page_with_debt
 def test_repayment_moves_debt_to_closed(static_server_url: str, page_with_debts_api_mock):
     page = page_with_debts_api_mock
     page.goto(f"{static_server_url}/static/index.html")
-    page.evaluate(
-        """
-        () => {
-          window.Telegram = {
-            WebApp: {
-              initData: "mock-init-data",
-              ready() {},
-              expand() {},
-            }
-          };
-        }
-        """
-    )
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
+    _login_via_mock_telegram(page)
 
     page.click("button[data-section='debts']")
     page.wait_for_selector("#debtsSection:not(.hidden)")
@@ -654,22 +651,7 @@ def test_repayment_moves_debt_to_closed(static_server_url: str, page_with_debts_
 def test_repayment_presets_fill_amount_from_current_outstanding(static_server_url: str, page_with_debts_api_mock):
     page = page_with_debts_api_mock
     page.goto(f"{static_server_url}/static/index.html")
-    page.evaluate(
-        """
-        () => {
-          window.Telegram = {
-            WebApp: {
-              initData: "mock-init-data",
-              ready() {},
-              expand() {},
-            }
-          };
-        }
-        """
-    )
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
+    _login_via_mock_telegram(page)
 
     page.click("button[data-section='debts']")
     page.wait_for_selector("#debtsSection:not(.hidden)")
@@ -692,22 +674,7 @@ def test_mobile_repayment_modal_keeps_amount_field_above_sticky_cta(static_serve
     page = page_with_debts_api_mock
     page.set_viewport_size({"width": 390, "height": 844})
     page.goto(f"{static_server_url}/static/index.html")
-    page.evaluate(
-        """
-        () => {
-          window.Telegram = {
-            WebApp: {
-              initData: "mock-init-data",
-              ready() {},
-              expand() {},
-            }
-          };
-        }
-        """
-    )
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
+    _login_via_mock_telegram(page)
 
     page.click("#mobileNavToggleBtn")
     page.click("button[data-section='debts']")
@@ -748,22 +715,7 @@ def test_mobile_repayment_modal_keeps_amount_field_above_sticky_cta(static_serve
 def test_debts_cards_infinite_scroll_loads_next_batch(static_server_url: str, page_with_debts_api_mock):
     page = page_with_debts_api_mock
     page.goto(f"{static_server_url}/static/index.html")
-    page.evaluate(
-        """
-        () => {
-          window.Telegram = {
-            WebApp: {
-              initData: "mock-init-data",
-              ready() {},
-              expand() {},
-            }
-          };
-        }
-        """
-    )
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
+    _login_via_mock_telegram(page)
 
     page.evaluate(
         """
@@ -794,22 +746,7 @@ def test_debts_cards_infinite_scroll_loads_next_batch(static_server_url: str, pa
 def test_debt_history_infinite_scroll_loads_next_batch(static_server_url: str, page_with_debts_api_mock):
     page = page_with_debts_api_mock
     page.goto(f"{static_server_url}/static/index.html")
-    page.evaluate(
-        """
-        () => {
-          window.Telegram = {
-            WebApp: {
-              initData: "mock-init-data",
-              ready() {},
-              expand() {},
-            }
-          };
-        }
-        """
-    )
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
+    _login_via_mock_telegram(page)
 
     page.evaluate(
         """
@@ -852,22 +789,7 @@ def test_mobile_debt_history_modal_keeps_scroll_region_visible(static_server_url
     page = page_with_debts_api_mock
     page.set_viewport_size({"width": 390, "height": 844})
     page.goto(f"{static_server_url}/static/index.html")
-    page.evaluate(
-        """
-        () => {
-          window.Telegram = {
-            WebApp: {
-              initData: "mock-init-data",
-              ready() {},
-              expand() {},
-            }
-          };
-        }
-        """
-    )
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
+    _login_via_mock_telegram(page)
 
     page.evaluate(
         """
@@ -928,22 +850,7 @@ def test_mobile_debt_history_modal_keeps_scroll_region_visible(static_server_url
 def test_debt_history_uses_directional_event_labels(static_server_url: str, page_with_debts_api_mock):
     page = page_with_debts_api_mock
     page.goto(f"{static_server_url}/static/index.html")
-    page.evaluate(
-        """
-        () => {
-          window.Telegram = {
-            WebApp: {
-              initData: "mock-init-data",
-              ready() {},
-              expand() {},
-            }
-          };
-        }
-        """
-    )
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
+    _login_via_mock_telegram(page)
 
     page.click("button[data-section='debts']")
     page.wait_for_selector("#debtsSection:not(.hidden)")
@@ -964,22 +871,7 @@ def test_debt_history_uses_directional_event_labels(static_server_url: str, page
 def test_edit_and_delete_debt(static_server_url: str, page_with_debts_api_mock):
     page = page_with_debts_api_mock
     page.goto(f"{static_server_url}/static/index.html")
-    page.evaluate(
-        """
-        () => {
-          window.Telegram = {
-            WebApp: {
-              initData: "mock-init-data",
-              ready() {},
-              expand() {},
-            }
-          };
-        }
-        """
-    )
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
+    _login_via_mock_telegram(page)
 
     page.click("button[data-section='debts']")
     page.wait_for_selector("#debtsSection:not(.hidden)")
@@ -1002,22 +894,7 @@ def test_edit_and_delete_debt(static_server_url: str, page_with_debts_api_mock):
 def test_overpay_creates_reverse_direction_debt(static_server_url: str, page_with_debts_api_mock):
     page = page_with_debts_api_mock
     page.goto(f"{static_server_url}/static/index.html")
-    page.evaluate(
-        """
-        () => {
-          window.Telegram = {
-            WebApp: {
-              initData: "mock-init-data",
-              ready() {},
-              expand() {},
-            }
-          };
-        }
-        """
-    )
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
+    _login_via_mock_telegram(page)
 
     page.click("button[data-section='debts']")
     page.wait_for_selector("#debtsSection:not(.hidden)")
@@ -1039,22 +916,7 @@ def test_overpay_creates_reverse_direction_debt(static_server_url: str, page_wit
 def test_edit_counterparty_name_merges_with_existing_card(static_server_url: str, page_with_debts_api_mock):
     page = page_with_debts_api_mock
     page.goto(f"{static_server_url}/static/index.html")
-    page.evaluate(
-        """
-        () => {
-          window.Telegram = {
-            WebApp: {
-              initData: "mock-init-data",
-              ready() {},
-              expand() {},
-            }
-          };
-        }
-        """
-    )
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
+    _login_via_mock_telegram(page)
 
     page.click("button[data-section='debts']")
     page.wait_for_selector("#debtsSection:not(.hidden)")
@@ -1087,22 +949,7 @@ def test_edit_counterparty_name_merges_with_existing_card(static_server_url: str
 def test_dashboard_debts_toggle_applies_without_page_reload(static_server_url: str, page_with_debts_api_mock):
     page = page_with_debts_api_mock
     page.goto(f"{static_server_url}/static/index.html")
-    page.evaluate(
-        """
-        () => {
-          window.Telegram = {
-            WebApp: {
-              initData: "mock-init-data",
-              ready() {},
-              expand() {},
-            }
-          };
-        }
-        """
-    )
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
+    _login_via_mock_telegram(page)
 
     page.click("button[data-section='settings']")
     page.wait_for_selector("#settingsSection:not(.hidden)")

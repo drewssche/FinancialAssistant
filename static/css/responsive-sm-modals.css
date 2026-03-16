@@ -51,6 +51,13 @@
     gap: var(--space-2);
   }
 
+  #debtHistoryDirection.debt-direction-pill {
+    min-width: 4.75rem;
+    justify-content: center;
+    white-space: nowrap;
+    padding-inline: calc(var(--space-2) + 0.375rem);
+  }
+
   #operationReceiptMeta,
   #itemTemplateHistoryMeta {
     margin-top: var(--space-2);
