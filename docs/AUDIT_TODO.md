@@ -89,6 +89,19 @@
 - `Categories` mobile cards must use visible color-linked parent/child grouping, with actions staying clear of accent rail
 - `Item Catalog` mobile group metas should read as stacked lines, not one compressed inline strip
 - settings picker button content must be optically centered vertically
+- New follow-up agreed 2026-03-16:
+- mobile list-card actions should default to full-width stacked buttons (keep debt cards as-is unless they regress)
+- sticky modal CTA needs a stronger layering contract: footer above content, reserved bottom scroll space, and no popover/content bleed over the CTA
+- `Categories` mobile should stop pretending to be a table; use dedicated `group card -> nested category cards` renderer
+- `Item Catalog` mobile should stop pretending to be a table; use dedicated `source card -> nested position cards` renderer
+- Implemented 2026-03-16:
+- `Categories` mobile now renders dedicated group/child cards instead of relying on `td[data-label]` table fallback
+- `Item Catalog` mobile now renders dedicated source/position cards instead of relying on `td[data-label]` table fallback
+- mobile card actions default to full-width stacked buttons across grouped list cards
+- sticky modal footer now sits above content/popovers and content areas reserve extra bottom scroll space near CTA
+- analytics mobile e2e helper now tolerates Mini App auto-login path in addition to manual login button visibility
+- analytics section now force-loads the currently active tab on section open, and analytics tab switches trigger immediate data load instead of waiting for another control change
+- desktop action buttons were restored to compact desktop behavior; aggressive wrap/full-width action rules remain mobile-scoped
 
 1. Fix stale category chip in Dashboard operations table
 - Status: done (2026-03-04)

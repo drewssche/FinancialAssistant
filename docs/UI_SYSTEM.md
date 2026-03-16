@@ -114,6 +114,13 @@ At the bottom-left sidebar, show compact static user block:
 - grouped mobile cards should preserve parent-child relation with shared accent rail/border color where the hierarchy is important (`Categories`, `Item Catalog`, debt-by-counterparty surfaces)
 - action buttons are always visible, full-width or stacked, and may wrap text instead of overflowing
 - dense mobile picker-like buttons (`settings`, `select` replacements) should use the same control height as primary form fields
+- when a desktop table becomes unreadable on phone width, prefer a dedicated mobile renderer over `td[data-label]` fallback; `Categories` and `Item Catalog` should render as `parent card -> nested child cards`
+- sticky mobile modal footers must reserve matching bottom scroll space in the content area and stay above popovers/autocomplete surfaces so CTA never covers the last actionable field
+- mobile list/card action zones should default to full-width stacked buttons unless the feature explicitly benefits from a denser layout (`Debts` currently remains an exception)
+- analytics section/tab contract:
+- opening `Аналитика` must immediately load data for the active analytics tab/state without requiring any extra control toggle
+- switching analytics internal tabs must trigger the corresponding data load immediately
+- desktop action buttons should preserve compact horizontal sizing; wrap/full-width action behavior is mobile-only
 
 ## Operation Modal Category Picker
 - Create/edit operation modals use chip-based category picker instead of plain select control

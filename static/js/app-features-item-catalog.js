@@ -261,6 +261,10 @@
     toggleItemCatalogGroup(shopKey);
   }
 
+  function isCompactMobileViewport() {
+    return window.matchMedia("(max-width: 640px)").matches;
+  }
+
   function renderItemCatalog(items) {
     if (!el.itemCatalogBody) {
       return;
@@ -284,26 +288,83 @@
     syncItemCatalogControls(queryActive, true);
     const collapsedShops = readItemCatalogCollapsedShops();
 
+    const compactMobile = isCompactMobileViewport();
     el.itemCatalogBody.innerHTML = groups.map((group) => {
       const isCollapsed = !queryActive && collapsedShops.has(group.shopKey);
       const chevron = isCollapsed ? "▸" : "▾";
-      const childRows = group.items.map((item) => `
-        <tr class="item-catalog-item-row table-hierarchy-child-row ${isCollapsed ? "hidden" : ""}" data-item-template-row="1">
-          <td class="item-catalog-source-context-cell" data-label="Источник"><span class="hierarchy-child-label">↳ ${core.highlightText(group.shopName, query)}</span></td>
-          <td data-label="Позиция">${core.highlightText(item.name || "—", query)}</td>
-          <td data-label="Цена">${core.formatMoney(item.latest_unit_price || 0)}</td>
-          <td class="mobile-actions-cell" data-label="Действия">
-            <div class="actions row-actions">
-              <button class="btn btn-secondary btn-xs" data-item-template-history-id="${item.id}" type="button">История</button>
-              <button class="btn btn-secondary btn-xs" data-edit-item-template-id="${item.id}" type="button">Редактировать</button>
-              <button class="btn btn-danger btn-xs" data-delete-item-template-id="${item.id}" type="button">Удалить</button>
-            </div>
-          </td>
-        </tr>
-      `).join("");
+      const childRows = group.items.map((item) => {
+        if (compactMobile) {
+          return `
+            <tr class="item-catalog-item-row table-hierarchy-child-row item-catalog-mobile-item-row ${isCollapsed ? "hidden" : ""}" data-item-template-row="1">
+              <td colspan="4" class="item-catalog-mobile-item-cell">
+                <div class="item-catalog-mobile-item-card">
+                  <div class="item-catalog-mobile-item-main">
+                    <div class="item-catalog-mobile-item-title">${core.highlightText(item.name || "—", query)}</div>
+                    <div class="item-catalog-mobile-item-meta">
+                      <span class="muted-small">Цена</span>
+                      <strong>${core.formatMoney(item.latest_unit_price || 0)}</strong>
+                    </div>
+                  </div>
+                  <div class="mobile-actions-cell">
+                    <div class="actions row-actions item-catalog-mobile-item-actions">
+                      <button class="btn btn-secondary" data-item-template-history-id="${item.id}" type="button">История</button>
+                      <button class="btn btn-secondary" data-edit-item-template-id="${item.id}" type="button">Редактировать</button>
+                      <button class="btn btn-danger" data-delete-item-template-id="${item.id}" type="button">Удалить</button>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          `;
+        }
+        return `
+          <tr class="item-catalog-item-row table-hierarchy-child-row ${isCollapsed ? "hidden" : ""}" data-item-template-row="1">
+            <td class="item-catalog-source-context-cell" data-label="Источник"><span class="hierarchy-child-label">↳ ${core.highlightText(group.shopName, query)}</span></td>
+            <td data-label="Позиция">${core.highlightText(item.name || "—", query)}</td>
+            <td data-label="Цена">${core.formatMoney(item.latest_unit_price || 0)}</td>
+            <td class="mobile-actions-cell" data-label="Действия">
+              <div class="actions row-actions">
+                <button class="btn btn-secondary btn-xs" data-item-template-history-id="${item.id}" type="button">История</button>
+                <button class="btn btn-secondary btn-xs" data-edit-item-template-id="${item.id}" type="button">Редактировать</button>
+                <button class="btn btn-danger btn-xs" data-delete-item-template-id="${item.id}" type="button">Удалить</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join("");
       const emptyRow = !group.items.length && !isCollapsed
-        ? `<tr class="item-catalog-item-row"><td data-label="Источник">${core.highlightText(group.shopName, query)}</td><td data-label="Позиция" colspan="3" class="muted-small">Позиции в источнике пока не добавлены</td></tr>`
+        ? compactMobile
+          ? `<tr class="item-catalog-item-row item-catalog-mobile-item-row"><td colspan="4" class="item-catalog-mobile-item-cell"><div class="item-catalog-mobile-empty muted-small">Позиции в источнике пока не добавлены</div></td></tr>`
+          : `<tr class="item-catalog-item-row"><td data-label="Источник">${core.highlightText(group.shopName, query)}</td><td data-label="Позиция" colspan="3" class="muted-small">Позиции в источнике пока не добавлены</td></tr>`
         : "";
+      if (compactMobile) {
+        return `
+          <tr class="item-catalog-group-row table-hierarchy-parent-row item-catalog-mobile-group-row">
+            <td colspan="4" class="item-catalog-group-cell item-catalog-mobile-group-cell">
+              <div class="item-catalog-mobile-group-card">
+                <button type="button" class="item-catalog-group-btn item-catalog-mobile-group-toggle" data-item-catalog-shop-key="${encodeURIComponent(group.shopKey)}" ${queryActive ? "disabled" : ""}>
+                  <span class="item-catalog-group-chevron">${chevron}</span>
+                  <span class="item-catalog-group-main">
+                    <span class="item-catalog-group-name">${core.highlightText(group.shopName, query)}</span>
+                    <span class="item-catalog-group-metas item-catalog-mobile-group-metas">
+                      <span class="item-catalog-group-meta">${group.items.length} поз.</span>
+                      <span class="item-catalog-group-meta">исп: ${group.useCountTotal}</span>
+                      <span class="item-catalog-group-meta">ср: ${group.avgPrice !== null ? core.formatMoney(group.avgPrice, { withCurrency: false }) : "—"}</span>
+                      <span class="item-catalog-group-meta">посл: ${group.lastUsedLabel}</span>
+                    </span>
+                  </span>
+                </button>
+                ${group.shopKey !== ITEM_CATALOG_NO_SHOP_KEY ? `<div class="actions row-actions item-catalog-source-actions item-catalog-mobile-group-actions">
+                  <button class="btn btn-secondary" data-edit-item-source-name="${escapeHtml(group.shopName)}" type="button">Редактировать</button>
+                  <button class="btn btn-danger" data-delete-item-source-name="${escapeHtml(group.shopName)}" type="button">Удалить</button>
+                </div>` : ""}
+              </div>
+            </td>
+          </tr>
+          ${childRows}
+          ${emptyRow}
+        `;
+      }
       return `
         <tr class="item-catalog-group-row table-hierarchy-parent-row">
           <td colspan="4" class="item-catalog-group-cell">

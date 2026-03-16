@@ -205,10 +205,13 @@
     }
   }
 
-  function renderCategoryRow(item, queryRaw, options = {}) {
-    const kindClass = item.kind === "income" ? "income" : "expense";
+  function isCompactMobileViewport() {
+    return window.matchMedia("(max-width: 640px)").matches;
+  }
+
+  function renderCategoryMobileRow(item, queryRaw, options, kindClass, actionCell, nameCell) {
     const tr = document.createElement("tr");
-    tr.classList.add(`kind-row-${kindClass}`);
+    tr.classList.add(`kind-row-${kindClass}`, "category-mobile-item-row", "table-hierarchy-child-row");
     tr.dataset.item = JSON.stringify(item);
     tr.dataset.itemType = "category";
     tr.dataset.categoryId = String(item.id);
@@ -225,6 +228,59 @@
     const accent = resolveGroupAccent(options.groupAccentColor, item.kind);
     tr.style.setProperty("--category-group-accent", accent.accent);
     tr.style.setProperty("--category-group-accent-soft", accent.soft);
+    tr.innerHTML = `
+      <td colspan="4" class="category-mobile-cell">
+        <div class="category-mobile-card">
+          <div class="category-mobile-main">
+            <div class="category-mobile-title">${nameCell}</div>
+            <div class="category-mobile-meta"><span class="kind-pill kind-pill-${kindClass}">${core.highlightText(core.kindLabel(item.kind), queryRaw)}</span></div>
+          </div>
+          <div class="mobile-actions-cell category-mobile-actions">${actionCell}</div>
+        </div>
+      </td>
+    `;
+    return tr;
+  }
+
+  function renderGroupHeaderMobileRow(group, queryRaw, isCollapsed, queryActive, groupName, kindMeta) {
+    const tr = document.createElement("tr");
+    tr.className = "category-table-group-row table-hierarchy-parent-row category-mobile-group-row";
+    tr.dataset.itemType = "group";
+    tr.dataset.groupKey = group.key;
+    if (group.id) {
+      tr.dataset.groupId = String(group.id);
+    }
+    const accent = resolveGroupAccent(group.accentColor, group.kind);
+    tr.style.setProperty("--category-group-accent", accent.accent);
+    tr.style.setProperty("--category-group-accent-soft", accent.soft);
+    const chevron = group.isUngrouped ? "•" : (isCollapsed ? "▸" : "▾");
+    const toggleDisabled = queryActive || group.isUngrouped;
+    const groupActions = group.id
+      ? `<div class="actions row-actions category-mobile-group-actions"><button class="btn btn-secondary" data-edit-group-id="${group.id}" type="button">Редактировать</button><button class="btn btn-danger" data-delete-group-id="${group.id}" type="button">Удалить</button></div>`
+      : "";
+    tr.innerHTML = `
+      <td colspan="4" class="category-table-group-cell category-mobile-group-cell">
+        <div class="category-mobile-group-card">
+          <button type="button" class="item-catalog-group-btn category-table-group-btn category-mobile-group-toggle" data-category-group-toggle-key="${group.key}" ${toggleDisabled ? "disabled" : ""}>
+            <span class="item-catalog-group-chevron">${chevron}</span>
+            <span class="item-catalog-group-main">
+              <span class="item-catalog-group-name">${groupName}</span>
+              <span class="item-catalog-group-metas category-mobile-group-metas">
+                <span class="item-catalog-group-meta">${group.children.length} кат.</span>
+                ${kindMeta}
+              </span>
+            </span>
+          </button>
+          ${groupActions}
+        </div>
+      </td>
+    `;
+    return tr;
+  }
+
+  function renderCategoryRow(item, queryRaw, options = {}) {
+    const kindClass = item.kind === "income" ? "income" : "expense";
+    const accent = resolveGroupAccent(options.groupAccentColor, item.kind);
     const actionCell = item.is_system
       ? "<span class='muted-small'>Защищено</span>"
       : `<div class='actions row-actions'><button class='btn btn-secondary' data-edit-category-id='${item.id}'>Редактировать</button><button class='btn btn-danger' data-delete-category-id='${item.id}'>Удалить</button></div>`;
@@ -233,6 +289,26 @@
       { name: item.name, icon: item.icon || item.group_icon, accent_color: item.group_accent_color || accent.accent },
       queryRaw,
     );
+    if (isCompactMobileViewport()) {
+      return renderCategoryMobileRow(item, queryRaw, options, kindClass, actionCell, nameCell);
+    }
+    const tr = document.createElement("tr");
+    tr.classList.add(`kind-row-${kindClass}`);
+    tr.dataset.item = JSON.stringify(item);
+    tr.dataset.itemType = "category";
+    tr.dataset.categoryId = String(item.id);
+    if (options.groupId) {
+      tr.dataset.groupId = String(options.groupId);
+      tr.classList.add("category-child-row");
+    }
+    if (options.groupKey) {
+      tr.dataset.groupKey = options.groupKey;
+    }
+    if (options.isCollapsed) {
+      tr.classList.add("hidden");
+    }
+    tr.style.setProperty("--category-group-accent", accent.accent);
+    tr.style.setProperty("--category-group-accent-soft", accent.soft);
     tr.innerHTML = `
       <td class="category-group-accent-cell category-group-context-cell" data-label="Группа">${groupCell}</td>
       <td data-label="Название">${nameCell}</td>
@@ -243,6 +319,13 @@
   }
 
   function renderGroupHeaderRow(group, queryRaw, isCollapsed, queryActive) {
+    const groupName = group.isUngrouped
+      ? `<span class="muted-small">${core.highlightText(group.name, queryRaw)}</span>`
+      : core.renderCategoryChip({ name: group.name, icon: null, accent_color: group.accentColor || resolveGroupAccent(group.accentColor, group.kind).accent }, queryRaw);
+    const kindMeta = group.kind ? `<span class="item-catalog-group-meta">${core.highlightText(core.kindLabel(group.kind), queryRaw)}</span>` : "";
+    if (isCompactMobileViewport()) {
+      return renderGroupHeaderMobileRow(group, queryRaw, isCollapsed, queryActive, groupName, kindMeta);
+    }
     const tr = document.createElement("tr");
     tr.className = "category-table-group-row table-hierarchy-parent-row";
     tr.dataset.itemType = "group";
@@ -254,10 +337,6 @@
     tr.style.setProperty("--category-group-accent", accent.accent);
     tr.style.setProperty("--category-group-accent-soft", accent.soft);
     const chevron = group.isUngrouped ? "•" : (isCollapsed ? "▸" : "▾");
-    const groupName = group.isUngrouped
-      ? `<span class="muted-small">${core.highlightText(group.name, queryRaw)}</span>`
-      : core.renderCategoryChip({ name: group.name, icon: null, accent_color: group.accentColor || accent.accent }, queryRaw);
-    const kindMeta = group.kind ? `<span class="item-catalog-group-meta">${core.highlightText(core.kindLabel(group.kind), queryRaw)}</span>` : "";
     const toggleDisabled = queryActive || group.isUngrouped;
     const groupActions = group.id
       ? `<div class="actions row-actions"><button class="btn btn-secondary btn-xs" data-edit-group-id="${group.id}" type="button">Редактировать</button><button class="btn btn-danger btn-xs" data-delete-group-id="${group.id}" type="button">Удалить</button></div>`

@@ -412,10 +412,13 @@
         if (state.analyticsTab === btn.dataset.analyticsTab) {
           return;
         }
-        actions.setAnalyticsTab(btn.dataset.analyticsTab);
         core.runAction({
-          errorPrefix: "Ошибка сохранения аналитики",
-          action: () => actions.savePreferences(),
+          errorPrefix: "Ошибка загрузки аналитики",
+          action: async () => {
+            actions.setAnalyticsTab(btn.dataset.analyticsTab);
+            await actions.loadAnalyticsSection({ force: true });
+            await actions.savePreferences();
+          },
         });
       });
     }

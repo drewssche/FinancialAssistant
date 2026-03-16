@@ -273,7 +273,7 @@
       });
     }
     if (sectionId === "analytics" && window.App.actions.loadAnalyticsSection) {
-      window.App.actions.loadAnalyticsSection().catch((err) => {
+      window.App.actions.loadAnalyticsSection({ force: true }).catch((err) => {
         const message = window.App.core.errorMessage ? window.App.core.errorMessage(err) : String(err);
         window.App.core.setStatus(`Не удалось открыть раздел «Аналитика»: ${message}`);
       });

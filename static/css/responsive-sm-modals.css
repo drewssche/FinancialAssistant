@@ -180,6 +180,7 @@
     width: min(max(100%, 20rem), calc(100vw - 1rem));
     max-width: calc(100vw - 1rem);
     max-height: min(38dvh, 320px);
+    z-index: 6;
   }
 
   .debt-history-list {
@@ -245,5 +246,10 @@
 
   .modal-card .bulk-import-preview .table-wrap {
     padding-bottom: calc(var(--control-height-lg) + var(--space-4) + env(safe-area-inset-bottom));
+  }
+
+  .modal-card .operation-category-picker,
+  .modal-card .app-popover {
+    z-index: 6;
   }
 }

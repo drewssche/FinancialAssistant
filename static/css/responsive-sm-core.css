@@ -159,7 +159,6 @@
     width: 100%;
     margin-left: 0;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
     justify-items: stretch;
   }
@@ -208,10 +207,32 @@
     padding-left: 8px;
   }
 
+  .mobile-card-table.categories-table .category-mobile-group-card,
+  .mobile-card-table.categories-table .category-mobile-card {
+    padding-left: 10px;
+  }
+
   .mobile-card-table.categories-table td[data-label="Название"] .category-chip,
   .mobile-card-table.categories-table td[data-label="Тип"] .kind-pill {
     width: fit-content;
     max-width: 100%;
+  }
+
+  .mobile-card-table.categories-table .category-mobile-title .category-chip,
+  .mobile-card-table.categories-table .category-mobile-meta .kind-pill {
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .mobile-card-table.categories-table .mobile-actions-cell .btn,
+  .mobile-card-table.categories-table .category-table-group-wrap .row-actions .btn {
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .mobile-card-table.categories-table .category-mobile-actions .row-actions,
+  .mobile-card-table.categories-table .category-mobile-group-actions {
+    grid-template-columns: 1fr;
   }
 
   .mobile-card-table.item-catalog-table .category-table-group-wrap {
@@ -245,6 +266,8 @@
   .mobile-card-table.item-catalog-table .item-catalog-group-meta {
     font-size: 11px;
     white-space: normal;
+    max-width: 100%;
+    overflow-wrap: anywhere;
   }
 
   .mobile-card-table.item-catalog-table .item-catalog-source-context-cell {
@@ -255,7 +278,6 @@
   .mobile-card-table.item-catalog-table .item-catalog-source-actions {
     width: 100%;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
     justify-items: stretch;
   }
@@ -287,9 +309,9 @@
     font-size: 13px;
   }
 
-  .mobile-card-table.item-catalog-table td.mobile-actions-cell .row-actions .btn:last-child,
-  .mobile-card-table.item-catalog-table .item-catalog-source-actions .btn:last-child {
-    grid-column: 1 / -1;
+  .mobile-card-table.item-catalog-table .item-catalog-mobile-group-card,
+  .mobile-card-table.item-catalog-table .item-catalog-mobile-item-card {
+    padding-left: 10px;
   }
 
   .mobile-card-table.item-catalog-table .table-hierarchy-parent-row {
@@ -299,6 +321,17 @@
   .mobile-card-table.item-catalog-table .table-hierarchy-child-row {
     width: calc(100% - var(--space-1));
     margin-left: var(--space-1);
+  }
+
+  .mobile-card-table.item-catalog-table .item-catalog-mobile-item-actions,
+  .mobile-card-table.item-catalog-table .item-catalog-mobile-group-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .mobile-card-table.item-catalog-table .mobile-actions-cell .btn,
+  .mobile-card-table.item-catalog-table .category-table-group-wrap .row-actions .btn {
+    white-space: normal;
+    word-break: break-word;
   }
 
   .analytics-switch-group {
