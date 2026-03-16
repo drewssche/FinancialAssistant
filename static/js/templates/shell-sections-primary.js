@@ -50,6 +50,7 @@
                   <svg id="dashboardCategoryBreakdownSvg" class="analytics-category-donut-svg" viewBox="0 0 260 260"></svg>
                   <div class="analytics-category-donut-hole">
                     <span id="dashboardCategoryBreakdownChartTitle" class="analytics-category-donut-title muted-small">Итог периода</span>
+                    <span id="dashboardCategoryBreakdownChartPeriod" class="analytics-category-donut-period muted-small">Нет периода</span>
                     <strong id="dashboardCategoryBreakdownChartValue">0</strong>
                     <span id="dashboardCategoryBreakdownChartMeta" class="muted-small">Нет данных</span>
                   </div>
@@ -59,21 +60,6 @@
             </div>
           </section>
 
-          <section id="dashboardDebtKpiGrid" class="kpi-grid">
-            <article class="kpi-card">
-              <h3>Мне должны</h3>
-              <p id="debtLendTotal">0.00</p>
-            </article>
-            <article class="kpi-card">
-              <h3>Я должен</h3>
-              <p id="debtBorrowTotal">0.00</p>
-            </article>
-            <article class="kpi-card">
-              <h3>Чистая позиция по долгам</h3>
-              <p id="debtNetTotal">0.00</p>
-            </article>
-          </section>
-
           <section id="dashboardDebtsPanel" class="panel">
             <div class="panel-head row between">
               <div>
@@ -81,6 +67,20 @@
                 <p class="subtitle">Краткий список по контрагентам</p>
               </div>
               <button id="openDebtsTabBtn" class="btn btn-secondary" type="button">Открыть раздел Долги</button>
+            </div>
+            <div id="dashboardDebtKpiGrid" class="kpi-grid dashboard-debts-summary">
+              <article class="kpi-card">
+                <h3>Мне должны</h3>
+                <p id="debtLendTotal">0.00</p>
+              </article>
+              <article class="kpi-card">
+                <h3>Я должен</h3>
+                <p id="debtBorrowTotal">0.00</p>
+              </article>
+              <article class="kpi-card">
+                <h3>Чистая позиция по долгам</h3>
+                <p id="debtNetTotal">0.00</p>
+              </article>
             </div>
             <div id="dashboardDebtsList" class="debt-cards debt-cards-compact"></div>
           </section>
@@ -172,6 +172,7 @@
                   <svg id="analyticsCategoryBreakdownSvg" class="analytics-category-donut-svg" viewBox="0 0 260 260"></svg>
                   <div class="analytics-category-donut-hole">
                     <span id="analyticsCategoryBreakdownChartTitle" class="analytics-category-donut-title muted-small">Итог периода</span>
+                    <span id="analyticsCategoryBreakdownChartPeriod" class="analytics-category-donut-period muted-small">Нет периода</span>
                     <strong id="analyticsCategoryBreakdownChartValue">0</strong>
                     <span id="analyticsCategoryBreakdownChartMeta" class="muted-small">Нет данных</span>
                   </div>
@@ -278,19 +279,23 @@
             <div class="analytics-trend-kpis analytics-kpi-grid">
               <article class="analytics-kpi-card analytics-kpi-income">
                 <div class="muted-small">Доход</div>
-                <strong id="analyticsIncomeDelta">0%</strong>
+                <strong id="analyticsIncomeDelta">0 руб.</strong>
+                <span class="analytics-kpi-delta">За выбранный период</span>
               </article>
               <article class="analytics-kpi-card analytics-kpi-expense">
                 <div class="muted-small">Расход</div>
-                <strong id="analyticsExpenseDelta">0%</strong>
+                <strong id="analyticsExpenseDelta">0 руб.</strong>
+                <span class="analytics-kpi-delta">За выбранный период</span>
               </article>
               <article class="analytics-kpi-card analytics-kpi-balance">
                 <div class="muted-small">Баланс</div>
-                <strong id="analyticsBalanceDelta">0%</strong>
+                <strong id="analyticsBalanceDelta">0 руб.</strong>
+                <span class="analytics-kpi-delta">За выбранный период</span>
               </article>
               <article class="analytics-kpi-card analytics-kpi-neutral">
                 <div class="muted-small">Операции</div>
-                <strong id="analyticsOpsDelta">0%</strong>
+                <strong id="analyticsOpsDelta">0</strong>
+                <span class="analytics-kpi-delta">За выбранный период</span>
               </article>
             </div>
           </section>

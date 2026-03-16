@@ -54,7 +54,10 @@
       if (el.opEntryMode.value === "debt") {
         return;
       }
-      pickerUtils.setPopoverOpen(el.createCategoryPickerBlock, true, { owners: [el.createCategoryField] });
+      pickerUtils.setPopoverOpen(el.createCategoryPickerBlock, true, {
+        owners: [el.createCategoryField],
+        onClose: closeCreateCategoryPopover,
+      });
     }
 
     function closeCreateCategoryPopover() {
@@ -62,7 +65,10 @@
     }
 
     function openEditCategoryPopover() {
-      pickerUtils.setPopoverOpen(el.editCategoryPickerBlock, true, { owners: [el.editCategoryField] });
+      pickerUtils.setPopoverOpen(el.editCategoryPickerBlock, true, {
+        owners: [el.editCategoryField],
+        onClose: closeEditCategoryPopover,
+      });
     }
 
     function closeEditCategoryPopover() {

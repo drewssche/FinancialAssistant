@@ -81,6 +81,9 @@
         ? String(hoveredItem.category_name || "Без категории")
         : "Итог периода";
     }
+    if (el.analyticsCategoryBreakdownChartPeriod) {
+      el.analyticsCategoryBreakdownChartPeriod.textContent = activeBreakdown.periodLabel || "Нет периода";
+    }
     if (el.analyticsCategoryBreakdownChartValue) {
       el.analyticsCategoryBreakdownChartValue.textContent = hoveredItem
         ? core.formatMoney(hoveredItem.total_amount || 0)
@@ -126,6 +129,9 @@
       el.dashboardCategoryBreakdownChartTitle.textContent = hoveredItem
         ? String(hoveredItem.category_name || "Без категории")
         : "Итог периода";
+    }
+    if (el.dashboardCategoryBreakdownChartPeriod) {
+      el.dashboardCategoryBreakdownChartPeriod.textContent = activeDashboardBreakdown.periodLabel || "Нет периода";
     }
     if (el.dashboardCategoryBreakdownChartValue) {
       el.dashboardCategoryBreakdownChartValue.textContent = hoveredItem
@@ -296,6 +302,7 @@
       level: selectedLevel,
       total: chartTotal,
       totalOps,
+      periodLabel: `${core.formatDateRu(data.date_from)} - ${core.formatDateRu(data.date_to)}`,
       defaultIndex: visibleItems.length ? 0 : null,
       hoveredIndex: null,
     };
@@ -374,7 +381,6 @@
               Доля: ${Number(item.share_pct || 0).toFixed(1)}% · Операций: ${item.operations_count}
               ${selectedKind === "all" ? ` · Тип: ${categoryKindShort(item.category_kind)}` : ""}
             </div>
-            <div class="muted-small">Изм. к прошлому: ${formatPct(item.change_pct)}</div>
             <div class="analytics-insight-actions">
               <button class="analytics-visibility-toggle ${item.is_visible_in_chart ? "is-on" : "is-off"}" type="button" aria-pressed="${item.is_visible_in_chart ? "true" : "false"}" data-analytics-breakdown-toggle="${item.breakdown_key}">
                 <span class="analytics-visibility-toggle-track"><span class="analytics-visibility-toggle-thumb"></span></span>
@@ -412,6 +418,7 @@
       level: selectedLevel,
       total,
       totalOps,
+      periodLabel: `${core.formatDateRu(data.date_from)} - ${core.formatDateRu(data.date_to)}`,
       defaultIndex: items.length ? 0 : null,
       hoveredIndex: null,
     };
@@ -423,6 +430,9 @@
     core.syncSegmentedActive(el.dashboardCategoryKindTabs, "dashboard-category-kind", selectedKind);
     if (el.dashboardCategoryBreakdownChartTitle) {
       el.dashboardCategoryBreakdownChartTitle.textContent = "Итог периода";
+    }
+    if (el.dashboardCategoryBreakdownChartPeriod) {
+      el.dashboardCategoryBreakdownChartPeriod.textContent = activeDashboardBreakdown.periodLabel;
     }
     if (el.dashboardCategoryBreakdownChartValue) {
       el.dashboardCategoryBreakdownChartValue.textContent = core.formatMoney(total);

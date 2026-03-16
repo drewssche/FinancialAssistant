@@ -149,6 +149,7 @@
 - extract common toolbar layout rules and mobile-card table overrides into tighter shared buckets to reduce per-section CSS drift
 - updated 2026-03-16: introduced shared toolbar contract via `section-action-toolbar` / `search-toolbar` across operations, categories, debts and item-catalog templates; reduced section-specific end-alignment CSS in `static/css/components-tables.css`
 - updated 2026-03-16: moved base `mobile-card-table` mobile layout contract from `static/css/responsive-sm-core.css` into shared `@media` block in `static/css/components-tables.css`; `responsive-sm-core.css` now keeps only section-specific mobile table tweaks
+- updated 2026-03-16: documented reusable parent/child hierarchy contract (`strong parent surface + nested child zone via indent/left guide`) for grouped tables/cards and applied it to Position Catalog, Categories and debt-by-counterparty views
 - `window.App.actions` dead-code pass:
 - audit historical exports/facades after module splits and remove actions no longer consumed by init/features/templates
 - updated 2026-03-16: removed unused action exports from `static/js/app-features.js` (`getCreateFormPreviewItem`, `renderEditCategoryPicker`, `setReceiptEnabled`, `selectCreateCategory`, `loadMe`, `loadPreferences`, `cancelDebouncedPreferencesSave`, `applyInterfaceSettingsUi`, `loadAnalyticsCalendar`, `loadOperationsSummary`, `fillGroupSelect`, `renderCreateGroupPicker`, `renderEditGroupPicker`, `selectCreateGroup`, `renderCategories`, `updateCategoriesBulkUi`, `groupCategoryIds`, `telegramBrowserLogin`)

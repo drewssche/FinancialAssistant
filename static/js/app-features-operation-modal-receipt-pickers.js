@@ -191,7 +191,10 @@
         </button>
       `;
       picker.innerHTML = `${suggestionsHtml}${createHtml}` || "<span class='muted-small'>Нет источников</span>";
-      pickerUtils.setPopoverOpen(picker, true, { owners: [rowNode, rowNode.querySelector(".receipt-shop-cell")] });
+      pickerUtils.setPopoverOpen(picker, true, {
+        owners: [rowNode, rowNode.querySelector(".receipt-shop-cell")],
+        onClose: hideAllReceiptPickers,
+      });
       receiptUiState.activePicker = { draft_id: Number(rowItem.draft_id), field: "shop_name", mode: getReceiptModeFromNode(rowNode) };
     }
 
@@ -232,7 +235,10 @@
         </button>
       `;
       picker.innerHTML = `${suggestionsHtml}${createHtml}` || "<span class='muted-small'>Нет совпадений</span>";
-      pickerUtils.setPopoverOpen(picker, true, { owners: [rowNode, rowNode.querySelector(".receipt-name-cell")] });
+      pickerUtils.setPopoverOpen(picker, true, {
+        owners: [rowNode, rowNode.querySelector(".receipt-name-cell")],
+        onClose: hideAllReceiptPickers,
+      });
       receiptUiState.activePicker = { draft_id: Number(rowItem.draft_id), field: "name", mode: getReceiptModeFromNode(rowNode) };
     }
 
@@ -302,7 +308,10 @@
         empty.textContent = "Без категорий для выбранного типа";
         picker.appendChild(empty);
       }
-      pickerUtils.setPopoverOpen(picker, true, { owners: [rowNode, rowNode.querySelector(".receipt-category-cell")] });
+      pickerUtils.setPopoverOpen(picker, true, {
+        owners: [rowNode, rowNode.querySelector(".receipt-category-cell")],
+        onClose: hideAllReceiptPickers,
+      });
       receiptUiState.activePicker = { draft_id: Number(rowItem.draft_id), field: "category_id", mode };
     }
 

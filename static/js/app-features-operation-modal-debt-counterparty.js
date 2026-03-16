@@ -123,7 +123,10 @@
     }
 
     function openDebtCounterpartyPopover() {
-      pickerUtils.setPopoverOpen(el.debtCounterpartyPickerBlock, true, { owners: [el.debtCounterpartyField] });
+      pickerUtils.setPopoverOpen(el.debtCounterpartyPickerBlock, true, {
+        owners: [el.debtCounterpartyField],
+        onClose: closeDebtCounterpartyPopover,
+      });
     }
 
     function closeDebtCounterpartyPopover() {

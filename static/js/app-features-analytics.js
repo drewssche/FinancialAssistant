@@ -33,14 +33,17 @@
     const calendar = window.App.featureAnalyticsModules?.calendar;
     const trend = window.App.featureAnalyticsModules?.trend;
     const highlights = window.App.featureAnalyticsModules?.highlights;
+    const tab = state.analyticsTab || "calendar";
 
     applyAnalyticsTabUi();
     calendar?.applyCalendarViewUi?.();
-    await Promise.all([
-      calendar?.loadAnalyticsCalendar?.(options),
-      trend?.loadAnalyticsTrend?.(options),
-      highlights?.loadAnalyticsHighlights?.(options),
-    ]);
+    if (tab === "calendar") {
+      return calendar?.loadAnalyticsCalendar?.(options) || null;
+    }
+    if (tab === "trends") {
+      return trend?.loadAnalyticsTrend?.(options) || null;
+    }
+    return highlights?.loadAnalyticsHighlights?.(options) || null;
   }
 
   async function openOperationsForAnalyticsDate(dayIso) {

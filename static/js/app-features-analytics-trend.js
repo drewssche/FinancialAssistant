@@ -25,16 +25,16 @@
     return sharedFormatPct(value);
   }
 
-  function formatChangeArrow(previous, current, formatter = (value) => String(value)) {
-    return `${formatter(previous)} -> ${formatter(current)}`;
-  }
-
-  function formatBucketDelta(current, previous, formatter = (value) => String(value)) {
-    const currentNum = Number(current || 0);
-    const previousNum = Number(previous || 0);
-    const diff = currentNum - previousNum;
-    const sign = diff > 0 ? "+" : "";
-    return `${sign}${formatter(diff)}`;
+  function formatBucketLabel(point) {
+    const start = String(point?.bucket_start || "").trim();
+    const end = String(point?.bucket_end || "").trim();
+    if (!start && !end) {
+      return String(point?.label || "").trim();
+    }
+    if (start && end && start !== end) {
+      return `${core.formatDateRu(start)} - ${core.formatDateRu(end)}`;
+    }
+    return core.formatDateRu(start || end);
   }
 
   function createTrendTooltipHost(svgNode) {
@@ -63,45 +63,16 @@
     tooltip.style.top = `${top}px`;
   }
 
-  function renderTrendTooltip(point, previousPoint = null, compact = false) {
+  function renderTrendTooltip(point, compact = false) {
     const ops = Number(point.operations_count || 0);
-    const hasPrevious = Boolean(previousPoint);
     return `
-      <div class="analytics-chart-tooltip-title">${escapeHtml(point.label || "")}</div>
+      <div class="analytics-chart-tooltip-title">${escapeHtml(formatBucketLabel(point) || point.label || "")}</div>
       <div class="analytics-chart-tooltip-grid${compact ? " analytics-chart-tooltip-grid-compact" : ""}">
         <span class="analytics-chart-tooltip-income">Доход: ${escapeHtml(core.formatMoney(point.income_total || 0))}</span>
         <span class="analytics-chart-tooltip-expense">Расход: ${escapeHtml(core.formatMoney(point.expense_total || 0))}</span>
         <span class="analytics-chart-tooltip-balance">Баланс: ${escapeHtml(core.formatMoney(point.balance || 0))}</span>
         <span class="analytics-chart-tooltip-ops">Операций: ${ops}</span>
       </div>
-      ${
-        hasPrevious
-          ? `
-        <div class="analytics-chart-tooltip-compare">
-          <div class="analytics-chart-tooltip-compare-row">
-            <span class="analytics-chart-tooltip-label">Доход</span>
-            <strong class="analytics-chart-tooltip-income">${escapeHtml(formatChangeArrow(previousPoint.income_total || 0, point.income_total || 0, (v) => core.formatMoney(v)))}</strong>
-            <span class="analytics-chart-tooltip-delta">${escapeHtml(formatBucketDelta(point.income_total || 0, previousPoint.income_total || 0, (v) => core.formatMoney(v)))}</span>
-          </div>
-          <div class="analytics-chart-tooltip-compare-row">
-            <span class="analytics-chart-tooltip-label">Расход</span>
-            <strong class="analytics-chart-tooltip-expense">${escapeHtml(formatChangeArrow(previousPoint.expense_total || 0, point.expense_total || 0, (v) => core.formatMoney(v)))}</strong>
-            <span class="analytics-chart-tooltip-delta">${escapeHtml(formatBucketDelta(point.expense_total || 0, previousPoint.expense_total || 0, (v) => core.formatMoney(v)))}</span>
-          </div>
-          <div class="analytics-chart-tooltip-compare-row">
-            <span class="analytics-chart-tooltip-label">Баланс</span>
-            <strong class="analytics-chart-tooltip-balance">${escapeHtml(formatChangeArrow(previousPoint.balance || 0, point.balance || 0, (v) => core.formatMoney(v)))}</strong>
-            <span class="analytics-chart-tooltip-delta">${escapeHtml(formatBucketDelta(point.balance || 0, previousPoint.balance || 0, (v) => core.formatMoney(v)))}</span>
-          </div>
-          <div class="analytics-chart-tooltip-compare-row">
-            <span class="analytics-chart-tooltip-label">Операции</span>
-            <strong class="analytics-chart-tooltip-ops">${escapeHtml(formatChangeArrow(previousPoint.operations_count || 0, point.operations_count || 0))}</strong>
-            <span class="analytics-chart-tooltip-delta">${escapeHtml(formatBucketDelta(point.operations_count || 0, previousPoint.operations_count || 0))}</span>
-          </div>
-        </div>
-      `
-          : ""
-      }
     `;
   }
 
@@ -125,7 +96,7 @@
         tooltip.classList.add("hidden");
         return;
       }
-      tooltip.innerHTML = renderTrendTooltip(point, index > 0 ? points[index - 1] : null, compact);
+      tooltip.innerHTML = renderTrendTooltip(point, compact);
       tooltip.classList.remove("hidden");
       positionTrendTooltip(svgNode, tooltip, event.clientX, event.clientY);
     };
@@ -250,16 +221,16 @@
       el.analyticsTrendRangeLabel.textContent = `Окно: ${core.formatDateRu(data.date_from)} - ${core.formatDateRu(data.date_to)} · Шаг: ${stepLabel}`;
     }
     if (el.analyticsIncomeDelta) {
-      el.analyticsIncomeDelta.textContent = `${formatPct(data.income_change_pct)} · ${core.formatMoney(data.prev_income_total || 0)} -> ${core.formatMoney(data.income_total || 0)}`;
+      el.analyticsIncomeDelta.textContent = core.formatMoney(data.income_total || 0);
     }
     if (el.analyticsExpenseDelta) {
-      el.analyticsExpenseDelta.textContent = `${formatPct(data.expense_change_pct)} · ${core.formatMoney(data.prev_expense_total || 0)} -> ${core.formatMoney(data.expense_total || 0)}`;
+      el.analyticsExpenseDelta.textContent = core.formatMoney(data.expense_total || 0);
     }
     if (el.analyticsBalanceDelta) {
-      el.analyticsBalanceDelta.textContent = `${formatPct(data.balance_change_pct)} · ${core.formatMoney(data.prev_balance || 0)} -> ${core.formatMoney(data.balance || 0)}`;
+      el.analyticsBalanceDelta.textContent = core.formatMoney(data.balance || 0);
     }
     if (el.analyticsOpsDelta) {
-      el.analyticsOpsDelta.textContent = `${formatPct(data.operations_change_pct)} · ${data.prev_operations_count || 0} -> ${data.operations_count || 0}`;
+      el.analyticsOpsDelta.textContent = String(data.operations_count || 0);
     }
   }
 

@@ -195,6 +195,39 @@ def test_operation_category_search_renders_single_chip_without_duplicates(static
 
 
 @pytest.mark.e2e
+def test_operation_category_popover_closes_on_outside_click(static_server_url: str, page_with_api_mock):
+    page = page_with_api_mock
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+
+    page.click("#telegramLoginBtn")
+    page.wait_for_selector("#appShell:not(.hidden)")
+    page.click("#addOperationCta")
+    page.wait_for_selector("#createModal:not(.hidden)")
+
+    page.click("#opCategorySearch")
+    page.wait_for_selector("#createCategoryPickerBlock:not(.hidden)")
+
+    page.click("#opNote")
+    page.wait_for_timeout(100)
+
+    assert page.locator("#createCategoryPickerBlock").is_hidden()
+
+
+@pytest.mark.e2e
 def test_mobile_create_category_modal_keeps_kind_switch_above_sticky_cta(static_server_url: str, page_with_api_mock):
     page = page_with_api_mock
     page.set_viewport_size({"width": 390, "height": 844})

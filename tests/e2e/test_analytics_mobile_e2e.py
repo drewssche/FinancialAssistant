@@ -255,6 +255,8 @@ def page_with_analytics_api_mock(page):
 
         if path == "/api/v1/auth/telegram" and method == "POST":
             return json_response(route, {"access_token": "e2e-token", "token_type": "bearer"})
+        if path == "/api/v1/auth/public-config" and method == "GET":
+            return json_response(route, {"telegram_bot_username": "FinanceWeaselBot", "browser_login_available": True})
 
         if path == "/api/v1/users/me" and method == "GET":
             return json_response(route, {"id": 1, "display_name": "Analytics User", "username": "analytics_user", "status": "approved", "is_admin": False})
@@ -366,6 +368,113 @@ def _open_mobile_analytics(page, static_server_url: str):
     page.click("#mobileNavToggleBtn")
     page.click("button[data-section='analytics']")
     page.wait_for_selector("#analyticsSection:not(.hidden)")
+
+
+@pytest.mark.e2e
+def test_opening_analytics_calendar_does_not_fail_when_other_tabs_endpoints_are_unavailable(page, static_server_url: str):
+    preferences = {
+        "preferences_version": 1,
+        "data": {
+            "dashboard": {"period": "day", "custom_date_from": "", "custom_date_to": ""},
+            "operations": {"filters": {"kind": "", "q": ""}},
+            "analytics": {
+                "tab": "calendar",
+                "calendar_view": "month",
+                "month_anchor": "2026-03",
+                "summary_period": "month",
+                "period": "month",
+                "granularity": "day",
+            },
+            "ui": {"active_section": "dashboard", "timezone": "Europe/Moscow"},
+        },
+    }
+
+    def json_response(route, payload: dict | list, status: int = 200):
+        route.fulfill(status=status, content_type="application/json", body=json.dumps(payload, ensure_ascii=False))
+
+    def handler(route, request):
+        parsed = urlparse(request.url)
+        path = parsed.path
+        method = request.method.upper()
+
+        if path == "/api/v1/auth/telegram" and method == "POST":
+            return json_response(route, {"access_token": "e2e-token", "token_type": "bearer"})
+        if path == "/api/v1/users/me" and method == "GET":
+            return json_response(route, {"id": 1, "display_name": "Analytics User", "username": "analytics_user", "status": "approved", "is_admin": False})
+        if path == "/api/v1/preferences":
+            if method == "GET":
+                return json_response(route, preferences)
+            if method == "PUT":
+                return json_response(route, preferences)
+        if path == "/api/v1/categories/groups" and method == "GET":
+            return json_response(route, [])
+        if path == "/api/v1/categories" and method == "GET":
+            return json_response(route, [])
+        if path == "/api/v1/dashboard/summary" and method == "GET":
+            return json_response(route, {"income_total": "0.00", "expense_total": "0.00", "balance": "0.00"})
+        if path == "/api/v1/dashboard/operations" and method == "GET":
+            return json_response(route, {"items": [], "total": 0, "page": 1, "page_size": 20})
+        if path == "/api/v1/debts/cards" and method == "GET":
+            return json_response(route, [])
+        if path == "/api/v1/operations" and method == "GET":
+            return json_response(route, {"items": [], "total": 0, "page": 1, "page_size": 20})
+        if path == "/api/v1/dashboard/analytics/calendar" and method == "GET":
+            return json_response(
+                route,
+                {
+                    "month": "2026-03",
+                    "month_start": "2026-03-01",
+                    "month_end": "2026-03-31",
+                    "income_total": "100.00",
+                    "expense_total": "50.00",
+                    "balance": "50.00",
+                    "operations_count": 2,
+                    "weeks": [],
+                },
+            )
+        if path == "/api/v1/dashboard/analytics/highlights" and method == "GET":
+            return json_response(route, {"detail": "highlights unavailable"}, status=503)
+        if path == "/api/v1/dashboard/analytics/trend" and method == "GET":
+            return json_response(route, {"detail": "trend unavailable"}, status=503)
+        return json_response(route, {"detail": f"Unhandled mock route: {method} {path}"}, status=404)
+
+    page.add_init_script(
+        """
+        window.Telegram = {
+          WebApp: {
+            initData: "mock-init-data",
+            ready() {},
+            expand() {},
+          }
+        };
+        """
+    )
+    page.route("**/api/v1/**", handler)
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+
+    page.click("#telegramLoginBtn")
+    page.wait_for_selector("#appShell:not(.hidden)")
+    page.click("button[data-section='analytics']")
+    page.wait_for_selector("#analyticsSection:not(.hidden)")
+    page.wait_for_selector("#analyticsCalendarPanel:not(.hidden)")
+    page.wait_for_timeout(150)
+
+    assert page.locator(".toast-text:has-text('Не удалось открыть раздел «Аналитика»')").count() == 0
+    assert page.locator("#analyticsMonthLabel").text_content().strip() != ""
 
 
 @pytest.mark.e2e

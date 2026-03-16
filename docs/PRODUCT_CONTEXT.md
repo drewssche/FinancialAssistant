@@ -39,6 +39,10 @@ Current delivery direction:
 - Backend pagination semantics stay internal (`page/page_size` or cursor), while classic numbered pagination controls are hidden.
 - Grouped/collapsible table pattern is now validated in Position Catalog:
 - parent group rows + nested child rows
+- parent/child hierarchy should be visually explicit:
+- parent rows use stronger surface + summary metas
+- child rows use inset layout (`indent + left guide/rail`) instead of full heavy borders per row
+- the same hierarchy contract is a reusable baseline for `Categories` and debt-by-counterparty views
 - persisted collapse state per user preferences
 - persisted sort preset per user preferences (`usage/recent/name`)
 - active search auto-expands matched groups

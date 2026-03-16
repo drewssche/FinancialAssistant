@@ -6,6 +6,7 @@
 }
 
 #analyticsCategoryBreakdownList {
+  height: 100%;
   max-height: 34rem;
   overflow-y: auto;
   padding-right: 0.25rem;
@@ -19,6 +20,7 @@
 }
 
 .dashboard-structure-grid .analytics-insight-list {
+  height: 100%;
   max-height: 34rem;
   overflow: auto;
   padding: 2px 0.25rem 0 0;
@@ -57,8 +59,8 @@
     border-color 0.18s ease,
     box-shadow 0.18s ease,
     transform 0.18s ease;
-  padding: var(--space-2) var(--space-3);
-  gap: var(--space-2);
+  padding: calc(var(--space-2) + 0.125rem) var(--space-3);
+  gap: calc(var(--space-1) + 0.125rem);
   min-height: 0;
   position: relative;
 }
@@ -97,13 +99,14 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: var(--space-2);
+  gap: calc(var(--space-2) + 0.125rem);
 }
 
 .analytics-insight-head > .muted-small {
   flex: 0 0 auto;
   white-space: nowrap;
   text-align: right;
+  color: #b8c7e3;
 }
 
 .analytics-insight-actions {
@@ -130,7 +133,9 @@
 .analytics-category-row-title strong {
   display: block;
   min-width: 0;
-  line-height: 1.25;
+  line-height: 1.18;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
   overflow-wrap: anywhere;
 }
 
@@ -262,16 +267,16 @@
 .analytics-chart-tooltip {
   position: absolute;
   z-index: 4;
-  min-width: 12rem;
-  max-width: min(18rem, calc(100% - 1rem));
+  min-width: 12.5rem;
+  max-width: min(16.5rem, calc(100% - 1rem));
   pointer-events: none;
   border: 1px solid rgba(118, 144, 188, 0.34);
   border-radius: var(--radius-sm);
-  background: rgba(10, 17, 29, 0.96);
-  box-shadow: 0 16px 36px rgba(4, 10, 18, 0.38);
-  padding: var(--space-2) var(--space-3);
+  background: rgba(10, 17, 29, 0.985);
+  box-shadow: 0 18px 42px rgba(4, 10, 18, 0.42);
+  padding: calc(var(--space-2) + 0.125rem) var(--space-3);
   display: grid;
-  gap: var(--space-2);
+  gap: calc(var(--space-1) + 0.125rem);
   transition: opacity 0.12s ease, transform 0.12s ease;
   transform: translateY(0);
   font-family: var(--money-font-family);
@@ -287,13 +292,14 @@
   font-size: 12px;
   font-weight: 700;
   color: #e7efff;
+  letter-spacing: 0.01em;
 }
 
 .analytics-chart-tooltip-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px 10px;
-  font-size: 12px;
+  gap: 5px 10px;
+  font-size: 11.5px;
 }
 
 .analytics-chart-tooltip-grid-compact {

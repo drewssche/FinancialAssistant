@@ -145,6 +145,9 @@ At the bottom-left sidebar, show compact static user block:
 - Current table pattern for position catalog is grouped by source with collapsible group rows:
 - group row: chevron + source title + compact aggregates (`позиции`, `исп`, `ср`, `посл`)
 - child rows: positions inside selected source group
+- hierarchy baseline:
+- group/source row uses stronger parent surface
+- child position rows are nested with inset layout and left guide, not only by repeated source text
 - search behavior: realtime across `source + position`, matching groups auto-expanded while query is active
 - search loading strategy: use local filtering when full catalog snapshot is available; fallback to API query when snapshot is partial/outdated
 - table controls:
@@ -161,6 +164,7 @@ At the bottom-left sidebar, show compact static user block:
 - source/position create flows include live preview of resulting table row
 - price history modal is visually/interaction-consistent with receipt positions modal and includes source chip in meta
 - This grouped-table pattern is reused in `Categories` table structure for consistency.
+- The same visual parent/child contract should also be reused in debt-by-counterparty blocks where one parent card contains multiple debt records.
 
 ## Debt Modal Pattern (Implemented MVP Baseline)
 - Operation modal supports two modes:

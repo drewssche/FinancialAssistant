@@ -234,7 +234,7 @@
 
   function renderGroupHeaderRow(group, queryRaw, isCollapsed, queryActive) {
     const tr = document.createElement("tr");
-    tr.className = "category-table-group-row";
+    tr.className = "category-table-group-row table-hierarchy-parent-row";
     tr.dataset.itemType = "group";
     tr.dataset.groupKey = group.key;
     if (group.id) {

@@ -1,5 +1,5 @@
 (() => {
-  const { el, actions, core } = window.App;
+  const { el, actions, core, pickerUtils } = window.App;
   let bound = false;
 
   function isCompactModalViewport() {
@@ -408,23 +408,11 @@
     }
 
     document.addEventListener("pointerdown", (event) => {
-      if (actions.handleCreateCategoryOutsidePointer) {
-        actions.handleCreateCategoryOutsidePointer(event);
-      }
-      if (actions.handleEditCategoryOutsidePointer) {
-        actions.handleEditCategoryOutsidePointer(event);
-      }
-      if (actions.handleDebtCounterpartyOutsidePointer) {
-        actions.handleDebtCounterpartyOutsidePointer(event);
-      }
-      if (actions.handleReceiptOutsidePointer) {
-        actions.handleReceiptOutsidePointer(event);
+      if (pickerUtils?.closeOpenPopoversOnOutside) {
+        pickerUtils.closeOpenPopoversOnOutside(event);
       }
       if (actions.handleCreateGroupOutsidePointer) {
         actions.handleCreateGroupOutsidePointer(event);
-      }
-      if (actions.handleItemTemplateSourceOutsidePointer) {
-        actions.handleItemTemplateSourceOutsidePointer(event);
       }
     }, true);
   }

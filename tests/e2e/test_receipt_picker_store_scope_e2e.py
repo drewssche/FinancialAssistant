@@ -239,6 +239,42 @@ def test_receipt_picker_store_scoped_and_optimistic_create(static_server_url: st
 
 
 @pytest.mark.e2e
+def test_receipt_category_picker_closes_on_outside_click(static_server_url: str, page_with_receipt_api_mock):
+    page = page_with_receipt_api_mock
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+
+    page.click("#telegramLoginBtn")
+    page.wait_for_selector("#appShell:not(.hidden)")
+    page.click("#addOperationCta")
+    page.wait_for_selector("#createModal:not(.hidden)")
+    page.locator('#createOperationModeSwitch button[data-operation-mode="receipt"]').click()
+    page.wait_for_selector("#opReceiptFields:not(.hidden)")
+
+    first_row = page.locator(".receipt-item-row").first
+    first_row.locator('[data-receipt-field="category_search"]').click()
+    page.wait_for_selector('.receipt-item-row:first-child .receipt-category-picker:not(.hidden)')
+
+    page.click("#createTitle")
+    page.wait_for_timeout(100)
+
+    assert first_row.locator(".receipt-category-picker").is_hidden()
+
+
+@pytest.mark.e2e
 def test_mobile_create_modal_preview_stays_above_sticky_cta(static_server_url: str, page_with_receipt_api_mock):
     page = page_with_receipt_api_mock
     page.set_viewport_size({"width": 390, "height": 844})

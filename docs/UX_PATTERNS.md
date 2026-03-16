@@ -179,6 +179,11 @@ Settings UX additions:
 - when search is active, manual collapse is disabled and matched groups stay expanded
 - grouped table can expose explicit group actions (`Свернуть все` / `Развернуть все` / `Сброс`) near search
 - grouped table can expose local sort presets; active sort preset must persist in user preferences
+- hierarchy visual contract for grouped parent/child lists:
+- parent row/card has strongest surface and summary metas
+- child zone is visually nested via indent + subtle left guide/rail
+- avoid heavy full border on every child row; hierarchy should rely on spacing and nesting first
+- mobile card variants must preserve the same parent/child hierarchy, not flatten parent and children to identical cards
 
 ## Category Inputs
 - Group color is chosen via color picker with synchronized hex value

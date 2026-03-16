@@ -191,7 +191,7 @@
           const directionLabel = debtUi.debtDirectionActionLabel(direction);
           const repaidClass = debtRepaidClass(debt);
           const noteText = debt.note ? core.highlightText(String(debt.note), searchQuery) : "";
-          return `<tr class="debt-row-${dueState} debt-row-${direction}">
+          return `<tr class="debt-row-${dueState} debt-row-${direction} debt-record-row">
             <td>${core.formatDateRu(debt.start_date)}</td>
             <td><span class="debt-direction-pill debt-direction-pill-${direction}">${directionLabel}</span></td>
             <td><span class="debt-amount-principal debt-amount-principal-${direction}">${formatMoney(debt.principal)}</span></td>
@@ -238,7 +238,7 @@
             <p class="subtitle">Статус: <span class="debt-status debt-status-${card.status}">${card.status === "active" ? "Активный" : "Закрыт"}</span></p>
           </div>
         </div>
-        <div class="table-wrap">
+        <div class="table-wrap debt-card-children-wrap">
           <table class="table table-hover">
             <thead>
               <tr>

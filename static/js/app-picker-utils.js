@@ -91,8 +91,15 @@
       return;
     }
     const owners = Array.isArray(options.owners) ? options.owners.filter(Boolean) : [];
+    if (owners.length) {
+      popover.__appPopoverOwners = owners;
+    }
+    if (typeof options.onClose === "function") {
+      popover.__appPopoverOnClose = options.onClose;
+    }
     popover.classList.toggle("hidden", !isOpen);
-    for (const owner of owners) {
+    const activeOwners = Array.isArray(popover.__appPopoverOwners) ? popover.__appPopoverOwners : owners;
+    for (const owner of activeOwners) {
       owner.classList.toggle("has-open-popover", Boolean(isOpen));
     }
   }
@@ -108,10 +115,15 @@
     }
     const allScopes = [popover, ...(Array.isArray(scopes) ? scopes.filter(Boolean) : [])];
     const inside = eventPathIncludes(event, (node) => {
-      if (!node) {
+      if (!(node instanceof Node)) {
         return false;
       }
-      return allScopes.some((scope) => node === scope || scope.contains?.(node));
+      return allScopes.some((scope) => {
+        if (!(scope instanceof Node)) {
+          return false;
+        }
+        return node === scope || scope.contains(node);
+      });
     });
     if (inside) {
       return false;
@@ -122,6 +134,22 @@
     }
     setPopoverOpen(popover, false, { owners: allScopes.filter((scope) => scope !== popover) });
     return true;
+  }
+
+  function closeOpenPopoversOnOutside(event) {
+    const openPopovers = Array.from(document.querySelectorAll(".app-popover:not(.hidden)"));
+    let closedAny = false;
+    for (const popover of openPopovers) {
+      const owners = Array.isArray(popover.__appPopoverOwners) ? popover.__appPopoverOwners : [];
+      const onClose = typeof popover.__appPopoverOnClose === "function" ? popover.__appPopoverOnClose : null;
+      const didClose = closePopoverOnOutside(event, {
+        popover,
+        scopes: owners,
+        onClose,
+      });
+      closedAny = closedAny || didClose;
+    }
+    return closedAny;
   }
 
   window.App = window.App || {};
@@ -135,5 +163,6 @@
     eventPathIncludes,
     setPopoverOpen,
     closePopoverOnOutside,
+    closeOpenPopoversOnOutside,
   };
 })();

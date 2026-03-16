@@ -288,8 +288,8 @@
       const isCollapsed = !queryActive && collapsedShops.has(group.shopKey);
       const chevron = isCollapsed ? "▸" : "▾";
       const childRows = group.items.map((item) => `
-        <tr class="item-catalog-item-row ${isCollapsed ? "hidden" : ""}" data-item-template-row="1">
-          <td data-label="Источник">${core.highlightText(group.shopName, query)}</td>
+        <tr class="item-catalog-item-row table-hierarchy-child-row ${isCollapsed ? "hidden" : ""}" data-item-template-row="1">
+          <td data-label="Источник"><span class="hierarchy-child-label">↳ ${core.highlightText(group.shopName, query)}</span></td>
           <td data-label="Позиция">${core.highlightText(item.name || "—", query)}</td>
           <td data-label="Цена">${core.formatMoney(item.latest_unit_price || 0)}</td>
           <td class="mobile-actions-cell" data-label="Действия">
@@ -305,7 +305,7 @@
         ? `<tr class="item-catalog-item-row"><td data-label="Источник">${core.highlightText(group.shopName, query)}</td><td data-label="Позиция" colspan="3" class="muted-small">Позиции в источнике пока не добавлены</td></tr>`
         : "";
       return `
-        <tr class="item-catalog-group-row">
+        <tr class="item-catalog-group-row table-hierarchy-parent-row">
           <td colspan="4" class="item-catalog-group-cell">
             <div class="category-table-group-wrap item-catalog-source-wrap">
               <button type="button" class="item-catalog-group-btn" data-item-catalog-shop-key="${encodeURIComponent(group.shopKey)}" ${queryActive ? "disabled" : ""}>

@@ -169,6 +169,10 @@
     gap: 10px;
   }
 
+  .dashboard-debt-row::before {
+    display: none;
+  }
+
   .bulk-count-text {
     font-size: 16px;
     min-height: 30px;
