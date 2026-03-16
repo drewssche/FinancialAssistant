@@ -137,6 +137,7 @@
     el.opReceiptBlock?.classList.toggle("hidden", isDebt || !isCreateReceiptMode());
     const opAmountField = document.getElementById("opAmountField");
     const opAmount = document.getElementById("opAmount");
+    const opDateField = document.getElementById("opDateField");
     const opDate = document.getElementById("opDate");
     const opNote = document.getElementById("opNote");
     if (opAmountField) {
@@ -148,8 +149,10 @@
         opAmount.required = false;
       }
     }
+    if (opDateField) {
+      opDateField.classList.toggle("hidden", isDebt);
+    }
     if (opDate) {
-      opDate.classList.toggle("hidden", isDebt);
       opDate.required = !isDebt;
     }
     if (opNote) {

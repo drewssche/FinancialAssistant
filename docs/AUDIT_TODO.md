@@ -139,6 +139,7 @@
 - removed duplicate small-screen `.app-popover` override in `static/css/responsive-sm-modals.css`
 - fixed post-split responsive regression by restoring `@media (max-width: 640px)` wrappers in `static/css/responsive-sm-core.css` and `static/css/responsive-sm-modals.css`
 - reinforced desktop calendar toolbar layout in `static/css/components-analytics-summary.css` so analytics calendar controls stay in a row on wide screens
+- added desktop spacing between analytics calendar control groups and fixed debt-mode date field visibility so hidden operation date pickers no longer float in the debt modal
 - Notes:
 - keep future picker variants on the same shared surface instead of cloning chip/create/meta rendering again
 

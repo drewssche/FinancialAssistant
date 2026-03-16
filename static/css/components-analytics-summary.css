@@ -448,6 +448,7 @@
   flex-wrap: nowrap;
   align-items: stretch;
   justify-content: flex-end;
+  gap: var(--space-3);
 }
 
 #analyticsCalendarPanel .analytics-switch-group {
@@ -459,6 +460,7 @@
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: center;
+  gap: var(--space-3);
 }
 
 #analyticsCalendarPanel .analytics-switch-group .toolbar .btn,
