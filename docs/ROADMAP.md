@@ -90,7 +90,7 @@
 
 3. Telegram Mini App integration polish
 - support Telegram WebApp viewport specifics (`safe-area`, header chrome, expand behavior)
-- align critical actions with Telegram interaction model (`BackButton`, `MainButton`) where useful
+- keep Telegram-specific integration focused on container/runtime concerns, not native navigation buttons
 - optimize startup/render path for mobile device constraints and in-app browser runtime
 - keep backend contracts shared; Telegram-specific behavior stays in client layer
 

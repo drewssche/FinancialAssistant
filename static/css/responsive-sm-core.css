@@ -66,8 +66,8 @@
   .modal-card .panel-head.row.between,
   .modal-card .debt-history-head .row.between {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 3rem;
-    column-gap: var(--space-2);
+    grid-template-columns: minmax(0, 1fr) 3.25rem;
+    column-gap: calc(var(--space-2) + 2px);
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
@@ -79,26 +79,26 @@
   }
 
   .modal-card .panel-head.row.between > h3 {
-    flex: 1 1 auto;
     min-width: 0;
-    padding-right: var(--space-2);
+    padding-right: 0;
+    align-self: center;
   }
 
   .modal-card .panel-head .btn.btn-secondary {
-    width: auto;
-    min-width: 0;
-    align-self: flex-end;
+    width: 100%;
+    min-width: 3.25rem;
+    align-self: center;
     padding-inline: 0;
   }
 
   .modal-card .panel-head .modal-close-btn {
-    width: 3rem;
-    height: 3rem;
-    min-width: 3rem;
-    min-height: 3rem;
+    width: 3.25rem;
+    height: 3.25rem;
+    min-width: 3.25rem;
+    min-height: 3.25rem;
     justify-self: end;
     padding: 0;
-    border-radius: 0.875rem;
+    border-radius: 1rem;
     border-color: rgba(74, 94, 132, 0.72);
     background: rgba(21, 31, 49, 0.96);
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
@@ -145,8 +145,8 @@
   .mobile-card-table.categories-table .item-catalog-group-metas {
     margin-left: 0;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, max-content));
-    gap: 6px 10px;
+    grid-template-columns: 1fr;
+    gap: 4px;
   }
 
   .mobile-card-table.categories-table .item-catalog-group-meta {
@@ -159,7 +159,8 @@
     width: 100%;
     margin-left: 0;
     display: grid;
-    gap: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
     justify-items: stretch;
   }
 
@@ -174,12 +175,43 @@
     font-size: 11px;
   }
 
+  .mobile-card-table.categories-table .table-hierarchy-parent-row {
+    border-color: rgba(112, 133, 171, 0.58);
+    box-shadow:
+      inset 0 0 0 1px rgba(58, 77, 108, 0.5),
+      inset 4px 0 0 0 var(--category-group-accent);
+  }
+
+  .mobile-card-table.categories-table .table-hierarchy-child-row {
+    width: calc(100% - var(--space-1));
+    margin-left: var(--space-1);
+    padding-left: calc(var(--space-3) + 0.875rem);
+    border-color: rgba(95, 115, 151, 0.42);
+    box-shadow:
+      inset 0 0 0 1px rgba(49, 67, 96, 0.42),
+      inset 3px 0 0 0 var(--category-group-accent);
+  }
+
   .mobile-card-table.categories-table .category-group-accent-cell {
-    box-shadow: inset 2px 0 0 0 var(--category-group-accent);
+    display: none;
   }
 
   .mobile-card-table.categories-table .category-group-context-cell {
     display: none;
+  }
+
+  .mobile-card-table.categories-table .category-table-group-wrap {
+    padding-left: 8px;
+  }
+
+  .mobile-card-table.categories-table td.mobile-actions-cell {
+    padding-left: 8px;
+  }
+
+  .mobile-card-table.categories-table td[data-label="Название"] .category-chip,
+  .mobile-card-table.categories-table td[data-label="Тип"] .kind-pill {
+    width: fit-content;
+    max-width: 100%;
   }
 
   .mobile-card-table.item-catalog-table .category-table-group-wrap {
@@ -206,8 +238,8 @@
   .mobile-card-table.item-catalog-table .item-catalog-group-metas {
     margin-left: 0;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, max-content));
-    gap: 6px 10px;
+    grid-template-columns: 1fr;
+    gap: 4px;
   }
 
   .mobile-card-table.item-catalog-table .item-catalog-group-meta {
@@ -223,7 +255,8 @@
   .mobile-card-table.item-catalog-table .item-catalog-source-actions {
     width: 100%;
     display: grid;
-    gap: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
     justify-items: stretch;
   }
 
@@ -252,6 +285,20 @@
     min-height: 2.5rem;
     padding: 10px 12px;
     font-size: 13px;
+  }
+
+  .mobile-card-table.item-catalog-table td.mobile-actions-cell .row-actions .btn:last-child,
+  .mobile-card-table.item-catalog-table .item-catalog-source-actions .btn:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .mobile-card-table.item-catalog-table .table-hierarchy-parent-row {
+    border-color: rgba(112, 133, 171, 0.56);
+  }
+
+  .mobile-card-table.item-catalog-table .table-hierarchy-child-row {
+    width: calc(100% - var(--space-1));
+    margin-left: var(--space-1);
   }
 
   .analytics-switch-group {
@@ -366,6 +413,7 @@
     display: inline-flex;
     min-height: 3rem;
     font-size: 16px;
+    align-items: center;
   }
 
   .settings-block input,

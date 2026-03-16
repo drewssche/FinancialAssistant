@@ -8,7 +8,7 @@
 - mobile drawer sidebar with overlay/close interactions is in place
 - topbar and CTA rows stack on tablet/mobile widths
 - safe-area-aware modal and toast baseline added for Mini App-sized screens
-- Telegram WebApp runtime adapter added (`ready`, `expand`, viewport sync, `BackButton` / `MainButton` baseline)
+- Telegram WebApp runtime adapter is kept only for container/viewport sync (`ready`, `expand`, safe-area, viewport height)
 - admin notification bot track re-enabled for pending-access alerts with inline `Approve / Reject`
 - Telegram `MainButton` is intentionally suppressed for modal flows because sticky in-app CTA already exists and duplicate CTA hurts Mini App UX
 - mobile navigation/startup/auth flows now have e2e regression coverage (`tests/e2e/test_auth_login_ui_e2e.py`)
@@ -68,11 +68,12 @@
 0.1 Mobile structural pass
 - Status: in progress (started 2026-03-16)
 - Current implementation plan:
-- replace narrow modal close affordance with fixed mobile header action slot (`44-48px` square target)
+- replace narrow modal close affordance with dedicated mobile header action slot and truly square close control
 - standardize long operation/category chips to one-line truncation with safe ellipsis and full title fallback
 - stop using native visible selects for mobile settings; use tappable setting rows that open a dedicated option sheet/modal
 - rework `Categories` mobile hierarchy from "table turned into cards" toward clearer `parent group card -> nested category items`
 - rework `Item Catalog` mobile hierarchy to the same `source card -> nested positions` contract, with metas on their own wrap row instead of colliding with title
+- remove Telegram `BackButton` runtime integration; keep Telegram WebApp adapter limited to viewport/container sync only
 - keep desktop table layout unchanged; mobile refactor should be additive and screen-width scoped
 - Current startup/e2e contract:
 - mobile auth/startup tests that expect Mini App login must initialize `window.Telegram.WebApp.initData` before `goto`, mock `/api/v1/auth/public-config`, and wait for final visible login-state before clicking `#telegramLoginBtn`
@@ -83,6 +84,11 @@
 - modal close control uses a fixed square action slot in mobile headers
 - grouped mobile cards (`Categories`, `Item Catalog`) use larger stacked action buttons and wrapped meta rows instead of compressed inline layout
 - settings mobile picker buttons now match form-control height/legibility contract
+- Follow-up agreed 2026-03-16:
+- remove noisy/non-working Telegram native back-button integration and related runtime syncing
+- `Categories` mobile cards must use visible color-linked parent/child grouping, with actions staying clear of accent rail
+- `Item Catalog` mobile group metas should read as stacked lines, not one compressed inline strip
+- settings picker button content must be optically centered vertically
 
 1. Fix stale category chip in Dashboard operations table
 - Status: done (2026-03-04)

@@ -21,9 +21,8 @@
 - safe-area insets
 - dynamic viewport height changes
 - in-app browser chrome and keyboard overlap
-- when beneficial, use Telegram-native affordances for shell-level actions:
-- `BackButton` for section/modal navigation
-- `MainButton` for strongest current action on mobile-focused flows
+- current baseline intentionally does not depend on Telegram-native `BackButton` navigation
+- shell and modal navigation must stay fully handled by regular in-app controls even inside Telegram
 - Telegram-specific runtime hooks must not leak into shared domain logic
 
 ## Sidebar Navigation
@@ -112,6 +111,7 @@ At the bottom-left sidebar, show compact static user block:
 - mobile grouped tables/cards should not keep desktop inline metas/actions in one row:
 - parent/group metas wrap below title
 - nested child rows keep visible inset/guide
+- grouped mobile cards should preserve parent-child relation with shared accent rail/border color where the hierarchy is important (`Categories`, `Item Catalog`, debt-by-counterparty surfaces)
 - action buttons are always visible, full-width or stacked, and may wrap text instead of overflowing
 - dense mobile picker-like buttons (`settings`, `select` replacements) should use the same control height as primary form fields
 
@@ -178,6 +178,7 @@ At the bottom-left sidebar, show compact static user block:
 - This grouped-table pattern is reused in `Categories` table structure for consistency.
 - The same visual parent/child contract should also be reused in debt-by-counterparty blocks where one parent card contains multiple debt records.
 - On mobile, parent/group metas should wrap onto their own row below title instead of competing with title width in one line.
+- On mobile, group/source metas may be rendered as short stacked lines for clarity instead of one compressed inline strip.
 
 ## Debt Modal Pattern (Implemented MVP Baseline)
 - Operation modal supports two modes:
