@@ -154,9 +154,11 @@
         if (!listNode) {
           continue;
         }
-        listNode.querySelectorAll(".receipt-shop-picker").forEach((node) => node.classList.add("hidden"));
-        listNode.querySelectorAll(".receipt-name-picker").forEach((node) => node.classList.add("hidden"));
-        listNode.querySelectorAll(".receipt-category-picker").forEach((node) => node.classList.add("hidden"));
+        listNode.querySelectorAll(".receipt-item-row").forEach((node) => node.classList.remove("has-open-popover"));
+        listNode.querySelectorAll(".receipt-shop-cell, .receipt-name-cell, .receipt-category-cell").forEach((node) => node.classList.remove("has-open-popover"));
+        listNode.querySelectorAll(".receipt-shop-picker, .receipt-name-picker, .receipt-category-picker").forEach((node) => {
+          pickerUtils.setPopoverOpen(node, false);
+        });
       }
       receiptUiState.activePicker = null;
     }
@@ -189,7 +191,7 @@
         </button>
       `;
       picker.innerHTML = `${suggestionsHtml}${createHtml}` || "<span class='muted-small'>Нет источников</span>";
-      picker.classList.remove("hidden");
+      pickerUtils.setPopoverOpen(picker, true, { owners: [rowNode, rowNode.querySelector(".receipt-shop-cell")] });
       receiptUiState.activePicker = { draft_id: Number(rowItem.draft_id), field: "shop_name", mode: getReceiptModeFromNode(rowNode) };
     }
 
@@ -230,7 +232,7 @@
         </button>
       `;
       picker.innerHTML = `${suggestionsHtml}${createHtml}` || "<span class='muted-small'>Нет совпадений</span>";
-      picker.classList.remove("hidden");
+      pickerUtils.setPopoverOpen(picker, true, { owners: [rowNode, rowNode.querySelector(".receipt-name-cell")] });
       receiptUiState.activePicker = { draft_id: Number(rowItem.draft_id), field: "name", mode: getReceiptModeFromNode(rowNode) };
     }
 
@@ -300,7 +302,7 @@
         empty.textContent = "Без категорий для выбранного типа";
         picker.appendChild(empty);
       }
-      picker.classList.remove("hidden");
+      pickerUtils.setPopoverOpen(picker, true, { owners: [rowNode, rowNode.querySelector(".receipt-category-cell")] });
       receiptUiState.activePicker = { draft_id: Number(rowItem.draft_id), field: "category_id", mode };
     }
 

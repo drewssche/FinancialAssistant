@@ -13,7 +13,7 @@
             </div>
             <div class="table-search-row">
               <input id="debtSearchQ" class="table-search-input" type="text" placeholder="Поиск по контрагенту/комментарию" />
-              <div class="toolbar debt-toolbar">
+              <div class="toolbar section-action-toolbar search-toolbar debt-toolbar">
                 <div class="segmented" id="debtStatusTabs" role="tablist" aria-label="Статус долгов">
                   <button class="segmented-btn active" data-debt-status="active" type="button">Активные</button>
                   <button class="segmented-btn" data-debt-status="all" type="button">Все</button>
@@ -36,7 +36,7 @@
           <section class="panel">
             <div class="table-search-row">
               <input id="itemCatalogSearchQ" class="table-search-input" type="text" placeholder="Поиск по источнику и позиции" />
-              <div class="toolbar item-catalog-controls">
+              <div class="toolbar section-action-toolbar search-toolbar item-catalog-controls">
                 <div class="segmented" id="itemCatalogSortTabs" role="tablist" aria-label="Сортировка каталога позиций">
                   <button class="segmented-btn active" data-item-sort="usage" type="button">Частота</button>
                   <button class="segmented-btn" data-item-sort="recent" type="button">Недавние</button>

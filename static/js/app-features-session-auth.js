@@ -17,6 +17,7 @@
   }
 
   async function telegramBrowserLogin(authData) {
+    core.showApp();
     const data = await core.requestJson("/api/v1/auth/telegram/browser", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -164,6 +165,7 @@
     if (!initData) {
       throw new Error("Нет Telegram initData. Откройте приложение внутри Telegram.");
     }
+    core.showApp();
     const data = await core.requestJson("/api/v1/auth/telegram", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -70,6 +70,9 @@
     if (preserveAlert) {
       return;
     }
+    if (el.loginAlert && !el.loginAlert.classList.contains("hidden") && String(el.loginAlert.textContent || "").trim()) {
+      return;
+    }
     hideLoginAlert();
   }
 

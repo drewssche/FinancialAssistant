@@ -85,8 +85,14 @@
     width: 100%;
   }
 
+  .section-action-toolbar {
+    width: 100%;
+    justify-content: stretch;
+  }
+
   .cta-row .btn,
   .toolbar .btn,
+  .section-action-toolbar .btn,
   .actions .btn,
   .settings-actions .btn,
   .confirm-actions .btn {

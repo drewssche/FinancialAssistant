@@ -18,6 +18,7 @@
     const sourcesFeature = window.App.createItemCatalogSourcesFeature
       ? window.App.createItemCatalogSourcesFeature(deps)
       : null;
+    const pickerUtils = window.App.pickerUtils;
 
     function openItemTemplateModal(item = null) {
       if (!el.itemTemplateModal || !el.itemTemplateForm) {
@@ -35,7 +36,7 @@
         el.itemTemplateSourceSearch.value = normalizeItemCatalogShopName(item?.shop_name || "");
       }
       if (el.itemTemplateSourcePickerBlock) {
-        el.itemTemplateSourcePickerBlock.classList.add("hidden");
+        pickerUtils.setPopoverOpen(el.itemTemplateSourcePickerBlock, false, { owners: [el.itemTemplateSourceField] });
       }
       if (el.itemTemplateName) {
         el.itemTemplateName.value = item?.name || "";
@@ -74,14 +75,12 @@
         el.itemTemplatePreviewBody.innerHTML = "";
       }
       if (el.itemTemplateSourcePickerBlock) {
-        el.itemTemplateSourcePickerBlock.classList.add("hidden");
+        pickerUtils.setPopoverOpen(el.itemTemplateSourcePickerBlock, false, { owners: [el.itemTemplateSourceField] });
       }
     }
 
     function closeItemTemplateSourcePicker() {
-      if (el.itemTemplateSourcePickerBlock) {
-        el.itemTemplateSourcePickerBlock.classList.add("hidden");
-      }
+      pickerUtils.setPopoverOpen(el.itemTemplateSourcePickerBlock, false, { owners: [el.itemTemplateSourceField] });
     }
 
     function updateItemTemplatePreview() {
@@ -168,7 +167,7 @@
         ? `<button type="button" class="chip-btn chip-btn-create" data-item-template-source-create="${escapeHtml(normalizedQuery)}">+ Создать источник «${escapeHtml(normalizedQuery)}»</button>`
         : "";
       el.itemTemplateSourceAll.innerHTML = chips + createChip || "<span class='muted-small'>Нет источников</span>";
-      el.itemTemplateSourcePickerBlock.classList.remove("hidden");
+      pickerUtils.setPopoverOpen(el.itemTemplateSourcePickerBlock, true, { owners: [el.itemTemplateSourceField] });
     }
 
     function selectItemTemplateSource(name, { keepPickerOpen = false } = {}) {
@@ -233,14 +232,11 @@
     }
 
     function handleItemTemplateSourceOutsidePointer(event) {
-      if (!el.itemTemplateSourcePickerBlock || el.itemTemplateSourcePickerBlock.classList.contains("hidden")) {
-        return;
-      }
-      const path = typeof event.composedPath === "function" ? event.composedPath() : [];
-      if (path.some((node) => node?.id === "itemTemplateSourceField")) {
-        return;
-      }
-      closeItemTemplateSourcePicker();
+      pickerUtils.closePopoverOnOutside(event, {
+        popover: el.itemTemplateSourcePickerBlock,
+        scopes: [el.itemTemplateSourceField],
+        onClose: closeItemTemplateSourcePicker,
+      });
     }
 
     function handleItemTemplateSourceSearchFocusOut(event) {

@@ -75,6 +75,55 @@
     return btn;
   }
 
+  function eventPathIncludes(event, matcher) {
+    if (!event || typeof matcher !== "function") {
+      return false;
+    }
+    const path = typeof event.composedPath === "function" ? event.composedPath() : [];
+    if (path.length) {
+      return path.some((node) => matcher(node));
+    }
+    return matcher(event.target);
+  }
+
+  function setPopoverOpen(popover, isOpen, options = {}) {
+    if (!popover) {
+      return;
+    }
+    const owners = Array.isArray(options.owners) ? options.owners.filter(Boolean) : [];
+    popover.classList.toggle("hidden", !isOpen);
+    for (const owner of owners) {
+      owner.classList.toggle("has-open-popover", Boolean(isOpen));
+    }
+  }
+
+  function closePopoverOnOutside(event, options = {}) {
+    const {
+      popover = null,
+      scopes = [],
+      onClose = null,
+    } = options;
+    if (!popover || popover.classList.contains("hidden")) {
+      return false;
+    }
+    const allScopes = [popover, ...(Array.isArray(scopes) ? scopes.filter(Boolean) : [])];
+    const inside = eventPathIncludes(event, (node) => {
+      if (!node) {
+        return false;
+      }
+      return allScopes.some((scope) => node === scope || scope.contains?.(node));
+    });
+    if (inside) {
+      return false;
+    }
+    if (typeof onClose === "function") {
+      onClose();
+      return true;
+    }
+    setPopoverOpen(popover, false, { owners: allScopes.filter((scope) => scope !== popover) });
+    return true;
+  }
+
   window.App = window.App || {};
   window.App.pickerUtils = {
     DEFAULT_CATEGORY_USAGE_KEY,
@@ -83,5 +132,8 @@
     createChipButton,
     createMetaChipButton,
     createActionChipButton,
+    eventPathIncludes,
+    setPopoverOpen,
+    closePopoverOnOutside,
   };
 })();

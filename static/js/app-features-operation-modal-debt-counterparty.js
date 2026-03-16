@@ -123,11 +123,11 @@
     }
 
     function openDebtCounterpartyPopover() {
-      el.debtCounterpartyPickerBlock?.classList.remove("hidden");
+      pickerUtils.setPopoverOpen(el.debtCounterpartyPickerBlock, true, { owners: [el.debtCounterpartyField] });
     }
 
     function closeDebtCounterpartyPopover() {
-      el.debtCounterpartyPickerBlock?.classList.add("hidden");
+      pickerUtils.setPopoverOpen(el.debtCounterpartyPickerBlock, false, { owners: [el.debtCounterpartyField] });
     }
 
     function renderDebtCounterpartyPicker() {
@@ -222,13 +222,11 @@
     }
 
     function handleDebtCounterpartyOutsidePointer(event) {
-      if (el.debtCounterpartyPickerBlock?.classList.contains("hidden")) {
-        return;
-      }
-      if (event.target.closest("#debtCounterpartyField")) {
-        return;
-      }
-      closeDebtCounterpartyPopover();
+      pickerUtils.closePopoverOnOutside(event, {
+        popover: el.debtCounterpartyPickerBlock,
+        scopes: [el.debtCounterpartyField],
+        onClose: closeDebtCounterpartyPopover,
+      });
     }
 
     return {

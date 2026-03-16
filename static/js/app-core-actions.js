@@ -308,7 +308,11 @@
       const prefixAllowed = typeof shouldPrefixError === "function"
         ? shouldPrefixError(message, err) !== false
         : true;
-      core.setStatus(errorPrefix && prefixAllowed ? `${errorPrefix}: ${message}` : message, forLogin);
+      if (forLogin && typeof core.showLogin === "function") {
+        core.showLogin(errorPrefix && prefixAllowed ? `${errorPrefix}: ${message}` : message);
+      } else {
+        core.setStatus(errorPrefix && prefixAllowed ? `${errorPrefix}: ${message}` : message, forLogin);
+      }
       if (rethrow) {
         throw err;
       }

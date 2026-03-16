@@ -147,10 +147,14 @@
 - Status: pending
 - Shared toolbar/table/mobile-card contract:
 - extract common toolbar layout rules and mobile-card table overrides into tighter shared buckets to reduce per-section CSS drift
+- updated 2026-03-16: introduced shared toolbar contract via `section-action-toolbar` / `search-toolbar` across operations, categories, debts and item-catalog templates; reduced section-specific end-alignment CSS in `static/css/components-tables.css`
+- updated 2026-03-16: moved base `mobile-card-table` mobile layout contract from `static/css/responsive-sm-core.css` into shared `@media` block in `static/css/components-tables.css`; `responsive-sm-core.css` now keeps only section-specific mobile table tweaks
 - `window.App.actions` dead-code pass:
 - audit historical exports/facades after module splits and remove actions no longer consumed by init/features/templates
+- updated 2026-03-16: removed unused action exports from `static/js/app-features.js` (`getCreateFormPreviewItem`, `renderEditCategoryPicker`, `setReceiptEnabled`, `selectCreateCategory`, `loadMe`, `loadPreferences`, `cancelDebouncedPreferencesSave`, `applyInterfaceSettingsUi`, `loadAnalyticsCalendar`, `loadOperationsSummary`, `fillGroupSelect`, `renderCreateGroupPicker`, `renderEditGroupPicker`, `selectCreateGroup`, `renderCategories`, `updateCategoriesBulkUi`, `groupCategoryIds`, `telegramBrowserLogin`)
 - picker runtime consistency:
 - keep auth-safe smoke coverage when touching early-loaded frontend modules so one broken export cannot block login again
+- updated 2026-03-16: introduced shared picker runtime helpers in `static/js/app-picker-utils.js` (`setPopoverOpen`, `closePopoverOnOutside`, `eventPathIncludes`) and switched operation category, debt counterparty, receipt-row and item-template source pickers to the same open/close/owner-class contract
 
 6. Add focused regression tests
 - Status: done (2026-03-05)

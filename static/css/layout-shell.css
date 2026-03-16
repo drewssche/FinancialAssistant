@@ -305,6 +305,10 @@
   z-index: 40;
 }
 
+.create-category-field.has-open-popover {
+  z-index: 40;
+}
+
 .create-category-field #opCategorySearch {
   width: 100%;
 }

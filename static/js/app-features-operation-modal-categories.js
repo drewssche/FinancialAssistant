@@ -54,19 +54,19 @@
       if (el.opEntryMode.value === "debt") {
         return;
       }
-      el.createCategoryPickerBlock.classList.remove("hidden");
+      pickerUtils.setPopoverOpen(el.createCategoryPickerBlock, true, { owners: [el.createCategoryField] });
     }
 
     function closeCreateCategoryPopover() {
-      el.createCategoryPickerBlock.classList.add("hidden");
+      pickerUtils.setPopoverOpen(el.createCategoryPickerBlock, false, { owners: [el.createCategoryField] });
     }
 
     function openEditCategoryPopover() {
-      el.editCategoryPickerBlock?.classList.remove("hidden");
+      pickerUtils.setPopoverOpen(el.editCategoryPickerBlock, true, { owners: [el.editCategoryField] });
     }
 
     function closeEditCategoryPopover() {
-      el.editCategoryPickerBlock?.classList.add("hidden");
+      pickerUtils.setPopoverOpen(el.editCategoryPickerBlock, false, { owners: [el.editCategoryField] });
     }
 
     function getCategoriesSorted(kind, query = "") {
@@ -276,23 +276,19 @@
     }
 
     function handleCreateCategoryOutsidePointer(event) {
-      if (el.createCategoryPickerBlock.classList.contains("hidden")) {
-        return;
-      }
-      if (event.target.closest("#createCategoryField")) {
-        return;
-      }
-      closeCreateCategoryPopover();
+      pickerUtils.closePopoverOnOutside(event, {
+        popover: el.createCategoryPickerBlock,
+        scopes: [el.createCategoryField],
+        onClose: closeCreateCategoryPopover,
+      });
     }
 
     function handleEditCategoryOutsidePointer(event) {
-      if (el.editCategoryPickerBlock?.classList.contains("hidden")) {
-        return;
-      }
-      if (event.target.closest("#editCategoryField")) {
-        return;
-      }
-      closeEditCategoryPopover();
+      pickerUtils.closePopoverOnOutside(event, {
+        popover: el.editCategoryPickerBlock,
+        scopes: [el.editCategoryField],
+        onClose: closeEditCategoryPopover,
+      });
     }
 
     function handleCreateCategoryPickerClick(event) {

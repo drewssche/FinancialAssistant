@@ -343,7 +343,7 @@
             <div class="table-search-row operations-workflow-row">
               <div class="analytics-switch-group operations-quickviews-group">
                 <span class="muted-small">Быстрые действия</span>
-                <div class="toolbar operations-workflow-actions">
+                <div class="toolbar section-action-toolbar section-action-toolbar-wrap operations-workflow-actions">
                   <button id="selectVisibleOperationsBtn" class="btn btn-secondary" type="button">Выделить видимое</button>
                   <button id="clearVisibleOperationsSelectionBtn" class="btn btn-secondary" type="button">Снять выделение</button>
                   <button id="quickFilterExpenseBtn" class="btn btn-secondary" type="button">Только расходы</button>
@@ -377,7 +377,7 @@
             </div>
             <div class="table-search-row sticky-search">
               <input id="filterQ" class="table-search-input" type="text" placeholder="Поиск" />
-              <div class="toolbar table-search-actions operations-search-actions">
+              <div class="toolbar section-action-toolbar search-toolbar table-search-actions operations-search-actions">
                 <button id="resetOperationsFiltersBtn" class="btn btn-secondary" type="button">Сбросить фильтры</button>
                 <button id="deleteAllOperationsBtn" class="btn btn-danger" type="button">Удалить все</button>
               </div>
@@ -425,7 +425,7 @@
 
             <div class="table-search-row sticky-search categories-search-row">
               <input id="categorySearchQ" class="table-search-input" type="text" placeholder="Поиск" />
-              <div class="toolbar category-group-controls">
+              <div class="toolbar section-action-toolbar search-toolbar category-group-controls">
                 <button id="categoriesCollapseAllBtn" class="btn btn-secondary btn-xs" type="button">Свернуть все</button>
                 <button id="categoriesExpandAllBtn" class="btn btn-secondary btn-xs" type="button">Развернуть все</button>
               </div>

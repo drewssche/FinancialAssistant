@@ -9,12 +9,10 @@
   const operationsFeatures = window.App.featureOperations;
   const operationModal = window.App.operationModal;
 
-  const getCreateFormPreviewItem = operationModal.getCreateFormPreviewItem;
   const updateCreatePreview = operationModal.updateCreatePreview;
   const updateDebtDueHint = operationModal.updateDebtDueHint;
   const updateEditPreview = operationModal.updateEditPreview;
   const renderCreateCategoryPicker = operationModal.renderCreateCategoryPicker;
-  const renderEditCategoryPicker = operationModal.renderEditCategoryPicker;
   const handleCreateCategoryPickerClick = operationModal.handleCreateCategoryPickerClick;
   const handleDebtCounterpartyPickerClick = operationModal.handleDebtCounterpartyPickerClick;
   const handleEditCategoryPickerClick = operationModal.handleEditCategoryPickerClick;
@@ -36,10 +34,8 @@
   const handleReceiptItemsListKeydown = operationModal.handleReceiptItemsListKeydown;
   const handleReceiptItemsListClick = operationModal.handleReceiptItemsListClick;
   const handlePullReceiptTotal = operationModal.handlePullReceiptTotal;
-  const setReceiptEnabled = operationModal.setReceiptEnabled;
   const renderReceiptSummary = operationModal.renderReceiptSummary;
   const onCategoryCreated = operationModal.onCategoryCreated;
-  const selectCreateCategory = operationModal.selectCreateCategory;
   const handleCreatePreviewClick = operationModal.handleCreatePreviewClick;
   const setOperationKind = operationModal.setOperationKind;
   const setCreateOperationMode = operationModal.setCreateOperationMode;
@@ -54,25 +50,19 @@
   const openPeriodCustomModal = operationModal.openPeriodCustomModal;
   const closePeriodCustomModal = operationModal.closePeriodCustomModal;
 
-  const loadMe = sessionFeatures.loadMe;
-  const loadPreferences = sessionFeatures.loadPreferences;
   const savePreferences = sessionFeatures.savePreferences;
   const savePreferencesDebounced = sessionFeatures.savePreferencesDebounced;
-  const cancelDebouncedPreferencesSave = sessionFeatures.cancelDebouncedPreferencesSave;
   const saveSettings = sessionFeatures.saveSettings;
-  const applyInterfaceSettingsUi = sessionFeatures.applyInterfaceSettingsUi;
   const previewInterfaceSettingsUi = sessionFeatures.previewInterfaceSettingsUi;
   const deleteMe = sessionFeatures.deleteMe;
   const logout = sessionFeatures.logout;
   const bootstrapApp = sessionFeatures.bootstrapApp;
   const telegramLogin = sessionFeatures.telegramLogin;
-  const telegramBrowserLogin = sessionFeatures.telegramBrowserLogin;
   const loadTelegramLoginConfig = sessionFeatures.loadTelegramLoginConfig;
   const tryAutoTelegramLogin = sessionFeatures.tryAutoTelegramLogin;
 
   const loadDashboard = dashboardFeatures.loadDashboard;
   const loadDashboardOperations = dashboardFeatures.loadDashboardOperations;
-  const loadAnalyticsCalendar = analyticsFeatures.loadAnalyticsCalendar;
   const loadAnalyticsTrend = analyticsFeatures.loadAnalyticsTrend;
   const loadDashboardAnalyticsPreview = analyticsFeatures.loadDashboardAnalyticsPreview;
   const loadAnalyticsSection = analyticsFeatures.loadAnalyticsSection;
@@ -126,7 +116,6 @@
   const closeSourceGroupModal = itemCatalogFeatures.closeSourceGroupModal;
   const submitSourceGroupForm = itemCatalogFeatures.submitSourceGroupForm;
   const deleteItemSourceFlow = itemCatalogFeatures.deleteItemSourceFlow;
-  const updateSourceGroupPreview = itemCatalogFeatures.updateSourceGroupPreview;
   const updateItemTemplatePreview = itemCatalogFeatures.updateItemTemplatePreview;
   const handleItemTemplateSourceSearchFocus = itemCatalogFeatures.handleItemTemplateSourceSearchFocus;
   const handleItemTemplateSourceSearchInput = itemCatalogFeatures.handleItemTemplateSourceSearchInput;
@@ -157,7 +146,6 @@
   const selectVisibleOperations = operationsFeatures.selectVisibleOperations;
   const clearVisibleOperationsSelection = operationsFeatures.clearVisibleOperationsSelection;
   const setOperationsKindFilter = operationsFeatures.setOperationsKindFilter;
-  const loadOperationsSummary = operationsFeatures.loadOperationsSummary;
   const openOperationReceiptModal = operationsFeatures.openOperationReceiptModal;
   const closeOperationReceiptModal = operationsFeatures.closeOperationReceiptModal;
   const cleanupOperationsRuntime = operationsFeatures.cleanupOperationsRuntime;
@@ -172,12 +160,10 @@
 
   window.App.actions = {
     ...previousActions,
-    getCreateFormPreviewItem,
     updateCreatePreview,
     updateDebtDueHint,
     updateEditPreview,
     renderCreateCategoryPicker,
-    renderEditCategoryPicker,
     handleCreateCategorySearchFocus,
     handleCreateCategorySearchInput,
     handleCreateCategorySearchKeydown,
@@ -199,10 +185,8 @@
     handleCreateCategoryPickerClick,
     handleDebtCounterpartyPickerClick,
     handleEditCategoryPickerClick,
-    setReceiptEnabled,
     renderReceiptSummary,
     onCategoryCreated,
-    selectCreateCategory,
     handleCreatePreviewClick,
     setOperationKind,
     setCreateOperationMode,
@@ -220,13 +204,9 @@
     closeCreateCategoryModal: categoryActions.closeCreateCategoryModal,
     openPeriodCustomModal,
     closePeriodCustomModal,
-    loadMe,
-    loadPreferences,
     savePreferences,
     savePreferencesDebounced,
-    cancelDebouncedPreferencesSave,
     saveSettings,
-    applyInterfaceSettingsUi,
     previewInterfaceSettingsUi,
     deleteMe,
     applySectionUi: previousActions.applySectionUi,
@@ -234,7 +214,6 @@
     renderTodayLabel: previousActions.renderTodayLabel,
     loadDashboard,
     loadDashboardOperations,
-    loadAnalyticsCalendar,
     loadAnalyticsTrend,
     loadAnalyticsHighlights,
     loadDashboardAnalyticsPreview,
@@ -290,7 +269,6 @@
     closeSourceGroupModal,
     submitSourceGroupForm,
     deleteItemSourceFlow,
-    updateSourceGroupPreview,
     updateItemTemplatePreview,
     handleItemTemplateSourceSearchFocus,
     handleItemTemplateSourceSearchInput,
@@ -308,11 +286,7 @@
     selectVisibleOperations,
     clearVisibleOperationsSelection,
     setOperationsKindFilter,
-    loadOperationsSummary,
-    fillGroupSelect: categoryActions.fillGroupSelect,
     setCategoryKind: categoryActions.setCategoryKind,
-    renderCreateGroupPicker: categoryActions.renderCreateGroupPicker,
-    renderEditGroupPicker: categoryActions.renderEditGroupPicker,
     handleCreateGroupSearchFocus: categoryActions.handleCreateGroupSearchFocus,
     handleCreateGroupSearchInput: categoryActions.handleCreateGroupSearchInput,
     handleCreateGroupSearchBlur: categoryActions.handleCreateGroupSearchBlur,
@@ -324,9 +298,6 @@
     handleCreateGroupPickerClick: categoryActions.handleCreateGroupPickerClick,
     handleEditGroupPickerClick: categoryActions.handleEditGroupPickerClick,
     handleCreateGroupOutsidePointer: categoryActions.handleCreateGroupOutsidePointer,
-    selectCreateGroup: categoryActions.selectCreateGroup,
-    renderCategories: categoryActions.renderCategories,
-    updateCategoriesBulkUi: categoryActions.updateCategoriesBulkUi,
     handleCategoriesGroupToggleClick: categoryActions.handleCategoriesGroupToggleClick,
     collapseAllCategoryGroups: categoryActions.collapseAllCategoryGroups,
     expandAllCategoryGroups: categoryActions.expandAllCategoryGroups,
@@ -340,7 +311,6 @@
     openEditCategoryModal: categoryActions.openEditCategoryModal,
     closeEditCategoryModal: categoryActions.closeEditCategoryModal,
     updateCategory: categoryActions.updateCategory,
-    groupCategoryIds: categoryActions.groupCategoryIds,
     bulkDeleteCategories: categoryActions.bulkDeleteCategories,
     bulkDeleteGroups: categoryActions.bulkDeleteGroups,
     deleteCategoryFlow: categoryActions.deleteCategoryFlow,
@@ -353,7 +323,6 @@
     refreshAll,
     logout: logoutWithCatalogCleanup,
     telegramLogin,
-    telegramBrowserLogin,
     loadTelegramLoginConfig,
     tryAutoTelegramLogin,
     bootstrapApp,

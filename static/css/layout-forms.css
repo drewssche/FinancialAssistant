@@ -24,6 +24,27 @@
   justify-content: flex-end;
 }
 
+.search-toolbar {
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
+.section-action-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.section-action-toolbar .btn {
+  min-width: 0;
+}
+
+.section-action-toolbar-wrap {
+  width: 100%;
+}
+
 .table-search-row-single {
   justify-content: flex-start;
 }
