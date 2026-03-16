@@ -80,22 +80,6 @@
       });
     }
 
-    if (el.operationsSortTabs && actions.setOperationsSortPreset) {
-      el.operationsSortTabs.addEventListener("click", (event) => {
-        const btn = event.target.closest("button[data-op-sort]");
-        if (!btn) {
-          return;
-        }
-        if (btn.dataset.opSort === state.operationSortPreset) {
-          return;
-        }
-        core.runAction({
-          errorPrefix: "Ошибка сортировки операций",
-          action: () => actions.setOperationsSortPreset(btn.dataset.opSort),
-        });
-      });
-    }
-
     el.filterQ.addEventListener("input", () => {
       if (filterDebounceId) {
         clearTimeout(filterDebounceId);

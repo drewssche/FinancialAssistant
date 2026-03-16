@@ -8,29 +8,19 @@
             <div class="panel-head row between">
               <div>
                 <h3>Плановые операции</h3>
-                <p class="subtitle">Разовые и регулярные планы без влияния на факт до подтверждения</p>
               </div>
             </div>
-            <div id="plansKpiGrid" class="analytics-kpi-grid plans-kpi-grid">
-              <article class="kpi-card">
-                <h3>К подтверждению</h3>
-                <p id="plansDueCount">0</p>
-              </article>
-              <article class="kpi-card">
-                <h3>Просрочено</h3>
-                <p id="plansOverdueCount">0</p>
-              </article>
-              <article class="kpi-card">
-                <h3>Впереди</h3>
-                <p id="plansUpcomingCount">0</p>
-              </article>
-              <article class="kpi-card">
-                <h3>Потенциальный расход</h3>
-                <p id="plansPotentialExpense">0,00 BYN</p>
-              </article>
-              <article class="kpi-card">
-                <h3>Потенциальный доход</h3>
-                <p id="plansPotentialIncome">0,00 BYN</p>
+            <div id="plansKpiGrid" class="plans-kpi-shell">
+              <article class="kpi-card plans-financial-kpi-card">
+                <div class="plans-financial-kpi-head">
+                  <h3>Плановый итог</h3>
+                  <div id="plansStatusChips" class="analytics-kpi-secondary plans-status-chips">
+                    <span id="plansDueChip" class="analytics-kpi-chip analytics-kpi-chip-neutral">К подтверждению: 0</span>
+                    <span id="plansOverdueChip" class="analytics-kpi-chip analytics-kpi-chip-negative">Просрочено: 0</span>
+                  </div>
+                </div>
+                <div id="plansFinancialValue" class="plans-financial-kpi-value">0,00 руб.</div>
+                <div id="plansFinancialMeta" class="subtitle plans-financial-kpi-meta">Планов пока нет</div>
               </article>
             </div>
             <div class="table-search-row">
@@ -76,17 +66,17 @@
             <div class="table-search-row">
               <input id="debtSearchQ" class="table-search-input" type="text" placeholder="Поиск по контрагенту/комментарию" />
               <div class="toolbar section-action-toolbar search-toolbar debt-toolbar">
-                <div class="segmented" id="debtStatusTabs" role="tablist" aria-label="Статус долгов">
+                <div class="segmented debt-toolbar-status" id="debtStatusTabs" role="tablist" aria-label="Статус долгов">
                   <button class="segmented-btn active" data-debt-status="active" type="button">Активные</button>
                   <button class="segmented-btn" data-debt-status="all" type="button">Все</button>
                   <button class="segmented-btn" data-debt-status="closed" type="button">Закрытые</button>
                 </div>
-                <div class="segmented" id="debtSortTabs" role="tablist" aria-label="Сортировка долгов">
+                <div class="segmented debt-toolbar-sort" id="debtSortTabs" role="tablist" aria-label="Сортировка долгов">
                   <button class="segmented-btn active" data-debt-sort="priority" type="button">Приоритет</button>
                   <button class="segmented-btn" data-debt-sort="amount" type="button">По сумме</button>
                   <button class="segmented-btn" data-debt-sort="name" type="button">По имени</button>
                 </div>
-                <button id="deleteAllDebtsBtn" class="btn btn-danger" type="button">Удалить все</button>
+                <button id="deleteAllDebtsBtn" class="btn btn-danger debt-toolbar-danger" type="button">Удалить все</button>
               </div>
             </div>
             <div id="debtsCards" class="debt-cards"></div>

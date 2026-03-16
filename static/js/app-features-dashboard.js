@@ -160,8 +160,10 @@
             <div class="debt-card-compact-grid">
               <div class="debt-card-compact-col debt-card-compact-main">
                 <div class="debt-card-compact-head">
-                  <h3>${core.highlightText(card.counterparty || "", "")}</h3>
-                  <span class="debt-status debt-status-${card.status}">${card.status === "active" ? "Активный" : "Закрыт"}</span>
+                  <div class="debt-card-compact-title-block">
+                    <h3>${core.highlightText(card.counterparty || "", "")}</h3>
+                    <span class="debt-status debt-status-${card.status}">${card.status === "active" ? "Активный" : "Закрыт"}</span>
+                  </div>
                 </div>
               </div>
               <div class="debt-card-compact-col debt-card-compact-rows debt-child-zone">${rowsHtml}</div>

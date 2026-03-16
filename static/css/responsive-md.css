@@ -140,6 +140,34 @@
     width: 100%;
   }
 
+  #debtsSection .table-search-row > .table-search-input {
+    width: min(100%, 32rem);
+    align-self: flex-start;
+  }
+
+  .debt-toolbar {
+    display: grid;
+    grid-template-columns: minmax(220px, 0.7fr) minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-2);
+  }
+
+  .debt-toolbar .table-search-input {
+    width: 100%;
+    max-width: 34rem;
+  }
+
+  .debt-toolbar-status,
+  .debt-toolbar-sort {
+    grid-column: 1 / -1;
+  }
+
+  .debt-toolbar-danger {
+    justify-self: end;
+    width: auto;
+    min-width: 10rem;
+  }
+
   .operation-category-picker-row,
   .debt-due-head,
   .operation-receipt-head,

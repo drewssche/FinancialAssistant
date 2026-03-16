@@ -248,6 +248,42 @@
   gap: var(--space-3);
 }
 
+.plans-kpi-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.plans-financial-kpi-card {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.plans-financial-kpi-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.plans-status-chips {
+  margin-top: 0;
+}
+
+.plans-financial-kpi-value {
+  font-size: 38px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-family: var(--money-font-family);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.plans-financial-kpi-meta {
+  margin-top: 0;
+}
+
 .dashboard-plans-kpi {
   margin-top: var(--space-2);
 }
@@ -267,6 +303,24 @@
   display: grid;
   gap: var(--space-2);
   min-width: 0;
+}
+
+.plan-card-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2) var(--space-3);
+}
+
+.plan-card-field {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.plan-card-field .category-chip,
+.plan-card-field .kind-pill {
+  width: max-content;
+  max-width: 100%;
 }
 
 .plan-card-head {
@@ -292,6 +346,40 @@
   gap: 4px;
 }
 
+.plan-card-progress {
+  display: grid;
+  gap: 6px;
+}
+
+.plan-card-progress-track {
+  height: 0.375rem;
+  border-radius: var(--radius-pill);
+  background: rgba(114, 130, 162, 0.26);
+  overflow: hidden;
+}
+
+.plan-card-progress-bar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.plan-card-progress-bar-none {
+  width: 0;
+}
+
+.plan-card-progress-bar-upcoming {
+  background: linear-gradient(90deg, #4fa8d9, #7cc8ee);
+}
+
+.plan-card-progress-bar-due {
+  background: linear-gradient(90deg, #e0a754, #f2c476);
+}
+
+.plan-card-progress-bar-overdue {
+  background: linear-gradient(90deg, #d16679, #ff9aaa);
+}
+
 .plan-card-actions {
   opacity: 1;
   transform: none;
@@ -300,6 +388,8 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--space-2);
+  margin-top: var(--space-1);
+  align-self: end;
 }
 
 .plan-card-actions .btn {
@@ -316,4 +406,8 @@
 
 .plan-card-upcoming {
   box-shadow: inset 3px 0 0 0 rgba(105, 190, 166, 0.72);
+}
+
+.plan-card .kind-pill {
+  justify-self: start;
 }

@@ -144,10 +144,11 @@
 
   function updateOperationsBulkUi() {
     const operationIds = visibleOperationIds();
-    const totalCount = operationIds.length;
+    const totalCount = Number(state.total || 0);
+    const visibleCount = operationIds.length;
     const selectedCount = operationIds.filter((id) => state.selectedOperationIds.has(id)).length;
     el.operationsSelectedCount.textContent =
-      selectedCount > 0 ? `Выбрано: ${selectedCount} из ${totalCount}` : `Всего: ${totalCount}`;
+      selectedCount > 0 ? `Выбрано: ${selectedCount} из ${visibleCount}` : `Всего: ${totalCount}`;
     el.bulkEditOperationsBtn.classList.toggle("hidden-action", selectedCount === 0);
     el.bulkDeleteOperationsBtn.classList.toggle("hidden-action", selectedCount === 0);
     syncOperationSelectAll();

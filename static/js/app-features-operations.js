@@ -173,7 +173,7 @@
 
   function renderPagination() {
     const loaded = operationsRawItems.length;
-    el.pageInfo.textContent = `Загружено ${loaded} из ${state.total}`;
+    el.pageInfo.textContent = `Показано ${loaded} из ${state.total}`;
     el.prevPageBtn.disabled = true;
     el.nextPageBtn.disabled = !state.operationsHasMore;
   }
@@ -187,31 +187,6 @@
   function applyOperationsSort(items) {
     const preset = state.operationSortPreset || "date";
     const sorted = items.slice();
-    if (preset === "amount") {
-      sorted.sort((a, b) => {
-        const diff = Number(b.amount || 0) - Number(a.amount || 0);
-        if (diff !== 0) {
-          return diff;
-        }
-        return compareIsoDateDesc(a.operation_date, b.operation_date);
-      });
-      return sorted;
-    }
-    if (preset === "risk") {
-      sorted.sort((a, b) => {
-        const aExpense = a.kind === "expense" ? 0 : 1;
-        const bExpense = b.kind === "expense" ? 0 : 1;
-        if (aExpense !== bExpense) {
-          return aExpense - bExpense;
-        }
-        const amountDiff = Number(b.amount || 0) - Number(a.amount || 0);
-        if (amountDiff !== 0) {
-          return amountDiff;
-        }
-        return compareIsoDateDesc(a.operation_date, b.operation_date);
-      });
-      return sorted;
-    }
     return sorted;
   }
 

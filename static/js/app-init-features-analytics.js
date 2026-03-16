@@ -116,6 +116,10 @@
         }
         state.dashboardAnalyticsPendingCustom = false;
         state.dashboardAnalyticsPeriod = selected;
+        if (selected !== "custom") {
+          state.dashboardAnalyticsDateFrom = "";
+          state.dashboardAnalyticsDateTo = "";
+        }
         core.syncSegmentedActive(el.dashboardAnalyticsPeriodTabs, "dashboard-analytics-period", state.dashboardAnalyticsPeriod);
         core.runAction({
           errorPrefix: "Ошибка загрузки аналитики дашборда",

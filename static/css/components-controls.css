@@ -173,14 +173,16 @@ textarea {
 }
 
 .modal-close-btn {
-  min-width: 0;
-  display: inline-grid;
-  place-items: center;
+  min-width: 7.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   gap: var(--space-2);
-  padding-inline: var(--space-3);
+  padding-inline: calc(var(--space-3) + 0.125rem);
   min-height: 2.75rem;
   line-height: 1;
   flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .modal-close-btn > span[aria-hidden="true"] {

@@ -49,8 +49,32 @@
 - daily recurrence also supports `only workdays`
 - dedicated `Plans` e2e coverage now validates UI create/confirm flows for weekly weekdays and monthly `last day of month`
 - `Plans` e2e also validates daily `only workdays` creation/confirm flow
+- `Plans` e2e also validates history event-type filters in UI
 - remaining follow-up:
 - custom recurrence rules beyond `daily/weekly/monthly/yearly`
+- next agreed UI pass:
+- replace the current operational KPI strip in `Планах` with a compact finance-first summary
+- do not keep separate large KPI cards for `Потенциальный расход` and `Потенциальный доход`
+- merge plan financial effect into one signed KPI surface; if the planned sum is negative, treat it as expense, if positive, as income
+- `К подтверждению` and `Просрочено` should be shown as compact chips/counters instead of separate large cards
+- remove redundant subtitle copy about plans not affecting fact before confirmation from both the section and the dashboard replacement block
+- plan cards must expose the full agreed action set again: `Подтвердить`, `Редактировать`, recurring-only `Пропустить`, `Удалить`
+- plan item presentation should reuse the information density/rhythm of regular `Операции` rows/cards, adding only plan-specific state chips and a due/progress indicator
+- verify renderer/styling so actions are not hidden by layout, overflow or wrong renderer selection
+- additional agreed polish:
+- desktop modal footer `Закрыть` button must return to a normal readable secondary button; current narrow wrapped variant is not acceptable
+- dashboard `Все время` KPI mode must always reload/show all-time data instead of leaking the previously configured day/custom period
+- `Operations` summary should display the real filtered total count even though table rows still render via `20 + infinite scroll`
+- dashboard debt card should be compacted so title, `Активный` chip, amount/progress and CTA do not leave a large empty gap in the middle
+- updated 2026-03-16:
+- plans section subtitle removed together with dashboard plans subtitle
+- plans KPI reworked into one finance-first summary card with compact `К подтверждению` / `Просрочено` chips
+- plan cards now reuse more of the `Operations` information rhythm and expose explicit action buttons again
+- operations sort controls `По дате / По сумме / Риск` removed from UI; frontend falls back to date ordering
+- dashboard analytics period switch now clears stale custom dates when leaving `custom`, so `Все время` no longer reuses a previous custom range
+- operations bulk/list summary now shows real backend total while infinite scroll still renders rows in batches
+- dashboard debt cards were tightened to reduce dead space between counterparty title, status chip and inner debt rows
+- debts compact-desktop toolbar now prefers controlled row layout instead of forcing every control into one overflowing line
 
 2. Scroll and overflow hardening
 - Status: done (updated 2026-03-08)
@@ -256,6 +280,15 @@
 - updated 2026-03-16: introduced shared toolbar contract via `section-action-toolbar` / `search-toolbar` across operations, categories, debts and item-catalog templates; reduced section-specific end-alignment CSS in `static/css/components-tables.css`
 - updated 2026-03-16: moved base `mobile-card-table` mobile layout contract from `static/css/responsive-sm-core.css` into shared `@media` block in `static/css/components-tables.css`; `responsive-sm-core.css` now keeps only section-specific mobile table tweaks
 - updated 2026-03-16: documented reusable parent/child hierarchy contract (`strong parent surface + nested child zone via indent/left guide`) for grouped tables/cards and applied it to Position Catalog, Categories and debt-by-counterparty views
+- updated 2026-03-16: next compact-desktop cleanup pass should simplify overloaded section toolbars instead of squeezing more controls into one row
+- `Operations`: remove UI controls `По дате / По сумме / Риск` and any dead bindings/preferences tied only to these controls
+- `Debts`: replace single-line compact-desktop toolbar with controlled row layout
+- search width may shrink instead of remaining visually oversized
+- status and sort segmented controls should move onto separate rows before the toolbar starts collapsing
+- destructive action should be allowed to wrap onto its own row on tighter widths
+- dashboard/data follow-up:
+- verify `all_time` dashboard KPI fetch path after switching away from custom/day periods and back
+- keep infinite-scroll mechanics in `Operations`, but detach rendered-row count from the visible `Всего` summary so users see the real total
 - `window.App.actions` dead-code pass:
 - audit historical exports/facades after module splits and remove actions no longer consumed by init/features/templates
 - updated 2026-03-16: removed unused action exports from `static/js/app-features.js` (`getCreateFormPreviewItem`, `renderEditCategoryPicker`, `setReceiptEnabled`, `selectCreateCategory`, `loadMe`, `loadPreferences`, `cancelDebouncedPreferencesSave`, `applyInterfaceSettingsUi`, `loadAnalyticsCalendar`, `loadOperationsSummary`, `fillGroupSelect`, `renderCreateGroupPicker`, `renderEditGroupPicker`, `selectCreateGroup`, `renderCategories`, `updateCategoriesBulkUi`, `groupCategoryIds`, `telegramBrowserLogin`)

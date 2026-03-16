@@ -446,6 +446,16 @@ def _login_and_open_plans(page, static_server_url: str):
     page.wait_for_selector("#addPlanCta:not(.hidden)")
 
 
+def _wait_for_history_pref(mock_state: dict, expected: str, timeout_sec: float = 3.0):
+    deadline = time.time() + timeout_sec
+    while time.time() < deadline:
+        current = ((mock_state.get("preferences") or {}).get("data") or {}).get("plans", {}).get("history_event_filter")
+        if current == expected:
+            return
+        time.sleep(0.05)
+    raise AssertionError(f"history_event_filter did not become {expected!r}")
+
+
 @pytest.mark.e2e
 def test_plans_ui_creates_weekly_multiweekday_plan(static_server_url: str, page_with_plans_api_mock):
     page, mock_state = page_with_plans_api_mock
@@ -541,3 +551,68 @@ def test_plans_ui_creates_daily_workdays_plan(static_server_url: str, page_with_
     assert len(mock_state["history"]) == 1
     assert mock_state["history"][0]["effective_date"] == "2026-03-13"
     assert mock_state["plans"][0]["scheduled_date"] == "2026-03-16"
+
+
+@pytest.mark.e2e
+def test_plans_history_event_type_filters(static_server_url: str, page_with_plans_api_mock):
+    page, mock_state = page_with_plans_api_mock
+    mock_state["history"][:] = [
+        {
+            "id": 3,
+            "plan_id": 3,
+            "operation_id": None,
+            "event_type": "reminded",
+            "kind": "expense",
+            "amount": "9.00",
+            "effective_date": "2026-03-18",
+            "note": "Напомнить про кофе",
+            "category_name": None,
+            "created_at": "2026-03-18T09:00:00Z",
+        },
+        {
+            "id": 2,
+            "plan_id": 2,
+            "operation_id": None,
+            "event_type": "skipped",
+            "kind": "expense",
+            "amount": "40.00",
+            "effective_date": "2026-03-17",
+            "note": "Пропущенный платеж",
+            "category_name": None,
+            "created_at": "2026-03-17T09:00:00Z",
+        },
+        {
+            "id": 1,
+            "plan_id": 1,
+            "operation_id": 101,
+            "event_type": "confirmed",
+            "kind": "expense",
+            "amount": "15.00",
+            "effective_date": "2026-03-16",
+            "note": "Подтвержденный кофе",
+            "category_name": None,
+            "created_at": "2026-03-16T09:00:00Z",
+        },
+    ]
+    _login_and_open_plans(page, static_server_url)
+
+    page.click('button[data-plan-tab="history"]')
+    page.wait_for_function("() => document.querySelector('#plansList')?.textContent.includes('Подтвержденный кофе')")
+    history_text = page.locator("#plansList").text_content()
+    assert "Подтвержденный кофе" in history_text
+    assert "Пропущенный платеж" in history_text
+    assert "Напомнить про кофе" in history_text
+
+    page.click('button[data-plan-history-event="confirmed"]')
+    page.wait_for_function(
+        "() => { const text = document.querySelector('#plansList')?.textContent || ''; return text.includes('Подтвержденный кофе') && !text.includes('Пропущенный платеж') && !text.includes('Напомнить про кофе'); }"
+    )
+    page.click('button[data-plan-history-event="skipped"]')
+    page.wait_for_function(
+        "() => { const text = document.querySelector('#plansList')?.textContent || ''; return text.includes('Пропущенный платеж') && !text.includes('Подтвержденный кофе') && !text.includes('Напомнить про кофе'); }"
+    )
+
+    page.click('button[data-plan-history-event="reminded"]')
+    page.wait_for_function(
+        "() => { const text = document.querySelector('#plansList')?.textContent || ''; return text.includes('Напомнить про кофе') && !text.includes('Подтвержденный кофе') && !text.includes('Пропущенный платеж'); }"
+    )

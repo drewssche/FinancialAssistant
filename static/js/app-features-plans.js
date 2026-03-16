@@ -84,6 +84,7 @@
       } else {
         acc.potentialExpense += amount;
       }
+      acc.netPlanned += item.kind === "income" ? amount : -amount;
       return acc;
     }, {
       dueCount: 0,
@@ -91,7 +92,48 @@
       upcomingCount: 0,
       potentialExpense: 0,
       potentialIncome: 0,
+      netPlanned: 0,
     });
+  }
+
+  function planNetLabel(summary) {
+    const net = Number(summary?.netPlanned || 0);
+    if (net > 0.000001) {
+      return "Потенциальный доход";
+    }
+    if (net < -0.000001) {
+      return "Потенциальный расход";
+    }
+    return "Плановый итог";
+  }
+
+  function planNetMeta(summary) {
+    const expense = Number(summary?.potentialExpense || 0);
+    const income = Number(summary?.potentialIncome || 0);
+    if (income > 0.000001 && expense > 0.000001) {
+      return `Доход: ${core.formatMoney(income)} | Расход: ${core.formatMoney(expense)}`;
+    }
+    if (income > 0.000001) {
+      return `Потенциальный доход: ${core.formatMoney(income)}`;
+    }
+    if (expense > 0.000001) {
+      return `Потенциальный расход: ${core.formatMoney(expense)}`;
+    }
+    return "Планов пока нет";
+  }
+
+  function dueProgressMeta(item) {
+    const dueDate = String(item.due_date || "").trim();
+    if (!dueDate) {
+      return { label: "Без срока", tone: "none", percent: 0 };
+    }
+    if (item.status === "overdue") {
+      return { label: `Просрочен с ${core.formatDateRu(dueDate)}`, tone: "overdue", percent: 100 };
+    }
+    if (item.status === "due") {
+      return { label: `Срок: ${core.formatDateRu(dueDate)}`, tone: "due", percent: 78 };
+    }
+    return { label: `Срок: ${core.formatDateRu(dueDate)}`, tone: "upcoming", percent: 42 };
   }
 
   function recurrenceLabel(item) {
@@ -241,6 +283,8 @@
       ? core.renderCategoryChip({ name: item.category_name, icon: item.category_icon || "", accent_color: item.category_accent_color || null }, "")
       : "<span class='muted-small'>Без категории</span>";
     const dateLabel = item.due_date ? core.formatDateRu(item.due_date) : "Без срока";
+    const progress = dueProgressMeta(item);
+    const kindLabel = item.kind === "income" ? "Доход" : "Расход";
     return `
       <article class="panel plan-card plan-card-${item.status || "upcoming"}">
         <div class="plan-card-main">
@@ -252,10 +296,21 @@
             </div>
             <strong class="plan-card-amount amount-${kindClass}">${core.formatMoney(item.amount || 0)}</strong>
           </div>
+          <div class="plan-card-fields">
+            <div class="plan-card-field"><span class="muted-small">Дата</span><strong>${dateLabel}</strong></div>
+            <div class="plan-card-field"><span class="muted-small">Тип</span><span class="kind-pill kind-pill-${kindClass}">${kindLabel}</span></div>
+            <div class="plan-card-field"><span class="muted-small">Категория</span>${categoryChip}</div>
+            <div class="plan-card-field"><span class="muted-small">Сумма</span><strong class="plan-card-amount amount-${kindClass}">${core.formatMoney(item.amount || 0)}</strong></div>
+          </div>
           <div class="plan-card-meta">
             ${item.note ? `<strong>${core.highlightText(item.note, "")}</strong>` : ""}
-            <span class="muted-small">Срок: ${dateLabel}</span>
             ${item.receipt_items?.length ? `<span class="muted-small">Позиций: ${item.receipt_items.length}</span>` : ""}
+          </div>
+          <div class="plan-card-progress">
+            <div class="plan-card-progress-track">
+              <span class="plan-card-progress-bar plan-card-progress-bar-${progress.tone}" style="width:${progress.percent}%"></span>
+            </div>
+            <span class="muted-small">${progress.label}</span>
           </div>
         </div>
         <div class="actions row-actions plan-card-actions">
@@ -311,8 +366,7 @@
     el.dashboardPlansKpi.innerHTML = `
       <span class="analytics-kpi-chip analytics-kpi-chip-neutral">К подтверждению: ${summary.dueCount}</span>
       <span class="analytics-kpi-chip analytics-kpi-chip-negative">Просрочено: ${summary.overdueCount}</span>
-      <span class="analytics-kpi-chip analytics-kpi-chip-negative">Пот. расход: ${core.formatMoney(summary.potentialExpense)}</span>
-      <span class="analytics-kpi-chip analytics-kpi-chip-positive">Пот. доход: ${core.formatMoney(summary.potentialIncome)}</span>
+      <span class="analytics-kpi-chip ${summary.netPlanned >= 0 ? "analytics-kpi-chip-positive" : "analytics-kpi-chip-negative"}">${planNetLabel(summary)}: ${core.formatMoney(Math.abs(summary.netPlanned))}</span>
     `;
     el.dashboardPlansList.innerHTML = items.length
       ? items.map(renderPlanCard).join("")
@@ -323,20 +377,19 @@
     const isHistoryTab = (state.plansTab || "due") === "history";
     const items = isHistoryTab ? getFilteredHistoryItems() : getFilteredPlans();
     const summary = summarizePlans(getPlanItems().filter((item) => item.status !== "confirmed" && item.status !== "skipped"));
-    if (el.plansDueCount) {
-      el.plansDueCount.textContent = String(summary.dueCount);
+    if (el.plansDueChip) {
+      el.plansDueChip.textContent = `К подтверждению: ${summary.dueCount}`;
     }
-    if (el.plansOverdueCount) {
-      el.plansOverdueCount.textContent = String(summary.overdueCount);
+    if (el.plansOverdueChip) {
+      el.plansOverdueChip.textContent = `Просрочено: ${summary.overdueCount}`;
     }
-    if (el.plansUpcomingCount) {
-      el.plansUpcomingCount.textContent = String(summary.upcomingCount);
+    if (el.plansFinancialValue) {
+      const label = planNetLabel(summary);
+      el.plansFinancialValue.textContent = `${summary.netPlanned < 0 ? "-" : summary.netPlanned > 0 ? "+" : ""}${core.formatMoney(Math.abs(summary.netPlanned))}`;
+      el.plansFinancialValue.dataset.plansFinancialLabel = label;
     }
-    if (el.plansPotentialExpense) {
-      el.plansPotentialExpense.textContent = core.formatMoney(summary.potentialExpense);
-    }
-    if (el.plansPotentialIncome) {
-      el.plansPotentialIncome.textContent = core.formatMoney(summary.potentialIncome);
+    if (el.plansFinancialMeta) {
+      el.plansFinancialMeta.textContent = planNetMeta(summary);
     }
     if (!el.plansList) {
       return;

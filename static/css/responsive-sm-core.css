@@ -272,6 +272,22 @@
     max-width: 100%;
   }
 
+  .plans-financial-kpi-head {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .plans-financial-kpi-value {
+    font-size: 30px;
+  }
+
+  .plan-card-head,
+  .plan-card-fields,
+  .plan-card-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
   .mobile-card-table.item-catalog-table .category-table-group-wrap {
     display: grid;
     grid-template-columns: minmax(0, 1fr);

@@ -75,10 +75,21 @@ Sidebar grouping baseline (when section groups are introduced):
 - `Пропустить` -> available for recurring plans and shifts next due date forward
 - `Удалить`
 - section-level plan monitoring UI:
-- KPI cards: `К подтверждению`, `Просрочено`, `Впереди`, `Потенциальный расход`, `Потенциальный доход`
+- KPI layer should be compact and finance-first, not split into five separate operational cards
+- primary KPI surface should merge plan impact into one signed summary card:
+- positive planned total is shown as planned income
+- negative planned total is shown as planned expense
+- if both signs exist, the signed aggregate and secondary potential value should still be readable in one shared KPI surface instead of separate `Потенциальный расход` / `Потенциальный доход` cards
+- `К подтверждению` and `Просрочено` should not consume standalone large cards by default; prefer compact status chips/counters near the main KPI surface
+- the old explanatory subtitle about plans not affecting fact before confirmation is redundant and should stay removed both in the section and in the dashboard plans block
 - status-scope filter: `Все сроки / Просрочено / Сегодня / Впереди`
 - initial dashboard strategy: replace the current recent operations block with `Ближайшие планы`
 - dashboard plans block should show pending/planned workload, not factual accounting data
+- plan list rows/cards should reuse the same information rhythm as regular `Операции` rows where practical:
+- core fields/meta should be rendered like an operation item
+- contextual plan chips should explain plan state/recurrence
+- due/progress indicator by term should be visible
+- the main difference from `Операции` rows should be the action set (`Подтвердить`, `Редактировать`, optional `Пропустить`, `Удалить`)
 - backend storage baseline:
 - `plan_operations`
 - `plan_receipt_items`
@@ -181,6 +192,9 @@ At the bottom-left sidebar, show compact static user block:
 - desktop grouped-row contract:
 - parent row content (`title`, `metas`) stays left-aligned
 - row actions stay pinned to the right edge
+- desktop modal footer/action contract:
+- secondary close buttons in modal footers should not collapse into narrow square-ish chips with wrapped text
+- `Закрыть` should stay a normal readable secondary button with stable horizontal padding and single-line label
 - mobile grouped-row contract:
 - `Categories` should mirror the clearer `Item Catalog` parent/child card pattern
 - `Operations` card actions should use full-width stacked buttons
@@ -188,6 +202,30 @@ At the bottom-left sidebar, show compact static user block:
 - sticky modal CTA overlay contract:
 - footer stays visually above lower content and popovers
 - content below must not bleed through the CTA surface
+- medium-width (`tablet/compact desktop`) toolbar contract:
+- do not keep every section in one dense horizontal toolbar if controls begin to deform the layout
+- `Operations`: low-value sort toggles `По дате / По сумме / Риск` should be removed instead of compressing the toolbar further
+- `Debts`: search does not need to stay artificially full-width; it may shrink to a sensible content width while the toolbar rearranges into controlled rows
+- `Debts` compact-wide layout should prefer stacked rows over overflow:
+- row 1: search + destructive action if space allows
+- row 2: status segmented control
+- row 3: sort segmented control
+- if width tightens further, destructive action may drop to its own row instead of forcing every control to collapse
+
+## Dashboard KPI and Summary Contract
+- selecting `Все время` must always map to all-time summary data; dashboard KPIs must not remain stuck on a previously selected day/week/custom range after the UI shows `Все время`
+- dashboard period label and summary payload must stay synchronized after period changes, including transitions from custom/day ranges back to `all_time`
+- leaving dashboard `custom` period must clear stored custom date bounds before loading another preset period
+
+## Operations List Summary Contract
+- list rendering may stay virtualized/batched (`20 + infinite scroll`) for performance
+- summary counters must still show the real matched total from backend/result metadata, not only the number of rows currently rendered in DOM
+- `Всего`/`Операций найдено` should reflect actual filtered total even while the table lazily appends more rows on scroll
+
+## Dashboard Debt Block
+- compact debt cards should minimize dead space between counterparty title, state chip and financial/progress content
+- `Активный`/status chip should sit closer to the debt title/meta cluster instead of leaving a large empty horizontal gap
+- debt summary, progress and CTA should read as one dense compact card, not as widely separated islands inside the same row
 
 ## Operation Modal Category Picker
 - Create/edit operation modals use chip-based category picker instead of plain select control
@@ -296,6 +334,7 @@ At the bottom-left sidebar, show compact static user block:
 - due-date chip + days-left chip + due-progress bar
 - Debt KPIs are displayed separately from cash-flow KPI (`Доход/Расход/Баланс`) to avoid semantic mixing
 - Dashboard debt cards block can be hidden by user interface preference
+- compact dashboard debt cards should keep title, status chip, debt rows and CTA visually dense; large empty horizontal gaps are treated as a layout defect
 
 ## Dashboard Analytics Preview
 - Dashboard includes compact analytics preview widget:

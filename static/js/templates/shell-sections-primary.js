@@ -89,7 +89,6 @@
             <div class="panel-head row between">
               <div>
                 <h3>Ближайшие планы</h3>
-                <p id="dashboardPlansLabel" class="subtitle">Запланированные операции без влияния на факт</p>
               </div>
               <div class="panel-controls">
                 <button id="openPlansTabBtn" class="btn btn-secondary" type="button">Открыть раздел Планы</button>
@@ -309,11 +308,6 @@
                   <button class="segmented-btn" data-kind="expense" type="button">Расход</button>
                   <button class="segmented-btn" data-kind="income" type="button">Доход</button>
                 </div>
-                <div class="segmented" id="operationsSortTabs" role="tablist" aria-label="Сортировка операций">
-                  <button class="segmented-btn active" data-op-sort="date" type="button">По дате</button>
-                  <button class="segmented-btn" data-op-sort="amount" type="button">По сумме</button>
-                  <button class="segmented-btn" data-op-sort="risk" type="button">Риск</button>
-                </div>
               </div>
             </div>
             <div class="table-search-row operations-quickviews-row">
@@ -391,7 +385,7 @@
 
             <div class="pagination hidden" aria-hidden="true">
               <button id="prevPageBtn" class="btn btn-secondary" type="button">Назад</button>
-              <span id="pageInfo">Страница 1</span>
+              <span id="pageInfo">Показано 0 из 0</span>
               <button id="nextPageBtn" class="btn btn-secondary" type="button">Вперёд</button>
             </div>
           </section>
