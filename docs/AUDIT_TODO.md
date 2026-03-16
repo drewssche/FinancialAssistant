@@ -79,7 +79,7 @@
 - Direction: move prefill logic into categories module and keep cross-module calls declarative.
 
 5. Split oversized frontend modules (rule compliance)
-- Status: in progress (updated 2026-03-16)
+- Status: done (updated 2026-03-16)
 - Files above hard threshold:
 - `static/js/app-features.js` (reduced: moved operation modal/picker logic to `static/js/app-features-operation-modal.js`; moved dashboard/session to `static/js/app-features-dashboard.js` and `static/js/app-features-session.js`; moved Item Catalog feature block to `static/js/app-features-item-catalog.js`; moved operations flow to `static/js/app-features-operations.js`)
 - `static/js/app-features-item-catalog.js` (further reduced by extracting modal/source-picker/history block to `static/js/app-features-item-catalog-modal.js`)
@@ -130,6 +130,24 @@
 - first split high-churn JS modules with mixed responsibilities (`operation modal`, `operations`, `session`, `analytics highlights`)
 - then split backend read/write service hot spots (`dashboard_service`, `operation_service`, `operation_repo`)
 - CSS files should be modularized last by feature/layout buckets to avoid regressions during active UI work
+
+5.1 Shared picker/popover cleanup
+- Status: done (updated 2026-03-16)
+- Implemented:
+- shared chip-picker primitives extracted to `static/js/app-picker-utils.js`
+- category picker, debt counterparty picker and receipt category picker now reuse the same chip/meta/create button builders
+- removed duplicate small-screen `.app-popover` override in `static/css/responsive-sm-modals.css`
+- Notes:
+- keep future picker variants on the same shared surface instead of cloning chip/create/meta rendering again
+
+5.2 Next semantic cleanup steps
+- Status: pending
+- Shared toolbar/table/mobile-card contract:
+- extract common toolbar layout rules and mobile-card table overrides into tighter shared buckets to reduce per-section CSS drift
+- `window.App.actions` dead-code pass:
+- audit historical exports/facades after module splits and remove actions no longer consumed by init/features/templates
+- picker runtime consistency:
+- keep auth-safe smoke coverage when touching early-loaded frontend modules so one broken export cannot block login again
 
 6. Add focused regression tests
 - Status: done (2026-03-05)

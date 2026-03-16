@@ -24,11 +24,6 @@
     min-width: 0;
   }
 
-  .app-popover {
-    width: min(max(100%, 20rem), calc(100vw - 1rem));
-    max-width: calc(100vw - 1rem);
-  }
-
   .icon-popover {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }

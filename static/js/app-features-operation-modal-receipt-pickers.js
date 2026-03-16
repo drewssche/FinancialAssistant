@@ -10,7 +10,8 @@
       RECEIPT_TEMPLATES_CACHE_TTL_MS,
     } = deps;
 
-    const CATEGORY_USAGE_KEY = "fa_category_usage_v1";
+    const pickerUtils = window.App.pickerUtils;
+    const CATEGORY_USAGE_KEY = pickerUtils.DEFAULT_CATEGORY_USAGE_KEY;
 
     function escHtml(value) {
       return String(value ?? "")
@@ -21,75 +22,38 @@
         .replaceAll("'", "&#39;");
     }
 
-    function readCategoryUsage() {
-      try {
-        const raw = localStorage.getItem(CATEGORY_USAGE_KEY);
-        const parsed = raw ? JSON.parse(raw) : {};
-        return parsed && typeof parsed === "object" ? parsed : {};
-      } catch {
-        return {};
-      }
-    }
-
     function getReceiptCategoriesSorted(kind, query = "") {
-      const usage = readCategoryUsage();
-      const normalizedQuery = String(query || "").trim().toLowerCase();
-      return (state.categories || [])
-        .filter((item) => item.kind === kind)
-        .filter((item) => {
-          if (!normalizedQuery) {
-            return true;
-          }
-          return item.name.toLowerCase().includes(normalizedQuery) || (item.group_name || "").toLowerCase().includes(normalizedQuery);
-        })
-        .map((item) => ({ ...item, usage: Number(usage[String(item.id)] || 0) }))
-        .sort((a, b) => {
-          if (b.usage !== a.usage) {
-            return b.usage - a.usage;
-          }
-          const colorA = (a.group_accent_color || "~").toLowerCase();
-          const colorB = (b.group_accent_color || "~").toLowerCase();
-          if (colorA !== colorB) {
-            return colorA.localeCompare(colorB, "ru");
-          }
-          const groupA = (a.group_name || "~").toLowerCase();
-          const groupB = (b.group_name || "~").toLowerCase();
-          if (groupA !== groupB) {
-            return groupA.localeCompare(groupB, "ru");
-          }
-          return a.name.localeCompare(b.name, "ru");
-        });
+      return pickerUtils.sortCategoriesByUsage(
+        (state.categories || []).filter((item) => item.kind === kind),
+        query,
+        CATEGORY_USAGE_KEY,
+      );
     }
 
     function createReceiptCategoryChipButton(category, selected, searchQuery = "") {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "chip-btn";
-      if (selected) {
-        btn.classList.add("active");
-      }
-      btn.dataset.receiptCategoryId = String(category.id);
-      btn.innerHTML = core.renderCategoryChip(
-        {
-          name: category.name,
-          icon: category.icon || category.group_icon || null,
-          accent_color: category.group_accent_color || null,
-        },
-        searchQuery,
-      );
-      return btn;
+      return pickerUtils.createChipButton({
+        datasetName: "receiptCategoryId",
+        datasetValue: category.id,
+        selected,
+        html: core.renderCategoryChip(
+          {
+            name: category.name,
+            icon: category.icon || category.group_icon || null,
+            accent_color: category.group_accent_color || null,
+          },
+          searchQuery,
+        ),
+      });
     }
 
     function createReceiptNoCategoryChipButton(selected) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "chip-btn chip-btn-meta";
-      if (selected) {
-        btn.classList.add("active");
-      }
-      btn.dataset.receiptCategoryId = "";
-      btn.innerHTML = core.renderMetaChip("Без категории");
-      return btn;
+      return pickerUtils.createMetaChipButton({
+        datasetName: "receiptCategoryId",
+        datasetValue: "",
+        selected,
+        label: "Без категории",
+        core,
+      });
     }
 
     function getReceiptTemplateMatch(token, shopName = "") {
@@ -322,12 +286,12 @@
         picker.appendChild(createReceiptCategoryChipButton(item, isActive, normalizedQuery));
       }
       if (!categories.length && normalizedQuery) {
-        const createChip = document.createElement("button");
-        createChip.type = "button";
-        createChip.className = "chip-btn chip-btn-create";
-        createChip.dataset.receiptCreateCategory = normalizedQuery;
+        const createChip = pickerUtils.createActionChipButton({
+          datasetName: "receiptCreateCategory",
+          datasetValue: normalizedQuery,
+          label: `+ Создать категорию «${normalizedQuery}»`,
+        });
         createChip.dataset.receiptItemId = String(rowItem.draft_id);
-        createChip.textContent = `+ Создать категорию «${normalizedQuery}»`;
         picker.appendChild(createChip);
       }
       if (!categories.length && !normalizedQuery) {

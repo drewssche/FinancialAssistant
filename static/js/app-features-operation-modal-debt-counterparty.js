@@ -13,6 +13,8 @@
       updateCreatePreview,
     } = deps;
 
+    const pickerUtils = window.App.pickerUtils;
+
     function normalizeCounterpartyName(value) {
       return String(value || "").trim().replace(/\s+/g, " ");
     }
@@ -136,23 +138,21 @@
       const items = getCounterpartyEntries(selectedName);
       el.debtCounterpartyAll.innerHTML = "";
       for (const item of items) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "chip-btn";
-        if (selectedName && selectedName.toLowerCase() === item.counterparty.toLowerCase()) {
-          btn.classList.add("active");
-        }
-        btn.dataset.debtCounterpartyName = item.counterparty;
-        btn.innerHTML = core.renderCategoryChip({ name: item.counterparty, icon: null, accent_color: null }, selectedName);
+        const btn = pickerUtils.createChipButton({
+          datasetName: "debtCounterpartyName",
+          datasetValue: item.counterparty,
+          selected: selectedName && selectedName.toLowerCase() === item.counterparty.toLowerCase(),
+          html: core.renderCategoryChip({ name: item.counterparty, icon: null, accent_color: null }, selectedName),
+        });
         el.debtCounterpartyAll.appendChild(btn);
       }
       const exactMatch = items.some((item) => item.counterparty.toLowerCase() === selectedName.toLowerCase());
       if (selectedName && !exactMatch) {
-        const createBtn = document.createElement("button");
-        createBtn.type = "button";
-        createBtn.className = "chip-btn chip-btn-create";
-        createBtn.dataset.createDebtCounterparty = selectedName;
-        createBtn.textContent = `+ Создать контрагента «${selectedName}»`;
+        const createBtn = pickerUtils.createActionChipButton({
+          datasetName: "createDebtCounterparty",
+          datasetValue: selectedName,
+          label: `+ Создать контрагента «${selectedName}»`,
+        });
         el.debtCounterpartyAll.appendChild(createBtn);
       }
       if (!items.length && !selectedName) {

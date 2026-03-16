@@ -15,17 +15,8 @@
       getCategoryMetaById,
     } = deps;
 
-    const CATEGORY_USAGE_KEY = "fa_category_usage_v1";
-
-    function readCategoryUsage() {
-      try {
-        const raw = localStorage.getItem(CATEGORY_USAGE_KEY);
-        const parsed = raw ? JSON.parse(raw) : {};
-        return parsed && typeof parsed === "object" ? parsed : {};
-      } catch {
-        return {};
-      }
-    }
+    const pickerUtils = window.App.pickerUtils;
+    const CATEGORY_USAGE_KEY = pickerUtils.DEFAULT_CATEGORY_USAGE_KEY;
 
     function writeCategoryUsage(usage) {
       localStorage.setItem(CATEGORY_USAGE_KEY, JSON.stringify(usage));
@@ -35,7 +26,7 @@
       if (!categoryId) {
         return;
       }
-      const usage = readCategoryUsage();
+      const usage = pickerUtils.readUsageMap(CATEGORY_USAGE_KEY);
       const key = String(categoryId);
       usage[key] = Number(usage[key] || 0) + 1;
       writeCategoryUsage(usage);
@@ -79,64 +70,37 @@
     }
 
     function getCategoriesSorted(kind, query = "") {
-      const usage = readCategoryUsage();
-      const normalizedQuery = query.trim().toLowerCase();
-      return state.categories
-        .filter((item) => item.kind === kind)
-        .filter((item) => {
-          if (!normalizedQuery) {
-            return true;
-          }
-          return item.name.toLowerCase().includes(normalizedQuery) || (item.group_name || "").toLowerCase().includes(normalizedQuery);
-        })
-        .map((item) => ({ ...item, usage: Number(usage[String(item.id)] || 0) }))
-        .sort((a, b) => {
-          if (b.usage !== a.usage) {
-            return b.usage - a.usage;
-          }
-          const colorA = (a.group_accent_color || "~").toLowerCase();
-          const colorB = (b.group_accent_color || "~").toLowerCase();
-          if (colorA !== colorB) {
-            return colorA.localeCompare(colorB, "ru");
-          }
-          const groupA = (a.group_name || "~").toLowerCase();
-          const groupB = (b.group_name || "~").toLowerCase();
-          if (groupA !== groupB) {
-            return groupA.localeCompare(groupB, "ru");
-          }
-          return a.name.localeCompare(b.name, "ru");
-        });
+      return pickerUtils.sortCategoriesByUsage(
+        state.categories.filter((item) => item.kind === kind),
+        query,
+        CATEGORY_USAGE_KEY,
+      );
     }
 
     function createCategoryChipButton(category, selected, searchQuery = "") {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "chip-btn";
-      if (selected) {
-        btn.classList.add("active");
-      }
-      btn.dataset.categoryId = String(category.id);
-      btn.innerHTML = core.renderCategoryChip(
-        {
-          name: category.name,
-          icon: category.icon || category.group_icon || null,
-          accent_color: category.group_accent_color || null,
-        },
-        searchQuery,
-      );
-      return btn;
+      return pickerUtils.createChipButton({
+        datasetName: "categoryId",
+        datasetValue: category.id,
+        selected,
+        html: core.renderCategoryChip(
+          {
+            name: category.name,
+            icon: category.icon || category.group_icon || null,
+            accent_color: category.group_accent_color || null,
+          },
+          searchQuery,
+        ),
+      });
     }
 
     function createNoCategoryChipButton(selected) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "chip-btn chip-btn-meta";
-      if (selected) {
-        btn.classList.add("active");
-      }
-      btn.dataset.categoryId = "";
-      btn.innerHTML = core.renderMetaChip("Без категории");
-      return btn;
+      return pickerUtils.createMetaChipButton({
+        datasetName: "categoryId",
+        datasetValue: "",
+        selected,
+        label: "Без категории",
+        core,
+      });
     }
 
     function renderCategoryPicker(options = {}) {
@@ -160,11 +124,11 @@
         targetNode.appendChild(createCategoryChipButton(item, selectedId === item.id, query));
       }
       if (!categories.length && query && createQueryDataset) {
-        const createChip = document.createElement("button");
-        createChip.type = "button";
-        createChip.className = "chip-btn chip-btn-create";
-        createChip.dataset[createQueryDataset] = query;
-        createChip.textContent = `+ Создать категорию «${query}»`;
+        const createChip = pickerUtils.createActionChipButton({
+          datasetName: createQueryDataset,
+          datasetValue: query,
+          label: `+ Создать категорию «${query}»`,
+        });
         targetNode.appendChild(createChip);
       }
       if (!categories.length && !query) {
