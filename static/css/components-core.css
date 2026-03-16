@@ -252,6 +252,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
+  margin-bottom: var(--space-3);
 }
 
 .plans-financial-kpi-card {
@@ -284,6 +285,23 @@
   margin-top: 0;
 }
 
+.plans-controls-row {
+  margin-top: var(--space-2);
+}
+
+.plans-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.plans-search-input {
+  width: min(22rem, 100%);
+  min-width: 14rem;
+  flex: 0 1 22rem;
+}
+
 .dashboard-plans-kpi {
   margin-top: var(--space-2);
 }
@@ -299,6 +317,20 @@
   background: linear-gradient(180deg, rgba(20, 31, 49, 0.94) 0%, rgba(14, 23, 37, 0.94) 100%);
 }
 
+.plan-card-top {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.plan-card-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: start;
+}
+
 .plan-card-main {
   display: grid;
   gap: var(--space-2);
@@ -311,6 +343,10 @@
   gap: var(--space-2) var(--space-3);
 }
 
+.plan-card-field-wide {
+  grid-column: 1 / -1;
+}
+
 .plan-card-field {
   min-width: 0;
   display: grid;
@@ -321,13 +357,6 @@
 .plan-card-field .kind-pill {
   width: max-content;
   max-width: 100%;
-}
-
-.plan-card-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: start;
-  gap: var(--space-3);
 }
 
 .plan-card-title-row {
@@ -381,19 +410,24 @@
 }
 
 .plan-card-actions {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  align-self: start;
+  min-width: 11rem;
+}
+
+.plan-card .row-actions.plan-card-actions {
   opacity: 1;
   transform: none;
   pointer-events: auto;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  margin-top: var(--space-1);
-  align-self: end;
 }
 
 .plan-card-actions .btn {
-  min-width: 8.5rem;
+  min-width: 11rem;
 }
 
 .plan-card-overdue {

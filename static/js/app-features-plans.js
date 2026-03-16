@@ -96,17 +96,6 @@
     });
   }
 
-  function planNetLabel(summary) {
-    const net = Number(summary?.netPlanned || 0);
-    if (net > 0.000001) {
-      return "Потенциальный доход";
-    }
-    if (net < -0.000001) {
-      return "Потенциальный расход";
-    }
-    return "Плановый итог";
-  }
-
   function planNetMeta(summary) {
     const expense = Number(summary?.potentialExpense || 0);
     const income = Number(summary?.potentialIncome || 0);
@@ -120,6 +109,17 @@
       return `Потенциальный расход: ${core.formatMoney(expense)}`;
     }
     return "Планов пока нет";
+  }
+
+  async function ensurePlansAllTimeBalance(force = false) {
+    if (!force && Number.isFinite(Number(state.plansAllTimeBalance))) {
+      return Number(state.plansAllTimeBalance || 0);
+    }
+    const data = await core.requestJson("/api/v1/dashboard/summary?period=all_time", {
+      headers: core.authHeaders(),
+    });
+    state.plansAllTimeBalance = Number(data?.balance || 0);
+    return state.plansAllTimeBalance;
   }
 
   function dueProgressMeta(item) {
@@ -285,39 +285,45 @@
     const dateLabel = item.due_date ? core.formatDateRu(item.due_date) : "Без срока";
     const progress = dueProgressMeta(item);
     const kindLabel = item.kind === "income" ? "Доход" : "Расход";
+    const receiptMeta = Array.isArray(item.receipt_items) && item.receipt_items.length
+      ? `<span class="meta-chip meta-chip-neutral">Чек</span>`
+      : "";
     return `
       <article class="panel plan-card plan-card-${item.status || "upcoming"}">
-        <div class="plan-card-main">
-          <div class="plan-card-head">
-            <div class="plan-card-title-row">
-              ${categoryChip}
-              <span class="meta-chip meta-chip-neutral">${recurrenceLabel(item)}</span>
-              <span class="meta-chip meta-chip-neutral">${statusLabel(item.status)}</span>
-            </div>
-            <strong class="plan-card-amount amount-${kindClass}">${core.formatMoney(item.amount || 0)}</strong>
+        <div class="plan-card-top">
+          <div class="plan-card-title-row">
+            ${categoryChip}
+            <span class="meta-chip meta-chip-neutral">${recurrenceLabel(item)}</span>
+            <span class="meta-chip meta-chip-neutral">${statusLabel(item.status)}</span>
+            ${receiptMeta}
           </div>
-          <div class="plan-card-fields">
-            <div class="plan-card-field"><span class="muted-small">Дата</span><strong>${dateLabel}</strong></div>
-            <div class="plan-card-field"><span class="muted-small">Тип</span><span class="kind-pill kind-pill-${kindClass}">${kindLabel}</span></div>
-            <div class="plan-card-field"><span class="muted-small">Категория</span>${categoryChip}</div>
-            <div class="plan-card-field"><span class="muted-small">Сумма</span><strong class="plan-card-amount amount-${kindClass}">${core.formatMoney(item.amount || 0)}</strong></div>
-          </div>
-          <div class="plan-card-meta">
-            ${item.note ? `<strong>${core.highlightText(item.note, "")}</strong>` : ""}
-            ${item.receipt_items?.length ? `<span class="muted-small">Позиций: ${item.receipt_items.length}</span>` : ""}
-          </div>
-          <div class="plan-card-progress">
-            <div class="plan-card-progress-track">
-              <span class="plan-card-progress-bar plan-card-progress-bar-${progress.tone}" style="width:${progress.percent}%"></span>
-            </div>
-            <span class="muted-small">${progress.label}</span>
-          </div>
+          <strong class="plan-card-amount amount-${kindClass}">${core.formatMoney(item.amount || 0)}</strong>
         </div>
-        <div class="actions row-actions plan-card-actions">
-          ${item.status !== "confirmed" && item.status !== "skipped" ? `<button class="btn btn-primary" type="button" data-plan-action="confirm" data-plan-id="${item.id}">Подтвердить</button>` : ""}
-          ${item.status !== "confirmed" && item.status !== "skipped" ? `<button class="btn btn-secondary" type="button" data-plan-action="edit" data-plan-id="${item.id}">Редактировать</button>` : ""}
-          ${item.recurrence_enabled && item.status !== "confirmed" ? `<button class="btn btn-secondary" type="button" data-plan-action="skip" data-plan-id="${item.id}">Пропустить</button>` : ""}
-          <button class="btn btn-danger" type="button" data-plan-action="delete" data-plan-id="${item.id}">Удалить</button>
+        <div class="plan-card-body">
+          <div class="plan-card-main">
+            <div class="plan-card-fields">
+              <div class="plan-card-field"><span class="muted-small">Дата</span><strong>${dateLabel}</strong></div>
+              <div class="plan-card-field"><span class="muted-small">Тип</span><span class="kind-pill kind-pill-${kindClass}">${kindLabel}</span></div>
+              <div class="plan-card-field plan-card-field-wide"><span class="muted-small">Категория</span>${categoryChip}</div>
+              <div class="plan-card-field"><span class="muted-small">Сумма</span><strong class="plan-card-amount amount-${kindClass}">${core.formatMoney(item.amount || 0)}</strong></div>
+            </div>
+            <div class="plan-card-meta">
+              ${item.note ? `<strong>${core.highlightText(item.note, "")}</strong>` : ""}
+              ${item.receipt_items?.length ? `<span class="muted-small">Позиций: ${item.receipt_items.length}</span>` : ""}
+            </div>
+            <div class="plan-card-progress">
+              <div class="plan-card-progress-track">
+                <span class="plan-card-progress-bar plan-card-progress-bar-${progress.tone}" style="width:${progress.percent}%"></span>
+              </div>
+              <span class="muted-small">${progress.label}</span>
+            </div>
+          </div>
+          <div class="actions row-actions plan-card-actions">
+            ${item.status !== "confirmed" && item.status !== "skipped" ? `<button class="btn btn-primary" type="button" data-plan-action="confirm" data-plan-id="${item.id}">Подтвердить</button>` : ""}
+            ${item.status !== "confirmed" && item.status !== "skipped" ? `<button class="btn btn-secondary" type="button" data-plan-action="edit" data-plan-id="${item.id}">Редактировать</button>` : ""}
+            ${item.recurrence_enabled && item.status !== "confirmed" ? `<button class="btn btn-secondary" type="button" data-plan-action="skip" data-plan-id="${item.id}">Пропустить</button>` : ""}
+            <button class="btn btn-danger" type="button" data-plan-action="delete" data-plan-id="${item.id}">Удалить</button>
+          </div>
         </div>
       </article>
     `;
@@ -366,17 +372,19 @@
     el.dashboardPlansKpi.innerHTML = `
       <span class="analytics-kpi-chip analytics-kpi-chip-neutral">К подтверждению: ${summary.dueCount}</span>
       <span class="analytics-kpi-chip analytics-kpi-chip-negative">Просрочено: ${summary.overdueCount}</span>
-      <span class="analytics-kpi-chip ${summary.netPlanned >= 0 ? "analytics-kpi-chip-positive" : "analytics-kpi-chip-negative"}">${planNetLabel(summary)}: ${core.formatMoney(Math.abs(summary.netPlanned))}</span>
+      <span class="analytics-kpi-chip ${summary.netPlanned >= 0 ? "analytics-kpi-chip-positive" : "analytics-kpi-chip-negative"}">Плановый сдвиг: ${summary.netPlanned < 0 ? "-" : "+"}${core.formatMoney(Math.abs(summary.netPlanned))}</span>
     `;
     el.dashboardPlansList.innerHTML = items.length
       ? items.map(renderPlanCard).join("")
       : "<div class='muted-small'>Планов пока нет</div>";
   }
 
-  function renderPlansSection() {
+  async function renderPlansSection() {
     const isHistoryTab = (state.plansTab || "due") === "history";
     const items = isHistoryTab ? getFilteredHistoryItems() : getFilteredPlans();
     const summary = summarizePlans(getPlanItems().filter((item) => item.status !== "confirmed" && item.status !== "skipped"));
+    const baseBalance = await ensurePlansAllTimeBalance();
+    const projectedBalance = baseBalance + Number(summary.netPlanned || 0);
     if (el.plansDueChip) {
       el.plansDueChip.textContent = `К подтверждению: ${summary.dueCount}`;
     }
@@ -384,12 +392,11 @@
       el.plansOverdueChip.textContent = `Просрочено: ${summary.overdueCount}`;
     }
     if (el.plansFinancialValue) {
-      const label = planNetLabel(summary);
-      el.plansFinancialValue.textContent = `${summary.netPlanned < 0 ? "-" : summary.netPlanned > 0 ? "+" : ""}${core.formatMoney(Math.abs(summary.netPlanned))}`;
-      el.plansFinancialValue.dataset.plansFinancialLabel = label;
+      el.plansFinancialValue.textContent = `${projectedBalance < 0 ? "-" : ""}${core.formatMoney(Math.abs(projectedBalance))}`;
     }
     if (el.plansFinancialMeta) {
-      el.plansFinancialMeta.textContent = planNetMeta(summary);
+      const shiftPrefix = Number(summary.netPlanned || 0) < 0 ? "-" : "+";
+      el.plansFinancialMeta.textContent = `Текущий баланс: ${core.formatMoney(baseBalance)} | Плановый сдвиг: ${shiftPrefix}${core.formatMoney(Math.abs(Number(summary.netPlanned || 0)))}`;
     }
     if (!el.plansList) {
       return;
@@ -500,6 +507,7 @@
 
   async function refreshAfterPlanMutation({ confirmed = false } = {}) {
     core.invalidateUiRequestCache?.("plans");
+    state.plansAllTimeBalance = null;
     await loadPlans({ force: true });
     if (!confirmed) {
       return;
@@ -528,7 +536,7 @@
       if (cached?.plans?.items) {
         state.plansItems = Array.isArray(cached.plans.items) ? cached.plans.items : [];
         state.plansHistoryItems = Array.isArray(cached.history?.items) ? cached.history.items : [];
-        renderPlansSection();
+        await renderPlansSection();
         renderDashboardPlans();
         return;
       }
@@ -544,38 +552,38 @@
     state.plansItems = Array.isArray(plansData.items) ? plansData.items : [];
     state.plansHistoryItems = Array.isArray(historyData.items) ? historyData.items : [];
     core.setUiRequestCache?.(getPlansCacheKey(), { plans: plansData, history: historyData });
-    renderPlansSection();
+    await renderPlansSection();
     renderDashboardPlans();
   }
 
   async function setPlansTab(value) {
     state.plansTab = value || "due";
     core.syncSegmentedActive(el.plansTabTabs, "plan-tab", state.plansTab);
-    renderPlansSection();
+    await renderPlansSection();
   }
 
   async function setPlansKindFilter(value) {
     state.plansKindFilter = value || "all";
     core.syncSegmentedActive(el.plansKindTabs, "plan-kind", state.plansKindFilter);
-    renderPlansSection();
+    await renderPlansSection();
   }
 
   async function setPlansStatusFilter(value) {
     state.plansStatusFilter = value || "all";
     core.syncSegmentedActive(el.plansStatusTabs, "plan-status", state.plansStatusFilter);
-    renderPlansSection();
+    await renderPlansSection();
     window.App.actions?.savePreferencesDebounced?.(250);
   }
 
   async function setPlansHistoryEventFilter(value) {
     state.plansHistoryEventFilter = value || "all";
     core.syncSegmentedActive(el.plansHistoryEventTabs, "plan-history-event", state.plansHistoryEventFilter);
-    renderPlansSection();
+    await renderPlansSection();
     window.App.actions?.savePreferencesDebounced?.(250);
   }
 
   function applyPlansSearch() {
-    renderPlansSection();
+    renderPlansSection().catch((err) => core.setStatus(String(err)));
   }
 
   function openCreatePlan() {

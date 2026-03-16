@@ -84,9 +84,6 @@
         if (!btn || btn.disabled) {
           return;
         }
-        if (!btn.closest("#debtsCards") && !btn.closest("#dashboardDebtsList")) {
-          return;
-        }
         event.preventDefault();
         event.stopPropagation();
         actions.openDebtRepaymentModal(Number(btn.dataset.repayDebtId || 0));
@@ -99,6 +96,17 @@
         event.preventDefault();
         event.stopPropagation();
         actions.openDebtRepaymentModal(Number(btn.dataset.dashboardRepayDebtId || 0));
+      }, true);
+    }
+    if (actions.openDebtHistoryModal) {
+      document.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-dashboard-history-debt-id]");
+        if (!btn) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        actions.openDebtHistoryModal(Number(btn.dataset.dashboardHistoryDebtId || 0));
       }, true);
     }
     if (actions.openEditDebtModal) {
@@ -119,9 +127,6 @@
       document.addEventListener("click", (event) => {
         const btn = event.target.closest("button[data-history-debt-id]");
         if (!btn) {
-          return;
-        }
-        if (!btn.closest("#debtsCards")) {
           return;
         }
         event.preventDefault();

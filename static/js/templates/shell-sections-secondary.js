@@ -13,7 +13,7 @@
             <div id="plansKpiGrid" class="plans-kpi-shell">
               <article class="kpi-card plans-financial-kpi-card">
                 <div class="plans-financial-kpi-head">
-                  <h3>Плановый итог</h3>
+                  <h3>Баланс с учетом планов</h3>
                   <div id="plansStatusChips" class="analytics-kpi-secondary plans-status-chips">
                     <span id="plansDueChip" class="analytics-kpi-chip analytics-kpi-chip-neutral">К подтверждению: 0</span>
                     <span id="plansOverdueChip" class="analytics-kpi-chip analytics-kpi-chip-negative">Просрочено: 0</span>
@@ -23,9 +23,9 @@
                 <div id="plansFinancialMeta" class="subtitle plans-financial-kpi-meta">Планов пока нет</div>
               </article>
             </div>
-            <div class="table-search-row">
-              <input id="plansSearchQ" class="table-search-input" type="text" placeholder="Поиск по категории/комментарию" />
-              <div class="toolbar section-action-toolbar search-toolbar">
+            <div class="table-search-row plans-controls-row">
+              <div class="toolbar section-action-toolbar search-toolbar plans-toolbar">
+                <input id="plansSearchQ" class="table-search-input plans-search-input" type="text" placeholder="Поиск по категории/комментарию" />
                 <div class="segmented" id="plansTabTabs" role="tablist" aria-label="Вкладки планов">
                   <button class="segmented-btn active" data-plan-tab="due" type="button">К подтверждению</button>
                   <button class="segmented-btn" data-plan-tab="oneoff" type="button">Разовые</button>

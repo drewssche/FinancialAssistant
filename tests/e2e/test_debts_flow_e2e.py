@@ -379,6 +379,12 @@ def page_with_debts_api_mock():
             only_active = [item for item in debt_cards if item["status"] == "active"]
             return json_response(route, only_active)
 
+        if path == "/api/v1/plans" and method == "GET":
+            return json_response(route, {"items": [], "total": 0})
+
+        if path == "/api/v1/plans/history" and method == "GET":
+            return json_response(route, {"items": [], "total": 0})
+
         if path == "/api/v1/debts" and method == "POST":
             payload = json.loads(request.post_data or "{}")
             counterparty = " ".join(str(payload["counterparty"]).split())

@@ -75,7 +75,7 @@
 
 .debt-card-compact-grid {
   display: grid;
-  grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1.2fr);
+  grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr);
   gap: var(--space-4);
   align-items: start;
 }
@@ -163,6 +163,8 @@
   margin-top: var(--space-1);
   display: flex;
   justify-content: flex-start;
+  gap: var(--space-2);
+  flex-wrap: wrap;
 }
 
 .dashboard-debts-summary {

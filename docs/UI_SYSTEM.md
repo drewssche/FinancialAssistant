@@ -76,15 +76,16 @@ Sidebar grouping baseline (when section groups are introduced):
 - `Удалить`
 - section-level plan monitoring UI:
 - KPI layer should be compact and finance-first, not split into five separate operational cards
-- primary KPI surface should merge plan impact into one signed summary card:
-- positive planned total is shown as planned income
-- negative planned total is shown as planned expense
-- if both signs exist, the signed aggregate and secondary potential value should still be readable in one shared KPI surface instead of separate `Потенциальный расход` / `Потенциальный доход` cards
+- primary KPI surface should show `Баланс с учетом планов`, not just isolated planned totals
+- the displayed value should be computed as current all-time balance plus/minus the sum of pending plan operations
+- supporting meta line should explicitly show current balance and planned shift
 - `К подтверждению` and `Просрочено` should not consume standalone large cards by default; prefer compact status chips/counters near the main KPI surface
 - the old explanatory subtitle about plans not affecting fact before confirmation is redundant and should stay removed both in the section and in the dashboard plans block
 - status-scope filter: `Все сроки / Просрочено / Сегодня / Впереди`
 - initial dashboard strategy: replace the current recent operations block with `Ближайшие планы`
 - dashboard plans block should show pending/planned workload, not factual accounting data
+- plans controls should keep a separate row under KPI; search belongs in the controls row, not glued directly to the KPI card
+- plans search field may stay narrower than full-width if that keeps all controls readable on desktop
 - plan list rows/cards should reuse the same information rhythm as regular `Операции` rows where practical:
 - core fields/meta should be rendered like an operation item
 - contextual plan chips should explain plan state/recurrence
@@ -335,6 +336,9 @@ At the bottom-left sidebar, show compact static user block:
 - Debt KPIs are displayed separately from cash-flow KPI (`Доход/Расход/Баланс`) to avoid semantic mixing
 - Dashboard debt cards block can be hidden by user interface preference
 - compact dashboard debt cards should keep title, status chip, debt rows and CTA visually dense; large empty horizontal gaps are treated as a layout defect
+- preferred compact desktop layout:
+- left column `1/3`: counterparty identity block (`name`, `status`, `created_at`)
+- right column `2/3`: debt working block (`direction/amount`, `progress`, `due`, `Погашение`, `История`)
 
 ## Dashboard Analytics Preview
 - Dashboard includes compact analytics preview widget:

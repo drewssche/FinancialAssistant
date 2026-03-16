@@ -75,6 +75,11 @@
 - operations bulk/list summary now shows real backend total while infinite scroll still renders rows in batches
 - dashboard debt cards were tightened to reduce dead space between counterparty title, status chip and inner debt rows
 - debts compact-desktop toolbar now prefers controlled row layout instead of forcing every control into one overflowing line
+- updated 2026-03-16 follow-up:
+- plans KPI should be upgraded from plain signed plan total to `Баланс с учетом планов` (`current all-time balance +/- planned shift`)
+- plans search should live in the controls row below KPI, with sensible compact width instead of sticking directly to the KPI card
+- plans cards should visually track regular operations rows/cards even closer, while keeping plan-specific chips and due progress
+- dashboard debt cards should use `1/3 identity + 2/3 working block`, and dashboard cards should also expose `История` alongside `Погашение`
 
 2. Scroll and overflow hardening
 - Status: done (updated 2026-03-08)

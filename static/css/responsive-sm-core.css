@@ -281,7 +281,18 @@
     font-size: 30px;
   }
 
-  .plan-card-head,
+  .plans-toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .plans-search-input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .plan-card-top,
+  .plan-card-body,
   .plan-card-fields,
   .plan-card-actions {
     display: grid;

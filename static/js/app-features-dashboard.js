@@ -33,6 +33,25 @@
     return 4;
   }
 
+  function formatDateTimeRu(value) {
+    if (!value) {
+      return "";
+    }
+    try {
+      const date = value instanceof Date ? value : new Date(value);
+      if (Number.isNaN(date.getTime())) {
+        return "";
+      }
+      return new Intl.DateTimeFormat("ru-RU", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }).format(date);
+    } catch {
+      return "";
+    }
+  }
+
 
   async function loadDashboard() {
     const ui = core.getUiSettings ? core.getUiSettings() : null;
@@ -148,12 +167,14 @@
                     }
                     <div class="dashboard-debt-actions">
                       <button class="btn btn-repay btn-xs" type="button" data-dashboard-repay-debt-id="${debt.id}" ${outstanding <= 0 ? "disabled" : ""}>Погашение</button>
+                      <button class="btn btn-secondary btn-xs" type="button" data-dashboard-history-debt-id="${debt.id}">История</button>
                     </div>
                   </div>
                 </div>
               `;
             })
             .join("");
+          const createdAt = visibleDebts[0]?.created_at ? formatDateTimeRu(visibleDebts[0].created_at) : "";
           const compact = document.createElement("article");
           compact.className = "panel debt-card debt-card-compact";
           compact.innerHTML = `
@@ -163,6 +184,7 @@
                   <div class="debt-card-compact-title-block">
                     <h3>${core.highlightText(card.counterparty || "", "")}</h3>
                     <span class="debt-status debt-status-${card.status}">${card.status === "active" ? "Активный" : "Закрыт"}</span>
+                    ${createdAt ? `<span class="muted-small">Создано: ${createdAt}</span>` : ""}
                   </div>
                 </div>
               </div>
