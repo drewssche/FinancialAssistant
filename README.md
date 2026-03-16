@@ -64,6 +64,7 @@ Telegram Mini App readiness is broader than responsive layout only. In addition 
 - If bot polling service is running, admins from `ADMIN_TELEGRAM_IDS` receive compact Telegram notifications for new pending users.
 - Notification message includes inline `Approve` / `Reject` buttons.
 - Admin must open the bot and press `Start` once, otherwise Telegram may reject outbound bot messages to that admin chat.
+- In local/dev or VPS Compose setup this polling worker is started by the `bot` service (`python scripts/run_telegram_admin_bot.py`).
 
 ## Domain and HTTPS Basics
 - Yes, you can prepare the domain yourself on your VPS.
@@ -100,10 +101,14 @@ Notes:
 
 ## Current Scope
 - Telegram auth flow
+- Browser Telegram login fallback with server-side availability gating (`/api/v1/auth/public-config`)
 - Full CRUD for operations, categories/groups, debts
 - Dashboard summary (including debt KPI fields) + summary metrics endpoint
+- Analytics endpoints for calendar, year calendar, trend and highlights views
 - Receipt line items in operations (`receipt_items`, discrepancy support)
+- Receipt line items can optionally store their own `category_id`
 - Reusable item templates catalog + price history endpoints
+- Category-level `include_in_statistics` flag for analytics/breakdown control
 - Persisted user preferences (server + local fallback)
 - API and UI regression suite (API + Playwright e2e)
 

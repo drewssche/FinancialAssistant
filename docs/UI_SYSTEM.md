@@ -116,6 +116,7 @@ At the bottom-left sidebar, show compact static user block:
 ## Operation Receipt Pattern (MVP)
 - Operation modal supports optional `Чек (позиции)` block.
 - Receipt line item fields:
+- `Категория` (optional chip-picker, per line item)
 - `Источник` (chip/template picker style, source chips)
 - `Позиция` (chip/template picker style, same mechanics as category chip picker)
 - `Кол-во`
@@ -132,8 +133,8 @@ At the bottom-left sidebar, show compact static user block:
 - `+ Создать позицию «...` adds position into local picker source immediately for next rows (optimistic UI), DB persistence remains on operation save
 - source chips act as grouping filter for position chips inside the same row (`Источник` -> filtered `Позиция`)
 - Operation rows with receipt items expose separate hover action `Позиции` (read-only modal with item list); note column is not auto-augmented by receipt metadata
-- Category per receipt line item is not supported in MVP.
-- Position-level analytics UI is not included in MVP (backlog).
+- Receipt item category remains optional and complements, not replaces, operation-level category.
+- Position analytics is currently exposed through analytics highlights (`top positions`, `price increases`); a dedicated per-position deep-dive screen is still backlog.
 
 ## Position Catalog (MVP)
 - Separate catalog view/modal for reusable receipt positions:
@@ -209,7 +210,7 @@ At the bottom-left sidebar, show compact static user block:
 - Debt KPIs are displayed separately from cash-flow KPI (`Доход/Расход/Баланс`) to avoid semantic mixing
 - Dashboard debt cards block can be hidden by user interface preference
 
-## Dashboard Analytics Preview (Planned)
+## Dashboard Analytics Preview
 - Dashboard includes compact analytics preview widget:
 - mini trend sparkline for selected period
 - short deltas vs previous period (`Доход`, `Расход`, `Баланс`)

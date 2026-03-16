@@ -53,7 +53,7 @@ Current delivery direction:
 - Keep raw operations atomic (event-level records) as the source of truth.
 - For trend analytics, use aggregated views/queries on top (`day/week/month` buckets by kind/category), without merging original records.
 - This keeps edit/delete auditability and avoids data loss, while still allowing fast trend calculations.
-- Position-level analytics is explicitly deferred to backlog and not part of current MVP.
+- Position analytics is currently limited to aggregated highlights (`top positions`, `price increases`) derived from receipt items; dedicated per-position drilldown remains backlog.
 
 ## Debt Domain (Implemented MVP Baseline)
 - Debt records are not expense/income categories; they are a separate workflow with dedicated fields:

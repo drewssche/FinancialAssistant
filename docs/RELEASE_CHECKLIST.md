@@ -73,11 +73,14 @@ Before any production deploy, verify:
 - `APP_ENV=production`
 - `APP_SECRET_KEY` is set and is not the default placeholder
 - `TELEGRAM_BOT_TOKEN` is set correctly
+- `TELEGRAM_BOT_USERNAME` is set correctly if browser Telegram login is intended on this host/domain
 - `ADMIN_TELEGRAM_IDS` contains actual admin Telegram IDs and owner/admin IDs are expected to auto-approve
-- no alternative non-Telegram login entrypoints remain enabled
+- browser Telegram login is either intentionally enabled for the current domain or intentionally unavailable via `browser_login_available=false`
 
 Expected:
-- Telegram auth is the only active sign-in path in production
+- Telegram auth is the only auth provider in production
+- Mini App `initData` login works
+- browser Telegram login works only when `TELEGRAM_BOT_USERNAME` is configured and Telegram-side domain setup is valid
 - admin approval flow works for a newly created `pending` user
 - non-approved users cannot access workspace sections
 

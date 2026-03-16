@@ -125,13 +125,23 @@
   }
 
   function groupCategoryIds(groupId) {
-    return state.categoryTableItems
+    return state.categories
       .filter((item) => item.group_id === groupId && !item.is_system)
       .map((item) => item.id);
   }
 
+  function getCategoryRowsForTable() {
+    return state.categories.filter((item) => {
+      if (state.categoryFilterKind === "all") {
+        return true;
+      }
+      return item.kind === state.categoryFilterKind;
+    });
+  }
+
   function getCategoriesDisplayGroups(queryRaw, queryLower) {
-    const filteredRows = state.categoryTableItems.filter((item) => {
+    const sourceRows = getCategoryRowsForTable();
+    const filteredRows = sourceRows.filter((item) => {
       if (!queryLower) {
         return true;
       }
@@ -165,7 +175,7 @@
 
     for (const group of filteredGroups) {
       const groupMatchesQuery = queryLower ? String(group.name || "").toLowerCase().includes(queryLower) : false;
-      const childrenSource = groupMatchesQuery ? state.categoryTableItems : filteredRows;
+      const childrenSource = groupMatchesQuery ? sourceRows : filteredRows;
       const children = childrenSource
         .filter((item) => item.group_id === group.id)
         .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "ru"));

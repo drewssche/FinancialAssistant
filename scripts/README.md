@@ -77,3 +77,22 @@ Optional thresholds via env:
 - `MAX_P95_MS` (default `250`)
 - `MIN_CACHE_HIT_RATIO` (default `0.0`)
 - `MAX_SUMMARY_GET_TOTAL` (default `0`, disabled)
+
+## Telegram Admin Bot
+
+Polling worker for admin access notifications and inline `Approve` / `Reject` actions:
+
+```bash
+PYTHONPATH=. ./.venv/bin/python scripts/run_telegram_admin_bot.py
+```
+
+Required env:
+- `TELEGRAM_BOT_TOKEN`
+- `ADMIN_TELEGRAM_IDS`
+
+Optional env:
+- `TELEGRAM_BOT_POLL_TIMEOUT_SECONDS` (default `25`)
+
+Notes:
+- the same worker is started by the Compose `bot` service
+- admins must open the bot and press `Start` once before Telegram allows outbound notifications

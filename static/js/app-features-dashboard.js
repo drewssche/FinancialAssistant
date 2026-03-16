@@ -163,7 +163,6 @@
                   <h3>${core.highlightText(card.counterparty || "", "")}</h3>
                   <span class="debt-status debt-status-${card.status}">${card.status === "active" ? "Активный" : "Закрыт"}</span>
                 </div>
-                <p class="subtitle">Актуальные обязательства и ближайшие действия</p>
               </div>
               <div class="debt-card-compact-col debt-card-compact-rows debt-child-zone">${rowsHtml}</div>
             </div>

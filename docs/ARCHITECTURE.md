@@ -26,6 +26,7 @@
 - Admin users are resolved from env (`ADMIN_TELEGRAM_IDS`) via Telegram identity mapping
 - Admin-only API surface: `/api/v1/admin/*`
 - In production mode, primary auth flow is Telegram WebApp `initData` verification
+- Optional browser Telegram auth is exposed via `/api/v1/auth/telegram/browser` only when `TELEGRAM_BOT_USERNAME` is configured; availability is advertised by `/api/v1/auth/public-config`
 
 ## Shared API for Multi-Client
 One API serves both Web and Telegram Mini App clients.
@@ -51,7 +52,7 @@ Client-specific logic stays at UI layer; domain logic stays in backend services.
 - save is allowed with discrepancy (warning use-case)
 - template price history appends on each use; old prices are preserved
 - template resolution for receipt items is batch-oriented (prefetch by `(name_ci, source_ci)` + bulk price inserts) to avoid N+1 query growth on long receipts
-- category-at-line-item is out of current MVP scope
+- receipt line items may carry their own optional `category_id`
 
 ## Debt Module (Implemented MVP Baseline)
 - Dedicated domain objects (separate from category semantics):
@@ -65,22 +66,27 @@ Client-specific logic stays at UI layer; domain logic stays in backend services.
 - web and Telegram Mini App use same debt endpoints
 - dashboard receives compact active-debt summary endpoint (not full debt history payload)
 
-## Analytics Module (Planned Architecture)
-- New read-focused analytics service and endpoints over existing operations/debts data.
-- Baseline endpoint groups:
+## Analytics Module (Implemented Baseline)
+- Read-focused analytics endpoints are implemented over existing operations/debts data.
+- Endpoint groups:
 - calendar aggregates (monthly matrix with week totals, Monday-first grid contract)
 - calendar year aggregates (12 month cards with per-month income/expense/ops/balance)
 - trend aggregates (day/week/month/year buckets for income/expense/balance)
-- optional category breakdown aggregates (top categories by expense/income share)
+- highlights aggregates with category breakdown (`category` or `group` level)
 - highlights aggregates for analytics tabs:
 - month KPI summary (income/expense/balance/ops/avg day expense/max day)
 - top heavy operations
 - top expensive positions from receipt items
-- position price-change markers and simple trend points
-- Query dimensions:
-- `period`, `date_from`, `date_to`, `timezone`, optional `category_id/kind`
+- position price-change markers
+- Implemented API surface:
+- `GET /api/v1/dashboard/analytics/calendar`
+- `GET /api/v1/dashboard/analytics/calendar/year`
+- `GET /api/v1/dashboard/analytics/trend`
+- `GET /api/v1/dashboard/analytics/highlights`
+- Query dimensions currently used by code:
+- `period`, `date_from`, `date_to`, `month`, `year`, `granularity`, `category_kind`, `category_breakdown_level`
 - API serves both `Dashboard` compact preview and full `Аналитика` section.
 - Performance strategy:
 - rely on existing indexed operation date/kind filters
-- apply short-lived Redis cache for heavy aggregate payloads
-- keep cache keys parameterized by `user + period/range + timezone + version`
+- keep dashboard summary cache in Redis for repeated aggregate reads
+- keep cache keys parameterized by `user + period/range + version`

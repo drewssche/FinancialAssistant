@@ -17,10 +17,6 @@
 - Budgets/limits
 - richer reports/charts
 - export/import options
-- Analytics section baseline (`Аналитика`):
-- month calendar grid (`Mon..Sun`) with per-day income/expense/operations count
-- week-row totals near calendar rows
-- day/week/month/year trend charts for income/expense/balance
 
 ## Delivered in MVP-1.x (already implemented)
 - Operations receipt detail:
@@ -28,15 +24,24 @@
 - reusable position catalog (chips/templates)
 - per-position price history
 - discrepancy warning (`operation amount` vs `receipt total`) with non-blocking save
+- optional per-line-item category in receipt rows
 - Debt management module (`Долги`) with:
 - counterparty cards
 - debt create flow (`дал`/`взял`)
 - repayment flow (`вернули`/`вернул`)
 - outstanding progress and due-date tracking
+- Analytics section baseline (`Аналитика`):
+- calendar month grid with week totals
+- year calendar aggregates
+- trend charts for `day/week/month/year`
+- highlights for top operations, category breakdown, anomalies, top positions and price increases
 - Access governance baseline:
 - user statuses (`pending/approved/rejected`)
 - admin-only section for approve/reject/delete user
 - admin identity from env (`ADMIN_TELEGRAM_IDS`)
+- Production browser Telegram login gate:
+- `GET /api/v1/auth/public-config`
+- optional `/api/v1/auth/telegram/browser` flow when `TELEGRAM_BOT_USERNAME` is configured
 
 ## Feature Status: Debts (Implemented MVP Baseline)
 1. Navigation and information architecture
@@ -69,8 +74,8 @@
 
 ## Production Transition Track (Near-Term)
 1. Production hardening
-- disable or fully isolate dev-only auth flows in production runtime
-- verify Telegram WebApp auth path end-to-end (`initData`, freshness, admin approval, rejected/pending states)
+- keep Telegram WebApp auth as the primary production path and verify it end-to-end (`initData`, freshness, admin approval, rejected/pending states)
+- keep browser Telegram login as optional fallback only when `TELEGRAM_BOT_USERNAME` is intentionally configured
 - make release checklist mandatory before deploy
 - add/keep explicit regression coverage for access states and admin actions
 
@@ -91,8 +96,8 @@
 
 ## Execution Steps (Current Sprint)
 1. Production auth cleanup
-- remove dev-only login flow from backend, frontend, and scripts
-- keep Telegram WebApp as the single supported auth path
+- keep Telegram WebApp as the primary supported auth path
+- expose browser Telegram login only behind `TELEGRAM_BOT_USERNAME` feature gate
 - keep `ADMIN_TELEGRAM_IDS` as immediate auto-approve/admin access list
 
 2. VPS deployment baseline
