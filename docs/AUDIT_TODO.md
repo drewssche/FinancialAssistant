@@ -137,6 +137,8 @@
 - shared chip-picker primitives extracted to `static/js/app-picker-utils.js`
 - category picker, debt counterparty picker and receipt category picker now reuse the same chip/meta/create button builders
 - removed duplicate small-screen `.app-popover` override in `static/css/responsive-sm-modals.css`
+- fixed post-split responsive regression by restoring `@media (max-width: 640px)` wrappers in `static/css/responsive-sm-core.css` and `static/css/responsive-sm-modals.css`
+- reinforced desktop calendar toolbar layout in `static/css/components-analytics-summary.css` so analytics calendar controls stay in a row on wide screens
 - Notes:
 - keep future picker variants on the same shared surface instead of cloning chip/create/meta rendering again
 

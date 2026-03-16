@@ -436,6 +436,42 @@
   align-items: stretch;
 }
 
+#analyticsCalendarPanel > .panel-head {
+  align-items: flex-start;
+}
+
+#analyticsCalendarPanel > .panel-head > .toolbar {
+  width: auto;
+  margin-left: auto;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  justify-content: flex-end;
+}
+
+#analyticsCalendarPanel .analytics-switch-group {
+  min-width: 15rem;
+}
+
+#analyticsCalendarPanel .analytics-switch-group .toolbar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+#analyticsCalendarPanel .analytics-switch-group .toolbar .btn,
+#analyticsCalendarPanel .analytics-switch-group .toolbar .input,
+#analyticsCalendarPanel .analytics-switch-group .toolbar .date-input-wrap {
+  flex: 0 0 auto;
+}
+
+#analyticsCalendarPanel .analytics-switch-group .toolbar .compact-input,
+#analyticsCalendarPanel .analytics-switch-group .toolbar .date-input-wrap.compact-input {
+  min-width: 12rem;
+}
+
 .analytics-switch-group .toolbar {
   gap: var(--space-2);
 }
@@ -481,4 +517,3 @@
 .analytics-year-card .analytics-ops {
   color: var(--muted);
 }
-

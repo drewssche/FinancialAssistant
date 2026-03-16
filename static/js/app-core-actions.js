@@ -75,7 +75,29 @@
   }
 
   async function requestJson(url, options = {}) {
-    const response = await fetch(url, options);
+    let response;
+    try {
+      response = await fetch(url, options);
+    } catch (err) {
+      const path = (() => {
+        try {
+          return new URL(url, window.location.origin).pathname;
+        } catch {
+          return url;
+        }
+      })();
+      const raw = errorMessage(err, "Сетевой запрос не выполнен");
+      const normalized = raw.toLowerCase();
+      if (
+        normalized.includes("failed to fetch")
+        || normalized.includes("networkerror")
+        || normalized.includes("err_address_unreachable")
+        || normalized.includes("load failed")
+      ) {
+        throw new Error(`Сеть недоступна: ${path}. Проверь домен, DNS и доступность сервера`);
+      }
+      throw new Error(`Сбой запроса: ${path}. ${raw}`);
+    }
     const data = await response.json().catch(() => ({}));
 
     if (response.status === 401) {

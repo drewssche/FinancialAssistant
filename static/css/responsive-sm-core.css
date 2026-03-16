@@ -1,3 +1,4 @@
+@media (max-width: 640px) {
   .login-screen {
     padding:
       max(var(--space-4), env(safe-area-inset-top))
@@ -361,3 +362,4 @@
   .modal-card form {
     margin-top: var(--space-1);
   }
+}
