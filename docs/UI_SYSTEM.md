@@ -101,6 +101,7 @@ Sidebar grouping baseline (when section groups are introduced):
 - left: operation-like fields/meta row
 - center/right: due/progress block integrated into the same horizontal rhythm, without large dead vertical space
 - right edge: visible action column
+- desktop polish target: amount stays right-aligned inside the data row, due/progress reads as one compact line, and the action column should sit visually close enough to the content to avoid a "hole" in the card
 - backend storage baseline:
 - `plan_operations`
 - `plan_receipt_items`

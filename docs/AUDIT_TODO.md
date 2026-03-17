@@ -87,6 +87,7 @@
 - plans desktop cards should use a denser multi-zone layout instead of a tall mobile-like column stack
 - action buttons must stay visible on the right, while fields/meta and due/progress use the horizontal space more evenly
 - plans desktop toolbar should use separate rows: controls first, then full-width search below
+- desktop polish should keep amount right-aligned, progress compact, and reduce the visual gap before the actions column
 
 2. Scroll and overflow hardening
 - Status: done (updated 2026-03-08)
