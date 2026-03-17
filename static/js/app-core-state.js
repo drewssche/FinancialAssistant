@@ -86,8 +86,6 @@
         group: { expense: [], income: [], all: [] },
       },
       analyticsGranularity: "day",
-      analyticsTopOperationsLimit: 5,
-      analyticsTopPositionsLimit: 10,
       dashboardAnalyticsPeriod: "month",
       dashboardAnalyticsPendingCustom: false,
       dashboardAnalyticsDateFrom: "",

@@ -213,6 +213,17 @@
   border-color: rgba(255, 179, 71, 0.45);
 }
 
+.date-input-wrap.is-disabled > input[type="date"],
+.date-input-wrap.is-disabled > input[type="month"] {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+.date-input-wrap.is-disabled .date-input-trigger {
+  opacity: 0.52;
+  cursor: not-allowed;
+}
+
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

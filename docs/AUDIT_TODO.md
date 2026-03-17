@@ -101,6 +101,12 @@
 - plan cards/dashboard cards should be able to show the next reminder time from the queued job
 - plan due progress should become real time-based progress instead of fixed `42/78/100` status placeholders
 - plan modal preview must immediately reflect `Разовая / Повторяющаяся`; stale one-off chips in recurring mode are a bug
+- updated 2026-03-16 reminder/settings cleanup:
+- plans reminder settings moved into their own dedicated Settings block
+- dead analytics top-limit settings were removed from Settings and preference plumbing
+- reminder chip time is now formatted in the effective user timezone instead of raw browser-local time
+- plans KPI keeps factual all-time balance after create/edit/skip/delete; only confirm invalidates the factual base balance
+- recurring plan controls should use the full modal width on desktop and must not visually collapse under the schedule-mode switch
 
 2. Scroll and overflow hardening
 - Status: done (updated 2026-03-08)

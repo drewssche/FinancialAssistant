@@ -292,10 +292,11 @@
 
 .plan-recurrence-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(12rem, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
   align-items: center;
   width: 100%;
+  justify-items: stretch;
 }
 
 .plan-recurrence-options {
@@ -304,6 +305,7 @@
   gap: var(--space-3);
   align-items: center;
   width: 100%;
+  justify-items: stretch;
 }
 
 .plan-recurrence-options > label {
@@ -315,6 +317,7 @@
 .plan-recurrence-grid .date-input-wrap {
   width: 100%;
   min-width: 0;
+  justify-self: stretch;
 }
 
 .plan-recurrence-grid > .input,
@@ -326,6 +329,24 @@
 #planRecurrenceBlock,
 #planRecurrenceFields {
   width: 100%;
+  min-width: 0;
+}
+
+#planRecurrenceFields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: stretch;
+}
+
+#planRecurrenceFields.hidden {
+  display: none;
+}
+
+#planRecurrenceBlock .plan-recurrence-grid select,
+#planRecurrenceBlock .plan-recurrence-grid input,
+#planRecurrenceBlock .plan-recurrence-grid .date-input-wrap,
+#planRecurrenceBlock .plan-recurrence-options > label {
+  max-width: none;
 }
 
 #createPlanPreviewCard {

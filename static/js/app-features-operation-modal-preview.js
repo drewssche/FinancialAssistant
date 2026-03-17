@@ -196,6 +196,7 @@
         const recurrenceEnabled = (el.planScheduleMode?.value || "oneoff") === "recurring";
         const frequency = el.planRecurrenceFrequency?.value || "monthly";
         const interval = Math.max(1, Number(el.planRecurrenceInterval?.value || 1));
+        const monthEndEnabled = String(el.planRecurrenceMonthEnd?.value || "off") === "on";
         const recurrenceLabel = !recurrenceEnabled
           ? "Разовый"
           : frequency === "weekly"
@@ -204,7 +205,7 @@
               ? (el.planRecurrenceWorkdaysOnly?.checked ? "По будням" : "Ежедневно")
               : frequency === "yearly"
                 ? "Ежегодно"
-                : "Ежемесячно";
+                : (monthEndEnabled ? "В последний день месяца" : "Ежемесячно");
         const planItem = {
           ...previewItem,
           due_date: previewItem.operation_date,
@@ -216,7 +217,7 @@
             ? Array.from(el.planRecurrenceWeekdays?.querySelectorAll("button[data-plan-weekday].active") || []).map((button) => Number(button.dataset.planWeekday || 0))
             : [],
           recurrence_workdays_only: recurrenceEnabled && frequency === "daily" ? Boolean(el.planRecurrenceWorkdaysOnly?.checked) : false,
-          recurrence_month_end: recurrenceEnabled && frequency === "monthly" ? Boolean(el.planRecurrenceMonthEnd?.checked) : false,
+          recurrence_month_end: recurrenceEnabled && frequency === "monthly" ? monthEndEnabled : false,
           recurrence_label: recurrenceLabel,
         };
         if (el.createPreviewTitle) {

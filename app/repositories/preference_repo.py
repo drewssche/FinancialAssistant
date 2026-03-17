@@ -18,10 +18,7 @@ class PreferenceRepository:
             data={
                 "dashboard": {"period": "day"},
                 "operations": {"filters": {}, "sort": "operation_date:desc"},
-                "analytics": {
-                    "top_operations_limit": 5,
-                    "top_positions_limit": 10,
-                },
+                "analytics": {},
                 "admin": {
                     "user_status_filter": "pending",
                 },

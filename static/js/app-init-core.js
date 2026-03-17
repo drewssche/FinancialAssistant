@@ -312,8 +312,6 @@
       [el.currencyPickerBtn, "currency"],
       [el.currencyPositionPickerBtn, "currency_position"],
       [el.dashboardOperationsLimitPickerBtn, "dashboard_operations_limit"],
-      [el.analyticsTopOperationsLimitPickerBtn, "analytics_top_operations_limit"],
-      [el.analyticsTopPositionsLimitPickerBtn, "analytics_top_positions_limit"],
     ];
     for (const [buttonNode, pickerKey] of pickerButtons) {
       if (buttonNode && actions.openSettingsPickerModal) {
@@ -415,28 +413,6 @@
         }
         if (state.activeSection === "dashboard" && actions.loadDashboardOperations) {
           actions.loadDashboardOperations().catch((err) => core.setStatus(String(err)));
-        }
-      });
-    }
-    if (el.analyticsTopOperationsLimitSelect) {
-      el.analyticsTopOperationsLimitSelect.addEventListener("change", () => {
-        state.analyticsTopOperationsLimit = Number(el.analyticsTopOperationsLimitSelect.value || 5);
-        if (actions.savePreferencesDebounced) {
-          actions.savePreferencesDebounced(300);
-        }
-        if (state.activeSection === "analytics" && actions.loadAnalyticsHighlights) {
-          actions.loadAnalyticsHighlights({ force: true }).catch((err) => core.setStatus(String(err)));
-        }
-      });
-    }
-    if (el.analyticsTopPositionsLimitSelect) {
-      el.analyticsTopPositionsLimitSelect.addEventListener("change", () => {
-        state.analyticsTopPositionsLimit = Number(el.analyticsTopPositionsLimitSelect.value || 10);
-        if (actions.savePreferencesDebounced) {
-          actions.savePreferencesDebounced(300);
-        }
-        if (state.activeSection === "analytics" && actions.loadAnalyticsHighlights) {
-          actions.loadAnalyticsHighlights({ force: true }).catch((err) => core.setStatus(String(err)));
         }
       });
     }
@@ -583,9 +559,25 @@
       });
     }
     if (el.planRecurrenceMonthEnd) {
-      el.planRecurrenceMonthEnd.addEventListener("change", () => {
+      const syncMonthEndMode = (value) => {
+        if (el.planRecurrenceMonthEnd) {
+          el.planRecurrenceMonthEnd.value = value ? "on" : "off";
+        }
+        if (el.planRecurrenceMonthEndSwitch) {
+          core.syncSegmentedActive(el.planRecurrenceMonthEndSwitch, "plan-month-end", value ? "on" : "off");
+        }
+        actions.syncPlanRecurrenceUi?.();
         actions.updateCreatePreview?.();
-      });
+      };
+      if (el.planRecurrenceMonthEndSwitch) {
+        el.planRecurrenceMonthEndSwitch.addEventListener("click", (event) => {
+          const btn = event.target.closest("button[data-plan-month-end]");
+          if (!btn) {
+            return;
+          }
+          syncMonthEndMode((btn.dataset.planMonthEnd || "off") === "on");
+        });
+      }
     }
     if (el.planRecurrenceWeekdays && actions.togglePlanWeekday) {
       el.planRecurrenceWeekdays.addEventListener("click", (event) => {

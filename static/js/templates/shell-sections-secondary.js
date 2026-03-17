@@ -187,14 +187,6 @@
                   <input id="showDashboardDebtsToggle" type="checkbox" checked />
                   <span>Показывать карточки долгов на дашборде</span>
                 </label>
-                <label class="settings-switch-row">
-                  <input id="plansRemindersToggle" type="checkbox" checked />
-                  <span>Напоминать о планах в Telegram</span>
-                </label>
-                <label class="field">
-                  <span>Время напоминания</span>
-                  <input id="plansReminderTimeInput" type="time" value="09:00" />
-                </label>
                 <label class="field">
                   <span>Строк планов на дашборде</span>
                   <div class="settings-picker-field">
@@ -215,31 +207,15 @@
                 </div>
               </section>
               <section class="settings-block">
-                <h3>Аналитика</h3>
-                <div class="settings-grid-2">
-                  <label class="field">
-                    <span>Топ операций</span>
-                    <div class="settings-picker-field">
-                      <select id="analyticsTopOperationsLimitSelect">
-                        <option value="3">3</option>
-                        <option value="5">5</option>
-                        <option value="10">10</option>
-                      </select>
-                      <button id="analyticsTopOperationsLimitPickerBtn" class="btn btn-secondary settings-picker-btn hidden" type="button" aria-haspopup="dialog"></button>
-                    </div>
-                  </label>
-                  <label class="field">
-                    <span>Топ позиций</span>
-                    <div class="settings-picker-field">
-                      <select id="analyticsTopPositionsLimitSelect">
-                        <option value="5">5</option>
-                        <option value="10">10</option>
-                        <option value="20">20</option>
-                      </select>
-                      <button id="analyticsTopPositionsLimitPickerBtn" class="btn btn-secondary settings-picker-btn hidden" type="button" aria-haspopup="dialog"></button>
-                    </div>
-                  </label>
-                </div>
+                <h3>Напоминания</h3>
+                <label class="settings-switch-row">
+                  <input id="plansRemindersToggle" type="checkbox" checked />
+                  <span>Напоминать о планах в Telegram</span>
+                </label>
+                <label class="field">
+                  <span>Время напоминания</span>
+                  <input id="plansReminderTimeInput" type="time" value="09:00" />
+                </label>
               </section>
               <div class="settings-actions">
                 <button id="saveSettingsBtn" class="btn btn-primary" type="submit">Сохранить настройки</button>

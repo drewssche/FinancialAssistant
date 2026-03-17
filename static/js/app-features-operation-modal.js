@@ -266,7 +266,10 @@
       el.planRecurrenceWorkdaysOnly.checked = false;
     }
     if (el.planRecurrenceMonthEnd) {
-      el.planRecurrenceMonthEnd.checked = false;
+      el.planRecurrenceMonthEnd.value = "off";
+    }
+    if (el.planRecurrenceMonthEndSwitch) {
+      core.syncSegmentedActive(el.planRecurrenceMonthEndSwitch, "plan-month-end", "off");
     }
     if (el.planRecurrenceEndDate) {
       core.syncDateFieldValue(el.planRecurrenceEndDate, "");

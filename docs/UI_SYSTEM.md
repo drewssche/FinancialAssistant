@@ -127,9 +127,11 @@ Sidebar grouping baseline (when section groups are introduced):
 - reminder delivery is controlled by preferences toggle `plans.reminders_enabled`
 - reminder time is controlled by `plans.reminder_time` in the user's configured `ui.timezone`
 - plan cards may show a reminder chip (`Напоминание HH:MM` / `Напоминание скоро`) derived from the next queued reminder
+- reminder chip time must be rendered in the same effective user timezone as settings; browser-local drift is not acceptable
 - plan due progress should be time-based from the current cycle anchor to the due date, not a static status percentage
 - plan preview in the modal must update immediately when switching `Разовая / Повторяющаяся`; stale `Разовый` chips in recurring mode are not acceptable
 - recurring controls in the plan modal should span the full modal width on desktop instead of collapsing to the width of the segmented switch
+- non-confirm plan mutations must not reset the factual all-time balance baseline inside plans KPI; only `Подтвердить` changes fact
 
 ## Settings
 - Settings section includes timezone selector
@@ -140,6 +142,10 @@ Sidebar grouping baseline (when section groups are introduced):
 - currency symbol position (`prefix`/`suffix`)
 - toggle `Показывать карточки долгов на дашборде`
 - UI scale slider (user-specific)
+- Settings include a separate `Напоминания` block for plans:
+- toggle `Напоминать о планах в Telegram`
+- `Время напоминания`
+- obsolete analytics top-limit settings were removed from Settings because they no longer drive live analytics rendering
 - All money outputs and amount inputs reuse one currency formatting rule from preferences
 - Settings include red `Danger Zone` with `Удалить меня` action (full user data removal)
 - On mobile, settings choice fields should prefer sheet/modal pickers over native visible `select` dropdowns, because WebView/native popup positioning is inconsistent and often visually detached from the triggering control.

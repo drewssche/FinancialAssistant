@@ -35,16 +35,6 @@
       select: () => el.dashboardOperationsLimitSelect,
       button: () => el.dashboardOperationsLimitPickerBtn,
     },
-    analytics_top_operations_limit: {
-      title: "Топ операций",
-      select: () => el.analyticsTopOperationsLimitSelect,
-      button: () => el.analyticsTopOperationsLimitPickerBtn,
-    },
-    analytics_top_positions_limit: {
-      title: "Топ позиций",
-      select: () => el.analyticsTopPositionsLimitSelect,
-      button: () => el.analyticsTopPositionsLimitPickerBtn,
-    },
   };
 
   function normalizeStructureHidden(raw) {
@@ -194,12 +184,6 @@
     if (el.dashboardDebtsPanel) {
       el.dashboardDebtsPanel.classList.toggle("hidden", ui.show_dashboard_debts === false);
     }
-    if (el.analyticsTopOperationsLimitSelect) {
-      el.analyticsTopOperationsLimitSelect.value = String(state.analyticsTopOperationsLimit || 5);
-    }
-    if (el.analyticsTopPositionsLimitSelect) {
-      el.analyticsTopPositionsLimitSelect.value = String(state.analyticsTopPositionsLimit || 10);
-    }
     syncSettingsPickerButtons();
   }
 
@@ -270,12 +254,6 @@
     if ((state.analyticsGlobalPeriod === "year" || state.analyticsGlobalPeriod === "all_time") && state.analyticsGranularity === "day") {
       state.analyticsGranularity = "week";
     }
-    state.analyticsTopOperationsLimit = [3, 5, 10].includes(Number(prefs.data?.analytics?.top_operations_limit))
-      ? Number(prefs.data?.analytics?.top_operations_limit)
-      : 5;
-    state.analyticsTopPositionsLimit = [5, 10, 20].includes(Number(prefs.data?.analytics?.top_positions_limit))
-      ? Number(prefs.data?.analytics?.top_positions_limit)
-      : 10;
     state.dashboardAnalyticsPeriod = prefs.data?.dashboard?.analytics_period || "month";
     state.dashboardAnalyticsDateFrom = prefs.data?.dashboard?.analytics_date_from || "";
     state.dashboardAnalyticsDateTo = prefs.data?.dashboard?.analytics_date_to || "";
@@ -322,6 +300,9 @@
   }
 
   function buildPreferencesPayload() {
+    const analyticsPrefs = { ...(state.preferences?.data?.analytics || {}) };
+    delete analyticsPrefs.top_operations_limit;
+    delete analyticsPrefs.top_positions_limit;
     return {
       preferences_version: state.preferences?.preferences_version || 1,
       data: {
@@ -353,7 +334,7 @@
           sort_preset: state.debtSortPreset || "priority",
         },
         analytics: {
-          ...(state.preferences?.data?.analytics || {}),
+          ...analyticsPrefs,
           month_anchor: state.analyticsMonthAnchor || "",
           tab: state.analyticsTab || "calendar",
           calendar_view: state.analyticsCalendarView || "month",
@@ -364,8 +345,6 @@
           structure_hidden: normalizeStructureHidden(state.analyticsStructureHidden),
           category_kind: state.analyticsCategoryKind || "expense",
           granularity: state.analyticsGranularity || "day",
-          top_operations_limit: state.analyticsTopOperationsLimit || 5,
-          top_positions_limit: state.analyticsTopPositionsLimit || 10,
         },
         admin: {
           ...(state.preferences?.data?.admin || {}),

@@ -501,8 +501,8 @@ def test_plans_ui_creates_month_end_plan_and_confirms_to_history(static_server_u
     page.fill("#opNote", "Подписка")
     page.click('button[data-plan-schedule-mode="recurring"]')
     page.select_option("#planRecurrenceFrequency", "monthly")
-    if not page.is_checked("#planRecurrenceMonthEnd"):
-        page.check("#planRecurrenceMonthEnd")
+    if page.locator("#planRecurrenceMonthEnd").input_value() != "on":
+        page.click('button[data-plan-month-end="on"]')
     page.click("#submitCreateOperationBtn")
 
     page.wait_for_selector("#createModal", state="hidden")

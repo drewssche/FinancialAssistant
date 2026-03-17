@@ -210,6 +210,64 @@
     }
   }
 
+  function getUserReminderTimeZone() {
+    const preferred = String(state.preferences?.data?.ui?.timezone || "").trim();
+    if (preferred && preferred !== "auto") {
+      return preferred;
+    }
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    } catch {
+      return "UTC";
+    }
+  }
+
+  function isMonthEndModeEnabled() {
+    return String(el.planRecurrenceMonthEnd?.value || "off") === "on";
+  }
+
+  function getMonthEndIso(isoDate) {
+    const normalized = core.parseDateInputValue(isoDate || "") || core.getTodayIso();
+    const [year, month] = normalized.split("-").map((value) => Number(value || 0));
+    if (!year || !month) {
+      return core.getTodayIso();
+    }
+    const lastDay = new Date(year, month, 0).getDate();
+    return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  }
+
+  function syncMonthEndScheduleDateLock() {
+    const opDateInput = document.getElementById("opDate");
+    const opDateWrap = document.getElementById("opDateField");
+    const opDateTrigger = opDateWrap?.querySelector(".date-input-trigger");
+    const shouldLock = (el.planScheduleMode?.value || "oneoff") === "recurring"
+      && (el.planRecurrenceFrequency?.value || "monthly") === "monthly"
+      && isMonthEndModeEnabled();
+    if (!opDateInput) {
+      return;
+    }
+    if (shouldLock) {
+      core.syncDateFieldValue(opDateInput, getMonthEndIso(opDateInput.value || core.getTodayIso()));
+    }
+    opDateInput.disabled = shouldLock;
+    if (opDateTrigger) {
+      opDateTrigger.disabled = shouldLock;
+      opDateTrigger.setAttribute("aria-disabled", shouldLock ? "true" : "false");
+    }
+    opDateWrap?.classList.toggle("is-disabled", shouldLock);
+  }
+
+  function setMonthEndMode(enabled) {
+    const next = enabled ? "on" : "off";
+    if (el.planRecurrenceMonthEnd) {
+      el.planRecurrenceMonthEnd.value = next;
+    }
+    if (el.planRecurrenceMonthEndSwitch) {
+      core.syncSegmentedActive(el.planRecurrenceMonthEndSwitch, "plan-month-end", next);
+    }
+    syncMonthEndScheduleDateLock();
+  }
+
   function statusLabel(status) {
     if (status === "overdue") {
       return "Просрочен";
@@ -241,6 +299,7 @@
       return `Напоминание ${new Intl.DateTimeFormat("ru-RU", {
         hour: "2-digit",
         minute: "2-digit",
+        timeZone: getUserReminderTimeZone(),
       }).format(reminderAt)}`;
     } catch {
       return "";
@@ -279,12 +338,13 @@
     if (!weekly) {
       setSelectedPlanWeekdays([]);
     }
-    if (monthly && el.planRecurrenceMonthEnd && state.editPlanId == null && isDateAtMonthEnd(document.getElementById("opDate")?.value || "")) {
-      el.planRecurrenceMonthEnd.checked = true;
+    if (monthly && el.planRecurrenceMonthEnd && state.editPlanId == null && !isMonthEndModeEnabled() && isDateAtMonthEnd(document.getElementById("opDate")?.value || "")) {
+      setMonthEndMode(true);
     }
     if (!monthly && el.planRecurrenceMonthEnd) {
-      el.planRecurrenceMonthEnd.checked = false;
+      setMonthEndMode(false);
     }
+    syncMonthEndScheduleDateLock();
   }
 
   function getPlanAnchorWeekday() {
@@ -566,9 +626,7 @@
     if (el.planRecurrenceWorkdaysOnly) {
       el.planRecurrenceWorkdaysOnly.checked = Boolean(plan?.recurrence_workdays_only);
     }
-    if (el.planRecurrenceMonthEnd) {
-      el.planRecurrenceMonthEnd.checked = Boolean(plan?.recurrence_month_end);
-    }
+    setMonthEndMode(Boolean(plan?.recurrence_month_end));
     setSelectedPlanWeekdays(plan?.recurrence_weekdays || []);
     if (el.planRecurrenceEndDate) {
       core.syncDateFieldValue(el.planRecurrenceEndDate, plan?.recurrence_end_date || "");
@@ -603,14 +661,16 @@
       recurrence_interval: recurrenceEnabled ? Math.max(1, Number(el.planRecurrenceInterval?.value || 1)) : 1,
       recurrence_weekdays: recurrenceEnabled && (el.planRecurrenceFrequency?.value || "monthly") === "weekly" ? getSelectedPlanWeekdays() : [],
       recurrence_workdays_only: recurrenceEnabled && (el.planRecurrenceFrequency?.value || "monthly") === "daily" ? Boolean(el.planRecurrenceWorkdaysOnly?.checked) : false,
-      recurrence_month_end: recurrenceEnabled && (el.planRecurrenceFrequency?.value || "monthly") === "monthly" ? Boolean(el.planRecurrenceMonthEnd?.checked) : false,
+      recurrence_month_end: recurrenceEnabled && (el.planRecurrenceFrequency?.value || "monthly") === "monthly" ? isMonthEndModeEnabled() : false,
       recurrence_end_date: recurrenceEnabled ? (recurrenceEndDate || null) : null,
     };
   }
 
   async function refreshAfterPlanMutation({ confirmed = false } = {}) {
     core.invalidateUiRequestCache?.("plans");
-    state.plansAllTimeBalance = null;
+    if (confirmed) {
+      state.plansAllTimeBalance = null;
+    }
     await loadPlans({ force: true });
     if (!confirmed) {
       return;
