@@ -80,6 +80,12 @@
 - plans search should live in the controls row below KPI, with sensible compact width instead of sticking directly to the KPI card
 - plans cards should visually track regular operations rows/cards even closer, while keeping plan-specific chips and due progress
 - dashboard debt cards should use `1/3 identity + 2/3 working block`, and dashboard cards should also expose `История` alongside `Погашение`
+- updated 2026-03-16 final KPI clarification:
+- plans KPI should show `current balance` first, with signed plan delta right next to it (`+/-`) and projected result only on the second line
+- plans controls row should try to remain a single desktop row; search width should shrink before segmented groups are allowed to wrap
+- updated 2026-03-16 desktop card follow-up:
+- plans desktop cards should use a denser multi-zone layout instead of a tall mobile-like column stack
+- action buttons must stay visible on the right, while fields/meta and due/progress use the horizontal space more evenly
 
 2. Scroll and overflow hardening
 - Status: done (updated 2026-03-08)

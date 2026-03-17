@@ -19,8 +19,11 @@
                     <span id="plansOverdueChip" class="analytics-kpi-chip analytics-kpi-chip-negative">Просрочено: 0</span>
                   </div>
                 </div>
-                <div id="plansFinancialValue" class="plans-financial-kpi-value">0,00 руб.</div>
-                <div id="plansFinancialMeta" class="subtitle plans-financial-kpi-meta">Планов пока нет</div>
+                <div class="plans-financial-kpi-line">
+                  <div id="plansFinancialValue" class="plans-financial-kpi-value">0,00 руб.</div>
+                  <div id="plansFinancialDelta" class="plans-financial-kpi-delta">+0,00 руб.</div>
+                </div>
+                <div id="plansFinancialMeta" class="subtitle plans-financial-kpi-meta">После планов: 0,00 руб.</div>
               </article>
             </div>
             <div class="table-search-row plans-controls-row">

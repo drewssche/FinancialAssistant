@@ -281,25 +281,68 @@
   font-variant-numeric: tabular-nums lining-nums;
 }
 
+.plans-financial-kpi-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.plans-financial-kpi-delta {
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1;
+  font-family: var(--money-font-family);
+  font-variant-numeric: tabular-nums lining-nums;
+  padding-top: 3px;
+}
+
+.plans-financial-kpi-delta-positive {
+  color: #9be9cf;
+}
+
+.plans-financial-kpi-delta-negative {
+  color: #ffb7c1;
+}
+
+.plans-financial-kpi-delta-neutral {
+  color: #cfdcf4;
+}
+
 .plans-financial-kpi-meta {
   margin-top: 0;
+  font-size: 15px;
 }
 
 .plans-controls-row {
-  margin-top: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .plans-toolbar {
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   gap: var(--space-2);
-  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .plans-search-input {
-  width: min(22rem, 100%);
-  min-width: 14rem;
-  flex: 0 1 22rem;
+  width: auto;
+  flex: 1 1 16rem;
+  min-width: 11rem;
+  max-width: 28rem;
+  min-width: 0;
+}
+
+.plans-toolbar .segmented {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+@media (max-width: 1500px) {
+  .plans-toolbar {
+    gap: calc(var(--space-1) + 2px);
+  }
 }
 
 .dashboard-plans-kpi {
@@ -312,39 +355,43 @@
 
 .plan-card {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-2);
   border: 1px solid rgba(55, 73, 104, 0.68);
   background: linear-gradient(180deg, rgba(20, 31, 49, 0.94) 0%, rgba(14, 23, 37, 0.94) 100%);
+  padding: var(--space-3);
 }
 
 .plan-card-top {
   display: flex;
-  align-items: start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
 }
 
 .plan-card-body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1.5fr) minmax(14rem, 0.85fr) auto;
   gap: var(--space-3);
-  align-items: start;
+  align-items: stretch;
 }
 
 .plan-card-main {
   display: grid;
-  gap: var(--space-2);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+  gap: var(--space-2) var(--space-4);
   min-width: 0;
+  align-items: start;
 }
 
 .plan-card-fields {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-2) var(--space-3);
+  align-content: start;
 }
 
 .plan-card-field-wide {
-  grid-column: 1 / -1;
+  grid-column: span 1;
 }
 
 .plan-card-field {
@@ -378,6 +425,11 @@
 .plan-card-progress {
   display: grid;
   gap: 6px;
+  align-self: stretch;
+  padding-left: var(--space-3);
+  border-left: 1px solid rgba(73, 92, 126, 0.4);
+  min-width: 0;
+  align-content: center;
 }
 
 .plan-card-progress-track {
@@ -412,12 +464,11 @@
 .plan-card-actions {
   display: flex;
   flex-direction: column;
-  flex-wrap: wrap;
   justify-content: flex-start;
   gap: var(--space-2);
-  margin-top: var(--space-1);
-  align-self: start;
-  min-width: 11rem;
+  align-self: stretch;
+  min-width: 12rem;
+  max-width: 13rem;
 }
 
 .plan-card .row-actions.plan-card-actions {
@@ -427,7 +478,8 @@
 }
 
 .plan-card-actions .btn {
-  min-width: 11rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .plan-card-overdue {
@@ -444,4 +496,40 @@
 
 .plan-card .kind-pill {
   justify-self: start;
+}
+
+@media (max-width: 1380px) {
+  .plans-toolbar {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .plans-search-input {
+    max-width: none;
+  }
+
+  .plan-card-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .plan-card-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .plan-card-progress {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .plan-card-actions {
+    max-width: none;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .plan-card-actions .btn {
+    width: auto;
+    min-width: 11rem;
+    flex: 1 1 11rem;
+  }
 }

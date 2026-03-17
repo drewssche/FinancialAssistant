@@ -133,6 +133,7 @@
       plansDueChip: document.getElementById("plansDueChip"),
       plansOverdueChip: document.getElementById("plansOverdueChip"),
       plansFinancialValue: document.getElementById("plansFinancialValue"),
+      plansFinancialDelta: document.getElementById("plansFinancialDelta"),
       plansFinancialMeta: document.getElementById("plansFinancialMeta"),
       plansSearchQ: document.getElementById("plansSearchQ"),
       plansTabTabs: document.getElementById("plansTabTabs"),

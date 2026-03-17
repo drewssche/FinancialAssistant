@@ -78,19 +78,30 @@ Sidebar grouping baseline (when section groups are introduced):
 - KPI layer should be compact and finance-first, not split into five separate operational cards
 - primary KPI surface should show `Баланс с учетом планов`, not just isolated planned totals
 - the displayed value should be computed as current all-time balance plus/minus the sum of pending plan operations
-- supporting meta line should explicitly show current balance and planned shift
+- preferred reading order:
+- first show current balance as the main anchor value
+- immediately next to it show signed plan delta (`-64` / `+64`) with expense/income color semantics
+- only below that show the projected post-plan result (`После планов: ...`)
+- current balance must remain the dominant number; the signed delta is a compact adjacent modifier, not a replacement for the base figure
 - `К подтверждению` and `Просрочено` should not consume standalone large cards by default; prefer compact status chips/counters near the main KPI surface
 - the old explanatory subtitle about plans not affecting fact before confirmation is redundant and should stay removed both in the section and in the dashboard plans block
 - status-scope filter: `Все сроки / Просрочено / Сегодня / Впереди`
 - initial dashboard strategy: replace the current recent operations block with `Ближайшие планы`
 - dashboard plans block should show pending/planned workload, not factual accounting data
 - plans controls should keep a separate row under KPI; search belongs in the controls row, not glued directly to the KPI card
-- plans search field may stay narrower than full-width if that keeps all controls readable on desktop
+- on desktop/compact-desktop the plans controls should prefer one row:
+- search field is the first element that shrinks
+- segmented groups should stay inline while there is still reasonable desktop width
+- wrap to multiple rows only after search width has already adapted down to its compact minimum
 - plan list rows/cards should reuse the same information rhythm as regular `Операции` rows where practical:
 - core fields/meta should be rendered like an operation item
 - contextual plan chips should explain plan state/recurrence
 - due/progress indicator by term should be visible
 - the main difference from `Операции` rows should be the action set (`Подтвердить`, `Редактировать`, optional `Пропустить`, `Удалить`)
+- on desktop, plan cards should not keep the tall mobile-style column stack; use a denser horizontal distribution with:
+- left: main fields/meta
+- center/right: due/progress block
+- right edge: visible action column
 - backend storage baseline:
 - `plan_operations`
 - `plan_receipt_items`

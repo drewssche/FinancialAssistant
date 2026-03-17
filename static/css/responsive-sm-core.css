@@ -281,6 +281,10 @@
     font-size: 30px;
   }
 
+  .plans-financial-kpi-delta {
+    font-size: 22px;
+  }
+
   .plans-toolbar {
     display: grid;
     grid-template-columns: 1fr;

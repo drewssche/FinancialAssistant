@@ -305,18 +305,17 @@
               <div class="plan-card-field"><span class="muted-small">Дата</span><strong>${dateLabel}</strong></div>
               <div class="plan-card-field"><span class="muted-small">Тип</span><span class="kind-pill kind-pill-${kindClass}">${kindLabel}</span></div>
               <div class="plan-card-field plan-card-field-wide"><span class="muted-small">Категория</span>${categoryChip}</div>
-              <div class="plan-card-field"><span class="muted-small">Сумма</span><strong class="plan-card-amount amount-${kindClass}">${core.formatMoney(item.amount || 0)}</strong></div>
             </div>
             <div class="plan-card-meta">
               ${item.note ? `<strong>${core.highlightText(item.note, "")}</strong>` : ""}
               ${item.receipt_items?.length ? `<span class="muted-small">Позиций: ${item.receipt_items.length}</span>` : ""}
             </div>
-            <div class="plan-card-progress">
-              <div class="plan-card-progress-track">
-                <span class="plan-card-progress-bar plan-card-progress-bar-${progress.tone}" style="width:${progress.percent}%"></span>
-              </div>
-              <span class="muted-small">${progress.label}</span>
+          </div>
+          <div class="plan-card-progress">
+            <div class="plan-card-progress-track">
+              <span class="plan-card-progress-bar plan-card-progress-bar-${progress.tone}" style="width:${progress.percent}%"></span>
             </div>
+            <span class="muted-small">${progress.label}</span>
           </div>
           <div class="actions row-actions plan-card-actions">
             ${item.status !== "confirmed" && item.status !== "skipped" ? `<button class="btn btn-primary" type="button" data-plan-action="confirm" data-plan-id="${item.id}">Подтвердить</button>` : ""}
@@ -392,11 +391,19 @@
       el.plansOverdueChip.textContent = `Просрочено: ${summary.overdueCount}`;
     }
     if (el.plansFinancialValue) {
-      el.plansFinancialValue.textContent = `${projectedBalance < 0 ? "-" : ""}${core.formatMoney(Math.abs(projectedBalance))}`;
+      el.plansFinancialValue.textContent = `${baseBalance < 0 ? "-" : ""}${core.formatMoney(Math.abs(baseBalance))}`;
+    }
+    if (el.plansFinancialDelta) {
+      const netDelta = Number(summary.netPlanned || 0);
+      const positive = netDelta > 0.000001;
+      const negative = netDelta < -0.000001;
+      el.plansFinancialDelta.textContent = `${negative ? "-" : positive ? "+" : ""}${core.formatMoney(Math.abs(netDelta))}`;
+      el.plansFinancialDelta.classList.toggle("plans-financial-kpi-delta-positive", positive);
+      el.plansFinancialDelta.classList.toggle("plans-financial-kpi-delta-negative", negative);
+      el.plansFinancialDelta.classList.toggle("plans-financial-kpi-delta-neutral", !positive && !negative);
     }
     if (el.plansFinancialMeta) {
-      const shiftPrefix = Number(summary.netPlanned || 0) < 0 ? "-" : "+";
-      el.plansFinancialMeta.textContent = `Текущий баланс: ${core.formatMoney(baseBalance)} | Плановый сдвиг: ${shiftPrefix}${core.formatMoney(Math.abs(Number(summary.netPlanned || 0)))}`;
+      el.plansFinancialMeta.textContent = `После планов: ${projectedBalance < 0 ? "-" : ""}${core.formatMoney(Math.abs(projectedBalance))}`;
     }
     if (!el.plansList) {
       return;
