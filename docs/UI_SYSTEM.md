@@ -109,6 +109,7 @@ Sidebar grouping baseline (when section groups are introduced):
 - contextual recurrence options should use the same segmented `Выкл / Вкл` contract instead of mixing checkboxes with segmented controls
 - when `В последний день месяца` is enabled, the main plan date field should become rule-driven and disabled/read-only to avoid conflicting manual input
 - desktop recurrence controls should stretch evenly across the available modal width instead of collapsing into narrow intrinsic-width inputs
+- frequency, interval, and recurrence end date should have explicit field labels in the modal; placeholder-only recurrence controls are not acceptable
 - on desktop, plan cards should not keep the tall mobile-style column stack; use a denser horizontal distribution with:
 - left: operation-like fields/meta row
 - center/right: due/progress block integrated into the same horizontal rhythm, without large dead vertical space

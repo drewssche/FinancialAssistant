@@ -294,16 +294,28 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
-  align-items: center;
+  align-items: start;
   width: 100%;
   justify-items: stretch;
+}
+
+.plan-recurrence-field {
+  min-width: 0;
+  width: 100%;
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+}
+
+.plan-recurrence-field .muted-small {
+  margin: 0;
 }
 
 .plan-recurrence-options {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
-  align-items: center;
+  align-items: start;
   width: 100%;
   justify-items: stretch;
 }
@@ -315,10 +327,20 @@
   display: grid;
   gap: var(--space-2);
   align-content: start;
+  padding: 0;
+}
+
+.plan-recurrence-options .muted-small {
+  margin: 0;
 }
 
 .plan-recurrence-options .segmented {
   margin-top: var(--space-1);
+  width: 100%;
+}
+
+.plan-recurrence-options .segmented .segmented-btn {
+  flex: 1 1 0;
 }
 
 .plan-recurrence-grid > *,
@@ -326,6 +348,10 @@
   width: 100%;
   min-width: 0;
   justify-self: stretch;
+}
+
+.plan-recurrence-field .date-input-wrap {
+  width: 100%;
 }
 
 .plan-recurrence-grid > .input,

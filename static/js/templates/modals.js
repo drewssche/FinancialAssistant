@@ -65,17 +65,26 @@
             <input id="planScheduleMode" type="hidden" value="oneoff" />
             <div id="planRecurrenceFields" class="category-modal-form hidden">
               <div class="plan-recurrence-grid">
-                <select id="planRecurrenceFrequency" class="input">
-                  <option value="monthly">Ежемесячно</option>
-                  <option value="weekly">Еженедельно</option>
-                  <option value="daily">Ежедневно</option>
-                  <option value="yearly">Ежегодно</option>
-                </select>
-                <input id="planRecurrenceInterval" class="input" type="number" min="1" max="365" value="1" placeholder="Шаг повторения" />
-                <div class="date-input-wrap">
-                  <input id="planRecurrenceEndDate" class="input" type="date" aria-label="Дата окончания повторения" />
-                  <button class="date-input-trigger" type="button" data-date-picker-trigger="planRecurrenceEndDate" aria-label="Открыть календарь"></button>
-                </div>
+                <label class="plan-recurrence-field">
+                  <span class="muted-small">Частота</span>
+                  <select id="planRecurrenceFrequency" class="input">
+                    <option value="monthly">Ежемесячно</option>
+                    <option value="weekly">Еженедельно</option>
+                    <option value="daily">Ежедневно</option>
+                    <option value="yearly">Ежегодно</option>
+                  </select>
+                </label>
+                <label class="plan-recurrence-field">
+                  <span class="muted-small">Шаг</span>
+                  <input id="planRecurrenceInterval" class="input" type="number" min="1" max="365" value="1" placeholder="Шаг повторения" />
+                </label>
+                <label class="plan-recurrence-field">
+                  <span class="muted-small">Дата окончания</span>
+                  <div class="date-input-wrap">
+                    <input id="planRecurrenceEndDate" class="input" type="date" aria-label="Дата окончания повторения" />
+                    <button class="date-input-trigger" type="button" data-date-picker-trigger="planRecurrenceEndDate" aria-label="Открыть календарь"></button>
+                  </div>
+                </label>
               </div>
               <div class="plan-recurrence-options">
                 <div id="planRecurrenceWorkdaysWrap" class="hidden">
