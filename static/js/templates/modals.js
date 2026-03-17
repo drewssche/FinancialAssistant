@@ -78,10 +78,14 @@
                 </div>
               </div>
               <div class="plan-recurrence-options">
-                <label id="planRecurrenceWorkdaysWrap" class="row gap-sm middle hidden">
-                  <input id="planRecurrenceWorkdaysOnly" type="checkbox" />
-                  <span>Только по будням</span>
-                </label>
+                <div id="planRecurrenceWorkdaysWrap" class="hidden">
+                  <div class="muted-small">Только по будням</div>
+                  <div class="segmented" id="planRecurrenceWorkdaysSwitch" aria-label="Только по будням">
+                    <button class="segmented-btn active" data-plan-workdays-only="off" type="button">Выкл</button>
+                    <button class="segmented-btn" data-plan-workdays-only="on" type="button">Вкл</button>
+                  </div>
+                  <input id="planRecurrenceWorkdaysOnly" type="hidden" value="off" />
+                </div>
                 <div id="planRecurrenceMonthEndWrap" class="hidden">
                   <div class="muted-small">В последний день месяца</div>
                   <div class="segmented" id="planRecurrenceMonthEndSwitch" aria-label="В последний день месяца">

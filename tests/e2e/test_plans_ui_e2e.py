@@ -539,7 +539,7 @@ def test_plans_ui_creates_daily_workdays_plan(static_server_url: str, page_with_
     page.fill("#opNote", "Кофе в офисе")
     page.click('button[data-plan-schedule-mode="recurring"]')
     page.select_option("#planRecurrenceFrequency", "daily")
-    page.check("#planRecurrenceWorkdaysOnly")
+    page.click('button[data-plan-workdays-only="on"]')
     page.click("#submitCreateOperationBtn")
 
     page.wait_for_selector("#createModal", state="hidden")

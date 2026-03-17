@@ -553,8 +553,14 @@
         actions.updateCreatePreview?.();
       });
     }
-    if (el.planRecurrenceWorkdaysOnly) {
-      el.planRecurrenceWorkdaysOnly.addEventListener("change", () => {
+    if (el.planRecurrenceWorkdaysOnly && el.planRecurrenceWorkdaysSwitch) {
+      el.planRecurrenceWorkdaysSwitch.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-plan-workdays-only]");
+        if (!btn) {
+          return;
+        }
+        el.planRecurrenceWorkdaysOnly.value = (btn.dataset.planWorkdaysOnly || "off") === "on" ? "on" : "off";
+        core.syncSegmentedActive(el.planRecurrenceWorkdaysSwitch, "plan-workdays-only", el.planRecurrenceWorkdaysOnly.value);
         actions.updateCreatePreview?.();
       });
     }

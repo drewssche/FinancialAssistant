@@ -263,7 +263,10 @@
       el.planRecurrenceInterval.value = "1";
     }
     if (el.planRecurrenceWorkdaysOnly) {
-      el.planRecurrenceWorkdaysOnly.checked = false;
+      el.planRecurrenceWorkdaysOnly.value = "off";
+    }
+    if (el.planRecurrenceWorkdaysSwitch) {
+      core.syncSegmentedActive(el.planRecurrenceWorkdaysSwitch, "plan-workdays-only", "off");
     }
     if (el.planRecurrenceMonthEnd) {
       el.planRecurrenceMonthEnd.value = "off";

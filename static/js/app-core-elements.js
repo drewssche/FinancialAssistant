@@ -273,6 +273,7 @@
       planRecurrenceFrequency: document.getElementById("planRecurrenceFrequency"),
       planRecurrenceInterval: document.getElementById("planRecurrenceInterval"),
       planRecurrenceWorkdaysWrap: document.getElementById("planRecurrenceWorkdaysWrap"),
+      planRecurrenceWorkdaysSwitch: document.getElementById("planRecurrenceWorkdaysSwitch"),
       planRecurrenceWorkdaysOnly: document.getElementById("planRecurrenceWorkdaysOnly"),
       planRecurrenceWeeklyBlock: document.getElementById("planRecurrenceWeeklyBlock"),
       planRecurrenceWeekdays: document.getElementById("planRecurrenceWeekdays"),

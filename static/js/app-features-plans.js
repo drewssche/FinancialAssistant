@@ -212,14 +212,22 @@
 
   function getUserReminderTimeZone() {
     const preferred = String(state.preferences?.data?.ui?.timezone || "").trim();
+    const browserTimeZone = String(state.preferences?.data?.ui?.browser_timezone || "").trim();
     if (preferred && preferred !== "auto") {
       return preferred;
+    }
+    if (browserTimeZone) {
+      return browserTimeZone;
     }
     try {
       return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
     } catch {
       return "UTC";
     }
+  }
+
+  function isWorkdaysOnlyEnabled() {
+    return String(el.planRecurrenceWorkdaysOnly?.value || "off") === "on";
   }
 
   function isMonthEndModeEnabled() {
@@ -266,6 +274,16 @@
       core.syncSegmentedActive(el.planRecurrenceMonthEndSwitch, "plan-month-end", next);
     }
     syncMonthEndScheduleDateLock();
+  }
+
+  function setWorkdaysOnlyMode(enabled) {
+    const next = enabled ? "on" : "off";
+    if (el.planRecurrenceWorkdaysOnly) {
+      el.planRecurrenceWorkdaysOnly.value = next;
+    }
+    if (el.planRecurrenceWorkdaysSwitch) {
+      core.syncSegmentedActive(el.planRecurrenceWorkdaysSwitch, "plan-workdays-only", next);
+    }
   }
 
   function statusLabel(status) {
@@ -330,16 +348,13 @@
     el.planRecurrenceWeeklyBlock?.classList.toggle("hidden", !weekly);
     el.planRecurrenceMonthEndWrap?.classList.toggle("hidden", !monthly);
     if (!daily && el.planRecurrenceWorkdaysOnly) {
-      el.planRecurrenceWorkdaysOnly.checked = false;
+      setWorkdaysOnlyMode(false);
     }
     if (weekly && !getSelectedPlanWeekdays().length) {
       setSelectedPlanWeekdays([getPlanAnchorWeekday()]);
     }
     if (!weekly) {
       setSelectedPlanWeekdays([]);
-    }
-    if (monthly && el.planRecurrenceMonthEnd && state.editPlanId == null && !isMonthEndModeEnabled() && isDateAtMonthEnd(document.getElementById("opDate")?.value || "")) {
-      setMonthEndMode(true);
     }
     if (!monthly && el.planRecurrenceMonthEnd) {
       setMonthEndMode(false);
@@ -623,9 +638,7 @@
     if (el.planRecurrenceInterval) {
       el.planRecurrenceInterval.value = String(plan?.recurrence_interval || 1);
     }
-    if (el.planRecurrenceWorkdaysOnly) {
-      el.planRecurrenceWorkdaysOnly.checked = Boolean(plan?.recurrence_workdays_only);
-    }
+    setWorkdaysOnlyMode(Boolean(plan?.recurrence_workdays_only));
     setMonthEndMode(Boolean(plan?.recurrence_month_end));
     setSelectedPlanWeekdays(plan?.recurrence_weekdays || []);
     if (el.planRecurrenceEndDate) {
@@ -660,7 +673,7 @@
       recurrence_frequency: recurrenceEnabled ? (el.planRecurrenceFrequency?.value || "monthly") : null,
       recurrence_interval: recurrenceEnabled ? Math.max(1, Number(el.planRecurrenceInterval?.value || 1)) : 1,
       recurrence_weekdays: recurrenceEnabled && (el.planRecurrenceFrequency?.value || "monthly") === "weekly" ? getSelectedPlanWeekdays() : [],
-      recurrence_workdays_only: recurrenceEnabled && (el.planRecurrenceFrequency?.value || "monthly") === "daily" ? Boolean(el.planRecurrenceWorkdaysOnly?.checked) : false,
+      recurrence_workdays_only: recurrenceEnabled && (el.planRecurrenceFrequency?.value || "monthly") === "daily" ? isWorkdaysOnlyEnabled() : false,
       recurrence_month_end: recurrenceEnabled && (el.planRecurrenceFrequency?.value || "monthly") === "monthly" ? isMonthEndModeEnabled() : false,
       recurrence_end_date: recurrenceEnabled ? (recurrenceEndDate || null) : null,
     };

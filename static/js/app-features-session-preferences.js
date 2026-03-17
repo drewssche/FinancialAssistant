@@ -4,6 +4,7 @@
   let preferencesSaveDebounceId = null;
   const DEFAULT_UI_PREFS = {
     timezone: "auto",
+    browser_timezone: "",
     currency: "BYN",
     currency_position: "suffix",
     show_dashboard_analytics: true,
@@ -362,6 +363,13 @@
           ...DEFAULT_UI_PREFS,
           active_section: state.activeSection,
           timezone: el.timezoneSelect ? el.timezoneSelect.value : getMergedUiPrefs().timezone,
+          browser_timezone: (() => {
+            try {
+              return Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+            } catch {
+              return "";
+            }
+          })(),
           currency: el.currencySelect ? el.currencySelect.value : getMergedUiPrefs().currency,
           currency_position: el.currencyPositionSelect ? el.currencyPositionSelect.value : getMergedUiPrefs().currency_position,
           show_dashboard_analytics: el.showDashboardAnalyticsToggle ? el.showDashboardAnalyticsToggle.checked : getMergedUiPrefs().show_dashboard_analytics,

@@ -107,6 +107,8 @@
 - reminder chip time is now formatted in the effective user timezone instead of raw browser-local time
 - plans KPI keeps factual all-time balance after create/edit/skip/delete; only confirm invalidates the factual base balance
 - recurring plan controls should use the full modal width on desktop and must not visually collapse under the schedule-mode switch
+- recurring contextual options (`По будням`, `В последний день месяца`) should use segmented `Выкл / Вкл` switches rather than standalone checkboxes
+- when `ui.timezone = auto`, reminder queue scheduling must follow saved browser timezone instead of UTC fallback
 
 2. Scroll and overflow hardening
 - Status: done (updated 2026-03-08)

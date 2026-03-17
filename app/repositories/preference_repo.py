@@ -29,6 +29,7 @@ class PreferenceRepository:
                 },
                 "ui": {
                     "timezone": "auto",
+                    "browser_timezone": "",
                     "currency": "BYN",
                     "currency_position": "suffix",
                     "show_dashboard_analytics": True,

@@ -157,7 +157,8 @@ class PlanReminderService:
         ui_prefs = prefs.get("ui") if isinstance(prefs.get("ui"), dict) else {}
         enabled = plans_prefs.get("reminders_enabled", True) is not False
         timezone_name = ui_prefs.get("timezone", "auto")
-        user_tz = self._resolve_timezone(timezone_name)
+        browser_timezone = ui_prefs.get("browser_timezone")
+        user_tz = self._resolve_timezone(timezone_name, browser_timezone)
         reminder_time = self._parse_reminder_time(plans_prefs.get("reminder_time"))
         return {
             "user_id": user_id,
@@ -186,9 +187,15 @@ class PlanReminderService:
         return target_local.astimezone(timezone.utc)
 
     @staticmethod
-    def _resolve_timezone(timezone_name: str | None):
+    def _resolve_timezone(timezone_name: str | None, browser_timezone: str | None = None):
         normalized = str(timezone_name or "auto").strip()
         if not normalized or normalized == "auto":
+            browser_normalized = str(browser_timezone or "").strip()
+            if browser_normalized:
+                try:
+                    return ZoneInfo(browser_normalized)
+                except Exception:
+                    return timezone.utc
             return timezone.utc
         try:
             return ZoneInfo(normalized)

@@ -421,7 +421,11 @@
 
   function getPreferenceTimeZone(state) {
     const saved = state.preferences?.data?.ui?.timezone;
+    const browserTimeZone = state.preferences?.data?.ui?.browser_timezone;
     if (!saved || saved === "auto") {
+      if (browserTimeZone) {
+        return browserTimeZone;
+      }
       return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
     }
     return saved;

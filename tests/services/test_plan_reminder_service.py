@@ -65,6 +65,49 @@ def test_sync_plan_job_creates_pending_job_for_active_plan():
         Base.metadata.drop_all(bind=engine)
 
 
+def test_sync_plan_job_uses_browser_timezone_when_ui_timezone_is_auto():
+    engine, SessionLocal = _make_session()
+    db = SessionLocal()
+    try:
+        db.add(User(id=1, display_name="Tester", status="active"))
+        db.add(
+            UserPreference(
+                user_id=1,
+                preferences_version=1,
+                data={
+                    "plans": {"reminders_enabled": True, "reminder_time": "09:00"},
+                    "ui": {"timezone": "auto", "browser_timezone": "Europe/Moscow"},
+                },
+            )
+        )
+        db.add(
+            PlanOperation(
+                id=1,
+                user_id=1,
+                kind="expense",
+                amount="10.00",
+                scheduled_date=date(2030, 3, 20),
+                note="Будущий план",
+                status="active",
+                recurrence_enabled=False,
+            )
+        )
+        db.commit()
+
+        plan = db.get(PlanOperation, 1)
+        service = PlanReminderService(db)
+        service.sync_plan_job(plan)
+        db.commit()
+
+        job = db.query(PlanReminderJob).one()
+        scheduled_for = job.scheduled_for.replace(tzinfo=timezone.utc) if job.scheduled_for.tzinfo is None else job.scheduled_for.astimezone(timezone.utc)
+        assert scheduled_for.hour == 6
+        assert scheduled_for.minute == 0
+    finally:
+        db.close()
+        Base.metadata.drop_all(bind=engine)
+
+
 def test_list_due_jobs_reads_queue_instead_of_scanning_all_plans():
     engine, SessionLocal = _make_session()
     db = SessionLocal()

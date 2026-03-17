@@ -106,6 +106,8 @@ Sidebar grouping baseline (when section groups are introduced):
 - plan create/edit preview should not reuse the old table-row preview when `createFlowMode === plan`; it should render the actual plan-card contract used in the `Планы` section
 - preview should stay non-interactive: do not render action buttons inside preview cards
 - recurrence controls should use a desktop main row for frequency/interval/end-date, with a separate option row for contextual toggles like `Только по будням` and `В последний день месяца`
+- contextual recurrence options should use the same segmented `Выкл / Вкл` contract instead of mixing checkboxes with segmented controls
+- when `В последний день месяца` is enabled, the main plan date field should become rule-driven and disabled/read-only to avoid conflicting manual input
 - desktop recurrence controls should stretch evenly across the available modal width instead of collapsing into narrow intrinsic-width inputs
 - on desktop, plan cards should not keep the tall mobile-style column stack; use a denser horizontal distribution with:
 - left: operation-like fields/meta row
@@ -126,6 +128,7 @@ Sidebar grouping baseline (when section groups are introduced):
 - reminder jobs are (re)scheduled when a plan is created, edited, confirmed, skipped, deleted, or when reminder settings change
 - reminder delivery is controlled by preferences toggle `plans.reminders_enabled`
 - reminder time is controlled by `plans.reminder_time` in the user's configured `ui.timezone`
+- when `ui.timezone` stays on `auto`, reminder scheduling must use the saved browser timezone snapshot (`ui.browser_timezone`) instead of falling back to UTC
 - plan cards may show a reminder chip (`Напоминание HH:MM` / `Напоминание скоро`) derived from the next queued reminder
 - reminder chip time must be rendered in the same effective user timezone as settings; browser-local drift is not acceptable
 - plan due progress should be time-based from the current cycle anchor to the due date, not a static status percentage
