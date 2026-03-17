@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import and_, delete, desc, or_, select
@@ -10,6 +10,7 @@ from app.db.models import (
     CategoryGroup,
     PlanOperation,
     PlanOperationEvent,
+    PlanReminderJob,
     PlanReceiptItem,
     UserPreference,
 )
@@ -143,6 +144,36 @@ class PlanRepository:
             grouped.setdefault(int(row.plan_id), []).append(row)
         return grouped
 
+    def list_next_pending_jobs_for_plans(self, *, user_id: int, plan_ids: list[int]) -> dict[int, PlanReminderJob]:
+        if not plan_ids:
+            return {}
+        stmt = (
+            select(PlanReminderJob)
+            .where(
+                PlanReminderJob.user_id == user_id,
+                PlanReminderJob.plan_id.in_(plan_ids),
+                PlanReminderJob.status == "pending",
+            )
+            .order_by(PlanReminderJob.plan_id.asc(), PlanReminderJob.scheduled_for.asc(), PlanReminderJob.id.asc())
+        )
+        grouped: dict[int, PlanReminderJob] = {}
+        for row in self.db.scalars(stmt):
+            grouped.setdefault(int(row.plan_id), row)
+        return grouped
+
+    def get_user_preferences(self, *, user_id: int) -> UserPreference | None:
+        return self.db.scalar(select(UserPreference).where(UserPreference.user_id == user_id))
+
+    def get_telegram_identity(self, *, user_id: int) -> AuthIdentity | None:
+        return self.db.scalar(
+            select(AuthIdentity)
+            .where(
+                AuthIdentity.user_id == user_id,
+                AuthIdentity.provider == "telegram",
+            )
+            .limit(1)
+        )
+
     def list_user_plan_reminder_targets(self) -> list:
         stmt = (
             select(AuthIdentity, UserPreference)
@@ -150,6 +181,51 @@ class PlanRepository:
             .where(AuthIdentity.provider == "telegram")
         )
         return list(self.db.execute(stmt).all())
+
+    def list_due_reminder_jobs(self, *, now_utc: datetime) -> list:
+        stmt = (
+            select(PlanReminderJob, PlanOperation, AuthIdentity, UserPreference)
+            .join(PlanOperation, PlanOperation.id == PlanReminderJob.plan_id)
+            .outerjoin(
+                AuthIdentity,
+                and_(
+                    AuthIdentity.user_id == PlanReminderJob.user_id,
+                    AuthIdentity.provider == "telegram",
+                ),
+            )
+            .outerjoin(UserPreference, UserPreference.user_id == PlanReminderJob.user_id)
+            .where(
+                PlanReminderJob.status == "pending",
+                PlanReminderJob.scheduled_for <= now_utc,
+            )
+            .order_by(PlanReminderJob.scheduled_for.asc(), PlanReminderJob.id.asc())
+        )
+        return list(self.db.execute(stmt).all())
+
+    def create_reminder_job(self, *, user_id: int, plan_id: int, scheduled_for: datetime) -> PlanReminderJob:
+        row = PlanReminderJob(
+            user_id=user_id,
+            plan_id=plan_id,
+            scheduled_for=scheduled_for,
+            status="pending",
+        )
+        self.db.add(row)
+        self.db.flush()
+        return row
+
+    def cancel_pending_reminder_jobs(self, *, user_id: int, plan_id: int, canceled_at: datetime) -> None:
+        stmt = select(PlanReminderJob).where(
+            PlanReminderJob.user_id == user_id,
+            PlanReminderJob.plan_id == plan_id,
+            PlanReminderJob.status == "pending",
+        )
+        for row in self.db.scalars(stmt):
+            row.status = "canceled"
+            row.canceled_at = canceled_at
+
+    def mark_reminder_job_sent(self, job: PlanReminderJob, *, sent_at: datetime) -> None:
+        job.status = "sent"
+        job.sent_at = sent_at
 
     def create_event(
         self,

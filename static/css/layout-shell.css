@@ -291,7 +291,8 @@
 }
 
 .create-note-field,
-#createDebtFields {
+#createDebtFields,
+#planRecurrenceBlock {
   grid-column: 1 / -1;
 }
 

@@ -11,6 +11,7 @@ from app.db.models.operation_item_template import OperationItemTemplate
 from app.db.models.operation_receipt_item import OperationReceiptItem
 from app.db.models.plan_operation import PlanOperation
 from app.db.models.plan_operation_event import PlanOperationEvent
+from app.db.models.plan_reminder_job import PlanReminderJob
 from app.db.models.plan_receipt_item import PlanReceiptItem
 from app.db.models.user import User
 from app.db.models.user_preference import UserPreference
@@ -26,6 +27,7 @@ __all__ = [
     "OperationReceiptItem",
     "PlanOperation",
     "PlanOperationEvent",
+    "PlanReminderJob",
     "PlanReceiptItem",
     "UserPreference",
     "DebtCounterparty",

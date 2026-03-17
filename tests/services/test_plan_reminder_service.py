@@ -1,11 +1,11 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timezone
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.db.base import Base
-from app.db.models import AuthIdentity, PlanOperation, PlanOperationEvent, User, UserPreference
+from app.db.models import AuthIdentity, PlanOperation, PlanOperationEvent, PlanReminderJob, User, UserPreference
 from app.services.plan_reminder_service import PlanReminderService
 
 
@@ -20,7 +20,52 @@ def _make_session():
     return engine, SessionLocal
 
 
-def test_collect_due_reminders_skips_items_already_reminded_today():
+def test_sync_plan_job_creates_pending_job_for_active_plan():
+    engine, SessionLocal = _make_session()
+    db = SessionLocal()
+    try:
+        db.add(User(id=1, display_name="Tester", status="active"))
+        db.add(
+            UserPreference(
+                user_id=1,
+                preferences_version=1,
+                data={
+                    "plans": {"reminders_enabled": True, "reminder_time": "09:30"},
+                    "ui": {"timezone": "UTC"},
+                },
+            )
+        )
+        db.add(
+            PlanOperation(
+                id=1,
+                user_id=1,
+                kind="expense",
+                amount="10.00",
+                scheduled_date=date(2030, 3, 20),
+                note="Будущий план",
+                status="active",
+                recurrence_enabled=False,
+            )
+        )
+        db.commit()
+
+        plan = db.get(PlanOperation, 1)
+        service = PlanReminderService(db)
+        service.sync_plan_job(plan)
+        db.commit()
+
+        jobs = db.query(PlanReminderJob).all()
+        assert len(jobs) == 1
+        assert jobs[0].status == "pending"
+        scheduled_for = jobs[0].scheduled_for
+        assert scheduled_for.date().isoformat() == "2030-03-20"
+        assert scheduled_for.minute == 30
+    finally:
+        db.close()
+        Base.metadata.drop_all(bind=engine)
+
+
+def test_list_due_jobs_reads_queue_instead_of_scanning_all_plans():
     engine, SessionLocal = _make_session()
     db = SessionLocal()
     try:
@@ -31,13 +76,14 @@ def test_collect_due_reminders_skips_items_already_reminded_today():
                 user_id=1,
                 preferences_version=1,
                 data={
-                    "plans": {"reminders_enabled": True},
+                    "plans": {"reminders_enabled": True, "reminder_time": "09:00"},
                     "ui": {"timezone": "UTC"},
                 },
             )
         )
         db.add(
             PlanOperation(
+                id=1,
                 user_id=1,
                 kind="expense",
                 amount="10.00",
@@ -48,75 +94,40 @@ def test_collect_due_reminders_skips_items_already_reminded_today():
             )
         )
         db.add(
-            PlanOperation(
+            PlanReminderJob(
+                plan_id=1,
                 user_id=1,
-                kind="expense",
-                amount="11.00",
-                scheduled_date=date.today(),
-                note="Уже напомнили",
-                status="active",
-                recurrence_enabled=False,
-                last_reminded_at=datetime.now(timezone.utc),
+                scheduled_for=datetime.now(timezone.utc),
+                status="pending",
             )
         )
         db.commit()
 
         service = PlanReminderService(db)
-        payloads = service.collect_due_reminders()
-        assert len(payloads) == 1
-        assert payloads[0]["chat_id"] == "100500"
-        assert len(payloads[0]["due_items"]) == 1
-        assert payloads[0]["due_items"][0].note == "Напомнить"
-
-        text = service.build_reminder_text(payloads[0])
-        assert "Планы к подтверждению" in text
-        assert "Напомнить" in text
+        jobs = service.list_due_jobs()
+        assert len(jobs) == 1
+        assert jobs[0]["chat_id"] == "100500"
+        assert jobs[0]["plan"].note == "Напомнить"
     finally:
         db.close()
         Base.metadata.drop_all(bind=engine)
 
 
-def test_collect_due_reminders_respects_preferences_toggle():
+def test_mark_job_sent_writes_event_and_schedules_next_day_for_active_plan():
     engine, SessionLocal = _make_session()
     db = SessionLocal()
     try:
-        db.add(User(id=1, display_name="Muted", status="active"))
-        db.add(AuthIdentity(user_id=1, provider="telegram", provider_user_id="200500", username="muted"))
+        db.add(User(id=1, display_name="Tester", status="active"))
         db.add(
             UserPreference(
                 user_id=1,
                 preferences_version=1,
                 data={
-                    "plans": {"reminders_enabled": False},
+                    "plans": {"reminders_enabled": True, "reminder_time": "09:00"},
                     "ui": {"timezone": "UTC"},
                 },
             )
         )
-        db.add(
-            PlanOperation(
-                user_id=1,
-                kind="expense",
-                amount="10.00",
-                scheduled_date=date.today(),
-                note="Без напоминаний",
-                status="active",
-                recurrence_enabled=False,
-            )
-        )
-        db.commit()
-
-        service = PlanReminderService(db)
-        assert service.collect_due_reminders() == []
-    finally:
-        db.close()
-        Base.metadata.drop_all(bind=engine)
-
-
-def test_mark_reminded_items_writes_history_event():
-    engine, SessionLocal = _make_session()
-    db = SessionLocal()
-    try:
-        db.add(User(id=1, display_name="Tester", status="active"))
         db.add(
             PlanOperation(
                 id=1,
@@ -129,17 +140,40 @@ def test_mark_reminded_items_writes_history_event():
                 recurrence_enabled=False,
             )
         )
+        db.add(
+            PlanReminderJob(
+                id=1,
+                plan_id=1,
+                user_id=1,
+                scheduled_for=datetime.now(timezone.utc),
+                status="pending",
+            )
+        )
         db.commit()
 
         plan = db.get(PlanOperation, 1)
+        job = db.get(PlanReminderJob, 1)
         service = PlanReminderService(db)
-        service.mark_reminded_items([plan])
+        service.mark_job_sent(
+            {
+                "job": job,
+                "plan": plan,
+                "config": {
+                    "enabled": True,
+                    "timezone": timezone.utc,
+                    "time": time(hour=9, minute=0),
+                },
+            }
+        )
 
         events = db.query(PlanOperationEvent).all()
+        jobs = db.query(PlanReminderJob).order_by(PlanReminderJob.id.asc()).all()
         assert len(events) == 1
         assert events[0].event_type == "reminded"
-        assert events[0].effective_date == date.today()
-        assert events[0].note == "Напомнить о плане"
+        assert jobs[0].status == "sent"
+        assert len(jobs) == 2
+        assert jobs[1].status == "pending"
+        assert jobs[1].scheduled_for > jobs[0].scheduled_for
     finally:
         db.close()
         Base.metadata.drop_all(bind=engine)

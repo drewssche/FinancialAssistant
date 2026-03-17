@@ -192,6 +192,10 @@
                   <span>Напоминать о планах в Telegram</span>
                 </label>
                 <label class="field">
+                  <span>Время напоминания</span>
+                  <input id="plansReminderTimeInput" type="time" value="09:00" />
+                </label>
+                <label class="field">
                   <span>Строк планов на дашборде</span>
                   <div class="settings-picker-field">
                     <select id="dashboardOperationsLimitSelect">

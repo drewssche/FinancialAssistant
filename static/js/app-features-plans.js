@@ -163,13 +163,23 @@
     if (!dueDate) {
       return { label: "Без срока", tone: "none", percent: 0 };
     }
+    const dueAt = new Date(`${dueDate}T23:59:59`);
+    if (Number.isNaN(dueAt.getTime())) {
+      return { label: `Срок: ${core.formatDateRu(dueDate)}`, tone: "none", percent: 0 };
+    }
+    const anchorRaw = item.progress_anchor_at || item.created_at || "";
+    const anchorAt = anchorRaw ? new Date(anchorRaw) : null;
+    const anchorMs = anchorAt && !Number.isNaN(anchorAt.getTime()) ? anchorAt.getTime() : Date.now();
+    const totalMs = Math.max(86400000, dueAt.getTime() - anchorMs);
+    const elapsedMs = Math.max(0, Date.now() - anchorMs);
+    const percent = Math.max(0, Math.min(100, Math.round((elapsedMs / totalMs) * 100)));
     if (item.status === "overdue") {
       return { label: `Просрочен с ${core.formatDateRu(dueDate)}`, tone: "overdue", percent: 100 };
     }
     if (item.status === "due") {
-      return { label: `Срок: ${core.formatDateRu(dueDate)}`, tone: "due", percent: 78 };
+      return { label: `Срок: ${core.formatDateRu(dueDate)}`, tone: "due", percent: Math.max(90, percent) };
     }
-    return { label: `Срок: ${core.formatDateRu(dueDate)}`, tone: "upcoming", percent: 42 };
+    return { label: `Срок: ${core.formatDateRu(dueDate)}`, tone: "upcoming", percent };
   }
 
   function recurrenceLabel(item) {
@@ -214,6 +224,27 @@
       return "Пропущен";
     }
     return "Запланирован";
+  }
+
+  function reminderLabel(item) {
+    if (!item?.next_reminder_at) {
+      return "";
+    }
+    try {
+      const reminderAt = new Date(item.next_reminder_at);
+      if (Number.isNaN(reminderAt.getTime())) {
+        return "";
+      }
+      if (reminderAt.getTime() <= Date.now() + 120000) {
+        return "Напоминание скоро";
+      }
+      return `Напоминание ${new Intl.DateTimeFormat("ru-RU", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(reminderAt)}`;
+    } catch {
+      return "";
+    }
   }
 
   function historyEventLabel(eventType) {
@@ -326,6 +357,9 @@
     const receiptMeta = Array.isArray(item.receipt_items) && item.receipt_items.length
       ? `<span class="meta-chip meta-chip-neutral">Чек</span>`
       : "";
+    const reminderMeta = reminderLabel(item)
+      ? `<span class="meta-chip meta-chip-neutral">${core.escapeHtml(reminderLabel(item))}</span>`
+      : "";
     const positionsMeta = item.receipt_items?.length
       ? `<button class="btn btn-link-inline plan-meta-link" type="button" data-plan-receipt-view-id="${item.id}">Позиций: ${item.receipt_items.length}</button>`
       : "";
@@ -336,6 +370,7 @@
           <span class="meta-chip meta-chip-neutral">${recurrenceLabel(item)}</span>
           <span class="meta-chip meta-chip-neutral">${statusLabel(item.status)}</span>
           ${receiptMeta}
+          ${reminderMeta}
         </div>
         <div class="plan-card-row">
           <div class="plan-card-primary">

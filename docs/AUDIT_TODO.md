@@ -96,6 +96,11 @@
 - plan cards should keep the interactive `Позиций: N` value without a redundant field label above it
 - preview cards should not render actions, and recurrence controls should be redistributed into a desktop main row plus a lighter options row
 - desktop recurrence controls should stretch to fill the modal row evenly, not stay as cramped intrinsic-width fields
+- reminders should move off the current full-plan scan model toward queued `next reminder` jobs that are recalculated on plan/settings mutations
+- settings should expose both `plans.reminders_enabled` and `plans.reminder_time`
+- plan cards/dashboard cards should be able to show the next reminder time from the queued job
+- plan due progress should become real time-based progress instead of fixed `42/78/100` status placeholders
+- plan modal preview must immediately reflect `Разовая / Повторяющаяся`; stale one-off chips in recurring mode are a bug
 
 2. Scroll and overflow hardening
 - Status: done (updated 2026-03-08)

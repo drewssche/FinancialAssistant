@@ -388,6 +388,23 @@
         }
       });
     }
+    if (el.plansRemindersToggle) {
+      el.plansRemindersToggle.addEventListener("change", () => {
+        if (actions.previewInterfaceSettingsUi) {
+          actions.previewInterfaceSettingsUi();
+        }
+        if (actions.savePreferencesDebounced) {
+          actions.savePreferencesDebounced(300);
+        }
+      });
+    }
+    if (el.plansReminderTimeInput) {
+      el.plansReminderTimeInput.addEventListener("change", () => {
+        if (actions.savePreferencesDebounced) {
+          actions.savePreferencesDebounced(300);
+        }
+      });
+    }
     if (el.dashboardOperationsLimitSelect) {
       el.dashboardOperationsLimitSelect.addEventListener("change", () => {
         if (actions.previewInterfaceSettingsUi) {
@@ -541,11 +558,33 @@
         }
         core.syncSegmentedActive(el.planScheduleModeSwitch, "plan-schedule-mode", el.planScheduleMode?.value || "oneoff");
         actions.syncPlanRecurrenceUi();
+        actions.updateCreatePreview?.();
       });
     }
     if (el.planRecurrenceFrequency && actions.syncPlanRecurrenceUi) {
       el.planRecurrenceFrequency.addEventListener("change", () => {
         actions.syncPlanRecurrenceUi();
+        actions.updateCreatePreview?.();
+      });
+    }
+    if (el.planRecurrenceInterval) {
+      el.planRecurrenceInterval.addEventListener("input", () => {
+        actions.updateCreatePreview?.();
+      });
+    }
+    if (el.planRecurrenceEndDate) {
+      el.planRecurrenceEndDate.addEventListener("change", () => {
+        actions.updateCreatePreview?.();
+      });
+    }
+    if (el.planRecurrenceWorkdaysOnly) {
+      el.planRecurrenceWorkdaysOnly.addEventListener("change", () => {
+        actions.updateCreatePreview?.();
+      });
+    }
+    if (el.planRecurrenceMonthEnd) {
+      el.planRecurrenceMonthEnd.addEventListener("change", () => {
+        actions.updateCreatePreview?.();
       });
     }
     if (el.planRecurrenceWeekdays && actions.togglePlanWeekday) {
@@ -555,6 +594,7 @@
           return;
         }
         actions.togglePlanWeekday(Number(btn.dataset.planWeekday || 0));
+        actions.updateCreatePreview?.();
       });
     }
   }

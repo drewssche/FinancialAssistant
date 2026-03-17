@@ -172,6 +172,10 @@
     if (el.plansRemindersToggle) {
       el.plansRemindersToggle.checked = (state.preferences?.data?.plans?.reminders_enabled) !== false;
     }
+    if (el.plansReminderTimeInput) {
+      el.plansReminderTimeInput.value = String(state.preferences?.data?.plans?.reminder_time || "09:00");
+      el.plansReminderTimeInput.disabled = el.plansRemindersToggle ? !el.plansRemindersToggle.checked : false;
+    }
     if (el.dashboardOperationsLimitSelect) {
       const value = [5, 8, 12].includes(Number(ui.dashboard_operations_limit)) ? String(ui.dashboard_operations_limit) : "8";
       el.dashboardOperationsLimitSelect.value = value;
@@ -219,6 +223,9 @@
     }
     if (el.dashboardPlansPanel && el.showDashboardOperationsToggle) {
       el.dashboardPlansPanel.classList.toggle("hidden", !el.showDashboardOperationsToggle.checked);
+    }
+    if (el.plansReminderTimeInput && el.plansRemindersToggle) {
+      el.plansReminderTimeInput.disabled = !el.plansRemindersToggle.checked;
     }
     syncSettingsPickerButtons();
   }
@@ -369,6 +376,7 @@
           status_filter: state.plansStatusFilter || "all",
           history_event_filter: state.plansHistoryEventFilter || "all",
           reminders_enabled: el.plansRemindersToggle ? el.plansRemindersToggle.checked : (state.preferences?.data?.plans?.reminders_enabled !== false),
+          reminder_time: el.plansReminderTimeInput ? String(el.plansReminderTimeInput.value || "09:00") : String(state.preferences?.data?.plans?.reminder_time || "09:00"),
         },
         ui: {
           ...(state.preferences?.data?.ui || {}),

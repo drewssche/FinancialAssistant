@@ -122,9 +122,14 @@ Sidebar grouping baseline (when section groups are introduced):
 - `История` tab is backed by real event rows (`confirmed`, `skipped`, `reminded`), not by a derived filter over closed plans
 - `История` tab also supports explicit event-type filtering (`all / confirmed / skipped / reminded`)
 - Telegram reminder baseline is implemented through the existing `bot` worker:
-- active due/overdue plans can generate one reminder per local day
+- the bot worker should not full-scan all plans continuously; it should poll only a queue of pending reminder jobs
+- reminder jobs are (re)scheduled when a plan is created, edited, confirmed, skipped, deleted, or when reminder settings change
 - reminder delivery is controlled by preferences toggle `plans.reminders_enabled`
-- local-day evaluation uses user timezone from preferences (`ui.timezone`)
+- reminder time is controlled by `plans.reminder_time` in the user's configured `ui.timezone`
+- plan cards may show a reminder chip (`Напоминание HH:MM` / `Напоминание скоро`) derived from the next queued reminder
+- plan due progress should be time-based from the current cycle anchor to the due date, not a static status percentage
+- plan preview in the modal must update immediately when switching `Разовая / Повторяющаяся`; stale `Разовый` chips in recurring mode are not acceptable
+- recurring controls in the plan modal should span the full modal width on desktop instead of collapsing to the width of the segmented switch
 
 ## Settings
 - Settings section includes timezone selector

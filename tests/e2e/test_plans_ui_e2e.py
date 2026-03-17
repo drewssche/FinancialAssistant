@@ -173,6 +173,8 @@ def _make_plan_item(plan: dict) -> dict:
         "recurrence_end_date": plan.get("recurrence_end_date"),
         "recurrence_label": _recurrence_label(plan),
         "status": plan.get("status", "upcoming"),
+        "progress_anchor_at": plan.get("progress_anchor_at") or plan.get("created_at") or "2026-03-16T12:00:00Z",
+        "next_reminder_at": plan.get("next_reminder_at"),
         "confirmed_operation_id": plan.get("confirmed_operation_id"),
         "confirm_count": int(plan.get("confirm_count") or 0),
         "skip_count": int(plan.get("skip_count") or 0),
@@ -367,6 +369,7 @@ def page_with_plans_api_mock(page):
                 "skip_count": 0,
                 "confirmed_operation_id": None,
                 "created_at": "2026-03-16T12:00:00Z",
+                "next_reminder_at": "2026-03-17T06:00:00Z",
             }
             mock_state["next_plan_id"] += 1
             mock_state["plans"].append(plan)
@@ -468,6 +471,9 @@ def test_plans_ui_creates_weekly_multiweekday_plan(static_server_url: str, page_
     page.fill("#opNote", "Спортзал")
     page.click('button[data-plan-schedule-mode="recurring"]')
     page.select_option("#planRecurrenceFrequency", "weekly")
+    page.wait_for_function(
+        "() => document.querySelector('#createPlanPreviewCard')?.textContent.includes('Еженедельно') && !document.querySelector('#createPlanPreviewCard')?.textContent.includes('Разовый')"
+    )
     page.click('button[data-plan-weekday="0"]')
     page.click('button[data-plan-weekday="2"]')
     page.click('button[data-plan-weekday="4"]')

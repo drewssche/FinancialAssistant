@@ -28,6 +28,7 @@ class PreferenceRepository:
                 "plans": {
                     "status_filter": "all",
                     "reminders_enabled": True,
+                    "reminder_time": "09:00",
                 },
                 "ui": {
                     "timezone": "auto",

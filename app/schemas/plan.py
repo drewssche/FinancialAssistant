@@ -60,6 +60,8 @@ class PlanOut(BaseModel):
     recurrence_end_date: date | None = None
     recurrence_label: str
     status: str
+    progress_anchor_at: datetime | None = None
+    next_reminder_at: datetime | None = None
     confirmed_operation_id: int | None = None
     confirm_count: int = 0
     skip_count: int = 0

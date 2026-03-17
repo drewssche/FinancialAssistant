@@ -116,6 +116,7 @@
       showDashboardOperationsToggle: document.getElementById("showDashboardOperationsToggle"),
       showDashboardDebtsToggle: document.getElementById("showDashboardDebtsToggle"),
       plansRemindersToggle: document.getElementById("plansRemindersToggle"),
+      plansReminderTimeInput: document.getElementById("plansReminderTimeInput"),
       dashboardOperationsLimitSelect: document.getElementById("dashboardOperationsLimitSelect"),
       dashboardOperationsLimitPickerBtn: document.getElementById("dashboardOperationsLimitPickerBtn"),
       analyticsTopOperationsLimitSelect: document.getElementById("analyticsTopOperationsLimitSelect"),

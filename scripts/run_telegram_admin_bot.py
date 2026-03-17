@@ -140,7 +140,7 @@ async def process_plan_reminders(client: TelegramBotClient) -> None:
     db = SessionLocal()
     try:
         service = PlanReminderService(db)
-        for payload in service.collect_due_reminders():
+        for payload in service.list_due_jobs():
             try:
                 await client.call(
                     "sendMessage",
@@ -151,9 +151,15 @@ async def process_plan_reminders(client: TelegramBotClient) -> None:
                     },
                 )
             except Exception as exc:  # noqa: BLE001
-                logger.warning("telegram plan reminder failed for user %s: %s", payload["user_id"], exc)
+                plan = payload.get("plan")
+                logger.warning(
+                    "telegram plan reminder failed for user %s plan %s: %s",
+                    getattr(plan, "user_id", "unknown"),
+                    getattr(plan, "id", "unknown"),
+                    exc,
+                )
                 continue
-            service.mark_reminded_items([*payload.get("overdue_items", []), *payload.get("due_items", [])])
+            service.mark_job_sent(payload)
     finally:
         db.close()
 

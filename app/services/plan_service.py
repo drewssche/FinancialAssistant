@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.repositories.plan_repo import PlanRepository
 from app.services.operation_service import OperationService
+from app.services.plan_reminder_service import PlanReminderService
 
 
 class PlanService:
@@ -13,13 +14,19 @@ class PlanService:
         self.db = db
         self.repo = PlanRepository(db)
         self.operation_service = OperationService(db)
+        self.reminder_service = PlanReminderService(db)
 
     def list_plans(self, *, user_id: int, q: str | None = None, kind: str | None = None) -> tuple[list[dict], int]:
         rows = self.repo.list_for_user(user_id=user_id, q=q, kind=kind)
         plan_ids = [int(row.PlanOperation.id) for row in rows]
         receipt_by_plan = self.repo.list_receipt_items_for_plans(user_id=user_id, plan_ids=plan_ids)
+        reminder_jobs = self.repo.list_next_pending_jobs_for_plans(user_id=user_id, plan_ids=plan_ids)
         items = [
-            self._serialize_plan_row(row=row, receipt_items=receipt_by_plan.get(int(row.PlanOperation.id), []))
+            self._serialize_plan_row(
+                row=row,
+                receipt_items=receipt_by_plan.get(int(row.PlanOperation.id), []),
+                reminder_job=reminder_jobs.get(int(row.PlanOperation.id)),
+            )
             for row in rows
         ]
         return items, len(items)
@@ -29,7 +36,8 @@ class PlanService:
         if not row:
             raise LookupError("Plan not found")
         receipt_by_plan = self.repo.list_receipt_items_for_plans(user_id=user_id, plan_ids=[plan_id])
-        return self._serialize_plan_row(row=row, receipt_items=receipt_by_plan.get(plan_id, []))
+        reminder_job = self.repo.list_next_pending_jobs_for_plans(user_id=user_id, plan_ids=[plan_id]).get(plan_id)
+        return self._serialize_plan_row(row=row, receipt_items=receipt_by_plan.get(plan_id, []), reminder_job=reminder_job)
 
     def list_history(self, *, user_id: int, q: str | None = None, kind: str | None = None) -> tuple[list[dict], int]:
         rows = self.repo.list_history_for_user(user_id=user_id, q=q, kind=kind)
@@ -84,6 +92,7 @@ class PlanService:
         )
         if normalized_items:
             self.repo.replace_receipt_items(user_id=user_id, plan_id=item.id, items=normalized_items)
+        self.reminder_service.sync_plan_job(item)
         self.db.commit()
         return self.get_plan(user_id=user_id, plan_id=int(item.id))
 
@@ -135,6 +144,7 @@ class PlanService:
         self.repo.update(item, updates)
         if normalized_items is not None:
             self.repo.replace_receipt_items(user_id=user_id, plan_id=item.id, items=normalized_items)
+        self.reminder_service.sync_plan_job(item)
         self.db.commit()
         return self.get_plan(user_id=user_id, plan_id=plan_id)
 
@@ -142,6 +152,11 @@ class PlanService:
         row = self.repo.get_by_id(user_id=user_id, plan_id=plan_id)
         if not row:
             raise LookupError("Plan not found")
+        self.repo.cancel_pending_reminder_jobs(
+            user_id=user_id,
+            plan_id=plan_id,
+            canceled_at=datetime.now(timezone.utc),
+        )
         self.repo.delete(row.PlanOperation)
         self.db.commit()
 
@@ -206,6 +221,7 @@ class PlanService:
                 item.status = "active"
         else:
             item.status = "confirmed"
+        self.reminder_service.sync_plan_job(item)
         self.db.commit()
         return {
             "plan": self.get_plan(user_id=user_id, plan_id=plan_id),
@@ -250,10 +266,11 @@ class PlanService:
                 item.status = "active"
         else:
             item.status = "skipped"
+        self.reminder_service.sync_plan_job(item)
         self.db.commit()
         return self.get_plan(user_id=user_id, plan_id=plan_id)
 
-    def _serialize_plan_row(self, *, row, receipt_items: list) -> dict:
+    def _serialize_plan_row(self, *, row, receipt_items: list, reminder_job=None) -> dict:
         item = row.PlanOperation
         category = row.Category
         group = row[2]
@@ -304,6 +321,8 @@ class PlanService:
                 month_end=bool(item.recurrence_month_end),
             ),
             "status": self._display_status(item),
+            "progress_anchor_at": self._progress_anchor_at(item),
+            "next_reminder_at": reminder_job.scheduled_for if reminder_job else None,
             "confirmed_operation_id": item.confirmed_operation_id,
             "confirm_count": int(item.confirm_count or 0),
             "skip_count": int(item.skip_count or 0),
@@ -335,6 +354,13 @@ class PlanService:
             "category_name": item.category_name,
             "created_at": item.created_at,
         }
+
+    @staticmethod
+    def _progress_anchor_at(item) -> datetime | None:
+        if bool(item.recurrence_enabled):
+            anchors = [value for value in (item.last_confirmed_at, item.last_skipped_at, item.created_at) if value]
+            return max(anchors) if anchors else None
+        return item.created_at
 
     def _validate_recurrence(
         self,
