@@ -288,34 +288,43 @@
     const receiptMeta = Array.isArray(item.receipt_items) && item.receipt_items.length
       ? `<span class="meta-chip meta-chip-neutral">Чек</span>`
       : "";
+    const positionsMeta = item.receipt_items?.length ? `<span class="muted-small">Позиций: ${item.receipt_items.length}</span>` : "";
+    const noteMeta = item.note ? `<span class="muted-small">${core.highlightText(item.note, "")}</span>` : "";
     return `
       <article class="panel plan-card plan-card-${item.status || "upcoming"}">
-        <div class="plan-card-top">
-          <div class="plan-card-title-row">
-            ${categoryChip}
-            <span class="meta-chip meta-chip-neutral">${recurrenceLabel(item)}</span>
-            <span class="meta-chip meta-chip-neutral">${statusLabel(item.status)}</span>
-            ${receiptMeta}
-          </div>
-          <strong class="plan-card-amount amount-${kindClass}">${core.formatMoney(item.amount || 0)}</strong>
-        </div>
-        <div class="plan-card-body">
-          <div class="plan-card-main">
+        <div class="plan-card-row">
+          <div class="plan-card-primary">
             <div class="plan-card-fields">
-              <div class="plan-card-field"><span class="muted-small">Дата</span><strong>${dateLabel}</strong></div>
-              <div class="plan-card-field"><span class="muted-small">Тип</span><span class="kind-pill kind-pill-${kindClass}">${kindLabel}</span></div>
-              <div class="plan-card-field plan-card-field-wide"><span class="muted-small">Категория</span>${categoryChip}</div>
+              <div class="plan-card-field">
+                <span class="muted-small">Дата</span>
+                <strong>${dateLabel}</strong>
+              </div>
+              <div class="plan-card-field">
+                <span class="muted-small">Тип</span>
+                <span class="kind-pill kind-pill-${kindClass}">${kindLabel}</span>
+              </div>
+              <div class="plan-card-field plan-card-field-category">
+                <span class="muted-small">Категория</span>
+                ${categoryChip}
+              </div>
+              <div class="plan-card-field plan-card-field-amount">
+                <span class="muted-small">Сумма</span>
+                <strong class="plan-card-amount amount-${kindClass}">${core.formatMoney(item.amount || 0)}</strong>
+              </div>
             </div>
             <div class="plan-card-meta">
-              ${item.note ? `<strong>${core.highlightText(item.note, "")}</strong>` : ""}
-              ${item.receipt_items?.length ? `<span class="muted-small">Позиций: ${item.receipt_items.length}</span>` : ""}
+              <span class="meta-chip meta-chip-neutral">${recurrenceLabel(item)}</span>
+              <span class="meta-chip meta-chip-neutral">${statusLabel(item.status)}</span>
+              ${receiptMeta}
+              ${positionsMeta}
+              ${noteMeta}
             </div>
-          </div>
-          <div class="plan-card-progress">
-            <div class="plan-card-progress-track">
-              <span class="plan-card-progress-bar plan-card-progress-bar-${progress.tone}" style="width:${progress.percent}%"></span>
+            <div class="plan-card-progress">
+              <span class="muted-small">${progress.label}</span>
+              <div class="plan-card-progress-track">
+                <span class="plan-card-progress-bar plan-card-progress-bar-${progress.tone}" style="width:${progress.percent}%"></span>
+              </div>
             </div>
-            <span class="muted-small">${progress.label}</span>
           </div>
           <div class="actions row-actions plan-card-actions">
             ${item.status !== "confirmed" && item.status !== "skipped" ? `<button class="btn btn-primary" type="button" data-plan-action="confirm" data-plan-id="${item.id}">Подтвердить</button>` : ""}

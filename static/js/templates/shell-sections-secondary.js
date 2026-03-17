@@ -26,9 +26,8 @@
                 <div id="plansFinancialMeta" class="subtitle plans-financial-kpi-meta">После планов: 0,00 руб.</div>
               </article>
             </div>
-            <div class="table-search-row plans-controls-row">
+            <div class="plans-controls-row">
               <div class="toolbar section-action-toolbar search-toolbar plans-toolbar">
-                <input id="plansSearchQ" class="table-search-input plans-search-input" type="text" placeholder="Поиск по категории/комментарию" />
                 <div class="segmented" id="plansTabTabs" role="tablist" aria-label="Вкладки планов">
                   <button class="segmented-btn active" data-plan-tab="due" type="button">К подтверждению</button>
                   <button class="segmented-btn" data-plan-tab="oneoff" type="button">Разовые</button>
@@ -53,6 +52,9 @@
                   <button class="segmented-btn" data-plan-history-event="reminded" type="button">Напоминания</button>
                 </div>
               </div>
+            </div>
+            <div class="table-search-row plans-search-row">
+              <input id="plansSearchQ" class="table-search-input plans-search-input" type="text" placeholder="Поиск по категории/комментарию" />
             </div>
             <div id="plansList" class="plans-list"></div>
           </section>

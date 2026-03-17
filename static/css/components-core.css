@@ -320,27 +320,24 @@
 
 .plans-toolbar {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
 }
 
+.plans-search-row {
+  margin-top: var(--space-2);
+}
+
 .plans-search-input {
-  width: min(100%, 34rem);
-  flex: 0 1 34rem;
-  min-width: 9rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .plans-toolbar .segmented {
   flex: 0 0 auto;
   min-width: 0;
-}
-
-@media (max-width: 1500px) {
-  .plans-toolbar {
-    gap: calc(var(--space-1) + 2px);
-  }
 }
 
 .dashboard-plans-kpi {
@@ -359,38 +356,29 @@
   padding: var(--space-3);
 }
 
-.plan-card-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.plan-card-body {
+.plan-card-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--space-3);
-  align-items: stretch;
+  align-items: start;
 }
 
-.plan-card-main {
+.plan-card-primary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-2) var(--space-3);
+  gap: var(--space-2);
   min-width: 0;
-  align-items: start;
 }
 
 .plan-card-fields {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-column: 1 / -1;
   gap: var(--space-2) var(--space-3);
   align-content: start;
+  align-items: end;
 }
 
-.plan-card-field-wide {
-  grid-column: span 1;
+.plan-card-field-category {
+  min-width: 0;
 }
 
 .plan-card-field {
@@ -421,17 +409,12 @@
   flex-wrap: wrap;
   gap: var(--space-2);
   align-items: center;
-  grid-column: 1 / span 2;
-  align-self: end;
 }
 
 .plan-card-progress {
   display: grid;
   gap: 6px;
-  grid-column: 3 / -1;
-  align-self: end;
   min-width: 0;
-  align-content: end;
 }
 
 .plan-card-progress-track {
@@ -468,7 +451,7 @@
   flex-direction: column;
   justify-content: flex-start;
   gap: var(--space-2);
-  align-self: stretch;
+  align-self: start;
   min-width: 11rem;
   max-width: 12rem;
 }
@@ -501,34 +484,16 @@
 }
 
 @media (max-width: 1380px) {
-  .plans-toolbar {
-    flex-wrap: wrap;
-    align-items: flex-start;
-  }
-
-  .plans-search-input {
-    width: 100%;
-    flex-basis: 100%;
-  }
-
-  .plan-card-body {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .plan-card-main {
+  .plan-card-row {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .plan-card-fields {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-column: auto;
   }
 
-  .plan-card-meta,
   .plan-card-progress {
-    grid-column: auto;
-    padding-left: 0;
-    border-left: 0;
+    align-content: start;
   }
 
   .plan-card-actions {

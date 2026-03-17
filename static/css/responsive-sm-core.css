@@ -290,13 +290,16 @@
     grid-template-columns: 1fr;
   }
 
+  .plans-search-row {
+    margin-top: var(--space-2);
+  }
+
   .plans-search-input {
     width: 100%;
     min-width: 0;
   }
 
-  .plan-card-top,
-  .plan-card-body,
+  .plan-card-row,
   .plan-card-fields,
   .plan-card-actions {
     display: grid;
