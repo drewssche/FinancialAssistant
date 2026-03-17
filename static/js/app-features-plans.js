@@ -324,6 +324,11 @@
     const noteMeta = item.note ? `<span class="muted-small">${core.highlightText(item.note, "")}</span>` : "";
     return `
       <article class="panel plan-card plan-card-${item.status || "upcoming"}">
+        <div class="plan-card-top-meta">
+          <span class="meta-chip meta-chip-neutral">${recurrenceLabel(item)}</span>
+          <span class="meta-chip meta-chip-neutral">${statusLabel(item.status)}</span>
+          ${receiptMeta}
+        </div>
         <div class="plan-card-row">
           <div class="plan-card-primary">
             <div class="plan-card-fields">
@@ -339,16 +344,16 @@
                 <span class="muted-small">Категория</span>
                 ${categoryChips}
               </div>
+              <div class="plan-card-field plan-card-field-positions">
+                <span class="muted-small">Позиции</span>
+                ${positionsMeta || "<span class='muted-small'>—</span>"}
+              </div>
               <div class="plan-card-field plan-card-field-amount">
                 <span class="muted-small">Сумма</span>
                 <strong class="plan-card-amount amount-${kindClass}">${core.formatMoney(item.amount || 0)}</strong>
               </div>
             </div>
             <div class="plan-card-meta">
-              <span class="meta-chip meta-chip-neutral">${recurrenceLabel(item)}</span>
-              <span class="meta-chip meta-chip-neutral">${statusLabel(item.status)}</span>
-              ${receiptMeta}
-              ${positionsMeta}
               ${noteMeta}
             </div>
             <div class="plan-card-progress">

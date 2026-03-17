@@ -89,6 +89,7 @@
 - plans desktop toolbar should use separate rows: controls first, then full-width search below
 - desktop polish should keep amount right-aligned, progress compact, and reduce the visual gap before the actions column
 - plans/operations category fallback should aggregate receipt-item categories without duplicates, and plan meta `Позиций: N` should open the shared receipt modal
+- plans desktop cards should keep top-left contextual chips separate from the main data row, and use `Позиции` as a real data column when receipt items exist
 
 2. Scroll and overflow hardening
 - Status: done (updated 2026-03-08)

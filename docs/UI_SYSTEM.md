@@ -95,6 +95,7 @@ Sidebar grouping baseline (when section groups are introduced):
 - plan list rows/cards should reuse the same information rhythm as regular `Операции` rows where practical:
 - core fields/meta should be rendered like an operation item
 - contextual plan chips should explain plan state/recurrence
+- on desktop, contextual plan chips should sit in a compact top-left row above the main data line
 - due/progress indicator by term should be visible
 - the main difference from `Операции` rows should be the action set (`Подтвердить`, `Редактировать`, optional `Пропустить`, `Удалить`)
 - when a plan/operation contains receipt positions without one shared default category, category display should be derived from receipt item categories and rendered as deduplicated chips rather than a misleading `Без категории`
@@ -104,6 +105,7 @@ Sidebar grouping baseline (when section groups are introduced):
 - center/right: due/progress block integrated into the same horizontal rhythm, without large dead vertical space
 - right edge: visible action column
 - desktop polish target: amount stays right-aligned inside the data row, due/progress reads as one compact line, and the action column should sit visually close enough to the content to avoid a "hole" in the card
+- if receipt positions exist, `Позиции` should occupy its own desktop data column between category and amount rather than leaving an empty middle zone
 - backend storage baseline:
 - `plan_operations`
 - `plan_receipt_items`
