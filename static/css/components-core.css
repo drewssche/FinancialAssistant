@@ -327,15 +327,13 @@
 }
 
 .plans-search-input {
-  width: auto;
-  flex: 1 1 16rem;
-  min-width: 11rem;
-  max-width: 28rem;
-  min-width: 0;
+  width: min(100%, 34rem);
+  flex: 0 1 34rem;
+  min-width: 9rem;
 }
 
 .plans-toolbar .segmented {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   min-width: 0;
 }
 
@@ -370,22 +368,23 @@
 
 .plan-card-body {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(14rem, 0.85fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--space-3);
   align-items: stretch;
 }
 
 .plan-card-main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
-  gap: var(--space-2) var(--space-4);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2) var(--space-3);
   min-width: 0;
   align-items: start;
 }
 
 .plan-card-fields {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-column: 1 / -1;
   gap: var(--space-2) var(--space-3);
   align-content: start;
 }
@@ -418,18 +417,21 @@
 }
 
 .plan-card-meta {
-  display: grid;
-  gap: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  grid-column: 1 / span 2;
+  align-self: end;
 }
 
 .plan-card-progress {
   display: grid;
   gap: 6px;
-  align-self: stretch;
-  padding-left: var(--space-3);
-  border-left: 1px solid rgba(73, 92, 126, 0.4);
+  grid-column: 3 / -1;
+  align-self: end;
   min-width: 0;
-  align-content: center;
+  align-content: end;
 }
 
 .plan-card-progress-track {
@@ -467,8 +469,8 @@
   justify-content: flex-start;
   gap: var(--space-2);
   align-self: stretch;
-  min-width: 12rem;
-  max-width: 13rem;
+  min-width: 11rem;
+  max-width: 12rem;
 }
 
 .plan-card .row-actions.plan-card-actions {
@@ -505,7 +507,8 @@
   }
 
   .plans-search-input {
-    max-width: none;
+    width: 100%;
+    flex-basis: 100%;
   }
 
   .plan-card-body {
@@ -516,7 +519,14 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .plan-card-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-column: auto;
+  }
+
+  .plan-card-meta,
   .plan-card-progress {
+    grid-column: auto;
     padding-left: 0;
     border-left: 0;
   }

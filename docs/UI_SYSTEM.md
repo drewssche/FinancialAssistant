@@ -90,7 +90,7 @@ Sidebar grouping baseline (when section groups are introduced):
 - dashboard plans block should show pending/planned workload, not factual accounting data
 - plans controls should keep a separate row under KPI; search belongs in the controls row, not glued directly to the KPI card
 - on desktop/compact-desktop the plans controls should prefer one row:
-- search field is the first element that shrinks
+- search field is the first element that shrinks and should not greedily occupy all remaining toolbar width
 - segmented groups should stay inline while there is still reasonable desktop width
 - wrap to multiple rows only after search width has already adapted down to its compact minimum
 - plan list rows/cards should reuse the same information rhythm as regular `Операции` rows where practical:
@@ -100,7 +100,7 @@ Sidebar grouping baseline (when section groups are introduced):
 - the main difference from `Операции` rows should be the action set (`Подтвердить`, `Редактировать`, optional `Пропустить`, `Удалить`)
 - on desktop, plan cards should not keep the tall mobile-style column stack; use a denser horizontal distribution with:
 - left: main fields/meta
-- center/right: due/progress block
+- center/right: due/progress block integrated into the same horizontal rhythm, without large dead vertical space
 - right edge: visible action column
 - backend storage baseline:
 - `plan_operations`

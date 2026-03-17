@@ -86,6 +86,7 @@
 - updated 2026-03-16 desktop card follow-up:
 - plans desktop cards should use a denser multi-zone layout instead of a tall mobile-like column stack
 - action buttons must stay visible on the right, while fields/meta and due/progress use the horizontal space more evenly
+- plans desktop toolbar search should shrink before segmented controls overflow, instead of consuming the whole row by default
 
 2. Scroll and overflow hardening
 - Status: done (updated 2026-03-08)
