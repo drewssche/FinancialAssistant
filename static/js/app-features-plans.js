@@ -100,8 +100,12 @@
   function summarizePlans(items) {
     return items.reduce((acc, item) => {
       const amount = Number(item.amount || 0);
+      acc.activeCount += 1;
       if (item.status === "due" || item.status === "overdue") {
         acc.dueCount += 1;
+      }
+      if (item.status === "due") {
+        acc.todayCount += 1;
       }
       if (item.status === "overdue") {
         acc.overdueCount += 1;
@@ -117,7 +121,9 @@
       acc.netPlanned += item.kind === "income" ? amount : -amount;
       return acc;
     }, {
+      activeCount: 0,
       dueCount: 0,
+      todayCount: 0,
       overdueCount: 0,
       upcomingCount: 0,
       potentialExpense: 0,
@@ -224,7 +230,7 @@
   }
 
   function syncPlanRecurrenceUi() {
-    const enabled = Boolean(el.planRecurrenceEnabled?.checked);
+    const enabled = (el.planScheduleMode?.value || "oneoff") === "recurring";
     el.planRecurrenceFields?.classList.toggle("hidden", !enabled);
     const frequency = el.planRecurrenceFrequency?.value || "monthly";
     const daily = enabled && frequency === "daily";
@@ -307,7 +313,8 @@
     setSelectedPlanWeekdays(Array.from(selected));
   }
 
-  function renderPlanCard(item) {
+  function renderPlanCard(item, options = {}) {
+    const dashboardCompact = options.dashboardCompact === true;
     const kindClass = item.kind === "income" ? "income" : "expense";
     const categoryChips = core.renderCategoryChipList
       ? core.renderCategoryChipList(getPlanDisplayCategories(item), "")
@@ -365,9 +372,9 @@
           </div>
           <div class="actions row-actions plan-card-actions">
             ${item.status !== "confirmed" && item.status !== "skipped" ? `<button class="btn btn-primary" type="button" data-plan-action="confirm" data-plan-id="${item.id}">Подтвердить</button>` : ""}
-            ${item.status !== "confirmed" && item.status !== "skipped" ? `<button class="btn btn-secondary" type="button" data-plan-action="edit" data-plan-id="${item.id}">Редактировать</button>` : ""}
-            ${item.recurrence_enabled && item.status !== "confirmed" ? `<button class="btn btn-secondary" type="button" data-plan-action="skip" data-plan-id="${item.id}">Пропустить</button>` : ""}
-            <button class="btn btn-danger" type="button" data-plan-action="delete" data-plan-id="${item.id}">Удалить</button>
+            ${!dashboardCompact && item.status !== "confirmed" && item.status !== "skipped" ? `<button class="btn btn-secondary" type="button" data-plan-action="edit" data-plan-id="${item.id}">Редактировать</button>` : ""}
+            ${!dashboardCompact && item.recurrence_enabled && item.status !== "confirmed" ? `<button class="btn btn-secondary" type="button" data-plan-action="skip" data-plan-id="${item.id}">Пропустить</button>` : ""}
+            ${!dashboardCompact ? `<button class="btn btn-danger" type="button" data-plan-action="delete" data-plan-id="${item.id}">Удалить</button>` : ""}
           </div>
         </div>
       </article>
@@ -415,12 +422,13 @@
       .slice(0, ui?.dashboardOperationsLimit || 8);
     const summary = summarizePlans(items);
     el.dashboardPlansKpi.innerHTML = `
-      <span class="analytics-kpi-chip analytics-kpi-chip-neutral">К подтверждению: ${summary.dueCount}</span>
+      <span class="analytics-kpi-chip analytics-kpi-chip-neutral">Активных: ${summary.activeCount}</span>
+      <span class="analytics-kpi-chip analytics-kpi-chip-neutral">Сегодня: ${summary.todayCount}</span>
       <span class="analytics-kpi-chip analytics-kpi-chip-negative">Просрочено: ${summary.overdueCount}</span>
       <span class="analytics-kpi-chip ${summary.netPlanned >= 0 ? "analytics-kpi-chip-positive" : "analytics-kpi-chip-negative"}">Плановый сдвиг: ${summary.netPlanned < 0 ? "-" : "+"}${core.formatMoney(Math.abs(summary.netPlanned))}</span>
     `;
     el.dashboardPlansList.innerHTML = items.length
-      ? items.map(renderPlanCard).join("")
+      ? items.map((item) => renderPlanCard(item, { dashboardCompact: true })).join("")
       : "<div class='muted-small'>Планов пока нет</div>";
   }
 
@@ -431,7 +439,10 @@
     const baseBalance = await ensurePlansAllTimeBalance();
     const projectedBalance = baseBalance + Number(summary.netPlanned || 0);
     if (el.plansDueChip) {
-      el.plansDueChip.textContent = `К подтверждению: ${summary.dueCount}`;
+      el.plansDueChip.textContent = `Активных: ${summary.activeCount}`;
+    }
+    if (el.plansTodayChip) {
+      el.plansTodayChip.textContent = `Сегодня: ${summary.todayCount}`;
     }
     if (el.plansOverdueChip) {
       el.plansOverdueChip.textContent = `Просрочено: ${summary.overdueCount}`;
@@ -449,7 +460,7 @@
       el.plansFinancialDelta.classList.toggle("plans-financial-kpi-delta-neutral", !positive && !negative);
     }
     if (el.plansFinancialMeta) {
-      el.plansFinancialMeta.textContent = `После планов: ${projectedBalance < 0 ? "-" : ""}${core.formatMoney(Math.abs(projectedBalance))}`;
+      el.plansFinancialMeta.textContent = `${projectedBalance < 0 ? "-" : ""}${core.formatMoney(Math.abs(projectedBalance))}`;
     }
     if (!el.plansList) {
       return;
@@ -504,8 +515,11 @@
     operationModal.renderReceiptItems?.("create");
     operationModal.renderReceiptSummary?.("create");
     state.editPlanId = plan?.id ? Number(plan.id) : null;
-    if (el.planRecurrenceEnabled) {
-      el.planRecurrenceEnabled.checked = Boolean(plan?.recurrence_enabled);
+    if (el.planScheduleMode) {
+      el.planScheduleMode.value = plan?.recurrence_enabled ? "recurring" : "oneoff";
+    }
+    if (el.planScheduleModeSwitch) {
+      core.syncSegmentedActive(el.planScheduleModeSwitch, "plan-schedule-mode", el.planScheduleMode?.value || "oneoff");
     }
     if (el.planRecurrenceFrequency) {
       el.planRecurrenceFrequency.value = plan?.recurrence_frequency || "monthly";
@@ -539,7 +553,7 @@
     if (!canDeriveAmountFromReceipt && (!amount.valid || amount.value <= 0)) {
       throw new Error("Проверь сумму плана");
     }
-    const recurrenceEnabled = Boolean(el.planRecurrenceEnabled?.checked);
+    const recurrenceEnabled = (el.planScheduleMode?.value || "oneoff") === "recurring";
     const recurrenceEndDate = core.parseDateInputValue(el.planRecurrenceEndDate?.value || "");
     return {
       kind: el.opKind.value,
@@ -748,6 +762,7 @@
     loadPlans,
     renderPlansSection,
     renderDashboardPlans,
+    renderPlanCardMarkup: renderPlanCard,
     setPlansTab,
     setPlansKindFilter,
     setPlansStatusFilter,

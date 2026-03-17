@@ -62,7 +62,7 @@ Sidebar grouping baseline (when section groups are introduced):
 - comment
 - optional receipt/positions flow
 - current recurrence contract:
-- toggle `Повторять план`
+- segmented switch `Разовая / Повторяющаяся`
 - frequency: `daily | weekly | monthly | yearly`
 - interval step
 - daily plans can optionally run only on weekdays (`Пн-Пт`)
@@ -76,18 +76,20 @@ Sidebar grouping baseline (when section groups are introduced):
 - `Удалить`
 - section-level plan monitoring UI:
 - KPI layer should be compact and finance-first, not split into five separate operational cards
-- primary KPI surface should show `Баланс с учетом планов`, not just isolated planned totals
+- primary KPI surface should show the financial baseline plus plan delta, not isolated planned totals
 - the displayed value should be computed as current all-time balance plus/minus the sum of pending plan operations
 - preferred reading order:
 - first show current balance as the main anchor value
 - immediately next to it show signed plan delta (`-64` / `+64`) with expense/income color semantics
-- only below that show the projected post-plan result (`После планов: ...`)
+- only below that show the projected post-plan result as a quieter secondary line
 - current balance must remain the dominant number; the signed delta is a compact adjacent modifier, not a replacement for the base figure
 - `К подтверждению` and `Просрочено` should not consume standalone large cards by default; prefer compact status chips/counters near the main KPI surface
+- current compact status set should favor `Активных`, `Сегодня`, `Просрочено` over the more ambiguous `К подтверждению`
 - the old explanatory subtitle about plans not affecting fact before confirmation is redundant and should stay removed both in the section and in the dashboard plans block
 - status-scope filter: `Все сроки / Просрочено / Сегодня / Впереди`
 - initial dashboard strategy: replace the current recent operations block with `Ближайшие планы`
 - dashboard plans block should show pending/planned workload, not factual accounting data
+- dashboard plan cards should use a compact action set; `Подтвердить` is enough there, while edit/delete belong to the main `Планы` section
 - plans controls should keep a separate row under KPI; search belongs in the controls row, not glued directly to the KPI card
 - on desktop the plans toolbar should be split into two clear rows:
 - first row: segmented controls only
@@ -100,6 +102,7 @@ Sidebar grouping baseline (when section groups are introduced):
 - the main difference from `Операции` rows should be the action set (`Подтвердить`, `Редактировать`, optional `Пропустить`, `Удалить`)
 - when a plan/operation contains receipt positions without one shared default category, category display should be derived from receipt item categories and rendered as deduplicated chips rather than a misleading `Без категории`
 - `Позиций: N` in plan meta should behave as an inline link/action that opens the same receipt-items modal used by `Операции`
+- plan create/edit preview should not reuse the old table-row preview when `createFlowMode === plan`; it should render the actual plan-card contract used in the `Планы` section
 - on desktop, plan cards should not keep the tall mobile-style column stack; use a denser horizontal distribution with:
 - left: operation-like fields/meta row
 - center/right: due/progress block integrated into the same horizontal rhythm, without large dead vertical space

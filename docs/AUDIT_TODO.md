@@ -76,7 +76,7 @@
 - dashboard debt cards were tightened to reduce dead space between counterparty title, status chip and inner debt rows
 - debts compact-desktop toolbar now prefers controlled row layout instead of forcing every control into one overflowing line
 - updated 2026-03-16 follow-up:
-- plans KPI should be upgraded from plain signed plan total to `Баланс с учетом планов` (`current all-time balance +/- planned shift`)
+- plans KPI should show current balance plus signed plan delta, with projected result as a secondary line
 - plans search should live in the controls row below KPI, with sensible compact width instead of sticking directly to the KPI card
 - plans cards should visually track regular operations rows/cards even closer, while keeping plan-specific chips and due progress
 - dashboard debt cards should use `1/3 identity + 2/3 working block`, and dashboard cards should also expose `История` alongside `Погашение`
@@ -90,6 +90,9 @@
 - desktop polish should keep amount right-aligned, progress compact, and reduce the visual gap before the actions column
 - plans/operations category fallback should aggregate receipt-item categories without duplicates, and plan meta `Позиций: N` should open the shared receipt modal
 - plans desktop cards should keep top-left contextual chips separate from the main data row, and use `Позиции` as a real data column when receipt items exist
+- plans KPI copy should stay visually minimal, while compact chips move to `Активных / Сегодня / Просрочено`
+- dashboard plans should use compact confirm-only action sets
+- plan modal recurrence should use `Разовая / Повторяющаяся` segmented switch, and plan preview should mirror the actual plan card instead of an old operations-table row
 
 2. Scroll and overflow hardening
 - Status: done (updated 2026-03-08)

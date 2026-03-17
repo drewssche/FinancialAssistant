@@ -153,6 +153,16 @@
 
     function updateCreatePreview() {
       el.createPreviewBody.innerHTML = "";
+      if (el.createPlanPreviewCard) {
+        el.createPlanPreviewCard.classList.add("hidden");
+        el.createPlanPreviewCard.innerHTML = "";
+      }
+      if (el.createPreviewTableWrap) {
+        el.createPreviewTableWrap.classList.remove("hidden");
+      }
+      if (el.createPreviewTitle) {
+        el.createPreviewTitle.textContent = "Превью строки в таблице";
+      }
       if (el.opEntryMode.value === "debt") {
         const row = document.createElement("tr");
         const snapshot = typeof getDebtPreviewSnapshot === "function" ? getDebtPreviewSnapshot() : null;
@@ -179,6 +189,49 @@
         row.appendChild(createPreviewCellButton("Комментарий", core.highlightText(debtNote || "", ""), "debtNote", "preview-cell-note"));
         el.createPreviewBody.appendChild(row);
         updateDebtDueHint();
+        return;
+      }
+      if (state.createFlowMode === "plan") {
+        const previewItem = getCreateFormPreviewItem();
+        const recurrenceEnabled = (el.planScheduleMode?.value || "oneoff") === "recurring";
+        const frequency = el.planRecurrenceFrequency?.value || "monthly";
+        const interval = Math.max(1, Number(el.planRecurrenceInterval?.value || 1));
+        const recurrenceLabel = !recurrenceEnabled
+          ? "Разовый"
+          : frequency === "weekly"
+            ? "Еженедельно"
+            : frequency === "daily"
+              ? (el.planRecurrenceWorkdaysOnly?.checked ? "По будням" : "Ежедневно")
+              : frequency === "yearly"
+                ? "Ежегодно"
+                : "Ежемесячно";
+        const planItem = {
+          ...previewItem,
+          due_date: previewItem.operation_date,
+          status: "upcoming",
+          recurrence_enabled: recurrenceEnabled,
+          recurrence_frequency: recurrenceEnabled ? frequency : null,
+          recurrence_interval: recurrenceEnabled ? interval : 1,
+          recurrence_weekdays: recurrenceEnabled && frequency === "weekly"
+            ? Array.from(el.planRecurrenceWeekdays?.querySelectorAll("button[data-plan-weekday].active") || []).map((button) => Number(button.dataset.planWeekday || 0))
+            : [],
+          recurrence_workdays_only: recurrenceEnabled && frequency === "daily" ? Boolean(el.planRecurrenceWorkdaysOnly?.checked) : false,
+          recurrence_month_end: recurrenceEnabled && frequency === "monthly" ? Boolean(el.planRecurrenceMonthEnd?.checked) : false,
+          recurrence_label: recurrenceLabel,
+        };
+        if (el.createPreviewTitle) {
+          el.createPreviewTitle.textContent = "Как будет выглядеть в Планах";
+        }
+        if (el.createPreviewTableWrap) {
+          el.createPreviewTableWrap.classList.add("hidden");
+        }
+        if (el.createPlanPreviewCard) {
+          const renderPlanCardMarkup = window.App.featurePlans?.renderPlanCardMarkup;
+          el.createPlanPreviewCard.classList.remove("hidden");
+          el.createPlanPreviewCard.innerHTML = typeof renderPlanCardMarkup === "function"
+            ? renderPlanCardMarkup(planItem)
+            : "";
+        }
         return;
       }
       const previewItem = getCreateFormPreviewItem();

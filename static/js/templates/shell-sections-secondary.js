@@ -13,9 +13,9 @@
             <div id="plansKpiGrid" class="plans-kpi-shell">
               <article class="kpi-card plans-financial-kpi-card">
                 <div class="plans-financial-kpi-head">
-                  <h3>Баланс с учетом планов</h3>
                   <div id="plansStatusChips" class="analytics-kpi-secondary plans-status-chips">
-                    <span id="plansDueChip" class="analytics-kpi-chip analytics-kpi-chip-neutral">К подтверждению: 0</span>
+                    <span id="plansDueChip" class="analytics-kpi-chip analytics-kpi-chip-neutral">Активных: 0</span>
+                    <span id="plansTodayChip" class="analytics-kpi-chip analytics-kpi-chip-neutral">Сегодня: 0</span>
                     <span id="plansOverdueChip" class="analytics-kpi-chip analytics-kpi-chip-negative">Просрочено: 0</span>
                   </div>
                 </div>
@@ -23,7 +23,7 @@
                   <div id="plansFinancialValue" class="plans-financial-kpi-value">0,00 руб.</div>
                   <div id="plansFinancialDelta" class="plans-financial-kpi-delta">+0,00 руб.</div>
                 </div>
-                <div id="plansFinancialMeta" class="subtitle plans-financial-kpi-meta">После планов: 0,00 руб.</div>
+                <div id="plansFinancialMeta" class="subtitle plans-financial-kpi-meta">0,00 руб.</div>
               </article>
             </div>
             <div class="plans-controls-row">

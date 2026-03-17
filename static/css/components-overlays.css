@@ -290,6 +290,17 @@
   margin-bottom: var(--space-2);
 }
 
+.plan-recurrence-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+  align-items: center;
+}
+
+#createPlanPreviewCard {
+  min-width: 0;
+}
+
 .preview-row {
   opacity: 0.95;
 }

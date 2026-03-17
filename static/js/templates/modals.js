@@ -58,22 +58,33 @@
           </div>
 
           <div id="planRecurrenceBlock" class="category-modal-form hidden">
-            <label class="row gap-sm middle">
-              <input id="planRecurrenceEnabled" type="checkbox" />
-              <span>Повторять план</span>
-            </label>
+            <div class="segmented" id="planScheduleModeSwitch" aria-label="Тип плана">
+              <button class="segmented-btn active" data-plan-schedule-mode="oneoff" type="button">Разовая</button>
+              <button class="segmented-btn" data-plan-schedule-mode="recurring" type="button">Повторяющаяся</button>
+            </div>
+            <input id="planScheduleMode" type="hidden" value="oneoff" />
             <div id="planRecurrenceFields" class="category-modal-form hidden">
-              <select id="planRecurrenceFrequency" class="input">
-                <option value="monthly">Ежемесячно</option>
-                <option value="weekly">Еженедельно</option>
-                <option value="daily">Ежедневно</option>
-                <option value="yearly">Ежегодно</option>
-              </select>
-              <input id="planRecurrenceInterval" class="input" type="number" min="1" max="365" value="1" placeholder="Шаг повторения" />
-              <label id="planRecurrenceWorkdaysWrap" class="row gap-sm middle hidden">
-                <input id="planRecurrenceWorkdaysOnly" type="checkbox" />
-                <span>Только по будням</span>
-              </label>
+              <div class="plan-recurrence-grid">
+                <select id="planRecurrenceFrequency" class="input">
+                  <option value="monthly">Ежемесячно</option>
+                  <option value="weekly">Еженедельно</option>
+                  <option value="daily">Ежедневно</option>
+                  <option value="yearly">Ежегодно</option>
+                </select>
+                <input id="planRecurrenceInterval" class="input" type="number" min="1" max="365" value="1" placeholder="Шаг повторения" />
+                <label id="planRecurrenceWorkdaysWrap" class="row gap-sm middle hidden">
+                  <input id="planRecurrenceWorkdaysOnly" type="checkbox" />
+                  <span>Только по будням</span>
+                </label>
+                <label id="planRecurrenceMonthEndWrap" class="row gap-sm middle hidden">
+                  <input id="planRecurrenceMonthEnd" type="checkbox" />
+                  <span>В последний день месяца</span>
+                </label>
+                <div class="date-input-wrap">
+                  <input id="planRecurrenceEndDate" class="input" type="date" aria-label="Дата окончания повторения" />
+                  <button class="date-input-trigger" type="button" data-date-picker-trigger="planRecurrenceEndDate" aria-label="Открыть календарь"></button>
+                </div>
+              </div>
               <div id="planRecurrenceWeeklyBlock" class="hidden">
                 <div class="muted-small">Дни недели</div>
                 <div id="planRecurrenceWeekdays" class="segmented" aria-label="Дни недели">
@@ -85,14 +96,6 @@
                   <button class="segmented-btn" data-plan-weekday="5" type="button">Сб</button>
                   <button class="segmented-btn" data-plan-weekday="6" type="button">Вс</button>
                 </div>
-              </div>
-              <label id="planRecurrenceMonthEndWrap" class="row gap-sm middle hidden">
-                <input id="planRecurrenceMonthEnd" type="checkbox" />
-                <span>В последний день месяца</span>
-              </label>
-              <div class="date-input-wrap">
-                <input id="planRecurrenceEndDate" class="input" type="date" aria-label="Дата окончания повторения" />
-                <button class="date-input-trigger" type="button" data-date-picker-trigger="planRecurrenceEndDate" aria-label="Открыть календарь"></button>
               </div>
             </div>
           </div>
@@ -129,8 +132,8 @@
           </div>
         </form>
         <div class="preview-panel">
-          <div class="preview-title">Превью строки в таблице</div>
-            <div class="table-wrap">
+          <div id="createPreviewTitle" class="preview-title">Превью строки в таблице</div>
+            <div id="createPreviewTableWrap" class="table-wrap">
               <table class="table table-hover">
                 <thead>
                 <tr id="createPreviewHeadOperation">
@@ -152,6 +155,7 @@
               <tbody id="createPreviewBody"></tbody>
             </table>
           </div>
+          <div id="createPlanPreviewCard" class="hidden"></div>
         </div>
 
         <div class="modal-footer">

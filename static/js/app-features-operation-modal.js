@@ -247,8 +247,11 @@
     if (el.planRecurrenceBlock) {
       el.planRecurrenceBlock.classList.add("hidden");
     }
-    if (el.planRecurrenceEnabled) {
-      el.planRecurrenceEnabled.checked = false;
+    if (el.planScheduleMode) {
+      el.planScheduleMode.value = "oneoff";
+    }
+    if (el.planScheduleModeSwitch) {
+      core.syncSegmentedActive(el.planScheduleModeSwitch, "plan-schedule-mode", "oneoff");
     }
     if (el.planRecurrenceFields) {
       el.planRecurrenceFields.classList.add("hidden");

@@ -530,8 +530,16 @@
         actions.handlePlanActionClick(event);
       });
     }
-    if (el.planRecurrenceEnabled && actions.syncPlanRecurrenceUi) {
-      el.planRecurrenceEnabled.addEventListener("change", () => {
+    if (el.planScheduleModeSwitch && actions.syncPlanRecurrenceUi) {
+      el.planScheduleModeSwitch.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-plan-schedule-mode]");
+        if (!btn) {
+          return;
+        }
+        if (el.planScheduleMode) {
+          el.planScheduleMode.value = btn.dataset.planScheduleMode || "oneoff";
+        }
+        core.syncSegmentedActive(el.planScheduleModeSwitch, "plan-schedule-mode", el.planScheduleMode?.value || "oneoff");
         actions.syncPlanRecurrenceUi();
       });
     }

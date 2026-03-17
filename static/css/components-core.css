@@ -349,6 +349,15 @@
   margin-top: var(--space-3);
 }
 
+.dashboard-plans-list .plan-card-actions .btn:not(.btn-primary) {
+  display: none;
+}
+
+.dashboard-plans-list .plan-card-actions {
+  min-width: 10rem;
+  max-width: 10.5rem;
+}
+
 .plan-card {
   display: grid;
   gap: var(--space-2);
