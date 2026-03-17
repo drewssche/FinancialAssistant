@@ -106,6 +106,7 @@ Sidebar grouping baseline (when section groups are introduced):
 - plan create/edit preview should not reuse the old table-row preview when `createFlowMode === plan`; it should render the actual plan-card contract used in the `Планы` section
 - preview should stay non-interactive: do not render action buttons inside preview cards
 - recurrence controls should use a desktop main row for frequency/interval/end-date, with a separate option row for contextual toggles like `Только по будням` and `В последний день месяца`
+- desktop recurrence controls should stretch evenly across the available modal width instead of collapsing into narrow intrinsic-width inputs
 - on desktop, plan cards should not keep the tall mobile-style column stack; use a denser horizontal distribution with:
 - left: operation-like fields/meta row
 - center/right: due/progress block integrated into the same horizontal rhythm, without large dead vertical space

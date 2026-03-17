@@ -95,6 +95,7 @@
 - plan modal recurrence should use `Разовая / Повторяющаяся` segmented switch, and plan preview should mirror the actual plan card instead of an old operations-table row
 - plan cards should keep the interactive `Позиций: N` value without a redundant field label above it
 - preview cards should not render actions, and recurrence controls should be redistributed into a desktop main row plus a lighter options row
+- desktop recurrence controls should stretch to fill the modal row evenly, not stay as cramped intrinsic-width fields
 
 2. Scroll and overflow hardening
 - Status: done (updated 2026-03-08)

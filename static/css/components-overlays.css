@@ -295,6 +295,7 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
   align-items: center;
+  width: 100%;
 }
 
 .plan-recurrence-options {
@@ -306,6 +307,18 @@
 
 .plan-recurrence-options > label {
   min-width: 0;
+}
+
+.plan-recurrence-grid > *,
+.plan-recurrence-grid .date-input-wrap {
+  width: 100%;
+  min-width: 0;
+}
+
+.plan-recurrence-grid > .input,
+.plan-recurrence-grid select,
+.plan-recurrence-grid input {
+  width: 100%;
 }
 
 #createPlanPreviewCard {
