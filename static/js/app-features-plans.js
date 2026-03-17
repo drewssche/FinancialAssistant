@@ -14,6 +14,36 @@
     return Array.isArray(state.plansHistoryItems) ? state.plansHistoryItems : [];
   }
 
+  function getCategoryMetaById(categoryId) {
+    const id = Number(categoryId || 0);
+    if (!id) {
+      return null;
+    }
+    const category = (state.categories || []).find((item) => Number(item.id) === id);
+    if (!category) {
+      return null;
+    }
+    return {
+      id: category.id,
+      name: category.name,
+      icon: category.icon || category.group_icon || null,
+      accent_color: category.group_accent_color || null,
+      kind: category.kind,
+      group_name: category.group_name || "",
+    };
+  }
+
+  function getPlanDisplayCategories(item) {
+    const categories = core.getReceiptCategoryMetas
+      ? core.getReceiptCategoryMetas(item?.receipt_items, item?.category_id, getCategoryMetaById)
+      : [];
+    if (categories.length) {
+      return categories;
+    }
+    const fallback = getCategoryMetaById(item?.category_id);
+    return fallback?.name ? [fallback] : [];
+  }
+
   function getFilteredPlans() {
     const query = String(el.plansSearchQ?.value || "").trim().toLowerCase();
     const activeTab = state.plansTab || "due";
@@ -279,8 +309,8 @@
 
   function renderPlanCard(item) {
     const kindClass = item.kind === "income" ? "income" : "expense";
-    const categoryChip = item.category_name
-      ? core.renderCategoryChip({ name: item.category_name, icon: item.category_icon || "", accent_color: item.category_accent_color || null }, "")
+    const categoryChips = core.renderCategoryChipList
+      ? core.renderCategoryChipList(getPlanDisplayCategories(item), "")
       : "<span class='muted-small'>Без категории</span>";
     const dateLabel = item.due_date ? core.formatDateRu(item.due_date) : "Без срока";
     const progress = dueProgressMeta(item);
@@ -288,7 +318,9 @@
     const receiptMeta = Array.isArray(item.receipt_items) && item.receipt_items.length
       ? `<span class="meta-chip meta-chip-neutral">Чек</span>`
       : "";
-    const positionsMeta = item.receipt_items?.length ? `<span class="muted-small">Позиций: ${item.receipt_items.length}</span>` : "";
+    const positionsMeta = item.receipt_items?.length
+      ? `<button class="btn btn-link-inline plan-meta-link" type="button" data-plan-receipt-view-id="${item.id}">Позиций: ${item.receipt_items.length}</button>`
+      : "";
     const noteMeta = item.note ? `<span class="muted-small">${core.highlightText(item.note, "")}</span>` : "";
     return `
       <article class="panel plan-card plan-card-${item.status || "upcoming"}">
@@ -305,7 +337,7 @@
               </div>
               <div class="plan-card-field plan-card-field-category">
                 <span class="muted-small">Категория</span>
-                ${categoryChip}
+                ${categoryChips}
               </div>
               <div class="plan-card-field plan-card-field-amount">
                 <span class="muted-small">Сумма</span>
@@ -670,6 +702,17 @@
   }
 
   function handlePlanActionClick(event) {
+    const receiptBtn = event.target.closest("button[data-plan-receipt-view-id]");
+    if (receiptBtn) {
+      const item = findPlanById(Number(receiptBtn.dataset.planReceiptViewId || 0));
+      if (item?.id && window.App.actions?.openOperationReceiptModal) {
+        window.App.actions.openOperationReceiptModal({
+          ...item,
+          operation_date: item.due_date || item.operation_date || core.getTodayIso(),
+        });
+      }
+      return;
+    }
     const btn = event.target.closest("button[data-plan-action]");
     if (!btn) {
       return;

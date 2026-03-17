@@ -239,6 +239,7 @@
         core.createOperationRow(item, {
           searchQuery: query,
           category: getOperationDisplayCategory(item),
+          categories: getOperationDisplayCategories(item),
           selectable: true,
           selected: state.selectedOperationIds.has(item.id),
         }),
@@ -438,6 +439,7 @@
     })
     : {};
   const getOperationDisplayCategory = displayFeature.getOperationDisplayCategory || (() => null);
+  const getOperationDisplayCategories = displayFeature.getOperationDisplayCategories || (() => []);
   const openOperationReceiptModal = displayFeature.openOperationReceiptModal || (() => {});
   const closeOperationReceiptModal = displayFeature.closeOperationReceiptModal || (() => {});
   window.App.featureOperations = {

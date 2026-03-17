@@ -2,26 +2,19 @@
   function createOperationsDisplayFeature(deps) {
     const { el, core, getCategoryMetaById } = deps;
 
-    function getOperationDisplayCategory(item) {
-      const hasReceiptItems = Array.isArray(item.receipt_items) && item.receipt_items.length > 0;
-      const receiptCategoryIds = hasReceiptItems
-        ? Array.from(new Set(
-          item.receipt_items
-            .map((row) => Number(row.category_id || item.category_id || 0))
-            .filter((value) => value > 0),
-        ))
+    function getOperationDisplayCategories(item) {
+      const categories = core.getReceiptCategoryMetas
+        ? core.getReceiptCategoryMetas(item?.receipt_items, item?.category_id, getCategoryMetaById)
         : [];
-      let categoryMeta = getCategoryMetaById(item.category_id);
-      if (!hasReceiptItems) {
-        return categoryMeta;
+      if (categories.length) {
+        return categories;
       }
-      if (receiptCategoryIds.length === 1) {
-        return getCategoryMetaById(receiptCategoryIds[0]);
-      }
-      if (receiptCategoryIds.length > 1) {
-        return { name: "Несколько категорий", icon: null, accent_color: null };
-      }
-      return categoryMeta || null;
+      const fallback = getCategoryMetaById(item?.category_id);
+      return fallback?.name ? [fallback] : [];
+    }
+
+    function getOperationDisplayCategory(item) {
+      return getOperationDisplayCategories(item)[0] || null;
     }
 
     function openOperationReceiptModal(item) {
@@ -75,6 +68,7 @@
 
     return {
       getOperationDisplayCategory,
+      getOperationDisplayCategories,
       openOperationReceiptModal,
       closeOperationReceiptModal,
     };

@@ -88,6 +88,7 @@
 - action buttons must stay visible on the right, while fields/meta and due/progress use the horizontal space more evenly
 - plans desktop toolbar should use separate rows: controls first, then full-width search below
 - desktop polish should keep amount right-aligned, progress compact, and reduce the visual gap before the actions column
+- plans/operations category fallback should aggregate receipt-item categories without duplicates, and plan meta `Позиций: N` should open the shared receipt modal
 
 2. Scroll and overflow hardening
 - Status: done (updated 2026-03-08)

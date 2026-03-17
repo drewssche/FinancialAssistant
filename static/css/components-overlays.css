@@ -3,6 +3,12 @@
   min-width: 360px;
 }
 
+.plans-search-input.table-search-input {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
 .color-picker-row {
   display: grid;
   grid-template-columns: 52px 1fr;

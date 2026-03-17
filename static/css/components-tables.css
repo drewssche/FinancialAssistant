@@ -104,6 +104,12 @@
   flex-wrap: wrap;
 }
 
+.category-chip-list-stack {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+}
+
 .category-groups-title {
   color: var(--muted);
   font-size: 13px;

@@ -97,6 +97,8 @@ Sidebar grouping baseline (when section groups are introduced):
 - contextual plan chips should explain plan state/recurrence
 - due/progress indicator by term should be visible
 - the main difference from `Операции` rows should be the action set (`Подтвердить`, `Редактировать`, optional `Пропустить`, `Удалить`)
+- when a plan/operation contains receipt positions without one shared default category, category display should be derived from receipt item categories and rendered as deduplicated chips rather than a misleading `Без категории`
+- `Позиций: N` in plan meta should behave as an inline link/action that opens the same receipt-items modal used by `Операции`
 - on desktop, plan cards should not keep the tall mobile-style column stack; use a denser horizontal distribution with:
 - left: operation-like fields/meta row
 - center/right: due/progress block integrated into the same horizontal rhythm, without large dead vertical space

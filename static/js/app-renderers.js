@@ -35,6 +35,29 @@
     return `<span class="category-chip"${style}${title}>${icon}<span class="category-chip-text">${highlightText(category.name, searchQuery)}</span></span>`;
   }
 
+  function renderCategoryChipList(categories, searchQuery = "") {
+    const items = Array.isArray(categories) ? categories.filter((item) => item?.name) : [];
+    if (!items.length) {
+      return "<span class='muted-small'>Без категории</span>";
+    }
+    const stackClass = items.length > 1 ? " category-chip-list-stack" : "";
+    return `<div class="category-chip-list${stackClass}">${items.map((item) => renderCategoryChip(item, searchQuery)).join("")}</div>`;
+  }
+
+  function getReceiptCategoryMetas(receiptItems, fallbackCategoryId, getCategoryMetaById) {
+    if (typeof getCategoryMetaById !== "function") {
+      return [];
+    }
+    const ids = Array.from(new Set(
+      (Array.isArray(receiptItems) ? receiptItems : [])
+        .map((row) => Number(row?.category_id || fallbackCategoryId || 0))
+        .filter((value) => value > 0),
+    ));
+    return ids
+      .map((id) => getCategoryMetaById(id))
+      .filter((item) => item?.name);
+  }
+
   function renderMetaChip(label, tone = "neutral") {
     return `<span class="meta-chip meta-chip-${escapeHtml(tone)}">${escapeHtml(label)}</span>`;
   }
@@ -179,7 +202,10 @@
     const kindText = core.kindLabel(item.kind);
     const noteText = item.note || "";
     const hasReceiptItems = Array.isArray(item.receipt_items) && item.receipt_items.length > 0;
-    const categoryHtml = renderCategoryChip(category, searchQuery);
+    const categories = Array.isArray(options.categories) && options.categories.length
+      ? options.categories
+      : (category?.name ? [category] : []);
+    const categoryHtml = renderCategoryChipList(categories, searchQuery);
     const categoryCellHtml = hasReceiptItems
       ? `<div class="operation-category-stack">${categoryHtml}${renderMetaChip("Чек")}</div>`
       : categoryHtml;
@@ -249,6 +275,8 @@
     escapeHtml,
     highlightText,
     renderCategoryChip,
+    renderCategoryChipList,
+    getReceiptCategoryMetas,
     renderMetaChip,
     createOperationRow,
     debtUi: {
