@@ -102,7 +102,10 @@ Sidebar grouping baseline (when section groups are introduced):
 - the main difference from `Операции` rows should be the action set (`Подтвердить`, `Редактировать`, optional `Пропустить`, `Удалить`)
 - when a plan/operation contains receipt positions without one shared default category, category display should be derived from receipt item categories and rendered as deduplicated chips rather than a misleading `Без категории`
 - `Позиций: N` in plan meta should behave as an inline link/action that opens the same receipt-items modal used by `Операции`
+- when `Позиций: N` is already rendered as the interactive value, the extra field label above that column should stay removed
 - plan create/edit preview should not reuse the old table-row preview when `createFlowMode === plan`; it should render the actual plan-card contract used in the `Планы` section
+- preview should stay non-interactive: do not render action buttons inside preview cards
+- recurrence controls should use a desktop main row for frequency/interval/end-date, with a separate option row for contextual toggles like `Только по будням` and `В последний день месяца`
 - on desktop, plan cards should not keep the tall mobile-style column stack; use a denser horizontal distribution with:
 - left: operation-like fields/meta row
 - center/right: due/progress block integrated into the same horizontal rhythm, without large dead vertical space

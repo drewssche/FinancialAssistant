@@ -220,7 +220,7 @@
           recurrence_label: recurrenceLabel,
         };
         if (el.createPreviewTitle) {
-          el.createPreviewTitle.textContent = "Как будет выглядеть в Планах";
+          el.createPreviewTitle.textContent = "Превью строки в таблице";
         }
         if (el.createPreviewTableWrap) {
           el.createPreviewTableWrap.classList.add("hidden");
@@ -229,7 +229,7 @@
           const renderPlanCardMarkup = window.App.featurePlans?.renderPlanCardMarkup;
           el.createPlanPreviewCard.classList.remove("hidden");
           el.createPlanPreviewCard.innerHTML = typeof renderPlanCardMarkup === "function"
-            ? renderPlanCardMarkup(planItem)
+            ? renderPlanCardMarkup(planItem, { hideActions: true })
             : "";
         }
         return;

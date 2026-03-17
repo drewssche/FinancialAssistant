@@ -93,6 +93,8 @@
 - plans KPI copy should stay visually minimal, while compact chips move to `Активных / Сегодня / Просрочено`
 - dashboard plans should use compact confirm-only action sets
 - plan modal recurrence should use `Разовая / Повторяющаяся` segmented switch, and plan preview should mirror the actual plan card instead of an old operations-table row
+- plan cards should keep the interactive `Позиций: N` value without a redundant field label above it
+- preview cards should not render actions, and recurrence controls should be redistributed into a desktop main row plus a lighter options row
 
 2. Scroll and overflow hardening
 - Status: done (updated 2026-03-08)

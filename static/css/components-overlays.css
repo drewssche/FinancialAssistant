@@ -292,13 +292,36 @@
 
 .plan-recurrence-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
   align-items: center;
 }
 
+.plan-recurrence-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.plan-recurrence-options > label {
+  min-width: 0;
+}
+
 #createPlanPreviewCard {
   min-width: 0;
+}
+
+#createPlanPreviewCard .plan-card {
+  padding: var(--space-3);
+}
+
+#createPlanPreviewCard .plan-card-row {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+#createPlanPreviewCard .plan-card-actions {
+  display: none;
 }
 
 .preview-row {

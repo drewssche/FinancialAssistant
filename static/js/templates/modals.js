@@ -72,6 +72,12 @@
                   <option value="yearly">Ежегодно</option>
                 </select>
                 <input id="planRecurrenceInterval" class="input" type="number" min="1" max="365" value="1" placeholder="Шаг повторения" />
+                <div class="date-input-wrap">
+                  <input id="planRecurrenceEndDate" class="input" type="date" aria-label="Дата окончания повторения" />
+                  <button class="date-input-trigger" type="button" data-date-picker-trigger="planRecurrenceEndDate" aria-label="Открыть календарь"></button>
+                </div>
+              </div>
+              <div class="plan-recurrence-options">
                 <label id="planRecurrenceWorkdaysWrap" class="row gap-sm middle hidden">
                   <input id="planRecurrenceWorkdaysOnly" type="checkbox" />
                   <span>Только по будням</span>
@@ -80,10 +86,6 @@
                   <input id="planRecurrenceMonthEnd" type="checkbox" />
                   <span>В последний день месяца</span>
                 </label>
-                <div class="date-input-wrap">
-                  <input id="planRecurrenceEndDate" class="input" type="date" aria-label="Дата окончания повторения" />
-                  <button class="date-input-trigger" type="button" data-date-picker-trigger="planRecurrenceEndDate" aria-label="Открыть календарь"></button>
-                </div>
               </div>
               <div id="planRecurrenceWeeklyBlock" class="hidden">
                 <div class="muted-small">Дни недели</div>

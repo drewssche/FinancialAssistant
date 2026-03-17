@@ -315,6 +315,7 @@
 
   function renderPlanCard(item, options = {}) {
     const dashboardCompact = options.dashboardCompact === true;
+    const hideActions = options.hideActions === true;
     const kindClass = item.kind === "income" ? "income" : "expense";
     const categoryChips = core.renderCategoryChipList
       ? core.renderCategoryChipList(getPlanDisplayCategories(item), "")
@@ -352,7 +353,6 @@
                 ${categoryChips}
               </div>
               <div class="plan-card-field plan-card-field-positions">
-                <span class="muted-small">Позиции</span>
                 ${positionsMeta || "<span class='muted-small'>—</span>"}
               </div>
               <div class="plan-card-field plan-card-field-amount">
@@ -370,12 +370,13 @@
               </div>
             </div>
           </div>
+          ${hideActions ? "" : `
           <div class="actions row-actions plan-card-actions">
             ${item.status !== "confirmed" && item.status !== "skipped" ? `<button class="btn btn-primary" type="button" data-plan-action="confirm" data-plan-id="${item.id}">Подтвердить</button>` : ""}
             ${!dashboardCompact && item.status !== "confirmed" && item.status !== "skipped" ? `<button class="btn btn-secondary" type="button" data-plan-action="edit" data-plan-id="${item.id}">Редактировать</button>` : ""}
             ${!dashboardCompact && item.recurrence_enabled && item.status !== "confirmed" ? `<button class="btn btn-secondary" type="button" data-plan-action="skip" data-plan-id="${item.id}">Пропустить</button>` : ""}
             ${!dashboardCompact ? `<button class="btn btn-danger" type="button" data-plan-action="delete" data-plan-id="${item.id}">Удалить</button>` : ""}
-          </div>
+          </div>`}
         </div>
       </article>
     `;
