@@ -89,6 +89,8 @@ Sidebar grouping baseline (when section groups are introduced):
 - status-scope filter: `Все сроки / Просрочено / Сегодня / Впереди`
 - initial dashboard strategy: replace the current recent operations block with `Ближайшие планы`
 - dashboard plans block should show pending/planned workload, not factual accounting data
+- dashboard plans block supports a local period switch `Эта неделя / Этот месяц / Все время`; it is scoped only to this block and must not reuse the global dashboard analytics period
+- `Эта неделя` and `Этот месяц` in dashboard plans should still include overdue plans, so urgent items do not disappear from the block
 - dashboard plan cards should use a compact action set; `Подтвердить` is enough there, while edit/delete belong to the main `Планы` section
 - plans controls should keep a separate row under KPI; search belongs in the controls row, not glued directly to the KPI card
 - on desktop the plans toolbar should be split into two clear rows:

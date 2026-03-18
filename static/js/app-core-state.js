@@ -92,6 +92,7 @@
       dashboardAnalyticsDateTo: "",
       dashboardBreakdownLevel: "category",
       dashboardCategoryKind: "expense",
+      dashboardPlansPeriod: "month",
       isAdmin: false,
       accessStatus: "pending",
       adminUserStatusFilter: "pending",

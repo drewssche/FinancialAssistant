@@ -550,13 +550,52 @@
     `;
   }
 
+  function getDashboardPlansPeriodFilteredItems() {
+    const period = state.dashboardPlansPeriod || "month";
+    const activeItems = getPlanItems().filter((item) => item.status === "due" || item.status === "overdue" || item.status === "upcoming");
+    if (period === "all_time") {
+      return activeItems;
+    }
+    const bounds = core.getPeriodBounds ? core.getPeriodBounds(state, period) : null;
+    if (!bounds?.dateFrom || !bounds?.dateTo) {
+      return activeItems;
+    }
+    return activeItems.filter((item) => {
+      if (item.status === "overdue") {
+        return true;
+      }
+      const dueDate = String(item.due_date || item.operation_date || "");
+      return Boolean(dueDate) && dueDate >= bounds.dateFrom && dueDate <= bounds.dateTo;
+    });
+  }
+
+  function getDashboardPlansPeriodLabel() {
+    const period = state.dashboardPlansPeriod || "month";
+    if (period === "all_time") {
+      return "Все активные планы";
+    }
+    const bounds = core.getPeriodBounds ? core.getPeriodBounds(state, period) : null;
+    if (!bounds?.dateFrom || !bounds?.dateTo) {
+      return period === "week" ? "Планы на текущую неделю" : "Планы на текущий месяц";
+    }
+    const base = core.formatPeriodLabel ? core.formatPeriodLabel(bounds.dateFrom, bounds.dateTo) : `${bounds.dateFrom} - ${bounds.dateTo}`;
+    return period === "week"
+      ? `Планы на неделю: ${base}`
+      : `Планы на месяц: ${base}`;
+  }
+
   function renderDashboardPlans() {
     if (!el.dashboardPlansList || !el.dashboardPlansKpi) {
       return;
     }
     const ui = core.getUiSettings ? core.getUiSettings() : null;
-    const items = getPlanItems()
-      .filter((item) => item.status === "due" || item.status === "overdue" || item.status === "upcoming")
+    if (el.dashboardPlansPeriodTabs) {
+      core.syncSegmentedActive(el.dashboardPlansPeriodTabs, "dashboard-plans-period", state.dashboardPlansPeriod || "month");
+    }
+    if (el.dashboardPlansPeriodLabel) {
+      el.dashboardPlansPeriodLabel.textContent = getDashboardPlansPeriodLabel();
+    }
+    const items = getDashboardPlansPeriodFilteredItems()
       .sort((a, b) => String(a.due_date || "").localeCompare(String(b.due_date || "")))
       .slice(0, ui?.dashboardOperationsLimit || 8);
     const summary = summarizePlans(items);
@@ -791,6 +830,14 @@
     window.App.actions?.savePreferencesDebounced?.(250);
   }
 
+  async function setDashboardPlansPeriod(value) {
+    const next = ["week", "month", "all_time"].includes(value) ? value : "month";
+    state.dashboardPlansPeriod = next;
+    core.syncSegmentedActive(el.dashboardPlansPeriodTabs, "dashboard-plans-period", next);
+    renderDashboardPlans();
+    window.App.actions?.savePreferencesDebounced?.(250);
+  }
+
   function applyPlansSearch() {
     renderPlansSection().catch((err) => core.setStatus(String(err)));
   }
@@ -946,6 +993,7 @@
     setPlansKindFilter,
     setPlansStatusFilter,
     setPlansHistoryEventFilter,
+    setDashboardPlansPeriod,
     applyPlansSearch,
     openCreatePlan,
     submitPlanForm,

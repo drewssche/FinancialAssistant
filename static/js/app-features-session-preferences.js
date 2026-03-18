@@ -182,6 +182,9 @@
     if (el.dashboardPlansPanel) {
       el.dashboardPlansPanel.classList.toggle("hidden", ui.show_dashboard_operations === false);
     }
+    if (el.dashboardPlansPeriodTabs) {
+      core.syncSegmentedActive(el.dashboardPlansPeriodTabs, "dashboard-plans-period", state.dashboardPlansPeriod || "month");
+    }
     if (el.dashboardDebtsPanel) {
       el.dashboardDebtsPanel.classList.toggle("hidden", ui.show_dashboard_debts === false);
     }
@@ -261,6 +264,9 @@
     if (state.dashboardAnalyticsPeriod === "custom" && (!state.dashboardAnalyticsDateFrom || !state.dashboardAnalyticsDateTo)) {
       state.dashboardAnalyticsPeriod = "month";
     }
+    state.dashboardPlansPeriod = ["week", "month", "all_time"].includes(prefs.data?.plans?.dashboard_period)
+      ? prefs.data.plans.dashboard_period
+      : "month";
     state.dashboardBreakdownLevel = ["category", "group"].includes(prefs.data?.dashboard?.breakdown_level)
       ? prefs.data.dashboard.breakdown_level
       : "category";
@@ -285,6 +291,7 @@
     core.syncSegmentedActive(el.analyticsCategoryKindTabs, "analytics-category-kind", state.analyticsCategoryKind);
     core.syncSegmentedActive(el.analyticsGranularityTabs, "analytics-granularity", state.analyticsGranularity);
     core.syncSegmentedActive(el.dashboardAnalyticsPeriodTabs, "dashboard-analytics-period", state.dashboardAnalyticsPeriod);
+    core.syncSegmentedActive(el.dashboardPlansPeriodTabs, "dashboard-plans-period", state.dashboardPlansPeriod);
     core.syncSegmentedActive(el.dashboardBreakdownLevelTabs, "dashboard-breakdown-level", state.dashboardBreakdownLevel);
     core.syncSegmentedActive(el.dashboardCategoryKindTabs, "dashboard-category-kind", state.dashboardCategoryKind);
     core.syncSegmentedActive(el.adminUserStatusTabs, "admin-user-status", state.adminUserStatusFilter);
@@ -355,6 +362,7 @@
           ...(state.preferences?.data?.plans || {}),
           status_filter: state.plansStatusFilter || "all",
           history_event_filter: state.plansHistoryEventFilter || "all",
+          dashboard_period: state.dashboardPlansPeriod || "month",
           reminders_enabled: el.plansRemindersToggle ? el.plansRemindersToggle.checked : (state.preferences?.data?.plans?.reminders_enabled !== false),
           reminder_time: el.plansReminderTimeInput ? String(el.plansReminderTimeInput.value || "09:00") : String(state.preferences?.data?.plans?.reminder_time || "09:00"),
         },

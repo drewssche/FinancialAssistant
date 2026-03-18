@@ -89,8 +89,14 @@
             <div class="panel-head row between">
               <div>
                 <h3>Ближайшие планы</h3>
+                <p id="dashboardPlansPeriodLabel" class="subtitle">Планы за выбранный период</p>
               </div>
               <div class="panel-controls">
+                <div class="segmented" id="dashboardPlansPeriodTabs" role="tablist" aria-label="Период планов на дашборде">
+                  <button class="segmented-btn" data-dashboard-plans-period="week" type="button">Эта неделя</button>
+                  <button class="segmented-btn active" data-dashboard-plans-period="month" type="button">Этот месяц</button>
+                  <button class="segmented-btn" data-dashboard-plans-period="all_time" type="button">Все время</button>
+                </div>
                 <button id="openPlansTabBtn" class="btn btn-secondary" type="button">Открыть раздел Планы</button>
               </div>
             </div>

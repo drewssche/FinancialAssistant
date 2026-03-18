@@ -523,6 +523,15 @@
         actions.handlePlanActionClick(event);
       });
     }
+    if (el.dashboardPlansPeriodTabs && actions.setDashboardPlansPeriod) {
+      el.dashboardPlansPeriodTabs.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-dashboard-plans-period]");
+        if (!btn) {
+          return;
+        }
+        actions.setDashboardPlansPeriod(btn.dataset.dashboardPlansPeriod || "").catch((err) => core.setStatus(String(err)));
+      });
+    }
     if (el.planScheduleModeSwitch && actions.syncPlanRecurrenceUi) {
       el.planScheduleModeSwitch.addEventListener("click", (event) => {
         const btn = event.target.closest("button[data-plan-schedule-mode]");

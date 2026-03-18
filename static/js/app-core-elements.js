@@ -45,6 +45,8 @@
       operationsBody: document.getElementById("operationsBody"),
       dashboardPlansList: document.getElementById("dashboardPlansList"),
       dashboardPlansKpi: document.getElementById("dashboardPlansKpi"),
+      dashboardPlansPeriodLabel: document.getElementById("dashboardPlansPeriodLabel"),
+      dashboardPlansPeriodTabs: document.getElementById("dashboardPlansPeriodTabs"),
       dashboardDebtsPanel: document.getElementById("dashboardDebtsPanel"),
       dashboardDebtsList: document.getElementById("dashboardDebtsList"),
       dashboardAnalyticsPanel: document.getElementById("dashboardAnalyticsPanel"),
