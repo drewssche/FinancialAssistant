@@ -217,7 +217,30 @@
       updateEditPreview();
     }
   }
+  function ensureCategoryCatalogReady(mode = "create") {
+    if (Array.isArray(state.categories) && state.categories.length > 0) {
+      return Promise.resolve();
+    }
+    if (!categoryActions.loadCategoryCatalog) {
+      return Promise.resolve();
+    }
+    return categoryActions.loadCategoryCatalog().then(() => {
+      if (mode === "edit") {
+        renderEditCategoryPicker();
+        renderReceiptItems("edit");
+        renderReceiptSummary("edit");
+        updateEditPreview();
+      } else {
+        renderCreateCategoryPicker();
+        renderReceiptItems("create");
+        renderReceiptSummary("create");
+        updateCreatePreview();
+      }
+    }).catch(() => {});
+  }
+
   function openCreateModal() {
+    ensureCategoryCatalogReady("create");
     state.createFlowMode = "operation";
     state.editPlanId = null;
     state.editDebtCreateId = null;
@@ -332,6 +355,7 @@
     updateCreatePreview();
   }
   function openEditModal(item) {
+    ensureCategoryCatalogReady("edit");
     state.editOperationId = item.id;
     document.getElementById("editAmount").value = item.amount;
     core.syncDateFieldValue(document.getElementById("editDate"), item.operation_date);

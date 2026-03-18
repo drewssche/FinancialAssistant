@@ -269,6 +269,12 @@
     if (sectionId === "plans" && window.App.actions.loadPlans) {
       await window.App.actions.loadPlans();
     }
+    if (sectionId === "categories" && window.App.actions.loadCategories) {
+      window.App.actions.loadCategories().catch((err) => {
+        const message = window.App.core.errorMessage ? window.App.core.errorMessage(err) : String(err);
+        window.App.core.setStatus(`Не удалось открыть раздел «Категории»: ${message}`);
+      });
+    }
     if (sectionId === "debts" && window.App.actions.loadDebtsCards) {
       window.App.actions.loadDebtsCards().catch((err) => {
         const message = window.App.core.errorMessage ? window.App.core.errorMessage(err) : String(err);
