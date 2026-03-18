@@ -144,6 +144,7 @@
       el.debtsInfiniteSentinel.classList.toggle("hidden", !state.debtCardsHasMore);
     }
     const searchQuery = String(el.debtSearchQ?.value || "").trim();
+    const compactMobile = window.matchMedia("(max-width: 640px)").matches;
     if (!renderedCards.length) {
       const empty = document.createElement("div");
       empty.className = "muted-small";
@@ -191,6 +192,59 @@
           const directionLabel = debtUi.debtDirectionActionLabel(direction);
           const repaidClass = debtRepaidClass(debt);
           const noteText = debt.note ? core.highlightText(String(debt.note), searchQuery) : "";
+          if (compactMobile) {
+            return `
+              <article class="debt-mobile-entry debt-row-${dueState} debt-row-${direction} table-record-open-row" data-debt-row-id="${debt.id}" tabindex="0">
+                <div class="debt-mobile-entry-head">
+                  <div class="debt-mobile-entry-main">
+                    <div class="debt-mobile-entry-topline">
+                      <span class="debt-direction-pill debt-direction-pill-${direction}">${directionLabel}</span>
+                      <strong class="debt-amount-principal debt-amount-principal-${direction}">${formatMoney(debt.outstanding_total)}</strong>
+                    </div>
+                    <div class="debt-mobile-entry-meta">
+                      <span class="muted-small">Старт: ${core.formatDateRu(debt.start_date)}</span>
+                      <span class="muted-small">${debtDueLabel(dueState, debt.due_date)}</span>
+                      ${dueDays ? `<span class="debt-due-days-badge debt-due-days-badge-${dueState}">${dueDays}</span>` : ""}
+                    </div>
+                  </div>
+                  <div class="mobile-card-kebab-wrap">
+                    <button class="btn btn-secondary mobile-card-kebab-trigger" data-mobile-card-menu-trigger="debt-${debt.id}" type="button" aria-label="Действия долга">
+                      <span aria-hidden="true">⋮</span>
+                    </button>
+                    <div class="app-popover hidden mobile-card-actions-popover" data-mobile-card-menu="debt-${debt.id}">
+                      <div class="mobile-card-actions-menu">
+                        <button class="btn btn-secondary" type="button" data-history-debt-id="${debt.id}">История</button>
+                        <button class="btn btn-secondary" type="button" data-edit-debt-id="${debt.id}">Редактировать</button>
+                        <button class="btn btn-danger" type="button" data-delete-debt-id="${debt.id}">Удалить</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="debt-mobile-entry-body">
+                  <div class="debt-mobile-entry-stats">
+                    <span class="muted-small">Сумма: <strong class="debt-amount-principal debt-amount-principal-${direction}">${formatMoney(debt.principal)}</strong></span>
+                    <span class="muted-small">Погашено: <strong class="debt-amount-repaid ${repaidClass}">${formatMoney(debt.repaid_total)}</strong></span>
+                    <span class="muted-small">Платежей: ${repayments.length}</span>
+                  </div>
+                  <div class="debt-repay-progress">
+                    <div class="debt-repay-progress-track">
+                      <span class="debt-repay-progress-bar debt-repay-progress-bar-${repayProgress.tone}" style="width:${repayProgress.percent}%"></span>
+                    </div>
+                    <span class="muted-small">Погашено: ${repayProgress.percent}%</span>
+                  </div>
+                  ${
+                    dueProgress
+                      ? `<div class="debt-due-progress"><div class="debt-due-progress-track"><span class="debt-due-progress-bar debt-due-progress-bar-${dueProgress.tone}" style="width:${dueProgress.percent}%"></span></div><span class="muted-small">Срок: ${dueProgress.percent}%</span></div>`
+                      : ""
+                  }
+                  ${noteText ? `<div class="muted-small debt-mobile-entry-note">${noteText}</div>` : ""}
+                </div>
+                <div class="debt-mobile-entry-actions">
+                  <button class="btn btn-repay" type="button" data-repay-debt-id="${debt.id}" ${Number(debt.outstanding_total) <= 0 ? "disabled" : ""}>Погашение</button>
+                </div>
+              </article>
+            `;
+          }
           return `<tr class="debt-row-${dueState} debt-row-${direction} debt-record-row table-record-open-row" data-debt-row-id="${debt.id}">
             <td>${core.formatDateRu(debt.start_date)}</td>
             <td><span class="debt-direction-pill debt-direction-pill-${direction}">${directionLabel}</span></td>
@@ -231,30 +285,40 @@
         })
         .join("");
 
-      item.innerHTML = `
-        <div class="row between">
-          <div>
-            <h3>${core.highlightText(card.counterparty, searchQuery)}</h3>
-            <p class="subtitle">Статус: <span class="debt-status debt-status-${card.status}">${card.status === "active" ? "Активный" : "Закрыт"}</span></p>
+      item.innerHTML = compactMobile
+        ? `
+          <div class="debt-mobile-card-head">
+            <div class="debt-mobile-card-title-block">
+              <h3>${core.highlightText(card.counterparty, searchQuery)}</h3>
+              <span class="debt-status debt-status-${card.status}">${card.status === "active" ? "Активный" : "Закрыт"}</span>
+            </div>
           </div>
-        </div>
-        <div class="table-wrap debt-card-children-wrap">
-          <table class="table table-hover">
-            <thead>
-              <tr>
-                <th>Дата</th>
-                <th>Направление</th>
-                <th>Сумма</th>
-                <th>Погашено</th>
-                <th>Остаток</th>
-                <th>Срок/История</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>${debtsRows}</tbody>
-          </table>
-        </div>
-      `;
+          <div class="debt-mobile-entries">${debtsRows}</div>
+        `
+        : `
+          <div class="row between">
+            <div>
+              <h3>${core.highlightText(card.counterparty, searchQuery)}</h3>
+              <p class="subtitle">Статус: <span class="debt-status debt-status-${card.status}">${card.status === "active" ? "Активный" : "Закрыт"}</span></p>
+            </div>
+          </div>
+          <div class="table-wrap debt-card-children-wrap">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Дата</th>
+                  <th>Направление</th>
+                  <th>Сумма</th>
+                  <th>Погашено</th>
+                  <th>Остаток</th>
+                  <th>Срок/История</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>${debtsRows}</tbody>
+            </table>
+          </div>
+        `;
       el.debtsCards.appendChild(item);
     }
   }

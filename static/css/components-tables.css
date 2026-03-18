@@ -711,6 +711,11 @@
   z-index: 30;
 }
 
+.mobile-card-menu-open-row {
+  position: relative;
+  z-index: 35;
+}
+
 .category-mobile-group-toggle,
 .item-catalog-mobile-group-toggle {
   width: 100%;
@@ -733,6 +738,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px 10px;
+  align-items: center;
 }
 
 .category-mobile-main,
@@ -775,6 +781,8 @@
 .mobile-card-kebab-wrap {
   position: relative;
   z-index: 2;
+  justify-self: end;
+  align-self: start;
 }
 
 .mobile-card-kebab-trigger {

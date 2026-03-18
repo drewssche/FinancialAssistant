@@ -159,6 +159,13 @@
   min-width: 0;
 }
 
+.dashboard-debt-row-col .dashboard-debt-due-label {
+  width: fit-content;
+  max-width: 100%;
+  align-self: flex-start;
+  white-space: nowrap;
+}
+
 .dashboard-debt-actions {
   margin-top: var(--space-1);
   display: flex;
@@ -191,6 +198,75 @@
 
 .debt-card h3 {
   margin: 0;
+}
+
+.debt-mobile-card-head {
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-2);
+  border-bottom: 1px solid rgba(58, 77, 108, 0.38);
+}
+
+.debt-mobile-card-title-block {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+}
+
+.debt-mobile-entries {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.debt-mobile-entry {
+  border: 1px solid rgba(56, 77, 111, 0.45);
+  border-radius: var(--radius-md);
+  background: rgba(14, 22, 36, 0.58);
+  padding: calc(var(--space-2) + 0.125rem);
+  display: grid;
+  gap: var(--space-2);
+  position: relative;
+}
+
+.debt-mobile-entry.mobile-card-menu-open {
+  z-index: 30;
+}
+
+.debt-mobile-entry-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: start;
+}
+
+.debt-mobile-entry-main,
+.debt-mobile-entry-body,
+.debt-mobile-entry-stats {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.debt-mobile-entry-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.debt-mobile-entry-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+}
+
+.debt-mobile-entry-actions .btn {
+  width: 100%;
+}
+
+.debt-mobile-entry-note {
+  line-height: 1.4;
 }
 
 .debt-card .row.between {

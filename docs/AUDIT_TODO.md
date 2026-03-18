@@ -9,6 +9,10 @@
 - topbar and CTA rows stack on tablet/mobile widths
 - mobile topbar should stay sticky so the sidebar trigger remains reachable while scrolling
 - grouped mobile list/cards should move secondary actions into kebab menus and keep aggregate meta near titles
+- mobile `Долги` should switch from nested table layout to compact stacked debt summary cards with one visible CTA and kebab secondary actions
+- unify mobile kebab popover stacking so menus are not clipped inside grouped cards
+- tighten mobile grouped-card headers: top-right kebab, title + compact meta line
+- make dashboard debt due chips fit-content instead of stretched pills
 - mobile settings `Danger Zone` should keep explicit spacing between confirmation input and destructive button
 - safe-area-aware modal and toast baseline added for Mini App-sized screens
 - Telegram WebApp runtime adapter is kept only for container/viewport sync (`ready`, `expand`, safe-area, viewport height)

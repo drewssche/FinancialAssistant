@@ -156,6 +156,7 @@
     flex-wrap: wrap;
     gap: 4px 10px;
     justify-content: flex-start;
+    align-items: center;
     text-align: left;
   }
 
@@ -211,6 +212,11 @@
   .mobile-card-table.categories-table .category-mobile-group-metas {
     justify-items: start;
     text-align: left;
+  }
+
+  .mobile-card-table.categories-table .category-mobile-group-head,
+  .mobile-card-table.categories-table .category-mobile-item-head {
+    align-items: start;
   }
 
   .mobile-card-table.categories-table .category-mobile-item-title .category-chip,
@@ -309,6 +315,7 @@
     flex-wrap: wrap;
     gap: 4px 10px;
     justify-content: flex-start;
+    align-items: center;
     text-align: left;
   }
 
@@ -355,6 +362,11 @@
     text-align: left;
   }
 
+  .mobile-card-table.item-catalog-table .item-catalog-mobile-group-head,
+  .mobile-card-table.item-catalog-table .item-catalog-mobile-item-head {
+    align-items: start;
+  }
+
   .mobile-card-table.item-catalog-table .table-hierarchy-parent-row {
     border-color: rgba(112, 133, 171, 0.56);
   }
@@ -368,6 +380,19 @@
     min-height: 2.5rem;
     padding: 10px 12px;
     font-size: 13px;
+  }
+
+  .debt-card {
+    padding-left: 10px;
+  }
+
+  .debt-mobile-entry .debt-repay-progress,
+  .debt-mobile-entry .debt-due-progress {
+    max-width: none;
+  }
+
+  .debt-mobile-entry-topline .debt-amount-principal {
+    font-size: 18px;
   }
 
   .plan-card-head {

@@ -211,6 +211,10 @@ At the bottom-left sidebar, show compact static user block:
 - critical actions must not rely on row hover
 - grouped list/cards on mobile should favor a compact kebab menu for secondary actions instead of stacking multiple full-width buttons inside each card
 - compact aggregate meta for mobile group/source cards should stay near the title as a concise meta-line rather than a tall vertical stack
+- mobile debt cards should not render nested mini-tables; they should use a parent counterparty card with stacked compact debt summary cards, one primary CTA (`Погашение`) and secondary actions inside a kebab menu
+- mobile kebab popovers must never be clipped by sibling cards; opening a menu should raise the owning mobile card/group wrapper above adjacent items
+- on mobile grouped cards, the kebab trigger belongs in the top-right corner of the header, while aggregate meta should stay inline next to the title instead of drifting into separate empty columns
+- dashboard debt due-status chips should size to content and never stretch across the full width of the debt row
 - in mobile settings `Danger Zone`, the confirmation input and destructive button must keep a visible gap and never visually merge into one block
 - inline row actions need mobile-safe alternative access:
 - always-visible compact action button

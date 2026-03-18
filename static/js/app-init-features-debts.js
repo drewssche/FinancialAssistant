@@ -53,6 +53,31 @@
 
     if (el.debtsCards && actions.openDebtRepaymentModal) {
       el.debtsCards.addEventListener("click", (event) => {
+        const menuTrigger = event.target.closest("button[data-mobile-card-menu-trigger]");
+        if (menuTrigger) {
+          const pickerUtils = window.App.pickerUtils;
+          const menuId = String(menuTrigger.dataset.mobileCardMenuTrigger || "");
+          const menu = menuId ? document.querySelector(`.mobile-card-actions-popover[data-mobile-card-menu="${CSS.escape(menuId)}"]`) : null;
+          const ownerCard = menuTrigger.closest(".debt-mobile-entry");
+          const ownerRow = menuTrigger.closest("tr");
+          if (menu && pickerUtils?.setPopoverOpen) {
+            const owners = [menuTrigger, menuTrigger.parentElement].filter(Boolean);
+            const shouldOpen = menu.classList.contains("hidden");
+            document.querySelectorAll(".mobile-card-actions-popover:not(.hidden)").forEach((node) => {
+              if (node !== menu) {
+                pickerUtils.setPopoverOpen(node, false, {
+                  owners: Array.isArray(node.__appPopoverOwners) ? node.__appPopoverOwners : [],
+                });
+                node.closest(".mobile-card-menu-open")?.classList.remove("mobile-card-menu-open");
+                node.closest("tr.mobile-card-menu-open-row")?.classList.remove("mobile-card-menu-open-row");
+              }
+            });
+            pickerUtils.setPopoverOpen(menu, shouldOpen, { owners });
+            ownerCard?.classList.toggle("mobile-card-menu-open", shouldOpen);
+            ownerRow?.classList.toggle("mobile-card-menu-open-row", shouldOpen);
+          }
+          return;
+        }
         const editBtn = event.target.closest("button[data-edit-debt-id]");
         if (editBtn && actions.openEditDebtModal) {
           actions.openEditDebtModal(Number(editBtn.dataset.editDebtId || 0));
@@ -78,14 +103,16 @@
         }
 
         const row = event.target.closest("tr[data-debt-row-id]");
-        if (!row) {
+        const mobileRow = event.target.closest(".debt-mobile-entry[data-debt-row-id]");
+        const targetRow = row || mobileRow;
+        if (!targetRow) {
           return;
         }
         if (event.target.closest("button, a, input, select, textarea, label, .app-popover")) {
           return;
         }
         if (actions.openEditDebtModal) {
-          actions.openEditDebtModal(Number(row.dataset.debtRowId || 0));
+          actions.openEditDebtModal(Number(targetRow.dataset.debtRowId || 0));
         }
       });
     }

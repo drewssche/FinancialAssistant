@@ -13,6 +13,7 @@
         return false;
       }
       const ownerCard = trigger.closest(".category-mobile-card, .category-mobile-group-card, .item-catalog-mobile-item-card, .item-catalog-mobile-group-card");
+      const ownerRow = trigger.closest("tr");
       const owners = [trigger, trigger.parentElement].filter(Boolean);
       const shouldOpen = menu.classList.contains("hidden");
       document.querySelectorAll(".mobile-card-actions-popover:not(.hidden)").forEach((node) => {
@@ -21,11 +22,15 @@
             owners: Array.isArray(node.__appPopoverOwners) ? node.__appPopoverOwners : [],
           });
           node.closest(".mobile-card-menu-open")?.classList.remove("mobile-card-menu-open");
+          node.closest("tr.mobile-card-menu-open-row")?.classList.remove("mobile-card-menu-open-row");
         }
       });
       pickerUtils.setPopoverOpen(menu, shouldOpen, { owners });
       if (ownerCard) {
         ownerCard.classList.toggle("mobile-card-menu-open", shouldOpen);
+      }
+      if (ownerRow) {
+        ownerRow.classList.toggle("mobile-card-menu-open-row", shouldOpen);
       }
       return true;
     }
