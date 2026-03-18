@@ -5,6 +5,7 @@
 
     <div id="appShell" class="app-shell hidden">
       <div id="mobileNavOverlay" class="mobile-nav-overlay hidden"></div>
+      <button id="mobileNavToggleBtn" class="mobile-nav-toggle" type="button" aria-label="Открыть меню" aria-expanded="false">☰</button>
       <aside class="sidebar" id="sidebarNav">
         <div class="sidebar-main">
           <div class="sidebar-head">
@@ -47,7 +48,6 @@
       <main class="main">
         <header class="topbar">
           <div class="topbar-title-block">
-            <button id="mobileNavToggleBtn" class="mobile-nav-toggle" type="button" aria-label="Открыть меню" aria-expanded="false">☰</button>
             <button id="sectionBackBtn" class="section-back-btn hidden" type="button" aria-label="Назад" title="Назад">
               <span class="section-back-btn-icon" aria-hidden="true">←</span>
               <span id="sectionBackLabel" class="section-back-btn-label">Назад</span>

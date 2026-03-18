@@ -109,6 +109,7 @@
   const loadPlans = plansFeatures.loadPlans;
   const renderPlansSection = plansFeatures.renderPlansSection;
   const renderDashboardPlans = plansFeatures.renderDashboardPlans;
+  const setDashboardPlansPeriod = plansFeatures.setDashboardPlansPeriod;
   const setPlansTab = plansFeatures.setPlansTab;
   const setPlansKindFilter = plansFeatures.setPlansKindFilter;
   const setPlansStatusFilter = plansFeatures.setPlansStatusFilter;
@@ -277,6 +278,7 @@
     deleteDebtFlow,
     renderPlansSection,
     renderDashboardPlans,
+    setDashboardPlansPeriod,
     setPlansTab,
     setPlansKindFilter,
     setPlansStatusFilter,

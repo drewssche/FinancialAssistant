@@ -1,8 +1,46 @@
 (() => {
   const { state, el, core, actions } = window.App;
+  const pickerUtils = window.App.pickerUtils;
   let bound = false;
   let debtsObserver = null;
   let historyObserver = null;
+
+  function toggleDebtMenu(trigger) {
+    const mobileMenuId = String(trigger?.dataset.mobileCardMenuTrigger || "");
+    const tableMenuId = String(trigger?.dataset.tableMenuTrigger || "");
+    const menu = mobileMenuId
+      ? document.querySelector(`.mobile-card-actions-popover[data-mobile-card-menu="${CSS.escape(mobileMenuId)}"]`)
+      : tableMenuId
+        ? document.querySelector(`.table-kebab-popover[data-table-menu="${CSS.escape(tableMenuId)}"]`)
+        : null;
+    const ownerCard = trigger.closest(".debt-mobile-entry");
+    const ownerRow = trigger.closest("tr");
+    const ownerCell = trigger.closest("td");
+    if (!menu || !pickerUtils?.setPopoverOpen) {
+      return false;
+    }
+    const owners = [trigger, trigger.parentElement].filter(Boolean);
+    const shouldOpen = menu.classList.contains("hidden");
+    document.querySelectorAll(".mobile-card-actions-popover:not(.hidden), .table-kebab-popover:not(.hidden)").forEach((node) => {
+      if (node !== menu) {
+        pickerUtils.setPopoverOpen(node, false, {
+          owners: Array.isArray(node.__appPopoverOwners) ? node.__appPopoverOwners : [],
+        });
+        node.closest(".mobile-card-menu-open")?.classList.remove("mobile-card-menu-open");
+        node.closest("td.mobile-card-menu-open-cell")?.classList.remove("mobile-card-menu-open-cell");
+        node.closest("tr.mobile-card-menu-open-row")?.classList.remove("mobile-card-menu-open-row");
+        node.closest(".table-menu-open-cell")?.classList.remove("table-menu-open-cell");
+        node.closest(".table-menu-open-row")?.classList.remove("table-menu-open-row");
+      }
+    });
+    pickerUtils.setPopoverOpen(menu, shouldOpen, { owners });
+    ownerCard?.classList.toggle("mobile-card-menu-open", shouldOpen);
+    ownerCell?.classList.toggle("mobile-card-menu-open-cell", shouldOpen);
+    ownerRow?.classList.toggle("mobile-card-menu-open-row", shouldOpen);
+    ownerCell?.classList.toggle("table-menu-open-cell", shouldOpen);
+    ownerRow?.classList.toggle("table-menu-open-row", shouldOpen);
+    return true;
+  }
 
   function bindDebtFeatureHandlers() {
     if (bound) {
@@ -53,29 +91,9 @@
 
     if (el.debtsCards && actions.openDebtRepaymentModal) {
       el.debtsCards.addEventListener("click", (event) => {
-        const menuTrigger = event.target.closest("button[data-mobile-card-menu-trigger]");
+        const menuTrigger = event.target.closest("button[data-mobile-card-menu-trigger], button[data-table-menu-trigger]");
         if (menuTrigger) {
-          const pickerUtils = window.App.pickerUtils;
-          const menuId = String(menuTrigger.dataset.mobileCardMenuTrigger || "");
-          const menu = menuId ? document.querySelector(`.mobile-card-actions-popover[data-mobile-card-menu="${CSS.escape(menuId)}"]`) : null;
-          const ownerCard = menuTrigger.closest(".debt-mobile-entry");
-          const ownerRow = menuTrigger.closest("tr");
-          if (menu && pickerUtils?.setPopoverOpen) {
-            const owners = [menuTrigger, menuTrigger.parentElement].filter(Boolean);
-            const shouldOpen = menu.classList.contains("hidden");
-            document.querySelectorAll(".mobile-card-actions-popover:not(.hidden)").forEach((node) => {
-              if (node !== menu) {
-                pickerUtils.setPopoverOpen(node, false, {
-                  owners: Array.isArray(node.__appPopoverOwners) ? node.__appPopoverOwners : [],
-                });
-                node.closest(".mobile-card-menu-open")?.classList.remove("mobile-card-menu-open");
-                node.closest("tr.mobile-card-menu-open-row")?.classList.remove("mobile-card-menu-open-row");
-              }
-            });
-            pickerUtils.setPopoverOpen(menu, shouldOpen, { owners });
-            ownerCard?.classList.toggle("mobile-card-menu-open", shouldOpen);
-            ownerRow?.classList.toggle("mobile-card-menu-open-row", shouldOpen);
-          }
+          toggleDebtMenu(menuTrigger);
           return;
         }
         const editBtn = event.target.closest("button[data-edit-debt-id]");

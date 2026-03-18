@@ -301,7 +301,12 @@
     const accent = resolveGroupAccent(options.groupAccentColor, item.kind);
     const actionCell = item.is_system
       ? "<span class='muted-small'>Защищено</span>"
-      : `<div class='actions row-actions'><button class='btn btn-secondary' data-edit-category-id='${item.id}'>Редактировать</button><button class='btn btn-danger' data-delete-category-id='${item.id}'>Удалить</button></div>`;
+      : core.renderInlineKebabMenu?.(
+        `category-${item.id}`,
+        `<button class='btn btn-secondary' data-edit-category-id='${item.id}'>Редактировать</button><button class='btn btn-danger' data-delete-category-id='${item.id}'>Удалить</button>`,
+        "Действия категории",
+        "category-row-kebab",
+      ) || "";
     const groupCell = options.groupLabel || "<span class='muted-small'>Без группы</span>";
     const nameCell = core.renderCategoryChip(
       { name: item.name, icon: item.icon || item.group_icon, accent_color: item.group_accent_color || accent.accent },
@@ -358,7 +363,12 @@
     const chevron = group.isUngrouped ? "•" : (isCollapsed ? "▸" : "▾");
     const toggleDisabled = queryActive || group.isUngrouped;
     const groupActions = group.id
-      ? `<div class="actions row-actions"><button class="btn btn-secondary btn-xs" data-edit-group-id="${group.id}" type="button">Редактировать</button><button class="btn btn-danger btn-xs" data-delete-group-id="${group.id}" type="button">Удалить</button></div>`
+      ? core.renderInlineKebabMenu?.(
+        `category-group-${group.id}`,
+        `<button class="btn btn-secondary" data-edit-group-id="${group.id}" type="button">Редактировать</button><button class="btn btn-danger" data-delete-group-id="${group.id}" type="button">Удалить</button>`,
+        "Действия группы",
+        "category-group-kebab",
+      )
       : "";
     tr.innerHTML = `
       <td colspan="4" class="category-table-group-cell category-group-accent-cell">

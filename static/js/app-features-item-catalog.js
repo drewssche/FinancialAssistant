@@ -329,12 +329,15 @@
             <td class="item-catalog-source-context-cell" data-label="Источник"><span class="hierarchy-child-label">↳ ${core.highlightText(group.shopName, query)}</span></td>
             <td data-label="Позиция">${core.highlightText(item.name || "—", query)}</td>
             <td data-label="Цена">${core.formatMoney(item.latest_unit_price || 0)}</td>
-            <td class="mobile-actions-cell" data-label="Действия">
-              <div class="actions row-actions">
-                <button class="btn btn-secondary btn-xs" data-item-template-history-id="${item.id}" type="button">История</button>
-                <button class="btn btn-secondary btn-xs" data-edit-item-template-id="${item.id}" type="button">Редактировать</button>
-                <button class="btn btn-danger btn-xs" data-delete-item-template-id="${item.id}" type="button">Удалить</button>
-              </div>
+            <td class="mobile-actions-cell table-kebab-cell" data-label="Действия">
+              ${core.renderInlineKebabMenu?.(
+                `item-template-${item.id}`,
+                `<button class="btn btn-secondary" data-item-template-history-id="${item.id}" type="button">История</button>
+                <button class="btn btn-secondary" data-edit-item-template-id="${item.id}" type="button">Редактировать</button>
+                <button class="btn btn-danger" data-delete-item-template-id="${item.id}" type="button">Удалить</button>`,
+                "Действия позиции",
+                "item-template-kebab",
+              ) || ""}
             </td>
           </tr>
         `;
@@ -397,10 +400,13 @@
                   </span>
                 </span>
               </button>
-              ${group.shopKey !== ITEM_CATALOG_NO_SHOP_KEY ? `<div class="actions row-actions item-catalog-source-actions">
-                <button class="btn btn-secondary btn-xs" data-edit-item-source-name="${escapeHtml(group.shopName)}" type="button">Редактировать</button>
-                <button class="btn btn-danger btn-xs" data-delete-item-source-name="${escapeHtml(group.shopName)}" type="button">Удалить</button>
-              </div>` : ""}
+              ${group.shopKey !== ITEM_CATALOG_NO_SHOP_KEY ? core.renderInlineKebabMenu?.(
+                `item-source-${escapeHtml(group.shopKey)}`,
+                `<button class="btn btn-secondary" data-edit-item-source-name="${escapeHtml(group.shopName)}" type="button">Редактировать</button>
+                <button class="btn btn-danger" data-delete-item-source-name="${escapeHtml(group.shopName)}" type="button">Удалить</button>`,
+                "Действия источника",
+                "item-source-kebab",
+              ) : ""}
             </div>
           </td>
         </tr>

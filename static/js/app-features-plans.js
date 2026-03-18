@@ -438,14 +438,12 @@
     const dateLabel = item.due_date ? core.formatDateRu(item.due_date) : "Без срока";
     const progress = dueProgressMeta(item);
     const kindLabel = item.kind === "income" ? "Доход" : "Расход";
-    const receiptMeta = Array.isArray(item.receipt_items) && item.receipt_items.length
-      ? `<span class="meta-chip meta-chip-neutral">Чек</span>`
-      : "";
+    const hasReceiptItems = Array.isArray(item.receipt_items) && item.receipt_items.length > 0;
     const reminderMeta = reminderLabel(item)
       ? `<span class="meta-chip meta-chip-neutral">${core.escapeHtml(reminderLabel(item))}</span>`
       : "";
-    const positionsMeta = item.receipt_items?.length
-      ? `<button class="btn btn-link-inline plan-meta-link" type="button" data-plan-receipt-view-id="${item.id}">Позиций: ${item.receipt_items.length}</button>`
+    const positionsMeta = hasReceiptItems
+      ? `<button class="meta-chip-btn meta-chip-btn-neutral" type="button" data-plan-receipt-view-id="${item.id}">Чек</button>`
       : "";
     const noteMeta = item.note ? `<span class="muted-small">${core.highlightText(item.note, "")}</span>` : "";
     const showConfirm = item.status !== "confirmed" && item.status !== "skipped";
@@ -461,7 +459,6 @@
           <div class="plan-card-top-meta">
             <span class="meta-chip meta-chip-neutral">${recurrenceLabel(item)}</span>
             <span class="meta-chip meta-chip-neutral">${statusLabel(item.status)}</span>
-            ${receiptMeta}
             ${reminderMeta}
           </div>
           ${showMenu ? `
@@ -556,7 +553,7 @@
     if (period === "all_time") {
       return activeItems;
     }
-    const bounds = core.getPeriodBounds ? core.getPeriodBounds(state, period) : null;
+    const bounds = core.getPeriodBounds ? core.getPeriodBounds(period) : null;
     if (!bounds?.dateFrom || !bounds?.dateTo) {
       return activeItems;
     }
@@ -574,7 +571,7 @@
     if (period === "all_time") {
       return "Все активные планы";
     }
-    const bounds = core.getPeriodBounds ? core.getPeriodBounds(state, period) : null;
+    const bounds = core.getPeriodBounds ? core.getPeriodBounds(period) : null;
     if (!bounds?.dateFrom || !bounds?.dateTo) {
       return period === "week" ? "Планы на текущую неделю" : "Планы на текущий месяц";
     }

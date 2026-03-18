@@ -133,6 +133,12 @@
   display: none;
   width: 42px;
   height: 42px;
+  min-width: 42px;
+  max-width: 42px;
+  min-height: 42px;
+  max-height: 42px;
+  flex: 0 0 42px;
+  flex-shrink: 0;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
   background: rgba(17, 28, 45, 0.9);
@@ -214,6 +220,11 @@
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
+  min-width: 0;
+}
+
+.topbar-title-block > div {
+  flex: 1 1 auto;
   min-width: 0;
 }
 

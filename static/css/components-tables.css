@@ -303,6 +303,7 @@
   .mobile-card-table tbody {
     display: grid;
     gap: var(--space-2);
+    overflow: visible;
   }
 
   .mobile-card-table tr {
@@ -310,7 +311,7 @@
     border-radius: var(--radius-md);
     background: rgba(14, 22, 36, 0.52);
     padding: var(--space-3);
-    overflow: hidden;
+    overflow: visible;
   }
 
   .mobile-card-table .table-hierarchy-parent-row {
@@ -704,6 +705,14 @@
   position: relative;
 }
 
+.category-mobile-cell,
+.category-mobile-group-cell,
+.item-catalog-mobile-item-cell,
+.item-catalog-mobile-group-cell {
+  position: relative;
+  overflow: visible;
+}
+
 .category-mobile-card.mobile-card-menu-open,
 .category-mobile-group-card.mobile-card-menu-open,
 .item-catalog-mobile-group-card.mobile-card-menu-open,
@@ -711,9 +720,16 @@
   z-index: 30;
 }
 
+.mobile-card-menu-open-cell {
+  position: relative;
+  z-index: 36;
+  overflow: visible;
+}
+
 .mobile-card-menu-open-row {
   position: relative;
   z-index: 35;
+  overflow: visible;
 }
 
 .category-mobile-group-toggle,
@@ -727,9 +743,10 @@
 .item-catalog-mobile-group-head,
 .item-catalog-mobile-item-head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 2.5rem;
   gap: var(--space-2);
   align-items: start;
+  min-width: 0;
 }
 
 .category-mobile-group-metas,
@@ -779,10 +796,15 @@
 }
 
 .mobile-card-kebab-wrap {
+  display: grid;
+  width: 2.5rem;
+  min-width: 2.5rem;
+  max-width: 2.5rem;
   position: relative;
   z-index: 2;
   justify-self: end;
   align-self: start;
+  place-items: start end;
 }
 
 .mobile-card-kebab-trigger {

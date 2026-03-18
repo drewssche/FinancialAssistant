@@ -111,9 +111,11 @@ Sidebar grouping baseline (when section groups are introduced):
 - when a plan/operation contains receipt positions without one shared default category, category display should be derived from receipt item categories and rendered as deduplicated chips rather than a misleading `Без категории`
 - operation/plan payloads should carry category meta (`category_name`, icon/accent when available) so list UIs do not depend exclusively on a separately preloaded category catalog
 - `Позиций: N` in plan meta should behave as an inline link/action that opens the same receipt-items modal used by `Операции`
+- plan cards should not duplicate receipt affordances: if a dedicated receipt shortcut column is present, reuse the `Чек` chip there and remove duplicate `Позиций: N` links elsewhere in the card
 - when `Позиций: N` is already rendered as the interactive value, the extra field label above that column should stay removed
 - plan create/edit preview should not reuse the old table-row preview when `createFlowMode === plan`; it should render the actual plan-card contract used in the `Планы` section
 - preview should stay non-interactive: do not render action buttons inside preview cards
+- receipt-mode previews in create/edit modals should explicitly show receipt context (`Чек`, receipt-derived category chips, receipt total) instead of stale plain-operation rows
 - recurrence controls should use a desktop main row for frequency/interval/end-date, with a separate option row for contextual toggles like `Только по будням` and `В последний день месяца`
 - contextual recurrence options should use the same segmented `Выкл / Вкл` contract instead of mixing checkboxes with segmented controls
 - when `В последний день месяца` is enabled, the main plan date field should become rule-driven and disabled/read-only to avoid conflicting manual input
@@ -214,6 +216,7 @@ At the bottom-left sidebar, show compact static user block:
 - mobile debt cards should not render nested mini-tables; they should use a parent counterparty card with stacked compact debt summary cards, one primary CTA (`Погашение`) and secondary actions inside a kebab menu
 - mobile kebab popovers must never be clipped by sibling cards; opening a menu should raise the owning mobile card/group wrapper above adjacent items
 - on mobile grouped cards, the kebab trigger belongs in the top-right corner of the header, while aggregate meta should stay inline next to the title instead of drifting into separate empty columns
+- the mobile topbar should stay sticky while the page scrolls, and the sidebar toggle inside it must keep a fixed square footprint regardless of title/subtitle length
 - dashboard debt due-status chips should size to content and never stretch across the full width of the debt row
 - in mobile settings `Danger Zone`, the confirmation input and destructive button must keep a visible gap and never visually merge into one block
 - inline row actions need mobile-safe alternative access:
@@ -320,7 +323,13 @@ At the bottom-left sidebar, show compact static user block:
 - popover closes on first outside click / `Esc` / chip selection
 - `+ Создать позицию «...` adds position into local picker source immediately for next rows (optimistic UI), DB persistence remains on operation save
 - source chips act as grouping filter for position chips inside the same row (`Источник` -> filtered `Позиция`)
-- Operation rows with receipt items expose separate hover action `Позиции` (read-only modal with item list); note column is not auto-augmented by receipt metadata
+- Operation rows with receipt items should expose a dedicated clickable `Чек` shortcut in its own desktop data column; clicking it opens the read-only receipt modal directly
+- desktop table/list sections should no longer rely on hover-only inline action clusters; editable rows, groups and items should keep a persistent square kebab trigger on the right edge for secondary actions
+- for receipt-backed operation rows, `Позиции` should move into the kebab menu together with `Редактировать` and `Удалить`; freed desktop width should be reallocated to the information columns instead of leaving an empty action gap
+- the dedicated desktop `Чек` column is the primary receipt affordance for operations and should open the receipt modal directly; the same receipt concept should not be duplicated by a separate inline `Позиций: N` link in plan cards
+- grouped desktop rows should follow the same contract: group/source header interaction keeps expand/collapse semantics, while management actions live in the square kebab trigger
+- debts keep one visible primary CTA (`Погашение`) on desktop, while `История`, `Редактировать`, and `Удалить` move into the kebab trigger
+- receipt-aware previews in create/edit modals must follow the same category/`Чек` contract as the live rows; receipt mode may not fall back to a plain single-category preview when multiple receipt categories are active
 - Receipt item category remains optional and complements, not replaces, operation-level category.
 - Position analytics is currently exposed through analytics highlights (`top positions`, `price increases`); a dedicated per-position deep-dive screen is still backlog.
 

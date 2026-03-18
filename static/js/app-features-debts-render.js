@@ -274,11 +274,16 @@
               ${noteText ? `<div class="muted-small">${noteText}</div>` : ""}
             </td>
             <td>
-              <div class="actions row-actions debt-actions-grid">
+              <div class="debt-desktop-actions">
                 <button class="btn btn-repay btn-xs" type="button" data-repay-debt-id="${debt.id}" ${Number(debt.outstanding_total) <= 0 ? "disabled" : ""}>Погашение</button>
-                <button class="btn btn-secondary btn-xs" type="button" data-edit-debt-id="${debt.id}">Редактировать</button>
-                <button class="btn btn-secondary btn-xs" type="button" data-history-debt-id="${debt.id}">История</button>
-                <button class="btn btn-danger btn-xs" type="button" data-delete-debt-id="${debt.id}">Удалить</button>
+                ${core.renderInlineKebabMenu?.(
+                  `debt-${debt.id}`,
+                  `<button class="btn btn-secondary" type="button" data-history-debt-id="${debt.id}">История</button>
+                  <button class="btn btn-secondary" type="button" data-edit-debt-id="${debt.id}">Редактировать</button>
+                  <button class="btn btn-danger" type="button" data-delete-debt-id="${debt.id}">Удалить</button>`,
+                  "Действия долга",
+                  "debt-row-kebab",
+                ) || ""}
               </div>
             </td>
           </tr>`;

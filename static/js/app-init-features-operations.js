@@ -1,5 +1,31 @@
 (() => {
   const { state, el, core, actions } = window.App;
+  const pickerUtils = window.App.pickerUtils;
+
+  function toggleTableMenu(trigger) {
+    const menuId = String(trigger?.dataset.tableMenuTrigger || "");
+    const menu = menuId ? document.querySelector(`.table-kebab-popover[data-table-menu="${CSS.escape(menuId)}"]`) : null;
+    const ownerRow = trigger.closest("tr");
+    const ownerCell = trigger.closest("td");
+    if (!menu || !pickerUtils?.setPopoverOpen) {
+      return false;
+    }
+    const owners = [trigger, trigger.parentElement].filter(Boolean);
+    const shouldOpen = menu.classList.contains("hidden");
+    document.querySelectorAll(".table-kebab-popover:not(.hidden)").forEach((node) => {
+      if (node !== menu) {
+        pickerUtils.setPopoverOpen(node, false, {
+          owners: Array.isArray(node.__appPopoverOwners) ? node.__appPopoverOwners : [],
+        });
+        node.closest(".table-menu-open-cell")?.classList.remove("table-menu-open-cell");
+        node.closest(".table-menu-open-row")?.classList.remove("table-menu-open-row");
+      }
+    });
+    pickerUtils.setPopoverOpen(menu, shouldOpen, { owners });
+    ownerCell?.classList.toggle("table-menu-open-cell", shouldOpen);
+    ownerRow?.classList.toggle("table-menu-open-row", shouldOpen);
+    return true;
+  }
 
   function bindOperationsFeatureHandlers(getOperationsObserver, setOperationsObserver) {
     let filterDebounceId = null;
@@ -149,6 +175,11 @@
     }
 
     el.operationsBody.addEventListener("click", (event) => {
+      const menuTrigger = event.target.closest("button[data-table-menu-trigger]");
+      if (menuTrigger) {
+        toggleTableMenu(menuTrigger);
+        return;
+      }
       const receiptBtn = event.target.closest("button[data-receipt-view-id]");
       if (receiptBtn) {
         const row = receiptBtn.closest("tr");

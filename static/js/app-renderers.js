@@ -46,8 +46,10 @@
 
   function getReceiptCategoryMetas(receiptItems, fallbackCategoryId, getCategoryMetaById) {
     const byKey = new Map();
+    const fallbackId = Number(fallbackCategoryId || 0);
     for (const row of Array.isArray(receiptItems) ? receiptItems : []) {
-      const categoryId = Number(row?.category_id || 0);
+      const explicitCategoryId = Number(row?.category_id || 0);
+      const categoryId = explicitCategoryId > 0 ? explicitCategoryId : fallbackId;
       let meta = null;
       if (categoryId > 0 && typeof getCategoryMetaById === "function") {
         meta = getCategoryMetaById(categoryId);
@@ -71,7 +73,6 @@
     if (byKey.size > 0) {
       return Array.from(byKey.values());
     }
-    const fallbackId = Number(fallbackCategoryId || 0);
     if (fallbackId > 0 && typeof getCategoryMetaById === "function") {
       const fallbackMeta = getCategoryMetaById(fallbackId);
       return fallbackMeta?.name ? [fallbackMeta] : [];
@@ -81,6 +82,24 @@
 
   function renderMetaChip(label, tone = "neutral") {
     return `<span class="meta-chip meta-chip-${escapeHtml(tone)}">${escapeHtml(label)}</span>`;
+  }
+
+  function renderInlineKebabMenu(menuId, itemsHtml, ariaLabel = "Действия", extraClass = "") {
+    if (!menuId || !String(itemsHtml || "").trim()) {
+      return "";
+    }
+    return `
+      <div class="table-kebab-wrap ${escapeHtml(extraClass)}">
+        <button class="btn btn-secondary table-kebab-trigger" type="button" data-table-menu-trigger="${escapeHtml(menuId)}" aria-label="${escapeHtml(ariaLabel)}">
+          <span aria-hidden="true">⋮</span>
+        </button>
+        <div class="app-popover hidden table-kebab-popover" data-table-menu="${escapeHtml(menuId)}">
+          <div class="table-kebab-menu">
+            ${itemsHtml}
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   function parseAmount(value) {
@@ -255,18 +274,16 @@
     }
 
     if (preview) {
+      const previewCategoryCellHtml = hasReceiptItems
+        ? `<div class="operation-category-stack">${categoryHtml}${renderMetaChip("Чек")}</div>`
+        : categoryHtml;
       row.innerHTML = `
         <td>${core.formatDateRu(item.operation_date)}</td>
         <td><span class="kind-pill kind-pill-${kindClass}">${highlightText(kindText, searchQuery)}</span></td>
-        <td>${categoryCellHtml}</td>
+        <td>${previewCategoryCellHtml}</td>
         <td><span class="amount-${kindClass}">${core.formatMoney(item.amount)}</span></td>
         <td>${highlightText(noteText, searchQuery)}</td>
-        <td>
-          <div class="actions">
-            <button class="btn btn-secondary" disabled>Редактировать</button>
-            <button class="btn btn-danger" disabled>Удалить</button>
-          </div>
-        </td>
+        <td><span class="muted-small">—</span></td>
       `;
       row.classList.add("preview-row");
       return row;
@@ -276,19 +293,24 @@
       ? `<td class="select-col" data-label="Выбор"><input class="table-checkbox" type="checkbox" data-select-operation-id="${item.id}" ${selected ? "checked" : ""} /></td>`
       : "";
 
+    const receiptCellHtml = hasReceiptItems
+      ? `<button class="meta-chip-btn meta-chip-btn-neutral" type="button" data-receipt-view-id="${item.id}">Чек</button>`
+      : "<span class='muted-small'>—</span>";
+    const menuItems = `
+      ${hasReceiptItems ? `<button class="btn btn-secondary" data-receipt-view-id="${item.id}">Позиции</button>` : ""}
+      <button class="btn btn-secondary" data-edit-id="${item.id}">Редактировать</button>
+      <button class="btn btn-danger" data-delete-id="${item.id}">Удалить</button>
+    `;
     row.innerHTML = `
       ${selectCell}
       <td data-label="Дата">${core.formatDateRu(item.operation_date)}</td>
       <td data-label="Тип"><span class="kind-pill kind-pill-${kindClass}">${highlightText(kindText, searchQuery)}</span></td>
-      <td data-label="Категория">${categoryCellHtml}</td>
+      <td data-label="Категория">${categoryHtml}</td>
+      <td data-label="Чек" class="operation-receipt-chip-cell">${receiptCellHtml}</td>
       <td data-label="Сумма"><span class="amount-${kindClass}">${core.formatMoney(item.amount)}</span></td>
       <td class="mobile-note-cell" data-label="Комментарий">${highlightText(noteText, searchQuery)}</td>
-      <td class="mobile-actions-cell" data-label="Действия">
-        <div class="actions row-actions">
-          ${hasReceiptItems ? `<button class="btn btn-secondary" data-receipt-view-id="${item.id}">Позиции</button>` : ""}
-          <button class="btn btn-secondary" data-edit-id="${item.id}">Редактировать</button>
-          <button class="btn btn-danger" data-delete-id="${item.id}">Удалить</button>
-        </div>
+      <td class="mobile-actions-cell table-kebab-cell" data-label="Действия">
+        ${renderInlineKebabMenu(`operation-${item.id}`, menuItems, "Действия операции", "operation-row-kebab")}
       </td>
     `;
     row.dataset.item = JSON.stringify(item);
@@ -307,6 +329,7 @@
     renderCategoryChipList,
     getReceiptCategoryMetas,
     renderMetaChip,
+    renderInlineKebabMenu,
     createOperationRow,
     debtUi: {
       parseAmount,

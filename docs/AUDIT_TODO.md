@@ -12,6 +12,7 @@
 - mobile `Долги` should switch from nested table layout to compact stacked debt summary cards with one visible CTA and kebab secondary actions
 - unify mobile kebab popover stacking so menus are not clipped inside grouped cards
 - tighten mobile grouped-card headers: top-right kebab, title + compact meta line
+- keep the mobile sidebar toggle sticky inside the topbar and lock it to a square footprint so long titles do not squeeze it
 - make dashboard debt due chips fit-content instead of stretched pills
 - mobile settings `Danger Zone` should keep explicit spacing between confirmation input and destructive button
 - safe-area-aware modal and toast baseline added for Mini App-sized screens
@@ -131,6 +132,13 @@
 - in `Debts`, debt-row click opens edit while `Погашение / История / Удалить` remain explicit CTA buttons
 - in `Categories`, group header still expands/collapses while child category row click opens edit
 - in `Item Catalog`, source header still expands/collapses while item row click opens edit
+- implemented 2026-03-18 desktop interaction pass:
+- `Operations`, `Categories`, `Item Catalog`, and desktop `Debts` now use persistent square kebab triggers instead of hover-only inline action clusters
+- `Operations` desktop rows moved `Позиции / Редактировать / Удалить` into kebab, kept checkbox-only selection, and exposed a dedicated clickable `Чек` desktop column
+- `Categories` and `Item Catalog` desktop groups/items keep toggle/edit row-click semantics while management actions live in the shared kebab pattern
+- desktop `Debts` keep visible `Погашение` and move `История / Редактировать / Удалить` into kebab
+- receipt-aware modal previews were audited: receipt mode preview now renders receipt-derived categories and `Чек` context in both create and edit flows
+- dashboard `Ближайшие планы` local period controls now have dedicated e2e regression coverage and a working runtime binding
 
 2. Scroll and overflow hardening
 - Status: done (updated 2026-03-08)

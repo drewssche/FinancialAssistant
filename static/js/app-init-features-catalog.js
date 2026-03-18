@@ -6,31 +6,47 @@
     let itemCatalogSearchDebounceId = null;
     const pickerUtils = window.App.pickerUtils;
 
-    function toggleMobileCardMenu(trigger) {
-      const menuId = String(trigger?.dataset.mobileCardMenuTrigger || "");
-      const menu = menuId ? document.querySelector(`.mobile-card-actions-popover[data-mobile-card-menu="${CSS.escape(menuId)}"]`) : null;
+    function toggleCardMenu(trigger) {
+      const mobileMenuId = String(trigger?.dataset.mobileCardMenuTrigger || "");
+      const tableMenuId = String(trigger?.dataset.tableMenuTrigger || "");
+      const menu = mobileMenuId
+        ? document.querySelector(`.mobile-card-actions-popover[data-mobile-card-menu="${CSS.escape(mobileMenuId)}"]`)
+        : tableMenuId
+          ? document.querySelector(`.table-kebab-popover[data-table-menu="${CSS.escape(tableMenuId)}"]`)
+          : null;
       if (!menu || !pickerUtils?.setPopoverOpen) {
         return false;
       }
       const ownerCard = trigger.closest(".category-mobile-card, .category-mobile-group-card, .item-catalog-mobile-item-card, .item-catalog-mobile-group-card");
       const ownerRow = trigger.closest("tr");
+      const ownerCell = trigger.closest("td");
       const owners = [trigger, trigger.parentElement].filter(Boolean);
       const shouldOpen = menu.classList.contains("hidden");
-      document.querySelectorAll(".mobile-card-actions-popover:not(.hidden)").forEach((node) => {
+      document.querySelectorAll(".mobile-card-actions-popover:not(.hidden), .table-kebab-popover:not(.hidden)").forEach((node) => {
         if (node !== menu) {
           pickerUtils.setPopoverOpen(node, false, {
             owners: Array.isArray(node.__appPopoverOwners) ? node.__appPopoverOwners : [],
           });
           node.closest(".mobile-card-menu-open")?.classList.remove("mobile-card-menu-open");
+          node.closest("td.mobile-card-menu-open-cell")?.classList.remove("mobile-card-menu-open-cell");
           node.closest("tr.mobile-card-menu-open-row")?.classList.remove("mobile-card-menu-open-row");
+          node.closest(".table-menu-open-cell")?.classList.remove("table-menu-open-cell");
+          node.closest(".table-menu-open-row")?.classList.remove("table-menu-open-row");
         }
       });
       pickerUtils.setPopoverOpen(menu, shouldOpen, { owners });
       if (ownerCard) {
         ownerCard.classList.toggle("mobile-card-menu-open", shouldOpen);
       }
+      if (ownerCell) {
+        ownerCell.classList.toggle("mobile-card-menu-open-cell", shouldOpen);
+      }
       if (ownerRow) {
         ownerRow.classList.toggle("mobile-card-menu-open-row", shouldOpen);
+        ownerRow.classList.toggle("table-menu-open-row", shouldOpen);
+      }
+      if (ownerCell) {
+        ownerCell.classList.toggle("table-menu-open-cell", shouldOpen);
       }
       return true;
     }
@@ -77,9 +93,9 @@
     }
     if (el.itemCatalogBody && actions.handleItemCatalogBodyClick) {
       el.itemCatalogBody.addEventListener("click", (event) => {
-        const menuTrigger = event.target.closest("button[data-mobile-card-menu-trigger]");
+        const menuTrigger = event.target.closest("button[data-mobile-card-menu-trigger], button[data-table-menu-trigger]");
         if (menuTrigger) {
-          toggleMobileCardMenu(menuTrigger);
+          toggleCardMenu(menuTrigger);
           return;
         }
         const deleteSourceBtn = event.target.closest("button[data-delete-item-source-name]");
@@ -173,9 +189,9 @@
     });
 
     el.categoriesBody.addEventListener("click", (event) => {
-      const menuTrigger = event.target.closest("button[data-mobile-card-menu-trigger]");
+      const menuTrigger = event.target.closest("button[data-mobile-card-menu-trigger], button[data-table-menu-trigger]");
       if (menuTrigger) {
-        toggleMobileCardMenu(menuTrigger);
+        toggleCardMenu(menuTrigger);
         return;
       }
       if (actions.handleCategoriesGroupToggleClick && actions.handleCategoriesGroupToggleClick(event)) {

@@ -172,6 +172,103 @@
   min-height: 2.625rem;
 }
 
+.table-kebab-wrap {
+  position: relative;
+  display: inline-flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.table-kebab-trigger {
+  width: 2.5rem;
+  min-width: 2.5rem;
+  max-width: 2.5rem;
+  height: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0;
+  border-radius: var(--radius-md);
+}
+
+.table-kebab-trigger span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  line-height: 1;
+  font-size: 20px;
+}
+
+.table-kebab-popover {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  min-width: 13rem;
+  padding: var(--space-2);
+  z-index: 44;
+}
+
+.table-kebab-menu {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.table-kebab-menu .btn {
+  width: 100%;
+  min-width: 0;
+}
+
+.table-menu-open-cell,
+.table-menu-open-row {
+  position: relative;
+  z-index: 40;
+  overflow: visible;
+}
+
+.table-kebab-cell {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.table-kebab-cell .table-kebab-wrap {
+  justify-content: flex-end;
+}
+
+.meta-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(85, 106, 145, 0.7);
+  background: rgba(20, 31, 50, 0.85);
+  color: #d5e2fb;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.meta-chip-btn:hover,
+.meta-chip-btn:focus-visible {
+  border-color: rgba(116, 155, 215, 0.88);
+  background: rgba(30, 47, 74, 0.94);
+  transform: translateY(-1px);
+}
+
+.meta-chip-btn-neutral {
+  color: #d5e2fb;
+}
+
+.operation-receipt-chip-cell {
+  width: 1%;
+  white-space: nowrap;
+}
+
 @media (min-width: 901px) {
   .table td.mobile-actions-cell {
     width: 1%;
@@ -221,7 +318,12 @@
 }
 
 .table td:last-child {
-  width: 220px;
+  width: auto;
+}
+
+.table td.table-kebab-cell {
+  width: 1% !important;
+  white-space: nowrap;
 }
 
 @media (max-width: 900px) {

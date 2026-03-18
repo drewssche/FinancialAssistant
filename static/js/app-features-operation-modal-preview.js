@@ -7,19 +7,15 @@
     getCategoryMetaById,
     getDebtPreviewSnapshot,
   }) {
-    function getReceiptSummaryCategory(receiptItems, fallbackCategoryId = null) {
-      const categoryIds = Array.from(new Set(
-        (Array.isArray(receiptItems) ? receiptItems : [])
-          .map((item) => Number(item?.category_id || fallbackCategoryId || 0))
-          .filter((value) => value > 0),
-      ));
-      if (categoryIds.length === 1) {
-        return getCategoryMetaById(categoryIds[0]);
+    function getReceiptSummaryCategories(receiptItems, fallbackCategoryId = null) {
+      const categories = core.getReceiptCategoryMetas
+        ? core.getReceiptCategoryMetas(receiptItems, fallbackCategoryId, getCategoryMetaById)
+        : [];
+      if (categories.length) {
+        return categories;
       }
-      if (categoryIds.length > 1) {
-        return { name: "Несколько категорий", icon: null, accent_color: null };
-      }
-      return getCategoryMetaById(fallbackCategoryId);
+      const fallback = getCategoryMetaById(fallbackCategoryId);
+      return fallback?.name ? [fallback] : [];
     }
 
     function focusCreateField(targetId) {
@@ -237,12 +233,21 @@
         return;
       }
       const previewItem = getCreateFormPreviewItem();
-      const category = el.opOperationMode?.value === "receipt"
-        ? getReceiptSummaryCategory(previewItem.receipt_items, previewItem.category_id)
-        : getCategoryMetaById(previewItem.category_id);
+      const receiptMode = el.opOperationMode?.value === "receipt";
+      const categories = receiptMode
+        ? getReceiptSummaryCategories(previewItem.receipt_items, previewItem.category_id)
+        : (() => {
+          const category = getCategoryMetaById(previewItem.category_id);
+          return category?.name ? [category] : [];
+        })();
       const row = document.createElement("tr");
       const kindClass = previewItem.kind === "income" ? "income" : "expense";
-      const categoryHtml = core.renderCategoryChip(category);
+      const categoryHtml = core.renderCategoryChipList
+        ? core.renderCategoryChipList(categories, "")
+        : "<span class='muted-small'>Без категории</span>";
+      const categoryCellHtml = receiptMode
+        ? `<div class="operation-category-stack">${categoryHtml}${core.renderMetaChip("Чек")}</div>`
+        : categoryHtml;
       const noteText = core.highlightText(previewItem.note || "", "");
       row.classList.add("preview-row", `kind-row-${kindClass}`);
       row.appendChild(createPreviewCellButton("Дата", core.formatDateRu(previewItem.operation_date), "opDate"));
@@ -253,7 +258,7 @@
           "createKindSwitch",
         ),
       );
-      row.appendChild(createPreviewCellButton("Категория", categoryHtml, "opCategorySearch"));
+      row.appendChild(createPreviewCellButton("Категория", categoryCellHtml, "opCategorySearch"));
       row.appendChild(createPreviewCellButton("Сумма", `<span class="amount-${kindClass}">${core.formatMoney(previewItem.amount)}</span>`, "opAmount"));
       row.appendChild(createPreviewCellButton("Комментарий", noteText, "opNote", "preview-cell-note"));
       el.createPreviewBody.appendChild(row);
@@ -265,13 +270,17 @@
       }
       const item = getEditFormPreviewItem();
       el.editPreviewBody.innerHTML = "";
-      const category = el.editOperationMode?.value === "receipt"
-        ? getReceiptSummaryCategory(item.receipt_items, item.category_id)
-        : getCategoryMetaById(item.category_id);
+      const categories = el.editOperationMode?.value === "receipt"
+        ? getReceiptSummaryCategories(item.receipt_items, item.category_id)
+        : (() => {
+          const fallback = getCategoryMetaById(item.category_id);
+          return fallback?.name ? [fallback] : [];
+        })();
       el.editPreviewBody.appendChild(
         core.createOperationRow(item, {
           preview: true,
-          category,
+          category: categories[0] || null,
+          categories,
         }),
       );
     }

@@ -54,7 +54,6 @@
     position: sticky;
     top: 0;
     z-index: 30;
-    position: sticky;
     margin-inline: calc(var(--space-4) * -1);
     padding:
       calc(env(safe-area-inset-top) + var(--space-2))
@@ -68,10 +67,25 @@
 
   .topbar-title-block {
     width: 100%;
+    align-items: flex-start;
+    padding-left: calc(42px + var(--space-3) + 4px);
   }
 
   .topbar-title-block > div {
     min-width: 0;
+  }
+
+  .mobile-nav-toggle {
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + var(--space-3));
+    left: max(var(--space-4), env(safe-area-inset-left));
+    z-index: 45;
+    flex: 0 0 42px;
+    min-width: 42px;
+    max-width: 42px;
+    width: 42px;
+    justify-self: start;
+    align-self: start;
   }
 
   .topbar-title-block #sectionTitle {

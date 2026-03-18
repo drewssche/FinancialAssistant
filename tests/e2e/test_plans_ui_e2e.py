@@ -6,7 +6,7 @@ import subprocess
 import sys
 import time
 import urllib.request
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -449,6 +449,20 @@ def _login_and_open_plans(page, static_server_url: str):
     page.wait_for_selector("#addPlanCta:not(.hidden)")
 
 
+def _login_and_open_dashboard(page, static_server_url: str):
+    page.goto(f"{static_server_url}/static/index.html")
+    _restore_mock_telegram(page)
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+    try:
+      page.locator("#telegramLoginBtn").wait_for(state="visible", timeout=1200)
+      page.click("#telegramLoginBtn")
+      page.wait_for_selector("#appShell:not(.hidden)")
+    except Exception:
+      page.wait_for_selector("#appShell:not(.hidden)")
+    page.wait_for_selector("#dashboardSection:not(.hidden)")
+    page.wait_for_selector("#dashboardPlansPanel:not(.hidden)")
+
+
 def _wait_for_history_pref(mock_state: dict, expected: str, timeout_sec: float = 3.0):
     deadline = time.time() + timeout_sec
     while time.time() < deadline:
@@ -622,3 +636,94 @@ def test_plans_history_event_type_filters(static_server_url: str, page_with_plan
     page.wait_for_function(
         "() => { const text = document.querySelector('#plansList')?.textContent || ''; return text.includes('Напомнить про кофе') && !text.includes('Подтвержденный кофе') && !text.includes('Пропущенный платеж'); }"
     )
+
+
+@pytest.mark.e2e
+def test_dashboard_plans_period_tabs_switch_and_filter(static_server_url: str, page_with_plans_api_mock):
+    page, mock_state = page_with_plans_api_mock
+    today = date.today()
+    start_of_week = today - timedelta(days=today.weekday())
+    current_week_item = today + timedelta(days=1 if today.weekday() < 6 else 0)
+    next_month_anchor = (today.replace(day=28) + timedelta(days=4)).replace(day=5)
+    overdue_item = today - timedelta(days=3)
+    mock_state["plans"][:] = [
+        {
+            "id": 1,
+            "kind": "expense",
+            "amount": "11.00",
+            "scheduled_date": overdue_item.isoformat(),
+            "note": "Просроченный план",
+            "recurrence_enabled": False,
+            "recurrence_frequency": None,
+            "recurrence_interval": 1,
+            "recurrence_weekdays": [],
+            "recurrence_workdays_only": False,
+            "recurrence_month_end": False,
+            "recurrence_end_date": None,
+            "status": "overdue",
+            "confirm_count": 0,
+            "skip_count": 0,
+            "confirmed_operation_id": None,
+            "created_at": f"{start_of_week.isoformat()}T09:00:00Z",
+            "next_reminder_at": f"{today.isoformat()}T06:00:00Z",
+        },
+        {
+            "id": 2,
+            "kind": "expense",
+            "amount": "22.00",
+            "scheduled_date": current_week_item.isoformat(),
+            "note": "План недели",
+            "recurrence_enabled": False,
+            "recurrence_frequency": None,
+            "recurrence_interval": 1,
+            "recurrence_weekdays": [],
+            "recurrence_workdays_only": False,
+            "recurrence_month_end": False,
+            "recurrence_end_date": None,
+            "status": "upcoming",
+            "confirm_count": 0,
+            "skip_count": 0,
+            "confirmed_operation_id": None,
+            "created_at": f"{today.isoformat()}T09:00:00Z",
+            "next_reminder_at": f"{today.isoformat()}T09:00:00Z",
+        },
+        {
+            "id": 3,
+            "kind": "income",
+            "amount": "33.00",
+            "scheduled_date": next_month_anchor.isoformat(),
+            "note": "План всех времен",
+            "recurrence_enabled": False,
+            "recurrence_frequency": None,
+            "recurrence_interval": 1,
+            "recurrence_weekdays": [],
+            "recurrence_workdays_only": False,
+            "recurrence_month_end": False,
+            "recurrence_end_date": None,
+            "status": "upcoming",
+            "confirm_count": 0,
+            "skip_count": 0,
+            "confirmed_operation_id": None,
+            "created_at": f"{today.isoformat()}T12:00:00Z",
+            "next_reminder_at": f"{today.isoformat()}T09:00:00Z",
+        },
+    ]
+
+    _login_and_open_dashboard(page, static_server_url)
+
+    page.wait_for_function(
+        "() => { const text = document.querySelector('#dashboardPlansList')?.textContent || ''; return text.includes('Просроченный план') && text.includes('План недели') && !text.includes('План всех времен'); }"
+    )
+    assert "Планы на месяц:" in (page.locator("#dashboardPlansPeriodLabel").text_content() or "")
+
+    page.click('button[data-dashboard-plans-period="all_time"]')
+    page.wait_for_function(
+        "() => { const text = document.querySelector('#dashboardPlansList')?.textContent || ''; return text.includes('План всех времен'); }"
+    )
+    assert "Все активные планы" in (page.locator("#dashboardPlansPeriodLabel").text_content() or "")
+
+    page.click('button[data-dashboard-plans-period="week"]')
+    page.wait_for_function(
+        "() => { const text = document.querySelector('#dashboardPlansList')?.textContent || ''; return text.includes('Просроченный план') && text.includes('План недели') && !text.includes('План всех времен'); }"
+    )
+    assert "Планы на неделю:" in (page.locator("#dashboardPlansPeriodLabel").text_content() or "")

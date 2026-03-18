@@ -47,6 +47,24 @@
     backdrop-filter: blur(10px);
   }
 
+  .topbar-title-block {
+    align-items: flex-start;
+    padding-left: calc(42px + var(--space-3) + 4px);
+  }
+
+  .mobile-nav-toggle {
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + var(--space-3));
+    left: max(var(--space-3), env(safe-area-inset-left));
+    z-index: 45;
+    flex: 0 0 42px;
+    min-width: 42px;
+    max-width: 42px;
+    width: 42px;
+    justify-self: start;
+    align-self: start;
+  }
+
   .btn-cta,
   .btn-cta-secondary,
   .modal-main-cta {
@@ -219,6 +237,35 @@
     align-items: start;
   }
 
+  .mobile-card-table.categories-table .category-mobile-group-toggle {
+    display: grid;
+    grid-template-columns: 16px minmax(0, 1fr);
+    column-gap: 10px;
+    align-items: start;
+  }
+
+  .mobile-card-table.categories-table .category-mobile-group-toggle .item-catalog-group-main {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .mobile-card-table.categories-table .category-mobile-group-toggle .item-catalog-group-name {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .mobile-card-table.categories-table .category-mobile-group-toggle .category-mobile-group-metas {
+    display: inline-flex;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    margin-left: 0;
+  }
+
   .mobile-card-table.categories-table .category-mobile-item-title .category-chip,
   .mobile-card-table.categories-table .category-mobile-item-meta .kind-pill {
     justify-self: start;
@@ -365,6 +412,35 @@
   .mobile-card-table.item-catalog-table .item-catalog-mobile-group-head,
   .mobile-card-table.item-catalog-table .item-catalog-mobile-item-head {
     align-items: start;
+  }
+
+  .mobile-card-table.item-catalog-table .item-catalog-mobile-group-toggle {
+    display: grid;
+    grid-template-columns: 16px minmax(0, 1fr);
+    column-gap: 10px;
+    align-items: start;
+  }
+
+  .mobile-card-table.item-catalog-table .item-catalog-mobile-group-toggle .item-catalog-group-main {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .mobile-card-table.item-catalog-table .item-catalog-mobile-group-toggle .item-catalog-group-name {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .mobile-card-table.item-catalog-table .item-catalog-mobile-group-toggle .item-catalog-mobile-group-metas {
+    display: inline-flex;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    margin-left: 0;
   }
 
   .mobile-card-table.item-catalog-table .table-hierarchy-parent-row {

@@ -14,6 +14,21 @@ import pytest
 sync_api = pytest.importorskip("playwright.sync_api", reason="playwright is not installed")
 
 
+def _login(page):
+    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+    try:
+        page.locator("#telegramLoginBtn").wait_for(state="visible", timeout=1200)
+        page.click("#telegramLoginBtn")
+        page.wait_for_selector("#appShell:not(.hidden)")
+    except Exception:
+        page.wait_for_selector("#appShell:not(.hidden)")
+
+
+def _ensure_categories_loaded(page):
+    page.evaluate("() => window.App.actions.loadCategories?.()")
+    page.wait_for_function("() => (window.App?.state?.categories || []).length >= 3")
+
+
 @pytest.fixture(scope="module")
 def static_server_url() -> str:
     repo_root = Path(__file__).resolve().parents[2]
@@ -197,10 +212,7 @@ def test_receipt_picker_store_scoped_and_optimistic_create(static_server_url: st
         }
         """
     )
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
+    _login(page)
     page.click("#addOperationCta")
     page.wait_for_selector("#createModal:not(.hidden)")
 
@@ -255,10 +267,7 @@ def test_receipt_category_picker_closes_on_outside_click(static_server_url: str,
         }
         """
     )
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
+    _login(page)
     page.click("#addOperationCta")
     page.wait_for_selector("#createModal:not(.hidden)")
     page.locator('#createOperationModeSwitch button[data-operation-mode="receipt"]').click()
@@ -292,10 +301,7 @@ def test_mobile_create_modal_preview_stays_above_sticky_cta(static_server_url: s
         }
         """
     )
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
+    _login(page)
     page.click("#addOperationCta")
     page.wait_for_selector("#createModal:not(.hidden)")
 
@@ -372,11 +378,8 @@ def test_mobile_edit_modal_preview_stays_above_sticky_cta(static_server_url: str
         }
         """
     )
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
-    page.wait_for_function("() => (window.App?.state?.categories || []).length >= 3")
+    _login(page)
+    _ensure_categories_loaded(page)
 
     page.evaluate(
         """
@@ -471,11 +474,8 @@ def test_edit_receipt_mixed_categories_keep_inheritance_and_preview_summary(stat
         }
         """
     )
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
-    page.wait_for_function("() => (window.App?.state?.categories || []).length >= 3")
+    _login(page)
+    _ensure_categories_loaded(page)
 
     page.evaluate(
         """
@@ -524,7 +524,9 @@ def test_edit_receipt_mixed_categories_keep_inheritance_and_preview_summary(stat
     assert not expect_badge_second.is_visible()
     assert first_row.locator('[data-receipt-field="category_search"]').input_value() == "Еда"
     assert second_row.locator('[data-receipt-field="category_search"]').input_value() == "Транспорт"
-    assert page.locator("#editPreviewBody").text_content().count("Несколько категорий") >= 1
+    preview_text = page.locator("#editPreviewBody").text_content() or ""
+    assert "Еда" in preview_text
+    assert "Транспорт" in preview_text
 
     first_row.locator('[data-receipt-field="category_search"]').click()
     page.wait_for_selector('.receipt-item-row:first-child .receipt-category-picker:not(.hidden)')
@@ -540,7 +542,9 @@ def test_edit_receipt_mixed_categories_keep_inheritance_and_preview_summary(stat
     assert second_row.locator('[data-receipt-field="category_search"]').input_value() == "Транспорт"
     assert expect_badge_first.is_visible()
     assert not expect_badge_second.is_visible()
-    assert page.locator("#editPreviewBody").text_content().count("Несколько категорий") >= 1
+    preview_text = page.locator("#editPreviewBody").text_content() or ""
+    assert "Кофе" in preview_text
+    assert "Транспорт" in preview_text
 
     second_row.locator('[data-receipt-field="category_search"]').click()
     page.wait_for_selector('.receipt-item-row:nth-child(2) .receipt-category-picker:not(.hidden)')
@@ -570,10 +574,7 @@ def test_mobile_item_template_modal_preview_stays_above_sticky_cta(static_server
         }
         """
     )
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
+    _login(page)
     page.click("#mobileNavToggleBtn")
     page.click("button[data-section='item_catalog']")
     page.wait_for_selector("#itemCatalogSection:not(.hidden)")
@@ -632,10 +633,7 @@ def test_mobile_source_group_modal_preview_stays_above_sticky_cta(static_server_
         }
         """
     )
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
+    _login(page)
     page.click("#mobileNavToggleBtn")
     page.click("button[data-section='item_catalog']")
     page.wait_for_selector("#itemCatalogSection:not(.hidden)")
@@ -643,6 +641,7 @@ def test_mobile_source_group_modal_preview_stays_above_sticky_cta(static_server_
     page.wait_for_selector("#sourceGroupModal:not(.hidden)")
 
     page.fill("#sourceGroupName", "Новый источник на мобиле")
+    page.evaluate("() => window.App.featureItemCatalog?.updateSourceGroupPreview?.()")
     page.wait_for_timeout(150)
 
     geometry = page.evaluate(
