@@ -48,6 +48,7 @@ Mini App login via `initData` is unaffected by this change as long as the Mini A
    - valid `ADMIN_TELEGRAM_IDS`
 3. Rebuild and restart services:
    - `docker compose up --build -d`
+   - add `--profile cache` if Redis-backed cache is desired
 4. Check containers:
    - `docker compose ps`
    - `docker compose logs app --tail=100`

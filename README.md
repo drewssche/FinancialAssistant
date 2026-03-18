@@ -5,7 +5,7 @@ Web-first financial assistant (income/expense tracking) with architecture ready 
 ## Stack
 - FastAPI
 - PostgreSQL
-- Redis
+- Redis (optional runtime cache)
 - SQLAlchemy + Alembic
 - Docker Compose
 
@@ -16,10 +16,16 @@ Web-first financial assistant (income/expense tracking) with architecture ready 
 4. Open API docs: `http://localhost:8001/docs`
 5. Open Web UI: `http://localhost:8001/`
 
+Optional cache profile:
+- lightweight VPS mode can run without Redis; app falls back to in-process cache
+- to enable Redis explicitly: `docker compose --profile cache up --build -d`
+
 For production auth mode set `APP_ENV=production` and configure:
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_BOT_USERNAME`
 - `TELEGRAM_BOT_POLL_TIMEOUT_SECONDS` (optional; default `25`)
+- `TELEGRAM_BOT_RETRY_DELAY_SECONDS` (optional; default `2`)
+- `TELEGRAM_PLAN_REMINDER_SCAN_INTERVAL_SECONDS` (optional; default `60`, effective minimum `15`)
 - `ADMIN_TELEGRAM_IDS` (comma-separated Telegram IDs of admins; these IDs are auto-approved on first login)
 
 Production startup fails fast if critical config is unsafe or incomplete:
@@ -29,7 +35,7 @@ Production startup fails fast if critical config is unsafe or incomplete:
 
 ## Ports
 - App API: `8001 -> 8000` (container)
-- Postgres and Redis are internal-only in current Compose setup and are not published to the host by default
+- Postgres and optional Redis are internal-only in current Compose setup and are not published to the host by default
 
 ## Access Approval
 - New users are created with `pending` status.
@@ -64,7 +70,7 @@ Telegram Mini App readiness is broader than responsive layout only. In addition 
 - If bot polling service is running, admins from `ADMIN_TELEGRAM_IDS` receive compact Telegram notifications for new pending users.
 - Notification message includes inline `Approve` / `Reject` buttons.
 - Admin must open the bot and press `Start` once, otherwise Telegram may reject outbound bot messages to that admin chat.
-- In local/dev or VPS Compose setup this polling worker is started by the `bot` service (`python scripts/run_telegram_admin_bot.py`).
+- In local/dev or VPS Compose setup this polling worker is started by the default `bot` service (`python scripts/run_telegram_admin_bot.py`).
 
 ## Domain and HTTPS Basics
 - Yes, you can prepare the domain yourself on your VPS.
@@ -80,8 +86,16 @@ Telegram Mini App readiness is broader than responsive layout only. In addition 
 For a small production rollout (`up to ~5 users`), a VPS with `1 vCPU / 2 GB RAM` is sufficient for this project when running:
 - app with one Uvicorn process
 - PostgreSQL with conservative memory settings
-- Redis as lightweight cache only
+- optional Redis as lightweight cache only when you want cross-process cache persistence
 - Docker Compose without dev reload/watch mode
+
+Recommended small-VPS mode:
+- `docker compose up --build -d`
+- this starts `app`, `bot`, `db`
+- Redis stays off unless you start profile `cache`
+
+Full runtime with Redis:
+- `docker compose --profile cache up --build -d`
 
 ## UI E2E Regression Test (Chip Picker)
 Added browser regression test for category chip duplication in operation modal search:

@@ -1,6 +1,7 @@
 (() => {
   function createDebtModalsFeature(deps) {
     const { state, el, core, debtUi, refreshDebtViews, findDebtById, syncDebtsControls } = deps;
+    const dashboardData = window.App.dashboardData || {};
     const formatMoney = debtUi.formatMoney;
     const parseAmount = debtUi.parseAmount;
     const parseIsoDate = debtUi.parseIsoDate;
@@ -123,6 +124,7 @@
         }),
       });
       core.invalidateUiRequestCache("debts");
+      dashboardData.invalidateReadCaches?.();
       closeDebtRepaymentModal();
       await refreshDebtViews();
     }
@@ -306,6 +308,7 @@
             headers: core.authHeaders(),
           });
           core.invalidateUiRequestCache("debts");
+          dashboardData.invalidateReadCaches?.();
         },
         onAfterDelete: async () => {
           await refreshDebtViews();
@@ -330,6 +333,7 @@
             });
           }
           core.invalidateUiRequestCache("debts");
+          dashboardData.invalidateReadCaches?.();
         },
         onAfterDelete: async () => {
           await refreshDebtViews();

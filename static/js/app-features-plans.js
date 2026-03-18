@@ -1,5 +1,6 @@
 (() => {
   const { state, el, core } = window.App;
+  const dashboardData = window.App.dashboardData || {};
   const operationModal = window.App.operationModal;
 
   function getPlansCacheKey() {
@@ -159,9 +160,9 @@
     if (!force && Number.isFinite(Number(state.plansAllTimeBalance))) {
       return Number(state.plansAllTimeBalance || 0);
     }
-    const data = await core.requestJson("/api/v1/dashboard/summary?period=all_time", {
-      headers: core.authHeaders(),
-    });
+    const data = await (dashboardData.loadAllTimeSummary
+      ? dashboardData.loadAllTimeSummary({ force })
+      : core.requestJson("/api/v1/dashboard/summary?period=all_time", { headers: core.authHeaders() }));
     state.plansAllTimeBalance = Number(data?.balance || 0);
     return state.plansAllTimeBalance;
   }
@@ -711,6 +712,7 @@
     core.invalidateUiRequestCache?.("item-catalog");
     if (confirmed) {
       state.plansAllTimeBalance = null;
+      dashboardData.invalidateSummaryCache?.();
     }
     await loadPlans({ force: true });
     const actions = window.App.actions || {};

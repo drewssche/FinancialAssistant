@@ -135,3 +135,49 @@ class DashboardService:
             date_to=date_to,
             month_anchor=month_anchor,
         )
+
+    def get_debt_preview(self, *, user_id: int, limit_cards: int = 6) -> list[dict]:
+        debt_repo = DebtRepository(self.db)
+        rows = debt_repo.list_active_dashboard_preview_rows(user_id=user_id)
+        grouped: dict[int, dict] = {}
+        ordered_counterparty_ids: list[int] = []
+        for row in rows:
+            counterparty_id = int(row[1])
+            if counterparty_id not in grouped:
+                grouped[counterparty_id] = {
+                    "counterparty_id": counterparty_id,
+                    "counterparty": str(row[2]),
+                    "principal_total": self._money(0),
+                    "principal_lend_total": self._money(0),
+                    "principal_borrow_total": self._money(0),
+                    "repaid_total": self._money(0),
+                    "outstanding_total": self._money(0),
+                    "status": "active",
+                    "nearest_due_date": None,
+                    "debts": [],
+                }
+                ordered_counterparty_ids.append(counterparty_id)
+            debt = {
+                "id": int(row[0]),
+                "direction": str(row[3]),
+                "principal": self._money(row[4]),
+                "repaid_total": self._money(row[5]),
+                "outstanding_total": self._money(row[6]),
+                "start_date": row[7].isoformat(),
+                "due_date": row[8].isoformat() if row[8] is not None else None,
+                "note": row[9],
+                "created_at": row[10].isoformat(),
+            }
+            card = grouped[counterparty_id]
+            card["debts"].append(debt)
+            card["principal_total"] += debt["principal"]
+            card["repaid_total"] += debt["repaid_total"]
+            card["outstanding_total"] += debt["outstanding_total"]
+            if debt["direction"] == "lend":
+                card["principal_lend_total"] += debt["principal"]
+            else:
+                card["principal_borrow_total"] += debt["principal"]
+            due_date = debt["due_date"]
+            if due_date and (card["nearest_due_date"] is None or due_date < card["nearest_due_date"]):
+                card["nearest_due_date"] = due_date
+        return [grouped[counterparty_id] for counterparty_id in ordered_counterparty_ids[:limit_cards]]

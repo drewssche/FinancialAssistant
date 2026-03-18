@@ -1,5 +1,6 @@
 (() => {
   const { state, el, core } = window.App;
+  const dashboardData = window.App.dashboardData || {};
   const operationModal = window.App.operationModal;
   const debtUi = core.debtUi;
   const getCategoryMetaById = operationModal.getCategoryMetaById;
@@ -67,12 +68,9 @@
     if (el.dashboardDebtsPanel && ui) {
       el.dashboardDebtsPanel.classList.toggle("hidden", ui.showDashboardDebts === false);
     }
-    const params = new URLSearchParams();
-    params.set("period", "all_time");
-
-    const data = await core.requestJson(`/api/v1/dashboard/summary?${params.toString()}`, {
-      headers: core.authHeaders(),
-    });
+    const data = await (dashboardData.loadAllTimeSummary
+      ? dashboardData.loadAllTimeSummary()
+      : core.requestJson("/api/v1/dashboard/summary?period=all_time", { headers: core.authHeaders() }));
     if (el.debtLendTotal) {
       el.debtLendTotal.textContent = core.formatMoney(data.debt_lend_outstanding);
     }
@@ -95,16 +93,17 @@
     }
 
     if (el.dashboardDebtsList) {
-      const cards = await core.requestJson("/api/v1/debts/cards?include_closed=false", { headers: core.authHeaders() });
+      const cards = await (dashboardData.loadDebtPreview
+        ? dashboardData.loadDebtPreview({ limit: 6 })
+        : core.requestJson("/api/v1/dashboard/debts/preview?limit=6", { headers: core.authHeaders() }));
       el.dashboardDebtsList.innerHTML = "";
-      const topCards = cards.slice(0, 6);
-      if (!topCards.length) {
+      if (!cards.length) {
         const empty = document.createElement("div");
         empty.className = "muted-small";
         empty.textContent = "Нет активных долгов";
         el.dashboardDebtsList.appendChild(empty);
       } else {
-        for (const card of topCards) {
+        for (const card of cards) {
           const now = new Date();
           const activeDebts = (card.debts || []).filter((debt) => Number(debt.outstanding_total || 0) > 0);
           activeDebts.sort((a, b) => {

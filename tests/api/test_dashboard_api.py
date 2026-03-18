@@ -129,6 +129,60 @@ def test_dashboard_summary_includes_debt_metrics(client: TestClient):
     assert payload["active_debt_cards"] == 2
 
 
+def test_dashboard_debt_preview_returns_compact_active_cards(client: TestClient):
+    client.post(
+        "/api/v1/debts",
+        json={
+            "counterparty": "Иван",
+            "direction": "lend",
+            "principal": "300.00",
+            "start_date": "2026-03-01",
+            "due_date": "2026-03-15",
+        },
+    )
+    client.post(
+        "/api/v1/debts",
+        json={
+            "counterparty": "Иван",
+            "direction": "lend",
+            "principal": "50.00",
+            "start_date": "2026-03-02",
+        },
+    )
+    client.post(
+        "/api/v1/debts",
+        json={
+            "counterparty": "Анна",
+            "direction": "borrow",
+            "principal": "120.00",
+            "start_date": "2026-03-02",
+        },
+    )
+
+    response = client.get("/api/v1/dashboard/debts/preview", params={"limit": 6})
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) == 2
+
+    anna = payload[0]
+    ivan = payload[1]
+
+    assert anna["counterparty"] == "Анна"
+    assert anna["status"] == "active"
+    assert anna["outstanding_total"] == "120.00"
+    assert anna["debts"][0]["direction"] == "borrow"
+    assert "repayments" not in anna["debts"][0]
+    assert "issuances" not in anna["debts"][0]
+
+    assert ivan["counterparty"] == "Иван"
+    assert ivan["principal_total"] == "350.00"
+    assert ivan["principal_lend_total"] == "350.00"
+    assert ivan["principal_borrow_total"] == "0.00"
+    assert ivan["outstanding_total"] == "350.00"
+    assert len(ivan["debts"]) == 1
+    assert ivan["debts"][0]["principal"] == "350.00"
+
+
 def test_dashboard_summary_metrics_track_cache_and_invalidation(client: TestClient):
     first = client.get("/api/v1/dashboard/summary", params={"period": "all_time"})
     assert first.status_code == 200

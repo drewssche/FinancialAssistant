@@ -51,6 +51,7 @@ def static_server_url() -> str:
 @pytest.mark.e2e
 def test_create_operation_allows_receipt_only_amount(static_server_url: str):
     created_payloads: list[dict] = []
+    dashboard_summary_requests = 0
 
     def json_response(route, payload: dict | list, status: int = 200):
         route.fulfill(status=status, content_type="application/json", body=json.dumps(payload, ensure_ascii=False))
@@ -75,6 +76,8 @@ def test_create_operation_allows_receipt_only_amount(static_server_url: str):
         if path == "/api/v1/categories" and method == "GET":
             return json_response(route, [])
         if path == "/api/v1/dashboard/summary" and method == "GET":
+            nonlocal dashboard_summary_requests
+            dashboard_summary_requests += 1
             return json_response(route, {"income_total": "0.00", "expense_total": "0.00", "balance": "0.00"})
         if path == "/api/v1/dashboard/operations" and method == "GET":
             return json_response(route, {"items": [], "total": 0, "page": 1, "page_size": 20})
@@ -166,5 +169,7 @@ def test_create_operation_allows_receipt_only_amount(static_server_url: str):
                     "unit_price": "7.70",
                 }
             ]
+            page.wait_for_timeout(500)
+            assert dashboard_summary_requests >= 2
         finally:
             browser.close()

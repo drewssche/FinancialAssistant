@@ -69,7 +69,7 @@ class DashboardAnalyticsTimelineService:
     ) -> dict:
         anchor = month_anchor or date.today()
         month_start, month_end = self.month_bounds(anchor)
-        operations = self.repo.list_for_period(user_id=user_id, date_from=month_start, date_to=month_end)
+        daily_rows = self.repo.aggregate_daily_for_period(user_id=user_id, date_from=month_start, date_to=month_end)
         by_day: dict[date, dict] = defaultdict(
             lambda: {
                 "income_total": Decimal("0"),
@@ -78,14 +78,11 @@ class DashboardAnalyticsTimelineService:
             }
         )
 
-        for item in operations:
-            bucket = by_day[item.operation_date]
-            amount = Decimal(item.amount or 0)
-            if item.kind == "income":
-                bucket["income_total"] += amount
-            else:
-                bucket["expense_total"] += amount
-            bucket["operations_count"] += 1
+        for row in daily_rows:
+            bucket = by_day[row["operation_date"]]
+            bucket["income_total"] = Decimal(row["income_total"] or 0)
+            bucket["expense_total"] = Decimal(row["expense_total"] or 0)
+            bucket["operations_count"] = int(row["operations_count"] or 0)
 
         grid_start = month_start - timedelta(days=month_start.weekday())
         grid_end = month_end + timedelta(days=(6 - month_end.weekday()))
@@ -157,7 +154,7 @@ class DashboardAnalyticsTimelineService:
         year = int(year_anchor or date.today().year)
         year_start = date(year, 1, 1)
         year_end = date(year, 12, 31)
-        operations = self.repo.list_for_period(user_id=user_id, date_from=year_start, date_to=year_end)
+        daily_rows = self.repo.aggregate_daily_for_period(user_id=user_id, date_from=year_start, date_to=year_end)
 
         by_month: dict[int, dict] = defaultdict(
             lambda: {
@@ -166,15 +163,12 @@ class DashboardAnalyticsTimelineService:
                 "operations_count": 0,
             }
         )
-        for item in operations:
-            month_index = int(item.operation_date.month)
+        for row in daily_rows:
+            month_index = int(row["operation_date"].month)
             bucket = by_month[month_index]
-            amount = Decimal(item.amount or 0)
-            if item.kind == "income":
-                bucket["income_total"] += amount
-            else:
-                bucket["expense_total"] += amount
-            bucket["operations_count"] += 1
+            bucket["income_total"] += Decimal(row["income_total"] or 0)
+            bucket["expense_total"] += Decimal(row["expense_total"] or 0)
+            bucket["operations_count"] += int(row["operations_count"] or 0)
 
         months = []
         total_income = Decimal("0")
@@ -230,7 +224,7 @@ class DashboardAnalyticsTimelineService:
         )
         if granularity not in {"day", "week", "month", "year"}:
             raise ValueError("Invalid granularity")
-        operations = self.repo.list_for_period(user_id=user_id, date_from=resolved_from, date_to=resolved_to)
+        daily_rows = self.repo.aggregate_daily_for_period(user_id=user_id, date_from=resolved_from, date_to=resolved_to)
 
         def bucket_start_for(day_value: date) -> date:
             if granularity == "day":
@@ -257,15 +251,12 @@ class DashboardAnalyticsTimelineService:
                 "operations_count": 0,
             }
         )
-        for item in operations:
-            bucket_key = bucket_start_for(item.operation_date)
+        for row in daily_rows:
+            bucket_key = bucket_start_for(row["operation_date"])
             stats = buckets[bucket_key]
-            amount = Decimal(item.amount or 0)
-            if item.kind == "income":
-                stats["income_total"] += amount
-            else:
-                stats["expense_total"] += amount
-            stats["operations_count"] += 1
+            stats["income_total"] += Decimal(row["income_total"] or 0)
+            stats["expense_total"] += Decimal(row["expense_total"] or 0)
+            stats["operations_count"] += int(row["operations_count"] or 0)
 
         sorted_keys = sorted(buckets.keys())
         points = []
@@ -297,16 +288,11 @@ class DashboardAnalyticsTimelineService:
         span_days = (resolved_to - resolved_from).days + 1
         prev_to = resolved_from - timedelta(days=1)
         prev_from = prev_to - timedelta(days=max(0, span_days - 1))
-        previous_ops = self.repo.list_for_period(user_id=user_id, date_from=prev_from, date_to=prev_to)
-        prev_income = Decimal("0")
-        prev_expense = Decimal("0")
-        for item in previous_ops:
-            amount = Decimal(item.amount or 0)
-            if item.kind == "income":
-                prev_income += amount
-            else:
-                prev_expense += amount
-        prev_operations = len(previous_ops)
+        prev_income, prev_expense, prev_operations = self.repo.summary_with_count_for_period(
+            user_id=user_id,
+            date_from=prev_from,
+            date_to=prev_to,
+        )
 
         current_balance = current_income - current_expense
         prev_balance = Decimal(prev_income or 0) - Decimal(prev_expense or 0)

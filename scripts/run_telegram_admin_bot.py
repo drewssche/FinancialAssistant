@@ -172,11 +172,13 @@ async def run() -> None:
     client = TelegramBotClient(token=token, timeout_seconds=settings.telegram_bot_poll_timeout_seconds)
     offset = 0
     last_plan_reminder_scan_at = 0.0
+    reminder_scan_interval_seconds = max(15, int(settings.telegram_plan_reminder_scan_interval_seconds))
+    retry_delay_seconds = max(1, int(settings.telegram_bot_retry_delay_seconds))
     logger.info("telegram admin bot started")
     try:
         while True:
             now_mono = monotonic()
-            if now_mono - last_plan_reminder_scan_at >= 60.0:
+            if now_mono - last_plan_reminder_scan_at >= reminder_scan_interval_seconds:
                 try:
                     await process_plan_reminders(client)
                 except Exception as exc:  # noqa: BLE001
@@ -199,7 +201,7 @@ async def run() -> None:
                 continue
             except httpx.RequestError as exc:
                 logger.warning("telegram getUpdates request failed, retrying: %s", exc)
-                await asyncio.sleep(2)
+                await asyncio.sleep(retry_delay_seconds)
                 continue
             for item in data.get("result", []):
                 offset = max(offset, int(item["update_id"]) + 1)

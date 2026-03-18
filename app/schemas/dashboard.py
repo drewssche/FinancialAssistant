@@ -35,6 +35,31 @@ class DashboardSummaryMetrics(BaseModel):
     endpoint_request_totals: dict[str, int]
 
 
+class DashboardDebtPreviewDebt(BaseModel):
+    id: int
+    direction: str
+    principal: Decimal
+    repaid_total: Decimal
+    outstanding_total: Decimal
+    start_date: str
+    due_date: str | None = None
+    note: str | None = None
+    created_at: str
+
+
+class DashboardDebtPreviewCard(BaseModel):
+    counterparty_id: int
+    counterparty: str
+    principal_total: Decimal
+    principal_lend_total: Decimal
+    principal_borrow_total: Decimal
+    repaid_total: Decimal
+    outstanding_total: Decimal
+    status: str
+    nearest_due_date: str | None = None
+    debts: list[DashboardDebtPreviewDebt]
+
+
 class AnalyticsCalendarDay(BaseModel):
     date: str
     in_month: bool

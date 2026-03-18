@@ -1071,6 +1071,12 @@
 - Progress:
 - phase 1 started with lowest-risk runtime cut: initial app bootstrap now loads only the active section instead of calling global `refreshAll()`
 - phase 2 started: dashboard summary hot path is being moved from Python-side scans to compact SQL aggregates
+- phase 3 started: dashboard/plans are moving to shared summary access and dashboard debt preview is being cut to a compact read-model
+- phase 4 started: Redis runtime is being reduced from always-on to optional profile for small VPS mode
+- phase 5 started: Telegram bot polling cadence is being moved from hardcoded sleeps to shared runtime settings for VPS tuning
+- phase 6 started: analytics calendar/year/trend are being moved off full operation scans onto compact daily SQL aggregates
+- phase 7 started: analytics highlights is being split into its own module and partial KPI/read-model work is moving to compact aggregate helpers
+- deferred phase planned: add Redis advisory notification via Telegram bot only after core hot-path optimization work is completed
 - Done:
 - `static/js/app-features-session-auth.js`
   - `bootstrapApp()` now delegates to `switchSection(activeSection)` for lazy first load
@@ -1080,10 +1086,75 @@
   - summary no longer expands full debt cards just to compute KPI numbers
 - `app/repositories/debt_repo.py`
   - added compact SQL aggregate for active debt totals and active counterparty-card count
+- `app/api/v1/dashboard.py`
+  - added compact `/api/v1/dashboard/debts/preview` endpoint for dashboard-only debt cards
+- `static/js/app-dashboard-data.js`
+  - added shared cached accessors for dashboard summary and dashboard debt preview
+- `static/js/app-features-dashboard.js`
+  - dashboard now reuses shared all-time summary accessor
+  - dashboard debt panel now reads compact preview endpoint instead of full debt cards payload
+- `static/js/app-features-plans.js`
+  - plans KPI balance now reuses the shared all-time summary accessor
+- `static/js/app-dashboard-data.js`
+  - shared dashboard read-cache invalidation is now centralized instead of repeated by raw cache prefixes in feature modules
+- `static/js/app-features-operations-mutations.js`
+  - operation/debt create-update-delete flows now invalidate shared dashboard summary/debt preview caches
+- `static/js/app-features-debts-modals.js`
+  - debt repayment/delete flows now invalidate shared dashboard read caches
+- `static/js/app-features-plans.js`
+  - confirmed plans now invalidate shared dashboard summary cache together with local plan balance snapshot
+- `docker-compose.yml`
+  - app no longer waits on Redis to start
+  - Redis moved behind optional `cache` profile for low-footprint VPS mode
+- `README.md`
+  - startup modes updated for default no-Redis VPS path and optional cache profile
+- `docs/ARCHITECTURE.md`
+  - architecture notes updated to reflect Redis as optional cache layer with local fallback
+- `app/core/config.py`
+  - added shared runtime settings for bot retry delay and reminder scan interval
+- `scripts/run_telegram_admin_bot.py`
+  - reminder scan interval and request retry delay now come from settings instead of hardcoded constants
+- `.env.example`
+  - documented bot retry delay and reminder scan interval env vars
+- `scripts/README.md`
+  - worker env docs updated with the new bot cadence settings
+- `docker-compose.yml`
+  - Telegram bot worker kept in the default stack so standard `docker compose up --build -d` still starts the full working runtime
+- `README.md`
+  - startup docs updated so default command again maps to `app + bot + db`, while Redis stays optional via profile
+- `docs/VPS_UPDATE_CHECKLIST.md`
+  - VPS restart checklist now explicitly calls out the optional Redis `cache` profile
+- `app/repositories/operation_repo.py`
+  - added compact daily aggregate read-model and period summary-with-count helper for analytics reads
+- `app/services/dashboard_analytics_timeline.py`
+  - calendar, calendar/year, and trend now build buckets from daily SQL aggregates instead of full operation lists
+- `app/services/dashboard_analytics.py`
+  - reduced to a thin coordinator so analytics logic is no longer piled into one large service file
+- `app/services/dashboard_analytics_highlights.py`
+  - highlights moved into its own module
+  - KPI totals, counts, and max-expense-day now reuse compact aggregate helpers instead of repeated Python scans
+- `app/repositories/operation_repo.py`
+  - highlights can now read lightweight operation snapshots instead of full ORM operation objects
+- `app/services/dashboard_analytics_highlights.py`
+  - category allocations, anomalies, and top operations now consume lightweight operation snapshots to reduce Python memory/ORM overhead
+  - receipt category allocations and receipt position stats are now built in one shared pass instead of two separate loops over the same receipt rows
 - Validation:
 - `./.venv/bin/pytest -q tests/api/test_health.py tests/api/test_auth_api.py`
 - `./.venv/bin/pytest -q tests/api/test_dashboard_api.py tests/api/test_debts_api.py`
+- `./.venv/bin/pytest -q tests/api/test_dashboard_api.py tests/api/test_debts_api.py tests/api/test_plans_api.py`
+- `./.venv/bin/pytest -q tests/e2e/test_debts_flow_e2e.py -m e2e`
+- `./.venv/bin/pytest -q tests/e2e/test_plans_ui_e2e.py -m e2e`
+- `./.venv/bin/pytest -q tests/e2e/test_create_operation_receipt_amount_autofill_e2e.py -m e2e`
+- `./.venv/bin/pytest -q tests/api/test_health.py tests/api/test_dashboard_api.py`
+- `docker compose config`
+- verified config renders default stack without `redis` service while app cache code still keeps Redis-to-local fallback in `app/core/cache.py`
+- `./.venv/bin/pytest -q tests/services/test_plan_reminder_service.py`
+- `docker compose config`
+- verified config now renders default stack with `app + bot + db`; `redis` appears only when `cache` profile is enabled
+- `./.venv/bin/pytest -q tests/api/test_dashboard_api.py -k "analytics_calendar or analytics_trend or analytics_calendar_year"`
+- `./.venv/bin/pytest -q tests/api/test_dashboard_api.py -k "analytics_highlights"`
+- `./.venv/bin/pytest -q tests/api/test_dashboard_api.py`
 - Next:
-- add compact backend aggregates for dashboard summary / debt preview
-- make dashboard/plans reuse shared summary accessors instead of duplicating `all_time` reads
-- review Redis optionalization path in compose/runtime docs after API-side optimizations land
+- verify default no-profile runtime on a live Docker daemon / deployed VPS, because local daemon was unavailable during this audit step
+- move to next hot path after cache/runtime cuts: backend metrics / runtime advisor groundwork for future Redis recommendation
+- after hot-path optimization is stabilized, add bot-side Redis advisor/notification instead of auto-enabling infrastructure

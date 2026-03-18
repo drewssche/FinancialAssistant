@@ -11,6 +11,7 @@ from app.schemas.dashboard import (
     AnalyticsCalendarYearOut,
     AnalyticsHighlightsOut,
     AnalyticsTrendOut,
+    DashboardDebtPreviewCard,
     DashboardSummary,
     DashboardSummaryMetrics,
 )
@@ -38,6 +39,16 @@ def get_summary(
 def get_summary_metrics(user_id: int = Depends(get_current_user_id)):
     _ = user_id
     return get_dashboard_summary_metrics()
+
+
+@router.get("/debts/preview", response_model=list[DashboardDebtPreviewCard])
+def get_debt_preview(
+    limit: int = Query(default=6, ge=1, le=12),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = DashboardService(db)
+    return service.get_debt_preview(user_id=user_id, limit_cards=limit)
 
 
 @router.get("/analytics/calendar", response_model=AnalyticsCalendarOut)

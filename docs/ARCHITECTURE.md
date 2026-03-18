@@ -4,7 +4,7 @@
 - Backend: FastAPI
 - DB: PostgreSQL
 - Migrations: Alembic
-- Cache/queue-ready: Redis
+- Cache/queue-ready: Redis (optional; app has local fallback for dashboard cache)
 - Runtime: Docker Compose
 
 ## Layering
@@ -88,5 +88,6 @@ Client-specific logic stays at UI layer; domain logic stays in backend services.
 - API serves both `Dashboard` compact preview and full `Аналитика` section.
 - Performance strategy:
 - rely on existing indexed operation date/kind filters
-- keep dashboard summary cache in Redis for repeated aggregate reads
+- keep dashboard summary cache in Redis for repeated aggregate reads when Redis profile is enabled
+- otherwise fall back to in-process cache for single-process/small-VPS mode
 - keep cache keys parameterized by `user + period/range + version`

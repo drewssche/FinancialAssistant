@@ -19,6 +19,7 @@
       loadItemCatalog,
       invalidateAllTimeAnchor,
     } = deps;
+    const dashboardData = window.App.dashboardData || {};
 
     function isSectionVisible(section) {
       return state.activeSection === section;
@@ -149,6 +150,7 @@
           body: JSON.stringify(payload),
         });
         core.invalidateUiRequestCache("debts");
+        dashboardData.invalidateReadCaches?.();
         state.editDebtCreateId = null;
         closeCreateModal();
         await refreshAfterDebtMutation();
@@ -161,6 +163,7 @@
         body: JSON.stringify(payload),
       });
       core.invalidateUiRequestCache("operations");
+      dashboardData.invalidateSummaryCache?.();
       invalidateAllTimeAnchor();
       trackCategoryUsage(payload.category_id);
       document.getElementById("opAmount").value = "";
@@ -185,6 +188,7 @@
         body: JSON.stringify(payload),
       });
       core.invalidateUiRequestCache("operations");
+      dashboardData.invalidateSummaryCache?.();
       invalidateAllTimeAnchor();
       trackCategoryUsage(payload.category_id);
       closeEditModal();
@@ -200,6 +204,7 @@
             headers: core.authHeaders(),
           });
           core.invalidateUiRequestCache("operations");
+          dashboardData.invalidateSummaryCache?.();
           invalidateAllTimeAnchor();
         },
         onAfterDelete: async () => {
@@ -219,6 +224,7 @@
             }),
           });
           core.invalidateUiRequestCache("operations");
+          dashboardData.invalidateSummaryCache?.();
           invalidateAllTimeAnchor();
           await refreshAfterOperationMutation();
           return "Операция восстановлена";

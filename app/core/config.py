@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     telegram_bot_username: str = Field(default="", alias="TELEGRAM_BOT_USERNAME")
     telegram_auth_max_age_seconds: int = Field(default=3600, alias="TELEGRAM_AUTH_MAX_AGE_SECONDS")
     telegram_bot_poll_timeout_seconds: int = Field(default=25, alias="TELEGRAM_BOT_POLL_TIMEOUT_SECONDS")
+    telegram_bot_retry_delay_seconds: int = Field(default=2, alias="TELEGRAM_BOT_RETRY_DELAY_SECONDS")
+    telegram_plan_reminder_scan_interval_seconds: int = Field(
+        default=60,
+        alias="TELEGRAM_PLAN_REMINDER_SCAN_INTERVAL_SECONDS",
+    )
     admin_telegram_ids: str = Field(default="", alias="ADMIN_TELEGRAM_IDS")
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)

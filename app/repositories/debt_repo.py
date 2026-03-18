@@ -135,6 +135,40 @@ class DebtRepository:
         total = self.db.scalar(stmt)
         return Decimal(total or 0)
 
+    def list_active_dashboard_preview_rows(self, *, user_id: int) -> list:
+        repaid_subq = (
+            select(
+                DebtRepayment.debt_id.label("debt_id"),
+                func.coalesce(func.sum(DebtRepayment.amount), 0).label("repaid_total"),
+            )
+            .group_by(DebtRepayment.debt_id)
+            .subquery()
+        )
+        outstanding_expr = Debt.principal - func.coalesce(repaid_subq.c.repaid_total, 0)
+        stmt = (
+            select(
+                Debt.id,
+                Debt.counterparty_id,
+                DebtCounterparty.name,
+                Debt.direction,
+                Debt.principal,
+                func.coalesce(repaid_subq.c.repaid_total, 0),
+                outstanding_expr,
+                Debt.start_date,
+                Debt.due_date,
+                Debt.note,
+                Debt.created_at,
+            )
+            .join(DebtCounterparty, DebtCounterparty.id == Debt.counterparty_id)
+            .outerjoin(repaid_subq, Debt.id == repaid_subq.c.debt_id)
+            .where(
+                Debt.user_id == user_id,
+                outstanding_expr > 0,
+            )
+            .order_by(DebtCounterparty.name.asc(), Debt.start_date.desc(), Debt.id.desc())
+        )
+        return list(self.db.execute(stmt).all())
+
     def summary_active_totals(self, *, user_id: int) -> tuple[Decimal, Decimal, int]:
         repaid_subq = (
             select(

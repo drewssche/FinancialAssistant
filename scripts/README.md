@@ -92,6 +92,8 @@ Required env:
 
 Optional env:
 - `TELEGRAM_BOT_POLL_TIMEOUT_SECONDS` (default `25`)
+- `TELEGRAM_BOT_RETRY_DELAY_SECONDS` (default `2`)
+- `TELEGRAM_PLAN_REMINDER_SCAN_INTERVAL_SECONDS` (default `60`, effective minimum `15`)
 
 Notes:
 - the same worker is started by the Compose `bot` service

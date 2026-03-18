@@ -433,6 +433,53 @@ class OperationRepository:
         expense_total = self.db.scalar(expense_stmt)
         return income_total, expense_total
 
+    def summary_with_count_for_period(self, *, user_id: int, date_from: date, date_to: date) -> tuple[Decimal, Decimal, int]:
+        stmt = (
+            select(
+                func.coalesce(func.sum(case((Operation.kind == "income", Operation.amount), else_=0)), 0),
+                func.coalesce(func.sum(case((Operation.kind == "expense", Operation.amount), else_=0)), 0),
+                func.count(),
+            )
+            .where(
+                and_(
+                    Operation.user_id == user_id,
+                    Operation.operation_date >= date_from,
+                    Operation.operation_date <= date_to,
+                )
+            )
+        )
+        income_total, expense_total, total = self.db.execute(stmt).one()
+        return Decimal(income_total or 0), Decimal(expense_total or 0), int(total or 0)
+
+    def aggregate_daily_for_period(self, *, user_id: int, date_from: date, date_to: date) -> list[dict]:
+        stmt = (
+            select(
+                Operation.operation_date,
+                func.coalesce(func.sum(case((Operation.kind == "income", Operation.amount), else_=0)), 0),
+                func.coalesce(func.sum(case((Operation.kind == "expense", Operation.amount), else_=0)), 0),
+                func.count(),
+            )
+            .where(
+                and_(
+                    Operation.user_id == user_id,
+                    Operation.operation_date >= date_from,
+                    Operation.operation_date <= date_to,
+                )
+            )
+            .group_by(Operation.operation_date)
+            .order_by(Operation.operation_date.asc())
+        )
+        rows = self.db.execute(stmt).all()
+        return [
+            {
+                "operation_date": row[0],
+                "income_total": Decimal(row[1] or 0),
+                "expense_total": Decimal(row[2] or 0),
+                "operations_count": int(row[3] or 0),
+            }
+            for row in rows
+        ]
+
     def list_for_period(self, user_id: int, date_from: date, date_to: date) -> list[Operation]:
         stmt = (
             select(Operation)
@@ -446,6 +493,38 @@ class OperationRepository:
             .order_by(Operation.operation_date.asc(), Operation.id.asc())
         )
         return list(self.db.scalars(stmt))
+
+    def list_snapshot_for_period(self, *, user_id: int, date_from: date, date_to: date) -> list[dict]:
+        stmt = (
+            select(
+                Operation.id,
+                Operation.kind,
+                Operation.amount,
+                Operation.operation_date,
+                Operation.category_id,
+                Operation.note,
+            )
+            .where(
+                and_(
+                    Operation.user_id == user_id,
+                    Operation.operation_date >= date_from,
+                    Operation.operation_date <= date_to,
+                )
+            )
+            .order_by(Operation.operation_date.asc(), Operation.id.asc())
+        )
+        rows = self.db.execute(stmt).all()
+        return [
+            {
+                "id": int(row[0]),
+                "kind": str(row[1]),
+                "amount": Decimal(row[2] or 0),
+                "operation_date": row[3],
+                "category_id": int(row[4]) if row[4] is not None else None,
+                "note": row[5],
+            }
+            for row in rows
+        ]
 
     def first_operation_date(self, user_id: int) -> date | None:
         stmt = select(func.min(Operation.operation_date)).where(Operation.user_id == user_id)
