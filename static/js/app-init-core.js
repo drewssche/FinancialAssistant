@@ -18,6 +18,9 @@
       case "item_catalog":
         actions.refreshItemCatalogView?.();
         break;
+      case "debts":
+        actions.renderDebtCards?.(state.debtCardsCache || []);
+        break;
       default:
         break;
     }
@@ -103,6 +106,9 @@
     document.addEventListener("click", (event) => {
       if (!event.target.closest(".icon-select") && !event.target.closest(".color-select") && actions.closeIconPopovers) {
         actions.closeIconPopovers();
+      }
+      if (window.App.pickerUtils?.closeOpenPopoversOnOutside) {
+        window.App.pickerUtils.closeOpenPopoversOnOutside(event);
       }
     });
 

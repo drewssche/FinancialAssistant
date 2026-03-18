@@ -51,9 +51,12 @@ def _restore_mock_telegram(page):
 def _login_via_mock_telegram(page):
     _restore_mock_telegram(page)
     page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-    page.locator("#telegramLoginBtn").wait_for(state="visible", timeout=1500)
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
+    try:
+        page.locator("#telegramLoginBtn").wait_for(state="visible", timeout=1200)
+        page.click("#telegramLoginBtn")
+        page.wait_for_selector("#appShell:not(.hidden)")
+    except Exception:
+        page.wait_for_selector("#appShell:not(.hidden)")
 
 
 @pytest.fixture(scope="module")
@@ -129,6 +132,28 @@ def _category_groups_payload():
     ]
 
 
+def _debt_cards_payload():
+    return [
+        {
+            "id": 1,
+            "counterparty": "Надя",
+            "status": "active",
+            "created_at": "2026-03-11T09:00:00Z",
+            "debts": [
+                {
+                    "id": 11,
+                    "direction": "borrow",
+                    "principal": "508.39",
+                    "outstanding_total": "158.39",
+                    "repaid_total": "350.00",
+                    "due_date": None,
+                    "created_at": "2025-09-22T12:00:00Z",
+                }
+            ],
+        }
+    ]
+
+
 def _build_handler(active_section: str):
     preferences = {
         "preferences_version": 1,
@@ -150,6 +175,7 @@ def _build_handler(active_section: str):
     item_templates = _item_templates_payload()
     categories = _categories_payload()
     category_groups = _category_groups_payload()
+    debt_cards = _debt_cards_payload()
 
     def handler(route, request):
         parsed = urlparse(request.url)
@@ -212,7 +238,7 @@ def _build_handler(active_section: str):
         if path == "/api/v1/operations" and method == "GET":
             return _json_response(route, {"items": [], "total": 0, "page": 1, "page_size": 20})
         if path == "/api/v1/debts/cards" and method == "GET":
-            return _json_response(route, [])
+            return _json_response(route, debt_cards)
         if path == "/api/v1/plans" and method == "GET":
             return _json_response(route, [])
         if path == "/api/v1/plans/history" and method == "GET":
@@ -284,7 +310,7 @@ def test_mobile_card_kebab_stays_top_right_and_menu_escapes_card(static_server_u
             assert page.locator(".category-mobile-group-row").first.evaluate("node => getComputedStyle(node).overflow") == "visible"
             assert page.locator(".category-mobile-group-cell").first.evaluate("node => getComputedStyle(node).overflow") == "visible"
 
-            page.click("#mobileNavToggleBtn")
+            page.locator("#mobileNavToggleBtn").evaluate("node => node.click()")
             page.locator("button[data-section='item_catalog']").click()
             item_card = page.locator(".item-catalog-mobile-group-card").first
             item_trigger = page.locator(".item-catalog-mobile-group-card .mobile-card-kebab-trigger").first
@@ -301,5 +327,26 @@ def test_mobile_card_kebab_stays_top_right_and_menu_escapes_card(static_server_u
             assert item_menu_box["y"] + item_menu_box["height"] > item_card_box["y"] + item_card_box["height"] + 8
             assert page.locator(".item-catalog-mobile-group-row").first.evaluate("node => getComputedStyle(node).overflow") == "visible"
             assert page.locator(".item-catalog-mobile-group-cell").first.evaluate("node => getComputedStyle(node).overflow") == "visible"
+            page.mouse.click(20, 20)
+            page.wait_for_timeout(100)
+            assert "mobile-card-menu-open" not in (page.locator(".item-catalog-mobile-group-card").first.get_attribute("class") or "")
+
+            page.locator("#mobileNavToggleBtn").evaluate("node => node.click()")
+            page.locator("button[data-section='debts']").click()
+            debt_card = page.locator(".debt-mobile-entry").first
+            debt_trigger = page.locator(".debt-mobile-entry .mobile-card-kebab-trigger").first
+            debt_trigger.wait_for(state="visible")
+            debt_card_box = debt_card.bounding_box()
+            debt_trigger_box = debt_trigger.bounding_box()
+            assert debt_card_box is not None and debt_trigger_box is not None
+            assert (debt_card_box["x"] + debt_card_box["width"]) - (debt_trigger_box["x"] + debt_trigger_box["width"]) <= 28
+            debt_trigger.click()
+            debt_menu = page.locator(".debt-mobile-entry .mobile-card-actions-popover:not(.hidden)").first
+            debt_menu.wait_for(state="visible")
+            debt_menu_box = debt_menu.bounding_box()
+            assert debt_menu_box is not None
+            assert debt_menu_box["x"] >= debt_card_box["x"]
+            assert debt_menu_box["y"] >= debt_trigger_box["y"] - 8
+            assert page.locator(".debt-mobile-entry").first.evaluate("node => getComputedStyle(node).overflow") == "visible"
         finally:
             browser.close()

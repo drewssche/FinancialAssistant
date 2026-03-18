@@ -92,6 +92,7 @@
   const deleteAdminUser = adminFeatures.deleteAdminUser;
 
   const loadDebtsCards = debtFeatures.loadDebtsCards;
+  const renderDebtCards = debtFeatures.renderDebtCards;
   const openDebtRepaymentModal = debtFeatures.openDebtRepaymentModal;
   const closeDebtRepaymentModal = debtFeatures.closeDebtRepaymentModal;
   const submitDebtRepayment = debtFeatures.submitDebtRepayment;
@@ -262,6 +263,7 @@
     rejectAdminUser,
     deleteAdminUser,
     loadDebtsCards,
+    renderDebtCards,
     loadPlans,
     openDebtRepaymentModal,
     closeDebtRepaymentModal,

@@ -139,6 +139,15 @@
 - desktop `Debts` keep visible `Погашение` and move `История / Редактировать / Удалить` into kebab
 - receipt-aware modal previews were audited: receipt mode preview now renders receipt-derived categories and `Чек` context in both create and edit flows
 - dashboard `Ближайшие планы` local period controls now have dedicated e2e regression coverage and a working runtime binding
+- implemented 2026-03-19 kebab/list hardening pass:
+- close-state cleanup now removes lingering hover/open styling after kebab popovers close
+- kebab triggers, popovers, and menu buttons use one compact shared size across sections
+- mobile kebab triggers are pinned top-right in `Планы`, `Категории`, `Каталог позиций`, and `Долги`
+- grouped mobile aggregate meta is kept in the compact title row instead of a taller stacked block where layout allows it
+- `Категории` and `Каталог позиций` mobile cards no longer clip kebab popovers
+- desktop `Категории` and `Каталог позиций` now use compact kebab popovers and wider toggle hover area up to the kebab trigger
+- desktop/mobile `Долги` use the same stacking/anchoring contract, and mobile debt cards re-render correctly after breakpoint transitions
+- regression coverage for this class of bugs now lives in `tests/e2e/test_mobile_shell_cards_e2e.py`
 
 2. Scroll and overflow hardening
 - Status: done (updated 2026-03-08)

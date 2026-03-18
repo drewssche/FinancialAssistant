@@ -20,12 +20,20 @@
       return false;
     }
     const owners = [trigger, trigger.parentElement].filter(Boolean);
+    const clearOpenState = () => {
+      ownerCard?.classList.remove("mobile-card-menu-open");
+      ownerCell?.classList.remove("mobile-card-menu-open-cell");
+      ownerRow?.classList.remove("mobile-card-menu-open-row");
+      ownerCell?.classList.remove("table-menu-open-cell");
+      ownerRow?.classList.remove("table-menu-open-row");
+    };
     const shouldOpen = menu.classList.contains("hidden");
     document.querySelectorAll(".mobile-card-actions-popover:not(.hidden), .table-kebab-popover:not(.hidden)").forEach((node) => {
       if (node !== menu) {
         pickerUtils.setPopoverOpen(node, false, {
           owners: Array.isArray(node.__appPopoverOwners) ? node.__appPopoverOwners : [],
         });
+        (Array.isArray(node.__appPopoverOwners) ? node.__appPopoverOwners : []).forEach((owner) => owner?.blur?.());
         node.closest(".mobile-card-menu-open")?.classList.remove("mobile-card-menu-open");
         node.closest("td.mobile-card-menu-open-cell")?.classList.remove("mobile-card-menu-open-cell");
         node.closest("tr.mobile-card-menu-open-row")?.classList.remove("mobile-card-menu-open-row");
@@ -33,12 +41,16 @@
         node.closest(".table-menu-open-row")?.classList.remove("table-menu-open-row");
       }
     });
-    pickerUtils.setPopoverOpen(menu, shouldOpen, { owners });
+    pickerUtils.setPopoverOpen(menu, shouldOpen, { owners, onClose: clearOpenState });
     ownerCard?.classList.toggle("mobile-card-menu-open", shouldOpen);
     ownerCell?.classList.toggle("mobile-card-menu-open-cell", shouldOpen);
     ownerRow?.classList.toggle("mobile-card-menu-open-row", shouldOpen);
     ownerCell?.classList.toggle("table-menu-open-cell", shouldOpen);
     ownerRow?.classList.toggle("table-menu-open-row", shouldOpen);
+    if (!shouldOpen) {
+      clearOpenState();
+      trigger?.blur?.();
+    }
     return true;
   }
 

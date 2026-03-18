@@ -2,7 +2,7 @@
   const { state, el, core, actions } = window.App;
   const pickerUtils = window.App.pickerUtils;
 
-  function toggleTableMenu(trigger) {
+    function toggleTableMenu(trigger) {
     const menuId = String(trigger?.dataset.tableMenuTrigger || "");
     const menu = menuId ? document.querySelector(`.table-kebab-popover[data-table-menu="${CSS.escape(menuId)}"]`) : null;
     const ownerRow = trigger.closest("tr");
@@ -10,21 +10,30 @@
     if (!menu || !pickerUtils?.setPopoverOpen) {
       return false;
     }
-    const owners = [trigger, trigger.parentElement].filter(Boolean);
-    const shouldOpen = menu.classList.contains("hidden");
+      const owners = [trigger, trigger.parentElement].filter(Boolean);
+      const clearOpenState = () => {
+        ownerCell?.classList.remove("table-menu-open-cell");
+        ownerRow?.classList.remove("table-menu-open-row");
+      };
+      const shouldOpen = menu.classList.contains("hidden");
     document.querySelectorAll(".table-kebab-popover:not(.hidden)").forEach((node) => {
       if (node !== menu) {
         pickerUtils.setPopoverOpen(node, false, {
           owners: Array.isArray(node.__appPopoverOwners) ? node.__appPopoverOwners : [],
         });
+        (Array.isArray(node.__appPopoverOwners) ? node.__appPopoverOwners : []).forEach((owner) => owner?.blur?.());
         node.closest(".table-menu-open-cell")?.classList.remove("table-menu-open-cell");
         node.closest(".table-menu-open-row")?.classList.remove("table-menu-open-row");
       }
     });
-    pickerUtils.setPopoverOpen(menu, shouldOpen, { owners });
-    ownerCell?.classList.toggle("table-menu-open-cell", shouldOpen);
-    ownerRow?.classList.toggle("table-menu-open-row", shouldOpen);
-    return true;
+      pickerUtils.setPopoverOpen(menu, shouldOpen, { owners, onClose: clearOpenState });
+      ownerCell?.classList.toggle("table-menu-open-cell", shouldOpen);
+      ownerRow?.classList.toggle("table-menu-open-row", shouldOpen);
+      if (!shouldOpen) {
+        clearOpenState();
+        trigger?.blur?.();
+      }
+      return true;
   }
 
   function bindOperationsFeatureHandlers(getOperationsObserver, setOperationsObserver) {

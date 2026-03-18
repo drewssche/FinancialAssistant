@@ -330,6 +330,20 @@ At the bottom-left sidebar, show compact static user block:
 - grouped desktop rows should follow the same contract: group/source header interaction keeps expand/collapse semantics, while management actions live in the square kebab trigger
 - debts keep one visible primary CTA (`Погашение`) on desktop, while `История`, `Редактировать`, and `Удалить` move into the kebab trigger
 - receipt-aware previews in create/edit modals must follow the same category/`Чек` contract as the live rows; receipt mode may not fall back to a plain single-category preview when multiple receipt categories are active
+- kebab-trigger state must not leak hover/open highlighting after the popover closes; `hover` and `menu-open` are separate states and closing the menu must fully clear owner-row/card emphasis
+- kebab triggers should use one reusable size contract across sections:
+  - desktop tables/lists: square `40x40` trigger in a narrow fixed action column
+  - mobile cards: square `42x42` trigger anchored in the top-right corner of the card/header
+- kebab popovers should use one moderate width contract instead of section-specific oversized menus:
+  - desktop: compact width roughly in the `180-220px` range
+  - mobile: width constrained to viewport with the same visual density as plan-card menus
+- mobile cards with kebab menus must not let the trigger participate in content flow; title and aggregate meta should lay out independently, with the trigger pinned top-right
+- for grouped cards on mobile (`Категории`, `Каталог позиций`, `Долги`) aggregate meta should sit on the same compact line as the title when possible, not as a tall vertical stack under it
+- grouped desktop rows (`Категории`, `Каталог позиций`) should expand the clickable toggle area up to the kebab trigger; the kebab remains a separate utility zone and the header body handles expand/collapse
+- desktop rows/cards that keep one visible primary CTA (`Планы`, `Долги`) should still move all secondary actions into kebab and keep the CTA outside the menu
+- `Долги` must follow the same kebab contract on both desktop and mobile:
+  - desktop debt rows keep visible `Погашение` and move `История / Редактировать / Удалить` into kebab
+  - mobile debt cards keep kebab fixed in the top-right corner and must never fall back to an inner mini-table layout after breakpoint changes
 - Receipt item category remains optional and complements, not replaces, operation-level category.
 - Position analytics is currently exposed through analytics highlights (`top positions`, `price increases`); a dedicated per-position deep-dive screen is still backlog.
 

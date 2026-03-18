@@ -831,6 +831,11 @@
     const next = ["week", "month", "all_time"].includes(value) ? value : "month";
     state.dashboardPlansPeriod = next;
     core.syncSegmentedActive(el.dashboardPlansPeriodTabs, "dashboard-plans-period", next);
+    if (!getPlanItems().length) {
+      await loadPlans({ force: true });
+      window.App.actions?.savePreferencesDebounced?.(250);
+      return;
+    }
     renderDashboardPlans();
     window.App.actions?.savePreferencesDebounced?.(250);
   }
@@ -915,6 +920,9 @@
       const pickerUtils = window.App.pickerUtils;
       if (menu && pickerUtils?.setPopoverOpen) {
         const owners = [menuTrigger, menuTrigger.parentElement].filter(Boolean);
+        const clearOpenState = () => {
+          card?.classList.remove("plan-card-menu-open");
+        };
         const shouldOpen = menu.classList.contains("hidden");
         document.querySelectorAll(".plan-card.plan-card-menu-open").forEach((node) => {
           if (node !== card) {
@@ -926,11 +934,16 @@
             pickerUtils.setPopoverOpen(node, false, {
               owners: Array.isArray(node.__appPopoverOwners) ? node.__appPopoverOwners : [],
             });
+            (Array.isArray(node.__appPopoverOwners) ? node.__appPopoverOwners : []).forEach((owner) => owner?.blur?.());
           }
         });
-        pickerUtils.setPopoverOpen(menu, shouldOpen, { owners });
+        pickerUtils.setPopoverOpen(menu, shouldOpen, { owners, onClose: clearOpenState });
         if (card) {
           card.classList.toggle("plan-card-menu-open", shouldOpen);
+        }
+        if (!shouldOpen) {
+          clearOpenState();
+          menuTrigger.blur?.();
         }
       }
       return;
@@ -967,6 +980,7 @@
       window.App.pickerUtils.setPopoverOpen(menu, false, {
         owners: Array.isArray(menu.__appPopoverOwners) ? menu.__appPopoverOwners : [],
       });
+      (Array.isArray(menu.__appPopoverOwners) ? menu.__appPopoverOwners : []).forEach((owner) => owner?.blur?.());
       menu.closest(".plan-card")?.classList.remove("plan-card-menu-open");
     }
     const action = btn.dataset.planAction || "";

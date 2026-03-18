@@ -61,6 +61,10 @@
     min-width: 42px;
     max-width: 42px;
     width: 42px;
+    height: 42px;
+    min-height: 42px;
+    max-height: 42px;
+    padding: 0;
     justify-self: start;
     align-self: start;
   }

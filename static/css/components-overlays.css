@@ -181,11 +181,11 @@
 }
 
 .table-kebab-trigger {
-  width: 2.5rem;
-  min-width: 2.5rem;
-  max-width: 2.5rem;
-  height: 2.5rem;
-  min-height: 2.5rem;
+  width: 2.25rem;
+  min-width: 2.25rem;
+  max-width: 2.25rem;
+  height: 2.25rem;
+  min-height: 2.25rem;
   padding: 0;
   border-radius: var(--radius-md);
 }
@@ -203,7 +203,8 @@
   position: absolute;
   top: calc(100% + var(--space-2));
   right: 0;
-  min-width: 13rem;
+  width: min(12rem, calc(100vw - 2rem));
+  min-width: 10.5rem;
   padding: var(--space-2);
   z-index: 44;
 }
@@ -216,12 +217,14 @@
 .table-kebab-menu .btn {
   width: 100%;
   min-width: 0;
+  min-height: 2.25rem;
+  padding: 10px 12px;
 }
 
 .table-menu-open-cell,
 .table-menu-open-row {
   position: relative;
-  z-index: 40;
+  z-index: 70;
   overflow: visible;
 }
 

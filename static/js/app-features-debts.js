@@ -162,6 +162,7 @@
 
   window.App.featureDebts = {
     loadDebtsCards,
+    renderDebtCards,
     openDebtRepaymentModal: debtModalsFeature?.openDebtRepaymentModal,
     closeDebtRepaymentModal: debtModalsFeature?.closeDebtRepaymentModal,
     submitDebtRepayment: debtModalsFeature?.submitDebtRepayment,
