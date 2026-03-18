@@ -4,6 +4,31 @@
   function bindCatalogFeatureHandlers(getCategoriesObserver, setCategoriesObserver) {
     let categorySearchDebounceId = null;
     let itemCatalogSearchDebounceId = null;
+    const pickerUtils = window.App.pickerUtils;
+
+    function toggleMobileCardMenu(trigger) {
+      const menuId = String(trigger?.dataset.mobileCardMenuTrigger || "");
+      const menu = menuId ? document.querySelector(`.mobile-card-actions-popover[data-mobile-card-menu="${CSS.escape(menuId)}"]`) : null;
+      if (!menu || !pickerUtils?.setPopoverOpen) {
+        return false;
+      }
+      const ownerCard = trigger.closest(".category-mobile-card, .category-mobile-group-card, .item-catalog-mobile-item-card, .item-catalog-mobile-group-card");
+      const owners = [trigger, trigger.parentElement].filter(Boolean);
+      const shouldOpen = menu.classList.contains("hidden");
+      document.querySelectorAll(".mobile-card-actions-popover:not(.hidden)").forEach((node) => {
+        if (node !== menu) {
+          pickerUtils.setPopoverOpen(node, false, {
+            owners: Array.isArray(node.__appPopoverOwners) ? node.__appPopoverOwners : [],
+          });
+          node.closest(".mobile-card-menu-open")?.classList.remove("mobile-card-menu-open");
+        }
+      });
+      pickerUtils.setPopoverOpen(menu, shouldOpen, { owners });
+      if (ownerCard) {
+        ownerCard.classList.toggle("mobile-card-menu-open", shouldOpen);
+      }
+      return true;
+    }
 
     if (el.itemCatalogSearchQ && actions.loadItemCatalog) {
       el.itemCatalogSearchQ.addEventListener("input", () => {
@@ -47,6 +72,11 @@
     }
     if (el.itemCatalogBody && actions.handleItemCatalogBodyClick) {
       el.itemCatalogBody.addEventListener("click", (event) => {
+        const menuTrigger = event.target.closest("button[data-mobile-card-menu-trigger]");
+        if (menuTrigger) {
+          toggleMobileCardMenu(menuTrigger);
+          return;
+        }
         const deleteSourceBtn = event.target.closest("button[data-delete-item-source-name]");
         if (deleteSourceBtn) {
           if (actions.deleteItemSourceFlow) {
@@ -138,6 +168,11 @@
     });
 
     el.categoriesBody.addEventListener("click", (event) => {
+      const menuTrigger = event.target.closest("button[data-mobile-card-menu-trigger]");
+      if (menuTrigger) {
+        toggleMobileCardMenu(menuTrigger);
+        return;
+      }
       if (actions.handleCategoriesGroupToggleClick && actions.handleCategoriesGroupToggleClick(event)) {
         return;
       }

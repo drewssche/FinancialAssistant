@@ -298,18 +298,25 @@
             <tr class="item-catalog-item-row table-hierarchy-child-row item-catalog-mobile-item-row table-record-open-row ${isCollapsed ? "hidden" : ""}" data-item-template-row="1" data-item-template-open-id="${item.id}">
               <td colspan="4" class="item-catalog-mobile-item-cell">
                 <div class="item-catalog-mobile-item-card">
-                  <div class="item-catalog-mobile-item-main">
+                  <div class="item-catalog-mobile-item-head">
                     <div class="item-catalog-mobile-item-title">${core.highlightText(item.name || "—", query)}</div>
+                    <div class="mobile-card-kebab-wrap">
+                      <button class="btn btn-secondary mobile-card-kebab-trigger" data-mobile-card-menu-trigger="item-template-${item.id}" type="button" aria-label="Действия позиции">
+                        <span aria-hidden="true">⋮</span>
+                      </button>
+                      <div class="app-popover hidden mobile-card-actions-popover" data-mobile-card-menu="item-template-${item.id}">
+                        <div class="mobile-card-actions-menu">
+                          <button class="btn btn-secondary" data-item-template-history-id="${item.id}" type="button">История</button>
+                          <button class="btn btn-secondary" data-edit-item-template-id="${item.id}" type="button">Редактировать</button>
+                          <button class="btn btn-danger" data-delete-item-template-id="${item.id}" type="button">Удалить</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="item-catalog-mobile-item-main">
                     <div class="item-catalog-mobile-item-meta">
                       <span class="muted-small">Цена</span>
                       <strong>${core.formatMoney(item.latest_unit_price || 0)}</strong>
-                    </div>
-                  </div>
-                  <div class="mobile-actions-cell">
-                    <div class="actions row-actions item-catalog-mobile-item-actions">
-                      <button class="btn btn-secondary" data-item-template-history-id="${item.id}" type="button">История</button>
-                      <button class="btn btn-secondary" data-edit-item-template-id="${item.id}" type="button">Редактировать</button>
-                      <button class="btn btn-danger" data-delete-item-template-id="${item.id}" type="button">Удалить</button>
                     </div>
                   </div>
                 </div>
@@ -342,22 +349,31 @@
           <tr class="item-catalog-group-row table-hierarchy-parent-row item-catalog-mobile-group-row">
             <td colspan="4" class="item-catalog-group-cell item-catalog-mobile-group-cell">
               <div class="item-catalog-mobile-group-card">
-                <button type="button" class="item-catalog-group-btn item-catalog-mobile-group-toggle" data-item-catalog-shop-key="${encodeURIComponent(group.shopKey)}" ${queryActive ? "disabled" : ""}>
-                  <span class="item-catalog-group-chevron">${chevron}</span>
-                  <span class="item-catalog-group-main">
-                    <span class="item-catalog-group-name">${core.highlightText(group.shopName, query)}</span>
-                    <span class="item-catalog-group-metas item-catalog-mobile-group-metas">
-                      <span class="item-catalog-group-meta">${group.items.length} поз.</span>
-                      <span class="item-catalog-group-meta">исп: ${group.useCountTotal}</span>
-                      <span class="item-catalog-group-meta">ср: ${group.avgPrice !== null ? core.formatMoney(group.avgPrice, { withCurrency: false }) : "—"}</span>
-                      <span class="item-catalog-group-meta">посл: ${group.lastUsedLabel}</span>
+                <div class="item-catalog-mobile-group-head">
+                  <button type="button" class="item-catalog-group-btn item-catalog-mobile-group-toggle" data-item-catalog-shop-key="${encodeURIComponent(group.shopKey)}" ${queryActive ? "disabled" : ""}>
+                    <span class="item-catalog-group-chevron">${chevron}</span>
+                    <span class="item-catalog-group-main">
+                      <span class="item-catalog-group-name">${core.highlightText(group.shopName, query)}</span>
+                      <span class="item-catalog-group-metas item-catalog-mobile-group-metas">
+                        <span class="item-catalog-group-meta">${group.items.length} поз.</span>
+                        <span class="item-catalog-group-meta">исп: ${group.useCountTotal}</span>
+                        <span class="item-catalog-group-meta">ср: ${group.avgPrice !== null ? core.formatMoney(group.avgPrice, { withCurrency: false }) : "—"}</span>
+                        <span class="item-catalog-group-meta">посл: ${group.lastUsedLabel}</span>
+                      </span>
                     </span>
-                  </span>
-                </button>
-                ${group.shopKey !== ITEM_CATALOG_NO_SHOP_KEY ? `<div class="actions row-actions item-catalog-source-actions item-catalog-mobile-group-actions">
-                  <button class="btn btn-secondary" data-edit-item-source-name="${escapeHtml(group.shopName)}" type="button">Редактировать</button>
-                  <button class="btn btn-danger" data-delete-item-source-name="${escapeHtml(group.shopName)}" type="button">Удалить</button>
-                </div>` : ""}
+                  </button>
+                  ${group.shopKey !== ITEM_CATALOG_NO_SHOP_KEY ? `<div class="mobile-card-kebab-wrap">
+                    <button class="btn btn-secondary mobile-card-kebab-trigger" data-mobile-card-menu-trigger="item-source-${escapeHtml(group.shopKey)}" type="button" aria-label="Действия источника">
+                      <span aria-hidden="true">⋮</span>
+                    </button>
+                    <div class="app-popover hidden mobile-card-actions-popover" data-mobile-card-menu="item-source-${escapeHtml(group.shopKey)}">
+                      <div class="mobile-card-actions-menu">
+                        <button class="btn btn-secondary" data-edit-item-source-name="${escapeHtml(group.shopName)}" type="button">Редактировать</button>
+                        <button class="btn btn-danger" data-delete-item-source-name="${escapeHtml(group.shopName)}" type="button">Удалить</button>
+                      </div>
+                    </div>
+                  </div>` : ""}
+                </div>
               </div>
             </td>
           </tr>

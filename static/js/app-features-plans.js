@@ -564,7 +564,7 @@
       if (item.status === "overdue") {
         return true;
       }
-      const dueDate = String(item.due_date || item.operation_date || "");
+      const dueDate = String(item.scheduled_date || item.due_date || item.operation_date || "");
       return Boolean(dueDate) && dueDate >= bounds.dateFrom && dueDate <= bounds.dateTo;
     });
   }
@@ -596,7 +596,7 @@
       el.dashboardPlansPeriodLabel.textContent = getDashboardPlansPeriodLabel();
     }
     const items = getDashboardPlansPeriodFilteredItems()
-      .sort((a, b) => String(a.due_date || "").localeCompare(String(b.due_date || "")))
+      .sort((a, b) => String(a.scheduled_date || a.due_date || a.operation_date || "").localeCompare(String(b.scheduled_date || b.due_date || b.operation_date || "")))
       .slice(0, ui?.dashboardOperationsLimit || 8);
     const summary = summarizePlans(items);
     el.dashboardPlansKpi.innerHTML = `
@@ -914,10 +914,16 @@
     if (menuTrigger) {
       const planId = String(menuTrigger.dataset.planMenuTrigger || "");
       const menu = document.querySelector(`.plan-card-actions-popover[data-plan-menu="${planId}"]`);
+      const card = menuTrigger.closest(".plan-card");
       const pickerUtils = window.App.pickerUtils;
       if (menu && pickerUtils?.setPopoverOpen) {
         const owners = [menuTrigger, menuTrigger.parentElement].filter(Boolean);
         const shouldOpen = menu.classList.contains("hidden");
+        document.querySelectorAll(".plan-card.plan-card-menu-open").forEach((node) => {
+          if (node !== card) {
+            node.classList.remove("plan-card-menu-open");
+          }
+        });
         document.querySelectorAll(".plan-card-actions-popover:not(.hidden)").forEach((node) => {
           if (node !== menu) {
             pickerUtils.setPopoverOpen(node, false, {
@@ -926,6 +932,9 @@
           }
         });
         pickerUtils.setPopoverOpen(menu, shouldOpen, { owners });
+        if (card) {
+          card.classList.toggle("plan-card-menu-open", shouldOpen);
+        }
       }
       return;
     }
@@ -961,6 +970,7 @@
       window.App.pickerUtils.setPopoverOpen(menu, false, {
         owners: Array.isArray(menu.__appPopoverOwners) ? menu.__appPopoverOwners : [],
       });
+      menu.closest(".plan-card")?.classList.remove("plan-card-menu-open");
     }
     const action = btn.dataset.planAction || "";
     const planId = Number(btn.dataset.planId || 0);

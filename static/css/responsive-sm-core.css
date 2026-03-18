@@ -37,6 +37,14 @@
     margin-inline: calc(var(--space-3) * -1);
     padding-right: max(var(--space-3), env(safe-area-inset-right));
     padding-left: max(var(--space-3), env(safe-area-inset-left));
+    position: sticky;
+    top: 0;
+    z-index: 25;
+    padding-top: max(var(--space-2), env(safe-area-inset-top));
+    padding-bottom: var(--space-2);
+    background: linear-gradient(180deg, rgba(15, 23, 36, 0.98) 0%, rgba(14, 21, 34, 0.94) 100%);
+    border-bottom: 1px solid rgba(39, 50, 72, 0.48);
+    backdrop-filter: blur(10px);
   }
 
   .btn-cta,
@@ -144,32 +152,16 @@
 
   .mobile-card-table.categories-table .item-catalog-group-metas {
     margin-left: 0;
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 4px;
-    justify-items: start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    justify-content: flex-start;
     text-align: left;
   }
 
   .mobile-card-table.categories-table .item-catalog-group-meta {
     font-size: 11px;
     white-space: normal;
-  }
-
-  .mobile-card-table.categories-table td.mobile-actions-cell .row-actions,
-  .mobile-card-table.categories-table .category-table-group-wrap .row-actions {
-    width: 100%;
-    margin-left: 0;
-    display: grid;
-    gap: 10px;
-    justify-items: stretch;
-  }
-
-  .mobile-card-table.categories-table td.mobile-actions-cell .row-actions .btn,
-  .mobile-card-table.categories-table .category-table-group-wrap .row-actions .btn {
-    min-height: 2.5rem;
-    padding: 10px 12px;
-    font-size: 13px;
   }
 
   .mobile-card-table.categories-table .category-tree-mark {
@@ -229,24 +221,8 @@
   }
 
   .mobile-card-table.categories-table .category-mobile-item-title,
-  .mobile-card-table.categories-table .category-mobile-item-meta,
-  .mobile-card-table.categories-table .category-mobile-item-actions,
-  .mobile-card-table.categories-table .category-mobile-group-actions {
+  .mobile-card-table.categories-table .category-mobile-item-meta {
     width: 100%;
-  }
-
-  .mobile-card-table.categories-table .category-mobile-actions .row-actions,
-  .mobile-card-table.categories-table .category-mobile-item-actions .row-actions,
-  .mobile-card-table.categories-table .category-mobile-group-actions {
-    grid-template-columns: 1fr;
-  }
-
-  .mobile-card-table.categories-table .category-mobile-item-actions .row-actions .btn,
-  .mobile-card-table.categories-table .category-mobile-group-actions .btn {
-    width: 100%;
-    min-width: 0;
-    white-space: normal;
-    word-break: break-word;
   }
 
   .mobile-card-table.operations-table td.mobile-actions-cell {
@@ -329,10 +305,10 @@
 
   .mobile-card-table.item-catalog-table .item-catalog-group-metas {
     margin-left: 0;
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 4px;
-    justify-items: start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    justify-content: flex-start;
     text-align: left;
   }
 
@@ -345,14 +321,6 @@
 
   .mobile-card-table.item-catalog-table .item-catalog-source-context-cell {
     display: none;
-  }
-
-  .mobile-card-table.item-catalog-table td.mobile-actions-cell .row-actions,
-  .mobile-card-table.item-catalog-table .item-catalog-source-actions {
-    width: 100%;
-    display: grid;
-    gap: 10px;
-    justify-items: stretch;
   }
 
   .mobile-card-table.dashboard-operations-table td[data-label] {
@@ -373,13 +341,6 @@
   .mobile-card-table.dashboard-operations-table .operation-category-stack .category-chip,
   .mobile-card-table.dashboard-operations-table .operation-category-stack .meta-chip {
     max-width: 100%;
-  }
-
-  .mobile-card-table.item-catalog-table td.mobile-actions-cell .row-actions .btn,
-  .mobile-card-table.item-catalog-table .item-catalog-source-actions .btn {
-    min-height: 2.5rem;
-    padding: 10px 12px;
-    font-size: 13px;
   }
 
   .mobile-card-table.item-catalog-table .item-catalog-mobile-group-card,
@@ -403,15 +364,10 @@
     margin-left: var(--space-1);
   }
 
-  .mobile-card-table.item-catalog-table .item-catalog-mobile-item-actions,
-  .mobile-card-table.item-catalog-table .item-catalog-mobile-group-actions {
-    grid-template-columns: 1fr;
-  }
-
-  .mobile-card-table.item-catalog-table .mobile-actions-cell .btn,
-  .mobile-card-table.item-catalog-table .category-table-group-wrap .row-actions .btn {
-    white-space: normal;
-    word-break: break-word;
+  .mobile-card-actions-menu .btn {
+    min-height: 2.5rem;
+    padding: 10px 12px;
+    font-size: 13px;
   }
 
   .plan-card-head {
@@ -557,6 +513,14 @@
     grid-template-columns: 1fr;
   }
 
+  .danger-zone {
+    gap: var(--space-3);
+  }
+
+  .danger-zone-actions {
+    gap: var(--space-3);
+  }
+
   .settings-picker-field select {
     position: absolute;
     width: 1px;
@@ -583,6 +547,10 @@
     width: 100%;
     min-width: 0;
     font-size: 16px;
+  }
+
+  .danger-zone-actions .btn {
+    margin-top: 2px;
   }
 
   .modal-card form {

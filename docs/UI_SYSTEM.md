@@ -196,6 +196,7 @@ At the bottom-left sidebar, show compact static user block:
 - username + handle aligned close to avatar
 - separate logout icon button on the right
 - no user context dropdown menu
+- on mobile, keep the page topbar sticky so the sidebar trigger remains available during scroll instead of disappearing off-screen
 
 ## Core UI Element Categories
 - Buttons: primary, secondary, danger, ghost
@@ -208,6 +209,9 @@ At the bottom-left sidebar, show compact static user block:
 
 ## Mobile Interaction Rules
 - critical actions must not rely on row hover
+- grouped list/cards on mobile should favor a compact kebab menu for secondary actions instead of stacking multiple full-width buttons inside each card
+- compact aggregate meta for mobile group/source cards should stay near the title as a concise meta-line rather than a tall vertical stack
+- in mobile settings `Danger Zone`, the confirmation input and destructive button must keep a visible gap and never visually merge into one block
 - inline row actions need mobile-safe alternative access:
 - always-visible compact action button
 - swipe/menu/sheet trigger

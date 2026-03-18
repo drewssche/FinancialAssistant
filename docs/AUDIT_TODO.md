@@ -7,6 +7,9 @@
 - Done:
 - mobile drawer sidebar with overlay/close interactions is in place
 - topbar and CTA rows stack on tablet/mobile widths
+- mobile topbar should stay sticky so the sidebar trigger remains reachable while scrolling
+- grouped mobile list/cards should move secondary actions into kebab menus and keep aggregate meta near titles
+- mobile settings `Danger Zone` should keep explicit spacing between confirmation input and destructive button
 - safe-area-aware modal and toast baseline added for Mini App-sized screens
 - Telegram WebApp runtime adapter is kept only for container/viewport sync (`ready`, `expand`, safe-area, viewport height)
 - admin notification bot track re-enabled for pending-access alerts with inline `Approve / Reject`

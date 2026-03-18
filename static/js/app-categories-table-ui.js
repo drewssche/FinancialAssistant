@@ -229,14 +229,29 @@
     const accent = resolveGroupAccent(options.groupAccentColor, item.kind);
     tr.style.setProperty("--category-group-accent", accent.accent);
     tr.style.setProperty("--category-group-accent-soft", accent.soft);
+    const menuActions = item.is_system
+      ? ""
+      : `<div class="mobile-card-kebab-wrap">
+              <button class="btn btn-secondary mobile-card-kebab-trigger" data-mobile-card-menu-trigger="category-${item.id}" type="button" aria-label="Действия категории">
+                <span aria-hidden="true">⋮</span>
+              </button>
+              <div class="app-popover hidden mobile-card-actions-popover" data-mobile-card-menu="category-${item.id}">
+                <div class="mobile-card-actions-menu">
+                  <button class='btn btn-secondary' data-edit-category-id='${item.id}'>Редактировать</button>
+                  <button class='btn btn-danger' data-delete-category-id='${item.id}'>Удалить</button>
+                </div>
+              </div>
+            </div>`;
     tr.innerHTML = `
       <td colspan="4" class="category-mobile-cell">
         <div class="category-mobile-card">
-          <div class="category-mobile-main">
+          <div class="category-mobile-item-head">
             <div class="category-mobile-item-title">${nameCell}</div>
+            ${menuActions}
+          </div>
+          <div class="category-mobile-main">
             <div class="category-mobile-item-meta"><span class="kind-pill kind-pill-${kindClass}">${core.highlightText(core.kindLabel(item.kind), queryRaw)}</span></div>
           </div>
-          <div class="mobile-actions-cell category-mobile-actions category-mobile-item-actions">${actionCell}</div>
         </div>
       </td>
     `;
@@ -257,22 +272,24 @@
     const chevron = group.isUngrouped ? "•" : (isCollapsed ? "▸" : "▾");
     const toggleDisabled = queryActive || group.isUngrouped;
     const groupActions = group.id
-      ? `<div class="actions row-actions category-mobile-group-actions"><button class="btn btn-secondary" data-edit-group-id="${group.id}" type="button">Редактировать</button><button class="btn btn-danger" data-delete-group-id="${group.id}" type="button">Удалить</button></div>`
+      ? `<div class="mobile-card-kebab-wrap"><button class="btn btn-secondary mobile-card-kebab-trigger" data-mobile-card-menu-trigger="category-group-${group.id}" type="button" aria-label="Действия группы"><span aria-hidden="true">⋮</span></button><div class="app-popover hidden mobile-card-actions-popover" data-mobile-card-menu="category-group-${group.id}"><div class="mobile-card-actions-menu"><button class="btn btn-secondary" data-edit-group-id="${group.id}" type="button">Редактировать</button><button class="btn btn-danger" data-delete-group-id="${group.id}" type="button">Удалить</button></div></div></div>`
       : "";
     tr.innerHTML = `
       <td colspan="4" class="category-table-group-cell category-mobile-group-cell">
         <div class="category-mobile-group-card">
-          <button type="button" class="item-catalog-group-btn category-table-group-btn category-mobile-group-toggle" data-category-group-toggle-key="${group.key}" ${toggleDisabled ? "disabled" : ""}>
-            <span class="item-catalog-group-chevron">${chevron}</span>
-            <span class="item-catalog-group-main">
-              <span class="item-catalog-group-name">${groupName}</span>
-              <span class="item-catalog-group-metas category-mobile-group-metas">
-                <span class="item-catalog-group-meta">${group.children.length} кат.</span>
-                ${kindMeta}
+          <div class="category-mobile-group-head">
+            <button type="button" class="item-catalog-group-btn category-table-group-btn category-mobile-group-toggle" data-category-group-toggle-key="${group.key}" ${toggleDisabled ? "disabled" : ""}>
+              <span class="item-catalog-group-chevron">${chevron}</span>
+              <span class="item-catalog-group-main">
+                <span class="item-catalog-group-name">${groupName}</span>
+                <span class="item-catalog-group-metas category-mobile-group-metas">
+                  <span class="item-catalog-group-meta">${group.children.length} кат.</span>
+                  ${kindMeta}
+                </span>
               </span>
-            </span>
-          </button>
-          ${groupActions}
+            </button>
+            ${groupActions}
+          </div>
         </div>
       </td>
     `;

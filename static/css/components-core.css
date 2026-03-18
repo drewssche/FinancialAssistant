@@ -380,6 +380,10 @@
   box-shadow: inset 3px 0 0 0 var(--plan-card-rail);
 }
 
+.plan-card.plan-card-menu-open {
+  z-index: 30;
+}
+
 .plan-card-topline {
   display: flex;
   align-items: start;
@@ -400,6 +404,7 @@
 .plan-card-menu-wrap {
   position: relative;
   flex: 0 0 auto;
+  z-index: 2;
 }
 
 .plan-card-menu-trigger {
@@ -433,7 +438,7 @@
   left: auto;
   width: min(15rem, calc(100vw - 2rem));
   padding: var(--space-2);
-  z-index: 40;
+  z-index: 80;
 }
 
 .plan-card-actions-menu {

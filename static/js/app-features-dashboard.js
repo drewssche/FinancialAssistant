@@ -88,6 +88,8 @@
       el.dashboardDebtKpiGrid.classList.toggle("hidden", !hasDebtKpi);
     }
 
+    window.App.featurePlans?.renderDashboardPlans?.();
+
     if (!core.isDashboardDebtsVisible()) {
       return;
     }
@@ -194,8 +196,6 @@
         }
       }
     }
-
-    window.App.featurePlans?.renderDashboardPlans?.();
   }
 
   async function loadDashboardPlans() {

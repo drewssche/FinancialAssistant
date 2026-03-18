@@ -96,7 +96,7 @@
       return [...starts, ...contains].slice(0, limit);
     }
 
-    function getReceiptShopSuggestions(query = "", limit = 8) {
+    function getReceiptShopSuggestions(query = "", limit = 24) {
       const normalized = normalizeReceiptName(query).toLowerCase();
       const byShop = new Map();
       for (const item of state.receiptTemplateHints || []) {
@@ -111,11 +111,11 @@
         if (!byShop.has(shopNameCi)) {
           byShop.set(shopNameCi, shopName);
         }
-        if (byShop.size >= limit) {
+        if (limit > 0 && byShop.size >= limit) {
           break;
         }
       }
-      return Array.from(byShop.values()).slice(0, limit);
+      return limit > 0 ? Array.from(byShop.values()).slice(0, limit) : Array.from(byShop.values());
     }
 
     function upsertLocalReceiptTemplate(name, latestUnitPrice = 0, shopName = "") {
