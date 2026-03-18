@@ -403,11 +403,24 @@
 .plan-card-menu-trigger {
   width: 2.5rem;
   min-width: 2.5rem;
+  max-width: 2.5rem;
   height: 2.5rem;
+  min-height: 2.5rem;
   padding: 0;
+  flex: 0 0 2.5rem;
+  align-self: start;
   justify-content: center;
   font-size: 20px;
   line-height: 1;
+}
+
+.plan-card-menu-trigger > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  line-height: 1;
+  transform: translateY(-1px);
 }
 
 .plan-card-actions-popover {
@@ -572,6 +585,33 @@
 .plan-card-actions .btn {
   width: 100%;
   min-width: 0;
+}
+
+.plan-card-interactive {
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.plan-card-interactive:hover,
+.plan-card-interactive:focus-within {
+  border-color: rgba(98, 125, 173, 0.82);
+  box-shadow:
+    inset 3px 0 0 0 rgba(121, 201, 180, 0.82),
+    0 0.6rem 1.2rem rgba(4, 10, 18, 0.22);
+  transform: translateY(-1px);
+}
+
+.plan-card-interactive .plan-card-primary {
+  transition: filter 0.18s ease;
+}
+
+.plan-card-interactive:hover .plan-card-primary,
+.plan-card-interactive:focus-within .plan-card-primary {
+  filter: brightness(1.03);
 }
 
 .plan-card-overdue {

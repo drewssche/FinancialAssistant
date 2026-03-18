@@ -444,8 +444,10 @@
     const canSkip = !dashboardCompact && item.recurrence_enabled && item.status !== "confirmed";
     const canDelete = !dashboardCompact;
     const showMenu = canEdit || canSkip || canDelete;
+    const interactiveClass = canEdit ? " plan-card-interactive" : "";
+    const interactiveAttrs = canEdit ? ` data-plan-card-edit-id="${item.id}" tabindex="0"` : "";
     return `
-      <article class="panel plan-card plan-card-${item.status || "upcoming"}">
+      <article class="panel plan-card plan-card-${item.status || "upcoming"}${interactiveClass}"${interactiveAttrs}>
         <div class="plan-card-topline">
           <div class="plan-card-top-meta">
             <span class="meta-chip meta-chip-neutral">${recurrenceLabel(item)}</span>
@@ -879,6 +881,18 @@
     }
     const btn = event.target.closest("button[data-plan-action]");
     if (!btn) {
+      const card = event.target.closest("article[data-plan-card-edit-id]");
+      if (!card) {
+        return;
+      }
+      const clickedInteractive = event.target.closest("button, a, input, select, textarea, label, .app-popover");
+      if (clickedInteractive) {
+        return;
+      }
+      const planId = Number(card.dataset.planCardEditId || 0);
+      if (planId) {
+        handlePlanAction("edit", planId).catch((err) => core.setStatus(String(err)));
+      }
       return;
     }
     const menu = btn.closest(".plan-card-actions-popover");
@@ -925,4 +939,19 @@
     syncPlanRecurrenceUi,
     togglePlanWeekday,
   };
+
+  document.addEventListener("keydown", (event) => {
+    const card = event.target.closest?.("article[data-plan-card-edit-id]");
+    if (!card) {
+      return;
+    }
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+    event.preventDefault();
+    const planId = Number(card.dataset.planCardEditId || 0);
+    if (planId) {
+      handlePlanAction("edit", planId).catch((err) => core.setStatus(String(err)));
+    }
+  });
 })();
