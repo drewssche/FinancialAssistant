@@ -72,10 +72,21 @@
         }
 
         const btn = event.target.closest("button[data-repay-debt-id]");
-        if (!btn || btn.disabled) {
+        if (btn && !btn.disabled) {
+          actions.openDebtRepaymentModal(Number(btn.dataset.repayDebtId || 0));
           return;
         }
-        actions.openDebtRepaymentModal(Number(btn.dataset.repayDebtId || 0));
+
+        const row = event.target.closest("tr[data-debt-row-id]");
+        if (!row) {
+          return;
+        }
+        if (event.target.closest("button, a, input, select, textarea, label, .app-popover")) {
+          return;
+        }
+        if (actions.openEditDebtModal) {
+          actions.openEditDebtModal(Number(row.dataset.debtRowId || 0));
+        }
       });
     }
     if (actions.openDebtRepaymentModal) {

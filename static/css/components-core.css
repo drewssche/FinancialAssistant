@@ -370,12 +370,14 @@
 }
 
 .plan-card {
+  --plan-card-rail: rgba(105, 190, 166, 0.72);
   display: grid;
   gap: var(--space-2);
   border: 1px solid rgba(55, 73, 104, 0.68);
   background: linear-gradient(180deg, rgba(20, 31, 49, 0.94) 0%, rgba(14, 23, 37, 0.94) 100%);
   padding: var(--space-3);
   position: relative;
+  box-shadow: inset 3px 0 0 0 var(--plan-card-rail);
 }
 
 .plan-card-topline {
@@ -601,7 +603,7 @@
 .plan-card-interactive:focus-within {
   border-color: rgba(98, 125, 173, 0.82);
   box-shadow:
-    inset 3px 0 0 0 rgba(121, 201, 180, 0.82),
+    inset 3px 0 0 0 var(--plan-card-rail),
     0 0.6rem 1.2rem rgba(4, 10, 18, 0.22);
   transform: translateY(-1px);
 }
@@ -615,16 +617,12 @@
   filter: brightness(1.03);
 }
 
-.plan-card-overdue {
-  box-shadow: inset 3px 0 0 0 rgba(255, 107, 107, 0.72);
+.plan-card-kind-expense {
+  --plan-card-rail: rgba(255, 111, 125, 0.78);
 }
 
-.plan-card-due {
-  box-shadow: inset 3px 0 0 0 rgba(255, 179, 71, 0.72);
-}
-
-.plan-card-upcoming {
-  box-shadow: inset 3px 0 0 0 rgba(105, 190, 166, 0.72);
+.plan-card-kind-income {
+  --plan-card-rail: rgba(73, 190, 120, 0.78);
 }
 
 .plan-card .kind-pill {

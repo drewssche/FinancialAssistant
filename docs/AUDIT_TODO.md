@@ -99,6 +99,7 @@
 - recurrence main fields in the plan modal should have explicit labels and spacing, not only placeholders
 - plan cards should hide secondary actions behind a compact kebab menu and keep only `Подтвердить` visible as the primary CTA
 - reusable cards/list-items with one primary CTA should adopt the same pattern: square kebab trigger for secondary actions, subtle hover/focus highlight, click on free card body opens edit/details
+- plan receipt items should populate the shared item catalog immediately on plan create/update, not only after confirm
 - reminders should move off the current full-plan scan model toward queued `next reminder` jobs that are recalculated on plan/settings mutations
 - settings should expose both `plans.reminders_enabled` and `plans.reminder_time`
 - plan cards/dashboard cards should be able to show the next reminder time from the queued job
@@ -112,6 +113,13 @@
 - recurring plan controls should use the full modal width on desktop and must not visually collapse under the schedule-mode switch
 - recurring contextual options (`По будням`, `В последний день месяца`) should use segmented `Выкл / Вкл` switches rather than standalone checkboxes
 - when `ui.timezone = auto`, reminder queue scheduling must follow saved browser timezone instead of UTC fallback
+- updated 2026-03-16 interaction rollout:
+- plans cards now use kind-based accent rails (`Расход` red/pink, `Доход` green) instead of one shared green rail
+- row/card click contract is now applied to `Plans`, `Operations`, `Debts`, `Categories` child rows and `Item Catalog` child rows
+- in `Operations`, row click opens edit and selection stays available only through the checkbox
+- in `Debts`, debt-row click opens edit while `Погашение / История / Удалить` remain explicit CTA buttons
+- in `Categories`, group header still expands/collapses while child category row click opens edit
+- in `Item Catalog`, source header still expands/collapses while item row click opens edit
 
 2. Scroll and overflow hardening
 - Status: done (updated 2026-03-08)
@@ -1038,12 +1046,42 @@
   - `tests/e2e/test_batch_create_operations_e2e.py::test_batch_create_modal_submits_multiple_operations`
   - `tests/e2e/test_batch_create_operations_e2e.py::test_create_debt_modal_accepts_display_date_format`
 - Follow-up pass:
-  - operations bulk import now also supports empty category with preserved column order:
+- operations bulk import now also supports empty category with preserved column order:
     `дата;тип;[группа];[категория];сумма;комментарий`
-  - 5-column operation rows without comment are now parsed correctly as
+- 5-column operation rows without comment are now parsed correctly as
     `дата;тип;группа;категория;сумма` instead of collapsing group into category
-  - catalog item price history deduplicates unchanged prices instead of appending same-price rows
-  - source groups in item catalog now support edit/delete flows and global cleanup via `Удалить все`
-  - mobile categories/cards compacted so group/category action buttons stay aligned on narrow screens
-  - list-level `Удалить все` buttons are now disabled on empty sections, and category cleanup deletes
-    categories + groups in one pass instead of leaving categories in `Без группы`
+- catalog item price history deduplicates unchanged prices instead of appending same-price rows
+- source groups in item catalog now support edit/delete flows and global cleanup via `Удалить все`
+- mobile categories/cards compacted so group/category action buttons stay aligned on narrow screens
+- list-level `Удалить все` buttons are now disabled on empty sections, and category cleanup deletes
+  categories + groups in one pass instead of leaving categories in `Без группы`
+
+29. VPS optimization audit kickoff (2026-03-18)
+- Status: in progress (started 2026-03-18)
+- Goal:
+- reduce steady CPU/memory footprint for VPS `1 vCPU / 2 GiB` without functional regressions
+- keep code split sane; avoid growing already heavy files during optimization pass
+- Findings confirmed in code/docs audit:
+- bootstrap eagerly loads almost all major sections on login, even when only one section is visible
+- dashboard summary still computes via full Python-side scans and debt-card expansion instead of compact aggregates
+- dashboard debt preview uses full `/api/v1/debts/cards` payload instead of a lightweight preview contract
+- Redis is optional in code path (local fallback exists) but still treated as always-on runtime dependency
+- Progress:
+- phase 1 started with lowest-risk runtime cut: initial app bootstrap now loads only the active section instead of calling global `refreshAll()`
+- phase 2 started: dashboard summary hot path is being moved from Python-side scans to compact SQL aggregates
+- Done:
+- `static/js/app-features-session-auth.js`
+  - `bootstrapApp()` now delegates to `switchSection(activeSection)` for lazy first load
+  - fallback to `refreshAll()` kept only as defensive compatibility path
+- `app/services/dashboard_service.py`
+  - summary no longer loads full operations list for totals
+  - summary no longer expands full debt cards just to compute KPI numbers
+- `app/repositories/debt_repo.py`
+  - added compact SQL aggregate for active debt totals and active counterparty-card count
+- Validation:
+- `./.venv/bin/pytest -q tests/api/test_health.py tests/api/test_auth_api.py`
+- `./.venv/bin/pytest -q tests/api/test_dashboard_api.py tests/api/test_debts_api.py`
+- Next:
+- add compact backend aggregates for dashboard summary / debt preview
+- make dashboard/plans reuse shared summary accessors instead of duplicating `all_time` reads
+- review Redis optionalization path in compose/runtime docs after API-side optimizations land

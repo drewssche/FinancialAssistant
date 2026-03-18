@@ -224,6 +224,12 @@
         <td data-label="Сумма"><span class="amount-${kindClass}">${core.formatMoney(item.amount)}</span></td>
         <td class="mobile-note-cell" data-label="Комментарий">${highlightText(noteText, searchQuery)}</td>
       `;
+      row.dataset.item = JSON.stringify(item);
+      row.dataset.operationRowId = String(item.id);
+      row.classList.add("table-record-open-row");
+      if (selected) {
+        row.classList.add("row-selected");
+      }
       return row;
     }
 
@@ -265,6 +271,8 @@
       </td>
     `;
     row.dataset.item = JSON.stringify(item);
+    row.dataset.operationRowId = String(item.id);
+    row.classList.add("table-record-open-row");
     if (selected) {
       row.classList.add("row-selected");
     }

@@ -240,3 +240,29 @@ def test_daily_plan_can_repeat_on_workdays_only(client: TestClient):
     assert confirmed.status_code == 200
     assert confirmed.json()["operation"]["operation_date"] == "2026-03-16"
     assert confirmed.json()["plan"]["scheduled_date"] == "2026-03-17"
+
+
+def test_income_plan_receipt_items_appear_in_item_catalog_before_confirm(client: TestClient):
+    category_resp = client.post("/api/v1/categories", json={"name": "Зарплата", "kind": "income"})
+    assert category_resp.status_code == 200
+    category_id = category_resp.json()["id"]
+
+    created = client.post(
+        "/api/v1/plans",
+        json={
+            "kind": "income",
+            "scheduled_date": "2026-03-20",
+            "category_id": category_id,
+            "note": "Получка",
+            "receipt_items": [
+                {"shop_name": "Получка", "name": "Оклад", "quantity": "1", "unit_price": "1500.00"},
+            ],
+        },
+    )
+    assert created.status_code == 201
+
+    catalog = client.get("/api/v1/operations/item-templates", params={"page": 1, "page_size": 20, "q": "Получка"})
+    assert catalog.status_code == 200
+    payload = catalog.json()
+    assert payload["total"] >= 1
+    assert any(item["shop_name"] == "Получка" and item["name"] == "Оклад" for item in payload["items"])

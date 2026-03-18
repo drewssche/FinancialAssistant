@@ -1,7 +1,7 @@
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from app.db.models import Debt, DebtCounterparty, DebtIssuance, DebtRepayment
@@ -134,3 +134,40 @@ class DebtRepository:
         stmt = select(func.coalesce(func.sum(DebtRepayment.amount), 0)).where(DebtRepayment.debt_id == debt_id)
         total = self.db.scalar(stmt)
         return Decimal(total or 0)
+
+    def summary_active_totals(self, *, user_id: int) -> tuple[Decimal, Decimal, int]:
+        repaid_subq = (
+            select(
+                DebtRepayment.debt_id.label("debt_id"),
+                func.coalesce(func.sum(DebtRepayment.amount), 0).label("repaid_total"),
+            )
+            .group_by(DebtRepayment.debt_id)
+            .subquery()
+        )
+        outstanding_expr = Debt.principal - func.coalesce(repaid_subq.c.repaid_total, 0)
+        stmt = (
+            select(
+                func.coalesce(func.sum(case((Debt.direction == "lend", outstanding_expr), else_=0)), 0),
+                func.coalesce(func.sum(case((Debt.direction == "borrow", outstanding_expr), else_=0)), 0),
+                func.count(
+                    func.distinct(
+                        case(
+                            (outstanding_expr > 0, Debt.counterparty_id),
+                            else_=None,
+                        )
+                    )
+                ),
+            )
+            .select_from(Debt)
+            .outerjoin(repaid_subq, Debt.id == repaid_subq.c.debt_id)
+            .where(
+                Debt.user_id == user_id,
+                outstanding_expr > 0,
+            )
+        )
+        lend_total, borrow_total, active_cards = self.db.execute(stmt).one()
+        return (
+            Decimal(lend_total or 0),
+            Decimal(borrow_total or 0),
+            int(active_cards or 0),
+        )

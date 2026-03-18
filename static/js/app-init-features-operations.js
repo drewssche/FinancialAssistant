@@ -169,11 +169,23 @@
       }
 
       const editBtn = event.target.closest("button[data-edit-id]");
-      if (!editBtn) {
+      if (editBtn) {
+        const row = editBtn.closest("tr");
+        const item = row ? JSON.parse(row.dataset.item || "{}") : null;
+        if (item?.id) {
+          actions.openEditModal(item);
+        }
         return;
       }
-      const row = editBtn.closest("tr");
-      const item = row ? JSON.parse(row.dataset.item || "{}") : null;
+
+      const row = event.target.closest("tr[data-operation-row-id]");
+      if (!row) {
+        return;
+      }
+      if (event.target.closest("button, a, input, select, textarea, label, .app-popover")) {
+        return;
+      }
+      const item = JSON.parse(row.dataset.item || "{}");
       if (item?.id) {
         actions.openEditModal(item);
       }

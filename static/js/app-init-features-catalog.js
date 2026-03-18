@@ -88,6 +88,14 @@
           }
           return;
         }
+        const itemRow = event.target.closest("tr[data-item-template-open-id]");
+        if (itemRow && !event.target.closest("button, a, input, select, textarea, label, .app-popover")) {
+          const item = JSON.parse(itemRow.dataset.itemTemplate || "{}");
+          if (item?.id && actions.openItemTemplateModal) {
+            actions.openItemTemplateModal(item);
+          }
+          return;
+        }
         actions.handleItemCatalogBodyClick(event);
       });
     }
@@ -167,6 +175,18 @@
         if (item?.id) {
           actions.openEditCategoryModal(item);
         }
+        return;
+      }
+      const row = event.target.closest("tr[data-category-id]");
+      if (!row) {
+        return;
+      }
+      if (event.target.closest("button, a, input, select, textarea, label, .app-popover")) {
+        return;
+      }
+      const item = JSON.parse(row.dataset.item || "{}");
+      if (item?.id) {
+        actions.openEditCategoryModal(item);
       }
     });
 

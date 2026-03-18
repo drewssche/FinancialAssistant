@@ -92,6 +92,12 @@ class PlanService:
         )
         if normalized_items:
             self.repo.replace_receipt_items(user_id=user_id, plan_id=item.id, items=normalized_items)
+            self.operation_service.item_templates.sync_templates_from_receipt_items(
+                user_id=user_id,
+                category_id=category_id,
+                normalized_items=normalized_items,
+                recorded_at=scheduled_date,
+            )
         self.reminder_service.sync_plan_job(item)
         self.db.commit()
         return self.get_plan(user_id=user_id, plan_id=int(item.id))
@@ -144,6 +150,14 @@ class PlanService:
         self.repo.update(item, updates)
         if normalized_items is not None:
             self.repo.replace_receipt_items(user_id=user_id, plan_id=item.id, items=normalized_items)
+            if normalized_items:
+                next_category_id = updates.get("category_id", item.category_id)
+                self.operation_service.item_templates.sync_templates_from_receipt_items(
+                    user_id=user_id,
+                    category_id=next_category_id,
+                    normalized_items=normalized_items,
+                    recorded_at=updates.get("scheduled_date", item.scheduled_date),
+                )
         self.reminder_service.sync_plan_job(item)
         self.db.commit()
         return self.get_plan(user_id=user_id, plan_id=plan_id)

@@ -212,6 +212,7 @@
   function renderCategoryMobileRow(item, queryRaw, options, kindClass, actionCell, nameCell) {
     const tr = document.createElement("tr");
     tr.classList.add(`kind-row-${kindClass}`, "category-mobile-item-row", "table-hierarchy-child-row");
+    tr.classList.add("table-record-open-row");
     tr.dataset.item = JSON.stringify(item);
     tr.dataset.itemType = "category";
     tr.dataset.categoryId = String(item.id);
@@ -294,6 +295,7 @@
     }
     const tr = document.createElement("tr");
     tr.classList.add(`kind-row-${kindClass}`);
+    tr.classList.add("table-record-open-row");
     tr.dataset.item = JSON.stringify(item);
     tr.dataset.itemType = "category";
     tr.dataset.categoryId = String(item.id);

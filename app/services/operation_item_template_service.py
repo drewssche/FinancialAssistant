@@ -286,6 +286,94 @@ class OperationItemTemplateService:
             self.db.flush()
         return storage_items
 
+    def sync_templates_from_receipt_items(
+        self,
+        *,
+        user_id: int,
+        category_id: int | None,
+        normalized_items: list[dict],
+        recorded_at: date | None = None,
+    ) -> None:
+        if not normalized_items:
+            return
+
+        key_order: list[tuple[str, str | None]] = []
+        sample_by_key: dict[tuple[str, str | None], dict] = {}
+        for item in normalized_items:
+            name_ci = item["name"].casefold()
+            shop_name = item.get("shop_name")
+            shop_name_ci = shop_name.casefold() if shop_name else None
+            key = (name_ci, shop_name_ci)
+            if key not in sample_by_key:
+                key_order.append(key)
+                sample_by_key[key] = item
+
+        existing_templates = self.repo.list_item_templates_for_names_ci(
+            user_id=user_id,
+            names_ci=[name_ci for name_ci, _ in key_order],
+            include_archived=True,
+        )
+        template_by_key: dict[tuple[str, str | None], object] = {}
+        for template in existing_templates:
+            template_by_key[(str(template.name_ci), template.shop_name_ci)] = template
+
+        created_templates = []
+        for name_ci, shop_name_ci in key_order:
+            key = (name_ci, shop_name_ci)
+            if key in template_by_key:
+                continue
+            matched_item = sample_by_key[key]
+            template = self.repo.create_item_template(
+                user_id=user_id,
+                shop_name=matched_item.get("shop_name"),
+                shop_name_ci=shop_name_ci,
+                name=matched_item["name"],
+                name_ci=name_ci,
+                last_category_id=matched_item.get("category_id", category_id),
+                flush=False,
+            )
+            template_by_key[key] = template
+            created_templates.append(template)
+        if created_templates:
+            self.db.flush()
+
+        existing_price_values: dict[int, set[Decimal]] = {}
+        for template in template_by_key.values():
+            template_id = int(template.id)
+            existing_price_values[template_id] = {
+                self._money(row.unit_price)
+                for row in self.repo.list_item_prices(template_id=template_id, limit=500)
+            }
+
+        price_rows: list[dict] = []
+        effective_date = recorded_at or date.today()
+        for item in normalized_items:
+            shop_name = item.get("shop_name")
+            shop_name_ci = shop_name.casefold() if shop_name else None
+            template = template_by_key.get((item["name"].casefold(), shop_name_ci))
+            if not template:
+                continue
+            template.is_archived = False
+            next_category_id = item.get("category_id", category_id)
+            if next_category_id is not None:
+                template.last_category_id = next_category_id
+            template_id = int(template.id)
+            unit_price = self._money(item["unit_price"])
+            if unit_price not in existing_price_values.setdefault(template_id, set()):
+                price_rows.append(
+                    {
+                        "template_id": template_id,
+                        "unit_price": unit_price,
+                        "recorded_at": effective_date,
+                        "source_operation_id": None,
+                    }
+                )
+                existing_price_values[template_id].add(unit_price)
+        if price_rows:
+            self.repo.add_item_template_prices_bulk(rows=price_rows)
+        else:
+            self.db.flush()
+
     def _serialize_item_template(self, item) -> dict:
         latest_map = self.repo.get_latest_prices_for_templates(template_ids=[int(item.id)])
         latest = latest_map.get(int(item.id))

@@ -155,6 +155,10 @@
     if (window.App.actions.applySectionUi) {
       window.App.actions.applySectionUi();
     }
+    if (window.App.actions.switchSection) {
+      await window.App.actions.switchSection(state.activeSection || "dashboard", { preserveBackStack: true });
+      return;
+    }
     if (window.App.actions.refreshAll) {
       await window.App.actions.refreshAll();
     }

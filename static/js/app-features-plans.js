@@ -447,7 +447,7 @@
     const interactiveClass = canEdit ? " plan-card-interactive" : "";
     const interactiveAttrs = canEdit ? ` data-plan-card-edit-id="${item.id}" tabindex="0"` : "";
     return `
-      <article class="panel plan-card plan-card-${item.status || "upcoming"}${interactiveClass}"${interactiveAttrs}>
+      <article class="panel plan-card plan-card-kind-${kindClass} plan-card-${item.status || "upcoming"}${interactiveClass}"${interactiveAttrs}>
         <div class="plan-card-topline">
           <div class="plan-card-top-meta">
             <span class="meta-chip meta-chip-neutral">${recurrenceLabel(item)}</span>

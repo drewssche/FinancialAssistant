@@ -295,7 +295,7 @@
       const childRows = group.items.map((item) => {
         if (compactMobile) {
           return `
-            <tr class="item-catalog-item-row table-hierarchy-child-row item-catalog-mobile-item-row ${isCollapsed ? "hidden" : ""}" data-item-template-row="1">
+            <tr class="item-catalog-item-row table-hierarchy-child-row item-catalog-mobile-item-row table-record-open-row ${isCollapsed ? "hidden" : ""}" data-item-template-row="1" data-item-template-open-id="${item.id}">
               <td colspan="4" class="item-catalog-mobile-item-cell">
                 <div class="item-catalog-mobile-item-card">
                   <div class="item-catalog-mobile-item-main">
@@ -318,7 +318,7 @@
           `;
         }
         return `
-          <tr class="item-catalog-item-row table-hierarchy-child-row ${isCollapsed ? "hidden" : ""}" data-item-template-row="1">
+          <tr class="item-catalog-item-row table-hierarchy-child-row table-record-open-row ${isCollapsed ? "hidden" : ""}" data-item-template-row="1" data-item-template-open-id="${item.id}">
             <td class="item-catalog-source-context-cell" data-label="Источник"><span class="hierarchy-child-label">↳ ${core.highlightText(group.shopName, query)}</span></td>
             <td data-label="Позиция">${core.highlightText(item.name || "—", query)}</td>
             <td data-label="Цена">${core.formatMoney(item.latest_unit_price || 0)}</td>

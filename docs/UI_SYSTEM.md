@@ -100,6 +100,8 @@ Sidebar grouping baseline (when section groups are introduced):
 - plan cards should keep only the primary CTA `Подтвердить` visible; secondary actions like `Редактировать`, `Пропустить`, and `Удалить` should live in a compact top-right kebab menu
 - reusable list/card pattern: when an entity has one dominant CTA and several secondary management actions, keep the dominant CTA visible, move secondary actions into a square top-right kebab trigger, and make the free card body open the edit/details flow on click
 - interactive list cards should use a subtle hover/focus treatment (slight lift + border glow), not an aggressive animation
+- plan cards should use semantic left accent rails by `kind`: expense plans use red/pink rail, income plans use green rail
+- receipt items from plans should also sync into the shared item template catalog; item catalog is not restricted to confirmed operations only
 - on desktop, contextual plan chips should sit in a compact top-left row above the main data line
 - due/progress indicator by term should be visible
 - the main difference from `Операции` rows should be the action set (`Подтвердить`, `Редактировать`, optional `Пропустить`, `Удалить`)
@@ -222,8 +224,18 @@ At the bottom-left sidebar, show compact static user block:
 - responsive renderer contract: sections that choose different mobile/desktop DOM structures (`Operations`, `Categories`, `Item Catalog`, similar table/card surfaces) must re-render on breakpoint transition, not only on full page reload
 - breakpoint-driven re-render should reuse already loaded client state and must not trigger duplicate data requests just because DevTools/device mode or viewport width changed
 - section-specific action contracts must stay isolated:
+- reusable row/card interaction contract:
+- click on free row/card body opens edit/details
+- checkbox is used only for selection
+- group/source headers are used only for expand/collapse
+- explicit buttons/links/popovers must not trigger row-level open
+- clickable rows/cards should also expose a subtle visual affordance on hover/focus (light lift + border glow), so edit-on-click is discoverable without relying on guesswork
 - `Operations`: desktop row actions stay compact and right-aligned for every row variant; mobile operation cards use full-width stacked actions
+- `Operations`: click on row body opens edit; mass selection lives only on the checkbox column
 - `Categories`: mobile layout should follow the same dedicated nested-card pattern as `Item Catalog`, not desktop `td[data-label]` table fallback
+- `Categories`: group header click expands/collapses; child category row/card click opens edit
+- `Item Catalog`: source header click expands/collapses; child item row/card click opens edit
+- `Debts`: debt row/card body click opens edit while repayment/history/delete stay explicit CTA actions
 - `Debts History`: direction pill (`Я дал` / `Я взял`) must remain single-line on narrow screens
 - semantic pills/chips (`Тип`, debt direction, category/type pills) should size to content by default and must not stretch to the full row unless the component is explicitly designed as a segmented/full-width control
 - analytics section/tab contract:

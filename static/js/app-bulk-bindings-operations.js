@@ -374,26 +374,6 @@
       bulkUi.updateOperationsBulkUi();
     });
 
-    el.operationsBody.addEventListener("click", (event) => {
-      if (event.target.closest("button")) {
-        return;
-      }
-      const checkbox = event.target.closest("input[data-select-operation-id]");
-      if (checkbox) {
-        return;
-      }
-      const row = event.target.closest("tr[data-item]");
-      if (!row) {
-        return;
-      }
-      const rowCheckbox = row.querySelector("input[data-select-operation-id]");
-      if (!rowCheckbox) {
-        return;
-      }
-      rowCheckbox.checked = !rowCheckbox.checked;
-      rowCheckbox.dispatchEvent(new Event("change", { bubbles: true }));
-    });
-
     el.bulkEditOperationsBtn.addEventListener("click", () => {
       bulkUi.fillBulkOperationCategorySelect(el.bulkOpKind.value);
       bulkUi.openBulkEditOperationsModal();
