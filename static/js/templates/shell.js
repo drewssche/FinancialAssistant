@@ -6,29 +6,31 @@
     <div id="appShell" class="app-shell hidden">
       <div id="mobileNavOverlay" class="mobile-nav-overlay hidden"></div>
       <aside class="sidebar" id="sidebarNav">
-        <div class="sidebar-head">
-          <div class="brand">FA</div>
-          <button id="mobileNavCloseBtn" class="mobile-nav-close" type="button" aria-label="Закрыть меню">×</button>
-        </div>
-        <div class="sidebar-today">
-          <div id="todayWeekday" class="today-weekday">Сегодня</div>
-          <div id="todayDate" class="today-date">--</div>
-        </div>
+        <div class="sidebar-main">
+          <div class="sidebar-head">
+            <div class="brand">FA</div>
+            <button id="mobileNavCloseBtn" class="mobile-nav-close" type="button" aria-label="Закрыть меню">×</button>
+          </div>
+          <div class="sidebar-today">
+            <div id="todayWeekday" class="today-weekday">Сегодня</div>
+            <div id="todayDate" class="today-date">--</div>
+          </div>
 
-        <nav class="nav" id="mainNav">
-          <div class="nav-group-title">Обзор</div>
-          <button class="nav-btn active" data-section="dashboard">Дашборд</button>
-          <button class="nav-btn" data-section="analytics">Аналитика</button>
-          <div class="nav-group-title">Учет</div>
-          <button class="nav-btn" data-section="operations">Операции</button>
-          <button class="nav-btn" data-section="plans">Планы</button>
-          <button class="nav-btn" data-section="debts">Долги</button>
-          <button class="nav-btn" data-section="categories">Категории</button>
-          <button class="nav-btn" data-section="item_catalog">Каталог позиций</button>
-          <div class="nav-group-title">Система</div>
-          <button id="adminNavBtn" class="nav-btn hidden" data-section="admin">Админ</button>
-          <button class="nav-btn" data-section="settings">Настройки</button>
-        </nav>
+          <nav class="nav" id="mainNav">
+            <div class="nav-group-title">Обзор</div>
+            <button class="nav-btn active" data-section="dashboard">Дашборд</button>
+            <button class="nav-btn" data-section="analytics">Аналитика</button>
+            <div class="nav-group-title">Учет</div>
+            <button class="nav-btn" data-section="operations">Операции</button>
+            <button class="nav-btn" data-section="plans">Планы</button>
+            <button class="nav-btn" data-section="debts">Долги</button>
+            <button class="nav-btn" data-section="categories">Категории</button>
+            <button class="nav-btn" data-section="item_catalog">Каталог позиций</button>
+            <div class="nav-group-title">Система</div>
+            <button id="adminNavBtn" class="nav-btn hidden" data-section="admin">Админ</button>
+            <button class="nav-btn" data-section="settings">Настройки</button>
+          </nav>
+        </div>
 
         <div class="user-area">
           <div class="user-block user-block-static">

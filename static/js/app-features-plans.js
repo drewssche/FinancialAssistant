@@ -512,7 +512,7 @@
           </div>
           ${hideActions ? "" : `
           <div class="actions row-actions plan-card-actions">
-            ${showConfirm ? `<button class="btn btn-primary" type="button" data-plan-action="confirm" data-plan-id="${item.id}">Подтвердить</button>` : ""}
+            ${showConfirm ? `<button class="btn btn-primary" type="button" data-plan-action="confirm" data-plan-id="${item.id}">В операцию</button>` : ""}
           </div>`}
         </div>
       </article>
