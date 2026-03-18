@@ -439,13 +439,33 @@
       ? `<button class="btn btn-link-inline plan-meta-link" type="button" data-plan-receipt-view-id="${item.id}">Позиций: ${item.receipt_items.length}</button>`
       : "";
     const noteMeta = item.note ? `<span class="muted-small">${core.highlightText(item.note, "")}</span>` : "";
+    const showConfirm = item.status !== "confirmed" && item.status !== "skipped";
+    const canEdit = !dashboardCompact && showConfirm;
+    const canSkip = !dashboardCompact && item.recurrence_enabled && item.status !== "confirmed";
+    const canDelete = !dashboardCompact;
+    const showMenu = canEdit || canSkip || canDelete;
     return `
       <article class="panel plan-card plan-card-${item.status || "upcoming"}">
-        <div class="plan-card-top-meta">
-          <span class="meta-chip meta-chip-neutral">${recurrenceLabel(item)}</span>
-          <span class="meta-chip meta-chip-neutral">${statusLabel(item.status)}</span>
-          ${receiptMeta}
-          ${reminderMeta}
+        <div class="plan-card-topline">
+          <div class="plan-card-top-meta">
+            <span class="meta-chip meta-chip-neutral">${recurrenceLabel(item)}</span>
+            <span class="meta-chip meta-chip-neutral">${statusLabel(item.status)}</span>
+            ${receiptMeta}
+            ${reminderMeta}
+          </div>
+          ${showMenu ? `
+            <div class="plan-card-menu-wrap">
+              <button class="btn btn-secondary plan-card-menu-trigger" type="button" data-plan-menu-trigger="${item.id}" aria-label="Дополнительные действия">
+                <span aria-hidden="true">⋮</span>
+              </button>
+              <div class="app-popover hidden plan-card-actions-popover" data-plan-menu="${item.id}">
+                <div class="plan-card-actions-menu">
+                  ${canEdit ? `<button class="btn btn-secondary" type="button" data-plan-action="edit" data-plan-id="${item.id}">Редактировать</button>` : ""}
+                  ${canSkip ? `<button class="btn btn-secondary" type="button" data-plan-action="skip" data-plan-id="${item.id}">Пропустить</button>` : ""}
+                  ${canDelete ? `<button class="btn btn-danger" type="button" data-plan-action="delete" data-plan-id="${item.id}">Удалить</button>` : ""}
+                </div>
+              </div>
+            </div>` : ""}
         </div>
         <div class="plan-card-row">
           <div class="plan-card-primary">
@@ -482,10 +502,7 @@
           </div>
           ${hideActions ? "" : `
           <div class="actions row-actions plan-card-actions">
-            ${item.status !== "confirmed" && item.status !== "skipped" ? `<button class="btn btn-primary" type="button" data-plan-action="confirm" data-plan-id="${item.id}">Подтвердить</button>` : ""}
-            ${!dashboardCompact && item.status !== "confirmed" && item.status !== "skipped" ? `<button class="btn btn-secondary" type="button" data-plan-action="edit" data-plan-id="${item.id}">Редактировать</button>` : ""}
-            ${!dashboardCompact && item.recurrence_enabled && item.status !== "confirmed" ? `<button class="btn btn-secondary" type="button" data-plan-action="skip" data-plan-id="${item.id}">Пропустить</button>` : ""}
-            ${!dashboardCompact ? `<button class="btn btn-danger" type="button" data-plan-action="delete" data-plan-id="${item.id}">Удалить</button>` : ""}
+            ${showConfirm ? `<button class="btn btn-primary" type="button" data-plan-action="confirm" data-plan-id="${item.id}">Подтвердить</button>` : ""}
           </div>`}
         </div>
       </article>
@@ -830,6 +847,25 @@
   }
 
   function handlePlanActionClick(event) {
+    const menuTrigger = event.target.closest("button[data-plan-menu-trigger]");
+    if (menuTrigger) {
+      const planId = String(menuTrigger.dataset.planMenuTrigger || "");
+      const menu = document.querySelector(`.plan-card-actions-popover[data-plan-menu="${planId}"]`);
+      const pickerUtils = window.App.pickerUtils;
+      if (menu && pickerUtils?.setPopoverOpen) {
+        const owners = [menuTrigger, menuTrigger.parentElement].filter(Boolean);
+        const shouldOpen = menu.classList.contains("hidden");
+        document.querySelectorAll(".plan-card-actions-popover:not(.hidden)").forEach((node) => {
+          if (node !== menu) {
+            pickerUtils.setPopoverOpen(node, false, {
+              owners: Array.isArray(node.__appPopoverOwners) ? node.__appPopoverOwners : [],
+            });
+          }
+        });
+        pickerUtils.setPopoverOpen(menu, shouldOpen, { owners });
+      }
+      return;
+    }
     const receiptBtn = event.target.closest("button[data-plan-receipt-view-id]");
     if (receiptBtn) {
       const item = findPlanById(Number(receiptBtn.dataset.planReceiptViewId || 0));
@@ -844,6 +880,12 @@
     const btn = event.target.closest("button[data-plan-action]");
     if (!btn) {
       return;
+    }
+    const menu = btn.closest(".plan-card-actions-popover");
+    if (menu && window.App.pickerUtils?.setPopoverOpen) {
+      window.App.pickerUtils.setPopoverOpen(menu, false, {
+        owners: Array.isArray(menu.__appPopoverOwners) ? menu.__appPopoverOwners : [],
+      });
     }
     const action = btn.dataset.planAction || "";
     const planId = Number(btn.dataset.planId || 0);

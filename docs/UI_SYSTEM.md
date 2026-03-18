@@ -97,6 +97,7 @@ Sidebar grouping baseline (when section groups are introduced):
 - plan list rows/cards should reuse the same information rhythm as regular `Операции` rows where practical:
 - core fields/meta should be rendered like an operation item
 - contextual plan chips should explain plan state/recurrence
+- plan cards should keep only the primary CTA `Подтвердить` visible; secondary actions like `Редактировать`, `Пропустить`, and `Удалить` should live in a compact top-right kebab menu
 - on desktop, contextual plan chips should sit in a compact top-left row above the main data line
 - due/progress indicator by term should be visible
 - the main difference from `Операции` rows should be the action set (`Подтвердить`, `Редактировать`, optional `Пропустить`, `Удалить`)

@@ -97,6 +97,7 @@
 - preview cards should not render actions, and recurrence controls should be redistributed into a desktop main row plus a lighter options row
 - desktop recurrence controls should stretch to fill the modal row evenly, not stay as cramped intrinsic-width fields
 - recurrence main fields in the plan modal should have explicit labels and spacing, not only placeholders
+- plan cards should hide secondary actions behind a compact kebab menu and keep only `Подтвердить` visible as the primary CTA
 - reminders should move off the current full-plan scan model toward queued `next reminder` jobs that are recalculated on plan/settings mutations
 - settings should expose both `plans.reminders_enabled` and `plans.reminder_time`
 - plan cards/dashboard cards should be able to show the next reminder time from the queued job
