@@ -401,17 +401,18 @@
 }
 
 .plan-card-menu-trigger {
-  width: 2.5rem;
-  min-width: 2.5rem;
-  max-width: 2.5rem;
-  height: 2.5rem;
-  min-height: 2.5rem;
+  width: 2.5rem !important;
+  min-width: 2.5rem !important;
+  max-width: 2.5rem !important;
+  height: 2.5rem !important;
+  min-height: 2.5rem !important;
   padding: 0;
   flex: 0 0 2.5rem;
   align-self: start;
   justify-content: center;
   font-size: 20px;
   line-height: 1;
+  display: inline-flex;
 }
 
 .plan-card-menu-trigger > span {
