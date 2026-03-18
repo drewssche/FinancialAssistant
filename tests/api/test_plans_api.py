@@ -266,3 +266,33 @@ def test_income_plan_receipt_items_appear_in_item_catalog_before_confirm(client:
     payload = catalog.json()
     assert payload["total"] >= 1
     assert any(item["shop_name"] == "Получка" and item["name"] == "Оклад" for item in payload["items"])
+
+
+def test_item_catalog_backfills_from_existing_plan_receipt_items(client: TestClient):
+    category_resp = client.post("/api/v1/categories", json={"name": "Фриланс", "kind": "income"})
+    assert category_resp.status_code == 200
+    category_id = category_resp.json()["id"]
+
+    created = client.post(
+        "/api/v1/plans",
+        json={
+            "kind": "income",
+            "scheduled_date": "2026-03-21",
+            "category_id": category_id,
+            "note": "Старый план",
+            "receipt_items": [
+                {"shop_name": "Подработка", "name": "Проект", "quantity": "1", "unit_price": "800.00"},
+            ],
+        },
+    )
+    assert created.status_code == 201
+
+    cleared = client.delete("/api/v1/operations/item-templates")
+    assert cleared.status_code == 200
+    assert cleared.json()["deleted"] >= 1
+
+    catalog = client.get("/api/v1/operations/item-templates", params={"page": 1, "page_size": 20, "q": "Подработка"})
+    assert catalog.status_code == 200
+    payload = catalog.json()
+    assert payload["total"] >= 1
+    assert any(item["shop_name"] == "Подработка" and item["name"] == "Проект" for item in payload["items"])

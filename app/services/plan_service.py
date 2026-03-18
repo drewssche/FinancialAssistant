@@ -288,16 +288,21 @@ class PlanService:
         item = row.PlanOperation
         category = row.Category
         group = row[2]
+        category_meta_map = self.operation_service._get_category_meta_map([receipt_item.category_id for receipt_item in receipt_items or []])
         receipt_payload = []
         receipt_total = Decimal("0")
         for receipt_item in receipt_items or []:
             line_total = self.operation_service._money(receipt_item.line_total)
             receipt_total += line_total
+            category_meta = category_meta_map.get(int(receipt_item.category_id or 0), {})
             receipt_payload.append(
                 {
                     "id": int(receipt_item.id),
                     "template_id": None,
                     "category_id": receipt_item.category_id,
+                    "category_name": category_meta.get("name"),
+                    "category_icon": category_meta.get("icon"),
+                    "category_accent_color": category_meta.get("accent_color"),
                     "shop_name": receipt_item.shop_name,
                     "name": receipt_item.name,
                     "quantity": self.operation_service._qty(receipt_item.quantity),

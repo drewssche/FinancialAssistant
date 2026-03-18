@@ -17,6 +17,9 @@ class OperationReceiptItemOut(BaseModel):
     id: int
     template_id: int | None
     category_id: int | None
+    category_name: str | None = None
+    category_icon: str | None = None
+    category_accent_color: str | None = None
     shop_name: str | None
     name: str
     quantity: Decimal
@@ -49,6 +52,9 @@ class OperationOut(BaseModel):
     amount: Decimal
     operation_date: date
     category_id: int | None
+    category_name: str | None = None
+    category_icon: str | None = None
+    category_accent_color: str | None = None
     note: str | None
     receipt_items: list[OperationReceiptItemOut] = []
     receipt_total: Decimal | None = None

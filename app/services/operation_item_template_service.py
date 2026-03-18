@@ -1,8 +1,10 @@
 from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.db.models import PlanOperation, PlanReceiptItem
 from app.repositories.operation_repo import OperationRepository
 
 
@@ -22,6 +24,7 @@ class OperationItemTemplateService:
         page_size: int,
         q: str | None,
     ) -> tuple[list[dict], int]:
+        self.backfill_templates_from_plan_receipts(user_id=user_id)
         templates, total = self.repo.list_item_templates(
             user_id=user_id,
             page=page,
@@ -45,6 +48,48 @@ class OperationItemTemplateService:
                 }
             )
         return payload, total
+
+    def backfill_templates_from_plan_receipts(self, *, user_id: int) -> None:
+        stmt = (
+            select(PlanOperation, PlanReceiptItem)
+            .join(PlanReceiptItem, PlanReceiptItem.plan_id == PlanOperation.id)
+            .where(
+                PlanOperation.user_id == user_id,
+                PlanReceiptItem.user_id == user_id,
+            )
+            .order_by(PlanOperation.id.asc(), PlanReceiptItem.id.asc())
+        )
+        grouped: dict[int, dict] = {}
+        for plan, receipt_item in self.db.execute(stmt).all():
+            bucket = grouped.setdefault(
+                int(plan.id),
+                {
+                    "category_id": plan.category_id,
+                    "recorded_at": plan.scheduled_date,
+                    "items": [],
+                },
+            )
+            bucket["items"].append(
+                {
+                    "category_id": receipt_item.category_id,
+                    "shop_name": receipt_item.shop_name,
+                    "name": receipt_item.name,
+                    "quantity": receipt_item.quantity,
+                    "unit_price": receipt_item.unit_price,
+                    "line_total": receipt_item.line_total,
+                    "note": receipt_item.note,
+                }
+            )
+        if not grouped:
+            return
+        for payload in grouped.values():
+            self.sync_templates_from_receipt_items(
+                user_id=user_id,
+                category_id=payload["category_id"],
+                normalized_items=payload["items"],
+                recorded_at=payload["recorded_at"],
+            )
+        self.db.commit()
 
     def list_item_template_prices(
         self,

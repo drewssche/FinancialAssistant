@@ -1,9 +1,11 @@
 from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.cache import invalidate_dashboard_summary_cache
+from app.db.models import Category, CategoryGroup
 from app.repositories.operation_repo import OperationRepository
 from app.services.operation_item_template_service import OperationItemTemplateService
 
@@ -275,16 +277,21 @@ class OperationService:
                 operation_ids=[int(operation.id)],
             )
             loaded_items = loaded.get(int(operation.id), [])
+        category_meta_map = self._get_category_meta_map([row.category_id for row in loaded_items or []] + [operation.category_id])
         receipt_payload = []
         receipt_total = Decimal("0")
         for row in loaded_items or []:
             line_total = self._money(row.line_total)
             receipt_total += line_total
+            category_meta = category_meta_map.get(int(row.category_id or 0), {})
             receipt_payload.append(
                 {
                     "id": int(row.id),
                     "template_id": row.template_id,
                     "category_id": row.category_id,
+                    "category_name": category_meta.get("name"),
+                    "category_icon": category_meta.get("icon"),
+                    "category_accent_color": category_meta.get("accent_color"),
                     "shop_name": row.shop_name,
                     "name": row.name,
                     "quantity": self._qty(row.quantity),
@@ -296,17 +303,39 @@ class OperationService:
         amount = self._money(operation.amount)
         receipt_total_value = self._money(receipt_total) if receipt_payload else None
         discrepancy = self._money(amount - receipt_total) if receipt_payload else None
+        operation_category_meta = category_meta_map.get(int(operation.category_id or 0), {})
         return {
             "id": int(operation.id),
             "kind": operation.kind,
             "amount": amount,
             "operation_date": operation.operation_date,
             "category_id": operation.category_id,
+            "category_name": operation_category_meta.get("name"),
+            "category_icon": operation_category_meta.get("icon"),
+            "category_accent_color": operation_category_meta.get("accent_color"),
             "note": operation.note,
             "receipt_items": receipt_payload,
             "receipt_total": receipt_total_value,
             "receipt_discrepancy": discrepancy,
         }
+
+    def _get_category_meta_map(self, category_ids: list[int | None]) -> dict[int, dict]:
+        normalized_ids = sorted({int(category_id) for category_id in category_ids if int(category_id or 0) > 0})
+        if not normalized_ids:
+            return {}
+        stmt = (
+            select(Category, CategoryGroup)
+            .outerjoin(CategoryGroup, CategoryGroup.id == Category.group_id)
+            .where(Category.id.in_(normalized_ids))
+        )
+        result: dict[int, dict] = {}
+        for category, group in self.db.execute(stmt).all():
+            result[int(category.id)] = {
+                "name": category.name,
+                "icon": category.icon or (group.icon if group else None),
+                "accent_color": group.accent_color if group else None,
+            }
+        return result
 
     def _normalize_receipt_items(self, receipt_items: list[dict]) -> tuple[list[dict], Decimal | None]:
         normalized: list[dict] = []

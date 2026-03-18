@@ -40,6 +40,14 @@
     if (categories.length) {
       return categories;
     }
+    if (item?.category_name) {
+      return [{
+        id: item?.category_id ? Number(item.category_id) : null,
+        name: item.category_name,
+        icon: item.category_icon || null,
+        accent_color: item.category_accent_color || null,
+      }];
+    }
     const fallback = getCategoryMetaById(item?.category_id);
     return fallback?.name ? [fallback] : [];
   }
@@ -700,14 +708,18 @@
 
   async function refreshAfterPlanMutation({ confirmed = false } = {}) {
     core.invalidateUiRequestCache?.("plans");
+    core.invalidateUiRequestCache?.("item-catalog");
     if (confirmed) {
       state.plansAllTimeBalance = null;
     }
     await loadPlans({ force: true });
+    const actions = window.App.actions || {};
+    if (actions.loadItemCatalog) {
+      await actions.loadItemCatalog({ force: true });
+    }
     if (!confirmed) {
       return;
     }
-    const actions = window.App.actions || {};
     const jobs = [];
     if (actions.loadOperations) {
       jobs.push(actions.loadOperations({ reset: true }));

@@ -152,6 +152,41 @@ def test_operations_search_by_note_category_and_kind_ru(client: TestClient):
     assert by_kind_ru.json()["items"][0]["kind"] == "expense"
 
 
+def test_operations_serialize_category_meta_for_operation_and_receipt_items(client: TestClient):
+    category_resp = client.post("/api/v1/categories", json={"name": "Еда", "kind": "expense"})
+    assert category_resp.status_code == 200
+    category_id = category_resp.json()["id"]
+
+    created = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "operation_date": "2026-03-02",
+            "category_id": category_id,
+            "note": "кофе и перекус",
+            "receipt_items": [
+                {
+                    "shop_name": "Store",
+                    "name": "Кофе",
+                    "quantity": "1",
+                    "unit_price": "5.00",
+                    "category_id": category_id,
+                },
+            ],
+        },
+    )
+    assert created.status_code == 201
+    payload = created.json()
+    assert payload["category_name"] == "Еда"
+    assert payload["receipt_items"][0]["category_name"] == "Еда"
+
+    listed = client.get("/api/v1/operations", params={"page": 1, "page_size": 20})
+    assert listed.status_code == 200
+    item = listed.json()["items"][0]
+    assert item["category_name"] == "Еда"
+    assert item["receipt_items"][0]["category_name"] == "Еда"
+
+
 def test_operations_summary_respects_filters(client: TestClient):
     category_resp = client.post("/api/v1/categories", json={"name": "Еда", "kind": "expense"})
     assert category_resp.status_code == 200

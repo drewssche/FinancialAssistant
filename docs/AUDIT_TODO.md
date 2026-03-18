@@ -100,6 +100,8 @@
 - plan cards should hide secondary actions behind a compact kebab menu and keep only `Подтвердить` visible as the primary CTA
 - reusable cards/list-items with one primary CTA should adopt the same pattern: square kebab trigger for secondary actions, subtle hover/focus highlight, click on free card body opens edit/details
 - plan receipt items should populate the shared item catalog immediately on plan create/update, not only after confirm
+- item catalog should backfill from existing old plan receipt items as well, so plans created before the sync fix can reappear without manual resave
+- operation/plan category rendering should fall back to payload-level category meta, not only to a separately preloaded category dictionary
 - reminders should move off the current full-plan scan model toward queued `next reminder` jobs that are recalculated on plan/settings mutations
 - settings should expose both `plans.reminders_enabled` and `plans.reminder_time`
 - plan cards/dashboard cards should be able to show the next reminder time from the queued job

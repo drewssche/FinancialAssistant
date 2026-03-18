@@ -45,17 +45,38 @@
   }
 
   function getReceiptCategoryMetas(receiptItems, fallbackCategoryId, getCategoryMetaById) {
-    if (typeof getCategoryMetaById !== "function") {
-      return [];
+    const byKey = new Map();
+    for (const row of Array.isArray(receiptItems) ? receiptItems : []) {
+      const categoryId = Number(row?.category_id || 0);
+      let meta = null;
+      if (categoryId > 0 && typeof getCategoryMetaById === "function") {
+        meta = getCategoryMetaById(categoryId);
+      }
+      if (!meta?.name && row?.category_name) {
+        meta = {
+          id: categoryId || null,
+          name: row.category_name,
+          icon: row.category_icon || null,
+          accent_color: row.category_accent_color || null,
+        };
+      }
+      if (!meta?.name) {
+        continue;
+      }
+      const key = meta.id ? `id:${meta.id}` : `name:${String(meta.name).toLowerCase()}`;
+      if (!byKey.has(key)) {
+        byKey.set(key, meta);
+      }
     }
-    const ids = Array.from(new Set(
-      (Array.isArray(receiptItems) ? receiptItems : [])
-        .map((row) => Number(row?.category_id || fallbackCategoryId || 0))
-        .filter((value) => value > 0),
-    ));
-    return ids
-      .map((id) => getCategoryMetaById(id))
-      .filter((item) => item?.name);
+    if (byKey.size > 0) {
+      return Array.from(byKey.values());
+    }
+    const fallbackId = Number(fallbackCategoryId || 0);
+    if (fallbackId > 0 && typeof getCategoryMetaById === "function") {
+      const fallbackMeta = getCategoryMetaById(fallbackId);
+      return fallbackMeta?.name ? [fallbackMeta] : [];
+    }
+    return [];
   }
 
   function renderMetaChip(label, tone = "neutral") {

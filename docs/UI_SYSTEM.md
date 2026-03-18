@@ -102,10 +102,12 @@ Sidebar grouping baseline (when section groups are introduced):
 - interactive list cards should use a subtle hover/focus treatment (slight lift + border glow), not an aggressive animation
 - plan cards should use semantic left accent rails by `kind`: expense plans use red/pink rail, income plans use green rail
 - receipt items from plans should also sync into the shared item template catalog; item catalog is not restricted to confirmed operations only
+- item catalog should also be able to backfill from existing historical `plan_receipt_items`, so plans created before a sync fix do not stay permanently invisible in the catalog
 - on desktop, contextual plan chips should sit in a compact top-left row above the main data line
 - due/progress indicator by term should be visible
 - the main difference from `Операции` rows should be the action set (`Подтвердить`, `Редактировать`, optional `Пропустить`, `Удалить`)
 - when a plan/operation contains receipt positions without one shared default category, category display should be derived from receipt item categories and rendered as deduplicated chips rather than a misleading `Без категории`
+- operation/plan payloads should carry category meta (`category_name`, icon/accent when available) so list UIs do not depend exclusively on a separately preloaded category catalog
 - `Позиций: N` in plan meta should behave as an inline link/action that opens the same receipt-items modal used by `Операции`
 - when `Позиций: N` is already rendered as the interactive value, the extra field label above that column should stay removed
 - plan create/edit preview should not reuse the old table-row preview when `createFlowMode === plan`; it should render the actual plan-card contract used in the `Планы` section
