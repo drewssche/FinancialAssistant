@@ -220,3 +220,54 @@ def test_mark_job_sent_writes_event_and_schedules_next_day_for_active_plan():
     finally:
         db.close()
         Base.metadata.drop_all(bind=engine)
+
+
+def test_refresh_due_job_payload_returns_none_for_deleted_plan_job():
+    engine, SessionLocal = _make_session()
+    db = SessionLocal()
+    try:
+        db.add(User(id=1, display_name="Tester", status="active"))
+        db.add(AuthIdentity(user_id=1, provider="telegram", provider_user_id="100500", username="tester"))
+        db.add(
+            UserPreference(
+                user_id=1,
+                preferences_version=1,
+                data={
+                    "plans": {"reminders_enabled": True, "reminder_time": "09:00"},
+                    "ui": {"timezone": "UTC"},
+                },
+            )
+        )
+        db.add(
+            PlanOperation(
+                id=1,
+                user_id=1,
+                kind="expense",
+                amount="10.00",
+                scheduled_date=date.today(),
+                note="Напомнить",
+                status="active",
+                recurrence_enabled=False,
+            )
+        )
+        db.add(
+            PlanReminderJob(
+                id=1,
+                plan_id=1,
+                user_id=1,
+                scheduled_for=datetime.now(timezone.utc),
+                status="pending",
+            )
+        )
+        db.commit()
+
+        service = PlanReminderService(db)
+        payload = service.list_due_jobs()[0]
+
+        db.delete(db.get(PlanOperation, 1))
+        db.commit()
+
+        assert service.refresh_due_job_payload(payload) is None
+    finally:
+        db.close()
+        Base.metadata.drop_all(bind=engine)

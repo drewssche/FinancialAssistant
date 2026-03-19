@@ -202,6 +202,26 @@ class PlanRepository:
         )
         return list(self.db.execute(stmt).all())
 
+    def get_pending_reminder_job_snapshot(self, *, job_id: int):
+        stmt = (
+            select(PlanReminderJob, PlanOperation, AuthIdentity, UserPreference)
+            .join(PlanOperation, PlanOperation.id == PlanReminderJob.plan_id)
+            .outerjoin(
+                AuthIdentity,
+                and_(
+                    AuthIdentity.user_id == PlanReminderJob.user_id,
+                    AuthIdentity.provider == "telegram",
+                ),
+            )
+            .outerjoin(UserPreference, UserPreference.user_id == PlanReminderJob.user_id)
+            .where(
+                PlanReminderJob.id == job_id,
+                PlanReminderJob.status == "pending",
+            )
+            .limit(1)
+        )
+        return self.db.execute(stmt).first()
+
     def create_reminder_job(self, *, user_id: int, plan_id: int, scheduled_for: datetime) -> PlanReminderJob:
         row = PlanReminderJob(
             user_id=user_id,

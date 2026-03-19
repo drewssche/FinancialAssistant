@@ -141,6 +141,9 @@ async def process_plan_reminders(client: TelegramBotClient) -> None:
     try:
         service = PlanReminderService(db)
         for payload in service.list_due_jobs():
+            payload = service.refresh_due_job_payload(payload)
+            if not payload or not payload.get("chat_id"):
+                continue
             try:
                 await client.call(
                     "sendMessage",

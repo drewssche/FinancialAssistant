@@ -154,6 +154,28 @@ def _debt_cards_payload():
     ]
 
 
+def _operations_payload():
+    return {
+        "items": [
+            {
+                "id": 1,
+                "kind": "expense",
+                "amount": "20.00",
+                "operation_date": "2026-03-18",
+                "category_id": 1,
+                "category_name": "Игры/софт/курсы",
+                "category_icon": "🎮",
+                "category_accent_color": "#8f6bd1",
+                "note": "STAR WARS Jedi Bundle",
+                "receipt_items": [],
+            }
+        ],
+        "total": 1,
+        "page": 1,
+        "page_size": 20,
+    }
+
+
 def _build_handler(active_section: str):
     preferences = {
         "preferences_version": 1,
@@ -176,6 +198,7 @@ def _build_handler(active_section: str):
     categories = _categories_payload()
     category_groups = _category_groups_payload()
     debt_cards = _debt_cards_payload()
+    operations = _operations_payload()
 
     def handler(route, request):
         parsed = urlparse(request.url)
@@ -236,7 +259,7 @@ def _build_handler(active_section: str):
         if path == "/api/v1/dashboard/analytics/calendar" and method == "GET":
             return _json_response(route, {"month": "2026-03", "weeks": [], "days": [], "income_total": "0.00", "expense_total": "0.00", "balance": "0.00", "operations_count": 0})
         if path == "/api/v1/operations" and method == "GET":
-            return _json_response(route, {"items": [], "total": 0, "page": 1, "page_size": 20})
+            return _json_response(route, operations)
         if path == "/api/v1/debts/cards" and method == "GET":
             return _json_response(route, debt_cards)
         if path == "/api/v1/plans" and method == "GET":
@@ -330,6 +353,16 @@ def test_mobile_card_kebab_stays_top_right_and_menu_escapes_card(static_server_u
             page.mouse.click(20, 20)
             page.wait_for_timeout(100)
             assert "mobile-card-menu-open" not in (page.locator(".item-catalog-mobile-group-card").first.get_attribute("class") or "")
+
+            page.locator("#mobileNavToggleBtn").evaluate("node => node.click()")
+            page.locator("button[data-section='operations']").click()
+            operation_card = page.locator(".mobile-card-table.operations-table tr[data-operation-row-id]").first
+            operation_trigger = page.locator(".mobile-card-table.operations-table td.mobile-actions-cell .table-kebab-trigger").first
+            operation_trigger.wait_for(state="visible")
+            operation_card_box = operation_card.bounding_box()
+            operation_trigger_box = operation_trigger.bounding_box()
+            assert operation_card_box is not None and operation_trigger_box is not None
+            assert (operation_card_box["x"] + operation_card_box["width"]) - (operation_trigger_box["x"] + operation_trigger_box["width"]) <= 28
 
             page.locator("#mobileNavToggleBtn").evaluate("node => node.click()")
             page.locator("button[data-section='debts']").click()

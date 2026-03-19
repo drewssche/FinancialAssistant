@@ -86,12 +86,39 @@ class PlanReminderService:
             )
         return jobs
 
+    def refresh_due_job_payload(self, payload: dict) -> dict | None:
+        job = payload.get("job")
+        if not job:
+            return None
+        row = self.repo.get_pending_reminder_job_snapshot(job_id=int(job.id))
+        if not row:
+            return None
+        current_job, plan, identity, preference = row
+        if not plan or plan.status != "active":
+            return None
+        prefs = preference.data if preference and isinstance(preference.data, dict) else {}
+        config = self._get_user_reminder_config_from_prefs(user_id=int(plan.user_id), prefs=prefs)
+        if not config["enabled"]:
+            return None
+        return {
+            "job": current_job,
+            "plan": plan,
+            "chat_id": str(identity.provider_user_id) if identity else None,
+            "config": config,
+        }
+
     def mark_job_sent(self, payload: dict) -> None:
         job = payload.get("job")
         plan = payload.get("plan")
         config = payload.get("config") or {}
         if not job or not plan:
             return
+        refreshed = self.refresh_due_job_payload(payload)
+        if not refreshed:
+            return
+        job = refreshed["job"]
+        plan = refreshed["plan"]
+        config = refreshed.get("config") or config
         now_utc = datetime.now(timezone.utc)
         self.repo.mark_reminder_job_sent(job, sent_at=now_utc)
         self.repo.create_event(

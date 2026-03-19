@@ -282,21 +282,32 @@
     width: 100%;
   }
 
+  .mobile-card-table.operations-table tr[data-operation-row-id] {
+    position: relative;
+    padding-right: calc(2.25rem + var(--space-3) + var(--space-1));
+  }
+
   .mobile-card-table.operations-table td.mobile-actions-cell {
-    width: 100%;
+    position: absolute;
+    top: var(--space-1);
+    right: var(--space-1);
+    width: 2.25rem;
+    min-width: 2.25rem;
+    margin-top: 0;
+    z-index: 2;
   }
 
-  .mobile-card-table.operations-table .mobile-actions-cell .row-actions {
-    width: 100%;
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 10px;
-    justify-items: stretch;
+  .mobile-card-table.operations-table td.mobile-actions-cell .table-kebab-wrap {
+    width: 2.25rem;
   }
 
-  .mobile-card-table.operations-table .mobile-actions-cell .row-actions .btn {
-    width: 100%;
-    min-width: 0;
+  .mobile-card-table.operations-table td.mobile-actions-cell .table-kebab-popover {
+    right: 0;
+  }
+
+  .mobile-card-table.operations-table .mobile-actions-cell .row-actions,
+  .mobile-card-table.operations-table .mobile-actions-cell::before {
+    display: none;
   }
 
   .mobile-card-table.operations-table td[data-label="Тип"] .kind-pill {

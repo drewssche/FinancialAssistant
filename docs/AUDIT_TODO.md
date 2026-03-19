@@ -148,6 +148,12 @@
 - desktop `Категории` and `Каталог позиций` now use compact kebab popovers and wider toggle hover area up to the kebab trigger
 - desktop/mobile `Долги` use the same stacking/anchoring contract, and mobile debt cards re-render correctly after breakpoint transitions
 - regression coverage for this class of bugs now lives in `tests/e2e/test_mobile_shell_cards_e2e.py`
+- next polish pass:
+- align `Категории`, `Каталог позиций`, `Долги`, and `Планы` kebab popovers to the compact desktop `Операции` baseline
+- pin mobile `Операции` kebab to the same top-right inset as the other card sections
+- add the same top-right inset polish to mobile `Долги`, where the trigger still hugs the edge too tightly
+- remove remaining inner scroll/clipping around desktop `Долги` row kebab popovers so menus float over the row instead of inside a scrolled sub-container
+- harden plan reminder queue semantics so deleting a plan cannot still emit a stale Telegram reminder from an already queued job
 
 2. Scroll and overflow hardening
 - Status: done (updated 2026-03-08)

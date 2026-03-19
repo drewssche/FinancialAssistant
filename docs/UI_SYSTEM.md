@@ -344,6 +344,10 @@ At the bottom-left sidebar, show compact static user block:
 - `Долги` must follow the same kebab contract on both desktop and mobile:
   - desktop debt rows keep visible `Погашение` and move `История / Редактировать / Удалить` into kebab
   - mobile debt cards keep kebab fixed in the top-right corner and must never fall back to an inner mini-table layout after breakpoint changes
+- the desktop kebab popover size used in `Операции` is the visual baseline for all other list/table sections; `Категории`, `Каталог позиций`, `Долги`, and `Планы` should match that compact width/button rhythm
+- mobile cards that use kebab actions (`Операции`, `Планы`, `Категории`, `Каталог позиций`, `Долги`) should pin the trigger to the same top-right inset; it must not drift into the content flow or hug the border radius
+- desktop `Долги` should keep horizontal scrolling only on the outer table wrapper; row/cell containers must not create an inner scroll/clipping context that cuts off the kebab popover
+- deleting a plan must cancel/remove its pending reminder jobs immediately, and the reminder worker must re-check that the plan still exists and is still eligible before sending any queued Telegram notification
 - Receipt item category remains optional and complements, not replaces, operation-level category.
 - Position analytics is currently exposed through analytics highlights (`top positions`, `price increases`); a dedicated per-position deep-dive screen is still backlog.
 
