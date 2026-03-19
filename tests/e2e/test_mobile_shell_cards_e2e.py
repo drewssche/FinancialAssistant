@@ -362,7 +362,10 @@ def test_mobile_card_kebab_stays_top_right_and_menu_escapes_card(static_server_u
             operation_card_box = operation_card.bounding_box()
             operation_trigger_box = operation_trigger.bounding_box()
             assert operation_card_box is not None and operation_trigger_box is not None
-            assert (operation_card_box["x"] + operation_card_box["width"]) - (operation_trigger_box["x"] + operation_trigger_box["width"]) <= 28
+            right_inset = (operation_card_box["x"] + operation_card_box["width"]) - (operation_trigger_box["x"] + operation_trigger_box["width"])
+            top_inset = operation_trigger_box["y"] - operation_card_box["y"]
+            assert 8 <= right_inset <= 28
+            assert 8 <= top_inset <= 28
 
             page.locator("#mobileNavToggleBtn").evaluate("node => node.click()")
             page.locator("button[data-section='debts']").click()
@@ -381,5 +384,34 @@ def test_mobile_card_kebab_stays_top_right_and_menu_escapes_card(static_server_u
             assert debt_menu_box["x"] >= debt_card_box["x"]
             assert debt_menu_box["y"] >= debt_trigger_box["y"] - 8
             assert page.locator(".debt-mobile-entry").first.evaluate("node => getComputedStyle(node).overflow") == "visible"
+        finally:
+            browser.close()
+
+
+@pytest.mark.e2e
+def test_desktop_debt_children_wrap_does_not_clip_kebab_menu(static_server_url: str):
+    with sync_api.sync_playwright() as p:
+        try:
+            browser = p.chromium.launch(headless=True)
+        except Exception as exc:  # pragma: no cover
+            pytest.skip(f"Chromium is not available for Playwright: {exc}")
+        page = browser.new_page(viewport={"width": 1440, "height": 960})
+        _set_mock_telegram(page)
+        page.route("**/api/v1/**", _build_handler("debts"))
+        try:
+            page.goto(f"{static_server_url}/static/index.html")
+            _login_via_mock_telegram(page)
+            debt_wrap = page.locator(".debt-card-children-wrap").first
+            debt_wrap.wait_for(state="visible")
+            assert debt_wrap.evaluate("node => getComputedStyle(node).overflowX") == "visible"
+            assert debt_wrap.evaluate("node => getComputedStyle(node).overflowY") == "visible"
+            debt_trigger = page.locator(".debt-card-children-wrap .table-kebab-trigger").first
+            debt_trigger.click()
+            menu = page.locator(".debt-card-children-wrap .table-kebab-popover:not(.hidden)").first
+            menu.wait_for(state="visible")
+            wrap_box = debt_wrap.bounding_box()
+            menu_box = menu.bounding_box()
+            assert wrap_box is not None and menu_box is not None
+            assert menu_box["y"] + menu_box["height"] > wrap_box["y"] + wrap_box["height"]
         finally:
             browser.close()

@@ -16,6 +16,7 @@
     const ownerCard = trigger.closest(".debt-mobile-entry");
     const ownerRow = trigger.closest("tr");
     const ownerCell = trigger.closest("td");
+    const ownerWrap = trigger.closest(".debt-card-children-wrap");
     if (!menu || !pickerUtils?.setPopoverOpen) {
       return false;
     }
@@ -26,6 +27,7 @@
       ownerRow?.classList.remove("mobile-card-menu-open-row");
       ownerCell?.classList.remove("table-menu-open-cell");
       ownerRow?.classList.remove("table-menu-open-row");
+      ownerWrap?.classList.remove("debt-menu-open-wrap");
     };
     const shouldOpen = menu.classList.contains("hidden");
     document.querySelectorAll(".mobile-card-actions-popover:not(.hidden), .table-kebab-popover:not(.hidden)").forEach((node) => {
@@ -39,6 +41,7 @@
         node.closest("tr.mobile-card-menu-open-row")?.classList.remove("mobile-card-menu-open-row");
         node.closest(".table-menu-open-cell")?.classList.remove("table-menu-open-cell");
         node.closest(".table-menu-open-row")?.classList.remove("table-menu-open-row");
+        node.closest(".debt-menu-open-wrap")?.classList.remove("debt-menu-open-wrap");
       }
     });
     pickerUtils.setPopoverOpen(menu, shouldOpen, { owners, onClose: clearOpenState });
@@ -47,6 +50,7 @@
     ownerRow?.classList.toggle("mobile-card-menu-open-row", shouldOpen);
     ownerCell?.classList.toggle("table-menu-open-cell", shouldOpen);
     ownerRow?.classList.toggle("table-menu-open-row", shouldOpen);
+    ownerWrap?.classList.toggle("debt-menu-open-wrap", shouldOpen);
     if (!shouldOpen) {
       clearOpenState();
       trigger?.blur?.();

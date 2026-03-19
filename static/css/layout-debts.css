@@ -101,8 +101,16 @@
 }
 
 .debt-card-children-wrap {
-  overflow-x: auto;
-  overflow-y: visible;
+  overflow: visible;
+}
+
+.debt-card-children-wrap > .table {
+  width: 100%;
+}
+
+.debt-card-children-wrap.debt-menu-open-wrap {
+  z-index: 84;
+  overflow: visible;
 }
 
 .debt-child-zone::before,

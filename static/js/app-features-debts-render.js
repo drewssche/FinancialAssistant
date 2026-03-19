@@ -307,7 +307,7 @@
               <p class="subtitle">Статус: <span class="debt-status debt-status-${card.status}">${card.status === "active" ? "Активный" : "Закрыт"}</span></p>
             </div>
           </div>
-          <div class="table-wrap debt-card-children-wrap">
+          <div class="debt-card-children-wrap">
             <table class="table table-hover">
               <thead>
                 <tr>

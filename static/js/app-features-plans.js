@@ -466,8 +466,8 @@
               <button class="btn btn-secondary plan-card-menu-trigger" type="button" data-plan-menu-trigger="${item.id}" aria-label="Дополнительные действия">
                 <span aria-hidden="true">⋮</span>
               </button>
-              <div class="app-popover hidden plan-card-actions-popover" data-plan-menu="${item.id}">
-                <div class="plan-card-actions-menu">
+              <div class="app-popover hidden plan-card-actions-popover table-kebab-popover" data-plan-menu="${item.id}">
+                <div class="plan-card-actions-menu table-kebab-menu">
                   ${canEdit ? `<button class="btn btn-secondary" type="button" data-plan-action="edit" data-plan-id="${item.id}">Редактировать</button>` : ""}
                   ${canSkip ? `<button class="btn btn-secondary" type="button" data-plan-action="skip" data-plan-id="${item.id}">Пропустить</button>` : ""}
                   ${canDelete ? `<button class="btn btn-danger" type="button" data-plan-action="delete" data-plan-id="${item.id}">Удалить</button>` : ""}

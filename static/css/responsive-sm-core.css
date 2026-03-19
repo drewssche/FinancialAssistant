@@ -284,13 +284,13 @@
 
   .mobile-card-table.operations-table tr[data-operation-row-id] {
     position: relative;
-    padding-right: calc(2.25rem + var(--space-3) + var(--space-1));
+    padding-right: calc(2.25rem + var(--space-3) + var(--space-2));
   }
 
   .mobile-card-table.operations-table td.mobile-actions-cell {
     position: absolute;
-    top: var(--space-1);
-    right: var(--space-1);
+    top: var(--space-2);
+    right: var(--space-2);
     width: 2.25rem;
     min-width: 2.25rem;
     margin-top: 0;
