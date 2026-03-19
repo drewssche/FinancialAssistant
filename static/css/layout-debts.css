@@ -546,6 +546,19 @@
   background: linear-gradient(90deg, #d7a257, #f0c978);
 }
 
+.debt-desktop-actions {
+  display: grid;
+  grid-template-columns: minmax(0, auto) 2.25rem;
+  justify-content: end;
+  align-items: start;
+  gap: var(--space-2);
+}
+
+.debt-desktop-actions .debt-row-kebab {
+  justify-self: end;
+  align-self: start;
+}
+
 .debt-due-progress-bar-danger {
   background: linear-gradient(90deg, #d16679, #ff8d9f);
 }
