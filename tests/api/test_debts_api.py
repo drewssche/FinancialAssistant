@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.api.deps import get_current_user_id
+from app.core.cache import reset_cache_for_tests
 from app.db.base import Base
 from app.db.models import User
 from app.db.session import get_db
@@ -17,6 +18,7 @@ def _override_current_user_id() -> int:
 
 @pytest.fixture
 def client():
+    reset_cache_for_tests()
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -43,6 +45,7 @@ def client():
     test_client = TestClient(app)
     yield test_client
 
+    reset_cache_for_tests()
     app.dependency_overrides.clear()
     Base.metadata.drop_all(bind=engine)
 
@@ -240,3 +243,62 @@ def test_debts_cards_search_by_counterparty_note_and_direction(client: TestClien
     by_direction = client.get("/api/v1/debts/cards", params={"q": "взял", "include_closed": True})
     assert by_direction.status_code == 200
     assert [item["counterparty"] for item in by_direction.json()] == ["Марина"]
+
+
+def test_debts_cards_cache_is_invalidated_after_mutations(client: TestClient):
+    initial = client.get("/api/v1/debts/cards", params={"include_closed": True})
+    assert initial.status_code == 200
+    assert initial.json() == []
+
+    created = client.post(
+        "/api/v1/debts",
+        json={
+            "counterparty": "Олег",
+            "direction": "lend",
+            "principal": "200.00",
+            "start_date": "2026-03-01",
+            "note": "На ремонт кухни",
+        },
+    )
+    assert created.status_code == 201
+    debt_id = created.json()["id"]
+
+    after_create = client.get("/api/v1/debts/cards", params={"include_closed": True})
+    assert after_create.status_code == 200
+    assert len(after_create.json()) == 1
+    assert after_create.json()[0]["outstanding_total"] == "200.00"
+
+    updated = client.patch(
+        f"/api/v1/debts/{debt_id}",
+        json={
+            "principal": "250.00",
+            "note": "Обновлено",
+        },
+    )
+    assert updated.status_code == 200
+
+    after_update = client.get("/api/v1/debts/cards", params={"include_closed": True})
+    assert after_update.status_code == 200
+    assert after_update.json()[0]["outstanding_total"] == "250.00"
+    assert after_update.json()[0]["debts"][0]["note"] == "Обновлено"
+
+    repaid = client.post(
+        f"/api/v1/debts/{debt_id}/repayments",
+        json={"amount": "250.00", "repayment_date": "2026-03-05"},
+    )
+    assert repaid.status_code == 201
+
+    after_repayment = client.get("/api/v1/debts/cards", params={"include_closed": True})
+    assert after_repayment.status_code == 200
+    assert after_repayment.json()[0]["status"] == "closed"
+    assert after_repayment.json()[0]["outstanding_total"] == "0.00"
+
+    deleted = client.delete(f"/api/v1/debts/{debt_id}")
+    assert deleted.status_code == 204
+
+    after_delete = client.get("/api/v1/debts/cards", params={"include_closed": True})
+    assert after_delete.status_code == 200
+    assert len(after_delete.json()) == 1
+    assert after_delete.json()[0]["status"] == "closed"
+    assert after_delete.json()[0]["outstanding_total"] == "0"
+    assert after_delete.json()[0]["debts"] == []

@@ -284,7 +284,7 @@
       }
     }
 
-    const createOperationModalReceiptInteractionsFeature = window.App.createOperationModalReceiptInteractionsFeature;
+    const createOperationModalReceiptInteractionsFeature = window.App.getRuntimeModule?.("operation-modal-receipt-interactions-factory");
     const interactions = createOperationModalReceiptInteractionsFeature
       ? createOperationModalReceiptInteractionsFeature({
         state,
@@ -418,5 +418,5 @@
   }
 
   window.App = window.App || {};
-  window.App.createOperationModalReceiptFeature = createOperationModalReceiptFeature;
+  window.App.registerRuntimeModule?.("operation-modal-receipt-factory", createOperationModalReceiptFeature);
 })();

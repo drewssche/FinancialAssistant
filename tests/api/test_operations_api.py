@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.api.deps import get_current_user_id
+from app.core.cache import reset_cache_for_tests
 from app.db.base import Base
 from app.db.models import User
 from app.db.session import get_db
@@ -17,6 +18,7 @@ def _override_current_user_id() -> int:
 
 @pytest.fixture
 def client():
+    reset_cache_for_tests()
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -42,6 +44,7 @@ def client():
 
     test_client = TestClient(app)
     yield test_client
+    reset_cache_for_tests()
     app.dependency_overrides.clear()
     Base.metadata.drop_all(bind=engine)
 
@@ -732,3 +735,158 @@ def test_operation_item_templates_delete_all(client: TestClient):
     templates = client.get("/api/v1/operations/item-templates", params={"page": 1, "page_size": 20})
     assert templates.status_code == 200
     assert templates.json()["total"] == 0
+
+
+def test_operation_item_templates_cache_is_invalidated_by_template_and_receipt_mutations(client: TestClient):
+    initial = client.get("/api/v1/operations/item-templates", params={"page": 1, "page_size": 20})
+    assert initial.status_code == 200
+    assert initial.json()["total"] == 0
+
+    created = client.post(
+        "/api/v1/operations/item-templates",
+        json={
+            "shop_name": "Соседи",
+            "name": "Кофе",
+            "latest_unit_price": "4.50",
+            "latest_price_date": "2026-03-05",
+        },
+    )
+    assert created.status_code == 201
+    template_id = created.json()["id"]
+
+    after_create = client.get("/api/v1/operations/item-templates", params={"page": 1, "page_size": 20})
+    assert after_create.status_code == 200
+    assert after_create.json()["total"] == 1
+    assert after_create.json()["items"][0]["latest_unit_price"] == "4.50"
+
+    first_history = client.get(f"/api/v1/operations/item-templates/{template_id}/prices")
+    assert first_history.status_code == 200
+    assert len(first_history.json()) == 1
+
+    operation = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "4.80",
+            "operation_date": "2026-03-06",
+            "receipt_items": [
+                {"shop_name": "Соседи", "name": "Кофе", "quantity": "1", "unit_price": "4.80"},
+            ],
+        },
+    )
+    assert operation.status_code == 201
+
+    after_receipt = client.get("/api/v1/operations/item-templates", params={"page": 1, "page_size": 20})
+    assert after_receipt.status_code == 200
+    assert after_receipt.json()["total"] == 1
+    assert after_receipt.json()["items"][0]["latest_unit_price"] == "4.80"
+    assert after_receipt.json()["items"][0]["use_count"] == 1
+
+    history_after_receipt = client.get(f"/api/v1/operations/item-templates/{template_id}/prices")
+    assert history_after_receipt.status_code == 200
+    history_payload = history_after_receipt.json()
+    assert len(history_payload) == 2
+    assert history_payload[0]["unit_price"] == "4.80"
+    assert history_payload[1]["unit_price"] == "4.50"
+
+
+def test_operations_summary_cache_is_invalidated_after_operation_mutations(client: TestClient):
+    initial_summary = client.get("/api/v1/operations/summary")
+    assert initial_summary.status_code == 200
+    assert initial_summary.json()["total"] == 0
+
+    created = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "120.00",
+            "operation_date": "2026-03-02",
+            "note": "cache summary op",
+        },
+    )
+    assert created.status_code == 201
+    operation_id = created.json()["id"]
+
+    after_create = client.get("/api/v1/operations/summary")
+    assert after_create.status_code == 200
+    assert after_create.json()["expense_total"] == "120.00"
+    assert after_create.json()["total"] == 1
+
+    updated = client.patch(
+        f"/api/v1/operations/{operation_id}",
+        json={
+            "amount": "150.00",
+            "note": "cache summary op updated",
+        },
+    )
+    assert updated.status_code == 200
+
+    after_update = client.get("/api/v1/operations/summary")
+    assert after_update.status_code == 200
+    assert after_update.json()["expense_total"] == "150.00"
+    assert after_update.json()["total"] == 1
+
+    deleted = client.delete(f"/api/v1/operations/{operation_id}")
+    assert deleted.status_code == 204
+
+    after_delete = client.get("/api/v1/operations/summary")
+    assert after_delete.status_code == 200
+    assert after_delete.json()["expense_total"] == "0"
+    assert after_delete.json()["total"] == 0
+
+
+def test_operations_list_cache_is_invalidated_after_operation_mutations(client: TestClient):
+    initial_list = client.get(
+        "/api/v1/operations",
+        params={"page": 1, "page_size": 20, "sort_by": "operation_date", "sort_dir": "desc"},
+    )
+    assert initial_list.status_code == 200
+    assert initial_list.json()["total"] == 0
+
+    created = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "120.00",
+            "operation_date": "2026-03-02",
+            "note": "cache list op",
+        },
+    )
+    assert created.status_code == 201
+    operation_id = created.json()["id"]
+
+    after_create = client.get(
+        "/api/v1/operations",
+        params={"page": 1, "page_size": 20, "sort_by": "operation_date", "sort_dir": "desc"},
+    )
+    assert after_create.status_code == 200
+    assert after_create.json()["total"] == 1
+    assert after_create.json()["items"][0]["note"] == "cache list op"
+
+    updated = client.patch(
+        f"/api/v1/operations/{operation_id}",
+        json={
+            "amount": "150.00",
+            "note": "cache list op updated",
+        },
+    )
+    assert updated.status_code == 200
+
+    after_update = client.get(
+        "/api/v1/operations",
+        params={"page": 1, "page_size": 20, "sort_by": "operation_date", "sort_dir": "desc"},
+    )
+    assert after_update.status_code == 200
+    assert after_update.json()["total"] == 1
+    assert after_update.json()["items"][0]["note"] == "cache list op updated"
+    assert after_update.json()["items"][0]["amount"] == "150.00"
+
+    deleted = client.delete(f"/api/v1/operations/{operation_id}")
+    assert deleted.status_code == 204
+
+    after_delete = client.get(
+        "/api/v1/operations",
+        params={"page": 1, "page_size": 20, "sort_by": "operation_date", "sort_dir": "desc"},
+    )
+    assert after_delete.status_code == 200
+    assert after_delete.json()["total"] == 0

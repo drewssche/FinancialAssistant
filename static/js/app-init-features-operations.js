@@ -1,6 +1,6 @@
 (() => {
   const { state, el, core, actions } = window.App;
-  const pickerUtils = window.App.pickerUtils;
+  const pickerUtils = window.App.getRuntimeModule?.("picker-utils");
 
     function toggleTableMenu(trigger) {
     const menuId = String(trigger?.dataset.tableMenuTrigger || "");
@@ -261,7 +261,10 @@
     }
   }
 
-  window.App.initFeatureOperations = {
+  const api = {
     bindOperationsFeatureHandlers,
   };
+
+  window.App.initFeatureOperations = api;
+  window.App.registerFeatureInitModule?.("operations", api);
 })();

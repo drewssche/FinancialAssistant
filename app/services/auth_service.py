@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.logging import log_auth_event
 from app.core.security import create_access_token
 from app.core.telegram_auth import (
     verify_and_extract_telegram_login_widget_user,
@@ -27,6 +28,11 @@ class AuthService:
     def _sync_admin_status(self, user, telegram_id: str) -> None:
         if self._is_admin_telegram_id(telegram_id) and user.status != "approved":
             user.status = "approved"
+            log_auth_event(
+                "admin_auto_approved",
+                telegram_id=telegram_id,
+                user_id=user.id,
+            )
 
     def _upsert_telegram_user(self, telegram_user: dict) -> str:
         telegram_id = telegram_user["telegram_id"]
@@ -42,11 +48,29 @@ class AuthService:
                 avatar_url=telegram_user.get("avatar_url"),
                 status=self._resolve_new_user_status(telegram_id),
             )
+            log_auth_event(
+                "new_user_created",
+                telegram_id=telegram_id,
+                user_id=user.id,
+                status=user.status,
+            )
         self._sync_admin_status(user, telegram_id)
+        if not created:
+            log_auth_event(
+                "existing_user_updated",
+                telegram_id=telegram_id,
+                user_id=user.id,
+                status=user.status,
+            )
 
         user.last_login_at = datetime.now(timezone.utc)
         self.db.commit()
         if created and user.status == "pending":
+            log_auth_event(
+                "pending_user_created",
+                telegram_id=telegram_id,
+                user_id=user.id,
+            )
             notify_new_pending_user(
                 user_id=user.id,
                 display_name=user.display_name,
@@ -54,6 +78,13 @@ class AuthService:
                 telegram_id=telegram_id,
                 created_at=user.created_at,
             )
+        log_auth_event(
+            "login_succeeded",
+            telegram_id=telegram_id,
+            user_id=user.id,
+            status=user.status,
+            created=created,
+        )
         return create_access_token({"sub": str(user.id)})
 
     def login_with_telegram(self, init_data: str) -> str:

@@ -15,7 +15,7 @@ sync_api = pytest.importorskip("playwright.sync_api", reason="playwright is not 
 
 
 def _login(page):
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+    page.evaluate("() => window.App.getRuntimeModule('session')?.refreshTelegramLoginUi?.()")
     try:
         page.locator("#telegramLoginBtn").wait_for(state="visible", timeout=1200)
         page.click("#telegramLoginBtn")
@@ -641,7 +641,7 @@ def test_mobile_source_group_modal_preview_stays_above_sticky_cta(static_server_
     page.wait_for_selector("#sourceGroupModal:not(.hidden)")
 
     page.fill("#sourceGroupName", "Новый источник на мобиле")
-    page.evaluate("() => window.App.featureItemCatalog?.updateSourceGroupPreview?.()")
+    page.evaluate("() => window.App.getRuntimeModule('item-catalog')?.updateSourceGroupPreview?.()")
     page.wait_for_timeout(150)
 
     geometry = page.evaluate(

@@ -1,7 +1,22 @@
 (() => {
   const { state, el, core } = window.App;
-  const highlightsUi = window.App.featureAnalyticsHighlightsUi || {};
   const HIGHLIGHTS_CACHE_TTL_MS = 20000;
+
+  function getHighlightsUi() {
+    return window.App.getRuntimeModule?.("analytics-highlights-ui") || {};
+  }
+
+  function getAnalyticsModules() {
+    return {
+      calendar: window.App.getRuntimeModule?.("analytics-calendar-module"),
+      trend: window.App.getRuntimeModule?.("analytics-trend-module"),
+    };
+  }
+
+  function getOperationsFeature() {
+    return window.App.getRuntimeModule?.("operations") || {};
+  }
+
   function getDashboardPeriodBounds() {
     const period = state.dashboardAnalyticsPeriod || "month";
     if (period === "custom" && state.dashboardAnalyticsDateFrom && state.dashboardAnalyticsDateTo) {
@@ -15,8 +30,9 @@
     if (settings && settings.showDashboardAnalytics === false) {
       return null;
     }
-    if (window.App.actions?.ensureAllTimeBounds) {
-      await window.App.actions.ensureAllTimeBounds();
+    const operationsFeature = getOperationsFeature();
+    if (operationsFeature.ensureAllTimeBounds) {
+      await operationsFeature.ensureAllTimeBounds();
     }
     const force = options.force === true;
     const period = state.dashboardAnalyticsPeriod || "month";
@@ -29,11 +45,12 @@
       category_breakdown_level: state.dashboardBreakdownLevel || "category",
     });
     const cacheKey = `dashboard:highlights:${params.toString()}`;
-    const trendModule = window.App.featureAnalyticsModules?.trend;
+    const trendModule = getAnalyticsModules().trend;
     const formatPct = trendModule?.formatPct || ((v) => String(v ?? "нет базы"));
     if (!force) {
       const cached = core.getUiRequestCache(cacheKey, HIGHLIGHTS_CACHE_TTL_MS);
       if (cached) {
+        const highlightsUi = getHighlightsUi();
         highlightsUi.renderPeriodKpiBlocks?.(el.dashboardKpiPrimary, el.dashboardKpiSecondary, el.dashboardAnalyticsPeriodLabel, cached, formatPct);
         highlightsUi.renderDashboardBreakdown?.(cached);
         return cached;
@@ -43,6 +60,7 @@
       headers: core.authHeaders(),
     });
     core.setUiRequestCache(cacheKey, data);
+    const highlightsUi = getHighlightsUi();
     highlightsUi.renderPeriodKpiBlocks?.(el.dashboardKpiPrimary, el.dashboardKpiSecondary, el.dashboardAnalyticsPeriodLabel, data, formatPct);
     highlightsUi.renderDashboardBreakdown?.(data);
     return data;
@@ -65,7 +83,7 @@
 
   async function loadAnalyticsHighlights(options = {}) {
     const force = options.force === true;
-    const calendarModule = window.App.featureAnalyticsModules?.calendar;
+    const calendarModule = getAnalyticsModules().calendar;
     const month = state.analyticsMonthAnchor || calendarModule?.serializeMonthAnchor?.(calendarModule.currentAnchorDate()) || "";
     const params = buildHighlightsParams(month);
     const cacheKey = `analytics:highlights:${params.toString()}`;
@@ -73,6 +91,7 @@
     if (!force) {
       const cached = core.getUiRequestCache(cacheKey, HIGHLIGHTS_CACHE_TTL_MS);
       if (cached) {
+        const highlightsUi = getHighlightsUi();
         highlightsUi.renderAnalyticsHighlights?.(cached);
         return cached;
       }
@@ -83,6 +102,7 @@
         headers: core.authHeaders(),
       });
       core.setUiRequestCache(cacheKey, data);
+      const highlightsUi = getHighlightsUi();
       highlightsUi.renderAnalyticsHighlights?.(data);
       return data;
     } catch (err) {
@@ -123,22 +143,24 @@
         top_positions: [],
         price_increases: [],
       };
+      const highlightsUi = getHighlightsUi();
       highlightsUi.renderAnalyticsHighlights?.(fallback);
       return fallback;
     }
   }
 
-  window.App.featureAnalyticsModules = window.App.featureAnalyticsModules || {};
-  window.App.featureAnalyticsModules.highlights = {
+  const api = {
     loadAnalyticsHighlights,
     loadDashboardAnalyticsPreview,
-    setCategoryBreakdownHover: highlightsUi.setCategoryBreakdownHover,
-    clearCategoryBreakdownHover: highlightsUi.clearCategoryBreakdownHover,
-    setDashboardBreakdownHover: highlightsUi.setDashboardBreakdownHover,
-    clearDashboardBreakdownHover: highlightsUi.clearDashboardBreakdownHover,
-    focusDefaultCategoryBreakdown: highlightsUi.focusDefaultCategoryBreakdown,
-    toggleCategoryBreakdownVisibility: highlightsUi.toggleCategoryBreakdownVisibility,
-    showAllCategoryBreakdownItems: highlightsUi.showAllCategoryBreakdownItems,
+    setCategoryBreakdownHover: (...args) => getHighlightsUi().setCategoryBreakdownHover?.(...args),
+    clearCategoryBreakdownHover: (...args) => getHighlightsUi().clearCategoryBreakdownHover?.(...args),
+    setDashboardBreakdownHover: (...args) => getHighlightsUi().setDashboardBreakdownHover?.(...args),
+    clearDashboardBreakdownHover: (...args) => getHighlightsUi().clearDashboardBreakdownHover?.(...args),
+    focusDefaultCategoryBreakdown: (...args) => getHighlightsUi().focusDefaultCategoryBreakdown?.(...args),
+    toggleCategoryBreakdownVisibility: (...args) => getHighlightsUi().toggleCategoryBreakdownVisibility?.(...args),
+    showAllCategoryBreakdownItems: (...args) => getHighlightsUi().showAllCategoryBreakdownItems?.(...args),
     getDashboardPeriodBounds,
   };
+
+  window.App.registerRuntimeModule?.("analytics-highlights-module", api);
 })();

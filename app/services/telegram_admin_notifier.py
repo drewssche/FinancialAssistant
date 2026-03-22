@@ -6,6 +6,7 @@ from datetime import datetime
 import httpx
 
 from app.core.config import get_settings
+from app.core.logging import log_admin_notification_event
 
 logger = logging.getLogger(__name__)
 
@@ -72,8 +73,30 @@ def notify_new_pending_user(
 
     with httpx.Client(timeout=3.0) as client:
         for admin_id in admin_ids:
+            log_admin_notification_event(
+                "admin_notification_attempted",
+                user_id=user_id,
+                telegram_id=telegram_id,
+                admin_telegram_id=admin_id,
+                has_username=bool(username),
+            )
             try:
                 response = client.post(url, json={**payload, "chat_id": admin_id})
                 response.raise_for_status()
+                log_admin_notification_event(
+                    "admin_notification_sent",
+                    user_id=user_id,
+                    telegram_id=telegram_id,
+                    admin_telegram_id=admin_id,
+                    has_username=bool(username),
+                )
             except Exception as exc:  # noqa: BLE001
+                log_admin_notification_event(
+                    "admin_notification_failed",
+                    user_id=user_id,
+                    telegram_id=telegram_id,
+                    admin_telegram_id=admin_id,
+                    has_username=bool(username),
+                    error=type(exc).__name__,
+                )
                 logger.warning("telegram admin notification failed for %s: %s", admin_id, exc)

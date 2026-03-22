@@ -1,14 +1,18 @@
 (() => {
-  const categoryActions = window.App.actions;
-  const dashboardFeatures = window.App.featureDashboard;
-  const analyticsFeatures = window.App.featureAnalytics;
-  const adminFeatures = window.App.featureAdmin;
-  const debtFeatures = window.App.featureDebts;
-  const plansFeatures = window.App.featurePlans;
-  const sessionFeatures = window.App.featureSession;
-  const itemCatalogFeatures = window.App.featureItemCatalog;
-  const operationsFeatures = window.App.featureOperations;
-  const operationModal = window.App.operationModal;
+  function getRuntimeModule(name) {
+    return window.App.getRuntimeModule?.(name) || {};
+  }
+
+  const categoryActions = getRuntimeModule("category-actions");
+  const dashboardFeatures = getRuntimeModule("dashboard");
+  const analyticsFeatures = getRuntimeModule("analytics");
+  const adminFeatures = getRuntimeModule("admin");
+  const debtFeatures = getRuntimeModule("debts");
+  const plansFeatures = getRuntimeModule("plans");
+  const sessionFeatures = getRuntimeModule("session");
+  const itemCatalogFeatures = getRuntimeModule("item-catalog");
+  const operationsFeatures = getRuntimeModule("operations");
+  const operationModal = getRuntimeModule("operation-modal");
 
   const updateCreatePreview = operationModal.updateCreatePreview;
   const updateDebtDueHint = operationModal.updateDebtDueHint;
@@ -179,9 +183,11 @@
   }
 
   const previousActions = window.App.actions;
-
-  window.App.actions = {
-    ...previousActions,
+  // Public actions facade is intentionally narrow now:
+  // navigation/back-stack helpers stay here as cross-section orchestration,
+  // category/debt/batch glue still stays here while it spans multiple modules,
+  // everything else should prefer direct runtime-module access.
+  const publicActionFacade = {
     updateCreatePreview,
     updateDebtDueHint,
     updateEditPreview,
@@ -328,7 +334,13 @@
     selectVisibleOperations,
     clearVisibleOperationsSelection,
     setOperationsKindFilter,
+    setupCategoryIconPickers: categoryActions.setupCategoryIconPickers,
+    closeIconPopovers: categoryActions.closeIconPopovers,
+    fillGroupSelect: categoryActions.fillGroupSelect,
     setCategoryKind: categoryActions.setCategoryKind,
+    populateCategorySelect: categoryActions.populateCategorySelect,
+    renderCreateGroupPicker: categoryActions.renderCreateGroupPicker,
+    renderEditGroupPicker: categoryActions.renderEditGroupPicker,
     handleCreateGroupSearchFocus: categoryActions.handleCreateGroupSearchFocus,
     handleCreateGroupSearchInput: categoryActions.handleCreateGroupSearchInput,
     handleCreateGroupSearchBlur: categoryActions.handleCreateGroupSearchBlur,
@@ -340,9 +352,18 @@
     handleCreateGroupPickerClick: categoryActions.handleCreateGroupPickerClick,
     handleEditGroupPickerClick: categoryActions.handleEditGroupPickerClick,
     handleCreateGroupOutsidePointer: categoryActions.handleCreateGroupOutsidePointer,
+    selectCreateGroup: categoryActions.selectCreateGroup,
+    selectEditGroup: categoryActions.selectEditGroup,
+    groupCategoryIds: categoryActions.groupCategoryIds,
+    updateCategoriesBulkUi: categoryActions.updateCategoriesBulkUi,
+    renderCategories: categoryActions.renderCategories,
     handleCategoriesGroupToggleClick: categoryActions.handleCategoriesGroupToggleClick,
     collapseAllCategoryGroups: categoryActions.collapseAllCategoryGroups,
     expandAllCategoryGroups: categoryActions.expandAllCategoryGroups,
+    loadCategoryGroups: categoryActions.loadCategoryGroups,
+    loadCategoryCatalog: categoryActions.loadCategoryCatalog,
+    loadCategoriesTable: categoryActions.loadCategoriesTable,
+    loadMoreCategoriesTable: categoryActions.loadMoreCategoriesTable,
     loadCategories: categoryActions.loadCategories,
     createCategory: categoryActions.createCategory,
     createGroup: categoryActions.createGroup,
@@ -369,4 +390,84 @@
     tryAutoTelegramLogin,
     bootstrapApp,
   };
+
+  window.App.actions = {
+    ...previousActions,
+    ...publicActionFacade,
+  };
+
+  const publicActionFacadeContract = Object.freeze({
+    navigation: Object.freeze([
+      "applySectionUi",
+      "switchSection",
+      "renderTodayLabel",
+      "pushSectionBackContext",
+      "navigateSectionBack",
+      "updateSectionBackUi",
+    ]),
+    category_glue: Object.freeze([
+      "openCreateCategoryModal",
+      "closeCreateCategoryModal",
+      "setupCategoryIconPickers",
+      "closeIconPopovers",
+      "fillGroupSelect",
+      "populateCategorySelect",
+      "renderCreateGroupPicker",
+      "renderEditGroupPicker",
+      "createCategory",
+      "updateCategory",
+      "createGroup",
+      "updateGroup",
+      "openEditCategoryModal",
+      "closeEditCategoryModal",
+      "openEditGroupModal",
+      "closeEditGroupModal",
+      "deleteCategoryFlow",
+      "deleteGroupFlow",
+      "bulkDeleteCategories",
+      "bulkDeleteGroups",
+      "loadCategories",
+      "setCategoryKind",
+      "handleCreateGroupSearchFocus",
+      "handleCreateGroupSearchInput",
+      "handleCreateGroupSearchBlur",
+      "handleCreateGroupSearchKeydown",
+      "handleEditGroupSearchFocus",
+      "handleEditGroupSearchInput",
+      "handleEditGroupSearchBlur",
+      "handleEditGroupSearchKeydown",
+      "handleCreateGroupPickerClick",
+      "handleEditGroupPickerClick",
+      "handleCreateGroupOutsidePointer",
+      "selectCreateGroup",
+      "selectEditGroup",
+      "groupCategoryIds",
+      "updateCategoriesBulkUi",
+      "renderCategories",
+      "handleCategoriesGroupToggleClick",
+      "collapseAllCategoryGroups",
+      "expandAllCategoryGroups",
+      "loadCategoryGroups",
+      "loadCategoryCatalog",
+      "loadCategoriesTable",
+      "loadMoreCategoriesTable",
+      "loadCategories",
+    ]),
+    debt_batch_orchestration: Object.freeze([
+      "renderDebtCards",
+      "openDebtRepaymentModal",
+      "closeDebtRepaymentModal",
+      "submitDebtRepayment",
+      "updateRepaymentDeltaHint",
+      "openDebtHistoryModal",
+      "closeDebtHistoryModal",
+      "openEditDebtModal",
+      "deleteDebtFlow",
+      "openBatchCreateModal",
+      "openBatchCategoryModal",
+      "openBatchItemTemplateModal",
+    ]),
+  });
+
+  window.App.publicActionFacadeContract = publicActionFacadeContract;
 })();

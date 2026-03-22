@@ -20,7 +20,15 @@
 - `categories table page` read-through cache: `45s`
 - frontend cache store is bounded by max entries (FIFO eviction) to prevent unbounded memory growth
 - Current backend implementation:
-- dashboard summary cache in Redis (`dashsum:v1:*`) with TTL `60s`
+- backend cache contract is now namespaced and user-scoped in `app/core/cache.py`
+- current namespaces:
+- `dashboard_summary` -> `dashsum:v1:*`, TTL `60s`
+- `dashboard_analytics` -> `dashanalytics:v1:*`, TTL `60s`
+- current `dashboard_analytics` rollout: `analytics/highlights`, `analytics/trend`, `analytics/calendar`, `analytics/calendar/year`
+- invalidation triggers for current backend cache namespaces:
+  - `dashboard_summary`: operations, debts
+  - `dashboard_analytics` (`highlights`, `trend`, `calendar`, `calendar/year`): operations
+  - extra `dashboard_analytics` invalidation for `highlights`: categories, category groups
 - invalidation on successful operations/debts mutations
 - backend telemetry endpoint for cache/latency: `GET /api/v1/dashboard/summary/metrics`
 - API middleware tracks request totals per endpoint (`METHOD /api/v1/...`) for request-volume analysis
@@ -38,6 +46,7 @@
 - deterministic key format (`user + endpoint/params + version`)
 - bounded TTL
 - documented invalidation trigger
+- preferred backend format: `namespace + user scope + deterministic params`
 - Do not cache destructive-action results optimistically without rollback path (`undo` or forced refetch)
 - Search rule:
 - default to server-side filtering for canonical lists; client-side cache filtering is acceptable only for already-loaded, bounded datasets (e.g., current debts cards view)

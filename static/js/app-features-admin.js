@@ -3,6 +3,10 @@
   const ADMIN_CACHE_TTL_MS = 15000;
   const escapeHtml = core.escapeHtml || ((value) => String(value ?? ""));
 
+  function getSessionFeature() {
+    return window.App.getRuntimeModule?.("session") || {};
+  }
+
   function formatDateTimeRu(value) {
     if (!value) {
       return "—";
@@ -93,8 +97,9 @@
     state.adminUserStatusFilter = allowed.has(filter) ? filter : "pending";
     core.syncSegmentedActive(el.adminUserStatusTabs, "admin-user-status", state.adminUserStatusFilter);
     await loadAdminUsers({ force: true });
-    if (window.App.actions.savePreferences) {
-      await window.App.actions.savePreferences();
+    const sessionFeature = getSessionFeature();
+    if (sessionFeature.savePreferences) {
+      await sessionFeature.savePreferences();
     }
   }
 
@@ -125,11 +130,14 @@
     await loadAdminUsers({ force: true });
   }
 
-  window.App.featureAdmin = {
+  const api = {
     loadAdminUsers,
     setAdminUserStatusFilter,
     approveAdminUser,
     rejectAdminUser,
     deleteAdminUser,
   };
+
+  window.App.featureAdmin = api;
+  window.App.registerRuntimeModule?.("admin", api);
 })();

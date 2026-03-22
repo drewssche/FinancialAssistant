@@ -437,7 +437,7 @@ def page_with_plans_api_mock(page):
 def _login_and_open_plans(page, static_server_url: str):
     page.goto(f"{static_server_url}/static/index.html")
     _restore_mock_telegram(page)
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+    page.evaluate("() => window.App.getRuntimeModule('session')?.refreshTelegramLoginUi?.()")
     try:
         page.locator("#telegramLoginBtn").wait_for(state="visible", timeout=1200)
         page.click("#telegramLoginBtn")
@@ -452,7 +452,7 @@ def _login_and_open_plans(page, static_server_url: str):
 def _login_and_open_dashboard(page, static_server_url: str):
     page.goto(f"{static_server_url}/static/index.html")
     _restore_mock_telegram(page)
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+    page.evaluate("() => window.App.getRuntimeModule('session')?.refreshTelegramLoginUi?.()")
     try:
       page.locator("#telegramLoginBtn").wait_for(state="visible", timeout=1200)
       page.click("#telegramLoginBtn")

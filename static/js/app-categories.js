@@ -1,8 +1,19 @@
 (() => {
-  const categoryUi = window.App.categoryUi;
-  const categoryData = window.App.categoryData;
+  function getCategoryUi() {
+    return window.App.getRuntimeModule?.("category-ui");
+  }
 
-  Object.assign(window.App.actions, {
+  function getCategoryData() {
+    return window.App.categoryData;
+  }
+
+  function getActionFacade() {
+    return window.App.actions;
+  }
+
+  const categoryUi = getCategoryUi();
+  const categoryData = getCategoryData();
+  const publicCategoryActions = {
     setupCategoryIconPickers: categoryUi.setupCategoryIconPickers,
     closeIconPopovers: categoryUi.closeIconPopovers,
     openCreateCategoryModal: categoryUi.openCreateCategoryModal,
@@ -50,5 +61,7 @@
     closeEditCategoryModal: categoryUi.closeEditCategoryModal,
     openEditGroupModal: categoryUi.openEditGroupModal,
     closeEditGroupModal: categoryUi.closeEditGroupModal,
-  });
+  };
+
+  window.App.registerRuntimeModule?.("category-actions", publicCategoryActions);
 })();

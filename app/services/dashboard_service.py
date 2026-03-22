@@ -4,7 +4,13 @@ from time import perf_counter
 
 from sqlalchemy.orm import Session
 
-from app.core.cache import build_dashboard_summary_cache_key, get_json, set_json
+from app.core.cache import (
+    build_dashboard_analytics_cache_key,
+    build_dashboard_summary_cache_key,
+    get_json,
+    get_namespace_ttl_seconds,
+    set_json,
+)
 from app.core.metrics import increment_counter, observe_latency_ms
 from app.repositories.debt_repo import DebtRepository
 from app.repositories.operation_repo import OperationRepository
@@ -88,7 +94,26 @@ class DashboardService:
         user_id: int,
         month_anchor: date | None = None,
     ) -> dict:
-        return self.analytics.get_calendar(user_id=user_id, month_anchor=month_anchor)
+        resolved_month_anchor = month_anchor or date.today().replace(day=1)
+        cache_key = build_dashboard_analytics_cache_key(
+            user_id=user_id,
+            view="calendar",
+            period="month",
+            date_from=None,
+            date_to=None,
+            month_anchor=resolved_month_anchor,
+        )
+        cached = get_json(cache_key)
+        if cached:
+            return cached
+
+        payload = self.analytics.get_calendar(user_id=user_id, month_anchor=resolved_month_anchor)
+        set_json(
+            cache_key,
+            payload,
+            ttl_seconds=get_namespace_ttl_seconds("dashboard_analytics"),
+        )
+        return payload
 
     def get_analytics_calendar_year(
         self,
@@ -96,7 +121,26 @@ class DashboardService:
         user_id: int,
         year_anchor: int | None = None,
     ) -> dict:
-        return self.analytics.get_calendar_year(user_id=user_id, year_anchor=year_anchor)
+        resolved_year_anchor = int(year_anchor or date.today().year)
+        cache_key = build_dashboard_analytics_cache_key(
+            user_id=user_id,
+            view="calendar_year",
+            period="year",
+            date_from=None,
+            date_to=None,
+            year_anchor=resolved_year_anchor,
+        )
+        cached = get_json(cache_key)
+        if cached:
+            return cached
+
+        payload = self.analytics.get_calendar_year(user_id=user_id, year_anchor=resolved_year_anchor)
+        set_json(
+            cache_key,
+            payload,
+            ttl_seconds=get_namespace_ttl_seconds("dashboard_analytics"),
+        )
+        return payload
 
     def get_analytics_trend(
         self,
@@ -107,13 +151,31 @@ class DashboardService:
         date_to: date | None = None,
         granularity: str = "day",
     ) -> dict:
-        return self.analytics.get_trend(
+        cache_key = build_dashboard_analytics_cache_key(
+            user_id=user_id,
+            view="trend",
+            period=period,
+            date_from=date_from,
+            date_to=date_to,
+            granularity=granularity,
+        )
+        cached = get_json(cache_key)
+        if cached:
+            return cached
+
+        payload = self.analytics.get_trend(
             user_id=user_id,
             period=period,
             date_from=date_from,
             date_to=date_to,
             granularity=granularity,
         )
+        set_json(
+            cache_key,
+            payload,
+            ttl_seconds=get_namespace_ttl_seconds("dashboard_analytics"),
+        )
+        return payload
 
     def get_analytics_highlights(
         self,
@@ -126,7 +188,21 @@ class DashboardService:
         date_to: date | None = None,
         month_anchor: date | None = None,
     ) -> dict:
-        return self.analytics.get_highlights(
+        cache_key = build_dashboard_analytics_cache_key(
+            user_id=user_id,
+            view="highlights",
+            period=period,
+            date_from=date_from,
+            date_to=date_to,
+            month_anchor=month_anchor,
+            category_kind=category_kind,
+            category_breakdown_level=category_breakdown_level,
+        )
+        cached = get_json(cache_key)
+        if cached:
+            return cached
+
+        payload = self.analytics.get_highlights(
             user_id=user_id,
             period=period,
             category_kind=category_kind,
@@ -135,6 +211,12 @@ class DashboardService:
             date_to=date_to,
             month_anchor=month_anchor,
         )
+        set_json(
+            cache_key,
+            payload,
+            ttl_seconds=get_namespace_ttl_seconds("dashboard_analytics"),
+        )
+        return payload
 
     def get_debt_preview(self, *, user_id: int, limit_cards: int = 6) -> list[dict]:
         debt_repo = DebtRepository(self.db)

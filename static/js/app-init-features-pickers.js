@@ -1,84 +1,17 @@
 (() => {
-  const { el, actions, core, pickerUtils } = window.App;
+  const { el } = window.App;
+  const actions = getActions();
+  const pickerUtils = getPickerUtils();
+  const pickerCoordinator = getPickerUiCoordinator();
   let bound = false;
-
-  function isCompactModalViewport() {
-    return window.matchMedia("(max-width: 640px)").matches;
-  }
-
-  function scrollFocusedModalFieldIntoView(event) {
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) {
-      return;
-    }
-    if (!isCompactModalViewport()) {
-      return;
-    }
-    if (!target.matches("input, textarea, select")) {
-      return;
-    }
-    const modalCard = target.closest(".modal-card");
-    const modal = target.closest(".modal");
-    if (!modalCard || !modal || modal.classList.contains("hidden")) {
-      return;
-    }
-    const scrollTarget = target.closest(
-      ".receipt-item-row, .money-input-wrap, .create-category-field, .debt-due-field, .receipt-summary, .preview-panel, .bulk-import-preview, .field",
-    ) || target;
-    window.requestAnimationFrame(() => {
-      window.setTimeout(() => {
-        scrollTarget.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
-      }, 120);
-    });
-  }
-
-  function bindDateField(id, onChange = null) {
-    const node = document.getElementById(id);
-    if (!node) {
-      return;
-    }
-    const normalize = () => {
-      core.syncDateFieldValue(node, node.value);
-      if (typeof onChange === "function") {
-        onChange();
-      }
-    };
-    if (node.type === "date") {
-      node.addEventListener("input", normalize);
-    }
-    node.addEventListener("blur", normalize);
-    node.addEventListener("change", normalize);
-  }
 
   function bindPickerFeatureHandlers() {
     if (bound) {
       return;
     }
     bound = true;
-    document.addEventListener("focusin", scrollFocusedModalFieldIntoView);
-    document.addEventListener("click", (event) => {
-      const trigger = event.target.closest("[data-date-picker-trigger]");
-      if (!trigger) {
-        return;
-      }
-      event.preventDefault();
-      const targetId = String(trigger.dataset.datePickerTrigger || "").trim();
-      if (!targetId) {
-        return;
-      }
-      const input = document.getElementById(targetId);
-      if (!(input instanceof HTMLInputElement) || input.disabled || input.readOnly) {
-        return;
-      }
-      if (typeof input.showPicker === "function") {
-        try {
-          input.showPicker();
-          return;
-        } catch {}
-      }
-      input.focus({ preventScroll: true });
-      input.click();
-    });
+    document.addEventListener("focusin", pickerCoordinator.scrollFocusedModalFieldIntoView);
+    pickerCoordinator.bindDatePickerTriggers();
 
     for (const id of ["opAmount", "opDate", "opNote"]) {
       const node = document.getElementById(id);
@@ -91,7 +24,7 @@
         }
       }
     }
-    bindDateField("opDate", actions.updateCreatePreview);
+    pickerCoordinator.bindDateField("opDate", actions.updateCreatePreview);
     for (const id of ["debtCounterparty", "debtPrincipal", "debtStartDate", "debtDueDate", "debtNote"]) {
       const node = document.getElementById(id);
       if (node) {
@@ -99,37 +32,16 @@
         node.addEventListener("change", actions.updateCreatePreview);
       }
     }
-    bindDateField("debtStartDate", actions.updateCreatePreview);
-    bindDateField("debtDueDate", actions.updateCreatePreview);
-    if (el.debtCounterparty) {
-      el.debtCounterparty.addEventListener("focus", () => {
-        if (actions.handleDebtCounterpartySearchFocus) {
-          actions.handleDebtCounterpartySearchFocus();
-        }
-      });
-      el.debtCounterparty.addEventListener("click", () => {
-        if (actions.handleDebtCounterpartySearchFocus) {
-          actions.handleDebtCounterpartySearchFocus();
-        }
-      });
-      el.debtCounterparty.addEventListener("input", () => {
-        if (actions.handleDebtCounterpartySearchInput) {
-          actions.handleDebtCounterpartySearchInput();
-        }
-      });
-      el.debtCounterparty.addEventListener("keydown", (event) => {
-        if (actions.handleDebtCounterpartySearchKeydown) {
-          actions.handleDebtCounterpartySearchKeydown(event);
-        }
-      });
-    }
-    if (el.debtCounterpartyAll) {
-      el.debtCounterpartyAll.addEventListener("click", (event) => {
-        if (actions.handleDebtCounterpartyPickerClick) {
-          actions.handleDebtCounterpartyPickerClick(event);
-        }
-      });
-    }
+    pickerCoordinator.bindDateField("debtStartDate", actions.updateCreatePreview);
+    pickerCoordinator.bindDateField("debtDueDate", actions.updateCreatePreview);
+    pickerCoordinator.bindSearchPicker({
+      input: el.debtCounterparty,
+      onFocus: actions.handleDebtCounterpartySearchFocus,
+      onInput: actions.handleDebtCounterpartySearchInput,
+      onKeydown: actions.handleDebtCounterpartySearchKeydown,
+      picker: el.debtCounterpartyAll,
+      onPickerClick: actions.handleDebtCounterpartyPickerClick,
+    });
     if (actions.updateDebtDueHint) {
       const dueNodes = [document.getElementById("debtStartDate"), document.getElementById("debtDueDate")];
       for (const node of dueNodes) {
@@ -151,123 +63,51 @@
         }
       }
     }
-    bindDateField("editDate", actions.updateEditPreview);
-    bindDateField("bulkOpDate");
-    bindDateField("customDateFrom");
-    bindDateField("customDateTo");
-    bindDateField("repaymentDate");
-    if (el.editCategorySearch) {
-      el.editCategorySearch.addEventListener("focus", () => {
-        if (actions.handleEditCategorySearchFocus) {
-          actions.handleEditCategorySearchFocus();
-        }
-      });
-      el.editCategorySearch.addEventListener("click", () => {
-        if (actions.handleEditCategorySearchFocus) {
-          actions.handleEditCategorySearchFocus();
-        }
-      });
-      el.editCategorySearch.addEventListener("input", () => {
-        if (actions.handleEditCategorySearchInput) {
-          actions.handleEditCategorySearchInput();
-        }
-      });
-      el.editCategorySearch.addEventListener("keydown", (event) => {
-        if (actions.handleEditCategorySearchKeydown) {
-          actions.handleEditCategorySearchKeydown(event);
-        }
-      });
-    }
-    if (el.editCategoryAll) {
-      el.editCategoryAll.addEventListener("click", (event) => {
-        if (actions.handleEditCategoryPickerClick) {
-          actions.handleEditCategoryPickerClick(event);
-        }
-      });
-    }
+    pickerCoordinator.bindDateField("editDate", actions.updateEditPreview);
+    pickerCoordinator.bindDateField("bulkOpDate");
+    pickerCoordinator.bindDateField("customDateFrom");
+    pickerCoordinator.bindDateField("customDateTo");
+    pickerCoordinator.bindDateField("repaymentDate");
+    pickerCoordinator.bindSearchPicker({
+      input: el.editCategorySearch,
+      onFocus: actions.handleEditCategorySearchFocus,
+      onInput: actions.handleEditCategorySearchInput,
+      onKeydown: actions.handleEditCategorySearchKeydown,
+      picker: el.editCategoryAll,
+      onPickerClick: actions.handleEditCategoryPickerClick,
+    });
 
-    el.opCategorySearch.addEventListener("focus", () => {
-      if (actions.handleCreateCategorySearchFocus) {
-        actions.handleCreateCategorySearchFocus();
-      }
+    pickerCoordinator.bindSearchPicker({
+      input: el.opCategorySearch,
+      onFocus: actions.handleCreateCategorySearchFocus,
+      onInput: actions.handleCreateCategorySearchInput,
+      onKeydown: actions.handleCreateCategorySearchKeydown,
+      picker: el.opCategoryAll,
+      onPickerClick: actions.handleCreateCategoryPickerClick,
     });
-    el.opCategorySearch.addEventListener("click", () => {
-      if (actions.handleCreateCategorySearchFocus) {
-        actions.handleCreateCategorySearchFocus();
-      }
-    });
-    el.opCategorySearch.addEventListener("input", () => {
-      if (actions.handleCreateCategorySearchInput) {
-        actions.handleCreateCategorySearchInput();
-      }
-    });
-    el.opCategorySearch.addEventListener("keydown", (event) => {
-      if (actions.handleCreateCategorySearchKeydown) {
-        actions.handleCreateCategorySearchKeydown(event);
-      }
-    });
-    if (el.opCategoryAll) {
-      el.opCategoryAll.addEventListener("click", (event) => {
-        if (actions.handleCreateCategoryPickerClick) {
-          actions.handleCreateCategoryPickerClick(event);
-        }
-      });
-    }
 
     if (el.pullReceiptTotalBtn && actions.handlePullReceiptTotal) {
       el.pullReceiptTotalBtn.addEventListener("click", () => {
         actions.handlePullReceiptTotal("create");
       });
     }
-    if (el.receiptItemsList) {
-      el.receiptItemsList.addEventListener("input", (event) => {
-        if (actions.handleReceiptItemsListInput) {
-          actions.handleReceiptItemsListInput(event);
-        }
-      });
-      el.receiptItemsList.addEventListener("focusin", (event) => {
-        if (actions.handleReceiptItemsListFocusIn) {
-          actions.handleReceiptItemsListFocusIn(event);
-        }
-      });
-      el.receiptItemsList.addEventListener("keydown", (event) => {
-        if (actions.handleReceiptItemsListKeydown) {
-          actions.handleReceiptItemsListKeydown(event);
-        }
-      });
-      el.receiptItemsList.addEventListener("click", (event) => {
-        if (actions.handleReceiptItemsListClick) {
-          actions.handleReceiptItemsListClick(event);
-        }
-      });
-    }
+    pickerCoordinator.bindReceiptList(el.receiptItemsList, {
+      onInput: actions.handleReceiptItemsListInput,
+      onFocusIn: actions.handleReceiptItemsListFocusIn,
+      onKeydown: actions.handleReceiptItemsListKeydown,
+      onClick: actions.handleReceiptItemsListClick,
+    });
     if (el.editPullReceiptTotalBtn && actions.handlePullReceiptTotal) {
       el.editPullReceiptTotalBtn.addEventListener("click", (event) => {
         actions.handlePullReceiptTotal(event);
       });
     }
-    if (el.editReceiptItemsList) {
-      el.editReceiptItemsList.addEventListener("input", (event) => {
-        if (actions.handleReceiptItemsListInput) {
-          actions.handleReceiptItemsListInput(event);
-        }
-      });
-      el.editReceiptItemsList.addEventListener("focusin", (event) => {
-        if (actions.handleReceiptItemsListFocusIn) {
-          actions.handleReceiptItemsListFocusIn(event);
-        }
-      });
-      el.editReceiptItemsList.addEventListener("keydown", (event) => {
-        if (actions.handleReceiptItemsListKeydown) {
-          actions.handleReceiptItemsListKeydown(event);
-        }
-      });
-      el.editReceiptItemsList.addEventListener("click", (event) => {
-        if (actions.handleReceiptItemsListClick) {
-          actions.handleReceiptItemsListClick(event);
-        }
-      });
-    }
+    pickerCoordinator.bindReceiptList(el.editReceiptItemsList, {
+      onInput: actions.handleReceiptItemsListInput,
+      onFocusIn: actions.handleReceiptItemsListFocusIn,
+      onKeydown: actions.handleReceiptItemsListKeydown,
+      onClick: actions.handleReceiptItemsListClick,
+    });
 
     if (el.categoryGroupSearch) {
       el.categoryGroupSearch.addEventListener("focus", () => {
@@ -417,7 +257,137 @@
     }, true);
   }
 
-  window.App.initFeaturePickers = {
+  const api = {
     bindPickerFeatureHandlers,
   };
+
+  window.App.initFeaturePickers = api;
+  window.App.registerFeatureInitModule?.("pickers", api);
 })();
+
+function getActions() {
+  return window.App.actions || {};
+}
+
+function getCore() {
+  return window.App.core;
+}
+
+function getPickerUtils() {
+  return window.App.getRuntimeModule?.("picker-utils") || window.App.pickerUtils;
+}
+
+function getPickerUiCoordinatorModule() {
+  return window.App.getRuntimeModule?.("picker-ui-coordinator");
+}
+
+function getPickerUiCoordinator() {
+  return (
+    getPickerUiCoordinatorModule() || {
+      scrollFocusedModalFieldIntoView(event) {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+        if (!window.matchMedia("(max-width: 640px)").matches) {
+          return;
+        }
+        if (!target.matches("input, textarea, select")) {
+          return;
+        }
+        const modalCard = target.closest(".modal-card");
+        const modal = target.closest(".modal");
+        if (!modalCard || !modal || modal.classList.contains("hidden")) {
+          return;
+        }
+        const scrollTarget = target.closest(
+          ".receipt-item-row, .money-input-wrap, .create-category-field, .debt-due-field, .receipt-summary, .preview-panel, .bulk-import-preview, .field",
+        ) || target;
+        window.requestAnimationFrame(() => {
+          window.setTimeout(() => {
+            scrollTarget.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+          }, 120);
+        });
+      },
+      bindDateField(id, onChange = null) {
+        const node = document.getElementById(id);
+        if (!node) {
+          return;
+        }
+        const normalize = () => {
+          getCore().syncDateFieldValue(node, node.value);
+          if (typeof onChange === "function") {
+            onChange();
+          }
+        };
+        if (node.type === "date") {
+          node.addEventListener("input", normalize);
+        }
+        node.addEventListener("blur", normalize);
+        node.addEventListener("change", normalize);
+      },
+      bindDatePickerTriggers() {
+        document.addEventListener("click", (event) => {
+          const trigger = event.target.closest("[data-date-picker-trigger]");
+          if (!trigger) {
+            return;
+          }
+          event.preventDefault();
+          const targetId = String(trigger.dataset.datePickerTrigger || "").trim();
+          if (!targetId) {
+            return;
+          }
+          const input = document.getElementById(targetId);
+          if (!(input instanceof HTMLInputElement) || input.disabled || input.readOnly) {
+            return;
+          }
+          if (typeof input.showPicker === "function") {
+            try {
+              input.showPicker();
+              return;
+            } catch {}
+          }
+          input.focus({ preventScroll: true });
+          input.click();
+        });
+      },
+      bindSearchPicker({ input, onFocus, onInput, onKeydown, picker, onPickerClick, onBlur = null }) {
+        if (input) {
+          if (typeof onFocus === "function") {
+            input.addEventListener("focus", onFocus);
+            input.addEventListener("click", onFocus);
+          }
+          if (typeof onInput === "function") {
+            input.addEventListener("input", onInput);
+          }
+          if (typeof onKeydown === "function") {
+            input.addEventListener("keydown", onKeydown);
+          }
+          if (typeof onBlur === "function") {
+            input.addEventListener("blur", onBlur);
+          }
+        }
+        if (picker && typeof onPickerClick === "function") {
+          picker.addEventListener("click", onPickerClick);
+        }
+      },
+      bindReceiptList(container, handlers) {
+        if (!container) {
+          return;
+        }
+        if (typeof handlers.onInput === "function") {
+          container.addEventListener("input", handlers.onInput);
+        }
+        if (typeof handlers.onFocusIn === "function") {
+          container.addEventListener("focusin", handlers.onFocusIn);
+        }
+        if (typeof handlers.onKeydown === "function") {
+          container.addEventListener("keydown", handlers.onKeydown);
+        }
+        if (typeof handlers.onClick === "function") {
+          container.addEventListener("click", handlers.onClick);
+        }
+      },
+    }
+  );
+}

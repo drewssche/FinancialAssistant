@@ -196,8 +196,9 @@ def test_sidebar_user_handle_falls_back_to_telegram_id_when_username_missing(sta
         try:
             page.goto(f"{static_server_url}/static/index.html")
             _restore_mock_telegram(page)
-            page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+            page.evaluate("() => window.App.getRuntimeModule('session')?.refreshTelegramLoginUi?.()")
             assert page.locator("#telegramLoginBtn").text_content() == "Войти через Telegram Mini App"
+            page.locator("#telegramLoginBtn").wait_for(state="visible")
             page.click("#telegramLoginBtn")
             page.wait_for_selector("#appShell:not(.hidden)")
             assert page.locator("#userHandle").text_content() == "ID 550011"
@@ -256,7 +257,7 @@ def test_login_keeps_pending_and_rejected_users_out_of_workspace(
         try:
             page.goto(f"{static_server_url}/static/index.html")
             _restore_mock_telegram(page)
-            page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+            page.evaluate("() => window.App.getRuntimeModule('session')?.refreshTelegramLoginUi?.()")
             page.click("#telegramLoginBtn")
             page.wait_for_selector("#loginScreen:not(.hidden)")
             assert page.locator("#loginAlert").text_content() == expected_message

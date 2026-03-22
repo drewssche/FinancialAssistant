@@ -6,6 +6,14 @@
   const CATEGORIES_CATALOG_CACHE_TTL_MS = 60000;
   const CATEGORIES_TABLE_CACHE_TTL_MS = 45000;
 
+  function getActions() {
+    return window.App.actions || {};
+  }
+
+  function getCategoryUi() {
+    return window.App.getRuntimeModule?.("category-ui");
+  }
+
   function getCategoriesTableCacheKey(params) {
     return `categories:table:${params.toString()}`;
   }
@@ -30,7 +38,7 @@
   }
 
   async function loadCategoryGroups() {
-    const categoryUi = window.App.categoryUi;
+    const categoryUi = getCategoryUi();
     const cacheKey = "categories:groups";
     const cached = core.getUiRequestCache(cacheKey, CATEGORIES_GROUPS_CACHE_TTL_MS);
     if (cached) {
@@ -58,7 +66,7 @@
   }
 
   async function loadCategoriesTable(options = {}) {
-    const categoryUi = window.App.categoryUi;
+    const categoryUi = getCategoryUi();
     const reset = options.reset !== false;
     const force = options.force === true;
     if (state.categoriesLoading && reset && categoriesRequestController) {
@@ -132,7 +140,8 @@
   }
 
   async function loadCategories() {
-    const categoryUi = window.App.categoryUi;
+    const categoryUi = getCategoryUi();
+    const actions = getActions();
     await loadCategoryGroups();
     await loadCategoryCatalog();
     await loadCategoriesTable({ reset: true });
@@ -141,19 +150,19 @@
     categoryUi.populateCategorySelect(el.opCategory, el.opCategory.value, el.opKind.value);
     categoryUi.populateCategorySelect(el.editCategory, el.editCategory.value, el.editKind.value || "expense");
 
-    if (window.App.actions.renderCreateCategoryPicker) {
-      window.App.actions.renderCreateCategoryPicker();
+    if (actions.renderCreateCategoryPicker) {
+      actions.renderCreateCategoryPicker();
     }
-    if (state.activeSection === "dashboard" && window.App.actions.loadDashboardOperations) {
-      window.App.actions.loadDashboardOperations().catch(() => {});
+    if (state.activeSection === "dashboard" && actions.loadDashboardOperations) {
+      actions.loadDashboardOperations().catch(() => {});
     }
-    if (window.App.actions.refreshOperationsView) {
-      window.App.actions.refreshOperationsView();
+    if (actions.refreshOperationsView) {
+      actions.refreshOperationsView();
     }
   }
 
   async function createCategory(event) {
-    const categoryUi = window.App.categoryUi;
+    const categoryUi = getCategoryUi();
     event.preventDefault();
     const payload = {
       name: el.categoryName.value.trim(),
@@ -183,13 +192,14 @@
     categoryUi.setCategoryKind("create", "expense");
     categoryUi.closeCreateCategoryModal(false);
     await loadCategories();
-    if (window.App.actions.onCategoryCreated) {
-      window.App.actions.onCategoryCreated(createdCategory);
+    const actions = getActions();
+    if (actions.onCategoryCreated) {
+      actions.onCategoryCreated(createdCategory);
     }
   }
 
   async function updateCategory(event) {
-    const categoryUi = window.App.categoryUi;
+    const categoryUi = getCategoryUi();
     event.preventDefault();
     if (!state.editCategoryId) {
       return;
@@ -236,12 +246,12 @@
     el.groupName.value = "";
     el.groupAccentColor.value = "#ff8a3d";
     el.groupAccentColorHex.value = "#ff8a3d";
-    window.App.actions.closeCreateGroupModal();
+    getActions().closeCreateGroupModal();
     await loadCategories();
   }
 
   async function updateGroup(event) {
-    const categoryUi = window.App.categoryUi;
+    const categoryUi = getCategoryUi();
     event.preventDefault();
     const groupId = Number(el.editGroupId.value || 0);
     const name = el.editGroupName.value.trim();

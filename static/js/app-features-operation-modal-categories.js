@@ -15,7 +15,7 @@
       getCategoryMetaById,
     } = deps;
 
-    const pickerUtils = window.App.pickerUtils;
+    const pickerUtils = window.App.getRuntimeModule?.("picker-utils");
     const CATEGORY_USAGE_KEY = pickerUtils.DEFAULT_CATEGORY_USAGE_KEY;
 
     function writeCategoryUsage(usage) {
@@ -101,8 +101,8 @@
 
     function createNoCategoryChipButton(selected) {
       return pickerUtils.createMetaChipButton({
-        datasetName: "categoryId",
-        datasetValue: "",
+        datasetName: "clearCategory",
+        datasetValue: "1",
         selected,
         label: "Без категории",
         core,
@@ -303,6 +303,11 @@
         openCreateCategoryFromOperation(createBtn.dataset.createCategory || "");
         return;
       }
+      const clearBtn = event.target.closest("button[data-clear-category]");
+      if (clearBtn) {
+        selectCreateCategory(null);
+        return;
+      }
       const chipBtn = event.target.closest("button[data-category-id]");
       if (!chipBtn) {
         return;
@@ -311,6 +316,11 @@
     }
 
     function handleEditCategoryPickerClick(event) {
+      const clearBtn = event.target.closest("button[data-clear-category]");
+      if (clearBtn) {
+        selectEditCategory(null);
+        return;
+      }
       const chipBtn = event.target.closest("button[data-category-id]");
       if (!chipBtn) {
         return;
@@ -385,5 +395,5 @@
   }
 
   window.App = window.App || {};
-  window.App.createOperationModalCategoryFeature = createOperationModalCategoryFeature;
+  window.App.registerRuntimeModule?.("operation-modal-category-factory", createOperationModalCategoryFeature);
 })();

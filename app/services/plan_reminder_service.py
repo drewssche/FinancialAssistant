@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
+from app.core.logging import log_background_job_event
 from app.repositories.plan_repo import PlanRepository
 
 
@@ -23,9 +24,24 @@ class PlanReminderService:
             canceled_at=now_utc,
         )
         if plan.status != "active":
+            log_background_job_event(
+                "plan_reminder",
+                "plan_sync_skipped",
+                user_id=int(plan.user_id),
+                plan_id=int(plan.id),
+                reason="inactive_plan",
+                status=plan.status,
+            )
             return
         config = self._get_user_reminder_config(user_id=int(plan.user_id))
         if not config["enabled"]:
+            log_background_job_event(
+                "plan_reminder",
+                "plan_sync_skipped",
+                user_id=int(plan.user_id),
+                plan_id=int(plan.id),
+                reason="reminders_disabled",
+            )
             return
         scheduled_for = self._compute_next_reminder_at(
             scheduled_date=plan.scheduled_date,
@@ -39,11 +55,19 @@ class PlanReminderService:
             plan_id=int(plan.id),
             scheduled_for=scheduled_for,
         )
+        log_background_job_event(
+            "plan_reminder",
+            "plan_job_synced",
+            user_id=int(plan.user_id),
+            plan_id=int(plan.id),
+            scheduled_for=scheduled_for.isoformat(),
+        )
 
     def sync_user_jobs(self, *, user_id: int) -> None:
         now_utc = datetime.now(timezone.utc)
         plans = self.repo.list_active_plans_for_user(user_id=user_id)
         config = self._get_user_reminder_config(user_id=user_id)
+        created_jobs = 0
         for plan in plans:
             self.repo.cancel_pending_reminder_jobs(
                 user_id=int(plan.user_id),
@@ -64,6 +88,15 @@ class PlanReminderService:
                 plan_id=int(plan.id),
                 scheduled_for=scheduled_for,
             )
+            created_jobs += 1
+        log_background_job_event(
+            "plan_reminder",
+            "user_jobs_synced",
+            user_id=user_id,
+            active_plan_count=len(plans),
+            created_jobs=created_jobs,
+            reminders_enabled=bool(config["enabled"]),
+        )
 
     def list_due_jobs(self) -> list[dict]:
         now_utc = datetime.now(timezone.utc)
@@ -148,6 +181,22 @@ class PlanReminderService:
                 scheduled_for=next_scheduled_for,
             )
         self.db.commit()
+        log_background_job_event(
+            "plan_reminder",
+            "job_sent",
+            user_id=int(plan.user_id),
+            plan_id=int(plan.id),
+            job_id=int(job.id),
+            reminder_sent_count=int(plan.reminder_sent_count or 0),
+        )
+        if plan.status == "active" and bool(config.get("enabled", True)):
+            log_background_job_event(
+                "plan_reminder",
+                "job_rescheduled",
+                user_id=int(plan.user_id),
+                plan_id=int(plan.id),
+                next_scheduled_for=next_scheduled_for.isoformat(),
+            )
 
     def build_reminder_text(self, payload: dict) -> str:
         plan = payload.get("plan")
@@ -159,6 +208,21 @@ class PlanReminderService:
         if plan.note:
             lines.append(plan.note)
         return "\n".join(lines)
+
+    def build_reminder_reply_markup(self, payload: dict) -> dict | None:
+        plan = payload.get("plan")
+        if not plan:
+            return None
+        return {
+            "inline_keyboard": [
+                [
+                    {
+                        "text": "Подтвердить",
+                        "callback_data": f"planc:{int(plan.id)}",
+                    }
+                ]
+            ]
+        }
 
     def get_plan_reminder_snapshot(self, *, user_id: int, plan_id: int) -> tuple[datetime | None, str | None]:
         config = self._get_user_reminder_config(user_id=user_id)

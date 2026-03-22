@@ -1,6 +1,22 @@
 (() => {
   const { state, el, core } = window.App;
 
+  function getNavigationActions() {
+    const actions = window.App.actions || {};
+    return {
+      switchSection: actions.switchSection,
+      pushSectionBackContext: actions.pushSectionBackContext,
+    };
+  }
+
+  function getAnalyticsModules() {
+    return {
+      calendar: window.App.getRuntimeModule?.("analytics-calendar-module"),
+      trend: window.App.getRuntimeModule?.("analytics-trend-module"),
+      highlights: window.App.getRuntimeModule?.("analytics-highlights-module"),
+    };
+  }
+
   function applyAnalyticsTabUi() {
     const tab = state.analyticsTab || "calendar";
     const panels = [
@@ -30,9 +46,7 @@
   }
 
   async function loadAnalyticsSection(options = {}) {
-    const calendar = window.App.featureAnalyticsModules?.calendar;
-    const trend = window.App.featureAnalyticsModules?.trend;
-    const highlights = window.App.featureAnalyticsModules?.highlights;
+    const { calendar, trend, highlights } = getAnalyticsModules();
     const tab = state.analyticsTab || "calendar";
 
     applyAnalyticsTabUi();
@@ -47,10 +61,11 @@
   }
 
   async function openOperationsForAnalyticsDate(dayIso) {
-    if (!dayIso || !window.App.actions.switchSection) {
+    const navigation = getNavigationActions();
+    if (!dayIso || !navigation.switchSection) {
       return;
     }
-    window.App.actions.pushSectionBackContext?.();
+    navigation.pushSectionBackContext?.();
     state.operationsCategoryFilterId = null;
     state.operationsCategoryFilterName = "";
     state.filterKind = "";
@@ -64,14 +79,15 @@
     state.customDateFrom = dayIso;
     state.customDateTo = dayIso;
     core.syncAllPeriodTabs("custom");
-    await window.App.actions.switchSection("operations");
+    await navigation.switchSection("operations");
   }
 
   async function openOperationsForAnalyticsRange(dateFrom, dateTo) {
-    if (!dateFrom || !dateTo || !window.App.actions.switchSection) {
+    const navigation = getNavigationActions();
+    if (!dateFrom || !dateTo || !navigation.switchSection) {
       return;
     }
-    window.App.actions.pushSectionBackContext?.();
+    navigation.pushSectionBackContext?.();
     state.operationsCategoryFilterId = null;
     state.operationsCategoryFilterName = "";
     state.filterKind = "";
@@ -85,7 +101,7 @@
     state.customDateFrom = dateFrom;
     state.customDateTo = dateTo;
     core.syncAllPeriodTabs("custom");
-    await window.App.actions.switchSection("operations");
+    await navigation.switchSection("operations");
   }
 
   function applyAnalyticsScopeToOperations() {
@@ -109,10 +125,11 @@
   }
 
   async function openOperationsForAnalyticsCategory(categoryId, categoryName, categoryKind) {
-    if (!window.App.actions.switchSection || !categoryId) {
+    const navigation = getNavigationActions();
+    if (!navigation.switchSection || !categoryId) {
       return;
     }
-    window.App.actions.pushSectionBackContext?.();
+    navigation.pushSectionBackContext?.();
     applyAnalyticsScopeToOperations();
     state.operationsQuickView = "all";
     core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
@@ -123,14 +140,12 @@
     }
     state.filterKind = categoryKind === "income" || categoryKind === "expense" ? categoryKind : "";
     core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
-    await window.App.actions.switchSection("operations");
+    await navigation.switchSection("operations");
   }
 
-  const calendar = window.App.featureAnalyticsModules?.calendar || {};
-  const trend = window.App.featureAnalyticsModules?.trend || {};
-  const highlights = window.App.featureAnalyticsModules?.highlights || {};
+  const { calendar = {}, trend = {}, highlights = {} } = getAnalyticsModules();
 
-  window.App.featureAnalytics = {
+  const api = {
     loadAnalyticsCalendar: calendar.loadAnalyticsCalendar,
     loadAnalyticsTrend: trend.loadAnalyticsTrend,
     loadAnalyticsHighlights: highlights.loadAnalyticsHighlights,
@@ -153,4 +168,6 @@
     toggleCategoryBreakdownVisibility: highlights.toggleCategoryBreakdownVisibility,
     showAllCategoryBreakdownItems: highlights.showAllCategoryBreakdownItems,
   };
+
+  window.App.registerRuntimeModule?.("analytics", api);
 })();

@@ -2,6 +2,46 @@
   const { state, el } = window.App;
   let todayTimerId = null;
 
+  function getActions() {
+    return window.App.actions || {};
+  }
+
+  function getCore() {
+    return window.App.core;
+  }
+
+  function getDashboardFeature() {
+    return window.App.getRuntimeModule?.("dashboard") || {};
+  }
+
+  function getAnalyticsFeature() {
+    return window.App.getRuntimeModule?.("analytics") || {};
+  }
+
+  function getOperationsFeature() {
+    return window.App.getRuntimeModule?.("operations") || {};
+  }
+
+  function getPlansFeature() {
+    return window.App.getRuntimeModule?.("plans") || {};
+  }
+
+  function getDebtsFeature() {
+    return window.App.getRuntimeModule?.("debts") || {};
+  }
+
+  function getItemCatalogFeature() {
+    return window.App.getRuntimeModule?.("item-catalog") || {};
+  }
+
+  function getAdminFeature() {
+    return window.App.getRuntimeModule?.("admin") || {};
+  }
+
+  function getSessionFeature() {
+    return window.App.getRuntimeModule?.("session") || {};
+  }
+
   function cloneNavigationState() {
     return {
       activeSection: state.activeSection,
@@ -56,17 +96,18 @@
     if (el.filterQ) {
       el.filterQ.value = snapshot.filterQ || "";
     }
-    window.App.core.syncAllPeriodTabs(state.period);
-    window.App.core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
-    window.App.core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
-    window.App.core.syncSegmentedActive(el.analyticsViewTabs, "analytics-tab", state.analyticsTab);
-    window.App.core.syncSegmentedActive(el.analyticsCalendarViewTabs, "analytics-calendar-view", state.analyticsCalendarView);
-    window.App.core.syncSegmentedActive(el.analyticsGlobalPeriodTabs, "analytics-global-period", state.analyticsGlobalPeriod);
-    window.App.core.syncSegmentedActive(el.analyticsCategoryKindTabs, "analytics-category-kind", state.analyticsCategoryKind);
-    window.App.core.syncSegmentedActive(el.analyticsGranularityTabs, "analytics-granularity", state.analyticsGranularity);
-    window.App.core.syncSegmentedActive(el.dashboardAnalyticsPeriodTabs, "dashboard-analytics-period", state.dashboardAnalyticsPeriod);
-    window.App.core.syncSegmentedActive(el.dashboardBreakdownLevelTabs, "dashboard-breakdown-level", state.dashboardBreakdownLevel);
-    window.App.core.syncSegmentedActive(el.dashboardCategoryKindTabs, "dashboard-category-kind", state.dashboardCategoryKind);
+    const core = getCore();
+    core.syncAllPeriodTabs(state.period);
+    core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
+    core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
+    core.syncSegmentedActive(el.analyticsViewTabs, "analytics-tab", state.analyticsTab);
+    core.syncSegmentedActive(el.analyticsCalendarViewTabs, "analytics-calendar-view", state.analyticsCalendarView);
+    core.syncSegmentedActive(el.analyticsGlobalPeriodTabs, "analytics-global-period", state.analyticsGlobalPeriod);
+    core.syncSegmentedActive(el.analyticsCategoryKindTabs, "analytics-category-kind", state.analyticsCategoryKind);
+    core.syncSegmentedActive(el.analyticsGranularityTabs, "analytics-granularity", state.analyticsGranularity);
+    core.syncSegmentedActive(el.dashboardAnalyticsPeriodTabs, "dashboard-analytics-period", state.dashboardAnalyticsPeriod);
+    core.syncSegmentedActive(el.dashboardBreakdownLevelTabs, "dashboard-breakdown-level", state.dashboardBreakdownLevel);
+    core.syncSegmentedActive(el.dashboardCategoryKindTabs, "dashboard-category-kind", state.dashboardCategoryKind);
   }
 
   function updateSectionBackUi() {
@@ -198,7 +239,7 @@
     let timeZone = fallbackTz;
 
     try {
-      timeZone = window.App.core.getPreferenceTimeZone();
+      timeZone = getCore().getPreferenceTimeZone();
       new Intl.DateTimeFormat("ru-RU", { timeZone }).format(now);
     } catch {
       timeZone = fallbackTz;
@@ -236,8 +277,10 @@
     if (sectionId === "admin" && !state.isAdmin) {
       return;
     }
-    if (window.App.core?.closeMobileNav) {
-      window.App.core.closeMobileNav();
+    const core = getCore();
+    const actions = getActions();
+    if (core?.closeMobileNav) {
+      core.closeMobileNav();
     }
     if (!preserveBackStack && state.activeSection !== sectionId) {
       state.sectionBackStack = [];
@@ -245,64 +288,66 @@
     state.activeSection = sectionId;
     applySectionUi();
     if (sectionId === "dashboard") {
+      const dashboardFeature = getDashboardFeature();
+      const analyticsFeature = getAnalyticsFeature();
       const jobs = [];
-      if (window.App.actions.loadDashboard) {
-        jobs.push(window.App.actions.loadDashboard());
+      if (dashboardFeature.loadDashboard) {
+        jobs.push(dashboardFeature.loadDashboard());
       }
-      if (window.App.actions.loadDashboardOperations) {
-        jobs.push(window.App.actions.loadDashboardOperations());
+      if (dashboardFeature.loadDashboardOperations) {
+        jobs.push(dashboardFeature.loadDashboardOperations());
       }
-      if (window.App.actions.loadDashboardAnalyticsPreview) {
-        jobs.push(window.App.actions.loadDashboardAnalyticsPreview({ force: true }));
+      if (analyticsFeature.loadDashboardAnalyticsPreview) {
+        jobs.push(analyticsFeature.loadDashboardAnalyticsPreview({ force: true }));
       }
       if (jobs.length) {
         const results = await Promise.allSettled(jobs);
         const hasFailure = results.some((item) => item.status === "rejected");
         if (hasFailure) {
-          window.App.core.setStatus("Не удалось полностью обновить дашборд");
+          core.setStatus("Не удалось полностью обновить дашборд");
         }
       }
     }
-    if (sectionId === "operations" && window.App.actions.loadOperations) {
-      await window.App.actions.loadOperations({ reset: true });
+    if (sectionId === "operations" && getOperationsFeature().loadOperations) {
+      await getOperationsFeature().loadOperations({ reset: true });
     }
-    if (sectionId === "plans" && window.App.actions.loadPlans) {
-      await window.App.actions.loadPlans();
+    if (sectionId === "plans" && getPlansFeature().loadPlans) {
+      await getPlansFeature().loadPlans();
     }
-    if (sectionId === "categories" && window.App.actions.loadCategories) {
-      window.App.actions.loadCategories().catch((err) => {
-        const message = window.App.core.errorMessage ? window.App.core.errorMessage(err) : String(err);
-        window.App.core.setStatus(`Не удалось открыть раздел «Категории»: ${message}`);
+    if (sectionId === "categories" && actions.loadCategories) {
+      actions.loadCategories().catch((err) => {
+        const message = core.errorMessage ? core.errorMessage(err) : String(err);
+        core.setStatus(`Не удалось открыть раздел «Категории»: ${message}`);
       });
     }
-    if (sectionId === "debts" && window.App.actions.loadDebtsCards) {
-      window.App.actions.loadDebtsCards().catch((err) => {
-        const message = window.App.core.errorMessage ? window.App.core.errorMessage(err) : String(err);
-        window.App.core.setStatus(`Не удалось открыть раздел «Долги»: ${message}`);
+    if (sectionId === "debts" && getDebtsFeature().loadDebtsCards) {
+      getDebtsFeature().loadDebtsCards().catch((err) => {
+        const message = core.errorMessage ? core.errorMessage(err) : String(err);
+        core.setStatus(`Не удалось открыть раздел «Долги»: ${message}`);
       });
     }
-    if (sectionId === "item_catalog" && window.App.actions.loadItemCatalog) {
-      window.App.actions.loadItemCatalog().catch((err) => {
-        const message = window.App.core.errorMessage ? window.App.core.errorMessage(err) : String(err);
-        window.App.core.setStatus(`Не удалось открыть раздел «Каталог позиций»: ${message}`);
+    if (sectionId === "item_catalog" && getItemCatalogFeature().loadItemCatalog) {
+      getItemCatalogFeature().loadItemCatalog().catch((err) => {
+        const message = core.errorMessage ? core.errorMessage(err) : String(err);
+        core.setStatus(`Не удалось открыть раздел «Каталог позиций»: ${message}`);
       });
     }
-    if (sectionId === "analytics" && window.App.actions.loadAnalyticsSection) {
-      window.App.actions.loadAnalyticsSection({ force: true }).catch((err) => {
-        const message = window.App.core.errorMessage ? window.App.core.errorMessage(err) : String(err);
-        window.App.core.setStatus(`Не удалось открыть раздел «Аналитика»: ${message}`);
+    if (sectionId === "analytics" && getAnalyticsFeature().loadAnalyticsSection) {
+      getAnalyticsFeature().loadAnalyticsSection({ force: true }).catch((err) => {
+        const message = core.errorMessage ? core.errorMessage(err) : String(err);
+        core.setStatus(`Не удалось открыть раздел «Аналитика»: ${message}`);
       });
     }
-    if (sectionId === "admin" && window.App.actions.loadAdminUsers) {
-      window.App.actions.loadAdminUsers({ force: true }).catch((err) => {
-        const message = window.App.core.errorMessage ? window.App.core.errorMessage(err) : String(err);
-        window.App.core.setStatus(`Не удалось открыть раздел «Админ»: ${message}`);
+    if (sectionId === "admin" && getAdminFeature().loadAdminUsers) {
+      getAdminFeature().loadAdminUsers({ force: true }).catch((err) => {
+        const message = core.errorMessage ? core.errorMessage(err) : String(err);
+        core.setStatus(`Не удалось открыть раздел «Админ»: ${message}`);
       });
     }
-    await window.App.actions.savePreferences();
+    await getSessionFeature().savePreferences?.();
   }
 
-  Object.assign(window.App.actions, {
+  Object.assign(getActions(), {
     applySectionUi,
     renderTodayLabel,
     switchSection,

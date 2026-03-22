@@ -72,7 +72,7 @@
     }
   }
 
-  window.App.dashboardData = {
+  const api = {
     loadSummary,
     loadAllTimeSummary,
     loadDebtPreview,
@@ -80,4 +80,6 @@
     invalidateDebtPreviewCache,
     invalidateReadCaches,
   };
+
+  window.App.registerRuntimeModule?.("dashboard-data", api);
 })();

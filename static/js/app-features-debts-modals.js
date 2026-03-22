@@ -1,10 +1,17 @@
 (() => {
   function createDebtModalsFeature(deps) {
     const { state, el, core, debtUi, refreshDebtViews, findDebtById, syncDebtsControls } = deps;
-    const dashboardData = window.App.dashboardData || {};
     const formatMoney = debtUi.formatMoney;
     const parseAmount = debtUi.parseAmount;
     const parseIsoDate = debtUi.parseIsoDate;
+
+    function getDashboardData() {
+      return window.App.getRuntimeModule?.("dashboard-data") || {};
+    }
+
+    function getOperationModal() {
+      return window.App.getRuntimeModule?.("operation-modal") || {};
+    }
 
     function openDebtRepaymentModal(debtId) {
       const found = findDebtById(debtId);
@@ -124,7 +131,7 @@
         }),
       });
       core.invalidateUiRequestCache("debts");
-      dashboardData.invalidateReadCaches?.();
+      getDashboardData().invalidateReadCaches?.();
       closeDebtRepaymentModal();
       await refreshDebtViews();
     }
@@ -284,8 +291,9 @@
         return;
       }
       const { card, debt } = found;
-      if (window.App.actions?.openCreateModalForDebtEdit) {
-        window.App.actions.openCreateModalForDebtEdit({
+      const operationModal = getOperationModal();
+      if (operationModal.openCreateModalForDebtEdit) {
+        operationModal.openCreateModalForDebtEdit({
           id: debt.id,
           counterparty: card.counterparty || "",
           direction: debt.direction || "lend",
@@ -308,7 +316,7 @@
             headers: core.authHeaders(),
           });
           core.invalidateUiRequestCache("debts");
-          dashboardData.invalidateReadCaches?.();
+          getDashboardData().invalidateReadCaches?.();
         },
         onAfterDelete: async () => {
           await refreshDebtViews();
@@ -333,7 +341,7 @@
             });
           }
           core.invalidateUiRequestCache("debts");
-          dashboardData.invalidateReadCaches?.();
+          getDashboardData().invalidateReadCaches?.();
         },
         onAfterDelete: async () => {
           await refreshDebtViews();

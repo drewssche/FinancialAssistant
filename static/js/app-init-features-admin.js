@@ -59,7 +59,10 @@
     }
   }
 
-  window.App.initFeatureAdmin = {
+  const api = {
     bindAdminFeatureHandlers,
   };
+
+  window.App.initFeatureAdmin = api;
+  window.App.registerFeatureInitModule?.("admin", api);
 })();

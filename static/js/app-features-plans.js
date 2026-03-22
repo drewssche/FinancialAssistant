@@ -1,7 +1,31 @@
 (() => {
   const { state, el, core } = window.App;
-  const dashboardData = window.App.dashboardData || {};
-  const operationModal = window.App.operationModal;
+  const dashboardData = window.App.getRuntimeModule?.("dashboard-data") || {};
+  const operationModal = window.App.getRuntimeModule?.("operation-modal") || {};
+
+  function getSessionFeature() {
+    return window.App.getRuntimeModule?.("session") || {};
+  }
+
+  function getItemCatalogFeature() {
+    return window.App.getRuntimeModule?.("item-catalog") || {};
+  }
+
+  function getOperationsFeature() {
+    return window.App.getRuntimeModule?.("operations") || {};
+  }
+
+  function getDashboardFeature() {
+    return window.App.getRuntimeModule?.("dashboard") || {};
+  }
+
+  function getAnalyticsFeature() {
+    return window.App.getRuntimeModule?.("analytics") || {};
+  }
+
+  function getPickerUtils() {
+    return window.App.getRuntimeModule?.("picker-utils") || {};
+  }
 
   function getPlansCacheKey() {
     return "plans:list";
@@ -751,25 +775,28 @@
       dashboardData.invalidateSummaryCache?.();
     }
     await loadPlans({ force: true });
-    const actions = window.App.actions || {};
-    if (actions.loadItemCatalog) {
-      await actions.loadItemCatalog({ force: true });
+    const itemCatalogFeature = getItemCatalogFeature();
+    if (itemCatalogFeature.loadItemCatalog) {
+      await itemCatalogFeature.loadItemCatalog({ force: true });
     }
     if (!confirmed) {
       return;
     }
     const jobs = [];
-    if (actions.loadOperations) {
-      jobs.push(actions.loadOperations({ reset: true }));
+    const operationsFeature = getOperationsFeature();
+    const dashboardFeature = getDashboardFeature();
+    const analyticsFeature = getAnalyticsFeature();
+    if (operationsFeature.loadOperations) {
+      jobs.push(operationsFeature.loadOperations({ reset: true }));
     }
-    if (actions.loadDashboard) {
-      jobs.push(actions.loadDashboard());
+    if (dashboardFeature.loadDashboard) {
+      jobs.push(dashboardFeature.loadDashboard());
     }
-    if (actions.loadDashboardOperations) {
-      jobs.push(actions.loadDashboardOperations());
+    if (dashboardFeature.loadDashboardOperations) {
+      jobs.push(dashboardFeature.loadDashboardOperations());
     }
-    if (actions.loadAnalyticsSection) {
-      jobs.push(actions.loadAnalyticsSection({ force: true }));
+    if (analyticsFeature.loadAnalyticsSection) {
+      jobs.push(analyticsFeature.loadAnalyticsSection({ force: true }));
     }
     await Promise.all(jobs);
   }
@@ -817,14 +844,14 @@
     state.plansStatusFilter = value || "all";
     core.syncSegmentedActive(el.plansStatusTabs, "plan-status", state.plansStatusFilter);
     await renderPlansSection();
-    window.App.actions?.savePreferencesDebounced?.(250);
+    getSessionFeature().savePreferencesDebounced?.(250);
   }
 
   async function setPlansHistoryEventFilter(value) {
     state.plansHistoryEventFilter = value || "all";
     core.syncSegmentedActive(el.plansHistoryEventTabs, "plan-history-event", state.plansHistoryEventFilter);
     await renderPlansSection();
-    window.App.actions?.savePreferencesDebounced?.(250);
+    getSessionFeature().savePreferencesDebounced?.(250);
   }
 
   async function setDashboardPlansPeriod(value) {
@@ -833,19 +860,19 @@
     core.syncSegmentedActive(el.dashboardPlansPeriodTabs, "dashboard-plans-period", next);
     if (!getPlanItems().length) {
       await loadPlans({ force: true });
-      window.App.actions?.savePreferencesDebounced?.(250);
+      getSessionFeature().savePreferencesDebounced?.(250);
       return;
     }
     renderDashboardPlans();
-    window.App.actions?.savePreferencesDebounced?.(250);
+    getSessionFeature().savePreferencesDebounced?.(250);
   }
 
   function applyPlansSearch() {
     renderPlansSection().catch((err) => core.setStatus(String(err)));
   }
 
-  function openCreatePlan() {
-    operationModal.openCreateModal();
+  async function openCreatePlan() {
+    await operationModal.openCreateModal();
     fillPlanModal(null);
   }
 
@@ -874,7 +901,7 @@
       throw new Error("План не найден");
     }
     if (action === "edit") {
-      operationModal.openCreateModal();
+      await operationModal.openCreateModal();
       fillPlanModal(item);
       return;
     }
@@ -917,7 +944,7 @@
       const planId = String(menuTrigger.dataset.planMenuTrigger || "");
       const menu = document.querySelector(`.plan-card-actions-popover[data-plan-menu="${planId}"]`);
       const card = menuTrigger.closest(".plan-card");
-      const pickerUtils = window.App.pickerUtils;
+      const pickerUtils = getPickerUtils();
       if (menu && pickerUtils?.setPopoverOpen) {
         const owners = [menuTrigger, menuTrigger.parentElement].filter(Boolean);
         const clearOpenState = () => {
@@ -951,8 +978,9 @@
     const receiptBtn = event.target.closest("button[data-plan-receipt-view-id]");
     if (receiptBtn) {
       const item = findPlanById(Number(receiptBtn.dataset.planReceiptViewId || 0));
-      if (item?.id && window.App.actions?.openOperationReceiptModal) {
-        window.App.actions.openOperationReceiptModal({
+      const operationsFeature = getOperationsFeature();
+      if (item?.id && operationsFeature.openOperationReceiptModal) {
+        operationsFeature.openOperationReceiptModal({
           ...item,
           operation_date: item.due_date || item.operation_date || core.getTodayIso(),
         });
@@ -976,8 +1004,9 @@
       return;
     }
     const menu = btn.closest(".plan-card-actions-popover");
-    if (menu && window.App.pickerUtils?.setPopoverOpen) {
-      window.App.pickerUtils.setPopoverOpen(menu, false, {
+    const pickerUtils = getPickerUtils();
+    if (menu && pickerUtils?.setPopoverOpen) {
+      pickerUtils.setPopoverOpen(menu, false, {
         owners: Array.isArray(menu.__appPopoverOwners) ? menu.__appPopoverOwners : [],
       });
       (Array.isArray(menu.__appPopoverOwners) ? menu.__appPopoverOwners : []).forEach((owner) => owner?.blur?.());
@@ -1005,7 +1034,7 @@
     });
   }
 
-  window.App.featurePlans = {
+  const api = {
     loadPlans,
     renderPlansSection,
     renderDashboardPlans,
@@ -1022,6 +1051,8 @@
     syncPlanRecurrenceUi,
     togglePlanWeekday,
   };
+
+  window.App.registerRuntimeModule?.("plans", api);
 
   document.addEventListener("keydown", (event) => {
     const card = event.target.closest?.("article[data-plan-card-edit-id]");

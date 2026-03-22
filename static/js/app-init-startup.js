@@ -1,5 +1,17 @@
 (() => {
-  const { state, el, core, actions } = window.App;
+  const { state, el, core } = window.App;
+
+  function getCategoryActions() {
+    return window.App.actions || {};
+  }
+
+  function getSessionFeature() {
+    return window.App.getRuntimeModule?.("session") || {};
+  }
+
+  function getTelegramWebApp() {
+    return window.App.telegramWebApp;
+  }
 
   function bindColorSyncHandlers() {
     el.groupAccentColor.addEventListener("input", () => {
@@ -21,25 +33,25 @@
   }
 
   async function startApp() {
-    if (window.App.telegramWebApp?.init) {
-      window.App.telegramWebApp.init();
+    if (getTelegramWebApp()?.init) {
+      getTelegramWebApp().init();
     }
 
-    if (actions.setupCategoryIconPickers) {
-      actions.setupCategoryIconPickers();
+    if (getCategoryActions().setupCategoryIconPickers) {
+      getCategoryActions().setupCategoryIconPickers();
     }
     bindColorSyncHandlers();
 
-    if (window.App.actions.renderTodayLabel) {
-      window.App.actions.renderTodayLabel();
+    if (getCategoryActions().renderTodayLabel) {
+      getCategoryActions().renderTodayLabel();
     }
 
-    if (actions.loadTelegramLoginConfig) {
-      await actions.loadTelegramLoginConfig();
+    if (getSessionFeature().loadTelegramLoginConfig) {
+      await getSessionFeature().loadTelegramLoginConfig();
     }
 
     if (state.token) {
-      actions.bootstrapApp().catch((err) => {
+      getSessionFeature().bootstrapApp?.().catch((err) => {
         if (!state.token) {
           core.showLogin(String(err));
           return;
@@ -51,9 +63,9 @@
       return;
     }
 
-    if (actions.tryAutoTelegramLogin) {
+    if (getSessionFeature().tryAutoTelegramLogin) {
       try {
-        const loggedIn = await actions.tryAutoTelegramLogin();
+        const loggedIn = await getSessionFeature().tryAutoTelegramLogin();
         if (loggedIn) {
           return;
         }
@@ -66,7 +78,10 @@
     core.showLogin();
   }
 
-  window.App.initStartup = {
+  const api = {
     startApp,
   };
+
+  window.App.initStartup = api;
+  window.App.registerBootstrapModule?.("startup", api);
 })();

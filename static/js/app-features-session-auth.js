@@ -1,7 +1,28 @@
 (() => {
   const { state, el, core } = window.App;
-  const categoryActions = window.App.actions;
-  const operationModal = window.App.operationModal;
+  const operationModal = window.App.getRuntimeModule?.("operation-modal");
+  const sessionPreferences = window.App.getRuntimeModule?.("session-preferences") || {};
+
+  function getActions() {
+    return window.App.actions || {};
+  }
+
+  function getCategoryActions() {
+    const actions = getActions();
+    return {
+      closeCreateCategoryModal: actions.closeCreateCategoryModal,
+    };
+  }
+
+  function getNavigationActions() {
+    const actions = getActions();
+    return {
+      applySectionUi: actions.applySectionUi,
+      switchSection: actions.switchSection,
+      refreshAll: actions.refreshAll,
+      closeEditCategoryModal: actions.closeEditCategoryModal,
+    };
+  }
 
   async function loadTelegramLoginConfig() {
     try {
@@ -112,7 +133,7 @@
 
   function logout(showMessage = true, options = {}) {
     const preserveLoginAlert = options?.preserveLoginAlert === true;
-    window.App.featureSessionPreferences?.cancelDebouncedPreferencesSave?.();
+    sessionPreferences.cancelDebouncedPreferencesSave?.();
     localStorage.removeItem("access_token");
     state.token = "";
     state.preferences = null;
@@ -125,11 +146,12 @@
     state.uiRequestCache.clear();
     operationModal.closeCreateModal();
     operationModal.closeEditModal();
-    if (categoryActions.closeCreateCategoryModal) {
-      categoryActions.closeCreateCategoryModal();
+    if (getCategoryActions().closeCreateCategoryModal) {
+      getCategoryActions().closeCreateCategoryModal();
     }
-    if (window.App.actions.closeEditCategoryModal) {
-      window.App.actions.closeEditCategoryModal();
+    const navigation = getNavigationActions();
+    if (navigation.closeEditCategoryModal) {
+      navigation.closeEditCategoryModal();
     }
     operationModal.closePeriodCustomModal();
     core.closeConfirm();
@@ -151,16 +173,17 @@
   async function bootstrapApp() {
     core.showApp();
     await loadMe();
-    await window.App.featureSessionPreferences?.loadPreferences?.();
-    if (window.App.actions.applySectionUi) {
-      window.App.actions.applySectionUi();
+    await sessionPreferences.loadPreferences?.();
+    const navigation = getNavigationActions();
+    if (navigation.applySectionUi) {
+      navigation.applySectionUi();
     }
-    if (window.App.actions.switchSection) {
-      await window.App.actions.switchSection(state.activeSection || "dashboard", { preserveBackStack: true });
+    if (navigation.switchSection) {
+      await navigation.switchSection(state.activeSection || "dashboard", { preserveBackStack: true });
       return;
     }
-    if (window.App.actions.refreshAll) {
-      await window.App.actions.refreshAll();
+    if (navigation.refreshAll) {
+      await navigation.refreshAll();
     }
   }
 
@@ -194,7 +217,7 @@
 
   applyTelegramLoginUi();
 
-  window.App.featureSessionAuth = {
+  const api = {
     loadTelegramLoginConfig,
     telegramBrowserLogin,
     refreshTelegramLoginUi,
@@ -204,4 +227,6 @@
     telegramLogin,
     tryAutoTelegramLogin,
   };
+
+  window.App.registerRuntimeModule?.("session-auth", api);
 })();

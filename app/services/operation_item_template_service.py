@@ -4,6 +4,13 @@ from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.cache import (
+    build_item_templates_cache_key,
+    get_json,
+    get_namespace_ttl_seconds,
+    invalidate_item_templates_cache,
+    set_json,
+)
 from app.db.models import PlanOperation, PlanReceiptItem
 from app.repositories.operation_repo import OperationRepository
 
@@ -24,7 +31,19 @@ class OperationItemTemplateService:
         page_size: int,
         q: str | None,
     ) -> tuple[list[dict], int]:
-        self.backfill_templates_from_plan_receipts(user_id=user_id)
+        backfilled = self.backfill_templates_from_plan_receipts(user_id=user_id)
+        if backfilled:
+            invalidate_item_templates_cache(user_id)
+        cache_key = build_item_templates_cache_key(
+            user_id=user_id,
+            view="list",
+            page=page,
+            page_size=page_size,
+            q=q,
+        )
+        cached = get_json(cache_key)
+        if cached is not None:
+            return cached["items"], int(cached["total"])
         templates, total = self.repo.list_item_templates(
             user_id=user_id,
             page=page,
@@ -47,9 +66,14 @@ class OperationItemTemplateService:
                     "latest_price_date": latest.recorded_at if latest else None,
                 }
             )
+        set_json(
+            cache_key,
+            {"items": payload, "total": total},
+            ttl_seconds=get_namespace_ttl_seconds("item_templates"),
+        )
         return payload, total
 
-    def backfill_templates_from_plan_receipts(self, *, user_id: int) -> None:
+    def backfill_templates_from_plan_receipts(self, *, user_id: int) -> bool:
         stmt = (
             select(PlanOperation, PlanReceiptItem)
             .join(PlanReceiptItem, PlanReceiptItem.plan_id == PlanOperation.id)
@@ -81,7 +105,7 @@ class OperationItemTemplateService:
                 }
             )
         if not grouped:
-            return
+            return False
         for payload in grouped.values():
             self.sync_templates_from_receipt_items(
                 user_id=user_id,
@@ -90,6 +114,7 @@ class OperationItemTemplateService:
                 recorded_at=payload["recorded_at"],
             )
         self.db.commit()
+        return True
 
     def list_item_template_prices(
         self,
@@ -103,8 +128,17 @@ class OperationItemTemplateService:
             raise LookupError("Item template not found")
         self.repo.cleanup_duplicate_item_template_prices(template_id=template_id)
         self.db.commit()
+        cache_key = build_item_templates_cache_key(
+            user_id=user_id,
+            view="prices",
+            template_id=template_id,
+            limit=limit,
+        )
+        cached = get_json(cache_key)
+        if cached is not None:
+            return cached["items"]
         rows = self.repo.list_item_prices(template_id=template_id, limit=limit)
-        return [
+        payload = [
             {
                 "id": int(row.id),
                 "unit_price": self._money(row.unit_price),
@@ -113,6 +147,12 @@ class OperationItemTemplateService:
             }
             for row in rows
         ]
+        set_json(
+            cache_key,
+            {"items": payload},
+            ttl_seconds=get_namespace_ttl_seconds("item_templates"),
+        )
+        return payload
 
     def create_item_template(
         self,
@@ -162,6 +202,7 @@ class OperationItemTemplateService:
                     source_operation_id=None,
                 )
         self.db.commit()
+        invalidate_item_templates_cache(user_id)
         return self._serialize_item_template(item)
 
     def update_item_template(
@@ -207,6 +248,7 @@ class OperationItemTemplateService:
                     source_operation_id=None,
                 )
         self.db.commit()
+        invalidate_item_templates_cache(user_id)
         return self._serialize_item_template(item)
 
     def delete_item_template(self, *, user_id: int, template_id: int) -> None:
@@ -214,10 +256,12 @@ class OperationItemTemplateService:
         if not deleted:
             raise LookupError("Item template not found")
         self.db.commit()
+        invalidate_item_templates_cache(user_id)
 
     def delete_all_item_templates(self, *, user_id: int) -> int:
         deleted = self.repo.archive_all_item_templates(user_id=user_id)
         self.db.commit()
+        invalidate_item_templates_cache(user_id)
         return deleted
 
     def resolve_templates_and_prices(

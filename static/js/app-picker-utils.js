@@ -153,7 +153,7 @@
   }
 
   window.App = window.App || {};
-  window.App.pickerUtils = {
+  const api = {
     DEFAULT_CATEGORY_USAGE_KEY,
     readUsageMap,
     sortCategoriesByUsage,
@@ -165,4 +165,6 @@
     closePopoverOnOutside,
     closeOpenPopoversOnOutside,
   };
+
+  window.App.registerRuntimeModule?.("picker-utils", api);
 })();

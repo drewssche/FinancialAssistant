@@ -1,6 +1,10 @@
 (() => {
   const { state, el, core } = window.App;
 
+  function getSessionFeature() {
+    return window.App.getRuntimeModule?.("session") || {};
+  }
+
   function isAbortError(err) {
     if (!err) {
       return false;
@@ -101,9 +105,7 @@
     const data = await response.json().catch(() => ({}));
 
     if (response.status === 401) {
-      if (window.App?.actions?.logout) {
-        window.App.actions.logout(false);
-      }
+      getSessionFeature().logout?.(false);
       throw new Error("Сессия истекла, авторизуйся снова");
     }
 

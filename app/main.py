@@ -1,4 +1,6 @@
 from pathlib import Path
+from time import perf_counter
+from uuid import uuid4
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
@@ -7,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
 from app.core.config import get_settings
-from app.core.logging import configure_logging
+from app.core.logging import configure_logging, log_api_request_completion
 from app.core.metrics import record_http_request
 
 settings = get_settings()
@@ -31,9 +33,26 @@ app.mount("/static", StaticFiles(directory=str(static_dir), check_dir=False), na
 
 @app.middleware("http")
 async def http_metrics_middleware(request, call_next):
-    response = await call_next(request)
-    record_http_request(path=request.url.path, method=request.method)
-    return response
+    request_id = request.headers.get("X-Request-ID") or str(uuid4())
+    request.state.request_id = request_id
+    started_at = perf_counter()
+    status_code = 500
+    response = None
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        return response
+    finally:
+        record_http_request(path=request.url.path, method=request.method)
+        if response is not None:
+            response.headers["X-Request-ID"] = request_id
+        log_api_request_completion(
+            method=request.method,
+            path=request.url.path,
+            status_code=status_code,
+            duration_ms=(perf_counter() - started_at) * 1000.0,
+            request_id=request_id,
+        )
 
 
 @app.get("/health")

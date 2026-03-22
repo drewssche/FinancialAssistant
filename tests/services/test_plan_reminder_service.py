@@ -1,3 +1,4 @@
+import logging
 from datetime import date, datetime, time, timezone
 
 from sqlalchemy import create_engine
@@ -268,6 +269,136 @@ def test_refresh_due_job_payload_returns_none_for_deleted_plan_job():
         db.commit()
 
         assert service.refresh_due_job_payload(payload) is None
+    finally:
+        db.close()
+        Base.metadata.drop_all(bind=engine)
+
+
+def test_build_reminder_reply_markup_adds_confirm_button():
+    engine, SessionLocal = _make_session()
+    db = SessionLocal()
+    try:
+        plan = PlanOperation(
+            id=7,
+            user_id=1,
+            kind="expense",
+            amount="10.00",
+            scheduled_date=date.today(),
+            note="Напомнить",
+            status="active",
+            recurrence_enabled=False,
+        )
+
+        markup = PlanReminderService(db).build_reminder_reply_markup({"plan": plan})
+
+        assert markup == {
+            "inline_keyboard": [[{"text": "Подтвердить", "callback_data": "planc:7"}]]
+        }
+    finally:
+        db.close()
+        Base.metadata.drop_all(bind=engine)
+
+
+def test_sync_plan_job_emits_background_event(caplog):
+    engine, SessionLocal = _make_session()
+    db = SessionLocal()
+    try:
+        db.add(User(id=1, display_name="Tester", status="active"))
+        db.add(
+            UserPreference(
+                user_id=1,
+                preferences_version=1,
+                data={
+                    "plans": {"reminders_enabled": True, "reminder_time": "09:30"},
+                    "ui": {"timezone": "UTC"},
+                },
+            )
+        )
+        db.add(
+            PlanOperation(
+                id=1,
+                user_id=1,
+                kind="expense",
+                amount="10.00",
+                scheduled_date=date(2030, 3, 20),
+                note="Будущий план",
+                status="active",
+                recurrence_enabled=False,
+            )
+        )
+        db.commit()
+
+        plan = db.get(PlanOperation, 1)
+        service = PlanReminderService(db)
+        with caplog.at_level(logging.INFO, logger="financial_assistant.jobs"):
+            service.sync_plan_job(plan)
+
+        assert "background_job_event component=plan_reminder event=plan_job_synced" in caplog.text
+        assert "plan_id=1" in caplog.text
+        assert "user_id=1" in caplog.text
+    finally:
+        db.close()
+        Base.metadata.drop_all(bind=engine)
+
+
+def test_mark_job_sent_emits_sent_and_rescheduled_background_events(caplog):
+    engine, SessionLocal = _make_session()
+    db = SessionLocal()
+    try:
+        db.add(User(id=1, display_name="Tester", status="active"))
+        db.add(
+            UserPreference(
+                user_id=1,
+                preferences_version=1,
+                data={
+                    "plans": {"reminders_enabled": True, "reminder_time": "09:00"},
+                    "ui": {"timezone": "UTC"},
+                },
+            )
+        )
+        db.add(
+            PlanOperation(
+                id=1,
+                user_id=1,
+                kind="expense",
+                amount="10.00",
+                scheduled_date=date.today(),
+                note="Напомнить о плане",
+                status="active",
+                recurrence_enabled=False,
+            )
+        )
+        db.add(
+            PlanReminderJob(
+                id=1,
+                plan_id=1,
+                user_id=1,
+                scheduled_for=datetime.now(timezone.utc),
+                status="pending",
+            )
+        )
+        db.commit()
+
+        plan = db.get(PlanOperation, 1)
+        job = db.get(PlanReminderJob, 1)
+        service = PlanReminderService(db)
+        with caplog.at_level(logging.INFO, logger="financial_assistant.jobs"):
+            service.mark_job_sent(
+                {
+                    "job": job,
+                    "plan": plan,
+                    "config": {
+                        "enabled": True,
+                        "timezone": timezone.utc,
+                        "time": time(hour=9, minute=0),
+                    },
+                }
+            )
+
+        assert "background_job_event component=plan_reminder event=job_sent" in caplog.text
+        assert "background_job_event component=plan_reminder event=job_rescheduled" in caplog.text
+        assert "plan_id=1" in caplog.text
+        assert "user_id=1" in caplog.text
     finally:
         db.close()
         Base.metadata.drop_all(bind=engine)

@@ -15,10 +15,9 @@
       loadItemCatalog,
       savePreferencesDebounced,
     } = deps;
-    const sourcesFeature = window.App.createItemCatalogSourcesFeature
-      ? window.App.createItemCatalogSourcesFeature(deps)
-      : null;
-    const pickerUtils = window.App.pickerUtils;
+    const createItemCatalogSourcesFeature = window.App.getRuntimeModule?.("item-catalog-sources-factory");
+    const sourcesFeature = createItemCatalogSourcesFeature ? createItemCatalogSourcesFeature(deps) : null;
+    const pickerUtils = window.App.getRuntimeModule?.("picker-utils") || {};
 
     function openItemTemplateModal(item = null) {
       if (!el.itemTemplateModal || !el.itemTemplateForm) {
@@ -318,6 +317,5 @@
     };
   }
 
-  window.App = window.App || {};
-  window.App.createItemCatalogModalFeature = createItemCatalogModalFeature;
+  window.App.registerRuntimeModule?.("item-catalog-modal-factory", createItemCatalogModalFeature);
 })();

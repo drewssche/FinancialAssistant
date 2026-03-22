@@ -19,7 +19,17 @@
       loadItemCatalog,
       invalidateAllTimeAnchor,
     } = deps;
-    const dashboardData = window.App.dashboardData || {};
+    function getDashboardData() {
+      return window.App.getRuntimeModule?.("dashboard-data") || {};
+    }
+
+    function getActions() {
+      return window.App.actions || {};
+    }
+
+    function getAnalyticsFeature() {
+      return window.App.getRuntimeModule?.("analytics") || {};
+    }
 
     function isSectionVisible(section) {
       return state.activeSection === section;
@@ -27,31 +37,33 @@
 
     async function refreshAfterOperationMutation() {
       const tasks = [loadOperations({ reset: true })];
+      const analyticsFeature = getAnalyticsFeature();
       if (isSectionVisible("dashboard")) {
         tasks.push(loadDashboard(), loadDashboardOperations());
-        if (window.App.actions.loadDashboardAnalyticsPreview) {
-          tasks.push(window.App.actions.loadDashboardAnalyticsPreview({ force: true }));
+        if (analyticsFeature.loadDashboardAnalyticsPreview) {
+          tasks.push(analyticsFeature.loadDashboardAnalyticsPreview({ force: true }));
         }
       }
-      if (isSectionVisible("analytics") && window.App.actions.loadAnalyticsSection) {
-        tasks.push(window.App.actions.loadAnalyticsSection({ force: true }));
+      if (isSectionVisible("analytics") && analyticsFeature.loadAnalyticsSection) {
+        tasks.push(analyticsFeature.loadAnalyticsSection({ force: true }));
       }
       await Promise.all(tasks);
     }
 
     async function refreshAfterDebtMutation() {
       const tasks = [];
+      const analyticsFeature = getAnalyticsFeature();
       if (isSectionVisible("debts") || isSectionVisible("dashboard")) {
         tasks.push(loadDebtsCards());
       }
       if (isSectionVisible("dashboard")) {
         tasks.push(loadDashboard());
-        if (window.App.actions.loadDashboardAnalyticsPreview) {
-          tasks.push(window.App.actions.loadDashboardAnalyticsPreview({ force: true }));
+        if (analyticsFeature.loadDashboardAnalyticsPreview) {
+          tasks.push(analyticsFeature.loadDashboardAnalyticsPreview({ force: true }));
         }
       }
-      if (isSectionVisible("analytics") && window.App.actions.loadAnalyticsSection) {
-        tasks.push(window.App.actions.loadAnalyticsSection({ force: true }));
+      if (isSectionVisible("analytics") && analyticsFeature.loadAnalyticsSection) {
+        tasks.push(analyticsFeature.loadAnalyticsSection({ force: true }));
       }
       if (!tasks.length) {
         return;
@@ -149,6 +161,7 @@
           headers: core.authHeaders(),
           body: JSON.stringify(payload),
         });
+        const dashboardData = getDashboardData();
         core.invalidateUiRequestCache("debts");
         dashboardData.invalidateReadCaches?.();
         state.editDebtCreateId = null;
@@ -162,6 +175,7 @@
         headers: core.authHeaders(),
         body: JSON.stringify(payload),
       });
+      const dashboardData = getDashboardData();
       core.invalidateUiRequestCache("operations");
       dashboardData.invalidateSummaryCache?.();
       invalidateAllTimeAnchor();
@@ -187,6 +201,7 @@
         headers: core.authHeaders(),
         body: JSON.stringify(payload),
       });
+      const dashboardData = getDashboardData();
       core.invalidateUiRequestCache("operations");
       dashboardData.invalidateSummaryCache?.();
       invalidateAllTimeAnchor();
@@ -203,6 +218,7 @@
             method: "DELETE",
             headers: core.authHeaders(),
           });
+          const dashboardData = getDashboardData();
           core.invalidateUiRequestCache("operations");
           dashboardData.invalidateSummaryCache?.();
           invalidateAllTimeAnchor();
@@ -223,6 +239,7 @@
               note: item.note,
             }),
           });
+          const dashboardData = getDashboardData();
           core.invalidateUiRequestCache("operations");
           dashboardData.invalidateSummaryCache?.();
           invalidateAllTimeAnchor();
@@ -251,12 +268,13 @@
     }
 
     async function refreshAll() {
+      const analyticsFeature = getAnalyticsFeature();
       const tasks = [
         { label: "Дашборд", run: () => loadDashboard() },
-        { label: "Аналитика (дашборд)", run: () => (window.App.actions.loadDashboardAnalyticsPreview ? window.App.actions.loadDashboardAnalyticsPreview({ force: true }) : Promise.resolve()) },
+        { label: "Аналитика (дашборд)", run: () => (analyticsFeature.loadDashboardAnalyticsPreview ? analyticsFeature.loadDashboardAnalyticsPreview({ force: true }) : Promise.resolve()) },
         { label: "Операции", run: () => loadOperations({ reset: true }) },
         { label: "Операции (дашборд)", run: () => loadDashboardOperations() },
-        { label: "Аналитика", run: () => (window.App.actions.loadAnalyticsSection ? window.App.actions.loadAnalyticsSection({ force: true }) : Promise.resolve()) },
+        { label: "Аналитика", run: () => (analyticsFeature.loadAnalyticsSection ? analyticsFeature.loadAnalyticsSection({ force: true }) : Promise.resolve()) },
         { label: "Категории", run: () => categoryActions.loadCategories() },
         { label: "Долги", run: () => loadDebtsCards() },
         { label: "Каталог позиций", run: () => loadItemCatalog({ force: true }) },
@@ -290,6 +308,5 @@
     };
   }
 
-  window.App = window.App || {};
-  window.App.createOperationsMutationFeature = createOperationsMutationFeature;
+  window.App.registerRuntimeModule?.("operations-mutation-factory", createOperationsMutationFeature);
 })();

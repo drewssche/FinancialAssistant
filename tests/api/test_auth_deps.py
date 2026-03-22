@@ -20,10 +20,15 @@ def test_get_current_user_rejects_invalid_scheme():
 def test_get_current_user_accepts_valid_bearer(monkeypatch):
     token = create_access_token({"sub": "123"})
 
-    def fake_get_by_id(self, user_id: int):
+    def fake_resolve_user(self, authorization: str | None):
+        assert authorization == f"Bearer {token}"
+        user_id = 123
         return SimpleNamespace(id=user_id)
 
-    monkeypatch.setattr("app.api.deps.UserRepository.get_by_id", fake_get_by_id)
+    monkeypatch.setattr(
+        "app.api.deps.AuthContextService.resolve_user_from_authorization_header",
+        fake_resolve_user,
+    )
 
     user = get_current_user(authorization=f"Bearer {token}", db=object())
     assert get_current_user_id(user) == 123

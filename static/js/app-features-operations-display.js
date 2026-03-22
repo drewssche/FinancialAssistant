@@ -82,6 +82,5 @@
     };
   }
 
-  window.App = window.App || {};
-  window.App.createOperationsDisplayFeature = createOperationsDisplayFeature;
+  window.App.registerRuntimeModule?.("operations-display-factory", createOperationsDisplayFeature);
 })();

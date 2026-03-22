@@ -1,11 +1,10 @@
 (() => {
   const { state, el, core } = window.App;
-  const categoryActions = window.App.actions;
-  const dashboardFeatures = window.App.featureDashboard;
-  const debtFeatures = window.App.featureDebts;
-  const sessionFeatures = window.App.featureSession;
-  const itemCatalogFeatures = window.App.featureItemCatalog;
-  const operationModal = window.App.operationModal;
+  const dashboardFeatures = window.App.getRuntimeModule?.("dashboard") || {};
+  const debtFeatures = window.App.getRuntimeModule?.("debts") || {};
+  const sessionFeatures = window.App.getRuntimeModule?.("session") || {};
+  const itemCatalogFeatures = window.App.getRuntimeModule?.("item-catalog") || {};
+  const operationModal = window.App.getRuntimeModule?.("operation-modal") || {};
   let operationsRawItems = [];
   let operationsRequestController = null;
   let operationsRequestSeq = 0;
@@ -25,8 +24,20 @@
   const loadDebtsCards = debtFeatures.loadDebtsCards;
   const loadItemCatalog = itemCatalogFeatures.loadItemCatalog;
   const OPERATIONS_SUMMARY_CACHE_TTL_MS = 15000;
-  const createOperationsMutationFeature = window.App.createOperationsMutationFeature;
-  const createOperationsDisplayFeature = window.App.createOperationsDisplayFeature;
+  const createOperationsMutationFeature = window.App.getRuntimeModule?.("operations-mutation-factory");
+  const createOperationsDisplayFeature = window.App.getRuntimeModule?.("operations-display-factory");
+
+  function getActions() {
+    return window.App.actions || {};
+  }
+
+  function getCategoryActions() {
+    return window.App.actions || {};
+  }
+
+  function getBulkUi() {
+    return window.App.getRuntimeModule?.("bulk-ui") || {};
+  }
 
   function invalidateAllTimeAnchor() {
     state.firstOperationDate = "";
@@ -245,9 +256,7 @@
         }),
       );
     }
-    if (window.App.actions.updateOperationsBulkUi) {
-      window.App.actions.updateOperationsBulkUi();
-    }
+    getBulkUi().updateOperationsBulkUi?.();
   }
 
   async function loadOperations(options = {}) {
@@ -357,7 +366,7 @@
         row.classList.add("row-selected");
       }
     }
-    window.App.bulkUi?.updateOperationsBulkUi?.();
+    getBulkUi().updateOperationsBulkUi?.();
   }
 
   function clearVisibleOperationsSelection() {
@@ -371,7 +380,7 @@
         row.classList.remove("row-selected");
       }
     }
-    window.App.bulkUi?.updateOperationsBulkUi?.();
+    getBulkUi().updateOperationsBulkUi?.();
   }
 
   async function setOperationsKindFilter(value) {
@@ -402,7 +411,7 @@
       state,
       el,
       core,
-      categoryActions,
+      categoryActions: getCategoryActions(),
       trackCategoryUsage,
       renderCreateCategoryPicker,
       updateCreatePreview,
@@ -442,7 +451,7 @@
   const getOperationDisplayCategories = displayFeature.getOperationDisplayCategories || (() => []);
   const openOperationReceiptModal = displayFeature.openOperationReceiptModal || (() => {});
   const closeOperationReceiptModal = displayFeature.closeOperationReceiptModal || (() => {});
-  window.App.featureOperations = {
+  const api = {
     ensureAllTimeBounds,
     invalidateAllTimeAnchor,
     loadOperations,
@@ -467,4 +476,6 @@
     closeOperationReceiptModal,
     cleanupOperationsRuntime,
   };
+
+  window.App.registerRuntimeModule?.("operations", api);
 })();

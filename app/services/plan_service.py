@@ -4,6 +4,14 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
+from app.core.cache import (
+    build_plans_cache_key,
+    get_json,
+    get_namespace_ttl_seconds,
+    invalidate_plans_cache,
+    set_json,
+)
+from app.core.logging import log_background_job_event
 from app.repositories.plan_repo import PlanRepository
 from app.services.operation_service import OperationService
 from app.services.plan_reminder_service import PlanReminderService
@@ -17,6 +25,13 @@ class PlanService:
         self.reminder_service = PlanReminderService(db)
 
     def list_plans(self, *, user_id: int, q: str | None = None, kind: str | None = None) -> tuple[list[dict], int]:
+        cache_key = build_plans_cache_key(user_id=user_id, view="list", q=q, kind=kind)
+        cached = get_json(cache_key)
+        if cached:
+            items = cached.get("items")
+            total = cached.get("total")
+            if isinstance(items, list) and isinstance(total, int):
+                return items, total
         rows = self.repo.list_for_user(user_id=user_id, q=q, kind=kind)
         plan_ids = [int(row.PlanOperation.id) for row in rows]
         receipt_by_plan = self.repo.list_receipt_items_for_plans(user_id=user_id, plan_ids=plan_ids)
@@ -29,6 +44,7 @@ class PlanService:
             )
             for row in rows
         ]
+        set_json(cache_key, {"items": items, "total": len(items)}, ttl_seconds=get_namespace_ttl_seconds("plans"))
         return items, len(items)
 
     def get_plan(self, *, user_id: int, plan_id: int) -> dict:
@@ -40,8 +56,16 @@ class PlanService:
         return self._serialize_plan_row(row=row, receipt_items=receipt_by_plan.get(plan_id, []), reminder_job=reminder_job)
 
     def list_history(self, *, user_id: int, q: str | None = None, kind: str | None = None) -> tuple[list[dict], int]:
+        cache_key = build_plans_cache_key(user_id=user_id, view="history", q=q, kind=kind)
+        cached = get_json(cache_key)
+        if cached:
+            items = cached.get("items")
+            total = cached.get("total")
+            if isinstance(items, list) and isinstance(total, int):
+                return items, total
         rows = self.repo.list_history_for_user(user_id=user_id, q=q, kind=kind)
         items = [self._serialize_event_row(row) for row in rows]
+        set_json(cache_key, {"items": items, "total": len(items)}, ttl_seconds=get_namespace_ttl_seconds("plans"))
         return items, len(items)
 
     def create_plan(
@@ -98,8 +122,33 @@ class PlanService:
                 normalized_items=normalized_items,
                 recorded_at=scheduled_date,
             )
+            log_background_job_event(
+                "plan_service",
+                "plan_item_templates_synced",
+                user_id=user_id,
+                plan_id=int(item.id),
+                receipt_items_count=len(normalized_items),
+            )
         self.reminder_service.sync_plan_job(item)
+        log_background_job_event(
+            "plan_service",
+            "plan_reminder_sync_requested",
+            action="create",
+            user_id=user_id,
+            plan_id=int(item.id),
+            recurrence_enabled=bool(item.recurrence_enabled),
+        )
         self.db.commit()
+        invalidate_plans_cache(user_id)
+        log_background_job_event(
+            "plan_service",
+            "plan_created",
+            user_id=user_id,
+            plan_id=int(item.id),
+            kind=item.kind,
+            status=item.status,
+            recurrence_enabled=bool(item.recurrence_enabled),
+        )
         return self.get_plan(user_id=user_id, plan_id=int(item.id))
 
     def update_plan(self, *, user_id: int, plan_id: int, updates: dict) -> dict:
@@ -158,8 +207,33 @@ class PlanService:
                     normalized_items=normalized_items,
                     recorded_at=updates.get("scheduled_date", item.scheduled_date),
                 )
+                log_background_job_event(
+                    "plan_service",
+                    "plan_item_templates_synced",
+                    user_id=user_id,
+                    plan_id=int(item.id),
+                    receipt_items_count=len(normalized_items),
+                )
         self.reminder_service.sync_plan_job(item)
+        log_background_job_event(
+            "plan_service",
+            "plan_reminder_sync_requested",
+            action="update",
+            user_id=user_id,
+            plan_id=int(item.id),
+            recurrence_enabled=bool(item.recurrence_enabled),
+        )
         self.db.commit()
+        invalidate_plans_cache(user_id)
+        log_background_job_event(
+            "plan_service",
+            "plan_updated",
+            user_id=user_id,
+            plan_id=int(item.id),
+            kind=item.kind,
+            status=item.status,
+            recurrence_enabled=bool(item.recurrence_enabled),
+        )
         return self.get_plan(user_id=user_id, plan_id=plan_id)
 
     def delete_plan(self, *, user_id: int, plan_id: int) -> None:
@@ -173,6 +247,13 @@ class PlanService:
         )
         self.repo.delete(row.PlanOperation)
         self.db.commit()
+        invalidate_plans_cache(user_id)
+        log_background_job_event(
+            "plan_service",
+            "plan_deleted",
+            user_id=user_id,
+            plan_id=plan_id,
+        )
 
     def confirm_plan(self, *, user_id: int, plan_id: int) -> dict:
         row = self.repo.get_by_id(user_id=user_id, plan_id=plan_id)
@@ -236,7 +317,25 @@ class PlanService:
         else:
             item.status = "confirmed"
         self.reminder_service.sync_plan_job(item)
+        log_background_job_event(
+            "plan_service",
+            "plan_reminder_sync_requested",
+            action="confirm",
+            user_id=user_id,
+            plan_id=int(item.id),
+            recurrence_enabled=bool(item.recurrence_enabled),
+        )
         self.db.commit()
+        invalidate_plans_cache(user_id)
+        log_background_job_event(
+            "plan_service",
+            "plan_completed",
+            user_id=user_id,
+            plan_id=int(item.id),
+            event_type="confirmed",
+            status=item.status,
+            recurrence_enabled=bool(item.recurrence_enabled),
+        )
         return {
             "plan": self.get_plan(user_id=user_id, plan_id=plan_id),
             "operation": operation,
@@ -281,7 +380,25 @@ class PlanService:
         else:
             item.status = "skipped"
         self.reminder_service.sync_plan_job(item)
+        log_background_job_event(
+            "plan_service",
+            "plan_reminder_sync_requested",
+            action="skip",
+            user_id=user_id,
+            plan_id=int(item.id),
+            recurrence_enabled=bool(item.recurrence_enabled),
+        )
         self.db.commit()
+        invalidate_plans_cache(user_id)
+        log_background_job_event(
+            "plan_service",
+            "plan_completed",
+            user_id=user_id,
+            plan_id=int(item.id),
+            event_type="skipped",
+            status=item.status,
+            recurrence_enabled=bool(item.recurrence_enabled),
+        )
         return self.get_plan(user_id=user_id, plan_id=plan_id)
 
     def _serialize_plan_row(self, *, row, receipt_items: list, reminder_job=None) -> dict:

@@ -13,7 +13,7 @@
       updateCreatePreview,
     } = deps;
 
-    const pickerUtils = window.App.pickerUtils;
+    const pickerUtils = window.App.getRuntimeModule?.("picker-utils");
 
     function normalizeCounterpartyName(value) {
       return String(value || "").trim().replace(/\s+/g, " ");
@@ -247,5 +247,5 @@
   }
 
   window.App = window.App || {};
-  window.App.createOperationModalDebtCounterpartyFeature = createOperationModalDebtCounterpartyFeature;
+  window.App.registerRuntimeModule?.("operation-modal-debt-counterparty-factory", createOperationModalDebtCounterpartyFeature);
 })();

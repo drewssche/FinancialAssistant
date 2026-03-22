@@ -1,6 +1,6 @@
 (() => {
   const { actions } = window.App;
-  const bulkUi = window.App.bulkUi;
+  const bulkUi = window.App.getRuntimeModule?.("bulk-ui");
   const bulkBindings = window.App.bulkBindings;
 
   bulkBindings.bindBulkHandlers();

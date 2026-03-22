@@ -1,6 +1,6 @@
 (() => {
   const { state, el, core } = window.App;
-  const operationModal = window.App.operationModal;
+  const operationModal = window.App.getRuntimeModule?.("operation-modal");
   let preferencesSaveDebounceId = null;
   const DEFAULT_UI_PREFS = {
     timezone: "auto",
@@ -14,6 +14,14 @@
     scale_percent: 100,
   };
   let activeSettingsPickerKey = "";
+
+  function getAnalyticsFeature() {
+    return window.App.getRuntimeModule?.("analytics") || {};
+  }
+
+  function getCategoryActions() {
+    return window.App.actions || {};
+  }
 
   const SETTINGS_PICKER_CONFIGS = {
     timezone: {
@@ -297,13 +305,14 @@
     core.syncSegmentedActive(el.adminUserStatusTabs, "admin-user-status", state.adminUserStatusFilter);
     core.syncSegmentedActive(el.plansStatusTabs, "plan-status", state.plansStatusFilter);
     core.syncSegmentedActive(el.plansHistoryEventTabs, "plan-history-event", state.plansHistoryEventFilter);
-    if (window.App.actions.applyAnalyticsTabUi) {
-      window.App.actions.applyAnalyticsTabUi();
+    const analyticsFeature = getAnalyticsFeature();
+    if (analyticsFeature.applyAnalyticsTabUi) {
+      analyticsFeature.applyAnalyticsTabUi();
     }
     applyInterfaceSettingsUi();
     operationModal.applySettingsUi();
-    if (window.App.actions.renderTodayLabel) {
-      window.App.actions.renderTodayLabel();
+    if (getCategoryActions().renderTodayLabel) {
+      getCategoryActions().renderTodayLabel();
     }
   }
 
@@ -425,7 +434,7 @@
     preferencesSaveDebounceId = null;
   }
 
-  window.App.featureSessionPreferences = {
+  const api = {
     DEFAULT_UI_PREFS,
     normalizeStructureHidden,
     getMergedUiPrefs,
@@ -440,4 +449,6 @@
     savePreferencesDebounced,
     cancelDebouncedPreferencesSave,
   };
+
+  window.App.registerRuntimeModule?.("session-preferences", api);
 })();

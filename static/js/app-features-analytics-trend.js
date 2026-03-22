@@ -334,10 +334,11 @@
     return data;
   }
 
-  window.App.featureAnalyticsModules = window.App.featureAnalyticsModules || {};
-  window.App.featureAnalyticsModules.trend = {
+  const api = {
     formatPct,
     loadAnalyticsTrend,
     loadDashboardAnalyticsPreview,
   };
+
+  window.App.registerRuntimeModule?.("analytics-trend-module", api);
 })();

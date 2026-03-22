@@ -73,6 +73,10 @@
     return `${year}-${month}`;
   }
 
+  function getAnalyticsFeature() {
+    return window.App.getRuntimeModule?.("analytics") || {};
+  }
+
   function syncMonthLabelByView(dateObj, view) {
     if (!el.analyticsMonthLabel) {
       return;
@@ -294,16 +298,18 @@
       current.setUTCMonth(current.getUTCMonth() + step, 1);
     }
     state.analyticsMonthAnchor = serializeMonthAnchor(current);
-    if (window.App.featureAnalytics?.loadAnalyticsSection) {
-      await window.App.featureAnalytics.loadAnalyticsSection({ force: true });
+    const analyticsFeature = getAnalyticsFeature();
+    if (analyticsFeature.loadAnalyticsSection) {
+      await analyticsFeature.loadAnalyticsSection({ force: true });
     }
   }
 
   async function resetAnalyticsMonth() {
     const now = new Date();
     state.analyticsMonthAnchor = serializeMonthAnchor(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)));
-    if (window.App.featureAnalytics?.loadAnalyticsSection) {
-      await window.App.featureAnalytics.loadAnalyticsSection({ force: true });
+    const analyticsFeature = getAnalyticsFeature();
+    if (analyticsFeature.loadAnalyticsSection) {
+      await analyticsFeature.loadAnalyticsSection({ force: true });
     }
   }
 
@@ -314,8 +320,9 @@
     }
     state.analyticsMonthAnchor = serializeMonthAnchor(parsed);
     state.analyticsCalendarView = "month";
-    if (window.App.featureAnalytics?.loadAnalyticsSection) {
-      await window.App.featureAnalytics.loadAnalyticsSection({ force: true });
+    const analyticsFeature = getAnalyticsFeature();
+    if (analyticsFeature.loadAnalyticsSection) {
+      await analyticsFeature.loadAnalyticsSection({ force: true });
     }
   }
 
@@ -352,8 +359,7 @@
     await loadAnalyticsCalendar({ force: true });
   }
 
-  window.App.featureAnalyticsModules = window.App.featureAnalyticsModules || {};
-  window.App.featureAnalyticsModules.calendar = {
+  const api = {
     parseMonthAnchor,
     currentAnchorDate,
     serializeMonthAnchor,
@@ -367,4 +373,6 @@
     setAnalyticsGridYearAnchor,
     syncCalendarScrollFade,
   };
+
+  window.App.registerRuntimeModule?.("analytics-calendar-module", api);
 })();

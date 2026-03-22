@@ -7,6 +7,18 @@
     income: "#49be78",
   };
 
+  function getCategoryUi() {
+    return window.App.getRuntimeModule?.("category-ui");
+  }
+
+  function getCategoriesUiCoordinator() {
+    return window.App.getRuntimeModule?.("categories-ui-coordinator") || {};
+  }
+
+  function getSessionFeature() {
+    return window.App.getRuntimeModule?.("session") || {};
+  }
+
   function normalizeHexColor(value) {
     const raw = String(value || "").trim();
     const match = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(raw);
@@ -67,8 +79,9 @@
 
   function persistCollapsedCategoryGroups(nextSet) {
     writeCollapsedCategoryGroups(nextSet);
-    if (window.App.actions?.savePreferences) {
-      window.App.actions.savePreferences().catch(() => {});
+    const sessionFeature = getSessionFeature();
+    if (sessionFeature.savePreferences) {
+      sessionFeature.savePreferences().catch(() => {});
     }
   }
 
@@ -83,45 +96,34 @@
   }
 
   function openEditGroupModal(group) {
-    if (!group) {
-      return;
-    }
-    el.editGroupId.value = String(group.id);
-    el.editGroupName.value = group.name || "";
-    const color = group.accent_color || "#ff8a3d";
-    el.editGroupAccentColor.value = color;
-    el.editGroupAccentColorHex.value = color;
-    el.editGroupModal.classList.remove("hidden");
+    const categoriesUiCoordinator = getCategoriesUiCoordinator();
+    categoriesUiCoordinator.openEditGroupModal?.({ group, el });
   }
 
   function closeEditGroupModal() {
-    el.editGroupId.value = "";
-    el.editGroupModal.classList.add("hidden");
+    const categoriesUiCoordinator = getCategoriesUiCoordinator();
+    categoriesUiCoordinator.closeEditGroupModal?.({ el });
   }
 
   function openEditCategoryModal(item) {
-    state.editCategoryId = item.id;
-    el.editCategoryName.value = item.name || "";
-    el.editCategoryIcon.value = item.icon || "";
-    window.App.categoryUi.updateIconToggleLabel(el.editCategoryIconToggle, el.editCategoryIcon.value);
-    window.App.categoryUi.closeIconPopovers();
-    window.App.categoryUi.setCategoryKind("edit", item.kind || "expense");
-    el.editCategoryGroup.value = item.group_id ? String(item.group_id) : "";
-    const selected = state.categoryGroups.find((group) => String(group.id) === el.editCategoryGroup.value);
-    if (el.editCategoryGroupSearch) {
-      el.editCategoryGroupSearch.value = selected?.name || "";
-    }
-    window.App.categoryUi.renderEditGroupPicker();
-    el.editCategoryModal.classList.remove("hidden");
+    const categoriesUiCoordinator = getCategoriesUiCoordinator();
+    const categoryUi = getCategoryUi();
+    categoriesUiCoordinator.openEditCategoryModal?.({
+      item,
+      state,
+      el,
+      categoryUi,
+    });
   }
 
   function closeEditCategoryModal() {
-    state.editCategoryId = null;
-    window.App.categoryUi.closeIconPopovers();
-    if (el.editCategoryGroupPickerBlock) {
-      el.editCategoryGroupPickerBlock.classList.add("hidden");
-    }
-    el.editCategoryModal.classList.add("hidden");
+    const categoriesUiCoordinator = getCategoriesUiCoordinator();
+    const categoryUi = getCategoryUi();
+    categoriesUiCoordinator.closeEditCategoryModal?.({
+      state,
+      el,
+      categoryUi,
+    });
   }
 
   function groupCategoryIds(groupId) {
@@ -391,76 +393,52 @@
   }
 
   function renderCategories() {
+    const categoriesUiCoordinator = getCategoriesUiCoordinator();
     const queryRaw = String(el.categorySearchQ.value || "").trim();
     const queryLower = queryRaw.toLowerCase();
     const queryActive = Boolean(queryRaw);
     const groups = getCategoriesDisplayGroups(queryRaw, queryLower);
     syncCategoryGroupControls(queryActive, groups);
-
-    el.categoriesBody.innerHTML = "";
-    if (!groups.length) {
-      const row = document.createElement("tr");
-      row.innerHTML = '<td colspan="4">Категории не найдены</td>';
-      el.categoriesBody.appendChild(row);
-      updateCategoriesBulkUi();
-      return;
-    }
-
-    const collapsedSet = readCollapsedCategoryGroups();
-    for (const group of groups) {
-      const isCollapsed = !queryActive && !group.isUngrouped && collapsedSet.has(group.key);
-      el.categoriesBody.appendChild(renderGroupHeaderRow(group, queryRaw, isCollapsed, queryActive));
-      for (const child of group.children) {
-        const row = renderCategoryRow(child, queryRaw, {
-          groupId: group.id,
-          groupKey: group.key,
-          isCollapsed,
-          groupLabel: group.isUngrouped
-            ? "<span class='muted-small'>Без группы</span>"
-            : "<span class='muted-small category-tree-mark'>↳</span>",
-          groupAccentColor: group.accentColor || null,
-        });
-        el.categoriesBody.appendChild(row);
-      }
-    }
-    updateCategoriesBulkUi();
+    categoriesUiCoordinator.renderGroupedCategoryTable?.({
+      body: el.categoriesBody,
+      groups,
+      queryRaw,
+      queryActive,
+      readCollapsedSet: readCollapsedCategoryGroups,
+      renderGroupHeaderRow,
+      renderCategoryRow,
+      updateBulkUi: updateCategoriesBulkUi,
+    });
   }
 
   function handleCategoriesGroupToggleClick(event) {
-    const btn = event.target.closest("button[data-category-group-toggle-key]");
-    if (!btn) {
-      return false;
-    }
-    const queryActive = Boolean(String(el.categorySearchQ.value || "").trim());
-    const groupKey = String(btn.dataset.categoryGroupToggleKey || "");
-    if (!groupKey || queryActive || groupKey === CATEGORY_UNGROUPED_KEY) {
-      return true;
-    }
-    const collapsedSet = readCollapsedCategoryGroups();
-    if (collapsedSet.has(groupKey)) {
-      collapsedSet.delete(groupKey);
-    } else {
-      collapsedSet.add(groupKey);
-    }
-    persistCollapsedCategoryGroups(collapsedSet);
-    renderCategories();
-    return true;
+    const categoriesUiCoordinator = getCategoriesUiCoordinator();
+    return categoriesUiCoordinator.toggleCollapsedGroupFromEvent?.({
+      event,
+      queryRaw: el.categorySearchQ.value || "",
+      ungroupedKey: CATEGORY_UNGROUPED_KEY,
+      readCollapsedSet: readCollapsedCategoryGroups,
+      persistCollapsedSet: persistCollapsedCategoryGroups,
+      rerender: renderCategories,
+    }) || false;
   }
 
   function collapseAllCategoryGroups() {
-    const queryActive = Boolean(String(el.categorySearchQ.value || "").trim());
-    if (queryActive) {
-      return;
-    }
-    const groups = getCategoriesDisplayGroups("", "");
-    const nextSet = new Set(groups.filter((group) => !group.isUngrouped).map((group) => group.key));
-    persistCollapsedCategoryGroups(nextSet);
-    renderCategories();
+    const categoriesUiCoordinator = getCategoriesUiCoordinator();
+    categoriesUiCoordinator.collapseAllCategoryGroups?.({
+      queryRaw: el.categorySearchQ.value || "",
+      groups: getCategoriesDisplayGroups("", ""),
+      persistCollapsedSet: persistCollapsedCategoryGroups,
+      rerender: renderCategories,
+    });
   }
 
   function expandAllCategoryGroups() {
-    persistCollapsedCategoryGroups(new Set());
-    renderCategories();
+    const categoriesUiCoordinator = getCategoriesUiCoordinator();
+    categoriesUiCoordinator.expandAllCategoryGroups?.({
+      persistCollapsedSet: persistCollapsedCategoryGroups,
+      rerender: renderCategories,
+    });
   }
 
   window.App.categoryTableUi = {

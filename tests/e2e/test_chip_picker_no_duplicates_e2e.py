@@ -161,6 +161,21 @@ def page_with_api_mock():
             browser.close()
 
 
+def _login_via_mock_telegram(page):
+    page.evaluate("() => window.App.getRuntimeModule('session')?.refreshTelegramLoginUi?.()")
+    try:
+        page.locator("#telegramLoginBtn").wait_for(state="visible", timeout=1200)
+        page.click("#telegramLoginBtn")
+        page.wait_for_selector("#appShell:not(.hidden)")
+    except Exception:
+        page.evaluate(
+            """
+            () => window.App.getRuntimeModule('session')?.tryAutoTelegramLogin?.().catch(() => null)
+            """
+        )
+        page.wait_for_selector("#appShell:not(.hidden)")
+
+
 @pytest.mark.e2e
 def test_operation_category_search_renders_single_chip_without_duplicates(static_server_url: str, page_with_api_mock):
     page = page_with_api_mock
@@ -178,10 +193,7 @@ def test_operation_category_search_renders_single_chip_without_duplicates(static
         }
         """
     )
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
+    _login_via_mock_telegram(page)
 
     page.click("#addOperationCta")
     page.wait_for_selector("#createModal:not(.hidden)")
@@ -211,10 +223,7 @@ def test_operation_category_popover_closes_on_outside_click(static_server_url: s
         }
         """
     )
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
+    _login_via_mock_telegram(page)
     page.click("#addOperationCta")
     page.wait_for_selector("#createModal:not(.hidden)")
 
@@ -245,10 +254,7 @@ def test_mobile_create_category_modal_keeps_kind_switch_above_sticky_cta(static_
         }
         """
     )
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
+    _login_via_mock_telegram(page)
 
     page.click("#mobileNavToggleBtn")
     page.click("button[data-section='categories']")
@@ -306,14 +312,13 @@ def test_mobile_edit_category_modal_keeps_group_field_above_sticky_cta(static_se
         }
         """
     )
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
+    _login_via_mock_telegram(page)
 
     page.click("#mobileNavToggleBtn")
     page.click("button[data-section='categories']")
     page.wait_for_selector("#categoriesSection:not(.hidden)")
+    page.click("button[data-mobile-card-menu-trigger='category-101']")
+    page.wait_for_selector("[data-mobile-card-menu='category-101']:not(.hidden)")
     page.click("button[data-edit-category-id='101']")
     page.wait_for_selector("#editCategoryModal:not(.hidden)")
     page.focus("#editCategoryGroupSearch")

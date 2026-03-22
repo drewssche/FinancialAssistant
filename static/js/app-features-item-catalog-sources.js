@@ -231,6 +231,5 @@
     };
   }
 
-  window.App = window.App || {};
-  window.App.createItemCatalogSourcesFeature = createItemCatalogSourcesFeature;
+  window.App.registerRuntimeModule?.("item-catalog-sources-factory", createItemCatalogSourcesFeature);
 })();

@@ -8,9 +8,19 @@ from typing import Any
 import httpx
 
 from app.core.config import get_settings
+from app.core.logging import log_telegram_bot_event
 from app.db.session import SessionLocal
-from app.repositories.user_repo import UserRepository
-from app.services.plan_reminder_service import PlanReminderService
+from app.services.telegram_admin_bot_service import (
+    TelegramAdminBotService,
+    TelegramAdminTargetUserNotFoundError,
+)
+from app.services.telegram_plan_bot_service import (
+    TelegramPlanAlreadyCompletedError,
+    TelegramPlanBotService,
+    TelegramPlanNotFoundError,
+    TelegramPlanUserNotFoundError,
+)
+from app.services.telegram_plan_reminder_bot_service import TelegramPlanReminderBotService
 
 
 logger = logging.getLogger("financial_assistant_admin_bot")
@@ -43,19 +53,6 @@ class TelegramBotClient:
             raise RuntimeError(f"Telegram API error for {method}: {data}")
         return data
 
-
-def _format_user_label(user) -> str:
-    identity = next((item for item in (user.identities or []) if item.provider == "telegram"), None)
-    username = f"@{identity.username}" if identity and identity.username else "—"
-    telegram_id = identity.provider_user_id if identity else "—"
-    return (
-        f"Имя: {user.display_name or 'Без имени'}\n"
-        f"Username: {username}\n"
-        f"Telegram ID: {telegram_id}\n"
-        f"User ID: {user.id}"
-    )
-
-
 async def _answer_callback(client: TelegramBotClient, callback_query_id: str, text: str) -> None:
     await client.call(
         "answerCallbackQuery",
@@ -80,6 +77,7 @@ async def handle_message(client: TelegramBotClient, message: dict[str, Any]) -> 
         else "Бот используется для уведомлений админов о новых заявках."
     )
     await client.call("sendMessage", {"chat_id": chat_id, "text": reply})
+    log_telegram_bot_event("start_message_sent", chat_id=chat_id, is_admin=is_admin)
 
 
 async def handle_callback_query(client: TelegramBotClient, query: dict[str, Any]) -> None:
@@ -87,51 +85,123 @@ async def handle_callback_query(client: TelegramBotClient, query: dict[str, Any]
     callback_id = str(query.get("id") or "")
     data = str(query.get("data") or "")
     from_user = query.get("from") or {}
-    admin_telegram_id = str(from_user.get("id") or "")
+    actor_telegram_id = str(from_user.get("id") or "")
     message = query.get("message") or {}
     chat_id = (message.get("chat") or {}).get("id")
     message_id = message.get("message_id")
 
-    if admin_telegram_id not in settings.admin_telegram_id_set:
-        await _answer_callback(client, callback_id, "Недостаточно прав")
+    access_parts = data.split(":")
+    if len(access_parts) == 3 and access_parts[0] == "access":
+        if actor_telegram_id not in settings.admin_telegram_id_set:
+            await _answer_callback(client, callback_id, "Недостаточно прав")
+            log_telegram_bot_event("callback_denied", admin_telegram_id=actor_telegram_id or "unknown", data=data or "empty")
+            return
+        if access_parts[1] not in {"approve", "reject"}:
+            await _answer_callback(client, callback_id, "Неизвестное действие")
+            log_telegram_bot_event("callback_invalid", admin_telegram_id=actor_telegram_id, data=data or "empty")
+            return
+        action = access_parts[1]
+        try:
+            user_id = int(access_parts[2])
+        except ValueError:
+            await _answer_callback(client, callback_id, "Некорректный пользователь")
+            log_telegram_bot_event("callback_invalid_user_id", admin_telegram_id=actor_telegram_id, raw_user_id=access_parts[2])
+            return
+
+        db = SessionLocal()
+        try:
+            try:
+                result = TelegramAdminBotService(db).review_access_request(action=action, user_id=user_id)
+            except TelegramAdminTargetUserNotFoundError as exc:
+                await _answer_callback(client, callback_id, str(exc))
+                log_telegram_bot_event(
+                    "callback_user_not_found",
+                    admin_telegram_id=actor_telegram_id,
+                    action=action,
+                    user_id=user_id,
+                )
+                return
+            if chat_id and message_id:
+                await client.call(
+                    "editMessageText",
+                    {
+                        "chat_id": chat_id,
+                        "message_id": message_id,
+                        "text": result.message_text,
+                    },
+                )
+            await _answer_callback(client, callback_id, result.callback_text)
+            log_telegram_bot_event(
+                "callback_processed",
+                admin_telegram_id=actor_telegram_id,
+                action=action,
+                user_id=user_id,
+                callback_text=result.callback_text,
+            )
+        finally:
+            db.close()
         return
 
-    parts = data.split(":")
-    if len(parts) != 3 or parts[0] != "access" or parts[1] not in {"approve", "reject"}:
+    confirm_parts = data.split(":", 1)
+    if len(confirm_parts) != 2 or confirm_parts[0] != "planc":
         await _answer_callback(client, callback_id, "Неизвестное действие")
+        log_telegram_bot_event("callback_invalid", actor_telegram_id=actor_telegram_id or "unknown", data=data or "empty")
         return
 
-    action = parts[1]
     try:
-        user_id = int(parts[2])
+        plan_id = int(confirm_parts[1])
     except ValueError:
-        await _answer_callback(client, callback_id, "Некорректный пользователь")
+        await _answer_callback(client, callback_id, "Некорректный план")
+        log_telegram_bot_event("plan_confirm_invalid_plan_id", telegram_id=actor_telegram_id or "unknown", raw_plan_id=confirm_parts[1])
         return
 
     db = SessionLocal()
     try:
-        repo = UserRepository(db)
-        user = repo.get_by_id(user_id)
-        if not user:
-            await _answer_callback(client, callback_id, "Пользователь не найден")
+        try:
+            result = TelegramPlanBotService(db).confirm_plan_from_telegram(
+                telegram_id=actor_telegram_id,
+                plan_id=plan_id,
+            )
+        except TelegramPlanUserNotFoundError as exc:
+            await _answer_callback(client, callback_id, str(exc))
+            log_telegram_bot_event(
+                "plan_confirm_user_not_found",
+                telegram_id=actor_telegram_id or "unknown",
+                plan_id=plan_id,
+            )
             return
-        next_status = "approved" if action == "approve" else "rejected"
-        changed = user.status != next_status
-        user.status = next_status
-        db.commit()
-        db.refresh(user)
-        status_label = "Одобрен" if next_status == "approved" else "Отклонен"
-        text = f"Заявка обработана: {status_label}\n\n{_format_user_label(user)}"
+        except TelegramPlanNotFoundError as exc:
+            await _answer_callback(client, callback_id, str(exc))
+            log_telegram_bot_event(
+                "plan_confirm_plan_not_found",
+                telegram_id=actor_telegram_id or "unknown",
+                plan_id=plan_id,
+            )
+            return
+        except TelegramPlanAlreadyCompletedError as exc:
+            await _answer_callback(client, callback_id, str(exc))
+            log_telegram_bot_event(
+                "plan_confirm_already_completed",
+                telegram_id=actor_telegram_id or "unknown",
+                plan_id=plan_id,
+            )
+            return
         if chat_id and message_id:
             await client.call(
                 "editMessageText",
                 {
                     "chat_id": chat_id,
                     "message_id": message_id,
-                    "text": text,
+                    "text": result.message_text,
                 },
             )
-        await _answer_callback(client, callback_id, status_label if changed else f"Уже: {status_label.lower()}")
+        await _answer_callback(client, callback_id, result.callback_text)
+        log_telegram_bot_event(
+            "plan_confirm_processed",
+            telegram_id=actor_telegram_id or "unknown",
+            plan_id=plan_id,
+            callback_text=result.callback_text,
+        )
     finally:
         db.close()
 
@@ -139,30 +209,39 @@ async def handle_callback_query(client: TelegramBotClient, query: dict[str, Any]
 async def process_plan_reminders(client: TelegramBotClient) -> None:
     db = SessionLocal()
     try:
-        service = PlanReminderService(db)
-        for payload in service.list_due_jobs():
-            payload = service.refresh_due_job_payload(payload)
-            if not payload or not payload.get("chat_id"):
-                continue
+        service = TelegramPlanReminderBotService(db)
+        for delivery in service.list_due_deliveries():
             try:
                 await client.call(
                     "sendMessage",
                     {
-                        "chat_id": payload["chat_id"],
-                        "text": service.build_reminder_text(payload),
+                        "chat_id": delivery.chat_id,
+                        "text": delivery.text,
+                        "reply_markup": delivery.reply_markup,
                         "disable_web_page_preview": True,
                     },
                 )
             except Exception as exc:  # noqa: BLE001
-                plan = payload.get("plan")
+                log_telegram_bot_event(
+                    "plan_reminder_failed",
+                    user_id=delivery.user_id,
+                    plan_id=delivery.plan_id,
+                    error=type(exc).__name__,
+                )
                 logger.warning(
                     "telegram plan reminder failed for user %s plan %s: %s",
-                    getattr(plan, "user_id", "unknown"),
-                    getattr(plan, "id", "unknown"),
+                    delivery.user_id,
+                    delivery.plan_id,
                     exc,
                 )
                 continue
-            service.mark_job_sent(payload)
+            service.mark_delivery_sent(delivery)
+            log_telegram_bot_event(
+                "plan_reminder_sent",
+                chat_id=delivery.chat_id,
+                user_id=delivery.user_id,
+                plan_id=delivery.plan_id,
+            )
     finally:
         db.close()
 
@@ -178,6 +257,11 @@ async def run() -> None:
     reminder_scan_interval_seconds = max(15, int(settings.telegram_plan_reminder_scan_interval_seconds))
     retry_delay_seconds = max(1, int(settings.telegram_bot_retry_delay_seconds))
     logger.info("telegram admin bot started")
+    log_telegram_bot_event(
+        "bot_started",
+        poll_timeout_seconds=settings.telegram_bot_poll_timeout_seconds,
+        reminder_scan_interval_seconds=reminder_scan_interval_seconds,
+    )
     try:
         while True:
             now_mono = monotonic()
@@ -185,6 +269,7 @@ async def run() -> None:
                 try:
                     await process_plan_reminders(client)
                 except Exception as exc:  # noqa: BLE001
+                    log_telegram_bot_event("plan_reminder_scan_failed", error=type(exc).__name__)
                     logger.warning("telegram plan reminder scan failed: %s", exc)
                 last_plan_reminder_scan_at = now_mono
             try:
@@ -197,12 +282,17 @@ async def run() -> None:
                     },
                 )
             except httpx.ReadTimeout:
+                log_telegram_bot_event(
+                    "get_updates_read_timeout",
+                    timeout_seconds=settings.telegram_bot_poll_timeout_seconds,
+                )
                 logger.warning(
                     "telegram getUpdates read timeout after %ss, retrying",
                     settings.telegram_bot_poll_timeout_seconds,
                 )
                 continue
             except httpx.RequestError as exc:
+                log_telegram_bot_event("get_updates_request_failed", error=type(exc).__name__)
                 logger.warning("telegram getUpdates request failed, retrying: %s", exc)
                 await asyncio.sleep(retry_delay_seconds)
                 continue

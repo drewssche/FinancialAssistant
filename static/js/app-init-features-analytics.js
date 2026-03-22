@@ -1,5 +1,7 @@
 (() => {
   const { state, el, core, actions } = window.App;
+  const hoverCoordinator = getAnalyticsHoverCoordinator();
+  const coordinator = getAnalyticsUiCoordinator();
   let bound = false;
 
   function bindAnalyticsFeatureHandlers() {
@@ -10,34 +12,25 @@
 
     if (el.analyticsPrevGridBtn && actions.shiftAnalyticsMonth) {
       el.analyticsPrevGridBtn.addEventListener("click", () => {
-        core.runAction({
+        coordinator.runPersistedAction({
           errorPrefix: "Ошибка загрузки календаря",
-          action: async () => {
-            await actions.shiftAnalyticsMonth(-1);
-            await actions.savePreferences();
-          },
+          action: () => actions.shiftAnalyticsMonth(-1),
         });
       });
     }
     if (el.analyticsNextGridBtn && actions.shiftAnalyticsMonth) {
       el.analyticsNextGridBtn.addEventListener("click", () => {
-        core.runAction({
+        coordinator.runPersistedAction({
           errorPrefix: "Ошибка загрузки календаря",
-          action: async () => {
-            await actions.shiftAnalyticsMonth(1);
-            await actions.savePreferences();
-          },
+          action: () => actions.shiftAnalyticsMonth(1),
         });
       });
     }
     if (el.analyticsTodayGridBtn && actions.resetAnalyticsMonth) {
       el.analyticsTodayGridBtn.addEventListener("click", () => {
-        core.runAction({
+        coordinator.runPersistedAction({
           errorPrefix: "Ошибка загрузки календаря",
-          action: async () => {
-            await actions.resetAnalyticsMonth();
-            await actions.savePreferences();
-          },
+          action: () => actions.resetAnalyticsMonth(),
         });
       });
     }
@@ -48,15 +41,16 @@
           return;
         }
         const nextView = btn.dataset.analyticsCalendarView;
-        if (state.analyticsCalendarView === nextView) {
-          return;
-        }
-        core.runAction({
-          errorPrefix: "Ошибка загрузки сетки",
-          action: async () => {
-            await actions.setAnalyticsCalendarView(nextView);
-            await actions.savePreferences();
+        coordinator.applySegmentedSelection({
+          currentValue: state.analyticsCalendarView,
+          nextValue: nextView,
+          assignValue: (value) => {
+            state.analyticsCalendarView = value;
           },
+          syncContainer: el.analyticsCalendarViewTabs,
+          syncAttr: "analytics-calendar-view",
+          errorPrefix: "Ошибка загрузки сетки",
+          action: () => actions.setAnalyticsCalendarView(nextView),
         });
       });
     }
@@ -74,26 +68,25 @@
           actions.openPeriodCustomModal();
           return;
         }
-        if (state.analyticsGlobalPeriod === selected) {
-          return;
-        }
         state.analyticsGlobalPendingCustom = false;
-        state.analyticsGlobalPeriod = selected;
-        if (selected !== "custom") {
-          state.analyticsGlobalDateFrom = "";
-          state.analyticsGlobalDateTo = "";
-        }
-        if ((state.analyticsGlobalPeriod === "year" || state.analyticsGlobalPeriod === "all_time") && state.analyticsGranularity === "day") {
-          state.analyticsGranularity = "week";
-          core.syncSegmentedActive(el.analyticsGranularityTabs, "analytics-granularity", state.analyticsGranularity);
-        }
-        core.syncSegmentedActive(el.analyticsGlobalPeriodTabs, "analytics-global-period", state.analyticsGlobalPeriod);
-        core.runAction({
-          errorPrefix: "Ошибка загрузки аналитики",
-          action: async () => {
-            await actions.loadAnalyticsSection({ force: true });
-            await actions.savePreferences();
+        coordinator.applySegmentedSelection({
+          currentValue: state.analyticsGlobalPeriod,
+          nextValue: selected,
+          assignValue: (value) => {
+            state.analyticsGlobalPeriod = value;
+            if (value !== "custom") {
+              state.analyticsGlobalDateFrom = "";
+              state.analyticsGlobalDateTo = "";
+            }
+            if ((value === "year" || value === "all_time") && state.analyticsGranularity === "day") {
+              state.analyticsGranularity = "week";
+              core.syncSegmentedActive(el.analyticsGranularityTabs, "analytics-granularity", state.analyticsGranularity);
+            }
           },
+          syncContainer: el.analyticsGlobalPeriodTabs,
+          syncAttr: "analytics-global-period",
+          errorPrefix: "Ошибка загрузки аналитики",
+          action: () => actions.loadAnalyticsSection({ force: true }),
         });
       });
     }
@@ -111,22 +104,21 @@
           actions.openPeriodCustomModal();
           return;
         }
-        if (state.dashboardAnalyticsPeriod === selected) {
-          return;
-        }
         state.dashboardAnalyticsPendingCustom = false;
-        state.dashboardAnalyticsPeriod = selected;
-        if (selected !== "custom") {
-          state.dashboardAnalyticsDateFrom = "";
-          state.dashboardAnalyticsDateTo = "";
-        }
-        core.syncSegmentedActive(el.dashboardAnalyticsPeriodTabs, "dashboard-analytics-period", state.dashboardAnalyticsPeriod);
-        core.runAction({
-          errorPrefix: "Ошибка загрузки аналитики дашборда",
-          action: async () => {
-            await actions.loadDashboardAnalyticsPreview({ force: true });
-            await actions.savePreferences();
+        coordinator.applySegmentedSelection({
+          currentValue: state.dashboardAnalyticsPeriod,
+          nextValue: selected,
+          assignValue: (value) => {
+            state.dashboardAnalyticsPeriod = value;
+            if (value !== "custom") {
+              state.dashboardAnalyticsDateFrom = "";
+              state.dashboardAnalyticsDateTo = "";
+            }
           },
+          syncContainer: el.dashboardAnalyticsPeriodTabs,
+          syncAttr: "dashboard-analytics-period",
+          errorPrefix: "Ошибка загрузки аналитики дашборда",
+          action: () => actions.loadDashboardAnalyticsPreview({ force: true }),
         });
       });
     }
@@ -137,17 +129,16 @@
           return;
         }
         const selected = btn.dataset.dashboardCategoryKind;
-        if (state.dashboardCategoryKind === selected) {
-          return;
-        }
-        state.dashboardCategoryKind = selected;
-        core.syncSegmentedActive(el.dashboardCategoryKindTabs, "dashboard-category-kind", state.dashboardCategoryKind);
-        core.runAction({
-          errorPrefix: "Ошибка загрузки структуры дашборда",
-          action: async () => {
-            await actions.loadDashboardAnalyticsPreview({ force: true });
-            await actions.savePreferences();
+        coordinator.applySegmentedSelection({
+          currentValue: state.dashboardCategoryKind,
+          nextValue: selected,
+          assignValue: (value) => {
+            state.dashboardCategoryKind = value;
           },
+          syncContainer: el.dashboardCategoryKindTabs,
+          syncAttr: "dashboard-category-kind",
+          errorPrefix: "Ошибка загрузки структуры дашборда",
+          action: () => actions.loadDashboardAnalyticsPreview({ force: true }),
         });
       });
     }
@@ -158,17 +149,16 @@
           return;
         }
         const selected = btn.dataset.dashboardBreakdownLevel;
-        if (state.dashboardBreakdownLevel === selected) {
-          return;
-        }
-        state.dashboardBreakdownLevel = selected;
-        core.syncSegmentedActive(el.dashboardBreakdownLevelTabs, "dashboard-breakdown-level", state.dashboardBreakdownLevel);
-        core.runAction({
-          errorPrefix: "Ошибка загрузки структуры дашборда",
-          action: async () => {
-            await actions.loadDashboardAnalyticsPreview({ force: true });
-            await actions.savePreferences();
+        coordinator.applySegmentedSelection({
+          currentValue: state.dashboardBreakdownLevel,
+          nextValue: selected,
+          assignValue: (value) => {
+            state.dashboardBreakdownLevel = value;
           },
+          syncContainer: el.dashboardBreakdownLevelTabs,
+          syncAttr: "dashboard-breakdown-level",
+          errorPrefix: "Ошибка загрузки структуры дашборда",
+          action: () => actions.loadDashboardAnalyticsPreview({ force: true }),
         });
       });
     }
@@ -179,17 +169,16 @@
           return;
         }
         const selected = btn.dataset.analyticsCategoryKind;
-        if (state.analyticsCategoryKind === selected) {
-          return;
-        }
-        state.analyticsCategoryKind = selected;
-        core.syncSegmentedActive(el.analyticsCategoryKindTabs, "analytics-category-kind", state.analyticsCategoryKind);
-        core.runAction({
-          errorPrefix: "Ошибка загрузки структуры категорий",
-          action: async () => {
-            await actions.loadAnalyticsSection({ force: true });
-            await actions.savePreferences();
+        coordinator.applySegmentedSelection({
+          currentValue: state.analyticsCategoryKind,
+          nextValue: selected,
+          assignValue: (value) => {
+            state.analyticsCategoryKind = value;
           },
+          syncContainer: el.analyticsCategoryKindTabs,
+          syncAttr: "analytics-category-kind",
+          errorPrefix: "Ошибка загрузки структуры категорий",
+          action: () => actions.loadAnalyticsSection({ force: true }),
         });
       });
     }
@@ -200,17 +189,16 @@
           return;
         }
         const selected = btn.dataset.analyticsBreakdownLevel;
-        if (state.analyticsBreakdownLevel === selected) {
-          return;
-        }
-        state.analyticsBreakdownLevel = selected;
-        core.syncSegmentedActive(el.analyticsBreakdownLevelTabs, "analytics-breakdown-level", state.analyticsBreakdownLevel);
-        core.runAction({
-          errorPrefix: "Ошибка загрузки структуры",
-          action: async () => {
-            await actions.loadAnalyticsSection({ force: true });
-            await actions.savePreferences();
+        coordinator.applySegmentedSelection({
+          currentValue: state.analyticsBreakdownLevel,
+          nextValue: selected,
+          assignValue: (value) => {
+            state.analyticsBreakdownLevel = value;
           },
+          syncContainer: el.analyticsBreakdownLevelTabs,
+          syncAttr: "analytics-breakdown-level",
+          errorPrefix: "Ошибка загрузки структуры",
+          action: () => actions.loadAnalyticsSection({ force: true }),
         });
       });
     }
@@ -220,12 +208,9 @@
         if (!nextValue) {
           return;
         }
-        core.runAction({
+        coordinator.runPersistedAction({
           errorPrefix: "Ошибка загрузки календаря",
-          action: async () => {
-            await actions.setAnalyticsGridMonthAnchor(nextValue);
-            await actions.savePreferences();
-          },
+          action: () => actions.setAnalyticsGridMonthAnchor(nextValue),
         });
       };
       el.analyticsGridMonthPicker.addEventListener("input", handleMonthPickerChange);
@@ -237,12 +222,9 @@
         if (!nextYear) {
           return;
         }
-        core.runAction({
+        coordinator.runPersistedAction({
           errorPrefix: "Ошибка загрузки календаря",
-          action: async () => {
-            await actions.setAnalyticsGridYearAnchor(nextYear);
-            await actions.savePreferences();
-          },
+          action: () => actions.setAnalyticsGridYearAnchor(nextYear),
         });
       };
       el.analyticsGridYearPicker.addEventListener("input", handleYearPickerChange);
@@ -266,12 +248,9 @@
         if (!card) {
           return;
         }
-        core.runAction({
+        coordinator.runPersistedAction({
           errorPrefix: "Ошибка загрузки месяца",
-          action: async () => {
-            await actions.openAnalyticsMonth(card.dataset.analyticsMonthAnchor);
-            await actions.savePreferences();
-          },
+          action: () => actions.openAnalyticsMonth(card.dataset.analyticsMonthAnchor),
         });
       });
     }
@@ -323,41 +302,12 @@
     }
     if (actions.setCategoryBreakdownHover && actions.clearCategoryBreakdownHover) {
       const bindCategoryHover = (container) => {
-        if (!container) {
-          return;
-        }
-        container.addEventListener("mouseover", (event) => {
-          const node = event.target.closest("[data-analytics-category-index]");
-          if (!node) {
-            return;
-          }
-          actions.setCategoryBreakdownHover(node.dataset.analyticsCategoryIndex);
-        });
-        container.addEventListener("focusin", (event) => {
-          const node = event.target.closest("[data-analytics-category-index]");
-          if (!node) {
-            return;
-          }
-          actions.setCategoryBreakdownHover(node.dataset.analyticsCategoryIndex);
-        });
-        container.addEventListener("mouseout", (event) => {
-          const related = event.relatedTarget instanceof Element ? event.relatedTarget.closest("[data-analytics-category-index]") : null;
-          const current = event.target.closest("[data-analytics-category-index]");
-          if (!current || (related && related.dataset.analyticsCategoryIndex === current.dataset.analyticsCategoryIndex)) {
-            return;
-          }
-          if (!container.contains(event.relatedTarget)) {
-            actions.clearCategoryBreakdownHover();
-          }
-        });
-        container.addEventListener("focusout", (event) => {
-          if (container.contains(event.relatedTarget)) {
-            return;
-          }
-          actions.clearCategoryBreakdownHover();
-        });
-        container.addEventListener("mouseleave", () => {
-          actions.clearCategoryBreakdownHover();
+        hoverCoordinator.bindIndexedHover({
+          container,
+          itemSelector: "[data-analytics-category-index]",
+          getIndex: (node) => node.dataset.analyticsCategoryIndex,
+          setHover: (index) => actions.setCategoryBreakdownHover(index),
+          clearHover: () => actions.clearCategoryBreakdownHover(),
         });
       };
       bindCategoryHover(el.analyticsCategoryBreakdownChart);
@@ -365,31 +315,12 @@
     }
     if (el.dashboardCategoryBreakdownList && actions.loadDashboardAnalyticsPreview) {
       const bindDashboardBreakdownHover = (container) => {
-        if (!container) {
-          return;
-        }
-        container.addEventListener("mouseover", (event) => {
-          const node = event.target.closest("[data-dashboard-category-index]");
-          if (!node || !window.App.featureAnalyticsModules?.highlights?.setDashboardBreakdownHover) {
-            return;
-          }
-          window.App.featureAnalyticsModules.highlights.setDashboardBreakdownHover(node.dataset.dashboardCategoryIndex);
-        });
-        container.addEventListener("focusin", (event) => {
-          const node = event.target.closest("[data-dashboard-category-index]");
-          if (!node || !window.App.featureAnalyticsModules?.highlights?.setDashboardBreakdownHover) {
-            return;
-          }
-          window.App.featureAnalyticsModules.highlights.setDashboardBreakdownHover(node.dataset.dashboardCategoryIndex);
-        });
-        container.addEventListener("mouseleave", () => {
-          window.App.featureAnalyticsModules?.highlights?.clearDashboardBreakdownHover?.();
-        });
-        container.addEventListener("focusout", (event) => {
-          if (container.contains(event.relatedTarget)) {
-            return;
-          }
-          window.App.featureAnalyticsModules?.highlights?.clearDashboardBreakdownHover?.();
+        hoverCoordinator.bindIndexedHover({
+          container,
+          itemSelector: "[data-dashboard-category-index]",
+          getIndex: (node) => node.dataset.dashboardCategoryIndex,
+          setHover: (index) => getAnalyticsHighlightsModule()?.setDashboardBreakdownHover?.(index),
+          clearHover: () => getAnalyticsHighlightsModule()?.clearDashboardBreakdownHover?.(),
         });
       };
       bindDashboardBreakdownHover(el.dashboardCategoryBreakdownChart);
@@ -413,16 +344,14 @@
         if (!btn) {
           return;
         }
-        if (state.analyticsTab === btn.dataset.analyticsTab) {
-          return;
-        }
-        core.runAction({
-          errorPrefix: "Ошибка загрузки аналитики",
-          action: async () => {
-            actions.setAnalyticsTab(btn.dataset.analyticsTab);
-            await actions.loadAnalyticsSection({ force: true });
-            await actions.savePreferences();
+        coordinator.applySegmentedSelection({
+          currentValue: state.analyticsTab,
+          nextValue: btn.dataset.analyticsTab,
+          assignValue: (value) => {
+            actions.setAnalyticsTab(value);
           },
+          errorPrefix: "Ошибка загрузки аналитики",
+          action: () => actions.loadAnalyticsSection({ force: true }),
         });
       });
     }
@@ -432,23 +361,114 @@
         if (!btn) {
           return;
         }
-        if (state.analyticsGranularity === btn.dataset.analyticsGranularity) {
-          return;
-        }
-        state.analyticsGranularity = btn.dataset.analyticsGranularity;
-        core.syncSegmentedActive(el.analyticsGranularityTabs, "analytics-granularity", state.analyticsGranularity);
-        core.runAction({
-          errorPrefix: "Ошибка загрузки тренда",
-          action: async () => {
-            await actions.loadAnalyticsTrend({ force: true });
-            await actions.savePreferences();
+        coordinator.applySegmentedSelection({
+          currentValue: state.analyticsGranularity,
+          nextValue: btn.dataset.analyticsGranularity,
+          assignValue: (value) => {
+            state.analyticsGranularity = value;
           },
+          syncContainer: el.analyticsGranularityTabs,
+          syncAttr: "analytics-granularity",
+          errorPrefix: "Ошибка загрузки тренда",
+          action: () => actions.loadAnalyticsTrend({ force: true }),
         });
       });
     }
   }
 
-  window.App.initFeatureAnalytics = {
+  const api = {
     bindAnalyticsFeatureHandlers,
   };
+
+  window.App.initFeatureAnalytics = api;
+  window.App.registerFeatureInitModule?.("analytics", api);
 })();
+
+function getAnalyticsUiCoordinator() {
+  function getCore() {
+    return window.App.core;
+  }
+
+  function getSessionFeature() {
+    return window.App.getRuntimeModule?.("session") || {};
+  }
+
+  return (
+    window.App.getRuntimeModule?.("analytics-ui-coordinator") || {
+      runPersistedAction({ errorPrefix, action }) {
+        return getCore().runAction({
+          errorPrefix,
+          action: async () => {
+            await action();
+            await getSessionFeature().savePreferences?.();
+          },
+        });
+      },
+      applySegmentedSelection({ currentValue, nextValue, assignValue, syncContainer, syncAttr, errorPrefix, action }) {
+        if (currentValue === nextValue) {
+          return;
+        }
+        assignValue(nextValue);
+        if (syncContainer && syncAttr) {
+          getCore().syncSegmentedActive(syncContainer, syncAttr, nextValue);
+        }
+        return getCore().runAction({
+          errorPrefix,
+          action: async () => {
+            await action();
+            await getSessionFeature().savePreferences?.();
+          },
+        });
+      },
+    }
+  );
+}
+
+function getAnalyticsHoverCoordinator() {
+  return (
+    window.App.getRuntimeModule?.("analytics-hover-coordinator") || {
+      bindIndexedHover({ container, itemSelector, getIndex, setHover, clearHover }) {
+        if (!container) {
+          return;
+        }
+        container.addEventListener("mouseover", (event) => {
+          const node = event.target.closest(itemSelector);
+          if (!node) {
+            return;
+          }
+          setHover(getIndex(node));
+        });
+        container.addEventListener("focusin", (event) => {
+          const node = event.target.closest(itemSelector);
+          if (!node) {
+            return;
+          }
+          setHover(getIndex(node));
+        });
+        container.addEventListener("mouseout", (event) => {
+          const current = event.target.closest(itemSelector);
+          const related = event.relatedTarget instanceof Element ? event.relatedTarget.closest(itemSelector) : null;
+          if (!current || (related && getIndex(related) === getIndex(current))) {
+            return;
+          }
+          if (!container.contains(event.relatedTarget)) {
+            clearHover();
+          }
+        });
+        container.addEventListener("focusout", (event) => {
+          if (container.contains(event.relatedTarget)) {
+            return;
+          }
+          clearHover();
+        });
+        container.addEventListener("mouseleave", () => {
+          clearHover();
+        });
+      },
+    }
+  );
+}
+
+function getAnalyticsHighlightsModule() {
+  return window.App.getRuntimeModule?.("analytics-highlights-module");
+}

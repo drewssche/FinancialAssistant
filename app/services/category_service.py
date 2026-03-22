@@ -1,5 +1,13 @@
 from sqlalchemy.orm import Session
 
+from app.core.cache import (
+    build_categories_cache_key,
+    get_json,
+    get_namespace_ttl_seconds,
+    invalidate_categories_cache,
+    invalidate_dashboard_analytics_cache,
+    set_json,
+)
 from app.repositories.category_repo import CategoryRepository
 
 
@@ -8,8 +16,46 @@ class CategoryService:
         self.db = db
         self.repo = CategoryRepository(db)
 
+    @staticmethod
+    def _serialize_category_row(row) -> dict:
+        payload = dict(row)
+        return {
+            "id": int(payload["id"]),
+            "name": payload["name"],
+            "icon": payload["icon"],
+            "kind": payload["kind"],
+            "include_in_statistics": bool(payload["include_in_statistics"]),
+            "group_id": payload["group_id"],
+            "is_system": bool(payload["is_system"]),
+            "group_name": payload.get("group_name"),
+            "group_icon": payload.get("group_icon"),
+            "group_accent_color": payload.get("group_accent_color"),
+        }
+
+    @staticmethod
+    def _serialize_group(group) -> dict:
+        return {
+            "id": int(group.id),
+            "name": group.name,
+            "kind": group.kind,
+            "accent_color": group.accent_color,
+        }
+
     def list_categories(self, user_id: int):
-        return self.repo.list_for_user(user_id)
+        cache_key = build_categories_cache_key(
+            user_id=user_id,
+            view="list",
+        )
+        cached = get_json(cache_key)
+        if cached is not None:
+            return cached["items"]
+        rows = [self._serialize_category_row(row) for row in self.repo.list_for_user(user_id)]
+        set_json(
+            cache_key,
+            {"items": rows},
+            ttl_seconds=get_namespace_ttl_seconds("categories"),
+        )
+        return rows
 
     def list_categories_paginated(
         self,
@@ -21,13 +67,31 @@ class CategoryService:
     ) -> tuple[list, int]:
         if kind and kind not in {"income", "expense"}:
             raise ValueError("kind must be either 'income' or 'expense'")
-        return self.repo.list_for_user_paginated(
+        cache_key = build_categories_cache_key(
+            user_id=user_id,
+            view="paginated",
+            page=page,
+            page_size=page_size,
+            kind=kind,
+            q=q,
+        )
+        cached = get_json(cache_key)
+        if cached is not None:
+            return cached["items"], int(cached["total"])
+        rows, total = self.repo.list_for_user_paginated(
             user_id=user_id,
             page=page,
             page_size=page_size,
             kind=kind,
             q=q,
         )
+        serialized_rows = [self._serialize_category_row(row) for row in rows]
+        set_json(
+            cache_key,
+            {"items": serialized_rows, "total": total},
+            ttl_seconds=get_namespace_ttl_seconds("categories"),
+        )
+        return serialized_rows, total
 
     def create_category(
         self,
@@ -55,6 +119,8 @@ class CategoryService:
             include_in_statistics=include_in_statistics,
         )
         self.db.commit()
+        invalidate_dashboard_analytics_cache(user_id)
+        invalidate_categories_cache(user_id)
         self.db.refresh(category)
         return category
 
@@ -64,6 +130,8 @@ class CategoryService:
             raise LookupError("Category not found")
         self.repo.delete(category)
         self.db.commit()
+        invalidate_dashboard_analytics_cache(user_id)
+        invalidate_categories_cache(user_id)
 
     def update_category(self, user_id: int, category_id: int, updates: dict):
         category = self.repo.get_by_id_for_user(user_id=user_id, category_id=category_id)
@@ -86,11 +154,26 @@ class CategoryService:
 
         category = self.repo.update(category, updates)
         self.db.commit()
+        invalidate_dashboard_analytics_cache(user_id)
+        invalidate_categories_cache(user_id)
         self.db.refresh(category)
         return category
 
     def list_groups(self, user_id: int):
-        return self.repo.list_groups_for_user(user_id)
+        cache_key = build_categories_cache_key(
+            user_id=user_id,
+            view="groups",
+        )
+        cached = get_json(cache_key)
+        if cached is not None:
+            return cached["items"]
+        rows = [self._serialize_group(group) for group in self.repo.list_groups_for_user(user_id)]
+        set_json(
+            cache_key,
+            {"items": rows},
+            ttl_seconds=get_namespace_ttl_seconds("categories"),
+        )
+        return rows
 
     def create_group(
         self,
@@ -108,6 +191,8 @@ class CategoryService:
             accent_color=accent_color,
         )
         self.db.commit()
+        invalidate_dashboard_analytics_cache(user_id)
+        invalidate_categories_cache(user_id)
         self.db.refresh(group)
         return group
 
@@ -119,6 +204,8 @@ class CategoryService:
             raise ValueError("name must not be empty")
         group = self.repo.update_group(group, updates)
         self.db.commit()
+        invalidate_dashboard_analytics_cache(user_id)
+        invalidate_categories_cache(user_id)
         self.db.refresh(group)
         return group
 
@@ -129,3 +216,5 @@ class CategoryService:
         self.repo.clear_group_refs(user_id=user_id, group_id=group_id)
         self.repo.delete_group(group)
         self.db.commit()
+        invalidate_dashboard_analytics_cache(user_id)
+        invalidate_categories_cache(user_id)

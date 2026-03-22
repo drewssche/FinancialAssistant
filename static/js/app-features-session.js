@@ -1,17 +1,29 @@
 (() => {
   const { el, core } = window.App;
-  const preferences = window.App.featureSessionPreferences || {};
-  const auth = window.App.featureSessionAuth || {};
+  const preferences = window.App.getRuntimeModule?.("session-preferences") || {};
+  const auth = window.App.getRuntimeModule?.("session-auth") || {};
+
+  function getActions() {
+    return window.App.actions || {};
+  }
+
+  function getCategoryActions() {
+    const actions = getActions();
+    return {
+      renderTodayLabel: actions.renderTodayLabel,
+    };
+  }
 
   async function saveSettings(event) {
     event.preventDefault();
     await preferences.savePreferences?.();
     preferences.applyInterfaceSettingsUi?.();
-    if (window.App.actions.renderTodayLabel) {
-      window.App.actions.renderTodayLabel();
+    if (getCategoryActions().renderTodayLabel) {
+      getCategoryActions().renderTodayLabel();
     }
-    if (window.App.actions.refreshAll) {
-      await window.App.actions.refreshAll();
+    const actions = getActions();
+    if (actions.refreshAll) {
+      await actions.refreshAll();
     }
   }
 
@@ -29,7 +41,7 @@
     core.setStatus("Аккаунт удален", true);
   }
 
-  window.App.featureSession = {
+  const api = {
     loadMe: auth.loadMe,
     loadPreferences: preferences.loadPreferences,
     savePreferences: preferences.savePreferences,
@@ -51,4 +63,6 @@
     refreshTelegramLoginUi: auth.refreshTelegramLoginUi,
     tryAutoTelegramLogin: auth.tryAutoTelegramLogin,
   };
+
+  window.App.registerRuntimeModule?.("session", api);
 })();

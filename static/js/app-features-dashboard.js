@@ -1,9 +1,16 @@
 (() => {
   const { state, el, core } = window.App;
-  const dashboardData = window.App.dashboardData || {};
-  const operationModal = window.App.operationModal;
+  const operationModal = window.App.getRuntimeModule?.("operation-modal");
   const debtUi = core.debtUi;
   const getCategoryMetaById = operationModal.getCategoryMetaById;
+
+  function getPlansFeature() {
+    return window.App.getRuntimeModule?.("plans");
+  }
+
+  function getDashboardData() {
+    return window.App.getRuntimeModule?.("dashboard-data");
+  }
 
   function dueBadgeLabel(stateValue, dueDate) {
     if (stateValue === "overdue") {
@@ -68,6 +75,7 @@
     if (el.dashboardDebtsPanel && ui) {
       el.dashboardDebtsPanel.classList.toggle("hidden", ui.showDashboardDebts === false);
     }
+    const dashboardData = getDashboardData();
     const data = await (dashboardData.loadAllTimeSummary
       ? dashboardData.loadAllTimeSummary()
       : core.requestJson("/api/v1/dashboard/summary?period=all_time", { headers: core.authHeaders() }));
@@ -89,9 +97,9 @@
     }
 
     if (el.dashboardPlansPanel && ui?.showDashboardOperations !== false) {
-      await window.App.featurePlans?.loadPlans?.();
+      await getPlansFeature().loadPlans?.();
     } else {
-      window.App.featurePlans?.renderDashboardPlans?.();
+      getPlansFeature().renderDashboardPlans?.();
     }
 
     if (!core.isDashboardDebtsVisible()) {
@@ -207,12 +215,14 @@
     if (ui && ui.showDashboardOperations === false) {
       return;
     }
-    await window.App.featurePlans?.loadPlans?.();
+    await getPlansFeature().loadPlans?.();
   }
 
-  window.App.featureDashboard = {
+  const api = {
     loadDashboard,
     loadDashboardOperations: loadDashboardPlans,
     loadDashboardPlans,
   };
+
+  window.App.registerRuntimeModule?.("dashboard", api);
 })();

@@ -3,6 +3,42 @@
   let bound = false;
   let compactViewportQuery = null;
 
+  function getSessionFeature() {
+    return window.App.getRuntimeModule?.("session") || {};
+  }
+
+  function getCategoryActions() {
+    return window.App.getRuntimeModule?.("category-actions") || {};
+  }
+
+  function getDashboardFeature() {
+    return window.App.getRuntimeModule?.("dashboard") || {};
+  }
+
+  function getAnalyticsFeature() {
+    return window.App.getRuntimeModule?.("analytics") || {};
+  }
+
+  function getOperationsFeature() {
+    return window.App.getRuntimeModule?.("operations") || {};
+  }
+
+  function getPlansFeature() {
+    return window.App.getRuntimeModule?.("plans") || {};
+  }
+
+  function getItemCatalogFeature() {
+    return window.App.getRuntimeModule?.("item-catalog") || {};
+  }
+
+  function getOperationModal() {
+    return window.App.getRuntimeModule?.("operation-modal") || {};
+  }
+
+  function getPickerUtils() {
+    return window.App.getRuntimeModule?.("picker-utils");
+  }
+
   function isCompactMobileViewport() {
     return window.matchMedia("(max-width: 640px)").matches;
   }
@@ -10,13 +46,13 @@
   function rerenderActiveSectionForViewportMode() {
     switch (state.activeSection) {
       case "operations":
-        actions.refreshOperationsView?.();
+        getOperationsFeature().refreshOperationsView?.();
         break;
       case "categories":
-        actions.renderCategories?.();
+        getCategoryActions().renderCategories?.();
         break;
       case "item_catalog":
-        actions.refreshItemCatalogView?.();
+        getItemCatalogFeature().refreshItemCatalogView?.();
         break;
       case "debts":
         actions.renderDebtCards?.(state.debtCardsCache || []);
@@ -50,8 +86,9 @@
         actions.navigateSectionBack().catch((err) => core.setStatus(String(err)));
       });
     }
-    if (el.telegramLoginBtn && actions.telegramLogin) {
+    if (el.telegramLoginBtn && getSessionFeature().telegramLogin) {
       el.telegramLoginBtn.addEventListener("click", () => {
+        const sessionFeature = getSessionFeature();
         core.runAction({
           button: el.telegramLoginBtn,
           pendingText: "Вход...",
@@ -61,7 +98,7 @@
             || message === "Доступ отклонен администратором"
           ),
           forLogin: true,
-          action: () => actions.telegramLogin(),
+          action: () => sessionFeature.telegramLogin?.(),
         });
       });
     }
@@ -92,23 +129,22 @@
     }
     if (el.openAnalyticsTabBtn) {
       el.openAnalyticsTabBtn.addEventListener("click", () => {
-        if (actions.setAnalyticsTab) {
-          actions.setAnalyticsTab("structure");
-        }
+        getAnalyticsFeature().setAnalyticsTab?.("structure");
         actions.switchSection("analytics").catch((err) => core.setStatus(String(err)));
       });
     }
 
     if (el.sidebarLogoutBtn) {
-      el.sidebarLogoutBtn.addEventListener("click", () => actions.logout(true));
+      el.sidebarLogoutBtn.addEventListener("click", () => getSessionFeature().logout?.(true));
     }
 
     document.addEventListener("click", (event) => {
-      if (!event.target.closest(".icon-select") && !event.target.closest(".color-select") && actions.closeIconPopovers) {
-        actions.closeIconPopovers();
+      if (!event.target.closest(".icon-select") && !event.target.closest(".color-select") && getCategoryActions().closeIconPopovers) {
+        getCategoryActions().closeIconPopovers();
       }
-      if (window.App.pickerUtils?.closeOpenPopoversOnOutside) {
-        window.App.pickerUtils.closeOpenPopoversOnOutside(event);
+      const pickerUtils = getPickerUtils();
+      if (pickerUtils?.closeOpenPopoversOnOutside) {
+        pickerUtils.closeOpenPopoversOnOutside(event);
       }
     });
 
@@ -130,26 +166,25 @@
   }
 
   function bindModalHandlers() {
-    el.addOperationCta.addEventListener("click", actions.openCreateModal);
-    if (el.addPlanCta && actions.openCreatePlan) {
-      el.addPlanCta.addEventListener("click", actions.openCreatePlan);
+    el.addOperationCta.addEventListener("click", () => getOperationModal().openCreateModal?.());
+    if (el.addPlanCta && getPlansFeature().openCreatePlan) {
+      el.addPlanCta.addEventListener("click", () => getPlansFeature().openCreatePlan?.());
     }
     if (el.addDebtCta) {
       el.addDebtCta.addEventListener("click", () => {
-        actions.openCreateModal();
-        if (actions.setCreateEntryMode) {
-          actions.setCreateEntryMode("debt");
-        }
+        const operationModal = getOperationModal();
+        operationModal.openCreateModal?.();
+        operationModal.setCreateEntryMode?.("debt");
       });
     }
-    if (el.addItemTemplateCta && actions.openItemTemplateModal) {
+    if (el.addItemTemplateCta && getItemCatalogFeature().openItemTemplateModal) {
       el.addItemTemplateCta.addEventListener("click", () => {
-        actions.openItemTemplateModal();
+        getItemCatalogFeature().openItemTemplateModal?.();
       });
     }
-    if (el.addItemSourceCta && actions.openSourceGroupModal) {
+    if (el.addItemSourceCta && getItemCatalogFeature().openSourceGroupModal) {
       el.addItemSourceCta.addEventListener("click", () => {
-        actions.openSourceGroupModal();
+        getItemCatalogFeature().openSourceGroupModal?.();
       });
     }
     el.batchOperationCta.addEventListener("click", () => {
@@ -168,30 +203,30 @@
       });
     }
 
-    el.closeCreateModalBtn.addEventListener("click", actions.closeCreateModal);
+    el.closeCreateModalBtn.addEventListener("click", () => getOperationModal().closeCreateModal?.());
     el.createModal.addEventListener("click", (event) => {
       if (event.target === el.createModal) {
-        actions.closeCreateModal();
+        getOperationModal().closeCreateModal?.();
       }
     });
 
-    el.closeEditModalBtn.addEventListener("click", actions.closeEditModal);
+    el.closeEditModalBtn.addEventListener("click", () => getOperationModal().closeEditModal?.());
     el.editModal.addEventListener("click", (event) => {
       if (event.target === el.editModal) {
-        actions.closeEditModal();
+        getOperationModal().closeEditModal?.();
       }
     });
 
-    el.addCategoryCta.addEventListener("click", actions.openCreateCategoryModal);
+    el.addCategoryCta.addEventListener("click", () => getCategoryActions().openCreateCategoryModal?.());
     el.addGroupCta.addEventListener("click", () => {
       if (actions.openCreateGroupModal) {
         actions.openCreateGroupModal();
       }
     });
-    el.closeCreateCategoryModalBtn.addEventListener("click", actions.closeCreateCategoryModal);
+    el.closeCreateCategoryModalBtn.addEventListener("click", () => getCategoryActions().closeCreateCategoryModal?.());
     el.createCategoryModal.addEventListener("click", (event) => {
       if (event.target === el.createCategoryModal) {
-        actions.closeCreateCategoryModal();
+        getCategoryActions().closeCreateCategoryModal?.();
       }
     });
     el.categoryIconToggle.addEventListener("click", () => {
@@ -199,10 +234,10 @@
       el.editCategoryIconPopover.classList.add("hidden");
     });
 
-    el.closeEditCategoryModalBtn.addEventListener("click", actions.closeEditCategoryModal);
+    el.closeEditCategoryModalBtn.addEventListener("click", () => getCategoryActions().closeEditCategoryModal?.());
     el.editCategoryModal.addEventListener("click", (event) => {
       if (event.target === el.editCategoryModal) {
-        actions.closeEditCategoryModal();
+        getCategoryActions().closeEditCategoryModal?.();
       }
     });
     el.editCategoryIconToggle.addEventListener("click", () => {
@@ -211,26 +246,26 @@
     });
 
     el.closeEditGroupModalBtn.addEventListener("click", () => {
-      if (actions.closeEditGroupModal) {
-        actions.closeEditGroupModal();
+      if (getCategoryActions().closeEditGroupModal) {
+        getCategoryActions().closeEditGroupModal();
       }
     });
     el.editGroupModal.addEventListener("click", (event) => {
-      if (event.target === el.editGroupModal && actions.closeEditGroupModal) {
-        actions.closeEditGroupModal();
+      if (event.target === el.editGroupModal && getCategoryActions().closeEditGroupModal) {
+        getCategoryActions().closeEditGroupModal();
       }
     });
 
     el.closePeriodCustomModalBtn.addEventListener("click", () => {
       state.analyticsGlobalPendingCustom = false;
       state.dashboardAnalyticsPendingCustom = false;
-      actions.closePeriodCustomModal();
+      getOperationModal().closePeriodCustomModal?.();
     });
     el.periodCustomModal.addEventListener("click", (event) => {
       if (event.target === el.periodCustomModal) {
         state.analyticsGlobalPendingCustom = false;
         state.dashboardAnalyticsPendingCustom = false;
-        actions.closePeriodCustomModal();
+        getOperationModal().closePeriodCustomModal?.();
       }
     });
 
@@ -254,63 +289,63 @@
         }
       });
     }
-    if (el.closeOperationReceiptModalBtn && actions.closeOperationReceiptModal) {
-      el.closeOperationReceiptModalBtn.addEventListener("click", actions.closeOperationReceiptModal);
+    if (el.closeOperationReceiptModalBtn && getOperationsFeature().closeOperationReceiptModal) {
+      el.closeOperationReceiptModalBtn.addEventListener("click", () => getOperationsFeature().closeOperationReceiptModal?.());
     }
-    if (el.operationReceiptModal && actions.closeOperationReceiptModal) {
+    if (el.operationReceiptModal && getOperationsFeature().closeOperationReceiptModal) {
       el.operationReceiptModal.addEventListener("click", (event) => {
         if (event.target === el.operationReceiptModal) {
-          actions.closeOperationReceiptModal();
+          getOperationsFeature().closeOperationReceiptModal?.();
         }
       });
     }
-    if (el.closeItemTemplateModalBtn && actions.closeItemTemplateModal) {
-      el.closeItemTemplateModalBtn.addEventListener("click", actions.closeItemTemplateModal);
+    if (el.closeItemTemplateModalBtn && getItemCatalogFeature().closeItemTemplateModal) {
+      el.closeItemTemplateModalBtn.addEventListener("click", () => getItemCatalogFeature().closeItemTemplateModal?.());
     }
-    if (el.itemTemplateModal && actions.closeItemTemplateModal) {
+    if (el.itemTemplateModal && getItemCatalogFeature().closeItemTemplateModal) {
       el.itemTemplateModal.addEventListener("click", (event) => {
         if (event.target === el.itemTemplateModal) {
-          actions.closeItemTemplateModal();
+          getItemCatalogFeature().closeItemTemplateModal?.();
         }
       });
     }
-    if (el.closeSourceGroupModalBtn && actions.closeSourceGroupModal) {
-      el.closeSourceGroupModalBtn.addEventListener("click", actions.closeSourceGroupModal);
+    if (el.closeSourceGroupModalBtn && getItemCatalogFeature().closeSourceGroupModal) {
+      el.closeSourceGroupModalBtn.addEventListener("click", () => getItemCatalogFeature().closeSourceGroupModal?.());
     }
-    if (el.sourceGroupModal && actions.closeSourceGroupModal) {
+    if (el.sourceGroupModal && getItemCatalogFeature().closeSourceGroupModal) {
       el.sourceGroupModal.addEventListener("click", (event) => {
         if (event.target === el.sourceGroupModal) {
-          actions.closeSourceGroupModal();
+          getItemCatalogFeature().closeSourceGroupModal?.();
         }
       });
     }
-    if (el.closeItemTemplateHistoryModalBtn && actions.closeItemTemplateHistoryModal) {
-      el.closeItemTemplateHistoryModalBtn.addEventListener("click", actions.closeItemTemplateHistoryModal);
+    if (el.closeItemTemplateHistoryModalBtn && getItemCatalogFeature().closeItemTemplateHistoryModal) {
+      el.closeItemTemplateHistoryModalBtn.addEventListener("click", () => getItemCatalogFeature().closeItemTemplateHistoryModal?.());
     }
-    if (el.itemTemplateHistoryModal && actions.closeItemTemplateHistoryModal) {
+    if (el.itemTemplateHistoryModal && getItemCatalogFeature().closeItemTemplateHistoryModal) {
       el.itemTemplateHistoryModal.addEventListener("click", (event) => {
         if (event.target === el.itemTemplateHistoryModal) {
-          actions.closeItemTemplateHistoryModal();
+          getItemCatalogFeature().closeItemTemplateHistoryModal?.();
         }
       });
     }
-    if (el.closeSettingsPickerModalBtn && actions.closeSettingsPickerModal) {
-      el.closeSettingsPickerModalBtn.addEventListener("click", actions.closeSettingsPickerModal);
+    if (el.closeSettingsPickerModalBtn && getSessionFeature().closeSettingsPickerModal) {
+      el.closeSettingsPickerModalBtn.addEventListener("click", () => getSessionFeature().closeSettingsPickerModal?.());
     }
-    if (el.settingsPickerModal && actions.closeSettingsPickerModal) {
+    if (el.settingsPickerModal && getSessionFeature().closeSettingsPickerModal) {
       el.settingsPickerModal.addEventListener("click", (event) => {
         if (event.target === el.settingsPickerModal) {
-          actions.closeSettingsPickerModal();
+          getSessionFeature().closeSettingsPickerModal?.();
         }
       });
     }
-    if (el.settingsPickerOptions && actions.applySettingsPickerValue) {
+    if (el.settingsPickerOptions && getSessionFeature().applySettingsPickerValue) {
       el.settingsPickerOptions.addEventListener("click", (event) => {
         const btn = event.target.closest("button[data-settings-picker-value]");
         if (!btn) {
           return;
         }
-        actions.applySettingsPickerValue(btn.dataset.settingsPickerValue || "");
+        getSessionFeature().applySettingsPickerValue?.(btn.dataset.settingsPickerValue || "");
       });
     }
     const pickerButtons = [
@@ -320,116 +355,95 @@
       [el.dashboardOperationsLimitPickerBtn, "dashboard_operations_limit"],
     ];
     for (const [buttonNode, pickerKey] of pickerButtons) {
-      if (buttonNode && actions.openSettingsPickerModal) {
-        buttonNode.addEventListener("click", () => actions.openSettingsPickerModal(pickerKey));
+      if (buttonNode && getSessionFeature().openSettingsPickerModal) {
+        buttonNode.addEventListener("click", () => getSessionFeature().openSettingsPickerModal?.(pickerKey));
       }
     }
 
     el.settingsForm.addEventListener("submit", (event) => {
+      const sessionFeature = getSessionFeature();
       core.runAction({
         button: el.saveSettingsBtn,
         pendingText: "Сохранение...",
         errorPrefix: "Ошибка сохранения настроек",
-        action: () => actions.saveSettings(event),
+        action: () => sessionFeature.saveSettings?.(event),
       });
     });
     if (el.currencySelect) {
       el.currencySelect.addEventListener("change", () => {
-        if (actions.previewInterfaceSettingsUi) {
-          actions.previewInterfaceSettingsUi();
-        }
-        if (actions.savePreferencesDebounced) {
-          actions.savePreferencesDebounced(350);
-        }
+        const sessionFeature = getSessionFeature();
+        sessionFeature.previewInterfaceSettingsUi?.();
+        sessionFeature.savePreferencesDebounced?.(350);
       });
     }
     if (el.currencyPositionSelect) {
       el.currencyPositionSelect.addEventListener("change", () => {
-        if (actions.previewInterfaceSettingsUi) {
-          actions.previewInterfaceSettingsUi();
-        }
-        if (actions.savePreferencesDebounced) {
-          actions.savePreferencesDebounced(350);
-        }
+        const sessionFeature = getSessionFeature();
+        sessionFeature.previewInterfaceSettingsUi?.();
+        sessionFeature.savePreferencesDebounced?.(350);
       });
     }
     if (el.showDashboardDebtsToggle) {
       el.showDashboardDebtsToggle.addEventListener("change", () => {
-        if (actions.previewInterfaceSettingsUi) {
-          actions.previewInterfaceSettingsUi();
-        }
-        if (actions.savePreferencesDebounced) {
-          actions.savePreferencesDebounced(300);
-        }
-        if (state.activeSection === "dashboard" && actions.loadDashboard) {
-          actions.loadDashboard().catch((err) => core.setStatus(String(err)));
+        const sessionFeature = getSessionFeature();
+        const dashboardFeature = getDashboardFeature();
+        sessionFeature.previewInterfaceSettingsUi?.();
+        sessionFeature.savePreferencesDebounced?.(300);
+        if (state.activeSection === "dashboard" && dashboardFeature.loadDashboard) {
+          dashboardFeature.loadDashboard().catch((err) => core.setStatus(String(err)));
         }
       });
     }
     if (el.showDashboardAnalyticsToggle) {
       el.showDashboardAnalyticsToggle.addEventListener("change", () => {
-        if (actions.previewInterfaceSettingsUi) {
-          actions.previewInterfaceSettingsUi();
-        }
-        if (actions.savePreferencesDebounced) {
-          actions.savePreferencesDebounced(300);
-        }
-        if (state.activeSection === "dashboard" && actions.loadDashboardAnalyticsPreview) {
-          actions.loadDashboardAnalyticsPreview({ force: true }).catch((err) => core.setStatus(String(err)));
+        const sessionFeature = getSessionFeature();
+        const analyticsFeature = getAnalyticsFeature();
+        sessionFeature.previewInterfaceSettingsUi?.();
+        sessionFeature.savePreferencesDebounced?.(300);
+        if (state.activeSection === "dashboard" && analyticsFeature.loadDashboardAnalyticsPreview) {
+          analyticsFeature.loadDashboardAnalyticsPreview({ force: true }).catch((err) => core.setStatus(String(err)));
         }
       });
     }
     if (el.showDashboardOperationsToggle) {
       el.showDashboardOperationsToggle.addEventListener("change", () => {
-        if (actions.previewInterfaceSettingsUi) {
-          actions.previewInterfaceSettingsUi();
-        }
-        if (actions.savePreferencesDebounced) {
-          actions.savePreferencesDebounced(300);
-        }
-        if (state.activeSection === "dashboard" && actions.loadDashboardOperations) {
-          actions.loadDashboardOperations().catch((err) => core.setStatus(String(err)));
+        const sessionFeature = getSessionFeature();
+        const dashboardFeature = getDashboardFeature();
+        sessionFeature.previewInterfaceSettingsUi?.();
+        sessionFeature.savePreferencesDebounced?.(300);
+        if (state.activeSection === "dashboard" && dashboardFeature.loadDashboardOperations) {
+          dashboardFeature.loadDashboardOperations().catch((err) => core.setStatus(String(err)));
         }
       });
     }
     if (el.plansRemindersToggle) {
       el.plansRemindersToggle.addEventListener("change", () => {
-        if (actions.previewInterfaceSettingsUi) {
-          actions.previewInterfaceSettingsUi();
-        }
-        if (actions.savePreferencesDebounced) {
-          actions.savePreferencesDebounced(300);
-        }
+        const sessionFeature = getSessionFeature();
+        sessionFeature.previewInterfaceSettingsUi?.();
+        sessionFeature.savePreferencesDebounced?.(300);
       });
     }
     if (el.plansReminderTimeInput) {
       el.plansReminderTimeInput.addEventListener("change", () => {
-        if (actions.savePreferencesDebounced) {
-          actions.savePreferencesDebounced(300);
-        }
+        getSessionFeature().savePreferencesDebounced?.(300);
       });
     }
     if (el.dashboardOperationsLimitSelect) {
       el.dashboardOperationsLimitSelect.addEventListener("change", () => {
-        if (actions.previewInterfaceSettingsUi) {
-          actions.previewInterfaceSettingsUi();
-        }
-        if (actions.savePreferencesDebounced) {
-          actions.savePreferencesDebounced(300);
-        }
-        if (state.activeSection === "dashboard" && actions.loadDashboardOperations) {
-          actions.loadDashboardOperations().catch((err) => core.setStatus(String(err)));
+        const sessionFeature = getSessionFeature();
+        const dashboardFeature = getDashboardFeature();
+        sessionFeature.previewInterfaceSettingsUi?.();
+        sessionFeature.savePreferencesDebounced?.(300);
+        if (state.activeSection === "dashboard" && dashboardFeature.loadDashboardOperations) {
+          dashboardFeature.loadDashboardOperations().catch((err) => core.setStatus(String(err)));
         }
       });
     }
     if (el.uiScaleRange) {
       el.uiScaleRange.addEventListener("input", () => {
-        if (actions.previewInterfaceSettingsUi) {
-          actions.previewInterfaceSettingsUi();
-        }
-        if (actions.savePreferencesDebounced) {
-          actions.savePreferencesDebounced(600);
-        }
+        const sessionFeature = getSessionFeature();
+        sessionFeature.previewInterfaceSettingsUi?.();
+        sessionFeature.savePreferencesDebounced?.(600);
       });
     }
     if (el.resetUiScaleBtn) {
@@ -437,29 +451,26 @@
         if (el.uiScaleRange) {
           el.uiScaleRange.value = "100";
         }
-        if (actions.previewInterfaceSettingsUi) {
-          actions.previewInterfaceSettingsUi();
-        }
-        if (actions.savePreferencesDebounced) {
-          actions.savePreferencesDebounced(300);
-        }
+        const sessionFeature = getSessionFeature();
+        sessionFeature.previewInterfaceSettingsUi?.();
+        sessionFeature.savePreferencesDebounced?.(300);
       });
     }
     window.addEventListener("resize", () => {
-      if (actions.syncSettingsPickerButtons) {
-        actions.syncSettingsPickerButtons();
-      }
-      if (!core.isMobileViewport() && actions.closeSettingsPickerModal) {
-        actions.closeSettingsPickerModal();
+      const sessionFeature = getSessionFeature();
+      sessionFeature.syncSettingsPickerButtons?.();
+      if (!core.isMobileViewport() && sessionFeature.closeSettingsPickerModal) {
+        sessionFeature.closeSettingsPickerModal();
       }
     });
     if (el.deleteMeBtn) {
       el.deleteMeBtn.addEventListener("click", () => {
+        const sessionFeature = getSessionFeature();
         core.runAction({
           button: el.deleteMeBtn,
           pendingText: "Удаление...",
           errorPrefix: "Ошибка удаления аккаунта",
-          action: () => actions.deleteMe(),
+          action: () => sessionFeature.deleteMe?.(),
         });
       });
     }
@@ -478,67 +489,67 @@
       }
     });
 
-    if (el.plansTabTabs && actions.setPlansTab) {
+    if (el.plansTabTabs && getPlansFeature().setPlansTab) {
       el.plansTabTabs.addEventListener("click", (event) => {
         const btn = event.target.closest("button[data-plan-tab]");
         if (!btn) {
           return;
         }
-        actions.setPlansTab(btn.dataset.planTab || "").catch((err) => core.setStatus(String(err)));
+        getPlansFeature().setPlansTab?.(btn.dataset.planTab || "").catch((err) => core.setStatus(String(err)));
       });
     }
-    if (el.plansKindTabs && actions.setPlansKindFilter) {
+    if (el.plansKindTabs && getPlansFeature().setPlansKindFilter) {
       el.plansKindTabs.addEventListener("click", (event) => {
         const btn = event.target.closest("button[data-plan-kind]");
         if (!btn) {
           return;
         }
-        actions.setPlansKindFilter(btn.dataset.planKind || "").catch((err) => core.setStatus(String(err)));
+        getPlansFeature().setPlansKindFilter?.(btn.dataset.planKind || "").catch((err) => core.setStatus(String(err)));
       });
     }
-    if (el.plansStatusTabs && actions.setPlansStatusFilter) {
+    if (el.plansStatusTabs && getPlansFeature().setPlansStatusFilter) {
       el.plansStatusTabs.addEventListener("click", (event) => {
         const btn = event.target.closest("button[data-plan-status]");
         if (!btn) {
           return;
         }
-        actions.setPlansStatusFilter(btn.dataset.planStatus || "").catch((err) => core.setStatus(String(err)));
+        getPlansFeature().setPlansStatusFilter?.(btn.dataset.planStatus || "").catch((err) => core.setStatus(String(err)));
       });
     }
-    if (el.plansHistoryEventTabs && actions.setPlansHistoryEventFilter) {
+    if (el.plansHistoryEventTabs && getPlansFeature().setPlansHistoryEventFilter) {
       el.plansHistoryEventTabs.addEventListener("click", (event) => {
         const btn = event.target.closest("button[data-plan-history-event]");
         if (!btn) {
           return;
         }
-        actions.setPlansHistoryEventFilter(btn.dataset.planHistoryEvent || "").catch((err) => core.setStatus(String(err)));
+        getPlansFeature().setPlansHistoryEventFilter?.(btn.dataset.planHistoryEvent || "").catch((err) => core.setStatus(String(err)));
       });
     }
-    if (el.plansSearchQ && actions.applyPlansSearch) {
+    if (el.plansSearchQ && getPlansFeature().applyPlansSearch) {
       el.plansSearchQ.addEventListener("input", () => {
-        actions.applyPlansSearch();
+        getPlansFeature().applyPlansSearch?.();
       });
     }
-    if (el.plansList && actions.handlePlanActionClick) {
+    if (el.plansList && getPlansFeature().handlePlanActionClick) {
       el.plansList.addEventListener("click", (event) => {
-        actions.handlePlanActionClick(event);
+        getPlansFeature().handlePlanActionClick?.(event);
       });
     }
-    if (el.dashboardPlansList && actions.handlePlanActionClick) {
+    if (el.dashboardPlansList && getPlansFeature().handlePlanActionClick) {
       el.dashboardPlansList.addEventListener("click", (event) => {
-        actions.handlePlanActionClick(event);
+        getPlansFeature().handlePlanActionClick?.(event);
       });
     }
-    if (el.dashboardPlansPeriodTabs && actions.setDashboardPlansPeriod) {
+    if (el.dashboardPlansPeriodTabs && getPlansFeature().setDashboardPlansPeriod) {
       el.dashboardPlansPeriodTabs.addEventListener("click", (event) => {
         const btn = event.target.closest("button[data-dashboard-plans-period]");
         if (!btn) {
           return;
         }
-        actions.setDashboardPlansPeriod(btn.dataset.dashboardPlansPeriod || "").catch((err) => core.setStatus(String(err)));
+        getPlansFeature().setDashboardPlansPeriod?.(btn.dataset.dashboardPlansPeriod || "").catch((err) => core.setStatus(String(err)));
       });
     }
-    if (el.planScheduleModeSwitch && actions.syncPlanRecurrenceUi) {
+    if (el.planScheduleModeSwitch && getPlansFeature().syncPlanRecurrenceUi) {
       el.planScheduleModeSwitch.addEventListener("click", (event) => {
         const btn = event.target.closest("button[data-plan-schedule-mode]");
         if (!btn) {
@@ -548,24 +559,28 @@
           el.planScheduleMode.value = btn.dataset.planScheduleMode || "oneoff";
         }
         core.syncSegmentedActive(el.planScheduleModeSwitch, "plan-schedule-mode", el.planScheduleMode?.value || "oneoff");
-        actions.syncPlanRecurrenceUi();
-        actions.updateCreatePreview?.();
+        const plansFeature = getPlansFeature();
+        const operationModal = getOperationModal();
+        plansFeature.syncPlanRecurrenceUi?.();
+        operationModal.updateCreatePreview?.();
       });
     }
-    if (el.planRecurrenceFrequency && actions.syncPlanRecurrenceUi) {
+    if (el.planRecurrenceFrequency && getPlansFeature().syncPlanRecurrenceUi) {
       el.planRecurrenceFrequency.addEventListener("change", () => {
-        actions.syncPlanRecurrenceUi();
-        actions.updateCreatePreview?.();
+        const plansFeature = getPlansFeature();
+        const operationModal = getOperationModal();
+        plansFeature.syncPlanRecurrenceUi?.();
+        operationModal.updateCreatePreview?.();
       });
     }
     if (el.planRecurrenceInterval) {
       el.planRecurrenceInterval.addEventListener("input", () => {
-        actions.updateCreatePreview?.();
+        getOperationModal().updateCreatePreview?.();
       });
     }
     if (el.planRecurrenceEndDate) {
       el.planRecurrenceEndDate.addEventListener("change", () => {
-        actions.updateCreatePreview?.();
+        getOperationModal().updateCreatePreview?.();
       });
     }
     if (el.planRecurrenceWorkdaysOnly && el.planRecurrenceWorkdaysSwitch) {
@@ -576,7 +591,7 @@
         }
         el.planRecurrenceWorkdaysOnly.value = (btn.dataset.planWorkdaysOnly || "off") === "on" ? "on" : "off";
         core.syncSegmentedActive(el.planRecurrenceWorkdaysSwitch, "plan-workdays-only", el.planRecurrenceWorkdaysOnly.value);
-        actions.updateCreatePreview?.();
+        getOperationModal().updateCreatePreview?.();
       });
     }
     if (el.planRecurrenceMonthEnd) {
@@ -587,8 +602,10 @@
         if (el.planRecurrenceMonthEndSwitch) {
           core.syncSegmentedActive(el.planRecurrenceMonthEndSwitch, "plan-month-end", value ? "on" : "off");
         }
-        actions.syncPlanRecurrenceUi?.();
-        actions.updateCreatePreview?.();
+        const plansFeature = getPlansFeature();
+        const operationModal = getOperationModal();
+        plansFeature.syncPlanRecurrenceUi?.();
+        operationModal.updateCreatePreview?.();
       };
       if (el.planRecurrenceMonthEndSwitch) {
         el.planRecurrenceMonthEndSwitch.addEventListener("click", (event) => {
@@ -600,14 +617,16 @@
         });
       }
     }
-    if (el.planRecurrenceWeekdays && actions.togglePlanWeekday) {
+    if (el.planRecurrenceWeekdays && getPlansFeature().togglePlanWeekday) {
       el.planRecurrenceWeekdays.addEventListener("click", (event) => {
         const btn = event.target.closest("button[data-plan-weekday]");
         if (!btn) {
           return;
         }
-        actions.togglePlanWeekday(Number(btn.dataset.planWeekday || 0));
-        actions.updateCreatePreview?.();
+        const plansFeature = getPlansFeature();
+        const operationModal = getOperationModal();
+        plansFeature.togglePlanWeekday?.(Number(btn.dataset.planWeekday || 0));
+        operationModal.updateCreatePreview?.();
       });
     }
   }
@@ -621,7 +640,10 @@
     bindModalHandlers();
   }
 
-  window.App.initCore = {
+  const api = {
     bindCoreInit,
   };
+
+  window.App.initCore = api;
+  window.App.registerBootstrapModule?.("core", api);
 })();

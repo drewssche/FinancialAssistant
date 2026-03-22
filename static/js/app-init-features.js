@@ -4,6 +4,38 @@
   let operationsObserver = null;
   let categoriesObserver = null;
 
+  function getSessionFeature() {
+    return window.App.getRuntimeModule?.("session") || {};
+  }
+
+  function getCategoryActions() {
+    return window.App.getRuntimeModule?.("category-actions") || {};
+  }
+
+  function getDashboardFeature() {
+    return window.App.getRuntimeModule?.("dashboard") || {};
+  }
+
+  function getAnalyticsFeature() {
+    return window.App.getRuntimeModule?.("analytics") || {};
+  }
+
+  function getOperationsFeature() {
+    return window.App.getRuntimeModule?.("operations") || {};
+  }
+
+  function getPlansFeature() {
+    return window.App.getRuntimeModule?.("plans") || {};
+  }
+
+  function getItemCatalogFeature() {
+    return window.App.getRuntimeModule?.("item-catalog") || {};
+  }
+
+  function getOperationModal() {
+    return window.App.getRuntimeModule?.("operation-modal") || {};
+  }
+
   function bindFeatureHandlers() {
     function getCreateFormActionMeta() {
       if (state.createFlowMode === "plan") {
@@ -32,22 +64,29 @@
 
     el.createForm.addEventListener("submit", (event) => {
       const meta = getCreateFormActionMeta();
+      const plansFeature = getPlansFeature();
+      const operationsFeature = getOperationsFeature();
       core.runAction({
         button: event.submitter || document.getElementById("submitCreateOperationBtn"),
         pendingText: meta.pendingText,
         successMessage: meta.successMessage,
         errorPrefix: meta.errorPrefix,
-        action: () => (state.createFlowMode === "plan" ? actions.submitPlanForm(event) : actions.createOperation(event)),
+        action: () => (
+          state.createFlowMode === "plan"
+            ? plansFeature.submitPlanForm?.(event)
+            : operationsFeature.createOperation?.(event)
+        ),
       });
     });
 
     el.editForm.addEventListener("submit", (event) => {
+      const operationsFeature = getOperationsFeature();
       core.runAction({
         button: event.submitter || document.getElementById("submitEditOperationBtn"),
         pendingText: "Сохранение...",
         successMessage: "Операция обновлена",
         errorPrefix: "Ошибка сохранения операции",
-        action: () => actions.updateOperation(event),
+        action: () => operationsFeature.updateOperation?.(event),
       });
     });
 
@@ -57,7 +96,7 @@
         pendingText: "Добавление...",
         successMessage: "Категория добавлена",
         errorPrefix: "Ошибка добавления категории",
-        action: () => actions.createCategory(event),
+        action: () => getCategoryActions().createCategory?.(event),
       });
     });
 
@@ -67,7 +106,7 @@
         pendingText: "Сохранение...",
         successMessage: "Категория обновлена",
         errorPrefix: "Ошибка обновления категории",
-        action: () => actions.updateCategory(event),
+        action: () => getCategoryActions().updateCategory?.(event),
       });
     });
 
@@ -77,29 +116,31 @@
         pendingText: "Сохранение...",
         successMessage: "Группа обновлена",
         errorPrefix: "Ошибка обновления группы",
-        action: () => actions.updateGroup(event),
+        action: () => getCategoryActions().updateGroup?.(event),
       });
     });
 
-    if (el.itemTemplateForm && actions.submitItemTemplateForm) {
+    if (el.itemTemplateForm && getItemCatalogFeature().submitItemTemplateForm) {
       el.itemTemplateForm.addEventListener("submit", (event) => {
+        const itemCatalogFeature = getItemCatalogFeature();
         core.runAction({
           button: event.submitter || document.getElementById("submitItemTemplateBtn"),
           pendingText: "Сохранение...",
           successMessage: "Позиция сохранена",
           errorPrefix: "Ошибка сохранения позиции",
-          action: () => actions.submitItemTemplateForm(event),
+          action: () => itemCatalogFeature.submitItemTemplateForm?.(event),
         });
       });
     }
-    if (el.sourceGroupForm && actions.submitSourceGroupForm) {
+    if (el.sourceGroupForm && getItemCatalogFeature().submitSourceGroupForm) {
       el.sourceGroupForm.addEventListener("submit", (event) => {
+        const itemCatalogFeature = getItemCatalogFeature();
         core.runAction({
           button: event.submitter || document.getElementById("submitSourceGroupBtn"),
           pendingText: "Сохранение...",
           successMessage: "Источник создан",
           errorPrefix: "Ошибка создания источника",
-          action: () => actions.submitSourceGroupForm(event),
+          action: () => itemCatalogFeature.submitSourceGroupForm?.(event),
         });
       });
     }
@@ -111,7 +152,7 @@
           return;
         }
         if (btn.dataset.period === "custom") {
-          actions.openPeriodCustomModal();
+          getOperationModal().openPeriodCustomModal?.();
           return;
         }
         if (btn.dataset.period === state.period) {
@@ -122,13 +163,21 @@
         core.runAction({
           errorPrefix: "Ошибка сохранения периода",
           action: async () => {
-            if (state.period === "all_time" && actions.ensureAllTimeBounds) {
-              await actions.ensureAllTimeBounds();
+            const operationsFeature = getOperationsFeature();
+            const sessionFeature = getSessionFeature();
+            const dashboardFeature = getDashboardFeature();
+            const analyticsFeature = getAnalyticsFeature();
+            if (state.period === "all_time" && operationsFeature.ensureAllTimeBounds) {
+              await operationsFeature.ensureAllTimeBounds();
             }
-            await actions.savePreferences();
-            const jobs = [actions.loadDashboard(), actions.loadDashboardOperations(), actions.loadOperations()];
-            if (actions.loadDashboardAnalyticsPreview) {
-              jobs.push(actions.loadDashboardAnalyticsPreview({ force: true }));
+            await sessionFeature.savePreferences?.();
+            const jobs = [
+              dashboardFeature.loadDashboard?.(),
+              dashboardFeature.loadDashboardOperations?.(),
+              operationsFeature.loadOperations?.(),
+            ].filter(Boolean);
+            if (analyticsFeature.loadDashboardAnalyticsPreview) {
+              jobs.push(analyticsFeature.loadDashboardAnalyticsPreview({ force: true }));
             }
             await Promise.all(jobs);
           },
@@ -155,11 +204,12 @@
           pendingText: "Применение...",
           errorPrefix: "Ошибка сохранения периода",
           action: async () => {
-            if (actions.loadAnalyticsSection) {
-              await actions.loadAnalyticsSection({ force: true });
-            }
-            await actions.savePreferences();
-            actions.closePeriodCustomModal();
+            const analyticsFeature = getAnalyticsFeature();
+            const sessionFeature = getSessionFeature();
+            const operationModal = getOperationModal();
+            await analyticsFeature.loadAnalyticsSection?.({ force: true });
+            await sessionFeature.savePreferences?.();
+            operationModal.closePeriodCustomModal?.();
           },
         });
         return;
@@ -175,14 +225,14 @@
           pendingText: "Применение...",
           errorPrefix: "Ошибка сохранения периода",
           action: async () => {
-            if (actions.loadDashboardAnalyticsPreview) {
-              await actions.loadDashboardAnalyticsPreview({ force: true });
-            }
-            if (actions.loadDashboardOperations) {
-              await actions.loadDashboardOperations();
-            }
-            await actions.savePreferences();
-            actions.closePeriodCustomModal();
+            const analyticsFeature = getAnalyticsFeature();
+            const dashboardFeature = getDashboardFeature();
+            const sessionFeature = getSessionFeature();
+            const operationModal = getOperationModal();
+            await analyticsFeature.loadDashboardAnalyticsPreview?.({ force: true });
+            await dashboardFeature.loadDashboardOperations?.();
+            await sessionFeature.savePreferences?.();
+            operationModal.closePeriodCustomModal?.();
           },
         });
         return;
@@ -191,27 +241,35 @@
       state.customDateTo = to;
       state.period = "custom";
       core.syncAllPeriodTabs("custom");
-      if (actions.invalidateAllTimeAnchor) {
-        actions.invalidateAllTimeAnchor();
-      }
+      getOperationsFeature().invalidateAllTimeAnchor?.();
       core.runAction({
         button: event.submitter || document.getElementById("submitPeriodCustomBtn"),
         pendingText: "Применение...",
         errorPrefix: "Ошибка сохранения периода",
         action: async () => {
-          await actions.savePreferences();
-          const jobs = [actions.loadDashboard(), actions.loadDashboardOperations(), actions.loadOperations()];
-          if (actions.loadDashboardAnalyticsPreview) {
-            jobs.push(actions.loadDashboardAnalyticsPreview({ force: true }));
+          const sessionFeature = getSessionFeature();
+          const dashboardFeature = getDashboardFeature();
+          const operationsFeature = getOperationsFeature();
+          const analyticsFeature = getAnalyticsFeature();
+          const operationModal = getOperationModal();
+          await sessionFeature.savePreferences?.();
+          const jobs = [
+            dashboardFeature.loadDashboard?.(),
+            dashboardFeature.loadDashboardOperations?.(),
+            operationsFeature.loadOperations?.(),
+          ].filter(Boolean);
+          if (analyticsFeature.loadDashboardAnalyticsPreview) {
+            jobs.push(analyticsFeature.loadDashboardAnalyticsPreview({ force: true }));
           }
           await Promise.all(jobs);
-          actions.closePeriodCustomModal();
+          operationModal.closePeriodCustomModal?.();
         },
       });
     });
 
-    if (window.App.initFeatureOperations?.bindOperationsFeatureHandlers) {
-      window.App.initFeatureOperations.bindOperationsFeatureHandlers(
+    const featureOperations = window.App.getFeatureInitModule?.("operations") || window.App.initFeatureOperations;
+    if (featureOperations?.bindOperationsFeatureHandlers) {
+      featureOperations.bindOperationsFeatureHandlers(
         () => operationsObserver,
         (observer) => {
           operationsObserver = observer;
@@ -219,8 +277,9 @@
       );
     }
 
-    if (window.App.initFeatureCatalog?.bindCatalogFeatureHandlers) {
-      window.App.initFeatureCatalog.bindCatalogFeatureHandlers(
+    const featureCatalog = window.App.getFeatureInitModule?.("catalog") || window.App.initFeatureCatalog;
+    if (featureCatalog?.bindCatalogFeatureHandlers) {
+      featureCatalog.bindCatalogFeatureHandlers(
         () => categoriesObserver,
         (observer) => {
           categoriesObserver = observer;
@@ -228,11 +287,13 @@
       );
     }
 
-    if (window.App.initFeatureAnalytics?.bindAnalyticsFeatureHandlers) {
-      window.App.initFeatureAnalytics.bindAnalyticsFeatureHandlers();
+    const featureAnalytics = window.App.getFeatureInitModule?.("analytics") || window.App.initFeatureAnalytics;
+    if (featureAnalytics?.bindAnalyticsFeatureHandlers) {
+      featureAnalytics.bindAnalyticsFeatureHandlers();
     }
-    if (window.App.initFeatureAdmin?.bindAdminFeatureHandlers) {
-      window.App.initFeatureAdmin.bindAdminFeatureHandlers();
+    const featureAdmin = window.App.getFeatureInitModule?.("admin") || window.App.initFeatureAdmin;
+    if (featureAdmin?.bindAdminFeatureHandlers) {
+      featureAdmin.bindAdminFeatureHandlers();
     }
 
     el.toastArea.addEventListener("click", (event) => {
@@ -248,11 +309,13 @@
       core.handleUndoClick(btn.dataset.toastUndo);
     });
 
-    if (window.App.initFeatureDebts?.bindDebtFeatureHandlers) {
-      window.App.initFeatureDebts.bindDebtFeatureHandlers();
+    const featureDebts = window.App.getFeatureInitModule?.("debts") || window.App.initFeatureDebts;
+    if (featureDebts?.bindDebtFeatureHandlers) {
+      featureDebts.bindDebtFeatureHandlers();
     }
-    if (window.App.initFeaturePickers?.bindPickerFeatureHandlers) {
-      window.App.initFeaturePickers.bindPickerFeatureHandlers();
+    const featurePickers = window.App.getFeatureInitModule?.("pickers") || window.App.initFeaturePickers;
+    if (featurePickers?.bindPickerFeatureHandlers) {
+      featurePickers.bindPickerFeatureHandlers();
     }
   }
 
@@ -262,7 +325,10 @@
     bindFeatureHandlers();
   }
 
-  window.App.initFeatures = {
+  const api = {
     bindFeatureInit,
   };
+
+  window.App.initFeatures = api;
+  window.App.registerBootstrapModule?.("features", api);
 })();

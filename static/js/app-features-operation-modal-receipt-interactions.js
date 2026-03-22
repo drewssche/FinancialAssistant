@@ -19,7 +19,11 @@
       updateEditPreview,
       RECEIPT_TEMPLATES_CACHE_TTL_MS,
     } = deps;
-    const createOperationModalReceiptPickerFeature = window.App.createOperationModalReceiptPickerFeature;
+    function getReceiptPickerFactory() {
+      return window.App.getRuntimeModule?.("operation-modal-receipt-picker-factory");
+    }
+
+    const createOperationModalReceiptPickerFeature = getReceiptPickerFactory();
     const pickerFeature = createOperationModalReceiptPickerFeature
       ? createOperationModalReceiptPickerFeature({
         state,
@@ -350,5 +354,5 @@
     };
   }
   window.App = window.App || {};
-  window.App.createOperationModalReceiptInteractionsFeature = createOperationModalReceiptInteractionsFeature;
+  window.App.registerRuntimeModule?.("operation-modal-receipt-interactions-factory", createOperationModalReceiptInteractionsFeature);
 })();

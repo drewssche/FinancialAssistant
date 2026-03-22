@@ -4,7 +4,14 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
-from app.core.cache import invalidate_dashboard_summary_cache
+from app.core.cache import (
+    build_debts_cache_key,
+    get_json,
+    get_namespace_ttl_seconds,
+    invalidate_dashboard_summary_cache,
+    invalidate_debts_cache,
+    set_json,
+)
 from app.repositories.debt_repo import DebtRepository
 
 
@@ -50,6 +57,28 @@ class DebtService:
             if term and self._matches_search_token(term, query_token):
                 return True
         return False
+
+    @staticmethod
+    def _serialize_repayment(repayment) -> dict:
+        return {
+            "id": int(repayment.id),
+            "debt_id": int(repayment.debt_id),
+            "amount": Decimal(repayment.amount),
+            "repayment_date": repayment.repayment_date,
+            "note": repayment.note,
+            "created_at": repayment.created_at,
+        }
+
+    @staticmethod
+    def _serialize_issuance(issuance) -> dict:
+        return {
+            "id": int(issuance.id),
+            "debt_id": int(issuance.debt_id),
+            "amount": Decimal(issuance.amount),
+            "issuance_date": issuance.issuance_date,
+            "note": issuance.note,
+            "created_at": issuance.created_at,
+        }
 
     def create_debt(
         self,
@@ -103,6 +132,7 @@ class DebtService:
         )
         self.db.commit()
         invalidate_dashboard_summary_cache(user_id)
+        invalidate_debts_cache(user_id)
         self.db.refresh(debt)
         return debt, cp
 
@@ -170,6 +200,7 @@ class DebtService:
 
         self.db.commit()
         invalidate_dashboard_summary_cache(user_id)
+        invalidate_debts_cache(user_id)
         self.db.refresh(repayment)
         return repayment
 
@@ -192,8 +223,8 @@ class DebtService:
             "due_date": debt.due_date,
             "note": debt.note,
             "created_at": debt.created_at,
-            "repayments": repayments,
-            "issuances": issuances,
+            "repayments": [self._serialize_repayment(item) for item in repayments],
+            "issuances": [self._serialize_issuance(item) for item in issuances],
         }
 
     def update_debt(self, user_id: int, debt_id: int, updates: dict):
@@ -229,6 +260,7 @@ class DebtService:
             debt = self.repo.update_debt(debt, payload)
             self.db.commit()
             invalidate_dashboard_summary_cache(user_id)
+            invalidate_debts_cache(user_id)
             self.db.refresh(debt)
         return debt
 
@@ -239,9 +271,19 @@ class DebtService:
         self.repo.delete_debt(debt)
         self.db.commit()
         invalidate_dashboard_summary_cache(user_id)
+        invalidate_debts_cache(user_id)
 
     def list_cards(self, user_id: int, include_closed: bool = False, q: str | None = None) -> list[dict]:
         query_token = " ".join((q or "").strip().split()).casefold()
+        cache_key = build_debts_cache_key(
+            user_id=user_id,
+            view="cards",
+            include_closed=include_closed,
+            q=query_token or None,
+        )
+        cached = get_json(cache_key)
+        if cached is not None:
+            return cached["items"]
         counterparties = self.repo.list_counterparties(user_id=user_id)
         if not counterparties:
             return []
@@ -277,7 +319,9 @@ class DebtService:
             for debt in card_debts:
                 debt_repayments = repayments_by_debt.get(debt.id, [])
                 debt_issuances = issuances_by_debt.get(debt.id, [])
-                debt_repaid = sum((Decimal(item.amount) for item in debt_repayments), Decimal("0"))
+                serialized_repayments = [self._serialize_repayment(item) for item in debt_repayments]
+                serialized_issuances = [self._serialize_issuance(item) for item in debt_issuances]
+                debt_repaid = sum((Decimal(item["amount"]) for item in serialized_repayments), Decimal("0"))
                 debt_outstanding = Decimal(debt.principal) - debt_repaid
                 debt_item = {
                     "id": debt.id,
@@ -290,8 +334,8 @@ class DebtService:
                     "due_date": debt.due_date,
                     "note": debt.note,
                     "created_at": debt.created_at,
-                    "repayments": debt_repayments,
-                    "issuances": debt_issuances,
+                    "repayments": serialized_repayments,
+                    "issuances": serialized_issuances,
                 }
                 cp_match = bool(query_token and self._matches_search_token(cp.name, query_token))
                 debt_match = bool(query_token and self._debt_matches_query(debt_item, query_token))
@@ -339,5 +383,10 @@ class DebtService:
                 item["nearest_due_date"] or date.max,
                 item["counterparty"].casefold(),
             )
+        )
+        set_json(
+            cache_key,
+            {"items": cards},
+            ttl_seconds=get_namespace_ttl_seconds("debts"),
         )
         return cards

@@ -330,6 +330,38 @@ def test_dashboard_analytics_calendar_returns_week_rows_and_day_cells(client: Te
     assert any(day["date"] == "2026-03-03" and day["operations_count"] == 2 for week in payload["weeks"] for day in week["days"])
 
 
+def test_dashboard_analytics_calendar_cache_is_invalidated_after_operation_mutation(client: TestClient):
+    created = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "50.00",
+            "operation_date": "2026-03-03",
+            "note": "calendar-cache-op",
+        },
+    )
+    assert created.status_code == 201
+    operation_id = created.json()["id"]
+
+    initial = client.get("/api/v1/dashboard/analytics/calendar", params={"month": "2026-03"})
+    assert initial.status_code == 200
+    assert initial.json()["expense_total"] == "50.00"
+
+    warm = client.get("/api/v1/dashboard/analytics/calendar", params={"month": "2026-03"})
+    assert warm.status_code == 200
+    assert warm.json()["expense_total"] == "50.00"
+
+    updated = client.patch(
+        f"/api/v1/operations/{operation_id}",
+        json={"amount": "140.00"},
+    )
+    assert updated.status_code == 200
+
+    after_update = client.get("/api/v1/dashboard/analytics/calendar", params={"month": "2026-03"})
+    assert after_update.status_code == 200
+    assert after_update.json()["expense_total"] == "140.00"
+
+
 def test_dashboard_analytics_trend_returns_points_and_deltas(client: TestClient):
     client.post(
         "/api/v1/operations",
@@ -380,6 +412,62 @@ def test_dashboard_analytics_trend_returns_points_and_deltas(client: TestClient)
     assert payload["points"][0]["bucket_start"] == "2026-03-01"
 
 
+def test_dashboard_analytics_trend_cache_is_invalidated_after_operation_mutation(client: TestClient):
+    created = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "30.00",
+            "operation_date": "2026-03-02",
+            "note": "trend-cache-op",
+        },
+    )
+    assert created.status_code == 201
+    operation_id = created.json()["id"]
+
+    initial = client.get(
+        "/api/v1/dashboard/analytics/trend",
+        params={
+            "period": "custom",
+            "date_from": "2026-03-01",
+            "date_to": "2026-03-03",
+            "granularity": "day",
+        },
+    )
+    assert initial.status_code == 200
+    assert initial.json()["expense_total"] == "30.00"
+
+    warm = client.get(
+        "/api/v1/dashboard/analytics/trend",
+        params={
+            "period": "custom",
+            "date_from": "2026-03-01",
+            "date_to": "2026-03-03",
+            "granularity": "day",
+        },
+    )
+    assert warm.status_code == 200
+    assert warm.json()["expense_total"] == "30.00"
+
+    updated = client.patch(
+        f"/api/v1/operations/{operation_id}",
+        json={"amount": "90.00"},
+    )
+    assert updated.status_code == 200
+
+    after_update = client.get(
+        "/api/v1/dashboard/analytics/trend",
+        params={
+            "period": "custom",
+            "date_from": "2026-03-01",
+            "date_to": "2026-03-03",
+            "granularity": "day",
+        },
+    )
+    assert after_update.status_code == 200
+    assert after_update.json()["expense_total"] == "90.00"
+
+
 def test_dashboard_analytics_calendar_year_returns_month_cells(client: TestClient):
     client.post(
         "/api/v1/operations",
@@ -412,6 +500,38 @@ def test_dashboard_analytics_calendar_year_returns_month_cells(client: TestClien
     mar = next(item for item in payload["months"] if item["month"] == "2026-03")
     assert jan["income_total"] == "100.00"
     assert mar["expense_total"] == "40.00"
+
+
+def test_dashboard_analytics_calendar_year_cache_is_invalidated_after_operation_mutation(client: TestClient):
+    created = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "40.00",
+            "operation_date": "2026-03-10",
+            "note": "calendar-year-cache-op",
+        },
+    )
+    assert created.status_code == 201
+    operation_id = created.json()["id"]
+
+    initial = client.get("/api/v1/dashboard/analytics/calendar/year", params={"year": 2026})
+    assert initial.status_code == 200
+    assert initial.json()["expense_total"] == "40.00"
+
+    warm = client.get("/api/v1/dashboard/analytics/calendar/year", params={"year": 2026})
+    assert warm.status_code == 200
+    assert warm.json()["expense_total"] == "40.00"
+
+    updated = client.patch(
+        f"/api/v1/operations/{operation_id}",
+        json={"amount": "90.00"},
+    )
+    assert updated.status_code == 200
+
+    after_update = client.get("/api/v1/dashboard/analytics/calendar/year", params={"year": 2026})
+    assert after_update.status_code == 200
+    assert after_update.json()["expense_total"] == "90.00"
 
 
 def test_dashboard_analytics_highlights_returns_kpis_and_top_blocks(client: TestClient):
@@ -683,3 +803,78 @@ def test_dashboard_analytics_highlights_can_group_breakdown_by_category_group(cl
     assert payload["category_breakdown"][1]["category_name"] == "Без группы"
     assert payload["category_breakdown"][1]["group_id"] is None
     assert payload["category_breakdown"][1]["total_amount"] == "25.00"
+
+
+def test_dashboard_analytics_highlights_cache_is_invalidated_after_operation_mutation(client: TestClient):
+    created = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "100.00",
+            "operation_date": "2026-03-10",
+            "note": "analytics-cache-op",
+        },
+    )
+    assert created.status_code == 201
+    operation_id = created.json()["id"]
+
+    initial = client.get("/api/v1/dashboard/analytics/highlights", params={"month": "2026-03"})
+    assert initial.status_code == 200
+    assert initial.json()["expense_total"] == "100.00"
+
+    warm = client.get("/api/v1/dashboard/analytics/highlights", params={"month": "2026-03"})
+    assert warm.status_code == 200
+    assert warm.json()["expense_total"] == "100.00"
+
+    updated = client.patch(
+        f"/api/v1/operations/{operation_id}",
+        json={"amount": "250.00"},
+    )
+    assert updated.status_code == 200
+
+    after_update = client.get("/api/v1/dashboard/analytics/highlights", params={"month": "2026-03"})
+    assert after_update.status_code == 200
+    assert after_update.json()["expense_total"] == "250.00"
+
+
+def test_dashboard_analytics_highlights_cache_is_invalidated_after_category_mutation(client: TestClient):
+    group = client.post(
+        "/api/v1/categories/groups",
+        json={"name": "Старое имя", "kind": "expense"},
+    )
+    assert group.status_code == 200
+    category = client.post(
+        "/api/v1/categories",
+        json={"name": "Продукты", "kind": "expense", "group_id": group.json()["id"]},
+    )
+    assert category.status_code == 200
+    op = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "category_id": category.json()["id"],
+            "amount": "80.00",
+            "operation_date": "2026-03-12",
+        },
+    )
+    assert op.status_code == 201
+
+    initial = client.get(
+        "/api/v1/dashboard/analytics/highlights",
+        params={"month": "2026-03", "category_breakdown_level": "group"},
+    )
+    assert initial.status_code == 200
+    assert initial.json()["category_breakdown"][0]["group_name"] == "Старое имя"
+
+    renamed = client.patch(
+        f"/api/v1/categories/groups/{group.json()['id']}",
+        json={"name": "Новое имя"},
+    )
+    assert renamed.status_code == 200
+
+    after_update = client.get(
+        "/api/v1/dashboard/analytics/highlights",
+        params={"month": "2026-03", "category_breakdown_level": "group"},
+    )
+    assert after_update.status_code == 200
+    assert after_update.json()["category_breakdown"][0]["group_name"] == "Новое имя"

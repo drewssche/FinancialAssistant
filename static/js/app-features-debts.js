@@ -21,14 +21,23 @@
   let debtsRequestSeq = 0;
   const DEBTS_CARDS_CACHE_TTL_MS = 20000;
 
+  function getDashboardFeature() {
+    return window.App.getRuntimeModule?.("dashboard") || {};
+  }
+
+  function getSessionFeature() {
+    return window.App.getRuntimeModule?.("session") || {};
+  }
+
   function resetDebtCardsPagination() {
     state.debtCardsVisibleLimit = Number(state.debtCardsPageSize || 20);
   }
 
   async function refreshDebtViews() {
     await loadDebtsCards();
-    if (window.App.actions?.loadDashboard) {
-      await window.App.actions.loadDashboard();
+    const dashboardFeature = getDashboardFeature();
+    if (dashboardFeature.loadDashboard) {
+      await dashboardFeature.loadDashboard();
     }
   }
 
@@ -131,8 +140,9 @@
     core.syncSegmentedActive(el.debtSortTabs, "debt-sort", state.debtSortPreset);
     resetDebtCardsPagination();
     renderDebtCards(state.debtCardsCache || []);
-    if (window.App.actions?.savePreferences) {
-      window.App.actions.savePreferences().catch(() => {});
+    const sessionFeature = getSessionFeature();
+    if (sessionFeature.savePreferences) {
+      sessionFeature.savePreferences().catch(() => {});
     }
   }
 
@@ -160,7 +170,7 @@
     return null;
   }
 
-  window.App.featureDebts = {
+  const api = {
     loadDebtsCards,
     renderDebtCards,
     openDebtRepaymentModal: debtModalsFeature?.openDebtRepaymentModal,
@@ -178,4 +188,6 @@
     deleteDebtFlow: debtModalsFeature?.deleteDebtFlow,
     deleteAllDebtsFlow: debtModalsFeature?.deleteAllDebtsFlow,
   };
+
+  window.App.registerRuntimeModule?.("debts", api);
 })();

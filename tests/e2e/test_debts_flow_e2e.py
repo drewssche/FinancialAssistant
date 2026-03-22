@@ -32,7 +32,7 @@ def _restore_mock_telegram(page):
 
 def _login_via_mock_telegram(page):
     _restore_mock_telegram(page)
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+    page.evaluate("() => window.App.getRuntimeModule('session')?.refreshTelegramLoginUi?.()")
     try:
         page.locator("#telegramLoginBtn").wait_for(state="visible", timeout=1200)
         page.click("#telegramLoginBtn")

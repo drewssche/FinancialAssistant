@@ -1,9 +1,11 @@
 from fastapi.testclient import TestClient
+from app.core.cache import reset_cache_for_tests
 
 from tests.api.test_operations_api import client
 
 
 def test_plans_crud_confirm_and_history(client: TestClient):
+    reset_cache_for_tests()
     category_resp = client.post("/api/v1/categories", json={"name": "Магазин", "kind": "expense"})
     assert category_resp.status_code == 200
     category_id = category_resp.json()["id"]
@@ -66,6 +68,7 @@ def test_plans_crud_confirm_and_history(client: TestClient):
 
 
 def test_recurring_plan_skip_and_confirm_advance_schedule(client: TestClient):
+    reset_cache_for_tests()
     created = client.post(
         "/api/v1/plans",
         json={
@@ -104,6 +107,7 @@ def test_recurring_plan_skip_and_confirm_advance_schedule(client: TestClient):
 
 
 def test_plan_rejects_invalid_recurrence_and_deletes(client: TestClient):
+    reset_cache_for_tests()
     invalid = client.post(
         "/api/v1/plans",
         json={
@@ -136,6 +140,7 @@ def test_plan_rejects_invalid_recurrence_and_deletes(client: TestClient):
 
 
 def test_weekly_plan_supports_multiple_weekdays(client: TestClient):
+    reset_cache_for_tests()
     created = client.post(
         "/api/v1/plans",
         json={
@@ -167,6 +172,7 @@ def test_weekly_plan_supports_multiple_weekdays(client: TestClient):
 
 
 def test_monthly_plan_can_stick_to_last_day_of_month(client: TestClient):
+    reset_cache_for_tests()
     created = client.post(
         "/api/v1/plans",
         json={
@@ -197,6 +203,7 @@ def test_monthly_plan_can_stick_to_last_day_of_month(client: TestClient):
 
 
 def test_plan_rejects_invalid_weekday_values(client: TestClient):
+    reset_cache_for_tests()
     invalid = client.post(
         "/api/v1/plans",
         json={
@@ -213,6 +220,7 @@ def test_plan_rejects_invalid_weekday_values(client: TestClient):
 
 
 def test_daily_plan_can_repeat_on_workdays_only(client: TestClient):
+    reset_cache_for_tests()
     created = client.post(
         "/api/v1/plans",
         json={
@@ -243,6 +251,7 @@ def test_daily_plan_can_repeat_on_workdays_only(client: TestClient):
 
 
 def test_income_plan_receipt_items_appear_in_item_catalog_before_confirm(client: TestClient):
+    reset_cache_for_tests()
     category_resp = client.post("/api/v1/categories", json={"name": "Зарплата", "kind": "income"})
     assert category_resp.status_code == 200
     category_id = category_resp.json()["id"]
@@ -269,6 +278,7 @@ def test_income_plan_receipt_items_appear_in_item_catalog_before_confirm(client:
 
 
 def test_item_catalog_backfills_from_existing_plan_receipt_items(client: TestClient):
+    reset_cache_for_tests()
     category_resp = client.post("/api/v1/categories", json={"name": "Фриланс", "kind": "income"})
     assert category_resp.status_code == 200
     category_id = category_resp.json()["id"]
@@ -296,3 +306,41 @@ def test_item_catalog_backfills_from_existing_plan_receipt_items(client: TestCli
     payload = catalog.json()
     assert payload["total"] >= 1
     assert any(item["shop_name"] == "Подработка" and item["name"] == "Проект" for item in payload["items"])
+
+
+def test_plans_list_and_history_cache_are_invalidated_after_plan_mutation(client: TestClient):
+    reset_cache_for_tests()
+
+    created = client.post(
+        "/api/v1/plans",
+        json={
+            "kind": "expense",
+            "amount": "42.00",
+            "scheduled_date": "2026-03-22",
+            "note": "Кэшируемый план",
+        },
+    )
+    assert created.status_code == 201
+    plan_id = created.json()["id"]
+
+    first_list = client.get("/api/v1/plans")
+    assert first_list.status_code == 200
+    assert first_list.json()["total"] >= 1
+
+    first_history = client.get("/api/v1/plans/history")
+    assert first_history.status_code == 200
+
+    updated = client.patch(f"/api/v1/plans/{plan_id}", json={"note": "Обновлённый кэшируемый план"})
+    assert updated.status_code == 200
+
+    second_list = client.get("/api/v1/plans")
+    assert second_list.status_code == 200
+    assert any(item["note"] == "Обновлённый кэшируемый план" for item in second_list.json()["items"])
+
+    confirmed = client.post(f"/api/v1/plans/{plan_id}/confirm")
+    assert confirmed.status_code == 200
+
+    second_history = client.get("/api/v1/plans/history")
+    assert second_history.status_code == 200
+    assert second_history.json()["total"] >= 1
+    assert second_history.json()["items"][0]["event_type"] == "confirmed"

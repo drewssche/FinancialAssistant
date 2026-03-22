@@ -165,7 +165,7 @@
     }
   }
 
-  window.App.bulkUi = {
+  const api = {
     openBatchCreateModal,
     closeBatchCreateModal,
     openBatchCategoryModal,
@@ -184,4 +184,6 @@
     resetBatchCategoryState,
     resetBatchItemTemplateState,
   };
+
+  window.App.registerRuntimeModule?.("bulk-ui", api);
 })();

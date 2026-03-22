@@ -1,6 +1,6 @@
 (() => {
   const { state, el, core, actions } = window.App;
-  const bulkUi = window.App.bulkUi;
+  const bulkUi = window.App.getRuntimeModule?.("bulk-ui");
   const bulkUtils = window.App.bulkImportUtils;
 
   function ensureCategoryCatalogLoaded() {

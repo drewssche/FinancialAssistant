@@ -1,6 +1,9 @@
 (() => {
   const { state, el, core } = window.App;
-  const categoryActions = window.App.actions;
+  function getCategoryActions() {
+    return window.App.actions || {};
+  }
+
   function getSelectedCreateCategoryId() {
     return el.opCategory.value ? Number(el.opCategory.value) : null;
   }
@@ -22,7 +25,7 @@
     };
   }
   let getDebtPreviewSnapshot = null;
-  const previewModule = window.App.operationModalPreview;
+  const previewModule = window.App.getRuntimeModule?.("operation-modal-preview");
   const preview = previewModule?.build({
     state,
     el,
@@ -36,7 +39,7 @@
   const updateCreatePreview = preview?.updateCreatePreview || (() => {});
   const updateEditPreview = preview?.updateEditPreview || (() => {});
   const handleCreatePreviewClick = preview?.handleCreatePreviewClick || (() => {});
-  const createOperationModalReceiptFeature = window.App.createOperationModalReceiptFeature;
+  const createOperationModalReceiptFeature = window.App.getRuntimeModule?.("operation-modal-receipt-factory");
   const receipt = createOperationModalReceiptFeature
     ? createOperationModalReceiptFeature({
       state,
@@ -61,7 +64,7 @@
   const getCreateReceiptPayload = receipt.getCreateReceiptPayload || (() => []);
   const getEditReceiptPayload = receipt.getEditReceiptPayload || (() => []);
   const syncReceiptCategoriesToKind = receipt.syncReceiptCategoriesToKind || (() => {});
-  const createOperationModalDebtCounterpartyFeature = window.App.createOperationModalDebtCounterpartyFeature;
+  const createOperationModalDebtCounterpartyFeature = window.App.getRuntimeModule?.("operation-modal-debt-counterparty-factory");
 
   function isCreateReceiptMode() {
     return el.opOperationMode?.value === "receipt";
@@ -192,7 +195,7 @@
     if (mode === "create") {
       el.opKind.value = kind;
       core.syncSegmentedActive(el.createKindSwitch, "kind", kind);
-      categoryActions.populateCategorySelect(el.opCategory, el.opCategory.value, kind);
+      getCategoryActions().populateCategorySelect?.(el.opCategory, el.opCategory.value, kind);
       if (el.opCategory.value && !state.categories.some((item) => String(item.id) === el.opCategory.value && item.kind === kind)) {
         el.opCategory.value = "";
         el.opCategorySearch.value = "";
@@ -205,7 +208,7 @@
     if (mode === "edit") {
       el.editKind.value = kind;
       core.syncSegmentedActive(el.editKindSwitch, "kind", kind);
-      categoryActions.populateCategorySelect(el.editCategory, el.editCategory.value, kind);
+      getCategoryActions().populateCategorySelect?.(el.editCategory, el.editCategory.value, kind);
       if (el.editCategory.value && !state.categories.some((item) => String(item.id) === el.editCategory.value && item.kind === kind)) {
         el.editCategory.value = "";
         if (el.editCategorySearch) {
@@ -221,10 +224,10 @@
     if (Array.isArray(state.categories) && state.categories.length > 0) {
       return Promise.resolve();
     }
-    if (!categoryActions.loadCategoryCatalog) {
+    if (!getCategoryActions().loadCategoryCatalog) {
       return Promise.resolve();
     }
-    return categoryActions.loadCategoryCatalog().then(() => {
+    return getCategoryActions().loadCategoryCatalog().then(() => {
       if (mode === "edit") {
         renderEditCategoryPicker();
         renderReceiptItems("edit");
@@ -239,8 +242,8 @@
     }).catch(() => {});
   }
 
-  function openCreateModal() {
-    ensureCategoryCatalogReady("create");
+  async function openCreateModal() {
+    await ensureCategoryCatalogReady("create");
     state.createFlowMode = "operation";
     state.editPlanId = null;
     state.editDebtCreateId = null;
@@ -330,11 +333,11 @@
     }
     el.createModal.classList.add("hidden");
   }
-  function openCreateModalForDebtEdit(payload) {
+  async function openCreateModalForDebtEdit(payload) {
     if (!payload?.id) {
       return;
     }
-    openCreateModal();
+    await openCreateModal();
     state.editDebtCreateId = Number(payload.id);
     if (el.createEntryModeSwitch) {
       el.createEntryModeSwitch.classList.add("hidden");
@@ -354,8 +357,8 @@
     renderDebtCounterpartyPicker();
     updateCreatePreview();
   }
-  function openEditModal(item) {
-    ensureCategoryCatalogReady("edit");
+  async function openEditModal(item) {
+    await ensureCategoryCatalogReady("edit");
     state.editOperationId = item.id;
     document.getElementById("editAmount").value = item.amount;
     core.syncDateFieldValue(document.getElementById("editDate"), item.operation_date);
@@ -406,13 +409,13 @@
   function closePeriodCustomModal() {
     el.periodCustomModal.classList.add("hidden");
   }
-  const createOperationModalCategoryFeature = window.App.createOperationModalCategoryFeature;
+  const createOperationModalCategoryFeature = window.App.getRuntimeModule?.("operation-modal-category-factory");
   const categoryFeature = createOperationModalCategoryFeature
     ? createOperationModalCategoryFeature({
       state,
       el,
       core,
-      categoryActions,
+      categoryActions: getCategoryActions(),
       renderReceiptItems,
       renderReceiptSummary,
       updateCreatePreview,
@@ -454,7 +457,7 @@
   const selectCreateCategory = categoryFeature.selectCreateCategory || (() => {});
   const selectDebtCounterparty = debtCounterpartyFeature.selectDebtCounterparty || (() => {});
   const selectEditCategory = categoryFeature.selectEditCategory || (() => {});
-  window.App.operationModal = {
+  const api = {
     trackCategoryUsage,
     getCategoryMetaById,
     getCreateFormPreviewItem,
@@ -517,4 +520,7 @@
     openPeriodCustomModal,
     closePeriodCustomModal,
   };
+
+  window.App.operationModal = api;
+  window.App.registerRuntimeModule?.("operation-modal", api);
 })();

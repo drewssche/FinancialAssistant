@@ -1,7 +1,11 @@
 (() => {
   const { state, el, core, actions } = window.App;
-  const bulkUi = window.App.bulkUi;
+  const bulkUi = window.App.getRuntimeModule?.("bulk-ui");
   const bulkUtils = window.App.bulkImportUtils;
+
+  function getItemCatalogFeature() {
+    return window.App.getRuntimeModule?.("item-catalog") || {};
+  }
 
   function clearItemCatalogPreview() {
     state.batchItemTemplatePlan = null;
@@ -196,9 +200,7 @@
     }
     persistImportedSources(plan.validRows);
     core.invalidateUiRequestCache("item-catalog");
-    if (actions.loadItemCatalog) {
-      await actions.loadItemCatalog({ force: true });
-    }
+    await getItemCatalogFeature().loadItemCatalog?.({ force: true });
     if (el.batchItemTemplateFeedback) {
       el.batchItemTemplateFeedback.textContent =
         `Импорт завершен: обработано ${created}, пропущено ${plan.skippedCount}, предупреждений ${plan.warningCount}, ошибок ${plan.errorCount}`;

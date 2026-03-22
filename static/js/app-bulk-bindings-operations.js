@@ -1,7 +1,15 @@
 (() => {
   const { state, el, core, actions } = window.App;
-  const bulkUi = window.App.bulkUi;
+  const bulkUi = window.App.getRuntimeModule?.("bulk-ui");
   const bulkUtils = window.App.bulkImportUtils;
+
+  function getDashboardFeature() {
+    return window.App.getRuntimeModule?.("dashboard") || {};
+  }
+
+  function getOperationsFeature() {
+    return window.App.getRuntimeModule?.("operations") || {};
+  }
 
   function ensureOperationCategoryCatalogLoaded() {
     if (state.categories.length) {
@@ -243,9 +251,7 @@
       });
       created += 1;
     }
-    if (actions.invalidateAllTimeAnchor) {
-      actions.invalidateAllTimeAnchor();
-    }
+    getOperationsFeature().invalidateAllTimeAnchor?.();
     if (el.batchCreateFeedback) {
       el.batchCreateFeedback.textContent = `Импорт завершен: создано ${created}, ошибок в предпросмотре ${plan.errorCount}`;
       el.batchCreateFeedback.classList.remove("hidden");
@@ -253,7 +259,13 @@
     if (el.confirmBatchCreateBtn) {
       el.confirmBatchCreateBtn.disabled = true;
     }
-    await Promise.all([actions.loadDashboard(), actions.loadDashboardOperations(), actions.loadOperations()]);
+    const dashboardFeature = getDashboardFeature();
+    const operationsFeature = getOperationsFeature();
+    await Promise.all([
+      dashboardFeature.loadDashboard?.(),
+      dashboardFeature.loadDashboardOperations?.(),
+      operationsFeature.loadOperations?.(),
+    ].filter(Boolean));
     core.setStatus(`Импорт операций завершен: создано ${created}`);
   }
 
@@ -264,11 +276,15 @@
         headers: core.authHeaders(),
       });
     }
-    if (actions.invalidateAllTimeAnchor) {
-      actions.invalidateAllTimeAnchor();
-    }
+    getOperationsFeature().invalidateAllTimeAnchor?.();
     state.selectedOperationIds.clear();
-    await Promise.all([actions.loadDashboard(), actions.loadDashboardOperations(), actions.loadOperations()]);
+    const dashboardFeature = getDashboardFeature();
+    const operationsFeature = getOperationsFeature();
+    await Promise.all([
+      dashboardFeature.loadDashboard?.(),
+      dashboardFeature.loadDashboardOperations?.(),
+      operationsFeature.loadOperations?.(),
+    ].filter(Boolean));
   }
 
   async function bulkUpdateOperations(event) {
@@ -303,12 +319,16 @@
         body: JSON.stringify(updates),
       });
     }
-    if (actions.invalidateAllTimeAnchor) {
-      actions.invalidateAllTimeAnchor();
-    }
+    getOperationsFeature().invalidateAllTimeAnchor?.();
     bulkUi.closeBulkEditOperationsModal();
     state.selectedOperationIds.clear();
-    await Promise.all([actions.loadDashboard(), actions.loadDashboardOperations(), actions.loadOperations()]);
+    const dashboardFeature = getDashboardFeature();
+    const operationsFeature = getOperationsFeature();
+    await Promise.all([
+      dashboardFeature.loadDashboard?.(),
+      dashboardFeature.loadDashboardOperations?.(),
+      operationsFeature.loadOperations?.(),
+    ].filter(Boolean));
   }
 
   function bindOperationBulkHandlers() {
@@ -410,7 +430,7 @@
       if (el.deleteAllOperationsBtn.disabled) {
         return;
       }
-      const ids = actions.getCurrentOperationItems().map((item) => item.id);
+      const ids = getOperationsFeature().getCurrentOperationItems?.().map((item) => item.id) || [];
       if (!ids.length) {
         return;
       }

@@ -40,6 +40,24 @@ Expected:
 - all tests pass
 - no unexpected warnings/regressions
 
+Critical-chain regression matrix:
+
+```bash
+./scripts/test_regression_matrix.sh
+```
+
+With browser-backed E2E chain included:
+
+```bash
+RUN_E2E=1 ./scripts/test_regression_matrix.sh
+```
+
+Expected:
+- API critical chain stays green by default
+- full critical chain stays green end-to-end when `RUN_E2E=1`:
+  `auth -> dashboard -> create/edit operation -> debts -> plans`
+- request-budget and cache-invalidation checks stay green for the same chain
+
 ## 2. Request Budget Guard
 Budgets are defined in:
 - `docs/REQUEST_BUDGETS.md`
@@ -104,3 +122,25 @@ Expected:
 - app is usable end-to-end on a real phone or equivalent mobile emulation
 - auth/session restore behaves correctly after reopening the Mini App
 - regression suite covers auth/access states, modal CTA reachability, batch preview reachability and analytics mobile navigation
+
+## 6. Critical Regression Matrix
+Run this targeted matrix before releases that touch auth, dashboard, operations, debts, plans, Telegram runtime, or frontend orchestration:
+
+```bash
+./scripts/test_regression_matrix.sh
+```
+
+Include browser-backed UI chain when environment supports Playwright + local socket/static server runtime:
+
+```bash
+RUN_E2E=1 ./scripts/test_regression_matrix.sh
+```
+
+Matrix scope:
+- API: dashboard open, operation create/refresh, debts search, operations CRUD, dashboard cache invalidation, debts CRUD, plans CRUD/history
+- E2E: auth/access states, create operation from receipt flow, receipt picker scope, debt create/repay/edit-delete, plans create/confirm
+
+Expected:
+- the critical API nucleus remains green without requiring a full `pytest -q`
+- the full chain is checked when `RUN_E2E=1`
+- this script stays the executable source of truth for the current regression nucleus

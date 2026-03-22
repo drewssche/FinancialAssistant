@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.api.deps import get_current_user_id
+from app.core.cache import reset_cache_for_tests
 from app.db.base import Base
 from app.db.models import User
 from app.db.session import get_db
@@ -17,6 +18,7 @@ def _override_current_user_id() -> int:
 
 @pytest.fixture
 def client():
+    reset_cache_for_tests()
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -43,6 +45,7 @@ def client():
     test_client = TestClient(app)
     yield test_client
 
+    reset_cache_for_tests()
     app.dependency_overrides.clear()
     Base.metadata.drop_all(bind=engine)
 
@@ -122,3 +125,70 @@ def test_categories_can_disable_statistics_flag(client: TestClient):
     )
     assert updated.status_code == 200
     assert updated.json()["include_in_statistics"] is True
+
+
+def test_categories_cache_is_invalidated_after_category_and_group_mutations(client: TestClient):
+    initial_catalog = client.get("/api/v1/categories")
+    assert initial_catalog.status_code == 200
+    assert initial_catalog.json() == []
+
+    initial_groups = client.get("/api/v1/categories/groups")
+    assert initial_groups.status_code == 200
+    assert initial_groups.json() == []
+
+    created_group = client.post(
+        "/api/v1/categories/groups",
+        json={"name": "Продукты", "kind": "expense", "accent_color": "#ffd166"},
+    )
+    assert created_group.status_code == 200
+    group_id = created_group.json()["id"]
+
+    groups_after_create = client.get("/api/v1/categories/groups")
+    assert groups_after_create.status_code == 200
+    assert len(groups_after_create.json()) == 1
+    assert groups_after_create.json()[0]["name"] == "Продукты"
+
+    created_category = client.post(
+        "/api/v1/categories",
+        json={"name": "Еда", "kind": "expense", "group_id": group_id},
+    )
+    assert created_category.status_code == 200
+    category_id = created_category.json()["id"]
+
+    catalog_after_create = client.get("/api/v1/categories")
+    assert catalog_after_create.status_code == 200
+    assert len(catalog_after_create.json()) == 1
+    assert catalog_after_create.json()[0]["name"] == "Еда"
+
+    paginated_after_create = client.get("/api/v1/categories", params={"page": 1, "page_size": 20})
+    assert paginated_after_create.status_code == 200
+    assert paginated_after_create.json()["total"] == 1
+    assert paginated_after_create.json()["items"][0]["name"] == "Еда"
+
+    updated_group = client.patch(f"/api/v1/categories/groups/{group_id}", json={"name": "Покупки"})
+    assert updated_group.status_code == 200
+
+    groups_after_update = client.get("/api/v1/categories/groups")
+    assert groups_after_update.status_code == 200
+    assert groups_after_update.json()[0]["name"] == "Покупки"
+
+    updated_category = client.patch(f"/api/v1/categories/{category_id}", json={"name": "Кафе"})
+    assert updated_category.status_code == 200
+
+    catalog_after_update = client.get("/api/v1/categories")
+    assert catalog_after_update.status_code == 200
+    assert catalog_after_update.json()[0]["name"] == "Кафе"
+
+    deleted_category = client.delete(f"/api/v1/categories/{category_id}")
+    assert deleted_category.status_code == 204
+
+    catalog_after_delete = client.get("/api/v1/categories")
+    assert catalog_after_delete.status_code == 200
+    assert catalog_after_delete.json() == []
+
+    deleted_group = client.delete(f"/api/v1/categories/groups/{group_id}")
+    assert deleted_group.status_code == 204
+
+    groups_after_delete = client.get("/api/v1/categories/groups")
+    assert groups_after_delete.status_code == 200
+    assert groups_after_delete.json() == []

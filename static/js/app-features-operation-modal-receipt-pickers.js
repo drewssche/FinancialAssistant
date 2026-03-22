@@ -10,7 +10,15 @@
       RECEIPT_TEMPLATES_CACHE_TTL_MS,
     } = deps;
 
-    const pickerUtils = window.App.pickerUtils;
+    function getPickerUtils() {
+      return window.App.getRuntimeModule?.("picker-utils");
+    }
+
+    function getActions() {
+      return window.App.actions || {};
+    }
+
+    const pickerUtils = getPickerUtils();
     const CATEGORY_USAGE_KEY = pickerUtils.DEFAULT_CATEGORY_USAGE_KEY;
 
     function escHtml(value) {
@@ -256,8 +264,8 @@
         query: trimmed,
       };
       hideAllReceiptPickers();
-      if (window.App.actions?.openCreateCategoryModal) {
-        window.App.actions.openCreateCategoryModal({
+      if (getActions().openCreateCategoryModal) {
+        getActions().openCreateCategoryModal({
           kind,
           prefillName: trimmed,
           reset: true,
@@ -399,5 +407,5 @@
   }
 
   window.App = window.App || {};
-  window.App.createOperationModalReceiptPickerFeature = createOperationModalReceiptPickerFeature;
+  window.App.registerRuntimeModule?.("operation-modal-receipt-picker-factory", createOperationModalReceiptPickerFeature);
 })();

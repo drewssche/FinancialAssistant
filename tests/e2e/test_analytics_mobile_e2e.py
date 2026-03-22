@@ -370,7 +370,7 @@ def _open_mobile_analytics(page, static_server_url: str):
     page.set_viewport_size({"width": 390, "height": 844})
     page.goto(f"{static_server_url}/static/index.html")
     _restore_mock_telegram(page)
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+    page.evaluate("() => window.App.getRuntimeModule('session')?.refreshTelegramLoginUi?.()")
     try:
         page.locator("#telegramLoginBtn").wait_for(state="visible", timeout=1200)
         page.click("#telegramLoginBtn")
@@ -378,7 +378,7 @@ def _open_mobile_analytics(page, static_server_url: str):
     except Exception:
         page.evaluate(
             """
-            () => window.App.featureSession.tryAutoTelegramLogin?.().catch(() => null)
+            () => window.App.getRuntimeModule('session')?.tryAutoTelegramLogin?.().catch(() => null)
             """
         )
         page.wait_for_selector("#appShell:not(.hidden)")
@@ -459,10 +459,18 @@ def test_opening_analytics_calendar_does_not_fail_when_other_tabs_endpoints_are_
     page.route("**/api/v1/**", handler)
     page.goto(f"{static_server_url}/static/index.html")
     _restore_mock_telegram(page)
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
-    page.locator("#telegramLoginBtn").wait_for(state="visible")
-    page.click("#telegramLoginBtn")
-    page.wait_for_selector("#appShell:not(.hidden)")
+    page.evaluate("() => window.App.getRuntimeModule('session')?.refreshTelegramLoginUi?.()")
+    try:
+        page.locator("#telegramLoginBtn").wait_for(state="visible", timeout=1200)
+        page.click("#telegramLoginBtn")
+        page.wait_for_selector("#appShell:not(.hidden)")
+    except Exception:
+        page.evaluate(
+            """
+            () => window.App.getRuntimeModule('session')?.tryAutoTelegramLogin?.().catch(() => null)
+            """
+        )
+        page.wait_for_selector("#appShell:not(.hidden)")
     page.click("button[data-section='analytics']")
     page.wait_for_selector("#analyticsSection:not(.hidden)")
     page.wait_for_selector("#analyticsCalendarPanel:not(.hidden)")

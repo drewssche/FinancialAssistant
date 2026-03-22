@@ -195,7 +195,7 @@ def _open_app(page, static_server_url: str):
         }
         """
     )
-    page.evaluate("() => window.App.featureSession.refreshTelegramLoginUi()")
+    page.evaluate("() => window.App.getRuntimeModule('session')?.refreshTelegramLoginUi?.()")
     if page.locator("#loginScreen:not(.hidden)").count():
         page.click("#telegramLoginBtn")
     page.wait_for_selector("#appShell:not(.hidden)")

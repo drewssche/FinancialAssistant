@@ -7,6 +7,10 @@
     getCategoryMetaById,
     getDebtPreviewSnapshot,
   }) {
+    function getPlansFeature() {
+      return window.App.getRuntimeModule?.("plans") || {};
+    }
+
     function getReceiptSummaryCategories(receiptItems, fallbackCategoryId = null) {
       const categories = core.getReceiptCategoryMetas
         ? core.getReceiptCategoryMetas(receiptItems, fallbackCategoryId, getCategoryMetaById)
@@ -224,7 +228,7 @@
           el.createPreviewTableWrap.classList.add("hidden");
         }
         if (el.createPlanPreviewCard) {
-          const renderPlanCardMarkup = window.App.featurePlans?.renderPlanCardMarkup;
+          const renderPlanCardMarkup = getPlansFeature().renderPlanCardMarkup;
           el.createPlanPreviewCard.classList.remove("hidden");
           el.createPlanPreviewCard.innerHTML = typeof renderPlanCardMarkup === "function"
             ? renderPlanCardMarkup(planItem, { hideActions: true })
@@ -304,7 +308,9 @@
     };
   }
 
-  window.App.operationModalPreview = {
+  const api = {
     build,
   };
+
+  window.App.registerRuntimeModule?.("operation-modal-preview", api);
 })();

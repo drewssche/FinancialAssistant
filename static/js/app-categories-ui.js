@@ -456,7 +456,7 @@
     }
   }
 
-  window.App.categoryUi = {
+  const api = {
     updateIconToggleLabel,
     closeIconPopovers,
     setupCategoryIconPickers,
@@ -491,4 +491,7 @@
     collapseAllCategoryGroups,
     expandAllCategoryGroups,
   };
+
+  window.App.categoryUi = api;
+  window.App.registerRuntimeModule?.("category-ui", api);
 })();

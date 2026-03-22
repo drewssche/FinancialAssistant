@@ -4,7 +4,16 @@ from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.cache import invalidate_dashboard_summary_cache
+from app.core.cache import (
+    build_operations_cache_key,
+    get_json,
+    get_namespace_ttl_seconds,
+    invalidate_dashboard_analytics_cache,
+    invalidate_dashboard_summary_cache,
+    invalidate_item_templates_cache,
+    invalidate_operations_cache,
+    set_json,
+)
 from app.db.models import Category, CategoryGroup
 from app.repositories.operation_repo import OperationRepository
 from app.services.operation_item_template_service import OperationItemTemplateService
@@ -33,6 +42,16 @@ class OperationService:
             return {"receipt_only": False, "uncategorized_only": True, "min_amount": None}
         return {"receipt_only": False, "uncategorized_only": False, "min_amount": None}
 
+    @staticmethod
+    def _normalize_quick_view_cache_token(quick_view_filters: dict) -> str:
+        if quick_view_filters["receipt_only"]:
+            return "receipt"
+        if quick_view_filters["uncategorized_only"]:
+            return "uncategorized"
+        if quick_view_filters["min_amount"] is not None:
+            return "large"
+        return "all"
+
     def create_operation(
         self,
         user_id: int,
@@ -59,6 +78,9 @@ class OperationService:
             self.repo.replace_receipt_items(user_id=user_id, operation_id=item.id, items=storage_items)
         self.db.commit()
         invalidate_dashboard_summary_cache(user_id)
+        invalidate_dashboard_analytics_cache(user_id)
+        invalidate_item_templates_cache(user_id)
+        invalidate_operations_cache(user_id)
         self.db.refresh(item)
         return self._serialize_operation(user_id=user_id, operation=item)
 
@@ -81,6 +103,24 @@ class OperationService:
         if kind:
             self._validate_kind(kind)
         quick_view_filters = self._resolve_quick_view_filters(quick_view)
+        quick_view_token = self._normalize_quick_view_cache_token(quick_view_filters)
+        cache_key = build_operations_cache_key(
+            user_id=user_id,
+            view="list",
+            page=page,
+            page_size=page_size,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+            kind=kind,
+            date_from=date_from,
+            date_to=date_to,
+            category_id=category_id,
+            q=q,
+            quick_view=quick_view_token,
+        )
+        cached = get_json(cache_key)
+        if cached is not None:
+            return cached["items"], int(cached["total"])
 
         items, total = self.repo.list_filtered(
             user_id=user_id,
@@ -110,6 +150,11 @@ class OperationService:
             )
             for item in items
         ]
+        set_json(
+            cache_key,
+            {"items": result, "total": total},
+            ttl_seconds=get_namespace_ttl_seconds("operations"),
+        )
         return result, total
 
     def summarize_operations(
@@ -128,6 +173,24 @@ class OperationService:
         if kind:
             self._validate_kind(kind)
         quick_view_filters = self._resolve_quick_view_filters(quick_view)
+        quick_view_token = self._normalize_quick_view_cache_token(quick_view_filters)
+        cache_key = build_operations_cache_key(
+            user_id=user_id,
+            view="summary",
+            page=None,
+            page_size=None,
+            sort_by=None,
+            sort_dir=None,
+            kind=kind,
+            date_from=date_from,
+            date_to=date_to,
+            category_id=category_id,
+            q=q,
+            quick_view=quick_view_token,
+        )
+        cached = get_json(cache_key)
+        if cached is not None:
+            return cached
         income_total, expense_total, total = self.repo.summary_filtered(
             user_id=user_id,
             kind=kind,
@@ -139,12 +202,18 @@ class OperationService:
             uncategorized_only=quick_view_filters["uncategorized_only"],
             min_amount=quick_view_filters["min_amount"],
         )
-        return {
+        payload = {
             "income_total": income_total,
             "expense_total": expense_total,
             "balance": income_total - expense_total,
             "total": total,
         }
+        set_json(
+            cache_key,
+            payload,
+            ttl_seconds=get_namespace_ttl_seconds("operations"),
+        )
+        return payload
 
     def get_operation(self, user_id: int, operation_id: int):
         item = self.repo.get_by_id(user_id=user_id, operation_id=operation_id)
@@ -193,6 +262,9 @@ class OperationService:
 
         self.db.commit()
         invalidate_dashboard_summary_cache(user_id)
+        invalidate_dashboard_analytics_cache(user_id)
+        invalidate_item_templates_cache(user_id)
+        invalidate_operations_cache(user_id)
         self.db.refresh(item)
         return self._serialize_operation(user_id=user_id, operation=item)
 
@@ -204,6 +276,9 @@ class OperationService:
         self.repo.delete(item)
         self.db.commit()
         invalidate_dashboard_summary_cache(user_id)
+        invalidate_dashboard_analytics_cache(user_id)
+        invalidate_item_templates_cache(user_id)
+        invalidate_operations_cache(user_id)
 
     def list_item_templates(
         self,
