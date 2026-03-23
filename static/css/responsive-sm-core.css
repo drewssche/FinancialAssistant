@@ -283,17 +283,27 @@
   }
 
   .mobile-card-table.operations-table tr[data-operation-row-id] {
-    position: relative;
     box-sizing: border-box;
     width: 100%;
     max-width: 100%;
-    padding-right: calc(2rem + 12px);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    column-gap: var(--space-2);
   }
 
-  .mobile-card-table.operations-table td.mobile-actions-cell {
-    position: absolute;
-    top: 8px;
-    right: 8px;
+  .mobile-card-table.operations-table tr[data-operation-row-id] > td.select-col {
+    grid-column: 1;
+    grid-row: 1;
+    margin-bottom: 0;
+  }
+
+  .mobile-card-table.operations-table tr[data-operation-row-id] > td.mobile-actions-cell {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    align-self: start;
+    position: static;
     width: 2rem;
     min-width: 2rem;
     max-width: 2rem;
@@ -301,6 +311,10 @@
     margin-top: 0;
     z-index: 2;
     overflow: visible;
+  }
+
+  .mobile-card-table.operations-table tr[data-operation-row-id] > td[data-label]:not(.select-col):not(.mobile-actions-cell) {
+    grid-column: 1 / -1;
   }
 
   .mobile-card-table.operations-table td.mobile-actions-cell .table-kebab-wrap {

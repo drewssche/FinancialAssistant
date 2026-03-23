@@ -371,12 +371,15 @@ def test_mobile_card_kebab_stays_top_right_and_menu_escapes_card(static_server_u
             receipt_chip = page.locator(".mobile-card-table.operations-table td.operation-receipt-chip-cell .meta-chip-btn").first
             receipt_chip_box = receipt_chip.bounding_box()
             receipt_cell_box = page.locator(".mobile-card-table.operations-table td.operation-receipt-chip-cell").first.bounding_box()
+            viewport_width = page.viewport_size["width"]
             assert operation_card_box is not None and operation_trigger_box is not None
             assert receipt_chip_box is not None and receipt_cell_box is not None
             right_inset = (operation_card_box["x"] + operation_card_box["width"]) - (operation_trigger_box["x"] + operation_trigger_box["width"])
             top_inset = operation_trigger_box["y"] - operation_card_box["y"]
             assert 8 <= right_inset <= 28
             assert 8 <= top_inset <= 28
+            assert operation_trigger_box["x"] >= operation_card_box["x"]
+            assert operation_trigger_box["x"] + operation_trigger_box["width"] <= viewport_width - 4
             assert receipt_chip_box["width"] < receipt_cell_box["width"] - 12
             operation_trigger.click()
             page.wait_for_timeout(100)
