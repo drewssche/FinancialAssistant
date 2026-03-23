@@ -287,13 +287,13 @@
     box-sizing: border-box;
     width: 100%;
     max-width: 100%;
-    padding-right: calc(2.25rem + var(--space-3) + var(--space-2));
+    padding-right: calc(2.25rem + var(--space-2) + 6px);
   }
 
   .mobile-card-table.operations-table td.mobile-actions-cell {
     position: absolute;
-    top: var(--space-2);
-    right: var(--space-2);
+    top: 10px;
+    right: 10px;
     width: 2.25rem;
     min-width: 2.25rem;
     max-width: 2.25rem;
@@ -577,24 +577,6 @@
 
   .analytics-category-donut {
     width: min(22rem, 100%);
-  }
-
-  #analyticsMonthGridWrap {
-    position: relative;
-    isolation: isolate;
-  }
-
-  #analyticsMonthGridWrap::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 50%;
-    width: 18px;
-    transform: translateX(-50%);
-    background: linear-gradient(90deg, rgba(143, 183, 255, 0) 0%, rgba(143, 183, 255, 0.08) 48%, rgba(143, 183, 255, 0.08) 52%, rgba(143, 183, 255, 0) 100%);
-    pointer-events: none;
-    z-index: 1;
   }
 
   .analytics-category-donut-hole {
