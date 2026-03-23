@@ -39,6 +39,7 @@
 - recommended command: `TOKEN=... BASE_URL=http://localhost:8001 ./scripts/health_check.sh`
 - switch to full monitoring/alerts when load grows (about `20+` active users) or visible perf complaints appear
 - if Redis is intentionally not connected, allow small-install local fallback as long as measured pressure stays low; once fallback pressure exceeds the conservative baseline (`entries > 25`, `local reads > 50`, `local writes > 25`, or `dashboard summary p95 > 250ms` with enough samples), send an admin-only advisory instead of silently staying in degraded mode
+- Redis advisory should be threshold-based and actionable, not a generic startup warning; recommended VPS command: `docker compose --profile cache up --build -d`
 - Cache adoption rule:
 - introduce cache only for endpoints/views with repeated reads or expensive aggregation; write-heavy flows stay source-of-truth first
 - Invalidation must be explicit after mutating actions:

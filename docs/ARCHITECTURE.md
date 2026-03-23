@@ -5,7 +5,7 @@
 - DB: PostgreSQL
 - Migrations: Alembic
 - Migration smoke test: `tests/test_migration_consistency.py` checks Alembic heads and SQLAlchemy metadata parity on a safe in-memory schema bootstrap
-- Cache/queue-ready: Redis (optional; app has local fallback for dashboard cache, and admin-only advisory can now warn when measured local-fallback pressure grows beyond the small-install baseline)
+- Cache/queue-ready: Redis (optional; app has local fallback for dashboard cache, and admin-only advisory is reserved for measured local-fallback pressure that grows beyond the small-install baseline)
 - Runtime: Docker Compose
 - Observability baseline: API responses now carry `X-Request-ID`, API request-completion logs include `method`, `path`, `status_code`, `duration_ms`, and `request_id`, Telegram bot emits structured event logs for callback/reminder/polling outcomes, Telegram inline plan confirmation emits structured service-level events through `app/services/telegram_plan_bot_service.py`, admin governance mutations emit structured service-level events through `app/services/admin_user_service.py`, plan-reminder job lifecycle emits structured background-job events from `app/services/plan_reminder_service.py`, debt due-soon reminder lifecycle emits structured background-job events from `app/services/debt_reminder_service.py`, preferences updates emit structured background-job events before/after reminder resync through `app/services/preferences_service.py`, HTTP totals remain tracked separately in `app/core/metrics.py`, cache runtime now also exposes Redis/local-fallback pressure signals used by the admin-only Redis advisory path, and debt-repayment owner notifications emit structured notifier-level events through `app/services/telegram_debt_notifier.py`
 

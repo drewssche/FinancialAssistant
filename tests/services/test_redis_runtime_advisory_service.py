@@ -60,6 +60,8 @@ def test_build_advisory_returns_threshold_based_message(monkeypatch):
     assert advisory.local_cache_entries == 40
     assert advisory.local_fallback_reads == 70
     assert advisory.local_fallback_writes == 30
+    assert "пора подключить Redis" in advisory.text
+    assert "docker compose --profile cache up --build -d" in advisory.text
     assert "safe <= 25" in advisory.text
     assert "current=40" in advisory.text
     assert "current=70" in advisory.text

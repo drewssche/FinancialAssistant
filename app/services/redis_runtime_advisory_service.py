@@ -66,8 +66,8 @@ class RedisRuntimeAdvisoryService:
             return None
 
         text = (
-            "Админ-совет: приложение сейчас работает без Redis и уже вышло за безопасный local-fallback baseline.\n\n"
-            "Нормально без Redis для маленькой установки:\n"
+            "Админ-совет: локальный fallback уже вышел за безопасный baseline, пора подключить Redis.\n\n"
+            "Ориентир, когда можно жить без Redis:\n"
             f"- local cache entries <= {_SAFE_LOCAL_CACHE_ENTRIES}\n"
             f"- local fallback reads <= {_SAFE_LOCAL_FALLBACK_READS}\n"
             f"- local fallback writes <= {_SAFE_LOCAL_FALLBACK_WRITES}\n"
@@ -79,7 +79,8 @@ class RedisRuntimeAdvisoryService:
             f"- dashboard summary p95: {dashboard_summary_p95_ms:.1f} ms\n\n"
             "Превышения:\n"
             + "\n".join(f"- {item}" for item in breaches)
-            + "\n\nРекомендация: подключить Redis для backend cache."
+            + "\n\nПодними Redis на VPS командой:\n"
+            "docker compose --profile cache up --build -d"
         )
         return RedisFallbackAdvisory(
             text=text,

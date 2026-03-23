@@ -252,7 +252,7 @@ Working note:
 - basic logging exists in `app/core/logging.py`
 - API request correlation now exists: responses include `X-Request-ID`, and request-completion logs include `method`, `path`, `status_code`, `duration_ms`, and `request_id`
 - Telegram bot now emits structured event logs for callback processing, reminder delivery, and `getUpdates` polling failures
-- Telegram bot now also emits admin-only Redis fallback advisory events on startup and sends a deduplicated operational warning when cache runtime drops to `local fallback`
+- Telegram bot no longer emits generic startup Redis warnings; admin-only Redis advisory is now reserved for measured local-fallback pressure that exceeds the safe baseline
 - plan reminder job lifecycle now emits structured background-job events from `app/services/plan_reminder_service.py` for sync/send/reschedule transitions
 - preferences update path now emits structured background-job events from `app/services/preferences_service.py` and leaves a visible trace when reminder resync is triggered
 - auth login/upsert flow now emits structured service-level auth events from `app/services/auth_service.py` for login success, new user creation, existing user update, admin auto-approve, and pending-user creation
