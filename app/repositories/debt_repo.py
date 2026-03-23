@@ -4,7 +4,7 @@ from decimal import Decimal
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
-from app.db.models import Debt, DebtCounterparty, DebtIssuance, DebtRepayment
+from app.db.models import AuthIdentity, Debt, DebtCounterparty, DebtIssuance, DebtReminderJob, DebtRepayment, UserPreference
 
 
 class DebtRepository:
@@ -24,8 +24,37 @@ class DebtRepository:
         self.db.flush()
         return item
 
+    def get_counterparty_by_id(self, user_id: int, counterparty_id: int) -> DebtCounterparty | None:
+        stmt = select(DebtCounterparty).where(
+            DebtCounterparty.id == counterparty_id,
+            DebtCounterparty.user_id == user_id,
+        )
+        return self.db.scalar(stmt)
+
     def list_counterparties(self, user_id: int) -> list[DebtCounterparty]:
         stmt = select(DebtCounterparty).where(DebtCounterparty.user_id == user_id).order_by(DebtCounterparty.name)
+        return list(self.db.scalars(stmt))
+
+    def list_active_due_dated_debts_for_user(self, *, user_id: int) -> list[Debt]:
+        repaid_subq = (
+            select(
+                DebtRepayment.debt_id.label("debt_id"),
+                func.coalesce(func.sum(DebtRepayment.amount), 0).label("repaid_total"),
+            )
+            .group_by(DebtRepayment.debt_id)
+            .subquery()
+        )
+        outstanding_expr = Debt.principal - func.coalesce(repaid_subq.c.repaid_total, 0)
+        stmt = (
+            select(Debt)
+            .outerjoin(repaid_subq, Debt.id == repaid_subq.c.debt_id)
+            .where(
+                Debt.user_id == user_id,
+                Debt.due_date.is_not(None),
+                outstanding_expr > 0,
+            )
+            .order_by(Debt.due_date.asc(), Debt.id.asc())
+        )
         return list(self.db.scalars(stmt))
 
     def create_debt(
@@ -77,6 +106,19 @@ class DebtRepository:
         self.db.flush()
         return item
 
+    def get_user_preferences(self, *, user_id: int) -> UserPreference | None:
+        return self.db.scalar(select(UserPreference).where(UserPreference.user_id == user_id))
+
+    def get_telegram_identity(self, *, user_id: int) -> AuthIdentity | None:
+        return self.db.scalar(
+            select(AuthIdentity)
+            .where(
+                AuthIdentity.user_id == user_id,
+                AuthIdentity.provider == "telegram",
+            )
+            .limit(1)
+        )
+
     def find_active_merge_candidate(self, user_id: int, counterparty_id: int, direction: str) -> Debt | None:
         repaid_subq = (
             select(
@@ -106,6 +148,62 @@ class DebtRepository:
         self.db.flush()
         return debt
 
+    def create_reminder_job(
+        self,
+        *,
+        user_id: int,
+        debt_id: int,
+        event_type: str,
+        scheduled_for,
+    ) -> DebtReminderJob:
+        row = DebtReminderJob(
+            user_id=user_id,
+            debt_id=debt_id,
+            event_type=event_type,
+            scheduled_for=scheduled_for,
+            status="pending",
+        )
+        self.db.add(row)
+        self.db.flush()
+        return row
+
+    def cancel_pending_reminder_jobs(
+        self,
+        *,
+        user_id: int,
+        debt_id: int,
+        event_type: str,
+        canceled_at,
+    ) -> None:
+        stmt = select(DebtReminderJob).where(
+            DebtReminderJob.user_id == user_id,
+            DebtReminderJob.debt_id == debt_id,
+            DebtReminderJob.event_type == event_type,
+            DebtReminderJob.status == "pending",
+        )
+        for row in self.db.scalars(stmt):
+            row.status = "canceled"
+            row.canceled_at = canceled_at
+
+    def mark_reminder_job_sent(self, job: DebtReminderJob, *, sent_at) -> None:
+        job.status = "sent"
+        job.sent_at = sent_at
+
+    def get_latest_sent_reminder_job(self, *, user_id: int, debt_id: int, event_type: str) -> DebtReminderJob | None:
+        stmt = (
+            select(DebtReminderJob)
+            .where(
+                DebtReminderJob.user_id == user_id,
+                DebtReminderJob.debt_id == debt_id,
+                DebtReminderJob.event_type == event_type,
+                DebtReminderJob.status == "sent",
+                DebtReminderJob.sent_at.is_not(None),
+            )
+            .order_by(DebtReminderJob.sent_at.desc(), DebtReminderJob.id.desc())
+            .limit(1)
+        )
+        return self.db.scalar(stmt)
+
     def delete_debt(self, debt: Debt) -> None:
         self.db.delete(debt)
         self.db.flush()
@@ -119,6 +217,42 @@ class DebtRepository:
             .order_by(DebtRepayment.repayment_date.desc(), DebtRepayment.id.desc())
         )
         return list(self.db.scalars(stmt))
+
+    def list_due_reminder_jobs(self, *, now_utc) -> list:
+        stmt = (
+            select(DebtReminderJob, Debt, DebtCounterparty, AuthIdentity, UserPreference)
+            .join(Debt, Debt.id == DebtReminderJob.debt_id)
+            .join(DebtCounterparty, DebtCounterparty.id == Debt.counterparty_id)
+            .outerjoin(
+                AuthIdentity,
+                (AuthIdentity.user_id == DebtReminderJob.user_id) & (AuthIdentity.provider == "telegram"),
+            )
+            .outerjoin(UserPreference, UserPreference.user_id == DebtReminderJob.user_id)
+            .where(
+                DebtReminderJob.status == "pending",
+                DebtReminderJob.scheduled_for <= now_utc,
+            )
+            .order_by(DebtReminderJob.scheduled_for.asc(), DebtReminderJob.id.asc())
+        )
+        return list(self.db.execute(stmt).all())
+
+    def get_pending_reminder_job_snapshot(self, *, job_id: int):
+        stmt = (
+            select(DebtReminderJob, Debt, DebtCounterparty, AuthIdentity, UserPreference)
+            .join(Debt, Debt.id == DebtReminderJob.debt_id)
+            .join(DebtCounterparty, DebtCounterparty.id == Debt.counterparty_id)
+            .outerjoin(
+                AuthIdentity,
+                (AuthIdentity.user_id == DebtReminderJob.user_id) & (AuthIdentity.provider == "telegram"),
+            )
+            .outerjoin(UserPreference, UserPreference.user_id == DebtReminderJob.user_id)
+            .where(
+                DebtReminderJob.id == job_id,
+                DebtReminderJob.status == "pending",
+            )
+            .limit(1)
+        )
+        return self.db.execute(stmt).first()
 
     def list_issuances_for_debts(self, debt_ids: list[int]) -> list[DebtIssuance]:
         if not debt_ids:

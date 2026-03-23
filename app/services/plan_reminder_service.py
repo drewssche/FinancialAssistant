@@ -14,10 +14,13 @@ class PlanReminderService:
         self.db = db
         self.repo = PlanRepository(db)
 
+    def _now_utc(self) -> datetime:
+        return datetime.now(timezone.utc)
+
     def sync_plan_job(self, plan) -> None:
         if not plan:
             return
-        now_utc = datetime.now(timezone.utc)
+        now_utc = self._now_utc()
         self.repo.cancel_pending_reminder_jobs(
             user_id=int(plan.user_id),
             plan_id=int(plan.id),
@@ -48,7 +51,11 @@ class PlanReminderService:
             reminder_time=config["time"],
             user_tz=config["timezone"],
             now_utc=now_utc,
-            after_send=False,
+            after_send=self._already_reminded_today(
+                last_reminded_at=getattr(plan, "last_reminded_at", None),
+                user_tz=config["timezone"],
+                now_utc=now_utc,
+            ),
         )
         self.repo.create_reminder_job(
             user_id=int(plan.user_id),
@@ -64,7 +71,7 @@ class PlanReminderService:
         )
 
     def sync_user_jobs(self, *, user_id: int) -> None:
-        now_utc = datetime.now(timezone.utc)
+        now_utc = self._now_utc()
         plans = self.repo.list_active_plans_for_user(user_id=user_id)
         config = self._get_user_reminder_config(user_id=user_id)
         created_jobs = 0
@@ -81,7 +88,11 @@ class PlanReminderService:
                 reminder_time=config["time"],
                 user_tz=config["timezone"],
                 now_utc=now_utc,
-                after_send=False,
+                after_send=self._already_reminded_today(
+                    last_reminded_at=getattr(plan, "last_reminded_at", None),
+                    user_tz=config["timezone"],
+                    now_utc=now_utc,
+                ),
             )
             self.repo.create_reminder_job(
                 user_id=int(plan.user_id),
@@ -99,7 +110,7 @@ class PlanReminderService:
         )
 
     def list_due_jobs(self) -> list[dict]:
-        now_utc = datetime.now(timezone.utc)
+        now_utc = self._now_utc()
         rows = self.repo.list_due_reminder_jobs(now_utc=now_utc)
         jobs: list[dict] = []
         for job, plan, identity, preference in rows:
@@ -152,7 +163,7 @@ class PlanReminderService:
         job = refreshed["job"]
         plan = refreshed["plan"]
         config = refreshed.get("config") or config
-        now_utc = datetime.now(timezone.utc)
+        now_utc = self._now_utc()
         self.repo.mark_reminder_job_sent(job, sent_at=now_utc)
         self.repo.create_event(
             user_id=int(plan.user_id),
@@ -276,6 +287,17 @@ class PlanReminderService:
         if scheduled_date <= now_local.date() and target_local <= now_local:
             return (now_utc + timedelta(minutes=1)).replace(second=0, microsecond=0)
         return target_local.astimezone(timezone.utc)
+
+    @staticmethod
+    def _already_reminded_today(*, last_reminded_at: datetime | None, user_tz, now_utc: datetime) -> bool:
+        if not last_reminded_at:
+            return False
+        reminded_at = (
+            last_reminded_at.replace(tzinfo=timezone.utc)
+            if last_reminded_at.tzinfo is None
+            else last_reminded_at.astimezone(timezone.utc)
+        )
+        return reminded_at.astimezone(user_tz).date() == now_utc.astimezone(user_tz).date()
 
     @staticmethod
     def _resolve_timezone(timezone_name: str | None, browser_timezone: str | None = None):

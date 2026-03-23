@@ -1,4 +1,19 @@
 (() => {
+  function setCenterText(node, text) {
+    if (!node) {
+      return;
+    }
+    const value = String(text || "").trim();
+    node.textContent = value;
+    if (value) {
+      node.setAttribute("title", value);
+      node.setAttribute("aria-label", value);
+    } else {
+      node.removeAttribute("title");
+      node.removeAttribute("aria-label");
+    }
+  }
+
   window.App = window.App || {};
 
   function applyBreakdownHoverState({
@@ -44,11 +59,12 @@
     });
 
     const hoveredItem = Number.isInteger(resolvedIndex) ? snapshot.items[resolvedIndex] : null;
-    if (titleNode) {
-      titleNode.textContent = hoveredItem
+    setCenterText(
+      titleNode,
+      hoveredItem
         ? String(hoveredItem.category_name || "Без категории")
-        : "Итог периода";
-    }
+        : "Итог периода",
+    );
     if (periodNode) {
       periodNode.textContent = snapshot.periodLabel || "Нет периода";
     }

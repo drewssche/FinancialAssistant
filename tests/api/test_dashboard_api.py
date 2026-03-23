@@ -208,6 +208,19 @@ def test_dashboard_summary_metrics_track_cache_and_invalidation(client: TestClie
     assert payload["endpoint_request_totals"].get("GET /api/v1/dashboard/summary", 0) >= 2
 
 
+def test_dashboard_summary_checks_redis_runtime_advisory(client: TestClient, monkeypatch):
+    advisory_checks: list[bool] = []
+    monkeypatch.setattr(
+        "app.services.dashboard_service.RedisRuntimeAdvisoryService.maybe_send_advisory",
+        lambda self: advisory_checks.append(True) or False,
+    )
+
+    response = client.get("/api/v1/dashboard/summary", params={"period": "all_time"})
+
+    assert response.status_code == 200
+    assert advisory_checks == [True]
+
+
 def test_dashboard_summary_cache_is_invalidated_after_operation_update_and_delete(client: TestClient):
     created = client.post(
         "/api/v1/operations",

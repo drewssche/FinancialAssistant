@@ -284,6 +284,9 @@
 
   .mobile-card-table.operations-table tr[data-operation-row-id] {
     position: relative;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
     padding-right: calc(2.25rem + var(--space-3) + var(--space-2));
   }
 
@@ -293,16 +296,24 @@
     right: var(--space-2);
     width: 2.25rem;
     min-width: 2.25rem;
+    max-width: 2.25rem;
+    padding: 0;
     margin-top: 0;
     z-index: 2;
+    overflow: visible;
   }
 
   .mobile-card-table.operations-table td.mobile-actions-cell .table-kebab-wrap {
     width: 2.25rem;
+    min-width: 2.25rem;
+    max-width: 2.25rem;
   }
 
   .mobile-card-table.operations-table td.mobile-actions-cell .table-kebab-popover {
     right: 0;
+    left: auto;
+    min-width: 0;
+    max-width: calc(100vw - 2rem);
   }
 
   .mobile-card-table.operations-table .mobile-actions-cell .row-actions,
@@ -313,6 +324,17 @@
   .mobile-card-table.operations-table td[data-label="Тип"] .kind-pill {
     justify-self: start;
     width: fit-content;
+    max-width: 100%;
+  }
+
+  .mobile-card-table.operations-table td.operation-receipt-chip-cell {
+    align-items: start;
+  }
+
+  .mobile-card-table.operations-table td.operation-receipt-chip-cell .meta-chip-btn {
+    justify-self: start;
+    width: fit-content;
+    min-width: 0;
     max-width: 100%;
   }
 
@@ -557,6 +579,24 @@
     width: min(22rem, 100%);
   }
 
+  #analyticsMonthGridWrap {
+    position: relative;
+    isolation: isolate;
+  }
+
+  #analyticsMonthGridWrap::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 18px;
+    transform: translateX(-50%);
+    background: linear-gradient(90deg, rgba(143, 183, 255, 0) 0%, rgba(143, 183, 255, 0.08) 48%, rgba(143, 183, 255, 0.08) 52%, rgba(143, 183, 255, 0) 100%);
+    pointer-events: none;
+    z-index: 1;
+  }
+
   .analytics-category-donut-hole {
     width: 62%;
     padding: var(--space-3);
@@ -565,6 +605,7 @@
 
   .analytics-category-donut-title {
     font-size: 0.62rem;
+    min-height: calc(0.62rem * 1.1 * 2);
   }
 
   .analytics-category-donut-period {
@@ -671,5 +712,30 @@
 
   .modal-card form {
     margin-top: var(--space-1);
+  }
+}
+
+@media (max-width: 400px) {
+  .analytics-category-donut {
+    width: min(19rem, 100%);
+  }
+
+  .analytics-category-donut-hole {
+    width: 60%;
+    padding: var(--space-2);
+    gap: 0.16rem;
+  }
+
+  .analytics-category-donut-title {
+    font-size: 0.56rem;
+    min-height: calc(0.56rem * 1.1 * 2);
+  }
+
+  .analytics-category-donut-period {
+    font-size: 0.58rem;
+  }
+
+  .analytics-category-donut-hole strong {
+    font-size: 1.04rem;
   }
 }

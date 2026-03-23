@@ -14,6 +14,7 @@ from app.core.cache import (
     invalidate_operations_cache,
     set_json,
 )
+from app.core.logging import log_background_job_event
 from app.db.models import Category, CategoryGroup
 from app.repositories.operation_repo import OperationRepository
 from app.services.operation_item_template_service import OperationItemTemplateService
@@ -82,6 +83,15 @@ class OperationService:
         invalidate_item_templates_cache(user_id)
         invalidate_operations_cache(user_id)
         self.db.refresh(item)
+        log_background_job_event(
+            "operation_service",
+            "operation_created",
+            user_id=user_id,
+            operation_id=item.id,
+            kind=item.kind,
+            category_id=item.category_id,
+            has_receipt=bool(normalized_items),
+        )
         return self._serialize_operation(user_id=user_id, operation=item)
 
     def list_operations(
@@ -266,6 +276,16 @@ class OperationService:
         invalidate_item_templates_cache(user_id)
         invalidate_operations_cache(user_id)
         self.db.refresh(item)
+        log_background_job_event(
+            "operation_service",
+            "operation_updated",
+            user_id=user_id,
+            operation_id=item.id,
+            kind=item.kind,
+            category_id=item.category_id,
+            fields_changed=",".join(sorted(updates.keys())),
+            receipt_updated=normalized_items is not None,
+        )
         return self._serialize_operation(user_id=user_id, operation=item)
 
     def delete_operation(self, user_id: int, operation_id: int) -> None:
@@ -279,6 +299,14 @@ class OperationService:
         invalidate_dashboard_analytics_cache(user_id)
         invalidate_item_templates_cache(user_id)
         invalidate_operations_cache(user_id)
+        log_background_job_event(
+            "operation_service",
+            "operation_deleted",
+            user_id=user_id,
+            operation_id=operation_id,
+            kind=item.kind,
+            category_id=item.category_id,
+        )
 
     def list_item_templates(
         self,

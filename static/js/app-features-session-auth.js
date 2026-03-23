@@ -8,10 +8,7 @@
   }
 
   function getCategoryActions() {
-    const actions = getActions();
-    return {
-      closeCreateCategoryModal: actions.closeCreateCategoryModal,
-    };
+    return window.App.getRuntimeModule?.("category-actions") || {};
   }
 
   function getNavigationActions() {
@@ -20,7 +17,6 @@
       applySectionUi: actions.applySectionUi,
       switchSection: actions.switchSection,
       refreshAll: actions.refreshAll,
-      closeEditCategoryModal: actions.closeEditCategoryModal,
     };
   }
 
@@ -149,10 +145,10 @@
     if (getCategoryActions().closeCreateCategoryModal) {
       getCategoryActions().closeCreateCategoryModal();
     }
-    const navigation = getNavigationActions();
-    if (navigation.closeEditCategoryModal) {
-      navigation.closeEditCategoryModal();
+    if (getCategoryActions().closeEditCategoryModal) {
+      getCategoryActions().closeEditCategoryModal();
     }
+    const navigation = getNavigationActions();
     operationModal.closePeriodCustomModal();
     core.closeConfirm();
     core.closeAllMenus();

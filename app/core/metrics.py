@@ -15,6 +15,11 @@ def increment_counter(name: str, value: int = 1) -> None:
         _COUNTERS[name] += value
 
 
+def get_counter_value(name: str) -> int:
+    with _LOCK:
+        return int(_COUNTERS.get(name, 0))
+
+
 def observe_latency_ms(name: str, value_ms: float) -> None:
     with _LOCK:
         _LATENCIES_MS[name].append(max(value_ms, 0.0))

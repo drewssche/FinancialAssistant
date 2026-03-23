@@ -15,6 +15,7 @@ from app.core.metrics import increment_counter, observe_latency_ms
 from app.repositories.debt_repo import DebtRepository
 from app.repositories.operation_repo import OperationRepository
 from app.services.dashboard_analytics import DashboardAnalyticsService
+from app.services.redis_runtime_advisory_service import RedisRuntimeAdvisoryService
 
 MONEY_Q = Decimal("0.01")
 
@@ -24,6 +25,7 @@ class DashboardService:
         self.db = db
         self.repo = OperationRepository(db)
         self.analytics = DashboardAnalyticsService(db, self.repo)
+        self.redis_runtime_advisory = RedisRuntimeAdvisoryService()
 
     def get_summary(
         self,
@@ -43,6 +45,7 @@ class DashboardService:
         if cached:
             increment_counter("dashboard_summary_cache_hit_total")
             observe_latency_ms("dashboard_summary_latency_total_ms", (perf_counter() - total_started) * 1000)
+            self.redis_runtime_advisory.maybe_send_advisory()
             return cached
 
         increment_counter("dashboard_summary_cache_miss_total")
@@ -82,6 +85,7 @@ class DashboardService:
         set_json(cache_key, payload)
         observe_latency_ms("dashboard_summary_latency_miss_compute_ms", (perf_counter() - miss_compute_started) * 1000)
         observe_latency_ms("dashboard_summary_latency_total_ms", (perf_counter() - total_started) * 1000)
+        self.redis_runtime_advisory.maybe_send_advisory()
         return payload
 
     @staticmethod

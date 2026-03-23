@@ -167,7 +167,14 @@ def _operations_payload():
                 "category_icon": "🎮",
                 "category_accent_color": "#8f6bd1",
                 "note": "STAR WARS Jedi Bundle",
-                "receipt_items": [],
+                "receipt_items": [
+                    {
+                        "shop_name": "Steam",
+                        "name": "Jedi Bundle",
+                        "quantity": "1.00",
+                        "unit_price": "20.00",
+                    }
+                ],
             }
         ],
         "total": 1,
@@ -361,11 +368,31 @@ def test_mobile_card_kebab_stays_top_right_and_menu_escapes_card(static_server_u
             operation_trigger.wait_for(state="visible")
             operation_card_box = operation_card.bounding_box()
             operation_trigger_box = operation_trigger.bounding_box()
+            receipt_chip = page.locator(".mobile-card-table.operations-table td.operation-receipt-chip-cell .meta-chip-btn").first
+            receipt_chip_box = receipt_chip.bounding_box()
+            receipt_cell_box = page.locator(".mobile-card-table.operations-table td.operation-receipt-chip-cell").first.bounding_box()
             assert operation_card_box is not None and operation_trigger_box is not None
+            assert receipt_chip_box is not None and receipt_cell_box is not None
             right_inset = (operation_card_box["x"] + operation_card_box["width"]) - (operation_trigger_box["x"] + operation_trigger_box["width"])
             top_inset = operation_trigger_box["y"] - operation_card_box["y"]
             assert 8 <= right_inset <= 28
             assert 8 <= top_inset <= 28
+            assert receipt_chip_box["width"] < receipt_cell_box["width"] - 12
+            operation_trigger.click()
+            page.wait_for_timeout(100)
+            overflow = page.evaluate(
+                """
+                () => ({
+                  document: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+                  main: (() => {
+                    const node = document.querySelector('.main');
+                    return node ? node.scrollWidth - node.clientWidth : 0;
+                  })(),
+                })
+                """
+            )
+            assert overflow["document"] <= 2
+            assert overflow["main"] <= 2
 
             page.locator("#mobileNavToggleBtn").evaluate("node => node.click()")
             page.locator("button[data-section='debts']").click()

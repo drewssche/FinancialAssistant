@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
 from time import monotonic
 from typing import Any
 
 import httpx
 
+from app.core.cache import get_cache_runtime_status
 from app.core.config import get_settings
 from app.core.logging import log_telegram_bot_event
 from app.db.session import SessionLocal
@@ -14,6 +19,7 @@ from app.services.telegram_admin_bot_service import (
     TelegramAdminBotService,
     TelegramAdminTargetUserNotFoundError,
 )
+from app.services.telegram_debt_reminder_bot_service import TelegramDebtReminderBotService
 from app.services.telegram_plan_bot_service import (
     TelegramPlanAlreadyCompletedError,
     TelegramPlanBotService,
@@ -25,6 +31,14 @@ from app.services.telegram_plan_reminder_bot_service import TelegramPlanReminder
 
 logger = logging.getLogger("financial_assistant_admin_bot")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+
+_REDIS_ADVISORY_COOLDOWN_SECONDS = 12 * 60 * 60
+_REDIS_ADVISORY_STAMP_FILE = Path(tempfile.gettempdir()) / "financial_assistant_redis_advisory.json"
+_REDIS_HEALTHCHECK_GUIDANCE = (
+    "Ориентир без Redis: small install ~2-3 active users, "
+    "dashboard summary p95 <= 250ms, cache_hit_ratio не деградирует, "
+    "request-budget checks не выходят за потолки."
+)
 
 
 class TelegramBotClient:
@@ -52,6 +66,69 @@ class TelegramBotClient:
         if not data.get("ok"):
             raise RuntimeError(f"Telegram API error for {method}: {data}")
         return data
+
+
+def _build_redis_fallback_advisory_text() -> str | None:
+    status = get_cache_runtime_status()
+    if status["redis_available"]:
+        return None
+    return (
+        "Redis недоступен, backend cache работает в local fallback.\n\n"
+        f"Текущее состояние: backend={status['backend']}, "
+        f"redis={status['redis_host']}:{status['redis_port']}, "
+        f"bot_local_cache_entries={status['local_entry_count']}.\n"
+        f"{_REDIS_HEALTHCHECK_GUIDANCE}\n"
+        "Проверь health-check: TOKEN=... BASE_URL=http://localhost:8001 ./scripts/health_check.sh"
+    )
+
+
+def _load_redis_advisory_stamp(now_utc: datetime) -> bool:
+    try:
+        payload = json.loads(_REDIS_ADVISORY_STAMP_FILE.read_text(encoding="utf-8"))
+        sent_at = float(payload.get("sent_at_epoch", 0))
+    except Exception:
+        return False
+    return now_utc.timestamp() - sent_at < _REDIS_ADVISORY_COOLDOWN_SECONDS
+
+
+def _store_redis_advisory_stamp(now_utc: datetime) -> None:
+    payload = {"sent_at_epoch": now_utc.timestamp()}
+    _REDIS_ADVISORY_STAMP_FILE.write_text(json.dumps(payload), encoding="utf-8")
+
+
+async def maybe_send_redis_fallback_advisory(client: TelegramBotClient) -> None:
+    settings = get_settings()
+    advisory_text = _build_redis_fallback_advisory_text()
+    if not advisory_text or not settings.admin_telegram_id_set:
+        return
+    now_utc = datetime.now(timezone.utc)
+    if _load_redis_advisory_stamp(now_utc):
+        log_telegram_bot_event("redis_advisory_skipped", reason="cooldown_active")
+        return
+    for admin_id in settings.admin_telegram_id_set:
+        try:
+            await client.call(
+                "sendMessage",
+                {
+                    "chat_id": admin_id,
+                    "text": advisory_text,
+                    "disable_web_page_preview": True,
+                },
+            )
+            log_telegram_bot_event(
+                "redis_advisory_sent",
+                admin_telegram_id=admin_id,
+                redis_host=settings.redis_host,
+                redis_port=settings.redis_port,
+            )
+        except Exception as exc:  # noqa: BLE001
+            log_telegram_bot_event(
+                "redis_advisory_failed",
+                admin_telegram_id=admin_id,
+                error=type(exc).__name__,
+            )
+            logger.warning("telegram redis advisory failed for %s: %s", admin_id, exc)
+    _store_redis_advisory_stamp(now_utc)
 
 async def _answer_callback(client: TelegramBotClient, callback_query_id: str, text: str) -> None:
     await client.call(
@@ -246,6 +323,45 @@ async def process_plan_reminders(client: TelegramBotClient) -> None:
         db.close()
 
 
+async def process_debt_reminders(client: TelegramBotClient) -> None:
+    db = SessionLocal()
+    try:
+        service = TelegramDebtReminderBotService(db)
+        for delivery in service.list_due_deliveries():
+            try:
+                await client.call(
+                    "sendMessage",
+                    {
+                        "chat_id": delivery.chat_id,
+                        "text": delivery.text,
+                        "disable_web_page_preview": True,
+                    },
+                )
+            except Exception as exc:  # noqa: BLE001
+                log_telegram_bot_event(
+                    "debt_reminder_failed",
+                    user_id=delivery.user_id,
+                    debt_id=delivery.debt_id,
+                    error=type(exc).__name__,
+                )
+                logger.warning(
+                    "telegram debt reminder failed for user %s debt %s: %s",
+                    delivery.user_id,
+                    delivery.debt_id,
+                    exc,
+                )
+                continue
+            service.mark_delivery_sent(delivery)
+            log_telegram_bot_event(
+                "debt_reminder_sent",
+                chat_id=delivery.chat_id,
+                user_id=delivery.user_id,
+                debt_id=delivery.debt_id,
+            )
+    finally:
+        db.close()
+
+
 async def run() -> None:
     settings = get_settings()
     token = settings.telegram_bot_token.strip()
@@ -263,6 +379,7 @@ async def run() -> None:
         reminder_scan_interval_seconds=reminder_scan_interval_seconds,
     )
     try:
+        await maybe_send_redis_fallback_advisory(client)
         while True:
             now_mono = monotonic()
             if now_mono - last_plan_reminder_scan_at >= reminder_scan_interval_seconds:
@@ -271,6 +388,11 @@ async def run() -> None:
                 except Exception as exc:  # noqa: BLE001
                     log_telegram_bot_event("plan_reminder_scan_failed", error=type(exc).__name__)
                     logger.warning("telegram plan reminder scan failed: %s", exc)
+                try:
+                    await process_debt_reminders(client)
+                except Exception as exc:  # noqa: BLE001
+                    log_telegram_bot_event("debt_reminder_scan_failed", error=type(exc).__name__)
+                    logger.warning("telegram debt reminder scan failed: %s", exc)
                 last_plan_reminder_scan_at = now_mono
             try:
                 data = await client.call(

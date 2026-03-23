@@ -186,6 +186,12 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     analytics_breakdown_render = (
         REPO_ROOT / "static" / "js" / "app-analytics-breakdown-render-coordinator.js"
     ).read_text(encoding="utf-8")
+    bulk_bindings_categories = (
+        REPO_ROOT / "static" / "js" / "app-bulk-bindings-categories.js"
+    ).read_text(encoding="utf-8")
+    bulk_bindings_operations = (
+        REPO_ROOT / "static" / "js" / "app-bulk-bindings-operations.js"
+    ).read_text(encoding="utf-8")
     pickers_init = (REPO_ROOT / "static" / "js" / "app-init-features-pickers.js").read_text(encoding="utf-8")
     picker_coordinator = (REPO_ROOT / "static" / "js" / "app-picker-ui-coordinator.js").read_text(encoding="utf-8")
     categories_ui_coordinator = (REPO_ROOT / "static" / "js" / "app-categories-ui-coordinator.js").read_text(encoding="utf-8")
@@ -195,11 +201,14 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     debts_init = (REPO_ROOT / "static" / "js" / "app-init-features-debts.js").read_text(encoding="utf-8")
 
     assert "function getActions()" in section_ui
+    assert "function getCategoryActions()" in section_ui
     assert "function getCategoryActions()" in session_auth
     assert "function getNavigationActions()" in session_auth
     assert "function getNavigationActions()" in analytics
     assert "function getActions()" in operations_mutations
-    assert "function getActions()" in categories_data
+    assert "function getOperationModal()" in categories_data
+    assert "function getDashboardFeature()" in categories_data
+    assert "function getOperationsFeature()" in categories_data
     assert "function getCategoryActions()" in op_modal
     assert "function getCategoryActions()" in operations
     session_feature = (REPO_ROOT / "static" / "js" / "app-features-session.js").read_text(encoding="utf-8")
@@ -227,6 +236,9 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert "function getSessionFeature()" in init_core
     assert "function getCategoryActions()" in init_core
     assert "function getCategoryActions()" in init_startup
+    assert "function getActions()" in init_startup
+    assert "function getCategoryActions()" in bulk_bindings_categories
+    assert "function getCategoryActions()" in bulk_bindings_operations
     assert "function getSessionFeature()" in init_startup
     assert "function getTelegramWebApp()" in init_startup
     assert "function getSessionFeature()" in core_actions
@@ -257,6 +269,22 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert 'registerRuntimeModule?.("bulk-ui"' in bulk_ui
     assert 'registerRuntimeModule?.("category-ui"' in categories_ui
     assert 'registerRuntimeModule?.("picker-utils"' in picker_utils
+    assert 'getRuntimeModule?.("category-actions")' in section_ui
+    assert 'getRuntimeModule?.("category-actions")' in bulk_bindings_categories
+    assert 'getRuntimeModule?.("category-actions")' in bulk_bindings_operations
+    assert '"setupCategoryIconPickers"' not in features
+    assert '"closeIconPopovers"' not in features
+    assert '"fillGroupSelect"' not in features
+    assert '"populateCategorySelect"' not in features
+    assert '"renderCreateGroupPicker"' not in features
+    assert '"renderEditGroupPicker"' not in features
+    assert '"handleCreateGroupSearchFocus"' not in features
+    assert '"handleEditGroupSearchFocus"' not in features
+    assert '"selectCreateGroup"' not in features
+    assert '"selectEditGroup"' not in features
+    assert '"groupCategoryIds"' not in features
+    assert '"updateCategoriesBulkUi"' not in features
+    assert '"renderCategories"' not in features
     assert 'registerRuntimeModule?.("dashboard-data"' in dashboard_data
     assert 'registerRuntimeModule?.("item-catalog-sources-factory"' in item_catalog_sources
     assert 'registerRuntimeModule?.("item-catalog-modal-factory"' in item_catalog_modal
@@ -303,6 +331,7 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert 'getRuntimeModule?.("categories-ui-coordinator")' in catalog_init
     assert 'getRuntimeModule?.("categories-section-coordinator")' in catalog_init
     assert 'getRuntimeModule?.("category-actions")' in catalog_init
+    assert 'getRuntimeModule?.("category-actions")' in pickers_init
     assert 'registerRuntimeModule?.("debts-ui-coordinator"' in debts_ui_coordinator
     assert 'getRuntimeModule?.("debts-ui-coordinator")' in debts_init
     assert "renderGroupedCategoryTable({" in categories_ui_coordinator
@@ -329,6 +358,7 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert 'getRuntimeModule?.("item-catalog-render-coordinator")' in item_catalog
     assert 'getRuntimeModule?.("picker-ui-coordinator")' in pickers_init
     assert "function getActions()" in pickers_init
+    assert "function getCategoryActions()" in pickers_init
     assert "function getCore()" in pickers_init
     assert "function getPickerUtils()" in pickers_init
     assert "function getCore()" in picker_coordinator
@@ -349,6 +379,7 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert "renderItemCatalog({" in item_catalog_render_coordinator
     assert 'registerRuntimeModule?.("operation-modal-receipt-picker-factory"' in op_modal_receipt_pickers
     assert "function getActions()" in op_modal_receipt_pickers
+    assert "function getCategoryActions()" in op_modal_receipt_pickers
     assert "function getPickerUtils()" in op_modal_receipt_pickers
     assert 'registerRuntimeModule?.("operation-modal-receipt-interactions-factory"' in op_modal_receipt_interactions
     assert 'registerRuntimeModule?.("operation-modal-receipt-factory"' in op_modal_receipt
@@ -362,6 +393,10 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert "function getActionFacade()" in categories_js
     assert "const publicCategoryActions =" in categories_js
     assert 'getRuntimeModule?.("category-ui")' in categories_data
+    assert 'getRuntimeModule?.("operation-modal")' in categories_data
+    assert 'getRuntimeModule?.("dashboard")' in categories_data
+    assert 'getRuntimeModule?.("operations")' in categories_data
+    assert 'getRuntimeModule?.("category-actions")' in op_modal
     assert 'getRuntimeModule?.("bulk-ui")' in bulk_bindings_ops
     assert 'getRuntimeModule?.("dashboard")' in bulk_bindings_ops
     assert 'getRuntimeModule?.("operations")' in bulk_bindings_ops
@@ -380,6 +415,7 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert "const categoryActions = window.App.actions" not in session_auth
     assert "const categoryActions = window.App.actions" not in op_modal
     assert "const categoryActions = window.App.actions" not in operations
+    assert "return window.App.actions || {}" not in op_modal
     assert "const highlightsUi = window.App.featureAnalyticsHighlightsUi" not in analytics_highlights
     assert "window.App.featureAnalyticsHighlightsUi =" not in analytics_highlights_ui
     assert "window.App.featureAnalyticsHighlightsUi" not in analytics_highlights
@@ -392,6 +428,7 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert "actions.tryAutoTelegramLogin" not in init_startup
     assert "actions.bootstrapApp" not in init_startup
     assert "window.App.actions?.openCreateCategoryModal" not in op_modal_receipt_pickers
+    assert 'getRuntimeModule?.("category-actions")' in op_modal_receipt_pickers
     assert 'getRuntimeModule?.("dashboard-data")' in operations_mutations_factory
     assert 'getRuntimeModule?.("dashboard")' in debts
     assert 'getRuntimeModule?.("session")' in debts
@@ -401,6 +438,7 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert 'getRuntimeModule?.("operations")' in analytics_highlights
     assert 'getRuntimeModule?.("session")' in init_core
     assert 'getRuntimeModule?.("category-actions")' in init_core
+    assert 'getRuntimeModule?.("category-actions")' in init_startup
     assert 'getRuntimeModule?.("session")' in core_actions
     assert 'getRuntimeModule?.("dashboard")' in init_core
     assert 'getRuntimeModule?.("analytics")' in init_core
@@ -438,19 +476,25 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert 'getRuntimeModule("dashboard")' in features
     assert 'getRuntimeModule("session")' in features
     assert 'getRuntimeModule("operation-modal")' in features
-    assert 'getRuntimeModule("category-actions")' in features
     assert "const publicActionFacade =" in features
     assert "const publicActionFacadeContract = Object.freeze({" in features
     assert "window.App.publicActionFacadeContract =" in features
     assert 'navigation: Object.freeze([' in features
-    assert 'category_glue: Object.freeze([' in features
     assert 'debt_batch_orchestration: Object.freeze([' in features
     assert '"switchSection"' in features
     assert '"navigateSectionBack"' in features
-    assert '"openCreateCategoryModal"' in features
-    assert '"bulkDeleteCategories"' in features
     assert '"openDebtRepaymentModal"' in features
     assert '"openBatchCreateModal"' in features
+    assert '"openCreateCategoryModal"' not in features
+    assert '"closeCreateCategoryModal"' not in features
+    assert '"closeEditCategoryModal"' not in features
+    assert '"closeEditGroupModal"' not in features
+    assert '"openEditCategoryModal"' not in features
+    assert '"openEditGroupModal"' not in features
+    assert '"loadCategories"' not in features
+    assert '"createGroup"' not in features
+    assert '"bulkDeleteCategories"' not in features
+    assert '"bulkDeleteGroups"' not in features
     assert '"telegramLogin"' not in features
     assert '"updateOperationsBulkUi"' not in features
     assert 'getRuntimeModule?.("analytics-trend-module")' in analytics_highlights
@@ -564,6 +608,7 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert "window.App.actions.switchSection" not in analytics
     assert "window.App.actions.loadDashboardAnalyticsPreview" not in operations_mutations
     assert "window.App.actions.renderCreateCategoryPicker" not in categories_data
+    assert "return window.App.actions || {}" not in categories_data
     assert "window.App.pickerUtils?.setPopoverOpen" not in plans
     assert "window.App.bulkUi?.updateOperationsBulkUi?.()" not in operations
     assert "actions.updateOperationsBulkUi" not in operations

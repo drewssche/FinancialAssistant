@@ -402,3 +402,63 @@ def test_mark_job_sent_emits_sent_and_rescheduled_background_events(caplog):
     finally:
         db.close()
         Base.metadata.drop_all(bind=engine)
+
+
+def test_sync_plan_job_does_not_reschedule_same_day_after_already_reminded():
+    engine, SessionLocal = _make_session()
+    db = SessionLocal()
+    try:
+        db.add(User(id=1, display_name="Tester", status="active"))
+        db.add(
+            UserPreference(
+                user_id=1,
+                preferences_version=1,
+                data={
+                    "plans": {"reminders_enabled": True, "reminder_time": "09:00"},
+                    "ui": {"timezone": "UTC"},
+                },
+            )
+        )
+        reminded_at = datetime(2030, 3, 20, 9, 0, tzinfo=timezone.utc)
+        db.add(
+            PlanOperation(
+                id=1,
+                user_id=1,
+                kind="expense",
+                amount="10.00",
+                scheduled_date=date(2030, 3, 20),
+                note="Напомнить о плане",
+                status="active",
+                recurrence_enabled=False,
+                last_reminded_at=reminded_at,
+                reminder_sent_count=1,
+            )
+        )
+        db.add(
+            PlanReminderJob(
+                id=1,
+                plan_id=1,
+                user_id=1,
+                scheduled_for=reminded_at,
+                status="sent",
+                sent_at=reminded_at,
+            )
+        )
+        db.commit()
+
+        plan = db.get(PlanOperation, 1)
+        service = PlanReminderService(db)
+        service._now_utc = lambda: datetime(2030, 3, 20, 11, 26, tzinfo=timezone.utc)
+        service.sync_plan_job(plan)
+        db.commit()
+
+        jobs = db.query(PlanReminderJob).order_by(PlanReminderJob.id.asc()).all()
+        assert len(jobs) == 2
+        assert jobs[0].status == "sent"
+        assert jobs[1].status == "pending"
+        assert jobs[1].scheduled_for.date().isoformat() == "2030-03-21"
+        assert jobs[1].scheduled_for.hour == 9
+        assert jobs[1].scheduled_for.minute == 0
+    finally:
+        db.close()
+        Base.metadata.drop_all(bind=engine)

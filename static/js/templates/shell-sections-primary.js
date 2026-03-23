@@ -108,6 +108,14 @@
         </section>
 
         <section id="analyticsSection" class="section-block hidden">
+          <section class="panel">
+            <div class="segmented" id="analyticsViewTabs" role="tablist" aria-label="Вкладки аналитики">
+              <button class="segmented-btn" data-analytics-tab="calendar" type="button">Календарь</button>
+              <button class="segmented-btn active" data-analytics-tab="structure" type="button">Структура</button>
+              <button class="segmented-btn" data-analytics-tab="trends" type="button">Тренды</button>
+            </div>
+          </section>
+
           <section id="analyticsGlobalScopePanel" class="panel">
             <div class="panel-head row between">
               <div>
@@ -123,14 +131,6 @@
                   <button class="segmented-btn" data-analytics-global-period="custom" type="button">Настроить</button>
                 </div>
               </div>
-            </div>
-          </section>
-
-          <section class="panel">
-            <div class="segmented" id="analyticsViewTabs" role="tablist" aria-label="Вкладки аналитики">
-              <button class="segmented-btn" data-analytics-tab="calendar" type="button">Календарь</button>
-              <button class="segmented-btn active" data-analytics-tab="structure" type="button">Структура</button>
-              <button class="segmented-btn" data-analytics-tab="trends" type="button">Тренды</button>
             </div>
           </section>
 

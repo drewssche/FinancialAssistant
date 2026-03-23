@@ -111,6 +111,10 @@
 - Telegram WebApp adapter for viewport/back button/main button
 
 ## Status Against Refactor Plan
+Working note:
+- `docs/ROADMAP.md` is the active source of truth for the current execution plan and status
+- `docs/AUDIT_TODO.md` is now treated as historical/archive context, not as the primary live task tracker
+
 1. Fix current behavior with regression tests
 - status: `done`
 - done:
@@ -133,26 +137,21 @@
 - contract coverage exists in `tests/api/test_frontend_bootstrap_contract.py`
 
 4. Reduce `window.App` usage
-- status: `partial`, but now extremely close to `done`
+- status: `done` for the current architecture track
 - done:
 - legacy top-level `window.App.feature*` providers were removed from active runtime paths
 - many consumers now use `getRuntimeModule(...)`
 - `window.App.actions` was narrowed and documented as an explicit public facade contract in `static/js/app-features.js`
+- `static/js/app-features.js` has now shrunk that explicit facade in practice: the category bridge no longer gets republished through the broad public action facade and now stays runtime-only behind `category-actions`
 - random hot-path globals in startup/session/modal/operations/catalog/analytics paths were moved behind local getters or runtime-module lookup
 - legacy analytics highlights UI access is no longer direct: `static/js/app-features-analytics-highlights.js` now resolves `analytics-highlights-ui` through registry-first lookup instead of depending on `window.App.featureAnalyticsHighlightsUi`
 - the last legacy analytics-highlights UI bridge was removed: `static/js/app-features-analytics-highlights-ui.js` no longer publishes `window.App.featureAnalyticsHighlightsUi`, and `static/js/app-features-analytics-highlights.js` now resolves the UI strictly through the runtime registry
-- not done:
-- the remaining blocker is mostly intentional facade/orchestrator code, not scattered hot-path globals
-- `static/js/app-features.js` still owns the explicit public action facade and its legacy compatibility bridge
-- `static/js/app-categories.js` no longer mutates `window.App.actions` directly; it now exposes the category bridge through runtime registration, while `static/js/app-features.js` still republishes that bridge into the explicit public facade for compatibility
-- `static/js/app-init-features-catalog.js` now also consumes category-specific section/table actions through `getRuntimeModule("category-actions")` instead of the broad `actions` facade, so category section glue is less coupled to the global action bag
-- `static/js/app-init-core.js` now also consumes category-specific modal/render/icon actions through `getRuntimeModule("category-actions")` instead of the broad `actions` facade, so core modal wiring is less coupled to the global action bag
-- `static/js/app-init-features.js` now also submits category/group create-update flows through `getRuntimeModule("category-actions")` instead of the broad `actions` facade, so feature-form glue is less coupled to the global action bag
-- a few local getter paths still intentionally resolve through `window.App.actions` / `window.App.core` in fallback or facade-heavy files such as `static/js/app-categories-data.js`, `static/js/app-init-startup.js`, `static/js/app-features-operation-modal.js`, `static/js/app-features-analytics.js`, and `static/js/app-init-features-pickers.js`
-- this means the architectural risk is now concentrated and explicit, but the repo has not fully reached a “minimal bootstrap/public API only” endpoint yet
+- residual/non-blocking:
+- `static/js/app-features.js` still owns the intentional broad public facade for navigation/back-stack and debt/batch orchestration
+- a few local getter paths still intentionally resolve through `window.App.actions` / `window.App.core` in compatibility-heavy files, but the category bridge and `feature*` global sprawl are no longer part of the active runtime path
 
 5. Centralize frontend state and DOM updates
-- status: `partial`, but now extremely close to `done`
+- status: `done` for the current architecture track
 - done:
 - shared runtime helpers/factories/preview flows are more centralized than before
 - some hot-path DOM/state mutation flows were pulled behind runtime modules and local getters
@@ -185,10 +184,8 @@
 - analytics breakdown render/presenter logic now goes through a centralized runtime helper in `static/js/app-analytics-breakdown-render-coordinator.js`, so `static/js/app-features-analytics-highlights-ui.js` is now more focused on state ownership and high-level UI coordination than on HTML/SVG rendering details
 - category picker clear-state is now separated from regular category chips, so `Без категории` is no longer exposed as a fake `data-category-id` option in operation modal search results
 - regression coverage was updated for the real mobile categories UX path via card action menu before opening the edit-category modal
-- not done:
-- the remaining work is now concentrated in a few intentional render/presentation layers rather than spread across the whole frontend
-- the biggest leftover hotspots are final presentation/render polish and facade cleanup, not random event glue inside init files
-- the main remaining frontend debt is now concentrated in the explicit public facade/orchestrator layers, above all `static/js/app-features.js`, plus a small set of fallback/getter-heavy files rather than mixed render/event glue across feature modules
+- residual/non-blocking:
+- the remaining work is now mostly final presentation/facade polish rather than mixed DOM/state glue spread across init and feature files
 
 6. Check and strengthen backend layer boundaries
 - status: `done`
@@ -212,6 +209,12 @@
 - the Telegram bot shell is now guarded against drifting back into direct repository/model/api imports
 - the Telegram bot shell is also guarded against importing `PlanReminderService` directly; reminder delivery stays behind the telegram-specific adapter service
 - current Telegram runtime paths with business logic now go through explicit service-layer adapters instead of embedding domain mutation logic in the shell
+- debt Telegram product flow now has two layers:
+- full debt repayment sends an owner-only notification through `app/services/telegram_debt_notifier.py`, triggered post-commit from `app/services/debt_service.py`
+- debt due-date reminders now also go through a dedicated queue path: `app/services/debt_reminder_service.py` owns scheduling/dedupe over `debt_reminder_jobs`, `app/services/telegram_debt_reminder_bot_service.py` owns Telegram delivery assembly, and `scripts/run_telegram_admin_bot.py` stays a thin polling/delivery shell
+- current debt reminder event types:
+  - `due_soon`: one-shot, one day before `due_date`
+  - `overdue`: at most once per local day, with next-day reschedule after send
 
 8. Unify caching model
 - status: `done`
@@ -231,6 +234,7 @@
 - operations summary/list cache invalidation is now wired from operation create/update/delete mutations
 - categories catalog/groups/paginated-table cache invalidation is now wired from category/group create/update/delete mutations
 - cache metrics and request-budget tests exist (`app/core/metrics.py`, `tests/api/test_dashboard_api.py`, `tests/api/test_request_budgets_api.py`)
+- cache runtime now also tracks Redis/local-fallback mode signals (`backend_cache_local_fallback_read_total`, `backend_cache_local_fallback_write_total`, local cache entry count) so Redis advisory decisions can be based on measured fallback pressure instead of a binary “Redis missing” check
 - cache contract guard tests now pin key shape, namespace TTL registry, and namespace-scoped invalidation in `tests/api/test_cache_contract.py`
 - plans cache invalidation after plan mutations is pinned in `tests/api/test_plans_api.py`
 - item-template cache invalidation after template/receipt mutations is pinned in `tests/api/test_operations_api.py`
@@ -243,15 +247,17 @@
 - residual uncached endpoints are low-cost or non-central compared with the main dashboard / operations / plans / categories / debts / item-template flows that motivated this plan item
 
 9. Improve observability
-- status: `partial`, but now very close to `done`
+- status: `done` for the current architecture track
 - done:
 - basic logging exists in `app/core/logging.py`
 - API request correlation now exists: responses include `X-Request-ID`, and request-completion logs include `method`, `path`, `status_code`, `duration_ms`, and `request_id`
 - Telegram bot now emits structured event logs for callback processing, reminder delivery, and `getUpdates` polling failures
+- Telegram bot now also emits admin-only Redis fallback advisory events on startup and sends a deduplicated operational warning when cache runtime drops to `local fallback`
 - plan reminder job lifecycle now emits structured background-job events from `app/services/plan_reminder_service.py` for sync/send/reschedule transitions
 - preferences update path now emits structured background-job events from `app/services/preferences_service.py` and leaves a visible trace when reminder resync is triggered
 - auth login/upsert flow now emits structured service-level auth events from `app/services/auth_service.py` for login success, new user creation, existing user update, admin auto-approve, and pending-user creation
 - admin notification delivery now also emits structured notifier-level events from `app/services/telegram_admin_notifier.py` for send attempt / success / failure
+- admin-only Redis fallback advisory now also goes through `app/services/telegram_admin_notifier.py`, and `app/services/redis_runtime_advisory_service.py` only sends it after measured local-fallback thresholds are exceeded plus a cooldown window
 - admin user lifecycle now also emits structured service-level events from `app/services/admin_user_service.py` for approve/reject transitions, no-op status writes, hard-delete outcomes, and blocked self-actions
 - plan mutation/orchestration flow now emits structured service-level events from `app/services/plan_service.py` for create/update/delete/confirm/skip and for downstream reminder-sync / item-template-sync requests
 - Telegram plan confirmation now also emits structured service-level events from `app/services/telegram_plan_bot_service.py` for confirm attempt / success / missing-user / missing-plan / already-completed outcomes
@@ -266,9 +272,13 @@
 - admin notifier observability is pinned by `tests/services/test_telegram_admin_notifier.py`
 - admin user lifecycle observability is pinned by `tests/services/test_admin_user_service_observability.py`
 - plan service observability is pinned by `tests/services/test_plan_service_observability.py`
+- operation service observability is pinned by `tests/services/test_operation_service_observability.py`
 - Telegram plan confirmation observability is pinned by `tests/services/test_telegram_plan_bot_service.py`
-- not done:
-- observability is now strong for API, auth upsert, admin governance decisions, admin notification delivery, Telegram bot shell, Telegram plan confirmation, reminder delivery, preferences-triggered reminder resync, and plan orchestration
+- residual/non-blocking:
+- observability is now strong for API, auth upsert, admin governance decisions, admin notification delivery, Telegram bot shell, Telegram plan confirmation, reminder delivery, preferences-triggered reminder resync, plan orchestration, and the critical operation mutation flow
+- debt Telegram repayment notification now also emits structured notifier-level events from `app/services/telegram_debt_notifier.py`
+- debt `due_soon` reminder lifecycle now also emits structured background-job events from `app/services/debt_reminder_service.py`, and bot delivery is observable via the existing Telegram bot shell logs
+- debt `overdue` reminder lifecycle now follows the same observable queue path and is also covered by `app/services/debt_reminder_service.py`
 - the remaining gap is primarily broader cross-process correlation and future background entrypoints outside the currently instrumented flows
 
 10. Check migrations and data-model consistency
@@ -283,6 +293,7 @@
 11. Working rule for future refactor passes
 - before deleting cross-module frontend contracts, first build a repo-wide consumer map
 - preferred workflow: use an `explorer` subagent for the impact scan, then patch locally
+- use subagents more aggressively for parallel audit/impact-scan/doc-sync work, while keeping final code edits and integration local
 
 ## Feature Draft: Analytics (Agreed, Next Delivery Track)
 1. New section and IA

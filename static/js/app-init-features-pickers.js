@@ -1,6 +1,7 @@
 (() => {
   const { el } = window.App;
   const actions = getActions();
+  const categoryActions = getCategoryActions();
   const pickerUtils = getPickerUtils();
   const pickerCoordinator = getPickerUiCoordinator();
   let bound = false;
@@ -111,69 +112,69 @@
 
     if (el.categoryGroupSearch) {
       el.categoryGroupSearch.addEventListener("focus", () => {
-        if (actions.handleCreateGroupSearchFocus) {
-          actions.handleCreateGroupSearchFocus();
+        if (categoryActions.handleCreateGroupSearchFocus) {
+          categoryActions.handleCreateGroupSearchFocus();
         }
       });
       el.categoryGroupSearch.addEventListener("click", () => {
-        if (actions.handleCreateGroupSearchFocus) {
-          actions.handleCreateGroupSearchFocus();
+        if (categoryActions.handleCreateGroupSearchFocus) {
+          categoryActions.handleCreateGroupSearchFocus();
         }
       });
       el.categoryGroupSearch.addEventListener("input", () => {
-        if (actions.handleCreateGroupSearchInput) {
-          actions.handleCreateGroupSearchInput();
+        if (categoryActions.handleCreateGroupSearchInput) {
+          categoryActions.handleCreateGroupSearchInput();
         }
       });
       el.categoryGroupSearch.addEventListener("blur", () => {
-        if (actions.handleCreateGroupSearchBlur) {
-          actions.handleCreateGroupSearchBlur();
+        if (categoryActions.handleCreateGroupSearchBlur) {
+          categoryActions.handleCreateGroupSearchBlur();
         }
       });
       el.categoryGroupSearch.addEventListener("keydown", (event) => {
-        if (actions.handleCreateGroupSearchKeydown) {
-          actions.handleCreateGroupSearchKeydown(event);
+        if (categoryActions.handleCreateGroupSearchKeydown) {
+          categoryActions.handleCreateGroupSearchKeydown(event);
         }
       });
     }
     if (el.categoryGroupAll) {
       el.categoryGroupAll.addEventListener("click", (event) => {
-        if (actions.handleCreateGroupPickerClick) {
-          actions.handleCreateGroupPickerClick(event);
+        if (categoryActions.handleCreateGroupPickerClick) {
+          categoryActions.handleCreateGroupPickerClick(event);
         }
       });
     }
     if (el.editCategoryGroupSearch) {
       el.editCategoryGroupSearch.addEventListener("focus", () => {
-        if (actions.handleEditGroupSearchFocus) {
-          actions.handleEditGroupSearchFocus();
+        if (categoryActions.handleEditGroupSearchFocus) {
+          categoryActions.handleEditGroupSearchFocus();
         }
       });
       el.editCategoryGroupSearch.addEventListener("click", () => {
-        if (actions.handleEditGroupSearchFocus) {
-          actions.handleEditGroupSearchFocus();
+        if (categoryActions.handleEditGroupSearchFocus) {
+          categoryActions.handleEditGroupSearchFocus();
         }
       });
       el.editCategoryGroupSearch.addEventListener("input", () => {
-        if (actions.handleEditGroupSearchInput) {
-          actions.handleEditGroupSearchInput();
+        if (categoryActions.handleEditGroupSearchInput) {
+          categoryActions.handleEditGroupSearchInput();
         }
       });
       el.editCategoryGroupSearch.addEventListener("blur", () => {
-        if (actions.handleEditGroupSearchBlur) {
-          actions.handleEditGroupSearchBlur();
+        if (categoryActions.handleEditGroupSearchBlur) {
+          categoryActions.handleEditGroupSearchBlur();
         }
       });
       el.editCategoryGroupSearch.addEventListener("keydown", (event) => {
-        if (actions.handleEditGroupSearchKeydown) {
-          actions.handleEditGroupSearchKeydown(event);
+        if (categoryActions.handleEditGroupSearchKeydown) {
+          categoryActions.handleEditGroupSearchKeydown(event);
         }
       });
     }
     if (el.editCategoryGroupAll) {
       el.editCategoryGroupAll.addEventListener("click", (event) => {
-        if (actions.handleEditGroupPickerClick) {
-          actions.handleEditGroupPickerClick(event);
+        if (categoryActions.handleEditGroupPickerClick) {
+          categoryActions.handleEditGroupPickerClick(event);
         }
       });
     }
@@ -251,8 +252,8 @@
       if (pickerUtils?.closeOpenPopoversOnOutside) {
         pickerUtils.closeOpenPopoversOnOutside(event);
       }
-      if (actions.handleCreateGroupOutsidePointer) {
-        actions.handleCreateGroupOutsidePointer(event);
+      if (categoryActions.handleCreateGroupOutsidePointer) {
+        categoryActions.handleCreateGroupOutsidePointer(event);
       }
     }, true);
   }
@@ -267,6 +268,10 @@
 
 function getActions() {
   return window.App.actions || {};
+}
+
+function getCategoryActions() {
+  return window.App.getRuntimeModule?.("category-actions") || {};
 }
 
 function getCore() {

@@ -12,6 +12,7 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 
 sync_api = pytest.importorskip("playwright.sync_api", reason="playwright is not installed")
+expect = sync_api.expect
 
 
 def _set_mock_telegram(page):
@@ -210,6 +211,16 @@ def page_with_analytics_api_mock(page):
                     "share_pct": 44.6,
                     "operations_count": 6,
                     "change_pct": 12.0,
+                },
+                {
+                    "category_id": 2,
+                    "category_name": "Транспорт",
+                    "category_kind": "expense",
+                    "total_amount": "670.00",
+                    "total_expense": "670.00",
+                    "share_pct": 55.4,
+                    "operations_count": 12,
+                    "change_pct": -4.0,
                 }
             ],
             "top_operations": [
@@ -385,6 +396,49 @@ def _open_mobile_analytics(page, static_server_url: str):
     page.click("#mobileNavToggleBtn")
     page.click("button[data-section='analytics']")
     page.wait_for_selector("#analyticsSection:not(.hidden)")
+
+
+@pytest.mark.e2e
+def test_structure_donut_defaults_to_period_total_in_center(page_with_analytics_api_mock, static_server_url: str):
+    page = page_with_analytics_api_mock
+
+    _open_mobile_analytics(page, static_server_url)
+    page.locator("button[data-analytics-tab='structure']").click()
+    page.wait_for_selector("#analyticsStructurePanel:not(.hidden)")
+
+    page.wait_for_selector("#analyticsCategoryBreakdownChartTitle")
+    expect(page.locator("#analyticsCategoryBreakdownChartTitle")).to_have_text("Итог периода")
+    expect(page.locator("#analyticsCategoryBreakdownChartValue")).to_have_text("1 210,00 руб.")
+
+
+@pytest.mark.e2e
+def test_mobile_analytics_tabs_stay_above_period_controls(page_with_analytics_api_mock, static_server_url: str):
+    page = page_with_analytics_api_mock
+
+    _open_mobile_analytics(page, static_server_url)
+    page.locator("button[data-analytics-tab='structure']").click()
+    page.wait_for_selector("#analyticsStructurePanel:not(.hidden)")
+    page.wait_for_selector("#analyticsGlobalScopePanel:not(.hidden)")
+
+    geometry = page.evaluate(
+        """
+        () => {
+          const tabs = document.querySelector('#analyticsViewTabs')?.getBoundingClientRect();
+          const scope = document.querySelector('#analyticsGlobalScopePanel:not(.hidden)')?.getBoundingClientRect();
+          if (!tabs || !scope) {
+            return null;
+          }
+          return {
+            tabsTop: tabs.top,
+            tabsBottom: tabs.bottom,
+            scopeTop: scope.top,
+          };
+        }
+        """
+    )
+
+    assert geometry is not None
+    assert geometry["scopeTop"] >= geometry["tabsBottom"] - 1
 
 
 @pytest.mark.e2e

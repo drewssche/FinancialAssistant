@@ -13,12 +13,17 @@ from app.core.cache import (
     set_json,
 )
 from app.repositories.debt_repo import DebtRepository
+from app.repositories.user_repo import UserRepository
+from app.services.debt_reminder_service import DebtReminderService
+from app.services.telegram_debt_notifier import notify_debt_repaid_owner
 
 
 class DebtService:
     def __init__(self, db: Session):
         self.db = db
         self.repo = DebtRepository(db)
+        self.user_repo = UserRepository(db)
+        self.debt_reminder_service = DebtReminderService(db)
 
     @staticmethod
     def _normalize_counterparty_name(value: str) -> tuple[str, str]:
@@ -134,6 +139,7 @@ class DebtService:
         invalidate_dashboard_summary_cache(user_id)
         invalidate_debts_cache(user_id)
         self.db.refresh(debt)
+        self.debt_reminder_service.sync_debt_job(user_id=user_id, debt_id=int(debt.id))
         return debt, cp
 
     def add_repayment(
@@ -148,6 +154,8 @@ class DebtService:
         debt = self.repo.get_debt_by_id_for_user(user_id=user_id, debt_id=debt_id)
         if not debt:
             raise LookupError("Debt not found")
+        owner_telegram_id = self.user_repo.get_telegram_id_for_user(user_id)
+        counterparty = self.repo.get_counterparty_by_id(user_id=user_id, counterparty_id=debt.counterparty_id)
 
         repaid = self.repo.repayment_total_for_debt(debt_id=debt_id)
         principal = Decimal(debt.principal)
@@ -202,6 +210,17 @@ class DebtService:
         invalidate_dashboard_summary_cache(user_id)
         invalidate_debts_cache(user_id)
         self.db.refresh(repayment)
+        self.debt_reminder_service.sync_debt_job(user_id=user_id, debt_id=int(debt.id))
+        if owner_telegram_id and applied_amount == outstanding:
+            notify_debt_repaid_owner(
+                owner_telegram_id=owner_telegram_id,
+                debt_id=debt.id,
+                counterparty=(counterparty.name if counterparty else str(debt.counterparty_id)),
+                direction=debt.direction,
+                amount=applied_amount,
+                repayment_date=repayment_date,
+                note=note,
+            )
         return repayment
 
     def get_debt_with_repayments(self, user_id: int, debt_id: int) -> dict:
@@ -262,6 +281,7 @@ class DebtService:
             invalidate_dashboard_summary_cache(user_id)
             invalidate_debts_cache(user_id)
             self.db.refresh(debt)
+            self.debt_reminder_service.sync_debt_job(user_id=user_id, debt_id=int(debt.id))
         return debt
 
     def delete_debt(self, user_id: int, debt_id: int) -> None:
@@ -272,6 +292,7 @@ class DebtService:
         self.db.commit()
         invalidate_dashboard_summary_cache(user_id)
         invalidate_debts_cache(user_id)
+        self.debt_reminder_service.sync_debt_job(user_id=user_id, debt_id=debt_id)
 
     def list_cards(self, user_id: int, include_closed: bool = False, q: str | None = None) -> list[dict]:
         query_token = " ".join((q or "").strip().split()).casefold()

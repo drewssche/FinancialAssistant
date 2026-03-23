@@ -1,5 +1,9 @@
 # Audit TODO
 
+Status note:
+- this file is historical/archive context
+- the active execution plan and current refactor status now live in `docs/ROADMAP.md`
+
 ## Mobile Adaptation Progress
 
 1. Shell and navigation adaptation

@@ -2,6 +2,10 @@
   const { state, el, core } = window.App;
 
   function getCategoryActions() {
+    return window.App.getRuntimeModule?.("category-actions") || {};
+  }
+
+  function getActions() {
     return window.App.actions || {};
   }
 
@@ -42,8 +46,8 @@
     }
     bindColorSyncHandlers();
 
-    if (getCategoryActions().renderTodayLabel) {
-      getCategoryActions().renderTodayLabel();
+    if (getActions().renderTodayLabel) {
+      getActions().renderTodayLabel();
     }
 
     if (getSessionFeature().loadTelegramLoginConfig) {

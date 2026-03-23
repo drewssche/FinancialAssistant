@@ -34,7 +34,7 @@
       total: chartTotal,
       totalOps,
       periodLabel: `${formatDateRu(data.date_from)} - ${formatDateRu(data.date_to)}`,
-      defaultIndex: visibleItems.length ? 0 : null,
+      defaultIndex: null,
       hoveredIndex: null,
     };
   }
@@ -52,7 +52,7 @@
       total,
       totalOps,
       periodLabel: `${formatDateRu(data.date_from)} - ${formatDateRu(data.date_to)}`,
-      defaultIndex: items.length ? 0 : null,
+      defaultIndex: null,
       hoveredIndex: null,
     };
   }

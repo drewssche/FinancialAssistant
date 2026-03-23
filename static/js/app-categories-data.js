@@ -6,12 +6,20 @@
   const CATEGORIES_CATALOG_CACHE_TTL_MS = 60000;
   const CATEGORIES_TABLE_CACHE_TTL_MS = 45000;
 
-  function getActions() {
-    return window.App.actions || {};
-  }
-
   function getCategoryUi() {
     return window.App.getRuntimeModule?.("category-ui");
+  }
+
+  function getOperationModal() {
+    return window.App.getRuntimeModule?.("operation-modal") || {};
+  }
+
+  function getDashboardFeature() {
+    return window.App.getRuntimeModule?.("dashboard") || {};
+  }
+
+  function getOperationsFeature() {
+    return window.App.getRuntimeModule?.("operations") || {};
   }
 
   function getCategoriesTableCacheKey(params) {
@@ -141,7 +149,9 @@
 
   async function loadCategories() {
     const categoryUi = getCategoryUi();
-    const actions = getActions();
+    const operationModal = getOperationModal();
+    const dashboardFeature = getDashboardFeature();
+    const operationsFeature = getOperationsFeature();
     await loadCategoryGroups();
     await loadCategoryCatalog();
     await loadCategoriesTable({ reset: true });
@@ -150,14 +160,14 @@
     categoryUi.populateCategorySelect(el.opCategory, el.opCategory.value, el.opKind.value);
     categoryUi.populateCategorySelect(el.editCategory, el.editCategory.value, el.editKind.value || "expense");
 
-    if (actions.renderCreateCategoryPicker) {
-      actions.renderCreateCategoryPicker();
+    if (operationModal.renderCreateCategoryPicker) {
+      operationModal.renderCreateCategoryPicker();
     }
-    if (state.activeSection === "dashboard" && actions.loadDashboardOperations) {
-      actions.loadDashboardOperations().catch(() => {});
+    if (state.activeSection === "dashboard" && dashboardFeature.loadDashboardOperations) {
+      dashboardFeature.loadDashboardOperations().catch(() => {});
     }
-    if (actions.refreshOperationsView) {
-      actions.refreshOperationsView();
+    if (operationsFeature.refreshOperationsView) {
+      operationsFeature.refreshOperationsView();
     }
   }
 
@@ -192,9 +202,8 @@
     categoryUi.setCategoryKind("create", "expense");
     categoryUi.closeCreateCategoryModal(false);
     await loadCategories();
-    const actions = getActions();
-    if (actions.onCategoryCreated) {
-      actions.onCategoryCreated(createdCategory);
+    if (getOperationModal().onCategoryCreated) {
+      getOperationModal().onCategoryCreated(createdCategory);
     }
   }
 
@@ -226,6 +235,7 @@
   }
 
   async function createGroup(event) {
+    const categoryUi = getCategoryUi();
     event.preventDefault();
     const payload = {
       name: el.groupName.value.trim(),
@@ -246,7 +256,7 @@
     el.groupName.value = "";
     el.groupAccentColor.value = "#ff8a3d";
     el.groupAccentColorHex.value = "#ff8a3d";
-    getActions().closeCreateGroupModal();
+    categoryUi.closeCreateGroupModal?.();
     await loadCategories();
   }
 

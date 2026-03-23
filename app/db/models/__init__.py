@@ -4,6 +4,7 @@ from app.db.models.category_group import CategoryGroup
 from app.db.models.debt import Debt
 from app.db.models.debt_counterparty import DebtCounterparty
 from app.db.models.debt_issuance import DebtIssuance
+from app.db.models.debt_reminder_job import DebtReminderJob
 from app.db.models.debt_repayment import DebtRepayment
 from app.db.models.operation import Operation
 from app.db.models.operation_item_price import OperationItemPrice
@@ -33,5 +34,6 @@ __all__ = [
     "DebtCounterparty",
     "Debt",
     "DebtIssuance",
+    "DebtReminderJob",
     "DebtRepayment",
 ]

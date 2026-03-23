@@ -1,7 +1,11 @@
 (() => {
-  const { state, el, core, actions } = window.App;
+  const { state, el, core } = window.App;
   const bulkUi = window.App.getRuntimeModule?.("bulk-ui");
   const bulkUtils = window.App.bulkImportUtils;
+
+  function getCategoryActions() {
+    return window.App.getRuntimeModule?.("category-actions") || {};
+  }
 
   function getDashboardFeature() {
     return window.App.getRuntimeModule?.("dashboard") || {};
@@ -15,8 +19,9 @@
     if (state.categories.length) {
       return Promise.resolve();
     }
-    if (actions.loadCategories) {
-      return actions.loadCategories();
+    const categoryActions = getCategoryActions();
+    if (categoryActions.loadCategories) {
+      return categoryActions.loadCategories();
     }
     return Promise.resolve();
   }

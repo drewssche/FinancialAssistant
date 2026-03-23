@@ -1,14 +1,19 @@
 (() => {
-  const { state, el, core, actions } = window.App;
+  const { state, el, core } = window.App;
   const bulkUi = window.App.getRuntimeModule?.("bulk-ui");
   const bulkUtils = window.App.bulkImportUtils;
+
+  function getCategoryActions() {
+    return window.App.getRuntimeModule?.("category-actions") || {};
+  }
 
   function ensureCategoryCatalogLoaded() {
     if (state.categories.length || state.categoryGroups.length) {
       return Promise.resolve();
     }
-    if (actions.loadCategories) {
-      return actions.loadCategories();
+    const categoryActions = getCategoryActions();
+    if (categoryActions.loadCategories) {
+      return categoryActions.loadCategories();
     }
     return Promise.resolve();
   }
@@ -276,7 +281,7 @@
     }
     core.invalidateUiRequestCache("categories");
     core.invalidateUiRequestCache("operations");
-    await actions.loadCategories();
+    await getCategoryActions().loadCategories?.();
     if (el.batchCategoryFeedback) {
       el.batchCategoryFeedback.textContent =
         `Импорт завершен: создано ${created}, пропущено ${plan.skippedCount}, предупреждений ${plan.warningCount}, ошибок ${plan.errorCount}`;
@@ -296,12 +301,13 @@
       }
     });
     el.groupModalForm.addEventListener("submit", (event) => {
+      const categoryActions = getCategoryActions();
       core.runAction({
         button: event.submitter || document.getElementById("submitCreateGroupBtn"),
         pendingText: "Создание...",
         successMessage: "Группа создана",
         errorPrefix: "Ошибка создания группы",
-        action: () => actions.createGroup(event),
+        action: () => categoryActions.createGroup?.(event),
       });
     });
     el.createGroupKind.addEventListener("click", (event) => {
@@ -380,11 +386,12 @@
       core.runDestructiveAction({
         confirmMessage: `Удалить все объекты в текущем списке (${total})?`,
         doDelete: async () => {
+          const categoryActions = getCategoryActions();
           if (categoryIds.length) {
-            await actions.bulkDeleteCategories(categoryIds);
+            await categoryActions.bulkDeleteCategories?.(categoryIds);
           }
-          if (groupIds.length && actions.bulkDeleteGroups) {
-            await actions.bulkDeleteGroups(groupIds);
+          if (groupIds.length && categoryActions.bulkDeleteGroups) {
+            await categoryActions.bulkDeleteGroups(groupIds);
           }
         },
         onDeleteError: "Не удалось удалить категории",

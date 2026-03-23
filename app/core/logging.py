@@ -64,3 +64,11 @@ def log_telegram_plan_event(event: str, **fields: object) -> None:
     if rendered_fields:
         message = f"{message} {rendered_fields}"
     logging.getLogger("financial_assistant.telegram_plan").info(message)
+
+
+def log_telegram_debt_event(event: str, **fields: object) -> None:
+    rendered_fields = " ".join(f"{key}={value}" for key, value in sorted(fields.items()))
+    message = f"telegram_debt_event event={event}"
+    if rendered_fields:
+        message = f"{message} {rendered_fields}"
+    logging.getLogger("financial_assistant.telegram_debt").info(message)

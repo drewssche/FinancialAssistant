@@ -1,7 +1,10 @@
 from datetime import datetime
 
 from app.core.config import get_settings
-from app.services.telegram_admin_notifier import notify_new_pending_user
+from app.services.telegram_admin_notifier import (
+    notify_new_pending_user,
+    notify_redis_fallback_advisory,
+)
 
 
 class _SuccessResponse:
@@ -71,4 +74,27 @@ def test_notify_new_pending_user_logs_failure(monkeypatch, caplog):
     assert "admin_notification_event event=admin_notification_failed" in text
     assert "error=RuntimeError" in text
     assert "telegram admin notification failed for 1001: boom" in text
+    get_settings.cache_clear()
+
+
+def test_notify_redis_fallback_advisory_logs_attempt_and_success(monkeypatch, caplog):
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "test-token")
+    monkeypatch.setenv("ADMIN_TELEGRAM_IDS", "1001")
+    get_settings.cache_clear()
+    monkeypatch.setattr("app.services.telegram_admin_notifier.httpx.Client", _SuccessClient)
+
+    with caplog.at_level("INFO", logger="financial_assistant.admin_notifier"):
+        notify_redis_fallback_advisory(
+            text="Redis advisory",
+            local_cache_entries=40,
+            local_fallback_reads=70,
+            local_fallback_writes=30,
+            dashboard_summary_p95_ms=310.0,
+        )
+
+    text = caplog.text
+    assert "admin_notification_event event=redis_fallback_advisory_attempted" in text
+    assert "admin_notification_event event=redis_fallback_advisory_sent" in text
+    assert "local_cache_entries=40" in text
+    assert "local_fallback_reads=70" in text
     get_settings.cache_clear()

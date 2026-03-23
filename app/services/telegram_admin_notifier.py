@@ -100,3 +100,57 @@ def notify_new_pending_user(
                     error=type(exc).__name__,
                 )
                 logger.warning("telegram admin notification failed for %s: %s", admin_id, exc)
+
+
+def notify_redis_fallback_advisory(
+    *,
+    text: str,
+    local_cache_entries: int,
+    local_fallback_reads: int,
+    local_fallback_writes: int,
+    dashboard_summary_p95_ms: float,
+) -> None:
+    settings = get_settings()
+    token = settings.telegram_bot_token.strip()
+    admin_ids = settings.admin_telegram_id_set
+    if not token or token == "change_me" or not admin_ids:
+        return
+
+    payload = {
+        "text": text,
+        "disable_web_page_preview": True,
+    }
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+
+    with httpx.Client(timeout=3.0) as client:
+        for admin_id in admin_ids:
+            log_admin_notification_event(
+                "redis_fallback_advisory_attempted",
+                admin_telegram_id=admin_id,
+                local_cache_entries=local_cache_entries,
+                local_fallback_reads=local_fallback_reads,
+                local_fallback_writes=local_fallback_writes,
+                dashboard_summary_p95_ms=round(max(dashboard_summary_p95_ms, 0.0), 3),
+            )
+            try:
+                response = client.post(url, json={**payload, "chat_id": admin_id})
+                response.raise_for_status()
+                log_admin_notification_event(
+                    "redis_fallback_advisory_sent",
+                    admin_telegram_id=admin_id,
+                    local_cache_entries=local_cache_entries,
+                    local_fallback_reads=local_fallback_reads,
+                    local_fallback_writes=local_fallback_writes,
+                    dashboard_summary_p95_ms=round(max(dashboard_summary_p95_ms, 0.0), 3),
+                )
+            except Exception as exc:  # noqa: BLE001
+                log_admin_notification_event(
+                    "redis_fallback_advisory_failed",
+                    admin_telegram_id=admin_id,
+                    local_cache_entries=local_cache_entries,
+                    local_fallback_reads=local_fallback_reads,
+                    local_fallback_writes=local_fallback_writes,
+                    dashboard_summary_p95_ms=round(max(dashboard_summary_p95_ms, 0.0), 3),
+                    error=type(exc).__name__,
+                )
+                logger.warning("telegram redis fallback advisory failed for %s: %s", admin_id, exc)

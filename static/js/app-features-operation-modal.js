@@ -1,7 +1,7 @@
 (() => {
   const { state, el, core } = window.App;
   function getCategoryActions() {
-    return window.App.actions || {};
+    return window.App.getRuntimeModule?.("category-actions") || {};
   }
 
   function getSelectedCreateCategoryId() {

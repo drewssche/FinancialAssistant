@@ -125,6 +125,30 @@ def _get_redis_client() -> Redis | None:
         return _client
 
 
+def get_cache_runtime_status() -> dict[str, Any]:
+    client = _get_redis_client()
+    with _local_cache_lock:
+        local_entry_count = len(_local_cache)
+    settings = get_settings()
+    return {
+        "backend": "redis" if client else "local_fallback",
+        "redis_available": bool(client),
+        "redis_host": settings.redis_host,
+        "redis_port": settings.redis_port,
+        "local_entry_count": local_entry_count,
+        "namespace_ttls": dict(_CACHE_NAMESPACE_TTLS),
+    }
+
+
+def get_cache_backend_mode() -> str:
+    return "redis" if _get_redis_client() is not None else "local_fallback"
+
+
+def get_local_cache_entry_count() -> int:
+    with _local_cache_lock:
+        return len(_local_cache)
+
+
 def build_dashboard_summary_cache_key(
     *,
     user_id: int,
@@ -286,6 +310,7 @@ def get_json(cache_key: str) -> dict[str, Any] | None:
         except RedisError:
             raw = None
     else:
+        increment_counter("backend_cache_local_fallback_read_total")
         with _local_cache_lock:
             record = _local_cache.get(cache_key)
             if not record:
@@ -315,6 +340,7 @@ def set_json(cache_key: str, payload: dict[str, Any], ttl_seconds: int = _DASHBO
             return
         except RedisError:
             pass
+    increment_counter("backend_cache_local_fallback_write_total")
     with _local_cache_lock:
         _local_cache[cache_key] = (time() + ttl_seconds, encoded)
 

@@ -18,6 +18,10 @@
       return window.App.actions || {};
     }
 
+    function getCategoryActions() {
+      return window.App.getRuntimeModule?.("category-actions") || {};
+    }
+
     const pickerUtils = getPickerUtils();
     const CATEGORY_USAGE_KEY = pickerUtils.DEFAULT_CATEGORY_USAGE_KEY;
 
@@ -264,8 +268,8 @@
         query: trimmed,
       };
       hideAllReceiptPickers();
-      if (getActions().openCreateCategoryModal) {
-        getActions().openCreateCategoryModal({
+      if (getCategoryActions().openCreateCategoryModal) {
+        getCategoryActions().openCreateCategoryModal({
           kind,
           prefillName: trimmed,
           reset: true,

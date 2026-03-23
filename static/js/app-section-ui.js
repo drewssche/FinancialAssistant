@@ -6,6 +6,10 @@
     return window.App.actions || {};
   }
 
+  function getCategoryActions() {
+    return window.App.getRuntimeModule?.("category-actions") || {};
+  }
+
   function getCore() {
     return window.App.core;
   }
@@ -314,8 +318,8 @@
     if (sectionId === "plans" && getPlansFeature().loadPlans) {
       await getPlansFeature().loadPlans();
     }
-    if (sectionId === "categories" && actions.loadCategories) {
-      actions.loadCategories().catch((err) => {
+    if (sectionId === "categories" && getCategoryActions().loadCategories) {
+      getCategoryActions().loadCategories().catch((err) => {
         const message = core.errorMessage ? core.errorMessage(err) : String(err);
         core.setStatus(`Не удалось открыть раздел «Категории»: ${message}`);
       });

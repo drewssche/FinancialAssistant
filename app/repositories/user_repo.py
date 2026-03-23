@@ -19,6 +19,13 @@ class UserRepository:
         )
         return self.db.scalar(stmt)
 
+    def get_telegram_id_for_user(self, user_id: int) -> str | None:
+        stmt = select(AuthIdentity.provider_user_id).where(
+            AuthIdentity.user_id == user_id,
+            AuthIdentity.provider == "telegram",
+        )
+        return self.db.scalar(stmt)
+
     def create_with_telegram_identity(
         self,
         telegram_id: str,

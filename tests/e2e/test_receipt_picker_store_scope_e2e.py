@@ -25,7 +25,7 @@ def _login(page):
 
 
 def _ensure_categories_loaded(page):
-    page.evaluate("() => window.App.actions.loadCategories?.()")
+    page.evaluate("() => window.App.getRuntimeModule('category-actions')?.loadCategories?.()")
     page.wait_for_function("() => (window.App?.state?.categories || []).length >= 3")
 
 
