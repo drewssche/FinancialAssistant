@@ -188,7 +188,7 @@
     tooltip.style.top = `${top}px`;
   }
 
-  function bindCurrencyChartTooltip(svgNode, points) {
+  function bindCurrencyChartTooltip(svgNode, points, helpers = {}) {
     if (!svgNode) {
       return;
     }
@@ -196,17 +196,47 @@
     if (!tooltip) {
       return;
     }
+    const hoverGroup = svgNode.querySelector(".currency-chart-hover");
+    const hoverXLine = svgNode.querySelector(".currency-chart-hover-x");
+    const hoverYLine = svgNode.querySelector(".currency-chart-hover-y");
+    const hoverDot = svgNode.querySelector(".currency-chart-hover-dot");
+    const hoverXLabel = svgNode.querySelector(".currency-chart-hover-x-label");
+    const hoverYLabel = svgNode.querySelector(".currency-chart-hover-y-label");
+    const { toX = () => 0, toY = () => 0, width = 980, height = 280, padX = 56, padY = 28 } = helpers;
     svgNode.onmousemove = (event) => {
       const bucket = event.target.closest(".trend-bucket");
       if (!bucket) {
         tooltip.classList.add("hidden");
+        hoverGroup?.classList.add("hidden");
         return;
       }
       const index = Number(bucket.dataset.analyticsBucketIndex || -1);
       const point = points[index];
       if (!point) {
         tooltip.classList.add("hidden");
+        hoverGroup?.classList.add("hidden");
         return;
+      }
+      const x = toX(index);
+      const y = toY(Number(point.rate || 0));
+      if (hoverGroup && hoverXLine && hoverYLine && hoverDot && hoverXLabel && hoverYLabel) {
+        hoverGroup.classList.remove("hidden");
+        hoverXLine.setAttribute("x1", String(padX));
+        hoverXLine.setAttribute("x2", String(width - padX));
+        hoverXLine.setAttribute("y1", String(y));
+        hoverXLine.setAttribute("y2", String(y));
+        hoverYLine.setAttribute("x1", String(x));
+        hoverYLine.setAttribute("x2", String(x));
+        hoverYLine.setAttribute("y1", String(padY));
+        hoverYLine.setAttribute("y2", String(height - padY));
+        hoverDot.setAttribute("cx", String(x));
+        hoverDot.setAttribute("cy", String(y));
+        hoverXLabel.setAttribute("x", String(x));
+        hoverXLabel.setAttribute("y", String(height - 10));
+        hoverXLabel.textContent = core.formatDateRu(point.rate_date);
+        hoverYLabel.setAttribute("x", String(width - padX));
+        hoverYLabel.setAttribute("y", String(Math.max(padY + 12, y - 8)));
+        hoverYLabel.textContent = Number(point.rate || 0).toFixed(4);
       }
       tooltip.innerHTML = `
         <div class="analytics-chart-tooltip-title">${escapeHtml(core.formatDateRu(point.rate_date))}</div>
@@ -219,6 +249,7 @@
     };
     svgNode.onmouseleave = () => {
       tooltip.classList.add("hidden");
+      hoverGroup?.classList.add("hidden");
     };
   }
 
@@ -251,6 +282,17 @@
     const middle = points[Math.floor(points.length / 2)];
     const midRate = minRate + yRange / 2;
     const bucketWidth = points.length > 1 ? xStep : width - padX * 2;
+    const pointDots = points.map((item, index) => `
+      <circle cx="${toX(index)}" cy="${toY(Number(item.rate || 0))}" r="2.8" fill="rgba(255,255,255,0.82)"></circle>
+    `).join("");
+    const xTicks = [0, Math.floor(points.length / 2), points.length - 1]
+      .filter((value, idx, arr) => arr.indexOf(value) === idx)
+      .map((index) => `
+        <line x1="${toX(index)}" y1="${height - padY}" x2="${toX(index)}" y2="${height - padY + 6}" stroke="rgba(207, 219, 245, 0.28)" stroke-width="1"></line>
+      `).join("");
+    const yTicks = [minRate, midRate, maxRate].map((value) => `
+      <line x1="${width - padX - 8}" y1="${toY(value)}" x2="${width - padX}" y2="${toY(value)}" stroke="rgba(207, 219, 245, 0.28)" stroke-width="1"></line>
+    `).join("");
     const hitboxes = points.map((item, index) => `
       <g class="trend-bucket" data-analytics-bucket-index="${index}">
         <rect
@@ -267,8 +309,18 @@
       <line x1="${padX}" y1="${height - padY}" x2="${width - padX}" y2="${height - padY}" class="analytics-axis-line"></line>
       <line x1="${padX}" y1="${padY}" x2="${padX}" y2="${height - padY}" class="analytics-axis-line"></line>
       <polyline fill="none" stroke="var(--accent, #6ea8ff)" stroke-width="4" points="${polyline}"></polyline>
+      ${pointDots}
       <circle cx="${toX(points.length - 1)}" cy="${toY(Number(last.rate || 0))}" r="5" fill="var(--accent, #6ea8ff)"></circle>
+      ${xTicks}
+      ${yTicks}
       ${hitboxes}
+      <g class="currency-chart-hover hidden">
+        <line class="currency-chart-hover-x" x1="0" y1="0" x2="0" y2="0" stroke="rgba(255,255,255,0.28)" stroke-dasharray="4 4" stroke-width="1"></line>
+        <line class="currency-chart-hover-y" x1="0" y1="0" x2="0" y2="0" stroke="rgba(255,255,255,0.28)" stroke-dasharray="4 4" stroke-width="1"></line>
+        <circle class="currency-chart-hover-dot" cx="0" cy="0" r="5.5" fill="var(--accent, #6ea8ff)" stroke="#fff" stroke-width="2"></circle>
+        <text class="analytics-chart-empty currency-chart-hover-x-label" x="0" y="0" text-anchor="middle">${core.formatDateRu(last.rate_date)}</text>
+        <text class="analytics-chart-empty currency-chart-hover-y-label" x="0" y="0" text-anchor="end">${Number(last.rate || 0).toFixed(4)}</text>
+      </g>
       <text x="${padX}" y="${height - 8}" class="analytics-chart-empty">${core.formatDateRu(first.rate_date)}</text>
       <text x="${toX(Math.floor(points.length / 2))}" y="${height - 8}" text-anchor="middle" class="analytics-chart-empty">${core.formatDateRu(middle.rate_date)}</text>
       <text x="${width - padX}" y="${height - 8}" text-anchor="end" class="analytics-chart-empty">${core.formatDateRu(last.rate_date)}</text>
@@ -277,7 +329,7 @@
       <text x="${width - padX}" y="${height - padY - 8}" text-anchor="end" class="analytics-chart-empty">${Number(minRate).toFixed(4)}</text>
       <text x="${Math.min(width - padX, toX(points.length - 1) + 12)}" y="${Math.max(padY + 16, toY(Number(last.rate || 0)) - 12)}" class="analytics-chart-empty">Текущий курс ${Number(last.rate || 0).toFixed(4)}</text>
     `;
-    bindCurrencyChartTooltip(el.analyticsCurrencyChart, points);
+    bindCurrencyChartTooltip(el.analyticsCurrencyChart, points, { toX, toY, width, height, padX, padY });
   }
 
   async function loadAnalyticsCurrency(options = {}) {

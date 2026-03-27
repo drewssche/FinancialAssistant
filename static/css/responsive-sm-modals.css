@@ -140,7 +140,6 @@
     grid-column: 1 / -1;
   }
 
-  .amount-currency-combo,
   .currency-modal-row {
     grid-template-columns: 1fr;
   }
