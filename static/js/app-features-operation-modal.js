@@ -163,12 +163,13 @@
     core.syncSegmentedActive(el.createEntryModeSwitch, "entry-mode", nextMode);
     const isDebt = nextMode === "debt";
     const isCurrency = nextMode === "currency";
-    el.createKindSwitch.classList.toggle("hidden", isDebt);
+    el.createKindSwitch.classList.toggle("hidden", isDebt || isCurrency);
     el.createOperationModeSwitch?.classList.toggle("hidden", isDebt || isCurrency);
     el.createCategoryField.classList.toggle("hidden", isDebt || isCurrency);
     el.opReceiptBlock?.classList.toggle("hidden", isDebt || isCurrency || !isCreateReceiptMode());
-    const opAmountField = document.getElementById("opAmountField");
+    const opAmountField = document.getElementById("opAmountCompound");
     const opAmount = document.getElementById("opAmount");
+    const opFxRateField = document.getElementById("opFxRateField");
     const opDateField = document.getElementById("opDateField");
     const opDate = document.getElementById("opDate");
     const opNote = document.getElementById("opNote");
@@ -180,6 +181,9 @@
       if (!isDebt && !isCurrency && isCreateReceiptMode()) {
         opAmount.required = false;
       }
+    }
+    if (opFxRateField) {
+      opFxRateField.classList.toggle("hidden", isDebt || isCurrency || (el.opCurrency?.value || (core.getCurrencyConfig?.().code || "BYN")) === (core.getCurrencyConfig?.().code || "BYN"));
     }
     if (opDateField) {
       opDateField.classList.toggle("hidden", isDebt || isCurrency);

@@ -121,11 +121,13 @@
   .create-modal-grid #createOperationModeSwitch,
   .create-modal-grid #createKindSwitch,
   .create-modal-grid #createCategoryField,
+  .create-modal-grid #opAmountCompound,
   .create-modal-grid #opAmountField,
   .edit-modal-grid #editDateField,
   .edit-modal-grid #editOperationModeSwitch,
   .edit-modal-grid #editKindSwitch,
   .edit-modal-grid #editCategoryField,
+  .edit-modal-grid #editAmountCompound,
   .edit-modal-grid #editAmountField,
   #createDebtFields #debtStartDateField,
   #createDebtFields #createDebtDirectionSwitch,
@@ -136,6 +138,11 @@
   .item-template-price-grid #itemTemplatePriceField,
   .item-template-price-grid #itemTemplatePriceDateField {
     grid-column: 1 / -1;
+  }
+
+  .amount-currency-combo,
+  .currency-modal-row {
+    grid-template-columns: 1fr;
   }
 
   .analytics-day-cell {

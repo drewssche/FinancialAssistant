@@ -74,6 +74,18 @@
     if (el.currencySummaryActiveCount) {
       el.currencySummaryActiveCount.textContent = String(data.active_positions || 0);
     }
+    if (el.currencySummaryBuyVolume) {
+      el.currencySummaryBuyVolume.textContent = core.formatMoney(data.buy_volume_base || 0);
+    }
+    if (el.currencySummaryBuyCount) {
+      el.currencySummaryBuyCount.textContent = `${String(data.buy_trades_count || 0)} сделок`;
+    }
+    if (el.currencySummarySellVolume) {
+      el.currencySummarySellVolume.textContent = core.formatMoney(data.sell_volume_base || 0);
+    }
+    if (el.currencySummarySellCount) {
+      el.currencySummarySellCount.textContent = `${String(data.sell_trades_count || 0)} сделок`;
+    }
   }
 
   function renderPositions(data) {

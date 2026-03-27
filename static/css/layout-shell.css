@@ -307,7 +307,11 @@
 }
 
 .create-modal-grid #opAmountField {
-  grid-column: span 2;
+  width: 100%;
+}
+
+.create-modal-grid #opAmountCompound {
+  grid-column: span 3;
   width: 100%;
 }
 
@@ -343,6 +347,50 @@
   flex: 1;
 }
 
+.amount-currency-combo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(132px, 164px);
+  gap: var(--space-2);
+  align-items: stretch;
+}
+
+.amount-currency-combo .money-input-wrap,
+.amount-currency-combo .inline-currency-select {
+  min-width: 0;
+}
+
+.inline-currency-select {
+  width: 100%;
+}
+
+.currency-modal-grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.currency-modal-grid #createCurrencySideSwitch {
+  grid-column: 1 / -1;
+}
+
+.currency-modal-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.currency-modal-row-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.currency-modal-row .field,
+.currency-modal-row .date-input-wrap,
+.currency-modal-row .money-input-wrap {
+  width: 100%;
+}
+
 .edit-modal-grid {
   grid-template-columns: repeat(12, minmax(0, 1fr));
   align-items: start;
@@ -374,7 +422,11 @@
 }
 
 .edit-modal-grid #editAmountField {
-  grid-column: span 2;
+  width: 100%;
+}
+
+.edit-modal-grid #editAmountCompound {
+  grid-column: span 3;
   width: 100%;
 }
 

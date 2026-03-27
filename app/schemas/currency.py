@@ -73,6 +73,10 @@ class CurrencyOverviewOut(BaseModel):
     total_book_value: Decimal
     total_current_value: Decimal
     total_result_value: Decimal
+    buy_trades_count: int = 0
+    sell_trades_count: int = 0
+    buy_volume_base: Decimal = Decimal("0")
+    sell_volume_base: Decimal = Decimal("0")
     positions: list[CurrencyPositionOut]
     recent_trades: list[CurrencyTradeOut]
     current_rates: list[CurrencyRateOut]

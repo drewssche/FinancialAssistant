@@ -91,6 +91,10 @@ def test_currency_trade_overview_and_current_rate(client: TestClient):
     assert payload["total_book_value"] == "322.00"
     assert payload["total_current_value"] == "330.00"
     assert payload["total_result_value"] == "8.00"
+    assert payload["buy_trades_count"] == 1
+    assert payload["sell_trades_count"] == 0
+    assert payload["buy_volume_base"] == "320.00"
+    assert payload["sell_volume_base"] == "0.00"
     assert len(payload["positions"]) == 1
     assert payload["positions"][0]["currency"] == "USD"
     assert payload["positions"][0]["average_buy_rate"] == "3.220000"
@@ -200,3 +204,41 @@ def test_currency_refresh_endpoint_forces_rate_refresh(client: TestClient, monke
     assert len(payload) == 1
     assert payload[0]["currency"] == "USD"
     assert payload[0]["rate"] == "3.990000"
+
+
+def test_currency_overview_tracks_buy_and_sell_kpi_totals(client: TestClient):
+    buy_response = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "100",
+            "unit_price": "3.20",
+            "fee": "0",
+            "trade_date": "2026-03-01",
+        },
+    )
+    assert buy_response.status_code == 201, buy_response.text
+
+    sell_response = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "sell",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "40",
+            "unit_price": "3.50",
+            "fee": "0",
+            "trade_date": "2026-03-10",
+        },
+    )
+    assert sell_response.status_code == 201, sell_response.text
+
+    response = client.get("/api/v1/currency/overview", params={"currency": "USD"})
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["buy_trades_count"] == 1
+    assert payload["sell_trades_count"] == 1
+    assert payload["buy_volume_base"] == "320.00"
+    assert payload["sell_volume_base"] == "140.00"

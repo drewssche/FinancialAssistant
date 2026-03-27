@@ -101,6 +101,10 @@ class DashboardService:
             "currency_book_value": currency_summary["total_book_value"],
             "currency_current_value": currency_summary["total_current_value"],
             "currency_result_value": currency_summary["total_result_value"],
+            "currency_buy_trades_count": currency_summary["buy_trades_count"],
+            "currency_sell_trades_count": currency_summary["sell_trades_count"],
+            "currency_buy_volume_base": currency_summary["buy_volume_base"],
+            "currency_sell_volume_base": currency_summary["sell_volume_base"],
             "active_currency_positions": currency_summary["active_positions"],
             "tracked_currency_positions": tracked_positions,
         }

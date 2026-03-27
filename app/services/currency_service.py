@@ -166,6 +166,11 @@ class CurrencyService:
         trades = self.repo.list_all_trades(user_id=user_id)
         positions_by_currency: dict[str, dict] = {}
         realized_by_currency: dict[str, Decimal] = {}
+        trade_stats_by_currency: dict[str, dict] = {}
+        total_buy_volume_base = self._money(0)
+        total_sell_volume_base = self._money(0)
+        total_buy_trades = 0
+        total_sell_trades = 0
 
         for trade in trades:
             currency = trade.asset_currency
@@ -179,13 +184,30 @@ class CurrencyService:
                     "realized_result_value": self._money(0),
                 },
             )
+            trade_stats = trade_stats_by_currency.setdefault(
+                currency,
+                {
+                    "buy_trades_count": 0,
+                    "sell_trades_count": 0,
+                    "buy_volume_base": self._money(0),
+                    "sell_volume_base": self._money(0),
+                },
+            )
             quantity = self._qty(trade.quantity)
             gross = Decimal(trade.quantity) * Decimal(trade.unit_price)
             fee = self._money(trade.fee)
             if trade.side == "buy":
+                total_buy_trades += 1
+                total_buy_volume_base = self._money(total_buy_volume_base + gross)
+                trade_stats["buy_trades_count"] += 1
+                trade_stats["buy_volume_base"] = self._money(trade_stats["buy_volume_base"] + gross)
                 position["quantity"] = self._qty(position["quantity"] + quantity)
                 position["book_value"] = self._money(position["book_value"] + gross + fee)
             else:
+                total_sell_trades += 1
+                total_sell_volume_base = self._money(total_sell_volume_base + gross)
+                trade_stats["sell_trades_count"] += 1
+                trade_stats["sell_volume_base"] = self._money(trade_stats["sell_volume_base"] + gross)
                 current_quantity = Decimal(position["quantity"])
                 if current_quantity <= 0 or current_quantity < quantity:
                     raise ValueError(f"Broken FX history for {currency}: sell exceeds available quantity")
@@ -245,8 +267,13 @@ class CurrencyService:
             "total_book_value": self._money(total_book_value),
             "total_current_value": self._money(total_current_value),
             "total_result_value": self._money(total_result_value),
+            "buy_trades_count": total_buy_trades,
+            "sell_trades_count": total_sell_trades,
+            "buy_volume_base": self._money(total_buy_volume_base),
+            "sell_volume_base": self._money(total_sell_volume_base),
             "positions": positions,
             "positions_by_currency": {item["currency"]: item for item in positions},
+            "trade_stats_by_currency": trade_stats_by_currency,
             "current_rates": [
                 {
                     "currency": current_row.currency,
@@ -285,6 +312,24 @@ class CurrencyService:
         current_rates = computed["current_rates"]
         if normalized_currency:
             current_rates = [item for item in current_rates if item["currency"] == normalized_currency]
+        trade_stats = (
+            computed["trade_stats_by_currency"].get(
+                normalized_currency,
+                {
+                    "buy_trades_count": 0,
+                    "sell_trades_count": 0,
+                    "buy_volume_base": self._money(0),
+                    "sell_volume_base": self._money(0),
+                },
+            )
+            if normalized_currency
+            else {
+                "buy_trades_count": computed["buy_trades_count"],
+                "sell_trades_count": computed["sell_trades_count"],
+                "buy_volume_base": computed["buy_volume_base"],
+                "sell_volume_base": computed["sell_volume_base"],
+            }
+        )
         return {
             "base_currency": computed["base_currency"],
             "tracked_currencies": computed["tracked_currencies"],
@@ -292,6 +337,10 @@ class CurrencyService:
             "total_book_value": self._money(sum(Decimal(item["book_value"]) for item in positions)),
             "total_current_value": self._money(sum(Decimal(item["current_value"]) for item in positions)),
             "total_result_value": self._money(sum(Decimal(item["result_value"]) for item in positions)),
+            "buy_trades_count": int(trade_stats["buy_trades_count"]),
+            "sell_trades_count": int(trade_stats["sell_trades_count"]),
+            "buy_volume_base": self._money(trade_stats["buy_volume_base"]),
+            "sell_volume_base": self._money(trade_stats["sell_volume_base"]),
             "positions": positions,
             "recent_trades": trades,
             "current_rates": current_rates,

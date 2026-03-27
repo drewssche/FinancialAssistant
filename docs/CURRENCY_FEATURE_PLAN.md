@@ -35,6 +35,10 @@ Implemented in current slice:
 - analytics tab `Валюта` with KPI, rate-history chart, deal list, and period controls
 - currency code presentation improved with symbol labels like `USD ($)` and `EUR (€)`
 - Phase 2 started: operations now support original currency plus base conversion snapshot
+- next UX slice agreed:
+  - in currency contexts prefer `Покупка / Продажа` as the action terminology
+  - in regular operation mode move the currency selector inline next to the amount field
+  - keep `Курс в базовую валюту` only as a conditional follow-up field for non-base currency operations
 
 Not implemented yet:
 - user-defined currency alert rules beyond daily digest
@@ -99,6 +103,9 @@ Rules:
 - show only currencies enabled for tracking
 - if no currencies are tracked, hide the block or show a compact empty-state
 - provide small force-refresh actions for rates directly in the block
+- currency KPI wording should remain domain-specific:
+  - action summaries use `Покупки` / `Продажи`
+  - avoid reusing `Доход` / `Расход` in FX-specific summaries
 
 ### 2. Currency Section
 
@@ -149,6 +156,12 @@ The original purchase price must always be fixed in the trade record.
 Interaction rule:
 - CTA `Сделка` from the `Валюта` section should open the shared create modal directly on the `Валюта` tab
 - avoid keeping a competing inline trade form on the section page
+- do not show the regular `Расход / Доход` switch while the modal is in `Валюта` mode
+
+For regular `Операция` mode:
+- keep the amount and currency tightly coupled in one row
+- render currency as a compact inline selector near the amount field, without a separate label block
+- show `Курс в базовую валюту` only when the selected currency differs from the main base currency
 
 ### 4. Analytics
 

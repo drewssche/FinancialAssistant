@@ -42,12 +42,11 @@
               </div>
             </div>
           </div>
-          <div id="opAmountField" class="money-input-wrap" data-money-input-wrap>
-            <input id="opAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" required />
-          </div>
-          <label class="field">
-            <span>Валюта операции</span>
-            <select id="opCurrency">
+          <div id="opAmountCompound" class="amount-currency-combo">
+            <div id="opAmountField" class="money-input-wrap" data-money-input-wrap>
+              <input id="opAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" required />
+            </div>
+            <select id="opCurrency" class="inline-currency-select" aria-label="Валюта суммы">
               <option value="BYN">BYN (руб.)</option>
               <option value="USD">USD ($)</option>
               <option value="EUR">EUR (€)</option>
@@ -55,7 +54,7 @@
               <option value="CNY">CNY (¥)</option>
               <option value="PLN">PLN (zł)</option>
             </select>
-          </label>
+          </div>
           <div id="opFxRateField" class="money-input-wrap hidden" data-money-input-wrap>
             <input id="opFxRate" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс в базовую валюту" title="Курс конверсии в основную валюту" />
           </div>
@@ -165,40 +164,63 @@
             <input id="debtNote" type="text" placeholder="Комментарий" class="create-note-field" />
           </div>
 
-          <div id="createCurrencyFields" class="category-modal-form hidden">
+          <div id="createCurrencyFields" class="category-modal-form currency-modal-grid hidden">
             <div class="segmented" id="createCurrencySideSwitch" aria-label="Действие с валютой">
               <button class="segmented-btn active" data-currency-side="buy" type="button">Покупка</button>
               <button class="segmented-btn" data-currency-side="sell" type="button">Продажа</button>
             </div>
             <input id="currencySide" type="hidden" value="buy" />
-            <label class="field">
-              <span>Валюта</span>
-              <select id="currencyAsset">
-                <option value="USD">USD ($)</option>
-                <option value="EUR">EUR (€)</option>
-                <option value="RUB">RUB (₽)</option>
-                <option value="CNY">CNY (¥)</option>
-                <option value="PLN">PLN (zł)</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>Базовая валюта</span>
-              <input id="currencyQuote" class="input" type="text" value="BYN" maxlength="3" placeholder="BYN" />
-            </label>
-            <div id="currencyTradeDateField" class="date-input-wrap">
-              <input id="currencyTradeDateModal" class="input" type="date" aria-label="Дата валютной сделки" />
-              <button class="date-input-trigger" type="button" data-date-picker-trigger="currencyTradeDateModal" aria-label="Открыть календарь"></button>
+            <div class="currency-modal-row">
+              <label class="field">
+                <span>Валюта</span>
+                <select id="currencyAsset">
+                  <option value="USD">USD ($)</option>
+                  <option value="EUR">EUR (€)</option>
+                  <option value="RUB">RUB (₽)</option>
+                  <option value="CNY">CNY (¥)</option>
+                  <option value="PLN">PLN (zł)</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Базовая валюта</span>
+                <input id="currencyQuote" class="input" type="text" value="BYN" maxlength="3" placeholder="BYN" />
+              </label>
             </div>
-            <div id="currencyQuantityField" class="money-input-wrap" data-money-input-wrap>
-              <input id="currencyQuantity" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Количество" />
+            <div class="currency-modal-row currency-modal-row-single">
+              <label class="field">
+                <span>Дата</span>
+                <div id="currencyTradeDateField" class="date-input-wrap">
+                  <input id="currencyTradeDateModal" class="input" type="date" aria-label="Дата валютной сделки" />
+                  <button class="date-input-trigger" type="button" data-date-picker-trigger="currencyTradeDateModal" aria-label="Открыть календарь"></button>
+                </div>
+              </label>
             </div>
-            <div id="currencyUnitPriceField" class="money-input-wrap" data-money-input-wrap>
-              <input id="currencyUnitPrice" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс" />
+            <div class="currency-modal-row">
+              <label class="field">
+                <span>Количество</span>
+                <div id="currencyQuantityField" class="money-input-wrap" data-money-input-wrap>
+                  <input id="currencyQuantity" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Количество" />
+                </div>
+              </label>
+              <label class="field">
+                <span>Курс</span>
+                <div id="currencyUnitPriceField" class="money-input-wrap" data-money-input-wrap>
+                  <input id="currencyUnitPrice" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс" />
+                </div>
+              </label>
             </div>
-            <div id="currencyFeeField" class="money-input-wrap" data-money-input-wrap>
-              <input id="currencyFee" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Комиссия" />
+            <div class="currency-modal-row">
+              <label class="field">
+                <span>Комиссия</span>
+                <div id="currencyFeeField" class="money-input-wrap" data-money-input-wrap>
+                  <input id="currencyFee" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Комиссия" />
+                </div>
+              </label>
+              <label class="field">
+                <span>Комментарий</span>
+                <input id="currencyNote" type="text" placeholder="Комментарий" class="create-note-field" />
+              </label>
             </div>
-            <input id="currencyNote" type="text" placeholder="Комментарий" class="create-note-field" />
           </div>
         </form>
         <div class="preview-panel">
@@ -399,12 +421,11 @@
               </div>
             </div>
           </div>
-          <div id="editAmountField" class="money-input-wrap" data-money-input-wrap>
-            <input id="editAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" required />
-          </div>
-          <label class="field">
-            <span>Валюта операции</span>
-            <select id="editCurrency">
+          <div id="editAmountCompound" class="amount-currency-combo">
+            <div id="editAmountField" class="money-input-wrap" data-money-input-wrap>
+              <input id="editAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" required />
+            </div>
+            <select id="editCurrency" class="inline-currency-select" aria-label="Валюта суммы">
               <option value="BYN">BYN (руб.)</option>
               <option value="USD">USD ($)</option>
               <option value="EUR">EUR (€)</option>
@@ -412,7 +433,7 @@
               <option value="CNY">CNY (¥)</option>
               <option value="PLN">PLN (zł)</option>
             </select>
-          </label>
+          </div>
           <div id="editFxRateField" class="money-input-wrap hidden" data-money-input-wrap>
             <input id="editFxRate" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс в базовую валюту" title="Курс конверсии в основную валюту" />
           </div>

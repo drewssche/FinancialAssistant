@@ -118,6 +118,16 @@
                 <div class="muted-small">Открытых позиций</div>
                 <strong id="currencySummaryActiveCount">0</strong>
               </article>
+              <article class="analytics-kpi-card analytics-kpi-neutral">
+                <div class="muted-small">Покупки</div>
+                <strong id="currencySummaryBuyVolume">0</strong>
+                <span class="analytics-kpi-delta" id="currencySummaryBuyCount">0 сделок</span>
+              </article>
+              <article class="analytics-kpi-card analytics-kpi-neutral">
+                <div class="muted-small">Продажи</div>
+                <strong id="currencySummarySellVolume">0</strong>
+                <span class="analytics-kpi-delta" id="currencySummarySellCount">0 сделок</span>
+              </article>
             </div>
             <div id="currencyPositionsList" class="plans-list"></div>
             <div id="currencyRatePanel" class="panel hidden">

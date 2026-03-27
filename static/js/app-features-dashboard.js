@@ -69,6 +69,16 @@
           <strong>${core.formatMoney(summary.currency_result_value || 0)}</strong>
         </article>
         <article class="analytics-kpi-card analytics-kpi-neutral">
+          <div class="muted-small">Покупки</div>
+          <strong>${core.formatMoney(summary.currency_buy_volume_base || 0)}</strong>
+          <span class="analytics-kpi-delta">${String(summary.currency_buy_trades_count || 0)} сделок</span>
+        </article>
+        <article class="analytics-kpi-card analytics-kpi-neutral">
+          <div class="muted-small">Продажи</div>
+          <strong>${core.formatMoney(summary.currency_sell_volume_base || 0)}</strong>
+          <span class="analytics-kpi-delta">${String(summary.currency_sell_trades_count || 0)} сделок</span>
+        </article>
+        <article class="analytics-kpi-card analytics-kpi-neutral">
           <div class="muted-small">Открытых позиций</div>
           <strong>${String(summary.active_currency_positions || 0)}</strong>
         </article>
