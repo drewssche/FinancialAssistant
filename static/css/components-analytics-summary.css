@@ -293,6 +293,36 @@
   gap: var(--space-3);
 }
 
+.currency-balance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr));
+  gap: var(--space-3);
+}
+
+.currency-balance-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: rgba(18, 27, 43, 0.72);
+  padding: var(--space-3);
+  display: grid;
+  gap: calc(var(--space-1) + 0.125rem);
+  min-height: 92px;
+}
+
+.currency-balance-card strong {
+  font-size: 1.38rem;
+  line-height: 1.05;
+  font-family: var(--money-font-family);
+  font-variant-numeric: tabular-nums lining-nums;
+  color: #eef4ff;
+}
+
+.currency-balance-card .currency-balance-secondary {
+  color: #9db0d4;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
 .dashboard-currency-rate-card {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);

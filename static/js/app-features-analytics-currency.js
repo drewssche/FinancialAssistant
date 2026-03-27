@@ -90,6 +90,25 @@
         ? "Сводка по всем отслеживаемым валютам"
         : `Курс, позиция и сделки по ${core.formatCurrencyLabel(state.analyticsCurrencyFilter)} ${periodLabels[state.analyticsCurrencyPeriod] || ""}`.trim();
     }
+    if (el.analyticsCurrencyBalancesRow) {
+      const positions = Array.isArray(overview.positions) ? overview.positions : [];
+      const baseCurrency = String(overview.base_currency || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
+      const bynCard = `
+        <article class="currency-balance-card">
+          <div class="muted-small">${core.formatCurrencyLabel(baseCurrency)}</div>
+          <strong>${core.formatMoney(overview.total_current_value || 0, { currency: baseCurrency })}</strong>
+          <div class="currency-balance-secondary">Текущая оценка валютных позиций в аналитике</div>
+        </article>
+      `;
+      const positionCards = positions.map((item) => `
+        <article class="currency-balance-card">
+          <div class="muted-small">${core.formatCurrencyLabel(item.currency)}</div>
+          <strong>${core.formatAmount(item.quantity || 0)}</strong>
+          <div class="currency-balance-secondary">${core.formatMoney(item.current_value || 0, { currency: baseCurrency })} по текущему курсу · ${Number(item.current_rate || 0).toFixed(4)}</div>
+        </article>
+      `);
+      el.analyticsCurrencyBalancesRow.innerHTML = [bynCard, ...positionCards].join("");
+    }
     if (el.analyticsCurrencySecondary) {
       const positions = Array.isArray(overview.positions) ? overview.positions : [];
       if (!positions.length) {

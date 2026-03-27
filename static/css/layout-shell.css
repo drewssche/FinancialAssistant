@@ -366,6 +366,11 @@
   justify-self: start;
 }
 
+.fx-rate-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
 .currency-modal-grid {
   grid-column: 1 / -1;
   display: grid;

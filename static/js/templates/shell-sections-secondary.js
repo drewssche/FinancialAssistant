@@ -129,6 +129,7 @@
                 <span class="analytics-kpi-delta" id="currencySummarySellCount">0 сделок</span>
               </article>
             </div>
+            <div id="currencyBalancesRow" class="currency-balance-grid"></div>
             <div id="currencyPositionsList" class="plans-list"></div>
             <div id="currencyRatePanel" class="panel hidden">
               <form id="currencyRateForm" class="category-modal-form">

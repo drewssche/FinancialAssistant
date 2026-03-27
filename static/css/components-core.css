@@ -170,6 +170,11 @@
   padding-left: 14px;
 }
 
+.fx-rate-hint {
+  display: block;
+  padding-left: 2px;
+}
+
 .date-input-wrap {
   position: relative;
 }

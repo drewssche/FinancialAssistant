@@ -40,6 +40,8 @@
   const updateEditPreview = preview?.updateEditPreview || (() => {});
   const handleCreatePreviewClick = preview?.handleCreatePreviewClick || (() => {});
   let currencyUnitPriceManual = false;
+  let createOperationFxRateManual = false;
+  let editOperationFxRateManual = true;
   const createOperationModalReceiptFeature = window.App.getRuntimeModule?.("operation-modal-receipt-factory");
   const receipt = createOperationModalReceiptFeature
     ? createOperationModalReceiptFeature({
@@ -204,6 +206,82 @@
     applyTradeFieldCurrency(el.currencyUnitPriceField, context.quoteCurrency);
     applyTradeFieldCurrency(el.currencyFeeField, context.quoteCurrency);
   }
+
+  function isOperationFxRateManual(mode = "create") {
+    return mode === "edit" ? editOperationFxRateManual : createOperationFxRateManual;
+  }
+
+  function setOperationFxRateManual(mode = "create", value = true) {
+    if (mode === "edit") {
+      editOperationFxRateManual = value;
+      return;
+    }
+    createOperationFxRateManual = value;
+  }
+
+  function setOperationFxRateHint(mode = "create", message = "", tone = "neutral") {
+    const hintNode = mode === "edit" ? el.editFxRateHint : el.opFxRateHint;
+    if (!hintNode) {
+      return;
+    }
+    hintNode.textContent = message;
+    hintNode.classList.toggle("hidden", !message);
+    hintNode.dataset.tone = tone;
+  }
+
+  async function syncSuggestedOperationFxRate(mode = "create", options = {}) {
+    const isEdit = mode === "edit";
+    const currencySelect = isEdit ? el.editCurrency : el.opCurrency;
+    const fxRateInput = isEdit ? el.editFxRate : el.opFxRate;
+    const dateInput = document.getElementById(isEdit ? "editDate" : "opDate");
+    const baseCurrency = String(core.getCurrencyConfig?.().code || "BYN").toUpperCase();
+    const selectedCurrency = String(currencySelect?.value || baseCurrency).toUpperCase();
+    const operationDate = core.parseDateInputValue(dateInput?.value || "");
+    if (!fxRateInput || !selectedCurrency || !operationDate) {
+      return;
+    }
+    if (selectedCurrency === baseCurrency) {
+      fxRateInput.value = "1";
+      setOperationFxRateHint(mode, "");
+      if (isEdit) {
+        updateEditPreview();
+      } else {
+        updateCreatePreview();
+      }
+      return;
+    }
+    if (isOperationFxRateManual(mode) && options.force !== true) {
+      return;
+    }
+    const params = new URLSearchParams({
+      currency: selectedCurrency,
+      date_from: operationDate,
+      date_to: operationDate,
+      limit: "5",
+    });
+    let history = await core.requestJson(`/api/v1/currency/rates/history?${params.toString()}`, {
+      headers: core.authHeaders(),
+    }).catch(() => []);
+    if (!Array.isArray(history) || !history.length) {
+      history = await core.requestJson(`/api/v1/currency/rates/history/fill?currency=${encodeURIComponent(selectedCurrency)}&date_from=${encodeURIComponent(operationDate)}&date_to=${encodeURIComponent(operationDate)}`, {
+        method: "POST",
+        headers: core.authHeaders(),
+      }).catch(() => []);
+    }
+    const rateRow = Array.isArray(history) && history.length ? history[history.length - 1] : null;
+    if (!rateRow?.rate) {
+      setOperationFxRateHint(mode, `Курс на ${core.formatDateRu(operationDate)} не найден, укажи вручную`, "warning");
+      return;
+    }
+    fxRateInput.value = Number(rateRow.rate || 0).toFixed(4);
+    setOperationFxRateHint(mode, `Курс подставлен автоматически на ${core.formatDateRu(operationDate)}`, "auto");
+    if (isEdit) {
+      updateEditPreview();
+    } else {
+      updateCreatePreview();
+    }
+  }
+
   function syncOperationCurrencyFields(mode = "create") {
     const isEdit = mode === "edit";
     const currencySelect = isEdit ? el.editCurrency : el.opCurrency;
@@ -213,12 +291,16 @@
     const selectedCurrency = String(currencySelect?.value || baseCurrency).toUpperCase();
     const needsFxRate = selectedCurrency !== baseCurrency;
     fxRateField?.classList.toggle("hidden", !needsFxRate);
+    if (!needsFxRate) {
+      setOperationFxRateHint(mode, "");
+    }
     if (fxRateInput) {
       fxRateInput.required = needsFxRate;
       if (!needsFxRate) {
         fxRateInput.value = "1";
       } else if (!String(fxRateInput.value || "").trim()) {
-        fxRateInput.value = "1";
+        setOperationFxRateManual(mode, false);
+        syncSuggestedOperationFxRate(mode).catch(() => {});
       }
     }
   }
@@ -458,6 +540,8 @@
     if (el.opFxRate) {
       el.opFxRate.value = "1";
     }
+    setOperationFxRateHint("create", "");
+    createOperationFxRateManual = false;
     if (el.planRecurrenceBlock) {
       el.planRecurrenceBlock.classList.add("hidden");
     }
@@ -566,6 +650,8 @@
     if (el.editFxRate) {
       el.editFxRate.value = item.fx_rate || "1";
     }
+    setOperationFxRateHint("edit", item.currency && item.currency !== (core.getCurrencyConfig?.().code || "BYN") ? "Сохранившийся курс операции" : "");
+    editOperationFxRateManual = true;
     core.syncDateFieldValue(document.getElementById("editDate"), item.operation_date);
     document.getElementById("editNote").value = item.note || "";
     clearReceiptItems("edit");
@@ -718,6 +804,17 @@
     setCreateOperationMode,
     setEditOperationMode,
     syncOperationCurrencyFields,
+    syncSuggestedOperationFxRate,
+    markCreateOperationFxRateManual: () => {
+      setOperationFxRateManual("create", true);
+      setOperationFxRateHint("create", "Курс изменен вручную", "manual");
+    },
+    markEditOperationFxRateManual: () => {
+      setOperationFxRateManual("edit", true);
+      setOperationFxRateHint("edit", "Курс изменен вручную", "manual");
+    },
+    resetCreateOperationFxRateAutofill: () => setOperationFxRateManual("create", false),
+    resetEditOperationFxRateAutofill: () => setOperationFxRateManual("edit", false),
     syncCurrencyTradeFieldUi,
     getCurrencyTradeContext,
     syncSuggestedCurrencyRate,

@@ -89,10 +89,31 @@
   }
 
   function renderPositions(data) {
+    const positions = Array.isArray(data.positions) ? data.positions : [];
+    const baseCurrency = String(data.base_currency || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
+    if (el.currencyBalancesRow) {
+      const bynCard = `
+        <article class="currency-balance-card">
+          <div class="muted-small">${core.formatCurrencyLabel(baseCurrency)}</div>
+          <strong>${core.formatMoney(data.total_current_value || 0, { currency: baseCurrency })}</strong>
+          <div class="currency-balance-secondary">Текущая оценка всех открытых валютных позиций</div>
+        </article>
+      `;
+      const positionCards = positions.map((item) => {
+        const currencyLabel = core.formatCurrencyLabel(item.currency);
+        return `
+          <article class="currency-balance-card">
+            <div class="muted-small">${core.escapeHtml ? core.escapeHtml(currencyLabel) : currencyLabel}</div>
+            <strong>${core.formatAmount(item.quantity || 0)}</strong>
+            <div class="currency-balance-secondary">${core.formatMoney(item.current_value || 0, { currency: baseCurrency })} по текущему курсу · ${Number(item.current_rate || 0).toFixed(4)}</div>
+          </article>
+        `;
+      });
+      el.currencyBalancesRow.innerHTML = [bynCard, ...positionCards].join("");
+    }
     if (!el.currencyPositionsList) {
       return;
     }
-    const positions = Array.isArray(data.positions) ? data.positions : [];
     if (!positions.length) {
       el.currencyPositionsList.innerHTML = `<div class="muted-small">Пока нет открытых валютных позиций</div>`;
       return;

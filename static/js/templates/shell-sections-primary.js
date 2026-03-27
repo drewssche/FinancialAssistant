@@ -16,6 +16,7 @@
               </div>
             </div>
             <div id="dashboardCurrencyKpiGrid" class="analytics-kpi-grid"></div>
+            <div id="dashboardCurrencyBalances" class="currency-balance-grid"></div>
             <div id="dashboardCurrencyRates" class="dashboard-currency-rates-grid"></div>
             <div id="dashboardCurrencyPositions" class="analytics-kpi-secondary"></div>
           </section>
@@ -349,6 +350,7 @@
                 <span class="analytics-kpi-delta" id="analyticsCurrencySellCount">0 сделок</span>
               </article>
             </div>
+            <div id="analyticsCurrencyBalancesRow" class="currency-balance-grid"></div>
             <div id="analyticsCurrencySecondary" class="analytics-kpi-secondary"></div>
             <div class="toolbar analytics-currency-chart-toolbar">
               <button id="analyticsCurrencyBackfillBtn" class="btn btn-secondary" type="button">Подгрузить историю для графика</button>

@@ -55,8 +55,11 @@
               <option value="PLN">PLN (zł)</option>
             </select>
           </div>
-          <div id="opFxRateField" class="money-input-wrap hidden" data-money-input-wrap>
-            <input id="opFxRate" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс в базовую валюту" title="Курс конверсии в основную валюту" />
+          <div id="opFxRateField" class="fx-rate-field hidden">
+            <div class="money-input-wrap" data-money-input-wrap>
+              <input id="opFxRate" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс в базовую валюту" title="Курс конверсии в основную валюту" />
+            </div>
+            <span id="opFxRateHint" class="muted-small fx-rate-hint hidden"></span>
           </div>
           <input id="opNote" class="create-note-field" type="text" placeholder="Комментарий" />
 
@@ -429,8 +432,11 @@
               <option value="PLN">PLN (zł)</option>
             </select>
           </div>
-          <div id="editFxRateField" class="money-input-wrap hidden" data-money-input-wrap>
-            <input id="editFxRate" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс в базовую валюту" title="Курс конверсии в основную валюту" />
+          <div id="editFxRateField" class="fx-rate-field hidden">
+            <div class="money-input-wrap" data-money-input-wrap>
+              <input id="editFxRate" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс в базовую валюту" title="Курс конверсии в основную валюту" />
+            </div>
+            <span id="editFxRateHint" class="muted-small fx-rate-hint hidden"></span>
           </div>
           <input id="editNote" class="create-note-field" type="text" placeholder="Комментарий" />
 
