@@ -162,6 +162,8 @@
       const rateDate = item.rate_date ? core.formatDateRu(item.rate_date) : "без даты";
       const source = item.source ? String(item.source).trim() : "manual";
       const currencyLabel = core.formatCurrencyLabel(item.currency);
+      const averageBuyRate = Number(item.average_buy_rate || 0);
+      const averageSellRate = Number(item.average_sell_rate || 0);
       return `
         <article class="dashboard-currency-rate-card">
           <div class="dashboard-currency-rate-head">
@@ -173,6 +175,10 @@
           <div class="dashboard-currency-rate-value">${Number(item.rate || 0).toFixed(4)}</div>
           <div class="dashboard-currency-rate-meta muted-small">Официальный курс к BYN · ${rateDate}</div>
           <div class="dashboard-currency-rate-delta dashboard-currency-rate-delta-${deltaTone}">${deltaLabel}</div>
+          <div class="dashboard-currency-rate-side-values muted-small">
+            <span>Покупка: ${averageBuyRate > 0 ? averageBuyRate.toFixed(4) : "—"}</span>
+            <span>Продажа: ${averageSellRate > 0 ? averageSellRate.toFixed(4) : "—"}</span>
+          </div>
           <div class="dashboard-currency-rate-source muted-small">Источник: ${core.escapeHtml ? core.escapeHtml(source) : source}</div>
           <div class="dashboard-currency-rate-actions">
             <button class="btn btn-secondary btn-xs" type="button" data-dashboard-refresh-currency="${item.currency}">Обновить</button>
@@ -183,19 +189,22 @@
   }
 
   async function refreshDashboardCurrencyRates(currency = "") {
+    const refreshState = getInlineRefreshState();
     const query = currency ? `?currency=${encodeURIComponent(currency)}` : "";
-    await core.requestJson(`/api/v1/currency/rates/refresh${query}`, {
-      method: "POST",
-      headers: core.authHeaders(),
-    });
-    core.invalidateUiRequestCache?.("dashboard:summary");
-    await loadDashboard();
-    if (state.activeSection === "currency") {
-      window.App.getRuntimeModule?.("currency")?.loadCurrencySection?.({ force: true }).catch(() => {});
-    }
-    if (state.activeSection === "analytics" && state.analyticsTab === "currency") {
-      window.App.getRuntimeModule?.("analytics-currency-module")?.loadAnalyticsCurrency?.({ force: true }).catch(() => {});
-    }
+    await refreshState.withRefresh?.(el.dashboardCurrencyPanel, async () => {
+      await core.requestJson(`/api/v1/currency/rates/refresh${query}`, {
+        method: "POST",
+        headers: core.authHeaders(),
+      });
+      core.invalidateUiRequestCache?.("dashboard:summary");
+      await loadDashboard();
+      if (state.activeSection === "currency") {
+        window.App.getRuntimeModule?.("currency")?.loadCurrencySection?.({ force: true }).catch(() => {});
+      }
+      if (state.activeSection === "analytics" && state.analyticsTab === "currency") {
+        window.App.getRuntimeModule?.("analytics-currency-module")?.loadAnalyticsCurrency?.({ force: true }).catch(() => {});
+      }
+    }, currency ? `Обновляется ${currency}` : "Обновляются курсы");
   }
 
   function formatDateTimeRu(value) {

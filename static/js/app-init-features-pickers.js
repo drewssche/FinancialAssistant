@@ -41,6 +41,12 @@
       if (node) {
         node.addEventListener("input", actions.updateCreatePreview);
         node.addEventListener("change", actions.updateCreatePreview);
+        if ((id === "currencyAsset" || id === "currencyTradeDateModal") && actions.syncSuggestedCurrencyRate) {
+          node.addEventListener("change", () => actions.syncSuggestedCurrencyRate().catch(() => {}));
+        }
+        if (id === "currencyUnitPrice" && actions.markCurrencyRateManual) {
+          node.addEventListener("input", actions.markCurrencyRateManual);
+        }
       }
     }
     pickerCoordinator.bindDateField("debtStartDate", actions.updateCreatePreview);

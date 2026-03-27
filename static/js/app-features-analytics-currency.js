@@ -1,5 +1,7 @@
 (() => {
   const { state, el, core } = window.App;
+  const shared = window.App.analyticsShared || {};
+  const escapeHtml = shared.escapeHtml || ((value) => String(value ?? ""));
 
   function getTrackedCurrencies() {
     const raw = state.preferences?.data?.currency?.tracked_currencies;
@@ -113,16 +115,19 @@
       return;
     }
     const { dateFrom, dateTo } = getHistoryRange();
-    await core.requestJson(
-      `/api/v1/currency/rates/history/fill?currency=${encodeURIComponent(state.analyticsCurrencyFilter)}&date_from=${encodeURIComponent(dateFrom)}&date_to=${encodeURIComponent(dateTo)}`,
-      {
-        method: "POST",
-        headers: core.authHeaders(),
-      },
-    );
-    await loadAnalyticsCurrency({ force: true });
-    core.invalidateUiRequestCache?.("dashboard:summary");
-    window.App.getRuntimeModule?.("dashboard")?.loadDashboard?.().catch(() => {});
+    const refreshState = window.App.getRuntimeModule?.("inline-refresh-state") || {};
+    await refreshState.withRefresh?.(el.analyticsCurrencyPanel, async () => {
+      await core.requestJson(
+        `/api/v1/currency/rates/history/fill?currency=${encodeURIComponent(state.analyticsCurrencyFilter)}&date_from=${encodeURIComponent(dateFrom)}&date_to=${encodeURIComponent(dateTo)}`,
+        {
+          method: "POST",
+          headers: core.authHeaders(),
+        },
+      );
+      await loadAnalyticsCurrency({ force: true });
+      core.invalidateUiRequestCache?.("dashboard:summary");
+      window.App.getRuntimeModule?.("dashboard")?.loadDashboard?.().catch(() => {});
+    }, "Подгружается история курса");
     core.setStatus("История курса подгружена");
   }
 
@@ -157,6 +162,66 @@
     `;
   }
 
+  function createCurrencyTooltipHost(svgNode) {
+    const wrapper = svgNode?.parentElement;
+    if (!wrapper) {
+      return null;
+    }
+    let tooltip = wrapper.querySelector(".analytics-chart-tooltip");
+    if (!tooltip) {
+      tooltip = document.createElement("div");
+      tooltip.className = "analytics-chart-tooltip hidden";
+      wrapper.appendChild(tooltip);
+    }
+    return tooltip;
+  }
+
+  function positionCurrencyTooltip(svgNode, tooltip, clientX, clientY) {
+    if (!svgNode || !tooltip) {
+      return;
+    }
+    const rect = svgNode.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const left = Math.max(8, Math.min(rect.width - tooltipRect.width - 8, clientX - rect.left + 12));
+    const top = Math.max(8, Math.min(rect.height - tooltipRect.height - 8, clientY - rect.top - tooltipRect.height - 10));
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+  }
+
+  function bindCurrencyChartTooltip(svgNode, points) {
+    if (!svgNode) {
+      return;
+    }
+    const tooltip = createCurrencyTooltipHost(svgNode);
+    if (!tooltip) {
+      return;
+    }
+    svgNode.onmousemove = (event) => {
+      const bucket = event.target.closest(".trend-bucket");
+      if (!bucket) {
+        tooltip.classList.add("hidden");
+        return;
+      }
+      const index = Number(bucket.dataset.analyticsBucketIndex || -1);
+      const point = points[index];
+      if (!point) {
+        tooltip.classList.add("hidden");
+        return;
+      }
+      tooltip.innerHTML = `
+        <div class="analytics-chart-tooltip-title">${escapeHtml(core.formatDateRu(point.rate_date))}</div>
+        <div class="analytics-chart-tooltip-grid analytics-chart-tooltip-grid-compact">
+          <span class="analytics-chart-tooltip-balance">Курс: ${escapeHtml(Number(point.rate || 0).toFixed(4))}</span>
+        </div>
+      `;
+      tooltip.classList.remove("hidden");
+      positionCurrencyTooltip(svgNode, tooltip, event.clientX, event.clientY);
+    };
+    svgNode.onmouseleave = () => {
+      tooltip.classList.add("hidden");
+    };
+  }
+
   function renderChart(points) {
     if (!el.analyticsCurrencyChart) {
       return;
@@ -183,16 +248,36 @@
     const polyline = points.map((item, index) => `${toX(index)},${toY(Number(item.rate || 0))}`).join(" ");
     const last = points[points.length - 1];
     const first = points[0];
+    const middle = points[Math.floor(points.length / 2)];
+    const midRate = minRate + yRange / 2;
+    const bucketWidth = points.length > 1 ? xStep : width - padX * 2;
+    const hitboxes = points.map((item, index) => `
+      <g class="trend-bucket" data-analytics-bucket-index="${index}">
+        <rect
+          class="analytics-trend-hitbox"
+          x="${Math.max(0, toX(index) - bucketWidth / 2).toFixed(2)}"
+          y="0"
+          width="${Math.max(bucketWidth, 24).toFixed(2)}"
+          height="${height}"
+          fill="transparent"
+        ></rect>
+      </g>
+    `).join("");
     el.analyticsCurrencyChart.innerHTML = `
       <line x1="${padX}" y1="${height - padY}" x2="${width - padX}" y2="${height - padY}" class="analytics-axis-line"></line>
       <line x1="${padX}" y1="${padY}" x2="${padX}" y2="${height - padY}" class="analytics-axis-line"></line>
       <polyline fill="none" stroke="var(--accent, #6ea8ff)" stroke-width="4" points="${polyline}"></polyline>
       <circle cx="${toX(points.length - 1)}" cy="${toY(Number(last.rate || 0))}" r="5" fill="var(--accent, #6ea8ff)"></circle>
+      ${hitboxes}
       <text x="${padX}" y="${height - 8}" class="analytics-chart-empty">${core.formatDateRu(first.rate_date)}</text>
+      <text x="${toX(Math.floor(points.length / 2))}" y="${height - 8}" text-anchor="middle" class="analytics-chart-empty">${core.formatDateRu(middle.rate_date)}</text>
       <text x="${width - padX}" y="${height - 8}" text-anchor="end" class="analytics-chart-empty">${core.formatDateRu(last.rate_date)}</text>
       <text x="${width - padX}" y="${padY + 4}" text-anchor="end" class="analytics-chart-empty">${Number(maxRate).toFixed(4)}</text>
+      <text x="${width - padX}" y="${((padY + height - padY) / 2).toFixed(2)}" text-anchor="end" class="analytics-chart-empty">${Number(midRate).toFixed(4)}</text>
       <text x="${width - padX}" y="${height - padY - 8}" text-anchor="end" class="analytics-chart-empty">${Number(minRate).toFixed(4)}</text>
+      <text x="${Math.min(width - padX, toX(points.length - 1) + 12)}" y="${Math.max(padY + 16, toY(Number(last.rate || 0)) - 12)}" class="analytics-chart-empty">Текущий курс ${Number(last.rate || 0).toFixed(4)}</text>
     `;
+    bindCurrencyChartTooltip(el.analyticsCurrencyChart, points);
   }
 
   async function loadAnalyticsCurrency(options = {}) {
@@ -256,7 +341,14 @@
     }
     if (el.analyticsCurrencyBackfillBtn) {
       el.analyticsCurrencyBackfillBtn.addEventListener("click", () => {
-        backfillAnalyticsCurrencyHistory().catch((err) => core.setStatus(String(err)));
+        core.runAction({
+          button: el.analyticsCurrencyBackfillBtn,
+          pendingText: "Подгружается...",
+          errorPrefix: "Ошибка подгрузки истории курса",
+          action: async () => {
+            await backfillAnalyticsCurrencyHistory();
+          },
+        });
       });
     }
   }

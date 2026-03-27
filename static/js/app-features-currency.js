@@ -187,16 +187,19 @@
 
   async function submitCurrencyRate(event) {
     event.preventDefault();
-    await core.requestJson("/api/v1/currency/rates/current", {
-      method: "PUT",
-      headers: core.authHeaders(),
-      body: JSON.stringify({
-        currency: el.currencyRateAsset?.value || "USD",
-        rate: el.currencyRateValue?.value || "0",
-        rate_date: el.currencyRateDate?.value || core.getTodayIso(),
-        source: el.currencyRateSource?.value || "manual",
-      }),
-    });
+    const refreshState = window.App.getRuntimeModule?.("inline-refresh-state") || {};
+    await refreshState.withRefresh?.(el.currencyRatePanel || el.currencySection, async () => {
+      await core.requestJson("/api/v1/currency/rates/current", {
+        method: "PUT",
+        headers: core.authHeaders(),
+        body: JSON.stringify({
+          currency: el.currencyRateAsset?.value || "USD",
+          rate: el.currencyRateValue?.value || "0",
+          rate_date: el.currencyRateDate?.value || core.getTodayIso(),
+          source: el.currencyRateSource?.value || "manual",
+        }),
+      });
+    }, "Обновляется курс");
     if (el.currencyRateValue) {
       el.currencyRateValue.value = "";
     }

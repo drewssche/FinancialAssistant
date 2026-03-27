@@ -39,6 +39,7 @@
   const updateCreatePreview = preview?.updateCreatePreview || (() => {});
   const updateEditPreview = preview?.updateEditPreview || (() => {});
   const handleCreatePreviewClick = preview?.handleCreatePreviewClick || (() => {});
+  let currencyUnitPriceManual = false;
   const createOperationModalReceiptFeature = window.App.getRuntimeModule?.("operation-modal-receipt-factory");
   const receipt = createOperationModalReceiptFeature
     ? createOperationModalReceiptFeature({
@@ -88,6 +89,37 @@
       core.syncSegmentedActive(el.createCurrencySideSwitch, "currency-side", nextSide);
     }
     updateCreatePreview();
+  }
+
+  async function syncSuggestedCurrencyRate(options = {}) {
+    if (!el.currencyUnitPrice || !el.currencyAsset || !el.currencyTradeDateModal) {
+      return;
+    }
+    if (currencyUnitPriceManual && options.force !== true) {
+      return;
+    }
+    const currency = String(el.currencyAsset.value || "").trim().toUpperCase();
+    const dateTo = core.parseDateInputValue(el.currencyTradeDateModal.value) || core.getTodayIso();
+    if (!currency || !dateTo) {
+      return;
+    }
+    const history = await core.requestJson(
+      `/api/v1/currency/rates/history?currency=${encodeURIComponent(currency)}&limit=1&date_to=${encodeURIComponent(dateTo)}`,
+      { headers: core.authHeaders() },
+    ).catch(() => []);
+    if (!Array.isArray(history) || !history.length) {
+      return;
+    }
+    const latest = history[history.length - 1];
+    if (!latest?.rate) {
+      return;
+    }
+    el.currencyUnitPrice.value = Number(latest.rate || 0).toFixed(4);
+    updateCreatePreview();
+  }
+
+  function markCurrencyRateManual() {
+    currencyUnitPriceManual = true;
   }
   function syncOperationCurrencyFields(mode = "create") {
     const isEdit = mode === "edit";
@@ -384,6 +416,7 @@
     el.planRecurrenceMonthEndWrap?.classList.add("hidden");
     setDebtDirection("lend");
     setCurrencySide("buy");
+    currencyUnitPriceManual = false;
     syncOperationCurrencyFields("create");
     syncOperationCurrencyFields("edit");
     applyDebtCurrencyUi();
@@ -434,6 +467,8 @@
   async function openCreateModalForCurrency() {
     await openCreateModal();
     setCreateEntryMode("currency");
+    currencyUnitPriceManual = false;
+    syncSuggestedCurrencyRate({ force: true }).catch(() => {});
   }
   async function openEditModal(item) {
     await ensureCategoryCatalogReady("edit");
@@ -597,6 +632,8 @@
     setCreateOperationMode,
     setEditOperationMode,
     syncOperationCurrencyFields,
+    syncSuggestedCurrencyRate,
+    markCurrencyRateManual,
     updateDebtDueHint,
     openCreateModal,
     openCreateModalForCurrency,

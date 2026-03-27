@@ -45,6 +45,8 @@ class CurrencyRateOut(BaseModel):
     previous_rate: Decimal | None = None
     change_value: Decimal | None = None
     change_pct: float | None = None
+    average_buy_rate: Decimal | None = None
+    average_sell_rate: Decimal | None = None
 
 
 class CurrencyRateHistoryPointOut(BaseModel):

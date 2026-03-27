@@ -279,6 +279,8 @@ class CurrencyService:
             "sell_trades_count": total_sell_trades,
             "buy_volume_base": self._money(total_buy_volume_base),
             "sell_volume_base": self._money(total_sell_volume_base),
+            "buy_quantity": self._qty(total_buy_quantity),
+            "sell_quantity": self._qty(total_sell_quantity),
             "buy_average_rate": self._rate(Decimal(total_buy_volume_base) / Decimal(total_buy_quantity)) if total_buy_quantity > 0 else self._rate(0),
             "sell_average_rate": self._rate(Decimal(total_sell_volume_base) / Decimal(total_sell_quantity)) if total_sell_quantity > 0 else self._rate(0),
             "positions": positions,
@@ -307,6 +309,14 @@ class CurrencyService:
                         if previous_row and Decimal(previous_row.rate) > 0
                         else None
                     ),
+                    "average_buy_rate": self._rate(
+                        Decimal(trade_stats_by_currency.get(current_row.currency, {}).get("buy_volume_base", 0))
+                        / Decimal(trade_stats_by_currency.get(current_row.currency, {}).get("buy_quantity", 0))
+                    ) if Decimal(trade_stats_by_currency.get(current_row.currency, {}).get("buy_quantity", 0)) > 0 else self._rate(0),
+                    "average_sell_rate": self._rate(
+                        Decimal(trade_stats_by_currency.get(current_row.currency, {}).get("sell_volume_base", 0))
+                        / Decimal(trade_stats_by_currency.get(current_row.currency, {}).get("sell_quantity", 0))
+                    ) if Decimal(trade_stats_by_currency.get(current_row.currency, {}).get("sell_quantity", 0)) > 0 else self._rate(0),
                 }
                 for current_row, previous_row in latest_rate_pairs.values()
             ],
@@ -326,12 +336,12 @@ class CurrencyService:
             computed["trade_stats_by_currency"].get(
                 normalized_currency,
                 {
-                    "buy_trades_count": 0,
-                    "sell_trades_count": 0,
-                    "buy_volume_base": self._money(0),
-                    "sell_volume_base": self._money(0),
-                    "buy_quantity": self._qty(0),
-                    "sell_quantity": self._qty(0),
+                "buy_trades_count": 0,
+                "sell_trades_count": 0,
+                "buy_volume_base": self._money(0),
+                "sell_volume_base": self._money(0),
+                "buy_quantity": self._qty(0),
+                "sell_quantity": self._qty(0),
                 },
             )
             if normalized_currency
@@ -340,18 +350,14 @@ class CurrencyService:
                 "sell_trades_count": computed["sell_trades_count"],
                 "buy_volume_base": computed["buy_volume_base"],
                 "sell_volume_base": computed["sell_volume_base"],
-                "buy_average_rate": computed["buy_average_rate"],
-                "sell_average_rate": computed["sell_average_rate"],
+                "buy_quantity": computed["buy_quantity"],
+                "sell_quantity": computed["sell_quantity"],
             }
         )
-        buy_average_rate = trade_stats.get("buy_average_rate")
-        if buy_average_rate is None:
-            buy_quantity = Decimal(trade_stats["buy_quantity"])
-            buy_average_rate = self._rate(Decimal(trade_stats["buy_volume_base"]) / buy_quantity) if buy_quantity > 0 else self._rate(0)
-        sell_average_rate = trade_stats.get("sell_average_rate")
-        if sell_average_rate is None:
-            sell_quantity = Decimal(trade_stats["sell_quantity"])
-            sell_average_rate = self._rate(Decimal(trade_stats["sell_volume_base"]) / sell_quantity) if sell_quantity > 0 else self._rate(0)
+        buy_quantity = Decimal(trade_stats["buy_quantity"])
+        buy_average_rate = self._rate(Decimal(trade_stats["buy_volume_base"]) / buy_quantity) if buy_quantity > 0 else self._rate(0)
+        sell_quantity = Decimal(trade_stats["sell_quantity"])
+        sell_average_rate = self._rate(Decimal(trade_stats["sell_volume_base"]) / sell_quantity) if sell_quantity > 0 else self._rate(0)
         return {
             "base_currency": computed["base_currency"],
             "tracked_currencies": computed["tracked_currencies"],
