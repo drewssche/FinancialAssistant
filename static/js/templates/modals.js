@@ -242,7 +242,7 @@
                   <th>Дата</th>
                   <th>Действие</th>
                   <th>Валюта</th>
-                  <th>Количество</th>
+                  <th id="createPreviewCurrencyAmountHead">Количество</th>
                   <th>Курс</th>
                   <th>Комиссия</th>
                   <th>Комментарий</th>

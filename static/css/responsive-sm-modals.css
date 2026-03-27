@@ -145,7 +145,7 @@
   }
 
   .amount-currency-combo {
-    grid-template-columns: minmax(0, 1fr) fit-content(10.5rem);
+    grid-template-columns: minmax(0, 1fr) max-content;
   }
 
   .analytics-day-cell {

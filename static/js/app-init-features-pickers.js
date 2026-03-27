@@ -42,7 +42,10 @@
         node.addEventListener("input", actions.updateCreatePreview);
         node.addEventListener("change", actions.updateCreatePreview);
         if ((id === "currencyAsset" || id === "currencyTradeDateModal") && actions.syncSuggestedCurrencyRate) {
-          node.addEventListener("change", () => actions.syncSuggestedCurrencyRate().catch(() => {}));
+          node.addEventListener("change", () => {
+            actions.resetCurrencyRateAutofill?.();
+            actions.syncSuggestedCurrencyRate().catch(() => {});
+          });
         }
         if ((id === "currencyAsset" || id === "currencyQuote") && actions.syncCurrencyTradeFieldUi) {
           node.addEventListener("change", actions.syncCurrencyTradeFieldUi);

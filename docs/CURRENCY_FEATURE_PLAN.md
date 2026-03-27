@@ -44,6 +44,10 @@ Implemented in current slice:
     - `Дата | Валюта`
     - `Количество | Курс | Комиссия`
     - `Комментарий`
+  - contextual trade semantics in the modal:
+    - for `Покупка`, the main amount field is the spent base/quote amount
+    - for `Продажа`, the main amount field is the sold asset quantity
+    - preview labels and payload conversion should switch with the selected side
   - do not expose base currency as a manual field in the currency modal; use the main currency from settings
   - in FX preview use direction-aware notation:
     - buy: `BYN -> USD`
@@ -53,6 +57,7 @@ Implemented in current slice:
     - compact secondary chips for `Покупки / Продажи / Открытые позиции`
     - include average price/rate in purchase/sale widgets
   - in `Аналитика -> Валюта` allow explicit history backfill for the currently selected currency and period so the rate chart can be populated on demand
+  - for `Все` in `Аналитика -> Валюта`, combine tracked currencies into one multi-line chart with color legend
 
 Not implemented yet:
 - user-defined currency alert rules beyond daily digest

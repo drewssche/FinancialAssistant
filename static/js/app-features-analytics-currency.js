@@ -2,6 +2,7 @@
   const { state, el, core } = window.App;
   const shared = window.App.analyticsShared || {};
   const escapeHtml = shared.escapeHtml || ((value) => String(value ?? ""));
+  const MULTI_SERIES_COLORS = ["#ff8a2b", "#6ea8ff", "#62d39a", "#f7c65b", "#d78cff", "#ff7c98"];
 
   function getTrackedCurrencies() {
     const raw = state.preferences?.data?.currency?.tracked_currencies;
@@ -98,11 +99,10 @@
       el.analyticsCurrencySecondary.innerHTML = positions.map((item) => {
         const resultTone = Number(item.result_value || 0) >= 0 ? "analytics-kpi-chip-positive" : "analytics-kpi-chip-negative";
         const currentRateDate = item.current_rate_date ? core.formatDateRu(item.current_rate_date) : "курс не задан";
-        const currencyLabel = core.formatCurrencyLabel(item.currency);
         return `
-          <span class="analytics-kpi-chip ${resultTone}">
-            ${currencyLabel}: ${core.formatMoney(item.current_value || 0)}
-            <span class="muted-small">остаток ${core.formatAmount(item.quantity || 0)} · средняя ${Number(item.average_buy_rate || 0).toFixed(4)} · текущий ${Number(item.current_rate || 0).toFixed(4)} · ${currentRateDate}</span>
+          <span class="analytics-kpi-chip currency-position-compact ${resultTone}">
+            <span class="currency-position-primary">${core.formatCurrencyLabel(item.currency)}: ${core.formatAmount(item.quantity || 0)}</span>
+            <span class="currency-position-secondary">${core.formatMoney(item.current_value || 0)} · средняя ${Number(item.average_buy_rate || 0).toFixed(4)} · текущий ${Number(item.current_rate || 0).toFixed(4)} · ${currentRateDate}</span>
           </span>
         `;
       }).join("");
@@ -110,25 +110,28 @@
   }
 
   async function backfillAnalyticsCurrencyHistory() {
-    if (!state.analyticsCurrencyFilter || state.analyticsCurrencyFilter === "all") {
-      core.setStatus("Выбери валюту, чтобы подгрузить историю курса");
+    const { dateFrom, dateTo } = getHistoryRange();
+    const currencies = state.analyticsCurrencyFilter === "all"
+      ? getTrackedCurrencies()
+      : [state.analyticsCurrencyFilter].filter(Boolean);
+    if (!currencies.length) {
+      core.setStatus("Нет валют для подгрузки истории");
       return;
     }
-    const { dateFrom, dateTo } = getHistoryRange();
     const refreshState = window.App.getRuntimeModule?.("inline-refresh-state") || {};
     await refreshState.withRefresh?.(el.analyticsCurrencyPanel, async () => {
-      await core.requestJson(
-        `/api/v1/currency/rates/history/fill?currency=${encodeURIComponent(state.analyticsCurrencyFilter)}&date_from=${encodeURIComponent(dateFrom)}&date_to=${encodeURIComponent(dateTo)}`,
+      await Promise.all(currencies.map((currency) => core.requestJson(
+        `/api/v1/currency/rates/history/fill?currency=${encodeURIComponent(currency)}&date_from=${encodeURIComponent(dateFrom)}&date_to=${encodeURIComponent(dateTo)}`,
         {
           method: "POST",
           headers: core.authHeaders(),
         },
-      );
+      )));
       await loadAnalyticsCurrency({ force: true });
       core.invalidateUiRequestCache?.("dashboard:summary");
       window.App.getRuntimeModule?.("dashboard")?.loadDashboard?.().catch(() => {});
-    }, "Подгружается история курса");
-    core.setStatus("История курса подгружена");
+    }, currencies.length > 1 ? "Подгружается история по валютам" : "Подгружается история курса");
+    core.setStatus(currencies.length > 1 ? "История по валютам подгружена" : "История курса подгружена");
   }
 
   function renderTrades(overview) {
@@ -253,6 +256,196 @@
     };
   }
 
+  function getSeriesColor(index) {
+    return MULTI_SERIES_COLORS[index % MULTI_SERIES_COLORS.length];
+  }
+
+  async function fetchCurrencyHistory(currency, range) {
+    const historyParams = new URLSearchParams({ currency, limit: range.dateFrom ? "365" : "1000" });
+    if (range.dateFrom) {
+      historyParams.set("date_from", range.dateFrom);
+    }
+    if (range.dateTo) {
+      historyParams.set("date_to", range.dateTo);
+    }
+    return core.requestJson(`/api/v1/currency/rates/history?${historyParams.toString()}`, {
+      headers: core.authHeaders(),
+    });
+  }
+
+  function bindMultiCurrencyChartTooltip(svgNode, seriesList, orderedDates, helpers = {}) {
+    if (!svgNode) {
+      return;
+    }
+    const tooltip = createCurrencyTooltipHost(svgNode);
+    if (!tooltip) {
+      return;
+    }
+    const hoverGroup = svgNode.querySelector(".currency-chart-hover");
+    const hoverYLine = svgNode.querySelector(".currency-chart-hover-y");
+    const hoverDotsGroup = svgNode.querySelector(".currency-chart-hover-dots");
+    const hoverXLabel = svgNode.querySelector(".currency-chart-hover-x-label");
+    const { toX = () => 0, toY = () => 0, height = 280, padY = 28 } = helpers;
+    svgNode.onmousemove = (event) => {
+      const bucket = event.target.closest(".trend-bucket");
+      if (!bucket) {
+        tooltip.classList.add("hidden");
+        hoverGroup?.classList.add("hidden");
+        return;
+      }
+      const index = Number(bucket.dataset.analyticsBucketIndex || -1);
+      const rateDate = orderedDates[index];
+      if (!rateDate) {
+        tooltip.classList.add("hidden");
+        hoverGroup?.classList.add("hidden");
+        return;
+      }
+      const x = toX(index);
+      const rows = seriesList
+        .map((series) => {
+          const point = series.pointsByDate.get(rateDate);
+          if (!point) {
+            return null;
+          }
+          return {
+            currency: series.currency,
+            color: series.color,
+            rate: Number(point.rate || 0),
+          };
+        })
+        .filter(Boolean)
+        .sort((left, right) => right.rate - left.rate);
+      if (!rows.length) {
+        tooltip.classList.add("hidden");
+        hoverGroup?.classList.add("hidden");
+        return;
+      }
+      if (hoverGroup && hoverYLine && hoverDotsGroup && hoverXLabel) {
+        hoverGroup.classList.remove("hidden");
+        hoverYLine.setAttribute("x1", String(x));
+        hoverYLine.setAttribute("x2", String(x));
+        hoverYLine.setAttribute("y1", String(padY));
+        hoverYLine.setAttribute("y2", String(height - padY));
+        hoverXLabel.setAttribute("x", String(x));
+        hoverXLabel.setAttribute("y", String(height - 10));
+        hoverXLabel.textContent = core.formatDateRu(rateDate);
+        hoverDotsGroup.innerHTML = rows.map((row) => `
+          <circle cx="${x}" cy="${toY(row.rate)}" r="5" fill="${row.color}" stroke="#fff" stroke-width="2"></circle>
+        `).join("");
+      }
+      tooltip.innerHTML = `
+        <div class="analytics-chart-tooltip-title">${escapeHtml(core.formatDateRu(rateDate))}</div>
+        <div class="analytics-chart-tooltip-grid">
+          ${rows.map((row) => `
+            <span class="analytics-chart-tooltip-balance">
+              <span style="color:${escapeHtml(row.color)}">●</span> ${escapeHtml(core.formatCurrencyLabel(row.currency))}: ${escapeHtml(row.rate.toFixed(4))}
+            </span>
+          `).join("")}
+        </div>
+      `;
+      tooltip.classList.remove("hidden");
+      positionCurrencyTooltip(svgNode, tooltip, event.clientX, event.clientY);
+    };
+    svgNode.onmouseleave = () => {
+      tooltip.classList.add("hidden");
+      hoverGroup?.classList.add("hidden");
+    };
+  }
+
+  function renderMultiCurrencyChart(seriesList) {
+    if (!el.analyticsCurrencyChart) {
+      return;
+    }
+    const visibleSeries = Array.isArray(seriesList) ? seriesList.filter((item) => Array.isArray(item.points) && item.points.length >= 2) : [];
+    if (!visibleSeries.length) {
+      renderEmptyChart("Недостаточно истории курса по отслеживаемым валютам");
+      return;
+    }
+    const width = 980;
+    const height = 280;
+    const padX = 56;
+    const padY = 36;
+    const orderedDates = Array.from(new Set(
+      visibleSeries.flatMap((series) => series.points.map((point) => point.rate_date)),
+    )).sort();
+    if (orderedDates.length < 2) {
+      renderEmptyChart("Недостаточно истории курса по отслеживаемым валютам");
+      return;
+    }
+    const allRates = visibleSeries.flatMap((series) => series.points.map((point) => Number(point.rate || 0))).filter((value) => Number.isFinite(value));
+    const minRate = Math.min(...allRates);
+    const maxRate = Math.max(...allRates);
+    const yRange = maxRate - minRate || 1;
+    const xStep = (width - padX * 2) / Math.max(1, orderedDates.length - 1);
+    const toX = (index) => padX + index * xStep;
+    const toY = (value) => height - padY - ((value - minRate) / yRange) * (height - padY * 2);
+    const bucketWidth = orderedDates.length > 1 ? xStep : width - padX * 2;
+    const legend = visibleSeries.map((series, index) => `
+      <g transform="translate(${padX + index * 128}, 18)">
+        <line x1="0" y1="0" x2="18" y2="0" stroke="${series.color}" stroke-width="4" stroke-linecap="round"></line>
+        <text x="24" y="4" class="currency-chart-legend-label">${escapeHtml(core.formatCurrencyLabel(series.currency))}</text>
+      </g>
+    `).join("");
+    const seriesMarkup = visibleSeries.map((series) => {
+      const polyline = orderedDates
+        .filter((rateDate) => series.pointsByDate.has(rateDate))
+        .map((rateDate) => {
+          const index = orderedDates.indexOf(rateDate);
+          const point = series.pointsByDate.get(rateDate);
+          return `${toX(index)},${toY(Number(point.rate || 0))}`;
+        })
+        .join(" ");
+      const dots = series.points.map((point) => {
+        const index = orderedDates.indexOf(point.rate_date);
+        return `<circle cx="${toX(index)}" cy="${toY(Number(point.rate || 0))}" r="3.2" fill="${series.color}" stroke="rgba(255,255,255,0.88)" stroke-width="1.6"></circle>`;
+      }).join("");
+      return `
+        <g class="currency-chart-series">
+          <polyline fill="none" stroke="${series.color}" stroke-width="3.25" stroke-linejoin="round" stroke-linecap="round" points="${polyline}"></polyline>
+          ${dots}
+        </g>
+      `;
+    }).join("");
+    const xTickIndexes = [0, Math.floor(orderedDates.length / 2), orderedDates.length - 1]
+      .filter((value, idx, arr) => arr.indexOf(value) === idx);
+    const xTicks = xTickIndexes.map((index) => `
+      <line x1="${toX(index)}" y1="${height - padY}" x2="${toX(index)}" y2="${height - padY + 6}" stroke="rgba(207, 219, 245, 0.28)" stroke-width="1"></line>
+      <text x="${toX(index)}" y="${height - 8}" text-anchor="${index === 0 ? "start" : index === orderedDates.length - 1 ? "end" : "middle"}" class="analytics-chart-empty">${core.formatDateRu(orderedDates[index])}</text>
+    `).join("");
+    const midRate = minRate + yRange / 2;
+    const yMarks = [minRate, midRate, maxRate].map((value) => `
+      <line x1="${width - padX - 8}" y1="${toY(value)}" x2="${width - padX}" y2="${toY(value)}" stroke="rgba(207, 219, 245, 0.28)" stroke-width="1"></line>
+      <text x="${width - padX}" y="${Math.max(padY + 10, toY(value) - 8)}" text-anchor="end" class="analytics-chart-empty">${Number(value).toFixed(4)}</text>
+    `).join("");
+    const hitboxes = orderedDates.map((rateDate, index) => `
+      <g class="trend-bucket" data-analytics-bucket-index="${index}" data-analytics-rate-date="${rateDate}">
+        <rect
+          class="analytics-trend-hitbox"
+          x="${Math.max(0, toX(index) - bucketWidth / 2).toFixed(2)}"
+          y="0"
+          width="${Math.max(bucketWidth, 24).toFixed(2)}"
+          height="${height}"
+          fill="transparent"
+        ></rect>
+      </g>
+    `).join("");
+    el.analyticsCurrencyChart.innerHTML = `
+      <line x1="${padX}" y1="${height - padY}" x2="${width - padX}" y2="${height - padY}" class="analytics-axis-line"></line>
+      <line x1="${padX}" y1="${padY}" x2="${padX}" y2="${height - padY}" class="analytics-axis-line"></line>
+      ${legend}
+      ${seriesMarkup}
+      ${xTicks}
+      ${yMarks}
+      ${hitboxes}
+      <g class="currency-chart-hover hidden">
+        <line class="currency-chart-hover-y" x1="0" y1="0" x2="0" y2="0" stroke="rgba(255,255,255,0.28)" stroke-dasharray="4 4" stroke-width="1"></line>
+        <g class="currency-chart-hover-dots"></g>
+        <text class="analytics-chart-empty currency-chart-hover-x-label" x="0" y="0" text-anchor="middle"></text>
+      </g>
+    `;
+    bindMultiCurrencyChartTooltip(el.analyticsCurrencyChart, visibleSeries, orderedDates, { toX, toY, height, padY });
+  }
+
   function renderChart(points) {
     if (!el.analyticsCurrencyChart) {
       return;
@@ -344,20 +537,22 @@
     renderSummary(overview);
     renderTrades(overview);
     if (state.analyticsCurrencyFilter === "all") {
-      renderEmptyChart("Выбери валюту, чтобы увидеть историю курса");
+      const range = getHistoryRange();
+      const tracked = getTrackedCurrencies();
+      const histories = await Promise.all(tracked.map(async (currency, index) => ({
+        currency,
+        color: getSeriesColor(index),
+        points: await fetchCurrencyHistory(currency, range),
+      })));
+      const seriesList = histories.map((item) => ({
+        currency: item.currency,
+        color: item.color,
+        points: Array.isArray(item.points) ? item.points : [],
+        pointsByDate: new Map((Array.isArray(item.points) ? item.points : []).map((point) => [point.rate_date, point])),
+      }));
+      renderMultiCurrencyChart(seriesList);
     } else {
-      const { dateFrom, dateTo } = getHistoryRange();
-      const historyParams = new URLSearchParams({ currency: state.analyticsCurrencyFilter, limit: "365" });
-      if (dateFrom) {
-        historyParams.set("date_from", dateFrom);
-      }
-      if (dateTo) {
-        historyParams.set("date_to", dateTo);
-      }
-      const history = await core.requestJson(
-        `/api/v1/currency/rates/history?${historyParams.toString()}`,
-        { headers: core.authHeaders() },
-      );
+      const history = await fetchCurrencyHistory(state.analyticsCurrencyFilter, getHistoryRange());
       renderChart(history);
     }
     state.analyticsCurrencyHydrated = true;

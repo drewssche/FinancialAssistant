@@ -192,17 +192,25 @@
         if (!tradeDate) {
           throw new Error("Проверь дату валютной сделки");
         }
-        const quantity = core.resolveMoneyInput(el.currencyQuantity?.value || 0);
-        const unitPrice = core.resolveMoneyInput(el.currencyUnitPrice?.value || 0);
-        const fee = core.resolveMoneyInput(el.currencyFee?.value || 0);
-        if (!quantity.valid || quantity.value <= 0) {
-          throw new Error("Проверь количество валюты");
+        const operationModal = window.App.getRuntimeModule?.("operation-modal") || {};
+        const tradeContext = typeof operationModal.getCurrencyTradeContext === "function"
+          ? operationModal.getCurrencyTradeContext()
+          : null;
+        const quantityInput = tradeContext?.quantityResolved || core.resolveMoneyInput(el.currencyQuantity?.value || 0);
+        const unitPrice = tradeContext?.rateResolved || core.resolveMoneyInput(el.currencyUnitPrice?.value || 0);
+        const fee = tradeContext?.feeResolved || core.resolveMoneyInput(el.currencyFee?.value || 0);
+        if (!quantityInput.valid || quantityInput.value <= 0) {
+          throw new Error((tradeContext?.side || "buy") === "buy" ? "Проверь сумму покупки" : "Проверь количество продаваемой валюты");
         }
         if (!unitPrice.valid || unitPrice.value <= 0) {
           throw new Error("Проверь курс валюты");
         }
         if (!fee.valid || fee.value < 0) {
           throw new Error("Проверь комиссию");
+        }
+        const effectiveQuantity = Number(tradeContext?.effectiveQuantity || 0);
+        if (!(effectiveQuantity > 0)) {
+          throw new Error((tradeContext?.side || "buy") === "buy" ? "Проверь сумму покупки и курс" : "Проверь количество валюты");
         }
         await core.requestJson("/api/v1/currency/trades", {
           method: "POST",
@@ -211,7 +219,7 @@
             side: el.currencySide?.value || "buy",
             asset_currency: String(el.currencyAsset?.value || "USD").toUpperCase(),
             quote_currency: String(el.currencyQuote?.value || "BYN").toUpperCase(),
-            quantity: quantity.formatted,
+            quantity: core.formatAmount(effectiveQuantity),
             unit_price: unitPrice.formatted,
             fee: fee.formatted,
             trade_date: tradeDate,

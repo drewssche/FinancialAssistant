@@ -116,16 +116,22 @@
 
     function getCreateFormPreviewItem() {
       if (el.opEntryMode?.value === "currency") {
-        const quantity = core.resolveMoneyInput(el.currencyQuantity?.value || 0);
-        const unitPrice = core.resolveMoneyInput(el.currencyUnitPrice?.value || 0);
-        const fee = core.resolveMoneyInput(el.currencyFee?.value || 0);
+        const tradeContext = window.App.getRuntimeModule?.("operation-modal")?.getCurrencyTradeContext?.() || null;
+        const quantity = tradeContext?.quantityResolved || core.resolveMoneyInput(el.currencyQuantity?.value || 0);
+        const unitPrice = tradeContext?.rateResolved || core.resolveMoneyInput(el.currencyUnitPrice?.value || 0);
+        const fee = tradeContext?.feeResolved || core.resolveMoneyInput(el.currencyFee?.value || 0);
+        const side = tradeContext?.side || el.currencySide?.value || "buy";
+        const assetCurrency = tradeContext?.assetCurrency || String(el.currencyAsset?.value || "USD").toUpperCase();
+        const quoteCurrency = tradeContext?.quoteCurrency || String(el.currencyQuote?.value || "BYN").toUpperCase();
         return {
           id: 0,
           trade_date: core.parseDateInputValue(el.currencyTradeDateModal?.value || "") || core.getTodayIso(),
-          side: el.currencySide?.value || "buy",
-          asset_currency: String(el.currencyAsset?.value || "USD").toUpperCase(),
-          quote_currency: String(el.currencyQuote?.value || "BYN").toUpperCase(),
-          quantity: quantity.previewValue || 0,
+          side,
+          asset_currency: assetCurrency,
+          quote_currency: quoteCurrency,
+          quantity: tradeContext?.effectiveQuantity || quantity.previewValue || 0,
+          entered_amount: tradeContext?.enteredAmount || quantity.previewValue || 0,
+          amount_label: tradeContext?.amountColumnLabel || "Количество",
           unit_price: unitPrice.previewValue || 0,
           fee: fee.previewValue || 0,
           note: el.currencyNote?.value || "",
@@ -267,11 +273,18 @@
         const directionLabel = item.side === "sell"
           ? `${assetLabel} → ${quoteLabel}`
           : `${quoteLabel} → ${assetLabel}`;
+        const amountHead = el.createPreviewCurrencyAmountHead;
+        if (amountHead) {
+          amountHead.textContent = item.amount_label || (item.side === "buy" ? "Сумма" : "Количество");
+        }
+        const amountValue = item.side === "buy"
+          ? core.formatMoney(item.entered_amount || 0, { currency: item.quote_currency || "BYN" })
+          : core.formatAmount(item.entered_amount || item.quantity || 0);
         row.classList.add("preview-row", `kind-row-${sideClass}`);
         row.appendChild(createPreviewCellButton("Дата", core.formatDateRu(item.trade_date), "currencyTradeDateModal"));
         row.appendChild(createPreviewCellButton("Действие", `<span class="kind-pill kind-pill-${sideClass}">${sideLabel}</span>`, "createCurrencySideSwitch"));
         row.appendChild(createPreviewCellButton("Валюта", directionLabel, "currencyAsset"));
-        row.appendChild(createPreviewCellButton("Количество", core.formatAmount(item.quantity || 0), "currencyQuantity"));
+        row.appendChild(createPreviewCellButton(item.amount_label || "Количество", amountValue, "currencyQuantity"));
         row.appendChild(createPreviewCellButton("Курс", Number(item.unit_price || 0).toFixed(4), "currencyUnitPrice"));
         row.appendChild(createPreviewCellButton("Комиссия", core.formatMoney(item.fee || 0, { currency: item.quote_currency || "BYN" }), "currencyFee"));
         row.appendChild(createPreviewCellButton("Комментарий", core.highlightText(item.note || "", ""), "currencyNote", "preview-cell-note"));

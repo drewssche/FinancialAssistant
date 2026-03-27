@@ -72,11 +72,17 @@
     }
     if (el.dashboardCurrencyPositions) {
       const positions = Array.isArray(summary.tracked_currency_positions) ? summary.tracked_currency_positions : [];
+      const renderHoldingChip = (item, toneClass = "analytics-kpi-chip-neutral") => {
+        const currencyLabel = core.formatCurrencyLabel(item.currency);
+        return `
+          <span class="analytics-kpi-chip currency-position-compact ${toneClass}">
+            <span class="currency-position-primary">${core.escapeHtml ? core.escapeHtml(currencyLabel) : currencyLabel}: ${core.formatAmount(item.quantity || 0)}</span>
+            <span class="currency-position-secondary">${core.formatMoney(item.current_value || 0)} по текущему курсу</span>
+          </span>
+        `;
+      };
       const holdingsChips = positions.length
-        ? positions.map((item) => {
-          const currencyLabel = core.formatCurrencyLabel(item.currency);
-          return `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">${core.escapeHtml ? core.escapeHtml(currencyLabel) : currencyLabel}: ${core.formatAmount(item.quantity || 0)}</span>`;
-        })
+        ? positions.map((item) => renderHoldingChip(item))
         : [`<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Пока нет сумм в отслеживаемых валютах</span>`];
       const summaryChips = [
         `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Покупки: ${core.formatMoney(summary.currency_buy_volume_base || 0)} <span class="muted-small">${String(summary.currency_buy_trades_count || 0)} сделок · средняя цена ${Number(summary.currency_buy_average_rate || 0).toFixed(4)}</span></span>`,
@@ -86,11 +92,10 @@
       const positionChips = positions.map((item) => {
         const signClass = Number(item.result_value || 0) >= 0 ? "analytics-kpi-chip-positive" : "analytics-kpi-chip-negative";
         const rateDate = item.current_rate_date ? ` · курс ${core.formatDateRu(item.current_rate_date)}` : "";
-        const currencyLabel = core.formatCurrencyLabel(item.currency);
         return `
-          <span class="analytics-kpi-chip ${signClass}">
-            ${core.escapeHtml ? core.escapeHtml(currencyLabel) : currencyLabel}: ${core.formatMoney(item.current_value || 0)}
-            <span class="muted-small">остаток ${core.formatAmount(item.quantity || 0)} · ср. вход ${Number(item.average_buy_rate || 0).toFixed(4)} · текущий ${Number(item.current_rate || 0).toFixed(4)}${rateDate}</span>
+          <span class="analytics-kpi-chip currency-position-compact ${signClass}">
+            <span class="currency-position-primary">${core.formatAmount(item.quantity || 0)} ${core.escapeHtml ? core.escapeHtml(item.currency || "") : (item.currency || "")}</span>
+            <span class="currency-position-secondary">${core.formatMoney(item.current_value || 0)} · ср. вход ${Number(item.average_buy_rate || 0).toFixed(4)} · текущий ${Number(item.current_rate || 0).toFixed(4)}${rateDate}</span>
           </span>
         `;
       });

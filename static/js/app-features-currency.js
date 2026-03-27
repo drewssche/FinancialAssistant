@@ -105,7 +105,10 @@
           <div class="panel-head row between">
             <div>
               <h3>${core.escapeHtml ? core.escapeHtml(currencyLabel) : currencyLabel}</h3>
-              <p class="subtitle">Остаток ${core.formatAmount(item.quantity || 0)}</p>
+              <p class="subtitle">
+                <span class="currency-position-primary">${core.formatAmount(item.quantity || 0)}</span>
+                <span class="currency-position-secondary">${core.formatMoney(item.current_value || 0)} по текущему курсу</span>
+              </p>
             </div>
             <span class="analytics-kpi-chip ${resultClass}">Прибыль / убыток: ${core.formatMoney(item.result_value || 0)}</span>
           </div>

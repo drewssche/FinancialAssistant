@@ -197,6 +197,7 @@
       currencyFee: document.getElementById("currencyFee"),
       currencyNote: document.getElementById("currencyNote"),
       createPreviewHeadCurrency: document.getElementById("createPreviewHeadCurrency"),
+      createPreviewCurrencyAmountHead: document.getElementById("createPreviewCurrencyAmountHead"),
       opCurrency: document.getElementById("opCurrency"),
       opFxRateField: document.getElementById("opFxRateField"),
       opFxRate: document.getElementById("opFxRate"),

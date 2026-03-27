@@ -88,8 +88,50 @@
     if (el.createCurrencySideSwitch) {
       core.syncSegmentedActive(el.createCurrencySideSwitch, "currency-side", nextSide);
     }
+    currencyUnitPriceManual = false;
     syncCurrencyTradeFieldUi();
+    syncSuggestedCurrencyRate({ force: true }).catch(() => {});
     updateCreatePreview();
+  }
+
+  function getCurrencyTradeContext() {
+    const side = el.currencySide?.value === "sell" ? "sell" : "buy";
+    const assetCurrency = String(el.currencyAsset?.value || "USD").toUpperCase();
+    const quoteCurrency = String(el.currencyQuote?.value || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
+    const assetLabel = core.formatCurrencyLabel?.(assetCurrency) || assetCurrency;
+    const quoteLabel = core.formatCurrencyLabel?.(quoteCurrency) || quoteCurrency;
+    const quantityResolved = core.resolveMoneyInput(el.currencyQuantity?.value || 0);
+    const rateResolved = core.resolveMoneyInput(el.currencyUnitPrice?.value || 0);
+    const feeResolved = core.resolveMoneyInput(el.currencyFee?.value || 0);
+    const enteredAmount = Number(quantityResolved.previewValue || 0);
+    const unitPrice = Number(rateResolved.previewValue || 0);
+    const effectiveQuantity = side === "buy"
+      ? (unitPrice > 0 ? enteredAmount / unitPrice : 0)
+      : enteredAmount;
+    return {
+      side,
+      assetCurrency,
+      quoteCurrency,
+      assetLabel,
+      quoteLabel,
+      quantityResolved,
+      rateResolved,
+      feeResolved,
+      enteredAmount,
+      unitPrice,
+      effectiveQuantity,
+      amountLabel: side === "buy" ? `Сумма в ${quoteLabel}` : `Количество ${assetLabel}`,
+      amountSuffixCurrency: side === "buy" ? quoteCurrency : assetCurrency,
+      amountColumnLabel: side === "buy" ? "Сумма" : "Количество",
+      amountPreviewText: side === "buy"
+        ? core.formatMoney(enteredAmount || 0, { currency: quoteCurrency })
+        : core.formatAmount(enteredAmount || 0),
+      directionLabel: side === "sell"
+        ? `${assetLabel} → ${quoteCurrency}`
+        : `${quoteCurrency} → ${assetLabel}`,
+      unitPriceLabel: `Курс ${quoteCurrency} за 1 ${assetCurrency}`,
+      feeLabel: `Комиссия в ${quoteLabel}`,
+    };
   }
 
   async function syncSuggestedCurrencyRate(options = {}) {
@@ -121,6 +163,10 @@
     currencyUnitPriceManual = true;
   }
 
+  function resetCurrencyRateAutofill() {
+    currencyUnitPriceManual = false;
+  }
+
   function applyTradeFieldCurrency(node, currencyCode) {
     if (!node) {
       return;
@@ -132,22 +178,31 @@
   }
 
   function syncCurrencyTradeFieldUi() {
-    const assetCode = String(el.currencyAsset?.value || "USD").toUpperCase();
-    const quoteCode = String(el.currencyQuote?.value || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
-    const assetLabel = core.formatCurrencyLabel?.(assetCode) || assetCode;
-    const quoteLabel = core.formatCurrencyLabel?.(quoteCode, { withSymbol: false }) || quoteCode;
+    const context = getCurrencyTradeContext();
     if (el.currencyQuantityLabel) {
-      el.currencyQuantityLabel.textContent = `Количество ${assetLabel}`;
+      el.currencyQuantityLabel.textContent = context.amountLabel;
     }
     if (el.currencyUnitPriceLabel) {
-      el.currencyUnitPriceLabel.textContent = `Курс ${quoteLabel} за 1 ${assetCode}`;
+      el.currencyUnitPriceLabel.textContent = context.unitPriceLabel;
     }
     if (el.currencyFeeLabel) {
-      el.currencyFeeLabel.textContent = `Комиссия в ${quoteLabel}`;
+      el.currencyFeeLabel.textContent = context.feeLabel;
     }
-    applyTradeFieldCurrency(el.currencyQuantityField, assetCode);
-    applyTradeFieldCurrency(el.currencyUnitPriceField, quoteCode);
-    applyTradeFieldCurrency(el.currencyFeeField, quoteCode);
+    if (el.createPreviewCurrencyAmountHead) {
+      el.createPreviewCurrencyAmountHead.textContent = context.amountColumnLabel;
+    }
+    if (el.currencyQuantity) {
+      el.currencyQuantity.placeholder = context.side === "buy" ? "320.00" : "100.00";
+    }
+    if (el.currencyUnitPrice) {
+      el.currencyUnitPrice.placeholder = "3.2700";
+    }
+    if (el.currencyFee) {
+      el.currencyFee.placeholder = "0.00";
+    }
+    applyTradeFieldCurrency(el.currencyQuantityField, context.amountSuffixCurrency);
+    applyTradeFieldCurrency(el.currencyUnitPriceField, context.quoteCurrency);
+    applyTradeFieldCurrency(el.currencyFeeField, context.quoteCurrency);
   }
   function syncOperationCurrencyFields(mode = "create") {
     const isEdit = mode === "edit";
@@ -664,8 +719,10 @@
     setEditOperationMode,
     syncOperationCurrencyFields,
     syncCurrencyTradeFieldUi,
+    getCurrencyTradeContext,
     syncSuggestedCurrencyRate,
     markCurrencyRateManual,
+    resetCurrencyRateAutofill,
     updateDebtDueHint,
     openCreateModal,
     openCreateModalForCurrency,
