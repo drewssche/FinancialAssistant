@@ -120,73 +120,17 @@
               </article>
             </div>
             <div id="currencyPositionsList" class="plans-list"></div>
-            <div id="currencyTradePanel" class="panel hidden">
-              <form id="currencyTradeForm" class="category-modal-form">
-                <div class="field">
-                  <span>Действие</span>
-                  <div id="currencyTradeSideTabs" class="segmented" role="tablist" aria-label="Действие с валютой">
-                    <button class="segmented-btn active" data-currency-side="buy" type="button">Покупка</button>
-                    <button class="segmented-btn" data-currency-side="sell" type="button">Продажа</button>
-                  </div>
-                  <input id="currencyTradeSide" type="hidden" value="buy" />
-                </div>
-                <div class="settings-grid-2">
-                  <label class="field">
-                    <span>Валюта</span>
-                    <select id="currencyTradeAsset">
-                      <option value="USD">USD</option>
-                      <option value="EUR">EUR</option>
-                      <option value="RUB">RUB</option>
-                      <option value="CNY">CNY</option>
-                      <option value="PLN">PLN</option>
-                    </select>
-                  </label>
-                  <label class="field">
-                    <span>Базовая валюта</span>
-                    <input id="currencyTradeQuote" type="text" value="BYN" maxlength="3" />
-                  </label>
-                </div>
-                <div class="settings-grid-2">
-                  <label class="field">
-                    <span>Количество</span>
-                    <input id="currencyTradeQuantity" type="number" min="0" step="0.000001" placeholder="100" />
-                  </label>
-                  <label class="field">
-                    <span>Курс покупки / продажи</span>
-                    <input id="currencyTradeUnitPrice" type="number" min="0" step="0.000001" placeholder="3.250000" />
-                  </label>
-                </div>
-                <div class="settings-grid-2">
-                  <label class="field">
-                    <span>Комиссия</span>
-                    <input id="currencyTradeFee" type="number" min="0" step="0.01" value="0" />
-                  </label>
-                  <label class="field">
-                    <span>Дата сделки</span>
-                    <input id="currencyTradeDate" type="date" />
-                  </label>
-                </div>
-                <label class="field">
-                  <span>Комментарий</span>
-                  <textarea id="currencyTradeNote" rows="2" placeholder="Например: покупка на подушку"></textarea>
-                </label>
-                <div class="settings-actions">
-                  <button id="submitCurrencyTradeBtn" class="btn btn-primary" type="submit">Сохранить сделку</button>
-                  <button id="closeCurrencyTradePanelBtn" class="btn btn-secondary" type="button">Скрыть</button>
-                </div>
-              </form>
-            </div>
             <div id="currencyRatePanel" class="panel hidden">
               <form id="currencyRateForm" class="category-modal-form">
                 <div class="settings-grid-2">
                   <label class="field">
                     <span>Валюта</span>
                     <select id="currencyRateAsset">
-                      <option value="USD">USD</option>
-                      <option value="EUR">EUR</option>
-                      <option value="RUB">RUB</option>
-                      <option value="CNY">CNY</option>
-                      <option value="PLN">PLN</option>
+                      <option value="USD">USD ($)</option>
+                      <option value="EUR">EUR (€)</option>
+                      <option value="RUB">RUB (₽)</option>
+                      <option value="CNY">CNY (¥)</option>
+                      <option value="PLN">PLN (zł)</option>
                     </select>
                   </label>
                   <label class="field">

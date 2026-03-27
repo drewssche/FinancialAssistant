@@ -1,5 +1,6 @@
 from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
+import re
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -16,12 +17,15 @@ from app.core.cache import (
 )
 from app.core.logging import log_background_job_event
 from app.db.models import Category, CategoryGroup
+from app.repositories.preference_repo import PreferenceRepository
 from app.repositories.operation_repo import OperationRepository
 from app.services.operation_item_template_service import OperationItemTemplateService
 
 
 MONEY_Q = Decimal("0.01")
 QTY_Q = Decimal("0.001")
+RATE_Q = Decimal("0.000001")
+_CURRENCY_RE = re.compile(r"^[A-Z]{3}$")
 
 
 class OperationService:
@@ -30,6 +34,7 @@ class OperationService:
     def __init__(self, db: Session):
         self.db = db
         self.repo = OperationRepository(db)
+        self.preferences = PreferenceRepository(db)
         self.item_templates = OperationItemTemplateService(db, self.repo)
 
     @classmethod
@@ -61,13 +66,34 @@ class OperationService:
         operation_date: date,
         category_id: int | None,
         note: str | None,
+        currency: str | None = None,
+        fx_rate: Decimal | None = None,
         receipt_items: list[dict] | None = None,
     ):
         self._validate_kind(kind)
         normalized_items, receipt_total = self._normalize_receipt_items(receipt_items or [])
-        resolved_amount = self._resolve_operation_amount(amount=amount, receipt_total=receipt_total)
+        original_amount = self._resolve_operation_amount(amount=amount, receipt_total=receipt_total)
+        base_currency = self._get_user_base_currency(user_id)
+        normalized_currency, normalized_fx_rate, base_amount = self._resolve_currency_amounts(
+            user_id=user_id,
+            original_amount=original_amount,
+            currency=currency,
+            fx_rate=fx_rate,
+            base_currency=base_currency,
+        )
 
-        item = self.repo.create(user_id, kind, resolved_amount, operation_date, category_id, note)
+        item = self.repo.create(
+            user_id,
+            kind,
+            base_amount,
+            original_amount,
+            normalized_currency,
+            base_currency,
+            normalized_fx_rate,
+            operation_date,
+            category_id,
+            note,
+        )
         if normalized_items:
             storage_items = self.item_templates.resolve_templates_and_prices(
                 user_id=user_id,
@@ -90,6 +116,7 @@ class OperationService:
             operation_id=item.id,
             kind=item.kind,
             category_id=item.category_id,
+            currency=item.currency,
             has_receipt=bool(normalized_items),
         )
         return self._serialize_operation(user_id=user_id, operation=item)
@@ -232,6 +259,7 @@ class OperationService:
         return self._serialize_operation(user_id=user_id, operation=item)
 
     def update_operation(self, user_id: int, operation_id: int, updates: dict):
+        logged_fields = sorted(updates.keys())
         if "kind" in updates and updates["kind"] is not None:
             self._validate_kind(updates["kind"])
 
@@ -252,6 +280,25 @@ class OperationService:
                 updates["amount"] = self._resolve_operation_amount(amount=None, receipt_total=receipt_total)
             else:
                 updates["amount"] = self._money(updates["amount"])
+
+        needs_currency_recalc = any(key in updates for key in ("amount", "currency", "fx_rate"))
+        if needs_currency_recalc:
+            base_currency = self._get_user_base_currency(user_id)
+            current_original_amount = updates.get("amount", self._money(getattr(item, "original_amount", item.amount)))
+            current_currency = updates.get("currency", getattr(item, "currency", base_currency))
+            current_fx_rate = updates.get("fx_rate", getattr(item, "fx_rate", Decimal("1.000000")))
+            normalized_currency, normalized_fx_rate, base_amount = self._resolve_currency_amounts(
+                user_id=user_id,
+                original_amount=current_original_amount,
+                currency=current_currency,
+                fx_rate=current_fx_rate,
+                base_currency=base_currency,
+            )
+            updates["original_amount"] = self._money(current_original_amount)
+            updates["currency"] = normalized_currency
+            updates["base_currency"] = base_currency
+            updates["fx_rate"] = normalized_fx_rate
+            updates["amount"] = base_amount
 
         item = self.repo.update(item, updates)
 
@@ -283,7 +330,8 @@ class OperationService:
             operation_id=item.id,
             kind=item.kind,
             category_id=item.category_id,
-            fields_changed=",".join(sorted(updates.keys())),
+            currency=item.currency,
+            fields_changed=",".join(logged_fields),
             receipt_updated=normalized_items is not None,
         )
         return self._serialize_operation(user_id=user_id, operation=item)
@@ -306,6 +354,7 @@ class OperationService:
             operation_id=operation_id,
             kind=item.kind,
             category_id=item.category_id,
+            currency=getattr(item, "currency", "BYN"),
         )
 
     def list_item_templates(
@@ -404,6 +453,10 @@ class OperationService:
                 }
             )
         amount = self._money(operation.amount)
+        original_amount = self._money(getattr(operation, "original_amount", operation.amount))
+        currency = str(getattr(operation, "currency", "BYN") or "BYN").upper()
+        base_currency = str(getattr(operation, "base_currency", "BYN") or "BYN").upper()
+        fx_rate = self._rate(getattr(operation, "fx_rate", Decimal("1.000000")))
         receipt_total_value = self._money(receipt_total) if receipt_payload else None
         discrepancy = self._money(amount - receipt_total) if receipt_payload else None
         operation_category_meta = category_meta_map.get(int(operation.category_id or 0), {})
@@ -411,6 +464,10 @@ class OperationService:
             "id": int(operation.id),
             "kind": operation.kind,
             "amount": amount,
+            "original_amount": original_amount,
+            "currency": currency,
+            "base_currency": base_currency,
+            "fx_rate": fx_rate,
             "operation_date": operation.operation_date,
             "category_id": operation.category_id,
             "category_name": operation_category_meta.get("name"),
@@ -421,6 +478,41 @@ class OperationService:
             "receipt_total": receipt_total_value,
             "receipt_discrepancy": discrepancy,
         }
+
+    def _normalize_currency(self, value: str | None, default: str = "BYN") -> str:
+        code = str(value or default).strip().upper()
+        if not _CURRENCY_RE.match(code):
+            raise ValueError("Currency must be a 3-letter ISO code")
+        return code
+
+    def _rate(self, value: Decimal | None) -> Decimal:
+        return Decimal(value or 0).quantize(RATE_Q)
+
+    def _get_user_base_currency(self, user_id: int) -> str:
+        prefs = self.preferences.get_or_create(user_id)
+        ui_prefs = prefs.data.get("ui") if isinstance(prefs.data.get("ui"), dict) else {}
+        return self._normalize_currency(ui_prefs.get("currency") or "BYN")
+
+    def _resolve_currency_amounts(
+        self,
+        *,
+        user_id: int,
+        original_amount: Decimal,
+        currency: str | None,
+        fx_rate: Decimal | None,
+        base_currency: str,
+    ) -> tuple[str, Decimal, Decimal]:
+        _ = user_id
+        normalized_currency = self._normalize_currency(currency or base_currency, default=base_currency)
+        normalized_original_amount = self._money(original_amount)
+        if normalized_currency == base_currency:
+            normalized_fx_rate = self._rate(Decimal("1"))
+            return normalized_currency, normalized_fx_rate, normalized_original_amount
+        normalized_fx_rate = self._rate(fx_rate)
+        if normalized_fx_rate <= 0:
+            raise ValueError("fx_rate must be positive for non-base currency operations")
+        base_amount = self._money(Decimal(normalized_original_amount) * Decimal(normalized_fx_rate))
+        return normalized_currency, normalized_fx_rate, base_amount
 
     def _get_category_meta_map(self, category_ids: list[int | None]) -> dict[int, dict]:
         normalized_ids = sorted({int(category_id) for category_id in category_ids if int(category_id or 0) > 0})

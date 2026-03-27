@@ -102,6 +102,18 @@
       return td;
     }
 
+    function formatOperationAmountHtml(item, kindClass) {
+      const originalAmount = Number(item.original_amount ?? item.amount ?? 0);
+      const currency = String(item.currency || "BYN").toUpperCase();
+      const baseAmount = Number(item.amount || 0);
+      const baseCurrency = String(item.base_currency || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
+      const originalMoney = core.formatMoney(originalAmount, { currency });
+      if (currency === baseCurrency) {
+        return `<span class="amount-${kindClass}">${originalMoney}</span>`;
+      }
+      return `<span class="amount-${kindClass}">${originalMoney}</span><div class="muted-small">≈ ${core.formatMoney(baseAmount, { currency: baseCurrency })}</div>`;
+    }
+
     function getCreateFormPreviewItem() {
       if (el.opEntryMode?.value === "currency") {
         const quantity = core.resolveMoneyInput(el.currencyQuantity?.value || 0);
@@ -142,12 +154,20 @@
         : (el.opOperationMode?.value === "receipt" && receiptTotal > 0 ? receiptTotal : 0);
       const noteRaw = document.getElementById("opNote").value || "";
       const operationDate = core.parseDateInputValue(document.getElementById("opDate").value) || core.getTodayIso();
+      const operationCurrency = String(el.opCurrency?.value || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
+      const baseCurrency = core.getCurrencyConfig?.().code || "BYN";
+      const fxRate = Number(core.resolveMoneyInput(el.opFxRate?.value || 1).previewValue || 1);
+      const baseAmount = operationCurrency === baseCurrency ? amountResolved : amountResolved * fxRate;
       return {
         id: 0,
         operation_date: operationDate,
         kind: el.opKind.value || "expense",
         category_id: getSelectedCreateCategoryId(),
-        amount: core.formatAmount(amountResolved),
+        amount: core.formatAmount(baseAmount),
+        original_amount: core.formatAmount(amountResolved),
+        currency: operationCurrency,
+        base_currency: baseCurrency,
+        fx_rate: core.resolveMoneyInput(el.opFxRate?.value || 1).previewFormatted,
         note: noteRaw,
         receipt_items: el.opOperationMode?.value === "receipt" ? receiptItems : [],
       };
@@ -156,12 +176,21 @@
     function getEditFormPreviewItem() {
       const operationDate = core.parseDateInputValue(document.getElementById("editDate").value) || core.getTodayIso();
       const amountResolved = core.resolveMoneyInput(document.getElementById("editAmount").value);
+      const operationCurrency = String(el.editCurrency?.value || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
+      const baseCurrency = core.getCurrencyConfig?.().code || "BYN";
+      const fxRate = Number(core.resolveMoneyInput(el.editFxRate?.value || 1).previewValue || 1);
+      const originalAmount = Number(amountResolved.previewValue || 0);
+      const baseAmount = operationCurrency === baseCurrency ? originalAmount : originalAmount * fxRate;
       return {
         id: state.editOperationId || 0,
         operation_date: operationDate,
         kind: el.editKind.value || "expense",
         category_id: el.editCategory.value ? Number(el.editCategory.value) : null,
-        amount: amountResolved.previewFormatted,
+        amount: core.formatAmount(baseAmount),
+        original_amount: amountResolved.previewFormatted,
+        currency: operationCurrency,
+        base_currency: baseCurrency,
+        fx_rate: core.resolveMoneyInput(el.editFxRate?.value || 1).previewFormatted,
         note: document.getElementById("editNote").value || "",
         receipt_items: el.editOperationMode?.value === "receipt" ? (state.editReceiptItems || []) : [],
       };
@@ -316,7 +345,7 @@
         ),
       );
       row.appendChild(createPreviewCellButton("Категория", categoryCellHtml, "opCategorySearch"));
-      row.appendChild(createPreviewCellButton("Сумма", `<span class="amount-${kindClass}">${core.formatMoney(previewItem.amount)}</span>`, "opAmount"));
+      row.appendChild(createPreviewCellButton("Сумма", formatOperationAmountHtml(previewItem, kindClass), "opAmount"));
       row.appendChild(createPreviewCellButton("Комментарий", noteText, "opNote", "preview-cell-note"));
       el.createPreviewBody.appendChild(row);
     }

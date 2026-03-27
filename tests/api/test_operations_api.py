@@ -99,6 +99,44 @@ def test_operations_crud_and_filters(client: TestClient):
     assert not_found.status_code == 404
 
 
+def test_operations_support_original_currency_and_base_conversion(client: TestClient):
+    created = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "10.00",
+            "currency": "USD",
+            "fx_rate": "3.30",
+            "operation_date": "2026-03-03",
+            "note": "usd expense",
+        },
+    )
+    assert created.status_code == 201, created.text
+    payload = created.json()
+    assert payload["currency"] == "USD"
+    assert payload["base_currency"] == "BYN"
+    assert payload["original_amount"] == "10.00"
+    assert payload["fx_rate"] == "3.300000"
+    assert payload["amount"] == "33.00"
+
+    summary = client.get("/api/v1/operations/summary")
+    assert summary.status_code == 200
+    assert summary.json()["expense_total"] == "33.00"
+
+    updated = client.patch(
+        f"/api/v1/operations/{payload['id']}",
+        json={
+            "amount": "12.00",
+            "currency": "USD",
+            "fx_rate": "3.20",
+        },
+    )
+    assert updated.status_code == 200, updated.text
+    updated_payload = updated.json()
+    assert updated_payload["original_amount"] == "12.00"
+    assert updated_payload["amount"] == "38.40"
+
+
 def test_operations_reject_invalid_date_range(client: TestClient):
     response = client.get(
         "/api/v1/operations",

@@ -5,6 +5,8 @@
     USD: { symbol: "$" },
     EUR: { symbol: "€" },
     GBP: { symbol: "£" },
+    CNY: { symbol: "¥" },
+    PLN: { symbol: "zł" },
   };
   function decorateCurrencyIcons() {}
 
@@ -217,6 +219,14 @@
       symbol,
       position,
     };
+  }
+
+  function formatCurrencyLabel(currencyCode, options = {}) {
+    const cfg = resolveCurrencyConfig(currencyCode);
+    if (options.withSymbol === false || cfg.symbol === cfg.code) {
+      return cfg.code;
+    }
+    return `${cfg.code} (${cfg.symbol})`;
   }
 
   function getCurrencyConfig(state) {
@@ -477,6 +487,7 @@
     resolveMoneyInput,
     getUiSettings,
     resolveCurrencyConfig,
+    formatCurrencyLabel,
     getCurrencyConfig,
     formatMoney,
     applyUiScale,

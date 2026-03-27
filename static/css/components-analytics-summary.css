@@ -382,6 +382,12 @@
   color: #94a8cc;
 }
 
+.dashboard-currency-rate-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+}
+
 .analytics-category-breakdown-grid {
   margin-top: var(--space-3);
   display: grid;

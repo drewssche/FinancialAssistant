@@ -31,6 +31,8 @@ class OperationReceiptItemOut(BaseModel):
 class OperationCreate(BaseModel):
     kind: str
     amount: Decimal | None = None
+    currency: str = Field(default="BYN", min_length=3, max_length=3)
+    fx_rate: Decimal | None = Field(default=None, gt=0)
     operation_date: date
     category_id: int | None = None
     note: str | None = None
@@ -40,6 +42,8 @@ class OperationCreate(BaseModel):
 class OperationUpdate(BaseModel):
     kind: str | None = None
     amount: Decimal | None = None
+    currency: str | None = Field(default=None, min_length=3, max_length=3)
+    fx_rate: Decimal | None = Field(default=None, gt=0)
     operation_date: date | None = None
     category_id: int | None = None
     note: str | None = None
@@ -50,6 +54,10 @@ class OperationOut(BaseModel):
     id: int
     kind: str
     amount: Decimal
+    original_amount: Decimal
+    currency: str
+    base_currency: str
+    fx_rate: Decimal
     operation_date: date
     category_id: int | None
     category_name: str | None = None

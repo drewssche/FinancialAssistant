@@ -40,7 +40,10 @@
         .replaceAll("'", "&#39;");
       if (el.operationReceiptMeta) {
         const note = item.note ? ` · ${item.note}` : "";
-        el.operationReceiptMeta.textContent = `${core.formatDateRu(item.operation_date)} · ${core.formatMoney(item.amount)}${note}`;
+        const money = item.currency && item.base_currency && item.currency !== item.base_currency
+          ? `${core.formatMoney(item.original_amount || item.amount, { currency: item.currency })} · ≈ ${core.formatMoney(item.amount, { currency: item.base_currency })}`
+          : core.formatMoney(item.amount, { currency: item.base_currency || item.currency || undefined });
+        el.operationReceiptMeta.textContent = `${core.formatDateRu(item.operation_date)} · ${money}${note}`;
       }
       el.operationReceiptItems.innerHTML = item.receipt_items.map((row) => {
         const qty = Number(row.quantity || 0);

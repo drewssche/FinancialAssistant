@@ -180,6 +180,10 @@
     return resolveCurrencyConfig(ui.currency, ui.currencyPosition);
   }
 
+  function formatCurrencyLabel(currencyCode, options = {}) {
+    return getCoreUtils().formatCurrencyLabel(currencyCode, options);
+  }
+
   function formatMoney(value, options = {}) {
     return getCoreUtils().formatMoney(state, value, options);
   }
@@ -272,6 +276,7 @@
       syncAllPeriodTabs,
       formatAmount,
       formatMoney,
+      formatCurrencyLabel,
       evaluateMathExpression,
       resolveMoneyInput,
       formatDateRu,

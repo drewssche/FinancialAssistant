@@ -5,6 +5,14 @@
     return window.App.getRuntimeModule?.("dashboard") || {};
   }
 
+  function getAnalyticsCurrencyFeature() {
+    return window.App.getRuntimeModule?.("analytics-currency-module") || {};
+  }
+
+  function getOperationModal() {
+    return window.App.getRuntimeModule?.("operation-modal") || {};
+  }
+
   function getTrackedCurrencies() {
     const raw = state.preferences?.data?.currency?.tracked_currencies;
     if (!Array.isArray(raw) || !raw.length) {
@@ -24,20 +32,22 @@
     }
     el.currencyFilterTabs.innerHTML = tabs.map((item) => {
       const isActive = state.currencyFilter === item;
-      const label = item === "all" ? "Все" : item;
+      const label = item === "all" ? "Все" : core.formatCurrencyLabel(item);
       return `<button class="segmented-btn ${isActive ? "active" : ""}" data-currency-filter="${item}" type="button">${label}</button>`;
     }).join("");
   }
 
-  function openTradePanel() {
-    el.currencyTradePanel?.classList.remove("hidden");
-    el.currencyRatePanel?.classList.add("hidden");
-    primeDefaultDates();
-    el.currencyTradeAsset?.focus();
-  }
-
-  function closeTradePanel() {
-    el.currencyTradePanel?.classList.add("hidden");
+  async function openTradePanel() {
+    const operationModal = getOperationModal();
+    if (operationModal?.openCreateModalForCurrency) {
+      await operationModal.openCreateModalForCurrency();
+      return;
+    }
+    if (!operationModal?.openCreateModal || !operationModal?.setCreateEntryMode) {
+      return;
+    }
+    await operationModal.openCreateModal();
+    operationModal.setCreateEntryMode("currency");
   }
 
   function openRatePanel() {
@@ -77,11 +87,12 @@
     }
     el.currencyPositionsList.innerHTML = positions.map((item) => {
       const resultClass = Number(item.result_value || 0) >= 0 ? "analytics-kpi-chip-positive" : "analytics-kpi-chip-negative";
+      const currencyLabel = core.formatCurrencyLabel(item.currency);
       return `
         <article class="panel">
           <div class="panel-head row between">
             <div>
-              <h3>${core.escapeHtml ? core.escapeHtml(item.currency) : item.currency}</h3>
+              <h3>${core.escapeHtml ? core.escapeHtml(currencyLabel) : currencyLabel}</h3>
               <p class="subtitle">Остаток ${core.formatAmount(item.quantity || 0)}</p>
             </div>
             <span class="analytics-kpi-chip ${resultClass}">Прибыль / убыток: ${core.formatMoney(item.result_value || 0)}</span>
@@ -123,7 +134,7 @@
       <tr>
         <td>${core.formatDateRu(item.trade_date)}</td>
         <td>${item.side === "sell" ? "Продажа" : "Покупка"}</td>
-        <td>${core.escapeHtml ? core.escapeHtml(item.asset_currency) : item.asset_currency}</td>
+        <td>${core.escapeHtml ? core.escapeHtml(core.formatCurrencyLabel(item.asset_currency)) : core.formatCurrencyLabel(item.asset_currency)}</td>
         <td>${core.formatAmount(item.quantity || 0)}</td>
         <td>${Number(item.unit_price || 0).toFixed(4)}</td>
         <td>${core.formatMoney(item.fee || 0, { withCurrency: true, currency: item.quote_currency || "BYN" })}</td>
@@ -162,41 +173,6 @@
     return data;
   }
 
-  async function submitCurrencyTrade(event) {
-    event.preventDefault();
-    await core.requestJson("/api/v1/currency/trades", {
-      method: "POST",
-      headers: core.authHeaders(),
-      body: JSON.stringify({
-        side: el.currencyTradeSide?.value || "buy",
-        asset_currency: el.currencyTradeAsset?.value || "USD",
-        quote_currency: String(el.currencyTradeQuote?.value || "BYN").toUpperCase(),
-        quantity: el.currencyTradeQuantity?.value || "0",
-        unit_price: el.currencyTradeUnitPrice?.value || "0",
-        fee: el.currencyTradeFee?.value || "0",
-        trade_date: el.currencyTradeDate?.value || core.getTodayIso(),
-        note: el.currencyTradeNote?.value || "",
-      }),
-    });
-    if (el.currencyTradeQuantity) {
-      el.currencyTradeQuantity.value = "";
-    }
-    if (el.currencyTradeUnitPrice) {
-      el.currencyTradeUnitPrice.value = "";
-    }
-    if (el.currencyTradeFee) {
-      el.currencyTradeFee.value = "0";
-    }
-    if (el.currencyTradeNote) {
-      el.currencyTradeNote.value = "";
-    }
-    closeTradePanel();
-    await loadCurrencySection({ force: true });
-    core.setStatus("Сделка по валюте сохранена");
-    core.invalidateUiRequestCache?.("dashboard:summary");
-    getDashboardFeature().loadDashboard?.().catch(() => {});
-  }
-
   async function submitCurrencyRate(event) {
     event.preventDefault();
     await core.requestJson("/api/v1/currency/rates/current", {
@@ -217,6 +193,7 @@
     core.setStatus("Текущий курс обновлен");
     core.invalidateUiRequestCache?.("dashboard:summary");
     getDashboardFeature().loadDashboard?.().catch(() => {});
+    getAnalyticsCurrencyFeature().loadAnalyticsCurrency?.({ force: true }).catch(() => {});
   }
 
   function bind() {
@@ -246,24 +223,11 @@
     if (el.openCurrencyTradePanelBtn) {
       el.openCurrencyTradePanelBtn.addEventListener("click", openTradePanel);
     }
-    if (el.closeCurrencyTradePanelBtn) {
-      el.closeCurrencyTradePanelBtn.addEventListener("click", closeTradePanel);
-    }
     if (el.openCurrencyRatePanelBtn) {
       el.openCurrencyRatePanelBtn.addEventListener("click", openRatePanel);
     }
     if (el.closeCurrencyRatePanelBtn) {
       el.closeCurrencyRatePanelBtn.addEventListener("click", closeRatePanel);
-    }
-    if (el.currencyTradeForm) {
-      el.currencyTradeForm.addEventListener("submit", (event) => {
-        core.runAction({
-          button: el.submitCurrencyTradeBtn,
-          pendingText: "Сохранение...",
-          errorPrefix: "Ошибка сохранения валютной сделки",
-          action: () => submitCurrencyTrade(event),
-        });
-      });
     }
     if (el.currencyRateForm) {
       el.currencyRateForm.addEventListener("submit", (event) => {

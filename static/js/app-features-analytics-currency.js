@@ -19,9 +19,35 @@
       state.analyticsCurrencyFilter = tracked[0] || "all";
     }
     el.analyticsCurrencyTabs.innerHTML = tabs.map((item) => {
-      const label = item === "all" ? "Все" : item;
+      const label = item === "all" ? "Все" : core.formatCurrencyLabel(item);
       return `<button class="segmented-btn ${state.analyticsCurrencyFilter === item ? "active" : ""}" data-analytics-currency-filter="${item}" type="button">${label}</button>`;
     }).join("");
+  }
+
+  function syncCurrencyPeriodTabs() {
+    if (!el.analyticsCurrencyPeriodTabs) {
+      return;
+    }
+    core.syncSegmentedActive(el.analyticsCurrencyPeriodTabs, "analytics-currency-period", state.analyticsCurrencyPeriod || "30d");
+  }
+
+  function getHistoryRange() {
+    const today = core.getTodayIso();
+    if (state.analyticsCurrencyPeriod === "all_time") {
+      return { dateFrom: "", dateTo: today };
+    }
+    const daysMap = {
+      "7d": 7,
+      "30d": 30,
+      "90d": 90,
+      "365d": 365,
+    };
+    const days = daysMap[state.analyticsCurrencyPeriod] || 30;
+    const end = new Date(`${today}T00:00:00`);
+    const start = new Date(end);
+    start.setDate(start.getDate() - (days - 1));
+    const format = (value) => value.toISOString().slice(0, 10);
+    return { dateFrom: format(start), dateTo: format(end) };
   }
 
   function renderSummary(overview) {
@@ -38,9 +64,16 @@
       el.analyticsCurrencyActiveCount.textContent = String(overview.active_positions || 0);
     }
     if (el.analyticsCurrencyRangeLabel) {
+      const periodLabels = {
+        "7d": "за 7 дней",
+        "30d": "за 30 дней",
+        "90d": "за 3 месяца",
+        "365d": "за 12 месяцев",
+        all_time: "за все время",
+      };
       el.analyticsCurrencyRangeLabel.textContent = state.analyticsCurrencyFilter === "all"
         ? "Сводка по всем отслеживаемым валютам"
-        : `Курс, позиция и сделки по ${state.analyticsCurrencyFilter}`;
+        : `Курс, позиция и сделки по ${core.formatCurrencyLabel(state.analyticsCurrencyFilter)} ${periodLabels[state.analyticsCurrencyPeriod] || ""}`.trim();
     }
     if (el.analyticsCurrencySecondary) {
       const positions = Array.isArray(overview.positions) ? overview.positions : [];
@@ -51,9 +84,10 @@
       el.analyticsCurrencySecondary.innerHTML = positions.map((item) => {
         const resultTone = Number(item.result_value || 0) >= 0 ? "analytics-kpi-chip-positive" : "analytics-kpi-chip-negative";
         const currentRateDate = item.current_rate_date ? core.formatDateRu(item.current_rate_date) : "курс не задан";
+        const currencyLabel = core.formatCurrencyLabel(item.currency);
         return `
           <span class="analytics-kpi-chip ${resultTone}">
-            ${item.currency}: ${core.formatMoney(item.current_value || 0)}
+            ${currencyLabel}: ${core.formatMoney(item.current_value || 0)}
             <span class="muted-small">остаток ${core.formatAmount(item.quantity || 0)} · средняя ${Number(item.average_buy_rate || 0).toFixed(4)} · текущий ${Number(item.current_rate || 0).toFixed(4)} · ${currentRateDate}</span>
           </span>
         `;
@@ -74,7 +108,7 @@
       <tr>
         <td>${core.formatDateRu(item.trade_date)}</td>
         <td>${item.side === "sell" ? "Продажа" : "Покупка"}</td>
-        <td>${item.asset_currency}</td>
+        <td>${core.formatCurrencyLabel(item.asset_currency)}</td>
         <td>${core.formatAmount(item.quantity || 0)}</td>
         <td>${Number(item.unit_price || 0).toFixed(4)}</td>
         <td>${core.formatMoney(item.fee || 0, { currency: item.quote_currency || "BYN" })}</td>
@@ -132,6 +166,7 @@
 
   async function loadAnalyticsCurrency(options = {}) {
     syncCurrencyTabs();
+    syncCurrencyPeriodTabs();
     const params = new URLSearchParams({ trades_limit: "100" });
     if (state.analyticsCurrencyFilter && state.analyticsCurrencyFilter !== "all") {
       params.set("currency", state.analyticsCurrencyFilter);
@@ -144,8 +179,16 @@
     if (state.analyticsCurrencyFilter === "all") {
       renderEmptyChart("Выбери валюту, чтобы увидеть историю курса");
     } else {
+      const { dateFrom, dateTo } = getHistoryRange();
+      const historyParams = new URLSearchParams({ currency: state.analyticsCurrencyFilter, limit: "365" });
+      if (dateFrom) {
+        historyParams.set("date_from", dateFrom);
+      }
+      if (dateTo) {
+        historyParams.set("date_to", dateTo);
+      }
       const history = await core.requestJson(
-        `/api/v1/currency/rates/history?currency=${encodeURIComponent(state.analyticsCurrencyFilter)}&limit=120`,
+        `/api/v1/currency/rates/history?${historyParams.toString()}`,
         { headers: core.authHeaders() },
       );
       renderChart(history);
@@ -166,6 +209,17 @@
         }
         state.analyticsCurrencyFilter = btn.dataset.analyticsCurrencyFilter || "all";
         window.App.getRuntimeModule?.("session")?.savePreferencesDebounced?.(250);
+        loadAnalyticsCurrency({ force: true }).catch((err) => core.setStatus(String(err)));
+      });
+    }
+    if (el.analyticsCurrencyPeriodTabs) {
+      el.analyticsCurrencyPeriodTabs.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-analytics-currency-period]");
+        if (!btn) {
+          return;
+        }
+        state.analyticsCurrencyPeriod = btn.dataset.analyticsCurrencyPeriod || "30d";
+        syncCurrencyPeriodTabs();
         loadAnalyticsCurrency({ force: true }).catch((err) => core.setStatus(String(err)));
       });
     }

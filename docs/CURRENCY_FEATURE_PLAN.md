@@ -18,10 +18,11 @@ Implemented in current slice:
 - dashboard currency block
 - dashboard currency block promoted into a separate panel above period KPI
 - dashboard rate widget enriched with day-over-day `+/-` vs previous snapshot
+- dashboard currency block gets force-refresh actions for rates
 - dedicated `Валюта` section with:
   - tracked-currency filter
   - current positions
-  - manual trade form
+  - CTA `Сделка` routed into the shared create modal on the `Валюта` tab
   - manual current-rate form
   - recent trades list
 - settings support for:
@@ -31,12 +32,15 @@ Implemented in current slice:
 - automatic daily tracked-rate refresh via Telegram bot scan loop
 - daily Telegram currency digest with separate reminder time and anti-duplicate guard
 - currency mode inside the common add-operation modal
-- analytics tab `Валюта` with KPI, rate-history chart, and deal list
+- analytics tab `Валюта` with KPI, rate-history chart, deal list, and period controls
+- currency code presentation improved with symbol labels like `USD ($)` and `EUR (€)`
+- Phase 2 started: operations now support original currency plus base conversion snapshot
 
 Not implemented yet:
 - user-defined currency alert rules beyond daily digest
 - admin-visible diagnostics/status for currency refresh and digest delivery
 - richer dashboard/widget polish such as sparkline or extended daily change metadata
+- full multi-currency amounts for operations, plans, and debts
 
 ## Agreed Product Direction
 
@@ -50,6 +54,7 @@ Not implemented yet:
 - `Аналитика` should get a dedicated `Валюта` tab.
 - Exchange rates should be refreshed daily.
 - Telegram should be able to send a daily currency digest for tracked currencies.
+- Operations, plans, and debts should later support their own original currency in addition to the base currency.
 
 ## Terminology
 
@@ -77,7 +82,7 @@ These can stay in code/model names if needed, but UI should show clearer wording
 
 ### 1. Dashboard
 
-Add a new row under the current dashboard KPI block:
+Add a new row above the current dashboard KPI block:
 - `Валютный портфель`
 - total current valuation in `BYN`
 - total profit/loss in `BYN`
@@ -93,6 +98,7 @@ Below or inside the row show mini-cards for tracked currencies:
 Rules:
 - show only currencies enabled for tracking
 - if no currencies are tracked, hide the block or show a compact empty-state
+- provide small force-refresh actions for rates directly in the block
 
 ### 2. Currency Section
 
@@ -140,6 +146,10 @@ For `Валюта` mode:
 
 The original purchase price must always be fixed in the trade record.
 
+Interaction rule:
+- CTA `Сделка` from the `Валюта` section should open the shared create modal directly on the `Валюта` tab
+- avoid keeping a competing inline trade form on the section page
+
 ### 4. Analytics
 
 Add a new analytics tab: `Валюта`.
@@ -149,6 +159,7 @@ Preferred scope for first release:
 - current position metrics
 - exchange rate trend
 - deal history
+- selectable history period with a sensible default of `30 days`
 
 Preferred internal layout:
 - top KPI strip
@@ -285,9 +296,9 @@ Ship first:
 
 Later:
 - richer charts for currency position history
-- manual rate refresh action
 - improved breakdown widgets
 - historical valuation snapshots
+- configurable chart ranges and optional custom date range for currency analytics
 
 ## V1.2 Scope
 
@@ -295,6 +306,32 @@ Later:
 - threshold-based alerts
 - per-currency notification rules
 - more detailed profit/loss split for partial sales
+
+## Phase 2 Roadmap: Multi-Currency Records Beyond FX
+
+After the current FX slice is stable, extend the rest of the app:
+
+### Operations
+- add original `currency` to operations
+- store `amount`, `currency`, `base_amount`, `base_currency`, `fx_rate`
+- keep entered value and converted base value together
+
+Status:
+- implemented in current slice
+
+### Plans
+- add original `currency` to plans
+- define how plan-vs-fact comparison works when currencies differ
+- decide whether conversion should use the planned rate, actual operation rate, or current rate depending on screen
+
+### Debts
+- add original `currency` to debts and repayments
+- preserve debt principal and outstanding amount in source currency
+- show both source-currency balance and base-currency valuation where appropriate
+
+Implementation rule:
+- do not start this phase by just adding a `currency` field everywhere
+- each entity must store both original currency data and base-currency conversion snapshot
 
 ## Open Decisions
 

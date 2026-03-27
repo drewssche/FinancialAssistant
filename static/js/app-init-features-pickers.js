@@ -14,7 +14,7 @@
     document.addEventListener("focusin", pickerCoordinator.scrollFocusedModalFieldIntoView);
     pickerCoordinator.bindDatePickerTriggers();
 
-    for (const id of ["opAmount", "opDate", "opNote"]) {
+    for (const id of ["opAmount", "opDate", "opNote", "opCurrency", "opFxRate"]) {
       const node = document.getElementById(id);
       if (node) {
         node.addEventListener("input", actions.updateCreatePreview);
@@ -22,6 +22,9 @@
         if (id === "opAmount" && actions.renderReceiptSummary) {
           node.addEventListener("input", actions.renderReceiptSummary);
           node.addEventListener("change", actions.renderReceiptSummary);
+        }
+        if (id === "opCurrency" && actions.syncOperationCurrencyFields) {
+          node.addEventListener("change", () => actions.syncOperationCurrencyFields("create"));
         }
       }
     }
@@ -61,7 +64,7 @@
         node.addEventListener("change", actions.updateDebtDueHint);
       }
     }
-    for (const id of ["editAmount", "editDate", "editNote"]) {
+    for (const id of ["editAmount", "editDate", "editNote", "editCurrency", "editFxRate"]) {
       const node = document.getElementById(id);
       if (node) {
         node.addEventListener("input", actions.updateEditPreview);
@@ -69,6 +72,9 @@
         if (id === "editAmount" && actions.renderReceiptSummary) {
           node.addEventListener("input", () => actions.renderReceiptSummary("edit"));
           node.addEventListener("change", () => actions.renderReceiptSummary("edit"));
+        }
+        if (id === "editCurrency" && actions.syncOperationCurrencyFields) {
+          node.addEventListener("change", () => actions.syncOperationCurrencyFields("edit"));
         }
       }
     }

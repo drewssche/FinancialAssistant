@@ -44,9 +44,23 @@ class CurrencyRateRefreshService:
             )
         return refreshed
 
-    def refresh_user_tracked_rates(self, *, user_id: int, prefs: dict | None = None) -> list[dict]:
+    def refresh_user_tracked_rates(
+        self,
+        *,
+        user_id: int,
+        prefs: dict | None = None,
+        currencies: list[str] | None = None,
+        force: bool = False,
+    ) -> list[dict]:
         currency_prefs = self.currency_service.get_currency_preferences(user_id)
         tracked = list(currency_prefs.get("tracked_currencies") or [])
+        target_currencies = [
+            self.currency_service._normalize_currency(code)
+            for code in (currencies or tracked)
+            if str(code or "").strip()
+        ]
+        if target_currencies:
+            tracked = list(dict.fromkeys(target_currencies))
         if not tracked:
             return []
         timezone_name = self._resolve_timezone_name(prefs or {})
@@ -55,7 +69,7 @@ class CurrencyRateRefreshService:
         missing = [
             currency
             for currency in tracked
-            if not latest_rate_pairs.get(currency) or latest_rate_pairs[currency][0].rate_date < target_date
+            if force or not latest_rate_pairs.get(currency) or latest_rate_pairs[currency][0].rate_date < target_date
         ]
         if not missing:
             return []

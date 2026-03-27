@@ -84,6 +84,8 @@
         dateInputId,
         noteInputId,
         receiptPayloadGetter,
+        currencySelectId,
+        fxRateInputId,
       } = options;
       const operationDate = core.parseDateInputValue(document.getElementById(dateInputId).value);
       if (!operationDate) {
@@ -91,15 +93,23 @@
       }
       const receiptItems = receiptPayloadGetter ? receiptPayloadGetter() : [];
       const amount = core.resolveMoneyInput(document.getElementById(amountInputId).value);
+      const currency = String(document.getElementById(currencySelectId)?.value || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
+      const fxRate = core.resolveMoneyInput(document.getElementById(fxRateInputId)?.value || 1);
+      const baseCurrency = core.getCurrencyConfig?.().code || "BYN";
       const hasReceiptItems = receiptItems.length > 0;
       const canDeriveAmountFromReceipt = hasReceiptItems && amount.empty;
       if (!canDeriveAmountFromReceipt && (!amount.valid || amount.value <= 0)) {
         throw new Error("Проверь сумму операции");
       }
+      if (currency !== baseCurrency && (!fxRate.valid || fxRate.value <= 0)) {
+        throw new Error("Проверь курс конверсии");
+      }
       return {
         kind,
         category_id: categoryId,
         amount: canDeriveAmountFromReceipt ? null : amount.formatted,
+        currency,
+        fx_rate: currency === baseCurrency ? null : fxRate.formatted,
         operation_date: operationDate,
         note: document.getElementById(noteInputId).value,
         receipt_items: receiptItems,
@@ -116,6 +126,8 @@
         dateInputId: "opDate",
         noteInputId: "opNote",
         receiptPayloadGetter: getCreateReceiptPayload,
+        currencySelectId: "opCurrency",
+        fxRateInputId: "opFxRate",
       });
       delete payload._mode;
       return payload;
@@ -130,6 +142,8 @@
         dateInputId: "editDate",
         noteInputId: "editNote",
         receiptPayloadGetter: getEditReceiptPayload,
+        currencySelectId: "editCurrency",
+        fxRateInputId: "editFxRate",
       });
       delete payload._mode;
       return payload;
@@ -293,6 +307,8 @@
               kind: item.kind,
               category_id: item.category_id,
               amount: item.amount,
+              currency: item.currency || "BYN",
+              fx_rate: item.currency && item.base_currency && item.currency !== item.base_currency ? item.fx_rate : null,
               operation_date: item.operation_date,
               note: item.note,
             }),

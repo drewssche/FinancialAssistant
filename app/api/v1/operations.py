@@ -97,6 +97,8 @@ def create_operation(
             user_id=user_id,
             kind=payload.kind,
             amount=payload.amount,
+            currency=payload.currency,
+            fx_rate=payload.fx_rate,
             operation_date=payload.operation_date,
             category_id=payload.category_id,
             note=payload.note,

@@ -90,16 +90,24 @@ class CurrencyRepository:
         self.db.flush()
         return row
 
-    def list_rate_history(self, *, user_id: int, currency: str, limit: int = 120) -> list[FxRateSnapshot]:
-        stmt = (
-            select(FxRateSnapshot)
-            .where(
-                FxRateSnapshot.user_id == user_id,
-                FxRateSnapshot.currency == currency,
-            )
-            .order_by(desc(FxRateSnapshot.rate_date), desc(FxRateSnapshot.id))
-            .limit(limit)
+    def list_rate_history(
+        self,
+        *,
+        user_id: int,
+        currency: str,
+        limit: int = 120,
+        date_from: date | None = None,
+        date_to: date | None = None,
+    ) -> list[FxRateSnapshot]:
+        stmt = select(FxRateSnapshot).where(
+            FxRateSnapshot.user_id == user_id,
+            FxRateSnapshot.currency == currency,
         )
+        if date_from:
+            stmt = stmt.where(FxRateSnapshot.rate_date >= date_from)
+        if date_to:
+            stmt = stmt.where(FxRateSnapshot.rate_date <= date_to)
+        stmt = stmt.order_by(desc(FxRateSnapshot.rate_date), desc(FxRateSnapshot.id)).limit(limit)
         return list(reversed(list(self.db.scalars(stmt))))
 
     def list_currency_preferences(self) -> list[UserPreference]:

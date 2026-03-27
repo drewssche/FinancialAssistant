@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
@@ -11,6 +13,7 @@ from app.schemas.currency import (
     CurrencyTradeCreate,
     CurrencyTradeOut,
 )
+from app.services.currency_rate_refresh_service import CurrencyRateRefreshService
 from app.services.currency_service import CurrencyService
 
 router = APIRouter(prefix="/currency", tags=["currency"])
@@ -76,11 +79,36 @@ def upsert_currency_rate(
 def get_currency_rate_history(
     currency: str = Query(min_length=3, max_length=3),
     limit: int = Query(default=120, ge=1, le=365),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     service = CurrencyService(db)
     try:
-        return service.get_rate_history(user_id=user_id, currency=currency, limit=limit)
+        return service.get_rate_history(
+            user_id=user_id,
+            currency=currency,
+            limit=limit,
+            date_from=date_from,
+            date_to=date_to,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post("/rates/refresh", response_model=list[CurrencyRateOut])
+def refresh_currency_rates(
+    currency: str | None = Query(default=None, min_length=3, max_length=3),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = CurrencyRateRefreshService(db)
+    try:
+        return service.refresh_user_tracked_rates(
+            user_id=user_id,
+            currencies=[currency] if currency else None,
+            force=True,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

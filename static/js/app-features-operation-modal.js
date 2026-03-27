@@ -89,6 +89,24 @@
     }
     updateCreatePreview();
   }
+  function syncOperationCurrencyFields(mode = "create") {
+    const isEdit = mode === "edit";
+    const currencySelect = isEdit ? el.editCurrency : el.opCurrency;
+    const fxRateField = isEdit ? el.editFxRateField : el.opFxRateField;
+    const fxRateInput = isEdit ? el.editFxRate : el.opFxRate;
+    const baseCurrency = core.getCurrencyConfig?.().code || "BYN";
+    const selectedCurrency = String(currencySelect?.value || baseCurrency).toUpperCase();
+    const needsFxRate = selectedCurrency !== baseCurrency;
+    fxRateField?.classList.toggle("hidden", !needsFxRate);
+    if (fxRateInput) {
+      fxRateInput.required = needsFxRate;
+      if (!needsFxRate) {
+        fxRateInput.value = "1";
+      } else if (!String(fxRateInput.value || "").trim()) {
+        fxRateInput.value = "1";
+      }
+    }
+  }
   function applyDebtCurrencyUi() {
     core.applyMoneyInputs();
   }
@@ -313,6 +331,12 @@
     if (el.currencyNote) {
       el.currencyNote.value = "";
     }
+    if (el.opCurrency) {
+      el.opCurrency.value = core.getCurrencyConfig?.().code || "BYN";
+    }
+    if (el.opFxRate) {
+      el.opFxRate.value = "1";
+    }
     if (el.planRecurrenceBlock) {
       el.planRecurrenceBlock.classList.add("hidden");
     }
@@ -356,6 +380,8 @@
     el.planRecurrenceMonthEndWrap?.classList.add("hidden");
     setDebtDirection("lend");
     setCurrencySide("buy");
+    syncOperationCurrencyFields("create");
+    syncOperationCurrencyFields("edit");
     applyDebtCurrencyUi();
     updateDebtDueHint();
     setCreateEntryMode("operation");
@@ -401,10 +427,20 @@
     renderDebtCounterpartyPicker();
     updateCreatePreview();
   }
+  async function openCreateModalForCurrency() {
+    await openCreateModal();
+    setCreateEntryMode("currency");
+  }
   async function openEditModal(item) {
     await ensureCategoryCatalogReady("edit");
     state.editOperationId = item.id;
-    document.getElementById("editAmount").value = item.amount;
+    document.getElementById("editAmount").value = item.original_amount || item.amount;
+    if (el.editCurrency) {
+      el.editCurrency.value = item.currency || "BYN";
+    }
+    if (el.editFxRate) {
+      el.editFxRate.value = item.fx_rate || "1";
+    }
     core.syncDateFieldValue(document.getElementById("editDate"), item.operation_date);
     document.getElementById("editNote").value = item.note || "";
     clearReceiptItems("edit");
@@ -424,6 +460,7 @@
     const hasReceipt = state.editReceiptItems.length > 0;
     el.editCategory.value = item.category_id ? String(item.category_id) : "";
     setOperationKind("edit", item.kind);
+    syncOperationCurrencyFields("edit");
     selectEditCategory(item.category_id ? Number(item.category_id) : null);
     setEditOperationMode(hasReceipt ? "receipt" : "common");
     updateEditPreview();
@@ -555,8 +592,10 @@
     setCreateEntryMode,
     setCreateOperationMode,
     setEditOperationMode,
+    syncOperationCurrencyFields,
     updateDebtDueHint,
     openCreateModal,
+    openCreateModalForCurrency,
     openCreateModalForDebtEdit,
     closeCreateModal,
     openEditModal,

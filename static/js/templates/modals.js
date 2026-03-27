@@ -14,7 +14,7 @@
 
         <form id="createOperationForm" class="form-grid modal-grid create-modal-grid">
           <div class="segmented" id="createEntryModeSwitch" aria-label="Режим создания">
-            <button class="segmented-btn active" data-entry-mode="operation" type="button">Обычная операция</button>
+            <button class="segmented-btn active" data-entry-mode="operation" type="button">Операция</button>
             <button class="segmented-btn" data-entry-mode="currency" type="button">Валюта</button>
             <button class="segmented-btn" data-entry-mode="debt" type="button">Долг</button>
           </div>
@@ -44,6 +44,20 @@
           </div>
           <div id="opAmountField" class="money-input-wrap" data-money-input-wrap>
             <input id="opAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" required />
+          </div>
+          <label class="field">
+            <span>Валюта операции</span>
+            <select id="opCurrency">
+              <option value="BYN">BYN (руб.)</option>
+              <option value="USD">USD ($)</option>
+              <option value="EUR">EUR (€)</option>
+              <option value="RUB">RUB (₽)</option>
+              <option value="CNY">CNY (¥)</option>
+              <option value="PLN">PLN (zł)</option>
+            </select>
+          </label>
+          <div id="opFxRateField" class="money-input-wrap hidden" data-money-input-wrap>
+            <input id="opFxRate" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс в базовую валюту" title="Курс конверсии в основную валюту" />
           </div>
           <input id="opNote" class="create-note-field" type="text" placeholder="Комментарий" />
 
@@ -160,11 +174,11 @@
             <label class="field">
               <span>Валюта</span>
               <select id="currencyAsset">
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-                <option value="RUB">RUB</option>
-                <option value="CNY">CNY</option>
-                <option value="PLN">PLN</option>
+                <option value="USD">USD ($)</option>
+                <option value="EUR">EUR (€)</option>
+                <option value="RUB">RUB (₽)</option>
+                <option value="CNY">CNY (¥)</option>
+                <option value="PLN">PLN (zł)</option>
               </select>
             </label>
             <label class="field">
@@ -387,6 +401,20 @@
           </div>
           <div id="editAmountField" class="money-input-wrap" data-money-input-wrap>
             <input id="editAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" required />
+          </div>
+          <label class="field">
+            <span>Валюта операции</span>
+            <select id="editCurrency">
+              <option value="BYN">BYN (руб.)</option>
+              <option value="USD">USD ($)</option>
+              <option value="EUR">EUR (€)</option>
+              <option value="RUB">RUB (₽)</option>
+              <option value="CNY">CNY (¥)</option>
+              <option value="PLN">PLN (zł)</option>
+            </select>
+          </label>
+          <div id="editFxRateField" class="money-input-wrap hidden" data-money-input-wrap>
+            <input id="editFxRate" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс в базовую валюту" title="Курс конверсии в основную валюту" />
           </div>
           <input id="editNote" class="create-note-field" type="text" placeholder="Комментарий" />
 

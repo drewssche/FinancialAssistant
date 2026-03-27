@@ -76,6 +76,7 @@
       analyticsMonthAnchor: "",
       analyticsTab: "overview",
       analyticsCurrencyFilter: "all",
+      analyticsCurrencyPeriod: "30d",
       analyticsCalendarView: "month",
       analyticsGlobalPeriod: "month",
       analyticsGlobalDateFrom: "",

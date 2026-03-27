@@ -111,6 +111,18 @@
     return core.formatMoney(parseAmount(value));
   }
 
+  function formatOperationAmountHtml(item, kindClass = "expense") {
+    const originalAmount = parseAmount(item?.original_amount ?? item?.amount);
+    const currency = String(item?.currency || "BYN").toUpperCase();
+    const baseAmount = parseAmount(item?.amount);
+    const baseCurrency = String(item?.base_currency || "BYN").toUpperCase();
+    const originalMoney = core.formatMoney(originalAmount, { currency });
+    if (currency === baseCurrency) {
+      return `<span class="amount-${kindClass}">${originalMoney}</span>`;
+    }
+    return `<span class="amount-${kindClass}">${originalMoney}</span><div class="muted-small">≈ ${core.formatMoney(baseAmount, { currency: baseCurrency })}</div>`;
+  }
+
   function parseIsoDate(value) {
     if (!value) {
       return null;
@@ -261,7 +273,7 @@
         <td data-label="Дата">${core.formatDateRu(item.operation_date)}</td>
         <td data-label="Тип"><span class="kind-pill kind-pill-${kindClass}">${highlightText(kindText, searchQuery)}</span></td>
         <td data-label="Категория">${categoryCellHtml}</td>
-        <td data-label="Сумма"><span class="amount-${kindClass}">${core.formatMoney(item.amount)}</span></td>
+        <td data-label="Сумма">${formatOperationAmountHtml(item, kindClass)}</td>
         <td class="mobile-note-cell" data-label="Комментарий">${highlightText(noteText, searchQuery)}</td>
       `;
       row.dataset.item = JSON.stringify(item);
@@ -281,7 +293,7 @@
         <td>${core.formatDateRu(item.operation_date)}</td>
         <td><span class="kind-pill kind-pill-${kindClass}">${highlightText(kindText, searchQuery)}</span></td>
         <td>${previewCategoryCellHtml}</td>
-        <td><span class="amount-${kindClass}">${core.formatMoney(item.amount)}</span></td>
+        <td>${formatOperationAmountHtml(item, kindClass)}</td>
         <td>${highlightText(noteText, searchQuery)}</td>
         <td><span class="muted-small">—</span></td>
       `;
@@ -307,7 +319,7 @@
       <td data-label="Тип"><span class="kind-pill kind-pill-${kindClass}">${highlightText(kindText, searchQuery)}</span></td>
       <td data-label="Категория">${categoryHtml}</td>
       <td data-label="Чек" class="operation-receipt-chip-cell">${receiptCellHtml}</td>
-      <td data-label="Сумма"><span class="amount-${kindClass}">${core.formatMoney(item.amount)}</span></td>
+      <td data-label="Сумма">${formatOperationAmountHtml(item, kindClass)}</td>
       <td class="mobile-note-cell" data-label="Комментарий">${highlightText(noteText, searchQuery)}</td>
       <td class="mobile-actions-cell table-kebab-cell" data-label="Действия">
         ${renderInlineKebabMenu(`operation-${item.id}`, menuItems, "Действия операции", "operation-row-kebab")}

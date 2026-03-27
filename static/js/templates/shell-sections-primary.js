@@ -10,7 +10,10 @@
                 <h3>Валютный портфель</h3>
                 <p class="subtitle">Позиции и курсы по отслеживаемым валютам</p>
               </div>
-              <button id="openCurrencyTabBtn" class="btn btn-secondary" type="button">Открыть раздел Валюта</button>
+              <div class="toolbar">
+                <button id="dashboardRefreshAllCurrencyRatesBtn" class="btn btn-secondary btn-xs" type="button">Обновить курсы</button>
+                <button id="openCurrencyTabBtn" class="btn btn-secondary" type="button">Открыть раздел Валюта</button>
+              </div>
             </div>
             <div id="dashboardCurrencyKpiGrid" class="analytics-kpi-grid"></div>
             <div id="dashboardCurrencyRates" class="dashboard-currency-rates-grid"></div>
@@ -309,6 +312,13 @@
               </div>
               <div class="toolbar">
                 <div id="analyticsCurrencyTabs" class="segmented" role="tablist" aria-label="Фильтр валютной аналитики"></div>
+                <div id="analyticsCurrencyPeriodTabs" class="segmented" role="tablist" aria-label="Период валютной аналитики">
+                  <button class="segmented-btn" data-analytics-currency-period="7d" type="button">7 дней</button>
+                  <button class="segmented-btn active" data-analytics-currency-period="30d" type="button">30 дней</button>
+                  <button class="segmented-btn" data-analytics-currency-period="90d" type="button">3 месяца</button>
+                  <button class="segmented-btn" data-analytics-currency-period="365d" type="button">12 месяцев</button>
+                  <button class="segmented-btn" data-analytics-currency-period="all_time" type="button">Все время</button>
+                </div>
               </div>
             </div>
             <div id="analyticsCurrencyKpiGrid" class="analytics-kpi-grid">

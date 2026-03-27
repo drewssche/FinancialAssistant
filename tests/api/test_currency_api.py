@@ -151,6 +151,14 @@ def test_currency_rate_history_returns_chronological_points(client: TestClient):
     assert [item["rate_date"] for item in payload] == ["2026-03-20", "2026-03-21", "2026-03-22"]
     assert [item["rate"] for item in payload] == ["3.210000", "3.250000", "3.240000"]
 
+    ranged = client.get(
+        "/api/v1/currency/rates/history",
+        params={"currency": "USD", "limit": 10, "date_from": "2026-03-21", "date_to": "2026-03-22"},
+    )
+    assert ranged.status_code == 200, ranged.text
+    ranged_payload = ranged.json()
+    assert [item["rate_date"] for item in ranged_payload] == ["2026-03-21", "2026-03-22"]
+
 
 def test_currency_overview_includes_day_change_from_previous_snapshot(client: TestClient):
     client.put(
@@ -178,3 +186,17 @@ def test_currency_overview_includes_day_change_from_previous_snapshot(client: Te
     assert payload["current_rates"][0]["previous_rate"] == "3.400000"
     assert payload["current_rates"][0]["change_value"] == "0.050000"
     assert payload["current_rates"][0]["change_pct"] == pytest.approx(1.4705882353)
+
+
+def test_currency_refresh_endpoint_forces_rate_refresh(client: TestClient, monkeypatch):
+    def _fake_fetch_rates(self, currencies):
+        return {currency: 3.99 for currency in currencies}
+
+    monkeypatch.setattr("app.services.currency_rate_refresh_service.CurrencyRateRefreshService._fetch_rates", _fake_fetch_rates)
+
+    response = client.post("/api/v1/currency/rates/refresh", params={"currency": "USD"})
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert len(payload) == 1
+    assert payload[0]["currency"] == "USD"
+    assert payload[0]["rate"] == "3.990000"

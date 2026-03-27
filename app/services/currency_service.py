@@ -297,9 +297,23 @@ class CurrencyService:
             "current_rates": current_rates,
         }
 
-    def get_rate_history(self, *, user_id: int, currency: str, limit: int = 120) -> list[dict]:
+    def get_rate_history(
+        self,
+        *,
+        user_id: int,
+        currency: str,
+        limit: int = 120,
+        date_from: date | None = None,
+        date_to: date | None = None,
+    ) -> list[dict]:
         normalized_currency = self._normalize_currency(currency)
-        rows = self.repo.list_rate_history(user_id=user_id, currency=normalized_currency, limit=limit)
+        rows = self.repo.list_rate_history(
+            user_id=user_id,
+            currency=normalized_currency,
+            limit=limit,
+            date_from=date_from,
+            date_to=date_to,
+        )
         return [
             {
                 "currency": row.currency,
