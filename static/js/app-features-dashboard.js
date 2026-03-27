@@ -54,17 +54,25 @@
     if (el.dashboardCurrencyPanel) {
       el.dashboardCurrencyPanel.classList.toggle("hidden", currencyPrefs.show_dashboard_kpi === false);
     }
-    if (el.dashboardCurrencyCurrentValue) {
-      el.dashboardCurrencyCurrentValue.textContent = core.formatMoney(summary.currency_current_value || 0);
-    }
-    if (el.dashboardCurrencyBookValue) {
-      el.dashboardCurrencyBookValue.textContent = core.formatMoney(summary.currency_book_value || 0);
-    }
-    if (el.dashboardCurrencyResultValue) {
-      el.dashboardCurrencyResultValue.textContent = core.formatMoney(summary.currency_result_value || 0);
-    }
-    if (el.dashboardCurrencyActiveCount) {
-      el.dashboardCurrencyActiveCount.textContent = String(summary.active_currency_positions || 0);
+    if (el.dashboardCurrencyKpiGrid) {
+      el.dashboardCurrencyKpiGrid.innerHTML = `
+        <article class="analytics-kpi-card analytics-kpi-neutral">
+          <div class="muted-small">Текущая оценка</div>
+          <strong>${core.formatMoney(summary.currency_current_value || 0)}</strong>
+        </article>
+        <article class="analytics-kpi-card analytics-kpi-balance">
+          <div class="muted-small">Вложено</div>
+          <strong>${core.formatMoney(summary.currency_book_value || 0)}</strong>
+        </article>
+        <article class="analytics-kpi-card analytics-kpi-income">
+          <div class="muted-small">Прибыль / убыток</div>
+          <strong>${core.formatMoney(summary.currency_result_value || 0)}</strong>
+        </article>
+        <article class="analytics-kpi-card analytics-kpi-neutral">
+          <div class="muted-small">Открытых позиций</div>
+          <strong>${String(summary.active_currency_positions || 0)}</strong>
+        </article>
+      `;
     }
     if (el.dashboardCurrencyPositions) {
       const positions = Array.isArray(summary.tracked_currency_positions) ? summary.tracked_currency_positions : [];
@@ -83,6 +91,26 @@
         `;
       }).join("");
     }
+  }
+
+  function renderDashboardCurrencyRates(currentRates = [], trackedCurrencies = []) {
+    if (!el.dashboardCurrencyRates) {
+      return;
+    }
+    const tracked = Array.isArray(trackedCurrencies) ? trackedCurrencies : [];
+    const rows = Array.isArray(currentRates)
+      ? currentRates.filter((item) => tracked.includes(String(item.currency || "").toUpperCase()))
+      : [];
+    if (!rows.length) {
+      el.dashboardCurrencyRates.innerHTML = `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Курсы пока не заданы</span>`;
+      return;
+    }
+    el.dashboardCurrencyRates.innerHTML = rows.map((item) => `
+      <span class="analytics-kpi-chip analytics-kpi-chip-neutral">
+        ${core.escapeHtml ? core.escapeHtml(item.currency) : item.currency}: ${Number(item.rate || 0).toFixed(4)}
+        <span class="muted-small">${item.rate_date ? core.formatDateRu(item.rate_date) : "без даты"}</span>
+      </span>
+    `).join("");
   }
 
   function formatDateTimeRu(value) {
@@ -157,6 +185,14 @@
         el.dashboardDebtKpiGrid.classList.toggle("hidden", !hasDebtKpi);
       }
       renderDashboardCurrencySummary(data);
+      try {
+        const currencyOverview = await core.requestJson("/api/v1/currency/overview?trades_limit=10", {
+          headers: core.authHeaders(),
+        });
+        renderDashboardCurrencyRates(currencyOverview.current_rates, currencyOverview.tracked_currencies);
+      } catch {
+        renderDashboardCurrencyRates([], []);
+      }
       state.dashboardDebtSummaryLoaded = true;
 
       if (el.dashboardPlansPanel && ui?.showDashboardOperations !== false) {

@@ -29,6 +29,28 @@
     }).join("");
   }
 
+  function openTradePanel() {
+    el.currencyTradePanel?.classList.remove("hidden");
+    el.currencyRatePanel?.classList.add("hidden");
+    primeDefaultDates();
+    el.currencyTradeAsset?.focus();
+  }
+
+  function closeTradePanel() {
+    el.currencyTradePanel?.classList.add("hidden");
+  }
+
+  function openRatePanel() {
+    el.currencyRatePanel?.classList.remove("hidden");
+    el.currencyTradePanel?.classList.add("hidden");
+    primeDefaultDates();
+    el.currencyRateAsset?.focus();
+  }
+
+  function closeRatePanel() {
+    el.currencyRatePanel?.classList.add("hidden");
+  }
+
   function renderSummary(data) {
     if (el.currencySummaryCurrentValue) {
       el.currencySummaryCurrentValue.textContent = core.formatMoney(data.total_current_value || 0);
@@ -168,6 +190,7 @@
     if (el.currencyTradeNote) {
       el.currencyTradeNote.value = "";
     }
+    closeTradePanel();
     await loadCurrencySection({ force: true });
     core.setStatus("Сделка по валюте сохранена");
     core.invalidateUiRequestCache?.("dashboard:summary");
@@ -189,6 +212,7 @@
     if (el.currencyRateValue) {
       el.currencyRateValue.value = "";
     }
+    closeRatePanel();
     await loadCurrencySection({ force: true });
     core.setStatus("Текущий курс обновлен");
     core.invalidateUiRequestCache?.("dashboard:summary");
@@ -219,6 +243,18 @@
         core.syncSegmentedActive(el.currencyTradeSideTabs, "currency-side", next);
       });
     }
+    if (el.openCurrencyTradePanelBtn) {
+      el.openCurrencyTradePanelBtn.addEventListener("click", openTradePanel);
+    }
+    if (el.closeCurrencyTradePanelBtn) {
+      el.closeCurrencyTradePanelBtn.addEventListener("click", closeTradePanel);
+    }
+    if (el.openCurrencyRatePanelBtn) {
+      el.openCurrencyRatePanelBtn.addEventListener("click", openRatePanel);
+    }
+    if (el.closeCurrencyRatePanelBtn) {
+      el.closeCurrencyRatePanelBtn.addEventListener("click", closeRatePanel);
+    }
     if (el.currencyTradeForm) {
       el.currencyTradeForm.addEventListener("submit", (event) => {
         core.runAction({
@@ -246,5 +282,7 @@
   window.App.registerRuntimeModule?.("currency", {
     loadCurrencySection,
     syncFilterTabs,
+    openTradePanel,
+    openRatePanel,
   });
 })();

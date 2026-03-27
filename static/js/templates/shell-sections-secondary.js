@@ -93,8 +93,11 @@
           <section class="panel">
             <div class="panel-head row between">
               <div>
-                <h3>Валютные позиции</h3>
-                <p class="subtitle">Покупки, продажи, текущий курс и результат по валюте</p>
+                <p class="subtitle">Позиции, сделки и текущие курсы валют</p>
+              </div>
+              <div class="toolbar">
+                <button id="openCurrencyTradePanelBtn" class="btn btn-cta" type="button">+ Сделка</button>
+                <button id="openCurrencyRatePanelBtn" class="btn btn-secondary" type="button">Обновить курс</button>
               </div>
             </div>
             <div class="table-search-row">
@@ -119,14 +122,8 @@
               </article>
             </div>
             <div id="currencyPositionsList" class="plans-list"></div>
-            <div class="settings-grid-2">
-              <form id="currencyTradeForm" class="panel">
-                <div class="panel-head row between">
-                  <div>
-                    <h3>Сделка</h3>
-                    <p class="subtitle">Покупка или продажа валюты</p>
-                  </div>
-                </div>
+            <div id="currencyTradePanel" class="panel hidden">
+              <form id="currencyTradeForm" class="category-modal-form">
                 <div class="field">
                   <span>Действие</span>
                   <div id="currencyTradeSideTabs" class="segmented" role="tablist" aria-label="Действие с валютой">
@@ -177,15 +174,12 @@
                 </label>
                 <div class="settings-actions">
                   <button id="submitCurrencyTradeBtn" class="btn btn-primary" type="submit">Сохранить сделку</button>
+                  <button id="closeCurrencyTradePanelBtn" class="btn btn-secondary" type="button">Скрыть</button>
                 </div>
               </form>
-              <form id="currencyRateForm" class="panel">
-                <div class="panel-head row between">
-                  <div>
-                    <h3>Текущий курс</h3>
-                    <p class="subtitle">Обнови курс вручную, чтобы увидеть актуальную оценку</p>
-                  </div>
-                </div>
+            </div>
+            <div id="currencyRatePanel" class="panel hidden">
+              <form id="currencyRateForm" class="category-modal-form">
                 <div class="settings-grid-2">
                   <label class="field">
                     <span>Валюта</span>
@@ -214,33 +208,26 @@
                 </div>
                 <div class="settings-actions">
                   <button id="submitCurrencyRateBtn" class="btn btn-secondary" type="submit">Обновить курс</button>
+                  <button id="closeCurrencyRatePanelBtn" class="btn btn-secondary" type="button">Скрыть</button>
                 </div>
               </form>
             </div>
-            <section class="panel">
-              <div class="panel-head row between">
-                <div>
-                  <h3>Последние сделки</h3>
-                  <p class="subtitle">История покупок и продаж по выбранному фильтру</p>
-                </div>
-              </div>
-              <div class="table-wrap">
-                <table class="table table-hover mobile-card-table">
-                  <thead>
-                    <tr>
-                      <th>Дата</th>
-                      <th>Действие</th>
-                      <th>Валюта</th>
-                      <th>Количество</th>
-                      <th>Курс</th>
-                      <th>Комиссия</th>
-                      <th>Комментарий</th>
-                    </tr>
-                  </thead>
-                  <tbody id="currencyTradesBody"></tbody>
-                </table>
-              </div>
-            </section>
+            <div class="table-wrap">
+              <table class="table table-hover mobile-card-table">
+                <thead>
+                  <tr>
+                    <th>Дата</th>
+                    <th>Действие</th>
+                    <th>Валюта</th>
+                    <th>Количество</th>
+                    <th>Курс</th>
+                    <th>Комиссия</th>
+                    <th>Комментарий</th>
+                  </tr>
+                </thead>
+                <tbody id="currencyTradesBody"></tbody>
+              </table>
+            </div>
           </section>
         </section>
 
