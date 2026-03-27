@@ -68,29 +68,16 @@
           <div class="muted-small">Прибыль / убыток</div>
           <strong>${core.formatMoney(summary.currency_result_value || 0)}</strong>
         </article>
-        <article class="analytics-kpi-card analytics-kpi-neutral">
-          <div class="muted-small">Покупки</div>
-          <strong>${core.formatMoney(summary.currency_buy_volume_base || 0)}</strong>
-          <span class="analytics-kpi-delta">${String(summary.currency_buy_trades_count || 0)} сделок</span>
-        </article>
-        <article class="analytics-kpi-card analytics-kpi-neutral">
-          <div class="muted-small">Продажи</div>
-          <strong>${core.formatMoney(summary.currency_sell_volume_base || 0)}</strong>
-          <span class="analytics-kpi-delta">${String(summary.currency_sell_trades_count || 0)} сделок</span>
-        </article>
-        <article class="analytics-kpi-card analytics-kpi-neutral">
-          <div class="muted-small">Открытых позиций</div>
-          <strong>${String(summary.active_currency_positions || 0)}</strong>
-        </article>
       `;
     }
     if (el.dashboardCurrencyPositions) {
       const positions = Array.isArray(summary.tracked_currency_positions) ? summary.tracked_currency_positions : [];
-      if (!positions.length) {
-        el.dashboardCurrencyPositions.innerHTML = `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Пока нет открытых валютных позиций</span>`;
-        return;
-      }
-      el.dashboardCurrencyPositions.innerHTML = positions.map((item) => {
+      const summaryChips = [
+        `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Покупки: ${core.formatMoney(summary.currency_buy_volume_base || 0)} <span class="muted-small">${String(summary.currency_buy_trades_count || 0)} сделок · ср. курс ${Number(summary.currency_buy_average_rate || 0).toFixed(4)}</span></span>`,
+        `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Продажи: ${core.formatMoney(summary.currency_sell_volume_base || 0)} <span class="muted-small">${String(summary.currency_sell_trades_count || 0)} сделок · ср. курс ${Number(summary.currency_sell_average_rate || 0).toFixed(4)}</span></span>`,
+        `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Открытых позиций: ${String(summary.active_currency_positions || 0)}</span>`,
+      ];
+      const positionChips = positions.map((item) => {
         const signClass = Number(item.result_value || 0) >= 0 ? "analytics-kpi-chip-positive" : "analytics-kpi-chip-negative";
         const rateDate = item.current_rate_date ? ` · курс ${core.formatDateRu(item.current_rate_date)}` : "";
         const currencyLabel = core.formatCurrencyLabel(item.currency);
@@ -100,7 +87,11 @@
             <span class="muted-small">остаток ${core.formatAmount(item.quantity || 0)} · ср. вход ${Number(item.average_buy_rate || 0).toFixed(4)} · текущий ${Number(item.current_rate || 0).toFixed(4)}${rateDate}</span>
           </span>
         `;
-      }).join("");
+      });
+      if (!positions.length) {
+        positionChips.push(`<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Пока нет открытых валютных позиций</span>`);
+      }
+      el.dashboardCurrencyPositions.innerHTML = [...summaryChips, ...positionChips].join("");
     }
   }
 

@@ -264,10 +264,13 @@
         const sideClass = item.side === "sell" ? "expense" : "income";
         const assetLabel = core.formatCurrencyLabel(item.asset_currency);
         const quoteLabel = core.formatCurrencyLabel(item.quote_currency, { withSymbol: false });
+        const directionLabel = item.side === "sell"
+          ? `${assetLabel} → ${quoteLabel}`
+          : `${quoteLabel} → ${assetLabel}`;
         row.classList.add("preview-row", `kind-row-${sideClass}`);
         row.appendChild(createPreviewCellButton("Дата", core.formatDateRu(item.trade_date), "currencyTradeDateModal"));
         row.appendChild(createPreviewCellButton("Действие", `<span class="kind-pill kind-pill-${sideClass}">${sideLabel}</span>`, "createCurrencySideSwitch"));
-        row.appendChild(createPreviewCellButton("Валюта", `${assetLabel} → ${quoteLabel}`, "currencyAsset"));
+        row.appendChild(createPreviewCellButton("Валюта", directionLabel, "currencyAsset"));
         row.appendChild(createPreviewCellButton("Количество", core.formatAmount(item.quantity || 0), "currencyQuantity"));
         row.appendChild(createPreviewCellButton("Курс", Number(item.unit_price || 0).toFixed(4), "currencyUnitPrice"));
         row.appendChild(createPreviewCellButton("Комиссия", core.formatMoney(item.fee || 0, { currency: item.quote_currency || "BYN" }), "currencyFee"));

@@ -77,6 +77,8 @@ class CurrencyOverviewOut(BaseModel):
     sell_trades_count: int = 0
     buy_volume_base: Decimal = Decimal("0")
     sell_volume_base: Decimal = Decimal("0")
+    buy_average_rate: Decimal = Decimal("0")
+    sell_average_rate: Decimal = Decimal("0")
     positions: list[CurrencyPositionOut]
     recent_trades: list[CurrencyTradeOut]
     current_rates: list[CurrencyRateOut]

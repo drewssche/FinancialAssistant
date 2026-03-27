@@ -39,6 +39,19 @@ Implemented in current slice:
   - in currency contexts prefer `Покупка / Продажа` as the action terminology
   - in regular operation mode move the currency selector inline next to the amount field
   - keep `Курс в базовую валюту` only as a conditional follow-up field for non-base currency operations
+  - in currency mode use the tighter flow:
+    - `Покупка / Продажа`
+    - `Дата | Валюта`
+    - `Количество | Курс | Комиссия`
+    - `Комментарий`
+  - do not expose base currency as a manual field in the currency modal; use the main currency from settings
+  - in FX preview use direction-aware notation:
+    - buy: `BYN -> USD`
+    - sell: `USD -> BYN`
+  - keep dashboard currency KPI visually lighter:
+    - primary cards for portfolio valuation/result
+    - compact secondary chips for `Покупки / Продажи / Открытые позиции`
+    - include average price/rate in purchase/sale widgets
 
 Not implemented yet:
 - user-defined currency alert rules beyond daily digest

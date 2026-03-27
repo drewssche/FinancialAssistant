@@ -78,13 +78,13 @@
       el.currencySummaryBuyVolume.textContent = core.formatMoney(data.buy_volume_base || 0);
     }
     if (el.currencySummaryBuyCount) {
-      el.currencySummaryBuyCount.textContent = `${String(data.buy_trades_count || 0)} сделок`;
+      el.currencySummaryBuyCount.textContent = `${String(data.buy_trades_count || 0)} сделок · ср. курс ${Number(data.buy_average_rate || 0).toFixed(4)}`;
     }
     if (el.currencySummarySellVolume) {
       el.currencySummarySellVolume.textContent = core.formatMoney(data.sell_volume_base || 0);
     }
     if (el.currencySummarySellCount) {
-      el.currencySummarySellCount.textContent = `${String(data.sell_trades_count || 0)} сделок`;
+      el.currencySummarySellCount.textContent = `${String(data.sell_trades_count || 0)} сделок · ср. курс ${Number(data.sell_average_rate || 0).toFixed(4)}`;
     }
   }
 

@@ -172,6 +172,13 @@
             <input id="currencySide" type="hidden" value="buy" />
             <div class="currency-modal-row">
               <label class="field">
+                <span>Дата</span>
+                <div id="currencyTradeDateField" class="date-input-wrap">
+                  <input id="currencyTradeDateModal" class="input" type="date" aria-label="Дата валютной сделки" />
+                  <button class="date-input-trigger" type="button" data-date-picker-trigger="currencyTradeDateModal" aria-label="Открыть календарь"></button>
+                </div>
+              </label>
+              <label class="field">
                 <span>Валюта</span>
                 <select id="currencyAsset">
                   <option value="USD">USD ($)</option>
@@ -181,44 +188,32 @@
                   <option value="PLN">PLN (zł)</option>
                 </select>
               </label>
-              <label class="field">
-                <span>Базовая валюта</span>
-                <input id="currencyQuote" class="input" type="text" value="BYN" maxlength="3" placeholder="BYN" />
-              </label>
             </div>
-            <div class="currency-modal-row currency-modal-row-single">
-              <label class="field">
-                <span>Дата</span>
-                <div id="currencyTradeDateField" class="date-input-wrap">
-                  <input id="currencyTradeDateModal" class="input" type="date" aria-label="Дата валютной сделки" />
-                  <button class="date-input-trigger" type="button" data-date-picker-trigger="currencyTradeDateModal" aria-label="Открыть календарь"></button>
-                </div>
-              </label>
-            </div>
-            <div class="currency-modal-row">
+            <input id="currencyQuote" type="hidden" value="BYN" />
+            <div class="currency-modal-row currency-modal-row-triple">
               <label class="field">
                 <span>Количество</span>
                 <div id="currencyQuantityField" class="money-input-wrap" data-money-input-wrap>
-                  <input id="currencyQuantity" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Количество" />
+                  <input id="currencyQuantity" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="100.00" />
                 </div>
               </label>
               <label class="field">
                 <span>Курс</span>
                 <div id="currencyUnitPriceField" class="money-input-wrap" data-money-input-wrap>
-                  <input id="currencyUnitPrice" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс" />
+                  <input id="currencyUnitPrice" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="3.2700" />
                 </div>
               </label>
-            </div>
-            <div class="currency-modal-row">
               <label class="field">
                 <span>Комиссия</span>
                 <div id="currencyFeeField" class="money-input-wrap" data-money-input-wrap>
-                  <input id="currencyFee" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Комиссия" />
+                  <input id="currencyFee" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="0.00" />
                 </div>
               </label>
+            </div>
+            <div class="currency-modal-row currency-modal-row-single">
               <label class="field">
                 <span>Комментарий</span>
-                <input id="currencyNote" type="text" placeholder="Комментарий" class="create-note-field" />
+                <input id="currencyNote" type="text" placeholder="Например: обменник у дома" class="create-note-field" />
               </label>
             </div>
           </div>

@@ -95,6 +95,8 @@ def test_currency_trade_overview_and_current_rate(client: TestClient):
     assert payload["sell_trades_count"] == 0
     assert payload["buy_volume_base"] == "320.00"
     assert payload["sell_volume_base"] == "0.00"
+    assert payload["buy_average_rate"] == "3.200000"
+    assert payload["sell_average_rate"] == "0.000000"
     assert len(payload["positions"]) == 1
     assert payload["positions"][0]["currency"] == "USD"
     assert payload["positions"][0]["average_buy_rate"] == "3.220000"
@@ -242,3 +244,5 @@ def test_currency_overview_tracks_buy_and_sell_kpi_totals(client: TestClient):
     assert payload["sell_trades_count"] == 1
     assert payload["buy_volume_base"] == "320.00"
     assert payload["sell_volume_base"] == "140.00"
+    assert payload["buy_average_rate"] == "3.200000"
+    assert payload["sell_average_rate"] == "3.500000"

@@ -164,6 +164,8 @@ def test_dashboard_summary_includes_currency_metrics(client: TestClient):
     assert payload["currency_sell_trades_count"] == 0
     assert payload["currency_buy_volume_base"] == "155.00"
     assert payload["currency_sell_volume_base"] == "0.00"
+    assert payload["currency_buy_average_rate"] == "3.100000"
+    assert payload["currency_sell_average_rate"] == "0.000000"
     assert payload["active_currency_positions"] == 1
     assert len(payload["tracked_currency_positions"]) == 1
     assert payload["tracked_currency_positions"][0]["currency"] == "USD"

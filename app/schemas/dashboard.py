@@ -30,6 +30,8 @@ class DashboardSummary(BaseModel):
     currency_sell_trades_count: int = 0
     currency_buy_volume_base: Decimal = Decimal("0")
     currency_sell_volume_base: Decimal = Decimal("0")
+    currency_buy_average_rate: Decimal = Decimal("0")
+    currency_sell_average_rate: Decimal = Decimal("0")
     active_currency_positions: int = 0
     tracked_currency_positions: list[DashboardCurrencyPosition] = Field(default_factory=list)
 

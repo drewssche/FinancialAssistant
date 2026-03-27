@@ -67,13 +67,13 @@
       el.analyticsCurrencyBuyVolume.textContent = core.formatMoney(overview.buy_volume_base || 0);
     }
     if (el.analyticsCurrencyBuyCount) {
-      el.analyticsCurrencyBuyCount.textContent = `${String(overview.buy_trades_count || 0)} сделок`;
+      el.analyticsCurrencyBuyCount.textContent = `${String(overview.buy_trades_count || 0)} сделок · ср. курс ${Number(overview.buy_average_rate || 0).toFixed(4)}`;
     }
     if (el.analyticsCurrencySellVolume) {
       el.analyticsCurrencySellVolume.textContent = core.formatMoney(overview.sell_volume_base || 0);
     }
     if (el.analyticsCurrencySellCount) {
-      el.analyticsCurrencySellCount.textContent = `${String(overview.sell_trades_count || 0)} сделок`;
+      el.analyticsCurrencySellCount.textContent = `${String(overview.sell_trades_count || 0)} сделок · ср. курс ${Number(overview.sell_average_rate || 0).toFixed(4)}`;
     }
     if (el.analyticsCurrencyRangeLabel) {
       const periodLabels = {

@@ -318,7 +318,7 @@
       el.currencyAsset.value = "USD";
     }
     if (el.currencyQuote) {
-      el.currencyQuote.value = "BYN";
+      el.currencyQuote.value = core.getCurrencyConfig?.().code || "BYN";
     }
     if (el.currencyTradeDateModal) {
       core.syncDateFieldValue(el.currencyTradeDateModal, core.getTodayIso());

@@ -171,6 +171,8 @@ class CurrencyService:
         total_sell_volume_base = self._money(0)
         total_buy_trades = 0
         total_sell_trades = 0
+        total_buy_quantity = self._qty(0)
+        total_sell_quantity = self._qty(0)
 
         for trade in trades:
             currency = trade.asset_currency
@@ -191,6 +193,8 @@ class CurrencyService:
                     "sell_trades_count": 0,
                     "buy_volume_base": self._money(0),
                     "sell_volume_base": self._money(0),
+                    "buy_quantity": self._qty(0),
+                    "sell_quantity": self._qty(0),
                 },
             )
             quantity = self._qty(trade.quantity)
@@ -199,15 +203,19 @@ class CurrencyService:
             if trade.side == "buy":
                 total_buy_trades += 1
                 total_buy_volume_base = self._money(total_buy_volume_base + gross)
+                total_buy_quantity = self._qty(total_buy_quantity + quantity)
                 trade_stats["buy_trades_count"] += 1
                 trade_stats["buy_volume_base"] = self._money(trade_stats["buy_volume_base"] + gross)
+                trade_stats["buy_quantity"] = self._qty(trade_stats["buy_quantity"] + quantity)
                 position["quantity"] = self._qty(position["quantity"] + quantity)
                 position["book_value"] = self._money(position["book_value"] + gross + fee)
             else:
                 total_sell_trades += 1
                 total_sell_volume_base = self._money(total_sell_volume_base + gross)
+                total_sell_quantity = self._qty(total_sell_quantity + quantity)
                 trade_stats["sell_trades_count"] += 1
                 trade_stats["sell_volume_base"] = self._money(trade_stats["sell_volume_base"] + gross)
+                trade_stats["sell_quantity"] = self._qty(trade_stats["sell_quantity"] + quantity)
                 current_quantity = Decimal(position["quantity"])
                 if current_quantity <= 0 or current_quantity < quantity:
                     raise ValueError(f"Broken FX history for {currency}: sell exceeds available quantity")
@@ -271,6 +279,8 @@ class CurrencyService:
             "sell_trades_count": total_sell_trades,
             "buy_volume_base": self._money(total_buy_volume_base),
             "sell_volume_base": self._money(total_sell_volume_base),
+            "buy_average_rate": self._rate(Decimal(total_buy_volume_base) / Decimal(total_buy_quantity)) if total_buy_quantity > 0 else self._rate(0),
+            "sell_average_rate": self._rate(Decimal(total_sell_volume_base) / Decimal(total_sell_quantity)) if total_sell_quantity > 0 else self._rate(0),
             "positions": positions,
             "positions_by_currency": {item["currency"]: item for item in positions},
             "trade_stats_by_currency": trade_stats_by_currency,
@@ -320,6 +330,8 @@ class CurrencyService:
                     "sell_trades_count": 0,
                     "buy_volume_base": self._money(0),
                     "sell_volume_base": self._money(0),
+                    "buy_quantity": self._qty(0),
+                    "sell_quantity": self._qty(0),
                 },
             )
             if normalized_currency
@@ -328,8 +340,18 @@ class CurrencyService:
                 "sell_trades_count": computed["sell_trades_count"],
                 "buy_volume_base": computed["buy_volume_base"],
                 "sell_volume_base": computed["sell_volume_base"],
+                "buy_average_rate": computed["buy_average_rate"],
+                "sell_average_rate": computed["sell_average_rate"],
             }
         )
+        buy_average_rate = trade_stats.get("buy_average_rate")
+        if buy_average_rate is None:
+            buy_quantity = Decimal(trade_stats["buy_quantity"])
+            buy_average_rate = self._rate(Decimal(trade_stats["buy_volume_base"]) / buy_quantity) if buy_quantity > 0 else self._rate(0)
+        sell_average_rate = trade_stats.get("sell_average_rate")
+        if sell_average_rate is None:
+            sell_quantity = Decimal(trade_stats["sell_quantity"])
+            sell_average_rate = self._rate(Decimal(trade_stats["sell_volume_base"]) / sell_quantity) if sell_quantity > 0 else self._rate(0)
         return {
             "base_currency": computed["base_currency"],
             "tracked_currencies": computed["tracked_currencies"],
@@ -341,6 +363,8 @@ class CurrencyService:
             "sell_trades_count": int(trade_stats["sell_trades_count"]),
             "buy_volume_base": self._money(trade_stats["buy_volume_base"]),
             "sell_volume_base": self._money(trade_stats["sell_volume_base"]),
+            "buy_average_rate": self._rate(buy_average_rate),
+            "sell_average_rate": self._rate(sell_average_rate),
             "positions": positions,
             "recent_trades": trades,
             "current_rates": current_rates,

@@ -105,6 +105,8 @@ class DashboardService:
             "currency_sell_trades_count": currency_summary["sell_trades_count"],
             "currency_buy_volume_base": currency_summary["buy_volume_base"],
             "currency_sell_volume_base": currency_summary["sell_volume_base"],
+            "currency_buy_average_rate": currency_summary["buy_average_rate"],
+            "currency_sell_average_rate": currency_summary["sell_average_rate"],
             "active_currency_positions": currency_summary["active_positions"],
             "tracked_currency_positions": tracked_positions,
         }
