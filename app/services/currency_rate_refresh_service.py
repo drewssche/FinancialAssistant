@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -76,8 +77,8 @@ class CurrencyRateRefreshService:
         fetched = self._fetch_rates(missing)
         refreshed: list[dict] = []
         for currency in missing:
-            rate = fetched.get(currency)
-            if rate is None:
+            rate_payload = fetched.get(currency)
+            if rate_payload is None:
                 log_background_job_event(
                     "currency_rate_refresh",
                     "currency_skipped",
@@ -86,12 +87,42 @@ class CurrencyRateRefreshService:
                     reason="rate_not_available",
                 )
                 continue
+            if isinstance(rate_payload, dict):
+                rate = rate_payload["rate"]
+                effective_date = rate_payload.get("effective_date") or target_date
+                effective_date_inferred = rate_payload.get("effective_date_inferred", True)
+            else:
+                rate = rate_payload
+                effective_date = target_date
+                effective_date_inferred = True
+            latest_pair = latest_rate_pairs.get(currency)
+            latest_row = latest_pair[0] if latest_pair else None
+            if effective_date > target_date:
+                effective_date = target_date
+            if (
+                not force
+                and latest_row
+                and effective_date_inferred
+                and latest_row.rate_date < target_date
+                and Decimal(str(rate)) == Decimal(str(latest_row.rate))
+            ):
+                log_background_job_event(
+                    "currency_rate_refresh",
+                    "currency_skipped",
+                    user_id=user_id,
+                    currency=currency,
+                    reason="latest_official_rate_not_published_yet",
+                    latest_rate_date=latest_row.rate_date.isoformat(),
+                )
+                continue
+            if not force and latest_row and effective_date <= latest_row.rate_date:
+                continue
             refreshed.append(
                 self.currency_service.upsert_rate(
                     user_id=user_id,
                     currency=currency,
                     rate=rate,
-                    rate_date=target_date,
+                    rate_date=effective_date,
                     source="nbrb_auto",
                 )
             )
@@ -157,8 +188,8 @@ class CurrencyRateRefreshService:
             timezone_name = str(ui_prefs.get("browser_timezone") or "").strip()
         return timezone_name or "Europe/Minsk"
 
-    def _fetch_rates(self, currencies: list[str]) -> dict[str, float]:
-        results: dict[str, float] = {}
+    def _fetch_rates(self, currencies: list[str]) -> dict[str, dict]:
+        results: dict[str, dict] = {}
         if not currencies:
             return results
         with httpx.Client(timeout=10.0) as client:
@@ -169,7 +200,12 @@ class CurrencyRateRefreshService:
                 raw_rate = payload.get("Cur_OfficialRate")
                 if raw_rate is None:
                     raise ValueError(f"Missing Cur_OfficialRate for {currency}")
-                results[currency] = float(raw_rate)
+                effective_date = self._extract_effective_date(payload)
+                results[currency] = {
+                    "rate": float(raw_rate),
+                    "effective_date": effective_date,
+                    "effective_date_inferred": effective_date is None,
+                }
         return results
 
     def _fetch_rate_for_date(self, currency: str, rate_date: date) -> float | None:
@@ -188,3 +224,21 @@ class CurrencyRateRefreshService:
             return base_url
         separator = "&" if "?" in base_url else "?"
         return f"{base_url}{separator}ondate={rate_date.isoformat()}"
+
+    def _extract_effective_date(self, payload: dict) -> date | None:
+        for key in ("Date", "Cur_Date", "Cur_DateStart"):
+            raw = payload.get(key)
+            if raw in (None, ""):
+                continue
+            text = str(raw).strip()
+            if not text:
+                continue
+            normalized = text.replace("Z", "+00:00")
+            try:
+                return datetime.fromisoformat(normalized).date()
+            except ValueError:
+                try:
+                    return date.fromisoformat(text[:10])
+                except ValueError:
+                    continue
+        return None

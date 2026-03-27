@@ -171,9 +171,11 @@
       }
       const deltaValue = Number(item.change_value || 0);
       const hasDelta = item.change_value !== null && item.change_value !== undefined;
+      const rateDateIso = item.rate_date ? String(item.rate_date) : "";
+      const isStale = Boolean(rateDateIso) && rateDateIso < core.getTodayIso();
       const deltaTone = deltaValue > 0 ? "positive" : deltaValue < 0 ? "negative" : "neutral";
       const deltaLabel = hasDelta
-        ? `За день ${formatSignedRate(item.change_value)} · ${formatSignedPercent(item.change_pct || 0)}`
+        ? `${isStale ? "К предыдущему курсу" : "За день"} ${formatSignedRate(item.change_value)} · ${formatSignedPercent(item.change_pct || 0)}`
         : "Нет предыдущего курса для сравнения";
       const rateDate = item.rate_date ? core.formatDateRu(item.rate_date) : "без даты";
       const source = item.source ? String(item.source).trim() : "manual";
@@ -183,11 +185,11 @@
           <div class="dashboard-currency-rate-head">
             <strong>${core.escapeHtml ? core.escapeHtml(currencyLabel) : currencyLabel}</strong>
             <span class="dashboard-currency-rate-badge dashboard-currency-rate-badge-${deltaTone}">
-              ${hasDelta ? formatSignedRate(item.change_value) : "новый"}
+              ${isStale ? "последний" : (hasDelta ? formatSignedRate(item.change_value) : "новый")}
             </span>
           </div>
           <div class="dashboard-currency-rate-value">${Number(item.rate || 0).toFixed(4)}</div>
-          <div class="dashboard-currency-rate-meta muted-small">Официальный курс к BYN · ${rateDate}</div>
+          <div class="dashboard-currency-rate-meta muted-small">${isStale ? "Последний доступный курс к BYN" : "Официальный курс к BYN"} · ${rateDate}</div>
           <div class="dashboard-currency-rate-delta dashboard-currency-rate-delta-${deltaTone}">${deltaLabel}</div>
           <div class="dashboard-currency-rate-source muted-small">Источник: ${core.escapeHtml ? core.escapeHtml(source) : source}</div>
           <div class="dashboard-currency-rate-actions">
