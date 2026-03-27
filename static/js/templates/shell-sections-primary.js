@@ -326,6 +326,13 @@
                   <button class="segmented-btn" data-operations-quick-view="uncategorized" type="button">Без категории</button>
                 </div>
               </div>
+              <div class="analytics-switch-group operations-quickviews-group">
+                <span class="muted-small">Сортировка</span>
+                <div class="segmented" id="operationsSortTabs" role="tablist" aria-label="Сортировка операций">
+                  <button class="segmented-btn active" data-op-sort="date" type="button">По дате</button>
+                  <button class="segmented-btn" data-op-sort="amount" type="button">По сумме</button>
+                </div>
+              </div>
             </div>
             <div class="table-search-row operations-workflow-row">
               <div class="analytics-switch-group operations-quickviews-group">

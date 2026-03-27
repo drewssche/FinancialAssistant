@@ -40,7 +40,7 @@
   place-items: center;
   padding: 20px;
   overflow-y: auto;
-  z-index: 40;
+  z-index: 140;
   overscroll-behavior: contain;
 }
 

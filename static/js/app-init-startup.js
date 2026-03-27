@@ -55,6 +55,7 @@
     }
 
     if (state.token) {
+      core.showApp();
       getSessionFeature().bootstrapApp?.().catch((err) => {
         if (!state.token) {
           core.showLogin(String(err));

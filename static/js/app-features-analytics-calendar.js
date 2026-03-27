@@ -77,6 +77,14 @@
     return window.App.getRuntimeModule?.("analytics") || {};
   }
 
+  function getLoadingSkeletons() {
+    return window.App.getRuntimeModule?.("loading-skeletons") || {};
+  }
+
+  function getInlineRefreshState() {
+    return window.App.getRuntimeModule?.("inline-refresh-state") || {};
+  }
+
   function syncMonthLabelByView(dateObj, view) {
     if (!el.analyticsMonthLabel) {
       return;
@@ -247,47 +255,65 @@
     const month = state.analyticsMonthAnchor;
     const view = state.analyticsCalendarView || "month";
     applyCalendarViewUi();
+    if (!state.analyticsCalendarHydrated && state.activeSection === "analytics" && (state.analyticsTab || "calendar") === "calendar") {
+      getLoadingSkeletons().renderAnalyticsCalendarSkeleton?.();
+    }
+    const refreshState = getInlineRefreshState();
+    const shouldRefreshInline = state.analyticsCalendarHydrated;
+    if (shouldRefreshInline) {
+      refreshState.begin?.(el.analyticsCalendarPanel, "Обновляется");
+    }
 
-    if (view === "year") {
-      const year = anchor.getUTCFullYear();
-      const cacheKey = `analytics:calendar-year:${year}`;
+    try {
+      if (view === "year") {
+        const year = anchor.getUTCFullYear();
+        const cacheKey = `analytics:calendar-year:${year}`;
+        if (!force) {
+          const cached = core.getUiRequestCache(cacheKey, CALENDAR_CACHE_TTL_MS);
+          if (cached) {
+            renderAnalyticsCalendarYear(cached);
+            renderCalendarTotals(cached, "year");
+            state.analyticsCalendarHydrated = true;
+            window.requestAnimationFrame(syncCalendarScrollFade);
+            return cached;
+          }
+        }
+        const data = await core.requestJson(`/api/v1/dashboard/analytics/calendar/year?year=${year}`, {
+          headers: core.authHeaders(),
+        });
+        core.setUiRequestCache(cacheKey, data);
+        renderAnalyticsCalendarYear(data);
+        renderCalendarTotals(data, "year");
+        state.analyticsCalendarHydrated = true;
+        window.requestAnimationFrame(syncCalendarScrollFade);
+        return data;
+      }
+
+      const cacheKey = `analytics:calendar:month=${month}`;
       if (!force) {
         const cached = core.getUiRequestCache(cacheKey, CALENDAR_CACHE_TTL_MS);
         if (cached) {
-          renderAnalyticsCalendarYear(cached);
-          renderCalendarTotals(cached, "year");
+          renderAnalyticsCalendarMonth(cached);
+          renderCalendarTotals(cached, "month");
+          state.analyticsCalendarHydrated = true;
           window.requestAnimationFrame(syncCalendarScrollFade);
           return cached;
         }
       }
-      const data = await core.requestJson(`/api/v1/dashboard/analytics/calendar/year?year=${year}`, {
+      const data = await core.requestJson(`/api/v1/dashboard/analytics/calendar?month=${encodeURIComponent(month)}`, {
         headers: core.authHeaders(),
       });
       core.setUiRequestCache(cacheKey, data);
-      renderAnalyticsCalendarYear(data);
-      renderCalendarTotals(data, "year");
+      renderAnalyticsCalendarMonth(data);
+      renderCalendarTotals(data, "month");
+      state.analyticsCalendarHydrated = true;
       window.requestAnimationFrame(syncCalendarScrollFade);
       return data;
-    }
-
-    const cacheKey = `analytics:calendar:month=${month}`;
-    if (!force) {
-      const cached = core.getUiRequestCache(cacheKey, CALENDAR_CACHE_TTL_MS);
-      if (cached) {
-        renderAnalyticsCalendarMonth(cached);
-        renderCalendarTotals(cached, "month");
-        window.requestAnimationFrame(syncCalendarScrollFade);
-        return cached;
+    } finally {
+      if (shouldRefreshInline) {
+        refreshState.end?.(el.analyticsCalendarPanel);
       }
     }
-    const data = await core.requestJson(`/api/v1/dashboard/analytics/calendar?month=${encodeURIComponent(month)}`, {
-      headers: core.authHeaders(),
-    });
-    core.setUiRequestCache(cacheKey, data);
-    renderAnalyticsCalendarMonth(data);
-    renderCalendarTotals(data, "month");
-    window.requestAnimationFrame(syncCalendarScrollFade);
-    return data;
   }
 
   async function shiftAnalyticsMonth(step) {

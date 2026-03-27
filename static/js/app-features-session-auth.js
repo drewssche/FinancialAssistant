@@ -138,6 +138,16 @@
     state.operationsLoading = false;
     state.firstOperationDate = "";
     state.allTimeAnchorResolved = false;
+    state.dashboardDebtSummaryLoaded = false;
+    state.dashboardAnalyticsHydrated = false;
+    state.dashboardDebtsHydrated = false;
+    state.dashboardPlansHydrated = false;
+    state.plansSectionHydrated = false;
+    state.debtsSectionHydrated = false;
+    state.operationsSectionHydrated = false;
+    state.analyticsStructureHydrated = false;
+    state.analyticsCalendarHydrated = false;
+    state.analyticsTrendHydrated = false;
     state.total = 0;
     state.uiRequestCache.clear();
     operationModal.closeCreateModal();

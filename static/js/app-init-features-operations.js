@@ -83,6 +83,21 @@
         });
       });
     }
+    if (el.operationsSortTabs && actions.setOperationsSortPreset) {
+      el.operationsSortTabs.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-op-sort]");
+        if (!btn) {
+          return;
+        }
+        if (state.operationSortPreset === btn.dataset.opSort) {
+          return;
+        }
+        core.runAction({
+          errorPrefix: "Ошибка применения сортировки",
+          action: () => actions.setOperationsSortPreset(btn.dataset.opSort),
+        });
+      });
+    }
     if (el.selectVisibleOperationsBtn && actions.selectVisibleOperations) {
       el.selectVisibleOperationsBtn.addEventListener("click", () => {
         actions.selectVisibleOperations();

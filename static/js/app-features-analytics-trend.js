@@ -5,6 +5,14 @@
   const escapeHtml = shared.escapeHtml || ((value) => String(value ?? ""));
   const sharedFormatPct = shared.formatPct || ((value) => String(value ?? ""));
 
+  function getLoadingSkeletons() {
+    return window.App.getRuntimeModule?.("loading-skeletons") || {};
+  }
+
+  function getInlineRefreshState() {
+    return window.App.getRuntimeModule?.("inline-refresh-state") || {};
+  }
+
   function pointsToPolyline(points, valueExtractor, width, height, minValue, maxValue) {
     if (!points.length) {
       return "";
@@ -236,21 +244,40 @@
 
   async function loadAnalyticsTrend(options = {}) {
     const force = options.force === true;
+    const skeletons = getLoadingSkeletons();
+    if (!state.analyticsTrendHydrated && state.activeSection === "analytics" && (state.analyticsTab || "calendar") === "trends") {
+      skeletons.renderAnalyticsTrendSkeleton?.();
+    }
+    const refreshState = getInlineRefreshState();
+    const shouldRefreshInline = state.analyticsTrendHydrated;
+    if (shouldRefreshInline) {
+      refreshState.begin?.(el.analyticsTrendsPanel, "Обновляется");
+    }
     const params = trendQueryParams();
     const cacheKey = `analytics:trend:${params.toString()}`;
-    if (!force) {
-      const cached = core.getUiRequestCache(cacheKey, TREND_CACHE_TTL_MS);
-      if (cached) {
-        renderAnalyticsTrend(cached);
-        return cached;
+    try {
+      if (!force) {
+        const cached = core.getUiRequestCache(cacheKey, TREND_CACHE_TTL_MS);
+        if (cached) {
+          renderAnalyticsTrend(cached);
+          skeletons.clearAnalyticsTrendSkeletonState?.();
+          state.analyticsTrendHydrated = true;
+          return cached;
+        }
+      }
+      const data = await core.requestJson(`/api/v1/dashboard/analytics/trend?${params.toString()}`, {
+        headers: core.authHeaders(),
+      });
+      core.setUiRequestCache(cacheKey, data);
+      renderAnalyticsTrend(data);
+      skeletons.clearAnalyticsTrendSkeletonState?.();
+      state.analyticsTrendHydrated = true;
+      return data;
+    } finally {
+      if (shouldRefreshInline) {
+        refreshState.end?.(el.analyticsTrendsPanel);
       }
     }
-    const data = await core.requestJson(`/api/v1/dashboard/analytics/trend?${params.toString()}`, {
-      headers: core.authHeaders(),
-    });
-    core.setUiRequestCache(cacheKey, data);
-    renderAnalyticsTrend(data);
-    return data;
   }
 
   async function loadDashboardAnalyticsPreview(options = {}) {

@@ -666,6 +666,22 @@ def test_repayment_moves_debt_to_closed(static_server_url: str, page_with_debts_
 
 
 @pytest.mark.e2e
+def test_debt_history_action_closes_popover_before_modal(static_server_url: str, page_with_debts_api_mock):
+    page = page_with_debts_api_mock
+    page.goto(f"{static_server_url}/static/index.html")
+    _login_via_mock_telegram(page)
+
+    page.click("button[data-section='debts']")
+    page.wait_for_selector("#debtsSection:not(.hidden)")
+    page.click("button[data-table-menu-trigger='debt-9001']")
+    page.wait_for_selector(".table-kebab-popover[data-table-menu='debt-9001']:not(.hidden)")
+    page.click("button[data-history-debt-id='9001']")
+    page.wait_for_selector("#debtHistoryModal:not(.hidden)")
+
+    assert page.locator(".table-kebab-popover[data-table-menu='debt-9001']").is_hidden()
+
+
+@pytest.mark.e2e
 def test_dashboard_debt_actions_load_full_debt_cache_before_open(static_server_url: str, page_with_debts_api_mock):
     page = page_with_debts_api_mock
     page.goto(f"{static_server_url}/static/index.html")

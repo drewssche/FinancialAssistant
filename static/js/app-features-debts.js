@@ -30,6 +30,10 @@
     return window.App.getRuntimeModule?.("session") || {};
   }
 
+  function getLoadingSkeletons() {
+    return window.App.getRuntimeModule?.("loading-skeletons") || {};
+  }
+
   function resetDebtCardsPagination() {
     state.debtCardsVisibleLimit = Number(state.debtCardsPageSize || 20);
   }
@@ -83,14 +87,19 @@
   async function loadDebtsCards(options = {}) {
     const force = options.force === true;
     const cacheKey = buildDebtsCardsCacheKey();
+    const skeletons = getLoadingSkeletons();
     if (!force) {
       const cached = core.getUiRequestCache(cacheKey, DEBTS_CARDS_CACHE_TTL_MS);
       if (cached) {
         state.debtCardsCache = cached;
         resetDebtCardsPagination();
         renderDebtCards(cached);
+        state.debtsSectionHydrated = true;
         return;
       }
+    }
+    if (!force && !state.debtsSectionHydrated && state.activeSection === "debts") {
+      skeletons.renderDebtsSectionSkeleton?.();
     }
     if (debtsRequestController) {
       debtsRequestController.abort();
@@ -116,6 +125,7 @@
       core.setUiRequestCache(cacheKey, cards);
       resetDebtCardsPagination();
       renderDebtCards(cards);
+      state.debtsSectionHydrated = true;
     } catch (err) {
       if (core.isAbortError && core.isAbortError(err)) {
         return;

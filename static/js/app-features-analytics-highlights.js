@@ -17,6 +17,14 @@
     return window.App.getRuntimeModule?.("operations") || {};
   }
 
+  function getLoadingSkeletons() {
+    return window.App.getRuntimeModule?.("loading-skeletons") || {};
+  }
+
+  function getInlineRefreshState() {
+    return window.App.getRuntimeModule?.("inline-refresh-state") || {};
+  }
+
   function getDashboardPeriodBounds() {
     const period = state.dashboardAnalyticsPeriod || "month";
     if (period === "custom" && state.dashboardAnalyticsDateFrom && state.dashboardAnalyticsDateTo) {
@@ -33,6 +41,10 @@
     const operationsFeature = getOperationsFeature();
     if (operationsFeature.ensureAllTimeBounds) {
       await operationsFeature.ensureAllTimeBounds(false, state.dashboardAnalyticsPeriod || "month");
+    }
+    const skeletons = getLoadingSkeletons();
+    if (!state.dashboardAnalyticsHydrated) {
+      skeletons.renderDashboardAnalyticsSkeleton?.();
     }
     const force = options.force === true;
     const period = state.dashboardAnalyticsPeriod || "month";
@@ -53,17 +65,34 @@
         const highlightsUi = getHighlightsUi();
         highlightsUi.renderPeriodKpiBlocks?.(el.dashboardKpiPrimary, el.dashboardKpiSecondary, el.dashboardAnalyticsPeriodLabel, cached, formatPct);
         highlightsUi.renderDashboardBreakdown?.(cached);
+        skeletons.clearDashboardAnalyticsSkeletonState?.();
+        state.dashboardAnalyticsHydrated = true;
         return cached;
       }
     }
-    const data = await core.requestJson(`/api/v1/dashboard/analytics/highlights?${params.toString()}`, {
-      headers: core.authHeaders(),
-    });
-    core.setUiRequestCache(cacheKey, data);
-    const highlightsUi = getHighlightsUi();
-    highlightsUi.renderPeriodKpiBlocks?.(el.dashboardKpiPrimary, el.dashboardKpiSecondary, el.dashboardAnalyticsPeriodLabel, data, formatPct);
-    highlightsUi.renderDashboardBreakdown?.(data);
-    return data;
+    const refreshState = getInlineRefreshState();
+    const shouldRefreshInline = state.dashboardAnalyticsHydrated;
+    if (shouldRefreshInline) {
+      refreshState.begin?.(el.dashboardAnalyticsPanel, "Обновляется");
+      refreshState.begin?.(el.dashboardStructurePanel, "Обновляется");
+    }
+    try {
+      const data = await core.requestJson(`/api/v1/dashboard/analytics/highlights?${params.toString()}`, {
+        headers: core.authHeaders(),
+      });
+      core.setUiRequestCache(cacheKey, data);
+      const highlightsUi = getHighlightsUi();
+      highlightsUi.renderPeriodKpiBlocks?.(el.dashboardKpiPrimary, el.dashboardKpiSecondary, el.dashboardAnalyticsPeriodLabel, data, formatPct);
+      highlightsUi.renderDashboardBreakdown?.(data);
+      skeletons.clearDashboardAnalyticsSkeletonState?.();
+      state.dashboardAnalyticsHydrated = true;
+      return data;
+    } finally {
+      if (shouldRefreshInline) {
+        refreshState.end?.(el.dashboardAnalyticsPanel);
+        refreshState.end?.(el.dashboardStructurePanel);
+      }
+    }
   }
 
   function buildHighlightsParams(month) {
@@ -91,14 +120,25 @@
     }
     const params = buildHighlightsParams(month);
     const cacheKey = `analytics:highlights:${params.toString()}`;
+    const skeletons = getLoadingSkeletons();
+    if (!state.analyticsStructureHydrated && state.activeSection === "analytics" && (state.analyticsTab || "calendar") === "structure") {
+      skeletons.renderAnalyticsStructureSkeleton?.();
+    }
 
     if (!force) {
       const cached = core.getUiRequestCache(cacheKey, HIGHLIGHTS_CACHE_TTL_MS);
       if (cached) {
         const highlightsUi = getHighlightsUi();
         highlightsUi.renderAnalyticsHighlights?.(cached);
+        skeletons.clearAnalyticsStructureSkeletonState?.();
+        state.analyticsStructureHydrated = true;
         return cached;
       }
+    }
+    const refreshState = getInlineRefreshState();
+    const shouldRefreshInline = state.analyticsStructureHydrated;
+    if (shouldRefreshInline) {
+      refreshState.begin?.(el.analyticsStructurePanel, "Обновляется");
     }
 
     try {
@@ -108,6 +148,8 @@
       core.setUiRequestCache(cacheKey, data);
       const highlightsUi = getHighlightsUi();
       highlightsUi.renderAnalyticsHighlights?.(data);
+      skeletons.clearAnalyticsStructureSkeletonState?.();
+      state.analyticsStructureHydrated = true;
       return data;
     } catch (err) {
       const message = core.errorMessage ? core.errorMessage(err) : String(err);
@@ -149,7 +191,13 @@
       };
       const highlightsUi = getHighlightsUi();
       highlightsUi.renderAnalyticsHighlights?.(fallback);
+      skeletons.clearAnalyticsStructureSkeletonState?.();
+      state.analyticsStructureHydrated = true;
       return fallback;
+    } finally {
+      if (shouldRefreshInline) {
+        refreshState.end?.(el.analyticsStructurePanel);
+      }
     }
   }
 

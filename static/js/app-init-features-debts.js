@@ -73,6 +73,7 @@
         }
         event.preventDefault();
         event.stopPropagation();
+        debtsUiCoordinator?.closeDebtActionPopover?.({ event, pickerUtils });
         actions.openDebtRepaymentModal(Number(btn.dataset.repayDebtId || 0));
       }, true);
       document.addEventListener("click", (event) => {
@@ -107,6 +108,7 @@
         }
         event.preventDefault();
         event.stopPropagation();
+        debtsUiCoordinator?.closeDebtActionPopover?.({ event, pickerUtils });
         actions.openEditDebtModal(Number(btn.dataset.editDebtId || 0));
       }, true);
     }
@@ -118,6 +120,7 @@
         }
         event.preventDefault();
         event.stopPropagation();
+        debtsUiCoordinator?.closeDebtActionPopover?.({ event, pickerUtils });
         actions.openDebtHistoryModal(Number(btn.dataset.historyDebtId || 0));
       }, true);
     }

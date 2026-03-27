@@ -58,6 +58,20 @@
     return true;
   }
 
+  function closeDebtActionPopover({ event, pickerUtils }) {
+    const menu = event.target.closest(".mobile-card-actions-popover, .table-kebab-popover");
+    if (!menu || !pickerUtils?.setPopoverOpen) {
+      return;
+    }
+    const owners = Array.isArray(menu.__appPopoverOwners) ? menu.__appPopoverOwners : [];
+    const onClose = typeof menu.__appPopoverOnClose === "function" ? menu.__appPopoverOnClose : null;
+    pickerUtils.setPopoverOpen(menu, false, { owners });
+    if (onClose) {
+      onClose();
+    }
+    owners.forEach((owner) => owner?.blur?.());
+  }
+
   function handleDebtsCardsClick({
     event,
     pickerUtils,
@@ -71,24 +85,28 @@
     }
     const editBtn = event.target.closest("button[data-edit-debt-id]");
     if (editBtn) {
+      closeDebtActionPopover({ event, pickerUtils });
       openEditDebtModal?.(Number(editBtn.dataset.editDebtId || 0));
       return true;
     }
 
     const historyBtn = event.target.closest("button[data-history-debt-id]");
     if (historyBtn) {
+      closeDebtActionPopover({ event, pickerUtils });
       openDebtHistoryModal?.(Number(historyBtn.dataset.historyDebtId || 0));
       return true;
     }
 
     const deleteBtn = event.target.closest("button[data-delete-debt-id]");
     if (deleteBtn) {
+      closeDebtActionPopover({ event, pickerUtils });
       deleteDebtFlow?.(Number(deleteBtn.dataset.deleteDebtId || 0));
       return true;
     }
 
     const repayBtn = event.target.closest("button[data-repay-debt-id]");
     if (repayBtn && !repayBtn.disabled) {
+      closeDebtActionPopover({ event, pickerUtils });
       openDebtRepaymentModal?.(Number(repayBtn.dataset.repayDebtId || 0));
       return true;
     }
@@ -108,6 +126,7 @@
 
   const api = {
     toggleDebtMenu,
+    closeDebtActionPopover,
     handleDebtsCardsClick,
   };
 

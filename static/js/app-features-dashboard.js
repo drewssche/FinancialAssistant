@@ -12,6 +12,14 @@
     return window.App.getRuntimeModule?.("dashboard-data");
   }
 
+  function getLoadingSkeletons() {
+    return window.App.getRuntimeModule?.("loading-skeletons") || {};
+  }
+
+  function getInlineRefreshState() {
+    return window.App.getRuntimeModule?.("inline-refresh-state") || {};
+  }
+
   function dueBadgeLabel(stateValue, dueDate) {
     if (stateValue === "overdue") {
       return "Просрочено";
@@ -62,6 +70,8 @@
 
 
   async function loadDashboard() {
+    const skeletons = getLoadingSkeletons();
+    const refreshState = getInlineRefreshState();
     const ui = core.getUiSettings ? core.getUiSettings() : null;
     if (el.dashboardAnalyticsPanel && ui) {
       el.dashboardAnalyticsPanel.classList.toggle("hidden", ui.showDashboardAnalytics === false);
@@ -75,49 +85,65 @@
     if (el.dashboardDebtsPanel && ui) {
       el.dashboardDebtsPanel.classList.toggle("hidden", ui.showDashboardDebts === false);
     }
+    if (!state.dashboardDebtSummaryLoaded) {
+      skeletons.renderDashboardDebtsSkeleton?.();
+    }
+    if (!state.dashboardPlansHydrated) {
+      skeletons.renderDashboardPlansSkeleton?.();
+    }
     const dashboardData = getDashboardData();
-    const data = await (dashboardData.loadAllTimeSummary
-      ? dashboardData.loadAllTimeSummary()
-      : core.requestJson("/api/v1/dashboard/summary?period=all_time", { headers: core.authHeaders() }));
-    if (el.debtLendTotal) {
-      el.debtLendTotal.textContent = core.formatMoney(data.debt_lend_outstanding);
+    const shouldRefreshDebts = state.dashboardDebtSummaryLoaded || state.dashboardDebtsHydrated;
+    const shouldRefreshPlans = state.dashboardPlansHydrated;
+    if (shouldRefreshDebts && el.dashboardDebtsPanel && core.isDashboardDebtsVisible()) {
+      refreshState.begin?.(el.dashboardDebtsPanel, "Обновляется");
     }
-    if (el.debtBorrowTotal) {
-      el.debtBorrowTotal.textContent = core.formatMoney(data.debt_borrow_outstanding);
+    if (shouldRefreshPlans && el.dashboardPlansPanel && ui?.showDashboardOperations !== false) {
+      refreshState.begin?.(el.dashboardPlansPanel, "Обновляется");
     }
-    if (el.debtNetTotal) {
-      el.debtNetTotal.textContent = core.formatMoney(data.debt_net_position);
-    }
-    if (el.dashboardDebtKpiGrid) {
-      const lendTotal = Number(data.debt_lend_outstanding || 0);
-      const borrowTotal = Number(data.debt_borrow_outstanding || 0);
-      const netTotal = Number(data.debt_net_position || 0);
-      const hasDebtKpi = Math.abs(lendTotal) > 0.000001 || Math.abs(borrowTotal) > 0.000001 || Math.abs(netTotal) > 0.000001;
-      el.dashboardDebtKpiGrid.classList.toggle("hidden", !hasDebtKpi);
-    }
+    try {
+      const data = await (dashboardData.loadAllTimeSummary
+        ? dashboardData.loadAllTimeSummary()
+        : core.requestJson("/api/v1/dashboard/summary?period=all_time", { headers: core.authHeaders() }));
+      if (el.debtLendTotal) {
+        el.debtLendTotal.textContent = core.formatMoney(data.debt_lend_outstanding);
+      }
+      if (el.debtBorrowTotal) {
+        el.debtBorrowTotal.textContent = core.formatMoney(data.debt_borrow_outstanding);
+      }
+      if (el.debtNetTotal) {
+        el.debtNetTotal.textContent = core.formatMoney(data.debt_net_position);
+      }
+      if (el.dashboardDebtKpiGrid) {
+        const lendTotal = Number(data.debt_lend_outstanding || 0);
+        const borrowTotal = Number(data.debt_borrow_outstanding || 0);
+        const netTotal = Number(data.debt_net_position || 0);
+        const hasDebtKpi = Math.abs(lendTotal) > 0.000001 || Math.abs(borrowTotal) > 0.000001 || Math.abs(netTotal) > 0.000001;
+        el.dashboardDebtKpiGrid.classList.toggle("hidden", !hasDebtKpi);
+      }
+      state.dashboardDebtSummaryLoaded = true;
 
-    if (el.dashboardPlansPanel && ui?.showDashboardOperations !== false) {
-      await getPlansFeature().loadPlans?.();
-    } else {
-      getPlansFeature().renderDashboardPlans?.();
-    }
-
-    if (!core.isDashboardDebtsVisible()) {
-      return;
-    }
-
-    if (el.dashboardDebtsList) {
-      const cards = await (dashboardData.loadDebtPreview
-        ? dashboardData.loadDebtPreview({ limit: 6 })
-        : core.requestJson("/api/v1/dashboard/debts/preview?limit=6", { headers: core.authHeaders() }));
-      el.dashboardDebtsList.innerHTML = "";
-      if (!cards.length) {
-        const empty = document.createElement("div");
-        empty.className = "muted-small";
-        empty.textContent = "Нет активных долгов";
-        el.dashboardDebtsList.appendChild(empty);
+      if (el.dashboardPlansPanel && ui?.showDashboardOperations !== false) {
+        await getPlansFeature().loadPlans?.();
       } else {
-        for (const card of cards) {
+        getPlansFeature().renderDashboardPlans?.();
+      }
+
+      if (!core.isDashboardDebtsVisible()) {
+        return;
+      }
+
+      if (el.dashboardDebtsList) {
+        const cards = await (dashboardData.loadDebtPreview
+          ? dashboardData.loadDebtPreview({ limit: 6 })
+          : core.requestJson("/api/v1/dashboard/debts/preview?limit=6", { headers: core.authHeaders() }));
+        el.dashboardDebtsList.innerHTML = "";
+        if (!cards.length) {
+          const empty = document.createElement("div");
+          empty.className = "muted-small";
+          empty.textContent = "Нет активных долгов";
+          el.dashboardDebtsList.appendChild(empty);
+        } else {
+          for (const card of cards) {
           const now = new Date();
           const activeDebts = (card.debts || []).filter((debt) => Number(debt.outstanding_total || 0) > 0);
           activeDebts.sort((a, b) => {
@@ -204,8 +230,17 @@
               <div class="debt-card-compact-col debt-card-compact-rows debt-child-zone">${rowsHtml}</div>
             </div>
           `;
-          el.dashboardDebtsList.appendChild(compact);
+            el.dashboardDebtsList.appendChild(compact);
+          }
         }
+        state.dashboardDebtsHydrated = true;
+      }
+    } finally {
+      if (shouldRefreshDebts && el.dashboardDebtsPanel) {
+        refreshState.end?.(el.dashboardDebtsPanel);
+      }
+      if (shouldRefreshPlans && el.dashboardPlansPanel) {
+        refreshState.end?.(el.dashboardPlansPanel);
       }
     }
   }

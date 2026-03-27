@@ -1,0 +1,41 @@
+.panel-inline-refresh {
+  position: relative;
+}
+
+.panel-inline-refresh::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(12, 18, 32, 0.08) 0%, rgba(12, 18, 32, 0.16) 100%);
+  pointer-events: none;
+}
+
+.panel-inline-refresh::after {
+  content: attr(data-inline-refresh-label);
+  position: absolute;
+  top: 0.9rem;
+  right: 1rem;
+  padding: 0.28rem 0.65rem;
+  border: 1px solid rgba(108, 167, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(17, 25, 42, 0.88);
+  color: rgba(228, 237, 255, 0.94);
+  font-size: 0.74rem;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  box-shadow: 0 8px 18px rgba(4, 8, 18, 0.2);
+  pointer-events: none;
+  animation: inlineRefreshPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes inlineRefreshPulse {
+  0%, 100% {
+    opacity: 0.72;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+}

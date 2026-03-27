@@ -39,6 +39,14 @@
     return window.App.getRuntimeModule?.("bulk-ui") || {};
   }
 
+  function getLoadingSkeletons() {
+    return window.App.getRuntimeModule?.("loading-skeletons") || {};
+  }
+
+  function getInlineRefreshState() {
+    return window.App.getRuntimeModule?.("inline-refresh-state") || {};
+  }
+
   function invalidateAllTimeAnchor() {
     state.firstOperationDate = "";
     state.allTimeAnchorResolved = false;
@@ -144,6 +152,18 @@
     }
     if (el.operationsTotalCount) {
       el.operationsTotalCount.textContent = String(data?.total || 0);
+    }
+  }
+
+  async function loadOperationsSummarySafely(options = {}) {
+    try {
+      return await loadOperationsSummary(options);
+    } catch (err) {
+      const message = core.errorMessage ? core.errorMessage(err) : String(err);
+      if (!String(message).includes("[404]")) {
+        core.setStatus(`Не удалось обновить сводку операций: ${message}`);
+      }
+      return null;
     }
   }
 
@@ -262,6 +282,7 @@
 
   async function loadOperations(options = {}) {
     await ensureAllTimeBounds();
+    core.syncSegmentedActive(el.operationsSortTabs, "op-sort", state.operationSortPreset || "date");
     renderOperationsActiveFilters();
     const reset = options.reset !== false;
     const force = options.force === true;
@@ -288,9 +309,19 @@
       const cached = core.getUiRequestCache(cacheKey, OPERATIONS_CACHE_TTL_MS);
       if (cached) {
         applyOperationsPageData(cached, reset, requestPage);
-        await loadOperationsSummary({ force: false });
+        await loadOperationsSummarySafely({ force: false });
+        state.operationsSectionHydrated = true;
         return;
       }
+    }
+
+    if (reset && !state.operationsSectionHydrated && state.activeSection === "operations") {
+      getLoadingSkeletons().renderOperationsSectionSkeleton?.();
+    }
+    const refreshState = getInlineRefreshState();
+    const shouldRefreshInline = reset && state.operationsSectionHydrated && state.activeSection === "operations";
+    if (shouldRefreshInline) {
+      refreshState.begin?.(el.operationsSection, "Обновляется");
     }
 
     state.operationsLoading = true;
@@ -307,13 +338,17 @@
       }
       core.setUiRequestCache(cacheKey, data);
       applyOperationsPageData(data, reset, requestPage);
-      await loadOperationsSummary({ force });
+      await loadOperationsSummarySafely({ force });
+      state.operationsSectionHydrated = true;
     } catch (err) {
       if (core.isAbortError && core.isAbortError(err)) {
         return;
       }
       throw err;
     } finally {
+      if (shouldRefreshInline) {
+        refreshState.end?.(el.operationsSection);
+      }
       if (operationsRequestController === requestController) {
         operationsRequestController = null;
         state.operationsLoading = false;

@@ -4,6 +4,8 @@
 @import url("/static/css/layout-debts.css");
 @import url("/static/css/layout-receipts.css");
 @import url("/static/css/components-core.css");
+@import url("/static/css/components-inline-refresh.css");
+@import url("/static/css/components-skeletons.css");
 @import url("/static/css/components-analytics-summary.css");
 @import url("/static/css/components-analytics-breakdown.css");
 @import url("/static/css/components-controls.css");

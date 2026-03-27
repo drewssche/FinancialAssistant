@@ -40,23 +40,35 @@ class RedisRuntimeAdvisoryService:
         dashboard_summary_p95_ms = float(latency_total.get("p95_ms") or 0.0)
         dashboard_summary_samples = int(latency_total.get("samples") or 0)
 
+        local_entries_breach = local_cache_entries >= _SAFE_LOCAL_CACHE_ENTRIES
+        local_reads_breach = local_fallback_reads >= _SAFE_LOCAL_FALLBACK_READS
+        local_writes_breach = local_fallback_writes >= _SAFE_LOCAL_FALLBACK_WRITES
+        dashboard_p95_breach = (
+            dashboard_summary_samples >= _P95_MIN_SAMPLES
+            and dashboard_summary_p95_ms > _SAFE_DASHBOARD_SUMMARY_P95_MS
+        )
+
+        # Read/write counters are process-lifetime cumulative signals, so on their own
+        # they are too noisy for small single-user installs. Use them only as supporting
+        # evidence once we already see real pressure via cache footprint or latency.
+        should_advise = local_entries_breach or dashboard_p95_breach
+        if not should_advise:
+            return None
+
         breaches: list[str] = []
-        if local_cache_entries >= _SAFE_LOCAL_CACHE_ENTRIES:
+        if local_entries_breach:
             breaches.append(
                 f"local cache entries: safe <= {_SAFE_LOCAL_CACHE_ENTRIES}, current={local_cache_entries}"
             )
-        if local_fallback_reads >= _SAFE_LOCAL_FALLBACK_READS:
+        if local_reads_breach:
             breaches.append(
                 f"local fallback reads: safe <= {_SAFE_LOCAL_FALLBACK_READS}, current={local_fallback_reads}"
             )
-        if local_fallback_writes >= _SAFE_LOCAL_FALLBACK_WRITES:
+        if local_writes_breach:
             breaches.append(
                 f"local fallback writes: safe <= {_SAFE_LOCAL_FALLBACK_WRITES}, current={local_fallback_writes}"
             )
-        if (
-            dashboard_summary_samples >= _P95_MIN_SAMPLES
-            and dashboard_summary_p95_ms > _SAFE_DASHBOARD_SUMMARY_P95_MS
-        ):
+        if dashboard_p95_breach:
             breaches.append(
                 "dashboard summary p95: "
                 f"safe <= {_SAFE_DASHBOARD_SUMMARY_P95_MS:.0f}ms, current={dashboard_summary_p95_ms:.1f}ms"

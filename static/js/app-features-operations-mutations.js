@@ -262,6 +262,7 @@
 
     async function setOperationsSortPreset(value, savePreferences) {
       state.operationSortPreset = value || "date";
+      localStorage.setItem("operations_sort_preset", state.operationSortPreset);
       core.syncSegmentedActive(el.operationsSortTabs, "op-sort", state.operationSortPreset);
       await loadOperations({ reset: true });
       await savePreferences();

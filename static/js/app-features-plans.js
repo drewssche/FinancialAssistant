@@ -27,6 +27,10 @@
     return window.App.getRuntimeModule?.("picker-utils") || {};
   }
 
+  function getLoadingSkeletons() {
+    return window.App.getRuntimeModule?.("loading-skeletons") || {};
+  }
+
   function getPlansCacheKey() {
     return "plans:list";
   }
@@ -810,8 +814,16 @@
         state.plansHistoryItems = Array.isArray(cached.history?.items) ? cached.history.items : [];
         await renderPlansSection();
         renderDashboardPlans();
+        state.dashboardPlansHydrated = true;
+        state.plansSectionHydrated = true;
         return;
       }
+    }
+    if (!state.plansSectionHydrated && state.activeSection === "plans") {
+      getLoadingSkeletons().renderPlansSectionSkeleton?.();
+    }
+    if (!state.dashboardPlansHydrated && state.activeSection === "dashboard") {
+      getLoadingSkeletons().renderDashboardPlansSkeleton?.();
     }
     const [plansData, historyData] = await Promise.all([
       core.requestJson("/api/v1/plans", {
@@ -826,6 +838,8 @@
     core.setUiRequestCache?.(getPlansCacheKey(), { plans: plansData, history: historyData });
     await renderPlansSection();
     renderDashboardPlans();
+    state.dashboardPlansHydrated = true;
+    state.plansSectionHydrated = true;
   }
 
   async function setPlansTab(value) {
