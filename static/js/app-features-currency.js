@@ -90,6 +90,12 @@
 
   function renderPositions(data) {
     const positions = Array.isArray(data.positions) ? data.positions : [];
+    const positionsByCurrency = new Map(positions.map((item) => [String(item.currency || "").toUpperCase(), item]));
+    const currentRates = Array.isArray(data.current_rates) ? data.current_rates : [];
+    const currentRatesByCurrency = new Map(currentRates.map((item) => [String(item.currency || "").toUpperCase(), item]));
+    const trackedCurrencies = Array.isArray(data.tracked_currencies) && data.tracked_currencies.length
+      ? data.tracked_currencies.map((item) => String(item || "").toUpperCase()).filter(Boolean)
+      : getTrackedCurrencies();
     const baseCurrency = String(data.base_currency || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
     if (el.currencyBalancesRow) {
       const bynCard = `
@@ -99,13 +105,15 @@
           <div class="currency-balance-secondary">Текущая оценка всех открытых валютных позиций</div>
         </article>
       `;
-      const positionCards = positions.map((item) => {
-        const currencyLabel = core.formatCurrencyLabel(item.currency);
+      const positionCards = trackedCurrencies.map((currency) => {
+        const item = positionsByCurrency.get(currency) || null;
+        const currentRate = currentRatesByCurrency.get(currency) || null;
+        const currencyLabel = core.formatCurrencyLabel(currency);
         return `
           <article class="currency-balance-card">
             <div class="muted-small">${core.escapeHtml ? core.escapeHtml(currencyLabel) : currencyLabel}</div>
-            <strong>${core.formatAmount(item.quantity || 0)}</strong>
-            <div class="currency-balance-secondary">${core.formatMoney(item.current_value || 0, { currency: baseCurrency })} по текущему курсу · ${Number(item.current_rate || 0).toFixed(4)}</div>
+            <strong>${core.formatAmount(item?.quantity || 0)}</strong>
+            <div class="currency-balance-secondary">${core.formatMoney(item?.current_value || 0, { currency: baseCurrency })} по текущему курсу${currentRate?.rate ? ` · ${Number(currentRate.rate || 0).toFixed(4)}` : ""}</div>
           </article>
         `;
       });
@@ -115,7 +123,14 @@
       return;
     }
     if (!positions.length) {
-      el.currencyPositionsList.innerHTML = `<div class="muted-small">Пока нет открытых валютных позиций</div>`;
+      const trackedSummary = trackedCurrencies.length
+        ? `Отслеживаются: ${trackedCurrencies.map((currency) => core.formatCurrencyLabel(currency)).join(", ")}.`
+        : "Отслеживаемые валюты остаются в карточках выше.";
+      el.currencyPositionsList.innerHTML = `
+        <div class="muted-small">
+          Открытых валютных позиций пока нет. ${trackedSummary}
+        </div>
+      `;
       return;
     }
     el.currencyPositionsList.innerHTML = positions.map((item) => {
@@ -163,7 +178,10 @@
     }
     const trades = Array.isArray(data.recent_trades) ? data.recent_trades : [];
     if (!trades.length) {
-      el.currencyTradesBody.innerHTML = `<tr><td colspan="7" class="muted-small">Сделок пока нет</td></tr>`;
+      const emptyLabel = state.currencyFilter && state.currencyFilter !== "all"
+        ? `Сделок по ${core.formatCurrencyLabel(state.currencyFilter)} пока нет`
+        : "Сделок по отслеживаемым валютам пока нет";
+      el.currencyTradesBody.innerHTML = `<tr><td colspan="7" class="muted-small">${emptyLabel}</td></tr>`;
       return;
     }
     el.currencyTradesBody.innerHTML = trades.map((item) => `

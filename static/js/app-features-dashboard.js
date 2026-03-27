@@ -20,6 +20,14 @@
     return window.App.getRuntimeModule?.("inline-refresh-state") || {};
   }
 
+  function getTrackedCurrencies() {
+    const raw = state.preferences?.data?.currency?.tracked_currencies;
+    if (!Array.isArray(raw) || !raw.length) {
+      return ["USD", "EUR"];
+    }
+    return raw.map((item) => String(item || "").toUpperCase()).filter(Boolean);
+  }
+
   function dueBadgeLabel(stateValue, dueDate) {
     if (stateValue === "overdue") {
       return "Просрочено";
@@ -72,6 +80,8 @@
     }
     if (el.dashboardCurrencyBalances) {
       const positions = Array.isArray(summary.tracked_currency_positions) ? summary.tracked_currency_positions : [];
+      const positionsByCurrency = new Map(positions.map((item) => [String(item.currency || "").toUpperCase(), item]));
+      const trackedCurrencies = getTrackedCurrencies();
       const baseCurrency = core.getCurrencyConfig?.().code || "BYN";
       const periodBalance = Number(summary.balance || 0);
       const currencyCurrentValue = Number(summary.currency_current_value || 0);
@@ -83,25 +93,17 @@
           <div class="currency-balance-secondary">баланс периода ${core.formatMoney(periodBalance, { currency: baseCurrency })} + валюта ${core.formatMoney(currencyCurrentValue, { currency: baseCurrency })}</div>
         </article>
       `;
-      const positionCards = positions.map((item) => {
-        const currencyLabel = core.formatCurrencyLabel(item.currency);
+      const positionCards = trackedCurrencies.map((currency) => {
+        const item = positionsByCurrency.get(currency) || null;
+        const currencyLabel = core.formatCurrencyLabel(currency);
         return `
           <article class="currency-balance-card">
             <div class="muted-small">${core.escapeHtml ? core.escapeHtml(currencyLabel) : currencyLabel}</div>
-            <strong>${core.formatAmount(item.quantity || 0)}</strong>
-            <div class="currency-balance-secondary">${core.formatMoney(item.current_value || 0, { currency: baseCurrency })} по текущему курсу · ${Number(item.current_rate || 0).toFixed(4)}</div>
+            <strong>${core.formatAmount(item?.quantity || 0)}</strong>
+            <div class="currency-balance-secondary">${core.formatMoney(item?.current_value || 0, { currency: baseCurrency })} по текущему курсу${item?.current_rate ? ` · ${Number(item.current_rate || 0).toFixed(4)}` : ""}</div>
           </article>
         `;
       });
-      if (!positionCards.length) {
-        positionCards.push(`
-          <article class="currency-balance-card">
-            <div class="muted-small">Открытые позиции</div>
-            <strong>0</strong>
-            <div class="currency-balance-secondary">Пока нет валютных остатков для отдельных карточек</div>
-          </article>
-        `);
-      }
       el.dashboardCurrencyBalances.innerHTML = [bynCard, ...positionCards].join("");
     }
     if (el.dashboardCurrencyPositions) {

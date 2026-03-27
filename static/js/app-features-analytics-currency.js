@@ -53,6 +53,23 @@
     return { dateFrom: format(start), dateTo: format(end) };
   }
 
+  function normalizeHistoryPoints(points, targetDate) {
+    const raw = Array.isArray(points) ? points.filter((item) => item?.rate_date && item?.rate !== undefined && item?.rate !== null) : [];
+    if (!raw.length) {
+      return [];
+    }
+    const sorted = [...raw].sort((left, right) => String(left.rate_date).localeCompare(String(right.rate_date)));
+    const last = sorted[sorted.length - 1];
+    if (targetDate && String(last.rate_date) < String(targetDate)) {
+      sorted.push({
+        ...last,
+        rate_date: targetDate,
+        synthetic: true,
+      });
+    }
+    return sorted;
+  }
+
   function renderSummary(overview) {
     if (el.analyticsCurrencyCurrentValue) {
       el.analyticsCurrencyCurrentValue.textContent = core.formatMoney(overview.total_current_value || 0);
@@ -92,6 +109,12 @@
     }
     if (el.analyticsCurrencyBalancesRow) {
       const positions = Array.isArray(overview.positions) ? overview.positions : [];
+      const positionsByCurrency = new Map(positions.map((item) => [String(item.currency || "").toUpperCase(), item]));
+      const currentRates = Array.isArray(overview.current_rates) ? overview.current_rates : [];
+      const currentRatesByCurrency = new Map(currentRates.map((item) => [String(item.currency || "").toUpperCase(), item]));
+      const trackedCurrencies = Array.isArray(overview.tracked_currencies) && overview.tracked_currencies.length
+        ? overview.tracked_currencies.map((item) => String(item || "").toUpperCase()).filter(Boolean)
+        : getTrackedCurrencies();
       const baseCurrency = String(overview.base_currency || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
       const bynCard = `
         <article class="currency-balance-card">
@@ -100,19 +123,30 @@
           <div class="currency-balance-secondary">Текущая оценка валютных позиций в аналитике</div>
         </article>
       `;
-      const positionCards = positions.map((item) => `
+      const positionCards = trackedCurrencies.map((currency) => {
+        const item = positionsByCurrency.get(currency) || null;
+        const currentRate = currentRatesByCurrency.get(currency) || null;
+        return `
         <article class="currency-balance-card">
-          <div class="muted-small">${core.formatCurrencyLabel(item.currency)}</div>
-          <strong>${core.formatAmount(item.quantity || 0)}</strong>
-          <div class="currency-balance-secondary">${core.formatMoney(item.current_value || 0, { currency: baseCurrency })} по текущему курсу · ${Number(item.current_rate || 0).toFixed(4)}</div>
+          <div class="muted-small">${core.formatCurrencyLabel(currency)}</div>
+          <strong>${core.formatAmount(item?.quantity || 0)}</strong>
+          <div class="currency-balance-secondary">${core.formatMoney(item?.current_value || 0, { currency: baseCurrency })} по текущему курсу${currentRate?.rate ? ` · ${Number(currentRate.rate || 0).toFixed(4)}` : ""}</div>
         </article>
-      `);
+      `;
+      });
       el.analyticsCurrencyBalancesRow.innerHTML = [bynCard, ...positionCards].join("");
     }
     if (el.analyticsCurrencySecondary) {
       const positions = Array.isArray(overview.positions) ? overview.positions : [];
       if (!positions.length) {
-        el.analyticsCurrencySecondary.innerHTML = `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Позиция пока не открыта</span>`;
+        const trackedCurrencies = Array.isArray(overview.tracked_currencies) && overview.tracked_currencies.length
+          ? overview.tracked_currencies.map((item) => core.formatCurrencyLabel(item)).join(", ")
+          : getTrackedCurrencies().map((item) => core.formatCurrencyLabel(item)).join(", ");
+        el.analyticsCurrencySecondary.innerHTML = `
+          <span class="analytics-kpi-chip analytics-kpi-chip-neutral">
+            Открытых позиций пока нет. Отслеживаются: ${trackedCurrencies}
+          </span>
+        `;
         return;
       }
       el.analyticsCurrencySecondary.innerHTML = positions.map((item) => {
@@ -159,7 +193,10 @@
     }
     const trades = Array.isArray(overview.recent_trades) ? overview.recent_trades : [];
     if (!trades.length) {
-      el.analyticsCurrencyTradesBody.innerHTML = `<tr><td colspan="7" class="muted-small">Сделок пока нет</td></tr>`;
+      const emptyLabel = state.analyticsCurrencyFilter && state.analyticsCurrencyFilter !== "all"
+        ? `Сделок по ${core.formatCurrencyLabel(state.analyticsCurrencyFilter)} пока нет`
+        : "Сделок по отслеживаемым валютам пока нет";
+      el.analyticsCurrencyTradesBody.innerHTML = `<tr><td colspan="7" class="muted-small">${emptyLabel}</td></tr>`;
       return;
     }
     el.analyticsCurrencyTradesBody.innerHTML = trades.map((item) => `
@@ -561,7 +598,7 @@
       const histories = await Promise.all(tracked.map(async (currency, index) => ({
         currency,
         color: getSeriesColor(index),
-        points: await fetchCurrencyHistory(currency, range),
+        points: normalizeHistoryPoints(await fetchCurrencyHistory(currency, range), range.dateTo),
       })));
       const seriesList = histories.map((item) => ({
         currency: item.currency,
@@ -571,7 +608,8 @@
       }));
       renderMultiCurrencyChart(seriesList);
     } else {
-      const history = await fetchCurrencyHistory(state.analyticsCurrencyFilter, getHistoryRange());
+      const range = getHistoryRange();
+      const history = normalizeHistoryPoints(await fetchCurrencyHistory(state.analyticsCurrencyFilter, range), range.dateTo);
       renderChart(history);
     }
     state.analyticsCurrencyHydrated = true;

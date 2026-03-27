@@ -294,6 +294,7 @@
 }
 
 .currency-balance-grid {
+  margin-top: var(--space-3);
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr));
   gap: var(--space-3);
@@ -321,6 +322,11 @@
   color: #9db0d4;
   font-size: 11px;
   line-height: 1.25;
+}
+
+#currencyPositionsList,
+#analyticsCurrencySecondary {
+  margin-top: var(--space-3);
 }
 
 .dashboard-currency-rate-card {
