@@ -14,6 +14,7 @@ from app.core.cache import (
 from app.core.metrics import increment_counter, observe_latency_ms
 from app.repositories.debt_repo import DebtRepository
 from app.repositories.operation_repo import OperationRepository
+from app.services.currency_service import CurrencyService
 from app.services.dashboard_analytics import DashboardAnalyticsService
 from app.services.redis_runtime_advisory_service import RedisRuntimeAdvisoryService
 
@@ -71,6 +72,22 @@ class DashboardService:
         )
         debt_lend_outstanding = self._money(debt_lend_outstanding)
         debt_borrow_outstanding = self._money(debt_borrow_outstanding)
+        currency_service = CurrencyService(self.db)
+        currency_summary = currency_service.compute_positions(user_id=user_id)
+        tracked_codes = currency_summary["tracked_currencies"]
+        tracked_positions = [
+            {
+                "currency": item["currency"],
+                "quantity": item["quantity"],
+                "average_buy_rate": item["average_buy_rate"],
+                "current_rate": item["current_rate"],
+                "current_rate_date": item["current_rate_date"],
+                "current_value": item["current_value"],
+                "result_value": item["result_value"],
+            }
+            for item in currency_summary["positions"]
+            if item["currency"] in tracked_codes
+        ]
         payload = {
             "date_from": resolved_date_from.isoformat(),
             "date_to": resolved_date_to.isoformat(),
@@ -81,6 +98,11 @@ class DashboardService:
             "debt_borrow_outstanding": debt_borrow_outstanding,
             "debt_net_position": debt_lend_outstanding - debt_borrow_outstanding,
             "active_debt_cards": active_debt_cards,
+            "currency_book_value": currency_summary["total_book_value"],
+            "currency_current_value": currency_summary["total_current_value"],
+            "currency_result_value": currency_summary["total_result_value"],
+            "active_currency_positions": currency_summary["active_positions"],
+            "tracked_currency_positions": tracked_positions,
         }
         set_json(cache_key, payload)
         observe_latency_ms("dashboard_summary_latency_miss_compute_ms", (perf_counter() - miss_compute_started) * 1000)

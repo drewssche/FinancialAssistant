@@ -26,6 +26,10 @@
     return window.App.getRuntimeModule?.("operations") || {};
   }
 
+  function getCurrencyFeature() {
+    return window.App.getRuntimeModule?.("currency") || {};
+  }
+
   function getPlansFeature() {
     return window.App.getRuntimeModule?.("plans") || {};
   }
@@ -56,7 +60,9 @@
       operationsQuickView: state.operationsQuickView,
       operationsCategoryFilterId: state.operationsCategoryFilterId,
       operationsCategoryFilterName: state.operationsCategoryFilterName,
+      currencyFilter: state.currencyFilter,
       analyticsTab: state.analyticsTab,
+      analyticsCurrencyFilter: state.analyticsCurrencyFilter,
       analyticsCalendarView: state.analyticsCalendarView,
       analyticsGlobalPeriod: state.analyticsGlobalPeriod,
       analyticsGlobalDateFrom: state.analyticsGlobalDateFrom,
@@ -84,7 +90,9 @@
     state.operationsQuickView = snapshot.operationsQuickView || "all";
     state.operationsCategoryFilterId = snapshot.operationsCategoryFilterId ?? null;
     state.operationsCategoryFilterName = snapshot.operationsCategoryFilterName || "";
+    state.currencyFilter = snapshot.currencyFilter || "all";
     state.analyticsTab = snapshot.analyticsTab || "calendar";
+    state.analyticsCurrencyFilter = snapshot.analyticsCurrencyFilter || "all";
     state.analyticsCalendarView = snapshot.analyticsCalendarView || "month";
     state.analyticsGlobalPeriod = snapshot.analyticsGlobalPeriod || "month";
     state.analyticsGlobalDateFrom = snapshot.analyticsGlobalDateFrom || "";
@@ -133,6 +141,7 @@
                   ? "к Трендам"
                   : "к Аналитике",
         operations: "к Операциям",
+        currency: "к Валюте",
         plans: "к Планам",
         debts: "к Долгам",
         categories: "к Категориям",
@@ -168,6 +177,7 @@
       { id: "dashboard", node: el.dashboardSection, title: "Дашборд", subtitle: "Доходы, расходы и операции за выбранный период" },
       { id: "analytics", node: el.analyticsSection, title: "Аналитика", subtitle: "Календарь, тренды и динамика расходов/доходов" },
       { id: "operations", node: el.operationsSection, title: "Операции", subtitle: "Рабочий список операций, фильтры и массовые действия" },
+      { id: "currency", node: el.currencySection, title: "Валюта", subtitle: "Позиции, сделки и текущие курсы валют" },
       { id: "plans", node: el.plansSection, title: "Планы", subtitle: "Будущие операции и регулярные обязательства до подтверждения" },
       { id: "debts", node: el.debtsSection, title: "Долги", subtitle: "Карточки задолженностей и погашения" },
       { id: "categories", node: el.categoriesSection, title: "Категории", subtitle: "Управление категориями доходов и расходов" },
@@ -314,6 +324,9 @@
     }
     if (sectionId === "operations" && getOperationsFeature().loadOperations) {
       await getOperationsFeature().loadOperations({ reset: true });
+    }
+    if (sectionId === "currency" && getCurrencyFeature().loadCurrencySection) {
+      await getCurrencyFeature().loadCurrencySection({ force: true });
     }
     if (sectionId === "plans" && getPlansFeature().loadPlans) {
       await getPlansFeature().loadPlans();

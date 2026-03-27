@@ -103,6 +103,22 @@
     }
 
     function getCreateFormPreviewItem() {
+      if (el.opEntryMode?.value === "currency") {
+        const quantity = core.resolveMoneyInput(el.currencyQuantity?.value || 0);
+        const unitPrice = core.resolveMoneyInput(el.currencyUnitPrice?.value || 0);
+        const fee = core.resolveMoneyInput(el.currencyFee?.value || 0);
+        return {
+          id: 0,
+          trade_date: core.parseDateInputValue(el.currencyTradeDateModal?.value || "") || core.getTodayIso(),
+          side: el.currencySide?.value || "buy",
+          asset_currency: String(el.currencyAsset?.value || "USD").toUpperCase(),
+          quote_currency: String(el.currencyQuote?.value || "BYN").toUpperCase(),
+          quantity: quantity.previewValue || 0,
+          unit_price: unitPrice.previewValue || 0,
+          fee: fee.previewValue || 0,
+          note: el.currencyNote?.value || "",
+        };
+      }
       const receiptItems = (Array.isArray(state.createReceiptItems) ? state.createReceiptItems : [])
         .filter((item) => Number(item?.quantity || 0) > 0 && Number(item?.unit_price || 0) > 0 && String(item?.name || "").trim())
         .map((item) => ({
@@ -163,7 +179,22 @@
       if (el.createPreviewTitle) {
         el.createPreviewTitle.textContent = "Превью строки в таблице";
       }
+      if (el.createPreviewHeadOperation) {
+        el.createPreviewHeadOperation.classList.remove("hidden");
+      }
+      if (el.createPreviewHeadDebt) {
+        el.createPreviewHeadDebt.classList.add("hidden");
+      }
+      if (el.createPreviewHeadCurrency) {
+        el.createPreviewHeadCurrency.classList.add("hidden");
+      }
       if (el.opEntryMode.value === "debt") {
+        if (el.createPreviewHeadOperation) {
+          el.createPreviewHeadOperation.classList.add("hidden");
+        }
+        if (el.createPreviewHeadDebt) {
+          el.createPreviewHeadDebt.classList.remove("hidden");
+        }
         const row = document.createElement("tr");
         const snapshot = typeof getDebtPreviewSnapshot === "function" ? getDebtPreviewSnapshot() : null;
         const direction = snapshot?.direction === "borrow" ? "borrow" : "lend";
@@ -189,6 +220,28 @@
         row.appendChild(createPreviewCellButton("Комментарий", core.highlightText(debtNote || "", ""), "debtNote", "preview-cell-note"));
         el.createPreviewBody.appendChild(row);
         updateDebtDueHint();
+        return;
+      }
+      if (el.opEntryMode?.value === "currency") {
+        if (el.createPreviewHeadOperation) {
+          el.createPreviewHeadOperation.classList.add("hidden");
+        }
+        if (el.createPreviewHeadCurrency) {
+          el.createPreviewHeadCurrency.classList.remove("hidden");
+        }
+        const item = getCreateFormPreviewItem();
+        const row = document.createElement("tr");
+        const sideLabel = item.side === "sell" ? "Продажа" : "Покупка";
+        const sideClass = item.side === "sell" ? "expense" : "income";
+        row.classList.add("preview-row", `kind-row-${sideClass}`);
+        row.appendChild(createPreviewCellButton("Дата", core.formatDateRu(item.trade_date), "currencyTradeDateModal"));
+        row.appendChild(createPreviewCellButton("Действие", `<span class="kind-pill kind-pill-${sideClass}">${sideLabel}</span>`, "createCurrencySideSwitch"));
+        row.appendChild(createPreviewCellButton("Валюта", `${item.asset_currency}/${item.quote_currency}`, "currencyAsset"));
+        row.appendChild(createPreviewCellButton("Количество", core.formatAmount(item.quantity || 0), "currencyQuantity"));
+        row.appendChild(createPreviewCellButton("Курс", Number(item.unit_price || 0).toFixed(4), "currencyUnitPrice"));
+        row.appendChild(createPreviewCellButton("Комиссия", core.formatMoney(item.fee || 0, { currency: item.quote_currency || "BYN" }), "currencyFee"));
+        row.appendChild(createPreviewCellButton("Комментарий", core.highlightText(item.note || "", ""), "currencyNote", "preview-cell-note"));
+        el.createPreviewBody.appendChild(row);
         return;
       }
       if (state.createFlowMode === "plan") {

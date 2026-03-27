@@ -129,6 +129,43 @@ def test_dashboard_summary_includes_debt_metrics(client: TestClient):
     assert payload["active_debt_cards"] == 2
 
 
+def test_dashboard_summary_includes_currency_metrics(client: TestClient):
+    rate_response = client.put(
+        "/api/v1/currency/rates/current",
+        json={
+            "currency": "USD",
+            "rate": "3.40",
+            "rate_date": "2026-03-27",
+        },
+    )
+    assert rate_response.status_code == 200
+    trade_response = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "50",
+            "unit_price": "3.10",
+            "fee": "0",
+            "trade_date": "2026-03-01",
+            "note": "USD buy",
+        },
+    )
+    assert trade_response.status_code == 201
+
+    summary = client.get("/api/v1/dashboard/summary", params={"period": "all_time"})
+    assert summary.status_code == 200
+    payload = summary.json()
+    assert payload["currency_book_value"] == "155.00"
+    assert payload["currency_current_value"] == "170.00"
+    assert payload["currency_result_value"] == "15.00"
+    assert payload["active_currency_positions"] == 1
+    assert len(payload["tracked_currency_positions"]) == 1
+    assert payload["tracked_currency_positions"][0]["currency"] == "USD"
+    assert payload["tracked_currency_positions"][0]["current_rate"] == "3.400000"
+
+
 def test_dashboard_debt_preview_returns_compact_active_cards(client: TestClient):
     client.post(
         "/api/v1/debts",

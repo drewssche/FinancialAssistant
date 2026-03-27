@@ -75,6 +75,7 @@
       editItemSourceName: "",
       analyticsMonthAnchor: "",
       analyticsTab: "overview",
+      analyticsCurrencyFilter: "all",
       analyticsCalendarView: "month",
       analyticsGlobalPeriod: "month",
       analyticsGlobalDateFrom: "",
@@ -100,9 +101,11 @@
       plansSectionHydrated: false,
       debtsSectionHydrated: false,
       operationsSectionHydrated: false,
+      currencySectionHydrated: false,
       analyticsStructureHydrated: false,
       analyticsCalendarHydrated: false,
       analyticsTrendHydrated: false,
+      analyticsCurrencyHydrated: false,
       isAdmin: false,
       accessStatus: "pending",
       adminUserStatusFilter: "pending",
@@ -111,6 +114,7 @@
       batchItemTemplatePlan: null,
       isCompactMobileViewport: false,
       createFlowMode: "operation",
+      currencyFilter: "all",
     };
   }
 

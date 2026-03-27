@@ -79,6 +79,16 @@
     core.syncSegmentedActive(el.createDebtDirectionSwitch, "debt-direction", nextDirection);
     updateCreatePreview();
   }
+  function setCurrencySide(side) {
+    const nextSide = side === "sell" ? "sell" : "buy";
+    if (el.currencySide) {
+      el.currencySide.value = nextSide;
+    }
+    if (el.createCurrencySideSwitch) {
+      core.syncSegmentedActive(el.createCurrencySideSwitch, "currency-side", nextSide);
+    }
+    updateCreatePreview();
+  }
   function applyDebtCurrencyUi() {
     core.applyMoneyInputs();
   }
@@ -108,7 +118,7 @@
     if (el.createOperationModeSwitch) {
       core.syncSegmentedActive(el.createOperationModeSwitch, "operation-mode", nextMode);
     }
-    el.opReceiptBlock?.classList.toggle("hidden", el.opEntryMode?.value === "debt" || nextMode !== "receipt");
+    el.opReceiptBlock?.classList.toggle("hidden", el.opEntryMode?.value === "debt" || el.opEntryMode?.value === "currency" || nextMode !== "receipt");
     setReceiptEnabled(nextMode === "receipt", "create");
     updateCreateCategoryFieldUi();
     renderCreateCategoryPicker();
@@ -130,44 +140,49 @@
     updateEditPreview();
   }
   function setCreateEntryMode(mode) {
-    const nextMode = mode === "debt" ? "debt" : "operation";
+    const nextMode = mode === "debt" ? "debt" : mode === "currency" ? "currency" : "operation";
     el.opEntryMode.value = nextMode;
     core.syncSegmentedActive(el.createEntryModeSwitch, "entry-mode", nextMode);
     const isDebt = nextMode === "debt";
+    const isCurrency = nextMode === "currency";
     el.createKindSwitch.classList.toggle("hidden", isDebt);
-    el.createOperationModeSwitch?.classList.toggle("hidden", isDebt);
-    el.createCategoryField.classList.toggle("hidden", isDebt);
-    el.opReceiptBlock?.classList.toggle("hidden", isDebt || !isCreateReceiptMode());
+    el.createOperationModeSwitch?.classList.toggle("hidden", isDebt || isCurrency);
+    el.createCategoryField.classList.toggle("hidden", isDebt || isCurrency);
+    el.opReceiptBlock?.classList.toggle("hidden", isDebt || isCurrency || !isCreateReceiptMode());
     const opAmountField = document.getElementById("opAmountField");
     const opAmount = document.getElementById("opAmount");
     const opDateField = document.getElementById("opDateField");
     const opDate = document.getElementById("opDate");
     const opNote = document.getElementById("opNote");
     if (opAmountField) {
-      opAmountField.classList.toggle("hidden", isDebt);
+      opAmountField.classList.toggle("hidden", isDebt || isCurrency);
     }
     if (opAmount) {
-      opAmount.required = !isDebt;
-      if (!isDebt && isCreateReceiptMode()) {
+      opAmount.required = !isDebt && !isCurrency;
+      if (!isDebt && !isCurrency && isCreateReceiptMode()) {
         opAmount.required = false;
       }
     }
     if (opDateField) {
-      opDateField.classList.toggle("hidden", isDebt);
+      opDateField.classList.toggle("hidden", isDebt || isCurrency);
     }
     if (opDate) {
-      opDate.required = !isDebt;
+      opDate.required = !isDebt && !isCurrency;
     }
     if (opNote) {
-      opNote.classList.toggle("hidden", isDebt);
+      opNote.classList.toggle("hidden", isDebt || isCurrency);
       opNote.placeholder = isDebt ? "Комментарий (долг)" : "Комментарий";
     }
     el.createDebtFields.classList.toggle("hidden", !isDebt);
+    el.createCurrencyFields?.classList.toggle("hidden", !isCurrency);
     if (el.createPreviewHeadOperation && el.createPreviewHeadDebt) {
-      el.createPreviewHeadOperation.classList.toggle("hidden", isDebt);
+      el.createPreviewHeadOperation.classList.toggle("hidden", isDebt || isCurrency);
       el.createPreviewHeadDebt.classList.toggle("hidden", !isDebt);
     }
-    if (isDebt) {
+    if (el.createPreviewHeadCurrency) {
+      el.createPreviewHeadCurrency.classList.toggle("hidden", !isCurrency);
+    }
+    if (isDebt || isCurrency) {
       closeCreateCategoryPopover();
       closeDebtCounterpartyPopover();
     }
@@ -183,10 +198,17 @@
       if (submit) {
         submit.textContent = state.editDebtCreateId ? "Сохранить долг" : "Создать долг";
       }
+    } else if (isCurrency) {
+      if (el.currencyTradeDateModal && !el.currencyTradeDateModal.value) {
+        core.syncDateFieldValue(el.currencyTradeDateModal, core.getTodayIso());
+      }
+      if (submit) {
+        submit.textContent = "Сохранить валютную сделку";
+      }
     } else if (submit) {
       submit.textContent = "Добавить";
     }
-    if (!isDebt) {
+    if (!isDebt && !isCurrency) {
       updateCreateCategoryFieldUi();
     }
     updateCreatePreview();
@@ -270,6 +292,27 @@
     el.debtStartDate.value = "";
     el.debtDueDate.value = "";
     el.debtNote.value = "";
+    if (el.currencyAsset) {
+      el.currencyAsset.value = "USD";
+    }
+    if (el.currencyQuote) {
+      el.currencyQuote.value = "BYN";
+    }
+    if (el.currencyTradeDateModal) {
+      core.syncDateFieldValue(el.currencyTradeDateModal, core.getTodayIso());
+    }
+    if (el.currencyQuantity) {
+      el.currencyQuantity.value = "";
+    }
+    if (el.currencyUnitPrice) {
+      el.currencyUnitPrice.value = "";
+    }
+    if (el.currencyFee) {
+      el.currencyFee.value = "";
+    }
+    if (el.currencyNote) {
+      el.currencyNote.value = "";
+    }
     if (el.planRecurrenceBlock) {
       el.planRecurrenceBlock.classList.add("hidden");
     }
@@ -312,6 +355,7 @@
     el.planRecurrenceWorkdaysWrap?.classList.add("hidden");
     el.planRecurrenceMonthEndWrap?.classList.add("hidden");
     setDebtDirection("lend");
+    setCurrencySide("buy");
     applyDebtCurrencyUi();
     updateDebtDueHint();
     setCreateEntryMode("operation");
@@ -506,6 +550,7 @@
     renderReceiptItems,
     handleCreatePreviewClick,
     setDebtDirection,
+    setCurrencySide,
     setOperationKind,
     setCreateEntryMode,
     setCreateOperationMode,

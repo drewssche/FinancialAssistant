@@ -1,6 +1,16 @@
 from decimal import Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class DashboardCurrencyPosition(BaseModel):
+    currency: str
+    quantity: Decimal
+    average_buy_rate: Decimal
+    current_rate: Decimal
+    current_rate_date: str | None = None
+    current_value: Decimal
+    result_value: Decimal
 
 
 class DashboardSummary(BaseModel):
@@ -13,6 +23,11 @@ class DashboardSummary(BaseModel):
     debt_borrow_outstanding: Decimal
     debt_net_position: Decimal
     active_debt_cards: int
+    currency_book_value: Decimal = Decimal("0")
+    currency_current_value: Decimal = Decimal("0")
+    currency_result_value: Decimal = Decimal("0")
+    active_currency_positions: int = 0
+    tracked_currency_positions: list[DashboardCurrencyPosition] = Field(default_factory=list)
 
 
 class DashboardLatencyStats(BaseModel):

@@ -14,6 +14,7 @@
       calendar: window.App.getRuntimeModule?.("analytics-calendar-module"),
       trend: window.App.getRuntimeModule?.("analytics-trend-module"),
       highlights: window.App.getRuntimeModule?.("analytics-highlights-module"),
+      currency: window.App.getRuntimeModule?.("analytics-currency-module"),
     };
   }
 
@@ -23,6 +24,7 @@
       { id: "structure", node: el.analyticsStructurePanel },
       { id: "calendar", node: el.analyticsCalendarPanel },
       { id: "trends", node: el.analyticsTrendsPanel },
+      { id: "currency", node: el.analyticsCurrencyPanel },
     ];
     for (const item of panels) {
       if (!item.node) {
@@ -31,13 +33,13 @@
       item.node.classList.toggle("hidden", item.id !== tab);
     }
     if (el.analyticsGlobalScopePanel) {
-      el.analyticsGlobalScopePanel.classList.toggle("hidden", tab === "calendar");
+      el.analyticsGlobalScopePanel.classList.toggle("hidden", tab === "calendar" || tab === "currency");
     }
     core.syncSegmentedActive(el.analyticsViewTabs, "analytics-tab", tab);
   }
 
   function setAnalyticsTab(tab) {
-    const allowed = new Set(["structure", "calendar", "trends"]);
+    const allowed = new Set(["structure", "calendar", "trends", "currency"]);
     state.analyticsTab = allowed.has(tab) ? tab : "calendar";
     applyAnalyticsTabUi();
     if (state.analyticsTab === "structure") {
@@ -46,7 +48,7 @@
   }
 
   async function loadAnalyticsSection(options = {}) {
-    const { calendar, trend, highlights } = getAnalyticsModules();
+    const { calendar, trend, highlights, currency } = getAnalyticsModules();
     const tab = state.analyticsTab || "calendar";
 
     applyAnalyticsTabUi();
@@ -56,6 +58,9 @@
     }
     if (tab === "trends") {
       return trend?.loadAnalyticsTrend?.(options) || null;
+    }
+    if (tab === "currency") {
+      return currency?.loadAnalyticsCurrency?.(options) || null;
     }
     return highlights?.loadAnalyticsHighlights?.(options) || null;
   }
@@ -143,12 +148,13 @@
     await navigation.switchSection("operations");
   }
 
-  const { calendar = {}, trend = {}, highlights = {} } = getAnalyticsModules();
+  const { calendar = {}, trend = {}, highlights = {}, currency = {} } = getAnalyticsModules();
 
   const api = {
     loadAnalyticsCalendar: calendar.loadAnalyticsCalendar,
     loadAnalyticsTrend: trend.loadAnalyticsTrend,
     loadAnalyticsHighlights: highlights.loadAnalyticsHighlights,
+    loadAnalyticsCurrency: currency.loadAnalyticsCurrency,
     loadDashboardAnalyticsPreview: highlights.loadDashboardAnalyticsPreview,
     loadAnalyticsSection,
     shiftAnalyticsMonth: calendar.shiftAnalyticsMonth,

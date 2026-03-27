@@ -49,6 +49,42 @@
     return 4;
   }
 
+  function renderDashboardCurrencySummary(summary) {
+    const currencyPrefs = state.preferences?.data?.currency || {};
+    if (el.dashboardCurrencyPanel) {
+      el.dashboardCurrencyPanel.classList.toggle("hidden", currencyPrefs.show_dashboard_kpi === false);
+    }
+    if (el.dashboardCurrencyCurrentValue) {
+      el.dashboardCurrencyCurrentValue.textContent = core.formatMoney(summary.currency_current_value || 0);
+    }
+    if (el.dashboardCurrencyBookValue) {
+      el.dashboardCurrencyBookValue.textContent = core.formatMoney(summary.currency_book_value || 0);
+    }
+    if (el.dashboardCurrencyResultValue) {
+      el.dashboardCurrencyResultValue.textContent = core.formatMoney(summary.currency_result_value || 0);
+    }
+    if (el.dashboardCurrencyActiveCount) {
+      el.dashboardCurrencyActiveCount.textContent = String(summary.active_currency_positions || 0);
+    }
+    if (el.dashboardCurrencyPositions) {
+      const positions = Array.isArray(summary.tracked_currency_positions) ? summary.tracked_currency_positions : [];
+      if (!positions.length) {
+        el.dashboardCurrencyPositions.innerHTML = `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Пока нет открытых валютных позиций</span>`;
+        return;
+      }
+      el.dashboardCurrencyPositions.innerHTML = positions.map((item) => {
+        const signClass = Number(item.result_value || 0) >= 0 ? "analytics-kpi-chip-positive" : "analytics-kpi-chip-negative";
+        const rateDate = item.current_rate_date ? ` · курс ${core.formatDateRu(item.current_rate_date)}` : "";
+        return `
+          <span class="analytics-kpi-chip ${signClass}">
+            ${core.escapeHtml ? core.escapeHtml(item.currency) : item.currency}: ${core.formatMoney(item.current_value || 0)}
+            <span class="muted-small">остаток ${core.formatAmount(item.quantity || 0)} · ср. вход ${Number(item.average_buy_rate || 0).toFixed(4)} · текущий ${Number(item.current_rate || 0).toFixed(4)}${rateDate}</span>
+          </span>
+        `;
+      }).join("");
+    }
+  }
+
   function formatDateTimeRu(value) {
     if (!value) {
       return "";
@@ -120,6 +156,7 @@
         const hasDebtKpi = Math.abs(lendTotal) > 0.000001 || Math.abs(borrowTotal) > 0.000001 || Math.abs(netTotal) > 0.000001;
         el.dashboardDebtKpiGrid.classList.toggle("hidden", !hasDebtKpi);
       }
+      renderDashboardCurrencySummary(data);
       state.dashboardDebtSummaryLoaded = true;
 
       if (el.dashboardPlansPanel && ui?.showDashboardOperations !== false) {

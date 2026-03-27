@@ -23,6 +23,7 @@
             <button class="nav-btn" data-section="analytics">Аналитика</button>
             <div class="nav-group-title">Учет</div>
             <button class="nav-btn" data-section="operations">Операции</button>
+            <button class="nav-btn" data-section="currency">Валюта</button>
             <button class="nav-btn" data-section="plans">Планы</button>
             <button class="nav-btn" data-section="debts">Долги</button>
             <button class="nav-btn" data-section="categories">Категории</button>

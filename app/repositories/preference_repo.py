@@ -27,6 +27,11 @@ class PreferenceRepository:
                     "reminders_enabled": True,
                     "reminder_time": "09:00",
                 },
+                "currency": {
+                    "tracked_currencies": ["USD", "EUR"],
+                    "show_dashboard_kpi": True,
+                    "telegram_digest_enabled": False,
+                },
                 "ui": {
                     "timezone": "auto",
                     "browser_timezone": "",

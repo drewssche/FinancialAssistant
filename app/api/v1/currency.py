@@ -1,0 +1,86 @@
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
+from app.api.deps import get_current_user_id
+from app.db.session import get_db
+from app.schemas.currency import (
+    CurrencyOverviewOut,
+    CurrencyRateHistoryPointOut,
+    CurrencyRateOut,
+    CurrencyRateUpsert,
+    CurrencyTradeCreate,
+    CurrencyTradeOut,
+)
+from app.services.currency_service import CurrencyService
+
+router = APIRouter(prefix="/currency", tags=["currency"])
+
+
+@router.get("/overview", response_model=CurrencyOverviewOut)
+def get_currency_overview(
+    currency: str | None = Query(default=None, min_length=3, max_length=3),
+    trades_limit: int = Query(default=100, ge=1, le=500),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = CurrencyService(db)
+    try:
+        return service.get_overview(user_id=user_id, currency=currency, trades_limit=trades_limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post("/trades", response_model=CurrencyTradeOut, status_code=status.HTTP_201_CREATED)
+def create_currency_trade(
+    payload: CurrencyTradeCreate,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = CurrencyService(db)
+    try:
+        return service.create_trade(
+            user_id=user_id,
+            side=payload.side,
+            asset_currency=payload.asset_currency,
+            quote_currency=payload.quote_currency,
+            quantity=payload.quantity,
+            unit_price=payload.unit_price,
+            fee=payload.fee,
+            trade_date=payload.trade_date,
+            note=payload.note,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.put("/rates/current", response_model=CurrencyRateOut)
+def upsert_currency_rate(
+    payload: CurrencyRateUpsert,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = CurrencyService(db)
+    try:
+        return service.upsert_rate(
+            user_id=user_id,
+            currency=payload.currency,
+            rate=payload.rate,
+            rate_date=payload.rate_date,
+            source=payload.source,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/rates/history", response_model=list[CurrencyRateHistoryPointOut])
+def get_currency_rate_history(
+    currency: str = Query(min_length=3, max_length=3),
+    limit: int = Query(default=120, ge=1, le=365),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = CurrencyService(db)
+    try:
+        return service.get_rate_history(user_id=user_id, currency=currency, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

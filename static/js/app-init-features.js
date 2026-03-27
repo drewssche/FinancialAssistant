@@ -47,6 +47,14 @@
         };
       }
       const isDebt = el.opEntryMode?.value === "debt";
+      const isCurrency = el.opEntryMode?.value === "currency";
+      if (isCurrency) {
+        return {
+          pendingText: "Сохранение...",
+          successMessage: "Валютная сделка сохранена",
+          errorPrefix: "Ошибка сохранения валютной сделки",
+        };
+      }
       if (!isDebt) {
         return {
           pendingText: "Добавление...",

@@ -15,6 +15,7 @@
         <form id="createOperationForm" class="form-grid modal-grid create-modal-grid">
           <div class="segmented" id="createEntryModeSwitch" aria-label="Режим создания">
             <button class="segmented-btn active" data-entry-mode="operation" type="button">Обычная операция</button>
+            <button class="segmented-btn" data-entry-mode="currency" type="button">Валюта</button>
             <button class="segmented-btn" data-entry-mode="debt" type="button">Долг</button>
           </div>
           <input id="opEntryMode" type="hidden" value="operation" />
@@ -149,6 +150,42 @@
             </div>
             <input id="debtNote" type="text" placeholder="Комментарий" class="create-note-field" />
           </div>
+
+          <div id="createCurrencyFields" class="category-modal-form hidden">
+            <div class="segmented" id="createCurrencySideSwitch" aria-label="Действие с валютой">
+              <button class="segmented-btn active" data-currency-side="buy" type="button">Покупка</button>
+              <button class="segmented-btn" data-currency-side="sell" type="button">Продажа</button>
+            </div>
+            <input id="currencySide" type="hidden" value="buy" />
+            <label class="field">
+              <span>Валюта</span>
+              <select id="currencyAsset">
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="RUB">RUB</option>
+                <option value="CNY">CNY</option>
+                <option value="PLN">PLN</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Базовая валюта</span>
+              <input id="currencyQuote" class="input" type="text" value="BYN" maxlength="3" placeholder="BYN" />
+            </label>
+            <div id="currencyTradeDateField" class="date-input-wrap">
+              <input id="currencyTradeDateModal" class="input" type="date" aria-label="Дата валютной сделки" />
+              <button class="date-input-trigger" type="button" data-date-picker-trigger="currencyTradeDateModal" aria-label="Открыть календарь"></button>
+            </div>
+            <div id="currencyQuantityField" class="money-input-wrap" data-money-input-wrap>
+              <input id="currencyQuantity" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Количество" />
+            </div>
+            <div id="currencyUnitPriceField" class="money-input-wrap" data-money-input-wrap>
+              <input id="currencyUnitPrice" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс" />
+            </div>
+            <div id="currencyFeeField" class="money-input-wrap" data-money-input-wrap>
+              <input id="currencyFee" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Комиссия" />
+            </div>
+            <input id="currencyNote" type="text" placeholder="Комментарий" class="create-note-field" />
+          </div>
         </form>
         <div class="preview-panel">
           <div id="createPreviewTitle" class="preview-title">Превью строки в таблице</div>
@@ -168,6 +205,15 @@
                   <th>Контрагент</th>
                   <th>Сумма</th>
                   <th>Срок</th>
+                  <th>Комментарий</th>
+                </tr>
+                <tr id="createPreviewHeadCurrency" class="hidden">
+                  <th>Дата</th>
+                  <th>Действие</th>
+                  <th>Валюта</th>
+                  <th>Количество</th>
+                  <th>Курс</th>
+                  <th>Комиссия</th>
                   <th>Комментарий</th>
                 </tr>
               </thead>

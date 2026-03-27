@@ -89,6 +89,161 @@
           </section>
         </section>
 
+        <section id="currencySection" class="section-block hidden">
+          <section class="panel">
+            <div class="panel-head row between">
+              <div>
+                <h3>Валютные позиции</h3>
+                <p class="subtitle">Покупки, продажи, текущий курс и результат по валюте</p>
+              </div>
+            </div>
+            <div class="table-search-row">
+              <div id="currencyFilterTabs" class="segmented" role="tablist" aria-label="Фильтр валют"></div>
+            </div>
+            <div id="currencySummaryGrid" class="analytics-kpi-grid">
+              <article class="analytics-kpi-card analytics-kpi-neutral">
+                <div class="muted-small">Текущая оценка</div>
+                <strong id="currencySummaryCurrentValue">0</strong>
+              </article>
+              <article class="analytics-kpi-card analytics-kpi-balance">
+                <div class="muted-small">Вложено</div>
+                <strong id="currencySummaryBookValue">0</strong>
+              </article>
+              <article class="analytics-kpi-card analytics-kpi-income">
+                <div class="muted-small">Прибыль / убыток</div>
+                <strong id="currencySummaryResultValue">0</strong>
+              </article>
+              <article class="analytics-kpi-card analytics-kpi-neutral">
+                <div class="muted-small">Открытых позиций</div>
+                <strong id="currencySummaryActiveCount">0</strong>
+              </article>
+            </div>
+            <div id="currencyPositionsList" class="plans-list"></div>
+            <div class="settings-grid-2">
+              <form id="currencyTradeForm" class="panel">
+                <div class="panel-head row between">
+                  <div>
+                    <h3>Сделка</h3>
+                    <p class="subtitle">Покупка или продажа валюты</p>
+                  </div>
+                </div>
+                <div class="field">
+                  <span>Действие</span>
+                  <div id="currencyTradeSideTabs" class="segmented" role="tablist" aria-label="Действие с валютой">
+                    <button class="segmented-btn active" data-currency-side="buy" type="button">Покупка</button>
+                    <button class="segmented-btn" data-currency-side="sell" type="button">Продажа</button>
+                  </div>
+                  <input id="currencyTradeSide" type="hidden" value="buy" />
+                </div>
+                <div class="settings-grid-2">
+                  <label class="field">
+                    <span>Валюта</span>
+                    <select id="currencyTradeAsset">
+                      <option value="USD">USD</option>
+                      <option value="EUR">EUR</option>
+                      <option value="RUB">RUB</option>
+                      <option value="CNY">CNY</option>
+                      <option value="PLN">PLN</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Базовая валюта</span>
+                    <input id="currencyTradeQuote" type="text" value="BYN" maxlength="3" />
+                  </label>
+                </div>
+                <div class="settings-grid-2">
+                  <label class="field">
+                    <span>Количество</span>
+                    <input id="currencyTradeQuantity" type="number" min="0" step="0.000001" placeholder="100" />
+                  </label>
+                  <label class="field">
+                    <span>Курс покупки / продажи</span>
+                    <input id="currencyTradeUnitPrice" type="number" min="0" step="0.000001" placeholder="3.250000" />
+                  </label>
+                </div>
+                <div class="settings-grid-2">
+                  <label class="field">
+                    <span>Комиссия</span>
+                    <input id="currencyTradeFee" type="number" min="0" step="0.01" value="0" />
+                  </label>
+                  <label class="field">
+                    <span>Дата сделки</span>
+                    <input id="currencyTradeDate" type="date" />
+                  </label>
+                </div>
+                <label class="field">
+                  <span>Комментарий</span>
+                  <textarea id="currencyTradeNote" rows="2" placeholder="Например: покупка на подушку"></textarea>
+                </label>
+                <div class="settings-actions">
+                  <button id="submitCurrencyTradeBtn" class="btn btn-primary" type="submit">Сохранить сделку</button>
+                </div>
+              </form>
+              <form id="currencyRateForm" class="panel">
+                <div class="panel-head row between">
+                  <div>
+                    <h3>Текущий курс</h3>
+                    <p class="subtitle">Обнови курс вручную, чтобы увидеть актуальную оценку</p>
+                  </div>
+                </div>
+                <div class="settings-grid-2">
+                  <label class="field">
+                    <span>Валюта</span>
+                    <select id="currencyRateAsset">
+                      <option value="USD">USD</option>
+                      <option value="EUR">EUR</option>
+                      <option value="RUB">RUB</option>
+                      <option value="CNY">CNY</option>
+                      <option value="PLN">PLN</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Курс к BYN</span>
+                    <input id="currencyRateValue" type="number" min="0" step="0.000001" placeholder="3.270000" />
+                  </label>
+                </div>
+                <div class="settings-grid-2">
+                  <label class="field">
+                    <span>Дата курса</span>
+                    <input id="currencyRateDate" type="date" />
+                  </label>
+                  <label class="field">
+                    <span>Источник</span>
+                    <input id="currencyRateSource" type="text" maxlength="20" value="manual" />
+                  </label>
+                </div>
+                <div class="settings-actions">
+                  <button id="submitCurrencyRateBtn" class="btn btn-secondary" type="submit">Обновить курс</button>
+                </div>
+              </form>
+            </div>
+            <section class="panel">
+              <div class="panel-head row between">
+                <div>
+                  <h3>Последние сделки</h3>
+                  <p class="subtitle">История покупок и продаж по выбранному фильтру</p>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table class="table table-hover mobile-card-table">
+                  <thead>
+                    <tr>
+                      <th>Дата</th>
+                      <th>Действие</th>
+                      <th>Валюта</th>
+                      <th>Количество</th>
+                      <th>Курс</th>
+                      <th>Комиссия</th>
+                      <th>Комментарий</th>
+                    </tr>
+                  </thead>
+                  <tbody id="currencyTradesBody"></tbody>
+                </table>
+              </div>
+            </section>
+          </section>
+        </section>
+
         <section id="itemCatalogSection" class="section-block hidden">
           <section class="panel">
             <div class="table-search-row">
@@ -187,6 +342,35 @@
                   <input id="showDashboardDebtsToggle" type="checkbox" checked />
                   <span>Показывать карточки долгов на дашборде</span>
                 </label>
+                <label class="settings-switch-row">
+                  <input id="showDashboardCurrencyToggle" type="checkbox" checked />
+                  <span>Показывать валютный блок на дашборде</span>
+                </label>
+                <section class="settings-block">
+                  <h3>Отслеживаемые валюты</h3>
+                  <div id="trackedCurrenciesWrap" class="settings-grid-2">
+                    <label class="settings-switch-row">
+                      <input name="trackedCurrency" type="checkbox" value="USD" checked />
+                      <span>USD</span>
+                    </label>
+                    <label class="settings-switch-row">
+                      <input name="trackedCurrency" type="checkbox" value="EUR" checked />
+                      <span>EUR</span>
+                    </label>
+                    <label class="settings-switch-row">
+                      <input name="trackedCurrency" type="checkbox" value="RUB" />
+                      <span>RUB</span>
+                    </label>
+                    <label class="settings-switch-row">
+                      <input name="trackedCurrency" type="checkbox" value="CNY" />
+                      <span>CNY</span>
+                    </label>
+                    <label class="settings-switch-row">
+                      <input name="trackedCurrency" type="checkbox" value="PLN" />
+                      <span>PLN</span>
+                    </label>
+                  </div>
+                </section>
                 <label class="field">
                   <span>Строк планов на дашборде</span>
                   <div class="settings-picker-field">
@@ -211,6 +395,10 @@
                 <label class="settings-switch-row">
                   <input id="plansRemindersToggle" type="checkbox" checked />
                   <span>Напоминать о планах в Telegram</span>
+                </label>
+                <label class="settings-switch-row">
+                  <input id="currencyDigestToggle" type="checkbox" />
+                  <span>Присылать раз в день курсы отслеживаемых валют в Telegram</span>
                 </label>
                 <label class="field">
                   <span>Время напоминания</span>

@@ -60,6 +60,35 @@
             </div>
           </section>
 
+          <section id="dashboardCurrencyPanel" class="panel">
+            <div class="panel-head row between">
+              <div>
+                <h3>Валютный портфель</h3>
+                <p class="subtitle">Текущая оценка по отслеживаемым валютам</p>
+              </div>
+              <button id="openCurrencyTabBtn" class="btn btn-secondary" type="button">Открыть раздел Валюта</button>
+            </div>
+            <div id="dashboardCurrencyKpiGrid" class="analytics-kpi-grid">
+              <article class="analytics-kpi-card analytics-kpi-neutral">
+                <div class="muted-small">Текущая оценка</div>
+                <strong id="dashboardCurrencyCurrentValue">0</strong>
+              </article>
+              <article class="analytics-kpi-card analytics-kpi-balance">
+                <div class="muted-small">Вложено</div>
+                <strong id="dashboardCurrencyBookValue">0</strong>
+              </article>
+              <article class="analytics-kpi-card analytics-kpi-income">
+                <div class="muted-small">Прибыль / убыток</div>
+                <strong id="dashboardCurrencyResultValue">0</strong>
+              </article>
+              <article class="analytics-kpi-card analytics-kpi-neutral">
+                <div class="muted-small">Открытых позиций</div>
+                <strong id="dashboardCurrencyActiveCount">0</strong>
+              </article>
+            </div>
+            <div id="dashboardCurrencyPositions" class="analytics-kpi-secondary"></div>
+          </section>
+
           <section id="dashboardDebtsPanel" class="panel">
             <div class="panel-head row between">
               <div>
@@ -113,6 +142,7 @@
               <button class="segmented-btn" data-analytics-tab="calendar" type="button">Календарь</button>
               <button class="segmented-btn active" data-analytics-tab="structure" type="button">Структура</button>
               <button class="segmented-btn" data-analytics-tab="trends" type="button">Тренды</button>
+              <button class="segmented-btn" data-analytics-tab="currency" type="button">Валюта</button>
             </div>
           </section>
 
@@ -284,6 +314,56 @@
                 <strong id="analyticsOpsDelta">0</strong>
                 <span class="analytics-kpi-delta">За выбранный период</span>
               </article>
+            </div>
+          </section>
+
+          <section id="analyticsCurrencyPanel" class="panel analytics-tab-panel hidden">
+            <div class="panel-head row between">
+              <div>
+                <h3>Валютная аналитика</h3>
+                <p id="analyticsCurrencyRangeLabel" class="subtitle">Текущая позиция, курс и сделки по выбранной валюте</p>
+              </div>
+              <div class="toolbar">
+                <div id="analyticsCurrencyTabs" class="segmented" role="tablist" aria-label="Фильтр валютной аналитики"></div>
+              </div>
+            </div>
+            <div id="analyticsCurrencyKpiGrid" class="analytics-kpi-grid">
+              <article class="analytics-kpi-card analytics-kpi-neutral">
+                <div class="muted-small">Текущая оценка</div>
+                <strong id="analyticsCurrencyCurrentValue">0</strong>
+              </article>
+              <article class="analytics-kpi-card analytics-kpi-balance">
+                <div class="muted-small">Вложено</div>
+                <strong id="analyticsCurrencyBookValue">0</strong>
+              </article>
+              <article class="analytics-kpi-card analytics-kpi-income">
+                <div class="muted-small">Прибыль / убыток</div>
+                <strong id="analyticsCurrencyResultValue">0</strong>
+              </article>
+              <article class="analytics-kpi-card analytics-kpi-neutral">
+                <div class="muted-small">Открытых позиций</div>
+                <strong id="analyticsCurrencyActiveCount">0</strong>
+              </article>
+            </div>
+            <div id="analyticsCurrencySecondary" class="analytics-kpi-secondary"></div>
+            <div class="analytics-trend-chart-wrap">
+              <svg id="analyticsCurrencyChart" class="analytics-trend-chart" viewBox="0 0 980 280" preserveAspectRatio="none" aria-label="История курса валюты"></svg>
+            </div>
+            <div class="table-wrap">
+              <table class="table table-hover mobile-card-table">
+                <thead>
+                  <tr>
+                    <th>Дата</th>
+                    <th>Действие</th>
+                    <th>Валюта</th>
+                    <th>Количество</th>
+                    <th>Курс</th>
+                    <th>Комиссия</th>
+                    <th>Комментарий</th>
+                  </tr>
+                </thead>
+                <tbody id="analyticsCurrencyTradesBody"></tbody>
+              </table>
             </div>
           </section>
         </section>

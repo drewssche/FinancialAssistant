@@ -45,6 +45,7 @@
   const setCreateOperationMode = operationModal.setCreateOperationMode;
   const setEditOperationMode = operationModal.setEditOperationMode;
   const setDebtDirection = operationModal.setDebtDirection;
+  const setCurrencySide = operationModal.setCurrencySide;
   const setCreateEntryMode = operationModal.setCreateEntryMode;
   const openCreateModal = operationModal.openCreateModal;
   const openCreateModalForDebtEdit = operationModal.openCreateModalForDebtEdit;
@@ -219,6 +220,7 @@
     setCreateOperationMode,
     setEditOperationMode,
     setDebtDirection,
+    setCurrencySide,
     setCreateEntryMode,
     openCreateModal,
     openCreateModalForDebtEdit,

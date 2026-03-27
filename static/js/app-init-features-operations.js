@@ -180,6 +180,16 @@
       });
     }
 
+    if (el.createCurrencySideSwitch) {
+      el.createCurrencySideSwitch.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-currency-side]");
+        if (!btn || !actions.setCurrencySide) {
+          return;
+        }
+        actions.setCurrencySide(btn.dataset.currencySide);
+      });
+    }
+
     el.editKindSwitch.addEventListener("click", (event) => {
       const btn = event.target.closest("button[data-kind]");
       if (!btn) {

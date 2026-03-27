@@ -33,8 +33,16 @@
         node.addEventListener("change", actions.updateCreatePreview);
       }
     }
+    for (const id of ["currencyAsset", "currencyQuote", "currencyTradeDateModal", "currencyQuantity", "currencyUnitPrice", "currencyFee", "currencyNote"]) {
+      const node = document.getElementById(id);
+      if (node) {
+        node.addEventListener("input", actions.updateCreatePreview);
+        node.addEventListener("change", actions.updateCreatePreview);
+      }
+    }
     pickerCoordinator.bindDateField("debtStartDate", actions.updateCreatePreview);
     pickerCoordinator.bindDateField("debtDueDate", actions.updateCreatePreview);
+    pickerCoordinator.bindDateField("currencyTradeDateModal", actions.updateCreatePreview);
     pickerCoordinator.bindSearchPicker({
       input: el.debtCounterparty,
       onFocus: actions.handleDebtCounterpartySearchFocus,

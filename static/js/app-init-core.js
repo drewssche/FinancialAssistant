@@ -133,6 +133,11 @@
         actions.switchSection("analytics").catch((err) => core.setStatus(String(err)));
       });
     }
+    if (el.openCurrencyTabBtn) {
+      el.openCurrencyTabBtn.addEventListener("click", () => {
+        actions.switchSection("currency").catch((err) => core.setStatus(String(err)));
+      });
+    }
 
     if (el.sidebarLogoutBtn) {
       el.sidebarLogoutBtn.addEventListener("click", () => getSessionFeature().logout?.(true));
@@ -392,6 +397,34 @@
         if (state.activeSection === "dashboard" && dashboardFeature.loadDashboard) {
           dashboardFeature.loadDashboard().catch((err) => core.setStatus(String(err)));
         }
+      });
+    }
+    if (el.showDashboardCurrencyToggle) {
+      el.showDashboardCurrencyToggle.addEventListener("change", () => {
+        const sessionFeature = getSessionFeature();
+        const dashboardFeature = getDashboardFeature();
+        sessionFeature.previewInterfaceSettingsUi?.();
+        sessionFeature.savePreferencesDebounced?.(300);
+        if (state.activeSection === "dashboard" && dashboardFeature.loadDashboard) {
+          dashboardFeature.loadDashboard().catch((err) => core.setStatus(String(err)));
+        }
+      });
+    }
+    if (el.trackedCurrencyInputs?.length) {
+      Array.from(el.trackedCurrencyInputs).forEach((input) => {
+        input.addEventListener("change", () => {
+          const sessionFeature = getSessionFeature();
+          const dashboardFeature = getDashboardFeature();
+          sessionFeature.savePreferencesDebounced?.(300);
+          if (state.activeSection === "dashboard" && dashboardFeature.loadDashboard) {
+            dashboardFeature.loadDashboard().catch((err) => core.setStatus(String(err)));
+          }
+        });
+      });
+    }
+    if (el.currencyDigestToggle) {
+      el.currencyDigestToggle.addEventListener("change", () => {
+        getSessionFeature().savePreferencesDebounced?.(300);
       });
     }
     if (el.showDashboardAnalyticsToggle) {

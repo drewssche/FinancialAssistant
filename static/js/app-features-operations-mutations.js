@@ -38,11 +38,15 @@
     async function refreshAfterOperationMutation() {
       const tasks = [loadOperations({ reset: true })];
       const analyticsFeature = getAnalyticsFeature();
+      const currencyFeature = window.App.getRuntimeModule?.("currency") || {};
       if (isSectionVisible("dashboard")) {
         tasks.push(loadDashboard(), loadDashboardOperations());
         if (analyticsFeature.loadDashboardAnalyticsPreview) {
           tasks.push(analyticsFeature.loadDashboardAnalyticsPreview({ force: true }));
         }
+      }
+      if (isSectionVisible("currency") && currencyFeature.loadCurrencySection) {
+        tasks.push(currencyFeature.loadCurrencySection({ force: true }));
       }
       if (isSectionVisible("analytics") && analyticsFeature.loadAnalyticsSection) {
         tasks.push(analyticsFeature.loadAnalyticsSection({ force: true }));
@@ -167,6 +171,60 @@
         state.editDebtCreateId = null;
         closeCreateModal();
         await refreshAfterDebtMutation();
+        return;
+      }
+      if (el.opEntryMode.value === "currency") {
+        const tradeDate = core.parseDateInputValue(el.currencyTradeDateModal?.value || "");
+        if (!tradeDate) {
+          throw new Error("Проверь дату валютной сделки");
+        }
+        const quantity = core.resolveMoneyInput(el.currencyQuantity?.value || 0);
+        const unitPrice = core.resolveMoneyInput(el.currencyUnitPrice?.value || 0);
+        const fee = core.resolveMoneyInput(el.currencyFee?.value || 0);
+        if (!quantity.valid || quantity.value <= 0) {
+          throw new Error("Проверь количество валюты");
+        }
+        if (!unitPrice.valid || unitPrice.value <= 0) {
+          throw new Error("Проверь курс валюты");
+        }
+        if (!fee.valid || fee.value < 0) {
+          throw new Error("Проверь комиссию");
+        }
+        await core.requestJson("/api/v1/currency/trades", {
+          method: "POST",
+          headers: core.authHeaders(),
+          body: JSON.stringify({
+            side: el.currencySide?.value || "buy",
+            asset_currency: String(el.currencyAsset?.value || "USD").toUpperCase(),
+            quote_currency: String(el.currencyQuote?.value || "BYN").toUpperCase(),
+            quantity: quantity.formatted,
+            unit_price: unitPrice.formatted,
+            fee: fee.formatted,
+            trade_date: tradeDate,
+            note: el.currencyNote?.value?.trim() || null,
+          }),
+        });
+        const dashboardData = getDashboardData();
+        dashboardData.invalidateSummaryCache?.();
+        core.invalidateUiRequestCache("dashboard:summary");
+        core.invalidateUiRequestCache("currency");
+        if (el.currencyQuantity) {
+          el.currencyQuantity.value = "";
+        }
+        if (el.currencyUnitPrice) {
+          el.currencyUnitPrice.value = "";
+        }
+        if (el.currencyFee) {
+          el.currencyFee.value = "";
+        }
+        if (el.currencyNote) {
+          el.currencyNote.value = "";
+        }
+        closeCreateModal();
+        if (isSectionVisible("currency")) {
+          window.App.getRuntimeModule?.("currency")?.loadCurrencySection?.({ force: true }).catch(() => {});
+        }
+        await refreshAfterOperationMutation();
         return;
       }
       const payload = getValidatedCreateOperationPayload();

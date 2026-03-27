@@ -13,6 +13,11 @@
     dashboard_operations_limit: 8,
     scale_percent: 100,
   };
+  const DEFAULT_CURRENCY_PREFS = {
+    tracked_currencies: ["USD", "EUR"],
+    show_dashboard_kpi: true,
+    telegram_digest_enabled: false,
+  };
   let activeSettingsPickerKey = "";
 
   function getAnalyticsFeature() {
@@ -65,6 +70,13 @@
     return {
       ...DEFAULT_UI_PREFS,
       ...(state.preferences?.data?.ui || {}),
+    };
+  }
+
+  function getMergedCurrencyPrefs() {
+    return {
+      ...DEFAULT_CURRENCY_PREFS,
+      ...(state.preferences?.data?.currency || {}),
     };
   }
 
@@ -162,6 +174,18 @@
     if (el.showDashboardDebtsToggle) {
       el.showDashboardDebtsToggle.checked = ui.show_dashboard_debts !== false;
     }
+    if (el.showDashboardCurrencyToggle) {
+      el.showDashboardCurrencyToggle.checked = getMergedCurrencyPrefs().show_dashboard_kpi !== false;
+    }
+    if (el.trackedCurrencyInputs?.length) {
+      const tracked = new Set((getMergedCurrencyPrefs().tracked_currencies || []).map((item) => String(item || "").toUpperCase()));
+      Array.from(el.trackedCurrencyInputs).forEach((input) => {
+        input.checked = tracked.has(String(input.value || "").toUpperCase());
+      });
+    }
+    if (el.currencyDigestToggle) {
+      el.currencyDigestToggle.checked = getMergedCurrencyPrefs().telegram_digest_enabled === true;
+    }
     if (el.showDashboardAnalyticsToggle) {
       el.showDashboardAnalyticsToggle.checked = ui.show_dashboard_analytics !== false;
     }
@@ -211,6 +235,9 @@
     if (el.dashboardDebtsPanel && el.showDashboardDebtsToggle) {
       el.dashboardDebtsPanel.classList.toggle("hidden", !el.showDashboardDebtsToggle.checked);
     }
+    if (el.dashboardCurrencyPanel && el.showDashboardCurrencyToggle) {
+      el.dashboardCurrencyPanel.classList.toggle("hidden", !el.showDashboardCurrencyToggle.checked);
+    }
     if (el.dashboardAnalyticsPanel && el.showDashboardAnalyticsToggle) {
       el.dashboardAnalyticsPanel.classList.toggle("hidden", !el.showDashboardAnalyticsToggle.checked);
     }
@@ -251,9 +278,10 @@
     if (state.analyticsTab === "positions" || state.analyticsTab === "operations" || state.analyticsTab === "overview") {
       state.analyticsTab = "calendar";
     }
-    if (!["structure", "calendar", "trends"].includes(state.analyticsTab)) {
+    if (!["structure", "calendar", "trends", "currency"].includes(state.analyticsTab)) {
       state.analyticsTab = "calendar";
     }
+    state.analyticsCurrencyFilter = prefs.data?.analytics?.currency_filter || "all";
     state.analyticsCalendarView = prefs.data?.analytics?.calendar_view || "month";
     state.analyticsGlobalPeriod = prefs.data?.analytics?.global_period || prefs.data?.analytics?.summary_period || prefs.data?.analytics?.period || "month";
     state.analyticsGlobalDateFrom = prefs.data?.analytics?.global_date_from || prefs.data?.analytics?.summary_date_from || "";
@@ -322,6 +350,11 @@
     const analyticsPrefs = { ...(state.preferences?.data?.analytics || {}) };
     delete analyticsPrefs.top_operations_limit;
     delete analyticsPrefs.top_positions_limit;
+    const trackedCurrencies = el.trackedCurrencyInputs?.length
+      ? Array.from(el.trackedCurrencyInputs)
+        .filter((input) => input.checked)
+        .map((input) => String(input.value || "").toUpperCase())
+      : (getMergedCurrencyPrefs().tracked_currencies || []);
     return {
       preferences_version: state.preferences?.preferences_version || 1,
       data: {
@@ -364,6 +397,7 @@
           structure_hidden: normalizeStructureHidden(state.analyticsStructureHidden),
           category_kind: state.analyticsCategoryKind || "expense",
           granularity: state.analyticsGranularity || "day",
+          currency_filter: state.analyticsCurrencyFilter || "all",
         },
         admin: {
           ...(state.preferences?.data?.admin || {}),
@@ -376,6 +410,13 @@
           dashboard_period: state.dashboardPlansPeriod || "month",
           reminders_enabled: el.plansRemindersToggle ? el.plansRemindersToggle.checked : (state.preferences?.data?.plans?.reminders_enabled !== false),
           reminder_time: el.plansReminderTimeInput ? String(el.plansReminderTimeInput.value || "09:00") : String(state.preferences?.data?.plans?.reminder_time || "09:00"),
+        },
+        currency: {
+          ...(state.preferences?.data?.currency || {}),
+          ...DEFAULT_CURRENCY_PREFS,
+          tracked_currencies: trackedCurrencies.length ? trackedCurrencies : [...DEFAULT_CURRENCY_PREFS.tracked_currencies],
+          show_dashboard_kpi: el.showDashboardCurrencyToggle ? el.showDashboardCurrencyToggle.checked : getMergedCurrencyPrefs().show_dashboard_kpi,
+          telegram_digest_enabled: el.currencyDigestToggle ? el.currencyDigestToggle.checked : getMergedCurrencyPrefs().telegram_digest_enabled,
         },
         ui: {
           ...(state.preferences?.data?.ui || {}),
@@ -438,8 +479,10 @@
 
   const api = {
     DEFAULT_UI_PREFS,
+    DEFAULT_CURRENCY_PREFS,
     normalizeStructureHidden,
     getMergedUiPrefs,
+    getMergedCurrencyPrefs,
     applyInterfaceSettingsUi,
     previewInterfaceSettingsUi,
     syncSettingsPickerButtons,

@@ -39,6 +39,16 @@
   min-height: 16.25rem;
 }
 
+.analytics-axis-line {
+  stroke: rgba(207, 219, 245, 0.18);
+  stroke-width: 1;
+}
+
+.analytics-chart-empty {
+  fill: rgba(207, 219, 245, 0.72);
+  font-size: 12px;
+}
+
 .analytics-trend-chart-wrap {
   background:
     radial-gradient(circle at 50% 0%, rgba(104, 151, 255, 0.08), transparent 42%),
