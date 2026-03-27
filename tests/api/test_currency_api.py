@@ -208,6 +208,39 @@ def test_currency_refresh_endpoint_forces_rate_refresh(client: TestClient, monke
     assert payload[0]["rate"] == "3.990000"
 
 
+def test_currency_history_fill_endpoint_backfills_selected_range(client: TestClient, monkeypatch):
+    def _fake_backfill(self, *, user_id, currency, date_from, date_to):
+        return [
+            {
+                "currency": currency,
+                "rate": "3.210000",
+                "rate_date": date_from,
+                "source": "nbrb_history",
+            },
+            {
+                "currency": currency,
+                "rate": "3.240000",
+                "rate_date": date_to,
+                "source": "nbrb_history",
+            },
+        ]
+
+    monkeypatch.setattr(
+        "app.services.currency_rate_refresh_service.CurrencyRateRefreshService.backfill_user_rate_history",
+        _fake_backfill,
+    )
+
+    response = client.post(
+        "/api/v1/currency/rates/history/fill",
+        params={"currency": "USD", "date_from": "2026-03-01", "date_to": "2026-03-31"},
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert len(payload) == 2
+    assert payload[0]["currency"] == "USD"
+    assert payload[0]["source"] == "nbrb_history"
+
+
 def test_currency_overview_tracks_buy_and_sell_kpi_totals(client: TestClient):
     buy_response = client.post(
         "/api/v1/currency/trades",

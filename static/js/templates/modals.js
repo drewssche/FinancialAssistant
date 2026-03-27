@@ -43,7 +43,7 @@
             </div>
           </div>
           <div id="opAmountCompound" class="amount-currency-combo">
-            <div id="opAmountField" class="money-input-wrap" data-money-input-wrap>
+            <div id="opAmountField" class="money-input-wrap money-input-no-suffix" data-money-input-wrap>
               <input id="opAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" required />
             </div>
             <select id="opCurrency" class="inline-currency-select" aria-label="Валюта суммы">
@@ -417,7 +417,7 @@
             </div>
           </div>
           <div id="editAmountCompound" class="amount-currency-combo">
-            <div id="editAmountField" class="money-input-wrap" data-money-input-wrap>
+            <div id="editAmountField" class="money-input-wrap money-input-no-suffix" data-money-input-wrap>
               <input id="editAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" required />
             </div>
             <select id="editCurrency" class="inline-currency-select" aria-label="Валюта суммы">

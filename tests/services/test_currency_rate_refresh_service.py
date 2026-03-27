@@ -80,3 +80,71 @@ def test_refresh_user_tracked_rates_upserts_missing_daily_snapshots(monkeypatch)
     finally:
         db.close()
         Base.metadata.drop_all(bind=engine)
+
+
+def test_backfill_user_rate_history_saves_missing_days(monkeypatch):
+    engine, SessionLocal = _make_session()
+    db = SessionLocal()
+    try:
+        db.add(User(id=1, display_name="Tester", status="active"))
+        db.add(
+            UserPreference(
+                user_id=1,
+                preferences_version=1,
+                data={
+                    "currency": {"tracked_currencies": ["USD"]},
+                    "ui": {"timezone": "UTC", "currency": "BYN"},
+                },
+            )
+        )
+        db.commit()
+
+        class _FakeResponse:
+            def __init__(self, rate: float):
+                self._rate = rate
+
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {"Cur_OfficialRate": self._rate}
+
+        class _FakeClient:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def get(self, url: str):
+                if "ondate=2026-03-01" in url:
+                    return _FakeResponse(3.21)
+                if "ondate=2026-03-02" in url:
+                    return _FakeResponse(3.22)
+                if "ondate=2026-03-03" in url:
+                    return _FakeResponse(3.23)
+                raise AssertionError(url)
+
+        monkeypatch.setattr("app.services.currency_rate_refresh_service.httpx.Client", _FakeClient)
+
+        refreshed = CurrencyRateRefreshService(db).backfill_user_rate_history(
+            user_id=1,
+            currency="USD",
+            date_from=date(2026, 3, 1),
+            date_to=date(2026, 3, 3),
+        )
+
+        assert len(refreshed) == 3
+        overview = CurrencyRateRefreshService(db).currency_service.get_rate_history(
+            user_id=1,
+            currency="USD",
+            date_from=date(2026, 3, 1),
+            date_to=date(2026, 3, 3),
+        )
+        assert [item["rate_date"] for item in overview] == [date(2026, 3, 1), date(2026, 3, 2), date(2026, 3, 3)]
+    finally:
+        db.close()
+        Base.metadata.drop_all(bind=engine)

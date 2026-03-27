@@ -353,6 +353,9 @@
             <div class="analytics-trend-chart-wrap">
               <svg id="analyticsCurrencyChart" class="analytics-trend-chart" viewBox="0 0 980 280" preserveAspectRatio="none" aria-label="История курса валюты"></svg>
             </div>
+            <div class="toolbar">
+              <button id="analyticsCurrencyBackfillBtn" class="btn btn-secondary" type="button">Подгрузить историю для графика</button>
+            </div>
             <div class="table-wrap">
               <table class="table table-hover mobile-card-table">
                 <thead>

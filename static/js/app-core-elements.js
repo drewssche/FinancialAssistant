@@ -294,6 +294,7 @@
       analyticsCurrencySellCount: document.getElementById("analyticsCurrencySellCount"),
       analyticsCurrencySecondary: document.getElementById("analyticsCurrencySecondary"),
       analyticsCurrencyChart: document.getElementById("analyticsCurrencyChart"),
+      analyticsCurrencyBackfillBtn: document.getElementById("analyticsCurrencyBackfillBtn"),
       analyticsCurrencyTradesBody: document.getElementById("analyticsCurrencyTradesBody"),
       analyticsIncomeDelta: document.getElementById("analyticsIncomeDelta"),
       analyticsExpenseDelta: document.getElementById("analyticsExpenseDelta"),

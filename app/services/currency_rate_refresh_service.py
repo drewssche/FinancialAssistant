@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -105,6 +105,51 @@ class CurrencyRateRefreshService:
             )
         return refreshed
 
+    def backfill_user_rate_history(
+        self,
+        *,
+        user_id: int,
+        currency: str,
+        date_from: date,
+        date_to: date,
+        force: bool = False,
+    ) -> list[dict]:
+        normalized_currency = self.currency_service._normalize_currency(currency)
+        if date_to < date_from:
+            raise ValueError("date_to must be on or after date_from")
+        total_days = (date_to - date_from).days + 1
+        if total_days > 370:
+            raise ValueError("Requested history window is too large")
+        existing_rows = self.repo.list_rate_history(
+            user_id=user_id,
+            currency=normalized_currency,
+            limit=370,
+            date_from=date_from,
+            date_to=date_to,
+        )
+        existing_dates = {row.rate_date for row in existing_rows}
+        refreshed: list[dict] = []
+        cursor = date_from
+        while cursor <= date_to:
+            if not force and cursor in existing_dates:
+                cursor += timedelta(days=1)
+                continue
+            rate = self._fetch_rate_for_date(normalized_currency, cursor)
+            if rate is None:
+                cursor += timedelta(days=1)
+                continue
+            refreshed.append(
+                self.currency_service.upsert_rate(
+                    user_id=user_id,
+                    currency=normalized_currency,
+                    rate=rate,
+                    rate_date=cursor,
+                    source="nbrb_history",
+                )
+            )
+            cursor += timedelta(days=1)
+        return refreshed
+
     def _resolve_timezone_name(self, prefs: dict) -> str:
         ui_prefs = prefs.get("ui") if isinstance(prefs.get("ui"), dict) else {}
         timezone_name = str(ui_prefs.get("timezone") or "").strip()
@@ -118,7 +163,7 @@ class CurrencyRateRefreshService:
             return results
         with httpx.Client(timeout=10.0) as client:
             for currency in currencies:
-                response = client.get(self.settings.currency_rate_provider_url.format(code=currency))
+                response = client.get(self._build_provider_url(currency))
                 response.raise_for_status()
                 payload = response.json()
                 raw_rate = payload.get("Cur_OfficialRate")
@@ -126,3 +171,20 @@ class CurrencyRateRefreshService:
                     raise ValueError(f"Missing Cur_OfficialRate for {currency}")
                 results[currency] = float(raw_rate)
         return results
+
+    def _fetch_rate_for_date(self, currency: str, rate_date: date) -> float | None:
+        with httpx.Client(timeout=10.0) as client:
+            response = client.get(self._build_provider_url(currency, rate_date))
+            response.raise_for_status()
+            payload = response.json()
+            raw_rate = payload.get("Cur_OfficialRate")
+            if raw_rate is None:
+                return None
+            return float(raw_rate)
+
+    def _build_provider_url(self, currency: str, rate_date: date | None = None) -> str:
+        base_url = self.settings.currency_rate_provider_url.format(code=currency)
+        if not rate_date:
+            return base_url
+        separator = "&" if "?" in base_url else "?"
+        return f"{base_url}{separator}ondate={rate_date.isoformat()}"

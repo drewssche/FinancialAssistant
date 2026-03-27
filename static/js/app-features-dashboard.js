@@ -72,9 +72,15 @@
     }
     if (el.dashboardCurrencyPositions) {
       const positions = Array.isArray(summary.tracked_currency_positions) ? summary.tracked_currency_positions : [];
+      const holdingsChips = positions.length
+        ? positions.map((item) => {
+          const currencyLabel = core.formatCurrencyLabel(item.currency);
+          return `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">${core.escapeHtml ? core.escapeHtml(currencyLabel) : currencyLabel}: ${core.formatAmount(item.quantity || 0)}</span>`;
+        })
+        : [`<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Пока нет сумм в отслеживаемых валютах</span>`];
       const summaryChips = [
-        `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Покупки: ${core.formatMoney(summary.currency_buy_volume_base || 0)} <span class="muted-small">${String(summary.currency_buy_trades_count || 0)} сделок · ср. курс ${Number(summary.currency_buy_average_rate || 0).toFixed(4)}</span></span>`,
-        `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Продажи: ${core.formatMoney(summary.currency_sell_volume_base || 0)} <span class="muted-small">${String(summary.currency_sell_trades_count || 0)} сделок · ср. курс ${Number(summary.currency_sell_average_rate || 0).toFixed(4)}</span></span>`,
+        `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Покупки: ${core.formatMoney(summary.currency_buy_volume_base || 0)} <span class="muted-small">${String(summary.currency_buy_trades_count || 0)} сделок · средняя цена ${Number(summary.currency_buy_average_rate || 0).toFixed(4)}</span></span>`,
+        `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Продажи: ${core.formatMoney(summary.currency_sell_volume_base || 0)} <span class="muted-small">${String(summary.currency_sell_trades_count || 0)} сделок · средняя цена ${Number(summary.currency_sell_average_rate || 0).toFixed(4)}</span></span>`,
         `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Открытых позиций: ${String(summary.active_currency_positions || 0)}</span>`,
       ];
       const positionChips = positions.map((item) => {
@@ -91,7 +97,7 @@
       if (!positions.length) {
         positionChips.push(`<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Пока нет открытых валютных позиций</span>`);
       }
-      el.dashboardCurrencyPositions.innerHTML = [...summaryChips, ...positionChips].join("");
+      el.dashboardCurrencyPositions.innerHTML = [...holdingsChips, ...summaryChips, ...positionChips].join("");
     }
   }
 
@@ -165,7 +171,7 @@
             </span>
           </div>
           <div class="dashboard-currency-rate-value">${Number(item.rate || 0).toFixed(4)}</div>
-          <div class="dashboard-currency-rate-meta muted-small">Курс к BYN · ${rateDate}</div>
+          <div class="dashboard-currency-rate-meta muted-small">Официальный курс к BYN · ${rateDate}</div>
           <div class="dashboard-currency-rate-delta dashboard-currency-rate-delta-${deltaTone}">${deltaLabel}</div>
           <div class="dashboard-currency-rate-source muted-small">Источник: ${core.escapeHtml ? core.escapeHtml(source) : source}</div>
           <div class="dashboard-currency-rate-actions">

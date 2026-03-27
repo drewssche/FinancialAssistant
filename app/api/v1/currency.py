@@ -112,3 +112,23 @@ def refresh_currency_rates(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post("/rates/history/fill", response_model=list[CurrencyRateOut])
+def fill_currency_rate_history(
+    currency: str = Query(min_length=3, max_length=3),
+    date_from: date = Query(),
+    date_to: date = Query(),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = CurrencyRateRefreshService(db)
+    try:
+        return service.backfill_user_rate_history(
+            user_id=user_id,
+            currency=currency,
+            date_from=date_from,
+            date_to=date_to,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

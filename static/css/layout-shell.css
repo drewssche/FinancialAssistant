@@ -361,6 +361,7 @@
 
 .inline-currency-select {
   width: 100%;
+  min-width: 160px;
 }
 
 .currency-modal-grid {

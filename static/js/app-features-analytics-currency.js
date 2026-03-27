@@ -107,6 +107,25 @@
     }
   }
 
+  async function backfillAnalyticsCurrencyHistory() {
+    if (!state.analyticsCurrencyFilter || state.analyticsCurrencyFilter === "all") {
+      core.setStatus("Выбери валюту, чтобы подгрузить историю курса");
+      return;
+    }
+    const { dateFrom, dateTo } = getHistoryRange();
+    await core.requestJson(
+      `/api/v1/currency/rates/history/fill?currency=${encodeURIComponent(state.analyticsCurrencyFilter)}&date_from=${encodeURIComponent(dateFrom)}&date_to=${encodeURIComponent(dateTo)}`,
+      {
+        method: "POST",
+        headers: core.authHeaders(),
+      },
+    );
+    await loadAnalyticsCurrency({ force: true });
+    core.invalidateUiRequestCache?.("dashboard:summary");
+    window.App.getRuntimeModule?.("dashboard")?.loadDashboard?.().catch(() => {});
+    core.setStatus("История курса подгружена");
+  }
+
   function renderTrades(overview) {
     if (!el.analyticsCurrencyTradesBody) {
       return;
@@ -233,6 +252,11 @@
         state.analyticsCurrencyPeriod = btn.dataset.analyticsCurrencyPeriod || "30d";
         syncCurrencyPeriodTabs();
         loadAnalyticsCurrency({ force: true }).catch((err) => core.setStatus(String(err)));
+      });
+    }
+    if (el.analyticsCurrencyBackfillBtn) {
+      el.analyticsCurrencyBackfillBtn.addEventListener("click", () => {
+        backfillAnalyticsCurrencyHistory().catch((err) => core.setStatus(String(err)));
       });
     }
   }

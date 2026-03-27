@@ -52,6 +52,7 @@ Implemented in current slice:
     - primary cards for portfolio valuation/result
     - compact secondary chips for `Покупки / Продажи / Открытые позиции`
     - include average price/rate in purchase/sale widgets
+  - in `Аналитика -> Валюта` allow explicit history backfill for the currently selected currency and period so the rate chart can be populated on demand
 
 Not implemented yet:
 - user-defined currency alert rules beyond daily digest

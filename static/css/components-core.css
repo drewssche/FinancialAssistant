@@ -161,6 +161,15 @@
   padding-left: 44px;
 }
 
+.money-input-wrap.money-input-no-suffix::after {
+  content: none;
+}
+
+.money-input-wrap.money-input-no-suffix input[data-money-input] {
+  padding-right: 14px;
+  padding-left: 14px;
+}
+
 .date-input-wrap {
   position: relative;
 }
