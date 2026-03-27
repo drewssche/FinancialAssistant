@@ -144,6 +144,10 @@
     grid-template-columns: 1fr;
   }
 
+  .amount-currency-combo {
+    grid-template-columns: minmax(0, 1fr) fit-content(10.5rem);
+  }
+
   .analytics-day-cell {
     min-width: 92px;
     padding: var(--space-1);

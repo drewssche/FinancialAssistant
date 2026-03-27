@@ -192,19 +192,19 @@
             <input id="currencyQuote" type="hidden" value="BYN" />
             <div class="currency-modal-row currency-modal-row-triple">
               <label class="field">
-                <span>Количество</span>
+                <span id="currencyQuantityLabel">Количество</span>
                 <div id="currencyQuantityField" class="money-input-wrap" data-money-input-wrap>
                   <input id="currencyQuantity" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="100.00" />
                 </div>
               </label>
               <label class="field">
-                <span>Курс</span>
+                <span id="currencyUnitPriceLabel">Курс</span>
                 <div id="currencyUnitPriceField" class="money-input-wrap" data-money-input-wrap>
                   <input id="currencyUnitPrice" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="3.2700" />
                 </div>
               </label>
               <label class="field">
-                <span>Комиссия</span>
+                <span id="currencyFeeLabel">Комиссия</span>
                 <div id="currencyFeeField" class="money-input-wrap" data-money-input-wrap>
                   <input id="currencyFee" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="0.00" />
                 </div>

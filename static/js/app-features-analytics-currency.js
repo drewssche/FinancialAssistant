@@ -327,7 +327,6 @@
       <text x="${width - padX}" y="${padY + 4}" text-anchor="end" class="analytics-chart-empty">${Number(maxRate).toFixed(4)}</text>
       <text x="${width - padX}" y="${((padY + height - padY) / 2).toFixed(2)}" text-anchor="end" class="analytics-chart-empty">${Number(midRate).toFixed(4)}</text>
       <text x="${width - padX}" y="${height - padY - 8}" text-anchor="end" class="analytics-chart-empty">${Number(minRate).toFixed(4)}</text>
-      <text x="${Math.min(width - padX, toX(points.length - 1) + 12)}" y="${Math.max(padY + 16, toY(Number(last.rate || 0)) - 12)}" class="analytics-chart-empty">Текущий курс ${Number(last.rate || 0).toFixed(4)}</text>
     `;
     bindCurrencyChartTooltip(el.analyticsCurrencyChart, points, { toX, toY, width, height, padX, padY });
   }

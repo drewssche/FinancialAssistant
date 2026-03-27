@@ -44,6 +44,9 @@
         if ((id === "currencyAsset" || id === "currencyTradeDateModal") && actions.syncSuggestedCurrencyRate) {
           node.addEventListener("change", () => actions.syncSuggestedCurrencyRate().catch(() => {}));
         }
+        if ((id === "currencyAsset" || id === "currencyQuote") && actions.syncCurrencyTradeFieldUi) {
+          node.addEventListener("change", actions.syncCurrencyTradeFieldUi);
+        }
         if (id === "currencyUnitPrice" && actions.markCurrencyRateManual) {
           node.addEventListener("input", actions.markCurrencyRateManual);
         }

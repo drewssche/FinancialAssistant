@@ -348,21 +348,22 @@
 }
 
 .amount-currency-combo {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) fit-content(12rem);
   gap: var(--space-3);
   align-items: stretch;
 }
 
 .amount-currency-combo .money-input-wrap {
-  flex: 1 1 auto;
   min-width: 0;
+  width: 100%;
 }
 
 .inline-currency-select {
-  flex: 0 0 auto;
   width: auto;
-  min-width: 10.75rem;
-  max-width: max-content;
+  min-width: 0;
+  max-width: 12rem;
+  justify-self: start;
 }
 
 .currency-modal-grid {

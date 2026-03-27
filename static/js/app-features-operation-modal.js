@@ -88,6 +88,7 @@
     if (el.createCurrencySideSwitch) {
       core.syncSegmentedActive(el.createCurrencySideSwitch, "currency-side", nextSide);
     }
+    syncCurrencyTradeFieldUi();
     updateCreatePreview();
   }
 
@@ -103,23 +104,50 @@
     if (!currency || !dateTo) {
       return;
     }
-    const history = await core.requestJson(
-      `/api/v1/currency/rates/history?currency=${encodeURIComponent(currency)}&limit=1&date_to=${encodeURIComponent(dateTo)}`,
+    const overview = await core.requestJson(
+      `/api/v1/currency/overview?currency=${encodeURIComponent(currency)}&trades_limit=1`,
       { headers: core.authHeaders() },
-    ).catch(() => []);
-    if (!Array.isArray(history) || !history.length) {
+    ).catch(() => null);
+    const currentRate = Array.isArray(overview?.current_rates) ? overview.current_rates[0] : null;
+    if (!currentRate?.rate) {
       return;
     }
-    const latest = history[history.length - 1];
-    if (!latest?.rate) {
-      return;
-    }
-    el.currencyUnitPrice.value = Number(latest.rate || 0).toFixed(4);
+    el.currencyUnitPrice.value = Number(currentRate.rate || 0).toFixed(4);
+    syncCurrencyTradeFieldUi();
     updateCreatePreview();
   }
 
   function markCurrencyRateManual() {
     currencyUnitPriceManual = true;
+  }
+
+  function applyTradeFieldCurrency(node, currencyCode) {
+    if (!node) {
+      return;
+    }
+    const cfg = core.resolveCurrencyConfig?.(currencyCode || "BYN", "suffix") || { symbol: "руб.", position: "suffix" };
+    node.dataset.currencySymbol = cfg.symbol || String(currencyCode || "BYN").toUpperCase();
+    node.classList.remove("currency-prefix");
+    node.classList.add("currency-suffix");
+  }
+
+  function syncCurrencyTradeFieldUi() {
+    const assetCode = String(el.currencyAsset?.value || "USD").toUpperCase();
+    const quoteCode = String(el.currencyQuote?.value || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
+    const assetLabel = core.formatCurrencyLabel?.(assetCode) || assetCode;
+    const quoteLabel = core.formatCurrencyLabel?.(quoteCode, { withSymbol: false }) || quoteCode;
+    if (el.currencyQuantityLabel) {
+      el.currencyQuantityLabel.textContent = `Количество ${assetLabel}`;
+    }
+    if (el.currencyUnitPriceLabel) {
+      el.currencyUnitPriceLabel.textContent = `Курс ${quoteLabel} за 1 ${assetCode}`;
+    }
+    if (el.currencyFeeLabel) {
+      el.currencyFeeLabel.textContent = `Комиссия в ${quoteLabel}`;
+    }
+    applyTradeFieldCurrency(el.currencyQuantityField, assetCode);
+    applyTradeFieldCurrency(el.currencyUnitPriceField, quoteCode);
+    applyTradeFieldCurrency(el.currencyFeeField, quoteCode);
   }
   function syncOperationCurrencyFields(mode = "create") {
     const isEdit = mode === "edit";
@@ -256,6 +284,8 @@
       if (el.currencyTradeDateModal && !el.currencyTradeDateModal.value) {
         core.syncDateFieldValue(el.currencyTradeDateModal, core.getTodayIso());
       }
+      syncCurrencyTradeFieldUi();
+      syncSuggestedCurrencyRate().catch(() => {});
       if (submit) {
         submit.textContent = "Сохранить валютную сделку";
       }
@@ -417,6 +447,7 @@
     setDebtDirection("lend");
     setCurrencySide("buy");
     currencyUnitPriceManual = false;
+    syncCurrencyTradeFieldUi();
     syncOperationCurrencyFields("create");
     syncOperationCurrencyFields("edit");
     applyDebtCurrencyUi();
@@ -632,6 +663,7 @@
     setCreateOperationMode,
     setEditOperationMode,
     syncOperationCurrencyFields,
+    syncCurrencyTradeFieldUi,
     syncSuggestedCurrencyRate,
     markCurrencyRateManual,
     updateDebtDueHint,
