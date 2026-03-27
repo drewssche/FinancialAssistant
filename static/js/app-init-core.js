@@ -424,6 +424,13 @@
     }
     if (el.currencyDigestToggle) {
       el.currencyDigestToggle.addEventListener("change", () => {
+        const sessionFeature = getSessionFeature();
+        sessionFeature.previewInterfaceSettingsUi?.();
+        sessionFeature.savePreferencesDebounced?.(300);
+      });
+    }
+    if (el.currencyDigestTimeInput) {
+      el.currencyDigestTimeInput.addEventListener("change", () => {
         getSessionFeature().savePreferencesDebounced?.(300);
       });
     }

@@ -95,6 +95,7 @@
       dashboardBreakdownLevel: "category",
       dashboardCategoryKind: "expense",
       dashboardPlansPeriod: "month",
+      dashboardCurrencyHydrated: false,
       dashboardAnalyticsHydrated: false,
       dashboardDebtsHydrated: false,
       dashboardPlansHydrated: false,

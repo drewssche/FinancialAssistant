@@ -17,6 +17,7 @@
     tracked_currencies: ["USD", "EUR"],
     show_dashboard_kpi: true,
     telegram_digest_enabled: false,
+    telegram_digest_time: "10:00",
   };
   let activeSettingsPickerKey = "";
 
@@ -186,6 +187,10 @@
     if (el.currencyDigestToggle) {
       el.currencyDigestToggle.checked = getMergedCurrencyPrefs().telegram_digest_enabled === true;
     }
+    if (el.currencyDigestTimeInput) {
+      el.currencyDigestTimeInput.value = String(getMergedCurrencyPrefs().telegram_digest_time || "10:00");
+      el.currencyDigestTimeInput.disabled = el.currencyDigestToggle ? !el.currencyDigestToggle.checked : false;
+    }
     if (el.showDashboardAnalyticsToggle) {
       el.showDashboardAnalyticsToggle.checked = ui.show_dashboard_analytics !== false;
     }
@@ -249,6 +254,9 @@
     }
     if (el.plansReminderTimeInput && el.plansRemindersToggle) {
       el.plansReminderTimeInput.disabled = !el.plansRemindersToggle.checked;
+    }
+    if (el.currencyDigestTimeInput && el.currencyDigestToggle) {
+      el.currencyDigestTimeInput.disabled = !el.currencyDigestToggle.checked;
     }
     syncSettingsPickerButtons();
   }
@@ -417,6 +425,7 @@
           tracked_currencies: trackedCurrencies.length ? trackedCurrencies : [...DEFAULT_CURRENCY_PREFS.tracked_currencies],
           show_dashboard_kpi: el.showDashboardCurrencyToggle ? el.showDashboardCurrencyToggle.checked : getMergedCurrencyPrefs().show_dashboard_kpi,
           telegram_digest_enabled: el.currencyDigestToggle ? el.currencyDigestToggle.checked : getMergedCurrencyPrefs().telegram_digest_enabled,
+          telegram_digest_time: el.currencyDigestTimeInput ? String(el.currencyDigestTimeInput.value || "10:00") : getMergedCurrencyPrefs().telegram_digest_time,
         },
         ui: {
           ...(state.preferences?.data?.ui || {}),

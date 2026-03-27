@@ -161,7 +161,8 @@ class CurrencyService:
 
     def compute_positions(self, *, user_id: int) -> dict:
         prefs = self.get_currency_preferences(user_id)
-        latest_rates = self.repo.get_latest_rate_map(user_id=user_id)
+        latest_rate_pairs = self.repo.get_latest_rate_pair_map(user_id=user_id)
+        latest_rates = {currency: pair[0] for currency, pair in latest_rate_pairs.items()}
         trades = self.repo.list_all_trades(user_id=user_id)
         positions_by_currency: dict[str, dict] = {}
         realized_by_currency: dict[str, Decimal] = {}
@@ -248,12 +249,29 @@ class CurrencyService:
             "positions_by_currency": {item["currency"]: item for item in positions},
             "current_rates": [
                 {
-                    "currency": row.currency,
-                    "rate": self._rate(row.rate),
-                    "rate_date": row.rate_date,
-                    "source": row.source,
+                    "currency": current_row.currency,
+                    "rate": self._rate(current_row.rate),
+                    "rate_date": current_row.rate_date,
+                    "source": current_row.source,
+                    "previous_rate": self._rate(previous_row.rate) if previous_row else None,
+                    "change_value": (
+                        self._rate(Decimal(current_row.rate) - Decimal(previous_row.rate))
+                        if previous_row
+                        else None
+                    ),
+                    "change_pct": (
+                        float(
+                            (
+                                (Decimal(current_row.rate) - Decimal(previous_row.rate))
+                                / Decimal(previous_row.rate)
+                            )
+                            * Decimal("100")
+                        )
+                        if previous_row and Decimal(previous_row.rate) > 0
+                        else None
+                    ),
                 }
-                for row in latest_rates.values()
+                for current_row, previous_row in latest_rate_pairs.values()
             ],
         }
 

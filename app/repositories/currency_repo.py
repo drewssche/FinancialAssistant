@@ -3,7 +3,7 @@ from datetime import date
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
-from app.db.models import FxRateSnapshot, FxTrade
+from app.db.models import AuthIdentity, FxRateSnapshot, FxTrade, UserPreference
 
 
 class CurrencyRepository:
@@ -40,6 +40,23 @@ class CurrencyRepository:
         for row in rows:
             latest.setdefault(row.currency, row)
         return latest
+
+    def get_latest_rate_pair_map(self, *, user_id: int) -> dict[str, tuple[FxRateSnapshot, FxRateSnapshot | None]]:
+        rows = self.db.execute(
+            select(FxRateSnapshot)
+            .where(FxRateSnapshot.user_id == user_id)
+            .order_by(FxRateSnapshot.currency.asc(), FxRateSnapshot.rate_date.desc(), FxRateSnapshot.id.desc())
+        ).scalars()
+        pairs: dict[str, list[FxRateSnapshot]] = {}
+        for row in rows:
+            items = pairs.setdefault(row.currency, [])
+            if len(items) < 2:
+                items.append(row)
+        return {
+            currency: (items[0], items[1] if len(items) > 1 else None)
+            for currency, items in pairs.items()
+            if items
+        }
 
     def upsert_rate(
         self,
@@ -84,3 +101,16 @@ class CurrencyRepository:
             .limit(limit)
         )
         return list(reversed(list(self.db.scalars(stmt))))
+
+    def list_currency_preferences(self) -> list[UserPreference]:
+        stmt = select(UserPreference).order_by(UserPreference.user_id.asc())
+        return list(self.db.scalars(stmt))
+
+    def list_telegram_digest_targets(self) -> list:
+        stmt = (
+            select(AuthIdentity, UserPreference)
+            .outerjoin(UserPreference, UserPreference.user_id == AuthIdentity.user_id)
+            .where(AuthIdentity.provider == "telegram")
+            .order_by(AuthIdentity.user_id.asc())
+        )
+        return list(self.db.execute(stmt).all())

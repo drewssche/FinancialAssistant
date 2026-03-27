@@ -31,6 +31,7 @@ class PreferenceRepository:
                     "tracked_currencies": ["USD", "EUR"],
                     "show_dashboard_kpi": True,
                     "telegram_digest_enabled": False,
+                    "telegram_digest_time": "10:00",
                 },
                 "ui": {
                     "timezone": "auto",

@@ -42,6 +42,9 @@ class CurrencyRateOut(BaseModel):
     rate: Decimal
     rate_date: date
     source: str
+    previous_rate: Decimal | None = None
+    change_value: Decimal | None = None
+    change_pct: float | None = None
 
 
 class CurrencyRateHistoryPointOut(BaseModel):

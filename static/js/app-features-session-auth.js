@@ -139,6 +139,7 @@
     state.firstOperationDate = "";
     state.allTimeAnchorResolved = false;
     state.dashboardDebtSummaryLoaded = false;
+    state.dashboardCurrencyHydrated = false;
     state.dashboardAnalyticsHydrated = false;
     state.dashboardDebtsHydrated = false;
     state.dashboardPlansHydrated = false;

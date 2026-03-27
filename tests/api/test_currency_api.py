@@ -97,6 +97,9 @@ def test_currency_trade_overview_and_current_rate(client: TestClient):
     assert payload["positions"][0]["current_rate"] == "3.300000"
     assert payload["positions"][0]["current_rate_date"] == "2026-03-27"
     assert payload["positions"][0]["result_value"] == "8.00"
+    assert payload["current_rates"][0]["previous_rate"] is None
+    assert payload["current_rates"][0]["change_value"] is None
+    assert payload["current_rates"][0]["change_pct"] is None
 
 
 def test_currency_trade_rejects_sell_above_available_balance(client: TestClient):
@@ -147,3 +150,31 @@ def test_currency_rate_history_returns_chronological_points(client: TestClient):
     payload = response.json()
     assert [item["rate_date"] for item in payload] == ["2026-03-20", "2026-03-21", "2026-03-22"]
     assert [item["rate"] for item in payload] == ["3.210000", "3.250000", "3.240000"]
+
+
+def test_currency_overview_includes_day_change_from_previous_snapshot(client: TestClient):
+    client.put(
+        "/api/v1/currency/rates/current",
+        json={
+            "currency": "EUR",
+            "rate": "3.40",
+            "rate_date": "2026-03-26",
+        },
+    )
+    client.put(
+        "/api/v1/currency/rates/current",
+        json={
+            "currency": "EUR",
+            "rate": "3.45",
+            "rate_date": "2026-03-27",
+        },
+    )
+
+    response = client.get("/api/v1/currency/overview", params={"currency": "EUR"})
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert len(payload["current_rates"]) == 1
+    assert payload["current_rates"][0]["currency"] == "EUR"
+    assert payload["current_rates"][0]["previous_rate"] == "3.400000"
+    assert payload["current_rates"][0]["change_value"] == "0.050000"
+    assert payload["current_rates"][0]["change_pct"] == pytest.approx(1.4705882353)

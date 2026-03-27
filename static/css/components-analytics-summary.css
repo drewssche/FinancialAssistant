@@ -277,6 +277,111 @@
   gap: var(--space-2);
 }
 
+.dashboard-currency-panel {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.dashboard-currency-panel .analytics-kpi-secondary,
+.dashboard-currency-panel .dashboard-currency-rates-grid {
+  margin-top: 0;
+}
+
+.dashboard-currency-rates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
+  gap: var(--space-3);
+}
+
+.dashboard-currency-rate-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(180deg, rgba(23, 35, 56, 0.92), rgba(16, 25, 41, 0.94)),
+    radial-gradient(circle at top right, rgba(255, 179, 71, 0.12), transparent 42%);
+  padding: var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+  min-height: 9.5rem;
+}
+
+.dashboard-currency-rate-card-empty {
+  background: rgba(18, 27, 43, 0.72);
+}
+
+.dashboard-currency-rate-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.dashboard-currency-rate-head strong {
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+}
+
+.dashboard-currency-rate-value {
+  font-size: 1.45rem;
+  line-height: 1;
+  font-family: var(--money-font-family);
+  font-variant-numeric: tabular-nums lining-nums;
+  color: #e8eefb;
+}
+
+.dashboard-currency-rate-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(140, 159, 194, 0.35);
+  background: rgba(143, 183, 255, 0.08);
+  padding: 0.22rem 0.55rem;
+  font-size: 0.72rem;
+  line-height: 1;
+  font-family: var(--money-font-family);
+  font-variant-numeric: tabular-nums lining-nums;
+  color: #dce7ff;
+}
+
+.dashboard-currency-rate-badge-positive,
+.dashboard-currency-rate-delta-positive {
+  color: #8ef0bc;
+}
+
+.dashboard-currency-rate-badge-positive {
+  border-color: rgba(59, 196, 123, 0.42);
+  background: rgba(59, 196, 123, 0.1);
+}
+
+.dashboard-currency-rate-badge-negative,
+.dashboard-currency-rate-delta-negative {
+  color: #ffabab;
+}
+
+.dashboard-currency-rate-badge-negative {
+  border-color: rgba(255, 122, 122, 0.42);
+  background: rgba(255, 122, 122, 0.1);
+}
+
+.dashboard-currency-rate-badge-neutral,
+.dashboard-currency-rate-delta-neutral,
+.dashboard-currency-rate-badge-empty {
+  color: #d3ddf3;
+}
+
+.dashboard-currency-rate-delta {
+  font-size: 0.86rem;
+  line-height: 1.25;
+  font-family: var(--money-font-family);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.dashboard-currency-rate-source,
+.dashboard-currency-rate-meta {
+  color: #94a8cc;
+}
+
 .analytics-category-breakdown-grid {
   margin-top: var(--space-3);
   display: grid;

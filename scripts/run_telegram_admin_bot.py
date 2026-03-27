@@ -15,6 +15,7 @@ from app.services.telegram_admin_bot_service import (
     TelegramAdminTargetUserNotFoundError,
 )
 from app.services.telegram_debt_reminder_bot_service import TelegramDebtReminderBotService
+from app.services.telegram_currency_digest_bot_service import TelegramCurrencyDigestBotService
 from app.services.telegram_plan_bot_service import (
     TelegramPlanAlreadyCompletedError,
     TelegramPlanBotService,
@@ -22,6 +23,7 @@ from app.services.telegram_plan_bot_service import (
     TelegramPlanUserNotFoundError,
 )
 from app.services.telegram_plan_reminder_bot_service import TelegramPlanReminderBotService
+from app.services.currency_rate_refresh_service import CurrencyRateRefreshService
 
 
 logger = logging.getLogger("financial_assistant_admin_bot")
@@ -287,6 +289,51 @@ async def process_debt_reminders(client: TelegramBotClient) -> None:
         db.close()
 
 
+async def process_currency_refresh() -> None:
+    db = SessionLocal()
+    try:
+        CurrencyRateRefreshService(db).refresh_due_tracked_rates()
+    finally:
+        db.close()
+
+
+async def process_currency_digests(client: TelegramBotClient) -> None:
+    db = SessionLocal()
+    try:
+        service = TelegramCurrencyDigestBotService(db)
+        for delivery in service.list_due_deliveries():
+            try:
+                await client.call(
+                    "sendMessage",
+                    {
+                        "chat_id": delivery.chat_id,
+                        "text": delivery.text,
+                        "disable_web_page_preview": True,
+                    },
+                )
+            except Exception as exc:  # noqa: BLE001
+                log_telegram_bot_event(
+                    "currency_digest_failed",
+                    user_id=delivery.user_id,
+                    error=type(exc).__name__,
+                )
+                logger.warning(
+                    "telegram currency digest failed for user %s: %s",
+                    delivery.user_id,
+                    exc,
+                )
+                continue
+            service.mark_delivery_sent(delivery)
+            log_telegram_bot_event(
+                "currency_digest_sent",
+                chat_id=delivery.chat_id,
+                user_id=delivery.user_id,
+                tracked_count=len(delivery.tracked_currencies),
+            )
+    finally:
+        db.close()
+
+
 async def run() -> None:
     settings = get_settings()
     token = settings.telegram_bot_token.strip()
@@ -317,6 +364,16 @@ async def run() -> None:
                 except Exception as exc:  # noqa: BLE001
                     log_telegram_bot_event("debt_reminder_scan_failed", error=type(exc).__name__)
                     logger.warning("telegram debt reminder scan failed: %s", exc)
+                try:
+                    await process_currency_refresh()
+                except Exception as exc:  # noqa: BLE001
+                    log_telegram_bot_event("currency_refresh_scan_failed", error=type(exc).__name__)
+                    logger.warning("currency rate refresh scan failed: %s", exc)
+                try:
+                    await process_currency_digests(client)
+                except Exception as exc:  # noqa: BLE001
+                    log_telegram_bot_event("currency_digest_scan_failed", error=type(exc).__name__)
+                    logger.warning("telegram currency digest scan failed: %s", exc)
                 last_plan_reminder_scan_at = now_mono
             try:
                 data = await client.call(

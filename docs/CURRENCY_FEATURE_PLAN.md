@@ -16,6 +16,8 @@ Implemented in current slice:
 - weighted-average position calculation from trade history
 - dashboard summary integration for currency KPI
 - dashboard currency block
+- dashboard currency block promoted into a separate panel above period KPI
+- dashboard rate widget enriched with day-over-day `+/-` vs previous snapshot
 - dedicated `Валюта` section with:
   - tracked-currency filter
   - current positions
@@ -26,12 +28,15 @@ Implemented in current slice:
   - tracked currencies
   - show/hide dashboard currency block
   - daily Telegram digest preference flag
+- automatic daily tracked-rate refresh via Telegram bot scan loop
+- daily Telegram currency digest with separate reminder time and anti-duplicate guard
 - currency mode inside the common add-operation modal
 - analytics tab `Валюта` with KPI, rate-history chart, and deal list
 
 Not implemented yet:
-- automatic daily exchange-rate refresh
-- actual daily Telegram currency digest job delivery
+- user-defined currency alert rules beyond daily digest
+- admin-visible diagnostics/status for currency refresh and digest delivery
+- richer dashboard/widget polish such as sparkline or extended daily change metadata
 
 ## Agreed Product Direction
 
@@ -39,7 +44,7 @@ Not implemented yet:
 - Currency should not be modeled as a plain income/expense operation only.
 - Currency deals should have their own domain model and their own UI mode, while still fitting naturally into the existing app flow.
 - The app should support optional tracked currencies such as `USD`, `EUR`, `RUB`, and others.
-- Dashboard should get a separate currency KPI row under the current KPI block.
+- Dashboard should get a separate currency KPI row above the period KPI block.
 - A dedicated `Валюта` section should be added.
 - `Добавить операцию` should get a separate mode/tab for currency deals.
 - `Аналитика` should get a dedicated `Валюта` tab.

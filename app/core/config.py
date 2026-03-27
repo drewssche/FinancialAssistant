@@ -36,6 +36,10 @@ class Settings(BaseSettings):
         default=60,
         alias="TELEGRAM_PLAN_REMINDER_SCAN_INTERVAL_SECONDS",
     )
+    currency_rate_provider_url: str = Field(
+        default="https://api.nbrb.by/exrates/rates/{code}?parammode=2",
+        alias="CURRENCY_RATE_PROVIDER_URL",
+    )
     admin_telegram_ids: str = Field(default="", alias="ADMIN_TELEGRAM_IDS")
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)

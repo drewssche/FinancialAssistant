@@ -92,9 +92,7 @@
         <section id="currencySection" class="section-block hidden">
           <section class="panel">
             <div class="panel-head row between">
-              <div>
-                <p class="subtitle">Позиции, сделки и текущие курсы валют</p>
-              </div>
+              <div></div>
               <div class="toolbar">
                 <button id="openCurrencyTradePanelBtn" class="btn btn-cta" type="button">+ Сделка</button>
                 <button id="openCurrencyRatePanelBtn" class="btn btn-secondary" type="button">Обновить курс</button>
@@ -383,13 +381,17 @@
                   <input id="plansRemindersToggle" type="checkbox" checked />
                   <span>Напоминать о планах в Telegram</span>
                 </label>
+                <label class="field">
+                  <span>Время уведомления по планам</span>
+                  <input id="plansReminderTimeInput" type="time" value="09:00" />
+                </label>
                 <label class="settings-switch-row">
                   <input id="currencyDigestToggle" type="checkbox" />
                   <span>Присылать раз в день курсы отслеживаемых валют в Telegram</span>
                 </label>
                 <label class="field">
-                  <span>Время напоминания</span>
-                  <input id="plansReminderTimeInput" type="time" value="09:00" />
+                  <span>Время уведомления по курсам</span>
+                  <input id="currencyDigestTimeInput" type="time" value="10:00" />
                 </label>
               </section>
               <div class="settings-actions">

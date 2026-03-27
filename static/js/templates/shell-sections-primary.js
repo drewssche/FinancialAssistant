@@ -4,6 +4,19 @@
   window.App.templates.shellSectionsPrimary = `
 
         <section id="dashboardSection" class="section-block">
+          <section id="dashboardCurrencyPanel" class="panel dashboard-currency-panel hidden">
+            <div class="panel-head row between">
+              <div>
+                <h3>Валютный портфель</h3>
+                <p class="subtitle">Позиции и курсы по отслеживаемым валютам</p>
+              </div>
+              <button id="openCurrencyTabBtn" class="btn btn-secondary" type="button">Открыть раздел Валюта</button>
+            </div>
+            <div id="dashboardCurrencyKpiGrid" class="analytics-kpi-grid"></div>
+            <div id="dashboardCurrencyRates" class="dashboard-currency-rates-grid"></div>
+            <div id="dashboardCurrencyPositions" class="analytics-kpi-secondary"></div>
+          </section>
+
           <section id="dashboardAnalyticsPanel" class="panel">
             <div class="panel-head row between">
               <div>
@@ -23,18 +36,6 @@
             </div>
             <div id="dashboardKpiPrimary" class="analytics-kpi-grid"></div>
             <div id="dashboardKpiSecondary" class="analytics-kpi-secondary"></div>
-            <div id="dashboardCurrencyPanel" class="dashboard-currency-inline hidden">
-              <div class="panel-head row between">
-                <div>
-                  <h3>Валютный портфель</h3>
-                  <p class="subtitle">Позиции и текущий курс по отслеживаемым валютам</p>
-                </div>
-                <button id="openCurrencyTabBtn" class="btn btn-secondary" type="button">Открыть раздел Валюта</button>
-              </div>
-              <div id="dashboardCurrencyKpiGrid" class="analytics-kpi-grid"></div>
-              <div id="dashboardCurrencyRates" class="analytics-kpi-secondary"></div>
-              <div id="dashboardCurrencyPositions" class="analytics-kpi-secondary"></div>
-            </div>
           </section>
 
           <section id="dashboardStructurePanel" class="panel">

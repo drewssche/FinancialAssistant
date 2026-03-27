@@ -93,24 +93,77 @@
     }
   }
 
+  function formatSignedRate(value, digits = 4) {
+    const numeric = Number(value || 0);
+    const prefix = numeric > 0 ? "+" : numeric < 0 ? "-" : "";
+    return `${prefix}${Math.abs(numeric).toFixed(digits)}`;
+  }
+
+  function formatSignedPercent(value) {
+    const numeric = Number(value || 0);
+    const prefix = numeric > 0 ? "+" : numeric < 0 ? "-" : "";
+    return `${prefix}${Math.abs(numeric).toFixed(2)}%`;
+  }
+
   function renderDashboardCurrencyRates(currentRates = [], trackedCurrencies = []) {
     if (!el.dashboardCurrencyRates) {
       return;
     }
     const tracked = Array.isArray(trackedCurrencies) ? trackedCurrencies : [];
-    const rows = Array.isArray(currentRates)
-      ? currentRates.filter((item) => tracked.includes(String(item.currency || "").toUpperCase()))
-      : [];
-    if (!rows.length) {
-      el.dashboardCurrencyRates.innerHTML = `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Курсы пока не заданы</span>`;
+    const normalizedTracked = tracked
+      .map((item) => String(item || "").trim().toUpperCase())
+      .filter(Boolean);
+    const rows = Array.isArray(currentRates) ? currentRates : [];
+    const rowsByCurrency = new Map(rows.map((item) => [String(item.currency || "").toUpperCase(), item]));
+    const visibleCurrencies = normalizedTracked.length
+      ? normalizedTracked
+      : Array.from(rowsByCurrency.keys());
+    if (!visibleCurrencies.length) {
+      el.dashboardCurrencyRates.innerHTML = `
+        <article class="dashboard-currency-rate-card dashboard-currency-rate-card-empty">
+          <strong>Курсы пока не заданы</strong>
+          <span class="muted-small">Добавь отслеживаемую валюту и хотя бы один snapshot курса</span>
+        </article>
+      `;
       return;
     }
-    el.dashboardCurrencyRates.innerHTML = rows.map((item) => `
-      <span class="analytics-kpi-chip analytics-kpi-chip-neutral">
-        ${core.escapeHtml ? core.escapeHtml(item.currency) : item.currency}: ${Number(item.rate || 0).toFixed(4)}
-        <span class="muted-small">${item.rate_date ? core.formatDateRu(item.rate_date) : "без даты"}</span>
-      </span>
-    `).join("");
+    el.dashboardCurrencyRates.innerHTML = visibleCurrencies.map((currency) => {
+      const item = rowsByCurrency.get(currency);
+      if (!item) {
+        return `
+          <article class="dashboard-currency-rate-card dashboard-currency-rate-card-empty">
+            <div class="dashboard-currency-rate-head">
+              <strong>${core.escapeHtml ? core.escapeHtml(currency) : currency}</strong>
+              <span class="dashboard-currency-rate-badge dashboard-currency-rate-badge-empty">Нет курса</span>
+            </div>
+            <div class="dashboard-currency-rate-value">—</div>
+            <div class="dashboard-currency-rate-meta muted-small">Сохрани текущий курс в разделе Валюта</div>
+          </article>
+        `;
+      }
+      const deltaValue = Number(item.change_value || 0);
+      const hasDelta = item.change_value !== null && item.change_value !== undefined;
+      const deltaTone = deltaValue > 0 ? "positive" : deltaValue < 0 ? "negative" : "neutral";
+      const deltaLabel = hasDelta
+        ? `За день ${formatSignedRate(item.change_value)} · ${formatSignedPercent(item.change_pct || 0)}`
+        : "Нет предыдущего курса для сравнения";
+      const rateDate = item.rate_date ? core.formatDateRu(item.rate_date) : "без даты";
+      const source = item.source ? String(item.source).trim() : "manual";
+      return `
+        <article class="dashboard-currency-rate-card">
+          <div class="dashboard-currency-rate-head">
+            <strong>${core.escapeHtml ? core.escapeHtml(item.currency) : item.currency}</strong>
+            <span class="dashboard-currency-rate-badge dashboard-currency-rate-badge-${deltaTone}">
+              ${hasDelta ? formatSignedRate(item.change_value) : "новый"}
+            </span>
+          </div>
+          <div class="dashboard-currency-rate-value">${Number(item.rate || 0).toFixed(4)}</div>
+          <div class="dashboard-currency-rate-meta muted-small">Курс к BYN · ${rateDate}</div>
+          <div class="dashboard-currency-rate-delta dashboard-currency-rate-delta-${deltaTone}">${deltaLabel}</div>
+          <div class="dashboard-currency-rate-source muted-small">Источник: ${core.escapeHtml ? core.escapeHtml(source) : source}</div>
+        </article>
+      `;
+    }).join("");
   }
 
   function formatDateTimeRu(value) {
@@ -156,8 +209,12 @@
       skeletons.renderDashboardPlansSkeleton?.();
     }
     const dashboardData = getDashboardData();
+    const shouldRefreshCurrency = state.dashboardCurrencyHydrated;
     const shouldRefreshDebts = state.dashboardDebtSummaryLoaded || state.dashboardDebtsHydrated;
     const shouldRefreshPlans = state.dashboardPlansHydrated;
+    if (shouldRefreshCurrency && el.dashboardCurrencyPanel) {
+      refreshState.begin?.(el.dashboardCurrencyPanel, "Обновляется");
+    }
     if (shouldRefreshDebts && el.dashboardDebtsPanel && core.isDashboardDebtsVisible()) {
       refreshState.begin?.(el.dashboardDebtsPanel, "Обновляется");
     }
@@ -193,6 +250,7 @@
       } catch {
         renderDashboardCurrencyRates([], []);
       }
+      state.dashboardCurrencyHydrated = true;
       state.dashboardDebtSummaryLoaded = true;
 
       if (el.dashboardPlansPanel && ui?.showDashboardOperations !== false) {
@@ -309,6 +367,9 @@
         state.dashboardDebtsHydrated = true;
       }
     } finally {
+      if (shouldRefreshCurrency && el.dashboardCurrencyPanel) {
+        refreshState.end?.(el.dashboardCurrencyPanel);
+      }
       if (shouldRefreshDebts && el.dashboardDebtsPanel) {
         refreshState.end?.(el.dashboardDebtsPanel);
       }
