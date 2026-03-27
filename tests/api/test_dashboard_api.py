@@ -614,6 +614,30 @@ def test_dashboard_analytics_highlights_returns_kpis_and_top_blocks(client: Test
     assert any(item["name"] == "Milk" for item in payload["price_increases"])
 
 
+def test_dashboard_analytics_highlights_accepts_day_period(client: TestClient):
+    created = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "75.00",
+            "operation_date": "2026-03-11",
+            "note": "day-period",
+        },
+    )
+    assert created.status_code == 201
+
+    response = client.get(
+        "/api/v1/dashboard/analytics/highlights",
+        params={"period": "day", "date_to": "2026-03-11"},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["period"] == "day"
+    assert payload["date_from"] == "2026-03-11"
+    assert payload["date_to"] == "2026-03-11"
+    assert payload["expense_total"] == "75.00"
+
+
 def test_dashboard_analytics_highlights_category_breakdown_respects_kind_filter(client: TestClient):
     food = client.post(
         "/api/v1/categories",

@@ -1,6 +1,6 @@
 (() => {
   function createDebtModalsFeature(deps) {
-    const { state, el, core, debtUi, refreshDebtViews, findDebtById, syncDebtsControls } = deps;
+    const { state, el, core, debtUi, refreshDebtViews, findDebtById, ensureDebtLoaded, syncDebtsControls } = deps;
     const formatMoney = debtUi.formatMoney;
     const parseAmount = debtUi.parseAmount;
     const parseIsoDate = debtUi.parseIsoDate;
@@ -13,8 +13,8 @@
       return window.App.getRuntimeModule?.("operation-modal") || {};
     }
 
-    function openDebtRepaymentModal(debtId) {
-      const found = findDebtById(debtId);
+    async function openDebtRepaymentModal(debtId) {
+      const found = await (ensureDebtLoaded ? ensureDebtLoaded(debtId) : Promise.resolve(findDebtById(debtId)));
       if (!found) {
         core.setStatus("Долг не найден");
         return;
@@ -136,12 +136,12 @@
       await refreshDebtViews();
     }
 
-    function openDebtHistoryModal(debtId) {
+    async function openDebtHistoryModal(debtId) {
       if (!el.debtHistoryModal) {
         core.setStatus("Модалка истории недоступна");
         return;
       }
-      const found = findDebtById(debtId);
+      const found = await (ensureDebtLoaded ? ensureDebtLoaded(debtId) : Promise.resolve(findDebtById(debtId)));
       if (!found) {
         core.setStatus("Долг не найден");
         return;
@@ -284,8 +284,8 @@
       renderDebtHistoryEvents();
     }
 
-    function openEditDebtModal(debtId) {
-      const found = findDebtById(debtId);
+    async function openEditDebtModal(debtId) {
+      const found = await (ensureDebtLoaded ? ensureDebtLoaded(debtId) : Promise.resolve(findDebtById(debtId)));
       if (!found) {
         core.setStatus("Долг не найден");
         return;

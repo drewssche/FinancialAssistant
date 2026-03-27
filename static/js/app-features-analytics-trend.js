@@ -315,6 +315,10 @@
 
     const force = options.force === true;
     const period = state.dashboardAnalyticsPeriod || "month";
+    const operationsFeature = window.App.getRuntimeModule?.("operations") || {};
+    if (operationsFeature.ensureAllTimeBounds) {
+      await operationsFeature.ensureAllTimeBounds(false, period);
+    }
     const granularity = period === "year" ? "month" : period === "all_time" ? "month" : "day";
     const cacheKey = `analytics:preview:period=${period}:granularity=${granularity}`;
     if (!force) {

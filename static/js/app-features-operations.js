@@ -44,8 +44,9 @@
     state.allTimeAnchorResolved = false;
   }
 
-  async function ensureAllTimeBounds(force = false) {
-    if (state.period !== "all_time") {
+  async function ensureAllTimeBounds(force = false, periodOverride = null) {
+    const targetPeriod = periodOverride || state.period;
+    if (targetPeriod !== "all_time") {
       return;
     }
     if (state.allTimeAnchorResolved && !force) {

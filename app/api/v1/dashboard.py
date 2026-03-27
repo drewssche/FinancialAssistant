@@ -101,7 +101,7 @@ def get_analytics_calendar_year(
 
 @router.get("/analytics/highlights", response_model=AnalyticsHighlightsOut)
 def get_analytics_highlights(
-    period: str = Query(default="month", pattern="^(week|month|year|all_time|custom)$"),
+    period: str = Query(default="month", pattern="^(day|week|month|year|all_time|custom)$"),
     category_kind: str = Query(default="expense", pattern="^(expense|income|all)$"),
     category_breakdown_level: str = Query(default="category", pattern="^(category|group)$"),
     month: str | None = Query(default=None, pattern=r"^\d{4}-\d{2}$"),

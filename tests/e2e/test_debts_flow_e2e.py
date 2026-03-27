@@ -229,6 +229,8 @@ def page_with_debts_api_mock():
             return json_response(
                 route,
                 {
+                    "date_from": "2026-03-01",
+                    "date_to": "2026-03-31",
                     "income_total": "0.00",
                     "expense_total": "0.00",
                     "balance": "0.00",
@@ -238,6 +240,13 @@ def page_with_debts_api_mock():
                     "active_debt_cards": 0,
                 },
             )
+
+        if path == "/api/v1/dashboard/debts/preview" and method == "GET":
+            limit = max(1, int((query.get("limit") or ["6"])[0]))
+            for card in debt_cards:
+                recalc_card(card)
+            only_active = [item for item in debt_cards if item["status"] == "active"]
+            return json_response(route, only_active[:limit])
 
         if path == "/api/v1/dashboard/analytics/calendar" and method == "GET":
             month = (query.get("month") or ["2026-03"])[0]
@@ -654,6 +663,24 @@ def test_repayment_moves_debt_to_closed(static_server_url: str, page_with_debts_
     page.click("#debtStatusTabs button[data-debt-status='closed']")
     page.wait_for_timeout(200)
     assert page.locator("#debtsCards .debt-card h3", has_text="Анна").count() == 1
+
+
+@pytest.mark.e2e
+def test_dashboard_debt_actions_load_full_debt_cache_before_open(static_server_url: str, page_with_debts_api_mock):
+    page = page_with_debts_api_mock
+    page.goto(f"{static_server_url}/static/index.html")
+    _login_via_mock_telegram(page)
+
+    page.wait_for_selector("button[data-dashboard-history-debt-id='9001']")
+    page.click("button[data-dashboard-history-debt-id='9001']")
+    page.wait_for_selector("#debtHistoryModal:not(.hidden)")
+    assert "Начальная сумма" in page.locator("#debtHistoryItems").inner_text()
+
+    page.click("#closeDebtHistoryModalBtn")
+    page.wait_for_selector("#debtHistoryModal", state="hidden")
+    page.click("button[data-dashboard-repay-debt-id='9001']")
+    page.wait_for_selector("#debtRepaymentModal:not(.hidden)")
+    assert page.locator("#repaymentDebtId").input_value() == "9001"
 
 
 @pytest.mark.e2e

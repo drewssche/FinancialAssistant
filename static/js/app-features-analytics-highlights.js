@@ -32,7 +32,7 @@
     }
     const operationsFeature = getOperationsFeature();
     if (operationsFeature.ensureAllTimeBounds) {
-      await operationsFeature.ensureAllTimeBounds();
+      await operationsFeature.ensureAllTimeBounds(false, state.dashboardAnalyticsPeriod || "month");
     }
     const force = options.force === true;
     const period = state.dashboardAnalyticsPeriod || "month";
@@ -85,6 +85,10 @@
     const force = options.force === true;
     const calendarModule = getAnalyticsModules().calendar;
     const month = state.analyticsMonthAnchor || calendarModule?.serializeMonthAnchor?.(calendarModule.currentAnchorDate()) || "";
+    const operationsFeature = getOperationsFeature();
+    if (operationsFeature.ensureAllTimeBounds) {
+      await operationsFeature.ensureAllTimeBounds(false, state.analyticsGlobalPeriod || "month");
+    }
     const params = buildHighlightsParams(month);
     const cacheKey = `analytics:highlights:${params.toString()}`;
 

@@ -13,6 +13,7 @@
       debtUi,
       refreshDebtViews,
       findDebtById,
+      ensureDebtLoaded,
       syncDebtsControls,
       getCurrentDebtIds,
     })
@@ -168,6 +169,15 @@
       }
     }
     return null;
+  }
+
+  async function ensureDebtLoaded(debtId) {
+    const existing = findDebtById(debtId);
+    if (existing) {
+      return existing;
+    }
+    await loadDebtsCards({ force: true });
+    return findDebtById(debtId);
   }
 
   const api = {
