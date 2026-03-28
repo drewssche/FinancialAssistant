@@ -130,7 +130,7 @@
           asset_currency: assetCurrency,
           quote_currency: quoteCurrency,
           quantity: tradeContext?.effectiveQuantity || quantity.previewValue || 0,
-          entered_amount: tradeContext?.enteredAmount || quantity.previewValue || 0,
+          quote_total: tradeContext?.estimatedQuoteTotal || 0,
           amount_label: tradeContext?.amountColumnLabel || "Количество",
           unit_price: unitPrice.previewValue || 0,
           unit_price_display: unitPrice.raw || tradeContext?.rateResolved?.raw || tradeContext?.rateResolved?.previewFormatted || unitPrice.previewFormatted || Number(unitPrice.previewValue || 0).toFixed(4),
@@ -284,11 +284,9 @@
           : `${quoteLabel} → ${assetLabel}`;
         const amountHead = el.createPreviewCurrencyAmountHead;
         if (amountHead) {
-          amountHead.textContent = item.amount_label || (item.side === "buy" ? "Сумма" : "Количество");
+          amountHead.textContent = item.amount_label || "Количество";
         }
-        const amountValue = item.side === "buy"
-          ? core.formatMoney(item.entered_amount || 0, { currency: item.quote_currency || "BYN" })
-          : core.formatAmount(item.entered_amount || item.quantity || 0);
+        const amountValue = `${core.formatAmount(item.quantity || 0)} ${item.asset_currency || ""}${item.quote_total ? `<div class="muted-small">≈ ${core.formatMoney(item.quote_total || 0, { currency: item.quote_currency || "BYN" })}</div>` : ""}`;
         row.classList.add("preview-row", `kind-row-${sideClass}`);
         row.appendChild(createPreviewCellButton("Дата", core.formatDateRu(item.trade_date), "currencyTradeDateModal"));
         row.appendChild(createPreviewCellButton("Действие", `<span class="kind-pill kind-pill-${sideClass}">${sideLabel}</span>`, "createCurrencySideSwitch"));

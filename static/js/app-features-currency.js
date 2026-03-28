@@ -286,7 +286,7 @@
         `<button class="btn btn-danger" type="button" data-delete-currency-trade-id="${Number(item.id)}">Удалить</button>`,
       ].join("");
       return `
-      <tr data-operation-row-id="${Number(item.id)}">
+      <tr class="table-record-open-row" data-currency-trade-row-id="${Number(item.id)}">
         <td data-label="Дата">${core.formatDateRu(item.trade_date)}</td>
         <td data-label="Действие"><span class="kind-pill kind-pill-${sideClass}">${sideLabel}</span></td>
         <td data-label="Валюта">${core.escapeHtml ? core.escapeHtml(core.formatCurrencyLabel(item.asset_currency)) : core.formatCurrencyLabel(item.asset_currency)}</td>
@@ -457,6 +457,21 @@
         if (deleteBtn) {
           const tradeId = Number(deleteBtn.dataset.deleteCurrencyTradeId || 0);
           deleteCurrencyTrade(tradeId);
+          return;
+        }
+        const row = event.target.closest("tr[data-currency-trade-row-id]");
+        if (!row) {
+          return;
+        }
+        if (event.target.closest("button, a, input, select, textarea, label, .app-popover")) {
+          return;
+        }
+        const tradeId = Number(row.dataset.currencyTradeRowId || 0);
+        if (tradeId > 0) {
+          core.runAction({
+            errorPrefix: "Ошибка открытия валютной сделки",
+            action: () => openCurrencyTradeEdit(tradeId),
+          });
         }
       });
     }

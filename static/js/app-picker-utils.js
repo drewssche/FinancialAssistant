@@ -102,6 +102,46 @@
     for (const owner of activeOwners) {
       owner.classList.toggle("has-open-popover", Boolean(isOpen));
     }
+    if (isOpen) {
+      const alignWithinViewport = () => {
+        if (!popover || popover.classList.contains("hidden")) {
+          return;
+        }
+        popover.style.top = "";
+        popover.style.bottom = "";
+        popover.style.left = "";
+        popover.style.right = "";
+        popover.style.maxHeight = "";
+        popover.style.overflowY = "";
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+        const margin = 12;
+        const rect = popover.getBoundingClientRect();
+        const parentRect = popover.offsetParent?.getBoundingClientRect?.() || { top: 0, left: 0, right: viewportWidth };
+        if (rect.bottom > viewportHeight - margin && parentRect.top >= rect.height + margin) {
+          popover.style.top = "auto";
+          popover.style.bottom = "calc(100% + var(--space-2))";
+        }
+        if (rect.left < margin && parentRect.right - parentRect.left >= rect.width) {
+          popover.style.left = "0";
+          popover.style.right = "auto";
+        } else if (rect.right > viewportWidth - margin) {
+          popover.style.right = "0";
+          popover.style.left = "auto";
+        }
+        const adjustedRect = popover.getBoundingClientRect();
+        if (adjustedRect.top < margin) {
+          popover.style.top = "calc(100% + var(--space-2))";
+          popover.style.bottom = "auto";
+        }
+        if (adjustedRect.height > viewportHeight - margin * 2) {
+          popover.style.maxHeight = `${Math.max(160, viewportHeight - margin * 2)}px`;
+          popover.style.overflowY = "auto";
+        }
+      };
+      alignWithinViewport();
+      requestAnimationFrame(alignWithinViewport);
+    }
   }
 
   function closePopoverOnOutside(event, options = {}) {

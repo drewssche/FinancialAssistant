@@ -202,7 +202,7 @@
         const unitPrice = tradeContext?.rateResolved || core.resolveMoneyInput(el.currencyUnitPrice?.value || 0);
         const fee = tradeContext?.feeResolved || core.resolveMoneyInput(feeRawValue || 0);
         if (!quantityInput.valid || quantityInput.value <= 0) {
-          throw new Error((tradeContext?.side || "buy") === "buy" ? "Проверь сумму покупки" : "Проверь количество продаваемой валюты");
+          throw new Error((tradeContext?.side || "buy") === "buy" ? "Проверь количество покупаемой валюты" : "Проверь количество продаваемой валюты");
         }
         if (!unitPrice.valid || unitPrice.value <= 0) {
           throw new Error("Проверь курс валюты");
@@ -212,7 +212,7 @@
         }
         const effectiveQuantity = Number(tradeContext?.effectiveQuantity || 0);
         if (!(effectiveQuantity > 0)) {
-          throw new Error((tradeContext?.side || "buy") === "buy" ? "Проверь сумму покупки и курс" : "Проверь количество валюты");
+          throw new Error((tradeContext?.side || "buy") === "buy" ? "Проверь количество покупки и курс" : "Проверь количество валюты");
         }
         const isEditTrade = Number(state.editCurrencyTradeId || 0) > 0;
         await core.requestJson(isEditTrade ? `/api/v1/currency/trades/${state.editCurrencyTradeId}` : "/api/v1/currency/trades", {
