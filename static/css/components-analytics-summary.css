@@ -369,7 +369,7 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
 .dashboard-currency-rate-badge {
@@ -423,12 +423,6 @@
 .dashboard-currency-rate-value-row .dashboard-currency-rate-delta {
   text-align: right;
   white-space: nowrap;
-}
-
-.dashboard-currency-rate-delta-caption {
-  font-size: 0.82rem;
-  line-height: 1.2;
-  color: #9fd8be;
 }
 
 .dashboard-currency-rate-source,

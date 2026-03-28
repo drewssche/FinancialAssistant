@@ -92,6 +92,20 @@ Remaining polish only:
 - optional UX extension:
   - extend the same currency-scope control pattern to similar list views where it stays meaningful beyond operations
   - this should help separate domestic/base-currency cashflow from foreign-currency activity quickly
+- immediate post-rollout regression batch:
+  - current corrective slice:
+    - step 1: dashboard currency cards
+      - remove duplicated comparison text
+      - keep delta visually close to the main rate value, not detached on another edge of the card
+    - step 2: operation / plan / currency preview math
+      - eliminate remaining `1:1` fallback in `≈ BYN` preview when non-base currency is selected
+      - keep amount labels and receipt-position labels synchronized with the selected currency
+      - keep currency-deal preview rate identical to the rate shown in the input field
+      - stop showing a visible manual FX field in regular operation mode when the rate should be auto-derived
+    - step 3: debt create and debt card polish
+      - place counterparty field directly below `Я дал / Я взял`
+      - keep amount + currency on the next row with the same proportions/pattern as regular operation create flow
+      - keep debt-row kebab in the top-right card corner by the established pattern
 
 ## Agreed Product Direction
 

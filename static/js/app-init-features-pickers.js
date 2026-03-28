@@ -18,7 +18,10 @@
       const node = document.getElementById(id);
       if (node) {
         node.addEventListener("input", actions.updateCreatePreview);
-        node.addEventListener("change", actions.updateCreatePreview);
+        const deferredPreviewField = id === "opCurrency" || id === "opDate";
+        if (!deferredPreviewField) {
+          node.addEventListener("change", actions.updateCreatePreview);
+        }
         if (id === "opAmount" && actions.renderReceiptSummary) {
           node.addEventListener("input", actions.renderReceiptSummary);
           node.addEventListener("change", actions.renderReceiptSummary);
@@ -61,11 +64,16 @@
       const node = document.getElementById(id);
       if (node) {
         node.addEventListener("input", actions.updateCreatePreview);
-        node.addEventListener("change", actions.updateCreatePreview);
-        if ((id === "currencyAsset" || id === "currencyTradeDateModal") && actions.syncSuggestedCurrencyRate) {
-          node.addEventListener("change", () => {
+        const autoRateField = id === "currencyAsset" || id === "currencyTradeDateModal";
+        if (!autoRateField) {
+          node.addEventListener("change", actions.updateCreatePreview);
+        }
+        if (autoRateField && actions.syncSuggestedCurrencyRate) {
+          node.addEventListener("change", async () => {
             actions.resetCurrencyRateAutofill?.();
-            actions.syncSuggestedCurrencyRate().catch(() => {});
+            await actions.syncSuggestedCurrencyRate().catch(() => {});
+            actions.syncCurrencyTradeFieldUi?.();
+            actions.updateCreatePreview?.();
           });
         }
         if ((id === "currencyAsset" || id === "currencyQuote") && actions.syncCurrencyTradeFieldUi) {
@@ -101,7 +109,10 @@
       const node = document.getElementById(id);
       if (node) {
         node.addEventListener("input", actions.updateEditPreview);
-        node.addEventListener("change", actions.updateEditPreview);
+        const deferredPreviewField = id === "editCurrency" || id === "editDate";
+        if (!deferredPreviewField) {
+          node.addEventListener("change", actions.updateEditPreview);
+        }
         if (id === "editAmount" && actions.renderReceiptSummary) {
           node.addEventListener("input", () => actions.renderReceiptSummary("edit"));
           node.addEventListener("change", () => actions.renderReceiptSummary("edit"));

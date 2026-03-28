@@ -174,9 +174,6 @@
       const rateDateIso = item.rate_date ? String(item.rate_date) : "";
       const isStale = Boolean(rateDateIso) && rateDateIso < core.getTodayIso();
       const deltaTone = deltaValue > 0 ? "positive" : deltaValue < 0 ? "negative" : "neutral";
-      const deltaLabel = hasDelta
-        ? `${isStale ? "К предыдущему курсу" : "За день"} ${formatSignedRate(item.change_value)} · ${formatSignedPercent(item.change_pct || 0)}`
-        : "Нет предыдущего курса для сравнения";
       const rateDate = item.rate_date ? core.formatDateRu(item.rate_date) : "без даты";
       const source = item.source ? String(item.source).trim() : "manual";
       const currencyLabel = core.formatCurrencyLabel(item.currency);
@@ -195,7 +192,7 @@
             </div>
           </div>
           <div class="dashboard-currency-rate-meta muted-small">${isStale ? "Последний доступный курс к BYN" : "Официальный курс к BYN"} · ${rateDate}</div>
-          <div class="dashboard-currency-rate-delta-caption dashboard-currency-rate-delta-${deltaTone}">${deltaLabel}</div>
+          <div class="dashboard-currency-rate-delta-caption muted-small">${hasDelta ? (isStale ? "К предыдущему курсу" : "За день") : "Нет предыдущего курса для сравнения"}</div>
           <div class="dashboard-currency-rate-source muted-small">Источник: ${core.escapeHtml ? core.escapeHtml(source) : source}</div>
           <div class="dashboard-currency-rate-actions">
             <button class="btn btn-secondary btn-xs" type="button" data-dashboard-refresh-currency="${item.currency}">Обновить</button>

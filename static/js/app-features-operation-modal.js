@@ -40,8 +40,13 @@
   const updateEditPreview = preview?.updateEditPreview || (() => {});
   const handleCreatePreviewClick = preview?.handleCreatePreviewClick || (() => {});
   let currencyUnitPriceManual = false;
+  let currencyRateRequestSeq = 0;
   let createOperationFxRateManual = false;
   let editOperationFxRateManual = true;
+  const operationFxRateRequestSeq = {
+    create: 0,
+    edit: 0,
+  };
   const createOperationModalReceiptFeature = window.App.getRuntimeModule?.("operation-modal-receipt-factory");
   const receipt = createOperationModalReceiptFeature
     ? createOperationModalReceiptFeature({
@@ -82,7 +87,7 @@
     core.syncSegmentedActive(el.createDebtDirectionSwitch, "debt-direction", nextDirection);
     updateCreatePreview();
   }
-  function setCurrencySide(side) {
+  async function setCurrencySide(side) {
     const nextSide = side === "sell" ? "sell" : "buy";
     if (el.currencySide) {
       el.currencySide.value = nextSide;
@@ -92,7 +97,7 @@
     }
     currencyUnitPriceManual = false;
     syncCurrencyTradeFieldUi();
-    syncSuggestedCurrencyRate({ force: true }).catch(() => {});
+    await syncSuggestedCurrencyRate({ force: true }).catch(() => {});
     updateCreatePreview();
   }
 
@@ -143,6 +148,7 @@
     if (currencyUnitPriceManual && options.force !== true) {
       return;
     }
+    const requestSeq = ++currencyRateRequestSeq;
     const currency = String(el.currencyAsset.value || "").trim().toUpperCase();
     const dateTo = core.parseDateInputValue(el.currencyTradeDateModal.value) || core.getTodayIso();
     if (!currency || !dateTo) {
@@ -152,6 +158,9 @@
       `/api/v1/currency/overview?currency=${encodeURIComponent(currency)}&trades_limit=1`,
       { headers: core.authHeaders() },
     ).catch(() => null);
+    if (requestSeq !== currencyRateRequestSeq) {
+      return;
+    }
     const currentRate = Array.isArray(overview?.current_rates) ? overview.current_rates[0] : null;
     if (!currentRate?.rate) {
       return;
@@ -285,8 +294,13 @@
     if (isOperationFxRateManual(mode) && options.force !== true) {
       return;
     }
+    const requestSeq = Number(operationFxRateRequestSeq[mode] || 0) + 1;
+    operationFxRateRequestSeq[mode] = requestSeq;
     if (context.isPlanFlow) {
       const currentRate = await getLatestCurrentCurrencyRate(context.currency);
+      if (requestSeq !== operationFxRateRequestSeq[mode]) {
+        return;
+      }
       if (!currentRate?.rate) {
         setOperationFxRateHint(mode, `Текущий курс ${core.formatCurrencyLabel(context.currency)} не найден`, "warning");
         return;
@@ -311,15 +325,24 @@
     let history = await core.requestJson(`/api/v1/currency/rates/history?${params.toString()}`, {
       headers: core.authHeaders(),
     }).catch(() => []);
+    if (requestSeq !== operationFxRateRequestSeq[mode]) {
+      return;
+    }
     if (!Array.isArray(history) || !history.length) {
       history = await core.requestJson(`/api/v1/currency/rates/history/fill?currency=${encodeURIComponent(context.currency)}&date_from=${encodeURIComponent(operationDate)}&date_to=${encodeURIComponent(operationDate)}`, {
         method: "POST",
         headers: core.authHeaders(),
       }).catch(() => []);
+      if (requestSeq !== operationFxRateRequestSeq[mode]) {
+        return;
+      }
     }
     const rateRow = Array.isArray(history) && history.length ? history[history.length - 1] : null;
     if (!rateRow?.rate) {
       const latestCurrentRate = await getLatestCurrentCurrencyRate(context.currency);
+      if (requestSeq !== operationFxRateRequestSeq[mode]) {
+        return;
+      }
       if (latestCurrentRate?.rate) {
         fxRateInput.value = Number(latestCurrentRate.rate || 0).toFixed(4);
         const rateDate = latestCurrentRate.rate_date ? core.formatDateRu(latestCurrentRate.rate_date) : "";
@@ -358,7 +381,7 @@
     const selectedCurrency = String(currencySelect?.value || baseCurrency).toUpperCase();
     const createPlanFlow = !isEdit && state.createFlowMode === "plan";
     const needsFxRate = selectedCurrency !== baseCurrency;
-    fxRateField?.classList.toggle("hidden", createPlanFlow || !needsFxRate);
+    fxRateField?.classList.add("hidden");
     if (createPlanFlow) {
       setOperationFxRateHint(mode, "");
     }
@@ -366,17 +389,14 @@
       setOperationFxRateHint(mode, "");
     }
     if (fxRateInput) {
-      fxRateInput.required = !createPlanFlow && needsFxRate;
-      if (createPlanFlow || !needsFxRate) {
+      fxRateInput.required = false;
+      if (!needsFxRate) {
         fxRateInput.value = "1";
-      } else if (!String(fxRateInput.value || "").trim()) {
         setOperationFxRateManual(mode, false);
-        await syncSuggestedOperationFxRate(mode).catch(() => {});
+      } else {
+        setOperationFxRateManual(mode, false);
+        await syncSuggestedOperationFxRate(mode, { force: true }).catch(() => {});
       }
-    }
-    if (createPlanFlow && needsFxRate) {
-      setOperationFxRateManual(mode, false);
-      await syncSuggestedOperationFxRate(mode, { force: true }).catch(() => {});
     }
   }
   function applyDebtCurrencyUi() {
