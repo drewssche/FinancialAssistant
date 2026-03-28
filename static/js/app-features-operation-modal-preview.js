@@ -118,8 +118,8 @@
       if (el.opEntryMode?.value === "currency") {
         const tradeContext = window.App.getRuntimeModule?.("operation-modal")?.getCurrencyTradeContext?.() || null;
         const quantity = core.resolveMoneyInput(el.currencyQuantity?.value || 0);
-        const unitPrice = core.resolveMoneyInput(el.currencyUnitPrice?.value || 0);
-        const fee = core.resolveMoneyInput(el.currencyFee?.value || 0);
+        const unitPrice = core.resolveRateInput(el.currencyUnitPrice?.value || 0, 0, 6);
+        const fee = core.resolveMoneyInput((typeof el.currencyFee?.value === "string" ? el.currencyFee.value.trim() : "") || "0");
         const side = tradeContext?.side || el.currencySide?.value || "buy";
         const assetCurrency = tradeContext?.assetCurrency || String(el.currencyAsset?.value || "USD").toUpperCase();
         const quoteCurrency = tradeContext?.quoteCurrency || String(el.currencyQuote?.value || "BYN").toUpperCase();
@@ -163,7 +163,7 @@
       const operationDate = core.parseDateInputValue(document.getElementById("opDate").value) || core.getTodayIso();
       const operationCurrency = String(el.opCurrency?.value || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
       const baseCurrency = core.getCurrencyConfig?.().code || "BYN";
-      const fxRate = Number(core.resolveMoneyInput(el.opFxRate?.value || 1).previewValue || 1);
+      const fxRate = Number(core.resolveRateInput(el.opFxRate?.value || 1, 1, 6).previewValue || 1);
       const baseAmount = operationCurrency === baseCurrency ? amountResolved : amountResolved * fxRate;
       return {
         id: 0,
@@ -174,7 +174,7 @@
         original_amount: core.formatAmount(amountResolved),
         currency: operationCurrency,
         base_currency: baseCurrency,
-        fx_rate: core.resolveMoneyInput(el.opFxRate?.value || 1).previewFormatted,
+        fx_rate: core.resolveRateInput(el.opFxRate?.value || 1, 1, 6).previewFormatted,
         note: noteRaw,
         receipt_items: el.opOperationMode?.value === "receipt" ? receiptItems : [],
       };
@@ -185,7 +185,7 @@
       const amountResolved = core.resolveMoneyInput(document.getElementById("editAmount").value);
       const operationCurrency = String(el.editCurrency?.value || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
       const baseCurrency = core.getCurrencyConfig?.().code || "BYN";
-      const fxRate = Number(core.resolveMoneyInput(el.editFxRate?.value || 1).previewValue || 1);
+      const fxRate = Number(core.resolveRateInput(el.editFxRate?.value || 1, 1, 6).previewValue || 1);
       const originalAmount = Number(amountResolved.previewValue || 0);
       const baseAmount = operationCurrency === baseCurrency ? originalAmount : originalAmount * fxRate;
       return {
@@ -197,7 +197,7 @@
         original_amount: amountResolved.previewFormatted,
         currency: operationCurrency,
         base_currency: baseCurrency,
-        fx_rate: core.resolveMoneyInput(el.editFxRate?.value || 1).previewFormatted,
+        fx_rate: core.resolveRateInput(el.editFxRate?.value || 1, 1, 6).previewFormatted,
         note: document.getElementById("editNote").value || "",
         receipt_items: el.editOperationMode?.value === "receipt" ? (state.editReceiptItems || []) : [],
       };

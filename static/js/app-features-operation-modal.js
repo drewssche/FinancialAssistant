@@ -109,8 +109,8 @@
     const quoteLabel = core.formatCurrencyLabel?.(quoteCurrency) || quoteCurrency;
     const feeRawValue = typeof el.currencyFee?.value === "string" ? el.currencyFee.value.trim() : "";
     const quantityResolved = core.resolveMoneyInput(el.currencyQuantity?.value || 0);
-    const rateResolved = core.resolveMoneyInput(el.currencyUnitPrice?.value || 0);
-    const feeResolved = core.resolveMoneyInput(feeRawValue || 0);
+    const rateResolved = core.resolveRateInput(el.currencyUnitPrice?.value || 0, 0, 6);
+    const feeResolved = core.resolveMoneyInput(feeRawValue || "0");
     const enteredAmount = Number(quantityResolved.previewValue || 0);
     const unitPrice = Number(rateResolved.previewValue || 0);
     const effectiveQuantity = enteredAmount;
@@ -322,7 +322,7 @@
     const dateInput = document.getElementById(isEdit ? "editDate" : "opDate");
     const baseCurrency = String(core.getCurrencyConfig?.().code || "BYN").toUpperCase();
     const currency = String(currencySelect?.value || baseCurrency).toUpperCase();
-    const fxRateState = core.resolveMoneyInput(fxRateInput?.value || 1);
+    const fxRateState = core.resolveRateInput(fxRateInput?.value || 1, 1, 6);
     return {
       mode,
       isEdit,

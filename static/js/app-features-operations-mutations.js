@@ -94,7 +94,7 @@
       const receiptItems = receiptPayloadGetter ? receiptPayloadGetter() : [];
       const amount = core.resolveMoneyInput(document.getElementById(amountInputId).value);
       const currency = String(document.getElementById(currencySelectId)?.value || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
-      const fxRate = core.resolveMoneyInput(document.getElementById(fxRateInputId)?.value || 1);
+      const fxRate = core.resolveRateInput(document.getElementById(fxRateInputId)?.value || 1, 1, 6);
       const baseCurrency = core.getCurrencyConfig?.().code || "BYN";
       const hasReceiptItems = receiptItems.length > 0;
       const canDeriveAmountFromReceipt = hasReceiptItems && amount.empty;
@@ -199,8 +199,8 @@
           : null;
         const feeRawValue = typeof el.currencyFee?.value === "string" ? el.currencyFee.value.trim() : "";
         const quantityInput = tradeContext?.quantityResolved || core.resolveMoneyInput(el.currencyQuantity?.value || 0);
-        const unitPrice = tradeContext?.rateResolved || core.resolveMoneyInput(el.currencyUnitPrice?.value || 0);
-        const fee = tradeContext?.feeResolved || core.resolveMoneyInput(feeRawValue || 0);
+        const unitPrice = tradeContext?.rateResolved || core.resolveRateInput(el.currencyUnitPrice?.value || 0, 0, 6);
+        const fee = tradeContext?.feeResolved || core.resolveMoneyInput(feeRawValue || "0");
         if (!quantityInput.valid || quantityInput.value <= 0) {
           throw new Error((tradeContext?.side || "buy") === "buy" ? "Проверь количество покупаемой валюты" : "Проверь количество продаваемой валюты");
         }

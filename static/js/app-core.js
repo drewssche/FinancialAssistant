@@ -140,6 +140,10 @@
     return getCoreUtils().formatAmount(value);
   }
 
+  function formatRateAmount(value, digits = 6) {
+    return getCoreUtils().formatRateAmount(value, digits);
+  }
+
   function getUiSettings() {
     const base = getCoreUtils().getUiSettings(state);
     const next = { ...base };
@@ -202,6 +206,10 @@
 
   function resolveMoneyInput(value, fallback = 0) {
     return getCoreUtils().resolveMoneyInput(value, fallback);
+  }
+
+  function resolveRateInput(value, fallback = 0, digits = 6) {
+    return getCoreUtils().resolveRateInput(value, fallback, digits);
   }
 
   function applyUiScale(scalePercent) {
@@ -283,10 +291,12 @@
     syncSegmentedActive,
       syncAllPeriodTabs,
       formatAmount,
+      formatRateAmount,
       formatMoney,
       formatCurrencyLabel,
       evaluateMathExpression,
       resolveMoneyInput,
+      resolveRateInput,
       formatDateRu,
       parseDateInputValue,
       normalizeDateInputValue,

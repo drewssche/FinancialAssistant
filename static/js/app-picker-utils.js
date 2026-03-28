@@ -86,6 +86,92 @@
     return matcher(event.target);
   }
 
+  function isFloatingActionPopover(popover) {
+    return Boolean(
+      popover?.classList?.contains("table-kebab-popover")
+      || popover?.classList?.contains("mobile-card-actions-popover"),
+    );
+  }
+
+  function clearFloatingPopoverStyles(popover) {
+    if (!popover) {
+      return;
+    }
+    [
+      "position",
+      "top",
+      "right",
+      "bottom",
+      "left",
+      "maxHeight",
+      "overflowY",
+      "zIndex",
+      "width",
+      "minWidth",
+    ].forEach((prop) => {
+      popover.style[prop] = "";
+    });
+  }
+
+  function detachFloatingPopoverObservers(popover) {
+    if (!popover) {
+      return;
+    }
+    if (typeof popover.__appPopoverFloatingReposition === "function") {
+      window.removeEventListener("resize", popover.__appPopoverFloatingReposition);
+      window.removeEventListener("scroll", popover.__appPopoverFloatingReposition, true);
+    }
+    delete popover.__appPopoverFloatingReposition;
+  }
+
+  function positionFloatingActionPopover(popover, owners = []) {
+    if (!popover || popover.classList.contains("hidden")) {
+      return;
+    }
+    const anchor = owners.find((node) => node instanceof HTMLElement && node.matches("button,[role=\"button\"]"))
+      || owners.find((node) => node instanceof HTMLElement)
+      || null;
+    if (!anchor) {
+      return;
+    }
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+    const margin = 12;
+    clearFloatingPopoverStyles(popover);
+    popover.style.position = "fixed";
+    popover.style.zIndex = "220";
+    popover.style.maxHeight = `${Math.max(160, viewportHeight - margin * 2)}px`;
+    popover.style.overflowY = "auto";
+    const anchorRect = anchor.getBoundingClientRect();
+    const preferredWidth = Math.min(192, Math.max(168, viewportWidth - margin * 2));
+    popover.style.width = `${preferredWidth}px`;
+    popover.style.minWidth = `${Math.min(168, preferredWidth)}px`;
+    popover.style.left = `${Math.max(margin, Math.min(anchorRect.right - preferredWidth, viewportWidth - preferredWidth - margin))}px`;
+    popover.style.top = `${Math.min(anchorRect.bottom + 8, viewportHeight - margin)}px`;
+    const rect = popover.getBoundingClientRect();
+    const spaceBelow = viewportHeight - anchorRect.bottom - margin;
+    const spaceAbove = anchorRect.top - margin;
+    const shouldOpenUp = rect.height > spaceBelow && spaceAbove > spaceBelow;
+    if (shouldOpenUp) {
+      popover.style.top = "auto";
+      popover.style.bottom = `${Math.max(margin, viewportHeight - anchorRect.top + 8)}px`;
+    }
+    const adjustedRect = popover.getBoundingClientRect();
+    if (adjustedRect.right > viewportWidth - margin) {
+      popover.style.left = `${Math.max(margin, viewportWidth - adjustedRect.width - margin)}px`;
+    }
+    if (adjustedRect.left < margin) {
+      popover.style.left = `${margin}px`;
+    }
+    if (adjustedRect.bottom > viewportHeight - margin && !shouldOpenUp) {
+      popover.style.top = `${Math.max(margin, viewportHeight - adjustedRect.height - margin)}px`;
+    }
+    if (adjustedRect.top < margin && shouldOpenUp) {
+      popover.style.bottom = "auto";
+      popover.style.top = `${margin}px`;
+    }
+  }
+
   function setPopoverOpen(popover, isOpen, options = {}) {
     if (!popover) {
       return;
@@ -97,50 +183,24 @@
     if (typeof options.onClose === "function") {
       popover.__appPopoverOnClose = options.onClose;
     }
+    if (!isOpen) {
+      detachFloatingPopoverObservers(popover);
+      clearFloatingPopoverStyles(popover);
+    }
     popover.classList.toggle("hidden", !isOpen);
     const activeOwners = Array.isArray(popover.__appPopoverOwners) ? popover.__appPopoverOwners : owners;
     for (const owner of activeOwners) {
       owner.classList.toggle("has-open-popover", Boolean(isOpen));
     }
-    if (isOpen) {
-      const alignWithinViewport = () => {
-        if (!popover || popover.classList.contains("hidden")) {
-          return;
-        }
-        popover.style.top = "";
-        popover.style.bottom = "";
-        popover.style.left = "";
-        popover.style.right = "";
-        popover.style.maxHeight = "";
-        popover.style.overflowY = "";
-        const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
-        const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
-        const margin = 12;
-        const rect = popover.getBoundingClientRect();
-        const parentRect = popover.offsetParent?.getBoundingClientRect?.() || { top: 0, left: 0, right: viewportWidth };
-        if (rect.bottom > viewportHeight - margin && parentRect.top >= rect.height + margin) {
-          popover.style.top = "auto";
-          popover.style.bottom = "calc(100% + var(--space-2))";
-        }
-        if (rect.left < margin && parentRect.right - parentRect.left >= rect.width) {
-          popover.style.left = "0";
-          popover.style.right = "auto";
-        } else if (rect.right > viewportWidth - margin) {
-          popover.style.right = "0";
-          popover.style.left = "auto";
-        }
-        const adjustedRect = popover.getBoundingClientRect();
-        if (adjustedRect.top < margin) {
-          popover.style.top = "calc(100% + var(--space-2))";
-          popover.style.bottom = "auto";
-        }
-        if (adjustedRect.height > viewportHeight - margin * 2) {
-          popover.style.maxHeight = `${Math.max(160, viewportHeight - margin * 2)}px`;
-          popover.style.overflowY = "auto";
-        }
-      };
-      alignWithinViewport();
-      requestAnimationFrame(alignWithinViewport);
+    if (isOpen && isFloatingActionPopover(popover)) {
+      const reposition = () => positionFloatingActionPopover(popover, activeOwners);
+      popover.__appPopoverFloatingReposition = reposition;
+      reposition();
+      requestAnimationFrame(reposition);
+      window.addEventListener("resize", reposition);
+      window.addEventListener("scroll", reposition, true);
+    } else if (isOpen) {
+      requestAnimationFrame(() => {});
     }
   }
 

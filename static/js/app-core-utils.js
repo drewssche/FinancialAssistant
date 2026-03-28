@@ -20,7 +20,15 @@
     return num.toFixed(2);
   }
 
-  function evaluateMathExpression(value) {
+  function formatRateAmount(value, digits = 6) {
+    const num = Number(value);
+    if (Number.isNaN(num)) {
+      return Number(0).toFixed(digits);
+    }
+    return num.toFixed(digits);
+  }
+
+  function evaluateMathExpression(value, precisionDigits = 2) {
     const raw = String(value || "").trim();
     if (!raw) {
       return { ok: false, value: 0, expression: "", reason: "empty" };
@@ -134,7 +142,8 @@
       if (index !== expression.length) {
         return { ok: false, value: 0, expression, reason: "trailing_token" };
       }
-      const rounded = Math.round(result * 100) / 100;
+      const factor = 10 ** Math.max(0, Number(precisionDigits || 0));
+      const rounded = Math.round(result * factor) / factor;
       if (!Number.isFinite(rounded)) {
         return { ok: false, value: 0, expression, reason: "non_finite" };
       }
@@ -192,6 +201,57 @@
       previewValue,
       formatted: formatAmount(fallbackValue),
       previewFormatted: formatAmount(previewValue),
+    };
+  }
+
+  function resolveRateInput(value, fallback = 0, digits = 6) {
+    const raw = String(value || "").trim();
+    const fallbackValue = Number(fallback) || 0;
+    if (!raw) {
+      return {
+        raw,
+        empty: true,
+        valid: false,
+        value: fallbackValue,
+        previewValue: fallbackValue,
+        formatted: formatRateAmount(fallbackValue, digits),
+        previewFormatted: formatRateAmount(fallbackValue, digits),
+      };
+    }
+    const evaluated = evaluateMathExpression(raw, digits);
+    if (evaluated.ok) {
+      return {
+        raw,
+        empty: false,
+        valid: true,
+        value: evaluated.value,
+        previewValue: evaluated.value,
+        formatted: formatRateAmount(evaluated.value, digits),
+        previewFormatted: formatRateAmount(evaluated.value, digits),
+      };
+    }
+
+    let previewValue = fallbackValue;
+    for (let i = raw.length - 1; i > 0; i -= 1) {
+      const candidate = raw.slice(0, i).trim();
+      if (!candidate) {
+        continue;
+      }
+      const partial = evaluateMathExpression(candidate, digits);
+      if (partial.ok) {
+        previewValue = partial.value;
+        break;
+      }
+    }
+
+    return {
+      raw,
+      empty: false,
+      valid: false,
+      value: fallbackValue,
+      previewValue,
+      formatted: formatRateAmount(fallbackValue, digits),
+      previewFormatted: formatRateAmount(previewValue, digits),
     };
   }
 
@@ -502,8 +562,10 @@
 
   window.App.coreUtils = {
     formatAmount,
+    formatRateAmount,
     evaluateMathExpression,
     resolveMoneyInput,
+    resolveRateInput,
     getUiSettings,
     resolveCurrencyConfig,
     formatCurrencyLabel,
