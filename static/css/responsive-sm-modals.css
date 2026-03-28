@@ -132,12 +132,16 @@
   #createDebtFields #debtStartDateField,
   #createDebtFields #createDebtDirectionSwitch,
   #createDebtFields #debtCounterpartyField,
-  #createDebtFields #debtPrincipalField,
+  #createDebtFields #debtPrincipalCompound,
   #createDebtFields #debtDueField,
   #createDebtFields #debtNote,
   .item-template-price-grid #itemTemplatePriceField,
   .item-template-price-grid #itemTemplatePriceDateField {
     grid-column: 1 / -1;
+  }
+
+  #createDebtFields #debtPrincipalCompound {
+    grid-template-columns: 1fr;
   }
 
   .currency-modal-row {

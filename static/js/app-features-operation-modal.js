@@ -229,21 +229,53 @@
     hintNode.dataset.tone = tone;
   }
 
-  async function syncSuggestedOperationFxRate(mode = "create", options = {}) {
+  function getOperationCurrencyContext(mode = "create") {
     const isEdit = mode === "edit";
     const currencySelect = isEdit ? el.editCurrency : el.opCurrency;
     const fxRateInput = isEdit ? el.editFxRate : el.opFxRate;
     const dateInput = document.getElementById(isEdit ? "editDate" : "opDate");
     const baseCurrency = String(core.getCurrencyConfig?.().code || "BYN").toUpperCase();
-    const selectedCurrency = String(currencySelect?.value || baseCurrency).toUpperCase();
-    const operationDate = core.parseDateInputValue(dateInput?.value || "");
-    if (!fxRateInput || !selectedCurrency || !operationDate) {
+    const currency = String(currencySelect?.value || baseCurrency).toUpperCase();
+    const fxRateState = core.resolveMoneyInput(fxRateInput?.value || 1);
+    return {
+      mode,
+      isEdit,
+      isPlanFlow: !isEdit && state.createFlowMode === "plan",
+      currency,
+      baseCurrency,
+      operationDate: core.parseDateInputValue(dateInput?.value || "") || "",
+      fxRate: Number(fxRateState.previewValue || 1),
+      hasForeignCurrency: currency !== baseCurrency,
+    };
+  }
+
+  async function getLatestCurrentCurrencyRate(currency) {
+    const normalizedCurrency = String(currency || "").trim().toUpperCase();
+    if (!normalizedCurrency) {
+      return null;
+    }
+    const overview = await core.requestJson(
+      `/api/v1/currency/overview?currency=${encodeURIComponent(normalizedCurrency)}&trades_limit=1`,
+      { headers: core.authHeaders() },
+    ).catch(() => null);
+    const currentRate = Array.isArray(overview?.current_rates) ? overview.current_rates[0] : null;
+    if (!currentRate?.rate) {
+      return null;
+    }
+    return currentRate;
+  }
+
+  async function syncSuggestedOperationFxRate(mode = "create", options = {}) {
+    const context = getOperationCurrencyContext(mode);
+    const fxRateInput = context.isEdit ? el.editFxRate : el.opFxRate;
+    if (!fxRateInput || !context.currency) {
       return;
     }
-    if (selectedCurrency === baseCurrency) {
+    if (context.currency === context.baseCurrency) {
       fxRateInput.value = "1";
       setOperationFxRateHint(mode, "");
-      if (isEdit) {
+      renderReceiptSummary(mode);
+      if (context.isEdit) {
         updateEditPreview();
       } else {
         updateCreatePreview();
@@ -253,8 +285,25 @@
     if (isOperationFxRateManual(mode) && options.force !== true) {
       return;
     }
+    if (context.isPlanFlow) {
+      const currentRate = await getLatestCurrentCurrencyRate(context.currency);
+      if (!currentRate?.rate) {
+        setOperationFxRateHint(mode, `Текущий курс ${core.formatCurrencyLabel(context.currency)} не найден`, "warning");
+        return;
+      }
+      fxRateInput.value = Number(currentRate.rate || 0).toFixed(4);
+      const rateDate = currentRate.rate_date ? core.formatDateRu(currentRate.rate_date) : "";
+      setOperationFxRateHint(mode, `Текущий курс подставлен автоматически${rateDate ? ` · ${rateDate}` : ""}`, "auto");
+      renderReceiptSummary(mode);
+      updateCreatePreview();
+      return;
+    }
+    const operationDate = context.operationDate;
+    if (!operationDate) {
+      return;
+    }
     const params = new URLSearchParams({
-      currency: selectedCurrency,
+      currency: context.currency,
       date_from: operationDate,
       date_to: operationDate,
       limit: "5",
@@ -263,7 +312,7 @@
       headers: core.authHeaders(),
     }).catch(() => []);
     if (!Array.isArray(history) || !history.length) {
-      history = await core.requestJson(`/api/v1/currency/rates/history/fill?currency=${encodeURIComponent(selectedCurrency)}&date_from=${encodeURIComponent(operationDate)}&date_to=${encodeURIComponent(operationDate)}`, {
+      history = await core.requestJson(`/api/v1/currency/rates/history/fill?currency=${encodeURIComponent(context.currency)}&date_from=${encodeURIComponent(operationDate)}&date_to=${encodeURIComponent(operationDate)}`, {
         method: "POST",
         headers: core.authHeaders(),
       }).catch(() => []);
@@ -275,7 +324,8 @@
     }
     fxRateInput.value = Number(rateRow.rate || 0).toFixed(4);
     setOperationFxRateHint(mode, `Курс подставлен автоматически на ${core.formatDateRu(operationDate)}`, "auto");
-    if (isEdit) {
+    renderReceiptSummary(mode);
+    if (context.isEdit) {
       updateEditPreview();
     } else {
       updateCreatePreview();
@@ -306,6 +356,10 @@
         setOperationFxRateManual(mode, false);
         syncSuggestedOperationFxRate(mode).catch(() => {});
       }
+    }
+    if (createPlanFlow && needsFxRate) {
+      setOperationFxRateManual(mode, false);
+      syncSuggestedOperationFxRate(mode, { force: true }).catch(() => {});
     }
   }
   function applyDebtCurrencyUi() {
@@ -826,6 +880,7 @@
     setCreateOperationMode,
     setEditOperationMode,
     syncOperationCurrencyFields,
+    getOperationCurrencyContext,
     syncSuggestedOperationFxRate,
     markCreateOperationFxRateManual: () => {
       setOperationFxRateManual("create", true);

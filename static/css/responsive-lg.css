@@ -86,9 +86,12 @@
   #createDebtFields #debtStartDateField,
   #createDebtFields #createDebtDirectionSwitch,
   #createDebtFields #debtCounterpartyField,
-  #createDebtFields #debtPrincipalField,
+  #createDebtFields #debtPrincipalCompound,
   #createDebtFields #debtDueField {
     grid-column: 1 / -1;
   }
-}
 
+  #createDebtFields #debtPrincipalCompound {
+    grid-template-columns: 1fr;
+  }
+}

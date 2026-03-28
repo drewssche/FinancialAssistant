@@ -584,12 +584,25 @@
 .debt-desktop-actions {
   display: grid;
   grid-template-columns: minmax(0, auto) 2.25rem;
+  grid-template-areas:
+    "chips chips"
+    "repay kebab";
   justify-content: end;
   align-items: start;
   gap: var(--space-2);
 }
 
+.debt-desktop-actions .debt-meta-chips {
+  grid-area: chips;
+  justify-content: flex-end;
+}
+
+.debt-desktop-actions .btn-repay {
+  grid-area: repay;
+}
+
 .debt-desktop-actions .debt-row-kebab {
+  grid-area: kebab;
   justify-self: end;
   align-self: start;
 }

@@ -67,8 +67,8 @@
             <div id="opReceiptFields" class="hidden">
               <div id="receiptItemsList" class="receipt-items-list"></div>
               <div class="receipt-summary">
-                <div class="muted-small">Сумма чека: <strong id="receiptTotalValue">0.00</strong></div>
-                <div class="muted-small">Расхождение: <strong id="receiptDiffValue">0.00</strong></div>
+                <div class="muted-small"><span id="receiptTotalLabel">Сумма чека</span>: <strong id="receiptTotalValue">0.00</strong></div>
+                <div class="muted-small"><span id="receiptDiffLabel">Расхождение</span>: <strong id="receiptDiffValue">0.00</strong></div>
                 <button id="pullReceiptTotalBtn" class="btn btn-secondary" type="button">Подтянуть сумму из чека</button>
               </div>
             </div>
@@ -454,8 +454,8 @@
             <div id="editReceiptFields" class="hidden">
               <div id="editReceiptItemsList" class="receipt-items-list"></div>
               <div class="receipt-summary">
-                <div class="muted-small">Сумма чека: <strong id="editReceiptTotalValue">0.00</strong></div>
-                <div class="muted-small">Расхождение: <strong id="editReceiptDiffValue">0.00</strong></div>
+                <div class="muted-small"><span id="editReceiptTotalLabel">Сумма чека</span>: <strong id="editReceiptTotalValue">0.00</strong></div>
+                <div class="muted-small"><span id="editReceiptDiffLabel">Расхождение</span>: <strong id="editReceiptDiffValue">0.00</strong></div>
                 <button id="editPullReceiptTotalBtn" class="btn btn-secondary" type="button" data-receipt-mode="edit">Подтянуть сумму из чека</button>
               </div>
             </div>

@@ -309,11 +309,11 @@
               <div class="muted-small">Добавлений: ${issuances.length}${lastIssuance ? ` • Последнее: ${core.formatDateRu(lastIssuance)}` : ""}</div>
               <div class="muted-small">Платежей: ${repayments.length}${lastRepayment ? ` • Последний: ${core.formatDateRu(lastRepayment)}` : ""}</div>
               ${debtClosureMeta(debt)}
-              ${debtSettlementChips(debt)}
               ${noteText ? `<div class="muted-small">${noteText}</div>` : ""}
             </td>
             <td>
               <div class="debt-desktop-actions">
+                ${debtSettlementChips(debt)}
                 <button class="btn btn-repay btn-xs" type="button" data-repay-debt-id="${debt.id}" ${Number(debt.outstanding_total) <= 0 ? "disabled" : ""}>Погашение</button>
                 ${core.renderInlineKebabMenu?.(
                   `debt-${debt.id}`,

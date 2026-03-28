@@ -58,6 +58,19 @@
       });
     }
 
+    function getReceiptBaseCurrency(mode = "create") {
+      const operationModal = window.App.getRuntimeModule?.("operation-modal");
+      const context = operationModal?.getOperationCurrencyContext?.(mode);
+      return String(context?.baseCurrency || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
+    }
+
+    function getReceiptFxRate(mode = "create") {
+      const operationModal = window.App.getRuntimeModule?.("operation-modal");
+      const context = operationModal?.getOperationCurrencyContext?.(mode);
+      const rate = Number(context?.fxRate || 1);
+      return Number.isFinite(rate) && rate > 0 ? rate : 1;
+    }
+
     function getReceiptContext(mode = "create") {
       const isEdit = mode === "edit";
       return {
@@ -67,7 +80,9 @@
         fieldsNode: isEdit ? el.editReceiptFields : el.opReceiptFields,
         listNode: isEdit ? el.editReceiptItemsList : el.receiptItemsList,
         totalNode: isEdit ? el.editReceiptTotalValue : el.receiptTotalValue,
+        totalLabelNode: isEdit ? el.editReceiptTotalLabel : el.receiptTotalLabel,
         diffNode: isEdit ? el.editReceiptDiffValue : el.receiptDiffValue,
+        diffLabelNode: isEdit ? el.editReceiptDiffLabel : el.receiptDiffLabel,
         amountNode: document.getElementById(isEdit ? "editAmount" : "opAmount"),
       };
     }
@@ -259,11 +274,30 @@
         return;
       }
       const total = getReceiptTotal(mode);
-      ctx.totalNode.textContent = formatReceiptMoney(total, mode);
+      const receiptCurrency = getReceiptCurrency(mode);
+      const baseCurrency = getReceiptBaseCurrency(mode);
+      const fxRate = getReceiptFxRate(mode);
+      const totalHtml = receiptCurrency === baseCurrency
+        ? formatReceiptMoney(total, mode)
+        : `${formatReceiptMoney(total, mode)} <span class="muted-small">· ≈ ${core.formatMoney(total * fxRate, { currency: baseCurrency })}</span>`;
+      if (ctx.totalLabelNode) {
+        ctx.totalLabelNode.textContent = `Сумма чека (${getReceiptCurrencyLabel(mode)})`;
+      }
+      if (ctx.totalNode) {
+        ctx.totalNode.innerHTML = totalHtml;
+      }
       const resolvedAmount = core.resolveMoneyInput(ctx.amountNode?.value || 0);
       const diff = !resolvedAmount.empty ? asMoney(resolvedAmount.previewValue - total) : 0;
-      ctx.diffNode.textContent = formatReceiptMoney(diff, mode);
-      ctx.diffNode.classList.toggle("receipt-diff-warn", !resolvedAmount.empty && Math.abs(diff) >= 0.01);
+      const diffHtml = receiptCurrency === baseCurrency
+        ? formatReceiptMoney(diff, mode)
+        : `${formatReceiptMoney(diff, mode)} <span class="muted-small">· ≈ ${core.formatMoney(diff * fxRate, { currency: baseCurrency })}</span>`;
+      if (ctx.diffLabelNode) {
+        ctx.diffLabelNode.textContent = `Расхождение (${getReceiptCurrencyLabel(mode)})`;
+      }
+      if (ctx.diffNode) {
+        ctx.diffNode.innerHTML = diffHtml;
+        ctx.diffNode.classList.toggle("receipt-diff-warn", !resolvedAmount.empty && Math.abs(diff) >= 0.01);
+      }
     }
 
     function removeReceiptItem(draftId, mode = "create") {

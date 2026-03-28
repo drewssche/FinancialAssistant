@@ -37,6 +37,9 @@
         el.repaymentDirection.textContent = debtUi.debtDirectionActionLabel(debt.direction);
         el.repaymentDirection.classList.remove("debt-direction-pill-lend", "debt-direction-pill-borrow");
         el.repaymentDirection.classList.add(isBorrow ? "debt-direction-pill-borrow" : "debt-direction-pill-lend");
+        if (el.forgiveDebtFromRepaymentBtn) {
+          el.forgiveDebtFromRepaymentBtn.textContent = isBorrow ? "Мне простили" : "Простить остаток";
+        }
       }
       if (el.repaymentOutstanding) {
         el.repaymentOutstanding.textContent = formatDebtMoney(outstanding, debt.currency || "BYN");
@@ -83,6 +86,9 @@
         el.forgivenessContextHint.textContent = debt.direction === "borrow"
           ? "Мне простили долг без выплаты"
           : "Я прощаю долг без возврата денег";
+      }
+      if (el.submitDebtForgivenessBtn) {
+        el.submitDebtForgivenessBtn.textContent = debt.direction === "borrow" ? "Мне простили" : "Простить долг";
       }
       el.forgivenessAmount.value = outstanding > 0 ? outstanding.toFixed(2) : "";
       if (!el.forgivenessDate.value) {
