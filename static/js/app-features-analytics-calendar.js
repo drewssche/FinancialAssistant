@@ -150,10 +150,11 @@
       el.analyticsCalendarTotalsRangeLabel.textContent = `${core.formatDateRu(rangeStart)} - ${core.formatDateRu(rangeEnd)}`;
     }
 
+    const result = describeResult(data.balance);
     const primary = [
       { label: "Доход", value: core.formatMoney(data.income_total), tone: "income" },
       { label: "Расход", value: core.formatMoney(data.expense_total), tone: "expense" },
-      { label: "Баланс", value: core.formatMoney(data.balance), tone: "balance" },
+      { label: result.label, value: core.formatMoney(data.balance), tone: result.tone },
       { label: "Операции", value: String(data.operations_count || 0), tone: "neutral" },
     ];
     el.analyticsCalendarTotals.innerHTML = primary

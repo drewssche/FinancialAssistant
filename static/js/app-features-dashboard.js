@@ -70,23 +70,33 @@
 
   function renderDashboardCurrencySummary(summary) {
     const currencyPrefs = state.preferences?.data?.currency || {};
-    const resultTone = getResultPresentation(summary.currency_result_value || 0);
+    const unrealizedTone = getResultPresentation(summary.currency_unrealized_result_value || summary.currency_result_value || 0);
+    const realizedTone = getResultPresentation(summary.currency_realized_result_value || 0);
+    const totalTone = getResultPresentation(summary.currency_total_result_value || summary.currency_result_value || 0);
     if (el.dashboardCurrencyPanel) {
       el.dashboardCurrencyPanel.classList.toggle("hidden", currencyPrefs.show_dashboard_kpi === false);
     }
     if (el.dashboardCurrencyKpiGrid) {
       el.dashboardCurrencyKpiGrid.innerHTML = `
         <article class="analytics-kpi-card analytics-kpi-neutral">
-          <div class="muted-small">Текущая оценка</div>
+          <div class="muted-small">Текущая оценка открытых позиций</div>
           <strong>${core.formatMoney(summary.currency_current_value || 0)}</strong>
         </article>
         <article class="analytics-kpi-card analytics-kpi-balance">
-          <div class="muted-small">Вложено</div>
+          <div class="muted-small">Вложено в открытые позиции</div>
           <strong>${core.formatMoney(summary.currency_book_value || 0)}</strong>
         </article>
-        <article class="analytics-kpi-card ${resultTone.cardClass}">
-          <div class="muted-small">${resultTone.label}</div>
-          <strong>${core.formatMoney(summary.currency_result_value || 0)}</strong>
+        <article class="analytics-kpi-card ${unrealizedTone.cardClass}">
+          <div class="muted-small">Нереализованный результат</div>
+          <strong>${core.formatMoney(summary.currency_unrealized_result_value || summary.currency_result_value || 0)}</strong>
+        </article>
+        <article class="analytics-kpi-card ${realizedTone.cardClass}">
+          <div class="muted-small">Реализованный результат</div>
+          <strong>${core.formatMoney(summary.currency_realized_result_value || 0)}</strong>
+        </article>
+        <article class="analytics-kpi-card ${totalTone.cardClass}">
+          <div class="muted-small">Итоговый результат</div>
+          <strong>${core.formatMoney(summary.currency_total_result_value || summary.currency_result_value || 0)}</strong>
         </article>
       `;
     }
@@ -96,13 +106,13 @@
       const trackedCurrencies = getTrackedCurrencies();
       const baseCurrency = core.getCurrencyConfig?.().code || "BYN";
       const periodBalance = Number(summary.balance || 0);
-      const currencyResultValue = Number(summary.currency_result_value || 0);
-      const combinedBaseBalance = Number(summary.balance_with_currency_result ?? (periodBalance + currencyResultValue));
+      const currencyTotalResultValue = Number(summary.currency_total_result_value || summary.currency_result_value || 0);
+      const combinedBaseBalance = periodBalance + currencyTotalResultValue;
       const bynCard = `
         <article class="currency-balance-card">
           <div class="muted-small">${core.formatCurrencyLabel(baseCurrency)}</div>
           <strong>${core.formatMoney(combinedBaseBalance, { currency: baseCurrency })}</strong>
-          <div class="currency-balance-secondary">баланс периода ${core.formatMoney(periodBalance, { currency: baseCurrency })} + результат валюты ${core.formatMoney(currencyResultValue, { currency: baseCurrency })}</div>
+          <div class="currency-balance-secondary">поток периода ${core.formatMoney(periodBalance, { currency: baseCurrency })} + итог валюты ${core.formatMoney(currencyTotalResultValue, { currency: baseCurrency })}</div>
         </article>
       `;
       const positionCards = trackedCurrencies.map((currency) => {

@@ -103,11 +103,11 @@
             </div>
             <div id="currencySummaryGrid" class="analytics-kpi-grid">
               <article class="analytics-kpi-card analytics-kpi-neutral">
-                <div class="muted-small">Текущая оценка</div>
+                <div class="muted-small">Текущая оценка открытых позиций</div>
                 <strong id="currencySummaryCurrentValue">0</strong>
               </article>
               <article class="analytics-kpi-card analytics-kpi-balance">
-                <div class="muted-small">Вложено</div>
+                <div class="muted-small">Вложено в открытые позиции</div>
                 <strong id="currencySummaryBookValue">0</strong>
               </article>
               <article id="currencySummaryResultCard" class="analytics-kpi-card analytics-kpi-neutral">

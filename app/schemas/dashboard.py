@@ -12,6 +12,8 @@ class DashboardCurrencyPosition(BaseModel):
     current_rate_date: str | None = None
     current_value: Decimal
     result_value: Decimal
+    realized_result_value: Decimal = Decimal("0")
+    total_result_value: Decimal = Decimal("0")
 
 
 class DashboardSummary(BaseModel):
@@ -28,6 +30,9 @@ class DashboardSummary(BaseModel):
     currency_book_value: Decimal = Decimal("0")
     currency_current_value: Decimal = Decimal("0")
     currency_result_value: Decimal = Decimal("0")
+    currency_unrealized_result_value: Decimal = Decimal("0")
+    currency_realized_result_value: Decimal = Decimal("0")
+    currency_total_result_value: Decimal = Decimal("0")
     currency_buy_trades_count: int = 0
     currency_sell_trades_count: int = 0
     currency_buy_volume_base: Decimal = Decimal("0")

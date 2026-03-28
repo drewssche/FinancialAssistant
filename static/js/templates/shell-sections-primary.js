@@ -324,30 +324,28 @@
             </div>
             <div id="analyticsCurrencyKpiGrid" class="analytics-kpi-grid">
               <article class="analytics-kpi-card analytics-kpi-neutral">
-                <div class="muted-small">Текущая оценка</div>
+                <div class="muted-small">Текущая оценка открытых позиций</div>
                 <strong id="analyticsCurrencyCurrentValue">0</strong>
               </article>
               <article class="analytics-kpi-card analytics-kpi-balance">
-                <div class="muted-small">Вложено</div>
+                <div class="muted-small">Вложено в открытые позиции</div>
                 <strong id="analyticsCurrencyBookValue">0</strong>
               </article>
               <article id="analyticsCurrencyResultCard" class="analytics-kpi-card analytics-kpi-neutral">
-                <div id="analyticsCurrencyResultLabel" class="muted-small">Результат</div>
+                <div id="analyticsCurrencyResultLabel" class="muted-small">Нереализованный результат</div>
                 <strong id="analyticsCurrencyResultValue">0</strong>
+              </article>
+              <article id="analyticsCurrencyRealizedCard" class="analytics-kpi-card analytics-kpi-neutral">
+                <div id="analyticsCurrencyRealizedLabel" class="muted-small">Реализованный результат</div>
+                <strong id="analyticsCurrencyRealizedValue">0</strong>
+              </article>
+              <article id="analyticsCurrencyCombinedCard" class="analytics-kpi-card analytics-kpi-neutral">
+                <div id="analyticsCurrencyCombinedLabel" class="muted-small">Итоговый результат</div>
+                <strong id="analyticsCurrencyCombinedValue">0</strong>
               </article>
               <article class="analytics-kpi-card analytics-kpi-neutral">
                 <div class="muted-small">Открытых позиций</div>
                 <strong id="analyticsCurrencyActiveCount">0</strong>
-              </article>
-              <article class="analytics-kpi-card analytics-kpi-neutral">
-                <div class="muted-small">Покупки</div>
-                <strong id="analyticsCurrencyBuyVolume">0</strong>
-                <span class="analytics-kpi-delta" id="analyticsCurrencyBuyCount">0 сделок</span>
-              </article>
-              <article class="analytics-kpi-card analytics-kpi-neutral">
-                <div class="muted-small">Продажи</div>
-                <strong id="analyticsCurrencySellVolume">0</strong>
-                <span class="analytics-kpi-delta" id="analyticsCurrencySellCount">0 сделок</span>
               </article>
             </div>
             <div id="analyticsCurrencyBalancesRow" class="currency-balance-grid"></div>

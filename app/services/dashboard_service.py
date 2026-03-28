@@ -85,6 +85,8 @@ class DashboardService:
                 "current_rate_date": item["current_rate_date"],
                 "current_value": item["current_value"],
                 "result_value": item["result_value"],
+                "realized_result_value": item.get("realized_result_value", 0),
+                "total_result_value": item.get("total_result_value", item["result_value"]),
             }
             for item in currency_summary["positions"]
             if item["currency"] in tracked_codes
@@ -103,6 +105,9 @@ class DashboardService:
             "currency_book_value": currency_summary["total_book_value"],
             "currency_current_value": currency_summary["total_current_value"],
             "currency_result_value": currency_summary["total_result_value"],
+            "currency_unrealized_result_value": currency_summary["total_unrealized_result_value"],
+            "currency_realized_result_value": currency_summary["total_realized_result_value"],
+            "currency_total_result_value": currency_summary["total_combined_result_value"],
             "currency_buy_trades_count": currency_summary["buy_trades_count"],
             "currency_sell_trades_count": currency_summary["sell_trades_count"],
             "currency_buy_volume_base": currency_summary["buy_volume_base"],

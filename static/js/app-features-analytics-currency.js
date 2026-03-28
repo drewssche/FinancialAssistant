@@ -87,7 +87,9 @@
   }
 
   function renderSummary(overview) {
-    const resultTone = getResultPresentation(overview.total_result_value || 0);
+    const unrealizedTone = getResultPresentation(overview.total_unrealized_result_value || overview.total_result_value || 0);
+    const realizedTone = getResultPresentation(overview.total_realized_result_value || 0);
+    const combinedTone = getResultPresentation(overview.total_combined_result_value || overview.total_result_value || 0);
     if (el.analyticsCurrencyCurrentValue) {
       el.analyticsCurrencyCurrentValue.textContent = core.formatMoney(overview.total_current_value || 0);
     }
@@ -95,29 +97,37 @@
       el.analyticsCurrencyBookValue.textContent = core.formatMoney(overview.total_book_value || 0);
     }
     if (el.analyticsCurrencyResultValue) {
-      el.analyticsCurrencyResultValue.textContent = core.formatMoney(overview.total_result_value || 0);
+      el.analyticsCurrencyResultValue.textContent = core.formatMoney(overview.total_unrealized_result_value || overview.total_result_value || 0);
     }
     if (el.analyticsCurrencyResultCard) {
       el.analyticsCurrencyResultCard.classList.remove("analytics-kpi-income", "analytics-kpi-expense", "analytics-kpi-neutral");
-      el.analyticsCurrencyResultCard.classList.add(resultTone.cardClass);
+      el.analyticsCurrencyResultCard.classList.add(unrealizedTone.cardClass);
     }
     if (el.analyticsCurrencyResultLabel) {
-      el.analyticsCurrencyResultLabel.textContent = resultTone.label;
+      el.analyticsCurrencyResultLabel.textContent = "Нереализованный результат";
+    }
+    if (el.analyticsCurrencyRealizedValue) {
+      el.analyticsCurrencyRealizedValue.textContent = core.formatMoney(overview.total_realized_result_value || 0);
+    }
+    if (el.analyticsCurrencyRealizedCard) {
+      el.analyticsCurrencyRealizedCard.classList.remove("analytics-kpi-income", "analytics-kpi-expense", "analytics-kpi-neutral");
+      el.analyticsCurrencyRealizedCard.classList.add(realizedTone.cardClass);
+    }
+    if (el.analyticsCurrencyRealizedLabel) {
+      el.analyticsCurrencyRealizedLabel.textContent = "Реализованный результат";
+    }
+    if (el.analyticsCurrencyCombinedValue) {
+      el.analyticsCurrencyCombinedValue.textContent = core.formatMoney(overview.total_combined_result_value || overview.total_result_value || 0);
+    }
+    if (el.analyticsCurrencyCombinedCard) {
+      el.analyticsCurrencyCombinedCard.classList.remove("analytics-kpi-income", "analytics-kpi-expense", "analytics-kpi-neutral");
+      el.analyticsCurrencyCombinedCard.classList.add(combinedTone.cardClass);
+    }
+    if (el.analyticsCurrencyCombinedLabel) {
+      el.analyticsCurrencyCombinedLabel.textContent = "Итоговый результат";
     }
     if (el.analyticsCurrencyActiveCount) {
       el.analyticsCurrencyActiveCount.textContent = String(overview.active_positions || 0);
-    }
-    if (el.analyticsCurrencyBuyVolume) {
-      el.analyticsCurrencyBuyVolume.textContent = core.formatMoney(overview.buy_volume_base || 0);
-    }
-    if (el.analyticsCurrencyBuyCount) {
-      el.analyticsCurrencyBuyCount.textContent = `${String(overview.buy_trades_count || 0)} сделок · ср. курс ${Number(overview.buy_average_rate || 0).toFixed(4)}`;
-    }
-    if (el.analyticsCurrencySellVolume) {
-      el.analyticsCurrencySellVolume.textContent = core.formatMoney(overview.sell_volume_base || 0);
-    }
-    if (el.analyticsCurrencySellCount) {
-      el.analyticsCurrencySellCount.textContent = `${String(overview.sell_trades_count || 0)} сделок · ср. курс ${Number(overview.sell_average_rate || 0).toFixed(4)}`;
     }
     if (el.analyticsCurrencyRangeLabel) {
       const periodLabels = {
@@ -182,7 +192,10 @@
             <span class="currency-position-secondary">${core.formatMoney(item.current_value || 0)} · средняя ${Number(item.average_buy_rate || 0).toFixed(4)} · текущий ${Number(item.current_rate || 0).toFixed(4)} · ${currentRateDate}</span>
           </span>
         `;
-      }).join("");
+      }).concat([
+        `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Покупки: ${core.formatMoney(overview.buy_volume_base || 0)} · ${String(overview.buy_trades_count || 0)} сделок · средняя ${Number(overview.buy_average_rate || 0).toFixed(4)}</span>`,
+        `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Продажи: ${core.formatMoney(overview.sell_volume_base || 0)} · ${String(overview.sell_trades_count || 0)} сделок · средняя ${Number(overview.sell_average_rate || 0).toFixed(4)}</span>`,
+      ]).join("");
     }
   }
 

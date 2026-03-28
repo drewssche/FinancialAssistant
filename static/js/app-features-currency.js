@@ -285,11 +285,11 @@
               <strong>${Number(item.average_buy_rate || 0).toFixed(4)}</strong>
             </article>
             <article class="analytics-kpi-card analytics-kpi-balance">
-              <div class="muted-small">Вложено</div>
+              <div class="muted-small">Вложено в открытые позиции</div>
               <strong>${core.formatMoney(item.book_value || 0)}</strong>
             </article>
             <article class="analytics-kpi-card analytics-kpi-neutral">
-              <div class="muted-small">Текущая оценка</div>
+              <div class="muted-small">Текущая оценка открытых позиций</div>
               <strong>${core.formatMoney(item.current_value || 0)}</strong>
             </article>
             <article class="analytics-kpi-card analytics-kpi-neutral">
