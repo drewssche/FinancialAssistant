@@ -1,7 +1,5 @@
 from sqlalchemy.orm import Session
 
-from app.repositories.currency_repo import CurrencyRepository
-from app.repositories.debt_repo import DebtRepository
 from app.repositories.operation_repo import OperationRepository
 from app.services.dashboard_analytics_highlights import DashboardAnalyticsHighlightsService
 from app.services.dashboard_analytics_timeline import DashboardAnalyticsTimelineService
@@ -9,7 +7,7 @@ from app.services.dashboard_analytics_timeline import DashboardAnalyticsTimeline
 
 class DashboardAnalyticsService:
     def __init__(self, db: Session, repo: OperationRepository):
-        self.timeline = DashboardAnalyticsTimelineService(repo, CurrencyRepository(db), DebtRepository(db))
+        self.timeline = DashboardAnalyticsTimelineService(repo)
         self.highlights = DashboardAnalyticsHighlightsService(db, repo, self.timeline)
 
     def resolve_period_bounds(self, **kwargs) -> tuple:

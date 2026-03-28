@@ -95,10 +95,6 @@ class AnalyticsCalendarDay(BaseModel):
     in_month: bool
     income_total: Decimal
     expense_total: Decimal
-    flow_balance: Decimal | None = None
-    operation_balance: Decimal | None = None
-    currency_value: Decimal | None = None
-    debt_value: Decimal | None = None
     balance: Decimal
     operations_count: int
 
@@ -108,11 +104,6 @@ class AnalyticsCalendarWeek(BaseModel):
     week_end: str
     income_total: Decimal
     expense_total: Decimal
-    flow_balance: Decimal | None = None
-    operation_balance: Decimal | None = None
-    currency_value: Decimal | None = None
-    debt_value: Decimal | None = None
-    balance_date: str | None = None
     balance: Decimal
     operations_count: int
     days: list[AnalyticsCalendarDay]
@@ -124,10 +115,6 @@ class AnalyticsCalendarOut(BaseModel):
     month_end: str
     income_total: Decimal
     expense_total: Decimal
-    flow_balance: Decimal | None = None
-    operation_balance: Decimal | None = None
-    currency_value: Decimal | None = None
-    debt_value: Decimal | None = None
     balance: Decimal
     operations_count: int
     weeks: list[AnalyticsCalendarWeek]
@@ -139,10 +126,6 @@ class AnalyticsCalendarYearMonth(BaseModel):
     month_end: str
     income_total: Decimal
     expense_total: Decimal
-    flow_balance: Decimal | None = None
-    operation_balance: Decimal | None = None
-    currency_value: Decimal | None = None
-    debt_value: Decimal | None = None
     balance: Decimal
     operations_count: int
 
@@ -153,10 +136,6 @@ class AnalyticsCalendarYearOut(BaseModel):
     year_end: str
     income_total: Decimal
     expense_total: Decimal
-    flow_balance: Decimal | None = None
-    operation_balance: Decimal | None = None
-    currency_value: Decimal | None = None
-    debt_value: Decimal | None = None
     balance: Decimal
     operations_count: int
     months: list[AnalyticsCalendarYearMonth]

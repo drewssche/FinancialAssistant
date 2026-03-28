@@ -136,7 +136,7 @@
     }
   }
 
-  function renderCalendarTotals(data, view) {
+  function renderCalendarTotals(data, view, currencyOverview = null) {
     if (!el.analyticsCalendarTotals || !el.analyticsCalendarTotalsSecondary) {
       return;
     }
@@ -149,16 +149,11 @@
     if (el.analyticsCalendarTotalsRangeLabel && rangeStart && rangeEnd) {
       el.analyticsCalendarTotalsRangeLabel.textContent = `${core.formatDateRu(rangeStart)} - ${core.formatDateRu(rangeEnd)}`;
     }
-    const totalBalance = Number(data.balance ?? 0);
-    const flowBalance = Number(data.flow_balance ?? data.balance ?? 0);
-    const operationBalance = Number(data.operation_balance ?? flowBalance);
-    const currencyValue = data.currency_value !== undefined && data.currency_value !== null ? Number(data.currency_value) : null;
-    const debtValue = data.debt_value !== undefined && data.debt_value !== null ? Number(data.debt_value) : null;
 
     const primary = [
       { label: "Доход", value: core.formatMoney(data.income_total), tone: "income" },
       { label: "Расход", value: core.formatMoney(data.expense_total), tone: "expense" },
-      { label: "Общий баланс", value: core.formatMoney(totalBalance), tone: "balance" },
+      { label: "Баланс", value: core.formatMoney(data.balance), tone: "balance" },
       { label: "Операции", value: String(data.operations_count || 0), tone: "neutral" },
     ];
     el.analyticsCalendarTotals.innerHTML = primary
@@ -172,25 +167,15 @@
       )
       .join("");
 
-    const secondary = [
-      `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Поток периода: ${escapeHtml(core.formatMoney(flowBalance))}</span>`,
-      `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Накопленный факт на дату: ${escapeHtml(core.formatMoney(operationBalance))}</span>`,
-    ];
-    if (currencyValue !== null) {
-      secondary.push(
-        `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Валюта на дату: ${escapeHtml(core.formatMoney(currencyValue))}</span>`,
-      );
-    }
-    if (debtValue !== null) {
-      secondary.push(
-        `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Долги на дату: ${escapeHtml(core.formatMoney(debtValue))}</span>`,
-      );
-    }
-    const result = describeResult(totalBalance);
-    secondary.push(
-      `<span class="analytics-kpi-chip analytics-kpi-chip-${result.tone}">${escapeHtml(result.label)}: ${escapeHtml(core.formatMoney(result.amount))}</span>`,
-    );
-    el.analyticsCalendarTotalsSecondary.innerHTML = secondary.join("");
+    const currencyCurrentValue = Number(currencyOverview?.total_current_value || 0);
+    const resultBalance = Number(data.balance || 0) + currencyCurrentValue;
+    const result = describeResult(resultBalance);
+    const prefix = currencyCurrentValue !== 0 ? "С учетом валюты" : result.label;
+    el.analyticsCalendarTotalsSecondary.innerHTML = `
+      <span class="analytics-kpi-chip analytics-kpi-chip-${result.tone}">
+        ${escapeHtml(prefix)}: ${escapeHtml(core.formatMoney(result.amount))}
+      </span>
+    `;
   }
 
   function renderAnalyticsCalendarMonth(data) {
@@ -208,36 +193,25 @@
         if (!day.in_month) {
           cell.innerHTML = "<span class='muted-small'>·</span>";
         } else {
-          const totalBalance = Number(day.balance ?? day.flow_balance ?? 0);
-          const currencyValue = day.currency_value !== undefined && day.currency_value !== null ? Number(day.currency_value) : null;
-          const debtValue = day.debt_value !== undefined && day.debt_value !== null ? Number(day.debt_value) : null;
           cell.innerHTML = `
             <button type="button" class="analytics-day-btn" data-analytics-date="${day.date}">
               <div class="analytics-day-date">${new Date(`${day.date}T00:00:00`).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}</div>
               <div class="analytics-day-money analytics-income">+${core.formatMoney(day.income_total)}</div>
               <div class="analytics-day-money analytics-expense">-${core.formatMoney(day.expense_total)}</div>
-              ${currencyValue !== null ? `<div class="analytics-day-money analytics-balance">Валюта ${core.formatMoney(currencyValue)}</div>` : ""}
-              ${debtValue !== null ? `<div class="analytics-day-money analytics-balance">Долги ${core.formatMoney(debtValue)}</div>` : ""}
-              <div class="muted-small analytics-day-meta">Баланс ${core.formatMoney(totalBalance)} · ${day.operations_count} опер.</div>
+              <div class="muted-small">${day.operations_count} опер.</div>
             </button>
           `;
         }
         tr.appendChild(cell);
       }
-      const weekBalance = Number(week.balance ?? week.flow_balance ?? 0);
-      const weekCurrencyValue = week.currency_value !== undefined && week.currency_value !== null ? Number(week.currency_value) : null;
-      const weekDebtValue = week.debt_value !== undefined && week.debt_value !== null ? Number(week.debt_value) : null;
-      const weekTone = weekBalance > 0 ? "positive" : weekBalance < 0 ? "negative" : "neutral";
       tr.innerHTML += `
         <td class="analytics-week-total analytics-income">${core.formatMoney(week.income_total)}</td>
         <td class="analytics-week-total analytics-expense">${core.formatMoney(week.expense_total)}</td>
         <td class="analytics-week-total">${week.operations_count}</td>
         <td class="analytics-week-total">
-          <span class="analytics-kpi-chip analytics-kpi-chip-${weekTone}">
-            Баланс: ${core.formatMoney(weekBalance)}
+          <span class="analytics-kpi-chip analytics-kpi-chip-${Number(week.balance || 0) > 0 ? "positive" : Number(week.balance || 0) < 0 ? "negative" : "neutral"}">
+            ${Number(week.balance || 0) > 0 ? "Профицит" : Number(week.balance || 0) < 0 ? "Дефицит" : "Ноль"}: ${core.formatMoney(Math.abs(Number(week.balance || 0)))}
           </span>
-          ${weekCurrencyValue !== null ? `<div class="muted-small analytics-week-subnote">Валюта на ${core.formatDateRu(week.balance_date)}: ${core.formatMoney(weekCurrencyValue)}</div>` : ""}
-          ${weekDebtValue !== null ? `<div class="muted-small analytics-week-subnote">Долги на ${core.formatDateRu(week.balance_date)}: ${core.formatMoney(weekDebtValue)}</div>` : ""}
         </td>
       `;
       el.analyticsCalendarBody.appendChild(tr);
@@ -265,9 +239,7 @@
             </div>
             <div class="muted-small analytics-income">Доход: ${core.formatMoney(item.income_total)}</div>
             <div class="muted-small analytics-expense">Расход: ${core.formatMoney(item.expense_total)}</div>
-            ${item.currency_value !== undefined && item.currency_value !== null ? `<div class="muted-small analytics-balance">Валюта: ${core.formatMoney(item.currency_value)}</div>` : ""}
-            ${item.debt_value !== undefined && item.debt_value !== null ? `<div class="muted-small analytics-balance">Долги: ${core.formatMoney(item.debt_value)}</div>` : ""}
-            <div class="muted-small analytics-balance">Общий баланс: ${core.formatMoney(item.balance)}</div>
+            <div class="muted-small analytics-balance">Баланс: ${core.formatMoney(item.balance)}</div>
           </article>
         `;
       })
@@ -299,44 +271,60 @@
       if (view === "year") {
         const year = anchor.getUTCFullYear();
         const cacheKey = `analytics:calendar-year:${year}`;
+        const currencyCacheKey = "analytics:calendar:currency-summary";
         if (!force) {
           const cached = core.getUiRequestCache(cacheKey, CALENDAR_CACHE_TTL_MS);
+          const cachedCurrency = core.getUiRequestCache(currencyCacheKey, CALENDAR_CACHE_TTL_MS);
           if (cached) {
             renderAnalyticsCalendarYear(cached);
-            renderCalendarTotals(cached, "year");
+            renderCalendarTotals(cached, "year", cachedCurrency || null);
             state.analyticsCalendarHydrated = true;
             window.requestAnimationFrame(syncCalendarScrollFade);
             return cached;
           }
         }
-        const data = await core.requestJson(`/api/v1/dashboard/analytics/calendar/year?year=${year}`, {
-          headers: core.authHeaders(),
-        });
+        const [data, currencyOverview] = await Promise.all([
+          core.requestJson(`/api/v1/dashboard/analytics/calendar/year?year=${year}`, {
+            headers: core.authHeaders(),
+          }),
+          core.requestJson("/api/v1/currency/overview?trades_limit=10", {
+            headers: core.authHeaders(),
+          }).catch(() => null),
+        ]);
         core.setUiRequestCache(cacheKey, data);
+        core.setUiRequestCache(currencyCacheKey, currencyOverview);
         renderAnalyticsCalendarYear(data);
-        renderCalendarTotals(data, "year");
+        renderCalendarTotals(data, "year", currencyOverview);
         state.analyticsCalendarHydrated = true;
         window.requestAnimationFrame(syncCalendarScrollFade);
         return data;
       }
 
       const cacheKey = `analytics:calendar:month=${month}`;
+      const currencyCacheKey = "analytics:calendar:currency-summary";
       if (!force) {
         const cached = core.getUiRequestCache(cacheKey, CALENDAR_CACHE_TTL_MS);
+        const cachedCurrency = core.getUiRequestCache(currencyCacheKey, CALENDAR_CACHE_TTL_MS);
         if (cached) {
           renderAnalyticsCalendarMonth(cached);
-          renderCalendarTotals(cached, "month");
+          renderCalendarTotals(cached, "month", cachedCurrency || null);
           state.analyticsCalendarHydrated = true;
           window.requestAnimationFrame(syncCalendarScrollFade);
           return cached;
         }
       }
-      const data = await core.requestJson(`/api/v1/dashboard/analytics/calendar?month=${encodeURIComponent(month)}`, {
-        headers: core.authHeaders(),
-      });
+      const [data, currencyOverview] = await Promise.all([
+        core.requestJson(`/api/v1/dashboard/analytics/calendar?month=${encodeURIComponent(month)}`, {
+          headers: core.authHeaders(),
+        }),
+        core.requestJson("/api/v1/currency/overview?trades_limit=10", {
+          headers: core.authHeaders(),
+        }).catch(() => null),
+      ]);
       core.setUiRequestCache(cacheKey, data);
+      core.setUiRequestCache(currencyCacheKey, currencyOverview);
       renderAnalyticsCalendarMonth(data);
-      renderCalendarTotals(data, "month");
+      renderCalendarTotals(data, "month", currencyOverview);
       state.analyticsCalendarHydrated = true;
       window.requestAnimationFrame(syncCalendarScrollFade);
       return data;
