@@ -81,6 +81,33 @@
     return fallback?.name ? [fallback] : [];
   }
 
+  function getPlanBaseAmountValue(item) {
+    const live = Number(item?.current_base_amount ?? NaN);
+    if (Number.isFinite(live)) {
+      return live;
+    }
+    return Number(item?.amount || 0);
+  }
+
+  function formatPlanAmountHtml(item) {
+    const originalAmount = Number((item?.original_amount ?? item?.amount) || 0);
+    const currency = String(item?.currency || "BYN").toUpperCase();
+    const baseCurrency = String(item?.base_currency || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
+    if (currency === baseCurrency) {
+      return core.formatMoney(originalAmount, { currency });
+    }
+    const currentBaseAmount = getPlanBaseAmountValue(item);
+    const currentRate = Number(item?.current_rate || 0);
+    const rateDate = item?.current_rate_date ? core.formatDateRu(item.current_rate_date) : "";
+    const secondary = currentRate > 0
+      ? `≈ ${core.formatMoney(currentBaseAmount, { currency: baseCurrency })} по текущему курсу${rateDate ? ` · ${rateDate}` : ""}`
+      : `≈ ${core.formatMoney(currentBaseAmount, { currency: baseCurrency })}`;
+    return `
+      <span>${core.formatMoney(originalAmount, { currency })}</span>
+      <div class="muted-small">${secondary}</div>
+    `;
+  }
+
   function getFilteredPlans() {
     const query = String(el.plansSearchQ?.value || "").trim().toLowerCase();
     const activeTab = state.plansTab || "due";
@@ -136,7 +163,7 @@
 
   function summarizePlans(items) {
     return items.reduce((acc, item) => {
-      const amount = Number(item.amount || 0);
+      const amount = getPlanBaseAmountValue(item);
       acc.activeCount += 1;
       if (item.status === "due" || item.status === "overdue") {
         acc.dueCount += 1;
@@ -523,7 +550,7 @@
               </div>
               <div class="plan-card-field plan-card-field-amount">
                 <span class="muted-small">Сумма</span>
-                <strong class="plan-card-amount amount-${kindClass}">${core.formatMoney(item.amount || 0)}</strong>
+                <strong class="plan-card-amount amount-${kindClass}">${formatPlanAmountHtml(item)}</strong>
               </div>
             </div>
             <div class="plan-card-meta">
@@ -562,7 +589,7 @@
               ${categoryChip}
               <span class="meta-chip meta-chip-neutral">${eventLabel}</span>
             </div>
-            <strong class="plan-card-amount amount-${kindClass}">${core.formatMoney(item.amount || 0)}</strong>
+            <strong class="plan-card-amount amount-${kindClass}">${formatPlanAmountHtml(item)}</strong>
           </div>
           <div class="plan-card-meta">
             ${item.note ? `<strong>${core.highlightText(item.note, "")}</strong>` : ""}
@@ -680,6 +707,14 @@
     state.editPlanId = null;
     el.createEntryModeSwitch?.classList.add("hidden");
     el.planRecurrenceBlock?.classList.remove("hidden");
+    if (el.opCurrency) {
+      el.opCurrency.value = core.getCurrencyConfig?.().code || "BYN";
+      el.opCurrency.disabled = false;
+      el.opCurrency.title = "";
+    }
+    if (el.opFxRate) {
+      el.opFxRate.value = "1";
+    }
   }
 
   function hydrateCreateReceiptItems(items) {
@@ -709,12 +744,16 @@
       submitBtn.textContent = plan?.id ? "Сохранить план" : "Сохранить план";
     }
     core.syncDateFieldValue(document.getElementById("opDate"), plan?.scheduled_date || core.getTodayIso());
-    document.getElementById("opAmount").value = plan?.amount || "";
+    document.getElementById("opAmount").value = plan?.original_amount || plan?.amount || "";
     document.getElementById("opNote").value = plan?.note || "";
+    if (el.opCurrency) {
+      el.opCurrency.value = plan?.currency || (core.getCurrencyConfig?.().code || "BYN");
+    }
     operationModal.setOperationKind("create", plan?.kind || "expense");
     operationModal.selectCreateCategory?.(plan?.category_id ? Number(plan.category_id) : null);
     hydrateCreateReceiptItems(plan?.receipt_items || []);
     operationModal.setCreateOperationMode(state.createReceiptItems.length ? "receipt" : "common");
+    operationModal.syncOperationCurrencyFields?.("create");
     operationModal.renderReceiptItems?.("create");
     operationModal.renderReceiptSummary?.("create");
     state.editPlanId = plan?.id ? Number(plan.id) : null;
@@ -758,6 +797,7 @@
       kind: el.opKind.value,
       category_id: el.opCategory.value ? Number(el.opCategory.value) : null,
       amount: canDeriveAmountFromReceipt ? null : amount.formatted,
+      currency: String(el.opCurrency?.value || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase(),
       scheduled_date: scheduledDate,
       note: String(document.getElementById("opNote").value || "").trim() || null,
       receipt_items: receiptItems,

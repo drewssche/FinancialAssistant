@@ -57,6 +57,16 @@
         }
       });
     }
+    if (el.refreshAdminCurrencyDiagnosticsBtn && actions.loadAdminCurrencyDiagnostics) {
+      el.refreshAdminCurrencyDiagnosticsBtn.addEventListener("click", () => {
+        core.runAction({
+          errorPrefix: "Ошибка обновления диагностики валют",
+          action: async () => {
+            await actions.loadAdminCurrencyDiagnostics({ force: true });
+          },
+        });
+      });
+    }
   }
 
   const api = {

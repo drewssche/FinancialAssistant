@@ -15,6 +15,10 @@ class Debt(Base):
     counterparty_id: Mapped[int] = mapped_column(ForeignKey("debt_counterparties.id", ondelete="CASCADE"), index=True)
     direction: Mapped[str] = mapped_column(String(10), index=True)  # lend|borrow
     principal: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    original_principal: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    currency: Mapped[str] = mapped_column(String(8), default="BYN", index=True)
+    base_currency: Mapped[str] = mapped_column(String(8), default="BYN")
+    closure_reason: Mapped[str | None] = mapped_column(String(24), nullable=True, index=True)
     start_date: Mapped[date] = mapped_column(Date, index=True)
     due_date: Mapped[date | None] = mapped_column(Date, index=True, nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)

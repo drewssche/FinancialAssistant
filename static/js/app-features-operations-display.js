@@ -49,6 +49,7 @@
         const qty = Number(row.quantity || 0);
         const price = Number(row.unit_price || 0);
         const total = Number(row.line_total || qty * price || 0);
+        const receiptCurrency = String(item.currency || item.base_currency || core.getCurrencyConfig?.().code || "BYN").toUpperCase();
         const shopChip = row.shop_name
           ? `<div class="operation-receipt-shop">${core.renderCategoryChip({ name: row.shop_name, icon: null, accent_color: null }, "")}</div>`
           : "";
@@ -59,12 +60,12 @@
           <article class="operation-receipt-item">
             <div class="operation-receipt-head">
               <strong>${esc(row.name || "Без названия")}</strong>
-              <span class="muted-small">${core.formatMoney(total)}</span>
+              <span class="muted-small">${core.formatMoney(total, { currency: receiptCurrency })}</span>
             </div>
             ${shopChip}
             ${categoryChip}
             <div class="operation-receipt-meta muted-small">
-              ${esc(core.formatAmount(qty))} × ${core.formatMoney(price)}
+              ${esc(core.formatAmount(qty))} × ${core.formatMoney(price, { currency: receiptCurrency })}
             </div>
             ${row.note ? `<div class="muted-small">${esc(row.note)}</div>` : ""}
           </article>

@@ -20,6 +20,9 @@ class PlanOperation(Base):
     )
     kind: Mapped[str] = mapped_column(String(20), index=True)  # income|expense
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    original_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=Decimal("0.00"))
+    currency: Mapped[str] = mapped_column(String(3), default="BYN")
+    base_currency: Mapped[str] = mapped_column(String(3), default="BYN")
     scheduled_date: Mapped[date] = mapped_column(Date, index=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), index=True, default="active", server_default="active")

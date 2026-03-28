@@ -51,6 +51,7 @@ def create_plan(
             user_id=user_id,
             kind=payload.kind,
             amount=payload.amount,
+            currency=payload.currency,
             scheduled_date=payload.scheduled_date,
             category_id=payload.category_id,
             note=payload.note,

@@ -91,6 +91,9 @@
     if ((state.operationsQuickView || "all") !== "all") {
       params.set("quick_view", state.operationsQuickView);
     }
+    if ((state.operationsCurrencyScope || "all") !== "all") {
+      params.set("currency_scope", state.operationsCurrencyScope);
+    }
     if (state.operationsCategoryFilterId !== null && state.operationsCategoryFilterId !== undefined && state.operationsCategoryFilterId !== "") {
       params.set("category_id", String(state.operationsCategoryFilterId));
     }
@@ -101,10 +104,24 @@
     return params;
   }
 
+  function syncOperationsCurrencyScopeUi() {
+    const baseCurrency = String(core.getCurrencyConfig?.().code || "BYN").toUpperCase();
+    if (el.operationsBaseCurrencyLabels?.length) {
+      el.operationsBaseCurrencyLabels.forEach((node) => {
+        node.textContent = baseCurrency;
+      });
+    }
+    if (el.operationsCurrencyScopeTabs) {
+      core.syncSegmentedActive(el.operationsCurrencyScopeTabs, "operations-currency-scope", state.operationsCurrencyScope || "all");
+    }
+    return baseCurrency;
+  }
+
   function renderOperationsActiveFilters() {
     if (!el.operationsActiveFilters || !el.operationsCategoryFilterChip || !el.clearOperationsCategoryFilterBtn) {
       return;
     }
+    const baseCurrency = syncOperationsCurrencyScopeUi();
     const hasCategory = state.operationsCategoryFilterId !== null && state.operationsCategoryFilterId !== undefined && state.operationsCategoryFilterId !== "";
     const quickViewLabel = state.operationsQuickView === "receipt"
       ? "Срез: Только с чеком"
@@ -118,9 +135,15 @@
       : state.filterKind === "income"
         ? "Тип: Только доходы"
         : "";
+    const currencyScopeLabel = state.operationsCurrencyScope === "base"
+      ? `Валюта: ${baseCurrency}`
+      : state.operationsCurrencyScope === "foreign"
+        ? "Валюта: Другая"
+        : "";
     const hasQuickView = Boolean(quickViewLabel);
     const hasKind = Boolean(kindLabel);
-    el.operationsActiveFilters.classList.toggle("hidden", !hasCategory && !hasQuickView && !hasKind);
+    const hasCurrencyScope = Boolean(currencyScopeLabel);
+    el.operationsActiveFilters.classList.toggle("hidden", !hasCategory && !hasQuickView && !hasKind && !hasCurrencyScope);
     if (el.operationsKindFilterChip) {
       el.operationsKindFilterChip.classList.toggle("hidden", !hasKind);
       el.operationsKindFilterChip.textContent = kindLabel;
@@ -129,6 +152,10 @@
       el.operationsQuickViewChip.classList.toggle("hidden", !hasQuickView);
       el.operationsQuickViewChip.textContent = quickViewLabel;
     }
+    if (el.operationsCurrencyScopeChip) {
+      el.operationsCurrencyScopeChip.classList.toggle("hidden", !hasCurrencyScope);
+      el.operationsCurrencyScopeChip.textContent = currencyScopeLabel;
+    }
     el.operationsCategoryFilterChip.classList.toggle("hidden", !hasCategory);
     el.clearOperationsCategoryFilterBtn.classList.toggle("hidden", !hasCategory);
     el.operationsCategoryFilterChip.textContent = hasCategory
@@ -136,7 +163,7 @@
       : "";
     if (el.resetOperationsFiltersBtn) {
       const hasQuery = Boolean(el.filterQ?.value.trim());
-      el.resetOperationsFiltersBtn.disabled = !hasCategory && !hasQuery && !hasKind && !hasQuickView;
+      el.resetOperationsFiltersBtn.disabled = !hasCategory && !hasQuery && !hasKind && !hasQuickView && !hasCurrencyScope;
     }
   }
 
@@ -179,6 +206,9 @@
     }
     if ((state.operationsQuickView || "all") !== "all") {
       params.set("quick_view", state.operationsQuickView);
+    }
+    if ((state.operationsCurrencyScope || "all") !== "all") {
+      params.set("currency_scope", state.operationsCurrencyScope);
     }
     if (state.operationsCategoryFilterId !== null && state.operationsCategoryFilterId !== undefined && state.operationsCategoryFilterId !== "") {
       params.set("category_id", String(state.operationsCategoryFilterId));
@@ -282,6 +312,7 @@
 
   async function loadOperations(options = {}) {
     await ensureAllTimeBounds();
+    syncOperationsCurrencyScopeUi();
     core.syncSegmentedActive(el.operationsSortTabs, "op-sort", state.operationSortPreset || "date");
     renderOperationsActiveFilters();
     const reset = options.reset !== false;
@@ -371,6 +402,7 @@
   async function resetOperationsFilters() {
     state.filterKind = "";
     state.operationsQuickView = "all";
+    state.operationsCurrencyScope = "all";
     state.operationsCategoryFilterId = null;
     state.operationsCategoryFilterName = "";
     if (el.filterQ) {
@@ -378,6 +410,7 @@
     }
     core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
     core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
+    core.syncSegmentedActive(el.operationsCurrencyScopeTabs, "operations-currency-scope", state.operationsCurrencyScope);
     renderOperationsActiveFilters();
     await loadOperations({ reset: true, force: true });
     await savePreferences();
@@ -386,6 +419,14 @@
   async function setOperationsQuickView(value) {
     state.operationsQuickView = value || "all";
     core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
+    renderOperationsActiveFilters();
+    await loadOperations({ reset: true, force: true });
+    await savePreferences();
+  }
+
+  async function setOperationsCurrencyScope(value) {
+    state.operationsCurrencyScope = ["base", "foreign"].includes(value) ? value : "all";
+    syncOperationsCurrencyScopeUi();
     renderOperationsActiveFilters();
     await loadOperations({ reset: true, force: true });
     await savePreferences();
@@ -504,6 +545,7 @@
     clearOperationsCategoryFilter,
     resetOperationsFilters,
     setOperationsQuickView,
+    setOperationsCurrencyScope,
     selectVisibleOperations,
     clearVisibleOperationsSelection,
     setOperationsKindFilter,

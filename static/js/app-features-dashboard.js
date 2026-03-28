@@ -356,18 +356,25 @@
               const principal = debtUi.parseAmount(debt.principal || 0);
               const outstanding = debtUi.parseAmount(debt.outstanding_total || 0);
               const repaid = debtUi.parseAmount(debt.repaid_total || 0);
-              const repayPercent = principal > 0 ? Math.max(0, Math.min(100, Math.round((repaid / principal) * 100))) : 0;
+              const forgiven = debtUi.parseAmount(debt.forgiven_total || 0);
+              const settled = repaid + forgiven;
+              const repayPercent = principal > 0 ? Math.max(0, Math.min(100, Math.round((settled / principal) * 100))) : 0;
               const direction = debt.direction === "borrow" ? "borrow" : "lend";
               const directionLabel = debtUi.debtDirectionBalanceLabel(direction);
               const repayTone = direction === "borrow" ? (repayPercent >= 100 ? "borrow-ok" : repayPercent >= 40 ? "borrow-warn" : "borrow-danger") : (repayPercent >= 100 ? "lend-ok" : "lend-warn");
               const dueState = debtUi.debtDueState(debt, now);
               const dueProgress = debtUi.debtDueProgress(debt, dueState, now);
               const dueDays = debtUi.debtDueDaysBadge(debt, dueState, now);
+              const settlementChips = [
+                repaid > 0 ? `<span class="meta-chip debt-meta-chip debt-meta-chip-repaid">Погашено ${core.formatMoney(repaid, { currency: debt.currency || "BYN" })}</span>` : "",
+                forgiven > 0 ? `<span class="meta-chip debt-meta-chip debt-meta-chip-forgiven">Прощено ${core.formatMoney(forgiven, { currency: debt.currency || "BYN" })}</span>` : "",
+              ].filter(Boolean).join("");
               return `
                 <div class="dashboard-debt-row">
                   <div class="dashboard-debt-row-col">
                     <div class="muted-small">${directionLabel}</div>
-                    <div class="debt-amount-principal ${direction === "borrow" ? "debt-amount-principal-borrow" : "debt-amount-principal-lend"}">${debtUi.formatMoney(outstanding)}</div>
+                    <div class="debt-amount-principal ${direction === "borrow" ? "debt-amount-principal-borrow" : "debt-amount-principal-lend"}">${core.formatMoney(outstanding, { currency: debt.currency || "BYN" })}</div>
+                    ${String(debt.currency || "BYN").toUpperCase() !== String(debt.base_currency || "BYN").toUpperCase() ? `<div class="muted-small">≈ ${core.formatMoney(debt.current_base_outstanding_total || 0, { currency: debt.base_currency || "BYN" })}</div>` : ""}
                   </div>
                   <div class="dashboard-debt-row-col">
                     <div class="muted-small">Погашение</div>
@@ -375,8 +382,9 @@
                       <div class="debt-repay-progress-track">
                         <span class="debt-repay-progress-bar debt-repay-progress-bar-${repayTone}" style="width:${repayPercent}%"></span>
                       </div>
-                      <span class="muted-small">${repayPercent}% (${debtUi.formatMoney(repaid)} из ${debtUi.formatMoney(principal)})</span>
+                      <span class="muted-small">${repayPercent}% (${core.formatMoney(settled, { currency: debt.currency || "BYN" })} из ${core.formatMoney(principal, { currency: debt.currency || "BYN" })})</span>
                     </div>
+                    ${settlementChips ? `<div class="debt-meta-chips dashboard-debt-meta-chips">${settlementChips}</div>` : ""}
                   </div>
                   <div class="dashboard-debt-row-col">
                     <div class="row debt-due-head">

@@ -129,6 +129,63 @@ def test_dashboard_summary_includes_debt_metrics(client: TestClient):
     assert payload["active_debt_cards"] == 2
 
 
+def test_dashboard_summary_uses_current_base_equivalent_for_foreign_currency_debt(client: TestClient):
+    rate = client.put(
+        "/api/v1/currency/rates/current",
+        json={
+            "currency": "USD",
+            "rate": "3.50",
+            "rate_date": "2026-03-28",
+            "source": "manual",
+        },
+    )
+    assert rate.status_code == 200
+
+    created = client.post(
+        "/api/v1/debts",
+        json={
+            "counterparty": "Игорь",
+            "direction": "lend",
+            "principal": "100.00",
+            "currency": "USD",
+            "start_date": "2026-03-07",
+        },
+    )
+    assert created.status_code == 201
+
+    response = client.get("/api/v1/dashboard/summary", params={"period": "all_time"})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["debt_lend_outstanding"] == "350.00"
+    assert payload["debt_borrow_outstanding"] in ("0", "0.00")
+    assert payload["debt_net_position"] == "350.00"
+
+
+def test_dashboard_summary_excludes_forgiven_debt_from_active_totals(client: TestClient):
+    created = client.post(
+        "/api/v1/debts",
+        json={
+            "counterparty": "Михаил",
+            "direction": "lend",
+            "principal": "180.00",
+            "start_date": "2026-03-05",
+        },
+    )
+    assert created.status_code == 201
+
+    forgiven = client.post(
+        f"/api/v1/debts/{created.json()['id']}/forgivenesses",
+        json={"amount": "180.00", "forgiven_date": "2026-03-21"},
+    )
+    assert forgiven.status_code == 201
+
+    response = client.get("/api/v1/dashboard/summary", params={"period": "all_time"})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["debt_lend_outstanding"] in ("0", "0.00")
+    assert payload["active_debt_cards"] == 0
+
+
 def test_dashboard_summary_includes_currency_metrics(client: TestClient):
     rate_response = client.put(
         "/api/v1/currency/rates/current",

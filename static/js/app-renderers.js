@@ -204,11 +204,13 @@
   function debtRepaymentProgress(debt) {
     const principal = parseAmount(debt?.principal);
     const repaid = parseAmount(debt?.repaid_total);
+    const forgiven = parseAmount(debt?.forgiven_total);
+    const settled = repaid + forgiven;
     const direction = debt?.direction === "borrow" ? "borrow" : "lend";
     if (principal <= 0) {
       return { percent: 0, tone: direction === "borrow" ? "borrow-danger" : "lend-ok" };
     }
-    const percent = Math.max(0, Math.min(100, Math.round((repaid / principal) * 100)));
+    const percent = Math.max(0, Math.min(100, Math.round((settled / principal) * 100)));
     if (direction === "borrow") {
       if (percent >= 100) {
         return { percent, tone: "borrow-ok" };

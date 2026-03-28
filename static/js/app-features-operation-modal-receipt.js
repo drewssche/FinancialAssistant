@@ -42,6 +42,22 @@
       return asMoney(asQty(item.quantity) * asMoney(item.unit_price));
     }
 
+    function getReceiptCurrency(mode = "create") {
+      const selected = mode === "edit" ? el.editCurrency?.value : el.opCurrency?.value;
+      return String(selected || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
+    }
+
+    function getReceiptCurrencyLabel(mode = "create") {
+      return core.formatCurrencyLabel?.(getReceiptCurrency(mode)) || getReceiptCurrency(mode);
+    }
+
+    function formatReceiptMoney(value, mode = "create", options = {}) {
+      return core.formatMoney(value, {
+        currency: getReceiptCurrency(mode),
+        ...options,
+      });
+    }
+
     function getReceiptContext(mode = "create") {
       const isEdit = mode === "edit";
       return {
@@ -224,9 +240,9 @@
               />
               <div class="receipt-category-picker app-popover ${categoryPickerOpen ? "" : "hidden"}"></div>
             </div>
-            <input type="number" step="0.01" min="0" data-receipt-field="unit_price" value="${item.unit_price || ""}" placeholder="Цена" />
+            <input type="number" step="0.01" min="0" data-receipt-field="unit_price" value="${item.unit_price || ""}" placeholder="Цена, ${esc(getReceiptCurrencyLabel(mode))}" title="Цена в ${esc(getReceiptCurrencyLabel(mode))}" />
             <input type="number" step="0.001" min="0" data-receipt-field="quantity" value="${item.quantity || ""}" placeholder="Кол-во" />
-            <div class="receipt-line-total"><span>Итого</span><strong>${core.formatMoney(total, { withCurrency: false })}</strong></div>
+            <div class="receipt-line-total"><span>Итого</span><strong>${formatReceiptMoney(total, mode)}</strong></div>
             <button class="btn btn-danger receipt-remove-btn ${removeHidden ? "hidden" : ""}" type="button" data-receipt-remove-id="${item.draft_id}" title="Удалить">×</button>
           </div>
         `;
@@ -243,10 +259,10 @@
         return;
       }
       const total = getReceiptTotal(mode);
-      ctx.totalNode.textContent = core.formatMoney(total);
+      ctx.totalNode.textContent = formatReceiptMoney(total, mode);
       const resolvedAmount = core.resolveMoneyInput(ctx.amountNode?.value || 0);
       const diff = !resolvedAmount.empty ? asMoney(resolvedAmount.previewValue - total) : 0;
-      ctx.diffNode.textContent = core.formatMoney(diff, { withCurrency: false });
+      ctx.diffNode.textContent = formatReceiptMoney(diff, mode);
       ctx.diffNode.classList.toggle("receipt-diff-warn", !resolvedAmount.empty && Math.abs(diff) >= 0.01);
     }
 

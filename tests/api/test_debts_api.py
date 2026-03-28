@@ -105,6 +105,42 @@ def test_debts_repayment_and_close_card(client: TestClient):
     assert payload[0]["outstanding_total"] == "0.00"
 
 
+def test_debts_forgiveness_closes_debt_with_forgiven_reason(client: TestClient):
+    created = client.post(
+        "/api/v1/debts",
+        json={
+            "counterparty": "Ольга",
+            "direction": "lend",
+            "principal": "250.00",
+            "start_date": "2026-03-10",
+        },
+    )
+    assert created.status_code == 201
+    debt_id = created.json()["id"]
+
+    forgiven = client.post(
+        f"/api/v1/debts/{debt_id}/forgivenesses",
+        json={"amount": "250.00", "forgiven_date": "2026-03-20", "note": "Списал без возврата"},
+    )
+    assert forgiven.status_code == 201
+    assert forgiven.json()["amount"] == "250.00"
+
+    active_cards = client.get("/api/v1/debts/cards")
+    assert active_cards.status_code == 200
+    assert active_cards.json() == []
+
+    all_cards = client.get("/api/v1/debts/cards", params={"include_closed": True})
+    assert all_cards.status_code == 200
+    payload = all_cards.json()
+    assert payload[0]["status"] == "closed"
+    debt = payload[0]["debts"][0]
+    assert debt["closure_reason"] == "forgiven"
+    assert debt["outstanding_total"] == "0.00"
+    assert debt["forgiven_total"] == "250.00"
+    assert len(debt["forgivenesses"]) == 1
+    assert debt["forgivenesses"][0]["note"] == "Списал без возврата"
+
+
 def test_debts_repayment_overpay_creates_reverse_debt(client: TestClient):
     created = client.post(
         "/api/v1/debts",
@@ -298,7 +334,43 @@ def test_debts_cards_cache_is_invalidated_after_mutations(client: TestClient):
 
     after_delete = client.get("/api/v1/debts/cards", params={"include_closed": True})
     assert after_delete.status_code == 200
-    assert len(after_delete.json()) == 1
-    assert after_delete.json()[0]["status"] == "closed"
-    assert after_delete.json()[0]["outstanding_total"] == "0"
-    assert after_delete.json()[0]["debts"] == []
+    assert after_delete.json() == []
+
+
+def test_debts_support_original_currency_and_live_base_equivalent(client: TestClient):
+    rate = client.put(
+        "/api/v1/currency/rates/current",
+        json={
+            "currency": "USD",
+            "rate": "3.20",
+            "rate_date": "2026-03-28",
+            "source": "manual",
+        },
+    )
+    assert rate.status_code == 200
+
+    created = client.post(
+        "/api/v1/debts",
+        json={
+            "counterparty": "Денис",
+            "direction": "lend",
+            "principal": "100.00",
+            "currency": "USD",
+            "start_date": "2026-03-05",
+            "note": "В долларах",
+        },
+    )
+    assert created.status_code == 201
+    payload = created.json()
+    assert payload["currency"] == "USD"
+    assert payload["base_currency"] == "BYN"
+    assert payload["principal"] == "100.00"
+    assert payload["current_rate"] == "3.200000"
+    assert payload["current_base_principal"] == "320.00"
+    assert payload["current_base_outstanding_total"] == "320.00"
+
+    cards = client.get("/api/v1/debts/cards", params={"include_closed": True})
+    assert cards.status_code == 200
+    debt = cards.json()[0]["debts"][0]
+    assert debt["currency"] == "USD"
+    assert debt["current_base_outstanding_total"] == "320.00"

@@ -1,3 +1,4 @@
+from datetime import date, datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, Field
@@ -60,12 +61,20 @@ class DashboardDebtPreviewDebt(BaseModel):
     id: int
     direction: str
     principal: Decimal
+    original_principal: Decimal
+    currency: str = "BYN"
+    base_currency: str = "BYN"
+    current_rate: Decimal | None = None
+    current_rate_date: date | None = None
+    current_base_principal: Decimal = Decimal("0")
     repaid_total: Decimal
+    current_base_repaid_total: Decimal = Decimal("0")
     outstanding_total: Decimal
-    start_date: str
-    due_date: str | None = None
+    current_base_outstanding_total: Decimal = Decimal("0")
+    start_date: date
+    due_date: date | None = None
     note: str | None = None
-    created_at: str
+    created_at: datetime
 
 
 class DashboardDebtPreviewCard(BaseModel):
@@ -77,7 +86,7 @@ class DashboardDebtPreviewCard(BaseModel):
     repaid_total: Decimal
     outstanding_total: Decimal
     status: str
-    nearest_due_date: str | None = None
+    nearest_due_date: date | None = None
     debts: list[DashboardDebtPreviewDebt]
 
 

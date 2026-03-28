@@ -238,7 +238,9 @@
         const debtDate = snapshot?.startDate || core.parseDateInputValue(el.debtStartDate.value) || core.getTodayIso();
         const debtDueDate = snapshot?.dueDate || core.parseDateInputValue(el.debtDueDate.value) || "";
         const debtCounterparty = snapshot?.counterparty || (el.debtCounterparty.value || "").trim();
-        const debtPrincipal = core.formatMoney(snapshot?.principalValue ?? core.resolveMoneyInput(el.debtPrincipal.value || 0).previewValue);
+        const debtCurrency = String(snapshot?.currency || el.debtCurrency?.value || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
+        const debtPrincipalValue = snapshot?.principalValue ?? core.resolveMoneyInput(el.debtPrincipal.value || 0).previewValue;
+        const debtPrincipal = core.formatMoney(debtPrincipalValue, { currency: debtCurrency });
         const debtNote = snapshot?.note ?? (el.debtNote.value || "").trim();
         row.classList.add("preview-row", `kind-row-${directionClass}`);
         row.appendChild(createPreviewCellButton("Дата", core.formatDateRu(debtDate), "debtStartDate"));
@@ -250,7 +252,13 @@
           ),
         );
         row.appendChild(createPreviewCellButton("Контрагент", core.highlightText(debtCounterparty || "Без имени", ""), "debtCounterparty"));
-        row.appendChild(createPreviewCellButton("Сумма", debtPrincipal, "debtPrincipal"));
+        row.appendChild(
+          createPreviewCellButton(
+            "Сумма",
+            `${debtPrincipal}${debtCurrency !== (core.getCurrencyConfig?.().code || "BYN") ? `<div class="muted-small">${core.formatCurrencyLabel(debtCurrency)}</div>` : ""}`,
+            "debtPrincipal",
+          ),
+        );
         row.appendChild(createPreviewCellButton("Срок", debtDueDate ? core.formatDateRu(debtDueDate) : "Без срока", "debtDueDate"));
         row.appendChild(createPreviewCellButton("Комментарий", core.highlightText(debtNote || "", ""), "debtNote", "preview-cell-note"));
         el.createPreviewBody.appendChild(row);

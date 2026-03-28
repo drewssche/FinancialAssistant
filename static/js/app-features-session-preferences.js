@@ -18,6 +18,7 @@
     show_dashboard_kpi: true,
     telegram_digest_enabled: false,
     telegram_digest_time: "10:00",
+    currency_alerts: {},
   };
   let activeSettingsPickerKey = "";
 
@@ -79,6 +80,42 @@
       ...DEFAULT_CURRENCY_PREFS,
       ...(state.preferences?.data?.currency || {}),
     };
+  }
+
+  function normalizeCurrencyAlerts(raw) {
+    const alerts = {};
+    if (!raw || typeof raw !== "object") {
+      return alerts;
+    }
+    for (const [currency, config] of Object.entries(raw)) {
+      const code = String(currency || "").trim().toUpperCase();
+      if (!code || !config || typeof config !== "object") {
+        continue;
+      }
+      const aboveRate = String(config.above_rate ?? "").trim();
+      const belowRate = String(config.below_rate ?? "").trim();
+      alerts[code] = {
+        above_rate: aboveRate,
+        below_rate: belowRate,
+        last_above_marker: String(config.last_above_marker ?? "").trim(),
+        last_below_marker: String(config.last_below_marker ?? "").trim(),
+      };
+    }
+    return alerts;
+  }
+
+  function syncCurrencyAlertRows() {
+    const tracked = new Set((getMergedCurrencyPrefs().tracked_currencies || []).map((item) => String(item || "").toUpperCase()));
+    if (el.currencyAlertRows?.length) {
+      Array.from(el.currencyAlertRows).forEach((row) => {
+        const code = String(row.dataset.currencyAlertRow || "").toUpperCase();
+        const visible = tracked.has(code);
+        row.classList.toggle("hidden", !visible);
+        row.querySelectorAll("input").forEach((input) => {
+          input.disabled = !visible;
+        });
+      });
+    }
   }
 
   function getSelectButtonLabel(selectNode) {
@@ -191,6 +228,16 @@
       el.currencyDigestTimeInput.value = String(getMergedCurrencyPrefs().telegram_digest_time || "10:00");
       el.currencyDigestTimeInput.disabled = el.currencyDigestToggle ? !el.currencyDigestToggle.checked : false;
     }
+    if (el.currencyAlertInputs?.length) {
+      const alerts = normalizeCurrencyAlerts(getMergedCurrencyPrefs().currency_alerts);
+      Array.from(el.currencyAlertInputs).forEach((input) => {
+        const currency = String(input.dataset.currencyAlert || "").toUpperCase();
+        const kind = String(input.dataset.currencyAlertKind || "").toLowerCase();
+        const config = alerts[currency] || {};
+        input.value = kind === "above" ? String(config.above_rate || "") : String(config.below_rate || "");
+      });
+    }
+    syncCurrencyAlertRows();
     if (el.showDashboardAnalyticsToggle) {
       el.showDashboardAnalyticsToggle.checked = ui.show_dashboard_analytics !== false;
     }
@@ -258,6 +305,7 @@
     if (el.currencyDigestTimeInput && el.currencyDigestToggle) {
       el.currencyDigestTimeInput.disabled = !el.currencyDigestToggle.checked;
     }
+    syncCurrencyAlertRows();
     syncSettingsPickerButtons();
   }
 
@@ -275,6 +323,9 @@
     }
     state.filterKind = prefs.data?.operations?.filters?.kind || "";
     state.operationsQuickView = prefs.data?.operations?.filters?.quick_view || "all";
+    state.operationsCurrencyScope = ["all", "base", "foreign"].includes(prefs.data?.operations?.filters?.currency_scope)
+      ? prefs.data.operations.filters.currency_scope
+      : "all";
     state.operationsCategoryFilterId = prefs.data?.operations?.filters?.category_id ?? null;
     state.operationsCategoryFilterName = prefs.data?.operations?.filters?.category_name || "";
     state.operationSortPreset = prefs.data?.operations?.sort_preset || localStorage.getItem("operations_sort_preset") || "date";
@@ -327,6 +378,7 @@
     core.syncAllPeriodTabs(state.period);
     core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
     core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
+    core.syncSegmentedActive(el.operationsCurrencyScopeTabs, "operations-currency-scope", state.operationsCurrencyScope);
     core.syncSegmentedActive(el.operationsSortTabs, "op-sort", state.operationSortPreset);
     core.syncSegmentedActive(el.debtSortTabs, "debt-sort", state.debtSortPreset);
     core.syncSegmentedActive(el.itemCatalogSortTabs, "item-sort", state.itemCatalogSortPreset);
@@ -363,6 +415,34 @@
         .filter((input) => input.checked)
         .map((input) => String(input.value || "").toUpperCase())
       : (getMergedCurrencyPrefs().tracked_currencies || []);
+    const existingAlerts = normalizeCurrencyAlerts(getMergedCurrencyPrefs().currency_alerts);
+    const currencyAlerts = {};
+    if (el.currencyAlertInputs?.length) {
+      Array.from(el.currencyAlertInputs).forEach((input) => {
+        const currency = String(input.dataset.currencyAlert || "").toUpperCase();
+        const kind = String(input.dataset.currencyAlertKind || "").toLowerCase();
+        if (!currency || !["above", "below"].includes(kind)) {
+          return;
+        }
+        const rawValue = String(input.value || "").trim();
+        const current = currencyAlerts[currency] || existingAlerts[currency] || {
+          above_rate: "",
+          below_rate: "",
+          last_above_marker: "",
+          last_below_marker: "",
+        };
+        current[kind === "above" ? "above_rate" : "below_rate"] = rawValue;
+        currencyAlerts[currency] = current;
+      });
+    }
+    Object.entries(existingAlerts).forEach(([currency, config]) => {
+      if (currencyAlerts[currency]) {
+        currencyAlerts[currency].last_above_marker = String(config.last_above_marker || "");
+        currencyAlerts[currency].last_below_marker = String(config.last_below_marker || "");
+        return;
+      }
+      currencyAlerts[currency] = config;
+    });
     return {
       preferences_version: state.preferences?.preferences_version || 1,
       data: {
@@ -384,6 +464,7 @@
           filters: {
             kind: state.filterKind,
             quick_view: state.operationsQuickView || "all",
+            currency_scope: state.operationsCurrencyScope || "all",
             category_id: state.operationsCategoryFilterId,
             category_name: state.operationsCategoryFilterName || "",
             q: el.filterQ.value.trim(),
@@ -426,6 +507,7 @@
           show_dashboard_kpi: el.showDashboardCurrencyToggle ? el.showDashboardCurrencyToggle.checked : getMergedCurrencyPrefs().show_dashboard_kpi,
           telegram_digest_enabled: el.currencyDigestToggle ? el.currencyDigestToggle.checked : getMergedCurrencyPrefs().telegram_digest_enabled,
           telegram_digest_time: el.currencyDigestTimeInput ? String(el.currencyDigestTimeInput.value || "10:00") : getMergedCurrencyPrefs().telegram_digest_time,
+          currency_alerts: currencyAlerts,
         },
         ui: {
           ...(state.preferences?.data?.ui || {}),
@@ -489,6 +571,7 @@
   const api = {
     DEFAULT_UI_PREFS,
     DEFAULT_CURRENCY_PREFS,
+    normalizeCurrencyAlerts,
     normalizeStructureHidden,
     getMergedUiPrefs,
     getMergedCurrencyPrefs,

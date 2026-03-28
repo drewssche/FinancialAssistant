@@ -99,6 +99,72 @@ def page_with_analytics_api_mock(page):
     }
 
     operations_payload = {"items": [], "total": 0, "page": 1, "page_size": 20}
+    currency_overview = {
+        "base_currency": "BYN",
+        "tracked_currencies": ["USD", "EUR"],
+        "active_positions": 1,
+        "total_book_value": "320.00",
+        "total_current_value": "336.00",
+        "total_result_value": "16.00",
+        "buy_trades_count": 1,
+        "sell_trades_count": 0,
+        "buy_volume_base": "320.00",
+        "sell_volume_base": "0.00",
+        "buy_average_rate": "3.2000",
+        "sell_average_rate": "0.0000",
+        "positions": [
+            {
+                "currency": "USD",
+                "quantity": "100.00",
+                "average_buy_rate": "3.2000",
+                "book_value": "320.00",
+                "current_rate": "3.3600",
+                "current_rate_date": "2026-03-28",
+                "current_value": "336.00",
+                "result_value": "16.00",
+                "result_pct": 5.0,
+                "realized_result_value": "0.00",
+            }
+        ],
+        "recent_trades": [],
+        "current_rates": [
+            {
+                "currency": "USD",
+                "rate": "3.3600",
+                "rate_date": "2026-03-28",
+                "source": "manual",
+                "previous_rate": "3.3400",
+                "change_value": "0.0200",
+                "change_pct": 0.6,
+                "average_buy_rate": "3.2000",
+                "average_sell_rate": "0.0000",
+            },
+            {
+                "currency": "EUR",
+                "rate": "3.5200",
+                "rate_date": "2026-03-28",
+                "source": "manual",
+                "previous_rate": "3.5000",
+                "change_value": "0.0200",
+                "change_pct": 0.57,
+                "average_buy_rate": "0.0000",
+                "average_sell_rate": "0.0000",
+            },
+        ],
+    }
+    currency_history = {
+        "USD": [
+            {"currency": "USD", "rate": "3.3000", "rate_date": "2026-03-20"},
+            {"currency": "USD", "rate": "3.3300", "rate_date": "2026-03-23"},
+            {"currency": "USD", "rate": "3.3600", "rate_date": "2026-03-28"},
+        ],
+        "EUR": [
+            {"currency": "EUR", "rate": "3.4400", "rate_date": "2026-03-20"},
+            {"currency": "EUR", "rate": "3.4800", "rate_date": "2026-03-23"},
+            {"currency": "EUR", "rate": "3.5200", "rate_date": "2026-03-28"},
+        ],
+    }
+    history_fill_calls = []
 
     def json_response(route, payload: dict | list, status: int = 200):
         route.fulfill(status=status, content_type="application/json", body=json.dumps(payload, ensure_ascii=False))
@@ -348,6 +414,29 @@ def page_with_analytics_api_mock(page):
         if path == "/api/v1/debts/cards" and method == "GET":
             return json_response(route, [])
 
+        if path == "/api/v1/currency/overview" and method == "GET":
+            selected_currency = (query.get("currency") or ["all"])[0]
+            if selected_currency and selected_currency != "all":
+                payload = dict(currency_overview)
+                payload["positions"] = [item for item in currency_overview["positions"] if item["currency"] == selected_currency]
+                payload["current_rates"] = [item for item in currency_overview["current_rates"] if item["currency"] == selected_currency]
+                payload["tracked_currencies"] = ["USD", "EUR"]
+                payload["active_positions"] = len(payload["positions"])
+                payload["total_book_value"] = payload["positions"][0]["book_value"] if payload["positions"] else "0.00"
+                payload["total_current_value"] = payload["positions"][0]["current_value"] if payload["positions"] else "0.00"
+                payload["total_result_value"] = payload["positions"][0]["result_value"] if payload["positions"] else "0.00"
+                return json_response(route, payload)
+            return json_response(route, currency_overview)
+
+        if path == "/api/v1/currency/rates/history" and method == "GET":
+            selected_currency = (query.get("currency") or ["USD"])[0]
+            return json_response(route, currency_history.get(selected_currency, []))
+
+        if path == "/api/v1/currency/rates/history/fill" and method == "POST":
+            selected_currency = (query.get("currency") or ["USD"])[0]
+            history_fill_calls.append(selected_currency)
+            return json_response(route, currency_history.get(selected_currency, []), status=201)
+
         if path == "/api/v1/operations" and method == "GET":
             if method == "GET":
                 date_from = (query.get("date_from") or [""])[0]
@@ -374,6 +463,7 @@ def page_with_analytics_api_mock(page):
 
     _set_mock_telegram(page)
     page.route("**/api/v1/**", handler)
+    page._currency_history_fill_calls = history_fill_calls
     yield page
 
 
@@ -626,3 +716,21 @@ def test_mobile_analytics_day_tap_opens_operations_for_exact_date(static_server_
     assert state["period"] == "custom"
     assert state["dateFrom"] == "2026-03-08"
     assert state["dateTo"] == "2026-03-08"
+
+
+@pytest.mark.e2e
+def test_currency_analytics_all_mode_renders_multi_currency_chart_and_backfill(page_with_analytics_api_mock, static_server_url: str):
+    page = page_with_analytics_api_mock
+
+    _open_mobile_analytics(page, static_server_url)
+    page.locator("button[data-analytics-tab='currency']").click()
+    page.wait_for_selector("#analyticsCurrencyPanel:not(.hidden)")
+
+    assert page.locator("#analyticsCurrencyBalancesRow .currency-balance-card").count() >= 3
+    assert page.locator("#analyticsCurrencyChart .currency-chart-legend-label", has_text="USD ($)").count() >= 1
+    assert page.locator("#analyticsCurrencyChart .currency-chart-legend-label", has_text="EUR (€)").count() >= 1
+    assert page.locator("#analyticsCurrencyChart .currency-chart-series").count() >= 2
+
+    page.click("#analyticsCurrencyBackfillBtn")
+    page.wait_for_timeout(200)
+    assert sorted(getattr(page, "_currency_history_fill_calls", [])) == ["EUR", "USD"]

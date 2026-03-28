@@ -9,6 +9,7 @@ from app.schemas.operation import OperationOut, OperationReceiptItemIn, Operatio
 class PlanCreate(BaseModel):
     kind: str
     amount: Decimal | None = None
+    currency: str = Field(default="BYN", min_length=3, max_length=3)
     scheduled_date: date
     category_id: int | None = None
     note: str | None = None
@@ -25,6 +26,7 @@ class PlanCreate(BaseModel):
 class PlanUpdate(BaseModel):
     kind: str | None = None
     amount: Decimal | None = None
+    currency: str | None = Field(default=None, min_length=3, max_length=3)
     scheduled_date: date | None = None
     category_id: int | None = None
     note: str | None = None
@@ -42,6 +44,12 @@ class PlanOut(BaseModel):
     id: int
     kind: str
     amount: Decimal
+    original_amount: Decimal
+    currency: str
+    base_currency: str
+    current_rate: Decimal | None = None
+    current_rate_date: date | None = None
+    current_base_amount: Decimal
     scheduled_date: date
     due_date: date
     category_id: int | None

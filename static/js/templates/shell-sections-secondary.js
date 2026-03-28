@@ -348,6 +348,45 @@
                   <span>Время уведомления по курсам</span>
                   <input id="currencyDigestTimeInput" type="time" value="10:00" />
                 </label>
+                <div class="field">
+                  <span>Алерты по курсам</span>
+                  <div id="currencyAlertsSettings" class="settings-alerts-grid">
+                    ${["USD", "EUR", "RUB", "CNY", "PLN"].map((currency) => `
+                      <div class="settings-alert-row" data-currency-alert-row="${currency}">
+                        <div class="settings-alert-row-head">
+                          <strong>${currency}</strong>
+                          <span class="muted-small">Telegram при достижении порога</span>
+                        </div>
+                        <div class="settings-alert-row-fields">
+                          <label class="field">
+                            <span>Выше курса</span>
+                            <input
+                              type="number"
+                              inputmode="decimal"
+                              step="0.0001"
+                              min="0"
+                              placeholder="Например 3.5000"
+                              data-currency-alert="${currency}"
+                              data-currency-alert-kind="above"
+                            />
+                          </label>
+                          <label class="field">
+                            <span>Ниже курса</span>
+                            <input
+                              type="number"
+                              inputmode="decimal"
+                              step="0.0001"
+                              min="0"
+                              placeholder="Например 3.1000"
+                              data-currency-alert="${currency}"
+                              data-currency-alert-kind="below"
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    `).join("")}
+                  </div>
+                </div>
               </section>
               <div class="settings-actions">
                 <button id="saveSettingsBtn" class="btn btn-primary" type="submit">Сохранить настройки</button>
@@ -392,6 +431,32 @@
                   </tr>
                 </thead>
                 <tbody id="adminUsersBody"></tbody>
+              </table>
+            </div>
+          </section>
+          <section class="panel">
+            <div class="panel-head row between">
+              <div>
+                <h3>Диагностика валюты</h3>
+                <p class="subtitle">Freshness курсов, digest и alerts по tracked currencies</p>
+              </div>
+              <button id="refreshAdminCurrencyDiagnosticsBtn" class="btn btn-secondary btn-xs" type="button">Обновить</button>
+            </div>
+            <div id="adminCurrencyDiagnosticsKpi" class="kpi-grid"></div>
+            <div class="table-wrap">
+              <table class="table table-hover mobile-card-table admin-users-table">
+                <thead>
+                  <tr>
+                    <th>Валюта</th>
+                    <th>Пользователей</th>
+                    <th>Digest</th>
+                    <th>Alerts</th>
+                    <th>Последний курс</th>
+                    <th>Stale</th>
+                    <th>Нет курса</th>
+                  </tr>
+                </thead>
+                <tbody id="adminCurrencyDiagnosticsBody"></tbody>
               </table>
             </div>
           </section>

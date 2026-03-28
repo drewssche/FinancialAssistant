@@ -8,6 +8,18 @@
   const debtDueDaysBadge = debtUi.debtDueDaysBadge;
   const debtRepaymentProgress = debtUi.debtRepaymentProgress;
 
+  function formatDebtMoney(value, currency = "BYN") {
+    return core.formatMoney(value, { currency });
+  }
+
+  function formatDebtAmountBlock(primaryValue, currency, currentBaseValue, baseCurrency = "BYN", extraClass = "") {
+    const primary = formatDebtMoney(primaryValue, currency);
+    if (String(currency || "BYN").toUpperCase() === String(baseCurrency || "BYN").toUpperCase()) {
+      return `<span class="${extraClass}">${primary}</span>`;
+    }
+    return `<span class="${extraClass}">${primary}</span><div class="muted-small">≈ ${core.formatMoney(currentBaseValue || 0, { currency: baseCurrency })}</div>`;
+  }
+
   function debtDueLabel(stateValue, dueDate) {
     if (stateValue === "overdue") {
       return "Просрочено";
@@ -22,6 +34,26 @@
       return "Закрыт";
     }
     return "Без срока";
+  }
+
+  function debtClosureMeta(debt) {
+    return String(debt.closure_reason || "") === "forgiven"
+      ? '<span class="muted-small">Прощен</span>'
+      : "";
+  }
+
+  function debtSettlementChips(debt) {
+    const chips = [];
+    const repaid = Number(debt.repaid_total || 0);
+    const forgiven = Number(debt.forgiven_total || 0);
+    const currency = debt.currency || "BYN";
+    if (repaid > 0) {
+      chips.push(`<span class="meta-chip debt-meta-chip debt-meta-chip-repaid">Погашено ${formatDebtMoney(repaid, currency)}</span>`);
+    }
+    if (forgiven > 0) {
+      chips.push(`<span class="meta-chip debt-meta-chip debt-meta-chip-forgiven">Прощено ${formatDebtMoney(forgiven, currency)}</span>`);
+    }
+    return chips.length ? `<div class="debt-meta-chips">${chips.join("")}</div>` : "";
   }
 
   function debtRepaidClass(debt) {
@@ -199,11 +231,12 @@
                   <div class="debt-mobile-entry-main">
                     <div class="debt-mobile-entry-topline">
                       <span class="debt-direction-pill debt-direction-pill-${direction}">${directionLabel}</span>
-                      <strong class="debt-amount-principal debt-amount-principal-${direction}">${formatMoney(debt.outstanding_total)}</strong>
+                      <strong class="debt-amount-principal debt-amount-principal-${direction}">${formatDebtMoney(debt.outstanding_total, debt.currency || "BYN")}</strong>
                     </div>
                     <div class="debt-mobile-entry-meta">
                       <span class="muted-small">Старт: ${core.formatDateRu(debt.start_date)}</span>
                       <span class="muted-small">${debtDueLabel(dueState, debt.due_date)}</span>
+                      ${String(debt.currency || "BYN").toUpperCase() !== String(debt.base_currency || "BYN").toUpperCase() ? `<span class="muted-small">≈ ${core.formatMoney(debt.current_base_outstanding_total || 0, { currency: debt.base_currency || "BYN" })}</span>` : ""}
                       ${dueDays ? `<span class="debt-due-days-badge debt-due-days-badge-${dueState}">${dueDays}</span>` : ""}
                     </div>
                   </div>
@@ -214,6 +247,7 @@
                     <div class="app-popover hidden mobile-card-actions-popover" data-mobile-card-menu="debt-${debt.id}">
                       <div class="mobile-card-actions-menu">
                         <button class="btn btn-secondary" type="button" data-history-debt-id="${debt.id}">История</button>
+                        <button class="btn btn-secondary" type="button" data-forgive-debt-id="${debt.id}" ${Number(debt.outstanding_total) <= 0 ? "disabled" : ""}>Простить</button>
                         <button class="btn btn-secondary" type="button" data-edit-debt-id="${debt.id}">Редактировать</button>
                         <button class="btn btn-danger" type="button" data-delete-debt-id="${debt.id}">Удалить</button>
                       </div>
@@ -222,10 +256,12 @@
                 </div>
                 <div class="debt-mobile-entry-body">
                   <div class="debt-mobile-entry-stats">
-                    <span class="muted-small">Сумма: <strong class="debt-amount-principal debt-amount-principal-${direction}">${formatMoney(debt.principal)}</strong></span>
-                    <span class="muted-small">Погашено: <strong class="debt-amount-repaid ${repaidClass}">${formatMoney(debt.repaid_total)}</strong></span>
+                    <span class="muted-small">Сумма: <strong class="debt-amount-principal debt-amount-principal-${direction}">${formatDebtMoney(debt.principal, debt.currency || "BYN")}</strong></span>
+                    <span class="muted-small">Погашено: <strong class="debt-amount-repaid ${repaidClass}">${formatDebtMoney(debt.repaid_total, debt.currency || "BYN")}</strong></span>
                     <span class="muted-small">Платежей: ${repayments.length}</span>
+                    ${debtClosureMeta(debt)}
                   </div>
+                  ${debtSettlementChips(debt)}
                   <div class="debt-repay-progress">
                     <div class="debt-repay-progress-track">
                       <span class="debt-repay-progress-bar debt-repay-progress-bar-${repayProgress.tone}" style="width:${repayProgress.percent}%"></span>
@@ -241,6 +277,7 @@
                 </div>
                 <div class="debt-mobile-entry-actions">
                   <button class="btn btn-repay" type="button" data-repay-debt-id="${debt.id}" ${Number(debt.outstanding_total) <= 0 ? "disabled" : ""}>Погашение</button>
+                  <button class="btn btn-secondary" type="button" data-forgive-debt-id="${debt.id}" ${Number(debt.outstanding_total) <= 0 ? "disabled" : ""}>Простить</button>
                 </div>
               </article>
             `;
@@ -248,10 +285,10 @@
           return `<tr class="debt-row-${dueState} debt-row-${direction} debt-record-row table-record-open-row" data-debt-row-id="${debt.id}">
             <td>${core.formatDateRu(debt.start_date)}</td>
             <td><span class="debt-direction-pill debt-direction-pill-${direction}">${directionLabel}</span></td>
-            <td><span class="debt-amount-principal debt-amount-principal-${direction}">${formatMoney(debt.principal)}</span></td>
-            <td><span class="debt-amount-repaid ${repaidClass}">${formatMoney(debt.repaid_total)}</span></td>
+            <td>${formatDebtAmountBlock(debt.principal, debt.currency || "BYN", debt.current_base_principal, debt.base_currency || "BYN", `debt-amount-principal debt-amount-principal-${direction}`)}</td>
+            <td>${formatDebtAmountBlock(debt.repaid_total, debt.currency || "BYN", debt.current_base_repaid_total, debt.base_currency || "BYN", `debt-amount-repaid ${repaidClass}`)}</td>
             <td>
-              <span class="debt-amount-outstanding debt-amount-outstanding-${direction}">${formatMoney(debt.outstanding_total)}</span>
+              ${formatDebtAmountBlock(debt.outstanding_total, debt.currency || "BYN", debt.current_base_outstanding_total, debt.base_currency || "BYN", `debt-amount-outstanding debt-amount-outstanding-${direction}`)}
               <div class="debt-repay-progress">
                 <div class="debt-repay-progress-track">
                   <span class="debt-repay-progress-bar debt-repay-progress-bar-${repayProgress.tone}" style="width:${repayProgress.percent}%"></span>
@@ -271,6 +308,8 @@
               }
               <div class="muted-small">Добавлений: ${issuances.length}${lastIssuance ? ` • Последнее: ${core.formatDateRu(lastIssuance)}` : ""}</div>
               <div class="muted-small">Платежей: ${repayments.length}${lastRepayment ? ` • Последний: ${core.formatDateRu(lastRepayment)}` : ""}</div>
+              ${debtClosureMeta(debt)}
+              ${debtSettlementChips(debt)}
               ${noteText ? `<div class="muted-small">${noteText}</div>` : ""}
             </td>
             <td>
@@ -279,6 +318,7 @@
                 ${core.renderInlineKebabMenu?.(
                   `debt-${debt.id}`,
                   `<button class="btn btn-secondary" type="button" data-history-debt-id="${debt.id}">История</button>
+                  <button class="btn btn-secondary" type="button" data-forgive-debt-id="${debt.id}" ${Number(debt.outstanding_total) <= 0 ? "disabled" : ""}>Простить</button>
                   <button class="btn btn-secondary" type="button" data-edit-debt-id="${debt.id}">Редактировать</button>
                   <button class="btn btn-danger" type="button" data-delete-debt-id="${debt.id}">Удалить</button>`,
                   "Действия долга",

@@ -137,6 +137,50 @@ def test_operations_support_original_currency_and_base_conversion(client: TestCl
     assert updated_payload["amount"] == "38.40"
 
 
+def test_operations_support_currency_scope_filters(client: TestClient):
+    created_base = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "15.00",
+            "operation_date": "2026-03-03",
+            "note": "byn expense",
+        },
+    )
+    assert created_base.status_code == 201, created_base.text
+
+    created_foreign = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "10.00",
+            "currency": "USD",
+            "fx_rate": "3.30",
+            "operation_date": "2026-03-04",
+            "note": "usd expense",
+        },
+    )
+    assert created_foreign.status_code == 201, created_foreign.text
+
+    base_filtered = client.get("/api/v1/operations", params={"currency_scope": "base", "page": 1, "page_size": 20})
+    assert base_filtered.status_code == 200, base_filtered.text
+    assert base_filtered.json()["total"] == 1
+    assert base_filtered.json()["items"][0]["currency"] == "BYN"
+
+    foreign_filtered = client.get("/api/v1/operations", params={"currency_scope": "foreign", "page": 1, "page_size": 20})
+    assert foreign_filtered.status_code == 200, foreign_filtered.text
+    assert foreign_filtered.json()["total"] == 1
+    assert foreign_filtered.json()["items"][0]["currency"] == "USD"
+
+    summary_base = client.get("/api/v1/operations/summary", params={"currency_scope": "base"})
+    assert summary_base.status_code == 200, summary_base.text
+    assert summary_base.json()["expense_total"] == "15.00"
+
+    summary_foreign = client.get("/api/v1/operations/summary", params={"currency_scope": "foreign"})
+    assert summary_foreign.status_code == 200, summary_foreign.text
+    assert summary_foreign.json()["expense_total"] == "33.00"
+
+
 def test_operations_reject_invalid_date_range(client: TestClient):
     response = client.get(
         "/api/v1/operations",

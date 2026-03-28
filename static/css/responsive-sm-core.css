@@ -669,6 +669,7 @@
   }
 
   .settings-grid-2,
+  .settings-alert-row-fields,
   .settings-scale-row,
   .danger-zone-actions {
     grid-template-columns: 1fr;

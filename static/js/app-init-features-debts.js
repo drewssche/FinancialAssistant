@@ -60,6 +60,7 @@
           pickerUtils,
           openEditDebtModal: actions.openEditDebtModal,
           openDebtHistoryModal: actions.openDebtHistoryModal,
+          openDebtForgivenessModal: actions.openDebtForgivenessModal,
           deleteDebtFlow: actions.deleteDebtFlow,
           openDebtRepaymentModal: actions.openDebtRepaymentModal,
         });
@@ -124,6 +125,18 @@
         actions.openDebtHistoryModal(Number(btn.dataset.historyDebtId || 0));
       }, true);
     }
+    if (actions.openDebtForgivenessModal) {
+      document.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-forgive-debt-id]");
+        if (!btn || btn.disabled) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        debtsUiCoordinator?.closeDebtActionPopover?.({ event, pickerUtils });
+        actions.openDebtForgivenessModal(Number(btn.dataset.forgiveDebtId || 0));
+      }, true);
+    }
 
     if (el.debtRepaymentForm && actions.submitDebtRepayment) {
       el.debtRepaymentForm.addEventListener("submit", (event) => {
@@ -133,6 +146,22 @@
           successMessage: "Погашение добавлено",
           errorPrefix: "Ошибка добавления погашения",
           action: () => actions.submitDebtRepayment(event),
+        });
+      });
+    }
+    if (el.forgiveDebtFromRepaymentBtn && actions.forgiveDebtFromRepaymentFlow) {
+      el.forgiveDebtFromRepaymentBtn.addEventListener("click", () => {
+        actions.forgiveDebtFromRepaymentFlow().catch((err) => core.setStatus(String(err)));
+      });
+    }
+    if (el.debtForgivenessForm && actions.submitDebtForgiveness) {
+      el.debtForgivenessForm.addEventListener("submit", (event) => {
+        core.runAction({
+          button: event.submitter || el.submitDebtForgivenessBtn,
+          pendingText: "Списание...",
+          successMessage: "Долг обновлен",
+          errorPrefix: "Ошибка прощения долга",
+          action: () => actions.submitDebtForgiveness(event),
         });
       });
     }

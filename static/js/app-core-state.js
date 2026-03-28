@@ -45,6 +45,7 @@
       customDateTo: "",
       filterKind: "",
       operationsQuickView: "all",
+      operationsCurrencyScope: "all",
       operationsCategoryFilterId: null,
       operationsCategoryFilterName: "",
       operationSortPreset: localStorage.getItem("operations_sort_preset") || "date",

@@ -75,8 +75,10 @@
     state.operationsCategoryFilterName = "";
     state.filterKind = "";
     state.operationsQuickView = "all";
+    state.operationsCurrencyScope = "all";
     core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
     core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
+    core.syncSegmentedActive(el.operationsCurrencyScopeTabs, "operations-currency-scope", state.operationsCurrencyScope);
     if (el.filterQ) {
       el.filterQ.value = "";
     }
@@ -97,8 +99,10 @@
     state.operationsCategoryFilterName = "";
     state.filterKind = "";
     state.operationsQuickView = "all";
+    state.operationsCurrencyScope = "all";
     core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
     core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
+    core.syncSegmentedActive(el.operationsCurrencyScopeTabs, "operations-currency-scope", state.operationsCurrencyScope);
     if (el.filterQ) {
       el.filterQ.value = "";
     }
@@ -137,7 +141,9 @@
     navigation.pushSectionBackContext?.();
     applyAnalyticsScopeToOperations();
     state.operationsQuickView = "all";
+    state.operationsCurrencyScope = "all";
     core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
+    core.syncSegmentedActive(el.operationsCurrencyScopeTabs, "operations-currency-scope", state.operationsCurrencyScope);
     state.operationsCategoryFilterId = Number(categoryId);
     state.operationsCategoryFilterName = String(categoryName || "").trim();
     if (el.filterQ) {

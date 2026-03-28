@@ -12,6 +12,7 @@ from app.core.cache import (
     set_json,
 )
 from app.core.logging import log_background_job_event
+from app.repositories.currency_repo import CurrencyRepository
 from app.repositories.plan_repo import PlanRepository
 from app.services.operation_service import OperationService
 from app.services.plan_reminder_service import PlanReminderService
@@ -21,6 +22,7 @@ class PlanService:
     def __init__(self, db: Session):
         self.db = db
         self.repo = PlanRepository(db)
+        self.currency_repo = CurrencyRepository(db)
         self.operation_service = OperationService(db)
         self.reminder_service = PlanReminderService(db)
 
@@ -74,6 +76,7 @@ class PlanService:
         user_id: int,
         kind: str,
         amount: Decimal | None,
+        currency: str = "BYN",
         scheduled_date: date,
         category_id: int | None,
         note: str | None,
@@ -89,6 +92,8 @@ class PlanService:
         self.operation_service._validate_kind(kind)
         normalized_items, receipt_total = self.operation_service._normalize_receipt_items(receipt_items or [])
         resolved_amount = self.operation_service._resolve_operation_amount(amount=amount, receipt_total=receipt_total)
+        base_currency = self.operation_service._get_user_base_currency(user_id)
+        normalized_currency = self.operation_service._normalize_currency(currency or base_currency, default=base_currency)
         recurrence_frequency, recurrence_interval, recurrence_weekdays, recurrence_workdays_only, recurrence_month_end, recurrence_end_date = self._validate_recurrence(
             recurrence_enabled=recurrence_enabled,
             recurrence_frequency=recurrence_frequency,
@@ -103,6 +108,9 @@ class PlanService:
             user_id=user_id,
             kind=kind,
             amount=resolved_amount,
+            original_amount=resolved_amount,
+            currency=normalized_currency,
+            base_currency=base_currency,
             scheduled_date=scheduled_date,
             category_id=category_id,
             note=note,
@@ -158,6 +166,7 @@ class PlanService:
         item = row.PlanOperation
         if "kind" in updates and updates["kind"] is not None:
             self.operation_service._validate_kind(updates["kind"])
+        base_currency = self.operation_service._get_user_base_currency(user_id)
         receipt_items_input = updates.pop("receipt_items", None) if "receipt_items" in updates else None
         normalized_items = None
         receipt_total = None
@@ -170,6 +179,11 @@ class PlanService:
                 updates["amount"] = self.operation_service._resolve_operation_amount(amount=None, receipt_total=receipt_total)
             else:
                 updates["amount"] = self.operation_service._money(updates["amount"])
+        if "currency" in updates and updates["currency"] is not None:
+            updates["currency"] = self.operation_service._normalize_currency(updates["currency"], default=base_currency)
+        updates["base_currency"] = base_currency
+        if "amount" in updates:
+            updates["original_amount"] = updates["amount"]
         next_scheduled_date = updates.get("scheduled_date", item.scheduled_date)
         next_recurrence_enabled = updates.get("recurrence_enabled", item.recurrence_enabled)
         next_recurrence_frequency = updates["recurrence_frequency"] if "recurrence_frequency" in updates else item.recurrence_frequency
@@ -269,7 +283,9 @@ class PlanService:
         operation = self.operation_service.create_operation(
             user_id=user_id,
             kind=item.kind,
-            amount=item.amount,
+            amount=getattr(item, "original_amount", item.amount),
+            currency=getattr(item, "currency", "BYN"),
+            fx_rate=self._resolve_plan_current_rate(item=item),
             operation_date=item.scheduled_date,
             category_id=item.category_id,
             note=item.note,
@@ -428,10 +444,27 @@ class PlanService:
                     "note": receipt_item.note,
                 }
             )
+        currency = str(getattr(item, "currency", "BYN") or "BYN").upper()
+        base_currency = str(getattr(item, "base_currency", "BYN") or "BYN").upper()
+        original_amount = self.operation_service._money(getattr(item, "original_amount", item.amount))
+        current_rate_row = self.currency_repo.get_latest_rate_map(user_id=int(item.user_id)).get(currency) if currency != base_currency else None
+        current_rate = self.operation_service._rate(current_rate_row.rate) if current_rate_row else None
+        current_base_amount = self._resolve_live_plan_base_amount(
+            amount=original_amount,
+            currency=currency,
+            base_currency=base_currency,
+            current_rate=current_rate,
+        )
         return {
             "id": int(item.id),
             "kind": item.kind,
             "amount": self.operation_service._money(item.amount),
+            "original_amount": original_amount,
+            "currency": currency,
+            "base_currency": base_currency,
+            "current_rate": current_rate,
+            "current_rate_date": current_rate_row.rate_date if current_rate_row else None,
+            "current_base_amount": current_base_amount,
             "scheduled_date": item.scheduled_date,
             "due_date": item.scheduled_date,
             "category_id": item.category_id,
@@ -466,6 +499,30 @@ class PlanService:
             "last_skipped_at": item.last_skipped_at,
             "created_at": item.created_at,
         }
+
+    def _resolve_live_plan_base_amount(
+        self,
+        *,
+        amount: Decimal,
+        currency: str,
+        base_currency: str,
+        current_rate: Decimal | None,
+    ) -> Decimal:
+        if currency == base_currency:
+            return self.operation_service._money(amount)
+        if current_rate is None or Decimal(current_rate) <= 0:
+            return self.operation_service._money(0)
+        return self.operation_service._money(Decimal(amount) * Decimal(current_rate))
+
+    def _resolve_plan_current_rate(self, *, item) -> Decimal | None:
+        currency = str(getattr(item, "currency", "BYN") or "BYN").upper()
+        base_currency = str(getattr(item, "base_currency", "BYN") or "BYN").upper()
+        if currency == base_currency:
+            return Decimal("1.000000")
+        latest_rate = self.currency_repo.get_latest_rate_map(user_id=int(item.user_id)).get(currency)
+        if not latest_rate:
+            raise ValueError(f"Нет текущего курса для {currency}")
+        return self.operation_service._rate(latest_rate.rate)
 
     def _display_status(self, item) -> str:
         if item.status in {"confirmed", "skipped"}:

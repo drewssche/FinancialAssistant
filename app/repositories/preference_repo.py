@@ -32,6 +32,7 @@ class PreferenceRepository:
                     "show_dashboard_kpi": True,
                     "telegram_digest_enabled": False,
                     "telegram_digest_time": "10:00",
+                    "currency_alerts": {},
                 },
                 "ui": {
                     "timezone": "auto",

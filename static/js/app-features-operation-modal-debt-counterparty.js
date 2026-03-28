@@ -6,6 +6,7 @@
       core,
       getCurrentDebtEditId,
       getCurrentDebtDirection,
+      getCurrentDebtCurrency,
       getCurrentDebtPrincipalValue,
       getCurrentDebtStartDate,
       getCurrentDebtDueDate,
@@ -59,12 +60,13 @@
       return getCounterpartyCards().find((card) => normalizeCounterpartyName(card?.counterparty || "").toLowerCase() === normalized) || null;
     }
 
-    function findDebtMergeCandidate(card, direction, excludeDebtId = 0) {
+    function findDebtMergeCandidate(card, direction, currency, excludeDebtId = 0) {
       if (!card || !Array.isArray(card.debts)) {
         return null;
       }
       const activeDebts = card.debts
         .filter((debt) => debt?.direction === direction)
+        .filter((debt) => String(debt?.currency || "BYN").toUpperCase() === String(currency || "BYN").toUpperCase())
         .filter((debt) => Number(debt?.outstanding_total || 0) > 0)
         .filter((debt) => Number(debt?.id || 0) !== Number(excludeDebtId || 0))
         .sort((a, b) => {
@@ -81,6 +83,7 @@
     function getDebtPreviewSnapshot() {
       const inputCounterparty = normalizeCounterpartyName(el.debtCounterparty?.value || "");
       const direction = getCurrentDebtDirection();
+      const currency = getCurrentDebtCurrency();
       const principalValue = Number(getCurrentDebtPrincipalValue() || 0);
       const startDate = getCurrentDebtStartDate();
       const dueDate = getCurrentDebtDueDate();
@@ -88,6 +91,7 @@
       const manual = {
         counterparty: inputCounterparty,
         direction,
+        currency,
         principalValue,
         startDate,
         dueDate,
@@ -101,7 +105,7 @@
       if (!card) {
         return manual;
       }
-      const mergeTarget = findDebtMergeCandidate(card, direction, getCurrentDebtEditId());
+      const mergeTarget = findDebtMergeCandidate(card, direction, currency, getCurrentDebtEditId());
       if (!mergeTarget) {
         return { ...manual, counterparty: card.counterparty || inputCounterparty };
       }
@@ -114,6 +118,7 @@
       return {
         counterparty: card.counterparty || inputCounterparty,
         direction,
+        currency,
         principalValue: mergedPrincipal,
         startDate: mergedStartDate,
         dueDate: mergedDueDate,

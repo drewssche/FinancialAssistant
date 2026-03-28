@@ -83,6 +83,21 @@
         });
       });
     }
+    if (el.operationsCurrencyScopeTabs && actions.setOperationsCurrencyScope) {
+      el.operationsCurrencyScopeTabs.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-operations-currency-scope]");
+        if (!btn) {
+          return;
+        }
+        if (state.operationsCurrencyScope === btn.dataset.operationsCurrencyScope) {
+          return;
+        }
+        core.runAction({
+          errorPrefix: "Ошибка применения валютного среза",
+          action: () => actions.setOperationsCurrencyScope(btn.dataset.operationsCurrencyScope),
+        });
+      });
+    }
     if (el.operationsSortTabs && actions.setOperationsSortPreset) {
       el.operationsSortTabs.addEventListener("click", (event) => {
         const btn = event.target.closest("button[data-op-sort]");

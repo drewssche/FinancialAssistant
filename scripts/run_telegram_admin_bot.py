@@ -16,6 +16,7 @@ from app.services.telegram_admin_bot_service import (
 )
 from app.services.telegram_debt_reminder_bot_service import TelegramDebtReminderBotService
 from app.services.telegram_currency_digest_bot_service import TelegramCurrencyDigestBotService
+from app.services.telegram_currency_alert_bot_service import TelegramCurrencyAlertBotService
 from app.services.telegram_plan_bot_service import (
     TelegramPlanAlreadyCompletedError,
     TelegramPlanBotService,
@@ -334,6 +335,43 @@ async def process_currency_digests(client: TelegramBotClient) -> None:
         db.close()
 
 
+async def process_currency_alerts(client: TelegramBotClient) -> None:
+    db = SessionLocal()
+    try:
+        service = TelegramCurrencyAlertBotService(db)
+        for delivery in service.list_due_deliveries():
+            try:
+                await client.call(
+                    "sendMessage",
+                    {
+                        "chat_id": delivery.chat_id,
+                        "text": delivery.text,
+                        "disable_web_page_preview": True,
+                    },
+                )
+            except Exception as exc:  # noqa: BLE001
+                log_telegram_bot_event(
+                    "currency_alert_failed",
+                    user_id=delivery.user_id,
+                    error=type(exc).__name__,
+                )
+                logger.warning(
+                    "telegram currency alert failed for user %s: %s",
+                    delivery.user_id,
+                    exc,
+                )
+                continue
+            service.mark_delivery_sent(delivery)
+            log_telegram_bot_event(
+                "currency_alert_sent",
+                chat_id=delivery.chat_id,
+                user_id=delivery.user_id,
+                trigger_count=len(delivery.triggers),
+            )
+    finally:
+        db.close()
+
+
 async def run() -> None:
     settings = get_settings()
     token = settings.telegram_bot_token.strip()
@@ -374,6 +412,11 @@ async def run() -> None:
                 except Exception as exc:  # noqa: BLE001
                     log_telegram_bot_event("currency_digest_scan_failed", error=type(exc).__name__)
                     logger.warning("telegram currency digest scan failed: %s", exc)
+                try:
+                    await process_currency_alerts(client)
+                except Exception as exc:  # noqa: BLE001
+                    log_telegram_bot_event("currency_alert_scan_failed", error=type(exc).__name__)
+                    logger.warning("telegram currency alert scan failed: %s", exc)
                 last_plan_reminder_scan_at = now_mono
             try:
                 data = await client.call(

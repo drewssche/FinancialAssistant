@@ -32,6 +32,8 @@ class OperationRepository:
         receipt_only: bool = False,
         uncategorized_only: bool = False,
         min_amount: Decimal | None = None,
+        currency_scope: str = "all",
+        base_currency: str = "BYN",
     ) -> list:
         conditions = [Operation.user_id == user_id]
 
@@ -69,6 +71,10 @@ class OperationRepository:
             )
         if min_amount is not None:
             conditions.append(Operation.amount >= min_amount)
+        if currency_scope == "base":
+            conditions.append(Operation.currency == base_currency)
+        elif currency_scope == "foreign":
+            conditions.append(Operation.currency != base_currency)
         if receipt_only:
             conditions.append(
                 select(OperationReceiptItem.id)
@@ -160,6 +166,8 @@ class OperationRepository:
         receipt_only: bool = False,
         uncategorized_only: bool = False,
         min_amount: Decimal | None = None,
+        currency_scope: str = "all",
+        base_currency: str = "BYN",
     ) -> tuple[list[Operation], int]:
         conditions = self._build_list_conditions(
             user_id=user_id,
@@ -171,6 +179,8 @@ class OperationRepository:
             receipt_only=receipt_only,
             uncategorized_only=uncategorized_only,
             min_amount=min_amount,
+            currency_scope=currency_scope,
+            base_currency=base_currency,
         )
 
         base_stmt: Select[tuple[Operation]] = (
@@ -213,6 +223,8 @@ class OperationRepository:
         receipt_only: bool = False,
         uncategorized_only: bool = False,
         min_amount: Decimal | None = None,
+        currency_scope: str = "all",
+        base_currency: str = "BYN",
     ) -> tuple[Decimal, Decimal, int]:
         conditions = self._build_list_conditions(
             user_id=user_id,
@@ -224,6 +236,8 @@ class OperationRepository:
             receipt_only=receipt_only,
             uncategorized_only=uncategorized_only,
             min_amount=min_amount,
+            currency_scope=currency_scope,
+            base_currency=base_currency,
         )
         stmt = (
             select(

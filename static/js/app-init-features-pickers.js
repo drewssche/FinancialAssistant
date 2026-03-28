@@ -27,6 +27,8 @@
           node.addEventListener("change", () => {
             actions.resetCreateOperationFxRateAutofill?.();
             actions.syncOperationCurrencyFields("create");
+            actions.renderReceiptItems?.("create");
+            actions.renderReceiptSummary?.("create");
             actions.syncSuggestedOperationFxRate?.("create").catch(() => {});
           });
         }
@@ -42,11 +44,14 @@
       }
     }
     pickerCoordinator.bindDateField("opDate", actions.updateCreatePreview);
-    for (const id of ["debtCounterparty", "debtPrincipal", "debtStartDate", "debtDueDate", "debtNote"]) {
+    for (const id of ["debtCounterparty", "debtPrincipal", "debtStartDate", "debtDueDate", "debtNote", "debtCurrency"]) {
       const node = document.getElementById(id);
       if (node) {
         node.addEventListener("input", actions.updateCreatePreview);
         node.addEventListener("change", actions.updateCreatePreview);
+        if (id === "debtCurrency" && actions.applyDebtCurrencyUi) {
+          node.addEventListener("change", actions.applyDebtCurrencyUi);
+        }
       }
     }
     for (const id of ["currencyAsset", "currencyQuote", "currencyTradeDateModal", "currencyQuantity", "currencyUnitPrice", "currencyFee", "currencyNote"]) {
@@ -102,6 +107,8 @@
           node.addEventListener("change", () => {
             actions.resetEditOperationFxRateAutofill?.();
             actions.syncOperationCurrencyFields("edit");
+            actions.renderReceiptItems?.("edit");
+            actions.renderReceiptSummary?.("edit");
             actions.syncSuggestedOperationFxRate?.("edit").catch(() => {});
           });
         }

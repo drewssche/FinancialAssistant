@@ -4,12 +4,43 @@ from decimal import Decimal
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
-from app.db.models import AuthIdentity, Debt, DebtCounterparty, DebtIssuance, DebtReminderJob, DebtRepayment, UserPreference
+from app.db.models import (
+    AuthIdentity,
+    Debt,
+    DebtCounterparty,
+    DebtForgiveness,
+    DebtIssuance,
+    DebtReminderJob,
+    DebtRepayment,
+    UserPreference,
+)
 
 
 class DebtRepository:
     def __init__(self, db: Session):
         self.db = db
+
+    @staticmethod
+    def _repaid_subquery():
+        return (
+            select(
+                DebtRepayment.debt_id.label("debt_id"),
+                func.coalesce(func.sum(DebtRepayment.amount), 0).label("repaid_total"),
+            )
+            .group_by(DebtRepayment.debt_id)
+            .subquery()
+        )
+
+    @staticmethod
+    def _forgiven_subquery():
+        return (
+            select(
+                DebtForgiveness.debt_id.label("debt_id"),
+                func.coalesce(func.sum(DebtForgiveness.amount), 0).label("forgiven_total"),
+            )
+            .group_by(DebtForgiveness.debt_id)
+            .subquery()
+        )
 
     def get_counterparty_by_name_ci(self, user_id: int, name_ci: str) -> DebtCounterparty | None:
         stmt = select(DebtCounterparty).where(
@@ -36,18 +67,13 @@ class DebtRepository:
         return list(self.db.scalars(stmt))
 
     def list_active_due_dated_debts_for_user(self, *, user_id: int) -> list[Debt]:
-        repaid_subq = (
-            select(
-                DebtRepayment.debt_id.label("debt_id"),
-                func.coalesce(func.sum(DebtRepayment.amount), 0).label("repaid_total"),
-            )
-            .group_by(DebtRepayment.debt_id)
-            .subquery()
-        )
-        outstanding_expr = Debt.principal - func.coalesce(repaid_subq.c.repaid_total, 0)
+        repaid_subq = self._repaid_subquery()
+        forgiven_subq = self._forgiven_subquery()
+        outstanding_expr = Debt.principal - func.coalesce(repaid_subq.c.repaid_total, 0) - func.coalesce(forgiven_subq.c.forgiven_total, 0)
         stmt = (
             select(Debt)
             .outerjoin(repaid_subq, Debt.id == repaid_subq.c.debt_id)
+            .outerjoin(forgiven_subq, Debt.id == forgiven_subq.c.debt_id)
             .where(
                 Debt.user_id == user_id,
                 Debt.due_date.is_not(None),
@@ -63,6 +89,9 @@ class DebtRepository:
         counterparty_id: int,
         direction: str,
         principal: Decimal,
+        original_principal: Decimal,
+        currency: str,
+        base_currency: str,
         start_date: date,
         due_date: date | None,
         note: str | None,
@@ -72,6 +101,9 @@ class DebtRepository:
             counterparty_id=counterparty_id,
             direction=direction,
             principal=principal,
+            original_principal=original_principal,
+            currency=currency,
+            base_currency=base_currency,
             start_date=start_date,
             due_date=due_date,
             note=note,
@@ -100,6 +132,12 @@ class DebtRepository:
         self.db.flush()
         return item
 
+    def create_forgiveness(self, debt_id: int, amount: Decimal, forgiven_date: date, note: str | None) -> DebtForgiveness:
+        item = DebtForgiveness(debt_id=debt_id, amount=amount, forgiven_date=forgiven_date, note=note)
+        self.db.add(item)
+        self.db.flush()
+        return item
+
     def create_issuance(self, debt_id: int, amount: Decimal, issuance_date: date, note: str | None) -> DebtIssuance:
         item = DebtIssuance(debt_id=debt_id, amount=amount, issuance_date=issuance_date, note=note)
         self.db.add(item)
@@ -119,23 +157,27 @@ class DebtRepository:
             .limit(1)
         )
 
-    def find_active_merge_candidate(self, user_id: int, counterparty_id: int, direction: str) -> Debt | None:
-        repaid_subq = (
-            select(
-                DebtRepayment.debt_id.label("debt_id"),
-                func.coalesce(func.sum(DebtRepayment.amount), 0).label("repaid_total"),
-            )
-            .group_by(DebtRepayment.debt_id)
-            .subquery()
-        )
+    def find_active_merge_candidate(
+        self,
+        user_id: int,
+        counterparty_id: int,
+        direction: str,
+        currency: str,
+        base_currency: str,
+    ) -> Debt | None:
+        repaid_subq = self._repaid_subquery()
+        forgiven_subq = self._forgiven_subquery()
         stmt = (
             select(Debt)
             .outerjoin(repaid_subq, Debt.id == repaid_subq.c.debt_id)
+            .outerjoin(forgiven_subq, Debt.id == forgiven_subq.c.debt_id)
             .where(
                 Debt.user_id == user_id,
                 Debt.counterparty_id == counterparty_id,
                 Debt.direction == direction,
-                (Debt.principal - func.coalesce(repaid_subq.c.repaid_total, 0)) > 0,
+                Debt.currency == currency,
+                Debt.base_currency == base_currency,
+                (Debt.principal - func.coalesce(repaid_subq.c.repaid_total, 0) - func.coalesce(forgiven_subq.c.forgiven_total, 0)) > 0,
             )
             .order_by(Debt.start_date.asc(), Debt.id.asc())
             .limit(1)
@@ -264,21 +306,30 @@ class DebtRepository:
         )
         return list(self.db.scalars(stmt))
 
+    def list_forgivenesses_for_debts(self, debt_ids: list[int]) -> list[DebtForgiveness]:
+        if not debt_ids:
+            return []
+        stmt = (
+            select(DebtForgiveness)
+            .where(DebtForgiveness.debt_id.in_(debt_ids))
+            .order_by(DebtForgiveness.forgiven_date.desc(), DebtForgiveness.id.desc())
+        )
+        return list(self.db.scalars(stmt))
+
     def repayment_total_for_debt(self, debt_id: int) -> Decimal:
         stmt = select(func.coalesce(func.sum(DebtRepayment.amount), 0)).where(DebtRepayment.debt_id == debt_id)
         total = self.db.scalar(stmt)
         return Decimal(total or 0)
 
+    def forgiveness_total_for_debt(self, debt_id: int) -> Decimal:
+        stmt = select(func.coalesce(func.sum(DebtForgiveness.amount), 0)).where(DebtForgiveness.debt_id == debt_id)
+        total = self.db.scalar(stmt)
+        return Decimal(total or 0)
+
     def list_active_dashboard_preview_rows(self, *, user_id: int) -> list:
-        repaid_subq = (
-            select(
-                DebtRepayment.debt_id.label("debt_id"),
-                func.coalesce(func.sum(DebtRepayment.amount), 0).label("repaid_total"),
-            )
-            .group_by(DebtRepayment.debt_id)
-            .subquery()
-        )
-        outstanding_expr = Debt.principal - func.coalesce(repaid_subq.c.repaid_total, 0)
+        repaid_subq = self._repaid_subquery()
+        forgiven_subq = self._forgiven_subquery()
+        outstanding_expr = Debt.principal - func.coalesce(repaid_subq.c.repaid_total, 0) - func.coalesce(forgiven_subq.c.forgiven_total, 0)
         stmt = (
             select(
                 Debt.id,
@@ -286,7 +337,12 @@ class DebtRepository:
                 DebtCounterparty.name,
                 Debt.direction,
                 Debt.principal,
+                Debt.original_principal,
+                Debt.currency,
+                Debt.base_currency,
+                Debt.closure_reason,
                 func.coalesce(repaid_subq.c.repaid_total, 0),
+                func.coalesce(forgiven_subq.c.forgiven_total, 0),
                 outstanding_expr,
                 Debt.start_date,
                 Debt.due_date,
@@ -295,6 +351,7 @@ class DebtRepository:
             )
             .join(DebtCounterparty, DebtCounterparty.id == Debt.counterparty_id)
             .outerjoin(repaid_subq, Debt.id == repaid_subq.c.debt_id)
+            .outerjoin(forgiven_subq, Debt.id == forgiven_subq.c.debt_id)
             .where(
                 Debt.user_id == user_id,
                 outstanding_expr > 0,
@@ -304,15 +361,9 @@ class DebtRepository:
         return list(self.db.execute(stmt).all())
 
     def summary_active_totals(self, *, user_id: int) -> tuple[Decimal, Decimal, int]:
-        repaid_subq = (
-            select(
-                DebtRepayment.debt_id.label("debt_id"),
-                func.coalesce(func.sum(DebtRepayment.amount), 0).label("repaid_total"),
-            )
-            .group_by(DebtRepayment.debt_id)
-            .subquery()
-        )
-        outstanding_expr = Debt.principal - func.coalesce(repaid_subq.c.repaid_total, 0)
+        repaid_subq = self._repaid_subquery()
+        forgiven_subq = self._forgiven_subquery()
+        outstanding_expr = Debt.principal - func.coalesce(repaid_subq.c.repaid_total, 0) - func.coalesce(forgiven_subq.c.forgiven_total, 0)
         stmt = (
             select(
                 func.coalesce(func.sum(case((Debt.direction == "lend", outstanding_expr), else_=0)), 0),
@@ -328,6 +379,7 @@ class DebtRepository:
             )
             .select_from(Debt)
             .outerjoin(repaid_subq, Debt.id == repaid_subq.c.debt_id)
+            .outerjoin(forgiven_subq, Debt.id == forgiven_subq.c.debt_id)
             .where(
                 Debt.user_id == user_id,
                 outstanding_expr > 0,

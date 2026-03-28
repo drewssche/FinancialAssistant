@@ -102,12 +102,15 @@ def page_with_debts_api_mock():
                     "direction": "lend",
                     "principal": "100.00",
                     "repaid_total": "0.00",
+                    "forgiven_total": "0.00",
+                    "closure_reason": None,
                     "outstanding_total": "100.00",
                     "start_date": "2026-03-05",
                     "due_date": "2026-03-10",
                     "note": "Тест",
                     "created_at": "2026-03-05T10:00:00Z",
                     "repayments": [],
+                    "forgivenesses": [],
                     "issuances": [
                         {
                             "id": 1,
@@ -123,6 +126,7 @@ def page_with_debts_api_mock():
         }
     ]
     next_debt_id = 9010
+    forgiveness_calls = []
 
     def json_response(route, payload: dict | list, status: int = 200):
         route.fulfill(status=status, content_type="application/json", body=json.dumps(payload, ensure_ascii=False))
@@ -136,7 +140,12 @@ def page_with_debts_api_mock():
     def recalc_debt(debt: dict) -> None:
         principal = float(debt.get("principal") or 0.0)
         repaid = float(debt.get("repaid_total") or 0.0)
-        debt["outstanding_total"] = fmt_amount(max(0.0, principal - repaid))
+        forgiven = float(debt.get("forgiven_total") or 0.0)
+        debt["outstanding_total"] = fmt_amount(max(0.0, principal - repaid - forgiven))
+        if float(debt["outstanding_total"]) <= 0 and forgiven > 0:
+            debt["closure_reason"] = "forgiven"
+        elif float(debt["outstanding_total"]) > 0:
+            debt["closure_reason"] = None
 
     def recalc_card(card: dict) -> None:
         principal_total = 0.0
@@ -420,12 +429,15 @@ def page_with_debts_api_mock():
                 "direction": direction,
                 "principal": principal,
                 "repaid_total": "0.00",
+                "forgiven_total": "0.00",
+                "closure_reason": None,
                 "outstanding_total": principal,
                 "start_date": payload.get("start_date"),
                 "due_date": payload.get("due_date"),
                 "note": payload.get("note"),
                 "created_at": "2026-03-05T10:00:00Z",
                 "repayments": [],
+                "forgivenesses": [],
                 "issuances": [],
             }
             add_issuance(new_debt, amount=principal_amount, issuance_date=payload.get("start_date"), note=payload.get("note"))
@@ -499,12 +511,15 @@ def page_with_debts_api_mock():
                             "direction": reverse_direction,
                             "principal": fmt_amount(overpay),
                             "repaid_total": "0.00",
+                            "forgiven_total": "0.00",
+                            "closure_reason": None,
                             "outstanding_total": fmt_amount(overpay),
                             "start_date": payload.get("repayment_date"),
                             "due_date": None,
                             "note": f"Переплата по долгу #{debt_id}",
                             "created_at": "2026-03-05T10:00:00Z",
                             "repayments": [],
+                            "forgivenesses": [],
                             "issuances": [],
                         }
                         add_issuance(
@@ -516,6 +531,34 @@ def page_with_debts_api_mock():
                         card["debts"].append(reverse_debt)
                 recalc_card(card)
                 return json_response(route, repayment_record, status=201)
+            return json_response(route, {"detail": "Debt not found"}, status=404)
+
+        if path.startswith("/api/v1/debts/") and path.endswith("/forgivenesses") and method == "POST":
+            payload = json.loads(request.post_data or "{}")
+            debt_id = int(path.split("/")[-2])
+            amount = float(payload["amount"])
+            forgiveness_calls.append({"debt_id": debt_id, **payload})
+            card, debt = find_debt(debt_id)
+            if card and debt:
+                principal = float(debt["principal"])
+                repaid_before = float(debt.get("repaid_total") or 0.0)
+                forgiven_before = float(debt.get("forgiven_total") or 0.0)
+                outstanding_before = max(0.0, principal - repaid_before - forgiven_before)
+                applied_amount = min(amount, outstanding_before)
+                debt["forgiven_total"] = fmt_amount(forgiven_before + applied_amount)
+                recalc_debt(debt)
+                forgivenesses = debt.setdefault("forgivenesses", [])
+                forgiveness_record = {
+                    "id": len(forgivenesses) + 1,
+                    "debt_id": debt_id,
+                    "amount": fmt_amount(applied_amount),
+                    "forgiven_date": payload["forgiven_date"],
+                    "note": payload.get("note"),
+                    "created_at": "2026-03-05T10:00:00Z",
+                }
+                forgivenesses.insert(0, forgiveness_record)
+                recalc_card(card)
+                return json_response(route, forgiveness_record, status=201)
             return json_response(route, {"detail": "Debt not found"}, status=404)
 
         if path.startswith("/api/v1/debts/") and method == "PATCH":
@@ -612,6 +655,7 @@ def page_with_debts_api_mock():
         )
         page.route("**/api/v1/**", handler)
         try:
+            page._forgiveness_calls = forgiveness_calls
             yield page
         finally:
             browser.close()
@@ -1023,3 +1067,31 @@ def test_dashboard_debts_toggle_applies_without_page_reload(static_server_url: s
     page.wait_for_selector("#dashboardSection:not(.hidden)")
     assert page.locator("#dashboardDebtsPanel").evaluate("el => el.classList.contains('hidden')") is False
     assert page.locator("#dashboardDebtsList").inner_text().find("Анна") != -1
+
+
+@pytest.mark.e2e
+def test_forgiveness_flow_closes_debt_with_forgiven_request(static_server_url: str, page_with_debts_api_mock):
+    page = page_with_debts_api_mock
+    page.goto(f"{static_server_url}/static/index.html")
+    _login_via_mock_telegram(page)
+
+    page.click("button[data-section='debts']")
+    page.wait_for_selector("#debtsSection:not(.hidden)")
+    page.evaluate("window.App.getRuntimeModule('debts').openDebtForgivenessModal(9001)")
+    page.wait_for_selector("#debtForgivenessModal:not(.hidden)")
+    page.fill("#forgivenessAmount", "100")
+    page.fill("#forgivenessDate", "2026-03-06")
+    page.fill("#forgivenessNote", "Списали без выплаты")
+    page.evaluate(
+        """
+        () => window.App.getRuntimeModule('debts').submitDebtForgiveness({
+          preventDefault() {},
+        })
+        """
+    )
+    page.wait_for_selector("#debtForgivenessModal", state="hidden")
+
+    assert len(getattr(page, "_forgiveness_calls", [])) == 1
+    assert getattr(page, "_forgiveness_calls", [])[0]["debt_id"] == 9001
+    assert getattr(page, "_forgiveness_calls", [])[0]["note"] == "Списали без выплаты"
+    assert "Долги не найдены" in page.locator("#debtsCards").inner_text()

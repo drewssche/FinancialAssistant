@@ -41,7 +41,7 @@ class DebtReminderService:
             )
             return
 
-        if self.repo.repayment_total_for_debt(debt_id=debt_id) >= debt.principal:
+        if (self.repo.repayment_total_for_debt(debt_id=debt_id) + self.repo.forgiveness_total_for_debt(debt_id=debt_id)) >= debt.principal:
             self.db.commit()
             log_background_job_event(
                 "debt_reminder",
@@ -140,7 +140,7 @@ class DebtReminderService:
         for job, debt, counterparty, identity, preference in rows:
             if not identity or job.event_type not in {self.EVENT_TYPE_DUE_SOON, self.EVENT_TYPE_OVERDUE}:
                 continue
-            outstanding_total = debt.principal - self.repo.repayment_total_for_debt(debt_id=int(debt.id))
+            outstanding_total = debt.principal - self.repo.repayment_total_for_debt(debt_id=int(debt.id)) - self.repo.forgiveness_total_for_debt(debt_id=int(debt.id))
             if outstanding_total <= 0:
                 continue
             prefs = preference.data if preference and isinstance(preference.data, dict) else {}
@@ -168,7 +168,7 @@ class DebtReminderService:
         if not row:
             return None
         current_job, debt, counterparty, identity, preference = row
-        outstanding_total = debt.principal - self.repo.repayment_total_for_debt(debt_id=int(debt.id))
+        outstanding_total = debt.principal - self.repo.repayment_total_for_debt(debt_id=int(debt.id)) - self.repo.forgiveness_total_for_debt(debt_id=int(debt.id))
         if not debt or not debt.due_date or outstanding_total <= 0:
             return None
         prefs = preference.data if preference and isinstance(preference.data, dict) else {}

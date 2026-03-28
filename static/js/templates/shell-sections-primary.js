@@ -385,6 +385,7 @@
                 <div id="operationsActiveFilters" class="analytics-kpi-secondary hidden">
                   <span id="operationsKindFilterChip" class="analytics-kpi-chip analytics-kpi-chip-neutral hidden"></span>
                   <span id="operationsQuickViewChip" class="analytics-kpi-chip analytics-kpi-chip-neutral hidden"></span>
+                  <span id="operationsCurrencyScopeChip" class="analytics-kpi-chip analytics-kpi-chip-neutral hidden"></span>
                   <span id="operationsCategoryFilterChip" class="analytics-kpi-chip analytics-kpi-chip-neutral hidden"></span>
                   <button id="clearOperationsCategoryFilterBtn" class="btn btn-secondary hidden" type="button">Сбросить фильтр</button>
                 </div>
@@ -413,6 +414,14 @@
                   <button class="segmented-btn" data-operations-quick-view="receipt" type="button">С чеком</button>
                   <button class="segmented-btn" data-operations-quick-view="large" type="button">Крупные</button>
                   <button class="segmented-btn" data-operations-quick-view="uncategorized" type="button">Без категории</button>
+                </div>
+              </div>
+              <div class="analytics-switch-group operations-quickviews-group">
+                <span class="muted-small">Валюта</span>
+                <div class="segmented" id="operationsCurrencyScopeTabs" role="tablist" aria-label="Фильтр по валюте операций">
+                  <button class="segmented-btn active" data-operations-currency-scope="all" type="button">Все</button>
+                  <button class="segmented-btn" data-operations-currency-scope="base" type="button" data-operations-base-currency-label>BYN</button>
+                  <button class="segmented-btn" data-operations-currency-scope="foreign" type="button">Другая валюта</button>
                 </div>
               </div>
               <div class="analytics-switch-group operations-quickviews-group">

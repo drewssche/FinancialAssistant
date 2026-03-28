@@ -154,8 +154,18 @@
                 </div>
               </div>
             </div>
-            <div id="debtPrincipalField" class="money-input-wrap" data-money-input-wrap>
-              <input id="debtPrincipal" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" />
+            <div id="debtPrincipalCompound" class="amount-currency-combo">
+              <div id="debtPrincipalField" class="money-input-wrap money-input-no-suffix" data-money-input-wrap>
+                <input id="debtPrincipal" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" />
+              </div>
+              <select id="debtCurrency" class="inline-currency-select" aria-label="Валюта долга">
+                <option value="BYN">BYN (руб.)</option>
+                <option value="USD">USD ($)</option>
+                <option value="EUR">EUR (€)</option>
+                <option value="RUB">RUB (₽)</option>
+                <option value="CNY">CNY (¥)</option>
+                <option value="PLN">PLN (zł)</option>
+              </select>
             </div>
             <div id="debtDueField" class="debt-due-field">
               <div id="debtDueDateField" class="date-input-wrap">

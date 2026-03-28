@@ -4,7 +4,16 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user_id
 from app.db.session import get_db
-from app.schemas.debt import DebtCardOut, DebtCreate, DebtOut, DebtRepaymentCreate, DebtRepaymentOut, DebtUpdate
+from app.schemas.debt import (
+    DebtCardOut,
+    DebtCreate,
+    DebtForgivenessCreate,
+    DebtForgivenessOut,
+    DebtOut,
+    DebtRepaymentCreate,
+    DebtRepaymentOut,
+    DebtUpdate,
+)
 from app.services.debt_service import DebtService
 
 router = APIRouter(prefix="/debts", tags=["debts"])
@@ -40,6 +49,7 @@ def create_debt(
             counterparty=payload.counterparty,
             direction=payload.direction,
             principal=payload.principal,
+            currency=payload.currency,
             start_date=payload.start_date,
             due_date=payload.due_date,
             note=payload.note,
@@ -68,6 +78,29 @@ def create_repayment(
             note=payload.note,
         )
         return repayment
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.post("/{debt_id}/forgivenesses", response_model=DebtForgivenessOut, status_code=status.HTTP_201_CREATED)
+def create_forgiveness(
+    debt_id: int,
+    payload: DebtForgivenessCreate,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = DebtService(db)
+    try:
+        forgiveness = service.add_forgiveness(
+            user_id=user_id,
+            debt_id=debt_id,
+            amount=payload.amount,
+            forgiven_date=payload.forgiven_date,
+            note=payload.note,
+        )
+        return forgiveness
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except LookupError as exc:

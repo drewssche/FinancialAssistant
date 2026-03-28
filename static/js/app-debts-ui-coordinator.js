@@ -77,6 +77,7 @@
     pickerUtils,
     openEditDebtModal,
     openDebtHistoryModal,
+    openDebtForgivenessModal,
     deleteDebtFlow,
     openDebtRepaymentModal,
   }) {
@@ -101,6 +102,13 @@
     if (deleteBtn) {
       closeDebtActionPopover({ event, pickerUtils });
       deleteDebtFlow?.(Number(deleteBtn.dataset.deleteDebtId || 0));
+      return true;
+    }
+
+    const forgiveBtn = event.target.closest("button[data-forgive-debt-id]");
+    if (forgiveBtn && !forgiveBtn.disabled) {
+      closeDebtActionPopover({ event, pickerUtils });
+      openDebtForgivenessModal?.(Number(forgiveBtn.dataset.forgiveDebtId || 0));
       return true;
     }
 

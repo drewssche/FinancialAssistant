@@ -35,6 +35,16 @@ Implemented in current slice:
 - analytics tab `Валюта` with KPI, rate-history chart, deal list, and period controls
 - currency code presentation improved with symbol labels like `USD ($)` and `EUR (€)`
 - Phase 2 started: operations now support original currency plus base conversion snapshot
+- multi-currency plans with live `≈ BYN` conversion
+- multi-currency debts with live `≈ BYN` conversion
+- debt forgiveness flow:
+  - separate action `Простить долг`
+  - API endpoint `POST /api/v1/debts/{id}/forgivenesses`
+  - debt history distinguishes `Погашение` and `Прощение`
+  - debt closes with `closure_reason=forgiven`
+  - UI keeps main status `Закрыт` and secondary meta `Прощен`
+  - forgiveness is available both as a dedicated debt action and from the repayment modal as `Простить остаток`
+  - debt cards, history, and dashboard preview now use chips for `Погашено` and `Прощено`
 - next UX slice agreed:
   - in currency contexts prefer `Покупка / Продажа` as the action terminology
   - in regular operation mode move the currency selector inline next to the amount field
@@ -60,10 +70,32 @@ Implemented in current slice:
   - for `Все` in `Аналитика -> Валюта`, combine tracked currencies into one multi-line chart with color legend
 
 Not implemented yet:
-- user-defined currency alert rules beyond daily digest
-- admin-visible diagnostics/status for currency refresh and digest delivery
 - richer dashboard/widget polish such as sparkline or extended daily change metadata
-- full multi-currency amounts for operations, plans, and debts
+- additional end-to-end coverage for:
+  - currency flows
+  - multi-currency operations/plans/debts
+  - debt forgiveness flow
+- operations currency-scope control:
+  - `Все`
+  - `<BASE>` for base-currency operations only, for example `BYN`
+  - `Другая валюта` for non-base operations only
+
+- current implementation slice:
+  - multi-currency debts
+  - debt amount stored in original currency
+  - no fixed fx rate on debt itself
+  - live `≈ BYN` label and KPI recalculation by latest available rate
+  - debt cards, dashboard preview and repayment/history UI use debt currency as primary amount
+  - dashboard debt KPI totals use current base-currency equivalents
+  - debt editing can change currency only before repayments or forgivenesses exist
+  - forgiveness is a separate debt event, not a fake repayment
+  - forgiveness is reachable from the same settlement flow as repayment
+- next implementation slice:
+  - e2e coverage for the new currency and debt-forgiveness flows
+
+- future UX slice:
+  - extend the same currency-scope control pattern to similar list views where it stays meaningful beyond operations
+  - this should help separate domestic/base-currency cashflow from foreign-currency activity quickly
 
 ## Agreed Product Direction
 
@@ -78,6 +110,15 @@ Not implemented yet:
 - Exchange rates should be refreshed daily.
 - Telegram should be able to send a daily currency digest for tracked currencies.
 - Operations, plans, and debts should later support their own original currency in addition to the base currency.
+- Plans should not fix an exchange rate at creation time.
+- Plans should display live conversion to base currency by the latest available rate.
+- Operations should keep a historical fx snapshot for accounting, but can display a live `≈ base currency` secondary label.
+- Debts should keep original currency as the source of truth and display current base-currency equivalent in UI.
+- Debt forgiveness should be represented as:
+  - action: `Простить долг`
+  - close reason: `forgiven`
+  - final status: `Закрыт`
+  - secondary status/meta: `Прощен`
 
 ## Terminology
 

@@ -168,6 +168,7 @@
           counterparty: el.debtCounterparty.value.trim(),
           direction: el.debtDirection.value,
           principal: principal.formatted,
+          currency: String(el.debtCurrency?.value || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase(),
           start_date: startDate,
           due_date: dueDate || null,
           note: el.debtNote.value.trim() || null,

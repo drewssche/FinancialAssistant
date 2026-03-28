@@ -289,14 +289,18 @@
     const fxRateInput = isEdit ? el.editFxRate : el.opFxRate;
     const baseCurrency = core.getCurrencyConfig?.().code || "BYN";
     const selectedCurrency = String(currencySelect?.value || baseCurrency).toUpperCase();
+    const createPlanFlow = !isEdit && state.createFlowMode === "plan";
     const needsFxRate = selectedCurrency !== baseCurrency;
-    fxRateField?.classList.toggle("hidden", !needsFxRate);
+    fxRateField?.classList.toggle("hidden", createPlanFlow || !needsFxRate);
+    if (createPlanFlow) {
+      setOperationFxRateHint(mode, "");
+    }
     if (!needsFxRate) {
       setOperationFxRateHint(mode, "");
     }
     if (fxRateInput) {
-      fxRateInput.required = needsFxRate;
-      if (!needsFxRate) {
+      fxRateInput.required = !createPlanFlow && needsFxRate;
+      if (createPlanFlow || !needsFxRate) {
         fxRateInput.value = "1";
       } else if (!String(fxRateInput.value || "").trim()) {
         setOperationFxRateManual(mode, false);
@@ -305,6 +309,14 @@
     }
   }
   function applyDebtCurrencyUi() {
+    const node = el.debtPrincipalField;
+    if (node) {
+      const currency = String(el.debtCurrency?.value || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
+      const cfg = core.resolveCurrencyConfig?.(currency, "suffix") || { symbol: "руб." };
+      node.dataset.currencySymbol = cfg.symbol || currency;
+      node.classList.remove("money-input-no-suffix", "currency-prefix");
+      node.classList.add("currency-suffix");
+    }
     core.applyMoneyInputs();
   }
   const debtCounterpartyFeature = createOperationModalDebtCounterpartyFeature
@@ -314,6 +326,7 @@
       core,
       getCurrentDebtEditId: () => Number(state.editDebtCreateId || 0),
       getCurrentDebtDirection: () => (el.debtDirection?.value === "borrow" ? "borrow" : "lend"),
+      getCurrentDebtCurrency: () => String(el.debtCurrency?.value || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase(),
       getCurrentDebtPrincipalValue: () => {
         const resolved = core.resolveMoneyInput(el.debtPrincipal?.value || 0);
         return Number(resolved.previewValue || 0);
@@ -510,6 +523,9 @@
     closeDebtCounterpartyPopover();
     el.debtCounterparty.value = "";
     el.debtPrincipal.value = "";
+    if (el.debtCurrency) {
+      el.debtCurrency.value = core.getCurrencyConfig?.().code || "BYN";
+    }
     el.debtStartDate.value = "";
     el.debtDueDate.value = "";
     el.debtNote.value = "";
@@ -536,6 +552,8 @@
     }
     if (el.opCurrency) {
       el.opCurrency.value = core.getCurrencyConfig?.().code || "BYN";
+      el.opCurrency.disabled = false;
+      el.opCurrency.title = "";
     }
     if (el.opFxRate) {
       el.opFxRate.value = "1";
@@ -625,11 +643,15 @@
     }
     selectDebtCounterparty(payload.counterparty || "", { keepOpen: false });
     el.debtPrincipal.value = payload.principal || "";
+    if (el.debtCurrency) {
+      el.debtCurrency.value = payload.currency || (core.getCurrencyConfig?.().code || "BYN");
+    }
     core.syncDateFieldValue(el.debtStartDate, payload.start_date || core.getTodayIso());
     core.syncDateFieldValue(el.debtDueDate, payload.due_date || "");
     el.debtNote.value = payload.note || "";
     setDebtDirection(payload.direction || "lend");
     setCreateEntryMode("debt");
+    applyDebtCurrencyUi();
     updateDebtDueHint();
     renderDebtCounterpartyPicker();
     updateCreatePreview();
@@ -820,6 +842,7 @@
     syncSuggestedCurrencyRate,
     markCurrencyRateManual,
     resetCurrencyRateAutofill,
+    applyDebtCurrencyUi,
     updateDebtDueHint,
     openCreateModal,
     openCreateModalForCurrency,

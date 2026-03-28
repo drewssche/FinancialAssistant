@@ -5,6 +5,10 @@
     const parseAmount = debtUi.parseAmount;
     const parseIsoDate = debtUi.parseIsoDate;
 
+    function formatDebtMoney(value, currency = "BYN") {
+      return core.formatMoney(value, { currency });
+    }
+
     function getDashboardData() {
       return window.App.getRuntimeModule?.("dashboard-data") || {};
     }
@@ -35,7 +39,7 @@
         el.repaymentDirection.classList.add(isBorrow ? "debt-direction-pill-borrow" : "debt-direction-pill-lend");
       }
       if (el.repaymentOutstanding) {
-        el.repaymentOutstanding.textContent = formatMoney(outstanding);
+        el.repaymentOutstanding.textContent = formatDebtMoney(outstanding, debt.currency || "BYN");
       }
       if (el.repaymentProgressBar) {
         el.repaymentProgressBar.style.width = `${progress}%`;
@@ -52,6 +56,45 @@
     function closeDebtRepaymentModal() {
       el.debtRepaymentModal.classList.add("hidden");
       el.repaymentDebtId.value = "";
+    }
+
+    async function openDebtForgivenessModal(debtId) {
+      const found = await (ensureDebtLoaded ? ensureDebtLoaded(debtId) : Promise.resolve(findDebtById(debtId)));
+      if (!found) {
+        core.setStatus("Долг не найден");
+        return;
+      }
+      const { card, debt } = found;
+      const outstanding = Number(debt.outstanding_total || 0);
+      el.forgivenessDebtId.value = String(debtId);
+      if (el.forgivenessCounterparty) {
+        el.forgivenessCounterparty.textContent = card.counterparty || "Контрагент";
+      }
+      if (el.forgivenessDirection) {
+        const isBorrow = debt.direction === "borrow";
+        el.forgivenessDirection.textContent = debtUi.debtDirectionActionLabel(debt.direction);
+        el.forgivenessDirection.classList.remove("debt-direction-pill-lend", "debt-direction-pill-borrow");
+        el.forgivenessDirection.classList.add(isBorrow ? "debt-direction-pill-borrow" : "debt-direction-pill-lend");
+      }
+      if (el.forgivenessOutstanding) {
+        el.forgivenessOutstanding.textContent = formatDebtMoney(outstanding, debt.currency || "BYN");
+      }
+      if (el.forgivenessContextHint) {
+        el.forgivenessContextHint.textContent = debt.direction === "borrow"
+          ? "Мне простили долг без выплаты"
+          : "Я прощаю долг без возврата денег";
+      }
+      el.forgivenessAmount.value = outstanding > 0 ? outstanding.toFixed(2) : "";
+      if (!el.forgivenessDate.value) {
+        core.syncDateFieldValue(el.forgivenessDate, core.getTodayIso());
+      }
+      el.forgivenessNote.value = "";
+      el.debtForgivenessModal.classList.remove("hidden");
+    }
+
+    function closeDebtForgivenessModal() {
+      el.debtForgivenessModal.classList.add("hidden");
+      el.forgivenessDebtId.value = "";
     }
 
     function updateRepaymentDeltaHint() {
@@ -77,12 +120,12 @@
       const { debt } = found;
       const outstanding = parseAmount(debt.outstanding_total);
       if (el.repaymentBeforeValue) {
-        el.repaymentBeforeValue.textContent = formatMoney(outstanding);
+        el.repaymentBeforeValue.textContent = formatDebtMoney(outstanding, debt.currency || "BYN");
       }
       if (entered <= outstanding) {
         const left = Math.max(0, outstanding - entered);
         if (el.repaymentAfterValue) {
-          el.repaymentAfterValue.textContent = formatMoney(left);
+          el.repaymentAfterValue.textContent = formatDebtMoney(left, debt.currency || "BYN");
         }
         if (el.repaymentCarryValue) {
           el.repaymentCarryValue.textContent = formatMoney(0);
@@ -95,10 +138,10 @@
       const overpay = entered - outstanding;
       const reverseDirection = debtUi.debtDirectionActionLabel(debt.direction === "lend" ? "borrow" : "lend");
       if (el.repaymentAfterValue) {
-        el.repaymentAfterValue.textContent = formatMoney(0);
+        el.repaymentAfterValue.textContent = formatDebtMoney(0, debt.currency || "BYN");
       }
       if (el.repaymentCarryValue) {
-        el.repaymentCarryValue.textContent = `${formatMoney(overpay)} (${reverseDirection})`;
+        el.repaymentCarryValue.textContent = `${formatDebtMoney(overpay, debt.currency || "BYN")} (${reverseDirection})`;
       }
       if (el.repaymentCarryRow) {
         el.repaymentCarryRow.classList.remove("hidden");
@@ -136,6 +179,49 @@
       await refreshDebtViews();
     }
 
+    async function forgiveDebtFromRepaymentFlow() {
+      const debtId = Number(el.repaymentDebtId.value || 0);
+      if (!debtId) {
+        return;
+      }
+      const repaymentDate = core.parseDateInputValue(el.repaymentDate.value);
+      if (!repaymentDate) {
+        core.setStatus("Проверь дату прощения");
+        return;
+      }
+      const found = findDebtById(debtId);
+      if (!found) {
+        core.setStatus("Долг не найден");
+        return;
+      }
+      const outstanding = parseAmount(found.debt?.outstanding_total);
+      if (!Number.isFinite(outstanding) || outstanding <= 0) {
+        core.setStatus("Долг уже закрыт");
+        return;
+      }
+      core.runDestructiveAction({
+        confirmMessage: "Простить весь остаток долга?",
+        doDelete: async () => {
+          await core.requestJson(`/api/v1/debts/${debtId}/forgivenesses`, {
+            method: "POST",
+            headers: core.authHeaders(),
+            body: JSON.stringify({
+              amount: outstanding.toFixed(2),
+              forgiven_date: repaymentDate,
+              note: el.repaymentNote.value || null,
+            }),
+          });
+          core.invalidateUiRequestCache("debts");
+          getDashboardData().invalidateReadCaches?.();
+        },
+        onAfterDelete: async () => {
+          closeDebtRepaymentModal();
+          await refreshDebtViews();
+        },
+        onDeleteError: "Не удалось простить долг",
+      });
+    }
+
     async function openDebtHistoryModal(debtId) {
       if (!el.debtHistoryModal) {
         core.setStatus("Модалка истории недоступна");
@@ -157,7 +243,7 @@
         el.debtHistoryDirection.classList.add(isBorrow ? "debt-direction-pill-borrow" : "debt-direction-pill-lend");
       }
       if (el.debtHistoryOutstanding) {
-        el.debtHistoryOutstanding.textContent = formatMoney(debt.outstanding_total);
+        el.debtHistoryOutstanding.textContent = formatDebtMoney(debt.outstanding_total, debt.currency || "BYN");
       }
       if (el.debtHistoryItems) {
         const issuances = debt.issuances || [];
@@ -182,6 +268,16 @@
             created_at: repayment.created_at || "",
           });
         }
+        for (const forgiveness of debt.forgivenesses || []) {
+          events.push({
+            type: "forgiveness",
+            date: forgiveness.forgiven_date || "",
+            amount: Number(forgiveness.amount || 0),
+            note: forgiveness.note || "",
+            id: Number(forgiveness.id || 0),
+            created_at: forgiveness.created_at || "",
+          });
+        }
         events.sort((a, b) => {
           const aTs = parseIsoDate(a.date)?.getTime() || 0;
           const bTs = parseIsoDate(b.date)?.getTime() || 0;
@@ -194,13 +290,15 @@
             return aCreated - bCreated;
           }
           if (a.type !== b.type) {
-            return a.type === "issuance" ? -1 : 1;
+            const rank = { issuance: 0, repayment: 1, forgiveness: 2 };
+            return (rank[a.type] || 9) - (rank[b.type] || 9);
           }
           return a.id - b.id;
         });
         state.debtHistoryEvents = events;
         state.debtHistoryMeta = {
           isBorrow,
+          currency: String(debt.currency || "BYN").toUpperCase(),
         };
         state.debtHistoryVisibleLimit = Number(state.debtHistoryPageSize || 20);
         renderDebtHistoryEvents();
@@ -225,6 +323,7 @@
         return;
       }
       const isBorrow = state.debtHistoryMeta?.isBorrow === true;
+      const currency = String(state.debtHistoryMeta?.currency || "BYN").toUpperCase();
       const firstEvent = events[0];
       let runningOutstanding = 0;
       const eventBlocks = [];
@@ -240,19 +339,30 @@
         const isStart = event.type === "issuance" && event.id === firstEvent.id && event.date === firstEvent.date;
         const eventClass = isStart
           ? "debt-history-event-start"
-          : (event.type === "repayment" ? "debt-history-event-repayment" : "debt-history-event-issuance");
+          : (event.type === "repayment" || event.type === "forgiveness"
+            ? "debt-history-event-repayment"
+            : "debt-history-event-issuance");
         const eventTitle = isStart
           ? (isBorrow ? "Начальная сумма: я взял в долг" : "Начальная сумма: я дал в долг")
           : (event.type === "repayment"
             ? debtUi.debtRepaymentEventLabel(isBorrow ? "borrow" : "lend")
-            : debtUi.debtIssuanceEventLabel(isBorrow ? "borrow" : "lend"));
+            : (event.type === "forgiveness"
+              ? (isBorrow ? "Прощение: мне простили долг" : "Прощение: я простил долг")
+              : debtUi.debtIssuanceEventLabel(isBorrow ? "borrow" : "lend")));
+        const eventChip = isStart
+          ? '<span class="meta-chip debt-meta-chip debt-meta-chip-start">Старт</span>'
+          : (event.type === "repayment"
+            ? '<span class="meta-chip debt-meta-chip debt-meta-chip-repaid">Погашение</span>'
+            : (event.type === "forgiveness"
+              ? '<span class="meta-chip debt-meta-chip debt-meta-chip-forgiven">Прощено</span>'
+              : '<span class="meta-chip debt-meta-chip debt-meta-chip-neutral">Добавление</span>'));
         eventBlocks.push(`<article class="debt-history-event ${eventClass}">
       <div class="row between">
-        <strong>${eventTitle}</strong>
+        <div class="row" style="gap:8px; align-items:center;"><strong>${eventTitle}</strong>${eventChip}</div>
         <span class="muted-small">${event.date ? core.formatDateRu(event.date) : "-"}</span>
       </div>
-      <div class="debt-history-amount">${formatMoney(event.amount)}</div>
-      <div class="muted-small">Остаток после шага: ${formatMoney(runningOutstanding)}</div>
+      <div class="debt-history-amount">${formatDebtMoney(event.amount, currency)}</div>
+      <div class="muted-small">Остаток после шага: ${formatDebtMoney(runningOutstanding, currency)}</div>
       ${event.note ? `<div class="muted-small">${core.highlightText(event.note, "")}</div>` : ""}
     </article>`);
       }
@@ -298,6 +408,7 @@
           counterparty: card.counterparty || "",
           direction: debt.direction || "lend",
           principal: debt.principal || "",
+          currency: debt.currency || "BYN",
           start_date: debt.start_date || "",
           due_date: debt.due_date || "",
           note: debt.note || "",
@@ -323,6 +434,37 @@
         },
         onDeleteError: "Не удалось удалить долг",
       });
+    }
+
+    async function submitDebtForgiveness(event) {
+      event.preventDefault();
+      const debtId = Number(el.forgivenessDebtId.value || 0);
+      if (!debtId) {
+        return;
+      }
+      const forgivenDate = core.parseDateInputValue(el.forgivenessDate.value);
+      if (!forgivenDate) {
+        core.setStatus("Проверь дату прощения");
+        return;
+      }
+      const amount = core.resolveMoneyInput(el.forgivenessAmount.value);
+      if (!amount.valid || amount.value <= 0) {
+        core.setStatus("Проверь сумму прощения");
+        return;
+      }
+      await core.requestJson(`/api/v1/debts/${debtId}/forgivenesses`, {
+        method: "POST",
+        headers: core.authHeaders(),
+        body: JSON.stringify({
+          amount: amount.formatted,
+          forgiven_date: forgivenDate,
+          note: el.forgivenessNote.value || null,
+        }),
+      });
+      core.invalidateUiRequestCache("debts");
+      getDashboardData().invalidateReadCaches?.();
+      closeDebtForgivenessModal();
+      await refreshDebtViews();
     }
 
     function deleteAllDebtsFlow() {
@@ -355,6 +497,10 @@
       closeDebtRepaymentModal,
       updateRepaymentDeltaHint,
       submitDebtRepayment,
+      forgiveDebtFromRepaymentFlow,
+      openDebtForgivenessModal,
+      closeDebtForgivenessModal,
+      submitDebtForgiveness,
       openDebtHistoryModal,
       renderDebtHistoryEvents,
       closeDebtHistoryModal,

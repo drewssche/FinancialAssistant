@@ -67,6 +67,46 @@ def test_plans_crud_confirm_and_history(client: TestClient):
     assert history_payload["items"][0]["category_name"] == "Магазин"
 
 
+def test_plan_supports_original_currency_and_confirms_into_operation_snapshot(client: TestClient):
+    reset_cache_for_tests()
+    rate_resp = client.put(
+        "/api/v1/currency/rates/current",
+        json={
+            "currency": "USD",
+            "rate": "3.25",
+            "rate_date": "2026-03-28",
+            "source": "manual",
+        },
+    )
+    assert rate_resp.status_code == 200
+
+    created = client.post(
+        "/api/v1/plans",
+        json={
+            "kind": "expense",
+            "amount": "10.00",
+            "currency": "USD",
+            "scheduled_date": "2026-03-28",
+            "note": "USD plan",
+        },
+    )
+    assert created.status_code == 201
+    payload = created.json()
+    assert payload["original_amount"] == "10.00"
+    assert payload["currency"] == "USD"
+    assert payload["base_currency"] == "BYN"
+    assert payload["current_rate"] == "3.250000"
+    assert payload["current_base_amount"] == "32.50"
+
+    confirmed = client.post(f"/api/v1/plans/{payload['id']}/confirm")
+    assert confirmed.status_code == 200
+    operation = confirmed.json()["operation"]
+    assert operation["original_amount"] == "10.00"
+    assert operation["currency"] == "USD"
+    assert operation["fx_rate"] == "3.250000"
+    assert operation["amount"] == "32.50"
+
+
 def test_recurring_plan_skip_and_confirm_advance_schedule(client: TestClient):
     reset_cache_for_tests()
     created = client.post(

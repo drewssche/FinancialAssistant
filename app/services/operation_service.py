@@ -58,6 +58,13 @@ class OperationService:
             return "large"
         return "all"
 
+    @staticmethod
+    def _normalize_currency_scope(currency_scope: str | None) -> str:
+        scope = str(currency_scope or "all").strip().lower()
+        if scope not in {"all", "base", "foreign"}:
+            raise ValueError("currency_scope must be one of: all, base, foreign")
+        return scope
+
     def create_operation(
         self,
         user_id: int,
@@ -134,11 +141,14 @@ class OperationService:
         category_id: int | None,
         q: str | None,
         quick_view: str | None = None,
+        currency_scope: str | None = None,
     ) -> tuple[list, int]:
         if date_from and date_to and date_from > date_to:
             raise ValueError("date_from must be less than or equal to date_to")
         if kind:
             self._validate_kind(kind)
+        normalized_currency_scope = self._normalize_currency_scope(currency_scope)
+        base_currency = self._get_user_base_currency(user_id)
         quick_view_filters = self._resolve_quick_view_filters(quick_view)
         quick_view_token = self._normalize_quick_view_cache_token(quick_view_filters)
         cache_key = build_operations_cache_key(
@@ -154,6 +164,7 @@ class OperationService:
             category_id=category_id,
             q=q,
             quick_view=quick_view_token,
+            currency_scope=normalized_currency_scope,
         )
         cached = get_json(cache_key)
         if cached is not None:
@@ -173,6 +184,8 @@ class OperationService:
             receipt_only=quick_view_filters["receipt_only"],
             uncategorized_only=quick_view_filters["uncategorized_only"],
             min_amount=quick_view_filters["min_amount"],
+            currency_scope=normalized_currency_scope,
+            base_currency=base_currency,
         )
         operation_ids = [int(item.id) for item in items]
         receipt_by_operation = self.repo.list_receipt_items_for_operations(
@@ -204,11 +217,14 @@ class OperationService:
         category_id: int | None,
         q: str | None,
         quick_view: str | None = None,
+        currency_scope: str | None = None,
     ) -> dict:
         if date_from and date_to and date_from > date_to:
             raise ValueError("date_from must be less than or equal to date_to")
         if kind:
             self._validate_kind(kind)
+        normalized_currency_scope = self._normalize_currency_scope(currency_scope)
+        base_currency = self._get_user_base_currency(user_id)
         quick_view_filters = self._resolve_quick_view_filters(quick_view)
         quick_view_token = self._normalize_quick_view_cache_token(quick_view_filters)
         cache_key = build_operations_cache_key(
@@ -224,6 +240,7 @@ class OperationService:
             category_id=category_id,
             q=q,
             quick_view=quick_view_token,
+            currency_scope=normalized_currency_scope,
         )
         cached = get_json(cache_key)
         if cached is not None:
@@ -238,6 +255,8 @@ class OperationService:
             receipt_only=quick_view_filters["receipt_only"],
             uncategorized_only=quick_view_filters["uncategorized_only"],
             min_amount=quick_view_filters["min_amount"],
+            currency_scope=normalized_currency_scope,
+            base_currency=base_currency,
         )
         payload = {
             "income_total": income_total,

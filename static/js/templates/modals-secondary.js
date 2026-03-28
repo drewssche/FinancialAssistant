@@ -74,6 +74,9 @@
           <input id="repaymentNote" type="text" placeholder="Комментарий" />
         </form>
         <div class="modal-footer">
+          <button id="forgiveDebtFromRepaymentBtn" class="btn btn-secondary" type="button">
+            Простить остаток
+          </button>
           <button id="submitDebtRepaymentBtn" class="btn btn-cta modal-main-cta" type="submit" form="debtRepaymentForm">
             Сохранить погашение
           </button>
@@ -99,6 +102,46 @@
         <div id="debtHistoryList" class="debt-history-list">
           <div id="debtHistoryItems" class="debt-history-items"></div>
           <div id="debtHistoryInfiniteSentinel" class="infinite-sentinel" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="debtForgivenessModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="debtForgivenessTitle">
+      <div class="modal-card modal-small">
+        <div class="panel-head row between">
+          <h3 id="debtForgivenessTitle">Простить долг</h3>
+          <button id="closeDebtForgivenessModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
+        </div>
+        <form id="debtForgivenessForm" class="category-modal-form">
+          <input id="forgivenessDebtId" type="hidden" />
+          <div class="repayment-card">
+            <div class="repayment-head row between">
+              <div>
+                <div id="forgivenessCounterparty" class="repayment-counterparty">Контрагент</div>
+                <div id="forgivenessDirection" class="debt-direction-pill debt-direction-pill-lend">Я дал</div>
+              </div>
+              <div class="repayment-outstanding">
+                <span class="muted-small">Остаток</span>
+                <strong id="forgivenessOutstanding">0.00</strong>
+              </div>
+            </div>
+            <div id="forgivenessContextHint" class="subtitle">Списание закроет долг без выплаты</div>
+          </div>
+          <div id="forgivenessAmountField" class="money-input-wrap" data-money-input-wrap>
+            <input id="forgivenessAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма прощения" title="Можно вводить выражения: 1000+250/2" required />
+          </div>
+          <div class="date-input-wrap">
+            <input id="forgivenessDate" class="input" type="date" aria-label="Дата прощения" required />
+            <button class="date-input-trigger" type="button" data-date-picker-trigger="forgivenessDate" aria-label="Открыть календарь"></button>
+          </div>
+          <input id="forgivenessNote" type="text" placeholder="Комментарий" />
+        </form>
+        <div class="modal-footer">
+          <button id="submitDebtForgivenessBtn" class="btn btn-danger modal-main-cta" type="submit" form="debtForgivenessForm">
+            Простить долг
+          </button>
         </div>
       </div>
     </div>

@@ -17,6 +17,7 @@ def _build_debt_repaid_text(
     counterparty: str,
     direction: str,
     amount: Decimal,
+    currency: str,
     repayment_date: date,
     note: str | None,
 ) -> str:
@@ -26,7 +27,7 @@ def _build_debt_repaid_text(
         "Долг погашен\n\n"
         f"{direction_label}\n"
         f"Контрагент: {counterparty}\n"
-        f"Сумма погашения: {amount:.2f}\n"
+        f"Сумма погашения: {amount:.2f} {currency}\n"
         f"Дата: {repayment_date.isoformat()}"
         f"{note_block}"
     )
@@ -39,6 +40,7 @@ def notify_debt_repaid_owner(
     counterparty: str,
     direction: str,
     amount: Decimal,
+    currency: str = "BYN",
     repayment_date: date,
     note: str | None = None,
 ) -> None:
@@ -51,6 +53,7 @@ def notify_debt_repaid_owner(
         counterparty=counterparty,
         direction=direction,
         amount=amount,
+        currency=currency,
         repayment_date=repayment_date,
         note=note,
     )

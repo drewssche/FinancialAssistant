@@ -264,6 +264,7 @@ def build_operations_cache_key(
     category_id: int | None = None,
     q: str | None = None,
     quick_view: str | None = None,
+    currency_scope: str | None = None,
 ) -> str:
     return build_user_scoped_cache_key(
         namespace="operations",
@@ -279,6 +280,7 @@ def build_operations_cache_key(
         category_id=category_id,
         q=q,
         quick_view=quick_view,
+        currency_scope=currency_scope,
     )
 
 

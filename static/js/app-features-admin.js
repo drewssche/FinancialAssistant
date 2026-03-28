@@ -73,6 +73,60 @@
       .join("");
   }
 
+  function formatRate(value) {
+    if (value === null || value === undefined || value === "") {
+      return "—";
+    }
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric.toFixed(4) : escapeHtml(String(value));
+  }
+
+  function renderAdminCurrencyDiagnostics(data) {
+    if (el.adminCurrencyDiagnosticsKpi) {
+      el.adminCurrencyDiagnosticsKpi.innerHTML = `
+        <article class="kpi-card">
+          <span class="kpi-label">Tracked users</span>
+          <strong class="kpi-value">${Number(data?.tracked_users || 0)}</strong>
+          <span class="kpi-meta">${Number(data?.tracked_currency_slots || 0)} валютных слотов</span>
+        </article>
+        <article class="kpi-card">
+          <span class="kpi-label">Digest enabled</span>
+          <strong class="kpi-value">${Number(data?.digest_enabled_users || 0)}</strong>
+          <span class="kpi-meta">пользователей</span>
+        </article>
+        <article class="kpi-card">
+          <span class="kpi-label">Alert rules</span>
+          <strong class="kpi-value">${Number(data?.alert_rules_count || 0)}</strong>
+          <span class="kpi-meta">активных порогов</span>
+        </article>
+        <article class="kpi-card">
+          <span class="kpi-label">Stale / missing</span>
+          <strong class="kpi-value">${Number(data?.stale_slots || 0)} / ${Number(data?.missing_slots || 0)}</strong>
+          <span class="kpi-meta">freshest: ${escapeHtml(data?.freshest_rate_date || "—")}</span>
+        </article>
+      `;
+    }
+    if (!el.adminCurrencyDiagnosticsBody) {
+      return;
+    }
+    const items = Array.isArray(data?.items) ? data.items : [];
+    if (!items.length) {
+      el.adminCurrencyDiagnosticsBody.innerHTML = "<tr><td colspan='7'>Нет валютных настроек для диагностики</td></tr>";
+      return;
+    }
+    el.adminCurrencyDiagnosticsBody.innerHTML = items.map((item) => `
+      <tr>
+        <td data-label="Валюта"><strong>${escapeHtml(item.currency || "—")}</strong></td>
+        <td data-label="Пользователей">${Number(item.tracked_users || 0)}</td>
+        <td data-label="Digest">${Number(item.digest_users || 0)}</td>
+        <td data-label="Alerts">${Number(item.alert_rules || 0)}</td>
+        <td data-label="Последний курс">${formatRate(item.latest_rate)}<div class="muted-small">${escapeHtml(item.latest_rate_date || "—")}</div></td>
+        <td data-label="Stale">${Number(item.stale_users || 0)}</td>
+        <td data-label="Нет курса">${Number(item.missing_users || 0)}</td>
+      </tr>
+    `).join("");
+  }
+
   async function loadAdminUsers(options = {}) {
     const force = options.force === true;
     const filter = state.adminUserStatusFilter || "pending";
@@ -89,6 +143,24 @@
     });
     core.setUiRequestCache(cacheKey, data);
     renderAdminUsers(data);
+    return data;
+  }
+
+  async function loadAdminCurrencyDiagnostics(options = {}) {
+    const force = options.force === true;
+    const cacheKey = "admin:currency-diagnostics";
+    if (!force) {
+      const cached = core.getUiRequestCache(cacheKey, ADMIN_CACHE_TTL_MS);
+      if (cached) {
+        renderAdminCurrencyDiagnostics(cached);
+        return cached;
+      }
+    }
+    const data = await core.requestJson("/api/v1/admin/currency-diagnostics", {
+      headers: core.authHeaders(),
+    });
+    core.setUiRequestCache(cacheKey, data);
+    renderAdminCurrencyDiagnostics(data);
     return data;
   }
 
@@ -132,6 +204,7 @@
 
   const api = {
     loadAdminUsers,
+    loadAdminCurrencyDiagnostics,
     setAdminUserStatusFilter,
     approveAdminUser,
     rejectAdminUser,

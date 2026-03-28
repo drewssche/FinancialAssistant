@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_admin_user
 from app.db.models import User
 from app.db.session import get_db
-from app.schemas.admin import AdminUserItem, AdminUsersOut, AdminUserStatusUpdateIn
+from app.schemas.admin import AdminCurrencyDiagnosticsOut, AdminUserItem, AdminUsersOut, AdminUserStatusUpdateIn
+from app.services.admin_currency_runtime_service import AdminCurrencyRuntimeService
 from app.services.admin_user_service import (
     AdminUserNotFoundError,
     AdminUserService,
@@ -58,3 +59,11 @@ def delete_user(
     except AdminUserNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/currency-diagnostics", response_model=AdminCurrencyDiagnosticsOut)
+def get_currency_diagnostics(
+    _: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+):
+    return AdminCurrencyRuntimeService(db).get_diagnostics()

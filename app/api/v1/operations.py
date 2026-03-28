@@ -35,6 +35,7 @@ def list_operations(
     category_id: int | None = Query(default=None),
     q: str | None = Query(default=None, max_length=100),
     quick_view: str | None = Query(default=None, pattern="^(all|receipt|large|uncategorized)$"),
+    currency_scope: str | None = Query(default=None, pattern="^(all|base|foreign)$"),
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
@@ -52,6 +53,7 @@ def list_operations(
             category_id=category_id,
             q=q,
             quick_view=quick_view,
+            currency_scope=currency_scope,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -67,6 +69,7 @@ def summarize_operations(
     category_id: int | None = Query(default=None),
     q: str | None = Query(default=None, max_length=100),
     quick_view: str | None = Query(default=None, pattern="^(all|receipt|large|uncategorized)$"),
+    currency_scope: str | None = Query(default=None, pattern="^(all|base|foreign)$"),
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
@@ -80,6 +83,7 @@ def summarize_operations(
             category_id=category_id,
             q=q,
             quick_view=quick_view,
+            currency_scope=currency_scope,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

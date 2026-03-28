@@ -294,6 +294,16 @@
         }
       });
     }
+    if (el.closeDebtForgivenessModalBtn && actions.closeDebtForgivenessModal) {
+      el.closeDebtForgivenessModalBtn.addEventListener("click", actions.closeDebtForgivenessModal);
+    }
+    if (el.debtForgivenessModal && actions.closeDebtForgivenessModal) {
+      el.debtForgivenessModal.addEventListener("click", (event) => {
+        if (event.target === el.debtForgivenessModal) {
+          actions.closeDebtForgivenessModal();
+        }
+      });
+    }
     if (el.closeOperationReceiptModalBtn && getOperationsFeature().closeOperationReceiptModal) {
       el.closeOperationReceiptModalBtn.addEventListener("click", () => getOperationsFeature().closeOperationReceiptModal?.());
     }
@@ -415,6 +425,7 @@
         input.addEventListener("change", () => {
           const sessionFeature = getSessionFeature();
           const dashboardFeature = getDashboardFeature();
+          sessionFeature.previewInterfaceSettingsUi?.();
           sessionFeature.savePreferencesDebounced?.(300);
           if (state.activeSection === "dashboard" && dashboardFeature.loadDashboard) {
             dashboardFeature.loadDashboard().catch((err) => core.setStatus(String(err)));
@@ -432,6 +443,13 @@
     if (el.currencyDigestTimeInput) {
       el.currencyDigestTimeInput.addEventListener("change", () => {
         getSessionFeature().savePreferencesDebounced?.(300);
+      });
+    }
+    if (el.currencyAlertInputs?.length) {
+      Array.from(el.currencyAlertInputs).forEach((input) => {
+        input.addEventListener("change", () => {
+          getSessionFeature().savePreferencesDebounced?.(300);
+        });
       });
     }
     if (el.showDashboardAnalyticsToggle) {

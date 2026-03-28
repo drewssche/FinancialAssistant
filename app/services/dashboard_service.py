@@ -15,6 +15,7 @@ from app.core.metrics import increment_counter, observe_latency_ms
 from app.repositories.debt_repo import DebtRepository
 from app.repositories.operation_repo import OperationRepository
 from app.services.currency_service import CurrencyService
+from app.services.debt_service import DebtService
 from app.services.dashboard_analytics import DashboardAnalyticsService
 from app.services.redis_runtime_advisory_service import RedisRuntimeAdvisoryService
 
@@ -66,8 +67,8 @@ class DashboardService:
         )
         income_total = self._money(income_total_raw)
         expense_total = self._money(expense_total_raw)
-        debt_repo = DebtRepository(self.db)
-        debt_lend_outstanding, debt_borrow_outstanding, active_debt_cards = debt_repo.summary_active_totals(
+        debt_service = DebtService(self.db)
+        debt_lend_outstanding, debt_borrow_outstanding, active_debt_cards = debt_service.summary_active_totals_current_base(
             user_id=user_id,
         )
         debt_lend_outstanding = self._money(debt_lend_outstanding)
@@ -252,6 +253,8 @@ class DashboardService:
 
     def get_debt_preview(self, *, user_id: int, limit_cards: int = 6) -> list[dict]:
         debt_repo = DebtRepository(self.db)
+        debt_service = DebtService(self.db)
+        latest_rate_map = debt_service.currency_repo.get_latest_rate_map(user_id=user_id)
         rows = debt_repo.list_active_dashboard_preview_rows(user_id=user_id)
         grouped: dict[int, dict] = {}
         ordered_counterparty_ids: list[int] = []
@@ -268,29 +271,62 @@ class DashboardService:
                     "outstanding_total": self._money(0),
                     "status": "active",
                     "nearest_due_date": None,
+                    "base_currency": str(row[7] or "BYN"),
                     "debts": [],
                 }
                 ordered_counterparty_ids.append(counterparty_id)
-            debt = {
+            debt_like = type("DashboardDebtRow", (), {
                 "id": int(row[0]),
+                "counterparty_id": counterparty_id,
                 "direction": str(row[3]),
-                "principal": self._money(row[4]),
-                "repaid_total": self._money(row[5]),
-                "outstanding_total": self._money(row[6]),
-                "start_date": row[7].isoformat(),
-                "due_date": row[8].isoformat() if row[8] is not None else None,
-                "note": row[9],
-                "created_at": row[10].isoformat(),
-            }
+                "principal": row[4],
+                "original_principal": row[5],
+                "currency": str(row[6] or "BYN"),
+                "base_currency": str(row[7] or "BYN"),
+                "closure_reason": row[8],
+                "start_date": row[12],
+                "due_date": row[13],
+                "note": row[14],
+                "created_at": row[15],
+            })()
+            repaid_total = self._money(row[9])
+            debt = debt_service._serialize_debt_item(
+                debt=debt_like,
+                repayments=[type("DebtRepaymentLike", (), {"id": 0, "debt_id": int(row[0]), "amount": repaid_total, "repayment_date": row[12], "note": None, "created_at": row[15]})()] if repaid_total > 0 else [],
+                forgivenesses=[],
+                issuances=[],
+                latest_rate_map=latest_rate_map,
+            )
+            debt["repaid_total"] = repaid_total
+            debt["current_base_repaid_total"] = debt_service._resolve_live_base_amount(
+                amount=repaid_total,
+                currency=debt["currency"],
+                base_currency=debt["base_currency"],
+                current_rate=debt["current_rate"],
+            )
+            debt["forgiven_total"] = self._money(row[10])
+            debt["current_base_forgiven_total"] = debt_service._resolve_live_base_amount(
+                amount=debt["forgiven_total"],
+                currency=debt["currency"],
+                base_currency=debt["base_currency"],
+                current_rate=debt["current_rate"],
+            )
+            debt["outstanding_total"] = self._money(row[11])
+            debt["current_base_outstanding_total"] = debt_service._resolve_live_base_amount(
+                amount=debt["outstanding_total"],
+                currency=debt["currency"],
+                base_currency=debt["base_currency"],
+                current_rate=debt["current_rate"],
+            )
             card = grouped[counterparty_id]
             card["debts"].append(debt)
-            card["principal_total"] += debt["principal"]
-            card["repaid_total"] += debt["repaid_total"]
-            card["outstanding_total"] += debt["outstanding_total"]
+            card["principal_total"] += debt["current_base_principal"]
+            card["repaid_total"] += debt["current_base_repaid_total"]
+            card["outstanding_total"] += debt["current_base_outstanding_total"]
             if debt["direction"] == "lend":
-                card["principal_lend_total"] += debt["principal"]
+                card["principal_lend_total"] += debt["current_base_principal"]
             else:
-                card["principal_borrow_total"] += debt["principal"]
+                card["principal_borrow_total"] += debt["current_base_principal"]
             due_date = debt["due_date"]
             if due_date and (card["nearest_due_date"] is None or due_date < card["nearest_due_date"]):
                 card["nearest_due_date"] = due_date
