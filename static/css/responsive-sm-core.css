@@ -588,6 +588,10 @@
     min-height: 2.625rem;
   }
 
+  .operations-workflow-actions .btn {
+    width: 100%;
+  }
+
   .analytics-insight-head {
     flex-direction: column;
   }

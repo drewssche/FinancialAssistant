@@ -160,6 +160,23 @@ Sidebar grouping baseline (when section groups are introduced):
 - Settings include a separate `Напоминания` block for plans:
 - toggle `Напоминать о планах в Telegram`
 - `Время напоминания`
+- Reminders/Telegram settings should follow one shared UX contract:
+  - each scenario gets its own explicit master `Вкл / Выкл` control instead of relying on passive checkboxes plus always-live fields
+  - when a scenario is `Выкл`, all dependent fields become visibly disabled and are excluded from the active delivery flow
+  - when a scenario is `Вкл`, the dependent fields become editable and the bot/runtime is allowed to deliver by its configured schedule/rules
+- current reminder scenarios to expose explicitly:
+  - `Планы в Telegram`
+  - `Курсы валют в Telegram`
+- `Планы в Telegram` controls:
+  - master `Вкл / Выкл`
+  - reminder time field
+  - turning `Выкл` off must cancel/suppress queued plan reminder jobs
+- `Курсы валют в Telegram` controls:
+  - master `Вкл / Выкл`
+  - daily digest time field
+  - threshold alert fields for tracked currencies
+  - turning `Выкл` off must disable both digest and threshold-alert inputs and remove the user from active currency-delivery evaluation
+- For currency notifications, the UX should look unified even though the backend currently mixes scan-based digest/alert delivery and queued jobs in other domains; the product contract is still `enabled => deliver`, `disabled => do not deliver`.
 - obsolete analytics top-limit settings were removed from Settings because they no longer drive live analytics rendering
 - All money outputs and amount inputs reuse one currency formatting rule from preferences
 - Settings include red `Danger Zone` with `Удалить меня` action (full user data removal)
@@ -256,6 +273,19 @@ At the bottom-left sidebar, show compact static user block:
 - analytics section/tab contract:
 - opening `Аналитика` must immediately load data for the active analytics tab/state without requiring any extra control toggle
 - switching analytics internal tabs must trigger the corresponding data load immediately
+- analytics calendar semantics:
+  - calendar `Баланс` is the operational net flow for the selected period (`Доход - Расход`)
+  - calendar must not silently replace this with current FX portfolio valuation or any mixed `net worth` number
+  - if currency data is added into the calendar surface, it should be additive:
+    - keep `Операционный баланс` as the primary metric
+    - add a secondary currency-aware chip/summary such as `Валютный портфель сейчас` or `Итого с учетом портфеля`
+  - avoid injecting current portfolio valuation into every day cell, because daily calendar cells model flow, not a point-in-time holdings snapshot
+- analytics currency integration:
+  - the dedicated `Валюта` tab remains the main source of truth for current portfolio valuation, FX result, and rate context
+  - cross-tab integration with `Календарь` should stay lightweight:
+    - secondary summary chips in month/year totals
+    - optional compact side summary/widget
+    - no semantic merging of period cashflow and point-in-time FX valuation into one ambiguous `Баланс`
 - desktop action buttons should preserve compact horizontal sizing; wrap/full-width action behavior is mobile-only
 - desktop grouped-row contract:
 - parent row content (`title`, `metas`) stays left-aligned

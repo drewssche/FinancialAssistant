@@ -112,3 +112,20 @@ Status:
 
 - use the same pattern selectively for other heavy lists where it improves perceived responsiveness
 - optionally tighten visual polish for inline states if the current badge/veil feels too subtle or too strong
+- priority candidates for the next selective rollout:
+  - analytics tab `Валюта`:
+    - cold-load skeleton for KPI strip
+    - balances row
+    - chart shell
+    - recent trades rows
+  - standalone `Валюта` section:
+    - summary KPI strip
+    - balances row
+    - positions list
+    - trades table
+  - dashboard currency panel:
+    - cold-load skeleton parity with the existing repeat-refresh inline state
+- lower priority candidates:
+  - `Настройки` tracked-currency / reminders block only if the real API latency makes first open feel empty
+  - admin runtime/diagnostics surfaces with heavier aggregate cards
+- do not force skeletons into simple forms that already have fast first paint; reserve them for data-backed summaries, charts, and large lists

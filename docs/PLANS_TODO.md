@@ -9,3 +9,7 @@
   - mobile kebab top-right inset
   - desktop debts wrapper overflow behavior
   - plans popover width consistency
+
+## Next UX / Product Pass
+- Keep this file scoped to `Планы` section fixes and regressions only.
+- Currency / analytics / reminders roadmap lives in [docs/CURRENCY_FEATURE_PLAN.md](/Users/bitriks24/Downloads/FinancialAssistant/docs/CURRENCY_FEATURE_PLAN.md).

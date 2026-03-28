@@ -8,6 +8,7 @@ from app.core.cache import (
     build_debts_cache_key,
     get_json,
     get_namespace_ttl_seconds,
+    invalidate_dashboard_analytics_cache,
     invalidate_dashboard_summary_cache,
     invalidate_debts_cache,
     set_json,
@@ -163,6 +164,7 @@ class DebtService:
         )
         self.db.commit()
         invalidate_dashboard_summary_cache(user_id)
+        invalidate_dashboard_analytics_cache(user_id)
         invalidate_debts_cache(user_id)
         self.db.refresh(debt)
         self.debt_reminder_service.sync_debt_job(user_id=user_id, debt_id=int(debt.id))
@@ -245,6 +247,7 @@ class DebtService:
 
         self.db.commit()
         invalidate_dashboard_summary_cache(user_id)
+        invalidate_dashboard_analytics_cache(user_id)
         invalidate_debts_cache(user_id)
         self.db.refresh(repayment)
         if Decimal(debt.principal) - (repaid + forgiven + applied_amount) <= 0:
@@ -292,6 +295,7 @@ class DebtService:
         debt.closure_reason = "forgiven" if remaining_after <= 0 else None
         self.db.commit()
         invalidate_dashboard_summary_cache(user_id)
+        invalidate_dashboard_analytics_cache(user_id)
         invalidate_debts_cache(user_id)
         self.db.refresh(forgiveness)
         self.debt_reminder_service.sync_debt_job(user_id=user_id, debt_id=int(debt.id))
@@ -360,6 +364,7 @@ class DebtService:
             debt = self.repo.update_debt(debt, payload)
             self.db.commit()
             invalidate_dashboard_summary_cache(user_id)
+            invalidate_dashboard_analytics_cache(user_id)
             invalidate_debts_cache(user_id)
             self.db.refresh(debt)
             self.debt_reminder_service.sync_debt_job(user_id=user_id, debt_id=int(debt.id))
@@ -372,6 +377,7 @@ class DebtService:
         self.repo.delete_debt(debt)
         self.db.commit()
         invalidate_dashboard_summary_cache(user_id)
+        invalidate_dashboard_analytics_cache(user_id)
         invalidate_debts_cache(user_id)
         self.debt_reminder_service.sync_debt_job(user_id=user_id, debt_id=debt_id)
 

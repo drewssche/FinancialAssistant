@@ -149,6 +149,14 @@
   color: #ff9494;
 }
 
+.analytics-balance {
+  color: #8eb7ff;
+}
+
+.analytics-day-meta {
+  color: #9db0d4;
+}
+
 .analytics-week-total {
   text-align: right;
   white-space: nowrap;
@@ -156,6 +164,15 @@
   vertical-align: middle;
   font-family: var(--money-font-family);
   font-variant-numeric: tabular-nums lining-nums;
+}
+
+.analytics-week-subnote {
+  margin-top: 0.35rem;
+  color: #9db0d4;
+  font-family: var(--money-font-family);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 500;
+  white-space: normal;
 }
 
 .analytics-trend-legend {
@@ -219,21 +236,49 @@
   min-height: 0;
 }
 
-.operations-quickviews-row {
+.operations-controls-grid {
   margin-bottom: var(--space-3);
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.15fr) max-content;
+  gap: var(--space-3);
+  align-items: start;
 }
 
-.operations-quickviews-group {
-  width: 100%;
+.operations-control-card {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-2);
 }
 
-.operations-workflow-row {
-  margin-bottom: var(--space-3);
+.operations-control-card .segmented {
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+
+.operations-control-card-sort {
+  justify-self: end;
+}
+
+.operations-control-card-actions {
+  grid-column: 1 / -1;
+}
+
+.operations-control-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 1rem;
 }
 
 .operations-workflow-actions {
   width: 100%;
+  gap: var(--space-2);
   flex-wrap: wrap;
+}
+
+.operations-workflow-actions .btn {
+  width: auto;
+  flex: 0 0 auto;
 }
 
 .analytics-kpi-card {

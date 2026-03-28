@@ -406,9 +406,11 @@
                 </div>
               </div>
             </div>
-            <div class="table-search-row operations-quickviews-row">
-              <div class="analytics-switch-group operations-quickviews-group">
-                <span class="muted-small">Быстрые срезы</span>
+            <div class="operations-controls-grid">
+              <div class="operations-control-card">
+                <div class="operations-control-head">
+                  <span class="muted-small">Быстрые срезы</span>
+                </div>
                 <div class="segmented" id="operationsQuickViewTabs" role="tablist" aria-label="Быстрые срезы операций">
                   <button class="segmented-btn active" data-operations-quick-view="all" type="button">Все</button>
                   <button class="segmented-btn" data-operations-quick-view="receipt" type="button">С чеком</button>
@@ -416,31 +418,35 @@
                   <button class="segmented-btn" data-operations-quick-view="uncategorized" type="button">Без категории</button>
                 </div>
               </div>
-              <div class="analytics-switch-group operations-quickviews-group">
-                <span class="muted-small">Валюта</span>
+              <div class="operations-control-card">
+                <div class="operations-control-head">
+                  <span class="muted-small">Валюта</span>
+                </div>
                 <div class="segmented" id="operationsCurrencyScopeTabs" role="tablist" aria-label="Фильтр по валюте операций">
                   <button class="segmented-btn active" data-operations-currency-scope="all" type="button">Все</button>
                   <button class="segmented-btn" data-operations-currency-scope="base" type="button" data-operations-base-currency-label>BYN</button>
                   <button class="segmented-btn" data-operations-currency-scope="foreign" type="button">Другая валюта</button>
                 </div>
               </div>
-              <div class="analytics-switch-group operations-quickviews-group">
-                <span class="muted-small">Сортировка</span>
+              <div class="operations-control-card operations-control-card-sort">
+                <div class="operations-control-head">
+                  <span class="muted-small">Сортировка</span>
+                </div>
                 <div class="segmented" id="operationsSortTabs" role="tablist" aria-label="Сортировка операций">
                   <button class="segmented-btn active" data-op-sort="date" type="button">По дате</button>
                   <button class="segmented-btn" data-op-sort="amount" type="button">По сумме</button>
                 </div>
               </div>
-            </div>
-            <div class="table-search-row operations-workflow-row">
-              <div class="analytics-switch-group operations-quickviews-group">
-                <span class="muted-small">Быстрые действия</span>
-                <div class="toolbar section-action-toolbar section-action-toolbar-wrap operations-workflow-actions">
-                  <button id="selectVisibleOperationsBtn" class="btn btn-secondary" type="button">Выделить видимое</button>
-                  <button id="clearVisibleOperationsSelectionBtn" class="btn btn-secondary" type="button">Снять выделение</button>
-                  <button id="quickFilterExpenseBtn" class="btn btn-secondary" type="button">Только расходы</button>
-                  <button id="quickFilterIncomeBtn" class="btn btn-secondary" type="button">Только доходы</button>
-                  <button id="quickCustomRangeBtn" class="btn btn-secondary" type="button">Настроить период</button>
+              <div class="operations-control-card operations-control-card-actions">
+                <div class="operations-control-head">
+                  <span class="muted-small">Быстрые действия</span>
+                </div>
+                <div class="toolbar section-action-toolbar operations-workflow-actions">
+                  <button id="selectVisibleOperationsBtn" class="btn btn-secondary btn-xs" type="button">Выделить видимое</button>
+                  <button id="clearVisibleOperationsSelectionBtn" class="btn btn-secondary btn-xs" type="button">Снять выделение</button>
+                  <button id="quickFilterExpenseBtn" class="btn btn-secondary btn-xs" type="button">Только расходы</button>
+                  <button id="quickFilterIncomeBtn" class="btn btn-secondary btn-xs" type="button">Только доходы</button>
+                  <button id="quickCustomRangeBtn" class="btn btn-secondary btn-xs" type="button">Настроить период</button>
                 </div>
               </div>
             </div>

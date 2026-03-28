@@ -4,7 +4,7 @@ import re
 
 from sqlalchemy.orm import Session
 
-from app.core.cache import invalidate_dashboard_summary_cache
+from app.core.cache import invalidate_dashboard_analytics_cache, invalidate_dashboard_summary_cache
 from app.core.logging import log_background_job_event
 from app.db.models import FxTrade
 from app.repositories.currency_repo import CurrencyRepository
@@ -138,6 +138,7 @@ class CurrencyService:
         self.db.commit()
         self.db.refresh(item)
         invalidate_dashboard_summary_cache(user_id)
+        invalidate_dashboard_analytics_cache(user_id)
         log_background_job_event(
             "currency_service",
             "fx_trade_created",
@@ -164,6 +165,7 @@ class CurrencyService:
         self.db.commit()
         self.db.refresh(item)
         invalidate_dashboard_summary_cache(user_id)
+        invalidate_dashboard_analytics_cache(user_id)
         log_background_job_event(
             "currency_service",
             "fx_rate_upserted",

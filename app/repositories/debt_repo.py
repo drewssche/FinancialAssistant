@@ -66,6 +66,14 @@ class DebtRepository:
         stmt = select(DebtCounterparty).where(DebtCounterparty.user_id == user_id).order_by(DebtCounterparty.name)
         return list(self.db.scalars(stmt))
 
+    def list_all_debts_for_user(self, *, user_id: int) -> list[Debt]:
+        stmt = (
+            select(Debt)
+            .where(Debt.user_id == user_id)
+            .order_by(Debt.start_date.asc(), Debt.id.asc())
+        )
+        return list(self.db.scalars(stmt))
+
     def list_active_due_dated_debts_for_user(self, *, user_id: int) -> list[Debt]:
         repaid_subq = self._repaid_subquery()
         forgiven_subq = self._forgiven_subquery()
@@ -260,6 +268,16 @@ class DebtRepository:
         )
         return list(self.db.scalars(stmt))
 
+    def list_all_repayments_for_debts(self, debt_ids: list[int]) -> list[DebtRepayment]:
+        if not debt_ids:
+            return []
+        stmt = (
+            select(DebtRepayment)
+            .where(DebtRepayment.debt_id.in_(debt_ids))
+            .order_by(DebtRepayment.repayment_date.asc(), DebtRepayment.id.asc())
+        )
+        return list(self.db.scalars(stmt))
+
     def list_due_reminder_jobs(self, *, now_utc) -> list:
         stmt = (
             select(DebtReminderJob, Debt, DebtCounterparty, AuthIdentity, UserPreference)
@@ -306,6 +324,16 @@ class DebtRepository:
         )
         return list(self.db.scalars(stmt))
 
+    def list_all_issuances_for_debts(self, debt_ids: list[int]) -> list[DebtIssuance]:
+        if not debt_ids:
+            return []
+        stmt = (
+            select(DebtIssuance)
+            .where(DebtIssuance.debt_id.in_(debt_ids))
+            .order_by(DebtIssuance.issuance_date.asc(), DebtIssuance.id.asc())
+        )
+        return list(self.db.scalars(stmt))
+
     def list_forgivenesses_for_debts(self, debt_ids: list[int]) -> list[DebtForgiveness]:
         if not debt_ids:
             return []
@@ -313,6 +341,16 @@ class DebtRepository:
             select(DebtForgiveness)
             .where(DebtForgiveness.debt_id.in_(debt_ids))
             .order_by(DebtForgiveness.forgiven_date.desc(), DebtForgiveness.id.desc())
+        )
+        return list(self.db.scalars(stmt))
+
+    def list_all_forgivenesses_for_debts(self, debt_ids: list[int]) -> list[DebtForgiveness]:
+        if not debt_ids:
+            return []
+        stmt = (
+            select(DebtForgiveness)
+            .where(DebtForgiveness.debt_id.in_(debt_ids))
+            .order_by(DebtForgiveness.forgiven_date.asc(), DebtForgiveness.id.asc())
         )
         return list(self.db.scalars(stmt))
 

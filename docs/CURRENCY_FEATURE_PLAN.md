@@ -89,6 +89,10 @@ Implemented:
 Remaining polish only:
 - richer dashboard/widget polish such as sparkline or extended daily change metadata
 - broader e2e coverage for all multi-currency operation / plan / debt permutations if needed
+- settings/reminders polish:
+  - replace the current checkbox-only reminder UX with explicit `Вкл / Выкл` scenario controls
+  - expose a unified currency-notifications contract where disabling the scenario also disables digest time and threshold-alert inputs
+  - add a dedicated persisted enable flag for currency threshold alerts instead of treating filled thresholds as implicitly active forever
 - optional UX extension:
   - extend the same currency-scope control pattern to similar list views where it stays meaningful beyond operations
   - this should help separate domestic/base-currency cashflow from foreign-currency activity quickly
@@ -109,6 +113,23 @@ Remaining polish only:
       - keep debt-row kebab in the top-right card corner by the established pattern
     - step 4: dashboard currency widget final alignment
       - keep compare metadata visually attached to the main rate value instead of drifting to the far right edge
+
+## Agreed Implementation Order
+
+1. Reminders
+- prefs schema changes
+- frontend `Вкл / Выкл` scenario toggles
+- dedicated alert enable flag
+- backend gating for digest / alerts delivery
+
+2. Analytics
+- secondary currency summary in calendar
+- do this without rewriting the existing calendar backend in the initial pass
+
+3. Skeleton
+- `Аналитика -> Валюта`
+- standalone `Валюта` section
+- dashboard currency panel
 
 ## Agreed Product Direction
 

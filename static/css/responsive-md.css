@@ -204,6 +204,18 @@
     min-height: 30px;
   }
 
+  .operations-controls-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .operations-control-card-sort {
+    justify-self: stretch;
+  }
+
+  .operations-control-card .segmented {
+    width: 100%;
+  }
+
   #categoriesBulkBar {
     grid-template-columns: 1fr;
     min-height: auto;
