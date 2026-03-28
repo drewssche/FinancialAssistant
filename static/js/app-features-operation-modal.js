@@ -167,6 +167,7 @@
     }
     el.currencyUnitPrice.value = Number(currentRate.rate || 0).toFixed(4);
     syncCurrencyTradeFieldUi();
+    updateCreatePreview();
   }
 
   function markCurrencyRateManual() {
@@ -189,26 +190,33 @@
 
   function syncCurrencyTradeFieldUi() {
     const context = getCurrencyTradeContext();
-    if (el.currencyQuantityLabel) {
-      el.currencyQuantityLabel.textContent = context.amountLabel;
-    }
-    if (el.currencyUnitPriceLabel) {
-      el.currencyUnitPriceLabel.textContent = context.unitPriceLabel;
-    }
-    if (el.currencyFeeLabel) {
-      el.currencyFeeLabel.textContent = context.feeLabel;
-    }
     if (el.createPreviewCurrencyAmountHead) {
       el.createPreviewCurrencyAmountHead.textContent = context.amountColumnLabel;
     }
     if (el.currencyQuantity) {
       el.currencyQuantity.placeholder = context.side === "buy" ? "320.00" : "100.00";
+      el.currencyQuantity.setAttribute("aria-label", context.amountLabel);
+      el.currencyQuantity.title = context.amountLabel;
     }
     if (el.currencyUnitPrice) {
       el.currencyUnitPrice.placeholder = "3.2700";
+      el.currencyUnitPrice.setAttribute("aria-label", context.unitPriceLabel);
+      el.currencyUnitPrice.title = context.unitPriceLabel;
     }
     if (el.currencyFee) {
       el.currencyFee.placeholder = "0.00";
+      el.currencyFee.setAttribute("aria-label", context.feeLabel);
+      el.currencyFee.title = context.feeLabel;
+    }
+    if (el.currencyAsset) {
+      el.currencyAsset.setAttribute("aria-label", `Валюта сделки: ${context.assetLabel}`);
+      el.currencyAsset.title = `Валюта сделки: ${context.assetLabel}`;
+    }
+    if (el.currencyTradeDateModal) {
+      el.currencyTradeDateModal.title = "Дата валютной сделки";
+    }
+    if (el.currencyNote) {
+      el.currencyNote.title = "Комментарий валютной сделки";
     }
     applyTradeFieldCurrency(el.currencyQuantityField, context.amountSuffixCurrency);
     applyTradeFieldCurrency(el.currencyUnitPriceField, context.quoteCurrency);

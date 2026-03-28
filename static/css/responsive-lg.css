@@ -79,6 +79,26 @@
     text-align: center;
   }
 
+  .compact-segmented {
+    width: max-content;
+    max-width: 100%;
+    flex-wrap: nowrap;
+  }
+
+  .compact-segmented .segmented-btn {
+    flex: 0 0 auto;
+  }
+
+  #editOperationModeSwitch {
+    width: max-content;
+    max-width: 100%;
+    flex-wrap: nowrap;
+  }
+
+  #editOperationModeSwitch .segmented-btn {
+    flex: 0 0 auto;
+  }
+
   #createDebtFields {
     grid-template-columns: 1fr;
   }
@@ -92,25 +112,21 @@
   }
 
   #createDebtFields #debtPrincipalCompound {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    width: 100%;
   }
 
   #debtsSection .table-search-row {
-    flex-direction: row;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  #debtsSection .table-search-row > .table-search-input {
-    flex: 1 1 22rem;
-    width: min(100%, 32rem);
-    min-width: 16rem;
+    flex-direction: column;
+    align-items: stretch;
+    flex-wrap: nowrap;
   }
 
   #debtsSection .debt-toolbar {
-    flex: 1 1 auto;
-    margin-left: auto;
-    justify-content: flex-end;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
     flex-wrap: wrap;
+    width: 100%;
   }
 }

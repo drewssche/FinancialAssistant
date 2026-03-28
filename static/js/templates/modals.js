@@ -184,50 +184,32 @@
             </div>
             <input id="currencySide" type="hidden" value="buy" />
             <div class="currency-modal-row">
-              <label class="field">
-                <span>Дата</span>
-                <div id="currencyTradeDateField" class="date-input-wrap">
-                  <input id="currencyTradeDateModal" class="input" type="date" aria-label="Дата валютной сделки" />
-                  <button class="date-input-trigger" type="button" data-date-picker-trigger="currencyTradeDateModal" aria-label="Открыть календарь"></button>
-                </div>
-              </label>
-              <label class="field">
-                <span>Валюта</span>
-                <select id="currencyAsset">
-                  <option value="USD">USD ($)</option>
-                  <option value="EUR">EUR (€)</option>
-                  <option value="RUB">RUB (₽)</option>
-                  <option value="CNY">CNY (¥)</option>
-                  <option value="PLN">PLN (zł)</option>
-                </select>
-              </label>
+              <div id="currencyTradeDateField" class="date-input-wrap">
+                <input id="currencyTradeDateModal" class="input" type="date" aria-label="Дата валютной сделки" />
+                <button class="date-input-trigger" type="button" data-date-picker-trigger="currencyTradeDateModal" aria-label="Открыть календарь"></button>
+              </div>
+              <select id="currencyAsset" aria-label="Валюта сделки">
+                <option value="USD">USD ($)</option>
+                <option value="EUR">EUR (€)</option>
+                <option value="RUB">RUB (₽)</option>
+                <option value="CNY">CNY (¥)</option>
+                <option value="PLN">PLN (zł)</option>
+              </select>
             </div>
             <input id="currencyQuote" type="hidden" value="BYN" />
             <div class="currency-modal-row currency-modal-row-triple">
-              <label class="field">
-                <span id="currencyQuantityLabel">Количество</span>
-                <div id="currencyQuantityField" class="money-input-wrap" data-money-input-wrap>
-                  <input id="currencyQuantity" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="100.00" />
-                </div>
-              </label>
-              <label class="field">
-                <span id="currencyUnitPriceLabel">Курс</span>
-                <div id="currencyUnitPriceField" class="money-input-wrap" data-money-input-wrap>
-                  <input id="currencyUnitPrice" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="3.2700" />
-                </div>
-              </label>
-              <label class="field">
-                <span id="currencyFeeLabel">Комиссия</span>
-                <div id="currencyFeeField" class="money-input-wrap" data-money-input-wrap>
-                  <input id="currencyFee" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="0.00" />
-                </div>
-              </label>
+              <div id="currencyQuantityField" class="money-input-wrap" data-money-input-wrap>
+                <input id="currencyQuantity" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="100.00" aria-label="Количество валютной сделки" />
+              </div>
+              <div id="currencyUnitPriceField" class="money-input-wrap" data-money-input-wrap>
+                <input id="currencyUnitPrice" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="3.2700" aria-label="Курс валютной сделки" />
+              </div>
+              <div id="currencyFeeField" class="money-input-wrap" data-money-input-wrap>
+                <input id="currencyFee" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="0.00" aria-label="Комиссия валютной сделки" />
+              </div>
             </div>
             <div class="currency-modal-row currency-modal-row-single">
-              <label class="field">
-                <span>Комментарий</span>
-                <input id="currencyNote" type="text" placeholder="Например: обменник у дома" class="create-note-field" />
-              </label>
+              <input id="currencyNote" type="text" placeholder="Например: обменник у дома" class="create-note-field" aria-label="Комментарий валютной сделки" />
             </div>
           </div>
         </form>
@@ -406,7 +388,7 @@
         </div>
 
         <form id="editOperationForm" class="form-grid modal-grid edit-modal-grid">
-          <div class="segmented" id="editOperationModeSwitch" aria-label="Формат операции">
+          <div class="segmented compact-segmented" id="editOperationModeSwitch" aria-label="Формат операции">
             <button class="segmented-btn active" data-operation-mode="common" type="button">Общая</button>
             <button class="segmented-btn" data-operation-mode="receipt" type="button">Чек</button>
           </div>

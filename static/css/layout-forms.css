@@ -49,6 +49,32 @@
   justify-content: flex-start;
 }
 
+#debtsSection .table-search-row {
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+}
+
+.debt-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  margin-left: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.debt-toolbar .table-search-input {
+  flex: 1 1 26rem;
+  width: min(100%, 34rem);
+  min-width: 16rem;
+  margin-right: auto;
+}
+
+.debt-toolbar-danger {
+  margin-left: auto;
+}
+
 .bulk-bar {
   margin: var(--space-2) 0 var(--space-3);
   display: flex;
@@ -175,14 +201,26 @@
 
 #createDebtFields #debtPrincipalCompound {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(11rem, max-content);
+  grid-template-columns: minmax(0, 1fr) max-content;
   gap: var(--space-3);
-  align-items: start;
+  align-items: stretch;
 }
 
 #createDebtFields #debtPrincipalField,
 #createDebtFields #debtCurrency {
   width: 100%;
+  max-width: 100%;
+}
+
+#createDebtFields #debtPrincipalField {
+  min-width: 0;
+}
+
+#createDebtFields #debtCurrency {
+  width: auto;
+  min-width: max-content;
+  max-width: none;
+  justify-self: start;
 }
 
 #createDebtFields #debtDueField {

@@ -404,9 +404,20 @@
 }
 
 .currency-modal-row .field,
+.currency-modal-row select,
+.currency-modal-row input,
 .currency-modal-row .date-input-wrap,
 .currency-modal-row .money-input-wrap {
   width: 100%;
+}
+
+.compact-segmented {
+  width: max-content;
+  max-width: 100%;
+}
+
+.compact-segmented .segmented-btn {
+  flex: 0 0 auto;
 }
 
 .edit-modal-grid {
@@ -422,7 +433,9 @@
 
 .edit-modal-grid #editOperationModeSwitch {
   grid-column: 1 / -1;
-  width: 100%;
+  width: max-content;
+  max-width: 100%;
+  justify-self: start;
 }
 
 .edit-modal-grid #editKindSwitch {
