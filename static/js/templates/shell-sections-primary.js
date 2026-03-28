@@ -331,8 +331,8 @@
                 <div class="muted-small">Вложено</div>
                 <strong id="analyticsCurrencyBookValue">0</strong>
               </article>
-              <article class="analytics-kpi-card analytics-kpi-income">
-                <div class="muted-small">Прибыль / убыток</div>
+              <article id="analyticsCurrencyResultCard" class="analytics-kpi-card analytics-kpi-neutral">
+                <div id="analyticsCurrencyResultLabel" class="muted-small">Результат</div>
                 <strong id="analyticsCurrencyResultValue">0</strong>
               </article>
               <article class="analytics-kpi-card analytics-kpi-neutral">

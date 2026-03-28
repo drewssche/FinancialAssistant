@@ -107,13 +107,17 @@
     const quoteCurrency = String(el.currencyQuote?.value || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
     const assetLabel = core.formatCurrencyLabel?.(assetCurrency) || assetCurrency;
     const quoteLabel = core.formatCurrencyLabel?.(quoteCurrency) || quoteCurrency;
+    const feeRawValue = typeof el.currencyFee?.value === "string" ? el.currencyFee.value.trim() : "";
     const quantityResolved = core.resolveMoneyInput(el.currencyQuantity?.value || 0);
     const rateResolved = core.resolveMoneyInput(el.currencyUnitPrice?.value || 0);
-    const feeResolved = core.resolveMoneyInput(el.currencyFee?.value || 0);
+    const feeResolved = core.resolveMoneyInput(feeRawValue || 0);
     const enteredAmount = Number(quantityResolved.previewValue || 0);
     const unitPrice = Number(rateResolved.previewValue || 0);
     const effectiveQuantity = side === "buy"
       ? (unitPrice > 0 ? enteredAmount / unitPrice : 0)
+      : enteredAmount;
+    const estimatedQuoteTotal = side === "sell"
+      ? (enteredAmount * unitPrice)
       : enteredAmount;
     return {
       side,
@@ -127,6 +131,7 @@
       enteredAmount,
       unitPrice,
       effectiveQuantity,
+      estimatedQuoteTotal,
       amountLabel: side === "buy" ? `Сумма в ${quoteLabel}` : `Количество ${assetLabel}`,
       amountSuffixCurrency: side === "buy" ? quoteCurrency : assetCurrency,
       amountColumnLabel: side === "buy" ? "Сумма" : "Количество",
@@ -194,19 +199,34 @@
       el.createPreviewCurrencyAmountHead.textContent = context.amountColumnLabel;
     }
     if (el.currencyQuantity) {
-      el.currencyQuantity.placeholder = context.side === "buy" ? "320.00" : "100.00";
+      el.currencyQuantity.placeholder = context.side === "buy" ? `Сумма в ${context.quoteCurrency}` : `Количество ${context.assetCurrency}`;
       el.currencyQuantity.setAttribute("aria-label", context.amountLabel);
       el.currencyQuantity.title = context.amountLabel;
     }
     if (el.currencyUnitPrice) {
-      el.currencyUnitPrice.placeholder = "3.2700";
+      el.currencyUnitPrice.placeholder = `Курс ${context.quoteCurrency} за 1 ${context.assetCurrency}`;
       el.currencyUnitPrice.setAttribute("aria-label", context.unitPriceLabel);
       el.currencyUnitPrice.title = context.unitPriceLabel;
     }
     if (el.currencyFee) {
-      el.currencyFee.placeholder = "0.00";
+      el.currencyFee.placeholder = `Комиссия в ${context.quoteCurrency}`;
       el.currencyFee.setAttribute("aria-label", context.feeLabel);
       el.currencyFee.title = context.feeLabel;
+    }
+    if (el.currencyTradeHint) {
+      const hasRate = context.unitPrice > 0;
+      const hasEnteredAmount = context.enteredAmount > 0;
+      if (context.side === "buy") {
+        const computed = hasRate && hasEnteredAmount
+          ? `Будет куплено примерно ${core.formatAmount(context.effectiveQuantity)} ${context.assetCurrency} за ${core.formatMoney(context.enteredAmount, { currency: context.quoteCurrency })}.`
+          : `Покупка считает первое поле как сумму списания в ${context.quoteCurrency}, а количество ${context.assetCurrency} рассчитывается по курсу.`;
+        el.currencyTradeHint.textContent = computed;
+      } else {
+        const computed = hasRate && hasEnteredAmount
+          ? `Будет получено примерно ${core.formatMoney(context.estimatedQuoteTotal, { currency: context.quoteCurrency })} за ${core.formatAmount(context.enteredAmount)} ${context.assetCurrency}.`
+          : `Продажа считает первое поле как количество ${context.assetCurrency}, а сумма в ${context.quoteCurrency} рассчитывается по курсу.`;
+        el.currencyTradeHint.textContent = computed;
+      }
     }
     if (el.currencyAsset) {
       el.currencyAsset.setAttribute("aria-label", `Валюта сделки: ${context.assetLabel}`);
@@ -591,7 +611,7 @@
       syncCurrencyTradeFieldUi();
       await syncSuggestedCurrencyRate().catch(() => {});
       if (submit) {
-        submit.textContent = "Сохранить валютную сделку";
+        submit.textContent = state.editCurrencyTradeId ? "Сохранить валютную сделку" : "Создать валютную сделку";
       }
     } else if (submit) {
       submit.textContent = "Добавить";
@@ -658,6 +678,7 @@
     state.createFlowMode = "operation";
     state.editPlanId = null;
     state.editDebtCreateId = null;
+    state.editCurrencyTradeId = null;
     const createTitle = document.getElementById("createTitle");
     if (createTitle) {
       createTitle.textContent = "Новая операция";
@@ -778,6 +799,7 @@
     state.createFlowMode = "operation";
     state.editPlanId = null;
     state.editDebtCreateId = null;
+    state.editCurrencyTradeId = null;
     const createTitle = document.getElementById("createTitle");
     if (createTitle) {
       createTitle.textContent = "Новая операция";
@@ -817,6 +839,49 @@
     await openCreateModal();
     await setCreateEntryMode("currency");
     currencyUnitPriceManual = false;
+  }
+  async function openCreateModalForCurrencyEdit(payload) {
+    if (!payload?.id) {
+      return;
+    }
+    await openCreateModal();
+    state.editCurrencyTradeId = Number(payload.id);
+    if (el.createEntryModeSwitch) {
+      el.createEntryModeSwitch.classList.add("hidden");
+    }
+    const createTitle = document.getElementById("createTitle");
+    if (createTitle) {
+      createTitle.textContent = "Редактировать валютную сделку";
+    }
+    await setCreateEntryMode("currency");
+    if (el.currencyAsset) {
+      el.currencyAsset.value = String(payload.asset_currency || buildSelectableCurrencyList(false)[0] || "USD").toUpperCase();
+    }
+    if (el.currencyQuote) {
+      el.currencyQuote.value = String(payload.quote_currency || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
+    }
+    core.syncDateFieldValue(el.currencyTradeDateModal, payload.trade_date || core.getTodayIso());
+    await setCurrencySide(payload.side || "buy");
+    if (el.currencyNote) {
+      el.currencyNote.value = payload.note || "";
+    }
+    if (el.currencyUnitPrice) {
+      el.currencyUnitPrice.value = Number(payload.unit_price || 0).toFixed(4);
+    }
+    if (el.currencyFee) {
+      el.currencyFee.value = Number(payload.fee || 0) > 0 ? String(payload.fee) : "";
+    }
+    if (el.currencyQuantity) {
+      const quantityValue = Number(payload.quantity || 0);
+      const unitPriceValue = Number(payload.unit_price || 0);
+      const enteredAmount = (payload.side || "buy") === "buy"
+        ? (quantityValue * unitPriceValue)
+        : quantityValue;
+      el.currencyQuantity.value = enteredAmount > 0 ? core.formatAmount(enteredAmount) : "";
+    }
+    currencyUnitPriceManual = true;
+    syncCurrencyTradeFieldUi();
+    updateCreatePreview();
   }
   async function openEditModal(item) {
     await ensureCategoryCatalogReady("edit");
@@ -1006,6 +1071,7 @@
     updateDebtDueHint,
     openCreateModal,
     openCreateModalForCurrency,
+    openCreateModalForCurrencyEdit,
     openCreateModalForDebtEdit,
     closeCreateModal,
     openEditModal,

@@ -15,6 +15,13 @@ class CurrencyRepository:
         self.db.flush()
         return trade
 
+    def get_trade(self, *, user_id: int, trade_id: int) -> FxTrade | None:
+        stmt = select(FxTrade).where(
+            FxTrade.user_id == user_id,
+            FxTrade.id == trade_id,
+        )
+        return self.db.scalar(stmt)
+
     def list_trades(self, *, user_id: int, asset_currency: str | None = None, limit: int = 200) -> list[FxTrade]:
         stmt = select(FxTrade).where(FxTrade.user_id == user_id)
         if asset_currency:
@@ -29,6 +36,10 @@ class CurrencyRepository:
             .order_by(FxTrade.asset_currency.asc(), FxTrade.trade_date.asc(), FxTrade.id.asc())
         )
         return list(self.db.scalars(stmt))
+
+    def delete_trade(self, trade: FxTrade) -> None:
+        self.db.delete(trade)
+        self.db.flush()
 
     def get_latest_rate_map(self, *, user_id: int) -> dict[str, FxRateSnapshot]:
         rows = self.db.execute(

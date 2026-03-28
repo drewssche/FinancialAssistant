@@ -1,5 +1,7 @@
 (() => {
   const { state, el, core } = window.App;
+  const tradeItemsById = new Map();
+  const pickerUtils = window.App.getRuntimeModule?.("picker-utils");
 
   function getDashboardFeature() {
     return window.App.getRuntimeModule?.("dashboard") || {};
@@ -11,6 +13,63 @@
 
   function getOperationModal() {
     return window.App.getRuntimeModule?.("operation-modal") || {};
+  }
+
+  function getResultPresentation(rawValue) {
+    const value = Number(rawValue || 0);
+    if (value > 0) {
+      return { cardClass: "analytics-kpi-income", label: "Прибыль", chipClass: "analytics-kpi-chip-positive" };
+    }
+    if (value < 0) {
+      return { cardClass: "analytics-kpi-expense", label: "Убыток", chipClass: "analytics-kpi-chip-negative" };
+    }
+    return { cardClass: "analytics-kpi-neutral", label: "Результат", chipClass: "analytics-kpi-chip-neutral" };
+  }
+
+  function formatRateWithQuote(rate, quoteCurrency) {
+    const quote = String(quoteCurrency || "BYN").toUpperCase();
+    return `${Number(rate || 0).toFixed(4)} ${quote}`;
+  }
+
+  function toggleTableMenu(trigger) {
+    const menuId = String(trigger?.dataset.tableMenuTrigger || "");
+    const menu = menuId ? document.querySelector(`.table-kebab-popover[data-table-menu="${CSS.escape(menuId)}"]`) : null;
+    const ownerRow = trigger.closest("tr");
+    const ownerCell = trigger.closest("td");
+    if (!menu || !pickerUtils?.setPopoverOpen) {
+      return false;
+    }
+    const owners = [trigger, trigger.parentElement].filter(Boolean);
+    const clearOpenState = () => {
+      ownerCell?.classList.remove("table-menu-open-cell");
+      ownerRow?.classList.remove("table-menu-open-row");
+    };
+    const shouldOpen = menu.classList.contains("hidden");
+    document.querySelectorAll(".table-kebab-popover:not(.hidden)").forEach((node) => {
+      if (node !== menu) {
+        pickerUtils.setPopoverOpen(node, false, {
+          owners: Array.isArray(node.__appPopoverOwners) ? node.__appPopoverOwners : [],
+        });
+        (Array.isArray(node.__appPopoverOwners) ? node.__appPopoverOwners : []).forEach((owner) => owner?.blur?.());
+        node.closest(".table-menu-open-cell")?.classList.remove("table-menu-open-cell");
+        node.closest(".table-menu-open-row")?.classList.remove("table-menu-open-row");
+      }
+    });
+    pickerUtils.setPopoverOpen(menu, shouldOpen, { owners, onClose: clearOpenState });
+    ownerCell?.classList.toggle("table-menu-open-cell", shouldOpen);
+    ownerRow?.classList.toggle("table-menu-open-row", shouldOpen);
+    if (!shouldOpen) {
+      clearOpenState();
+      trigger?.blur?.();
+    }
+    return true;
+  }
+
+  async function refreshAfterTradeMutation() {
+    await loadCurrencySection({ force: true });
+    core.invalidateUiRequestCache?.("dashboard:summary");
+    getDashboardFeature().loadDashboard?.().catch(() => {});
+    getAnalyticsCurrencyFeature().loadAnalyticsCurrency?.({ force: true }).catch(() => {});
   }
 
   function getTrackedCurrencies() {
@@ -83,6 +142,7 @@
   }
 
   function renderSummary(data) {
+    const resultTone = getResultPresentation(data.total_result_value || 0);
     if (el.currencySummaryCurrentValue) {
       el.currencySummaryCurrentValue.textContent = core.formatMoney(data.total_current_value || 0);
     }
@@ -91,6 +151,13 @@
     }
     if (el.currencySummaryResultValue) {
       el.currencySummaryResultValue.textContent = core.formatMoney(data.total_result_value || 0);
+    }
+    if (el.currencySummaryResultCard) {
+      el.currencySummaryResultCard.classList.remove("analytics-kpi-income", "analytics-kpi-expense", "analytics-kpi-neutral");
+      el.currencySummaryResultCard.classList.add(resultTone.cardClass);
+    }
+    if (el.currencySummaryResultLabel) {
+      el.currencySummaryResultLabel.textContent = resultTone.label;
     }
     if (el.currencySummaryActiveCount) {
       el.currencySummaryActiveCount.textContent = String(data.active_positions || 0);
@@ -155,7 +222,7 @@
       return;
     }
     el.currencyPositionsList.innerHTML = positions.map((item) => {
-      const resultClass = Number(item.result_value || 0) >= 0 ? "analytics-kpi-chip-positive" : "analytics-kpi-chip-negative";
+      const resultTone = getResultPresentation(item.result_value || 0);
       const currencyLabel = core.formatCurrencyLabel(item.currency);
       return `
         <article class="panel">
@@ -167,7 +234,7 @@
                 <span class="currency-position-secondary">${core.formatMoney(item.current_value || 0)} по текущему курсу</span>
               </p>
             </div>
-            <span class="analytics-kpi-chip ${resultClass}">Прибыль / убыток: ${core.formatMoney(item.result_value || 0)}</span>
+            <span class="analytics-kpi-chip ${resultTone.chipClass}">${resultTone.label}: ${core.formatMoney(item.result_value || 0)}</span>
           </div>
           <div class="analytics-kpi-grid">
             <article class="analytics-kpi-card analytics-kpi-neutral">
@@ -198,24 +265,39 @@
       return;
     }
     const trades = Array.isArray(data.recent_trades) ? data.recent_trades : [];
+    tradeItemsById.clear();
+    trades.forEach((item) => {
+      if (item?.id) {
+        tradeItemsById.set(Number(item.id), item);
+      }
+    });
     if (!trades.length) {
       const emptyLabel = state.currencyFilter && state.currencyFilter !== "all"
         ? `Сделок по ${core.formatCurrencyLabel(state.currencyFilter)} пока нет`
         : "Сделок по отслеживаемым валютам пока нет";
-      el.currencyTradesBody.innerHTML = `<tr><td colspan="7" class="muted-small">${emptyLabel}</td></tr>`;
+      el.currencyTradesBody.innerHTML = `<tr><td colspan="8" class="muted-small">${emptyLabel}</td></tr>`;
       return;
     }
-    el.currencyTradesBody.innerHTML = trades.map((item) => `
+    el.currencyTradesBody.innerHTML = trades.map((item) => {
+      const menuItems = [
+        `<button class="table-kebab-item" type="button" data-edit-currency-trade-id="${Number(item.id)}">Редактировать</button>`,
+        `<button class="table-kebab-item danger" type="button" data-delete-currency-trade-id="${Number(item.id)}">Удалить</button>`,
+      ].join("");
+      return `
       <tr>
         <td>${core.formatDateRu(item.trade_date)}</td>
         <td>${item.side === "sell" ? "Продажа" : "Покупка"}</td>
         <td>${core.escapeHtml ? core.escapeHtml(core.formatCurrencyLabel(item.asset_currency)) : core.formatCurrencyLabel(item.asset_currency)}</td>
         <td>${core.formatAmount(item.quantity || 0)}</td>
-        <td>${Number(item.unit_price || 0).toFixed(4)}</td>
+        <td>${formatRateWithQuote(item.unit_price || 0, item.quote_currency || "BYN")}</td>
         <td>${core.formatMoney(item.fee || 0, { withCurrency: true, currency: item.quote_currency || "BYN" })}</td>
         <td>${core.escapeHtml ? core.escapeHtml(item.note || "") : (item.note || "")}</td>
+        <td>
+          ${core.renderInlineKebabMenu?.(`currency-trade-${Number(item.id)}`, menuItems, "Действия валютной сделки")}
+        </td>
       </tr>
-    `).join("");
+    `;
+    }).join("");
   }
 
   function primeDefaultDates() {
@@ -275,6 +357,39 @@
     getAnalyticsCurrencyFeature().loadAnalyticsCurrency?.({ force: true }).catch(() => {});
   }
 
+  async function openCurrencyTradeEdit(tradeId) {
+    const trade = tradeItemsById.get(Number(tradeId));
+    if (!trade) {
+      core.setStatus("Сделка не найдена");
+      return;
+    }
+    await getOperationModal().openCreateModalForCurrencyEdit?.(trade);
+  }
+
+  function deleteCurrencyTrade(tradeId) {
+    const trade = tradeItemsById.get(Number(tradeId));
+    if (!trade) {
+      core.setStatus("Сделка не найдена");
+      return;
+    }
+    const actionLabel = trade.side === "sell" ? "Продажа" : "Покупка";
+    core.runDestructiveAction({
+      confirmMessage: `Удалить валютную сделку «${actionLabel} ${core.formatCurrencyLabel(trade.asset_currency)}»?`,
+      doDelete: async () => {
+        await core.requestJson(`/api/v1/currency/trades/${Number(trade.id)}`, {
+          method: "DELETE",
+          headers: core.authHeaders(),
+        });
+        core.invalidateUiRequestCache?.("currency");
+      },
+      onAfterDelete: async () => {
+        await refreshAfterTradeMutation();
+      },
+      toastMessage: "Валютная сделка удалена",
+      onDeleteError: "Не удалось удалить валютную сделку",
+    });
+  }
+
   function bind() {
     if (el.currencyFilterTabs) {
       el.currencyFilterTabs.addEventListener("click", (event) => {
@@ -316,6 +431,31 @@
           errorPrefix: "Ошибка обновления курса",
           action: () => submitCurrencyRate(event),
         });
+      });
+    }
+    if (el.currencyTradesBody) {
+      el.currencyTradesBody.addEventListener("click", (event) => {
+        const trigger = event.target.closest("[data-table-menu-trigger]");
+        if (trigger) {
+          event.preventDefault();
+          event.stopPropagation();
+          toggleTableMenu(trigger);
+          return;
+        }
+        const editBtn = event.target.closest("[data-edit-currency-trade-id]");
+        if (editBtn) {
+          const tradeId = Number(editBtn.dataset.editCurrencyTradeId || 0);
+          core.runAction({
+            errorPrefix: "Ошибка открытия валютной сделки",
+            action: () => openCurrencyTradeEdit(tradeId),
+          });
+          return;
+        }
+        const deleteBtn = event.target.closest("[data-delete-currency-trade-id]");
+        if (deleteBtn) {
+          const tradeId = Number(deleteBtn.dataset.deleteCurrencyTradeId || 0);
+          deleteCurrencyTrade(tradeId);
+        }
       });
     }
   }

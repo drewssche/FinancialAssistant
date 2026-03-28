@@ -53,6 +53,22 @@
     return { dateFrom: format(start), dateTo: format(end) };
   }
 
+  function getResultPresentation(rawValue) {
+    const value = Number(rawValue || 0);
+    if (value > 0) {
+      return { cardClass: "analytics-kpi-income", label: "Прибыль", chipClass: "analytics-kpi-chip-positive" };
+    }
+    if (value < 0) {
+      return { cardClass: "analytics-kpi-expense", label: "Убыток", chipClass: "analytics-kpi-chip-negative" };
+    }
+    return { cardClass: "analytics-kpi-neutral", label: "Результат", chipClass: "analytics-kpi-chip-neutral" };
+  }
+
+  function formatRateWithQuote(rate, quoteCurrency) {
+    const quote = String(quoteCurrency || "BYN").toUpperCase();
+    return `${Number(rate || 0).toFixed(4)} ${quote}`;
+  }
+
   function normalizeHistoryPoints(points, targetDate) {
     const raw = Array.isArray(points) ? points.filter((item) => item?.rate_date && item?.rate !== undefined && item?.rate !== null) : [];
     if (!raw.length) {
@@ -71,6 +87,7 @@
   }
 
   function renderSummary(overview) {
+    const resultTone = getResultPresentation(overview.total_result_value || 0);
     if (el.analyticsCurrencyCurrentValue) {
       el.analyticsCurrencyCurrentValue.textContent = core.formatMoney(overview.total_current_value || 0);
     }
@@ -79,6 +96,13 @@
     }
     if (el.analyticsCurrencyResultValue) {
       el.analyticsCurrencyResultValue.textContent = core.formatMoney(overview.total_result_value || 0);
+    }
+    if (el.analyticsCurrencyResultCard) {
+      el.analyticsCurrencyResultCard.classList.remove("analytics-kpi-income", "analytics-kpi-expense", "analytics-kpi-neutral");
+      el.analyticsCurrencyResultCard.classList.add(resultTone.cardClass);
+    }
+    if (el.analyticsCurrencyResultLabel) {
+      el.analyticsCurrencyResultLabel.textContent = resultTone.label;
     }
     if (el.analyticsCurrencyActiveCount) {
       el.analyticsCurrencyActiveCount.textContent = String(overview.active_positions || 0);
@@ -150,10 +174,10 @@
         return;
       }
       el.analyticsCurrencySecondary.innerHTML = positions.map((item) => {
-        const resultTone = Number(item.result_value || 0) >= 0 ? "analytics-kpi-chip-positive" : "analytics-kpi-chip-negative";
+        const resultTone = getResultPresentation(item.result_value || 0);
         const currentRateDate = item.current_rate_date ? core.formatDateRu(item.current_rate_date) : "курс не задан";
         return `
-          <span class="analytics-kpi-chip currency-position-compact ${resultTone}">
+          <span class="analytics-kpi-chip currency-position-compact ${resultTone.chipClass}">
             <span class="currency-position-primary">${core.formatCurrencyLabel(item.currency)}: ${core.formatAmount(item.quantity || 0)}</span>
             <span class="currency-position-secondary">${core.formatMoney(item.current_value || 0)} · средняя ${Number(item.average_buy_rate || 0).toFixed(4)} · текущий ${Number(item.current_rate || 0).toFixed(4)} · ${currentRateDate}</span>
           </span>
@@ -205,7 +229,7 @@
         <td>${item.side === "sell" ? "Продажа" : "Покупка"}</td>
         <td>${core.formatCurrencyLabel(item.asset_currency)}</td>
         <td>${core.formatAmount(item.quantity || 0)}</td>
-        <td>${Number(item.unit_price || 0).toFixed(4)}</td>
+        <td>${formatRateWithQuote(item.unit_price || 0, item.quote_currency || "BYN")}</td>
         <td>${core.formatMoney(item.fee || 0, { currency: item.quote_currency || "BYN" })}</td>
         <td>${core.escapeHtml ? core.escapeHtml(item.note || "") : (item.note || "")}</td>
       </tr>

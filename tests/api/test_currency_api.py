@@ -108,6 +108,24 @@ def test_currency_trade_overview_and_current_rate(client: TestClient):
     assert payload["current_rates"][0]["change_pct"] is None
 
 
+def test_currency_trade_create_accepts_missing_fee(client: TestClient):
+    response = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "50",
+            "unit_price": "3.10",
+            "trade_date": "2026-03-03",
+            "note": "Без комиссии",
+        },
+    )
+    assert response.status_code == 201, response.text
+    payload = response.json()
+    assert payload["fee"] in {"0", "0.00"}
+
+
 def test_currency_trade_rejects_sell_above_available_balance(client: TestClient):
     response = client.post(
         "/api/v1/currency/trades",
@@ -279,3 +297,102 @@ def test_currency_overview_tracks_buy_and_sell_kpi_totals(client: TestClient):
     assert payload["sell_volume_base"] == "140.00"
     assert payload["buy_average_rate"] == "3.200000"
     assert payload["sell_average_rate"] == "3.500000"
+
+
+def test_currency_trade_update_changes_trade_and_preserves_history(client: TestClient):
+    created = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "100",
+            "unit_price": "3.20",
+            "fee": "1.50",
+            "trade_date": "2026-03-01",
+            "note": "Покупка",
+        },
+    )
+    assert created.status_code == 201, created.text
+    trade_id = created.json()["id"]
+
+    updated = client.patch(
+        f"/api/v1/currency/trades/{trade_id}",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "120",
+            "unit_price": "3.15",
+            "fee": "0",
+            "trade_date": "2026-03-02",
+            "note": "Обновленная покупка",
+        },
+    )
+    assert updated.status_code == 200, updated.text
+    payload = updated.json()
+    assert payload["quantity"] == "120.000000"
+    assert payload["unit_price"] == "3.150000"
+    assert payload["fee"] == "0.00"
+    assert payload["trade_date"] == "2026-03-02"
+    assert payload["note"] == "Обновленная покупка"
+
+
+def test_currency_trade_delete_rejects_when_it_breaks_later_sell(client: TestClient):
+    buy_response = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "100",
+            "unit_price": "3.20",
+            "fee": "0",
+            "trade_date": "2026-03-01",
+        },
+    )
+    assert buy_response.status_code == 201, buy_response.text
+    trade_id = buy_response.json()["id"]
+
+    sell_response = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "sell",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "40",
+            "unit_price": "3.50",
+            "fee": "0",
+            "trade_date": "2026-03-10",
+        },
+    )
+    assert sell_response.status_code == 201, sell_response.text
+
+    response = client.delete(f"/api/v1/currency/trades/{trade_id}")
+    assert response.status_code == 400
+    assert "history consistent" in response.json()["detail"]
+
+
+def test_currency_trade_delete_removes_trade_when_history_stays_valid(client: TestClient):
+    created = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "EUR",
+            "quote_currency": "BYN",
+            "quantity": "10",
+            "unit_price": "3.45",
+            "fee": "0",
+            "trade_date": "2026-03-04",
+        },
+    )
+    assert created.status_code == 201, created.text
+    trade_id = created.json()["id"]
+
+    deleted = client.delete(f"/api/v1/currency/trades/{trade_id}")
+    assert deleted.status_code == 204, deleted.text
+
+    overview = client.get("/api/v1/currency/overview", params={"currency": "EUR"})
+    assert overview.status_code == 200, overview.text
+    payload = overview.json()
+    assert payload["recent_trades"] == []

@@ -20,6 +20,7 @@ class DashboardSummary(BaseModel):
     income_total: Decimal
     expense_total: Decimal
     balance: Decimal
+    balance_with_currency_result: Decimal = Decimal("0")
     debt_lend_outstanding: Decimal
     debt_borrow_outstanding: Decimal
     debt_net_position: Decimal

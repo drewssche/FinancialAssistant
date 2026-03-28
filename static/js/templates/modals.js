@@ -208,6 +208,7 @@
                 <input id="currencyFee" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="0.00" aria-label="Комиссия валютной сделки" />
               </div>
             </div>
+            <div id="currencyTradeHint" class="muted-small currency-trade-hint"></div>
             <div class="currency-modal-row currency-modal-row-single">
               <input id="currencyNote" type="text" placeholder="Например: обменник у дома" class="create-note-field" aria-label="Комментарий валютной сделки" />
             </div>

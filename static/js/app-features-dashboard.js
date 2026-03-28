@@ -84,13 +84,13 @@
       const trackedCurrencies = getTrackedCurrencies();
       const baseCurrency = core.getCurrencyConfig?.().code || "BYN";
       const periodBalance = Number(summary.balance || 0);
-      const currencyCurrentValue = Number(summary.currency_current_value || 0);
-      const combinedBaseBalance = periodBalance + currencyCurrentValue;
+      const currencyResultValue = Number(summary.currency_result_value || 0);
+      const combinedBaseBalance = Number(summary.balance_with_currency_result ?? (periodBalance + currencyResultValue));
       const bynCard = `
         <article class="currency-balance-card">
           <div class="muted-small">${core.formatCurrencyLabel(baseCurrency)}</div>
           <strong>${core.formatMoney(combinedBaseBalance, { currency: baseCurrency })}</strong>
-          <div class="currency-balance-secondary">баланс периода ${core.formatMoney(periodBalance, { currency: baseCurrency })} + валюта ${core.formatMoney(currencyCurrentValue, { currency: baseCurrency })}</div>
+          <div class="currency-balance-secondary">баланс периода ${core.formatMoney(periodBalance, { currency: baseCurrency })} + результат валюты ${core.formatMoney(currencyResultValue, { currency: baseCurrency })}</div>
         </article>
       `;
       const positionCards = trackedCurrencies.map((currency) => {

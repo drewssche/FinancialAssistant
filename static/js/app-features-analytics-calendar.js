@@ -167,10 +167,10 @@
       )
       .join("");
 
-    const currencyCurrentValue = Number(currencyOverview?.total_current_value || 0);
-    const resultBalance = Number(data.balance || 0) + currencyCurrentValue;
+    const currencyResultValue = Number(currencyOverview?.total_result_value || 0);
+    const resultBalance = Number(data.balance || 0) + currencyResultValue;
     const result = describeResult(resultBalance);
-    const prefix = currencyCurrentValue !== 0 ? "С учетом валюты" : result.label;
+    const prefix = currencyResultValue !== 0 ? "С учетом результата валюты" : result.label;
     el.analyticsCalendarTotalsSecondary.innerHTML = `
       <span class="analytics-kpi-chip analytics-kpi-chip-${result.tone}">
         ${escapeHtml(prefix)}: ${escapeHtml(core.formatMoney(result.amount))}

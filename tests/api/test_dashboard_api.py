@@ -217,7 +217,43 @@ def test_dashboard_summary_includes_currency_metrics(client: TestClient):
     assert payload["currency_book_value"] == "155.00"
     assert payload["currency_current_value"] == "170.00"
     assert payload["currency_result_value"] == "15.00"
+    assert payload["balance_with_currency_result"] == "15.00"
     assert payload["currency_buy_trades_count"] == 1
+
+
+def test_dashboard_summary_does_not_double_count_currency_current_value_in_combined_balance(client: TestClient):
+    trade_response = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "50",
+            "unit_price": "3.10",
+            "fee": "0",
+            "trade_date": "2026-03-01",
+            "note": "USD buy",
+        },
+    )
+    assert trade_response.status_code == 201
+    rate_response = client.put(
+        "/api/v1/currency/rates/current",
+        json={
+            "currency": "USD",
+            "rate": "3.10",
+            "rate_date": "2026-03-27",
+        },
+    )
+    assert rate_response.status_code == 200
+
+    summary = client.get("/api/v1/dashboard/summary", params={"period": "all_time"})
+    assert summary.status_code == 200
+    payload = summary.json()
+    assert payload["balance"] in ("0", "0.00")
+    assert payload["currency_book_value"] == "155.00"
+    assert payload["currency_current_value"] == "155.00"
+    assert payload["currency_result_value"] in ("0", "0.00")
+    assert payload["balance_with_currency_result"] in ("0", "0.00")
     assert payload["currency_sell_trades_count"] == 0
     assert payload["currency_buy_volume_base"] == "155.00"
     assert payload["currency_sell_volume_base"] == "0.00"
@@ -226,7 +262,7 @@ def test_dashboard_summary_includes_currency_metrics(client: TestClient):
     assert payload["active_currency_positions"] == 1
     assert len(payload["tracked_currency_positions"]) == 1
     assert payload["tracked_currency_positions"][0]["currency"] == "USD"
-    assert payload["tracked_currency_positions"][0]["current_rate"] == "3.400000"
+    assert payload["tracked_currency_positions"][0]["current_rate"] == "3.100000"
 
 
 def test_dashboard_debt_preview_returns_compact_active_cards(client: TestClient):

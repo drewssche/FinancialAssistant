@@ -15,6 +15,10 @@ class CurrencyTradeCreate(BaseModel):
     note: str | None = Field(default=None, max_length=500)
 
 
+class CurrencyTradeUpdate(CurrencyTradeCreate):
+    pass
+
+
 class CurrencyTradeOut(BaseModel):
     id: int
     side: str

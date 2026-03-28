@@ -69,6 +69,27 @@ class CurrencyService:
             raise ValueError("side must be buy or sell")
         return side
 
+    def _validate_trade_sequence(self, trades: list[FxTrade]) -> None:
+        quantities_by_currency: dict[str, Decimal] = {}
+        ordered = sorted(
+            trades,
+            key=lambda item: (
+                str(item.asset_currency or ""),
+                item.trade_date.isoformat() if item.trade_date else "",
+                int(item.id or 0),
+            ),
+        )
+        for trade in ordered:
+            currency = self._normalize_currency(trade.asset_currency)
+            quantity = self._qty(trade.quantity)
+            available = quantities_by_currency.get(currency, Decimal("0"))
+            if trade.side == "buy":
+                quantities_by_currency[currency] = self._qty(available + quantity)
+                continue
+            if available < quantity:
+                raise ValueError("Not enough currency balance to keep FX trade history consistent")
+            quantities_by_currency[currency] = self._qty(available - quantity)
+
     def get_currency_preferences(self, user_id: int) -> dict:
         prefs = self.preferences.get_or_create(user_id)
         raw = prefs.data.get("currency") if isinstance(prefs.data.get("currency"), dict) else {}
@@ -116,24 +137,27 @@ class CurrencyService:
         if normalized_quantity <= 0 or normalized_unit_price <= 0:
             raise ValueError("quantity and unit_price must be positive")
 
-        positions = self.compute_positions(user_id=user_id)
-        if normalized_side == "sell":
-            current = positions["positions_by_currency"].get(normalized_asset)
-            if not current or current["quantity"] < normalized_quantity:
-                raise ValueError("Not enough currency balance to sell")
+        trades = self.repo.list_all_trades(user_id=user_id)
+        candidate = FxTrade(
+            user_id=user_id,
+            side=normalized_side,
+            asset_currency=normalized_asset,
+            quote_currency=normalized_quote,
+            quantity=normalized_quantity,
+            unit_price=normalized_unit_price,
+            fee=normalized_fee,
+            trade_date=trade_date,
+            note=(note or "").strip() or None,
+        )
+        try:
+            self._validate_trade_sequence([*trades, candidate])
+        except ValueError as exc:
+            if normalized_side == "sell":
+                raise ValueError("Not enough currency balance to sell") from exc
+            raise
 
         item = self.repo.create_trade(
-            FxTrade(
-                user_id=user_id,
-                side=normalized_side,
-                asset_currency=normalized_asset,
-                quote_currency=normalized_quote,
-                quantity=normalized_quantity,
-                unit_price=normalized_unit_price,
-                fee=normalized_fee,
-                trade_date=trade_date,
-                note=(note or "").strip() or None,
-            )
+            candidate
         )
         self.db.commit()
         self.db.refresh(item)
@@ -149,6 +173,93 @@ class CurrencyService:
             quote_currency=item.quote_currency,
         )
         return item
+
+    def update_trade(
+        self,
+        *,
+        user_id: int,
+        trade_id: int,
+        side: str,
+        asset_currency: str,
+        quote_currency: str,
+        quantity,
+        unit_price,
+        fee,
+        trade_date: date,
+        note: str | None = None,
+    ) -> FxTrade:
+        item = self.repo.get_trade(user_id=user_id, trade_id=trade_id)
+        if not item:
+            raise ValueError("Currency trade not found")
+        normalized_side = self._normalize_side(side)
+        normalized_asset = self._normalize_currency(asset_currency)
+        normalized_quote = self._normalize_currency(quote_currency)
+        normalized_quantity = self._qty(quantity)
+        normalized_unit_price = self._rate(unit_price)
+        normalized_fee = self._money(fee)
+        if normalized_asset == normalized_quote:
+            raise ValueError("asset_currency and quote_currency must differ")
+        if normalized_quantity <= 0 or normalized_unit_price <= 0:
+            raise ValueError("quantity and unit_price must be positive")
+        trades = self.repo.list_all_trades(user_id=user_id)
+        replacement = FxTrade(
+            id=item.id,
+            user_id=item.user_id,
+            side=normalized_side,
+            asset_currency=normalized_asset,
+            quote_currency=normalized_quote,
+            quantity=normalized_quantity,
+            unit_price=normalized_unit_price,
+            fee=normalized_fee,
+            trade_date=trade_date,
+            note=(note or "").strip() or None,
+        )
+        self._validate_trade_sequence([replacement if trade.id == item.id else trade for trade in trades])
+        item.side = normalized_side
+        item.asset_currency = normalized_asset
+        item.quote_currency = normalized_quote
+        item.quantity = normalized_quantity
+        item.unit_price = normalized_unit_price
+        item.fee = normalized_fee
+        item.trade_date = trade_date
+        item.note = (note or "").strip() or None
+        self.db.commit()
+        self.db.refresh(item)
+        invalidate_dashboard_summary_cache(user_id)
+        invalidate_dashboard_analytics_cache(user_id)
+        log_background_job_event(
+            "currency_service",
+            "fx_trade_updated",
+            user_id=user_id,
+            fx_trade_id=item.id,
+            side=item.side,
+            asset_currency=item.asset_currency,
+            quote_currency=item.quote_currency,
+        )
+        return item
+
+    def delete_trade(self, *, user_id: int, trade_id: int) -> None:
+        item = self.repo.get_trade(user_id=user_id, trade_id=trade_id)
+        if not item:
+            raise ValueError("Currency trade not found")
+        item_side = item.side
+        item_asset_currency = item.asset_currency
+        item_quote_currency = item.quote_currency
+        trades = self.repo.list_all_trades(user_id=user_id)
+        self._validate_trade_sequence([trade for trade in trades if trade.id != item.id])
+        self.repo.delete_trade(item)
+        self.db.commit()
+        invalidate_dashboard_summary_cache(user_id)
+        invalidate_dashboard_analytics_cache(user_id)
+        log_background_job_event(
+            "currency_service",
+            "fx_trade_deleted",
+            user_id=user_id,
+            fx_trade_id=trade_id,
+            side=item_side,
+            asset_currency=item_asset_currency,
+            quote_currency=item_quote_currency,
+        )
 
     def upsert_rate(self, *, user_id: int, currency: str, rate, rate_date: date, source: str = "manual") -> dict:
         normalized_currency = self._normalize_currency(currency)

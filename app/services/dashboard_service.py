@@ -95,6 +95,7 @@ class DashboardService:
             "income_total": income_total,
             "expense_total": expense_total,
             "balance": income_total - expense_total,
+            "balance_with_currency_result": (income_total - expense_total) + self._money(currency_summary["total_result_value"]),
             "debt_lend_outstanding": debt_lend_outstanding,
             "debt_borrow_outstanding": debt_borrow_outstanding,
             "debt_net_position": debt_lend_outstanding - debt_borrow_outstanding,

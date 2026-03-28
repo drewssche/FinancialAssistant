@@ -197,9 +197,10 @@
         const tradeContext = typeof operationModal.getCurrencyTradeContext === "function"
           ? operationModal.getCurrencyTradeContext()
           : null;
+        const feeRawValue = typeof el.currencyFee?.value === "string" ? el.currencyFee.value.trim() : "";
         const quantityInput = tradeContext?.quantityResolved || core.resolveMoneyInput(el.currencyQuantity?.value || 0);
         const unitPrice = tradeContext?.rateResolved || core.resolveMoneyInput(el.currencyUnitPrice?.value || 0);
-        const fee = tradeContext?.feeResolved || core.resolveMoneyInput(el.currencyFee?.value || 0);
+        const fee = tradeContext?.feeResolved || core.resolveMoneyInput(feeRawValue || 0);
         if (!quantityInput.valid || quantityInput.value <= 0) {
           throw new Error((tradeContext?.side || "buy") === "buy" ? "Проверь сумму покупки" : "Проверь количество продаваемой валюты");
         }
@@ -213,8 +214,9 @@
         if (!(effectiveQuantity > 0)) {
           throw new Error((tradeContext?.side || "buy") === "buy" ? "Проверь сумму покупки и курс" : "Проверь количество валюты");
         }
-        await core.requestJson("/api/v1/currency/trades", {
-          method: "POST",
+        const isEditTrade = Number(state.editCurrencyTradeId || 0) > 0;
+        await core.requestJson(isEditTrade ? `/api/v1/currency/trades/${state.editCurrencyTradeId}` : "/api/v1/currency/trades", {
+          method: isEditTrade ? "PATCH" : "POST",
           headers: core.authHeaders(),
           body: JSON.stringify({
             side: el.currencySide?.value || "buy",
@@ -231,6 +233,7 @@
         dashboardData.invalidateSummaryCache?.();
         core.invalidateUiRequestCache("dashboard:summary");
         core.invalidateUiRequestCache("currency");
+        state.editCurrencyTradeId = null;
         if (el.currencyQuantity) {
           el.currencyQuantity.value = "";
         }

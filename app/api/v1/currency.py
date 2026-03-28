@@ -12,6 +12,7 @@ from app.schemas.currency import (
     CurrencyRateUpsert,
     CurrencyTradeCreate,
     CurrencyTradeOut,
+    CurrencyTradeUpdate,
 )
 from app.services.currency_rate_refresh_service import CurrencyRateRefreshService
 from app.services.currency_service import CurrencyService
@@ -54,6 +55,48 @@ def create_currency_trade(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.patch("/trades/{trade_id}", response_model=CurrencyTradeOut)
+def update_currency_trade(
+    trade_id: int,
+    payload: CurrencyTradeUpdate,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = CurrencyService(db)
+    try:
+        return service.update_trade(
+            user_id=user_id,
+            trade_id=trade_id,
+            side=payload.side,
+            asset_currency=payload.asset_currency,
+            quote_currency=payload.quote_currency,
+            quantity=payload.quantity,
+            unit_price=payload.unit_price,
+            fee=payload.fee,
+            trade_date=payload.trade_date,
+            note=payload.note,
+        )
+    except ValueError as exc:
+        detail = str(exc)
+        status_code = status.HTTP_404_NOT_FOUND if detail == "Currency trade not found" else status.HTTP_400_BAD_REQUEST
+        raise HTTPException(status_code=status_code, detail=detail) from exc
+
+
+@router.delete("/trades/{trade_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_currency_trade(
+    trade_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = CurrencyService(db)
+    try:
+        service.delete_trade(user_id=user_id, trade_id=trade_id)
+    except ValueError as exc:
+        detail = str(exc)
+        status_code = status.HTTP_404_NOT_FOUND if detail == "Currency trade not found" else status.HTTP_400_BAD_REQUEST
+        raise HTTPException(status_code=status_code, detail=detail) from exc
 
 
 @router.put("/rates/current", response_model=CurrencyRateOut)

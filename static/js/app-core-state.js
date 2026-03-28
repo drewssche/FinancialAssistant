@@ -37,6 +37,7 @@
       debtHistoryMeta: null,
       debtHistoryHasMore: false,
       editDebtCreateId: null,
+      editCurrencyTradeId: null,
       editPlanId: null,
       editOperationId: null,
       editCategoryId: null,

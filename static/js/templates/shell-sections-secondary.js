@@ -110,8 +110,8 @@
                 <div class="muted-small">Вложено</div>
                 <strong id="currencySummaryBookValue">0</strong>
               </article>
-              <article class="analytics-kpi-card analytics-kpi-income">
-                <div class="muted-small">Прибыль / убыток</div>
+              <article id="currencySummaryResultCard" class="analytics-kpi-card analytics-kpi-neutral">
+                <div id="currencySummaryResultLabel" class="muted-small">Результат</div>
                 <strong id="currencySummaryResultValue">0</strong>
               </article>
               <article class="analytics-kpi-card analytics-kpi-neutral">
@@ -176,6 +176,7 @@
                     <th>Курс</th>
                     <th>Комиссия</th>
                     <th>Комментарий</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody id="currencyTradesBody"></tbody>
