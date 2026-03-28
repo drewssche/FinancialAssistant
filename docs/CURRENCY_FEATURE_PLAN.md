@@ -1,13 +1,13 @@
 # Currency Feature Plan
 
 Status:
-- in progress
+- mostly complete
 - owner: Codex
 - scope: currency positions, exchange deals, dashboard KPI, analytics, and telegram notifications
 
 ## Implementation Progress
 
-Implemented in current slice:
+Implemented:
 - backend models and migration for `fx_trades` and `fx_rate_snapshots`
 - API endpoints:
   - `GET /api/v1/currency/overview`
@@ -31,10 +31,22 @@ Implemented in current slice:
   - daily Telegram digest preference flag
 - automatic daily tracked-rate refresh via Telegram bot scan loop
 - daily Telegram currency digest with separate reminder time and anti-duplicate guard
+- Telegram currency threshold alerts:
+  - `выше курса`
+  - `ниже курса`
 - currency mode inside the common add-operation modal
 - analytics tab `Валюта` with KPI, rate-history chart, deal list, and period controls
+- admin diagnostics for currency runtime:
+  - tracked users
+  - digest enabled
+  - alert rules
+  - stale / missing rates
 - currency code presentation improved with symbol labels like `USD ($)` and `EUR (€)`
-- Phase 2 started: operations now support original currency plus base conversion snapshot
+- operations support original currency plus base conversion snapshot
+- operations currency-scope control:
+  - `Все`
+  - `<BASE>` for base-currency operations only, for example `BYN`
+  - `Другая валюта` for non-base operations only
 - multi-currency plans with live `≈ BYN` conversion
 - multi-currency debts with live `≈ BYN` conversion
 - debt forgiveness flow:
@@ -45,55 +57,32 @@ Implemented in current slice:
   - UI keeps main status `Закрыт` and secondary meta `Прощен`
   - forgiveness is available both as a dedicated debt action and from the repayment modal as `Простить остаток`
   - debt cards, history, and dashboard preview now use chips for `Погашено` and `Прощено`
-- next UX slice agreed:
-  - in currency contexts prefer `Покупка / Продажа` as the action terminology
-  - in regular operation mode move the currency selector inline next to the amount field
-  - keep `Курс в базовую валюту` only as a conditional follow-up field for non-base currency operations
-  - in currency mode use the tighter flow:
+- currency UX finalized around:
+  - `Покупка / Продажа` terminology in FX contexts
+  - inline currency selector next to amount in regular operation mode
+  - conditional `Курс в базовую валюту` only for non-base operations
+  - tighter currency modal flow:
     - `Покупка / Продажа`
     - `Дата | Валюта`
     - `Количество | Курс | Комиссия`
     - `Комментарий`
-  - contextual trade semantics in the modal:
+  - contextual trade semantics:
     - for `Покупка`, the main amount field is the spent base/quote amount
     - for `Продажа`, the main amount field is the sold asset quantity
-    - preview labels and payload conversion should switch with the selected side
-  - do not expose base currency as a manual field in the currency modal; use the main currency from settings
-  - in FX preview use direction-aware notation:
+  - direction-aware FX preview:
     - buy: `BYN -> USD`
     - sell: `USD -> BYN`
-  - keep dashboard currency KPI visually lighter:
-    - primary cards for portfolio valuation/result
-    - compact secondary chips for `Покупки / Продажи / Открытые позиции`
-    - include average price/rate in purchase/sale widgets
-  - in `Аналитика -> Валюта` allow explicit history backfill for the currently selected currency and period so the rate chart can be populated on demand
-  - for `Все` in `Аналитика -> Валюта`, combine tracked currencies into one multi-line chart with color legend
-
-Not implemented yet:
-- richer dashboard/widget polish such as sparkline or extended daily change metadata
-- additional end-to-end coverage for:
-  - currency flows
-  - multi-currency operations/plans/debts
+  - analytics currency history backfill
+  - combined multi-line chart for `Все` in `Аналитика -> Валюта`
+  - dashboard currency balances row and rate widgets with last-known-rate fallback
+- targeted e2e coverage for:
+  - currency analytics `Все`
   - debt forgiveness flow
-- operations currency-scope control:
-  - `Все`
-  - `<BASE>` for base-currency operations only, for example `BYN`
-  - `Другая валюта` for non-base operations only
 
-- current implementation slice:
-  - multi-currency debts
-  - debt amount stored in original currency
-  - no fixed fx rate on debt itself
-  - live `≈ BYN` label and KPI recalculation by latest available rate
-  - debt cards, dashboard preview and repayment/history UI use debt currency as primary amount
-  - dashboard debt KPI totals use current base-currency equivalents
-  - debt editing can change currency only before repayments or forgivenesses exist
-  - forgiveness is a separate debt event, not a fake repayment
-  - forgiveness is reachable from the same settlement flow as repayment
-- next implementation slice:
-  - e2e coverage for the new currency and debt-forgiveness flows
-
-- future UX slice:
+Remaining polish only:
+- richer dashboard/widget polish such as sparkline or extended daily change metadata
+- broader e2e coverage for all multi-currency operation / plan / debt permutations if needed
+- optional UX extension:
   - extend the same currency-scope control pattern to similar list views where it stays meaningful beyond operations
   - this should help separate domestic/base-currency cashflow from foreign-currency activity quickly
 
