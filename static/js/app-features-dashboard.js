@@ -28,6 +28,17 @@
     return raw.map((item) => String(item || "").toUpperCase()).filter(Boolean);
   }
 
+  function getResultPresentation(rawValue) {
+    const value = Number(rawValue || 0);
+    if (value > 0) {
+      return { cardClass: "analytics-kpi-income", label: "Прибыль" };
+    }
+    if (value < 0) {
+      return { cardClass: "analytics-kpi-expense", label: "Убыток" };
+    }
+    return { cardClass: "analytics-kpi-neutral", label: "Результат" };
+  }
+
   function dueBadgeLabel(stateValue, dueDate) {
     if (stateValue === "overdue") {
       return "Просрочено";
@@ -59,6 +70,7 @@
 
   function renderDashboardCurrencySummary(summary) {
     const currencyPrefs = state.preferences?.data?.currency || {};
+    const resultTone = getResultPresentation(summary.currency_result_value || 0);
     if (el.dashboardCurrencyPanel) {
       el.dashboardCurrencyPanel.classList.toggle("hidden", currencyPrefs.show_dashboard_kpi === false);
     }
@@ -72,8 +84,8 @@
           <div class="muted-small">Вложено</div>
           <strong>${core.formatMoney(summary.currency_book_value || 0)}</strong>
         </article>
-        <article class="analytics-kpi-card analytics-kpi-income">
-          <div class="muted-small">Прибыль / убыток</div>
+        <article class="analytics-kpi-card ${resultTone.cardClass}">
+          <div class="muted-small">${resultTone.label}</div>
           <strong>${core.formatMoney(summary.currency_result_value || 0)}</strong>
         </article>
       `;

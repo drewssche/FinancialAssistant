@@ -26,6 +26,13 @@
     return { cardClass: "analytics-kpi-neutral", label: "Результат", chipClass: "analytics-kpi-chip-neutral" };
   }
 
+  function formatTradeQuoteTotal(item) {
+    const quantity = Number(item?.quantity || 0);
+    const unitPrice = Number(item?.unit_price || 0);
+    const quoteCurrency = String(item?.quote_currency || "BYN").toUpperCase();
+    return core.formatMoney(quantity * unitPrice, { currency: quoteCurrency });
+  }
+
   function formatRateWithQuote(rate, quoteCurrency) {
     const quote = String(quoteCurrency || "BYN").toUpperCase();
     return `${Number(rate || 0).toFixed(4)} ${quote}`;
@@ -162,18 +169,6 @@
     if (el.currencySummaryActiveCount) {
       el.currencySummaryActiveCount.textContent = String(data.active_positions || 0);
     }
-    if (el.currencySummaryBuyVolume) {
-      el.currencySummaryBuyVolume.textContent = core.formatMoney(data.buy_volume_base || 0);
-    }
-    if (el.currencySummaryBuyCount) {
-      el.currencySummaryBuyCount.textContent = `${String(data.buy_trades_count || 0)} сделок · ср. курс ${Number(data.buy_average_rate || 0).toFixed(4)}`;
-    }
-    if (el.currencySummarySellVolume) {
-      el.currencySummarySellVolume.textContent = core.formatMoney(data.sell_volume_base || 0);
-    }
-    if (el.currencySummarySellCount) {
-      el.currencySummarySellCount.textContent = `${String(data.sell_trades_count || 0)} сделок · ср. курс ${Number(data.sell_average_rate || 0).toFixed(4)}`;
-    }
   }
 
   function renderPositions(data) {
@@ -186,13 +181,6 @@
       : getTrackedCurrencies();
     const baseCurrency = String(data.base_currency || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
     if (el.currencyBalancesRow) {
-      const bynCard = `
-        <article class="currency-balance-card">
-          <div class="muted-small">${core.formatCurrencyLabel(baseCurrency)}</div>
-          <strong>${core.formatMoney(data.total_current_value || 0, { currency: baseCurrency })}</strong>
-          <div class="currency-balance-secondary">Текущая оценка всех открытых валютных позиций</div>
-        </article>
-      `;
       const positionCards = trackedCurrencies.map((currency) => {
         const item = positionsByCurrency.get(currency) || null;
         const currentRate = currentRatesByCurrency.get(currency) || null;
@@ -205,7 +193,7 @@
           </article>
         `;
       });
-      el.currencyBalancesRow.innerHTML = [bynCard, ...positionCards].join("");
+      el.currencyBalancesRow.innerHTML = positionCards.join("");
     }
     if (!el.currencyPositionsList) {
       return;
@@ -245,7 +233,7 @@
               <div class="muted-small">Вложено</div>
               <strong>${core.formatMoney(item.book_value || 0)}</strong>
             </article>
-            <article class="analytics-kpi-card analytics-kpi-income">
+            <article class="analytics-kpi-card analytics-kpi-neutral">
               <div class="muted-small">Текущая оценка</div>
               <strong>${core.formatMoney(item.current_value || 0)}</strong>
             </article>
@@ -290,7 +278,7 @@
         <td data-label="Дата">${core.formatDateRu(item.trade_date)}</td>
         <td data-label="Действие"><span class="kind-pill kind-pill-${sideClass}">${sideLabel}</span></td>
         <td data-label="Валюта">${core.escapeHtml ? core.escapeHtml(core.formatCurrencyLabel(item.asset_currency)) : core.formatCurrencyLabel(item.asset_currency)}</td>
-        <td data-label="Количество">${core.formatAmount(item.quantity || 0)} ${core.escapeHtml ? core.escapeHtml(item.asset_currency || "") : (item.asset_currency || "")}</td>
+        <td data-label="Количество">${core.formatAmount(item.quantity || 0)} ${core.escapeHtml ? core.escapeHtml(item.asset_currency || "") : (item.asset_currency || "")}<div class="muted-small">≈ ${formatTradeQuoteTotal(item)}</div></td>
         <td data-label="Курс">${formatRateWithQuote(item.unit_price || 0, item.quote_currency || "BYN")}</td>
         <td class="mobile-note-cell" data-label="Комментарий">${core.escapeHtml ? core.escapeHtml(item.note || "") : (item.note || "")}</td>
         <td class="mobile-actions-cell table-kebab-cell" data-label="Действия">

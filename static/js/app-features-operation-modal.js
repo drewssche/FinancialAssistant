@@ -106,11 +106,13 @@
   function markCurrencyQuantitySource() {
     currencyTradeSourceField = "quantity";
     syncCurrencyTradeFieldUi();
+    updateCreatePreview();
   }
 
   function markCurrencyQuoteSource() {
     currencyTradeSourceField = "quote";
     syncCurrencyTradeFieldUi();
+    updateCreatePreview();
   }
 
   function getCurrencyTradeContext() {
@@ -195,6 +197,8 @@
 
   function markCurrencyRateManual() {
     currencyUnitPriceManual = true;
+    syncCurrencyTradeFieldUi();
+    updateCreatePreview();
   }
 
   function resetCurrencyRateAutofill() {
