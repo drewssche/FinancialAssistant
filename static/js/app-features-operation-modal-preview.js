@@ -266,6 +266,7 @@
         return;
       }
       if (el.opEntryMode?.value === "currency") {
+        const tradeContext = window.App.getRuntimeModule?.("operation-modal")?.getCurrencyTradeContext?.() || null;
         if (el.createPreviewHeadOperation) {
           el.createPreviewHeadOperation.classList.add("hidden");
         }

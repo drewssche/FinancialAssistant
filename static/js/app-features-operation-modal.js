@@ -221,18 +221,20 @@
       el.createPreviewCurrencyAmountHead.textContent = context.amountColumnLabel;
     }
     if (el.currencyQuantity) {
-      if (context.sourceField !== "quote" && context.unitPrice > 0) {
+      if (context.sourceField === "quote" && context.unitPrice > 0) {
         el.currencyQuantity.value = context.effectiveQuantity > 0 ? core.formatAmount(context.effectiveQuantity) : "";
+      } else if (context.sourceField === "quote" && context.unitPrice <= 0) {
+        el.currencyQuantity.value = "";
       }
       el.currencyQuantity.placeholder = context.amountLabel;
       el.currencyQuantity.setAttribute("aria-label", context.amountLabel);
       el.currencyQuantity.title = context.amountLabel;
     }
     if (el.currencyQuoteTotal) {
-      if (context.sourceField !== "quantity" && context.unitPrice > 0) {
+      if (context.sourceField === "quantity" && context.unitPrice > 0) {
         el.currencyQuoteTotal.value = context.estimatedQuoteTotal > 0 ? core.formatAmount(context.estimatedQuoteTotal) : "";
-      } else if (context.sourceField === "quantity" && context.unitPrice > 0) {
-        el.currencyQuoteTotal.value = context.estimatedQuoteTotal > 0 ? core.formatAmount(context.estimatedQuoteTotal) : "";
+      } else if (context.sourceField === "quantity" && context.unitPrice <= 0) {
+        el.currencyQuoteTotal.value = "";
       }
       el.currencyQuoteTotal.placeholder = context.quoteAmountLabel;
       el.currencyQuoteTotal.setAttribute("aria-label", context.quoteAmountLabel);
@@ -703,7 +705,12 @@
     }).catch(() => {});
   }
 
-  async function openCreateModal() {
+  async function openCreateModal(options = {}) {
+    const initialEntryMode = options?.entryMode === "debt"
+      ? "debt"
+      : options?.entryMode === "currency"
+        ? "currency"
+        : "operation";
     await ensureCategoryCatalogReady("create");
     state.createFlowMode = "operation";
     state.editPlanId = null;
@@ -817,7 +824,7 @@
     syncOperationCurrencyFields("edit").catch(() => {});
     applyDebtCurrencyUi();
     updateDebtDueHint();
-    await setCreateEntryMode("operation");
+    await setCreateEntryMode(initialEntryMode);
     renderCreateCategoryPicker();
     renderDebtCounterpartyPicker();
     loadReceiptTemplateHints().catch(() => {});
@@ -841,7 +848,7 @@
     if (!payload?.id) {
       return;
     }
-    await openCreateModal();
+    await openCreateModal({ entryMode: "debt" });
     state.editDebtCreateId = Number(payload.id);
     if (el.createEntryModeSwitch) {
       el.createEntryModeSwitch.classList.add("hidden");
@@ -860,22 +867,22 @@
     core.syncDateFieldValue(el.debtDueDate, payload.due_date || "");
     el.debtNote.value = payload.note || "";
     setDebtDirection(payload.direction || "lend");
-    await setCreateEntryMode("debt");
     applyDebtCurrencyUi();
     updateDebtDueHint();
     renderDebtCounterpartyPicker();
     updateCreatePreview();
   }
   async function openCreateModalForCurrency() {
-    await openCreateModal();
-    await setCreateEntryMode("currency");
+    await openCreateModal({ entryMode: "currency" });
     currencyUnitPriceManual = false;
+    syncCurrencyTradeFieldUi();
+    updateCreatePreview();
   }
   async function openCreateModalForCurrencyEdit(payload) {
     if (!payload?.id) {
       return;
     }
-    await openCreateModal();
+    await openCreateModal({ entryMode: "currency" });
     state.editCurrencyTradeId = Number(payload.id);
     if (el.createEntryModeSwitch) {
       el.createEntryModeSwitch.classList.add("hidden");
@@ -884,7 +891,6 @@
     if (createTitle) {
       createTitle.textContent = "Редактировать валютную сделку";
     }
-    await setCreateEntryMode("currency");
     if (el.currencyAsset) {
       el.currencyAsset.value = String(payload.asset_currency || buildSelectableCurrencyList(false)[0] || "USD").toUpperCase();
     }
