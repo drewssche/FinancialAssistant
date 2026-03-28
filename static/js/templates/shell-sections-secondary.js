@@ -166,7 +166,7 @@
               </form>
             </div>
             <div class="table-wrap">
-              <table class="table table-hover mobile-card-table">
+              <table class="table table-hover mobile-card-table operations-table">
                 <thead>
                   <tr>
                     <th>Дата</th>

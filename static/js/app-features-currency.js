@@ -279,21 +279,23 @@
       return;
     }
     el.currencyTradesBody.innerHTML = trades.map((item) => {
+      const sideClass = item.side === "sell" ? "expense" : "income";
+      const sideLabel = item.side === "sell" ? "Продажа" : "Покупка";
       const menuItems = [
-        `<button class="table-kebab-item" type="button" data-edit-currency-trade-id="${Number(item.id)}">Редактировать</button>`,
-        `<button class="table-kebab-item danger" type="button" data-delete-currency-trade-id="${Number(item.id)}">Удалить</button>`,
+        `<button class="btn btn-secondary" type="button" data-edit-currency-trade-id="${Number(item.id)}">Редактировать</button>`,
+        `<button class="btn btn-danger" type="button" data-delete-currency-trade-id="${Number(item.id)}">Удалить</button>`,
       ].join("");
       return `
-      <tr>
-        <td>${core.formatDateRu(item.trade_date)}</td>
-        <td>${item.side === "sell" ? "Продажа" : "Покупка"}</td>
-        <td>${core.escapeHtml ? core.escapeHtml(core.formatCurrencyLabel(item.asset_currency)) : core.formatCurrencyLabel(item.asset_currency)}</td>
-        <td>${core.formatAmount(item.quantity || 0)}</td>
-        <td>${formatRateWithQuote(item.unit_price || 0, item.quote_currency || "BYN")}</td>
-        <td>${core.formatMoney(item.fee || 0, { withCurrency: true, currency: item.quote_currency || "BYN" })}</td>
-        <td>${core.escapeHtml ? core.escapeHtml(item.note || "") : (item.note || "")}</td>
-        <td>
-          ${core.renderInlineKebabMenu?.(`currency-trade-${Number(item.id)}`, menuItems, "Действия валютной сделки")}
+      <tr data-operation-row-id="${Number(item.id)}">
+        <td data-label="Дата">${core.formatDateRu(item.trade_date)}</td>
+        <td data-label="Действие"><span class="kind-pill kind-pill-${sideClass}">${sideLabel}</span></td>
+        <td data-label="Валюта">${core.escapeHtml ? core.escapeHtml(core.formatCurrencyLabel(item.asset_currency)) : core.formatCurrencyLabel(item.asset_currency)}</td>
+        <td data-label="Количество">${core.formatAmount(item.quantity || 0)}</td>
+        <td data-label="Курс">${formatRateWithQuote(item.unit_price || 0, item.quote_currency || "BYN")}</td>
+        <td data-label="Комиссия">${core.formatMoney(item.fee || 0, { withCurrency: true, currency: item.quote_currency || "BYN" })}</td>
+        <td class="mobile-note-cell" data-label="Комментарий">${core.escapeHtml ? core.escapeHtml(item.note || "") : (item.note || "")}</td>
+        <td class="mobile-actions-cell table-kebab-cell" data-label="Действия">
+          ${core.renderInlineKebabMenu?.(`currency-trade-${Number(item.id)}`, menuItems, "Действия валютной сделки", "operation-row-kebab")}
         </td>
       </tr>
     `;
