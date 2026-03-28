@@ -60,7 +60,7 @@
         }
       }
     }
-    for (const id of ["currencyAsset", "currencyQuote", "currencyTradeDateModal", "currencyQuantity", "currencyUnitPrice", "currencyFee", "currencyNote"]) {
+    for (const id of ["currencyAsset", "currencyQuote", "currencyTradeDateModal", "currencyQuantity", "currencyQuoteTotal", "currencyUnitPrice", "currencyNote"]) {
       const node = document.getElementById(id);
       if (node) {
         node.addEventListener("input", actions.updateCreatePreview);
@@ -78,6 +78,12 @@
         }
         if ((id === "currencyAsset" || id === "currencyQuote") && actions.syncCurrencyTradeFieldUi) {
           node.addEventListener("change", actions.syncCurrencyTradeFieldUi);
+        }
+        if (id === "currencyQuantity" && actions.markCurrencyQuantitySource) {
+          node.addEventListener("input", actions.markCurrencyQuantitySource);
+        }
+        if (id === "currencyQuoteTotal" && actions.markCurrencyQuoteSource) {
+          node.addEventListener("input", actions.markCurrencyQuoteSource);
         }
         if (id === "currencyUnitPrice" && actions.markCurrencyRateManual) {
           node.addEventListener("input", actions.markCurrencyRateManual);

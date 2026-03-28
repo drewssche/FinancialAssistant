@@ -201,11 +201,11 @@
               <div id="currencyQuantityField" class="money-input-wrap" data-money-input-wrap>
                 <input id="currencyQuantity" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="100.00" aria-label="Количество валютной сделки" />
               </div>
+              <div id="currencyQuoteTotalField" class="money-input-wrap" data-money-input-wrap>
+                <input id="currencyQuoteTotal" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="0.00" aria-label="Сумма в базовой валюте" />
+              </div>
               <div id="currencyUnitPriceField" class="money-input-wrap" data-money-input-wrap>
                 <input id="currencyUnitPrice" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="3.2700" aria-label="Курс валютной сделки" />
-              </div>
-              <div id="currencyFeeField" class="money-input-wrap" data-money-input-wrap>
-                <input id="currencyFee" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="0.00" aria-label="Комиссия валютной сделки" />
               </div>
             </div>
             <div id="currencyTradeHint" class="muted-small currency-trade-hint"></div>
@@ -240,7 +240,6 @@
                   <th>Валюта</th>
                   <th id="createPreviewCurrencyAmountHead">Количество</th>
                   <th>Курс</th>
-                  <th>Комиссия</th>
                   <th>Комментарий</th>
                 </tr>
               </thead>

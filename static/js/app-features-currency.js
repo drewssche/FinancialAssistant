@@ -275,7 +275,7 @@
       const emptyLabel = state.currencyFilter && state.currencyFilter !== "all"
         ? `Сделок по ${core.formatCurrencyLabel(state.currencyFilter)} пока нет`
         : "Сделок по отслеживаемым валютам пока нет";
-      el.currencyTradesBody.innerHTML = `<tr><td colspan="8" class="muted-small">${emptyLabel}</td></tr>`;
+      el.currencyTradesBody.innerHTML = `<tr><td colspan="7" class="muted-small">${emptyLabel}</td></tr>`;
       return;
     }
     el.currencyTradesBody.innerHTML = trades.map((item) => {
@@ -290,9 +290,8 @@
         <td data-label="Дата">${core.formatDateRu(item.trade_date)}</td>
         <td data-label="Действие"><span class="kind-pill kind-pill-${sideClass}">${sideLabel}</span></td>
         <td data-label="Валюта">${core.escapeHtml ? core.escapeHtml(core.formatCurrencyLabel(item.asset_currency)) : core.formatCurrencyLabel(item.asset_currency)}</td>
-        <td data-label="Количество">${core.formatAmount(item.quantity || 0)}</td>
+        <td data-label="Количество">${core.formatAmount(item.quantity || 0)} ${core.escapeHtml ? core.escapeHtml(item.asset_currency || "") : (item.asset_currency || "")}</td>
         <td data-label="Курс">${formatRateWithQuote(item.unit_price || 0, item.quote_currency || "BYN")}</td>
-        <td data-label="Комиссия">${core.formatMoney(item.fee || 0, { withCurrency: true, currency: item.quote_currency || "BYN" })}</td>
         <td class="mobile-note-cell" data-label="Комментарий">${core.escapeHtml ? core.escapeHtml(item.note || "") : (item.note || "")}</td>
         <td class="mobile-actions-cell table-kebab-cell" data-label="Действия">
           ${core.renderInlineKebabMenu?.(`currency-trade-${Number(item.id)}`, menuItems, "Действия валютной сделки", "operation-row-kebab")}

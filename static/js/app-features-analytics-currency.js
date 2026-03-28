@@ -220,7 +220,7 @@
       const emptyLabel = state.analyticsCurrencyFilter && state.analyticsCurrencyFilter !== "all"
         ? `Сделок по ${core.formatCurrencyLabel(state.analyticsCurrencyFilter)} пока нет`
         : "Сделок по отслеживаемым валютам пока нет";
-      el.analyticsCurrencyTradesBody.innerHTML = `<tr><td colspan="7" class="muted-small">${emptyLabel}</td></tr>`;
+      el.analyticsCurrencyTradesBody.innerHTML = `<tr><td colspan="6" class="muted-small">${emptyLabel}</td></tr>`;
       return;
     }
     el.analyticsCurrencyTradesBody.innerHTML = trades.map((item) => `
@@ -228,9 +228,8 @@
         <td>${core.formatDateRu(item.trade_date)}</td>
         <td>${item.side === "sell" ? "Продажа" : "Покупка"}</td>
         <td>${core.formatCurrencyLabel(item.asset_currency)}</td>
-        <td>${core.formatAmount(item.quantity || 0)}</td>
+        <td>${core.formatAmount(item.quantity || 0)} ${escapeHtml(item.asset_currency || "")}</td>
         <td>${formatRateWithQuote(item.unit_price || 0, item.quote_currency || "BYN")}</td>
-        <td>${core.formatMoney(item.fee || 0, { currency: item.quote_currency || "BYN" })}</td>
         <td>${core.escapeHtml ? core.escapeHtml(item.note || "") : (item.note || "")}</td>
       </tr>
     `).join("");

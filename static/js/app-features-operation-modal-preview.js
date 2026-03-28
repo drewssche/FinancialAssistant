@@ -118,8 +118,8 @@
       if (el.opEntryMode?.value === "currency") {
         const tradeContext = window.App.getRuntimeModule?.("operation-modal")?.getCurrencyTradeContext?.() || null;
         const quantity = core.resolveMoneyInput(el.currencyQuantity?.value || 0);
+        const quoteTotal = core.resolveMoneyInput(el.currencyQuoteTotal?.value || 0);
         const unitPrice = core.resolveRateInput(el.currencyUnitPrice?.value || 0, 0, 6);
-        const fee = core.resolveMoneyInput((typeof el.currencyFee?.value === "string" ? el.currencyFee.value.trim() : "") || "0");
         const side = tradeContext?.side || el.currencySide?.value || "buy";
         const assetCurrency = tradeContext?.assetCurrency || String(el.currencyAsset?.value || "USD").toUpperCase();
         const quoteCurrency = tradeContext?.quoteCurrency || String(el.currencyQuote?.value || "BYN").toUpperCase();
@@ -130,11 +130,10 @@
           asset_currency: assetCurrency,
           quote_currency: quoteCurrency,
           quantity: tradeContext?.effectiveQuantity || quantity.previewValue || 0,
-          quote_total: tradeContext?.estimatedQuoteTotal || 0,
+          quote_total: tradeContext?.estimatedQuoteTotal || quoteTotal.previewValue || 0,
           amount_label: tradeContext?.amountColumnLabel || "Количество",
           unit_price: unitPrice.previewValue || 0,
           unit_price_display: unitPrice.raw || tradeContext?.rateResolved?.raw || tradeContext?.rateResolved?.previewFormatted || unitPrice.previewFormatted || Number(unitPrice.previewValue || 0).toFixed(4),
-          fee: fee.previewValue || 0,
           note: el.currencyNote?.value || "",
         };
       }
@@ -287,13 +286,13 @@
           amountHead.textContent = item.amount_label || "Количество";
         }
         const amountValue = `${core.formatAmount(item.quantity || 0)} ${item.asset_currency || ""}${item.quote_total ? `<div class="muted-small">≈ ${core.formatMoney(item.quote_total || 0, { currency: item.quote_currency || "BYN" })}</div>` : ""}`;
+        const amountFocusTarget = (tradeContext?.sourceField || "quantity") === "quote" ? "currencyQuoteTotal" : "currencyQuantity";
         row.classList.add("preview-row", `kind-row-${sideClass}`);
         row.appendChild(createPreviewCellButton("Дата", core.formatDateRu(item.trade_date), "currencyTradeDateModal"));
         row.appendChild(createPreviewCellButton("Действие", `<span class="kind-pill kind-pill-${sideClass}">${sideLabel}</span>`, "createCurrencySideSwitch"));
         row.appendChild(createPreviewCellButton("Валюта", directionLabel, "currencyAsset"));
-        row.appendChild(createPreviewCellButton(item.amount_label || "Количество", amountValue, "currencyQuantity"));
+        row.appendChild(createPreviewCellButton(item.amount_label || "Количество", amountValue, amountFocusTarget));
         row.appendChild(createPreviewCellButton("Курс", item.unit_price_display || Number(item.unit_price || 0).toFixed(4), "currencyUnitPrice"));
-        row.appendChild(createPreviewCellButton("Комиссия", core.formatMoney(item.fee || 0, { currency: item.quote_currency || "BYN" }), "currencyFee"));
         row.appendChild(createPreviewCellButton("Комментарий", core.highlightText(item.note || "", ""), "currencyNote", "preview-cell-note"));
         el.createPreviewBody.appendChild(row);
         return;

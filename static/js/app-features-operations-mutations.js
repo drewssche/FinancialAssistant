@@ -197,18 +197,19 @@
         const tradeContext = typeof operationModal.getCurrencyTradeContext === "function"
           ? operationModal.getCurrencyTradeContext()
           : null;
-        const feeRawValue = typeof el.currencyFee?.value === "string" ? el.currencyFee.value.trim() : "";
         const quantityInput = tradeContext?.quantityResolved || core.resolveMoneyInput(el.currencyQuantity?.value || 0);
+        const quoteInput = tradeContext?.quoteResolved || core.resolveMoneyInput(el.currencyQuoteTotal?.value || 0);
         const unitPrice = tradeContext?.rateResolved || core.resolveRateInput(el.currencyUnitPrice?.value || 0, 0, 6);
-        const fee = tradeContext?.feeResolved || core.resolveMoneyInput(feeRawValue || "0");
-        if (!quantityInput.valid || quantityInput.value <= 0) {
+        const sourceField = tradeContext?.sourceField === "quote" ? "quote" : "quantity";
+        const primaryInput = sourceField === "quote" ? quoteInput : quantityInput;
+        if (!primaryInput.valid || primaryInput.value <= 0) {
+          if (sourceField === "quote") {
+            throw new Error((tradeContext?.side || "buy") === "buy" ? "Проверь сумму оплаты" : "Проверь сумму получения");
+          }
           throw new Error((tradeContext?.side || "buy") === "buy" ? "Проверь количество покупаемой валюты" : "Проверь количество продаваемой валюты");
         }
         if (!unitPrice.valid || unitPrice.value <= 0) {
           throw new Error("Проверь курс валюты");
-        }
-        if (!fee.valid || fee.value < 0) {
-          throw new Error("Проверь комиссию");
         }
         const effectiveQuantity = Number(tradeContext?.effectiveQuantity || 0);
         if (!(effectiveQuantity > 0)) {
@@ -224,7 +225,7 @@
             quote_currency: String(el.currencyQuote?.value || "BYN").toUpperCase(),
             quantity: core.formatAmount(effectiveQuantity),
             unit_price: unitPrice.formatted,
-            fee: fee.formatted,
+            fee: "0.00",
             trade_date: tradeDate,
             note: el.currencyNote?.value?.trim() || null,
           }),
@@ -240,8 +241,8 @@
         if (el.currencyUnitPrice) {
           el.currencyUnitPrice.value = "";
         }
-        if (el.currencyFee) {
-          el.currencyFee.value = "";
+        if (el.currencyQuoteTotal) {
+          el.currencyQuoteTotal.value = "";
         }
         if (el.currencyNote) {
           el.currencyNote.value = "";
