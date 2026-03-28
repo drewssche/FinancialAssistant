@@ -583,17 +583,22 @@
 
 .debt-desktop-actions {
   display: grid;
-  grid-template-columns: minmax(0, auto) 2.25rem;
+  grid-template-columns: minmax(0, auto);
+  grid-template-areas:
+    "kebab"
+    "repay";
   justify-content: end;
   align-items: start;
   gap: var(--space-2);
 }
 
 .debt-desktop-actions .btn-repay {
+  grid-area: repay;
   justify-self: end;
 }
 
 .debt-desktop-actions .debt-row-kebab {
+  grid-area: kebab;
   justify-self: end;
   align-self: start;
 }

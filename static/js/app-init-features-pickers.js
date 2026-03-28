@@ -24,18 +24,21 @@
           node.addEventListener("change", actions.renderReceiptSummary);
         }
         if (id === "opCurrency" && actions.syncOperationCurrencyFields) {
-          node.addEventListener("change", () => {
+          node.addEventListener("change", async () => {
             actions.resetCreateOperationFxRateAutofill?.();
-            actions.syncOperationCurrencyFields("create");
+            await actions.syncOperationCurrencyFields("create");
             actions.renderReceiptItems?.("create");
             actions.renderReceiptSummary?.("create");
-            actions.syncSuggestedOperationFxRate?.("create").catch(() => {});
+            actions.updateCreatePreview?.();
           });
         }
         if (id === "opDate" && actions.syncSuggestedOperationFxRate) {
-          node.addEventListener("change", () => {
+          node.addEventListener("change", async () => {
             actions.resetCreateOperationFxRateAutofill?.();
-            actions.syncSuggestedOperationFxRate("create").catch(() => {});
+            await actions.syncSuggestedOperationFxRate("create").catch(() => {});
+            actions.renderReceiptItems?.("create");
+            actions.renderReceiptSummary?.("create");
+            actions.updateCreatePreview?.();
           });
         }
         if (id === "opFxRate" && actions.markCreateOperationFxRateManual) {
@@ -104,18 +107,21 @@
           node.addEventListener("change", () => actions.renderReceiptSummary("edit"));
         }
         if (id === "editCurrency" && actions.syncOperationCurrencyFields) {
-          node.addEventListener("change", () => {
+          node.addEventListener("change", async () => {
             actions.resetEditOperationFxRateAutofill?.();
-            actions.syncOperationCurrencyFields("edit");
+            await actions.syncOperationCurrencyFields("edit");
             actions.renderReceiptItems?.("edit");
             actions.renderReceiptSummary?.("edit");
-            actions.syncSuggestedOperationFxRate?.("edit").catch(() => {});
+            actions.updateEditPreview?.();
           });
         }
         if (id === "editDate" && actions.syncSuggestedOperationFxRate) {
-          node.addEventListener("change", () => {
+          node.addEventListener("change", async () => {
             actions.resetEditOperationFxRateAutofill?.();
-            actions.syncSuggestedOperationFxRate("edit").catch(() => {});
+            await actions.syncSuggestedOperationFxRate("edit").catch(() => {});
+            actions.renderReceiptItems?.("edit");
+            actions.renderReceiptSummary?.("edit");
+            actions.updateEditPreview?.();
           });
         }
         if (id === "editFxRate" && actions.markEditOperationFxRateManual) {

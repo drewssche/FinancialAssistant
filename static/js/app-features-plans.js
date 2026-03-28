@@ -733,7 +733,7 @@
     }, "create"));
   }
 
-  function fillPlanModal(plan = null) {
+  async function fillPlanModal(plan = null) {
     resetPlanModalState();
     const createTitle = document.getElementById("createTitle");
     const submitBtn = document.getElementById("submitCreateOperationBtn");
@@ -753,7 +753,7 @@
     operationModal.selectCreateCategory?.(plan?.category_id ? Number(plan.category_id) : null);
     hydrateCreateReceiptItems(plan?.receipt_items || []);
     operationModal.setCreateOperationMode(state.createReceiptItems.length ? "receipt" : "common");
-    operationModal.syncOperationCurrencyFields?.("create");
+    await operationModal.syncOperationCurrencyFields?.("create");
     operationModal.renderReceiptItems?.("create");
     operationModal.renderReceiptSummary?.("create");
     state.editPlanId = plan?.id ? Number(plan.id) : null;
@@ -927,7 +927,7 @@
 
   async function openCreatePlan() {
     await operationModal.openCreateModal();
-    fillPlanModal(null);
+    await fillPlanModal(null);
   }
 
   async function submitPlanForm(event) {
@@ -956,7 +956,7 @@
     }
     if (action === "edit") {
       await operationModal.openCreateModal();
-      fillPlanModal(item);
+      await fillPlanModal(item);
       return;
     }
     if (action === "confirm") {

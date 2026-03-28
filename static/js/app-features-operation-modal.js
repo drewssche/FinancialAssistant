@@ -349,7 +349,7 @@
     }
   }
 
-  function syncOperationCurrencyFields(mode = "create") {
+  async function syncOperationCurrencyFields(mode = "create") {
     const isEdit = mode === "edit";
     const currencySelect = isEdit ? el.editCurrency : el.opCurrency;
     const fxRateField = isEdit ? el.editFxRateField : el.opFxRateField;
@@ -371,12 +371,12 @@
         fxRateInput.value = "1";
       } else if (!String(fxRateInput.value || "").trim()) {
         setOperationFxRateManual(mode, false);
-        syncSuggestedOperationFxRate(mode).catch(() => {});
+        await syncSuggestedOperationFxRate(mode).catch(() => {});
       }
     }
     if (createPlanFlow && needsFxRate) {
       setOperationFxRateManual(mode, false);
-      syncSuggestedOperationFxRate(mode, { force: true }).catch(() => {});
+      await syncSuggestedOperationFxRate(mode, { force: true }).catch(() => {});
     }
   }
   function applyDebtCurrencyUi() {
@@ -515,7 +515,7 @@
     }
     if (!isDebt && !isCurrency) {
       updateCreateCategoryFieldUi();
-      syncOperationCurrencyFields("create");
+      syncOperationCurrencyFields("create").catch(() => {});
     }
     updateCreatePreview();
   }
@@ -677,8 +677,8 @@
     setCurrencySide("buy");
     currencyUnitPriceManual = false;
     syncCurrencyTradeFieldUi();
-    syncOperationCurrencyFields("create");
-    syncOperationCurrencyFields("edit");
+    syncOperationCurrencyFields("create").catch(() => {});
+    syncOperationCurrencyFields("edit").catch(() => {});
     applyDebtCurrencyUi();
     updateDebtDueHint();
     setCreateEntryMode("operation");

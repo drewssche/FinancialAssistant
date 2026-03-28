@@ -188,9 +188,14 @@
               ${isStale ? "последний" : (hasDelta ? formatSignedRate(item.change_value) : "новый")}
             </span>
           </div>
-          <div class="dashboard-currency-rate-value">${Number(item.rate || 0).toFixed(4)}</div>
+          <div class="dashboard-currency-rate-value-row">
+            <div class="dashboard-currency-rate-value">${Number(item.rate || 0).toFixed(4)}</div>
+            <div class="dashboard-currency-rate-delta dashboard-currency-rate-delta-${deltaTone}">
+              ${hasDelta ? `${formatSignedRate(item.change_value)} · ${formatSignedPercent(item.change_pct || 0)}` : "—"}
+            </div>
+          </div>
           <div class="dashboard-currency-rate-meta muted-small">${isStale ? "Последний доступный курс к BYN" : "Официальный курс к BYN"} · ${rateDate}</div>
-          <div class="dashboard-currency-rate-delta dashboard-currency-rate-delta-${deltaTone}">${deltaLabel}</div>
+          <div class="dashboard-currency-rate-delta-caption dashboard-currency-rate-delta-${deltaTone}">${deltaLabel}</div>
           <div class="dashboard-currency-rate-source muted-small">Источник: ${core.escapeHtml ? core.escapeHtml(source) : source}</div>
           <div class="dashboard-currency-rate-actions">
             <button class="btn btn-secondary btn-xs" type="button" data-dashboard-refresh-currency="${item.currency}">Обновить</button>

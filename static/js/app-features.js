@@ -54,6 +54,18 @@
   const closeEditModal = operationModal.closeEditModal;
   const openPeriodCustomModal = operationModal.openPeriodCustomModal;
   const closePeriodCustomModal = operationModal.closePeriodCustomModal;
+  const syncOperationCurrencyFields = operationModal.syncOperationCurrencyFields;
+  const syncSuggestedOperationFxRate = operationModal.syncSuggestedOperationFxRate;
+  const markCreateOperationFxRateManual = operationModal.markCreateOperationFxRateManual;
+  const markEditOperationFxRateManual = operationModal.markEditOperationFxRateManual;
+  const resetCreateOperationFxRateAutofill = operationModal.resetCreateOperationFxRateAutofill;
+  const resetEditOperationFxRateAutofill = operationModal.resetEditOperationFxRateAutofill;
+  const renderReceiptItems = operationModal.renderReceiptItems;
+  const syncCurrencyTradeFieldUi = operationModal.syncCurrencyTradeFieldUi;
+  const syncSuggestedCurrencyRate = operationModal.syncSuggestedCurrencyRate;
+  const markCurrencyRateManual = operationModal.markCurrencyRateManual;
+  const resetCurrencyRateAutofill = operationModal.resetCurrencyRateAutofill;
+  const applyDebtCurrencyUi = operationModal.applyDebtCurrencyUi;
 
   const savePreferences = sessionFeatures.savePreferences;
   const savePreferencesDebounced = sessionFeatures.savePreferencesDebounced;
@@ -231,6 +243,18 @@
     closeOperationReceiptModal,
     openPeriodCustomModal,
     closePeriodCustomModal,
+    syncOperationCurrencyFields,
+    syncSuggestedOperationFxRate,
+    markCreateOperationFxRateManual,
+    markEditOperationFxRateManual,
+    resetCreateOperationFxRateAutofill,
+    resetEditOperationFxRateAutofill,
+    renderReceiptItems,
+    syncCurrencyTradeFieldUi,
+    syncSuggestedCurrencyRate,
+    markCurrencyRateManual,
+    resetCurrencyRateAutofill,
+    applyDebtCurrencyUi,
     savePreferences,
     savePreferencesDebounced,
     saveSettings,
