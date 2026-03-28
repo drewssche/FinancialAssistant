@@ -56,7 +56,7 @@
             </select>
           </div>
           <div id="opFxRateField" class="fx-rate-field hidden">
-            <div class="money-input-wrap" data-money-input-wrap>
+            <div class="money-input-wrap money-input-no-suffix" data-money-input-wrap>
               <input id="opFxRate" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс в базовую валюту" title="Курс конверсии в основную валюту" />
             </div>
             <span id="opFxRateHint" class="muted-small fx-rate-hint hidden"></span>
@@ -443,7 +443,7 @@
             </select>
           </div>
           <div id="editFxRateField" class="fx-rate-field hidden">
-            <div class="money-input-wrap" data-money-input-wrap>
+            <div class="money-input-wrap money-input-no-suffix" data-money-input-wrap>
               <input id="editFxRate" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс в базовую валюту" title="Курс конверсии в основную валюту" />
             </div>
             <span id="editFxRateHint" class="muted-small fx-rate-hint hidden"></span>

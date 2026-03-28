@@ -37,6 +37,26 @@ class CurrencyService:
     def _rate(value) -> Decimal:
         return Decimal(value or 0).quantize(RATE_Q)
 
+    @staticmethod
+    def _select_display_rate_rows(
+        latest_rows: tuple | list,
+        *,
+        today: date,
+    ) -> tuple | None:
+        if not latest_rows:
+            return None
+        current_row = latest_rows[0] if len(latest_rows) > 0 else None
+        previous_row = latest_rows[1] if len(latest_rows) > 1 else None
+        older_row = latest_rows[2] if len(latest_rows) > 2 else None
+        if (
+            current_row
+            and previous_row
+            and current_row.rate_date == today
+            and Decimal(current_row.rate) == Decimal(previous_row.rate)
+        ):
+            return previous_row, older_row
+        return current_row, previous_row
+
     def _normalize_currency(self, value: str) -> str:
         code = str(value or "").strip().upper()
         if not _CURRENCY_RE.match(code):
@@ -161,8 +181,12 @@ class CurrencyService:
 
     def compute_positions(self, *, user_id: int) -> dict:
         prefs = self.get_currency_preferences(user_id)
-        latest_rate_pairs = self.repo.get_latest_rate_pair_map(user_id=user_id)
-        latest_rates = {currency: pair[0] for currency, pair in latest_rate_pairs.items()}
+        latest_rate_triplets = self.repo.get_latest_rate_triplet_map(user_id=user_id)
+        latest_rates = {}
+        for currency, rows in latest_rate_triplets.items():
+            selected = self._select_display_rate_rows(rows, today=date.today())
+            if selected and selected[0]:
+                latest_rates[currency] = selected[0]
         trades = self.repo.list_all_trades(user_id=user_id)
         positions_by_currency: dict[str, dict] = {}
         realized_by_currency: dict[str, Decimal] = {}
@@ -318,7 +342,9 @@ class CurrencyService:
                         / Decimal(trade_stats_by_currency.get(current_row.currency, {}).get("sell_quantity", 0))
                     ) if Decimal(trade_stats_by_currency.get(current_row.currency, {}).get("sell_quantity", 0)) > 0 else self._rate(0),
                 }
-                for current_row, previous_row in latest_rate_pairs.values()
+                for rows in latest_rate_triplets.values()
+                for current_row, previous_row in [self._select_display_rate_rows(rows, today=date.today())]
+                if current_row
             ],
         }
 

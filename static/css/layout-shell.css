@@ -315,6 +315,12 @@
   width: 100%;
 }
 
+.create-modal-grid #opFxRateField,
+.edit-modal-grid #editFxRateField {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
 .create-note-field,
 #createDebtFields,
 #planRecurrenceBlock {

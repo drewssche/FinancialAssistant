@@ -37,23 +37,13 @@
   }
 
   function debtClosureMeta(debt) {
-    return String(debt.closure_reason || "") === "forgiven"
-      ? '<span class="muted-small">Прощен</span>'
-      : "";
-  }
-
-  function debtSettlementChips(debt) {
-    const chips = [];
-    const repaid = Number(debt.repaid_total || 0);
     const forgiven = Number(debt.forgiven_total || 0);
-    const currency = debt.currency || "BYN";
-    if (repaid > 0) {
-      chips.push(`<span class="meta-chip debt-meta-chip debt-meta-chip-repaid">Погашено ${formatDebtMoney(repaid, currency)}</span>`);
+    if (forgiven <= 0) {
+      return String(debt.closure_reason || "") === "forgiven"
+        ? '<span class="muted-small">Прощен</span>'
+        : "";
     }
-    if (forgiven > 0) {
-      chips.push(`<span class="meta-chip debt-meta-chip debt-meta-chip-forgiven">Прощено ${formatDebtMoney(forgiven, currency)}</span>`);
-    }
-    return chips.length ? `<div class="debt-meta-chips">${chips.join("")}</div>` : "";
+    return `<span class="muted-small">Прощено: <strong>${formatDebtMoney(forgiven, debt.currency || "BYN")}</strong></span>`;
   }
 
   function debtRepaidClass(debt) {
@@ -261,7 +251,6 @@
                     <span class="muted-small">Платежей: ${repayments.length}</span>
                     ${debtClosureMeta(debt)}
                   </div>
-                  ${debtSettlementChips(debt)}
                   <div class="debt-repay-progress">
                     <div class="debt-repay-progress-track">
                       <span class="debt-repay-progress-bar debt-repay-progress-bar-${repayProgress.tone}" style="width:${repayProgress.percent}%"></span>
@@ -313,7 +302,6 @@
             </td>
             <td>
               <div class="debt-desktop-actions">
-                ${debtSettlementChips(debt)}
                 <button class="btn btn-repay btn-xs" type="button" data-repay-debt-id="${debt.id}" ${Number(debt.outstanding_total) <= 0 ? "disabled" : ""}>Погашение</button>
                 ${core.renderInlineKebabMenu?.(
                   `debt-${debt.id}`,

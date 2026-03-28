@@ -15,6 +15,27 @@
     } = deps;
 
     const pickerUtils = window.App.getRuntimeModule?.("picker-utils");
+    let counterpartyLoading = false;
+
+    async function ensureDebtCounterpartyCacheLoaded() {
+      if (counterpartyLoading) {
+        return;
+      }
+      if (Array.isArray(state.debtCardsCache) && state.debtCardsCache.length) {
+        return;
+      }
+      counterpartyLoading = true;
+      try {
+        const cards = await core.requestJson("/api/v1/debts/cards?include_closed=true", {
+          headers: core.authHeaders(),
+        }).catch(() => []);
+        if (Array.isArray(cards) && cards.length) {
+          state.debtCardsCache = cards;
+        }
+      } finally {
+        counterpartyLoading = false;
+      }
+    }
 
     function normalizeCounterpartyName(value) {
       return String(value || "").trim().replace(/\s+/g, " ");
@@ -142,6 +163,10 @@
       if (!el.debtCounterpartyAll) {
         return;
       }
+      if (counterpartyLoading) {
+        el.debtCounterpartyAll.innerHTML = "<span class='muted-small'>Загрузка контрагентов…</span>";
+        return;
+      }
       const selectedName = normalizeCounterpartyName(el.debtCounterparty?.value || "");
       const items = getCounterpartyEntries(selectedName);
       el.debtCounterpartyAll.innerHTML = "";
@@ -183,12 +208,14 @@
       }
     }
 
-    function handleDebtCounterpartySearchFocus() {
+    async function handleDebtCounterpartySearchFocus() {
+      await ensureDebtCounterpartyCacheLoaded();
       openDebtCounterpartyPopover();
       renderDebtCounterpartyPicker();
     }
 
-    function handleDebtCounterpartySearchInput() {
+    async function handleDebtCounterpartySearchInput() {
+      await ensureDebtCounterpartyCacheLoaded();
       openDebtCounterpartyPopover();
       renderDebtCounterpartyPicker();
       updateCreatePreview();

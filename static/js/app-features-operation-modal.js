@@ -319,6 +319,23 @@
     }
     const rateRow = Array.isArray(history) && history.length ? history[history.length - 1] : null;
     if (!rateRow?.rate) {
+      const latestCurrentRate = await getLatestCurrentCurrencyRate(context.currency);
+      if (latestCurrentRate?.rate) {
+        fxRateInput.value = Number(latestCurrentRate.rate || 0).toFixed(4);
+        const rateDate = latestCurrentRate.rate_date ? core.formatDateRu(latestCurrentRate.rate_date) : "";
+        setOperationFxRateHint(
+          mode,
+          `Последний доступный курс подставлен автоматически${rateDate ? ` · ${rateDate}` : ""}`,
+          "auto",
+        );
+        renderReceiptSummary(mode);
+        if (context.isEdit) {
+          updateEditPreview();
+        } else {
+          updateCreatePreview();
+        }
+        return;
+      }
       setOperationFxRateHint(mode, `Курс на ${core.formatDateRu(operationDate)} не найден, укажи вручную`, "warning");
       return;
     }
@@ -447,7 +464,7 @@
       }
     }
     if (opFxRateField) {
-      opFxRateField.classList.toggle("hidden", isDebt || isCurrency || (el.opCurrency?.value || (core.getCurrencyConfig?.().code || "BYN")) === (core.getCurrencyConfig?.().code || "BYN"));
+      opFxRateField.classList.toggle("hidden", isDebt || isCurrency);
     }
     if (opDateField) {
       opDateField.classList.toggle("hidden", isDebt || isCurrency);
@@ -498,6 +515,7 @@
     }
     if (!isDebt && !isCurrency) {
       updateCreateCategoryFieldUi();
+      syncOperationCurrencyFields("create");
     }
     updateCreatePreview();
   }

@@ -75,6 +75,13 @@ Implemented:
   - analytics currency history backfill
   - combined multi-line chart for `Все` in `Аналитика -> Валюта`
   - dashboard currency balances row and rate widgets with last-known-rate fallback
+  - dashboard currency widgets keep comparing against the previous real snapshot even if the new official day has not been published yet
+  - receipt and preview flows now recalculate `≈ BYN` by the latest available rate instead of falling back to `1:1`
+  - debt create/edit flow now keeps counterparty suggestions available even before visiting the debts section
+  - debt create amount + currency layout now follows the same row pattern as the operation modal
+  - debt card info is de-duplicated:
+    - redundant `Погашено` chip removed from the card action area
+    - forgiveness amount stays in the card meta/history context instead of crowding the action column
 - targeted e2e coverage for:
   - currency analytics `Все`
   - debt forgiveness flow
@@ -82,14 +89,6 @@ Implemented:
 Remaining polish only:
 - richer dashboard/widget polish such as sparkline or extended daily change metadata
 - broader e2e coverage for all multi-currency operation / plan / debt permutations if needed
-- post-rollout fixes:
-  - in plan and operation receipt flows, switching currency must recalculate live `≈ BYN` by the latest available current rate instead of falling back to `1:1`
-  - when currency changes in create/edit flows, all contextual money labels inside the same flow should switch to the selected currency consistently
-  - debt edit modal layout needs cleanup after the multi-currency rollout
-  - debt cards should move status/meta chips out of the already crowded info column and keep the kebab action in the top-right corner by the established card pattern
-  - repayment modal wording should be direction-aware:
-    - for borrowed debts (`Я взял`), forgiveness CTA should read as `Мне простили`
-    - for lent debts (`Я дал`), keep the existing forgiveness wording
 - optional UX extension:
   - extend the same currency-scope control pattern to similar list views where it stays meaningful beyond operations
   - this should help separate domestic/base-currency cashflow from foreign-currency activity quickly

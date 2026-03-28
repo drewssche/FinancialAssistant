@@ -41,7 +41,11 @@ class CurrencyRepository:
             latest.setdefault(row.currency, row)
         return latest
 
-    def get_latest_rate_pair_map(self, *, user_id: int) -> dict[str, tuple[FxRateSnapshot, FxRateSnapshot | None]]:
+    def get_latest_rate_triplet_map(
+        self,
+        *,
+        user_id: int,
+    ) -> dict[str, tuple[FxRateSnapshot, FxRateSnapshot | None, FxRateSnapshot | None]]:
         rows = self.db.execute(
             select(FxRateSnapshot)
             .where(FxRateSnapshot.user_id == user_id)
@@ -50,10 +54,14 @@ class CurrencyRepository:
         pairs: dict[str, list[FxRateSnapshot]] = {}
         for row in rows:
             items = pairs.setdefault(row.currency, [])
-            if len(items) < 2:
+            if len(items) < 3:
                 items.append(row)
         return {
-            currency: (items[0], items[1] if len(items) > 1 else None)
+            currency: (
+                items[0],
+                items[1] if len(items) > 1 else None,
+                items[2] if len(items) > 2 else None,
+            )
             for currency, items in pairs.items()
             if items
         }

@@ -66,11 +66,11 @@ class CurrencyRateRefreshService:
             return []
         timezone_name = self._resolve_timezone_name(prefs or {})
         target_date = datetime.now(ZoneInfo(timezone_name)).date()
-        latest_rate_pairs = self.repo.get_latest_rate_pair_map(user_id=user_id)
+        latest_rate_triplets = self.repo.get_latest_rate_triplet_map(user_id=user_id)
         missing = [
             currency
             for currency in tracked
-            if force or not latest_rate_pairs.get(currency) or latest_rate_pairs[currency][0].rate_date < target_date
+            if force or not latest_rate_triplets.get(currency) or latest_rate_triplets[currency][0].rate_date < target_date
         ]
         if not missing:
             return []
@@ -95,8 +95,8 @@ class CurrencyRateRefreshService:
                 rate = rate_payload
                 effective_date = target_date
                 effective_date_inferred = True
-            latest_pair = latest_rate_pairs.get(currency)
-            latest_row = latest_pair[0] if latest_pair else None
+            latest_rows = latest_rate_triplets.get(currency)
+            latest_row = latest_rows[0] if latest_rows else None
             if effective_date > target_date:
                 effective_date = target_date
             if (
