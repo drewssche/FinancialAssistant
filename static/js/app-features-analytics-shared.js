@@ -21,7 +21,24 @@
     if (balance < 0) {
       return { label: "Дефицит", tone: "negative", amount: Math.abs(balance) };
     }
-    return { label: "Нулевой баланс", tone: "neutral", amount: 0 };
+    return { label: "Ноль", tone: "neutral", amount: 0 };
+  }
+
+  function describeFxCashflow(valueRaw) {
+    const value = Number(valueRaw || 0);
+    if (value > 0) {
+      return {
+        text: `С учетом валютных сделок: +${core.formatMoney(value)}`,
+        tone: "positive",
+      };
+    }
+    if (value < 0) {
+      return {
+        text: `С учетом валютных сделок: ${core.formatMoney(value)}`,
+        tone: "negative",
+      };
+    }
+    return null;
   }
 
   function renderInsightList(container, items, renderItem, emptyText) {
@@ -43,6 +60,7 @@
     }
 
     if (primaryContainer) {
+      const result = describeResult(data.balance);
       const primary = [
         {
           label: "Доход",
@@ -59,11 +77,11 @@
           tone: "expense",
         },
         {
-          label: "Баланс",
+          label: result.label,
           value: core.formatMoney(data.balance),
           delta: formatPct(data.balance_change_pct),
           previous: core.formatMoney(data.prev_balance || 0),
-          tone: "balance",
+          tone: result.tone,
         },
         {
           label: "Операций за период",
@@ -86,9 +104,7 @@
     }
 
     if (secondaryContainer) {
-      const result = describeResult(data.balance);
       const chips = [
-        { text: `${result.label}: ${core.formatMoney(result.amount)}`, tone: result.tone },
         { text: `Средний расход/день: ${core.formatMoney(data.avg_daily_expense || 0)}`, tone: "neutral" },
         {
           text: data.max_expense_day_date
@@ -97,6 +113,10 @@
           tone: "neutral",
         },
       ];
+      const fxCashflowChip = describeFxCashflow(data.fx_cashflow_total);
+      if (fxCashflowChip) {
+        chips.push(fxCashflowChip);
+      }
       secondaryContainer.innerHTML = chips
         .map((item) => `<span class="analytics-kpi-chip analytics-kpi-chip-${item.tone}">${escapeHtml(item.text)}</span>`)
         .join("");
@@ -186,6 +206,7 @@
   window.App.analyticsShared = {
     escapeHtml,
     describeResult,
+    describeFxCashflow,
     renderInsightList,
     renderPeriodKpiBlocks,
     formatPct,

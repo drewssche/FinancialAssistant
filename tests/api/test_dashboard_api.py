@@ -750,6 +750,69 @@ def test_dashboard_analytics_highlights_returns_kpis_and_top_blocks(client: Test
     assert any(item["name"] == "Milk" for item in payload["price_increases"])
 
 
+def test_dashboard_analytics_highlights_includes_fx_cashflow_for_period(client: TestClient):
+    income = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "amount": "300.00",
+            "operation_date": "2026-03-11",
+            "note": "salary",
+        },
+    )
+    assert income.status_code == 201
+    expense = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "120.00",
+            "operation_date": "2026-03-12",
+            "note": "groceries",
+        },
+    )
+    assert expense.status_code == 201
+
+    buy_trade = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "50",
+            "unit_price": "3.10",
+            "fee": "0",
+            "trade_date": "2026-03-14",
+            "note": "buy usd",
+        },
+    )
+    assert buy_trade.status_code == 201
+    sell_trade = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "sell",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "10",
+            "unit_price": "3.25",
+            "fee": "0",
+            "trade_date": "2026-03-20",
+            "note": "sell usd",
+        },
+    )
+    assert sell_trade.status_code == 201
+
+    response = client.get("/api/v1/dashboard/analytics/highlights", params={"month": "2026-03"})
+    assert response.status_code == 200
+    payload = response.json()
+
+    assert payload["income_total"] == "300.00"
+    assert payload["expense_total"] == "120.00"
+    assert payload["balance"] == "180.00"
+    assert payload["fx_cashflow_total"] == "-122.50"
+    assert payload["prev_fx_cashflow_total"] in ("0", "0.00")
+    assert payload["fx_cashflow_change_pct"] is None
+
+
 def test_dashboard_analytics_highlights_accepts_day_period(client: TestClient):
     created = client.post(
         "/api/v1/operations",

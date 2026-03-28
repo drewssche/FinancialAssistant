@@ -111,13 +111,33 @@
                 <strong id="currencySummaryBookValue">0</strong>
               </article>
               <article id="currencySummaryResultCard" class="analytics-kpi-card analytics-kpi-neutral">
-                <div id="currencySummaryResultLabel" class="muted-small">Результат</div>
+                <div id="currencySummaryResultLabel" class="muted-small">Нереализованный результат</div>
                 <strong id="currencySummaryResultValue">0</strong>
+              </article>
+              <article id="currencySummaryRealizedCard" class="analytics-kpi-card analytics-kpi-neutral">
+                <div id="currencySummaryRealizedLabel" class="muted-small">Реализованный результат</div>
+                <strong id="currencySummaryRealizedValue">0</strong>
+              </article>
+              <article id="currencySummaryCombinedCard" class="analytics-kpi-card analytics-kpi-neutral">
+                <div id="currencySummaryCombinedLabel" class="muted-small">Итоговый результат</div>
+                <strong id="currencySummaryCombinedValue">0</strong>
               </article>
               <article class="analytics-kpi-card analytics-kpi-neutral">
                 <div class="muted-small">Открытых позиций</div>
                 <strong id="currencySummaryActiveCount">0</strong>
               </article>
+            </div>
+            <div class="toolbar analytics-currency-chart-toolbar">
+              <div id="currencyPerformancePeriodTabs" class="segmented" role="tablist" aria-label="Период графика валютного результата">
+                <button class="segmented-btn" data-currency-performance-period="30d" type="button">30 дней</button>
+                <button class="segmented-btn active" data-currency-performance-period="90d" type="button">3 месяца</button>
+                <button class="segmented-btn" data-currency-performance-period="365d" type="button">12 месяцев</button>
+                <button class="segmented-btn" data-currency-performance-period="all_time" type="button">Все время</button>
+              </div>
+              <div id="currencyPerformanceRangeLabel" class="subtitle"></div>
+            </div>
+            <div class="analytics-trend-chart-wrap">
+              <svg id="currencyPerformanceChart" class="analytics-trend-chart" viewBox="0 0 980 280" preserveAspectRatio="none" aria-label="История валютного результата"></svg>
             </div>
             <div id="currencyBalancesRow" class="currency-balance-grid"></div>
             <div id="currencyPositionsList" class="plans-list"></div>

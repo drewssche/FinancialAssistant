@@ -7,6 +7,7 @@ from app.api.deps import get_current_user_id
 from app.db.session import get_db
 from app.schemas.currency import (
     CurrencyOverviewOut,
+    CurrencyPerformanceHistoryOut,
     CurrencyRateHistoryPointOut,
     CurrencyRateOut,
     CurrencyRateUpsert,
@@ -30,6 +31,26 @@ def get_currency_overview(
     service = CurrencyService(db)
     try:
         return service.get_overview(user_id=user_id, currency=currency, trades_limit=trades_limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/performance/history", response_model=CurrencyPerformanceHistoryOut)
+def get_currency_performance_history(
+    currency: str | None = Query(default=None, min_length=3, max_length=3),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = CurrencyService(db)
+    try:
+        return service.get_performance_history(
+            user_id=user_id,
+            currency=currency,
+            date_from=date_from,
+            date_to=date_to,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 

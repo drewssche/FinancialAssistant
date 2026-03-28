@@ -37,6 +37,24 @@ class CurrencyRepository:
         )
         return list(self.db.scalars(stmt))
 
+    def list_trades_for_period(
+        self,
+        *,
+        user_id: int,
+        date_from: date,
+        date_to: date,
+    ) -> list[FxTrade]:
+        stmt = (
+            select(FxTrade)
+            .where(
+                FxTrade.user_id == user_id,
+                FxTrade.trade_date >= date_from,
+                FxTrade.trade_date <= date_to,
+            )
+            .order_by(FxTrade.trade_date.asc(), FxTrade.id.asc())
+        )
+        return list(self.db.scalars(stmt))
+
     def delete_trade(self, trade: FxTrade) -> None:
         self.db.delete(trade)
         self.db.flush()
@@ -128,6 +146,27 @@ class CurrencyRepository:
             stmt = stmt.where(FxRateSnapshot.rate_date <= date_to)
         stmt = stmt.order_by(desc(FxRateSnapshot.rate_date), desc(FxRateSnapshot.id)).limit(limit)
         return list(reversed(list(self.db.scalars(stmt))))
+
+    def list_rate_history_for_currencies(
+        self,
+        *,
+        user_id: int,
+        currencies: list[str],
+        date_to: date,
+    ) -> list[FxRateSnapshot]:
+        normalized = [str(item or "").upper() for item in currencies if str(item or "").strip()]
+        if not normalized:
+            return []
+        stmt = (
+            select(FxRateSnapshot)
+            .where(
+                FxRateSnapshot.user_id == user_id,
+                FxRateSnapshot.currency.in_(normalized),
+                FxRateSnapshot.rate_date <= date_to,
+            )
+            .order_by(FxRateSnapshot.currency.asc(), FxRateSnapshot.rate_date.asc(), FxRateSnapshot.id.asc())
+        )
+        return list(self.db.scalars(stmt))
 
     def list_currency_preferences(self) -> list[UserPreference]:
         stmt = select(UserPreference).order_by(UserPreference.user_id.asc())

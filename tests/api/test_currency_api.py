@@ -91,6 +91,9 @@ def test_currency_trade_overview_and_current_rate(client: TestClient):
     assert payload["total_book_value"] == "322.00"
     assert payload["total_current_value"] == "330.00"
     assert payload["total_result_value"] == "8.00"
+    assert payload["total_unrealized_result_value"] == "8.00"
+    assert payload["total_realized_result_value"] in {"0", "0.00"}
+    assert payload["total_combined_result_value"] == "8.00"
     assert payload["buy_trades_count"] == 1
     assert payload["sell_trades_count"] == 0
     assert payload["buy_volume_base"] == "320.00"
@@ -103,9 +106,82 @@ def test_currency_trade_overview_and_current_rate(client: TestClient):
     assert payload["positions"][0]["current_rate"] == "3.300000"
     assert payload["positions"][0]["current_rate_date"] == "2026-03-27"
     assert payload["positions"][0]["result_value"] == "8.00"
+    assert payload["positions"][0]["total_result_value"] == "8.00"
     assert payload["current_rates"][0]["previous_rate"] is None
     assert payload["current_rates"][0]["change_value"] is None
     assert payload["current_rates"][0]["change_pct"] is None
+
+
+def test_currency_overview_and_performance_history_include_realized_and_total_result(client: TestClient):
+    buy_response = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "100",
+            "unit_price": "3.00",
+            "fee": "0",
+            "trade_date": "2026-03-01",
+            "note": "Buy USD",
+        },
+    )
+    assert buy_response.status_code == 201, buy_response.text
+    sell_response = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "sell",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "40",
+            "unit_price": "2.80",
+            "fee": "0",
+            "trade_date": "2026-03-10",
+            "note": "Sell USD",
+        },
+    )
+    assert sell_response.status_code == 201, sell_response.text
+    rate = client.put(
+        "/api/v1/currency/rates/current",
+        json={
+            "currency": "USD",
+            "rate": "2.50",
+            "rate_date": "2026-03-27",
+            "source": "manual",
+        },
+    )
+    assert rate.status_code == 200, rate.text
+
+    overview = client.get("/api/v1/currency/overview", params={"currency": "USD"})
+    assert overview.status_code == 200, overview.text
+    payload = overview.json()
+    assert payload["total_book_value"] == "180.00"
+    assert payload["total_current_value"] == "150.00"
+    assert payload["total_result_value"] == "-30.00"
+    assert payload["total_unrealized_result_value"] == "-30.00"
+    assert payload["total_realized_result_value"] == "-8.00"
+    assert payload["total_combined_result_value"] == "-38.00"
+    assert payload["positions"][0]["result_value"] == "-30.00"
+    assert payload["positions"][0]["realized_result_value"] == "-8.00"
+    assert payload["positions"][0]["total_result_value"] == "-38.00"
+
+    history = client.get(
+        "/api/v1/currency/performance/history",
+        params={"currency": "USD", "date_from": "2026-03-01", "date_to": "2026-03-27"},
+    )
+    assert history.status_code == 200, history.text
+    history_payload = history.json()
+    assert history_payload["base_currency"] == "BYN"
+    assert history_payload["currency"] == "USD"
+    assert history_payload["date_from"] == "2026-03-01"
+    assert history_payload["date_to"] == "2026-03-27"
+    assert history_payload["points"][0]["point_date"] == "2026-03-01"
+    assert history_payload["points"][-1]["point_date"] == "2026-03-27"
+    assert history_payload["points"][-1]["book_value"] == "180.00"
+    assert history_payload["points"][-1]["current_value"] == "150.00"
+    assert history_payload["points"][-1]["unrealized_result_value"] == "-30.00"
+    assert history_payload["points"][-1]["realized_result_value"] == "-8.00"
+    assert history_payload["points"][-1]["total_result_value"] == "-38.00"
 
 
 def test_currency_trade_create_accepts_missing_fee(client: TestClient):

@@ -119,6 +119,7 @@
       isCompactMobileViewport: false,
       createFlowMode: "operation",
       currencyFilter: "all",
+      currencyPerformancePeriod: "90d",
     };
   }
 

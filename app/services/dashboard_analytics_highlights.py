@@ -5,7 +5,8 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import Category, CategoryGroup
+from app.db.models import Category, CategoryGroup, UserPreference
+from app.repositories.currency_repo import CurrencyRepository
 from app.repositories.operation_repo import OperationRepository
 from app.services.dashboard_analytics_timeline import DashboardAnalyticsTimelineService
 
@@ -15,6 +16,43 @@ class DashboardAnalyticsHighlightsService:
         self.db = db
         self.repo = repo
         self.timeline = timeline
+        self.currency_repo = CurrencyRepository(db)
+
+    def get_user_base_currency(self, user_id: int) -> str:
+        prefs = self.db.scalar(select(UserPreference).where(UserPreference.user_id == user_id))
+        raw_data = prefs.data if prefs and isinstance(prefs.data, dict) else {}
+        raw_ui = raw_data.get("ui") if isinstance(raw_data.get("ui"), dict) else {}
+        value = str(raw_ui.get("currency") or "BYN").strip().upper()
+        if len(value) != 3 or not value.isalpha():
+            return "BYN"
+        return value
+
+    def compute_fx_cashflow_total(
+        self,
+        *,
+        user_id: int,
+        date_from: date,
+        date_to: date,
+        base_currency: str,
+    ) -> Decimal:
+        trades = self.currency_repo.list_trades_for_period(
+            user_id=user_id,
+            date_from=date_from,
+            date_to=date_to,
+        )
+        total = Decimal("0")
+        for trade in trades:
+            quote_currency = str(getattr(trade, "quote_currency", "BYN") or "BYN").upper()
+            if quote_currency != base_currency:
+                continue
+            quantity = Decimal(getattr(trade, "quantity", 0) or 0)
+            unit_price = Decimal(getattr(trade, "unit_price", 0) or 0)
+            quote_total = quantity * unit_price
+            if trade.side == "buy":
+                total -= quote_total
+            elif trade.side == "sell":
+                total += quote_total
+        return total.quantize(Decimal("0.01"))
 
     def build_receipt_analytics_snapshot(
         self,
@@ -153,6 +191,7 @@ class DashboardAnalyticsHighlightsService:
                 date_to=date_to,
             )
         month_start, month_end = self.timeline.month_bounds(resolved_from)
+        base_currency = self.get_user_base_currency(user_id)
 
         span_days = (resolved_to - resolved_from).days + 1
         prev_to = resolved_from - timedelta(days=1)
@@ -179,6 +218,18 @@ class DashboardAnalyticsHighlightsService:
             user_id=user_id,
             date_from=prev_from,
             date_to=prev_to,
+        )
+        fx_cashflow_total = self.compute_fx_cashflow_total(
+            user_id=user_id,
+            date_from=resolved_from,
+            date_to=resolved_to,
+            base_currency=base_currency,
+        )
+        prev_fx_cashflow_total = self.compute_fx_cashflow_total(
+            user_id=user_id,
+            date_from=prev_from,
+            date_to=prev_to,
+            base_currency=base_currency,
         )
 
         max_expense_day_total = Decimal("0")
@@ -364,9 +415,11 @@ class DashboardAnalyticsHighlightsService:
             "income_total": income_total,
             "expense_total": expense_total,
             "balance": balance,
+            "fx_cashflow_total": fx_cashflow_total,
             "prev_income_total": prev_income_total,
             "prev_expense_total": prev_expense_total,
             "prev_balance": prev_balance,
+            "prev_fx_cashflow_total": prev_fx_cashflow_total,
             "prev_operations_count": prev_operations_count,
             "surplus_total": surplus_total,
             "deficit_total": deficit_total,
@@ -377,6 +430,7 @@ class DashboardAnalyticsHighlightsService:
             "income_change_pct": self.timeline.percent_change(income_total, prev_income_total),
             "expense_change_pct": self.timeline.percent_change(expense_total, prev_expense_total),
             "balance_change_pct": self.timeline.percent_change(balance, prev_balance),
+            "fx_cashflow_change_pct": self.timeline.percent_change(fx_cashflow_total, prev_fx_cashflow_total),
             "operations_change_pct": self.timeline.percent_change(Decimal(operations_count), Decimal(prev_operations_count)),
             "category_breakdown": [
                 {

@@ -70,6 +70,7 @@ class CurrencyPositionOut(BaseModel):
     result_value: Decimal
     result_pct: float | None = None
     realized_result_value: Decimal
+    total_result_value: Decimal = Decimal("0")
 
 
 class CurrencyOverviewOut(BaseModel):
@@ -79,6 +80,9 @@ class CurrencyOverviewOut(BaseModel):
     total_book_value: Decimal
     total_current_value: Decimal
     total_result_value: Decimal
+    total_unrealized_result_value: Decimal = Decimal("0")
+    total_realized_result_value: Decimal = Decimal("0")
+    total_combined_result_value: Decimal = Decimal("0")
     buy_trades_count: int = 0
     sell_trades_count: int = 0
     buy_volume_base: Decimal = Decimal("0")
@@ -88,3 +92,20 @@ class CurrencyOverviewOut(BaseModel):
     positions: list[CurrencyPositionOut]
     recent_trades: list[CurrencyTradeOut]
     current_rates: list[CurrencyRateOut]
+
+
+class CurrencyPerformancePointOut(BaseModel):
+    point_date: date
+    book_value: Decimal = Decimal("0")
+    current_value: Decimal = Decimal("0")
+    unrealized_result_value: Decimal = Decimal("0")
+    realized_result_value: Decimal = Decimal("0")
+    total_result_value: Decimal = Decimal("0")
+
+
+class CurrencyPerformanceHistoryOut(BaseModel):
+    base_currency: str
+    currency: str | None = None
+    date_from: date
+    date_to: date
+    points: list[CurrencyPerformancePointOut]

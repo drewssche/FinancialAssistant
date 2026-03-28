@@ -231,9 +231,11 @@ class AnalyticsHighlightsOut(BaseModel):
     income_total: Decimal
     expense_total: Decimal
     balance: Decimal
+    fx_cashflow_total: Decimal = Decimal("0")
     prev_income_total: Decimal
     prev_expense_total: Decimal
     prev_balance: Decimal
+    prev_fx_cashflow_total: Decimal = Decimal("0")
     prev_operations_count: int
     surplus_total: Decimal
     deficit_total: Decimal
@@ -244,6 +246,7 @@ class AnalyticsHighlightsOut(BaseModel):
     income_change_pct: float | None
     expense_change_pct: float | None
     balance_change_pct: float | None
+    fx_cashflow_change_pct: float | None = None
     operations_change_pct: float | None
     category_breakdown: list[AnalyticsTopCategory]
     top_operations: list[AnalyticsTopOperation]
