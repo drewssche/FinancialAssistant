@@ -64,6 +64,8 @@
   const syncCurrencyTradeFieldUi = operationModal.syncCurrencyTradeFieldUi;
   const syncSuggestedCurrencyRate = operationModal.syncSuggestedCurrencyRate;
   const markCurrencyRateManual = operationModal.markCurrencyRateManual;
+  const markCurrencyQuantitySource = operationModal.markCurrencyQuantitySource;
+  const markCurrencyQuoteSource = operationModal.markCurrencyQuoteSource;
   const resetCurrencyRateAutofill = operationModal.resetCurrencyRateAutofill;
   const applyDebtCurrencyUi = operationModal.applyDebtCurrencyUi;
 
@@ -253,6 +255,8 @@
     syncCurrencyTradeFieldUi,
     syncSuggestedCurrencyRate,
     markCurrencyRateManual,
+    markCurrencyQuantitySource,
+    markCurrencyQuoteSource,
     resetCurrencyRateAutofill,
     applyDebtCurrencyUi,
     savePreferences,
