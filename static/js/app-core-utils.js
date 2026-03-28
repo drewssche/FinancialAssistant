@@ -234,6 +234,25 @@
     return resolveCurrencyConfig(ui.currency, ui.currencyPosition);
   }
 
+  function getTrackedCurrencies(state) {
+    const raw = state?.preferences?.data?.currency?.tracked_currencies;
+    if (!Array.isArray(raw) || !raw.length) {
+      return ["USD", "EUR"];
+    }
+    return Array.from(new Set(
+      raw
+        .map((item) => String(item || "").trim().toUpperCase())
+        .filter(Boolean),
+    ));
+  }
+
+  function getSelectableCurrencies(state, options = {}) {
+    const includeBase = options?.includeBase !== false;
+    const baseCurrency = String(getCurrencyConfig(state).code || "BYN").toUpperCase();
+    const tracked = getTrackedCurrencies(state).filter((item) => item !== baseCurrency);
+    return includeBase ? [baseCurrency, ...tracked] : tracked;
+  }
+
   function formatMoney(state, value, options = {}) {
     const amount = Number(value || 0);
     const safe = Number.isFinite(amount) ? amount : 0;
@@ -489,6 +508,8 @@
     resolveCurrencyConfig,
     formatCurrencyLabel,
     getCurrencyConfig,
+    getTrackedCurrencies,
+    getSelectableCurrencies,
     formatMoney,
     applyUiScale,
     applyMoneyInputs,

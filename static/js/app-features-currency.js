@@ -21,6 +21,26 @@
     return raw.map((item) => String(item || "").toUpperCase()).filter(Boolean);
   }
 
+  function syncRateAssetOptions(preserveValue = "") {
+    if (!el.currencyRateAsset) {
+      return;
+    }
+    const tracked = core.getSelectableCurrencies?.({ includeBase: false }) || getTrackedCurrencies();
+    const normalized = Array.from(new Set(
+      tracked
+        .map((item) => String(item || "").trim().toUpperCase())
+        .filter(Boolean),
+    ));
+    const nextValue = String(preserveValue || el.currencyRateAsset.value || normalized[0] || "").toUpperCase();
+    el.currencyRateAsset.innerHTML = normalized.map((currency) => {
+      const selected = currency === nextValue ? " selected" : "";
+      return `<option value="${currency}"${selected}>${core.formatCurrencyLabel(currency)}</option>`;
+    }).join("");
+    if (nextValue) {
+      el.currencyRateAsset.value = nextValue;
+    }
+  }
+
   function syncFilterTabs() {
     if (!el.currencyFilterTabs) {
       return;
@@ -51,6 +71,7 @@
   }
 
   function openRatePanel() {
+    syncRateAssetOptions();
     el.currencyRatePanel?.classList.remove("hidden");
     el.currencyTradePanel?.classList.add("hidden");
     primeDefaultDates();
@@ -224,6 +245,7 @@
     if (options.force !== false) {
       syncFilterTabs();
     }
+    syncRateAssetOptions();
     return data;
   }
 

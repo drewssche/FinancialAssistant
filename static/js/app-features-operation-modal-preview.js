@@ -117,9 +117,9 @@
     function getCreateFormPreviewItem() {
       if (el.opEntryMode?.value === "currency") {
         const tradeContext = window.App.getRuntimeModule?.("operation-modal")?.getCurrencyTradeContext?.() || null;
-        const quantity = tradeContext?.quantityResolved || core.resolveMoneyInput(el.currencyQuantity?.value || 0);
-        const unitPrice = tradeContext?.rateResolved || core.resolveMoneyInput(el.currencyUnitPrice?.value || 0);
-        const fee = tradeContext?.feeResolved || core.resolveMoneyInput(el.currencyFee?.value || 0);
+        const quantity = core.resolveMoneyInput(el.currencyQuantity?.value || 0);
+        const unitPrice = core.resolveMoneyInput(el.currencyUnitPrice?.value || 0);
+        const fee = core.resolveMoneyInput(el.currencyFee?.value || 0);
         const side = tradeContext?.side || el.currencySide?.value || "buy";
         const assetCurrency = tradeContext?.assetCurrency || String(el.currencyAsset?.value || "USD").toUpperCase();
         const quoteCurrency = tradeContext?.quoteCurrency || String(el.currencyQuote?.value || "BYN").toUpperCase();

@@ -94,4 +94,23 @@
   #createDebtFields #debtPrincipalCompound {
     grid-template-columns: 1fr;
   }
+
+  #debtsSection .table-search-row {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  #debtsSection .table-search-row > .table-search-input {
+    flex: 1 1 22rem;
+    width: min(100%, 32rem);
+    min-width: 16rem;
+  }
+
+  #debtsSection .debt-toolbar {
+    flex: 1 1 auto;
+    margin-left: auto;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
 }

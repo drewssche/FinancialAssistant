@@ -167,7 +167,6 @@
     }
     el.currencyUnitPrice.value = Number(currentRate.rate || 0).toFixed(4);
     syncCurrencyTradeFieldUi();
-    updateCreatePreview();
   }
 
   function markCurrencyRateManual() {
@@ -214,6 +213,62 @@
     applyTradeFieldCurrency(el.currencyQuantityField, context.amountSuffixCurrency);
     applyTradeFieldCurrency(el.currencyUnitPriceField, context.quoteCurrency);
     applyTradeFieldCurrency(el.currencyFeeField, context.quoteCurrency);
+  }
+
+  function buildSelectableCurrencyList(includeBase = true, preserveValue = "") {
+    const baseCurrency = String(core.getCurrencyConfig?.().code || "BYN").toUpperCase();
+    const source = core.getSelectableCurrencies?.({ includeBase }) || (includeBase ? [baseCurrency, "USD", "EUR"] : ["USD", "EUR"]);
+    const normalized = source
+      .map((item) => String(item || "").trim().toUpperCase())
+      .filter(Boolean);
+    const preserved = String(preserveValue || "").trim().toUpperCase();
+    if (preserved && !normalized.includes(preserved)) {
+      normalized.push(preserved);
+    }
+    return Array.from(new Set(normalized));
+  }
+
+  function populateCurrencySelect(selectNode, options = {}) {
+    if (!selectNode) {
+      return;
+    }
+    const includeBase = options.includeBase !== false;
+    const preserveValue = String(options.preserveValue || selectNode.value || "").trim().toUpperCase();
+    const fallbackValue = String(options.fallbackValue || "").trim().toUpperCase();
+    const nextOptions = buildSelectableCurrencyList(includeBase, preserveValue);
+    const nextValue = preserveValue || fallbackValue || nextOptions[0] || "";
+    selectNode.innerHTML = nextOptions.map((currency) => {
+      const selected = currency === nextValue ? " selected" : "";
+      return `<option value="${currency}"${selected}>${core.formatCurrencyLabel(currency)}</option>`;
+    }).join("");
+    if (nextValue) {
+      selectNode.value = nextValue;
+    }
+  }
+
+  function syncSelectableCurrencyFields(preserve = {}) {
+    const baseCurrency = String(core.getCurrencyConfig?.().code || "BYN").toUpperCase();
+    const firstTracked = buildSelectableCurrencyList(false)[0] || "USD";
+    populateCurrencySelect(el.opCurrency, {
+      includeBase: true,
+      preserveValue: preserve.opCurrency || el.opCurrency?.value || baseCurrency,
+      fallbackValue: baseCurrency,
+    });
+    populateCurrencySelect(el.editCurrency, {
+      includeBase: true,
+      preserveValue: preserve.editCurrency || el.editCurrency?.value || baseCurrency,
+      fallbackValue: baseCurrency,
+    });
+    populateCurrencySelect(el.debtCurrency, {
+      includeBase: true,
+      preserveValue: preserve.debtCurrency || el.debtCurrency?.value || baseCurrency,
+      fallbackValue: baseCurrency,
+    });
+    populateCurrencySelect(el.currencyAsset, {
+      includeBase: false,
+      preserveValue: preserve.currencyAsset || el.currencyAsset?.value || firstTracked,
+      fallbackValue: firstTracked,
+    });
   }
 
   function isOperationFxRateManual(mode = "create") {
@@ -458,7 +513,7 @@
     renderEditCategoryPicker();
     updateEditPreview();
   }
-  function setCreateEntryMode(mode) {
+  async function setCreateEntryMode(mode) {
     const nextMode = mode === "debt" ? "debt" : mode === "currency" ? "currency" : "operation";
     el.opEntryMode.value = nextMode;
     core.syncSegmentedActive(el.createEntryModeSwitch, "entry-mode", nextMode);
@@ -526,7 +581,7 @@
         core.syncDateFieldValue(el.currencyTradeDateModal, core.getTodayIso());
       }
       syncCurrencyTradeFieldUi();
-      syncSuggestedCurrencyRate().catch(() => {});
+      await syncSuggestedCurrencyRate().catch(() => {});
       if (submit) {
         submit.textContent = "Сохранить валютную сделку";
       }
@@ -535,7 +590,7 @@
     }
     if (!isDebt && !isCurrency) {
       updateCreateCategoryFieldUi();
-      syncOperationCurrencyFields("create").catch(() => {});
+      await syncOperationCurrencyFields("create").catch(() => {});
     }
     updateCreatePreview();
   }
@@ -615,6 +670,7 @@
     closeDebtCounterpartyPopover();
     el.debtCounterparty.value = "";
     el.debtPrincipal.value = "";
+    syncSelectableCurrencyFields();
     if (el.debtCurrency) {
       el.debtCurrency.value = core.getCurrencyConfig?.().code || "BYN";
     }
@@ -622,7 +678,7 @@
     el.debtDueDate.value = "";
     el.debtNote.value = "";
     if (el.currencyAsset) {
-      el.currencyAsset.value = "USD";
+      el.currencyAsset.value = buildSelectableCurrencyList(false)[0] || "USD";
     }
     if (el.currencyQuote) {
       el.currencyQuote.value = core.getCurrencyConfig?.().code || "BYN";
@@ -694,14 +750,14 @@
     el.planRecurrenceWorkdaysWrap?.classList.add("hidden");
     el.planRecurrenceMonthEndWrap?.classList.add("hidden");
     setDebtDirection("lend");
-    setCurrencySide("buy");
+    await setCurrencySide("buy");
     currencyUnitPriceManual = false;
     syncCurrencyTradeFieldUi();
     syncOperationCurrencyFields("create").catch(() => {});
     syncOperationCurrencyFields("edit").catch(() => {});
     applyDebtCurrencyUi();
     updateDebtDueHint();
-    setCreateEntryMode("operation");
+    await setCreateEntryMode("operation");
     renderCreateCategoryPicker();
     renderDebtCounterpartyPicker();
     loadReceiptTemplateHints().catch(() => {});
@@ -735,6 +791,7 @@
     }
     selectDebtCounterparty(payload.counterparty || "", { keepOpen: false });
     el.debtPrincipal.value = payload.principal || "";
+    syncSelectableCurrencyFields({ debtCurrency: payload.currency || "" });
     if (el.debtCurrency) {
       el.debtCurrency.value = payload.currency || (core.getCurrencyConfig?.().code || "BYN");
     }
@@ -742,7 +799,7 @@
     core.syncDateFieldValue(el.debtDueDate, payload.due_date || "");
     el.debtNote.value = payload.note || "";
     setDebtDirection(payload.direction || "lend");
-    setCreateEntryMode("debt");
+    await setCreateEntryMode("debt");
     applyDebtCurrencyUi();
     updateDebtDueHint();
     renderDebtCounterpartyPicker();
@@ -750,14 +807,14 @@
   }
   async function openCreateModalForCurrency() {
     await openCreateModal();
-    setCreateEntryMode("currency");
+    await setCreateEntryMode("currency");
     currencyUnitPriceManual = false;
-    syncSuggestedCurrencyRate({ force: true }).catch(() => {});
   }
   async function openEditModal(item) {
     await ensureCategoryCatalogReady("edit");
     state.editOperationId = item.id;
     document.getElementById("editAmount").value = item.original_amount || item.amount;
+    syncSelectableCurrencyFields({ editCurrency: item.currency || "" });
     if (el.editCurrency) {
       el.editCurrency.value = item.currency || "BYN";
     }
@@ -804,6 +861,7 @@
       const hasOption = Array.from(el.timezoneSelect.options).some((opt) => opt.value === savedTz);
       el.timezoneSelect.value = hasOption ? savedTz : "auto";
     }
+    syncSelectableCurrencyFields();
     applyDebtCurrencyUi();
   }
   function openPeriodCustomModal() {
@@ -931,6 +989,7 @@
     resetCreateOperationFxRateAutofill: () => setOperationFxRateManual("create", false),
     resetEditOperationFxRateAutofill: () => setOperationFxRateManual("edit", false),
     syncCurrencyTradeFieldUi,
+    syncSelectableCurrencyFields,
     getCurrencyTradeContext,
     syncSuggestedCurrencyRate,
     markCurrencyRateManual,

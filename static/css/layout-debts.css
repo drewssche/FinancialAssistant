@@ -585,10 +585,10 @@
   position: relative;
   display: flex;
   justify-content: end;
-  align-items: center;
+  align-items: flex-end;
   gap: var(--space-2);
-  min-height: 4.5rem;
-  padding-top: calc(var(--space-2) + 0.125rem);
+  min-height: 4.75rem;
+  padding-right: calc(2.75rem + var(--space-2));
 }
 
 .debt-desktop-actions .btn-repay {

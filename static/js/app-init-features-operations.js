@@ -166,12 +166,12 @@
     });
 
     if (el.createEntryModeSwitch) {
-      el.createEntryModeSwitch.addEventListener("click", (event) => {
+      el.createEntryModeSwitch.addEventListener("click", async (event) => {
         const btn = event.target.closest("button[data-entry-mode]");
         if (!btn || !actions.setCreateEntryMode) {
           return;
         }
-        actions.setCreateEntryMode(btn.dataset.entryMode);
+        await actions.setCreateEntryMode(btn.dataset.entryMode);
       });
     }
 
@@ -196,12 +196,12 @@
     }
 
     if (el.createCurrencySideSwitch) {
-      el.createCurrencySideSwitch.addEventListener("click", (event) => {
+      el.createCurrencySideSwitch.addEventListener("click", async (event) => {
         const btn = event.target.closest("button[data-currency-side]");
         if (!btn || !actions.setCurrencySide) {
           return;
         }
-        actions.setCurrencySide(btn.dataset.currencySide);
+        await actions.setCurrencySide(btn.dataset.currencySide);
       });
     }
 

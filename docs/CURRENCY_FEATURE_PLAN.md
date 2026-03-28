@@ -98,14 +98,17 @@ Remaining polish only:
       - remove duplicated comparison text
       - keep delta visually close to the main rate value, not detached on another edge of the card
     - step 2: operation / plan / currency preview math
-      - eliminate remaining `1:1` fallback in `≈ BYN` preview when non-base currency is selected
-      - keep amount labels and receipt-position labels synchronized with the selected currency
       - keep currency-deal preview rate identical to the rate shown in the input field
+      - limit currency selectors to tracked currencies where current-rate autofill is expected
+      - when selectors are restricted, still preserve the currently stored currency while editing old records
+      - keep amount labels and receipt-position labels synchronized with the selected currency
       - stop showing a visible manual FX field in regular operation mode when the rate should be auto-derived
     - step 3: debt create and debt card polish
       - place counterparty field directly below `Я дал / Я взял`
       - keep amount + currency on the next row with the same proportions/pattern as regular operation create flow
       - keep debt-row kebab in the top-right card corner by the established pattern
+    - step 4: dashboard currency widget final alignment
+      - keep compare metadata visually attached to the main rate value instead of drifting to the far right edge
 
 ## Agreed Product Direction
 

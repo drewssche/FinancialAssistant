@@ -180,6 +180,14 @@
     return resolveCurrencyConfig(ui.currency, ui.currencyPosition);
   }
 
+  function getTrackedCurrencies() {
+    return getCoreUtils().getTrackedCurrencies(state);
+  }
+
+  function getSelectableCurrencies(options = {}) {
+    return getCoreUtils().getSelectableCurrencies(state, options);
+  }
+
   function formatCurrencyLabel(currencyCode, options = {}) {
     return getCoreUtils().formatCurrencyLabel(currencyCode, options);
   }
@@ -289,6 +297,8 @@
       formatPeriodLabel,
       getPreferenceTimeZone,
       getCurrencyConfig,
+      getTrackedCurrencies,
+      getSelectableCurrencies,
       resolveCurrencyConfig,
       getUiSettings,
       applyUiScale,
