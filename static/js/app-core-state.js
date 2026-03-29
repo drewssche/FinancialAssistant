@@ -76,7 +76,7 @@
       editItemTemplateId: null,
       editItemSourceName: "",
       analyticsMonthAnchor: "",
-      analyticsTab: "overview",
+      analyticsTab: "calendar",
       analyticsCurrencyFilter: "all",
       analyticsCurrencyPeriod: "30d",
       analyticsCalendarView: "month",

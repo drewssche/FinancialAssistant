@@ -136,8 +136,8 @@ class TelegramCurrencyAlertBotService:
         tracked = currency_prefs.get("tracked_currencies")
         tracked_currencies = {
             str(item).strip().upper()
-            for item in tracked
-            if isinstance(tracked, list) and str(item).strip()
+            for item in (tracked if isinstance(tracked, list) else [])
+            if str(item).strip()
         }
         raw_alerts = currency_prefs.get("currency_alerts") if isinstance(currency_prefs.get("currency_alerts"), dict) else {}
         alerts = {}
