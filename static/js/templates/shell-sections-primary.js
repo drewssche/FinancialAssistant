@@ -405,10 +405,7 @@
               </div>
             </div>
             <div class="operations-controls-grid">
-              <div class="operations-control-card">
-                <div class="operations-control-head">
-                  <span class="muted-small">Режим</span>
-                </div>
+              <div class="operations-control-card operations-control-card-mode">
                 <div class="segmented" id="operationsModeTabs" role="tablist" aria-label="Режим операций">
                   <button class="segmented-btn active" data-operations-mode="operations" type="button">Операции</button>
                   <button class="segmented-btn" data-operations-mode="money_flow" type="button">Денежный поток</button>
@@ -448,9 +445,6 @@
                 </div>
               </div>
               <div class="operations-control-card operations-control-card-sort">
-                <div class="operations-control-head">
-                  <span class="muted-small">Сортировка</span>
-                </div>
                 <div class="segmented" id="operationsSortTabs" role="tablist" aria-label="Сортировка операций">
                   <button class="segmented-btn active" data-op-sort="date" type="button">По дате</button>
                   <button class="segmented-btn" data-op-sort="amount" type="button">По сумме</button>

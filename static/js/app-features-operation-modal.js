@@ -423,6 +423,18 @@
       : "Сначала укажи сумму операции или заполни чек";
   }
 
+  function getReceiptPayloadTotal(mode = "create") {
+    const rows = mode === "edit" ? getEditReceiptPayload() : getCreateReceiptPayload();
+    if (!Array.isArray(rows) || !rows.length) {
+      return 0;
+    }
+    return rows.reduce((sum, row) => {
+      const qty = Number(row?.quantity || 0);
+      const unitPrice = Number(row?.unit_price || 0);
+      return sum + (qty > 0 && unitPrice > 0 ? qty * unitPrice : 0);
+    }, 0);
+  }
+
   function syncCreateFxSettlementVisibility() {
     const isOperationEntry = el.opEntryMode?.value === "operation";
     const isExpense = el.opKind?.value === "expense";
@@ -473,6 +485,7 @@
       baseCurrency,
       assetCurrency,
       baseAmount,
+      receiptTotal: getReceiptPayloadTotal("create"),
       quantityResolved,
       rateResolved,
       effectiveQuantity,
@@ -512,11 +525,23 @@
         el.opFxSettlementHint.textContent = "Сумма списания берется из операции или из суммы чека, поэтому в валютном блоке достаточно указать количество и/или курс.";
       } else if (context.effectiveQuantity > 0 && context.effectiveRate > 0) {
         const mismatch = Math.abs(context.computedBase - context.baseAmount) >= 0.01;
-        el.opFxSettlementHint.textContent = mismatch
+        const baseHint = mismatch
           ? `Проверь связку: ${core.formatAmount(context.effectiveQuantity)} ${context.assetCurrency} по курсу ${formatTradeRateValue(context.effectiveRate)} дают ${core.formatMoney(context.computedBase, { currency: context.baseCurrency })}, а сумма ${getFxSettlementSourceLabel(context)} = ${core.formatMoney(context.baseAmount, { currency: context.baseCurrency })}.`
           : `Будет списано ${core.formatAmount(context.effectiveQuantity)} ${context.assetCurrency} по курсу ${formatTradeRateValue(context.effectiveRate)} на ${core.formatMoney(context.baseAmount, { currency: context.baseCurrency })}.`;
+        const receiptMismatch = context.baseSource === "operation"
+          && context.receiptTotal > 0
+          && Math.abs(context.receiptTotal - context.baseAmount) >= 0.01;
+        el.opFxSettlementHint.textContent = receiptMismatch
+          ? `${baseHint} Сейчас расчет идет от общей суммы сверху: ${core.formatMoney(context.baseAmount, { currency: context.baseCurrency })}, а итог чека = ${core.formatMoney(context.receiptTotal, { currency: context.baseCurrency })}.`
+          : baseHint;
       } else {
-        el.opFxSettlementHint.textContent = `Укажи количество ${context.assetCurrency} или курс. Второе поле пересчитается от суммы ${getFxSettlementSourceLabel(context)} в ${context.baseCurrency}.`;
+        const baseHint = `Укажи количество ${context.assetCurrency} или курс. Второе поле пересчитается от суммы ${getFxSettlementSourceLabel(context)} в ${context.baseCurrency}.`;
+        const receiptMismatch = context.baseSource === "operation"
+          && context.receiptTotal > 0
+          && Math.abs(context.receiptTotal - context.baseAmount) >= 0.01;
+        el.opFxSettlementHint.textContent = receiptMismatch
+          ? `${baseHint} Сейчас приоритет у общей суммы сверху, а не у итога чека.`
+          : baseHint;
       }
     }
     applyTradeFieldCurrency(el.opFxSettlementQuantityField, context.assetCurrency);
@@ -604,7 +629,18 @@
       effectiveQuantity = baseAmount / enteredRate;
     }
     const computedBase = effectiveQuantity > 0 && effectiveRate > 0 ? effectiveQuantity * effectiveRate : 0;
-    return { baseCurrency, assetCurrency, baseAmount, effectiveQuantity, effectiveRate, computedBase, hasQuantity, hasRate, baseSource: baseContext.source };
+    return {
+      baseCurrency,
+      assetCurrency,
+      baseAmount,
+      receiptTotal: getReceiptPayloadTotal("edit"),
+      effectiveQuantity,
+      effectiveRate,
+      computedBase,
+      hasQuantity,
+      hasRate,
+      baseSource: baseContext.source,
+    };
   }
 
   function syncEditFxSettlementFieldUi() {
@@ -635,11 +671,23 @@
         el.editFxSettlementHint.textContent = "Сумма списания берется из операции или из суммы чека.";
       } else if (context.effectiveQuantity > 0 && context.effectiveRate > 0) {
         const mismatch = Math.abs(context.computedBase - context.baseAmount) >= 0.01;
-        el.editFxSettlementHint.textContent = mismatch
+        const baseHint = mismatch
           ? `Проверь связку: ${core.formatAmount(context.effectiveQuantity)} ${context.assetCurrency} по курсу ${formatTradeRateValue(context.effectiveRate)} дают ${core.formatMoney(context.computedBase, { currency: context.baseCurrency })}, а сумма ${getFxSettlementSourceLabel(context)} = ${core.formatMoney(context.baseAmount, { currency: context.baseCurrency })}.`
           : `Будет списано ${core.formatAmount(context.effectiveQuantity)} ${context.assetCurrency} на ${core.formatMoney(context.baseAmount, { currency: context.baseCurrency })}.`;
+        const receiptMismatch = context.baseSource === "operation"
+          && context.receiptTotal > 0
+          && Math.abs(context.receiptTotal - context.baseAmount) >= 0.01;
+        el.editFxSettlementHint.textContent = receiptMismatch
+          ? `${baseHint} Сейчас расчет идет от общей суммы сверху: ${core.formatMoney(context.baseAmount, { currency: context.baseCurrency })}, а итог чека = ${core.formatMoney(context.receiptTotal, { currency: context.baseCurrency })}.`
+          : baseHint;
       } else {
-        el.editFxSettlementHint.textContent = `Укажи количество ${context.assetCurrency} или курс. Второе поле пересчитается от суммы ${getFxSettlementSourceLabel(context)} в ${context.baseCurrency}.`;
+        const baseHint = `Укажи количество ${context.assetCurrency} или курс. Второе поле пересчитается от суммы ${getFxSettlementSourceLabel(context)} в ${context.baseCurrency}.`;
+        const receiptMismatch = context.baseSource === "operation"
+          && context.receiptTotal > 0
+          && Math.abs(context.receiptTotal - context.baseAmount) >= 0.01;
+        el.editFxSettlementHint.textContent = receiptMismatch
+          ? `${baseHint} Сейчас приоритет у общей суммы сверху, а не у итога чека.`
+          : baseHint;
       }
     }
     applyTradeFieldCurrency(el.editFxSettlementQuantityField, context.assetCurrency);

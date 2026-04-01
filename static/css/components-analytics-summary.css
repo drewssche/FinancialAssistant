@@ -239,7 +239,7 @@
 .operations-controls-grid {
   margin-bottom: var(--space-3);
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.15fr) max-content;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
   gap: var(--space-3);
   align-items: start;
 }
@@ -256,7 +256,13 @@
 }
 
 .operations-control-card-sort {
-  justify-self: end;
+  justify-self: stretch;
+}
+
+.operations-control-card-mode .segmented,
+.operations-control-card-sort .segmented {
+  width: max-content;
+  max-width: 100%;
 }
 
 .money-flow-context {
