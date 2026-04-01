@@ -4,6 +4,21 @@
   const TREND_CACHE_TTL_MS = 20000;
   const escapeHtml = shared.escapeHtml || ((value) => String(value ?? ""));
   const sharedFormatPct = shared.formatPct || ((value) => String(value ?? ""));
+  const resolveResultMetric = shared.resolveResultMetric || ((data) => ({
+    value: Number(data?.cashflow_total ?? data?.balance ?? 0),
+    previous: Number(data?.prev_cashflow_total ?? data?.prev_balance ?? 0),
+    delta: data?.cashflow_change_pct ?? data?.balance_change_pct ?? null,
+  }));
+  const describeResult = shared.describeResult || ((balanceRaw) => {
+    const balance = Number(balanceRaw || 0);
+    if (balance > 0) {
+      return { label: "Профицит", tone: "positive", cardClass: "positive", amount: balance };
+    }
+    if (balance < 0) {
+      return { label: "Дефицит", tone: "negative", cardClass: "negative", amount: Math.abs(balance) };
+    }
+    return { label: "Ноль", tone: "neutral", cardClass: "neutral", amount: 0 };
+  });
 
   function getLoadingSkeletons() {
     return window.App.getRuntimeModule?.("loading-skeletons") || {};
@@ -73,13 +88,24 @@
 
   function renderTrendTooltip(point, compact = false) {
     const ops = Number(point.operations_count || 0);
+    const result = describeResult(point.cashflow_total ?? point.balance);
+    const debtCashflow = Number(point?.debt_cashflow_total || 0);
+    const fxCashflow = Number(point?.fx_cashflow_total || 0);
+    const extras = [];
+    if (debtCashflow !== 0) {
+      extras.push(`<span class="analytics-chart-tooltip-ops">Долги: ${escapeHtml(core.formatMoney(debtCashflow))}</span>`);
+    }
+    if (fxCashflow !== 0) {
+      extras.push(`<span class="analytics-chart-tooltip-ops">FX: ${escapeHtml(core.formatMoney(fxCashflow))}</span>`);
+    }
     return `
       <div class="analytics-chart-tooltip-title">${escapeHtml(formatBucketLabel(point) || point.label || "")}</div>
       <div class="analytics-chart-tooltip-grid${compact ? " analytics-chart-tooltip-grid-compact" : ""}">
         <span class="analytics-chart-tooltip-income">Доход: ${escapeHtml(core.formatMoney(point.income_total || 0))}</span>
         <span class="analytics-chart-tooltip-expense">Расход: ${escapeHtml(core.formatMoney(point.expense_total || 0))}</span>
-        <span class="analytics-chart-tooltip-balance">Баланс: ${escapeHtml(core.formatMoney(point.balance || 0))}</span>
+        <span class="analytics-chart-tooltip-balance">${escapeHtml(result.label)}: ${escapeHtml(core.formatMoney(result.amount))}</span>
         <span class="analytics-chart-tooltip-ops">Операций: ${ops}</span>
+        ${extras.join("")}
       </div>
     `;
   }
@@ -124,7 +150,7 @@
     }
     const width = compact ? 420 : 980;
     const height = compact ? 110 : 280;
-    const values = points.flatMap((p) => [Number(p.income_total || 0), Number(p.expense_total || 0), Number(p.balance || 0)]);
+    const values = points.flatMap((p) => [Number(p.income_total || 0), Number(p.expense_total || 0), Number(p.cashflow_total ?? p.balance ?? 0)]);
     const minValue = Math.min(0, ...values);
     const maxValue = Math.max(0, ...values);
     const mapY = (value) => {
@@ -143,7 +169,7 @@
       const baseX = idx * bucketWidth + bucketWidth / 2;
       const incomeY = mapY(point.income_total);
       const expenseY = mapY(point.expense_total);
-      const balanceY = mapY(point.balance);
+      const balanceY = mapY(point.cashflow_total ?? point.balance);
       const incomeHeight = Math.max(1, Math.abs(zeroY - incomeY));
       const expenseHeight = Math.max(1, Math.abs(zeroY - expenseY));
       bucketGroups.push(`
@@ -201,7 +227,7 @@
       `);
     }
 
-    const balanceLine = pointsToPolyline(points, (p) => p.balance, width, height, minValue, maxValue);
+    const balanceLine = pointsToPolyline(points, (p) => p.cashflow_total ?? p.balance, width, height, minValue, maxValue);
     svgNode.innerHTML = `
       <line x1="0" y1="${zeroY.toFixed(2)}" x2="${width}" y2="${zeroY.toFixed(2)}" stroke="rgba(141,160,190,0.45)" stroke-width="1" />
       <polyline points="${balanceLine}" fill="none" stroke="#6ca7ff" stroke-width="${compact ? "2.4" : "3"}" stroke-linecap="round" />
@@ -223,6 +249,9 @@
   }
 
   function renderAnalyticsTrend(data) {
+    const resultMetric = resolveResultMetric(data);
+    const result = describeResult(resultMetric.value);
+    const resultTone = result.cardClass || result.tone || "neutral";
     renderTrendChart(el.analyticsTrendChart, data, false);
     if (el.analyticsTrendRangeLabel) {
       const stepLabel = data.granularity === "day" ? "По дням" : data.granularity === "week" ? "По неделям" : data.granularity === "month" ? "По месяцам" : "По годам";
@@ -234,8 +263,22 @@
     if (el.analyticsExpenseDelta) {
       el.analyticsExpenseDelta.textContent = core.formatMoney(data.expense_total || 0);
     }
+    if (el.analyticsResultCard) {
+      el.analyticsResultCard.classList.remove(
+        "analytics-kpi-income",
+        "analytics-kpi-expense",
+        "analytics-kpi-balance",
+        "analytics-kpi-positive",
+        "analytics-kpi-negative",
+        "analytics-kpi-neutral",
+      );
+      el.analyticsResultCard.classList.add(`analytics-kpi-${resultTone}`);
+    }
+    if (el.analyticsResultLabel) {
+      el.analyticsResultLabel.textContent = result.label;
+    }
     if (el.analyticsBalanceDelta) {
-      el.analyticsBalanceDelta.textContent = core.formatMoney(data.balance || 0);
+      el.analyticsBalanceDelta.textContent = core.formatMoney(result.amount || 0);
     }
     if (el.analyticsOpsDelta) {
       el.analyticsOpsDelta.textContent = String(data.operations_count || 0);
@@ -289,6 +332,8 @@
       const points = Array.isArray(data?.points) ? data.points : [];
       const operationsCount = Number(data?.operations_count || 0);
       const hasEnoughData = operationsCount >= 3 && points.length >= 2;
+      const resultMetric = resolveResultMetric(data);
+      const result = describeResult(resultMetric.value);
 
       if (hasEnoughData) {
         renderTrendChart(el.dashboardAnalyticsSparkline, data, true);
@@ -317,12 +362,12 @@
         el.dashboardAnalyticsExpenseDelta.textContent = core.formatMoney(data.expense_total || 0);
       }
       if (el.dashboardAnalyticsBalanceDelta) {
-        el.dashboardAnalyticsBalanceDelta.textContent = core.formatMoney(data.balance || 0);
+        el.dashboardAnalyticsBalanceDelta.textContent = core.formatMoney(result.amount || 0);
       }
 
       const incomeDelta = formatPct(data.income_change_pct);
       const expenseDelta = formatPct(data.expense_change_pct);
-      const balanceDelta = formatPct(data.balance_change_pct);
+      const balanceDelta = formatPct(resultMetric.delta);
       if (el.dashboardAnalyticsIncomeMeta) {
         el.dashboardAnalyticsIncomeMeta.textContent = incomeDelta === "нет базы"
           ? `было: ${core.formatMoney(data.prev_income_total || 0)}`
@@ -335,8 +380,8 @@
       }
       if (el.dashboardAnalyticsBalanceMeta) {
         el.dashboardAnalyticsBalanceMeta.textContent = balanceDelta === "нет базы"
-          ? `было: ${core.formatMoney(data.prev_balance || 0)}`
-          : `к прошлому: ${balanceDelta} · было ${core.formatMoney(data.prev_balance || 0)}`;
+          ? `было: ${core.formatMoney(resultMetric.previous || 0)}`
+          : `к прошлому: ${balanceDelta} · было ${core.formatMoney(resultMetric.previous || 0)}`;
       }
     };
 

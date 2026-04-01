@@ -106,7 +106,7 @@
                 <div class="muted-small">Текущая оценка открытых позиций</div>
                 <strong id="currencySummaryCurrentValue">0</strong>
               </article>
-              <article class="analytics-kpi-card analytics-kpi-balance">
+              <article class="analytics-kpi-card analytics-kpi-neutral">
                 <div class="muted-small">Вложено в открытые позиции</div>
                 <strong id="currencySummaryBookValue">0</strong>
               </article>

@@ -284,7 +284,7 @@
               <div class="muted-small">Средняя цена покупки</div>
               <strong>${Number(item.average_buy_rate || 0).toFixed(4)}</strong>
             </article>
-            <article class="analytics-kpi-card analytics-kpi-balance">
+            <article class="analytics-kpi-card analytics-kpi-neutral">
               <div class="muted-small">Вложено в открытые позиции</div>
               <strong>${core.formatMoney(item.book_value || 0)}</strong>
             </article>
@@ -676,5 +676,6 @@
     syncFilterTabs,
     openTradePanel,
     openRatePanel,
+    openCurrencyTradeEdit,
   });
 })();

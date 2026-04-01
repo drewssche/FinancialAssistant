@@ -211,6 +211,50 @@ class OperationRepository:
         total = int(self.db.scalar(count_stmt) or 0)
         return items, total
 
+    def list_filtered_all(
+        self,
+        *,
+        user_id: int,
+        sort_by: str,
+        sort_dir: str,
+        kind: str | None,
+        date_from: date | None,
+        date_to: date | None,
+        category_id: int | None,
+        q: str | None,
+        receipt_only: bool = False,
+        uncategorized_only: bool = False,
+        min_amount: Decimal | None = None,
+        currency_scope: str = "all",
+        base_currency: str = "BYN",
+    ) -> list[Operation]:
+        conditions = self._build_list_conditions(
+            user_id=user_id,
+            kind=kind,
+            date_from=date_from,
+            date_to=date_to,
+            category_id=category_id,
+            q=q,
+            receipt_only=receipt_only,
+            uncategorized_only=uncategorized_only,
+            min_amount=min_amount,
+            currency_scope=currency_scope,
+            base_currency=base_currency,
+        )
+        sort_column = {
+            "operation_date": Operation.operation_date,
+            "amount": Operation.amount,
+            "created_at": Operation.created_at,
+        }[sort_by]
+        order_expr = asc(sort_column) if sort_dir == "asc" else desc(sort_column)
+        stmt = (
+            select(Operation)
+            .outerjoin(Category, Category.id == Operation.category_id)
+            .where(and_(*conditions))
+            .order_by(order_expr, Operation.id.desc())
+        )
+        return list(self.db.scalars(stmt))
+
     def summary_filtered(
         self,
         *,

@@ -67,6 +67,14 @@ class DashboardService:
         )
         income_total = self._money(income_total_raw)
         expense_total = self._money(expense_total_raw)
+        cashflow_totals = self.analytics.get_cashflow_totals(
+            user_id=user_id,
+            date_from=resolved_date_from,
+            date_to=resolved_date_to,
+        )
+        debt_cashflow_total = self._money(cashflow_totals["debt_cashflow_total"])
+        fx_cashflow_total = self._money(cashflow_totals["fx_cashflow_total"])
+        cashflow_total = self._money((income_total - expense_total) + debt_cashflow_total + fx_cashflow_total)
         debt_service = DebtService(self.db)
         debt_lend_outstanding, debt_borrow_outstanding, active_debt_cards = debt_service.summary_active_totals_current_base(
             user_id=user_id,
@@ -97,6 +105,9 @@ class DashboardService:
             "income_total": income_total,
             "expense_total": expense_total,
             "balance": income_total - expense_total,
+            "debt_cashflow_total": debt_cashflow_total,
+            "fx_cashflow_total": fx_cashflow_total,
+            "cashflow_total": cashflow_total,
             "balance_with_currency_result": (income_total - expense_total) + self._money(currency_summary["total_result_value"]),
             "debt_lend_outstanding": debt_lend_outstanding,
             "debt_borrow_outstanding": debt_borrow_outstanding,

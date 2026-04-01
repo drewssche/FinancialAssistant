@@ -199,8 +199,14 @@
           : null;
         const quantityInput = tradeContext?.quantityResolved || core.resolveMoneyInput(el.currencyQuantity?.value || 0);
         const quoteInput = tradeContext?.quoteResolved || core.resolveMoneyInput(el.currencyQuoteTotal?.value || 0);
-        const unitPrice = tradeContext?.rateResolved || core.resolveRateInput(el.currencyUnitPrice?.value || 0, 0, 6);
-        const sourceField = tradeContext?.sourceField === "quote" ? "quote" : "quantity";
+        const unitPrice = tradeContext?.sourceField === "pair"
+          ? core.resolveRateInput(tradeContext?.unitPrice || 0, 0, 6)
+          : (tradeContext?.rateResolved || core.resolveRateInput(el.currencyUnitPrice?.value || 0, 0, 6));
+        const sourceField = tradeContext?.sourceField === "quote"
+          ? "quote"
+          : tradeContext?.sourceField === "pair"
+            ? "pair"
+            : "quantity";
         const primaryInput = sourceField === "quote" ? quoteInput : quantityInput;
         if (!primaryInput.valid || primaryInput.value <= 0) {
           if (sourceField === "quote") {

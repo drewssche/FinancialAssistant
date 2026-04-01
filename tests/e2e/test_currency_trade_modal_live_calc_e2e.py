@@ -168,5 +168,22 @@ def test_currency_trade_modal_keeps_preview_and_live_recalculates(static_server_
             assert quote_value.startswith("149.00")
             assert preview_rows.count() == 1
             assert "50.25 USD" in page.locator("#createPreviewBody").text_content()
+
+            page.click("#closeCreateModalBtn")
+            page.wait_for_selector("#createModal", state="hidden")
+            page.click("#addOperationCta")
+            page.wait_for_selector("#createModal:not(.hidden)")
+            page.locator('#createEntryModeSwitch button[data-entry-mode="currency"]').click()
+            page.wait_for_selector("#createPreviewHeadCurrency:not(.hidden)")
+            page.locator('#createCurrencySideSwitch button[data-currency-side="sell"]').click()
+
+            page.locator("#currencyUnitPrice").fill("")
+            page.locator("#currencyQuantity").fill("20")
+            page.locator("#currencyQuoteTotal").fill("60")
+            page.wait_for_timeout(200)
+
+            rate_value = page.locator("#currencyUnitPrice").input_value()
+            assert rate_value.startswith("3.0000")
+            assert page.locator("#currencyTradeHint").text_content().strip().startswith("Будет получено примерно 60,00 руб.")
         finally:
             browser.close()

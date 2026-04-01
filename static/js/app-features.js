@@ -114,7 +114,11 @@
   const openDebtRepaymentModal = debtFeatures.openDebtRepaymentModal;
   const closeDebtRepaymentModal = debtFeatures.closeDebtRepaymentModal;
   const submitDebtRepayment = debtFeatures.submitDebtRepayment;
+  const forgiveDebtFromRepaymentFlow = debtFeatures.forgiveDebtFromRepaymentFlow;
   const updateRepaymentDeltaHint = debtFeatures.updateRepaymentDeltaHint;
+  const openDebtForgivenessModal = debtFeatures.openDebtForgivenessModal;
+  const closeDebtForgivenessModal = debtFeatures.closeDebtForgivenessModal;
+  const submitDebtForgiveness = debtFeatures.submitDebtForgiveness;
   const openDebtHistoryModal = debtFeatures.openDebtHistoryModal;
   const closeDebtHistoryModal = debtFeatures.closeDebtHistoryModal;
   const setDebtStatusFilter = debtFeatures.setDebtStatusFilter;
@@ -182,10 +186,13 @@
   const getCurrentOperationItems = operationsFeatures.getCurrentOperationItems;
   const clearOperationsCategoryFilter = operationsFeatures.clearOperationsCategoryFilter;
   const resetOperationsFilters = operationsFeatures.resetOperationsFilters;
+  const setOperationsMode = operationsFeatures.setOperationsMode;
+  const setOperationsSourceFilter = operationsFeatures.setOperationsSourceFilter;
   const setOperationsQuickView = operationsFeatures.setOperationsQuickView;
   const selectVisibleOperations = operationsFeatures.selectVisibleOperations;
   const clearVisibleOperationsSelection = operationsFeatures.clearVisibleOperationsSelection;
   const setOperationsKindFilter = operationsFeatures.setOperationsKindFilter;
+  const openMoneyFlowSource = operationsFeatures.openMoneyFlowSource;
   const openOperationReceiptModal = operationsFeatures.openOperationReceiptModal;
   const closeOperationReceiptModal = operationsFeatures.closeOperationReceiptModal;
   const cleanupOperationsRuntime = operationsFeatures.cleanupOperationsRuntime;
@@ -301,7 +308,11 @@
     openDebtRepaymentModal,
     closeDebtRepaymentModal,
     submitDebtRepayment,
+    forgiveDebtFromRepaymentFlow,
     updateRepaymentDeltaHint,
+    openDebtForgivenessModal,
+    closeDebtForgivenessModal,
+    submitDebtForgiveness,
     openDebtHistoryModal,
     closeDebtHistoryModal,
     setDebtStatusFilter,
@@ -357,10 +368,13 @@
     getCurrentOperationItems,
     clearOperationsCategoryFilter,
     resetOperationsFilters,
+    setOperationsMode,
+    setOperationsSourceFilter,
     setOperationsQuickView,
     selectVisibleOperations,
     clearVisibleOperationsSelection,
     setOperationsKindFilter,
+    openMoneyFlowSource,
     createOperation,
     updateOperation,
     deleteOperationFlow,
@@ -394,7 +408,11 @@
       "openDebtRepaymentModal",
       "closeDebtRepaymentModal",
       "submitDebtRepayment",
+      "forgiveDebtFromRepaymentFlow",
       "updateRepaymentDeltaHint",
+      "openDebtForgivenessModal",
+      "closeDebtForgivenessModal",
+      "submitDebtForgiveness",
       "openDebtHistoryModal",
       "closeDebtHistoryModal",
       "openEditDebtModal",

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user_id
 from app.db.session import get_db
 from app.schemas.operation import (
+    MoneyFlowListOut,
     OperationCreate,
     OperationItemTemplateCreate,
     OperationItemTemplateDeleteAllOut,
@@ -61,6 +62,42 @@ def list_operations(
     return OperationListOut(items=items, total=total, page=page, page_size=page_size)
 
 
+@router.get("/money-flow", response_model=MoneyFlowListOut)
+def list_money_flow(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    sort_by: str = Query(default="operation_date", pattern="^(operation_date|amount|created_at)$"),
+    sort_dir: str = Query(default="desc", pattern="^(asc|desc)$"),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    q: str | None = Query(default=None, max_length=100),
+    direction: str | None = Query(default=None, pattern="^(all|inflow|outflow)$"),
+    source: str | None = Query(default=None, pattern="^(all|operation|debt|fx)$"),
+    currency_scope: str | None = Query(default=None, pattern="^(all|base|foreign)$"),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = OperationService(db)
+    try:
+        items, total = service.list_money_flow(
+            user_id=user_id,
+            page=page,
+            page_size=page_size,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+            date_from=date_from,
+            date_to=date_to,
+            q=q,
+            direction=direction,
+            source=source,
+            currency_scope=currency_scope,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    return MoneyFlowListOut(items=items, total=total, page=page, page_size=page_size)
+
+
 @router.get("/summary", response_model=OperationSummaryOut)
 def summarize_operations(
     kind: str | None = Query(default=None, pattern="^(income|expense)$"),
@@ -83,6 +120,32 @@ def summarize_operations(
             category_id=category_id,
             q=q,
             quick_view=quick_view,
+            currency_scope=currency_scope,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/money-flow/summary", response_model=OperationSummaryOut)
+def summarize_money_flow(
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    q: str | None = Query(default=None, max_length=100),
+    direction: str | None = Query(default=None, pattern="^(all|inflow|outflow)$"),
+    source: str | None = Query(default=None, pattern="^(all|operation|debt|fx)$"),
+    currency_scope: str | None = Query(default=None, pattern="^(all|base|foreign)$"),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = OperationService(db)
+    try:
+        return service.summarize_money_flow(
+            user_id=user_id,
+            date_from=date_from,
+            date_to=date_to,
+            q=q,
+            direction=direction,
+            source=source,
             currency_scope=currency_scope,
         )
     except ValueError as exc:

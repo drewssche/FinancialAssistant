@@ -132,8 +132,10 @@
           quantity: tradeContext?.effectiveQuantity || quantity.previewValue || 0,
           quote_total: tradeContext?.estimatedQuoteTotal || quoteTotal.previewValue || 0,
           amount_label: tradeContext?.amountColumnLabel || "Количество",
-          unit_price: unitPrice.previewValue || 0,
-          unit_price_display: unitPrice.raw || tradeContext?.rateResolved?.raw || tradeContext?.rateResolved?.previewFormatted || unitPrice.previewFormatted || Number(unitPrice.previewValue || 0).toFixed(4),
+          unit_price: tradeContext?.unitPrice || unitPrice.previewValue || 0,
+          unit_price_display: tradeContext?.sourceField === "pair"
+            ? Number(tradeContext?.unitPrice || 0).toFixed(4)
+            : (unitPrice.raw || tradeContext?.rateResolved?.raw || tradeContext?.rateResolved?.previewFormatted || unitPrice.previewFormatted || Number(unitPrice.previewValue || 0).toFixed(4)),
           note: el.currencyNote?.value || "",
         };
       }
@@ -287,7 +289,11 @@
           amountHead.textContent = item.amount_label || "Количество";
         }
         const amountValue = `${core.formatAmount(item.quantity || 0)} ${item.asset_currency || ""}${item.quote_total ? `<div class="muted-small">≈ ${core.formatMoney(item.quote_total || 0, { currency: item.quote_currency || "BYN" })}</div>` : ""}`;
-        const amountFocusTarget = (tradeContext?.sourceField || "quantity") === "quote" ? "currencyQuoteTotal" : "currencyQuantity";
+        const amountFocusTarget = (tradeContext?.sourceField || "quantity") === "quote"
+          ? "currencyQuoteTotal"
+          : (tradeContext?.sourceField || "quantity") === "pair"
+            ? "currencyUnitPrice"
+            : "currencyQuantity";
         row.classList.add("preview-row", `kind-row-${sideClass}`);
         row.appendChild(createPreviewCellButton("Дата", core.formatDateRu(item.trade_date), "currencyTradeDateModal"));
         row.appendChild(createPreviewCellButton("Действие", `<span class="kind-pill kind-pill-${sideClass}">${sideLabel}</span>`, "createCurrencySideSwitch"));

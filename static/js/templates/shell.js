@@ -55,7 +55,7 @@
             </button>
             <div>
             <h2 id="sectionTitle">Дашборд</h2>
-            <p class="subtitle" id="sectionSubtitle">Доходы, расходы и быстрый контроль баланса</p>
+            <p class="subtitle" id="sectionSubtitle">Доходы, расходы и быстрый контроль результата</p>
             </div>
           </div>
           <div class="top-actions">

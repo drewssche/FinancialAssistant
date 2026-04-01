@@ -123,6 +123,12 @@
     return `<span class="amount-${kindClass}">${originalMoney}</span><div class="muted-small">≈ ${core.formatMoney(baseAmount, { currency: baseCurrency })}</div>`;
   }
 
+  function formatFlowAmountHtml(item) {
+    const flowDirection = String(item?.flow_direction || "outflow");
+    const kindClass = flowDirection === "inflow" ? "income" : "expense";
+    return formatOperationAmountHtml(item, kindClass);
+  }
+
   function parseIsoDate(value) {
     if (!value) {
       return null;
@@ -336,6 +342,100 @@
     return row;
   }
 
+  function createMoneyFlowRow(item, options = {}) {
+    const searchQuery = options.searchQuery || "";
+    const selectable = options.selectable === true;
+    const selected = options.selected === true;
+    const flowDirection = String(item?.flow_direction || "outflow");
+    const kindClass = flowDirection === "inflow" ? "income" : "expense";
+    const sourceKind = String(item?.source_kind || "operation");
+    const directionLabel = flowDirection === "inflow" ? "Приток" : "Отток";
+    const sourceCode = sourceKind === "debt" ? "DEBT" : sourceKind === "fx" ? "FX" : "OP";
+    const sourceLabel = sourceKind === "debt"
+      ? "Долг"
+      : sourceKind === "fx"
+        ? "Валюта"
+        : "Операция";
+    const title = item?.title || "Событие";
+    const subtitle = item?.subtitle || "";
+    const noteText = item?.note || "";
+    const eventTone = sourceKind === "debt"
+      ? (flowDirection === "inflow" ? "positive" : "negative")
+      : sourceKind === "fx"
+        ? (String(item?.trade_side || "") === "sell" ? "positive" : "negative")
+        : "neutral";
+    const sourceTone = sourceKind === "debt" ? "warning" : sourceKind === "fx" ? "info" : "neutral";
+    const eventChips = [];
+    if (sourceKind === "debt") {
+      eventChips.push(renderMetaChip(title, eventTone));
+    } else if (sourceKind === "fx") {
+      eventChips.push(renderMetaChip(String(item?.trade_side || "") === "sell" ? "FX: Продажа" : "FX: Покупка", eventTone));
+    } else {
+      eventChips.push(renderMetaChip(title, "neutral"));
+    }
+    if (item?.counterparty_name && sourceKind !== "debt") {
+      eventChips.push(renderMetaChip(item.counterparty_name, "neutral"));
+    }
+    if (item?.asset_currency && item?.quote_currency) {
+      eventChips.push(renderMetaChip(`${item.asset_currency}/${item.quote_currency}`, "info"));
+    }
+    const categoryMeta = item?.category_name
+      ? {
+        id: item.category_id || null,
+        name: item.category_name,
+        icon: item.category_icon || null,
+        accent_color: item.category_accent_color || null,
+      }
+      : null;
+    const categoryCellHtml = categoryMeta
+      ? renderCategoryChip(categoryMeta, searchQuery)
+      : `<div class="money-flow-context"><div class="money-flow-title">${highlightText(title, searchQuery)}</div>${subtitle ? `<div class="muted-small money-flow-subtitle">${highlightText(subtitle, searchQuery)}</div>` : ""}</div>`;
+    const sourceCellHtml = `
+      <div class="operation-category-stack money-flow-source-stack">
+        ${renderMetaChip(sourceCode, "neutral")}
+        ${renderMetaChip(sourceLabel, sourceTone)}
+        ${eventChips.join("")}
+      </div>
+    `;
+    const menuItems = item?.can_open_source
+      ? `<button class="btn btn-secondary" data-open-source-kind="${sourceKind}" data-open-source-id="${item.source_id || ""}">${escapeHtml(item?.open_label || "Открыть")}</button>`
+      : sourceKind === "operation"
+        ? `<button class="btn btn-secondary" data-edit-id="${item.source_id || ""}">Редактировать</button>`
+        : "";
+    const selectCell = selectable
+      ? `<td class="select-col" data-label="Выбор"><input class="table-checkbox" type="checkbox" data-select-operation-id="${escapeHtml(item.id)}" ${selected ? "checked" : ""} /></td>`
+      : "<td class=\"select-col\" data-label=\"Выбор\"><span class=\"muted-small\">—</span></td>";
+    const row = document.createElement("tr");
+    row.classList.add(`kind-row-${kindClass}`);
+    row.classList.add(`money-flow-row-source-${sourceKind}`);
+    if (sourceKind === "fx") {
+      row.classList.add(`money-flow-row-fx-${String(item?.trade_side || "buy") === "sell" ? "sell" : "buy"}`);
+    }
+    row.innerHTML = `
+      ${selectCell}
+      <td data-label="Дата">${core.formatDateRu(item.event_date)}</td>
+      <td data-label="Тип"><span class="kind-pill kind-pill-${kindClass}">${highlightText(directionLabel, searchQuery)}</span></td>
+      <td data-label="Контекст">${categoryCellHtml}</td>
+      <td data-label="Источник">${sourceCellHtml}</td>
+      <td data-label="Сумма">${formatFlowAmountHtml(item)}</td>
+      <td class="mobile-note-cell" data-label="Комментарий">${highlightText(noteText, searchQuery)}</td>
+      <td class="mobile-actions-cell table-kebab-cell" data-label="Действия">
+        ${menuItems ? renderInlineKebabMenu(`money-flow-${escapeHtml(item.id)}`, menuItems, "Действия движения", "operation-row-kebab") : "<span class='muted-small'>—</span>"}
+      </td>
+    `;
+    row.dataset.item = JSON.stringify(item);
+    row.dataset.moneyFlowRowId = String(item.id || "");
+    if (sourceKind === "operation" && item?.source_id) {
+      row.dataset.operationRowId = String(item.source_id);
+    }
+    if (selected) {
+      row.classList.add("row-selected");
+    }
+    row.dataset.moneyFlowSource = sourceKind;
+    row.dataset.moneyFlowSourceCode = sourceCode;
+    return row;
+  }
+
   Object.assign(core, {
     escapeHtml,
     highlightText,
@@ -345,6 +445,7 @@
     renderMetaChip,
     renderInlineKebabMenu,
     createOperationRow,
+    createMoneyFlowRow,
     debtUi: {
       parseAmount,
       formatMoney,

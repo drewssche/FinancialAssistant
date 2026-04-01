@@ -479,6 +479,138 @@ def test_dashboard_analytics_calendar_returns_week_rows_and_day_cells(client: Te
     assert any(day["date"] == "2026-03-03" and day["operations_count"] == 2 for week in payload["weeks"] for day in week["days"])
 
 
+def test_dashboard_analytics_calendar_exposes_debt_and_fx_cashflow_overlay(client: TestClient):
+    debt = client.post(
+        "/api/v1/debts",
+        json={
+            "counterparty": "Иван",
+            "direction": "lend",
+            "principal": "50.00",
+            "currency": "BYN",
+            "start_date": "2026-03-03",
+            "note": "дал в долг",
+        },
+    )
+    assert debt.status_code == 201
+    debt_id = debt.json()["id"]
+
+    repaid = client.post(
+        f"/api/v1/debts/{debt_id}/repayments",
+        json={"amount": "20.00", "repayment_date": "2026-03-04"},
+    )
+    assert repaid.status_code == 201
+
+    forgiven = client.post(
+        f"/api/v1/debts/{debt_id}/forgivenesses",
+        json={"amount": "10.00", "forgiven_date": "2026-03-05"},
+    )
+    assert forgiven.status_code == 201
+
+    trade = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "10",
+            "unit_price": "3.00",
+            "fee": "1.00",
+            "trade_date": "2026-03-04",
+            "note": "купил валюту",
+        },
+    )
+    assert trade.status_code == 201
+
+    response = client.get("/api/v1/dashboard/analytics/calendar", params={"month": "2026-03"})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["debt_cashflow_total"] == "-30.00"
+    assert payload["debt_events_count"] == 2
+    assert payload["fx_cashflow_total"] == "-31.00"
+    assert payload["fx_events_count"] == 1
+    assert payload["cashflow_total"] == "-61.00"
+    assert payload["cashflow_events_count"] == 3
+
+    day_03 = next(day for week in payload["weeks"] for day in week["days"] if day["date"] == "2026-03-03")
+    day_04 = next(day for week in payload["weeks"] for day in week["days"] if day["date"] == "2026-03-04")
+    day_05 = next(day for week in payload["weeks"] for day in week["days"] if day["date"] == "2026-03-05")
+
+    assert day_03["debt_cashflow_total"] == "-50.00"
+    assert day_03["debt_events_count"] == 1
+    assert day_03["cashflow_total"] == "-50.00"
+    assert day_04["debt_cashflow_total"] == "20.00"
+    assert day_04["fx_cashflow_total"] == "-31.00"
+    assert day_04["cashflow_total"] == "-11.00"
+    assert day_05["debt_cashflow_total"] in ("0", "0.00")
+    assert day_05["debt_events_count"] == 0
+    assert day_05["cashflow_total"] in ("0", "0.00")
+
+
+def test_dashboard_analytics_calendar_includes_debt_and_fx_cashflow(client: TestClient):
+    debt_created = client.post(
+        "/api/v1/debts",
+        json={
+            "counterparty": "Alex",
+            "direction": "lend",
+            "principal": "150.00",
+            "currency": "BYN",
+            "start_date": "2026-03-04",
+            "note": "loan-out",
+        },
+    )
+    assert debt_created.status_code == 201
+    debt_id = debt_created.json()["id"]
+
+    repaid = client.post(
+        f"/api/v1/debts/{debt_id}/repayments",
+        json={
+            "amount": "40.00",
+            "repayment_date": "2026-03-06",
+            "note": "partial-return",
+        },
+    )
+    assert repaid.status_code == 201
+
+    fx_trade = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "10",
+            "unit_price": "3.00",
+            "fee": "1.00",
+            "trade_date": "2026-03-05",
+            "note": "usd-buy",
+        },
+    )
+    assert fx_trade.status_code == 201
+
+    response = client.get("/api/v1/dashboard/analytics/calendar", params={"month": "2026-03"})
+    assert response.status_code == 200
+    payload = response.json()
+
+    assert payload["debt_cashflow_total"] == "-110.00"
+    assert payload["fx_cashflow_total"] == "-31.00"
+    assert payload["cashflow_total"] == "-141.00"
+    assert payload["cashflow_events_count"] == 3
+
+    day_loan = next(day for week in payload["weeks"] for day in week["days"] if day["date"] == "2026-03-04")
+    assert day_loan["debt_cashflow_total"] == "-150.00"
+    assert day_loan["debt_events_count"] == 1
+    assert day_loan["cashflow_total"] == "-150.00"
+
+    day_fx = next(day for week in payload["weeks"] for day in week["days"] if day["date"] == "2026-03-05")
+    assert day_fx["fx_cashflow_total"] == "-31.00"
+    assert day_fx["fx_events_count"] == 1
+    assert day_fx["cashflow_total"] == "-31.00"
+
+    day_repaid = next(day for week in payload["weeks"] for day in week["days"] if day["date"] == "2026-03-06")
+    assert day_repaid["debt_cashflow_total"] == "40.00"
+    assert day_repaid["debt_events_count"] == 1
+    assert day_repaid["cashflow_total"] == "40.00"
+
+
 def test_dashboard_analytics_calendar_cache_is_invalidated_after_operation_mutation(client: TestClient):
     created = client.post(
         "/api/v1/operations",
@@ -556,9 +688,86 @@ def test_dashboard_analytics_trend_returns_points_and_deltas(client: TestClient)
     assert payload["income_total"] == "170.00"
     assert payload["expense_total"] == "30.00"
     assert payload["balance"] == "140.00"
+    assert payload["cashflow_total"] == "140.00"
     assert payload["operations_count"] == 3
     assert len(payload["points"]) == 3
     assert payload["points"][0]["bucket_start"] == "2026-03-01"
+
+
+def test_dashboard_analytics_trend_uses_unified_cashflow(client: TestClient):
+    assert client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "amount": "300.00",
+            "operation_date": "2026-03-01",
+            "note": "salary",
+        },
+    ).status_code == 201
+    assert client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "120.00",
+            "operation_date": "2026-03-02",
+            "note": "groceries",
+        },
+    ).status_code == 201
+    debt_created = client.post(
+        "/api/v1/debts",
+        json={
+            "counterparty": "Иван",
+            "direction": "lend",
+            "principal": "50.00",
+            "currency": "BYN",
+            "start_date": "2026-03-03",
+        },
+    )
+    assert debt_created.status_code == 201, debt_created.text
+    debt_id = debt_created.json()["id"]
+    assert client.post(
+        f"/api/v1/debts/{debt_id}/repayments",
+        json={"amount": "20.00", "repayment_date": "2026-03-04"},
+    ).status_code == 201
+    assert client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "10",
+            "unit_price": "3.00",
+            "fee": "1.00",
+            "trade_date": "2026-03-05",
+        },
+    ).status_code == 201
+
+    response = client.get(
+        "/api/v1/dashboard/analytics/trend",
+        params={
+            "period": "custom",
+            "date_from": "2026-03-01",
+            "date_to": "2026-03-05",
+            "granularity": "day",
+        },
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["balance"] == "180.00"
+    assert payload["debt_cashflow_total"] == "-30.00"
+    assert payload["fx_cashflow_total"] == "-31.00"
+    assert payload["cashflow_total"] == "119.00"
+    assert payload["cashflow_change_pct"] is None
+
+    day_03 = next(item for item in payload["points"] if item["bucket_start"] == "2026-03-03")
+    day_04 = next(item for item in payload["points"] if item["bucket_start"] == "2026-03-04")
+    day_05 = next(item for item in payload["points"] if item["bucket_start"] == "2026-03-05")
+    assert day_03["cashflow_total"] == "-50.00"
+    assert day_03["debt_cashflow_total"] == "-50.00"
+    assert day_04["cashflow_total"] == "20.00"
+    assert day_04["debt_cashflow_total"] == "20.00"
+    assert day_05["cashflow_total"] == "-31.00"
+    assert day_05["fx_cashflow_total"] == "-31.00"
 
 
 def test_dashboard_analytics_trend_cache_is_invalidated_after_operation_mutation(client: TestClient):
@@ -649,6 +858,90 @@ def test_dashboard_analytics_calendar_year_returns_month_cells(client: TestClien
     mar = next(item for item in payload["months"] if item["month"] == "2026-03")
     assert jan["income_total"] == "100.00"
     assert mar["expense_total"] == "40.00"
+
+
+def test_dashboard_analytics_calendar_year_includes_cashflow_overlays(client: TestClient):
+    debt_created = client.post(
+        "/api/v1/debts",
+        json={
+            "counterparty": "Nina",
+            "direction": "borrow",
+            "principal": "90.00",
+            "currency": "BYN",
+            "start_date": "2026-01-10",
+            "note": "borrowed",
+        },
+    )
+    assert debt_created.status_code == 201
+    debt_id = debt_created.json()["id"]
+
+    repaid = client.post(
+        f"/api/v1/debts/{debt_id}/repayments",
+        json={
+            "amount": "30.00",
+            "repayment_date": "2026-02-10",
+            "note": "repay",
+        },
+    )
+    assert repaid.status_code == 201
+
+    fx_trade = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "sell",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "5",
+            "unit_price": "3.20",
+            "fee": "1.00",
+            "trade_date": "2026-02-15",
+            "note": "usd-sell",
+        },
+    )
+    assert fx_trade.status_code == 400
+
+    buy_trade = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "5",
+            "unit_price": "3.00",
+            "fee": "0.00",
+            "trade_date": "2026-01-12",
+            "note": "usd-buy",
+        },
+    )
+    assert buy_trade.status_code == 201
+    sell_trade = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "sell",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "5",
+            "unit_price": "3.20",
+            "fee": "1.00",
+            "trade_date": "2026-02-15",
+            "note": "usd-sell",
+        },
+    )
+    assert sell_trade.status_code == 201
+
+    response = client.get("/api/v1/dashboard/analytics/calendar/year", params={"year": 2026})
+    assert response.status_code == 200
+    payload = response.json()
+    jan = next(item for item in payload["months"] if item["month"] == "2026-01")
+    feb = next(item for item in payload["months"] if item["month"] == "2026-02")
+
+    assert jan["debt_cashflow_total"] == "90.00"
+    assert jan["fx_cashflow_total"] == "-15.00"
+    assert jan["cashflow_total"] == "75.00"
+
+    assert feb["debt_cashflow_total"] == "-30.00"
+    assert feb["fx_cashflow_total"] == "15.00"
+    assert feb["cashflow_total"] == "-15.00"
 
 
 def test_dashboard_analytics_calendar_year_cache_is_invalidated_after_operation_mutation(client: TestClient):
@@ -808,9 +1101,79 @@ def test_dashboard_analytics_highlights_includes_fx_cashflow_for_period(client: 
     assert payload["income_total"] == "300.00"
     assert payload["expense_total"] == "120.00"
     assert payload["balance"] == "180.00"
+    assert payload["cashflow_total"] == "57.50"
     assert payload["fx_cashflow_total"] == "-122.50"
     assert payload["prev_fx_cashflow_total"] in ("0", "0.00")
     assert payload["fx_cashflow_change_pct"] is None
+
+
+def test_dashboard_summary_and_highlights_use_unified_cashflow(client: TestClient):
+    assert client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "amount": "300.00",
+            "operation_date": "2026-03-11",
+            "note": "salary",
+        },
+    ).status_code == 201
+    assert client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "120.00",
+            "operation_date": "2026-03-12",
+            "note": "groceries",
+        },
+    ).status_code == 201
+    debt_created = client.post(
+        "/api/v1/debts",
+        json={
+            "counterparty": "Иван",
+            "direction": "lend",
+            "principal": "50.00",
+            "start_date": "2026-03-13",
+        },
+    )
+    assert debt_created.status_code == 201, debt_created.text
+    debt_id = debt_created.json()["id"]
+    assert client.post(
+        f"/api/v1/debts/{debt_id}/repayments",
+        json={"amount": "20.00", "repayment_date": "2026-03-15"},
+    ).status_code == 201
+    assert client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "10",
+            "unit_price": "3.00",
+            "fee": "1.00",
+            "trade_date": "2026-03-16",
+        },
+    ).status_code == 201
+
+    summary = client.get(
+        "/api/v1/dashboard/summary",
+        params={"period": "custom", "date_from": "2026-03-01", "date_to": "2026-03-31"},
+    )
+    assert summary.status_code == 200, summary.text
+    summary_payload = summary.json()
+    assert summary_payload["balance"] == "180.00"
+    assert summary_payload["debt_cashflow_total"] == "-30.00"
+    assert summary_payload["fx_cashflow_total"] == "-31.00"
+    assert summary_payload["cashflow_total"] == "119.00"
+
+    highlights = client.get("/api/v1/dashboard/analytics/highlights", params={"month": "2026-03"})
+    assert highlights.status_code == 200, highlights.text
+    payload = highlights.json()
+    assert payload["balance"] == "180.00"
+    assert payload["debt_cashflow_total"] == "-30.00"
+    assert payload["fx_cashflow_total"] == "-31.00"
+    assert payload["cashflow_total"] == "119.00"
+    assert payload["surplus_total"] == "119.00"
+    assert payload["deficit_total"] in ("0", "0.00")
 
 
 def test_dashboard_analytics_highlights_accepts_day_period(client: TestClient):
@@ -957,7 +1320,10 @@ def test_dashboard_analytics_ignores_category_statistics_flag(client: TestClient
     assert hidden_op.status_code == 201
     assert visible_op.status_code == 201
 
-    summary = client.get("/api/v1/dashboard/summary", params={"period": "month"})
+    summary = client.get(
+        "/api/v1/dashboard/summary",
+        params={"period": "custom", "date_from": "2026-03-01", "date_to": "2026-03-31"},
+    )
     assert summary.status_code == 200
     assert summary.json()["expense_total"] == "320.00"
 

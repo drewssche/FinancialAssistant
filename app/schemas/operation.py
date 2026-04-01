@@ -85,6 +85,44 @@ class OperationSummaryOut(BaseModel):
     total: int
 
 
+class MoneyFlowItemOut(BaseModel):
+    id: str
+    source_kind: str
+    source_id: int | None = None
+    flow_direction: str
+    event_date: date
+    amount: Decimal
+    original_amount: Decimal
+    currency: str
+    base_currency: str
+    fx_rate: Decimal = Decimal("1")
+    title: str
+    subtitle: str | None = None
+    note: str | None = None
+    category_id: int | None = None
+    category_name: str | None = None
+    category_icon: str | None = None
+    category_accent_color: str | None = None
+    counterparty_id: int | None = None
+    counterparty_name: str | None = None
+    asset_currency: str | None = None
+    quote_currency: str | None = None
+    trade_side: str | None = None
+    receipt_items: list[OperationReceiptItemOut] = []
+    receipt_total: Decimal | None = None
+    receipt_discrepancy: Decimal | None = None
+    can_open_source: bool = False
+    open_section: str | None = None
+    open_label: str | None = None
+
+
+class MoneyFlowListOut(BaseModel):
+    items: list[MoneyFlowItemOut]
+    total: int
+    page: int = Field(ge=1)
+    page_size: int = Field(ge=1)
+
+
 class OperationItemTemplateOut(BaseModel):
     id: int
     shop_name: str | None = None

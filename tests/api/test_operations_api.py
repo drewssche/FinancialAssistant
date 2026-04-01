@@ -181,6 +181,156 @@ def test_operations_support_currency_scope_filters(client: TestClient):
     assert summary_foreign.json()["expense_total"] == "33.00"
 
 
+def test_operations_money_flow_combines_operations_debts_and_fx(client: TestClient):
+    assert client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "amount": "70.00",
+            "operation_date": "2026-03-01",
+            "note": "salary",
+        },
+    ).status_code == 201
+    assert client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "20.00",
+            "operation_date": "2026-03-02",
+            "note": "coffee",
+        },
+    ).status_code == 201
+    debt_created = client.post(
+        "/api/v1/debts",
+        json={
+            "counterparty": "Иван",
+            "direction": "lend",
+            "principal": "100.00",
+            "start_date": "2026-03-03",
+            "note": "на ремонт",
+        },
+    )
+    assert debt_created.status_code == 201, debt_created.text
+    debt_id = debt_created.json()["id"]
+    repayment = client.post(
+        f"/api/v1/debts/{debt_id}/repayments",
+        json={"amount": "30.00", "repayment_date": "2026-03-04", "note": "частично"},
+    )
+    assert repayment.status_code == 201, repayment.text
+    forgiveness = client.post(
+        f"/api/v1/debts/{debt_id}/forgivenesses",
+        json={"amount": "10.00", "forgiven_date": "2026-03-05", "note": "списал"},
+    )
+    assert forgiveness.status_code == 201, forgiveness.text
+    trade = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "10",
+            "unit_price": "3.00",
+            "fee": "1.00",
+            "trade_date": "2026-03-06",
+            "note": "покупка usd",
+        },
+    )
+    assert trade.status_code == 201, trade.text
+
+    listed = client.get(
+        "/api/v1/operations/money-flow",
+        params={"page": 1, "page_size": 20, "date_from": "2026-03-01", "date_to": "2026-03-10"},
+    )
+    assert listed.status_code == 200, listed.text
+    payload = listed.json()
+    assert payload["total"] == 5
+    assert [item["source_kind"] for item in payload["items"]] == ["fx", "debt", "debt", "operation", "operation"]
+    assert payload["items"][0]["amount"] == "31.00"
+    assert payload["items"][0]["flow_direction"] == "outflow"
+    assert payload["items"][1]["flow_direction"] == "inflow"
+    assert payload["items"][2]["flow_direction"] == "outflow"
+    assert all(item["note"] != "списал" for item in payload["items"])
+
+    summary = client.get(
+        "/api/v1/operations/money-flow/summary",
+        params={"date_from": "2026-03-01", "date_to": "2026-03-10"},
+    )
+    assert summary.status_code == 200, summary.text
+    assert summary.json() == {
+        "income_total": "100.00",
+        "expense_total": "151.00",
+        "balance": "-51.00",
+        "total": 5,
+    }
+
+
+def test_operations_money_flow_supports_direction_and_source_filters(client: TestClient):
+    debt_created = client.post(
+        "/api/v1/debts",
+        json={
+            "counterparty": "Ольга",
+            "direction": "borrow",
+            "principal": "80.00",
+            "start_date": "2026-03-10",
+        },
+    )
+    assert debt_created.status_code == 201, debt_created.text
+    debt_id = debt_created.json()["id"]
+    assert client.post(
+        f"/api/v1/debts/{debt_id}/repayments",
+        json={"amount": "20.00", "repayment_date": "2026-03-12"},
+    ).status_code == 201
+    assert client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "sell",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "5",
+            "unit_price": "3.20",
+            "fee": "1.00",
+            "trade_date": "2026-03-11",
+        },
+    ).status_code == 400
+    assert client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "5",
+            "unit_price": "3.00",
+            "trade_date": "2026-03-09",
+        },
+    ).status_code == 201
+    assert client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "sell",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "5",
+            "unit_price": "3.20",
+            "fee": "1.00",
+            "trade_date": "2026-03-11",
+        },
+    ).status_code == 201
+
+    debt_only = client.get(
+        "/api/v1/operations/money-flow",
+        params={"page": 1, "page_size": 20, "source": "debt", "direction": "inflow"},
+    )
+    assert debt_only.status_code == 200, debt_only.text
+    assert debt_only.json()["total"] == 1
+    assert debt_only.json()["items"][0]["source_kind"] == "debt"
+    assert debt_only.json()["items"][0]["flow_direction"] == "inflow"
+
+    inflow_summary = client.get("/api/v1/operations/money-flow/summary", params={"direction": "inflow"})
+    assert inflow_summary.status_code == 200, inflow_summary.text
+    assert inflow_summary.json()["income_total"] == "95.00"
+    assert inflow_summary.json()["expense_total"] == "0.00"
+
+
 def test_operations_reject_invalid_date_range(client: TestClient):
     response = client.get(
         "/api/v1/operations",

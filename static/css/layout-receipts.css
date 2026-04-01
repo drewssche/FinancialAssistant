@@ -113,6 +113,30 @@
   border-color: rgba(120, 140, 170, 0.35);
 }
 
+.meta-chip-positive {
+  border-color: rgba(73, 190, 120, 0.35);
+  background: rgba(73, 190, 120, 0.16);
+  color: #b8efcb;
+}
+
+.meta-chip-negative {
+  border-color: rgba(255, 111, 125, 0.35);
+  background: rgba(255, 111, 125, 0.14);
+  color: #ffc0c8;
+}
+
+.meta-chip-warning {
+  border-color: rgba(255, 179, 71, 0.4);
+  background: rgba(255, 179, 71, 0.14);
+  color: #ffd79b;
+}
+
+.meta-chip-info {
+  border-color: rgba(109, 141, 189, 0.42);
+  background: rgba(109, 141, 189, 0.16);
+  color: #d5e2fb;
+}
+
 .receipt-items-list {
   display: grid;
   gap: var(--space-2);

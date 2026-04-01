@@ -244,7 +244,7 @@
                       <th>Итог доход</th>
                       <th>Итог расход</th>
                       <th>Операций</th>
-                      <th>Результат</th>
+                      <th>Профицит / Дефицит</th>
                     </tr>
                   </thead>
                   <tbody id="analyticsCalendarBody"></tbody>
@@ -274,12 +274,12 @@
               </div>
             </div>
             <div class="analytics-trend-chart-wrap">
-              <svg id="analyticsTrendChart" class="analytics-trend-chart" viewBox="0 0 980 280" preserveAspectRatio="none" aria-label="Тренд доходов расходов баланса"></svg>
+              <svg id="analyticsTrendChart" class="analytics-trend-chart" viewBox="0 0 980 280" preserveAspectRatio="none" aria-label="Тренд доходов, расходов и профицита или дефицита"></svg>
             </div>
             <div class="analytics-trend-legend">
               <span><i class="legend-dot legend-income"></i>Доход</span>
               <span><i class="legend-dot legend-expense"></i>Расход</span>
-              <span><i class="legend-dot legend-balance"></i>Баланс</span>
+              <span><i class="legend-dot legend-balance"></i>Профицит / Дефицит</span>
             </div>
             <div class="analytics-trend-kpis analytics-kpi-grid">
               <article class="analytics-kpi-card analytics-kpi-income">
@@ -292,8 +292,8 @@
                 <strong id="analyticsExpenseDelta">0 руб.</strong>
                 <span class="analytics-kpi-delta">За выбранный период</span>
               </article>
-              <article class="analytics-kpi-card analytics-kpi-balance">
-                <div class="muted-small">Баланс</div>
+              <article id="analyticsResultCard" class="analytics-kpi-card analytics-kpi-neutral">
+                <div id="analyticsResultLabel" class="muted-small">Профицит / Дефицит</div>
                 <strong id="analyticsBalanceDelta">0 руб.</strong>
                 <span class="analytics-kpi-delta">За выбранный период</span>
               </article>
@@ -327,7 +327,7 @@
                 <div class="muted-small">Текущая оценка открытых позиций</div>
                 <strong id="analyticsCurrencyCurrentValue">0</strong>
               </article>
-              <article class="analytics-kpi-card analytics-kpi-balance">
+              <article class="analytics-kpi-card analytics-kpi-neutral">
                 <div class="muted-small">Вложено в открытые позиции</div>
                 <strong id="analyticsCurrencyBookValue">0</strong>
               </article>
@@ -381,6 +381,7 @@
                 <p id="operationsPeriodLabel" class="subtitle"></p>
                 <div id="operationsActiveFilters" class="analytics-kpi-secondary hidden">
                   <span id="operationsKindFilterChip" class="analytics-kpi-chip analytics-kpi-chip-neutral hidden"></span>
+                  <span id="operationsSourceFilterChip" class="analytics-kpi-chip analytics-kpi-chip-neutral hidden"></span>
                   <span id="operationsQuickViewChip" class="analytics-kpi-chip analytics-kpi-chip-neutral hidden"></span>
                   <span id="operationsCurrencyScopeChip" class="analytics-kpi-chip analytics-kpi-chip-neutral hidden"></span>
                   <span id="operationsCategoryFilterChip" class="analytics-kpi-chip analytics-kpi-chip-neutral hidden"></span>
@@ -397,14 +398,24 @@
                   <button class="segmented-btn" data-period="custom" type="button">Настроить</button>
                 </div>
                 <div class="segmented" id="kindFilters" role="tablist" aria-label="Фильтр по типу">
-                  <button class="segmented-btn active" data-kind="" type="button">Все</button>
-                  <button class="segmented-btn" data-kind="expense" type="button">Расход</button>
-                  <button class="segmented-btn" data-kind="income" type="button">Доход</button>
+                  <button class="segmented-btn active" data-kind="" type="button" id="operationsKindAllLabel">Все</button>
+                  <button class="segmented-btn" data-kind="expense" type="button" id="operationsKindExpenseLabel">Расход</button>
+                  <button class="segmented-btn" data-kind="income" type="button" id="operationsKindIncomeLabel">Доход</button>
                 </div>
               </div>
             </div>
             <div class="operations-controls-grid">
               <div class="operations-control-card">
+                <div class="operations-control-head">
+                  <span class="muted-small">Режим</span>
+                </div>
+                <div class="segmented" id="operationsModeTabs" role="tablist" aria-label="Режим операций">
+                  <button class="segmented-btn active" data-operations-mode="operations" type="button">Операции</button>
+                  <button class="segmented-btn" data-operations-mode="money_flow" type="button">Денежный поток</button>
+                </div>
+                <div id="operationsModeHint" class="muted-small">Текущий CRUD-режим по доходам и расходам.</div>
+              </div>
+              <div id="operationsQuickViewCard" class="operations-control-card">
                 <div class="operations-control-head">
                   <span class="muted-small">Быстрые срезы</span>
                 </div>
@@ -413,6 +424,17 @@
                   <button class="segmented-btn" data-operations-quick-view="receipt" type="button">С чеком</button>
                   <button class="segmented-btn" data-operations-quick-view="large" type="button">Крупные</button>
                   <button class="segmented-btn" data-operations-quick-view="uncategorized" type="button">Без категории</button>
+                </div>
+              </div>
+              <div id="operationsSourceCard" class="operations-control-card hidden">
+                <div class="operations-control-head">
+                  <span class="muted-small">Источник</span>
+                </div>
+                <div class="segmented" id="operationsSourceTabs" role="tablist" aria-label="Источник денежного потока">
+                  <button class="segmented-btn active" data-operations-source="all" type="button">Все</button>
+                  <button class="segmented-btn" data-operations-source="operation" type="button">Операции</button>
+                  <button class="segmented-btn" data-operations-source="debt" type="button">Долги</button>
+                  <button class="segmented-btn" data-operations-source="fx" type="button">Валюта</button>
                 </div>
               </div>
               <div class="operations-control-card">
@@ -449,19 +471,19 @@
             </div>
             <div id="operationsSummaryGrid" class="analytics-kpi-grid operations-summary-grid">
               <article class="analytics-kpi-card analytics-kpi-income">
-                <div class="muted-small">Доход по выборке</div>
+                <div id="operationsIncomeLabel" class="muted-small">Доход по выборке</div>
                 <strong id="operationsIncomeTotal">0</strong>
               </article>
               <article class="analytics-kpi-card analytics-kpi-expense">
-                <div class="muted-small">Расход по выборке</div>
+                <div id="operationsExpenseLabel" class="muted-small">Расход по выборке</div>
                 <strong id="operationsExpenseTotal">0</strong>
               </article>
-              <article class="analytics-kpi-card analytics-kpi-balance">
-                <div class="muted-small">Баланс по выборке</div>
+              <article id="operationsResultCard" class="analytics-kpi-card analytics-kpi-neutral">
+                <div id="operationsResultLabel" class="muted-small">Профицит / Дефицит по выборке</div>
                 <strong id="operationsBalanceTotal">0</strong>
               </article>
               <article class="analytics-kpi-card analytics-kpi-neutral">
-                <div class="muted-small">Операций найдено</div>
+                <div id="operationsTotalCountLabel" class="muted-small">Операций найдено</div>
                 <strong id="operationsTotalCount">0</strong>
               </article>
             </div>
@@ -484,12 +506,12 @@
                   <tr>
                     <th class="select-col"><input id="operationsSelectAll" class="table-checkbox" type="checkbox" /></th>
                     <th>Дата</th>
-                    <th>Тип</th>
-                    <th>Категория</th>
-                    <th>Чек</th>
+                    <th id="operationsTypeHeader">Тип</th>
+                    <th id="operationsCategoryHeader">Категория</th>
+                    <th id="operationsReceiptHeader">Чек</th>
                     <th>Сумма</th>
                     <th>Комментарий</th>
-                    <th></th>
+                    <th id="operationsActionsHeader"></th>
                   </tr>
                 </thead>
                 <tbody id="operationsBody"></tbody>

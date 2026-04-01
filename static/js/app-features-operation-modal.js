@@ -41,6 +41,7 @@
   const handleCreatePreviewClick = preview?.handleCreatePreviewClick || (() => {});
   let currencyUnitPriceManual = false;
   let currencyTradeSourceField = "quantity";
+  let currencyTradeRateDriver = false;
   let currencyRateRequestSeq = 0;
   let createOperationFxRateManual = false;
   let editOperationFxRateManual = true;
@@ -98,21 +99,42 @@
     }
     currencyUnitPriceManual = false;
     currencyTradeSourceField = "quantity";
+    currencyTradeRateDriver = false;
     syncCurrencyTradeFieldUi();
     await syncSuggestedCurrencyRate({ force: true }).catch(() => {});
     updateCreatePreview();
   }
 
   function markCurrencyQuantitySource() {
+    const rateResolved = core.resolveRateInput(el.currencyUnitPrice?.value || 0, 0, 6);
+    const preserveRateDriver = rateResolved.valid && Number(rateResolved.previewValue || 0) > 0;
     currencyTradeSourceField = "quantity";
+    currencyUnitPriceManual = preserveRateDriver;
+    currencyTradeRateDriver = preserveRateDriver;
     syncCurrencyTradeFieldUi();
     updateCreatePreview();
   }
 
   function markCurrencyQuoteSource() {
+    const rateResolved = core.resolveRateInput(el.currencyUnitPrice?.value || 0, 0, 6);
+    const preserveRateDriver = rateResolved.valid && Number(rateResolved.previewValue || 0) > 0;
     currencyTradeSourceField = "quote";
+    currencyUnitPriceManual = preserveRateDriver;
+    currencyTradeRateDriver = preserveRateDriver;
     syncCurrencyTradeFieldUi();
     updateCreatePreview();
+  }
+
+  function formatTradeRateValue(value) {
+    const numeric = Number(value || 0);
+    if (!(numeric > 0)) {
+      return "";
+    }
+    const fixed = numeric.toFixed(6);
+    const [whole, fraction = ""] = fixed.split(".");
+    const trimmedFraction = fraction.replace(/0+$/, "");
+    const nextFraction = trimmedFraction.length >= 4 ? trimmedFraction : fraction.slice(0, 4);
+    return `${whole}.${nextFraction}`;
   }
 
   function getCurrencyTradeContext() {
@@ -126,19 +148,32 @@
     const rateResolved = core.resolveRateInput(el.currencyUnitPrice?.value || 0, 0, 6);
     const enteredQuantity = Number(quantityResolved.previewValue || 0);
     const enteredQuoteTotal = Number(quoteResolved.previewValue || 0);
-    const unitPrice = Number(rateResolved.previewValue || 0);
+    const enteredUnitPrice = Number(rateResolved.previewValue || 0);
+    const hasQuantity = quantityResolved.valid && enteredQuantity > 0;
+    const hasQuoteTotal = quoteResolved.valid && enteredQuoteTotal > 0;
+    const hasPairInputs = hasQuantity && hasQuoteTotal;
+    const pairDerivedRate = hasPairInputs ? enteredQuoteTotal / enteredQuantity : 0;
     const preferredSource = currencyTradeSourceField === "quote" ? "quote" : "quantity";
-    const resolvedSource = quoteResolved.valid && !quantityResolved.valid
-      ? "quote"
-      : quantityResolved.valid && !quoteResolved.valid
-        ? "quantity"
-        : preferredSource;
+    const derivedRateFromAmounts = hasPairInputs && (!rateResolved.valid || enteredUnitPrice <= 0);
+    const effectiveRateResolved = derivedRateFromAmounts
+      ? core.resolveRateInput(pairDerivedRate, 0, 6)
+      : rateResolved;
+    const resolvedSource = derivedRateFromAmounts
+      ? "pair"
+      : hasQuoteTotal && !hasQuantity
+        ? "quote"
+        : hasQuantity && !hasQuoteTotal
+          ? "quantity"
+          : preferredSource;
+    const unitPrice = Number(effectiveRateResolved.previewValue || enteredUnitPrice || 0);
     const effectiveQuantity = resolvedSource === "quote" && unitPrice > 0
       ? enteredQuoteTotal / unitPrice
       : enteredQuantity;
     const estimatedQuoteTotal = resolvedSource === "quote"
       ? enteredQuoteTotal
-      : effectiveQuantity * unitPrice;
+      : resolvedSource === "pair"
+        ? enteredQuoteTotal
+        : effectiveQuantity * unitPrice;
     return {
       side,
       assetCurrency,
@@ -147,12 +182,13 @@
       quoteLabel,
       quantityResolved,
       quoteResolved,
-      rateResolved,
+      rateResolved: effectiveRateResolved,
       enteredQuantity,
       enteredQuoteTotal,
       unitPrice,
       effectiveQuantity,
       estimatedQuoteTotal,
+      derivedRateFromAmounts,
       sourceField: resolvedSource,
       amountLabel: side === "buy" ? `Покупаю ${assetLabel}` : `Продаю ${assetLabel}`,
       quoteAmountLabel: side === "buy" ? `Плачу ${quoteLabel}` : `Получаю ${quoteLabel}`,
@@ -183,7 +219,7 @@
       `/api/v1/currency/overview?currency=${encodeURIComponent(currency)}&trades_limit=1`,
       { headers: core.authHeaders() },
     ).catch(() => null);
-    if (requestSeq !== currencyRateRequestSeq) {
+    if (requestSeq !== currencyRateRequestSeq || currencyUnitPriceManual || currencyTradeRateDriver) {
       return;
     }
     const currentRate = Array.isArray(overview?.current_rates) ? overview.current_rates[0] : null;
@@ -196,13 +232,17 @@
   }
 
   function markCurrencyRateManual() {
-    currencyUnitPriceManual = true;
+    const rateResolved = core.resolveRateInput(el.currencyUnitPrice?.value || 0, 0, 6);
+    const hasValidRate = rateResolved.valid && Number(rateResolved.previewValue || 0) > 0;
+    currencyUnitPriceManual = hasValidRate;
+    currencyTradeRateDriver = hasValidRate;
     syncCurrencyTradeFieldUi();
     updateCreatePreview();
   }
 
   function resetCurrencyRateAutofill() {
     currencyUnitPriceManual = false;
+    currencyTradeRateDriver = false;
   }
 
   function applyTradeFieldCurrency(node, currencyCode) {
@@ -241,6 +281,11 @@
       el.currencyQuoteTotal.title = context.quoteAmountLabel;
     }
     if (el.currencyUnitPrice) {
+      if (context.sourceField === "pair" && context.unitPrice > 0) {
+        el.currencyUnitPrice.value = formatTradeRateValue(context.unitPrice);
+      } else if (context.sourceField === "pair" && context.unitPrice <= 0) {
+        el.currencyUnitPrice.value = "";
+      }
       el.currencyUnitPrice.placeholder = `Курс ${context.quoteCurrency} за 1 ${context.assetCurrency}`;
       el.currencyUnitPrice.setAttribute("aria-label", context.unitPriceLabel);
       el.currencyUnitPrice.title = context.unitPriceLabel;
@@ -251,12 +296,12 @@
       if (context.side === "buy") {
         const computed = hasRate && hasQuantity
           ? `Будет списано примерно ${core.formatMoney(context.estimatedQuoteTotal, { currency: context.quoteCurrency })} за ${core.formatAmount(context.effectiveQuantity)} ${context.assetCurrency}.`
-          : `Можно вводить либо сколько покупаешь в ${context.assetCurrency}, либо сколько платишь в ${context.quoteCurrency}. Второе поле пересчитается по курсу.`;
+          : `Можно заполнить любые две величины: количество в ${context.assetCurrency}, сумму в ${context.quoteCurrency} или курс. Третье поле пересчитается автоматически.`;
         el.currencyTradeHint.textContent = computed;
       } else {
         const computed = hasRate && hasQuantity
           ? `Будет получено примерно ${core.formatMoney(context.estimatedQuoteTotal, { currency: context.quoteCurrency })} за ${core.formatAmount(context.effectiveQuantity)} ${context.assetCurrency}.`
-          : `Можно вводить либо сколько продаёшь в ${context.assetCurrency}, либо сколько хочешь получить в ${context.quoteCurrency}. Второе поле пересчитается по курсу.`;
+          : `Можно заполнить любые две величины: количество в ${context.assetCurrency}, сумму в ${context.quoteCurrency} или курс. Третье поле пересчитается автоматически.`;
         el.currencyTradeHint.textContent = computed;
       }
     }
@@ -819,6 +864,7 @@
     await setCurrencySide("buy");
     currencyUnitPriceManual = false;
     currencyTradeSourceField = "quantity";
+    currencyTradeRateDriver = false;
     syncCurrencyTradeFieldUi();
     syncOperationCurrencyFields("create").catch(() => {});
     syncOperationCurrencyFields("edit").catch(() => {});
@@ -875,6 +921,7 @@
   async function openCreateModalForCurrency() {
     await openCreateModal({ entryMode: "currency" });
     currencyUnitPriceManual = false;
+    currencyTradeRateDriver = false;
     syncCurrencyTradeFieldUi();
     updateCreatePreview();
   }
@@ -915,6 +962,7 @@
     }
     currencyTradeSourceField = "quantity";
     currencyUnitPriceManual = true;
+    currencyTradeRateDriver = false;
     syncCurrencyTradeFieldUi();
     updateCreatePreview();
   }

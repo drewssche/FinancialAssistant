@@ -268,3 +268,46 @@ def test_currency_trade_modal_keeps_preview_and_recalculates_both_fields(static_
     preview_text = page.locator("#createPreviewBody").inner_text()
     assert "2.00 USD" in preview_text
     assert "5,93 руб." in preview_text
+
+
+@pytest.mark.e2e
+def test_currency_trade_modal_derives_rate_from_quantity_and_quote_total(static_server_url: str, page_with_currency_modal_api_mock):
+    page = page_with_currency_modal_api_mock
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    _login_via_mock_telegram(page)
+
+    page.click("#addOperationCta")
+    page.wait_for_selector("#createModal:not(.hidden)")
+    page.click("#createEntryModeSwitch button[data-entry-mode='currency']")
+
+    page.fill("#currencyQuantity", "2")
+    page.fill("#currencyQuoteTotal", "5.93")
+
+    page.wait_for_function(
+        """
+        () => {
+          const rate = document.querySelector('#currencyUnitPrice');
+          const previewBody = document.querySelector('#createPreviewBody');
+          return Boolean(rate && previewBody && rate.value && rate.value.startsWith('2.965') && previewBody.children.length === 1);
+        }
+        """
+    )
+
+    assert page.locator("#currencyUnitPrice").input_value().startswith("2.965")
+    preview_text = page.locator("#createPreviewBody").inner_text()
+    assert "2.00 USD" in preview_text
+    assert "5,93 руб." in preview_text
+    assert "2.965" in preview_text

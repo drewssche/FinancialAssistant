@@ -322,6 +322,12 @@
       state.period = "day";
     }
     state.filterKind = prefs.data?.operations?.filters?.kind || "";
+    state.operationsMode = ["operations", "money_flow"].includes(prefs.data?.operations?.mode)
+      ? prefs.data.operations.mode
+      : "operations";
+    state.operationsSourceFilter = ["all", "operation", "debt", "fx"].includes(prefs.data?.operations?.filters?.source)
+      ? prefs.data.operations.filters.source
+      : "all";
     state.operationsQuickView = prefs.data?.operations?.filters?.quick_view || "all";
     state.operationsCurrencyScope = ["all", "base", "foreign"].includes(prefs.data?.operations?.filters?.currency_scope)
       ? prefs.data.operations.filters.currency_scope
@@ -376,7 +382,9 @@
     state.activeSection = prefs.data?.ui?.active_section || "dashboard";
 
     core.syncAllPeriodTabs(state.period);
+    core.syncSegmentedActive(el.operationsModeTabs, "operations-mode", state.operationsMode);
     core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
+    core.syncSegmentedActive(el.operationsSourceTabs, "operations-source", state.operationsSourceFilter);
     core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
     core.syncSegmentedActive(el.operationsCurrencyScopeTabs, "operations-currency-scope", state.operationsCurrencyScope);
     core.syncSegmentedActive(el.operationsSortTabs, "op-sort", state.operationSortPreset);
@@ -460,9 +468,11 @@
         },
         operations: {
           ...(state.preferences?.data?.operations || {}),
+          mode: state.operationsMode || "operations",
           sort_preset: state.operationSortPreset || "date",
           filters: {
             kind: state.filterKind,
+            source: state.operationsSourceFilter || "all",
             quick_view: state.operationsQuickView || "all",
             currency_scope: state.operationsCurrencyScope || "all",
             category_id: state.operationsCategoryFilterId,

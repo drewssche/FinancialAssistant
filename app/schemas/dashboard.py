@@ -22,6 +22,9 @@ class DashboardSummary(BaseModel):
     income_total: Decimal
     expense_total: Decimal
     balance: Decimal
+    debt_cashflow_total: Decimal = Decimal("0")
+    fx_cashflow_total: Decimal = Decimal("0")
+    cashflow_total: Decimal = Decimal("0")
     balance_with_currency_result: Decimal = Decimal("0")
     debt_lend_outstanding: Decimal
     debt_borrow_outstanding: Decimal
@@ -103,6 +106,12 @@ class AnalyticsCalendarDay(BaseModel):
     expense_total: Decimal
     balance: Decimal
     operations_count: int
+    debt_cashflow_total: Decimal = Decimal("0")
+    debt_events_count: int = 0
+    fx_cashflow_total: Decimal = Decimal("0")
+    fx_events_count: int = 0
+    cashflow_total: Decimal = Decimal("0")
+    cashflow_events_count: int = 0
 
 
 class AnalyticsCalendarWeek(BaseModel):
@@ -112,6 +121,12 @@ class AnalyticsCalendarWeek(BaseModel):
     expense_total: Decimal
     balance: Decimal
     operations_count: int
+    debt_cashflow_total: Decimal = Decimal("0")
+    debt_events_count: int = 0
+    fx_cashflow_total: Decimal = Decimal("0")
+    fx_events_count: int = 0
+    cashflow_total: Decimal = Decimal("0")
+    cashflow_events_count: int = 0
     days: list[AnalyticsCalendarDay]
 
 
@@ -123,6 +138,12 @@ class AnalyticsCalendarOut(BaseModel):
     expense_total: Decimal
     balance: Decimal
     operations_count: int
+    debt_cashflow_total: Decimal = Decimal("0")
+    debt_events_count: int = 0
+    fx_cashflow_total: Decimal = Decimal("0")
+    fx_events_count: int = 0
+    cashflow_total: Decimal = Decimal("0")
+    cashflow_events_count: int = 0
     weeks: list[AnalyticsCalendarWeek]
 
 
@@ -134,6 +155,12 @@ class AnalyticsCalendarYearMonth(BaseModel):
     expense_total: Decimal
     balance: Decimal
     operations_count: int
+    debt_cashflow_total: Decimal = Decimal("0")
+    debt_events_count: int = 0
+    fx_cashflow_total: Decimal = Decimal("0")
+    fx_events_count: int = 0
+    cashflow_total: Decimal = Decimal("0")
+    cashflow_events_count: int = 0
 
 
 class AnalyticsCalendarYearOut(BaseModel):
@@ -144,6 +171,12 @@ class AnalyticsCalendarYearOut(BaseModel):
     expense_total: Decimal
     balance: Decimal
     operations_count: int
+    debt_cashflow_total: Decimal = Decimal("0")
+    debt_events_count: int = 0
+    fx_cashflow_total: Decimal = Decimal("0")
+    fx_events_count: int = 0
+    cashflow_total: Decimal = Decimal("0")
+    cashflow_events_count: int = 0
     months: list[AnalyticsCalendarYearMonth]
 
 
@@ -154,6 +187,12 @@ class AnalyticsTrendPoint(BaseModel):
     income_total: Decimal
     expense_total: Decimal
     balance: Decimal
+    debt_cashflow_total: Decimal = Decimal("0")
+    debt_events_count: int = 0
+    fx_cashflow_total: Decimal = Decimal("0")
+    fx_events_count: int = 0
+    cashflow_total: Decimal = Decimal("0")
+    cashflow_events_count: int = 0
     operations_count: int
 
 
@@ -165,14 +204,23 @@ class AnalyticsTrendOut(BaseModel):
     income_total: Decimal
     expense_total: Decimal
     balance: Decimal
+    debt_cashflow_total: Decimal = Decimal("0")
+    fx_cashflow_total: Decimal = Decimal("0")
+    cashflow_total: Decimal = Decimal("0")
     operations_count: int
     prev_income_total: Decimal
     prev_expense_total: Decimal
     prev_balance: Decimal
+    prev_debt_cashflow_total: Decimal = Decimal("0")
+    prev_fx_cashflow_total: Decimal = Decimal("0")
+    prev_cashflow_total: Decimal = Decimal("0")
     prev_operations_count: int
     income_change_pct: float | None
     expense_change_pct: float | None
     balance_change_pct: float | None
+    debt_cashflow_change_pct: float | None = None
+    fx_cashflow_change_pct: float | None = None
+    cashflow_change_pct: float | None = None
     operations_change_pct: float | None
     points: list[AnalyticsTrendPoint]
 
@@ -236,11 +284,15 @@ class AnalyticsHighlightsOut(BaseModel):
     income_total: Decimal
     expense_total: Decimal
     balance: Decimal
+    debt_cashflow_total: Decimal = Decimal("0")
     fx_cashflow_total: Decimal = Decimal("0")
+    cashflow_total: Decimal = Decimal("0")
     prev_income_total: Decimal
     prev_expense_total: Decimal
     prev_balance: Decimal
+    prev_debt_cashflow_total: Decimal = Decimal("0")
     prev_fx_cashflow_total: Decimal = Decimal("0")
+    prev_cashflow_total: Decimal = Decimal("0")
     prev_operations_count: int
     surplus_total: Decimal
     deficit_total: Decimal
@@ -251,7 +303,9 @@ class AnalyticsHighlightsOut(BaseModel):
     income_change_pct: float | None
     expense_change_pct: float | None
     balance_change_pct: float | None
+    debt_cashflow_change_pct: float | None = None
     fx_cashflow_change_pct: float | None = None
+    cashflow_change_pct: float | None = None
     operations_change_pct: float | None
     category_breakdown: list[AnalyticsTopCategory]
     top_operations: list[AnalyticsTopOperation]

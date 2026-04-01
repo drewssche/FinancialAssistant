@@ -45,6 +45,8 @@
       customDateFrom: "",
       customDateTo: "",
       filterKind: "",
+      operationsMode: "operations",
+      operationsSourceFilter: "all",
       operationsQuickView: "all",
       operationsCurrencyScope: "all",
       operationsCategoryFilterId: null,

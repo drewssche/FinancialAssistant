@@ -219,18 +219,20 @@ class DashboardAnalyticsHighlightsService:
             date_from=prev_from,
             date_to=prev_to,
         )
-        fx_cashflow_total = self.compute_fx_cashflow_total(
+        cashflow_totals = self.timeline.get_cashflow_totals(
             user_id=user_id,
             date_from=resolved_from,
             date_to=resolved_to,
-            base_currency=base_currency,
         )
-        prev_fx_cashflow_total = self.compute_fx_cashflow_total(
+        prev_cashflow_totals = self.timeline.get_cashflow_totals(
             user_id=user_id,
             date_from=prev_from,
             date_to=prev_to,
-            base_currency=base_currency,
         )
+        debt_cashflow_total = Decimal(cashflow_totals["debt_cashflow_total"] or 0)
+        fx_cashflow_total = Decimal(cashflow_totals["fx_cashflow_total"] or 0)
+        prev_debt_cashflow_total = Decimal(prev_cashflow_totals["debt_cashflow_total"] or 0)
+        prev_fx_cashflow_total = Decimal(prev_cashflow_totals["fx_cashflow_total"] or 0)
 
         max_expense_day_total = Decimal("0")
         max_expense_day_date: date | None = None
@@ -401,8 +403,10 @@ class DashboardAnalyticsHighlightsService:
 
         balance = income_total - expense_total
         prev_balance = prev_income_total - prev_expense_total
-        surplus_total = balance if balance > 0 else Decimal("0")
-        deficit_total = abs(balance) if balance < 0 else Decimal("0")
+        cashflow_total = balance + debt_cashflow_total + fx_cashflow_total
+        prev_cashflow_total = prev_balance + prev_debt_cashflow_total + prev_fx_cashflow_total
+        surplus_total = cashflow_total if cashflow_total > 0 else Decimal("0")
+        deficit_total = abs(cashflow_total) if cashflow_total < 0 else Decimal("0")
         return {
             "period": period,
             "category_breakdown_kind": category_kind,
@@ -415,11 +419,15 @@ class DashboardAnalyticsHighlightsService:
             "income_total": income_total,
             "expense_total": expense_total,
             "balance": balance,
+            "debt_cashflow_total": debt_cashflow_total,
             "fx_cashflow_total": fx_cashflow_total,
+            "cashflow_total": cashflow_total,
             "prev_income_total": prev_income_total,
             "prev_expense_total": prev_expense_total,
             "prev_balance": prev_balance,
+            "prev_debt_cashflow_total": prev_debt_cashflow_total,
             "prev_fx_cashflow_total": prev_fx_cashflow_total,
+            "prev_cashflow_total": prev_cashflow_total,
             "prev_operations_count": prev_operations_count,
             "surplus_total": surplus_total,
             "deficit_total": deficit_total,
@@ -430,7 +438,9 @@ class DashboardAnalyticsHighlightsService:
             "income_change_pct": self.timeline.percent_change(income_total, prev_income_total),
             "expense_change_pct": self.timeline.percent_change(expense_total, prev_expense_total),
             "balance_change_pct": self.timeline.percent_change(balance, prev_balance),
+            "debt_cashflow_change_pct": self.timeline.percent_change(debt_cashflow_total, prev_debt_cashflow_total),
             "fx_cashflow_change_pct": self.timeline.percent_change(fx_cashflow_total, prev_fx_cashflow_total),
+            "cashflow_change_pct": self.timeline.percent_change(cashflow_total, prev_cashflow_total),
             "operations_change_pct": self.timeline.percent_change(Decimal(operations_count), Decimal(prev_operations_count)),
             "category_breakdown": [
                 {

@@ -271,6 +271,330 @@ class OperationService:
         )
         return payload
 
+    @staticmethod
+    def _normalize_money_flow_direction(direction: str | None) -> str:
+        value = str(direction or "all").strip().lower()
+        if value not in {"all", "inflow", "outflow"}:
+            raise ValueError("direction must be one of: all, inflow, outflow")
+        return value
+
+    @staticmethod
+    def _normalize_money_flow_source(source: str | None) -> str:
+        value = str(source or "all").strip().lower()
+        if value not in {"all", "operation", "debt", "fx"}:
+            raise ValueError("source must be one of: all, operation, debt, fx")
+        return value
+
+    def _matches_money_flow_query(self, item: dict, q: str | None) -> bool:
+        query = " ".join((q or "").strip().split()).casefold()
+        if not query:
+            return True
+        haystack = " ".join([
+            str(item.get("title") or ""),
+            str(item.get("subtitle") or ""),
+            str(item.get("note") or ""),
+            str(item.get("category_name") or ""),
+            str(item.get("counterparty_name") or ""),
+            str(item.get("asset_currency") or ""),
+            str(item.get("quote_currency") or ""),
+            str(item.get("trade_side") or ""),
+            str(item.get("source_kind") or ""),
+        ]).casefold()
+        return query in haystack
+
+    def _build_money_flow_dataset(
+        self,
+        *,
+        user_id: int,
+        sort_by: str,
+        sort_dir: str,
+        date_from: date | None,
+        date_to: date | None,
+        q: str | None,
+        direction: str | None,
+        source: str | None,
+        currency_scope: str | None,
+    ) -> list[dict]:
+        if date_from and date_to and date_from > date_to:
+            raise ValueError("date_from must be less than or equal to date_to")
+        normalized_direction = self._normalize_money_flow_direction(direction)
+        normalized_source = self._normalize_money_flow_source(source)
+        normalized_currency_scope = self._normalize_currency_scope(currency_scope)
+        base_currency = self._get_user_base_currency(user_id)
+        items: list[dict] = []
+
+        def include_direction(flow_direction: str) -> bool:
+            if normalized_direction == "all":
+                return True
+            return flow_direction == normalized_direction
+
+        def include_currency(event_currency: str, event_base_currency: str) -> bool:
+            currency = str(event_currency or event_base_currency or base_currency).upper()
+            base = str(event_base_currency or base_currency).upper()
+            if normalized_currency_scope == "all":
+                return True
+            if normalized_currency_scope == "base":
+                return currency == base
+            return currency != base
+
+        if normalized_source in {"all", "operation"}:
+            operation_kind = None
+            if normalized_direction == "inflow":
+                operation_kind = "income"
+            elif normalized_direction == "outflow":
+                operation_kind = "expense"
+            operations = self.repo.list_filtered_all(
+                user_id=user_id,
+                sort_by=sort_by,
+                sort_dir=sort_dir,
+                kind=operation_kind,
+                date_from=date_from,
+                date_to=date_to,
+                category_id=None,
+                q=q,
+                receipt_only=False,
+                uncategorized_only=False,
+                min_amount=None,
+                currency_scope=normalized_currency_scope,
+                base_currency=base_currency,
+            )
+            receipt_by_operation = self.repo.list_receipt_items_for_operations(
+                user_id=user_id,
+                operation_ids=[int(item.id) for item in operations],
+            )
+            for operation in operations:
+                payload = self._serialize_operation(
+                    user_id=user_id,
+                    operation=operation,
+                    receipt_items=receipt_by_operation.get(int(operation.id), []),
+                )
+                flow_direction = "inflow" if payload["kind"] == "income" else "outflow"
+                item = {
+                    "id": f"operation:{payload['id']}",
+                    "source_kind": "operation",
+                    "source_id": int(payload["id"]),
+                    "flow_direction": flow_direction,
+                    "event_date": payload["operation_date"],
+                    "amount": payload["amount"],
+                    "original_amount": payload["original_amount"],
+                    "currency": payload["currency"],
+                    "base_currency": payload["base_currency"],
+                    "fx_rate": payload["fx_rate"],
+                    "title": payload.get("category_name") or "Без категории",
+                    "subtitle": "Обычная операция",
+                    "note": payload.get("note"),
+                    "category_id": payload.get("category_id"),
+                    "category_name": payload.get("category_name"),
+                    "category_icon": payload.get("category_icon"),
+                    "category_accent_color": payload.get("category_accent_color"),
+                    "receipt_items": payload.get("receipt_items") or [],
+                    "receipt_total": payload.get("receipt_total"),
+                    "receipt_discrepancy": payload.get("receipt_discrepancy"),
+                    "can_open_source": False,
+                    "open_section": "operations",
+                    "open_label": "Операция",
+                }
+                if self._matches_money_flow_query(item, q):
+                    items.append(item)
+
+        if normalized_source in {"all", "debt"}:
+            from app.services.debt_service import DebtService
+
+            debt_service = DebtService(self.db)
+            for card in debt_service.list_cards(user_id=user_id, include_closed=True, q=None):
+                for debt in card.get("debts", []) or []:
+                    debt_currency = str(debt.get("currency") or base_currency).upper()
+                    debt_base_currency = str(debt.get("base_currency") or base_currency).upper()
+                    if not include_currency(debt_currency, debt_base_currency):
+                        continue
+                    direction_sign = -1 if str(debt.get("direction") or "lend") == "lend" else 1
+                    for issuance in debt.get("issuances", []) or []:
+                        flow_direction = "outflow" if direction_sign < 0 else "inflow"
+                        if not include_direction(flow_direction):
+                            continue
+                        is_lend = direction_sign < 0
+                        item = {
+                            "id": f"debt-issuance:{issuance['id']}",
+                            "source_kind": "debt",
+                            "source_id": int(debt["id"]),
+                            "flow_direction": flow_direction,
+                            "event_date": issuance["issuance_date"],
+                            "amount": self._money(issuance.get("current_base_amount") or issuance.get("amount") or 0),
+                            "original_amount": self._money(issuance.get("amount") or 0),
+                            "currency": debt_currency,
+                            "base_currency": debt_base_currency,
+                            "fx_rate": self._rate(Decimal("1")),
+                            "title": "Я дал в долг" if is_lend else "Я взял в долг",
+                            "subtitle": str(card.get("counterparty") or "Контрагент"),
+                            "note": issuance.get("note") or debt.get("note"),
+                            "counterparty_id": int(card["counterparty_id"]),
+                            "counterparty_name": str(card.get("counterparty") or ""),
+                            "can_open_source": True,
+                            "open_section": "debts",
+                            "open_label": "История долга",
+                        }
+                        if self._matches_money_flow_query(item, q):
+                            items.append(item)
+                    for repayment in debt.get("repayments", []) or []:
+                        flow_direction = "inflow" if direction_sign < 0 else "outflow"
+                        if not include_direction(flow_direction):
+                            continue
+                        is_lend = direction_sign < 0
+                        item = {
+                            "id": f"debt-repayment:{repayment['id']}",
+                            "source_kind": "debt",
+                            "source_id": int(debt["id"]),
+                            "flow_direction": flow_direction,
+                            "event_date": repayment["repayment_date"],
+                            "amount": self._money(repayment.get("current_base_amount") or repayment.get("amount") or 0),
+                            "original_amount": self._money(repayment.get("amount") or 0),
+                            "currency": debt_currency,
+                            "base_currency": debt_base_currency,
+                            "fx_rate": self._rate(Decimal("1")),
+                            "title": "Мне вернули долг" if is_lend else "Я вернул долг",
+                            "subtitle": str(card.get("counterparty") or "Контрагент"),
+                            "note": repayment.get("note") or debt.get("note"),
+                            "counterparty_id": int(card["counterparty_id"]),
+                            "counterparty_name": str(card.get("counterparty") or ""),
+                            "can_open_source": True,
+                            "open_section": "debts",
+                            "open_label": "История долга",
+                        }
+                        if self._matches_money_flow_query(item, q):
+                            items.append(item)
+
+        if normalized_source in {"all", "fx"}:
+            from app.repositories.currency_repo import CurrencyRepository
+
+            currency_repo = CurrencyRepository(self.db)
+            for trade in currency_repo.list_trades_for_period(
+                user_id=user_id,
+                date_from=date_from or date.min,
+                date_to=date_to or date.max,
+            ):
+                quote_currency = str(getattr(trade, "quote_currency", base_currency) or base_currency).upper()
+                if quote_currency != base_currency:
+                    continue
+                flow_direction = "outflow" if trade.side == "buy" else "inflow"
+                if not include_direction(flow_direction):
+                    continue
+                if normalized_currency_scope == "foreign":
+                    continue
+                gross = Decimal(getattr(trade, "quantity", 0) or 0) * Decimal(getattr(trade, "unit_price", 0) or 0)
+                fee = Decimal(getattr(trade, "fee", 0) or 0)
+                amount = self._money(gross + fee if trade.side == "buy" else gross - fee)
+                item = {
+                    "id": f"fx:{trade.id}",
+                    "source_kind": "fx",
+                    "source_id": int(trade.id),
+                    "flow_direction": flow_direction,
+                    "event_date": trade.trade_date,
+                    "amount": amount,
+                    "original_amount": amount,
+                    "currency": quote_currency,
+                    "base_currency": base_currency,
+                    "fx_rate": self._rate(Decimal("1")),
+                    "title": f"{'Покупка' if trade.side == 'buy' else 'Продажа'} {str(trade.asset_currency).upper()}",
+                    "subtitle": f"{'За' if trade.side == 'buy' else 'В'} {quote_currency} · курс {self._rate(Decimal(trade.unit_price))}",
+                    "note": trade.note,
+                    "asset_currency": str(trade.asset_currency).upper(),
+                    "quote_currency": quote_currency,
+                    "trade_side": str(trade.side),
+                    "can_open_source": True,
+                    "open_section": "currency",
+                    "open_label": "Сделка",
+                }
+                if self._matches_money_flow_query(item, q):
+                    items.append(item)
+
+        def sort_key(item: dict):
+            if sort_by == "amount":
+                primary = Decimal(item.get("amount") or 0)
+            elif sort_by == "created_at":
+                primary = item.get("source_id") or 0
+            else:
+                primary = str(item.get("event_date") or "")
+            return primary
+
+        reverse = sort_dir != "asc"
+        items.sort(
+            key=lambda item: (
+                sort_key(item),
+                str(item.get("event_date") or ""),
+                str(item.get("id") or ""),
+            ),
+            reverse=reverse,
+        )
+        return items
+
+    def list_money_flow(
+        self,
+        *,
+        user_id: int,
+        page: int,
+        page_size: int,
+        sort_by: str,
+        sort_dir: str,
+        date_from: date | None,
+        date_to: date | None,
+        q: str | None,
+        direction: str | None = None,
+        source: str | None = None,
+        currency_scope: str | None = None,
+    ) -> tuple[list[dict], int]:
+        items = self._build_money_flow_dataset(
+            user_id=user_id,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+            date_from=date_from,
+            date_to=date_to,
+            q=q,
+            direction=direction,
+            source=source,
+            currency_scope=currency_scope,
+        )
+        total = len(items)
+        start = (page - 1) * page_size
+        end = start + page_size
+        return items[start:end], total
+
+    def summarize_money_flow(
+        self,
+        *,
+        user_id: int,
+        date_from: date | None,
+        date_to: date | None,
+        q: str | None,
+        direction: str | None = None,
+        source: str | None = None,
+        currency_scope: str | None = None,
+    ) -> dict:
+        items = self._build_money_flow_dataset(
+            user_id=user_id,
+            sort_by="operation_date",
+            sort_dir="desc",
+            date_from=date_from,
+            date_to=date_to,
+            q=q,
+            direction=direction,
+            source=source,
+            currency_scope=currency_scope,
+        )
+        income_total = sum(
+            (Decimal(item["amount"]) for item in items if item.get("flow_direction") == "inflow"),
+            start=Decimal("0"),
+        )
+        expense_total = sum(
+            (Decimal(item["amount"]) for item in items if item.get("flow_direction") == "outflow"),
+            start=Decimal("0"),
+        )
+        return {
+            "income_total": self._money(income_total),
+            "expense_total": self._money(expense_total),
+            "balance": self._money(income_total - expense_total),
+            "total": len(items),
+        }
+
     def get_operation(self, user_id: int, operation_id: int):
         item = self.repo.get_by_id(user_id=user_id, operation_id=operation_id)
         if not item:

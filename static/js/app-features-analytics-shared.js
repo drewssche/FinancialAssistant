@@ -16,12 +16,12 @@
   function describeResult(balanceRaw) {
     const balance = Number(balanceRaw || 0);
     if (balance > 0) {
-      return { label: "Профицит", tone: "positive", amount: balance };
+      return { label: "Профицит", tone: "positive", cardClass: "positive", amount: balance };
     }
     if (balance < 0) {
-      return { label: "Дефицит", tone: "negative", amount: Math.abs(balance) };
+      return { label: "Дефицит", tone: "negative", cardClass: "negative", amount: Math.abs(balance) };
     }
-    return { label: "Ноль", tone: "neutral", amount: 0 };
+    return { label: "Ноль", tone: "neutral", cardClass: "neutral", amount: 0 };
   }
 
   function describeFxCashflow(valueRaw) {
@@ -39,6 +39,30 @@
       };
     }
     return null;
+  }
+
+  function describeDebtCashflow(valueRaw) {
+    const value = Number(valueRaw || 0);
+    if (value > 0) {
+      return {
+        text: `С учетом долгов: +${core.formatMoney(value)}`,
+        tone: "positive",
+      };
+    }
+    if (value < 0) {
+      return {
+        text: `С учетом долгов: ${core.formatMoney(value)}`,
+        tone: "negative",
+      };
+    }
+    return null;
+  }
+
+  function resolveResultMetric(data) {
+    const value = Number(data?.cashflow_total ?? data?.balance ?? 0);
+    const previous = Number(data?.prev_cashflow_total ?? data?.prev_balance ?? 0);
+    const delta = data?.cashflow_change_pct ?? data?.balance_change_pct ?? null;
+    return { value, previous, delta };
   }
 
   function renderInsightList(container, items, renderItem, emptyText) {
@@ -60,40 +84,41 @@
     }
 
     if (primaryContainer) {
-      const result = describeResult(data.balance);
+      const resultMetric = resolveResultMetric(data);
+      const result = describeResult(resultMetric.value);
       const primary = [
         {
           label: "Доход",
           value: core.formatMoney(data.income_total),
           delta: formatPct(data.income_change_pct),
           previous: core.formatMoney(data.prev_income_total || 0),
-          tone: "income",
+          cardClass: "income",
         },
         {
           label: "Расход",
           value: core.formatMoney(data.expense_total),
           delta: formatPct(data.expense_change_pct),
           previous: core.formatMoney(data.prev_expense_total || 0),
-          tone: "expense",
+          cardClass: "expense",
         },
         {
           label: result.label,
-          value: core.formatMoney(data.balance),
-          delta: formatPct(data.balance_change_pct),
-          previous: core.formatMoney(data.prev_balance || 0),
-          tone: result.tone,
+          value: core.formatMoney(result.amount),
+          delta: formatPct(resultMetric.delta),
+          previous: core.formatMoney(resultMetric.previous || 0),
+          cardClass: result.cardClass,
         },
         {
           label: "Операций за период",
           value: String(data.operations_count || 0),
           delta: formatPct(data.operations_change_pct),
           previous: String(data.prev_operations_count || 0),
-          tone: "neutral",
+          cardClass: "neutral",
         },
       ];
       primaryContainer.innerHTML = primary
         .map((item) => `
-          <article class="analytics-kpi-card analytics-kpi-${item.tone}">
+          <article class="analytics-kpi-card analytics-kpi-${item.cardClass}">
             <div class="muted-small">${escapeHtml(item.label)}</div>
             <strong>${escapeHtml(item.value)}</strong>
             <span class="analytics-kpi-delta">К прошлому периоду: ${escapeHtml(item.delta)}</span>
@@ -113,6 +138,10 @@
           tone: "neutral",
         },
       ];
+      const debtCashflowChip = describeDebtCashflow(data.debt_cashflow_total);
+      if (debtCashflowChip) {
+        chips.push(debtCashflowChip);
+      }
       const fxCashflowChip = describeFxCashflow(data.fx_cashflow_total);
       if (fxCashflowChip) {
         chips.push(fxCashflowChip);
@@ -206,7 +235,9 @@
   window.App.analyticsShared = {
     escapeHtml,
     describeResult,
+    describeDebtCashflow,
     describeFxCashflow,
+    resolveResultMetric,
     renderInsightList,
     renderPeriodKpiBlocks,
     formatPct,

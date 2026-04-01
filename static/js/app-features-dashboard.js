@@ -82,7 +82,7 @@
           <div class="muted-small">Текущая оценка открытых позиций</div>
           <strong>${core.formatMoney(summary.currency_current_value || 0)}</strong>
         </article>
-        <article class="analytics-kpi-card analytics-kpi-balance">
+        <article class="analytics-kpi-card analytics-kpi-neutral">
           <div class="muted-small">Вложено в открытые позиции</div>
           <strong>${core.formatMoney(summary.currency_book_value || 0)}</strong>
         </article>
@@ -105,7 +105,7 @@
       const positionsByCurrency = new Map(positions.map((item) => [String(item.currency || "").toUpperCase(), item]));
       const trackedCurrencies = getTrackedCurrencies();
       const baseCurrency = core.getCurrencyConfig?.().code || "BYN";
-      const periodBalance = Number(summary.balance || 0);
+      const periodBalance = Number(summary.cashflow_total ?? summary.balance ?? 0);
       const currencyTotalResultValue = Number(summary.currency_total_result_value || summary.currency_result_value || 0);
       const combinedBaseBalance = periodBalance + currencyTotalResultValue;
       const bynCard = `

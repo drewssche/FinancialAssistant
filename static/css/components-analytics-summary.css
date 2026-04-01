@@ -259,6 +259,44 @@
   justify-self: end;
 }
 
+.money-flow-context {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.money-flow-title {
+  font-weight: 700;
+  color: #e7eefc;
+}
+
+.money-flow-subtitle {
+  color: #aebfdd;
+}
+
+.money-flow-source-stack .meta-chip {
+  max-width: 100%;
+}
+
+.money-flow-row-source-debt {
+  background:
+    linear-gradient(90deg, rgba(255, 179, 71, 0.08) 0%, rgba(255, 179, 71, 0) 36%),
+    inherit;
+}
+
+.money-flow-row-source-fx {
+  background:
+    linear-gradient(90deg, rgba(109, 141, 189, 0.08) 0%, rgba(109, 141, 189, 0) 36%),
+    inherit;
+}
+
+.money-flow-row-fx-buy {
+  box-shadow: inset 3px 0 0 rgba(255, 111, 125, 0.42);
+}
+
+.money-flow-row-fx-sell {
+  box-shadow: inset 3px 0 0 rgba(73, 190, 120, 0.42);
+}
+
 .operations-control-card-actions {
   grid-column: 1 / -1;
 }
@@ -306,6 +344,15 @@
   color: #ff9494;
 }
 
+.analytics-kpi-positive strong {
+  color: #76e2a5;
+}
+
+.analytics-kpi-negative strong {
+  color: #ff9494;
+}
+
+.analytics-kpi-neutral strong,
 .analytics-kpi-balance strong {
   color: #8fb7ff;
 }

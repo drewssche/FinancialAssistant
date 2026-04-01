@@ -83,6 +83,36 @@
         });
       });
     }
+    if (el.operationsSourceTabs && actions.setOperationsSourceFilter) {
+      el.operationsSourceTabs.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-operations-source]");
+        if (!btn) {
+          return;
+        }
+        if (state.operationsSourceFilter === btn.dataset.operationsSource) {
+          return;
+        }
+        core.runAction({
+          errorPrefix: "Ошибка применения фильтра источника",
+          action: () => actions.setOperationsSourceFilter(btn.dataset.operationsSource),
+        });
+      });
+    }
+    if (el.operationsModeTabs && actions.setOperationsMode) {
+      el.operationsModeTabs.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-operations-mode]");
+        if (!btn) {
+          return;
+        }
+        if (state.operationsMode === btn.dataset.operationsMode) {
+          return;
+        }
+        core.runAction({
+          errorPrefix: "Ошибка переключения режима операций",
+          action: () => actions.setOperationsMode(btn.dataset.operationsMode),
+        });
+      });
+    }
     if (el.operationsCurrencyScopeTabs && actions.setOperationsCurrencyScope) {
       el.operationsCurrencyScopeTabs.addEventListener("click", (event) => {
         const btn = event.target.closest("button[data-operations-currency-scope]");
@@ -255,6 +285,15 @@
         if (item?.id) {
           actions.openEditModal(item);
         }
+        return;
+      }
+
+      const openSourceBtn = event.target.closest("button[data-open-source-kind]");
+      if (openSourceBtn && actions.openMoneyFlowSource) {
+        actions.openMoneyFlowSource({
+          sourceKind: openSourceBtn.dataset.openSourceKind,
+          sourceId: openSourceBtn.dataset.openSourceId,
+        }).catch((err) => core.setStatus(String(err)));
         return;
       }
 

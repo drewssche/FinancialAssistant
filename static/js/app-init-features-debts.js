@@ -55,12 +55,13 @@
 
     if (el.debtsCards && actions.openDebtRepaymentModal) {
       el.debtsCards.addEventListener("click", (event) => {
+        const debtFeature = window.App.getRuntimeModule?.("debts") || {};
         debtsUiCoordinator?.handleDebtsCardsClick?.({
           event,
           pickerUtils,
           openEditDebtModal: actions.openEditDebtModal,
           openDebtHistoryModal: actions.openDebtHistoryModal,
-          openDebtForgivenessModal: actions.openDebtForgivenessModal,
+          openDebtForgivenessModal: debtFeature.openDebtForgivenessModal,
           deleteDebtFlow: actions.deleteDebtFlow,
           openDebtRepaymentModal: actions.openDebtRepaymentModal,
         });
@@ -125,16 +126,33 @@
         actions.openDebtHistoryModal(Number(btn.dataset.historyDebtId || 0));
       }, true);
     }
-    if (actions.openDebtForgivenessModal) {
+    {
       document.addEventListener("click", (event) => {
         const btn = event.target.closest("button[data-forgive-debt-id]");
+        const debtFeature = window.App.getRuntimeModule?.("debts") || {};
+        if (!debtFeature.openDebtForgivenessModal) {
+          return;
+        }
         if (!btn || btn.disabled) {
           return;
         }
         event.preventDefault();
         event.stopPropagation();
         debtsUiCoordinator?.closeDebtActionPopover?.({ event, pickerUtils });
-        actions.openDebtForgivenessModal(Number(btn.dataset.forgiveDebtId || 0));
+        debtFeature.openDebtForgivenessModal(Number(btn.dataset.forgiveDebtId || 0));
+      }, true);
+      document.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-dashboard-forgive-debt-id]");
+        const debtFeature = window.App.getRuntimeModule?.("debts") || {};
+        if (!debtFeature.openDebtForgivenessModal) {
+          return;
+        }
+        if (!btn || btn.disabled) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        debtFeature.openDebtForgivenessModal(Number(btn.dataset.dashboardForgiveDebtId || 0));
       }, true);
     }
 
@@ -149,19 +167,21 @@
         });
       });
     }
-    if (el.forgiveDebtFromRepaymentBtn && actions.forgiveDebtFromRepaymentFlow) {
+    if (el.forgiveDebtFromRepaymentBtn) {
       el.forgiveDebtFromRepaymentBtn.addEventListener("click", () => {
-        actions.forgiveDebtFromRepaymentFlow().catch((err) => core.setStatus(String(err)));
+        const debtFeature = window.App.getRuntimeModule?.("debts") || {};
+        debtFeature.forgiveDebtFromRepaymentFlow?.().catch((err) => core.setStatus(String(err)));
       });
     }
-    if (el.debtForgivenessForm && actions.submitDebtForgiveness) {
+    if (el.debtForgivenessForm) {
       el.debtForgivenessForm.addEventListener("submit", (event) => {
+        const debtFeature = window.App.getRuntimeModule?.("debts") || {};
         core.runAction({
           button: event.submitter || el.submitDebtForgivenessBtn,
           pendingText: "Списание...",
           successMessage: "Долг обновлен",
           errorPrefix: "Ошибка прощения долга",
-          action: () => actions.submitDebtForgiveness(event),
+          action: () => debtFeature.submitDebtForgiveness?.(event),
         });
       });
     }

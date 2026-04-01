@@ -6,12 +6,12 @@
   const describeResult = shared.describeResult || ((balanceRaw) => {
     const balance = Number(balanceRaw || 0);
     if (balance > 0) {
-      return { label: "Профицит", tone: "positive", amount: balance };
+      return { label: "Профицит", tone: "positive", cardClass: "positive", amount: balance };
     }
     if (balance < 0) {
-      return { label: "Дефицит", tone: "negative", amount: Math.abs(balance) };
+      return { label: "Дефицит", tone: "negative", cardClass: "negative", amount: Math.abs(balance) };
     }
-    return { label: "Нулевой баланс", tone: "neutral", amount: 0 };
+    return { label: "Ноль", tone: "neutral", cardClass: "neutral", amount: 0 };
   });
   let calendarScrollUiBound = false;
 
@@ -136,6 +136,24 @@
     }
   }
 
+  function resolveCashflowTotals(item) {
+    const operationIncome = Number(item?.income_total || 0);
+    const operationExpense = Number(item?.expense_total || 0);
+    const debtCashflow = Number(item?.debt_cashflow_total || 0);
+    const fxCashflow = Number(item?.fx_cashflow_total || 0);
+    return {
+      incomeTotal: operationIncome + Math.max(0, debtCashflow) + Math.max(0, fxCashflow),
+      expenseTotal: operationExpense + Math.abs(Math.min(0, debtCashflow)) + Math.abs(Math.min(0, fxCashflow)),
+      resultTotal: Number(item?.cashflow_total ?? (operationIncome - operationExpense + debtCashflow + fxCashflow)),
+      operationsCount: Number(item?.operations_count || 0),
+      eventsCount: Number(item?.cashflow_events_count || item?.operations_count || 0),
+      debtCashflow,
+      debtEventsCount: Number(item?.debt_events_count || 0),
+      fxCashflow,
+      fxEventsCount: Number(item?.fx_events_count || 0),
+    };
+  }
+
   function renderCalendarTotals(data, view, currencyOverview = null) {
     if (!el.analyticsCalendarTotals || !el.analyticsCalendarTotalsSecondary) {
       return;
@@ -150,12 +168,14 @@
       el.analyticsCalendarTotalsRangeLabel.textContent = `${core.formatDateRu(rangeStart)} - ${core.formatDateRu(rangeEnd)}`;
     }
 
-    const result = describeResult(data.balance);
+    const cashflow = resolveCashflowTotals(data);
+    const result = describeResult(cashflow.resultTotal);
+    const resultTone = result.cardClass || result.tone || "neutral";
     const primary = [
-      { label: "Доход", value: core.formatMoney(data.income_total), tone: "income" },
-      { label: "Расход", value: core.formatMoney(data.expense_total), tone: "expense" },
-      { label: result.label, value: core.formatMoney(data.balance), tone: result.tone },
-      { label: "Операции", value: String(data.operations_count || 0), tone: "neutral" },
+      { label: "Доход", value: core.formatMoney(cashflow.incomeTotal), tone: "income" },
+      { label: "Расход", value: core.formatMoney(cashflow.expenseTotal), tone: "expense" },
+      { label: result.label, value: core.formatMoney(result.amount), tone: resultTone },
+      { label: "События", value: String(cashflow.eventsCount || 0), tone: "neutral" },
     ];
     el.analyticsCalendarTotals.innerHTML = primary
       .map(
@@ -169,14 +189,25 @@
       .join("");
 
     const currencyResultValue = Number(currencyOverview?.total_result_value || 0);
-    const resultBalance = Number(data.balance || 0) + currencyResultValue;
+    const resultBalance = cashflow.resultTotal + currencyResultValue;
     const combinedResult = describeResult(resultBalance);
     const prefix = currencyResultValue !== 0 ? "С учетом результата валюты" : combinedResult.label;
-    el.analyticsCalendarTotalsSecondary.innerHTML = `
-      <span class="analytics-kpi-chip analytics-kpi-chip-${combinedResult.tone}">
-        ${escapeHtml(prefix)}: ${escapeHtml(core.formatMoney(combinedResult.amount))}
-      </span>
-    `;
+    const chips = [
+      `<span class="analytics-kpi-chip analytics-kpi-chip-${combinedResult.tone}">${escapeHtml(prefix)}: ${escapeHtml(core.formatMoney(combinedResult.amount))}</span>`,
+    ];
+    if (cashflow.debtEventsCount > 0) {
+      const debtResult = describeResult(cashflow.debtCashflow);
+      chips.push(
+        `<span class="analytics-kpi-chip analytics-kpi-chip-${debtResult.tone}">Долги: ${escapeHtml(core.formatMoney(cashflow.debtCashflow))} · ${escapeHtml(String(cashflow.debtEventsCount))} событ.</span>`,
+      );
+    }
+    if (cashflow.fxEventsCount > 0) {
+      const fxResult = describeResult(cashflow.fxCashflow);
+      chips.push(
+        `<span class="analytics-kpi-chip analytics-kpi-chip-${fxResult.tone}">Валюта: ${escapeHtml(core.formatMoney(cashflow.fxCashflow))} · ${escapeHtml(String(cashflow.fxEventsCount))} событ.</span>`,
+      );
+    }
+    el.analyticsCalendarTotalsSecondary.innerHTML = chips.join("");
   }
 
   function renderAnalyticsCalendarMonth(data) {
@@ -188,30 +219,42 @@
     el.analyticsCalendarBody.innerHTML = "";
     for (const week of data.weeks || []) {
       const tr = document.createElement("tr");
+      const weekCashflow = resolveCashflowTotals(week);
+      const weekResult = describeResult(weekCashflow.resultTotal);
       for (const day of week.days || []) {
         const cell = document.createElement("td");
         cell.className = `analytics-day-cell ${day.in_month ? "" : "analytics-day-cell-out"}`.trim();
         if (!day.in_month) {
           cell.innerHTML = "<span class='muted-small'>·</span>";
         } else {
+          const cashflow = resolveCashflowTotals(day);
+          const markerBits = [];
+          if (cashflow.debtEventsCount > 0) {
+            markerBits.push(`Долг ${core.formatMoney(cashflow.debtCashflow)}`);
+          }
+          if (cashflow.fxEventsCount > 0) {
+            markerBits.push(`FX ${core.formatMoney(cashflow.fxCashflow)}`);
+          }
+          const markersHtml = markerBits.length ? `<div class="muted-small">${markerBits.join(" · ")}</div>` : "";
           cell.innerHTML = `
             <button type="button" class="analytics-day-btn" data-analytics-date="${day.date}">
               <div class="analytics-day-date">${new Date(`${day.date}T00:00:00`).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}</div>
-              <div class="analytics-day-money analytics-income">+${core.formatMoney(day.income_total)}</div>
-              <div class="analytics-day-money analytics-expense">-${core.formatMoney(day.expense_total)}</div>
-              <div class="muted-small">${day.operations_count} опер.</div>
+              <div class="analytics-day-money analytics-income">+${core.formatMoney(cashflow.incomeTotal)}</div>
+              <div class="analytics-day-money analytics-expense">-${core.formatMoney(cashflow.expenseTotal)}</div>
+              ${markersHtml}
+              <div class="muted-small">${cashflow.eventsCount} событ.</div>
             </button>
           `;
         }
         tr.appendChild(cell);
       }
       tr.innerHTML += `
-        <td class="analytics-week-total analytics-income">${core.formatMoney(week.income_total)}</td>
-        <td class="analytics-week-total analytics-expense">${core.formatMoney(week.expense_total)}</td>
-        <td class="analytics-week-total">${week.operations_count}</td>
+        <td class="analytics-week-total analytics-income">${core.formatMoney(weekCashflow.incomeTotal)}</td>
+        <td class="analytics-week-total analytics-expense">${core.formatMoney(weekCashflow.expenseTotal)}</td>
+        <td class="analytics-week-total">${weekCashflow.eventsCount}</td>
         <td class="analytics-week-total">
-          <span class="analytics-kpi-chip analytics-kpi-chip-${Number(week.balance || 0) > 0 ? "positive" : Number(week.balance || 0) < 0 ? "negative" : "neutral"}">
-            ${Number(week.balance || 0) > 0 ? "Профицит" : Number(week.balance || 0) < 0 ? "Дефицит" : "Ноль"}: ${core.formatMoney(Math.abs(Number(week.balance || 0)))}
+          <span class="analytics-kpi-chip analytics-kpi-chip-${weekResult.tone}">
+            ${weekResult.label}: ${core.formatMoney(weekResult.amount)}
           </span>
         </td>
       `;
@@ -228,6 +271,9 @@
     const months = Array.isArray(data.months) ? data.months : [];
     el.analyticsYearGrid.innerHTML = months
       .map((item) => {
+        const cashflow = resolveCashflowTotals(item);
+        const result = describeResult(cashflow.resultTotal);
+        const resultTone = result.cardClass || result.tone || "neutral";
         const monthDate = parseMonthAnchor(item.month);
         const label = monthDate
           ? monthDate.toLocaleDateString("ru-RU", { month: "short", year: "numeric", timeZone: "UTC" })
@@ -236,11 +282,11 @@
           <article class="analytics-year-card" data-analytics-month-anchor="${item.month}">
             <div class="analytics-insight-head">
               <strong>${label}</strong>
-              <span class="muted-small analytics-ops">${item.operations_count} опер.</span>
+              <span class="muted-small analytics-ops">${cashflow.eventsCount} событ.</span>
             </div>
-            <div class="muted-small analytics-income">Доход: ${core.formatMoney(item.income_total)}</div>
-            <div class="muted-small analytics-expense">Расход: ${core.formatMoney(item.expense_total)}</div>
-            <div class="muted-small analytics-balance">Баланс: ${core.formatMoney(item.balance)}</div>
+            <div class="muted-small analytics-income">Доход: ${core.formatMoney(cashflow.incomeTotal)}</div>
+            <div class="muted-small analytics-expense">Расход: ${core.formatMoney(cashflow.expenseTotal)}</div>
+            <div class="muted-small analytics-${resultTone}">${result.label}: ${core.formatMoney(result.amount)}</div>
           </article>
         `;
       })
