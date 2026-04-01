@@ -458,9 +458,10 @@
       return;
     }
     el.currencyTradesBody.innerHTML = trades.map((item) => {
-      const sideClass = item.side === "sell" ? "expense" : "income";
-      const sideLabel = item.side === "sell" ? "Продажа" : "Покупка";
-      const menuItems = [
+      const isLinkedSettlement = item.trade_kind === "card_payment" && Number(item.linked_operation_id || 0) > 0;
+      const sideClass = isLinkedSettlement ? "expense" : item.side === "sell" ? "expense" : "income";
+      const sideLabel = isLinkedSettlement ? "Оплата картой" : item.side === "sell" ? "Продажа" : "Покупка";
+      const menuItems = isLinkedSettlement ? "" : [
         `<button class="btn btn-secondary" type="button" data-edit-currency-trade-id="${Number(item.id)}">Редактировать</button>`,
         `<button class="btn btn-danger" type="button" data-delete-currency-trade-id="${Number(item.id)}">Удалить</button>`,
       ].join("");
@@ -473,7 +474,7 @@
         <td data-label="Курс">${formatRateWithQuote(item.unit_price || 0, item.quote_currency || "BYN")}</td>
         <td class="mobile-note-cell" data-label="Комментарий">${core.escapeHtml ? core.escapeHtml(item.note || "") : (item.note || "")}</td>
         <td class="mobile-actions-cell table-kebab-cell" data-label="Действия">
-          ${core.renderInlineKebabMenu?.(`currency-trade-${Number(item.id)}`, menuItems, "Действия валютной сделки", "operation-row-kebab")}
+          ${menuItems ? (core.renderInlineKebabMenu?.(`currency-trade-${Number(item.id)}`, menuItems, "Действия валютной сделки", "operation-row-kebab") || "") : '<span class="muted-small">Через операцию</span>'}
         </td>
       </tr>
     `;
@@ -660,6 +661,11 @@
         }
         const tradeId = Number(row.dataset.currencyTradeRowId || 0);
         if (tradeId > 0) {
+          const trade = tradeItemsById.get(tradeId);
+          if (trade?.trade_kind === "card_payment" && Number(trade.linked_operation_id || 0) > 0) {
+            core.setStatus("Это списание связано с операцией и редактируется из операции");
+            return;
+          }
           core.runAction({
             errorPrefix: "Ошибка открытия валютной сделки",
             action: () => openCurrencyTradeEdit(tradeId),

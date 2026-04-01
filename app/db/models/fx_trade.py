@@ -18,6 +18,8 @@ class FxTrade(Base):
     quantity: Mapped[Decimal] = mapped_column(Numeric(18, 6))
     unit_price: Mapped[Decimal] = mapped_column(Numeric(18, 6))
     fee: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    trade_kind: Mapped[str] = mapped_column(String(24), index=True, default="manual")
+    linked_operation_id: Mapped[int | None] = mapped_column(ForeignKey("operations.id", ondelete="CASCADE"), nullable=True, index=True)
     trade_date: Mapped[date] = mapped_column(Date, index=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

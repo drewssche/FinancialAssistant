@@ -71,6 +71,8 @@ def create_currency_trade(
             quantity=payload.quantity,
             unit_price=payload.unit_price,
             fee=payload.fee,
+            trade_kind=payload.trade_kind,
+            linked_operation_id=payload.linked_operation_id,
             trade_date=payload.trade_date,
             note=payload.note,
         )
@@ -96,6 +98,8 @@ def update_currency_trade(
             quantity=payload.quantity,
             unit_price=payload.unit_price,
             fee=payload.fee,
+            trade_kind=payload.trade_kind,
+            linked_operation_id=payload.linked_operation_id,
             trade_date=payload.trade_date,
             note=payload.note,
         )

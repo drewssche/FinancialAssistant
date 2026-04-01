@@ -70,6 +70,17 @@ class CurrencyService:
             raise ValueError("side must be buy or sell")
         return side
 
+    @staticmethod
+    def _normalize_trade_kind(value: str | None) -> str:
+        trade_kind = str(value or "manual").strip().lower()
+        if trade_kind not in {"manual", "card_payment"}:
+            raise ValueError("trade_kind must be manual or card_payment")
+        return trade_kind
+
+    @staticmethod
+    def is_cashflow_trade(trade: FxTrade) -> bool:
+        return str(getattr(trade, "trade_kind", "manual") or "manual").strip().lower() != "card_payment"
+
     def _validate_trade_sequence(self, trades: list[FxTrade]) -> None:
         quantities_by_currency: dict[str, Decimal] = {}
         ordered = sorted(
@@ -196,8 +207,11 @@ class CurrencyService:
         quantity,
         unit_price,
         fee,
+        trade_kind: str = "manual",
+        linked_operation_id: int | None = None,
         trade_date: date,
         note: str | None = None,
+        commit: bool = True,
     ) -> FxTrade:
         normalized_side = self._normalize_side(side)
         normalized_asset = self._normalize_currency(asset_currency)
@@ -205,6 +219,7 @@ class CurrencyService:
         normalized_quantity = self._qty(quantity)
         normalized_unit_price = self._rate(unit_price)
         normalized_fee = self._money(fee)
+        normalized_trade_kind = self._normalize_trade_kind(trade_kind)
         if normalized_asset == normalized_quote:
             raise ValueError("asset_currency and quote_currency must differ")
         if normalized_quantity <= 0 or normalized_unit_price <= 0:
@@ -219,6 +234,8 @@ class CurrencyService:
             quantity=normalized_quantity,
             unit_price=normalized_unit_price,
             fee=normalized_fee,
+            trade_kind=normalized_trade_kind,
+            linked_operation_id=linked_operation_id,
             trade_date=trade_date,
             note=(note or "").strip() or None,
         )
@@ -232,19 +249,21 @@ class CurrencyService:
         item = self.repo.create_trade(
             candidate
         )
-        self.db.commit()
-        self.db.refresh(item)
-        invalidate_dashboard_summary_cache(user_id)
-        invalidate_dashboard_analytics_cache(user_id)
-        log_background_job_event(
-            "currency_service",
-            "fx_trade_created",
-            user_id=user_id,
-            fx_trade_id=item.id,
-            side=item.side,
-            asset_currency=item.asset_currency,
-            quote_currency=item.quote_currency,
-        )
+        if commit:
+            self.db.commit()
+            self.db.refresh(item)
+            invalidate_dashboard_summary_cache(user_id)
+            invalidate_dashboard_analytics_cache(user_id)
+            log_background_job_event(
+                "currency_service",
+                "fx_trade_created",
+                user_id=user_id,
+                fx_trade_id=item.id,
+                side=item.side,
+                asset_currency=item.asset_currency,
+                quote_currency=item.quote_currency,
+                trade_kind=item.trade_kind,
+            )
         return item
 
     def update_trade(
@@ -258,18 +277,24 @@ class CurrencyService:
         quantity,
         unit_price,
         fee,
+        trade_kind: str = "manual",
+        linked_operation_id: int | None = None,
         trade_date: date,
         note: str | None = None,
+        allow_linked_trade_update: bool = False,
     ) -> FxTrade:
         item = self.repo.get_trade(user_id=user_id, trade_id=trade_id)
         if not item:
             raise ValueError("Currency trade not found")
+        if getattr(item, "linked_operation_id", None) is not None and not allow_linked_trade_update:
+            raise ValueError("Linked settlement trade must be edited from the operation")
         normalized_side = self._normalize_side(side)
         normalized_asset = self._normalize_currency(asset_currency)
         normalized_quote = self._normalize_currency(quote_currency)
         normalized_quantity = self._qty(quantity)
         normalized_unit_price = self._rate(unit_price)
         normalized_fee = self._money(fee)
+        normalized_trade_kind = self._normalize_trade_kind(trade_kind)
         if normalized_asset == normalized_quote:
             raise ValueError("asset_currency and quote_currency must differ")
         if normalized_quantity <= 0 or normalized_unit_price <= 0:
@@ -284,6 +309,8 @@ class CurrencyService:
             quantity=normalized_quantity,
             unit_price=normalized_unit_price,
             fee=normalized_fee,
+            trade_kind=normalized_trade_kind,
+            linked_operation_id=linked_operation_id,
             trade_date=trade_date,
             note=(note or "").strip() or None,
         )
@@ -294,6 +321,8 @@ class CurrencyService:
         item.quantity = normalized_quantity
         item.unit_price = normalized_unit_price
         item.fee = normalized_fee
+        item.trade_kind = normalized_trade_kind
+        item.linked_operation_id = linked_operation_id
         item.trade_date = trade_date
         item.note = (note or "").strip() or None
         self.db.commit()
@@ -308,13 +337,61 @@ class CurrencyService:
             side=item.side,
             asset_currency=item.asset_currency,
             quote_currency=item.quote_currency,
+            trade_kind=item.trade_kind,
         )
         return item
+
+    def sync_linked_operation_trade(
+        self,
+        *,
+        user_id: int,
+        operation_id: int,
+        asset_currency: str,
+        quote_currency: str,
+        quantity,
+        unit_price,
+        trade_date: date,
+        note: str | None = None,
+        commit: bool = False,
+    ) -> FxTrade:
+        existing = self.repo.get_trade_by_linked_operation_id(user_id=user_id, operation_id=operation_id)
+        if existing:
+            return self.update_trade(
+                user_id=user_id,
+                trade_id=existing.id,
+                side="sell",
+                asset_currency=asset_currency,
+                quote_currency=quote_currency,
+                quantity=quantity,
+                unit_price=unit_price,
+                fee=Decimal("0"),
+                trade_kind="card_payment",
+                linked_operation_id=operation_id,
+                trade_date=trade_date,
+                note=note,
+                allow_linked_trade_update=True,
+            )
+        return self.create_trade(
+            user_id=user_id,
+            side="sell",
+            asset_currency=asset_currency,
+            quote_currency=quote_currency,
+            quantity=quantity,
+            unit_price=unit_price,
+            fee=Decimal("0"),
+            trade_kind="card_payment",
+            linked_operation_id=operation_id,
+            trade_date=trade_date,
+            note=note,
+            commit=commit,
+        )
 
     def delete_trade(self, *, user_id: int, trade_id: int) -> None:
         item = self.repo.get_trade(user_id=user_id, trade_id=trade_id)
         if not item:
             raise ValueError("Currency trade not found")
+        if getattr(item, "linked_operation_id", None) is not None:
+            raise ValueError("Linked settlement trade must be deleted from the operation")
         item_side = item.side
         item_asset_currency = item.asset_currency
         item_quote_currency = item.quote_currency
@@ -431,6 +508,23 @@ class CurrencyService:
             total_current_value += current_value
             total_result_value += result_value
 
+        recent_trades = [
+            {
+                "id": trade.id,
+                "side": trade.side,
+                "asset_currency": trade.asset_currency,
+                "quote_currency": trade.quote_currency,
+                "quantity": self._qty(trade.quantity),
+                "unit_price": self._rate(trade.unit_price),
+                "fee": self._money(trade.fee),
+                "trade_kind": getattr(trade, "trade_kind", "manual") or "manual",
+                "linked_operation_id": getattr(trade, "linked_operation_id", None),
+                "trade_date": trade.trade_date,
+                "note": trade.note,
+                "created_at": trade.created_at,
+            }
+            for trade in trades
+        ]
         return {
             "base_currency": prefs["base_currency"],
             "tracked_currencies": prefs["tracked_currencies"],
@@ -497,6 +591,23 @@ class CurrencyService:
         normalized_currency = self._normalize_currency(currency) if currency else None
         computed = self.compute_positions(user_id=user_id)
         trades = self.repo.list_trades(user_id=user_id, asset_currency=normalized_currency, limit=trades_limit)
+        recent_trades = [
+            {
+                "id": trade.id,
+                "side": trade.side,
+                "asset_currency": trade.asset_currency,
+                "quote_currency": trade.quote_currency,
+                "quantity": self._qty(trade.quantity),
+                "unit_price": self._rate(trade.unit_price),
+                "fee": self._money(trade.fee),
+                "trade_kind": getattr(trade, "trade_kind", "manual") or "manual",
+                "linked_operation_id": getattr(trade, "linked_operation_id", None),
+                "trade_date": trade.trade_date,
+                "note": trade.note,
+                "created_at": trade.created_at,
+            }
+            for trade in trades
+        ]
         positions = computed["positions"]
         if normalized_currency:
             positions = [item for item in positions if item["currency"] == normalized_currency]
@@ -559,7 +670,7 @@ class CurrencyService:
             "buy_average_rate": self._rate(buy_average_rate),
             "sell_average_rate": self._rate(sell_average_rate),
             "positions": positions,
-            "recent_trades": trades,
+            "recent_trades": recent_trades,
             "current_rates": current_rates,
         }
 

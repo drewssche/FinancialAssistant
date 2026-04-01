@@ -181,6 +181,131 @@ def test_operations_support_currency_scope_filters(client: TestClient):
     assert summary_foreign.json()["expense_total"] == "33.00"
 
 
+def test_operation_create_supports_linked_fx_settlement_without_double_count_in_money_flow(client: TestClient):
+    funding = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "20.00",
+            "unit_price": "3.20",
+            "fee": "0.00",
+            "trade_date": "2026-03-01",
+            "note": "FX funding",
+        },
+    )
+    assert funding.status_code == 201, funding.text
+
+    created = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "32.50",
+            "operation_date": "2026-03-05",
+            "note": "Оплата в магазине",
+            "fx_settlement": {
+                "asset_currency": "USD",
+                "quantity": "10.00",
+                "quote_total": "32.50",
+                "unit_price": "3.25",
+                "note": "USD card",
+            },
+        },
+    )
+    assert created.status_code == 201, created.text
+
+    overview = client.get("/api/v1/currency/overview", params={"currency": "USD"})
+    assert overview.status_code == 200, overview.text
+    overview_payload = overview.json()
+    assert overview_payload["recent_trades"][0]["trade_kind"] == "card_payment"
+    assert overview_payload["recent_trades"][0]["linked_operation_id"] == created.json()["id"]
+    assert overview_payload["recent_trades"][0]["side"] == "sell"
+
+    money_flow = client.get("/api/v1/operations/money-flow", params={"date_from": "2026-03-05", "date_to": "2026-03-05"})
+    assert money_flow.status_code == 200, money_flow.text
+    money_flow_payload = money_flow.json()
+    assert money_flow_payload["total"] == 1
+    assert money_flow_payload["items"][0]["source_kind"] == "operation"
+    assert money_flow_payload["items"][0]["amount"] == "32.50"
+
+    money_flow_summary = client.get("/api/v1/operations/money-flow/summary", params={"date_from": "2026-03-05", "date_to": "2026-03-05"})
+    assert money_flow_summary.status_code == 200, money_flow_summary.text
+    assert money_flow_summary.json()["expense_total"] == "32.50"
+
+
+def test_operation_update_can_change_and_remove_linked_fx_settlement(client: TestClient):
+    funding = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "30.00",
+            "unit_price": "3.20",
+            "fee": "0.00",
+            "trade_date": "2026-03-01",
+        },
+    )
+    assert funding.status_code == 201, funding.text
+
+    created = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "32.50",
+            "operation_date": "2026-03-05",
+            "fx_settlement": {
+                "asset_currency": "USD",
+                "quantity": "10.00",
+                "quote_total": "32.50",
+                "unit_price": "3.25",
+                "note": "USD card",
+            },
+        },
+    )
+    assert created.status_code == 201, created.text
+    operation_id = created.json()["id"]
+    assert created.json()["fx_settlement"]["quantity"] == "10.000"
+
+    updated = client.patch(
+        f"/api/v1/operations/{operation_id}",
+        json={
+            "amount": "33.60",
+            "fx_settlement": {
+                "asset_currency": "USD",
+                "quantity": "10.50",
+                "quote_total": "33.60",
+                "unit_price": "3.20",
+                "note": "Updated card payment",
+            },
+        },
+    )
+    assert updated.status_code == 200, updated.text
+    updated_payload = updated.json()
+    assert updated_payload["amount"] == "33.60"
+    assert updated_payload["fx_settlement"]["quantity"] == "10.500"
+    assert updated_payload["fx_settlement"]["quote_total"] == "33.60"
+    assert updated_payload["fx_settlement"]["note"] == "Updated card payment"
+
+    fetched = client.get(f"/api/v1/operations/{operation_id}")
+    assert fetched.status_code == 200, fetched.text
+    assert fetched.json()["fx_settlement"]["quantity"] == "10.500"
+
+    removed = client.patch(
+        f"/api/v1/operations/{operation_id}",
+        json={
+            "fx_settlement": None,
+        },
+    )
+    assert removed.status_code == 200, removed.text
+    assert removed.json()["fx_settlement"] is None
+
+    overview = client.get("/api/v1/currency/overview", params={"currency": "USD"})
+    assert overview.status_code == 200, overview.text
+    assert all(item["linked_operation_id"] != operation_id for item in overview.json()["recent_trades"])
+
+
 def test_operations_money_flow_combines_operations_debts_and_fx(client: TestClient):
     assert client.post(
         "/api/v1/operations",

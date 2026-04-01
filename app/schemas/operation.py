@@ -28,6 +28,25 @@ class OperationReceiptItemOut(BaseModel):
     note: str | None
 
 
+class OperationFxSettlementIn(BaseModel):
+    asset_currency: str = Field(min_length=3, max_length=3)
+    quantity: Decimal = Field(gt=0)
+    quote_total: Decimal = Field(gt=0)
+    unit_price: Decimal = Field(gt=0)
+    note: str | None = Field(default=None, max_length=300)
+
+
+class OperationFxSettlementOut(BaseModel):
+    trade_id: int
+    asset_currency: str
+    quote_currency: str
+    quantity: Decimal
+    quote_total: Decimal
+    unit_price: Decimal
+    trade_date: date
+    note: str | None = None
+
+
 class OperationCreate(BaseModel):
     kind: str
     amount: Decimal | None = None
@@ -37,6 +56,7 @@ class OperationCreate(BaseModel):
     category_id: int | None = None
     note: str | None = None
     receipt_items: list[OperationReceiptItemIn] = []
+    fx_settlement: OperationFxSettlementIn | None = None
 
 
 class OperationUpdate(BaseModel):
@@ -48,6 +68,7 @@ class OperationUpdate(BaseModel):
     category_id: int | None = None
     note: str | None = None
     receipt_items: list[OperationReceiptItemIn] | None = None
+    fx_settlement: OperationFxSettlementIn | None = None
 
 
 class OperationOut(BaseModel):
@@ -67,6 +88,7 @@ class OperationOut(BaseModel):
     receipt_items: list[OperationReceiptItemOut] = []
     receipt_total: Decimal | None = None
     receipt_discrepancy: Decimal | None = None
+    fx_settlement: OperationFxSettlementOut | None = None
 
     model_config = {"from_attributes": True, "extra": "allow"}
 

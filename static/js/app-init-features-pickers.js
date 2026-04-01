@@ -26,6 +26,10 @@
           node.addEventListener("input", actions.renderReceiptSummary);
           node.addEventListener("change", actions.renderReceiptSummary);
         }
+        if (id === "opAmount" && actions.syncCreateFxSettlementFieldUi) {
+          node.addEventListener("input", actions.syncCreateFxSettlementFieldUi);
+          node.addEventListener("change", actions.syncCreateFxSettlementFieldUi);
+        }
         if (id === "opCurrency" && actions.syncOperationCurrencyFields) {
           node.addEventListener("change", async () => {
             actions.resetCreateOperationFxRateAutofill?.();
@@ -90,6 +94,23 @@
         }
       }
     }
+    for (const id of ["opUseFxSettlement", "opFxSettlementAsset", "opFxSettlementQuantity", "opFxSettlementUnitPrice", "opFxSettlementNote"]) {
+      const node = document.getElementById(id);
+      if (!node) {
+        continue;
+      }
+      node.addEventListener("input", actions.syncCreateFxSettlementFieldUi);
+      node.addEventListener("change", actions.syncCreateFxSettlementFieldUi);
+      if (id === "opUseFxSettlement" && actions.toggleCreateFxSettlement) {
+        node.addEventListener("change", actions.toggleCreateFxSettlement);
+      }
+      if (id === "opFxSettlementQuantity" && actions.markFxSettlementQuantitySource) {
+        node.addEventListener("input", actions.markFxSettlementQuantitySource);
+      }
+      if (id === "opFxSettlementUnitPrice" && actions.markFxSettlementRateSource) {
+        node.addEventListener("input", actions.markFxSettlementRateSource);
+      }
+    }
     pickerCoordinator.bindDateField("debtStartDate", actions.updateCreatePreview);
     pickerCoordinator.bindDateField("debtDueDate", actions.updateCreatePreview);
     pickerCoordinator.bindDateField("currencyTradeDateModal", actions.updateCreatePreview);
@@ -123,6 +144,10 @@
           node.addEventListener("input", () => actions.renderReceiptSummary("edit"));
           node.addEventListener("change", () => actions.renderReceiptSummary("edit"));
         }
+        if (id === "editAmount" && actions.syncEditFxSettlementFieldUi) {
+          node.addEventListener("input", actions.syncEditFxSettlementFieldUi);
+          node.addEventListener("change", actions.syncEditFxSettlementFieldUi);
+        }
         if (id === "editCurrency" && actions.syncOperationCurrencyFields) {
           node.addEventListener("change", async () => {
             actions.resetEditOperationFxRateAutofill?.();
@@ -144,6 +169,23 @@
         if (id === "editFxRate" && actions.markEditOperationFxRateManual) {
           node.addEventListener("input", actions.markEditOperationFxRateManual);
         }
+      }
+    }
+    for (const id of ["editUseFxSettlement", "editFxSettlementAsset", "editFxSettlementQuantity", "editFxSettlementUnitPrice", "editFxSettlementNote"]) {
+      const node = document.getElementById(id);
+      if (!node) {
+        continue;
+      }
+      node.addEventListener("input", actions.syncEditFxSettlementFieldUi);
+      node.addEventListener("change", actions.syncEditFxSettlementFieldUi);
+      if (id === "editUseFxSettlement" && actions.toggleEditFxSettlement) {
+        node.addEventListener("change", actions.toggleEditFxSettlement);
+      }
+      if (id === "editFxSettlementQuantity" && actions.markEditFxSettlementQuantitySource) {
+        node.addEventListener("input", actions.markEditFxSettlementQuantitySource);
+      }
+      if (id === "editFxSettlementUnitPrice" && actions.markEditFxSettlementRateSource) {
+        node.addEventListener("input", actions.markEditFxSettlementRateSource);
       }
     }
     pickerCoordinator.bindDateField("editDate", actions.updateEditPreview);

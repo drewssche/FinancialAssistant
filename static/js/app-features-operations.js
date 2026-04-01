@@ -14,7 +14,9 @@
   const renderCreateCategoryPicker = operationModal.renderCreateCategoryPicker;
   const updateCreatePreview = operationModal.updateCreatePreview;
   const getCreateReceiptPayload = operationModal.getCreateReceiptPayload;
+  const getCreateFxSettlementPayload = operationModal.getCreateFxSettlementPayload;
   const getEditReceiptPayload = operationModal.getEditReceiptPayload;
+  const getEditFxSettlementPayload = operationModal.getEditFxSettlementPayload;
   const closeCreateModal = operationModal.closeCreateModal;
   const closeEditModal = operationModal.closeEditModal;
   const savePreferences = sessionFeatures.savePreferences;
@@ -670,7 +672,9 @@
       renderCreateCategoryPicker,
       updateCreatePreview,
       getCreateReceiptPayload,
+      getCreateFxSettlementPayload,
       getEditReceiptPayload,
+      getEditFxSettlementPayload,
       closeCreateModal,
       closeEditModal,
       loadOperations,

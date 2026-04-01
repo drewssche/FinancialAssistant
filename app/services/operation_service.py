@@ -17,8 +17,10 @@ from app.core.cache import (
 )
 from app.core.logging import log_background_job_event
 from app.db.models import Category, CategoryGroup
+from app.repositories.currency_repo import CurrencyRepository
 from app.repositories.preference_repo import PreferenceRepository
 from app.repositories.operation_repo import OperationRepository
+from app.services.currency_service import CurrencyService
 from app.services.operation_item_template_service import OperationItemTemplateService
 
 
@@ -34,6 +36,7 @@ class OperationService:
     def __init__(self, db: Session):
         self.db = db
         self.repo = OperationRepository(db)
+        self.currency_repo = CurrencyRepository(db)
         self.preferences = PreferenceRepository(db)
         self.item_templates = OperationItemTemplateService(db, self.repo)
 
@@ -76,6 +79,7 @@ class OperationService:
         currency: str | None = None,
         fx_rate: Decimal | None = None,
         receipt_items: list[dict] | None = None,
+        fx_settlement: dict | None = None,
     ):
         self._validate_kind(kind)
         normalized_items, receipt_total = self._normalize_receipt_items(receipt_items or [])
@@ -101,6 +105,27 @@ class OperationService:
             category_id,
             note,
         )
+        if fx_settlement:
+            normalized_settlement = self._normalize_fx_settlement(
+                user_id=user_id,
+                kind=kind,
+                operation_amount=base_amount,
+                operation_date=operation_date,
+                base_currency=base_currency,
+                payload=fx_settlement,
+            )
+            currency_service = CurrencyService(self.db)
+            currency_service.sync_linked_operation_trade(
+                user_id=user_id,
+                operation_id=item.id,
+                asset_currency=normalized_settlement["asset_currency"],
+                quote_currency=base_currency,
+                quantity=normalized_settlement["quantity"],
+                unit_price=normalized_settlement["unit_price"],
+                trade_date=operation_date,
+                note=normalized_settlement["note"],
+                commit=False,
+            )
         if normalized_items:
             storage_items = self.item_templates.resolve_templates_and_prices(
                 user_id=user_id,
@@ -125,6 +150,7 @@ class OperationService:
             category_id=item.category_id,
             currency=item.currency,
             has_receipt=bool(normalized_items),
+            has_fx_settlement=bool(fx_settlement),
         )
         return self._serialize_operation(user_id=user_id, operation=item)
 
@@ -472,6 +498,8 @@ class OperationService:
                 date_from=date_from or date.min,
                 date_to=date_to or date.max,
             ):
+                if not CurrencyService.is_cashflow_trade(trade):
+                    continue
                 quote_currency = str(getattr(trade, "quote_currency", base_currency) or base_currency).upper()
                 if quote_currency != base_currency:
                     continue
@@ -595,6 +623,43 @@ class OperationService:
             "total": len(items),
         }
 
+    def _normalize_fx_settlement(
+        self,
+        *,
+        user_id: int,
+        kind: str,
+        operation_amount: Decimal,
+        operation_date: date,
+        base_currency: str,
+        payload: dict,
+    ) -> dict:
+        if kind != "expense":
+            raise ValueError("fx_settlement is supported only for expense operations")
+        asset_currency = str(payload.get("asset_currency") or "").strip().upper()
+        quote_total = self._money(payload.get("quote_total") or 0)
+        quantity = Decimal(payload.get("quantity") or 0).quantize(QTY_Q)
+        unit_price = Decimal(payload.get("unit_price") or 0).quantize(RATE_Q)
+        note = str(payload.get("note") or "").strip() or None
+        if not _CURRENCY_RE.match(asset_currency):
+            raise ValueError("fx_settlement asset_currency must be a 3-letter ISO code")
+        if asset_currency == base_currency:
+            raise ValueError("fx_settlement asset_currency must differ from base currency")
+        if quantity <= 0 or unit_price <= 0 or quote_total <= 0:
+            raise ValueError("fx_settlement quantity, quote_total and unit_price must be positive")
+        computed_total = self._money(quantity * unit_price)
+        if computed_total != quote_total:
+            raise ValueError("fx_settlement quote_total must match quantity * unit_price")
+        if quote_total != self._money(operation_amount):
+            raise ValueError("fx_settlement quote_total must match operation amount in base currency")
+        return {
+            "asset_currency": asset_currency,
+            "quantity": quantity,
+            "unit_price": unit_price,
+            "quote_total": quote_total,
+            "note": note,
+            "trade_date": operation_date,
+        }
+
     def get_operation(self, user_id: int, operation_id: int):
         item = self.repo.get_by_id(user_id=user_id, operation_id=operation_id)
         if not item:
@@ -611,6 +676,7 @@ class OperationService:
             raise LookupError("Operation not found")
 
         receipt_items_input = updates.pop("receipt_items", None) if "receipt_items" in updates else None
+        fx_settlement_input = updates.pop("fx_settlement", None) if "fx_settlement" in updates else None
         normalized_items: list[dict] | None = None
         receipt_total: Decimal | None = None
         if receipt_items_input is not None:
@@ -660,6 +726,36 @@ class OperationService:
                 # Keep operation amount as source of truth; discrepancy is reported in output.
                 _ = receipt_total
 
+        if "fx_settlement" in logged_fields:
+            linked_trade = self.currency_repo.get_trade_by_linked_operation_id(user_id=user_id, operation_id=item.id)
+            if fx_settlement_input is None:
+                if linked_trade is not None:
+                    self.currency_repo.delete_trade(linked_trade)
+            else:
+                current_kind = str(getattr(item, "kind", updates.get("kind") or "expense"))
+                current_base_amount = self._money(getattr(item, "amount", 0))
+                current_base_currency = str(getattr(item, "base_currency", self._get_user_base_currency(user_id)) or self._get_user_base_currency(user_id)).upper()
+                normalized_settlement = self._normalize_fx_settlement(
+                    user_id=user_id,
+                    kind=current_kind,
+                    operation_amount=current_base_amount,
+                    operation_date=item.operation_date,
+                    base_currency=current_base_currency,
+                    payload=fx_settlement_input,
+                )
+                currency_service = CurrencyService(self.db)
+                currency_service.sync_linked_operation_trade(
+                    user_id=user_id,
+                    operation_id=item.id,
+                    asset_currency=normalized_settlement["asset_currency"],
+                    quote_currency=current_base_currency,
+                    quantity=normalized_settlement["quantity"],
+                    unit_price=normalized_settlement["unit_price"],
+                    trade_date=item.operation_date,
+                    note=normalized_settlement["note"],
+                    commit=False,
+                )
+
         self.db.commit()
         invalidate_dashboard_summary_cache(user_id)
         invalidate_dashboard_analytics_cache(user_id)
@@ -676,6 +772,7 @@ class OperationService:
             currency=item.currency,
             fields_changed=",".join(logged_fields),
             receipt_updated=normalized_items is not None,
+            fx_settlement_updated="fx_settlement" in logged_fields,
         )
         return self._serialize_operation(user_id=user_id, operation=item)
 
@@ -802,6 +899,22 @@ class OperationService:
         fx_rate = self._rate(getattr(operation, "fx_rate", Decimal("1.000000")))
         receipt_total_value = self._money(receipt_total) if receipt_payload else None
         discrepancy = self._money(amount - receipt_total) if receipt_payload else None
+        linked_trade = self.currency_repo.get_trade_by_linked_operation_id(
+            user_id=user_id,
+            operation_id=int(operation.id),
+        )
+        fx_settlement = None
+        if linked_trade is not None:
+            fx_settlement = {
+                "trade_id": int(linked_trade.id),
+                "asset_currency": str(linked_trade.asset_currency or "").upper(),
+                "quote_currency": str(linked_trade.quote_currency or "").upper(),
+                "quantity": self._qty(linked_trade.quantity),
+                "quote_total": self._money(Decimal(linked_trade.quantity or 0) * Decimal(linked_trade.unit_price or 0)),
+                "unit_price": self._rate(linked_trade.unit_price),
+                "trade_date": linked_trade.trade_date,
+                "note": linked_trade.note,
+            }
         operation_category_meta = category_meta_map.get(int(operation.category_id or 0), {})
         return {
             "id": int(operation.id),
@@ -820,6 +933,7 @@ class OperationService:
             "receipt_items": receipt_payload,
             "receipt_total": receipt_total_value,
             "receipt_discrepancy": discrepancy,
+            "fx_settlement": fx_settlement,
         }
 
     def _normalize_currency(self, value: str | None, default: str = "BYN") -> str:

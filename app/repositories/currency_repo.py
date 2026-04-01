@@ -22,6 +22,13 @@ class CurrencyRepository:
         )
         return self.db.scalar(stmt)
 
+    def get_trade_by_linked_operation_id(self, *, user_id: int, operation_id: int) -> FxTrade | None:
+        stmt = select(FxTrade).where(
+            FxTrade.user_id == user_id,
+            FxTrade.linked_operation_id == operation_id,
+        )
+        return self.db.scalar(stmt)
+
     def list_trades(self, *, user_id: int, asset_currency: str | None = None, limit: int = 200) -> list[FxTrade]:
         stmt = select(FxTrade).where(FxTrade.user_id == user_id)
         if asset_currency:

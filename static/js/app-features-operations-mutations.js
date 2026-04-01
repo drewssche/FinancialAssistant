@@ -9,7 +9,9 @@
       renderCreateCategoryPicker,
       updateCreatePreview,
       getCreateReceiptPayload,
+      getCreateFxSettlementPayload,
       getEditReceiptPayload,
+      getEditFxSettlementPayload,
       closeCreateModal,
       closeEditModal,
       loadOperations,
@@ -129,6 +131,7 @@
         currencySelectId: "opCurrency",
         fxRateInputId: "opFxRate",
       });
+      payload.fx_settlement = getCreateFxSettlementPayload ? getCreateFxSettlementPayload() : null;
       delete payload._mode;
       return payload;
     }
@@ -145,6 +148,7 @@
         currencySelectId: "editCurrency",
         fxRateInputId: "editFxRate",
       });
+      payload.fx_settlement = getEditFxSettlementPayload ? getEditFxSettlementPayload() : null;
       delete payload._mode;
       return payload;
     }

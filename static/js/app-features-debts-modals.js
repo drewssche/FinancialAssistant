@@ -67,35 +67,19 @@
         core.setStatus("Долг не найден");
         return;
       }
-      const { card, debt } = found;
+      const { debt } = found;
       const outstanding = Number(debt.outstanding_total || 0);
-      el.forgivenessDebtId.value = String(debtId);
-      if (el.forgivenessCounterparty) {
-        el.forgivenessCounterparty.textContent = card.counterparty || "Контрагент";
+      if (!Number.isFinite(outstanding) || outstanding <= 0) {
+        core.setStatus("Долг уже закрыт");
+        return;
       }
-      if (el.forgivenessDirection) {
-        const isBorrow = debt.direction === "borrow";
-        el.forgivenessDirection.textContent = debtUi.debtDirectionActionLabel(debt.direction);
-        el.forgivenessDirection.classList.remove("debt-direction-pill-lend", "debt-direction-pill-borrow");
-        el.forgivenessDirection.classList.add(isBorrow ? "debt-direction-pill-borrow" : "debt-direction-pill-lend");
-      }
-      if (el.forgivenessOutstanding) {
-        el.forgivenessOutstanding.textContent = formatDebtMoney(outstanding, debt.currency || "BYN");
-      }
-      if (el.forgivenessContextHint) {
-        el.forgivenessContextHint.textContent = debt.direction === "borrow"
-          ? "Мне простили долг без выплаты"
-          : "Я прощаю долг без возврата денег";
-      }
-      if (el.submitDebtForgivenessBtn) {
-        el.submitDebtForgivenessBtn.textContent = debt.direction === "borrow" ? "Мне простили" : "Простить долг";
-      }
-      el.forgivenessAmount.value = outstanding > 0 ? outstanding.toFixed(2) : "";
-      if (!el.forgivenessDate.value) {
-        core.syncDateFieldValue(el.forgivenessDate, core.getTodayIso());
-      }
-      el.forgivenessNote.value = "";
-      el.debtForgivenessModal.classList.remove("hidden");
+      await confirmDebtForgiveness({
+        debtId,
+        debt: found.debt,
+        repaymentDate: core.getTodayIso(),
+        note: null,
+        closeAfter: null,
+      });
     }
 
     function closeDebtForgivenessModal() {
@@ -205,8 +189,31 @@
         core.setStatus("Долг уже закрыт");
         return;
       }
+      await confirmDebtForgiveness({
+        debtId,
+        debt: found.debt,
+        repaymentDate,
+        note: el.repaymentNote.value || null,
+        closeAfter: async () => {
+          closeDebtRepaymentModal();
+          await refreshDebtViews();
+        },
+      });
+    }
+
+    async function confirmDebtForgiveness({ debtId, debt, repaymentDate, note, closeAfter }) {
+      const outstanding = parseAmount(debt?.outstanding_total);
+      const currency = String(debt?.currency || "BYN").toUpperCase();
+      const isBorrow = debt?.direction === "borrow";
+      const amountLabel = formatDebtMoney(outstanding, currency);
       core.runDestructiveAction({
-        confirmMessage: "Простить весь остаток долга?",
+        confirmTitle: isBorrow ? "Подтвердить списание" : "Подтвердить прощение",
+        confirmMessage: isBorrow
+          ? `Подтвердить, что мне простили остаток ${amountLabel}?`
+          : `Простить остаток ${amountLabel} без возврата денег?`,
+        confirmLabel: isBorrow ? "Подтвердить списание" : "Простить остаток",
+        cancelLabel: isBorrow ? "Оставить долг" : "Не прощать",
+        confirmTone: "danger",
         doDelete: async () => {
           await core.requestJson(`/api/v1/debts/${debtId}/forgivenesses`, {
             method: "POST",
@@ -214,17 +221,20 @@
             body: JSON.stringify({
               amount: outstanding.toFixed(2),
               forgiven_date: repaymentDate,
-              note: el.repaymentNote.value || null,
+              note,
             }),
           });
           core.invalidateUiRequestCache("debts");
           getDashboardData().invalidateReadCaches?.();
         },
         onAfterDelete: async () => {
-          closeDebtRepaymentModal();
+          if (typeof closeAfter === "function") {
+            await closeAfter();
+            return;
+          }
           await refreshDebtViews();
         },
-        onDeleteError: "Не удалось простить долг",
+        onDeleteError: isBorrow ? "Не удалось подтвердить списание долга" : "Не удалось простить долг",
       });
     }
 

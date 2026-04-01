@@ -42,6 +42,10 @@
   let currencyUnitPriceManual = false;
   let currencyTradeSourceField = "quantity";
   let currencyTradeRateDriver = false;
+  let fxSettlementQuantityDriver = false;
+  let fxSettlementRateDriver = false;
+  let editFxSettlementQuantityDriver = false;
+  let editFxSettlementRateDriver = false;
   let currencyRateRequestSeq = 0;
   let createOperationFxRateManual = false;
   let editOperationFxRateManual = true;
@@ -320,6 +324,276 @@
     applyTradeFieldCurrency(el.currencyUnitPriceField, context.quoteCurrency);
   }
 
+  function isCreateFxSettlementEnabled() {
+    return el.opUseFxSettlement?.checked === true;
+  }
+
+  function getCreateOperationBaseAmountValue() {
+    const amountResolved = core.resolveMoneyInput(el.opAmount?.value || 0);
+    if (amountResolved.valid && Number(amountResolved.previewValue || 0) > 0) {
+      return Number(amountResolved.previewValue || 0);
+    }
+    const receiptItems = getCreateReceiptPayload();
+    if (!Array.isArray(receiptItems) || !receiptItems.length) {
+      return 0;
+    }
+    return receiptItems.reduce((sum, row) => {
+      const qty = Number(row?.quantity || 0);
+      const unitPrice = Number(row?.unit_price || 0);
+      return sum + (qty > 0 && unitPrice > 0 ? qty * unitPrice : 0);
+    }, 0);
+  }
+
+  function syncCreateFxSettlementVisibility() {
+    const isOperationEntry = el.opEntryMode?.value === "operation";
+    const isExpense = el.opKind?.value === "expense";
+    const shouldShowBlock = isOperationEntry && isExpense;
+    el.opFxSettlementBlock?.classList.toggle("hidden", !shouldShowBlock);
+    if (!shouldShowBlock && el.opUseFxSettlement) {
+      el.opUseFxSettlement.checked = false;
+    }
+    const enabled = shouldShowBlock && isCreateFxSettlementEnabled();
+    el.opFxSettlementFields?.classList.toggle("hidden", !enabled);
+    if (el.opCurrency) {
+      if (enabled) {
+        el.opCurrency.value = String(core.getCurrencyConfig?.().code || "BYN").toUpperCase();
+        el.opCurrency.disabled = true;
+        el.opCurrency.title = "При оплате с валютной карты операция фиксируется в базовой валюте";
+      } else {
+        el.opCurrency.disabled = false;
+        el.opCurrency.title = "";
+      }
+    }
+  }
+
+  function getCreateFxSettlementContext() {
+    const baseCurrency = String(core.getCurrencyConfig?.().code || "BYN").toUpperCase();
+    const assetCurrency = String(el.opFxSettlementAsset?.value || "USD").toUpperCase();
+    const quantityResolved = core.resolveMoneyInput(el.opFxSettlementQuantity?.value || 0);
+    const rateResolved = core.resolveRateInput(el.opFxSettlementUnitPrice?.value || 0, 0, 6);
+    const baseAmount = getCreateOperationBaseAmountValue();
+    const enteredQuantity = Number(quantityResolved.previewValue || 0);
+    const enteredRate = Number(rateResolved.previewValue || 0);
+    const hasQuantity = quantityResolved.valid && enteredQuantity > 0;
+    const hasRate = rateResolved.valid && enteredRate > 0;
+    let effectiveQuantity = enteredQuantity;
+    let effectiveRate = enteredRate;
+    if (baseAmount > 0 && hasQuantity && !hasRate) {
+      effectiveRate = baseAmount / enteredQuantity;
+    } else if (baseAmount > 0 && !hasQuantity && hasRate) {
+      effectiveQuantity = baseAmount / enteredRate;
+    }
+    const computedBase = effectiveQuantity > 0 && effectiveRate > 0 ? effectiveQuantity * effectiveRate : 0;
+    return {
+      baseCurrency,
+      assetCurrency,
+      baseAmount,
+      quantityResolved,
+      rateResolved,
+      effectiveQuantity,
+      effectiveRate,
+      computedBase,
+      hasQuantity,
+      hasRate,
+    };
+  }
+
+  function syncCreateFxSettlementFieldUi() {
+    syncCreateFxSettlementVisibility();
+    if (!isCreateFxSettlementEnabled()) {
+      return;
+    }
+    const context = getCreateFxSettlementContext();
+    if (el.opFxSettlementBaseTotal) {
+      el.opFxSettlementBaseTotal.textContent = context.baseAmount > 0
+        ? `Сумма операции: ${core.formatMoney(context.baseAmount, { currency: context.baseCurrency })}`
+        : "Сначала укажи сумму операции или заполни чек";
+    }
+    if (el.opFxSettlementQuantity) {
+      el.opFxSettlementQuantity.placeholder = `Списано ${context.assetCurrency}`;
+      if (!fxSettlementQuantityDriver && context.baseAmount > 0 && context.effectiveQuantity > 0 && context.hasRate) {
+        el.opFxSettlementQuantity.value = core.formatAmount(context.effectiveQuantity);
+      }
+    }
+    if (el.opFxSettlementUnitPrice) {
+      el.opFxSettlementUnitPrice.placeholder = `Курс ${context.baseCurrency} за 1 ${context.assetCurrency}`;
+      if (!fxSettlementRateDriver && context.baseAmount > 0 && context.effectiveRate > 0 && context.hasQuantity) {
+        el.opFxSettlementUnitPrice.value = formatTradeRateValue(context.effectiveRate);
+      }
+    }
+    if (el.opFxSettlementHint) {
+      if (!(context.baseAmount > 0)) {
+        el.opFxSettlementHint.textContent = "Сумма списания берется из операции или из суммы чека, поэтому в валютном блоке достаточно указать количество и/или курс.";
+      } else if (context.effectiveQuantity > 0 && context.effectiveRate > 0) {
+        const mismatch = Math.abs(context.computedBase - context.baseAmount) >= 0.01;
+        el.opFxSettlementHint.textContent = mismatch
+          ? `Проверь связку: ${core.formatAmount(context.effectiveQuantity)} ${context.assetCurrency} по курсу ${formatTradeRateValue(context.effectiveRate)} дают ${core.formatMoney(context.computedBase, { currency: context.baseCurrency })}, а операция = ${core.formatMoney(context.baseAmount, { currency: context.baseCurrency })}.`
+          : `Будет списано ${core.formatAmount(context.effectiveQuantity)} ${context.assetCurrency} по курсу ${formatTradeRateValue(context.effectiveRate)} на ${core.formatMoney(context.baseAmount, { currency: context.baseCurrency })}.`;
+      } else {
+        el.opFxSettlementHint.textContent = `Укажи количество ${context.assetCurrency} или курс. Второе поле пересчитается от суммы операции в ${context.baseCurrency}.`;
+      }
+    }
+    applyTradeFieldCurrency(el.opFxSettlementQuantityField, context.assetCurrency);
+    applyTradeFieldCurrency(el.opFxSettlementUnitPriceField, context.baseCurrency);
+  }
+
+  function getCreateFxSettlementPayload() {
+    if (!isCreateFxSettlementEnabled()) {
+      return null;
+    }
+    const context = getCreateFxSettlementContext();
+    if (!(context.baseAmount > 0)) {
+      throw new Error("Сначала укажи сумму операции для оплаты с валютной карты");
+    }
+    if (!(context.effectiveQuantity > 0)) {
+      throw new Error(`Проверь количество списания в ${context.assetCurrency}`);
+    }
+    if (!(context.effectiveRate > 0)) {
+      throw new Error("Проверь курс валютного списания");
+    }
+    const computedBase = Number((context.effectiveQuantity * context.effectiveRate).toFixed(2));
+    const baseAmount = Number(context.baseAmount.toFixed(2));
+    if (Math.abs(computedBase - baseAmount) >= 0.01) {
+      throw new Error("Сумма валютного списания должна совпадать с суммой операции");
+    }
+    return {
+      asset_currency: context.assetCurrency,
+      quantity: core.formatAmount(context.effectiveQuantity),
+      quote_total: core.formatAmount(context.baseAmount),
+      unit_price: core.resolveRateInput(context.effectiveRate, 0, 6).formatted,
+      note: el.opFxSettlementNote?.value?.trim() || null,
+    };
+  }
+
+  function isEditFxSettlementEnabled() {
+    return el.editUseFxSettlement?.checked === true;
+  }
+
+  function getEditOperationBaseAmountValue() {
+    const amountResolved = core.resolveMoneyInput(el.editAmount?.value || 0);
+    if (amountResolved.valid && Number(amountResolved.previewValue || 0) > 0) {
+      return Number(amountResolved.previewValue || 0);
+    }
+    const receiptItems = getEditReceiptPayload();
+    if (!Array.isArray(receiptItems) || !receiptItems.length) {
+      return 0;
+    }
+    return receiptItems.reduce((sum, row) => {
+      const qty = Number(row?.quantity || 0);
+      const unitPrice = Number(row?.unit_price || 0);
+      return sum + (qty > 0 && unitPrice > 0 ? qty * unitPrice : 0);
+    }, 0);
+  }
+
+  function syncEditFxSettlementVisibility() {
+    const isExpense = el.editKind?.value === "expense";
+    const shouldShowBlock = isExpense;
+    el.editFxSettlementBlock?.classList.toggle("hidden", !shouldShowBlock);
+    if (!shouldShowBlock && el.editUseFxSettlement) {
+      el.editUseFxSettlement.checked = false;
+    }
+    const enabled = shouldShowBlock && isEditFxSettlementEnabled();
+    el.editFxSettlementFields?.classList.toggle("hidden", !enabled);
+    if (el.editCurrency) {
+      if (enabled) {
+        el.editCurrency.value = String(core.getCurrencyConfig?.().code || "BYN").toUpperCase();
+        el.editCurrency.disabled = true;
+        el.editCurrency.title = "При оплате с валютной карты операция фиксируется в базовой валюте";
+      } else {
+        el.editCurrency.disabled = false;
+        el.editCurrency.title = "";
+      }
+    }
+  }
+
+  function getEditFxSettlementContext() {
+    const baseCurrency = String(core.getCurrencyConfig?.().code || "BYN").toUpperCase();
+    const assetCurrency = String(el.editFxSettlementAsset?.value || "USD").toUpperCase();
+    const quantityResolved = core.resolveMoneyInput(el.editFxSettlementQuantity?.value || 0);
+    const rateResolved = core.resolveRateInput(el.editFxSettlementUnitPrice?.value || 0, 0, 6);
+    const baseAmount = getEditOperationBaseAmountValue();
+    const enteredQuantity = Number(quantityResolved.previewValue || 0);
+    const enteredRate = Number(rateResolved.previewValue || 0);
+    const hasQuantity = quantityResolved.valid && enteredQuantity > 0;
+    const hasRate = rateResolved.valid && enteredRate > 0;
+    let effectiveQuantity = enteredQuantity;
+    let effectiveRate = enteredRate;
+    if (baseAmount > 0 && hasQuantity && !hasRate) {
+      effectiveRate = baseAmount / enteredQuantity;
+    } else if (baseAmount > 0 && !hasQuantity && hasRate) {
+      effectiveQuantity = baseAmount / enteredRate;
+    }
+    const computedBase = effectiveQuantity > 0 && effectiveRate > 0 ? effectiveQuantity * effectiveRate : 0;
+    return { baseCurrency, assetCurrency, baseAmount, effectiveQuantity, effectiveRate, computedBase, hasQuantity, hasRate };
+  }
+
+  function syncEditFxSettlementFieldUi() {
+    syncEditFxSettlementVisibility();
+    if (!isEditFxSettlementEnabled()) {
+      return;
+    }
+    const context = getEditFxSettlementContext();
+    if (el.editFxSettlementBaseTotal) {
+      el.editFxSettlementBaseTotal.textContent = context.baseAmount > 0
+        ? `Сумма операции: ${core.formatMoney(context.baseAmount, { currency: context.baseCurrency })}`
+        : "Сначала укажи сумму операции или заполни чек";
+    }
+    if (el.editFxSettlementQuantity) {
+      el.editFxSettlementQuantity.placeholder = `Списано ${context.assetCurrency}`;
+      if (!editFxSettlementQuantityDriver && context.baseAmount > 0 && context.effectiveQuantity > 0 && context.hasRate) {
+        el.editFxSettlementQuantity.value = core.formatAmount(context.effectiveQuantity);
+      }
+    }
+    if (el.editFxSettlementUnitPrice) {
+      el.editFxSettlementUnitPrice.placeholder = `Курс ${context.baseCurrency} за 1 ${context.assetCurrency}`;
+      if (!editFxSettlementRateDriver && context.baseAmount > 0 && context.effectiveRate > 0 && context.hasQuantity) {
+        el.editFxSettlementUnitPrice.value = formatTradeRateValue(context.effectiveRate);
+      }
+    }
+    if (el.editFxSettlementHint) {
+      if (!(context.baseAmount > 0)) {
+        el.editFxSettlementHint.textContent = "Сумма списания берется из операции или из суммы чека.";
+      } else if (context.effectiveQuantity > 0 && context.effectiveRate > 0) {
+        const mismatch = Math.abs(context.computedBase - context.baseAmount) >= 0.01;
+        el.editFxSettlementHint.textContent = mismatch
+          ? `Проверь связку: ${core.formatAmount(context.effectiveQuantity)} ${context.assetCurrency} по курсу ${formatTradeRateValue(context.effectiveRate)} дают ${core.formatMoney(context.computedBase, { currency: context.baseCurrency })}, а операция = ${core.formatMoney(context.baseAmount, { currency: context.baseCurrency })}.`
+          : `Будет списано ${core.formatAmount(context.effectiveQuantity)} ${context.assetCurrency} на ${core.formatMoney(context.baseAmount, { currency: context.baseCurrency })}.`;
+      } else {
+        el.editFxSettlementHint.textContent = `Укажи количество ${context.assetCurrency} или курс. Второе поле пересчитается от суммы операции.`;
+      }
+    }
+    applyTradeFieldCurrency(el.editFxSettlementQuantityField, context.assetCurrency);
+    applyTradeFieldCurrency(el.editFxSettlementUnitPriceField, context.baseCurrency);
+  }
+
+  function getEditFxSettlementPayload() {
+    if (!isEditFxSettlementEnabled()) {
+      return null;
+    }
+    const context = getEditFxSettlementContext();
+    if (!(context.baseAmount > 0)) {
+      throw new Error("Сначала укажи сумму операции для оплаты с валютной карты");
+    }
+    if (!(context.effectiveQuantity > 0)) {
+      throw new Error(`Проверь количество списания в ${context.assetCurrency}`);
+    }
+    if (!(context.effectiveRate > 0)) {
+      throw new Error("Проверь курс валютного списания");
+    }
+    const computedBase = Number((context.effectiveQuantity * context.effectiveRate).toFixed(2));
+    const baseAmount = Number(context.baseAmount.toFixed(2));
+    if (Math.abs(computedBase - baseAmount) >= 0.01) {
+      throw new Error("Сумма валютного списания должна совпадать с суммой операции");
+    }
+    return {
+      asset_currency: context.assetCurrency,
+      quantity: core.formatAmount(context.effectiveQuantity),
+      quote_total: core.formatAmount(context.baseAmount),
+      unit_price: core.resolveRateInput(context.effectiveRate, 0, 6).formatted,
+      note: el.editFxSettlementNote?.value?.trim() || null,
+    };
+  }
+
   function buildSelectableCurrencyList(includeBase = true, preserveValue = "") {
     const baseCurrency = String(core.getCurrencyConfig?.().code || "BYN").toUpperCase();
     const source = core.getSelectableCurrencies?.({ includeBase }) || (includeBase ? [baseCurrency, "USD", "EUR"] : ["USD", "EUR"]);
@@ -372,6 +646,11 @@
     populateCurrencySelect(el.currencyAsset, {
       includeBase: false,
       preserveValue: preserve.currencyAsset || el.currencyAsset?.value || firstTracked,
+      fallbackValue: firstTracked,
+    });
+    populateCurrencySelect(el.opFxSettlementAsset, {
+      includeBase: false,
+      preserveValue: preserve.opFxSettlementAsset || el.opFxSettlementAsset?.value || firstTracked,
       fallbackValue: firstTracked,
     });
   }
@@ -602,6 +881,7 @@
     updateCreateCategoryFieldUi();
     renderCreateCategoryPicker();
     renderDebtCounterpartyPicker();
+    syncCreateFxSettlementFieldUi();
     updateCreatePreview();
   }
   function setEditOperationMode(mode) {
@@ -616,6 +896,7 @@
     setReceiptEnabled(nextMode === "receipt", "edit");
     updateEditCategoryFieldUi();
     renderEditCategoryPicker();
+    syncEditFxSettlementFieldUi();
     updateEditPreview();
   }
   async function setCreateEntryMode(mode) {
@@ -697,6 +978,7 @@
       updateCreateCategoryFieldUi();
       await syncOperationCurrencyFields("create").catch(() => {});
     }
+    syncCreateFxSettlementFieldUi();
     updateCreatePreview();
   }
   function setOperationKind(mode, kind) {
@@ -809,6 +1091,18 @@
     if (el.currencyNote) {
       el.currencyNote.value = "";
     }
+    if (el.opUseFxSettlement) {
+      el.opUseFxSettlement.checked = false;
+    }
+    if (el.opFxSettlementQuantity) {
+      el.opFxSettlementQuantity.value = "";
+    }
+    if (el.opFxSettlementUnitPrice) {
+      el.opFxSettlementUnitPrice.value = "";
+    }
+    if (el.opFxSettlementNote) {
+      el.opFxSettlementNote.value = "";
+    }
     if (el.opCurrency) {
       el.opCurrency.value = core.getCurrencyConfig?.().code || "BYN";
       el.opCurrency.disabled = false;
@@ -865,7 +1159,10 @@
     currencyUnitPriceManual = false;
     currencyTradeSourceField = "quantity";
     currencyTradeRateDriver = false;
+    fxSettlementQuantityDriver = false;
+    fxSettlementRateDriver = false;
     syncCurrencyTradeFieldUi();
+    syncCreateFxSettlementFieldUi();
     syncOperationCurrencyFields("create").catch(() => {});
     syncOperationCurrencyFields("edit").catch(() => {});
     applyDebtCurrencyUi();
@@ -1001,6 +1298,24 @@
     syncOperationCurrencyFields("edit");
     selectEditCategory(item.category_id ? Number(item.category_id) : null);
     setEditOperationMode(hasReceipt ? "receipt" : "common");
+    if (el.editUseFxSettlement) {
+      el.editUseFxSettlement.checked = Boolean(item.fx_settlement);
+    }
+    if (el.editFxSettlementAsset) {
+      el.editFxSettlementAsset.value = String(item.fx_settlement?.asset_currency || buildSelectableCurrencyList(false)[0] || "USD").toUpperCase();
+    }
+    if (el.editFxSettlementQuantity) {
+      el.editFxSettlementQuantity.value = item.fx_settlement?.quantity ? core.formatAmount(item.fx_settlement.quantity) : "";
+    }
+    if (el.editFxSettlementUnitPrice) {
+      el.editFxSettlementUnitPrice.value = item.fx_settlement?.unit_price ? formatTradeRateValue(item.fx_settlement.unit_price) : "";
+    }
+    if (el.editFxSettlementNote) {
+      el.editFxSettlementNote.value = item.fx_settlement?.note || "";
+    }
+    editFxSettlementQuantityDriver = false;
+    editFxSettlementRateDriver = false;
+    syncEditFxSettlementFieldUi();
     updateEditPreview();
     el.editModal.classList.remove("hidden");
   }
@@ -1008,6 +1323,20 @@
     state.editOperationId = null;
     clearReceiptItems("edit");
     setEditOperationMode("common");
+    if (el.editUseFxSettlement) {
+      el.editUseFxSettlement.checked = false;
+    }
+    if (el.editFxSettlementQuantity) {
+      el.editFxSettlementQuantity.value = "";
+    }
+    if (el.editFxSettlementUnitPrice) {
+      el.editFxSettlementUnitPrice.value = "";
+    }
+    if (el.editFxSettlementNote) {
+      el.editFxSettlementNote.value = "";
+    }
+    editFxSettlementQuantityDriver = false;
+    editFxSettlementRateDriver = false;
     closeEditCategoryPopover();
     el.editModal.classList.add("hidden");
   }
@@ -1115,7 +1444,9 @@
     handlePullReceiptTotal,
     setReceiptEnabled,
     getCreateReceiptPayload,
+    getCreateFxSettlementPayload,
     getEditReceiptPayload,
+    getEditFxSettlementPayload,
     renderReceiptSummary,
     onCategoryCreated,
     selectCreateCategory,
@@ -1145,6 +1476,8 @@
     resetCreateOperationFxRateAutofill: () => setOperationFxRateManual("create", false),
     resetEditOperationFxRateAutofill: () => setOperationFxRateManual("edit", false),
     syncCurrencyTradeFieldUi,
+    syncCreateFxSettlementFieldUi,
+    syncEditFxSettlementFieldUi,
     syncSelectableCurrencyFields,
     getCurrencyTradeContext,
     syncSuggestedCurrencyRate,
@@ -1152,6 +1485,42 @@
     markCurrencyQuantitySource,
     markCurrencyQuoteSource,
     resetCurrencyRateAutofill,
+    toggleCreateFxSettlement: () => {
+      fxSettlementQuantityDriver = false;
+      fxSettlementRateDriver = false;
+      syncCreateFxSettlementFieldUi();
+      updateCreatePreview();
+    },
+    markFxSettlementQuantitySource: () => {
+      fxSettlementQuantityDriver = true;
+      fxSettlementRateDriver = false;
+      syncCreateFxSettlementFieldUi();
+      updateCreatePreview();
+    },
+    markFxSettlementRateSource: () => {
+      fxSettlementRateDriver = true;
+      fxSettlementQuantityDriver = false;
+      syncCreateFxSettlementFieldUi();
+      updateCreatePreview();
+    },
+    toggleEditFxSettlement: () => {
+      editFxSettlementQuantityDriver = false;
+      editFxSettlementRateDriver = false;
+      syncEditFxSettlementFieldUi();
+      updateEditPreview();
+    },
+    markEditFxSettlementQuantitySource: () => {
+      editFxSettlementQuantityDriver = true;
+      editFxSettlementRateDriver = false;
+      syncEditFxSettlementFieldUi();
+      updateEditPreview();
+    },
+    markEditFxSettlementRateSource: () => {
+      editFxSettlementRateDriver = true;
+      editFxSettlementQuantityDriver = false;
+      syncEditFxSettlementFieldUi();
+      updateEditPreview();
+    },
     applyDebtCurrencyUi,
     updateDebtDueHint,
     openCreateModal,

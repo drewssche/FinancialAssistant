@@ -1078,20 +1078,14 @@ def test_forgiveness_flow_closes_debt_with_forgiven_request(static_server_url: s
     page.click("button[data-section='debts']")
     page.wait_for_selector("#debtsSection:not(.hidden)")
     page.evaluate("window.App.getRuntimeModule('debts').openDebtForgivenessModal(9001)")
-    page.wait_for_selector("#debtForgivenessModal:not(.hidden)")
-    page.fill("#forgivenessAmount", "100")
-    page.fill("#forgivenessDate", "2026-03-06")
-    page.fill("#forgivenessNote", "Списали без выплаты")
-    page.evaluate(
-        """
-        () => window.App.getRuntimeModule('debts').submitDebtForgiveness({
-          preventDefault() {},
-        })
-        """
-    )
-    page.wait_for_selector("#debtForgivenessModal", state="hidden")
+    page.wait_for_selector("#confirmModal:not(.hidden)")
+    assert page.locator("#confirmDeleteBtn").inner_text() in {"Простить остаток", "Подтвердить списание"}
+    assert page.locator("#confirmCancelBtn").inner_text() in {"Не прощать", "Оставить долг"}
+    page.click("#confirmDeleteBtn")
+    page.wait_for_selector("#confirmModal", state="hidden")
 
     assert len(getattr(page, "_forgiveness_calls", [])) == 1
     assert getattr(page, "_forgiveness_calls", [])[0]["debt_id"] == 9001
-    assert getattr(page, "_forgiveness_calls", [])[0]["note"] == "Списали без выплаты"
+    assert getattr(page, "_forgiveness_calls", [])[0]["amount"] == "100.00"
+    assert getattr(page, "_forgiveness_calls", [])[0]["note"] is None
     assert "Долги не найдены" in page.locator("#debtsCards").inner_text()

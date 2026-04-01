@@ -180,14 +180,45 @@
     }
   }
 
-  function showConfirm(message, onConfirm) {
+  function showConfirm(message, onConfirm, options = {}) {
+    const {
+      title = "Подтверждение удаления",
+      confirmLabel = "Удалить",
+      cancelLabel = "Отмена",
+      confirmTone = "danger",
+    } = options;
+    if (el.confirmTitle) {
+      el.confirmTitle.textContent = title;
+    }
     el.confirmText.textContent = message;
+    if (el.confirmDeleteBtn) {
+      el.confirmDeleteBtn.textContent = confirmLabel;
+      el.confirmDeleteBtn.classList.remove("btn-danger", "btn-primary", "btn-secondary");
+      el.confirmDeleteBtn.classList.add(confirmTone === "primary" ? "btn-primary" : confirmTone === "secondary" ? "btn-secondary" : "btn-danger");
+    }
+    if (el.confirmCancelBtn) {
+      el.confirmCancelBtn.textContent = cancelLabel;
+    }
     state.pendingConfirm = onConfirm;
     el.confirmModal.classList.remove("hidden");
   }
 
   function closeConfirm() {
     state.pendingConfirm = null;
+    if (el.confirmTitle) {
+      el.confirmTitle.textContent = "Подтверждение удаления";
+    }
+    if (el.confirmText) {
+      el.confirmText.textContent = "Вы уверены, что хотите удалить объект?";
+    }
+    if (el.confirmDeleteBtn) {
+      el.confirmDeleteBtn.textContent = "Удалить";
+      el.confirmDeleteBtn.classList.remove("btn-primary", "btn-secondary");
+      el.confirmDeleteBtn.classList.add("btn-danger");
+    }
+    if (el.confirmCancelBtn) {
+      el.confirmCancelBtn.textContent = "Отмена";
+    }
     el.confirmModal.classList.add("hidden");
   }
 
@@ -233,6 +264,10 @@
       toastMessage,
       undoAction,
       onDeleteError = "Не удалось выполнить удаление",
+      confirmTitle,
+      confirmLabel,
+      cancelLabel,
+      confirmTone,
     } = config;
 
     showConfirm(confirmMessage, async () => {
@@ -249,6 +284,11 @@
       if (toastMessage && undoAction) {
         showUndoToast(toastMessage, undoAction);
       }
+    }, {
+      title: confirmTitle,
+      confirmLabel,
+      cancelLabel,
+      confirmTone,
     });
   }
 

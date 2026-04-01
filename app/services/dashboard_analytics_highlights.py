@@ -42,6 +42,8 @@ class DashboardAnalyticsHighlightsService:
         )
         total = Decimal("0")
         for trade in trades:
+            if str(getattr(trade, "trade_kind", "manual") or "manual").strip().lower() == "card_payment":
+                continue
             quote_currency = str(getattr(trade, "quote_currency", "BYN") or "BYN").upper()
             if quote_currency != base_currency:
                 continue

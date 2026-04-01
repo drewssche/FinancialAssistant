@@ -219,6 +219,64 @@ def test_currency_trade_rejects_sell_above_available_balance(client: TestClient)
     assert "Not enough currency balance to sell" in response.json()["detail"]
 
 
+def test_linked_card_payment_trade_cannot_be_managed_directly(client: TestClient):
+    funding = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "20.00",
+            "unit_price": "3.20",
+            "fee": "0.00",
+            "trade_date": "2026-03-01",
+            "note": "FX funding",
+        },
+    )
+    assert funding.status_code == 201, funding.text
+
+    operation = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "32.50",
+            "operation_date": "2026-03-05",
+            "fx_settlement": {
+                "asset_currency": "USD",
+                "quantity": "10.00",
+                "quote_total": "32.50",
+                "unit_price": "3.25",
+            },
+        },
+    )
+    assert operation.status_code == 201, operation.text
+
+    overview = client.get("/api/v1/currency/overview", params={"currency": "USD"})
+    assert overview.status_code == 200, overview.text
+    trade_id = overview.json()["recent_trades"][0]["id"]
+
+    update_response = client.patch(
+        f"/api/v1/currency/trades/{trade_id}",
+        json={
+            "side": "sell",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "10.00",
+            "unit_price": "3.25",
+            "fee": "0",
+            "trade_kind": "card_payment",
+            "linked_operation_id": operation.json()["id"],
+            "trade_date": "2026-03-05",
+        },
+    )
+    assert update_response.status_code == 400
+    assert "Linked settlement trade must be edited from the operation" in update_response.json()["detail"]
+
+    delete_response = client.delete(f"/api/v1/currency/trades/{trade_id}")
+    assert delete_response.status_code == 400
+    assert "Linked settlement trade must be deleted from the operation" in delete_response.json()["detail"]
+
+
 def test_currency_rate_history_returns_chronological_points(client: TestClient):
     client.put(
         "/api/v1/currency/rates/current",

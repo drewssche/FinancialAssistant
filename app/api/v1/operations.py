@@ -170,6 +170,7 @@ def create_operation(
             category_id=payload.category_id,
             note=payload.note,
             receipt_items=[item.model_dump() for item in payload.receipt_items],
+            fx_settlement=payload.fx_settlement.model_dump() if payload.fx_settlement else None,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -307,6 +308,8 @@ def update_operation(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields provided for update")
     if "receipt_items" in updates and updates["receipt_items"] is not None:
         updates["receipt_items"] = [item.model_dump() if hasattr(item, "model_dump") else item for item in updates["receipt_items"]]
+    if "fx_settlement" in updates and updates["fx_settlement"] is not None and hasattr(updates["fx_settlement"], "model_dump"):
+        updates["fx_settlement"] = updates["fx_settlement"].model_dump()
 
     service = OperationService(db)
     try:

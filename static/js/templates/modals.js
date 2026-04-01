@@ -74,6 +74,37 @@
             </div>
           </div>
 
+          <div id="opFxSettlementBlock" class="category-modal-form hidden">
+            <label class="muted-small" for="opUseFxSettlement">
+              <input id="opUseFxSettlement" type="checkbox" />
+              Оплата с валютной карты
+            </label>
+            <div id="opFxSettlementFields" class="currency-modal-grid hidden">
+              <div class="currency-modal-row">
+                <select id="opFxSettlementAsset" aria-label="Валюта списания">
+                  <option value="USD">USD ($)</option>
+                  <option value="EUR">EUR (€)</option>
+                  <option value="RUB">RUB (₽)</option>
+                  <option value="CNY">CNY (¥)</option>
+                  <option value="PLN">PLN (zł)</option>
+                </select>
+                <div id="opFxSettlementBaseTotal" class="muted-small currency-trade-hint">Сумма операции в базовой валюте появится после ввода</div>
+              </div>
+              <div class="currency-modal-row currency-modal-row-triple">
+                <div id="opFxSettlementQuantityField" class="money-input-wrap" data-money-input-wrap>
+                  <input id="opFxSettlementQuantity" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Количество валюты" aria-label="Количество списания в валюте" />
+                </div>
+                <div id="opFxSettlementUnitPriceField" class="money-input-wrap" data-money-input-wrap>
+                  <input id="opFxSettlementUnitPrice" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс" aria-label="Курс списания в базовую валюту" />
+                </div>
+              </div>
+              <div id="opFxSettlementHint" class="muted-small currency-trade-hint"></div>
+              <div class="currency-modal-row currency-modal-row-single">
+                <input id="opFxSettlementNote" type="text" placeholder="Например: оплата USD-картой" class="create-note-field" aria-label="Комментарий валютного списания" />
+              </div>
+            </div>
+          </div>
+
           <div id="planRecurrenceBlock" class="category-modal-form hidden">
             <div class="segmented" id="planScheduleModeSwitch" aria-label="Тип плана">
               <button class="segmented-btn active" data-plan-schedule-mode="oneoff" type="button">Разовая</button>
@@ -439,6 +470,37 @@
                 <div class="muted-small"><span id="editReceiptTotalLabel">Сумма чека</span>: <strong id="editReceiptTotalValue">0.00</strong></div>
                 <div class="muted-small"><span id="editReceiptDiffLabel">Расхождение</span>: <strong id="editReceiptDiffValue">0.00</strong></div>
                 <button id="editPullReceiptTotalBtn" class="btn btn-secondary" type="button" data-receipt-mode="edit">Подтянуть сумму из чека</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="editFxSettlementBlock" class="category-modal-form hidden">
+            <label class="muted-small" for="editUseFxSettlement">
+              <input id="editUseFxSettlement" type="checkbox" />
+              Оплата с валютной карты
+            </label>
+            <div id="editFxSettlementFields" class="currency-modal-grid hidden">
+              <div class="currency-modal-row">
+                <select id="editFxSettlementAsset" aria-label="Валюта списания">
+                  <option value="USD">USD ($)</option>
+                  <option value="EUR">EUR (€)</option>
+                  <option value="RUB">RUB (₽)</option>
+                  <option value="CNY">CNY (¥)</option>
+                  <option value="PLN">PLN (zł)</option>
+                </select>
+                <div id="editFxSettlementBaseTotal" class="muted-small currency-trade-hint">Сумма операции в базовой валюте появится после ввода</div>
+              </div>
+              <div class="currency-modal-row currency-modal-row-triple">
+                <div id="editFxSettlementQuantityField" class="money-input-wrap" data-money-input-wrap>
+                  <input id="editFxSettlementQuantity" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Количество валюты" aria-label="Количество списания в валюте" />
+                </div>
+                <div id="editFxSettlementUnitPriceField" class="money-input-wrap" data-money-input-wrap>
+                  <input id="editFxSettlementUnitPrice" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс" aria-label="Курс списания в базовую валюту" />
+                </div>
+              </div>
+              <div id="editFxSettlementHint" class="muted-small currency-trade-hint"></div>
+              <div class="currency-modal-row currency-modal-row-single">
+                <input id="editFxSettlementNote" type="text" placeholder="Например: оплата USD-картой" class="create-note-field" aria-label="Комментарий валютного списания" />
               </div>
             </div>
           </div>

@@ -107,6 +107,8 @@ class DashboardAnalyticsTimelineService:
             date_from=date_from,
             date_to=date_to,
         ):
+            if str(getattr(trade, "trade_kind", "manual") or "manual").strip().lower() == "card_payment":
+                continue
             quote_currency = str(getattr(trade, "quote_currency", base_currency) or base_currency).upper()
             if quote_currency != base_currency:
                 continue
@@ -144,6 +146,8 @@ class DashboardAnalyticsTimelineService:
             date_from=date.min,
             date_to=date.max,
         ):
+            if str(getattr(trade, "trade_kind", "manual") or "manual").strip().lower() == "card_payment":
+                continue
             if getattr(trade, "trade_date", None):
                 candidates.append(trade.trade_date)
 

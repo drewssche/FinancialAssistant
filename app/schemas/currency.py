@@ -11,6 +11,8 @@ class CurrencyTradeCreate(BaseModel):
     quantity: Decimal = Field(gt=0)
     unit_price: Decimal = Field(gt=0)
     fee: Decimal = Field(default=Decimal("0"), ge=0)
+    trade_kind: str = Field(default="manual", min_length=1, max_length=24)
+    linked_operation_id: int | None = None
     trade_date: date
     note: str | None = Field(default=None, max_length=500)
 
@@ -27,6 +29,8 @@ class CurrencyTradeOut(BaseModel):
     quantity: Decimal
     unit_price: Decimal
     fee: Decimal
+    trade_kind: str = "manual"
+    linked_operation_id: int | None = None
     trade_date: date
     note: str | None
     created_at: datetime
