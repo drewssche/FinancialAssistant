@@ -61,6 +61,8 @@
       core,
       updateCreatePreview,
       updateEditPreview,
+      syncCreateFxSettlementFieldUi,
+      syncEditFxSettlementFieldUi,
     })
     : {};
   const createReceiptDraft = receipt.createReceiptDraft;
@@ -361,20 +363,64 @@
     }
   }
 
-  function getCreateOperationBaseAmountValue() {
+  function getCreateOperationBaseContext() {
     const amountResolved = core.resolveMoneyInput(el.opAmount?.value || 0);
     if (amountResolved.valid && Number(amountResolved.previewValue || 0) > 0) {
-      return Number(amountResolved.previewValue || 0);
+      return { amount: Number(amountResolved.previewValue || 0), source: "operation" };
     }
     const receiptItems = getCreateReceiptPayload();
     if (!Array.isArray(receiptItems) || !receiptItems.length) {
-      return 0;
+      return { amount: 0, source: isCreateReceiptMode() ? "receipt" : "operation" };
     }
-    return receiptItems.reduce((sum, row) => {
-      const qty = Number(row?.quantity || 0);
-      const unitPrice = Number(row?.unit_price || 0);
-      return sum + (qty > 0 && unitPrice > 0 ? qty * unitPrice : 0);
-    }, 0);
+    return {
+      amount: receiptItems.reduce((sum, row) => {
+        const qty = Number(row?.quantity || 0);
+        const unitPrice = Number(row?.unit_price || 0);
+        return sum + (qty > 0 && unitPrice > 0 ? qty * unitPrice : 0);
+      }, 0),
+      source: "receipt",
+    };
+  }
+
+  function getCreateOperationBaseAmountValue() {
+    return getCreateOperationBaseContext().amount;
+  }
+
+  function getEditOperationBaseContext() {
+    const amountResolved = core.resolveMoneyInput(el.editAmount?.value || 0);
+    if (amountResolved.valid && Number(amountResolved.previewValue || 0) > 0) {
+      return { amount: Number(amountResolved.previewValue || 0), source: "operation" };
+    }
+    const receiptItems = getEditReceiptPayload();
+    if (!Array.isArray(receiptItems) || !receiptItems.length) {
+      return { amount: 0, source: isEditReceiptMode() ? "receipt" : "operation" };
+    }
+    return {
+      amount: receiptItems.reduce((sum, row) => {
+        const qty = Number(row?.quantity || 0);
+        const unitPrice = Number(row?.unit_price || 0);
+        return sum + (qty > 0 && unitPrice > 0 ? qty * unitPrice : 0);
+      }, 0),
+      source: "receipt",
+    };
+  }
+
+  function getEditOperationBaseAmountValue() {
+    return getEditOperationBaseContext().amount;
+  }
+
+  function getFxSettlementSourceLabel(context) {
+    return context?.baseSource === "receipt" ? "чека" : "операции";
+  }
+
+  function getFxSettlementSourceTitle(context) {
+    return context?.baseSource === "receipt" ? "Сумма чека" : "Сумма операции";
+  }
+
+  function getFxSettlementEmptyHint(context) {
+    return context?.baseSource === "receipt"
+      ? "Сначала собери чек или подтяни итог"
+      : "Сначала укажи сумму операции или заполни чек";
   }
 
   function syncCreateFxSettlementVisibility() {
@@ -409,7 +455,8 @@
     const assetCurrency = String(el.opFxSettlementAsset?.value || "USD").toUpperCase();
     const quantityResolved = core.resolveMoneyInput(el.opFxSettlementQuantity?.value || 0);
     const rateResolved = core.resolveRateInput(el.opFxSettlementUnitPrice?.value || 0, 0, 6);
-    const baseAmount = getCreateOperationBaseAmountValue();
+    const baseContext = getCreateOperationBaseContext();
+    const baseAmount = baseContext.amount;
     const enteredQuantity = Number(quantityResolved.previewValue || 0);
     const enteredRate = Number(rateResolved.previewValue || 0);
     const hasQuantity = quantityResolved.valid && enteredQuantity > 0;
@@ -433,6 +480,7 @@
       computedBase,
       hasQuantity,
       hasRate,
+      baseSource: baseContext.source,
     };
   }
 
@@ -444,8 +492,8 @@
     const context = getCreateFxSettlementContext();
     if (el.opFxSettlementBaseTotal) {
       el.opFxSettlementBaseTotal.textContent = context.baseAmount > 0
-        ? `Сумма операции: ${core.formatMoney(context.baseAmount, { currency: context.baseCurrency })}`
-        : "Сначала укажи сумму операции или заполни чек";
+        ? `${getFxSettlementSourceTitle(context)}: ${core.formatMoney(context.baseAmount, { currency: context.baseCurrency })}`
+        : getFxSettlementEmptyHint(context);
     }
     if (el.opFxSettlementQuantity) {
       el.opFxSettlementQuantity.placeholder = `Списано ${context.assetCurrency}`;
@@ -465,10 +513,10 @@
       } else if (context.effectiveQuantity > 0 && context.effectiveRate > 0) {
         const mismatch = Math.abs(context.computedBase - context.baseAmount) >= 0.01;
         el.opFxSettlementHint.textContent = mismatch
-          ? `Проверь связку: ${core.formatAmount(context.effectiveQuantity)} ${context.assetCurrency} по курсу ${formatTradeRateValue(context.effectiveRate)} дают ${core.formatMoney(context.computedBase, { currency: context.baseCurrency })}, а операция = ${core.formatMoney(context.baseAmount, { currency: context.baseCurrency })}.`
+          ? `Проверь связку: ${core.formatAmount(context.effectiveQuantity)} ${context.assetCurrency} по курсу ${formatTradeRateValue(context.effectiveRate)} дают ${core.formatMoney(context.computedBase, { currency: context.baseCurrency })}, а сумма ${getFxSettlementSourceLabel(context)} = ${core.formatMoney(context.baseAmount, { currency: context.baseCurrency })}.`
           : `Будет списано ${core.formatAmount(context.effectiveQuantity)} ${context.assetCurrency} по курсу ${formatTradeRateValue(context.effectiveRate)} на ${core.formatMoney(context.baseAmount, { currency: context.baseCurrency })}.`;
       } else {
-        el.opFxSettlementHint.textContent = `Укажи количество ${context.assetCurrency} или курс. Второе поле пересчитается от суммы операции в ${context.baseCurrency}.`;
+        el.opFxSettlementHint.textContent = `Укажи количество ${context.assetCurrency} или курс. Второе поле пересчитается от суммы ${getFxSettlementSourceLabel(context)} в ${context.baseCurrency}.`;
       }
     }
     applyTradeFieldCurrency(el.opFxSettlementQuantityField, context.assetCurrency);
@@ -483,7 +531,9 @@
     }
     const context = getCreateFxSettlementContext();
     if (!(context.baseAmount > 0)) {
-      throw new Error("Сначала укажи сумму операции для оплаты с валютной карты");
+      throw new Error(context.baseSource === "receipt"
+        ? "Сначала собери чек или подтяни его итог для оплаты с валютной карты"
+        : "Сначала укажи сумму операции для оплаты с валютной карты");
     }
     if (!(context.effectiveQuantity > 0)) {
       throw new Error(`Проверь количество списания в ${context.assetCurrency}`);
@@ -494,7 +544,7 @@
     const computedBase = Number((context.effectiveQuantity * context.effectiveRate).toFixed(2));
     const baseAmount = Number(context.baseAmount.toFixed(2));
     if (Math.abs(computedBase - baseAmount) >= 0.01) {
-      throw new Error("Сумма валютного списания должна совпадать с суммой операции");
+      throw new Error(`Сумма валютного списания должна совпадать с суммой ${getFxSettlementSourceLabel(context)}`);
     }
     return {
       asset_currency: context.assetCurrency,
@@ -507,22 +557,6 @@
 
   function isEditFxSettlementEnabled() {
     return el.editUseFxSettlement?.checked === true;
-  }
-
-  function getEditOperationBaseAmountValue() {
-    const amountResolved = core.resolveMoneyInput(el.editAmount?.value || 0);
-    if (amountResolved.valid && Number(amountResolved.previewValue || 0) > 0) {
-      return Number(amountResolved.previewValue || 0);
-    }
-    const receiptItems = getEditReceiptPayload();
-    if (!Array.isArray(receiptItems) || !receiptItems.length) {
-      return 0;
-    }
-    return receiptItems.reduce((sum, row) => {
-      const qty = Number(row?.quantity || 0);
-      const unitPrice = Number(row?.unit_price || 0);
-      return sum + (qty > 0 && unitPrice > 0 ? qty * unitPrice : 0);
-    }, 0);
   }
 
   function syncEditFxSettlementVisibility() {
@@ -556,7 +590,8 @@
     const assetCurrency = String(el.editFxSettlementAsset?.value || "USD").toUpperCase();
     const quantityResolved = core.resolveMoneyInput(el.editFxSettlementQuantity?.value || 0);
     const rateResolved = core.resolveRateInput(el.editFxSettlementUnitPrice?.value || 0, 0, 6);
-    const baseAmount = getEditOperationBaseAmountValue();
+    const baseContext = getEditOperationBaseContext();
+    const baseAmount = baseContext.amount;
     const enteredQuantity = Number(quantityResolved.previewValue || 0);
     const enteredRate = Number(rateResolved.previewValue || 0);
     const hasQuantity = quantityResolved.valid && enteredQuantity > 0;
@@ -569,7 +604,7 @@
       effectiveQuantity = baseAmount / enteredRate;
     }
     const computedBase = effectiveQuantity > 0 && effectiveRate > 0 ? effectiveQuantity * effectiveRate : 0;
-    return { baseCurrency, assetCurrency, baseAmount, effectiveQuantity, effectiveRate, computedBase, hasQuantity, hasRate };
+    return { baseCurrency, assetCurrency, baseAmount, effectiveQuantity, effectiveRate, computedBase, hasQuantity, hasRate, baseSource: baseContext.source };
   }
 
   function syncEditFxSettlementFieldUi() {
@@ -580,8 +615,8 @@
     const context = getEditFxSettlementContext();
     if (el.editFxSettlementBaseTotal) {
       el.editFxSettlementBaseTotal.textContent = context.baseAmount > 0
-        ? `Сумма операции: ${core.formatMoney(context.baseAmount, { currency: context.baseCurrency })}`
-        : "Сначала укажи сумму операции или заполни чек";
+        ? `${getFxSettlementSourceTitle(context)}: ${core.formatMoney(context.baseAmount, { currency: context.baseCurrency })}`
+        : getFxSettlementEmptyHint(context);
     }
     if (el.editFxSettlementQuantity) {
       el.editFxSettlementQuantity.placeholder = `Списано ${context.assetCurrency}`;
@@ -601,10 +636,10 @@
       } else if (context.effectiveQuantity > 0 && context.effectiveRate > 0) {
         const mismatch = Math.abs(context.computedBase - context.baseAmount) >= 0.01;
         el.editFxSettlementHint.textContent = mismatch
-          ? `Проверь связку: ${core.formatAmount(context.effectiveQuantity)} ${context.assetCurrency} по курсу ${formatTradeRateValue(context.effectiveRate)} дают ${core.formatMoney(context.computedBase, { currency: context.baseCurrency })}, а операция = ${core.formatMoney(context.baseAmount, { currency: context.baseCurrency })}.`
+          ? `Проверь связку: ${core.formatAmount(context.effectiveQuantity)} ${context.assetCurrency} по курсу ${formatTradeRateValue(context.effectiveRate)} дают ${core.formatMoney(context.computedBase, { currency: context.baseCurrency })}, а сумма ${getFxSettlementSourceLabel(context)} = ${core.formatMoney(context.baseAmount, { currency: context.baseCurrency })}.`
           : `Будет списано ${core.formatAmount(context.effectiveQuantity)} ${context.assetCurrency} на ${core.formatMoney(context.baseAmount, { currency: context.baseCurrency })}.`;
       } else {
-        el.editFxSettlementHint.textContent = `Укажи количество ${context.assetCurrency} или курс. Второе поле пересчитается от суммы операции.`;
+        el.editFxSettlementHint.textContent = `Укажи количество ${context.assetCurrency} или курс. Второе поле пересчитается от суммы ${getFxSettlementSourceLabel(context)} в ${context.baseCurrency}.`;
       }
     }
     applyTradeFieldCurrency(el.editFxSettlementQuantityField, context.assetCurrency);
@@ -619,7 +654,9 @@
     }
     const context = getEditFxSettlementContext();
     if (!(context.baseAmount > 0)) {
-      throw new Error("Сначала укажи сумму операции для оплаты с валютной карты");
+      throw new Error(context.baseSource === "receipt"
+        ? "Сначала собери чек или подтяни его итог для оплаты с валютной карты"
+        : "Сначала укажи сумму операции для оплаты с валютной карты");
     }
     if (!(context.effectiveQuantity > 0)) {
       throw new Error(`Проверь количество списания в ${context.assetCurrency}`);
@@ -630,7 +667,7 @@
     const computedBase = Number((context.effectiveQuantity * context.effectiveRate).toFixed(2));
     const baseAmount = Number(context.baseAmount.toFixed(2));
     if (Math.abs(computedBase - baseAmount) >= 0.01) {
-      throw new Error("Сумма валютного списания должна совпадать с суммой операции");
+      throw new Error(`Сумма валютного списания должна совпадать с суммой ${getFxSettlementSourceLabel(context)}`);
     }
     return {
       asset_currency: context.assetCurrency,

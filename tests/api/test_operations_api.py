@@ -234,6 +234,67 @@ def test_operation_create_supports_linked_fx_settlement_without_double_count_in_
     assert money_flow_summary.json()["expense_total"] == "32.50"
 
 
+def test_operation_receipt_supports_linked_fx_settlement_without_double_count(client: TestClient):
+    funding = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "50.00",
+            "unit_price": "3.20",
+            "fee": "0.00",
+            "trade_date": "2026-03-01",
+            "note": "FX funding for receipt",
+        },
+    )
+    assert funding.status_code == 201, funding.text
+
+    created = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": None,
+            "operation_date": "2026-03-06",
+            "note": "Чек с валютной картой",
+            "receipt_items": [
+                {
+                    "name": "Кофе",
+                    "quantity": "2",
+                    "unit_price": "8.50",
+                },
+                {
+                    "name": "Десерт",
+                    "quantity": "1",
+                    "unit_price": "15.10",
+                },
+            ],
+            "fx_settlement": {
+                "asset_currency": "USD",
+                "quantity": "10.00",
+                "quote_total": "32.10",
+                "unit_price": "3.21",
+                "note": "USD card receipt",
+            },
+        },
+    )
+    assert created.status_code == 201, created.text
+    payload = created.json()
+    assert payload["amount"] == "32.10"
+    assert payload["receipt_total"] == "32.10"
+    assert payload["fx_settlement"]["asset_currency"] == "USD"
+    assert payload["fx_settlement"]["quote_total"] == "32.10"
+
+    money_flow = client.get("/api/v1/operations/money-flow", params={"date_from": "2026-03-06", "date_to": "2026-03-06"})
+    assert money_flow.status_code == 200, money_flow.text
+    money_flow_payload = money_flow.json()
+    assert money_flow_payload["total"] == 1
+    assert money_flow_payload["items"][0]["source_kind"] == "operation"
+    assert money_flow_payload["items"][0]["amount"] == "32.10"
+    assert money_flow_payload["items"][0]["has_fx_settlement"] is True
+    assert money_flow_payload["items"][0]["settlement_asset_currency"] == "USD"
+
+
 def test_operation_update_can_change_and_remove_linked_fx_settlement(client: TestClient):
     funding = client.post(
         "/api/v1/currency/trades",

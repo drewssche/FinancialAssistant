@@ -6,6 +6,8 @@
       core,
       updateCreatePreview,
       updateEditPreview,
+      syncCreateFxSettlementFieldUi,
+      syncEditFxSettlementFieldUi,
     } = deps;
 
     const RECEIPT_TEMPLATES_CACHE_TTL_MS = 20000;
@@ -310,6 +312,11 @@
       renderReceiptItems(mode);
       renderReceiptSummary(mode);
       if (mode === "create") {
+        syncCreateFxSettlementFieldUi?.();
+      } else {
+        syncEditFxSettlementFieldUi?.();
+      }
+      if (mode === "create") {
         updateCreatePreview();
       } else {
         updateEditPreview();
@@ -327,6 +334,11 @@
       }
       ctx.amountNode.value = core.formatAmount(total);
       renderReceiptSummary(mode);
+      if (mode === "create") {
+        syncCreateFxSettlementFieldUi?.();
+      } else {
+        syncEditFxSettlementFieldUi?.();
+      }
       if (mode === "create") {
         updateCreatePreview();
       } else {
@@ -385,6 +397,11 @@
       renderReceiptItems(mode);
       renderReceiptSummary(mode);
       if (mode === "create") {
+        syncCreateFxSettlementFieldUi?.();
+      } else {
+        syncEditFxSettlementFieldUi?.();
+      }
+      if (mode === "create") {
         updateCreatePreview();
       } else {
         updateEditPreview();
@@ -398,6 +415,11 @@
       hideAllReceiptPickers();
       renderReceiptItems(mode);
       renderReceiptSummary(mode);
+      if (mode === "create") {
+        syncCreateFxSettlementFieldUi?.();
+      } else {
+        syncEditFxSettlementFieldUi?.();
+      }
     }
 
     function syncReceiptCategoriesToKind(mode = "create") {
@@ -414,6 +436,11 @@
       }
       renderReceiptItems(mode);
       renderReceiptSummary(mode);
+      if (mode === "create") {
+        syncCreateFxSettlementFieldUi?.();
+      } else {
+        syncEditFxSettlementFieldUi?.();
+      }
     }
 
     function getCreateReceiptPayload() {
