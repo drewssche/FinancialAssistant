@@ -413,6 +413,12 @@ class OperationService:
                     "category_name": payload.get("category_name"),
                     "category_icon": payload.get("category_icon"),
                     "category_accent_color": payload.get("category_accent_color"),
+                    "has_fx_settlement": bool(payload.get("fx_settlement")),
+                    "settlement_asset_currency": (
+                        str(payload.get("fx_settlement", {}).get("asset_currency") or "").upper()
+                        if isinstance(payload.get("fx_settlement"), dict)
+                        else None
+                    ),
                     "receipt_items": payload.get("receipt_items") or [],
                     "receipt_total": payload.get("receipt_total"),
                     "receipt_discrepancy": payload.get("receipt_discrepancy"),

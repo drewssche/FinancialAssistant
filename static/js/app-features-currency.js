@@ -17,6 +17,10 @@
     return window.App.getRuntimeModule?.("operation-modal") || {};
   }
 
+  function getActions() {
+    return window.App.actions || {};
+  }
+
   function getResultPresentation(rawValue) {
     const value = Number(rawValue || 0);
     if (value > 0) {
@@ -108,6 +112,22 @@
     core.invalidateUiRequestCache?.("dashboard:summary");
     getDashboardFeature().loadDashboard?.().catch(() => {});
     getAnalyticsCurrencyFeature().loadAnalyticsCurrency?.({ force: true }).catch(() => {});
+  }
+
+  async function openLinkedOperation(operationId) {
+    const resolvedId = Number(operationId || 0);
+    if (!(resolvedId > 0)) {
+      return;
+    }
+    const operationModal = getOperationModal();
+    if (!operationModal?.openEditModal) {
+      throw new Error("Редактирование операции недоступно");
+    }
+    const item = await core.requestJson(`/api/v1/operations/${resolvedId}`, {
+      headers: core.authHeaders(),
+    });
+    await getActions().switchSection?.("operations");
+    await operationModal.openEditModal(item);
   }
 
   function getTrackedCurrencies() {
@@ -461,6 +481,14 @@
       const isLinkedSettlement = item.trade_kind === "card_payment" && Number(item.linked_operation_id || 0) > 0;
       const sideClass = isLinkedSettlement ? "expense" : item.side === "sell" ? "expense" : "income";
       const sideLabel = isLinkedSettlement ? "Оплата картой" : item.side === "sell" ? "Продажа" : "Покупка";
+      const linkedMeta = isLinkedSettlement
+        ? `
+          <div class="currency-trade-meta">
+            <span class="meta-chip meta-chip-info">Связано с операцией</span>
+            <button class="meta-chip-btn meta-chip-btn-neutral" type="button" data-open-linked-operation-id="${Number(item.linked_operation_id)}">Открыть</button>
+          </div>
+        `
+        : "";
       const menuItems = isLinkedSettlement ? "" : [
         `<button class="btn btn-secondary" type="button" data-edit-currency-trade-id="${Number(item.id)}">Редактировать</button>`,
         `<button class="btn btn-danger" type="button" data-delete-currency-trade-id="${Number(item.id)}">Удалить</button>`,
@@ -472,7 +500,12 @@
         <td data-label="Валюта">${core.escapeHtml ? core.escapeHtml(core.formatCurrencyLabel(item.asset_currency)) : core.formatCurrencyLabel(item.asset_currency)}</td>
         <td data-label="Количество">${core.formatAmount(item.quantity || 0)} ${core.escapeHtml ? core.escapeHtml(item.asset_currency || "") : (item.asset_currency || "")}<div class="muted-small">≈ ${formatTradeQuoteTotal(item)}</div></td>
         <td data-label="Курс">${formatRateWithQuote(item.unit_price || 0, item.quote_currency || "BYN")}</td>
-        <td class="mobile-note-cell" data-label="Комментарий">${core.escapeHtml ? core.escapeHtml(item.note || "") : (item.note || "")}</td>
+        <td class="mobile-note-cell" data-label="Комментарий">
+          <div class="currency-trade-note">
+            ${linkedMeta}
+            ${core.escapeHtml ? core.escapeHtml(item.note || "") : (item.note || "")}
+          </div>
+        </td>
         <td class="mobile-actions-cell table-kebab-cell" data-label="Действия">
           ${menuItems ? (core.renderInlineKebabMenu?.(`currency-trade-${Number(item.id)}`, menuItems, "Действия валютной сделки", "operation-row-kebab") || "") : '<span class="muted-small">Через операцию</span>'}
         </td>
@@ -650,6 +683,15 @@
         if (deleteBtn) {
           const tradeId = Number(deleteBtn.dataset.deleteCurrencyTradeId || 0);
           deleteCurrencyTrade(tradeId);
+          return;
+        }
+        const linkedOperationBtn = event.target.closest("[data-open-linked-operation-id]");
+        if (linkedOperationBtn) {
+          const operationId = Number(linkedOperationBtn.dataset.openLinkedOperationId || 0);
+          core.runAction({
+            errorPrefix: "Ошибка открытия связанной операции",
+            action: () => openLinkedOperation(operationId),
+          });
           return;
         }
         const row = event.target.closest("tr[data-currency-trade-row-id]");

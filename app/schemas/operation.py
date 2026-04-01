@@ -130,6 +130,8 @@ class MoneyFlowItemOut(BaseModel):
     asset_currency: str | None = None
     quote_currency: str | None = None
     trade_side: str | None = None
+    has_fx_settlement: bool = False
+    settlement_asset_currency: str | None = None
     receipt_items: list[OperationReceiptItemOut] = []
     receipt_total: Decimal | None = None
     receipt_discrepancy: Decimal | None = None

@@ -259,6 +259,20 @@
     node.classList.add("currency-suffix");
   }
 
+  function setAutoComputedField(node, enabled) {
+    if (!node) {
+      return;
+    }
+    node.classList.toggle("money-input-auto", Boolean(enabled));
+    if (enabled) {
+      node.setAttribute("data-auto-badge", "AUTO");
+      node.setAttribute("title", "Поле рассчитывается автоматически");
+    } else {
+      node.removeAttribute("data-auto-badge");
+      node.removeAttribute("title");
+    }
+  }
+
   function syncCurrencyTradeFieldUi() {
     const context = getCurrencyTradeContext();
     if (el.createPreviewCurrencyAmountHead) {
@@ -322,10 +336,29 @@
     applyTradeFieldCurrency(el.currencyQuantityField, context.amountSuffixCurrency);
     applyTradeFieldCurrency(el.currencyQuoteTotalField, context.quoteCurrency);
     applyTradeFieldCurrency(el.currencyUnitPriceField, context.quoteCurrency);
+    setAutoComputedField(el.currencyQuantityField, context.sourceField === "quote" && context.unitPrice > 0);
+    setAutoComputedField(el.currencyQuoteTotalField, context.sourceField === "quantity" && context.unitPrice > 0);
+    setAutoComputedField(el.currencyUnitPriceField, context.sourceField === "pair" && context.unitPrice > 0);
   }
 
   function isCreateFxSettlementEnabled() {
     return el.opUseFxSettlement?.checked === true;
+  }
+
+  function syncFxSettlementToggleUi(mode) {
+    const isEdit = mode === "edit";
+    const input = isEdit ? el.editUseFxSettlement : el.opUseFxSettlement;
+    const toggle = isEdit ? el.editFxSettlementToggle : el.opFxSettlementToggle;
+    const stateNode = isEdit ? el.editFxSettlementState : el.opFxSettlementState;
+    const enabled = input?.checked === true;
+    if (toggle) {
+      toggle.classList.toggle("is-on", enabled);
+      toggle.classList.toggle("is-off", !enabled);
+      toggle.setAttribute("aria-checked", enabled ? "true" : "false");
+    }
+    if (stateNode) {
+      stateNode.textContent = enabled ? "Вкл" : "Выкл";
+    }
   }
 
   function getCreateOperationBaseAmountValue() {
@@ -354,6 +387,11 @@
     }
     const enabled = shouldShowBlock && isCreateFxSettlementEnabled();
     el.opFxSettlementFields?.classList.toggle("hidden", !enabled);
+    syncFxSettlementToggleUi("create");
+    if (!enabled) {
+      setAutoComputedField(el.opFxSettlementQuantityField, false);
+      setAutoComputedField(el.opFxSettlementUnitPriceField, false);
+    }
     if (el.opCurrency) {
       if (enabled) {
         el.opCurrency.value = String(core.getCurrencyConfig?.().code || "BYN").toUpperCase();
@@ -435,6 +473,8 @@
     }
     applyTradeFieldCurrency(el.opFxSettlementQuantityField, context.assetCurrency);
     applyTradeFieldCurrency(el.opFxSettlementUnitPriceField, context.baseCurrency);
+    setAutoComputedField(el.opFxSettlementQuantityField, context.baseAmount > 0 && !context.hasQuantity && context.hasRate);
+    setAutoComputedField(el.opFxSettlementUnitPriceField, context.baseAmount > 0 && context.hasQuantity && !context.hasRate);
   }
 
   function getCreateFxSettlementPayload() {
@@ -494,6 +534,11 @@
     }
     const enabled = shouldShowBlock && isEditFxSettlementEnabled();
     el.editFxSettlementFields?.classList.toggle("hidden", !enabled);
+    syncFxSettlementToggleUi("edit");
+    if (!enabled) {
+      setAutoComputedField(el.editFxSettlementQuantityField, false);
+      setAutoComputedField(el.editFxSettlementUnitPriceField, false);
+    }
     if (el.editCurrency) {
       if (enabled) {
         el.editCurrency.value = String(core.getCurrencyConfig?.().code || "BYN").toUpperCase();
@@ -564,6 +609,8 @@
     }
     applyTradeFieldCurrency(el.editFxSettlementQuantityField, context.assetCurrency);
     applyTradeFieldCurrency(el.editFxSettlementUnitPriceField, context.baseCurrency);
+    setAutoComputedField(el.editFxSettlementQuantityField, context.baseAmount > 0 && !context.hasQuantity && context.hasRate);
+    setAutoComputedField(el.editFxSettlementUnitPriceField, context.baseAmount > 0 && context.hasQuantity && !context.hasRate);
   }
 
   function getEditFxSettlementPayload() {
@@ -1335,6 +1382,8 @@
     if (el.editFxSettlementNote) {
       el.editFxSettlementNote.value = "";
     }
+    setAutoComputedField(el.editFxSettlementQuantityField, false);
+    setAutoComputedField(el.editFxSettlementUnitPriceField, false);
     editFxSettlementQuantityDriver = false;
     editFxSettlementRateDriver = false;
     closeEditCategoryPopover();

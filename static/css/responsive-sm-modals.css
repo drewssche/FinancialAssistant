@@ -148,6 +148,15 @@
     grid-template-columns: 1fr;
   }
 
+  .fx-settlement-switch-row {
+    align-items: stretch;
+  }
+
+  .fx-settlement-toggle {
+    width: 100%;
+    min-width: 0;
+  }
+
   .amount-currency-combo {
     grid-template-columns: minmax(0, 1fr) max-content;
   }

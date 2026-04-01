@@ -74,13 +74,23 @@
             </div>
           </div>
 
-          <div id="opFxSettlementBlock" class="category-modal-form hidden">
-            <label class="muted-small" for="opUseFxSettlement">
-              <input id="opUseFxSettlement" type="checkbox" />
-              Оплата с валютной карты
-            </label>
-            <div id="opFxSettlementFields" class="currency-modal-grid hidden">
-              <div class="currency-modal-row">
+          <div id="opFxSettlementBlock" class="category-modal-form fx-settlement-block hidden">
+            <div class="fx-settlement-switch-row">
+              <div class="fx-settlement-switch-copy">
+                <div class="muted-small fx-settlement-switch-label">Оплата с валютной карты</div>
+                <div id="opFxSettlementBaseTotal" class="muted-small currency-trade-hint fx-settlement-base-total">Сумма операции в базовой валюте появится после ввода</div>
+              </div>
+              <label id="opFxSettlementToggle" class="analytics-visibility-toggle fx-settlement-toggle is-off" for="opUseFxSettlement" role="switch" aria-checked="false" aria-live="polite">
+                <input id="opUseFxSettlement" class="sr-only" type="checkbox" />
+                <span class="analytics-visibility-toggle-track"><span class="analytics-visibility-toggle-thumb"></span></span>
+                <span class="fx-settlement-toggle-copy">
+                  <span class="fx-settlement-toggle-title">Использовать</span>
+                  <span id="opFxSettlementState" class="analytics-visibility-toggle-label">Выкл</span>
+                </span>
+              </label>
+            </div>
+            <div id="opFxSettlementFields" class="currency-modal-grid fx-settlement-fields hidden">
+              <div class="currency-modal-row fx-settlement-row-main">
                 <select id="opFxSettlementAsset" aria-label="Валюта списания">
                   <option value="USD">USD ($)</option>
                   <option value="EUR">EUR (€)</option>
@@ -88,9 +98,6 @@
                   <option value="CNY">CNY (¥)</option>
                   <option value="PLN">PLN (zł)</option>
                 </select>
-                <div id="opFxSettlementBaseTotal" class="muted-small currency-trade-hint">Сумма операции в базовой валюте появится после ввода</div>
-              </div>
-              <div class="currency-modal-row currency-modal-row-triple">
                 <div id="opFxSettlementQuantityField" class="money-input-wrap" data-money-input-wrap>
                   <input id="opFxSettlementQuantity" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Количество валюты" aria-label="Количество списания в валюте" />
                 </div>
@@ -474,13 +481,23 @@
             </div>
           </div>
 
-          <div id="editFxSettlementBlock" class="category-modal-form hidden">
-            <label class="muted-small" for="editUseFxSettlement">
-              <input id="editUseFxSettlement" type="checkbox" />
-              Оплата с валютной карты
-            </label>
-            <div id="editFxSettlementFields" class="currency-modal-grid hidden">
-              <div class="currency-modal-row">
+          <div id="editFxSettlementBlock" class="category-modal-form fx-settlement-block hidden">
+            <div class="fx-settlement-switch-row">
+              <div class="fx-settlement-switch-copy">
+                <div class="muted-small fx-settlement-switch-label">Оплата с валютной карты</div>
+                <div id="editFxSettlementBaseTotal" class="muted-small currency-trade-hint fx-settlement-base-total">Сумма операции в базовой валюте появится после ввода</div>
+              </div>
+              <label id="editFxSettlementToggle" class="analytics-visibility-toggle fx-settlement-toggle is-off" for="editUseFxSettlement" role="switch" aria-checked="false" aria-live="polite">
+                <input id="editUseFxSettlement" class="sr-only" type="checkbox" />
+                <span class="analytics-visibility-toggle-track"><span class="analytics-visibility-toggle-thumb"></span></span>
+                <span class="fx-settlement-toggle-copy">
+                  <span class="fx-settlement-toggle-title">Использовать</span>
+                  <span id="editFxSettlementState" class="analytics-visibility-toggle-label">Выкл</span>
+                </span>
+              </label>
+            </div>
+            <div id="editFxSettlementFields" class="currency-modal-grid fx-settlement-fields hidden">
+              <div class="currency-modal-row fx-settlement-row-main">
                 <select id="editFxSettlementAsset" aria-label="Валюта списания">
                   <option value="USD">USD ($)</option>
                   <option value="EUR">EUR (€)</option>
@@ -488,9 +505,6 @@
                   <option value="CNY">CNY (¥)</option>
                   <option value="PLN">PLN (zł)</option>
                 </select>
-                <div id="editFxSettlementBaseTotal" class="muted-small currency-trade-hint">Сумма операции в базовой валюте появится после ввода</div>
-              </div>
-              <div class="currency-modal-row currency-modal-row-triple">
                 <div id="editFxSettlementQuantityField" class="money-input-wrap" data-money-input-wrap>
                   <input id="editFxSettlementQuantity" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Количество валюты" aria-label="Количество списания в валюте" />
                 </div>

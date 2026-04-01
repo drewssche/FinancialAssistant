@@ -84,6 +84,20 @@
     return `<span class="meta-chip meta-chip-${escapeHtml(tone)}">${escapeHtml(label)}</span>`;
   }
 
+  function renderOperationContextChips(item) {
+    const chips = [];
+    const hasReceiptItems = Array.isArray(item?.receipt_items) && item.receipt_items.length > 0;
+    const settlementCurrency = String(item?.fx_settlement?.asset_currency || item?.settlement_asset_currency || "").toUpperCase();
+    const hasFxSettlement = Boolean(item?.fx_settlement) || item?.has_fx_settlement === true;
+    if (hasReceiptItems) {
+      chips.push(renderMetaChip("Чек"));
+    }
+    if (hasFxSettlement) {
+      chips.push(renderMetaChip(settlementCurrency ? `Валютная карта · ${settlementCurrency}` : "Валютная карта", "info"));
+    }
+    return chips.join("");
+  }
+
   function renderInlineKebabMenu(menuId, itemsHtml, ariaLabel = "Действия", extraClass = "") {
     if (!menuId || !String(itemsHtml || "").trim()) {
       return "";
@@ -266,8 +280,9 @@
       ? options.categories
       : (category?.name ? [category] : []);
     const categoryHtml = renderCategoryChipList(categories, searchQuery);
-    const categoryCellHtml = hasReceiptItems
-      ? `<div class="operation-category-stack">${categoryHtml}${renderMetaChip("Чек")}</div>`
+    const contextChipsHtml = renderOperationContextChips(item);
+    const categoryCellHtml = contextChipsHtml
+      ? `<div class="operation-category-stack">${categoryHtml}${contextChipsHtml}</div>`
       : categoryHtml;
     const row = document.createElement("tr");
     row.classList.add(`kind-row-${kindClass}`);
@@ -294,8 +309,8 @@
     }
 
     if (preview) {
-      const previewCategoryCellHtml = hasReceiptItems
-        ? `<div class="operation-category-stack">${categoryHtml}${renderMetaChip("Чек")}</div>`
+      const previewCategoryCellHtml = contextChipsHtml
+        ? `<div class="operation-category-stack">${categoryHtml}${contextChipsHtml}</div>`
         : categoryHtml;
       row.innerHTML = `
         <td>${core.formatDateRu(item.operation_date)}</td>
@@ -325,7 +340,7 @@
       ${selectCell}
       <td data-label="Дата">${core.formatDateRu(item.operation_date)}</td>
       <td data-label="Тип"><span class="kind-pill kind-pill-${kindClass}">${highlightText(kindText, searchQuery)}</span></td>
-      <td data-label="Категория">${categoryHtml}</td>
+      <td data-label="Категория">${contextChipsHtml ? `<div class="operation-category-stack">${categoryHtml}${contextChipsHtml}</div>` : categoryHtml}</td>
       <td data-label="Чек" class="operation-receipt-chip-cell">${receiptCellHtml}</td>
       <td data-label="Сумма">${formatOperationAmountHtml(item, kindClass)}</td>
       <td class="mobile-note-cell" data-label="Комментарий">${highlightText(noteText, searchQuery)}</td>
@@ -372,6 +387,10 @@
       eventChips.push(renderMetaChip(String(item?.trade_side || "") === "sell" ? "FX: Продажа" : "FX: Покупка", eventTone));
     } else {
       eventChips.push(renderMetaChip(title, "neutral"));
+      if (item?.has_fx_settlement) {
+        const settlementCurrency = String(item?.settlement_asset_currency || "").toUpperCase();
+        eventChips.push(renderMetaChip(settlementCurrency ? `Валютная карта · ${settlementCurrency}` : "Валютная карта", "info"));
+      }
     }
     if (item?.counterparty_name && sourceKind !== "debt") {
       eventChips.push(renderMetaChip(item.counterparty_name, "neutral"));

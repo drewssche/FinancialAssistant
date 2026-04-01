@@ -416,6 +416,81 @@
   width: 100%;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.fx-settlement-block {
+  grid-column: 1 / -1;
+  border: 1px solid rgba(56, 73, 103, 0.7);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: rgba(16, 25, 40, 0.48);
+  gap: var(--space-3);
+}
+
+.fx-settlement-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.fx-settlement-switch-copy {
+  display: grid;
+  gap: 0.35rem;
+  min-width: min(18rem, 100%);
+  flex: 1 1 18rem;
+}
+
+.fx-settlement-switch-label {
+  color: var(--text-main);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.fx-settlement-base-total {
+  margin-top: 0;
+}
+
+.fx-settlement-toggle {
+  justify-content: space-between;
+  min-width: 10.75rem;
+  padding-inline: 0.8rem;
+}
+
+.fx-settlement-toggle-copy {
+  display: grid;
+  gap: 0.1rem;
+  line-height: 1.1;
+}
+
+.fx-settlement-toggle-title {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.fx-settlement-fields {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.fx-settlement-row-main {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  align-items: center;
+}
+
 .compact-segmented {
   width: max-content;
   max-width: 100%;
