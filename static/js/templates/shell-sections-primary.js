@@ -412,31 +412,33 @@
                     <button class="segmented-btn" data-operations-mode="money_flow" type="button">Денежный поток</button>
                   </div>
                 </div>
-                <div id="operationsSourceCard" class="operations-control-card hidden">
-                  <div class="operations-control-head">
-                    <span class="muted-small">Источник</span>
+                <div class="operations-primary-controls-right">
+                  <div id="operationsSourceCard" class="operations-control-card hidden">
+                    <div class="operations-control-head">
+                      <span class="muted-small">Источник</span>
+                    </div>
+                    <div class="segmented" id="operationsSourceTabs" role="tablist" aria-label="Источник денежного потока">
+                      <button class="segmented-btn active" data-operations-source="all" type="button">Все</button>
+                      <button class="segmented-btn" data-operations-source="operation" type="button">Операции</button>
+                      <button class="segmented-btn" data-operations-source="debt" type="button">Долги</button>
+                      <button class="segmented-btn" data-operations-source="fx" type="button">Валюта</button>
+                    </div>
                   </div>
-                  <div class="segmented" id="operationsSourceTabs" role="tablist" aria-label="Источник денежного потока">
-                    <button class="segmented-btn active" data-operations-source="all" type="button">Все</button>
-                    <button class="segmented-btn" data-operations-source="operation" type="button">Операции</button>
-                    <button class="segmented-btn" data-operations-source="debt" type="button">Долги</button>
-                    <button class="segmented-btn" data-operations-source="fx" type="button">Валюта</button>
+                  <div class="operations-control-card">
+                    <div class="operations-control-head">
+                      <span class="muted-small">Валюта</span>
+                    </div>
+                    <div class="segmented" id="operationsCurrencyScopeTabs" role="tablist" aria-label="Фильтр по валюте операций">
+                      <button class="segmented-btn active" data-operations-currency-scope="all" type="button">Все</button>
+                      <button class="segmented-btn" data-operations-currency-scope="base" type="button" data-operations-base-currency-label>BYN</button>
+                      <button class="segmented-btn" data-operations-currency-scope="foreign" type="button">Другая валюта</button>
+                    </div>
                   </div>
-                </div>
-                <div class="operations-control-card">
-                  <div class="operations-control-head">
-                    <span class="muted-small">Валюта</span>
-                  </div>
-                  <div class="segmented" id="operationsCurrencyScopeTabs" role="tablist" aria-label="Фильтр по валюте операций">
-                    <button class="segmented-btn active" data-operations-currency-scope="all" type="button">Все</button>
-                    <button class="segmented-btn" data-operations-currency-scope="base" type="button" data-operations-base-currency-label>BYN</button>
-                    <button class="segmented-btn" data-operations-currency-scope="foreign" type="button">Другая валюта</button>
-                  </div>
-                </div>
-                <div class="operations-control-card operations-control-card-sort">
-                  <div class="segmented" id="operationsSortTabs" role="tablist" aria-label="Сортировка операций">
-                    <button class="segmented-btn active" data-op-sort="date" type="button">По дате</button>
-                    <button class="segmented-btn" data-op-sort="amount" type="button">По сумме</button>
+                  <div class="operations-control-card operations-control-card-sort">
+                    <div class="segmented" id="operationsSortTabs" role="tablist" aria-label="Сортировка операций">
+                      <button class="segmented-btn active" data-op-sort="date" type="button">По дате</button>
+                      <button class="segmented-btn" data-op-sort="amount" type="button">По сумме</button>
+                    </div>
                   </div>
                 </div>
               </div>

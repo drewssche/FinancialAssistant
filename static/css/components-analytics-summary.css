@@ -252,6 +252,14 @@
 }
 
 .operations-primary-controls {
+  justify-content: space-between;
+}
+
+.operations-primary-controls-right {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-end;
   justify-content: flex-end;
 }
 

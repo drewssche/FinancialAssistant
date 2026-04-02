@@ -442,6 +442,7 @@
     if (!(context.baseAmount > 0) || !(context.hasQuantity) || !(context.effectiveRate > 0) || !el.opFxSettlementUnitPrice) {
       return;
     }
+    fxSettlementRateDriver = false;
     el.opFxSettlementUnitPrice.value = formatTradeRateValue(context.effectiveRate);
   }
 
@@ -450,6 +451,7 @@
     if (!(context.baseAmount > 0) || !(context.hasQuantity) || !(context.effectiveRate > 0) || !el.editFxSettlementUnitPrice) {
       return;
     }
+    editFxSettlementRateDriver = false;
     el.editFxSettlementUnitPrice.value = formatTradeRateValue(context.effectiveRate);
   }
 
@@ -537,7 +539,11 @@
       const shouldAutoFillRate = context.baseAmount > 0
         && context.effectiveRate > 0
         && context.hasQuantity
-        && (!fxSettlementRateDriver || !(Number(core.resolveRateInput(el.opFxSettlementUnitPrice?.value || 0, 0, 6).previewValue || 0) > 0));
+        && (
+          fxSettlementQuantityDriver
+          || !fxSettlementRateDriver
+          || !(Number(core.resolveRateInput(el.opFxSettlementUnitPrice?.value || 0, 0, 6).previewValue || 0) > 0)
+        );
       if (shouldAutoFillRate) {
         el.opFxSettlementUnitPrice.value = formatTradeRateValue(context.effectiveRate);
       }
@@ -687,7 +693,11 @@
       const shouldAutoFillRate = context.baseAmount > 0
         && context.effectiveRate > 0
         && context.hasQuantity
-        && (!editFxSettlementRateDriver || !(Number(core.resolveRateInput(el.editFxSettlementUnitPrice?.value || 0, 0, 6).previewValue || 0) > 0));
+        && (
+          editFxSettlementQuantityDriver
+          || !editFxSettlementRateDriver
+          || !(Number(core.resolveRateInput(el.editFxSettlementUnitPrice?.value || 0, 0, 6).previewValue || 0) > 0)
+        );
       if (shouldAutoFillRate) {
         el.editFxSettlementUnitPrice.value = formatTradeRateValue(context.effectiveRate);
       }

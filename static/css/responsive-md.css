@@ -209,6 +209,7 @@
   }
 
   .operations-primary-controls,
+  .operations-primary-controls-right,
   .operations-secondary-controls {
     justify-content: stretch;
   }
