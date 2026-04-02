@@ -105,28 +105,39 @@
       const positionsByCurrency = new Map(positions.map((item) => [String(item.currency || "").toUpperCase(), item]));
       const trackedCurrencies = getTrackedCurrencies();
       const baseCurrency = core.getCurrencyConfig?.().code || "BYN";
-      const periodBalance = Number(summary.cashflow_total ?? summary.balance ?? 0);
-      const currencyTotalResultValue = Number(summary.currency_total_result_value || summary.currency_result_value || 0);
-      const combinedBaseBalance = periodBalance + currencyTotalResultValue;
-      const bynCard = `
+      const portfolioCurrentValue = Number(summary.currency_current_value || 0);
+      const portfolioBookValue = Number(summary.currency_book_value || 0);
+      const portfolioTotalResultValue = Number(summary.currency_total_result_value || summary.currency_result_value || 0);
+      const portfolioCard = `
         <article class="currency-balance-card">
-          <div class="muted-small">${core.formatCurrencyLabel(baseCurrency)}</div>
-          <strong>${core.formatMoney(combinedBaseBalance, { currency: baseCurrency })}</strong>
-          <div class="currency-balance-secondary">поток периода ${core.formatMoney(periodBalance, { currency: baseCurrency })} + итог валюты ${core.formatMoney(currencyTotalResultValue, { currency: baseCurrency })}</div>
+          <div class="muted-small">Оценка валютного портфеля</div>
+          <strong>${core.formatMoney(portfolioCurrentValue, { currency: baseCurrency })}</strong>
+          <div class="currency-balance-secondary">Вложено ${core.formatMoney(portfolioBookValue, { currency: baseCurrency })} · итоговый результат ${core.formatMoney(portfolioTotalResultValue, { currency: baseCurrency })}</div>
         </article>
       `;
       const positionCards = trackedCurrencies.map((currency) => {
         const item = positionsByCurrency.get(currency) || null;
         const currencyLabel = core.formatCurrencyLabel(currency);
+        const quantity = Number(item?.quantity || 0);
+        const currentRate = Number(item?.current_rate || 0);
+        const currentValue = Number(item?.current_value || 0);
+        const currentRateDate = item?.current_rate_date ? core.formatDateRu(item.current_rate_date) : "";
+        const currentRateLabel = currentRate > 0
+          ? `${currentRate.toFixed(4)} ${baseCurrency}${currentRateDate ? ` · ${currentRateDate}` : ""}`
+          : "Курс не задан";
+        const currentValueLabel = currentValue > 0
+          ? `≈ ${core.formatMoney(currentValue, { currency: baseCurrency })}`
+          : `≈ ${core.formatMoney(0, { currency: baseCurrency })}`;
         return `
           <article class="currency-balance-card">
             <div class="muted-small">${core.escapeHtml ? core.escapeHtml(currencyLabel) : currencyLabel}</div>
-            <strong>${core.formatAmount(item?.quantity || 0)}</strong>
-            <div class="currency-balance-secondary">${core.formatMoney(item?.current_value || 0, { currency: baseCurrency })} по текущему курсу${item?.current_rate ? ` · ${Number(item.current_rate || 0).toFixed(4)}` : ""}</div>
+            <strong>${core.formatAmount(quantity)} ${core.escapeHtml ? core.escapeHtml(currency) : currency}</strong>
+            <div class="currency-balance-secondary">Курс: ${currentRateLabel}</div>
+            <div class="currency-balance-secondary">${currentValueLabel} по текущему курсу</div>
           </article>
         `;
       });
-      el.dashboardCurrencyBalances.innerHTML = [bynCard, ...positionCards].join("");
+      el.dashboardCurrencyBalances.innerHTML = [portfolioCard, ...positionCards].join("");
     }
     if (el.dashboardCurrencyPositions) {
       const positions = Array.isArray(summary.tracked_currency_positions) ? summary.tracked_currency_positions : [];
