@@ -77,28 +77,8 @@
       el.dashboardCurrencyPanel.classList.toggle("hidden", currencyPrefs.show_dashboard_kpi === false);
     }
     if (el.dashboardCurrencyKpiGrid) {
-      el.dashboardCurrencyKpiGrid.innerHTML = `
-        <article class="analytics-kpi-card analytics-kpi-neutral">
-          <div class="muted-small">Текущая оценка открытых позиций</div>
-          <strong>${core.formatMoney(summary.currency_current_value || 0)}</strong>
-        </article>
-        <article class="analytics-kpi-card analytics-kpi-neutral">
-          <div class="muted-small">Вложено в открытые позиции</div>
-          <strong>${core.formatMoney(summary.currency_book_value || 0)}</strong>
-        </article>
-        <article class="analytics-kpi-card ${unrealizedTone.cardClass}">
-          <div class="muted-small">Нереализованный результат</div>
-          <strong>${core.formatMoney(summary.currency_unrealized_result_value || summary.currency_result_value || 0)}</strong>
-        </article>
-        <article class="analytics-kpi-card ${realizedTone.cardClass}">
-          <div class="muted-small">Реализованный результат</div>
-          <strong>${core.formatMoney(summary.currency_realized_result_value || 0)}</strong>
-        </article>
-        <article class="analytics-kpi-card ${totalTone.cardClass}">
-          <div class="muted-small">Итоговый результат</div>
-          <strong>${core.formatMoney(summary.currency_total_result_value || summary.currency_result_value || 0)}</strong>
-        </article>
-      `;
+      el.dashboardCurrencyKpiGrid.innerHTML = "";
+      el.dashboardCurrencyKpiGrid.classList.add("hidden");
     }
     if (el.dashboardCurrencyBalances) {
       const positions = Array.isArray(summary.tracked_currency_positions) ? summary.tracked_currency_positions : [];
@@ -142,8 +122,10 @@
     if (el.dashboardCurrencyPositions) {
       const positions = Array.isArray(summary.tracked_currency_positions) ? summary.tracked_currency_positions : [];
       const summaryChips = [
-        `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Покупки: ${core.formatMoney(summary.currency_buy_volume_base || 0)} <span class="muted-small">${String(summary.currency_buy_trades_count || 0)} сделок · средняя цена ${Number(summary.currency_buy_average_rate || 0).toFixed(4)}</span></span>`,
-        `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Продажи: ${core.formatMoney(summary.currency_sell_volume_base || 0)} <span class="muted-small">${String(summary.currency_sell_trades_count || 0)} сделок · средняя цена ${Number(summary.currency_sell_average_rate || 0).toFixed(4)}</span></span>`,
+        `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Вложено: ${core.formatMoney(summary.currency_book_value || 0)}</span>`,
+        `<span class="analytics-kpi-chip analytics-kpi-chip-${unrealizedTone.chipClass}">Нереализованный: ${core.formatMoney(summary.currency_unrealized_result_value || summary.currency_result_value || 0)}</span>`,
+        `<span class="analytics-kpi-chip analytics-kpi-chip-${realizedTone.chipClass}">Реализованный: ${core.formatMoney(summary.currency_realized_result_value || 0)}</span>`,
+        `<span class="analytics-kpi-chip analytics-kpi-chip-${totalTone.chipClass}">Итог: ${core.formatMoney(summary.currency_total_result_value || summary.currency_result_value || 0)}</span>`,
         `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Открытых позиций: ${String(summary.active_currency_positions || 0)}</span>`,
       ];
       el.dashboardCurrencyPositions.innerHTML = summaryChips.join("");

@@ -63,7 +63,7 @@
       titleNode,
       hoveredItem
         ? String(hoveredItem.category_name || "Без категории")
-        : "Итог периода",
+        : (snapshot.defaultTitle || "Итог периода"),
     );
     if (periodNode) {
       periodNode.textContent = snapshot.periodLabel || "Нет периода";
@@ -76,6 +76,8 @@
     if (metaNode) {
       metaNode.textContent = hoveredItem
         ? `${Number(hoveredItem.share_pct || 0).toFixed(1)}% · ${Number(hoveredItem.operations_count || 0)} опер.`
+        : snapshot.kind === "all"
+          ? `Доход ${formatMoney(snapshot.defaultIncomeTotal || 0)} · Расход ${formatMoney(snapshot.defaultExpenseTotal || 0)}`
         : snapshot.items.length
           ? `${snapshot.items.length} ${countLabel(snapshot.level)} · ${snapshot.totalOps} опер.`
           : "Нет данных за период";

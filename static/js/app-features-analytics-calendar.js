@@ -169,12 +169,15 @@
     }
 
     const cashflow = resolveCashflowTotals(data);
+    const operatingResultValue = Number(data?.balance ?? 0);
     const result = describeResult(cashflow.resultTotal);
     const resultTone = result.cardClass || result.tone || "neutral";
+    const operatingTone = operatingResultValue > 0 ? "income" : operatingResultValue < 0 ? "expense" : "neutral";
     const primary = [
-      { label: "Доход", value: core.formatMoney(cashflow.incomeTotal), tone: "income" },
-      { label: "Расход", value: core.formatMoney(cashflow.expenseTotal), tone: "expense" },
-      { label: result.label, value: core.formatMoney(result.amount), tone: resultTone },
+      { label: "Приток", value: core.formatMoney(cashflow.incomeTotal), tone: "income" },
+      { label: "Отток", value: core.formatMoney(cashflow.expenseTotal), tone: "expense" },
+      { label: "Операционный результат", value: core.formatMoney(operatingResultValue), tone: operatingTone },
+      { label: "Денежный поток", value: core.formatMoney(cashflow.resultTotal), tone: resultTone },
       { label: "События", value: String(cashflow.eventsCount || 0), tone: "neutral" },
     ];
     el.analyticsCalendarTotals.innerHTML = primary
@@ -188,23 +191,19 @@
       )
       .join("");
 
-    const currencyResultValue = Number(currencyOverview?.total_result_value || 0);
-    const resultBalance = cashflow.resultTotal + currencyResultValue;
-    const combinedResult = describeResult(resultBalance);
-    const prefix = currencyResultValue !== 0 ? "С учетом результата валюты" : combinedResult.label;
     const chips = [
-      `<span class="analytics-kpi-chip analytics-kpi-chip-${combinedResult.tone}">${escapeHtml(prefix)}: ${escapeHtml(core.formatMoney(combinedResult.amount))}</span>`,
+      `<span class="analytics-kpi-chip analytics-kpi-chip-${result.tone}">Денежный поток: ${escapeHtml(core.formatMoney(cashflow.resultTotal))}</span>`,
     ];
     if (cashflow.debtEventsCount > 0) {
       const debtResult = describeResult(cashflow.debtCashflow);
       chips.push(
-        `<span class="analytics-kpi-chip analytics-kpi-chip-${debtResult.tone}">Долги: ${escapeHtml(core.formatMoney(cashflow.debtCashflow))} · ${escapeHtml(String(cashflow.debtEventsCount))} событ.</span>`,
+        `<span class="analytics-kpi-chip analytics-kpi-chip-${debtResult.tone}">Долги в потоке: ${escapeHtml(core.formatMoney(cashflow.debtCashflow))} · ${escapeHtml(String(cashflow.debtEventsCount))} событ.</span>`,
       );
     }
     if (cashflow.fxEventsCount > 0) {
       const fxResult = describeResult(cashflow.fxCashflow);
       chips.push(
-        `<span class="analytics-kpi-chip analytics-kpi-chip-${fxResult.tone}">Валюта: ${escapeHtml(core.formatMoney(cashflow.fxCashflow))} · ${escapeHtml(String(cashflow.fxEventsCount))} событ.</span>`,
+        `<span class="analytics-kpi-chip analytics-kpi-chip-${fxResult.tone}">Валюта в потоке: ${escapeHtml(core.formatMoney(cashflow.fxCashflow))} · ${escapeHtml(String(cashflow.fxEventsCount))} событ.</span>`,
       );
     }
     el.analyticsCalendarTotalsSecondary.innerHTML = chips.join("");
@@ -235,13 +234,30 @@
           if (cashflow.fxEventsCount > 0) {
             markerBits.push(`FX ${core.formatMoney(cashflow.fxCashflow)}`);
           }
-          const markersHtml = markerBits.length ? `<div class="muted-small">${markerBits.join(" · ")}</div>` : "";
+          const result = describeResult(cashflow.resultTotal);
+          const titleBits = [
+            core.formatDateRu(day.date),
+            `Приток ${core.formatMoney(cashflow.incomeTotal)}`,
+            `Отток ${core.formatMoney(cashflow.expenseTotal)}`,
+            `Денежный поток ${core.formatMoney(cashflow.resultTotal)}`,
+            `${cashflow.eventsCount} событ.`,
+          ];
+          if (markerBits.length) {
+            titleBits.push(markerBits.join(" · "));
+          }
+          const dayTitle = titleBits.join(" | ");
           cell.innerHTML = `
-            <button type="button" class="analytics-day-btn" data-analytics-date="${day.date}">
+            <button
+              type="button"
+              class="analytics-day-btn"
+              data-analytics-date="${day.date}"
+              title="${escapeHtml(dayTitle)}"
+              aria-label="${escapeHtml(dayTitle)}"
+            >
               <div class="analytics-day-date">${new Date(`${day.date}T00:00:00`).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}</div>
               <div class="analytics-day-money analytics-income">+${core.formatMoney(cashflow.incomeTotal)}</div>
               <div class="analytics-day-money analytics-expense">-${core.formatMoney(cashflow.expenseTotal)}</div>
-              ${markersHtml}
+              <div class="muted-small analytics-day-meta">${result.label}: ${core.formatMoney(cashflow.resultTotal)}</div>
               <div class="muted-small">${cashflow.eventsCount} событ.</div>
             </button>
           `;
@@ -254,7 +270,7 @@
         <td class="analytics-week-total">${weekCashflow.eventsCount}</td>
         <td class="analytics-week-total">
           <span class="analytics-kpi-chip analytics-kpi-chip-${weekResult.tone}">
-            ${weekResult.label}: ${core.formatMoney(weekResult.amount)}
+            Денежный поток: ${core.formatMoney(weekCashflow.resultTotal)}
           </span>
         </td>
       `;
@@ -284,9 +300,9 @@
               <strong>${label}</strong>
               <span class="muted-small analytics-ops">${cashflow.eventsCount} событ.</span>
             </div>
-            <div class="muted-small analytics-income">Доход: ${core.formatMoney(cashflow.incomeTotal)}</div>
-            <div class="muted-small analytics-expense">Расход: ${core.formatMoney(cashflow.expenseTotal)}</div>
-            <div class="muted-small analytics-${resultTone}">${result.label}: ${core.formatMoney(result.amount)}</div>
+            <div class="muted-small analytics-income">Приток: ${core.formatMoney(cashflow.incomeTotal)}</div>
+            <div class="muted-small analytics-expense">Отток: ${core.formatMoney(cashflow.expenseTotal)}</div>
+            <div class="muted-small analytics-${resultTone}">Денежный поток: ${core.formatMoney(cashflow.resultTotal)}</div>
           </article>
         `;
       })

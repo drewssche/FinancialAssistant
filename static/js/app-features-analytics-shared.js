@@ -24,6 +24,17 @@
     return { label: "Ноль", tone: "neutral", cardClass: "neutral", amount: 0 };
   }
 
+  function metricTone(valueRaw) {
+    const value = Number(valueRaw || 0);
+    if (value > 0) {
+      return "income";
+    }
+    if (value < 0) {
+      return "expense";
+    }
+    return "neutral";
+  }
+
   function describeFxCashflow(valueRaw) {
     const value = Number(valueRaw || 0);
     if (value > 0) {
@@ -84,8 +95,10 @@
     }
 
     if (primaryContainer) {
-      const resultMetric = resolveResultMetric(data);
-      const result = describeResult(resultMetric.value);
+      const operatingValue = Number(data?.balance ?? 0);
+      const operatingPrevious = Number(data?.prev_balance ?? 0);
+      const operatingDelta = data?.balance_change_pct ?? null;
+      const cashflowMetric = resolveResultMetric(data);
       const primary = [
         {
           label: "Доход",
@@ -102,11 +115,18 @@
           cardClass: "expense",
         },
         {
-          label: result.label,
-          value: core.formatMoney(result.amount),
-          delta: formatPct(resultMetric.delta),
-          previous: core.formatMoney(resultMetric.previous || 0),
-          cardClass: result.cardClass,
+          label: "Операционный результат",
+          value: core.formatMoney(operatingValue),
+          delta: formatPct(operatingDelta),
+          previous: core.formatMoney(operatingPrevious),
+          cardClass: metricTone(operatingValue),
+        },
+        {
+          label: "Денежный поток",
+          value: core.formatMoney(cashflowMetric.value),
+          delta: formatPct(cashflowMetric.delta),
+          previous: core.formatMoney(cashflowMetric.previous || 0),
+          cardClass: metricTone(cashflowMetric.value),
         },
         {
           label: "Операций за период",
@@ -140,10 +160,12 @@
       ];
       const debtCashflowChip = describeDebtCashflow(data.debt_cashflow_total);
       if (debtCashflowChip) {
+        debtCashflowChip.text = debtCashflowChip.text.replace("С учетом долгов", "Долги в потоке");
         chips.push(debtCashflowChip);
       }
       const fxCashflowChip = describeFxCashflow(data.fx_cashflow_total);
       if (fxCashflowChip) {
+        fxCashflowChip.text = fxCashflowChip.text.replace("С учетом валютных сделок", "Валюта в потоке");
         chips.push(fxCashflowChip);
       }
       secondaryContainer.innerHTML = chips
@@ -238,6 +260,7 @@
     describeDebtCashflow,
     describeFxCashflow,
     resolveResultMetric,
+    metricTone,
     renderInsightList,
     renderPeriodKpiBlocks,
     formatPct,

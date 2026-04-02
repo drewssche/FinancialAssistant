@@ -72,6 +72,7 @@
                     <span id="dashboardCategoryBreakdownChartMeta" class="muted-small">Нет данных</span>
                   </div>
                 </div>
+                <div id="dashboardCategoryBreakdownSplit" class="analytics-category-breakdown-split hidden"></div>
               </div>
               <div id="dashboardCategoryBreakdownList" class="analytics-insight-list"></div>
             </div>
@@ -182,6 +183,7 @@
                     <span id="analyticsCategoryBreakdownChartMeta" class="muted-small">Нет данных</span>
                   </div>
                 </div>
+                <div id="analyticsCategoryBreakdownSplit" class="analytics-category-breakdown-split hidden"></div>
               </div>
               <div id="analyticsCategoryBreakdownList" class="analytics-insight-list"></div>
             </div>
@@ -241,10 +243,10 @@
                       <th>Пт</th>
                       <th>Сб</th>
                       <th>Вс</th>
-                      <th>Итог доход</th>
-                      <th>Итог расход</th>
+                      <th>Итог приток</th>
+                      <th>Итог отток</th>
                       <th>Операций</th>
-                      <th>Профицит / Дефицит</th>
+                      <th>Денежный поток</th>
                     </tr>
                   </thead>
                   <tbody id="analyticsCalendarBody"></tbody>
@@ -259,7 +261,7 @@
           <section id="analyticsTrendsPanel" class="panel analytics-tab-panel hidden">
             <div class="panel-head row between">
               <div>
-                <h3>Тренды доходов и расходов</h3>
+                <h3>Тренды периода</h3>
                 <p id="analyticsTrendRangeLabel" class="subtitle"></p>
               </div>
               <div class="toolbar">
@@ -274,12 +276,12 @@
               </div>
             </div>
             <div class="analytics-trend-chart-wrap">
-              <svg id="analyticsTrendChart" class="analytics-trend-chart" viewBox="0 0 980 280" preserveAspectRatio="none" aria-label="Тренд доходов, расходов и профицита или дефицита"></svg>
+              <svg id="analyticsTrendChart" class="analytics-trend-chart" viewBox="0 0 980 280" preserveAspectRatio="none" aria-label="Тренд доходов, расходов и денежного потока"></svg>
             </div>
             <div class="analytics-trend-legend">
               <span><i class="legend-dot legend-income"></i>Доход</span>
               <span><i class="legend-dot legend-expense"></i>Расход</span>
-              <span><i class="legend-dot legend-balance"></i>Профицит / Дефицит</span>
+              <span><i class="legend-dot legend-balance"></i>Денежный поток</span>
             </div>
             <div class="analytics-trend-kpis analytics-kpi-grid">
               <article class="analytics-kpi-card analytics-kpi-income">
@@ -292,8 +294,13 @@
                 <strong id="analyticsExpenseDelta">0 руб.</strong>
                 <span class="analytics-kpi-delta">За выбранный период</span>
               </article>
+              <article id="analyticsOperatingResultCard" class="analytics-kpi-card analytics-kpi-neutral">
+                <div id="analyticsOperatingResultLabel" class="muted-small">Операционный результат</div>
+                <strong id="analyticsOperatingResultValue">0 руб.</strong>
+                <span class="analytics-kpi-delta">За выбранный период</span>
+              </article>
               <article id="analyticsResultCard" class="analytics-kpi-card analytics-kpi-neutral">
-                <div id="analyticsResultLabel" class="muted-small">Профицит / Дефицит</div>
+                <div id="analyticsResultLabel" class="muted-small">Денежный поток</div>
                 <strong id="analyticsBalanceDelta">0 руб.</strong>
                 <span class="analytics-kpi-delta">За выбранный период</span>
               </article>
@@ -478,7 +485,7 @@
                 <strong id="operationsExpenseTotal">0</strong>
               </article>
               <article id="operationsResultCard" class="analytics-kpi-card analytics-kpi-neutral">
-                <div id="operationsResultLabel" class="muted-small">Профицит / Дефицит по выборке</div>
+                <div id="operationsResultLabel" class="muted-small">Операционный результат по выборке</div>
                 <strong id="operationsBalanceTotal">0</strong>
               </article>
               <article class="analytics-kpi-card analytics-kpi-neutral">

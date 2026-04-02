@@ -1,4 +1,11 @@
 (() => {
+  function splitBreakdownItems(items = []) {
+    return {
+      income: items.filter((item) => String(item?.category_kind || "") === "income"),
+      expense: items.filter((item) => String(item?.category_kind || "") !== "income"),
+    };
+  }
+
   function buildDonutMarkup({ items, palette, buildDonutSegmentPath, datasetBuilder, center, outerRadius, innerRadius }) {
     let accAngle = 0;
     return items.map((item, idx) => {
@@ -17,6 +24,60 @@
           style="--slice-shift-x:${shiftX.toFixed(2)}px; --slice-shift-y:${shiftY.toFixed(2)}px;"
           ${datasetBuilder(item, idx)}
         ></path>
+      `;
+    }).join("");
+  }
+
+  function renderSplitBreakdownMarkup({
+    items,
+    palette,
+    buildDonutSegmentPath,
+    center,
+    outerRadius,
+    innerRadius,
+    formatMoney,
+    escapeHtml,
+  }) {
+    const groups = splitBreakdownItems(items);
+    const cards = [
+      { key: "income", title: "Доходы", toneClass: "income", items: groups.income },
+      { key: "expense", title: "Расходы", toneClass: "expense", items: groups.expense },
+    ];
+    return cards.map((group) => {
+      const total = group.items.reduce((acc, item) => acc + Number(item.total_amount || 0), 0);
+      const operations = group.items.reduce((acc, item) => acc + Number(item.operations_count || 0), 0);
+      const normalizedItems = total > 0
+        ? group.items.map((item) => ({
+          ...item,
+          share_pct: (Number(item.total_amount || 0) / total) * 100,
+        }))
+        : group.items;
+      const markup = group.items.length
+        ? buildDonutMarkup({
+          items: normalizedItems,
+          palette,
+          buildDonutSegmentPath,
+          datasetBuilder: (_, idx) => `data-split-breakdown-index="${idx}"`,
+          center,
+          outerRadius,
+          innerRadius,
+        })
+        : "";
+      return `
+        <article class="analytics-category-split-card analytics-category-split-card-${group.toneClass}">
+          <div class="analytics-category-split-title-row">
+            <span class="analytics-breakdown-kind-badge analytics-breakdown-kind-badge-${group.toneClass}">${escapeHtml(group.title)}</span>
+            <span class="muted-small">${group.items.length} кат.</span>
+          </div>
+          <div class="analytics-category-donut analytics-category-donut-mini ${group.items.length ? "analytics-category-donut-has-data" : "analytics-category-donut-empty"}">
+            <svg class="analytics-category-donut-svg" viewBox="0 0 260 260">${markup}</svg>
+            <div class="analytics-category-donut-hole analytics-category-donut-hole-mini">
+              <span class="analytics-category-donut-title muted-small">${escapeHtml(group.title)}</span>
+              <strong>${escapeHtml(formatMoney(total))}</strong>
+              <span class="muted-small">${escapeHtml(String(operations))} опер.</span>
+            </div>
+          </div>
+        </article>
       `;
     }).join("");
   }
@@ -46,9 +107,14 @@
     const listItems = snapshot.listItems || [];
     const selectedKind = snapshot.kind || "expense";
     const selectedLevel = snapshot.level || "category";
+    const kindBadge = (itemKind) => selectedKind === "all"
+      ? `<span class="analytics-breakdown-kind-badge analytics-breakdown-kind-badge-${itemKind === "income" ? "income" : "expense"}">${escapeHtml(categoryKindShort(itemKind))}</span>`
+      : "";
 
     if (el.analyticsCategoryBreakdownLabel) {
-      el.analyticsCategoryBreakdownLabel.textContent = `Доли по сумме для ${categoryKindLabel(selectedKind)} по ${breakdownEntityLabel(selectedLevel)} в выбранном периоде`;
+      el.analyticsCategoryBreakdownLabel.textContent = selectedKind === "all"
+        ? `Раздельная структура доходов и расходов по ${breakdownEntityLabel(selectedLevel)} в выбранном периоде`
+        : `Доли по сумме для ${categoryKindLabel(selectedKind)} по ${breakdownEntityLabel(selectedLevel)} в выбранном периоде`;
     }
     if (el.analyticsBreakdownShowAllBtn) {
       el.analyticsBreakdownShowAllBtn.disabled = visibleItems.length === listItems.length;
@@ -60,7 +126,9 @@
       }
     }
     if (el.analyticsTopCategoriesSubtitle) {
-      el.analyticsTopCategoriesSubtitle.textContent = `Топ-5 категорий ${categoryKindLabel(selectedKind)}`;
+      el.analyticsTopCategoriesSubtitle.textContent = selectedKind === "all"
+        ? "Топ-5 категорий периода с разделением доходов и расходов"
+        : `Топ-5 категорий ${categoryKindLabel(selectedKind)}`;
     }
     if (el.analyticsTopCategoriesTitle) {
       el.analyticsTopCategoriesTitle.textContent = selectedKind === "income"
@@ -71,6 +139,28 @@
     }
     syncSegmentedActive(el.analyticsBreakdownLevelTabs, "analytics-breakdown-level", selectedLevel);
     syncSegmentedActive(el.analyticsCategoryKindTabs, "analytics-category-kind", selectedKind);
+
+    if (el.analyticsCategoryBreakdownSplit) {
+      const splitMode = selectedKind === "all";
+      el.analyticsCategoryBreakdownSplit.classList.toggle("hidden", !splitMode);
+      if (splitMode) {
+        el.analyticsCategoryBreakdownSplit.innerHTML = renderSplitBreakdownMarkup({
+          items: visibleItems,
+          palette,
+          buildDonutSegmentPath,
+          center: donutCenter,
+          outerRadius: donutOuterRadius,
+          innerRadius: donutInnerRadius,
+          formatMoney,
+          escapeHtml,
+        });
+      } else {
+        el.analyticsCategoryBreakdownSplit.innerHTML = "";
+      }
+    }
+    if (el.analyticsCategoryBreakdownChart) {
+      el.analyticsCategoryBreakdownChart.classList.toggle("hidden", selectedKind === "all");
+    }
 
     if (el.analyticsCategoryBreakdownSvg) {
       if (visibleItems.length) {
@@ -124,6 +214,7 @@
               <div class="analytics-category-row-title">
                 <span class="analytics-category-color" style="background:${palette[(item.is_visible_in_chart ? item.chart_index : item.palette_index) % palette.length]}"></span>
                 <strong>${itemName}</strong>
+                ${kindBadge(item.category_kind || selectedKind)}
               </div>
               <span class="muted-small">${formatMoney(item.total_amount || 0)}</span>
             </div>
@@ -177,12 +268,38 @@
     const totalOps = snapshot.totalOps || 0;
     const selectedKind = snapshot.kind || "expense";
     const selectedLevel = snapshot.level || "category";
+    const kindBadge = (itemKind) => selectedKind === "all"
+      ? `<span class="analytics-breakdown-kind-badge analytics-breakdown-kind-badge-${itemKind === "income" ? "income" : "expense"}">${escapeHtml(categoryKindShort(itemKind))}</span>`
+      : "";
 
     if (el.dashboardStructurePeriodLabel) {
-      el.dashboardStructurePeriodLabel.textContent = `Структура ${categoryKindLabel(selectedKind)} по ${breakdownEntityLabel(selectedLevel)}: ${data.date_from} - ${data.date_to}`;
+      el.dashboardStructurePeriodLabel.textContent = selectedKind === "all"
+        ? `Структура доходов и расходов по ${breakdownEntityLabel(selectedLevel)}: ${data.date_from} - ${data.date_to}`
+        : `Структура ${categoryKindLabel(selectedKind)} по ${breakdownEntityLabel(selectedLevel)}: ${data.date_from} - ${data.date_to}`;
     }
     syncSegmentedActive(el.dashboardBreakdownLevelTabs, "dashboard-breakdown-level", selectedLevel);
     syncSegmentedActive(el.dashboardCategoryKindTabs, "dashboard-category-kind", selectedKind);
+    if (el.dashboardCategoryBreakdownSplit) {
+      const splitMode = selectedKind === "all";
+      el.dashboardCategoryBreakdownSplit.classList.toggle("hidden", !splitMode);
+      if (splitMode) {
+        el.dashboardCategoryBreakdownSplit.innerHTML = renderSplitBreakdownMarkup({
+          items,
+          palette,
+          buildDonutSegmentPath,
+          center: donutCenter,
+          outerRadius: donutOuterRadius,
+          innerRadius: donutInnerRadius,
+          formatMoney,
+          escapeHtml,
+        });
+      } else {
+        el.dashboardCategoryBreakdownSplit.innerHTML = "";
+      }
+    }
+    if (el.dashboardCategoryBreakdownChart) {
+      el.dashboardCategoryBreakdownChart.classList.toggle("hidden", selectedKind === "all");
+    }
     if (el.dashboardCategoryBreakdownChartTitle) {
       el.dashboardCategoryBreakdownChartTitle.textContent = "Итог периода";
     }
@@ -231,6 +348,7 @@
             <div class="analytics-category-row-title">
               <span class="analytics-category-color" style="background:${palette[idx % palette.length]}"></span>
               <strong>${escapeHtml(item.category_name || "Без категории")}</strong>
+              ${kindBadge(item.category_kind || selectedKind)}
             </div>
             <span class="muted-small">${formatMoney(item.total_amount || 0)}</span>
           </div>

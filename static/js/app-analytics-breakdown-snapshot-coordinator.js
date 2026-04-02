@@ -25,6 +25,8 @@
     const visibleItems = listItems.filter((item) => item.is_visible_in_chart);
     const chartTotal = visibleItems.reduce((acc, item) => acc + Number(item.total_amount || 0), 0);
     const totalOps = visibleItems.reduce((acc, item) => acc + Number(item.operations_count || 0), 0);
+    const incomeTotal = Number(data.income_total || 0);
+    const expenseTotal = Number(data.expense_total || 0);
     return {
       payload: data,
       items: visibleItems,
@@ -34,6 +36,9 @@
       total: chartTotal,
       totalOps,
       periodLabel: `${formatDateRu(data.date_from)} - ${formatDateRu(data.date_to)}`,
+      defaultTitle: selectedKind === "all" ? "Доходы + расходы" : "Итог периода",
+      defaultIncomeTotal: incomeTotal,
+      defaultExpenseTotal: expenseTotal,
       defaultIndex: null,
       hoveredIndex: null,
     };
@@ -45,6 +50,8 @@
     const totalOps = items.reduce((acc, item) => acc + Number(item.operations_count || 0), 0);
     const selectedKind = data.category_breakdown_kind || state.dashboardCategoryKind || "expense";
     const selectedLevel = data.category_breakdown_level || state.dashboardBreakdownLevel || "category";
+    const incomeTotal = Number(data.income_total || 0);
+    const expenseTotal = Number(data.expense_total || 0);
     return {
       items,
       kind: selectedKind,
@@ -52,6 +59,9 @@
       total,
       totalOps,
       periodLabel: `${formatDateRu(data.date_from)} - ${formatDateRu(data.date_to)}`,
+      defaultTitle: selectedKind === "all" ? "Доходы + расходы" : "Итог периода",
+      defaultIncomeTotal: incomeTotal,
+      defaultExpenseTotal: expenseTotal,
       defaultIndex: null,
       hoveredIndex: null,
     };

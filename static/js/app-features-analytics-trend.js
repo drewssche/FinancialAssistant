@@ -9,6 +9,16 @@
     previous: Number(data?.prev_cashflow_total ?? data?.prev_balance ?? 0),
     delta: data?.cashflow_change_pct ?? data?.balance_change_pct ?? null,
   }));
+  const metricTone = shared.metricTone || ((valueRaw) => {
+    const value = Number(valueRaw || 0);
+    if (value > 0) {
+      return "income";
+    }
+    if (value < 0) {
+      return "expense";
+    }
+    return "neutral";
+  });
   const describeResult = shared.describeResult || ((balanceRaw) => {
     const balance = Number(balanceRaw || 0);
     if (balance > 0) {
@@ -88,7 +98,8 @@
 
   function renderTrendTooltip(point, compact = false) {
     const ops = Number(point.operations_count || 0);
-    const result = describeResult(point.cashflow_total ?? point.balance);
+    const operatingResult = Number(point.balance || 0);
+    const cashflowResult = Number(point.cashflow_total ?? point.balance ?? 0);
     const debtCashflow = Number(point?.debt_cashflow_total || 0);
     const fxCashflow = Number(point?.fx_cashflow_total || 0);
     const extras = [];
@@ -103,7 +114,8 @@
       <div class="analytics-chart-tooltip-grid${compact ? " analytics-chart-tooltip-grid-compact" : ""}">
         <span class="analytics-chart-tooltip-income">Доход: ${escapeHtml(core.formatMoney(point.income_total || 0))}</span>
         <span class="analytics-chart-tooltip-expense">Расход: ${escapeHtml(core.formatMoney(point.expense_total || 0))}</span>
-        <span class="analytics-chart-tooltip-balance">${escapeHtml(result.label)}: ${escapeHtml(core.formatMoney(result.amount))}</span>
+        <span class="analytics-chart-tooltip-balance">Операционный результат: ${escapeHtml(core.formatMoney(operatingResult))}</span>
+        <span class="analytics-chart-tooltip-balance">Денежный поток: ${escapeHtml(core.formatMoney(cashflowResult))}</span>
         <span class="analytics-chart-tooltip-ops">Операций: ${ops}</span>
         ${extras.join("")}
       </div>
@@ -249,9 +261,10 @@
   }
 
   function renderAnalyticsTrend(data) {
+    const operatingValue = Number(data?.balance ?? 0);
     const resultMetric = resolveResultMetric(data);
-    const result = describeResult(resultMetric.value);
-    const resultTone = result.cardClass || result.tone || "neutral";
+    const resultTone = metricTone(resultMetric.value);
+    const operatingTone = metricTone(operatingValue);
     renderTrendChart(el.analyticsTrendChart, data, false);
     if (el.analyticsTrendRangeLabel) {
       const stepLabel = data.granularity === "day" ? "По дням" : data.granularity === "week" ? "По неделям" : data.granularity === "month" ? "По месяцам" : "По годам";
@@ -262,6 +275,20 @@
     }
     if (el.analyticsExpenseDelta) {
       el.analyticsExpenseDelta.textContent = core.formatMoney(data.expense_total || 0);
+    }
+    if (el.analyticsOperatingResultCard) {
+      el.analyticsOperatingResultCard.classList.remove(
+        "analytics-kpi-income",
+        "analytics-kpi-expense",
+        "analytics-kpi-balance",
+        "analytics-kpi-positive",
+        "analytics-kpi-negative",
+        "analytics-kpi-neutral",
+      );
+      el.analyticsOperatingResultCard.classList.add(`analytics-kpi-${operatingTone}`);
+    }
+    if (el.analyticsOperatingResultValue) {
+      el.analyticsOperatingResultValue.textContent = core.formatMoney(operatingValue);
     }
     if (el.analyticsResultCard) {
       el.analyticsResultCard.classList.remove(
@@ -275,10 +302,10 @@
       el.analyticsResultCard.classList.add(`analytics-kpi-${resultTone}`);
     }
     if (el.analyticsResultLabel) {
-      el.analyticsResultLabel.textContent = result.label;
+      el.analyticsResultLabel.textContent = "Денежный поток";
     }
     if (el.analyticsBalanceDelta) {
-      el.analyticsBalanceDelta.textContent = core.formatMoney(result.amount || 0);
+      el.analyticsBalanceDelta.textContent = core.formatMoney(resultMetric.value || 0);
     }
     if (el.analyticsOpsDelta) {
       el.analyticsOpsDelta.textContent = String(data.operations_count || 0);

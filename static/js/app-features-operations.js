@@ -202,8 +202,8 @@
 
   function renderOperationsSummary(data) {
     const isMoneyFlowMode = state.operationsMode === "money_flow";
-    const result = describeResult(data?.balance || 0);
-    const resultTone = result.cardClass || result.tone || "neutral";
+    const resultValue = Number(data?.balance || 0);
+    const resultTone = resultValue > 0 ? "income" : resultValue < 0 ? "expense" : "neutral";
     if (el.operationsResultCard) {
       el.operationsResultCard.classList.remove(
         "analytics-kpi-income",
@@ -216,7 +216,7 @@
       el.operationsResultCard.classList.add(`analytics-kpi-${resultTone}`);
     }
     if (el.operationsResultLabel) {
-      el.operationsResultLabel.textContent = `${result.label} по выборке`;
+      el.operationsResultLabel.textContent = isMoneyFlowMode ? "Денежный поток по выборке" : "Операционный результат по выборке";
     }
     if (el.operationsIncomeTotal) {
       el.operationsIncomeTotal.textContent = core.formatMoney(data?.income_total || 0);
@@ -225,7 +225,7 @@
       el.operationsExpenseTotal.textContent = core.formatMoney(data?.expense_total || 0);
     }
     if (el.operationsBalanceTotal) {
-      el.operationsBalanceTotal.textContent = core.formatMoney(result.amount || 0);
+      el.operationsBalanceTotal.textContent = core.formatMoney(resultValue || 0);
     }
     if (el.operationsTotalCount) {
       el.operationsTotalCount.textContent = String(data?.total || 0);
