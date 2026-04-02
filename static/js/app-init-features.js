@@ -37,6 +37,13 @@
   }
 
   function bindFeatureHandlers() {
+    async function refreshOperationsPeriodViews() {
+      const sessionFeature = getSessionFeature();
+      const operationsFeature = getOperationsFeature();
+      await sessionFeature.savePreferences?.();
+      await operationsFeature.loadOperations?.({ reset: true, force: true });
+    }
+
     function getCreateFormActionMeta() {
       if (state.createFlowMode === "plan") {
         const isEditPlan = Number(state.editPlanId || 0) > 0;
@@ -172,22 +179,10 @@
           errorPrefix: "Ошибка сохранения периода",
           action: async () => {
             const operationsFeature = getOperationsFeature();
-            const sessionFeature = getSessionFeature();
-            const dashboardFeature = getDashboardFeature();
-            const analyticsFeature = getAnalyticsFeature();
             if (state.period === "all_time" && operationsFeature.ensureAllTimeBounds) {
               await operationsFeature.ensureAllTimeBounds();
             }
-            await sessionFeature.savePreferences?.();
-            const jobs = [
-              dashboardFeature.loadDashboard?.(),
-              dashboardFeature.loadDashboardOperations?.(),
-              operationsFeature.loadOperations?.(),
-            ].filter(Boolean);
-            if (analyticsFeature.loadDashboardAnalyticsPreview) {
-              jobs.push(analyticsFeature.loadDashboardAnalyticsPreview({ force: true }));
-            }
-            await Promise.all(jobs);
+            await refreshOperationsPeriodViews();
           },
         });
       });
@@ -255,21 +250,8 @@
         pendingText: "Применение...",
         errorPrefix: "Ошибка сохранения периода",
         action: async () => {
-          const sessionFeature = getSessionFeature();
-          const dashboardFeature = getDashboardFeature();
-          const operationsFeature = getOperationsFeature();
-          const analyticsFeature = getAnalyticsFeature();
           const operationModal = getOperationModal();
-          await sessionFeature.savePreferences?.();
-          const jobs = [
-            dashboardFeature.loadDashboard?.(),
-            dashboardFeature.loadDashboardOperations?.(),
-            operationsFeature.loadOperations?.(),
-          ].filter(Boolean);
-          if (analyticsFeature.loadDashboardAnalyticsPreview) {
-            jobs.push(analyticsFeature.loadDashboardAnalyticsPreview({ force: true }));
-          }
-          await Promise.all(jobs);
+          await refreshOperationsPeriodViews();
           operationModal.closePeriodCustomModal?.();
         },
       });

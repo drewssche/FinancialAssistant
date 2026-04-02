@@ -71,6 +71,12 @@
   - `DEBT`
   - `FX`
   - отдельный accent для FX buy/sell
+- linked FX settlements теперь исключаются из unified cashflow и по `linked_operation_id`, а не только по `trade_kind=card_payment`
+  - это закрывает legacy-кейсы, где связанная валютная запись могла выглядеть как обычная FX trade
+  - для `FX-backed expense` в `Денежном потоке` остается одна строка операции
+- переключение периода в разделе `Операции` отвязано от обязательного refresh dashboard summary
+  - при смене периода обновляется и сохраняется именно operations view
+  - custom period в operations flow использует тот же scoped refresh
 
 ### Notes
 - из строки unified feed:
@@ -82,6 +88,8 @@
 - `cashflow_total` добавлен как отдельная unified метрика для KPI и summary
 - category filter и quick view остаются только в обычном режиме `Операции`
 - dashboard summary test стабилизирован на `period=custom`, чтобы не зависеть от текущего календарного месяца
+- toast `Ошибка сохранения периода` в operations раньше мог приходить из unrelated dashboard all-time summary reload, а не из самого period apply
+- теперь эта связка для operations period controls убрана
 
 ### Validation
 - добавлен e2e `tests/e2e/test_operations_money_flow_e2e.py`
@@ -91,6 +99,7 @@
   - `tests/api/test_operations_api.py`
   - `tests/api/test_dashboard_api.py`
   - `tests/api/test_currency_api.py`
+  - `tests/services/test_cashflow_linked_trade_exclusion.py`
   - `tests/e2e/test_analytics_trend_cashflow_e2e.py -m e2e`
   - `tests/e2e/test_operations_money_flow_e2e.py -m e2e`
   - `tests/e2e/test_currency_trade_modal_e2e.py -m e2e`

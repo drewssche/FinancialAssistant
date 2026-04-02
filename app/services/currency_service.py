@@ -79,6 +79,8 @@ class CurrencyService:
 
     @staticmethod
     def is_cashflow_trade(trade: FxTrade) -> bool:
+        if getattr(trade, "linked_operation_id", None) is not None:
+            return False
         return str(getattr(trade, "trade_kind", "manual") or "manual").strip().lower() != "card_payment"
 
     def _validate_trade_sequence(self, trades: list[FxTrade]) -> None:

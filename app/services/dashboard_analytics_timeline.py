@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.repositories.currency_repo import CurrencyRepository
 from app.repositories.operation_repo import OperationRepository
+from app.services.currency_service import CurrencyService
 from app.services.debt_service import DebtService
 
 
@@ -107,7 +108,7 @@ class DashboardAnalyticsTimelineService:
             date_from=date_from,
             date_to=date_to,
         ):
-            if str(getattr(trade, "trade_kind", "manual") or "manual").strip().lower() == "card_payment":
+            if not CurrencyService.is_cashflow_trade(trade):
                 continue
             quote_currency = str(getattr(trade, "quote_currency", base_currency) or base_currency).upper()
             if quote_currency != base_currency:
@@ -146,7 +147,7 @@ class DashboardAnalyticsTimelineService:
             date_from=date.min,
             date_to=date.max,
         ):
-            if str(getattr(trade, "trade_kind", "manual") or "manual").strip().lower() == "card_payment":
+            if not CurrencyService.is_cashflow_trade(trade):
                 continue
             if getattr(trade, "trade_date", None):
                 candidates.append(trade.trade_date)
