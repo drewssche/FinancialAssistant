@@ -118,3 +118,46 @@ def test_backfill_linked_card_payment_trades_skips_ambiguous_matches() -> None:
         assert trade.linked_operation_id is None
     finally:
         db.close()
+
+
+def test_backfill_links_legacy_manual_sell_trade_and_marks_it_as_card_payment() -> None:
+    db = _build_session()
+    try:
+        created_at = datetime(2026, 4, 1, 10, 0, tzinfo=timezone.utc)
+        operation = Operation(
+            user_id=1,
+            kind="expense",
+            amount=Decimal("4.50"),
+            original_amount=Decimal("4.50"),
+            currency="BYN",
+            base_currency="BYN",
+            fx_rate=Decimal("1.000000"),
+            operation_date=date(2026, 4, 1),
+            note="legacy coffee payment",
+            created_at=created_at,
+        )
+        trade = FxTrade(
+            user_id=1,
+            side="sell",
+            asset_currency="USD",
+            quote_currency="BYN",
+            quantity=Decimal("1.560000"),
+            unit_price=Decimal("2.884615"),
+            fee=Decimal("0.00"),
+            trade_kind="manual",
+            linked_operation_id=None,
+            trade_date=date(2026, 4, 1),
+            note="legacy settlement as manual trade",
+            created_at=created_at + timedelta(seconds=15),
+        )
+        db.add_all([operation, trade])
+        db.commit()
+
+        linked_count = CurrencyService(db).backfill_linked_card_payment_trades()
+        db.refresh(trade)
+
+        assert linked_count == 1
+        assert trade.linked_operation_id == operation.id
+        assert trade.trade_kind == "card_payment"
+    finally:
+        db.close()

@@ -633,6 +633,43 @@
   }
 
   function bind() {
+    function handleCurrencyTradeActionClick(event) {
+      const editBtn = event.target.closest("[data-edit-currency-trade-id]");
+      if (editBtn) {
+        const tradeId = Number(editBtn.dataset.editCurrencyTradeId || 0);
+        core.runAction({
+          errorPrefix: "Ошибка открытия валютной сделки",
+          action: () => openCurrencyTradeEdit(tradeId),
+        });
+        return true;
+      }
+      const deleteBtn = event.target.closest("[data-delete-currency-trade-id]");
+      if (deleteBtn) {
+        const tradeId = Number(deleteBtn.dataset.deleteCurrencyTradeId || 0);
+        deleteCurrencyTrade(tradeId);
+        return true;
+      }
+      const linkedOperationBtn = event.target.closest("[data-open-linked-operation-id]");
+      if (linkedOperationBtn) {
+        const operationId = Number(linkedOperationBtn.dataset.openLinkedOperationId || 0);
+        core.runAction({
+          errorPrefix: "Ошибка открытия связанной операции",
+          action: () => openLinkedOperation(operationId),
+        });
+        return true;
+      }
+      const deleteLinkedOperationBtn = event.target.closest("[data-delete-linked-operation-id]");
+      if (deleteLinkedOperationBtn) {
+        const operationId = Number(deleteLinkedOperationBtn.dataset.deleteLinkedOperationId || 0);
+        core.runAction({
+          errorPrefix: "Ошибка удаления связанной операции",
+          action: () => deleteLinkedOperation(operationId),
+        });
+        return true;
+      }
+      return false;
+    }
+
     if (el.currencyFilterTabs) {
       el.currencyFilterTabs.addEventListener("click", (event) => {
         const btn = event.target.closest("button[data-currency-filter]");
@@ -695,37 +732,7 @@
           toggleTableMenu(trigger);
           return;
         }
-        const editBtn = event.target.closest("[data-edit-currency-trade-id]");
-        if (editBtn) {
-          const tradeId = Number(editBtn.dataset.editCurrencyTradeId || 0);
-          core.runAction({
-            errorPrefix: "Ошибка открытия валютной сделки",
-            action: () => openCurrencyTradeEdit(tradeId),
-          });
-          return;
-        }
-        const deleteBtn = event.target.closest("[data-delete-currency-trade-id]");
-        if (deleteBtn) {
-          const tradeId = Number(deleteBtn.dataset.deleteCurrencyTradeId || 0);
-          deleteCurrencyTrade(tradeId);
-          return;
-        }
-        const linkedOperationBtn = event.target.closest("[data-open-linked-operation-id]");
-        if (linkedOperationBtn) {
-          const operationId = Number(linkedOperationBtn.dataset.openLinkedOperationId || 0);
-          core.runAction({
-            errorPrefix: "Ошибка открытия связанной операции",
-            action: () => openLinkedOperation(operationId),
-          });
-          return;
-        }
-        const deleteLinkedOperationBtn = event.target.closest("[data-delete-linked-operation-id]");
-        if (deleteLinkedOperationBtn) {
-          const operationId = Number(deleteLinkedOperationBtn.dataset.deleteLinkedOperationId || 0);
-          core.runAction({
-            errorPrefix: "Ошибка удаления связанной операции",
-            action: () => deleteLinkedOperation(operationId),
-          });
+        if (handleCurrencyTradeActionClick(event)) {
           return;
         }
         const row = event.target.closest("tr[data-currency-trade-row-id]");
@@ -752,6 +759,12 @@
         }
       });
     }
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest(".table-kebab-popover[data-table-menu^=\"currency-trade-\"]")) {
+        return;
+      }
+      handleCurrencyTradeActionClick(event);
+    });
   }
 
   bind();

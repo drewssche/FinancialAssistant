@@ -94,7 +94,7 @@ class CurrencyService:
             self.db.scalars(
                 select(FxTrade)
                 .where(
-                    FxTrade.trade_kind == "card_payment",
+                    FxTrade.trade_kind.in_(("card_payment", "manual")),
                     FxTrade.linked_operation_id.is_(None),
                     FxTrade.side == "sell",
                 )
@@ -128,6 +128,7 @@ class CurrencyService:
             ]
             if len(candidate_operations) == 1:
                 trade.linked_operation_id = int(candidate_operations[0].id)
+                trade.trade_kind = "card_payment"
                 already_linked_operation_ids.add(int(candidate_operations[0].id))
                 linked_count += 1
                 continue
@@ -147,6 +148,7 @@ class CurrencyService:
             if len(nearby_matches) == 1:
                 matched_operation = nearby_matches[0][1]
                 trade.linked_operation_id = int(matched_operation.id)
+                trade.trade_kind = "card_payment"
                 already_linked_operation_ids.add(int(matched_operation.id))
                 linked_count += 1
         if linked_count:
