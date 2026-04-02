@@ -631,10 +631,14 @@
     const debtsFeature = window.App.getRuntimeModule?.("debts") || {};
     const currencyFeature = window.App.getRuntimeModule?.("currency") || {};
     if (sourceKind === "operation") {
-      const item = operationsRawItems.find((entry) => String(entry.source_id || entry.id) === String(sourceId));
-      if (item) {
-        navigation.openEditModal?.(item);
+      const resolvedId = Number(sourceId || 0);
+      if (!(resolvedId > 0)) {
+        return;
       }
+      const item = await core.requestJson(`/api/v1/operations/${resolvedId}`, {
+        headers: core.authHeaders(),
+      });
+      navigation.openEditModal?.(item);
       return;
     }
     if (sourceKind === "debt") {

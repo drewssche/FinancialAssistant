@@ -110,3 +110,6 @@
   - `tests/e2e/test_currency_trade_modal_live_calc_e2e.py -m e2e`
   - `tests/e2e/test_debts_flow_e2e.py -m e2e -k forgiveness_flow_closes_debt_with_forgiven_request`
   - `tests/e2e/test_currency_trade_modal_e2e.py -m e2e -k keeps_preview_and_recalculates_both_fields`
+- 2026-04-02: Fix edit/open flows to always fetch full operation payload from money-flow/currency linked rows before opening the operation modal. This restores receipt edit state correctly: date, kind switch, receipt categories, and preview no longer depend on the truncated money-flow row payload.
+- 2026-04-02: Add consistent actions for linked settlement rows and money-flow rows. Currency linked `card_payment` rows now have a kebab with `Открыть операцию` / `Удалить операцию`, keep the `Через операцию` hint, and row-click opens the related operation instead of a dead-end toast. Money-flow operation rows now expose delete, and standalone FX rows can also be removed directly from money-flow.
+- 2026-04-02: Add conservative backfill for legacy `fx_trades.trade_kind=card_payment` rows with missing `linked_operation_id`. The migration only links rows when there is one unambiguous matching expense by user/date/base-amount/base-currency, so old duplicated FX settlement lines disappear automatically after `alembic upgrade head` during deploy.

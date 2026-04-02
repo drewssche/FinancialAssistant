@@ -130,6 +130,26 @@
     await operationModal.openEditModal(item);
   }
 
+  async function deleteLinkedOperation(operationId) {
+    const resolvedId = Number(operationId || 0);
+    if (!(resolvedId > 0)) {
+      return;
+    }
+    const actions = getActions();
+    const item = await core.requestJson(`/api/v1/operations/${resolvedId}`, {
+      headers: core.authHeaders(),
+    });
+    if (actions.deleteOperationFlow) {
+      await actions.deleteOperationFlow(item);
+      return;
+    }
+    await core.requestJson(`/api/v1/operations/${resolvedId}`, {
+      method: "DELETE",
+      headers: core.authHeaders(),
+    });
+    await refreshAfterTradeMutation();
+  }
+
   function getTrackedCurrencies() {
     const raw = state.preferences?.data?.currency?.tracked_currencies;
     if (!Array.isArray(raw) || !raw.length) {
@@ -489,10 +509,15 @@
           </div>
         `
         : "";
-      const menuItems = isLinkedSettlement ? "" : [
-        `<button class="btn btn-secondary" type="button" data-edit-currency-trade-id="${Number(item.id)}">Редактировать</button>`,
-        `<button class="btn btn-danger" type="button" data-delete-currency-trade-id="${Number(item.id)}">Удалить</button>`,
-      ].join("");
+      const menuItems = isLinkedSettlement
+        ? [
+          `<button class="btn btn-secondary" type="button" data-open-linked-operation-id="${Number(item.linked_operation_id)}">Открыть операцию</button>`,
+          `<button class="btn btn-danger" type="button" data-delete-linked-operation-id="${Number(item.linked_operation_id)}">Удалить операцию</button>`,
+        ].join("")
+        : [
+          `<button class="btn btn-secondary" type="button" data-edit-currency-trade-id="${Number(item.id)}">Редактировать</button>`,
+          `<button class="btn btn-danger" type="button" data-delete-currency-trade-id="${Number(item.id)}">Удалить</button>`,
+        ].join("");
       return `
       <tr class="table-record-open-row" data-currency-trade-row-id="${Number(item.id)}">
         <td data-label="Дата">${core.formatDateRu(item.trade_date)}</td>
@@ -507,7 +532,7 @@
           </div>
         </td>
         <td class="mobile-actions-cell table-kebab-cell" data-label="Действия">
-          ${menuItems ? (core.renderInlineKebabMenu?.(`currency-trade-${Number(item.id)}`, menuItems, "Действия валютной сделки", "operation-row-kebab") || "") : '<span class="muted-small">Через операцию</span>'}
+          ${core.renderInlineKebabMenu?.(`currency-trade-${Number(item.id)}`, menuItems, "Действия валютной сделки", "operation-row-kebab") || '<span class="muted-small">Через операцию</span>'}
         </td>
       </tr>
     `;
@@ -694,6 +719,15 @@
           });
           return;
         }
+        const deleteLinkedOperationBtn = event.target.closest("[data-delete-linked-operation-id]");
+        if (deleteLinkedOperationBtn) {
+          const operationId = Number(deleteLinkedOperationBtn.dataset.deleteLinkedOperationId || 0);
+          core.runAction({
+            errorPrefix: "Ошибка удаления связанной операции",
+            action: () => deleteLinkedOperation(operationId),
+          });
+          return;
+        }
         const row = event.target.closest("tr[data-currency-trade-row-id]");
         if (!row) {
           return;
@@ -705,7 +739,10 @@
         if (tradeId > 0) {
           const trade = tradeItemsById.get(tradeId);
           if (trade?.trade_kind === "card_payment" && Number(trade.linked_operation_id || 0) > 0) {
-            core.setStatus("Это списание связано с операцией и редактируется из операции");
+            core.runAction({
+              errorPrefix: "Ошибка открытия связанной операции",
+              action: () => openLinkedOperation(Number(trade.linked_operation_id)),
+            });
             return;
           }
           core.runAction({
@@ -725,5 +762,6 @@
     openTradePanel,
     openRatePanel,
     openCurrencyTradeEdit,
+    deleteCurrencyTrade,
   });
 })();

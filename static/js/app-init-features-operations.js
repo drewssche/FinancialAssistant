@@ -278,9 +278,65 @@
         return;
       }
 
+      const deleteOperationSourceBtn = event.target.closest("button[data-delete-operation-source-id]");
+      if (deleteOperationSourceBtn) {
+        const operationId = Number(deleteOperationSourceBtn.dataset.deleteOperationSourceId || 0);
+        if (operationId > 0 && actions.deleteOperationFlow) {
+          core.runAction({
+            errorPrefix: "Ошибка удаления операции",
+            action: async () => {
+              const item = await core.requestJson(`/api/v1/operations/${operationId}`, {
+                headers: core.authHeaders(),
+              });
+              await actions.deleteOperationFlow(item);
+            },
+          });
+        }
+        return;
+      }
+
+      const deleteFxSourceBtn = event.target.closest("button[data-delete-fx-source-id]");
+      if (deleteFxSourceBtn) {
+        const tradeId = Number(deleteFxSourceBtn.dataset.deleteFxSourceId || 0);
+        const row = deleteFxSourceBtn.closest("tr");
+        const item = row ? JSON.parse(row.dataset.item || "{}") : null;
+        if (tradeId > 0) {
+          core.runDestructiveAction({
+            confirmMessage: `Удалить валютную сделку «${String(item?.title || "Сделка")}»?`,
+            doDelete: async () => {
+              await core.requestJson(`/api/v1/currency/trades/${tradeId}`, {
+                method: "DELETE",
+                headers: core.authHeaders(),
+              });
+              core.invalidateUiRequestCache?.("currency");
+              core.invalidateUiRequestCache?.("dashboard:summary");
+            },
+            onAfterDelete: async () => {
+              await actions.refreshAll?.();
+            },
+            toastMessage: "Валютная сделка удалена",
+            onDeleteError: "Не удалось удалить валютную сделку",
+          });
+        }
+        return;
+      }
+
       const editBtn = event.target.closest("button[data-edit-id]");
       if (editBtn) {
         const row = editBtn.closest("tr");
+        const operationId = Number(editBtn.dataset.editId || row?.dataset.operationRowId || 0);
+        if (operationId > 0 && row?.dataset.moneyFlowRowId) {
+          core.runAction({
+            errorPrefix: "Ошибка открытия операции",
+            action: async () => {
+              const item = await core.requestJson(`/api/v1/operations/${operationId}`, {
+                headers: core.authHeaders(),
+              });
+              await actions.openEditModal(item);
+            },
+          });
+          return;
+        }
         const item = row ? JSON.parse(row.dataset.item || "{}") : null;
         if (item?.id) {
           actions.openEditModal(item);
@@ -305,6 +361,14 @@
         return;
       }
       const item = JSON.parse(row.dataset.item || "{}");
+      const operationId = Number(row.dataset.operationRowId || item?.id || 0);
+      if (row.dataset.moneyFlowRowId && operationId > 0 && actions.openMoneyFlowSource) {
+        actions.openMoneyFlowSource({
+          sourceKind: "operation",
+          sourceId: operationId,
+        }).catch((err) => core.setStatus(String(err)));
+        return;
+      }
       if (item?.id) {
         actions.openEditModal(item);
       }

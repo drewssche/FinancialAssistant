@@ -435,11 +435,20 @@
         ${eventChips.join("")}
       </div>
     `;
-    const menuItems = item?.can_open_source
-      ? `<button class="btn btn-secondary" data-open-source-kind="${sourceKind}" data-open-source-id="${item.source_id || ""}">${escapeHtml(item?.open_label || "Открыть")}</button>`
-      : sourceKind === "operation"
-        ? `<button class="btn btn-secondary" data-edit-id="${item.source_id || ""}">Редактировать</button>`
-        : "";
+    let menuItems = "";
+    if (sourceKind === "operation" && item?.source_id) {
+      menuItems = [
+        `<button class="btn btn-secondary" data-open-source-kind="operation" data-open-source-id="${item.source_id || ""}">Редактировать</button>`,
+        `<button class="btn btn-danger" data-delete-operation-source-id="${item.source_id || ""}">Удалить</button>`,
+      ].join("");
+    } else if (sourceKind === "fx" && item?.source_id) {
+      menuItems = [
+        `<button class="btn btn-secondary" data-open-source-kind="fx" data-open-source-id="${item.source_id || ""}">${escapeHtml(item?.open_label || "Открыть")}</button>`,
+        `<button class="btn btn-danger" data-delete-fx-source-id="${item.source_id || ""}">Удалить</button>`,
+      ].join("");
+    } else if (item?.can_open_source) {
+      menuItems = `<button class="btn btn-secondary" data-open-source-kind="${sourceKind}" data-open-source-id="${item.source_id || ""}">${escapeHtml(item?.open_label || "Открыть")}</button>`;
+    }
     const selectCell = selectable
       ? `<td class="select-col" data-label="Выбор"><input class="table-checkbox" type="checkbox" data-select-operation-id="${escapeHtml(item.id)}" ${selected ? "checked" : ""} /></td>`
       : "<td class=\"select-col\" data-label=\"Выбор\"><span class=\"muted-small\">—</span></td>";

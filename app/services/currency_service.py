@@ -3,11 +3,12 @@ from datetime import date, timedelta
 from decimal import Decimal
 import re
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.cache import invalidate_dashboard_analytics_cache, invalidate_dashboard_summary_cache
 from app.core.logging import log_background_job_event
-from app.db.models import FxTrade
+from app.db.models import FxTrade, Operation
 from app.repositories.currency_repo import CurrencyRepository
 from app.repositories.preference_repo import PreferenceRepository
 
@@ -82,6 +83,78 @@ class CurrencyService:
         if getattr(trade, "linked_operation_id", None) is not None:
             return False
         return str(getattr(trade, "trade_kind", "manual") or "manual").strip().lower() != "card_payment"
+
+    def backfill_linked_card_payment_trades(
+        self,
+        *,
+        commit: bool = False,
+        max_created_at_delta_seconds: int = 600,
+    ) -> int:
+        trades = list(
+            self.db.scalars(
+                select(FxTrade)
+                .where(
+                    FxTrade.trade_kind == "card_payment",
+                    FxTrade.linked_operation_id.is_(None),
+                    FxTrade.side == "sell",
+                )
+                .order_by(FxTrade.user_id.asc(), FxTrade.trade_date.asc(), FxTrade.id.asc())
+            )
+        )
+        if not trades:
+            return 0
+        already_linked_operation_ids = {
+            int(item)
+            for item in self.db.scalars(select(FxTrade.linked_operation_id).where(FxTrade.linked_operation_id.is_not(None)))
+            if item is not None
+        }
+        linked_count = 0
+        for trade in trades:
+            quote_total = self._money(Decimal(trade.quantity or 0) * Decimal(trade.unit_price or 0))
+            candidate_operations = [
+                operation
+                for operation in self.db.scalars(
+                    select(Operation)
+                    .where(
+                        Operation.user_id == trade.user_id,
+                        Operation.kind == "expense",
+                        Operation.operation_date == trade.trade_date,
+                        Operation.amount == quote_total,
+                        Operation.base_currency == str(trade.quote_currency or "BYN").upper(),
+                    )
+                    .order_by(Operation.created_at.asc(), Operation.id.asc())
+                )
+                if int(operation.id) not in already_linked_operation_ids
+            ]
+            if len(candidate_operations) == 1:
+                trade.linked_operation_id = int(candidate_operations[0].id)
+                already_linked_operation_ids.add(int(candidate_operations[0].id))
+                linked_count += 1
+                continue
+            if len(candidate_operations) <= 1 or not max_created_at_delta_seconds:
+                continue
+            trade_created_at = getattr(trade, "created_at", None)
+            if trade_created_at is None:
+                continue
+            nearby_matches = []
+            for operation in candidate_operations:
+                operation_created_at = getattr(operation, "created_at", None)
+                if operation_created_at is None:
+                    continue
+                delta_seconds = abs((operation_created_at - trade_created_at).total_seconds())
+                if delta_seconds <= max_created_at_delta_seconds:
+                    nearby_matches.append((delta_seconds, operation))
+            if len(nearby_matches) == 1:
+                matched_operation = nearby_matches[0][1]
+                trade.linked_operation_id = int(matched_operation.id)
+                already_linked_operation_ids.add(int(matched_operation.id))
+                linked_count += 1
+        if linked_count:
+            if commit:
+                self.db.commit()
+            else:
+                self.db.flush()
+        return linked_count
 
     def _validate_trade_sequence(self, trades: list[FxTrade]) -> None:
         quantities_by_currency: dict[str, Decimal] = {}
