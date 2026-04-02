@@ -495,7 +495,11 @@
     const hasRate = rateResolved.valid && enteredRate > 0;
     let effectiveQuantity = enteredQuantity;
     let effectiveRate = enteredRate;
-    if (baseAmount > 0 && hasQuantity && !hasRate) {
+    if (baseAmount > 0 && hasQuantity && fxSettlementQuantityDriver) {
+      effectiveRate = baseAmount / enteredQuantity;
+    } else if (baseAmount > 0 && hasRate && fxSettlementRateDriver) {
+      effectiveQuantity = baseAmount / enteredRate;
+    } else if (baseAmount > 0 && hasQuantity && !hasRate) {
       effectiveRate = baseAmount / enteredQuantity;
     } else if (baseAmount > 0 && !hasQuantity && hasRate) {
       effectiveQuantity = baseAmount / enteredRate;
@@ -651,7 +655,11 @@
     const hasRate = rateResolved.valid && enteredRate > 0;
     let effectiveQuantity = enteredQuantity;
     let effectiveRate = enteredRate;
-    if (baseAmount > 0 && hasQuantity && !hasRate) {
+    if (baseAmount > 0 && hasQuantity && editFxSettlementQuantityDriver) {
+      effectiveRate = baseAmount / enteredQuantity;
+    } else if (baseAmount > 0 && hasRate && editFxSettlementRateDriver) {
+      effectiveQuantity = baseAmount / enteredRate;
+    } else if (baseAmount > 0 && hasQuantity && !hasRate) {
       effectiveRate = baseAmount / enteredQuantity;
     } else if (baseAmount > 0 && !hasQuantity && hasRate) {
       effectiveQuantity = baseAmount / enteredRate;
