@@ -365,7 +365,7 @@
 
   function getCreateOperationBaseContext() {
     const amountResolved = core.resolveMoneyInput(el.opAmount?.value || 0);
-    if (amountResolved.valid && Number(amountResolved.previewValue || 0) > 0) {
+    if (!amountResolved.empty && Number(amountResolved.previewValue || 0) > 0) {
       return { amount: Number(amountResolved.previewValue || 0), source: "operation" };
     }
     const receiptItems = getCreateReceiptPayload();
@@ -388,7 +388,7 @@
 
   function getEditOperationBaseContext() {
     const amountResolved = core.resolveMoneyInput(el.editAmount?.value || 0);
-    if (amountResolved.valid && Number(amountResolved.previewValue || 0) > 0) {
+    if (!amountResolved.empty && Number(amountResolved.previewValue || 0) > 0) {
       return { amount: Number(amountResolved.previewValue || 0), source: "operation" };
     }
     const receiptItems = getEditReceiptPayload();
@@ -516,7 +516,11 @@
     }
     if (el.opFxSettlementUnitPrice) {
       el.opFxSettlementUnitPrice.placeholder = `Курс ${context.baseCurrency} за 1 ${context.assetCurrency}`;
-      if (!fxSettlementRateDriver && context.baseAmount > 0 && context.effectiveRate > 0 && context.hasQuantity) {
+      const shouldAutoFillRate = context.baseAmount > 0
+        && context.effectiveRate > 0
+        && context.hasQuantity
+        && (!fxSettlementRateDriver || !(Number(core.resolveRateInput(el.opFxSettlementUnitPrice?.value || 0, 0, 6).previewValue || 0) > 0));
+      if (shouldAutoFillRate) {
         el.opFxSettlementUnitPrice.value = formatTradeRateValue(context.effectiveRate);
       }
     }
@@ -662,7 +666,11 @@
     }
     if (el.editFxSettlementUnitPrice) {
       el.editFxSettlementUnitPrice.placeholder = `Курс ${context.baseCurrency} за 1 ${context.assetCurrency}`;
-      if (!editFxSettlementRateDriver && context.baseAmount > 0 && context.effectiveRate > 0 && context.hasQuantity) {
+      const shouldAutoFillRate = context.baseAmount > 0
+        && context.effectiveRate > 0
+        && context.hasQuantity
+        && (!editFxSettlementRateDriver || !(Number(core.resolveRateInput(el.editFxSettlementUnitPrice?.value || 0, 0, 6).previewValue || 0) > 0));
+      if (shouldAutoFillRate) {
         el.editFxSettlementUnitPrice.value = formatTradeRateValue(context.effectiveRate);
       }
     }

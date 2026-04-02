@@ -106,9 +106,11 @@
       }
       if (id === "opFxSettlementQuantity" && actions.markFxSettlementQuantitySource) {
         node.addEventListener("input", actions.markFxSettlementQuantitySource);
+        node.addEventListener("change", actions.markFxSettlementQuantitySource);
       }
       if (id === "opFxSettlementUnitPrice" && actions.markFxSettlementRateSource) {
         node.addEventListener("input", actions.markFxSettlementRateSource);
+        node.addEventListener("change", actions.markFxSettlementRateSource);
       }
     }
     pickerCoordinator.bindDateField("debtStartDate", actions.updateCreatePreview);
@@ -183,9 +185,11 @@
       }
       if (id === "editFxSettlementQuantity" && actions.markEditFxSettlementQuantitySource) {
         node.addEventListener("input", actions.markEditFxSettlementQuantitySource);
+        node.addEventListener("change", actions.markEditFxSettlementQuantitySource);
       }
       if (id === "editFxSettlementUnitPrice" && actions.markEditFxSettlementRateSource) {
         node.addEventListener("input", actions.markEditFxSettlementRateSource);
+        node.addEventListener("change", actions.markEditFxSettlementRateSource);
       }
     }
     pickerCoordinator.bindDateField("editDate", actions.updateEditPreview);

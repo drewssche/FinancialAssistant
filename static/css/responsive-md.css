@@ -208,6 +208,11 @@
     grid-template-columns: 1fr;
   }
 
+  .operations-primary-controls,
+  .operations-secondary-controls {
+    justify-content: stretch;
+  }
+
   .operations-control-card-sort {
     justify-self: stretch;
   }

@@ -239,9 +239,24 @@
 .operations-controls-grid {
   margin-bottom: var(--space-3);
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
   gap: var(--space-3);
   align-items: start;
+}
+
+.operations-primary-controls,
+.operations-secondary-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.operations-primary-controls {
+  justify-content: flex-end;
+}
+
+.operations-secondary-controls {
+  justify-content: flex-start;
 }
 
 .operations-control-card {
@@ -263,6 +278,10 @@
 .operations-control-card-sort .segmented {
   width: max-content;
   max-width: 100%;
+}
+
+.operations-control-card-mode {
+  min-width: 22rem;
 }
 
 .money-flow-context {
