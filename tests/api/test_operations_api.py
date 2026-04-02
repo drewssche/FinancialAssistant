@@ -517,6 +517,35 @@ def test_operations_money_flow_supports_direction_and_source_filters(client: Tes
     assert inflow_summary.json()["expense_total"] == "0.00"
 
 
+def test_operations_money_flow_filters_debt_events_by_date_range(client: TestClient):
+    debt_created = client.post(
+        "/api/v1/debts",
+        json={
+            "counterparty": "Надя",
+            "direction": "borrow",
+            "principal": "80.00",
+            "start_date": "2026-03-10",
+        },
+    )
+    assert debt_created.status_code == 201, debt_created.text
+    debt_id = debt_created.json()["id"]
+    assert client.post(
+        f"/api/v1/debts/{debt_id}/repayments",
+        json={"amount": "20.00", "repayment_date": "2026-03-12"},
+    ).status_code == 201
+
+    same_day = client.get(
+        "/api/v1/operations/money-flow",
+        params={"page": 1, "page_size": 20, "date_from": "2026-03-12", "date_to": "2026-03-12"},
+    )
+    assert same_day.status_code == 200, same_day.text
+    payload = same_day.json()
+    assert payload["total"] == 1
+    assert payload["items"][0]["source_kind"] == "debt"
+    assert payload["items"][0]["event_date"] == "2026-03-12"
+    assert payload["items"][0]["flow_direction"] == "outflow"
+
+
 def test_operations_reject_invalid_date_range(client: TestClient):
     response = client.get(
         "/api/v1/operations",
@@ -606,6 +635,51 @@ def test_operations_serialize_category_meta_for_operation_and_receipt_items(clie
     item = listed.json()["items"][0]
     assert item["category_name"] == "Еда"
     assert item["receipt_items"][0]["category_name"] == "Еда"
+
+
+def test_operation_receipt_with_single_item_category_promotes_effective_operation_category(client: TestClient):
+    category_resp = client.post("/api/v1/categories", json={"name": "Кофе", "kind": "expense"})
+    assert category_resp.status_code == 200
+    category_id = category_resp.json()["id"]
+
+    created = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "operation_date": "2026-03-02",
+            "note": "капучино",
+            "receipt_items": [
+                {
+                    "shop_name": "Рамонак",
+                    "name": "Капучино",
+                    "quantity": "1",
+                    "unit_price": "4.50",
+                    "category_id": category_id,
+                },
+            ],
+        },
+    )
+    assert created.status_code == 201, created.text
+    payload = created.json()
+    assert payload["category_id"] == category_id
+    assert payload["category_name"] == "Кофе"
+    assert payload["receipt_items"][0]["category_id"] == category_id
+
+    listed = client.get("/api/v1/operations", params={"page": 1, "page_size": 20})
+    assert listed.status_code == 200
+    listed_item = listed.json()["items"][0]
+    assert listed_item["category_id"] == category_id
+    assert listed_item["category_name"] == "Кофе"
+
+    money_flow = client.get(
+        "/api/v1/operations/money-flow",
+        params={"date_from": "2026-03-02", "date_to": "2026-03-02", "page": 1, "page_size": 20},
+    )
+    assert money_flow.status_code == 200
+    flow_item = money_flow.json()["items"][0]
+    assert flow_item["category_id"] == category_id
+    assert flow_item["category_name"] == "Кофе"
+    assert flow_item["title"] == "Кофе"
 
 
 def test_operations_summary_respects_filters(client: TestClient):
@@ -768,6 +842,45 @@ def test_operations_filter_by_receipt_item_category(client: TestClient):
     assert updated_payload["amount"] == "70.00"
     assert updated_payload["receipt_total"] == "69.40"
     assert updated_payload["receipt_discrepancy"] == "0.60"
+
+
+def test_operation_update_receipt_with_single_item_category_updates_effective_operation_category(client: TestClient):
+    food_category = client.post("/api/v1/categories", json={"name": "Еда", "kind": "expense"})
+    assert food_category.status_code == 200
+    food_category_id = food_category.json()["id"]
+
+    transport_category = client.post("/api/v1/categories", json={"name": "Транспорт", "kind": "expense"})
+    assert transport_category.status_code == 200
+    transport_category_id = transport_category.json()["id"]
+
+    created = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "100.00",
+            "operation_date": "2026-03-08",
+            "receipt_items": [
+                {"name": "Обед", "quantity": "1", "unit_price": "30.00", "category_id": food_category_id},
+                {"name": "Такси", "quantity": "1", "unit_price": "70.00", "category_id": transport_category_id},
+            ],
+        },
+    )
+    assert created.status_code == 201
+    operation_id = created.json()["id"]
+    assert created.json()["category_id"] is None
+
+    updated = client.patch(
+        f"/api/v1/operations/{operation_id}",
+        json={
+            "receipt_items": [
+                {"name": "Обед", "quantity": "1", "unit_price": "100.00", "category_id": food_category_id},
+            ],
+        },
+    )
+    assert updated.status_code == 200, updated.text
+    payload = updated.json()
+    assert payload["category_id"] == food_category_id
+    assert payload["category_name"] == "Еда"
 
 
 def test_operation_receipt_item_templates_and_price_history(client: TestClient):

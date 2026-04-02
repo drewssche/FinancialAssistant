@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_UP
 import re
 
@@ -83,6 +83,10 @@ class OperationService:
     ):
         self._validate_kind(kind)
         normalized_items, receipt_total = self._normalize_receipt_items(receipt_items or [])
+        category_id = self._resolve_effective_operation_category_id(
+            category_id=category_id,
+            receipt_items=normalized_items,
+        )
         original_amount = self._resolve_operation_amount(amount=amount, receipt_total=receipt_total)
         base_currency = self._get_user_base_currency(user_id)
         normalized_currency, normalized_fx_rate, base_amount = self._resolve_currency_amounts(
@@ -363,6 +367,20 @@ class OperationService:
                 return currency == base
             return currency != base
 
+        def include_event_date(event_date) -> bool:
+            if isinstance(event_date, str):
+                try:
+                    event_date = datetime.strptime(event_date, "%Y-%m-%d").date()
+                except ValueError:
+                    return False
+            if event_date is None:
+                return False
+            if date_from and event_date < date_from:
+                return False
+            if date_to and event_date > date_to:
+                return False
+            return True
+
         if normalized_source in {"all", "operation"}:
             operation_kind = None
             if normalized_direction == "inflow":
@@ -441,6 +459,9 @@ class OperationService:
                         continue
                     direction_sign = -1 if str(debt.get("direction") or "lend") == "lend" else 1
                     for issuance in debt.get("issuances", []) or []:
+                        event_date = issuance.get("issuance_date")
+                        if not include_event_date(event_date):
+                            continue
                         flow_direction = "outflow" if direction_sign < 0 else "inflow"
                         if not include_direction(flow_direction):
                             continue
@@ -450,7 +471,7 @@ class OperationService:
                             "source_kind": "debt",
                             "source_id": int(debt["id"]),
                             "flow_direction": flow_direction,
-                            "event_date": issuance["issuance_date"],
+                            "event_date": event_date,
                             "amount": self._money(issuance.get("current_base_amount") or issuance.get("amount") or 0),
                             "original_amount": self._money(issuance.get("amount") or 0),
                             "currency": debt_currency,
@@ -468,6 +489,9 @@ class OperationService:
                         if self._matches_money_flow_query(item, q):
                             items.append(item)
                     for repayment in debt.get("repayments", []) or []:
+                        event_date = repayment.get("repayment_date")
+                        if not include_event_date(event_date):
+                            continue
                         flow_direction = "inflow" if direction_sign < 0 else "outflow"
                         if not include_direction(flow_direction):
                             continue
@@ -477,7 +501,7 @@ class OperationService:
                             "source_kind": "debt",
                             "source_id": int(debt["id"]),
                             "flow_direction": flow_direction,
-                            "event_date": repayment["repayment_date"],
+                            "event_date": event_date,
                             "amount": self._money(repayment.get("current_base_amount") or repayment.get("amount") or 0),
                             "original_amount": self._money(repayment.get("amount") or 0),
                             "currency": debt_currency,
@@ -672,6 +696,24 @@ class OperationService:
             raise LookupError("Operation not found")
         return self._serialize_operation(user_id=user_id, operation=item)
 
+    @staticmethod
+    def _resolve_effective_operation_category_id(
+        *,
+        category_id: int | None,
+        receipt_items: list[dict] | None,
+    ) -> int | None:
+        explicit_category_id = int(category_id or 0)
+        if explicit_category_id > 0:
+            return explicit_category_id
+        unique_receipt_category_ids = {
+            int(row.get("category_id") or 0)
+            for row in (receipt_items or [])
+            if int(row.get("category_id") or 0) > 0
+        }
+        if len(unique_receipt_category_ids) == 1:
+            return next(iter(unique_receipt_category_ids))
+        return None
+
     def update_operation(self, user_id: int, operation_id: int, updates: dict):
         logged_fields = sorted(updates.keys())
         if "kind" in updates and updates["kind"] is not None:
@@ -687,6 +729,11 @@ class OperationService:
         receipt_total: Decimal | None = None
         if receipt_items_input is not None:
             normalized_items, receipt_total = self._normalize_receipt_items(receipt_items_input)
+            current_category_id = updates.get("category_id", getattr(item, "category_id", None))
+            updates["category_id"] = self._resolve_effective_operation_category_id(
+                category_id=current_category_id,
+                receipt_items=normalized_items,
+            )
 
         if "amount" in updates:
             if updates["amount"] is None:
@@ -921,7 +968,11 @@ class OperationService:
                 "trade_date": linked_trade.trade_date,
                 "note": linked_trade.note,
             }
-        operation_category_meta = category_meta_map.get(int(operation.category_id or 0), {})
+        effective_operation_category_id = self._resolve_effective_operation_category_id(
+            category_id=getattr(operation, "category_id", None),
+            receipt_items=receipt_payload,
+        )
+        operation_category_meta = category_meta_map.get(int(effective_operation_category_id or 0), {})
         return {
             "id": int(operation.id),
             "kind": operation.kind,
@@ -931,7 +982,7 @@ class OperationService:
             "base_currency": base_currency,
             "fx_rate": fx_rate,
             "operation_date": operation.operation_date,
-            "category_id": operation.category_id,
+            "category_id": effective_operation_category_id,
             "category_name": operation_category_meta.get("name"),
             "category_icon": operation_category_meta.get("icon"),
             "category_accent_color": operation_category_meta.get("accent_color"),

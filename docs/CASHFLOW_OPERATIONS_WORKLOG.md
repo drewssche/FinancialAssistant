@@ -77,6 +77,9 @@
 - переключение периода в разделе `Операции` отвязано от обязательного refresh dashboard summary
   - при смене периода обновляется и сохраняется именно operations view
   - custom period в operations flow использует тот же scoped refresh
+- receipt-категория теперь поднимается в эффективную категорию операции, если в чеке есть ровно одна уникальная категория и верхнее поле категории пустое
+  - это синхронизирует `Операции`, `Денежный поток`, preview и edit-flow
+  - для старых записей display serialization тоже берет fallback из `receipt_items`, даже если top-level category раньше не сохранился
 
 ### Notes
 - из строки unified feed:
@@ -90,6 +93,7 @@
 - dashboard summary test стабилизирован на `period=custom`, чтобы не зависеть от текущего календарного месяца
 - toast `Ошибка сохранения периода` в operations раньше мог приходить из unrelated dashboard all-time summary reload, а не из самого period apply
 - теперь эта связка для operations period controls убрана
+- receipt mode больше не должен визуально деградировать в `Без категории`, если категория задана только на позиции и она одна
 
 ### Validation
 - добавлен e2e `tests/e2e/test_operations_money_flow_e2e.py`

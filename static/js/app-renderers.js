@@ -380,6 +380,9 @@
         ? (String(item?.trade_side || "") === "sell" ? "positive" : "negative")
         : "neutral";
     const sourceTone = sourceKind === "debt" ? "warning" : sourceKind === "fx" ? "info" : "neutral";
+    const receiptCategories = sourceKind === "operation"
+      ? getReceiptCategoryMetas(item?.receipt_items, item?.category_id, null)
+      : [];
     const eventChips = [];
     if (sourceKind === "debt") {
       eventChips.push(renderMetaChip(title, eventTone));
@@ -406,9 +409,25 @@
         accent_color: item.category_accent_color || null,
       }
       : null;
+    const receiptCategoryHtml = receiptCategories.length
+      ? renderCategoryChipList(receiptCategories, searchQuery)
+      : "";
+    const operationContextChipsHtml = sourceKind === "operation"
+      ? renderOperationContextChips(item)
+      : "";
+    const contextTitleHtml = `<div class="money-flow-title">${highlightText(title, searchQuery)}</div>`;
+    const contextSubtitleHtml = subtitle
+      ? `<div class="muted-small money-flow-subtitle">${highlightText(subtitle, searchQuery)}</div>`
+      : "";
     const categoryCellHtml = categoryMeta
       ? renderCategoryChip(categoryMeta, searchQuery)
-      : `<div class="money-flow-context"><div class="money-flow-title">${highlightText(title, searchQuery)}</div>${subtitle ? `<div class="muted-small money-flow-subtitle">${highlightText(subtitle, searchQuery)}</div>` : ""}</div>`;
+      : sourceKind === "operation" && receiptCategoryHtml
+        ? (operationContextChipsHtml
+          ? `<div class="operation-category-stack">${receiptCategoryHtml}${operationContextChipsHtml}</div>`
+          : receiptCategoryHtml)
+      : receiptCategoryHtml
+        ? `<div class="money-flow-context">${receiptCategoryHtml}${contextSubtitleHtml}</div>`
+        : `<div class="money-flow-context">${contextTitleHtml}${contextSubtitleHtml}</div>`;
     const sourceCellHtml = `
       <div class="operation-category-stack money-flow-source-stack">
         ${renderMetaChip(sourceCode, "neutral")}
