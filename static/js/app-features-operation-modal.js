@@ -364,7 +364,8 @@
   }
 
   function getCreateOperationBaseContext() {
-    const amountResolved = core.resolveMoneyInput(el.opAmount?.value || 0);
+    const amountInput = document.getElementById("opAmount");
+    const amountResolved = core.resolveMoneyInput(amountInput?.value || 0);
     if (!amountResolved.empty && Number(amountResolved.previewValue || 0) > 0) {
       return { amount: Number(amountResolved.previewValue || 0), source: "operation" };
     }
@@ -387,7 +388,8 @@
   }
 
   function getEditOperationBaseContext() {
-    const amountResolved = core.resolveMoneyInput(el.editAmount?.value || 0);
+    const amountInput = document.getElementById("editAmount");
+    const amountResolved = core.resolveMoneyInput(amountInput?.value || 0);
     if (!amountResolved.empty && Number(amountResolved.previewValue || 0) > 0) {
       return { amount: Number(amountResolved.previewValue || 0), source: "operation" };
     }
@@ -433,6 +435,22 @@
       const unitPrice = Number(row?.unit_price || 0);
       return sum + (qty > 0 && unitPrice > 0 ? qty * unitPrice : 0);
     }, 0);
+  }
+
+  function forceAutofillCreateFxSettlementRate() {
+    const context = getCreateFxSettlementContext();
+    if (!(context.baseAmount > 0) || !(context.hasQuantity) || !(context.effectiveRate > 0) || !el.opFxSettlementUnitPrice) {
+      return;
+    }
+    el.opFxSettlementUnitPrice.value = formatTradeRateValue(context.effectiveRate);
+  }
+
+  function forceAutofillEditFxSettlementRate() {
+    const context = getEditFxSettlementContext();
+    if (!(context.baseAmount > 0) || !(context.hasQuantity) || !(context.effectiveRate > 0) || !el.editFxSettlementUnitPrice) {
+      return;
+    }
+    el.editFxSettlementUnitPrice.value = formatTradeRateValue(context.effectiveRate);
   }
 
   function syncCreateFxSettlementVisibility() {
@@ -1636,6 +1654,7 @@
     markFxSettlementQuantitySource: () => {
       fxSettlementQuantityDriver = true;
       fxSettlementRateDriver = false;
+      forceAutofillCreateFxSettlementRate();
       syncCreateFxSettlementFieldUi();
       updateCreatePreview();
     },
@@ -1654,6 +1673,7 @@
     markEditFxSettlementQuantitySource: () => {
       editFxSettlementQuantityDriver = true;
       editFxSettlementRateDriver = false;
+      forceAutofillEditFxSettlementRate();
       syncEditFxSettlementFieldUi();
       updateEditPreview();
     },
