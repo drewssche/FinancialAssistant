@@ -108,6 +108,31 @@
     applyTelegramLoginUi();
   }
 
+  function renderUserAvatar(name, avatarUrl) {
+    if (!el.userAvatar) {
+      return;
+    }
+    const initial = String(name || "Пользователь").trim()[0]?.toUpperCase() || "П";
+    const safeAvatarUrl = String(avatarUrl || "").trim();
+    if (!safeAvatarUrl) {
+      el.userAvatar.classList.remove("avatar-image");
+      el.userAvatar.innerHTML = initial;
+      return;
+    }
+    const img = document.createElement("img");
+    img.className = "avatar-photo";
+    img.alt = "";
+    img.src = safeAvatarUrl;
+    img.loading = "lazy";
+    img.referrerPolicy = "no-referrer";
+    img.addEventListener("error", () => {
+      el.userAvatar.classList.remove("avatar-image");
+      el.userAvatar.innerHTML = initial;
+    }, { once: true });
+    el.userAvatar.classList.add("avatar-image");
+    el.userAvatar.replaceChildren(img);
+  }
+
   async function loadMe() {
     const me = await core.requestJson("/api/v1/users/me", { headers: core.authHeaders() });
     state.isAdmin = me.is_admin === true;
@@ -117,7 +142,7 @@
     const telegramId = String(me.telegram_id || "").trim();
     el.userName.textContent = name;
     el.userHandle.textContent = username ? `@${username}` : (telegramId ? `ID ${telegramId}` : "Telegram");
-    el.userAvatar.textContent = name[0]?.toUpperCase() || "П";
+    renderUserAvatar(name, me.avatar_url);
     if (!state.isAdmin && state.accessStatus !== "approved" && state.accessStatus !== "active") {
       const reason = state.accessStatus === "rejected"
         ? "Доступ отклонен администратором"
@@ -154,6 +179,7 @@
     state.analyticsCurrencyHydrated = false;
     state.total = 0;
     state.uiRequestCache.clear();
+    renderUserAvatar("Пользователь", "");
     operationModal.closeCreateModal();
     operationModal.closeEditModal();
     if (getCategoryActions().closeCreateCategoryModal) {

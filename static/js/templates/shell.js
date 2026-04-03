@@ -36,12 +36,14 @@
 
         <div class="user-area">
           <div class="user-block user-block-static">
-            <div class="avatar" id="userAvatar">П</div>
+            <div class="avatar" id="userAvatar" aria-hidden="true">П</div>
             <div class="meta">
               <div id="userName">Пользователь</div>
               <div id="userHandle">Telegram</div>
             </div>
-            <button id="sidebarLogoutBtn" class="user-logout-icon-btn" type="button" title="Выйти" aria-label="Выйти">⎋</button>
+            <button id="sidebarLogoutBtn" class="user-logout-icon-btn" type="button" title="Выйти" aria-label="Выйти">
+              <span class="user-logout-icon" aria-hidden="true">➜</span>
+            </button>
           </div>
         </div>
       </aside>

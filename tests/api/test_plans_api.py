@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+from datetime import date
 from app.core.cache import reset_cache_for_tests
 
 from tests.api.test_operations_api import client
@@ -48,9 +49,11 @@ def test_plans_crud_confirm_and_history(client: TestClient):
     confirmed = client.post(f"/api/v1/plans/{plan_id}/confirm")
     assert confirmed.status_code == 200
     confirm_payload = confirmed.json()
+    today_iso = date.today().isoformat()
     assert confirm_payload["operation"]["amount"] == "6.00"
     assert confirm_payload["plan"]["status"] == "confirmed"
     assert confirm_payload["plan"]["confirmed_operation_id"] == confirm_payload["operation"]["id"]
+    assert confirm_payload["operation"]["operation_date"] == today_iso
 
     operations = client.get("/api/v1/operations", params={"page": 1, "page_size": 20})
     assert operations.status_code == 200
@@ -63,7 +66,7 @@ def test_plans_crud_confirm_and_history(client: TestClient):
     assert history_payload["total"] == 1
     assert history_payload["items"][0]["event_type"] == "confirmed"
     assert history_payload["items"][0]["operation_id"] == confirm_payload["operation"]["id"]
-    assert history_payload["items"][0]["effective_date"] == "2026-03-15"
+    assert history_payload["items"][0]["effective_date"] == today_iso
     assert history_payload["items"][0]["category_name"] == "Магазин"
 
 
@@ -134,15 +137,16 @@ def test_recurring_plan_skip_and_confirm_advance_schedule(client: TestClient):
     confirmed = client.post(f"/api/v1/plans/{plan_id}/confirm")
     assert confirmed.status_code == 200
     confirmed_payload = confirmed.json()
+    today_iso = date.today().isoformat()
     assert confirmed_payload["plan"]["confirm_count"] == 1
     assert confirmed_payload["plan"]["scheduled_date"] == "2026-05-10"
-    assert confirmed_payload["operation"]["operation_date"] == "2026-04-10"
+    assert confirmed_payload["operation"]["operation_date"] == today_iso
 
     history = client.get("/api/v1/plans/history")
     assert history.status_code == 200
     history_items = history.json()["items"]
     assert [item["event_type"] for item in history_items[:2]] == ["confirmed", "skipped"]
-    assert history_items[0]["effective_date"] == "2026-04-10"
+    assert history_items[0]["effective_date"] == today_iso
     assert history_items[1]["effective_date"] == "2026-03-10"
 
 
@@ -207,7 +211,7 @@ def test_weekly_plan_supports_multiple_weekdays(client: TestClient):
 
     confirmed = client.post(f"/api/v1/plans/{plan_id}/confirm")
     assert confirmed.status_code == 200
-    assert confirmed.json()["operation"]["operation_date"] == "2026-03-11"
+    assert confirmed.json()["operation"]["operation_date"] == date.today().isoformat()
     assert confirmed.json()["plan"]["scheduled_date"] == "2026-03-13"
 
 
@@ -238,7 +242,7 @@ def test_monthly_plan_can_stick_to_last_day_of_month(client: TestClient):
 
     confirmed = client.post(f"/api/v1/plans/{plan_id}/confirm")
     assert confirmed.status_code == 200
-    assert confirmed.json()["operation"]["operation_date"] == "2026-02-28"
+    assert confirmed.json()["operation"]["operation_date"] == date.today().isoformat()
     assert confirmed.json()["plan"]["scheduled_date"] == "2026-03-31"
 
 
@@ -286,7 +290,7 @@ def test_daily_plan_can_repeat_on_workdays_only(client: TestClient):
 
     confirmed = client.post(f"/api/v1/plans/{plan_id}/confirm")
     assert confirmed.status_code == 200
-    assert confirmed.json()["operation"]["operation_date"] == "2026-03-16"
+    assert confirmed.json()["operation"]["operation_date"] == date.today().isoformat()
     assert confirmed.json()["plan"]["scheduled_date"] == "2026-03-17"
 
 

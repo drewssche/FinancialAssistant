@@ -355,9 +355,9 @@
       ? `<button class="meta-chip-btn meta-chip-btn-neutral" type="button" data-receipt-view-id="${item.id}">Чек</button>`
       : "<span class='muted-small'>—</span>";
     const menuItems = `
-      ${hasReceiptItems ? `<button class="btn btn-secondary" data-receipt-view-id="${item.id}">Позиции</button>` : ""}
-      <button class="btn btn-secondary" data-edit-id="${item.id}">Редактировать</button>
-      <button class="btn btn-danger" data-delete-id="${item.id}">Удалить</button>
+      ${hasReceiptItems ? `<button class="btn btn-secondary" type="button" data-receipt-view-id="${item.id}">Позиции</button>` : ""}
+      <button class="btn btn-secondary" type="button" data-edit-id="${item.id}">Редактировать</button>
+      <button class="btn btn-danger" type="button" data-delete-id="${item.id}">Удалить</button>
     `;
     row.innerHTML = `
       ${selectCell}
@@ -388,7 +388,6 @@
     const kindClass = flowDirection === "inflow" ? "income" : "expense";
     const sourceKind = String(item?.source_kind || "operation");
     const directionLabel = flowDirection === "inflow" ? "Приток" : "Отток";
-    const sourceCode = sourceKind === "debt" ? "DEBT" : sourceKind === "fx" ? "FX" : "OP";
     const sourceLabel = sourceKind === "debt"
       ? "Долг"
       : sourceKind === "fx"
@@ -459,7 +458,6 @@
         : `<div class="money-flow-context">${contextTitleHtml}${contextSubtitleHtml}</div>`;
     const sourceCellHtml = `
       <div class="operation-category-stack money-flow-source-stack">
-        ${renderMetaChip(sourceCode, "neutral")}
         ${renderMetaChip(sourceLabel, sourceTone)}
         ${eventChips.join("")}
       </div>
@@ -468,23 +466,23 @@
     const hasReceiptItems = sourceKind === "operation" && Array.isArray(item?.receipt_items) && item.receipt_items.length > 0;
     if (sourceKind === "operation" && item?.source_id) {
       menuItems = [
-        ...(hasReceiptItems ? [`<button class="btn btn-secondary" data-receipt-view-id="${item.source_id || ""}">Позиции</button>`] : []),
-        `<button class="btn btn-secondary" data-open-source-kind="operation" data-open-source-id="${item.source_id || ""}">Редактировать</button>`,
-        `<button class="btn btn-danger" data-delete-operation-source-id="${item.source_id || ""}">Удалить</button>`,
+        ...(hasReceiptItems ? [`<button class="btn btn-secondary" type="button" data-receipt-view-id="${item.source_id || ""}">Позиции</button>`] : []),
+        `<button class="btn btn-secondary" type="button" data-open-source-kind="operation" data-open-source-id="${item.source_id || ""}">Редактировать</button>`,
+        `<button class="btn btn-danger" type="button" data-delete-operation-source-id="${item.source_id || ""}">Удалить</button>`,
       ].join("");
     } else if (sourceKind === "debt" && item?.source_id) {
       menuItems = [
-        `<button class="btn btn-secondary" data-open-source-kind="debt" data-open-source-id="${item.source_id || ""}" data-open-source-mode="edit">Редактировать</button>`,
-        `<button class="btn btn-secondary" data-open-source-kind="debt" data-open-source-id="${item.source_id || ""}" data-open-source-mode="history">История</button>`,
-        `<button class="btn btn-danger" data-delete-debt-source-id="${item.source_id || ""}">Удалить</button>`,
+        `<button class="btn btn-secondary" type="button" data-open-source-kind="debt" data-open-source-id="${item.source_id || ""}" data-open-source-mode="edit">Редактировать</button>`,
+        `<button class="btn btn-secondary" type="button" data-open-source-kind="debt" data-open-source-id="${item.source_id || ""}" data-open-source-mode="history">История</button>`,
+        `<button class="btn btn-danger" type="button" data-delete-debt-source-id="${item.source_id || ""}">Удалить</button>`,
       ].join("");
     } else if (sourceKind === "fx" && item?.source_id) {
       menuItems = [
-        `<button class="btn btn-secondary" data-open-source-kind="fx" data-open-source-id="${item.source_id || ""}" data-open-source-mode="edit">Редактировать</button>`,
-        `<button class="btn btn-danger" data-delete-fx-source-id="${item.source_id || ""}">Удалить</button>`,
+        `<button class="btn btn-secondary" type="button" data-open-source-kind="fx" data-open-source-id="${item.source_id || ""}" data-open-source-mode="edit">Редактировать</button>`,
+        `<button class="btn btn-danger" type="button" data-delete-fx-source-id="${item.source_id || ""}">Удалить</button>`,
       ].join("");
     } else if (item?.can_open_source) {
-      menuItems = `<button class="btn btn-secondary" data-open-source-kind="${sourceKind}" data-open-source-id="${item.source_id || ""}" data-open-source-mode="edit">${escapeHtml(item?.open_label || "Редактировать")}</button>`;
+      menuItems = `<button class="btn btn-secondary" type="button" data-open-source-kind="${sourceKind}" data-open-source-id="${item.source_id || ""}" data-open-source-mode="edit">${escapeHtml(item?.open_label || "Редактировать")}</button>`;
     }
     const selectCell = selectable
       ? `<td class="select-col" data-label="Выбор"><input class="table-checkbox" type="checkbox" data-select-operation-id="${escapeHtml(item.id)}" ${selected ? "checked" : ""} /></td>`
@@ -520,7 +518,6 @@
       row.classList.add("row-selected");
     }
     row.dataset.moneyFlowSource = sourceKind;
-    row.dataset.moneyFlowSourceCode = sourceCode;
     return row;
   }
 

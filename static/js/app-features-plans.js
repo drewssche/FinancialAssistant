@@ -814,6 +814,8 @@
   async function refreshAfterPlanMutation({ confirmed = false } = {}) {
     core.invalidateUiRequestCache?.("plans");
     core.invalidateUiRequestCache?.("item-catalog");
+    core.invalidateUiRequestCache?.("analytics");
+    core.invalidateUiRequestCache?.("dashboard:highlights");
     if (confirmed) {
       state.plansAllTimeBalance = null;
       dashboardData.invalidateSummaryCache?.();
@@ -831,18 +833,28 @@
     const dashboardFeature = getDashboardFeature();
     const analyticsFeature = getAnalyticsFeature();
     if (operationsFeature.loadOperations) {
-      jobs.push(operationsFeature.loadOperations({ reset: true }));
+      jobs.push({ label: "Операции", run: () => operationsFeature.loadOperations({ reset: true }) });
     }
     if (dashboardFeature.loadDashboard) {
-      jobs.push(dashboardFeature.loadDashboard());
+      jobs.push({ label: "Дашборд", run: () => dashboardFeature.loadDashboard() });
     }
     if (dashboardFeature.loadDashboardOperations) {
-      jobs.push(dashboardFeature.loadDashboardOperations());
+      jobs.push({ label: "Планы на дашборде", run: () => dashboardFeature.loadDashboardOperations() });
     }
     if (analyticsFeature.loadAnalyticsSection) {
-      jobs.push(analyticsFeature.loadAnalyticsSection({ force: true }));
+      jobs.push({ label: "Аналитика", run: () => analyticsFeature.loadAnalyticsSection({ force: true }) });
     }
-    await Promise.all(jobs);
+    const results = await Promise.allSettled(jobs.map((job) => job.run()));
+    const failed = [];
+    for (let idx = 0; idx < results.length; idx += 1) {
+      if (results[idx].status !== "rejected") {
+        continue;
+      }
+      failed.push(jobs[idx].label);
+    }
+    if (failed.length > 0) {
+      console.warn("Plan confirm post-refresh partial failure", failed);
+    }
   }
 
   async function loadPlans(options = {}) {

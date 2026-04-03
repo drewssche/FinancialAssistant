@@ -275,7 +275,7 @@ class PlanService:
             raise LookupError("Plan not found")
         item = row.PlanOperation
         category_name = row.Category.name if row.Category else self.repo.get_category_name(category_id=item.category_id)
-        effective_date = item.scheduled_date
+        effective_date = date.today()
         if item.status in {"confirmed", "skipped"} and not item.recurrence_enabled:
             raise ValueError("Plan is already completed")
         receipt_map = self.repo.list_receipt_items_for_plans(user_id=user_id, plan_ids=[plan_id])
@@ -286,7 +286,7 @@ class PlanService:
             amount=getattr(item, "original_amount", item.amount),
             currency=getattr(item, "currency", "BYN"),
             fx_rate=self._resolve_plan_current_rate(item=item),
-            operation_date=item.scheduled_date,
+            operation_date=effective_date,
             category_id=item.category_id,
             note=item.note,
             receipt_items=[

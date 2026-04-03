@@ -39,9 +39,52 @@
   function bindOperationsFeatureHandlers(getOperationsObserver, setOperationsObserver) {
     let filterDebounceId = null;
 
+    function closeTableMenuForAction(target) {
+      const menu = target?.closest?.(".table-kebab-popover[data-table-menu]");
+      if (!menu || !pickerUtils?.setPopoverOpen) {
+        return;
+      }
+      pickerUtils.setPopoverOpen(menu, false, {
+        owners: Array.isArray(menu.__appPopoverOwners) ? menu.__appPopoverOwners : [],
+      });
+      (Array.isArray(menu.__appPopoverOwners) ? menu.__appPopoverOwners : []).forEach((owner) => owner?.blur?.());
+      menu.closest(".table-menu-open-cell")?.classList.remove("table-menu-open-cell");
+      menu.closest(".table-menu-open-row")?.classList.remove("table-menu-open-row");
+    }
+
     function handleOperationActionClick(event) {
+      const receiptBtn = event.target.closest("button[data-receipt-view-id]");
+      if (receiptBtn) {
+        closeTableMenuForAction(event.target);
+        const operationId = Number(receiptBtn.dataset.receiptViewId || 0);
+        if (operationId > 0 && actions.openOperationReceiptModal) {
+          core.runAction({
+            errorPrefix: "Ошибка открытия чека",
+            action: async () => {
+              const item = await core.requestJson(`/api/v1/operations/${operationId}`, {
+                headers: core.authHeaders(),
+              });
+              actions.openOperationReceiptModal(item);
+            },
+          });
+        }
+        return true;
+      }
+
+      const deleteBtn = event.target.closest("button[data-delete-id]");
+      if (deleteBtn) {
+        closeTableMenuForAction(event.target);
+        const row = event.target.closest("tr");
+        const item = row ? JSON.parse(row.dataset.item || "{}") : null;
+        if (item?.id && actions.deleteOperationFlow) {
+          actions.deleteOperationFlow(item).catch((err) => core.setStatus(String(err)));
+        }
+        return true;
+      }
+
       const deleteOperationSourceBtn = event.target.closest("button[data-delete-operation-source-id]");
       if (deleteOperationSourceBtn) {
+        closeTableMenuForAction(event.target);
         const operationId = Number(deleteOperationSourceBtn.dataset.deleteOperationSourceId || 0);
         if (operationId > 0 && actions.deleteOperationFlow) {
           core.runAction({
@@ -59,6 +102,7 @@
 
       const deleteFxSourceBtn = event.target.closest("button[data-delete-fx-source-id]");
       if (deleteFxSourceBtn) {
+        closeTableMenuForAction(event.target);
         const tradeId = Number(deleteFxSourceBtn.dataset.deleteFxSourceId || 0);
         const row = event.target.closest("tr");
         const item = row ? JSON.parse(row.dataset.item || "{}") : null;
@@ -85,6 +129,7 @@
 
       const deleteDebtSourceBtn = event.target.closest("button[data-delete-debt-source-id]");
       if (deleteDebtSourceBtn) {
+        closeTableMenuForAction(event.target);
         const debtId = Number(deleteDebtSourceBtn.dataset.deleteDebtSourceId || 0);
         if (debtId > 0 && actions.deleteDebtFlow) {
           actions.deleteDebtFlow(debtId);
@@ -94,6 +139,7 @@
 
       const editBtn = event.target.closest("button[data-edit-id]");
       if (editBtn) {
+        closeTableMenuForAction(event.target);
         const row = event.target.closest("tr");
         const operationId = Number(editBtn.dataset.editId || row?.dataset.operationRowId || 0);
         if (operationId > 0 && row?.dataset.moneyFlowRowId) {
@@ -108,10 +154,28 @@
           });
           return true;
         }
+        if (operationId > 0 && actions.openEditModal) {
+          const item = row ? JSON.parse(row.dataset.item || "{}") : null;
+          if (item?.id) {
+            actions.openEditModal(item);
+            return true;
+          }
+          core.runAction({
+            errorPrefix: "Ошибка открытия операции",
+            action: async () => {
+              const fullItem = await core.requestJson(`/api/v1/operations/${operationId}`, {
+                headers: core.authHeaders(),
+              });
+              await actions.openEditModal(fullItem);
+            },
+          });
+          return true;
+        }
       }
 
       const openSourceBtn = event.target.closest("button[data-open-source-kind]");
       if (openSourceBtn && actions.openMoneyFlowSource) {
+        closeTableMenuForAction(event.target);
         actions.openMoneyFlowSource({
           sourceKind: openSourceBtn.dataset.openSourceKind,
           sourceId: openSourceBtn.dataset.openSourceId,
@@ -342,35 +406,7 @@
         toggleTableMenu(menuTrigger);
         return;
       }
-      const receiptBtn = event.target.closest("button[data-receipt-view-id]");
-      if (receiptBtn) {
-        const row = receiptBtn.closest("tr");
-        const item = row ? JSON.parse(row.dataset.item || "{}") : null;
-        if (item?.id && actions.openOperationReceiptModal) {
-          actions.openOperationReceiptModal(item);
-        }
-        return;
-      }
-      const deleteBtn = event.target.closest("button[data-delete-id]");
-      if (deleteBtn) {
-        const row = deleteBtn.closest("tr");
-        const item = row ? JSON.parse(row.dataset.item || "{}") : null;
-        if (item?.id) {
-          actions.deleteOperationFlow(item).catch((err) => core.setStatus(String(err)));
-        }
-        return;
-      }
-
       if (handleOperationActionClick(event)) {
-        return;
-      }
-      const editBtn = event.target.closest("button[data-edit-id]");
-      if (editBtn) {
-        const row = editBtn.closest("tr");
-        const item = row ? JSON.parse(row.dataset.item || "{}") : null;
-        if (item?.id) {
-          actions.openEditModal(item);
-        }
         return;
       }
 
@@ -399,7 +435,7 @@
     });
 
     document.addEventListener("click", (event) => {
-      if (!event.target.closest(".table-kebab-popover[data-table-menu^=\"money-flow-\"]")) {
+      if (!event.target.closest(".table-kebab-popover[data-table-menu^=\"money-flow-\"], .table-kebab-popover[data-table-menu^=\"operation-\"]")) {
         return;
       }
       handleOperationActionClick(event);
