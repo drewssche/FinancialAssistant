@@ -35,13 +35,26 @@
     return `<span class="category-chip"${style}${title}>${icon}<span class="category-chip-text">${highlightText(category.name, searchQuery)}</span></span>`;
   }
 
-  function renderCategoryChipList(categories, searchQuery = "") {
+  function renderCategoryOverflowChip(hiddenItems) {
+    const hidden = Array.isArray(hiddenItems) ? hiddenItems.filter((item) => item?.name) : [];
+    if (!hidden.length) {
+      return "";
+    }
+    const title = hidden.map((item) => String(item.name || "").trim()).filter(Boolean).join(", ");
+    return `<span class="category-chip category-chip-overflow" title="${escapeHtml(title)}">+${hidden.length}</span>`;
+  }
+
+  function renderCategoryChipList(categories, searchQuery = "", options = {}) {
     const items = Array.isArray(categories) ? categories.filter((item) => item?.name) : [];
     if (!items.length) {
       return "<span class='muted-small'>Без категории</span>";
     }
+    const maxVisible = Number(options.maxVisible || 0);
+    const hasLimit = Number.isFinite(maxVisible) && maxVisible > 0;
+    const visibleItems = hasLimit ? items.slice(0, maxVisible) : items;
+    const hiddenItems = hasLimit ? items.slice(maxVisible) : [];
     const stackClass = items.length > 1 ? " category-chip-list-stack" : "";
-    return `<div class="category-chip-list${stackClass}">${items.map((item) => renderCategoryChip(item, searchQuery)).join("")}</div>`;
+    return `<div class="category-chip-list${stackClass}">${visibleItems.map((item) => renderCategoryChip(item, searchQuery)).join("")}${renderCategoryOverflowChip(hiddenItems)}</div>`;
   }
 
   function getReceiptCategoryMetas(receiptItems, fallbackCategoryId, getCategoryMetaById) {
@@ -140,7 +153,17 @@
   function formatFlowAmountHtml(item) {
     const flowDirection = String(item?.flow_direction || "outflow");
     const kindClass = flowDirection === "inflow" ? "income" : "expense";
-    return formatOperationAmountHtml(item, kindClass);
+    const primary = formatOperationAmountHtml(item, kindClass);
+    if (String(item?.source_kind || "") !== "fx") {
+      return primary;
+    }
+    const quantity = Number(item?.asset_quantity || 0);
+    const assetCurrency = String(item?.asset_currency || "").toUpperCase();
+    const tradeSide = String(item?.trade_side || "buy") === "sell" ? "Продано" : "Куплено";
+    const quantityText = Number.isFinite(quantity) && quantity > 0
+      ? `${tradeSide} ${quantity.toFixed(2).replace(/\.00$/, "").replace(/(\.\d*[1-9])0+$/, "$1")} ${assetCurrency}`
+      : "";
+    return `${primary}${quantityText ? `<div class="muted-small">${escapeHtml(quantityText)}</div>` : ""}`;
   }
 
   function parseIsoDate(value) {
@@ -279,7 +302,7 @@
     const categories = Array.isArray(options.categories) && options.categories.length
       ? options.categories
       : (category?.name ? [category] : []);
-    const categoryHtml = renderCategoryChipList(categories, searchQuery);
+    const categoryHtml = renderCategoryChipList(categories, searchQuery, preview ? {} : { maxVisible: 3 });
     const contextChipsHtml = renderOperationContextChips(item);
     const categoryCellHtml = contextChipsHtml
       ? `<div class="operation-category-stack">${categoryHtml}${contextChipsHtml}</div>`
@@ -410,7 +433,7 @@
       }
       : null;
     const receiptCategoryHtml = receiptCategories.length
-      ? renderCategoryChipList(receiptCategories, searchQuery)
+      ? renderCategoryChipList(receiptCategories, searchQuery, { maxVisible: 3 })
       : "";
     const operationContextChipsHtml = sourceKind === "operation"
       ? renderOperationContextChips(item)
@@ -419,8 +442,14 @@
     const contextSubtitleHtml = subtitle
       ? `<div class="muted-small money-flow-subtitle">${highlightText(subtitle, searchQuery)}</div>`
       : "";
-    const categoryCellHtml = categoryMeta
-      ? renderCategoryChip(categoryMeta, searchQuery)
+    const operationCategoryHtml = receiptCategoryHtml
+      || (categoryMeta ? renderCategoryChip(categoryMeta, searchQuery) : "");
+    const categoryCellHtml = sourceKind === "operation" && operationCategoryHtml
+      ? (operationContextChipsHtml
+        ? `<div class="operation-category-stack">${operationCategoryHtml}${operationContextChipsHtml}</div>`
+        : operationCategoryHtml)
+      : categoryMeta
+        ? renderCategoryChip(categoryMeta, searchQuery)
       : sourceKind === "operation" && receiptCategoryHtml
         ? (operationContextChipsHtml
           ? `<div class="operation-category-stack">${receiptCategoryHtml}${operationContextChipsHtml}</div>`
@@ -436,18 +465,26 @@
       </div>
     `;
     let menuItems = "";
+    const hasReceiptItems = sourceKind === "operation" && Array.isArray(item?.receipt_items) && item.receipt_items.length > 0;
     if (sourceKind === "operation" && item?.source_id) {
       menuItems = [
+        ...(hasReceiptItems ? [`<button class="btn btn-secondary" data-receipt-view-id="${item.source_id || ""}">Позиции</button>`] : []),
         `<button class="btn btn-secondary" data-open-source-kind="operation" data-open-source-id="${item.source_id || ""}">Редактировать</button>`,
         `<button class="btn btn-danger" data-delete-operation-source-id="${item.source_id || ""}">Удалить</button>`,
       ].join("");
+    } else if (sourceKind === "debt" && item?.source_id) {
+      menuItems = [
+        `<button class="btn btn-secondary" data-open-source-kind="debt" data-open-source-id="${item.source_id || ""}" data-open-source-mode="edit">Редактировать</button>`,
+        `<button class="btn btn-secondary" data-open-source-kind="debt" data-open-source-id="${item.source_id || ""}" data-open-source-mode="history">История</button>`,
+        `<button class="btn btn-danger" data-delete-debt-source-id="${item.source_id || ""}">Удалить</button>`,
+      ].join("");
     } else if (sourceKind === "fx" && item?.source_id) {
       menuItems = [
-        `<button class="btn btn-secondary" data-open-source-kind="fx" data-open-source-id="${item.source_id || ""}">${escapeHtml(item?.open_label || "Открыть")}</button>`,
+        `<button class="btn btn-secondary" data-open-source-kind="fx" data-open-source-id="${item.source_id || ""}" data-open-source-mode="edit">Редактировать</button>`,
         `<button class="btn btn-danger" data-delete-fx-source-id="${item.source_id || ""}">Удалить</button>`,
       ].join("");
     } else if (item?.can_open_source) {
-      menuItems = `<button class="btn btn-secondary" data-open-source-kind="${sourceKind}" data-open-source-id="${item.source_id || ""}">${escapeHtml(item?.open_label || "Открыть")}</button>`;
+      menuItems = `<button class="btn btn-secondary" data-open-source-kind="${sourceKind}" data-open-source-id="${item.source_id || ""}" data-open-source-mode="edit">${escapeHtml(item?.open_label || "Редактировать")}</button>`;
     }
     const selectCell = selectable
       ? `<td class="select-col" data-label="Выбор"><input class="table-checkbox" type="checkbox" data-select-operation-id="${escapeHtml(item.id)}" ${selected ? "checked" : ""} /></td>`
@@ -472,8 +509,12 @@
     `;
     row.dataset.item = JSON.stringify(item);
     row.dataset.moneyFlowRowId = String(item.id || "");
+    row.dataset.moneyFlowSourceId = String(item?.source_id || "");
     if (sourceKind === "operation" && item?.source_id) {
       row.dataset.operationRowId = String(item.source_id);
+    }
+    if (item?.source_id || item?.can_open_source) {
+      row.classList.add("table-record-open-row");
     }
     if (selected) {
       row.classList.add("row-selected");

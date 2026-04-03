@@ -1287,6 +1287,73 @@ def test_dashboard_analytics_highlights_uses_receipt_item_categories_for_structu
     assert breakdown["Прочее"]["total_amount"] == "20.00"
 
 
+def test_dashboard_analytics_highlights_preserve_mixed_receipt_categories_with_linked_fx_settlement(client: TestClient):
+    food = client.post("/api/v1/categories", json={"name": "Продукты", "kind": "expense"})
+    snacks = client.post("/api/v1/categories", json={"name": "Снэки", "kind": "expense"})
+    misc = client.post("/api/v1/categories", json={"name": "Прочее", "kind": "expense"})
+    assert food.status_code == 200
+    assert snacks.status_code == 200
+    assert misc.status_code == 200
+
+    funding = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "50.00",
+            "unit_price": "3.20",
+            "fee": "0.00",
+            "trade_date": "2026-03-01",
+        },
+    )
+    assert funding.status_code == 201, funding.text
+
+    created = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "category_id": misc.json()["id"],
+            "amount": "21.30",
+            "operation_date": "2026-04-01",
+            "receipt_items": [
+                {
+                    "shop_name": "Евроопт",
+                    "name": "Перец желтый 1кг",
+                    "quantity": "0.18",
+                    "unit_price": "16.33",
+                    "category_id": food.json()["id"],
+                },
+                {
+                    "shop_name": "Евроопт",
+                    "name": "Сырок какао",
+                    "quantity": "4",
+                    "unit_price": "0.95",
+                    "category_id": snacks.json()["id"],
+                },
+            ],
+            "fx_settlement": {
+                "asset_currency": "USD",
+                "quantity": "7.42",
+                "quote_total": "21.30",
+                "unit_price": "2.870620",
+            },
+        },
+    )
+    assert created.status_code == 201, created.text
+
+    response = client.get(
+        "/api/v1/dashboard/analytics/highlights",
+        params={"period": "custom", "date_from": "2026-04-01", "date_to": "2026-04-30"},
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    breakdown = {item["category_name"]: item for item in payload["category_breakdown"]}
+    assert breakdown["Продукты"]["total_amount"] == "2.94"
+    assert breakdown["Снэки"]["total_amount"] == "3.80"
+    assert breakdown["Прочее"]["total_amount"] == "14.56"
+
+
 def test_dashboard_analytics_ignores_category_statistics_flag(client: TestClient):
     hidden = client.post(
         "/api/v1/categories",

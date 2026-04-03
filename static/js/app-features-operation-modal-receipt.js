@@ -443,6 +443,27 @@
       }
     }
 
+    function resolveReceiptPayloadCategoryId(item, mode = "create", defaultCategoryId = null) {
+      if (item?.category_id) {
+        return Number(item.category_id);
+      }
+      const ctx = getReceiptContext(mode);
+      const categoryInput = ctx.listNode?.querySelector(
+        `[data-receipt-item-id="${Number(item?.draft_id || 0)}"] [data-receipt-field="category_search"]`,
+      );
+      const kind = getReceiptOperationKind(mode);
+      const rawValue = normalizeReceiptName(categoryInput?.value || "");
+      if (rawValue) {
+        const exactMatch = (state.categories || []).find((entry) => (
+          entry?.kind === kind && normalizeReceiptName(entry?.name || "").toLowerCase() === rawValue.toLowerCase()
+        ));
+        if (exactMatch?.id) {
+          return Number(exactMatch.id);
+        }
+      }
+      return defaultCategoryId;
+    }
+
     function getCreateReceiptPayload() {
       if (!isReceiptModeEnabled("create")) {
         return [];
@@ -450,7 +471,7 @@
       const defaultCategoryId = el.opCategory?.value ? Number(el.opCategory.value) : null;
       return getReceiptItems("create")
         .map((item) => ({
-          category_id: item.category_id ? Number(item.category_id) : defaultCategoryId,
+          category_id: resolveReceiptPayloadCategoryId(item, "create", defaultCategoryId),
           shop_name: normalizeReceiptName(item.shop_name || "") || null,
           name: normalizeReceiptName(item.name),
           quantity: String(asQty(item.quantity || 0)),
@@ -466,7 +487,7 @@
       const defaultCategoryId = el.editCategory?.value ? Number(el.editCategory.value) : null;
       return getReceiptItems("edit")
         .map((item) => ({
-          category_id: item.category_id ? Number(item.category_id) : defaultCategoryId,
+          category_id: resolveReceiptPayloadCategoryId(item, "edit", defaultCategoryId),
           shop_name: normalizeReceiptName(item.shop_name || "") || null,
           name: normalizeReceiptName(item.name),
           quantity: String(asQty(item.quantity || 0)),

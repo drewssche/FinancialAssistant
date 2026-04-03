@@ -626,7 +626,7 @@
     await savePreferences();
   }
 
-  async function openMoneyFlowSource({ sourceKind, sourceId }) {
+  async function openMoneyFlowSource({ sourceKind, sourceId, mode = "edit" }) {
     const navigation = getActions();
     const debtsFeature = window.App.getRuntimeModule?.("debts") || {};
     const currencyFeature = window.App.getRuntimeModule?.("currency") || {};
@@ -644,7 +644,11 @@
     if (sourceKind === "debt") {
       navigation.pushSectionBackContext?.();
       await navigation.switchSection?.("debts");
-      await debtsFeature.openDebtHistoryModal?.(Number(sourceId || 0));
+      if (mode === "history") {
+        await debtsFeature.openDebtHistoryModal?.(Number(sourceId || 0));
+        return;
+      }
+      await debtsFeature.openEditDebtModal?.(Number(sourceId || 0));
       return;
     }
     if (sourceKind === "fx") {

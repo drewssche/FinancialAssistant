@@ -72,7 +72,6 @@
                     <span id="dashboardCategoryBreakdownChartMeta" class="muted-small">Нет данных</span>
                   </div>
                 </div>
-                <div id="dashboardCategoryBreakdownSplit" class="analytics-category-breakdown-split hidden"></div>
               </div>
               <div id="dashboardCategoryBreakdownList" class="analytics-insight-list"></div>
             </div>
@@ -183,7 +182,6 @@
                     <span id="analyticsCategoryBreakdownChartMeta" class="muted-small">Нет данных</span>
                   </div>
                 </div>
-                <div id="analyticsCategoryBreakdownSplit" class="analytics-category-breakdown-split hidden"></div>
               </div>
               <div id="analyticsCategoryBreakdownList" class="analytics-insight-list"></div>
             </div>
@@ -246,6 +244,7 @@
                       <th>Итог приток</th>
                       <th>Итог отток</th>
                       <th>Операций</th>
+                      <th>Операционные траты</th>
                       <th>Денежный поток</th>
                     </tr>
                   </thead>

@@ -38,6 +38,8 @@
     }
 
     async function refreshAfterOperationMutation() {
+      core.invalidateUiRequestCache?.("analytics");
+      core.invalidateUiRequestCache?.("dashboard:highlights");
       const tasks = [loadOperations({ reset: true })];
       const analyticsFeature = getAnalyticsFeature();
       const currencyFeature = window.App.getRuntimeModule?.("currency") || {};

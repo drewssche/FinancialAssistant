@@ -235,10 +235,12 @@
             markerBits.push(`FX ${core.formatMoney(cashflow.fxCashflow)}`);
           }
           const result = describeResult(cashflow.resultTotal);
+          const operationalExpense = Number(day?.expense_total || 0);
           const titleBits = [
             core.formatDateRu(day.date),
             `Приток ${core.formatMoney(cashflow.incomeTotal)}`,
             `Отток ${core.formatMoney(cashflow.expenseTotal)}`,
+            `Операционные траты ${core.formatMoney(operationalExpense)}`,
             `Денежный поток ${core.formatMoney(cashflow.resultTotal)}`,
             `${cashflow.eventsCount} событ.`,
           ];
@@ -257,7 +259,7 @@
               <div class="analytics-day-date">${new Date(`${day.date}T00:00:00`).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}</div>
               <div class="analytics-day-money analytics-income">+${core.formatMoney(cashflow.incomeTotal)}</div>
               <div class="analytics-day-money analytics-expense">-${core.formatMoney(cashflow.expenseTotal)}</div>
-              <div class="muted-small analytics-day-meta">${result.label}: ${core.formatMoney(cashflow.resultTotal)}</div>
+              <div class="muted-small analytics-day-meta">Опер. траты: ${core.formatMoney(operationalExpense)}</div>
               <div class="muted-small">${cashflow.eventsCount} событ.</div>
             </button>
           `;
@@ -268,6 +270,7 @@
         <td class="analytics-week-total analytics-income">${core.formatMoney(weekCashflow.incomeTotal)}</td>
         <td class="analytics-week-total analytics-expense">${core.formatMoney(weekCashflow.expenseTotal)}</td>
         <td class="analytics-week-total">${weekCashflow.eventsCount}</td>
+        <td class="analytics-week-total analytics-expense">${core.formatMoney(Number(week?.expense_total || 0))}</td>
         <td class="analytics-week-total">
           <span class="analytics-kpi-chip analytics-kpi-chip-${weekResult.tone}">
             Денежный поток: ${core.formatMoney(weekCashflow.resultTotal)}

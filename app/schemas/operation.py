@@ -128,6 +128,7 @@ class MoneyFlowItemOut(BaseModel):
     counterparty_id: int | None = None
     counterparty_name: str | None = None
     asset_currency: str | None = None
+    asset_quantity: Decimal | None = None
     quote_currency: str | None = None
     trade_side: str | None = None
     has_fx_settlement: bool = False

@@ -74,8 +74,11 @@
         : formatMoney(snapshot.total);
     }
     if (metaNode) {
+      const hoveredShare = Number((hoveredItem?.display_share_pct ?? hoveredItem?.share_pct) ?? 0);
       metaNode.textContent = hoveredItem
-        ? `${Number(hoveredItem.share_pct || 0).toFixed(1)}% · ${Number(hoveredItem.operations_count || 0)} опер.`
+        ? snapshot.kind === "all"
+          ? `${String(hoveredItem.category_kind || "") === "income" ? "Доход" : "Расход"} · ${hoveredShare.toFixed(1)}% · ${Number(hoveredItem.operations_count || 0)} опер.`
+          : `${Number(hoveredItem.share_pct || 0).toFixed(1)}% · ${Number(hoveredItem.operations_count || 0)} опер.`
         : snapshot.kind === "all"
           ? `Доход ${formatMoney(snapshot.defaultIncomeTotal || 0)} · Расход ${formatMoney(snapshot.defaultExpenseTotal || 0)}`
         : snapshot.items.length

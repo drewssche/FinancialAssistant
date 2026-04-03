@@ -304,21 +304,35 @@
     if (sectionId === "dashboard") {
       const dashboardFeature = getDashboardFeature();
       const analyticsFeature = getAnalyticsFeature();
+      const uiSettings = typeof core?.getUiSettings === "function" ? core.getUiSettings() : null;
       const jobs = [];
       if (dashboardFeature.loadDashboard) {
-        jobs.push(dashboardFeature.loadDashboard());
+        jobs.push({
+          name: "dashboard",
+          critical: true,
+          promise: dashboardFeature.loadDashboard(),
+        });
       }
-      if (dashboardFeature.loadDashboardOperations) {
-        jobs.push(dashboardFeature.loadDashboardOperations());
-      }
-      if (analyticsFeature.loadDashboardAnalyticsPreview) {
-        jobs.push(analyticsFeature.loadDashboardAnalyticsPreview({ force: true }));
+      if (analyticsFeature.loadDashboardAnalyticsPreview && uiSettings?.showDashboardAnalytics !== false) {
+        jobs.push({
+          name: "dashboard-analytics-preview",
+          critical: false,
+          promise: analyticsFeature.loadDashboardAnalyticsPreview({ force: true }),
+        });
       }
       if (jobs.length) {
-        const results = await Promise.allSettled(jobs);
-        const hasFailure = results.some((item) => item.status === "rejected");
-        if (hasFailure) {
-          core.setStatus("Не удалось полностью обновить дашборд");
+        const results = await Promise.allSettled(jobs.map((job) => job.promise));
+        const criticalFailure = results.some((item, idx) => item.status === "rejected" && jobs[idx].critical);
+        const optionalFailures = results
+          .map((item, idx) => ({ item, job: jobs[idx] }))
+          .filter(({ item, job }) => item.status === "rejected" && !job.critical);
+        if (criticalFailure) {
+          core.setStatus("Не удалось обновить дашборд");
+        } else if (optionalFailures.length) {
+          console.warn("Optional dashboard jobs failed", optionalFailures.map(({ job, item }) => ({
+            name: job.name,
+            reason: item.status === "rejected" ? item.reason : null,
+          })));
         }
       }
     }

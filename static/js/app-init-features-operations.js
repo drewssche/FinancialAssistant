@@ -83,6 +83,15 @@
         return true;
       }
 
+      const deleteDebtSourceBtn = event.target.closest("button[data-delete-debt-source-id]");
+      if (deleteDebtSourceBtn) {
+        const debtId = Number(deleteDebtSourceBtn.dataset.deleteDebtSourceId || 0);
+        if (debtId > 0 && actions.deleteDebtFlow) {
+          actions.deleteDebtFlow(debtId);
+        }
+        return true;
+      }
+
       const editBtn = event.target.closest("button[data-edit-id]");
       if (editBtn) {
         const row = event.target.closest("tr");
@@ -106,6 +115,7 @@
         actions.openMoneyFlowSource({
           sourceKind: openSourceBtn.dataset.openSourceKind,
           sourceId: openSourceBtn.dataset.openSourceId,
+          mode: openSourceBtn.dataset.openSourceMode || "edit",
         }).catch((err) => core.setStatus(String(err)));
         return true;
       }
@@ -364,7 +374,7 @@
         return;
       }
 
-      const row = event.target.closest("tr[data-operation-row-id]");
+      const row = event.target.closest("tr[data-money-flow-row-id], tr[data-operation-row-id]");
       if (!row) {
         return;
       }
@@ -373,10 +383,13 @@
       }
       const item = JSON.parse(row.dataset.item || "{}");
       const operationId = Number(row.dataset.operationRowId || item?.id || 0);
-      if (row.dataset.moneyFlowRowId && operationId > 0 && actions.openMoneyFlowSource) {
+      const moneyFlowSource = String(row.dataset.moneyFlowSource || item?.source_kind || "");
+      const moneyFlowSourceId = Number(row.dataset.moneyFlowSourceId || item?.source_id || 0);
+      if (row.dataset.moneyFlowRowId && moneyFlowSourceId > 0 && actions.openMoneyFlowSource) {
         actions.openMoneyFlowSource({
-          sourceKind: "operation",
-          sourceId: operationId,
+          sourceKind: moneyFlowSource || "operation",
+          sourceId: moneyFlowSourceId,
+          mode: "edit",
         }).catch((err) => core.setStatus(String(err)));
         return;
       }

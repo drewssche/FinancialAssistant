@@ -556,11 +556,12 @@ class OperationService:
                     "subtitle": f"{'За' if trade.side == 'buy' else 'В'} {quote_currency} · курс {self._rate(Decimal(trade.unit_price))}",
                     "note": trade.note,
                     "asset_currency": str(trade.asset_currency).upper(),
+                    "asset_quantity": self._qty(Decimal(getattr(trade, "quantity", 0) or 0)),
                     "quote_currency": quote_currency,
                     "trade_side": str(trade.side),
                     "can_open_source": True,
                     "open_section": "currency",
-                    "open_label": "Сделка",
+                    "open_label": "Редактировать",
                 }
                 if self._matches_money_flow_query(item, q):
                     items.append(item)

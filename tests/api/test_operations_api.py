@@ -295,6 +295,75 @@ def test_operation_receipt_supports_linked_fx_settlement_without_double_count(cl
     assert money_flow_payload["items"][0]["settlement_asset_currency"] == "USD"
 
 
+def test_operation_receipt_with_linked_fx_settlement_preserves_mixed_receipt_categories_in_list(client: TestClient):
+    food = client.post("/api/v1/categories", json={"name": "Продукты", "kind": "expense"})
+    snacks = client.post("/api/v1/categories", json={"name": "Снэки", "kind": "expense"})
+    assert food.status_code == 200
+    assert snacks.status_code == 200
+
+    funding = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "50.00",
+            "unit_price": "3.20",
+            "fee": "0.00",
+            "trade_date": "2026-03-01",
+            "note": "FX funding for mixed receipt",
+        },
+    )
+    assert funding.status_code == 201, funding.text
+
+    created = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "category_id": food.json()["id"],
+            "amount": "21.30",
+            "operation_date": "2026-04-01",
+            "receipt_items": [
+                {
+                    "shop_name": "Евроопт",
+                    "name": "Перец желтый 1кг",
+                    "quantity": "0.18",
+                    "unit_price": "16.33",
+                    "category_id": food.json()["id"],
+                },
+                {
+                    "shop_name": "Евроопт",
+                    "name": "Сырок какао",
+                    "quantity": "4",
+                    "unit_price": "0.95",
+                    "category_id": snacks.json()["id"],
+                },
+            ],
+            "fx_settlement": {
+                "asset_currency": "USD",
+                "quantity": "7.42",
+                "quote_total": "21.30",
+                "unit_price": "2.870620",
+                "note": "USD card mixed receipt",
+            },
+        },
+    )
+    assert created.status_code == 201, created.text
+    payload = created.json()
+    assert [item["category_id"] for item in payload["receipt_items"]] == [food.json()["id"], snacks.json()["id"]]
+
+    listed = client.get(
+        "/api/v1/operations",
+        params={"page": 1, "page_size": 20, "date_from": "2026-04-01", "date_to": "2026-04-01"},
+    )
+    assert listed.status_code == 200, listed.text
+    listed_payload = listed.json()
+    assert listed_payload["total"] == 1
+    listed_item = listed_payload["items"][0]
+    assert listed_item["category_id"] == food.json()["id"]
+    assert [item["category_id"] for item in listed_item["receipt_items"]] == [food.json()["id"], snacks.json()["id"]]
+
+
 def test_operation_update_can_change_and_remove_linked_fx_settlement(client: TestClient):
     funding = client.post(
         "/api/v1/currency/trades",

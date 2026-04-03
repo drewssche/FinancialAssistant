@@ -23,6 +23,19 @@
       };
     });
     const visibleItems = listItems.filter((item) => item.is_visible_in_chart);
+    if (selectedKind === "all") {
+      const incomeVisibleTotal = visibleItems
+        .filter((item) => String(item.category_kind || "") === "income")
+        .reduce((acc, item) => acc + Number(item.total_amount || 0), 0);
+      const expenseVisibleTotal = visibleItems
+        .filter((item) => String(item.category_kind || "") !== "income")
+        .reduce((acc, item) => acc + Number(item.total_amount || 0), 0);
+      listItems.forEach((item) => {
+        const isIncome = String(item.category_kind || "") === "income";
+        const baseTotal = isIncome ? incomeVisibleTotal : expenseVisibleTotal;
+        item.display_share_pct = baseTotal > 0 ? (Number(item.total_amount || 0) / baseTotal) * 100 : 0;
+      });
+    }
     const chartTotal = visibleItems.reduce((acc, item) => acc + Number(item.total_amount || 0), 0);
     const totalOps = visibleItems.reduce((acc, item) => acc + Number(item.operations_count || 0), 0);
     const incomeTotal = Number(data.income_total || 0);
@@ -50,6 +63,19 @@
     const totalOps = items.reduce((acc, item) => acc + Number(item.operations_count || 0), 0);
     const selectedKind = data.category_breakdown_kind || state.dashboardCategoryKind || "expense";
     const selectedLevel = data.category_breakdown_level || state.dashboardBreakdownLevel || "category";
+    if (selectedKind === "all") {
+      const incomeTotalVisible = items
+        .filter((item) => String(item.category_kind || "") === "income")
+        .reduce((acc, item) => acc + Number(item.total_amount || 0), 0);
+      const expenseTotalVisible = items
+        .filter((item) => String(item.category_kind || "") !== "income")
+        .reduce((acc, item) => acc + Number(item.total_amount || 0), 0);
+      items.forEach((item) => {
+        const isIncome = String(item.category_kind || "") === "income";
+        const baseTotal = isIncome ? incomeTotalVisible : expenseTotalVisible;
+        item.display_share_pct = baseTotal > 0 ? (Number(item.total_amount || 0) / baseTotal) * 100 : 0;
+      });
+    }
     const incomeTotal = Number(data.income_total || 0);
     const expenseTotal = Number(data.expense_total || 0);
     return {

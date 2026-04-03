@@ -624,13 +624,6 @@
     font-size: 1.22rem;
   }
 
-  .analytics-category-breakdown-split {
-    grid-template-columns: 1fr;
-  }
-
-  .analytics-category-donut-mini {
-    max-width: 13rem;
-  }
 
   .analytics-trend-chart-wrap,
   .dashboard-analytics-chart-wrap {
