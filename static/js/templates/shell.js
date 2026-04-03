@@ -42,7 +42,11 @@
               <div id="userHandle">Telegram</div>
             </div>
             <button id="sidebarLogoutBtn" class="user-logout-icon-btn" type="button" title="Выйти" aria-label="Выйти">
-              <span class="user-logout-icon" aria-hidden="true">➜</span>
+              <svg class="user-logout-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>
+                <path d="M13 8l5 4-5 4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>
+                <path d="M18 12H9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
             </button>
           </div>
         </div>

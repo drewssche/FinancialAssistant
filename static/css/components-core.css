@@ -88,10 +88,10 @@
 }
 
 .user-logout-icon {
-  display: inline-block;
-  transform: rotate(135deg);
-  transform-origin: center;
-  line-height: 1;
+  width: 18px;
+  height: 18px;
+  display: block;
+  overflow: visible;
 }
 
 .user-logout-icon-btn:hover {
