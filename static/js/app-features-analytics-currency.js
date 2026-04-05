@@ -1,8 +1,18 @@
 (() => {
   const { state, el, core } = window.App;
   const shared = window.App.analyticsShared || {};
+  const pickerUtils = window.App.getRuntimeModule?.("picker-utils");
   const escapeHtml = shared.escapeHtml || ((value) => String(value ?? ""));
   const MULTI_SERIES_COLORS = ["#ff8a2b", "#6ea8ff", "#62d39a", "#f7c65b", "#d78cff", "#ff7c98"];
+  let analyticsCurrencyTradesObserver = null;
+
+  function getLoadingSkeletons() {
+    return window.App.getRuntimeModule?.("loading-skeletons") || {};
+  }
+
+  function getInlineRefreshState() {
+    return window.App.getRuntimeModule?.("inline-refresh-state") || {};
+  }
 
   function getTrackedCurrencies() {
     const raw = state.preferences?.data?.currency?.tracked_currencies;
@@ -48,9 +58,89 @@
     const days = daysMap[state.analyticsCurrencyPeriod] || 30;
     const end = new Date(`${today}T00:00:00`);
     const start = new Date(end);
+    if (state.analyticsCurrencyPeriodAnchor === "previous") {
+      end.setDate(end.getDate() - days);
+    }
     start.setDate(start.getDate() - (days - 1));
     const format = (value) => value.toISOString().slice(0, 10);
     return { dateFrom: format(start), dateTo: format(end) };
+  }
+
+  function closeAnalyticsCurrencyPeriodPopover() {
+    pickerUtils?.setPopoverOpen?.(el.analyticsCurrencyPeriodPopover, false, {
+      owners: [el.analyticsCurrencyPeriodTabs].filter(Boolean),
+    });
+  }
+
+  function getAnalyticsCurrencyQuickCopy(period) {
+    const labels = {
+      "7d": { current: "Текущие 7 дней", previous: "Предыдущие 7 дней" },
+      "30d": { current: "Текущие 30 дней", previous: "Предыдущие 30 дней" },
+      "90d": { current: "Текущие 3 месяца", previous: "Предыдущие 3 месяца" },
+      "365d": { current: "Текущие 12 месяцев", previous: "Предыдущие 12 месяцев" },
+    };
+    return labels[period] || { current: "Текущий период", previous: "Предыдущий период" };
+  }
+
+  function renderAnalyticsCurrencyPeriodOptions(period = state.analyticsCurrencyPeriod || "30d") {
+    if (!el.analyticsCurrencyPeriodOptions) {
+      return;
+    }
+    const currentAnchor = state.analyticsCurrencyPeriodAnchor === "previous" ? "previous" : "current";
+    const copy = getAnalyticsCurrencyQuickCopy(period);
+    const currentRange = (() => {
+      const prevAnchor = state.analyticsCurrencyPeriodAnchor;
+      state.analyticsCurrencyPeriodAnchor = "current";
+      const range = getHistoryRange();
+      state.analyticsCurrencyPeriodAnchor = prevAnchor;
+      return range;
+    })();
+    const previousRange = (() => {
+      const prevAnchor = state.analyticsCurrencyPeriodAnchor;
+      state.analyticsCurrencyPeriodAnchor = "previous";
+      const range = getHistoryRange();
+      state.analyticsCurrencyPeriodAnchor = prevAnchor;
+      return range;
+    })();
+    el.analyticsCurrencyPeriodOptions.innerHTML = [
+      `
+        <button class="btn btn-secondary settings-picker-option ${currentAnchor === "current" ? "active" : ""}" type="button" data-analytics-currency-quick-period="${period}" data-analytics-currency-quick-anchor="current">
+          ${copy.current}
+          <span class="muted-small">${core.formatPeriodLabel(currentRange.dateFrom, currentRange.dateTo)}</span>
+        </button>
+      `,
+      `
+        <button class="btn btn-secondary settings-picker-option ${currentAnchor === "previous" ? "active" : ""}" type="button" data-analytics-currency-quick-period="${period}" data-analytics-currency-quick-anchor="previous">
+          ${copy.previous}
+          <span class="muted-small">${core.formatPeriodLabel(previousRange.dateFrom, previousRange.dateTo)}</span>
+        </button>
+      `,
+      `
+        <button class="btn btn-secondary settings-picker-option" type="button" data-analytics-currency-quick-period="all_time" data-analytics-currency-quick-anchor="current">
+          Все время
+          <span class="muted-small">Полная история по валюте</span>
+        </button>
+      `,
+    ].join("");
+  }
+
+  function openAnalyticsCurrencyPeriodPopover(period, trigger) {
+    if (!pickerUtils?.setPopoverOpen || !["7d", "30d", "90d", "365d"].includes(period)) {
+      return;
+    }
+    renderAnalyticsCurrencyPeriodOptions(period);
+    pickerUtils.setPopoverOpen(el.analyticsCurrencyPeriodPopover, true, {
+      owners: [trigger || el.analyticsCurrencyPeriodTabs].filter(Boolean),
+      onClose: () => closeAnalyticsCurrencyPeriodPopover(),
+    });
+  }
+
+  function applyAnalyticsCurrencyPeriod(period, anchor = "current") {
+    state.analyticsCurrencyPeriod = period === "all_time" ? "all_time" : (["7d", "30d", "90d", "365d"].includes(period) ? period : "30d");
+    state.analyticsCurrencyPeriodAnchor = state.analyticsCurrencyPeriod === "all_time" ? "current" : (anchor === "previous" ? "previous" : "current");
+    syncCurrencyPeriodTabs();
+    closeAnalyticsCurrencyPeriodPopover();
+    loadAnalyticsCurrency({ force: true }).catch((err) => core.setStatus(String(err)));
   }
 
   function getResultPresentation(rawValue) {
@@ -131,10 +221,10 @@
     }
     if (el.analyticsCurrencyRangeLabel) {
       const periodLabels = {
-        "7d": "за 7 дней",
-        "30d": "за 30 дней",
-        "90d": "за 3 месяца",
-        "365d": "за 12 месяцев",
+        "7d": state.analyticsCurrencyPeriodAnchor === "previous" ? "за предыдущие 7 дней" : "за 7 дней",
+        "30d": state.analyticsCurrencyPeriodAnchor === "previous" ? "за предыдущие 30 дней" : "за 30 дней",
+        "90d": state.analyticsCurrencyPeriodAnchor === "previous" ? "за предыдущие 3 месяца" : "за 3 месяца",
+        "365d": state.analyticsCurrencyPeriodAnchor === "previous" ? "за предыдущие 12 месяцев" : "за 12 месяцев",
         all_time: "за все время",
       };
       el.analyticsCurrencyRangeLabel.textContent = state.analyticsCurrencyFilter === "all"
@@ -234,6 +324,9 @@
         ? `Сделок по ${core.formatCurrencyLabel(state.analyticsCurrencyFilter)} пока нет`
         : "Сделок по отслеживаемым валютам пока нет";
       el.analyticsCurrencyTradesBody.innerHTML = `<tr><td colspan="6" class="muted-small">${emptyLabel}</td></tr>`;
+      if (el.analyticsCurrencyTradesInfiniteSentinel) {
+        el.analyticsCurrencyTradesInfiniteSentinel.classList.add("hidden");
+      }
       return;
     }
     el.analyticsCurrencyTradesBody.innerHTML = trades.map((item) => `
@@ -246,6 +339,89 @@
         <td>${core.escapeHtml ? core.escapeHtml(item.note || "") : (item.note || "")}</td>
       </tr>
     `).join("");
+    if (el.analyticsCurrencyTradesInfiniteSentinel) {
+      el.analyticsCurrencyTradesInfiniteSentinel.classList.toggle("hidden", !state.analyticsCurrencyTradesHasMore);
+    }
+  }
+
+  function appendUniqueAnalyticsTrades(items) {
+    const existing = new Set((state.analyticsCurrencyTradesItems || []).map((item) => Number(item?.id || 0)).filter((id) => id > 0));
+    const nextItems = Array.isArray(state.analyticsCurrencyTradesItems) ? [...state.analyticsCurrencyTradesItems] : [];
+    for (const item of Array.isArray(items) ? items : []) {
+      const tradeId = Number(item?.id || 0);
+      if (tradeId > 0 && existing.has(tradeId)) {
+        continue;
+      }
+      if (tradeId > 0) {
+        existing.add(tradeId);
+      }
+      nextItems.push(item);
+    }
+    state.analyticsCurrencyTradesItems = nextItems;
+  }
+
+  async function loadAnalyticsCurrencyTradesPage(page, options = {}) {
+    const reset = options.reset === true;
+    if (state.analyticsCurrencyTradesLoading && !reset) {
+      return;
+    }
+    state.analyticsCurrencyTradesLoading = true;
+    try {
+      const params = new URLSearchParams({
+        page: String(page),
+        page_size: String(state.analyticsCurrencyTradesPageSize || 20),
+      });
+      if (state.analyticsCurrencyFilter && state.analyticsCurrencyFilter !== "all") {
+        params.set("currency", state.analyticsCurrencyFilter);
+      }
+      const data = await core.requestJson(`/api/v1/currency/trades?${params.toString()}`, {
+        headers: core.authHeaders(),
+      });
+      if (reset) {
+        state.analyticsCurrencyTradesItems = Array.isArray(data.items) ? data.items : [];
+      } else {
+        appendUniqueAnalyticsTrades(data.items);
+      }
+      state.analyticsCurrencyTradesPage = Number(data.page || page);
+      state.analyticsCurrencyTradesTotal = Number(data.total || 0);
+      state.analyticsCurrencyTradesHasMore = state.analyticsCurrencyTradesItems.length < state.analyticsCurrencyTradesTotal;
+      renderTrades({ recent_trades: state.analyticsCurrencyTradesItems });
+    } finally {
+      state.analyticsCurrencyTradesLoading = false;
+    }
+  }
+
+  async function loadMoreAnalyticsCurrencyTrades() {
+    if (!state.analyticsCurrencyTradesHasMore || state.analyticsCurrencyTradesLoading) {
+      return;
+    }
+    await loadAnalyticsCurrencyTradesPage(Number(state.analyticsCurrencyTradesPage || 1) + 1);
+  }
+
+  function bindAnalyticsCurrencyTradesInfiniteScroll() {
+    if (!el.analyticsCurrencyTradesInfiniteSentinel || !("IntersectionObserver" in window)) {
+      return;
+    }
+    if (analyticsCurrencyTradesObserver) {
+      analyticsCurrencyTradesObserver.disconnect();
+    }
+    analyticsCurrencyTradesObserver = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry?.isIntersecting) {
+          return;
+        }
+        if (state.activeSection !== "analytics" || state.analyticsTab !== "currency") {
+          return;
+        }
+        if (!state.analyticsCurrencyTradesHasMore || state.analyticsCurrencyTradesLoading) {
+          return;
+        }
+        loadMoreAnalyticsCurrencyTrades().catch((err) => core.setStatus(String(err)));
+      },
+      { root: null, rootMargin: "240px 0px", threshold: 0 },
+    );
+    analyticsCurrencyTradesObserver.observe(el.analyticsCurrencyTradesInfiniteSentinel);
   }
 
   function renderEmptyChart(message) {
@@ -617,42 +793,60 @@
   }
 
   async function loadAnalyticsCurrency(options = {}) {
+    const skeletons = getLoadingSkeletons();
+    const refreshState = getInlineRefreshState();
+    const coldLoad = !state.analyticsCurrencyHydrated && state.activeSection === "analytics" && state.analyticsTab === "currency";
+    if (coldLoad) {
+      skeletons.renderAnalyticsCurrencySkeleton?.();
+    }
+    const shouldRefreshInline = !coldLoad && state.analyticsCurrencyHydrated && state.activeSection === "analytics" && state.analyticsTab === "currency";
+    if (shouldRefreshInline) {
+      refreshState.begin?.(el.analyticsCurrencyPanel, "Обновляется");
+    }
     syncCurrencyTabs();
     syncCurrencyPeriodTabs();
-    const params = new URLSearchParams({ trades_limit: "100" });
-    if (state.analyticsCurrencyFilter && state.analyticsCurrencyFilter !== "all") {
-      params.set("currency", state.analyticsCurrencyFilter);
+    try {
+      const params = new URLSearchParams({ trades_limit: "1" });
+      if (state.analyticsCurrencyFilter && state.analyticsCurrencyFilter !== "all") {
+        params.set("currency", state.analyticsCurrencyFilter);
+      }
+      const overview = await core.requestJson(`/api/v1/currency/overview?${params.toString()}`, {
+        headers: core.authHeaders(),
+      });
+      renderSummary(overview);
+      await loadAnalyticsCurrencyTradesPage(1, { reset: true });
+      if (state.analyticsCurrencyFilter === "all") {
+        const range = getHistoryRange();
+        const tracked = getTrackedCurrencies();
+        const histories = await Promise.all(tracked.map(async (currency, index) => ({
+          currency,
+          color: getSeriesColor(index),
+          points: normalizeHistoryPoints(await fetchCurrencyHistory(currency, range), range.dateTo),
+        })));
+        const seriesList = histories.map((item) => ({
+          currency: item.currency,
+          color: item.color,
+          points: Array.isArray(item.points) ? item.points : [],
+          pointsByDate: new Map((Array.isArray(item.points) ? item.points : []).map((point) => [point.rate_date, point])),
+        }));
+        renderMultiCurrencyChart(seriesList);
+      } else {
+        const range = getHistoryRange();
+        const history = normalizeHistoryPoints(await fetchCurrencyHistory(state.analyticsCurrencyFilter, range), range.dateTo);
+        renderChart(history);
+      }
+      skeletons.clearAnalyticsCurrencySkeletonState?.();
+      state.analyticsCurrencyHydrated = true;
+      if (options.force !== false) {
+        syncCurrencyTabs();
+      }
+      bindAnalyticsCurrencyTradesInfiniteScroll();
+      return overview;
+    } finally {
+      if (shouldRefreshInline) {
+        refreshState.end?.(el.analyticsCurrencyPanel);
+      }
     }
-    const overview = await core.requestJson(`/api/v1/currency/overview?${params.toString()}`, {
-      headers: core.authHeaders(),
-    });
-    renderSummary(overview);
-    renderTrades(overview);
-    if (state.analyticsCurrencyFilter === "all") {
-      const range = getHistoryRange();
-      const tracked = getTrackedCurrencies();
-      const histories = await Promise.all(tracked.map(async (currency, index) => ({
-        currency,
-        color: getSeriesColor(index),
-        points: normalizeHistoryPoints(await fetchCurrencyHistory(currency, range), range.dateTo),
-      })));
-      const seriesList = histories.map((item) => ({
-        currency: item.currency,
-        color: item.color,
-        points: Array.isArray(item.points) ? item.points : [],
-        pointsByDate: new Map((Array.isArray(item.points) ? item.points : []).map((point) => [point.rate_date, point])),
-      }));
-      renderMultiCurrencyChart(seriesList);
-    } else {
-      const range = getHistoryRange();
-      const history = normalizeHistoryPoints(await fetchCurrencyHistory(state.analyticsCurrencyFilter, range), range.dateTo);
-      renderChart(history);
-    }
-    state.analyticsCurrencyHydrated = true;
-    if (options.force !== false) {
-      syncCurrencyTabs();
-    }
-    return overview;
   }
 
   function bind() {
@@ -673,9 +867,24 @@
         if (!btn) {
           return;
         }
-        state.analyticsCurrencyPeriod = btn.dataset.analyticsCurrencyPeriod || "30d";
-        syncCurrencyPeriodTabs();
-        loadAnalyticsCurrency({ force: true }).catch((err) => core.setStatus(String(err)));
+        const period = String(btn.dataset.analyticsCurrencyPeriod || "30d");
+        if (period === state.analyticsCurrencyPeriod && ["7d", "30d", "90d", "365d"].includes(period)) {
+          openAnalyticsCurrencyPeriodPopover(period, btn);
+          return;
+        }
+        applyAnalyticsCurrencyPeriod(period, "current");
+      });
+    }
+    if (el.analyticsCurrencyPeriodOptions) {
+      el.analyticsCurrencyPeriodOptions.addEventListener("click", (event) => {
+        const btn = event.target.closest("[data-analytics-currency-quick-period][data-analytics-currency-quick-anchor]");
+        if (!btn) {
+          return;
+        }
+        applyAnalyticsCurrencyPeriod(
+          String(btn.dataset.analyticsCurrencyQuickPeriod || "30d"),
+          String(btn.dataset.analyticsCurrencyQuickAnchor || "current"),
+        );
       });
     }
     if (el.analyticsCurrencyBackfillBtn) {
@@ -696,6 +905,7 @@
 
   window.App.registerRuntimeModule?.("analytics-currency-module", {
     loadAnalyticsCurrency,
+    loadMoreAnalyticsCurrencyTrades,
     syncCurrencyTabs,
   });
 })();

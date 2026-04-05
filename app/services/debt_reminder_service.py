@@ -250,13 +250,14 @@ class DebtReminderService:
         return self._get_user_reminder_config_from_prefs(user_id=user_id, prefs=prefs)
 
     def _get_user_reminder_config_from_prefs(self, *, user_id: int, prefs: dict) -> dict:
+        debts_prefs = prefs.get("debts") if isinstance(prefs.get("debts"), dict) else {}
         plans_prefs = prefs.get("plans") if isinstance(prefs.get("plans"), dict) else {}
         ui_prefs = prefs.get("ui") if isinstance(prefs.get("ui"), dict) else {}
-        enabled = plans_prefs.get("reminders_enabled", True) is not False
+        enabled = debts_prefs.get("reminders_enabled", plans_prefs.get("reminders_enabled", True)) is not False
         timezone_name = ui_prefs.get("timezone", "auto")
         browser_timezone = ui_prefs.get("browser_timezone")
         user_tz = self._resolve_timezone(timezone_name, browser_timezone)
-        reminder_time = self._parse_reminder_time(plans_prefs.get("reminder_time"))
+        reminder_time = self._parse_reminder_time(debts_prefs.get("reminder_time", plans_prefs.get("reminder_time")))
         return {
             "user_id": user_id,
             "enabled": enabled,

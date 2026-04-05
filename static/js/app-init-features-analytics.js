@@ -2,7 +2,209 @@
   const { state, el, core, actions } = window.App;
   const hoverCoordinator = getAnalyticsHoverCoordinator();
   const coordinator = getAnalyticsUiCoordinator();
+  const pickerUtils = getPickerUtils();
   let bound = false;
+
+  function parseIsoDate(value) {
+    const raw = String(value || "").trim();
+    if (!raw) {
+      return null;
+    }
+    const date = new Date(`${raw}T00:00:00Z`);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  function toIsoDate(date) {
+    return date instanceof Date && !Number.isNaN(date.getTime()) ? date.toISOString().slice(0, 10) : "";
+  }
+
+  function addDaysIso(value, deltaDays) {
+    const parsed = parseIsoDate(value);
+    if (!parsed) {
+      return "";
+    }
+    parsed.setUTCDate(parsed.getUTCDate() + deltaDays);
+    return toIsoDate(parsed);
+  }
+
+  function previousRelativeBounds(period) {
+    const current = core.getPeriodBounds(period);
+    if (period === "day") {
+      const dateFrom = addDaysIso(current.dateFrom, -1);
+      return { dateFrom, dateTo: dateFrom };
+    }
+    if (period === "week") {
+      return {
+        dateFrom: addDaysIso(current.dateFrom, -7),
+        dateTo: addDaysIso(current.dateTo, -7),
+      };
+    }
+    if (period === "month") {
+      const currentStart = parseIsoDate(current.dateFrom);
+      if (!currentStart) {
+        return current;
+      }
+      const prevMonthStart = new Date(Date.UTC(currentStart.getUTCFullYear(), currentStart.getUTCMonth() - 1, 1));
+      const prevMonthEnd = new Date(Date.UTC(currentStart.getUTCFullYear(), currentStart.getUTCMonth(), 0));
+      return { dateFrom: toIsoDate(prevMonthStart), dateTo: toIsoDate(prevMonthEnd) };
+    }
+    if (period === "year") {
+      const currentStart = parseIsoDate(current.dateFrom);
+      if (!currentStart) {
+        return current;
+      }
+      const prevYear = currentStart.getUTCFullYear() - 1;
+      return {
+        dateFrom: `${prevYear}-01-01`,
+        dateTo: `${prevYear}-12-31`,
+      };
+    }
+    return current;
+  }
+
+  function getQuickPeriodCopy(period) {
+    if (period === "day") {
+      return { current: "Сегодня", previous: "Вчера" };
+    }
+    if (period === "week") {
+      return { current: "Эта неделя", previous: "Прошлая неделя" };
+    }
+    if (period === "month") {
+      return { current: "Этот месяц", previous: "Прошлый месяц" };
+    }
+    if (period === "year") {
+      return { current: "Этот год", previous: "Прошлый год" };
+    }
+    return { current: "Текущий период", previous: "Предыдущий период" };
+  }
+
+  function closeQuickPeriodPopovers() {
+    pickerUtils.setPopoverOpen?.(el.dashboardAnalyticsPeriodPopover, false, {
+      owners: [el.dashboardAnalyticsPeriodTabs].filter(Boolean),
+    });
+    pickerUtils.setPopoverOpen?.(el.analyticsGlobalPeriodPopover, false, {
+      owners: [el.analyticsGlobalPeriodTabs].filter(Boolean),
+    });
+  }
+
+  function renderQuickPeriodOptions(scope, period) {
+    const optionsHost = scope === "dashboard" ? el.dashboardAnalyticsPeriodOptions : el.analyticsGlobalPeriodOptions;
+    if (!optionsHost) {
+      return;
+    }
+    const copy = getQuickPeriodCopy(period);
+    const currentBounds = core.getPeriodBounds(period);
+    const previousBounds = previousRelativeBounds(period);
+    optionsHost.innerHTML = [
+      `
+        <button class="btn btn-secondary settings-picker-option active" type="button" data-quick-period-scope="${scope}" data-quick-period="${period}" data-quick-period-action="current">
+          ${copy.current}
+          <span class="muted-small">${core.formatPeriodLabel(currentBounds.dateFrom, currentBounds.dateTo)}</span>
+        </button>
+      `,
+      `
+        <button class="btn btn-secondary settings-picker-option" type="button" data-quick-period-scope="${scope}" data-quick-period="${period}" data-quick-period-action="previous">
+          ${copy.previous}
+          <span class="muted-small">${core.formatPeriodLabel(previousBounds.dateFrom, previousBounds.dateTo)}</span>
+        </button>
+      `,
+      `
+        <button class="btn btn-secondary settings-picker-option" type="button" data-quick-period-scope="${scope}" data-quick-period="${period}" data-quick-period-action="custom">
+          Выбрать диапазон
+          <span class="muted-small">Открыть ручной диапазон дат</span>
+        </button>
+      `,
+    ].join("");
+  }
+
+  function openQuickPeriodPopover(scope, period, trigger) {
+    const popover = scope === "dashboard" ? el.dashboardAnalyticsPeriodPopover : el.analyticsGlobalPeriodPopover;
+    const tabs = scope === "dashboard" ? el.dashboardAnalyticsPeriodTabs : el.analyticsGlobalPeriodTabs;
+    if (!popover || !pickerUtils.setPopoverOpen) {
+      return;
+    }
+    renderQuickPeriodOptions(scope, period);
+    const dashboardPopover = el.dashboardAnalyticsPeriodPopover;
+    const analyticsPopover = el.analyticsGlobalPeriodPopover;
+    if (dashboardPopover && dashboardPopover !== popover) {
+      pickerUtils.setPopoverOpen(dashboardPopover, false, { owners: [el.dashboardAnalyticsPeriodTabs].filter(Boolean) });
+    }
+    if (analyticsPopover && analyticsPopover !== popover) {
+      pickerUtils.setPopoverOpen(analyticsPopover, false, { owners: [el.analyticsGlobalPeriodTabs].filter(Boolean) });
+    }
+    pickerUtils.setPopoverOpen(popover, true, {
+      owners: [trigger || tabs].filter(Boolean),
+      onClose: () => closeQuickPeriodPopovers(),
+    });
+  }
+
+  function applyDashboardQuickPeriod(action, period) {
+    closeQuickPeriodPopovers();
+    if (action === "custom") {
+      state.dashboardAnalyticsPendingCustom = true;
+      const baseBounds = core.getPeriodBounds(period);
+      core.syncDateFieldValue(el.customDateFrom, state.dashboardAnalyticsDateFrom || baseBounds.dateFrom || "");
+      core.syncDateFieldValue(el.customDateTo, state.dashboardAnalyticsDateTo || baseBounds.dateTo || "");
+      actions.openPeriodCustomModal();
+      return;
+    }
+    const bounds = action === "previous" ? previousRelativeBounds(period) : core.getPeriodBounds(period);
+    coordinator.runPersistedAction({
+      errorPrefix: "Ошибка загрузки аналитики дашборда",
+      action: async () => {
+        if (action === "previous") {
+          state.dashboardAnalyticsPeriod = "custom";
+          state.dashboardAnalyticsDateFrom = bounds.dateFrom;
+          state.dashboardAnalyticsDateTo = bounds.dateTo;
+          core.syncSegmentedActive(el.dashboardAnalyticsPeriodTabs, "dashboard-analytics-period", "custom");
+        } else {
+          state.dashboardAnalyticsPeriod = period;
+          state.dashboardAnalyticsDateFrom = "";
+          state.dashboardAnalyticsDateTo = "";
+          core.syncSegmentedActive(el.dashboardAnalyticsPeriodTabs, "dashboard-analytics-period", period);
+        }
+        await actions.loadDashboardAnalyticsPreview?.({ force: true });
+      },
+    });
+  }
+
+  function applyAnalyticsGlobalQuickPeriod(action, period) {
+    closeQuickPeriodPopovers();
+    if (action === "custom") {
+      state.analyticsGlobalPendingCustom = true;
+      const baseBounds = core.getPeriodBounds(period);
+      core.syncDateFieldValue(el.customDateFrom, state.analyticsGlobalDateFrom || baseBounds.dateFrom || "");
+      core.syncDateFieldValue(el.customDateTo, state.analyticsGlobalDateTo || baseBounds.dateTo || "");
+      actions.openPeriodCustomModal();
+      return;
+    }
+    const bounds = action === "previous" ? previousRelativeBounds(period) : core.getPeriodBounds(period);
+    coordinator.runPersistedAction({
+      errorPrefix: "Ошибка загрузки аналитики",
+      action: async () => {
+        if (action === "previous") {
+          state.analyticsGlobalPeriod = "custom";
+          state.analyticsGlobalDateFrom = bounds.dateFrom;
+          state.analyticsGlobalDateTo = bounds.dateTo;
+          core.syncSegmentedActive(el.analyticsGlobalPeriodTabs, "analytics-global-period", "custom");
+        } else {
+          state.analyticsGlobalPeriod = period;
+          state.analyticsGlobalDateFrom = "";
+          state.analyticsGlobalDateTo = "";
+          core.syncSegmentedActive(el.analyticsGlobalPeriodTabs, "analytics-global-period", period);
+        }
+        if (((action === "current" ? period : "custom") === "year" || (action === "current" ? period : state.analyticsGlobalPeriod) === "all_time") && state.analyticsGranularity === "day") {
+          state.analyticsGranularity = "week";
+          core.syncSegmentedActive(el.analyticsGranularityTabs, "analytics-granularity", state.analyticsGranularity);
+        }
+        if (action === "current" && (period === "year" || period === "all_time") && state.analyticsGranularity === "day") {
+          state.analyticsGranularity = "week";
+          core.syncSegmentedActive(el.analyticsGranularityTabs, "analytics-granularity", state.analyticsGranularity);
+        }
+        await actions.loadAnalyticsSection?.({ force: true });
+      },
+    });
+  }
 
   function bindAnalyticsFeatureHandlers() {
     if (bound) {
@@ -61,6 +263,10 @@
           return;
         }
         const selected = btn.dataset.analyticsGlobalPeriod;
+        if (selected === state.analyticsGlobalPeriod && ["week", "month", "year"].includes(selected)) {
+          openQuickPeriodPopover("analytics", selected, btn);
+          return;
+        }
         if (selected === "custom") {
           state.analyticsGlobalPendingCustom = true;
           core.syncDateFieldValue(el.customDateFrom, state.analyticsGlobalDateFrom || "");
@@ -97,6 +303,10 @@
           return;
         }
         const selected = btn.dataset.dashboardAnalyticsPeriod;
+        if (selected === state.dashboardAnalyticsPeriod && ["day", "week", "month", "year"].includes(selected)) {
+          openQuickPeriodPopover("dashboard", selected, btn);
+          return;
+        }
         if (selected === "custom") {
           state.dashboardAnalyticsPendingCustom = true;
           core.syncDateFieldValue(el.customDateFrom, state.dashboardAnalyticsDateFrom || "");
@@ -120,6 +330,30 @@
           errorPrefix: "Ошибка загрузки аналитики дашборда",
           action: () => actions.loadDashboardAnalyticsPreview({ force: true }),
         });
+      });
+    }
+    if (el.dashboardAnalyticsPeriodOptions) {
+      el.dashboardAnalyticsPeriodOptions.addEventListener("click", (event) => {
+        const btn = event.target.closest("[data-quick-period-scope='dashboard'][data-quick-period-action]");
+        if (!btn) {
+          return;
+        }
+        applyDashboardQuickPeriod(
+          String(btn.dataset.quickPeriodAction || ""),
+          String(btn.dataset.quickPeriod || ""),
+        );
+      });
+    }
+    if (el.analyticsGlobalPeriodOptions) {
+      el.analyticsGlobalPeriodOptions.addEventListener("click", (event) => {
+        const btn = event.target.closest("[data-quick-period-scope='analytics'][data-quick-period-action]");
+        if (!btn) {
+          return;
+        }
+        applyAnalyticsGlobalQuickPeriod(
+          String(btn.dataset.quickPeriodAction || ""),
+          String(btn.dataset.quickPeriod || ""),
+        );
       });
     }
     if (el.dashboardCategoryKindTabs && actions.loadDashboardAnalyticsPreview) {
@@ -422,6 +656,10 @@ function getAnalyticsUiCoordinator() {
       },
     }
   );
+}
+
+function getPickerUtils() {
+  return window.App.getRuntimeModule?.("picker-utils") || {};
 }
 
 function getAnalyticsHoverCoordinator() {

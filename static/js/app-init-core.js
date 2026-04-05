@@ -486,6 +486,18 @@
         getSessionFeature().savePreferencesDebounced?.(300);
       });
     }
+    if (el.debtsRemindersToggle) {
+      el.debtsRemindersToggle.addEventListener("change", () => {
+        const sessionFeature = getSessionFeature();
+        sessionFeature.previewInterfaceSettingsUi?.();
+        sessionFeature.savePreferencesDebounced?.(300);
+      });
+    }
+    if (el.debtsReminderTimeInput) {
+      el.debtsReminderTimeInput.addEventListener("change", () => {
+        getSessionFeature().savePreferencesDebounced?.(300);
+      });
+    }
     if (el.dashboardOperationsLimitSelect) {
       el.dashboardOperationsLimitSelect.addEventListener("change", () => {
         const sessionFeature = getSessionFeature();
@@ -604,7 +616,12 @@
         if (!btn) {
           return;
         }
-        getPlansFeature().setDashboardPlansPeriod?.(btn.dataset.dashboardPlansPeriod || "").catch((err) => core.setStatus(String(err)));
+        const period = String(btn.dataset.dashboardPlansPeriod || "");
+        if (period === state.dashboardPlansPeriod && ["week", "month"].includes(period)) {
+          getPlansFeature().openDashboardPlansPeriodPopover?.(period, btn);
+          return;
+        }
+        getPlansFeature().setDashboardPlansPeriod?.(period, "current").catch((err) => core.setStatus(String(err)));
       });
     }
     if (el.planScheduleModeSwitch && getPlansFeature().syncPlanRecurrenceUi) {

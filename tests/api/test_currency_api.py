@@ -433,6 +433,87 @@ def test_currency_overview_tracks_buy_and_sell_kpi_totals(client: TestClient):
     assert payload["sell_average_rate"] == "3.500000"
 
 
+def test_currency_trades_endpoint_returns_paginated_items_in_desc_order(client: TestClient):
+    for index in range(25):
+        created = client.post(
+            "/api/v1/currency/trades",
+            json={
+                "side": "buy",
+                "asset_currency": "USD",
+                "quote_currency": "BYN",
+                "quantity": str(index + 1),
+                "unit_price": "3.10",
+                "fee": "0",
+                "trade_date": f"2026-03-{index + 1:02d}",
+                "note": f"trade-{index + 1}",
+            },
+        )
+        assert created.status_code == 201, created.text
+
+    response = client.get("/api/v1/currency/trades", params={"page": 1, "page_size": 20})
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["page"] == 1
+    assert payload["page_size"] == 20
+    assert payload["total"] == 25
+    assert len(payload["items"]) == 20
+    assert payload["items"][0]["trade_date"] == "2026-03-25"
+    assert payload["items"][0]["note"] == "trade-25"
+    assert payload["items"][-1]["trade_date"] == "2026-03-06"
+    assert payload["items"][-1]["note"] == "trade-6"
+
+    page_two = client.get("/api/v1/currency/trades", params={"page": 2, "page_size": 20})
+    assert page_two.status_code == 200, page_two.text
+    page_two_payload = page_two.json()
+    assert page_two_payload["page"] == 2
+    assert page_two_payload["page_size"] == 20
+    assert page_two_payload["total"] == 25
+    assert len(page_two_payload["items"]) == 5
+    assert page_two_payload["items"][0]["trade_date"] == "2026-03-05"
+    assert page_two_payload["items"][0]["note"] == "trade-5"
+    assert page_two_payload["items"][-1]["trade_date"] == "2026-03-01"
+    assert page_two_payload["items"][-1]["note"] == "trade-1"
+
+
+def test_currency_trades_endpoint_applies_currency_filter(client: TestClient):
+    usd_trade = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "10",
+            "unit_price": "3.10",
+            "fee": "0",
+            "trade_date": "2026-03-01",
+            "note": "usd-trade",
+        },
+    )
+    assert usd_trade.status_code == 201, usd_trade.text
+    eur_trade = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "EUR",
+            "quote_currency": "BYN",
+            "quantity": "20",
+            "unit_price": "3.45",
+            "fee": "0",
+            "trade_date": "2026-03-02",
+            "note": "eur-trade",
+        },
+    )
+    assert eur_trade.status_code == 201, eur_trade.text
+
+    response = client.get("/api/v1/currency/trades", params={"currency": "USD", "page": 1, "page_size": 20})
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["total"] == 1
+    assert len(payload["items"]) == 1
+    assert payload["items"][0]["asset_currency"] == "USD"
+    assert payload["items"][0]["note"] == "usd-trade"
+
+
 def test_currency_trade_update_changes_trade_and_preserves_history(client: TestClient):
     created = client.post(
         "/api/v1/currency/trades",

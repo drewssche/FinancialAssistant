@@ -23,14 +23,17 @@ class PreferencesService:
         self.db.commit()
         self.db.refresh(item)
         plans_prefs = data.get("plans") if isinstance(data.get("plans"), dict) else {}
+        debts_prefs = data.get("debts") if isinstance(data.get("debts"), dict) else {}
         ui_prefs = data.get("ui") if isinstance(data.get("ui"), dict) else {}
         log_background_job_event(
             "preferences",
             "preferences_updated",
             user_id=user_id,
             preferences_version=preferences_version,
-            reminders_enabled=plans_prefs.get("reminders_enabled", True),
-            reminder_time=plans_prefs.get("reminder_time", "09:00"),
+            plan_reminders_enabled=plans_prefs.get("reminders_enabled", True),
+            plan_reminder_time=plans_prefs.get("reminder_time", "09:00"),
+            debt_reminders_enabled=debts_prefs.get("reminders_enabled", plans_prefs.get("reminders_enabled", True)),
+            debt_reminder_time=debts_prefs.get("reminder_time", plans_prefs.get("reminder_time", "09:00")),
             timezone=ui_prefs.get("timezone", "auto"),
         )
         return item

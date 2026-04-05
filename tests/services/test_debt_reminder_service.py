@@ -29,7 +29,11 @@ def db_session():
             UserPreference(
                 user_id=1,
                 preferences_version=1,
-                data={"plans": {"reminders_enabled": True, "reminder_time": "09:00"}, "ui": {"timezone": "UTC"}},
+                data={
+                    "plans": {"reminders_enabled": True, "reminder_time": "09:00"},
+                    "debts": {"reminders_enabled": True, "reminder_time": "09:00"},
+                    "ui": {"timezone": "UTC"},
+                },
             )
         )
         db.commit()
@@ -209,6 +213,11 @@ def test_overdue_delivery_uses_current_outstanding_total_after_partial_repayment
 
 def test_sync_debt_job_cancels_overdue_jobs_when_due_date_moves_to_future(db_session: Session, monkeypatch):
     debt_service = DebtService(db_session)
+    monkeypatch.setattr(
+        debt_service.debt_reminder_service,
+        "_now_utc",
+        lambda: datetime(2026, 3, 23, 12, 0, tzinfo=timezone.utc),
+    )
     debt, _ = debt_service.create_debt(
         user_id=1,
         counterparty="Анна",
@@ -236,3 +245,34 @@ def test_sync_debt_job_cancels_overdue_jobs_when_due_date_moves_to_future(db_ses
     jobs = list(db_session.scalars(select(DebtReminderJob).order_by(DebtReminderJob.id.asc())))
     assert any(job.event_type == "overdue" and job.status == "canceled" for job in jobs)
     assert any(job.event_type == "due_soon" and job.status == "pending" for job in jobs)
+
+
+def test_debt_reminder_service_falls_back_to_legacy_plan_preferences(db_session: Session, monkeypatch):
+    preference = db_session.scalar(select(UserPreference).where(UserPreference.user_id == 1))
+    preference.data = {
+        "plans": {"reminders_enabled": False, "reminder_time": "08:15"},
+        "ui": {"timezone": "UTC"},
+    }
+    db_session.commit()
+
+    debt, _ = DebtService(db_session).create_debt(
+        user_id=1,
+        counterparty="Легаси",
+        direction="borrow",
+        principal=Decimal("50.00"),
+        start_date=date(2026, 3, 20),
+        due_date=date(2026, 3, 24),
+    )
+    db_session.query(DebtReminderJob).delete()
+    db_session.commit()
+    service = DebtReminderService(db_session)
+    monkeypatch.setattr(
+        service,
+        "_now_utc",
+        lambda: datetime(2026, 3, 23, 8, 0, tzinfo=timezone.utc),
+    )
+
+    service.sync_debt_job(user_id=1, debt_id=int(debt.id))
+
+    jobs = list(db_session.scalars(select(DebtReminderJob)))
+    assert jobs == []

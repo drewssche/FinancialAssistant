@@ -134,6 +134,9 @@
                 <button class="segmented-btn" data-currency-performance-period="365d" type="button">12 месяцев</button>
                 <button class="segmented-btn" data-currency-performance-period="all_time" type="button">Все время</button>
               </div>
+              <div id="currencyPerformancePeriodPopover" class="app-popover hidden" role="dialog" aria-label="Быстрый выбор периода графика валют">
+                <div id="currencyPerformancePeriodOptions" class="settings-picker-options"></div>
+              </div>
               <div id="currencyPerformanceRangeLabel" class="subtitle"></div>
             </div>
             <div class="analytics-trend-chart-wrap">
@@ -191,6 +194,7 @@
                 <tbody id="currencyTradesBody"></tbody>
               </table>
             </div>
+            <div id="currencyTradesInfiniteSentinel" class="infinite-sentinel" aria-hidden="true"></div>
           </section>
         </section>
 
@@ -349,6 +353,14 @@
                 <label class="field">
                   <span>Время уведомления по планам</span>
                   <input id="plansReminderTimeInput" type="time" value="09:00" />
+                </label>
+                <label class="settings-switch-row">
+                  <input id="debtsRemindersToggle" type="checkbox" checked />
+                  <span>Напоминать о долгах в Telegram</span>
+                </label>
+                <label class="field">
+                  <span>Время уведомления по долгам</span>
+                  <input id="debtsReminderTimeInput" type="time" value="09:00" />
                 </label>
                 <label class="settings-switch-row">
                   <input id="currencyDigestToggle" type="checkbox" />

@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import desc, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
 from app.db.models import AuthIdentity, FxRateSnapshot, FxTrade, UserPreference
@@ -35,6 +35,30 @@ class CurrencyRepository:
             stmt = stmt.where(FxTrade.asset_currency == asset_currency)
         stmt = stmt.order_by(FxTrade.trade_date.desc(), FxTrade.id.desc()).limit(limit)
         return list(self.db.scalars(stmt))
+
+    def list_trades_paginated(
+        self,
+        *,
+        user_id: int,
+        asset_currency: str | None = None,
+        page: int,
+        page_size: int,
+    ) -> tuple[list[FxTrade], int]:
+        stmt = select(FxTrade).where(FxTrade.user_id == user_id)
+        count_stmt = select(func.count()).select_from(FxTrade).where(FxTrade.user_id == user_id)
+        if asset_currency:
+            stmt = stmt.where(FxTrade.asset_currency == asset_currency)
+            count_stmt = count_stmt.where(FxTrade.asset_currency == asset_currency)
+        total = int(self.db.scalar(count_stmt) or 0)
+        items = list(
+            self.db.scalars(
+                stmt
+                .order_by(FxTrade.trade_date.desc(), FxTrade.id.desc())
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+            )
+        )
+        return items, total
 
     def list_all_trades(self, *, user_id: int) -> list[FxTrade]:
         stmt = (

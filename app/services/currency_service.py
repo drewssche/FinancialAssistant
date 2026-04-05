@@ -751,6 +751,44 @@ class CurrencyService:
             "current_rates": current_rates,
         }
 
+    def list_trades(
+        self,
+        *,
+        user_id: int,
+        currency: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> dict:
+        normalized_currency = self._normalize_currency(currency) if currency else None
+        items, total = self.repo.list_trades_paginated(
+            user_id=user_id,
+            asset_currency=normalized_currency,
+            page=page,
+            page_size=page_size,
+        )
+        return {
+            "items": [
+                {
+                    "id": trade.id,
+                    "side": trade.side,
+                    "asset_currency": trade.asset_currency,
+                    "quote_currency": trade.quote_currency,
+                    "quantity": self._qty(trade.quantity),
+                    "unit_price": self._rate(trade.unit_price),
+                    "fee": self._money(trade.fee),
+                    "trade_kind": getattr(trade, "trade_kind", "manual") or "manual",
+                    "linked_operation_id": getattr(trade, "linked_operation_id", None),
+                    "trade_date": trade.trade_date,
+                    "note": trade.note,
+                    "created_at": trade.created_at,
+                }
+                for trade in items
+            ],
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+        }
+
     def get_performance_history(
         self,
         *,

@@ -36,6 +36,9 @@
                   <button class="segmented-btn" data-dashboard-analytics-period="all_time" type="button">Все время</button>
                   <button class="segmented-btn" data-dashboard-analytics-period="custom" type="button">Настроить</button>
                 </div>
+                <div id="dashboardAnalyticsPeriodPopover" class="app-popover hidden" role="dialog" aria-label="Быстрый выбор периода дашборда">
+                  <div id="dashboardAnalyticsPeriodOptions" class="settings-picker-options"></div>
+                </div>
               </div>
             </div>
             <div id="dashboardKpiPrimary" class="analytics-kpi-grid"></div>
@@ -114,6 +117,9 @@
                   <button class="segmented-btn active" data-dashboard-plans-period="month" type="button">Этот месяц</button>
                   <button class="segmented-btn" data-dashboard-plans-period="all_time" type="button">Все время</button>
                 </div>
+                <div id="dashboardPlansPeriodPopover" class="app-popover hidden" role="dialog" aria-label="Быстрый выбор периода планов">
+                  <div id="dashboardPlansPeriodOptions" class="settings-picker-options"></div>
+                </div>
                 <button id="openPlansTabBtn" class="btn btn-secondary" type="button">Открыть раздел Планы</button>
               </div>
             </div>
@@ -147,6 +153,9 @@
                   <button class="segmented-btn" data-analytics-global-period="year" type="button">Этот год</button>
                   <button class="segmented-btn" data-analytics-global-period="all_time" type="button">Все время</button>
                   <button class="segmented-btn" data-analytics-global-period="custom" type="button">Настроить</button>
+                </div>
+                <div id="analyticsGlobalPeriodPopover" class="app-popover hidden" role="dialog" aria-label="Быстрый выбор периода аналитики">
+                  <div id="analyticsGlobalPeriodOptions" class="settings-picker-options"></div>
                 </div>
               </div>
             </div>
@@ -204,9 +213,16 @@
                 <div class="analytics-switch-group">
                   <span class="muted-small">Выбор периода сетки</span>
                   <div class="toolbar">
-                    <div id="analyticsGridMonthPickerWrap" class="date-input-wrap compact-input">
+                    <button id="analyticsGridMonthTrigger" class="btn btn-secondary analytics-grid-picker-trigger" type="button" aria-haspopup="dialog">Месяц</button>
+                    <div id="analyticsGridMonthPopover" class="app-popover hidden" role="dialog" aria-label="Выбор месяца сетки">
+                      <div id="analyticsGridMonthOptions" class="settings-picker-options"></div>
+                    </div>
+                    <button id="analyticsGridYearTrigger" class="btn btn-secondary analytics-grid-picker-trigger hidden" type="button" aria-haspopup="dialog">Год</button>
+                    <div id="analyticsGridYearPopover" class="app-popover hidden" role="dialog" aria-label="Выбор года сетки">
+                      <div id="analyticsGridYearOptions" class="settings-picker-options"></div>
+                    </div>
+                    <div id="analyticsGridMonthPickerWrap" class="date-input-wrap compact-input hidden">
                       <input id="analyticsGridMonthPicker" class="input compact-input" type="month" aria-label="Выбор месяца сетки" />
-                      <button class="date-input-trigger" type="button" data-date-picker-trigger="analyticsGridMonthPicker" aria-label="Открыть выбор месяца"></button>
                     </div>
                     <input id="analyticsGridYearPicker" class="input compact-input hidden" type="number" min="1970" max="2100" step="1" placeholder="Год" />
                   </div>
@@ -243,8 +259,8 @@
                       <th>Вс</th>
                       <th>Итог приток</th>
                       <th>Итог отток</th>
-                      <th>Операций</th>
-                      <th>Операционные траты</th>
+                      <th>События</th>
+                      <th>Профицит / Дефицит</th>
                       <th>Денежный поток</th>
                     </tr>
                   </thead>
@@ -326,6 +342,9 @@
                   <button class="segmented-btn" data-analytics-currency-period="365d" type="button">12 месяцев</button>
                   <button class="segmented-btn" data-analytics-currency-period="all_time" type="button">Все время</button>
                 </div>
+                <div id="analyticsCurrencyPeriodPopover" class="app-popover hidden" role="dialog" aria-label="Быстрый выбор периода валютной аналитики">
+                  <div id="analyticsCurrencyPeriodOptions" class="settings-picker-options"></div>
+                </div>
               </div>
             </div>
             <div id="analyticsCurrencyKpiGrid" class="analytics-kpi-grid">
@@ -377,6 +396,7 @@
                 <tbody id="analyticsCurrencyTradesBody"></tbody>
               </table>
             </div>
+            <div id="analyticsCurrencyTradesInfiniteSentinel" class="infinite-sentinel" aria-hidden="true"></div>
           </section>
         </section>
 
@@ -402,6 +422,9 @@
                   <button class="segmented-btn" data-period="year" type="button">Этот год</button>
                   <button class="segmented-btn" data-period="all_time" type="button">Все время</button>
                   <button class="segmented-btn" data-period="custom" type="button">Настроить</button>
+                </div>
+                <div id="operationsPeriodPopover" class="app-popover hidden" role="dialog" aria-label="Быстрый выбор периода операций">
+                  <div id="operationsPeriodOptions" class="settings-picker-options"></div>
                 </div>
                 <div class="segmented" id="kindFilters" role="tablist" aria-label="Фильтр по типу">
                   <button class="segmented-btn active" data-kind="" type="button" id="operationsKindAllLabel">Все</button>

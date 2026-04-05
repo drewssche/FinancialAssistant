@@ -255,6 +255,13 @@
     }
   }
 
+  function reportOptionalDashboardPanelFailure(panelName, err) {
+    console.warn("Optional dashboard panel failed", {
+      panel: panelName,
+      reason: err,
+    });
+  }
+
 
   async function loadDashboard() {
     const skeletons = getLoadingSkeletons();
@@ -277,6 +284,9 @@
     }
     if (!state.dashboardPlansHydrated) {
       skeletons.renderDashboardPlansSkeleton?.();
+    }
+    if (!state.dashboardCurrencyHydrated) {
+      skeletons.renderDashboardCurrencySkeleton?.();
     }
     const dashboardData = getDashboardData();
     const shouldRefreshCurrency = state.dashboardCurrencyHydrated;
@@ -324,7 +334,12 @@
       state.dashboardDebtSummaryLoaded = true;
 
       if (el.dashboardPlansPanel && ui?.showDashboardOperations !== false) {
-        await getPlansFeature().loadPlans?.();
+        try {
+          await getPlansFeature().loadPlans?.();
+        } catch (err) {
+          reportOptionalDashboardPanelFailure("plans", err);
+          getPlansFeature().renderDashboardPlans?.();
+        }
       } else {
         getPlansFeature().renderDashboardPlans?.();
       }
@@ -334,115 +349,122 @@
       }
 
       if (el.dashboardDebtsList) {
-        const cards = await (dashboardData.loadDebtPreview
-          ? dashboardData.loadDebtPreview({ limit: 6 })
-          : core.requestJson("/api/v1/dashboard/debts/preview?limit=6", { headers: core.authHeaders() }));
-        el.dashboardDebtsList.innerHTML = "";
-        if (!cards.length) {
-          const empty = document.createElement("div");
-          empty.className = "muted-small";
-          empty.textContent = "Нет активных долгов";
-          el.dashboardDebtsList.appendChild(empty);
-        } else {
-          for (const card of cards) {
-          const now = new Date();
-          const activeDebts = (card.debts || []).filter((debt) => Number(debt.outstanding_total || 0) > 0);
-          activeDebts.sort((a, b) => {
-            const aState = debtUi.debtDueState(a, now);
-            const bState = debtUi.debtDueState(b, now);
-            const rankDiff = duePriorityRank(aState) - duePriorityRank(bState);
-            if (rankDiff !== 0) {
-              return rankDiff;
-            }
-            const aDue = debtUi.parseIsoDateEnd(a.due_date);
-            const bDue = debtUi.parseIsoDateEnd(b.due_date);
-            if (aDue && bDue) {
-              return aDue.getTime() - bDue.getTime();
-            }
-            if (aDue) {
-              return -1;
-            }
-            if (bDue) {
-              return 1;
-            }
-            return Number(b.id || 0) - Number(a.id || 0);
-          });
-          const visibleDebts = activeDebts.slice(0, 2);
-          const rowsHtml = visibleDebts
-            .map((debt) => {
-              const principal = debtUi.parseAmount(debt.principal || 0);
-              const outstanding = debtUi.parseAmount(debt.outstanding_total || 0);
-              const repaid = debtUi.parseAmount(debt.repaid_total || 0);
-              const forgiven = debtUi.parseAmount(debt.forgiven_total || 0);
-              const settled = repaid + forgiven;
-              const repayPercent = principal > 0 ? Math.max(0, Math.min(100, Math.round((settled / principal) * 100))) : 0;
-              const direction = debt.direction === "borrow" ? "borrow" : "lend";
-              const directionLabel = debtUi.debtDirectionBalanceLabel(direction);
-              const repayTone = direction === "borrow" ? (repayPercent >= 100 ? "borrow-ok" : repayPercent >= 40 ? "borrow-warn" : "borrow-danger") : (repayPercent >= 100 ? "lend-ok" : "lend-warn");
-              const dueState = debtUi.debtDueState(debt, now);
-              const dueProgress = debtUi.debtDueProgress(debt, dueState, now);
-              const dueDays = debtUi.debtDueDaysBadge(debt, dueState, now);
-              const settlementChips = [
-                repaid > 0 ? `<span class="meta-chip debt-meta-chip debt-meta-chip-repaid">Погашено ${core.formatMoney(repaid, { currency: debt.currency || "BYN" })}</span>` : "",
-                forgiven > 0 ? `<span class="meta-chip debt-meta-chip debt-meta-chip-forgiven">Прощено ${core.formatMoney(forgiven, { currency: debt.currency || "BYN" })}</span>` : "",
-              ].filter(Boolean).join("");
-              return `
-                <div class="dashboard-debt-row">
-                  <div class="dashboard-debt-row-col">
-                    <div class="muted-small">${directionLabel}</div>
-                    <div class="debt-amount-principal ${direction === "borrow" ? "debt-amount-principal-borrow" : "debt-amount-principal-lend"}">${core.formatMoney(outstanding, { currency: debt.currency || "BYN" })}</div>
-                    ${String(debt.currency || "BYN").toUpperCase() !== String(debt.base_currency || "BYN").toUpperCase() ? `<div class="muted-small">≈ ${core.formatMoney(debt.current_base_outstanding_total || 0, { currency: debt.base_currency || "BYN" })}</div>` : ""}
-                  </div>
-                  <div class="dashboard-debt-row-col">
-                    <div class="muted-small">Погашение</div>
-                    <div class="debt-repay-progress">
-                      <div class="debt-repay-progress-track">
-                        <span class="debt-repay-progress-bar debt-repay-progress-bar-${repayTone}" style="width:${repayPercent}%"></span>
+        try {
+          const cards = await (dashboardData.loadDebtPreview
+            ? dashboardData.loadDebtPreview({ limit: 6 })
+            : core.requestJson("/api/v1/dashboard/debts/preview?limit=6", { headers: core.authHeaders() }));
+          el.dashboardDebtsList.innerHTML = "";
+          if (!cards.length) {
+            const empty = document.createElement("div");
+            empty.className = "muted-small";
+            empty.textContent = "Нет активных долгов";
+            el.dashboardDebtsList.appendChild(empty);
+          } else {
+            for (const card of cards) {
+              const now = new Date();
+              const activeDebts = (card.debts || []).filter((debt) => Number(debt.outstanding_total || 0) > 0);
+              activeDebts.sort((a, b) => {
+                const aState = debtUi.debtDueState(a, now);
+                const bState = debtUi.debtDueState(b, now);
+                const rankDiff = duePriorityRank(aState) - duePriorityRank(bState);
+                if (rankDiff !== 0) {
+                  return rankDiff;
+                }
+                const aDue = debtUi.parseIsoDateEnd(a.due_date);
+                const bDue = debtUi.parseIsoDateEnd(b.due_date);
+                if (aDue && bDue) {
+                  return aDue.getTime() - bDue.getTime();
+                }
+                if (aDue) {
+                  return -1;
+                }
+                if (bDue) {
+                  return 1;
+                }
+                return Number(b.id || 0) - Number(a.id || 0);
+              });
+              const visibleDebts = activeDebts.slice(0, 2);
+              const rowsHtml = visibleDebts
+                .map((debt) => {
+                  const principal = debtUi.parseAmount(debt.principal || 0);
+                  const outstanding = debtUi.parseAmount(debt.outstanding_total || 0);
+                  const repaid = debtUi.parseAmount(debt.repaid_total || 0);
+                  const forgiven = debtUi.parseAmount(debt.forgiven_total || 0);
+                  const settled = repaid + forgiven;
+                  const repayPercent = principal > 0 ? Math.max(0, Math.min(100, Math.round((settled / principal) * 100))) : 0;
+                  const direction = debt.direction === "borrow" ? "borrow" : "lend";
+                  const directionLabel = debtUi.debtDirectionBalanceLabel(direction);
+                  const repayTone = direction === "borrow" ? (repayPercent >= 100 ? "borrow-ok" : repayPercent >= 40 ? "borrow-warn" : "borrow-danger") : (repayPercent >= 100 ? "lend-ok" : "lend-warn");
+                  const dueState = debtUi.debtDueState(debt, now);
+                  const dueProgress = debtUi.debtDueProgress(debt, dueState, now);
+                  const dueDays = debtUi.debtDueDaysBadge(debt, dueState, now);
+                  const settlementChips = [
+                    repaid > 0 ? `<span class="meta-chip debt-meta-chip debt-meta-chip-repaid">Погашено ${core.formatMoney(repaid, { currency: debt.currency || "BYN" })}</span>` : "",
+                    forgiven > 0 ? `<span class="meta-chip debt-meta-chip debt-meta-chip-forgiven">Прощено ${core.formatMoney(forgiven, { currency: debt.currency || "BYN" })}</span>` : "",
+                  ].filter(Boolean).join("");
+                  return `
+                    <div class="dashboard-debt-row">
+                      <div class="dashboard-debt-row-col">
+                        <div class="muted-small">${directionLabel}</div>
+                        <div class="debt-amount-principal ${direction === "borrow" ? "debt-amount-principal-borrow" : "debt-amount-principal-lend"}">${core.formatMoney(outstanding, { currency: debt.currency || "BYN" })}</div>
+                        ${String(debt.currency || "BYN").toUpperCase() !== String(debt.base_currency || "BYN").toUpperCase() ? `<div class="muted-small">≈ ${core.formatMoney(debt.current_base_outstanding_total || 0, { currency: debt.base_currency || "BYN" })}</div>` : ""}
                       </div>
-                      <span class="muted-small">${repayPercent}% (${core.formatMoney(settled, { currency: debt.currency || "BYN" })} из ${core.formatMoney(principal, { currency: debt.currency || "BYN" })})</span>
+                      <div class="dashboard-debt-row-col">
+                        <div class="muted-small">Погашение</div>
+                        <div class="debt-repay-progress">
+                          <div class="debt-repay-progress-track">
+                            <span class="debt-repay-progress-bar debt-repay-progress-bar-${repayTone}" style="width:${repayPercent}%"></span>
+                          </div>
+                          <span class="muted-small">${repayPercent}% (${core.formatMoney(settled, { currency: debt.currency || "BYN" })} из ${core.formatMoney(principal, { currency: debt.currency || "BYN" })})</span>
+                        </div>
+                        ${settlementChips ? `<div class="debt-meta-chips dashboard-debt-meta-chips">${settlementChips}</div>` : ""}
+                      </div>
+                      <div class="dashboard-debt-row-col">
+                        <div class="row debt-due-head">
+                          <span class="dashboard-debt-due-label dashboard-debt-due-label-${dueState}">${dueBadgeLabel(dueState, debt.due_date || "")}</span>
+                          ${dueDays ? `<span class="debt-due-days-badge debt-due-days-badge-${dueState}">${dueDays}</span>` : ""}
+                        </div>
+                        ${
+                          dueProgress
+                            ? `<div class="debt-due-progress"><div class="debt-due-progress-track"><span class="debt-due-progress-bar debt-due-progress-bar-${dueProgress.tone}" style="width:${dueProgress.percent}%"></span></div><span class="muted-small">Срок: ${dueProgress.percent}%</span></div>`
+                            : `<span class="muted-small">Срок не задан</span>`
+                        }
+                        <div class="dashboard-debt-actions">
+                          <button class="btn btn-repay btn-xs" type="button" data-dashboard-repay-debt-id="${debt.id}" ${outstanding <= 0 ? "disabled" : ""}>Погашение</button>
+                          <button class="btn btn-secondary btn-xs" type="button" data-dashboard-history-debt-id="${debt.id}">История</button>
+                        </div>
+                      </div>
                     </div>
-                    ${settlementChips ? `<div class="debt-meta-chips dashboard-debt-meta-chips">${settlementChips}</div>` : ""}
+                  `;
+                })
+                .join("");
+              const createdAt = visibleDebts[0]?.created_at ? formatDateTimeRu(visibleDebts[0].created_at) : "";
+              const compact = document.createElement("article");
+              compact.className = "panel debt-card debt-card-compact";
+              compact.innerHTML = `
+                <div class="debt-card-compact-grid">
+                  <div class="debt-card-compact-col debt-card-compact-main">
+                    <div class="debt-card-compact-head">
+                      <div class="debt-card-compact-title-block">
+                        <h3>${core.highlightText(card.counterparty || "", "")}</h3>
+                        <span class="debt-status debt-status-${card.status}">${card.status === "active" ? "Активный" : "Закрыт"}</span>
+                        ${createdAt ? `<span class="muted-small">Создано: ${createdAt}</span>` : ""}
+                      </div>
+                    </div>
                   </div>
-                  <div class="dashboard-debt-row-col">
-                    <div class="row debt-due-head">
-                      <span class="dashboard-debt-due-label dashboard-debt-due-label-${dueState}">${dueBadgeLabel(dueState, debt.due_date || "")}</span>
-                      ${dueDays ? `<span class="debt-due-days-badge debt-due-days-badge-${dueState}">${dueDays}</span>` : ""}
-                    </div>
-                    ${
-                      dueProgress
-                        ? `<div class="debt-due-progress"><div class="debt-due-progress-track"><span class="debt-due-progress-bar debt-due-progress-bar-${dueProgress.tone}" style="width:${dueProgress.percent}%"></span></div><span class="muted-small">Срок: ${dueProgress.percent}%</span></div>`
-                        : `<span class="muted-small">Срок не задан</span>`
-                    }
-                    <div class="dashboard-debt-actions">
-                      <button class="btn btn-repay btn-xs" type="button" data-dashboard-repay-debt-id="${debt.id}" ${outstanding <= 0 ? "disabled" : ""}>Погашение</button>
-                      <button class="btn btn-secondary btn-xs" type="button" data-dashboard-history-debt-id="${debt.id}">История</button>
-                    </div>
-                  </div>
+                  <div class="debt-card-compact-col debt-card-compact-rows debt-child-zone">${rowsHtml}</div>
                 </div>
               `;
-            })
-            .join("");
-          const createdAt = visibleDebts[0]?.created_at ? formatDateTimeRu(visibleDebts[0].created_at) : "";
-          const compact = document.createElement("article");
-          compact.className = "panel debt-card debt-card-compact";
-          compact.innerHTML = `
-            <div class="debt-card-compact-grid">
-              <div class="debt-card-compact-col debt-card-compact-main">
-                <div class="debt-card-compact-head">
-                  <div class="debt-card-compact-title-block">
-                    <h3>${core.highlightText(card.counterparty || "", "")}</h3>
-                    <span class="debt-status debt-status-${card.status}">${card.status === "active" ? "Активный" : "Закрыт"}</span>
-                    ${createdAt ? `<span class="muted-small">Создано: ${createdAt}</span>` : ""}
-                  </div>
-                </div>
-              </div>
-              <div class="debt-card-compact-col debt-card-compact-rows debt-child-zone">${rowsHtml}</div>
-            </div>
-          `;
-            el.dashboardDebtsList.appendChild(compact);
+              el.dashboardDebtsList.appendChild(compact);
+            }
+          }
+          state.dashboardDebtsHydrated = true;
+        } catch (err) {
+          reportOptionalDashboardPanelFailure("debts-preview", err);
+          if (!state.dashboardDebtsHydrated) {
+            el.dashboardDebtsList.innerHTML = "<div class='muted-small'>Не удалось загрузить активные долги</div>";
           }
         }
-        state.dashboardDebtsHydrated = true;
       }
     } finally {
       if (shouldRefreshCurrency && el.dashboardCurrencyPanel) {

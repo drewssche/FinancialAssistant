@@ -31,6 +31,84 @@
     return window.App.getRuntimeModule?.("loading-skeletons") || {};
   }
 
+  function getDashboardPlansPeriodBounds(period = state.dashboardPlansPeriod || "month", anchor = state.dashboardPlansPeriodAnchor || "current") {
+    if (period === "all_time") {
+      return null;
+    }
+    const current = core.getPeriodBounds ? core.getPeriodBounds(period) : null;
+    if (!current?.dateFrom || !current?.dateTo || anchor !== "previous") {
+      return current;
+    }
+    const parseIso = (value) => {
+      const parsed = new Date(`${String(value || "").trim()}T00:00:00Z`);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    };
+    const toIso = (value) => value instanceof Date && !Number.isNaN(value.getTime()) ? value.toISOString().slice(0, 10) : "";
+    const addDays = (value, deltaDays) => {
+      const parsed = parseIso(value);
+      if (!parsed) {
+        return "";
+      }
+      parsed.setUTCDate(parsed.getUTCDate() + deltaDays);
+      return toIso(parsed);
+    };
+    if (period === "week") {
+      return {
+        dateFrom: addDays(current.dateFrom, -7),
+        dateTo: addDays(current.dateTo, -7),
+      };
+    }
+    if (period === "month") {
+      const currentStart = parseIso(current.dateFrom);
+      if (!currentStart) {
+        return current;
+      }
+      const prevMonthStart = new Date(Date.UTC(currentStart.getUTCFullYear(), currentStart.getUTCMonth() - 1, 1));
+      const prevMonthEnd = new Date(Date.UTC(currentStart.getUTCFullYear(), currentStart.getUTCMonth(), 0));
+      return {
+        dateFrom: toIso(prevMonthStart),
+        dateTo: toIso(prevMonthEnd),
+      };
+    }
+    return current;
+  }
+
+  function closeDashboardPlansPeriodPopover() {
+    getPickerUtils().setPopoverOpen?.(el.dashboardPlansPeriodPopover, false, {
+      owners: [el.dashboardPlansPeriodTabs].filter(Boolean),
+    });
+  }
+
+  function renderDashboardPlansPeriodOptions(period = state.dashboardPlansPeriod || "month") {
+    if (!el.dashboardPlansPeriodOptions) {
+      return;
+    }
+    const currentBounds = getDashboardPlansPeriodBounds(period, "current");
+    const previousBounds = getDashboardPlansPeriodBounds(period, "previous");
+    const currentLabel = period === "week" ? "Эта неделя" : "Этот месяц";
+    const previousLabel = period === "week" ? "Прошлая неделя" : "Прошлый месяц";
+    el.dashboardPlansPeriodOptions.innerHTML = [
+      `
+        <button class="btn btn-secondary settings-picker-option active" type="button" data-dashboard-plans-quick-period="${period}" data-dashboard-plans-quick-anchor="current">
+          ${currentLabel}
+          <span class="muted-small">${core.formatPeriodLabel(currentBounds?.dateFrom || "", currentBounds?.dateTo || "")}</span>
+        </button>
+      `,
+      `
+        <button class="btn btn-secondary settings-picker-option" type="button" data-dashboard-plans-quick-period="${period}" data-dashboard-plans-quick-anchor="previous">
+          ${previousLabel}
+          <span class="muted-small">${core.formatPeriodLabel(previousBounds?.dateFrom || "", previousBounds?.dateTo || "")}</span>
+        </button>
+      `,
+      `
+        <button class="btn btn-secondary settings-picker-option" type="button" data-dashboard-plans-quick-period="all_time" data-dashboard-plans-quick-anchor="current">
+          Все активные планы
+          <span class="muted-small">Без ограничения по периоду</span>
+        </button>
+      `,
+    ].join("");
+  }
+
   function getPlansCacheKey() {
     return "plans:list";
   }
@@ -608,7 +686,7 @@
     if (period === "all_time") {
       return activeItems;
     }
-    const bounds = core.getPeriodBounds ? core.getPeriodBounds(period) : null;
+    const bounds = getDashboardPlansPeriodBounds(period, state.dashboardPlansPeriodAnchor || "current");
     if (!bounds?.dateFrom || !bounds?.dateTo) {
       return activeItems;
     }
@@ -626,14 +704,16 @@
     if (period === "all_time") {
       return "Все активные планы";
     }
-    const bounds = core.getPeriodBounds ? core.getPeriodBounds(period) : null;
+    const anchor = state.dashboardPlansPeriodAnchor || "current";
+    const bounds = getDashboardPlansPeriodBounds(period, anchor);
     if (!bounds?.dateFrom || !bounds?.dateTo) {
       return period === "week" ? "Планы на текущую неделю" : "Планы на текущий месяц";
     }
     const base = core.formatPeriodLabel ? core.formatPeriodLabel(bounds.dateFrom, bounds.dateTo) : `${bounds.dateFrom} - ${bounds.dateTo}`;
-    return period === "week"
-      ? `Планы на неделю: ${base}`
-      : `Планы на месяц: ${base}`;
+    if (period === "week") {
+      return anchor === "previous" ? `Планы за прошлую неделю: ${base}` : `Планы на неделю: ${base}`;
+    }
+    return anchor === "previous" ? `Планы за прошлый месяц: ${base}` : `Планы на месяц: ${base}`;
   }
 
   function renderDashboardPlans() {
@@ -920,10 +1000,23 @@
     getSessionFeature().savePreferencesDebounced?.(250);
   }
 
-  async function setDashboardPlansPeriod(value) {
+  function openDashboardPlansPeriodPopover(period, trigger) {
+    if (!["week", "month"].includes(period) || !el.dashboardPlansPeriodPopover) {
+      return;
+    }
+    renderDashboardPlansPeriodOptions(period);
+    getPickerUtils().setPopoverOpen?.(el.dashboardPlansPeriodPopover, true, {
+      owners: [trigger || el.dashboardPlansPeriodTabs].filter(Boolean),
+      onClose: () => closeDashboardPlansPeriodPopover(),
+    });
+  }
+
+  async function setDashboardPlansPeriod(value, anchor = "current") {
     const next = ["week", "month", "all_time"].includes(value) ? value : "month";
     state.dashboardPlansPeriod = next;
+    state.dashboardPlansPeriodAnchor = next === "all_time" ? "current" : (anchor === "previous" ? "previous" : "current");
     core.syncSegmentedActive(el.dashboardPlansPeriodTabs, "dashboard-plans-period", next);
+    closeDashboardPlansPeriodPopover();
     if (!getPlanItems().length) {
       await loadPlans({ force: true });
       getSessionFeature().savePreferencesDebounced?.(250);
@@ -1100,6 +1193,19 @@
     });
   }
 
+  if (el.dashboardPlansPeriodOptions) {
+    el.dashboardPlansPeriodOptions.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-dashboard-plans-quick-period][data-dashboard-plans-quick-anchor]");
+      if (!btn) {
+        return;
+      }
+      setDashboardPlansPeriod(
+        String(btn.dataset.dashboardPlansQuickPeriod || ""),
+        String(btn.dataset.dashboardPlansQuickAnchor || "current"),
+      ).catch((err) => core.setStatus(String(err)));
+    });
+  }
+
   const api = {
     loadPlans,
     renderPlansSection,
@@ -1110,6 +1216,7 @@
     setPlansStatusFilter,
     setPlansHistoryEventFilter,
     setDashboardPlansPeriod,
+    openDashboardPlansPeriodPopover,
     applyPlansSearch,
     openCreatePlan,
     submitPlanForm,

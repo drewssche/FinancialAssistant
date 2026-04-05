@@ -38,6 +38,13 @@ class CurrencyTradeOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CurrencyTradeListOut(BaseModel):
+    items: list[CurrencyTradeOut]
+    total: int
+    page: int
+    page_size: int
+
+
 class CurrencyRateUpsert(BaseModel):
     currency: str = Field(min_length=3, max_length=3)
     rate: Decimal = Field(gt=0)

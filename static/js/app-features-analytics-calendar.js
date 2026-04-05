@@ -14,6 +14,7 @@
     return { label: "Ноль", tone: "neutral", cardClass: "neutral", amount: 0 };
   });
   let calendarScrollUiBound = false;
+  const pickerUtils = window.App.getRuntimeModule?.("picker-utils") || {};
 
   function syncCalendarScrollFade() {
     if (!el.analyticsCalendarScrollWrap) {
@@ -116,14 +117,25 @@
       el.analyticsYearGridWrap.classList.toggle("hidden", view !== "year");
     }
     if (el.analyticsGridMonthPickerWrap) {
-      el.analyticsGridMonthPickerWrap.classList.toggle("hidden", view !== "month");
+      el.analyticsGridMonthPickerWrap.classList.add("hidden");
     } else if (el.analyticsGridMonthPicker) {
       el.analyticsGridMonthPicker.classList.toggle("hidden", view !== "month");
     }
     if (el.analyticsGridYearPicker) {
-      el.analyticsGridYearPicker.classList.toggle("hidden", view !== "year");
+      el.analyticsGridYearPicker.classList.add("hidden");
+    }
+    if (el.analyticsGridMonthTrigger) {
+      el.analyticsGridMonthTrigger.classList.toggle("hidden", view !== "month");
+    }
+    if (el.analyticsGridYearTrigger) {
+      el.analyticsGridYearTrigger.classList.toggle("hidden", view !== "year");
     }
     syncGridPickers();
+  }
+
+  function formatMonthTriggerLabel(anchor) {
+    const value = anchor.toLocaleDateString("ru-RU", { month: "long", year: "numeric", timeZone: "UTC" });
+    return value.charAt(0).toUpperCase() + value.slice(1);
   }
 
   function syncGridPickers() {
@@ -134,6 +146,83 @@
     if (el.analyticsGridYearPicker) {
       el.analyticsGridYearPicker.value = String(anchor.getUTCFullYear());
     }
+    if (el.analyticsGridMonthTrigger) {
+      el.analyticsGridMonthTrigger.textContent = formatMonthTriggerLabel(anchor);
+    }
+    if (el.analyticsGridYearTrigger) {
+      el.analyticsGridYearTrigger.textContent = String(anchor.getUTCFullYear());
+    }
+    renderAnalyticsGridMonthPopoverOptions(anchor);
+    renderAnalyticsGridYearPopoverOptions(anchor);
+  }
+
+  function renderAnalyticsGridMonthPopoverOptions(anchor = currentAnchorDate()) {
+    if (!el.analyticsGridMonthOptions) {
+      return;
+    }
+    const selectedValue = serializeMonthAnchor(anchor);
+    const currentAnchor = new Date();
+    const currentMonthValue = serializeMonthAnchor(new Date(Date.UTC(currentAnchor.getUTCFullYear(), currentAnchor.getUTCMonth(), 1)));
+    const monthButtons = [
+      `
+        <button class="btn btn-secondary settings-picker-option ${selectedValue === currentMonthValue ? "active" : ""}" type="button" data-analytics-grid-month-value="${currentMonthValue}">
+          Текущий месяц
+        </button>
+      `,
+      ...Array.from({ length: 12 }, (_, monthIndex) => {
+        const monthDate = new Date(Date.UTC(anchor.getUTCFullYear(), monthIndex, 1));
+        const value = serializeMonthAnchor(monthDate);
+        const label = formatMonthTriggerLabel(monthDate);
+        return `
+          <button class="btn btn-secondary settings-picker-option ${selectedValue === value ? "active" : ""}" type="button" data-analytics-grid-month-value="${value}">
+            ${escapeHtml(label)}
+          </button>
+        `;
+      }),
+    ];
+    el.analyticsGridMonthOptions.innerHTML = monthButtons.join("");
+  }
+
+  function renderAnalyticsGridYearPopoverOptions(anchor = currentAnchorDate()) {
+    if (!el.analyticsGridYearOptions) {
+      return;
+    }
+    const selectedYear = anchor.getUTCFullYear();
+    const currentYear = new Date().getUTCFullYear();
+    const years = Array.from({ length: 9 }, (_, index) => selectedYear - 4 + index);
+    const uniqueYears = Array.from(new Set([currentYear, ...years])).sort((left, right) => right - left);
+    el.analyticsGridYearOptions.innerHTML = uniqueYears.map((year) => `
+      <button class="btn btn-secondary settings-picker-option ${selectedYear === year ? "active" : ""}" type="button" data-analytics-grid-year-value="${year}">
+        ${year === currentYear ? `Текущий год (${year})` : String(year)}
+      </button>
+    `).join("");
+  }
+
+  function closeAnalyticsGridPopovers() {
+    pickerUtils.setPopoverOpen?.(el.analyticsGridMonthPopover, false, { owners: [el.analyticsGridMonthTrigger].filter(Boolean) });
+    pickerUtils.setPopoverOpen?.(el.analyticsGridYearPopover, false, { owners: [el.analyticsGridYearTrigger].filter(Boolean) });
+  }
+
+  function toggleAnalyticsGridPopover(type) {
+    if (!pickerUtils.setPopoverOpen) {
+      return;
+    }
+    const isMonth = type === "month";
+    const trigger = isMonth ? el.analyticsGridMonthTrigger : el.analyticsGridYearTrigger;
+    const popover = isMonth ? el.analyticsGridMonthPopover : el.analyticsGridYearPopover;
+    const otherTrigger = isMonth ? el.analyticsGridYearTrigger : el.analyticsGridMonthTrigger;
+    const otherPopover = isMonth ? el.analyticsGridYearPopover : el.analyticsGridMonthPopover;
+    if (!trigger || !popover) {
+      return;
+    }
+    const shouldOpen = popover.classList.contains("hidden");
+    if (otherPopover) {
+      pickerUtils.setPopoverOpen(otherPopover, false, { owners: [otherTrigger].filter(Boolean) });
+    }
+    pickerUtils.setPopoverOpen(popover, shouldOpen, {
+      owners: [trigger],
+      onClose: () => closeAnalyticsGridPopovers(),
+    });
   }
 
   function resolveCashflowTotals(item) {
@@ -154,6 +243,14 @@
     };
   }
 
+  function resolveOperatingResult(item) {
+    const value = Number(item?.balance ?? (Number(item?.income_total || 0) - Number(item?.expense_total || 0)));
+    return {
+      value,
+      presentation: describeResult(value),
+    };
+  }
+
   function renderCalendarTotals(data, view, currencyOverview = null) {
     if (!el.analyticsCalendarTotals || !el.analyticsCalendarTotalsSecondary) {
       return;
@@ -169,15 +266,12 @@
     }
 
     const cashflow = resolveCashflowTotals(data);
-    const operatingResultValue = Number(data?.balance ?? 0);
+    const operatingResult = resolveOperatingResult(data);
     const result = describeResult(cashflow.resultTotal);
-    const resultTone = result.cardClass || result.tone || "neutral";
-    const operatingTone = operatingResultValue > 0 ? "income" : operatingResultValue < 0 ? "expense" : "neutral";
     const primary = [
       { label: "Приток", value: core.formatMoney(cashflow.incomeTotal), tone: "income" },
       { label: "Отток", value: core.formatMoney(cashflow.expenseTotal), tone: "expense" },
-      { label: "Операционный результат", value: core.formatMoney(operatingResultValue), tone: operatingTone },
-      { label: "Денежный поток", value: core.formatMoney(cashflow.resultTotal), tone: resultTone },
+      { label: operatingResult.presentation.label, value: core.formatMoney(operatingResult.presentation.amount), tone: operatingResult.presentation.tone },
       { label: "События", value: String(cashflow.eventsCount || 0), tone: "neutral" },
     ];
     el.analyticsCalendarTotals.innerHTML = primary
@@ -192,6 +286,7 @@
       .join("");
 
     const chips = [
+      `<span class="analytics-kpi-chip analytics-kpi-chip-${operatingResult.presentation.tone}">${escapeHtml(operatingResult.presentation.label)} по операциям: ${escapeHtml(core.formatMoney(operatingResult.presentation.amount))}</span>`,
       `<span class="analytics-kpi-chip analytics-kpi-chip-${result.tone}">Денежный поток: ${escapeHtml(core.formatMoney(cashflow.resultTotal))}</span>`,
     ];
     if (cashflow.debtEventsCount > 0) {
@@ -219,6 +314,7 @@
     for (const week of data.weeks || []) {
       const tr = document.createElement("tr");
       const weekCashflow = resolveCashflowTotals(week);
+      const weekOperatingResult = resolveOperatingResult(week);
       const weekResult = describeResult(weekCashflow.resultTotal);
       for (const day of week.days || []) {
         const cell = document.createElement("td");
@@ -234,13 +330,12 @@
           if (cashflow.fxEventsCount > 0) {
             markerBits.push(`FX ${core.formatMoney(cashflow.fxCashflow)}`);
           }
-          const result = describeResult(cashflow.resultTotal);
-          const operationalExpense = Number(day?.expense_total || 0);
+          const operatingResult = resolveOperatingResult(day);
           const titleBits = [
             core.formatDateRu(day.date),
             `Приток ${core.formatMoney(cashflow.incomeTotal)}`,
             `Отток ${core.formatMoney(cashflow.expenseTotal)}`,
-            `Операционные траты ${core.formatMoney(operationalExpense)}`,
+            `${operatingResult.presentation.label} по операциям ${core.formatMoney(operatingResult.presentation.amount)}`,
             `Денежный поток ${core.formatMoney(cashflow.resultTotal)}`,
             `${cashflow.eventsCount} событ.`,
           ];
@@ -259,7 +354,7 @@
               <div class="analytics-day-date">${new Date(`${day.date}T00:00:00`).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}</div>
               <div class="analytics-day-money analytics-income">+${core.formatMoney(cashflow.incomeTotal)}</div>
               <div class="analytics-day-money analytics-expense">-${core.formatMoney(cashflow.expenseTotal)}</div>
-              <div class="muted-small analytics-day-meta">Опер. траты: ${core.formatMoney(operationalExpense)}</div>
+              <div class="muted-small analytics-day-meta analytics-${operatingResult.presentation.tone}">${operatingResult.presentation.label}: ${core.formatMoney(operatingResult.presentation.amount)}</div>
               <div class="muted-small">${cashflow.eventsCount} событ.</div>
             </button>
           `;
@@ -270,7 +365,7 @@
         <td class="analytics-week-total analytics-income">${core.formatMoney(weekCashflow.incomeTotal)}</td>
         <td class="analytics-week-total analytics-expense">${core.formatMoney(weekCashflow.expenseTotal)}</td>
         <td class="analytics-week-total">${weekCashflow.eventsCount}</td>
-        <td class="analytics-week-total analytics-expense">${core.formatMoney(Number(week?.expense_total || 0))}</td>
+        <td class="analytics-week-total analytics-${weekOperatingResult.presentation.tone}">${weekOperatingResult.presentation.label}: ${core.formatMoney(weekOperatingResult.presentation.amount)}</td>
         <td class="analytics-week-total">
           <span class="analytics-kpi-chip analytics-kpi-chip-${weekResult.tone}">
             Денежный поток: ${core.formatMoney(weekCashflow.resultTotal)}
@@ -291,8 +386,7 @@
     el.analyticsYearGrid.innerHTML = months
       .map((item) => {
         const cashflow = resolveCashflowTotals(item);
-        const result = describeResult(cashflow.resultTotal);
-        const resultTone = result.cardClass || result.tone || "neutral";
+        const operatingResult = resolveOperatingResult(item);
         const monthDate = parseMonthAnchor(item.month);
         const label = monthDate
           ? monthDate.toLocaleDateString("ru-RU", { month: "short", year: "numeric", timeZone: "UTC" })
@@ -305,7 +399,8 @@
             </div>
             <div class="muted-small analytics-income">Приток: ${core.formatMoney(cashflow.incomeTotal)}</div>
             <div class="muted-small analytics-expense">Отток: ${core.formatMoney(cashflow.expenseTotal)}</div>
-            <div class="muted-small analytics-${resultTone}">Денежный поток: ${core.formatMoney(cashflow.resultTotal)}</div>
+            <div class="muted-small analytics-${operatingResult.presentation.tone}">${operatingResult.presentation.label}: ${core.formatMoney(operatingResult.presentation.amount)}</div>
+            <div class="muted-small analytics-balance">Денежный поток: ${core.formatMoney(cashflow.resultTotal)}</div>
           </article>
         `;
       })
@@ -452,6 +547,7 @@
     state.analyticsMonthAnchor = serializeMonthAnchor(parsed);
     syncGridPickers();
     syncMonthLabelByView(parsed, "month");
+    closeAnalyticsGridPopovers();
     await loadAnalyticsCalendar({ force: true });
   }
 
@@ -467,7 +563,39 @@
     }
     syncGridPickers();
     syncMonthLabelByView(new Date(Date.UTC(year, 0, 1)), "year");
+    closeAnalyticsGridPopovers();
     await loadAnalyticsCalendar({ force: true });
+  }
+
+  function bindGridPickerPopovers() {
+    if (el.analyticsGridMonthTrigger) {
+      el.analyticsGridMonthTrigger.addEventListener("click", () => {
+        toggleAnalyticsGridPopover("month");
+      });
+    }
+    if (el.analyticsGridYearTrigger) {
+      el.analyticsGridYearTrigger.addEventListener("click", () => {
+        toggleAnalyticsGridPopover("year");
+      });
+    }
+    if (el.analyticsGridMonthOptions) {
+      el.analyticsGridMonthOptions.addEventListener("click", (event) => {
+        const btn = event.target.closest("[data-analytics-grid-month-value]");
+        if (!btn) {
+          return;
+        }
+        setAnalyticsGridMonthAnchor(String(btn.dataset.analyticsGridMonthValue || "")).catch((err) => core.setStatus(String(err)));
+      });
+    }
+    if (el.analyticsGridYearOptions) {
+      el.analyticsGridYearOptions.addEventListener("click", (event) => {
+        const btn = event.target.closest("[data-analytics-grid-year-value]");
+        if (!btn) {
+          return;
+        }
+        setAnalyticsGridYearAnchor(String(btn.dataset.analyticsGridYearValue || "")).catch((err) => core.setStatus(String(err)));
+      });
+    }
   }
 
   const api = {
@@ -484,6 +612,8 @@
     setAnalyticsGridYearAnchor,
     syncCalendarScrollFade,
   };
+
+  bindGridPickerPopovers();
 
   window.App.registerRuntimeModule?.("analytics-calendar-module", api);
 })();

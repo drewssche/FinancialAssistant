@@ -94,6 +94,11 @@
   min-width: 9rem;
 }
 
+.analytics-grid-picker-trigger {
+  min-width: 11rem;
+  justify-content: flex-start;
+}
+
 .analytics-calendar-table td {
   vertical-align: top;
 }
@@ -157,6 +162,24 @@
 
 .analytics-day-meta {
   color: #9db0d4;
+}
+
+.analytics-day-meta.analytics-positive,
+.analytics-week-total.analytics-positive,
+.analytics-year-card .analytics-positive {
+  color: #76e2a5;
+}
+
+.analytics-day-meta.analytics-negative,
+.analytics-week-total.analytics-negative,
+.analytics-year-card .analytics-negative {
+  color: #ff9494;
+}
+
+.analytics-day-meta.analytics-neutral,
+.analytics-week-total.analytics-neutral,
+.analytics-year-card .analytics-neutral {
+  color: #8fb7ff;
 }
 
 .analytics-week-total {

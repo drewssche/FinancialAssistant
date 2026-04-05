@@ -20,6 +20,10 @@
     telegram_digest_time: "10:00",
     currency_alerts: {},
   };
+  const DEFAULT_DEBT_PREFS = {
+    reminders_enabled: true,
+    reminder_time: "09:00",
+  };
   let activeSettingsPickerKey = "";
 
   function getAnalyticsFeature() {
@@ -79,6 +83,17 @@
     return {
       ...DEFAULT_CURRENCY_PREFS,
       ...(state.preferences?.data?.currency || {}),
+    };
+  }
+
+  function getMergedDebtPrefs() {
+    const rawDebts = state.preferences?.data?.debts || {};
+    const legacyPlans = state.preferences?.data?.plans || {};
+    return {
+      ...DEFAULT_DEBT_PREFS,
+      reminders_enabled: rawDebts.reminders_enabled ?? legacyPlans.reminders_enabled ?? DEFAULT_DEBT_PREFS.reminders_enabled,
+      reminder_time: rawDebts.reminder_time || legacyPlans.reminder_time || DEFAULT_DEBT_PREFS.reminder_time,
+      ...rawDebts,
     };
   }
 
@@ -251,6 +266,13 @@
       el.plansReminderTimeInput.value = String(state.preferences?.data?.plans?.reminder_time || "09:00");
       el.plansReminderTimeInput.disabled = el.plansRemindersToggle ? !el.plansRemindersToggle.checked : false;
     }
+    if (el.debtsRemindersToggle) {
+      el.debtsRemindersToggle.checked = getMergedDebtPrefs().reminders_enabled !== false;
+    }
+    if (el.debtsReminderTimeInput) {
+      el.debtsReminderTimeInput.value = String(getMergedDebtPrefs().reminder_time || "09:00");
+      el.debtsReminderTimeInput.disabled = el.debtsRemindersToggle ? !el.debtsRemindersToggle.checked : false;
+    }
     if (el.dashboardOperationsLimitSelect) {
       const value = [5, 8, 12].includes(Number(ui.dashboard_operations_limit)) ? String(ui.dashboard_operations_limit) : "8";
       el.dashboardOperationsLimitSelect.value = value;
@@ -301,6 +323,9 @@
     }
     if (el.plansReminderTimeInput && el.plansRemindersToggle) {
       el.plansReminderTimeInput.disabled = !el.plansRemindersToggle.checked;
+    }
+    if (el.debtsReminderTimeInput && el.debtsRemindersToggle) {
+      el.debtsReminderTimeInput.disabled = !el.debtsRemindersToggle.checked;
     }
     if (el.currencyDigestTimeInput && el.currencyDigestToggle) {
       el.currencyDigestTimeInput.disabled = !el.currencyDigestToggle.checked;
@@ -483,6 +508,8 @@
         debts: {
           ...(state.preferences?.data?.debts || {}),
           sort_preset: state.debtSortPreset || "priority",
+          reminders_enabled: el.debtsRemindersToggle ? el.debtsRemindersToggle.checked : getMergedDebtPrefs().reminders_enabled,
+          reminder_time: el.debtsReminderTimeInput ? String(el.debtsReminderTimeInput.value || "09:00") : String(getMergedDebtPrefs().reminder_time || "09:00"),
         },
         analytics: {
           ...analyticsPrefs,
@@ -585,6 +612,7 @@
     normalizeStructureHidden,
     getMergedUiPrefs,
     getMergedCurrencyPrefs,
+    getMergedDebtPrefs,
     applyInterfaceSettingsUi,
     previewInterfaceSettingsUi,
     syncSettingsPickerButtons,

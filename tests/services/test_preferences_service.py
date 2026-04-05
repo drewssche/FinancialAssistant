@@ -32,6 +32,7 @@ def test_update_preferences_emits_background_event_and_triggers_plan_sync(caplog
                 preferences_version=1,
                 data={
                     "plans": {"reminders_enabled": True, "reminder_time": "09:00"},
+                    "debts": {"reminders_enabled": True, "reminder_time": "09:30"},
                     "ui": {"timezone": "UTC"},
                 },
             )
@@ -57,6 +58,7 @@ def test_update_preferences_emits_background_event_and_triggers_plan_sync(caplog
                 preferences_version=2,
                 data={
                     "plans": {"reminders_enabled": False, "reminder_time": "08:15"},
+                    "debts": {"reminders_enabled": True, "reminder_time": "10:45"},
                     "ui": {"timezone": "Europe/Minsk"},
                 },
             )
@@ -64,10 +66,13 @@ def test_update_preferences_emits_background_event_and_triggers_plan_sync(caplog
         assert updated.preferences_version == 2
         assert "background_job_event component=preferences event=preferences_updated" in caplog.text
         assert "background_job_event component=plan_reminder event=user_jobs_synced" in caplog.text
+        assert "background_job_event component=debt_reminder event=user_jobs_synced" in caplog.text
         assert "user_id=1" in caplog.text
         assert "preferences_version=2" in caplog.text
-        assert "reminders_enabled=False" in caplog.text
-        assert "reminder_time=08:15" in caplog.text
+        assert "plan_reminders_enabled=False" in caplog.text
+        assert "plan_reminder_time=08:15" in caplog.text
+        assert "debt_reminders_enabled=True" in caplog.text
+        assert "debt_reminder_time=10:45" in caplog.text
         assert "timezone=Europe/Minsk" in caplog.text
     finally:
         db.close()

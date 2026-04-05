@@ -10,6 +10,7 @@ from app.schemas.currency import (
     CurrencyPerformanceHistoryOut,
     CurrencyRateHistoryPointOut,
     CurrencyRateOut,
+    CurrencyTradeListOut,
     CurrencyRateUpsert,
     CurrencyTradeCreate,
     CurrencyTradeOut,
@@ -31,6 +32,21 @@ def get_currency_overview(
     service = CurrencyService(db)
     try:
         return service.get_overview(user_id=user_id, currency=currency, trades_limit=trades_limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/trades", response_model=CurrencyTradeListOut)
+def list_currency_trades(
+    currency: str | None = Query(default=None, min_length=3, max_length=3),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = CurrencyService(db)
+    try:
+        return service.list_trades(user_id=user_id, currency=currency, page=page, page_size=page_size)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 

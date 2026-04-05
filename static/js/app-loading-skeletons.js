@@ -131,6 +131,33 @@
     }
   }
 
+  function renderDashboardCurrencySkeleton() {
+    if (el.dashboardCurrencyBalances) {
+      el.dashboardCurrencyBalances.innerHTML = Array.from({ length: 3 }, () => `
+        <article class="currency-balance-card skeleton-card-block skeleton-stack-md">
+          ${line("skeleton-w-40", "skeleton-line-xs")}
+          ${line("skeleton-w-56", "skeleton-line-lg")}
+          ${line("skeleton-w-80", "skeleton-line-sm")}
+          ${line("skeleton-w-72", "skeleton-line-sm")}
+        </article>
+      `).join("");
+    }
+    if (el.dashboardCurrencyRates) {
+      el.dashboardCurrencyRates.innerHTML = Array.from({ length: 2 }, () => `
+        <article class="dashboard-currency-rate-card skeleton-card-block skeleton-stack-md">
+          ${line("skeleton-w-32", "skeleton-line-xs")}
+          ${line("skeleton-w-48", "skeleton-line-lg")}
+          ${line("skeleton-w-64", "skeleton-line-sm")}
+          ${line("skeleton-w-56", "skeleton-line-xs")}
+          ${line("skeleton-w-32", "skeleton-line-sm")}
+        </article>
+      `).join("");
+    }
+    if (el.dashboardCurrencyPositions) {
+      el.dashboardCurrencyPositions.innerHTML = Array.from({ length: 5 }, () => `<span class="skeleton-chip" aria-hidden="true"></span>`).join("");
+    }
+  }
+
   function renderPlansSectionSkeleton() {
     if (el.plansDueChip) {
       el.plansDueChip.innerHTML = inlineLine("skeleton-w-64", "skeleton-line-sm");
@@ -388,19 +415,215 @@
     }
   }
 
+  function renderCurrencySectionSkeleton() {
+    if (el.currencySummaryCurrentValue) {
+      el.currencySummaryCurrentValue.innerHTML = inlineLine("skeleton-w-48", "skeleton-line-money");
+    }
+    if (el.currencySummaryBookValue) {
+      el.currencySummaryBookValue.innerHTML = inlineLine("skeleton-w-48", "skeleton-line-money");
+    }
+    if (el.currencySummaryResultValue) {
+      el.currencySummaryResultValue.innerHTML = inlineLine("skeleton-w-48", "skeleton-line-money");
+    }
+    if (el.currencySummaryRealizedValue) {
+      el.currencySummaryRealizedValue.innerHTML = inlineLine("skeleton-w-48", "skeleton-line-money");
+    }
+    if (el.currencySummaryCombinedValue) {
+      el.currencySummaryCombinedValue.innerHTML = inlineLine("skeleton-w-48", "skeleton-line-money");
+    }
+    if (el.currencySummaryActiveCount) {
+      el.currencySummaryActiveCount.innerHTML = inlineLine("skeleton-w-24", "skeleton-line-lg");
+    }
+    if (el.currencyPerformanceRangeLabel) {
+      el.currencyPerformanceRangeLabel.innerHTML = inlineLine("skeleton-w-72", "skeleton-line-sm");
+    }
+    if (el.currencyPerformanceChart) {
+      el.currencyPerformanceChart.classList.add("analytics-trend-chart-skeleton");
+      el.currencyPerformanceChart.innerHTML = `
+        <defs>
+          <linearGradient id="currencyPerformanceSkeletonFill" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="rgba(72, 92, 128, 0.18)" />
+            <stop offset="45%" stop-color="rgba(232, 239, 255, 0.14)" />
+            <stop offset="100%" stop-color="rgba(72, 92, 128, 0.18)" />
+            <animateTransform
+              attributeName="gradientTransform"
+              type="translate"
+              from="-1 0"
+              to="1 0"
+              dur="1.4s"
+              repeatCount="indefinite"
+            />
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="980" height="280" rx="18" fill="rgba(57, 74, 104, 0.12)"></rect>
+        <path
+          d="M 20 188 C 130 170, 230 112, 360 136 S 600 214, 720 160 S 860 116, 960 128"
+          fill="none"
+          stroke="url(#currencyPerformanceSkeletonFill)"
+          stroke-width="8"
+          stroke-linecap="round"
+        ></path>
+      `;
+    }
+    if (el.currencyBalancesRow) {
+      el.currencyBalancesRow.innerHTML = Array.from({ length: 3 }, () => `
+        <article class="currency-balance-card skeleton-card-block skeleton-stack-md">
+          ${line("skeleton-w-32", "skeleton-line-xs")}
+          ${line("skeleton-w-48", "skeleton-line-lg")}
+          ${line("skeleton-w-80", "skeleton-line-sm")}
+        </article>
+      `).join("");
+    }
+    if (el.currencyPositionsList) {
+      el.currencyPositionsList.innerHTML = `
+        <div class="plans-skeleton-list">
+          ${Array.from({ length: 2 }, () => `
+            <article class="panel skeleton-card-block skeleton-stack-lg plans-skeleton-card">
+              <div class="plans-skeleton-head">
+                <div class="skeleton-stack-sm">
+                  ${line("skeleton-w-40", "skeleton-line-sm")}
+                  ${line("skeleton-w-56", "skeleton-line-xs")}
+                </div>
+                <span class="skeleton-chip" aria-hidden="true"></span>
+              </div>
+              <div class="analytics-kpi-grid">
+                ${Array.from({ length: 6 }, () => `
+                  <article class="analytics-kpi-card skeleton-card-block skeleton-stack-sm">
+                    ${line("skeleton-w-40", "skeleton-line-xs")}
+                    ${line("skeleton-w-56", "skeleton-line-lg")}
+                  </article>
+                `).join("")}
+              </div>
+            </article>
+          `).join("")}
+        </div>
+      `;
+    }
+    if (el.currencyTradesBody) {
+      el.currencyTradesBody.innerHTML = Array.from({ length: 6 }, () => `
+        <tr class="operations-skeleton-row">
+          <td><div class="skeleton-row-block operations-skeleton-cell"></div></td>
+          <td><div class="skeleton-row-block operations-skeleton-cell"></div></td>
+          <td><div class="skeleton-row-block operations-skeleton-cell"></div></td>
+          <td><div class="skeleton-row-block operations-skeleton-cell"></div></td>
+          <td><div class="skeleton-row-block operations-skeleton-cell"></div></td>
+          <td><div class="skeleton-row-block operations-skeleton-cell"></div></td>
+          <td><div class="skeleton-row-block operations-skeleton-cell operations-skeleton-action"></div></td>
+        </tr>
+      `).join("");
+    }
+    if (el.currencyTradesInfiniteSentinel) {
+      el.currencyTradesInfiniteSentinel.classList.add("hidden");
+    }
+  }
+
+  function clearCurrencySectionSkeletonState() {
+    el.currencyPerformanceChart?.classList.remove("analytics-trend-chart-skeleton");
+  }
+
+  function renderAnalyticsCurrencySkeleton() {
+    if (el.analyticsCurrencyRangeLabel) {
+      el.analyticsCurrencyRangeLabel.innerHTML = inlineLine("skeleton-w-72", "skeleton-line-sm");
+    }
+    if (el.analyticsCurrencyCurrentValue) {
+      el.analyticsCurrencyCurrentValue.innerHTML = inlineLine("skeleton-w-48", "skeleton-line-money");
+    }
+    if (el.analyticsCurrencyBookValue) {
+      el.analyticsCurrencyBookValue.innerHTML = inlineLine("skeleton-w-48", "skeleton-line-money");
+    }
+    if (el.analyticsCurrencyResultValue) {
+      el.analyticsCurrencyResultValue.innerHTML = inlineLine("skeleton-w-48", "skeleton-line-money");
+    }
+    if (el.analyticsCurrencyRealizedValue) {
+      el.analyticsCurrencyRealizedValue.innerHTML = inlineLine("skeleton-w-48", "skeleton-line-money");
+    }
+    if (el.analyticsCurrencyCombinedValue) {
+      el.analyticsCurrencyCombinedValue.innerHTML = inlineLine("skeleton-w-48", "skeleton-line-money");
+    }
+    if (el.analyticsCurrencyActiveCount) {
+      el.analyticsCurrencyActiveCount.innerHTML = inlineLine("skeleton-w-24", "skeleton-line-lg");
+    }
+    if (el.analyticsCurrencyBalancesRow) {
+      el.analyticsCurrencyBalancesRow.innerHTML = Array.from({ length: 3 }, () => `
+        <article class="currency-balance-card skeleton-card-block skeleton-stack-md">
+          ${line("skeleton-w-32", "skeleton-line-xs")}
+          ${line("skeleton-w-48", "skeleton-line-lg")}
+          ${line("skeleton-w-80", "skeleton-line-sm")}
+        </article>
+      `).join("");
+    }
+    if (el.analyticsCurrencySecondary) {
+      el.analyticsCurrencySecondary.innerHTML = Array.from({ length: 4 }, () => `<span class="skeleton-chip" aria-hidden="true"></span>`).join("");
+    }
+    if (el.analyticsCurrencyChart) {
+      el.analyticsCurrencyChart.classList.add("analytics-trend-chart-skeleton");
+      el.analyticsCurrencyChart.innerHTML = `
+        <defs>
+          <linearGradient id="analyticsCurrencySkeletonFill" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="rgba(72, 92, 128, 0.18)" />
+            <stop offset="45%" stop-color="rgba(232, 239, 255, 0.14)" />
+            <stop offset="100%" stop-color="rgba(72, 92, 128, 0.18)" />
+            <animateTransform
+              attributeName="gradientTransform"
+              type="translate"
+              from="-1 0"
+              to="1 0"
+              dur="1.4s"
+              repeatCount="indefinite"
+            />
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="980" height="280" rx="18" fill="rgba(57, 74, 104, 0.12)"></rect>
+        ${Array.from({ length: 2 }, (_, idx) => `
+          <path
+            d="${idx === 0 ? "M 20 188 C 130 170, 230 112, 360 136 S 600 214, 720 160 S 860 116, 960 128" : "M 20 154 C 150 134, 250 172, 380 148 S 620 104, 760 126 S 880 154, 960 118"}"
+            fill="none"
+            stroke="url(#analyticsCurrencySkeletonFill)"
+            stroke-width="${idx === 0 ? "8" : "6"}"
+            stroke-linecap="round"
+          ></path>
+        `).join("")}
+      `;
+    }
+    if (el.analyticsCurrencyTradesBody) {
+      el.analyticsCurrencyTradesBody.innerHTML = Array.from({ length: 6 }, () => `
+        <tr class="operations-skeleton-row">
+          <td><div class="skeleton-row-block operations-skeleton-cell"></div></td>
+          <td><div class="skeleton-row-block operations-skeleton-cell"></div></td>
+          <td><div class="skeleton-row-block operations-skeleton-cell"></div></td>
+          <td><div class="skeleton-row-block operations-skeleton-cell"></div></td>
+          <td><div class="skeleton-row-block operations-skeleton-cell"></div></td>
+          <td><div class="skeleton-row-block operations-skeleton-cell"></div></td>
+        </tr>
+      `).join("");
+    }
+    if (el.analyticsCurrencyTradesInfiniteSentinel) {
+      el.analyticsCurrencyTradesInfiniteSentinel.classList.add("hidden");
+    }
+  }
+
+  function clearAnalyticsCurrencySkeletonState() {
+    el.analyticsCurrencyChart?.classList.remove("analytics-trend-chart-skeleton");
+  }
+
   const api = {
     renderDashboardAnalyticsSkeleton,
     clearDashboardAnalyticsSkeletonState,
     renderDashboardDebtsSkeleton,
     renderDashboardPlansSkeleton,
+    renderDashboardCurrencySkeleton,
     renderPlansSectionSkeleton,
     renderDebtsSectionSkeleton,
     renderOperationsSectionSkeleton,
+    renderCurrencySectionSkeleton,
+    clearCurrencySectionSkeletonState,
     renderAnalyticsStructureSkeleton,
     clearAnalyticsStructureSkeletonState,
     renderAnalyticsCalendarSkeleton,
     renderAnalyticsTrendSkeleton,
     clearAnalyticsTrendSkeletonState,
+    renderAnalyticsCurrencySkeleton,
+    clearAnalyticsCurrencySkeletonState,
   };
 
   window.App.registerRuntimeModule?.("loading-skeletons", api);

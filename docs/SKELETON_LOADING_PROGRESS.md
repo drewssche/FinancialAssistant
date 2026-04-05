@@ -107,24 +107,15 @@ Status:
 - 2026-03-27: operations inline refresh rollout:
   - full `Операции` now keeps visible summary and table content during repeat reset-loads
   - inline refresh is limited to full reloads of the section and does not interfere with infinite scroll append behavior
+- 2026-03-27: currency selective rollout completed:
+  - standalone `Валюта` and `Аналитика -> Валюта` now have cold-load skeletons and inline refresh on repeat loads
+  - dashboard currency panel now has cold-load skeleton parity with its existing inline refresh state
 
 ## Next Phase
 
 - use the same pattern selectively for other heavy lists where it improves perceived responsiveness
 - optionally tighten visual polish for inline states if the current badge/veil feels too subtle or too strong
 - priority candidates for the next selective rollout:
-  - analytics tab `Валюта`:
-    - cold-load skeleton for KPI strip
-    - balances row
-    - chart shell
-    - recent trades rows
-  - standalone `Валюта` section:
-    - summary KPI strip
-    - balances row
-    - positions list
-    - trades table
-  - dashboard currency panel:
-    - cold-load skeleton parity with the existing repeat-refresh inline state
 - lower priority candidates:
   - `Настройки` tracked-currency / reminders block only if the real API latency makes first open feel empty
   - admin runtime/diagnostics surfaces with heavier aggregate cards

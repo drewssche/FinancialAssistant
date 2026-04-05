@@ -27,6 +27,11 @@ class PreferenceRepository:
                     "reminders_enabled": True,
                     "reminder_time": "09:00",
                 },
+                "debts": {
+                    "sort_preset": "priority",
+                    "reminders_enabled": True,
+                    "reminder_time": "09:00",
+                },
                 "currency": {
                     "tracked_currencies": ["USD", "EUR"],
                     "show_dashboard_kpi": True,
