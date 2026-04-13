@@ -1531,6 +1531,26 @@
     const today = core.getTodayIso();
     core.syncDateFieldValue(el.customDateTo, state.customDateTo || today);
     core.syncDateFieldValue(el.customDateFrom, state.customDateFrom || today);
+    if (el.customDayDate) {
+      const dayValue = el.customDateFrom?.value === el.customDateTo?.value
+        ? el.customDateFrom.value
+        : (state.customDateFrom || today);
+      core.syncDateFieldValue(el.customDayDate, dayValue || today);
+    }
+    const mode = el.customDateFrom?.value && el.customDateTo?.value && el.customDateFrom.value !== el.customDateTo.value
+      ? "range"
+      : "day";
+    if (el.customPeriodMode) {
+      el.customPeriodMode.value = mode;
+    }
+    if (el.periodCustomModeTabs) {
+      core.syncSegmentedActive(el.periodCustomModeTabs, "period-custom-mode", mode);
+    }
+    el.customDayField?.classList.toggle("hidden", mode !== "day");
+    el.customRangeFields?.classList.toggle("hidden", mode !== "range");
+    if (el.submitPeriodCustomBtn) {
+      el.submitPeriodCustomBtn.textContent = mode === "day" ? "Показать день" : "Применить период";
+    }
     el.periodCustomModal.classList.remove("hidden");
   }
   function closePeriodCustomModal() {

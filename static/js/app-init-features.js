@@ -171,6 +171,51 @@
       getOperationModal().openPeriodCustomModal?.();
     }
 
+    function setPeriodCustomMode(mode) {
+      const nextMode = mode === "range" ? "range" : "day";
+      if (el.customPeriodMode) {
+        el.customPeriodMode.value = nextMode;
+      }
+      if (el.periodCustomModeTabs) {
+        core.syncSegmentedActive(el.periodCustomModeTabs, "period-custom-mode", nextMode);
+      }
+      const today = core.getTodayIso();
+      if (nextMode === "day") {
+        const fromValue = el.customDateFrom?.value || "";
+        const toValue = el.customDateTo?.value || "";
+        const nextDay = fromValue && fromValue === toValue
+          ? fromValue
+          : (fromValue || state.customDateFrom || today);
+        core.syncDateFieldValue(el.customDayDate, nextDay);
+      } else {
+        const dayValue = el.customDayDate?.value || state.customDateFrom || today;
+        if (!el.customDateFrom?.value || el.customDateFrom.value === el.customDateTo?.value) {
+          core.syncDateFieldValue(el.customDateFrom, dayValue);
+        }
+        if (!el.customDateTo?.value) {
+          core.syncDateFieldValue(el.customDateTo, dayValue);
+        }
+      }
+      el.customDayField?.classList.toggle("hidden", nextMode !== "day");
+      el.customRangeFields?.classList.toggle("hidden", nextMode !== "range");
+      if (el.submitPeriodCustomBtn) {
+        el.submitPeriodCustomBtn.textContent = nextMode === "day" ? "Показать день" : "Применить период";
+      }
+    }
+
+    function resolvePeriodCustomBounds() {
+      const mode = el.customPeriodMode?.value === "range" ? "range" : "day";
+      if (mode === "day") {
+        const day = core.parseDateInputValue(el.customDayDate?.value || "");
+        return day ? { from: day, to: day, mode } : { from: "", to: "", mode };
+      }
+      return {
+        from: core.parseDateInputValue(el.customDateFrom.value),
+        to: core.parseDateInputValue(el.customDateTo.value),
+        mode,
+      };
+    }
+
     function applyOperationsQuickPeriod(action, period) {
       closeOperationsPeriodPopover();
       if (action === "custom") {
@@ -369,12 +414,27 @@
       });
     }
 
+    if (el.periodCustomModeTabs) {
+      el.periodCustomModeTabs.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-period-custom-mode]");
+        if (!btn) {
+          return;
+        }
+        setPeriodCustomMode(String(btn.dataset.periodCustomMode || "day"));
+      });
+    }
+
+    if (el.customDayTodayBtn) {
+      el.customDayTodayBtn.addEventListener("click", () => {
+        core.syncDateFieldValue(el.customDayDate, core.getTodayIso());
+      });
+    }
+
     el.periodCustomForm.addEventListener("submit", (event) => {
       event.preventDefault();
-      const from = core.parseDateInputValue(el.customDateFrom.value);
-      const to = core.parseDateInputValue(el.customDateTo.value);
+      const { from, to, mode } = resolvePeriodCustomBounds();
       if (!from || !to || from > to) {
-        core.setStatus("Проверь диапазон дат");
+        core.setStatus(mode === "day" ? "Проверь дату" : "Проверь диапазон дат");
         return;
       }
       if (state.analyticsGlobalPendingCustom && state.activeSection === "analytics") {

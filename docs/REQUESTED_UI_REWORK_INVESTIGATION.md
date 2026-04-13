@@ -14,6 +14,7 @@ Implemented:
   - `debts.reminder_time`
 - dashboard refresh stabilization:
   - secondary panel failures больше не должны валить целиком reload дашборда
+  - stale dashboard loads are ignored after the user switches to another section, so old dashboard failures should not surface over `Планы`/other sections
 - currency pagination contract:
   - backend `GET /api/v1/currency/trades?page=1&page_size=20&currency=USD`
   - frontend `Валюта` и `Аналитика -> Валюта` переведены на `20 + 20` with infinite scroll sentinel

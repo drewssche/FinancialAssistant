@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.logging import log_background_job_event
 from app.repositories.plan_repo import PlanRepository
+from app.services.telegram_message_format import ICON_RECEIPT, money_direction_icon, title
 
 
 class PlanReminderService:
@@ -212,10 +213,10 @@ class PlanReminderService:
     def build_reminder_text(self, payload: dict) -> str:
         plan = payload.get("plan")
         if not plan:
-            return "План к подтверждению"
+            return title(ICON_RECEIPT, "План к подтверждению")
         kind_label = "Доход" if plan.kind == "income" else "Расход"
-        lines = ["План к подтверждению"]
-        lines.append(f"• {kind_label} {plan.amount} на {plan.scheduled_date.isoformat()}")
+        lines = [title(ICON_RECEIPT, "План к подтверждению")]
+        lines.append(f"{money_direction_icon(plan.kind)} {kind_label} {plan.amount} на {plan.scheduled_date.isoformat()}")
         if plan.note:
             lines.append(plan.note)
         return "\n".join(lines)

@@ -3,6 +3,7 @@
   const operationModal = window.App.getRuntimeModule?.("operation-modal");
   const debtUi = core.debtUi;
   const getCategoryMetaById = operationModal.getCategoryMetaById;
+  let dashboardLoadSeq = 0;
 
   function getPlansFeature() {
     return window.App.getRuntimeModule?.("plans");
@@ -264,6 +265,9 @@
 
 
   async function loadDashboard() {
+    const loadSeq = ++dashboardLoadSeq;
+    const isCurrentDashboardLoad = () => loadSeq === dashboardLoadSeq && state.activeSection === "dashboard";
+    const startedOnDashboard = state.activeSection === "dashboard";
     const skeletons = getLoadingSkeletons();
     const refreshState = getInlineRefreshState();
     const ui = core.getUiSettings ? core.getUiSettings() : null;
@@ -279,19 +283,19 @@
     if (el.dashboardDebtsPanel && ui) {
       el.dashboardDebtsPanel.classList.toggle("hidden", ui.showDashboardDebts === false);
     }
-    if (!state.dashboardDebtSummaryLoaded) {
+    if (startedOnDashboard && !state.dashboardDebtSummaryLoaded) {
       skeletons.renderDashboardDebtsSkeleton?.();
     }
-    if (!state.dashboardPlansHydrated) {
+    if (startedOnDashboard && !state.dashboardPlansHydrated) {
       skeletons.renderDashboardPlansSkeleton?.();
     }
-    if (!state.dashboardCurrencyHydrated) {
+    if (startedOnDashboard && !state.dashboardCurrencyHydrated) {
       skeletons.renderDashboardCurrencySkeleton?.();
     }
     const dashboardData = getDashboardData();
-    const shouldRefreshCurrency = state.dashboardCurrencyHydrated;
-    const shouldRefreshDebts = state.dashboardDebtSummaryLoaded || state.dashboardDebtsHydrated;
-    const shouldRefreshPlans = state.dashboardPlansHydrated;
+    const shouldRefreshCurrency = startedOnDashboard && state.dashboardCurrencyHydrated;
+    const shouldRefreshDebts = startedOnDashboard && (state.dashboardDebtSummaryLoaded || state.dashboardDebtsHydrated);
+    const shouldRefreshPlans = startedOnDashboard && state.dashboardPlansHydrated;
     if (shouldRefreshCurrency && el.dashboardCurrencyPanel) {
       refreshState.begin?.(el.dashboardCurrencyPanel, "Обновляется");
     }
@@ -305,6 +309,9 @@
       const data = await (dashboardData.loadAllTimeSummary
         ? dashboardData.loadAllTimeSummary()
         : core.requestJson("/api/v1/dashboard/summary?period=all_time", { headers: core.authHeaders() }));
+      if (!isCurrentDashboardLoad()) {
+        return;
+      }
       if (el.debtLendTotal) {
         el.debtLendTotal.textContent = core.formatMoney(data.debt_lend_outstanding);
       }
@@ -326,8 +333,14 @@
         const currencyOverview = await core.requestJson("/api/v1/currency/overview?trades_limit=10", {
           headers: core.authHeaders(),
         });
+        if (!isCurrentDashboardLoad()) {
+          return;
+        }
         renderDashboardCurrencyRates(currencyOverview.current_rates, currencyOverview.tracked_currencies);
       } catch {
+        if (!isCurrentDashboardLoad()) {
+          return;
+        }
         renderDashboardCurrencyRates([], []);
       }
       state.dashboardCurrencyHydrated = true;
@@ -335,13 +348,23 @@
 
       if (el.dashboardPlansPanel && ui?.showDashboardOperations !== false) {
         try {
+          if (!isCurrentDashboardLoad()) {
+            return;
+          }
           await getPlansFeature().loadPlans?.();
+          if (!isCurrentDashboardLoad()) {
+            return;
+          }
         } catch (err) {
           reportOptionalDashboardPanelFailure("plans", err);
-          getPlansFeature().renderDashboardPlans?.();
+          if (isCurrentDashboardLoad()) {
+            getPlansFeature().renderDashboardPlans?.();
+          }
         }
       } else {
-        getPlansFeature().renderDashboardPlans?.();
+        if (isCurrentDashboardLoad()) {
+          getPlansFeature().renderDashboardPlans?.();
+        }
       }
 
       if (!core.isDashboardDebtsVisible()) {
@@ -353,6 +376,9 @@
           const cards = await (dashboardData.loadDebtPreview
             ? dashboardData.loadDebtPreview({ limit: 6 })
             : core.requestJson("/api/v1/dashboard/debts/preview?limit=6", { headers: core.authHeaders() }));
+          if (!isCurrentDashboardLoad()) {
+            return;
+          }
           el.dashboardDebtsList.innerHTML = "";
           if (!cards.length) {
             const empty = document.createElement("div");

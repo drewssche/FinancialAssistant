@@ -64,6 +64,8 @@ def test_list_due_deliveries_builds_ready_to_send_payload():
         assert len(deliveries) == 1
         delivery = deliveries[0]
         assert delivery.chat_id == "100500"
+        assert delivery.text.startswith("🧾 План к подтверждению")
+        assert "💸 Расход 10.00" in delivery.text
         assert "План к подтверждению" in delivery.text
         assert delivery.reply_markup == {
             "inline_keyboard": [[{"text": "Подтвердить", "callback_data": "planc:1"}]]

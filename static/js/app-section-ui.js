@@ -1,6 +1,7 @@
 (() => {
   const { state, el } = window.App;
   let todayTimerId = null;
+  let sectionSwitchSeq = 0;
 
   function getActions() {
     return window.App.actions || {};
@@ -287,6 +288,8 @@
   }
 
   async function switchSection(sectionId, options = {}) {
+    const switchSeq = ++sectionSwitchSeq;
+    const isCurrentSwitch = () => switchSeq === sectionSwitchSeq && state.activeSection === sectionId;
     const preserveBackStack = options.preserveBackStack === true;
     if (sectionId === "admin" && !state.isAdmin) {
       return;
@@ -322,6 +325,9 @@
       }
       if (jobs.length) {
         const results = await Promise.allSettled(jobs.map((job) => job.promise));
+        if (!isCurrentSwitch()) {
+          return;
+        }
         const criticalFailure = results.some((item, idx) => item.status === "rejected" && jobs[idx].critical);
         const optionalFailures = results
           .map((item, idx) => ({ item, job: jobs[idx] }))

@@ -12,6 +12,7 @@ from app.repositories.currency_repo import CurrencyRepository
 from app.repositories.preference_repo import PreferenceRepository
 from app.services.currency_rate_refresh_service import CurrencyRateRefreshService
 from app.services.currency_service import CurrencyService
+from app.services.telegram_message_format import ICON_CURRENCY, signed_decimal, title, trend_icon
 
 
 @dataclass(frozen=True)
@@ -72,7 +73,7 @@ class TelegramCurrencyDigestBotService:
         )
 
     def build_digest_text(self, *, overview: dict, config: dict) -> str:
-        lines = ["Курсы и валютный портфель на сегодня"]
+        lines = [title(ICON_CURRENCY, "Курсы и валютный портфель на сегодня")]
         current_rates = {
             str(item["currency"]).upper(): item
             for item in overview.get("current_rates") or []
@@ -86,27 +87,29 @@ class TelegramCurrencyDigestBotService:
             rate_row = current_rates.get(currency)
             position_row = positions.get(currency)
             if rate_row:
+                line_icon = "ℹ️"
                 rate_part = f"{currency}: курс {Decimal(rate_row['rate']):.4f}"
                 if rate_row.get("change_value") is not None:
                     delta = Decimal(rate_row["change_value"])
-                    delta_prefix = "+" if delta > 0 else "-" if delta < 0 else ""
-                    rate_part += f", {delta_prefix}{abs(delta):.4f} за день"
+                    line_icon = trend_icon(delta)
+                    rate_part += f", {signed_decimal(delta, places=4)} за день"
             else:
+                line_icon = "ℹ️"
                 rate_part = f"{currency}: курс пока не задан"
             if position_row:
                 result_value = Decimal(position_row["result_value"])
-                result_prefix = "+" if result_value > 0 else "-" if result_value < 0 else ""
+                if result_value:
+                    line_icon = trend_icon(result_value)
                 rate_part += (
                     f", позиция {Decimal(position_row['quantity']):.2f} {currency}, "
                     f"оценка {Decimal(position_row['current_value']):.2f} {base_currency}, "
-                    f"результат {result_prefix}{abs(result_value):.2f} {base_currency}"
+                    f"результат {signed_decimal(result_value, places=2)} {base_currency}"
                 )
-            lines.append(rate_part)
+            lines.append(f"{line_icon} {rate_part}")
         total_value = Decimal(overview.get("total_current_value") or 0)
         total_result = Decimal(overview.get("total_result_value") or 0)
-        total_prefix = "+" if total_result > 0 else "-" if total_result < 0 else ""
         lines.append(
-            f"Итого: оценка {total_value:.2f} {base_currency}, результат {total_prefix}{abs(total_result):.2f} {base_currency}"
+            f"{trend_icon(total_result)} Итого: оценка {total_value:.2f} {base_currency}, результат {signed_decimal(total_result, places=2)} {base_currency}"
         )
         return "\n".join(lines)
 

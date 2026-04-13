@@ -12,18 +12,41 @@
           </button>
         </div>
         <form id="periodCustomForm" class="category-modal-form">
-          <div class="date-input-wrap">
-            <input id="customDateFrom" class="input" type="date" aria-label="Дата начала периода" required />
-            <button class="date-input-trigger" type="button" data-date-picker-trigger="customDateFrom" aria-label="Открыть календарь"></button>
+          <input id="customPeriodMode" type="hidden" value="day" />
+          <div id="periodCustomModeTabs" class="segmented period-custom-mode-tabs" role="tablist" aria-label="Режим настройки периода">
+            <button class="segmented-btn active" data-period-custom-mode="day" type="button">День</button>
+            <button class="segmented-btn" data-period-custom-mode="range" type="button">Диапазон</button>
           </div>
-          <div class="date-input-wrap">
-            <input id="customDateTo" class="input" type="date" aria-label="Дата окончания периода" required />
-            <button class="date-input-trigger" type="button" data-date-picker-trigger="customDateTo" aria-label="Открыть календарь"></button>
+          <div id="customDayField" class="period-custom-field">
+            <div class="field-head row between">
+              <span class="muted-small">Дата</span>
+              <button id="customDayTodayBtn" class="btn btn-secondary btn-xs" type="button">Сегодня</button>
+            </div>
+            <div class="date-input-wrap">
+              <input id="customDayDate" class="input" type="date" aria-label="Дата периода" />
+              <button class="date-input-trigger" type="button" data-date-picker-trigger="customDayDate" aria-label="Открыть календарь"></button>
+            </div>
+          </div>
+          <div id="customRangeFields" class="period-custom-range-fields hidden">
+            <div class="period-custom-field">
+              <span class="muted-small">С даты</span>
+              <div class="date-input-wrap">
+                <input id="customDateFrom" class="input" type="date" aria-label="Дата начала периода" required />
+                <button class="date-input-trigger" type="button" data-date-picker-trigger="customDateFrom" aria-label="Открыть календарь"></button>
+              </div>
+            </div>
+            <div class="period-custom-field">
+              <span class="muted-small">По дату</span>
+              <div class="date-input-wrap">
+                <input id="customDateTo" class="input" type="date" aria-label="Дата окончания периода" required />
+                <button class="date-input-trigger" type="button" data-date-picker-trigger="customDateTo" aria-label="Открыть календарь"></button>
+              </div>
+            </div>
           </div>
         </form>
         <div class="modal-footer">
           <button id="submitPeriodCustomBtn" class="btn btn-cta modal-main-cta" type="submit" form="periodCustomForm">
-            Применить период
+            Показать день
           </button>
         </div>
       </div>

@@ -209,8 +209,7 @@ Working note:
 - the Telegram bot shell is now guarded against drifting back into direct repository/model/api imports
 - the Telegram bot shell is also guarded against importing `PlanReminderService` directly; reminder delivery stays behind the telegram-specific adapter service
 - current Telegram runtime paths with business logic now go through explicit service-layer adapters instead of embedding domain mutation logic in the shell
-- debt Telegram product flow now has two layers:
-- full debt repayment sends an owner-only notification through `app/services/telegram_debt_notifier.py`, triggered post-commit from `app/services/debt_service.py`
+- debt Telegram product flow is intentionally limited to due-date reminders; full manual repayment no longer sends an owner-only Telegram notification because the UI action itself already confirms the result
 - debt due-date reminders now also go through a dedicated queue path: `app/services/debt_reminder_service.py` owns scheduling/dedupe over `debt_reminder_jobs`, `app/services/telegram_debt_reminder_bot_service.py` owns Telegram delivery assembly, and `scripts/run_telegram_admin_bot.py` stays a thin polling/delivery shell
 - current debt reminder event types:
   - `due_soon`: one-shot, one day before `due_date`
@@ -276,7 +275,6 @@ Working note:
 - Telegram plan confirmation observability is pinned by `tests/services/test_telegram_plan_bot_service.py`
 - residual/non-blocking:
 - observability is now strong for API, auth upsert, admin governance decisions, admin notification delivery, Telegram bot shell, Telegram plan confirmation, reminder delivery, preferences-triggered reminder resync, plan orchestration, and the critical operation mutation flow
-- debt Telegram repayment notification now also emits structured notifier-level events from `app/services/telegram_debt_notifier.py`
 - debt `due_soon` reminder lifecycle now also emits structured background-job events from `app/services/debt_reminder_service.py`, and bot delivery is observable via the existing Telegram bot shell logs
 - debt `overdue` reminder lifecycle now follows the same observable queue path and is also covered by `app/services/debt_reminder_service.py`
 - the remaining gap is primarily broader cross-process correlation and future background entrypoints outside the currently instrumented flows

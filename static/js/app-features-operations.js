@@ -326,6 +326,9 @@
     if (el.operationsQuickViewCard) {
       el.operationsQuickViewCard.classList.toggle("hidden", isMoneyFlowMode);
     }
+    if (el.operationsQuickActionsCard) {
+      el.operationsQuickActionsCard.classList.toggle("hidden", isMoneyFlowMode);
+    }
     if (el.operationsSourceCard) {
       el.operationsSourceCard.classList.toggle("hidden", !isMoneyFlowMode);
     }

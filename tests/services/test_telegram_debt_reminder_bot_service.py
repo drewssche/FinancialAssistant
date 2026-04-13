@@ -68,6 +68,8 @@ def test_list_due_deliveries_builds_due_soon_text(db_session: Session, monkeypat
     assert len(deliveries) == 1
     assert deliveries[0].chat_id == "100500"
     assert deliveries[0].debt_id == debt.id
+    assert deliveries[0].text.startswith("⏰ Скоро срок долга")
+    assert "💸 Вам нужно вернуть" in deliveries[0].text
     assert "Скоро срок долга" in deliveries[0].text
     assert "Контрагент: Мария" in deliveries[0].text
 
@@ -98,5 +100,6 @@ def test_list_due_deliveries_builds_overdue_text(db_session: Session, monkeypatc
     deliveries = TelegramDebtReminderBotService(db_session).list_due_deliveries()
 
     assert len(deliveries) == 1
+    assert deliveries[0].text.startswith("⚠️ Срок долга наступил")
     assert "Срок долга наступил" in deliveries[0].text
     assert "Контрагент: Олег" in deliveries[0].text

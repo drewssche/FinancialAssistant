@@ -194,6 +194,7 @@
     }
     pickerCoordinator.bindDateField("editDate", actions.updateEditPreview);
     pickerCoordinator.bindDateField("bulkOpDate");
+    pickerCoordinator.bindDateField("customDayDate");
     pickerCoordinator.bindDateField("customDateFrom");
     pickerCoordinator.bindDateField("customDateTo");
     pickerCoordinator.bindDateField("repaymentDate");

@@ -10,6 +10,7 @@ from app.repositories.currency_repo import CurrencyRepository
 from app.repositories.preference_repo import PreferenceRepository
 from app.services.currency_rate_refresh_service import CurrencyRateRefreshService
 from app.services.currency_service import CurrencyService
+from app.services.telegram_message_format import ICON_TARGET, threshold_icon, title
 
 
 @dataclass(frozen=True)
@@ -87,11 +88,11 @@ class TelegramCurrencyAlertBotService:
         )
 
     def build_alert_text(self, *, triggers: list[CurrencyAlertTrigger], base_currency: str) -> str:
-        lines = ["Сработали алерты по курсам валют"]
+        lines = [title(ICON_TARGET, "Сработали алерты по курсам валют")]
         for trigger in triggers:
             direction_text = "выше" if trigger.direction == "above" else "ниже"
             lines.append(
-                f"{trigger.currency}: курс {trigger.current_rate:.4f} {base_currency} {direction_text} порога {trigger.threshold:.4f} "
+                f"{threshold_icon(trigger.direction)} {trigger.currency}: курс {trigger.current_rate:.4f} {base_currency} {direction_text} порога {trigger.threshold:.4f} "
                 f"(дата курса {trigger.rate_date})"
             )
         return "\n".join(lines)

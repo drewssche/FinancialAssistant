@@ -123,6 +123,20 @@ def test_runtime_registry_registrations_exist_for_key_modules():
     assert 'registerRuntimeModule?.("operation-modal"' in contents
 
 
+def test_dashboard_navigation_ignores_stale_section_loads():
+    section_ui = (REPO_ROOT / "static" / "js" / "app-section-ui.js").read_text(encoding="utf-8")
+    dashboard = (REPO_ROOT / "static" / "js" / "app-features-dashboard.js").read_text(encoding="utf-8")
+
+    assert "let sectionSwitchSeq = 0" in section_ui
+    assert "const switchSeq = ++sectionSwitchSeq" in section_ui
+    assert "if (!isCurrentSwitch())" in section_ui
+    assert 'core.setStatus("Не удалось обновить дашборд")' in section_ui
+    assert "let dashboardLoadSeq = 0" in dashboard
+    assert "const loadSeq = ++dashboardLoadSeq" in dashboard
+    assert 'state.activeSection === "dashboard"' in dashboard
+    assert "if (!isCurrentDashboardLoad())" in dashboard
+
+
 def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     section_ui = (REPO_ROOT / "static" / "js" / "app-section-ui.js").read_text(encoding="utf-8")
     session_auth = (REPO_ROOT / "static" / "js" / "app-features-session-auth.js").read_text(encoding="utf-8")

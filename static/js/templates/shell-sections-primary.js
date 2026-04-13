@@ -483,7 +483,7 @@
                   <button class="segmented-btn" data-operations-quick-view="uncategorized" type="button">Без категории</button>
                 </div>
               </div>
-              <div class="operations-control-card operations-control-card-actions">
+              <div id="operationsQuickActionsCard" class="operations-control-card operations-control-card-actions">
                 <div class="operations-control-head">
                   <span class="muted-small">Быстрые действия</span>
                 </div>

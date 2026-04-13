@@ -7,6 +7,7 @@ from time import monotonic
 from app.core.cache import get_cache_backend_mode, get_local_cache_entry_count
 from app.core.metrics import get_counter_value, get_dashboard_summary_metrics
 from app.services.telegram_admin_notifier import notify_redis_fallback_advisory
+from app.services.telegram_message_format import ICON_ADMIN, title
 
 _SAFE_LOCAL_CACHE_ENTRIES = 25
 _SAFE_LOCAL_FALLBACK_READS = 50
@@ -78,7 +79,7 @@ class RedisRuntimeAdvisoryService:
             return None
 
         text = (
-            "Админ-совет: локальный fallback уже вышел за безопасный baseline, пора подключить Redis.\n\n"
+            f"{title(ICON_ADMIN, 'Админ-совет: локальный fallback уже вышел за безопасный baseline, пора подключить Redis.')}\n\n"
             "Ориентир, когда можно жить без Redis:\n"
             f"- local cache entries <= {_SAFE_LOCAL_CACHE_ENTRIES}\n"
             f"- local fallback reads <= {_SAFE_LOCAL_FALLBACK_READS}\n"

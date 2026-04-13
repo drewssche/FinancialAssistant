@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.logging import log_background_job_event
 from app.repositories.debt_repo import DebtRepository
+from app.services.telegram_message_format import ICON_REMINDER, ICON_WARNING, money_direction_icon, title
 
 
 class DebtReminderService:
@@ -231,14 +232,16 @@ class DebtReminderService:
         counterparty = payload.get("counterparty")
         outstanding_total = payload.get("outstanding_total")
         if not debt:
-            return "Скоро срок долга"
+            return title(ICON_REMINDER, "Скоро срок долга")
         direction_label = "Вам нужно вернуть" if debt.direction == "borrow" else "Вам должны вернуть"
         counterparty_name = counterparty.name if counterparty else "—"
         event_type = payload.get("event_type") or self.EVENT_TYPE_DUE_SOON
-        title = "Срок долга наступил" if event_type == self.EVENT_TYPE_OVERDUE else "Скоро срок долга"
+        title_icon = ICON_WARNING if event_type == self.EVENT_TYPE_OVERDUE else ICON_REMINDER
+        title_text = "Срок долга наступил" if event_type == self.EVENT_TYPE_OVERDUE else "Скоро срок долга"
+        direction_icon = money_direction_icon("expense" if debt.direction == "borrow" else "income")
         return (
-            f"{title}\n\n"
-            f"{direction_label}\n"
+            f"{title(title_icon, title_text)}\n\n"
+            f"{direction_icon} {direction_label}\n"
             f"Контрагент: {counterparty_name}\n"
             f"Сумма: {outstanding_total if outstanding_total is not None else debt.principal}\n"
             f"Срок: {debt.due_date.isoformat()}"

@@ -7,6 +7,7 @@ import httpx
 
 from app.core.config import get_settings
 from app.core.logging import log_admin_notification_event
+from app.services.telegram_message_format import ICON_ACCESS, title
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ def _build_request_text(
     handle = f"@{username}" if username else "—"
     created_label = created_at.strftime("%d.%m.%Y %H:%M") if created_at else "—"
     return (
-        "Новая заявка на доступ\n\n"
+        f"{title(ICON_ACCESS, 'Новая заявка на доступ')}\n\n"
         f"Имя: {name}\n"
         f"Username: {handle}\n"
         f"Telegram ID: {telegram_id}\n"

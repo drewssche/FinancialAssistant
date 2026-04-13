@@ -18,7 +18,6 @@ from app.repositories.user_repo import UserRepository
 from app.repositories.currency_repo import CurrencyRepository
 from app.services.debt_reminder_service import DebtReminderService
 from app.services.operation_service import OperationService
-from app.services.telegram_debt_notifier import notify_debt_repaid_owner
 
 
 class DebtService:
@@ -254,17 +253,6 @@ class DebtService:
             debt.closure_reason = None
             self.db.commit()
         self.debt_reminder_service.sync_debt_job(user_id=user_id, debt_id=int(debt.id))
-        if owner_telegram_id and applied_amount == outstanding:
-            notify_debt_repaid_owner(
-                owner_telegram_id=owner_telegram_id,
-                debt_id=debt.id,
-                counterparty=(counterparty.name if counterparty else str(debt.counterparty_id)),
-                direction=debt.direction,
-                amount=applied_amount,
-                currency=str(getattr(debt, "currency", "BYN") or "BYN").upper(),
-                repayment_date=repayment_date,
-                note=note,
-            )
         return repayment
 
     def add_forgiveness(

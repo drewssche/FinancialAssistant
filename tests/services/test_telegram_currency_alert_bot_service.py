@@ -66,6 +66,8 @@ def test_list_due_deliveries_builds_threshold_alert(monkeypatch):
         assert len(deliveries) == 1
         delivery = deliveries[0]
         assert delivery.chat_id == "100500"
+        assert delivery.text.startswith("🎯 Сработали алерты")
+        assert "📈 USD:" in delivery.text
         assert "USD: курс 3.4200 BYN выше порога 3.3000" in delivery.text
         assert len(delivery.triggers) == 1
         assert delivery.triggers[0].direction == "above"

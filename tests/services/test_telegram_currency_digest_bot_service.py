@@ -86,6 +86,8 @@ def test_list_due_deliveries_builds_currency_digest(monkeypatch):
         assert len(deliveries) == 1
         delivery = deliveries[0]
         assert delivery.chat_id == "100500"
+        assert delivery.text.startswith("💱 Курсы")
+        assert "📈 USD:" in delivery.text
         assert "USD: курс 3.2700, +0.0200 за день" in delivery.text
         assert "позиция 100.00 USD" in delivery.text
         assert "оценка 327.00 BYN" in delivery.text
