@@ -134,7 +134,7 @@
                 <button class="segmented-btn" data-currency-performance-period="365d" type="button">12 месяцев</button>
                 <button class="segmented-btn" data-currency-performance-period="all_time" type="button">Все время</button>
               </div>
-              <div id="currencyPerformancePeriodPopover" class="app-popover hidden" role="dialog" aria-label="Быстрый выбор периода графика валют">
+              <div id="currencyPerformancePeriodPopover" class="app-popover app-popover-floating period-control-popover hidden" role="dialog" aria-label="Быстрый выбор периода графика валют">
                 <div id="currencyPerformancePeriodOptions" class="settings-picker-options"></div>
               </div>
               <div id="currencyPerformanceRangeLabel" class="subtitle"></div>

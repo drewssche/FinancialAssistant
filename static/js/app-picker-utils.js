@@ -89,7 +89,9 @@
   function isFloatingActionPopover(popover) {
     return Boolean(
       popover?.classList?.contains("table-kebab-popover")
-      || popover?.classList?.contains("mobile-card-actions-popover"),
+      || popover?.classList?.contains("mobile-card-actions-popover")
+      || popover?.classList?.contains("app-popover-floating")
+      || popover?.classList?.contains("period-control-popover"),
     );
   }
 
@@ -171,9 +173,12 @@
     popover.style.maxHeight = `${Math.max(160, viewportHeight - margin * 2)}px`;
     popover.style.overflowY = "auto";
     const anchorRect = anchor.getBoundingClientRect();
-    const preferredWidth = Math.min(192, Math.max(168, viewportWidth - margin * 2));
+    const isControlPopover = popover.classList.contains("app-popover-floating") || popover.classList.contains("period-control-popover");
+    const preferredWidth = isControlPopover
+      ? Math.min(260, Math.max(220, viewportWidth - margin * 2))
+      : Math.min(192, Math.max(168, viewportWidth - margin * 2));
     popover.style.width = `${preferredWidth}px`;
-    popover.style.minWidth = `${Math.min(168, preferredWidth)}px`;
+    popover.style.minWidth = `${Math.min(isControlPopover ? 220 : 168, preferredWidth)}px`;
     popover.style.left = `${Math.max(margin, Math.min(anchorRect.right - preferredWidth, viewportWidth - preferredWidth - margin))}px`;
     popover.style.top = `${Math.min(anchorRect.bottom + 8, viewportHeight - margin)}px`;
     const rect = popover.getBoundingClientRect();

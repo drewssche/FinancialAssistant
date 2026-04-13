@@ -36,6 +36,8 @@ Implemented:
   - dashboard plans supports active-click popover with `текущий / предыдущий / все активные`
   - currency performance supports active-click popover with `текущее / предыдущее окно / все время`
   - analytics currency supports the same rolling-window quick chooser
+- period popover layout fix:
+  - all period/control popovers are mounted as floating overlays instead of expanding their parent toolbar/card
 - calendar year/month presentation rework:
   - primary semantics moved to operations-only `Профицит / Дефицит`
   - unified `Денежный поток` kept as secondary context
