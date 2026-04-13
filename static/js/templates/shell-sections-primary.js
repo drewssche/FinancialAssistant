@@ -301,22 +301,22 @@
             <div class="analytics-trend-kpis analytics-kpi-grid">
               <article class="analytics-kpi-card analytics-kpi-income">
                 <div class="muted-small">Доход</div>
-                <strong id="analyticsIncomeDelta">0 руб.</strong>
+                <strong id="analyticsIncomeDelta">0 ƃ</strong>
                 <span class="analytics-kpi-delta">За выбранный период</span>
               </article>
               <article class="analytics-kpi-card analytics-kpi-expense">
                 <div class="muted-small">Расход</div>
-                <strong id="analyticsExpenseDelta">0 руб.</strong>
+                <strong id="analyticsExpenseDelta">0 ƃ</strong>
                 <span class="analytics-kpi-delta">За выбранный период</span>
               </article>
               <article id="analyticsOperatingResultCard" class="analytics-kpi-card analytics-kpi-neutral">
                 <div id="analyticsOperatingResultLabel" class="muted-small">Операционный результат</div>
-                <strong id="analyticsOperatingResultValue">0 руб.</strong>
+                <strong id="analyticsOperatingResultValue">0 ƃ</strong>
                 <span class="analytics-kpi-delta">За выбранный период</span>
               </article>
               <article id="analyticsResultCard" class="analytics-kpi-card analytics-kpi-neutral">
                 <div id="analyticsResultLabel" class="muted-small">Денежный поток</div>
-                <strong id="analyticsBalanceDelta">0 руб.</strong>
+                <strong id="analyticsBalanceDelta">0 ƃ</strong>
                 <span class="analytics-kpi-delta">За выбранный период</span>
               </article>
               <article class="analytics-kpi-card analytics-kpi-neutral">

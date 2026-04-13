@@ -220,6 +220,7 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert "function getNavigationActions()" in session_auth
     assert "function getNavigationActions()" in analytics
     assert "function getActions()" in operations_mutations
+    assert "function getCategoryActions()" in operations_mutations
     assert "function getOperationModal()" in categories_data
     assert "function getDashboardFeature()" in categories_data
     assert "function getOperationsFeature()" in categories_data
@@ -663,4 +664,29 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert "actions.openOperationReceiptModal" not in plans
     assert "actions.loadDashboardAnalyticsPreview" not in operations_mutations_factory
     assert "actions.loadAnalyticsSection" not in operations_mutations_factory
+    assert "categoryActions.loadCategories()" not in operations_mutations_factory
     assert "window.App.actions?.openCreateModalForDebtEdit" not in debts_modals
+
+
+def test_period_control_popovers_have_wide_floating_layout():
+    picker_utils = (REPO_ROOT / "static" / "js" / "app-picker-utils.js").read_text(encoding="utf-8")
+    overlays_css = (REPO_ROOT / "static" / "css" / "components-overlays.css").read_text(encoding="utf-8")
+
+    assert "Math.min(360, Math.max(320, viewportWidth - margin * 2))" in picker_utils
+    assert "Math.min(isControlPopover ? 320 : 168, preferredWidth)" in picker_utils
+    assert ".period-control-popover .settings-picker-option" in overlays_css
+    assert "white-space: nowrap" in overlays_css
+
+
+def test_byn_uses_compact_currency_symbol_in_frontend_formatters():
+    core_utils = (REPO_ROOT / "static" / "js" / "app-core-utils.js").read_text(encoding="utf-8")
+    modal_templates = (REPO_ROOT / "static" / "js" / "templates" / "modals.js").read_text(encoding="utf-8")
+    secondary_templates = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-secondary.js").read_text(encoding="utf-8")
+    core_css = (REPO_ROOT / "static" / "css" / "components-core.css").read_text(encoding="utf-8")
+
+    assert 'BYN: { symbol: "ƃ" }' in core_utils
+    assert r"`${formatted}\u00A0${cfg.symbol}`" in core_utils
+    assert "BYN (ƃ)" in modal_templates
+    assert "Пример: 1 234,56 ƃ" in secondary_templates
+    assert "text-rendering: geometricPrecision" in core_css
+    assert "руб." not in core_utils

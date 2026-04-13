@@ -1005,7 +1005,7 @@ def test_overpay_creates_reverse_direction_debt(static_server_url: str, page_wit
     card = page.locator("#debtsCards .debt-card", has_text="Анна")
     card.wait_for()
     assert card.locator("tr:has-text('Я взял')").count() == 1
-    assert card.locator("tr:has-text('20,00 руб.')").count() >= 1
+    assert card.locator("tr:has-text('20,00 ƃ')").count() >= 1
 
 
 @pytest.mark.e2e
@@ -1038,7 +1038,7 @@ def test_edit_counterparty_name_merges_with_existing_card(static_server_url: str
     boris_card = page.locator("#debtsCards .debt-card", has_text="Борис")
     assert boris_card.count() == 1
     assert boris_card.locator("tbody tr").count() == 1
-    assert boris_card.locator("tbody tr:has-text('350,00 руб.')").count() >= 1
+    assert boris_card.locator("tbody tr:has-text('350,00 ƃ')").count() >= 1
 
 
 @pytest.mark.e2e

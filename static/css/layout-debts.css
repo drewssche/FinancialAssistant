@@ -415,6 +415,9 @@
   font-weight: 700;
   font-family: var(--money-font-family);
   font-variant-numeric: tabular-nums lining-nums;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  white-space: nowrap;
 }
 
 .debt-amount-principal-lend {
@@ -429,6 +432,9 @@
   font-weight: 700;
   font-family: var(--money-font-family);
   font-variant-numeric: tabular-nums lining-nums;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  white-space: nowrap;
 }
 
 .debt-amount-repaid-lend {
@@ -452,6 +458,9 @@
   font-weight: 700;
   font-family: var(--money-font-family);
   font-variant-numeric: tabular-nums lining-nums;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  white-space: nowrap;
 }
 
 .debt-amount-outstanding-lend {

@@ -249,6 +249,6 @@ def test_analytics_trend_uses_cashflow_total_for_result(page_with_analytics_tren
     page.locator("button[data-analytics-tab='trends']").click()
     page.wait_for_selector("#analyticsTrendsPanel:not(.hidden)")
 
-    expect(page.locator("#analyticsResultLabel")).to_have_text("Дефицит")
-    expect(page.locator("#analyticsBalanceDelta")).to_have_text("170,00 руб.")
+    expect(page.locator("#analyticsResultLabel")).to_have_text("Денежный поток")
+    expect(page.locator("#analyticsBalanceDelta")).to_have_text("-170,00 ƃ")
     expect(page.locator("#analyticsTrendChart .trend-bucket")).to_have_count(2)

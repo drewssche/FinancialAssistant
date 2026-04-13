@@ -146,6 +146,9 @@
   line-height: 1.1;
   font-family: var(--money-font-family);
   font-variant-numeric: tabular-nums lining-nums;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  white-space: nowrap;
 }
 
 .analytics-income {

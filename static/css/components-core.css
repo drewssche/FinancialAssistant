@@ -164,6 +164,9 @@
   pointer-events: none;
   font-family: var(--money-font-family);
   font-variant-numeric: tabular-nums lining-nums;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  white-space: nowrap;
 }
 
 .money-input-wrap.currency-suffix::after {
@@ -314,6 +317,9 @@
   font-weight: 700;
   font-family: var(--money-font-family);
   font-variant-numeric: tabular-nums lining-nums;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  white-space: nowrap;
 }
 
 .plans-list {
@@ -352,6 +358,9 @@
   letter-spacing: -0.03em;
   font-family: var(--money-font-family);
   font-variant-numeric: tabular-nums lining-nums;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  white-space: nowrap;
 }
 
 .plans-financial-kpi-line {
@@ -367,6 +376,9 @@
   line-height: 1;
   font-family: var(--money-font-family);
   font-variant-numeric: tabular-nums lining-nums;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  white-space: nowrap;
   padding-top: 3px;
 }
 

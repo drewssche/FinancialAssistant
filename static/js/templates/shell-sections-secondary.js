@@ -20,10 +20,10 @@
                   </div>
                 </div>
                 <div class="plans-financial-kpi-line">
-                  <div id="plansFinancialValue" class="plans-financial-kpi-value">0,00 руб.</div>
-                  <div id="plansFinancialDelta" class="plans-financial-kpi-delta">+0,00 руб.</div>
+                  <div id="plansFinancialValue" class="plans-financial-kpi-value">0,00 ƃ</div>
+                  <div id="plansFinancialDelta" class="plans-financial-kpi-delta">+0,00 ƃ</div>
                 </div>
-                <div id="plansFinancialMeta" class="subtitle plans-financial-kpi-meta">0,00 руб.</div>
+                <div id="plansFinancialMeta" class="subtitle plans-financial-kpi-meta">0,00 ƃ</div>
               </article>
             </div>
             <div class="plans-controls-row">
@@ -283,7 +283,7 @@
                     </div>
                   </label>
                 </div>
-                <div id="currencyPreview" class="settings-preview">Пример: 1 234,56 руб.</div>
+                <div id="currencyPreview" class="settings-preview">Пример: 1 234,56 ƃ</div>
                 <label class="settings-switch-row">
                   <input id="showDashboardAnalyticsToggle" type="checkbox" checked />
                   <span>Показывать блок аналитики на дашборде</span>

@@ -29,6 +29,10 @@
       return window.App.actions || {};
     }
 
+    function getCategoryActions() {
+      return window.App.getRuntimeModule?.("category-actions") || categoryActions || {};
+    }
+
     function getAnalyticsFeature() {
       return window.App.getRuntimeModule?.("analytics") || {};
     }
@@ -375,7 +379,7 @@
         { label: "Операции", run: () => loadOperations({ reset: true }) },
         { label: "Операции (дашборд)", run: () => loadDashboardOperations() },
         { label: "Аналитика", run: () => (analyticsFeature.loadAnalyticsSection ? analyticsFeature.loadAnalyticsSection({ force: true }) : Promise.resolve()) },
-        { label: "Категории", run: () => categoryActions.loadCategories() },
+        { label: "Категории", run: () => getCategoryActions().loadCategories?.() || Promise.resolve() },
         { label: "Долги", run: () => loadDebtsCards() },
         { label: "Каталог позиций", run: () => loadItemCatalog({ force: true }) },
       ];

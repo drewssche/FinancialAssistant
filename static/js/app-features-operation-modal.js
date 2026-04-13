@@ -255,7 +255,7 @@
     if (!node) {
       return;
     }
-    const cfg = core.resolveCurrencyConfig?.(currencyCode || "BYN", "suffix") || { symbol: "руб.", position: "suffix" };
+    const cfg = core.resolveCurrencyConfig?.(currencyCode || "BYN", "suffix") || { symbol: "ƃ", position: "suffix" };
     node.dataset.currencySymbol = cfg.symbol || String(currencyCode || "BYN").toUpperCase();
     node.classList.remove("currency-prefix");
     node.classList.add("currency-suffix");
@@ -1018,7 +1018,7 @@
     const node = el.debtPrincipalField;
     if (node) {
       const currency = String(el.debtCurrency?.value || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
-      const cfg = core.resolveCurrencyConfig?.(currency, "suffix") || { symbol: "руб." };
+      const cfg = core.resolveCurrencyConfig?.(currency, "suffix") || { symbol: "ƃ" };
       node.dataset.currencySymbol = cfg.symbol || currency;
       node.classList.remove("money-input-no-suffix", "currency-prefix");
       node.classList.add("currency-suffix");

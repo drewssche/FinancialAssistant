@@ -45,7 +45,7 @@
   }
 
   function getCategoryActions() {
-    return window.App.actions || {};
+    return window.App.getRuntimeModule?.("category-actions") || window.App.actions || {};
   }
 
   function getBulkUi() {

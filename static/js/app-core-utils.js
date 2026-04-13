@@ -1,6 +1,6 @@
 (() => {
   const CURRENCY_META = {
-    BYN: { symbol: "руб." },
+    BYN: { symbol: "ƃ" },
     RUB: { symbol: "₽" },
     USD: { symbol: "$" },
     EUR: { symbol: "€" },
@@ -326,7 +326,7 @@
     const cfg = options.currency || options.position
       ? resolveCurrencyConfig(options.currency, options.position)
       : getCurrencyConfig(state);
-    return cfg.position === "prefix" ? `${cfg.symbol} ${formatted}` : `${formatted} ${cfg.symbol}`;
+    return cfg.position === "prefix" ? `${cfg.symbol}\u00A0${formatted}` : `${formatted}\u00A0${cfg.symbol}`;
   }
 
   function applyUiScale(el, scalePercent) {
