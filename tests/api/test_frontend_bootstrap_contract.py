@@ -680,13 +680,18 @@ def test_period_control_popovers_have_wide_floating_layout():
 
 def test_byn_uses_compact_currency_symbol_in_frontend_formatters():
     core_utils = (REPO_ROOT / "static" / "js" / "app-core-utils.js").read_text(encoding="utf-8")
+    tokens_css = (REPO_ROOT / "static" / "css" / "tokens.css").read_text(encoding="utf-8")
     modal_templates = (REPO_ROOT / "static" / "js" / "templates" / "modals.js").read_text(encoding="utf-8")
     secondary_templates = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-secondary.js").read_text(encoding="utf-8")
     core_css = (REPO_ROOT / "static" / "css" / "components-core.css").read_text(encoding="utf-8")
 
-    assert 'BYN: { symbol: "ƃ" }' in core_utils
+    assert '@font-face {\n  font-family: "nbrb";' in tokens_css
+    assert 'url("/static/fonts/nbrb.woff2") format("woff2")' in tokens_css
+    assert 'unicode-range: U+E901, U+42, U+59, U+4E;' in tokens_css
+    assert 'font-feature-settings: "liga"' in tokens_css
+    assert 'BYN: { symbol: "BYN" }' in core_utils
     assert r"`${formatted}\u00A0${cfg.symbol}`" in core_utils
-    assert "BYN (ƃ)" in modal_templates
-    assert "Пример: 1 234,56 ƃ" in secondary_templates
+    assert "<option value=\"BYN\">BYN</option>" in modal_templates
+    assert "Пример: 1 234,56&nbsp;BYN" in secondary_templates
     assert "text-rendering: geometricPrecision" in core_css
     assert "руб." not in core_utils

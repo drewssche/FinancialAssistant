@@ -157,7 +157,7 @@ def test_currency_trade_modal_keeps_preview_and_live_recalculates(static_server_
 
             quantity_value = page.locator("#currencyQuantity").input_value()
             assert quantity_value.startswith("1.01")
-            assert page.locator("#currencyTradeHint").text_content().strip().startswith("Будет получено примерно 3,00\u00a0ƃ")
+            assert page.locator("#currencyTradeHint").text_content().strip().startswith("Будет получено примерно 3,00\u00a0BYN")
             assert preview_rows.count() == 1
             assert "Продажа" in page.locator("#createPreviewBody").text_content()
             assert "1.01 USD" in page.locator("#createPreviewBody").text_content()
@@ -184,6 +184,6 @@ def test_currency_trade_modal_keeps_preview_and_live_recalculates(static_server_
 
             rate_value = page.locator("#currencyUnitPrice").input_value()
             assert rate_value.startswith("3.0000")
-            assert page.locator("#currencyTradeHint").text_content().strip().startswith("Будет получено примерно 60,00\u00a0ƃ")
+            assert page.locator("#currencyTradeHint").text_content().strip().startswith("Будет получено примерно 60,00\u00a0BYN")
         finally:
             browser.close()

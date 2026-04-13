@@ -498,7 +498,7 @@ def test_structure_donut_defaults_to_period_total_in_center(page_with_analytics_
 
     page.wait_for_selector("#analyticsCategoryBreakdownChartTitle")
     expect(page.locator("#analyticsCategoryBreakdownChartTitle")).to_have_text("Итог периода")
-    expect(page.locator("#analyticsCategoryBreakdownChartValue")).to_have_text("1 210,00 ƃ")
+    expect(page.locator("#analyticsCategoryBreakdownChartValue")).to_have_text("1 210,00\u00a0BYN")
 
 
 @pytest.mark.e2e

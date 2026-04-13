@@ -1,3 +1,12 @@
+@font-face {
+  font-family: "nbrb";
+  src:
+    url("/static/fonts/nbrb.woff2") format("woff2"),
+    url("/static/fonts/nbrb.ttf") format("truetype"),
+    url("/static/fonts/nbrb.woff") format("woff");
+  unicode-range: U+E901, U+42, U+59, U+4E;
+}
+
 :root {
   --ui-scale: 1;
   --ui-font-base: 16px;
@@ -32,7 +41,53 @@
   --scrollbar-track-border: rgba(39, 50, 72, 0.72);
   --scrollbar-thumb: linear-gradient(180deg, rgba(255, 122, 24, 0.82) 0%, rgba(255, 179, 71, 0.82) 100%);
   --scrollbar-thumb-hover: linear-gradient(180deg, rgba(255, 145, 52, 0.95) 0%, rgba(255, 194, 112, 0.95) 100%);
-  --money-font-family: "Noto Sans", "DejaVu Sans", "Segoe UI Symbol", "Segoe UI", Tahoma, sans-serif;
+  --money-font-family: "nbrb", "Noto Sans", "DejaVu Sans", "Segoe UI Symbol", "Segoe UI", Tahoma, sans-serif;
+}
+
+.nbrb-icon {
+  font-family: "nbrb" !important;
+  speak: none;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: normal;
+  -webkit-font-feature-settings: "liga";
+  -moz-font-feature-settings: "liga=1";
+  -moz-font-feature-settings: "liga";
+  -ms-font-feature-settings: "liga" 1;
+  font-feature-settings: "liga";
+  -webkit-font-variant-ligatures: discretionary-ligatures;
+  font-variant-ligatures: discretionary-ligatures;
+}
+
+.nbrb-icon-byn::before {
+  content: "\e901";
+}
+
+.money-input-wrap::after,
+.kpi-card p,
+.plans-financial-kpi-value,
+.plans-financial-kpi-delta,
+.plans-financial-kpi-meta,
+.analytics-day-money,
+.dashboard-analytics-kpi strong,
+.analytics-kpi-card strong,
+.amount-expense,
+.amount-income,
+.debt-amount-principal,
+.debt-amount-repaid,
+.debt-amount-outstanding {
+  -webkit-font-feature-settings: "liga";
+  -moz-font-feature-settings: "liga=1";
+  -moz-font-feature-settings: "liga";
+  -ms-font-feature-settings: "liga" 1;
+  font-feature-settings: "liga";
+  -webkit-font-variant-ligatures: discretionary-ligatures;
+  font-variant-ligatures: discretionary-ligatures;
 }
 
 html {

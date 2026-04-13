@@ -267,7 +267,7 @@ def test_currency_trade_modal_keeps_preview_and_recalculates_both_fields(static_
     assert page.locator("#createPreviewBody tr").count() == 1
     preview_text = page.locator("#createPreviewBody").inner_text()
     assert "2.00 USD" in preview_text
-    assert "5,93\u00a0ƃ" in preview_text
+    assert "5,93\u00a0BYN" in preview_text
 
 
 @pytest.mark.e2e
@@ -309,5 +309,5 @@ def test_currency_trade_modal_derives_rate_from_quantity_and_quote_total(static_
     assert page.locator("#currencyUnitPrice").input_value().startswith("2.965")
     preview_text = page.locator("#createPreviewBody").inner_text()
     assert "2.00 USD" in preview_text
-    assert "5,93\u00a0ƃ" in preview_text
+    assert "5,93\u00a0BYN" in preview_text
     assert "2.965" in preview_text
