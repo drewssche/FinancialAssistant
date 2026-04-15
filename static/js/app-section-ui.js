@@ -304,6 +304,9 @@
     }
     state.activeSection = sectionId;
     applySectionUi();
+    if (sectionId !== "dashboard") {
+      getDashboardFeature().abortDashboardLoad?.();
+    }
     if (sectionId === "dashboard") {
       const dashboardFeature = getDashboardFeature();
       const analyticsFeature = getAnalyticsFeature();

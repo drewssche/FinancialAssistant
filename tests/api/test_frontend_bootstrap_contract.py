@@ -131,7 +131,11 @@ def test_dashboard_navigation_ignores_stale_section_loads():
     assert "const switchSeq = ++sectionSwitchSeq" in section_ui
     assert "if (!isCurrentSwitch())" in section_ui
     assert 'core.setStatus("Не удалось обновить дашборд")' in section_ui
+    assert 'getDashboardFeature().abortDashboardLoad?.()' in section_ui
     assert "let dashboardLoadSeq = 0" in dashboard
+    assert "let dashboardLoadController = null" in dashboard
+    assert "new AbortController()" in dashboard
+    assert "function abortDashboardLoad()" in dashboard
     assert "const loadSeq = ++dashboardLoadSeq" in dashboard
     assert 'state.activeSection === "dashboard"' in dashboard
     assert "if (!isCurrentDashboardLoad())" in dashboard
@@ -690,8 +694,10 @@ def test_byn_uses_compact_currency_symbol_in_frontend_formatters():
     assert 'unicode-range: U+E901, U+42, U+59, U+4E;' in tokens_css
     assert 'font-feature-settings: "liga"' in tokens_css
     assert 'BYN: { symbol: "\\uE901" }' in core_utils
+    assert '--money-font-family: "Noto Sans", "DejaVu Sans", "Segoe UI Symbol", "Segoe UI", Tahoma, "nbrb", sans-serif;' in tokens_css
     assert 'RU: "RUB"' in core_utils
     assert "function normalizeCurrencyCode" in core_utils
+    assert "function formatCurrencySymbol" in core_utils
     assert r"`${formatted}\u00A0${cfg.symbol}`" in core_utils
     assert "<option value=\"BYN\">BYN (&#xe901;)</option>" in modal_templates
     assert "Пример: 1 234,56&nbsp;&#xe901;" in secondary_templates

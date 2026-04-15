@@ -149,7 +149,7 @@
     const next = { ...base };
 
     if (el.currencySelect?.value) {
-      next.currency = String(el.currencySelect.value || "BYN").toUpperCase();
+      next.currency = normalizeCurrencyCode(el.currencySelect.value || "BYN");
     }
     if (el.currencyPositionSelect?.value) {
       next.currencyPosition = el.currencyPositionSelect.value === "prefix" ? "prefix" : "suffix";
@@ -198,6 +198,10 @@
 
   function formatCurrencyLabel(currencyCode, options = {}) {
     return getCoreUtils().formatCurrencyLabel(currencyCode, options);
+  }
+
+  function formatCurrencySymbol(currencyCode) {
+    return getCoreUtils().formatCurrencySymbol(currencyCode);
   }
 
   function formatMoney(value, options = {}) {
@@ -298,6 +302,7 @@
       formatRateAmount,
       formatMoney,
       formatCurrencyLabel,
+      formatCurrencySymbol,
       evaluateMathExpression,
       resolveMoneyInput,
       resolveRateInput,

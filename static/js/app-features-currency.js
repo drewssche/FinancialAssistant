@@ -152,13 +152,13 @@
   function formatTradeQuoteTotal(item) {
     const quantity = Number(item?.quantity || 0);
     const unitPrice = Number(item?.unit_price || 0);
-    const quoteCurrency = String(item?.quote_currency || "BYN").toUpperCase();
+    const quoteCurrency = core.normalizeCurrencyCode?.(item?.quote_currency, "BYN") || "BYN";
     return core.formatMoney(quantity * unitPrice, { currency: quoteCurrency });
   }
 
   function formatRateWithQuote(rate, quoteCurrency) {
-    const quote = String(quoteCurrency || "BYN").toUpperCase();
-    return `${Number(rate || 0).toFixed(4)} ${quote}`;
+    const quote = core.normalizeCurrencyCode?.(quoteCurrency, "BYN") || "BYN";
+    return `${Number(rate || 0).toFixed(4)} ${core.formatCurrencySymbol?.(quote) || quote}`;
   }
 
   function toggleTableMenu(trigger) {
@@ -260,7 +260,7 @@
         .map((item) => core.normalizeCurrencyCode?.(item, "") || "")
         .filter(Boolean),
     ));
-    const nextValue = String(preserveValue || el.currencyRateAsset.value || normalized[0] || "").toUpperCase();
+    const nextValue = core.normalizeCurrencyCode?.(preserveValue || el.currencyRateAsset.value || normalized[0] || "", "") || "";
     el.currencyRateAsset.innerHTML = normalized.map((currency) => {
       const selected = currency === nextValue ? " selected" : "";
       return `<option value="${currency}"${selected}>${core.formatCurrencyLabel(currency)}</option>`;
@@ -358,13 +358,13 @@
 
   function renderPositions(data) {
     const positions = Array.isArray(data.positions) ? data.positions : [];
-    const positionsByCurrency = new Map(positions.map((item) => [String(item.currency || "").toUpperCase(), item]));
+    const positionsByCurrency = new Map(positions.map((item) => [core.normalizeCurrencyCode?.(item.currency, "") || "", item]));
     const currentRates = Array.isArray(data.current_rates) ? data.current_rates : [];
-    const currentRatesByCurrency = new Map(currentRates.map((item) => [String(item.currency || "").toUpperCase(), item]));
+    const currentRatesByCurrency = new Map(currentRates.map((item) => [core.normalizeCurrencyCode?.(item.currency, "") || "", item]));
     const trackedCurrencies = Array.isArray(data.tracked_currencies) && data.tracked_currencies.length
-      ? data.tracked_currencies.map((item) => String(item || "").toUpperCase()).filter(Boolean)
+      ? data.tracked_currencies.map((item) => core.normalizeCurrencyCode?.(item, "") || "").filter(Boolean)
       : getTrackedCurrencies();
-    const baseCurrency = String(data.base_currency || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
+    const baseCurrency = core.normalizeCurrencyCode?.(data.base_currency || (core.getCurrencyConfig?.().code || "BYN"), "BYN") || "BYN";
     if (el.currencyBalancesRow) {
       const positionCards = trackedCurrencies.map((currency) => {
         const item = positionsByCurrency.get(currency) || null;

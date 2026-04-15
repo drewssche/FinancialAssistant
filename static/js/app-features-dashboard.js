@@ -4,6 +4,7 @@
   const debtUi = core.debtUi;
   const getCategoryMetaById = operationModal.getCategoryMetaById;
   let dashboardLoadSeq = 0;
+  let dashboardLoadController = null;
 
   function getPlansFeature() {
     return window.App.getRuntimeModule?.("plans");
@@ -83,9 +84,10 @@
     }
     if (el.dashboardCurrencyBalances) {
       const positions = Array.isArray(summary.tracked_currency_positions) ? summary.tracked_currency_positions : [];
-      const positionsByCurrency = new Map(positions.map((item) => [String(item.currency || "").toUpperCase(), item]));
+      const positionsByCurrency = new Map(positions.map((item) => [core.normalizeCurrencyCode?.(item.currency, "") || "", item]));
       const trackedCurrencies = getTrackedCurrencies();
       const baseCurrency = core.getCurrencyConfig?.().code || "BYN";
+      const baseCurrencySymbol = core.formatCurrencySymbol?.(baseCurrency) || baseCurrency;
       const portfolioCurrentValue = Number(summary.currency_current_value || 0);
       const portfolioBookValue = Number(summary.currency_book_value || 0);
       const portfolioTotalResultValue = Number(summary.currency_total_result_value || summary.currency_result_value || 0);
@@ -104,7 +106,7 @@
         const currentValue = Number(item?.current_value || 0);
         const currentRateDate = item?.current_rate_date ? core.formatDateRu(item.current_rate_date) : "";
         const currentRateLabel = currentRate > 0
-          ? `${currentRate.toFixed(4)} ${baseCurrency}${currentRateDate ? ` · ${currentRateDate}` : ""}`
+          ? `${currentRate.toFixed(4)} ${baseCurrencySymbol}${currentRateDate ? ` · ${currentRateDate}` : ""}`
           : "Курс не задан";
         const currentValueLabel = currentValue > 0
           ? `≈ ${core.formatMoney(currentValue, { currency: baseCurrency })}`
@@ -151,10 +153,10 @@
     }
     const tracked = Array.isArray(trackedCurrencies) ? trackedCurrencies : [];
     const normalizedTracked = tracked
-      .map((item) => String(item || "").trim().toUpperCase())
+      .map((item) => core.normalizeCurrencyCode?.(item, "") || "")
       .filter(Boolean);
     const rows = Array.isArray(currentRates) ? currentRates : [];
-    const rowsByCurrency = new Map(rows.map((item) => [String(item.currency || "").toUpperCase(), item]));
+    const rowsByCurrency = new Map(rows.map((item) => [core.normalizeCurrencyCode?.(item.currency, "") || "", item]));
     const visibleCurrencies = normalizedTracked.length
       ? normalizedTracked
       : Array.from(rowsByCurrency.keys());
@@ -192,7 +194,9 @@
       const deltaTone = deltaValue > 0 ? "positive" : deltaValue < 0 ? "negative" : "neutral";
       const rateDate = item.rate_date ? core.formatDateRu(item.rate_date) : "без даты";
       const source = item.source ? String(item.source).trim() : "manual";
-      const currencyLabel = core.formatCurrencyLabel(item.currency);
+      const itemCurrency = core.normalizeCurrencyCode?.(item.currency, "") || "";
+      const currencyLabel = core.formatCurrencyLabel(itemCurrency);
+      const baseCurrencySymbol = core.formatCurrencySymbol?.(core.getCurrencyConfig?.().code || "BYN") || "BYN";
       return `
         <article class="dashboard-currency-rate-card">
           <div class="dashboard-currency-rate-head">
@@ -207,7 +211,7 @@
               ${hasDelta ? `${formatSignedRate(item.change_value)} · ${formatSignedPercent(item.change_pct || 0)}` : "—"}
             </div>
           </div>
-          <div class="dashboard-currency-rate-meta muted-small">${isStale ? "Последний доступный курс к BYN" : "Официальный курс к BYN"} · ${rateDate}</div>
+          <div class="dashboard-currency-rate-meta muted-small">${isStale ? `Последний доступный курс к ${baseCurrencySymbol}` : `Официальный курс к ${baseCurrencySymbol}`} · ${rateDate}</div>
           <div class="dashboard-currency-rate-delta-caption muted-small">${hasDelta ? (isStale ? "К предыдущему курсу" : "За день") : "Нет предыдущего курса для сравнения"}</div>
           <div class="dashboard-currency-rate-source muted-small">Источник: ${core.escapeHtml ? core.escapeHtml(source) : source}</div>
           <div class="dashboard-currency-rate-actions">
@@ -265,8 +269,13 @@
 
 
   async function loadDashboard() {
+    if (dashboardLoadController) {
+      dashboardLoadController.abort();
+    }
+    dashboardLoadController = new AbortController();
+    const requestSignal = dashboardLoadController.signal;
     const loadSeq = ++dashboardLoadSeq;
-    const isCurrentDashboardLoad = () => loadSeq === dashboardLoadSeq && state.activeSection === "dashboard";
+    const isCurrentDashboardLoad = () => !requestSignal.aborted && loadSeq === dashboardLoadSeq && state.activeSection === "dashboard";
     const startedOnDashboard = state.activeSection === "dashboard";
     const skeletons = getLoadingSkeletons();
     const refreshState = getInlineRefreshState();
@@ -307,8 +316,8 @@
     }
     try {
       const data = await (dashboardData.loadAllTimeSummary
-        ? dashboardData.loadAllTimeSummary()
-        : core.requestJson("/api/v1/dashboard/summary?period=all_time", { headers: core.authHeaders() }));
+        ? dashboardData.loadAllTimeSummary({ signal: requestSignal })
+        : core.requestJson("/api/v1/dashboard/summary?period=all_time", { headers: core.authHeaders(), signal: requestSignal }));
       if (!isCurrentDashboardLoad()) {
         return;
       }
@@ -329,37 +338,61 @@
         el.dashboardDebtKpiGrid.classList.toggle("hidden", !hasDebtKpi);
       }
       renderDashboardCurrencySummary(data);
-      try {
-        const currencyOverview = await core.requestJson("/api/v1/currency/overview?trades_limit=10", {
-          headers: core.authHeaders(),
-        });
-        if (!isCurrentDashboardLoad()) {
-          return;
+      const currencyOverviewTask = core.requestJson("/api/v1/currency/overview?trades_limit=10", {
+        headers: core.authHeaders(),
+        signal: requestSignal,
+      })
+        .then((value) => ({ value, error: null }))
+        .catch((error) => ({ value: null, error }));
+      const plansTask = el.dashboardPlansPanel && ui?.showDashboardOperations !== false
+        ? Promise.resolve(getPlansFeature().loadPlans?.({ signal: requestSignal }))
+          .then((value) => ({ value, error: null }))
+          .catch((error) => ({ value: null, error }))
+        : Promise.resolve({ value: null, error: null });
+      const debtCardsTask = core.isDashboardDebtsVisible() && el.dashboardDebtsList
+        ? (dashboardData.loadDebtPreview
+          ? dashboardData.loadDebtPreview({ limit: 6, signal: requestSignal })
+          : core.requestJson("/api/v1/dashboard/debts/preview?limit=6", {
+            headers: core.authHeaders(),
+            signal: requestSignal,
+          }))
+          .then((value) => ({ value, error: null }))
+          .catch((error) => ({ value: null, error }))
+        : Promise.resolve({ value: null, error: null });
+
+      {
+        const currencyOverviewResult = await currencyOverviewTask;
+        if (currencyOverviewResult.error) {
+          if (core.isAbortError?.(currencyOverviewResult.error)) {
+            return;
+          }
+          if (!isCurrentDashboardLoad()) {
+            return;
+          }
+          renderDashboardCurrencyRates([], []);
+        } else {
+          if (!isCurrentDashboardLoad()) {
+            return;
+          }
+          const currencyOverview = currencyOverviewResult.value || {};
+          renderDashboardCurrencyRates(currencyOverview.current_rates, currencyOverview.tracked_currencies);
         }
-        renderDashboardCurrencyRates(currencyOverview.current_rates, currencyOverview.tracked_currencies);
-      } catch {
-        if (!isCurrentDashboardLoad()) {
-          return;
-        }
-        renderDashboardCurrencyRates([], []);
       }
       state.dashboardCurrencyHydrated = true;
       state.dashboardDebtSummaryLoaded = true;
 
       if (el.dashboardPlansPanel && ui?.showDashboardOperations !== false) {
-        try {
-          if (!isCurrentDashboardLoad()) {
+        const plansResult = await plansTask;
+        if (plansResult.error) {
+          if (core.isAbortError?.(plansResult.error)) {
             return;
           }
-          await getPlansFeature().loadPlans?.();
-          if (!isCurrentDashboardLoad()) {
-            return;
-          }
-        } catch (err) {
-          reportOptionalDashboardPanelFailure("plans", err);
+          reportOptionalDashboardPanelFailure("plans", plansResult.error);
           if (isCurrentDashboardLoad()) {
             getPlansFeature().renderDashboardPlans?.();
           }
+        } else if (!isCurrentDashboardLoad()) {
+          return;
         }
       } else {
         if (isCurrentDashboardLoad()) {
@@ -372,10 +405,17 @@
       }
 
       if (el.dashboardDebtsList) {
-        try {
-          const cards = await (dashboardData.loadDebtPreview
-            ? dashboardData.loadDebtPreview({ limit: 6 })
-            : core.requestJson("/api/v1/dashboard/debts/preview?limit=6", { headers: core.authHeaders() }));
+        const debtCardsResult = await debtCardsTask;
+        if (debtCardsResult.error) {
+          if (core.isAbortError?.(debtCardsResult.error)) {
+            return;
+          }
+          reportOptionalDashboardPanelFailure("debts-preview", debtCardsResult.error);
+          if (!state.dashboardDebtsHydrated) {
+            el.dashboardDebtsList.innerHTML = "<div class='muted-small'>Не удалось загрузить активные долги</div>";
+          }
+        } else {
+          const cards = Array.isArray(debtCardsResult.value) ? debtCardsResult.value : [];
           if (!isCurrentDashboardLoad()) {
             return;
           }
@@ -433,7 +473,7 @@
                       <div class="dashboard-debt-row-col">
                         <div class="muted-small">${directionLabel}</div>
                         <div class="debt-amount-principal ${direction === "borrow" ? "debt-amount-principal-borrow" : "debt-amount-principal-lend"}">${core.formatMoney(outstanding, { currency: debt.currency || "BYN" })}</div>
-                        ${String(debt.currency || "BYN").toUpperCase() !== String(debt.base_currency || "BYN").toUpperCase() ? `<div class="muted-small">≈ ${core.formatMoney(debt.current_base_outstanding_total || 0, { currency: debt.base_currency || "BYN" })}</div>` : ""}
+                        ${(core.normalizeCurrencyCode?.(debt.currency || "BYN", "BYN") || "BYN") !== (core.normalizeCurrencyCode?.(debt.base_currency || "BYN", "BYN") || "BYN") ? `<div class="muted-small">≈ ${core.formatMoney(debt.current_base_outstanding_total || 0, { currency: debt.base_currency || "BYN" })}</div>` : ""}
                       </div>
                       <div class="dashboard-debt-row-col">
                         <div class="muted-small">Погашение</div>
@@ -485,14 +525,19 @@
             }
           }
           state.dashboardDebtsHydrated = true;
-        } catch (err) {
-          reportOptionalDashboardPanelFailure("debts-preview", err);
-          if (!state.dashboardDebtsHydrated) {
-            el.dashboardDebtsList.innerHTML = "<div class='muted-small'>Не удалось загрузить активные долги</div>";
-          }
         }
       }
+    } catch (err) {
+      if (core.isAbortError?.(err)) {
+        return;
+      }
+      if (isCurrentDashboardLoad()) {
+        throw err;
+      }
     } finally {
+      if (dashboardLoadController?.signal === requestSignal) {
+        dashboardLoadController = null;
+      }
       if (shouldRefreshCurrency && el.dashboardCurrencyPanel) {
         refreshState.end?.(el.dashboardCurrencyPanel);
       }
@@ -511,6 +556,14 @@
       return;
     }
     await getPlansFeature().loadPlans?.();
+  }
+
+  function abortDashboardLoad() {
+    if (dashboardLoadController) {
+      dashboardLoadController.abort();
+      dashboardLoadController = null;
+    }
+    dashboardLoadSeq += 1;
   }
 
   function bindCurrencyActions() {
@@ -551,6 +604,7 @@
 
   const api = {
     loadDashboard,
+    abortDashboardLoad,
     refreshDashboardCurrencyRates,
     loadDashboardOperations: loadDashboardPlans,
     loadDashboardPlans,

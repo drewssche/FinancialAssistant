@@ -939,6 +939,7 @@
 
   async function loadPlans(options = {}) {
     const { force = false } = options;
+    const { signal = null } = options;
     if (!force) {
       const cached = core.getUiRequestCache?.(getPlansCacheKey(), 30_000);
       if (cached?.plans?.items) {
@@ -960,11 +961,16 @@
     const [plansData, historyData] = await Promise.all([
       core.requestJson("/api/v1/plans", {
         headers: core.authHeaders(),
+        signal,
       }),
       core.requestJson("/api/v1/plans/history", {
         headers: core.authHeaders(),
+        signal,
       }),
     ]);
+    if (signal?.aborted) {
+      return;
+    }
     state.plansItems = Array.isArray(plansData.items) ? plansData.items : [];
     state.plansHistoryItems = Array.isArray(historyData.items) ? historyData.items : [];
     core.setUiRequestCache?.(getPlansCacheKey(), { plans: plansData, history: historyData });

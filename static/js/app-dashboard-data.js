@@ -18,6 +18,7 @@
     }
     const data = await core.requestJson(`/api/v1/dashboard/summary?${params.toString()}`, {
       headers: core.authHeaders(),
+      signal: options.signal,
     });
     core.setUiRequestCache(cacheKey, data);
     return data;
@@ -42,6 +43,7 @@
     try {
       data = await core.requestJson(`/api/v1/dashboard/debts/preview?limit=${limit}`, {
         headers: core.authHeaders(),
+        signal: options.signal,
       });
     } catch (err) {
       const message = core.errorMessage ? core.errorMessage(err) : String(err);
@@ -50,6 +52,7 @@
       }
       const legacyCards = await core.requestJson("/api/v1/debts/cards?include_closed=false", {
         headers: core.authHeaders(),
+        signal: options.signal,
       });
       data = Array.isArray(legacyCards) ? legacyCards.slice(0, limit) : [];
     }

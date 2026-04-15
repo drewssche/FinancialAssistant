@@ -155,8 +155,8 @@
   }
 
   function formatRateWithQuote(rate, quoteCurrency) {
-    const quote = String(quoteCurrency || "BYN").toUpperCase();
-    return `${Number(rate || 0).toFixed(4)} ${quote}`;
+    const quote = core.normalizeCurrencyCode?.(quoteCurrency, "BYN") || "BYN";
+    return `${Number(rate || 0).toFixed(4)} ${core.formatCurrencySymbol?.(quote) || quote}`;
   }
 
   function normalizeHistoryPoints(points, targetDate) {
@@ -233,13 +233,13 @@
     }
     if (el.analyticsCurrencyBalancesRow) {
       const positions = Array.isArray(overview.positions) ? overview.positions : [];
-      const positionsByCurrency = new Map(positions.map((item) => [String(item.currency || "").toUpperCase(), item]));
+      const positionsByCurrency = new Map(positions.map((item) => [core.normalizeCurrencyCode?.(item.currency, "") || "", item]));
       const currentRates = Array.isArray(overview.current_rates) ? overview.current_rates : [];
-      const currentRatesByCurrency = new Map(currentRates.map((item) => [String(item.currency || "").toUpperCase(), item]));
+      const currentRatesByCurrency = new Map(currentRates.map((item) => [core.normalizeCurrencyCode?.(item.currency, "") || "", item]));
       const trackedCurrencies = Array.isArray(overview.tracked_currencies) && overview.tracked_currencies.length
-        ? overview.tracked_currencies.map((item) => String(item || "").toUpperCase()).filter(Boolean)
+        ? overview.tracked_currencies.map((item) => core.normalizeCurrencyCode?.(item, "") || "").filter(Boolean)
         : getTrackedCurrencies();
-      const baseCurrency = String(overview.base_currency || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
+      const baseCurrency = core.normalizeCurrencyCode?.(overview.base_currency || (core.getCurrencyConfig?.().code || "BYN"), "BYN") || "BYN";
       const bynCard = `
         <article class="currency-balance-card">
           <div class="muted-small">${core.formatCurrencyLabel(baseCurrency)}</div>

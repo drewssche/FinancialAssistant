@@ -299,6 +299,10 @@
     return `${cfg.code} (${cfg.symbol})`;
   }
 
+  function formatCurrencySymbol(currencyCode) {
+    return resolveCurrencyConfig(currencyCode).symbol;
+  }
+
   function getCurrencyConfig(state) {
     const ui = getUiSettings(state);
     return resolveCurrencyConfig(ui.currency, ui.currencyPosition);
@@ -580,6 +584,7 @@
     getUiSettings,
     resolveCurrencyConfig,
     formatCurrencyLabel,
+    formatCurrencySymbol,
     getCurrencyConfig,
     getTrackedCurrencies,
     getSelectableCurrencies,

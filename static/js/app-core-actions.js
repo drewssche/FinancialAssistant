@@ -83,6 +83,9 @@
     try {
       response = await fetch(url, options);
     } catch (err) {
+      if (isAbortError(err)) {
+        throw err;
+      }
       const path = (() => {
         try {
           return new URL(url, window.location.origin).pathname;
