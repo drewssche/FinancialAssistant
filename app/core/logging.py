@@ -1,4 +1,23 @@
 import logging
+import os
+import re
+
+
+class SensitiveDataFilter(logging.Filter):
+    def __init__(self) -> None:
+        super().__init__()
+        token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+        self._token = token if token and token != "change_me" else ""
+        self._telegram_bot_url_pattern = re.compile(r"/bot[0-9]+:[A-Za-z0-9_-]+")
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        message = record.getMessage()
+        if self._token:
+            message = message.replace(self._token, "<telegram-token-redacted>")
+        message = self._telegram_bot_url_pattern.sub("/bot<telegram-token-redacted>", message)
+        record.msg = message
+        record.args = ()
+        return True
 
 
 def configure_logging() -> None:
@@ -6,6 +25,13 @@ def configure_logging() -> None:
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    redaction_filter = SensitiveDataFilter()
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers:
+        if not any(isinstance(item, SensitiveDataFilter) for item in handler.filters):
+            handler.addFilter(redaction_filter)
 
 
 def log_api_request_completion(

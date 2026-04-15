@@ -8,7 +8,7 @@ from typing import Any
 import httpx
 
 from app.core.config import get_settings
-from app.core.logging import log_telegram_bot_event
+from app.core.logging import configure_logging, log_telegram_bot_event
 from app.db.session import SessionLocal
 from app.services.telegram_admin_bot_service import (
     TelegramAdminBotService,
@@ -28,7 +28,21 @@ from app.services.currency_rate_refresh_service import CurrencyRateRefreshServic
 
 
 logger = logging.getLogger("financial_assistant_admin_bot")
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+configure_logging()
+
+
+class TelegramBotHTTPError(RuntimeError):
+    def __init__(self, method: str, status_code: int) -> None:
+        self.method = method
+        self.status_code = status_code
+        super().__init__(f"Telegram API HTTP error for {method}: status_code={status_code}")
+
+
+class TelegramBotRequestError(RuntimeError):
+    def __init__(self, method: str, error_type: str) -> None:
+        self.method = method
+        self.error_type = error_type
+        super().__init__(f"Telegram API request failed for {method}: error={error_type}")
 
 
 class TelegramBotClient:
@@ -50,8 +64,16 @@ class TelegramBotClient:
         await self.http.aclose()
 
     async def call(self, method: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
-        response = await self.http.post(f"{self.base_url}/{method}", json=payload or {})
-        response.raise_for_status()
+        try:
+            response = await self.http.post(f"{self.base_url}/{method}", json=payload or {})
+        except httpx.ReadTimeout:
+            raise
+        except httpx.RequestError as exc:
+            raise TelegramBotRequestError(method, type(exc).__name__) from None
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise TelegramBotHTTPError(method, exc.response.status_code) from None
         data = response.json()
         if not data.get("ok"):
             raise RuntimeError(f"Telegram API error for {method}: {data}")
@@ -439,7 +461,24 @@ async def run() -> None:
                 continue
             except httpx.RequestError as exc:
                 log_telegram_bot_event("get_updates_request_failed", error=type(exc).__name__)
-                logger.warning("telegram getUpdates request failed, retrying: %s", exc)
+                logger.warning("telegram getUpdates request failed, retrying: %s", type(exc).__name__)
+                await asyncio.sleep(retry_delay_seconds)
+                continue
+            except TelegramBotHTTPError as exc:
+                log_telegram_bot_event(
+                    "get_updates_http_failed",
+                    status_code=exc.status_code,
+                    method=exc.method,
+                )
+                logger.warning(
+                    "telegram getUpdates HTTP error, retrying: status_code=%s",
+                    exc.status_code,
+                )
+                await asyncio.sleep(retry_delay_seconds)
+                continue
+            except TelegramBotRequestError as exc:
+                log_telegram_bot_event("get_updates_request_failed", error=exc.error_type, method=exc.method)
+                logger.warning("telegram getUpdates request failed, retrying: %s", exc.error_type)
                 await asyncio.sleep(retry_delay_seconds)
                 continue
             for item in data.get("result", []):
