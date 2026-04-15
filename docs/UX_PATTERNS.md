@@ -220,7 +220,7 @@ Settings UX additions:
 - Operations table note/comment column must show only user note text (no auto-appended receipt suffix like `Чек: N поз.`).
 - If operation has receipt items, row hover actions should include `Позиции` button that opens read-only receipt item list.
 - Scope guard:
-- no per-item category in MVP
+- per-item category is supported for receipt rows and should stay optional
 - no item-level analytics in MVP (backlog)
 
 ## Debt UX Rules (Implemented Baseline)

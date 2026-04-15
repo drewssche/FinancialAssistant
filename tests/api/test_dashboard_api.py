@@ -73,6 +73,24 @@ def test_dashboard_all_time_empty(client: TestClient):
     assert payload["active_debt_cards"] == 0
 
 
+def test_dashboard_summary_survives_inconsistent_fx_history(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    def raise_broken_history(self, *, user_id: int):
+        raise ValueError("Broken FX history for USD: sell exceeds available quantity")
+
+    monkeypatch.setattr(
+        "app.services.dashboard_service.CurrencyService.compute_positions",
+        raise_broken_history,
+    )
+
+    summary = client.get("/api/v1/dashboard/summary", params={"period": "all_time"})
+
+    assert summary.status_code == 200
+    payload = summary.json()
+    assert payload["currency_current_value"] in ("0", "0.00")
+    assert payload["currency_total_result_value"] in ("0", "0.00")
+    assert payload["tracked_currency_positions"] == []
+
+
 def test_dashboard_all_time_uses_first_operation_date(client: TestClient):
     client.post(
         "/api/v1/operations",

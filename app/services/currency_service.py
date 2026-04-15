@@ -17,6 +17,9 @@ MONEY_Q = Decimal("0.01")
 RATE_Q = Decimal("0.000001")
 QTY_Q = Decimal("0.000001")
 _CURRENCY_RE = re.compile(r"^[A-Z]{3}$")
+_CURRENCY_ALIASES = {
+    "RU": "RUB",
+}
 
 
 class CurrencyService:
@@ -60,7 +63,8 @@ class CurrencyService:
         return current_row, previous_row
 
     def _normalize_currency(self, value: str) -> str:
-        code = str(value or "").strip().upper()
+        raw = str(value or "").strip().upper()
+        code = _CURRENCY_ALIASES.get(raw, raw)
         if not _CURRENCY_RE.match(code):
             raise ValueError("Currency must be a 3-letter ISO code")
         return code

@@ -263,7 +263,7 @@
                     <span>Валюта</span>
                     <div class="settings-picker-field">
                       <select id="currencySelect">
-                        <option value="BYN">BYN</option>
+                        <option value="BYN">BYN (BYN)</option>
                         <option value="RUB">RUB (₽)</option>
                         <option value="USD">USD ($)</option>
                         <option value="EUR">EUR (€)</option>

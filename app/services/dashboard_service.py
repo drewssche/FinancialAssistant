@@ -11,6 +11,7 @@ from app.core.cache import (
     get_namespace_ttl_seconds,
     set_json,
 )
+from app.core.logging import log_background_job_event
 from app.core.metrics import increment_counter, observe_latency_ms
 from app.repositories.debt_repo import DebtRepository
 from app.repositories.operation_repo import OperationRepository
@@ -82,7 +83,7 @@ class DashboardService:
         debt_lend_outstanding = self._money(debt_lend_outstanding)
         debt_borrow_outstanding = self._money(debt_borrow_outstanding)
         currency_service = CurrencyService(self.db)
-        currency_summary = currency_service.compute_positions(user_id=user_id)
+        currency_summary = self._safe_currency_summary(currency_service, user_id=user_id)
         tracked_codes = currency_summary["tracked_currencies"]
         tracked_positions = [
             {
@@ -137,6 +138,46 @@ class DashboardService:
     @staticmethod
     def _money(value) -> Decimal:
         return Decimal(value or 0).quantize(MONEY_Q)
+
+    def _safe_currency_summary(self, currency_service: CurrencyService, *, user_id: int) -> dict:
+        try:
+            return currency_service.compute_positions(user_id=user_id)
+        except ValueError as exc:
+            log_background_job_event(
+                "dashboard_service",
+                "currency_summary_skipped",
+                user_id=user_id,
+                reason=str(exc),
+            )
+            prefs = currency_service.get_currency_preferences(user_id)
+            zero_money = self._money(0)
+            zero_rate = Decimal("0.000000")
+            return {
+                "base_currency": prefs["base_currency"],
+                "tracked_currencies": prefs["tracked_currencies"],
+                "show_dashboard_kpi": prefs["show_dashboard_kpi"],
+                "telegram_digest_enabled": prefs["telegram_digest_enabled"],
+                "active_positions": 0,
+                "total_book_value": zero_money,
+                "total_current_value": zero_money,
+                "total_result_value": zero_money,
+                "total_unrealized_result_value": zero_money,
+                "total_realized_result_value": zero_money,
+                "total_combined_result_value": zero_money,
+                "buy_trades_count": 0,
+                "sell_trades_count": 0,
+                "buy_volume_base": zero_money,
+                "sell_volume_base": zero_money,
+                "buy_quantity": zero_rate,
+                "sell_quantity": zero_rate,
+                "buy_average_rate": zero_rate,
+                "sell_average_rate": zero_rate,
+                "positions": [],
+                "positions_by_currency": {},
+                "realized_by_currency": {},
+                "trade_stats_by_currency": {},
+                "current_rates": [],
+            }
 
     def get_analytics_calendar(
         self,

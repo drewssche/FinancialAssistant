@@ -179,6 +179,10 @@
     return getCoreUtils().resolveCurrencyConfig(currencyCode, positionValue);
   }
 
+  function normalizeCurrencyCode(value, fallback = "BYN") {
+    return getCoreUtils().normalizeCurrencyCode(value, fallback);
+  }
+
   function getCurrencyConfig() {
     const ui = getUiSettings();
     return resolveCurrencyConfig(ui.currency, ui.currencyPosition);
@@ -309,6 +313,7 @@
       getCurrencyConfig,
       getTrackedCurrencies,
       getSelectableCurrencies,
+      normalizeCurrencyCode,
       resolveCurrencyConfig,
       getUiSettings,
       applyUiScale,

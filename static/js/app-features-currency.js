@@ -243,7 +243,11 @@
     if (!Array.isArray(raw) || !raw.length) {
       return ["USD", "EUR"];
     }
-    return raw.map((item) => String(item || "").toUpperCase()).filter(Boolean);
+    return Array.from(new Set(
+      raw
+        .map((item) => core.normalizeCurrencyCode?.(item, "") || "")
+        .filter(Boolean),
+    ));
   }
 
   function syncRateAssetOptions(preserveValue = "") {
@@ -253,7 +257,7 @@
     const tracked = core.getSelectableCurrencies?.({ includeBase: false }) || getTrackedCurrencies();
     const normalized = Array.from(new Set(
       tracked
-        .map((item) => String(item || "").trim().toUpperCase())
+        .map((item) => core.normalizeCurrencyCode?.(item, "") || "")
         .filter(Boolean),
     ));
     const nextValue = String(preserveValue || el.currencyRateAsset.value || normalized[0] || "").toUpperCase();

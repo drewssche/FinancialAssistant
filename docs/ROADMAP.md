@@ -9,7 +9,7 @@
 - Categories grouped table (collapsible groups, row-level actions, `Удалить все` without checkbox bulk-select)
 - Batch operation create flow
 - Persisted user preferences for display/filter state
-- Docker Compose stack (app + postgres + redis)
+- Docker Compose stack (`app` + `bot` + PostgreSQL by default, Redis via optional `cache` profile)
 - List loading standard for high-volume sections: `20` rows initially + `+20` on scroll (infinite scroll; no visible numbered pagination)
 
 ## MVP-2
@@ -35,6 +35,18 @@
 - year calendar aggregates
 - trend charts for `day/week/month/year`
 - highlights for top operations, category breakdown, anomalies, top positions and price increases
+- Plans module:
+- planned operations with receipt items
+- plan history events
+- inline Telegram confirmation / skip flows
+- reminder queue integration
+- Currency/FX module:
+- tracked currencies, FX trades and current/history rates
+- dashboard currency panel and analytics currency tab
+- operations currency-scope filters (`Все` / base currency / foreign currency)
+- multi-currency operations, plans and debts
+- Telegram currency digest and threshold alerts
+- debt forgiveness flow with dedicated repayment-history semantics
 - Access governance baseline:
 - user statuses (`pending/approved/rejected`)
 - admin-only section for approve/reject/delete user

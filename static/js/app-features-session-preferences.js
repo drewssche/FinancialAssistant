@@ -103,7 +103,7 @@
       return alerts;
     }
     for (const [currency, config] of Object.entries(raw)) {
-      const code = String(currency || "").trim().toUpperCase();
+      const code = core.normalizeCurrencyCode?.(currency, "") || "";
       if (!code || !config || typeof config !== "object") {
         continue;
       }
@@ -120,7 +120,7 @@
   }
 
   function syncCurrencyAlertRows() {
-    const tracked = new Set((getMergedCurrencyPrefs().tracked_currencies || []).map((item) => String(item || "").toUpperCase()));
+    const tracked = new Set((getMergedCurrencyPrefs().tracked_currencies || []).map((item) => core.normalizeCurrencyCode?.(item, "") || "").filter(Boolean));
     if (el.currencyAlertRows?.length) {
       Array.from(el.currencyAlertRows).forEach((row) => {
         const code = String(row.dataset.currencyAlertRow || "").toUpperCase();
@@ -231,7 +231,7 @@
       el.showDashboardCurrencyToggle.checked = getMergedCurrencyPrefs().show_dashboard_kpi !== false;
     }
     if (el.trackedCurrencyInputs?.length) {
-      const tracked = new Set((getMergedCurrencyPrefs().tracked_currencies || []).map((item) => String(item || "").toUpperCase()));
+      const tracked = new Set((getMergedCurrencyPrefs().tracked_currencies || []).map((item) => core.normalizeCurrencyCode?.(item, "") || "").filter(Boolean));
       Array.from(el.trackedCurrencyInputs).forEach((input) => {
         input.checked = tracked.has(String(input.value || "").toUpperCase());
       });
@@ -446,7 +446,8 @@
     const trackedCurrencies = el.trackedCurrencyInputs?.length
       ? Array.from(el.trackedCurrencyInputs)
         .filter((input) => input.checked)
-        .map((input) => String(input.value || "").toUpperCase())
+        .map((input) => core.normalizeCurrencyCode?.(input.value, "") || "")
+        .filter(Boolean)
       : (getMergedCurrencyPrefs().tracked_currencies || []);
     const existingAlerts = normalizeCurrencyAlerts(getMergedCurrencyPrefs().currency_alerts);
     const currencyAlerts = {};

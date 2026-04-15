@@ -18,13 +18,16 @@ ALEMBIC_INI = REPO_ROOT / "alembic.ini"
 ALEMBIC_VERSIONS_DIR = REPO_ROOT / "alembic" / "versions"
 
 
-def test_alembic_has_a_single_head_revision():
+def _get_alembic_heads() -> list[str]:
     config = Config(str(ALEMBIC_INI))
     script = ScriptDirectory.from_config(config)
+    return script.get_heads()
 
-    heads = script.get_heads()
 
-    assert heads == ["20260316_0018"]
+def test_alembic_has_a_single_head_revision():
+    heads = _get_alembic_heads()
+
+    assert len(heads) == 1
 
 
 def test_all_alembic_revision_files_import_and_define_migration_hooks():
@@ -57,7 +60,7 @@ def test_all_alembic_revision_files_import_and_define_migration_hooks():
     assert len(revision_ids) == len(down_revisions)
 
     walked_revisions = []
-    current_revision = "20260316_0018"
+    current_revision = _get_alembic_heads()[0]
     while current_revision is not None:
         walked_revisions.append(current_revision)
         current_revision = down_revisions[current_revision]

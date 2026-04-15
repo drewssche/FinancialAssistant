@@ -1,6 +1,6 @@
 (() => {
   const CURRENCY_META = {
-    BYN: { symbol: "BYN" },
+    BYN: { symbol: "BYN", showSymbolInLabel: true },
     RUB: { symbol: "₽" },
     USD: { symbol: "$" },
     EUR: { symbol: "€" },
@@ -8,9 +8,18 @@
     CNY: { symbol: "¥" },
     PLN: { symbol: "zł" },
   };
+  const CURRENCY_CODE_ALIASES = {
+    RU: "RUB",
+  };
   function decorateCurrencyIcons() {}
 
   function startCurrencyIconObserver() {}
+
+  function normalizeCurrencyCode(value, fallback = "BYN") {
+    const raw = String(value || "").trim().toUpperCase();
+    const aliased = CURRENCY_CODE_ALIASES[raw] || raw;
+    return /^[A-Z]{3}$/.test(aliased) ? aliased : String(fallback || "BYN").trim().toUpperCase();
+  }
 
   function formatAmount(value) {
     const num = Number(value);
@@ -260,7 +269,7 @@
     const scale = Number(ui.scale_percent || 100);
     const dashboardOpsLimit = Number(ui.dashboard_operations_limit || 8);
     return {
-      currency: String(ui.currency || "BYN").toUpperCase(),
+      currency: normalizeCurrencyCode(ui.currency || "BYN"),
       currencyPosition: ui.currency_position === "prefix" ? "prefix" : "suffix",
       showDashboardAnalytics: ui.show_dashboard_analytics !== false,
       showDashboardOperations: ui.show_dashboard_operations !== false,
@@ -271,7 +280,7 @@
   }
 
   function resolveCurrencyConfig(currencyCode, positionValue) {
-    const code = String(currencyCode || "BYN").toUpperCase();
+    const code = normalizeCurrencyCode(currencyCode || "BYN");
     const position = positionValue === "prefix" ? "prefix" : "suffix";
     const symbol = CURRENCY_META[code]?.symbol || code;
     return {
@@ -283,7 +292,8 @@
 
   function formatCurrencyLabel(currencyCode, options = {}) {
     const cfg = resolveCurrencyConfig(currencyCode);
-    if (options.withSymbol === false || cfg.symbol === cfg.code) {
+    const meta = CURRENCY_META[cfg.code] || {};
+    if (options.withSymbol === false || (cfg.symbol === cfg.code && !meta.showSymbolInLabel)) {
       return cfg.code;
     }
     return `${cfg.code} (${cfg.symbol})`;
@@ -301,7 +311,7 @@
     }
     return Array.from(new Set(
       raw
-        .map((item) => String(item || "").trim().toUpperCase())
+        .map((item) => normalizeCurrencyCode(item, ""))
         .filter(Boolean),
     ));
   }
@@ -566,6 +576,7 @@
     evaluateMathExpression,
     resolveMoneyInput,
     resolveRateInput,
+    normalizeCurrencyCode,
     getUiSettings,
     resolveCurrencyConfig,
     formatCurrencyLabel,

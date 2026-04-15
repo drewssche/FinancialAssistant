@@ -116,13 +116,17 @@ Notes:
 ## Current Scope
 - Telegram auth flow
 - Browser Telegram login fallback with server-side availability gating (`/api/v1/auth/public-config`)
-- Full CRUD for operations, categories/groups, debts
-- Dashboard summary (including debt KPI fields) + summary metrics endpoint
+- Full CRUD for operations, categories/groups, debts and plans
+- Dashboard summary (including debt and currency KPI fields) + summary metrics endpoint
 - Analytics endpoints for calendar, year calendar, trend and highlights views
+- Money-flow views over operations, debts and FX events
 - Receipt line items in operations (`receipt_items`, discrepancy support)
 - Receipt line items can optionally store their own `category_id`
 - Reusable item templates catalog + price history endpoints
 - Category-level `include_in_statistics` flag for analytics/breakdown control
+- Currency/FX module: tracked currencies, FX trades, current/history rates, dashboard currency panel, analytics currency tab and Telegram currency notifications
+- Multi-currency operations, plans and debts with base-currency conversion snapshots or live equivalents where appropriate
+- Plan and debt due-date reminders through the Telegram bot runtime
 - Persisted user preferences (server + local fallback)
 - API and UI regression suite (API + Playwright e2e)
 

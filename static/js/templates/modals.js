@@ -47,7 +47,7 @@
               <input id="opAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" required />
             </div>
             <select id="opCurrency" class="inline-currency-select" aria-label="Валюта суммы">
-              <option value="BYN">BYN</option>
+              <option value="BYN">BYN (BYN)</option>
               <option value="USD">USD ($)</option>
               <option value="EUR">EUR (€)</option>
               <option value="RUB">RUB (₽)</option>
@@ -197,7 +197,7 @@
                 <input id="debtPrincipal" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" />
               </div>
               <select id="debtCurrency" class="inline-currency-select" aria-label="Валюта долга">
-                <option value="BYN">BYN</option>
+                <option value="BYN">BYN (BYN)</option>
                 <option value="USD">USD ($)</option>
                 <option value="EUR">EUR (€)</option>
                 <option value="RUB">RUB (₽)</option>
@@ -454,7 +454,7 @@
               <input id="editAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" required />
             </div>
             <select id="editCurrency" class="inline-currency-select" aria-label="Валюта суммы">
-              <option value="BYN">BYN</option>
+              <option value="BYN">BYN (BYN)</option>
               <option value="USD">USD ($)</option>
               <option value="EUR">EUR (€)</option>
               <option value="RUB">RUB (₽)</option>
