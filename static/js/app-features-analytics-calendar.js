@@ -14,6 +14,7 @@
     return { label: "Ноль", tone: "neutral", cardClass: "neutral", amount: 0 };
   });
   let calendarScrollUiBound = false;
+  let calendarTooltipUiBound = false;
   const pickerUtils = window.App.getRuntimeModule?.("picker-utils") || {};
 
   function syncCalendarScrollFade() {
@@ -43,6 +44,75 @@
     calendarScrollUiBound = true;
     el.analyticsCalendarScrollWrap.addEventListener("scroll", syncCalendarScrollFade, { passive: true });
     window.addEventListener("resize", syncCalendarScrollFade);
+  }
+
+  function ensureCalendarTooltip() {
+    const host = el.analyticsCalendarPanel || el.analyticsCalendarScrollWrap;
+    if (!host) {
+      return null;
+    }
+    let tooltip = host.querySelector(".analytics-calendar-tooltip");
+    if (!tooltip) {
+      tooltip = document.createElement("div");
+      tooltip.className = "analytics-chart-tooltip analytics-calendar-tooltip hidden";
+      host.appendChild(tooltip);
+    }
+    return tooltip;
+  }
+
+  function hideCalendarTooltip() {
+    const tooltip = el.analyticsCalendarPanel?.querySelector(".analytics-calendar-tooltip");
+    if (tooltip) {
+      tooltip.classList.add("hidden");
+    }
+  }
+
+  function positionCalendarTooltip(tooltip, clientX, clientY) {
+    const host = el.analyticsCalendarPanel || el.analyticsCalendarScrollWrap;
+    if (!host || !tooltip) {
+      return;
+    }
+    const rect = host.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const left = Math.max(8, Math.min(rect.width - tooltipRect.width - 8, clientX - rect.left + 12));
+    const top = Math.max(8, Math.min(rect.height - tooltipRect.height - 8, clientY - rect.top - tooltipRect.height - 10));
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+  }
+
+  function bindCalendarTooltipUi() {
+    if (calendarTooltipUiBound || !el.analyticsCalendarPanel) {
+      return;
+    }
+    calendarTooltipUiBound = true;
+    el.analyticsCalendarPanel.addEventListener("mousemove", (event) => {
+      const target = event.target.closest("[data-analytics-calendar-tooltip]");
+      if (!target || !el.analyticsCalendarPanel.contains(target)) {
+        hideCalendarTooltip();
+        return;
+      }
+      const tooltip = ensureCalendarTooltip();
+      if (!tooltip) {
+        return;
+      }
+      const lines = String(target.dataset.analyticsCalendarTooltip || "")
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean);
+      if (!lines.length) {
+        hideCalendarTooltip();
+        return;
+      }
+      tooltip.innerHTML = `
+        <div class="analytics-chart-tooltip-title">${escapeHtml(lines[0])}</div>
+        <div class="analytics-chart-tooltip-grid analytics-chart-tooltip-grid-compact">
+          ${lines.slice(1).map((line) => `<span class="analytics-chart-tooltip-balance">${escapeHtml(line)}</span>`).join("")}
+        </div>
+      `;
+      tooltip.classList.remove("hidden");
+      positionCalendarTooltip(tooltip, event.clientX, event.clientY);
+    });
+    el.analyticsCalendarPanel.addEventListener("mouseleave", hideCalendarTooltip);
   }
 
   function parseMonthAnchor(rawValue) {
@@ -342,14 +412,14 @@
           if (markerBits.length) {
             titleBits.push(markerBits.join(" · "));
           }
-          const dayTitle = titleBits.join(" | ");
+          const dayTooltip = titleBits.join("\n");
           cell.innerHTML = `
             <button
               type="button"
               class="analytics-day-btn"
               data-analytics-date="${day.date}"
-              title="${escapeHtml(dayTitle)}"
-              aria-label="${escapeHtml(dayTitle)}"
+              data-analytics-calendar-tooltip="${escapeHtml(dayTooltip)}"
+              aria-label="${escapeHtml(titleBits.join(" | "))}"
             >
               <div class="analytics-day-date">${new Date(`${day.date}T00:00:00`).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}</div>
               <div class="analytics-day-money analytics-income">+${core.formatMoney(cashflow.incomeTotal)}</div>
@@ -410,6 +480,7 @@
 
   async function loadAnalyticsCalendar(options = {}) {
     bindCalendarScrollUi();
+    bindCalendarTooltipUi();
     const force = options.force === true;
     if (!state.analyticsMonthAnchor) {
       const now = new Date();

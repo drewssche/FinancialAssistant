@@ -165,6 +165,8 @@
 
 .analytics-day-meta {
   color: #9db0d4;
+  font-family: var(--money-font-family);
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .analytics-day-meta.analytics-positive,
@@ -192,6 +194,14 @@
   vertical-align: middle;
   font-family: var(--money-font-family);
   font-variant-numeric: tabular-nums lining-nums;
+}
+
+.analytics-calendar-tooltip {
+  font-family: var(--money-font-family);
+}
+
+#analyticsCalendarPanel {
+  position: relative;
 }
 
 .analytics-week-subnote {

@@ -703,3 +703,14 @@ def test_byn_uses_compact_currency_symbol_in_frontend_formatters():
     assert "Пример: 1 234,56&nbsp;&#xe901;" in secondary_templates
     assert "text-rendering: geometricPrecision" in core_css
     assert "руб." not in core_utils
+
+
+def test_analytics_calendar_money_tooltip_uses_app_font_not_native_title():
+    analytics_calendar = (REPO_ROOT / "static" / "js" / "app-features-analytics-calendar.js").read_text(encoding="utf-8")
+    analytics_css = (REPO_ROOT / "static" / "css" / "components-analytics-summary.css").read_text(encoding="utf-8")
+
+    assert "function bindCalendarTooltipUi()" in analytics_calendar
+    assert 'data-analytics-calendar-tooltip="${escapeHtml(dayTooltip)}"' in analytics_calendar
+    assert 'title="${escapeHtml(dayTitle)}"' not in analytics_calendar
+    assert ".analytics-day-meta {\n  color: #9db0d4;\n  font-family: var(--money-font-family);" in analytics_css
+    assert ".analytics-calendar-tooltip {\n  font-family: var(--money-font-family);\n}" in analytics_css
