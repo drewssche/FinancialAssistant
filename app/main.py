@@ -46,6 +46,14 @@ async def http_metrics_middleware(request, call_next):
         record_http_request(path=request.url.path, method=request.method)
         if response is not None:
             response.headers["X-Request-ID"] = request_id
+            path = request.url.path
+            if (
+                path == "/"
+                or path == "/static/index.html"
+                or path == "/static/styles.css"
+                or path.startswith("/static/js/")
+            ):
+                response.headers["Cache-Control"] = "no-cache"
         log_api_request_completion(
             method=request.method,
             path=request.url.path,

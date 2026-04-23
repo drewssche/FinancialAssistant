@@ -146,6 +146,8 @@ def test_dashboard_navigation_ignores_stale_section_loads():
     assert "if (!isCurrentDashboardLoad())" in dashboard
     assert "Promise.allSettled([currencyOverviewTask, plansTask, debtCardsTask]).finally" in dashboard
     assert "optionalPanelTasksStarted = true" in dashboard
+    assert "function renderDashboardLoadFailure(err)" in dashboard
+    assert "renderDashboardLoadFailure(err);" in dashboard
     assert "abortDashboardAnalyticsPreview: highlights.abortDashboardAnalyticsPreview" in analytics
     assert "let dashboardAnalyticsPreviewController = null" in analytics_highlights
     assert "function abortDashboardAnalyticsPreview()" in analytics_highlights

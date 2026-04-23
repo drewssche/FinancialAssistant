@@ -21,6 +21,18 @@ def test_request_id_header_is_preserved_when_provided_by_client():
     assert response.headers.get("X-Request-ID") == "req-123"
 
 
+def test_frontend_entrypoint_and_scripts_revalidate_after_deploy():
+    client = TestClient(app)
+
+    index_response = client.get("/")
+    script_response = client.get("/static/js/app-features-dashboard.js")
+
+    assert index_response.status_code == 200
+    assert index_response.headers.get("Cache-Control") == "no-cache"
+    assert script_response.status_code == 200
+    assert script_response.headers.get("Cache-Control") == "no-cache"
+
+
 def test_api_request_completion_is_logged_with_request_context(caplog):
     client = TestClient(app)
 

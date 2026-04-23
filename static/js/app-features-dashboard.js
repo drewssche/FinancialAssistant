@@ -267,6 +267,38 @@
     });
   }
 
+  function renderDashboardLoadFailure(err) {
+    const message = core.errorMessage ? core.errorMessage(err) : String(err || "Ошибка загрузки");
+    if (el.dashboardCurrencyBalances) {
+      el.dashboardCurrencyBalances.innerHTML = `<div class="muted-small">Не удалось загрузить валютный портфель: ${core.escapeHtml ? core.escapeHtml(message) : message}</div>`;
+    }
+    if (el.dashboardCurrencyRates) {
+      el.dashboardCurrencyRates.innerHTML = "";
+    }
+    if (el.dashboardCurrencyPositions) {
+      el.dashboardCurrencyPositions.innerHTML = "";
+    }
+    if (el.dashboardPlansList) {
+      el.dashboardPlansList.innerHTML = "<div class='muted-small'>Не удалось загрузить ближайшие планы</div>";
+    }
+    if (el.dashboardPlansKpi) {
+      el.dashboardPlansKpi.innerHTML = "";
+    }
+    if (el.dashboardDebtsList) {
+      el.dashboardDebtsList.innerHTML = "<div class='muted-small'>Не удалось загрузить активные долги</div>";
+    }
+    if (el.debtLendTotal) {
+      el.debtLendTotal.textContent = core.formatMoney(0);
+    }
+    if (el.debtBorrowTotal) {
+      el.debtBorrowTotal.textContent = core.formatMoney(0);
+    }
+    if (el.debtNetTotal) {
+      el.debtNetTotal.textContent = core.formatMoney(0);
+    }
+    getLoadingSkeletons().clearDashboardAnalyticsSkeletonState?.();
+  }
+
 
   async function loadDashboard() {
     if (dashboardLoadController) {
@@ -572,6 +604,7 @@
         return;
       }
       if (isCurrentDashboardLoad()) {
+        renderDashboardLoadFailure(err);
         throw err;
       }
     } finally {
