@@ -91,6 +91,43 @@ def test_dashboard_summary_survives_inconsistent_fx_history(client: TestClient, 
     assert payload["tracked_currency_positions"] == []
 
 
+def test_dashboard_summary_survives_unexpected_currency_error(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    def raise_unexpected_currency_error(self, *, user_id: int):
+        raise RuntimeError("currency backend is temporarily unavailable")
+
+    monkeypatch.setattr(
+        "app.services.dashboard_service.CurrencyService.compute_positions",
+        raise_unexpected_currency_error,
+    )
+
+    summary = client.get("/api/v1/dashboard/summary", params={"period": "all_time"})
+
+    assert summary.status_code == 200
+    payload = summary.json()
+    assert payload["currency_current_value"] in ("0", "0.00")
+    assert payload["currency_total_result_value"] in ("0", "0.00")
+    assert payload["tracked_currency_positions"] == []
+
+
+def test_dashboard_summary_survives_debt_summary_error(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    def raise_debt_error(self, *, user_id: int):
+        raise RuntimeError("debt backend is temporarily unavailable")
+
+    monkeypatch.setattr(
+        "app.services.dashboard_service.DebtService.summary_active_totals_current_base",
+        raise_debt_error,
+    )
+
+    summary = client.get("/api/v1/dashboard/summary", params={"period": "all_time"})
+
+    assert summary.status_code == 200
+    payload = summary.json()
+    assert payload["debt_lend_outstanding"] in ("0", "0.00")
+    assert payload["debt_borrow_outstanding"] in ("0", "0.00")
+    assert payload["debt_net_position"] in ("0", "0.00")
+    assert payload["active_debt_cards"] == 0
+
+
 def test_dashboard_all_time_uses_first_operation_date(client: TestClient):
     client.post(
         "/api/v1/operations",

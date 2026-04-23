@@ -1,6 +1,7 @@
 (() => {
   const { state, el, core } = window.App;
   const HIGHLIGHTS_CACHE_TTL_MS = 20000;
+  let dashboardAnalyticsPreviewController = null;
 
   function getHighlightsUi() {
     return window.App.getRuntimeModule?.("analytics-highlights-ui") || {};
@@ -33,14 +34,34 @@
     return core.getPeriodBounds(period);
   }
 
+  function clearDashboardAnalyticsPreviewController(requestSignal) {
+    if (dashboardAnalyticsPreviewController?.signal === requestSignal) {
+      dashboardAnalyticsPreviewController = null;
+    }
+  }
+
   async function loadDashboardAnalyticsPreview(options = {}) {
+    if (dashboardAnalyticsPreviewController) {
+      dashboardAnalyticsPreviewController.abort();
+    }
+    dashboardAnalyticsPreviewController = new AbortController();
+    const requestSignal = options.signal || dashboardAnalyticsPreviewController.signal;
     const settings = core.getUiSettings ? core.getUiSettings() : null;
     if (settings && settings.showDashboardAnalytics === false) {
+      clearDashboardAnalyticsPreviewController(requestSignal);
+      return null;
+    }
+    if (state.activeSection !== "dashboard") {
+      clearDashboardAnalyticsPreviewController(requestSignal);
       return null;
     }
     const operationsFeature = getOperationsFeature();
     if (operationsFeature.ensureAllTimeBounds) {
       await operationsFeature.ensureAllTimeBounds(false, state.dashboardAnalyticsPeriod || "month");
+    }
+    if (requestSignal.aborted) {
+      clearDashboardAnalyticsPreviewController(requestSignal);
+      return null;
     }
     const skeletons = getLoadingSkeletons();
     if (!state.dashboardAnalyticsHydrated) {
@@ -67,6 +88,7 @@
         highlightsUi.renderDashboardBreakdown?.(cached);
         skeletons.clearDashboardAnalyticsSkeletonState?.();
         state.dashboardAnalyticsHydrated = true;
+        clearDashboardAnalyticsPreviewController(requestSignal);
         return cached;
       }
     }
@@ -79,7 +101,11 @@
     try {
       const data = await core.requestJson(`/api/v1/dashboard/analytics/highlights?${params.toString()}`, {
         headers: core.authHeaders(),
+        signal: requestSignal,
       });
+      if (requestSignal.aborted || state.activeSection !== "dashboard") {
+        return null;
+      }
       core.setUiRequestCache(cacheKey, data);
       const highlightsUi = getHighlightsUi();
       highlightsUi.renderPeriodKpiBlocks?.(el.dashboardKpiPrimary, el.dashboardKpiSecondary, el.dashboardAnalyticsPeriodLabel, data, formatPct);
@@ -87,11 +113,24 @@
       skeletons.clearDashboardAnalyticsSkeletonState?.();
       state.dashboardAnalyticsHydrated = true;
       return data;
+    } catch (err) {
+      if (core.isAbortError?.(err)) {
+        return null;
+      }
+      throw err;
     } finally {
+      clearDashboardAnalyticsPreviewController(requestSignal);
       if (shouldRefreshInline) {
         refreshState.end?.(el.dashboardAnalyticsPanel);
         refreshState.end?.(el.dashboardStructurePanel);
       }
+    }
+  }
+
+  function abortDashboardAnalyticsPreview() {
+    if (dashboardAnalyticsPreviewController) {
+      dashboardAnalyticsPreviewController.abort();
+      dashboardAnalyticsPreviewController = null;
     }
   }
 
@@ -213,6 +252,7 @@
   const api = {
     loadAnalyticsHighlights,
     loadDashboardAnalyticsPreview,
+    abortDashboardAnalyticsPreview,
     setCategoryBreakdownHover: (...args) => getHighlightsUi().setCategoryBreakdownHover?.(...args),
     clearCategoryBreakdownHover: (...args) => getHighlightsUi().clearCategoryBreakdownHover?.(...args),
     setDashboardBreakdownHover: (...args) => getHighlightsUi().setDashboardBreakdownHover?.(...args),

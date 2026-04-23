@@ -362,6 +362,7 @@
         renderReceiptItems,
         renderReceiptSummary,
         receiptLineTotal,
+        formatReceiptMoney,
         removeReceiptItem,
         updateCreatePreview,
         updateEditPreview,

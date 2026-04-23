@@ -314,6 +314,7 @@
     if (shouldRefreshPlans && el.dashboardPlansPanel && ui?.showDashboardOperations !== false) {
       refreshState.begin?.(el.dashboardPlansPanel, "Обновляется");
     }
+    let optionalPanelTasksStarted = false;
     try {
       const data = await (dashboardData.loadAllTimeSummary
         ? dashboardData.loadAllTimeSummary({ signal: requestSignal })
@@ -338,6 +339,8 @@
         el.dashboardDebtKpiGrid.classList.toggle("hidden", !hasDebtKpi);
       }
       renderDashboardCurrencySummary(data);
+      state.dashboardDebtSummaryLoaded = true;
+
       const currencyOverviewTask = core.requestJson("/api/v1/currency/overview?trades_limit=10", {
         headers: core.authHeaders(),
         signal: requestSignal,
@@ -359,9 +362,14 @@
           .then((value) => ({ value, error: null }))
           .catch((error) => ({ value: null, error }))
         : Promise.resolve({ value: null, error: null });
+      optionalPanelTasksStarted = true;
+      Promise.allSettled([currencyOverviewTask, plansTask, debtCardsTask]).finally(() => {
+        if (dashboardLoadController?.signal === requestSignal) {
+          dashboardLoadController = null;
+        }
+      });
 
-      {
-        const currencyOverviewResult = await currencyOverviewTask;
+      currencyOverviewTask.then((currencyOverviewResult) => {
         if (currencyOverviewResult.error) {
           if (core.isAbortError?.(currencyOverviewResult.error)) {
             return;
@@ -377,98 +385,119 @@
           const currencyOverview = currencyOverviewResult.value || {};
           renderDashboardCurrencyRates(currencyOverview.current_rates, currencyOverview.tracked_currencies);
         }
-      }
-      state.dashboardCurrencyHydrated = true;
-      state.dashboardDebtSummaryLoaded = true;
+        state.dashboardCurrencyHydrated = true;
+      }).catch((err) => {
+        if (!core.isAbortError?.(err)) {
+          reportOptionalDashboardPanelFailure("currency", err);
+        }
+      }).finally(() => {
+        if (shouldRefreshCurrency && el.dashboardCurrencyPanel) {
+          refreshState.end?.(el.dashboardCurrencyPanel);
+        }
+      });
 
       if (el.dashboardPlansPanel && ui?.showDashboardOperations !== false) {
-        const plansResult = await plansTask;
-        if (plansResult.error) {
-          if (core.isAbortError?.(plansResult.error)) {
+        plansTask.then((plansResult) => {
+          if (plansResult.error) {
+            if (core.isAbortError?.(plansResult.error)) {
+              return;
+            }
+            reportOptionalDashboardPanelFailure("plans", plansResult.error);
+            if (isCurrentDashboardLoad()) {
+              getPlansFeature().renderDashboardPlans?.();
+            }
+          } else if (!isCurrentDashboardLoad()) {
             return;
           }
-          reportOptionalDashboardPanelFailure("plans", plansResult.error);
-          if (isCurrentDashboardLoad()) {
-            getPlansFeature().renderDashboardPlans?.();
+        }).catch((err) => {
+          if (!core.isAbortError?.(err)) {
+            reportOptionalDashboardPanelFailure("plans", err);
           }
-        } else if (!isCurrentDashboardLoad()) {
-          return;
-        }
+        }).finally(() => {
+          if (shouldRefreshPlans && el.dashboardPlansPanel) {
+            refreshState.end?.(el.dashboardPlansPanel);
+          }
+        });
       } else {
         if (isCurrentDashboardLoad()) {
           getPlansFeature().renderDashboardPlans?.();
         }
+        if (shouldRefreshPlans && el.dashboardPlansPanel) {
+          refreshState.end?.(el.dashboardPlansPanel);
+        }
       }
 
       if (!core.isDashboardDebtsVisible()) {
+        if (shouldRefreshDebts && el.dashboardDebtsPanel) {
+          refreshState.end?.(el.dashboardDebtsPanel);
+        }
         return;
       }
 
       if (el.dashboardDebtsList) {
-        const debtCardsResult = await debtCardsTask;
-        if (debtCardsResult.error) {
-          if (core.isAbortError?.(debtCardsResult.error)) {
+        debtCardsTask.then((debtCardsResult) => {
+          if (debtCardsResult.error) {
+            if (core.isAbortError?.(debtCardsResult.error)) {
+              return;
+            }
+            reportOptionalDashboardPanelFailure("debts-preview", debtCardsResult.error);
+            if (!state.dashboardDebtsHydrated) {
+              el.dashboardDebtsList.innerHTML = "<div class='muted-small'>Не удалось загрузить активные долги</div>";
+            }
             return;
           }
-          reportOptionalDashboardPanelFailure("debts-preview", debtCardsResult.error);
-          if (!state.dashboardDebtsHydrated) {
-            el.dashboardDebtsList.innerHTML = "<div class='muted-small'>Не удалось загрузить активные долги</div>";
-          }
-        } else {
           const cards = Array.isArray(debtCardsResult.value) ? debtCardsResult.value : [];
-          if (!isCurrentDashboardLoad()) {
-            return;
-          }
-          el.dashboardDebtsList.innerHTML = "";
-          if (!cards.length) {
-            const empty = document.createElement("div");
-            empty.className = "muted-small";
-            empty.textContent = "Нет активных долгов";
-            el.dashboardDebtsList.appendChild(empty);
-          } else {
-            for (const card of cards) {
-              const now = new Date();
-              const activeDebts = (card.debts || []).filter((debt) => Number(debt.outstanding_total || 0) > 0);
-              activeDebts.sort((a, b) => {
-                const aState = debtUi.debtDueState(a, now);
-                const bState = debtUi.debtDueState(b, now);
-                const rankDiff = duePriorityRank(aState) - duePriorityRank(bState);
-                if (rankDiff !== 0) {
-                  return rankDiff;
-                }
-                const aDue = debtUi.parseIsoDateEnd(a.due_date);
-                const bDue = debtUi.parseIsoDateEnd(b.due_date);
-                if (aDue && bDue) {
-                  return aDue.getTime() - bDue.getTime();
-                }
-                if (aDue) {
-                  return -1;
-                }
-                if (bDue) {
-                  return 1;
-                }
-                return Number(b.id || 0) - Number(a.id || 0);
-              });
-              const visibleDebts = activeDebts.slice(0, 2);
-              const rowsHtml = visibleDebts
-                .map((debt) => {
-                  const principal = debtUi.parseAmount(debt.principal || 0);
-                  const outstanding = debtUi.parseAmount(debt.outstanding_total || 0);
-                  const repaid = debtUi.parseAmount(debt.repaid_total || 0);
-                  const forgiven = debtUi.parseAmount(debt.forgiven_total || 0);
-                  const settled = repaid + forgiven;
-                  const repayPercent = principal > 0 ? Math.max(0, Math.min(100, Math.round((settled / principal) * 100))) : 0;
-                  const direction = debt.direction === "borrow" ? "borrow" : "lend";
-                  const directionLabel = debtUi.debtDirectionBalanceLabel(direction);
-                  const repayTone = direction === "borrow" ? (repayPercent >= 100 ? "borrow-ok" : repayPercent >= 40 ? "borrow-warn" : "borrow-danger") : (repayPercent >= 100 ? "lend-ok" : "lend-warn");
-                  const dueState = debtUi.debtDueState(debt, now);
-                  const dueProgress = debtUi.debtDueProgress(debt, dueState, now);
-                  const dueDays = debtUi.debtDueDaysBadge(debt, dueState, now);
-                  const settlementChips = [
-                    repaid > 0 ? `<span class="meta-chip debt-meta-chip debt-meta-chip-repaid">Погашено ${core.formatMoney(repaid, { currency: debt.currency || "BYN" })}</span>` : "",
-                    forgiven > 0 ? `<span class="meta-chip debt-meta-chip debt-meta-chip-forgiven">Прощено ${core.formatMoney(forgiven, { currency: debt.currency || "BYN" })}</span>` : "",
-                  ].filter(Boolean).join("");
-                  return `
+          if (isCurrentDashboardLoad()) {
+            el.dashboardDebtsList.innerHTML = "";
+            if (!cards.length) {
+              const empty = document.createElement("div");
+              empty.className = "muted-small";
+              empty.textContent = "Нет активных долгов";
+              el.dashboardDebtsList.appendChild(empty);
+            } else {
+              for (const card of cards) {
+                const now = new Date();
+                const activeDebts = (card.debts || []).filter((debt) => Number(debt.outstanding_total || 0) > 0);
+                activeDebts.sort((a, b) => {
+                  const aState = debtUi.debtDueState(a, now);
+                  const bState = debtUi.debtDueState(b, now);
+                  const rankDiff = duePriorityRank(aState) - duePriorityRank(bState);
+                  if (rankDiff !== 0) {
+                    return rankDiff;
+                  }
+                  const aDue = debtUi.parseIsoDateEnd(a.due_date);
+                  const bDue = debtUi.parseIsoDateEnd(b.due_date);
+                  if (aDue && bDue) {
+                    return aDue.getTime() - bDue.getTime();
+                  }
+                  if (aDue) {
+                    return -1;
+                  }
+                  if (bDue) {
+                    return 1;
+                  }
+                  return Number(b.id || 0) - Number(a.id || 0);
+                });
+                const visibleDebts = activeDebts.slice(0, 2);
+                const rowsHtml = visibleDebts
+                  .map((debt) => {
+                    const principal = debtUi.parseAmount(debt.principal || 0);
+                    const outstanding = debtUi.parseAmount(debt.outstanding_total || 0);
+                    const repaid = debtUi.parseAmount(debt.repaid_total || 0);
+                    const forgiven = debtUi.parseAmount(debt.forgiven_total || 0);
+                    const settled = repaid + forgiven;
+                    const repayPercent = principal > 0 ? Math.max(0, Math.min(100, Math.round((settled / principal) * 100))) : 0;
+                    const direction = debt.direction === "borrow" ? "borrow" : "lend";
+                    const directionLabel = debtUi.debtDirectionBalanceLabel(direction);
+                    const repayTone = direction === "borrow" ? (repayPercent >= 100 ? "borrow-ok" : repayPercent >= 40 ? "borrow-warn" : "borrow-danger") : (repayPercent >= 100 ? "lend-ok" : "lend-warn");
+                    const dueState = debtUi.debtDueState(debt, now);
+                    const dueProgress = debtUi.debtDueProgress(debt, dueState, now);
+                    const dueDays = debtUi.debtDueDaysBadge(debt, dueState, now);
+                    const settlementChips = [
+                      repaid > 0 ? `<span class="meta-chip debt-meta-chip debt-meta-chip-repaid">Погашено ${core.formatMoney(repaid, { currency: debt.currency || "BYN" })}</span>` : "",
+                      forgiven > 0 ? `<span class="meta-chip debt-meta-chip debt-meta-chip-forgiven">Прощено ${core.formatMoney(forgiven, { currency: debt.currency || "BYN" })}</span>` : "",
+                    ].filter(Boolean).join("");
+                    return `
                     <div class="dashboard-debt-row">
                       <div class="dashboard-debt-row-col">
                         <div class="muted-small">${directionLabel}</div>
@@ -502,12 +531,12 @@
                       </div>
                     </div>
                   `;
-                })
-                .join("");
-              const createdAt = visibleDebts[0]?.created_at ? formatDateTimeRu(visibleDebts[0].created_at) : "";
-              const compact = document.createElement("article");
-              compact.className = "panel debt-card debt-card-compact";
-              compact.innerHTML = `
+                  })
+                  .join("");
+                const createdAt = visibleDebts[0]?.created_at ? formatDateTimeRu(visibleDebts[0].created_at) : "";
+                const compact = document.createElement("article");
+                compact.className = "panel debt-card debt-card-compact";
+                compact.innerHTML = `
                 <div class="debt-card-compact-grid">
                   <div class="debt-card-compact-col debt-card-compact-main">
                     <div class="debt-card-compact-head">
@@ -521,11 +550,22 @@
                   <div class="debt-card-compact-col debt-card-compact-rows debt-child-zone">${rowsHtml}</div>
                 </div>
               `;
-              el.dashboardDebtsList.appendChild(compact);
+                el.dashboardDebtsList.appendChild(compact);
+              }
             }
+            state.dashboardDebtsHydrated = true;
           }
-          state.dashboardDebtsHydrated = true;
-        }
+        }).catch((err) => {
+          if (!core.isAbortError?.(err)) {
+            reportOptionalDashboardPanelFailure("debts-preview", err);
+          }
+        }).finally(() => {
+          if (shouldRefreshDebts && el.dashboardDebtsPanel) {
+            refreshState.end?.(el.dashboardDebtsPanel);
+          }
+        });
+      } else if (shouldRefreshDebts && el.dashboardDebtsPanel) {
+        refreshState.end?.(el.dashboardDebtsPanel);
       }
     } catch (err) {
       if (core.isAbortError?.(err)) {
@@ -535,16 +575,16 @@
         throw err;
       }
     } finally {
-      if (dashboardLoadController?.signal === requestSignal) {
+      if (!optionalPanelTasksStarted && dashboardLoadController?.signal === requestSignal) {
         dashboardLoadController = null;
       }
-      if (shouldRefreshCurrency && el.dashboardCurrencyPanel) {
+      if (!optionalPanelTasksStarted && shouldRefreshCurrency && el.dashboardCurrencyPanel) {
         refreshState.end?.(el.dashboardCurrencyPanel);
       }
-      if (shouldRefreshDebts && el.dashboardDebtsPanel) {
+      if (!optionalPanelTasksStarted && shouldRefreshDebts && el.dashboardDebtsPanel) {
         refreshState.end?.(el.dashboardDebtsPanel);
       }
-      if (shouldRefreshPlans && el.dashboardPlansPanel) {
+      if (!optionalPanelTasksStarted && shouldRefreshPlans && el.dashboardPlansPanel) {
         refreshState.end?.(el.dashboardPlansPanel);
       }
     }

@@ -306,6 +306,7 @@
     applySectionUi();
     if (sectionId !== "dashboard") {
       getDashboardFeature().abortDashboardLoad?.();
+      getAnalyticsFeature().abortDashboardAnalyticsPreview?.();
     }
     if (sectionId === "dashboard") {
       const dashboardFeature = getDashboardFeature();
@@ -320,10 +321,13 @@
         });
       }
       if (analyticsFeature.loadDashboardAnalyticsPreview && uiSettings?.showDashboardAnalytics !== false) {
-        jobs.push({
-          name: "dashboard-analytics-preview",
-          critical: false,
-          promise: analyticsFeature.loadDashboardAnalyticsPreview({ force: true }),
+        analyticsFeature.loadDashboardAnalyticsPreview({ force: true }).catch((err) => {
+          if (!core.isAbortError?.(err) && isCurrentSwitch()) {
+            console.warn("Optional dashboard jobs failed", [{
+              name: "dashboard-analytics-preview",
+              reason: err,
+            }]);
+          }
         });
       }
       if (jobs.length) {

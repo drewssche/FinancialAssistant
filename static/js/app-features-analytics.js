@@ -162,6 +162,7 @@
     loadAnalyticsHighlights: highlights.loadAnalyticsHighlights,
     loadAnalyticsCurrency: currency.loadAnalyticsCurrency,
     loadDashboardAnalyticsPreview: highlights.loadDashboardAnalyticsPreview,
+    abortDashboardAnalyticsPreview: highlights.abortDashboardAnalyticsPreview,
     loadAnalyticsSection,
     shiftAnalyticsMonth: calendar.shiftAnalyticsMonth,
     resetAnalyticsMonth: calendar.resetAnalyticsMonth,

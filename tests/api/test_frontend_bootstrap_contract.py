@@ -126,12 +126,17 @@ def test_runtime_registry_registrations_exist_for_key_modules():
 def test_dashboard_navigation_ignores_stale_section_loads():
     section_ui = (REPO_ROOT / "static" / "js" / "app-section-ui.js").read_text(encoding="utf-8")
     dashboard = (REPO_ROOT / "static" / "js" / "app-features-dashboard.js").read_text(encoding="utf-8")
+    analytics = (REPO_ROOT / "static" / "js" / "app-features-analytics.js").read_text(encoding="utf-8")
+    analytics_highlights = (REPO_ROOT / "static" / "js" / "app-features-analytics-highlights.js").read_text(encoding="utf-8")
 
     assert "let sectionSwitchSeq = 0" in section_ui
     assert "const switchSeq = ++sectionSwitchSeq" in section_ui
     assert "if (!isCurrentSwitch())" in section_ui
     assert 'core.setStatus("Не удалось обновить дашборд")' in section_ui
     assert 'getDashboardFeature().abortDashboardLoad?.()' in section_ui
+    assert 'getAnalyticsFeature().abortDashboardAnalyticsPreview?.()' in section_ui
+    assert 'analyticsFeature.loadDashboardAnalyticsPreview({ force: true }).catch((err) => {' in section_ui
+    assert 'promise: analyticsFeature.loadDashboardAnalyticsPreview' not in section_ui
     assert "let dashboardLoadSeq = 0" in dashboard
     assert "let dashboardLoadController = null" in dashboard
     assert "new AbortController()" in dashboard
@@ -139,6 +144,13 @@ def test_dashboard_navigation_ignores_stale_section_loads():
     assert "const loadSeq = ++dashboardLoadSeq" in dashboard
     assert 'state.activeSection === "dashboard"' in dashboard
     assert "if (!isCurrentDashboardLoad())" in dashboard
+    assert "Promise.allSettled([currencyOverviewTask, plansTask, debtCardsTask]).finally" in dashboard
+    assert "optionalPanelTasksStarted = true" in dashboard
+    assert "abortDashboardAnalyticsPreview: highlights.abortDashboardAnalyticsPreview" in analytics
+    assert "let dashboardAnalyticsPreviewController = null" in analytics_highlights
+    assert "function abortDashboardAnalyticsPreview()" in analytics_highlights
+    assert "signal: requestSignal" in analytics_highlights
+    assert 'state.activeSection !== "dashboard"' in analytics_highlights
 
 
 def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
@@ -714,3 +726,16 @@ def test_analytics_calendar_money_tooltip_uses_app_font_not_native_title():
     assert 'title="${escapeHtml(dayTitle)}"' not in analytics_calendar
     assert ".analytics-day-meta {\n  color: #9db0d4;\n  font-family: var(--money-font-family);" in analytics_css
     assert ".analytics-calendar-tooltip {\n  font-family: var(--money-font-family);\n}" in analytics_css
+
+
+def test_receipt_line_total_live_update_keeps_currency_symbol():
+    receipt = (REPO_ROOT / "static" / "js" / "app-features-operation-modal-receipt.js").read_text(encoding="utf-8")
+    interactions = (
+        REPO_ROOT / "static" / "js" / "app-features-operation-modal-receipt-interactions.js"
+    ).read_text(encoding="utf-8")
+
+    assert "formatReceiptMoney(value, mode = \"create\", options = {})" in receipt
+    assert "formatReceiptMoney," in receipt
+    assert "formatReceiptMoney," in interactions
+    assert "${formatReceiptMoney(receiptLineTotal(updated.item), mode)}" in interactions
+    assert "receiptLineTotal(updated.item), { withCurrency: false }" not in interactions

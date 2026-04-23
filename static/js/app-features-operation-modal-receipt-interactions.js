@@ -14,6 +14,7 @@
       renderReceiptItems,
       renderReceiptSummary,
       receiptLineTotal,
+      formatReceiptMoney,
       removeReceiptItem,
       updateCreatePreview,
       updateEditPreview,
@@ -100,7 +101,7 @@
       } else {
         const totalCell = row.querySelector(".receipt-line-total");
         if (totalCell) {
-          totalCell.innerHTML = `<span>Итого</span><strong>${core.formatMoney(receiptLineTotal(updated.item), { withCurrency: false })}</strong>`;
+          totalCell.innerHTML = `<span>Итого</span><strong>${formatReceiptMoney(receiptLineTotal(updated.item), mode)}</strong>`;
         }
       }
       if (field === "category_search") {

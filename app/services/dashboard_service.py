@@ -77,7 +77,8 @@ class DashboardService:
         fx_cashflow_total = self._money(cashflow_totals["fx_cashflow_total"])
         cashflow_total = self._money((income_total - expense_total) + debt_cashflow_total + fx_cashflow_total)
         debt_service = DebtService(self.db)
-        debt_lend_outstanding, debt_borrow_outstanding, active_debt_cards = debt_service.summary_active_totals_current_base(
+        debt_lend_outstanding, debt_borrow_outstanding, active_debt_cards = self._safe_debt_summary(
+            debt_service,
             user_id=user_id,
         )
         debt_lend_outstanding = self._money(debt_lend_outstanding)
@@ -139,15 +140,30 @@ class DashboardService:
     def _money(value) -> Decimal:
         return Decimal(value or 0).quantize(MONEY_Q)
 
+    def _safe_debt_summary(self, debt_service: DebtService, *, user_id: int) -> tuple[Decimal, Decimal, int]:
+        try:
+            return debt_service.summary_active_totals_current_base(user_id=user_id)
+        except Exception as exc:  # noqa: BLE001 - dashboard must stay available if an optional debt panel fails.
+            log_background_job_event(
+                "dashboard_service",
+                "debt_summary_skipped",
+                user_id=user_id,
+                reason=str(exc),
+                error_type=type(exc).__name__,
+            )
+            zero_money = self._money(0)
+            return zero_money, zero_money, 0
+
     def _safe_currency_summary(self, currency_service: CurrencyService, *, user_id: int) -> dict:
         try:
             return currency_service.compute_positions(user_id=user_id)
-        except ValueError as exc:
+        except Exception as exc:  # noqa: BLE001 - dashboard must stay available if an optional currency panel fails.
             log_background_job_event(
                 "dashboard_service",
                 "currency_summary_skipped",
                 user_id=user_id,
                 reason=str(exc),
+                error_type=type(exc).__name__,
             )
             prefs = currency_service.get_currency_preferences(user_id)
             zero_money = self._money(0)
