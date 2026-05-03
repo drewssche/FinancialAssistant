@@ -639,7 +639,6 @@
           <div class="plan-card-top-meta">
             <span class="meta-chip meta-chip-neutral">${recurrenceLabel(item)}</span>
             <span class="meta-chip meta-chip-neutral">${statusLabel(item.status)}</span>
-            ${dueDays ? `<span class="debt-due-days-badge debt-due-days-badge-${dueDaysTone}">${dueDays}</span>` : ""}
             ${reminderMeta}
           </div>
           ${showMenu ? `
@@ -683,7 +682,10 @@
               ${noteMeta}
             </div>
             <div class="plan-card-progress">
-              <span class="muted-small">${progress.label}</span>
+              <div class="plan-card-progress-head">
+                <span class="muted-small">${progress.label}</span>
+                ${dueDays ? `<span class="debt-due-days-badge debt-due-days-badge-${dueDaysTone}">${dueDays}</span>` : ""}
+              </div>
               <div class="plan-card-progress-track">
                 <span class="plan-card-progress-bar plan-card-progress-bar-${progress.tone}" style="width:${progress.percent}%"></span>
               </div>

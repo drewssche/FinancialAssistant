@@ -602,9 +602,21 @@
 
 .plan-card-progress {
   display: grid;
-  grid-template-columns: auto minmax(10rem, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+}
+
+.plan-card-progress-head {
+  display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.plan-card-progress-head .muted-small {
   min-width: 0;
 }
 
