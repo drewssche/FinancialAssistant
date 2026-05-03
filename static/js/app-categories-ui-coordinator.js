@@ -229,7 +229,9 @@
     const deleteBtn = event.target.closest("button[data-delete-category-id]");
     if (deleteBtn) {
       const row = deleteBtn.closest("tr");
-      const item = row ? JSON.parse(row.dataset.item || "{}") : null;
+      const item = row
+        ? JSON.parse(row.dataset.item || "{}")
+        : state.categories.find((category) => Number(category.id) === Number(deleteBtn.dataset.deleteCategoryId || 0));
       if (item?.id) {
         deleteCategoryFlow?.(item);
       }
@@ -238,7 +240,9 @@
     const editBtn = event.target.closest("button[data-edit-category-id]");
     if (editBtn) {
       const row = editBtn.closest("tr");
-      const item = row ? JSON.parse(row.dataset.item || "{}") : null;
+      const item = row
+        ? JSON.parse(row.dataset.item || "{}")
+        : state.categories.find((category) => Number(category.id) === Number(editBtn.dataset.editCategoryId || 0));
       if (item?.id) {
         openEditCategoryModalAction?.(item);
       }

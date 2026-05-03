@@ -353,11 +353,12 @@
     if (el.sourceGroupForm && getItemCatalogFeature().submitSourceGroupForm) {
       el.sourceGroupForm.addEventListener("submit", (event) => {
         const itemCatalogFeature = getItemCatalogFeature();
+        const isEdit = Boolean(String(state.editItemSourceName || "").trim());
         core.runAction({
           button: event.submitter || document.getElementById("submitSourceGroupBtn"),
           pendingText: "Сохранение...",
-          successMessage: "Источник создан",
-          errorPrefix: "Ошибка создания источника",
+          successMessage: isEdit ? "Источник сохранен" : "Источник создан",
+          errorPrefix: isEdit ? "Ошибка сохранения источника" : "Ошибка создания источника",
           action: () => itemCatalogFeature.submitSourceGroupForm?.(event),
         });
       });

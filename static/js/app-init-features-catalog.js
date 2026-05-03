@@ -118,6 +118,21 @@
         openEditCategoryModalAction: categoryActions.openEditCategoryModal,
       });
     });
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest(".mobile-card-actions-popover[data-mobile-card-menu^=\"category-\"], .table-kebab-popover[data-table-menu^=\"category-\"]")) {
+        return;
+      }
+      categoriesUiCoordinator?.handleCategoriesBodyClick?.({
+        event,
+        state,
+        pickerUtils,
+        handleGroupToggleClick: categoryActions.handleCategoriesGroupToggleClick,
+        openEditGroupModalAction: categoryActions.openEditGroupModal,
+        deleteGroupFlow: (group) => categoryActions.deleteGroupFlow?.(group).catch((err) => core.setStatus(String(err))),
+        deleteCategoryFlow: (item) => categoryActions.deleteCategoryFlow?.(item).catch((err) => core.setStatus(String(err))),
+        openEditCategoryModalAction: categoryActions.openEditCategoryModal,
+      });
+    });
 
     categoriesSectionCoordinator?.bindCategoryCollapseExpand?.({
       el,

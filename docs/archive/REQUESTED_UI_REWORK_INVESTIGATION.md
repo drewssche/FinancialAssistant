@@ -77,11 +77,11 @@ Closeout decisions:
 ## Existing Product Contracts Already In Repo
 
 - В [docs/PRODUCT_CONTEXT.md](/Users/bitriks24/Downloads/FinancialAssistant/docs/PRODUCT_CONTEXT.md) уже зафиксирован стандарт списков: initial `20`, далее `+20` on scroll.
-- В [docs/SKELETON_LOADING_PROGRESS.md](/Users/bitriks24/Downloads/FinancialAssistant/docs/SKELETON_LOADING_PROGRESS.md) явно отмечено, что следующий приоритет по skeleton/inline refresh:
+- В [docs/archive/SKELETON_LOADING_PROGRESS.md](/Users/bitriks24/Downloads/FinancialAssistant/docs/archive/SKELETON_LOADING_PROGRESS.md) явно отмечено, что следующий приоритет по skeleton/inline refresh:
   - `Аналитика -> Валюта`
   - standalone `Валюта`
   - dashboard currency panel cold-load parity
-- В [docs/ANALYTICS_STRUCTURE_AND_CALENDAR_PLAN.md](/Users/bitriks24/Downloads/FinancialAssistant/docs/ANALYTICS_STRUCTURE_AND_CALENDAR_PLAN.md) и [docs/CASHFLOW_OPERATIONS_REWORK_PLAN.md](/Users/bitriks24/Downloads/FinancialAssistant/docs/CASHFLOW_OPERATIONS_REWORK_PLAN.md) уже есть часть семантики по cashflow/calendar, но текущий UI еще не доведен до requested presentation.
+- В [docs/archive/ANALYTICS_STRUCTURE_AND_CALENDAR_PLAN.md](/Users/bitriks24/Downloads/FinancialAssistant/docs/archive/ANALYTICS_STRUCTURE_AND_CALENDAR_PLAN.md) и [docs/archive/CASHFLOW_OPERATIONS_REWORK_PLAN.md](/Users/bitriks24/Downloads/FinancialAssistant/docs/archive/CASHFLOW_OPERATIONS_REWORK_PLAN.md) уже есть часть семантики по cashflow/calendar, но текущий UI еще не доведен до requested presentation.
 
 ## Requested Change Map
 
@@ -153,7 +153,7 @@ Primary files:
 - [static/js/app-loading-skeletons.js](/Users/bitriks24/Downloads/FinancialAssistant/static/js/app-loading-skeletons.js)
 - [static/js/app-features-currency.js](/Users/bitriks24/Downloads/FinancialAssistant/static/js/app-features-currency.js)
 - [static/js/app-features-analytics-currency.js](/Users/bitriks24/Downloads/FinancialAssistant/static/js/app-features-analytics-currency.js)
-- [docs/SKELETON_LOADING_PROGRESS.md](/Users/bitriks24/Downloads/FinancialAssistant/docs/SKELETON_LOADING_PROGRESS.md)
+- [docs/archive/SKELETON_LOADING_PROGRESS.md](/Users/bitriks24/Downloads/FinancialAssistant/docs/archive/SKELETON_LOADING_PROGRESS.md)
 
 Recommended direction:
 - сперва закрыть currency screens, потому что они уже отмечены в docs как next phase

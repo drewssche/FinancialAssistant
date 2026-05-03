@@ -1376,6 +1376,10 @@
     if (createTitle) {
       createTitle.textContent = "Редактировать долг";
     }
+    const submit = document.getElementById("submitCreateOperationBtn");
+    if (submit) {
+      submit.textContent = "Сохранить долг";
+    }
     selectDebtCounterparty(payload.counterparty || "", { keepOpen: false });
     el.debtPrincipal.value = payload.principal || "";
     syncSelectableCurrencyFields({ debtCurrency: payload.currency || "" });
@@ -1410,6 +1414,10 @@
     const createTitle = document.getElementById("createTitle");
     if (createTitle) {
       createTitle.textContent = "Редактировать валютную сделку";
+    }
+    const submit = document.getElementById("submitCreateOperationBtn");
+    if (submit) {
+      submit.textContent = "Сохранить валютную сделку";
     }
     if (el.currencyAsset) {
       el.currencyAsset.value = String(payload.asset_currency || buildSelectableCurrencyList(false)[0] || "USD").toUpperCase();

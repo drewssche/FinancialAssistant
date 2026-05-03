@@ -110,6 +110,7 @@
       "zIndex",
       "width",
       "minWidth",
+      "maxWidth",
     ].forEach((prop) => {
       popover.style[prop] = "";
     });
@@ -161,7 +162,13 @@
     const anchor = owners.find((node) => node instanceof HTMLElement && node.matches("button,[role=\"button\"]"))
       || owners.find((node) => node instanceof HTMLElement)
       || null;
-    if (!anchor) {
+    if (!anchor || !anchor.isConnected) {
+      const activeOwners = Array.isArray(popover.__appPopoverOwners) ? popover.__appPopoverOwners : owners;
+      const onClose = typeof popover.__appPopoverOnClose === "function" ? popover.__appPopoverOnClose : null;
+      setPopoverOpen(popover, false, { owners: activeOwners });
+      if (onClose) {
+        onClose();
+      }
       return;
     }
     const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
@@ -174,9 +181,14 @@
     popover.style.overflowY = "auto";
     const anchorRect = anchor.getBoundingClientRect();
     const isControlPopover = popover.classList.contains("app-popover-floating") || popover.classList.contains("period-control-popover");
-    const preferredWidth = isControlPopover
-      ? Math.min(360, Math.max(320, viewportWidth - margin * 2))
-      : Math.min(192, Math.max(168, viewportWidth - margin * 2));
+    let preferredWidth = Math.min(360, Math.max(320, viewportWidth - margin * 2));
+    if (!isControlPopover) {
+      popover.style.width = "max-content";
+      popover.style.minWidth = "10.5rem";
+      popover.style.maxWidth = `calc(100vw - ${margin * 2}px)`;
+      const naturalWidth = Math.ceil(popover.getBoundingClientRect().width);
+      preferredWidth = Math.min(Math.max(naturalWidth, 168), viewportWidth - margin * 2);
+    }
     popover.style.width = `${preferredWidth}px`;
     popover.style.minWidth = `${Math.min(isControlPopover ? 320 : 168, preferredWidth)}px`;
     popover.style.left = `${Math.max(margin, Math.min(anchorRect.right - preferredWidth, viewportWidth - preferredWidth - margin))}px`;
@@ -264,11 +276,10 @@
     if (inside) {
       return false;
     }
+    setPopoverOpen(popover, false, { owners: allScopes.filter((scope) => scope !== popover) });
     if (typeof onClose === "function") {
       onClose();
-      return true;
     }
-    setPopoverOpen(popover, false, { owners: allScopes.filter((scope) => scope !== popover) });
     return true;
   }
 

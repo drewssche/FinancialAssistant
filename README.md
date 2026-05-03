@@ -37,6 +37,12 @@ Production startup fails fast if critical config is unsafe or incomplete:
 - App API: `8001 -> 8000` (container)
 - Postgres and optional Redis are internal-only in current Compose setup and are not published to the host by default
 
+## Documentation
+- Start with `docs/README.md` for the documentation map.
+- Current source-of-truth docs live at the top level of `docs/`.
+- Historical plans and investigations live in `docs/archive/`.
+- Local temporary notes belong in ignored `docs/_local/`.
+
 ## Access Approval
 - New users are created with `pending` status.
 - Only `approved` users can access data sections.

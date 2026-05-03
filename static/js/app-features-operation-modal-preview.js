@@ -259,6 +259,7 @@
             "Сумма",
             `${debtPrincipal}${debtCurrency !== (core.getCurrencyConfig?.().code || "BYN") ? `<div class="muted-small">${core.formatCurrencyLabel(debtCurrency)}</div>` : ""}`,
             "debtPrincipal",
+            `amount-${directionClass}`,
           ),
         );
         row.appendChild(createPreviewCellButton("Срок", debtDueDate ? core.formatDateRu(debtDueDate) : "Без срока", "debtDueDate"));

@@ -161,6 +161,35 @@
       return created;
     }
 
+    function normalizeServerReceiptTemplate(item) {
+      return {
+        id: Number(item.id || 0),
+        shop_name: normalizeReceiptName(item.shop_name || "") || null,
+        shop_name_ci: normalizeReceiptName(item.shop_name || "").toLowerCase(),
+        name: normalizeReceiptName(item.name || ""),
+        name_ci: normalizeReceiptName(item.name || "").toLowerCase(),
+        last_category_id: item.last_category_id ? Number(item.last_category_id) : null,
+        latest_unit_price: Number(item.latest_unit_price || 0) || 0,
+      };
+    }
+
+    function mergeReceiptTemplateHints(items = []) {
+      const byKey = new Map();
+      for (const item of state.receiptTemplateHints || []) {
+        if (item?.name_ci) {
+          byKey.set(`${item.name_ci}::${item.shop_name_ci || ""}`, item);
+        }
+      }
+      for (const raw of items) {
+        const item = raw?.name_ci ? raw : normalizeServerReceiptTemplate(raw);
+        if (item?.name_ci) {
+          byKey.set(`${item.name_ci}::${item.shop_name_ci || ""}`, item);
+        }
+      }
+      state.receiptTemplateHints = Array.from(byKey.values());
+      return state.receiptTemplateHints;
+    }
+
     function hideAllReceiptPickers() {
       for (const listNode of [el.receiptItemsList, el.editReceiptItemsList]) {
         if (!listNode) {
@@ -252,6 +281,23 @@
         onClose: hideAllReceiptPickers,
       });
       receiptUiState.activePicker = { draft_id: Number(rowItem.draft_id), field: "name", mode: getReceiptModeFromNode(rowNode) };
+      if (normalizedQuery && !exact && suggestions.length < 6) {
+        loadReceiptTemplates(normalizedQuery)
+          .then((items) => {
+            const prevCount = Array.isArray(state.receiptTemplateHints) ? state.receiptTemplateHints.length : 0;
+            mergeReceiptTemplateHints(items);
+            const active = receiptUiState.activePicker;
+            if (
+              active?.field === "name"
+              && Number(active.draft_id) === Number(rowItem.draft_id)
+              && !picker.classList.contains("hidden")
+              && state.receiptTemplateHints.length !== prevCount
+            ) {
+              renderReceiptNamePickerForRow(rowNode, rowItem, query);
+            }
+          })
+          .catch(() => {});
+      }
     }
 
     function openCreateCategoryFromReceipt(rowNode, rowItem, query) {
@@ -367,25 +413,7 @@
         } catch {
           templates = [];
         }
-        const serverTemplates = templates.map((item) => ({
-          id: Number(item.id || 0),
-          shop_name: normalizeReceiptName(item.shop_name || "") || null,
-          shop_name_ci: normalizeReceiptName(item.shop_name || "").toLowerCase(),
-          name: normalizeReceiptName(item.name || ""),
-          name_ci: normalizeReceiptName(item.name || "").toLowerCase(),
-          last_category_id: item.last_category_id ? Number(item.last_category_id) : null,
-          latest_unit_price: Number(item.latest_unit_price || 0) || 0,
-        }));
-        const merged = [...serverTemplates];
-        for (const localItem of state.receiptTemplateHints || []) {
-          if (!localItem?.name_ci) {
-            continue;
-          }
-          if (!merged.some((serverItem) => serverItem.name_ci === localItem.name_ci && (serverItem.shop_name_ci || "") === (localItem.shop_name_ci || ""))) {
-            merged.push(localItem);
-          }
-        }
-        state.receiptTemplateHints = merged;
+        mergeReceiptTemplateHints(templates);
         receiptUiState.hintsLoadedAt = Date.now();
       })();
       try {
@@ -401,6 +429,7 @@
       getReceiptTemplateSuggestions,
       getReceiptShopSuggestions,
       upsertLocalReceiptTemplate,
+      mergeReceiptTemplateHints,
       hideAllReceiptPickers,
       renderReceiptShopPickerForRow,
       renderReceiptNamePickerForRow,

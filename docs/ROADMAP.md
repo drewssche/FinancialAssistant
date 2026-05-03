@@ -125,7 +125,7 @@
 ## Status Against Refactor Plan
 Working note:
 - `docs/ROADMAP.md` is the active source of truth for the current execution plan and status
-- `docs/AUDIT_TODO.md` is now treated as historical/archive context, not as the primary live task tracker
+- `docs/archive/AUDIT_TODO.md` is now treated as historical/archive context, not as the primary live task tracker
 
 1. Fix current behavior with regression tests
 - status: `done`
@@ -512,4 +512,4 @@ Current status:
 - not implemented yet:
 - custom recurrence rules beyond `daily/weekly/monthly/yearly`
 
-See detailed execution queue: `docs/AUDIT_TODO.md`
+See historical execution queue: `docs/archive/AUDIT_TODO.md`

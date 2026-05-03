@@ -324,6 +324,51 @@
     return { label: `Срок: ${core.formatDateRu(dueDate)}`, tone: "upcoming", percent };
   }
 
+  function planDueDaysBadge(item) {
+    const dueDate = String(item?.due_date || "").trim();
+    if (!dueDate) {
+      return "";
+    }
+    const dueAt = new Date(`${dueDate}T23:59:59`);
+    if (Number.isNaN(dueAt.getTime())) {
+      return "";
+    }
+    if (item.status === "confirmed") {
+      return "Закрыт";
+    }
+    if (item.status === "skipped") {
+      return "Пропущен";
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDay = new Date(`${dueDate}T00:00:00`);
+    const diffDays = Math.round((dueDay.getTime() - today.getTime()) / 86400000);
+    if (diffDays < 0) {
+      const overdueDays = Math.abs(diffDays);
+      return overdueDays === 1 ? "Просрочен на 1 день" : `Просрочен на ${overdueDays} дн.`;
+    }
+    if (diffDays === 0) {
+      return "Сегодня";
+    }
+    if (diffDays === 1) {
+      return "Остался 1 день";
+    }
+    return `Осталось ${diffDays} дн.`;
+  }
+
+  function planDueDaysBadgeTone(progressTone) {
+    if (progressTone === "overdue") {
+      return "overdue";
+    }
+    if (progressTone === "due") {
+      return "soon";
+    }
+    if (progressTone === "upcoming") {
+      return "future";
+    }
+    return "none";
+  }
+
   function recurrenceLabel(item) {
     if (!item.recurrence_enabled) {
       return "Разовый";
@@ -570,6 +615,8 @@
       : "<span class='muted-small'>Без категории</span>";
     const dateLabel = item.due_date ? core.formatDateRu(item.due_date) : "Без срока";
     const progress = dueProgressMeta(item);
+    const dueDays = planDueDaysBadge(item);
+    const dueDaysTone = planDueDaysBadgeTone(progress.tone);
     const kindLabel = item.kind === "income" ? "Доход" : "Расход";
     const hasReceiptItems = Array.isArray(item.receipt_items) && item.receipt_items.length > 0;
     const reminderMeta = reminderLabel(item)
@@ -592,6 +639,7 @@
           <div class="plan-card-top-meta">
             <span class="meta-chip meta-chip-neutral">${recurrenceLabel(item)}</span>
             <span class="meta-chip meta-chip-neutral">${statusLabel(item.status)}</span>
+            ${dueDays ? `<span class="debt-due-days-badge debt-due-days-badge-${dueDaysTone}">${dueDays}</span>` : ""}
             ${reminderMeta}
           </div>
           ${showMenu ? `
@@ -821,7 +869,7 @@
       createTitle.textContent = plan?.id ? "Редактировать план" : "Новый план";
     }
     if (submitBtn) {
-      submitBtn.textContent = plan?.id ? "Сохранить план" : "Сохранить план";
+      submitBtn.textContent = plan?.id ? "Сохранить план" : "Создать план";
     }
     core.syncDateFieldValue(document.getElementById("opDate"), plan?.scheduled_date || core.getTodayIso());
     document.getElementById("opAmount").value = plan?.original_amount || plan?.amount || "";
