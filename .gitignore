@@ -10,3 +10,9 @@ __pycache__/
 .coverage
 htmlcov/
 .DS_Store
+
+# Local / temporary planning notes
+docs/_local/
+docs/TEMP_*.md
+docs/LOCAL_*.md
+docs/*_DRAFT.md
