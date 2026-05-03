@@ -389,9 +389,20 @@
 
   .plan-card-row,
   .plan-card-fields,
+  .plan-card-summary,
+  .plan-card-side,
   .plan-card-actions {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .plan-card-date strong {
+    white-space: normal;
+  }
+
+  .plan-card-amount-block {
+    justify-items: start;
+    text-align: left;
   }
 
   .mobile-card-table.item-catalog-table .category-table-group-wrap {

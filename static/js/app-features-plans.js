@@ -657,29 +657,19 @@
         </div>
         <div class="plan-card-row">
           <div class="plan-card-primary">
-            <div class="plan-card-fields">
-              <div class="plan-card-field">
+            <div class="plan-card-summary">
+              <div class="plan-card-date">
                 <span class="muted-small">Дата</span>
                 <strong>${dateLabel}</strong>
               </div>
-              <div class="plan-card-field">
-                <span class="muted-small">Тип</span>
-                <span class="kind-pill kind-pill-${kindClass}">${kindLabel}</span>
+              <div class="plan-card-context">
+                <div class="plan-card-title-row">
+                  <span class="kind-pill kind-pill-${kindClass}">${kindLabel}</span>
+                  <div class="plan-card-category-list">${categoryChips}</div>
+                  ${positionsMeta}
+                </div>
+                ${noteMeta ? `<div class="plan-card-meta">${noteMeta}</div>` : ""}
               </div>
-              <div class="plan-card-field plan-card-field-category">
-                <span class="muted-small">Категория</span>
-                ${categoryChips}
-              </div>
-              <div class="plan-card-field plan-card-field-positions">
-                ${positionsMeta || "<span class='muted-small'>—</span>"}
-              </div>
-              <div class="plan-card-field plan-card-field-amount">
-                <span class="muted-small">Сумма</span>
-                <strong class="plan-card-amount amount-${kindClass}">${formatPlanAmountHtml(item)}</strong>
-              </div>
-            </div>
-            <div class="plan-card-meta">
-              ${noteMeta}
             </div>
             <div class="plan-card-progress">
               <div class="plan-card-progress-head">
@@ -691,10 +681,16 @@
               </div>
             </div>
           </div>
+          <div class="plan-card-side">
+            <div class="plan-card-amount-block">
+              <span class="muted-small">Сумма</span>
+              <strong class="plan-card-amount amount-${kindClass}">${formatPlanAmountHtml(item)}</strong>
+            </div>
           ${hideActions ? "" : `
-          <div class="actions row-actions plan-card-actions">
-            ${showConfirm ? `<button class="btn btn-primary" type="button" data-plan-action="confirm" data-plan-id="${item.id}">В операцию</button>` : ""}
-          </div>`}
+            <div class="actions row-actions plan-card-actions">
+              ${showConfirm ? `<button class="btn btn-primary" type="button" data-plan-action="confirm" data-plan-id="${item.id}">В операцию</button>` : ""}
+            </div>`}
+          </div>
         </div>
       </article>
     `;

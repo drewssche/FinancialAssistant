@@ -536,14 +536,42 @@
 
 .plan-card-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(10.5rem, 11rem);
-  gap: calc(var(--space-3) + 2px);
+  grid-template-columns: minmax(0, 1fr) minmax(12rem, 14rem);
+  gap: var(--space-4);
   align-items: center;
 }
 
 .plan-card-primary {
   display: grid;
-  gap: calc(var(--space-2) + 2px);
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.plan-card-summary {
+  display: grid;
+  grid-template-columns: minmax(7rem, 8.5rem) minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: center;
+  min-width: 0;
+}
+
+.plan-card-date {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.plan-card-date strong {
+  font-size: 1.12rem;
+  line-height: 1.15;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.plan-card-context {
+  display: grid;
+  gap: var(--space-2);
+  align-content: center;
   min-width: 0;
 }
 
@@ -584,6 +612,15 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+  align-items: center;
+  min-width: 0;
+}
+
+.plan-card-category-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
   min-width: 0;
 }
 
@@ -591,13 +628,29 @@
   white-space: nowrap;
 }
 
+.plan-card-side {
+  display: grid;
+  gap: var(--space-3);
+  align-content: center;
+  justify-items: stretch;
+  min-width: 0;
+}
+
+.plan-card-amount-block {
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+  text-align: right;
+  min-width: 0;
+}
+
 .plan-card-meta {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
   align-items: center;
-  min-height: 1.75rem;
   justify-content: flex-start;
+  min-width: 0;
 }
 
 .plan-card-progress {
@@ -737,6 +790,16 @@
 
   .plan-card-fields {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .plan-card-side {
+    grid-template-columns: minmax(0, 1fr) minmax(10.5rem, auto);
+    align-items: center;
+  }
+
+  .plan-card-amount-block {
+    justify-items: start;
+    text-align: left;
   }
 
   .plan-card-progress {
