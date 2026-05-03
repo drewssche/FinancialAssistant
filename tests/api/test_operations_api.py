@@ -1036,6 +1036,101 @@ def test_operation_receipt_item_templates_skip_duplicate_price_history(client: T
     assert history_payload[0]["recorded_at"] == "2026-03-05"
 
 
+def test_discounted_receipt_item_does_not_pollute_price_history(client: TestClient):
+    baseline = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "6.80",
+            "operation_date": "2026-03-05",
+            "receipt_items": [
+                {"shop_name": "Корона", "name": "Кофе", "quantity": "1", "unit_price": "6.80"},
+            ],
+        },
+    )
+    assert baseline.status_code == 201
+
+    discounted = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "5.20",
+            "operation_date": "2026-03-06",
+            "receipt_items": [
+                {
+                    "shop_name": "Корона",
+                    "name": "Кофе",
+                    "quantity": "1",
+                    "unit_price": "5.20",
+                    "is_discounted": True,
+                },
+            ],
+        },
+    )
+    assert discounted.status_code == 201
+    receipt_item = discounted.json()["receipt_items"][0]
+    assert receipt_item["unit_price"] == "5.20"
+    assert receipt_item["is_discounted"] is True
+    assert receipt_item["regular_unit_price"] is None
+
+    templates = client.get("/api/v1/operations/item-templates", params={"page": 1, "page_size": 20, "q": "Кофе"})
+    assert templates.status_code == 200
+    template = templates.json()["items"][0]
+    assert template["latest_unit_price"] == "6.80"
+
+    history = client.get(f"/api/v1/operations/item-templates/{template['id']}/prices")
+    assert history.status_code == 200
+    assert [row["unit_price"] for row in history.json()] == ["6.80"]
+
+
+def test_discounted_receipt_item_can_record_regular_price_history(client: TestClient):
+    baseline = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "6.80",
+            "operation_date": "2026-03-05",
+            "receipt_items": [
+                {"shop_name": "Корона", "name": "Чай", "quantity": "1", "unit_price": "6.80"},
+            ],
+        },
+    )
+    assert baseline.status_code == 201
+
+    discounted = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "5.20",
+            "operation_date": "2026-03-06",
+            "receipt_items": [
+                {
+                    "shop_name": "Корона",
+                    "name": "Чай",
+                    "quantity": "1",
+                    "unit_price": "5.20",
+                    "is_discounted": True,
+                    "regular_unit_price": "7.10",
+                },
+            ],
+        },
+    )
+    assert discounted.status_code == 201
+    receipt_item = discounted.json()["receipt_items"][0]
+    assert receipt_item["unit_price"] == "5.20"
+    assert receipt_item["is_discounted"] is True
+    assert receipt_item["regular_unit_price"] == "7.10"
+
+    templates = client.get("/api/v1/operations/item-templates", params={"page": 1, "page_size": 20, "q": "Чай"})
+    assert templates.status_code == 200
+    template = templates.json()["items"][0]
+    assert template["latest_unit_price"] == "7.10"
+
+    history = client.get(f"/api/v1/operations/item-templates/{template['id']}/prices")
+    assert history.status_code == 200
+    assert [row["unit_price"] for row in history.json()] == ["7.10", "6.80"]
+
+
 def test_operation_rejects_missing_amount_when_receipt_is_empty(client: TestClient):
     response = client.post(
         "/api/v1/operations",

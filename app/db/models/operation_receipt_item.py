@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -30,6 +30,8 @@ class OperationReceiptItem(Base):
     name: Mapped[str] = mapped_column(Text)
     quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3))
     unit_price: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    is_discounted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    regular_unit_price: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
     line_total: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

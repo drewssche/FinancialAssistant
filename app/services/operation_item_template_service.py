@@ -100,6 +100,8 @@ class OperationItemTemplateService:
                     "name": receipt_item.name,
                     "quantity": receipt_item.quantity,
                     "unit_price": receipt_item.unit_price,
+                    "is_discounted": bool(getattr(receipt_item, "is_discounted", False)),
+                    "regular_unit_price": getattr(receipt_item, "regular_unit_price", None),
                     "line_total": receipt_item.line_total,
                     "note": receipt_item.note,
                 }
@@ -351,18 +353,21 @@ class OperationItemTemplateService:
                 flush=False,
             )
             template_id = int(template.id)
-            unit_price = self._money(item["unit_price"])
-            if unit_price not in existing_price_values.setdefault(template_id, set()):
+            price_history_unit_price = self._receipt_item_price_for_history(item)
+            if (
+                price_history_unit_price is not None
+                and price_history_unit_price not in existing_price_values.setdefault(template_id, set())
+            ):
                 price_rows.append(
                     {
                         "template_id": template_id,
-                        "unit_price": unit_price,
+                        "unit_price": price_history_unit_price,
                         "recorded_at": operation_date,
                         "source_operation_id": operation_id,
                     }
                 )
-                existing_price_values[template_id].add(unit_price)
-                latest_price_by_template[template_id] = unit_price
+                existing_price_values[template_id].add(price_history_unit_price)
+                latest_price_by_template[template_id] = price_history_unit_price
             storage_items.append(
                 {
                     **item,
@@ -447,21 +452,30 @@ class OperationItemTemplateService:
             if next_category_id is not None:
                 template.last_category_id = next_category_id
             template_id = int(template.id)
-            unit_price = self._money(item["unit_price"])
-            if unit_price not in existing_price_values.setdefault(template_id, set()):
+            price_history_unit_price = self._receipt_item_price_for_history(item)
+            if (
+                price_history_unit_price is not None
+                and price_history_unit_price not in existing_price_values.setdefault(template_id, set())
+            ):
                 price_rows.append(
                     {
                         "template_id": template_id,
-                        "unit_price": unit_price,
+                        "unit_price": price_history_unit_price,
                         "recorded_at": effective_date,
                         "source_operation_id": None,
                     }
                 )
-                existing_price_values[template_id].add(unit_price)
+                existing_price_values[template_id].add(price_history_unit_price)
         if price_rows:
             self.repo.add_item_template_prices_bulk(rows=price_rows)
         else:
             self.db.flush()
+
+    def _receipt_item_price_for_history(self, item: dict) -> Decimal | None:
+        if bool(item.get("is_discounted")):
+            regular_unit_price = item.get("regular_unit_price")
+            return self._money(regular_unit_price) if regular_unit_price is not None else None
+        return self._money(item["unit_price"])
 
     def _serialize_item_template(self, item) -> dict:
         latest_map = self.repo.get_latest_prices_for_templates(template_ids=[int(item.id)])

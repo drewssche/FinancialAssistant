@@ -942,6 +942,12 @@ class OperationService:
                     "name": row.name,
                     "quantity": self._qty(row.quantity),
                     "unit_price": self._money(row.unit_price),
+                    "is_discounted": bool(getattr(row, "is_discounted", False)),
+                    "regular_unit_price": (
+                        self._money(row.regular_unit_price)
+                        if getattr(row, "regular_unit_price", None) is not None
+                        else None
+                    ),
                     "line_total": line_total,
                     "note": row.note,
                 }
@@ -1062,6 +1068,12 @@ class OperationService:
             unit_price = self._money(item.get("unit_price") or Decimal("0"))
             if unit_price <= 0:
                 raise ValueError("receipt item unit_price must be greater than 0")
+            is_discounted = bool(item.get("is_discounted"))
+            regular_unit_price = None
+            if item.get("regular_unit_price") not in (None, ""):
+                regular_unit_price = self._money(item.get("regular_unit_price") or Decimal("0"))
+                if regular_unit_price <= 0:
+                    raise ValueError("receipt item regular_unit_price must be greater than 0")
             line_total = self._money(quantity * unit_price)
             note = item.get("note")
             normalized.append(
@@ -1071,6 +1083,8 @@ class OperationService:
                     "name": name,
                     "quantity": quantity,
                     "unit_price": unit_price,
+                    "is_discounted": is_discounted,
+                    "regular_unit_price": regular_unit_price if is_discounted else None,
                     "line_total": line_total,
                     "note": note,
                 }

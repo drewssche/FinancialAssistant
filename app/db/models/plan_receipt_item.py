@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from sqlalchemy import ForeignKey, Numeric, String, Text
+from sqlalchemy import Boolean, ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -17,5 +17,7 @@ class PlanReceiptItem(Base):
     name: Mapped[str] = mapped_column(String(160))
     quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3))
     unit_price: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    is_discounted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    regular_unit_price: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
     line_total: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     note: Mapped[str | None] = mapped_column(Text, nullable=True)

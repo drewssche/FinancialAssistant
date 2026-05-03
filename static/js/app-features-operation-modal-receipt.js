@@ -44,6 +44,24 @@
       return asMoney(asQty(item.quantity) * asMoney(item.unit_price));
     }
 
+    function receiptDiscountPercent(item) {
+      const regular = asMoney(item?.regular_unit_price || 0);
+      const unitPrice = asMoney(item?.unit_price || 0);
+      if (regular <= 0 || unitPrice <= 0 || unitPrice >= regular) {
+        return null;
+      }
+      return Math.round(((regular - unitPrice) / regular) * 100);
+    }
+
+    function getReceiptLatestTemplatePrice(item) {
+      const templateId = Number(item?.template_id || 0);
+      if (!templateId) {
+        return 0;
+      }
+      const template = (state.receiptTemplateHints || []).find((entry) => Number(entry.id) === templateId);
+      return asMoney(template?.latest_unit_price || 0);
+    }
+
     function getReceiptCurrency(mode = "create") {
       const selected = mode === "edit" ? el.editCurrency?.value : el.opCurrency?.value;
       return String(selected || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
@@ -131,6 +149,8 @@
         name: normalizeReceiptName(seed.name || ""),
         quantity: hasQuantity ? asQty(seed.quantity) : 0,
         unit_price: hasUnitPrice ? asMoney(seed.unit_price) : 0,
+        is_discounted: Boolean(seed.is_discounted),
+        regular_unit_price: seed.regular_unit_price ? asMoney(seed.regular_unit_price) : 0,
         note: seed.note || "",
       };
     }
@@ -150,6 +170,19 @@
         item.quantity = asQty(value);
       } else if (key === "unit_price") {
         item.unit_price = asMoney(value);
+      } else if (key === "regular_unit_price") {
+        item.regular_unit_price = asMoney(value);
+      } else if (key === "is_discounted") {
+        item.is_discounted = Boolean(value);
+        if (item.is_discounted && !item.regular_unit_price) {
+          const latestPrice = getReceiptLatestTemplatePrice(item);
+          if (latestPrice > asMoney(item.unit_price || 0)) {
+            item.regular_unit_price = latestPrice;
+          }
+        }
+        if (!item.is_discounted) {
+          item.regular_unit_price = 0;
+        }
       } else if (key === "shop_name") {
         item.shop_name = normalizeReceiptName(value);
         item.template_id = null;
@@ -233,6 +266,12 @@
           ? (state.categories || []).find((entry) => Number(entry.id) === effectiveCategoryId)
           : null;
         const categorySource = explicitCategoryId ? "explicit" : (categoryMeta ? "default" : "none");
+        const discountPercent = receiptDiscountPercent(item);
+        const discountHelper = item.is_discounted
+          ? discountPercent
+            ? `Акция ~${discountPercent}% · цена не попадет в историю`
+            : "Акция · цена не попадет в историю"
+          : "";
         return `
           <div class="receipt-item-row ${hasOpenPicker ? "has-open-popover" : ""}" data-receipt-mode="${mode}" data-receipt-item-id="${item.draft_id}">
             <div class="receipt-shop-cell ${shopPickerOpen ? "has-open-popover" : ""}">
@@ -257,7 +296,12 @@
               />
               <div class="receipt-category-picker app-popover ${categoryPickerOpen ? "" : "hidden"}"></div>
             </div>
-            <input type="number" step="0.01" min="0" data-receipt-field="unit_price" value="${item.unit_price || ""}" placeholder="Цена, ${esc(getReceiptCurrencyLabel(mode))}" title="Цена в ${esc(getReceiptCurrencyLabel(mode))}" />
+            <div class="receipt-price-cell ${item.is_discounted ? "receipt-price-cell-discounted" : ""}">
+              <input type="number" step="0.01" min="0" data-receipt-field="unit_price" value="${item.unit_price || ""}" placeholder="Цена, ${esc(getReceiptCurrencyLabel(mode))}" title="Цена в ${esc(getReceiptCurrencyLabel(mode))}" />
+              <button class="receipt-discount-toggle ${item.is_discounted ? "is-active" : ""}" type="button" data-receipt-discount-toggle="${item.draft_id}" aria-pressed="${item.is_discounted ? "true" : "false"}">% Акция</button>
+              <input class="receipt-regular-price ${item.is_discounted ? "" : "hidden"}" type="number" step="0.01" min="0" data-receipt-field="regular_unit_price" value="${item.regular_unit_price || ""}" placeholder="Обычная" title="Обычная цена для истории" />
+              <span class="receipt-discount-hint ${item.is_discounted ? "" : "hidden"}">${esc(discountHelper)}</span>
+            </div>
             <input type="number" step="0.001" min="0" data-receipt-field="quantity" value="${item.quantity || ""}" placeholder="Кол-во" />
             <div class="receipt-line-total"><span>Итого</span><strong>${formatReceiptMoney(total, mode)}</strong></div>
             <button class="btn btn-danger receipt-remove-btn ${removeHidden ? "hidden" : ""}" type="button" data-receipt-remove-id="${item.draft_id}" title="Удалить">×</button>
@@ -362,6 +406,7 @@
         renderReceiptItems,
         renderReceiptSummary,
         receiptLineTotal,
+        receiptDiscountPercent,
         formatReceiptMoney,
         removeReceiptItem,
         updateCreatePreview,
@@ -477,6 +522,10 @@
           name: normalizeReceiptName(item.name),
           quantity: String(asQty(item.quantity || 0)),
           unit_price: core.formatAmount(item.unit_price || 0),
+          is_discounted: Boolean(item.is_discounted),
+          regular_unit_price: item.is_discounted && Number(item.regular_unit_price || 0) > 0
+            ? core.formatAmount(item.regular_unit_price)
+            : null,
         }))
         .filter((item) => item.name && Number(item.quantity) > 0 && Number(item.unit_price) > 0);
     }
@@ -493,6 +542,10 @@
           name: normalizeReceiptName(item.name),
           quantity: String(asQty(item.quantity || 0)),
           unit_price: core.formatAmount(item.unit_price || 0),
+          is_discounted: Boolean(item.is_discounted),
+          regular_unit_price: item.is_discounted && Number(item.regular_unit_price || 0) > 0
+            ? core.formatAmount(item.regular_unit_price)
+            : null,
         }))
         .filter((item) => item.name && Number(item.quantity) > 0 && Number(item.unit_price) > 0);
     }

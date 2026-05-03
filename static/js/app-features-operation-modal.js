@@ -1471,6 +1471,8 @@
         name: row.name || "",
         quantity: row.quantity || 0,
         unit_price: row.unit_price || 0,
+        is_discounted: Boolean(row.is_discounted),
+        regular_unit_price: row.regular_unit_price || 0,
         note: row.note || "",
       }, "edit"));
     } else {

@@ -321,6 +321,48 @@ def test_income_plan_receipt_items_appear_in_item_catalog_before_confirm(client:
     assert any(item["shop_name"] == "Получка" and item["name"] == "Оклад" for item in payload["items"])
 
 
+def test_discounted_plan_receipt_item_does_not_update_latest_price(client: TestClient):
+    reset_cache_for_tests()
+    baseline = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "6.80",
+            "operation_date": "2026-03-05",
+            "receipt_items": [
+                {"shop_name": "Корона", "name": "Йогурт", "quantity": "1", "unit_price": "6.80"},
+            ],
+        },
+    )
+    assert baseline.status_code == 201
+
+    created = client.post(
+        "/api/v1/plans",
+        json={
+            "kind": "expense",
+            "scheduled_date": "2026-03-20",
+            "receipt_items": [
+                {
+                    "shop_name": "Корона",
+                    "name": "Йогурт",
+                    "quantity": "1",
+                    "unit_price": "5.20",
+                    "is_discounted": True,
+                },
+            ],
+        },
+    )
+    assert created.status_code == 201
+    receipt_item = created.json()["receipt_items"][0]
+    assert receipt_item["is_discounted"] is True
+    assert receipt_item["regular_unit_price"] is None
+
+    catalog = client.get("/api/v1/operations/item-templates", params={"page": 1, "page_size": 20, "q": "Йогурт"})
+    assert catalog.status_code == 200
+    payload = catalog.json()
+    assert payload["items"][0]["latest_unit_price"] == "6.80"
+
+
 def test_item_catalog_backfills_from_existing_plan_receipt_items(client: TestClient):
     reset_cache_for_tests()
     category_resp = client.post("/api/v1/categories", json={"name": "Фриланс", "kind": "income"})

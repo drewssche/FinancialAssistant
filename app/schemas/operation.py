@@ -10,6 +10,8 @@ class OperationReceiptItemIn(BaseModel):
     name: str = Field(min_length=1, max_length=160)
     quantity: Decimal = Field(default=Decimal("1"), gt=0)
     unit_price: Decimal = Field(gt=0)
+    is_discounted: bool = False
+    regular_unit_price: Decimal | None = Field(default=None, gt=0)
     note: str | None = Field(default=None, max_length=300)
 
 
@@ -24,6 +26,8 @@ class OperationReceiptItemOut(BaseModel):
     name: str
     quantity: Decimal
     unit_price: Decimal
+    is_discounted: bool = False
+    regular_unit_price: Decimal | None = None
     line_total: Decimal
     note: str | None
 

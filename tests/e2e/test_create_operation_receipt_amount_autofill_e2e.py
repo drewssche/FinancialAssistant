@@ -167,6 +167,8 @@ def test_create_operation_allows_receipt_only_amount(static_server_url: str):
                     "name": "Хлеб",
                     "quantity": "2",
                     "unit_price": "7.70",
+                    "is_discounted": False,
+                    "regular_unit_price": None,
                 }
             ]
             page.wait_for_timeout(500)

@@ -296,6 +296,8 @@ class PlanService:
                     "name": row_item.name,
                     "quantity": row_item.quantity,
                     "unit_price": row_item.unit_price,
+                    "is_discounted": bool(getattr(row_item, "is_discounted", False)),
+                    "regular_unit_price": getattr(row_item, "regular_unit_price", None),
                     "note": row_item.note,
                 }
                 for row_item in receipt_items
@@ -440,6 +442,12 @@ class PlanService:
                     "name": receipt_item.name,
                     "quantity": self.operation_service._qty(receipt_item.quantity),
                     "unit_price": self.operation_service._money(receipt_item.unit_price),
+                    "is_discounted": bool(getattr(receipt_item, "is_discounted", False)),
+                    "regular_unit_price": (
+                        self.operation_service._money(receipt_item.regular_unit_price)
+                        if getattr(receipt_item, "regular_unit_price", None) is not None
+                        else None
+                    ),
                     "line_total": line_total,
                     "note": receipt_item.note,
                 }

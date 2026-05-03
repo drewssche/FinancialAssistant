@@ -14,6 +14,7 @@
       renderReceiptItems,
       renderReceiptSummary,
       receiptLineTotal,
+      receiptDiscountPercent,
       formatReceiptMoney,
       removeReceiptItem,
       updateCreatePreview,
@@ -102,6 +103,15 @@
         const totalCell = row.querySelector(".receipt-line-total");
         if (totalCell) {
           totalCell.innerHTML = `<span>Итого</span><strong>${formatReceiptMoney(receiptLineTotal(updated.item), mode)}</strong>`;
+        }
+        if (field === "unit_price" || field === "regular_unit_price") {
+          const hint = row.querySelector(".receipt-discount-hint");
+          const discountPercent = receiptDiscountPercent?.(updated.item);
+          if (hint && updated.item.is_discounted) {
+            hint.textContent = discountPercent
+              ? `Акция ~${discountPercent}% · цена не попадет в историю`
+              : "Акция · цена не попадет в историю";
+          }
         }
       }
       if (field === "category_search") {
@@ -324,6 +334,18 @@
         rowItem.category_id = categoryBtn.dataset.receiptCategoryId ? Number(categoryBtn.dataset.receiptCategoryId) : null;
         receiptUiState.activePicker = null;
         commitReceiptRowMutation(mode);
+        return;
+      }
+      const discountBtn = event.target.closest("button[data-receipt-discount-toggle]");
+      if (discountBtn) {
+        const draftId = Number(discountBtn.dataset.receiptDiscountToggle || 0);
+        const row = discountBtn.closest("[data-receipt-item-id]");
+        const mode = getReceiptModeFromNode(row);
+        const rowItem = getReceiptItemByDraftId(draftId, mode);
+        if (rowItem) {
+          updateReceiptItemField(draftId, "is_discounted", !rowItem.is_discounted, mode);
+          commitReceiptRowMutation(mode);
+        }
         return;
       }
       const removeBtn = event.target.closest("button[data-receipt-remove-id]");

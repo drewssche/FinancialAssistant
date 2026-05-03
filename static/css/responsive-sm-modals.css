@@ -193,6 +193,7 @@
   .receipt-item-row .receipt-shop-cell,
   .receipt-item-row .receipt-name-cell,
   .receipt-item-row .receipt-category-cell,
+  .receipt-item-row .receipt-price-cell,
   .receipt-item-row .receipt-line-total {
     grid-column: 1 / -1;
   }
