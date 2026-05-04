@@ -14,7 +14,6 @@
       renderReceiptItems,
       renderReceiptSummary,
       receiptLineTotal,
-      receiptDiscountPercent,
       formatReceiptMoney,
       removeReceiptItem,
       updateCreatePreview,
@@ -103,15 +102,6 @@
         const totalCell = row.querySelector(".receipt-line-total");
         if (totalCell) {
           totalCell.innerHTML = `<span>Итого</span><strong>${formatReceiptMoney(receiptLineTotal(updated.item), mode)}</strong>`;
-        }
-        if (field === "unit_price" || field === "regular_unit_price") {
-          const hint = row.querySelector(".receipt-discount-hint");
-          const discountPercent = receiptDiscountPercent?.(updated.item);
-          if (hint && updated.item.is_discounted) {
-            hint.textContent = discountPercent
-              ? `Акция ~${discountPercent}% · цена не попадет в историю`
-              : "Акция · цена не попадет в историю";
-          }
         }
       }
       if (field === "category_search") {

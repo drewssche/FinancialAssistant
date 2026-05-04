@@ -44,15 +44,6 @@
       return asMoney(asQty(item.quantity) * asMoney(item.unit_price));
     }
 
-    function receiptDiscountPercent(item) {
-      const regular = asMoney(item?.regular_unit_price || 0);
-      const unitPrice = asMoney(item?.unit_price || 0);
-      if (regular <= 0 || unitPrice <= 0 || unitPrice >= regular) {
-        return null;
-      }
-      return Math.round(((regular - unitPrice) / regular) * 100);
-    }
-
     function getReceiptLatestTemplatePrice(item) {
       const templateId = Number(item?.template_id || 0);
       if (!templateId) {
@@ -266,12 +257,6 @@
           ? (state.categories || []).find((entry) => Number(entry.id) === effectiveCategoryId)
           : null;
         const categorySource = explicitCategoryId ? "explicit" : (categoryMeta ? "default" : "none");
-        const discountPercent = receiptDiscountPercent(item);
-        const discountHelper = item.is_discounted
-          ? discountPercent
-            ? `Акция ~${discountPercent}% · цена не попадет в историю`
-            : "Акция · цена не попадет в историю"
-          : "";
         return `
           <div class="receipt-item-row ${hasOpenPicker ? "has-open-popover" : ""}" data-receipt-mode="${mode}" data-receipt-item-id="${item.draft_id}">
             <div class="receipt-shop-cell ${shopPickerOpen ? "has-open-popover" : ""}">
@@ -300,7 +285,6 @@
               <input type="number" step="0.01" min="0" data-receipt-field="unit_price" value="${item.unit_price || ""}" placeholder="Цена, ${esc(getReceiptCurrencyLabel(mode))}" title="Цена в ${esc(getReceiptCurrencyLabel(mode))}" />
               <button class="receipt-discount-toggle ${item.is_discounted ? "is-active" : ""}" type="button" data-receipt-discount-toggle="${item.draft_id}" aria-pressed="${item.is_discounted ? "true" : "false"}">% Акция</button>
               <input class="receipt-regular-price ${item.is_discounted ? "" : "hidden"}" type="number" step="0.01" min="0" data-receipt-field="regular_unit_price" value="${item.regular_unit_price || ""}" placeholder="Обычная" title="Обычная цена для истории" />
-              <span class="receipt-discount-hint ${item.is_discounted ? "" : "hidden"}">${esc(discountHelper)}</span>
             </div>
             <input type="number" step="0.001" min="0" data-receipt-field="quantity" value="${item.quantity || ""}" placeholder="Кол-во" />
             <div class="receipt-line-total"><span>Итого</span><strong>${formatReceiptMoney(total, mode)}</strong></div>
@@ -406,7 +390,6 @@
         renderReceiptItems,
         renderReceiptSummary,
         receiptLineTotal,
-        receiptDiscountPercent,
         formatReceiptMoney,
         removeReceiptItem,
         updateCreatePreview,

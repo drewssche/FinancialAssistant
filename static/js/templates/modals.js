@@ -4,7 +4,7 @@
   window.App.templates.modals = `
 
     <div id="createModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="createTitle">
-      <div class="modal-card">
+      <div class="modal-card operation-modal-card">
         <div class="panel-head row between">
           <h3 id="createTitle">Новая операция</h3>
           <button id="closeCreateModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
@@ -417,7 +417,7 @@
     </div>
 
     <div id="editModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="editTitle">
-      <div class="modal-card">
+      <div class="modal-card operation-modal-card">
         <div class="panel-head row between">
           <h3 id="editTitle">Редактировать операцию</h3>
           <button id="closeEditModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">

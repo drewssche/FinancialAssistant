@@ -25,6 +25,19 @@
       return getOperationDisplayCategories(item)[0] || null;
     }
 
+    function receiptDiscountLabel(row) {
+      if (!row?.is_discounted) {
+        return "";
+      }
+      const regular = Number(row.regular_unit_price || 0);
+      const price = Number(row.unit_price || 0);
+      if (regular > 0 && price > 0 && price < regular) {
+        const percent = Math.round(((regular - price) / regular) * 100);
+        return `Акция -${percent}%`;
+      }
+      return "Акция";
+    }
+
     function openOperationReceiptModal(item) {
       if (!item || !Array.isArray(item.receipt_items) || item.receipt_items.length === 0) {
         return;
@@ -56,16 +69,26 @@
         const categoryChip = row.category_id
           ? `<div class="operation-receipt-shop">${core.renderCategoryChip(getCategoryMetaById(row.category_id), "")}</div>`
           : "";
+        const discountLabel = receiptDiscountLabel(row);
+        const discountChip = discountLabel
+          ? `<span class="operation-receipt-discount-chip">${esc(discountLabel)}</span>`
+          : "";
+        const regularPrice = row.is_discounted && Number(row.regular_unit_price || 0) > 0
+          ? ` · обычная ${core.formatMoney(row.regular_unit_price, { currency: receiptCurrency })}`
+          : "";
         return `
           <article class="operation-receipt-item">
             <div class="operation-receipt-head">
-              <strong>${esc(row.name || "Без названия")}</strong>
+              <div class="operation-receipt-title">
+                <strong>${esc(row.name || "Без названия")}</strong>
+                ${discountChip}
+              </div>
               <span class="muted-small">${core.formatMoney(total, { currency: receiptCurrency })}</span>
             </div>
             ${shopChip}
             ${categoryChip}
             <div class="operation-receipt-meta muted-small">
-              ${esc(core.formatAmount(qty))} × ${core.formatMoney(price, { currency: receiptCurrency })}
+              ${esc(core.formatAmount(qty))} × ${core.formatMoney(price, { currency: receiptCurrency })}${regularPrice}
             </div>
             ${row.note ? `<div class="muted-small">${esc(row.note)}</div>` : ""}
           </article>

@@ -53,6 +53,10 @@
   min-width: 0;
 }
 
+.operation-modal-card {
+  width: min(1180px, 100%);
+}
+
 @supports not (height: 100dvh) {
   .modal-card {
     max-height: calc(100vh - 40px);
