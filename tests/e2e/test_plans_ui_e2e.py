@@ -374,6 +374,32 @@ def page_with_plans_api_mock(page):
             mock_state["next_plan_id"] += 1
             mock_state["plans"].append(plan)
             return _json_response(route, _make_plan_item(plan), status=201)
+        if path.startswith("/api/v1/plans/") and path.count("/") == 4:
+            plan_id = int(path.split("/")[-1])
+            plan = next((item for item in mock_state["plans"] if int(item["id"]) == plan_id), None)
+            if plan is None:
+                return _json_response(route, {"detail": "Plan not found"}, status=404)
+            if method == "PATCH":
+                payload = json.loads(request.post_data or "{}")
+                plan.update(
+                    {
+                        "kind": payload.get("kind", plan["kind"]),
+                        "amount": payload.get("amount", plan["amount"]),
+                        "scheduled_date": payload.get("scheduled_date", plan["scheduled_date"]),
+                        "note": payload.get("note"),
+                        "recurrence_enabled": bool(payload.get("recurrence_enabled")),
+                        "recurrence_frequency": payload.get("recurrence_frequency"),
+                        "recurrence_interval": int(payload.get("recurrence_interval") or 1),
+                        "recurrence_weekdays": list(payload.get("recurrence_weekdays") or []),
+                        "recurrence_workdays_only": bool(payload.get("recurrence_workdays_only")),
+                        "recurrence_month_end": bool(payload.get("recurrence_month_end")),
+                        "recurrence_end_date": payload.get("recurrence_end_date"),
+                    }
+                )
+                return _json_response(route, _make_plan_item(plan))
+            if method == "DELETE":
+                mock_state["plans"][:] = [item for item in mock_state["plans"] if int(item["id"]) != plan_id]
+                return _json_response(route, {"ok": True})
         if path.startswith("/api/v1/plans/") and path.endswith("/confirm") and method == "POST":
             plan_id = int(path.split("/")[-2])
             plan = next(item for item in mock_state["plans"] if int(item["id"]) == plan_id)
@@ -427,6 +453,28 @@ def page_with_plans_api_mock(page):
             else:
                 plan["status"] = "confirmed"
             return _json_response(route, {"plan": _make_plan_item(plan), "operation": operation})
+        if path.startswith("/api/v1/plans/") and path.endswith("/skip") and method == "POST":
+            plan_id = int(path.split("/")[-2])
+            plan = next(item for item in mock_state["plans"] if int(item["id"]) == plan_id)
+            mock_state["history"].insert(
+                0,
+                {
+                    "id": len(mock_state["history"]) + 1,
+                    "plan_id": plan_id,
+                    "operation_id": None,
+                    "event_type": "skipped",
+                    "kind": plan["kind"],
+                    "amount": plan["amount"],
+                    "effective_date": plan["scheduled_date"],
+                    "note": plan.get("note"),
+                    "category_name": None,
+                    "created_at": "2026-03-16T12:05:00Z",
+                },
+            )
+            plan["skip_count"] = int(plan.get("skip_count") or 0) + 1
+            plan["last_skipped_at"] = "2026-03-16T12:05:00Z"
+            plan["status"] = "skipped"
+            return _json_response(route, _make_plan_item(plan))
         return _json_response(route, {"detail": f"Unhandled mock route: {method} {path}"}, status=404)
 
     _set_mock_telegram(page)
@@ -539,6 +587,77 @@ def test_plans_ui_creates_month_end_plan_and_confirms_to_history(static_server_u
     history_text = page.locator("#plansList").text_content()
     assert "Подписка" in history_text
     assert "31.01.2026" in history_text
+
+
+@pytest.mark.e2e
+def test_plan_kebab_menu_actions_work_from_floating_popover(static_server_url: str, page_with_plans_api_mock):
+    page, mock_state = page_with_plans_api_mock
+    mock_state["plans"][:] = [
+        {
+            "id": 1,
+            "kind": "expense",
+            "amount": "15.00",
+            "scheduled_date": "2026-03-20",
+            "note": "Кебаб редактировать",
+            "recurrence_enabled": True,
+            "recurrence_frequency": "monthly",
+            "recurrence_interval": 1,
+            "recurrence_weekdays": [],
+            "recurrence_workdays_only": False,
+            "recurrence_month_end": False,
+            "recurrence_end_date": None,
+            "status": "upcoming",
+            "confirm_count": 0,
+            "skip_count": 0,
+            "confirmed_operation_id": None,
+            "created_at": "2026-03-16T12:00:00Z",
+            "next_reminder_at": "2026-03-17T06:00:00Z",
+        },
+        {
+            "id": 2,
+            "kind": "expense",
+            "amount": "20.00",
+            "scheduled_date": "2026-03-21",
+            "note": "Кебаб удалить",
+            "recurrence_enabled": False,
+            "recurrence_frequency": None,
+            "recurrence_interval": 1,
+            "recurrence_weekdays": [],
+            "recurrence_workdays_only": False,
+            "recurrence_month_end": False,
+            "recurrence_end_date": None,
+            "status": "upcoming",
+            "confirm_count": 0,
+            "skip_count": 0,
+            "confirmed_operation_id": None,
+            "created_at": "2026-03-16T12:00:00Z",
+            "next_reminder_at": "2026-03-17T06:00:00Z",
+        },
+    ]
+    _login_and_open_plans(page, static_server_url)
+    page.wait_for_function("() => document.querySelector('#plansList')?.textContent.includes('Кебаб редактировать')")
+
+    page.locator('button[data-plan-menu-trigger="1"]').click()
+    page.locator('.plan-card-actions-popover:not(.hidden) button[data-plan-action="edit"][data-plan-id="1"]').click()
+    page.wait_for_selector("#createModal:not(.hidden)")
+    assert page.locator("#createTitle").text_content() == "Редактировать план"
+    page.click("#closeCreateModalBtn")
+    page.wait_for_selector("#createModal", state="hidden")
+
+    page.locator('button[data-plan-menu-trigger="1"]').click()
+    page.locator('.plan-card-actions-popover:not(.hidden) button[data-plan-action="skip"][data-plan-id="1"]').click()
+    deadline = time.time() + 5
+    while time.time() < deadline and mock_state["plans"][0]["status"] != "skipped":
+        time.sleep(0.1)
+    assert mock_state["plans"][0]["status"] == "skipped"
+    page.wait_for_function("() => document.querySelector('#plansList')?.textContent.includes('Кебаб удалить')")
+
+    page.locator('button[data-plan-menu-trigger="2"]').click()
+    page.locator('.plan-card-actions-popover:not(.hidden) button[data-plan-action="delete"][data-plan-id="2"]').click()
+    page.wait_for_selector("#confirmModal:not(.hidden)")
+    page.click("#confirmDeleteBtn")
+    page.wait_for_function("() => !(document.querySelector('#plansList')?.textContent || '').includes('Кебаб удалить')")
+    assert [item["id"] for item in mock_state["plans"]] == [1]
 
 
 @pytest.mark.e2e

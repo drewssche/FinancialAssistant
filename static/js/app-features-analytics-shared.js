@@ -115,6 +115,17 @@
           cardClass: "expense",
         },
         {
+          label: "Сэкономлено на акциях",
+          value: core.formatMoney(data.discount_savings_total || 0),
+          delta: String(data.discount_items_count || 0),
+          previous: data.discount_savings_rate_pct === null || data.discount_savings_rate_pct === undefined
+            ? "нет расходов"
+            : formatPct(data.discount_savings_rate_pct),
+          deltaLabel: "Акционных позиций",
+          previousLabel: "К расходам",
+          cardClass: "income",
+        },
+        {
           label: "Операционный результат",
           value: core.formatMoney(operatingValue),
           delta: formatPct(operatingDelta),
@@ -137,14 +148,18 @@
         },
       ];
       primaryContainer.innerHTML = primary
-        .map((item) => `
+        .map((item) => {
+          const deltaLabel = item.deltaLabel || "К прошлому периоду";
+          const previousLabel = item.previousLabel || "Было";
+          return `
           <article class="analytics-kpi-card analytics-kpi-${item.cardClass}">
             <div class="muted-small">${escapeHtml(item.label)}</div>
             <strong>${escapeHtml(item.value)}</strong>
-            <span class="analytics-kpi-delta">К прошлому периоду: ${escapeHtml(item.delta)}</span>
-            <span class="muted-small">Было: ${escapeHtml(item.previous)}</span>
+            <span class="analytics-kpi-delta">${escapeHtml(deltaLabel)}: ${escapeHtml(item.delta)}</span>
+            <span class="muted-small">${escapeHtml(previousLabel)}: ${escapeHtml(item.previous)}</span>
           </article>
-        `)
+        `;
+        })
         .join("");
     }
 

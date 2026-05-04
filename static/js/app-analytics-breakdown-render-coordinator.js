@@ -222,6 +222,41 @@
       hoverSetter: setCategoryBreakdownHover,
       hoverClearer: clearCategoryBreakdownHover,
     });
+    const payload = snapshot.payload || {};
+    renderInsightList(
+      el.analyticsPriceIncreasesList,
+      payload.price_increases || [],
+      (item) => `
+        <article class="analytics-insight-item">
+          <div class="analytics-insight-head">
+            <strong>${escapeHtml(item.name || "Позиция")}</strong>
+            <span class="muted-small">+${Number(item.change_pct || 0).toFixed(1)}%</span>
+          </div>
+          <div class="muted-small">
+            ${item.shop_name ? `${escapeHtml(item.shop_name)} · ` : ""}
+            ${formatMoney(item.previous_avg_unit_price || 0)} → ${formatMoney(item.current_avg_unit_price || 0)}
+          </div>
+        </article>
+      `,
+      "Нет заметного роста цен",
+    );
+    renderInsightList(
+      el.analyticsTopDiscountSavingsList,
+      payload.top_discount_savings || [],
+      (item) => `
+        <article class="analytics-insight-item">
+          <div class="analytics-insight-head">
+            <strong>${escapeHtml(item.name || "Позиция")}</strong>
+            <span class="muted-small">${formatMoney(item.savings_total || 0)}</span>
+          </div>
+          <div class="muted-small">
+            ${item.shop_name ? `${escapeHtml(item.shop_name)} · ` : ""}
+            Скидка ${Number(item.discount_pct || 0).toFixed(1)}% · Потрачено ${formatMoney(item.actual_total || 0)}
+          </div>
+        </article>
+      `,
+      "Нет акций с обычной ценой",
+    );
   }
 
   function renderDashboardBreakdownView({

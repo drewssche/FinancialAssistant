@@ -236,6 +236,7 @@
         anomalies: [],
         top_positions: [],
         price_increases: [],
+        top_discount_savings: [],
       };
       const highlightsUi = getHighlightsUi();
       highlightsUi.renderAnalyticsHighlights?.(fallback);

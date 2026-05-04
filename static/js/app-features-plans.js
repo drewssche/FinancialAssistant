@@ -1152,6 +1152,9 @@
   }
 
   function handlePlanActionClick(event) {
+    if (event.__planActionHandled) {
+      return;
+    }
     const menuTrigger = event.target.closest("button[data-plan-menu-trigger]");
     if (menuTrigger) {
       const planId = String(menuTrigger.dataset.planMenuTrigger || "");
@@ -1219,17 +1222,23 @@
     const menu = btn.closest(".plan-card-actions-popover");
     const pickerUtils = getPickerUtils();
     if (menu && pickerUtils?.setPopoverOpen) {
+      const onClose = typeof menu.__appPopoverOnClose === "function" ? menu.__appPopoverOnClose : null;
       pickerUtils.setPopoverOpen(menu, false, {
         owners: Array.isArray(menu.__appPopoverOwners) ? menu.__appPopoverOwners : [],
       });
       (Array.isArray(menu.__appPopoverOwners) ? menu.__appPopoverOwners : []).forEach((owner) => owner?.blur?.());
-      menu.closest(".plan-card")?.classList.remove("plan-card-menu-open");
+      if (onClose) {
+        onClose();
+      } else {
+        menu.closest(".plan-card")?.classList.remove("plan-card-menu-open");
+      }
     }
     const action = btn.dataset.planAction || "";
     const planId = Number(btn.dataset.planId || 0);
     if (!planId || !action) {
       return;
     }
+    event.__planActionHandled = true;
     const meta = {
       confirm: { pendingText: "Подтверждение...", successMessage: "План подтвержден" },
       skip: { pendingText: "Обновление...", successMessage: "План обновлен" },
@@ -1294,5 +1303,13 @@
     if (planId) {
       handlePlanAction("edit", planId).catch((err) => core.setStatus(String(err)));
     }
+  });
+
+  document.addEventListener("click", (event) => {
+    const btn = event.target.closest?.(".plan-card-actions-popover button[data-plan-action]");
+    if (!btn) {
+      return;
+    }
+    handlePlanActionClick(event);
   });
 })();

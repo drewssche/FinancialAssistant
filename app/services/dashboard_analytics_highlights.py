@@ -56,6 +56,18 @@ class DashboardAnalyticsHighlightsService:
                 total += quote_total
         return total.quantize(Decimal("0.01"))
 
+    def resolve_receipt_price_for_history(self, row) -> Decimal | None:
+        unit_price = Decimal(getattr(row, "unit_price", 0) or 0)
+        if unit_price <= 0:
+            return None
+        if not bool(getattr(row, "is_discounted", False)):
+            return unit_price
+        regular_unit_price = getattr(row, "regular_unit_price", None)
+        if regular_unit_price is None:
+            return None
+        resolved_price = Decimal(regular_unit_price or 0)
+        return resolved_price if resolved_price > 0 else None
+
     def build_receipt_analytics_snapshot(
         self,
         *,
@@ -103,12 +115,13 @@ class DashboardAnalyticsHighlightsService:
                     bucket = position_stats[key]
                     bucket["name"] = name
                     bucket["shop_name"] = shop_name
-                    unit_price = Decimal(row.unit_price or 0)
                     bucket["total_spent"] += line_total
-                    bucket["max_unit_price"] = max(bucket["max_unit_price"], unit_price)
-                    bucket["unit_price_sum"] += unit_price
-                    bucket["unit_price_count"] += 1
                     bucket["purchases_count"] += 1
+                    price_for_history = self.resolve_receipt_price_for_history(row)
+                    if price_for_history is not None:
+                        bucket["max_unit_price"] = max(bucket["max_unit_price"], price_for_history)
+                        bucket["unit_price_sum"] += price_for_history
+                        bucket["unit_price_count"] += 1
                 effective_category_id = (
                     int(row.category_id)
                     if row.category_id is not None
@@ -409,6 +422,12 @@ class DashboardAnalyticsHighlightsService:
         prev_cashflow_total = prev_balance + prev_debt_cashflow_total + prev_fx_cashflow_total
         surplus_total = cashflow_total if cashflow_total > 0 else Decimal("0")
         deficit_total = abs(cashflow_total) if cashflow_total < 0 else Decimal("0")
+        discount_savings_total, discount_items_count = self.compute_discount_savings(current_receipt_items)
+        discount_savings_rate_pct = (
+            float((discount_savings_total / expense_total) * Decimal("100"))
+            if expense_total > 0
+            else None
+        )
         return {
             "period": period,
             "category_breakdown_kind": category_kind,
@@ -433,6 +452,9 @@ class DashboardAnalyticsHighlightsService:
             "prev_operations_count": prev_operations_count,
             "surplus_total": surplus_total,
             "deficit_total": deficit_total,
+            "discount_savings_total": discount_savings_total,
+            "discount_items_count": discount_items_count,
+            "discount_savings_rate_pct": discount_savings_rate_pct,
             "operations_count": operations_count,
             "avg_daily_expense": avg_daily_expense,
             "max_expense_day_date": max_expense_day_date.isoformat() if max_expense_day_date else None,
@@ -517,4 +539,80 @@ class DashboardAnalyticsHighlightsService:
                 for item in top_positions
             ],
             "price_increases": price_increases[:5],
+            "top_discount_savings": self.build_top_discount_savings(current_receipt_items),
         }
+
+    def compute_discount_savings(
+        self,
+        receipt_items_by_operation: dict[int, list] | None,
+    ) -> tuple[Decimal, int]:
+        savings_total = Decimal("0")
+        items_count = 0
+        for receipt_rows in (receipt_items_by_operation or {}).values():
+            for row in receipt_rows or []:
+                if not bool(getattr(row, "is_discounted", False)):
+                    continue
+                quantity = Decimal(getattr(row, "quantity", 0) or 0)
+                unit_price = Decimal(getattr(row, "unit_price", 0) or 0)
+                regular_unit_price = Decimal(getattr(row, "regular_unit_price", 0) or 0)
+                if quantity <= 0 or unit_price <= 0 or regular_unit_price <= unit_price:
+                    continue
+                savings_total += (regular_unit_price - unit_price) * quantity
+                items_count += 1
+        return savings_total.quantize(Decimal("0.01")), items_count
+
+    def build_top_discount_savings(self, receipt_items_by_operation: dict[int, list] | None) -> list[dict]:
+        buckets: dict[tuple[str, str | None], dict] = defaultdict(
+            lambda: {
+                "name": "",
+                "shop_name": None,
+                "savings_total": Decimal("0"),
+                "regular_total": Decimal("0"),
+                "actual_total": Decimal("0"),
+                "quantity_total": Decimal("0"),
+                "purchases_count": 0,
+            }
+        )
+        for receipt_rows in (receipt_items_by_operation or {}).values():
+            for row in receipt_rows or []:
+                if not bool(getattr(row, "is_discounted", False)):
+                    continue
+                quantity = Decimal(getattr(row, "quantity", 0) or 0)
+                unit_price = Decimal(getattr(row, "unit_price", 0) or 0)
+                regular_unit_price = Decimal(getattr(row, "regular_unit_price", 0) or 0)
+                if quantity <= 0 or unit_price <= 0 or regular_unit_price <= unit_price:
+                    continue
+                name = str(getattr(row, "name", "") or "").strip()
+                if not name:
+                    continue
+                shop_name = str(getattr(row, "shop_name", "") or "").strip() or None
+                key = (name.casefold(), shop_name.casefold() if shop_name else None)
+                bucket = buckets[key]
+                bucket["name"] = name
+                bucket["shop_name"] = shop_name
+                regular_total = regular_unit_price * quantity
+                actual_total = unit_price * quantity
+                bucket["regular_total"] += regular_total
+                bucket["actual_total"] += actual_total
+                bucket["savings_total"] += regular_total - actual_total
+                bucket["quantity_total"] += quantity
+                bucket["purchases_count"] += 1
+        items = []
+        for bucket in buckets.values():
+            regular_total = Decimal(bucket["regular_total"] or 0)
+            if regular_total <= 0:
+                continue
+            items.append(
+                {
+                    "name": bucket["name"],
+                    "shop_name": bucket["shop_name"],
+                    "savings_total": Decimal(bucket["savings_total"] or 0).quantize(Decimal("0.01")),
+                    "regular_total": regular_total.quantize(Decimal("0.01")),
+                    "actual_total": Decimal(bucket["actual_total"] or 0).quantize(Decimal("0.01")),
+                    "discount_pct": float((Decimal(bucket["savings_total"] or 0) / regular_total) * Decimal("100")),
+                    "quantity_total": Decimal(bucket["quantity_total"] or 0),
+                    "purchases_count": int(bucket["purchases_count"] or 0),
+                }
+            )
+        items.sort(key=lambda item: (item["savings_total"], item["discount_pct"], item["purchases_count"]), reverse=True)
+        return items[:5]

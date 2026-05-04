@@ -334,6 +334,7 @@
       analyticsAnomaliesList: document.getElementById("analyticsAnomaliesList"),
       analyticsTopPositionsList: document.getElementById("analyticsTopPositionsList"),
       analyticsPriceIncreasesList: document.getElementById("analyticsPriceIncreasesList"),
+      analyticsTopDiscountSavingsList: document.getElementById("analyticsTopDiscountSavingsList"),
       operationsActiveFilters: document.getElementById("operationsActiveFilters"),
       operationsKindFilterChip: document.getElementById("operationsKindFilterChip"),
       operationsQuickViewChip: document.getElementById("operationsQuickViewChip"),

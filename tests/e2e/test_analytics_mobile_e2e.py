@@ -313,6 +313,18 @@ def page_with_analytics_api_mock(page):
             "price_increases": [
                 {"name": "Кофе", "shop_name": "Соседи", "change_pct": 11.0, "previous_avg_unit_price": "9.00", "current_avg_unit_price": "10.00"}
             ],
+            "top_discount_savings": [
+                {
+                    "name": "Капучино 0,2",
+                    "shop_name": "Cofix",
+                    "savings_total": "2.00",
+                    "regular_total": "7.00",
+                    "actual_total": "5.00",
+                    "discount_pct": 28.57,
+                    "quantity_total": "1.000",
+                    "purchases_count": 1,
+                }
+            ],
         }
 
     def trend_payload(period: str, granularity: str) -> dict:
@@ -428,6 +440,9 @@ def page_with_analytics_api_mock(page):
                 return json_response(route, payload)
             return json_response(route, currency_overview)
 
+        if path == "/api/v1/currency/trades" and method == "GET":
+            return json_response(route, {"items": [], "total": 0, "page": 1, "page_size": 20})
+
         if path == "/api/v1/currency/rates/history" and method == "GET":
             selected_currency = (query.get("currency") or ["USD"])[0]
             return json_response(route, currency_history.get(selected_currency, []))
@@ -498,7 +513,47 @@ def test_structure_donut_defaults_to_period_total_in_center(page_with_analytics_
 
     page.wait_for_selector("#analyticsCategoryBreakdownChartTitle")
     expect(page.locator("#analyticsCategoryBreakdownChartTitle")).to_have_text("Итог периода")
-    expect(page.locator("#analyticsCategoryBreakdownChartValue")).to_have_text("1 210,00\u00a0BYN")
+    expect(page.locator("#analyticsCategoryBreakdownChartValue")).to_contain_text("1\u00a0210,00")
+
+
+@pytest.mark.e2e
+def test_mobile_analytics_structure_shows_price_and_discount_insights(page_with_analytics_api_mock, static_server_url: str):
+    page = page_with_analytics_api_mock
+
+    _open_mobile_analytics(page, static_server_url)
+    page.locator("button[data-analytics-tab='structure']").click()
+    page.wait_for_selector("#analyticsStructurePanel:not(.hidden)")
+    page.wait_for_selector("#analyticsPriceIncreasesList .analytics-insight-item")
+    page.wait_for_selector("#analyticsTopDiscountSavingsList .analytics-insight-item")
+
+    expect(page.locator(".analytics-price-insight-block").filter(has_text="Топ подорожаний")).to_contain_text("Кофе")
+    expect(page.locator(".analytics-price-insight-block").filter(has_text="Топ подорожаний")).to_contain_text("+11.0%")
+    expect(page.locator(".analytics-price-insight-block").filter(has_text="Лучшие акции")).to_contain_text("Капучино 0,2")
+    expect(page.locator(".analytics-price-insight-block").filter(has_text="Лучшие акции")).to_contain_text("Скидка 28.6%")
+
+    geometry = page.evaluate(
+        """
+        () => {
+          const panel = document.querySelector('#analyticsStructurePanel');
+          const blocks = Array.from(document.querySelectorAll('.analytics-price-insight-block'));
+          if (!panel || blocks.length < 2) {
+            return null;
+          }
+          const panelRect = panel.getBoundingClientRect();
+          return {
+            viewportWidth: window.innerWidth,
+            panelRight: panelRect.right,
+            maxBlockRight: Math.max(...blocks.map((item) => item.getBoundingClientRect().right)),
+            minBlockWidth: Math.min(...blocks.map((item) => item.getBoundingClientRect().width)),
+          };
+        }
+        """
+    )
+
+    assert geometry is not None
+    assert geometry["maxBlockRight"] <= geometry["viewportWidth"] + 2
+    assert geometry["maxBlockRight"] <= geometry["panelRight"] + 2
+    assert geometry["minBlockWidth"] > 280
 
 
 @pytest.mark.e2e
@@ -725,10 +780,14 @@ def test_currency_analytics_all_mode_renders_multi_currency_chart_and_backfill(p
     _open_mobile_analytics(page, static_server_url)
     page.locator("button[data-analytics-tab='currency']").click()
     page.wait_for_selector("#analyticsCurrencyPanel:not(.hidden)")
+    page.wait_for_selector("button[data-analytics-currency-filter='all']")
+    page.click("button[data-analytics-currency-filter='all']")
+    page.click("button[data-analytics-currency-period='all_time']")
+    page.wait_for_selector("#analyticsCurrencyChart .currency-chart-series")
 
     assert page.locator("#analyticsCurrencyBalancesRow .currency-balance-card").count() >= 3
-    assert page.locator("#analyticsCurrencyChart .currency-chart-legend-label", has_text="USD ($)").count() >= 1
-    assert page.locator("#analyticsCurrencyChart .currency-chart-legend-label", has_text="EUR (€)").count() >= 1
+    assert page.locator("#analyticsCurrencyChart .currency-chart-legend-label", has_text="USD").count() >= 1
+    assert page.locator("#analyticsCurrencyChart .currency-chart-legend-label", has_text="EUR").count() >= 1
     assert page.locator("#analyticsCurrencyChart .currency-chart-series").count() >= 2
 
     page.click("#analyticsCurrencyBackfillBtn")

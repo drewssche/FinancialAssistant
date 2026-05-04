@@ -272,6 +272,17 @@ class AnalyticsPriceIncrease(BaseModel):
     change_pct: float
 
 
+class AnalyticsTopDiscountSaving(BaseModel):
+    name: str
+    shop_name: str | None
+    savings_total: Decimal
+    regular_total: Decimal
+    actual_total: Decimal
+    discount_pct: float
+    quantity_total: Decimal
+    purchases_count: int
+
+
 class AnalyticsHighlightsOut(BaseModel):
     period: str
     category_breakdown_kind: str
@@ -296,6 +307,9 @@ class AnalyticsHighlightsOut(BaseModel):
     prev_operations_count: int
     surplus_total: Decimal
     deficit_total: Decimal
+    discount_savings_total: Decimal = Decimal("0")
+    discount_items_count: int = 0
+    discount_savings_rate_pct: float | None = None
     operations_count: int
     avg_daily_expense: Decimal
     max_expense_day_date: str | None
@@ -313,3 +327,4 @@ class AnalyticsHighlightsOut(BaseModel):
     anomalies: list[AnalyticsOperationAnomaly]
     top_positions: list[AnalyticsTopPosition]
     price_increases: list[AnalyticsPriceIncrease]
+    top_discount_savings: list[AnalyticsTopDiscountSaving] = Field(default_factory=list)

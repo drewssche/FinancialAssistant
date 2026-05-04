@@ -1098,6 +1098,119 @@ def test_dashboard_analytics_highlights_returns_kpis_and_top_blocks(client: Test
     assert any(item["name"] == "Milk" for item in payload["price_increases"])
 
 
+def test_dashboard_analytics_highlights_includes_discount_savings_kpi(client: TestClient):
+    operation = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "13.40",
+            "operation_date": "2026-03-12",
+            "note": "discounted receipt",
+            "receipt_items": [
+                {
+                    "shop_name": "Store",
+                    "name": "Coffee",
+                    "quantity": "2",
+                    "unit_price": "5.20",
+                    "is_discounted": True,
+                    "regular_unit_price": "6.80",
+                },
+                {
+                    "shop_name": "Store",
+                    "name": "Tea",
+                    "quantity": "1",
+                    "unit_price": "3.00",
+                    "is_discounted": True,
+                },
+            ],
+        },
+    )
+    assert operation.status_code == 201
+
+    response = client.get("/api/v1/dashboard/analytics/highlights", params={"month": "2026-03"})
+    assert response.status_code == 200
+    payload = response.json()
+
+    assert payload["expense_total"] == "13.40"
+    assert payload["discount_savings_total"] == "3.20"
+    assert payload["discount_items_count"] == 1
+    assert payload["discount_savings_rate_pct"] == pytest.approx(23.88, abs=0.01)
+    assert payload["top_discount_savings"] == [
+        {
+            "name": "Coffee",
+            "shop_name": "Store",
+            "savings_total": "3.20",
+            "regular_total": "13.60",
+            "actual_total": "10.40",
+            "discount_pct": pytest.approx(23.53, abs=0.01),
+            "quantity_total": "2.000",
+            "purchases_count": 1,
+        }
+    ]
+
+
+def test_dashboard_analytics_highlights_uses_regular_discount_price_for_price_history(client: TestClient):
+    previous = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "10.00",
+            "operation_date": "2026-02-12",
+            "receipt_items": [
+                {
+                    "shop_name": "Store",
+                    "name": "Coffee",
+                    "quantity": "1",
+                    "unit_price": "10.00",
+                },
+            ],
+        },
+    )
+    assert previous.status_code == 201
+
+    current = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "20.00",
+            "operation_date": "2026-03-12",
+            "receipt_items": [
+                {
+                    "shop_name": "Store",
+                    "name": "Coffee",
+                    "quantity": "1",
+                    "unit_price": "8.00",
+                    "is_discounted": True,
+                    "regular_unit_price": "10.00",
+                },
+                {
+                    "shop_name": "Store",
+                    "name": "Tea",
+                    "quantity": "1",
+                    "unit_price": "12.00",
+                    "is_discounted": True,
+                },
+            ],
+        },
+    )
+    assert current.status_code == 201
+
+    response = client.get("/api/v1/dashboard/analytics/highlights", params={"month": "2026-03"})
+    assert response.status_code == 200
+    payload = response.json()
+
+    coffee = next(item for item in payload["top_positions"] if item["name"] == "Coffee")
+    tea = next(item for item in payload["top_positions"] if item["name"] == "Tea")
+    assert coffee["total_spent"] == "8.00"
+    assert coffee["max_unit_price"] == "10.00"
+    assert coffee["avg_unit_price"] == "10.00"
+    assert tea["total_spent"] == "12.00"
+    assert tea["max_unit_price"] == "0"
+    assert tea["avg_unit_price"] == "0"
+    assert not any(item["name"] == "Coffee" for item in payload["price_increases"])
+    assert not any(item["name"] == "Tea" for item in payload["price_increases"])
+
+
 def test_dashboard_analytics_highlights_includes_fx_cashflow_for_period(client: TestClient):
     income = client.post(
         "/api/v1/operations",

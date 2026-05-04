@@ -194,6 +194,16 @@
               </div>
               <div id="analyticsCategoryBreakdownList" class="analytics-insight-list"></div>
             </div>
+            <div class="analytics-positions-grid analytics-price-insights-grid">
+              <div class="analytics-price-insight-block">
+                <h4>Топ подорожаний</h4>
+                <div id="analyticsPriceIncreasesList" class="analytics-insight-list"></div>
+              </div>
+              <div class="analytics-price-insight-block">
+                <h4>Лучшие акции</h4>
+                <div id="analyticsTopDiscountSavingsList" class="analytics-insight-list"></div>
+              </div>
+            </div>
           </section>
 
           <section id="analyticsCalendarPanel" class="panel analytics-tab-panel hidden">

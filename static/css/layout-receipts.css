@@ -172,7 +172,7 @@
 
 .receipt-item-row {
   display: grid;
-  grid-template-columns: minmax(136px, 0.72fr) minmax(180px, 1.2fr) minmax(160px, 0.92fr) minmax(220px, 1fr) 92px 100px 40px;
+  grid-template-columns: minmax(136px, 0.72fr) minmax(180px, 1.18fr) minmax(160px, 0.9fr) minmax(260px, 1.12fr) 76px 100px 40px;
   gap: var(--space-2);
   align-items: center;
   min-width: 0;
@@ -360,8 +360,8 @@
 
 .receipt-price-cell {
   display: grid;
-  grid-template-columns: minmax(72px, 1fr) auto minmax(82px, 0.92fr);
-  gap: 6px;
+  grid-template-columns: minmax(72px, 0.78fr) auto minmax(104px, 0.95fr);
+  gap: var(--space-2);
   align-items: center;
   min-width: 0;
 }
@@ -434,7 +434,7 @@
 
 @media (max-width: 900px) {
   .receipt-item-row {
-    grid-template-columns: minmax(120px, 0.65fr) minmax(0, 1fr) minmax(140px, 0.9fr) minmax(180px, 1fr) 84px 86px 32px;
+    grid-template-columns: minmax(120px, 0.65fr) minmax(0, 1fr) minmax(140px, 0.86fr) minmax(220px, 1.08fr) 72px 86px 32px;
     gap: 6px;
   }
 
