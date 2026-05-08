@@ -17,6 +17,12 @@
       return window.App.getRuntimeModule?.("operation-modal") || {};
     }
 
+    function invalidateDebtCaches() {
+      core.invalidateUiRequestCache("debts");
+      state.debtCounterpartyCardsCache = null;
+      state.debtCounterpartyCardsCacheLoaded = false;
+    }
+
     async function openDebtRepaymentModal(debtId) {
       const found = await (ensureDebtLoaded ? ensureDebtLoaded(debtId) : Promise.resolve(findDebtById(debtId)));
       if (!found) {
@@ -163,7 +169,7 @@
           note: el.repaymentNote.value || null,
         }),
       });
-      core.invalidateUiRequestCache("debts");
+      invalidateDebtCaches();
       getDashboardData().invalidateReadCaches?.();
       closeDebtRepaymentModal();
       await refreshDebtViews();
@@ -224,7 +230,7 @@
               note,
             }),
           });
-          core.invalidateUiRequestCache("debts");
+          invalidateDebtCaches();
           getDashboardData().invalidateReadCaches?.();
         },
         onAfterDelete: async () => {
@@ -442,7 +448,7 @@
             method: "DELETE",
             headers: core.authHeaders(),
           });
-          core.invalidateUiRequestCache("debts");
+          invalidateDebtCaches();
           getDashboardData().invalidateReadCaches?.();
         },
         onAfterDelete: async () => {
@@ -477,7 +483,7 @@
           note: el.forgivenessNote.value || null,
         }),
       });
-      core.invalidateUiRequestCache("debts");
+      invalidateDebtCaches();
       getDashboardData().invalidateReadCaches?.();
       closeDebtForgivenessModal();
       await refreshDebtViews();
@@ -498,7 +504,7 @@
               headers: core.authHeaders(),
             });
           }
-          core.invalidateUiRequestCache("debts");
+          invalidateDebtCaches();
           getDashboardData().invalidateReadCaches?.();
         },
         onAfterDelete: async () => {

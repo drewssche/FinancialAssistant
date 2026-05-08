@@ -190,6 +190,7 @@ def page_with_plans_api_mock(page):
         "plans": [],
         "history": [],
         "operations": [],
+        "debt_cards": [],
         "last_create_payload": None,
         "next_plan_id": 1,
         "next_operation_id": 100,
@@ -343,7 +344,11 @@ def page_with_plans_api_mock(page):
         if path == "/api/v1/operations" and method == "GET":
             return _json_response(route, {"items": mock_state["operations"], "total": len(mock_state["operations"]), "page": 1, "page_size": 20})
         if path == "/api/v1/debts/cards" and method == "GET":
-            return _json_response(route, [])
+            include_closed = query.get("include_closed", ["false"])[0].lower() == "true"
+            cards = list(mock_state["debt_cards"])
+            if not include_closed:
+                cards = [card for card in cards if card.get("status") == "active"]
+            return _json_response(route, cards)
         if path == "/api/v1/plans" and method == "GET":
             return _json_response(route, {"items": [_make_plan_item(item) for item in mock_state["plans"]], "total": len(mock_state["plans"])})
         if path == "/api/v1/plans/history" and method == "GET":
@@ -658,6 +663,67 @@ def test_plan_kebab_menu_actions_work_from_floating_popover(static_server_url: s
     page.click("#confirmDeleteBtn")
     page.wait_for_function("() => !(document.querySelector('#plansList')?.textContent || '').includes('Кебаб удалить')")
     assert [item["id"] for item in mock_state["plans"]] == [1]
+
+
+@pytest.mark.e2e
+def test_debt_counterparty_picker_loads_closed_counterparties_despite_active_debt_cache(static_server_url: str, page_with_plans_api_mock):
+    page, mock_state = page_with_plans_api_mock
+    mock_state["debt_cards"][:] = [
+        {
+            "counterparty": "Активный контакт",
+            "counterparty_id": 1,
+            "status": "active",
+            "debts": [
+                {
+                    "id": 10,
+                    "direction": "lend",
+                    "principal": "100.00",
+                    "currency": "BYN",
+                    "start_date": "2026-03-01",
+                    "due_date": None,
+                    "note": "",
+                    "outstanding_total": "100.00",
+                }
+            ],
+        },
+        {
+            "counterparty": "Закрытый контакт",
+            "counterparty_id": 2,
+            "status": "closed",
+            "debts": [
+                {
+                    "id": 11,
+                    "direction": "lend",
+                    "principal": "40.00",
+                    "currency": "BYN",
+                    "start_date": "2026-02-01",
+                    "due_date": None,
+                    "note": "",
+                    "outstanding_total": "0.00",
+                }
+            ],
+        },
+    ]
+    _login_and_open_plans(page, static_server_url)
+    page.evaluate(
+        """
+        () => {
+          window.App.state.debtCardsCache = [{
+            counterparty: "Активный контакт",
+            counterparty_id: 1,
+            status: "active",
+            debts: []
+          }];
+          window.App.state.debtCounterpartyCardsCache = null;
+          window.App.state.debtCounterpartyCardsCacheLoaded = false;
+        }
+        """
+    )
+    page.evaluate("() => window.App.getRuntimeModule('operation-modal').openCreateModal({ entryMode: 'debt' })")
+    page.wait_for_selector("#createModal:not(.hidden)")
+
+    page.fill("#debtCounterparty", "Закр")
+    page.wait_for_function("() => document.querySelector('#debtCounterpartyAll')?.textContent.includes('Закрытый контакт')")
 
 
 @pytest.mark.e2e

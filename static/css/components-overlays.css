@@ -117,8 +117,8 @@
 .settings-picker-option {
   width: 100%;
   min-width: 0;
-  justify-content: flex-start;
-  text-align: left;
+  justify-content: center;
+  text-align: center;
   min-height: 3rem;
 }
 
@@ -132,7 +132,9 @@
   display: grid;
   grid-template-columns: max-content 1fr;
   column-gap: var(--space-1);
-  align-items: baseline;
+  align-items: center;
+  justify-content: center;
+  justify-items: center;
 }
 
 .period-control-popover .settings-picker-option,

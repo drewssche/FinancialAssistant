@@ -196,6 +196,29 @@
     });
   }
 
+  async function fetchItemCatalogPages(params, requestController) {
+    const firstPayload = await core.requestJson(`/api/v1/operations/item-templates?${params.toString()}`, {
+      headers: core.authHeaders(),
+      signal: requestController.signal,
+    });
+    const items = Array.isArray(firstPayload.items) ? firstPayload.items.slice() : [];
+    const total = Number(firstPayload.total || items.length || 0);
+    const pageSize = Number(firstPayload.page_size || params.get("page_size") || 100) || 100;
+    if (total > items.length) {
+      const pageCount = Math.ceil(total / pageSize);
+      for (let page = 2; page <= pageCount; page += 1) {
+        const pageParams = new URLSearchParams(params);
+        pageParams.set("page", String(page));
+        const pagePayload = await core.requestJson(`/api/v1/operations/item-templates?${pageParams.toString()}`, {
+          headers: core.authHeaders(),
+          signal: requestController.signal,
+        });
+        items.push(...(Array.isArray(pagePayload.items) ? pagePayload.items : []));
+      }
+    }
+    return { ...firstPayload, items };
+  }
+
   async function loadItemCatalog(options = {}) {
     const force = options.force === true;
     const query = String(el.itemCatalogSearchQ?.value || "").trim();
@@ -206,7 +229,7 @@
     }
     const params = new URLSearchParams({
       page: "1",
-      page_size: "50",
+      page_size: "100",
     });
     if (query) {
       params.set("q", query);
@@ -231,10 +254,7 @@
     itemCatalogRequestController = requestController;
     const requestSeq = ++itemCatalogRequestSeq;
     try {
-      const payload = await core.requestJson(`/api/v1/operations/item-templates?${params.toString()}`, {
-        headers: core.authHeaders(),
-        signal: requestController.signal,
-      });
+      const payload = await fetchItemCatalogPages(params, requestController);
       if (requestSeq !== itemCatalogRequestSeq) {
         return;
       }

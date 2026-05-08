@@ -21,7 +21,7 @@
       if (counterpartyLoading) {
         return;
       }
-      if (Array.isArray(state.debtCardsCache) && state.debtCardsCache.length) {
+      if (Array.isArray(state.debtCounterpartyCardsCache) && state.debtCounterpartyCardsCacheLoaded === true) {
         return;
       }
       counterpartyLoading = true;
@@ -29,8 +29,9 @@
         const cards = await core.requestJson("/api/v1/debts/cards?include_closed=true", {
           headers: core.authHeaders(),
         }).catch(() => []);
-        if (Array.isArray(cards) && cards.length) {
-          state.debtCardsCache = cards;
+        if (Array.isArray(cards)) {
+          state.debtCounterpartyCardsCache = cards;
+          state.debtCounterpartyCardsCacheLoaded = true;
         }
       } finally {
         counterpartyLoading = false;
@@ -42,7 +43,7 @@
     }
 
     function getCounterpartyCards() {
-      return Array.isArray(state.debtCardsCache) ? state.debtCardsCache : [];
+      return Array.isArray(state.debtCounterpartyCardsCache) ? state.debtCounterpartyCardsCache : [];
     }
 
     function getCounterpartyEntries(query = "") {

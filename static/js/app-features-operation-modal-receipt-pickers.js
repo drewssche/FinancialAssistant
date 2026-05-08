@@ -108,9 +108,25 @@
       return [...starts, ...contains].slice(0, limit);
     }
 
-    function getReceiptShopSuggestions(query = "", limit = 24) {
+    function getReceiptShopSuggestions(query = "", limit = 100) {
       const normalized = normalizeReceiptName(query).toLowerCase();
       const byShop = new Map();
+      const preferenceSources = state.preferences?.data?.ui?.item_catalog_sources;
+      if (Array.isArray(preferenceSources)) {
+        for (const sourceName of preferenceSources) {
+          const shopName = normalizeReceiptName(sourceName || "");
+          if (!shopName) {
+            continue;
+          }
+          const shopNameCi = shopName.toLowerCase();
+          if (normalized && !shopNameCi.includes(normalized)) {
+            continue;
+          }
+          if (!byShop.has(shopNameCi)) {
+            byShop.set(shopNameCi, shopName);
+          }
+        }
+      }
       for (const item of state.receiptTemplateHints || []) {
         const shopName = normalizeReceiptName(item.shop_name || "");
         if (!shopName) {
@@ -373,16 +389,17 @@
       receiptUiState.activePicker = { draft_id: Number(rowItem.draft_id), field: "category_id", mode };
     }
 
-    async function loadReceiptTemplates(query = "") {
+    async function loadReceiptTemplates(query = "", options = {}) {
       const normalized = String(query || "").trim().toLowerCase();
-      const cacheKey = `op:receipt:templates:q=${normalized}`;
+      const allPages = options.allPages === true && !normalized;
+      const cacheKey = `op:receipt:templates:q=${normalized}:all=${allPages ? "1" : "0"}`;
       const cached = core.getUiRequestCache ? core.getUiRequestCache(cacheKey, RECEIPT_TEMPLATES_CACHE_TTL_MS) : null;
       if (cached) {
         return cached.items || [];
       }
       const params = new URLSearchParams({
         page: "1",
-        page_size: "20",
+        page_size: "100",
       });
       if (normalized) {
         params.set("q", normalized);
@@ -390,10 +407,25 @@
       const payload = await core.requestJson(`/api/v1/operations/item-templates?${params.toString()}`, {
         headers: core.authHeaders(),
       });
-      if (core.setUiRequestCache) {
-        core.setUiRequestCache(cacheKey, payload);
+      const items = Array.isArray(payload.items) ? payload.items.slice() : [];
+      const total = Number(payload.total || items.length || 0);
+      if (allPages && total > items.length) {
+        const pageSize = Number(payload.page_size || 100) || 100;
+        const pageCount = Math.ceil(total / pageSize);
+        for (let page = 2; page <= pageCount; page += 1) {
+          const pageParams = new URLSearchParams(params);
+          pageParams.set("page", String(page));
+          const pagePayload = await core.requestJson(`/api/v1/operations/item-templates?${pageParams.toString()}`, {
+            headers: core.authHeaders(),
+          });
+          items.push(...(Array.isArray(pagePayload.items) ? pagePayload.items : []));
+        }
       }
-      return payload.items || [];
+      const result = { ...payload, items };
+      if (core.setUiRequestCache) {
+        core.setUiRequestCache(cacheKey, result);
+      }
+      return items;
     }
 
     async function loadReceiptTemplateHints() {
@@ -409,7 +441,7 @@
       receiptUiState.hintsPromise = (async () => {
         let templates = [];
         try {
-          templates = await loadReceiptTemplates("");
+          templates = await loadReceiptTemplates("", { allPages: true });
         } catch {
           templates = [];
         }

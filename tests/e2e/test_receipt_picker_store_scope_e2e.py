@@ -70,7 +70,11 @@ def page_with_receipt_api_mock():
         "data": {
             "dashboard": {"period": "day", "custom_date_from": "", "custom_date_to": ""},
             "operations": {"filters": {"kind": "", "q": ""}},
-            "ui": {"active_section": "dashboard", "timezone": "Europe/Moscow"},
+            "ui": {
+                "active_section": "dashboard",
+                "timezone": "Europe/Moscow",
+                "item_catalog_sources": ["Пустой источник"],
+            },
         },
     }
 
@@ -124,6 +128,15 @@ def page_with_receipt_api_mock():
             "latest_unit_price": "2.20",
         },
     ]
+    templates.extend(
+        {
+            "id": idx,
+            "shop_name": "Дальний источник" if idx == 125 else f"Источник {idx:03d}",
+            "name": "Дальняя позиция" if idx == 125 else f"Позиция {idx:03d}",
+            "latest_unit_price": "1.00",
+        }
+        for idx in range(3, 128)
+    )
 
     def json_response(route, payload: dict | list, status: int = 200):
         route.fulfill(status=status, content_type="application/json", body=json.dumps(payload, ensure_ascii=False))
@@ -167,7 +180,11 @@ def page_with_receipt_api_mock():
                     item for item in templates
                     if token in item["name"].casefold() or token in (item.get("shop_name") or "").casefold()
                 ]
-            return json_response(route, {"items": items, "total": len(items), "page": 1, "page_size": 20})
+            page = int((query.get("page") or ["1"])[0])
+            page_size = int((query.get("page_size") or ["20"])[0])
+            start = (page - 1) * page_size
+            end = start + page_size
+            return json_response(route, {"items": items[start:end], "total": len(items), "page": page, "page_size": page_size})
 
         return json_response(route, {"detail": f"Unhandled mock route: {method} {path}"}, status=404)
 
@@ -248,6 +265,69 @@ def test_receipt_picker_store_scoped_and_optimistic_create(static_server_url: st
     page.wait_for_selector('.receipt-item-row:nth-child(2) .receipt-name-picker:not(.hidden)')
     assert second_name_picker.locator('.chip-btn:has-text("Хлеб")').first.is_visible()
     assert second_name_picker.locator('.chip-btn:has-text("Чипсы Лейс")').count() == 0
+
+
+@pytest.mark.e2e
+def test_receipt_picker_loads_catalog_sources_and_templates_beyond_first_page(static_server_url: str, page_with_receipt_api_mock):
+    page = page_with_receipt_api_mock
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    _login(page)
+    page.click("#addOperationCta")
+    page.wait_for_selector("#createModal:not(.hidden)")
+    page.locator('#createOperationModeSwitch button[data-operation-mode="receipt"]').click()
+    page.wait_for_selector("#opReceiptFields:not(.hidden)")
+
+    first_row = page.locator(".receipt-item-row").first
+    first_row.locator('[data-receipt-field="shop_name"]').click()
+    page.wait_for_selector('.receipt-item-row:first-child .receipt-shop-picker:not(.hidden)')
+    assert first_row.locator('.receipt-shop-picker .chip-btn:has-text("Пустой источник")').first.is_visible()
+
+    first_row.locator('[data-receipt-field="shop_name"]').fill("Дальний")
+    page.wait_for_selector('.receipt-item-row:first-child .receipt-shop-picker:not(.hidden)')
+    assert first_row.locator('.receipt-shop-picker .chip-btn:has-text("Дальний источник")').first.is_visible()
+    first_row.locator('.receipt-shop-picker .chip-btn:has-text("Дальний источник")').first.click()
+
+    first_row.locator('[data-receipt-field="name"]').click()
+    page.wait_for_selector('.receipt-item-row:first-child .receipt-name-picker:not(.hidden)')
+    assert first_row.locator('.receipt-name-picker .chip-btn:has-text("Дальняя позиция")').first.is_visible()
+
+
+@pytest.mark.e2e
+def test_item_catalog_loads_templates_beyond_first_page(static_server_url: str, page_with_receipt_api_mock):
+    page = page_with_receipt_api_mock
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    _login(page)
+    page.click("button[data-section='item_catalog']")
+    page.wait_for_selector("#itemCatalogSection:not(.hidden)")
+    page.wait_for_function("() => (window.App?.state?.itemCatalogItems || []).length >= 127")
+
+    assert page.locator("#itemCatalogBody").get_by_text("Дальняя позиция").first.is_visible()
 
 
 @pytest.mark.e2e

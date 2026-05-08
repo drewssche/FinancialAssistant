@@ -54,7 +54,7 @@
 }
 
 .operation-modal-card {
-  width: min(1180px, 100%);
+  width: min(1360px, 100%);
 }
 
 @supports not (height: 100dvh) {

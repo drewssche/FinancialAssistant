@@ -192,6 +192,8 @@
         });
         const dashboardData = getDashboardData();
         core.invalidateUiRequestCache("debts");
+        state.debtCounterpartyCardsCache = null;
+        state.debtCounterpartyCardsCacheLoaded = false;
         dashboardData.invalidateReadCaches?.();
         state.editDebtCreateId = null;
         closeCreateModal();
