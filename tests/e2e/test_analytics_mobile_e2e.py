@@ -717,6 +717,43 @@ def test_mobile_analytics_calendar_scroll_wrap_reaches_last_columns(static_serve
 
 
 @pytest.mark.e2e
+def test_analytics_calendar_highlights_current_day_and_month(static_server_url: str, page_with_analytics_api_mock):
+    page = page_with_analytics_api_mock
+    page.add_init_script(
+        """
+        (() => {
+          const RealDate = Date;
+          const fixedNow = new RealDate("2026-03-08T12:00:00");
+          class MockDate extends RealDate {
+            constructor(...args) {
+              super(...(args.length ? args : [fixedNow.getTime()]));
+            }
+            static now() {
+              return fixedNow.getTime();
+            }
+            static parse(value) {
+              return RealDate.parse(value);
+            }
+            static UTC(...args) {
+              return RealDate.UTC(...args);
+            }
+          }
+          window.Date = MockDate;
+        })();
+        """
+    )
+    _open_mobile_analytics(page, static_server_url)
+
+    page.click("button[data-analytics-tab='calendar']")
+    page.wait_for_selector("#analyticsCalendarPanel:not(.hidden)")
+    page.wait_for_selector(".analytics-day-cell-today button[data-analytics-date='2026-03-08']")
+
+    page.click("button[data-analytics-calendar-view='year']")
+    page.wait_for_selector("#analyticsYearGridWrap:not(.hidden)")
+    page.wait_for_selector(".analytics-year-card-current[data-analytics-month-anchor='2026-03']")
+
+
+@pytest.mark.e2e
 def test_mobile_analytics_year_view_card_opens_month_view(static_server_url: str, page_with_analytics_api_mock):
     page = page_with_analytics_api_mock
     _open_mobile_analytics(page, static_server_url)

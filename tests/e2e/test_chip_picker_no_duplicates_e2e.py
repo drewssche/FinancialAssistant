@@ -321,6 +321,7 @@ def test_mobile_edit_category_modal_keeps_group_field_above_sticky_cta(static_se
     page.wait_for_selector("[data-mobile-card-menu='category-101']:not(.hidden)")
     page.click("button[data-edit-category-id='101']")
     page.wait_for_selector("#editCategoryModal:not(.hidden)")
+    assert page.locator("[data-mobile-card-menu='category-101']").is_hidden()
     page.focus("#editCategoryGroupSearch")
     page.wait_for_timeout(150)
 

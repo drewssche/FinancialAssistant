@@ -137,6 +137,19 @@
     el.editCategoryModal.classList.add("hidden");
   }
 
+  function closeCategoryActionPopoverFromEvent({ event, pickerUtils }) {
+    const menu = event.target.closest(".mobile-card-actions-popover, .table-kebab-popover");
+    if (!menu || !pickerUtils?.setPopoverOpen) {
+      return;
+    }
+    const owners = Array.isArray(menu.__appPopoverOwners) ? menu.__appPopoverOwners : [];
+    pickerUtils.setPopoverOpen(menu, false, { owners });
+    if (typeof menu.__appPopoverOnClose === "function") {
+      menu.__appPopoverOnClose();
+    }
+    owners.forEach((owner) => owner?.blur?.());
+  }
+
   function toggleCategoriesCardMenu({ event, pickerUtils }) {
     const trigger = event.target.closest("button[data-mobile-card-menu-trigger], button[data-table-menu-trigger]");
     if (!trigger) {
@@ -210,6 +223,7 @@
     }
     const editGroupBtn = event.target.closest("button[data-edit-group-id]");
     if (editGroupBtn) {
+      closeCategoryActionPopoverFromEvent({ event, pickerUtils });
       const id = Number(editGroupBtn.dataset.editGroupId);
       const group = state.categoryGroups.find((item) => item.id === id);
       if (group) {
@@ -219,6 +233,7 @@
     }
     const deleteGroupBtn = event.target.closest("button[data-delete-group-id]");
     if (deleteGroupBtn) {
+      closeCategoryActionPopoverFromEvent({ event, pickerUtils });
       const id = Number(deleteGroupBtn.dataset.deleteGroupId);
       const group = state.categoryGroups.find((item) => item.id === id);
       if (group) {
@@ -228,6 +243,7 @@
     }
     const deleteBtn = event.target.closest("button[data-delete-category-id]");
     if (deleteBtn) {
+      closeCategoryActionPopoverFromEvent({ event, pickerUtils });
       const row = deleteBtn.closest("tr");
       const item = row
         ? JSON.parse(row.dataset.item || "{}")
@@ -239,6 +255,7 @@
     }
     const editBtn = event.target.closest("button[data-edit-category-id]");
     if (editBtn) {
+      closeCategoryActionPopoverFromEvent({ event, pickerUtils });
       const row = editBtn.closest("tr");
       const item = row
         ? JSON.parse(row.dataset.item || "{}")

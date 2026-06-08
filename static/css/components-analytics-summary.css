@@ -152,6 +152,28 @@
   background: rgba(25, 37, 58, 0.95);
 }
 
+.analytics-day-cell-today .analytics-day-btn {
+  border-color: rgba(255, 179, 71, 0.86);
+  background:
+    linear-gradient(180deg, rgba(255, 179, 71, 0.18), rgba(255, 179, 71, 0.05)),
+    rgba(18, 27, 43, 0.95);
+  box-shadow:
+    0 0 0 1px rgba(255, 179, 71, 0.26),
+    0 0 0 4px rgba(255, 179, 71, 0.08);
+}
+
+.analytics-day-cell-today .analytics-day-date::after {
+  content: "Сегодня";
+  display: inline-flex;
+  margin-left: var(--space-2);
+  padding: 0.08rem 0.42rem;
+  border-radius: 999px;
+  background: rgba(255, 179, 71, 0.16);
+  color: #ffd18a;
+  font-size: 10px;
+  font-weight: 800;
+}
+
 .analytics-day-date {
   font-weight: 700;
   font-size: 12px;
@@ -988,6 +1010,28 @@
 
 .analytics-year-card:hover {
   border-color: rgba(255, 179, 71, 0.45);
+}
+
+.analytics-year-card-current {
+  border-color: rgba(255, 179, 71, 0.82);
+  background:
+    linear-gradient(180deg, rgba(255, 179, 71, 0.16), rgba(255, 179, 71, 0.04)),
+    rgba(18, 27, 43, 0.9);
+  box-shadow:
+    0 0 0 1px rgba(255, 179, 71, 0.24),
+    0 0 0 4px rgba(255, 179, 71, 0.07);
+}
+
+.analytics-year-card-current .analytics-insight-head strong::after {
+  content: "Текущий";
+  display: inline-flex;
+  margin-left: var(--space-2);
+  padding: 0.08rem 0.42rem;
+  border-radius: 999px;
+  background: rgba(255, 179, 71, 0.16);
+  color: #ffd18a;
+  font-size: 10px;
+  font-weight: 800;
 }
 
 .analytics-year-card .analytics-income {

@@ -37,6 +37,18 @@
     node.classList.toggle("has-right-fade", scrollLeft < maxScrollLeft - edgeTolerance);
   }
 
+  function todayIsoDate() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function currentMonthAnchor() {
+    return todayIsoDate().slice(0, 7);
+  }
+
   function bindCalendarScrollUi() {
     if (calendarScrollUiBound || !el.analyticsCalendarScrollWrap) {
       return;
@@ -380,6 +392,7 @@
     }
     const anchor = parseMonthAnchor(data.month) || currentAnchorDate();
     syncMonthLabelByView(anchor, "month");
+    const today = todayIsoDate();
     el.analyticsCalendarBody.innerHTML = "";
     for (const week of data.weeks || []) {
       const tr = document.createElement("tr");
@@ -388,7 +401,12 @@
       const weekResult = describeResult(weekCashflow.resultTotal);
       for (const day of week.days || []) {
         const cell = document.createElement("td");
-        cell.className = `analytics-day-cell ${day.in_month ? "" : "analytics-day-cell-out"}`.trim();
+        const isToday = day.in_month && day.date === today;
+        cell.className = [
+          "analytics-day-cell",
+          day.in_month ? "" : "analytics-day-cell-out",
+          isToday ? "analytics-day-cell-today" : "",
+        ].filter(Boolean).join(" ");
         if (!day.in_month) {
           cell.innerHTML = "<span class='muted-small'>·</span>";
         } else {
@@ -453,6 +471,7 @@
     }
     syncMonthLabelByView(new Date(Date.UTC(Number(data.year || 0), 0, 1)), "year");
     const months = Array.isArray(data.months) ? data.months : [];
+    const currentMonth = currentMonthAnchor();
     el.analyticsYearGrid.innerHTML = months
       .map((item) => {
         const cashflow = resolveCashflowTotals(item);
@@ -461,8 +480,9 @@
         const label = monthDate
           ? monthDate.toLocaleDateString("ru-RU", { month: "short", year: "numeric", timeZone: "UTC" })
           : item.month;
+        const isCurrentMonth = item.month === currentMonth;
         return `
-          <article class="analytics-year-card" data-analytics-month-anchor="${item.month}">
+          <article class="analytics-year-card ${isCurrentMonth ? "analytics-year-card-current" : ""}" data-analytics-month-anchor="${item.month}">
             <div class="analytics-insight-head">
               <strong>${label}</strong>
               <span class="muted-small analytics-ops">${cashflow.eventsCount} событ.</span>

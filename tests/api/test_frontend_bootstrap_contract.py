@@ -730,6 +730,17 @@ def test_analytics_calendar_money_tooltip_uses_app_font_not_native_title():
     assert ".analytics-calendar-tooltip {\n  font-family: var(--money-font-family);\n}" in analytics_css
 
 
+def test_number_inputs_hide_native_spin_buttons():
+    controls_css = (REPO_ROOT / "static" / "css" / "components-controls.css").read_text(encoding="utf-8")
+
+    assert 'input[type="number"] {\n  appearance: textfield !important;' in controls_css
+    assert "-webkit-appearance: none !important;" in controls_css
+    assert "-moz-appearance: textfield !important;" in controls_css
+    assert "input[type=\"number\"]::-webkit-outer-spin-button" in controls_css
+    assert "input[type=\"number\"]::-webkit-inner-spin-button" in controls_css
+    assert "display: none;" in controls_css
+
+
 def test_receipt_line_total_live_update_keeps_currency_symbol():
     receipt = (REPO_ROOT / "static" / "js" / "app-features-operation-modal-receipt.js").read_text(encoding="utf-8")
     interactions = (

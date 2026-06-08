@@ -42,14 +42,16 @@ select,
 }
 
 input[type="number"] {
-  appearance: textfield;
-  -moz-appearance: textfield;
+  appearance: textfield !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: textfield !important;
 }
 
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button {
+  display: none;
   margin: 0;
-  -webkit-appearance: none;
+  -webkit-appearance: none !important;
 }
 
 select {
