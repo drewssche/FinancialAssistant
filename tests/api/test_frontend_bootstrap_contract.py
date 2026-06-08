@@ -45,6 +45,7 @@ def test_runtime_registry_is_loaded_before_feature_modules():
     script_sources = re.findall(r'"(/static/js/[^"]+\.js)"', manifest)
 
     registry_index = script_sources.index("/static/js/app-runtime-registry.js")
+    assert registry_index < script_sources.index("/static/js/app-activity.js")
     assert registry_index < script_sources.index("/static/js/app-features-dashboard.js")
     assert registry_index < script_sources.index("/static/js/app-features-session-auth.js")
     assert registry_index < script_sources.index("/static/js/app-features-session.js")
@@ -95,6 +96,7 @@ def test_runtime_registry_is_loaded_before_feature_modules():
 
 def test_runtime_registry_registrations_exist_for_key_modules():
     runtime_files = [
+        REPO_ROOT / "static" / "js" / "app-activity.js",
         REPO_ROOT / "static" / "js" / "app-features-session-preferences.js",
         REPO_ROOT / "static" / "js" / "app-features-session-auth.js",
         REPO_ROOT / "static" / "js" / "app-features-session.js",
@@ -110,6 +112,7 @@ def test_runtime_registry_registrations_exist_for_key_modules():
 
     contents = "\n".join(path.read_text(encoding="utf-8") for path in runtime_files)
 
+    assert 'registerRuntimeModule?.("activity"' in contents
     assert 'registerRuntimeModule?.("session-preferences"' in contents
     assert 'registerRuntimeModule?.("session-auth"' in contents
     assert 'registerRuntimeModule?.("session"' in contents
@@ -121,6 +124,40 @@ def test_runtime_registry_registrations_exist_for_key_modules():
     assert 'registerRuntimeModule?.("item-catalog"' in contents
     assert 'registerRuntimeModule?.("operations"' in contents
     assert 'registerRuntimeModule?.("operation-modal"' in contents
+
+
+def test_activity_journal_modal_is_available_in_frontend_templates():
+    modals = (REPO_ROOT / "static" / "js" / "templates" / "modals.js").read_text(encoding="utf-8")
+    modals_item_catalog = (REPO_ROOT / "static" / "js" / "templates" / "modals-item-catalog.js").read_text(encoding="utf-8")
+    shell_primary = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-primary.js").read_text(encoding="utf-8")
+    shell_secondary = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-secondary.js").read_text(encoding="utf-8")
+    activity = (REPO_ROOT / "static" / "js" / "app-activity.js").read_text(encoding="utf-8")
+    elements = (REPO_ROOT / "static" / "js" / "app-core-elements.js").read_text(encoding="utf-8")
+    session_auth = (REPO_ROOT / "static" / "js" / "app-features-session-auth.js").read_text(encoding="utf-8")
+    init_core = (REPO_ROOT / "static" / "js" / "app-init-core.js").read_text(encoding="utf-8")
+
+    assert 'id="activityModal"' in modals
+    assert 'id="activityList"' in modals
+    assert 'id="closeActivityModalBtn"' in modals
+    for button_id in (
+        "createModalActivityBtn",
+        "editModalActivityBtn",
+        "editGroupActivityBtn",
+        "editCategoryActivityBtn",
+    ):
+        assert f'id="{button_id}"' in modals
+        assert f'{button_id}: document.getElementById("{button_id}")' in elements
+    assert 'id="itemTemplateActivityBtn"' in modals_item_catalog
+    assert 'itemTemplateActivityBtn: document.getElementById("itemTemplateActivityBtn")' in elements
+    assert 'id="dashboardCurrencyActivityBtn"' in shell_primary
+    assert 'id="currencyPortfolioActivityBtn"' in shell_secondary
+    assert 'dashboardCurrencyActivityBtn: document.getElementById("dashboardCurrencyActivityBtn")' in elements
+    assert 'currencyPortfolioActivityBtn: document.getElementById("currencyPortfolioActivityBtn")' in elements
+    assert 'activityModal: document.getElementById("activityModal")' in elements
+    assert "function configureActivityButton" in activity
+    assert '"currency_portfolio"' in session_auth
+    assert 'getRuntimeModule?.("activity")' in init_core
+    assert "bindActivityUi" in init_core
 
 
 def test_dashboard_navigation_ignores_stale_section_loads():

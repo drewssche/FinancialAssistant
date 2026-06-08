@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.logging import log_background_job_event
 from app.repositories.currency_repo import CurrencyRepository
 from app.repositories.preference_repo import PreferenceRepository
+from app.services.activity_service import ActivityService
 from app.services.currency_rate_refresh_service import CurrencyRateRefreshService
 from app.services.currency_service import CurrencyService
 from app.services.telegram_message_format import ICON_TARGET, threshold_icon, title
@@ -38,6 +39,7 @@ class TelegramCurrencyAlertBotService:
         self.preferences = PreferenceRepository(db)
         self.currency_service = CurrencyService(db)
         self.refresh_service = CurrencyRateRefreshService(db)
+        self.activity = ActivityService(db)
 
     def list_due_deliveries(self) -> list[TelegramCurrencyAlertDelivery]:
         deliveries: list[TelegramCurrencyAlertDelivery] = []
@@ -76,6 +78,25 @@ class TelegramCurrencyAlertBotService:
             config = alerts.setdefault(trigger.currency, {})
             key = "last_above_marker" if trigger.direction == "above" else "last_below_marker"
             config[key] = trigger.marker
+            self.activity.record(
+                user_id=delivery.user_id,
+                actor_user_id=None,
+                entity_type="currency_portfolio",
+                entity_id=delivery.user_id,
+                event_type="telegram_sent",
+                title="Валютный алерт Telegram отправлен",
+                source="telegram",
+                metadata={
+                    "message_type": "currency_alert",
+                    "chat_id": delivery.chat_id,
+                    "currency": trigger.currency,
+                    "direction": trigger.direction,
+                    "threshold": str(trigger.threshold),
+                    "current_rate": str(trigger.current_rate),
+                    "rate_date": trigger.rate_date,
+                    "marker": trigger.marker,
+                },
+            )
         currency_prefs["currency_alerts"] = alerts
         prefs["currency"] = currency_prefs
         preference.data = prefs
@@ -105,8 +126,9 @@ class TelegramCurrencyAlertBotService:
                 continue
             current_rate = Decimal(rate_row["rate"])
             rate_date = str(rate_row.get("rate_date") or "")
-            marker = f"{rate_date}:{current_rate:.6f}"
             above_rate = alert.get("above_rate")
+            if above_rate is not None:
+                marker = f"{rate_date}:{current_rate:.6f}:above:{above_rate:.6f}"
             if above_rate is not None and current_rate >= above_rate and marker != alert.get("last_above_marker"):
                 triggers.append(
                     CurrencyAlertTrigger(
@@ -119,6 +141,8 @@ class TelegramCurrencyAlertBotService:
                     )
                 )
             below_rate = alert.get("below_rate")
+            if below_rate is not None:
+                marker = f"{rate_date}:{current_rate:.6f}:below:{below_rate:.6f}"
             if below_rate is not None and current_rate <= below_rate and marker != alert.get("last_below_marker"):
                 triggers.append(
                     CurrencyAlertTrigger(

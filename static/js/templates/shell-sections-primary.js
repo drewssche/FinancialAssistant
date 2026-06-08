@@ -11,6 +11,7 @@
                 <p class="subtitle">Позиции и курсы по отслеживаемым валютам</p>
               </div>
               <div class="toolbar">
+                <button id="dashboardCurrencyActivityBtn" class="btn btn-secondary btn-xs hidden" type="button">Журнал</button>
                 <button id="dashboardRefreshAllCurrencyRatesBtn" class="btn btn-secondary btn-xs" type="button">Обновить курсы</button>
                 <button id="openCurrencyTabBtn" class="btn btn-secondary" type="button">Открыть раздел Валюта</button>
               </div>

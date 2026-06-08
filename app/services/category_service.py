@@ -9,12 +9,29 @@ from app.core.cache import (
     set_json,
 )
 from app.repositories.category_repo import CategoryRepository
+from app.services.activity_service import ActivityService
 
 
 class CategoryService:
+    CATEGORY_FIELDS = ["name", "kind", "icon", "group_id", "include_in_statistics"]
+    CATEGORY_LABELS = {
+        "name": "Название",
+        "kind": "Тип",
+        "icon": "Иконка",
+        "group_id": "Группа",
+        "include_in_statistics": "В статистике",
+    }
+    GROUP_FIELDS = ["name", "kind", "accent_color"]
+    GROUP_LABELS = {
+        "name": "Название",
+        "kind": "Тип",
+        "accent_color": "Цвет",
+    }
+
     def __init__(self, db: Session):
         self.db = db
         self.repo = CategoryRepository(db)
+        self.activity = ActivityService(db)
 
     @staticmethod
     def _serialize_category_row(row) -> dict:
@@ -118,6 +135,14 @@ class CategoryService:
             icon=icon,
             include_in_statistics=include_in_statistics,
         )
+        self.activity.record_created(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="category",
+            entity_id=int(category.id),
+            title="Категория создана",
+            metadata=ActivityService.snapshot(category, self.CATEGORY_FIELDS),
+        )
         self.db.commit()
         invalidate_dashboard_analytics_cache(user_id)
         invalidate_categories_cache(user_id)
@@ -128,6 +153,15 @@ class CategoryService:
         category = self.repo.get_by_id_for_user(user_id=user_id, category_id=category_id)
         if not category:
             raise LookupError("Category not found")
+        self.activity.record(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="category",
+            entity_id=int(category.id),
+            event_type="deleted",
+            title="Категория удалена",
+            metadata=ActivityService.snapshot(category, self.CATEGORY_FIELDS),
+        )
         self.repo.delete(category)
         self.db.commit()
         invalidate_dashboard_analytics_cache(user_id)
@@ -137,6 +171,7 @@ class CategoryService:
         category = self.repo.get_by_id_for_user(user_id=user_id, category_id=category_id)
         if not category:
             raise LookupError("Category not found")
+        before_activity = ActivityService.snapshot(category, self.CATEGORY_FIELDS)
 
         kind = updates.get("kind", category.kind)
         if kind not in {"income", "expense"}:
@@ -153,6 +188,17 @@ class CategoryService:
             raise ValueError("name must not be empty")
 
         category = self.repo.update(category, updates)
+        after_activity = ActivityService.snapshot(category, self.CATEGORY_FIELDS)
+        self.activity.record_updated(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="category",
+            entity_id=int(category.id),
+            before=before_activity,
+            after=after_activity,
+            labels=self.CATEGORY_LABELS,
+            title="Категория изменена",
+        )
         self.db.commit()
         invalidate_dashboard_analytics_cache(user_id)
         invalidate_categories_cache(user_id)
@@ -190,6 +236,14 @@ class CategoryService:
             kind=kind,
             accent_color=accent_color,
         )
+        self.activity.record_created(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="category_group",
+            entity_id=int(group.id),
+            title="Группа категорий создана",
+            metadata=ActivityService.snapshot(group, self.GROUP_FIELDS),
+        )
         self.db.commit()
         invalidate_dashboard_analytics_cache(user_id)
         invalidate_categories_cache(user_id)
@@ -200,9 +254,21 @@ class CategoryService:
         group = self.repo.get_group_by_id_for_user(user_id=user_id, group_id=group_id)
         if not group:
             raise LookupError("Group not found")
+        before_activity = ActivityService.snapshot(group, self.GROUP_FIELDS)
         if "name" in updates and not updates["name"]:
             raise ValueError("name must not be empty")
         group = self.repo.update_group(group, updates)
+        after_activity = ActivityService.snapshot(group, self.GROUP_FIELDS)
+        self.activity.record_updated(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="category_group",
+            entity_id=int(group.id),
+            before=before_activity,
+            after=after_activity,
+            labels=self.GROUP_LABELS,
+            title="Группа категорий изменена",
+        )
         self.db.commit()
         invalidate_dashboard_analytics_cache(user_id)
         invalidate_categories_cache(user_id)
@@ -213,6 +279,15 @@ class CategoryService:
         group = self.repo.get_group_by_id_for_user(user_id=user_id, group_id=group_id)
         if not group:
             raise LookupError("Group not found")
+        self.activity.record(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="category_group",
+            entity_id=int(group.id),
+            event_type="deleted",
+            title="Группа категорий удалена",
+            metadata=ActivityService.snapshot(group, self.GROUP_FIELDS),
+        )
         self.repo.clear_group_refs(user_id=user_id, group_id=group_id)
         self.repo.delete_group(group)
         self.db.commit()

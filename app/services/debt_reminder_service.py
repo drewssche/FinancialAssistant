@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.logging import log_background_job_event
 from app.repositories.debt_repo import DebtRepository
+from app.services.activity_service import ActivityService
 from app.services.telegram_message_format import ICON_REMINDER, ICON_WARNING, money_direction_icon, title
 
 
@@ -17,6 +18,7 @@ class DebtReminderService:
     def __init__(self, db: Session):
         self.db = db
         self.repo = DebtRepository(db)
+        self.activity = ActivityService(db)
 
     def _now_utc(self) -> datetime:
         return datetime.now(timezone.utc)
@@ -194,6 +196,7 @@ class DebtReminderService:
         debt = refreshed["debt"]
         event_type = str(refreshed.get("event_type") or job.event_type or self.EVENT_TYPE_DUE_SOON)
         config = refreshed.get("config") or {}
+        chat_id = refreshed.get("chat_id")
         now_utc = self._now_utc()
         self.repo.mark_reminder_job_sent(job, sent_at=now_utc)
         if event_type == self.EVENT_TYPE_OVERDUE and debt.due_date:
@@ -208,6 +211,24 @@ class DebtReminderService:
                 event_type=self.EVENT_TYPE_OVERDUE,
                 scheduled_for=next_scheduled_for,
             )
+        self.activity.record(
+            user_id=int(debt.user_id),
+            actor_user_id=None,
+            entity_type="debt",
+            entity_id=int(debt.id),
+            event_type="telegram_sent",
+            title="Сообщение Telegram отправлено",
+            source="telegram",
+            created_at=now_utc,
+            metadata={
+                "message_type": "debt_reminder",
+                "reminder_type": event_type,
+                "sent_at": now_utc.isoformat(),
+                "chat_id": str(chat_id) if chat_id else None,
+                "job_id": int(job.id),
+                "due_date": debt.due_date.isoformat() if debt.due_date else None,
+            },
+        )
         self.db.commit()
         log_background_job_event(
             "debt_reminder",

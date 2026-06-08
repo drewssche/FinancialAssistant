@@ -99,6 +99,52 @@ def test_operations_crud_and_filters(client: TestClient):
     assert not_found.status_code == 404
 
 
+def test_activity_journal_tracks_operation_create_update_delete(client: TestClient):
+    created = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "10.00",
+            "operation_date": "2026-03-04",
+            "note": "initial note",
+        },
+    )
+    assert created.status_code == 201, created.text
+    operation_id = created.json()["id"]
+
+    updated = client.patch(
+        f"/api/v1/operations/{operation_id}",
+        json={"amount": "12.50", "note": "updated note"},
+    )
+    assert updated.status_code == 200, updated.text
+
+    journal = client.get(
+        "/api/v1/activity",
+        params={"entity_type": "operation", "entity_id": operation_id, "page_size": 20},
+    )
+    assert journal.status_code == 200, journal.text
+    payload = journal.json()
+    assert payload["total"] == 2
+    titles = [item["title"] for item in payload["items"]]
+    assert titles == ["Операция изменена", "Операция создана"]
+    update_event = payload["items"][0]
+    changed_fields = {item["field"]: item for item in update_event["changes"]}
+    assert changed_fields["original_amount"]["old"] == "10.00"
+    assert changed_fields["original_amount"]["new"] == "12.50"
+    assert changed_fields["note"]["old"] == "initial note"
+    assert changed_fields["note"]["new"] == "updated note"
+
+    removed = client.delete(f"/api/v1/operations/{operation_id}")
+    assert removed.status_code == 204
+
+    journal_after_delete = client.get(
+        "/api/v1/activity",
+        params={"entity_type": "operation", "entity_id": operation_id, "page_size": 20},
+    )
+    assert journal_after_delete.status_code == 200
+    assert [item["title"] for item in journal_after_delete.json()["items"]][0] == "Операция удалена"
+
+
 def test_operations_support_original_currency_and_base_conversion(client: TestClient):
     created = client.post(
         "/api/v1/operations",

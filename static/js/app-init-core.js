@@ -39,6 +39,10 @@
     return window.App.getRuntimeModule?.("picker-utils");
   }
 
+  function getActivityFeature() {
+    return window.App.getRuntimeModule?.("activity") || {};
+  }
+
   function isCompactMobileViewport() {
     return window.matchMedia("(max-width: 640px)").matches;
   }
@@ -713,6 +717,7 @@
     bound = true;
     bindCoreHandlers();
     bindModalHandlers();
+    getActivityFeature().bindActivityUi?.();
   }
 
   const api = {

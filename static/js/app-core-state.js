@@ -9,6 +9,7 @@
       telegramWebAppReady: false,
       telegramWebAppAvailable: false,
       browserTelegramLoginReady: false,
+      currentUserId: null,
       preferences: null,
       page: 1,
       pageSize: 20,

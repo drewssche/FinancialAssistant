@@ -648,6 +648,7 @@
               </button>
               <div class="app-popover hidden plan-card-actions-popover table-kebab-popover" data-plan-menu="${item.id}">
                 <div class="plan-card-actions-menu table-kebab-menu">
+                  <button class="btn btn-secondary" type="button" data-activity-entity-type="plan" data-activity-entity-id="${item.id}">Журнал</button>
                   ${canEdit ? `<button class="btn btn-secondary" type="button" data-plan-action="edit" data-plan-id="${item.id}">Редактировать</button>` : ""}
                   ${canSkip ? `<button class="btn btn-secondary" type="button" data-plan-action="skip" data-plan-id="${item.id}">Пропустить</button>` : ""}
                   ${canDelete ? `<button class="btn btn-danger" type="button" data-plan-action="delete" data-plan-id="${item.id}">Удалить</button>` : ""}
@@ -1087,6 +1088,7 @@
   async function openCreatePlan() {
     await operationModal.openCreateModal();
     await fillPlanModal(null);
+    operationModal.setCreateModalActivity?.(null, null);
   }
 
   async function submitPlanForm(event) {
@@ -1116,6 +1118,7 @@
     if (action === "edit") {
       await operationModal.openCreateModal();
       await fillPlanModal(item);
+      operationModal.setCreateModalActivity?.("plan", item.id);
       return;
     }
     if (action === "confirm") {

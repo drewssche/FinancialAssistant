@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.logging import log_background_job_event
 from app.repositories.plan_repo import PlanRepository
+from app.services.activity_service import ActivityService
 from app.services.telegram_message_format import ICON_RECEIPT, money_direction_icon, title
 
 
@@ -14,6 +15,7 @@ class PlanReminderService:
     def __init__(self, db: Session):
         self.db = db
         self.repo = PlanRepository(db)
+        self.activity = ActivityService(db)
 
     def _now_utc(self) -> datetime:
         return datetime.now(timezone.utc)
@@ -166,6 +168,7 @@ class PlanReminderService:
         config = refreshed.get("config") or config
         now_utc = self._now_utc()
         self.repo.mark_reminder_job_sent(job, sent_at=now_utc)
+        chat_id = refreshed.get("chat_id")
         self.repo.create_event(
             user_id=int(plan.user_id),
             plan_id=int(plan.id),
@@ -179,6 +182,23 @@ class PlanReminderService:
         )
         plan.last_reminded_at = now_utc
         plan.reminder_sent_count = int(plan.reminder_sent_count or 0) + 1
+        self.activity.record(
+            user_id=int(plan.user_id),
+            actor_user_id=None,
+            entity_type="plan",
+            entity_id=int(plan.id),
+            event_type="telegram_sent",
+            title="Сообщение Telegram отправлено",
+            source="telegram",
+            created_at=now_utc,
+            metadata={
+                "message_type": "plan_reminder",
+                "sent_at": now_utc.isoformat(),
+                "chat_id": str(chat_id) if chat_id else None,
+                "job_id": int(job.id),
+                "scheduled_date": plan.scheduled_date.isoformat(),
+            },
+        )
         if plan.status == "active" and bool(config.get("enabled", True)):
             next_scheduled_for = self._compute_next_reminder_at(
                 scheduled_date=plan.scheduled_date,

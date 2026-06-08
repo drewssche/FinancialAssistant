@@ -16,11 +16,24 @@ from app.core.cache import (
 from app.repositories.debt_repo import DebtRepository
 from app.repositories.user_repo import UserRepository
 from app.repositories.currency_repo import CurrencyRepository
+from app.services.activity_service import ActivityService
 from app.services.debt_reminder_service import DebtReminderService
 from app.services.operation_service import OperationService
 
 
 class DebtService:
+    ACTIVITY_FIELDS = ["counterparty_id", "direction", "principal", "currency", "start_date", "due_date", "note", "closure_reason"]
+    ACTIVITY_LABELS = {
+        "counterparty_id": "Контрагент",
+        "direction": "Тип",
+        "principal": "Сумма",
+        "currency": "Валюта",
+        "start_date": "Дата начала",
+        "due_date": "Срок",
+        "note": "Комментарий",
+        "closure_reason": "Причина закрытия",
+    }
+
     def __init__(self, db: Session):
         self.db = db
         self.repo = DebtRepository(db)
@@ -28,6 +41,7 @@ class DebtService:
         self.currency_repo = CurrencyRepository(db)
         self.operation_service = OperationService(db)
         self.debt_reminder_service = DebtReminderService(db)
+        self.activity = ActivityService(db)
 
     @staticmethod
     def _normalize_counterparty_name(value: str) -> tuple[str, str]:
@@ -130,6 +144,7 @@ class DebtService:
             base_currency=base_currency,
         )
         if merge_target:
+            before_activity = ActivityService.snapshot(merge_target, self.ACTIVITY_FIELDS)
             updates = {
                 "principal": Decimal(merge_target.principal) + Decimal(principal),
                 "original_principal": Decimal(getattr(merge_target, "original_principal", merge_target.principal)) + Decimal(principal),
@@ -142,6 +157,16 @@ class DebtService:
             if note and not merge_target.note:
                 updates["note"] = note
             debt = self.repo.update_debt(merge_target, updates)
+            self.activity.record_updated(
+                user_id=user_id,
+                actor_user_id=user_id,
+                entity_type="debt",
+                entity_id=int(debt.id),
+                before=before_activity,
+                after=ActivityService.snapshot(debt, self.ACTIVITY_FIELDS),
+                labels=self.ACTIVITY_LABELS,
+                title="Долг увеличен",
+            )
         else:
             debt = self.repo.create_debt(
                 user_id=user_id,
@@ -155,11 +180,31 @@ class DebtService:
                 due_date=due_date,
                 note=note,
             )
+            self.activity.record_created(
+                user_id=user_id,
+                actor_user_id=user_id,
+                entity_type="debt",
+                entity_id=int(debt.id),
+                title="Долг создан",
+                metadata={
+                    **ActivityService.snapshot(debt, self.ACTIVITY_FIELDS),
+                    "counterparty": cp.name,
+                },
+            )
         self.repo.create_issuance(
             debt_id=debt.id,
             amount=principal,
             issuance_date=start_date,
             note=note,
+        )
+        self.activity.record(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="debt",
+            entity_id=int(debt.id),
+            event_type="issued",
+            title="Сумма долга выдана",
+            metadata={"amount": str(principal), "date": start_date.isoformat(), "note": note},
         )
         self.db.commit()
         invalidate_dashboard_summary_cache(user_id)
@@ -202,6 +247,15 @@ class DebtService:
             repayment_date=repayment_date,
             note=note,
         )
+        self.activity.record(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="debt",
+            entity_id=int(debt.id),
+            event_type="repaid",
+            title="Погашение долга",
+            metadata={"amount": str(applied_amount), "date": repayment_date.isoformat(), "note": note},
+        )
 
         overpay = amount - applied_amount
         if overpay > 0:
@@ -237,11 +291,28 @@ class DebtService:
                     due_date=None,
                     note=carry_note,
                 )
+                self.activity.record_created(
+                    user_id=user_id,
+                    actor_user_id=user_id,
+                    entity_type="debt",
+                    entity_id=int(counter_debt.id),
+                    title="Долг создан из переплаты",
+                    metadata=ActivityService.snapshot(counter_debt, self.ACTIVITY_FIELDS),
+                )
             self.repo.create_issuance(
                 debt_id=counter_debt.id,
                 amount=overpay,
                 issuance_date=repayment_date,
                 note=carry_note,
+            )
+            self.activity.record(
+                user_id=user_id,
+                actor_user_id=user_id,
+                entity_type="debt",
+                entity_id=int(counter_debt.id),
+                event_type="issued",
+                title="Сумма долга выдана",
+                metadata={"amount": str(overpay), "date": repayment_date.isoformat(), "note": carry_note},
             )
 
         self.db.commit()
@@ -281,6 +352,15 @@ class DebtService:
         )
         remaining_after = principal - (repaid + forgiven + applied_amount)
         debt.closure_reason = "forgiven" if remaining_after <= 0 else None
+        self.activity.record(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="debt",
+            entity_id=int(debt.id),
+            event_type="forgiven",
+            title="Долг прощен",
+            metadata={"amount": str(applied_amount), "date": forgiven_date.isoformat(), "note": note},
+        )
         self.db.commit()
         invalidate_dashboard_summary_cache(user_id)
         invalidate_dashboard_analytics_cache(user_id)
@@ -309,6 +389,7 @@ class DebtService:
         debt = self.repo.get_debt_by_id_for_user(user_id=user_id, debt_id=debt_id)
         if not debt:
             raise LookupError("Debt not found")
+        before_activity = ActivityService.snapshot(debt, self.ACTIVITY_FIELDS)
 
         if "counterparty" in updates:
             normalized_name, name_ci = self._normalize_counterparty_name(updates["counterparty"] or "")
@@ -350,6 +431,16 @@ class DebtService:
         payload = {key: value for key, value in updates.items() if key in allowed}
         if payload:
             debt = self.repo.update_debt(debt, payload)
+            self.activity.record_updated(
+                user_id=user_id,
+                actor_user_id=user_id,
+                entity_type="debt",
+                entity_id=int(debt.id),
+                before=before_activity,
+                after=ActivityService.snapshot(debt, self.ACTIVITY_FIELDS),
+                labels=self.ACTIVITY_LABELS,
+                title="Долг изменен",
+            )
             self.db.commit()
             invalidate_dashboard_summary_cache(user_id)
             invalidate_dashboard_analytics_cache(user_id)
@@ -362,6 +453,15 @@ class DebtService:
         debt = self.repo.get_debt_by_id_for_user(user_id=user_id, debt_id=debt_id)
         if not debt:
             raise LookupError("Debt not found")
+        self.activity.record(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="debt",
+            entity_id=int(debt.id),
+            event_type="deleted",
+            title="Долг удален",
+            metadata=ActivityService.snapshot(debt, self.ACTIVITY_FIELDS),
+        )
         self.repo.delete_debt(debt)
         self.db.commit()
         invalidate_dashboard_summary_cache(user_id)

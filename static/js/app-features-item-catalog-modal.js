@@ -19,12 +19,17 @@
     const sourcesFeature = createItemCatalogSourcesFeature ? createItemCatalogSourcesFeature(deps) : null;
     const pickerUtils = window.App.getRuntimeModule?.("picker-utils") || {};
 
+    function getActivityFeature() {
+      return window.App.getRuntimeModule?.("activity") || {};
+    }
+
     function openItemTemplateModal(item = null) {
       if (!el.itemTemplateModal || !el.itemTemplateForm) {
         return;
       }
       const isEdit = Boolean(item?.id);
       state.editItemTemplateId = isEdit ? Number(item.id) : null;
+      getActivityFeature().configureActivityButton?.(el.itemTemplateActivityBtn, isEdit ? "item_template" : null, item?.id);
       if (el.itemTemplateModalTitle) {
         el.itemTemplateModalTitle.textContent = isEdit ? "Редактировать позицию" : "Новая позиция";
       }
@@ -64,6 +69,7 @@
 
     function closeItemTemplateModal() {
       state.editItemTemplateId = null;
+      getActivityFeature().configureActivityButton?.(el.itemTemplateActivityBtn, null, null);
       if (el.itemTemplateForm) {
         el.itemTemplateForm.reset();
       }

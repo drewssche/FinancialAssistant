@@ -94,6 +94,7 @@
             <div class="panel-head row between">
               <div></div>
               <div class="toolbar">
+                <button id="currencyPortfolioActivityBtn" class="btn btn-secondary" type="button">Журнал</button>
                 <button id="openCurrencyTradePanelBtn" class="btn btn-cta" type="button">+ Сделка</button>
                 <button id="openCurrencyRatePanelBtn" class="btn btn-secondary" type="button">Обновить курс</button>
               </div>

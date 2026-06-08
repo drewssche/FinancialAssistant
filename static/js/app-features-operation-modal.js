@@ -24,6 +24,18 @@
       group_name: category.group_name || "",
     };
   }
+
+  function getActivityFeature() {
+    return window.App.getRuntimeModule?.("activity") || {};
+  }
+
+  function setCreateModalActivity(entityType, entityId) {
+    getActivityFeature().configureActivityButton?.(el.createModalActivityBtn, entityType, entityId);
+  }
+
+  function setEditModalActivity(entityType, entityId) {
+    getActivityFeature().configureActivityButton?.(el.editModalActivityBtn, entityType, entityId);
+  }
   let getDebtPreviewSnapshot = null;
   const previewModule = window.App.getRuntimeModule?.("operation-modal-preview");
   const preview = previewModule?.build({
@@ -1263,6 +1275,7 @@
     state.editPlanId = null;
     state.editDebtCreateId = null;
     state.editCurrencyTradeId = null;
+    setCreateModalActivity(null, null);
     const createTitle = document.getElementById("createTitle");
     if (createTitle) {
       createTitle.textContent = "Новая операция";
@@ -1403,6 +1416,7 @@
     state.editPlanId = null;
     state.editDebtCreateId = null;
     state.editCurrencyTradeId = null;
+    setCreateModalActivity(null, null);
     const createTitle = document.getElementById("createTitle");
     if (createTitle) {
       createTitle.textContent = "Новая операция";
@@ -1415,6 +1429,7 @@
     }
     await openCreateModal({ entryMode: "debt" });
     state.editDebtCreateId = Number(payload.id);
+    setCreateModalActivity("debt", payload.id);
     if (el.createEntryModeSwitch) {
       el.createEntryModeSwitch.classList.add("hidden");
     }
@@ -1455,6 +1470,7 @@
     }
     await openCreateModal({ entryMode: "currency" });
     state.editCurrencyTradeId = Number(payload.id);
+    setCreateModalActivity("currency_trade", payload.id);
     if (el.createEntryModeSwitch) {
       el.createEntryModeSwitch.classList.add("hidden");
     }
@@ -1498,6 +1514,7 @@
   async function openEditModal(item) {
     await ensureCategoryCatalogReady("edit");
     state.editOperationId = item.id;
+    setEditModalActivity("operation", item.id);
     document.getElementById("editAmount").value = item.original_amount || item.amount;
     syncSelectableCurrencyFields({ editCurrency: item.currency || "" });
     if (el.editCurrency) {
@@ -1555,6 +1572,7 @@
   }
   function closeEditModal() {
     state.editOperationId = null;
+    setEditModalActivity(null, null);
     clearReceiptItems("edit");
     setEditOperationMode("common");
     if (el.editUseFxSettlement) {
@@ -1782,6 +1800,7 @@
     applyDebtCurrencyUi,
     updateDebtDueHint,
     openCreateModal,
+    setCreateModalActivity,
     openCreateModalForCurrency,
     openCreateModalForCurrencyEdit,
     openCreateModalForDebtEdit,

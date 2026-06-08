@@ -13,15 +13,27 @@ from app.core.cache import (
 )
 from app.db.models import PlanOperation, PlanReceiptItem
 from app.repositories.operation_repo import OperationRepository
+from app.services.activity_service import ActivityService
 
 
 MONEY_Q = Decimal("0.01")
 
 
 class OperationItemTemplateService:
+    ACTIVITY_FIELDS = ["shop_name", "name", "last_category_id", "use_count", "is_archived", "last_used_at"]
+    ACTIVITY_LABELS = {
+        "shop_name": "Источник",
+        "name": "Название",
+        "last_category_id": "Категория",
+        "use_count": "Использований",
+        "is_archived": "Архив",
+        "last_used_at": "Последнее использование",
+    }
+
     def __init__(self, db: Session, repo: OperationRepository):
         self.db = db
         self.repo = repo
+        self.activity = ActivityService(db)
 
     def list_item_templates(
         self,
@@ -184,7 +196,16 @@ class OperationItemTemplateService:
                 name_ci=name_ci,
                 last_category_id=None,
             )
+            self.activity.record_created(
+                user_id=user_id,
+                actor_user_id=user_id,
+                entity_type="item_template",
+                entity_id=int(item.id),
+                title="Позиция каталога создана",
+                metadata=ActivityService.snapshot(item, self.ACTIVITY_FIELDS),
+            )
         else:
+            before_activity = ActivityService.snapshot(item, self.ACTIVITY_FIELDS)
             item.is_archived = False
             if item.shop_name != normalized_shop:
                 item.shop_name = normalized_shop
@@ -193,6 +214,16 @@ class OperationItemTemplateService:
                 item.name = normalized_name
                 item.name_ci = name_ci
             self.db.flush()
+            self.activity.record_updated(
+                user_id=user_id,
+                actor_user_id=user_id,
+                entity_type="item_template",
+                entity_id=int(item.id),
+                before=before_activity,
+                after=ActivityService.snapshot(item, self.ACTIVITY_FIELDS),
+                labels=self.ACTIVITY_LABELS,
+                title="Позиция каталога восстановлена",
+            )
         if latest_unit_price is not None:
             next_price = self._money(latest_unit_price)
             recorded_at = latest_price_date or date.today()
@@ -203,6 +234,15 @@ class OperationItemTemplateService:
                     recorded_at=recorded_at,
                     source_operation_id=None,
                 )
+            self.activity.record(
+                user_id=user_id,
+                actor_user_id=user_id,
+                entity_type="item_template",
+                entity_id=int(item.id),
+                event_type="price_added",
+                title="Цена позиции добавлена",
+                metadata={"unit_price": str(next_price), "recorded_at": recorded_at.isoformat()},
+            )
         self.db.commit()
         invalidate_item_templates_cache(user_id)
         return self._serialize_item_template(item)
@@ -217,6 +257,7 @@ class OperationItemTemplateService:
         item = self.repo.get_item_template_by_id(user_id=user_id, template_id=template_id)
         if not item:
             raise LookupError("Item template not found")
+        before_activity = ActivityService.snapshot(item, self.ACTIVITY_FIELDS)
         next_shop = updates["shop_name"] if "shop_name" in updates else item.shop_name
         next_name = updates["name"] if "name" in updates else item.name
         normalized_shop, normalized_name = self._normalize_item_template_fields(shop_name=next_shop, name=next_name)
@@ -249,11 +290,42 @@ class OperationItemTemplateService:
                     recorded_at=recorded_at,
                     source_operation_id=None,
                 )
+            self.activity.record(
+                user_id=user_id,
+                actor_user_id=user_id,
+                entity_type="item_template",
+                entity_id=int(item.id),
+                event_type="price_added",
+                title="Цена позиции добавлена",
+                metadata={"unit_price": str(next_price), "recorded_at": recorded_at.isoformat()},
+            )
+        self.activity.record_updated(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="item_template",
+            entity_id=int(item.id),
+            before=before_activity,
+            after=ActivityService.snapshot(item, self.ACTIVITY_FIELDS),
+            labels=self.ACTIVITY_LABELS,
+            title="Позиция каталога изменена",
+        )
         self.db.commit()
         invalidate_item_templates_cache(user_id)
         return self._serialize_item_template(item)
 
     def delete_item_template(self, *, user_id: int, template_id: int) -> None:
+        item = self.repo.get_item_template_by_id(user_id=user_id, template_id=template_id)
+        if not item:
+            raise LookupError("Item template not found")
+        self.activity.record(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="item_template",
+            entity_id=int(item.id),
+            event_type="deleted",
+            title="Позиция каталога удалена",
+            metadata=ActivityService.snapshot(item, self.ACTIVITY_FIELDS),
+        )
         deleted = self.repo.archive_item_template(user_id=user_id, template_id=template_id)
         if not deleted:
             raise LookupError("Item template not found")

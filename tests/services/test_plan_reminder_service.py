@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.db.base import Base
-from app.db.models import AuthIdentity, PlanOperation, PlanOperationEvent, PlanReminderJob, User, UserPreference
+from app.db.models import ActivityEvent, AuthIdentity, PlanOperation, PlanOperationEvent, PlanReminderJob, User, UserPreference
 from app.services.plan_reminder_service import PlanReminderService
 
 
@@ -218,6 +218,10 @@ def test_mark_job_sent_writes_event_and_schedules_next_day_for_active_plan():
         assert len(jobs) == 2
         assert jobs[1].status == "pending"
         assert jobs[1].scheduled_for > jobs[0].scheduled_for
+        activity = db.query(ActivityEvent).filter(ActivityEvent.entity_type == "plan", ActivityEvent.entity_id == 1).one()
+        assert activity.event_type == "telegram_sent"
+        assert activity.source == "telegram"
+        assert activity.metadata_json["message_type"] == "plan_reminder"
     finally:
         db.close()
         Base.metadata.drop_all(bind=engine)

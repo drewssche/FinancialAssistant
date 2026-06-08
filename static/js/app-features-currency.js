@@ -608,9 +608,11 @@
       const menuItems = isLinkedSettlement
         ? [
           `<button class="btn btn-secondary" type="button" data-open-linked-operation-id="${Number(item.linked_operation_id)}">Открыть операцию</button>`,
+          `<button class="btn btn-secondary" type="button" data-activity-entity-type="currency_trade" data-activity-entity-id="${Number(item.id)}">Журнал</button>`,
           `<button class="btn btn-danger" type="button" data-delete-linked-operation-id="${Number(item.linked_operation_id)}">Удалить операцию</button>`,
         ].join("")
         : [
+          `<button class="btn btn-secondary" type="button" data-activity-entity-type="currency_trade" data-activity-entity-id="${Number(item.id)}">Журнал</button>`,
           `<button class="btn btn-secondary" type="button" data-edit-currency-trade-id="${Number(item.id)}">Редактировать</button>`,
           `<button class="btn btn-danger" type="button" data-delete-currency-trade-id="${Number(item.id)}">Удалить</button>`,
         ].join("");

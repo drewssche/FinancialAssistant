@@ -356,6 +356,7 @@
       : "<span class='muted-small'>—</span>";
     const menuItems = `
       ${hasReceiptItems ? `<button class="btn btn-secondary" type="button" data-receipt-view-id="${item.id}">Позиции</button>` : ""}
+      <button class="btn btn-secondary" type="button" data-activity-entity-type="operation" data-activity-entity-id="${item.id}">Журнал</button>
       <button class="btn btn-secondary" type="button" data-edit-id="${item.id}">Редактировать</button>
       <button class="btn btn-danger" type="button" data-delete-id="${item.id}">Удалить</button>
     `;

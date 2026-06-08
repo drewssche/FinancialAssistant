@@ -135,6 +135,7 @@
 
   async function loadMe() {
     const me = await core.requestJson("/api/v1/users/me", { headers: core.authHeaders() });
+    state.currentUserId = Number(me.id || 0) || null;
     state.isAdmin = me.is_admin === true;
     state.accessStatus = me.status || "pending";
     const name = me.display_name || "Пользователь";
@@ -142,6 +143,9 @@
     const telegramId = String(me.telegram_id || "").trim();
     el.userName.textContent = name;
     el.userHandle.textContent = username ? `@${username}` : (telegramId ? `ID ${telegramId}` : "Telegram");
+    const activityFeature = window.App.getRuntimeModule?.("activity") || {};
+    activityFeature.configureActivityButton?.(el.dashboardCurrencyActivityBtn, "currency_portfolio", state.currentUserId);
+    activityFeature.configureActivityButton?.(el.currencyPortfolioActivityBtn, "currency_portfolio", state.currentUserId);
     renderUserAvatar(name, me.avatar_url);
     if (!state.isAdmin && state.accessStatus !== "approved" && state.accessStatus !== "active") {
       const reason = state.accessStatus === "rejected"

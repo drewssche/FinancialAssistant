@@ -7,9 +7,12 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="itemTemplateModalTitle">Новая позиция</h3>
-          <button id="closeItemTemplateModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-          </button>
+          <div class="modal-head-actions">
+            <button id="itemTemplateActivityBtn" class="btn btn-secondary hidden" type="button">Журнал</button>
+            <button id="closeItemTemplateModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+              <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+            </button>
+          </div>
         </div>
         <form id="itemTemplateForm" class="category-modal-form">
           <input id="itemTemplateSource" type="hidden" />

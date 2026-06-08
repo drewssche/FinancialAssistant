@@ -239,6 +239,7 @@
               </button>
               <div class="app-popover hidden mobile-card-actions-popover" data-mobile-card-menu="category-${item.id}">
                 <div class="mobile-card-actions-menu">
+                  <button class='btn btn-secondary' data-activity-entity-type='category' data-activity-entity-id='${item.id}'>Журнал</button>
                   <button class='btn btn-secondary' data-edit-category-id='${item.id}'>Редактировать</button>
                   <button class='btn btn-danger' data-delete-category-id='${item.id}'>Удалить</button>
                 </div>
@@ -274,7 +275,7 @@
     const chevron = group.isUngrouped ? "•" : (isCollapsed ? "▸" : "▾");
     const toggleDisabled = queryActive || group.isUngrouped;
     const groupActions = group.id
-      ? `<div class="mobile-card-kebab-wrap"><button class="btn btn-secondary mobile-card-kebab-trigger" data-mobile-card-menu-trigger="category-group-${group.id}" type="button" aria-label="Действия группы"><span aria-hidden="true">⋮</span></button><div class="app-popover hidden mobile-card-actions-popover" data-mobile-card-menu="category-group-${group.id}"><div class="mobile-card-actions-menu"><button class="btn btn-secondary" data-edit-group-id="${group.id}" type="button">Редактировать</button><button class="btn btn-danger" data-delete-group-id="${group.id}" type="button">Удалить</button></div></div></div>`
+      ? `<div class="mobile-card-kebab-wrap"><button class="btn btn-secondary mobile-card-kebab-trigger" data-mobile-card-menu-trigger="category-group-${group.id}" type="button" aria-label="Действия группы"><span aria-hidden="true">⋮</span></button><div class="app-popover hidden mobile-card-actions-popover" data-mobile-card-menu="category-group-${group.id}"><div class="mobile-card-actions-menu"><button class="btn btn-secondary" data-activity-entity-type="category_group" data-activity-entity-id="${group.id}" type="button">Журнал</button><button class="btn btn-secondary" data-edit-group-id="${group.id}" type="button">Редактировать</button><button class="btn btn-danger" data-delete-group-id="${group.id}" type="button">Удалить</button></div></div></div>`
       : "";
     tr.innerHTML = `
       <td colspan="4" class="category-table-group-cell category-mobile-group-cell">
@@ -305,7 +306,7 @@
       ? "<span class='muted-small'>Защищено</span>"
       : core.renderInlineKebabMenu?.(
         `category-${item.id}`,
-        `<button class='btn btn-secondary' data-edit-category-id='${item.id}'>Редактировать</button><button class='btn btn-danger' data-delete-category-id='${item.id}'>Удалить</button>`,
+        `<button class='btn btn-secondary' data-activity-entity-type='category' data-activity-entity-id='${item.id}'>Журнал</button><button class='btn btn-secondary' data-edit-category-id='${item.id}'>Редактировать</button><button class='btn btn-danger' data-delete-category-id='${item.id}'>Удалить</button>`,
         "Действия категории",
         "category-row-kebab",
       ) || "";
@@ -367,7 +368,7 @@
     const groupActions = group.id
       ? core.renderInlineKebabMenu?.(
         `category-group-${group.id}`,
-        `<button class="btn btn-secondary" data-edit-group-id="${group.id}" type="button">Редактировать</button><button class="btn btn-danger" data-delete-group-id="${group.id}" type="button">Удалить</button>`,
+        `<button class="btn btn-secondary" data-activity-entity-type="category_group" data-activity-entity-id="${group.id}" type="button">Журнал</button><button class="btn btn-secondary" data-edit-group-id="${group.id}" type="button">Редактировать</button><button class="btn btn-danger" data-delete-group-id="${group.id}" type="button">Удалить</button>`,
         "Действия группы",
         "category-group-kebab",
       )

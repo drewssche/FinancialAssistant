@@ -7,9 +7,12 @@
       <div class="modal-card operation-modal-card">
         <div class="panel-head row between">
           <h3 id="createTitle">Новая операция</h3>
-          <button id="closeCreateModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-          </button>
+          <div class="modal-head-actions">
+            <button id="createModalActivityBtn" class="btn btn-secondary hidden" type="button">Журнал</button>
+            <button id="closeCreateModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+              <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+            </button>
+          </div>
         </div>
 
         <form id="createOperationForm" class="form-grid modal-grid create-modal-grid">
@@ -420,9 +423,12 @@
       <div class="modal-card operation-modal-card">
         <div class="panel-head row between">
           <h3 id="editTitle">Редактировать операцию</h3>
-          <button id="closeEditModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-          </button>
+          <div class="modal-head-actions">
+            <button id="editModalActivityBtn" class="btn btn-secondary hidden" type="button">Журнал</button>
+            <button id="closeEditModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+              <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+            </button>
+          </div>
         </div>
 
         <form id="editOperationForm" class="form-grid modal-grid edit-modal-grid">
@@ -622,9 +628,12 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="editGroupTitle">Редактировать группу</h3>
-          <button id="closeEditGroupModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-          </button>
+          <div class="modal-head-actions">
+            <button id="editGroupActivityBtn" class="btn btn-secondary hidden" type="button">Журнал</button>
+            <button id="closeEditGroupModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+              <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+            </button>
+          </div>
         </div>
         <form id="editGroupForm" class="category-modal-form">
           <input id="editGroupName" type="text" placeholder="Название группы" required />
@@ -646,9 +655,12 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="editCategoryTitle">Редактировать категорию</h3>
-          <button id="closeEditCategoryModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-          </button>
+          <div class="modal-head-actions">
+            <button id="editCategoryActivityBtn" class="btn btn-secondary hidden" type="button">Журнал</button>
+            <button id="closeEditCategoryModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+              <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+            </button>
+          </div>
         </div>
         <form id="editCategoryForm" class="category-modal-form">
           <div class="category-name-row">
@@ -682,6 +694,23 @@
           <button id="submitEditCategoryBtn" class="btn btn-cta modal-main-cta" type="submit" form="editCategoryForm">
             Сохранить
           </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="activityModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="activityModalTitle">
+      <div class="modal-card modal-medium">
+        <div class="panel-head row between">
+          <div>
+            <h3 id="activityModalTitle">Журнал действий</h3>
+            <p id="activityModalSubtitle" class="subtitle">История изменений карточки</p>
+          </div>
+          <button id="closeActivityModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
+        </div>
+        <div id="activityList" class="activity-list">
+          <div class="muted-small">Журнал пока пуст</div>
         </div>
       </div>
     </div>

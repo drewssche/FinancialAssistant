@@ -15,6 +15,7 @@
     "/static/js/app-core-utils.js",
     "/static/js/app-core-actions.js",
     "/static/js/app-runtime-registry.js",
+    "/static/js/app-activity.js",
     "/static/js/app-dashboard-data.js",
     "/static/js/app-inline-refresh-state.js",
     "/static/js/app-loading-skeletons.js",

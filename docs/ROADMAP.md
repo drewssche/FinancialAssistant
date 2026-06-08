@@ -375,6 +375,7 @@ Working note:
 1. Stabilize shared UI mechanics
 - fix one-time binding for reusable popovers (avoid duplicate listeners)
 - move modal open/close flows to shared helpers with options payload
+- deduplicate repeated activity-journal button/menu markup after the audit journal rollout; keep one helper for entity type/id labels instead of repeated inline strings
 
 2. Reduce module size and coupling
 - continue splitting `static/js/app-features.js` into focused modules (`operations`, `dashboard`, `preferences`, `item-catalog`)

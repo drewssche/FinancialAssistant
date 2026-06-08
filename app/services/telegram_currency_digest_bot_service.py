@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.logging import log_background_job_event
 from app.repositories.currency_repo import CurrencyRepository
 from app.repositories.preference_repo import PreferenceRepository
+from app.services.activity_service import ActivityService
 from app.services.currency_rate_refresh_service import CurrencyRateRefreshService
 from app.services.currency_service import CurrencyService
 from app.services.telegram_message_format import ICON_CURRENCY, signed_decimal, title, trend_icon
@@ -30,6 +31,7 @@ class TelegramCurrencyDigestBotService:
         self.preferences = PreferenceRepository(db)
         self.currency_service = CurrencyService(db)
         self.refresh_service = CurrencyRateRefreshService(db)
+        self.activity = ActivityService(db)
 
     def list_due_deliveries(self) -> list[TelegramCurrencyDigestDelivery]:
         deliveries: list[TelegramCurrencyDigestDelivery] = []
@@ -63,6 +65,22 @@ class TelegramCurrencyDigestBotService:
         currency_prefs["last_digest_sent_on"] = now_local.date().isoformat()
         prefs["currency"] = currency_prefs
         preference.data = prefs
+        self.activity.record(
+            user_id=delivery.user_id,
+            actor_user_id=None,
+            entity_type="currency_portfolio",
+            entity_id=delivery.user_id,
+            event_type="telegram_sent",
+            title="Валютный дайджест Telegram отправлен",
+            source="telegram",
+            created_at=now_local,
+            metadata={
+                "message_type": "currency_digest",
+                "sent_at": now_local.isoformat(),
+                "chat_id": delivery.chat_id,
+                "tracked_currencies": delivery.tracked_currencies,
+            },
+        )
         self.db.commit()
         log_background_job_event(
             "currency_digest",

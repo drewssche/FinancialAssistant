@@ -1,4 +1,5 @@
 from app.db.models.auth_identity import AuthIdentity
+from app.db.models.activity_event import ActivityEvent
 from app.db.models.category import Category
 from app.db.models.category_group import CategoryGroup
 from app.db.models.debt import Debt
@@ -23,6 +24,7 @@ from app.db.models.user_preference import UserPreference
 __all__ = [
     "User",
     "AuthIdentity",
+    "ActivityEvent",
     "CategoryGroup",
     "Category",
     "Operation",

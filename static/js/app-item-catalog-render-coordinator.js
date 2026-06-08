@@ -142,6 +142,7 @@
                       </button>
                       <div class="app-popover hidden mobile-card-actions-popover" data-mobile-card-menu="item-template-${item.id}">
                         <div class="mobile-card-actions-menu">
+                          <button class="btn btn-secondary" data-activity-entity-type="item_template" data-activity-entity-id="${item.id}" type="button">Журнал</button>
                           <button class="btn btn-secondary" data-item-template-history-id="${item.id}" type="button">История</button>
                           <button class="btn btn-secondary" data-edit-item-template-id="${item.id}" type="button">Редактировать</button>
                           <button class="btn btn-danger" data-delete-item-template-id="${item.id}" type="button">Удалить</button>
@@ -168,7 +169,8 @@
             <td class="mobile-actions-cell table-kebab-cell" data-label="Действия">
               ${core.renderInlineKebabMenu?.(
                 `item-template-${item.id}`,
-                `<button class="btn btn-secondary" data-item-template-history-id="${item.id}" type="button">История</button>
+                `<button class="btn btn-secondary" data-activity-entity-type="item_template" data-activity-entity-id="${item.id}" type="button">Журнал</button>
+                <button class="btn btn-secondary" data-item-template-history-id="${item.id}" type="button">История</button>
                 <button class="btn btn-secondary" data-edit-item-template-id="${item.id}" type="button">Редактировать</button>
                 <button class="btn btn-danger" data-delete-item-template-id="${item.id}" type="button">Удалить</button>`,
                 "Действия позиции",

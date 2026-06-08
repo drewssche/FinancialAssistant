@@ -14,17 +14,50 @@ from app.core.cache import (
 from app.core.logging import log_background_job_event
 from app.repositories.currency_repo import CurrencyRepository
 from app.repositories.plan_repo import PlanRepository
+from app.services.activity_service import ActivityService
 from app.services.operation_service import OperationService
 from app.services.plan_reminder_service import PlanReminderService
 
 
 class PlanService:
+    ACTIVITY_FIELDS = [
+        "kind",
+        "original_amount",
+        "currency",
+        "scheduled_date",
+        "category_id",
+        "note",
+        "status",
+        "recurrence_enabled",
+        "recurrence_frequency",
+        "recurrence_interval",
+        "recurrence_workdays_only",
+        "recurrence_month_end",
+        "recurrence_end_date",
+    ]
+    ACTIVITY_LABELS = {
+        "kind": "Тип",
+        "original_amount": "Сумма",
+        "currency": "Валюта",
+        "scheduled_date": "Дата",
+        "category_id": "Категория",
+        "note": "Комментарий",
+        "status": "Статус",
+        "recurrence_enabled": "Повторение",
+        "recurrence_frequency": "Частота",
+        "recurrence_interval": "Интервал",
+        "recurrence_workdays_only": "Только будни",
+        "recurrence_month_end": "Последний день месяца",
+        "recurrence_end_date": "Дата окончания",
+    }
+
     def __init__(self, db: Session):
         self.db = db
         self.repo = PlanRepository(db)
         self.currency_repo = CurrencyRepository(db)
         self.operation_service = OperationService(db)
         self.reminder_service = PlanReminderService(db)
+        self.activity = ActivityService(db)
 
     def list_plans(self, *, user_id: int, q: str | None = None, kind: str | None = None) -> tuple[list[dict], int]:
         cache_key = build_plans_cache_key(user_id=user_id, view="list", q=q, kind=kind)
@@ -138,6 +171,17 @@ class PlanService:
                 receipt_items_count=len(normalized_items),
             )
         self.reminder_service.sync_plan_job(item)
+        self.activity.record_created(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="plan",
+            entity_id=int(item.id),
+            title="План создан",
+            metadata={
+                **ActivityService.snapshot(item, self.ACTIVITY_FIELDS),
+                "has_receipt": bool(normalized_items),
+            },
+        )
         log_background_job_event(
             "plan_service",
             "plan_reminder_sync_requested",
@@ -164,6 +208,7 @@ class PlanService:
         if not row:
             raise LookupError("Plan not found")
         item = row.PlanOperation
+        before_activity = ActivityService.snapshot(item, self.ACTIVITY_FIELDS)
         if "kind" in updates and updates["kind"] is not None:
             self.operation_service._validate_kind(updates["kind"])
         base_currency = self.operation_service._get_user_base_currency(user_id)
@@ -229,6 +274,27 @@ class PlanService:
                     receipt_items_count=len(normalized_items),
                 )
         self.reminder_service.sync_plan_job(item)
+        activity_event = self.activity.record_updated(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="plan",
+            entity_id=int(item.id),
+            before=before_activity,
+            after=ActivityService.snapshot(item, self.ACTIVITY_FIELDS),
+            labels=self.ACTIVITY_LABELS,
+            title="План изменен",
+            metadata={"receipt_updated": normalized_items is not None},
+        )
+        if activity_event is None and normalized_items is not None:
+            self.activity.record(
+                user_id=user_id,
+                actor_user_id=user_id,
+                entity_type="plan",
+                entity_id=int(item.id),
+                event_type="updated",
+                title="План изменен",
+                metadata={"receipt_updated": True},
+            )
         log_background_job_event(
             "plan_service",
             "plan_reminder_sync_requested",
@@ -254,6 +320,15 @@ class PlanService:
         row = self.repo.get_by_id(user_id=user_id, plan_id=plan_id)
         if not row:
             raise LookupError("Plan not found")
+        self.activity.record(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="plan",
+            entity_id=int(row.PlanOperation.id),
+            event_type="deleted",
+            title="План удален",
+            metadata=ActivityService.snapshot(row.PlanOperation, self.ACTIVITY_FIELDS),
+        )
         self.repo.cancel_pending_reminder_jobs(
             user_id=user_id,
             plan_id=plan_id,
@@ -318,6 +393,20 @@ class PlanService:
             note=item.note,
             category_name=category_name,
         )
+        self.activity.record(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="plan",
+            entity_id=int(item.id),
+            event_type="confirmed",
+            title="План подтвержден",
+            metadata={
+                "operation_id": int(operation["id"]),
+                "amount": str(item.amount),
+                "effective_date": effective_date.isoformat(),
+                "category_name": category_name,
+            },
+        )
         if item.recurrence_enabled:
             next_date = self._advance_recurrence(
                 scheduled_date=item.scheduled_date,
@@ -380,6 +469,19 @@ class PlanService:
             effective_date=effective_date,
             note=item.note,
             category_name=category_name,
+        )
+        self.activity.record(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="plan",
+            entity_id=int(item.id),
+            event_type="skipped",
+            title="План пропущен",
+            metadata={
+                "amount": str(item.amount),
+                "effective_date": effective_date.isoformat(),
+                "category_name": category_name,
+            },
         )
         if item.recurrence_enabled:
             next_date = self._advance_recurrence(

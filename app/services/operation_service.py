@@ -20,6 +20,7 @@ from app.db.models import Category, CategoryGroup
 from app.repositories.currency_repo import CurrencyRepository
 from app.repositories.preference_repo import PreferenceRepository
 from app.repositories.operation_repo import OperationRepository
+from app.services.activity_service import ActivityService
 from app.services.currency_service import CurrencyService
 from app.services.operation_item_template_service import OperationItemTemplateService
 
@@ -32,6 +33,16 @@ _CURRENCY_RE = re.compile(r"^[A-Z]{3}$")
 
 class OperationService:
     LARGE_OPERATION_THRESHOLD = Decimal("100")
+    ACTIVITY_FIELDS = ["kind", "original_amount", "currency", "fx_rate", "operation_date", "category_id", "note"]
+    ACTIVITY_LABELS = {
+        "kind": "Тип",
+        "original_amount": "Сумма",
+        "currency": "Валюта",
+        "fx_rate": "Курс",
+        "operation_date": "Дата",
+        "category_id": "Категория",
+        "note": "Комментарий",
+    }
 
     def __init__(self, db: Session):
         self.db = db
@@ -39,6 +50,7 @@ class OperationService:
         self.currency_repo = CurrencyRepository(db)
         self.preferences = PreferenceRepository(db)
         self.item_templates = OperationItemTemplateService(db, self.repo)
+        self.activity = ActivityService(db)
 
     @classmethod
     def _resolve_quick_view_filters(cls, quick_view: str | None) -> dict:
@@ -139,6 +151,20 @@ class OperationService:
                 normalized_items=normalized_items,
             )
             self.repo.replace_receipt_items(user_id=user_id, operation_id=item.id, items=storage_items)
+        self.activity.record_created(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="operation",
+            entity_id=int(item.id),
+            title="Операция создана",
+            metadata={
+                "kind": item.kind,
+                "amount": str(item.original_amount),
+                "currency": item.currency,
+                "has_receipt": bool(normalized_items),
+                "has_fx_settlement": bool(fx_settlement),
+            },
+        )
         self.db.commit()
         invalidate_dashboard_summary_cache(user_id)
         invalidate_dashboard_analytics_cache(user_id)
@@ -723,6 +749,7 @@ class OperationService:
         item = self.repo.get_by_id(user_id=user_id, operation_id=operation_id)
         if not item:
             raise LookupError("Operation not found")
+        before_activity = ActivityService.snapshot(item, self.ACTIVITY_FIELDS)
 
         receipt_items_input = updates.pop("receipt_items", None) if "receipt_items" in updates else None
         fx_settlement_input = updates.pop("fx_settlement", None) if "fx_settlement" in updates else None
@@ -810,6 +837,34 @@ class OperationService:
                     commit=False,
                 )
 
+        after_activity = ActivityService.snapshot(item, self.ACTIVITY_FIELDS)
+        activity_event = self.activity.record_updated(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="operation",
+            entity_id=int(item.id),
+            before=before_activity,
+            after=after_activity,
+            labels=self.ACTIVITY_LABELS,
+            title="Операция изменена",
+            metadata={
+                "receipt_updated": normalized_items is not None,
+                "fx_settlement_updated": "fx_settlement" in logged_fields,
+            },
+        )
+        if activity_event is None and (normalized_items is not None or "fx_settlement" in logged_fields):
+            self.activity.record(
+                user_id=user_id,
+                actor_user_id=user_id,
+                entity_type="operation",
+                entity_id=int(item.id),
+                event_type="updated",
+                title="Операция изменена",
+                metadata={
+                    "receipt_updated": normalized_items is not None,
+                    "fx_settlement_updated": "fx_settlement" in logged_fields,
+                },
+            )
         self.db.commit()
         invalidate_dashboard_summary_cache(user_id)
         invalidate_dashboard_analytics_cache(user_id)
@@ -835,6 +890,15 @@ class OperationService:
         if not item:
             raise LookupError("Operation not found")
 
+        self.activity.record(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="operation",
+            entity_id=int(item.id),
+            event_type="deleted",
+            title="Операция удалена",
+            metadata=ActivityService.snapshot(item, self.ACTIVITY_FIELDS),
+        )
         self.repo.delete(item)
         self.db.commit()
         invalidate_dashboard_summary_cache(user_id)

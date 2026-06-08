@@ -237,6 +237,7 @@
                     <div class="app-popover hidden mobile-card-actions-popover" data-mobile-card-menu="debt-${debt.id}">
                       <div class="mobile-card-actions-menu">
                         <button class="btn btn-secondary" type="button" data-history-debt-id="${debt.id}">История</button>
+                        <button class="btn btn-secondary" type="button" data-activity-entity-type="debt" data-activity-entity-id="${debt.id}">Журнал</button>
                         <button class="btn btn-secondary" type="button" data-forgive-debt-id="${debt.id}" ${Number(debt.outstanding_total) <= 0 ? "disabled" : ""}>Простить</button>
                         <button class="btn btn-secondary" type="button" data-edit-debt-id="${debt.id}">Редактировать</button>
                         <button class="btn btn-danger" type="button" data-delete-debt-id="${debt.id}">Удалить</button>
@@ -306,6 +307,7 @@
                 ${core.renderInlineKebabMenu?.(
                   `debt-${debt.id}`,
                   `<button class="btn btn-secondary" type="button" data-history-debt-id="${debt.id}">История</button>
+                  <button class="btn btn-secondary" type="button" data-activity-entity-type="debt" data-activity-entity-id="${debt.id}">Журнал</button>
                   <button class="btn btn-secondary" type="button" data-forgive-debt-id="${debt.id}" ${Number(debt.outstanding_total) <= 0 ? "disabled" : ""}>Простить</button>
                   <button class="btn btn-secondary" type="button" data-edit-debt-id="${debt.id}">Редактировать</button>
                   <button class="btn btn-danger" type="button" data-delete-debt-id="${debt.id}">Удалить</button>`,

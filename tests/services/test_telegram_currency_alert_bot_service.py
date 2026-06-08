@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.db.base import Base
-from app.db.models import AuthIdentity, FxRateSnapshot, User, UserPreference
+from app.db.models import ActivityEvent, AuthIdentity, FxRateSnapshot, User, UserPreference
 from app.services.telegram_currency_alert_bot_service import TelegramCurrencyAlertBotService
 
 
@@ -122,7 +122,126 @@ def test_mark_delivery_sent_persists_marker_and_prevents_duplicates(monkeypatch)
 
         prefs = db.get(UserPreference, 1)
         assert prefs.data["currency"]["currency_alerts"]["USD"]["last_above_marker"]
+        activity = db.query(ActivityEvent).filter(ActivityEvent.entity_type == "currency_portfolio").one()
+        assert activity.event_type == "telegram_sent"
+        assert activity.source == "telegram"
+        assert activity.metadata_json["message_type"] == "currency_alert"
+        assert activity.metadata_json["direction"] == "above"
         assert service.list_due_deliveries() == []
+    finally:
+        db.close()
+        Base.metadata.drop_all(bind=engine)
+
+
+def test_list_due_deliveries_collects_above_and_below_alerts_when_both_match(monkeypatch):
+    engine, SessionLocal = _make_session()
+    db = SessionLocal()
+    try:
+        db.add(User(id=1, display_name="Tester", status="active"))
+        db.add(AuthIdentity(user_id=1, provider="telegram", provider_user_id="100500", username="tester"))
+        db.add(
+            UserPreference(
+                user_id=1,
+                preferences_version=1,
+                data={
+                    "currency": {
+                        "tracked_currencies": ["USD"],
+                        "currency_alerts": {
+                            "USD": {
+                                "above_rate": "3.0000",
+                                "below_rate": "4.0000",
+                            }
+                        },
+                    },
+                    "ui": {"timezone": "UTC", "currency": "BYN"},
+                },
+            )
+        )
+        db.add(
+            FxRateSnapshot(
+                id=1,
+                user_id=1,
+                currency="USD",
+                rate=Decimal("3.4200"),
+                rate_date=date(2026, 3, 28),
+                source="manual",
+            )
+        )
+        db.commit()
+
+        monkeypatch.setattr(
+            "app.services.telegram_currency_alert_bot_service.CurrencyRateRefreshService.refresh_user_tracked_rates",
+            lambda self, user_id, prefs=None: [],
+        )
+
+        service = TelegramCurrencyAlertBotService(db)
+        delivery = service.list_due_deliveries()[0]
+
+        assert [trigger.direction for trigger in delivery.triggers] == ["above", "below"]
+        assert "выше порога 3.0000" in delivery.text
+        assert "ниже порога 4.0000" in delivery.text
+
+        service.mark_delivery_sent(delivery)
+
+        prefs = db.get(UserPreference, 1)
+        alert_state = prefs.data["currency"]["currency_alerts"]["USD"]
+        assert alert_state["last_above_marker"]
+        assert alert_state["last_below_marker"]
+        activity = db.query(ActivityEvent).filter(ActivityEvent.entity_type == "currency_portfolio").order_by(ActivityEvent.id.asc()).all()
+        assert [item.metadata_json["direction"] for item in activity] == ["above", "below"]
+        assert service.list_due_deliveries() == []
+    finally:
+        db.close()
+        Base.metadata.drop_all(bind=engine)
+
+
+def test_threshold_change_rearms_alert_even_when_rate_marker_was_sent(monkeypatch):
+    engine, SessionLocal = _make_session()
+    db = SessionLocal()
+    try:
+        db.add(User(id=1, display_name="Tester", status="active"))
+        db.add(AuthIdentity(user_id=1, provider="telegram", provider_user_id="100500", username="tester"))
+        db.add(
+            UserPreference(
+                user_id=1,
+                preferences_version=1,
+                data={
+                    "currency": {
+                        "tracked_currencies": ["USD"],
+                        "currency_alerts": {
+                            "USD": {
+                                "above_rate": "3.3000",
+                                "last_above_marker": "2026-03-28:3.420000",
+                            }
+                        },
+                    },
+                    "ui": {"timezone": "UTC", "currency": "BYN"},
+                },
+            )
+        )
+        db.add(
+            FxRateSnapshot(
+                id=1,
+                user_id=1,
+                currency="USD",
+                rate=Decimal("3.4200"),
+                rate_date=date(2026, 3, 28),
+                source="manual",
+            )
+        )
+        db.commit()
+
+        monkeypatch.setattr(
+            "app.services.telegram_currency_alert_bot_service.CurrencyRateRefreshService.refresh_user_tracked_rates",
+            lambda self, user_id, prefs=None: [],
+        )
+
+        service = TelegramCurrencyAlertBotService(db)
+        delivery = service.list_due_deliveries()[0]
+
+        assert len(delivery.triggers) == 1
+        assert delivery.triggers[0].direction == "above"
+        assert delivery.triggers[0].marker == "2026-03-28:3.420000:above:3.300000"
     finally:
         db.close()
         Base.metadata.drop_all(bind=engine)

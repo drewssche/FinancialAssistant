@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.db.base import Base
-from app.db.models import AuthIdentity, FxRateSnapshot, FxTrade, User, UserPreference
+from app.db.models import ActivityEvent, AuthIdentity, FxRateSnapshot, FxTrade, User, UserPreference
 from app.services.telegram_currency_digest_bot_service import TelegramCurrencyDigestBotService
 
 
@@ -128,6 +128,11 @@ def test_mark_delivery_sent_persists_last_digest_sent_on(monkeypatch):
 
         prefs = db.get(UserPreference, 1)
         assert prefs.data["currency"]["last_digest_sent_on"]
+        activity = db.query(ActivityEvent).filter(ActivityEvent.entity_type == "currency_portfolio").one()
+        assert activity.event_type == "telegram_sent"
+        assert activity.source == "telegram"
+        assert activity.metadata_json["message_type"] == "currency_digest"
+        assert activity.metadata_json["tracked_currencies"] == ["USD"]
     finally:
         db.close()
         Base.metadata.drop_all(bind=engine)

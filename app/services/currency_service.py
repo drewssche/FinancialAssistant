@@ -11,6 +11,7 @@ from app.core.logging import log_background_job_event
 from app.db.models import FxTrade, Operation
 from app.repositories.currency_repo import CurrencyRepository
 from app.repositories.preference_repo import PreferenceRepository
+from app.services.activity_service import ActivityService
 
 
 MONEY_Q = Decimal("0.01")
@@ -24,11 +25,24 @@ _CURRENCY_ALIASES = {
 
 class CurrencyService:
     DEFAULT_TRACKED_CURRENCIES = ["USD", "EUR"]
+    TRADE_FIELDS = ["side", "asset_currency", "quote_currency", "quantity", "unit_price", "fee", "trade_kind", "trade_date", "note"]
+    TRADE_LABELS = {
+        "side": "Тип сделки",
+        "asset_currency": "Валюта",
+        "quote_currency": "Валюта расчета",
+        "quantity": "Количество",
+        "unit_price": "Курс",
+        "fee": "Комиссия",
+        "trade_kind": "Источник",
+        "trade_date": "Дата",
+        "note": "Комментарий",
+    }
 
     def __init__(self, db: Session):
         self.db = db
         self.repo = CurrencyRepository(db)
         self.preferences = PreferenceRepository(db)
+        self.activity = ActivityService(db)
 
     @staticmethod
     def _money(value) -> Decimal:
@@ -330,6 +344,15 @@ class CurrencyService:
         item = self.repo.create_trade(
             candidate
         )
+        self.activity.record_created(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="currency_trade",
+            entity_id=int(item.id),
+            title="Валютная сделка создана",
+            metadata=ActivityService.snapshot(item, self.TRADE_FIELDS),
+            source="system" if normalized_trade_kind == "card_payment" else "web",
+        )
         if commit:
             self.db.commit()
             self.db.refresh(item)
@@ -369,6 +392,7 @@ class CurrencyService:
             raise ValueError("Currency trade not found")
         if getattr(item, "linked_operation_id", None) is not None and not allow_linked_trade_update:
             raise ValueError("Linked settlement trade must be edited from the operation")
+        before_activity = ActivityService.snapshot(item, self.TRADE_FIELDS)
         normalized_side = self._normalize_side(side)
         normalized_asset = self._normalize_currency(asset_currency)
         normalized_quote = self._normalize_currency(quote_currency)
@@ -406,6 +430,18 @@ class CurrencyService:
         item.linked_operation_id = linked_operation_id
         item.trade_date = trade_date
         item.note = (note or "").strip() or None
+        after_activity = ActivityService.snapshot(item, self.TRADE_FIELDS)
+        self.activity.record_updated(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="currency_trade",
+            entity_id=int(item.id),
+            before=before_activity,
+            after=after_activity,
+            labels=self.TRADE_LABELS,
+            title="Валютная сделка изменена",
+            source="system" if normalized_trade_kind == "card_payment" else "web",
+        )
         self.db.commit()
         self.db.refresh(item)
         invalidate_dashboard_summary_cache(user_id)
@@ -478,6 +514,15 @@ class CurrencyService:
         item_quote_currency = item.quote_currency
         trades = self.repo.list_all_trades(user_id=user_id)
         self._validate_trade_sequence([trade for trade in trades if trade.id != item.id])
+        self.activity.record(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="currency_trade",
+            entity_id=int(item.id),
+            event_type="deleted",
+            title="Валютная сделка удалена",
+            metadata=ActivityService.snapshot(item, self.TRADE_FIELDS),
+        )
         self.repo.delete_trade(item)
         self.db.commit()
         invalidate_dashboard_summary_cache(user_id)

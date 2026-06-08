@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.db.base import Base
-from app.db.models import AuthIdentity, DebtReminderJob, User, UserPreference
+from app.db.models import ActivityEvent, AuthIdentity, DebtReminderJob, User, UserPreference
 from app.services.debt_service import DebtService
 from app.services.debt_reminder_service import DebtReminderService
 
@@ -105,6 +105,11 @@ def test_list_due_jobs_and_mark_sent(db_session: Session, monkeypatch):
     stored_job = db_session.scalar(select(DebtReminderJob).where(DebtReminderJob.debt_id == debt.id))
     assert stored_job is not None
     assert stored_job.status == "sent"
+    activity = db_session.query(ActivityEvent).filter(ActivityEvent.entity_type == "debt", ActivityEvent.entity_id == debt.id).order_by(ActivityEvent.id.desc()).first()
+    assert activity is not None
+    assert activity.event_type == "telegram_sent"
+    assert activity.source == "telegram"
+    assert activity.metadata_json["message_type"] == "debt_reminder"
 
 
 def test_sync_due_soon_job_skips_same_day_debt(db_session: Session, monkeypatch):
