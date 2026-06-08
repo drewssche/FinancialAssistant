@@ -141,10 +141,21 @@ def test_currency_trade_modal_keeps_preview_and_live_recalculates(static_server_
         try:
             page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")
             page.wait_for_selector("#appShell:not(.hidden)")
+            page.wait_for_selector("#dashboardCurrencyPanel:not(.hidden)")
+            page.wait_for_selector("#dashboardCurrencyRates .dashboard-currency-rate-card")
+            assert "hidden" in (page.locator("#dashboardCurrencyBalances").get_attribute("class") or "")
+            assert "hidden" in (page.locator("#dashboardCurrencyPositions").get_attribute("class") or "")
             page.click("#addOperationCta")
             page.wait_for_selector("#createModal:not(.hidden)")
             page.locator('#createEntryModeSwitch button[data-entry-mode="currency"]').click()
             page.wait_for_selector("#createPreviewHeadCurrency:not(.hidden)")
+            assert page.locator("#currencyTradeDateField .date-step-btn").count() == 2
+            page.locator("#currencyTradeDateModal").fill("2026-03-27")
+            assert page.locator("#currencyTradeDateModal").input_value() == "2026-03-27"
+            page.locator("#currencyTradeDateField .date-step-btn-prev").click()
+            assert page.locator("#currencyTradeDateModal").input_value() == "2026-03-26"
+            page.locator("#currencyTradeDateField .date-step-btn-next").click()
+            assert page.locator("#currencyTradeDateModal").input_value() == "2026-03-27"
 
             preview_rows = page.locator("#createPreviewBody tr")
             expect_rows = preview_rows.count()
@@ -157,7 +168,9 @@ def test_currency_trade_modal_keeps_preview_and_live_recalculates(static_server_
 
             quantity_value = page.locator("#currencyQuantity").input_value()
             assert quantity_value.startswith("1.01")
-            assert page.locator("#currencyTradeHint").text_content().strip().startswith("Будет получено примерно 3,00\u00a0BYN")
+            hint_text = page.locator("#currencyTradeHint").text_content().strip()
+            assert hint_text.startswith("Будет получено примерно 3,00")
+            assert "за 1.01 USD" in hint_text
             assert preview_rows.count() == 1
             assert "Продажа" in page.locator("#createPreviewBody").text_content()
             assert "1.01 USD" in page.locator("#createPreviewBody").text_content()
@@ -184,6 +197,13 @@ def test_currency_trade_modal_keeps_preview_and_live_recalculates(static_server_
 
             rate_value = page.locator("#currencyUnitPrice").input_value()
             assert rate_value.startswith("3.0000")
-            assert page.locator("#currencyTradeHint").text_content().strip().startswith("Будет получено примерно 60,00\u00a0BYN")
+            hint_text = page.locator("#currencyTradeHint").text_content().strip()
+            assert hint_text.startswith("Будет получено примерно 60,00")
+            assert "за 20.00 USD" in hint_text
+
+            page.locator("#currencyQuantity").fill("10")
+            page.locator("#currencyQuoteTotal").fill("40")
+            page.wait_for_timeout(200)
+            assert page.locator("#currencyUnitPrice").input_value().startswith("4.0000")
         finally:
             browser.close()

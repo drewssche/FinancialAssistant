@@ -22,7 +22,7 @@
               <span class="muted-small">Дата</span>
               <button id="customDayTodayBtn" class="btn btn-secondary btn-xs" type="button">Сегодня</button>
             </div>
-            <div class="date-input-wrap">
+            <div class="date-input-wrap" data-date-stepper>
               <input id="customDayDate" class="input" type="date" aria-label="Дата периода" />
               <button class="date-input-trigger" type="button" data-date-picker-trigger="customDayDate" aria-label="Открыть календарь"></button>
             </div>
@@ -90,7 +90,7 @@
             <div class="muted-small">После: <span id="repaymentAfterValue">0.00</span></div>
             <div id="repaymentCarryRow" class="muted-small hidden">Перенос: <span id="repaymentCarryValue">0.00</span></div>
           </div>
-          <div class="date-input-wrap">
+          <div class="date-input-wrap" data-date-stepper>
             <input id="repaymentDate" class="input" type="date" aria-label="Дата погашения" required />
             <button class="date-input-trigger" type="button" data-date-picker-trigger="repaymentDate" aria-label="Открыть календарь"></button>
           </div>
@@ -155,7 +155,7 @@
           <div id="forgivenessAmountField" class="money-input-wrap" data-money-input-wrap>
             <input id="forgivenessAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма прощения" title="Можно вводить выражения: 1000+250/2" required />
           </div>
-          <div class="date-input-wrap">
+          <div class="date-input-wrap" data-date-stepper>
             <input id="forgivenessDate" class="input" type="date" aria-label="Дата прощения" required />
             <button class="date-input-trigger" type="button" data-date-picker-trigger="forgivenessDate" aria-label="Открыть календарь"></button>
           </div>

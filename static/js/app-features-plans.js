@@ -181,8 +181,8 @@
       ? `≈ ${core.formatMoney(currentBaseAmount, { currency: baseCurrency })} по текущему курсу${rateDate ? ` · ${rateDate}` : ""}`
       : `≈ ${core.formatMoney(currentBaseAmount, { currency: baseCurrency })}`;
     return `
-      <span>${core.formatMoney(originalAmount, { currency })}</span>
-      <div class="muted-small">${secondary}</div>
+      <span class="plan-card-amount-primary">${core.formatMoney(originalAmount, { currency })}</span>
+      <span class="muted-small plan-card-amount-secondary">${secondary}</span>
     `;
   }
 

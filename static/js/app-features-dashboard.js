@@ -91,39 +91,66 @@
       const portfolioCurrentValue = Number(summary.currency_current_value || 0);
       const portfolioBookValue = Number(summary.currency_book_value || 0);
       const portfolioTotalResultValue = Number(summary.currency_total_result_value || summary.currency_result_value || 0);
-      const portfolioCard = `
-        <article class="currency-balance-card">
-          <div class="muted-small">Оценка валютного портфеля</div>
-          <strong>${core.formatMoney(portfolioCurrentValue, { currency: baseCurrency })}</strong>
-          <div class="currency-balance-secondary">Вложено ${core.formatMoney(portfolioBookValue, { currency: baseCurrency })} · итоговый результат ${core.formatMoney(portfolioTotalResultValue, { currency: baseCurrency })}</div>
-        </article>
-      `;
-      const positionCards = trackedCurrencies.map((currency) => {
-        const item = positionsByCurrency.get(currency) || null;
-        const currencyLabel = core.formatCurrencyLabel(currency);
-        const quantity = Number(item?.quantity || 0);
-        const currentRate = Number(item?.current_rate || 0);
-        const currentValue = Number(item?.current_value || 0);
-        const currentRateDate = item?.current_rate_date ? core.formatDateRu(item.current_rate_date) : "";
-        const currentRateLabel = currentRate > 0
-          ? `${currentRate.toFixed(4)} ${baseCurrencySymbol}${currentRateDate ? ` · ${currentRateDate}` : ""}`
-          : "Курс не задан";
-        const currentValueLabel = currentValue > 0
-          ? `≈ ${core.formatMoney(currentValue, { currency: baseCurrency })}`
-          : `≈ ${core.formatMoney(0, { currency: baseCurrency })}`;
-        return `
+      const hasPortfolioActivity = (
+        Math.abs(portfolioCurrentValue) > 0.000001
+        || Math.abs(portfolioBookValue) > 0.000001
+        || Math.abs(portfolioTotalResultValue) > 0.000001
+        || Number(summary.active_currency_positions || 0) > 0
+        || positions.some((item) => Math.abs(Number(item?.quantity || 0)) > 0.000001 || Math.abs(Number(item?.current_value || 0)) > 0.000001)
+      );
+      el.dashboardCurrencyBalances.classList.toggle("hidden", !hasPortfolioActivity);
+      if (!hasPortfolioActivity) {
+        el.dashboardCurrencyBalances.innerHTML = "";
+      } else {
+        const portfolioCard = `
           <article class="currency-balance-card">
-            <div class="muted-small">${core.escapeHtml ? core.escapeHtml(currencyLabel) : currencyLabel}</div>
-            <strong>${core.formatAmount(quantity)} ${core.escapeHtml ? core.escapeHtml(currency) : currency}</strong>
-            <div class="currency-balance-secondary">Курс: ${currentRateLabel}</div>
-            <div class="currency-balance-secondary">${currentValueLabel} по текущему курсу</div>
+            <div class="muted-small">Оценка валютного портфеля</div>
+            <strong>${core.formatMoney(portfolioCurrentValue, { currency: baseCurrency })}</strong>
+            <div class="currency-balance-secondary">Вложено ${core.formatMoney(portfolioBookValue, { currency: baseCurrency })} · итоговый результат ${core.formatMoney(portfolioTotalResultValue, { currency: baseCurrency })}</div>
           </article>
         `;
-      });
-      el.dashboardCurrencyBalances.innerHTML = [portfolioCard, ...positionCards].join("");
+        const positionCards = trackedCurrencies.map((currency) => {
+          const item = positionsByCurrency.get(currency) || null;
+          const currencyLabel = core.formatCurrencyLabel(currency);
+          const quantity = Number(item?.quantity || 0);
+          const currentRate = Number(item?.current_rate || 0);
+          const currentValue = Number(item?.current_value || 0);
+          if (Math.abs(quantity) <= 0.000001 && Math.abs(currentValue) <= 0.000001) {
+            return "";
+          }
+          const currentRateDate = item?.current_rate_date ? core.formatDateRu(item.current_rate_date) : "";
+          const currentRateLabel = currentRate > 0
+            ? `${currentRate.toFixed(4)} ${baseCurrencySymbol}${currentRateDate ? ` · ${currentRateDate}` : ""}`
+            : "Курс не задан";
+          const currentValueLabel = currentValue > 0
+            ? `≈ ${core.formatMoney(currentValue, { currency: baseCurrency })}`
+            : `≈ ${core.formatMoney(0, { currency: baseCurrency })}`;
+          return `
+            <article class="currency-balance-card">
+              <div class="muted-small">${core.escapeHtml ? core.escapeHtml(currencyLabel) : currencyLabel}</div>
+              <strong>${core.formatAmount(quantity)} ${core.escapeHtml ? core.escapeHtml(currency) : currency}</strong>
+              <div class="currency-balance-secondary">Курс: ${currentRateLabel}</div>
+              <div class="currency-balance-secondary">${currentValueLabel} по текущему курсу</div>
+            </article>
+          `;
+        }).filter(Boolean);
+        el.dashboardCurrencyBalances.innerHTML = [portfolioCard, ...positionCards].join("");
+      }
     }
     if (el.dashboardCurrencyPositions) {
       const positions = Array.isArray(summary.tracked_currency_positions) ? summary.tracked_currency_positions : [];
+      const hasPortfolioActivity = (
+        Math.abs(Number(summary.currency_current_value || 0)) > 0.000001
+        || Math.abs(Number(summary.currency_book_value || 0)) > 0.000001
+        || Math.abs(Number(summary.currency_total_result_value || summary.currency_result_value || 0)) > 0.000001
+        || Number(summary.active_currency_positions || 0) > 0
+        || positions.some((item) => Math.abs(Number(item?.quantity || 0)) > 0.000001 || Math.abs(Number(item?.current_value || 0)) > 0.000001)
+      );
+      el.dashboardCurrencyPositions.classList.toggle("hidden", !hasPortfolioActivity);
+      if (!hasPortfolioActivity) {
+        el.dashboardCurrencyPositions.innerHTML = "";
+        return;
+      }
       const summaryChips = [
         `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Вложено: ${core.formatMoney(summary.currency_book_value || 0)}</span>`,
         `<span class="analytics-kpi-chip analytics-kpi-chip-${unrealizedTone.chipClass}">Нереализованный: ${core.formatMoney(summary.currency_unrealized_result_value || summary.currency_result_value || 0)}</span>`,

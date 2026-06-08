@@ -155,6 +155,12 @@ def _make_plan_item(plan: dict) -> dict:
         "id": plan["id"],
         "kind": plan["kind"],
         "amount": plan["amount"],
+        "original_amount": plan.get("original_amount", plan["amount"]),
+        "currency": plan.get("currency", "BYN"),
+        "base_currency": plan.get("base_currency", "BYN"),
+        "current_rate": plan.get("current_rate"),
+        "current_rate_date": plan.get("current_rate_date"),
+        "current_base_amount": plan.get("current_base_amount"),
         "scheduled_date": plan["scheduled_date"],
         "due_date": plan["scheduled_date"],
         "category_id": None,
@@ -663,6 +669,52 @@ def test_plan_kebab_menu_actions_work_from_floating_popover(static_server_url: s
     page.click("#confirmDeleteBtn")
     page.wait_for_function("() => !(document.querySelector('#plansList')?.textContent || '').includes('Кебаб удалить')")
     assert [item["id"] for item in mock_state["plans"]] == [1]
+
+
+@pytest.mark.e2e
+def test_plan_foreign_currency_amount_meta_wraps_inside_card(static_server_url: str, page_with_plans_api_mock):
+    page, mock_state = page_with_plans_api_mock
+    mock_state["plans"][:] = [
+        {
+            "id": 1,
+            "kind": "expense",
+            "amount": "2178.74",
+            "original_amount": "686.00",
+            "currency": "EUR",
+            "base_currency": "BYN",
+            "current_rate": "3.17600",
+            "current_rate_date": "2026-05-22",
+            "current_base_amount": "2178.74",
+            "scheduled_date": "2026-06-30",
+            "status": "upcoming",
+            "note": "За тур в Стамбул (остаток 762,5-76,5)",
+            "created_at": "2026-05-22T12:00:00Z",
+        }
+    ]
+
+    _login_and_open_plans(page, static_server_url)
+    page.wait_for_function("() => document.querySelector('#plansList')?.textContent.includes('Стамбул')")
+    geometry = page.locator("#plansList .plan-card").evaluate(
+        """
+        node => {
+          const card = node.getBoundingClientRect();
+          const amount = node.querySelector('.plan-card-amount').getBoundingClientRect();
+          const secondary = node.querySelector('.plan-card-amount-secondary').getBoundingClientRect();
+          return {
+            cardLeft: card.left,
+            cardRight: card.right,
+            amountLeft: amount.left,
+            amountRight: amount.right,
+            secondaryLeft: secondary.left,
+            secondaryRight: secondary.right,
+          };
+        }
+        """
+    )
+    assert geometry["amountRight"] <= geometry["cardRight"] + 1
+    assert geometry["secondaryRight"] <= geometry["cardRight"] + 1
+    assert geometry["amountLeft"] >= geometry["cardLeft"] - 1
+    assert geometry["secondaryLeft"] >= geometry["cardLeft"] - 1
 
 
 @pytest.mark.e2e

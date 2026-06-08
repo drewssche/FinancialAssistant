@@ -24,7 +24,7 @@
             <button class="segmented-btn" data-operation-mode="receipt" type="button">Чек</button>
           </div>
           <input id="opOperationMode" type="hidden" value="common" />
-          <div id="opDateField" class="date-input-wrap">
+          <div id="opDateField" class="date-input-wrap" data-date-stepper>
             <input id="opDate" class="input" type="date" aria-label="Дата операции" required />
             <button class="date-input-trigger" type="button" data-date-picker-trigger="opDate" aria-label="Открыть календарь"></button>
           </div>
@@ -175,7 +175,7 @@
           </div>
 
           <div id="createDebtFields" class="category-modal-form hidden">
-            <div id="debtStartDateField" class="date-input-wrap">
+              <div id="debtStartDateField" class="date-input-wrap" data-date-stepper>
               <input id="debtStartDate" class="input" type="date" aria-label="Дата начала долга" />
               <button class="date-input-trigger" type="button" data-date-picker-trigger="debtStartDate" aria-label="Открыть календарь"></button>
             </div>
@@ -206,7 +206,7 @@
               </select>
             </div>
             <div id="debtDueField" class="debt-due-field">
-              <div id="debtDueDateField" class="date-input-wrap">
+              <div id="debtDueDateField" class="date-input-wrap" data-date-stepper>
                 <input id="debtDueDate" class="input" type="date" aria-label="Срок долга" />
                 <button class="date-input-trigger" type="button" data-date-picker-trigger="debtDueDate" aria-label="Открыть календарь"></button>
               </div>
@@ -222,7 +222,7 @@
             </div>
             <input id="currencySide" type="hidden" value="buy" />
             <div class="currency-modal-row">
-              <div id="currencyTradeDateField" class="date-input-wrap">
+              <div id="currencyTradeDateField" class="date-input-wrap" data-date-stepper>
                 <input id="currencyTradeDateModal" class="input" type="date" aria-label="Дата валютной сделки" />
                 <button class="date-input-trigger" type="button" data-date-picker-trigger="currencyTradeDateModal" aria-label="Открыть календарь"></button>
               </div>
@@ -431,7 +431,7 @@
             <button class="segmented-btn" data-operation-mode="receipt" type="button">Чек</button>
           </div>
           <input id="editOperationMode" type="hidden" value="common" />
-          <div id="editDateField" class="date-input-wrap">
+          <div id="editDateField" class="date-input-wrap" data-date-stepper>
             <input id="editDate" class="input" type="date" aria-label="Дата операции" required />
             <button class="date-input-trigger" type="button" data-date-picker-trigger="editDate" aria-label="Открыть календарь"></button>
           </div>

@@ -42,6 +42,7 @@
   let currencyUnitPriceManual = false;
   let currencyTradeSourceField = "quantity";
   let currencyTradeRateDriver = false;
+  let currencyTradeManualOrder = [];
   let fxSettlementQuantityDriver = false;
   let fxSettlementRateDriver = false;
   let editFxSettlementQuantityDriver = false;
@@ -106,14 +107,31 @@
     currencyUnitPriceManual = false;
     currencyTradeSourceField = "quantity";
     currencyTradeRateDriver = false;
+    currencyTradeManualOrder = [];
     syncCurrencyTradeFieldUi();
     await syncSuggestedCurrencyRate({ force: true }).catch(() => {});
     updateCreatePreview();
   }
 
+  function rememberCurrencyTradeManualField(field) {
+    currencyTradeManualOrder = currencyTradeManualOrder.filter((item) => item !== field);
+    currencyTradeManualOrder.push(field);
+    if (currencyTradeManualOrder.length > 2) {
+      currencyTradeManualOrder = currencyTradeManualOrder.slice(-2);
+    }
+  }
+
   function markCurrencyQuantitySource() {
+    const wasAutoComputed = el.currencyQuantityField?.classList.contains("money-input-auto");
+    if (wasAutoComputed) {
+      currencyTradeManualOrder = currencyTradeManualOrder.filter((item) => item !== "quote");
+    }
+    rememberCurrencyTradeManualField("quantity");
     const rateResolved = core.resolveRateInput(el.currencyUnitPrice?.value || 0, 0, 6);
     const preserveRateDriver = rateResolved.valid && Number(rateResolved.previewValue || 0) > 0;
+    if (wasAutoComputed && preserveRateDriver && !currencyTradeManualOrder.includes("rate")) {
+      currencyTradeManualOrder = ["rate", "quantity"];
+    }
     currencyTradeSourceField = "quantity";
     currencyUnitPriceManual = preserveRateDriver;
     currencyTradeRateDriver = preserveRateDriver;
@@ -122,8 +140,16 @@
   }
 
   function markCurrencyQuoteSource() {
+    const wasAutoComputed = el.currencyQuoteTotalField?.classList.contains("money-input-auto");
+    if (wasAutoComputed) {
+      currencyTradeManualOrder = currencyTradeManualOrder.filter((item) => item !== "quantity");
+    }
+    rememberCurrencyTradeManualField("quote");
     const rateResolved = core.resolveRateInput(el.currencyUnitPrice?.value || 0, 0, 6);
     const preserveRateDriver = rateResolved.valid && Number(rateResolved.previewValue || 0) > 0;
+    if (wasAutoComputed && preserveRateDriver && !currencyTradeManualOrder.includes("rate")) {
+      currencyTradeManualOrder = ["rate", "quote"];
+    }
     currencyTradeSourceField = "quote";
     currencyUnitPriceManual = preserveRateDriver;
     currencyTradeRateDriver = preserveRateDriver;
@@ -157,20 +183,33 @@
     const enteredUnitPrice = Number(rateResolved.previewValue || 0);
     const hasQuantity = quantityResolved.valid && enteredQuantity > 0;
     const hasQuoteTotal = quoteResolved.valid && enteredQuoteTotal > 0;
+    const hasUnitPrice = rateResolved.valid && enteredUnitPrice > 0;
     const hasPairInputs = hasQuantity && hasQuoteTotal;
     const pairDerivedRate = hasPairInputs ? enteredQuoteTotal / enteredQuantity : 0;
     const preferredSource = currencyTradeSourceField === "quote" ? "quote" : "quantity";
-    const derivedRateFromAmounts = hasPairInputs && (!rateResolved.valid || enteredUnitPrice <= 0);
+    const validManualFields = currencyTradeManualOrder.filter((field) => (
+      (field === "quantity" && hasQuantity)
+      || (field === "quote" && hasQuoteTotal)
+      || (field === "rate" && hasUnitPrice)
+    ));
+    const manualPairKey = validManualFields.length >= 2 ? validManualFields.slice(-2).sort().join(":") : "";
+    const derivedRateFromAmounts = hasPairInputs && (manualPairKey === "quantity:quote" || !hasUnitPrice);
+    const derivedQuantityFromQuoteAndRate = hasQuoteTotal && hasUnitPrice && manualPairKey === "quote:rate";
+    const derivedQuoteFromQuantityAndRate = hasQuantity && hasUnitPrice && manualPairKey === "quantity:rate";
     const effectiveRateResolved = derivedRateFromAmounts
       ? core.resolveRateInput(pairDerivedRate, 0, 6)
       : rateResolved;
     const resolvedSource = derivedRateFromAmounts
       ? "pair"
-      : hasQuoteTotal && !hasQuantity
+      : derivedQuantityFromQuoteAndRate
         ? "quote"
-        : hasQuantity && !hasQuoteTotal
+        : derivedQuoteFromQuantityAndRate
           ? "quantity"
-          : preferredSource;
+          : hasQuoteTotal && !hasQuantity
+            ? "quote"
+            : hasQuantity && !hasQuoteTotal
+              ? "quantity"
+              : preferredSource;
     const unitPrice = Number(effectiveRateResolved.previewValue || enteredUnitPrice || 0);
     const effectiveQuantity = resolvedSource === "quote" && unitPrice > 0
       ? enteredQuoteTotal / unitPrice
@@ -238,6 +277,11 @@
   }
 
   function markCurrencyRateManual() {
+    const wasAutoComputed = el.currencyUnitPriceField?.classList.contains("money-input-auto");
+    if (wasAutoComputed) {
+      currencyTradeManualOrder = currencyTradeManualOrder.filter((item) => item !== "quote");
+    }
+    rememberCurrencyTradeManualField("rate");
     const rateResolved = core.resolveRateInput(el.currencyUnitPrice?.value || 0, 0, 6);
     const hasValidRate = rateResolved.valid && Number(rateResolved.previewValue || 0) > 0;
     currencyUnitPriceManual = hasValidRate;
@@ -1264,6 +1308,7 @@
     if (el.currencyUnitPrice) {
       el.currencyUnitPrice.value = "";
     }
+    currencyTradeManualOrder = [];
     if (el.currencyNote) {
       el.currencyNote.value = "";
     }
@@ -1335,6 +1380,7 @@
     currencyUnitPriceManual = false;
     currencyTradeSourceField = "quantity";
     currencyTradeRateDriver = false;
+    currencyTradeManualOrder = [];
     fxSettlementQuantityDriver = false;
     fxSettlementRateDriver = false;
     syncCurrencyTradeFieldUi();
@@ -1399,6 +1445,7 @@
     await openCreateModal({ entryMode: "currency" });
     currencyUnitPriceManual = false;
     currencyTradeRateDriver = false;
+    currencyTradeManualOrder = [];
     syncCurrencyTradeFieldUi();
     updateCreatePreview();
   }
@@ -1444,6 +1491,7 @@
     currencyTradeSourceField = "quantity";
     currencyUnitPriceManual = true;
     currencyTradeRateDriver = false;
+    currencyTradeManualOrder = ["quantity", "rate"];
     syncCurrencyTradeFieldUi();
     updateCreatePreview();
   }

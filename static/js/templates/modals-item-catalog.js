@@ -26,7 +26,7 @@
             <div id="itemTemplatePriceField" class="money-input-wrap" data-money-input-wrap>
               <input id="itemTemplatePrice" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" />
             </div>
-            <div id="itemTemplatePriceDateField" class="date-input-wrap">
+            <div id="itemTemplatePriceDateField" class="date-input-wrap" data-date-stepper>
               <input id="itemTemplatePriceDate" class="input" type="date" aria-label="Дата цены" />
               <button class="date-input-trigger" type="button" data-date-picker-trigger="itemTemplatePriceDate" aria-label="Открыть календарь"></button>
             </div>
