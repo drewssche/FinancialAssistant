@@ -234,9 +234,9 @@
         getCategoryActions().closeCreateCategoryModal?.();
       }
     });
-    el.categoryIconToggle.addEventListener("click", () => {
-      el.categoryIconPopover.classList.toggle("hidden");
-      el.editCategoryIconPopover.classList.add("hidden");
+    el.categoryIconToggle.addEventListener("click", (event) => {
+      event.preventDefault();
+      getCategoryActions().toggleIconPopover?.("create");
     });
 
     el.closeEditCategoryModalBtn.addEventListener("click", () => getCategoryActions().closeEditCategoryModal?.());
@@ -245,9 +245,9 @@
         getCategoryActions().closeEditCategoryModal?.();
       }
     });
-    el.editCategoryIconToggle.addEventListener("click", () => {
-      el.editCategoryIconPopover.classList.toggle("hidden");
-      el.categoryIconPopover.classList.add("hidden");
+    el.editCategoryIconToggle.addEventListener("click", (event) => {
+      event.preventDefault();
+      getCategoryActions().toggleIconPopover?.("edit");
     });
 
     el.closeEditGroupModalBtn.addEventListener("click", () => {

@@ -143,6 +143,17 @@
     padding-inline: calc(var(--space-3) * 0.5);
   }
 
+  #analyticsCurrencyPanel .analytics-trend-chart-wrap {
+    margin-inline: calc(var(--space-3) * -0.5);
+    padding-inline: calc(var(--space-3) * 0.5);
+    touch-action: pan-x pan-y;
+  }
+
+  #analyticsCurrencyChart {
+    width: max(100%, var(--currency-chart-mobile-width, 46rem));
+    max-width: none;
+  }
+
   .table-search-row,
   .topbar,
   .panel-head,

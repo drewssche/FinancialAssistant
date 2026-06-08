@@ -4,6 +4,8 @@
   const pickerUtils = window.App.getRuntimeModule?.("picker-utils");
   const escapeHtml = shared.escapeHtml || ((value) => String(value ?? ""));
   const MULTI_SERIES_COLORS = ["#ff8a2b", "#6ea8ff", "#62d39a", "#f7c65b", "#d78cff", "#ff7c98"];
+  const CURRENCY_CHART_MIN_ZOOM = 1;
+  const CURRENCY_CHART_MAX_ZOOM = 2.8;
   let analyticsCurrencyTradesObserver = null;
 
   function getLoadingSkeletons() {
@@ -428,6 +430,7 @@
     if (!el.analyticsCurrencyChart) {
       return;
     }
+    ensureCurrencyChartZoom();
     el.analyticsCurrencyChart.innerHTML = `
       <text x="490" y="140" text-anchor="middle" class="analytics-chart-empty">${message}</text>
     `;
@@ -457,6 +460,98 @@
     const top = Math.max(8, Math.min(rect.height - tooltipRect.height - 8, clientY - rect.top - tooltipRect.height - 10));
     tooltip.style.left = `${left}px`;
     tooltip.style.top = `${top}px`;
+  }
+
+  function clampChartZoom(value) {
+    return Math.max(CURRENCY_CHART_MIN_ZOOM, Math.min(CURRENCY_CHART_MAX_ZOOM, Number(value) || 1));
+  }
+
+  function getCurrencyChartBaseWidth(wrapper) {
+    const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const mobileBaseline = rootFontSize * 46;
+    return Math.max(wrapper?.clientWidth || 0, mobileBaseline);
+  }
+
+  function applyCurrencyChartZoom(wrapper, zoom, focusRatio = 0.5) {
+    if (!wrapper || !el.analyticsCurrencyChart) {
+      return;
+    }
+    const nextZoom = clampChartZoom(zoom);
+    const baseWidth = getCurrencyChartBaseWidth(wrapper);
+    const previousScrollWidth = wrapper.scrollWidth || baseWidth;
+    const previousLeft = wrapper.scrollLeft;
+    el.analyticsCurrencyChart.dataset.chartZoom = String(nextZoom);
+    el.analyticsCurrencyChart.style.setProperty("--currency-chart-mobile-width", `${Math.round(baseWidth * nextZoom)}px`);
+    requestAnimationFrame(() => {
+      const nextScrollWidth = wrapper.scrollWidth || baseWidth;
+      const focusX = previousLeft + (wrapper.clientWidth || 0) * focusRatio;
+      const ratio = previousScrollWidth > 0 ? focusX / previousScrollWidth : focusRatio;
+      wrapper.scrollLeft = Math.max(0, ratio * nextScrollWidth - (wrapper.clientWidth || 0) * focusRatio);
+    });
+  }
+
+  function ensureCurrencyChartZoom() {
+    const chart = el.analyticsCurrencyChart;
+    const wrapper = chart?.closest?.(".analytics-trend-chart-wrap");
+    if (!chart || !wrapper) {
+      return;
+    }
+    if (!chart.dataset.chartZoom) {
+      applyCurrencyChartZoom(wrapper, 1, 0);
+    }
+    if (wrapper.dataset.currencyChartZoomBound === "1") {
+      return;
+    }
+    wrapper.dataset.currencyChartZoomBound = "1";
+    let pinchStartDistance = 0;
+    let pinchStartZoom = 1;
+
+    const getTouchDistance = (event) => {
+      if (!event.touches || event.touches.length < 2) {
+        return 0;
+      }
+      const [first, second] = event.touches;
+      return Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY);
+    };
+
+    wrapper.addEventListener("touchstart", (event) => {
+      if (event.touches.length !== 2) {
+        return;
+      }
+      pinchStartDistance = getTouchDistance(event);
+      pinchStartZoom = clampChartZoom(chart.dataset.chartZoom || 1);
+      wrapper.classList.add("is-pinch-zooming");
+    }, { passive: true });
+
+    wrapper.addEventListener("touchmove", (event) => {
+      if (event.touches.length !== 2 || !pinchStartDistance) {
+        return;
+      }
+      event.preventDefault();
+      const nextDistance = getTouchDistance(event);
+      const focusRatio = Math.max(0, Math.min(1, ((event.touches[0].clientX + event.touches[1].clientX) / 2 - wrapper.getBoundingClientRect().left) / Math.max(1, wrapper.clientWidth)));
+      applyCurrencyChartZoom(wrapper, pinchStartZoom * (nextDistance / pinchStartDistance), focusRatio);
+    }, { passive: false });
+
+    const stopPinch = (event) => {
+      if (!event.touches || event.touches.length < 2) {
+        wrapper.classList.remove("is-pinch-zooming");
+        pinchStartDistance = 0;
+      }
+    };
+    wrapper.addEventListener("touchend", stopPinch, { passive: true });
+    wrapper.addEventListener("touchcancel", stopPinch, { passive: true });
+
+    wrapper.addEventListener("wheel", (event) => {
+      if (!event.ctrlKey && !event.metaKey) {
+        return;
+      }
+      event.preventDefault();
+      const currentZoom = clampChartZoom(chart.dataset.chartZoom || 1);
+      const nextZoom = currentZoom * (event.deltaY < 0 ? 1.08 : 0.92);
+      const focusRatio = Math.max(0, Math.min(1, (event.clientX - wrapper.getBoundingClientRect().left) / Math.max(1, wrapper.clientWidth)));
+      applyCurrencyChartZoom(wrapper, nextZoom, focusRatio);
+    }, { passive: false });
   }
 
   function bindCurrencyChartTooltip(svgNode, points, helpers = {}) {
@@ -624,6 +719,7 @@
     if (!el.analyticsCurrencyChart) {
       return;
     }
+    ensureCurrencyChartZoom();
     const visibleSeries = Array.isArray(seriesList) ? seriesList.filter((item) => Array.isArray(item.points) && item.points.length >= 2) : [];
     if (!visibleSeries.length) {
       renderEmptyChart("Недостаточно истории курса по отслеживаемым валютам");
@@ -718,6 +814,7 @@
     if (!el.analyticsCurrencyChart) {
       return;
     }
+    ensureCurrencyChartZoom();
     if (!Array.isArray(points) || points.length < 2) {
       renderEmptyChart("Недостаточно истории курса");
       return;

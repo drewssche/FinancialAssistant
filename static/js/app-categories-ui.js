@@ -13,6 +13,12 @@
     }
   }
 
+  function toggleIconPopover(mode = "create") {
+    if (window.App.categoryIconUi?.toggleIconPopover) {
+      window.App.categoryIconUi.toggleIconPopover(mode);
+    }
+  }
+
   function setupCategoryIconPickers() {
     if (window.App.categoryIconUi?.setupCategoryIconPickers) {
       window.App.categoryIconUi.setupCategoryIconPickers();
@@ -459,6 +465,7 @@
   const api = {
     updateIconToggleLabel,
     closeIconPopovers,
+    toggleIconPopover,
     setupCategoryIconPickers,
     openCreateCategoryModal,
     closeCreateCategoryModal,

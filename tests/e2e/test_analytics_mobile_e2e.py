@@ -789,6 +789,23 @@ def test_currency_analytics_all_mode_renders_multi_currency_chart_and_backfill(p
     assert page.locator("#analyticsCurrencyChart .currency-chart-legend-label", has_text="USD").count() >= 1
     assert page.locator("#analyticsCurrencyChart .currency-chart-legend-label", has_text="EUR").count() >= 1
     assert page.locator("#analyticsCurrencyChart .currency-chart-series").count() >= 2
+    chart_geometry = page.locator("#analyticsCurrencyChart").evaluate(
+        """
+        node => {
+          const wrap = node.closest(".analytics-trend-chart-wrap");
+          return {
+            chartWidth: node.getBoundingClientRect().width,
+            wrapWidth: wrap.getBoundingClientRect().width,
+            scrollWidth: wrap.scrollWidth,
+            clientWidth: wrap.clientWidth,
+            overflowX: getComputedStyle(wrap).overflowX,
+          };
+        }
+        """
+    )
+    assert chart_geometry["chartWidth"] > chart_geometry["wrapWidth"] + 80
+    assert chart_geometry["scrollWidth"] > chart_geometry["clientWidth"] + 80
+    assert chart_geometry["overflowX"] == "auto"
 
     page.click("#analyticsCurrencyBackfillBtn")
     page.wait_for_timeout(200)

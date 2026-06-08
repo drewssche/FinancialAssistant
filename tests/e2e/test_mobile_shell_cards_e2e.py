@@ -12,6 +12,7 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 
 sync_api = pytest.importorskip("playwright.sync_api", reason="playwright is not installed")
+expect = sync_api.expect
 
 
 def _json_response(route, payload: dict | list, status: int = 200):
@@ -332,7 +333,7 @@ def test_mobile_card_kebab_stays_top_right_and_menu_escapes_card(static_server_u
             assert card_box is not None and trigger_box is not None
             assert (card_box["x"] + card_box["width"]) - (trigger_box["x"] + trigger_box["width"]) <= 28
             category_trigger.click()
-            category_menu = page.locator(".category-mobile-group-card .mobile-card-actions-popover:not(.hidden)").first
+            category_menu = page.locator(".mobile-card-actions-popover:not(.hidden)").first
             category_menu.wait_for(state="visible")
             menu_box = category_menu.bounding_box()
             assert menu_box is not None
@@ -350,7 +351,7 @@ def test_mobile_card_kebab_stays_top_right_and_menu_escapes_card(static_server_u
             assert item_card_box is not None and item_trigger_box is not None
             assert (item_card_box["x"] + item_card_box["width"]) - (item_trigger_box["x"] + item_trigger_box["width"]) <= 28
             item_trigger.click()
-            item_menu = page.locator(".item-catalog-mobile-group-card .mobile-card-actions-popover:not(.hidden)").first
+            item_menu = page.locator(".mobile-card-actions-popover:not(.hidden)").first
             item_menu.wait_for(state="visible")
             item_menu_box = item_menu.bounding_box()
             assert item_menu_box is not None
@@ -407,13 +408,50 @@ def test_mobile_card_kebab_stays_top_right_and_menu_escapes_card(static_server_u
             assert debt_card_box is not None and debt_trigger_box is not None
             assert (debt_card_box["x"] + debt_card_box["width"]) - (debt_trigger_box["x"] + debt_trigger_box["width"]) <= 28
             debt_trigger.click()
-            debt_menu = page.locator(".debt-mobile-entry .mobile-card-actions-popover:not(.hidden)").first
+            debt_menu = page.locator(".mobile-card-actions-popover:not(.hidden)").first
             debt_menu.wait_for(state="visible")
             debt_menu_box = debt_menu.bounding_box()
             assert debt_menu_box is not None
             assert debt_menu_box["x"] >= debt_card_box["x"]
             assert debt_menu_box["y"] >= debt_trigger_box["y"] - 8
             assert page.locator(".debt-mobile-entry").first.evaluate("node => getComputedStyle(node).overflow") == "visible"
+        finally:
+            browser.close()
+
+
+@pytest.mark.e2e
+def test_mobile_category_edit_icon_picker_opens_from_plus(static_server_url: str):
+    with sync_api.sync_playwright() as p:
+        try:
+            browser = p.chromium.launch(headless=True)
+        except Exception as exc:  # pragma: no cover
+            pytest.skip(f"Chromium is not available for Playwright: {exc}")
+        page = browser.new_page(viewport={"width": 430, "height": 932})
+        _set_mock_telegram(page)
+        page.route("**/api/v1/**", _build_handler("categories"))
+        try:
+            page.goto(f"{static_server_url}/static/index.html")
+            _login_via_mock_telegram(page)
+
+            category_trigger = page.locator("button[data-mobile-card-menu-trigger='category-1']").first
+            category_trigger.wait_for(state="visible")
+            category_trigger.click()
+            page.locator(".mobile-card-actions-popover[data-mobile-card-menu='category-1']:not(.hidden)").wait_for(state="visible")
+            page.locator("button[data-edit-category-id='1']").click()
+            page.locator("#editCategoryModal:not(.hidden)").wait_for(state="visible")
+
+            page.locator("#editCategoryIconToggle").click()
+            page.locator("#editCategoryIconPopover:not(.hidden)").wait_for(state="visible")
+            popover_box = page.locator("#editCategoryIconPopover").bounding_box()
+            toggle_box = page.locator("#editCategoryIconToggle").bounding_box()
+            assert popover_box is not None and toggle_box is not None
+            assert popover_box["y"] >= 0
+            assert popover_box["x"] >= 0
+            assert popover_box["width"] > toggle_box["width"]
+
+            page.locator("#editCategoryIconPopover button[data-icon='🚕']").click()
+            expect(page.locator("#editCategoryIconToggle")).to_have_text("🚕")
+            assert "hidden" in (page.locator("#editCategoryIconPopover").get_attribute("class") or "")
         finally:
             browser.close()
 

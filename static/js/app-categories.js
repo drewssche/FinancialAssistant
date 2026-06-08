@@ -16,6 +16,7 @@
   const publicCategoryActions = {
     setupCategoryIconPickers: categoryUi.setupCategoryIconPickers,
     closeIconPopovers: categoryUi.closeIconPopovers,
+    toggleIconPopover: categoryUi.toggleIconPopover,
     openCreateCategoryModal: categoryUi.openCreateCategoryModal,
     closeCreateCategoryModal: categoryUi.closeCreateCategoryModal,
     fillGroupSelect: categoryUi.fillGroupSelect,

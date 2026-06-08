@@ -1,5 +1,6 @@
 (() => {
   const { el } = window.App;
+  const pickerUtils = window.App.getRuntimeModule?.("picker-utils") || window.App.pickerUtils;
 
   const CATEGORY_ICON_POOL = [
     "🍽️",
@@ -109,8 +110,34 @@
   }
 
   function closeIconPopovers() {
+    if (pickerUtils?.setPopoverOpen) {
+      pickerUtils.setPopoverOpen(el.categoryIconPopover, false, { owners: [el.categoryIconToggle].filter(Boolean) });
+      pickerUtils.setPopoverOpen(el.editCategoryIconPopover, false, { owners: [el.editCategoryIconToggle].filter(Boolean) });
+      return;
+    }
     el.categoryIconPopover.classList.add("hidden");
     el.editCategoryIconPopover.classList.add("hidden");
+  }
+
+  function toggleIconPopover(mode = "create") {
+    const isEdit = mode === "edit";
+    const popoverNode = isEdit ? el.editCategoryIconPopover : el.categoryIconPopover;
+    const toggleNode = isEdit ? el.editCategoryIconToggle : el.categoryIconToggle;
+    const otherPopover = isEdit ? el.categoryIconPopover : el.editCategoryIconPopover;
+    const otherToggle = isEdit ? el.categoryIconToggle : el.editCategoryIconToggle;
+    if (!popoverNode || !toggleNode) {
+      return;
+    }
+    const shouldOpen = popoverNode.classList.contains("hidden");
+    if (pickerUtils?.setPopoverOpen) {
+      pickerUtils.setPopoverOpen(otherPopover, false, { owners: [otherToggle].filter(Boolean) });
+      pickerUtils.setPopoverOpen(popoverNode, shouldOpen, {
+        owners: [toggleNode, toggleNode.closest(".icon-select")].filter(Boolean),
+      });
+      return;
+    }
+    otherPopover?.classList.add("hidden");
+    popoverNode.classList.toggle("hidden", !shouldOpen);
   }
 
   function bindIconPopoverOnce(popoverNode) {
@@ -145,6 +172,7 @@
     }
     popoverNode.dataset.hiddenTarget = hiddenNode.id || "";
     popoverNode.dataset.toggleTarget = toggleNode.id || "";
+    popoverNode.classList.add("app-popover-floating");
     bindIconPopoverOnce(popoverNode);
     popoverNode.innerHTML = "";
     const emptyButton = document.createElement("button");
@@ -180,6 +208,7 @@
   window.App.categoryIconUi = {
     updateIconToggleLabel,
     closeIconPopovers,
+    toggleIconPopover,
     setupCategoryIconPickers,
   };
 })();
