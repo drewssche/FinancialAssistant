@@ -155,6 +155,8 @@ def test_activity_journal_modal_is_available_in_frontend_templates():
     assert 'currencyPortfolioActivityBtn: document.getElementById("currencyPortfolioActivityBtn")' in elements
     assert 'activityModal: document.getElementById("activityModal")' in elements
     assert "function configureActivityButton" in activity
+    assert "headers: core.authHeaders()" in activity
+    assert "auth: true" not in activity
     assert '"currency_portfolio"' in session_auth
     assert 'getRuntimeModule?.("activity")' in init_core
     assert "bindActivityUi" in init_core

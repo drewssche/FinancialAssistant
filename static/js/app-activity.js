@@ -113,7 +113,9 @@
         entity_id: String(entityId),
         page_size: "100",
       });
-      const payload = await core.requestJson(`/api/v1/activity?${params.toString()}`, { auth: true });
+      const payload = await core.requestJson(`/api/v1/activity?${params.toString()}`, {
+        headers: core.authHeaders(),
+      });
       renderEvents(payload.items || []);
     } catch (err) {
       el.activityList.innerHTML = `<div class="form-error">Не удалось загрузить журнал: ${core.escapeHtml(String(err?.message || err))}</div>`;
