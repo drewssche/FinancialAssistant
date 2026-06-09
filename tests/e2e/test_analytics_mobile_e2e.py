@@ -528,8 +528,8 @@ def test_mobile_analytics_structure_shows_price_and_discount_insights(page_with_
 
     expect(page.locator(".analytics-price-insight-block").filter(has_text="Топ подорожаний")).to_contain_text("Кофе")
     expect(page.locator(".analytics-price-insight-block").filter(has_text="Топ подорожаний")).to_contain_text("+11.0%")
-    expect(page.locator(".analytics-price-insight-block").filter(has_text="Лучшие акции")).to_contain_text("Капучино 0,2")
-    expect(page.locator(".analytics-price-insight-block").filter(has_text="Лучшие акции")).to_contain_text("Скидка 28.6%")
+    expect(page.locator(".analytics-price-insight-block").filter(has_text="Лучшие скидки")).to_contain_text("Капучино 0,2")
+    expect(page.locator(".analytics-price-insight-block").filter(has_text="Лучшие скидки")).to_contain_text("Скидка 28.6%")
 
     geometry = page.evaluate(
         """

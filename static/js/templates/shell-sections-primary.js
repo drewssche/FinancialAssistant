@@ -201,7 +201,7 @@
                 <div id="analyticsPriceIncreasesList" class="analytics-insight-list"></div>
               </div>
               <div class="analytics-price-insight-block">
-                <h4>Лучшие акции</h4>
+                <h4>Лучшие скидки</h4>
                 <div id="analyticsTopDiscountSavingsList" class="analytics-insight-list"></div>
               </div>
             </div>

@@ -167,7 +167,7 @@
         item.is_discounted = Boolean(value);
         if (item.is_discounted && !item.regular_unit_price) {
           const latestPrice = getReceiptLatestTemplatePrice(item);
-          if (latestPrice > asMoney(item.unit_price || 0)) {
+          if (latestPrice > 0) {
             item.regular_unit_price = latestPrice;
           }
         }
@@ -282,9 +282,9 @@
               <div class="receipt-category-picker app-popover ${categoryPickerOpen ? "" : "hidden"}"></div>
             </div>
             <div class="receipt-price-cell ${item.is_discounted ? "receipt-price-cell-discounted" : ""}">
-              <input type="number" step="0.01" min="0" data-receipt-field="unit_price" value="${item.unit_price || ""}" placeholder="Цена, ${esc(getReceiptCurrencyLabel(mode))}" title="Цена в ${esc(getReceiptCurrencyLabel(mode))}" />
-              <button class="receipt-discount-toggle ${item.is_discounted ? "is-active" : ""}" type="button" data-receipt-discount-toggle="${item.draft_id}" aria-pressed="${item.is_discounted ? "true" : "false"}">% Акция</button>
-              <input class="receipt-regular-price ${item.is_discounted ? "" : "hidden"}" type="number" step="0.01" min="0" data-receipt-field="regular_unit_price" value="${item.regular_unit_price || ""}" placeholder="Обычная" title="Обычная цена для истории" />
+              <input type="number" step="0.01" min="0" data-receipt-field="unit_price" value="${item.unit_price || ""}" placeholder="Цена покупки" title="Цена покупки в ${esc(getReceiptCurrencyLabel(mode))}" />
+              <button class="receipt-discount-toggle ${item.is_discounted ? "is-active" : ""}" type="button" data-receipt-discount-toggle="${item.draft_id}" aria-pressed="${item.is_discounted ? "true" : "false"}" title="Скидка, купон, промокод или бонусы">Скидка</button>
+              <input class="receipt-regular-price ${item.is_discounted ? "" : "hidden"}" type="number" step="0.01" min="0" data-receipt-field="regular_unit_price" value="${item.regular_unit_price || ""}" placeholder="Обычная цена" title="Обычная цена для истории" />
             </div>
             <input type="number" step="0.001" min="0" data-receipt-field="quantity" value="${item.quantity || ""}" placeholder="Кол-во" />
             <div class="receipt-line-total"><span>Итого</span><strong>${formatReceiptMoney(total, mode)}</strong></div>

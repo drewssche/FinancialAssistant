@@ -33,9 +33,9 @@
       const price = Number(row.unit_price || 0);
       if (regular > 0 && price > 0 && price < regular) {
         const percent = Math.round(((regular - price) / regular) * 100);
-        return `Акция -${percent}%`;
+        return `Скидка -${percent}%`;
       }
-      return "Акция";
+      return "Скидка";
     }
 
     function openOperationReceiptModal(item) {
@@ -74,7 +74,7 @@
           ? `<span class="operation-receipt-discount-chip">${esc(discountLabel)}</span>`
           : "";
         const regularPrice = row.is_discounted && Number(row.regular_unit_price || 0) > 0
-          ? ` · обычная ${core.formatMoney(row.regular_unit_price, { currency: receiptCurrency })}`
+          ? ` · обычная цена ${core.formatMoney(row.regular_unit_price, { currency: receiptCurrency })}`
           : "";
         return `
           <article class="operation-receipt-item">

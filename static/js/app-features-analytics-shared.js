@@ -115,13 +115,13 @@
           cardClass: "expense",
         },
         {
-          label: "Сэкономлено на акциях",
+          label: "Сэкономлено на скидках",
           value: core.formatMoney(data.discount_savings_total || 0),
           delta: String(data.discount_items_count || 0),
           previous: data.discount_savings_rate_pct === null || data.discount_savings_rate_pct === undefined
             ? "нет расходов"
             : formatPct(data.discount_savings_rate_pct),
-          deltaLabel: "Акционных позиций",
+          deltaLabel: "Позиций со скидкой",
           previousLabel: "К расходам",
           cardClass: "income",
         },

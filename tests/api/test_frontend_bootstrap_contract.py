@@ -791,3 +791,14 @@ def test_receipt_line_total_live_update_keeps_currency_symbol():
     assert "formatReceiptMoney," in interactions
     assert "${formatReceiptMoney(receiptLineTotal(updated.item), mode)}" in interactions
     assert "receiptLineTotal(updated.item), { withCurrency: false }" not in interactions
+
+
+def test_receipt_discount_ui_uses_discount_copy_and_prefills_regular_price():
+    receipt = (REPO_ROOT / "static" / "js" / "app-features-operation-modal-receipt.js").read_text(encoding="utf-8")
+
+    assert ">Скидка</button>" in receipt
+    assert "title=\"Скидка, купон, промокод или бонусы\"" in receipt
+    assert 'placeholder="Цена покупки"' in receipt
+    assert 'placeholder="Обычная цена"' in receipt
+    assert "if (latestPrice > 0)" in receipt
+    assert "latestPrice > asMoney(item.unit_price || 0)" not in receipt
