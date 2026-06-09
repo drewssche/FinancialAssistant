@@ -112,6 +112,14 @@
 - [x] Operations: show the resolved date/period immediately instead of a perpetual placeholder.
 - [x] Reliability: add summary retry and non-blocking plans fallback for intermittent `[500] /api/v1/dashboard/summary`; production logs/HTTP check showed current summary responses are `200` after the latest restart.
 
+### Active Product Tasks 2026-06-09
+- [x] Operations: make `Денежный поток` the only/default operations list mode and ignore legacy saved `operations` mode preferences.
+- [x] Operations: remove mass-selection UI from the operations table (`select all`, `Выделить видимое`, bulk edit/delete bar) in the unified money-flow view.
+- [x] Operations: support category and item-template filters in money-flow endpoints and UI navigation.
+- [x] Categories: add a usage modal inside category cards, visually consistent with the activity journal, with usage KPIs and related operations.
+- [x] Item catalog: add a usage modal inside item cards, visually consistent with the activity journal, with receipt-line usage KPIs and related operations.
+- [ ] Item catalog duplicates: keep duplicate detection/merge in backlog until usage counters and operation drill-down are stable.
+
 1. Production auth cleanup
 - keep Telegram WebApp as the primary supported auth path
 - expose browser Telegram login only behind `TELEGRAM_BOT_USERNAME` feature gate

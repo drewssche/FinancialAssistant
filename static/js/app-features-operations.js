@@ -97,7 +97,8 @@
   function buildOperationsQuery(page) {
     const { dateFrom, dateTo } = core.getPeriodBounds(state.period);
     updateOperationsPeriodLabel();
-    const isMoneyFlowMode = state.operationsMode === "money_flow";
+    state.operationsMode = "money_flow";
+    const isMoneyFlowMode = true;
     const params = new URLSearchParams({
       page: String(page),
       page_size: String(state.pageSize),
@@ -123,8 +124,12 @@
     if ((state.operationsCurrencyScope || "all") !== "all") {
       params.set("currency_scope", state.operationsCurrencyScope);
     }
-    if (!isMoneyFlowMode && state.operationsCategoryFilterId !== null && state.operationsCategoryFilterId !== undefined && state.operationsCategoryFilterId !== "") {
+    if (state.operationsCategoryFilterId !== null && state.operationsCategoryFilterId !== undefined && state.operationsCategoryFilterId !== "") {
       params.set("category_id", String(state.operationsCategoryFilterId));
+    }
+    if (state.operationsItemTemplateFilterId !== null && state.operationsItemTemplateFilterId !== undefined && state.operationsItemTemplateFilterId !== "") {
+      params.set("item_template_id", String(state.operationsItemTemplateFilterId));
+      params.set("source", "operation");
     }
     const query = el.filterQ.value.trim();
     if (query) {
@@ -150,9 +155,11 @@
     if (!el.operationsActiveFilters || !el.operationsCategoryFilterChip || !el.clearOperationsCategoryFilterBtn) {
       return;
     }
-    const isMoneyFlowMode = state.operationsMode === "money_flow";
+    state.operationsMode = "money_flow";
+    const isMoneyFlowMode = true;
     const baseCurrency = syncOperationsCurrencyScopeUi();
-    const hasCategory = !isMoneyFlowMode && state.operationsCategoryFilterId !== null && state.operationsCategoryFilterId !== undefined && state.operationsCategoryFilterId !== "";
+    const hasCategory = state.operationsCategoryFilterId !== null && state.operationsCategoryFilterId !== undefined && state.operationsCategoryFilterId !== "";
+    const hasItemTemplate = state.operationsItemTemplateFilterId !== null && state.operationsItemTemplateFilterId !== undefined && state.operationsItemTemplateFilterId !== "";
     const sourceLabel = isMoneyFlowMode && state.operationsSourceFilter === "operation"
       ? "Источник: Операции"
       : isMoneyFlowMode && state.operationsSourceFilter === "debt"
@@ -180,7 +187,7 @@
     const hasQuickView = Boolean(quickViewLabel);
     const hasKind = Boolean(kindLabel);
     const hasCurrencyScope = Boolean(currencyScopeLabel);
-    el.operationsActiveFilters.classList.toggle("hidden", !hasCategory && !hasQuickView && !hasKind && !hasCurrencyScope && !sourceLabel);
+    el.operationsActiveFilters.classList.toggle("hidden", !hasCategory && !hasItemTemplate && !hasQuickView && !hasKind && !hasCurrencyScope && !sourceLabel);
     if (el.operationsKindFilterChip) {
       el.operationsKindFilterChip.classList.toggle("hidden", !hasKind);
       el.operationsKindFilterChip.textContent = kindLabel;
@@ -198,18 +205,25 @@
       el.operationsSourceFilterChip.textContent = sourceLabel;
     }
     el.operationsCategoryFilterChip.classList.toggle("hidden", !hasCategory);
-    el.clearOperationsCategoryFilterBtn.classList.toggle("hidden", !hasCategory);
+    el.clearOperationsCategoryFilterBtn.classList.toggle("hidden", !hasCategory && !hasItemTemplate);
     el.operationsCategoryFilterChip.textContent = hasCategory
       ? `Категория: ${state.operationsCategoryFilterName || `#${state.operationsCategoryFilterId}`}`
       : "";
+    if (el.operationsItemTemplateFilterChip) {
+      el.operationsItemTemplateFilterChip.classList.toggle("hidden", !hasItemTemplate);
+      el.operationsItemTemplateFilterChip.textContent = hasItemTemplate
+        ? `Позиция: ${state.operationsItemTemplateFilterName || `#${state.operationsItemTemplateFilterId}`}`
+        : "";
+    }
     if (el.resetOperationsFiltersBtn) {
       const hasQuery = Boolean(el.filterQ?.value.trim());
-      el.resetOperationsFiltersBtn.disabled = !hasCategory && !hasQuery && !hasKind && !hasQuickView && !hasCurrencyScope && !sourceLabel;
+      el.resetOperationsFiltersBtn.disabled = !hasCategory && !hasItemTemplate && !hasQuery && !hasKind && !hasQuickView && !hasCurrencyScope && !sourceLabel;
     }
   }
 
   function renderOperationsSummary(data) {
-    const isMoneyFlowMode = state.operationsMode === "money_flow";
+    state.operationsMode = "money_flow";
+    const isMoneyFlowMode = true;
     const resultValue = Number(data?.balance || 0);
     const resultTone = resultValue > 0 ? "income" : resultValue < 0 ? "expense" : "neutral";
     if (el.operationsResultCard) {
@@ -264,7 +278,8 @@
   async function loadOperationsSummary(options = {}) {
     const force = options.force === true;
     const { dateFrom, dateTo } = core.getPeriodBounds(state.period);
-    const isMoneyFlowMode = state.operationsMode === "money_flow";
+    state.operationsMode = "money_flow";
+    const isMoneyFlowMode = true;
     const params = new URLSearchParams({
       date_from: dateFrom,
       date_to: dateTo,
@@ -285,8 +300,12 @@
     if ((state.operationsCurrencyScope || "all") !== "all") {
       params.set("currency_scope", state.operationsCurrencyScope);
     }
-    if (!isMoneyFlowMode && state.operationsCategoryFilterId !== null && state.operationsCategoryFilterId !== undefined && state.operationsCategoryFilterId !== "") {
+    if (state.operationsCategoryFilterId !== null && state.operationsCategoryFilterId !== undefined && state.operationsCategoryFilterId !== "") {
       params.set("category_id", String(state.operationsCategoryFilterId));
+    }
+    if (state.operationsItemTemplateFilterId !== null && state.operationsItemTemplateFilterId !== undefined && state.operationsItemTemplateFilterId !== "") {
+      params.set("item_template_id", String(state.operationsItemTemplateFilterId));
+      params.set("source", "operation");
     }
     const query = el.filterQ.value.trim();
     if (query) {
@@ -329,16 +348,19 @@
   }
 
   function applyOperationsModeUi() {
-    const isMoneyFlowMode = state.operationsMode === "money_flow";
-    core.syncSegmentedActive(el.operationsModeTabs, "operations-mode", state.operationsMode || "operations");
+    state.operationsMode = "money_flow";
+    const isMoneyFlowMode = true;
+    if (el.operationsModeTabs) {
+      core.syncSegmentedActive(el.operationsModeTabs, "operations-mode", "money_flow");
+    }
     if (el.operationsQuickViewCard) {
-      el.operationsQuickViewCard.classList.toggle("hidden", isMoneyFlowMode);
+      el.operationsQuickViewCard.classList.add("hidden");
     }
     if (el.operationsQuickActionsCard) {
-      el.operationsQuickActionsCard.classList.toggle("hidden", isMoneyFlowMode);
+      el.operationsQuickActionsCard.classList.remove("hidden");
     }
     if (el.operationsSourceCard) {
-      el.operationsSourceCard.classList.toggle("hidden", !isMoneyFlowMode);
+      el.operationsSourceCard.classList.remove("hidden");
     }
     if (el.operationsModeHint) {
       el.operationsModeHint.textContent = isMoneyFlowMode
@@ -349,16 +371,16 @@
       el.operationsKindAllLabel.textContent = "Все";
     }
     if (el.operationsKindExpenseLabel) {
-      el.operationsKindExpenseLabel.textContent = isMoneyFlowMode ? "Отток" : "Расход";
+      el.operationsKindExpenseLabel.textContent = "Отток";
     }
     if (el.operationsKindIncomeLabel) {
-      el.operationsKindIncomeLabel.textContent = isMoneyFlowMode ? "Приток" : "Доход";
+      el.operationsKindIncomeLabel.textContent = "Приток";
     }
     if (el.quickFilterExpenseBtn) {
-      el.quickFilterExpenseBtn.textContent = isMoneyFlowMode ? "Только отток" : "Только расходы";
+      el.quickFilterExpenseBtn.textContent = "Только отток";
     }
     if (el.quickFilterIncomeBtn) {
-      el.quickFilterIncomeBtn.textContent = isMoneyFlowMode ? "Только приток" : "Только доходы";
+      el.quickFilterIncomeBtn.textContent = "Только приток";
     }
     if (el.operationsCategoryHeader) {
       el.operationsCategoryHeader.textContent = isMoneyFlowMode ? "Контекст" : "Категория";
@@ -367,7 +389,7 @@
       el.operationsReceiptHeader.textContent = isMoneyFlowMode ? "Источник" : "Чек";
     }
     if (el.operationsBulkBar) {
-      el.operationsBulkBar.classList.toggle("hidden", isMoneyFlowMode);
+      el.operationsBulkBar.classList.add("hidden");
     }
     core.syncSegmentedActive(el.operationsSourceTabs, "operations-source", state.operationsSourceFilter || "all");
     if (el.operationsSelectAll) {
@@ -376,7 +398,7 @@
       el.operationsSelectAll.indeterminate = false;
     }
     if (el.deleteAllOperationsBtn) {
-      el.deleteAllOperationsBtn.classList.toggle("hidden", isMoneyFlowMode);
+      el.deleteAllOperationsBtn.classList.add("hidden");
     }
   }
 
@@ -405,7 +427,8 @@
   }
 
   function renderOperations(items) {
-    const isMoneyFlowMode = state.operationsMode === "money_flow";
+    state.operationsMode = "money_flow";
+    const isMoneyFlowMode = true;
     const sortedItems = applyOperationsSort(items);
     const query = el.filterQ.value.trim();
     applyOperationsModeUi();
@@ -472,7 +495,8 @@
 
     const requestPage = state.page;
     const params = buildOperationsQuery(requestPage);
-    const isMoneyFlowMode = state.operationsMode === "money_flow";
+    state.operationsMode = "money_flow";
+    const isMoneyFlowMode = true;
     const endpoint = isMoneyFlowMode ? "/api/v1/operations/money-flow" : "/api/v1/operations";
     const cacheKey = `operations:${isMoneyFlowMode ? "money-flow" : "list"}:${params.toString()}`;
     if (!force) {
@@ -533,6 +557,8 @@
   async function clearOperationsCategoryFilter() {
     state.operationsCategoryFilterId = null;
     state.operationsCategoryFilterName = "";
+    state.operationsItemTemplateFilterId = null;
+    state.operationsItemTemplateFilterName = "";
     renderOperationsActiveFilters();
     await loadOperations({ reset: true, force: true });
     await savePreferences();
@@ -540,16 +566,20 @@
 
   async function resetOperationsFilters() {
     state.filterKind = "";
-    state.operationsMode = "operations";
+    state.operationsMode = "money_flow";
     state.operationsSourceFilter = "all";
     state.operationsQuickView = "all";
     state.operationsCurrencyScope = "all";
     state.operationsCategoryFilterId = null;
     state.operationsCategoryFilterName = "";
+    state.operationsItemTemplateFilterId = null;
+    state.operationsItemTemplateFilterName = "";
     if (el.filterQ) {
       el.filterQ.value = "";
     }
-    core.syncSegmentedActive(el.operationsModeTabs, "operations-mode", state.operationsMode);
+    if (el.operationsModeTabs) {
+      core.syncSegmentedActive(el.operationsModeTabs, "operations-mode", state.operationsMode);
+    }
     core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
     core.syncSegmentedActive(el.operationsSourceTabs, "operations-source", state.operationsSourceFilter);
     core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
@@ -623,16 +653,44 @@
   }
 
   async function setOperationsMode(value) {
-    state.operationsMode = value === "money_flow" ? "money_flow" : "operations";
+    state.operationsMode = "money_flow";
     state.selectedOperationIds.clear();
-    if (state.operationsMode === "money_flow") {
-      state.operationsQuickView = "all";
-      state.operationsCategoryFilterId = null;
-      state.operationsCategoryFilterName = "";
-    } else {
-      state.operationsSourceFilter = "all";
-    }
+    state.operationsQuickView = "all";
     applyOperationsModeUi();
+    renderOperationsActiveFilters();
+    await loadOperations({ reset: true, force: true });
+    await savePreferences();
+  }
+
+  async function openOperationsForCategory(categoryId, categoryName = "") {
+    const resolvedId = Number(categoryId || 0);
+    if (!(resolvedId > 0)) {
+      return;
+    }
+    state.operationsMode = "money_flow";
+    state.operationsSourceFilter = "operation";
+    state.operationsCategoryFilterId = resolvedId;
+    state.operationsCategoryFilterName = categoryName || "";
+    state.operationsItemTemplateFilterId = null;
+    state.operationsItemTemplateFilterName = "";
+    await getActions().showSection?.("operations");
+    renderOperationsActiveFilters();
+    await loadOperations({ reset: true, force: true });
+    await savePreferences();
+  }
+
+  async function openOperationsForItemTemplate(templateId, templateName = "") {
+    const resolvedId = Number(templateId || 0);
+    if (!(resolvedId > 0)) {
+      return;
+    }
+    state.operationsMode = "money_flow";
+    state.operationsSourceFilter = "operation";
+    state.operationsCategoryFilterId = null;
+    state.operationsCategoryFilterName = "";
+    state.operationsItemTemplateFilterId = resolvedId;
+    state.operationsItemTemplateFilterName = templateName || "";
+    await getActions().showSection?.("operations");
     renderOperationsActiveFilters();
     await loadOperations({ reset: true, force: true });
     await savePreferences();
@@ -754,6 +812,8 @@
     clearVisibleOperationsSelection,
     setOperationsKindFilter,
     loadOperationsSummary,
+    openOperationsForCategory,
+    openOperationsForItemTemplate,
     openOperationReceiptModal,
     closeOperationReceiptModal,
     openMoneyFlowSource,

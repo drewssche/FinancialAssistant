@@ -485,9 +485,6 @@
     } else if (item?.can_open_source) {
       menuItems = `<button class="btn btn-secondary" type="button" data-open-source-kind="${sourceKind}" data-open-source-id="${item.source_id || ""}" data-open-source-mode="edit">${escapeHtml(item?.open_label || "Редактировать")}</button>`;
     }
-    const selectCell = selectable
-      ? `<td class="select-col" data-label="Выбор"><input class="table-checkbox" type="checkbox" data-select-operation-id="${escapeHtml(item.id)}" ${selected ? "checked" : ""} /></td>`
-      : "<td class=\"select-col\" data-label=\"Выбор\"><span class=\"muted-small\">—</span></td>";
     const row = document.createElement("tr");
     row.classList.add(`kind-row-${kindClass}`);
     row.classList.add(`money-flow-row-source-${sourceKind}`);
@@ -495,7 +492,6 @@
       row.classList.add(`money-flow-row-fx-${String(item?.trade_side || "buy") === "sell" ? "sell" : "buy"}`);
     }
     row.innerHTML = `
-      ${selectCell}
       <td data-label="Дата">${core.formatDateRu(item.event_date)}</td>
       <td data-label="Тип"><span class="kind-pill kind-pill-${kindClass}">${highlightText(directionLabel, searchQuery)}</span></td>
       <td data-label="Контекст">${categoryCellHtml}</td>

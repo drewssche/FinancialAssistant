@@ -5,6 +5,10 @@
     return window.App.getRuntimeModule?.("activity") || {};
   }
 
+  function getUsageFeature() {
+    return window.App.getRuntimeModule?.("usage") || {};
+  }
+
   function renderGroupedCategoryTable({
     body,
     groups,
@@ -118,6 +122,7 @@
     }
     state.editCategoryId = item.id;
     getActivityFeature().configureActivityButton?.(el.editCategoryActivityBtn, "category", item.id);
+    getUsageFeature().configureUsageButton?.(el.editCategoryUsageBtn, "category", item.id, item.name || "");
     el.editCategoryName.value = item.name || "";
     el.editCategoryIcon.value = item.icon || "";
     categoryUi.updateIconToggleLabel(el.editCategoryIconToggle, el.editCategoryIcon.value);
@@ -138,6 +143,7 @@
     }
     state.editCategoryId = null;
     getActivityFeature().configureActivityButton?.(el.editCategoryActivityBtn, null, null);
+    getUsageFeature().configureUsageButton?.(el.editCategoryUsageBtn, null, null);
     categoryUi.closeIconPopovers();
     if (el.editCategoryGroupPickerBlock) {
       el.editCategoryGroupPickerBlock.classList.add("hidden");

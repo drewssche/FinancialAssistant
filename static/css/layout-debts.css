@@ -60,6 +60,11 @@
   gap: var(--space-3);
 }
 
+.debts-section-kpi {
+  margin-top: 0;
+  margin-bottom: var(--space-3);
+}
+
 .debt-cards-compact .debt-card-compact {
   padding: calc(var(--space-3) + 0.125rem);
   background:

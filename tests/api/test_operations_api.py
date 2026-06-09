@@ -927,6 +927,7 @@ def test_operations_filter_by_receipt_item_category(client: TestClient):
     )
     assert created.status_code == 201
     payload = created.json()
+    operation_id = payload["id"]
     assert payload["receipt_items"][0]["category_id"] == food_category_id
     assert payload["receipt_items"][1]["category_id"] == transport_category_id
 
@@ -937,11 +938,34 @@ def test_operations_filter_by_receipt_item_category(client: TestClient):
     assert filtered.status_code == 200
     assert filtered.json()["total"] == 1
 
+    money_flow_by_category = client.get(
+        "/api/v1/operations/money-flow",
+        params={"category_id": transport_category_id, "page": 1, "page_size": 10},
+    )
+    assert money_flow_by_category.status_code == 200
+    assert money_flow_by_category.json()["total"] == 1
+    assert money_flow_by_category.json()["items"][0]["source_kind"] == "operation"
+
+    money_flow_summary = client.get(
+        "/api/v1/operations/money-flow/summary",
+        params={"category_id": transport_category_id},
+    )
+    assert money_flow_summary.status_code == 200
+    assert money_flow_summary.json()["expense_total"] == "100.00"
+
+    item_template_id = payload["receipt_items"][0]["template_id"]
+    money_flow_by_item = client.get(
+        "/api/v1/operations/money-flow",
+        params={"item_template_id": item_template_id, "page": 1, "page_size": 10},
+    )
+    assert money_flow_by_item.status_code == 200
+    assert money_flow_by_item.json()["total"] == 1
+    assert money_flow_by_item.json()["items"][0]["source_id"] == operation_id
+
     summary = client.get("/api/v1/operations/summary", params={"category_id": food_category_id})
     assert summary.status_code == 200
     assert summary.json()["expense_total"] == "100.00"
 
-    operation_id = payload["id"]
     updated = client.patch(
         f"/api/v1/operations/{operation_id}",
         json={

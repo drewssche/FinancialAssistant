@@ -655,9 +655,10 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="editCategoryTitle">Редактировать категорию</h3>
-          <div class="modal-head-actions">
-            <button id="editCategoryActivityBtn" class="btn btn-secondary hidden" type="button">Журнал</button>
-            <button id="closeEditCategoryModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <div class="modal-head-actions">
+              <button id="editCategoryActivityBtn" class="btn btn-secondary hidden" type="button">Журнал</button>
+              <button id="editCategoryUsageBtn" class="btn btn-secondary hidden" type="button">Операции</button>
+              <button id="closeEditCategoryModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
               <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
             </button>
           </div>
@@ -711,6 +712,27 @@
         </div>
         <div id="activityList" class="activity-list">
           <div class="muted-small">Журнал пока пуст</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="usageModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="usageModalTitle">
+      <div class="modal-card modal-medium">
+        <div class="panel-head row between">
+          <div>
+            <h3 id="usageModalTitle">Операции</h3>
+            <p id="usageModalSubtitle" class="subtitle">Где используется карточка</p>
+          </div>
+          <button id="closeUsageModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
+        </div>
+        <div id="usageKpi" class="analytics-kpi-secondary usage-kpi"></div>
+        <div class="usage-modal-actions">
+          <button id="openUsageInOperationsBtn" class="btn btn-secondary" type="button">Открыть в разделе Операции</button>
+        </div>
+        <div id="usageList" class="activity-list usage-list">
+          <div class="muted-small">Операций пока нет</div>
         </div>
       </div>
     </div>

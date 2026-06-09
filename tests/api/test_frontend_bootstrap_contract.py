@@ -46,6 +46,7 @@ def test_runtime_registry_is_loaded_before_feature_modules():
 
     registry_index = script_sources.index("/static/js/app-runtime-registry.js")
     assert registry_index < script_sources.index("/static/js/app-activity.js")
+    assert registry_index < script_sources.index("/static/js/app-usage.js")
     assert registry_index < script_sources.index("/static/js/app-features-dashboard.js")
     assert registry_index < script_sources.index("/static/js/app-features-session-auth.js")
     assert registry_index < script_sources.index("/static/js/app-features-session.js")
@@ -132,13 +133,17 @@ def test_activity_journal_modal_is_available_in_frontend_templates():
     shell_primary = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-primary.js").read_text(encoding="utf-8")
     shell_secondary = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-secondary.js").read_text(encoding="utf-8")
     activity = (REPO_ROOT / "static" / "js" / "app-activity.js").read_text(encoding="utf-8")
+    usage = (REPO_ROOT / "static" / "js" / "app-usage.js").read_text(encoding="utf-8")
     elements = (REPO_ROOT / "static" / "js" / "app-core-elements.js").read_text(encoding="utf-8")
     session_auth = (REPO_ROOT / "static" / "js" / "app-features-session-auth.js").read_text(encoding="utf-8")
     init_core = (REPO_ROOT / "static" / "js" / "app-init-core.js").read_text(encoding="utf-8")
 
     assert 'id="activityModal"' in modals
+    assert 'id="usageModal"' in modals
     assert 'id="activityList"' in modals
+    assert 'id="usageList"' in modals
     assert 'id="closeActivityModalBtn"' in modals
+    assert 'id="closeUsageModalBtn"' in modals
     for button_id in (
         "createModalActivityBtn",
         "editModalActivityBtn",
@@ -148,18 +153,26 @@ def test_activity_journal_modal_is_available_in_frontend_templates():
         assert f'id="{button_id}"' in modals
         assert f'{button_id}: document.getElementById("{button_id}")' in elements
     assert 'id="itemTemplateActivityBtn"' in modals_item_catalog
+    assert 'id="itemTemplateUsageBtn"' in modals_item_catalog
     assert 'itemTemplateActivityBtn: document.getElementById("itemTemplateActivityBtn")' in elements
+    assert 'itemTemplateUsageBtn: document.getElementById("itemTemplateUsageBtn")' in elements
     assert 'id="dashboardCurrencyActivityBtn"' in shell_primary
     assert 'id="currencyPortfolioActivityBtn"' in shell_secondary
     assert 'dashboardCurrencyActivityBtn: document.getElementById("dashboardCurrencyActivityBtn")' in elements
     assert 'currencyPortfolioActivityBtn: document.getElementById("currencyPortfolioActivityBtn")' in elements
     assert 'activityModal: document.getElementById("activityModal")' in elements
+    assert 'usageModal: document.getElementById("usageModal")' in elements
     assert "function configureActivityButton" in activity
+    assert "function configureUsageButton" in usage
+    assert "/api/v1/operations/money-flow?" in usage
+    assert "item_template_id" in usage
     assert "headers: core.authHeaders()" in activity
     assert "auth: true" not in activity
     assert '"currency_portfolio"' in session_auth
     assert 'getRuntimeModule?.("activity")' in init_core
+    assert 'getRuntimeModule?.("usage")' in init_core
     assert "bindActivityUi" in init_core
+    assert "bindUsageUi" in init_core
 
 
 def test_dashboard_navigation_ignores_stale_section_loads():
@@ -826,3 +839,43 @@ def test_dashboard_summary_retry_and_plan_fallback_are_non_blocking():
     assert "await wait(450, options.signal);" in dashboard_data
     assert "state.plansAllTimeBalance = 0;" in plans
     assert "return 0;" in plans
+
+
+def test_operations_section_is_money_flow_first_without_bulk_select():
+    shell_primary = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-primary.js").read_text(
+        encoding="utf-8"
+    )
+    state = (REPO_ROOT / "static" / "js" / "app-core-state.js").read_text(encoding="utf-8")
+    operations = (REPO_ROOT / "static" / "js" / "app-features-operations.js").read_text(encoding="utf-8")
+    preferences = (REPO_ROOT / "static" / "js" / "app-features-session-preferences.js").read_text(encoding="utf-8")
+    renderers = (REPO_ROOT / "static" / "js" / "app-renderers.js").read_text(encoding="utf-8")
+
+    assert 'operationsMode: "money_flow"' in state
+    assert 'id="operationsModeTabs"' not in shell_primary
+    assert 'id="operationsSelectAll"' not in shell_primary
+    assert 'id="selectVisibleOperationsBtn"' not in shell_primary
+    assert 'id="operationsBulkBar"' not in shell_primary
+    assert 'id="deleteAllOperationsBtn"' not in shell_primary
+    assert 'state.operationsMode = "money_flow";' in operations
+    assert 'mode: "money_flow"' in preferences
+    assert 'params.set("item_template_id", String(state.operationsItemTemplateFilterId));' in operations
+    assert '<td class="select-col" data-label="Выбор"><span class="muted-small">—</span></td>' not in renderers
+
+
+def test_debts_section_has_filtered_base_currency_kpi():
+    secondary_template = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-secondary.js").read_text(
+        encoding="utf-8"
+    )
+    elements = (REPO_ROOT / "static" / "js" / "app-core-elements.js").read_text(encoding="utf-8")
+    debts_render = (REPO_ROOT / "static" / "js" / "app-features-debts-render.js").read_text(encoding="utf-8")
+    debts_css = (REPO_ROOT / "static" / "css" / "layout-debts.css").read_text(encoding="utf-8")
+
+    assert 'id="debtsSectionKpi"' in secondary_template
+    assert "debtsSectionKpi: document.getElementById(\"debtsSectionKpi\")" in elements
+    assert "function summarizeDebtCards(cards)" in debts_render
+    assert "debt.current_base_outstanding_total ?? debt.outstanding_total" in debts_render
+    assert "renderDebtsSectionKpi(visibleCards);" in debts_render
+    assert "Я должен:" in debts_render
+    assert "Мне должны:" in debts_render
+    assert "Чистая позиция:" in debts_render
+    assert ".debts-section-kpi" in debts_css

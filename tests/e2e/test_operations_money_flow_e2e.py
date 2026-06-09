@@ -259,6 +259,9 @@ def page_with_money_flow_api_mock():
             return json_response(route, debt_cards)
         if path == "/api/v1/currency/overview" and method == "GET":
             return json_response(route, currency_overview)
+        if path == "/api/v1/currency/trades" and method == "GET":
+            trades = currency_overview["recent_trades"]
+            return json_response(route, {"items": trades, "total": len(trades), "page": 1, "page_size": 20})
         if path == "/api/v1/currency/performance/history" and method == "GET":
             return json_response(route, {
                 "base_currency": "BYN",
@@ -332,19 +335,14 @@ def test_operations_money_flow_mode_supports_source_filter_and_drilldown(static_
 
     page.click("button[data-section='operations']")
     page.wait_for_selector("#operationsSection:not(.hidden)")
-    page.click("#operationsModeTabs button[data-operations-mode='money_flow']")
-    page.wait_for_function(
-        """
-        () => document.querySelector('#operationsModeTabs .segmented-btn.active')?.dataset.operationsMode === 'money_flow'
-        """
-    )
+    assert page.locator("#operationsModeTabs").count() == 0
+    page.wait_for_selector("#operationsSourceTabs")
     page.wait_for_selector("#operationsBody tr")
 
     table_text = page.locator("#operationsBody").inner_text()
     assert "Я дал в долг" in table_text
     assert "Мне вернули долг" in table_text
     assert "FX" in table_text
-    assert "DEBT" in table_text
 
     page.click("#operationsSourceTabs button[data-operations-source='debt']")
     page.wait_for_function(
@@ -370,6 +368,7 @@ def test_operations_money_flow_mode_supports_source_filter_and_drilldown(static_
         () => window.App.actions.openMoneyFlowSource({
           sourceKind: 'debt',
           sourceId: '9001',
+          mode: 'history',
         })
         """
     )

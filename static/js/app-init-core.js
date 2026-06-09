@@ -43,6 +43,10 @@
     return window.App.getRuntimeModule?.("activity") || {};
   }
 
+  function getUsageFeature() {
+    return window.App.getRuntimeModule?.("usage") || {};
+  }
+
   function isCompactMobileViewport() {
     return window.matchMedia("(max-width: 640px)").matches;
   }
@@ -718,6 +722,7 @@
     bindCoreHandlers();
     bindModalHandlers();
     getActivityFeature().bindActivityUi?.();
+    getUsageFeature().bindUsageUi?.();
   }
 
   const api = {

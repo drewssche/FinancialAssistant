@@ -200,6 +200,8 @@
   const selectVisibleOperations = operationsFeatures.selectVisibleOperations;
   const clearVisibleOperationsSelection = operationsFeatures.clearVisibleOperationsSelection;
   const setOperationsKindFilter = operationsFeatures.setOperationsKindFilter;
+  const openOperationsForCategory = operationsFeatures.openOperationsForCategory;
+  const openOperationsForItemTemplate = operationsFeatures.openOperationsForItemTemplate;
   const openMoneyFlowSource = operationsFeatures.openMoneyFlowSource;
   const openOperationReceiptModal = operationsFeatures.openOperationReceiptModal;
   const closeOperationReceiptModal = operationsFeatures.closeOperationReceiptModal;
@@ -390,6 +392,8 @@
     selectVisibleOperations,
     clearVisibleOperationsSelection,
     setOperationsKindFilter,
+    openOperationsForCategory,
+    openOperationsForItemTemplate,
     openMoneyFlowSource,
     createOperation,
     updateOperation,

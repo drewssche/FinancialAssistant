@@ -347,9 +347,7 @@
       state.period = "day";
     }
     state.filterKind = prefs.data?.operations?.filters?.kind || "";
-    state.operationsMode = ["operations", "money_flow"].includes(prefs.data?.operations?.mode)
-      ? prefs.data.operations.mode
-      : "operations";
+    state.operationsMode = "money_flow";
     state.operationsSourceFilter = ["all", "operation", "debt", "fx"].includes(prefs.data?.operations?.filters?.source)
       ? prefs.data.operations.filters.source
       : "all";
@@ -359,6 +357,8 @@
       : "all";
     state.operationsCategoryFilterId = prefs.data?.operations?.filters?.category_id ?? null;
     state.operationsCategoryFilterName = prefs.data?.operations?.filters?.category_name || "";
+    state.operationsItemTemplateFilterId = prefs.data?.operations?.filters?.item_template_id ?? null;
+    state.operationsItemTemplateFilterName = prefs.data?.operations?.filters?.item_template_name || "";
     state.operationSortPreset = prefs.data?.operations?.sort_preset || localStorage.getItem("operations_sort_preset") || "date";
     localStorage.setItem("operations_sort_preset", state.operationSortPreset);
     state.debtSortPreset = prefs.data?.debts?.sort_preset || "priority";
@@ -407,7 +407,9 @@
     state.activeSection = prefs.data?.ui?.active_section || "dashboard";
 
     core.syncAllPeriodTabs(state.period);
-    core.syncSegmentedActive(el.operationsModeTabs, "operations-mode", state.operationsMode);
+    if (el.operationsModeTabs) {
+      core.syncSegmentedActive(el.operationsModeTabs, "operations-mode", state.operationsMode);
+    }
     core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
     core.syncSegmentedActive(el.operationsSourceTabs, "operations-source", state.operationsSourceFilter);
     core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
@@ -494,7 +496,7 @@
         },
         operations: {
           ...(state.preferences?.data?.operations || {}),
-          mode: state.operationsMode || "operations",
+          mode: "money_flow",
           sort_preset: state.operationSortPreset || "date",
           filters: {
             kind: state.filterKind,
@@ -503,6 +505,8 @@
             currency_scope: state.operationsCurrencyScope || "all",
             category_id: state.operationsCategoryFilterId,
             category_name: state.operationsCategoryFilterName || "",
+            item_template_id: state.operationsItemTemplateFilterId,
+            item_template_name: state.operationsItemTemplateFilterName || "",
             q: el.filterQ.value.trim(),
           },
         },

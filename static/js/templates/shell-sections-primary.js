@@ -422,6 +422,7 @@
                   <span id="operationsQuickViewChip" class="analytics-kpi-chip analytics-kpi-chip-neutral hidden"></span>
                   <span id="operationsCurrencyScopeChip" class="analytics-kpi-chip analytics-kpi-chip-neutral hidden"></span>
                   <span id="operationsCategoryFilterChip" class="analytics-kpi-chip analytics-kpi-chip-neutral hidden"></span>
+                  <span id="operationsItemTemplateFilterChip" class="analytics-kpi-chip analytics-kpi-chip-neutral hidden"></span>
                   <button id="clearOperationsCategoryFilterBtn" class="btn btn-secondary hidden" type="button">Сбросить фильтр</button>
                 </div>
               </div>
@@ -446,14 +447,8 @@
             </div>
             <div class="operations-controls-grid">
               <div class="operations-primary-controls">
-                <div class="operations-control-card operations-control-card-mode">
-                  <div class="segmented" id="operationsModeTabs" role="tablist" aria-label="Режим операций">
-                    <button class="segmented-btn active" data-operations-mode="operations" type="button">Операции</button>
-                    <button class="segmented-btn" data-operations-mode="money_flow" type="button">Денежный поток</button>
-                  </div>
-                </div>
                 <div class="operations-primary-controls-right">
-                  <div id="operationsSourceCard" class="operations-control-card hidden">
+                  <div id="operationsSourceCard" class="operations-control-card">
                     <div class="operations-control-head">
                       <span class="muted-small">Источник</span>
                     </div>
@@ -483,26 +478,13 @@
                 </div>
               </div>
               <div class="operations-secondary-controls">
-                <div id="operationsQuickViewCard" class="operations-control-card">
-                <div class="operations-control-head">
-                  <span class="muted-small">Быстрые срезы</span>
-                </div>
-                <div class="segmented" id="operationsQuickViewTabs" role="tablist" aria-label="Быстрые срезы операций">
-                  <button class="segmented-btn active" data-operations-quick-view="all" type="button">Все</button>
-                  <button class="segmented-btn" data-operations-quick-view="receipt" type="button">С чеком</button>
-                  <button class="segmented-btn" data-operations-quick-view="large" type="button">Крупные</button>
-                  <button class="segmented-btn" data-operations-quick-view="uncategorized" type="button">Без категории</button>
-                </div>
-              </div>
               <div id="operationsQuickActionsCard" class="operations-control-card operations-control-card-actions">
                 <div class="operations-control-head">
                   <span class="muted-small">Быстрые действия</span>
                 </div>
                 <div class="toolbar section-action-toolbar operations-workflow-actions">
-                  <button id="selectVisibleOperationsBtn" class="btn btn-secondary btn-xs" type="button">Выделить видимое</button>
-                  <button id="clearVisibleOperationsSelectionBtn" class="btn btn-secondary btn-xs" type="button">Снять выделение</button>
-                  <button id="quickFilterExpenseBtn" class="btn btn-secondary btn-xs" type="button">Только расходы</button>
-                  <button id="quickFilterIncomeBtn" class="btn btn-secondary btn-xs" type="button">Только доходы</button>
+                  <button id="quickFilterExpenseBtn" class="btn btn-secondary btn-xs" type="button">Только отток</button>
+                  <button id="quickFilterIncomeBtn" class="btn btn-secondary btn-xs" type="button">Только приток</button>
                   <button id="quickCustomRangeBtn" class="btn btn-secondary btn-xs" type="button">Настроить период</button>
                 </div>
               </div>
@@ -526,16 +508,10 @@
                 <strong id="operationsTotalCount">0</strong>
               </article>
             </div>
-            <div id="operationsBulkBar" class="bulk-bar sticky-bar">
-              <span id="operationsSelectedCount">Всего: 0</span>
-              <button id="bulkEditOperationsBtn" class="btn btn-secondary bulk-action hidden-action" type="button">Редактировать выбранные</button>
-              <button id="bulkDeleteOperationsBtn" class="btn btn-danger bulk-action hidden-action" type="button">Удалить выбранные</button>
-            </div>
             <div class="table-search-row sticky-search">
               <input id="filterQ" class="table-search-input" type="text" placeholder="Поиск" />
               <div class="toolbar section-action-toolbar search-toolbar table-search-actions operations-search-actions">
                 <button id="resetOperationsFiltersBtn" class="btn btn-secondary" type="button">Сбросить фильтры</button>
-                <button id="deleteAllOperationsBtn" class="btn btn-danger" type="button">Удалить все</button>
               </div>
             </div>
 
@@ -543,7 +519,6 @@
               <table class="table table-hover mobile-card-table operations-table">
                 <thead>
                   <tr>
-                    <th class="select-col"><input id="operationsSelectAll" class="table-checkbox" type="checkbox" /></th>
                     <th>Дата</th>
                     <th id="operationsTypeHeader">Тип</th>
                     <th id="operationsCategoryHeader">Категория</th>

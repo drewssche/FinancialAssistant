@@ -151,12 +151,64 @@
     return sorted;
   }
 
+  function summarizeDebtCards(cards) {
+    const configCurrency = core.normalizeCurrencyCode?.(core.getCurrencyConfig?.().code || "BYN", "BYN") || "BYN";
+    const summary = {
+      lendTotal: 0,
+      borrowTotal: 0,
+      activeCardCount: 0,
+      baseCurrency: configCurrency,
+    };
+    for (const card of cards || []) {
+      let hasActiveDebt = false;
+      for (const debt of card.debts || []) {
+        const outstanding = Number(debt.current_base_outstanding_total ?? debt.outstanding_total ?? 0);
+        if (Math.abs(outstanding) <= 0.000001) {
+          continue;
+        }
+        const baseCurrency = core.normalizeCurrencyCode?.(debt.base_currency || summary.baseCurrency, summary.baseCurrency) || summary.baseCurrency;
+        summary.baseCurrency = baseCurrency || summary.baseCurrency;
+        if (debt.direction === "borrow") {
+          summary.borrowTotal += outstanding;
+        } else {
+          summary.lendTotal += outstanding;
+        }
+        hasActiveDebt = true;
+      }
+      if (hasActiveDebt || card.status === "active") {
+        summary.activeCardCount += 1;
+      }
+    }
+    summary.netTotal = summary.lendTotal - summary.borrowTotal;
+    return summary;
+  }
+
+  function renderDebtsSectionKpi(cards) {
+    if (!el.debtsSectionKpi) {
+      return;
+    }
+    const summary = summarizeDebtCards(cards);
+    const netTone = summary.netTotal > 0.000001
+      ? "analytics-kpi-chip-positive"
+      : summary.netTotal < -0.000001
+        ? "analytics-kpi-chip-negative"
+        : "analytics-kpi-chip-neutral";
+    const netPrefix = summary.netTotal > 0.000001 ? "+" : summary.netTotal < -0.000001 ? "-" : "";
+    el.debtsSectionKpi.innerHTML = `
+      <span class="analytics-kpi-chip analytics-kpi-chip-negative">Я должен: ${formatDebtMoney(summary.borrowTotal, summary.baseCurrency)}</span>
+      <span class="analytics-kpi-chip analytics-kpi-chip-positive">Мне должны: ${formatDebtMoney(summary.lendTotal, summary.baseCurrency)}</span>
+      <span class="analytics-kpi-chip ${netTone}">Чистая позиция: ${netPrefix}${formatDebtMoney(Math.abs(summary.netTotal), summary.baseCurrency)}</span>
+      <span class="analytics-kpi-chip analytics-kpi-chip-neutral">Активных карточек: ${summary.activeCardCount}</span>
+    `;
+  }
+
   function renderDebtCards(cards) {
     if (!el.debtsCards) {
       return;
     }
     el.debtsCards.innerHTML = "";
     const visibleCards = sortCards(filterCards(cards));
+    renderDebtsSectionKpi(visibleCards);
     const pageSize = Number(state.debtCardsPageSize || 20);
     const visibleLimit = Number(state.debtCardsVisibleLimit || pageSize);
     const renderedCards = visibleCards.slice(0, Math.max(pageSize, visibleLimit));

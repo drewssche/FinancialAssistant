@@ -380,24 +380,26 @@
       bulkUi.updateOperationsBulkUi();
     });
 
-    el.operationsSelectAll.addEventListener("change", () => {
-      const checkboxes = Array.from(el.operationsBody.querySelectorAll("input[data-select-operation-id]"));
-      for (const checkbox of checkboxes) {
-        const id = Number(checkbox.dataset.selectOperationId);
-        if (el.operationsSelectAll.checked) {
-          state.selectedOperationIds.add(id);
-          checkbox.checked = true;
-        } else {
-          state.selectedOperationIds.delete(id);
-          checkbox.checked = false;
+    if (el.operationsSelectAll) {
+      el.operationsSelectAll.addEventListener("change", () => {
+        const checkboxes = Array.from(el.operationsBody.querySelectorAll("input[data-select-operation-id]"));
+        for (const checkbox of checkboxes) {
+          const id = Number(checkbox.dataset.selectOperationId);
+          if (el.operationsSelectAll.checked) {
+            state.selectedOperationIds.add(id);
+            checkbox.checked = true;
+          } else {
+            state.selectedOperationIds.delete(id);
+            checkbox.checked = false;
+          }
+          const row = checkbox.closest("tr[data-item]");
+          if (row) {
+            row.classList.toggle("row-selected", checkbox.checked);
+          }
         }
-        const row = checkbox.closest("tr[data-item]");
-        if (row) {
-          row.classList.toggle("row-selected", checkbox.checked);
-        }
-      }
-      bulkUi.updateOperationsBulkUi();
-    });
+        bulkUi.updateOperationsBulkUi();
+      });
+    }
 
     el.bulkEditOperationsBtn.addEventListener("click", () => {
       bulkUi.fillBulkOperationCategorySelect(el.bulkOpKind.value);
@@ -431,20 +433,22 @@
       });
     });
 
-    el.deleteAllOperationsBtn.addEventListener("click", () => {
-      if (el.deleteAllOperationsBtn.disabled) {
-        return;
-      }
-      const ids = getOperationsFeature().getCurrentOperationItems?.().map((item) => item.id) || [];
-      if (!ids.length) {
-        return;
-      }
-      core.runDestructiveAction({
-        confirmMessage: `Удалить все загруженные операции (${ids.length})?`,
-        doDelete: async () => bulkDeleteOperations(ids),
-        onDeleteError: "Не удалось удалить операции",
+    if (el.deleteAllOperationsBtn) {
+      el.deleteAllOperationsBtn.addEventListener("click", () => {
+        if (el.deleteAllOperationsBtn.disabled) {
+          return;
+        }
+        const ids = getOperationsFeature().getCurrentOperationItems?.().map((item) => item.id) || [];
+        if (!ids.length) {
+          return;
+        }
+        core.runDestructiveAction({
+          confirmMessage: `Удалить все загруженные операции (${ids.length})?`,
+          doDelete: async () => bulkDeleteOperations(ids),
+          onDeleteError: "Не удалось удалить операции",
+        });
       });
-    });
+    }
   }
 
   window.App.bulkBindingsOperations = {

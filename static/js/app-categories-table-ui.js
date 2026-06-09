@@ -240,6 +240,7 @@
               <div class="app-popover hidden mobile-card-actions-popover" data-mobile-card-menu="category-${item.id}">
                 <div class="mobile-card-actions-menu">
                   <button class='btn btn-secondary' data-activity-entity-type='category' data-activity-entity-id='${item.id}'>Журнал</button>
+                  <button class='btn btn-secondary' data-usage-entity-type='category' data-usage-entity-id='${item.id}' data-usage-entity-name='${core.escapeHtml(item.name || "")}'>Операции</button>
                   <button class='btn btn-secondary' data-edit-category-id='${item.id}'>Редактировать</button>
                   <button class='btn btn-danger' data-delete-category-id='${item.id}'>Удалить</button>
                 </div>
@@ -306,7 +307,7 @@
       ? "<span class='muted-small'>Защищено</span>"
       : core.renderInlineKebabMenu?.(
         `category-${item.id}`,
-        `<button class='btn btn-secondary' data-activity-entity-type='category' data-activity-entity-id='${item.id}'>Журнал</button><button class='btn btn-secondary' data-edit-category-id='${item.id}'>Редактировать</button><button class='btn btn-danger' data-delete-category-id='${item.id}'>Удалить</button>`,
+        `<button class='btn btn-secondary' data-activity-entity-type='category' data-activity-entity-id='${item.id}'>Журнал</button><button class='btn btn-secondary' data-usage-entity-type='category' data-usage-entity-id='${item.id}' data-usage-entity-name='${core.escapeHtml(item.name || "")}'>Операции</button><button class='btn btn-secondary' data-edit-category-id='${item.id}'>Редактировать</button><button class='btn btn-danger' data-delete-category-id='${item.id}'>Удалить</button>`,
         "Действия категории",
         "category-row-kebab",
       ) || "";

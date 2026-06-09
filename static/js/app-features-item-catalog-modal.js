@@ -23,6 +23,10 @@
       return window.App.getRuntimeModule?.("activity") || {};
     }
 
+    function getUsageFeature() {
+      return window.App.getRuntimeModule?.("usage") || {};
+    }
+
     function openItemTemplateModal(item = null) {
       if (!el.itemTemplateModal || !el.itemTemplateForm) {
         return;
@@ -30,6 +34,7 @@
       const isEdit = Boolean(item?.id);
       state.editItemTemplateId = isEdit ? Number(item.id) : null;
       getActivityFeature().configureActivityButton?.(el.itemTemplateActivityBtn, isEdit ? "item_template" : null, item?.id);
+      getUsageFeature().configureUsageButton?.(el.itemTemplateUsageBtn, isEdit ? "item_template" : null, item?.id, item?.name || "");
       if (el.itemTemplateModalTitle) {
         el.itemTemplateModalTitle.textContent = isEdit ? "Редактировать позицию" : "Новая позиция";
       }
@@ -70,6 +75,7 @@
     function closeItemTemplateModal() {
       state.editItemTemplateId = null;
       getActivityFeature().configureActivityButton?.(el.itemTemplateActivityBtn, null, null);
+      getUsageFeature().configureUsageButton?.(el.itemTemplateUsageBtn, null, null);
       if (el.itemTemplateForm) {
         el.itemTemplateForm.reset();
       }

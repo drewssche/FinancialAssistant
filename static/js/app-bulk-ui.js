@@ -136,6 +136,9 @@
   }
 
   function syncOperationSelectAll() {
+    if (!el.operationsSelectAll) {
+      return;
+    }
     const operationIds = visibleOperationIds();
     const selectedCount = operationIds.filter((id) => state.selectedOperationIds.has(id)).length;
     el.operationsSelectAll.checked = operationIds.length > 0 && selectedCount === operationIds.length;
@@ -147,10 +150,12 @@
     const totalCount = Number(state.total || 0);
     const visibleCount = operationIds.length;
     const selectedCount = operationIds.filter((id) => state.selectedOperationIds.has(id)).length;
-    el.operationsSelectedCount.textContent =
-      selectedCount > 0 ? `Выбрано: ${selectedCount} из ${visibleCount}` : `Всего: ${totalCount}`;
-    el.bulkEditOperationsBtn.classList.toggle("hidden-action", selectedCount === 0);
-    el.bulkDeleteOperationsBtn.classList.toggle("hidden-action", selectedCount === 0);
+    if (el.operationsSelectedCount) {
+      el.operationsSelectedCount.textContent =
+        selectedCount > 0 ? `Выбрано: ${selectedCount} из ${visibleCount}` : `Всего: ${totalCount}`;
+    }
+    el.bulkEditOperationsBtn?.classList.toggle("hidden-action", selectedCount === 0);
+    el.bulkDeleteOperationsBtn?.classList.toggle("hidden-action", selectedCount === 0);
     syncOperationSelectAll();
   }
 

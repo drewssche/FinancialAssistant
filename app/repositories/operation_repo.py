@@ -29,6 +29,7 @@ class OperationRepository:
         date_to: date | None,
         category_id: int | None,
         q: str | None,
+        item_template_id: int | None = None,
         receipt_only: bool = False,
         uncategorized_only: bool = False,
         min_amount: Decimal | None = None,
@@ -55,6 +56,16 @@ class OperationRepository:
                     )
                     .exists(),
                 )
+            )
+        if item_template_id is not None:
+            conditions.append(
+                select(OperationReceiptItem.id)
+                .where(
+                    OperationReceiptItem.user_id == user_id,
+                    OperationReceiptItem.operation_id == Operation.id,
+                    OperationReceiptItem.template_id == item_template_id,
+                )
+                .exists()
             )
         if uncategorized_only:
             conditions.append(
@@ -163,6 +174,7 @@ class OperationRepository:
         date_to: date | None,
         category_id: int | None,
         q: str | None,
+        item_template_id: int | None = None,
         receipt_only: bool = False,
         uncategorized_only: bool = False,
         min_amount: Decimal | None = None,
@@ -176,6 +188,7 @@ class OperationRepository:
             date_to=date_to,
             category_id=category_id,
             q=q,
+            item_template_id=item_template_id,
             receipt_only=receipt_only,
             uncategorized_only=uncategorized_only,
             min_amount=min_amount,
@@ -222,6 +235,7 @@ class OperationRepository:
         date_to: date | None,
         category_id: int | None,
         q: str | None,
+        item_template_id: int | None = None,
         receipt_only: bool = False,
         uncategorized_only: bool = False,
         min_amount: Decimal | None = None,
@@ -235,6 +249,7 @@ class OperationRepository:
             date_to=date_to,
             category_id=category_id,
             q=q,
+            item_template_id=item_template_id,
             receipt_only=receipt_only,
             uncategorized_only=uncategorized_only,
             min_amount=min_amount,

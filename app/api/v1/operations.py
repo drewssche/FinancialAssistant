@@ -74,6 +74,8 @@ def list_money_flow(
     direction: str | None = Query(default=None, pattern="^(all|inflow|outflow)$"),
     source: str | None = Query(default=None, pattern="^(all|operation|debt|fx)$"),
     currency_scope: str | None = Query(default=None, pattern="^(all|base|foreign)$"),
+    category_id: int | None = Query(default=None),
+    item_template_id: int | None = Query(default=None),
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
@@ -91,6 +93,8 @@ def list_money_flow(
             direction=direction,
             source=source,
             currency_scope=currency_scope,
+            category_id=category_id,
+            item_template_id=item_template_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -134,6 +138,8 @@ def summarize_money_flow(
     direction: str | None = Query(default=None, pattern="^(all|inflow|outflow)$"),
     source: str | None = Query(default=None, pattern="^(all|operation|debt|fx)$"),
     currency_scope: str | None = Query(default=None, pattern="^(all|base|foreign)$"),
+    category_id: int | None = Query(default=None),
+    item_template_id: int | None = Query(default=None),
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
@@ -147,6 +153,8 @@ def summarize_money_flow(
             direction=direction,
             source=source,
             currency_scope=currency_scope,
+            category_id=category_id,
+            item_template_id=item_template_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

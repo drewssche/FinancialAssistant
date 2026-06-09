@@ -370,12 +370,15 @@ class OperationService:
         direction: str | None,
         source: str | None,
         currency_scope: str | None,
+        category_id: int | None = None,
+        item_template_id: int | None = None,
     ) -> list[dict]:
         if date_from and date_to and date_from > date_to:
             raise ValueError("date_from must be less than or equal to date_to")
         normalized_direction = self._normalize_money_flow_direction(direction)
         normalized_source = self._normalize_money_flow_source(source)
         normalized_currency_scope = self._normalize_currency_scope(currency_scope)
+        operations_only_filter = category_id is not None or item_template_id is not None
         base_currency = self._get_user_base_currency(user_id)
         items: list[dict] = []
 
@@ -420,8 +423,9 @@ class OperationService:
                 kind=operation_kind,
                 date_from=date_from,
                 date_to=date_to,
-                category_id=None,
+                category_id=category_id,
                 q=q,
+                item_template_id=item_template_id,
                 receipt_only=False,
                 uncategorized_only=False,
                 min_amount=None,
@@ -473,7 +477,7 @@ class OperationService:
                 if self._matches_money_flow_query(item, q):
                     items.append(item)
 
-        if normalized_source in {"all", "debt"}:
+        if not operations_only_filter and normalized_source in {"all", "debt"}:
             from app.services.debt_service import DebtService
 
             debt_service = DebtService(self.db)
@@ -545,7 +549,7 @@ class OperationService:
                         if self._matches_money_flow_query(item, q):
                             items.append(item)
 
-        if normalized_source in {"all", "fx"}:
+        if not operations_only_filter and normalized_source in {"all", "fx"}:
             from app.repositories.currency_repo import CurrencyRepository
 
             currency_repo = CurrencyRepository(self.db)
@@ -626,6 +630,8 @@ class OperationService:
         direction: str | None = None,
         source: str | None = None,
         currency_scope: str | None = None,
+        category_id: int | None = None,
+        item_template_id: int | None = None,
     ) -> tuple[list[dict], int]:
         items = self._build_money_flow_dataset(
             user_id=user_id,
@@ -637,6 +643,8 @@ class OperationService:
             direction=direction,
             source=source,
             currency_scope=currency_scope,
+            category_id=category_id,
+            item_template_id=item_template_id,
         )
         total = len(items)
         start = (page - 1) * page_size
@@ -653,6 +661,8 @@ class OperationService:
         direction: str | None = None,
         source: str | None = None,
         currency_scope: str | None = None,
+        category_id: int | None = None,
+        item_template_id: int | None = None,
     ) -> dict:
         items = self._build_money_flow_dataset(
             user_id=user_id,
@@ -664,6 +674,8 @@ class OperationService:
             direction=direction,
             source=source,
             currency_scope=currency_scope,
+            category_id=category_id,
+            item_template_id=item_template_id,
         )
         income_total = sum(
             (Decimal(item["amount"]) for item in items if item.get("flow_direction") == "inflow"),
