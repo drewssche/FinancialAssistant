@@ -7,6 +7,28 @@
     return `dashboard:summary:${params.toString()}`;
   }
 
+  function isRetryableSummaryError(err) {
+    if (core.isAbortError?.(err)) {
+      return false;
+    }
+    const message = core.errorMessage ? core.errorMessage(err) : String(err || "");
+    return /\[(500|502|503|504)\]/.test(message) || message.includes("Сеть недоступна") || message.includes("Сбой запроса");
+  }
+
+  function wait(ms, signal = null) {
+    return new Promise((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(new DOMException("Aborted", "AbortError"));
+        return;
+      }
+      const timer = setTimeout(resolve, ms);
+      signal?.addEventListener?.("abort", () => {
+        clearTimeout(timer);
+        reject(new DOMException("Aborted", "AbortError"));
+      }, { once: true });
+    });
+  }
+
   async function loadSummary(params, options = {}) {
     const force = options.force === true;
     const cacheKey = buildSummaryCacheKey(params);
@@ -16,10 +38,22 @@
         return cached;
       }
     }
-    const data = await core.requestJson(`/api/v1/dashboard/summary?${params.toString()}`, {
-      headers: core.authHeaders(),
-      signal: options.signal,
-    });
+    let data;
+    try {
+      data = await core.requestJson(`/api/v1/dashboard/summary?${params.toString()}`, {
+        headers: core.authHeaders(),
+        signal: options.signal,
+      });
+    } catch (err) {
+      if (!isRetryableSummaryError(err)) {
+        throw err;
+      }
+      await wait(450, options.signal);
+      data = await core.requestJson(`/api/v1/dashboard/summary?${params.toString()}`, {
+        headers: core.authHeaders(),
+        signal: options.signal,
+      });
+    }
     core.setUiRequestCache(cacheKey, data);
     return data;
   }

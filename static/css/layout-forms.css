@@ -65,9 +65,9 @@
 }
 
 .debt-toolbar .table-search-input {
-  flex: 1 1 26rem;
+  flex: 0 1 34rem;
   width: min(100%, 34rem);
-  min-width: 16rem;
+  min-width: min(100%, 16rem);
   margin-right: auto;
 }
 

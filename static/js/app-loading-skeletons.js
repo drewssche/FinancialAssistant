@@ -381,9 +381,6 @@
   }
 
   function renderOperationsSectionSkeleton() {
-    if (el.operationsPeriodLabel) {
-      el.operationsPeriodLabel.innerHTML = inlineLine("skeleton-w-56", "skeleton-line-sm");
-    }
     if (el.operationsIncomeTotal) {
       el.operationsIncomeTotal.innerHTML = inlineLine("skeleton-w-48", "skeleton-line-money");
     }

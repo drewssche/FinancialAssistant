@@ -293,9 +293,18 @@
     if (!force && Number.isFinite(Number(state.plansAllTimeBalance))) {
       return Number(state.plansAllTimeBalance || 0);
     }
-    const data = await (dashboardData.loadAllTimeSummary
-      ? dashboardData.loadAllTimeSummary({ force })
-      : core.requestJson("/api/v1/dashboard/summary?period=all_time", { headers: core.authHeaders() }));
+    let data = null;
+    try {
+      data = await (dashboardData.loadAllTimeSummary
+        ? dashboardData.loadAllTimeSummary({ force })
+        : core.requestJson("/api/v1/dashboard/summary?period=all_time", { headers: core.authHeaders() }));
+    } catch (err) {
+      if (core.isAbortError?.(err)) {
+        throw err;
+      }
+      state.plansAllTimeBalance = 0;
+      return 0;
+    }
     state.plansAllTimeBalance = Number(data?.balance || 0);
     return state.plansAllTimeBalance;
   }

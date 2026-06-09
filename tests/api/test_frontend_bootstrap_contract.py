@@ -802,3 +802,27 @@ def test_receipt_discount_ui_uses_discount_copy_and_prefills_regular_price():
     assert 'placeholder="Обычная цена"' in receipt
     assert "if (latestPrice > 0)" in receipt
     assert "latestPrice > asMoney(item.unit_price || 0)" not in receipt
+
+
+def test_debts_mobile_search_and_operations_period_label_contracts():
+    layout_forms = (REPO_ROOT / "static" / "css" / "layout-forms.css").read_text(encoding="utf-8")
+    responsive_lg = (REPO_ROOT / "static" / "css" / "responsive-lg.css").read_text(encoding="utf-8")
+    operations = (REPO_ROOT / "static" / "js" / "app-features-operations.js").read_text(encoding="utf-8")
+    skeletons = (REPO_ROOT / "static" / "js" / "app-loading-skeletons.js").read_text(encoding="utf-8")
+
+    assert ".debt-toolbar .table-search-input {\n  flex: 0 1 34rem;" in layout_forms
+    assert "#debtsSection .debt-toolbar .table-search-input {\n    flex: 0 0 auto;" in responsive_lg
+    assert "function updateOperationsPeriodLabel()" in operations
+    assert "updateOperationsPeriodLabel," in operations
+    assert "el.operationsPeriodLabel.innerHTML" not in skeletons
+
+
+def test_dashboard_summary_retry_and_plan_fallback_are_non_blocking():
+    dashboard_data = (REPO_ROOT / "static" / "js" / "app-dashboard-data.js").read_text(encoding="utf-8")
+    plans = (REPO_ROOT / "static" / "js" / "app-features-plans.js").read_text(encoding="utf-8")
+
+    assert "function isRetryableSummaryError(err)" in dashboard_data
+    assert "/\\[(500|502|503|504)\\]/.test(message)" in dashboard_data
+    assert "await wait(450, options.signal);" in dashboard_data
+    assert "state.plansAllTimeBalance = 0;" in plans
+    assert "return 0;" in plans

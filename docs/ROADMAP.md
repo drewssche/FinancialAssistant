@@ -107,6 +107,11 @@
 - keep backend contracts shared; Telegram-specific behavior stays in client layer
 
 ## Execution Steps (Current Sprint)
+### Active Fixes 2026-06-09
+- [x] Debts mobile: reduce oversized counterparty search field in the debts section.
+- [x] Operations: show the resolved date/period immediately instead of a perpetual placeholder.
+- [x] Reliability: add summary retry and non-blocking plans fallback for intermittent `[500] /api/v1/dashboard/summary`; production logs/HTTP check showed current summary responses are `200` after the latest restart.
+
 1. Production auth cleanup
 - keep Telegram WebApp as the primary supported auth path
 - expose browser Telegram login only behind `TELEGRAM_BOT_USERNAME` feature gate

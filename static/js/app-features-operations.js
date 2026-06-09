@@ -86,9 +86,17 @@
     state.allTimeAnchorResolved = true;
   }
 
-  function buildOperationsQuery(page) {
+  function updateOperationsPeriodLabel() {
+    if (!el.operationsPeriodLabel) {
+      return;
+    }
     const { dateFrom, dateTo } = core.getPeriodBounds(state.period);
     el.operationsPeriodLabel.textContent = core.formatPeriodLabel(dateFrom, dateTo);
+  }
+
+  function buildOperationsQuery(page) {
+    const { dateFrom, dateTo } = core.getPeriodBounds(state.period);
+    updateOperationsPeriodLabel();
     const isMoneyFlowMode = state.operationsMode === "money_flow";
     const params = new URLSearchParams({
       page: String(page),
@@ -442,6 +450,7 @@
     applyOperationsModeUi();
     syncOperationsCurrencyScopeUi();
     core.syncSegmentedActive(el.operationsSortTabs, "op-sort", state.operationSortPreset || "date");
+    updateOperationsPeriodLabel();
     renderOperationsActiveFilters();
     const reset = options.reset !== false;
     const force = options.force === true;
@@ -723,6 +732,7 @@
   const api = {
     ensureAllTimeBounds,
     invalidateAllTimeAnchor,
+    updateOperationsPeriodLabel,
     loadOperations,
     loadMoreOperations,
     createOperation,
