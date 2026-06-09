@@ -769,7 +769,7 @@ class OperationService:
                     raise ValueError("amount must not be null")
                 updates["amount"] = self._resolve_operation_amount(amount=None, receipt_total=receipt_total)
             else:
-                updates["amount"] = self._money(updates["amount"])
+                updates["amount"] = self._resolve_operation_amount(amount=updates["amount"], receipt_total=None)
 
         needs_currency_recalc = any(key in updates for key in ("amount", "currency", "fx_rate"))
         if needs_currency_recalc:
@@ -1162,10 +1162,16 @@ class OperationService:
         if amount is None and receipt_total is None:
             raise ValueError("amount is required when receipt_items are empty")
         if amount is None and receipt_total is not None:
-            return self._money(receipt_total)
+            resolved_amount = self._money(receipt_total)
+            if resolved_amount <= 0:
+                raise ValueError("amount must be greater than 0")
+            return resolved_amount
         if amount is None:
             raise ValueError("amount is required")
-        return self._money(amount)
+        resolved_amount = self._money(amount)
+        if resolved_amount <= 0:
+            raise ValueError("amount must be greater than 0")
+        return resolved_amount
 
     @staticmethod
     def _validate_kind(kind: str) -> None:

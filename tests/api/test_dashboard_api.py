@@ -1455,6 +1455,50 @@ def test_dashboard_analytics_highlights_uses_receipt_item_categories_for_structu
     assert breakdown["Прочее"]["total_amount"] == "20.00"
 
 
+def test_dashboard_analytics_highlights_scales_overfull_receipt_without_negative_fallback(client: TestClient):
+    food = client.post("/api/v1/categories", json={"name": "Еда", "kind": "expense"})
+    transport = client.post("/api/v1/categories", json={"name": "Транспорт", "kind": "expense"})
+    coffee = client.post("/api/v1/categories", json={"name": "Кофе/кофейни", "kind": "expense"})
+    assert food.status_code == 200
+    assert transport.status_code == 200
+    assert coffee.status_code == 200
+
+    created = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "category_id": coffee.json()["id"],
+            "amount": "100.00",
+            "operation_date": "2026-03-12",
+            "note": "receipt with total discount",
+            "receipt_items": [
+                {
+                    "name": "Продукты",
+                    "quantity": "1",
+                    "unit_price": "80.00",
+                    "category_id": food.json()["id"],
+                },
+                {
+                    "name": "Такси",
+                    "quantity": "1",
+                    "unit_price": "70.00",
+                    "category_id": transport.json()["id"],
+                },
+            ],
+        },
+    )
+    assert created.status_code == 201
+
+    response = client.get("/api/v1/dashboard/analytics/highlights", params={"month": "2026-03"})
+    assert response.status_code == 200
+    payload = response.json()
+    breakdown = {item["category_name"]: item for item in payload["category_breakdown"]}
+    assert breakdown["Еда"]["total_amount"] == "53.33"
+    assert breakdown["Транспорт"]["total_amount"] == "46.67"
+    assert "Кофе/кофейни" not in breakdown
+    assert sum(float(item["share_pct"]) for item in payload["category_breakdown"]) == pytest.approx(100.0)
+
+
 def test_dashboard_analytics_highlights_preserve_mixed_receipt_categories_with_linked_fx_settlement(client: TestClient):
     food = client.post("/api/v1/categories", json={"name": "Продукты", "kind": "expense"})
     snacks = client.post("/api/v1/categories", json={"name": "Снэки", "kind": "expense"})

@@ -1,6 +1,6 @@
 from collections import defaultdict
 from datetime import date, timedelta
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -12,6 +12,8 @@ from app.services.dashboard_analytics_timeline import DashboardAnalyticsTimeline
 
 
 class DashboardAnalyticsHighlightsService:
+    MONEY_Q = Decimal("0.01")
+
     def __init__(self, db: Session, repo: OperationRepository, timeline: DashboardAnalyticsTimelineService):
         self.db = db
         self.repo = repo
@@ -90,6 +92,7 @@ class DashboardAnalyticsHighlightsService:
         for item in operations:
             operation_id = int(item["id"])
             amount = Decimal(item["amount"] or 0)
+            allocation_amount = abs(amount)
             receipt_rows = grouped_receipt_items.get(operation_id, []) or []
             if not receipt_rows:
                 allocations.append(
@@ -98,13 +101,14 @@ class DashboardAnalyticsHighlightsService:
                         "operation_date": item["operation_date"],
                         "kind": item["kind"],
                         "category_id": int(item["category_id"]) if item["category_id"] is not None else None,
-                        "amount": amount,
+                        "amount": allocation_amount,
                     }
                 )
                 continue
 
             receipt_total = Decimal("0")
             effective_receipt_category_ids: set[int | None] = set()
+            receipt_allocation_rows: list[tuple[object, int | None, Decimal]] = []
             for row in receipt_rows:
                 line_total = Decimal(row.line_total or 0)
                 receipt_total += line_total
@@ -128,17 +132,40 @@ class DashboardAnalyticsHighlightsService:
                     else (int(item["category_id"]) if item["category_id"] is not None else None)
                 )
                 effective_receipt_category_ids.add(effective_category_id)
+                receipt_allocation_rows.append((row, effective_category_id, line_total))
+
+            allocated_receipt_total = receipt_total
+            scaled_allocations: list[tuple[int | None, Decimal]] = []
+            if receipt_total > 0 and allocation_amount > 0 and receipt_total > allocation_amount:
+                ratio = allocation_amount / receipt_total
+                running_total = Decimal("0")
+                last_index = len(receipt_allocation_rows) - 1
+                for index, (_row, effective_category_id, line_total) in enumerate(receipt_allocation_rows):
+                    if index == last_index:
+                        scaled_amount = allocation_amount - running_total
+                    else:
+                        scaled_amount = (line_total * ratio).quantize(self.MONEY_Q, rounding=ROUND_HALF_UP)
+                        running_total += scaled_amount
+                    scaled_allocations.append((effective_category_id, scaled_amount))
+                allocated_receipt_total = allocation_amount
+            else:
+                scaled_allocations = [
+                    (effective_category_id, line_total)
+                    for _row, effective_category_id, line_total in receipt_allocation_rows
+                ]
+
+            for effective_category_id, allocated_line_total in scaled_allocations:
                 allocations.append(
                     {
                         "operation_id": operation_id,
                         "operation_date": item["operation_date"],
                         "kind": item["kind"],
                         "category_id": effective_category_id,
-                        "amount": line_total,
+                        "amount": allocated_line_total,
                     }
                 )
 
-            discrepancy = amount - receipt_total
+            discrepancy = allocation_amount - allocated_receipt_total
             if discrepancy != 0:
                 if item["category_id"] is not None:
                     fallback_category_id = int(item["category_id"])

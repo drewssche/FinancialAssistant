@@ -1191,6 +1191,35 @@ def test_operation_rejects_missing_amount_when_receipt_is_empty(client: TestClie
     assert "amount is required" in response.json()["detail"]
 
 
+def test_operation_rejects_non_positive_amount(client: TestClient):
+    response = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "-10.00",
+            "operation_date": "2026-03-07",
+        },
+    )
+    assert response.status_code == 400
+    assert "amount must be greater than 0" in response.json()["detail"]
+
+
+def test_operation_update_rejects_non_positive_amount(client: TestClient):
+    created = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "10.00",
+            "operation_date": "2026-03-07",
+        },
+    )
+    assert created.status_code == 201
+
+    response = client.patch(f"/api/v1/operations/{created.json()['id']}", json={"amount": "0.00"})
+    assert response.status_code == 400
+    assert "amount must be greater than 0" in response.json()["detail"]
+
+
 def test_operation_item_templates_are_scoped_by_shop(client: TestClient):
     first = client.post(
         "/api/v1/operations",
