@@ -533,6 +533,28 @@ def page_with_debts_api_mock():
                 return json_response(route, repayment_record, status=201)
             return json_response(route, {"detail": "Debt not found"}, status=404)
 
+        if path.startswith("/api/v1/debts/") and path.endswith("/issuances") and method == "POST":
+            payload = json.loads(request.post_data or "{}")
+            debt_id = int(path.split("/")[-2])
+            amount = float(payload["amount"])
+            card, debt = find_debt(debt_id)
+            if card and debt:
+                debt["principal"] = fmt_amount(float(debt["principal"]) + amount)
+                debt["closure_reason"] = None
+                issuance_record = {
+                    "id": len(debt.setdefault("issuances", [])) + 1,
+                    "debt_id": debt_id,
+                    "amount": fmt_amount(amount),
+                    "issuance_date": payload["issuance_date"],
+                    "note": payload.get("note"),
+                    "created_at": "2026-03-05T10:00:00Z",
+                }
+                debt["issuances"].insert(0, issuance_record)
+                recalc_debt(debt)
+                recalc_card(card)
+                return json_response(route, issuance_record, status=201)
+            return json_response(route, {"detail": "Debt not found"}, status=404)
+
         if path.startswith("/api/v1/debts/") and path.endswith("/forgivenesses") and method == "POST":
             payload = json.loads(request.post_data or "{}")
             debt_id = int(path.split("/")[-2])
@@ -723,6 +745,32 @@ def test_debt_history_action_closes_popover_before_modal(static_server_url: str,
     page.wait_for_selector("#debtHistoryModal:not(.hidden)")
 
     assert page.locator(".table-kebab-popover[data-table-menu='debt-9001']").is_hidden()
+
+
+@pytest.mark.e2e
+def test_add_debt_issuance_increases_outstanding_and_movements(static_server_url: str, page_with_debts_api_mock):
+    page = page_with_debts_api_mock
+    page.goto(f"{static_server_url}/static/index.html")
+    _login_via_mock_telegram(page)
+
+    page.click("button[data-section='debts']")
+    page.wait_for_selector("#debtsSection:not(.hidden)")
+    page.locator(".debt-desktop-actions button[data-add-debt-issuance-id='9001']").first.click(force=True)
+    page.wait_for_selector("#debtIssuanceModal:not(.hidden)")
+    assert "100,00" in page.locator("#issuanceBeforeValue").inner_text()
+
+    page.fill("#issuanceAmount", "40")
+    assert "140,00" in page.locator("#issuanceAfterValue").inner_text()
+    page.fill("#issuanceDate", "2026-03-07")
+    page.fill("#issuanceNote", "Долг вырос")
+    page.click("#submitDebtIssuanceBtn")
+    page.wait_for_selector("#debtIssuanceModal", state="hidden")
+
+    page.evaluate("window.App.actions.openDebtHistoryModal(9001)")
+    page.wait_for_selector("#debtHistoryModal:not(.hidden)")
+    history_text = page.locator("#debtHistoryItems").inner_text()
+    assert "Добавление" in history_text
+    assert "Долг вырос" in history_text
 
 
 @pytest.mark.e2e
@@ -976,6 +1024,8 @@ def test_edit_and_delete_debt(static_server_url: str, page_with_debts_api_mock):
     page.fill("#debtCounterparty", "Анна Обновл.")
     page.fill("#debtPrincipal", "150")
     page.click("#submitCreateOperationBtn")
+    page.wait_for_selector("#createModal:not(.hidden)")
+    page.keyboard.press("Escape")
     page.wait_for_selector("#createModal", state="hidden")
     assert page.locator("#debtsCards .debt-card h3", has_text="Анна Обновл.").count() == 1
 
@@ -1005,7 +1055,7 @@ def test_overpay_creates_reverse_direction_debt(static_server_url: str, page_wit
     card = page.locator("#debtsCards .debt-card", has_text="Анна")
     card.wait_for()
     assert card.locator("tr:has-text('Я взял')").count() == 1
-    assert card.locator("tr:has-text('20,00 BYN')").count() >= 1
+    assert card.locator("tr:has-text('20,00')").count() >= 1
 
 
 @pytest.mark.e2e
@@ -1031,6 +1081,8 @@ def test_edit_counterparty_name_merges_with_existing_card(static_server_url: str
     page.wait_for_selector("#createModal:not(.hidden)")
     page.fill("#debtCounterparty", "борис")
     page.click("#submitCreateOperationBtn")
+    page.wait_for_selector("#createModal:not(.hidden)")
+    page.keyboard.press("Escape")
     page.wait_for_selector("#createModal", state="hidden")
 
     page.wait_for_timeout(200)
@@ -1038,7 +1090,7 @@ def test_edit_counterparty_name_merges_with_existing_card(static_server_url: str
     boris_card = page.locator("#debtsCards .debt-card", has_text="Борис")
     assert boris_card.count() == 1
     assert boris_card.locator("tbody tr").count() == 1
-    assert boris_card.locator("tbody tr:has-text('350,00 BYN')").count() >= 1
+    assert boris_card.locator("tbody tr:has-text('350,00')").count() >= 1
 
 
 @pytest.mark.e2e

@@ -585,7 +585,7 @@
                         }
                         <div class="dashboard-debt-actions">
                           <button class="btn btn-repay btn-xs" type="button" data-dashboard-repay-debt-id="${debt.id}" ${outstanding <= 0 ? "disabled" : ""}>Погашение</button>
-                          <button class="btn btn-secondary btn-xs" type="button" data-dashboard-history-debt-id="${debt.id}">История</button>
+                          <button class="btn btn-secondary btn-xs" type="button" data-dashboard-history-debt-id="${debt.id}">Движения</button>
                         </div>
                       </div>
                     </div>

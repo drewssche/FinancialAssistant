@@ -185,6 +185,64 @@ def test_activity_journal_modal_is_available_in_frontend_templates():
     assert "bindUsageUi" in init_core
 
 
+def test_debt_movements_and_add_amount_ui_contract():
+    modals_secondary = (REPO_ROOT / "static" / "js" / "templates" / "modals-secondary.js").read_text(encoding="utf-8")
+    debts_render = (REPO_ROOT / "static" / "js" / "app-features-debts-render.js").read_text(encoding="utf-8")
+    debts_modals = (REPO_ROOT / "static" / "js" / "app-features-debts-modals.js").read_text(encoding="utf-8")
+    debts_init = (REPO_ROOT / "static" / "js" / "app-init-features-debts.js").read_text(encoding="utf-8")
+    elements = (REPO_ROOT / "static" / "js" / "app-core-elements.js").read_text(encoding="utf-8")
+    features = (REPO_ROOT / "static" / "js" / "app-features.js").read_text(encoding="utf-8")
+
+    assert 'id="debtIssuanceModal"' in modals_secondary
+    assert 'id="debtIssuanceForm"' in modals_secondary
+    assert 'id="issuanceAmount"' in modals_secondary
+    assert "Движения долга" in modals_secondary
+    assert ">История</button>" not in debts_render
+    assert "data-add-debt-issuance-id" in debts_render
+    assert "Добавить сумму" in debts_render
+    assert "openDebtIssuanceModal" in debts_modals
+    assert "submitDebtIssuance" in debts_modals
+    assert "/api/v1/debts/${debtId}/issuances" in debts_modals
+    assert "updateIssuanceDeltaHint" in debts_init
+    assert 'debtIssuanceModal: document.getElementById("debtIssuanceModal")' in elements
+    assert "openDebtIssuanceModal" in features
+
+
+def test_edit_modals_keep_open_after_successful_save():
+    operations_mutations = (REPO_ROOT / "static" / "js" / "app-features-operations-mutations.js").read_text(
+        encoding="utf-8"
+    )
+    plans = (REPO_ROOT / "static" / "js" / "app-features-plans.js").read_text(encoding="utf-8")
+    categories_data = (REPO_ROOT / "static" / "js" / "app-categories-data.js").read_text(encoding="utf-8")
+    item_template_modal = (REPO_ROOT / "static" / "js" / "app-features-item-catalog-modal.js").read_text(
+        encoding="utf-8"
+    )
+    item_sources = (REPO_ROOT / "static" / "js" / "app-features-item-catalog-sources.js").read_text(
+        encoding="utf-8"
+    )
+    init_core = (REPO_ROOT / "static" / "js" / "app-init-core.js").read_text(encoding="utf-8")
+    renderers = (REPO_ROOT / "static" / "js" / "app-renderers.js").read_text(encoding="utf-8")
+
+    assert "if (!isEditDebt) {\n          state.editDebtCreateId = null;\n          closeCreateModal();" in operations_mutations
+    assert "if (!isEditTrade) {\n          state.editCurrencyTradeId = null;" in operations_mutations
+    assert "async function updateOperation" in operations_mutations
+    update_operation_block = operations_mutations.split("async function updateOperation", 1)[1].split(
+        "async function deleteOperationFlow", 1
+    )[0]
+    assert "closeEditModal();" not in update_operation_block
+    assert "if (planId <= 0) {\n      operationModal.closeCreateModal();" in plans
+    assert "categoryUi.closeEditCategoryModal();" not in categories_data
+    assert "categoryUi.closeEditGroupModal();" not in categories_data
+    assert "if (!isEdit) {\n        closeItemTemplateModal();" in item_template_modal
+    source_edit_block = item_sources.split("if (originalName)", 1)[1].split("writeItemCatalogSourceGroups([...groups", 1)[0]
+    assert "closeSourceGroupModal();" not in source_edit_block
+    assert "function closeVisibleModalOnEscape" in init_core
+    assert "getOperationModal().closeEditModal" in init_core
+    assert 'data-activity-entity-type="operation"' in renderers
+    assert 'data-activity-entity-type="debt"' in renderers
+    assert 'data-activity-entity-type="currency_trade"' in renderers
+
+
 def test_dashboard_navigation_ignores_stale_section_loads():
     section_ui = (REPO_ROOT / "static" / "js" / "app-section-ui.js").read_text(encoding="utf-8")
     dashboard = (REPO_ROOT / "static" / "js" / "app-features-dashboard.js").read_text(encoding="utf-8")

@@ -120,6 +120,11 @@
 - [x] Item catalog: add a usage modal inside item cards, visually consistent with the activity journal, with receipt-line usage KPIs and related operations.
 - [ ] Item catalog duplicates: keep duplicate detection/merge in backlog until usage counters and operation drill-down are stable.
 
+### Active Debt Tasks 2026-06-10
+- [x] Debts: rename financial `История` to `Движения`, keeping audit `Журнал` separate.
+- [x] Debts: add an `Добавить сумму` action that increases an existing debt without treating it as repayment.
+- [x] Debts: keep debt movements reflected in money-flow and dashboard/debt caches.
+
 1. Production auth cleanup
 - keep Telegram WebApp as the primary supported auth path
 - expose browser Telegram login only behind `TELEGRAM_BOT_USERNAME` feature gate

@@ -101,7 +101,7 @@ def page_with_money_flow_api_mock():
             "counterparty_name": "Иван",
             "can_open_source": True,
             "open_section": "debts",
-            "open_label": "История долга",
+            "open_label": "Движения долга",
         },
         {
             "id": "debt-issuance:9101",
@@ -121,7 +121,7 @@ def page_with_money_flow_api_mock():
             "counterparty_name": "Иван",
             "can_open_source": True,
             "open_section": "debts",
-            "open_label": "История долга",
+            "open_label": "Движения долга",
         },
         {
             "id": "operation:1",

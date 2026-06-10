@@ -67,6 +67,41 @@
       el.repaymentDebtId.value = "";
     }
 
+    async function openDebtIssuanceModal(debtId) {
+      const found = await (ensureDebtLoaded ? ensureDebtLoaded(debtId) : Promise.resolve(findDebtById(debtId)));
+      if (!found) {
+        core.setStatus("Долг не найден");
+        return;
+      }
+      const { card, debt } = found;
+      const outstanding = Number(debt.outstanding_total || 0);
+      el.issuanceDebtId.value = String(debtId);
+      if (el.issuanceCounterparty) {
+        el.issuanceCounterparty.textContent = card.counterparty || "Контрагент";
+      }
+      if (el.issuanceDirection) {
+        const isBorrow = debt.direction === "borrow";
+        el.issuanceDirection.textContent = debtUi.debtDirectionActionLabel(debt.direction);
+        el.issuanceDirection.classList.remove("debt-direction-pill-lend", "debt-direction-pill-borrow");
+        el.issuanceDirection.classList.add(isBorrow ? "debt-direction-pill-borrow" : "debt-direction-pill-lend");
+      }
+      if (el.issuanceOutstanding) {
+        el.issuanceOutstanding.textContent = formatDebtMoney(outstanding, debt.currency || "BYN");
+      }
+      if (!el.issuanceDate.value) {
+        core.syncDateFieldValue(el.issuanceDate, core.getTodayIso());
+      }
+      el.issuanceAmount.value = "";
+      el.issuanceNote.value = "";
+      updateIssuanceDeltaHint();
+      el.debtIssuanceModal.classList.remove("hidden");
+    }
+
+    function closeDebtIssuanceModal() {
+      el.debtIssuanceModal.classList.add("hidden");
+      el.issuanceDebtId.value = "";
+    }
+
     async function openDebtForgivenessModal(debtId) {
       const found = await (ensureDebtLoaded ? ensureDebtLoaded(debtId) : Promise.resolve(findDebtById(debtId)));
       if (!found) {
@@ -142,6 +177,52 @@
       if (el.repaymentCarryRow) {
         el.repaymentCarryRow.classList.remove("hidden");
       }
+    }
+
+    function updateIssuanceDeltaHint() {
+      const debtId = Number(el.issuanceDebtId?.value || 0);
+      const enteredState = core.resolveMoneyInput(el.issuanceAmount?.value || 0);
+      const entered = !enteredState.empty ? enteredState.previewValue : 0;
+      const found = debtId ? findDebtById(debtId) : null;
+      const outstanding = found ? parseAmount(found.debt?.outstanding_total) : 0;
+      const currency = found?.debt?.currency || "BYN";
+      if (el.issuanceBeforeValue) {
+        el.issuanceBeforeValue.textContent = formatDebtMoney(outstanding, currency);
+      }
+      if (el.issuanceAfterValue) {
+        el.issuanceAfterValue.textContent = formatDebtMoney(outstanding + Math.max(0, entered), currency);
+      }
+    }
+
+    async function submitDebtIssuance(event) {
+      event.preventDefault();
+      const debtId = Number(el.issuanceDebtId.value || 0);
+      if (!debtId) {
+        return;
+      }
+      const issuanceDate = core.parseDateInputValue(el.issuanceDate.value);
+      if (!issuanceDate) {
+        core.setStatus("Проверь дату добавления");
+        return;
+      }
+      const amount = core.resolveMoneyInput(el.issuanceAmount.value);
+      if (!amount.valid || amount.value <= 0) {
+        core.setStatus("Проверь сумму добавления");
+        return;
+      }
+      await core.requestJson(`/api/v1/debts/${debtId}/issuances`, {
+        method: "POST",
+        headers: core.authHeaders(),
+        body: JSON.stringify({
+          amount: amount.formatted,
+          issuance_date: issuanceDate,
+          note: el.issuanceNote.value || null,
+        }),
+      });
+      invalidateDebtCaches();
+      getDashboardData().invalidateReadCaches?.();
+      closeDebtIssuanceModal();
+      await refreshDebtViews();
     }
 
     async function submitDebtRepayment(event) {
@@ -520,6 +601,10 @@
       updateRepaymentDeltaHint,
       submitDebtRepayment,
       forgiveDebtFromRepaymentFlow,
+      openDebtIssuanceModal,
+      closeDebtIssuanceModal,
+      updateIssuanceDeltaHint,
+      submitDebtIssuance,
       openDebtForgivenessModal,
       closeDebtForgivenessModal,
       submitDebtForgiveness,

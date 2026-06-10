@@ -514,7 +514,7 @@ class OperationService:
                             "counterparty_name": str(card.get("counterparty") or ""),
                             "can_open_source": True,
                             "open_section": "debts",
-                            "open_label": "История долга",
+                            "open_label": "Движения долга",
                         }
                         if self._matches_money_flow_query(item, q):
                             items.append(item)
@@ -544,7 +544,7 @@ class OperationService:
                             "counterparty_name": str(card.get("counterparty") or ""),
                             "can_open_source": True,
                             "open_section": "debts",
-                            "open_label": "История долга",
+                            "open_label": "Движения долга",
                         }
                         if self._matches_money_flow_query(item, q):
                             items.append(item)

@@ -64,8 +64,21 @@
           openDebtForgivenessModal: debtFeature.openDebtForgivenessModal,
           deleteDebtFlow: actions.deleteDebtFlow,
           openDebtRepaymentModal: actions.openDebtRepaymentModal,
+          openDebtIssuanceModal: actions.openDebtIssuanceModal,
         });
       });
+    }
+    if (actions.openDebtIssuanceModal) {
+      document.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-add-debt-issuance-id]");
+        if (!btn || btn.disabled) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        debtsUiCoordinator?.closeDebtActionPopover?.({ event, pickerUtils });
+        actions.openDebtIssuanceModal(Number(btn.dataset.addDebtIssuanceId || 0));
+      }, true);
     }
     if (actions.openDebtRepaymentModal) {
       document.addEventListener("click", (event) => {
@@ -167,6 +180,17 @@
         });
       });
     }
+    if (el.debtIssuanceForm && actions.submitDebtIssuance) {
+      el.debtIssuanceForm.addEventListener("submit", (event) => {
+        core.runAction({
+          button: event.submitter || el.submitDebtIssuanceBtn,
+          pendingText: "Добавление...",
+          successMessage: "Сумма добавлена",
+          errorPrefix: "Ошибка добавления суммы",
+          action: () => actions.submitDebtIssuance(event),
+        });
+      });
+    }
     if (el.forgiveDebtFromRepaymentBtn) {
       el.forgiveDebtFromRepaymentBtn.addEventListener("click", () => {
         const debtFeature = window.App.getRuntimeModule?.("debts") || {};
@@ -216,6 +240,11 @@
     if (el.repaymentAmount && actions.updateRepaymentDeltaHint) {
       el.repaymentAmount.addEventListener("input", () => {
         actions.updateRepaymentDeltaHint();
+      });
+    }
+    if (el.issuanceAmount && actions.updateIssuanceDeltaHint) {
+      el.issuanceAmount.addEventListener("input", () => {
+        actions.updateIssuanceDeltaHint();
       });
     }
 

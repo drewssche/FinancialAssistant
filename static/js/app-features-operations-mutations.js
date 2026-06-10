@@ -195,8 +195,10 @@
         state.debtCounterpartyCardsCache = null;
         state.debtCounterpartyCardsCacheLoaded = false;
         dashboardData.invalidateReadCaches?.();
-        state.editDebtCreateId = null;
-        closeCreateModal();
+        if (!isEditDebt) {
+          state.editDebtCreateId = null;
+          closeCreateModal();
+        }
         await refreshAfterDebtMutation();
         return;
       }
@@ -252,20 +254,22 @@
         dashboardData.invalidateSummaryCache?.();
         core.invalidateUiRequestCache("dashboard:summary");
         core.invalidateUiRequestCache("currency");
-        state.editCurrencyTradeId = null;
-        if (el.currencyQuantity) {
-          el.currencyQuantity.value = "";
+        if (!isEditTrade) {
+          state.editCurrencyTradeId = null;
+          if (el.currencyQuantity) {
+            el.currencyQuantity.value = "";
+          }
+          if (el.currencyUnitPrice) {
+            el.currencyUnitPrice.value = "";
+          }
+          if (el.currencyQuoteTotal) {
+            el.currencyQuoteTotal.value = "";
+          }
+          if (el.currencyNote) {
+            el.currencyNote.value = "";
+          }
+          closeCreateModal();
         }
-        if (el.currencyUnitPrice) {
-          el.currencyUnitPrice.value = "";
-        }
-        if (el.currencyQuoteTotal) {
-          el.currencyQuoteTotal.value = "";
-        }
-        if (el.currencyNote) {
-          el.currencyNote.value = "";
-        }
-        closeCreateModal();
         if (isSectionVisible("currency")) {
           window.App.getRuntimeModule?.("currency")?.loadCurrencySection?.({ force: true }).catch(() => {});
         }
@@ -309,7 +313,6 @@
       dashboardData.invalidateSummaryCache?.();
       invalidateAllTimeAnchor();
       trackCategoryUsage(payload.category_id);
-      closeEditModal();
       await refreshAfterOperationMutation();
     }
 

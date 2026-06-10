@@ -1111,7 +1111,9 @@
       headers: core.authHeaders(),
       body: JSON.stringify(payload),
     });
-    operationModal.closeCreateModal();
+    if (planId <= 0) {
+      operationModal.closeCreateModal();
+    }
     await refreshAfterPlanMutation();
   }
 

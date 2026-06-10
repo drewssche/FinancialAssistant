@@ -105,6 +105,37 @@ def test_debts_repayment_and_close_card(client: TestClient):
     assert payload[0]["outstanding_total"] == "0.00"
 
 
+def test_debts_add_issuance_increases_existing_debt(client: TestClient):
+    created = client.post(
+        "/api/v1/debts",
+        json={
+            "counterparty": "Мария",
+            "direction": "borrow",
+            "principal": "300.00",
+            "start_date": "2026-02-10",
+        },
+    )
+    assert created.status_code == 201
+    debt_id = created.json()["id"]
+
+    added = client.post(
+        f"/api/v1/debts/{debt_id}/issuances",
+        json={"amount": "125.50", "issuance_date": "2026-02-20", "note": "Долг вырос"},
+    )
+    assert added.status_code == 201
+    assert added.json()["amount"] == "125.50"
+    assert added.json()["issuance_date"] == "2026-02-20"
+
+    cards = client.get("/api/v1/debts/cards", params={"include_closed": True})
+    assert cards.status_code == 200
+    payload = cards.json()
+    debt = payload[0]["debts"][0]
+    assert debt["principal"] == "425.50"
+    assert debt["outstanding_total"] == "425.50"
+    assert [item["amount"] for item in debt["issuances"]] == ["125.50", "300.00"]
+    assert debt["issuances"][0]["note"] == "Долг вырос"
+
+
 def test_debts_forgiveness_closes_debt_with_forgiven_reason(client: TestClient):
     created = client.post(
         "/api/v1/debts",

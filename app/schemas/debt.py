@@ -20,6 +20,12 @@ class DebtRepaymentCreate(BaseModel):
     note: str | None = None
 
 
+class DebtIssuanceCreate(BaseModel):
+    amount: Decimal
+    issuance_date: date
+    note: str | None = None
+
+
 class DebtForgivenessCreate(BaseModel):
     amount: Decimal
     forgiven_date: date

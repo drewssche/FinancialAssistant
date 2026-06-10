@@ -155,7 +155,9 @@
         }
       }
       core.invalidateUiRequestCache("item-catalog");
-      closeItemTemplateModal();
+      if (!isEdit) {
+        closeItemTemplateModal();
+      }
       await loadItemCatalog({ force: true });
     }
 

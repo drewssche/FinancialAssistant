@@ -219,6 +219,62 @@ class DebtService:
         forgiven = self.repo.forgiveness_total_for_debt(debt_id=debt_id)
         return repaid, forgiven, repaid + forgiven
 
+    def add_issuance(
+        self,
+        user_id: int,
+        debt_id: int,
+        amount: Decimal,
+        issuance_date: date,
+        note: str | None = None,
+    ):
+        self._validate_positive_amount(amount, "amount")
+        debt = self.repo.get_debt_by_id_for_user(user_id=user_id, debt_id=debt_id)
+        if not debt:
+            raise LookupError("Debt not found")
+        before_activity = ActivityService.snapshot(debt, self.ACTIVITY_FIELDS)
+        updated_principal = Decimal(debt.principal) + Decimal(amount)
+        updated_original = Decimal(getattr(debt, "original_principal", debt.principal)) + Decimal(amount)
+        updates = {
+            "principal": updated_principal,
+            "original_principal": updated_original,
+            "closure_reason": None,
+        }
+        if issuance_date and debt.start_date and issuance_date < debt.start_date:
+            updates["start_date"] = issuance_date
+        debt = self.repo.update_debt(debt, updates)
+        issuance = self.repo.create_issuance(
+            debt_id=debt_id,
+            amount=amount,
+            issuance_date=issuance_date,
+            note=note,
+        )
+        self.activity.record_updated(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="debt",
+            entity_id=int(debt.id),
+            before=before_activity,
+            after=ActivityService.snapshot(debt, self.ACTIVITY_FIELDS),
+            labels=self.ACTIVITY_LABELS,
+            title="Долг увеличен",
+        )
+        self.activity.record(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="debt",
+            entity_id=int(debt.id),
+            event_type="issued",
+            title="Сумма долга добавлена",
+            metadata={"amount": str(amount), "date": issuance_date.isoformat(), "note": note},
+        )
+        self.db.commit()
+        invalidate_dashboard_summary_cache(user_id)
+        invalidate_dashboard_analytics_cache(user_id)
+        invalidate_debts_cache(user_id)
+        self.db.refresh(issuance)
+        self.debt_reminder_service.sync_debt_job(user_id=user_id, debt_id=int(debt.id))
+        return issuance
+
     def add_repayment(
         self,
         user_id: int,

@@ -79,6 +79,29 @@
     rerenderActiveSectionForViewportMode();
   }
 
+  function closeVisibleModalOnEscape() {
+    if (el.confirmModal && !el.confirmModal.classList.contains("hidden")) {
+      return false;
+    }
+    const closers = [
+      [el.editModal, () => getOperationModal().closeEditModal?.()],
+      [el.createModal, () => getOperationModal().closeCreateModal?.()],
+      [el.editCategoryModal, () => getCategoryActions().closeEditCategoryModal?.()],
+      [el.editGroupModal, () => getCategoryActions().closeEditGroupModal?.()],
+      [el.createCategoryModal, () => getCategoryActions().closeCreateCategoryModal?.()],
+      [el.createGroupModal, () => getCategoryActions().closeCreateGroupModal?.()],
+      [el.itemTemplateModal, () => getItemCatalogFeature().closeItemTemplateModal?.()],
+      [el.sourceGroupModal, () => getItemCatalogFeature().closeSourceGroupModal?.()],
+    ];
+    for (const [modal, close] of closers) {
+      if (modal && !modal.classList.contains("hidden")) {
+        close();
+        return true;
+      }
+    }
+    return false;
+  }
+
   function bindCoreHandlers() {
     if (el.mobileNavToggleBtn) {
       el.mobileNavToggleBtn.addEventListener("click", () => core.toggleMobileNav());
@@ -163,6 +186,10 @@
 
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
+        if (closeVisibleModalOnEscape()) {
+          event.preventDefault();
+          return;
+        }
         core.closeMobileNav();
       }
     });
@@ -289,6 +316,16 @@
       el.debtRepaymentModal.addEventListener("click", (event) => {
         if (event.target === el.debtRepaymentModal) {
           actions.closeDebtRepaymentModal();
+        }
+      });
+    }
+    if (el.closeDebtIssuanceModalBtn && actions.closeDebtIssuanceModal) {
+      el.closeDebtIssuanceModalBtn.addEventListener("click", actions.closeDebtIssuanceModal);
+    }
+    if (el.debtIssuanceModal && actions.closeDebtIssuanceModal) {
+      el.debtIssuanceModal.addEventListener("click", (event) => {
+        if (event.target === el.debtIssuanceModal) {
+          actions.closeDebtIssuanceModal();
         }
       });
     }

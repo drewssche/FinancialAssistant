@@ -230,7 +230,6 @@
     });
     core.invalidateUiRequestCache("categories");
     core.invalidateUiRequestCache("operations");
-    categoryUi.closeEditCategoryModal();
     await loadCategories();
   }
 
@@ -280,7 +279,6 @@
     });
     core.invalidateUiRequestCache("categories");
     core.invalidateUiRequestCache("operations");
-    categoryUi.closeEditGroupModal();
     await loadCategories();
   }
 

@@ -80,6 +80,7 @@
     openDebtForgivenessModal,
     deleteDebtFlow,
     openDebtRepaymentModal,
+    openDebtIssuanceModal,
   }) {
     if (toggleDebtMenu({ event, pickerUtils })) {
       return true;
@@ -95,6 +96,13 @@
     if (historyBtn) {
       closeDebtActionPopover({ event, pickerUtils });
       openDebtHistoryModal?.(Number(historyBtn.dataset.historyDebtId || 0));
+      return true;
+    }
+
+    const issuanceBtn = event.target.closest("button[data-add-debt-issuance-id]");
+    if (issuanceBtn && !issuanceBtn.disabled) {
+      closeDebtActionPopover({ event, pickerUtils });
+      openDebtIssuanceModal?.(Number(issuanceBtn.dataset.addDebtIssuanceId || 0));
       return true;
     }
 

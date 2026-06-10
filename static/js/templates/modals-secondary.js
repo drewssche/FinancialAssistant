@@ -107,10 +107,54 @@
       </div>
     </div>
 
+    <div id="debtIssuanceModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="debtIssuanceTitle">
+      <div class="modal-card modal-small">
+        <div class="panel-head row between">
+          <h3 id="debtIssuanceTitle">Добавить сумму</h3>
+          <button id="closeDebtIssuanceModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
+        </div>
+        <form id="debtIssuanceForm" class="category-modal-form">
+          <input id="issuanceDebtId" type="hidden" />
+          <div class="repayment-card">
+            <div class="repayment-head row between">
+              <div>
+                <div id="issuanceCounterparty" class="repayment-counterparty">Контрагент</div>
+                <div id="issuanceDirection" class="debt-direction-pill debt-direction-pill-lend">Я дал</div>
+              </div>
+              <div class="repayment-outstanding">
+                <span class="muted-small">Остаток</span>
+                <strong id="issuanceOutstanding">0.00</strong>
+              </div>
+            </div>
+            <div class="muted-small">Добавление увеличит текущий долг и попадет в денежный поток.</div>
+          </div>
+          <div class="money-input-wrap" data-money-input-wrap>
+            <input id="issuanceAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" required />
+          </div>
+          <div class="repayment-delta-box">
+            <div class="muted-small">До: <span id="issuanceBeforeValue">0.00</span></div>
+            <div class="muted-small">После: <span id="issuanceAfterValue">0.00</span></div>
+          </div>
+          <div class="date-input-wrap" data-date-stepper>
+            <input id="issuanceDate" class="input" type="date" aria-label="Дата добавления" required />
+            <button class="date-input-trigger" type="button" data-date-picker-trigger="issuanceDate" aria-label="Открыть календарь"></button>
+          </div>
+          <input id="issuanceNote" type="text" placeholder="Комментарий" />
+        </form>
+        <div class="modal-footer">
+          <button id="submitDebtIssuanceBtn" class="btn btn-cta modal-main-cta" type="submit" form="debtIssuanceForm">
+            Добавить сумму
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div id="debtHistoryModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="debtHistoryTitle">
       <div class="modal-card modal-small">
         <div class="panel-head row between">
-          <h3 id="debtHistoryTitle">История долга</h3>
+          <h3 id="debtHistoryTitle">Движения долга</h3>
           <button id="closeDebtHistoryModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
             <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
           </button>

@@ -118,7 +118,6 @@
       }
       if (originalName) {
         if (getItemCatalogShopKey(originalName) === getItemCatalogShopKey(sourceName)) {
-          closeSourceGroupModal();
           renderItemCatalog(state.itemCatalogItems);
           return;
         }
@@ -140,7 +139,13 @@
             .filter((name, idx, arr) => name && arr.findIndex((item) => getItemCatalogShopKey(item) === getItemCatalogShopKey(name)) === idx),
         );
         core.invalidateUiRequestCache("item-catalog");
-        closeSourceGroupModal();
+        state.editItemSourceName = sourceName;
+        if (el.sourceGroupOriginalName) {
+          el.sourceGroupOriginalName.value = sourceName;
+        }
+        if (el.sourceGroupName) {
+          el.sourceGroupName.value = sourceName;
+        }
         await loadItemCatalog({ force: true });
         savePreferencesDebounced(450);
         return;

@@ -124,6 +124,10 @@
   const submitDebtRepayment = debtFeatures.submitDebtRepayment;
   const forgiveDebtFromRepaymentFlow = debtFeatures.forgiveDebtFromRepaymentFlow;
   const updateRepaymentDeltaHint = debtFeatures.updateRepaymentDeltaHint;
+  const openDebtIssuanceModal = debtFeatures.openDebtIssuanceModal;
+  const closeDebtIssuanceModal = debtFeatures.closeDebtIssuanceModal;
+  const submitDebtIssuance = debtFeatures.submitDebtIssuance;
+  const updateIssuanceDeltaHint = debtFeatures.updateIssuanceDeltaHint;
   const openDebtForgivenessModal = debtFeatures.openDebtForgivenessModal;
   const closeDebtForgivenessModal = debtFeatures.closeDebtForgivenessModal;
   const submitDebtForgiveness = debtFeatures.submitDebtForgiveness;
@@ -328,6 +332,10 @@
     submitDebtRepayment,
     forgiveDebtFromRepaymentFlow,
     updateRepaymentDeltaHint,
+    openDebtIssuanceModal,
+    closeDebtIssuanceModal,
+    submitDebtIssuance,
+    updateIssuanceDeltaHint,
     openDebtForgivenessModal,
     closeDebtForgivenessModal,
     submitDebtForgiveness,
@@ -430,6 +438,10 @@
       "submitDebtRepayment",
       "forgiveDebtFromRepaymentFlow",
       "updateRepaymentDeltaHint",
+      "openDebtIssuanceModal",
+      "closeDebtIssuanceModal",
+      "submitDebtIssuance",
+      "updateIssuanceDeltaHint",
       "openDebtForgivenessModal",
       "closeDebtForgivenessModal",
       "submitDebtForgiveness",

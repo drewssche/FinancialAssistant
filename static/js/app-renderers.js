@@ -468,17 +468,20 @@
     if (sourceKind === "operation" && item?.source_id) {
       menuItems = [
         ...(hasReceiptItems ? [`<button class="btn btn-secondary" type="button" data-receipt-view-id="${item.source_id || ""}">Позиции</button>`] : []),
+        `<button class="btn btn-secondary" type="button" data-activity-entity-type="operation" data-activity-entity-id="${item.source_id || ""}">Журнал</button>`,
         `<button class="btn btn-secondary" type="button" data-open-source-kind="operation" data-open-source-id="${item.source_id || ""}">Редактировать</button>`,
         `<button class="btn btn-danger" type="button" data-delete-operation-source-id="${item.source_id || ""}">Удалить</button>`,
       ].join("");
     } else if (sourceKind === "debt" && item?.source_id) {
       menuItems = [
+        `<button class="btn btn-secondary" type="button" data-activity-entity-type="debt" data-activity-entity-id="${item.source_id || ""}">Журнал</button>`,
         `<button class="btn btn-secondary" type="button" data-open-source-kind="debt" data-open-source-id="${item.source_id || ""}" data-open-source-mode="edit">Редактировать</button>`,
-        `<button class="btn btn-secondary" type="button" data-open-source-kind="debt" data-open-source-id="${item.source_id || ""}" data-open-source-mode="history">История</button>`,
+        `<button class="btn btn-secondary" type="button" data-open-source-kind="debt" data-open-source-id="${item.source_id || ""}" data-open-source-mode="history">Движения</button>`,
         `<button class="btn btn-danger" type="button" data-delete-debt-source-id="${item.source_id || ""}">Удалить</button>`,
       ].join("");
     } else if (sourceKind === "fx" && item?.source_id) {
       menuItems = [
+        `<button class="btn btn-secondary" type="button" data-activity-entity-type="currency_trade" data-activity-entity-id="${item.source_id || ""}">Журнал</button>`,
         `<button class="btn btn-secondary" type="button" data-open-source-kind="fx" data-open-source-id="${item.source_id || ""}" data-open-source-mode="edit">Редактировать</button>`,
         `<button class="btn btn-danger" type="button" data-delete-fx-source-id="${item.source_id || ""}">Удалить</button>`,
       ].join("");
