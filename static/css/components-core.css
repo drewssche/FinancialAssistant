@@ -380,6 +380,15 @@
   margin-bottom: var(--space-3);
 }
 
+.section-kpi-grid {
+  margin-bottom: var(--space-3);
+}
+
+.section-kpi-grid .analytics-kpi-card strong {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .plans-financial-kpi-card {
   display: grid;
   gap: var(--space-3);

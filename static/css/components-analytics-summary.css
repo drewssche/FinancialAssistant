@@ -312,6 +312,7 @@
   min-height: 0;
 }
 
+.control-section-grid,
 .operations-controls-grid {
   margin-bottom: var(--space-3);
   display: grid;
@@ -319,28 +320,40 @@
   align-items: start;
 }
 
-.operations-primary-controls,
-.operations-secondary-controls {
-  display: flex;
-  flex-wrap: wrap;
+.control-section {
+  border: 1px solid rgba(56, 77, 111, 0.58);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(180deg, rgba(24, 35, 55, 0.72), rgba(14, 22, 36, 0.68));
+  padding: var(--space-3);
+  min-width: 0;
+  display: grid;
   gap: var(--space-3);
-  align-items: flex-end;
 }
 
-.operations-primary-controls {
+.control-section-head {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+  color: #dbe6fb;
+  font-weight: 700;
 }
 
-.operations-primary-controls-right {
+.control-section-body {
+  min-width: 0;
+}
+
+.operations-controls-grid {
+  grid-template-columns: minmax(18rem, 1fr) minmax(24rem, 2fr) minmax(12rem, auto);
+}
+
+.operations-filter-grid {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
   align-items: flex-end;
-  justify-content: flex-end;
-}
-
-.operations-secondary-controls {
-  justify-content: flex-start;
 }
 
 .operations-control-card {
@@ -356,7 +369,7 @@
 }
 
 .operations-control-card-sort {
-  justify-self: stretch;
+  justify-self: start;
 }
 
 .operations-control-card-mode .segmented,
@@ -369,8 +382,8 @@
   min-width: 22rem;
 }
 
-.operations-primary-controls .operations-control-card {
-  flex: 0 0 auto;
+.operations-filter-section .operations-control-card {
+  flex: 0 1 auto;
 }
 
 .money-flow-context {
@@ -411,10 +424,6 @@
   box-shadow: inset 3px 0 0 rgba(73, 190, 120, 0.42);
 }
 
-.operations-control-card-actions {
-  grid-column: 1 / -1;
-}
-
 .operations-control-head {
   display: flex;
   align-items: center;
@@ -422,15 +431,8 @@
   min-height: 1rem;
 }
 
-.operations-workflow-actions {
-  width: 100%;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-.operations-workflow-actions .btn {
-  width: auto;
-  flex: 0 0 auto;
+.operations-search-row {
+  grid-template-columns: minmax(16rem, 32rem);
 }
 
 .analytics-kpi-card {

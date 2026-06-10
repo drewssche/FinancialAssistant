@@ -116,6 +116,35 @@
         return group.items.length > 0 || sourceMatch;
       })
       : groupsAll;
+    if (el.itemCatalogKpiGrid) {
+      const visibleItems = groups.flatMap((group) => group.items || []);
+      const sourceCount = groups.filter((group) => group.shopKey !== "__no_shop__" && (group.items || []).length > 0).length;
+      const totalUseCount = visibleItems.reduce((sum, item) => sum + Number(item.use_count || 0), 0);
+      const priceItems = visibleItems
+        .map((item) => Number(item.latest_unit_price || 0))
+        .filter((value) => Number.isFinite(value) && value > 0);
+      const avgPrice = priceItems.length
+        ? priceItems.reduce((sum, value) => sum + value, 0) / priceItems.length
+        : 0;
+      el.itemCatalogKpiGrid.innerHTML = `
+        <article class="analytics-kpi-card analytics-kpi-neutral">
+          <div class="muted-small">Позиций</div>
+          <strong>${visibleItems.length}</strong>
+        </article>
+        <article class="analytics-kpi-card analytics-kpi-neutral">
+          <div class="muted-small">Источников</div>
+          <strong>${sourceCount}</strong>
+        </article>
+        <article class="analytics-kpi-card analytics-kpi-positive">
+          <div class="muted-small">Использований</div>
+          <strong>${totalUseCount}</strong>
+        </article>
+        <article class="analytics-kpi-card analytics-kpi-neutral">
+          <div class="muted-small">Средняя последняя цена</div>
+          <strong>${core.formatMoney(avgPrice)}</strong>
+        </article>
+      `;
+    }
     if (!groups.length) {
       syncItemCatalogControls({ el, queryActive, hasRows: false });
       el.itemCatalogBody.innerHTML = '<tr><td colspan="4">Нет позиций</td></tr>';

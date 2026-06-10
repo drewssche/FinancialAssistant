@@ -208,6 +208,35 @@ def test_debt_movements_and_add_amount_ui_contract():
     assert "openDebtIssuanceModal" in features
 
 
+def test_section_kpi_cards_and_mobile_debt_search_contract():
+    shell_primary = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-primary.js").read_text(
+        encoding="utf-8"
+    )
+    shell_secondary = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-secondary.js").read_text(
+        encoding="utf-8"
+    )
+    elements = (REPO_ROOT / "static" / "js" / "app-core-elements.js").read_text(encoding="utf-8")
+    debts_render = (REPO_ROOT / "static" / "js" / "app-features-debts-render.js").read_text(encoding="utf-8")
+    categories_table = (REPO_ROOT / "static" / "js" / "app-categories-table-ui.js").read_text(encoding="utf-8")
+    item_catalog_render = (REPO_ROOT / "static" / "js" / "app-item-catalog-render-coordinator.js").read_text(
+        encoding="utf-8"
+    )
+    responsive_sm = (REPO_ROOT / "static" / "css" / "responsive-sm-core.css").read_text(encoding="utf-8")
+    components_core = (REPO_ROOT / "static" / "css" / "components-core.css").read_text(encoding="utf-8")
+
+    assert 'id="categoriesKpiGrid"' in shell_primary
+    assert 'id="itemCatalogKpiGrid"' in shell_secondary
+    assert 'id="debtsSectionKpi" class="analytics-kpi-grid section-kpi-grid debts-section-kpi"' in shell_secondary
+    assert 'categoriesKpiGrid: document.getElementById("categoriesKpiGrid")' in elements
+    assert 'itemCatalogKpiGrid: document.getElementById("itemCatalogKpiGrid")' in elements
+    assert "analytics-kpi-card analytics-kpi-negative" in debts_render
+    assert "el.categoriesKpiGrid.innerHTML" in categories_table
+    assert "el.itemCatalogKpiGrid.innerHTML" in item_catalog_render
+    assert "#debtsSection .debt-toolbar .table-search-input" in responsive_sm
+    assert "height: 2.75rem;" in responsive_sm
+    assert ".section-kpi-grid" in components_core
+
+
 def test_edit_modals_keep_open_after_successful_save():
     operations_mutations = (REPO_ROOT / "static" / "js" / "app-features-operations-mutations.js").read_text(
         encoding="utf-8"
@@ -920,11 +949,21 @@ def test_operations_section_is_money_flow_first_without_bulk_select():
 
     assert 'operationsMode: "money_flow"' in state
     assert 'id="operationsModeTabs"' not in shell_primary
+    assert 'class="operations-controls-grid control-section-grid"' in shell_primary
+    assert 'class="control-section operations-period-section"' in shell_primary
+    assert 'class="control-section operations-filter-section"' in shell_primary
+    assert 'class="control-section operations-sort-section"' in shell_primary
+    assert shell_primary.index('id="resetOperationsFiltersBtn"') < shell_primary.index('id="operationsSummaryGrid"')
+    assert 'id="operationsQuickActionsCard"' not in shell_primary
+    assert 'id="quickFilterExpenseBtn"' not in shell_primary
+    assert 'id="quickFilterIncomeBtn"' not in shell_primary
+    assert 'id="quickCustomRangeBtn"' not in shell_primary
     assert 'id="operationsSelectAll"' not in shell_primary
     assert 'id="selectVisibleOperationsBtn"' not in shell_primary
     assert 'id="operationsBulkBar"' not in shell_primary
     assert 'id="deleteAllOperationsBtn"' not in shell_primary
     assert 'state.operationsMode = "money_flow";' in operations
+    assert "setOperationsCurrencyScope," in (REPO_ROOT / "static" / "js" / "app-features.js").read_text(encoding="utf-8")
     assert 'mode: "money_flow"' in preferences
     assert 'params.set("item_template_id", String(state.operationsItemTemplateFilterId));' in operations
     assert '<td class="select-col" data-label="Выбор"><span class="muted-small">—</span></td>' not in renderers
@@ -943,7 +982,8 @@ def test_debts_section_has_filtered_base_currency_kpi():
     assert "function summarizeDebtCards(cards)" in debts_render
     assert "debt.current_base_outstanding_total ?? debt.outstanding_total" in debts_render
     assert "renderDebtsSectionKpi(visibleCards);" in debts_render
-    assert "Я должен:" in debts_render
-    assert "Мне должны:" in debts_render
-    assert "Чистая позиция:" in debts_render
+    assert "Я должен" in debts_render
+    assert "Мне должны" in debts_render
+    assert "Чистая позиция" in debts_render
+    assert "analytics-kpi-card analytics-kpi-negative" in debts_render
     assert ".debts-section-kpi" in debts_css

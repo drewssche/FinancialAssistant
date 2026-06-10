@@ -108,7 +108,6 @@
 
 ## Execution Steps (Current Sprint)
 ### Active Fixes 2026-06-09
-- [x] Debts mobile: reduce oversized counterparty search field in the debts section.
 - [x] Operations: show the resolved date/period immediately instead of a perpetual placeholder.
 - [x] Reliability: add summary retry and non-blocking plans fallback for intermittent `[500] /api/v1/dashboard/summary`; production logs/HTTP check showed current summary responses are `200` after the latest restart.
 
@@ -124,6 +123,19 @@
 - [x] Debts: rename financial `История` to `Движения`, keeping audit `Журнал` separate.
 - [x] Debts: add an `Добавить сумму` action that increases an existing debt without treating it as repayment.
 - [x] Debts: keep debt movements reflected in money-flow and dashboard/debt caches.
+
+### Active UI Tasks 2026-06-10
+- [x] Debts mobile: reduce the counterparty search field height in the debts toolbar.
+- [x] Debts: render section KPI as dashboard-style cards instead of compact chips.
+- [x] Categories and item catalog: add dashboard-style KPI cards above the tables.
+
+### Active Controls Rework 2026-06-10
+- [x] Operations: regroup period, filters, sorting and search controls into clear visual sections.
+- [x] Operations: move `Сбросить фильтры` next to the filter controls.
+- [x] Operations: remove unused quick actions.
+- [x] Operations: verify/fix currency-scope filtering.
+- [ ] Shared date controls: design the next step for clickable date/period controls with arrows and a period popover across sections.
+  - Recommendation: introduce one reusable `period-control` component with left/right step buttons, a clickable current-period label, and a popover for day/week/month/year/all-time/range. Apply it first to Operations and Analytics global period, then migrate dashboard/plans/currency period controls after e2e coverage.
 
 1. Production auth cleanup
 - keep Telegram WebApp as the primary supported auth path

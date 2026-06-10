@@ -208,18 +208,21 @@
     grid-template-columns: 1fr;
   }
 
-  .operations-primary-controls,
-  .operations-primary-controls-right,
-  .operations-secondary-controls {
-    justify-content: stretch;
-  }
-
   .operations-control-card-sort {
     justify-self: stretch;
   }
 
   .operations-control-card .segmented {
     width: 100%;
+  }
+
+  .operations-filter-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .operations-search-row {
+    grid-template-columns: 1fr;
   }
 
   #categoriesBulkBar {

@@ -189,16 +189,28 @@
     }
     const summary = summarizeDebtCards(cards);
     const netTone = summary.netTotal > 0.000001
-      ? "analytics-kpi-chip-positive"
+      ? "analytics-kpi-positive"
       : summary.netTotal < -0.000001
-        ? "analytics-kpi-chip-negative"
-        : "analytics-kpi-chip-neutral";
+        ? "analytics-kpi-negative"
+        : "analytics-kpi-neutral";
     const netPrefix = summary.netTotal > 0.000001 ? "+" : summary.netTotal < -0.000001 ? "-" : "";
     el.debtsSectionKpi.innerHTML = `
-      <span class="analytics-kpi-chip analytics-kpi-chip-negative">Я должен: ${formatDebtMoney(summary.borrowTotal, summary.baseCurrency)}</span>
-      <span class="analytics-kpi-chip analytics-kpi-chip-positive">Мне должны: ${formatDebtMoney(summary.lendTotal, summary.baseCurrency)}</span>
-      <span class="analytics-kpi-chip ${netTone}">Чистая позиция: ${netPrefix}${formatDebtMoney(Math.abs(summary.netTotal), summary.baseCurrency)}</span>
-      <span class="analytics-kpi-chip analytics-kpi-chip-neutral">Активных карточек: ${summary.activeCardCount}</span>
+      <article class="analytics-kpi-card analytics-kpi-negative">
+        <div class="muted-small">Я должен</div>
+        <strong>${formatDebtMoney(summary.borrowTotal, summary.baseCurrency)}</strong>
+      </article>
+      <article class="analytics-kpi-card analytics-kpi-positive">
+        <div class="muted-small">Мне должны</div>
+        <strong>${formatDebtMoney(summary.lendTotal, summary.baseCurrency)}</strong>
+      </article>
+      <article class="analytics-kpi-card ${netTone}">
+        <div class="muted-small">Чистая позиция</div>
+        <strong>${netPrefix}${formatDebtMoney(Math.abs(summary.netTotal), summary.baseCurrency)}</strong>
+      </article>
+      <article class="analytics-kpi-card analytics-kpi-neutral">
+        <div class="muted-small">Активных карточек</div>
+        <strong>${summary.activeCardCount}</strong>
+      </article>
     `;
   }
 

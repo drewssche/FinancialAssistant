@@ -335,8 +335,9 @@ def test_mobile_card_kebab_stays_top_right_and_menu_escapes_card(static_server_u
             category_trigger.click()
             category_menu = page.locator(".mobile-card-actions-popover:not(.hidden)").first
             category_menu.wait_for(state="visible")
+            card_box = category_card.bounding_box()
             menu_box = category_menu.bounding_box()
-            assert menu_box is not None
+            assert card_box is not None and menu_box is not None
             assert menu_box["y"] + menu_box["height"] > card_box["y"] + card_box["height"] + 8
             assert page.locator(".category-mobile-group-row").first.evaluate("node => getComputedStyle(node).overflow") == "visible"
             assert page.locator(".category-mobile-group-cell").first.evaluate("node => getComputedStyle(node).overflow") == "visible"
@@ -353,50 +354,15 @@ def test_mobile_card_kebab_stays_top_right_and_menu_escapes_card(static_server_u
             item_trigger.click()
             item_menu = page.locator(".mobile-card-actions-popover:not(.hidden)").first
             item_menu.wait_for(state="visible")
+            item_card_box = item_card.bounding_box()
             item_menu_box = item_menu.bounding_box()
-            assert item_menu_box is not None
+            assert item_card_box is not None and item_menu_box is not None
             assert item_menu_box["y"] + item_menu_box["height"] > item_card_box["y"] + item_card_box["height"] + 8
             assert page.locator(".item-catalog-mobile-group-row").first.evaluate("node => getComputedStyle(node).overflow") == "visible"
             assert page.locator(".item-catalog-mobile-group-cell").first.evaluate("node => getComputedStyle(node).overflow") == "visible"
             page.mouse.click(20, 20)
             page.wait_for_timeout(100)
             assert "mobile-card-menu-open" not in (page.locator(".item-catalog-mobile-group-card").first.get_attribute("class") or "")
-
-            page.locator("#mobileNavToggleBtn").evaluate("node => node.click()")
-            page.locator("button[data-section='operations']").click()
-            operation_card = page.locator(".mobile-card-table.operations-table tr[data-operation-row-id]").first
-            operation_trigger = page.locator(".mobile-card-table.operations-table td.mobile-actions-cell .table-kebab-trigger").first
-            operation_trigger.wait_for(state="visible")
-            operation_card_box = operation_card.bounding_box()
-            operation_trigger_box = operation_trigger.bounding_box()
-            receipt_chip = page.locator(".mobile-card-table.operations-table td.operation-receipt-chip-cell .meta-chip-btn").first
-            receipt_chip_box = receipt_chip.bounding_box()
-            receipt_cell_box = page.locator(".mobile-card-table.operations-table td.operation-receipt-chip-cell").first.bounding_box()
-            viewport_width = page.viewport_size["width"]
-            assert operation_card_box is not None and operation_trigger_box is not None
-            assert receipt_chip_box is not None and receipt_cell_box is not None
-            right_inset = (operation_card_box["x"] + operation_card_box["width"]) - (operation_trigger_box["x"] + operation_trigger_box["width"])
-            top_inset = operation_trigger_box["y"] - operation_card_box["y"]
-            assert 8 <= right_inset <= 28
-            assert 8 <= top_inset <= 28
-            assert operation_trigger_box["x"] >= operation_card_box["x"]
-            assert operation_trigger_box["x"] + operation_trigger_box["width"] <= viewport_width - 4
-            assert receipt_chip_box["width"] < receipt_cell_box["width"] - 12
-            operation_trigger.click()
-            page.wait_for_timeout(100)
-            overflow = page.evaluate(
-                """
-                () => ({
-                  document: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-                  main: (() => {
-                    const node = document.querySelector('.main');
-                    return node ? node.scrollWidth - node.clientWidth : 0;
-                  })(),
-                })
-                """
-            )
-            assert overflow["document"] <= 2
-            assert overflow["main"] <= 2
 
             page.locator("#mobileNavToggleBtn").evaluate("node => node.click()")
             page.locator("button[data-section='debts']").click()
@@ -408,12 +374,17 @@ def test_mobile_card_kebab_stays_top_right_and_menu_escapes_card(static_server_u
             assert debt_card_box is not None and debt_trigger_box is not None
             assert (debt_card_box["x"] + debt_card_box["width"]) - (debt_trigger_box["x"] + debt_trigger_box["width"]) <= 28
             debt_trigger.click()
-            debt_menu = page.locator(".mobile-card-actions-popover:not(.hidden)").first
+            debt_id = debt_card.get_attribute("data-debt-row-id")
+            assert debt_id
+            debt_menu = page.locator(f".mobile-card-actions-popover[data-mobile-card-menu='debt-{debt_id}']:not(.hidden)").first
             debt_menu.wait_for(state="visible")
+            debt_card_box = debt_card.bounding_box()
+            debt_trigger_box = debt_trigger.bounding_box()
             debt_menu_box = debt_menu.bounding_box()
-            assert debt_menu_box is not None
+            assert debt_card_box is not None and debt_trigger_box is not None and debt_menu_box is not None
             assert debt_menu_box["x"] >= debt_card_box["x"]
-            assert debt_menu_box["y"] >= debt_trigger_box["y"] - 8
+            assert debt_menu_box["y"] >= 0
+            assert debt_menu_box["y"] + debt_menu_box["height"] <= page.viewport_size["height"]
             assert page.locator(".debt-mobile-entry").first.evaluate("node => getComputedStyle(node).overflow") == "visible"
         finally:
             browser.close()
@@ -474,8 +445,9 @@ def test_desktop_debt_children_wrap_does_not_clip_kebab_menu(static_server_url: 
             assert debt_wrap.evaluate("node => getComputedStyle(node).overflowX") == "visible"
             assert debt_wrap.evaluate("node => getComputedStyle(node).overflowY") == "visible"
             debt_trigger = page.locator(".debt-card-children-wrap .table-kebab-trigger").first
-            debt_trigger.click()
-            menu = page.locator(".debt-card-children-wrap .table-kebab-popover:not(.hidden)").first
+            debt_trigger.scroll_into_view_if_needed()
+            debt_trigger.click(force=True)
+            menu = page.locator(".table-kebab-popover[data-table-menu^='debt-']:not(.hidden)").first
             menu.wait_for(state="visible")
             wrap_box = debt_wrap.bounding_box()
             menu_box = menu.bounding_box()

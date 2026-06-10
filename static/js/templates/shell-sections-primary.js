@@ -426,7 +426,12 @@
                   <button id="clearOperationsCategoryFilterBtn" class="btn btn-secondary hidden" type="button">Сбросить фильтр</button>
                 </div>
               </div>
-              <div class="toolbar">
+            </div>
+            <div class="operations-controls-grid control-section-grid">
+              <section class="control-section operations-period-section" aria-label="Период операций">
+                <div class="control-section-head">
+                  <span>Период</span>
+                </div>
                 <div class="segmented" data-period-tabs role="tablist" aria-label="Период операций">
                   <button class="segmented-btn active" data-period="day" type="button">Сегодня</button>
                   <button class="segmented-btn" data-period="week" type="button">Эта неделя</button>
@@ -438,16 +443,23 @@
                 <div id="operationsPeriodPopover" class="app-popover app-popover-floating period-control-popover hidden" role="dialog" aria-label="Быстрый выбор периода операций">
                   <div id="operationsPeriodOptions" class="settings-picker-options"></div>
                 </div>
-                <div class="segmented" id="kindFilters" role="tablist" aria-label="Фильтр по типу">
-                  <button class="segmented-btn active" data-kind="" type="button" id="operationsKindAllLabel">Все</button>
-                  <button class="segmented-btn" data-kind="expense" type="button" id="operationsKindExpenseLabel">Расход</button>
-                  <button class="segmented-btn" data-kind="income" type="button" id="operationsKindIncomeLabel">Доход</button>
+              </section>
+              <section class="control-section operations-filter-section" aria-label="Фильтры операций">
+                <div class="control-section-head">
+                  <span>Фильтры</span>
+                  <button id="resetOperationsFiltersBtn" class="btn btn-secondary btn-xs" type="button">Сбросить фильтры</button>
                 </div>
-              </div>
-            </div>
-            <div class="operations-controls-grid">
-              <div class="operations-primary-controls">
-                <div class="operations-primary-controls-right">
+                <div class="control-section-body operations-filter-grid">
+                  <div class="operations-control-card">
+                    <div class="operations-control-head">
+                      <span class="muted-small">Тип</span>
+                    </div>
+                    <div class="segmented" id="kindFilters" role="tablist" aria-label="Фильтр по типу">
+                      <button class="segmented-btn active" data-kind="" type="button" id="operationsKindAllLabel">Все</button>
+                      <button class="segmented-btn" data-kind="expense" type="button" id="operationsKindExpenseLabel">Расход</button>
+                      <button class="segmented-btn" data-kind="income" type="button" id="operationsKindIncomeLabel">Доход</button>
+                    </div>
+                  </div>
                   <div id="operationsSourceCard" class="operations-control-card">
                     <div class="operations-control-head">
                       <span class="muted-small">Источник</span>
@@ -469,26 +481,19 @@
                       <button class="segmented-btn" data-operations-currency-scope="foreign" type="button">Другая валюта</button>
                     </div>
                   </div>
-                  <div class="operations-control-card operations-control-card-sort">
-                    <div class="segmented" id="operationsSortTabs" role="tablist" aria-label="Сортировка операций">
-                      <button class="segmented-btn active" data-op-sort="date" type="button">По дате</button>
-                      <button class="segmented-btn" data-op-sort="amount" type="button">По сумме</button>
-                    </div>
+                </div>
+              </section>
+              <section class="control-section operations-sort-section" aria-label="Сортировка операций">
+                <div class="control-section-head">
+                  <span>Сортировка</span>
+                </div>
+                <div class="operations-control-card operations-control-card-sort">
+                  <div class="segmented" id="operationsSortTabs" role="tablist" aria-label="Сортировка операций">
+                    <button class="segmented-btn active" data-op-sort="date" type="button">По дате</button>
+                    <button class="segmented-btn" data-op-sort="amount" type="button">По сумме</button>
                   </div>
                 </div>
-              </div>
-              <div class="operations-secondary-controls">
-              <div id="operationsQuickActionsCard" class="operations-control-card operations-control-card-actions">
-                <div class="operations-control-head">
-                  <span class="muted-small">Быстрые действия</span>
-                </div>
-                <div class="toolbar section-action-toolbar operations-workflow-actions">
-                  <button id="quickFilterExpenseBtn" class="btn btn-secondary btn-xs" type="button">Только отток</button>
-                  <button id="quickFilterIncomeBtn" class="btn btn-secondary btn-xs" type="button">Только приток</button>
-                  <button id="quickCustomRangeBtn" class="btn btn-secondary btn-xs" type="button">Настроить период</button>
-                </div>
-              </div>
-              </div>
+              </section>
             </div>
             <div id="operationsSummaryGrid" class="analytics-kpi-grid operations-summary-grid">
               <article class="analytics-kpi-card analytics-kpi-income">
@@ -508,11 +513,8 @@
                 <strong id="operationsTotalCount">0</strong>
               </article>
             </div>
-            <div class="table-search-row sticky-search">
+            <div class="table-search-row sticky-search operations-search-row">
               <input id="filterQ" class="table-search-input" type="text" placeholder="Поиск" />
-              <div class="toolbar section-action-toolbar search-toolbar table-search-actions operations-search-actions">
-                <button id="resetOperationsFiltersBtn" class="btn btn-secondary" type="button">Сбросить фильтры</button>
-              </div>
             </div>
 
             <div class="table-wrap">
@@ -563,6 +565,7 @@
               </div>
               <button id="deleteAllCategoriesBtn" class="btn btn-danger" type="button">Удалить все</button>
             </div>
+            <div id="categoriesKpiGrid" class="analytics-kpi-grid section-kpi-grid" aria-label="Итоги категорий"></div>
 
             <div class="table-wrap">
               <table class="table table-hover mobile-card-table categories-table">

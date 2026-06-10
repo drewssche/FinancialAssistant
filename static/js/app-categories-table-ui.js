@@ -400,6 +400,41 @@
     const queryLower = queryRaw.toLowerCase();
     const queryActive = Boolean(queryRaw);
     const groups = getCategoriesDisplayGroups(queryRaw, queryLower);
+    if (el.categoriesKpiGrid) {
+      const categories = Array.isArray(state.categories) ? state.categories : [];
+      const visibleCategoryIds = new Set();
+      for (const group of groups) {
+        for (const item of group.items || []) {
+          if (item?.id) {
+            visibleCategoryIds.add(Number(item.id));
+          }
+        }
+      }
+      const visibleCategories = queryActive || state.categoryFilterKind !== "all"
+        ? categories.filter((item) => visibleCategoryIds.has(Number(item.id)))
+        : categories;
+      const expenseCount = visibleCategories.filter((item) => item.kind === "expense").length;
+      const incomeCount = visibleCategories.filter((item) => item.kind === "income").length;
+      const activeGroups = groups.filter((group) => group.key !== CATEGORY_UNGROUPED_KEY && (group.items || []).length > 0).length;
+      el.categoriesKpiGrid.innerHTML = `
+        <article class="analytics-kpi-card analytics-kpi-neutral">
+          <div class="muted-small">Категорий</div>
+          <strong>${visibleCategories.length}</strong>
+        </article>
+        <article class="analytics-kpi-card analytics-kpi-expense">
+          <div class="muted-small">Расходных</div>
+          <strong>${expenseCount}</strong>
+        </article>
+        <article class="analytics-kpi-card analytics-kpi-income">
+          <div class="muted-small">Доходных</div>
+          <strong>${incomeCount}</strong>
+        </article>
+        <article class="analytics-kpi-card analytics-kpi-neutral">
+          <div class="muted-small">Групп с категориями</div>
+          <strong>${activeGroups}</strong>
+        </article>
+      `;
+    }
     syncCategoryGroupControls(queryActive, groups);
     categoriesUiCoordinator.renderGroupedCategoryTable?.({
       body: el.categoriesBody,

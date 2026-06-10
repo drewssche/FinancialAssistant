@@ -59,7 +59,7 @@ def page_with_money_flow_api_mock():
             "currency": {"tracked_currencies": ["USD", "EUR"]},
         },
     }
-    metrics = {"last_money_flow_source": "all"}
+    metrics = {"last_money_flow_source": "all", "last_money_flow_currency_scope": "all"}
     operations = []
     money_flow_items = [
         {
@@ -137,6 +137,22 @@ def page_with_money_flow_api_mock():
             "title": "Без категории",
             "subtitle": "Обычная операция",
             "note": "salary",
+            "can_open_source": False,
+        },
+        {
+            "id": "operation:2",
+            "source_kind": "operation",
+            "source_id": 2,
+            "flow_direction": "outflow",
+            "event_date": "2026-03-02",
+            "amount": "15.00",
+            "original_amount": "5.00",
+            "currency": "USD",
+            "base_currency": "BYN",
+            "fx_rate": "3.000000",
+            "title": "Иностранная операция",
+            "subtitle": "Обычная операция",
+            "note": "foreign",
             "can_open_source": False,
         },
     ]
@@ -239,14 +255,25 @@ def page_with_money_flow_api_mock():
             return json_response(route, {"items": operations, "total": len(operations), "page": 1, "page_size": 20})
         if path == "/api/v1/operations/summary" and method == "GET":
             return json_response(route, {"income_total": "0.00", "expense_total": "0.00", "balance": "0.00", "total": 0})
+        def filter_money_flow_items(source: str, currency_scope: str):
+            items = money_flow_items if source == "all" else [item for item in money_flow_items if item["source_kind"] == source]
+            if currency_scope == "base":
+                return [item for item in items if item.get("currency") == item.get("base_currency")]
+            if currency_scope == "foreign":
+                return [item for item in items if item.get("currency") != item.get("base_currency")]
+            return items
+
         if path == "/api/v1/operations/money-flow" and method == "GET":
             source = (query.get("source") or ["all"])[0]
+            currency_scope = (query.get("currency_scope") or ["all"])[0]
             metrics["last_money_flow_source"] = source
-            items = money_flow_items if source == "all" else [item for item in money_flow_items if item["source_kind"] == source]
+            metrics["last_money_flow_currency_scope"] = currency_scope
+            items = filter_money_flow_items(source, currency_scope)
             return json_response(route, {"items": items, "total": len(items), "page": 1, "page_size": 20})
         if path == "/api/v1/operations/money-flow/summary" and method == "GET":
             source = (query.get("source") or ["all"])[0]
-            items = money_flow_items if source == "all" else [item for item in money_flow_items if item["source_kind"] == source]
+            currency_scope = (query.get("currency_scope") or ["all"])[0]
+            items = filter_money_flow_items(source, currency_scope)
             income_total = sum(float(item["amount"]) for item in items if item["flow_direction"] == "inflow")
             expense_total = sum(float(item["amount"]) for item in items if item["flow_direction"] == "outflow")
             return json_response(route, {
@@ -362,6 +389,40 @@ def test_operations_money_flow_mode_supports_source_filter_and_drilldown(static_
     debt_only_text = page.locator("#operationsBody").inner_text()
     assert "Я дал в долг" in debt_only_text
     assert "Покупка USD" not in debt_only_text
+
+    page.click("#operationsSourceTabs button[data-operations-source='all']")
+    page.wait_for_function(
+        """
+        () => document.querySelector('#operationsSourceTabs .segmented-btn.active')?.dataset.operationsSource === 'all'
+        """
+    )
+    page.wait_for_function(
+        """
+        async () => {
+          const response = await fetch('/api/v1/test/money-flow-metrics');
+          const payload = await response.json();
+          return payload.last_money_flow_source === 'all';
+        }
+        """
+    )
+    page.click("#operationsCurrencyScopeTabs button[data-operations-currency-scope='foreign']")
+    page.wait_for_function(
+        """
+        () => document.querySelector('#operationsCurrencyScopeTabs .segmented-btn.active')?.dataset.operationsCurrencyScope === 'foreign'
+        """
+    )
+    page.wait_for_function(
+        """
+        async () => {
+          const response = await fetch('/api/v1/test/money-flow-metrics');
+          const payload = await response.json();
+          return payload.last_money_flow_currency_scope === 'foreign';
+        }
+        """
+    )
+    foreign_only_text = page.locator("#operationsBody").inner_text()
+    assert "Иностранная операция" in foreign_only_text
+    assert "Я дал в долг" not in foreign_only_text
 
     page.evaluate(
         """

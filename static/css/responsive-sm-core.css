@@ -405,6 +405,32 @@
     font-size: 14px;
   }
 
+  #debtsSection .table-search-row,
+  #debtsSection .debt-toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  #debtsSection .debt-toolbar .table-search-input {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    min-height: 2.5rem;
+    height: 2.75rem;
+    padding-block: 0.5rem;
+    font-size: 14px;
+  }
+
+  #debtsSection .debt-toolbar .segmented,
+  #debtsSection .debt-toolbar .btn {
+    width: 100%;
+  }
+
+  .section-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
   .plan-card-row,
   .plan-card-fields,
   .plan-card-summary,
@@ -617,7 +643,16 @@
     min-height: 2.625rem;
   }
 
-  .operations-workflow-actions .btn {
+  .control-section {
+    padding: var(--space-2);
+  }
+
+  .control-section-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .control-section-head .btn {
     width: 100%;
   }
 

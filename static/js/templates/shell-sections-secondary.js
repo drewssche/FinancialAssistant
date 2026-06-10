@@ -84,7 +84,7 @@
                 <button id="deleteAllDebtsBtn" class="btn btn-danger debt-toolbar-danger" type="button">Удалить все</button>
               </div>
             </div>
-            <div id="debtsSectionKpi" class="analytics-kpi-secondary debts-section-kpi" aria-label="Итоги долгов"></div>
+            <div id="debtsSectionKpi" class="analytics-kpi-grid section-kpi-grid debts-section-kpi" aria-label="Итоги долгов"></div>
             <div id="debtsCards" class="debt-cards"></div>
             <div id="debtsInfiniteSentinel" class="infinite-sentinel" aria-hidden="true"></div>
           </section>
@@ -215,6 +215,7 @@
                 <button id="deleteAllItemTemplatesBtn" class="btn btn-danger" type="button">Удалить все</button>
               </div>
             </div>
+            <div id="itemCatalogKpiGrid" class="analytics-kpi-grid section-kpi-grid" aria-label="Итоги каталога позиций"></div>
             <div class="table-wrap">
               <table class="table table-hover mobile-card-table item-catalog-table">
                 <thead>

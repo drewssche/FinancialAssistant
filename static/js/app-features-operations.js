@@ -356,9 +356,6 @@
     if (el.operationsQuickViewCard) {
       el.operationsQuickViewCard.classList.add("hidden");
     }
-    if (el.operationsQuickActionsCard) {
-      el.operationsQuickActionsCard.classList.remove("hidden");
-    }
     if (el.operationsSourceCard) {
       el.operationsSourceCard.classList.remove("hidden");
     }
@@ -375,12 +372,6 @@
     }
     if (el.operationsKindIncomeLabel) {
       el.operationsKindIncomeLabel.textContent = "Приток";
-    }
-    if (el.quickFilterExpenseBtn) {
-      el.quickFilterExpenseBtn.textContent = "Только отток";
-    }
-    if (el.quickFilterIncomeBtn) {
-      el.quickFilterIncomeBtn.textContent = "Только приток";
     }
     if (el.operationsCategoryHeader) {
       el.operationsCategoryHeader.textContent = isMoneyFlowMode ? "Контекст" : "Категория";

@@ -201,6 +201,7 @@
   const setOperationsMode = operationsFeatures.setOperationsMode;
   const setOperationsSourceFilter = operationsFeatures.setOperationsSourceFilter;
   const setOperationsQuickView = operationsFeatures.setOperationsQuickView;
+  const setOperationsCurrencyScope = operationsFeatures.setOperationsCurrencyScope;
   const selectVisibleOperations = operationsFeatures.selectVisibleOperations;
   const clearVisibleOperationsSelection = operationsFeatures.clearVisibleOperationsSelection;
   const setOperationsKindFilter = operationsFeatures.setOperationsKindFilter;
@@ -397,6 +398,7 @@
     setOperationsMode,
     setOperationsSourceFilter,
     setOperationsQuickView,
+    setOperationsCurrencyScope,
     selectVisibleOperations,
     clearVisibleOperationsSelection,
     setOperationsKindFilter,
