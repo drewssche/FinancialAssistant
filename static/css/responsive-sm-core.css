@@ -138,6 +138,10 @@
     display: none;
   }
 
+  .modal-head-actions {
+    flex-wrap: wrap;
+  }
+
   .table-wrap {
     margin-inline: calc(var(--space-3) * -0.5);
     padding-inline: calc(var(--space-3) * 0.5);

@@ -134,6 +134,10 @@ def test_activity_journal_modal_is_available_in_frontend_templates():
     shell_secondary = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-secondary.js").read_text(encoding="utf-8")
     activity = (REPO_ROOT / "static" / "js" / "app-activity.js").read_text(encoding="utf-8")
     usage = (REPO_ROOT / "static" / "js" / "app-usage.js").read_text(encoding="utf-8")
+    overlays = (REPO_ROOT / "static" / "css" / "components-overlays.css").read_text(encoding="utf-8")
+    item_modal = (REPO_ROOT / "static" / "js" / "templates" / "modals-item-catalog.js").read_text(
+        encoding="utf-8"
+    )
     elements = (REPO_ROOT / "static" / "js" / "app-core-elements.js").read_text(encoding="utf-8")
     session_auth = (REPO_ROOT / "static" / "js" / "app-features-session-auth.js").read_text(encoding="utf-8")
     init_core = (REPO_ROOT / "static" / "js" / "app-init-core.js").read_text(encoding="utf-8")
@@ -166,6 +170,12 @@ def test_activity_journal_modal_is_available_in_frontend_templates():
     assert "function configureUsageButton" in usage
     assert "/api/v1/operations/money-flow?" in usage
     assert "item_template_id" in usage
+    assert "matchingReceiptItem?.category_name" in usage
+    assert "data-usage-operation-id" in usage
+    assert "openMoneyFlowSource" in usage
+    assert "#usageModal {\n  z-index: 180;" in overlays
+    assert ".modal.modal-front" in overlays
+    assert 'modal-medium item-template-modal-card' in item_modal
     assert "headers: core.authHeaders()" in activity
     assert "auth: true" not in activity
     assert '"currency_portfolio"' in session_auth

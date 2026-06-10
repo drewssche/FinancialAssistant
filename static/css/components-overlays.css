@@ -687,6 +687,24 @@
   gap: var(--space-2);
 }
 
+#activityModal,
+#usageModal {
+  z-index: 180;
+}
+
+.modal.modal-front {
+  z-index: 190;
+}
+
+.usage-event {
+  cursor: pointer;
+}
+
+.usage-event:focus-visible {
+  outline: 2px solid #5a8dff;
+  outline-offset: 2px;
+}
+
 .activity-change-list {
   list-style: none;
   margin: 0;
@@ -713,7 +731,16 @@
 .modal-head-actions {
   align-items: center;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
   justify-content: flex-end;
+}
+
+.item-template-modal-card .panel-head {
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.item-template-modal-card .modal-head-actions {
+  flex: 0 0 auto;
 }

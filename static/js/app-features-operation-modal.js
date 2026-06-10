@@ -1592,6 +1592,7 @@
     editFxSettlementQuantityDriver = false;
     editFxSettlementRateDriver = false;
     closeEditCategoryPopover();
+    el.editModal.classList.remove("modal-front");
     el.editModal.classList.add("hidden");
   }
   function applySettingsUi() {

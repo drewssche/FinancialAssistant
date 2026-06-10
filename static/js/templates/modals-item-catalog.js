@@ -4,7 +4,7 @@
   window.App.templates.modalsItemCatalog = `
 
     <div id="itemTemplateModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="itemTemplateModalTitle">
-      <div class="modal-card modal-small">
+      <div class="modal-card modal-medium item-template-modal-card">
         <div class="panel-head row between">
           <h3 id="itemTemplateModalTitle">Новая позиция</h3>
           <div class="modal-head-actions">

@@ -105,10 +105,19 @@
     el.usageList.innerHTML = items.map((item) => {
       const direction = item.flow_direction === "inflow" ? "Приток" : "Отток";
       const tone = item.flow_direction === "inflow" ? "income" : "expense";
-      const title = item.title || item.category_name || "Операция";
+      const receiptItems = Array.isArray(item.receipt_items) ? item.receipt_items : [];
+      const matchingReceiptItem = currentUsage?.entityType === "item_template"
+        ? receiptItems.find((row) => Number(row.template_id || 0) === Number(currentUsage.entityId || 0))
+        : currentUsage?.entityType === "category"
+          ? receiptItems.find((row) => Number(row.category_id || 0) === Number(currentUsage.entityId || 0))
+          : null;
+      const receiptCategoryName = matchingReceiptItem?.category_name || "";
+      const receiptItemName = matchingReceiptItem?.name || "";
+      const title = receiptCategoryName || item.category_name || item.title || "Операция";
       const subtitle = item.subtitle || "";
+      const operationId = Number(item.source_kind === "operation" ? item.source_id || 0 : 0);
       return `
-        <article class="activity-event usage-event">
+        <article class="activity-event usage-event${operationId > 0 ? " table-record-open-row" : ""}" ${operationId > 0 ? `data-usage-operation-id="${operationId}" tabindex="0"` : ""}>
           <div class="activity-event-head">
             <strong>${core.escapeHtml(title)}</strong>
             <span class="muted-small">${core.escapeHtml(formatDate(item.event_date))}</span>
@@ -116,6 +125,7 @@
           <div class="usage-event-body">
             <span class="kind-pill kind-pill-${tone}">${direction}</span>
             <strong>${core.formatMoney(item.amount || 0, { currency: item.base_currency || item.currency || undefined })}</strong>
+            ${receiptItemName ? `<span class="muted-small">${core.escapeHtml(receiptItemName)}</span>` : ""}
             ${subtitle ? `<span class="muted-small">${core.escapeHtml(subtitle)}</span>` : ""}
             ${item.note ? `<span class="muted-small">${core.escapeHtml(item.note)}</span>` : ""}
           </div>
@@ -168,6 +178,20 @@
     el.usageModal?.classList.add("hidden");
   }
 
+  async function openUsageOperation(operationId) {
+    const resolvedId = Number(operationId || 0);
+    if (!(resolvedId > 0)) {
+      return;
+    }
+    closeUsageModal();
+    await getOperationsFeature().openMoneyFlowSource?.({
+      sourceKind: "operation",
+      sourceId: resolvedId,
+      mode: "edit",
+    });
+    el.editModal?.classList.add("modal-front");
+  }
+
   function openCurrentUsageInOperations() {
     if (!currentUsage) {
       return;
@@ -204,7 +228,29 @@
     el.usageModal?.addEventListener("click", (event) => {
       if (event.target === el.usageModal) {
         closeUsageModal();
+        return;
       }
+      const row = event.target.closest("[data-usage-operation-id]");
+      if (row && !event.target.closest("button, a, input, select, textarea, label")) {
+        core.runAction({
+          errorPrefix: "Ошибка открытия операции",
+          action: () => openUsageOperation(row.dataset.usageOperationId),
+        });
+      }
+    });
+    el.usageModal?.addEventListener("keydown", (event) => {
+      if (!["Enter", " "].includes(event.key)) {
+        return;
+      }
+      const row = event.target.closest("[data-usage-operation-id]");
+      if (!row) {
+        return;
+      }
+      event.preventDefault();
+      core.runAction({
+        errorPrefix: "Ошибка открытия операции",
+        action: () => openUsageOperation(row.dataset.usageOperationId),
+      });
     });
     el.openUsageInOperationsBtn?.addEventListener("click", openCurrentUsageInOperations);
   }
