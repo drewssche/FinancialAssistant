@@ -80,6 +80,14 @@
   }
 
   function closeVisibleModalOnEscape() {
+    const topModal = core.getTopVisibleModal?.();
+    if (topModal) {
+      const closeButton = topModal.querySelector(".modal-close-btn");
+      if (closeButton instanceof HTMLElement && !closeButton.disabled) {
+        closeButton.click();
+        return true;
+      }
+    }
     if (el.confirmModal && !el.confirmModal.classList.contains("hidden")) {
       return false;
     }

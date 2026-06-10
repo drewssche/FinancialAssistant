@@ -107,6 +107,7 @@
     }
     el.activityList.innerHTML = "<div class='muted-small'>Загрузка журнала...</div>";
     el.activityModal.classList.remove("hidden");
+    core.bringModalToFront?.(el.activityModal);
     try {
       const params = new URLSearchParams({
         entity_type: entityType,
@@ -124,6 +125,7 @@
 
   function closeActivityModal() {
     el.activityModal?.classList.add("hidden");
+    core.markModalClosed?.(el.activityModal);
   }
 
   function bindActivityUi() {

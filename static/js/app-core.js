@@ -126,6 +126,60 @@
     }
   }
 
+  let modalStackCounter = 0;
+
+  function bringModalToFront(modal) {
+    if (!modal || !modal.classList?.contains("modal")) {
+      return;
+    }
+    modalStackCounter += 1;
+    modal.dataset.modalStackIndex = String(modalStackCounter);
+    modal.style.zIndex = String(140 + modalStackCounter);
+    document.querySelectorAll(".modal.modal-front").forEach((node) => {
+      if (node !== modal) {
+        node.classList.remove("modal-front");
+      }
+    });
+    modal.classList.add("modal-front");
+  }
+
+  function getTopVisibleModal() {
+    const visible = Array.from(document.querySelectorAll(".modal:not(.hidden)"));
+    if (!visible.length) {
+      return null;
+    }
+    return visible
+      .map((modal, index) => ({ modal, index }))
+      .sort((aItem, bItem) => {
+      const a = aItem.modal;
+      const b = bItem.modal;
+      const stackA = Number(a.dataset.modalStackIndex || 0);
+      const stackB = Number(b.dataset.modalStackIndex || 0);
+      if (stackA !== stackB) {
+        return stackB - stackA;
+      }
+      const zA = Number(window.getComputedStyle(a).zIndex || 0);
+      const zB = Number(window.getComputedStyle(b).zIndex || 0);
+      if (zA !== zB) {
+        return zB - zA;
+      }
+      return bItem.index - aItem.index;
+    })[0]?.modal || null;
+  }
+
+  function markModalClosed(modal) {
+    if (!modal || !modal.classList?.contains("modal")) {
+      return;
+    }
+    modal.classList.remove("modal-front");
+    modal.style.zIndex = "";
+    delete modal.dataset.modalStackIndex;
+    const next = getTopVisibleModal();
+    if (next) {
+      bringModalToFront(next);
+    }
+  }
+
   function syncAllPeriodTabs(value) {
     for (const container of el.periodTabGroups) {
       syncSegmentedActive(container, "period", value);
@@ -296,7 +350,10 @@
     isTelegramWebApp() {
       return state.telegramWebAppAvailable === true;
     },
-    syncSegmentedActive,
+	    syncSegmentedActive,
+	      bringModalToFront,
+	      getTopVisibleModal,
+	      markModalClosed,
       syncAllPeriodTabs,
       formatAmount,
       formatRateAmount,

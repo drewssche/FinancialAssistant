@@ -67,8 +67,8 @@
       return toIsoDate(parsed);
     }
 
-    function previousOperationsBounds(period) {
-      const current = core.getPeriodBounds(period);
+    function previousOperationsBounds(period, currentBounds = null) {
+      const current = currentBounds || core.getPeriodBounds(period);
       if (period === "day") {
         const dateFrom = addDaysIso(current.dateFrom, -1);
         return { dateFrom, dateTo: dateFrom };
@@ -102,20 +102,39 @@
       return current;
     }
 
-    function getOperationsQuickPeriodCopy(period) {
+    function nextOperationsBounds(period, currentBounds = null) {
+      const current = currentBounds || core.getPeriodBounds(period);
       if (period === "day") {
-        return { current: "Сегодня", previous: "Вчера" };
+        const dateFrom = addDaysIso(current.dateFrom, 1);
+        return { dateFrom, dateTo: dateFrom };
       }
       if (period === "week") {
-        return { current: "Эта неделя", previous: "Прошлая неделя" };
+        return {
+          dateFrom: addDaysIso(current.dateFrom, 7),
+          dateTo: addDaysIso(current.dateTo, 7),
+        };
       }
       if (period === "month") {
-        return { current: "Этот месяц", previous: "Прошлый месяц" };
+        const currentStart = parseIsoDate(current.dateFrom);
+        if (!currentStart) {
+          return current;
+        }
+        const nextMonthStart = new Date(Date.UTC(currentStart.getUTCFullYear(), currentStart.getUTCMonth() + 1, 1));
+        const nextMonthEnd = new Date(Date.UTC(currentStart.getUTCFullYear(), currentStart.getUTCMonth() + 2, 0));
+        return { dateFrom: toIsoDate(nextMonthStart), dateTo: toIsoDate(nextMonthEnd) };
       }
       if (period === "year") {
-        return { current: "Этот год", previous: "Прошлый год" };
+        const currentStart = parseIsoDate(current.dateFrom);
+        if (!currentStart) {
+          return current;
+        }
+        const nextYear = currentStart.getUTCFullYear() + 1;
+        return {
+          dateFrom: `${nextYear}-01-01`,
+          dateTo: `${nextYear}-12-31`,
+        };
       }
-      return { current: "Текущий период", previous: "Предыдущий период" };
+      return current;
     }
 
     function closeOperationsPeriodPopover() {
@@ -128,25 +147,26 @@
       if (!el.operationsPeriodOptions) {
         return;
       }
-      const copy = getOperationsQuickPeriodCopy(period);
-      const currentBounds = core.getPeriodBounds(period);
-      const previousBounds = previousOperationsBounds(period);
+      const options = [
+        ["day", "День"],
+        ["week", "Неделя"],
+        ["month", "Месяц"],
+        ["year", "Год"],
+        ["all_time", "Все время"],
+      ];
       el.operationsPeriodOptions.innerHTML = [
-        `
-          <button class="btn btn-secondary settings-picker-option active" type="button" data-operations-quick-period="${period}" data-operations-quick-action="current">
-            ${copy.current}
-            <span class="muted-small">${core.formatPeriodLabel(currentBounds.dateFrom, currentBounds.dateTo)}</span>
-          </button>
-        `,
-        `
-          <button class="btn btn-secondary settings-picker-option" type="button" data-operations-quick-period="${period}" data-operations-quick-action="previous">
-            ${copy.previous}
-            <span class="muted-small">${core.formatPeriodLabel(previousBounds.dateFrom, previousBounds.dateTo)}</span>
-          </button>
-        `,
+        ...options.map(([value, label]) => {
+          const bounds = core.getPeriodBounds(value);
+          return `
+            <button class="btn btn-secondary settings-picker-option ${state.period === value ? "active" : ""}" type="button" data-operations-period-choice="${value}">
+              ${label}
+              <span class="muted-small">${core.formatPeriodLabel(bounds.dateFrom, bounds.dateTo)}</span>
+            </button>
+          `;
+        }),
         `
           <button class="btn btn-secondary settings-picker-option" type="button" data-operations-quick-period="${period}" data-operations-quick-action="custom">
-            Выбрать диапазон
+            Диапазон
             <span class="muted-small">Открыть ручной диапазон дат</span>
           </button>
         `,
@@ -161,6 +181,54 @@
       pickerUtils.setPopoverOpen(el.operationsPeriodPopover, true, {
         owners: [trigger].filter(Boolean),
         onClose: () => closeOperationsPeriodPopover(),
+      });
+    }
+
+    function applyOperationsPeriodChoice(period) {
+      closeOperationsPeriodPopover();
+      if (period === "custom") {
+        openOperationsCustomRange();
+        return;
+      }
+      state.operationsPeriodStepGranularity = period;
+      state.period = period;
+      state.customDateFrom = "";
+      state.customDateTo = "";
+      core.syncAllPeriodTabs(state.period);
+      getOperationsFeature().invalidateAllTimeAnchor?.();
+      core.runAction({
+        errorPrefix: "Ошибка сохранения периода",
+        action: async () => {
+          const operationsFeature = getOperationsFeature();
+          if (state.period === "all_time" && operationsFeature.ensureAllTimeBounds) {
+            await operationsFeature.ensureAllTimeBounds();
+          }
+          await refreshOperationsPeriodViews();
+        },
+      });
+    }
+
+    function shiftOperationsPeriod(delta) {
+      if (state.period === "all_time") {
+        return;
+      }
+      const periodValues = ["day", "week", "month", "year"];
+      const basePeriod = periodValues.includes(state.period)
+        ? state.period
+        : (periodValues.includes(state.operationsPeriodStepGranularity) ? state.operationsPeriodStepGranularity : "day");
+      const currentBounds = state.period === "custom" && state.customDateFrom && state.customDateTo
+        ? { dateFrom: state.customDateFrom, dateTo: state.customDateTo }
+        : null;
+      const bounds = delta < 0 ? previousOperationsBounds(basePeriod, currentBounds) : nextOperationsBounds(basePeriod, currentBounds);
+      state.operationsPeriodStepGranularity = basePeriod;
+      state.period = "custom";
+      state.customDateFrom = bounds.dateFrom;
+      state.customDateTo = bounds.dateTo;
+      core.syncAllPeriodTabs("custom");
+      getOperationsFeature().invalidateAllTimeAnchor?.();
+      core.runAction({
+        errorPrefix: "Ошибка сохранения периода",
+        action: () => refreshOperationsPeriodViews(),
       });
     }
 
@@ -396,6 +464,18 @@
       });
     }
 
+    if (el.operationsPeriodTrigger) {
+      el.operationsPeriodTrigger.addEventListener("click", () => {
+        openOperationsQuickPeriodPopover(state.period || "day", el.operationsPeriodTrigger);
+      });
+    }
+
+    document.querySelectorAll("[data-operations-period-step]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        shiftOperationsPeriod(Number(btn.dataset.operationsPeriodStep || 0));
+      });
+    });
+
     if (el.quickCustomRangeBtn) {
       el.quickCustomRangeBtn.addEventListener("click", () => {
         openOperationsCustomRange();
@@ -404,6 +484,11 @@
 
     if (el.operationsPeriodOptions) {
       el.operationsPeriodOptions.addEventListener("click", (event) => {
+        const choiceBtn = event.target.closest("[data-operations-period-choice]");
+        if (choiceBtn) {
+          applyOperationsPeriodChoice(String(choiceBtn.dataset.operationsPeriodChoice || "day"));
+          return;
+        }
         const btn = event.target.closest("[data-operations-quick-action][data-operations-quick-period]");
         if (!btn) {
           return;

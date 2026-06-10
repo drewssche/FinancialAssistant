@@ -156,6 +156,7 @@
     }
     el.usageList.innerHTML = "<div class='muted-small'>Загрузка операций...</div>";
     el.usageModal.classList.remove("hidden");
+    core.bringModalToFront?.(el.usageModal);
     const params = usageParams(entityType, normalizedId);
     try {
       const [listPayload, summaryPayload] = await Promise.all([
@@ -176,6 +177,7 @@
 
   function closeUsageModal() {
     el.usageModal?.classList.add("hidden");
+    core.markModalClosed?.(el.usageModal);
   }
 
   async function openUsageOperation(operationId) {
@@ -189,7 +191,7 @@
       sourceId: resolvedId,
       mode: "edit",
     });
-    el.editModal?.classList.add("modal-front");
+    core.bringModalToFront?.(el.editModal);
   }
 
   function openCurrentUsageInOperations() {

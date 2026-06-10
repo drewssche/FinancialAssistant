@@ -173,6 +173,8 @@ def test_activity_journal_modal_is_available_in_frontend_templates():
     assert "matchingReceiptItem?.category_name" in usage
     assert "data-usage-operation-id" in usage
     assert "openMoneyFlowSource" in usage
+    assert "core.bringModalToFront?.(el.activityModal);" in activity
+    assert "core.bringModalToFront?.(el.usageModal);" in usage
     assert "#usageModal {\n  z-index: 180;" in overlays
     assert ".modal.modal-front" in overlays
     assert 'modal-medium item-template-modal-card' in item_modal
@@ -183,6 +185,10 @@ def test_activity_journal_modal_is_available_in_frontend_templates():
     assert 'getRuntimeModule?.("usage")' in init_core
     assert "bindActivityUi" in init_core
     assert "bindUsageUi" in init_core
+    assert "core.getTopVisibleModal?.()" in init_core
+    core_js = (REPO_ROOT / "static" / "js" / "app-core.js").read_text(encoding="utf-8")
+    assert "function bringModalToFront(modal)" in core_js
+    assert "function getTopVisibleModal()" in core_js
 
 
 def test_debt_movements_and_add_amount_ui_contract():
@@ -231,7 +237,10 @@ def test_section_kpi_cards_and_mobile_debt_search_contract():
     assert 'itemCatalogKpiGrid: document.getElementById("itemCatalogKpiGrid")' in elements
     assert "analytics-kpi-card analytics-kpi-negative" in debts_render
     assert "el.categoriesKpiGrid.innerHTML" in categories_table
+    assert "visibleCategories" in categories_table
+    assert "activeGroupIds.size" in categories_table
     assert "el.itemCatalogKpiGrid.innerHTML" in item_catalog_render
+    assert "Средняя последняя цена" not in item_catalog_render
     assert "#debtsSection .debt-toolbar .table-search-input" in responsive_sm
     assert "height: 2.75rem;" in responsive_sm
     assert ".section-kpi-grid" in components_core
@@ -944,8 +953,10 @@ def test_operations_section_is_money_flow_first_without_bulk_select():
     )
     state = (REPO_ROOT / "static" / "js" / "app-core-state.js").read_text(encoding="utf-8")
     operations = (REPO_ROOT / "static" / "js" / "app-features-operations.js").read_text(encoding="utf-8")
+    init_features = (REPO_ROOT / "static" / "js" / "app-init-features.js").read_text(encoding="utf-8")
     preferences = (REPO_ROOT / "static" / "js" / "app-features-session-preferences.js").read_text(encoding="utf-8")
     renderers = (REPO_ROOT / "static" / "js" / "app-renderers.js").read_text(encoding="utf-8")
+    operations_css = (REPO_ROOT / "static" / "css" / "components-analytics-summary.css").read_text(encoding="utf-8")
 
     assert 'operationsMode: "money_flow"' in state
     assert 'id="operationsModeTabs"' not in shell_primary
@@ -953,6 +964,9 @@ def test_operations_section_is_money_flow_first_without_bulk_select():
     assert 'class="control-section operations-period-section"' in shell_primary
     assert 'class="control-section operations-filter-section"' in shell_primary
     assert 'class="control-section operations-sort-section"' in shell_primary
+    assert 'id="operationsPeriodTrigger"' in shell_primary
+    assert 'id="operationsPeriodControlLabel"' in shell_primary
+    assert 'class="segmented hidden" data-period-tabs' in shell_primary
     assert shell_primary.index('id="resetOperationsFiltersBtn"') < shell_primary.index('id="operationsSummaryGrid"')
     assert 'id="operationsQuickActionsCard"' not in shell_primary
     assert 'id="quickFilterExpenseBtn"' not in shell_primary
@@ -962,11 +976,39 @@ def test_operations_section_is_money_flow_first_without_bulk_select():
     assert 'id="selectVisibleOperationsBtn"' not in shell_primary
     assert 'id="operationsBulkBar"' not in shell_primary
     assert 'id="deleteAllOperationsBtn"' not in shell_primary
+    assert "padding: 12px;" in operations_css
+    assert "gap: 10px;" in operations_css
+    assert ".period-control {" in operations_css
+    assert "grid-template-columns: 2.25rem minmax(10rem, 1fr) 2.25rem;" in operations_css
     assert 'state.operationsMode = "money_flow";' in operations
+    assert "data-operations-period-choice" in init_features
+    assert "state.operationsPeriodStepGranularity" in init_features
     assert "setOperationsCurrencyScope," in (REPO_ROOT / "static" / "js" / "app-features.js").read_text(encoding="utf-8")
     assert 'mode: "money_flow"' in preferences
     assert 'params.set("item_template_id", String(state.operationsItemTemplateFilterId));' in operations
     assert '<td class="select-col" data-label="Выбор"><span class="muted-small">—</span></td>' not in renderers
+
+
+def test_analytics_global_period_uses_compact_period_control():
+    shell_primary = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-primary.js").read_text(
+        encoding="utf-8"
+    )
+    elements = (REPO_ROOT / "static" / "js" / "app-core-elements.js").read_text(encoding="utf-8")
+    analytics_init = (REPO_ROOT / "static" / "js" / "app-init-features-analytics.js").read_text(encoding="utf-8")
+    analytics_ui = (REPO_ROOT / "static" / "js" / "app-features-analytics-highlights-ui.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'data-period-control="analytics-global"' in shell_primary
+    assert 'id="analyticsGlobalPeriodTrigger"' in shell_primary
+    assert 'id="analyticsGlobalPeriodControlLabel"' in shell_primary
+    assert 'class="segmented hidden" id="analyticsGlobalPeriodTabs"' in shell_primary
+    assert "analyticsGlobalPeriodTrigger: document.getElementById" in elements
+    assert "analyticsGlobalPeriodControlLabel: document.getElementById" in elements
+    assert "data-analytics-period-choice" in analytics_init
+    assert "data-dashboard-period-choice" in analytics_init
+    assert "state.analyticsGlobalPeriodStepGranularity" in analytics_init
+    assert "el.analyticsGlobalPeriodControlLabel.textContent = label;" in analytics_ui
 
 
 def test_debts_section_has_filtered_base_currency_kpi():

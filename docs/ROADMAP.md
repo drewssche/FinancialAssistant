@@ -134,8 +134,15 @@
 - [x] Operations: move `Сбросить фильтры` next to the filter controls.
 - [x] Operations: remove unused quick actions.
 - [x] Operations: verify/fix currency-scope filtering.
-- [ ] Shared date controls: design the next step for clickable date/period controls with arrows and a period popover across sections.
+- [x] Modals: keep the last opened modal above previous modals and close the top visible modal on `Esc`.
+- [x] Item catalog: remove the redundant average latest price KPI.
+- [x] Categories: fix the `Групп с категориями` KPI.
+- [x] Operations controls: tighten spacing and recommend the next compact control layout.
+- [x] Shared date controls: design the next step for clickable date/period controls with arrows and a period popover across sections.
   - Recommendation: introduce one reusable `period-control` component with left/right step buttons, a clickable current-period label, and a popover for day/week/month/year/all-time/range. Apply it first to Operations and Analytics global period, then migrate dashboard/plans/currency period controls after e2e coverage.
+  - [x] Operations: replace the wide period segmented control with compact arrows + clickable current period.
+  - [x] Analytics: apply the same compact global period control.
+  - [x] Period popovers: expose day/week/month/year/all-time/range choices directly instead of requiring repeated tab clicks.
 
 1. Production auth cleanup
 - keep Telegram WebApp as the primary supported auth path

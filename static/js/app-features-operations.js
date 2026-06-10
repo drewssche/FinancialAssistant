@@ -91,7 +91,11 @@
       return;
     }
     const { dateFrom, dateTo } = core.getPeriodBounds(state.period);
-    el.operationsPeriodLabel.textContent = core.formatPeriodLabel(dateFrom, dateTo);
+    const label = core.formatPeriodLabel(dateFrom, dateTo);
+    el.operationsPeriodLabel.textContent = label;
+    if (el.operationsPeriodControlLabel) {
+      el.operationsPeriodControlLabel.textContent = label || "Период";
+    }
   }
 
   function buildOperationsQuery(page) {

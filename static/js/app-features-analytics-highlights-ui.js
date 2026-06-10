@@ -186,7 +186,11 @@
     const trendModule = window.App.getRuntimeModule?.("analytics-trend-module");
     const formatPct = trendModule?.formatPct || ((v) => String(v ?? "нет базы"));
     if (el.analyticsGlobalRangeLabel) {
-      el.analyticsGlobalRangeLabel.textContent = `${core.formatDateRu(data.date_from)} - ${core.formatDateRu(data.date_to)}`;
+      const label = `${core.formatDateRu(data.date_from)} - ${core.formatDateRu(data.date_to)}`;
+      el.analyticsGlobalRangeLabel.textContent = label;
+      if (el.analyticsGlobalPeriodControlLabel) {
+        el.analyticsGlobalPeriodControlLabel.textContent = label;
+      }
     }
     renderCategoryBreakdown(data, formatPct);
   }

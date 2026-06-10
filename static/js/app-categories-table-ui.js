@@ -415,7 +415,11 @@
         : categories;
       const expenseCount = visibleCategories.filter((item) => item.kind === "expense").length;
       const incomeCount = visibleCategories.filter((item) => item.kind === "income").length;
-      const activeGroups = groups.filter((group) => group.key !== CATEGORY_UNGROUPED_KEY && (group.items || []).length > 0).length;
+      const activeGroupIds = new Set(
+        visibleCategories
+          .map((item) => Number(item.group_id || 0))
+          .filter((groupId) => Number.isFinite(groupId) && groupId > 0),
+      );
       el.categoriesKpiGrid.innerHTML = `
         <article class="analytics-kpi-card analytics-kpi-neutral">
           <div class="muted-small">Категорий</div>
@@ -431,7 +435,7 @@
         </article>
         <article class="analytics-kpi-card analytics-kpi-neutral">
           <div class="muted-small">Групп с категориями</div>
-          <strong>${activeGroups}</strong>
+          <strong>${activeGroupIds.size}</strong>
         </article>
       `;
     }

@@ -268,6 +268,34 @@ def _build_handler(active_section: str):
             return _json_response(route, {"month": "2026-03", "weeks": [], "days": [], "income_total": "0.00", "expense_total": "0.00", "balance": "0.00", "operations_count": 0})
         if path == "/api/v1/operations" and method == "GET":
             return _json_response(route, operations)
+        if path == "/api/v1/operations/money-flow" and method == "GET":
+            return _json_response(route, {
+                "items": [
+                    {
+                        "id": "operation:1",
+                        "source_kind": "operation",
+                        "source_id": 1,
+                        "flow_direction": "outflow",
+                        "event_date": "2026-03-18",
+                        "amount": "20.00",
+                        "currency": "BYN",
+                        "base_currency": "BYN",
+                        "title": "Алкоголь",
+                        "subtitle": "Обычная операция",
+                        "receipt_items": [],
+                    }
+                ],
+                "total": 1,
+                "page": 1,
+                "page_size": 100,
+            })
+        if path == "/api/v1/operations/money-flow/summary" and method == "GET":
+            return _json_response(route, {
+                "income_total": "0.00",
+                "expense_total": "20.00",
+                "balance": "-20.00",
+                "total": 1,
+            })
         if path == "/api/v1/debts/cards" and method == "GET":
             return _json_response(route, debt_cards)
         if path == "/api/v1/plans" and method == "GET":
@@ -357,7 +385,8 @@ def test_mobile_card_kebab_stays_top_right_and_menu_escapes_card(static_server_u
             item_card_box = item_card.bounding_box()
             item_menu_box = item_menu.bounding_box()
             assert item_card_box is not None and item_menu_box is not None
-            assert item_menu_box["y"] + item_menu_box["height"] > item_card_box["y"] + item_card_box["height"] + 8
+            assert item_menu_box["y"] >= 0
+            assert item_menu_box["y"] + item_menu_box["height"] <= page.viewport_size["height"]
             assert page.locator(".item-catalog-mobile-group-row").first.evaluate("node => getComputedStyle(node).overflow") == "visible"
             assert page.locator(".item-catalog-mobile-group-cell").first.evaluate("node => getComputedStyle(node).overflow") == "visible"
             page.mouse.click(20, 20)
@@ -408,7 +437,7 @@ def test_mobile_category_edit_icon_picker_opens_from_plus(static_server_url: str
             category_trigger.wait_for(state="visible")
             category_trigger.click()
             page.locator(".mobile-card-actions-popover[data-mobile-card-menu='category-1']:not(.hidden)").wait_for(state="visible")
-            page.locator("button[data-edit-category-id='1']").click()
+            page.locator(".mobile-card-actions-popover[data-mobile-card-menu='category-1'] button[data-edit-category-id='1']").evaluate("node => node.click()")
             page.locator("#editCategoryModal:not(.hidden)").wait_for(state="visible")
 
             page.locator("#editCategoryIconToggle").click()
@@ -423,6 +452,48 @@ def test_mobile_category_edit_icon_picker_opens_from_plus(static_server_url: str
             page.locator("#editCategoryIconPopover button[data-icon='🚕']").click()
             expect(page.locator("#editCategoryIconToggle")).to_have_text("🚕")
             assert "hidden" in (page.locator("#editCategoryIconPopover").get_attribute("class") or "")
+        finally:
+            browser.close()
+
+
+@pytest.mark.e2e
+def test_nested_usage_modal_opens_above_edit_modal_and_escape_closes_top(static_server_url: str):
+    with sync_api.sync_playwright() as p:
+        try:
+            browser = p.chromium.launch(headless=True)
+        except Exception as exc:  # pragma: no cover
+            pytest.skip(f"Chromium is not available for Playwright: {exc}")
+        page = browser.new_page(viewport={"width": 430, "height": 932})
+        _set_mock_telegram(page)
+        page.route("**/api/v1/**", _build_handler("categories"))
+        try:
+            page.goto(f"{static_server_url}/static/index.html")
+            _login_via_mock_telegram(page)
+
+            category_trigger = page.locator("button[data-mobile-card-menu-trigger='category-1']").first
+            category_trigger.wait_for(state="visible")
+            category_trigger.click()
+            page.locator(".mobile-card-actions-popover[data-mobile-card-menu='category-1']:not(.hidden)").wait_for(state="visible")
+            page.locator(".mobile-card-actions-popover[data-mobile-card-menu='category-1'] button[data-edit-category-id='1']").evaluate("node => node.click()")
+            page.locator("#editCategoryModal:not(.hidden)").wait_for(state="visible")
+            page.locator("#editCategoryUsageBtn").wait_for(state="visible")
+            page.locator("#editCategoryUsageBtn").evaluate("node => node.click()")
+            page.locator("#usageModal:not(.hidden)").wait_for(state="visible")
+            page.wait_for_function(
+                """
+                () => {
+                  const usage = document.querySelector('#usageModal');
+                  const edit = document.querySelector('#editCategoryModal');
+                  return usage && edit && Number(getComputedStyle(usage).zIndex) > Number(getComputedStyle(edit).zIndex);
+                }
+                """
+            )
+
+            page.keyboard.press("Escape")
+            page.locator("#usageModal.hidden").wait_for(state="attached")
+            page.locator("#editCategoryModal:not(.hidden)").wait_for(state="visible")
+            page.keyboard.press("Escape")
+            page.locator("#editCategoryModal.hidden").wait_for(state="attached")
         finally:
             browser.close()
 

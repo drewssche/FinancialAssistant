@@ -148,7 +148,15 @@
                 <p id="analyticsGlobalRangeLabel" class="subtitle"></p>
               </div>
               <div class="toolbar">
-                <div class="segmented" id="analyticsGlobalPeriodTabs" role="tablist" aria-label="Глобальный период аналитики">
+                <div class="period-control" data-period-control="analytics-global">
+                  <button class="period-step-btn" data-analytics-period-step="-1" type="button" aria-label="Предыдущий период">‹</button>
+                  <button id="analyticsGlobalPeriodTrigger" class="period-current-btn" type="button" aria-haspopup="dialog" aria-controls="analyticsGlobalPeriodPopover">
+                    <span class="period-current-label">Период</span>
+                    <strong id="analyticsGlobalPeriodControlLabel">Этот месяц</strong>
+                  </button>
+                  <button class="period-step-btn" data-analytics-period-step="1" type="button" aria-label="Следующий период">›</button>
+                </div>
+                <div class="segmented hidden" id="analyticsGlobalPeriodTabs" role="tablist" aria-label="Глобальный период аналитики">
                   <button class="segmented-btn" data-analytics-global-period="week" type="button">Эта неделя</button>
                   <button class="segmented-btn active" data-analytics-global-period="month" type="button">Этот месяц</button>
                   <button class="segmented-btn" data-analytics-global-period="year" type="button">Этот год</button>
@@ -432,7 +440,15 @@
                 <div class="control-section-head">
                   <span>Период</span>
                 </div>
-                <div class="segmented" data-period-tabs role="tablist" aria-label="Период операций">
+                <div class="period-control" data-period-control="operations">
+                  <button class="period-step-btn" data-operations-period-step="-1" type="button" aria-label="Предыдущий период">‹</button>
+                  <button id="operationsPeriodTrigger" class="period-current-btn" type="button" aria-haspopup="dialog" aria-controls="operationsPeriodPopover">
+                    <span class="period-current-label">Период</span>
+                    <strong id="operationsPeriodControlLabel">Сегодня</strong>
+                  </button>
+                  <button class="period-step-btn" data-operations-period-step="1" type="button" aria-label="Следующий период">›</button>
+                </div>
+                <div class="segmented hidden" data-period-tabs role="tablist" aria-label="Период операций">
                   <button class="segmented-btn active" data-period="day" type="button">Сегодня</button>
                   <button class="segmented-btn" data-period="week" type="button">Эта неделя</button>
                   <button class="segmented-btn" data-period="month" type="button">Этот месяц</button>
