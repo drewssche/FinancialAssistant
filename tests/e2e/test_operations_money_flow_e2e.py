@@ -138,6 +138,16 @@ def page_with_money_flow_api_mock():
             "subtitle": "Обычная операция",
             "note": "salary",
             "can_open_source": False,
+            "receipt_items": [
+                {
+                    "name": "Кофе",
+                    "quantity": "1.000",
+                    "unit_price": "70.00",
+                    "line_total": "70.00",
+                    "shop_name": "Кофейня",
+                    "category_id": None,
+                }
+            ],
         },
         {
             "id": "operation:2",
@@ -253,6 +263,18 @@ def page_with_money_flow_api_mock():
             return json_response(route, {"income_total": "0.00", "expense_total": "0.00", "balance": "0.00"})
         if path == "/api/v1/operations" and method == "GET":
             return json_response(route, {"items": operations, "total": len(operations), "page": 1, "page_size": 20})
+        if path == "/api/v1/operations/1" and method == "GET":
+            return json_response(route, {
+                "id": 1,
+                "kind": "income",
+                "amount": "70.00",
+                "original_amount": "70.00",
+                "currency": "BYN",
+                "base_currency": "BYN",
+                "operation_date": "2026-03-01",
+                "note": "salary",
+                "receipt_items": money_flow_items[3]["receipt_items"],
+            })
         if path == "/api/v1/operations/summary" and method == "GET":
             return json_response(route, {"income_total": "0.00", "expense_total": "0.00", "balance": "0.00", "total": 0})
         def filter_money_flow_items(source: str, currency_scope: str):
@@ -356,6 +378,23 @@ def _open_app(page, static_server_url: str):
 
 
 @pytest.mark.e2e
+def test_operations_period_popover_changes_period(static_server_url: str, page_with_money_flow_api_mock):
+    page = page_with_money_flow_api_mock
+    _open_app(page, static_server_url)
+
+    page.click("button[data-section='operations']")
+    page.wait_for_selector("#operationsSection:not(.hidden)")
+    page.locator("#operationsPeriodTrigger").click()
+    page.wait_for_selector("#operationsPeriodPopover:not(.hidden)")
+    page.locator("#operationsPeriodPopover [data-operations-period-choice='week']").click()
+    page.wait_for_function("() => window.App.state.period === 'week'")
+
+    assert page.evaluate("() => window.App.state.period") == "week"
+    assert page.evaluate("() => window.App.state.customDateFrom") == ""
+    assert page.evaluate("() => window.App.state.customDateTo") == ""
+
+
+@pytest.mark.e2e
 def test_operations_money_flow_mode_supports_source_filter_and_drilldown(static_server_url: str, page_with_money_flow_api_mock):
     page = page_with_money_flow_api_mock
     _open_app(page, static_server_url)
@@ -448,3 +487,23 @@ def test_operations_money_flow_mode_supports_source_filter_and_drilldown(static_
     page.wait_for_selector("#createModal:not(.hidden)")
     assert page.locator("#createTitle").inner_text().strip() == "Редактировать валютную сделку"
     assert page.locator("#currencyAsset").input_value() == "USD"
+
+
+@pytest.mark.e2e
+def test_operations_receipt_chip_opens_same_positions_modal_as_kebab(
+    static_server_url: str,
+    page_with_money_flow_api_mock,
+):
+    page = page_with_money_flow_api_mock
+    _open_app(page, static_server_url)
+
+    page.click("button[data-section='operations']")
+    page.wait_for_selector("#operationsSection:not(.hidden)")
+    receipt_chip = page.locator(
+        "#operationsBody tr[data-money-flow-source='operation'][data-money-flow-source-id='1'] "
+        ".operation-category-stack button[data-receipt-view-id='1']"
+    )
+    receipt_chip.click()
+
+    page.wait_for_selector("#operationReceiptModal:not(.hidden)")
+    assert "Кофе" in page.locator("#operationReceiptModal").inner_text()

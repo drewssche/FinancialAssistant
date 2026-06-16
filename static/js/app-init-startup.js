@@ -5,8 +5,8 @@
     return window.App.getRuntimeModule?.("category-actions") || {};
   }
 
-  function getActions() {
-    return window.App.actions || {};
+  function getNavigationActions() {
+    return window.App.getRuntimeModule?.("navigation") || {};
   }
 
   function getSessionFeature() {
@@ -46,8 +46,8 @@
     }
     bindColorSyncHandlers();
 
-    if (getActions().renderTodayLabel) {
-      getActions().renderTodayLabel();
+    if (getNavigationActions().renderTodayLabel) {
+      getNavigationActions().renderTodayLabel();
     }
 
     if (getSessionFeature().loadTelegramLoginConfig) {

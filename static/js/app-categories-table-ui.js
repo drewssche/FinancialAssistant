@@ -276,7 +276,7 @@
     const chevron = group.isUngrouped ? "•" : (isCollapsed ? "▸" : "▾");
     const toggleDisabled = queryActive || group.isUngrouped;
     const groupActions = group.id
-      ? `<div class="mobile-card-kebab-wrap"><button class="btn btn-secondary mobile-card-kebab-trigger" data-mobile-card-menu-trigger="category-group-${group.id}" type="button" aria-label="Действия группы"><span aria-hidden="true">⋮</span></button><div class="app-popover hidden mobile-card-actions-popover" data-mobile-card-menu="category-group-${group.id}"><div class="mobile-card-actions-menu"><button class="btn btn-secondary" data-activity-entity-type="category_group" data-activity-entity-id="${group.id}" type="button">Журнал</button><button class="btn btn-secondary" data-edit-group-id="${group.id}" type="button">Редактировать</button><button class="btn btn-danger" data-delete-group-id="${group.id}" type="button">Удалить</button></div></div></div>`
+      ? `<div class="mobile-card-kebab-wrap"><button class="btn btn-secondary mobile-card-kebab-trigger" data-mobile-card-menu-trigger="category-group-${group.id}" type="button" aria-label="Действия группы"><span aria-hidden="true">⋮</span></button><div class="app-popover hidden mobile-card-actions-popover" data-mobile-card-menu="category-group-${group.id}"><div class="mobile-card-actions-menu"><button class="btn btn-secondary" data-create-category-group-id="${group.id}" data-create-category-kind="${core.escapeHtml(group.kind || "expense")}" type="button">Добавить категорию</button><button class="btn btn-secondary" data-activity-entity-type="category_group" data-activity-entity-id="${group.id}" type="button">Журнал</button><button class="btn btn-secondary" data-edit-group-id="${group.id}" type="button">Редактировать</button><button class="btn btn-danger" data-delete-group-id="${group.id}" type="button">Удалить</button></div></div></div>`
       : "";
     tr.innerHTML = `
       <td colspan="4" class="category-table-group-cell category-mobile-group-cell">
@@ -369,10 +369,13 @@
     const groupActions = group.id
       ? core.renderInlineKebabMenu?.(
         `category-group-${group.id}`,
-        `<button class="btn btn-secondary" data-activity-entity-type="category_group" data-activity-entity-id="${group.id}" type="button">Журнал</button><button class="btn btn-secondary" data-edit-group-id="${group.id}" type="button">Редактировать</button><button class="btn btn-danger" data-delete-group-id="${group.id}" type="button">Удалить</button>`,
+        `<button class="btn btn-secondary" data-create-category-group-id="${group.id}" data-create-category-kind="${core.escapeHtml(group.kind || "expense")}" type="button">Добавить категорию</button><button class="btn btn-secondary" data-activity-entity-type="category_group" data-activity-entity-id="${group.id}" type="button">Журнал</button><button class="btn btn-secondary" data-edit-group-id="${group.id}" type="button">Редактировать</button><button class="btn btn-danger" data-delete-group-id="${group.id}" type="button">Удалить</button>`,
         "Действия группы",
         "category-group-kebab",
       )
+      : "";
+    const createAction = group.id
+      ? `<button class="btn btn-secondary category-context-create-btn" data-create-category-group-id="${group.id}" data-create-category-kind="${core.escapeHtml(group.kind || "expense")}" type="button" aria-label="Добавить категорию в группу">+</button>`
       : "";
     tr.innerHTML = `
       <td colspan="4" class="category-table-group-cell category-group-accent-cell">
@@ -387,6 +390,7 @@
               </span>
             </span>
           </button>
+          ${createAction}
           ${groupActions}
         </div>
       </td>

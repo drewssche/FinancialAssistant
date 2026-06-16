@@ -266,9 +266,16 @@
     const resultTone = metricTone(resultMetric.value);
     const operatingTone = metricTone(operatingValue);
     renderTrendChart(el.analyticsTrendChart, data, false);
+    const rangeLabel = `${core.formatDateRu(data.date_from)} - ${core.formatDateRu(data.date_to)}`;
+    if (el.analyticsGlobalRangeLabel) {
+      el.analyticsGlobalRangeLabel.textContent = rangeLabel;
+    }
+    if (el.analyticsGlobalPeriodControlLabel) {
+      el.analyticsGlobalPeriodControlLabel.textContent = rangeLabel;
+    }
     if (el.analyticsTrendRangeLabel) {
       const stepLabel = data.granularity === "day" ? "По дням" : data.granularity === "week" ? "По неделям" : data.granularity === "month" ? "По месяцам" : "По годам";
-      el.analyticsTrendRangeLabel.textContent = `Окно: ${core.formatDateRu(data.date_from)} - ${core.formatDateRu(data.date_to)} · Шаг: ${stepLabel}`;
+      el.analyticsTrendRangeLabel.textContent = `Окно: ${rangeLabel} · Шаг: ${stepLabel}`;
     }
     if (el.analyticsIncomeDelta) {
       el.analyticsIncomeDelta.textContent = core.formatMoney(data.income_total || 0);
@@ -428,7 +435,11 @@
       }
     }
     const { dateFrom, dateTo } = core.getPeriodBounds(period);
-    const params = new URLSearchParams({ period, granularity, date_from: dateFrom, date_to: dateTo });
+    const params = new URLSearchParams({ period, granularity });
+    if (period !== "all_time") {
+      params.set("date_from", dateFrom);
+      params.set("date_to", dateTo);
+    }
     const data = await core.requestJson(`/api/v1/dashboard/analytics/trend?${params.toString()}`, {
       headers: core.authHeaders(),
     });

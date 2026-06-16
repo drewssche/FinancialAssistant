@@ -7,10 +7,6 @@
     return window.App.categoryData;
   }
 
-  function getActionFacade() {
-    return window.App.actions;
-  }
-
   const categoryUi = getCategoryUi();
   const categoryData = getCategoryData();
   const publicCategoryActions = {
@@ -19,6 +15,8 @@
     toggleIconPopover: categoryUi.toggleIconPopover,
     openCreateCategoryModal: categoryUi.openCreateCategoryModal,
     closeCreateCategoryModal: categoryUi.closeCreateCategoryModal,
+    openCreateGroupModal: categoryUi.openCreateGroupModal,
+    closeCreateGroupModal: categoryUi.closeCreateGroupModal,
     fillGroupSelect: categoryUi.fillGroupSelect,
     setCategoryKind: categoryUi.setCategoryKind,
     populateCategorySelect: categoryUi.populateCategorySelect,

@@ -396,12 +396,15 @@
     await getSessionFeature().savePreferences?.();
   }
 
-  Object.assign(getActions(), {
+  const api = {
     applySectionUi,
     renderTodayLabel,
     switchSection,
     pushSectionBackContext,
     navigateSectionBack,
     updateSectionBackUi,
-  });
+  };
+
+  window.App.registerRuntimeModule?.("navigation", api);
+  Object.assign(getActions(), api);
 })();

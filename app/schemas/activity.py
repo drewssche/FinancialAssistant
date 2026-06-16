@@ -23,6 +23,7 @@ class ActivityEventOut(BaseModel):
     title: str
     changes: list[ActivityChangeOut] = Field(default_factory=list)
     metadata: dict = Field(default_factory=dict)
+    metadata_display: list[str] = Field(default_factory=list)
     source: str
     created_at: datetime
 

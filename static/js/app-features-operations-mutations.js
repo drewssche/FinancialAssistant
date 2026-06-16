@@ -25,10 +25,6 @@
       return window.App.getRuntimeModule?.("dashboard-data") || {};
     }
 
-    function getActions() {
-      return window.App.actions || {};
-    }
-
     function getCategoryActions() {
       return window.App.getRuntimeModule?.("category-actions") || categoryActions || {};
     }

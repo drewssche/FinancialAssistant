@@ -29,7 +29,15 @@
                 <p id="dashboardAnalyticsPeriodLabel" class="subtitle">Показатели за выбранный период</p>
               </div>
               <div class="toolbar">
-                <div class="segmented" id="dashboardAnalyticsPeriodTabs" role="tablist" aria-label="Период аналитики дашборда">
+                <div class="period-control" data-period-control="dashboard-analytics">
+                  <button class="period-step-btn" data-dashboard-analytics-period-step="-1" type="button" aria-label="Предыдущий период">‹</button>
+                  <button id="dashboardAnalyticsPeriodTrigger" class="period-current-btn" type="button" aria-haspopup="dialog" aria-controls="dashboardAnalyticsPeriodPopover">
+                    <span class="period-current-label">Период</span>
+                    <strong id="dashboardAnalyticsPeriodControlLabel">Этот месяц</strong>
+                  </button>
+                  <button class="period-step-btn" data-dashboard-analytics-period-step="1" type="button" aria-label="Следующий период">›</button>
+                </div>
+                <div class="segmented hidden" id="dashboardAnalyticsPeriodTabs" role="tablist" aria-label="Период аналитики дашборда">
                   <button class="segmented-btn" data-dashboard-analytics-period="day" type="button">Сегодня</button>
                   <button class="segmented-btn" data-dashboard-analytics-period="week" type="button">Эта неделя</button>
                   <button class="segmented-btn active" data-dashboard-analytics-period="month" type="button">Этот месяц</button>

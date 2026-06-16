@@ -294,10 +294,10 @@
   }
 
   function bindCategoryBulkHandlers() {
-    el.closeCreateGroupModalBtn.addEventListener("click", bulkUi.closeCreateGroupModal);
+    el.closeCreateGroupModalBtn.addEventListener("click", () => getCategoryActions().closeCreateGroupModal?.());
     el.createGroupModal.addEventListener("click", (event) => {
       if (event.target === el.createGroupModal) {
-        bulkUi.closeCreateGroupModal();
+        getCategoryActions().closeCreateGroupModal?.();
       }
     });
     el.groupModalForm.addEventListener("submit", (event) => {

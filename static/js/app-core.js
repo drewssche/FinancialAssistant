@@ -105,6 +105,13 @@
     if (el.mobileNavToggleBtn) {
       el.mobileNavToggleBtn.setAttribute("aria-expanded", next ? "true" : "false");
     }
+    if (next) {
+      window.requestAnimationFrame(() => {
+        el.sidebarNav
+          ?.querySelector(".nav-btn.active")
+          ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+      });
+    }
   }
 
   function toggleMobileNav() {

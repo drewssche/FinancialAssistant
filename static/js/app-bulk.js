@@ -1,6 +1,7 @@
 (() => {
   const { actions } = window.App;
   const bulkUi = window.App.getRuntimeModule?.("bulk-ui");
+  const categoryActions = window.App.getRuntimeModule?.("category-actions");
   const bulkBindings = window.App.bulkBindings;
 
   bulkBindings.bindBulkHandlers();
@@ -12,8 +13,8 @@
     closeBatchCategoryModal: bulkUi.closeBatchCategoryModal,
     openBatchItemTemplateModal: bulkUi.openBatchItemTemplateModal,
     closeBatchItemTemplateModal: bulkUi.closeBatchItemTemplateModal,
-    openCreateGroupModal: bulkUi.openCreateGroupModal,
-    closeCreateGroupModal: bulkUi.closeCreateGroupModal,
+    openCreateGroupModal: categoryActions.openCreateGroupModal,
+    closeCreateGroupModal: categoryActions.closeCreateGroupModal,
     openBulkEditOperationsModal: bulkUi.openBulkEditOperationsModal,
     closeBulkEditOperationsModal: bulkUi.closeBulkEditOperationsModal,
     updateOperationsBulkUi: bulkUi.updateOperationsBulkUi,

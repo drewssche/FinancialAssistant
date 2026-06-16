@@ -99,6 +99,7 @@ def page_with_analytics_api_mock(page):
     }
 
     operations_payload = {"items": [], "total": 0, "page": 1, "page_size": 20}
+    money_flow_queries = []
     currency_overview = {
         "base_currency": "BYN",
         "tracked_currencies": ["USD", "EUR"],
@@ -243,12 +244,14 @@ def page_with_analytics_api_mock(page):
             "months": months,
         }
 
-    def highlights_payload(month: str) -> dict:
+    def highlights_payload(month: str, period: str = "month") -> dict:
+        date_from = "2026-01-10" if period == "all_time" else f"{month}-01"
+        date_to = "2026-06-16" if period == "all_time" else f"{month}-31"
         return {
-            "period": "month",
+            "period": period,
             "category_breakdown_kind": "expense",
-            "date_from": f"{month}-01",
-            "date_to": f"{month}-31",
+            "date_from": date_from,
+            "date_to": date_to,
             "month": month,
             "month_start": f"{month}-01",
             "month_end": f"{month}-31",
@@ -327,12 +330,12 @@ def page_with_analytics_api_mock(page):
             ],
         }
 
-    def trend_payload(period: str, granularity: str) -> dict:
+    def trend_payload(period: str, granularity: str, date_from: str = "2026-03-01", date_to: str = "2026-03-31") -> dict:
         return {
             "period": period,
             "granularity": granularity,
-            "date_from": "2026-03-01",
-            "date_to": "2026-03-31",
+            "date_from": date_from,
+            "date_to": date_to,
             "income_total": "1840.00",
             "expense_total": "1210.00",
             "balance": "630.00",
@@ -416,12 +419,15 @@ def page_with_analytics_api_mock(page):
 
         if path == "/api/v1/dashboard/analytics/highlights" and method == "GET":
             month = (query.get("month") or ["2026-03"])[0]
-            return json_response(route, highlights_payload(month))
+            period = (query.get("period") or ["month"])[0]
+            return json_response(route, highlights_payload(month, period))
 
         if path == "/api/v1/dashboard/analytics/trend" and method == "GET":
             period = (query.get("period") or ["month"])[0]
             granularity = (query.get("granularity") or ["day"])[0]
-            return json_response(route, trend_payload(period, granularity))
+            date_from = (query.get("date_from") or ["2026-03-01"])[0]
+            date_to = (query.get("date_to") or ["2026-03-31"])[0]
+            return json_response(route, trend_payload(period, granularity, date_from, date_to))
 
         if path == "/api/v1/debts/cards" and method == "GET":
             return json_response(route, [])
@@ -452,6 +458,40 @@ def page_with_analytics_api_mock(page):
             history_fill_calls.append(selected_currency)
             return json_response(route, currency_history.get(selected_currency, []), status=201)
 
+        if path == "/api/v1/operations/money-flow" and method == "GET":
+            money_flow_queries.append(query)
+            return json_response(route, {
+                "items": [
+                    {
+                        "id": "operation:1",
+                        "source_kind": "operation",
+                        "source_id": 1,
+                        "flow_direction": "outflow",
+                        "event_date": (query.get("date_from") or ["2026-03-01"])[0],
+                        "amount": "80.00",
+                        "original_amount": "80.00",
+                        "currency": "BYN",
+                        "base_currency": "BYN",
+                        "fx_rate": "1.000000",
+                        "title": "Еда",
+                        "subtitle": "Обычная операция",
+                        "category_id": int((query.get("category_id") or ["1"])[0]),
+                        "category_name": "Еда",
+                    }
+                ],
+                "total": 1,
+                "page": 1,
+                "page_size": 20,
+            })
+
+        if path == "/api/v1/operations/money-flow/summary" and method == "GET":
+            return json_response(route, {
+                "income_total": "0.00",
+                "expense_total": "80.00",
+                "balance": "-80.00",
+                "total": 1,
+            })
+
         if path == "/api/v1/operations" and method == "GET":
             if method == "GET":
                 date_from = (query.get("date_from") or [""])[0]
@@ -479,6 +519,7 @@ def page_with_analytics_api_mock(page):
     _set_mock_telegram(page)
     page.route("**/api/v1/**", handler)
     page._currency_history_fill_calls = history_fill_calls
+    page._analytics_money_flow_queries = money_flow_queries
     yield page
 
 
@@ -497,10 +538,28 @@ def _open_mobile_analytics(page, static_server_url: str):
             () => window.App.getRuntimeModule('session')?.tryAutoTelegramLogin?.().catch(() => null)
             """
         )
-        page.wait_for_selector("#appShell:not(.hidden)")
+    page.wait_for_selector("#appShell:not(.hidden)")
     page.click("#mobileNavToggleBtn")
     page.click("button[data-section='analytics']")
     page.wait_for_selector("#analyticsSection:not(.hidden)")
+
+
+def _open_desktop_app(page, static_server_url: str):
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.goto(f"{static_server_url}/static/index.html")
+    _restore_mock_telegram(page)
+    page.evaluate("() => window.App.getRuntimeModule('session')?.refreshTelegramLoginUi?.()")
+    try:
+        page.locator("#telegramLoginBtn").wait_for(state="visible", timeout=1200)
+        page.click("#telegramLoginBtn")
+        page.wait_for_selector("#appShell:not(.hidden)")
+    except Exception:
+        page.evaluate(
+            """
+            () => window.App.getRuntimeModule('session')?.tryAutoTelegramLogin?.().catch(() => null)
+            """
+        )
+        page.wait_for_selector("#appShell:not(.hidden)")
 
 
 @pytest.mark.e2e
@@ -514,6 +573,52 @@ def test_structure_donut_defaults_to_period_total_in_center(page_with_analytics_
     page.wait_for_selector("#analyticsCategoryBreakdownChartTitle")
     expect(page.locator("#analyticsCategoryBreakdownChartTitle")).to_have_text("Итог периода")
     expect(page.locator("#analyticsCategoryBreakdownChartValue")).to_contain_text("1\u00a0210,00")
+
+
+@pytest.mark.e2e
+def test_desktop_breakdown_lists_match_chart_height(page_with_analytics_api_mock, static_server_url: str):
+    page = page_with_analytics_api_mock
+
+    _open_desktop_app(page, static_server_url)
+    page.wait_for_selector("#dashboardStructurePanel .analytics-category-breakdown-chart-card")
+    page.wait_for_selector("#dashboardCategoryBreakdownList .analytics-insight-item")
+    dashboard_geometry = page.evaluate(
+        """
+        () => {
+          const chart = document.querySelector('#dashboardStructurePanel .analytics-category-breakdown-chart-card')?.getBoundingClientRect();
+          const list = document.querySelector('#dashboardCategoryBreakdownList')?.getBoundingClientRect();
+          return chart && list ? { chartHeight: chart.height, listHeight: list.height } : null;
+        }
+        """
+    )
+    assert dashboard_geometry is not None
+    assert abs(dashboard_geometry["chartHeight"] - dashboard_geometry["listHeight"]) <= 1
+
+    page.evaluate(
+        """
+        async () => {
+          window.App.state.activeSection = 'analytics';
+          window.App.state.analyticsTab = 'structure';
+          document.getElementById('dashboardSection')?.classList.add('hidden');
+          document.getElementById('analyticsSection')?.classList.remove('hidden');
+          window.App.getRuntimeModule('analytics')?.applyAnalyticsTabUi?.();
+          await window.App.getRuntimeModule('analytics')?.loadAnalyticsSection?.({ force: true });
+        }
+        """
+    )
+    page.wait_for_selector("#analyticsStructurePanel:not(.hidden)")
+    page.wait_for_selector("#analyticsCategoryBreakdownList .analytics-insight-item")
+    analytics_geometry = page.evaluate(
+        """
+        () => {
+          const chart = document.querySelector('#analyticsStructurePanel .analytics-category-breakdown-chart-card')?.getBoundingClientRect();
+          const list = document.querySelector('#analyticsCategoryBreakdownList')?.getBoundingClientRect();
+          return chart && list ? { chartHeight: chart.height, listHeight: list.height } : null;
+        }
+        """
+    )
+    assert analytics_geometry is not None
+    assert abs(analytics_geometry["chartHeight"] - analytics_geometry["listHeight"]) <= 1
 
 
 @pytest.mark.e2e
@@ -584,6 +689,57 @@ def test_mobile_analytics_tabs_stay_above_period_controls(page_with_analytics_ap
 
     assert geometry is not None
     assert geometry["scopeTop"] >= geometry["tabsBottom"] - 1
+
+
+@pytest.mark.e2e
+def test_mobile_analytics_global_period_popover_changes_period(page_with_analytics_api_mock, static_server_url: str):
+    page = page_with_analytics_api_mock
+
+    _open_mobile_analytics(page, static_server_url)
+    page.locator("button[data-analytics-tab='structure']").click()
+    page.wait_for_selector("#analyticsStructurePanel:not(.hidden)")
+    page.wait_for_selector("#analyticsGlobalScopePanel:not(.hidden)")
+    page.locator("#analyticsGlobalPeriodTrigger").click()
+    page.wait_for_selector("#analyticsGlobalPeriodPopover:not(.hidden)")
+    page.locator("#analyticsGlobalPeriodPopover [data-analytics-period-choice='week']").click()
+    page.wait_for_function("() => window.App.state.analyticsGlobalPeriod === 'week'")
+
+    assert page.evaluate("() => window.App.state.analyticsGlobalPeriod") == "week"
+    assert page.evaluate("() => window.App.state.analyticsGlobalDateFrom") == ""
+    assert page.evaluate("() => window.App.state.analyticsGlobalDateTo") == ""
+
+
+@pytest.mark.e2e
+def test_mobile_analytics_structure_all_time_period_loads_without_error(page_with_analytics_api_mock, static_server_url: str):
+    page = page_with_analytics_api_mock
+
+    _open_mobile_analytics(page, static_server_url)
+    page.locator("button[data-analytics-tab='structure']").click()
+    page.wait_for_selector("#analyticsStructurePanel:not(.hidden)")
+    page.locator("#analyticsGlobalPeriodTrigger").click()
+    page.wait_for_selector("#analyticsGlobalPeriodPopover:not(.hidden)")
+    page.locator("#analyticsGlobalPeriodPopover [data-analytics-period-choice='all_time']").click()
+    page.wait_for_function("() => window.App.state.analyticsGlobalPeriod === 'all_time'")
+
+    expect(page.locator("#analyticsGlobalPeriodControlLabel")).to_have_text("10.01.2026 - 16.06.2026")
+    expect(page.locator("#analyticsCategoryBreakdownList .analytics-insight-item")).to_have_count(2)
+    expect(page.locator(".toast, .status-error")).to_have_count(0)
+
+
+@pytest.mark.e2e
+def test_mobile_analytics_trend_period_arrows_update_visible_label(page_with_analytics_api_mock, static_server_url: str):
+    page = page_with_analytics_api_mock
+
+    _open_mobile_analytics(page, static_server_url)
+    page.locator("button[data-analytics-tab='trends']").click()
+    page.wait_for_selector("#analyticsTrendsPanel:not(.hidden)")
+    expect(page.locator("#analyticsGlobalPeriodControlLabel")).to_have_text("01.03.2026 - 31.03.2026")
+
+    page.locator("button[data-analytics-period-step='-1']").click()
+    page.wait_for_function("() => window.App.state.analyticsGlobalPeriod === 'custom'")
+
+    expect(page.locator("#analyticsGlobalPeriodControlLabel")).to_have_text("01.05.2026 - 31.05.2026")
+    expect(page.locator("#analyticsTrendRangeLabel")).to_contain_text("01.05.2026 - 31.05.2026")
 
 
 @pytest.mark.e2e
@@ -750,6 +906,8 @@ def test_analytics_calendar_highlights_current_day_and_month(static_server_url: 
 
     page.click("button[data-analytics-calendar-view='year']")
     page.wait_for_selector("#analyticsYearGridWrap:not(.hidden)")
+    page.wait_for_selector(".analytics-year-quarter[data-analytics-quarter='1']")
+    assert page.locator(".analytics-year-quarter").count() == 4
     page.wait_for_selector(".analytics-year-card-current[data-analytics-month-anchor='2026-03']")
 
 
@@ -762,6 +920,7 @@ def test_mobile_analytics_year_view_card_opens_month_view(static_server_url: str
     page.wait_for_selector("#analyticsCalendarPanel:not(.hidden)")
     page.click("button[data-analytics-calendar-view='year']")
     page.wait_for_selector("#analyticsYearGridWrap:not(.hidden)")
+    page.wait_for_selector(".analytics-year-quarter")
     page.wait_for_selector("#analyticsYearGrid .analytics-year-card")
     page.click("#analyticsYearGrid .analytics-year-card")
     page.wait_for_selector("#analyticsMonthGridWrap:not(.hidden)")
@@ -808,6 +967,46 @@ def test_mobile_analytics_day_tap_opens_operations_for_exact_date(static_server_
     assert state["period"] == "custom"
     assert state["dateFrom"] == "2026-03-08"
     assert state["dateTo"] == "2026-03-08"
+
+
+@pytest.mark.e2e
+def test_mobile_analytics_category_drilldown_opens_operations_with_filter(
+    static_server_url: str, page_with_analytics_api_mock
+):
+    page = page_with_analytics_api_mock
+    _open_mobile_analytics(page, static_server_url)
+
+    page.click("button[data-analytics-tab='structure']")
+    page.wait_for_selector("#analyticsStructurePanel:not(.hidden)")
+    page.wait_for_selector("#analyticsCategoryBreakdownList [data-analytics-category-id='1']")
+    page.locator("#analyticsCategoryBreakdownList [data-analytics-category-id='1']", has_text="Еда").get_by_role(
+        "button",
+        name="Открыть операции",
+    ).click()
+    page.wait_for_selector("#operationsSection:not(.hidden)")
+    page.wait_for_function("() => window.App.state.operationsCategoryFilterId === 1")
+
+    state = page.evaluate(
+        """
+        () => ({
+          activeSection: window.App.state.activeSection,
+          period: window.App.state.period,
+          categoryId: window.App.state.operationsCategoryFilterId,
+          categoryName: window.App.state.operationsCategoryFilterName,
+          kind: window.App.state.filterKind,
+        })
+        """
+    )
+    queries = page._analytics_money_flow_queries
+    last_query = queries[-1] if queries else {}
+
+    assert state["activeSection"] == "operations"
+    assert state["period"] == "month"
+    assert state["categoryId"] == 1
+    assert state["categoryName"] == "Еда"
+    assert state["kind"] == "expense"
+    assert last_query.get("category_id") == ["1"]
+    assert last_query.get("direction") == ["outflow"]
 
 
 @pytest.mark.e2e

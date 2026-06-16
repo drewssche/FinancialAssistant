@@ -6,6 +6,7 @@
 @import url("/static/css/components-core.css");
 @import url("/static/css/components-inline-refresh.css");
 @import url("/static/css/components-skeletons.css");
+@import url("/static/css/components-operation-controls.css");
 @import url("/static/css/components-analytics-summary.css");
 @import url("/static/css/components-analytics-breakdown.css");
 @import url("/static/css/components-controls.css");
@@ -14,5 +15,6 @@
 @import url("/static/css/overlays.css");
 @import url("/static/css/responsive-lg.css");
 @import url("/static/css/responsive-md.css");
+@import url("/static/css/responsive-sm-tables.css");
 @import url("/static/css/responsive-sm-core.css");
 @import url("/static/css/responsive-sm-modals.css");

@@ -14,10 +14,6 @@
       return window.App.getRuntimeModule?.("picker-utils");
     }
 
-    function getActions() {
-      return window.App.actions || {};
-    }
-
     function getCategoryActions() {
       return window.App.getRuntimeModule?.("category-actions") || {};
     }

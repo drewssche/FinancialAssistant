@@ -90,6 +90,8 @@
       dashboardStructurePanel: document.getElementById("dashboardStructurePanel"),
       dashboardPlansPanel: document.getElementById("dashboardPlansPanel"),
       dashboardAnalyticsPeriodTabs: document.getElementById("dashboardAnalyticsPeriodTabs"),
+      dashboardAnalyticsPeriodTrigger: document.getElementById("dashboardAnalyticsPeriodTrigger"),
+      dashboardAnalyticsPeriodControlLabel: document.getElementById("dashboardAnalyticsPeriodControlLabel"),
       dashboardAnalyticsPeriodPopover: document.getElementById("dashboardAnalyticsPeriodPopover"),
       dashboardAnalyticsPeriodOptions: document.getElementById("dashboardAnalyticsPeriodOptions"),
       dashboardAnalyticsPeriodLabel: document.getElementById("dashboardAnalyticsPeriodLabel"),

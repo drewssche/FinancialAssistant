@@ -13,28 +13,11 @@
     }
     return { label: "Ноль", tone: "neutral", cardClass: "neutral", amount: 0 };
   });
-  let calendarScrollUiBound = false;
   let calendarTooltipUiBound = false;
   const pickerUtils = window.App.getRuntimeModule?.("picker-utils") || {};
 
   function syncCalendarScrollFade() {
-    if (!el.analyticsCalendarScrollWrap) {
-      return;
-    }
-    const node = el.analyticsCalendarScrollWrap;
-    if ((state.analyticsCalendarView || "month") !== "month") {
-      node.classList.remove("has-left-fade", "has-right-fade");
-      return;
-    }
-    const maxScrollLeft = Math.max(0, node.scrollWidth - node.clientWidth);
-    if (maxScrollLeft <= 4) {
-      node.classList.remove("has-left-fade", "has-right-fade");
-      return;
-    }
-    const scrollLeft = Math.max(0, node.scrollLeft || 0);
-    const edgeTolerance = 2;
-    node.classList.toggle("has-left-fade", scrollLeft > edgeTolerance);
-    node.classList.toggle("has-right-fade", scrollLeft < maxScrollLeft - edgeTolerance);
+    el.analyticsCalendarScrollWrap?.classList.remove("has-left-fade", "has-right-fade");
   }
 
   function todayIsoDate() {
@@ -50,12 +33,7 @@
   }
 
   function bindCalendarScrollUi() {
-    if (calendarScrollUiBound || !el.analyticsCalendarScrollWrap) {
-      return;
-    }
-    calendarScrollUiBound = true;
-    el.analyticsCalendarScrollWrap.addEventListener("scroll", syncCalendarScrollFade, { passive: true });
-    window.addEventListener("resize", syncCalendarScrollFade);
+    syncCalendarScrollFade();
   }
 
   function ensureCalendarTooltip() {
@@ -333,6 +311,93 @@
     };
   }
 
+  function quarterLabel(index) {
+    return ["I", "II", "III", "IV"][index] || String(index + 1);
+  }
+
+  function formatMonthRange(months) {
+    const labels = months
+      .map((item) => {
+        const monthDate = parseMonthAnchor(item?.month);
+        return monthDate ? monthDate.toLocaleDateString("ru-RU", { month: "short", timeZone: "UTC" }) : "";
+      })
+      .filter(Boolean);
+    if (!labels.length) {
+      return "";
+    }
+    return `${labels[0]} - ${labels[labels.length - 1]}`;
+  }
+
+  function summarizeQuarterMonths(months) {
+    return months.reduce(
+      (summary, item) => {
+        const cashflow = resolveCashflowTotals(item);
+        const operating = resolveOperatingResult(item);
+        summary.incomeTotal += cashflow.incomeTotal;
+        summary.expenseTotal += cashflow.expenseTotal;
+        summary.eventsCount += cashflow.eventsCount;
+        summary.resultTotal += cashflow.resultTotal;
+        summary.operatingTotal += operating.value;
+        return summary;
+      },
+      {
+        incomeTotal: 0,
+        expenseTotal: 0,
+        eventsCount: 0,
+        resultTotal: 0,
+        operatingTotal: 0,
+      },
+    );
+  }
+
+  function renderAnalyticsYearMonthCard(item, currentMonth) {
+    const cashflow = resolveCashflowTotals(item);
+    const operatingResult = resolveOperatingResult(item);
+    const monthDate = parseMonthAnchor(item.month);
+    const label = monthDate
+      ? monthDate.toLocaleDateString("ru-RU", { month: "short", year: "numeric", timeZone: "UTC" })
+      : item.month;
+    const isCurrentMonth = item.month === currentMonth;
+    return `
+      <article class="analytics-year-card ${isCurrentMonth ? "analytics-year-card-current" : ""}" data-analytics-month-anchor="${item.month}">
+        <div class="analytics-insight-head">
+          <strong>${escapeHtml(label)}</strong>
+          <span class="muted-small analytics-ops">${escapeHtml(String(cashflow.eventsCount))} событ.</span>
+        </div>
+        <div class="muted-small analytics-income">Приток: ${escapeHtml(core.formatMoney(cashflow.incomeTotal))}</div>
+        <div class="muted-small analytics-expense">Отток: ${escapeHtml(core.formatMoney(cashflow.expenseTotal))}</div>
+        <div class="muted-small analytics-${operatingResult.presentation.tone}">${escapeHtml(operatingResult.presentation.label)}: ${escapeHtml(core.formatMoney(operatingResult.presentation.amount))}</div>
+        <div class="muted-small analytics-balance">Денежный поток: ${escapeHtml(core.formatMoney(cashflow.resultTotal))}</div>
+      </article>
+    `;
+  }
+
+  function renderAnalyticsYearQuarter(months, index, currentMonth) {
+    const summary = summarizeQuarterMonths(months);
+    const operatingResult = describeResult(summary.operatingTotal);
+    const cashflowResult = describeResult(summary.resultTotal);
+    return `
+      <section class="analytics-year-quarter" data-analytics-quarter="${index + 1}">
+        <div class="analytics-year-quarter-head">
+          <div class="analytics-year-quarter-title">
+            <strong>${quarterLabel(index)} квартал</strong>
+            <span class="muted-small">${escapeHtml(formatMonthRange(months))}</span>
+          </div>
+          <div class="analytics-year-quarter-totals" aria-label="Итоги квартала">
+            <div class="analytics-year-quarter-total analytics-income"><span>Приток</span><strong>${escapeHtml(core.formatMoney(summary.incomeTotal))}</strong></div>
+            <div class="analytics-year-quarter-total analytics-expense"><span>Отток</span><strong>${escapeHtml(core.formatMoney(summary.expenseTotal))}</strong></div>
+            <div class="analytics-year-quarter-total analytics-ops"><span>События</span><strong>${escapeHtml(String(summary.eventsCount))}</strong></div>
+            <div class="analytics-year-quarter-total analytics-${operatingResult.tone}"><span>${escapeHtml(operatingResult.label)}</span><strong>${escapeHtml(core.formatMoney(operatingResult.amount))}</strong></div>
+            <div class="analytics-year-quarter-total analytics-${cashflowResult.tone}"><span>Денежный поток</span><strong>${escapeHtml(core.formatMoney(summary.resultTotal))}</strong></div>
+          </div>
+        </div>
+        <div class="analytics-year-quarter-months">
+          ${months.map((item) => renderAnalyticsYearMonthCard(item, currentMonth)).join("")}
+        </div>
+      </section>
+    `;
+  }
+
   function renderCalendarTotals(data, view, currencyOverview = null) {
     if (!el.analyticsCalendarTotals || !el.analyticsCalendarTotalsSecondary) {
       return;
@@ -472,28 +537,8 @@
     syncMonthLabelByView(new Date(Date.UTC(Number(data.year || 0), 0, 1)), "year");
     const months = Array.isArray(data.months) ? data.months : [];
     const currentMonth = currentMonthAnchor();
-    el.analyticsYearGrid.innerHTML = months
-      .map((item) => {
-        const cashflow = resolveCashflowTotals(item);
-        const operatingResult = resolveOperatingResult(item);
-        const monthDate = parseMonthAnchor(item.month);
-        const label = monthDate
-          ? monthDate.toLocaleDateString("ru-RU", { month: "short", year: "numeric", timeZone: "UTC" })
-          : item.month;
-        const isCurrentMonth = item.month === currentMonth;
-        return `
-          <article class="analytics-year-card ${isCurrentMonth ? "analytics-year-card-current" : ""}" data-analytics-month-anchor="${item.month}">
-            <div class="analytics-insight-head">
-              <strong>${label}</strong>
-              <span class="muted-small analytics-ops">${cashflow.eventsCount} событ.</span>
-            </div>
-            <div class="muted-small analytics-income">Приток: ${core.formatMoney(cashflow.incomeTotal)}</div>
-            <div class="muted-small analytics-expense">Отток: ${core.formatMoney(cashflow.expenseTotal)}</div>
-            <div class="muted-small analytics-${operatingResult.presentation.tone}">${operatingResult.presentation.label}: ${core.formatMoney(operatingResult.presentation.amount)}</div>
-            <div class="muted-small analytics-balance">Денежный поток: ${core.formatMoney(cashflow.resultTotal)}</div>
-          </article>
-        `;
-      })
+    el.analyticsYearGrid.innerHTML = [0, 1, 2, 3]
+      .map((index) => renderAnalyticsYearQuarter(months.slice(index * 3, index * 3 + 3), index, currentMonth))
       .join("");
     window.requestAnimationFrame(syncCalendarScrollFade);
   }

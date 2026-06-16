@@ -31,7 +31,7 @@
   }
 
   function getCategoryActions() {
-    return window.App.actions || {};
+    return window.App.getRuntimeModule?.("navigation") || {};
   }
 
   const SETTINGS_PICKER_CONFIGS = {

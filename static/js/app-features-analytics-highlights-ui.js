@@ -196,6 +196,9 @@
   }
 
   function renderDashboardBreakdown(data) {
+    if (el.dashboardAnalyticsPeriodControlLabel) {
+      el.dashboardAnalyticsPeriodControlLabel.textContent = `${core.formatDateRu(data.date_from)} - ${core.formatDateRu(data.date_to)}`;
+    }
     activeDashboardBreakdown = getSnapshotCoordinator().buildDashboardBreakdownSnapshot?.({
       data,
       state,

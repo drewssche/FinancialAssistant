@@ -385,6 +385,15 @@
 
   .analytics-category-breakdown-chart-card {
     min-height: 15rem;
+    height: auto;
+  }
+
+  .analytics-category-breakdown-grid > .analytics-insight-list,
+  #analyticsCategoryBreakdownList,
+  .dashboard-structure-grid .analytics-insight-list {
+    min-height: 0;
+    height: auto;
+    max-height: none;
   }
 
   .analytics-insight-actions {
@@ -726,6 +735,12 @@
   color: var(--text);
   font-family: var(--money-font-family);
   font-variant-numeric: tabular-nums lining-nums;
+}
+
+.activity-metadata-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
 }
 
 .modal-head-actions {

@@ -8,6 +8,8 @@
   let operationsRawItems = [];
   let operationsRequestController = null;
   let operationsRequestSeq = 0;
+  let operationsSummaryRequestController = null;
+  let operationsSummaryRequestSeq = 0;
   const OPERATIONS_CACHE_TTL_MS = 15000;
   const getCategoryMetaById = operationModal.getCategoryMetaById;
   const trackCategoryUsage = operationModal.trackCategoryUsage;
@@ -40,12 +42,12 @@
     return { label: "Ноль", tone: "neutral", cardClass: "neutral", amount: 0 };
   });
 
-  function getActions() {
-    return window.App.actions || {};
+  function getNavigationActions() {
+    return window.App.getRuntimeModule?.("navigation") || {};
   }
 
   function getCategoryActions() {
-    return window.App.getRuntimeModule?.("category-actions") || window.App.actions || {};
+    return window.App.getRuntimeModule?.("category-actions") || {};
   }
 
   function getBulkUi() {
@@ -323,13 +325,34 @@
         return cached;
       }
     }
+    if (operationsSummaryRequestController) {
+      operationsSummaryRequestController.abort();
+    }
+    const requestController = new AbortController();
+    operationsSummaryRequestController = requestController;
+    const requestSeq = ++operationsSummaryRequestSeq;
     const endpoint = isMoneyFlowMode ? "/api/v1/operations/money-flow/summary" : "/api/v1/operations/summary";
-    const data = await core.requestJson(`${endpoint}?${params.toString()}`, {
-      headers: core.authHeaders(),
-    });
-    core.setUiRequestCache(cacheKey, data);
-    renderOperationsSummary(data);
-    return data;
+    try {
+      const data = await core.requestJson(`${endpoint}?${params.toString()}`, {
+        headers: core.authHeaders(),
+        signal: requestController.signal,
+      });
+      if (requestSeq !== operationsSummaryRequestSeq) {
+        return null;
+      }
+      core.setUiRequestCache(cacheKey, data);
+      renderOperationsSummary(data);
+      return data;
+    } catch (err) {
+      if (core.isAbortError && core.isAbortError(err)) {
+        return null;
+      }
+      throw err;
+    } finally {
+      if (operationsSummaryRequestController === requestController) {
+        operationsSummaryRequestController = null;
+      }
+    }
   }
 
   function renderPagination() {
@@ -668,7 +691,7 @@
     state.operationsCategoryFilterName = categoryName || "";
     state.operationsItemTemplateFilterId = null;
     state.operationsItemTemplateFilterName = "";
-    await getActions().showSection?.("operations");
+    await getNavigationActions().switchSection?.("operations");
     renderOperationsActiveFilters();
     await loadOperations({ reset: true, force: true });
     await savePreferences();
@@ -685,14 +708,14 @@
     state.operationsCategoryFilterName = "";
     state.operationsItemTemplateFilterId = resolvedId;
     state.operationsItemTemplateFilterName = templateName || "";
-    await getActions().showSection?.("operations");
+    await getNavigationActions().switchSection?.("operations");
     renderOperationsActiveFilters();
     await loadOperations({ reset: true, force: true });
     await savePreferences();
   }
 
   async function openMoneyFlowSource({ sourceKind, sourceId, mode = "edit" }) {
-    const navigation = getActions();
+    const navigation = getNavigationActions();
     const debtsFeature = window.App.getRuntimeModule?.("debts") || {};
     const currencyFeature = window.App.getRuntimeModule?.("currency") || {};
     if (sourceKind === "operation") {
@@ -703,7 +726,7 @@
       const item = await core.requestJson(`/api/v1/operations/${resolvedId}`, {
         headers: core.authHeaders(),
       });
-      navigation.openEditModal?.(item);
+      operationModal.openEditModal?.(item);
       return;
     }
     if (sourceKind === "debt") {

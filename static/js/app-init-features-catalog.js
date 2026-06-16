@@ -62,6 +62,7 @@
       el.itemCatalogBody.addEventListener("click", (event) => {
         itemCatalogUiCoordinator?.handleItemCatalogBodyClick?.({
           event,
+          state,
           pickerUtils,
           handleItemCatalogBodyClickAction: actions.handleItemCatalogBodyClick,
           deleteItemSourceFlow: actions.deleteItemSourceFlow,
@@ -73,6 +74,23 @@
         });
       });
     }
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest(".mobile-card-actions-popover[data-mobile-card-menu^=\"item-\"], .table-kebab-popover[data-table-menu^=\"item-\"]")) {
+        return;
+      }
+      itemCatalogUiCoordinator?.handleItemCatalogBodyClick?.({
+        event,
+        state,
+        pickerUtils,
+        handleItemCatalogBodyClickAction: actions.handleItemCatalogBodyClick,
+        deleteItemSourceFlow: actions.deleteItemSourceFlow,
+        openEditSourceGroupModalAction: actions.openEditSourceGroupModal,
+        deleteItemTemplateFlow: actions.deleteItemTemplateFlow,
+        openItemTemplateModalAction: actions.openItemTemplateModal,
+        openItemTemplateHistoryModalAction: actions.openItemTemplateHistoryModal,
+        setStatus: (message) => core.setStatus(message),
+      });
+    });
 
     categoriesSectionCoordinator?.bindCategoryKindTabs?.({
       el,
@@ -112,6 +130,7 @@
         state,
         pickerUtils,
         handleGroupToggleClick: categoryActions.handleCategoriesGroupToggleClick,
+        openCreateCategoryModalAction: categoryActions.openCreateCategoryModal,
         openEditGroupModalAction: categoryActions.openEditGroupModal,
         deleteGroupFlow: (group) => categoryActions.deleteGroupFlow?.(group).catch((err) => core.setStatus(String(err))),
         deleteCategoryFlow: (item) => categoryActions.deleteCategoryFlow?.(item).catch((err) => core.setStatus(String(err))),
@@ -127,6 +146,7 @@
         state,
         pickerUtils,
         handleGroupToggleClick: categoryActions.handleCategoriesGroupToggleClick,
+        openCreateCategoryModalAction: categoryActions.openCreateCategoryModal,
         openEditGroupModalAction: categoryActions.openEditGroupModal,
         deleteGroupFlow: (group) => categoryActions.deleteGroupFlow?.(group).catch((err) => core.setStatus(String(err))),
         deleteCategoryFlow: (item) => categoryActions.deleteCategoryFlow?.(item).catch((err) => core.setStatus(String(err))),

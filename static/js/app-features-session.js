@@ -3,27 +3,24 @@
   const preferences = window.App.getRuntimeModule?.("session-preferences") || {};
   const auth = window.App.getRuntimeModule?.("session-auth") || {};
 
-  function getActions() {
-    return window.App.actions || {};
+  function getNavigationActions() {
+    return window.App.getRuntimeModule?.("navigation") || {};
   }
 
-  function getCategoryActions() {
-    const actions = getActions();
-    return {
-      renderTodayLabel: actions.renderTodayLabel,
-    };
+  function getOperationsFeature() {
+    return window.App.getRuntimeModule?.("operations") || {};
   }
 
   async function saveSettings(event) {
     event.preventDefault();
     await preferences.savePreferences?.();
     preferences.applyInterfaceSettingsUi?.();
-    if (getCategoryActions().renderTodayLabel) {
-      getCategoryActions().renderTodayLabel();
+    if (getNavigationActions().renderTodayLabel) {
+      getNavigationActions().renderTodayLabel();
     }
-    const actions = getActions();
-    if (actions.refreshAll) {
-      await actions.refreshAll();
+    const operationsFeature = getOperationsFeature();
+    if (operationsFeature.refreshAll) {
+      await operationsFeature.refreshAll();
     }
   }
 

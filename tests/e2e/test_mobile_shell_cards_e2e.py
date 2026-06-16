@@ -420,6 +420,53 @@ def test_mobile_card_kebab_stays_top_right_and_menu_escapes_card(static_server_u
 
 
 @pytest.mark.e2e
+def test_item_catalog_kebab_actions_work_from_floating_popover(static_server_url: str):
+    with sync_api.sync_playwright() as p:
+        try:
+            browser = p.chromium.launch(headless=True)
+        except Exception as exc:  # pragma: no cover
+            pytest.skip(f"Chromium is not available for Playwright: {exc}")
+        page = browser.new_page(viewport={"width": 430, "height": 932})
+        _set_mock_telegram(page)
+        page.route("**/api/v1/**", _build_handler("item_catalog"))
+        try:
+            page.goto(f"{static_server_url}/static/index.html")
+            _login_via_mock_telegram(page)
+
+            page.evaluate("() => window.App.actions.switchSection('item_catalog')")
+            page.wait_for_selector("#itemCatalogSection:not(.hidden)")
+            page.wait_for_selector("button[data-mobile-card-menu-trigger='item-template-1']")
+
+            page.locator("button[data-mobile-card-menu-trigger='item-template-1']").click()
+            page.locator(".mobile-card-actions-popover[data-mobile-card-menu='item-template-1']:not(.hidden)").wait_for(state="visible")
+            page.locator("button[data-item-template-history-id='1']").click()
+            page.wait_for_selector("#itemTemplateHistoryModal:not(.hidden)")
+            assert page.locator("#itemTemplateHistoryTitle").inner_text().strip().startswith("История цен")
+            assert page.locator(".mobile-card-actions-popover[data-mobile-card-menu='item-template-1']").is_hidden()
+            page.locator("#closeItemTemplateHistoryModalBtn").click()
+            page.wait_for_selector("#itemTemplateHistoryModal", state="hidden")
+
+            page.locator("button[data-mobile-card-menu-trigger='item-template-1']").click()
+            page.locator(".mobile-card-actions-popover[data-mobile-card-menu='item-template-1']:not(.hidden)").wait_for(state="visible")
+            page.locator("button[data-edit-item-template-id='1']").click()
+            page.wait_for_selector("#itemTemplateModal:not(.hidden)")
+            assert page.locator("#itemTemplateModalTitle").inner_text().strip() == "Редактировать позицию"
+            assert page.locator("#itemTemplateName").input_value() == "Позиция 1"
+            assert page.locator(".mobile-card-actions-popover[data-mobile-card-menu='item-template-1']").is_hidden()
+            page.locator("#closeItemTemplateModalBtn").click()
+            page.wait_for_selector("#itemTemplateModal", state="hidden")
+
+            page.locator("button[data-mobile-card-menu-trigger='item-template-1']").click()
+            page.locator(".mobile-card-actions-popover[data-mobile-card-menu='item-template-1']:not(.hidden)").wait_for(state="visible")
+            page.locator("button[data-delete-item-template-id='1']").click()
+            page.wait_for_selector("#confirmModal:not(.hidden)")
+            assert "Удалить позицию" in page.locator("#confirmText").inner_text()
+            assert page.locator(".mobile-card-actions-popover[data-mobile-card-menu='item-template-1']").is_hidden()
+        finally:
+            browser.close()
+
+
+@pytest.mark.e2e
 def test_mobile_category_edit_icon_picker_opens_from_plus(static_server_url: str):
     with sync_api.sync_playwright() as p:
         try:

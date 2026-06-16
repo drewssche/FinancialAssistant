@@ -224,6 +224,7 @@
     state,
     pickerUtils,
     handleGroupToggleClick,
+    openCreateCategoryModalAction,
     openEditGroupModalAction,
     deleteGroupFlow,
     deleteCategoryFlow,
@@ -233,6 +234,16 @@
       return true;
     }
     if (handleGroupToggleClick?.(event)) {
+      return true;
+    }
+    const createCategoryBtn = event.target.closest("button[data-create-category-group-id]");
+    if (createCategoryBtn) {
+      closeCategoryActionPopoverFromEvent({ event, pickerUtils });
+      const groupId = Number(createCategoryBtn.dataset.createCategoryGroupId || 0);
+      const kind = createCategoryBtn.dataset.createCategoryKind || "expense";
+      if (groupId) {
+        openCreateCategoryModalAction?.({ groupId, kind });
+      }
       return true;
     }
     const editGroupBtn = event.target.closest("button[data-edit-group-id]");

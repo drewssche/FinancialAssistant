@@ -10,6 +10,8 @@ from app.db.base import Base
 from app.db.models import User
 from app.db.session import get_db
 from app.main import app
+from app.repositories.operation_repo import OperationRepository
+from app.services.operation_money_flow_service import OperationMoneyFlowService
 
 
 def _override_current_user_id() -> int:
@@ -100,12 +102,18 @@ def test_operations_crud_and_filters(client: TestClient):
 
 
 def test_activity_journal_tracks_operation_create_update_delete(client: TestClient):
+    category_a = client.post("/api/v1/categories", json={"name": "Кофе", "kind": "expense"})
+    assert category_a.status_code == 200, category_a.text
+    category_b = client.post("/api/v1/categories", json={"name": "Подработка", "kind": "income"})
+    assert category_b.status_code == 200, category_b.text
+
     created = client.post(
         "/api/v1/operations",
         json={
             "kind": "expense",
             "amount": "10.00",
             "operation_date": "2026-03-04",
+            "category_id": category_a.json()["id"],
             "note": "initial note",
         },
     )
@@ -114,7 +122,21 @@ def test_activity_journal_tracks_operation_create_update_delete(client: TestClie
 
     updated = client.patch(
         f"/api/v1/operations/{operation_id}",
-        json={"amount": "12.50", "note": "updated note"},
+        json={
+            "kind": "income",
+            "amount": "12.50",
+            "operation_date": "2026-03-05",
+            "category_id": category_b.json()["id"],
+            "note": "updated note",
+            "receipt_items": [
+                {
+                    "name": "Бонус",
+                    "quantity": "1",
+                    "unit_price": "12.50",
+                    "category_id": category_b.json()["id"],
+                }
+            ],
+        },
     )
     assert updated.status_code == 200, updated.text
 
@@ -128,9 +150,20 @@ def test_activity_journal_tracks_operation_create_update_delete(client: TestClie
     titles = [item["title"] for item in payload["items"]]
     assert titles == ["Операция изменена", "Операция создана"]
     update_event = payload["items"][0]
+    assert "Чек: добавлено 1" in update_event["metadata_display"]
+    assert "Добавлено: Бонус" in update_event["metadata_display"]
+    assert update_event["metadata"]["receipt_changes"]["added"] == ["Бонус"]
     changed_fields = {item["field"]: item for item in update_event["changes"]}
     assert changed_fields["original_amount"]["old"] == "10.00"
     assert changed_fields["original_amount"]["new"] == "12.50"
+    assert changed_fields["original_amount"]["old_display"] == "10"
+    assert changed_fields["original_amount"]["new_display"] == "12.5"
+    assert changed_fields["kind"]["old_display"] == "Расход"
+    assert changed_fields["kind"]["new_display"] == "Доход"
+    assert changed_fields["operation_date"]["old_display"] == "04.03.2026"
+    assert changed_fields["operation_date"]["new_display"] == "05.03.2026"
+    assert changed_fields["category_id"]["old_display"] == "Кофе"
+    assert changed_fields["category_id"]["new_display"] == "Подработка"
     assert changed_fields["note"]["old"] == "initial note"
     assert changed_fields["note"]["new"] == "updated note"
 
@@ -981,6 +1014,188 @@ def test_operations_filter_by_receipt_item_category(client: TestClient):
     assert updated_payload["amount"] == "70.00"
     assert updated_payload["receipt_total"] == "69.40"
     assert updated_payload["receipt_discrepancy"] == "0.60"
+
+
+def test_money_flow_category_filter_uses_paginated_operation_fast_path(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    category = client.post("/api/v1/categories", json={"name": "Еда", "kind": "expense"})
+    assert category.status_code == 200
+    category_id = category.json()["id"]
+
+    for index in range(3):
+        created = client.post(
+            "/api/v1/operations",
+            json={
+                "kind": "expense",
+                "amount": str(10 + index),
+                "operation_date": f"2026-03-{index + 1:02d}",
+                "category_id": category_id,
+                "note": f"fast-path-{index}",
+            },
+        )
+        assert created.status_code == 201
+
+    def fail_full_dataset(*args, **kwargs):
+        raise AssertionError("money-flow category filter should not build the full dataset")
+
+    monkeypatch.setattr(OperationMoneyFlowService, "_build_dataset", fail_full_dataset)
+
+    response = client.get(
+        "/api/v1/operations/money-flow",
+        params={
+            "category_id": category_id,
+            "page": 1,
+            "page_size": 2,
+            "sort_by": "operation_date",
+            "sort_dir": "desc",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["total"] == 3
+    assert len(payload["items"]) == 2
+    assert [item["source_kind"] for item in payload["items"]] == ["operation", "operation"]
+    assert payload["items"][0]["event_date"] == "2026-03-03"
+
+
+def test_money_flow_operation_source_uses_paginated_operation_fast_path(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    for index in range(3):
+        created = client.post(
+            "/api/v1/operations",
+            json={
+                "kind": "income",
+                "amount": str(100 + index),
+                "operation_date": f"2026-04-{index + 1:02d}",
+                "note": f"source-operation-{index}",
+            },
+        )
+        assert created.status_code == 201
+
+    def fail_full_dataset(*args, **kwargs):
+        raise AssertionError("money-flow source=operation should not build the full dataset")
+
+    monkeypatch.setattr(OperationMoneyFlowService, "_build_dataset", fail_full_dataset)
+
+    response = client.get(
+        "/api/v1/operations/money-flow",
+        params={
+            "source": "operation",
+            "page": 1,
+            "page_size": 2,
+            "sort_by": "operation_date",
+            "sort_dir": "desc",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["total"] == 3
+    assert len(payload["items"]) == 2
+    assert [item["flow_direction"] for item in payload["items"]] == ["inflow", "inflow"]
+    assert payload["items"][0]["event_date"] == "2026-04-03"
+
+
+def test_money_flow_all_source_uses_paginated_operation_window(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    for index in range(3):
+        created = client.post(
+            "/api/v1/operations",
+            json={
+                "kind": "expense",
+                "amount": str(20 + index),
+                "operation_date": f"2026-05-{index + 1:02d}",
+                "note": f"all-source-{index}",
+            },
+        )
+        assert created.status_code == 201
+
+    def fail_full_operation_list(*args, **kwargs):
+        raise AssertionError("money-flow source=all should not fetch all operations without q")
+
+    monkeypatch.setattr(OperationRepository, "list_filtered_all", fail_full_operation_list)
+
+    response = client.get(
+        "/api/v1/operations/money-flow",
+        params={
+            "page": 1,
+            "page_size": 2,
+            "sort_by": "operation_date",
+            "sort_dir": "desc",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["total"] == 3
+    assert len(payload["items"]) == 2
+    assert payload["items"][0]["source_kind"] == "operation"
+    assert payload["items"][0]["event_date"] == "2026-05-03"
+
+
+def test_money_flow_summary_all_source_uses_sql_operation_summary(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    for index in range(3):
+        created = client.post(
+            "/api/v1/operations",
+            json={
+                "kind": "expense" if index < 2 else "income",
+                "amount": "20.00",
+                "operation_date": f"2026-05-{index + 1:02d}",
+            },
+        )
+        assert created.status_code == 201
+
+    def fail_full_operation_list(*args, **kwargs):
+        raise AssertionError("money-flow summary should not fetch all operations without q")
+
+    monkeypatch.setattr(OperationRepository, "list_filtered_all", fail_full_operation_list)
+
+    response = client.get("/api/v1/operations/money-flow/summary")
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["income_total"] == "20.00"
+    assert payload["expense_total"] == "40.00"
+    assert payload["total"] == 3
+
+
+def test_money_flow_summary_category_filter_uses_sql_operation_summary(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    category = client.post("/api/v1/categories", json={"name": "Еда", "kind": "expense"})
+    assert category.status_code == 200
+    category_id = category.json()["id"]
+    created = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "30.00",
+            "operation_date": "2026-05-10",
+            "category_id": category_id,
+        },
+    )
+    assert created.status_code == 201
+
+    def fail_full_dataset(*args, **kwargs):
+        raise AssertionError("money-flow category summary should not build the full dataset")
+
+    monkeypatch.setattr(OperationMoneyFlowService, "_build_dataset", fail_full_dataset)
+
+    response = client.get(
+        "/api/v1/operations/money-flow/summary",
+        params={"category_id": category_id},
+    )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["expense_total"] == "30.00"
+    assert payload["total"] == 1
 
 
 def test_operation_update_receipt_with_single_item_category_updates_effective_operation_category(client: TestClient):

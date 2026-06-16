@@ -1368,6 +1368,42 @@ def test_dashboard_analytics_highlights_accepts_day_period(client: TestClient):
     assert payload["expense_total"] == "75.00"
 
 
+def test_dashboard_analytics_highlights_accepts_all_time_without_manual_dates(client: TestClient):
+    old_operation = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "40.00",
+            "operation_date": "2026-01-10",
+            "note": "old all-time expense",
+        },
+    )
+    assert old_operation.status_code == 201
+    recent_operation = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "amount": "120.00",
+            "operation_date": "2026-03-11",
+            "note": "recent all-time income",
+        },
+    )
+    assert recent_operation.status_code == 201
+
+    response = client.get(
+        "/api/v1/dashboard/analytics/highlights",
+        params={"period": "all_time", "category_kind": "all"},
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["period"] == "all_time"
+    assert payload["date_from"] == "2026-01-10"
+    assert payload["date_to"] >= "2026-03-11"
+    assert payload["income_total"] == "120.00"
+    assert payload["expense_total"] == "40.00"
+    assert payload["operations_count"] == 2
+
+
 def test_dashboard_analytics_highlights_category_breakdown_respects_kind_filter(client: TestClient):
     food = client.post(
         "/api/v1/categories",

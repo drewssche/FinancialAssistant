@@ -1,0 +1,165 @@
+@media (max-width: 640px) {
+  .mobile-card-table thead {
+    display: none;
+  }
+
+  .mobile-card-table,
+  .mobile-card-table tbody,
+  .mobile-card-table tr,
+  .mobile-card-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .mobile-card-table tbody {
+    display: grid;
+    gap: var(--space-2);
+    overflow: visible;
+  }
+
+  .mobile-card-table tr {
+    border: 1px solid rgba(39, 50, 72, 0.75);
+    border-radius: var(--radius-md);
+    background: rgba(14, 22, 36, 0.52);
+    padding: var(--space-3);
+    overflow: visible;
+  }
+
+  .mobile-card-table .table-hierarchy-parent-row {
+    background:
+      linear-gradient(180deg, rgba(24, 34, 52, 0.96) 0%, rgba(18, 27, 43, 0.92) 100%);
+    box-shadow:
+      inset 0 0 0 1px rgba(58, 77, 108, 0.5),
+      inset 3px 0 0 0 rgba(112, 133, 171, 0.68);
+  }
+
+  .mobile-card-table .table-hierarchy-child-row {
+    position: relative;
+    width: calc(100% - var(--space-2));
+    margin-left: var(--space-2);
+    padding-left: calc(var(--space-3) + 0.625rem);
+    background:
+      linear-gradient(180deg, rgba(16, 24, 38, 0.88) 0%, rgba(12, 19, 31, 0.9) 100%);
+    box-shadow: inset 0 0 0 1px rgba(49, 67, 96, 0.48);
+  }
+
+  .mobile-card-table .table-hierarchy-child-row::before {
+    content: "";
+    position: absolute;
+    left: calc(var(--space-2) - 0.125rem);
+    top: 10px;
+    bottom: 10px;
+    width: 2px;
+    border-radius: 999px;
+    background: rgba(112, 133, 171, 0.62);
+  }
+
+  .mobile-card-table tr.hidden {
+    display: none !important;
+  }
+
+  .mobile-card-table td {
+    border-bottom: none;
+    padding: 0;
+  }
+
+  .mobile-card-table .table-hierarchy-child-row td:first-child {
+    padding-left: 0;
+  }
+
+  .mobile-card-table .table-hierarchy-child-row td:first-child::before,
+  .mobile-card-table .table-hierarchy-child-row td:first-child::after {
+    display: none;
+  }
+
+  .mobile-card-table td + td {
+    margin-top: var(--space-2);
+  }
+
+  .mobile-card-table td[data-label] {
+    display: grid;
+    grid-template-columns: minmax(92px, 0.8fr) minmax(0, 1fr);
+    gap: var(--space-2);
+    align-items: start;
+    min-width: 0;
+  }
+
+  .mobile-card-table td[data-label]::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .mobile-card-table td.select-col,
+  .mobile-card-table td.mobile-actions-cell,
+  .mobile-card-table td.mobile-note-cell,
+  .mobile-card-table .category-table-group-row td {
+    grid-template-columns: 1fr;
+  }
+
+  .mobile-card-table td.select-col::before,
+  .mobile-card-table td.mobile-actions-cell::before,
+  .mobile-card-table td.mobile-note-cell::before,
+  .mobile-card-table .category-table-group-row td::before {
+    display: none;
+  }
+
+  .mobile-card-table td.select-col {
+    margin-bottom: var(--space-1);
+  }
+
+  .mobile-card-table td.select-col .table-checkbox {
+    width: 20px;
+    height: 20px;
+  }
+
+  .mobile-card-table .category-table-group-row {
+    padding: var(--space-2);
+  }
+
+  .mobile-card-table .category-table-group-row td {
+    margin-top: 0;
+  }
+
+  .mobile-card-table .category-table-group-wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-2);
+  }
+
+  .mobile-card-table .category-table-group-btn {
+    width: 100%;
+    padding: var(--space-2);
+    gap: 8px;
+  }
+
+  .mobile-card-table .admin-row-actions,
+  .mobile-card-table td .actions.row-actions {
+    justify-content: stretch;
+  }
+
+  .mobile-card-table .category-table-group-wrap .row-actions,
+  .mobile-card-table td .actions.row-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  .mobile-card-table .category-table-group-wrap .row-actions .btn,
+  .mobile-card-table td .actions.row-actions .btn {
+    width: 100%;
+    min-width: 0;
+    white-space: normal;
+    line-height: 1.2;
+  }
+
+  .mobile-card-table .mobile-actions-cell .actions.row-actions .btn {
+    width: 100%;
+  }
+}

@@ -1,6 +1,46 @@
 import json
+import socket
+import subprocess
+import sys
+import time
+import urllib.request
+from pathlib import Path
 
 import pytest
+
+
+@pytest.fixture(scope="module")
+def static_server_url() -> str:
+    repo_root = Path(__file__).resolve().parents[2]
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+
+    process = subprocess.Popen(
+        [sys.executable, "-m", "http.server", str(port), "--bind", "127.0.0.1"],
+        cwd=str(repo_root),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+    url = f"http://127.0.0.1:{port}"
+    deadline = time.time() + 10
+    while time.time() < deadline:
+        try:
+            with urllib.request.urlopen(url, timeout=1):
+                break
+        except Exception:
+            time.sleep(0.1)
+    else:
+        process.terminate()
+        process.wait(timeout=5)
+        raise RuntimeError("Static server did not start in time")
+
+    try:
+        yield url
+    finally:
+        process.terminate()
+        process.wait(timeout=5)
 
 
 @pytest.mark.e2e
@@ -66,7 +106,7 @@ def test_delete_all_categories_removes_groups_and_categories_in_one_pass(page):
     page.add_init_script("""window.localStorage.setItem("access_token", "test-token");""")
 
     page.goto("http://127.0.0.1:8001/", wait_until="networkidle")
-    page.get_by_role("button", name="Категории").click()
+    page.locator("#mainNav button[data-section='categories']").click()
     page.locator("#deleteAllCategoriesBtn").click()
     page.locator("#confirmDeleteBtn").click()
 
@@ -123,7 +163,7 @@ def test_batch_category_modal_imports_categories_with_group_fallback(page):
     page.add_init_script("""window.localStorage.setItem("access_token", "test-token");""")
 
     page.goto("http://127.0.0.1:8001/", wait_until="networkidle")
-    page.get_by_role("button", name="Категории").click()
+    page.locator("#mainNav button[data-section='categories']").click()
     page.get_by_role("button", name="+ Массовое добавление").click()
     page.locator("#batchCategoryInput").fill(
         "Расход;Такси;Транспорт\n"
@@ -190,7 +230,7 @@ def test_batch_category_groups_mode_accepts_trailing_semicolon(page):
     page.add_init_script("""window.localStorage.setItem("access_token", "test-token");""")
 
     page.goto("http://127.0.0.1:8001/", wait_until="networkidle")
-    page.get_by_role("button", name="Категории").click()
+    page.locator("#mainNav button[data-section='categories']").click()
     page.get_by_role("button", name="+ Массовое добавление").click()
     page.get_by_role("button", name="Группы").click()
     page.locator("#batchCategoryInput").fill(
@@ -321,7 +361,7 @@ def test_mobile_batch_category_modal_preview_stays_above_sticky_cta(page):
 
     page.goto("http://127.0.0.1:8001/", wait_until="networkidle")
     page.click("#mobileNavToggleBtn")
-    page.get_by_role("button", name="Категории").click()
+    page.locator("#mainNav button[data-section='categories']").click()
     page.get_by_role("button", name="+ Массовое добавление").click()
     page.locator("#batchCategoryInput").fill(
         "Расход;Такси;Транспорт\n"
@@ -460,3 +500,116 @@ def test_mobile_batch_item_template_modal_preview_stays_above_sticky_cta(page):
     assert geometry["previewPanelTop"] < geometry["footerTop"]
     assert geometry["previewRowTop"] < geometry["footerTop"]
     assert geometry["previewRowBottom"] <= geometry["footerTop"] + 2
+
+
+@pytest.mark.e2e
+def test_category_group_context_create_prefills_group_from_hover_action(page, static_server_url: str):
+    def handle_request(route):
+        request = route.request
+        url = request.url
+        method = request.method
+
+        if url.endswith("/api/v1/auth/public-config"):
+            route.fulfill(status=200, content_type="application/json", body='{"telegram_bot_username":"FinanceWeaselBot","browser_login_available":true}')
+            return
+        if url.endswith("/api/v1/users/me"):
+            route.fulfill(status=200, content_type="application/json", body='{"id":1,"display_name":"Admin","status":"approved","is_admin":true,"username":"owner_admin","telegram_id":"281896361"}')
+            return
+        if "/api/v1/preferences" in url:
+            route.fulfill(status=200, content_type="application/json", body='{"data":{"ui":{}}}')
+            return
+        if "/api/v1/dashboard/summary" in url:
+            route.fulfill(status=200, content_type="application/json", body='{"income_total":"0.00","expense_total":"0.00","balance":"0.00","debt_lend_total":"0.00","debt_borrow_total":"0.00","debt_net_total":"0.00"}')
+            return
+        if "/api/v1/dashboard/operations" in url or "/api/v1/dashboard/analytics" in url:
+            route.fulfill(status=200, content_type="application/json", body='{"items":[],"total":0,"page":1,"page_size":20}')
+            return
+        if "/api/v1/operations" in url or "/api/v1/debts" in url:
+            route.fulfill(status=200, content_type="application/json", body='{"items":[],"total":0,"page":1,"page_size":20}')
+            return
+        if url.endswith("/api/v1/categories/groups") and method == "GET":
+            route.fulfill(status=200, content_type="application/json", body='[{"id":7,"name":"Еда","kind":"expense","accent_color":"#ff8a3d"}]')
+            return
+        if "/api/v1/categories" in url and method == "GET":
+            if "page=" in url and "page_size=" in url:
+                route.fulfill(status=200, content_type="application/json", body='{"items":[],"total":0,"page":1,"page_size":20}')
+                return
+            route.fulfill(status=200, content_type="application/json", body="[]")
+            return
+        route.fulfill(status=200, content_type="application/json", body="{}")
+
+    page.route("**/api/**", handle_request)
+    page.add_init_script("""window.localStorage.setItem("access_token", "test-token");""")
+    page.set_viewport_size({"width": 1280, "height": 850})
+
+    page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")
+    page.locator("#mainNav button[data-section='categories']").click()
+    page.wait_for_selector(".category-table-group-wrap", state="visible")
+    page.wait_for_selector("button[data-create-category-group-id='7']", state="attached")
+    page.locator(".category-table-group-wrap", has_text="Еда").hover()
+    page.locator("button.category-context-create-btn[data-create-category-group-id='7']").click()
+
+    page.wait_for_selector("#createCategoryModal:not(.hidden)")
+    assert page.locator("#categoryGroup").input_value() == "7"
+    assert page.locator("#categoryGroupSearch").input_value() == "Еда"
+    assert "active" in page.locator("button[data-cat-create-kind='expense']").get_attribute("class")
+
+
+@pytest.mark.e2e
+def test_item_source_context_create_prefills_source_from_hover_action(page, static_server_url: str):
+    def handle_request(route):
+        request = route.request
+        url = request.url
+        method = request.method
+
+        if url.endswith("/api/v1/auth/public-config"):
+            route.fulfill(status=200, content_type="application/json", body='{"telegram_bot_username":"FinanceWeaselBot","browser_login_available":true}')
+            return
+        if url.endswith("/api/v1/users/me"):
+            route.fulfill(status=200, content_type="application/json", body='{"id":1,"display_name":"Admin","status":"approved","is_admin":true,"username":"owner_admin","telegram_id":"281896361"}')
+            return
+        if "/api/v1/preferences" in url:
+            route.fulfill(status=200, content_type="application/json", body='{"data":{"ui":{},"item_catalog_sources":["Евроопт"]}}')
+            return
+        if "/api/v1/dashboard/summary" in url:
+            route.fulfill(status=200, content_type="application/json", body='{"income_total":"0.00","expense_total":"0.00","balance":"0.00","debt_lend_total":"0.00","debt_borrow_total":"0.00","debt_net_total":"0.00"}')
+            return
+        if "/api/v1/dashboard/operations" in url or "/api/v1/dashboard/analytics" in url:
+            route.fulfill(status=200, content_type="application/json", body='{"items":[],"total":0,"page":1,"page_size":20}')
+            return
+        if "/api/v1/operations/item-templates" in url and method == "GET":
+            route.fulfill(
+                status=200,
+                content_type="application/json",
+                body='{"items":[{"id":31,"name":"Молоко","shop_name":"Евроопт","latest_unit_price":"3.20","latest_price_date":"2026-06-01","use_count":2}],"total":1,"page":1,"page_size":100}',
+            )
+            return
+        if "/api/v1/categories/groups" in url:
+            route.fulfill(status=200, content_type="application/json", body="[]")
+            return
+        if "/api/v1/categories" in url and method == "GET":
+            if "page=" in url and "page_size=" in url:
+                route.fulfill(status=200, content_type="application/json", body='{"items":[],"total":0,"page":1,"page_size":20}')
+                return
+            route.fulfill(status=200, content_type="application/json", body="[]")
+            return
+        if "/api/v1/operations" in url or "/api/v1/debts" in url:
+            route.fulfill(status=200, content_type="application/json", body='{"items":[],"total":0,"page":1,"page_size":20}')
+            return
+        route.fulfill(status=200, content_type="application/json", body="{}")
+
+    page.route("**/api/**", handle_request)
+    page.add_init_script("""window.localStorage.setItem("access_token", "test-token");""")
+    page.set_viewport_size({"width": 1280, "height": 850})
+
+    page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")
+    page.get_by_role("button", name="Каталог позиций").click()
+    page.wait_for_selector(".item-catalog-source-wrap", state="visible")
+    page.wait_for_selector("button[data-create-item-template-source-name='Евроопт']", state="attached")
+    page.locator(".item-catalog-source-wrap", has_text="Евроопт").hover()
+    page.locator("button.item-source-context-create-btn[data-create-item-template-source-name='Евроопт']").click()
+
+    page.wait_for_selector("#itemTemplateModal:not(.hidden)")
+    assert page.locator("#itemTemplateSource").input_value() == "Евроопт"
+    assert page.locator("#itemTemplateSourceSearch").input_value() == "Евроопт"
+    assert page.evaluate("() => document.activeElement?.id") == "itemTemplateName"

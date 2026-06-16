@@ -5,6 +5,10 @@
   const getCategoryMetaById = operationModal.getCategoryMetaById;
   let dashboardLoadSeq = 0;
   let dashboardLoadController = null;
+  let dashboardOptionalLoadSeq = 0;
+  let dashboardOptionalLoadController = null;
+  let dashboardOptionalLoadPromise = null;
+  let dashboardPlansLoadPromise = null;
 
   function getPlansFeature() {
     return window.App.getRuntimeModule?.("plans");
@@ -294,6 +298,19 @@
     });
   }
 
+  function endDashboardOptionalRefreshes({ currency = false, debts = false, plans = false } = {}) {
+    const refreshState = getInlineRefreshState();
+    if (currency && el.dashboardCurrencyPanel) {
+      refreshState.end?.(el.dashboardCurrencyPanel);
+    }
+    if (debts && el.dashboardDebtsPanel) {
+      refreshState.end?.(el.dashboardDebtsPanel);
+    }
+    if (plans && el.dashboardPlansPanel) {
+      refreshState.end?.(el.dashboardPlansPanel);
+    }
+  }
+
   function renderDashboardLoadFailure(err) {
     const message = core.errorMessage ? core.errorMessage(err) : String(err || "Ошибка загрузки");
     if (el.dashboardCurrencyBalances) {
@@ -400,31 +417,54 @@
       renderDashboardCurrencySummary(data);
       state.dashboardDebtSummaryLoaded = true;
 
+      if (dashboardOptionalLoadPromise) {
+        optionalPanelTasksStarted = true;
+        dashboardOptionalLoadPromise.finally(() => {
+          endDashboardOptionalRefreshes({
+            currency: shouldRefreshCurrency,
+            debts: shouldRefreshDebts,
+            plans: shouldRefreshPlans,
+          });
+        });
+        return;
+      }
+
+      dashboardOptionalLoadController = new AbortController();
+      const optionalRequestSignal = dashboardOptionalLoadController.signal;
+      const optionalLoadSeq = ++dashboardOptionalLoadSeq;
+      const isCurrentOptionalDashboardLoad = () => (
+        !optionalRequestSignal.aborted
+        && optionalLoadSeq === dashboardOptionalLoadSeq
+        && state.activeSection === "dashboard"
+      );
       const currencyOverviewTask = core.requestJson("/api/v1/currency/overview?trades_limit=10", {
         headers: core.authHeaders(),
-        signal: requestSignal,
+        signal: optionalRequestSignal,
       })
         .then((value) => ({ value, error: null }))
         .catch((error) => ({ value: null, error }));
       const plansTask = el.dashboardPlansPanel && ui?.showDashboardOperations !== false
-        ? Promise.resolve(getPlansFeature().loadPlans?.({ signal: requestSignal }))
+        ? Promise.resolve(getPlansFeature().loadPlans?.({ signal: optionalRequestSignal }))
           .then((value) => ({ value, error: null }))
           .catch((error) => ({ value: null, error }))
         : Promise.resolve({ value: null, error: null });
       const debtCardsTask = core.isDashboardDebtsVisible() && el.dashboardDebtsList
         ? (dashboardData.loadDebtPreview
-          ? dashboardData.loadDebtPreview({ limit: 6, signal: requestSignal })
+          ? dashboardData.loadDebtPreview({ limit: 6, signal: optionalRequestSignal })
           : core.requestJson("/api/v1/dashboard/debts/preview?limit=6", {
             headers: core.authHeaders(),
-            signal: requestSignal,
+            signal: optionalRequestSignal,
           }))
           .then((value) => ({ value, error: null }))
           .catch((error) => ({ value: null, error }))
         : Promise.resolve({ value: null, error: null });
       optionalPanelTasksStarted = true;
-      Promise.allSettled([currencyOverviewTask, plansTask, debtCardsTask]).finally(() => {
-        if (dashboardLoadController?.signal === requestSignal) {
-          dashboardLoadController = null;
+      dashboardOptionalLoadPromise = Promise.allSettled([currencyOverviewTask, plansTask, debtCardsTask]).finally(() => {
+        if (dashboardOptionalLoadController?.signal === optionalRequestSignal) {
+          dashboardOptionalLoadController = null;
+        }
+        if (dashboardOptionalLoadPromise) {
+          dashboardOptionalLoadPromise = null;
         }
       });
 
@@ -433,12 +473,12 @@
           if (core.isAbortError?.(currencyOverviewResult.error)) {
             return;
           }
-          if (!isCurrentDashboardLoad()) {
+          if (!isCurrentOptionalDashboardLoad()) {
             return;
           }
           renderDashboardCurrencyRates([], []);
         } else {
-          if (!isCurrentDashboardLoad()) {
+          if (!isCurrentOptionalDashboardLoad()) {
             return;
           }
           const currencyOverview = currencyOverviewResult.value || {};
@@ -462,10 +502,10 @@
               return;
             }
             reportOptionalDashboardPanelFailure("plans", plansResult.error);
-            if (isCurrentDashboardLoad()) {
+            if (isCurrentOptionalDashboardLoad()) {
               getPlansFeature().renderDashboardPlans?.();
             }
-          } else if (!isCurrentDashboardLoad()) {
+          } else if (!isCurrentOptionalDashboardLoad()) {
             return;
           }
         }).catch((err) => {
@@ -478,7 +518,7 @@
           }
         });
       } else {
-        if (isCurrentDashboardLoad()) {
+        if (isCurrentOptionalDashboardLoad()) {
           getPlansFeature().renderDashboardPlans?.();
         }
         if (shouldRefreshPlans && el.dashboardPlansPanel) {
@@ -506,7 +546,7 @@
             return;
           }
           const cards = Array.isArray(debtCardsResult.value) ? debtCardsResult.value : [];
-          if (isCurrentDashboardLoad()) {
+          if (isCurrentOptionalDashboardLoad()) {
             el.dashboardDebtsList.innerHTML = "";
             if (!cards.length) {
               const empty = document.createElement("div");
@@ -635,17 +675,15 @@
         throw err;
       }
     } finally {
-      if (!optionalPanelTasksStarted && dashboardLoadController?.signal === requestSignal) {
+      if (dashboardLoadController?.signal === requestSignal) {
         dashboardLoadController = null;
       }
-      if (!optionalPanelTasksStarted && shouldRefreshCurrency && el.dashboardCurrencyPanel) {
-        refreshState.end?.(el.dashboardCurrencyPanel);
-      }
-      if (!optionalPanelTasksStarted && shouldRefreshDebts && el.dashboardDebtsPanel) {
-        refreshState.end?.(el.dashboardDebtsPanel);
-      }
-      if (!optionalPanelTasksStarted && shouldRefreshPlans && el.dashboardPlansPanel) {
-        refreshState.end?.(el.dashboardPlansPanel);
+      if (!optionalPanelTasksStarted) {
+        endDashboardOptionalRefreshes({
+          currency: shouldRefreshCurrency,
+          debts: shouldRefreshDebts,
+          plans: shouldRefreshPlans,
+        });
       }
     }
   }
@@ -655,7 +693,16 @@
     if (ui && ui.showDashboardOperations === false) {
       return;
     }
-    await getPlansFeature().loadPlans?.();
+    if (dashboardOptionalLoadPromise) {
+      await dashboardOptionalLoadPromise;
+      return;
+    }
+    if (!dashboardPlansLoadPromise) {
+      dashboardPlansLoadPromise = Promise.resolve(getPlansFeature().loadPlans?.()).finally(() => {
+        dashboardPlansLoadPromise = null;
+      });
+    }
+    await dashboardPlansLoadPromise;
   }
 
   function abortDashboardLoad() {
@@ -663,7 +710,14 @@
       dashboardLoadController.abort();
       dashboardLoadController = null;
     }
+    if (dashboardOptionalLoadController) {
+      dashboardOptionalLoadController.abort();
+      dashboardOptionalLoadController = null;
+    }
+    dashboardOptionalLoadPromise = null;
+    dashboardPlansLoadPromise = null;
     dashboardLoadSeq += 1;
+    dashboardOptionalLoadSeq += 1;
   }
 
   function bindCurrencyActions() {

@@ -100,10 +100,13 @@
   function renderOperationContextChips(item) {
     const chips = [];
     const hasReceiptItems = Array.isArray(item?.receipt_items) && item.receipt_items.length > 0;
+    const operationId = Number(item?.source_id || item?.id || 0);
     const settlementCurrency = String(item?.fx_settlement?.asset_currency || item?.settlement_asset_currency || "").toUpperCase();
     const hasFxSettlement = Boolean(item?.fx_settlement) || item?.has_fx_settlement === true;
-    if (hasReceiptItems) {
-      chips.push(renderMetaChip("Чек"));
+    if (hasReceiptItems && operationId > 0) {
+      chips.push(
+        `<button class="meta-chip-btn meta-chip-btn-neutral" type="button" data-receipt-view-id="${operationId}">Чек</button>`,
+      );
     }
     if (hasFxSettlement) {
       chips.push(renderMetaChip(settlementCurrency ? `Валютная карта · ${settlementCurrency}` : "Валютная карта", "info"));
@@ -444,16 +447,13 @@
       : "";
     const operationCategoryHtml = receiptCategoryHtml
       || (categoryMeta ? renderCategoryChip(categoryMeta, searchQuery) : "");
-    const categoryCellHtml = sourceKind === "operation" && operationCategoryHtml
+    const operationContextHtml = operationCategoryHtml || contextTitleHtml;
+    const categoryCellHtml = sourceKind === "operation"
       ? (operationContextChipsHtml
-        ? `<div class="operation-category-stack">${operationCategoryHtml}${operationContextChipsHtml}</div>`
-        : operationCategoryHtml)
+        ? `<div class="operation-category-stack">${operationContextHtml}${operationContextChipsHtml}</div>`
+        : operationContextHtml)
       : categoryMeta
         ? renderCategoryChip(categoryMeta, searchQuery)
-      : sourceKind === "operation" && receiptCategoryHtml
-        ? (operationContextChipsHtml
-          ? `<div class="operation-category-stack">${receiptCategoryHtml}${operationContextChipsHtml}</div>`
-          : receiptCategoryHtml)
       : receiptCategoryHtml
         ? `<div class="money-flow-context">${receiptCategoryHtml}${contextSubtitleHtml}</div>`
         : `<div class="money-flow-context">${contextTitleHtml}${contextSubtitleHtml}</div>`;

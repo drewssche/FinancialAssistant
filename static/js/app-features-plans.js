@@ -30,84 +30,20 @@
   function getLoadingSkeletons() {
     return window.App.getRuntimeModule?.("loading-skeletons") || {};
   }
-
-  function getDashboardPlansPeriodBounds(period = state.dashboardPlansPeriod || "month", anchor = state.dashboardPlansPeriodAnchor || "current") {
-    if (period === "all_time") {
-      return null;
-    }
-    const current = core.getPeriodBounds ? core.getPeriodBounds(period) : null;
-    if (!current?.dateFrom || !current?.dateTo || anchor !== "previous") {
-      return current;
-    }
-    const parseIso = (value) => {
-      const parsed = new Date(`${String(value || "").trim()}T00:00:00Z`);
-      return Number.isNaN(parsed.getTime()) ? null : parsed;
-    };
-    const toIso = (value) => value instanceof Date && !Number.isNaN(value.getTime()) ? value.toISOString().slice(0, 10) : "";
-    const addDays = (value, deltaDays) => {
-      const parsed = parseIso(value);
-      if (!parsed) {
-        return "";
-      }
-      parsed.setUTCDate(parsed.getUTCDate() + deltaDays);
-      return toIso(parsed);
-    };
-    if (period === "week") {
-      return {
-        dateFrom: addDays(current.dateFrom, -7),
-        dateTo: addDays(current.dateTo, -7),
-      };
-    }
-    if (period === "month") {
-      const currentStart = parseIso(current.dateFrom);
-      if (!currentStart) {
-        return current;
-      }
-      const prevMonthStart = new Date(Date.UTC(currentStart.getUTCFullYear(), currentStart.getUTCMonth() - 1, 1));
-      const prevMonthEnd = new Date(Date.UTC(currentStart.getUTCFullYear(), currentStart.getUTCMonth(), 0));
-      return {
-        dateFrom: toIso(prevMonthStart),
-        dateTo: toIso(prevMonthEnd),
-      };
-    }
-    return current;
-  }
-
-  function closeDashboardPlansPeriodPopover() {
-    getPickerUtils().setPopoverOpen?.(el.dashboardPlansPeriodPopover, false, {
-      owners: [el.dashboardPlansPeriodTabs].filter(Boolean),
-    });
-  }
-
-  function renderDashboardPlansPeriodOptions(period = state.dashboardPlansPeriod || "month") {
-    if (!el.dashboardPlansPeriodOptions) {
-      return;
-    }
-    const currentBounds = getDashboardPlansPeriodBounds(period, "current");
-    const previousBounds = getDashboardPlansPeriodBounds(period, "previous");
-    const currentLabel = period === "week" ? "Эта неделя" : "Этот месяц";
-    const previousLabel = period === "week" ? "Прошлая неделя" : "Прошлый месяц";
-    el.dashboardPlansPeriodOptions.innerHTML = [
-      `
-        <button class="btn btn-secondary settings-picker-option active" type="button" data-dashboard-plans-quick-period="${period}" data-dashboard-plans-quick-anchor="current">
-          ${currentLabel}
-          <span class="muted-small">${core.formatPeriodLabel(currentBounds?.dateFrom || "", currentBounds?.dateTo || "")}</span>
-        </button>
-      `,
-      `
-        <button class="btn btn-secondary settings-picker-option" type="button" data-dashboard-plans-quick-period="${period}" data-dashboard-plans-quick-anchor="previous">
-          ${previousLabel}
-          <span class="muted-small">${core.formatPeriodLabel(previousBounds?.dateFrom || "", previousBounds?.dateTo || "")}</span>
-        </button>
-      `,
-      `
-        <button class="btn btn-secondary settings-picker-option" type="button" data-dashboard-plans-quick-period="all_time" data-dashboard-plans-quick-anchor="current">
-          Все активные планы
-          <span class="muted-small">Без ограничения по периоду</span>
-        </button>
-      `,
-    ].join("");
-  }
+  const createPlansRecurrenceFeature = window.App.getRuntimeModule?.("plans-recurrence");
+  const plansRecurrence = createPlansRecurrenceFeature
+    ? createPlansRecurrenceFeature({ el, core })
+    : {};
+  const isWorkdaysOnlyEnabled = plansRecurrence.isWorkdaysOnlyEnabled || (() => false);
+  const isMonthEndModeEnabled = plansRecurrence.isMonthEndModeEnabled || (() => false);
+  const setMonthEndMode = plansRecurrence.setMonthEndMode || (() => {});
+  const setWorkdaysOnlyMode = plansRecurrence.setWorkdaysOnlyMode || (() => {});
+  const syncPlanRecurrenceUi = plansRecurrence.syncPlanRecurrenceUi || (() => {});
+  const getSelectedPlanWeekdays = plansRecurrence.getSelectedPlanWeekdays || (() => []);
+  const setSelectedPlanWeekdays = plansRecurrence.setSelectedPlanWeekdays || (() => {});
+  const togglePlanWeekday = plansRecurrence.togglePlanWeekday || (() => {});
+  let plansRender = {};
+  let plansDashboard = {};
 
   function getPlansCacheKey() {
     return "plans:list";
@@ -140,25 +76,6 @@
     };
   }
 
-  function getPlanDisplayCategories(item) {
-    const categories = core.getReceiptCategoryMetas
-      ? core.getReceiptCategoryMetas(item?.receipt_items, item?.category_id, getCategoryMetaById)
-      : [];
-    if (categories.length) {
-      return categories;
-    }
-    if (item?.category_name) {
-      return [{
-        id: item?.category_id ? Number(item.category_id) : null,
-        name: item.category_name,
-        icon: item.category_icon || null,
-        accent_color: item.category_accent_color || null,
-      }];
-    }
-    const fallback = getCategoryMetaById(item?.category_id);
-    return fallback?.name ? [fallback] : [];
-  }
-
   function getPlanBaseAmountValue(item) {
     const live = Number(item?.current_base_amount ?? NaN);
     if (Number.isFinite(live)) {
@@ -167,24 +84,35 @@
     return Number(item?.amount || 0);
   }
 
-  function formatPlanAmountHtml(item) {
-    const originalAmount = Number((item?.original_amount ?? item?.amount) || 0);
-    const currency = String(item?.currency || "BYN").toUpperCase();
-    const baseCurrency = String(item?.base_currency || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
-    if (currency === baseCurrency) {
-      return core.formatMoney(originalAmount, { currency });
-    }
-    const currentBaseAmount = getPlanBaseAmountValue(item);
-    const currentRate = Number(item?.current_rate || 0);
-    const rateDate = item?.current_rate_date ? core.formatDateRu(item.current_rate_date) : "";
-    const secondary = currentRate > 0
-      ? `≈ ${core.formatMoney(currentBaseAmount, { currency: baseCurrency })} по текущему курсу${rateDate ? ` · ${rateDate}` : ""}`
-      : `≈ ${core.formatMoney(currentBaseAmount, { currency: baseCurrency })}`;
-    return `
-      <span class="plan-card-amount-primary">${core.formatMoney(originalAmount, { currency })}</span>
-      <span class="muted-small plan-card-amount-secondary">${secondary}</span>
-    `;
-  }
+  const createPlansRenderFeature = window.App.getRuntimeModule?.("plans-render");
+  plansRender = createPlansRenderFeature
+    ? createPlansRenderFeature({
+      state,
+      core,
+      getCategoryMetaById,
+      getPlanBaseAmountValue,
+    })
+    : {};
+  const renderPlanCard = plansRender.renderPlanCard || (() => "");
+  const renderHistoryCard = plansRender.renderHistoryCard || (() => "");
+
+  const createPlansDashboardFeature = window.App.getRuntimeModule?.("plans-dashboard");
+  plansDashboard = createPlansDashboardFeature
+    ? createPlansDashboardFeature({
+      state,
+      el,
+      core,
+      getPickerUtils,
+      getPlanItems,
+      getSessionFeature,
+      summarizePlans,
+      renderPlanCard,
+      loadPlans,
+    })
+    : {};
+  const renderDashboardPlans = plansDashboard.renderDashboardPlans || (() => {});
+  const setDashboardPlansPeriod = plansDashboard.setDashboardPlansPeriod || (async () => {});
+  const openDashboardPlansPeriodPopover = plansDashboard.openDashboardPlansPeriodPopover || (() => {});
 
   function getFilteredPlans() {
     const query = String(el.plansSearchQ?.value || "").trim().toLowerCase();
@@ -307,495 +235,6 @@
     }
     state.plansAllTimeBalance = Number(data?.balance || 0);
     return state.plansAllTimeBalance;
-  }
-
-  function dueProgressMeta(item) {
-    const dueDate = String(item.due_date || "").trim();
-    if (!dueDate) {
-      return { label: "Без срока", tone: "none", percent: 0 };
-    }
-    const dueAt = new Date(`${dueDate}T23:59:59`);
-    if (Number.isNaN(dueAt.getTime())) {
-      return { label: `Срок: ${core.formatDateRu(dueDate)}`, tone: "none", percent: 0 };
-    }
-    const anchorRaw = item.progress_anchor_at || item.created_at || "";
-    const anchorAt = anchorRaw ? new Date(anchorRaw) : null;
-    const anchorMs = anchorAt && !Number.isNaN(anchorAt.getTime()) ? anchorAt.getTime() : Date.now();
-    const totalMs = Math.max(86400000, dueAt.getTime() - anchorMs);
-    const elapsedMs = Math.max(0, Date.now() - anchorMs);
-    const percent = Math.max(0, Math.min(100, Math.round((elapsedMs / totalMs) * 100)));
-    if (item.status === "overdue") {
-      return { label: `Просрочен с ${core.formatDateRu(dueDate)}`, tone: "overdue", percent: 100 };
-    }
-    if (item.status === "due") {
-      return { label: `Срок: ${core.formatDateRu(dueDate)}`, tone: "due", percent: Math.max(90, percent) };
-    }
-    return { label: `Срок: ${core.formatDateRu(dueDate)}`, tone: "upcoming", percent };
-  }
-
-  function planDueDaysBadge(item) {
-    const dueDate = String(item?.due_date || "").trim();
-    if (!dueDate) {
-      return "";
-    }
-    const dueAt = new Date(`${dueDate}T23:59:59`);
-    if (Number.isNaN(dueAt.getTime())) {
-      return "";
-    }
-    if (item.status === "confirmed") {
-      return "Закрыт";
-    }
-    if (item.status === "skipped") {
-      return "Пропущен";
-    }
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const dueDay = new Date(`${dueDate}T00:00:00`);
-    const diffDays = Math.round((dueDay.getTime() - today.getTime()) / 86400000);
-    if (diffDays < 0) {
-      const overdueDays = Math.abs(diffDays);
-      return overdueDays === 1 ? "Просрочен на 1 день" : `Просрочен на ${overdueDays} дн.`;
-    }
-    if (diffDays === 0) {
-      return "Сегодня";
-    }
-    if (diffDays === 1) {
-      return "Остался 1 день";
-    }
-    return `Осталось ${diffDays} дн.`;
-  }
-
-  function planDueDaysBadgeTone(progressTone) {
-    if (progressTone === "overdue") {
-      return "overdue";
-    }
-    if (progressTone === "due") {
-      return "soon";
-    }
-    if (progressTone === "upcoming") {
-      return "future";
-    }
-    return "none";
-  }
-
-  function recurrenceLabel(item) {
-    if (!item.recurrence_enabled) {
-      return "Разовый";
-    }
-    return item.recurrence_label || "Регулярный";
-  }
-
-  function formatDateTimeRu(value) {
-    if (!value) {
-      return "";
-    }
-    try {
-      const date = value instanceof Date ? value : new Date(value);
-      if (Number.isNaN(date.getTime())) {
-        return String(value);
-      }
-      return new Intl.DateTimeFormat("ru-RU", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(date);
-    } catch {
-      return String(value);
-    }
-  }
-
-  function getUserReminderTimeZone() {
-    const preferred = String(state.preferences?.data?.ui?.timezone || "").trim();
-    const browserTimeZone = String(state.preferences?.data?.ui?.browser_timezone || "").trim();
-    if (preferred && preferred !== "auto") {
-      return preferred;
-    }
-    if (browserTimeZone) {
-      return browserTimeZone;
-    }
-    try {
-      return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-    } catch {
-      return "UTC";
-    }
-  }
-
-  function isWorkdaysOnlyEnabled() {
-    return String(el.planRecurrenceWorkdaysOnly?.value || "off") === "on";
-  }
-
-  function isMonthEndModeEnabled() {
-    return String(el.planRecurrenceMonthEnd?.value || "off") === "on";
-  }
-
-  function getMonthEndIso(isoDate) {
-    const normalized = core.parseDateInputValue(isoDate || "") || core.getTodayIso();
-    const [year, month] = normalized.split("-").map((value) => Number(value || 0));
-    if (!year || !month) {
-      return core.getTodayIso();
-    }
-    const lastDay = new Date(year, month, 0).getDate();
-    return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-  }
-
-  function syncMonthEndScheduleDateLock() {
-    const opDateInput = document.getElementById("opDate");
-    const opDateWrap = document.getElementById("opDateField");
-    const opDateTrigger = opDateWrap?.querySelector(".date-input-trigger");
-    const shouldLock = (el.planScheduleMode?.value || "oneoff") === "recurring"
-      && (el.planRecurrenceFrequency?.value || "monthly") === "monthly"
-      && isMonthEndModeEnabled();
-    if (!opDateInput) {
-      return;
-    }
-    if (shouldLock) {
-      core.syncDateFieldValue(opDateInput, getMonthEndIso(opDateInput.value || core.getTodayIso()));
-    }
-    opDateInput.disabled = shouldLock;
-    if (opDateTrigger) {
-      opDateTrigger.disabled = shouldLock;
-      opDateTrigger.setAttribute("aria-disabled", shouldLock ? "true" : "false");
-    }
-    opDateWrap?.classList.toggle("is-disabled", shouldLock);
-  }
-
-  function setMonthEndMode(enabled) {
-    const next = enabled ? "on" : "off";
-    if (el.planRecurrenceMonthEnd) {
-      el.planRecurrenceMonthEnd.value = next;
-    }
-    if (el.planRecurrenceMonthEndSwitch) {
-      core.syncSegmentedActive(el.planRecurrenceMonthEndSwitch, "plan-month-end", next);
-    }
-    syncMonthEndScheduleDateLock();
-  }
-
-  function setWorkdaysOnlyMode(enabled) {
-    const next = enabled ? "on" : "off";
-    if (el.planRecurrenceWorkdaysOnly) {
-      el.planRecurrenceWorkdaysOnly.value = next;
-    }
-    if (el.planRecurrenceWorkdaysSwitch) {
-      core.syncSegmentedActive(el.planRecurrenceWorkdaysSwitch, "plan-workdays-only", next);
-    }
-  }
-
-  function statusLabel(status) {
-    if (status === "overdue") {
-      return "Просрочен";
-    }
-    if (status === "due") {
-      return "К подтверждению";
-    }
-    if (status === "confirmed") {
-      return "Подтвержден";
-    }
-    if (status === "skipped") {
-      return "Пропущен";
-    }
-    return "Запланирован";
-  }
-
-  function reminderLabel(item) {
-    if (!item?.next_reminder_at) {
-      return "";
-    }
-    try {
-      const reminderAt = new Date(item.next_reminder_at);
-      if (Number.isNaN(reminderAt.getTime())) {
-        return "";
-      }
-      if (reminderAt.getTime() <= Date.now() + 120000) {
-        return "Напоминание скоро";
-      }
-      return `Напоминание ${new Intl.DateTimeFormat("ru-RU", {
-        hour: "2-digit",
-        minute: "2-digit",
-        timeZone: getUserReminderTimeZone(),
-      }).format(reminderAt)}`;
-    } catch {
-      return "";
-    }
-  }
-
-  function historyEventLabel(eventType) {
-    if (eventType === "confirmed") {
-      return "Подтвержден";
-    }
-    if (eventType === "skipped") {
-      return "Пропущен";
-    }
-    if (eventType === "reminded") {
-      return "Напоминание";
-    }
-    return "Событие";
-  }
-
-  function syncPlanRecurrenceUi() {
-    const enabled = (el.planScheduleMode?.value || "oneoff") === "recurring";
-    el.planRecurrenceFields?.classList.toggle("hidden", !enabled);
-    const frequency = el.planRecurrenceFrequency?.value || "monthly";
-    const daily = enabled && frequency === "daily";
-    const weekly = enabled && frequency === "weekly";
-    const monthly = enabled && frequency === "monthly";
-    el.planRecurrenceWorkdaysWrap?.classList.toggle("hidden", !daily);
-    el.planRecurrenceWeeklyBlock?.classList.toggle("hidden", !weekly);
-    el.planRecurrenceMonthEndWrap?.classList.toggle("hidden", !monthly);
-    if (!daily && el.planRecurrenceWorkdaysOnly) {
-      setWorkdaysOnlyMode(false);
-    }
-    if (weekly && !getSelectedPlanWeekdays().length) {
-      setSelectedPlanWeekdays([getPlanAnchorWeekday()]);
-    }
-    if (!weekly) {
-      setSelectedPlanWeekdays([]);
-    }
-    if (!monthly && el.planRecurrenceMonthEnd) {
-      setMonthEndMode(false);
-    }
-    syncMonthEndScheduleDateLock();
-  }
-
-  function getPlanAnchorWeekday() {
-    const scheduledDate = core.parseDateInputValue(document.getElementById("opDate")?.value || "") || core.getTodayIso();
-    const anchor = new Date(`${scheduledDate}T00:00:00`);
-    const jsWeekday = anchor.getDay();
-    return (jsWeekday + 6) % 7;
-  }
-
-  function isDateAtMonthEnd(isoDate) {
-    const normalized = String(isoDate || "").trim();
-    if (!normalized) {
-      return false;
-    }
-    const [year, month, day] = normalized.split("-").map((value) => Number(value || 0));
-    if (!year || !month || !day) {
-      return false;
-    }
-    return day === new Date(year, month, 0).getDate();
-  }
-
-  function getSelectedPlanWeekdays() {
-    if (!el.planRecurrenceWeekdays) {
-      return [];
-    }
-    return Array.from(el.planRecurrenceWeekdays.querySelectorAll("button[data-plan-weekday].active"))
-      .map((button) => Number(button.dataset.planWeekday || 0))
-      .filter((value) => Number.isInteger(value) && value >= 0 && value <= 6)
-      .sort((a, b) => a - b);
-  }
-
-  function setSelectedPlanWeekdays(values) {
-    if (!el.planRecurrenceWeekdays) {
-      return;
-    }
-    const selected = new Set(Array.isArray(values) ? values.map((value) => Number(value)) : []);
-    Array.from(el.planRecurrenceWeekdays.querySelectorAll("button[data-plan-weekday]")).forEach((button) => {
-      const weekday = Number(button.dataset.planWeekday || 0);
-      button.classList.toggle("active", selected.has(weekday));
-    });
-  }
-
-  function togglePlanWeekday(weekday) {
-    if (!el.planRecurrenceWeekdays || Number.isNaN(weekday)) {
-      return;
-    }
-    const button = el.planRecurrenceWeekdays.querySelector(`button[data-plan-weekday="${weekday}"]`);
-    if (!button) {
-      return;
-    }
-    const selected = new Set(getSelectedPlanWeekdays());
-    if (selected.has(weekday) && selected.size > 1) {
-      selected.delete(weekday);
-    } else {
-      selected.add(weekday);
-    }
-    setSelectedPlanWeekdays(Array.from(selected));
-  }
-
-  function renderPlanCard(item, options = {}) {
-    const dashboardCompact = options.dashboardCompact === true;
-    const hideActions = options.hideActions === true;
-    const kindClass = item.kind === "income" ? "income" : "expense";
-    const categoryChips = core.renderCategoryChipList
-      ? core.renderCategoryChipList(getPlanDisplayCategories(item), "")
-      : "<span class='muted-small'>Без категории</span>";
-    const dateLabel = item.due_date ? core.formatDateRu(item.due_date) : "Без срока";
-    const progress = dueProgressMeta(item);
-    const dueDays = planDueDaysBadge(item);
-    const dueDaysTone = planDueDaysBadgeTone(progress.tone);
-    const kindLabel = item.kind === "income" ? "Доход" : "Расход";
-    const hasReceiptItems = Array.isArray(item.receipt_items) && item.receipt_items.length > 0;
-    const reminderMeta = reminderLabel(item)
-      ? `<span class="meta-chip meta-chip-neutral">${core.escapeHtml(reminderLabel(item))}</span>`
-      : "";
-    const positionsMeta = hasReceiptItems
-      ? `<button class="meta-chip-btn meta-chip-btn-neutral" type="button" data-plan-receipt-view-id="${item.id}">Чек</button>`
-      : "";
-    const noteMeta = item.note ? `<span class="muted-small">${core.highlightText(item.note, "")}</span>` : "";
-    const showConfirm = item.status !== "confirmed" && item.status !== "skipped";
-    const canEdit = !dashboardCompact && showConfirm;
-    const canSkip = !dashboardCompact && item.recurrence_enabled && item.status !== "confirmed";
-    const canDelete = !dashboardCompact;
-    const showMenu = canEdit || canSkip || canDelete;
-    const interactiveClass = canEdit ? " plan-card-interactive" : "";
-    const interactiveAttrs = canEdit ? ` data-plan-card-edit-id="${item.id}" tabindex="0"` : "";
-    return `
-      <article class="panel plan-card plan-card-kind-${kindClass} plan-card-${item.status || "upcoming"}${interactiveClass}"${interactiveAttrs}>
-        <div class="plan-card-topline">
-          <div class="plan-card-top-meta">
-            <span class="meta-chip meta-chip-neutral">${recurrenceLabel(item)}</span>
-            <span class="meta-chip meta-chip-neutral">${statusLabel(item.status)}</span>
-            ${reminderMeta}
-          </div>
-          ${showMenu ? `
-            <div class="plan-card-menu-wrap">
-              <button class="btn btn-secondary plan-card-menu-trigger" type="button" data-plan-menu-trigger="${item.id}" aria-label="Дополнительные действия">
-                <span aria-hidden="true">⋮</span>
-              </button>
-              <div class="app-popover hidden plan-card-actions-popover table-kebab-popover" data-plan-menu="${item.id}">
-                <div class="plan-card-actions-menu table-kebab-menu">
-                  <button class="btn btn-secondary" type="button" data-activity-entity-type="plan" data-activity-entity-id="${item.id}">Журнал</button>
-                  ${canEdit ? `<button class="btn btn-secondary" type="button" data-plan-action="edit" data-plan-id="${item.id}">Редактировать</button>` : ""}
-                  ${canSkip ? `<button class="btn btn-secondary" type="button" data-plan-action="skip" data-plan-id="${item.id}">Пропустить</button>` : ""}
-                  ${canDelete ? `<button class="btn btn-danger" type="button" data-plan-action="delete" data-plan-id="${item.id}">Удалить</button>` : ""}
-                </div>
-              </div>
-            </div>` : ""}
-        </div>
-        <div class="plan-card-row">
-          <div class="plan-card-primary">
-            <div class="plan-card-summary">
-              <div class="plan-card-date">
-                <span class="muted-small">Дата</span>
-                <strong>${dateLabel}</strong>
-              </div>
-              <div class="plan-card-context">
-                <div class="plan-card-title-row">
-                  <span class="kind-pill kind-pill-${kindClass}">${kindLabel}</span>
-                  <div class="plan-card-category-list">${categoryChips}</div>
-                  ${positionsMeta}
-                </div>
-                ${noteMeta ? `<div class="plan-card-meta">${noteMeta}</div>` : ""}
-              </div>
-            </div>
-            <div class="plan-card-progress">
-              <div class="plan-card-progress-head">
-                <span class="muted-small">${progress.label}</span>
-                ${dueDays ? `<span class="debt-due-days-badge debt-due-days-badge-${dueDaysTone}">${dueDays}</span>` : ""}
-              </div>
-              <div class="plan-card-progress-track">
-                <span class="plan-card-progress-bar plan-card-progress-bar-${progress.tone}" style="width:${progress.percent}%"></span>
-              </div>
-            </div>
-          </div>
-          <div class="plan-card-side">
-            <div class="plan-card-amount-block">
-              <span class="muted-small">Сумма</span>
-              <strong class="plan-card-amount amount-${kindClass}">${formatPlanAmountHtml(item)}</strong>
-            </div>
-          ${hideActions ? "" : `
-            <div class="actions row-actions plan-card-actions">
-              ${showConfirm ? `<button class="btn btn-primary" type="button" data-plan-action="confirm" data-plan-id="${item.id}">В операцию</button>` : ""}
-            </div>`}
-          </div>
-        </div>
-      </article>
-    `;
-  }
-
-  function renderHistoryCard(item) {
-    const kindClass = item.kind === "income" ? "income" : "expense";
-    const categoryChip = item.category_name
-      ? core.renderCategoryChip({ name: item.category_name, icon: "", accent_color: null }, "")
-      : "<span class='muted-small'>Без категории</span>";
-    const eventLabel = historyEventLabel(item.event_type);
-    const effectiveDate = item.effective_date ? core.formatDateRu(item.effective_date) : "Без даты";
-    const createdAt = item.created_at ? formatDateTimeRu(item.created_at) : "";
-    const operationMeta = item.operation_id ? `<span class="muted-small">Операция #${item.operation_id}</span>` : "";
-    return `
-      <article class="panel plan-card plan-history-card plan-history-card-${item.event_type || "event"}">
-        <div class="plan-card-main">
-          <div class="plan-card-head">
-            <div class="plan-card-title-row">
-              ${categoryChip}
-              <span class="meta-chip meta-chip-neutral">${eventLabel}</span>
-            </div>
-            <strong class="plan-card-amount amount-${kindClass}">${formatPlanAmountHtml(item)}</strong>
-          </div>
-          <div class="plan-card-meta">
-            ${item.note ? `<strong>${core.highlightText(item.note, "")}</strong>` : ""}
-            <span class="muted-small">Дата плана: ${effectiveDate}</span>
-            ${createdAt ? `<span class="muted-small">Событие: ${createdAt}</span>` : ""}
-            ${operationMeta}
-          </div>
-        </div>
-      </article>
-    `;
-  }
-
-  function getDashboardPlansPeriodFilteredItems() {
-    const period = state.dashboardPlansPeriod || "month";
-    const activeItems = getPlanItems().filter((item) => item.status === "due" || item.status === "overdue" || item.status === "upcoming");
-    if (period === "all_time") {
-      return activeItems;
-    }
-    const bounds = getDashboardPlansPeriodBounds(period, state.dashboardPlansPeriodAnchor || "current");
-    if (!bounds?.dateFrom || !bounds?.dateTo) {
-      return activeItems;
-    }
-    return activeItems.filter((item) => {
-      if (item.status === "overdue") {
-        return true;
-      }
-      const dueDate = String(item.scheduled_date || item.due_date || item.operation_date || "");
-      return Boolean(dueDate) && dueDate >= bounds.dateFrom && dueDate <= bounds.dateTo;
-    });
-  }
-
-  function getDashboardPlansPeriodLabel() {
-    const period = state.dashboardPlansPeriod || "month";
-    if (period === "all_time") {
-      return "Все активные планы";
-    }
-    const anchor = state.dashboardPlansPeriodAnchor || "current";
-    const bounds = getDashboardPlansPeriodBounds(period, anchor);
-    if (!bounds?.dateFrom || !bounds?.dateTo) {
-      return period === "week" ? "Планы на текущую неделю" : "Планы на текущий месяц";
-    }
-    const base = core.formatPeriodLabel ? core.formatPeriodLabel(bounds.dateFrom, bounds.dateTo) : `${bounds.dateFrom} - ${bounds.dateTo}`;
-    if (period === "week") {
-      return anchor === "previous" ? `Планы за прошлую неделю: ${base}` : `Планы на неделю: ${base}`;
-    }
-    return anchor === "previous" ? `Планы за прошлый месяц: ${base}` : `Планы на месяц: ${base}`;
-  }
-
-  function renderDashboardPlans() {
-    if (!el.dashboardPlansList || !el.dashboardPlansKpi) {
-      return;
-    }
-    const ui = core.getUiSettings ? core.getUiSettings() : null;
-    if (el.dashboardPlansPeriodTabs) {
-      core.syncSegmentedActive(el.dashboardPlansPeriodTabs, "dashboard-plans-period", state.dashboardPlansPeriod || "month");
-    }
-    if (el.dashboardPlansPeriodLabel) {
-      el.dashboardPlansPeriodLabel.textContent = getDashboardPlansPeriodLabel();
-    }
-    const items = getDashboardPlansPeriodFilteredItems()
-      .sort((a, b) => String(a.scheduled_date || a.due_date || a.operation_date || "").localeCompare(String(b.scheduled_date || b.due_date || b.operation_date || "")))
-      .slice(0, ui?.dashboardOperationsLimit || 8);
-    const summary = summarizePlans(items);
-    el.dashboardPlansKpi.innerHTML = `
-      <span class="analytics-kpi-chip analytics-kpi-chip-neutral">Активных: ${summary.activeCount}</span>
-      <span class="analytics-kpi-chip analytics-kpi-chip-neutral">Сегодня: ${summary.todayCount}</span>
-      <span class="analytics-kpi-chip analytics-kpi-chip-negative">Просрочено: ${summary.overdueCount}</span>
-      <span class="analytics-kpi-chip ${summary.netPlanned >= 0 ? "analytics-kpi-chip-positive" : "analytics-kpi-chip-negative"}">Плановый сдвиг: ${summary.netPlanned < 0 ? "-" : "+"}${core.formatMoney(Math.abs(summary.netPlanned))}</span>
-    `;
-    el.dashboardPlansList.innerHTML = items.length
-      ? items.map((item) => renderPlanCard(item, { dashboardCompact: true })).join("")
-      : "<div class='muted-small'>Планов пока нет</div>";
   }
 
   async function renderPlansSection() {
@@ -1064,32 +503,6 @@
     getSessionFeature().savePreferencesDebounced?.(250);
   }
 
-  function openDashboardPlansPeriodPopover(period, trigger) {
-    if (!["week", "month"].includes(period) || !el.dashboardPlansPeriodPopover) {
-      return;
-    }
-    renderDashboardPlansPeriodOptions(period);
-    getPickerUtils().setPopoverOpen?.(el.dashboardPlansPeriodPopover, true, {
-      owners: [trigger || el.dashboardPlansPeriodTabs].filter(Boolean),
-      onClose: () => closeDashboardPlansPeriodPopover(),
-    });
-  }
-
-  async function setDashboardPlansPeriod(value, anchor = "current") {
-    const next = ["week", "month", "all_time"].includes(value) ? value : "month";
-    state.dashboardPlansPeriod = next;
-    state.dashboardPlansPeriodAnchor = next === "all_time" ? "current" : (anchor === "previous" ? "previous" : "current");
-    core.syncSegmentedActive(el.dashboardPlansPeriodTabs, "dashboard-plans-period", next);
-    closeDashboardPlansPeriodPopover();
-    if (!getPlanItems().length) {
-      await loadPlans({ force: true });
-      getSessionFeature().savePreferencesDebounced?.(250);
-      return;
-    }
-    renderDashboardPlans();
-    getSessionFeature().savePreferencesDebounced?.(250);
-  }
-
   function applyPlansSearch() {
     renderPlansSection().catch((err) => core.setStatus(String(err)));
   }
@@ -1270,18 +683,7 @@
     });
   }
 
-  if (el.dashboardPlansPeriodOptions) {
-    el.dashboardPlansPeriodOptions.addEventListener("click", (event) => {
-      const btn = event.target.closest("[data-dashboard-plans-quick-period][data-dashboard-plans-quick-anchor]");
-      if (!btn) {
-        return;
-      }
-      setDashboardPlansPeriod(
-        String(btn.dataset.dashboardPlansQuickPeriod || ""),
-        String(btn.dataset.dashboardPlansQuickAnchor || "current"),
-      ).catch((err) => core.setStatus(String(err)));
-    });
-  }
+  plansDashboard.bindDashboardPlansPeriodOptions?.();
 
   const api = {
     loadPlans,

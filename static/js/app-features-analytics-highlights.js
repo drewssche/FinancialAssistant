@@ -72,11 +72,13 @@
     const { dateFrom, dateTo } = getDashboardPeriodBounds();
     const params = new URLSearchParams({
       period,
-      date_from: dateFrom,
-      date_to: dateTo,
       category_kind: state.dashboardCategoryKind || "expense",
       category_breakdown_level: state.dashboardBreakdownLevel || "category",
     });
+    if (period !== "all_time") {
+      params.set("date_from", dateFrom);
+      params.set("date_to", dateTo);
+    }
     const cacheKey = `dashboard:highlights:${params.toString()}`;
     const trendModule = getAnalyticsModules().trend;
     const formatPct = trendModule?.formatPct || ((v) => String(v ?? "нет базы"));

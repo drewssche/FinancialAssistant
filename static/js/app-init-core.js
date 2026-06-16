@@ -47,6 +47,10 @@
     return window.App.getRuntimeModule?.("usage") || {};
   }
 
+  function getBulkUi() {
+    return window.App.getRuntimeModule?.("bulk-ui") || {};
+  }
+
   function isCompactMobileViewport() {
     return window.matchMedia("(max-width: 640px)").matches;
   }
@@ -236,18 +240,16 @@
       });
     }
     el.batchOperationCta.addEventListener("click", () => {
-      if (actions.openBatchCreateModal) {
-        actions.openBatchCreateModal();
-      }
+      getBulkUi().openBatchCreateModal?.();
     });
-    if (el.batchCategoryCta && actions.openBatchCategoryModal) {
+    if (el.batchCategoryCta) {
       el.batchCategoryCta.addEventListener("click", () => {
-        actions.openBatchCategoryModal();
+        getBulkUi().openBatchCategoryModal?.();
       });
     }
-    if (el.batchItemCatalogCta && actions.openBatchItemTemplateModal) {
+    if (el.batchItemCatalogCta) {
       el.batchItemCatalogCta.addEventListener("click", () => {
-        actions.openBatchItemTemplateModal();
+        getBulkUi().openBatchItemTemplateModal?.();
       });
     }
 
@@ -267,9 +269,7 @@
 
     el.addCategoryCta.addEventListener("click", () => getCategoryActions().openCreateCategoryModal?.());
     el.addGroupCta.addEventListener("click", () => {
-      if (actions.openCreateGroupModal) {
-        actions.openCreateGroupModal();
-      }
+      getCategoryActions().openCreateGroupModal?.();
     });
     el.closeCreateCategoryModalBtn.addEventListener("click", () => getCategoryActions().closeCreateCategoryModal?.());
     el.createCategoryModal.addEventListener("click", (event) => {

@@ -217,13 +217,8 @@
   }
 
   function handleCreateGroupSearchBlur() {
-    window.setTimeout(() => {
-      const active = document.activeElement;
-      if (active && active.closest("#createCategoryGroupField")) {
-        return;
-      }
-      closeCreateGroupPopover();
-    }, 0);
+    // Selection on touch devices can temporarily move focus to the document
+    // before the option click fires. Outside-pointer handling owns dismissal.
   }
 
   function handleEditGroupSearchFocus() {
@@ -240,13 +235,7 @@
   }
 
   function handleEditGroupSearchBlur() {
-    window.setTimeout(() => {
-      const active = document.activeElement;
-      if (active && active.closest("#editCategoryGroupField")) {
-        return;
-      }
-      closeEditGroupPopover();
-    }, 0);
+    // Keep the picker open until selection, Escape, or an outside pointer.
   }
 
   function handleCreateGroupSearchKeydown(event) {
@@ -351,6 +340,7 @@
   function openCreateCategoryModal(options = {}) {
     const kind = options.kind || "expense";
     const prefillName = typeof options.prefillName === "string" ? options.prefillName.trim() : "";
+    const preselectGroupId = options.groupId ? String(options.groupId) : "";
     const resetForm = options.reset !== false;
 
     if (resetForm) {
@@ -368,6 +358,15 @@
     }
 
     setCategoryKind("create", kind);
+    if (preselectGroupId) {
+      const selected = state.categoryGroups.find((group) => String(group.id) === preselectGroupId && (!kind || group.kind === kind));
+      if (selected) {
+        el.categoryGroup.value = preselectGroupId;
+        if (el.categoryGroupSearch) {
+          el.categoryGroupSearch.value = selected.name || "";
+        }
+      }
+    }
     renderCreateGroupPicker();
     el.createCategoryModal.classList.remove("hidden");
   }
@@ -380,6 +379,29 @@
       state.pendingCreateCategoryFromOperation = "";
       state.pendingCreateCategoryFromReceipt = null;
     }
+  }
+
+  function openCreateGroupModal() {
+    if (el.groupKind) {
+      el.groupKind.value = "expense";
+    }
+    if (el.createGroupKind) {
+      core.syncSegmentedActive(el.createGroupKind, "group-create-kind", "expense");
+    }
+    if (el.groupName) {
+      el.groupName.value = "";
+    }
+    if (el.groupAccentColor) {
+      el.groupAccentColor.value = "#ff8a3d";
+    }
+    if (el.groupAccentColorHex) {
+      el.groupAccentColorHex.value = "#ff8a3d";
+    }
+    el.createGroupModal?.classList.remove("hidden");
+  }
+
+  function closeCreateGroupModal() {
+    el.createGroupModal?.classList.add("hidden");
   }
 
   function populateCategorySelect(selectNode, selectedId, kind) {
@@ -469,6 +491,8 @@
     setupCategoryIconPickers,
     openCreateCategoryModal,
     closeCreateCategoryModal,
+    openCreateGroupModal,
+    closeCreateGroupModal,
     fillGroupSelect,
     setCategoryKind,
     populateCategorySelect,

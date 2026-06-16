@@ -2,6 +2,10 @@
   const { state, el, core, actions } = window.App;
   const pickerUtils = window.App.getRuntimeModule?.("picker-utils");
 
+  function getOperationsFeature() {
+    return window.App.getRuntimeModule?.("operations") || {};
+  }
+
     function toggleTableMenu(trigger) {
     const menuId = String(trigger?.dataset.tableMenuTrigger || "");
     const menu = menuId ? document.querySelector(`.table-kebab-popover[data-table-menu="${CSS.escape(menuId)}"]`) : null;
@@ -57,14 +61,15 @@
       if (receiptBtn) {
         closeTableMenuForAction(event.target);
         const operationId = Number(receiptBtn.dataset.receiptViewId || 0);
-        if (operationId > 0 && actions.openOperationReceiptModal) {
+        const operationsFeature = getOperationsFeature();
+        if (operationId > 0 && operationsFeature.openOperationReceiptModal) {
           core.runAction({
             errorPrefix: "Ошибка открытия чека",
             action: async () => {
               const item = await core.requestJson(`/api/v1/operations/${operationId}`, {
                 headers: core.authHeaders(),
               });
-              actions.openOperationReceiptModal(item);
+              operationsFeature.openOperationReceiptModal(item);
             },
           });
         }

@@ -230,6 +230,7 @@
                     </button>
                     <div class="app-popover hidden mobile-card-actions-popover" data-mobile-card-menu="item-source-${escapeHtml(group.shopKey)}">
                       <div class="mobile-card-actions-menu">
+                        <button class="btn btn-secondary" data-create-item-template-source-name="${escapeHtml(group.shopName)}" type="button">Добавить позицию</button>
                         <button class="btn btn-secondary" data-edit-item-source-name="${escapeHtml(group.shopName)}" type="button">Редактировать</button>
                         <button class="btn btn-danger" data-delete-item-source-name="${escapeHtml(group.shopName)}" type="button">Удалить</button>
                       </div>
@@ -259,9 +260,11 @@
                   </span>
                 </span>
               </button>
+              ${group.shopKey !== "__no_shop__" ? `<button class="btn btn-secondary category-context-create-btn item-source-context-create-btn" data-create-item-template-source-name="${escapeHtml(group.shopName)}" type="button" aria-label="Добавить позицию в источник">+</button>` : ""}
               ${group.shopKey !== "__no_shop__" ? core.renderInlineKebabMenu?.(
                 `item-source-${escapeHtml(group.shopKey)}`,
-                `<button class="btn btn-secondary" data-edit-item-source-name="${escapeHtml(group.shopName)}" type="button">Редактировать</button>
+                `<button class="btn btn-secondary" data-create-item-template-source-name="${escapeHtml(group.shopName)}" type="button">Добавить позицию</button>
+                <button class="btn btn-secondary" data-edit-item-source-name="${escapeHtml(group.shopName)}" type="button">Редактировать</button>
                 <button class="btn btn-danger" data-delete-item-source-name="${escapeHtml(group.shopName)}" type="button">Удалить</button>`,
                 "Действия источника",
                 "item-source-kebab",

@@ -1,6 +1,6 @@
 (() => {
   const { el } = window.App;
-  const actions = getActions();
+  const actions = getPickerActions();
   const categoryActions = getCategoryActions();
   const pickerUtils = getPickerUtils();
   const pickerCoordinator = getPickerUiCoordinator();
@@ -395,12 +395,23 @@
   window.App.registerFeatureInitModule?.("pickers", api);
 })();
 
-function getActions() {
-  return window.App.actions || {};
+function getPickerActions() {
+  return {
+    ...getOperationModal(),
+    ...getItemCatalogFeature(),
+  };
 }
 
 function getCategoryActions() {
   return window.App.getRuntimeModule?.("category-actions") || {};
+}
+
+function getOperationModal() {
+  return window.App.getRuntimeModule?.("operation-modal") || {};
+}
+
+function getItemCatalogFeature() {
+  return window.App.getRuntimeModule?.("item-catalog") || {};
 }
 
 function getCore() {

@@ -64,8 +64,39 @@
     }
   }
 
+  function findItemTemplateById(state, itemId) {
+    const id = Number(itemId || 0);
+    if (!id) {
+      return null;
+    }
+    return (Array.isArray(state.itemCatalogItems) ? state.itemCatalogItems : []).find((item) => Number(item?.id || 0) === id) || null;
+  }
+
+  function resolveItemTemplateFromButton(button, state, datasetName) {
+    const rowItem = parseRowItem(button?.closest?.("tr"));
+    if (rowItem?.id) {
+      return rowItem;
+    }
+    return findItemTemplateById(state, button?.dataset?.[datasetName]);
+  }
+
+  function closeItemCatalogActionPopover({ event, pickerUtils }) {
+    const menu = event.target.closest(".mobile-card-actions-popover, .table-kebab-popover");
+    if (!menu || !pickerUtils?.setPopoverOpen) {
+      return;
+    }
+    const owners = Array.isArray(menu.__appPopoverOwners) ? menu.__appPopoverOwners : [];
+    const onClose = typeof menu.__appPopoverOnClose === "function" ? menu.__appPopoverOnClose : null;
+    pickerUtils.setPopoverOpen(menu, false, { owners });
+    if (onClose) {
+      onClose();
+    }
+    owners.forEach((owner) => owner?.blur?.());
+  }
+
   function handleItemCatalogBodyClick({
     event,
+    state,
     pickerUtils,
     handleItemCatalogBodyClickAction,
     deleteItemSourceFlow,
@@ -82,17 +113,26 @@
     }
     const deleteSourceBtn = event.target.closest("button[data-delete-item-source-name]");
     if (deleteSourceBtn) {
+      closeItemCatalogActionPopover({ event, pickerUtils });
       deleteItemSourceFlow?.(deleteSourceBtn.dataset.deleteItemSourceName || "").catch((err) => setStatus?.(String(err)));
+      return true;
+    }
+    const createInSourceBtn = event.target.closest("button[data-create-item-template-source-name]");
+    if (createInSourceBtn) {
+      closeItemCatalogActionPopover({ event, pickerUtils });
+      openItemTemplateModalAction?.({ shop_name: createInSourceBtn.dataset.createItemTemplateSourceName || "" });
       return true;
     }
     const editSourceBtn = event.target.closest("button[data-edit-item-source-name]");
     if (editSourceBtn) {
+      closeItemCatalogActionPopover({ event, pickerUtils });
       openEditSourceGroupModalAction?.(editSourceBtn.dataset.editItemSourceName || "");
       return true;
     }
     const deleteBtn = event.target.closest("button[data-delete-item-template-id]");
     if (deleteBtn) {
-      const item = parseRowItem(deleteBtn.closest("tr"));
+      closeItemCatalogActionPopover({ event, pickerUtils });
+      const item = resolveItemTemplateFromButton(deleteBtn, state, "deleteItemTemplateId");
       if (item?.id) {
         deleteItemTemplateFlow?.(item).catch((err) => setStatus?.(String(err)));
       }
@@ -100,7 +140,8 @@
     }
     const editBtn = event.target.closest("button[data-edit-item-template-id]");
     if (editBtn) {
-      const item = parseRowItem(editBtn.closest("tr"));
+      closeItemCatalogActionPopover({ event, pickerUtils });
+      const item = resolveItemTemplateFromButton(editBtn, state, "editItemTemplateId");
       if (item?.id) {
         openItemTemplateModalAction?.(item);
       }
@@ -108,7 +149,8 @@
     }
     const historyBtn = event.target.closest("button[data-item-template-history-id]");
     if (historyBtn) {
-      const item = parseRowItem(historyBtn.closest("tr"));
+      closeItemCatalogActionPopover({ event, pickerUtils });
+      const item = resolveItemTemplateFromButton(historyBtn, state, "itemTemplateHistoryId");
       if (item?.id) {
         openItemTemplateHistoryModalAction?.(item).catch((err) => setStatus?.(String(err)));
       }

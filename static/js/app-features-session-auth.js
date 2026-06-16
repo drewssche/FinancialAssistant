@@ -3,21 +3,16 @@
   const operationModal = window.App.getRuntimeModule?.("operation-modal");
   const sessionPreferences = window.App.getRuntimeModule?.("session-preferences") || {};
 
-  function getActions() {
-    return window.App.actions || {};
-  }
-
   function getCategoryActions() {
     return window.App.getRuntimeModule?.("category-actions") || {};
   }
 
   function getNavigationActions() {
-    const actions = getActions();
-    return {
-      applySectionUi: actions.applySectionUi,
-      switchSection: actions.switchSection,
-      refreshAll: actions.refreshAll,
-    };
+    return window.App.getRuntimeModule?.("navigation") || {};
+  }
+
+  function getOperationsFeature() {
+    return window.App.getRuntimeModule?.("operations") || {};
   }
 
   async function loadTelegramLoginConfig() {
@@ -222,8 +217,9 @@
       await navigation.switchSection(state.activeSection || "dashboard", { preserveBackStack: true });
       return;
     }
-    if (navigation.refreshAll) {
-      await navigation.refreshAll();
+    const operationsFeature = getOperationsFeature();
+    if (operationsFeature.refreshAll) {
+      await operationsFeature.refreshAll();
     }
   }
 

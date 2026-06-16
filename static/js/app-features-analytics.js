@@ -2,11 +2,7 @@
   const { state, el, core } = window.App;
 
   function getNavigationActions() {
-    const actions = window.App.actions || {};
-    return {
-      switchSection: actions.switchSection,
-      pushSectionBackContext: actions.pushSectionBackContext,
-    };
+    return window.App.getRuntimeModule?.("navigation") || {};
   }
 
   function getAnalyticsModules() {

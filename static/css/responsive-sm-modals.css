@@ -224,38 +224,6 @@
     margin-top: var(--space-1);
   }
 
-  .analytics-calendar-scroll-wrap {
-    position: relative;
-  }
-
-  .analytics-calendar-scroll-wrap::before,
-  .analytics-calendar-scroll-wrap::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 12px;
-    pointer-events: none;
-    z-index: 2;
-    opacity: 0;
-    transition: opacity 0.18s ease;
-  }
-
-  .analytics-calendar-scroll-wrap::before {
-    left: 0;
-    background: linear-gradient(90deg, rgba(17, 25, 39, 0.58) 0%, rgba(17, 25, 39, 0) 100%);
-  }
-
-  .analytics-calendar-scroll-wrap::after {
-    right: 0;
-    background: linear-gradient(270deg, rgba(17, 25, 39, 0.58) 0%, rgba(17, 25, 39, 0) 100%);
-  }
-
-  .analytics-calendar-scroll-wrap.has-left-fade::before,
-  .analytics-calendar-scroll-wrap.has-right-fade::after {
-    opacity: 1;
-  }
-
   .analytics-calendar-scroll-wrap .table-wrap {
     touch-action: pan-x pan-y;
   }

@@ -61,7 +61,7 @@
       }
       el.itemTemplateModal.classList.remove("hidden");
       setTimeout(() => {
-        if (!isEdit && el.itemTemplateSourceSearch) {
+        if (!isEdit && !normalizeItemCatalogShopName(item?.shop_name || "") && el.itemTemplateSourceSearch) {
           el.itemTemplateSourceSearch.focus();
           return;
         }

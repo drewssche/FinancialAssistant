@@ -75,6 +75,17 @@
     `;
   }
 
+  function renderMetadataDisplay(items) {
+    if (!Array.isArray(items) || !items.length) {
+      return "";
+    }
+    return `
+      <div class="activity-metadata-list">
+        ${items.map((item) => `<span class="meta-chip meta-chip-info">${core.escapeHtml(item)}</span>`).join("")}
+      </div>
+    `;
+  }
+
   function renderEvents(items) {
     if (!el.activityList) {
       return;
@@ -90,6 +101,7 @@
           <span class="muted-small">${core.escapeHtml(formatEventDate(item.created_at))}</span>
         </div>
         ${renderChanges(item.changes)}
+        ${renderMetadataDisplay(item.metadata_display)}
       </article>
     `).join("");
   }
