@@ -48,6 +48,8 @@ Include e2e when environment supports it:
 RUN_E2E=1 ./scripts/release_check.sh
 ```
 
+The e2e release mode runs browser suites in domain groups and keeps sync-Playwright preference tests isolated. Prefer it over a single mixed `pytest -q` command for complete release validation.
+
 Include runtime API checks:
 
 ```bash

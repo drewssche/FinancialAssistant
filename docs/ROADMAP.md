@@ -12,6 +12,31 @@
 - Keep Telegram-specific behavior in the client runtime; backend contracts stay shared between Web UI and Telegram.
 
 ## Current Sprint
+### Release Validation 2026-06-16
+- [x] Commit under validation: `34870fa f`; working tree was clean before validation fixes.
+- [x] API suite: `./.venv/bin/pytest -q tests/api` passed.
+- [x] E2E domain suites passed in isolated pytest processes: operations money-flow, analytics mobile/desktop structure, bulk/contextual actions, mobile shell cards, debts, plans, currency, receipt/category pickers, batch create, and sort preference persistence.
+- [x] Local Docker stack is running; app health is OK from inside the app container via `http://127.0.0.1:8000/health`.
+- Notes:
+  - `tests/e2e/test_sort_preset_persistence_e2e.py` must remain an isolated pytest process because it owns a sync Playwright lifecycle and conflicts with pytest-playwright async-loop fixtures when mixed into a large command.
+  - Host `curl http://127.0.0.1:8001/health` failed in this validation shell even though `docker compose ps` showed the app published on `8001` and container-internal health returned OK.
+
+### Production Hardening 2026-06-16
+- [x] Browser Telegram login default safety.
+  - Done 2026-06-16: `.env.example` no longer enables browser Telegram login by placeholder username. `TELEGRAM_BOT_USERNAME` placeholders (`change_me`, `change_me_bot`, `your_bot_username`) normalize to empty, while real usernames normalize without leading `@`.
+  - Covered by config/auth API tests and auth-login UI e2e.
+- [x] Release check script hardening.
+  - Done 2026-06-16: `scripts/release_check.sh` no longer mixes all e2e tests into one pytest process when `RUN_E2E=1`; it runs domain e2e groups explicitly and keeps sort-preference sync Playwright tests isolated.
+  - Fast release mode (`./scripts/release_check.sh`) passes locally: non-e2e baseline, request-budget guard, and tokenless health-check skip path.
+  - Full local release mode (`RUN_E2E=1 ./scripts/release_check.sh`) passes with elevated socket permissions: non-e2e baseline, auth, operations money-flow, analytics, bulk/batch, mobile shell, debts, plans, currency, receipt/category pickers, isolated sort preferences, and request-budget guard.
+- [x] Legacy plan confirmation compatibility.
+  - Done 2026-06-16: plan confirmation and serialization fall back from zero/empty `original_amount` to positive `amount`, so older or manually-created plan rows can still be confirmed from Telegram without creating a zero-amount operation.
+  - Covered by Telegram plan bot service tests and adjacent plan/reminder service tests.
+- [x] Release/deploy checklist documentation sync.
+  - Done 2026-06-16: release docs now prefer `release_check.sh` over a mixed full pytest command, VPS checklist documents placeholder-safe `TELEGRAM_BOT_USERNAME`, and scripts README explains the isolated e2e release mode.
+- [ ] Production deploy checklist execution.
+  - Next: decide whether to run the deploy-side checklist against a real VPS/domain or keep validation local until a production snapshot/domain is available.
+
 ### Period Controls, All-Time Performance, And Geometry Audit 2026-06-16
 - [x] Stage 1: audit period handling across dashboard, operations, analytics structure/highlights, analytics trends, calendar, debts and plans where applicable.
   - Done 2026-06-16: verified `all_time` highlights on backend, found frontend label drift in trends, found old dashboard analytics tabs, and confirmed operations money-flow had a backend pagination bottleneck for large all-time operation datasets.

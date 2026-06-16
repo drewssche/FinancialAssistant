@@ -1,6 +1,6 @@
 # VPS Update Checklist
 
-Updated: 2026-03-08
+Updated: 2026-06-16
 
 ## What Changed in Telegram/Bot Terms
 
@@ -28,6 +28,7 @@ If none of that changed, recent auth/mobile/UI changes do not require a new BotF
 Browser Telegram login is now stricter:
 
 - backend rejects `/api/v1/auth/telegram/browser` when `TELEGRAM_BOT_USERNAME` is not configured
+- placeholder values (`change_me`, `change_me_bot`, `your_bot_username`) are treated as not configured
 - frontend relies on server `browser_login_available`
 
 So after update, browser login still works only when:
@@ -55,6 +56,7 @@ Mini App login via `initData` is unaffected by this change as long as the Mini A
    - `docker compose logs bot --tail=100`
 5. Run quick health check:
    - `/health`
+   - `TOKEN=... BASE_URL=https://your-domain ./scripts/health_check.sh`
    - login in Telegram Mini App
    - if browser login is used, verify widget is still shown and works on current domain
 

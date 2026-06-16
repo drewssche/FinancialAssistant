@@ -355,10 +355,11 @@ class PlanService:
             raise ValueError("Plan is already completed")
         receipt_map = self.repo.list_receipt_items_for_plans(user_id=user_id, plan_ids=[plan_id])
         receipt_items = receipt_map.get(plan_id, [])
+        original_amount = self._get_plan_original_amount(item)
         operation = self.operation_service.create_operation(
             user_id=user_id,
             kind=item.kind,
-            amount=getattr(item, "original_amount", item.amount),
+            amount=original_amount,
             currency=getattr(item, "currency", "BYN"),
             fx_rate=self._resolve_plan_current_rate(item=item),
             operation_date=effective_date,
@@ -556,7 +557,7 @@ class PlanService:
             )
         currency = str(getattr(item, "currency", "BYN") or "BYN").upper()
         base_currency = str(getattr(item, "base_currency", "BYN") or "BYN").upper()
-        original_amount = self.operation_service._money(getattr(item, "original_amount", item.amount))
+        original_amount = self._get_plan_original_amount(item)
         current_rate_row = self.currency_repo.get_latest_rate_map(user_id=int(item.user_id)).get(currency) if currency != base_currency else None
         current_rate = self.operation_service._rate(current_rate_row.rate) if current_rate_row else None
         current_base_amount = self._resolve_live_plan_base_amount(
@@ -609,6 +610,13 @@ class PlanService:
             "last_skipped_at": item.last_skipped_at,
             "created_at": item.created_at,
         }
+
+    def _get_plan_original_amount(self, item) -> Decimal:
+        original_amount = self.operation_service._money(getattr(item, "original_amount", None) or 0)
+        base_amount = self.operation_service._money(getattr(item, "amount", None) or 0)
+        if original_amount <= 0 and base_amount > 0:
+            return base_amount
+        return original_amount
 
     def _resolve_live_plan_base_amount(
         self,

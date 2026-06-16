@@ -59,3 +59,17 @@ def test_development_runtime_allows_placeholder_values():
 
     assert settings.production_config_errors() == []
     settings.validate_runtime_requirements()
+
+
+def test_placeholder_telegram_bot_username_does_not_enable_browser_login():
+    settings = Settings(TELEGRAM_BOT_USERNAME="change_me_bot")
+
+    assert settings.normalized_telegram_bot_username == ""
+    assert settings.browser_telegram_login_enabled is False
+
+
+def test_telegram_bot_username_is_normalized_for_browser_login():
+    settings = Settings(TELEGRAM_BOT_USERNAME="@finance_assistant_bot")
+
+    assert settings.normalized_telegram_bot_username == "finance_assistant_bot"
+    assert settings.browser_telegram_login_enabled is True

@@ -198,8 +198,9 @@ def test_sidebar_user_handle_falls_back_to_telegram_id_when_username_missing(sta
             _restore_mock_telegram(page)
             page.evaluate("() => window.App.getRuntimeModule('session')?.refreshTelegramLoginUi?.()")
             assert page.locator("#telegramLoginBtn").text_content() == "Войти через Telegram Mini App"
-            page.locator("#telegramLoginBtn").wait_for(state="visible")
-            page.click("#telegramLoginBtn")
+            if page.locator("#appShell:not(.hidden)").count() == 0:
+                page.locator("#telegramLoginBtn").wait_for(state="visible")
+                page.click("#telegramLoginBtn")
             page.wait_for_selector("#appShell:not(.hidden)")
             assert page.locator("#userHandle").text_content() == "ID 550011"
         finally:

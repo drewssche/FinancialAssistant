@@ -69,7 +69,10 @@ class Settings(BaseSettings):
 
     @property
     def normalized_telegram_bot_username(self) -> str:
-        return self.telegram_bot_username.strip()
+        username = self.telegram_bot_username.strip().lstrip("@")
+        if username.lower() in {"change_me", "change_me_bot", "your_bot_username"}:
+            return ""
+        return username
 
     @property
     def browser_telegram_login_enabled(self) -> bool:

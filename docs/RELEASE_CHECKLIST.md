@@ -30,15 +30,17 @@ REQUIRE_HEALTH=1 TOKEN=... BASE_URL=http://localhost:8001 ./scripts/release_chec
 ```
 
 ## 1. Test Baseline
-Run full test suite:
+Run the non-e2e baseline directly only when you need a lower-level pytest check:
 
 ```bash
-./.venv/bin/pytest -q
+./.venv/bin/pytest -q -m "not e2e"
 ```
 
 Expected:
 - all tests pass
 - no unexpected warnings/regressions
+
+Do not use a single mixed `./.venv/bin/pytest -q` command for the complete suite. Some browser e2e files intentionally own their own Playwright lifecycle and must stay in isolated pytest processes. Use `RUN_E2E=1 ./scripts/release_check.sh` for the complete local release pass.
 
 Critical-chain regression matrix:
 
@@ -110,13 +112,8 @@ Before exposing the app inside Telegram WebApp, verify:
 - main forms remain usable with mobile keyboard open
 - safe-area/viewport shifts do not hide primary CTA or break layout
 - targeted mobile e2e regression suite passes:
-  - `tests/e2e/test_auth_login_ui_e2e.py`
-  - `tests/e2e/test_receipt_picker_store_scope_e2e.py`
-  - `tests/e2e/test_debts_flow_e2e.py`
-  - `tests/e2e/test_chip_picker_no_duplicates_e2e.py`
-  - `tests/e2e/test_batch_create_operations_e2e.py`
-  - `tests/e2e/test_bulk_import_sections_e2e.py`
-  - `tests/e2e/test_analytics_mobile_e2e.py`
+  - preferred: `RUN_E2E=1 ./scripts/release_check.sh`
+  - targeted fallback: run the relevant e2e files as separate pytest processes when debugging one domain
 
 Expected:
 - app is usable end-to-end on a real phone or equivalent mobile emulation

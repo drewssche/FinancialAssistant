@@ -146,10 +146,12 @@ def page_with_sort_prefs_api_mock():
             return json_response(route, [])
         if path == "/api/v1/dashboard/summary" and method == "GET":
             return json_response(route, {"income_total": "0.00", "expense_total": "0.00", "balance": "0.00"})
-        if path == "/api/v1/operations" and method == "GET":
+        if path in {"/api/v1/operations", "/api/v1/operations/money-flow"} and method == "GET":
             if (query.get("page_size") or [""])[0] == "20":
                 metrics["last_operations_sort_by_page20"] = (query.get("sort_by") or [""])[0]
             return json_response(route, {"items": operations, "total": len(operations), "page": 1, "page_size": 20})
+        if path == "/api/v1/operations/money-flow/summary" and method == "GET":
+            return json_response(route, {"income_total": "0.00", "expense_total": "210.00", "balance": "-210.00", "total": len(operations)})
         if path == "/api/v1/debts/cards" and method == "GET":
             return json_response(route, debt_cards)
         if path == "/api/v1/test/sort-metrics" and method == "GET":
@@ -211,6 +213,15 @@ def test_operations_sort_preset_persists_after_reload(static_server_url: str, pa
     page.wait_for_function(
         """
         () => document.querySelector('#operationsSortTabs .segmented-btn.active')?.dataset.opSort === 'amount'
+        """
+    )
+    page.wait_for_function(
+        """
+        async () => {
+          const response = await fetch('/api/v1/preferences');
+          const payload = await response.json();
+          return payload?.data?.operations?.sort_preset === 'amount';
+        }
         """
     )
 

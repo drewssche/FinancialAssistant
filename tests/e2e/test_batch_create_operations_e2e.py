@@ -141,7 +141,7 @@ def test_batch_create_modal_submits_multiple_operations(page):
 
 
 @pytest.mark.e2e
-def test_create_debt_modal_accepts_display_date_format(page):
+def test_create_debt_modal_submits_native_date_values(page):
     debt_payloads = []
 
     def handle_request(route):
@@ -214,8 +214,8 @@ def test_create_debt_modal_accepts_display_date_format(page):
     page.evaluate("window.App.actions.openCreateModal()")
     page.locator("#createModal").wait_for(state="visible")
     page.locator('#createModal #createEntryModeSwitch button[data-entry-mode="debt"]').click()
-    page.fill("#debtStartDate", "07.03.2026")
-    page.fill("#debtDueDate", "20.03.2026")
+    page.fill("#debtStartDate", "2026-03-07")
+    page.fill("#debtDueDate", "2026-03-20")
     page.fill("#debtCounterparty", "Alex")
     page.fill("#debtPrincipal", "120")
     page.fill("#debtNote", "Тест")
