@@ -245,7 +245,8 @@
           categoryActions.handleCreateGroupSearchFocus();
         }
       });
-      el.categoryGroupSearch.addEventListener("click", () => {
+      el.categoryGroupSearch.addEventListener("click", (event) => {
+        event.stopPropagation();
         if (categoryActions.handleCreateGroupSearchFocus) {
           categoryActions.handleCreateGroupSearchFocus();
         }
@@ -279,7 +280,8 @@
           categoryActions.handleEditGroupSearchFocus();
         }
       });
-      el.editCategoryGroupSearch.addEventListener("click", () => {
+      el.editCategoryGroupSearch.addEventListener("click", (event) => {
+        event.stopPropagation();
         if (categoryActions.handleEditGroupSearchFocus) {
           categoryActions.handleEditGroupSearchFocus();
         }

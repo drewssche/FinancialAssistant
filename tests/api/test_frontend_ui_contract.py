@@ -91,6 +91,35 @@ def test_byn_uses_compact_currency_symbol_in_frontend_formatters():
     assert "руб." not in core_utils
 
 
+def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
+    manifest = MANIFEST_JS.read_text(encoding="utf-8")
+    shell = (REPO_ROOT / "static" / "js" / "templates" / "shell.js").read_text(encoding="utf-8")
+    styles = (REPO_ROOT / "static" / "styles.css").read_text(encoding="utf-8")
+    calculator_css = (REPO_ROOT / "static" / "css" / "components-finance-calculator.css").read_text(encoding="utf-8")
+    calculator_js = (REPO_ROOT / "static" / "js" / "app-finance-calculator.js").read_text(encoding="utf-8")
+    init_features = (REPO_ROOT / "static" / "js" / "app-init-features.js").read_text(encoding="utf-8")
+    index_html = INDEX_HTML.read_text(encoding="utf-8")
+
+    assert "<title>ФинАсист</title>" in index_html
+    assert "<h1>ФинАсист</h1>" in index_html
+    assert '<div class="brand">ФА</div>' in shell
+    assert 'id="financeCalculatorToggle"' in shell
+    assert 'id="financeCalculatorDrawer"' in shell
+    assert 'data-calculator-mode="discount"' in shell
+    assert 'data-calculator-mode="split"' in shell
+    assert '"/static/js/app-finance-calculator.js"' in manifest
+    assert '@import url("/static/css/components-finance-calculator.css");' in styles
+    assert "registerRuntimeModule?.(\"finance-calculator\"" in calculator_js
+    assert "calculateDiscount" in calculator_js
+    assert "calculateChange" in calculator_js
+    assert "calculateUnit" in calculator_js
+    assert "calculateSplit" in calculator_js
+    assert "getFinanceCalculator().bind?.();" in init_features
+    assert "body.finance-calculator-open" in calculator_css
+    assert "@media (max-width: 640px)" in calculator_css
+    assert "max-height: min(88dvh, 720px)" in calculator_css
+
+
 def test_analytics_calendar_money_tooltip_uses_app_font_not_native_title():
     analytics_calendar = (REPO_ROOT / "static" / "js" / "app-features-analytics-calendar.js").read_text(encoding="utf-8")
     analytics_css = (REPO_ROOT / "static" / "css" / "components-analytics-summary.css").read_text(encoding="utf-8")

@@ -102,3 +102,5 @@ Notes:
 - admins must open the bot and press `Start` once before Telegram allows outbound notifications
 - the same worker also sends due/overdue plan reminders to users who enabled `plans.reminders_enabled`
 - when Redis is unavailable, the worker now sends an admin-only advisory about `local fallback` mode with a built-in `12h` cooldown and health-check guidance
+- for local Web/API checks, the worker is optional; use `docker compose up --build -d app db` and keep `bot` stopped when local `.env` does not contain a valid Telegram token
+- Telegram `401/403` polling responses are treated as invalid token/configuration and park the worker instead of busy-retrying

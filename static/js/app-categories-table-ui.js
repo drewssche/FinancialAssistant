@@ -380,17 +380,19 @@
     tr.innerHTML = `
       <td colspan="4" class="category-table-group-cell category-group-accent-cell">
         <div class="category-table-group-wrap">
-          <button type="button" class="item-catalog-group-btn category-table-group-btn" data-category-group-toggle-key="${group.key}" ${toggleDisabled ? "disabled" : ""}>
-            <span class="item-catalog-group-chevron">${chevron}</span>
-            <span class="item-catalog-group-main">
-              <span class="item-catalog-group-name">${groupName}</span>
-              <span class="item-catalog-group-metas">
-                <span class="item-catalog-group-meta">${group.children.length} кат.</span>
-                ${kindMeta}
-              </span>
+          <div class="category-table-group-content">
+            <div class="category-table-group-title">
+              <button type="button" class="item-catalog-group-btn category-table-group-btn" data-category-group-toggle-key="${group.key}" ${toggleDisabled ? "disabled" : ""}>
+                <span class="item-catalog-group-chevron">${chevron}</span>
+                <span class="item-catalog-group-name">${groupName}</span>
+              </button>
+              ${createAction}
+            </div>
+            <span class="item-catalog-group-metas">
+              <span class="item-catalog-group-meta">${group.children.length} кат.</span>
+              ${kindMeta}
             </span>
-          </button>
-          ${createAction}
+          </div>
           ${groupActions}
         </div>
       </td>

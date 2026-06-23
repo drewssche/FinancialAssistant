@@ -21,6 +21,7 @@
     "/static/js/app-inline-refresh-state.js",
     "/static/js/app-loading-skeletons.js",
     "/static/js/app-renderers.js",
+    "/static/js/app-finance-calculator.js",
     "/static/js/app-picker-utils.js",
     "/static/js/app-period-control-utils.js",
     "/static/js/app-categories-ui.js",

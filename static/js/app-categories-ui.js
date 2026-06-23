@@ -77,11 +77,25 @@
     if (!el.createCategoryGroupPickerBlock) {
       return;
     }
+    const pickerUtils = window.App.getPickerUtils?.();
+    if (pickerUtils?.setPopoverOpen) {
+      pickerUtils.setPopoverOpen(el.createCategoryGroupPickerBlock, true, {
+        owners: [el.createCategoryGroupField].filter(Boolean),
+      });
+      return;
+    }
     el.createCategoryGroupPickerBlock.classList.remove("hidden");
   }
 
   function closeCreateGroupPopover() {
     if (!el.createCategoryGroupPickerBlock) {
+      return;
+    }
+    const pickerUtils = window.App.getPickerUtils?.();
+    if (pickerUtils?.setPopoverOpen) {
+      pickerUtils.setPopoverOpen(el.createCategoryGroupPickerBlock, false, {
+        owners: [el.createCategoryGroupField].filter(Boolean),
+      });
       return;
     }
     el.createCategoryGroupPickerBlock.classList.add("hidden");
@@ -91,11 +105,25 @@
     if (!el.editCategoryGroupPickerBlock) {
       return;
     }
+    const pickerUtils = window.App.getPickerUtils?.();
+    if (pickerUtils?.setPopoverOpen) {
+      pickerUtils.setPopoverOpen(el.editCategoryGroupPickerBlock, true, {
+        owners: [el.editCategoryGroupField].filter(Boolean),
+      });
+      return;
+    }
     el.editCategoryGroupPickerBlock.classList.remove("hidden");
   }
 
   function closeEditGroupPopover() {
     if (!el.editCategoryGroupPickerBlock) {
+      return;
+    }
+    const pickerUtils = window.App.getPickerUtils?.();
+    if (pickerUtils?.setPopoverOpen) {
+      pickerUtils.setPopoverOpen(el.editCategoryGroupPickerBlock, false, {
+        owners: [el.editCategoryGroupField].filter(Boolean),
+      });
       return;
     }
     el.editCategoryGroupPickerBlock.classList.add("hidden");
@@ -291,17 +319,29 @@
   }
 
   function handleCreateGroupOutsidePointer(event) {
+    const path = typeof event.composedPath === "function" ? event.composedPath() : [];
+    const isInside = (node) => {
+      if (!node) {
+        return false;
+      }
+      if (path.length) {
+        return path.includes(node);
+      }
+      return node.contains(event.target);
+    };
     if (
       el.createCategoryGroupPickerBlock &&
       !el.createCategoryGroupPickerBlock.classList.contains("hidden") &&
-      !event.target.closest("#createCategoryGroupField")
+      !isInside(el.createCategoryGroupField) &&
+      !isInside(el.createCategoryGroupPickerBlock)
     ) {
       closeCreateGroupPopover();
     }
     if (
       el.editCategoryGroupPickerBlock &&
       !el.editCategoryGroupPickerBlock.classList.contains("hidden") &&
-      !event.target.closest("#editCategoryGroupField")
+      !isInside(el.editCategoryGroupField) &&
+      !isInside(el.editCategoryGroupPickerBlock)
     ) {
       closeEditGroupPopover();
     }

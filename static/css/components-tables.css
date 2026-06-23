@@ -417,10 +417,37 @@
 
 .category-table-group-wrap {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: stretch;
   gap: 8px;
   padding-right: 8px;
+}
+
+.category-table-group-title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.category-table-group-content {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 2px;
+}
+
+.category-table-group-title .item-catalog-group-btn {
+  width: auto;
+  max-width: 100%;
+  flex: 0 1 auto;
+  min-height: 0;
+  padding-block: 6px;
+}
+
+.category-table-group-content > .item-catalog-group-metas {
+  padding-left: 34px;
 }
 
 .category-table-group-btn {
@@ -428,6 +455,7 @@
 }
 
 .category-context-create-btn {
+  align-self: center;
   min-width: 2.25rem;
   width: 2.25rem;
   padding-inline: 0;

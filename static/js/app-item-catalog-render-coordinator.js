@@ -248,19 +248,21 @@
         <tr class="item-catalog-group-row table-hierarchy-parent-row">
           <td colspan="4" class="item-catalog-group-cell">
             <div class="category-table-group-wrap item-catalog-source-wrap">
-              <button type="button" class="item-catalog-group-btn" data-item-catalog-shop-key="${encodeURIComponent(group.shopKey)}" ${queryActive ? "disabled" : ""}>
-                <span class="item-catalog-group-chevron">${chevron}</span>
-                <span class="item-catalog-group-main">
-                  <span class="item-catalog-group-name">${core.highlightText(group.shopName, query)}</span>
-                  <span class="item-catalog-group-metas">
-                    <span class="item-catalog-group-meta">${group.items.length} поз.</span>
-                    <span class="item-catalog-group-meta">исп: ${group.useCountTotal}</span>
-                    <span class="item-catalog-group-meta">ср: ${group.avgPrice !== null ? core.formatMoney(group.avgPrice, { withCurrency: false }) : "—"}</span>
-                    <span class="item-catalog-group-meta">посл: ${group.lastUsedLabel}</span>
-                  </span>
+              <div class="category-table-group-content">
+                <div class="category-table-group-title">
+                  <button type="button" class="item-catalog-group-btn" data-item-catalog-shop-key="${encodeURIComponent(group.shopKey)}" ${queryActive ? "disabled" : ""}>
+                    <span class="item-catalog-group-chevron">${chevron}</span>
+                    <span class="item-catalog-group-name">${core.highlightText(group.shopName, query)}</span>
+                  </button>
+                  ${group.shopKey !== "__no_shop__" ? `<button class="btn btn-secondary category-context-create-btn item-source-context-create-btn" data-create-item-template-source-name="${escapeHtml(group.shopName)}" type="button" aria-label="Добавить позицию в источник">+</button>` : ""}
+                </div>
+                <span class="item-catalog-group-metas">
+                  <span class="item-catalog-group-meta">${group.items.length} поз.</span>
+                  <span class="item-catalog-group-meta">исп: ${group.useCountTotal}</span>
+                  <span class="item-catalog-group-meta">ср: ${group.avgPrice !== null ? core.formatMoney(group.avgPrice, { withCurrency: false }) : "—"}</span>
+                  <span class="item-catalog-group-meta">посл: ${group.lastUsedLabel}</span>
                 </span>
-              </button>
-              ${group.shopKey !== "__no_shop__" ? `<button class="btn btn-secondary category-context-create-btn item-source-context-create-btn" data-create-item-template-source-name="${escapeHtml(group.shopName)}" type="button" aria-label="Добавить позицию в источник">+</button>` : ""}
+              </div>
               ${group.shopKey !== "__no_shop__" ? core.renderInlineKebabMenu?.(
                 `item-source-${escapeHtml(group.shopKey)}`,
                 `<button class="btn btn-secondary" data-create-item-template-source-name="${escapeHtml(group.shopName)}" type="button">Добавить позицию</button>

@@ -37,6 +37,10 @@
     return window.App.getRuntimeModule?.("operation-modal") || {};
   }
 
+  function getFinanceCalculator() {
+    return window.App.getRuntimeModule?.("finance-calculator") || {};
+  }
+
   function bindFeatureHandlers() {
     async function refreshOperationsPeriodViews() {
       const sessionFeature = getSessionFeature();
@@ -188,6 +192,16 @@
         successMessage: "Группа обновлена",
         errorPrefix: "Ошибка обновления группы",
         action: () => getCategoryActions().updateGroup?.(event),
+      });
+    });
+
+    el.groupModalForm.addEventListener("submit", (event) => {
+      core.runAction({
+        button: event.submitter || document.getElementById("submitCreateGroupBtn"),
+        pendingText: "Создание...",
+        successMessage: "Группа создана",
+        errorPrefix: "Ошибка создания группы",
+        action: () => getCategoryActions().createGroup?.(event),
       });
     });
 
@@ -419,6 +433,7 @@
     if (featurePickers?.bindPickerFeatureHandlers) {
       featurePickers.bindPickerFeatureHandlers();
     }
+    getFinanceCalculator().bind?.();
   }
 
   function bindFeatureInit() {

@@ -470,6 +470,18 @@ async def run() -> None:
                     status_code=exc.status_code,
                     method=exc.method,
                 )
+                if exc.status_code in {401, 403}:
+                    log_telegram_bot_event(
+                        "bot_token_invalid",
+                        status_code=exc.status_code,
+                        method=exc.method,
+                    )
+                    logger.error(
+                        "telegram bot token is invalid or forbidden; worker is parked until container restart "
+                        "with a valid TELEGRAM_BOT_TOKEN"
+                    )
+                    while True:
+                        await asyncio.sleep(3600)
                 logger.warning(
                     "telegram getUpdates HTTP error, retrying: status_code=%s",
                     exc.status_code,

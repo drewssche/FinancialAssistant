@@ -504,6 +504,8 @@ def test_mobile_batch_item_template_modal_preview_stays_above_sticky_cta(page):
 
 @pytest.mark.e2e
 def test_category_group_context_create_prefills_group_from_hover_action(page, static_server_url: str):
+    created_groups = []
+
     def handle_request(route):
         request = route.request
         url = request.url
@@ -530,6 +532,10 @@ def test_category_group_context_create_prefills_group_from_hover_action(page, st
         if url.endswith("/api/v1/categories/groups") and method == "GET":
             route.fulfill(status=200, content_type="application/json", body='[{"id":7,"name":"Еда","kind":"expense","accent_color":"#ff8a3d"}]')
             return
+        if url.endswith("/api/v1/categories/groups") and method == "POST":
+            created_groups.append(request.post_data_json)
+            route.fulfill(status=200, content_type="application/json", body='{"id":8,"name":"Дом","kind":"income","accent_color":"#ff8a3d"}')
+            return
         if "/api/v1/categories" in url and method == "GET":
             if "page=" in url and "page_size=" in url:
                 route.fulfill(status=200, content_type="application/json", body='{"items":[],"total":0,"page":1,"page_size":20}')
@@ -553,6 +559,49 @@ def test_category_group_context_create_prefills_group_from_hover_action(page, st
     assert page.locator("#categoryGroup").input_value() == "7"
     assert page.locator("#categoryGroupSearch").input_value() == "Еда"
     assert "active" in page.locator("button[data-cat-create-kind='expense']").get_attribute("class")
+
+    page.locator("#categoryGroupSearch").click()
+    page.wait_for_timeout(100)
+    page.wait_for_selector("#createCategoryGroupPickerBlock:not(.hidden)")
+    assert page.locator("#createCategoryGroupPickerBlock").is_visible()
+    page.locator("#categoryGroupAll button[data-group-id='7']").click()
+    assert page.locator("#categoryGroupSearch").input_value() == "Еда"
+
+    geometry = page.evaluate(
+        """
+        () => {
+          const row = document.querySelector('.category-table-group-wrap');
+          const name = row?.querySelector('.item-catalog-group-name');
+          const create = row?.querySelector('.category-context-create-btn');
+          if (!row || !name || !create) {
+            return null;
+          }
+          const rowRect = row.getBoundingClientRect();
+          const nameRect = name.getBoundingClientRect();
+          const createRect = create.getBoundingClientRect();
+          return {
+            nameRight: nameRect.right,
+            createLeft: createRect.left,
+            createFromRowLeft: createRect.left - rowRect.left,
+          };
+        }
+        """
+    )
+    assert geometry is not None
+    assert 0 <= geometry["createLeft"] - geometry["nameRight"] <= 24
+    assert geometry["createFromRowLeft"] < 180
+
+    page.locator("#closeCreateCategoryModalBtn").click()
+    page.wait_for_function("() => document.querySelector('#createCategoryModal')?.classList.contains('hidden')")
+
+    page.locator("#addGroupCta").click()
+    page.wait_for_selector("#createGroupModal:not(.hidden)")
+    page.locator("button[data-group-create-kind='income']").click()
+    assert page.locator("#groupKind").input_value() == "income"
+    page.locator("#groupName").fill("Дом")
+    page.locator("#submitCreateGroupBtn").click()
+    page.wait_for_function("() => document.querySelector('#createGroupModal')?.classList.contains('hidden')")
+    assert created_groups == [{"name": "Дом", "kind": "income", "accent_color": "#ff8a3d"}]
 
 
 @pytest.mark.e2e
@@ -607,6 +656,31 @@ def test_item_source_context_create_prefills_source_from_hover_action(page, stat
     page.wait_for_selector(".item-catalog-source-wrap", state="visible")
     page.wait_for_selector("button[data-create-item-template-source-name='Евроопт']", state="attached")
     page.locator(".item-catalog-source-wrap", has_text="Евроопт").hover()
+
+    geometry = page.evaluate(
+        """
+        () => {
+          const row = document.querySelector('.item-catalog-source-wrap');
+          const name = row?.querySelector('.item-catalog-group-name');
+          const create = row?.querySelector('.item-source-context-create-btn');
+          if (!row || !name || !create) {
+            return null;
+          }
+          const rowRect = row.getBoundingClientRect();
+          const nameRect = name.getBoundingClientRect();
+          const createRect = create.getBoundingClientRect();
+          return {
+            nameRight: nameRect.right,
+            createLeft: createRect.left,
+            createFromRowLeft: createRect.left - rowRect.left,
+          };
+        }
+        """
+    )
+    assert geometry is not None
+    assert 0 <= geometry["createLeft"] - geometry["nameRight"] <= 24
+    assert geometry["createFromRowLeft"] < 220
+
     page.locator("button.item-source-context-create-btn[data-create-item-template-source-name='Евроопт']").click()
 
     page.wait_for_selector("#itemTemplateModal:not(.hidden)")

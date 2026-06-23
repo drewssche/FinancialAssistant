@@ -12,6 +12,24 @@
 - Keep Telegram-specific behavior in the client runtime; backend contracts stay shared between Web UI and Telegram.
 
 ## Current Sprint
+### Category And Catalog Interaction Fixes 2026-06-23
+- [x] Category group creation modal reliability.
+  - Done 2026-06-23: `Создать группу` no longer depends on bulk-import bindings for close, kind switch, and submit handlers. Create-group modal controls are bound in the regular app init path, with bulk duplicate bindings removed to avoid double submits.
+- [x] Category group picker stability.
+  - Done 2026-06-23: create/edit category group pickers now use the shared popover lifecycle with owner scopes and guarded click propagation, so clicking the group field keeps the picker open until selection, Escape, or outside click.
+- [x] Contextual `+` placement.
+  - Done 2026-06-23: category-group and item-source hover/focus `+` buttons moved next to the group/source name instead of the far-right action area; kebab actions remain on the right and touch-device actions remain in menus.
+- [x] Regression coverage.
+  - Covered by `tests/e2e/test_bulk_import_sections_e2e.py -m e2e`: category picker stays open and selects a group, create-group modal submits once and closes, contextual `+` prefill still works, and category/catalog `+` geometry stays close to the visible name.
+
+### Product Utility And Naming 2026-06-23
+- [x] Finance calculator side drawer, first increment.
+  - Done 2026-06-23: added a local-only right drawer calculator with discount, price-change, unit-price, and split-check modes. The drawer is available from the topbar, uses current frontend money formatting, and has a mobile bottom-sheet layout.
+  - Covered by frontend UI contract and isolated finance-calculator e2e geometry/calculation test. Future iteration: optional integration with operation/receipt forms after visual review.
+- [x] Product naming first pass.
+  - Done 2026-06-23: visible web title/login heading and sidebar mark now use `ФинАсист` / `ФА`.
+  - Remaining manual step: update Telegram BotFather display name/description/username if the final public name is approved and available.
+
 ### Release Validation 2026-06-16
 - [x] Commit under validation: `34870fa f`; working tree was clean before validation fixes.
 - [x] API suite: `./.venv/bin/pytest -q tests/api` passed.

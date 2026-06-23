@@ -9,7 +9,7 @@
       <aside class="sidebar" id="sidebarNav">
         <div class="sidebar-main">
           <div class="sidebar-head">
-            <div class="brand">FA</div>
+            <div class="brand">ФА</div>
             <button id="mobileNavCloseBtn" class="mobile-nav-close" type="button" aria-label="Закрыть меню">×</button>
           </div>
           <div class="sidebar-today">
@@ -65,6 +65,10 @@
             </div>
           </div>
           <div class="top-actions">
+            <button id="financeCalculatorToggle" class="finance-calculator-toggle btn btn-secondary" type="button" aria-controls="financeCalculatorDrawer" aria-expanded="false" title="Калькулятор">
+              <span aria-hidden="true">%</span>
+              <span>Калькулятор</span>
+            </button>
             <div class="cta-row">
               <button id="addOperationCta" class="btn btn-cta" type="button">+ Добавить операцию</button>
               <button id="batchOperationCta" class="btn btn-secondary" type="button">+ Массовое добавление</button>
@@ -83,6 +87,24 @@
         ${window.App.templates.shellSections || ""}
 
       </main>
+      <div id="financeCalculatorOverlay" class="finance-calculator-overlay hidden" aria-hidden="true"></div>
+      <aside id="financeCalculatorDrawer" class="finance-calculator-drawer hidden" aria-label="Финансовый калькулятор" aria-hidden="true">
+        <div class="finance-calculator-head">
+          <div>
+            <h3>Калькулятор</h3>
+            <p class="muted-small">Скидки, изменения цены и быстрые расчеты</p>
+          </div>
+          <button id="financeCalculatorClose" class="btn btn-secondary finance-calculator-close" type="button" aria-label="Закрыть калькулятор">×</button>
+        </div>
+        <div id="financeCalculatorTabs" class="segmented finance-calculator-tabs" role="tablist" aria-label="Режим калькулятора">
+          <button class="segmented-btn active" type="button" data-calculator-mode="discount">Скидка</button>
+          <button class="segmented-btn" type="button" data-calculator-mode="change">Изменение</button>
+          <button class="segmented-btn" type="button" data-calculator-mode="unit">За единицу</button>
+          <button class="segmented-btn" type="button" data-calculator-mode="split">Разделить</button>
+        </div>
+        <div id="financeCalculatorFields" class="finance-calculator-fields"></div>
+        <div id="financeCalculatorResult" class="finance-calculator-result" aria-live="polite"></div>
+      </aside>
     </div>
 `;
 })();

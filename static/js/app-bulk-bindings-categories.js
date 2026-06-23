@@ -294,31 +294,6 @@
   }
 
   function bindCategoryBulkHandlers() {
-    el.closeCreateGroupModalBtn.addEventListener("click", () => getCategoryActions().closeCreateGroupModal?.());
-    el.createGroupModal.addEventListener("click", (event) => {
-      if (event.target === el.createGroupModal) {
-        getCategoryActions().closeCreateGroupModal?.();
-      }
-    });
-    el.groupModalForm.addEventListener("submit", (event) => {
-      const categoryActions = getCategoryActions();
-      core.runAction({
-        button: event.submitter || document.getElementById("submitCreateGroupBtn"),
-        pendingText: "Создание...",
-        successMessage: "Группа создана",
-        errorPrefix: "Ошибка создания группы",
-        action: () => categoryActions.createGroup?.(event),
-      });
-    });
-    el.createGroupKind.addEventListener("click", (event) => {
-      const btn = event.target.closest("button[data-group-create-kind]");
-      if (!btn) {
-        return;
-      }
-      el.groupKind.value = btn.dataset.groupCreateKind;
-      core.syncSegmentedActive(el.createGroupKind, "group-create-kind", el.groupKind.value);
-    });
-
     if (el.batchCategoryModeTabs) {
       el.batchCategoryModeTabs.addEventListener("click", (event) => {
         const btn = event.target.closest("button[data-batch-category-mode]");

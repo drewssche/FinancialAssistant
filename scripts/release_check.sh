@@ -43,6 +43,9 @@ if [[ "${RUN_E2E}" == "1" ]]; then
   run_pytest "E2E: preferences and sort presets (isolated sync Playwright)" \
     tests/e2e/test_sort_preset_persistence_e2e.py \
     -m e2e
+  run_pytest "E2E: finance calculator drawer (isolated sync Playwright)" \
+    tests/e2e/test_finance_calculator_e2e.py \
+    -m e2e
 else
   run_pytest "Unit/API tests" -m "not e2e"
   echo "Skipped e2e tests by default (set RUN_E2E=1 to include)."

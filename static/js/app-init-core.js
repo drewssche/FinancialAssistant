@@ -271,6 +271,20 @@
     el.addGroupCta.addEventListener("click", () => {
       getCategoryActions().openCreateGroupModal?.();
     });
+    el.closeCreateGroupModalBtn.addEventListener("click", () => getCategoryActions().closeCreateGroupModal?.());
+    el.createGroupModal.addEventListener("click", (event) => {
+      if (event.target === el.createGroupModal) {
+        getCategoryActions().closeCreateGroupModal?.();
+      }
+    });
+    el.createGroupKind.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-group-create-kind]");
+      if (!btn) {
+        return;
+      }
+      el.groupKind.value = btn.dataset.groupCreateKind;
+      core.syncSegmentedActive(el.createGroupKind, "group-create-kind", el.groupKind.value);
+    });
     el.closeCreateCategoryModalBtn.addEventListener("click", () => getCategoryActions().closeCreateCategoryModal?.());
     el.createCategoryModal.addEventListener("click", (event) => {
       if (event.target === el.createCategoryModal) {

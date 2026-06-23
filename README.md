@@ -1,4 +1,4 @@
-# Financial Assistant
+# ФинАсист
 
 Web-first financial assistant (income/expense tracking) with architecture ready for Telegram Mini App integration.
 
@@ -19,6 +19,13 @@ Web-first financial assistant (income/expense tracking) with architecture ready 
 Optional cache profile:
 - lightweight VPS mode can run without Redis; app falls back to in-process cache
 - to enable Redis explicitly: `docker compose --profile cache up --build -d`
+
+Local Web/API-only development:
+- the Telegram bot worker is not required for UI/API checks
+- if local `.env` has no valid `TELEGRAM_BOT_TOKEN`, run only app + database:
+  `docker compose up --build -d app db`
+- if a stale bot container is already running, stop it with:
+  `docker compose stop bot`
 
 For production auth mode set `APP_ENV=production` and configure:
 - `TELEGRAM_BOT_TOKEN`
