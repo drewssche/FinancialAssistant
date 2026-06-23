@@ -191,3 +191,49 @@ def test_finance_calculator_drawer_calculates_discount_and_fits_mobile(static_se
     assert geometry["width"] <= geometry["viewportWidth"]
     assert geometry["bottom"] <= geometry["viewportHeight"] + 1
     assert geometry["height"] <= geometry["viewportHeight"] * 0.9
+
+
+@pytest.mark.e2e
+def test_finance_calculator_attaches_to_operation_modal_without_global_overlay(static_server_url: str, page_with_calculator_mock):
+    page = page_with_calculator_mock
+    page.set_viewport_size({"width": 1440, "height": 900})
+    _open_app(page, static_server_url)
+
+    page.click("#addOperationCta")
+    page.wait_for_selector("#createModal:not(.hidden)")
+    page.click("#createFinanceCalculatorToggle")
+    page.wait_for_selector("#financeCalculatorDrawer:not(.hidden).modal-attached")
+
+    assert page.locator("#financeCalculatorOverlay").evaluate("node => node.classList.contains('hidden')")
+    page.fill("#financeCalculatorInput-price", "200")
+    page.fill("#financeCalculatorInput-discount", "10")
+    expect(page.locator("#financeCalculatorResult")).to_contain_text("180,00")
+
+    geometry = page.evaluate(
+        """
+        () => {
+          const drawer = document.getElementById('financeCalculatorDrawer').getBoundingClientRect();
+          const card = document.querySelector('#createModal .modal-card').getBoundingClientRect();
+          const head = document.querySelector('#createModal .panel-head').getBoundingClientRect();
+          return {
+            drawerTop: drawer.top,
+            drawerBottom: drawer.bottom,
+            drawerLeft: drawer.left,
+            drawerRight: drawer.right,
+            cardTop: card.top,
+            cardRight: card.right,
+            headBottom: head.bottom,
+            viewportWidth: window.innerWidth,
+            viewportHeight: window.innerHeight,
+          };
+        }
+        """
+    )
+    assert geometry["drawerTop"] >= geometry["headBottom"]
+    assert geometry["drawerTop"] <= geometry["headBottom"] + 24
+    assert geometry["drawerRight"] <= geometry["viewportWidth"] + 1
+    assert geometry["drawerBottom"] <= geometry["viewportHeight"] + 1
+    assert geometry["drawerLeft"] >= 0
+
+    page.click("#closeCreateModalBtn")
+    page.wait_for_function("() => document.querySelector('#financeCalculatorDrawer')?.classList.contains('hidden')")

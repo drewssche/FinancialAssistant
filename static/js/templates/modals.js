@@ -9,6 +9,9 @@
           <h3 id="createTitle">Новая операция</h3>
           <div class="modal-head-actions">
             <button id="createModalActivityBtn" class="btn btn-secondary hidden" type="button">Журнал</button>
+            <button id="createFinanceCalculatorToggle" class="btn btn-secondary finance-calculator-modal-toggle" type="button" aria-controls="financeCalculatorDrawer" aria-expanded="false" title="Калькулятор">
+              <span aria-hidden="true">%</span><span>Калькулятор</span>
+            </button>
             <button id="closeCreateModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
               <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
             </button>
@@ -425,6 +428,9 @@
           <h3 id="editTitle">Редактировать операцию</h3>
           <div class="modal-head-actions">
             <button id="editModalActivityBtn" class="btn btn-secondary hidden" type="button">Журнал</button>
+            <button id="editFinanceCalculatorToggle" class="btn btn-secondary finance-calculator-modal-toggle" type="button" aria-controls="financeCalculatorDrawer" aria-expanded="false" title="Калькулятор">
+              <span aria-hidden="true">%</span><span>Калькулятор</span>
+            </button>
             <button id="closeEditModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
               <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
             </button>

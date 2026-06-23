@@ -9,6 +9,10 @@
     return window.App.getRuntimeModule?.("usage") || {};
   }
 
+  function isInteractiveTableTarget(target) {
+    return Boolean(target?.closest?.("button, a, input, select, textarea, label, .app-popover, [role='button']"));
+  }
+
   function renderGroupedCategoryTable({
     body,
     groups,
@@ -61,11 +65,13 @@
     rerender,
   }) {
     const btn = event.target.closest("button[data-category-group-toggle-key]");
-    if (!btn) {
+    const wrap = event.target.closest("[data-category-group-row-toggle-key]");
+    const row = event.target.closest("tr.category-table-group-row[data-group-key]");
+    const groupKey = String(btn?.dataset.categoryGroupToggleKey || (!isInteractiveTableTarget(event.target) ? (wrap?.dataset.categoryGroupRowToggleKey || row?.dataset.groupKey) : "") || "");
+    if (!btn && !groupKey) {
       return false;
     }
     const queryActive = Boolean(String(queryRaw || "").trim());
-    const groupKey = String(btn.dataset.categoryGroupToggleKey || "");
     if (!groupKey || queryActive || groupKey === ungroupedKey) {
       return true;
     }

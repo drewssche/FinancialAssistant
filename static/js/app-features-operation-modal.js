@@ -460,6 +460,7 @@
     el.createModal.classList.remove("hidden");
   }
   function closeCreateModal() {
+    window.App.getRuntimeModule?.("finance-calculator")?.closeIfAttachedToModal?.(el.createModal);
     state.createFlowMode = "operation";
     state.editPlanId = null;
     state.editDebtCreateId = null;
@@ -585,6 +586,7 @@
     el.editModal.classList.remove("hidden");
   }
   function closeEditModal() {
+    window.App.getRuntimeModule?.("finance-calculator")?.closeIfAttachedToModal?.(el.editModal);
     state.editOperationId = null;
     setEditModalActivity(null, null);
     clearReceiptItems("edit");

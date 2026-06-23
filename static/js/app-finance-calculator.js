@@ -28,6 +28,9 @@
 
   let bound = false;
   let mode = "discount";
+  let openSource = "global";
+  let activeModal = null;
+  let returnFocusNode = null;
 
   function getCore() {
     return window.App.core || {};
@@ -159,25 +162,98 @@
     renderFields();
   }
 
-  function setOpen(open) {
+  function clearModalPosition() {
+    const drawer = getNode("financeCalculatorDrawer");
+    if (!drawer) {
+      return;
+    }
+    drawer.style.removeProperty("--finance-calculator-modal-top");
+    drawer.style.removeProperty("--finance-calculator-modal-left");
+    drawer.style.removeProperty("--finance-calculator-modal-height");
+  }
+
+  function positionModalDrawer() {
+    const drawer = getNode("financeCalculatorDrawer");
+    if (!drawer || openSource !== "modal" || !activeModal || activeModal.classList.contains("hidden")) {
+      return;
+    }
+    const card = activeModal.querySelector(".modal-card");
+    if (!card) {
+      return;
+    }
+    const margin = 12;
+    const gap = 8;
+    const rect = card.getBoundingClientRect();
+    const headRect = card.querySelector(".panel-head")?.getBoundingClientRect();
+    const top = Math.max(margin, (headRect?.bottom || rect.top) + gap);
+    const width = Math.min(360, Math.max(280, window.innerWidth - margin * 2));
+    const preferredLeft = rect.right + gap;
+    const left = preferredLeft + width <= window.innerWidth - margin
+      ? preferredLeft
+      : Math.max(margin, Math.min(window.innerWidth - width - margin, rect.right - width));
+    drawer.style.setProperty("--finance-calculator-modal-top", `${top}px`);
+    drawer.style.setProperty("--finance-calculator-modal-left", `${left}px`);
+    drawer.style.setProperty("--finance-calculator-modal-height", `${Math.min(Math.max(260, rect.bottom - top), window.innerHeight - top - margin)}px`);
+  }
+
+  function syncModalToggleState(open) {
+    ["financeCalculatorToggle", "createFinanceCalculatorToggle", "editFinanceCalculatorToggle"].forEach((id) => {
+      getNode(id)?.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+  }
+
+  function setOpen(open, options = {}) {
     const drawer = getNode("financeCalculatorDrawer");
     const overlay = getNode("financeCalculatorOverlay");
-    const toggle = getNode("financeCalculatorToggle");
+    if (open && options.source === "modal") {
+      openSource = "modal";
+      activeModal = options.modal || null;
+      returnFocusNode = options.returnFocus || null;
+    } else if (open) {
+      openSource = "global";
+      activeModal = null;
+      returnFocusNode = options.returnFocus || getNode("financeCalculatorToggle");
+    }
     drawer?.classList.toggle("hidden", !open);
-    overlay?.classList.toggle("hidden", !open);
+    drawer?.classList.toggle("modal-attached", open && openSource === "modal");
+    overlay?.classList.toggle("hidden", !open || openSource === "modal");
     drawer?.setAttribute("aria-hidden", open ? "false" : "true");
-    overlay?.setAttribute("aria-hidden", open ? "false" : "true");
-    toggle?.setAttribute("aria-expanded", open ? "true" : "false");
-    document.body.classList.toggle("finance-calculator-open", open);
+    overlay?.setAttribute("aria-hidden", open && openSource !== "modal" ? "false" : "true");
+    syncModalToggleState(open);
+    document.body.classList.toggle("finance-calculator-open", open && openSource !== "modal");
     if (open) {
+      positionModalDrawer();
       renderFields();
     } else {
-      toggle?.focus();
+      drawer?.classList.remove("modal-attached");
+      clearModalPosition();
+      document.body.classList.remove("finance-calculator-open");
+      const focusTarget = returnFocusNode || getNode("financeCalculatorToggle");
+      openSource = "global";
+      activeModal = null;
+      returnFocusNode = null;
+      focusTarget?.focus?.();
     }
   }
 
   function toggle() {
-    setOpen(getNode("financeCalculatorDrawer")?.classList.contains("hidden") ?? true);
+    setOpen(getNode("financeCalculatorDrawer")?.classList.contains("hidden") ?? true, {
+      source: "global",
+      returnFocus: getNode("financeCalculatorToggle"),
+    });
+  }
+
+  function toggleFromModal(modalId, trigger) {
+    const drawer = getNode("financeCalculatorDrawer");
+    const modal = getNode(modalId);
+    const shouldOpen = drawer?.classList.contains("hidden") || openSource !== "modal" || activeModal !== modal;
+    setOpen(shouldOpen, { source: "modal", modal, returnFocus: trigger });
+  }
+
+  function closeIfAttachedToModal(modal) {
+    if (openSource === "modal" && (!modal || modal === activeModal)) {
+      setOpen(false);
+    }
   }
 
   function bind() {
@@ -186,6 +262,12 @@
     }
     bound = true;
     getNode("financeCalculatorToggle")?.addEventListener("click", toggle);
+    getNode("createFinanceCalculatorToggle")?.addEventListener("click", (event) => {
+      toggleFromModal("createModal", event.currentTarget);
+    });
+    getNode("editFinanceCalculatorToggle")?.addEventListener("click", (event) => {
+      toggleFromModal("editModal", event.currentTarget);
+    });
     getNode("financeCalculatorClose")?.addEventListener("click", () => setOpen(false));
     getNode("financeCalculatorOverlay")?.addEventListener("click", () => setOpen(false));
     getNode("financeCalculatorTabs")?.addEventListener("click", (event) => {
@@ -200,11 +282,14 @@
         setOpen(false);
       }
     });
+    window.addEventListener("resize", positionModalDrawer);
+    document.addEventListener("scroll", positionModalDrawer, true);
     setMode(mode);
   }
 
   const api = {
     bind,
+    closeIfAttachedToModal,
     calculateDiscount,
     calculateChange,
     calculateUnit,

@@ -12,6 +12,15 @@
 - Keep Telegram-specific behavior in the client runtime; backend contracts stay shared between Web UI and Telegram.
 
 ## Current Sprint
+### Operation Modal Calculator And Row Toggles 2026-06-23
+- [x] Calculator in operation modals.
+  - Done 2026-06-23: create/edit operation modals now expose a calculator button in the header action area. The existing calculator opens in a modal-attached side panel without the global overlay and closes automatically when the operation modal closes.
+  - Mobile behavior remains a bottom sheet to preserve usable modal width.
+- [x] Wider group/source row toggles.
+  - Done 2026-06-23: category group rows and item source rows now collapse/expand from clicks on the row surface, while buttons, kebab menus, inputs, links and popovers keep their own actions.
+- [x] Regression coverage.
+  - Covered by finance-calculator e2e for modal-attached geometry/calculation/autoclose and by category/catalog e2e for row collapse/expand plus preserved contextual `+` actions.
+
 ### Category And Catalog Interaction Fixes 2026-06-23
 - [x] Category group creation modal reliability.
   - Done 2026-06-23: `Создать группу` no longer depends on bulk-import bindings for close, kind switch, and submit handlers. Create-group modal controls are bound in the regular app init path, with bulk duplicate bindings removed to avoid double submits.

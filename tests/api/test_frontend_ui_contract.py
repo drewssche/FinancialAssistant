@@ -94,6 +94,7 @@ def test_byn_uses_compact_currency_symbol_in_frontend_formatters():
 def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     manifest = MANIFEST_JS.read_text(encoding="utf-8")
     shell = (REPO_ROOT / "static" / "js" / "templates" / "shell.js").read_text(encoding="utf-8")
+    modals = (REPO_ROOT / "static" / "js" / "templates" / "modals.js").read_text(encoding="utf-8")
     styles = (REPO_ROOT / "static" / "styles.css").read_text(encoding="utf-8")
     calculator_css = (REPO_ROOT / "static" / "css" / "components-finance-calculator.css").read_text(encoding="utf-8")
     calculator_js = (REPO_ROOT / "static" / "js" / "app-finance-calculator.js").read_text(encoding="utf-8")
@@ -105,6 +106,8 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert '<div class="brand">ФА</div>' in shell
     assert 'id="financeCalculatorToggle"' in shell
     assert 'id="financeCalculatorDrawer"' in shell
+    assert 'id="createFinanceCalculatorToggle"' in modals
+    assert 'id="editFinanceCalculatorToggle"' in modals
     assert 'data-calculator-mode="discount"' in shell
     assert 'data-calculator-mode="split"' in shell
     assert '"/static/js/app-finance-calculator.js"' in manifest
@@ -114,6 +117,8 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert "calculateChange" in calculator_js
     assert "calculateUnit" in calculator_js
     assert "calculateSplit" in calculator_js
+    assert "closeIfAttachedToModal" in calculator_js
+    assert "modal-attached" in calculator_css
     assert "getFinanceCalculator().bind?.();" in init_features
     assert "body.finance-calculator-open" in calculator_css
     assert "@media (max-width: 640px)" in calculator_css

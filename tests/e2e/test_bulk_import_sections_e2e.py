@@ -518,6 +518,9 @@ def test_category_group_context_create_prefills_group_from_hover_action(page, st
             route.fulfill(status=200, content_type="application/json", body='{"id":1,"display_name":"Admin","status":"approved","is_admin":true,"username":"owner_admin","telegram_id":"281896361"}')
             return
         if "/api/v1/preferences" in url:
+            if method == "PUT":
+                route.fulfill(status=200, content_type="application/json", body=request.post_data or '{"data":{"ui":{}}}')
+                return
             route.fulfill(status=200, content_type="application/json", body='{"data":{"ui":{}}}')
             return
         if "/api/v1/dashboard/summary" in url:
@@ -538,9 +541,13 @@ def test_category_group_context_create_prefills_group_from_hover_action(page, st
             return
         if "/api/v1/categories" in url and method == "GET":
             if "page=" in url and "page_size=" in url:
-                route.fulfill(status=200, content_type="application/json", body='{"items":[],"total":0,"page":1,"page_size":20}')
+                route.fulfill(
+                    status=200,
+                    content_type="application/json",
+                    body='{"items":[{"id":21,"name":"Снеки","icon":null,"kind":"expense","group_id":7,"group_name":"Еда","group_icon":null,"group_accent_color":"#ff8a3d","is_system":false}],"total":1,"page":1,"page_size":20}',
+                )
                 return
-            route.fulfill(status=200, content_type="application/json", body="[]")
+            route.fulfill(status=200, content_type="application/json", body='[{"id":21,"name":"Снеки","icon":null,"kind":"expense","group_id":7,"group_name":"Еда","group_icon":null,"group_accent_color":"#ff8a3d","is_system":false}]')
             return
         route.fulfill(status=200, content_type="application/json", body="{}")
 
@@ -551,8 +558,13 @@ def test_category_group_context_create_prefills_group_from_hover_action(page, st
     page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")
     page.locator("#mainNav button[data-section='categories']").click()
     page.wait_for_selector(".category-table-group-wrap", state="visible")
+    page.wait_for_selector("tr.category-child-row:not(.hidden)", state="visible")
     page.wait_for_selector("button[data-create-category-group-id='7']", state="attached")
     page.locator(".category-table-group-wrap", has_text="Еда").hover()
+    page.locator(".category-table-group-wrap", has_text="Еда").click(position={"x": 520, "y": 20})
+    page.wait_for_function("() => document.querySelector('tr.category-child-row')?.classList.contains('hidden')")
+    page.locator(".category-table-group-wrap", has_text="Еда").click(position={"x": 520, "y": 20})
+    page.wait_for_selector("tr.category-child-row:not(.hidden)", state="visible")
     page.locator("button.category-context-create-btn[data-create-category-group-id='7']").click()
 
     page.wait_for_selector("#createCategoryModal:not(.hidden)")
@@ -654,8 +666,13 @@ def test_item_source_context_create_prefills_source_from_hover_action(page, stat
     page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")
     page.get_by_role("button", name="Каталог позиций").click()
     page.wait_for_selector(".item-catalog-source-wrap", state="visible")
+    page.wait_for_selector("tr.item-catalog-item-row", state="visible")
     page.wait_for_selector("button[data-create-item-template-source-name='Евроопт']", state="attached")
     page.locator(".item-catalog-source-wrap", has_text="Евроопт").hover()
+    page.locator(".item-catalog-source-wrap", has_text="Евроопт").click(position={"x": 520, "y": 34})
+    page.wait_for_function("() => document.querySelector('tr.item-catalog-item-row')?.classList.contains('hidden')")
+    page.locator(".item-catalog-source-wrap", has_text="Евроопт").click(position={"x": 520, "y": 34})
+    page.wait_for_selector("tr.item-catalog-item-row:not(.hidden)", state="visible")
 
     geometry = page.evaluate(
         """

@@ -379,7 +379,7 @@
       : "";
     tr.innerHTML = `
       <td colspan="4" class="category-table-group-cell category-group-accent-cell">
-        <div class="category-table-group-wrap">
+        <div class="category-table-group-wrap" data-category-group-row-toggle-key="${group.key}">
           <div class="category-table-group-content">
             <div class="category-table-group-title">
               <button type="button" class="item-catalog-group-btn category-table-group-btn" data-category-group-toggle-key="${group.key}" ${toggleDisabled ? "disabled" : ""}>

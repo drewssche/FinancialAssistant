@@ -1,4 +1,8 @@
 (() => {
+  function isInteractiveTableTarget(target) {
+    return Boolean(target?.closest?.("button, a, input, select, textarea, label, .app-popover, [role='button']"));
+  }
+
   function syncItemCatalogControls({ el, queryActive, hasRows }) {
     if (el.itemCatalogCollapseAllBtn) {
       el.itemCatalogCollapseAllBtn.disabled = queryActive || !hasRows;
@@ -21,14 +25,19 @@
     savePreferencesDebounced,
   }) {
     const btn = event.target.closest("button[data-item-catalog-shop-key]");
-    if (!btn) {
+    const row = event.target.closest("tr.item-catalog-group-row");
+    const fallbackBtn = !btn && !isInteractiveTableTarget(event.target)
+      ? row?.querySelector("button[data-item-catalog-shop-key]")
+      : null;
+    const toggleBtn = btn || fallbackBtn;
+    if (!toggleBtn) {
       return false;
     }
     const query = String(el.itemCatalogSearchQ?.value || "").trim();
     if (query) {
       return true;
     }
-    const encodedKey = btn.dataset.itemCatalogShopKey || "";
+    const encodedKey = toggleBtn.dataset.itemCatalogShopKey || "";
     let shopKey = "";
     try {
       shopKey = encodedKey ? decodeURIComponent(encodedKey) : "";
