@@ -29,7 +29,6 @@
   }
 
   async function telegramBrowserLogin(authData) {
-    core.showApp();
     const data = await core.requestJson("/api/v1/auth/telegram/browser", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -206,13 +205,13 @@
   }
 
   async function bootstrapApp() {
-    core.showApp();
     await loadMe();
     await sessionPreferences.loadPreferences?.();
     const navigation = getNavigationActions();
     if (navigation.applySectionUi) {
       navigation.applySectionUi();
     }
+    core.showApp();
     if (navigation.switchSection) {
       await navigation.switchSection(state.activeSection || "dashboard", { preserveBackStack: true });
       return;
@@ -228,7 +227,6 @@
     if (!initData) {
       throw new Error("Нет Telegram initData. Откройте приложение внутри Telegram.");
     }
-    core.showApp();
     const data = await core.requestJson("/api/v1/auth/telegram", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

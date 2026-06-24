@@ -10,18 +10,52 @@
 }
 
 .login-card {
-  width: min(780px, 100%);
+  width: min(520px, 100%);
   background: linear-gradient(180deg, rgba(19, 26, 42, 0.96) 0%, rgba(13, 19, 32, 0.98) 100%);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   padding: calc(var(--space-8) + var(--space-2));
   box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.login-content,
+.login-loading {
+  display: grid;
+  justify-items: center;
+}
+
+.login-content {
+  gap: 0;
+}
+
+.login-loading {
+  gap: var(--space-3);
+  min-height: 172px;
+  align-content: center;
+}
+
+.login-loading strong {
+  font-size: 1.35rem;
+}
+
+.login-loading span {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.login-brand-mark {
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin-bottom: var(--space-2);
+  border-radius: 16px;
 }
 
 .login-card p {
   margin-top: 14px;
   color: var(--muted);
-  font-size: 22px;
+  font-size: 18px;
   line-height: 1.45;
 }
 

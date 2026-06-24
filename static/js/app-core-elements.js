@@ -2,6 +2,8 @@
   function createAppElements() {
     return {
       loginScreen: document.getElementById("loginScreen"),
+      loginLoading: document.getElementById("loginLoading"),
+      loginContent: document.getElementById("loginContent"),
       appShell: document.getElementById("appShell"),
       loginAlert: document.getElementById("loginAlert"),
       loginTelegramHint: document.getElementById("loginTelegramHint"),

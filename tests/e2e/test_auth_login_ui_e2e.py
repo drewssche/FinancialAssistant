@@ -261,6 +261,10 @@ def test_login_keeps_pending_and_rejected_users_out_of_workspace(
             page.evaluate("() => window.App.getRuntimeModule('session')?.refreshTelegramLoginUi?.()")
             page.click("#telegramLoginBtn")
             page.wait_for_selector("#loginScreen:not(.hidden)")
+            page.wait_for_function(
+                "(expected) => document.querySelector('#loginAlert')?.textContent === expected",
+                arg=expected_message,
+            )
             assert page.locator("#loginAlert").text_content() == expected_message
             assert page.locator("#appShell.hidden").count() == 1
             assert page.evaluate("() => window.localStorage.getItem('access_token')") is None

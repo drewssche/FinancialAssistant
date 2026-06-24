@@ -28,6 +28,8 @@
   - Done 2026-06-24: pin Pydantic to a version compatible with the current FastAPI and pydantic-settings stack so Docker builds do not backtrack across unavailable pydantic-core releases.
 - [x] Calculator tab fit.
   - Done 2026-06-24: calculator modes use four equal compact columns, with a two-column fallback on very narrow screens, so `Разделить` stays inside the drawer.
+- [x] Branded session loading and favicon.
+  - Done 2026-06-24: reloads show a centered `ФинАсист` session check instead of flashing the login form; the login card is compact and centered, and the favicon uses the new orange Cyrillic `Ф` with a mint status accent.
 
 ### Category And Catalog Interaction Fixes 2026-06-23
 - [x] Category group creation modal reliability.

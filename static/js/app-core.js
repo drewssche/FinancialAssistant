@@ -62,6 +62,8 @@
     const preserveAlert = options?.preserveAlert === true;
     setMobileNavOpen(false);
     el.loginScreen.classList.remove("hidden");
+    el.loginLoading?.classList.add("hidden");
+    el.loginContent?.classList.remove("hidden");
     el.appShell.classList.add("hidden");
     if (message) {
       setStatus(message, true);
@@ -78,6 +80,8 @@
 
   function showApp() {
     el.loginScreen.classList.add("hidden");
+    el.loginLoading?.classList.add("hidden");
+    el.loginContent?.classList.add("hidden");
     el.appShell.classList.remove("hidden");
     setMobileNavOpen(false);
     hideLoginAlert();

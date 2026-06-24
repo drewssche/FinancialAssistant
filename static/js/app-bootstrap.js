@@ -3,6 +3,8 @@
 
   function showBootstrapError(message) {
     const text = String(message || "Не удалось загрузить приложение.");
+    document.getElementById("loginLoading")?.classList.add("hidden");
+    document.getElementById("loginContent")?.classList.remove("hidden");
     const loginAlert = document.getElementById("loginAlert");
     if (loginAlert) {
       loginAlert.textContent = text;
