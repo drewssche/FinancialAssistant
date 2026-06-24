@@ -24,6 +24,8 @@
   - Done 2026-06-24: calculator buttons remain only in create/edit operation modals; the side panel uses a compact close control and prevents horizontal overflow.
 - [x] Compact analytics calendar picker.
   - Done 2026-06-24: month/year popovers size to their longest option instead of inheriting the wide generic popover width, with a viewport cap for small screens.
+- [x] Reproducible production dependency resolution.
+  - Done 2026-06-24: pin Pydantic to a version compatible with the current FastAPI and pydantic-settings stack so Docker builds do not backtrack across unavailable pydantic-core releases.
 
 ### Category And Catalog Interaction Fixes 2026-06-23
 - [x] Category group creation modal reliability.
