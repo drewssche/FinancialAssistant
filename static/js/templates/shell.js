@@ -65,10 +65,6 @@
             </div>
           </div>
           <div class="top-actions">
-            <button id="financeCalculatorToggle" class="finance-calculator-toggle btn btn-secondary" type="button" aria-controls="financeCalculatorDrawer" aria-expanded="false" title="Калькулятор">
-              <span aria-hidden="true">%</span>
-              <span>Калькулятор</span>
-            </button>
             <div class="cta-row">
               <button id="addOperationCta" class="btn btn-cta" type="button">+ Добавить операцию</button>
               <button id="batchOperationCta" class="btn btn-secondary" type="button">+ Массовое добавление</button>

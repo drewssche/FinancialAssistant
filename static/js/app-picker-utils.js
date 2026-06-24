@@ -181,8 +181,9 @@
     popover.style.overflowY = "auto";
     const anchorRect = anchor.getBoundingClientRect();
     const isControlPopover = popover.classList.contains("app-popover-floating") || popover.classList.contains("period-control-popover");
+    const sizesToContent = popover.classList.contains("analytics-grid-picker-popover");
     let preferredWidth = Math.min(360, Math.max(320, viewportWidth - margin * 2));
-    if (!isControlPopover) {
+    if (!isControlPopover || sizesToContent) {
       popover.style.width = "max-content";
       popover.style.minWidth = "10.5rem";
       popover.style.maxWidth = `calc(100vw - ${margin * 2}px)`;
@@ -190,7 +191,7 @@
       preferredWidth = Math.min(Math.max(naturalWidth, 168), viewportWidth - margin * 2);
     }
     popover.style.width = `${preferredWidth}px`;
-    popover.style.minWidth = `${Math.min(isControlPopover ? 320 : 168, preferredWidth)}px`;
+    popover.style.minWidth = `${Math.min(isControlPopover && !sizesToContent ? 320 : 168, preferredWidth)}px`;
     popover.style.left = `${Math.max(margin, Math.min(anchorRect.right - preferredWidth, viewportWidth - preferredWidth - margin))}px`;
     popover.style.top = `${Math.min(anchorRect.bottom + 8, viewportHeight - margin)}px`;
     const rect = popover.getBoundingClientRect();

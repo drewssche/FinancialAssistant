@@ -160,12 +160,18 @@ def _open_app(page, static_server_url: str):
 
 
 @pytest.mark.e2e
-def test_finance_calculator_drawer_calculates_discount_and_fits_mobile(static_server_url: str, page_with_calculator_mock):
+def test_finance_calculator_modal_drawer_calculates_discount_without_horizontal_overflow(
+    static_server_url: str,
+    page_with_calculator_mock,
+):
     page = page_with_calculator_mock
+    page.set_viewport_size({"width": 390, "height": 844})
     _open_app(page, static_server_url)
 
-    page.click("#financeCalculatorToggle")
-    page.wait_for_selector("#financeCalculatorDrawer:not(.hidden)")
+    page.click("#addOperationCta")
+    page.wait_for_selector("#createModal:not(.hidden)")
+    page.click("#createFinanceCalculatorToggle")
+    page.wait_for_selector("#financeCalculatorDrawer:not(.hidden).modal-attached")
     page.fill("#financeCalculatorInput-price", "100")
     page.fill("#financeCalculatorInput-discount", "15")
 
@@ -182,6 +188,16 @@ def test_finance_calculator_drawer_calculates_discount_and_fits_mobile(static_se
             bottom: drawer.bottom,
             width: drawer.width,
             height: drawer.height,
+            clientWidth: document.getElementById('financeCalculatorDrawer').clientWidth,
+            scrollWidth: document.getElementById('financeCalculatorDrawer').scrollWidth,
+            overflowers: [...document.getElementById('financeCalculatorDrawer').querySelectorAll('*')]
+              .map((node) => ({
+                node: `${node.tagName}.${node.className}`,
+                width: node.getBoundingClientRect().width,
+                scrollWidth: node.scrollWidth,
+                clientWidth: node.clientWidth,
+              }))
+              .filter((item) => item.scrollWidth > item.clientWidth),
             viewportWidth: window.innerWidth,
             viewportHeight: window.innerHeight,
           };
@@ -191,6 +207,7 @@ def test_finance_calculator_drawer_calculates_discount_and_fits_mobile(static_se
     assert geometry["width"] <= geometry["viewportWidth"]
     assert geometry["bottom"] <= geometry["viewportHeight"] + 1
     assert geometry["height"] <= geometry["viewportHeight"] * 0.9
+    assert geometry["scrollWidth"] <= geometry["clientWidth"], geometry["overflowers"]
 
 
 @pytest.mark.e2e

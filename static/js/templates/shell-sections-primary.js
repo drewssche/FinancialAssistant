@@ -241,11 +241,11 @@
                   <span class="muted-small">Выбор периода сетки</span>
                   <div class="toolbar">
                     <button id="analyticsGridMonthTrigger" class="btn btn-secondary analytics-grid-picker-trigger" type="button" aria-haspopup="dialog">Месяц</button>
-                    <div id="analyticsGridMonthPopover" class="app-popover app-popover-floating period-control-popover hidden" role="dialog" aria-label="Выбор месяца сетки">
+                    <div id="analyticsGridMonthPopover" class="app-popover app-popover-floating period-control-popover analytics-grid-picker-popover hidden" role="dialog" aria-label="Выбор месяца сетки">
                       <div id="analyticsGridMonthOptions" class="settings-picker-options"></div>
                     </div>
                     <button id="analyticsGridYearTrigger" class="btn btn-secondary analytics-grid-picker-trigger hidden" type="button" aria-haspopup="dialog">Год</button>
-                    <div id="analyticsGridYearPopover" class="app-popover app-popover-floating period-control-popover hidden" role="dialog" aria-label="Выбор года сетки">
+                    <div id="analyticsGridYearPopover" class="app-popover app-popover-floating period-control-popover analytics-grid-picker-popover hidden" role="dialog" aria-label="Выбор года сетки">
                       <div id="analyticsGridYearOptions" class="settings-picker-options"></div>
                     </div>
                     <div id="analyticsGridMonthPickerWrap" class="date-input-wrap compact-input hidden">

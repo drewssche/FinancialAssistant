@@ -63,7 +63,7 @@ def test_period_control_popovers_have_wide_floating_layout():
     overlays_css = (REPO_ROOT / "static" / "css" / "components-overlays.css").read_text(encoding="utf-8")
 
     assert "Math.min(360, Math.max(320, viewportWidth - margin * 2))" in picker_utils
-    assert "Math.min(isControlPopover ? 320 : 168, preferredWidth)" in picker_utils
+    assert "Math.min(isControlPopover && !sizesToContent ? 320 : 168, preferredWidth)" in picker_utils
     assert ".period-control-popover .settings-picker-option" in overlays_css
     assert "white-space: nowrap" in overlays_css
 
@@ -104,7 +104,7 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert "<title>ФинАсист</title>" in index_html
     assert "<h1>ФинАсист</h1>" in index_html
     assert '<div class="brand">ФА</div>' in shell
-    assert 'id="financeCalculatorToggle"' in shell
+    assert 'id="financeCalculatorToggle"' not in shell
     assert 'id="financeCalculatorDrawer"' in shell
     assert 'id="createFinanceCalculatorToggle"' in modals
     assert 'id="editFinanceCalculatorToggle"' in modals
@@ -119,6 +119,7 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert "calculateSplit" in calculator_js
     assert "closeIfAttachedToModal" in calculator_js
     assert "modal-attached" in calculator_css
+    assert "overflow-x: hidden" in calculator_css
     assert "getFinanceCalculator().bind?.();" in init_features
     assert "body.finance-calculator-open" in calculator_css
     assert "@media (max-width: 640px)" in calculator_css
@@ -133,6 +134,17 @@ def test_analytics_calendar_money_tooltip_uses_app_font_not_native_title():
     assert 'data-analytics-calendar-tooltip="${escapeHtml(dayTooltip)}"' in analytics_calendar
     assert 'title="${escapeHtml(dayTitle)}"' not in analytics_calendar
     assert ".analytics-day-meta {\n  color: #9db0d4;\n  font-family: var(--money-font-family);" in analytics_css
+
+
+def test_analytics_calendar_picker_popover_uses_content_width():
+    analytics_template = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-primary.js").read_text(encoding="utf-8")
+    analytics_css = (REPO_ROOT / "static" / "css" / "components-analytics-summary.css").read_text(encoding="utf-8")
+    picker_utils = (REPO_ROOT / "static" / "js" / "app-picker-utils.js").read_text(encoding="utf-8")
+
+    assert analytics_template.count("analytics-grid-picker-popover") == 2
+    assert ".app-popover.analytics-grid-picker-popover {\n  width: max-content;" in analytics_css
+    assert "max-width: calc(100vw - 2rem);" in analytics_css
+    assert 'const sizesToContent = popover.classList.contains("analytics-grid-picker-popover");' in picker_utils
     assert ".analytics-calendar-tooltip {\n  font-family: var(--money-font-family);\n}" in analytics_css
 
 

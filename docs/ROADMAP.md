@@ -20,6 +20,10 @@
   - Done 2026-06-23: category group rows and item source rows now collapse/expand from clicks on the row surface, while buttons, kebab menus, inputs, links and popovers keep their own actions.
 - [x] Regression coverage.
   - Covered by finance-calculator e2e for modal-attached geometry/calculation/autoclose and by category/catalog e2e for row collapse/expand plus preserved contextual `+` actions.
+- [x] Calculator entry points and drawer overflow.
+  - Done 2026-06-24: calculator buttons remain only in create/edit operation modals; the side panel uses a compact close control and prevents horizontal overflow.
+- [x] Compact analytics calendar picker.
+  - Done 2026-06-24: month/year popovers size to their longest option instead of inheriting the wide generic popover width, with a viewport cap for small screens.
 
 ### Category And Catalog Interaction Fixes 2026-06-23
 - [x] Category group creation modal reliability.

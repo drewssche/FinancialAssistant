@@ -912,6 +912,37 @@ def test_analytics_calendar_highlights_current_day_and_month(static_server_url: 
 
 
 @pytest.mark.e2e
+def test_analytics_calendar_month_picker_sizes_to_content(static_server_url: str, page_with_analytics_api_mock):
+    page = page_with_analytics_api_mock
+    _open_mobile_analytics(page, static_server_url)
+
+    page.click("button[data-analytics-tab='calendar']")
+    page.wait_for_selector("#analyticsCalendarPanel:not(.hidden)")
+    page.click("#analyticsGridMonthTrigger")
+    page.wait_for_selector("#analyticsGridMonthPopover:not(.hidden)")
+
+    geometry = page.evaluate(
+        """
+        () => {
+          const popover = document.getElementById('analyticsGridMonthPopover');
+          const rect = popover.getBoundingClientRect();
+          return {
+            width: rect.width,
+            right: rect.right,
+            clientWidth: popover.clientWidth,
+            scrollWidth: popover.scrollWidth,
+            viewportWidth: window.innerWidth,
+          };
+        }
+        """
+    )
+
+    assert geometry["width"] < 300, geometry
+    assert geometry["right"] <= geometry["viewportWidth"] + 1
+    assert geometry["scrollWidth"] <= geometry["clientWidth"]
+
+
+@pytest.mark.e2e
 def test_mobile_analytics_year_view_card_opens_month_view(static_server_url: str, page_with_analytics_api_mock):
     page = page_with_analytics_api_mock
     _open_mobile_analytics(page, static_server_url)
