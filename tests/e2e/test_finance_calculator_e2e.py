@@ -183,6 +183,8 @@ def test_finance_calculator_modal_drawer_calculates_discount_without_horizontal_
         """
         () => {
           const drawer = document.getElementById('financeCalculatorDrawer').getBoundingClientRect();
+          const tabs = document.getElementById('financeCalculatorTabs').getBoundingClientRect();
+          const splitTab = document.querySelector('[data-calculator-mode="split"]').getBoundingClientRect();
           return {
             top: drawer.top,
             bottom: drawer.bottom,
@@ -200,6 +202,8 @@ def test_finance_calculator_modal_drawer_calculates_discount_without_horizontal_
               .filter((item) => item.scrollWidth > item.clientWidth),
             viewportWidth: window.innerWidth,
             viewportHeight: window.innerHeight,
+            tabsRight: tabs.right,
+            splitTabRight: splitTab.right,
           };
         }
         """
@@ -208,6 +212,7 @@ def test_finance_calculator_modal_drawer_calculates_discount_without_horizontal_
     assert geometry["bottom"] <= geometry["viewportHeight"] + 1
     assert geometry["height"] <= geometry["viewportHeight"] * 0.9
     assert geometry["scrollWidth"] <= geometry["clientWidth"], geometry["overflowers"]
+    assert geometry["splitTabRight"] <= geometry["tabsRight"] + 1
 
 
 @pytest.mark.e2e
@@ -232,6 +237,8 @@ def test_finance_calculator_attaches_to_operation_modal_without_global_overlay(s
           const drawer = document.getElementById('financeCalculatorDrawer').getBoundingClientRect();
           const card = document.querySelector('#createModal .modal-card').getBoundingClientRect();
           const head = document.querySelector('#createModal .panel-head').getBoundingClientRect();
+          const tabs = document.getElementById('financeCalculatorTabs').getBoundingClientRect();
+          const splitTab = document.querySelector('[data-calculator-mode="split"]').getBoundingClientRect();
           return {
             drawerTop: drawer.top,
             drawerBottom: drawer.bottom,
@@ -242,6 +249,8 @@ def test_finance_calculator_attaches_to_operation_modal_without_global_overlay(s
             headBottom: head.bottom,
             viewportWidth: window.innerWidth,
             viewportHeight: window.innerHeight,
+            tabsRight: tabs.right,
+            splitTabRight: splitTab.right,
           };
         }
         """
@@ -251,6 +260,7 @@ def test_finance_calculator_attaches_to_operation_modal_without_global_overlay(s
     assert geometry["drawerRight"] <= geometry["viewportWidth"] + 1
     assert geometry["drawerBottom"] <= geometry["viewportHeight"] + 1
     assert geometry["drawerLeft"] >= 0
+    assert geometry["splitTabRight"] <= geometry["tabsRight"] + 1
 
     page.click("#closeCreateModalBtn")
     page.wait_for_function("() => document.querySelector('#financeCalculatorDrawer')?.classList.contains('hidden')")

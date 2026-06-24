@@ -120,6 +120,8 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert "closeIfAttachedToModal" in calculator_js
     assert "modal-attached" in calculator_css
     assert "overflow-x: hidden" in calculator_css
+    assert ".segmented.finance-calculator-tabs {" in calculator_css
+    assert "grid-template-columns: repeat(4, minmax(0, 1fr));" in calculator_css
     assert "getFinanceCalculator().bind?.();" in init_features
     assert "body.finance-calculator-open" in calculator_css
     assert "@media (max-width: 640px)" in calculator_css

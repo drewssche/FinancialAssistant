@@ -26,6 +26,8 @@
   - Done 2026-06-24: month/year popovers size to their longest option instead of inheriting the wide generic popover width, with a viewport cap for small screens.
 - [x] Reproducible production dependency resolution.
   - Done 2026-06-24: pin Pydantic to a version compatible with the current FastAPI and pydantic-settings stack so Docker builds do not backtrack across unavailable pydantic-core releases.
+- [x] Calculator tab fit.
+  - Done 2026-06-24: calculator modes use four equal compact columns, with a two-column fallback on very narrow screens, so `Разделить` stays inside the drawer.
 
 ### Category And Catalog Interaction Fixes 2026-06-23
 - [x] Category group creation modal reliability.
