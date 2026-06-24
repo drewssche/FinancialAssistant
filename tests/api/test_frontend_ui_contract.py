@@ -107,7 +107,10 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert 'id="loginContent" class="login-content hidden"' in index_html
     assert "/static/favicon.svg?v=2" in index_html
     assert "Проверяем сессию..." in index_html
-    assert '<div class="brand">ФА</div>' in shell
+    assert 'class="login-brand-mark"' in index_html
+    assert 'width="52" height="52"' in index_html
+    assert '<div class="brand" aria-label="ФинАсист">' in shell
+    assert '<img src="/static/favicon.svg?v=2" alt="" width="40" height="40" />' in shell
     assert 'id="financeCalculatorToggle"' not in shell
     assert 'id="financeCalculatorDrawer"' in shell
     assert 'id="createFinanceCalculatorToggle"' in modals

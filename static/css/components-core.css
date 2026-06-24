@@ -7,12 +7,20 @@
 .brand {
   width: 44px;
   height: 44px;
-  border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: #361900;
-  font-weight: 800;
   display: grid;
   place-items: center;
+}
+
+.brand img {
+  display: block;
+  width: 40px;
+  min-width: 40px;
+  max-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  max-height: 40px;
+  border-radius: 10px;
+  object-fit: contain;
 }
 
 .nav {

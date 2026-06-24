@@ -30,6 +30,8 @@
   - Done 2026-06-24: calculator modes use four equal compact columns, with a two-column fallback on very narrow screens, so `Разделить` stays inside the drawer.
 - [x] Branded session loading and favicon.
   - Done 2026-06-24: reloads show a centered `ФинАсист` session check instead of flashing the login form; the login card is compact and centered, and the favicon uses the new orange Cyrillic `Ф` with a mint status accent.
+  - Refined 2026-06-24: the login mark is constrained to 52px in widget environments; session checking uses a lightweight transform/opacity pulse with reduced-motion support.
+  - Refined 2026-06-24: the sidebar now uses the same branded `Ф` mark instead of the legacy `ФА` badge.
 
 ### Category And Catalog Interaction Fixes 2026-06-23
 - [x] Category group creation modal reliability.

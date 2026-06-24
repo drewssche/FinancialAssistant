@@ -9,7 +9,9 @@
       <aside class="sidebar" id="sidebarNav">
         <div class="sidebar-main">
           <div class="sidebar-head">
-            <div class="brand">ФА</div>
+            <div class="brand" aria-label="ФинАсист">
+              <img src="/static/favicon.svg?v=2" alt="" width="40" height="40" />
+            </div>
             <button id="mobileNavCloseBtn" class="mobile-nav-close" type="button" aria-label="Закрыть меню">×</button>
           </div>
           <div class="sidebar-today">

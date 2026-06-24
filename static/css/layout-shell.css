@@ -44,12 +44,73 @@
   font-size: 0.9rem;
 }
 
-.login-brand-mark {
+.login-card .login-brand-mark {
   display: block;
-  width: 64px;
-  height: 64px;
+  width: 52px;
+  min-width: 52px;
+  max-width: 52px;
+  height: 52px;
+  min-height: 52px;
+  max-height: 52px;
   margin-bottom: var(--space-2);
-  border-radius: 16px;
+  border-radius: 13px;
+  object-fit: contain;
+  flex: 0 0 52px;
+}
+
+.login-brand-motion {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  margin-bottom: var(--space-1);
+  animation: loginBrandFloat 1.8s ease-in-out infinite;
+}
+
+.login-brand-motion .login-brand-mark {
+  margin: 0;
+}
+
+.login-brand-motion::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 1px solid rgba(255, 154, 77, 0.36);
+  border-radius: 18px;
+  animation: loginBrandPulse 1.8s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes loginBrandFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes loginBrandPulse {
+  0% {
+    opacity: 0;
+    transform: scale(0.78);
+  }
+  35% {
+    opacity: 0.72;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-brand-motion,
+  .login-brand-motion::before {
+    animation: none;
+  }
 }
 
 .login-card p {
