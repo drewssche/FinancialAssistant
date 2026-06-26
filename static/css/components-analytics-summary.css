@@ -367,6 +367,29 @@
   font-variant-numeric: tabular-nums lining-nums;
 }
 
+.analytics-kpi-breakdown {
+  display: grid;
+  gap: 4px;
+  margin-top: 2px;
+  padding-top: var(--space-2);
+  border-top: 1px solid rgba(120, 140, 170, 0.18);
+}
+
+.analytics-kpi-breakdown span {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.analytics-kpi-breakdown b {
+  color: #d7e0f4;
+  font-weight: 700;
+}
+
 .analytics-kpi-income strong {
   color: #76e2a5;
 }

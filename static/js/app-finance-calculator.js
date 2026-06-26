@@ -41,6 +41,10 @@
   }
 
   function parseNumber(value) {
+    const resolved = getCore().resolveMoneyInput?.(value || "");
+    if (resolved && !resolved.empty) {
+      return Number(resolved.previewValue || 0);
+    }
     const normalized = String(value || "").trim().replace(/\s+/g, "").replace(",", ".");
     const parsed = Number(normalized);
     return Number.isFinite(parsed) ? parsed : 0;

@@ -224,6 +224,7 @@
     pickerCoordinator.bindReceiptList(el.receiptItemsList, {
       onInput: actions.handleReceiptItemsListInput,
       onFocusIn: actions.handleReceiptItemsListFocusIn,
+      onFocusOut: actions.handleReceiptItemsListFocusOut,
       onKeydown: actions.handleReceiptItemsListKeydown,
       onClick: actions.handleReceiptItemsListClick,
     });
@@ -235,6 +236,7 @@
     pickerCoordinator.bindReceiptList(el.editReceiptItemsList, {
       onInput: actions.handleReceiptItemsListInput,
       onFocusIn: actions.handleReceiptItemsListFocusIn,
+      onFocusOut: actions.handleReceiptItemsListFocusOut,
       onKeydown: actions.handleReceiptItemsListKeydown,
       onClick: actions.handleReceiptItemsListClick,
     });
@@ -527,6 +529,9 @@ function getPickerUiCoordinator() {
         }
         if (typeof handlers.onFocusIn === "function") {
           container.addEventListener("focusin", handlers.onFocusIn);
+        }
+        if (typeof handlers.onFocusOut === "function") {
+          container.addEventListener("focusout", handlers.onFocusOut);
         }
         if (typeof handlers.onKeydown === "function") {
           container.addEventListener("keydown", handlers.onKeydown);

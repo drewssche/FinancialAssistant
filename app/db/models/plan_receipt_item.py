@@ -19,5 +19,6 @@ class PlanReceiptItem(Base):
     unit_price: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     is_discounted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     regular_unit_price: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    discount_type: Mapped[str | None] = mapped_column(String(24), nullable=True)
     line_total: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     note: Mapped[str | None] = mapped_column(Text, nullable=True)

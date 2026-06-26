@@ -238,6 +238,7 @@
         anomalies: [],
         top_positions: [],
         price_increases: [],
+        discount_savings_by_type: [],
         top_discount_savings: [],
       };
       const highlightsUi = getHighlightsUi();

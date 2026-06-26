@@ -332,6 +332,7 @@ class ActivityService:
             "line_total": str(get("line_total") or "0"),
             "is_discounted": bool(get("is_discounted") or False),
             "regular_unit_price": str(get("regular_unit_price") or ""),
+            "discount_type": str(get("discount_type") or ""),
             "note": str(get("note") or ""),
         }
 
@@ -346,6 +347,7 @@ class ActivityService:
             payload.get("line_total"),
             payload.get("is_discounted"),
             payload.get("regular_unit_price"),
+            payload.get("discount_type"),
             payload.get("note"),
         )
 

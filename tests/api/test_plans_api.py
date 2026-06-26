@@ -348,6 +348,7 @@ def test_discounted_plan_receipt_item_does_not_update_latest_price(client: TestC
                     "quantity": "1",
                     "unit_price": "5.20",
                     "is_discounted": True,
+                    "discount_type": "loyalty_points",
                 },
             ],
         },
@@ -356,6 +357,7 @@ def test_discounted_plan_receipt_item_does_not_update_latest_price(client: TestC
     receipt_item = created.json()["receipt_items"][0]
     assert receipt_item["is_discounted"] is True
     assert receipt_item["regular_unit_price"] is None
+    assert receipt_item["discount_type"] == "loyalty_points"
 
     catalog = client.get("/api/v1/operations/item-templates", params={"page": 1, "page_size": 20, "q": "Йогурт"})
     assert catalog.status_code == 200

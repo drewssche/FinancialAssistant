@@ -32,6 +32,11 @@
   - Done 2026-06-24: reloads show a centered `ФинАсист` session check instead of flashing the login form; the login card is compact and centered, and the favicon uses the new orange Cyrillic `Ф` with a mint status accent.
   - Refined 2026-06-24: the login mark is constrained to 52px in widget environments; session checking uses a lightweight transform/opacity pulse with reduced-motion support.
   - Refined 2026-06-24: the sidebar now uses the same branded `Ф` mark instead of the legacy `ФА` badge.
+- [x] Receipt discount input and analytics.
+  - Done 2026-06-27: receipt item price fields now accept the same math expressions as the main operation amount, including discounted regular-price fields and the finance calculator's amount inputs.
+  - Done 2026-06-27: discounted receipt rows store a compact discount type (`promo`, `coupon`, `loyalty_points`) through operations, plans, activity diffs, and API responses. The UI uses inline chips (`Акция`, `Купон`, `Баллы`) instead of selects.
+  - Done 2026-06-27: analytics highlights keep the existing total savings KPI and add a compact savings breakdown by discount type for future product reporting.
+  - Covered by receipt e2e for receipt-only amount creation and discounted receipt creation with math input plus `Купон` payload.
 
 ### Category And Catalog Interaction Fixes 2026-06-23
 - [x] Category group creation modal reliability.

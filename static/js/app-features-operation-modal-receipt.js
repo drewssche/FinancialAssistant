@@ -17,6 +17,11 @@
       hintsPromise: null,
       hintsLoadedAt: 0,
     };
+    const RECEIPT_DISCOUNT_TYPES = [
+      { value: "promo", label: "Акция" },
+      { value: "coupon", label: "Купон" },
+      { value: "loyalty_points", label: "Баллы" },
+    ];
 
     function normalizeReceiptName(value) {
       return String(value || "")
@@ -25,7 +30,8 @@
     }
 
     function asMoney(value) {
-      const num = Number(value || 0);
+      const resolved = core.resolveMoneyInput?.(value || 0);
+      const num = resolved ? Number(resolved.previewValue || 0) : Number(value || 0);
       if (!Number.isFinite(num)) {
         return 0;
       }
@@ -67,6 +73,11 @@
         currency: getReceiptCurrency(mode),
         ...options,
       });
+    }
+
+    function formatReceiptInputAmount(value) {
+      const amount = asMoney(value || 0);
+      return amount > 0 ? core.formatAmount(amount) : "";
     }
 
     function getReceiptBaseCurrency(mode = "create") {
@@ -142,6 +153,7 @@
         unit_price: hasUnitPrice ? asMoney(seed.unit_price) : 0,
         is_discounted: Boolean(seed.is_discounted),
         regular_unit_price: seed.regular_unit_price ? asMoney(seed.regular_unit_price) : 0,
+        discount_type: seed.discount_type || (seed.is_discounted ? "promo" : null),
         note: seed.note || "",
       };
     }
@@ -165,6 +177,7 @@
         item.regular_unit_price = asMoney(value);
       } else if (key === "is_discounted") {
         item.is_discounted = Boolean(value);
+        item.discount_type = item.is_discounted ? (item.discount_type || "promo") : null;
         if (item.is_discounted && !item.regular_unit_price) {
           const latestPrice = getReceiptLatestTemplatePrice(item);
           if (latestPrice > 0) {
@@ -174,6 +187,10 @@
         if (!item.is_discounted) {
           item.regular_unit_price = 0;
         }
+      } else if (key === "discount_type") {
+        item.discount_type = RECEIPT_DISCOUNT_TYPES.some((entry) => entry.value === value)
+          ? value
+          : "promo";
       } else if (key === "shop_name") {
         item.shop_name = normalizeReceiptName(value);
         item.template_id = null;
@@ -257,6 +274,16 @@
           ? (state.categories || []).find((entry) => Number(entry.id) === effectiveCategoryId)
           : null;
         const categorySource = explicitCategoryId ? "explicit" : (categoryMeta ? "default" : "none");
+        const activeDiscountType = item.discount_type || "promo";
+        const discountTypeButtons = RECEIPT_DISCOUNT_TYPES.map((entry) => `
+          <button
+            class="receipt-discount-type-chip ${activeDiscountType === entry.value ? "is-active" : ""}"
+            type="button"
+            data-receipt-discount-type="${entry.value}"
+            data-receipt-item-id="${item.draft_id}"
+            aria-pressed="${activeDiscountType === entry.value ? "true" : "false"}"
+          >${esc(entry.label)}</button>
+        `).join("");
         return `
           <div class="receipt-item-row ${hasOpenPicker ? "has-open-popover" : ""}" data-receipt-mode="${mode}" data-receipt-item-id="${item.draft_id}">
             <div class="receipt-shop-cell ${shopPickerOpen ? "has-open-popover" : ""}">
@@ -282,9 +309,16 @@
               <div class="receipt-category-picker app-popover ${categoryPickerOpen ? "" : "hidden"}"></div>
             </div>
             <div class="receipt-price-cell ${item.is_discounted ? "receipt-price-cell-discounted" : ""}">
-              <input type="number" step="0.01" min="0" data-receipt-field="unit_price" value="${item.unit_price || ""}" placeholder="Цена покупки" title="Цена покупки в ${esc(getReceiptCurrencyLabel(mode))}" />
+              <div class="receipt-price-field">
+                <span class="receipt-price-label-chip">Цена покупки</span>
+                <input type="text" inputmode="decimal" data-receipt-field="unit_price" value="${formatReceiptInputAmount(item.unit_price)}" placeholder="Цена" title="Цена покупки в ${esc(getReceiptCurrencyLabel(mode))}" />
+              </div>
               <button class="receipt-discount-toggle ${item.is_discounted ? "is-active" : ""}" type="button" data-receipt-discount-toggle="${item.draft_id}" aria-pressed="${item.is_discounted ? "true" : "false"}" title="Скидка, купон, промокод или бонусы">Скидка</button>
-              <input class="receipt-regular-price ${item.is_discounted ? "" : "hidden"}" type="number" step="0.01" min="0" data-receipt-field="regular_unit_price" value="${item.regular_unit_price || ""}" placeholder="Обычная цена" title="Обычная цена для истории" />
+              <div class="receipt-discount-type-row ${item.is_discounted ? "" : "hidden"}" role="group" aria-label="Тип скидки">${discountTypeButtons}</div>
+              <div class="receipt-price-field receipt-regular-price-field ${item.is_discounted ? "" : "hidden"}">
+                <span class="receipt-price-label-chip receipt-price-label-regular">Обычная цена</span>
+                <input class="receipt-regular-price" type="text" inputmode="decimal" data-receipt-field="regular_unit_price" value="${formatReceiptInputAmount(item.regular_unit_price)}" placeholder="До скидки" title="Обычная цена для истории" />
+              </div>
             </div>
             <input type="number" step="0.001" min="0" data-receipt-field="quantity" value="${item.quantity || ""}" placeholder="Кол-во" />
             <div class="receipt-line-total"><span>Итого</span><strong>${formatReceiptMoney(total, mode)}</strong></div>
@@ -403,6 +437,7 @@
       receiptUiState.activePicker = null;
     });
     const handleReceiptItemsListInput = interactions.handleReceiptItemsListInput || (() => {});
+    const handleReceiptItemsListFocusOut = interactions.handleReceiptItemsListFocusOut || (() => {});
     const handleReceiptItemsListFocusIn = interactions.handleReceiptItemsListFocusIn || (() => {});
     const handleReceiptItemsListKeydown = interactions.handleReceiptItemsListKeydown || (() => {});
     const handleReceiptItemsListClick = interactions.handleReceiptItemsListClick || (() => {});
@@ -509,6 +544,7 @@
           regular_unit_price: item.is_discounted && Number(item.regular_unit_price || 0) > 0
             ? core.formatAmount(item.regular_unit_price)
             : null,
+          discount_type: item.is_discounted ? (item.discount_type || "promo") : null,
         }))
         .filter((item) => item.name && Number(item.quantity) > 0 && Number(item.unit_price) > 0);
     }
@@ -529,6 +565,7 @@
           regular_unit_price: item.is_discounted && Number(item.regular_unit_price || 0) > 0
             ? core.formatAmount(item.regular_unit_price)
             : null,
+          discount_type: item.is_discounted ? (item.discount_type || "promo") : null,
         }))
         .filter((item) => item.name && Number(item.quantity) > 0 && Number(item.unit_price) > 0);
     }
@@ -541,6 +578,7 @@
       renderReceiptSummary,
       loadReceiptTemplateHints,
       handleReceiptItemsListInput,
+      handleReceiptItemsListFocusOut,
       handleReceiptItemsListFocusIn,
       handleReceiptItemsListKeydown,
       handleReceiptItemsListClick,

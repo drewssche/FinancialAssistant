@@ -95,6 +95,9 @@
     }
 
     if (primaryContainer) {
+      const discountBreakdown = Array.isArray(data.discount_savings_by_type)
+        ? data.discount_savings_by_type.filter((item) => Number(item?.savings_total || 0) > 0)
+        : [];
       const operatingValue = Number(data?.balance ?? 0);
       const operatingPrevious = Number(data?.prev_balance ?? 0);
       const operatingDelta = data?.balance_change_pct ?? null;
@@ -124,6 +127,11 @@
           deltaLabel: "Позиций со скидкой",
           previousLabel: "К расходам",
           cardClass: "income",
+          extraHtml: discountBreakdown.length
+            ? `<div class="analytics-kpi-breakdown">${discountBreakdown.map((entry) => `
+              <span><b>${escapeHtml(entry.label || "Скидка")}</b>${escapeHtml(core.formatMoney(entry.savings_total || 0))}</span>
+            `).join("")}</div>`
+            : "",
         },
         {
           label: "Операционный результат",
@@ -157,6 +165,7 @@
             <strong>${escapeHtml(item.value)}</strong>
             <span class="analytics-kpi-delta">${escapeHtml(deltaLabel)}: ${escapeHtml(item.delta)}</span>
             <span class="muted-small">${escapeHtml(previousLabel)}: ${escapeHtml(item.previous)}</span>
+            ${item.extraHtml || ""}
           </article>
         `;
         })

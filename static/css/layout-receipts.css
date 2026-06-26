@@ -358,15 +358,73 @@
   width: 100%;
 }
 
+.receipt-item-row input.input-invalid {
+  border-color: rgba(255, 111, 125, 0.82);
+  box-shadow: 0 0 0 1px rgba(255, 111, 125, 0.2);
+}
+
 .receipt-price-cell {
   display: grid;
   grid-template-columns: minmax(96px, 1fr) max-content minmax(112px, 1fr);
   gap: var(--space-2);
-  align-items: center;
+  align-items: end;
   min-width: 0;
 }
 
-.receipt-price-cell .receipt-regular-price {
+.receipt-price-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.receipt-price-field input {
+  min-width: 0;
+}
+
+.receipt-price-cell-discounted .receipt-price-field:first-child {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.receipt-price-cell-discounted .receipt-discount-toggle {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.receipt-price-cell-discounted .receipt-regular-price-field {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.receipt-price-label-chip {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.25rem;
+  padding: 2px 7px;
+  border: 1px solid rgba(83, 105, 143, 0.45);
+  border-radius: var(--radius-pill);
+  background: rgba(18, 29, 48, 0.72);
+  color: #b8c5de;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.receipt-price-label-regular {
+  border-color: rgba(255, 175, 82, 0.48);
+  background: rgba(94, 58, 25, 0.28);
+  color: #ffd39b;
+}
+
+.receipt-discount-type-row {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
   min-width: 0;
 }
 
@@ -374,6 +432,7 @@
   width: auto;
   min-width: max-content;
   min-height: 2.25rem;
+  align-self: end;
   padding: 6px 10px;
   border: 1px solid rgba(83, 105, 143, 0.62);
   border-radius: var(--radius-pill);
@@ -389,6 +448,26 @@
   border-color: rgba(255, 175, 82, 0.72);
   background: rgba(94, 58, 25, 0.66);
   color: #ffd39b;
+}
+
+.receipt-discount-type-chip {
+  min-height: 1.75rem;
+  padding: 4px 9px;
+  border: 1px solid rgba(83, 105, 143, 0.55);
+  border-radius: var(--radius-pill);
+  background: rgba(18, 29, 48, 0.8);
+  color: #b9c5db;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.receipt-discount-type-chip.is-active {
+  border-color: rgba(95, 199, 163, 0.62);
+  background: rgba(34, 92, 76, 0.36);
+  color: #b9f1dd;
 }
 
 .receipt-item-row .receipt-line-total {

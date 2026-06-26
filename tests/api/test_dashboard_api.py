@@ -1114,6 +1114,7 @@ def test_dashboard_analytics_highlights_includes_discount_savings_kpi(client: Te
                     "unit_price": "5.20",
                     "is_discounted": True,
                     "regular_unit_price": "6.80",
+                    "discount_type": "coupon",
                 },
                 {
                     "shop_name": "Store",
@@ -1135,6 +1136,14 @@ def test_dashboard_analytics_highlights_includes_discount_savings_kpi(client: Te
     assert payload["discount_savings_total"] == "3.20"
     assert payload["discount_items_count"] == 1
     assert payload["discount_savings_rate_pct"] == pytest.approx(23.88, abs=0.01)
+    assert payload["discount_savings_by_type"] == [
+        {
+            "discount_type": "coupon",
+            "label": "Купоны",
+            "savings_total": "3.20",
+            "items_count": 1,
+        }
+    ]
     assert payload["top_discount_savings"] == [
         {
             "name": "Coffee",

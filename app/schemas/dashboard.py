@@ -283,6 +283,13 @@ class AnalyticsTopDiscountSaving(BaseModel):
     purchases_count: int
 
 
+class AnalyticsDiscountBreakdownItem(BaseModel):
+    discount_type: str | None = None
+    label: str
+    savings_total: Decimal
+    items_count: int
+
+
 class AnalyticsHighlightsOut(BaseModel):
     period: str
     category_breakdown_kind: str
@@ -310,6 +317,7 @@ class AnalyticsHighlightsOut(BaseModel):
     discount_savings_total: Decimal = Decimal("0")
     discount_items_count: int = 0
     discount_savings_rate_pct: float | None = None
+    discount_savings_by_type: list[AnalyticsDiscountBreakdownItem] = Field(default_factory=list)
     operations_count: int
     avg_daily_expense: Decimal
     max_expense_day_date: str | None

@@ -29,13 +29,18 @@
       if (!row?.is_discounted) {
         return "";
       }
+      const typeLabel = {
+        promo: "Акция",
+        coupon: "Купон",
+        loyalty_points: "Баллы",
+      }[row.discount_type] || "Скидка";
       const regular = Number(row.regular_unit_price || 0);
       const price = Number(row.unit_price || 0);
       if (regular > 0 && price > 0 && price < regular) {
         const percent = Math.round(((regular - price) / regular) * 100);
-        return `Скидка -${percent}%`;
+        return `${typeLabel} -${percent}%`;
       }
-      return "Скидка";
+      return typeLabel;
     }
 
     function openOperationReceiptModal(item) {

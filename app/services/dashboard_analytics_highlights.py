@@ -450,6 +450,7 @@ class DashboardAnalyticsHighlightsService:
         surplus_total = cashflow_total if cashflow_total > 0 else Decimal("0")
         deficit_total = abs(cashflow_total) if cashflow_total < 0 else Decimal("0")
         discount_savings_total, discount_items_count = self.compute_discount_savings(current_receipt_items)
+        discount_savings_by_type = self.compute_discount_savings_by_type(current_receipt_items)
         discount_savings_rate_pct = (
             float((discount_savings_total / expense_total) * Decimal("100"))
             if expense_total > 0
@@ -482,6 +483,7 @@ class DashboardAnalyticsHighlightsService:
             "discount_savings_total": discount_savings_total,
             "discount_items_count": discount_items_count,
             "discount_savings_rate_pct": discount_savings_rate_pct,
+            "discount_savings_by_type": discount_savings_by_type,
             "operations_count": operations_count,
             "avg_daily_expense": avg_daily_expense,
             "max_expense_day_date": max_expense_day_date.isoformat() if max_expense_day_date else None,
@@ -587,6 +589,45 @@ class DashboardAnalyticsHighlightsService:
                 savings_total += (regular_unit_price - unit_price) * quantity
                 items_count += 1
         return savings_total.quantize(Decimal("0.01")), items_count
+
+    def compute_discount_savings_by_type(self, receipt_items_by_operation: dict[int, list] | None) -> list[dict]:
+        labels = {
+            "promo": "Акции",
+            "coupon": "Купоны",
+            "loyalty_points": "Баллы",
+            None: "Без типа",
+        }
+        order = {"promo": 0, "coupon": 1, "loyalty_points": 2, None: 3}
+        buckets: dict[str | None, dict] = defaultdict(
+            lambda: {"savings_total": Decimal("0"), "items_count": 0}
+        )
+        for receipt_rows in (receipt_items_by_operation or {}).values():
+            for row in receipt_rows or []:
+                if not bool(getattr(row, "is_discounted", False)):
+                    continue
+                quantity = Decimal(getattr(row, "quantity", 0) or 0)
+                unit_price = Decimal(getattr(row, "unit_price", 0) or 0)
+                regular_unit_price = Decimal(getattr(row, "regular_unit_price", 0) or 0)
+                if quantity <= 0 or unit_price <= 0 or regular_unit_price <= unit_price:
+                    continue
+                discount_type = getattr(row, "discount_type", None)
+                if discount_type not in ("promo", "coupon", "loyalty_points"):
+                    discount_type = None
+                bucket = buckets[discount_type]
+                bucket["savings_total"] += (regular_unit_price - unit_price) * quantity
+                bucket["items_count"] += 1
+        items = [
+            {
+                "discount_type": discount_type,
+                "label": labels[discount_type],
+                "savings_total": Decimal(bucket["savings_total"] or 0).quantize(Decimal("0.01")),
+                "items_count": int(bucket["items_count"] or 0),
+            }
+            for discount_type, bucket in buckets.items()
+            if Decimal(bucket["savings_total"] or 0) > 0
+        ]
+        items.sort(key=lambda item: order.get(item["discount_type"], 99))
+        return items
 
     def build_top_discount_savings(self, receipt_items_by_operation: dict[int, list] | None) -> list[dict]:
         buckets: dict[tuple[str, str | None], dict] = defaultdict(

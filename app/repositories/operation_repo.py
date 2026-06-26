@@ -349,6 +349,7 @@ class OperationRepository:
                 unit_price=payload["unit_price"],
                 is_discounted=bool(payload.get("is_discounted")),
                 regular_unit_price=payload.get("regular_unit_price"),
+                discount_type=payload.get("discount_type"),
                 line_total=payload["line_total"],
                 note=payload.get("note"),
             )

@@ -158,6 +158,36 @@
         }
       }
     }
+    function handleReceiptItemsListFocusOut(event) {
+      const input = event.target.closest('[data-receipt-field="unit_price"], [data-receipt-field="regular_unit_price"]');
+      if (!input) {
+        return;
+      }
+      const row = input.closest("[data-receipt-item-id]");
+      if (!row) {
+        return;
+      }
+      const draftId = Number(row.dataset.receiptItemId || 0);
+      const field = input.dataset.receiptField;
+      const mode = getReceiptModeFromNode(row);
+      const resolved = core.resolveMoneyInput?.(input.value || "");
+      if (!resolved || resolved.empty) {
+        return;
+      }
+      if (!resolved.valid) {
+        input.classList.add("input-invalid");
+        return;
+      }
+      input.classList.remove("input-invalid");
+      input.value = resolved.formatted;
+      updateReceiptItemField(draftId, field, resolved.formatted, mode);
+      renderReceiptSummary(mode);
+      if (mode === "create") {
+        updateCreatePreview();
+      } else {
+        updateEditPreview();
+      }
+    }
     function handleReceiptItemsListFocusIn(event) {
       const input = event.target.closest('[data-receipt-field="name"], [data-receipt-field="shop_name"], [data-receipt-field="category_search"]');
       if (!input) return;
@@ -338,6 +368,17 @@
         }
         return;
       }
+      const discountTypeBtn = event.target.closest("button[data-receipt-discount-type]");
+      if (discountTypeBtn) {
+        const draftId = Number(discountTypeBtn.dataset.receiptItemId || 0);
+        const row = discountTypeBtn.closest("[data-receipt-item-id]");
+        const mode = getReceiptModeFromNode(row);
+        if (getReceiptItemByDraftId(draftId, mode)) {
+          updateReceiptItemField(draftId, "discount_type", discountTypeBtn.dataset.receiptDiscountType || "promo", mode);
+          commitReceiptRowMutation(mode);
+        }
+        return;
+      }
       const removeBtn = event.target.closest("button[data-receipt-remove-id]");
       if (!removeBtn) return;
       const row = removeBtn.closest("[data-receipt-item-id]");
@@ -360,6 +401,7 @@
       loadReceiptTemplateHints,
       hideAllReceiptPickers,
       handleReceiptItemsListInput,
+      handleReceiptItemsListFocusOut,
       handleReceiptItemsListFocusIn,
       handleReceiptItemsListKeydown,
       handleReceiptItemsListClick,

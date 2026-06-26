@@ -128,6 +128,7 @@ class PlanRepository:
                 unit_price=item["unit_price"],
                 is_discounted=bool(item.get("is_discounted")),
                 regular_unit_price=item.get("regular_unit_price"),
+                discount_type=item.get("discount_type"),
                 line_total=item["line_total"],
                 note=item.get("note"),
             )

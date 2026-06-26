@@ -728,6 +728,7 @@ class OperationService:
                         if getattr(row, "regular_unit_price", None) is not None
                         else None
                     ),
+                    "discount_type": getattr(row, "discount_type", None),
                     "line_total": line_total,
                     "note": row.note,
                 }
@@ -854,6 +855,9 @@ class OperationService:
                 regular_unit_price = self._money(item.get("regular_unit_price") or Decimal("0"))
                 if regular_unit_price <= 0:
                     raise ValueError("receipt item regular_unit_price must be greater than 0")
+            discount_type = str(item.get("discount_type") or "").strip() or None
+            if discount_type not in (None, "promo", "coupon", "loyalty_points"):
+                raise ValueError("receipt item discount_type is invalid")
             line_total = self._money(quantity * unit_price)
             note = item.get("note")
             normalized.append(
@@ -865,6 +869,7 @@ class OperationService:
                     "unit_price": unit_price,
                     "is_discounted": is_discounted,
                     "regular_unit_price": regular_unit_price if is_discounted else None,
+                    "discount_type": discount_type if is_discounted else None,
                     "line_total": line_total,
                     "note": note,
                 }

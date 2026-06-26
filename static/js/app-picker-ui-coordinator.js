@@ -173,6 +173,9 @@
     if (typeof handlers.onFocusIn === "function") {
       container.addEventListener("focusin", handlers.onFocusIn);
     }
+    if (typeof handlers.onFocusOut === "function") {
+      container.addEventListener("focusout", handlers.onFocusOut);
+    }
     if (typeof handlers.onKeydown === "function") {
       container.addEventListener("keydown", handlers.onKeydown);
     }

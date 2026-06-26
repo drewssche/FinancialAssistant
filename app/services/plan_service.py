@@ -374,6 +374,7 @@ class PlanService:
                     "unit_price": row_item.unit_price,
                     "is_discounted": bool(getattr(row_item, "is_discounted", False)),
                     "regular_unit_price": getattr(row_item, "regular_unit_price", None),
+                    "discount_type": getattr(row_item, "discount_type", None),
                     "note": row_item.note,
                 }
                 for row_item in receipt_items
@@ -551,6 +552,7 @@ class PlanService:
                         if getattr(receipt_item, "regular_unit_price", None) is not None
                         else None
                     ),
+                    "discount_type": getattr(receipt_item, "discount_type", None),
                     "line_total": line_total,
                     "note": receipt_item.note,
                 }

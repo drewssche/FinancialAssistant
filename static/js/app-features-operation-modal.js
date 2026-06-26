@@ -97,6 +97,7 @@
   const renderReceiptSummary = receipt.renderReceiptSummary || (() => {});
   const loadReceiptTemplateHints = receipt.loadReceiptTemplateHints || (async () => {});
   const handleReceiptItemsListInput = receipt.handleReceiptItemsListInput || (() => {});
+  const handleReceiptItemsListFocusOut = receipt.handleReceiptItemsListFocusOut || (() => {});
   const handleReceiptItemsListFocusIn = receipt.handleReceiptItemsListFocusIn || (() => {});
   const handleReceiptItemsListKeydown = receipt.handleReceiptItemsListKeydown || (() => {});
   const handleReceiptItemsListClick = receipt.handleReceiptItemsListClick || (() => {});
@@ -554,6 +555,7 @@
         unit_price: row.unit_price || 0,
         is_discounted: Boolean(row.is_discounted),
         regular_unit_price: row.regular_unit_price || 0,
+        discount_type: row.discount_type || null,
         note: row.note || "",
       }, "edit"));
     } else {
@@ -727,6 +729,7 @@
     handleDebtCounterpartyOutsidePointer,
     handleEditCategoryOutsidePointer,
     handleReceiptItemsListInput,
+    handleReceiptItemsListFocusOut,
     handleReceiptItemsListFocusIn,
     handleReceiptItemsListKeydown,
     handleReceiptItemsListClick,

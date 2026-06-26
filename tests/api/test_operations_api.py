@@ -1396,6 +1396,7 @@ def test_discounted_receipt_item_can_record_regular_price_history(client: TestCl
                     "unit_price": "5.20",
                     "is_discounted": True,
                     "regular_unit_price": "7.10",
+                    "discount_type": "coupon",
                 },
             ],
         },
@@ -1405,6 +1406,7 @@ def test_discounted_receipt_item_can_record_regular_price_history(client: TestCl
     assert receipt_item["unit_price"] == "5.20"
     assert receipt_item["is_discounted"] is True
     assert receipt_item["regular_unit_price"] == "7.10"
+    assert receipt_item["discount_type"] == "coupon"
 
     templates = client.get("/api/v1/operations/item-templates", params={"page": 1, "page_size": 20, "q": "Чай"})
     assert templates.status_code == 200

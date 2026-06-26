@@ -1,7 +1,10 @@
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, Field
+
+DiscountType = Literal["promo", "coupon", "loyalty_points"]
 
 
 class OperationReceiptItemIn(BaseModel):
@@ -12,6 +15,7 @@ class OperationReceiptItemIn(BaseModel):
     unit_price: Decimal = Field(gt=0)
     is_discounted: bool = False
     regular_unit_price: Decimal | None = Field(default=None, gt=0)
+    discount_type: DiscountType | None = None
     note: str | None = Field(default=None, max_length=300)
 
 
@@ -28,6 +32,7 @@ class OperationReceiptItemOut(BaseModel):
     unit_price: Decimal
     is_discounted: bool = False
     regular_unit_price: Decimal | None = None
+    discount_type: DiscountType | None = None
     line_total: Decimal
     note: str | None
 
