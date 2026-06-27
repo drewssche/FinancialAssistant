@@ -6,6 +6,10 @@
     return window.App.getRuntimeModule?.("operations") || {};
   }
 
+  function getOperationModal() {
+    return window.App.getRuntimeModule?.("operation-modal") || {};
+  }
+
     function toggleTableMenu(trigger) {
     const menuId = String(trigger?.dataset.tableMenuTrigger || "");
     const menu = menuId ? document.querySelector(`.table-kebab-popover[data-table-menu="${CSS.escape(menuId)}"]`) : null;
@@ -364,6 +368,14 @@
           return;
         }
         actions.setCreateOperationMode(btn.dataset.operationMode);
+      });
+    }
+
+    const convertAmountToDiscountReceiptBtn = el.convertAmountToDiscountReceiptBtn
+      || document.getElementById("convertAmountToDiscountReceiptBtn");
+    if (convertAmountToDiscountReceiptBtn) {
+      convertAmountToDiscountReceiptBtn.addEventListener("click", () => {
+        getOperationModal().convertCreateAmountToDiscountReceipt?.();
       });
     }
 

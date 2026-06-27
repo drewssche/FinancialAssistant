@@ -285,7 +285,7 @@
           >${esc(entry.label)}</button>
         `).join("");
         return `
-          <div class="receipt-item-row ${hasOpenPicker ? "has-open-popover" : ""}" data-receipt-mode="${mode}" data-receipt-item-id="${item.draft_id}">
+          <div class="receipt-item-row ${item.is_discounted ? "receipt-item-row-discounted" : ""} ${hasOpenPicker ? "has-open-popover" : ""}" data-receipt-mode="${mode}" data-receipt-item-id="${item.draft_id}">
             <div class="receipt-shop-cell ${shopPickerOpen ? "has-open-popover" : ""}">
               <input type="text" data-receipt-field="shop_name" value="${esc(item.shop_name || "")}" placeholder="Источник" />
               <div class="receipt-shop-picker app-popover ${shopPickerOpen ? "" : "hidden"}"></div>
@@ -310,13 +310,11 @@
             </div>
             <div class="receipt-price-cell ${item.is_discounted ? "receipt-price-cell-discounted" : ""}">
               <div class="receipt-price-field">
-                <span class="receipt-price-label-chip">Цена покупки</span>
                 <input type="text" inputmode="decimal" data-receipt-field="unit_price" value="${formatReceiptInputAmount(item.unit_price)}" placeholder="Цена" title="Цена покупки в ${esc(getReceiptCurrencyLabel(mode))}" />
               </div>
               <button class="receipt-discount-toggle ${item.is_discounted ? "is-active" : ""}" type="button" data-receipt-discount-toggle="${item.draft_id}" aria-pressed="${item.is_discounted ? "true" : "false"}" title="Скидка, купон, промокод или бонусы">Скидка</button>
               <div class="receipt-discount-type-row ${item.is_discounted ? "" : "hidden"}" role="group" aria-label="Тип скидки">${discountTypeButtons}</div>
               <div class="receipt-price-field receipt-regular-price-field ${item.is_discounted ? "" : "hidden"}">
-                <span class="receipt-price-label-chip receipt-price-label-regular">Обычная цена</span>
                 <input class="receipt-regular-price" type="text" inputmode="decimal" data-receipt-field="regular_unit_price" value="${formatReceiptInputAmount(item.regular_unit_price)}" placeholder="До скидки" title="Обычная цена для истории" />
               </div>
             </div>

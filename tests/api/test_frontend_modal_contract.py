@@ -150,9 +150,8 @@ def test_receipt_discount_ui_uses_discount_copy_and_prefills_regular_price():
     assert "title=\"Скидка, купон, промокод или бонусы\"" in receipt
     assert 'type="text" inputmode="decimal" data-receipt-field="unit_price"' in receipt
     assert 'data-receipt-field="regular_unit_price"' in receipt
-    assert "receipt-price-label-chip" in receipt
-    assert "Цена покупки" in receipt
-    assert "Обычная цена" in receipt
+    assert "receipt-item-row-discounted" in receipt
+    assert "receipt-price-label-chip" not in receipt
     assert 'data-receipt-discount-type="${entry.value}"' in receipt
     assert "Акция" in receipt
     assert "Купон" in receipt

@@ -37,6 +37,7 @@
   - Done 2026-06-27: discounted receipt rows store a compact discount type (`promo`, `coupon`, `loyalty_points`) through operations, plans, activity diffs, and API responses. The UI uses inline chips (`Акция`, `Купон`, `Баллы`) instead of selects.
   - Done 2026-06-27: analytics highlights keep the existing total savings KPI and add a compact savings breakdown by discount type for future product reporting.
   - Covered by receipt e2e for receipt-only amount creation and discounted receipt creation with math input plus `Купон` payload.
+  - Refined 2026-06-27: regular operations can convert the entered amount into a one-line discounted receipt, keeping discount analytics on receipt items instead of duplicating operation-level discount fields.
 
 ### Category And Catalog Interaction Fixes 2026-06-23
 - [x] Category group creation modal reliability.

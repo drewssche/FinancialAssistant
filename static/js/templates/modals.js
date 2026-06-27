@@ -60,6 +60,7 @@
               <option value="CNY">CNY (¥)</option>
               <option value="PLN">PLN (zł)</option>
             </select>
+            <button id="convertAmountToDiscountReceiptBtn" class="btn btn-secondary convert-discount-receipt-btn" type="button">Покупка со скидкой</button>
           </div>
           <div id="opFxRateField" class="fx-rate-field hidden">
             <div class="money-input-wrap money-input-no-suffix" data-money-input-wrap>

@@ -460,6 +460,14 @@
   width: 100%;
 }
 
+.convert-discount-receipt-btn {
+  grid-column: 1 / -1;
+  justify-self: start;
+  min-height: 2rem;
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
 .inline-currency-select {
   width: auto;
   min-width: max-content;

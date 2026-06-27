@@ -267,6 +267,7 @@
       createPreviewHeadCurrency: document.getElementById("createPreviewHeadCurrency"),
       createPreviewCurrencyAmountHead: document.getElementById("createPreviewCurrencyAmountHead"),
       opCurrency: document.getElementById("opCurrency"),
+      convertAmountToDiscountReceiptBtn: document.getElementById("convertAmountToDiscountReceiptBtn"),
       opFxRateField: document.getElementById("opFxRateField"),
       opFxRate: document.getElementById("opFxRate"),
       opFxRateHint: document.getElementById("opFxRateHint"),

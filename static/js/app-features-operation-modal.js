@@ -179,12 +179,63 @@
       core.syncSegmentedActive(el.createOperationModeSwitch, "operation-mode", nextMode);
     }
     el.opReceiptBlock?.classList.toggle("hidden", el.opEntryMode?.value === "debt" || el.opEntryMode?.value === "currency" || nextMode !== "receipt");
+    el.convertAmountToDiscountReceiptBtn?.classList.toggle("hidden", nextMode !== "common");
     setReceiptEnabled(nextMode === "receipt", "create");
     updateCreateCategoryFieldUi();
     renderCreateCategoryPicker();
     renderDebtCounterpartyPicker();
     syncCreateFxSettlementFieldUi();
     updateCreatePreview();
+  }
+  function convertCreateAmountToDiscountReceipt() {
+    if (el.opEntryMode?.value && el.opEntryMode.value !== "operation") {
+      return;
+    }
+    const amountInput = document.getElementById("opAmount");
+    const amountResolved = core.resolveMoneyInput(amountInput?.value || "");
+    const amountValue = amountResolved?.valid && Number(amountResolved.previewValue || 0) > 0
+      ? core.formatAmount(amountResolved.previewValue)
+      : "";
+    setCreateOperationMode("receipt");
+    const existingRows = Array.isArray(state.createReceiptItems)
+      ? state.createReceiptItems.filter((item) => {
+        const hasName = String(item?.name || "").trim() !== "";
+        const hasShop = String(item?.shop_name || "").trim() !== "";
+        const hasPrice = Number(item?.unit_price || 0) > 0;
+        return hasName || hasShop || hasPrice;
+      })
+      : [];
+    const seed = {
+      quantity: 1,
+      unit_price: amountValue,
+      is_discounted: true,
+      regular_unit_price: "",
+      discount_type: "promo",
+    };
+    state.createReceiptItems = existingRows.length
+      ? existingRows
+      : [createReceiptDraft ? createReceiptDraft(seed, "create") : seed];
+    if (state.createReceiptItems[0]) {
+      state.createReceiptItems[0].is_discounted = true;
+      state.createReceiptItems[0].discount_type = state.createReceiptItems[0].discount_type || "promo";
+      if (amountValue && Number(state.createReceiptItems[0].unit_price || 0) <= 0) {
+        state.createReceiptItems[0].unit_price = Number(amountResolved.previewValue || 0);
+      }
+      if (!state.createReceiptItems[0].quantity || Number(state.createReceiptItems[0].quantity) <= 0) {
+        state.createReceiptItems[0].quantity = 1;
+      }
+    }
+    if (amountInput) {
+      amountInput.value = "";
+    }
+    renderReceiptItems("create");
+    renderReceiptSummary("create");
+    syncCreateFxSettlementFieldUi();
+    updateCreatePreview();
+    const focusTarget = document.querySelector(
+      '#receiptItemsList .receipt-item-row:first-child [data-receipt-field="regular_unit_price"], #receiptItemsList .receipt-item-row:first-child [data-receipt-field="unit_price"]',
+    );
+    focusTarget?.focus();
   }
   function setEditOperationMode(mode) {
     const nextMode = mode === "receipt" ? "receipt" : "common";
@@ -220,6 +271,7 @@
     if (opAmountField) {
       opAmountField.classList.toggle("hidden", isDebt || isCurrency);
     }
+    el.convertAmountToDiscountReceiptBtn?.classList.toggle("hidden", isDebt || isCurrency || isCreateReceiptMode());
     if (opAmount) {
       opAmount.required = !isDebt && !isCurrency;
       if (!isDebt && !isCurrency && isCreateReceiptMode()) {
@@ -735,6 +787,7 @@
     handleReceiptItemsListClick,
     handleReceiptOutsidePointer,
     handlePullReceiptTotal,
+    convertCreateAmountToDiscountReceipt,
     setReceiptEnabled,
     getCreateReceiptPayload,
     getCreateFxSettlementPayload,
