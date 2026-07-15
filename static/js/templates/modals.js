@@ -9,7 +9,9 @@
           <h3 id="createTitle">Новая операция</h3>
           <div class="modal-head-actions">
             <button id="createModalActivityBtn" class="btn btn-secondary hidden" type="button">Журнал</button>
-            <button id="createSessionRefreshBtn" class="session-refresh-btn operation-session-refresh-btn" type="button" title="Продлить сессию" aria-label="Продлить сессию">↻</button>
+            <button id="createSessionRefreshBtn" class="btn btn-secondary operation-session-refresh-btn" type="button" title="Продлить сессию" aria-label="Продлить сессию">
+              <span aria-hidden="true">⟳</span><span class="operation-session-refresh-label">Продлить</span>
+            </button>
             <button id="createFinanceCalculatorToggle" class="btn btn-secondary finance-calculator-modal-toggle" type="button" aria-controls="financeCalculatorDrawer" aria-expanded="false" title="Калькулятор">
               <span aria-hidden="true">%</span><span>Калькулятор</span>
             </button>
@@ -430,7 +432,9 @@
           <h3 id="editTitle">Редактировать операцию</h3>
           <div class="modal-head-actions">
             <button id="editModalActivityBtn" class="btn btn-secondary hidden" type="button">Журнал</button>
-            <button id="editSessionRefreshBtn" class="session-refresh-btn operation-session-refresh-btn" type="button" title="Продлить сессию" aria-label="Продлить сессию">↻</button>
+            <button id="editSessionRefreshBtn" class="btn btn-secondary operation-session-refresh-btn" type="button" title="Продлить сессию" aria-label="Продлить сессию">
+              <span aria-hidden="true">⟳</span><span class="operation-session-refresh-label">Продлить</span>
+            </button>
             <button id="editFinanceCalculatorToggle" class="btn btn-secondary finance-calculator-modal-toggle" type="button" aria-controls="financeCalculatorDrawer" aria-expanded="false" title="Калькулятор">
               <span aria-hidden="true">%</span><span>Калькулятор</span>
             </button>

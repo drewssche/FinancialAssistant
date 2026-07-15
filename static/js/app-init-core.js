@@ -254,9 +254,7 @@
     }
     if (el.addDebtCta) {
       el.addDebtCta.addEventListener("click", () => {
-        const operationModal = getOperationModal();
-        operationModal.openCreateModal?.();
-        operationModal.setCreateEntryMode?.("debt");
+        getOperationModal().openCreateModal?.({ entryMode: "debt" });
       });
     }
     if (el.addItemTemplateCta && getItemCatalogFeature().openItemTemplateModal) {

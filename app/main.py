@@ -51,6 +51,7 @@ async def http_metrics_middleware(request, call_next):
                 path == "/"
                 or path == "/static/index.html"
                 or path == "/static/styles.css"
+                or path.startswith("/static/css/")
                 or path.startswith("/static/js/")
             ):
                 response.headers["Cache-Control"] = "no-cache"

@@ -693,7 +693,9 @@ def test_create_debt_from_operation_modal(static_server_url: str, page_with_debt
     page.wait_for_selector("#debtsSection:not(.hidden)")
     page.click("#addDebtCta")
     page.wait_for_selector("#createModal:not(.hidden)")
-    page.click("#createEntryModeSwitch button[data-entry-mode='debt']")
+    assert page.locator("#opEntryMode").input_value() == "debt"
+    assert "active" in (page.locator("#createEntryModeSwitch button[data-entry-mode='debt']").get_attribute("class") or "")
+    assert page.locator("#createTitle").inner_text() == "Новый долг"
     page.fill("#debtCounterparty", "Иван")
     page.click("#createDebtDirectionSwitch button[data-debt-direction='lend']")
     page.fill("#debtPrincipal", "250")
@@ -1068,7 +1070,7 @@ def test_edit_counterparty_name_merges_with_existing_card(static_server_url: str
     page.wait_for_selector("#debtsSection:not(.hidden)")
     page.click("#addDebtCta")
     page.wait_for_selector("#createModal:not(.hidden)")
-    page.click("#createEntryModeSwitch button[data-entry-mode='debt']")
+    assert page.locator("#opEntryMode").input_value() == "debt"
     page.fill("#debtCounterparty", "Борис")
     page.click("#createDebtDirectionSwitch button[data-debt-direction='lend']")
     page.fill("#debtPrincipal", "250")

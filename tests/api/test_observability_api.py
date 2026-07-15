@@ -26,11 +26,14 @@ def test_frontend_entrypoint_and_scripts_revalidate_after_deploy():
 
     index_response = client.get("/")
     script_response = client.get("/static/js/app-features-dashboard.js")
+    css_response = client.get("/static/css/components-analytics-summary.css")
 
     assert index_response.status_code == 200
     assert index_response.headers.get("Cache-Control") == "no-cache"
     assert script_response.status_code == 200
     assert script_response.headers.get("Cache-Control") == "no-cache"
+    assert css_response.status_code == 200
+    assert css_response.headers.get("Cache-Control") == "no-cache"
 
 
 def test_api_request_completion_is_logged_with_request_context(caplog):

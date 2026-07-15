@@ -148,7 +148,31 @@ def test_delayed_telegram_startup_and_session_refresh_preserve_operation_modal(s
     assert counters["telegram_auth"] == 1
     assert page.evaluate("() => performance.getEntriesByType('navigation')[0]?.type") == "navigate"
 
-    expect(page.locator("#sessionRemainingLabel")).to_contain_text("Сессия")
+    expect(page.locator("#sessionRemainingLabel")).to_contain_text("мин")
+    session_geometry = page.evaluate(
+        """
+        () => {
+          const panel = document.getElementById('sessionStatusRow')?.getBoundingClientRect();
+          const user = document.querySelector('.user-block-static')?.getBoundingClientRect();
+          const button = document.getElementById('sessionRefreshBtn')?.getBoundingClientRect();
+          return panel && user && button ? {
+            panelLeft: panel.left,
+            panelRight: panel.right,
+            panelBottom: panel.bottom,
+            userLeft: user.left,
+            userRight: user.right,
+            userTop: user.top,
+            buttonRight: button.right,
+          } : null;
+        }
+        """
+    )
+    assert session_geometry is not None
+    assert abs(session_geometry["panelLeft"] - session_geometry["userLeft"]) <= 1
+    assert abs(session_geometry["panelRight"] - session_geometry["userRight"]) <= 1
+    assert session_geometry["panelBottom"] <= session_geometry["userTop"]
+    assert session_geometry["buttonRight"] <= session_geometry["panelRight"]
+    page.screenshot(path="/tmp/finasist-session-panel.png", full_page=True)
     page.click("#addOperationCta")
     page.wait_for_selector("#createModal:not(.hidden)")
     page.fill("#opAmount", "129.90")

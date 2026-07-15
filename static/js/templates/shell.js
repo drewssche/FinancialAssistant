@@ -37,15 +37,18 @@
         </div>
 
         <div class="user-area">
+          <div id="sessionStatusRow" class="session-status-panel hidden">
+            <div class="session-status-copy">
+              <span>Сессия</span>
+              <strong id="sessionRemainingLabel">30 мин</strong>
+            </div>
+            <button id="sessionRefreshBtn" class="btn btn-secondary session-renew-btn" type="button" title="Продлить сессию">Продлить</button>
+          </div>
           <div class="user-block user-block-static">
             <div class="avatar" id="userAvatar" aria-hidden="true">П</div>
             <div class="meta">
               <div id="userName">Пользователь</div>
               <div id="userHandle">Telegram</div>
-              <div id="sessionStatusRow" class="session-status-row hidden">
-                <span id="sessionRemainingLabel">Сессия</span>
-                <button id="sessionRefreshBtn" class="session-refresh-btn" type="button" title="Продлить сессию" aria-label="Продлить сессию">↻</button>
-              </div>
             </div>
             <button id="sidebarLogoutBtn" class="user-logout-icon-btn" type="button" title="Выйти" aria-label="Выйти">
               <svg class="user-logout-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">

@@ -258,6 +258,14 @@
     core.syncSegmentedActive(el.createEntryModeSwitch, "entry-mode", nextMode);
     const isDebt = nextMode === "debt";
     const isCurrency = nextMode === "currency";
+    const createTitle = document.getElementById("createTitle");
+    if (createTitle) {
+      createTitle.textContent = isDebt
+        ? "Новый долг"
+        : isCurrency
+          ? "Новая валютная сделка"
+          : "Новая операция";
+    }
     el.createKindSwitch.classList.toggle("hidden", isDebt || isCurrency);
     el.createOperationModeSwitch?.classList.toggle("hidden", isDebt || isCurrency);
     el.createCategoryField.classList.toggle("hidden", isDebt || isCurrency);

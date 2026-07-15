@@ -147,64 +147,69 @@
   font-size: 12px;
 }
 
-.session-status-row {
+.session-status-panel {
   min-width: 0;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 5px;
-  margin-top: 3px;
-  color: #9fb0d0;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  padding: var(--space-2) calc(var(--space-2) + var(--space-1));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: rgba(17, 28, 45, 0.9);
+}
+
+.session-status-copy {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.session-status-copy > span {
+  color: var(--muted);
   font-size: 10px;
   line-height: 1.2;
 }
 
-.session-status-row.is-warning {
-  color: #ffc266;
-}
-
-.session-status-row.is-expired {
-  color: #ff9eaa;
-}
-
-.session-status-row > span {
+.session-status-copy > strong {
   min-width: 0;
   overflow: hidden;
+  color: #cfe0ff;
+  font-size: 12px;
+  line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.session-refresh-btn {
-  width: 20px;
-  min-width: 20px;
-  height: 20px;
-  display: inline-grid;
-  place-items: center;
-  padding: 0;
-  border: 1px solid rgba(86, 108, 142, 0.5);
-  border-radius: 5px;
-  background: rgba(11, 20, 34, 0.7);
-  color: currentColor;
-  font-size: 13px;
-  line-height: 1;
-  cursor: pointer;
+.session-status-panel.is-warning .session-status-copy > strong {
+  color: #ffc266;
 }
 
-.session-refresh-btn:hover,
-.session-refresh-btn:focus-visible {
-  border-color: rgba(255, 151, 63, 0.7);
-  color: var(--text);
+.session-status-panel.is-expired .session-status-copy > strong {
+  color: #ff9eaa;
 }
 
-.session-refresh-btn:disabled {
-  opacity: 0.55;
-  cursor: wait;
+.session-renew-btn {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 11px;
 }
 
 .operation-session-refresh-btn {
-  width: 34px;
-  min-width: 34px;
-  height: 34px;
-  font-size: 17px;
+  min-width: 0;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.operation-session-refresh-btn > span[aria-hidden="true"] {
+  font-size: 15px;
+  line-height: 1;
 }
 
 .session-recovery-overlay {

@@ -45,10 +45,10 @@
   }
 
   function formatRemainingTime(remainingMs) {
-    if (remainingMs <= 0) return "Сессия истекла";
+    if (remainingMs <= 0) return "Истекла";
     const minutes = Math.max(1, Math.ceil(remainingMs / 60000));
-    if (minutes >= 60) return `Сессия · ${Math.floor(minutes / 60)} ч ${minutes % 60} мин`;
-    return `Сессия · ${minutes} мин`;
+    if (minutes >= 60) return `${Math.floor(minutes / 60)} ч ${minutes % 60} мин`;
+    return `${minutes} мин`;
   }
 
   function updateSessionStatus() {
@@ -194,9 +194,13 @@
 
   async function maybeRefreshSession() {
     if (document.visibilityState === "hidden") return false;
+    if (!state.token || !state.sessionExpiresAt) {
+      updateSessionStatus();
+      return false;
+    }
     const remainingMs = sessionRemainingMs();
     updateSessionStatus();
-    if (!state.token || remainingMs > AUTO_REFRESH_WINDOW_MS) return false;
+    if (remainingMs > AUTO_REFRESH_WINDOW_MS) return false;
     if (remainingMs <= 0) return recoverUnauthorized();
     try {
       await refreshSession();

@@ -121,6 +121,7 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert 'id="editFinanceCalculatorToggle"' in modals
     assert 'id="createSessionRefreshBtn"' in modals
     assert 'id="editSessionRefreshBtn"' in modals
+    assert modals.count('class="operation-session-refresh-label">Продлить</span>') >= 2
     assert 'data-calculator-mode="discount"' in shell
     assert 'data-calculator-mode="split"' in shell
     assert '"/static/js/app-finance-calculator.js"' in manifest
@@ -139,6 +140,9 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert "body.finance-calculator-open" in calculator_css
     assert "@media (max-width: 640px)" in calculator_css
     assert "max-height: min(88dvh, 720px)" in calculator_css
+    assert '/static/styles.css?v=20260716' in index_html
+    assert '/static/css/components-core.css?v=20260716' in styles
+    assert '/static/css/components-analytics-summary.css?v=20260716' in styles
 
 
 def test_session_refresh_preserves_runtime_ui_and_retries_unauthorized_requests():
