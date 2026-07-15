@@ -1095,7 +1095,97 @@ def test_dashboard_analytics_highlights_returns_kpis_and_top_blocks(client: Test
     assert len(payload["anomalies"]) == 0
     assert len(payload["top_positions"]) >= 2
     assert payload["top_positions"][0]["name"] == "Steak"
+    assert len(payload["frequent_positions"]) == 2
+    assert payload["frequent_positions"][0]["name"] == "Steak"
+    assert payload["frequent_positions"][0]["purchases_count"] == 1
+    assert payload["frequent_positions"][0]["quantity_total"] == "1.000"
+    assert payload["frequent_positions"][0]["amount_total"] == "25.00"
     assert any(item["name"] == "Milk" for item in payload["price_increases"])
+
+
+def test_dashboard_position_analytics_groups_receipts_into_period_buckets(client: TestClient):
+    for payload in (
+        {
+            "kind": "expense",
+            "amount": "10.00",
+            "operation_date": "2026-03-02",
+            "receipt_items": [
+                {"shop_name": "Store", "name": "Coffee", "quantity": "2", "unit_price": "5.00"},
+            ],
+        },
+        {
+            "kind": "expense",
+            "amount": "5.00",
+            "operation_date": "2026-03-02",
+            "receipt_items": [
+                {"shop_name": "Store", "name": "Coffee", "quantity": "1", "unit_price": "5.00"},
+            ],
+        },
+        {
+            "kind": "expense",
+            "amount": "3.00",
+            "operation_date": "2026-03-03",
+            "receipt_items": [
+                {"shop_name": "Store", "name": "Tea", "quantity": "1", "unit_price": "3.00"},
+            ],
+        },
+        {
+            "kind": "income",
+            "amount": "100.00",
+            "operation_date": "2026-03-03",
+            "receipt_items": [
+                {"shop_name": "Store", "name": "Coffee", "quantity": "20", "unit_price": "5.00"},
+            ],
+        },
+    ):
+        response = client.post("/api/v1/operations", json=payload)
+        assert response.status_code == 201
+
+    response = client.get(
+        "/api/v1/dashboard/analytics/positions",
+        params={"period": "month", "anchor": "2026-03-15"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["date_from"] == "2026-03-01"
+    assert body["date_to"] == "2026-03-31"
+    assert len(body["buckets"]) == 31
+    coffee = next(item for item in body["positions"] if item["name"] == "Coffee")
+    assert coffee["shop_name"] == "Store"
+    assert coffee["purchases_count"] == 2
+    assert coffee["quantity_total"] == "3.000"
+    assert coffee["amount_total"] == "15.00"
+    march_second = next(item for item in coffee["buckets"] if item["key"] == "2026-03-02")
+    assert march_second["purchases_count"] == 2
+    assert march_second["quantity_total"] == "3.000"
+
+    week = client.get(
+        "/api/v1/dashboard/analytics/positions",
+        params={"period": "week", "anchor": "2026-03-04"},
+    )
+    assert week.status_code == 200
+    week_body = week.json()
+    assert week_body["date_from"] == "2026-03-02"
+    assert week_body["date_to"] == "2026-03-08"
+    assert len(week_body["buckets"]) == 7
+    assert [bucket["label"] for bucket in week_body["buckets"]] == [
+        "02.03",
+        "03.03",
+        "04.03",
+        "05.03",
+        "06.03",
+        "07.03",
+        "08.03",
+    ]
+
+    year = client.get(
+        "/api/v1/dashboard/analytics/positions",
+        params={"period": "year", "anchor": "2026-07-15"},
+    )
+    assert year.status_code == 200
+    assert len(year.json()["buckets"]) == 12
+    march = next(item for item in year.json()["positions"][0]["buckets"] if item["key"] == "2026-03")
+    assert march["purchases_count"] >= 1
 
 
 def test_dashboard_analytics_highlights_includes_discount_savings_kpi(client: TestClient):

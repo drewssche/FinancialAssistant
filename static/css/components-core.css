@@ -147,6 +147,104 @@
   font-size: 12px;
 }
 
+.session-status-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  color: #9fb0d0;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.session-status-row.is-warning {
+  color: #ffc266;
+}
+
+.session-status-row.is-expired {
+  color: #ff9eaa;
+}
+
+.session-status-row > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-refresh-btn {
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(86, 108, 142, 0.5);
+  border-radius: 5px;
+  background: rgba(11, 20, 34, 0.7);
+  color: currentColor;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.session-refresh-btn:hover,
+.session-refresh-btn:focus-visible {
+  border-color: rgba(255, 151, 63, 0.7);
+  color: var(--text);
+}
+
+.session-refresh-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.operation-session-refresh-btn {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  font-size: 17px;
+}
+
+.session-recovery-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: grid;
+  place-items: center;
+  padding: max(var(--space-4), env(safe-area-inset-top)) max(var(--space-4), env(safe-area-inset-right)) max(var(--space-4), env(safe-area-inset-bottom)) max(var(--space-4), env(safe-area-inset-left));
+  background: rgba(5, 9, 16, 0.78);
+  backdrop-filter: blur(4px);
+}
+
+.session-recovery-panel {
+  width: min(360px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: rgba(16, 24, 39, 0.98);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.session-recovery-panel h3,
+.session-recovery-panel p {
+  margin: 0;
+}
+
+.session-recovery-panel p {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.session-recovery-panel .login-brand-motion {
+  margin-bottom: 0;
+}
+
 .chevron {
   color: var(--muted);
   font-size: 12px;

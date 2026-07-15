@@ -79,9 +79,10 @@
   }
 
   async function requestJson(url, options = {}) {
+    const { skipAuthRecovery = false, ...fetchOptions } = options;
     let response;
     try {
-      response = await fetch(url, options);
+      response = await fetch(url, fetchOptions);
     } catch (err) {
       if (isAbortError(err)) {
         throw err;
@@ -108,7 +109,19 @@
     const data = await response.json().catch(() => ({}));
 
     if (response.status === 401) {
-      getSessionFeature().logout?.(false);
+      if (!skipAuthRecovery && state.token) {
+        const recovered = await getSessionFeature().recoverUnauthorized?.();
+        if (recovered) {
+          return requestJson(url, {
+            ...fetchOptions,
+            headers: {
+              ...(fetchOptions.headers || {}),
+              Authorization: `Bearer ${state.token}`,
+            },
+            skipAuthRecovery: true,
+          });
+        }
+      }
       throw new Error("Сессия истекла, авторизуйся снова");
     }
 

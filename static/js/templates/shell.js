@@ -42,6 +42,10 @@
             <div class="meta">
               <div id="userName">Пользователь</div>
               <div id="userHandle">Telegram</div>
+              <div id="sessionStatusRow" class="session-status-row hidden">
+                <span id="sessionRemainingLabel">Сессия</span>
+                <button id="sessionRefreshBtn" class="session-refresh-btn" type="button" title="Продлить сессию" aria-label="Продлить сессию">↻</button>
+              </div>
             </div>
             <button id="sidebarLogoutBtn" class="user-logout-icon-btn" type="button" title="Выйти" aria-label="Выйти">
               <svg class="user-logout-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -85,6 +89,16 @@
         ${window.App.templates.shellSections || ""}
 
       </main>
+      <div id="sessionRecoveryOverlay" class="session-recovery-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="sessionRecoveryTitle">
+        <section class="session-recovery-panel">
+          <div class="login-brand-motion" aria-hidden="true">
+            <img class="login-brand-mark" src="/static/favicon.svg?v=2" alt="" width="52" height="52" />
+          </div>
+          <h3 id="sessionRecoveryTitle">Нужно обновить сессию</h3>
+          <p id="sessionRecoveryMessage">Данные формы сохранены. Обновите авторизацию, чтобы продолжить.</p>
+          <button id="sessionRecoveryBtn" class="btn btn-primary" type="button">Продолжить через Telegram</button>
+        </section>
+      </div>
       <div id="financeCalculatorOverlay" class="finance-calculator-overlay hidden" aria-hidden="true"></div>
       <aside id="financeCalculatorDrawer" class="finance-calculator-drawer hidden" aria-label="Финансовый калькулятор" aria-hidden="true">
         <div class="finance-calculator-head">

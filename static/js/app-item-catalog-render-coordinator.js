@@ -1,4 +1,24 @@
 (() => {
+  function renderContextActions(entityType, entity, escapeHtml) {
+    const contextActions = window.App.getRuntimeModule?.("context-actions");
+    return (contextActions?.keys?.(entityType, "row") || []).map((key) => {
+      if (entityType === "item_template") {
+        if (key === "activity") return `<button class="btn btn-secondary" data-activity-entity-type="item_template" data-activity-entity-id="${entity.id}" type="button">Журнал</button>`;
+        if (key === "usage") return `<button class="btn btn-secondary" data-usage-entity-type="item_template" data-usage-entity-id="${entity.id}" data-usage-entity-name="${escapeHtml(entity.name || "")}" type="button">Операции</button>`;
+        if (key === "history") return `<button class="btn btn-secondary" data-item-template-history-id="${entity.id}" type="button">История</button>`;
+        if (key === "edit") return `<button class="btn btn-secondary" data-edit-item-template-id="${entity.id}" type="button">Редактировать</button>`;
+        if (key === "delete") return `<button class="btn btn-danger" data-delete-item-template-id="${entity.id}" type="button">Удалить</button>`;
+      }
+      if (entityType === "item_source") {
+        const sourceName = escapeHtml(entity.shopName || "");
+        if (key === "create_child") return `<button class="btn btn-secondary" data-create-item-template-source-name="${sourceName}" type="button">Добавить позицию</button>`;
+        if (key === "edit") return `<button class="btn btn-secondary" data-edit-item-source-name="${sourceName}" type="button">Редактировать</button>`;
+        if (key === "delete") return `<button class="btn btn-danger" data-delete-item-source-name="${sourceName}" type="button">Удалить</button>`;
+      }
+      return "";
+    }).join("");
+  }
+
   function isCompactMobileViewport() {
     return window.matchMedia("(max-width: 640px)").matches;
   }
@@ -147,7 +167,9 @@
     el.itemCatalogBody.innerHTML = groups.map((group) => {
       const isCollapsed = !queryActive && collapsedShops.has(group.shopKey);
       const chevron = isCollapsed ? "▸" : "▾";
+      const sourceActions = renderContextActions("item_source", group, escapeHtml);
       const childRows = group.items.map((item) => {
+        const itemActions = renderContextActions("item_template", item, escapeHtml);
         if (compactMobile) {
           return `
             <tr class="item-catalog-item-row table-hierarchy-child-row item-catalog-mobile-item-row table-record-open-row ${isCollapsed ? "hidden" : ""}" data-item-template-row="1" data-item-template-open-id="${item.id}">
@@ -161,11 +183,7 @@
                       </button>
                       <div class="app-popover hidden mobile-card-actions-popover" data-mobile-card-menu="item-template-${item.id}">
                         <div class="mobile-card-actions-menu">
-                          <button class="btn btn-secondary" data-activity-entity-type="item_template" data-activity-entity-id="${item.id}" type="button">Журнал</button>
-                          <button class="btn btn-secondary" data-usage-entity-type="item_template" data-usage-entity-id="${item.id}" data-usage-entity-name="${escapeHtml(item.name || "")}" type="button">Операции</button>
-                          <button class="btn btn-secondary" data-item-template-history-id="${item.id}" type="button">История</button>
-                          <button class="btn btn-secondary" data-edit-item-template-id="${item.id}" type="button">Редактировать</button>
-                          <button class="btn btn-danger" data-delete-item-template-id="${item.id}" type="button">Удалить</button>
+                          ${itemActions}
                         </div>
                       </div>
                     </div>
@@ -189,11 +207,7 @@
             <td class="mobile-actions-cell table-kebab-cell" data-label="Действия">
               ${core.renderInlineKebabMenu?.(
                 `item-template-${item.id}`,
-                `<button class="btn btn-secondary" data-activity-entity-type="item_template" data-activity-entity-id="${item.id}" type="button">Журнал</button>
-                <button class="btn btn-secondary" data-usage-entity-type="item_template" data-usage-entity-id="${item.id}" data-usage-entity-name="${escapeHtml(item.name || "")}" type="button">Операции</button>
-                <button class="btn btn-secondary" data-item-template-history-id="${item.id}" type="button">История</button>
-                <button class="btn btn-secondary" data-edit-item-template-id="${item.id}" type="button">Редактировать</button>
-                <button class="btn btn-danger" data-delete-item-template-id="${item.id}" type="button">Удалить</button>`,
+                itemActions,
                 "Действия позиции",
                 "item-template-kebab",
               ) || ""}
@@ -230,9 +244,7 @@
                     </button>
                     <div class="app-popover hidden mobile-card-actions-popover" data-mobile-card-menu="item-source-${escapeHtml(group.shopKey)}">
                       <div class="mobile-card-actions-menu">
-                        <button class="btn btn-secondary" data-create-item-template-source-name="${escapeHtml(group.shopName)}" type="button">Добавить позицию</button>
-                        <button class="btn btn-secondary" data-edit-item-source-name="${escapeHtml(group.shopName)}" type="button">Редактировать</button>
-                        <button class="btn btn-danger" data-delete-item-source-name="${escapeHtml(group.shopName)}" type="button">Удалить</button>
+                        ${sourceActions}
                       </div>
                     </div>
                   </div>` : ""}
@@ -265,9 +277,7 @@
               </div>
               ${group.shopKey !== "__no_shop__" ? core.renderInlineKebabMenu?.(
                 `item-source-${escapeHtml(group.shopKey)}`,
-                `<button class="btn btn-secondary" data-create-item-template-source-name="${escapeHtml(group.shopName)}" type="button">Добавить позицию</button>
-                <button class="btn btn-secondary" data-edit-item-source-name="${escapeHtml(group.shopName)}" type="button">Редактировать</button>
-                <button class="btn btn-danger" data-delete-item-source-name="${escapeHtml(group.shopName)}" type="button">Удалить</button>`,
+                sourceActions,
                 "Действия источника",
                 "item-source-kebab",
               ) : ""}

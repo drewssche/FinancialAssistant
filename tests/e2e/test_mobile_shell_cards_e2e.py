@@ -453,6 +453,12 @@ def test_item_catalog_kebab_actions_work_from_floating_popover(static_server_url
             assert page.locator("#itemTemplateModalTitle").inner_text().strip() == "Редактировать позицию"
             assert page.locator("#itemTemplateName").input_value() == "Позиция 1"
             assert page.locator(".mobile-card-actions-popover[data-mobile-card-menu='item-template-1']").is_hidden()
+            page.locator("#itemTemplateHistoryBtn").click()
+            page.wait_for_selector("#itemTemplateHistoryModal:not(.hidden)")
+            assert page.locator("#itemTemplateHistoryTitle").inner_text().strip().startswith("История цен")
+            page.locator("#closeItemTemplateHistoryModalBtn").click()
+            page.wait_for_selector("#itemTemplateHistoryModal", state="hidden")
+            assert page.locator("#itemTemplateModal").is_visible()
             page.locator("#closeItemTemplateModalBtn").click()
             page.wait_for_selector("#itemTemplateModal", state="hidden")
 

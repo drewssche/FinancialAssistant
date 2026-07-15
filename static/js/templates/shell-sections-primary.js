@@ -89,6 +89,18 @@
             </div>
           </section>
 
+          <section id="dashboardPositionsPanel" class="panel">
+            <div class="panel-head row between">
+              <div>
+                <h3>Чаще всего покупали</h3>
+                <p id="dashboardPositionsPeriodLabel" class="subtitle">Топ позиций за выбранный период</p>
+              </div>
+              <button id="openPositionsAnalyticsBtn" class="btn btn-secondary" type="button">Все позиции</button>
+            </div>
+            <div id="dashboardPositionsRanking" class="analytics-position-ranking-list analytics-position-ranking-dashboard"></div>
+            <div id="dashboardPositionsEmpty" class="muted-small hidden">За выбранный период покупок по позициям нет</div>
+          </section>
+
           <section id="dashboardDebtsPanel" class="panel">
             <div class="panel-head row between">
               <div>
@@ -144,6 +156,7 @@
             <div class="segmented" id="analyticsViewTabs" role="tablist" aria-label="Вкладки аналитики">
               <button class="segmented-btn" data-analytics-tab="calendar" type="button">Календарь</button>
               <button class="segmented-btn active" data-analytics-tab="structure" type="button">Структура</button>
+              <button class="segmented-btn" data-analytics-tab="positions" type="button">Позиции</button>
               <button class="segmented-btn" data-analytics-tab="trends" type="button">Тренды</button>
               <button class="segmented-btn" data-analytics-tab="currency" type="button">Валюта</button>
             </div>
@@ -221,6 +234,68 @@
                 <div id="analyticsTopDiscountSavingsList" class="analytics-insight-list"></div>
               </div>
             </div>
+          </section>
+
+          <section id="analyticsPositionsPanel" class="panel analytics-tab-panel hidden">
+            <div class="panel-head row between">
+              <div>
+                <h3>Покупки по позициям</h3>
+                <p id="analyticsPositionsRangeLabel" class="subtitle">Нет периода</p>
+              </div>
+              <div class="toolbar analytics-positions-toolbar">
+                <div class="analytics-switch-group">
+                  <span class="muted-small">Период</span>
+                  <div class="period-control" data-period-control="analytics-positions">
+                    <button id="analyticsPositionsPrevBtn" class="period-step-btn" type="button" aria-label="Предыдущий период">‹</button>
+                    <button id="analyticsPositionsPeriodTrigger" class="period-current-btn" type="button" aria-haspopup="dialog" aria-controls="analyticsPositionsPeriodPopover">
+                      <span class="period-current-label">Период</span>
+                      <strong id="analyticsPositionsPeriodControlLabel">Этот месяц</strong>
+                    </button>
+                    <button id="analyticsPositionsNextBtn" class="period-step-btn" type="button" aria-label="Следующий период">›</button>
+                  </div>
+                  <div id="analyticsPositionsPeriodPopover" class="app-popover app-popover-floating period-control-popover hidden" role="dialog" aria-label="Быстрый выбор периода позиций">
+                    <div id="analyticsPositionsPeriodOptions" class="settings-picker-options"></div>
+                  </div>
+                </div>
+                <div class="analytics-switch-group">
+                  <span class="muted-small">Метрика</span>
+                  <div class="segmented" id="analyticsPositionsMetricTabs" role="tablist" aria-label="Метрика позиций">
+                    <button class="segmented-btn active" data-analytics-positions-metric="purchases" type="button">Покупки</button>
+                    <button class="segmented-btn" data-analytics-positions-metric="quantity" type="button">Количество</button>
+                    <button class="segmented-btn" data-analytics-positions-metric="amount" type="button">Сумма</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="analytics-positions-filters">
+              <input id="analyticsPositionsSearch" type="search" placeholder="Поиск позиции" autocomplete="off" />
+              <input id="analyticsPositionsSourceSearch" type="search" placeholder="Источник" autocomplete="off" />
+              <div class="segmented" id="analyticsPositionsLimitTabs" role="tablist" aria-label="Количество позиций">
+                <button class="segmented-btn active" data-analytics-positions-limit="top" type="button">Топ-10</button>
+                <button class="segmented-btn" data-analytics-positions-limit="all" type="button">Все</button>
+              </div>
+            </div>
+            <div id="analyticsPositionsSummary" class="analytics-kpi-secondary"></div>
+            <div class="analytics-positions-overview">
+              <section class="analytics-position-ranking-block">
+                <div class="analytics-position-ranking-head">
+                  <div>
+                    <h4 id="analyticsPositionsRankingTitle">Чаще всего покупали</h4>
+                    <span class="muted-small">Выберите позицию для просмотра динамики</span>
+                  </div>
+                  <button id="analyticsPositionsSortBtn" class="analytics-position-sort-btn" type="button" title="Сначала больше" aria-label="Сортировка: сначала больше">↓</button>
+                </div>
+                <div id="analyticsPositionsRanking" class="analytics-position-ranking-list"></div>
+              </section>
+              <section id="analyticsPositionsMobileFocus" class="analytics-positions-mobile-focus"></section>
+            </div>
+            <div id="analyticsPositionsMatrixWrap" class="table-wrap analytics-positions-matrix-wrap">
+              <table class="table analytics-positions-matrix">
+                <thead id="analyticsPositionsMatrixHead"></thead>
+                <tbody id="analyticsPositionsMatrixBody"></tbody>
+              </table>
+            </div>
+            <div id="analyticsPositionsEmpty" class="muted-small hidden">За выбранный период позиции не найдены</div>
           </section>
 
           <section id="analyticsCalendarPanel" class="panel analytics-tab-panel hidden">

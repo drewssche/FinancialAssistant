@@ -20,6 +20,7 @@
         return;
       }
       state.editItemSourceName = "";
+      el.sourceGroupCreateItemBtn?.classList.add("hidden");
       el.sourceGroupForm.reset();
       if (el.sourceGroupOriginalName) {
         el.sourceGroupOriginalName.value = "";
@@ -41,6 +42,10 @@
 
     function closeSourceGroupModal() {
       state.editItemSourceName = "";
+      el.sourceGroupCreateItemBtn?.classList.add("hidden");
+      if (el.sourceGroupCreateItemBtn) {
+        el.sourceGroupCreateItemBtn.dataset.createItemTemplateSourceName = "";
+      }
       if (el.sourceGroupModal) {
         el.sourceGroupModal.classList.add("hidden");
       }
@@ -52,6 +57,12 @@
         return;
       }
       state.editItemSourceName = normalized;
+      const contextActions = window.App.getRuntimeModule?.("context-actions");
+      if (el.sourceGroupCreateItemBtn) {
+        const showCreate = contextActions?.has?.("item_source", "modal", "create_child");
+        el.sourceGroupCreateItemBtn.classList.toggle("hidden", !showCreate);
+        el.sourceGroupCreateItemBtn.dataset.createItemTemplateSourceName = showCreate ? normalized : "";
+      }
       el.sourceGroupForm.reset();
       if (el.sourceGroupOriginalName) {
         el.sourceGroupOriginalName.value = normalized;

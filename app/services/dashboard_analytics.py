@@ -3,12 +3,14 @@ from sqlalchemy.orm import Session
 from app.repositories.operation_repo import OperationRepository
 from app.services.dashboard_analytics_highlights import DashboardAnalyticsHighlightsService
 from app.services.dashboard_analytics_timeline import DashboardAnalyticsTimelineService
+from app.services.dashboard_analytics_positions import DashboardAnalyticsPositionsService
 
 
 class DashboardAnalyticsService:
     def __init__(self, db: Session, repo: OperationRepository):
         self.timeline = DashboardAnalyticsTimelineService(db, repo)
         self.highlights = DashboardAnalyticsHighlightsService(db, repo, self.timeline)
+        self.positions = DashboardAnalyticsPositionsService(repo)
 
     def resolve_period_bounds(self, **kwargs) -> tuple:
         return self.timeline.resolve_period_bounds(**kwargs)
@@ -33,3 +35,6 @@ class DashboardAnalyticsService:
 
     def get_highlights(self, **kwargs) -> dict:
         return self.highlights.get_highlights(**kwargs)
+
+    def get_positions(self, **kwargs) -> dict:
+        return self.positions.get_positions(**kwargs)

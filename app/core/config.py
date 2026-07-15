@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     app_cors_origins: str = Field(default="http://localhost:5173", alias="APP_CORS_ORIGINS")
     app_secret_key: str = Field(default="change_me", alias="APP_SECRET_KEY")
     app_access_token_expire_minutes: int = Field(default=30, alias="APP_ACCESS_TOKEN_EXPIRE_MINUTES")
+    app_session_max_hours: int = Field(default=12, alias="APP_SESSION_MAX_HOURS")
 
     postgres_user: str = Field(default="fin_user", alias="POSTGRES_USER")
     postgres_password: str = Field(default="fin_pass", alias="POSTGRES_PASSWORD")

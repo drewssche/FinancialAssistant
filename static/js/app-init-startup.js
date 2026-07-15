@@ -37,6 +37,7 @@
   }
 
   async function startApp() {
+    core.showSessionChecking?.();
     if (getTelegramWebApp()?.init) {
       getTelegramWebApp().init();
     }

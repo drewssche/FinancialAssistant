@@ -59,6 +59,12 @@
     loadTelegramLoginConfig: auth.loadTelegramLoginConfig,
     refreshTelegramLoginUi: auth.refreshTelegramLoginUi,
     tryAutoTelegramLogin: auth.tryAutoTelegramLogin,
+    refreshSession: auth.refreshSession,
+    renewSessionManually: auth.renewSessionManually,
+    recoverUnauthorized: auth.recoverUnauthorized,
+    updateSessionStatus: auth.updateSessionStatus,
+    showSessionRecovery: auth.showSessionRecovery,
+    hideSessionRecovery: auth.hideSessionRecovery,
   };
 
   window.App.registerRuntimeModule?.("session", api);

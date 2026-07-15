@@ -12,6 +12,73 @@
 - Keep Telegram-specific behavior in the client runtime; backend contracts stay shared between Web UI and Telegram.
 
 ## Current Sprint
+### Session Reliability And Telegram Startup 2026-07-16
+- [x] P0: make Telegram Mini App startup reliable without a manual reload.
+  - Replace the one-shot `Telegram.WebApp.initData` check with a bounded readiness wait and short backoff while the branded session-check animation remains visible.
+  - Retry automatic login on `pageshow` and when the document becomes visible if no token exists and Telegram later provides `initData`.
+  - Coalesce startup/login attempts so SDK readiness, visibility events, and user actions cannot submit duplicate authentication requests or bootstrap the app twice.
+  - Stop waiting after a small fixed deadline and show the existing actionable login state instead of leaving an endless loader.
+  - Cover delayed `initData`, immediate `initData`, absent Telegram SDK, resumed WebApp, failed authentication, and duplicate-event behavior with runtime and browser tests.
+  - Done 2026-07-16: startup keeps the branded checking state while waiting up to five seconds for Telegram launch data, retries on `pageshow`/visibility recovery, and coalesces both authentication and bootstrap work.
+- [x] P0: add in-place session renewal that never closes an operation modal or clears a receipt draft.
+  - Add an authenticated `POST /api/v1/auth/refresh` endpoint that renews only a still-valid approved session and returns the new token with its exact expiration time.
+  - Replace only the client token and expiration metadata; do not call `bootstrapApp()`, `logout()`, section navigation, modal close handlers, or data reloads after a successful refresh.
+  - Coalesce parallel refresh attempts and renew automatically five minutes before expiry while the document is active; recheck immediately after the app returns to the foreground.
+  - Keep a bounded absolute session lifetime (target: 12 hours) before full Telegram authentication is required.
+  - Cover refresh authorization, expiry boundaries, rejected/deleted users, parallel requests, modal continuity, and preservation of a large receipt form.
+  - Done 2026-07-16: authenticated `/auth/refresh` rotates a still-valid JWT, preserves its original session start, enforces a configurable 12-hour absolute lifetime, and returns exact expiration metadata without a database migration.
+  - Done 2026-07-16: the shared request pipeline performs one background recovery and retries the original request after `401`; it no longer calls destructive logout for an authentication timeout.
+- [x] P1: expose a quiet session status and manual renewal control.
+  - Add a compact status to the user area, updated every 30 seconds: normal remaining time, an amber warning near expiry, and an icon button with the tooltip `Продлить сессию`.
+  - Keep the control usable in desktop, mobile, and Telegram layouts without competing with primary operation actions.
+  - Show success/failure feedback through the existing toast system and keep renewal fully background-safe for open modals.
+  - Done 2026-07-16: the user block shows remaining time and a compact renewal control; create/edit operation headers expose the same control while a modal covers the sidebar. Automatic checks run every 30 seconds and refresh inside the final five-minute window.
+- [x] P1: use the same branded authorization motion in browser and Telegram WebApp flows.
+  - Explicitly enter the shared session-check state before stored-token validation and Telegram auto-login, reusing the lightweight logo float/pulse and `prefers-reduced-motion` behavior.
+  - Do not add an artificial delay: animation remains visible only while readiness, authentication, or bootstrap work is actually pending.
+  - Done 2026-07-16: stored-token validation and Telegram auto-login explicitly reuse the existing lightweight logo motion, with no artificial delay and unchanged reduced-motion behavior.
+- [x] P1: preserve unsaved work if a session has already expired.
+  - Do not invoke the current destructive `logout()` path immediately on an authentication timeout because it closes modals and clears runtime state.
+  - Present a compact re-authentication layer over the current app, keep operation/receipt fields mounted, and resume the interrupted action after successful authentication when safe.
+  - Treat explicit user logout and account rejection/deletion as destructive flows that still clear protected UI state.
+  - Done 2026-07-16: failed background recovery opens a dedicated re-authentication layer over the mounted app. Telegram can recover in place; browser login can temporarily show the login surface without invoking modal close handlers.
+  - Covered by auth API tests, frontend/modal contracts, and browser tests for delayed Telegram `initData`, single-login/bootstrap behavior, session refresh, `401` retry, retained operation amount/comment, and 390px modal geometry.
+
+### Currency Alert Reliability And Context Actions 2026-07-15
+- [x] P0: send currency threshold alerts only when the rate enters the configured zone.
+  - Replace snapshot-marker semantics (`rate_date + rate + threshold`) with persisted above/below zone state. A new rate snapshot must not repeat an alert while the condition remains true.
+  - Rearm a direction only after the rate leaves its trigger zone; changing the configured threshold also rearms the corresponding direction.
+  - Guard the alert scan against overlapping bot instances during deploy/restart and preserve structured logs for trigger, suppression, rearm, delivery, and failure outcomes.
+  - Cover transitions below -> above -> above -> below -> above, both threshold directions, threshold edits, bot restarts, and overlapping scans.
+  - Done 2026-07-15: alert markers now persist the active threshold zone instead of a rate snapshot, legacy markers remain compatible, leaving the zone rearms delivery, and threshold edits create a new zone state.
+  - Done 2026-07-15: the scan uses a PostgreSQL advisory lock with a local test fallback; structured events cover trigger, suppression, rearm, sent, failed, and overlapping-scan outcomes.
+- [x] P1: keep contextual row/kebab actions and edit-modal actions in sync.
+  - Introduce one entity-action registry used to derive both row menus and modal actions instead of maintaining duplicated button markup.
+  - Add `История` to the item-template edit modal; add contextual `Добавить категорию` to category-group editing and `Добавить позицию` to item-source editing.
+  - Preserve the already-correct category actions (`Журнал`, `Операции`) and avoid redundant actions where the modal already exposes the same content, such as receipt positions inside operation editing.
+  - Show at most three frequent non-destructive actions directly in a modal header; keep destructive and less frequent actions in a compact modal action menu, especially on mobile.
+  - Add contract tests for action parity plus desktop/mobile e2e for item history, contextual creation, modal-menu geometry, and action routing.
+  - Done 2026-07-15: one contextual action registry now drives category, category-group, item-template, and source row menus; edit modals expose the applicable frequent actions.
+  - Done 2026-07-15: item editing includes `История`; group/source editing includes prefilled child creation. Contract coverage and mobile item-history routing e2e pass.
+- [x] P1: add visual position-purchase analytics for day, week, month, and year periods.
+  - Add a dedicated `Позиции` analytics tab with a matrix chart: position rows, period buckets on the horizontal axis, intensity/short bars for values, and a fixed total scale per row.
+  - Use one bucket and ranked horizontal bars for a day, Monday-Sunday daily buckets for a week, calendar days for a month, and months for a year. Do not imply hourly precision while operations store only a date.
+  - Provide segmented metrics `Покупки` (distinct receipts/operations), `Количество` (sum of receipt quantity), and `Сумма`; default to purchases.
+  - Keep position/source labels and totals sticky on desktop with controlled horizontal scrolling. On mobile, show the selected position's bucket chart above a ranked position list, while retaining access to the full scrollable matrix.
+  - Support position search, source filtering, top-10/all display, period arrows, tooltips, and drilldown from a bucket to matching operations.
+  - Aggregate directly in SQL by operation date and item template, with a normalized name/source fallback for legacy or deleted templates; cover API semantics, cache invalidation, interaction routing, and 320/390/768/desktop geometry.
+  - Done 2026-07-15: the `Позиции` tab provides day/week/month/year buckets, purchases/quantity/amount metrics, search and source filtering, top-10/all, period navigation, sticky totals, mobile focus bars, and bucket drilldown into filtered operations.
+  - Refined 2026-07-16: week view uses Monday-Sunday daily buckets; the mobile period control has equal compact arrows around a wider `Текущий` action, and summary values use compact KPI chips.
+  - Done 2026-07-15: API aggregation groups receipt positions by operation date and template with historical name/source fallback. Existing operation and receipt composite indexes already cover the query path, so no redundant schema migration is required.
+  - Covered by API aggregation tests, frontend/runtime contracts, action-routing e2e, and screenshot-backed overflow/sticky-column checks at 320, 390, 768, and 1440px.
+  - [x] Add a visual ranking above the position timeline: horizontal bars follow the selected metric, selecting a row focuses the timeline/matrix, and an icon control switches value order between descending and ascending with an explicit title (`Чаще` / `Реже`, etc.).
+    - Done 2026-07-16: ranking order follows purchases, quantity, or amount; selection drives the adjacent timeline and matrix, while the compact arrow control switches between explicit descending and ascending views.
+  - [x] Add a fixed descending top-5 `Чаще всего покупали` dashboard block for the dashboard period, with purchases as the primary value, quantity/amount as context, operation drilldown, and a link to the full positions tab.
+    - Done 2026-07-16: the dashboard highlights response includes a distinct-purchase top five with quantity and spend context; rows drill into matching operations and `Все позиции` opens the full analytics tab with the dashboard period.
+  - [x] Replace the positions-specific period layout and date shifting with the shared `period-control` markup, popover lifecycle, and `period-control-utils.shiftPeriodBounds`, while retaining independent day/week/month/year state and excluding unbounded matrix ranges.
+    - Done 2026-07-16: positions reuse the shared arrows, central period trigger, popover lifecycle, and period shifting utility while retaining independent day/week/month/year preferences. Compact control dates remain readable at 320px.
+  - Covered by dashboard/API contracts and browser scenarios for ranking order, selection, weekly shifting, operation drilldown, shared-control geometry, sticky columns, and page overflow at 320, 768, and desktop widths.
+
 ### Operation Modal Calculator And Row Toggles 2026-06-23
 - [x] Calculator in operation modals.
   - Done 2026-06-23: create/edit operation modals now expose a calculator button in the header action area. The existing calculator opens in a modal-attached side panel without the global overlay and closes automatically when the operation modal closes.

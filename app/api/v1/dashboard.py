@@ -10,6 +10,7 @@ from app.schemas.dashboard import (
     AnalyticsCalendarOut,
     AnalyticsCalendarYearOut,
     AnalyticsHighlightsOut,
+    AnalyticsPositionsOut,
     AnalyticsTrendOut,
     DashboardDebtPreviewCard,
     DashboardSummary,
@@ -127,5 +128,19 @@ def get_analytics_highlights(
             date_to=date_to,
             month_anchor=month_anchor,
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/analytics/positions", response_model=AnalyticsPositionsOut)
+def get_analytics_positions(
+    period: str = Query(default="month", pattern="^(day|week|month|year)$"),
+    anchor: date | None = Query(default=None),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = DashboardService(db)
+    try:
+        return service.get_analytics_positions(user_id=user_id, period=period, anchor=anchor)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

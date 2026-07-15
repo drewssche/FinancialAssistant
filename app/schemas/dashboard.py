@@ -242,6 +242,44 @@ class AnalyticsTopPosition(BaseModel):
     purchases_count: int
 
 
+class AnalyticsFrequentPosition(BaseModel):
+    template_id: int | None = None
+    name: str
+    shop_name: str | None = None
+    purchases_count: int
+    quantity_total: Decimal
+    amount_total: Decimal
+
+
+class AnalyticsPositionBucket(BaseModel):
+    key: str
+    label: str | None = None
+    date_from: str | None = None
+    date_to: str | None = None
+    purchases_count: int | None = None
+    quantity_total: Decimal | None = None
+    amount_total: Decimal | None = None
+
+
+class AnalyticsPositionRow(BaseModel):
+    template_id: int | None
+    name: str
+    shop_name: str | None
+    purchases_count: int
+    quantity_total: Decimal
+    amount_total: Decimal
+    buckets: list[AnalyticsPositionBucket]
+
+
+class AnalyticsPositionsOut(BaseModel):
+    period: str
+    anchor: str
+    date_from: str
+    date_to: str
+    buckets: list[AnalyticsPositionBucket]
+    positions: list[AnalyticsPositionRow]
+
+
 class AnalyticsTopCategory(BaseModel):
     category_id: int | None
     category_name: str
@@ -334,5 +372,6 @@ class AnalyticsHighlightsOut(BaseModel):
     top_categories: list[AnalyticsTopCategory]
     anomalies: list[AnalyticsOperationAnomaly]
     top_positions: list[AnalyticsTopPosition]
+    frequent_positions: list[AnalyticsFrequentPosition] = Field(default_factory=list)
     price_increases: list[AnalyticsPriceIncrease]
     top_discount_savings: list[AnalyticsTopDiscountSaving] = Field(default_factory=list)

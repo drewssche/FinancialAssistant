@@ -2,6 +2,240 @@
   const { state, el, core } = window.App;
   const operationModal = window.App.getRuntimeModule?.("operation-modal");
   const sessionPreferences = window.App.getRuntimeModule?.("session-preferences") || {};
+  const AUTO_REFRESH_WINDOW_MS = 5 * 60 * 1000;
+  const SESSION_TICK_MS = 30 * 1000;
+  const TELEGRAM_READY_TIMEOUT_MS = 5000;
+  let telegramAuthPromise = null;
+  let sessionRefreshPromise = null;
+  let bootstrapPromise = null;
+  let sessionTimerId = null;
+  let sessionLifecycleBound = false;
+
+  function parseTokenPayload(token) {
+    try {
+      const payload = String(token || "").split(".")[1] || "";
+      const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+      const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+      return JSON.parse(atob(padded));
+    } catch {
+      return {};
+    }
+  }
+
+  function storeAccessToken(data) {
+    const token = String(data?.access_token || "").trim();
+    if (!token) throw new Error("Сервер не вернул токен доступа");
+    const claims = parseTokenPayload(token);
+    state.token = token;
+    state.sessionExpiresAt = data?.expires_at || (claims.exp ? new Date(Number(claims.exp) * 1000).toISOString() : "");
+    localStorage.setItem("access_token", token);
+    updateSessionStatus();
+    return token;
+  }
+
+  function hydrateStoredTokenMetadata() {
+    if (!state.token) return;
+    const claims = parseTokenPayload(state.token);
+    state.sessionExpiresAt = claims.exp ? new Date(Number(claims.exp) * 1000).toISOString() : "";
+  }
+
+  function sessionRemainingMs() {
+    const expiresAt = Date.parse(state.sessionExpiresAt || "");
+    return Number.isFinite(expiresAt) ? expiresAt - Date.now() : 0;
+  }
+
+  function formatRemainingTime(remainingMs) {
+    if (remainingMs <= 0) return "Сессия истекла";
+    const minutes = Math.max(1, Math.ceil(remainingMs / 60000));
+    if (minutes >= 60) return `Сессия · ${Math.floor(minutes / 60)} ч ${minutes % 60} мин`;
+    return `Сессия · ${minutes} мин`;
+  }
+
+  function updateSessionStatus() {
+    if (!el.sessionStatusRow || !el.sessionRemainingLabel) return;
+    const remainingMs = sessionRemainingMs();
+    const visible = Boolean(state.token && state.sessionExpiresAt);
+    el.sessionStatusRow.classList.toggle("hidden", !visible);
+    if (!visible) return;
+    el.sessionRemainingLabel.textContent = formatRemainingTime(remainingMs);
+    el.sessionStatusRow.classList.toggle("is-warning", remainingMs > 0 && remainingMs <= AUTO_REFRESH_WINDOW_MS);
+    el.sessionStatusRow.classList.toggle("is-expired", remainingMs <= 0);
+    [el.sessionRefreshBtn, el.createSessionRefreshBtn, el.editSessionRefreshBtn].forEach((button) => {
+      if (button) button.disabled = state.sessionRefreshPending === true;
+    });
+  }
+
+  function telegramInitData() {
+    return String(window.Telegram?.WebApp?.initData || "").trim();
+  }
+
+  function hasTelegramLaunchContext() {
+    if (telegramInitData()) return true;
+    const platform = String(window.Telegram?.WebApp?.platform || "").toLowerCase();
+    const launchParams = `${window.location.search || ""}${window.location.hash || ""}`;
+    return (platform && platform !== "unknown") || /tgWebApp(?:Data|Platform|Version)/i.test(launchParams);
+  }
+
+  async function waitForTelegramInitData(timeoutMs = TELEGRAM_READY_TIMEOUT_MS) {
+    const immediate = telegramInitData();
+    if (immediate) return immediate;
+    if (!hasTelegramLaunchContext()) return "";
+    const deadline = Date.now() + Math.max(0, timeoutMs);
+    while (Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const value = telegramInitData();
+      if (value) return value;
+    }
+    return "";
+  }
+
+  function showSessionRecovery(message = "Данные формы сохранены. Обновите авторизацию, чтобы продолжить.") {
+    state.sessionRecoveryVisible = true;
+    if (el.sessionRecoveryMessage) el.sessionRecoveryMessage.textContent = message;
+    el.sessionRecoveryOverlay?.classList.remove("hidden");
+  }
+
+  function hideSessionRecovery() {
+    state.sessionRecoveryVisible = false;
+    el.sessionRecoveryOverlay?.classList.add("hidden");
+  }
+
+  async function requestFreshAccessToken() {
+    const response = await fetch("/api/v1/auth/refresh", {
+      method: "POST",
+      headers: core.authHeaders(),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const detail = typeof data.detail === "string" ? data.detail : "Не удалось продлить сессию";
+      throw new Error(detail);
+    }
+    return data;
+  }
+
+  async function refreshSession(options = {}) {
+    const manual = options.manual === true;
+    if (!state.token) throw new Error("Нет активной сессии");
+    if (sessionRefreshPromise) return sessionRefreshPromise;
+    state.sessionRefreshPending = true;
+    updateSessionStatus();
+    sessionRefreshPromise = requestFreshAccessToken()
+      .then((data) => {
+        storeAccessToken(data);
+        hideSessionRecovery();
+        if (manual) core.notify?.("Сессия продлена", { type: "success" });
+        return true;
+      })
+      .finally(() => {
+        state.sessionRefreshPending = false;
+        sessionRefreshPromise = null;
+        updateSessionStatus();
+      });
+    return sessionRefreshPromise;
+  }
+
+  async function authenticateTelegramInPlace(options = {}) {
+    if (telegramAuthPromise) return telegramAuthPromise;
+    const initData = options.initData || await waitForTelegramInitData();
+    if (!initData) throw new Error("Telegram не передал данные авторизации. Закройте и снова откройте Mini App.");
+    telegramAuthPromise = core.requestJson("/api/v1/auth/telegram", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ init_data: initData }),
+      skipAuthRecovery: true,
+    }).then((data) => {
+      storeAccessToken(data);
+      hideSessionRecovery();
+      return true;
+    }).finally(() => {
+      telegramAuthPromise = null;
+    });
+    return telegramAuthPromise;
+  }
+
+  async function recoverUnauthorized() {
+    try {
+      await refreshSession();
+      return true;
+    } catch {}
+    try {
+      await authenticateTelegramInPlace();
+      return true;
+    } catch (err) {
+      showSessionRecovery(err instanceof Error ? err.message : String(err));
+      return false;
+    }
+  }
+
+  async function renewSessionManually() {
+    try {
+      if (sessionRemainingMs() > 0) {
+        try {
+          await refreshSession({ manual: true });
+          return true;
+        } catch {}
+      }
+      await authenticateTelegramInPlace();
+      core.notify?.("Сессия восстановлена", { type: "success" });
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (!hasTelegramLaunchContext()) {
+        hideSessionRecovery();
+        applyTelegramLoginUi();
+        core.showLogin(message);
+        return false;
+      }
+      showSessionRecovery(message);
+      core.notify?.(message, { type: "error" });
+      return false;
+    }
+  }
+
+  async function maybeRefreshSession() {
+    if (document.visibilityState === "hidden") return false;
+    const remainingMs = sessionRemainingMs();
+    updateSessionStatus();
+    if (!state.token || remainingMs > AUTO_REFRESH_WINDOW_MS) return false;
+    if (remainingMs <= 0) return recoverUnauthorized();
+    try {
+      await refreshSession();
+      return true;
+    } catch {
+      return recoverUnauthorized();
+    }
+  }
+
+  function bindSessionLifecycle() {
+    if (sessionLifecycleBound) return;
+    sessionLifecycleBound = true;
+    const resume = () => {
+      if (document.visibilityState === "hidden") return;
+      if (state.token) {
+        maybeRefreshSession().catch(() => {});
+        return;
+      }
+      tryAutoTelegramLogin({ waitForReady: true, bootstrap: true }).catch(() => {});
+    };
+    document.addEventListener("visibilitychange", resume);
+    window.addEventListener("pageshow", resume);
+  }
+
+  function startSessionMonitor() {
+    if (sessionTimerId) clearInterval(sessionTimerId);
+    bindSessionLifecycle();
+    updateSessionStatus();
+    sessionTimerId = setInterval(() => {
+      maybeRefreshSession().catch(() => {});
+    }, SESSION_TICK_MS);
+  }
+
+  function stopSessionMonitor() {
+    if (sessionTimerId) clearInterval(sessionTimerId);
+    sessionTimerId = null;
+    state.sessionExpiresAt = "";
+    updateSessionStatus();
+  }
 
   function getCategoryActions() {
     return window.App.getRuntimeModule?.("category-actions") || {};
@@ -34,8 +268,7 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(authData),
     });
-    state.token = data.access_token;
-    localStorage.setItem("access_token", data.access_token);
+    storeAccessToken(data);
     await bootstrapApp();
   }
 
@@ -155,6 +388,8 @@
     sessionPreferences.cancelDebouncedPreferencesSave?.();
     localStorage.removeItem("access_token");
     state.token = "";
+    stopSessionMonitor();
+    hideSessionRecovery();
     state.preferences = null;
     state.page = 1;
     state.operationsHasMore = true;
@@ -205,51 +440,55 @@
   }
 
   async function bootstrapApp() {
-    await loadMe();
-    await sessionPreferences.loadPreferences?.();
-    const navigation = getNavigationActions();
-    if (navigation.applySectionUi) {
-      navigation.applySectionUi();
-    }
-    core.showApp();
-    if (navigation.switchSection) {
-      await navigation.switchSection(state.activeSection || "dashboard", { preserveBackStack: true });
-      return;
-    }
-    const operationsFeature = getOperationsFeature();
-    if (operationsFeature.refreshAll) {
-      await operationsFeature.refreshAll();
-    }
+    if (bootstrapPromise) return bootstrapPromise;
+    bootstrapPromise = (async () => {
+      await loadMe();
+      await sessionPreferences.loadPreferences?.();
+      const navigation = getNavigationActions();
+      if (navigation.applySectionUi) {
+        navigation.applySectionUi();
+      }
+      core.showApp();
+      startSessionMonitor();
+      if (navigation.switchSection) {
+        await navigation.switchSection(state.activeSection || "dashboard", { preserveBackStack: true });
+        return;
+      }
+      const operationsFeature = getOperationsFeature();
+      if (operationsFeature.refreshAll) {
+        await operationsFeature.refreshAll();
+      }
+    })().finally(() => {
+      bootstrapPromise = null;
+    });
+    return bootstrapPromise;
   }
 
   async function telegramLogin() {
-    const initData = String(window.Telegram?.WebApp?.initData || "").trim();
-    if (!initData) {
-      throw new Error("Нет Telegram initData. Откройте приложение внутри Telegram.");
-    }
-    const data = await core.requestJson("/api/v1/auth/telegram", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ init_data: initData }),
-    });
-    state.token = data.access_token;
-    localStorage.setItem("access_token", data.access_token);
+    core.showSessionChecking?.("Входим через Telegram...");
+    await authenticateTelegramInPlace();
     await bootstrapApp();
   }
 
-  async function tryAutoTelegramLogin() {
+  async function tryAutoTelegramLogin(options = {}) {
     if (state.token) {
       return false;
     }
-    const initData = String(window.Telegram?.WebApp?.initData || "").trim();
+    const initData = options.waitForReady === false
+      ? telegramInitData()
+      : await waitForTelegramInitData();
     if (!initData) {
       return false;
     }
-    await telegramLogin();
+    core.showSessionChecking?.("Входим через Telegram...");
+    await authenticateTelegramInPlace({ initData });
+    if (options.bootstrap !== false) await bootstrapApp();
     return true;
   }
 
+  hydrateStoredTokenMetadata();
   applyTelegramLoginUi();
+  bindSessionLifecycle();
 
   const api = {
     loadTelegramLoginConfig,
@@ -260,6 +499,12 @@
     bootstrapApp,
     telegramLogin,
     tryAutoTelegramLogin,
+    refreshSession,
+    renewSessionManually,
+    recoverUnauthorized,
+    updateSessionStatus,
+    showSessionRecovery,
+    hideSessionRecovery,
   };
 
   window.App.registerRuntimeModule?.("session-auth", api);

@@ -95,6 +95,7 @@
   const loadDashboard = dashboardFeatures.loadDashboard;
   const loadDashboardOperations = dashboardFeatures.loadDashboardOperations;
   const loadAnalyticsTrend = analyticsFeatures.loadAnalyticsTrend;
+  const loadAnalyticsPositions = analyticsFeatures.loadAnalyticsPositions;
   const loadDashboardAnalyticsPreview = analyticsFeatures.loadDashboardAnalyticsPreview;
   const loadAnalyticsSection = analyticsFeatures.loadAnalyticsSection;
   const loadAnalyticsHighlights = analyticsFeatures.loadAnalyticsHighlights;
@@ -108,9 +109,17 @@
   const openAnalyticsMonth = analyticsFeatures.openAnalyticsMonth;
   const openOperationsForAnalyticsDate = analyticsFeatures.openOperationsForAnalyticsDate;
   const openOperationsForAnalyticsRange = analyticsFeatures.openOperationsForAnalyticsRange;
+  const openOperationsForAnalyticsPositionRange = analyticsFeatures.openOperationsForAnalyticsPositionRange;
+  const openPositionsAnalyticsFromDashboard = analyticsFeatures.openPositionsAnalyticsFromDashboard;
   const openOperationsForAnalyticsCategory = analyticsFeatures.openOperationsForAnalyticsCategory;
   const toggleCategoryBreakdownVisibility = analyticsFeatures.toggleCategoryBreakdownVisibility;
   const showAllCategoryBreakdownItems = analyticsFeatures.showAllCategoryBreakdownItems;
+  const renderAnalyticsPositions = analyticsFeatures.renderAnalyticsPositions;
+  const setAnalyticsPositionsPeriod = analyticsFeatures.setAnalyticsPositionsPeriod;
+  const shiftAnalyticsPositionsPeriod = analyticsFeatures.shiftAnalyticsPositionsPeriod;
+  const resetAnalyticsPositionsPeriod = analyticsFeatures.resetAnalyticsPositionsPeriod;
+  const toggleAnalyticsPositionsSort = analyticsFeatures.toggleAnalyticsPositionsSort;
+  const renderAnalyticsPositionsPeriodOptions = analyticsFeatures.renderAnalyticsPositionsPeriodOptions;
   const loadAdminUsers = adminFeatures.loadAdminUsers;
   const setAdminUserStatusFilter = adminFeatures.setAdminUserStatusFilter;
   const approveAdminUser = adminFeatures.approveAdminUser;
@@ -304,6 +313,7 @@
     loadDashboard,
     loadDashboardOperations,
     loadAnalyticsTrend,
+    loadAnalyticsPositions,
     loadAnalyticsHighlights,
     loadDashboardAnalyticsPreview,
     loadAnalyticsSection,
@@ -317,9 +327,17 @@
     openAnalyticsMonth,
     openOperationsForAnalyticsDate,
     openOperationsForAnalyticsRange,
+    openOperationsForAnalyticsPositionRange,
+    openPositionsAnalyticsFromDashboard,
     openOperationsForAnalyticsCategory,
     toggleCategoryBreakdownVisibility,
     showAllCategoryBreakdownItems,
+    renderAnalyticsPositions,
+    setAnalyticsPositionsPeriod,
+    shiftAnalyticsPositionsPeriod,
+    resetAnalyticsPositionsPeriod,
+    toggleAnalyticsPositionsSort,
+    renderAnalyticsPositionsPeriodOptions,
     loadAdminUsers,
     setAdminUserStatusFilter,
     approveAdminUser,

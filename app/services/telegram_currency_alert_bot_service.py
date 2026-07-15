@@ -55,9 +55,26 @@ class TelegramCurrencyAlertBotService:
                 str(item["currency"]).upper(): item
                 for item in overview.get("current_rates") or []
             }
-            triggers = self._collect_triggers(current_rates=current_rates, config=config)
+            triggers, rearmed, suppressed = self._collect_triggers(current_rates=current_rates, config=config)
+            if rearmed:
+                self._persist_rearmed_directions(user_id=user_id, rearmed=rearmed)
+            if suppressed:
+                log_background_job_event(
+                    "currency_alerts",
+                    "alerts_suppressed",
+                    user_id=user_id,
+                    trigger_count=len(suppressed),
+                    directions=sorted({direction for _, direction in suppressed}),
+                )
             if not triggers:
                 continue
+            log_background_job_event(
+                "currency_alerts",
+                "alerts_triggered",
+                user_id=user_id,
+                trigger_count=len(triggers),
+                directions=sorted({trigger.direction for trigger in triggers}),
+            )
             deliveries.append(
                 TelegramCurrencyAlertDelivery(
                     chat_id=str(identity.provider_user_id),
@@ -118,8 +135,15 @@ class TelegramCurrencyAlertBotService:
             )
         return "\n".join(lines)
 
-    def _collect_triggers(self, *, current_rates: dict[str, dict], config: dict) -> list[CurrencyAlertTrigger]:
+    def _collect_triggers(
+        self,
+        *,
+        current_rates: dict[str, dict],
+        config: dict,
+    ) -> tuple[list[CurrencyAlertTrigger], list[tuple[str, str]], list[tuple[str, str]]]:
         triggers: list[CurrencyAlertTrigger] = []
+        rearmed: list[tuple[str, str]] = []
+        suppressed: list[tuple[str, str]] = []
         for currency, alert in config["alerts"].items():
             rate_row = current_rates.get(currency)
             if not rate_row:
@@ -128,33 +152,91 @@ class TelegramCurrencyAlertBotService:
             rate_date = str(rate_row.get("rate_date") or "")
             above_rate = alert.get("above_rate")
             if above_rate is not None:
-                marker = f"{rate_date}:{current_rate:.6f}:above:{above_rate:.6f}"
-            if above_rate is not None and current_rate >= above_rate and marker != alert.get("last_above_marker"):
-                triggers.append(
-                    CurrencyAlertTrigger(
-                        currency=currency,
-                        direction="above",
-                        threshold=above_rate,
-                        current_rate=current_rate,
-                        rate_date=rate_date,
-                        marker=marker,
-                    )
-                )
+                marker = self._active_marker(direction="above", threshold=above_rate)
+                last_marker = str(alert.get("last_above_marker") or "")
+                if current_rate >= above_rate:
+                    if not self._marker_is_active(last_marker, direction="above", threshold=above_rate):
+                        triggers.append(
+                            CurrencyAlertTrigger(
+                                currency=currency,
+                                direction="above",
+                                threshold=above_rate,
+                                current_rate=current_rate,
+                                rate_date=rate_date,
+                                marker=marker,
+                            )
+                        )
+                    else:
+                        suppressed.append((currency, "above"))
+                elif last_marker:
+                    rearmed.append((currency, "above"))
             below_rate = alert.get("below_rate")
             if below_rate is not None:
-                marker = f"{rate_date}:{current_rate:.6f}:below:{below_rate:.6f}"
-            if below_rate is not None and current_rate <= below_rate and marker != alert.get("last_below_marker"):
-                triggers.append(
-                    CurrencyAlertTrigger(
-                        currency=currency,
-                        direction="below",
-                        threshold=below_rate,
-                        current_rate=current_rate,
-                        rate_date=rate_date,
-                        marker=marker,
-                    )
-                )
-        return triggers
+                marker = self._active_marker(direction="below", threshold=below_rate)
+                last_marker = str(alert.get("last_below_marker") or "")
+                if current_rate <= below_rate:
+                    if not self._marker_is_active(last_marker, direction="below", threshold=below_rate):
+                        triggers.append(
+                            CurrencyAlertTrigger(
+                                currency=currency,
+                                direction="below",
+                                threshold=below_rate,
+                                current_rate=current_rate,
+                                rate_date=rate_date,
+                                marker=marker,
+                            )
+                        )
+                    else:
+                        suppressed.append((currency, "below"))
+                elif last_marker:
+                    rearmed.append((currency, "below"))
+        return triggers, rearmed, suppressed
+
+    def _persist_rearmed_directions(self, *, user_id: int, rearmed: list[tuple[str, str]]) -> None:
+        preference = self.preferences.get_or_create(user_id)
+        prefs = dict(preference.data) if isinstance(preference.data, dict) else {}
+        currency_prefs = dict(prefs.get("currency")) if isinstance(prefs.get("currency"), dict) else {}
+        raw_alerts = currency_prefs.get("currency_alerts") if isinstance(currency_prefs.get("currency_alerts"), dict) else {}
+        alerts = {str(code).upper(): dict(value) for code, value in raw_alerts.items() if isinstance(value, dict)}
+        changed = 0
+        for currency, direction in rearmed:
+            config = alerts.get(currency)
+            if not config:
+                continue
+            key = "last_above_marker" if direction == "above" else "last_below_marker"
+            if config.get(key):
+                config[key] = ""
+                changed += 1
+        if not changed:
+            return
+        currency_prefs["currency_alerts"] = alerts
+        prefs["currency"] = currency_prefs
+        preference.data = prefs
+        self.db.commit()
+        log_background_job_event(
+            "currency_alerts",
+            "alerts_rearmed",
+            user_id=user_id,
+            direction_count=changed,
+        )
+
+    @staticmethod
+    def _active_marker(*, direction: str, threshold: Decimal) -> str:
+        return f"active:{direction}:{threshold:.6f}"
+
+    @staticmethod
+    def _marker_is_active(marker: str, *, direction: str, threshold: Decimal) -> bool:
+        raw = str(marker or "").strip()
+        if not raw:
+            return False
+        parts = raw.split(":")
+        if len(parts) < 3 or parts[-2] != direction:
+            return False
+        try:
+            marker_threshold = Decimal(parts[-1])
+        except Exception:  # noqa: BLE001
+            return False
+        return marker_threshold == threshold
 
     def _get_alerts_config(self, prefs: dict) -> dict:
         currency_prefs = prefs.get("currency") if isinstance(prefs.get("currency"), dict) else {}

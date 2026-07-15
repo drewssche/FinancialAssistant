@@ -9,6 +9,7 @@
           <h3 id="createTitle">Новая операция</h3>
           <div class="modal-head-actions">
             <button id="createModalActivityBtn" class="btn btn-secondary hidden" type="button">Журнал</button>
+            <button id="createSessionRefreshBtn" class="session-refresh-btn operation-session-refresh-btn" type="button" title="Продлить сессию" aria-label="Продлить сессию">↻</button>
             <button id="createFinanceCalculatorToggle" class="btn btn-secondary finance-calculator-modal-toggle" type="button" aria-controls="financeCalculatorDrawer" aria-expanded="false" title="Калькулятор">
               <span aria-hidden="true">%</span><span>Калькулятор</span>
             </button>
@@ -429,6 +430,7 @@
           <h3 id="editTitle">Редактировать операцию</h3>
           <div class="modal-head-actions">
             <button id="editModalActivityBtn" class="btn btn-secondary hidden" type="button">Журнал</button>
+            <button id="editSessionRefreshBtn" class="session-refresh-btn operation-session-refresh-btn" type="button" title="Продлить сессию" aria-label="Продлить сессию">↻</button>
             <button id="editFinanceCalculatorToggle" class="btn btn-secondary finance-calculator-modal-toggle" type="button" aria-controls="financeCalculatorDrawer" aria-expanded="false" title="Калькулятор">
               <span aria-hidden="true">%</span><span>Калькулятор</span>
             </button>
@@ -636,6 +638,7 @@
         <div class="panel-head row between">
           <h3 id="editGroupTitle">Редактировать группу</h3>
           <div class="modal-head-actions">
+            <button id="editGroupCreateCategoryBtn" class="btn btn-secondary hidden" type="button">Добавить категорию</button>
             <button id="editGroupActivityBtn" class="btn btn-secondary hidden" type="button">Журнал</button>
             <button id="closeEditGroupModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
               <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>

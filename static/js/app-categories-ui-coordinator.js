@@ -107,6 +107,13 @@
     el.editGroupId.value = String(group.id);
     el.editGroupName.value = group.name || "";
     getActivityFeature().configureActivityButton?.(el.editGroupActivityBtn, "category_group", group.id);
+    const contextActions = window.App.getRuntimeModule?.("context-actions");
+    if (el.editGroupCreateCategoryBtn) {
+      const showCreate = contextActions?.has?.("category_group", "modal", "create_child");
+      el.editGroupCreateCategoryBtn.classList.toggle("hidden", !showCreate);
+      el.editGroupCreateCategoryBtn.dataset.createCategoryGroupId = showCreate ? String(group.id) : "";
+      el.editGroupCreateCategoryBtn.dataset.createCategoryKind = showCreate ? String(group.kind || "expense") : "";
+    }
     const color = group.accent_color || "#ff8a3d";
     el.editGroupAccentColor.value = color;
     el.editGroupAccentColorHex.value = color;
@@ -119,6 +126,11 @@
     }
     el.editGroupId.value = "";
     getActivityFeature().configureActivityButton?.(el.editGroupActivityBtn, null, null);
+    if (el.editGroupCreateCategoryBtn) {
+      el.editGroupCreateCategoryBtn.classList.add("hidden");
+      el.editGroupCreateCategoryBtn.dataset.createCategoryGroupId = "";
+      el.editGroupCreateCategoryBtn.dataset.createCategoryKind = "";
+    }
     el.editGroupModal.classList.add("hidden");
   }
 

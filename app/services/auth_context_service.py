@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from jose import JWTError, jwt
+from jose import JWTError
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.core.security import ALGORITHM
+from app.core.security import decode_access_token
 from app.db.models import User
 from app.repositories.user_repo import UserRepository
 
@@ -31,7 +31,7 @@ class AuthContextService:
         self.repo = UserRepository(db)
         self.settings = get_settings()
 
-    def resolve_user_from_authorization_header(self, authorization: str | None) -> User:
+    def resolve_token_payload_from_authorization_header(self, authorization: str | None) -> dict:
         if not authorization:
             raise InvalidAuthorizationHeaderError("Missing Authorization header")
 
@@ -43,9 +43,12 @@ class AuthContextService:
             raise InvalidAuthorizationHeaderError("Empty bearer token")
 
         try:
-            payload = jwt.decode(token, self.settings.app_secret_key, algorithms=[ALGORITHM])
+            return decode_access_token(token)
         except JWTError as exc:
             raise InvalidAccessTokenError("Invalid token") from exc
+
+    def resolve_user_from_authorization_header(self, authorization: str | None) -> User:
+        payload = self.resolve_token_payload_from_authorization_header(authorization)
 
         sub = payload.get("sub")
         if not sub:

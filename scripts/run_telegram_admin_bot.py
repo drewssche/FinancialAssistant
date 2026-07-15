@@ -25,6 +25,7 @@ from app.services.telegram_plan_bot_service import (
 )
 from app.services.telegram_plan_reminder_bot_service import TelegramPlanReminderBotService
 from app.services.currency_rate_refresh_service import CurrencyRateRefreshService
+from app.services.background_job_lock import try_background_job_lock
 
 
 logger = logging.getLogger("financial_assistant_admin_bot")
@@ -360,36 +361,40 @@ async def process_currency_digests(client: TelegramBotClient) -> None:
 async def process_currency_alerts(client: TelegramBotClient) -> None:
     db = SessionLocal()
     try:
-        service = TelegramCurrencyAlertBotService(db)
-        for delivery in service.list_due_deliveries():
-            try:
-                await client.call(
-                    "sendMessage",
-                    {
-                        "chat_id": delivery.chat_id,
-                        "text": delivery.text,
-                        "disable_web_page_preview": True,
-                    },
-                )
-            except Exception as exc:  # noqa: BLE001
+        with try_background_job_lock(db, "telegram_currency_alert_scan") as acquired:
+            if not acquired:
+                log_telegram_bot_event("currency_alert_scan_skipped", reason="already_running")
+                return
+            service = TelegramCurrencyAlertBotService(db)
+            for delivery in service.list_due_deliveries():
+                try:
+                    await client.call(
+                        "sendMessage",
+                        {
+                            "chat_id": delivery.chat_id,
+                            "text": delivery.text,
+                            "disable_web_page_preview": True,
+                        },
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    log_telegram_bot_event(
+                        "currency_alert_failed",
+                        user_id=delivery.user_id,
+                        error=type(exc).__name__,
+                    )
+                    logger.warning(
+                        "telegram currency alert failed for user %s: %s",
+                        delivery.user_id,
+                        exc,
+                    )
+                    continue
+                service.mark_delivery_sent(delivery)
                 log_telegram_bot_event(
-                    "currency_alert_failed",
+                    "currency_alert_sent",
+                    chat_id=delivery.chat_id,
                     user_id=delivery.user_id,
-                    error=type(exc).__name__,
+                    trigger_count=len(delivery.triggers),
                 )
-                logger.warning(
-                    "telegram currency alert failed for user %s: %s",
-                    delivery.user_id,
-                    exc,
-                )
-                continue
-            service.mark_delivery_sent(delivery)
-            log_telegram_bot_event(
-                "currency_alert_sent",
-                chat_id=delivery.chat_id,
-                user_id=delivery.user_id,
-                trigger_count=len(delivery.triggers),
-            )
     finally:
         db.close()
 

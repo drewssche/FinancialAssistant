@@ -19,6 +19,25 @@
     return window.App.getRuntimeModule?.("session") || {};
   }
 
+  function renderCategoryContextActions(entityType, entity) {
+    const contextActions = window.App.getRuntimeModule?.("context-actions");
+    return (contextActions?.keys?.(entityType, "row") || []).map((key) => {
+      if (entityType === "category") {
+        if (key === "activity") return `<button class='btn btn-secondary' data-activity-entity-type='category' data-activity-entity-id='${entity.id}'>Журнал</button>`;
+        if (key === "usage") return `<button class='btn btn-secondary' data-usage-entity-type='category' data-usage-entity-id='${entity.id}' data-usage-entity-name='${core.escapeHtml(entity.name || "")}'>Операции</button>`;
+        if (key === "edit") return `<button class='btn btn-secondary' data-edit-category-id='${entity.id}'>Редактировать</button>`;
+        if (key === "delete") return `<button class='btn btn-danger' data-delete-category-id='${entity.id}'>Удалить</button>`;
+      }
+      if (entityType === "category_group") {
+        if (key === "create_child") return `<button class="btn btn-secondary" data-create-category-group-id="${entity.id}" data-create-category-kind="${core.escapeHtml(entity.kind || "expense")}" type="button">Добавить категорию</button>`;
+        if (key === "activity") return `<button class="btn btn-secondary" data-activity-entity-type="category_group" data-activity-entity-id="${entity.id}" type="button">Журнал</button>`;
+        if (key === "edit") return `<button class="btn btn-secondary" data-edit-group-id="${entity.id}" type="button">Редактировать</button>`;
+        if (key === "delete") return `<button class="btn btn-danger" data-delete-group-id="${entity.id}" type="button">Удалить</button>`;
+      }
+      return "";
+    }).join("");
+  }
+
   function normalizeHexColor(value) {
     const raw = String(value || "").trim();
     const match = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(raw);
@@ -231,6 +250,7 @@
     const accent = resolveGroupAccent(options.groupAccentColor, item.kind);
     tr.style.setProperty("--category-group-accent", accent.accent);
     tr.style.setProperty("--category-group-accent-soft", accent.soft);
+    const categoryActions = renderCategoryContextActions("category", item);
     const menuActions = item.is_system
       ? ""
       : `<div class="mobile-card-kebab-wrap">
@@ -239,10 +259,7 @@
               </button>
               <div class="app-popover hidden mobile-card-actions-popover" data-mobile-card-menu="category-${item.id}">
                 <div class="mobile-card-actions-menu">
-                  <button class='btn btn-secondary' data-activity-entity-type='category' data-activity-entity-id='${item.id}'>Журнал</button>
-                  <button class='btn btn-secondary' data-usage-entity-type='category' data-usage-entity-id='${item.id}' data-usage-entity-name='${core.escapeHtml(item.name || "")}'>Операции</button>
-                  <button class='btn btn-secondary' data-edit-category-id='${item.id}'>Редактировать</button>
-                  <button class='btn btn-danger' data-delete-category-id='${item.id}'>Удалить</button>
+                  ${categoryActions}
                 </div>
               </div>
             </div>`;
@@ -275,8 +292,9 @@
     tr.style.setProperty("--category-group-accent-soft", accent.soft);
     const chevron = group.isUngrouped ? "•" : (isCollapsed ? "▸" : "▾");
     const toggleDisabled = queryActive || group.isUngrouped;
+    const groupActionButtons = group.id ? renderCategoryContextActions("category_group", group) : "";
     const groupActions = group.id
-      ? `<div class="mobile-card-kebab-wrap"><button class="btn btn-secondary mobile-card-kebab-trigger" data-mobile-card-menu-trigger="category-group-${group.id}" type="button" aria-label="Действия группы"><span aria-hidden="true">⋮</span></button><div class="app-popover hidden mobile-card-actions-popover" data-mobile-card-menu="category-group-${group.id}"><div class="mobile-card-actions-menu"><button class="btn btn-secondary" data-create-category-group-id="${group.id}" data-create-category-kind="${core.escapeHtml(group.kind || "expense")}" type="button">Добавить категорию</button><button class="btn btn-secondary" data-activity-entity-type="category_group" data-activity-entity-id="${group.id}" type="button">Журнал</button><button class="btn btn-secondary" data-edit-group-id="${group.id}" type="button">Редактировать</button><button class="btn btn-danger" data-delete-group-id="${group.id}" type="button">Удалить</button></div></div></div>`
+      ? `<div class="mobile-card-kebab-wrap"><button class="btn btn-secondary mobile-card-kebab-trigger" data-mobile-card-menu-trigger="category-group-${group.id}" type="button" aria-label="Действия группы"><span aria-hidden="true">⋮</span></button><div class="app-popover hidden mobile-card-actions-popover" data-mobile-card-menu="category-group-${group.id}"><div class="mobile-card-actions-menu">${groupActionButtons}</div></div></div>`
       : "";
     tr.innerHTML = `
       <td colspan="4" class="category-table-group-cell category-mobile-group-cell">
@@ -307,7 +325,7 @@
       ? "<span class='muted-small'>Защищено</span>"
       : core.renderInlineKebabMenu?.(
         `category-${item.id}`,
-        `<button class='btn btn-secondary' data-activity-entity-type='category' data-activity-entity-id='${item.id}'>Журнал</button><button class='btn btn-secondary' data-usage-entity-type='category' data-usage-entity-id='${item.id}' data-usage-entity-name='${core.escapeHtml(item.name || "")}'>Операции</button><button class='btn btn-secondary' data-edit-category-id='${item.id}'>Редактировать</button><button class='btn btn-danger' data-delete-category-id='${item.id}'>Удалить</button>`,
+        renderCategoryContextActions("category", item),
         "Действия категории",
         "category-row-kebab",
       ) || "";
@@ -369,7 +387,7 @@
     const groupActions = group.id
       ? core.renderInlineKebabMenu?.(
         `category-group-${group.id}`,
-        `<button class="btn btn-secondary" data-create-category-group-id="${group.id}" data-create-category-kind="${core.escapeHtml(group.kind || "expense")}" type="button">Добавить категорию</button><button class="btn btn-secondary" data-activity-entity-type="category_group" data-activity-entity-id="${group.id}" type="button">Журнал</button><button class="btn btn-secondary" data-edit-group-id="${group.id}" type="button">Редактировать</button><button class="btn btn-danger" data-delete-group-id="${group.id}" type="button">Удалить</button>`,
+        renderCategoryContextActions("category_group", group),
         "Действия группы",
         "category-group-kebab",
       )

@@ -39,8 +39,14 @@ def test_activity_journal_modal_is_available_in_frontend_templates():
         assert f'{button_id}: document.getElementById("{button_id}")' in elements
     assert 'id="itemTemplateActivityBtn"' in modals_item_catalog
     assert 'id="itemTemplateUsageBtn"' in modals_item_catalog
+    assert 'id="itemTemplateHistoryBtn"' in modals_item_catalog
+    assert 'id="sourceGroupCreateItemBtn"' in modals_item_catalog
+    assert 'id="editGroupCreateCategoryBtn"' in modals
     assert 'itemTemplateActivityBtn: document.getElementById("itemTemplateActivityBtn")' in elements
     assert 'itemTemplateUsageBtn: document.getElementById("itemTemplateUsageBtn")' in elements
+    assert 'itemTemplateHistoryBtn: document.getElementById("itemTemplateHistoryBtn")' in elements
+    assert 'sourceGroupCreateItemBtn: document.getElementById("sourceGroupCreateItemBtn")' in elements
+    assert 'editGroupCreateCategoryBtn: document.getElementById("editGroupCreateCategoryBtn")' in elements
     assert 'id="dashboardCurrencyActivityBtn"' in shell_primary
     assert 'id="currencyPortfolioActivityBtn"' in shell_secondary
     assert 'dashboardCurrencyActivityBtn: document.getElementById("dashboardCurrencyActivityBtn")' in elements
@@ -70,6 +76,29 @@ def test_activity_journal_modal_is_available_in_frontend_templates():
     core_js = (REPO_ROOT / "static" / "js" / "app-core.js").read_text(encoding="utf-8")
     assert "function bringModalToFront(modal)" in core_js
     assert "function getTopVisibleModal()" in core_js
+
+
+def test_context_action_registry_keeps_row_and_modal_actions_explicit():
+    registry = (REPO_ROOT / "static" / "js" / "app-context-actions.js").read_text(encoding="utf-8")
+    manifest = MANIFEST_JS.read_text(encoding="utf-8")
+    item_render = (REPO_ROOT / "static" / "js" / "app-item-catalog-render-coordinator.js").read_text(
+        encoding="utf-8"
+    )
+    category_render = (REPO_ROOT / "static" / "js" / "app-categories-table-ui.js").read_text(encoding="utf-8")
+    catalog_init = (REPO_ROOT / "static" / "js" / "app-init-features-catalog.js").read_text(encoding="utf-8")
+
+    assert 'item_template: Object.freeze({' in registry
+    assert 'modal: Object.freeze(["activity", "usage", "history"])' in registry
+    assert 'category_group: Object.freeze({' in registry
+    assert 'item_source: Object.freeze({' in registry
+    assert 'modal: Object.freeze(["create_child"])' in registry
+    assert '"/static/js/app-context-actions.js"' in manifest
+    assert 'renderContextActions("item_template", item' in item_render
+    assert 'renderContextActions("item_source", group' in item_render
+    assert 'renderCategoryContextActions("category_group", group)' in category_render
+    assert "el.itemTemplateHistoryBtn?.addEventListener" in catalog_init
+    assert "el.sourceGroupCreateItemBtn?.addEventListener" in catalog_init
+    assert "el.editGroupCreateCategoryBtn?.addEventListener" in catalog_init
 
 
 def test_debt_movements_and_add_amount_ui_contract():

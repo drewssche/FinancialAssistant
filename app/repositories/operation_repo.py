@@ -566,6 +566,48 @@ class OperationRepository:
             for row in rows
         ]
 
+    def aggregate_positions_for_period(self, *, user_id: int, date_from: date, date_to: date) -> list[dict]:
+        display_name = func.coalesce(OperationItemTemplate.name, OperationReceiptItem.name)
+        display_shop = func.coalesce(OperationItemTemplate.shop_name, OperationReceiptItem.shop_name)
+        stmt = (
+            select(
+                OperationReceiptItem.template_id,
+                display_name.label("position_name"),
+                display_shop.label("shop_name"),
+                Operation.operation_date,
+                func.count(func.distinct(Operation.id)).label("purchases_count"),
+                func.coalesce(func.sum(OperationReceiptItem.quantity), 0).label("quantity_total"),
+                func.coalesce(func.sum(OperationReceiptItem.line_total), 0).label("amount_total"),
+            )
+            .join(Operation, Operation.id == OperationReceiptItem.operation_id)
+            .outerjoin(OperationItemTemplate, OperationItemTemplate.id == OperationReceiptItem.template_id)
+            .where(
+                Operation.user_id == user_id,
+                Operation.kind == "expense",
+                Operation.operation_date >= date_from,
+                Operation.operation_date <= date_to,
+            )
+            .group_by(
+                OperationReceiptItem.template_id,
+                display_name,
+                display_shop,
+                Operation.operation_date,
+            )
+            .order_by(Operation.operation_date.asc(), display_name.asc())
+        )
+        return [
+            {
+                "template_id": int(row.template_id) if row.template_id is not None else None,
+                "name": str(row.position_name or "Позиция"),
+                "shop_name": str(row.shop_name) if row.shop_name else None,
+                "operation_date": row.operation_date,
+                "purchases_count": int(row.purchases_count or 0),
+                "quantity_total": Decimal(row.quantity_total or 0),
+                "amount_total": Decimal(row.amount_total or 0),
+            }
+            for row in self.db.execute(stmt)
+        ]
+
     def list_for_period(self, user_id: int, date_from: date, date_to: date) -> list[Operation]:
         stmt = (
             select(Operation)

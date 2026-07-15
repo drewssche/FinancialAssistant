@@ -318,6 +318,9 @@
     if (el.dashboardStructurePanel && el.showDashboardAnalyticsToggle) {
       el.dashboardStructurePanel.classList.toggle("hidden", !el.showDashboardAnalyticsToggle.checked);
     }
+    if (el.dashboardPositionsPanel && el.showDashboardAnalyticsToggle) {
+      el.dashboardPositionsPanel.classList.toggle("hidden", !el.showDashboardAnalyticsToggle.checked);
+    }
     if (el.dashboardPlansPanel && el.showDashboardOperationsToggle) {
       el.dashboardPlansPanel.classList.toggle("hidden", !el.showDashboardOperationsToggle.checked);
     }
@@ -365,10 +368,10 @@
     state.itemCatalogSortPreset = prefs.data?.ui?.item_catalog_sort_preset || "usage";
     state.analyticsMonthAnchor = prefs.data?.analytics?.month_anchor || "";
     state.analyticsTab = prefs.data?.analytics?.tab || "calendar";
-    if (state.analyticsTab === "positions" || state.analyticsTab === "operations" || state.analyticsTab === "overview") {
+    if (state.analyticsTab === "operations" || state.analyticsTab === "overview") {
       state.analyticsTab = "calendar";
     }
-    if (!["structure", "calendar", "trends", "currency"].includes(state.analyticsTab)) {
+    if (!["structure", "positions", "calendar", "trends", "currency"].includes(state.analyticsTab)) {
       state.analyticsTab = "calendar";
     }
     state.analyticsCurrencyFilter = prefs.data?.analytics?.currency_filter || "all";
@@ -382,6 +385,15 @@
       : "category";
     state.analyticsStructureHidden = normalizeStructureHidden(prefs.data?.analytics?.structure_hidden);
     state.analyticsGranularity = prefs.data?.analytics?.granularity || "day";
+    state.analyticsPositionsPeriod = ["day", "week", "month", "year"].includes(prefs.data?.analytics?.positions_period)
+      ? prefs.data.analytics.positions_period
+      : "month";
+    state.analyticsPositionsAnchor = prefs.data?.analytics?.positions_anchor || "";
+    state.analyticsPositionsMetric = ["purchases", "quantity", "amount"].includes(prefs.data?.analytics?.positions_metric)
+      ? prefs.data.analytics.positions_metric
+      : "purchases";
+    state.analyticsPositionsLimit = prefs.data?.analytics?.positions_limit === "all" ? "all" : "top";
+    state.analyticsPositionsSort = prefs.data?.analytics?.positions_sort === "asc" ? "asc" : "desc";
     if ((state.analyticsGlobalPeriod === "year" || state.analyticsGlobalPeriod === "all_time") && state.analyticsGranularity === "day") {
       state.analyticsGranularity = "week";
     }
@@ -423,6 +435,8 @@
     core.syncSegmentedActive(el.analyticsBreakdownLevelTabs, "analytics-breakdown-level", state.analyticsBreakdownLevel);
     core.syncSegmentedActive(el.analyticsCategoryKindTabs, "analytics-category-kind", state.analyticsCategoryKind);
     core.syncSegmentedActive(el.analyticsGranularityTabs, "analytics-granularity", state.analyticsGranularity);
+    core.syncSegmentedActive(el.analyticsPositionsMetricTabs, "analytics-positions-metric", state.analyticsPositionsMetric);
+    core.syncSegmentedActive(el.analyticsPositionsLimitTabs, "analytics-positions-limit", state.analyticsPositionsLimit);
     core.syncSegmentedActive(el.dashboardAnalyticsPeriodTabs, "dashboard-analytics-period", state.dashboardAnalyticsPeriod);
     core.syncSegmentedActive(el.dashboardPlansPeriodTabs, "dashboard-plans-period", state.dashboardPlansPeriod);
     core.syncSegmentedActive(el.dashboardBreakdownLevelTabs, "dashboard-breakdown-level", state.dashboardBreakdownLevel);
@@ -528,6 +542,11 @@
           structure_hidden: normalizeStructureHidden(state.analyticsStructureHidden),
           category_kind: state.analyticsCategoryKind || "expense",
           granularity: state.analyticsGranularity || "day",
+          positions_period: state.analyticsPositionsPeriod || "month",
+          positions_anchor: state.analyticsPositionsAnchor || "",
+          positions_metric: state.analyticsPositionsMetric || "purchases",
+          positions_limit: state.analyticsPositionsLimit || "top",
+          positions_sort: state.analyticsPositionsSort || "desc",
           currency_filter: state.analyticsCurrencyFilter || "all",
         },
         admin: {

@@ -38,6 +38,31 @@
     const itemCatalogUiCoordinator = getItemCatalogUiCoordinator();
     const itemCatalogSectionCoordinator = getItemCatalogSectionCoordinator();
 
+    el.itemTemplateHistoryBtn?.addEventListener("click", () => {
+      const itemId = Number(el.itemTemplateHistoryBtn.dataset.itemTemplateHistoryId || 0);
+      const item = (state.itemCatalogItems || []).find((row) => Number(row?.id || 0) === itemId);
+      if (item) {
+        actions.openItemTemplateHistoryModal?.(item).catch((err) => core.setStatus(String(err)));
+      }
+    });
+    el.sourceGroupCreateItemBtn?.addEventListener("click", () => {
+      const sourceName = String(el.sourceGroupCreateItemBtn.dataset.createItemTemplateSourceName || "").trim();
+      if (!sourceName) {
+        return;
+      }
+      actions.closeSourceGroupModal?.();
+      actions.openItemTemplateModal?.({ shop_name: sourceName });
+    });
+    el.editGroupCreateCategoryBtn?.addEventListener("click", () => {
+      const groupId = Number(el.editGroupCreateCategoryBtn.dataset.createCategoryGroupId || 0);
+      const kind = String(el.editGroupCreateCategoryBtn.dataset.createCategoryKind || "expense");
+      if (!groupId) {
+        return;
+      }
+      categoryActions.closeEditGroupModal?.();
+      categoryActions.openCreateCategoryModal?.({ groupId, kind });
+    });
+
     itemCatalogSectionCoordinator?.bindItemCatalogSearch?.({
       el,
       core,

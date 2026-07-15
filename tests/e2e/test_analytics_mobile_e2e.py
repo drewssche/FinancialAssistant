@@ -6,6 +6,7 @@ import subprocess
 import sys
 import time
 import urllib.request
+from datetime import date, timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -313,6 +314,10 @@ def page_with_analytics_api_mock(page):
             "top_positions": [
                 {"name": "Кофе", "shop_name": "Соседи", "max_unit_price": "12.50", "purchases_count": 4, "total_spent": "41.50", "avg_unit_price": "10.38"}
             ],
+            "frequent_positions": [
+                {"template_id": 11, "name": "Кофе зерновой", "shop_name": "Соседи", "purchases_count": 8, "quantity_total": "12.000", "amount_total": "84.60"},
+                {"template_id": 12, "name": "Молоко", "shop_name": "Green", "purchases_count": 5, "quantity_total": "5.000", "amount_total": "20.00"},
+            ],
             "price_increases": [
                 {"name": "Кофе", "shop_name": "Соседи", "change_pct": 11.0, "previous_avg_unit_price": "9.00", "current_avg_unit_price": "10.00"}
             ],
@@ -364,6 +369,79 @@ def page_with_analytics_api_mock(page):
                     "expense_total": "330.00",
                     "balance": "120.00",
                     "operations_count": 5,
+                },
+            ],
+        }
+
+    def positions_payload(period: str, anchor: str = "2026-03-15") -> dict:
+        if period == "year":
+            labels = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"]
+            buckets = [
+                {
+                    "key": f"2026-{month:02d}",
+                    "label": label,
+                    "date_from": f"2026-{month:02d}-01",
+                    "date_to": f"2026-{month:02d}-28",
+                }
+                for month, label in enumerate(labels, start=1)
+            ]
+            date_from, date_to = "2026-01-01", "2026-12-31"
+        elif period == "day":
+            buckets = [{"key": "2026-03-15", "label": "15.03", "date_from": "2026-03-15", "date_to": "2026-03-15"}]
+            date_from = date_to = "2026-03-15"
+        elif period == "week":
+            anchor_date = date.fromisoformat(anchor)
+            week_start = anchor_date - timedelta(days=anchor_date.weekday())
+            week_days = [week_start + timedelta(days=offset) for offset in range(7)]
+            buckets = [
+                {"key": day.isoformat(), "label": day.strftime("%d.%m"), "date_from": day.isoformat(), "date_to": day.isoformat()}
+                for day in week_days
+            ]
+            date_from, date_to = week_days[0].isoformat(), week_days[-1].isoformat()
+        else:
+            buckets = [
+                {"key": f"2026-03-{day:02d}", "label": str(day), "date_from": f"2026-03-{day:02d}", "date_to": f"2026-03-{day:02d}"}
+                for day in range(1, 32)
+            ]
+            date_from, date_to = "2026-03-01", "2026-03-31"
+
+        def values(active_indexes: set[int], quantity: int, amount: str) -> list[dict]:
+            return [
+                {
+                    "key": bucket["key"],
+                    "purchases_count": 1 if index in active_indexes else 0,
+                    "quantity_total": str(quantity if index in active_indexes else 0),
+                    "amount_total": amount if index in active_indexes else "0.00",
+                }
+                for index, bucket in enumerate(buckets)
+            ]
+
+        first_active = {0, min(4, len(buckets) - 1)}
+        second_active = {min(2, len(buckets) - 1)}
+        return {
+            "period": period,
+            "anchor": anchor,
+            "date_from": date_from,
+            "date_to": date_to,
+            "buckets": buckets,
+            "positions": [
+                {
+                    "template_id": 11,
+                    "name": "Кофе зерновой",
+                    "shop_name": "Соседи",
+                    "purchases_count": len(first_active),
+                    "quantity_total": str(len(first_active) * 2),
+                    "amount_total": str(len(first_active) * 18),
+                    "buckets": values(first_active, 2, "18.00"),
+                },
+                {
+                    "template_id": 12,
+                    "name": "Молоко",
+                    "shop_name": "Green",
+                    "purchases_count": len(second_active),
+                    "quantity_total": str(len(second_active)),
+                    "amount_total": str(len(second_active) * 4),
+                    "buckets": values(second_active, 1, "4.00"),
                 },
             ],
         }
@@ -428,6 +506,11 @@ def page_with_analytics_api_mock(page):
             date_from = (query.get("date_from") or ["2026-03-01"])[0]
             date_to = (query.get("date_to") or ["2026-03-31"])[0]
             return json_response(route, trend_payload(period, granularity, date_from, date_to))
+
+        if path == "/api/v1/dashboard/analytics/positions" and method == "GET":
+            period = (query.get("period") or ["month"])[0]
+            anchor = (query.get("anchor") or ["2026-03-15"])[0]
+            return json_response(route, positions_payload(period, anchor))
 
         if path == "/api/v1/debts/cards" and method == "GET":
             return json_response(route, [])
@@ -622,6 +705,31 @@ def test_desktop_breakdown_lists_match_chart_height(page_with_analytics_api_mock
 
 
 @pytest.mark.e2e
+def test_dashboard_position_ranking_routes_to_operations_and_full_analytics(page_with_analytics_api_mock, static_server_url: str):
+    page = page_with_analytics_api_mock
+
+    _open_desktop_app(page, static_server_url)
+    page.evaluate("() => window.App.actions.switchSection('dashboard')")
+    page.wait_for_selector("#dashboardPositionsRanking .analytics-position-ranking-row")
+    expect(page.locator("#dashboardPositionsRanking .analytics-position-ranking-row")).to_have_count(2)
+    expect(page.locator("#dashboardPositionsRanking")).to_contain_text("Кофе зерновой")
+    expect(page.locator("#dashboardPositionsRanking")).to_contain_text("12.00")
+    page.screenshot(path="/tmp/finasist-dashboard-ranking.png", full_page=True)
+
+    page.locator("#dashboardPositionsRanking .analytics-position-ranking-row").first.click()
+    page.wait_for_selector("#operationsSection:not(.hidden)")
+    assert page.evaluate("() => window.App.state.operationsItemTemplateFilterId") == 11
+    assert page.evaluate("() => window.App.state.period") == "custom"
+
+    _open_desktop_app(page, static_server_url)
+    page.evaluate("() => window.App.actions.switchSection('dashboard')")
+    page.wait_for_selector("#dashboardPositionsRanking .analytics-position-ranking-row")
+    page.locator("#openPositionsAnalyticsBtn").click()
+    page.wait_for_selector("#analyticsPositionsPanel:not(.hidden)")
+    assert page.evaluate("() => window.App.state.analyticsTab") == "positions"
+
+
+@pytest.mark.e2e
 def test_mobile_analytics_structure_shows_price_and_discount_insights(page_with_analytics_api_mock, static_server_url: str):
     page = page_with_analytics_api_mock
 
@@ -740,6 +848,209 @@ def test_mobile_analytics_trend_period_arrows_update_visible_label(page_with_ana
 
     expect(page.locator("#analyticsGlobalPeriodControlLabel")).to_have_text("01.05.2026 - 31.05.2026")
     expect(page.locator("#analyticsTrendRangeLabel")).to_contain_text("01.05.2026 - 31.05.2026")
+
+
+@pytest.mark.e2e
+def test_mobile_position_analytics_renders_matrix_and_drills_into_operations(page_with_analytics_api_mock, static_server_url: str):
+    page = page_with_analytics_api_mock
+
+    _open_mobile_analytics(page, static_server_url)
+    page.locator("button[data-analytics-tab='positions']").click()
+    page.wait_for_selector("#analyticsPositionsPanel:not(.hidden)")
+    page.wait_for_selector("#analyticsPositionsMatrixBody .analytics-position-cell.has-value")
+
+    expect(page.locator("#analyticsPositionsSummary .analytics-position-kpi")).to_have_count(5)
+    expect(page.locator("#analyticsPositionsSummary")).to_contain_text("Позиций")
+    expect(page.locator("#analyticsPositionsMobileFocus")).to_contain_text("Кофе зерновой")
+    page.locator("button[data-analytics-positions-metric='quantity']").click()
+    expect(page.locator("#analyticsPositionsMobileFocus .analytics-positions-focus-head")).to_contain_text("4")
+
+    page.locator("#analyticsPositionsPeriodTrigger").click()
+    page.wait_for_selector("#analyticsPositionsPeriodPopover:not(.hidden)")
+    page.locator("button[data-analytics-positions-period-choice='week']").click()
+    page.wait_for_function("() => window.App.state.analyticsPositionsPeriod === 'week'")
+    expect(page.locator("#analyticsPositionsRangeLabel")).not_to_have_text("Нет периода")
+    expect(page.locator("#analyticsPositionsMobileFocus .analytics-position-focus-bar")).to_have_count(7)
+
+    control_geometry = page.evaluate(
+        """
+        () => {
+          const previous = document.getElementById('analyticsPositionsPrevBtn')?.getBoundingClientRect();
+          const current = document.getElementById('analyticsPositionsPeriodTrigger')?.getBoundingClientRect();
+          const next = document.getElementById('analyticsPositionsNextBtn')?.getBoundingClientRect();
+          return previous && current && next ? {
+            previousWidth: previous.width,
+            currentWidth: current.width,
+            nextWidth: next.width,
+            previousHeight: previous.height,
+            nextHeight: next.height,
+          } : null;
+        }
+        """
+    )
+    assert control_geometry is not None
+    assert abs(control_geometry["previousWidth"] - control_geometry["nextWidth"]) <= 1
+    assert abs(control_geometry["previousHeight"] - control_geometry["nextHeight"]) <= 1
+    assert control_geometry["currentWidth"] > control_geometry["previousWidth"]
+
+    expect(page.locator("#analyticsPositionsRanking .analytics-position-ranking-row")).to_have_count(2)
+    expect(page.locator("#analyticsPositionsRankingTitle")).to_have_text("Больше всего единиц")
+    page.locator("#analyticsPositionsSortBtn").click()
+    expect(page.locator("#analyticsPositionsRankingTitle")).to_have_text("Меньше всего единиц")
+    expect(page.locator("#analyticsPositionsRanking .analytics-position-ranking-row").first).to_contain_text("Молоко")
+    page.locator("#analyticsPositionsSortBtn").click()
+    expect(page.locator("#analyticsPositionsRankingTitle")).to_have_text("Больше всего единиц")
+
+    anchor_before_shift = date.fromisoformat(page.evaluate("() => window.App.state.analyticsPositionsAnchor"))
+    page.locator("#analyticsPositionsPrevBtn").click()
+    page.wait_for_function(
+        "anchor => window.App.state.analyticsPositionsAnchor !== anchor",
+        arg=anchor_before_shift.isoformat(),
+    )
+    anchor_after_shift = date.fromisoformat(page.evaluate("() => window.App.state.analyticsPositionsAnchor"))
+    assert (anchor_before_shift - anchor_after_shift).days == 7
+
+    geometry = page.evaluate(
+        """
+        () => {
+          const panel = document.getElementById('analyticsPositionsPanel');
+          const matrix = document.getElementById('analyticsPositionsMatrixWrap');
+          const body = document.documentElement;
+          if (!panel || !matrix) return null;
+          const panelRect = panel.getBoundingClientRect();
+          return {
+            viewportWidth: window.innerWidth,
+            panelLeft: panelRect.left,
+            panelRight: panelRect.right,
+            bodyClientWidth: body.clientWidth,
+            bodyScrollWidth: body.scrollWidth,
+            matrixClientWidth: matrix.clientWidth,
+            matrixScrollWidth: matrix.scrollWidth,
+          };
+        }
+        """
+    )
+    assert geometry is not None
+    assert geometry["panelLeft"] >= -1
+    assert geometry["panelRight"] <= geometry["viewportWidth"] + 1
+    assert geometry["bodyScrollWidth"] <= geometry["bodyClientWidth"] + 1
+    assert geometry["matrixScrollWidth"] > geometry["matrixClientWidth"]
+    page.screenshot(path="/tmp/finasist-positions-mobile.png", full_page=True)
+
+    page.locator("#analyticsPositionsMatrixBody .analytics-position-cell.has-value").first.click()
+    page.wait_for_selector("#operationsSection:not(.hidden)")
+    state = page.evaluate(
+        """
+        () => ({
+          period: window.App.state.period,
+          kind: window.App.state.filterKind,
+          templateId: window.App.state.operationsItemTemplateFilterId,
+          templateName: window.App.state.operationsItemTemplateFilterName,
+        })
+        """
+    )
+    assert state == {
+        "period": "custom",
+        "kind": "expense",
+        "templateId": 11,
+        "templateName": "Кофе зерновой",
+    }
+
+
+@pytest.mark.e2e
+def test_desktop_position_analytics_keeps_sticky_columns_inside_panel(page_with_analytics_api_mock, static_server_url: str):
+    page = page_with_analytics_api_mock
+
+    _open_desktop_app(page, static_server_url)
+    page.evaluate(
+        """
+        async () => {
+          await window.App.actions.switchSection('analytics');
+          window.App.actions.setAnalyticsTab('positions');
+          await window.App.actions.loadAnalyticsPositions({ force: true });
+        }
+        """
+    )
+    page.wait_for_selector("#analyticsPositionsPanel:not(.hidden)")
+    page.wait_for_selector("#analyticsPositionsMatrixBody .analytics-position-cell.has-value")
+
+    geometry = page.evaluate(
+        """
+        () => {
+          const panel = document.getElementById('analyticsPositionsPanel');
+          const matrix = document.getElementById('analyticsPositionsMatrixWrap');
+          const stickyName = matrix?.querySelector('.analytics-position-sticky-name');
+          const stickyTotal = matrix?.querySelector('.analytics-position-sticky-total');
+          if (!panel || !matrix || !stickyName || !stickyTotal) return null;
+          matrix.scrollLeft = matrix.scrollWidth;
+          const panelRect = panel.getBoundingClientRect();
+          const matrixRect = matrix.getBoundingClientRect();
+          const nameRect = stickyName.getBoundingClientRect();
+          const totalRect = stickyTotal.getBoundingClientRect();
+          return {
+            panelLeft: panelRect.left,
+            panelRight: panelRect.right,
+            matrixLeft: matrixRect.left,
+            matrixRight: matrixRect.right,
+            nameLeft: nameRect.left,
+            totalRight: totalRect.right,
+            bodyClientWidth: document.documentElement.clientWidth,
+            bodyScrollWidth: document.documentElement.scrollWidth,
+          };
+        }
+        """
+    )
+    assert geometry is not None
+    assert geometry["matrixLeft"] >= geometry["panelLeft"] - 1
+    assert geometry["matrixRight"] <= geometry["panelRight"] + 1
+    assert geometry["nameLeft"] >= geometry["matrixLeft"] - 1
+    assert geometry["totalRight"] <= geometry["matrixRight"] + 1
+    assert geometry["bodyScrollWidth"] <= geometry["bodyClientWidth"] + 1
+    page.screenshot(path="/tmp/finasist-positions-desktop.png", full_page=True)
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize(("width", "height"), [(320, 720), (768, 900)])
+def test_position_analytics_has_no_page_overflow_at_boundary_widths(
+    page_with_analytics_api_mock,
+    static_server_url: str,
+    width: int,
+    height: int,
+):
+    page = page_with_analytics_api_mock
+
+    _open_mobile_analytics(page, static_server_url)
+    page.evaluate("() => window.App.core.closeMobileNav()")
+    page.set_viewport_size({"width": width, "height": height})
+    page.wait_for_timeout(250)
+    page.locator("button[data-analytics-tab='positions']").click()
+    page.wait_for_selector("#analyticsPositionsPanel:not(.hidden)")
+    page.wait_for_selector("#analyticsPositionsMatrixBody .analytics-position-cell.has-value")
+
+    geometry = page.evaluate(
+        """
+        () => {
+          const panel = document.getElementById('analyticsPositionsPanel');
+          const periodLabel = document.getElementById('analyticsPositionsPeriodControlLabel');
+          const rect = panel?.getBoundingClientRect();
+          return rect ? {
+            left: rect.left,
+            right: rect.right,
+            viewportWidth: window.innerWidth,
+            bodyClientWidth: document.documentElement.clientWidth,
+            bodyScrollWidth: document.documentElement.scrollWidth,
+            periodLabelClientWidth: periodLabel?.clientWidth || 0,
+            periodLabelScrollWidth: periodLabel?.scrollWidth || 0,
+          } : null;
+        }
+        """
+    )
+    assert geometry is not None
+    assert geometry["left"] >= -1
+    assert geometry["right"] <= geometry["viewportWidth"] + 1
+    assert geometry["bodyScrollWidth"] <= geometry["bodyClientWidth"] + 1
+    assert geometry["periodLabelScrollWidth"] <= geometry["periodLabelClientWidth"] + 1
+    page.screenshot(path=f"/tmp/finasist-positions-{width}.png", full_page=True)
 
 
 @pytest.mark.e2e

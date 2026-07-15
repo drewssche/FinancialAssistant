@@ -325,6 +325,32 @@ class DashboardService:
         )
         return payload
 
+    def get_analytics_positions(
+        self,
+        *,
+        user_id: int,
+        period: str = "month",
+        anchor: date | None = None,
+    ) -> dict:
+        cache_key = build_dashboard_analytics_cache_key(
+            user_id=user_id,
+            view="positions",
+            period=period,
+            date_from=anchor,
+            date_to=anchor,
+            granularity=period,
+        )
+        cached = get_json(cache_key)
+        if cached:
+            return cached
+        payload = self.analytics.get_positions(user_id=user_id, period=period, anchor=anchor)
+        set_json(
+            cache_key,
+            payload,
+            ttl_seconds=get_namespace_ttl_seconds("dashboard_analytics"),
+        )
+        return payload
+
     def get_debt_preview(self, *, user_id: int, limit_cards: int = 6) -> list[dict]:
         debt_repo = DebtRepository(self.db)
         debt_service = DebtService(self.db)

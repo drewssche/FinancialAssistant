@@ -111,10 +111,16 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert 'width="52" height="52"' in index_html
     assert '<div class="brand" aria-label="ФинАсист">' in shell
     assert '<img src="/static/favicon.svg?v=2" alt="" width="40" height="40" />' in shell
+    assert 'id="sessionStatusRow"' in shell
+    assert 'id="sessionRefreshBtn"' in shell
+    assert 'id="sessionRecoveryOverlay"' in shell
+    assert 'id="sessionRecoveryBtn"' in shell
     assert 'id="financeCalculatorToggle"' not in shell
     assert 'id="financeCalculatorDrawer"' in shell
     assert 'id="createFinanceCalculatorToggle"' in modals
     assert 'id="editFinanceCalculatorToggle"' in modals
+    assert 'id="createSessionRefreshBtn"' in modals
+    assert 'id="editSessionRefreshBtn"' in modals
     assert 'data-calculator-mode="discount"' in shell
     assert 'data-calculator-mode="split"' in shell
     assert '"/static/js/app-finance-calculator.js"' in manifest
@@ -133,6 +139,24 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert "body.finance-calculator-open" in calculator_css
     assert "@media (max-width: 640px)" in calculator_css
     assert "max-height: min(88dvh, 720px)" in calculator_css
+
+
+def test_session_refresh_preserves_runtime_ui_and_retries_unauthorized_requests():
+    session_auth = (REPO_ROOT / "static" / "js" / "app-features-session-auth.js").read_text(encoding="utf-8")
+    core_actions = (REPO_ROOT / "static" / "js" / "app-core-actions.js").read_text(encoding="utf-8")
+    startup = (REPO_ROOT / "static" / "js" / "app-init-startup.js").read_text(encoding="utf-8")
+
+    assert 'fetch("/api/v1/auth/refresh"' in session_auth
+    assert "waitForTelegramInitData" in session_auth
+    assert 'document.addEventListener("visibilitychange", resume)' in session_auth
+    assert 'window.addEventListener("pageshow", resume)' in session_auth
+    assert "if (bootstrapPromise) return bootstrapPromise" in session_auth
+    assert "await refreshSession({ manual: true })" in session_auth
+    assert "operationModal.closeCreateModal()" not in session_auth.split("async function refreshSession", 1)[1].split("async function authenticateTelegramInPlace", 1)[0]
+    assert "recoverUnauthorized" in core_actions
+    assert "getSessionFeature().logout?.(false)" not in core_actions
+    assert "skipAuthRecovery: true" in core_actions
+    assert "core.showSessionChecking?.();" in startup
 
 
 def test_analytics_calendar_money_tooltip_uses_app_font_not_native_title():
@@ -313,19 +337,30 @@ def test_analytics_global_period_uses_compact_period_control():
         encoding="utf-8"
     )
     analytics_trend = (REPO_ROOT / "static" / "js" / "app-features-analytics-trend.js").read_text(encoding="utf-8")
+    preferences = (REPO_ROOT / "static" / "js" / "app-features-session-preferences.js").read_text(encoding="utf-8")
 
     assert 'data-period-control="analytics-global"' in shell_primary
     assert 'data-period-control="dashboard-analytics"' in shell_primary
+    assert 'data-period-control="analytics-positions"' in shell_primary
     assert 'id="dashboardAnalyticsPeriodTrigger"' in shell_primary
     assert 'id="dashboardAnalyticsPeriodControlLabel"' in shell_primary
     assert 'id="analyticsGlobalPeriodTrigger"' in shell_primary
     assert 'id="analyticsGlobalPeriodControlLabel"' in shell_primary
+    assert 'id="dashboardPositionsPanel"' in shell_primary
+    assert 'id="dashboardPositionsRanking"' in shell_primary
+    assert 'id="openPositionsAnalyticsBtn"' in shell_primary
     assert 'class="segmented hidden" id="dashboardAnalyticsPeriodTabs"' in shell_primary
     assert 'class="segmented hidden" id="analyticsGlobalPeriodTabs"' in shell_primary
     assert "dashboardAnalyticsPeriodTrigger: document.getElementById" in elements
     assert "dashboardAnalyticsPeriodControlLabel: document.getElementById" in elements
     assert "analyticsGlobalPeriodTrigger: document.getElementById" in elements
     assert "analyticsGlobalPeriodControlLabel: document.getElementById" in elements
+    assert "analyticsPositionsPeriodTrigger: document.getElementById" in elements
+    assert "analyticsPositionsPeriodControlLabel: document.getElementById" in elements
+    assert "dashboardPositionsPanel: document.getElementById" in elements
+    assert "dashboardPositionsRanking: document.getElementById" in elements
+    assert "openPositionsAnalyticsBtn: document.getElementById" in elements
+    assert 'el.dashboardPositionsPanel.classList.toggle("hidden"' in preferences
     assert 'const periodAttr = scope === "dashboard" ? "dashboard" : "analytics";' in analytics_period_controls
     assert "data-${periodAttr}-period-choice" in analytics_period_controls
     assert "data-analytics-period-choice" in analytics_init

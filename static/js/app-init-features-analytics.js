@@ -445,6 +445,72 @@
         });
       });
     }
+    el.analyticsPositionsPeriodTrigger?.addEventListener("click", () => {
+      actions.renderAnalyticsPositionsPeriodOptions?.();
+      pickerUtils.setPopoverOpen?.(el.analyticsPositionsPeriodPopover, true, {
+        owners: [el.analyticsPositionsPeriodTrigger],
+      });
+    });
+    el.analyticsPositionsPeriodPopover?.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-analytics-positions-period-choice]");
+      if (!btn) return;
+      actions.setAnalyticsPositionsPeriod?.(btn.dataset.analyticsPositionsPeriodChoice);
+      pickerUtils.setPopoverOpen?.(el.analyticsPositionsPeriodPopover, false, {
+        owners: [el.analyticsPositionsPeriodTrigger],
+      });
+      window.App.getRuntimeModule?.("session")?.savePreferencesDebounced?.(250);
+      core.runAction({ errorPrefix: "Ошибка загрузки позиций", action: () => actions.loadAnalyticsPositions({ force: true }) });
+    });
+    el.analyticsPositionsPrevBtn?.addEventListener("click", () => {
+      actions.shiftAnalyticsPositionsPeriod?.(-1);
+      window.App.getRuntimeModule?.("session")?.savePreferencesDebounced?.(250);
+      core.runAction({ errorPrefix: "Ошибка загрузки позиций", action: () => actions.loadAnalyticsPositions({ force: true }) });
+    });
+    el.analyticsPositionsNextBtn?.addEventListener("click", () => {
+      actions.shiftAnalyticsPositionsPeriod?.(1);
+      window.App.getRuntimeModule?.("session")?.savePreferencesDebounced?.(250);
+      core.runAction({ errorPrefix: "Ошибка загрузки позиций", action: () => actions.loadAnalyticsPositions({ force: true }) });
+    });
+    el.analyticsPositionsSortBtn?.addEventListener("click", () => {
+      actions.toggleAnalyticsPositionsSort?.();
+      window.App.getRuntimeModule?.("session")?.savePreferencesDebounced?.(250);
+    });
+    el.analyticsPositionsMetricTabs?.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-analytics-positions-metric]");
+      if (!btn) return;
+      state.analyticsPositionsMetric = btn.dataset.analyticsPositionsMetric;
+      actions.renderAnalyticsPositions?.();
+      window.App.getRuntimeModule?.("session")?.savePreferencesDebounced?.(250);
+    });
+    el.analyticsPositionsLimitTabs?.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-analytics-positions-limit]");
+      if (!btn) return;
+      state.analyticsPositionsLimit = btn.dataset.analyticsPositionsLimit;
+      actions.renderAnalyticsPositions?.();
+      window.App.getRuntimeModule?.("session")?.savePreferencesDebounced?.(250);
+    });
+    [el.analyticsPositionsSearch, el.analyticsPositionsSourceSearch].filter(Boolean).forEach((input) => {
+      input.addEventListener("input", () => actions.renderAnalyticsPositions?.());
+    });
+    el.analyticsPositionsPanel?.addEventListener("click", (event) => {
+      const selectBtn = event.target.closest("button[data-position-select-key]");
+      if (selectBtn) {
+        state.analyticsPositionsSelectedKey = selectBtn.dataset.positionSelectKey || "";
+        actions.renderAnalyticsPositions?.();
+        return;
+      }
+      const cell = event.target.closest("button[data-position-date-from][data-position-date-to]");
+      if (!cell) return;
+      core.runAction({
+        errorPrefix: "Ошибка перехода в операции",
+        action: () => actions.openOperationsForAnalyticsPositionRange?.(
+          cell.dataset.positionTemplateId,
+          cell.dataset.positionName,
+          cell.dataset.positionDateFrom,
+          cell.dataset.positionDateTo,
+        ),
+      });
+    });
   }
 
   const api = {

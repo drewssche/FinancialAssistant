@@ -176,6 +176,21 @@
         actions.switchSection("analytics").catch((err) => core.setStatus(String(err)));
       });
     }
+    if (el.openPositionsAnalyticsBtn) {
+      el.openPositionsAnalyticsBtn.addEventListener("click", () => {
+        getAnalyticsFeature().openPositionsAnalyticsFromDashboard?.().catch((err) => core.setStatus(String(err)));
+      });
+    }
+    el.dashboardPositionsRanking?.addEventListener("click", (event) => {
+      const row = event.target.closest("button[data-dashboard-position-date-from][data-dashboard-position-date-to]");
+      if (!row) return;
+      getAnalyticsFeature().openOperationsForAnalyticsPositionRange?.(
+        row.dataset.dashboardPositionTemplateId,
+        row.dataset.dashboardPositionName,
+        row.dataset.dashboardPositionDateFrom,
+        row.dataset.dashboardPositionDateTo,
+      ).catch((err) => core.setStatus(String(err)));
+    });
     if (el.openCurrencyTabBtn) {
       el.openCurrencyTabBtn.addEventListener("click", () => {
         actions.switchSection("currency").catch((err) => core.setStatus(String(err)));
@@ -184,6 +199,21 @@
 
     if (el.sidebarLogoutBtn) {
       el.sidebarLogoutBtn.addEventListener("click", () => getSessionFeature().logout?.(true));
+    }
+    if (el.sessionRefreshBtn) {
+      el.sessionRefreshBtn.addEventListener("click", () => {
+        getSessionFeature().renewSessionManually?.().catch((err) => core.setStatus(String(err)));
+      });
+    }
+    [el.createSessionRefreshBtn, el.editSessionRefreshBtn].forEach((button) => {
+      button?.addEventListener("click", () => {
+        getSessionFeature().renewSessionManually?.().catch((err) => core.setStatus(String(err)));
+      });
+    });
+    if (el.sessionRecoveryBtn) {
+      el.sessionRecoveryBtn.addEventListener("click", () => {
+        getSessionFeature().renewSessionManually?.().catch((err) => core.setStatus(String(err)));
+      });
     }
 
     document.addEventListener("click", (event) => {

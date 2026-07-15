@@ -99,6 +99,7 @@
     if (shouldRefreshInline) {
       refreshState.begin?.(el.dashboardAnalyticsPanel, "Обновляется");
       refreshState.begin?.(el.dashboardStructurePanel, "Обновляется");
+      refreshState.begin?.(el.dashboardPositionsPanel, "Обновляется");
     }
     try {
       const data = await core.requestJson(`/api/v1/dashboard/analytics/highlights?${params.toString()}`, {
@@ -125,6 +126,7 @@
       if (shouldRefreshInline) {
         refreshState.end?.(el.dashboardAnalyticsPanel);
         refreshState.end?.(el.dashboardStructurePanel);
+        refreshState.end?.(el.dashboardPositionsPanel);
       }
     }
   }
@@ -237,6 +239,7 @@
         top_categories: [],
         anomalies: [],
         top_positions: [],
+        frequent_positions: [],
         price_increases: [],
         discount_savings_by_type: [],
         top_discount_savings: [],

@@ -78,6 +78,16 @@
     hideLoginAlert();
   }
 
+  function showSessionChecking(message = "Проверяем сессию...") {
+    setMobileNavOpen(false);
+    el.loginScreen.classList.remove("hidden");
+    el.loginLoading?.classList.remove("hidden");
+    el.loginContent?.classList.add("hidden");
+    el.appShell.classList.add("hidden");
+    const label = el.loginLoading?.querySelector("span");
+    if (label) label.textContent = message;
+  }
+
   function showApp() {
     el.loginScreen.classList.add("hidden");
     el.loginLoading?.classList.add("hidden");
@@ -352,6 +362,7 @@
       setStatus,
       authHeaders,
       showLogin,
+      showSessionChecking,
       showApp,
     closeAllMenus,
     setMobileNavOpen,

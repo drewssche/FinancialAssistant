@@ -230,6 +230,7 @@
       donutInnerRadius: DONUT_INNER_RADIUS,
     });
     applyDashboardBreakdownHover(null);
+    window.App.getRuntimeModule?.("analytics-positions-module")?.renderDashboardRanking?.(data);
   }
 
   const api = {

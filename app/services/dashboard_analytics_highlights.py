@@ -87,6 +87,9 @@ class DashboardAnalyticsHighlightsService:
                 "unit_price_sum": Decimal("0"),
                 "unit_price_count": 0,
                 "purchases_count": 0,
+                "quantity_total": Decimal("0"),
+                "operation_ids": set(),
+                "template_ids": set(),
             }
         )
         for item in operations:
@@ -120,7 +123,11 @@ class DashboardAnalyticsHighlightsService:
                     bucket["name"] = name
                     bucket["shop_name"] = shop_name
                     bucket["total_spent"] += line_total
-                    bucket["purchases_count"] += 1
+                    bucket["quantity_total"] += Decimal(row.quantity or 0)
+                    bucket["operation_ids"].add(operation_id)
+                    bucket["purchases_count"] = len(bucket["operation_ids"])
+                    if row.template_id is not None:
+                        bucket["template_ids"].add(int(row.template_id))
                     price_for_history = self.resolve_receipt_price_for_history(row)
                     if price_for_history is not None:
                         bucket["max_unit_price"] = max(bucket["max_unit_price"], price_for_history)
@@ -416,6 +423,11 @@ class DashboardAnalyticsHighlightsService:
             key=lambda item: (item["max_unit_price"], item["total_spent"], item["purchases_count"]),
             reverse=True,
         )[:10]
+        frequent_positions = sorted(
+            current_position_stats.values(),
+            key=lambda item: (item["purchases_count"], item["quantity_total"], item["total_spent"], item["name"].casefold()),
+            reverse=True,
+        )[:5]
 
         price_increases = []
         for key, current_item in current_position_stats.items():
@@ -566,6 +578,17 @@ class DashboardAnalyticsHighlightsService:
                     "purchases_count": int(item["purchases_count"]),
                 }
                 for item in top_positions
+            ],
+            "frequent_positions": [
+                {
+                    "template_id": next(iter(item["template_ids"])) if len(item["template_ids"]) == 1 else None,
+                    "name": item["name"],
+                    "shop_name": item["shop_name"],
+                    "purchases_count": int(item["purchases_count"]),
+                    "quantity_total": item["quantity_total"],
+                    "amount_total": item["total_spent"],
+                }
+                for item in frequent_positions
             ],
             "price_increases": price_increases[:5],
             "top_discount_savings": self.build_top_discount_savings(current_receipt_items),
