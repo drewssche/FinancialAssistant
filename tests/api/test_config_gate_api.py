@@ -1,3 +1,6 @@
+import pytest
+from pydantic import ValidationError
+
 from app.core.config import Settings
 
 
@@ -7,6 +10,8 @@ def test_production_config_errors_are_empty_for_valid_runtime():
         APP_SECRET_KEY="super-secret-key",
         TELEGRAM_BOT_TOKEN="telegram-token",
         ADMIN_TELEGRAM_IDS="100001,100002",
+        POSTGRES_PASSWORD="non-default-database-password",
+        APP_CORS_ORIGINS="https://finance.example.com",
     )
 
     assert settings.production_config_errors() == []
@@ -19,6 +24,8 @@ def test_production_config_errors_report_missing_critical_values():
         APP_SECRET_KEY="change_me",
         TELEGRAM_BOT_TOKEN="change_me",
         ADMIN_TELEGRAM_IDS="",
+        POSTGRES_PASSWORD="fin_pass",
+        APP_CORS_ORIGINS="http://localhost:5173,*",
     )
 
     errors = settings.production_config_errors()
@@ -26,6 +33,8 @@ def test_production_config_errors_report_missing_critical_values():
     assert "APP_SECRET_KEY must be set to a non-default value in production" in errors
     assert "TELEGRAM_BOT_TOKEN must be set to a non-default value in production" in errors
     assert "ADMIN_TELEGRAM_IDS must include at least one admin Telegram ID in production" in errors
+    assert "POSTGRES_PASSWORD must be set to a non-default value in production" in errors
+    assert "APP_CORS_ORIGINS must contain only explicit HTTPS origins in production" in errors
 
 
 def test_production_runtime_validation_raises_with_all_errors():
@@ -34,6 +43,8 @@ def test_production_runtime_validation_raises_with_all_errors():
         APP_SECRET_KEY="change_me",
         TELEGRAM_BOT_TOKEN="change_me",
         ADMIN_TELEGRAM_IDS="",
+        POSTGRES_PASSWORD="fin_pass",
+        APP_CORS_ORIGINS="http://localhost:5173",
     )
 
     try:
@@ -47,6 +58,8 @@ def test_production_runtime_validation_raises_with_all_errors():
     assert "APP_SECRET_KEY must be set to a non-default value in production" in message
     assert "TELEGRAM_BOT_TOKEN must be set to a non-default value in production" in message
     assert "ADMIN_TELEGRAM_IDS must include at least one admin Telegram ID in production" in message
+    assert "POSTGRES_PASSWORD must be set to a non-default value in production" in message
+    assert "APP_CORS_ORIGINS must contain only explicit HTTPS origins in production" in message
 
 
 def test_development_runtime_allows_placeholder_values():
@@ -59,6 +72,13 @@ def test_development_runtime_allows_placeholder_values():
 
     assert settings.production_config_errors() == []
     settings.validate_runtime_requirements()
+
+
+def test_app_env_is_normalized_and_rejects_unknown_values():
+    assert Settings(APP_ENV=" Production ").app_env == "production"
+
+    with pytest.raises(ValidationError):
+        Settings(APP_ENV="prodution")
 
 
 def test_placeholder_telegram_bot_username_does_not_enable_browser_login():

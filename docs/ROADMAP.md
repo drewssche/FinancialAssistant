@@ -31,10 +31,10 @@
   - Keep `all_time` cashflow/search aggregation in SQL with pagination or explicit limits; add client request timeouts and cancellation without breaking coalesced dashboard panels.
 - [x] P1: distinguish dashboard loading, empty, stale, and failed states.
   - Do not cache request failures as valid zero data; retain the last successful panel result, expose a local retry, and add structured timing/error logs per panel.
-- [ ] P2: harden runtime configuration without requiring a server `.env` migration.
+- [x] P2: harden runtime configuration without requiring a server `.env` migration.
   - First add a non-secret preflight check and warning for the current VPS environment value. Preserve the existing valid `production`, `development`, or `test` values and do not enable a new startup failure in the same deployment.
   - After production is verified, restrict `APP_ENV` to the explicit enum so future typos fail startup; require non-default secrets, database credentials, admin IDs, Telegram token, and allowed CORS origins only for the production profile.
-  - Added a non-secret runtime preflight; the current local production profile passes it without changing existing `.env` values. Strict enum/startup enforcement remains deferred until the VPS preflight is run.
+  - The production VPS passed the non-secret strict preflight on 2026-07-16. `APP_ENV` is now an explicit normalized enum, and production startup rejects default database credentials or unsafe CORS origins.
 - [ ] P2: reduce browser-side injection impact.
   - Remove dynamic HTML from toast rendering, define a Content Security Policy, and review long-lived token storage together with the existing in-place session recovery flow.
   - Dynamic toast HTML is removed and CSP, MIME-sniffing, and referrer headers are active. The token-storage tradeoff remains pending because moving from persistent storage changes Telegram WebApp login behavior.
@@ -49,8 +49,8 @@
 
 #### Audit implementation status
 - Completed in code: lossless rollback, idempotent reminder/digest claims, readiness/migration gates, bounded requests, stale dashboard states, CSP-safe toasts, Redis retry/diagnostics, runtime metrics, and baseline CI.
-- Requires VPS setup or verification: backup schedule and off-host credentials, first restore drill, and `runtime_preflight.py --strict` against the deployed `.env`.
-- Remaining engineering backlog: frontend bundling, explicit `APP_ENV` enum after VPS verification, and persistent-token review.
+- Requires VPS setup or verification: backup schedule, off-host credentials, and the first restore drill. A protected one-time pre-deployment dump was created and `runtime_preflight.py --strict` passed on 2026-07-16.
+- Remaining engineering backlog: frontend bundling and persistent-token review.
 
 ### Currency Rate Unit Audit 2026-07-16
 - [x] P0: normalize NBRB rates to the price of one currency unit.

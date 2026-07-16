@@ -1,13 +1,13 @@
 from functools import lru_cache
-from typing import List
+from typing import List, Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     app_name: str = Field(default="FinancialAssistant", alias="APP_NAME")
-    app_env: str = Field(default="development", alias="APP_ENV")
+    app_env: Literal["development", "test", "production"] = Field(default="development", alias="APP_ENV")
     app_host: str = Field(default="0.0.0.0", alias="APP_HOST")
     app_port: int = Field(default=8000, alias="APP_PORT")
     app_cors_origins: str = Field(default="http://localhost:5173", alias="APP_CORS_ORIGINS")
@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     admin_telegram_ids: str = Field(default="", alias="ADMIN_TELEGRAM_IDS")
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
+
+    @field_validator("app_env", mode="before")
+    @classmethod
+    def normalize_app_env(cls, value: object) -> str:
+        return str(value or "").strip().lower()
 
     @property
     def is_production(self) -> bool:
@@ -90,6 +95,19 @@ class Settings(BaseSettings):
             errors.append("TELEGRAM_BOT_TOKEN must be set to a non-default value in production")
         if not self.admin_telegram_id_set:
             errors.append("ADMIN_TELEGRAM_IDS must include at least one admin Telegram ID in production")
+        if not self.postgres_password.strip() or self.postgres_password.strip() == "fin_pass":
+            errors.append("POSTGRES_PASSWORD must be set to a non-default value in production")
+        origins = self.cors_origins
+        if not origins:
+            errors.append("APP_CORS_ORIGINS must include at least one HTTPS origin in production")
+        elif any(
+            origin == "*"
+            or not origin.startswith("https://")
+            or "localhost" in origin
+            or "127.0.0.1" in origin
+            for origin in origins
+        ):
+            errors.append("APP_CORS_ORIGINS must contain only explicit HTTPS origins in production")
         return errors
 
     def validate_runtime_requirements(self) -> None:
