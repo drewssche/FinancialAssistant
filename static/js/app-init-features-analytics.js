@@ -511,6 +511,60 @@
         ),
       });
     });
+    el.analyticsCommerceModeTabs?.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-analytics-commerce-mode]");
+      if (!btn) return;
+      state.analyticsCommerceMode = btn.dataset.analyticsCommerceMode === "discounts" ? "discounts" : "prices";
+      state.analyticsCommerceMetric = state.analyticsCommerceMode === "discounts" ? "savings_total" : "change_pct";
+      state.analyticsCommerceSelectedKey = "";
+      window.App.getRuntimeModule?.("analytics-commerce-module")?.renderCommerce?.();
+      window.App.getRuntimeModule?.("session")?.savePreferencesDebounced?.(250);
+    });
+    el.analyticsCommerceMetricTabs?.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-analytics-commerce-metric]");
+      if (!btn) return;
+      state.analyticsCommerceMetric = btn.dataset.analyticsCommerceMetric || state.analyticsCommerceMetric;
+      window.App.getRuntimeModule?.("analytics-commerce-module")?.renderCommerce?.();
+      window.App.getRuntimeModule?.("session")?.savePreferencesDebounced?.(250);
+    });
+    el.analyticsCommerceDiscountTypeTabs?.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-analytics-commerce-discount-type]");
+      if (!btn) return;
+      state.analyticsCommerceDiscountType = btn.dataset.analyticsCommerceDiscountType || "all";
+      state.analyticsCommerceSelectedKey = "";
+      window.App.getRuntimeModule?.("analytics-commerce-module")?.renderCommerce?.();
+      window.App.getRuntimeModule?.("session")?.savePreferencesDebounced?.(250);
+    });
+    el.analyticsCommerceSortBtn?.addEventListener("click", () => {
+      state.analyticsCommerceSort = state.analyticsCommerceSort === "asc" ? "desc" : "asc";
+      window.App.getRuntimeModule?.("analytics-commerce-module")?.renderCommerce?.();
+      window.App.getRuntimeModule?.("session")?.savePreferencesDebounced?.(250);
+    });
+    el.analyticsCommercePanel?.addEventListener("click", (event) => {
+      const selectBtn = event.target.closest("button[data-commerce-select-key]");
+      if (selectBtn) {
+        state.analyticsCommerceSelectedKey = selectBtn.dataset.commerceSelectKey || "";
+        window.App.getRuntimeModule?.("analytics-commerce-module")?.renderCommerce?.();
+        return;
+      }
+      const commerce = window.App.getRuntimeModule?.("analytics-commerce-module");
+      const selected = commerce?.selectedItem?.();
+      if (!selected) return;
+      const timelineBtn = event.target.closest("button[data-commerce-date]");
+      const openBtn = event.target.closest("button[data-commerce-open-operations]");
+      if (!timelineBtn && !openBtn) return;
+      const dateFrom = timelineBtn?.dataset.commerceDate || state.analyticsHighlightsData?.date_from;
+      const dateTo = timelineBtn?.dataset.commerceDate || state.analyticsHighlightsData?.date_to;
+      core.runAction({
+        errorPrefix: "Ошибка перехода в операции",
+        action: () => actions.openOperationsForAnalyticsPositionRange?.(
+          selected.template_id,
+          selected.name,
+          dateFrom,
+          dateTo,
+        ),
+      });
+    });
   }
 
   const api = {

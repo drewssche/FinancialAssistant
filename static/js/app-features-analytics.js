@@ -11,6 +11,7 @@
       trend: window.App.getRuntimeModule?.("analytics-trend-module"),
       highlights: window.App.getRuntimeModule?.("analytics-highlights-module"),
       positions: window.App.getRuntimeModule?.("analytics-positions-module"),
+      commerce: window.App.getRuntimeModule?.("analytics-commerce-module"),
       currency: window.App.getRuntimeModule?.("analytics-currency-module"),
     };
   }
@@ -20,6 +21,7 @@
     const panels = [
       { id: "structure", node: el.analyticsStructurePanel },
       { id: "positions", node: el.analyticsPositionsPanel },
+      { id: "commerce", node: el.analyticsCommercePanel },
       { id: "calendar", node: el.analyticsCalendarPanel },
       { id: "trends", node: el.analyticsTrendsPanel },
       { id: "currency", node: el.analyticsCurrencyPanel },
@@ -37,11 +39,11 @@
   }
 
   function setAnalyticsTab(tab) {
-    const allowed = new Set(["structure", "positions", "calendar", "trends", "currency"]);
+    const allowed = new Set(["structure", "positions", "commerce", "calendar", "trends", "currency"]);
     state.analyticsTab = allowed.has(tab) ? tab : "calendar";
     applyAnalyticsTabUi();
     if (state.analyticsTab === "structure") {
-      highlights?.focusDefaultCategoryBreakdown?.();
+      getAnalyticsModules().highlights?.focusDefaultCategoryBreakdown?.();
     }
   }
 
@@ -59,6 +61,9 @@
     }
     if (tab === "positions") {
       return positions?.loadAnalyticsPositions?.(options) || null;
+    }
+    if (tab === "commerce") {
+      return highlights?.loadAnalyticsHighlights?.(options) || null;
     }
     if (tab === "currency") {
       return currency?.loadAnalyticsCurrency?.(options) || null;
@@ -89,7 +94,7 @@
     state.customDateFrom = dayIso;
     state.customDateTo = dayIso;
     core.syncAllPeriodTabs("custom");
-    await navigation.switchSection("operations");
+    await navigation.switchSection("operations", { preserveBackStack: true, scrollToTop: true });
   }
 
   async function openOperationsForAnalyticsRange(dateFrom, dateTo) {
@@ -115,7 +120,7 @@
     state.customDateFrom = dateFrom;
     state.customDateTo = dateTo;
     core.syncAllPeriodTabs("custom");
-    await navigation.switchSection("operations");
+    await navigation.switchSection("operations", { preserveBackStack: true, scrollToTop: true });
   }
 
   async function openOperationsForAnalyticsPositionRange(templateId, positionName, dateFrom, dateTo) {
@@ -143,7 +148,7 @@
     core.syncSegmentedActive(el.operationsSourceTabs, "operations-source", state.operationsSourceFilter);
     core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
     core.syncSegmentedActive(el.operationsCurrencyScopeTabs, "operations-currency-scope", state.operationsCurrencyScope);
-    await navigation.switchSection("operations");
+    await navigation.switchSection("operations", { preserveBackStack: true, scrollToTop: true });
   }
 
   async function openPositionsAnalyticsFromDashboard() {
@@ -156,8 +161,9 @@
       : core.getPeriodBounds?.(period) || {};
     state.analyticsPositionsPeriod = period;
     state.analyticsPositionsAnchor = bounds.dateFrom || bounds.dateTo || "";
+    navigation.pushSectionBackContext?.();
     setAnalyticsTab("positions");
-    await navigation.switchSection?.("analytics");
+    await navigation.switchSection?.("analytics", { preserveBackStack: true, scrollToTop: true });
   }
 
   function applyAnalyticsScopeToOperations() {
@@ -200,7 +206,7 @@
     }
     state.filterKind = categoryKind === "income" || categoryKind === "expense" ? categoryKind : "";
     core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
-    await navigation.switchSection("operations");
+    await navigation.switchSection("operations", { preserveBackStack: true, scrollToTop: true });
   }
 
   const { calendar = {}, trend = {}, highlights = {}, positions = {}, currency = {} } = getAnalyticsModules();

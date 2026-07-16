@@ -80,6 +80,17 @@
     return ascending ? "Реже всего покупали" : "Чаще всего покупали";
   }
 
+  function rankingMeta(item) {
+    const parts = [item.shop_name || "Без источника"];
+    if (state.analyticsPositionsMetric !== "quantity") {
+      parts.push(`${core.formatAmount(item.quantity_total || 0)} ед.`);
+    }
+    if (state.analyticsPositionsMetric !== "amount") {
+      parts.push(core.formatMoney(item.amount_total || 0));
+    }
+    return parts.join(" · ");
+  }
+
   function renderRanking(rows) {
     if (!el.analyticsPositionsRanking) return;
     const maxValue = Math.max(1, ...rows.map((item) => metricValue(item)));
@@ -94,9 +105,9 @@
       const value = metricValue(item);
       const width = value > 0 ? Math.max(5, Math.round((value / maxValue) * 100)) : 0;
       const key = positionKey(item);
-      return `<button class="analytics-position-ranking-row${key === state.analyticsPositionsSelectedKey ? " active" : ""}" type="button" data-position-select-key="${core.escapeHtml(key)}">
+      return `<button class="analytics-position-ranking-row${key === state.analyticsPositionsSelectedKey ? " active" : ""}" type="button" data-position-select-key="${core.escapeHtml(key)}" title="Показать динамику позиции">
         <span class="analytics-position-ranking-index">${index + 1}</span>
-        <span class="analytics-position-ranking-copy"><strong>${core.escapeHtml(item.name || "Позиция")}</strong><small>${core.escapeHtml(item.shop_name || "Без источника")}</small><i style="--ranking-width:${width}%"></i></span>
+        <span class="analytics-position-ranking-copy"><strong>${core.escapeHtml(item.name || "Позиция")}</strong><small>${core.escapeHtml(rankingMeta(item))}</small><i style="--ranking-width:${width}%"></i></span>
         <strong class="analytics-position-ranking-value">${formatMetric(value)}</strong>
       </button>`;
     }).join("");
@@ -136,7 +147,7 @@
           const value = metricValue(bucket);
           const height = value > 0 ? Math.max(8, Math.round((value / max) * 100)) : 2;
           const meta = data.buckets?.[index] || {};
-          return `<button class="analytics-position-focus-bar" type="button" style="--bar-height:${height}%" data-position-template-id="${selected.template_id || ""}" data-position-name="${core.escapeHtml(selected.name || "")}" data-position-date-from="${meta.date_from || ""}" data-position-date-to="${meta.date_to || ""}" title="${core.escapeHtml(meta.label || "")} · ${core.escapeHtml(formatMetric(value))}"${value > 0 ? "" : " disabled"}><i></i><span>${core.escapeHtml(meta.label || "")}</span></button>`;
+          return `<button class="analytics-position-focus-bar" type="button" style="--bar-height:${height}%" data-position-template-id="${selected.template_id || ""}" data-position-name="${core.escapeHtml(selected.name || "")}" data-position-date-from="${meta.date_from || ""}" data-position-date-to="${meta.date_to || ""}" title="${core.escapeHtml(meta.label || "")} · ${core.escapeHtml(formatMetric(value))} · Открыть операции"${value > 0 ? "" : " disabled"}><i></i><span>${core.escapeHtml(meta.label || "")}</span></button>`;
         }).join("")}
       </div>
     `;
@@ -156,7 +167,7 @@
           const value = metricValue(bucket);
           const intensity = value > 0 ? Math.max(0.12, value / bucketMax) : 0;
           const meta = buckets[index] || {};
-          return `<td><button class="analytics-position-cell${value > 0 ? " has-value" : ""}" type="button" style="--cell-intensity:${intensity.toFixed(3)}" data-position-template-id="${item.template_id || ""}" data-position-name="${core.escapeHtml(item.name || "")}" data-position-date-from="${meta.date_from || ""}" data-position-date-to="${meta.date_to || ""}" title="${core.escapeHtml(item.name || "")} · ${core.escapeHtml(meta.label || "")} · ${core.escapeHtml(formatMetric(value))}"${value > 0 ? "" : " disabled"}><i></i><span>${value > 0 ? core.escapeHtml(formatMetric(value)) : "·"}</span></button></td>`;
+          return `<td><button class="analytics-position-cell${value > 0 ? " has-value" : ""}" type="button" style="--cell-intensity:${intensity.toFixed(3)}" data-position-template-id="${item.template_id || ""}" data-position-name="${core.escapeHtml(item.name || "")}" data-position-date-from="${meta.date_from || ""}" data-position-date-to="${meta.date_to || ""}" title="${core.escapeHtml(item.name || "")} · ${core.escapeHtml(meta.label || "")} · ${core.escapeHtml(formatMetric(value))} · Открыть операции"${value > 0 ? "" : " disabled"}><i></i><span>${value > 0 ? core.escapeHtml(formatMetric(value)) : "·"}</span></button></td>`;
         }).join("")}
         <td class="analytics-position-sticky-total"><div class="analytics-position-total" style="--total-width:${Math.max(4, Math.round((metricValue(item) / totalMax) * 100))}%"><i></i><strong>${formatMetric(metricValue(item))}</strong></div></td>
       </tr>`;
@@ -167,7 +178,7 @@
     const data = state.analyticsPositionsData || { buckets: [], positions: [] };
     const rows = filteredPositions();
     if (!state.analyticsPositionsSelectedKey && rows[0]) state.analyticsPositionsSelectedKey = positionKey(rows[0]);
-    core.syncSegmentedActive(el.analyticsPositionsMetricTabs, "analytics-positions-metric", state.analyticsPositionsMetric || "purchases");
+    core.syncSegmentedActive(el.analyticsPositionsMetricTabs, "analytics-positions-metric", state.analyticsPositionsMetric || "quantity");
     core.syncSegmentedActive(el.analyticsPositionsLimitTabs, "analytics-positions-limit", state.analyticsPositionsLimit || "top");
     const periodLabel = data.date_from ? `${core.formatDateRu(data.date_from)} - ${core.formatDateRu(data.date_to)}` : "Нет периода";
     if (el.analyticsPositionsRangeLabel) el.analyticsPositionsRangeLabel.textContent = periodLabel;
@@ -238,17 +249,18 @@
   function renderDashboardRanking(data) {
     if (!el.dashboardPositionsRanking) return;
     const rows = (data?.frequent_positions || []).slice(0, 5);
-    const maxValue = Math.max(1, ...rows.map((item) => Number(item.purchases_count || 0)));
+    const maxValue = Math.max(1, ...rows.map((item) => Number(item.quantity_total || 0)));
     if (el.dashboardPositionsPeriodLabel && data?.date_from) {
       el.dashboardPositionsPeriodLabel.textContent = `${core.formatDateRu(data.date_from)} - ${core.formatDateRu(data.date_to)}`;
     }
     el.dashboardPositionsRanking.innerHTML = rows.map((item, index) => {
+      const quantity = Number(item.quantity_total || 0);
       const purchases = Number(item.purchases_count || 0);
-      const width = Math.max(5, Math.round((purchases / maxValue) * 100));
+      const width = Math.max(5, Math.round((quantity / maxValue) * 100));
       return `<button class="analytics-position-ranking-row" type="button" data-dashboard-position-template-id="${item.template_id || ""}" data-dashboard-position-name="${core.escapeHtml(item.name || "")}" data-dashboard-position-date-from="${data.date_from || ""}" data-dashboard-position-date-to="${data.date_to || ""}">
         <span class="analytics-position-ranking-index">${index + 1}</span>
-        <span class="analytics-position-ranking-copy"><strong>${core.escapeHtml(item.name || "Позиция")}</strong><small>${core.escapeHtml(item.shop_name || "Без источника")} · ${core.formatAmount(item.quantity_total || 0)} ед. · ${core.formatMoney(item.amount_total || 0)}</small><i style="--ranking-width:${width}%"></i></span>
-        <strong class="analytics-position-ranking-value">${purchases}</strong>
+        <span class="analytics-position-ranking-copy"><strong>${core.escapeHtml(item.name || "Позиция")}</strong><small>${core.escapeHtml(item.shop_name || "Без источника")} · ${core.formatMoney(item.amount_total || 0)} · ${purchases} пок.</small><i style="--ranking-width:${width}%"></i></span>
+        <strong class="analytics-position-ranking-value">${core.formatAmount(quantity)} ед.</strong>
       </button>`;
     }).join("");
     el.dashboardPositionsEmpty?.classList.toggle("hidden", rows.length > 0);

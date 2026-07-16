@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import socket
 import subprocess
 import sys
@@ -319,7 +320,23 @@ def page_with_analytics_api_mock(page):
                 {"template_id": 12, "name": "Молоко", "shop_name": "Green", "purchases_count": 5, "quantity_total": "5.000", "amount_total": "20.00"},
             ],
             "price_increases": [
-                {"name": "Кофе", "shop_name": "Соседи", "change_pct": 11.0, "previous_avg_unit_price": "9.00", "current_avg_unit_price": "10.00"}
+                {
+                    "template_id": 11,
+                    "name": "Кофе",
+                    "shop_name": "Соседи",
+                    "change_pct": 11.0,
+                    "change_amount": "1.00",
+                    "previous_avg_unit_price": "9.00",
+                    "current_avg_unit_price": "10.00",
+                    "previous_samples_count": 3,
+                    "current_samples_count": 4,
+                    "previous_purchases_count": 3,
+                    "current_purchases_count": 4,
+                    "timeline": [
+                        {"date": f"{month}-05", "avg_unit_price": "9.50", "samples_count": 2},
+                        {"date": f"{month}-18", "avg_unit_price": "10.00", "samples_count": 2},
+                    ],
+                }
             ],
             "top_discount_savings": [
                 {
@@ -331,6 +348,18 @@ def page_with_analytics_api_mock(page):
                     "discount_pct": 28.57,
                     "quantity_total": "1.000",
                     "purchases_count": 1,
+                    "template_id": 11,
+                    "type_breakdown": [
+                        {
+                            "discount_type": "coupon",
+                            "savings_total": "2.00",
+                            "regular_total": "7.00",
+                            "actual_total": "5.00",
+                            "discount_pct": 28.57,
+                            "purchases_count": 1,
+                        }
+                    ],
+                    "timeline": [{"date": f"{month}-18", "discount_type": "coupon", "savings_total": "2.00", "purchases_count": 1}],
                 }
             ],
         }
@@ -479,7 +508,17 @@ def page_with_analytics_api_mock(page):
             return json_response(route, [])
 
         if path == "/api/v1/dashboard/summary" and method == "GET":
-            return json_response(route, {"income_total": "0.00", "expense_total": "0.00", "balance": "0.00"})
+            return json_response(
+                route,
+                {
+                    "income_total": "0.00",
+                    "expense_total": "0.00",
+                    "balance": "0.00",
+                    "debt_lend_outstanding": "25.00",
+                    "debt_borrow_outstanding": "100.00",
+                    "debt_net_position": "-75.00",
+                },
+            )
 
         if path == "/api/v1/dashboard/operations" and method == "GET":
             return json_response(route, operations_payload)
@@ -695,13 +734,24 @@ def test_desktop_breakdown_lists_match_chart_height(page_with_analytics_api_mock
         """
         () => {
           const chart = document.querySelector('#analyticsStructurePanel .analytics-category-breakdown-chart-card')?.getBoundingClientRect();
+          const donut = document.querySelector('#analyticsStructurePanel .analytics-category-donut')?.getBoundingClientRect();
           const list = document.querySelector('#analyticsCategoryBreakdownList')?.getBoundingClientRect();
-          return chart && list ? { chartHeight: chart.height, listHeight: list.height } : null;
+          return chart && donut && list ? {
+            chartHeight: chart.height,
+            listHeight: list.height,
+            chartTop: chart.top,
+            chartBottom: chart.bottom,
+            donutTop: donut.top,
+            donutBottom: donut.bottom,
+          } : null;
         }
         """
     )
     assert analytics_geometry is not None
     assert abs(analytics_geometry["chartHeight"] - analytics_geometry["listHeight"]) <= 1
+    assert analytics_geometry["donutTop"] >= analytics_geometry["chartTop"] - 1
+    assert analytics_geometry["donutBottom"] <= analytics_geometry["chartBottom"] + 1
+    page.screenshot(path="/tmp/finasist-structure-donut-desktop.png", full_page=True)
 
 
 @pytest.mark.e2e
@@ -713,7 +763,11 @@ def test_dashboard_position_ranking_routes_to_operations_and_full_analytics(page
     page.wait_for_selector("#dashboardPositionsRanking .analytics-position-ranking-row")
     expect(page.locator("#dashboardPositionsRanking .analytics-position-ranking-row")).to_have_count(2)
     expect(page.locator("#dashboardPositionsRanking")).to_contain_text("Кофе зерновой")
-    expect(page.locator("#dashboardPositionsRanking")).to_contain_text("12.00")
+    expect(page.locator("#dashboardPositionsRanking")).to_contain_text("12.00 ед.")
+    expect(page.locator("#dashboardPositionsRanking")).to_contain_text("84,60\u00a0Br")
+    expect(page.locator("#dashboardDebtLendKpi")).to_have_class(re.compile(r"\bis-positive\b"))
+    expect(page.locator("#dashboardDebtBorrowKpi")).to_have_class(re.compile(r"\bis-negative\b"))
+    expect(page.locator("#dashboardDebtNetKpi")).to_have_class(re.compile(r"\bis-negative\b"))
     page.screenshot(path="/tmp/finasist-dashboard-ranking.png", full_page=True)
 
     page.locator("#dashboardPositionsRanking .analytics-position-ranking-row").first.click()
@@ -730,43 +784,14 @@ def test_dashboard_position_ranking_routes_to_operations_and_full_analytics(page
 
 
 @pytest.mark.e2e
-def test_mobile_analytics_structure_shows_price_and_discount_insights(page_with_analytics_api_mock, static_server_url: str):
+def test_mobile_analytics_structure_excludes_price_and_discount_insights(page_with_analytics_api_mock, static_server_url: str):
     page = page_with_analytics_api_mock
 
     _open_mobile_analytics(page, static_server_url)
     page.locator("button[data-analytics-tab='structure']").click()
     page.wait_for_selector("#analyticsStructurePanel:not(.hidden)")
-    page.wait_for_selector("#analyticsPriceIncreasesList .analytics-insight-item")
-    page.wait_for_selector("#analyticsTopDiscountSavingsList .analytics-insight-item")
-
-    expect(page.locator(".analytics-price-insight-block").filter(has_text="Топ подорожаний")).to_contain_text("Кофе")
-    expect(page.locator(".analytics-price-insight-block").filter(has_text="Топ подорожаний")).to_contain_text("+11.0%")
-    expect(page.locator(".analytics-price-insight-block").filter(has_text="Лучшие скидки")).to_contain_text("Капучино 0,2")
-    expect(page.locator(".analytics-price-insight-block").filter(has_text="Лучшие скидки")).to_contain_text("Скидка 28.6%")
-
-    geometry = page.evaluate(
-        """
-        () => {
-          const panel = document.querySelector('#analyticsStructurePanel');
-          const blocks = Array.from(document.querySelectorAll('.analytics-price-insight-block'));
-          if (!panel || blocks.length < 2) {
-            return null;
-          }
-          const panelRect = panel.getBoundingClientRect();
-          return {
-            viewportWidth: window.innerWidth,
-            panelRight: panelRect.right,
-            maxBlockRight: Math.max(...blocks.map((item) => item.getBoundingClientRect().right)),
-            minBlockWidth: Math.min(...blocks.map((item) => item.getBoundingClientRect().width)),
-          };
-        }
-        """
-    )
-
-    assert geometry is not None
-    assert geometry["maxBlockRight"] <= geometry["viewportWidth"] + 2
-    assert geometry["maxBlockRight"] <= geometry["panelRight"] + 2
-    assert geometry["minBlockWidth"] > 280
+    assert page.locator("#analyticsStructurePanel .analytics-price-insight-block").count() == 0
+    expect(page.locator("button[data-analytics-tab='commerce']")).to_be_visible()
 
 
 @pytest.mark.e2e
@@ -846,8 +871,12 @@ def test_mobile_analytics_trend_period_arrows_update_visible_label(page_with_ana
     page.locator("button[data-analytics-period-step='-1']").click()
     page.wait_for_function("() => window.App.state.analyticsGlobalPeriod === 'custom'")
 
-    expect(page.locator("#analyticsGlobalPeriodControlLabel")).to_have_text("01.05.2026 - 31.05.2026")
-    expect(page.locator("#analyticsTrendRangeLabel")).to_contain_text("01.05.2026 - 31.05.2026")
+    current_month_start = date.today().replace(day=1)
+    previous_month_end = current_month_start - timedelta(days=1)
+    previous_month_start = previous_month_end.replace(day=1)
+    expected_range = f"{previous_month_start:%d.%m.%Y} - {previous_month_end:%d.%m.%Y}"
+    expect(page.locator("#analyticsGlobalPeriodControlLabel")).to_have_text(expected_range)
+    expect(page.locator("#analyticsTrendRangeLabel")).to_contain_text(expected_range)
 
 
 @pytest.mark.e2e
@@ -955,6 +984,96 @@ def test_mobile_position_analytics_renders_matrix_and_drills_into_operations(pag
         "templateId": 11,
         "templateName": "Кофе зерновой",
     }
+    expect(page.locator("#operationsKindFilterChip")).to_be_visible()
+    assert page.evaluate("() => window.scrollY") <= 1
+    expect(page.locator("#operationsKindFilterChip > span")).to_have_text("Тип")
+    expect(page.locator("#operationsKindFilterChip > strong")).to_have_text("Только оттоки")
+    expect(page.locator("#operationsItemTemplateFilterChip > strong")).to_have_text("Кофе зерновой")
+    page.screenshot(path="/tmp/finasist-operations-filters-back-mobile.png", full_page=False)
+    page.locator("#operationsKindFilterChip").click()
+    expect(page.locator("#operationsKindFilterChip")).to_be_hidden()
+    expect(page.locator("#operationsItemTemplateFilterChip")).to_be_visible()
+    expect(page.locator("#sectionBackBtn")).to_be_visible()
+    expect(page.locator("#sectionBackBtn")).to_have_attribute("aria-label", "Назад к Позициям")
+    page.locator("#sectionBackBtn").click()
+    page.wait_for_selector("#analyticsPositionsPanel:not(.hidden)")
+    expect(page.locator("button[data-analytics-tab='positions']")).to_have_class(re.compile(r"\bactive\b"))
+
+
+@pytest.mark.e2e
+def test_mobile_prices_and_discounts_tab_renders_rankings_and_restores_context(page_with_analytics_api_mock, static_server_url: str):
+    page = page_with_analytics_api_mock
+
+    _open_mobile_analytics(page, static_server_url)
+    page.locator("button[data-analytics-tab='commerce']").click()
+    page.wait_for_selector("#analyticsCommercePanel:not(.hidden)")
+
+    expect(page.locator("#analyticsCommerceRankingTitle")).to_have_text("Топ подорожаний")
+    expect(page.locator("#analyticsCommerceRanking .analytics-commerce-ranking-row")).to_have_count(1)
+    expect(page.locator("#analyticsCommerceFocus")).to_contain_text("9,00")
+    expect(page.locator("#analyticsCommerceFocus .analytics-commerce-timeline-bar")).to_have_count(2)
+    assert page.locator("#analyticsStructurePanel #analyticsPriceIncreasesList").count() == 0
+
+    page.locator("button[data-analytics-commerce-mode='discounts']").click()
+    expect(page.locator("#analyticsCommerceRankingTitle")).to_have_text("Лучшие скидки")
+    page.locator("button[data-analytics-commerce-discount-type='coupon']").click()
+    expect(page.locator("#analyticsCommerceRanking")).to_contain_text("Капучино 0,2")
+    expect(page.locator("#analyticsCommerceSummary")).to_contain_text("2,00")
+    page.screenshot(path="/tmp/finasist-commerce-mobile.png", full_page=True)
+
+    page.locator("#analyticsCommerceFocus .analytics-commerce-timeline-bar").click()
+    page.wait_for_selector("#operationsSection:not(.hidden)")
+    expect(page.locator("#sectionBackBtn")).to_have_attribute("aria-label", "Назад к Ценам и скидкам")
+    page.locator("#sectionBackBtn").click()
+    page.wait_for_selector("#analyticsCommercePanel:not(.hidden)")
+    expect(page.locator("button[data-analytics-commerce-mode='discounts']")).to_have_class(re.compile(r"\bactive\b"))
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize(("width", "height"), [(320, 720), (390, 844), (768, 900), (1440, 900)])
+def test_prices_discounts_tab_has_no_page_overflow(
+    page_with_analytics_api_mock,
+    static_server_url: str,
+    width: int,
+    height: int,
+):
+    page = page_with_analytics_api_mock
+    if width < 900:
+        _open_mobile_analytics(page, static_server_url)
+        page.set_viewport_size({"width": width, "height": height})
+    else:
+        _open_desktop_app(page, static_server_url)
+        page.evaluate("() => window.App.actions.switchSection('analytics')")
+        page.wait_for_selector("#analyticsSection:not(.hidden)")
+
+    page.locator("button[data-analytics-tab='commerce']").click()
+    page.wait_for_selector("#analyticsCommercePanel:not(.hidden)")
+    geometry = page.evaluate(
+        """
+        () => {
+          const panel = document.getElementById('analyticsCommercePanel')?.getBoundingClientRect();
+          const tabs = document.getElementById('analyticsViewTabs')?.getBoundingClientRect();
+          const body = document.documentElement;
+          return panel && tabs ? {
+            viewportWidth: window.innerWidth,
+            panelLeft: panel.left,
+            panelRight: panel.right,
+            tabsLeft: tabs.left,
+            tabsRight: tabs.right,
+            bodyClientWidth: body.clientWidth,
+            bodyScrollWidth: body.scrollWidth,
+          } : null;
+        }
+        """
+    )
+    assert geometry is not None
+    assert geometry["panelLeft"] >= -1
+    assert geometry["panelRight"] <= geometry["viewportWidth"] + 1
+    assert geometry["tabsLeft"] >= -1
+    assert geometry["tabsRight"] <= geometry["viewportWidth"] + 1
+    assert geometry["bodyScrollWidth"] <= geometry["bodyClientWidth"] + 1
+    if width == 1440:
+        page.screenshot(path="/tmp/finasist-commerce-desktop.png", full_page=True)
 
 
 @pytest.mark.e2e

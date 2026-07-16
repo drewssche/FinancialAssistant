@@ -164,7 +164,7 @@
     const params = buildHighlightsParams(month);
     const cacheKey = `analytics:highlights:${params.toString()}`;
     const skeletons = getLoadingSkeletons();
-    if (!state.analyticsStructureHydrated && state.activeSection === "analytics" && (state.analyticsTab || "calendar") === "structure") {
+    if (!state.analyticsStructureHydrated && state.activeSection === "analytics" && ["structure", "commerce"].includes(state.analyticsTab || "calendar")) {
       skeletons.renderAnalyticsStructureSkeleton?.();
     }
 

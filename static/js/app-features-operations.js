@@ -166,64 +166,55 @@
     const baseCurrency = syncOperationsCurrencyScopeUi();
     const hasCategory = state.operationsCategoryFilterId !== null && state.operationsCategoryFilterId !== undefined && state.operationsCategoryFilterId !== "";
     const hasItemTemplate = state.operationsItemTemplateFilterId !== null && state.operationsItemTemplateFilterId !== undefined && state.operationsItemTemplateFilterId !== "";
-    const sourceLabel = isMoneyFlowMode && state.operationsSourceFilter === "operation"
-      ? "Источник: Операции"
+    const sourceValue = isMoneyFlowMode && state.operationsSourceFilter === "operation"
+      ? "Операции"
       : isMoneyFlowMode && state.operationsSourceFilter === "debt"
-        ? "Источник: Долги"
+        ? "Долги"
         : isMoneyFlowMode && state.operationsSourceFilter === "fx"
-          ? "Источник: Валюта"
+          ? "Валюта"
           : "";
-    const quickViewLabel = state.operationsQuickView === "receipt"
-      ? "Срез: Только с чеком"
+    const quickViewValue = state.operationsQuickView === "receipt"
+      ? "Только с чеком"
       : state.operationsQuickView === "large"
-        ? `Срез: Крупные от ${core.formatMoney(100)}`
+        ? `Крупные от ${core.formatMoney(100)}`
         : state.operationsQuickView === "uncategorized"
-          ? "Срез: Без категории"
+          ? "Без категории"
           : "";
-    const kindLabel = state.filterKind === "expense"
-      ? `Тип: Только ${isMoneyFlowMode ? "оттоки" : "расходы"}`
+    const kindValue = state.filterKind === "expense"
+      ? `Только ${isMoneyFlowMode ? "оттоки" : "расходы"}`
       : state.filterKind === "income"
-        ? `Тип: Только ${isMoneyFlowMode ? "притоки" : "доходы"}`
+        ? `Только ${isMoneyFlowMode ? "притоки" : "доходы"}`
         : "";
-    const currencyScopeLabel = state.operationsCurrencyScope === "base"
-      ? `Валюта: ${baseCurrency}`
+    const currencyScopeValue = state.operationsCurrencyScope === "base"
+      ? baseCurrency
       : state.operationsCurrencyScope === "foreign"
-        ? "Валюта: Другая"
+        ? "Другая"
         : "";
-    const hasQuickView = Boolean(quickViewLabel);
-    const hasKind = Boolean(kindLabel);
-    const hasCurrencyScope = Boolean(currencyScopeLabel);
-    el.operationsActiveFilters.classList.toggle("hidden", !hasCategory && !hasItemTemplate && !hasQuickView && !hasKind && !hasCurrencyScope && !sourceLabel);
-    if (el.operationsKindFilterChip) {
-      el.operationsKindFilterChip.classList.toggle("hidden", !hasKind);
-      el.operationsKindFilterChip.textContent = kindLabel;
-    }
-    if (el.operationsQuickViewChip) {
-      el.operationsQuickViewChip.classList.toggle("hidden", !hasQuickView);
-      el.operationsQuickViewChip.textContent = quickViewLabel;
-    }
-    if (el.operationsCurrencyScopeChip) {
-      el.operationsCurrencyScopeChip.classList.toggle("hidden", !hasCurrencyScope);
-      el.operationsCurrencyScopeChip.textContent = currencyScopeLabel;
-    }
-    if (el.operationsSourceFilterChip) {
-      el.operationsSourceFilterChip.classList.toggle("hidden", !sourceLabel);
-      el.operationsSourceFilterChip.textContent = sourceLabel;
-    }
-    el.operationsCategoryFilterChip.classList.toggle("hidden", !hasCategory);
-    el.clearOperationsCategoryFilterBtn.classList.toggle("hidden", !hasCategory && !hasItemTemplate);
-    el.operationsCategoryFilterChip.textContent = hasCategory
-      ? `Категория: ${state.operationsCategoryFilterName || `#${state.operationsCategoryFilterId}`}`
-      : "";
-    if (el.operationsItemTemplateFilterChip) {
-      el.operationsItemTemplateFilterChip.classList.toggle("hidden", !hasItemTemplate);
-      el.operationsItemTemplateFilterChip.textContent = hasItemTemplate
-        ? `Позиция: ${state.operationsItemTemplateFilterName || `#${state.operationsItemTemplateFilterId}`}`
+    const hasQuickView = Boolean(quickViewValue);
+    const hasKind = Boolean(kindValue);
+    const hasCurrencyScope = Boolean(currencyScopeValue);
+    const hasSource = Boolean(sourceValue);
+    const hasAny = hasCategory || hasItemTemplate || hasQuickView || hasKind || hasCurrencyScope || hasSource;
+    const renderChip = (node, label, value, visible) => {
+      if (!node) return;
+      node.classList.toggle("hidden", !visible);
+      node.innerHTML = visible
+        ? `<span>${core.escapeHtml(label)}</span><strong>${core.escapeHtml(value)}</strong><i aria-hidden="true">×</i>`
         : "";
-    }
+      node.title = visible ? `Снять фильтр «${label}: ${value}»` : "";
+      node.setAttribute("aria-label", visible ? `Снять фильтр ${label}: ${value}` : label);
+    };
+    el.operationsActiveFilters.classList.toggle("hidden", !hasAny);
+    renderChip(el.operationsKindFilterChip, "Тип", kindValue, hasKind);
+    renderChip(el.operationsSourceFilterChip, "Источник", sourceValue, hasSource);
+    renderChip(el.operationsQuickViewChip, "Срез", quickViewValue, hasQuickView);
+    renderChip(el.operationsCurrencyScopeChip, "Валюта", currencyScopeValue, hasCurrencyScope);
+    renderChip(el.operationsCategoryFilterChip, "Категория", state.operationsCategoryFilterName || `#${state.operationsCategoryFilterId}`, hasCategory);
+    renderChip(el.operationsItemTemplateFilterChip, "Позиция", state.operationsItemTemplateFilterName || `#${state.operationsItemTemplateFilterId}`, hasItemTemplate);
+    el.clearOperationsCategoryFilterBtn.classList.toggle("hidden", !hasAny);
     if (el.resetOperationsFiltersBtn) {
       const hasQuery = Boolean(el.filterQ?.value.trim());
-      el.resetOperationsFiltersBtn.disabled = !hasCategory && !hasItemTemplate && !hasQuery && !hasKind && !hasQuickView && !hasCurrencyScope && !sourceLabel;
+      el.resetOperationsFiltersBtn.disabled = !hasAny && !hasQuery;
     }
   }
 
@@ -582,6 +573,28 @@
     await savePreferences();
   }
 
+  async function clearOperationsFilter(filterName) {
+    if (filterName === "kind") state.filterKind = "";
+    if (filterName === "source") state.operationsSourceFilter = "all";
+    if (filterName === "quick_view") state.operationsQuickView = "all";
+    if (filterName === "currency") state.operationsCurrencyScope = "all";
+    if (filterName === "category") {
+      state.operationsCategoryFilterId = null;
+      state.operationsCategoryFilterName = "";
+    }
+    if (filterName === "position") {
+      state.operationsItemTemplateFilterId = null;
+      state.operationsItemTemplateFilterName = "";
+    }
+    core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
+    core.syncSegmentedActive(el.operationsSourceTabs, "operations-source", state.operationsSourceFilter);
+    core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
+    core.syncSegmentedActive(el.operationsCurrencyScopeTabs, "operations-currency-scope", state.operationsCurrencyScope);
+    renderOperationsActiveFilters();
+    await loadOperations({ reset: true, force: true });
+    await savePreferences();
+  }
+
   async function resetOperationsFilters() {
     state.filterKind = "";
     state.operationsMode = "money_flow";
@@ -691,7 +704,10 @@
     state.operationsCategoryFilterName = categoryName || "";
     state.operationsItemTemplateFilterId = null;
     state.operationsItemTemplateFilterName = "";
-    await getNavigationActions().switchSection?.("operations");
+    const navigation = getNavigationActions();
+    const hasSourceContext = state.activeSection !== "operations";
+    if (hasSourceContext) navigation.pushSectionBackContext?.();
+    await navigation.switchSection?.("operations", { preserveBackStack: hasSourceContext, scrollToTop: hasSourceContext });
     renderOperationsActiveFilters();
     await loadOperations({ reset: true, force: true });
     await savePreferences();
@@ -708,7 +724,10 @@
     state.operationsCategoryFilterName = "";
     state.operationsItemTemplateFilterId = resolvedId;
     state.operationsItemTemplateFilterName = templateName || "";
-    await getNavigationActions().switchSection?.("operations");
+    const navigation = getNavigationActions();
+    const hasSourceContext = state.activeSection !== "operations";
+    if (hasSourceContext) navigation.pushSectionBackContext?.();
+    await navigation.switchSection?.("operations", { preserveBackStack: hasSourceContext, scrollToTop: hasSourceContext });
     renderOperationsActiveFilters();
     await loadOperations({ reset: true, force: true });
     await savePreferences();
@@ -731,7 +750,7 @@
     }
     if (sourceKind === "debt") {
       navigation.pushSectionBackContext?.();
-      await navigation.switchSection?.("debts");
+      await navigation.switchSection?.("debts", { preserveBackStack: true, scrollToTop: true });
       if (mode === "history") {
         await debtsFeature.openDebtHistoryModal?.(Number(sourceId || 0));
         return;
@@ -741,7 +760,7 @@
     }
     if (sourceKind === "fx") {
       navigation.pushSectionBackContext?.();
-      await navigation.switchSection?.("currency");
+      await navigation.switchSection?.("currency", { preserveBackStack: true, scrollToTop: true });
       await currencyFeature.openCurrencyTradeEdit?.(Number(sourceId || 0));
     }
   }
@@ -821,6 +840,7 @@
     refreshOperationsView,
     getCurrentOperationItems,
     clearOperationsCategoryFilter,
+    clearOperationsFilter,
     resetOperationsFilters,
     setOperationsMode,
     setOperationsSourceFilter,

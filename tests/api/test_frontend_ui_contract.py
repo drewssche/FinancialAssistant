@@ -21,6 +21,24 @@ def test_mobile_table_styles_live_in_dedicated_responsive_module():
     assert ".mobile-card-table td[data-label]::before" in responsive_tables
 
 
+def test_prices_discounts_tab_and_context_navigation_contract():
+    shell_primary = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-primary.js").read_text(encoding="utf-8")
+    shell = (REPO_ROOT / "static" / "js" / "templates" / "shell.js").read_text(encoding="utf-8")
+    manifest = MANIFEST_JS.read_text(encoding="utf-8")
+    navigation = (REPO_ROOT / "static" / "js" / "app-section-ui.js").read_text(encoding="utf-8")
+
+    assert 'data-analytics-tab="commerce"' in shell_primary
+    assert 'id="analyticsCommercePanel"' in shell_primary
+    assert 'data-analytics-commerce-mode="prices"' in shell_primary
+    assert 'data-analytics-commerce-mode="discounts"' in shell_primary
+    assert 'id="analyticsPriceIncreasesList"' not in shell_primary
+    assert 'id="analyticsTopDiscountSavingsList"' not in shell_primary
+    assert '"/static/js/app-features-analytics-commerce.js"' in manifest
+    assert 'id="sectionBackBtn"' in shell
+    assert 'id="sectionBackLabel"' not in shell
+    assert 'preserveBackStack' in navigation
+
+
 def test_section_kpi_cards_and_mobile_debt_search_contract():
     shell_primary = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-primary.js").read_text(
         encoding="utf-8"
@@ -79,7 +97,7 @@ def test_byn_uses_compact_currency_symbol_in_frontend_formatters():
     assert 'url("/static/fonts/nbrb.woff2") format("woff2")' in tokens_css
     assert 'unicode-range: U+E901, U+42, U+59, U+4E;' in tokens_css
     assert 'font-feature-settings: "liga"' in tokens_css
-    assert 'BYN: { symbol: "\\uE901" }' in core_utils
+    assert 'BYN: { symbol: "Br" }' in core_utils
     assert '--money-font-family: "Noto Sans", "DejaVu Sans", "Segoe UI Symbol", "Segoe UI", Tahoma, "nbrb", sans-serif;' in tokens_css
     assert 'RU: "RUB"' in core_utils
     assert "function normalizeCurrencyCode" in core_utils
@@ -121,7 +139,7 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert 'id="editFinanceCalculatorToggle"' in modals
     assert 'id="createSessionRefreshBtn"' in modals
     assert 'id="editSessionRefreshBtn"' in modals
-    assert modals.count('class="operation-session-refresh-label">Продлить</span>') >= 2
+    assert modals.count('aria-label="Продлить сессию"') >= 2
     assert 'data-calculator-mode="discount"' in shell
     assert 'data-calculator-mode="split"' in shell
     assert '"/static/js/app-finance-calculator.js"' in manifest

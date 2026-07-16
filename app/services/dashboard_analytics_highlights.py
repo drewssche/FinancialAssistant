@@ -90,6 +90,7 @@ class DashboardAnalyticsHighlightsService:
                 "quantity_total": Decimal("0"),
                 "operation_ids": set(),
                 "template_ids": set(),
+                "price_history": [],
             }
         )
         for item in operations:
@@ -133,6 +134,12 @@ class DashboardAnalyticsHighlightsService:
                         bucket["max_unit_price"] = max(bucket["max_unit_price"], price_for_history)
                         bucket["unit_price_sum"] += price_for_history
                         bucket["unit_price_count"] += 1
+                        bucket["price_history"].append(
+                            {
+                                "operation_date": item["operation_date"],
+                                "unit_price": price_for_history,
+                            }
+                        )
                 effective_category_id = (
                     int(row.category_id)
                     if row.category_id is not None
@@ -425,7 +432,7 @@ class DashboardAnalyticsHighlightsService:
         )[:10]
         frequent_positions = sorted(
             current_position_stats.values(),
-            key=lambda item: (item["purchases_count"], item["quantity_total"], item["total_spent"], item["name"].casefold()),
+            key=lambda item: (item["quantity_total"], item["total_spent"], item["purchases_count"], item["name"].casefold()),
             reverse=True,
         )[:5]
 
@@ -445,11 +452,18 @@ class DashboardAnalyticsHighlightsService:
                 continue
             price_increases.append(
                 {
+                    "template_id": next(iter(current_item["template_ids"])) if len(current_item["template_ids"]) == 1 else None,
                     "name": current_item["name"],
                     "shop_name": current_item["shop_name"],
                     "previous_avg_unit_price": prev_avg,
                     "current_avg_unit_price": curr_avg,
+                    "change_amount": curr_avg - prev_avg,
                     "change_pct": change_pct,
+                    "previous_samples_count": prev_count,
+                    "current_samples_count": curr_count,
+                    "previous_purchases_count": int(previous_item["purchases_count"] or 0),
+                    "current_purchases_count": int(current_item["purchases_count"] or 0),
+                    "timeline": self.build_price_timeline(current_item["price_history"]),
                 }
             )
 
@@ -590,9 +604,35 @@ class DashboardAnalyticsHighlightsService:
                 }
                 for item in frequent_positions
             ],
-            "price_increases": price_increases[:5],
-            "top_discount_savings": self.build_top_discount_savings(current_receipt_items),
+            "price_increases": price_increases[:10],
+            "top_discount_savings": self.build_top_discount_savings(
+                current_receipt_items,
+                operation_dates={int(item["id"]): item["operation_date"] for item in operations},
+            ),
         }
+
+    def build_price_timeline(self, history: list[dict] | None) -> list[dict]:
+        buckets: dict[date, dict[str, Decimal | int]] = defaultdict(
+            lambda: {"price_total": Decimal("0"), "samples_count": 0}
+        )
+        for item in history or []:
+            operation_date = item.get("operation_date")
+            unit_price = Decimal(item.get("unit_price") or 0)
+            if not isinstance(operation_date, date) or unit_price <= 0:
+                continue
+            buckets[operation_date]["price_total"] += unit_price
+            buckets[operation_date]["samples_count"] += 1
+        return [
+            {
+                "date": operation_date.isoformat(),
+                "avg_unit_price": (
+                    Decimal(bucket["price_total"]) / Decimal(int(bucket["samples_count"]))
+                ).quantize(self.MONEY_Q),
+                "samples_count": int(bucket["samples_count"]),
+            }
+            for operation_date, bucket in sorted(buckets.items())
+            if int(bucket["samples_count"]) > 0
+        ]
 
     def compute_discount_savings(
         self,
@@ -652,7 +692,12 @@ class DashboardAnalyticsHighlightsService:
         items.sort(key=lambda item: order.get(item["discount_type"], 99))
         return items
 
-    def build_top_discount_savings(self, receipt_items_by_operation: dict[int, list] | None) -> list[dict]:
+    def build_top_discount_savings(
+        self,
+        receipt_items_by_operation: dict[int, list] | None,
+        *,
+        operation_dates: dict[int, date] | None = None,
+    ) -> list[dict]:
         buckets: dict[tuple[str, str | None], dict] = defaultdict(
             lambda: {
                 "name": "",
@@ -662,9 +707,21 @@ class DashboardAnalyticsHighlightsService:
                 "actual_total": Decimal("0"),
                 "quantity_total": Decimal("0"),
                 "purchases_count": 0,
+                "template_ids": set(),
+                "type_breakdown": defaultdict(
+                    lambda: {
+                        "savings_total": Decimal("0"),
+                        "regular_total": Decimal("0"),
+                        "actual_total": Decimal("0"),
+                        "purchases_count": 0,
+                    }
+                ),
+                "timeline": defaultdict(
+                    lambda: {"savings_total": Decimal("0"), "purchases_count": 0}
+                ),
             }
         )
-        for receipt_rows in (receipt_items_by_operation or {}).values():
+        for operation_id, receipt_rows in (receipt_items_by_operation or {}).items():
             for row in receipt_rows or []:
                 if not bool(getattr(row, "is_discounted", False)):
                     continue
@@ -688,6 +745,21 @@ class DashboardAnalyticsHighlightsService:
                 bucket["savings_total"] += regular_total - actual_total
                 bucket["quantity_total"] += quantity
                 bucket["purchases_count"] += 1
+                if getattr(row, "template_id", None) is not None:
+                    bucket["template_ids"].add(int(row.template_id))
+                discount_type = getattr(row, "discount_type", None)
+                if discount_type not in ("promo", "coupon", "loyalty_points"):
+                    discount_type = None
+                type_bucket = bucket["type_breakdown"][discount_type]
+                type_bucket["regular_total"] += regular_total
+                type_bucket["actual_total"] += actual_total
+                type_bucket["savings_total"] += regular_total - actual_total
+                type_bucket["purchases_count"] += 1
+                operation_date = (operation_dates or {}).get(int(operation_id))
+                if operation_date is not None:
+                    timeline_bucket = bucket["timeline"][(operation_date, discount_type)]
+                    timeline_bucket["savings_total"] += regular_total - actual_total
+                    timeline_bucket["purchases_count"] += 1
         items = []
         for bucket in buckets.values():
             regular_total = Decimal(bucket["regular_total"] or 0)
@@ -695,6 +767,7 @@ class DashboardAnalyticsHighlightsService:
                 continue
             items.append(
                 {
+                    "template_id": next(iter(bucket["template_ids"])) if len(bucket["template_ids"]) == 1 else None,
                     "name": bucket["name"],
                     "shop_name": bucket["shop_name"],
                     "savings_total": Decimal(bucket["savings_total"] or 0).quantize(Decimal("0.01")),
@@ -703,7 +776,32 @@ class DashboardAnalyticsHighlightsService:
                     "discount_pct": float((Decimal(bucket["savings_total"] or 0) / regular_total) * Decimal("100")),
                     "quantity_total": Decimal(bucket["quantity_total"] or 0),
                     "purchases_count": int(bucket["purchases_count"] or 0),
+                    "type_breakdown": [
+                        {
+                            "discount_type": discount_type,
+                            "savings_total": Decimal(values["savings_total"] or 0).quantize(self.MONEY_Q),
+                            "regular_total": Decimal(values["regular_total"] or 0).quantize(self.MONEY_Q),
+                            "actual_total": Decimal(values["actual_total"] or 0).quantize(self.MONEY_Q),
+                            "discount_pct": float(
+                                (Decimal(values["savings_total"] or 0) / Decimal(values["regular_total"])) * Decimal("100")
+                            ) if Decimal(values["regular_total"] or 0) > 0 else 0.0,
+                            "purchases_count": int(values["purchases_count"] or 0),
+                        }
+                        for discount_type, values in bucket["type_breakdown"].items()
+                    ],
+                    "timeline": [
+                        {
+                            "date": operation_date.isoformat(),
+                            "discount_type": discount_type,
+                            "savings_total": Decimal(values["savings_total"] or 0).quantize(self.MONEY_Q),
+                            "purchases_count": int(values["purchases_count"] or 0),
+                        }
+                        for (operation_date, discount_type), values in sorted(
+                            bucket["timeline"].items(),
+                            key=lambda item: (item[0][0], str(item[0][1] or "")),
+                        )
+                    ],
                 }
             )
         items.sort(key=lambda item: (item["savings_total"], item["discount_pct"], item["purchases_count"]), reverse=True)
-        return items[:5]
+        return items[:10]

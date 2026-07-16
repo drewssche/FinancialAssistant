@@ -58,9 +58,13 @@
       customDateFrom: state.customDateFrom,
       customDateTo: state.customDateTo,
       filterKind: state.filterKind,
+      operationsSourceFilter: state.operationsSourceFilter,
       operationsQuickView: state.operationsQuickView,
+      operationsCurrencyScope: state.operationsCurrencyScope,
       operationsCategoryFilterId: state.operationsCategoryFilterId,
       operationsCategoryFilterName: state.operationsCategoryFilterName,
+      operationsItemTemplateFilterId: state.operationsItemTemplateFilterId,
+      operationsItemTemplateFilterName: state.operationsItemTemplateFilterName,
       currencyFilter: state.currencyFilter,
       analyticsTab: state.analyticsTab,
       analyticsCurrencyFilter: state.analyticsCurrencyFilter,
@@ -71,12 +75,25 @@
       analyticsCategoryKind: state.analyticsCategoryKind,
       analyticsGranularity: state.analyticsGranularity,
       analyticsMonthAnchor: state.analyticsMonthAnchor,
+      analyticsPositionsPeriod: state.analyticsPositionsPeriod,
+      analyticsPositionsAnchor: state.analyticsPositionsAnchor,
+      analyticsPositionsMetric: state.analyticsPositionsMetric,
+      analyticsPositionsLimit: state.analyticsPositionsLimit,
+      analyticsPositionsSort: state.analyticsPositionsSort,
+      analyticsPositionsSelectedKey: state.analyticsPositionsSelectedKey,
+      analyticsCommerceMode: state.analyticsCommerceMode,
+      analyticsCommerceMetric: state.analyticsCommerceMetric,
+      analyticsCommerceDiscountType: state.analyticsCommerceDiscountType,
+      analyticsCommerceSort: state.analyticsCommerceSort,
+      analyticsCommerceSelectedKey: state.analyticsCommerceSelectedKey,
       dashboardAnalyticsPeriod: state.dashboardAnalyticsPeriod,
       dashboardAnalyticsDateFrom: state.dashboardAnalyticsDateFrom,
       dashboardAnalyticsDateTo: state.dashboardAnalyticsDateTo,
       dashboardBreakdownLevel: state.dashboardBreakdownLevel,
       dashboardCategoryKind: state.dashboardCategoryKind,
       filterQ: String(el.filterQ?.value || ""),
+      pageScrollY: window.scrollY || 0,
+      analyticsPositionsMatrixScrollLeft: el.analyticsPositionsMatrixWrap?.scrollLeft || 0,
     };
   }
 
@@ -88,9 +105,13 @@
     state.customDateFrom = snapshot.customDateFrom || "";
     state.customDateTo = snapshot.customDateTo || "";
     state.filterKind = snapshot.filterKind || "";
+    state.operationsSourceFilter = snapshot.operationsSourceFilter || "all";
     state.operationsQuickView = snapshot.operationsQuickView || "all";
+    state.operationsCurrencyScope = snapshot.operationsCurrencyScope || "all";
     state.operationsCategoryFilterId = snapshot.operationsCategoryFilterId ?? null;
     state.operationsCategoryFilterName = snapshot.operationsCategoryFilterName || "";
+    state.operationsItemTemplateFilterId = snapshot.operationsItemTemplateFilterId ?? null;
+    state.operationsItemTemplateFilterName = snapshot.operationsItemTemplateFilterName || "";
     state.currencyFilter = snapshot.currencyFilter || "all";
     state.analyticsTab = snapshot.analyticsTab || "calendar";
     state.analyticsCurrencyFilter = snapshot.analyticsCurrencyFilter || "all";
@@ -101,6 +122,17 @@
     state.analyticsCategoryKind = snapshot.analyticsCategoryKind || "expense";
     state.analyticsGranularity = snapshot.analyticsGranularity || "day";
     state.analyticsMonthAnchor = snapshot.analyticsMonthAnchor || "";
+    state.analyticsPositionsPeriod = snapshot.analyticsPositionsPeriod || "month";
+    state.analyticsPositionsAnchor = snapshot.analyticsPositionsAnchor || "";
+    state.analyticsPositionsMetric = snapshot.analyticsPositionsMetric || "quantity";
+    state.analyticsPositionsLimit = snapshot.analyticsPositionsLimit || "top";
+    state.analyticsPositionsSort = snapshot.analyticsPositionsSort || "desc";
+    state.analyticsPositionsSelectedKey = snapshot.analyticsPositionsSelectedKey || "";
+    state.analyticsCommerceMode = snapshot.analyticsCommerceMode || "prices";
+    state.analyticsCommerceMetric = snapshot.analyticsCommerceMetric || "change_pct";
+    state.analyticsCommerceDiscountType = snapshot.analyticsCommerceDiscountType || "all";
+    state.analyticsCommerceSort = snapshot.analyticsCommerceSort || "desc";
+    state.analyticsCommerceSelectedKey = snapshot.analyticsCommerceSelectedKey || "";
     state.dashboardAnalyticsPeriod = snapshot.dashboardAnalyticsPeriod || "month";
     state.dashboardAnalyticsDateFrom = snapshot.dashboardAnalyticsDateFrom || "";
     state.dashboardAnalyticsDateTo = snapshot.dashboardAnalyticsDateTo || "";
@@ -113,6 +145,8 @@
     core.syncAllPeriodTabs(state.period);
     core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
     core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
+    core.syncSegmentedActive(el.operationsSourceTabs, "operations-source", state.operationsSourceFilter);
+    core.syncSegmentedActive(el.operationsCurrencyScopeTabs, "operations-currency-scope", state.operationsCurrencyScope);
     core.syncSegmentedActive(el.analyticsViewTabs, "analytics-tab", state.analyticsTab);
     core.syncSegmentedActive(el.analyticsCalendarViewTabs, "analytics-calendar-view", state.analyticsCalendarView);
     core.syncSegmentedActive(el.analyticsGlobalPeriodTabs, "analytics-global-period", state.analyticsGlobalPeriod);
@@ -131,13 +165,16 @@
     const last = stack[stack.length - 1] || null;
     const isVisible = Boolean(last);
     el.sectionBackBtn.classList.toggle("hidden", !isVisible);
-    if (el.sectionBackLabel) {
-      const sectionLabelMap = {
+    const sectionLabelMap = {
         dashboard: "к Дашборду",
         analytics: last?.analyticsTab === "calendar"
           ? "к Календарю"
           : last?.analyticsTab === "structure"
               ? "к Структуре"
+              : last?.analyticsTab === "positions"
+                  ? "к Позициям"
+                  : last?.analyticsTab === "commerce"
+                    ? "к Ценам и скидкам"
               : last?.analyticsTab === "trends"
                   ? "к Трендам"
                   : "к Аналитике",
@@ -150,8 +187,9 @@
         settings: "к Настройкам",
         admin: "к Админу",
       };
-      el.sectionBackLabel.textContent = isVisible ? (sectionLabelMap[last.activeSection] || "Назад") : "Назад";
-    }
+    const destination = isVisible ? (sectionLabelMap[last.activeSection] || "назад") : "назад";
+    el.sectionBackBtn.title = `Назад ${destination}`;
+    el.sectionBackBtn.setAttribute("aria-label", `Назад ${destination}`);
   }
 
   function pushSectionBackContext() {
@@ -171,6 +209,12 @@
     restoreNavigationState(snapshot);
     updateSectionBackUi();
     await switchSection(snapshot.activeSection || "dashboard", { preserveBackStack: true });
+    requestAnimationFrame(() => {
+      if (el.analyticsPositionsMatrixWrap) {
+        el.analyticsPositionsMatrixWrap.scrollLeft = Number(snapshot.analyticsPositionsMatrixScrollLeft || 0);
+      }
+      window.scrollTo({ top: Number(snapshot.pageScrollY || 0), behavior: "auto" });
+    });
   }
 
   function applySectionUi() {
@@ -289,6 +333,7 @@
 
   async function switchSection(sectionId, options = {}) {
     const switchSeq = ++sectionSwitchSeq;
+    const sectionChanged = state.activeSection !== sectionId;
     const isCurrentSwitch = () => switchSeq === sectionSwitchSeq && state.activeSection === sectionId;
     const preserveBackStack = options.preserveBackStack === true;
     if (sectionId === "admin" && !state.isAdmin) {
@@ -304,6 +349,9 @@
     }
     state.activeSection = sectionId;
     applySectionUi();
+    if (sectionChanged && options.scrollToTop === true) {
+      window.scrollTo({ top: 0, behavior: "auto" });
+    }
     if (sectionId !== "dashboard") {
       getDashboardFeature().abortDashboardLoad?.();
       getAnalyticsFeature().abortDashboardAnalyticsPreview?.();

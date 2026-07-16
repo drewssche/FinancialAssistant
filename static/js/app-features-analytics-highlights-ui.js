@@ -193,6 +193,7 @@
       }
     }
     renderCategoryBreakdown(data, formatPct);
+    window.App.getRuntimeModule?.("analytics-commerce-module")?.renderCommerce?.(data);
   }
 
   function renderDashboardBreakdown(data) {

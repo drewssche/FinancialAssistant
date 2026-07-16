@@ -371,7 +371,7 @@
     if (state.analyticsTab === "operations" || state.analyticsTab === "overview") {
       state.analyticsTab = "calendar";
     }
-    if (!["structure", "positions", "calendar", "trends", "currency"].includes(state.analyticsTab)) {
+    if (!["structure", "positions", "commerce", "calendar", "trends", "currency"].includes(state.analyticsTab)) {
       state.analyticsTab = "calendar";
     }
     state.analyticsCurrencyFilter = prefs.data?.analytics?.currency_filter || "all";
@@ -380,6 +380,12 @@
     state.analyticsGlobalDateFrom = prefs.data?.analytics?.global_date_from || prefs.data?.analytics?.summary_date_from || "";
     state.analyticsGlobalDateTo = prefs.data?.analytics?.global_date_to || prefs.data?.analytics?.summary_date_to || "";
     state.analyticsCategoryKind = prefs.data?.analytics?.category_kind || "expense";
+    state.analyticsCommerceMode = prefs.data?.analytics?.commerce_mode === "discounts" ? "discounts" : "prices";
+    state.analyticsCommerceMetric = prefs.data?.analytics?.commerce_metric || "change_pct";
+    state.analyticsCommerceDiscountType = ["all", "promo", "coupon", "loyalty_points"].includes(prefs.data?.analytics?.commerce_discount_type)
+      ? prefs.data.analytics.commerce_discount_type
+      : "all";
+    state.analyticsCommerceSort = prefs.data?.analytics?.commerce_sort === "asc" ? "asc" : "desc";
     state.analyticsBreakdownLevel = ["category", "group"].includes(prefs.data?.analytics?.breakdown_level)
       ? prefs.data.analytics.breakdown_level
       : "category";
@@ -389,9 +395,11 @@
       ? prefs.data.analytics.positions_period
       : "month";
     state.analyticsPositionsAnchor = prefs.data?.analytics?.positions_anchor || "";
-    state.analyticsPositionsMetric = ["purchases", "quantity", "amount"].includes(prefs.data?.analytics?.positions_metric)
+    const positionsMetricVersion = Number(prefs.data?.analytics?.positions_metric_version || 0);
+    state.analyticsPositionsMetric = positionsMetricVersion >= 2
+      && ["purchases", "quantity", "amount"].includes(prefs.data?.analytics?.positions_metric)
       ? prefs.data.analytics.positions_metric
-      : "purchases";
+      : "quantity";
     state.analyticsPositionsLimit = prefs.data?.analytics?.positions_limit === "all" ? "all" : "top";
     state.analyticsPositionsSort = prefs.data?.analytics?.positions_sort === "asc" ? "asc" : "desc";
     if ((state.analyticsGlobalPeriod === "year" || state.analyticsGlobalPeriod === "all_time") && state.analyticsGranularity === "day") {
@@ -544,8 +552,13 @@
           granularity: state.analyticsGranularity || "day",
           positions_period: state.analyticsPositionsPeriod || "month",
           positions_anchor: state.analyticsPositionsAnchor || "",
-          positions_metric: state.analyticsPositionsMetric || "purchases",
+          positions_metric: state.analyticsPositionsMetric || "quantity",
+          positions_metric_version: 2,
           positions_limit: state.analyticsPositionsLimit || "top",
+          commerce_mode: state.analyticsCommerceMode || "prices",
+          commerce_metric: state.analyticsCommerceMetric || "change_pct",
+          commerce_discount_type: state.analyticsCommerceDiscountType || "all",
+          commerce_sort: state.analyticsCommerceSort || "desc",
           positions_sort: state.analyticsPositionsSort || "desc",
           currency_filter: state.analyticsCurrencyFilter || "all",
         },

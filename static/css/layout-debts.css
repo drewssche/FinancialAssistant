@@ -204,6 +204,26 @@
   padding: var(--space-3);
   background: rgba(18, 27, 43, 0.72);
   min-height: 0;
+  border-color: rgba(60, 78, 109, 0.62);
+  transition: border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.dashboard-debts-summary .dashboard-debt-kpi.is-positive {
+  border-color: rgba(92, 199, 165, 0.5);
+  background: rgba(32, 91, 76, 0.2);
+}
+
+.dashboard-debts-summary .dashboard-debt-kpi.is-negative {
+  border-color: rgba(255, 111, 125, 0.5);
+  background: rgba(112, 42, 55, 0.2);
+}
+
+.dashboard-debts-summary .dashboard-debt-kpi.is-positive p {
+  color: #76ddb9;
+}
+
+.dashboard-debts-summary .dashboard-debt-kpi.is-negative p {
+  color: #ff8e99;
 }
 
 .dashboard-debts-summary .kpi-card h3 {

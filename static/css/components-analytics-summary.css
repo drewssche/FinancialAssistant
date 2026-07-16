@@ -615,6 +615,17 @@
   align-items: stretch;
 }
 
+#analyticsViewTabs {
+  max-width: 100%;
+  justify-content: flex-start;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+#analyticsViewTabs > .segmented-btn {
+  flex: 0 0 auto;
+}
+
 .analytics-category-breakdown-grid > .analytics-insight-list {
   min-height: var(--breakdown-panel-height);
   height: var(--breakdown-panel-height);
@@ -629,11 +640,13 @@
   place-items: center;
   min-height: var(--breakdown-panel-height);
   height: var(--breakdown-panel-height);
+  overflow: hidden;
   isolation: isolate;
 }
 
 .analytics-category-donut {
-  width: min(36rem, 100%);
+  width: min(100%, calc(var(--breakdown-panel-height, 34rem) - 2rem));
+  max-height: 100%;
   aspect-ratio: 1;
   border-radius: 50%;
   display: grid;
@@ -648,7 +661,7 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .analytics-category-slice {
@@ -818,6 +831,68 @@
 
 .analytics-kpi-chip-neutral {
   color: #d3ddf3;
+}
+
+#operationsActiveFilters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: var(--space-2);
+}
+
+.operations-filter-chip {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 7px 6px 9px;
+  border: 1px solid rgba(86, 108, 142, 0.42);
+  border-radius: 6px;
+  background: rgba(18, 27, 43, 0.78);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.operations-filter-chip > span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.operations-filter-chip > strong {
+  max-width: 220px;
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operations-filter-chip > i {
+  color: #aebbd4;
+  font-size: 14px;
+  font-style: normal;
+  line-height: 1;
+}
+
+.operations-filter-chip:hover,
+.operations-filter-chip:focus-visible {
+  border-color: rgba(255, 151, 63, 0.65);
+  background: rgba(255, 151, 63, 0.08);
+}
+
+.operations-filter-reset {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(86, 108, 142, 0.42);
+  border-radius: 6px;
+  background: rgba(18, 27, 43, 0.78);
+  color: #cbd6eb;
+  font-size: 16px;
+  cursor: pointer;
 }
 
 .currency-position-compact {
@@ -1234,6 +1309,7 @@
   background: rgba(29, 42, 64, 0.34);
   color: var(--muted);
   cursor: default;
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
 }
 
 .analytics-position-cell i {
@@ -1260,6 +1336,8 @@
 .analytics-position-cell.has-value:focus-visible {
   border-color: #ff973f;
   box-shadow: 0 0 0 2px rgba(255, 151, 63, 0.18);
+  filter: brightness(1.14);
+  transform: translateY(-2px);
 }
 
 .analytics-position-total {
@@ -1356,6 +1434,7 @@
   color: var(--text);
   text-align: left;
   cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease, background-color 0.16s ease;
 }
 
 .analytics-position-ranking-row:hover,
@@ -1363,6 +1442,7 @@
 .analytics-position-ranking-row.active {
   border-color: rgba(92, 199, 165, 0.58);
   background: rgba(92, 199, 165, 0.08);
+  transform: translateX(2px);
 }
 
 .analytics-position-ranking-index {
@@ -1437,6 +1517,14 @@
   background: transparent;
   color: var(--muted);
   padding: 0;
+  cursor: pointer;
+  transition: filter 0.16s ease, transform 0.16s ease;
+}
+
+.analytics-position-focus-bar:not(:disabled):hover,
+.analytics-position-focus-bar:not(:disabled):focus-visible {
+  filter: brightness(1.18);
+  transform: translateY(-2px);
 }
 
 .analytics-position-focus-bar i {
@@ -1451,7 +1539,147 @@
   font-size: 9px;
 }
 
+.analytics-commerce-discount-types {
+  width: fit-content;
+  margin: var(--space-3) 0;
+}
+
+.analytics-commerce-toolbar {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+#analyticsCommerceSummary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.analytics-commerce-layout {
+  display: grid;
+  grid-template-columns: minmax(270px, 0.9fr) minmax(0, 1.3fr);
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.analytics-commerce-ranking-block,
+.analytics-commerce-focus {
+  min-width: 0;
+}
+
+.analytics-commerce-ranking-block {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+}
+
+.analytics-commerce-focus {
+  min-height: 250px;
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--border);
+}
+
+.analytics-commerce-focus-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.analytics-commerce-focus-head > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.analytics-commerce-focus-meta {
+  margin: 0;
+}
+
+.analytics-commerce-timeline {
+  height: 132px;
+  display: flex;
+  align-items: stretch;
+  gap: 5px;
+  overflow-x: auto;
+  padding: var(--space-2) 1px 2px;
+  justify-content: flex-start;
+}
+
+.analytics-commerce-timeline-bar {
+  flex: 0 0 38px;
+  width: 38px;
+  min-width: 38px;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 20px;
+  align-items: end;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: filter 0.16s ease, transform 0.16s ease;
+}
+
+.analytics-commerce-timeline-bar i {
+  width: 100%;
+  height: var(--bar-height, 8%);
+  border-radius: 4px 4px 2px 2px;
+  background: #ff973f;
+}
+
+.analytics-commerce-timeline-bar span {
+  font-size: 9px;
+}
+
+.analytics-commerce-timeline-bar:hover,
+.analytics-commerce-timeline-bar:focus-visible {
+  filter: brightness(1.18);
+  transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analytics-position-cell,
+  .analytics-position-ranking-row,
+  .analytics-position-focus-bar,
+  .analytics-commerce-timeline-bar {
+    transition: none;
+  }
+}
+
 @media (max-width: 640px) {
+  #analyticsCommerceSummary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .analytics-commerce-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-commerce-focus {
+    min-height: 0;
+    padding: var(--space-3) 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .analytics-commerce-focus-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .analytics-commerce-open-btn {
+    width: 100%;
+  }
+
   #analyticsPositionsSummary {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }

@@ -303,14 +303,44 @@ class AnalyticsOperationAnomaly(BaseModel):
 
 
 class AnalyticsPriceIncrease(BaseModel):
+    template_id: int | None = None
     name: str
     shop_name: str | None
     previous_avg_unit_price: Decimal
     current_avg_unit_price: Decimal
+    change_amount: Decimal = Decimal("0")
     change_pct: float
+    previous_samples_count: int = 0
+    current_samples_count: int = 0
+    previous_purchases_count: int = 0
+    current_purchases_count: int = 0
+    timeline: list["AnalyticsPriceTimelinePoint"] = Field(default_factory=list)
+
+
+class AnalyticsPriceTimelinePoint(BaseModel):
+    date: str
+    avg_unit_price: Decimal
+    samples_count: int
+
+
+class AnalyticsDiscountTypeSaving(BaseModel):
+    discount_type: str | None = None
+    savings_total: Decimal
+    regular_total: Decimal
+    actual_total: Decimal
+    discount_pct: float
+    purchases_count: int
+
+
+class AnalyticsDiscountTimelinePoint(BaseModel):
+    date: str
+    discount_type: str | None = None
+    savings_total: Decimal
+    purchases_count: int
 
 
 class AnalyticsTopDiscountSaving(BaseModel):
+    template_id: int | None = None
     name: str
     shop_name: str | None
     savings_total: Decimal
@@ -319,6 +349,8 @@ class AnalyticsTopDiscountSaving(BaseModel):
     discount_pct: float
     quantity_total: Decimal
     purchases_count: int
+    type_breakdown: list[AnalyticsDiscountTypeSaving] = Field(default_factory=list)
+    timeline: list[AnalyticsDiscountTimelinePoint] = Field(default_factory=list)
 
 
 class AnalyticsDiscountBreakdownItem(BaseModel):

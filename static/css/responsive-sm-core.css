@@ -138,10 +138,6 @@
     display: none;
   }
 
-  .modal-card .panel-head .operation-session-refresh-label {
-    display: none;
-  }
-
   .modal-head-actions {
     flex-wrap: wrap;
   }

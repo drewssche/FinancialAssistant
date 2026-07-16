@@ -206,6 +206,7 @@
   const refreshOperationsView = operationsFeatures.refreshOperationsView;
   const getCurrentOperationItems = operationsFeatures.getCurrentOperationItems;
   const clearOperationsCategoryFilter = operationsFeatures.clearOperationsCategoryFilter;
+  const clearOperationsFilter = operationsFeatures.clearOperationsFilter;
   const resetOperationsFilters = operationsFeatures.resetOperationsFilters;
   const setOperationsMode = operationsFeatures.setOperationsMode;
   const setOperationsSourceFilter = operationsFeatures.setOperationsSourceFilter;
@@ -412,6 +413,7 @@
     refreshOperationsView,
     getCurrentOperationItems,
     clearOperationsCategoryFilter,
+    clearOperationsFilter,
     resetOperationsFilters,
     setOperationsMode,
     setOperationsSourceFilter,

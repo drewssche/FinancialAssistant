@@ -208,14 +208,22 @@
       });
     });
 
-    if (el.clearOperationsCategoryFilterBtn && actions.clearOperationsCategoryFilter) {
+    if (el.clearOperationsCategoryFilterBtn && actions.resetOperationsFilters) {
       el.clearOperationsCategoryFilterBtn.addEventListener("click", () => {
         core.runAction({
-          errorPrefix: "Ошибка сброса фильтра категории",
-          action: () => actions.clearOperationsCategoryFilter(),
+          errorPrefix: "Ошибка сброса фильтров",
+          action: () => actions.resetOperationsFilters(),
         });
       });
     }
+    el.operationsActiveFilters?.addEventListener("click", (event) => {
+      const chip = event.target.closest("button[data-clear-operations-filter]");
+      if (!chip || !actions.clearOperationsFilter) return;
+      core.runAction({
+        errorPrefix: "Ошибка сброса фильтра",
+        action: () => actions.clearOperationsFilter(chip.dataset.clearOperationsFilter),
+      });
+    });
     if (el.resetOperationsFiltersBtn && actions.resetOperationsFilters) {
       el.resetOperationsFiltersBtn.addEventListener("click", () => {
         core.runAction({

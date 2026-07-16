@@ -311,6 +311,19 @@
     }
   }
 
+  function setDebtKpiTone(node, tone = "neutral") {
+    if (!node) return;
+    node.classList.toggle("is-positive", tone === "positive");
+    node.classList.toggle("is-negative", tone === "negative");
+  }
+
+  function renderDebtKpiTones({ lend = 0, borrow = 0, net = 0 } = {}) {
+    const epsilon = 0.000001;
+    setDebtKpiTone(el.dashboardDebtLendKpi, Number(lend) > epsilon ? "positive" : "neutral");
+    setDebtKpiTone(el.dashboardDebtBorrowKpi, Number(borrow) > epsilon ? "negative" : "neutral");
+    setDebtKpiTone(el.dashboardDebtNetKpi, Number(net) > epsilon ? "positive" : Number(net) < -epsilon ? "negative" : "neutral");
+  }
+
   function renderDashboardLoadFailure(err) {
     const message = core.errorMessage ? core.errorMessage(err) : String(err || "Ошибка загрузки");
     if (el.dashboardCurrencyBalances) {
@@ -340,6 +353,7 @@
     if (el.debtNetTotal) {
       el.debtNetTotal.textContent = core.formatMoney(0);
     }
+    renderDebtKpiTones();
     getLoadingSkeletons().clearDashboardAnalyticsSkeletonState?.();
   }
 
@@ -407,6 +421,11 @@
       if (el.debtNetTotal) {
         el.debtNetTotal.textContent = core.formatMoney(data.debt_net_position);
       }
+      renderDebtKpiTones({
+        lend: data.debt_lend_outstanding,
+        borrow: data.debt_borrow_outstanding,
+        net: data.debt_net_position,
+      });
       if (el.dashboardDebtKpiGrid) {
         const lendTotal = Number(data.debt_lend_outstanding || 0);
         const borrowTotal = Number(data.debt_borrow_outstanding || 0);

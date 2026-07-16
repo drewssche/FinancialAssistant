@@ -1100,7 +1100,13 @@ def test_dashboard_analytics_highlights_returns_kpis_and_top_blocks(client: Test
     assert payload["frequent_positions"][0]["purchases_count"] == 1
     assert payload["frequent_positions"][0]["quantity_total"] == "1.000"
     assert payload["frequent_positions"][0]["amount_total"] == "25.00"
-    assert any(item["name"] == "Milk" for item in payload["price_increases"])
+    milk_increase = next(item for item in payload["price_increases"] if item["name"] == "Milk")
+    assert milk_increase["change_amount"] != "0"
+    assert milk_increase["previous_samples_count"] >= 1
+    assert milk_increase["current_samples_count"] >= 1
+    assert milk_increase["previous_purchases_count"] >= 1
+    assert milk_increase["current_purchases_count"] >= 1
+    assert milk_increase["timeline"]
 
 
 def test_dashboard_position_analytics_groups_receipts_into_period_buckets(client: TestClient):
@@ -1234,17 +1240,28 @@ def test_dashboard_analytics_highlights_includes_discount_savings_kpi(client: Te
             "items_count": 1,
         }
     ]
-    assert payload["top_discount_savings"] == [
+    top_discount = payload["top_discount_savings"][0]
+    assert top_discount["name"] == "Coffee"
+    assert top_discount["shop_name"] == "Store"
+    assert top_discount["savings_total"] == "3.20"
+    assert top_discount["regular_total"] == "13.60"
+    assert top_discount["actual_total"] == "10.40"
+    assert top_discount["discount_pct"] == pytest.approx(23.53, abs=0.01)
+    assert top_discount["quantity_total"] == "2.000"
+    assert top_discount["purchases_count"] == 1
+    assert top_discount["template_id"] is not None
+    assert top_discount["type_breakdown"] == [
         {
-            "name": "Coffee",
-            "shop_name": "Store",
+            "discount_type": "coupon",
             "savings_total": "3.20",
             "regular_total": "13.60",
             "actual_total": "10.40",
             "discount_pct": pytest.approx(23.53, abs=0.01),
-            "quantity_total": "2.000",
             "purchases_count": 1,
         }
+    ]
+    assert top_discount["timeline"] == [
+        {"date": "2026-03-12", "discount_type": "coupon", "savings_total": "3.20", "purchases_count": 1}
     ]
 
 

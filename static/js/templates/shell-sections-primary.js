@@ -92,8 +92,8 @@
           <section id="dashboardPositionsPanel" class="panel">
             <div class="panel-head row between">
               <div>
-                <h3>Чаще всего покупали</h3>
-                <p id="dashboardPositionsPeriodLabel" class="subtitle">Топ позиций за выбранный период</p>
+                <h3>Больше всего купили</h3>
+                <p id="dashboardPositionsPeriodLabel" class="subtitle">Топ по количеству за выбранный период</p>
               </div>
               <button id="openPositionsAnalyticsBtn" class="btn btn-secondary" type="button">Все позиции</button>
             </div>
@@ -110,15 +110,15 @@
               <button id="openDebtsTabBtn" class="btn btn-secondary" type="button">Открыть раздел Долги</button>
             </div>
             <div id="dashboardDebtKpiGrid" class="kpi-grid dashboard-debts-summary">
-              <article class="kpi-card">
+              <article id="dashboardDebtLendKpi" class="kpi-card dashboard-debt-kpi">
                 <h3>Мне должны</h3>
                 <p id="debtLendTotal">0.00</p>
               </article>
-              <article class="kpi-card">
+              <article id="dashboardDebtBorrowKpi" class="kpi-card dashboard-debt-kpi">
                 <h3>Я должен</h3>
                 <p id="debtBorrowTotal">0.00</p>
               </article>
-              <article class="kpi-card">
+              <article id="dashboardDebtNetKpi" class="kpi-card dashboard-debt-kpi">
                 <h3>Чистая позиция по долгам</h3>
                 <p id="debtNetTotal">0.00</p>
               </article>
@@ -157,6 +157,7 @@
               <button class="segmented-btn" data-analytics-tab="calendar" type="button">Календарь</button>
               <button class="segmented-btn active" data-analytics-tab="structure" type="button">Структура</button>
               <button class="segmented-btn" data-analytics-tab="positions" type="button">Позиции</button>
+              <button class="segmented-btn" data-analytics-tab="commerce" type="button">Цены и скидки</button>
               <button class="segmented-btn" data-analytics-tab="trends" type="button">Тренды</button>
               <button class="segmented-btn" data-analytics-tab="currency" type="button">Валюта</button>
             </div>
@@ -224,16 +225,51 @@
               </div>
               <div id="analyticsCategoryBreakdownList" class="analytics-insight-list"></div>
             </div>
-            <div class="analytics-positions-grid analytics-price-insights-grid">
-              <div class="analytics-price-insight-block">
-                <h4>Топ подорожаний</h4>
-                <div id="analyticsPriceIncreasesList" class="analytics-insight-list"></div>
+          </section>
+
+          <section id="analyticsCommercePanel" class="panel analytics-tab-panel hidden">
+            <div class="panel-head row between">
+              <div>
+                <h3>Цены и скидки</h3>
+                <p id="analyticsCommerceRangeLabel" class="subtitle">Нет периода</p>
               </div>
-              <div class="analytics-price-insight-block">
-                <h4>Лучшие скидки</h4>
-                <div id="analyticsTopDiscountSavingsList" class="analytics-insight-list"></div>
+              <div class="toolbar analytics-commerce-toolbar">
+                <div class="analytics-switch-group">
+                  <span class="muted-small">Раздел</span>
+                  <div id="analyticsCommerceModeTabs" class="segmented" role="tablist" aria-label="Раздел ценовой аналитики">
+                    <button class="segmented-btn active" data-analytics-commerce-mode="prices" type="button">Цены</button>
+                    <button class="segmented-btn" data-analytics-commerce-mode="discounts" type="button">Скидки</button>
+                  </div>
+                </div>
+                <div class="analytics-switch-group">
+                  <span class="muted-small">Метрика</span>
+                  <div id="analyticsCommerceMetricTabs" class="segmented" role="tablist" aria-label="Метрика ценовой аналитики"></div>
+                </div>
               </div>
             </div>
+            <div id="analyticsCommerceDiscountTypeTabs" class="segmented analytics-commerce-discount-types hidden" role="tablist" aria-label="Тип скидки">
+              <button class="segmented-btn active" data-analytics-commerce-discount-type="all" type="button">Все</button>
+              <button class="segmented-btn" data-analytics-commerce-discount-type="promo" type="button">Акции</button>
+              <button class="segmented-btn" data-analytics-commerce-discount-type="coupon" type="button">Купоны</button>
+              <button class="segmented-btn" data-analytics-commerce-discount-type="loyalty_points" type="button">Баллы</button>
+            </div>
+            <div id="analyticsCommerceSummary" class="analytics-kpi-secondary"></div>
+            <div class="analytics-commerce-layout">
+              <section class="analytics-commerce-ranking-block">
+                <div class="analytics-position-ranking-head">
+                  <div>
+                    <h4 id="analyticsCommerceRankingTitle">Топ подорожаний</h4>
+                    <span class="muted-small">Выберите позицию для просмотра деталей</span>
+                  </div>
+                  <button id="analyticsCommerceSortBtn" class="analytics-position-sort-btn" type="button" title="Сначала больше" aria-label="Сортировка: сначала больше">↓</button>
+                </div>
+                <div id="analyticsCommerceRanking" class="analytics-position-ranking-list"></div>
+              </section>
+              <section id="analyticsCommerceFocus" class="analytics-commerce-focus">
+                <div class="muted-small">Выберите позицию в рейтинге</div>
+              </section>
+            </div>
+            <div id="analyticsCommerceEmpty" class="muted-small hidden">За выбранный период данных нет</div>
           </section>
 
           <section id="analyticsPositionsPanel" class="panel analytics-tab-panel hidden">
@@ -260,8 +296,8 @@
                 <div class="analytics-switch-group">
                   <span class="muted-small">Метрика</span>
                   <div class="segmented" id="analyticsPositionsMetricTabs" role="tablist" aria-label="Метрика позиций">
-                    <button class="segmented-btn active" data-analytics-positions-metric="purchases" type="button">Покупки</button>
-                    <button class="segmented-btn" data-analytics-positions-metric="quantity" type="button">Количество</button>
+                    <button class="segmented-btn" data-analytics-positions-metric="purchases" type="button">Покупки</button>
+                    <button class="segmented-btn active" data-analytics-positions-metric="quantity" type="button">Количество</button>
                     <button class="segmented-btn" data-analytics-positions-metric="amount" type="button">Сумма</button>
                   </div>
                 </div>
@@ -508,13 +544,13 @@
               <div>
                 <p id="operationsPeriodLabel" class="subtitle"></p>
                 <div id="operationsActiveFilters" class="analytics-kpi-secondary hidden">
-                  <span id="operationsKindFilterChip" class="analytics-kpi-chip analytics-kpi-chip-neutral hidden"></span>
-                  <span id="operationsSourceFilterChip" class="analytics-kpi-chip analytics-kpi-chip-neutral hidden"></span>
-                  <span id="operationsQuickViewChip" class="analytics-kpi-chip analytics-kpi-chip-neutral hidden"></span>
-                  <span id="operationsCurrencyScopeChip" class="analytics-kpi-chip analytics-kpi-chip-neutral hidden"></span>
-                  <span id="operationsCategoryFilterChip" class="analytics-kpi-chip analytics-kpi-chip-neutral hidden"></span>
-                  <span id="operationsItemTemplateFilterChip" class="analytics-kpi-chip analytics-kpi-chip-neutral hidden"></span>
-                  <button id="clearOperationsCategoryFilterBtn" class="btn btn-secondary hidden" type="button">Сбросить фильтр</button>
+                  <button id="operationsKindFilterChip" class="operations-filter-chip hidden" data-clear-operations-filter="kind" type="button"></button>
+                  <button id="operationsSourceFilterChip" class="operations-filter-chip hidden" data-clear-operations-filter="source" type="button"></button>
+                  <button id="operationsQuickViewChip" class="operations-filter-chip hidden" data-clear-operations-filter="quick_view" type="button"></button>
+                  <button id="operationsCurrencyScopeChip" class="operations-filter-chip hidden" data-clear-operations-filter="currency" type="button"></button>
+                  <button id="operationsCategoryFilterChip" class="operations-filter-chip hidden" data-clear-operations-filter="category" type="button"></button>
+                  <button id="operationsItemTemplateFilterChip" class="operations-filter-chip hidden" data-clear-operations-filter="position" type="button"></button>
+                  <button id="clearOperationsCategoryFilterBtn" class="operations-filter-reset hidden" type="button" title="Сбросить все фильтры" aria-label="Сбросить все фильтры">×</button>
                 </div>
               </div>
             </div>

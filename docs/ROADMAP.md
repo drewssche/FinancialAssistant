@@ -12,6 +12,40 @@
 - Keep Telegram-specific behavior in the client runtime; backend contracts stay shared between Web UI and Telegram.
 
 ## Current Sprint
+### Currency, Debt KPI And Position Metrics 2026-07-16
+- [x] P0: replace the fragile private-font BYN glyph with the portable `Br` label in the shared currency formatter and cover the frontend contract.
+- [x] P1: add contextual debt KPI states: receivables positive, payables negative, and net position colored by sign while zero remains neutral.
+- [x] P1: make quantity the default position-ranking metric, keep amount visible in ranking context, and leave purchase/event count in the KPI summary and optional metric switch.
+
+### Analytics Prices, Discounts And Drilldown Navigation 2026-07-16
+- [x] P0: keep the category structure chart inside its fixed desktop panel and responsive mobile bounds.
+  - Size the donut from the available card width and height instead of allowing a `36rem` square inside a `34rem` panel with padding.
+  - Keep SVG hover expansion clipped to a deliberate chart viewport and cover 320/390/768/desktop widths without page overflow.
+  - Done 2026-07-16: donut sizing now uses the card's available inner height, SVG overflow is clipped, and desktop geometry asserts that the chart remains inside the equal-height card.
+- [x] P0: make contextual back navigation visible and stateful.
+  - Preserve the existing section-back stack during analytics/category/position drilldowns instead of clearing it in the following section switch.
+  - Use one compact icon button with a destination tooltip; restore the analytics tab, period, selected position, filters, sort order, and useful scroll context.
+  - Keep ordinary sidebar navigation as a fresh navigation that clears contextual history.
+  - Done 2026-07-16: contextual switches preserve the stack and open the destination at the top so the icon Back control is visible; Back restores the source tab, position analytics state, filters, and scroll position.
+- [x] P1: add a dedicated `Цены и скидки` analytics tab and remove price/discount rankings from `Структура`.
+  - Reuse the global analytics period and present `Цены` / `Скидки` as an internal segmented mode.
+  - Price view: ranked bars for percentage change, absolute change, and current average price; expose previous/current purchase counts so one-off observations are not presented as reliable trends.
+  - Discount view: ranked bars for saved amount, discount rate, and purchase count; filter by all/promo/coupon/loyalty-points using compact chips.
+  - Selecting an item opens a focused time view and bucket drilldown to matching operations. Keep popular positions in `Позиции`, categories in `Структура`, and defer unrelated anomalies/largest operations to a future observations surface.
+  - Done 2026-07-16: `Структура` contains only category/group composition. `Цены и скидки` reuses the global period and provides price/discount modes, metric rankings, discount-type filters, compact KPI summaries, selected-item timelines, and operation drilldown.
+  - Done 2026-07-16: highlights include template IDs, absolute price change, current/previous sample and purchase counts, price timelines, discount type breakdowns, and type-aware savings timelines without an additional request.
+- [x] P1: make position analytics visibly interactive.
+  - Add restrained hover/focus motion, stronger active color, pointer affordance, and an explicit operation-drilldown tooltip to non-empty ranking/bucket controls.
+  - Respect `prefers-reduced-motion`; do not add persistent pulse or layout-shifting animation.
+  - Done 2026-07-16: ranking rows and non-empty timeline/matrix buckets use restrained hover/focus motion, stronger feedback, explicit pointer behavior, and operation-drilldown tooltips with reduced-motion support.
+- [x] P1: replace passive operation filter labels with a consistent active-filter strip.
+  - Render compact label/value chips with individual removal and one icon-only reset-all action.
+  - Ensure reset-all clears every visible drilldown constraint, while Back restores the source analytics context.
+  - Done 2026-07-16: active filters render as compact label/value controls with individual removal plus one icon-only reset-all action; drilldown Back remains independent from filter reset.
+- [x] P1: extend tests and visual validation.
+  - Cover price/discount API semantics, comparison sample counts, discount-type filtering, ranking sort, bucket drilldown, Back restoration, filter removal, and desktop/mobile overflow.
+  - Done 2026-07-16: dashboard/API and frontend contracts pass; the full analytics browser suite covers Back restoration, filter removal, structure containment, and the new tab at 320/390/768/1440px. Targeted operations and session browser regressions also pass.
+
 ### Session Reliability And Telegram Startup 2026-07-16
 - [x] P0: make Telegram Mini App startup reliable without a manual reload.
   - Replace the one-shot `Telegram.WebApp.initData` check with a bounded readiness wait and short backoff while the branded session-check animation remains visible.

@@ -66,7 +66,6 @@
           <div class="topbar-title-block">
             <button id="sectionBackBtn" class="section-back-btn hidden" type="button" aria-label="Назад" title="Назад">
               <span class="section-back-btn-icon" aria-hidden="true">←</span>
-              <span id="sectionBackLabel" class="section-back-btn-label">Назад</span>
             </button>
             <div>
             <h2 id="sectionTitle">Дашборд</h2>
