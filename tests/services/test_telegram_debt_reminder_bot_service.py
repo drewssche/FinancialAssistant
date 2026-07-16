@@ -63,7 +63,8 @@ def test_list_due_deliveries_builds_due_soon_text(db_session: Session, monkeypat
         lambda self: datetime(2026, 3, 23, 10, 7, tzinfo=timezone.utc),
     )
 
-    deliveries = TelegramDebtReminderBotService(db_session).list_due_deliveries()
+    service = TelegramDebtReminderBotService(db_session)
+    deliveries = service.list_due_deliveries()
 
     assert len(deliveries) == 1
     assert deliveries[0].chat_id == "100500"
@@ -72,6 +73,12 @@ def test_list_due_deliveries_builds_due_soon_text(db_session: Session, monkeypat
     assert "💸 Вам нужно вернуть" in deliveries[0].text
     assert "Скоро срок долга" in deliveries[0].text
     assert "Контрагент: Мария" in deliveries[0].text
+    claimed = service.claim_delivery(deliveries[0])
+    assert claimed is not None
+    assert db_session.get(DebtReminderJob, claimed.payload["job"].id).status == "sending"
+    assert service.claim_delivery(deliveries[0]) is None
+    service.release_delivery(claimed)
+    assert db_session.get(DebtReminderJob, claimed.payload["job"].id).status == "pending"
 
 
 def test_list_due_deliveries_builds_overdue_text(db_session: Session, monkeypatch):

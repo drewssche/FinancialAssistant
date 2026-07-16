@@ -13,6 +13,8 @@ from app.core.cache import (
     reset_cache_for_tests,
     set_json,
 )
+import app.core.cache as cache_module
+from redis.exceptions import RedisError
 
 
 def test_dashboard_summary_wrapper_keeps_existing_key_shape():
@@ -230,3 +232,29 @@ def test_categories_paginated_cache_key_shape_is_namespaced_and_parameterized():
         q="еда",
     )
     assert key == "cats:v1:u:7:view:paginated:page:2:page_size:20:kind:expense:q:еда"
+
+
+def test_redis_client_retries_after_initial_connection_failure(monkeypatch):
+    reset_cache_for_tests()
+    now = [0.0]
+    attempts = []
+
+    class FakeRedis:
+        def __init__(self, **_kwargs):
+            attempts.append(len(attempts) + 1)
+
+        def ping(self):
+            if len(attempts) == 1:
+                raise RedisError("offline")
+            return True
+
+    monkeypatch.setattr(cache_module, "Redis", FakeRedis)
+    monkeypatch.setattr(cache_module, "monotonic", lambda: now[0])
+    assert cache_module.get_cache_backend_mode() == "local_fallback"
+    assert cache_module.get_cache_backend_mode() == "local_fallback"
+    assert attempts == [1]
+
+    now[0] = 31.0
+    assert cache_module.get_cache_backend_mode() == "redis"
+    assert attempts == [1, 2]
+    reset_cache_for_tests()

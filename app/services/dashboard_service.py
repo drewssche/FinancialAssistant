@@ -77,14 +77,15 @@ class DashboardService:
         fx_cashflow_total = self._money(cashflow_totals["fx_cashflow_total"])
         cashflow_total = self._money((income_total - expense_total) + debt_cashflow_total + fx_cashflow_total)
         debt_service = DebtService(self.db)
-        debt_lend_outstanding, debt_borrow_outstanding, active_debt_cards = self._safe_debt_summary(
+        debt_summary, debt_summary_available = self._safe_debt_summary(
             debt_service,
             user_id=user_id,
         )
+        debt_lend_outstanding, debt_borrow_outstanding, active_debt_cards = debt_summary
         debt_lend_outstanding = self._money(debt_lend_outstanding)
         debt_borrow_outstanding = self._money(debt_borrow_outstanding)
         currency_service = CurrencyService(self.db)
-        currency_summary = self._safe_currency_summary(currency_service, user_id=user_id)
+        currency_summary, currency_summary_available = self._safe_currency_summary(currency_service, user_id=user_id)
         tracked_codes = currency_summary["tracked_currencies"]
         tracked_positions = [
             {
@@ -115,6 +116,7 @@ class DashboardService:
             "debt_borrow_outstanding": debt_borrow_outstanding,
             "debt_net_position": debt_lend_outstanding - debt_borrow_outstanding,
             "active_debt_cards": active_debt_cards,
+            "debt_summary_available": debt_summary_available,
             "currency_book_value": currency_summary["total_book_value"],
             "currency_current_value": currency_summary["total_current_value"],
             "currency_result_value": currency_summary["total_result_value"],
@@ -129,8 +131,10 @@ class DashboardService:
             "currency_sell_average_rate": currency_summary["sell_average_rate"],
             "active_currency_positions": currency_summary["active_positions"],
             "tracked_currency_positions": tracked_positions,
+            "currency_summary_available": currency_summary_available,
         }
-        set_json(cache_key, payload)
+        if debt_summary_available and currency_summary_available:
+            set_json(cache_key, payload)
         observe_latency_ms("dashboard_summary_latency_miss_compute_ms", (perf_counter() - miss_compute_started) * 1000)
         observe_latency_ms("dashboard_summary_latency_total_ms", (perf_counter() - total_started) * 1000)
         self.redis_runtime_advisory.maybe_send_advisory()
@@ -140,9 +144,9 @@ class DashboardService:
     def _money(value) -> Decimal:
         return Decimal(value or 0).quantize(MONEY_Q)
 
-    def _safe_debt_summary(self, debt_service: DebtService, *, user_id: int) -> tuple[Decimal, Decimal, int]:
+    def _safe_debt_summary(self, debt_service: DebtService, *, user_id: int) -> tuple[tuple[Decimal, Decimal, int], bool]:
         try:
-            return debt_service.summary_active_totals_current_base(user_id=user_id)
+            return debt_service.summary_active_totals_current_base(user_id=user_id), True
         except Exception as exc:  # noqa: BLE001 - dashboard must stay available if an optional debt panel fails.
             log_background_job_event(
                 "dashboard_service",
@@ -152,11 +156,11 @@ class DashboardService:
                 error_type=type(exc).__name__,
             )
             zero_money = self._money(0)
-            return zero_money, zero_money, 0
+            return (zero_money, zero_money, 0), False
 
-    def _safe_currency_summary(self, currency_service: CurrencyService, *, user_id: int) -> dict:
+    def _safe_currency_summary(self, currency_service: CurrencyService, *, user_id: int) -> tuple[dict, bool]:
         try:
-            return currency_service.compute_positions(user_id=user_id)
+            return currency_service.compute_positions(user_id=user_id), True
         except Exception as exc:  # noqa: BLE001 - dashboard must stay available if an optional currency panel fails.
             log_background_job_event(
                 "dashboard_service",
@@ -193,7 +197,7 @@ class DashboardService:
                 "realized_by_currency": {},
                 "trade_stats_by_currency": {},
                 "current_rates": [],
-            }
+            }, False
 
     def get_analytics_calendar(
         self,

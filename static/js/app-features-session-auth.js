@@ -6,6 +6,7 @@
   const SESSION_TICK_MS = 30 * 1000;
   const TELEGRAM_READY_TIMEOUT_MS = 5000;
   let telegramAuthPromise = null;
+  let autoTelegramLoginPromise = null;
   let sessionRefreshPromise = null;
   let bootstrapPromise = null;
   let sessionTimerId = null;
@@ -22,12 +23,23 @@
     }
   }
 
-  function storeAccessToken(data) {
+  function tokenTimestampIso(rawValue) {
+    const seconds = Number(rawValue || 0);
+    return Number.isFinite(seconds) && seconds > 0 ? new Date(seconds * 1000).toISOString() : "";
+  }
+
+  function storeAccessToken(data, options = {}) {
     const token = String(data?.access_token || "").trim();
     if (!token) throw new Error("Сервер не вернул токен доступа");
     const claims = parseTokenPayload(token);
     state.token = token;
     state.sessionExpiresAt = data?.expires_at || (claims.exp ? new Date(Number(claims.exp) * 1000).toISOString() : "");
+    state.sessionStartedAt = tokenTimestampIso(claims.session_started_at || claims.iat);
+    const issuedAt = tokenTimestampIso(claims.iat);
+    state.sessionLastRenewedAt = options.renewed === true
+      || (claims.session_started_at && Number(claims.iat || 0) > Number(claims.session_started_at || 0) + 1)
+      ? issuedAt
+      : "";
     localStorage.setItem("access_token", token);
     updateSessionStatus();
     return token;
@@ -37,6 +49,10 @@
     if (!state.token) return;
     const claims = parseTokenPayload(state.token);
     state.sessionExpiresAt = claims.exp ? new Date(Number(claims.exp) * 1000).toISOString() : "";
+    state.sessionStartedAt = tokenTimestampIso(claims.session_started_at || claims.iat);
+    state.sessionLastRenewedAt = claims.session_started_at && Number(claims.iat || 0) > Number(claims.session_started_at || 0) + 1
+      ? tokenTimestampIso(claims.iat)
+      : "";
   }
 
   function sessionRemainingMs() {
@@ -51,6 +67,12 @@
     return `${minutes} мин`;
   }
 
+  function formatSessionTime(value) {
+    const parsed = new Date(value || "");
+    if (Number.isNaN(parsed.getTime())) return "";
+    return new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(parsed);
+  }
+
   function updateSessionStatus() {
     if (!el.sessionStatusRow || !el.sessionRemainingLabel) return;
     const remainingMs = sessionRemainingMs();
@@ -58,6 +80,15 @@
     el.sessionStatusRow.classList.toggle("hidden", !visible);
     if (!visible) return;
     el.sessionRemainingLabel.textContent = formatRemainingTime(remainingMs);
+    const startedAt = formatSessionTime(state.sessionStartedAt);
+    const renewedAt = formatSessionTime(state.sessionLastRenewedAt);
+    if (el.sessionStartedLabel) {
+      el.sessionStartedLabel.textContent = startedAt ? `Начата ${startedAt}` : "Сессия";
+    }
+    if (el.sessionRenewedLabel) {
+      el.sessionRenewedLabel.textContent = renewedAt ? `Обновлена ${renewedAt}` : "";
+      el.sessionRenewedLabel.classList.toggle("hidden", !renewedAt);
+    }
     el.sessionStatusRow.classList.toggle("is-warning", remainingMs > 0 && remainingMs <= AUTO_REFRESH_WINDOW_MS);
     el.sessionStatusRow.classList.toggle("is-expired", remainingMs <= 0);
     [el.sessionRefreshBtn, el.createSessionRefreshBtn, el.editSessionRefreshBtn].forEach((button) => {
@@ -121,7 +152,7 @@
     updateSessionStatus();
     sessionRefreshPromise = requestFreshAccessToken()
       .then((data) => {
-        storeAccessToken(data);
+        storeAccessToken(data, { renewed: true });
         hideSessionRecovery();
         if (manual) core.notify?.("Сессия продлена", { type: "success" });
         return true;
@@ -134,20 +165,21 @@
     return sessionRefreshPromise;
   }
 
-  async function authenticateTelegramInPlace(options = {}) {
+  function authenticateTelegramInPlace(options = {}) {
     if (telegramAuthPromise) return telegramAuthPromise;
-    const initData = options.initData || await waitForTelegramInitData();
-    if (!initData) throw new Error("Telegram не передал данные авторизации. Закройте и снова откройте Mini App.");
-    telegramAuthPromise = core.requestJson("/api/v1/auth/telegram", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ init_data: initData }),
-      skipAuthRecovery: true,
-    }).then((data) => {
+    telegramAuthPromise = (async () => {
+      const initData = options.initData || await waitForTelegramInitData();
+      if (!initData) throw new Error("Telegram не передал данные авторизации. Закройте и снова откройте Mini App.");
+      const data = await core.requestJson("/api/v1/auth/telegram", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ init_data: initData }),
+        skipAuthRecovery: true,
+      });
       storeAccessToken(data);
       hideSessionRecovery();
       return true;
-    }).finally(() => {
+    })().finally(() => {
       telegramAuthPromise = null;
     });
     return telegramAuthPromise;
@@ -238,6 +270,8 @@
     if (sessionTimerId) clearInterval(sessionTimerId);
     sessionTimerId = null;
     state.sessionExpiresAt = "";
+    state.sessionStartedAt = "";
+    state.sessionLastRenewedAt = "";
     updateSessionStatus();
   }
 
@@ -401,6 +435,7 @@
     state.firstOperationDate = "";
     state.allTimeAnchorResolved = false;
     state.dashboardDebtSummaryLoaded = false;
+    state.dashboardSummaryHydrated = false;
     state.dashboardCurrencyHydrated = false;
     state.dashboardAnalyticsHydrated = false;
     state.dashboardDebtsHydrated = false;
@@ -474,20 +509,26 @@
     await bootstrapApp();
   }
 
-  async function tryAutoTelegramLogin(options = {}) {
+  function tryAutoTelegramLogin(options = {}) {
     if (state.token) {
-      return false;
+      return Promise.resolve(false);
     }
-    const initData = options.waitForReady === false
-      ? telegramInitData()
-      : await waitForTelegramInitData();
-    if (!initData) {
-      return false;
-    }
-    core.showSessionChecking?.("Входим через Telegram...");
-    await authenticateTelegramInPlace({ initData });
-    if (options.bootstrap !== false) await bootstrapApp();
-    return true;
+    if (autoTelegramLoginPromise) return autoTelegramLoginPromise;
+    autoTelegramLoginPromise = (async () => {
+      const initData = options.waitForReady === false
+        ? telegramInitData()
+        : await waitForTelegramInitData();
+      if (!initData) {
+        return false;
+      }
+      core.showSessionChecking?.("Входим через Telegram...");
+      await authenticateTelegramInPlace({ initData });
+      if (options.bootstrap !== false) await bootstrapApp();
+      return true;
+    })().finally(() => {
+      autoTelegramLoginPromise = null;
+    });
+    return autoTelegramLoginPromise;
   }
 
   hydrateStoredTokenMetadata();

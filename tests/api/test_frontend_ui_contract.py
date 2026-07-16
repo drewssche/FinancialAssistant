@@ -13,7 +13,7 @@ def test_mobile_table_styles_live_in_dedicated_responsive_module():
     tables = (REPO_ROOT / "static" / "css" / "components-tables.css").read_text(encoding="utf-8")
     responsive_tables = (REPO_ROOT / "static" / "css" / "responsive-sm-tables.css").read_text(encoding="utf-8")
 
-    assert '@import url("/static/css/responsive-sm-tables.css");' in styles
+    assert '@import url("/static/css/responsive-sm-tables.css?v=20260716j");' in styles
     assert styles.index("responsive-sm-tables.css") < styles.index("responsive-sm-core.css")
     assert "@media (max-width: 640px)" not in tables
     assert ".mobile-card-table thead" in responsive_tables
@@ -103,8 +103,10 @@ def test_byn_uses_compact_currency_symbol_in_frontend_formatters():
     assert "function normalizeCurrencyCode" in core_utils
     assert "function formatCurrencySymbol" in core_utils
     assert r"`${formatted}\u00A0${cfg.symbol}`" in core_utils
-    assert "<option value=\"BYN\">BYN (&#xe901;)</option>" in modal_templates
-    assert "Пример: 1 234,56&nbsp;&#xe901;" in secondary_templates
+    assert "<option value=\"BYN\">BYN (Br)</option>" in modal_templates
+    assert "Пример: 1 234,56&nbsp;Br" in secondary_templates
+    assert "&#xe901;" not in modal_templates
+    assert "&#xe901;" not in secondary_templates
     assert "text-rendering: geometricPrecision" in core_css
     assert "руб." not in core_utils
 
@@ -130,7 +132,10 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert '<div class="brand" aria-label="ФинАсист">' in shell
     assert '<img src="/static/favicon.svg?v=2" alt="" width="40" height="40" />' in shell
     assert 'id="sessionStatusRow"' in shell
+    assert 'id="sessionStartedLabel"' in shell
+    assert 'id="sessionRenewedLabel" class="hidden"' in shell
     assert 'id="sessionRefreshBtn"' in shell
+    assert 'id="sessionRefreshBtn" class="btn btn-secondary session-renew-btn" type="button" title="Продлить сессию" aria-label="Продлить сессию"><span aria-hidden="true">⟳</span></button>' in shell
     assert 'id="sessionRecoveryOverlay"' in shell
     assert 'id="sessionRecoveryBtn"' in shell
     assert 'id="financeCalculatorToggle"' not in shell
@@ -140,10 +145,13 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert 'id="createSessionRefreshBtn"' in modals
     assert 'id="editSessionRefreshBtn"' in modals
     assert modals.count('aria-label="Продлить сессию"') >= 2
+    assert modals.count("modal-head-icon-btn") >= 8
+    assert '<span aria-hidden="true">%</span><span>Калькулятор</span>' not in modals
+    assert modals.count('class="modal-action-svg"') == 2
     assert 'data-calculator-mode="discount"' in shell
     assert 'data-calculator-mode="split"' in shell
     assert '"/static/js/app-finance-calculator.js"' in manifest
-    assert '@import url("/static/css/components-finance-calculator.css");' in styles
+    assert '@import url("/static/css/components-finance-calculator.css?v=20260716j");' in styles
     assert "registerRuntimeModule?.(\"finance-calculator\"" in calculator_js
     assert "calculateDiscount" in calculator_js
     assert "calculateChange" in calculator_js
@@ -158,9 +166,10 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert "body.finance-calculator-open" in calculator_css
     assert "@media (max-width: 640px)" in calculator_css
     assert "max-height: min(88dvh, 720px)" in calculator_css
-    assert '/static/styles.css?v=20260716' in index_html
-    assert '/static/css/components-core.css?v=20260716' in styles
-    assert '/static/css/components-analytics-summary.css?v=20260716' in styles
+    assert '/static/styles.css?v=20260716l' in index_html
+    assert '/static/css/components-core.css?v=20260716j' in styles
+    assert '/static/css/layout-debts.css?v=20260716j' in styles
+    assert '/static/css/components-analytics-summary.css?v=20260716j' in styles
 
 
 def test_session_refresh_preserves_runtime_ui_and_retries_unauthorized_requests():
@@ -174,7 +183,9 @@ def test_session_refresh_preserves_runtime_ui_and_retries_unauthorized_requests(
     assert 'window.addEventListener("pageshow", resume)' in session_auth
     assert "if (bootstrapPromise) return bootstrapPromise" in session_auth
     assert "await refreshSession({ manual: true })" in session_auth
-    assert "operationModal.closeCreateModal()" not in session_auth.split("async function refreshSession", 1)[1].split("async function authenticateTelegramInPlace", 1)[0]
+    assert "state.sessionStartedAt = tokenTimestampIso(claims.session_started_at || claims.iat)" in session_auth
+    assert "storeAccessToken(data, { renewed: true })" in session_auth
+    assert "operationModal.closeCreateModal()" not in session_auth.split("async function refreshSession", 1)[1].split("function authenticateTelegramInPlace", 1)[0]
     assert "recoverUnauthorized" in core_actions
     assert "getSessionFeature().logout?.(false)" not in core_actions
     assert "skipAuthRecovery: true" in core_actions
@@ -285,11 +296,18 @@ def test_debts_mobile_search_and_operations_period_label_contracts():
 
 def test_dashboard_summary_retry_and_plan_fallback_are_non_blocking():
     dashboard_data = (REPO_ROOT / "static" / "js" / "app-dashboard-data.js").read_text(encoding="utf-8")
+    dashboard = (REPO_ROOT / "static" / "js" / "app-features-dashboard.js").read_text(encoding="utf-8")
+    skeletons = (REPO_ROOT / "static" / "js" / "app-loading-skeletons.js").read_text(encoding="utf-8")
     plans = (REPO_ROOT / "static" / "js" / "app-features-plans.js").read_text(encoding="utf-8")
 
     assert "function isRetryableSummaryError(err)" in dashboard_data
     assert "/\\[(500|502|503|504)\\]/.test(message)" in dashboard_data
     assert "await wait(450, options.signal);" in dashboard_data
+    assert "Загружаем активные долги…" in skeletons
+    assert "Загружаем ближайшие планы…" in skeletons
+    assert "data-dashboard-retry" in dashboard
+    assert "bindDashboardRetryActions" in dashboard
+    assert "data-plans-retry" in plans
     assert "state.plansAllTimeBalance = 0;" in plans
     assert "return 0;" in plans
 
@@ -332,7 +350,7 @@ def test_operations_section_is_money_flow_first_without_bulk_select():
     assert "gap: 10px;" in operations_css
     assert ".period-control {" in operations_css
     assert "grid-template-columns: 2.25rem minmax(10rem, 1fr) 2.25rem;" in operations_css
-    assert '@import url("/static/css/components-operation-controls.css");' in styles
+    assert '@import url("/static/css/components-operation-controls.css?v=20260716j");' in styles
     assert styles.index("components-operation-controls.css") < styles.index("components-analytics-summary.css")
     assert ".period-control {" not in analytics_css
     assert ".operations-controls-grid {" not in analytics_css

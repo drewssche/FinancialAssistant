@@ -7,6 +7,7 @@ from threading import Lock
 _COUNTERS: dict[str, int] = defaultdict(int)
 _LATENCIES_MS: dict[str, deque[float]] = defaultdict(lambda: deque(maxlen=2048))
 _HTTP_REQUEST_TOTALS: dict[str, int] = defaultdict(int)
+_HTTP_RESPONSE_BYTES: dict[str, deque[int]] = defaultdict(lambda: deque(maxlen=2048))
 _LOCK = Lock()
 
 
@@ -64,6 +65,10 @@ def get_dashboard_summary_metrics() -> dict:
         "latency_total": _latency_stats("dashboard_summary_latency_total_ms"),
         "latency_miss_compute": _latency_stats("dashboard_summary_latency_miss_compute_ms"),
         "endpoint_request_totals": get_http_request_totals(),
+        "endpoint_response_bytes": get_http_response_size_stats(),
+        "database_query_total": get_counter_value("database_query_total"),
+        "database_query_error_total": get_counter_value("database_query_error_total"),
+        "database_query_latency": _latency_stats("database_query_latency_ms"),
     }
 
 
@@ -80,8 +85,30 @@ def get_http_request_totals() -> dict[str, int]:
         return dict(sorted(_HTTP_REQUEST_TOTALS.items(), key=lambda item: item[0]))
 
 
+def record_http_response_size(path: str, method: str, size_bytes: int) -> None:
+    if not path.startswith("/api/v1/"):
+        return
+    key = f"{method.upper()} {path}"
+    with _LOCK:
+        _HTTP_RESPONSE_BYTES[key].append(max(int(size_bytes), 0))
+
+
+def get_http_response_size_stats() -> dict[str, dict[str, int]]:
+    with _LOCK:
+        snapshots = {key: list(values) for key, values in _HTTP_RESPONSE_BYTES.items()}
+    return {
+        key: {
+            "samples": len(values),
+            "avg_bytes": int(round(sum(values) / len(values))) if values else 0,
+            "max_bytes": max(values, default=0),
+        }
+        for key, values in sorted(snapshots.items(), key=lambda item: item[0])
+    }
+
+
 def reset_metrics_for_tests() -> None:
     with _LOCK:
         _COUNTERS.clear()
         _LATENCIES_MS.clear()
         _HTTP_REQUEST_TOTALS.clear()
+        _HTTP_RESPONSE_BYTES.clear()

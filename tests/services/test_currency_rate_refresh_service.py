@@ -1,6 +1,7 @@
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -8,6 +9,25 @@ from sqlalchemy.pool import StaticPool
 from app.db.base import Base
 from app.db.models import User, UserPreference
 from app.services.currency_rate_refresh_service import CurrencyRateRefreshService
+
+
+@pytest.mark.parametrize(
+    ("currency", "official_rate", "scale", "expected"),
+    [
+        ("USD", "2.8864", 1, "2.8864"),
+        ("EUR", "3.2957", 1, "3.2957"),
+        ("RUB", "3.7044", 100, "0.037044"),
+        ("CNY", "4.2611", 10, "0.42611"),
+        ("PLN", "7.6148", 10, "0.76148"),
+    ],
+)
+def test_nbrb_rate_is_normalized_to_one_currency_unit(currency, official_rate, scale, expected):
+    normalized = CurrencyRateRefreshService._normalize_provider_rate(
+        {"Cur_OfficialRate": official_rate, "Cur_Scale": scale},
+        currency=currency,
+    )
+
+    assert str(normalized) == expected
 
 
 def _make_session():
@@ -175,7 +195,7 @@ def test_refresh_user_tracked_rates_keeps_last_available_snapshot_until_new_offi
             currency="USD",
             rate=3.27,
             rate_date=yesterday,
-            source="nbrb_auto",
+            source="nbrb_auto_unit",
         )
 
         class _FakeResponse:

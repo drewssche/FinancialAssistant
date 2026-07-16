@@ -1,7 +1,7 @@
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import case, func, select
+from sqlalchemy import case, func, select, update
 from sqlalchemy.orm import Session
 
 from app.db.models import (
@@ -296,7 +296,7 @@ class DebtRepository:
         )
         return list(self.db.execute(stmt).all())
 
-    def get_pending_reminder_job_snapshot(self, *, job_id: int):
+    def get_reminder_job_snapshot(self, *, job_id: int, status: str = "pending"):
         stmt = (
             select(DebtReminderJob, Debt, DebtCounterparty, AuthIdentity, UserPreference)
             .join(Debt, Debt.id == DebtReminderJob.debt_id)
@@ -308,11 +308,30 @@ class DebtRepository:
             .outerjoin(UserPreference, UserPreference.user_id == DebtReminderJob.user_id)
             .where(
                 DebtReminderJob.id == job_id,
-                DebtReminderJob.status == "pending",
+                DebtReminderJob.status == status,
             )
             .limit(1)
         )
         return self.db.execute(stmt).first()
+
+    def get_pending_reminder_job_snapshot(self, *, job_id: int):
+        return self.get_reminder_job_snapshot(job_id=job_id, status="pending")
+
+    def claim_reminder_job(self, *, job_id: int) -> bool:
+        result = self.db.execute(
+            update(DebtReminderJob)
+            .where(DebtReminderJob.id == job_id, DebtReminderJob.status == "pending")
+            .values(status="sending")
+        )
+        return bool(result.rowcount)
+
+    def release_reminder_job(self, *, job_id: int) -> bool:
+        result = self.db.execute(
+            update(DebtReminderJob)
+            .where(DebtReminderJob.id == job_id, DebtReminderJob.status == "sending")
+            .values(status="pending")
+        )
+        return bool(result.rowcount)
 
     def list_issuances_for_debts(self, debt_ids: list[int]) -> list[DebtIssuance]:
         if not debt_ids:

@@ -330,18 +330,9 @@
         },
         toastMessage: "Операция удалена",
         undoAction: async () => {
-          await core.requestJson("/api/v1/operations", {
+          await core.requestJson(`/api/v1/operations/${item.id}/restore`, {
             method: "POST",
             headers: core.authHeaders(),
-            body: JSON.stringify({
-              kind: item.kind,
-              category_id: item.category_id,
-              amount: item.amount,
-              currency: item.currency || "BYN",
-              fx_rate: item.currency && item.base_currency && item.currency !== item.base_currency ? item.fx_rate : null,
-              operation_date: item.operation_date,
-              note: item.note,
-            }),
           });
           const dashboardData = getDashboardData();
           core.invalidateUiRequestCache("operations");

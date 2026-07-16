@@ -18,8 +18,7 @@ def _override_current_user_id() -> int:
     return 1
 
 
-@pytest.fixture
-def client():
+def _client_lifecycle():
     reset_cache_for_tests()
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
@@ -49,6 +48,11 @@ def client():
     reset_cache_for_tests()
     app.dependency_overrides.clear()
     Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture
+def client():
+    yield from _client_lifecycle()
 
 
 def test_operations_crud_and_filters(client: TestClient):
@@ -513,6 +517,193 @@ def test_operation_update_can_change_and_remove_linked_fx_settlement(client: Tes
     overview = client.get("/api/v1/currency/overview", params={"currency": "USD"})
     assert overview.status_code == 200, overview.text
     assert all(item["linked_operation_id"] != operation_id for item in overview.json()["recent_trades"])
+
+
+def test_old_foreign_operation_can_add_update_disable_and_delete_currency_settlement(client: TestClient):
+    funding = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "100.00",
+            "unit_price": "3.00",
+            "fee": "0",
+            "trade_date": "2026-03-01",
+        },
+    )
+    assert funding.status_code == 201, funding.text
+
+    operation = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "20.00",
+            "currency": "USD",
+            "fx_rate": "3.00",
+            "operation_date": "2026-03-05",
+            "note": "Historical USD expense",
+        },
+    )
+    assert operation.status_code == 201, operation.text
+    operation_id = operation.json()["id"]
+    assert operation.json()["currency"] == "USD"
+    assert operation.json()["original_amount"] == "20.00"
+    assert operation.json()["amount"] == "60.00"
+    assert operation.json()["fx_settlement"] is None
+
+    linked = client.patch(
+        f"/api/v1/operations/{operation_id}",
+        json={
+            "fx_settlement": {
+                "asset_currency": "USD",
+                "quantity": "20.00",
+                "quote_total": "60.00",
+                "unit_price": "3.00",
+            },
+        },
+    )
+    assert linked.status_code == 200, linked.text
+    assert linked.json()["currency"] == "USD"
+    assert linked.json()["original_amount"] == "20.00"
+    assert linked.json()["fx_settlement"]["quantity"] == "20.000"
+
+    overview = client.get("/api/v1/currency/overview", params={"currency": "USD"})
+    assert overview.status_code == 200, overview.text
+    assert overview.json()["positions"][0]["quantity"] == "80.000000"
+
+    changed = client.patch(
+        f"/api/v1/operations/{operation_id}",
+        json={
+            "amount": "25.00",
+            "currency": "USD",
+            "fx_rate": "3.00",
+            "fx_settlement": {
+                "asset_currency": "USD",
+                "quantity": "25.00",
+                "quote_total": "75.00",
+                "unit_price": "3.00",
+            },
+        },
+    )
+    assert changed.status_code == 200, changed.text
+    assert changed.json()["currency"] == "USD"
+    assert changed.json()["original_amount"] == "25.00"
+    assert changed.json()["fx_settlement"]["quantity"] == "25.000"
+
+    disabled = client.patch(f"/api/v1/operations/{operation_id}", json={"fx_settlement": None})
+    assert disabled.status_code == 200, disabled.text
+    restored = client.get("/api/v1/currency/overview", params={"currency": "USD"})
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["positions"][0]["quantity"] == "100.000000"
+
+    relinked = client.patch(
+        f"/api/v1/operations/{operation_id}",
+        json={
+            "fx_settlement": {
+                "asset_currency": "USD",
+                "quantity": "25.00",
+                "quote_total": "75.00",
+                "unit_price": "3.00",
+            },
+        },
+    )
+    assert relinked.status_code == 200, relinked.text
+    deleted = client.delete(f"/api/v1/operations/{operation_id}")
+    assert deleted.status_code == 204, deleted.text
+    after_delete = client.get("/api/v1/currency/overview", params={"currency": "USD"})
+    assert after_delete.status_code == 200, after_delete.text
+    assert after_delete.json()["positions"][0]["quantity"] == "100.000000"
+
+
+def test_deleted_operation_restore_is_lossless_and_single_use(client: TestClient):
+    funding = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "100.00",
+            "unit_price": "3.00",
+            "fee": "0",
+            "trade_date": "2026-03-01",
+        },
+    )
+    assert funding.status_code == 201, funding.text
+    category = client.post(
+        "/api/v1/categories",
+        json={"name": "Travel", "kind": "expense", "icon": "plane"},
+    )
+    assert category.status_code == 200, category.text
+
+    created = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "10.00",
+            "currency": "USD",
+            "fx_rate": "3.00",
+            "operation_date": "2026-03-05",
+            "category_id": category.json()["id"],
+            "note": "Lossless restore",
+            "receipt_items": [
+                {
+                    "shop_name": "Airport",
+                    "name": "Coffee",
+                    "category_id": category.json()["id"],
+                    "quantity": "2",
+                    "unit_price": "5.00",
+                    "is_discounted": True,
+                    "regular_unit_price": "7.00",
+                    "discount_type": "coupon",
+                    "note": "Two cups",
+                }
+            ],
+            "fx_settlement": {
+                "asset_currency": "USD",
+                "quantity": "10.00",
+                "quote_total": "30.00",
+                "unit_price": "3.00",
+                "note": "Currency card",
+            },
+        },
+    )
+    assert created.status_code == 201, created.text
+    operation_id = created.json()["id"]
+    receipt_id = created.json()["receipt_items"][0]["id"]
+    settlement_id = created.json()["fx_settlement"]["trade_id"]
+
+    deleted = client.delete(f"/api/v1/operations/{operation_id}")
+    assert deleted.status_code == 204, deleted.text
+    restored_balance = client.get("/api/v1/currency/overview", params={"currency": "USD"})
+    assert restored_balance.json()["positions"][0]["quantity"] == "100.000000"
+
+    restored = client.post(f"/api/v1/operations/{operation_id}/restore")
+    assert restored.status_code == 200, restored.text
+    payload = restored.json()
+    assert payload["id"] == operation_id
+    assert payload["original_amount"] == "10.00"
+    assert payload["amount"] == "30.00"
+    assert payload["currency"] == "USD"
+    assert payload["fx_rate"] == "3.000000"
+    assert payload["receipt_items"][0]["id"] == receipt_id
+    assert payload["receipt_items"][0]["discount_type"] == "coupon"
+    assert payload["receipt_items"][0]["regular_unit_price"] == "7.00"
+    assert payload["fx_settlement"]["trade_id"] == settlement_id
+    assert payload["fx_settlement"]["note"] == "Currency card"
+
+    debited_balance = client.get("/api/v1/currency/overview", params={"currency": "USD"})
+    assert debited_balance.json()["positions"][0]["quantity"] == "90.000000"
+    duplicate = client.post(f"/api/v1/operations/{operation_id}/restore")
+    assert duplicate.status_code == 409
+
+    journal = client.get(
+        "/api/v1/activity",
+        params={"entity_type": "operation", "entity_id": operation_id, "page_size": 20},
+    )
+    assert journal.status_code == 200, journal.text
+    assert journal.json()["items"][0]["event_type"] == "restored"
+    assert all("_restore_snapshot" not in item["metadata"] for item in journal.json()["items"])
 
 
 def test_operations_money_flow_combines_operations_debts_and_fx(client: TestClient):
@@ -1135,6 +1326,22 @@ def test_money_flow_all_source_uses_paginated_operation_window(
     assert len(payload["items"]) == 2
     assert payload["items"][0]["source_kind"] == "operation"
     assert payload["items"][0]["event_date"] == "2026-05-03"
+
+
+def test_money_flow_broad_search_has_explicit_in_memory_limit(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    oversized = [object()] * (OperationMoneyFlowService.MAX_IN_MEMORY_FLOW_ITEMS + 1)
+
+    monkeypatch.setattr(OperationRepository, "list_filtered_all", lambda *args, **kwargs: oversized)
+
+    response = client.get(
+        "/api/v1/operations/money-flow",
+        params={"source": "all", "q": "широкий поиск"},
+    )
+
+    assert response.status_code == 400
+    assert "Уточните период" in response.json()["detail"]
 
 
 def test_money_flow_summary_all_source_uses_sql_operation_summary(

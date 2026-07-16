@@ -84,6 +84,13 @@ class CurrencyPositionOut(BaseModel):
     total_result_value: Decimal = Decimal("0")
 
 
+class CurrencyAvailableBalanceOut(BaseModel):
+    currency: str
+    as_of: date
+    available_quantity: Decimal
+    current_quantity: Decimal
+
+
 class CurrencyOverviewOut(BaseModel):
     base_currency: str
     tracked_currencies: list[str]

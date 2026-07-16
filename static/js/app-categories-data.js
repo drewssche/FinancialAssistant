@@ -313,10 +313,9 @@
       onAfterDelete: loadCategories,
       toastMessage: `Категория «${item.name}» удалена`,
       undoAction: async () => {
-        await core.requestJson("/api/v1/categories", {
+        await core.requestJson(`/api/v1/categories/${item.id}/restore`, {
           method: "POST",
           headers: core.authHeaders(),
-          body: JSON.stringify({ name: item.name, kind: item.kind, group_id: item.group_id }),
         });
         core.invalidateUiRequestCache("categories");
         core.invalidateUiRequestCache("operations");

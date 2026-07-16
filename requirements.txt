@@ -3,10 +3,10 @@ uvicorn[standard]==0.34.0
 SQLAlchemy==2.0.38
 alembic==1.14.1
 psycopg2-binary==2.9.10
-python-dotenv==1.0.1
+python-dotenv==1.2.2
 pydantic==2.10.6
 pydantic-settings==2.8.1
-python-jose[cryptography]==3.3.0
+python-jose[cryptography]==3.4.0
 httpx==0.28.1
 redis==5.2.1
-pytest==8.3.5
+pytest==9.0.3

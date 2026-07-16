@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user_id
 from app.db.session import get_db
 from app.schemas.currency import (
+    CurrencyAvailableBalanceOut,
     CurrencyOverviewOut,
     CurrencyPerformanceHistoryOut,
     CurrencyRateHistoryPointOut,
@@ -20,6 +21,26 @@ from app.services.currency_rate_refresh_service import CurrencyRateRefreshServic
 from app.services.currency_service import CurrencyService
 
 router = APIRouter(prefix="/currency", tags=["currency"])
+
+
+@router.get("/available-balance", response_model=CurrencyAvailableBalanceOut)
+def get_currency_available_balance(
+    currency: str = Query(min_length=3, max_length=3),
+    as_of: date = Query(),
+    exclude_linked_operation_id: int | None = Query(default=None, ge=1),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = CurrencyService(db)
+    try:
+        return service.get_available_balance(
+            user_id=user_id,
+            currency=currency,
+            as_of=as_of,
+            exclude_linked_operation_id=exclude_linked_operation_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.get("/overview", response_model=CurrencyOverviewOut)

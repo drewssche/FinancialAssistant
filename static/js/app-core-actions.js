@@ -47,13 +47,25 @@
     const id = `toast_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const toast = document.createElement("div");
     toast.className = `toast toast-${type}`;
-    toast.innerHTML = `
-      <div class="toast-header">
-        <div class="toast-text">${message}</div>
-        <button class="toast-close" type="button" data-toast-close="${id}" aria-label="Закрыть">×</button>
-      </div>
-      <div class="toast-progress"><div class="toast-progress-bar" style="animation-duration:${durationMs}ms"></div></div>
-    `;
+    const header = document.createElement("div");
+    header.className = "toast-header";
+    const textNode = document.createElement("div");
+    textNode.className = "toast-text";
+    textNode.textContent = String(message ?? "");
+    const closeButton = document.createElement("button");
+    closeButton.className = "toast-close";
+    closeButton.type = "button";
+    closeButton.dataset.toastClose = id;
+    closeButton.setAttribute("aria-label", "Закрыть");
+    closeButton.textContent = "×";
+    header.append(textNode, closeButton);
+    const progress = document.createElement("div");
+    progress.className = "toast-progress";
+    const progressBar = document.createElement("div");
+    progressBar.className = "toast-progress-bar";
+    progressBar.style.animationDuration = `${durationMs}ms`;
+    progress.appendChild(progressBar);
+    toast.append(header, progress);
 
     el.toastArea.appendChild(toast);
     const timeoutId = setTimeout(() => dismissToast(id), durationMs);
@@ -79,11 +91,31 @@
   }
 
   async function requestJson(url, options = {}) {
-    const { skipAuthRecovery = false, ...fetchOptions } = options;
+    const { skipAuthRecovery = false, timeoutMs = 20000, ...fetchOptions } = options;
+    const upstreamSignal = fetchOptions.signal;
+    const requestController = new AbortController();
+    let timedOut = false;
+    const abortFromUpstream = () => requestController.abort(upstreamSignal?.reason);
+    if (upstreamSignal?.aborted) {
+      abortFromUpstream();
+    } else {
+      upstreamSignal?.addEventListener?.("abort", abortFromUpstream, { once: true });
+    }
+    fetchOptions.signal = requestController.signal;
+    const normalizedTimeoutMs = Number(timeoutMs);
+    const timeoutId = Number.isFinite(normalizedTimeoutMs) && normalizedTimeoutMs > 0
+      ? setTimeout(() => {
+          timedOut = true;
+          requestController.abort();
+        }, normalizedTimeoutMs)
+      : null;
     let response;
     try {
       response = await fetch(url, fetchOptions);
     } catch (err) {
+      if (timedOut) {
+        throw new Error(`Сервер не ответил за ${Math.ceil(normalizedTimeoutMs / 1000)} сек.`);
+      }
       if (isAbortError(err)) {
         throw err;
       }
@@ -105,6 +137,11 @@
         throw new Error(`Сеть недоступна: ${path}. Проверь домен, DNS и доступность сервера`);
       }
       throw new Error(`Сбой запроса: ${path}. ${raw}`);
+    } finally {
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
+      upstreamSignal?.removeEventListener?.("abort", abortFromUpstream);
     }
     const data = await response.json().catch(() => ({}));
 
@@ -242,13 +279,24 @@
     const id = `toast_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const toast = document.createElement("div");
     toast.className = "toast toast-info";
-    toast.innerHTML = `
-      <div class="toast-header">
-        <div class="toast-text">${message}</div>
-        <button class="btn btn-secondary" data-toast-undo="${id}">Отменить</button>
-      </div>
-      <div class="toast-progress"><div class="toast-progress-bar" style="animation-duration:${durationMs}ms"></div></div>
-    `;
+    const header = document.createElement("div");
+    header.className = "toast-header";
+    const textNode = document.createElement("div");
+    textNode.className = "toast-text";
+    textNode.textContent = String(message ?? "");
+    const undoButton = document.createElement("button");
+    undoButton.className = "btn btn-secondary";
+    undoButton.type = "button";
+    undoButton.dataset.toastUndo = id;
+    undoButton.textContent = "Отменить";
+    header.append(textNode, undoButton);
+    const progress = document.createElement("div");
+    progress.className = "toast-progress";
+    const progressBar = document.createElement("div");
+    progressBar.className = "toast-progress-bar";
+    progressBar.style.animationDuration = `${durationMs}ms`;
+    progress.appendChild(progressBar);
+    toast.append(header, progress);
 
     el.toastArea.appendChild(toast);
     const timeoutId = setTimeout(() => {

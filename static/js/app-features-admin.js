@@ -78,7 +78,7 @@
       return "—";
     }
     const numeric = Number(value);
-    return Number.isFinite(numeric) ? numeric.toFixed(4) : escapeHtml(String(value));
+    return Number.isFinite(numeric) ? core.formatRateDisplay?.(numeric, 4, 6) : escapeHtml(String(value));
   }
 
   function renderAdminCurrencyDiagnostics(data) {

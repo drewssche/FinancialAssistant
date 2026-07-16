@@ -233,6 +233,11 @@ class ActivityService:
         return [self._serialize(row) for row in items], total
 
     def _serialize(self, row: ActivityEvent) -> dict:
+        metadata = {
+            key: value
+            for key, value in (row.metadata_json or {}).items()
+            if not str(key).startswith("_")
+        }
         return {
             "id": int(row.id),
             "user_id": int(row.user_id),
@@ -242,11 +247,41 @@ class ActivityService:
             "event_type": row.event_type,
             "title": row.title,
             "changes": [self._serialize_change(change, row) for change in (row.changes_json or [])],
-            "metadata": row.metadata_json or {},
-            "metadata_display": self._metadata_display(row.metadata_json or {}),
+            "metadata": metadata,
+            "metadata_display": self._metadata_display(metadata),
             "source": row.source,
             "created_at": row.created_at,
         }
+
+    def get_restore_event(
+        self,
+        *,
+        user_id: int,
+        entity_type: str,
+        entity_id: int,
+    ) -> ActivityEvent:
+        event = self.repo.get_latest_for_entity(
+            user_id=user_id,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            event_type="deleted",
+            for_update=True,
+        )
+        if event is None:
+            raise LookupError("Restore snapshot not found")
+        metadata = event.metadata_json if isinstance(event.metadata_json, dict) else {}
+        if metadata.get("_restored_entity_id") is not None:
+            raise ValueError("Entity has already been restored")
+        if not isinstance(metadata.get("_restore_snapshot"), dict):
+            raise ValueError("Deleted entity does not have a restorable snapshot")
+        return event
+
+    @staticmethod
+    def mark_restored(event: ActivityEvent, *, entity_id: int) -> None:
+        metadata = dict(event.metadata_json or {})
+        metadata["_restored_entity_id"] = int(entity_id)
+        metadata["_restored_at"] = datetime.now().astimezone().isoformat()
+        event.metadata_json = metadata
 
     @staticmethod
     def _metadata_display(metadata: dict) -> list[str]:

@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import and_, delete, desc, or_, select
+from sqlalchemy import and_, delete, desc, or_, select, update
 from sqlalchemy.orm import Session, aliased
 
 from app.db.models import (
@@ -211,7 +211,7 @@ class PlanRepository:
         )
         return list(self.db.execute(stmt).all())
 
-    def get_pending_reminder_job_snapshot(self, *, job_id: int):
+    def get_reminder_job_snapshot(self, *, job_id: int, status: str = "pending"):
         stmt = (
             select(PlanReminderJob, PlanOperation, AuthIdentity, UserPreference)
             .join(PlanOperation, PlanOperation.id == PlanReminderJob.plan_id)
@@ -225,11 +225,30 @@ class PlanRepository:
             .outerjoin(UserPreference, UserPreference.user_id == PlanReminderJob.user_id)
             .where(
                 PlanReminderJob.id == job_id,
-                PlanReminderJob.status == "pending",
+                PlanReminderJob.status == status,
             )
             .limit(1)
         )
         return self.db.execute(stmt).first()
+
+    def get_pending_reminder_job_snapshot(self, *, job_id: int):
+        return self.get_reminder_job_snapshot(job_id=job_id, status="pending")
+
+    def claim_reminder_job(self, *, job_id: int) -> bool:
+        result = self.db.execute(
+            update(PlanReminderJob)
+            .where(PlanReminderJob.id == job_id, PlanReminderJob.status == "pending")
+            .values(status="sending")
+        )
+        return bool(result.rowcount)
+
+    def release_reminder_job(self, *, job_id: int) -> bool:
+        result = self.db.execute(
+            update(PlanReminderJob)
+            .where(PlanReminderJob.id == job_id, PlanReminderJob.status == "sending")
+            .values(status="pending")
+        )
+        return bool(result.rowcount)
 
     def create_reminder_job(self, *, user_id: int, plan_id: int, scheduled_for: datetime) -> PlanReminderJob:
         row = PlanReminderJob(

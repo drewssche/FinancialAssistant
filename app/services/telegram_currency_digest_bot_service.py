@@ -63,6 +63,7 @@ class TelegramCurrencyDigestBotService:
         currency_prefs = dict(prefs.get("currency")) if isinstance(prefs.get("currency"), dict) else {}
         now_local = datetime.now(config["timezone"])
         currency_prefs["last_digest_sent_on"] = now_local.date().isoformat()
+        currency_prefs.pop("digest_delivery_claimed_on", None)
         prefs["currency"] = currency_prefs
         preference.data = prefs
         self.activity.record(
@@ -89,6 +90,35 @@ class TelegramCurrencyDigestBotService:
             tracked_count=len(delivery.tracked_currencies),
             sent_on=currency_prefs["last_digest_sent_on"],
         )
+
+    def claim_delivery(self, delivery: TelegramCurrencyDigestDelivery) -> bool:
+        preference = self.preferences.get_or_create(delivery.user_id)
+        prefs = dict(preference.data) if isinstance(preference.data, dict) else {}
+        config = self._get_digest_config(prefs)
+        today = datetime.now(config["timezone"]).date().isoformat()
+        if config.get("last_digest_sent_on") == today or config.get("digest_delivery_claimed_on") == today:
+            return False
+        currency_prefs = dict(prefs.get("currency")) if isinstance(prefs.get("currency"), dict) else {}
+        currency_prefs["digest_delivery_claimed_on"] = today
+        prefs["currency"] = currency_prefs
+        preference.data = prefs
+        self.db.commit()
+        log_background_job_event(
+            "currency_digest",
+            "digest_delivery_claimed",
+            user_id=delivery.user_id,
+            claimed_on=today,
+        )
+        return True
+
+    def release_delivery(self, delivery: TelegramCurrencyDigestDelivery) -> None:
+        preference = self.preferences.get_or_create(delivery.user_id)
+        prefs = dict(preference.data) if isinstance(preference.data, dict) else {}
+        currency_prefs = dict(prefs.get("currency")) if isinstance(prefs.get("currency"), dict) else {}
+        currency_prefs.pop("digest_delivery_claimed_on", None)
+        prefs["currency"] = currency_prefs
+        preference.data = prefs
+        self.db.commit()
 
     def build_digest_text(self, *, overview: dict, config: dict) -> str:
         lines = [title(ICON_CURRENCY, "Курсы и валютный портфель на сегодня")]
@@ -147,6 +177,7 @@ class TelegramCurrencyDigestBotService:
             "timezone": timezone_obj,
             "tracked_currencies": [str(item).strip().upper() for item in tracked if str(item).strip()],
             "last_digest_sent_on": str(currency_prefs.get("last_digest_sent_on") or "").strip(),
+            "digest_delivery_claimed_on": str(currency_prefs.get("digest_delivery_claimed_on") or "").strip(),
         }
 
     def _is_due_now(self, config: dict) -> bool:
@@ -159,6 +190,7 @@ class TelegramCurrencyDigestBotService:
         except (ValueError, TypeError):
             reminder_hour = 10
             reminder_minute = 0
-        if config.get("last_digest_sent_on") == now_local.date().isoformat():
+        today = now_local.date().isoformat()
+        if config.get("last_digest_sent_on") == today or config.get("digest_delivery_claimed_on") == today:
             return False
         return (now_local.hour, now_local.minute) >= (reminder_hour, reminder_minute)

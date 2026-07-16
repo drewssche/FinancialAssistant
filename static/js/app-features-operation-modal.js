@@ -569,7 +569,7 @@
       el.currencyNote.value = payload.note || "";
     }
     if (el.currencyUnitPrice) {
-      el.currencyUnitPrice.value = Number(payload.unit_price || 0).toFixed(4);
+      el.currencyUnitPrice.value = core.formatRateDisplay?.(payload.unit_price || 0, 4, 6) || Number(payload.unit_price || 0).toFixed(6);
     }
     if (el.currencyQuoteTotal) {
       const quoteTotalValue = Number(payload.quantity || 0) * Number(payload.unit_price || 0);

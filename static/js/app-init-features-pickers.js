@@ -34,6 +34,7 @@
           node.addEventListener("change", async () => {
             actions.resetCreateOperationFxRateAutofill?.();
             await actions.syncOperationCurrencyFields("create");
+            actions.syncCreateFxSettlementFieldUi?.();
             actions.renderReceiptItems?.("create");
             actions.renderReceiptSummary?.("create");
             actions.updateCreatePreview?.();
@@ -43,13 +44,17 @@
           node.addEventListener("change", async () => {
             actions.resetCreateOperationFxRateAutofill?.();
             await actions.syncSuggestedOperationFxRate("create").catch(() => {});
+            actions.syncCreateFxSettlementFieldUi?.();
             actions.renderReceiptItems?.("create");
             actions.renderReceiptSummary?.("create");
             actions.updateCreatePreview?.();
           });
         }
         if (id === "opFxRate" && actions.markCreateOperationFxRateManual) {
-          node.addEventListener("input", actions.markCreateOperationFxRateManual);
+          node.addEventListener("input", () => {
+            actions.markCreateOperationFxRateManual();
+            actions.syncCreateFxSettlementFieldUi?.();
+          });
         }
       }
     }
@@ -154,6 +159,7 @@
           node.addEventListener("change", async () => {
             actions.resetEditOperationFxRateAutofill?.();
             await actions.syncOperationCurrencyFields("edit");
+            actions.syncEditFxSettlementFieldUi?.();
             actions.renderReceiptItems?.("edit");
             actions.renderReceiptSummary?.("edit");
             actions.updateEditPreview?.();
@@ -163,13 +169,17 @@
           node.addEventListener("change", async () => {
             actions.resetEditOperationFxRateAutofill?.();
             await actions.syncSuggestedOperationFxRate("edit").catch(() => {});
+            actions.syncEditFxSettlementFieldUi?.();
             actions.renderReceiptItems?.("edit");
             actions.renderReceiptSummary?.("edit");
             actions.updateEditPreview?.();
           });
         }
         if (id === "editFxRate" && actions.markEditOperationFxRateManual) {
-          node.addEventListener("input", actions.markEditOperationFxRateManual);
+          node.addEventListener("input", () => {
+            actions.markEditOperationFxRateManual();
+            actions.syncEditFxSettlementFieldUi?.();
+          });
         }
       }
     }

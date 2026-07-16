@@ -130,6 +130,12 @@
       if (core.isAbortError && core.isAbortError(err)) {
         return;
       }
+      if (state.activeSection === "debts" && el.debtsCards) {
+        el.debtsCards.innerHTML = `<div class="panel-load-state panel-load-state-error" role="alert">
+          <span>Не удалось загрузить долги</span>
+          <button class="btn btn-secondary btn-xs" type="button" data-debts-retry>Повторить</button>
+        </div>`;
+      }
       throw err;
     } finally {
       if (debtsRequestController === requestController) {

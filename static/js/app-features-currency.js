@@ -52,7 +52,7 @@
 
   function formatRateWithQuote(rate, quoteCurrency) {
     const quote = core.normalizeCurrencyCode?.(quoteCurrency, "BYN") || "BYN";
-    return `${Number(rate || 0).toFixed(4)} ${core.formatCurrencySymbol?.(quote) || quote}`;
+    return `${core.formatRateDisplay?.(rate || 0, 4, 6) || Number(rate || 0).toFixed(6)} ${core.formatCurrencySymbol?.(quote) || quote}`;
   }
 
   async function refreshAfterTradeMutation() {
@@ -265,7 +265,7 @@
           <article class="currency-balance-card">
             <div class="muted-small">${core.escapeHtml ? core.escapeHtml(currencyLabel) : currencyLabel}</div>
             <strong>${core.formatAmount(item?.quantity || 0)}</strong>
-            <div class="currency-balance-secondary">${core.formatMoney(item?.current_value || 0, { currency: baseCurrency })} по текущему курсу${currentRate?.rate ? ` · ${Number(currentRate.rate || 0).toFixed(4)}` : ""}</div>
+            <div class="currency-balance-secondary">${core.formatMoney(item?.current_value || 0, { currency: baseCurrency })} по текущему курсу${currentRate?.rate ? ` · ${core.formatRateDisplay?.(currentRate.rate || 0, 4, 6)}` : ""}</div>
           </article>
         `;
       });
@@ -305,7 +305,7 @@
           <div class="analytics-kpi-grid">
             <article class="analytics-kpi-card analytics-kpi-neutral">
               <div class="muted-small">Средняя цена покупки</div>
-              <strong>${Number(item.average_buy_rate || 0).toFixed(4)}</strong>
+              <strong>${core.formatRateDisplay?.(item.average_buy_rate || 0, 4, 6)}</strong>
             </article>
             <article class="analytics-kpi-card analytics-kpi-neutral">
               <div class="muted-small">Вложено в открытые позиции</div>
@@ -317,7 +317,7 @@
             </article>
             <article class="analytics-kpi-card analytics-kpi-neutral">
               <div class="muted-small">Текущий курс</div>
-              <strong>${Number(item.current_rate || 0).toFixed(4)}</strong>
+              <strong>${core.formatRateDisplay?.(item.current_rate || 0, 4, 6)}</strong>
               <span class="analytics-kpi-delta">${item.current_rate_date ? core.formatDateRu(item.current_rate_date) : "Курс не задан"}</span>
             </article>
             <article class="analytics-kpi-card ${unrealizedTone.cardClass}">

@@ -72,6 +72,28 @@ TOKEN=... BASE_URL=http://localhost:8001 ./scripts/health_check.sh
 
 What it checks:
 - `GET /health` returns `{"status":"ok"}`
+- `GET /ready` returns `200` only when PostgreSQL is reachable and its Alembic revision matches the application head.
+
+## Encrypted PostgreSQL backup
+
+Backups are opt-in and require an `rclone` destination outside the VPS. The scripts never retain a permanent local archive:
+
+```bash
+BACKUP_REMOTE_DIR=remote:financialassistant/postgres \
+BACKUP_ENCRYPTION_PASSWORD_FILE=/secure/financialassistant-backup.pass \
+BACKUP_RETENTION_DAYS=30 \
+./scripts/backup_postgres.sh
+```
+
+Verify one uploaded archive by restoring it into a disposable database:
+
+```bash
+BACKUP_OBJECT=remote:financialassistant/postgres/financialassistant-YYYYMMDDTHHMMSSZ.dump.enc \
+BACKUP_ENCRYPTION_PASSWORD_FILE=/secure/financialassistant-backup.pass \
+./scripts/verify_postgres_restore.sh
+```
+
+Run `./.venv/bin/python scripts/runtime_preflight.py` before enabling stricter production configuration checks. It prints only non-secret status and does not change `.env`.
 - `GET /api/v1/dashboard/summary` is available for authenticated user
 - `GET /api/v1/dashboard/summary/metrics` returns valid telemetry and basic thresholds
 

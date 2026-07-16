@@ -387,6 +387,7 @@ class CurrencyService:
         trade_date: date,
         note: str | None = None,
         allow_linked_trade_update: bool = False,
+        commit: bool = True,
     ) -> FxTrade:
         item = self.repo.get_trade(user_id=user_id, trade_id=trade_id)
         if not item:
@@ -443,20 +444,23 @@ class CurrencyService:
             title="Валютная сделка изменена",
             source="system" if normalized_trade_kind == "card_payment" else "web",
         )
-        self.db.commit()
-        self.db.refresh(item)
-        invalidate_dashboard_summary_cache(user_id)
-        invalidate_dashboard_analytics_cache(user_id)
-        log_background_job_event(
-            "currency_service",
-            "fx_trade_updated",
-            user_id=user_id,
-            fx_trade_id=item.id,
-            side=item.side,
-            asset_currency=item.asset_currency,
-            quote_currency=item.quote_currency,
-            trade_kind=item.trade_kind,
-        )
+        if commit:
+            self.db.commit()
+            self.db.refresh(item)
+            invalidate_dashboard_summary_cache(user_id)
+            invalidate_dashboard_analytics_cache(user_id)
+            log_background_job_event(
+                "currency_service",
+                "fx_trade_updated",
+                user_id=user_id,
+                fx_trade_id=item.id,
+                side=item.side,
+                asset_currency=item.asset_currency,
+                quote_currency=item.quote_currency,
+                trade_kind=item.trade_kind,
+            )
+        else:
+            self.db.flush()
         return item
 
     def sync_linked_operation_trade(
@@ -488,6 +492,7 @@ class CurrencyService:
                 trade_date=trade_date,
                 note=note,
                 allow_linked_trade_update=True,
+                commit=commit,
             )
         return self.create_trade(
             user_id=user_id,
@@ -571,6 +576,48 @@ class CurrencyService:
 
     def compute_positions(self, *, user_id: int) -> dict:
         return self.reporting.compute_positions(user_id=user_id)
+
+    def get_available_balance(
+        self,
+        *,
+        user_id: int,
+        currency: str,
+        as_of: date,
+        exclude_linked_operation_id: int | None = None,
+    ) -> dict:
+        normalized_currency = self._normalize_currency(currency)
+        trades = [
+            trade
+            for trade in self.repo.list_all_trades(user_id=user_id)
+            if self._normalize_currency(trade.asset_currency) == normalized_currency
+            and (
+                exclude_linked_operation_id is None
+                or int(getattr(trade, "linked_operation_id", 0) or 0) != exclude_linked_operation_id
+            )
+        ]
+        balance = Decimal("0")
+        for trade in trades:
+            if trade.trade_date >= as_of:
+                continue
+            quantity = self._qty(trade.quantity)
+            balance = self._qty(balance + quantity if trade.side == "buy" else balance - quantity)
+
+        # A historical debit must leave every later point non-negative, not only
+        # the balance displayed on the operation date.
+        available = balance
+        for trade in trades:
+            if trade.trade_date < as_of:
+                continue
+            quantity = self._qty(trade.quantity)
+            balance = self._qty(balance + quantity if trade.side == "buy" else balance - quantity)
+            available = min(available, balance)
+
+        return {
+            "currency": normalized_currency,
+            "as_of": as_of,
+            "available_quantity": self._qty(max(available, Decimal("0"))),
+            "current_quantity": self._qty(max(balance, Decimal("0"))),
+        }
 
     def get_overview(self, *, user_id: int, currency: str | None = None, trades_limit: int = 100) -> dict:
         return self.reporting.get_overview(

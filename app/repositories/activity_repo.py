@@ -63,3 +63,27 @@ class ActivityRepository:
             )
         )
         return items, total
+
+    def get_latest_for_entity(
+        self,
+        *,
+        user_id: int,
+        entity_type: str,
+        entity_id: int,
+        event_type: str,
+        for_update: bool = False,
+    ) -> ActivityEvent | None:
+        stmt = (
+            select(ActivityEvent)
+            .where(
+                ActivityEvent.user_id == user_id,
+                ActivityEvent.entity_type == entity_type,
+                ActivityEvent.entity_id == entity_id,
+                ActivityEvent.event_type == event_type,
+            )
+            .order_by(ActivityEvent.id.desc())
+            .limit(1)
+        )
+        if for_update:
+            stmt = stmt.with_for_update()
+        return self.db.scalar(stmt)

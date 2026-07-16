@@ -112,6 +112,30 @@ def test_currency_trade_overview_and_current_rate(client: TestClient):
     assert payload["current_rates"][0]["change_pct"] is None
 
 
+def test_rub_trade_uses_price_per_single_ruble(client: TestClient):
+    created = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "RUB",
+            "quote_currency": "BYN",
+            "quantity": "5500",
+            "unit_price": "0.0354",
+            "fee": "0",
+            "trade_date": "2026-07-16",
+            "note": "5500 RUB за 194.70 BYN",
+        },
+    )
+
+    assert created.status_code == 201, created.text
+    overview = client.get("/api/v1/currency/overview", params={"currency": "RUB"})
+    assert overview.status_code == 200
+    position = overview.json()["positions"][0]
+    assert position["quantity"] == "5500.000000"
+    assert position["book_value"] == "194.70"
+    assert position["average_buy_rate"] == "0.035400"
+
+
 def test_currency_overview_and_performance_history_include_realized_and_total_result(client: TestClient):
     buy_response = client.post(
         "/api/v1/currency/trades",
@@ -217,6 +241,73 @@ def test_currency_trade_rejects_sell_above_available_balance(client: TestClient)
     )
     assert response.status_code == 400
     assert "Not enough currency balance to sell" in response.json()["detail"]
+
+
+def test_available_balance_reserves_later_sales_and_can_exclude_existing_settlement(client: TestClient):
+    funding = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "buy",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "100.00",
+            "unit_price": "3.20",
+            "fee": "0",
+            "trade_date": "2026-03-01",
+        },
+    )
+    assert funding.status_code == 201, funding.text
+
+    later_sale = client.post(
+        "/api/v1/currency/trades",
+        json={
+            "side": "sell",
+            "asset_currency": "USD",
+            "quote_currency": "BYN",
+            "quantity": "30.00",
+            "unit_price": "3.25",
+            "fee": "0",
+            "trade_date": "2026-03-10",
+        },
+    )
+    assert later_sale.status_code == 201, later_sale.text
+
+    operation = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "64.00",
+            "operation_date": "2026-03-05",
+            "fx_settlement": {
+                "asset_currency": "USD",
+                "quantity": "20.00",
+                "quote_total": "64.00",
+                "unit_price": "3.20",
+            },
+        },
+    )
+    assert operation.status_code == 201, operation.text
+    operation_id = operation.json()["id"]
+
+    included = client.get(
+        "/api/v1/currency/available-balance",
+        params={"currency": "USD", "as_of": "2026-03-05"},
+    )
+    assert included.status_code == 200, included.text
+    assert included.json()["available_quantity"] == "50.000000"
+    assert included.json()["current_quantity"] == "50.000000"
+
+    excluded = client.get(
+        "/api/v1/currency/available-balance",
+        params={
+            "currency": "USD",
+            "as_of": "2026-03-05",
+            "exclude_linked_operation_id": operation_id,
+        },
+    )
+    assert excluded.status_code == 200, excluded.text
+    assert excluded.json()["available_quantity"] == "70.000000"
+    assert excluded.json()["current_quantity"] == "70.000000"
 
 
 def test_linked_card_payment_trade_cannot_be_managed_directly(client: TestClient):

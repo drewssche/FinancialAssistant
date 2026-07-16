@@ -328,6 +328,21 @@ def update_operation(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
+@router.post("/{operation_id}/restore", response_model=OperationOut)
+def restore_operation(
+    operation_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = OperationService(db)
+    try:
+        return service.restore_deleted_operation(user_id=user_id, operation_id=operation_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
 @router.delete("/{operation_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 def delete_operation(
     operation_id: int,

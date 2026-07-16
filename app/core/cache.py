@@ -4,8 +4,8 @@ import json
 from datetime import date, datetime
 from decimal import Decimal
 from threading import Lock
-from time import time
-from typing import Any
+from time import monotonic, time
+from typing import Any, cast
 
 from redis import Redis
 from redis.exceptions import RedisError
@@ -50,6 +50,8 @@ _CACHE_NAMESPACE_TTLS = {
 
 _client: Redis | None = None
 _client_initialized = False
+_next_client_retry_at = 0.0
+_REDIS_RETRY_INTERVAL_SECONDS = 30.0
 _client_lock = Lock()
 _local_cache: dict[str, tuple[float, str]] = {}
 _local_cache_lock = Lock()
@@ -101,13 +103,15 @@ def build_user_scoped_cache_key(
 
 
 def _get_redis_client() -> Redis | None:
-    global _client, _client_initialized
+    global _client, _client_initialized, _next_client_retry_at
 
-    if _client_initialized:
+    now = monotonic()
+    if _client_initialized and (_client is not None or now < _next_client_retry_at):
         return _client
 
     with _client_lock:
-        if _client_initialized:
+        now = monotonic()
+        if _client_initialized and (_client is not None or now < _next_client_retry_at):
             return _client
         settings = get_settings()
         try:
@@ -121,8 +125,19 @@ def _get_redis_client() -> Redis | None:
             _client.ping()
         except RedisError:
             _client = None
+            _next_client_retry_at = monotonic() + _REDIS_RETRY_INTERVAL_SECONDS
+        else:
+            _next_client_retry_at = 0.0
         _client_initialized = True
         return _client
+
+
+def _mark_redis_unavailable() -> None:
+    global _client, _client_initialized, _next_client_retry_at
+    with _client_lock:
+        _client = None
+        _client_initialized = True
+        _next_client_retry_at = monotonic() + _REDIS_RETRY_INTERVAL_SECONDS
 
 
 def get_cache_runtime_status() -> dict[str, Any]:
@@ -308,10 +323,11 @@ def get_json(cache_key: str) -> dict[str, Any] | None:
     client = _get_redis_client()
     if client:
         try:
-            raw = client.get(cache_key)
+            raw = cast(str | bytes | None, client.get(cache_key))
         except RedisError:
-            raw = None
-    else:
+            _mark_redis_unavailable()
+            client = None
+    if not client:
         increment_counter("backend_cache_local_fallback_read_total")
         with _local_cache_lock:
             record = _local_cache.get(cache_key)
@@ -341,7 +357,7 @@ def set_json(cache_key: str, payload: dict[str, Any], ttl_seconds: int = _DASHBO
             client.setex(cache_key, ttl_seconds, encoded)
             return
         except RedisError:
-            pass
+            _mark_redis_unavailable()
     increment_counter("backend_cache_local_fallback_write_total")
     with _local_cache_lock:
         _local_cache[cache_key] = (time() + ttl_seconds, encoded)
@@ -366,7 +382,7 @@ def invalidate_user_scoped_cache(
                 if metrics_prefix:
                     increment_counter(f"{metrics_prefix}_invalidated_keys_total", len(keys))
         except RedisError:
-            pass
+            _mark_redis_unavailable()
     with _local_cache_lock:
         keys = [key for key in _local_cache if key.startswith(f"{prefix}:u:{user_id}:")]
         if keys:
@@ -427,9 +443,10 @@ def invalidate_categories_cache(user_id: int) -> None:
 
 
 def reset_cache_for_tests() -> None:
-    global _client, _client_initialized
+    global _client, _client_initialized, _next_client_retry_at
     with _client_lock:
         _client = None
         _client_initialized = False
+        _next_client_retry_at = 0.0
     with _local_cache_lock:
         _local_cache.clear()

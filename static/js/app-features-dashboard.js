@@ -124,7 +124,7 @@
           }
           const currentRateDate = item?.current_rate_date ? core.formatDateRu(item.current_rate_date) : "";
           const currentRateLabel = currentRate > 0
-            ? `${currentRate.toFixed(4)} ${baseCurrencySymbol}${currentRateDate ? ` · ${currentRateDate}` : ""}`
+            ? `${core.formatRateDisplay?.(currentRate, 4, 6)} ${baseCurrencySymbol}${currentRateDate ? ` · ${currentRateDate}` : ""}`
             : "Курс не задан";
           const currentValueLabel = currentValue > 0
             ? `≈ ${core.formatMoney(currentValue, { currency: baseCurrency })}`
@@ -237,7 +237,7 @@
             </span>
           </div>
           <div class="dashboard-currency-rate-value-row">
-            <div class="dashboard-currency-rate-value">${Number(item.rate || 0).toFixed(4)}</div>
+            <div class="dashboard-currency-rate-value">${core.formatRateDisplay?.(item.rate || 0, 4, 6)}</div>
             <div class="dashboard-currency-rate-delta dashboard-currency-rate-delta-${deltaTone}">
               ${hasDelta ? `${formatSignedRate(item.change_value)} · ${formatSignedPercent(item.change_pct || 0)}` : "—"}
             </div>
@@ -298,6 +298,20 @@
     });
   }
 
+  function setDashboardPanelState(panel, loadState = "ready") {
+    if (!panel) return;
+    panel.dataset.loadState = loadState;
+    panel.classList.toggle("is-stale", loadState === "stale");
+    panel.querySelector(":scope > .panel-stale-indicator")?.remove();
+    if (loadState === "stale") {
+      const indicator = document.createElement("div");
+      indicator.className = "panel-stale-indicator";
+      indicator.setAttribute("role", "status");
+      indicator.textContent = "Показаны последние данные · обновление не удалось";
+      panel.appendChild(indicator);
+    }
+  }
+
   function endDashboardOptionalRefreshes({ currency = false, debts = false, plans = false } = {}) {
     const refreshState = getInlineRefreshState();
     if (currency && el.dashboardCurrencyPanel) {
@@ -324,8 +338,21 @@
     setDebtKpiTone(el.dashboardDebtNetKpi, Number(net) > epsilon ? "positive" : Number(net) < -epsilon ? "negative" : "neutral");
   }
 
-  function renderDashboardLoadFailure(err) {
+  function dashboardPanelError(message) {
+    return `<div class="panel-load-state panel-load-state-error" role="alert">
+      <span>${core.escapeHtml?.(message) || message}</span>
+      <button class="btn btn-secondary btn-xs" type="button" data-dashboard-retry>Повторить</button>
+    </div>`;
+  }
+
+  function renderDashboardLoadFailure(err, { preserveExisting = false } = {}) {
     const message = core.errorMessage ? core.errorMessage(err) : String(err || "Ошибка загрузки");
+    if (preserveExisting) {
+      setDashboardPanelState(el.dashboardCurrencyPanel, "stale");
+      setDashboardPanelState(el.dashboardDebtsPanel, "stale");
+      getLoadingSkeletons().clearDashboardAnalyticsSkeletonState?.();
+      return;
+    }
     if (el.dashboardCurrencyBalances) {
       el.dashboardCurrencyBalances.innerHTML = `<div class="muted-small">Не удалось загрузить валютный портфель: ${core.escapeHtml ? core.escapeHtml(message) : message}</div>`;
     }
@@ -336,13 +363,13 @@
       el.dashboardCurrencyPositions.innerHTML = "";
     }
     if (el.dashboardPlansList) {
-      el.dashboardPlansList.innerHTML = "<div class='muted-small'>Не удалось загрузить ближайшие планы</div>";
+      el.dashboardPlansList.innerHTML = dashboardPanelError("Не удалось загрузить ближайшие планы");
     }
     if (el.dashboardPlansKpi) {
       el.dashboardPlansKpi.innerHTML = "";
     }
     if (el.dashboardDebtsList) {
-      el.dashboardDebtsList.innerHTML = "<div class='muted-small'>Не удалось загрузить активные долги</div>";
+      el.dashboardDebtsList.innerHTML = dashboardPanelError("Не удалось загрузить активные долги");
     }
     if (el.debtLendTotal) {
       el.debtLendTotal.textContent = core.formatMoney(0);
@@ -426,6 +453,9 @@
         borrow: data.debt_borrow_outstanding,
         net: data.debt_net_position,
       });
+      state.dashboardSummaryHydrated = true;
+      setDashboardPanelState(el.dashboardDebtsPanel, "ready");
+      setDashboardPanelState(el.dashboardCurrencyPanel, "ready");
       if (el.dashboardDebtKpiGrid) {
         const lendTotal = Number(data.debt_lend_outstanding || 0);
         const borrowTotal = Number(data.debt_borrow_outstanding || 0);
@@ -433,8 +463,13 @@
         const hasDebtKpi = Math.abs(lendTotal) > 0.000001 || Math.abs(borrowTotal) > 0.000001 || Math.abs(netTotal) > 0.000001;
         el.dashboardDebtKpiGrid.classList.toggle("hidden", !hasDebtKpi);
       }
+      if (data.debt_summary_available === false) {
+        state.dashboardDebtSummaryLoaded = false;
+      }
       renderDashboardCurrencySummary(data);
-      state.dashboardDebtSummaryLoaded = true;
+      if (data.debt_summary_available !== false) {
+        state.dashboardDebtSummaryLoaded = true;
+      }
 
       if (dashboardOptionalLoadPromise) {
         optionalPanelTasksStarted = true;
@@ -495,6 +530,11 @@
           if (!isCurrentOptionalDashboardLoad()) {
             return;
           }
+          reportOptionalDashboardPanelFailure("currency", currencyOverviewResult.error);
+          if (state.dashboardCurrencyHydrated) {
+            setDashboardPanelState(el.dashboardCurrencyPanel, "stale");
+            return;
+          }
           renderDashboardCurrencyRates([], []);
         } else {
           if (!isCurrentOptionalDashboardLoad()) {
@@ -502,8 +542,9 @@
           }
           const currencyOverview = currencyOverviewResult.value || {};
           renderDashboardCurrencyRates(currencyOverview.current_rates, currencyOverview.tracked_currencies);
+          state.dashboardCurrencyHydrated = true;
+          setDashboardPanelState(el.dashboardCurrencyPanel, "ready");
         }
-        state.dashboardCurrencyHydrated = true;
       }).catch((err) => {
         if (!core.isAbortError?.(err)) {
           reportOptionalDashboardPanelFailure("currency", err);
@@ -522,10 +563,16 @@
             }
             reportOptionalDashboardPanelFailure("plans", plansResult.error);
             if (isCurrentOptionalDashboardLoad()) {
-              getPlansFeature().renderDashboardPlans?.();
+              if (state.dashboardPlansHydrated) {
+                setDashboardPanelState(el.dashboardPlansPanel, "stale");
+              } else {
+                el.dashboardPlansList.innerHTML = dashboardPanelError("Не удалось загрузить ближайшие планы");
+              }
             }
           } else if (!isCurrentOptionalDashboardLoad()) {
             return;
+          } else {
+            setDashboardPanelState(el.dashboardPlansPanel, "ready");
           }
         }).catch((err) => {
           if (!core.isAbortError?.(err)) {
@@ -559,8 +606,10 @@
               return;
             }
             reportOptionalDashboardPanelFailure("debts-preview", debtCardsResult.error);
-            if (!state.dashboardDebtsHydrated) {
-              el.dashboardDebtsList.innerHTML = "<div class='muted-small'>Не удалось загрузить активные долги</div>";
+            if (state.dashboardDebtsHydrated) {
+              setDashboardPanelState(el.dashboardDebtsPanel, "stale");
+            } else {
+              el.dashboardDebtsList.innerHTML = dashboardPanelError("Не удалось загрузить активные долги");
             }
             return;
           }
@@ -672,6 +721,7 @@
               }
             }
             state.dashboardDebtsHydrated = true;
+            setDashboardPanelState(el.dashboardDebtsPanel, "ready");
           }
         }).catch((err) => {
           if (!core.isAbortError?.(err)) {
@@ -690,7 +740,7 @@
         return;
       }
       if (isCurrentDashboardLoad()) {
-        renderDashboardLoadFailure(err);
+        renderDashboardLoadFailure(err, { preserveExisting: state.dashboardSummaryHydrated });
         throw err;
       }
     } finally {
@@ -773,7 +823,29 @@
     }
   }
 
+  function bindDashboardRetryActions() {
+    [el.dashboardCurrencyPanel, el.dashboardPlansPanel, el.dashboardDebtsPanel].filter(Boolean).forEach((panel) => {
+      panel.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-dashboard-retry]");
+        if (!button) return;
+        state.dashboardDebtSummaryLoaded = false;
+        state.dashboardSummaryHydrated = false;
+        state.dashboardDebtsHydrated = false;
+        state.dashboardPlansHydrated = false;
+        state.dashboardCurrencyHydrated = false;
+        getDashboardData().invalidateReadCaches?.();
+        core.runAction({
+          button,
+          pendingText: "Загрузка…",
+          errorPrefix: "Не удалось обновить дашборд",
+          action: () => loadDashboard(),
+        });
+      });
+    });
+  }
+
   bindCurrencyActions();
+  bindDashboardRetryActions();
 
   const api = {
     loadDashboard,

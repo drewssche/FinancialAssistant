@@ -111,7 +111,7 @@ class RedisRuntimeAdvisoryService:
         now_mono = monotonic()
         global _LAST_ADVISORY_SENT_AT
         with _ADVISORY_LOCK:
-            if now_mono - _LAST_ADVISORY_SENT_AT < _ADVISORY_COOLDOWN_SECONDS:
+            if _LAST_ADVISORY_SENT_AT > 0 and now_mono - _LAST_ADVISORY_SENT_AT < _ADVISORY_COOLDOWN_SECONDS:
                 return False
             notify_redis_fallback_advisory(
                 text=advisory.text,

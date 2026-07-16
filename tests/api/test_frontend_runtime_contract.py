@@ -42,8 +42,9 @@ def test_dashboard_navigation_ignores_stale_section_loads():
     assert "dashboardOptionalLoadPromise.finally(() => {" in load_dashboard_body
     assert "endDashboardOptionalRefreshes({" in load_dashboard_body
     assert "if (!dashboardPlansLoadPromise) {" in dashboard
-    assert "function renderDashboardLoadFailure(err)" in dashboard
-    assert "renderDashboardLoadFailure(err);" in dashboard
+    assert "function renderDashboardLoadFailure(err, { preserveExisting = false } = {})" in dashboard
+    assert "renderDashboardLoadFailure(err, { preserveExisting: state.dashboardSummaryHydrated });" in dashboard
+    assert "data-dashboard-retry" in dashboard
     assert "abortDashboardAnalyticsPreview: highlights.abortDashboardAnalyticsPreview" in analytics
     assert "let dashboardAnalyticsPreviewController = null" in analytics_highlights
     assert "function abortDashboardAnalyticsPreview()" in analytics_highlights
@@ -373,6 +374,9 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert 'registerRuntimeModule?.("operation-modal-debt-counterparty-factory"' in op_modal_debt
     assert 'registerRuntimeModule?.("operation-modal-debt-factory"' in op_modal_debt_form
     assert 'registerRuntimeModule?.("operation-modal-fx-settlement-factory"' in op_modal_fx_settlement
+    assert "/api/v1/currency/available-balance?" in op_modal_fx_settlement
+    assert "directForeignSettlement" in op_modal_fx_settlement
+    assert "el.editCurrency.disabled = false" in op_modal_fx_settlement
     assert 'registerRuntimeModule?.("operation-modal-currency-factory"' in op_modal_currency
     assert 'registerRuntimeModule?.("operation-modal-preview"' in op_modal_preview
     assert 'getRuntimeModule?.("category-ui")' in categories_js
@@ -671,3 +675,60 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert "actions.loadAnalyticsSection" not in operations_mutations_factory
     assert "categoryActions.loadCategories()" not in operations_mutations_factory
     assert "window.App.actions?.openCreateModalForDebtEdit" not in debts_modals
+
+
+def test_core_requests_have_timeout_and_toasts_do_not_render_dynamic_html():
+    core_actions = (REPO_ROOT / "static" / "js" / "app-core-actions.js").read_text(encoding="utf-8")
+
+    assert "timeoutMs = 20000" in core_actions
+    assert "const requestController = new AbortController()" in core_actions
+    assert 'textNode.textContent = String(message ?? "")' in core_actions
+    assert "toast.innerHTML" not in core_actions
+
+
+def test_dashboard_preserves_last_successful_optional_panel_data():
+    dashboard = (REPO_ROOT / "static" / "js" / "app-features-dashboard.js").read_text(encoding="utf-8")
+    state = (REPO_ROOT / "static" / "js" / "app-core-state.js").read_text(encoding="utf-8")
+
+    assert "dashboardSummaryHydrated: false" in state
+    assert 'setDashboardPanelState(el.dashboardCurrencyPanel, "stale")' in dashboard
+    assert 'setDashboardPanelState(el.dashboardPlansPanel, "stale")' in dashboard
+    assert 'setDashboardPanelState(el.dashboardDebtsPanel, "stale")' in dashboard
+    assert "preserveExisting: state.dashboardSummaryHydrated" in dashboard
+
+
+def test_telegram_auth_coalesces_readiness_wait_and_network_request():
+    auth = (REPO_ROOT / "static" / "js" / "app-features-session-auth.js").read_text(encoding="utf-8")
+    body = auth.split("function authenticateTelegramInPlace(options = {}) {", 1)[1].split(
+        "async function recoverUnauthorized()", 1
+    )[0]
+
+    assert "if (telegramAuthPromise) return telegramAuthPromise" in body
+    assert "telegramAuthPromise = (async () => {" in body
+    assert body.index("telegramAuthPromise = (async () => {") < body.index("await waitForTelegramInitData()")
+
+    auto_body = auth.split("function tryAutoTelegramLogin(options = {}) {", 1)[1].split(
+        "hydrateStoredTokenMetadata()", 1
+    )[0]
+    assert "if (autoTelegramLoginPromise) return autoTelegramLoginPromise" in auto_body
+    assert "autoTelegramLoginPromise = (async () => {" in auto_body
+    assert auto_body.index("autoTelegramLoginPromise = (async () => {") < auto_body.index(
+        "await waitForTelegramInitData()"
+    )
+
+
+def test_currency_rates_keep_precision_for_low_unit_values():
+    core_utils = (REPO_ROOT / "static" / "js" / "app-core-utils.js").read_text(encoding="utf-8")
+    currency_files = [
+        "app-features-currency.js",
+        "app-features-analytics-currency.js",
+        "app-features-analytics-currency-chart.js",
+        "app-features-dashboard.js",
+        "app-features-operation-modal-currency.js",
+        "app-features-operation-modal-preview.js",
+    ]
+
+    assert "function formatRateDisplay(value, minDigits = 4, maxDigits = 6)" in core_utils
+    for filename in currency_files:
+        source = (REPO_ROOT / "static" / "js" / filename).read_text(encoding="utf-8")
+        assert ".toFixed(4)" not in source, f"{filename} must not truncate low-value currency rates"

@@ -149,6 +149,8 @@ def test_delayed_telegram_startup_and_session_refresh_preserve_operation_modal(s
     assert page.evaluate("() => performance.getEntriesByType('navigation')[0]?.type") == "navigate"
 
     expect(page.locator("#sessionRemainingLabel")).to_contain_text("мин")
+    expect(page.locator("#sessionStartedLabel")).to_contain_text("Начата")
+    expect(page.locator("#sessionRenewedLabel")).to_be_hidden()
     session_geometry = page.evaluate(
         """
         () => {
@@ -163,11 +165,13 @@ def test_delayed_telegram_startup_and_session_refresh_preserve_operation_modal(s
             userRight: user.right,
             userTop: user.top,
             buttonRight: button.right,
+            buttonWidth: button.width,
           } : null;
         }
         """
     )
     assert session_geometry is not None
+    assert session_geometry["buttonWidth"] <= 33
     assert abs(session_geometry["panelLeft"] - session_geometry["userLeft"]) <= 1
     assert abs(session_geometry["panelRight"] - session_geometry["userRight"]) <= 1
     assert session_geometry["panelBottom"] <= session_geometry["userTop"]
@@ -181,6 +185,8 @@ def test_delayed_telegram_startup_and_session_refresh_preserve_operation_modal(s
     page.wait_for_function("() => document.getElementById('sessionRemainingLabel')?.textContent.includes('30 мин')")
 
     assert counters["refresh"] == 1
+    expect(page.locator("#sessionRenewedLabel")).to_be_visible()
+    expect(page.locator("#sessionRenewedLabel")).to_contain_text("Обновлена")
     expect(page.locator("#createModal")).to_be_visible()
     expect(page.locator("#opAmount")).to_have_value("129.90")
     expect(page.locator("#opNote")).to_have_value("Большой чек не должен закрыться")
@@ -213,11 +219,15 @@ def test_delayed_telegram_startup_and_session_refresh_preserve_operation_modal(s
         () => {
           const card = document.querySelector('#createModal .modal-card')?.getBoundingClientRect();
           const actions = document.querySelector('#createModal .modal-head-actions')?.getBoundingClientRect();
+          const actionButtons = Array.from(document.querySelectorAll('#createModal .modal-head-actions > button:not(.hidden)'))
+            .map((button) => button.getBoundingClientRect());
           return card && actions ? {
             cardLeft: card.left,
             cardRight: card.right,
             actionsLeft: actions.left,
             actionsRight: actions.right,
+            actionWidths: actionButtons.map((button) => button.width),
+            actionHeights: actionButtons.map((button) => button.height),
             bodyClientWidth: document.documentElement.clientWidth,
             bodyScrollWidth: document.documentElement.scrollWidth,
           } : null;
@@ -227,5 +237,7 @@ def test_delayed_telegram_startup_and_session_refresh_preserve_operation_modal(s
     assert geometry is not None
     assert geometry["actionsLeft"] >= geometry["cardLeft"] - 1
     assert geometry["actionsRight"] <= geometry["cardRight"] + 1
+    assert all(abs(width - 34) <= 1 for width in geometry["actionWidths"])
+    assert all(abs(height - 34) <= 1 for height in geometry["actionHeights"])
     assert geometry["bodyScrollWidth"] <= geometry["bodyClientWidth"] + 1
     page.screenshot(path="/tmp/finasist-session-refresh-modal.png", full_page=True)

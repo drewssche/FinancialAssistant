@@ -455,16 +455,29 @@
     if (!state.dashboardPlansHydrated && state.activeSection === "dashboard") {
       getLoadingSkeletons().renderDashboardPlansSkeleton?.();
     }
-    const [plansData, historyData] = await Promise.all([
-      core.requestJson("/api/v1/plans", {
-        headers: core.authHeaders(),
-        signal,
-      }),
-      core.requestJson("/api/v1/plans/history", {
-        headers: core.authHeaders(),
-        signal,
-      }),
-    ]);
+    let plansData;
+    let historyData;
+    try {
+      [plansData, historyData] = await Promise.all([
+        core.requestJson("/api/v1/plans", {
+          headers: core.authHeaders(),
+          signal,
+        }),
+        core.requestJson("/api/v1/plans/history", {
+          headers: core.authHeaders(),
+          signal,
+        }),
+      ]);
+    } catch (err) {
+      if (core.isAbortError?.(err)) return;
+      if (state.activeSection === "plans" && el.plansList) {
+        el.plansList.innerHTML = `<div class="panel-load-state panel-load-state-error" role="alert">
+          <span>Не удалось загрузить планы</span>
+          <button class="btn btn-secondary btn-xs" type="button" data-plans-retry>Повторить</button>
+        </div>`;
+      }
+      throw err;
+    }
     if (signal?.aborted) {
       return;
     }

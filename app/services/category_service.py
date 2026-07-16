@@ -1,3 +1,6 @@
+from datetime import datetime
+
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.cache import (
@@ -6,7 +9,18 @@ from app.core.cache import (
     get_namespace_ttl_seconds,
     invalidate_categories_cache,
     invalidate_dashboard_analytics_cache,
+    invalidate_item_templates_cache,
+    invalidate_operations_cache,
+    invalidate_plans_cache,
     set_json,
+)
+from app.db.models import (
+    Category,
+    Operation,
+    OperationItemTemplate,
+    OperationReceiptItem,
+    PlanOperation,
+    PlanReceiptItem,
 )
 from app.repositories.category_repo import CategoryRepository
 from app.services.activity_service import ActivityService
@@ -153,6 +167,10 @@ class CategoryService:
         category = self.repo.get_by_id_for_user(user_id=user_id, category_id=category_id)
         if not category:
             raise LookupError("Category not found")
+        restore_snapshot = self._build_category_restore_snapshot(
+            user_id=user_id,
+            category=category,
+        )
         self.activity.record(
             user_id=user_id,
             actor_user_id=user_id,
@@ -160,12 +178,167 @@ class CategoryService:
             entity_id=int(category.id),
             event_type="deleted",
             title="Категория удалена",
-            metadata=ActivityService.snapshot(category, self.CATEGORY_FIELDS),
+            metadata={
+                **ActivityService.snapshot(category, self.CATEGORY_FIELDS),
+                "_restore_snapshot": restore_snapshot,
+            },
         )
         self.repo.delete(category)
         self.db.commit()
         invalidate_dashboard_analytics_cache(user_id)
         invalidate_categories_cache(user_id)
+
+    def _build_category_restore_snapshot(self, *, user_id: int, category: Category) -> dict:
+        def ids(model) -> list[int]:
+            return [
+                int(item_id)
+                for item_id in self.db.scalars(
+                    select(model.id).where(
+                        model.user_id == user_id,
+                        model.category_id == category.id,
+                    )
+                )
+            ]
+
+        template_ids = [
+            int(item_id)
+            for item_id in self.db.scalars(
+                select(OperationItemTemplate.id).where(
+                    OperationItemTemplate.user_id == user_id,
+                    OperationItemTemplate.last_category_id == category.id,
+                )
+            )
+        ]
+        return {
+            "version": 1,
+            "category": {
+                "id": int(category.id),
+                "name": category.name,
+                "kind": category.kind,
+                "icon": category.icon,
+                "group_id": category.group_id,
+                "include_in_statistics": bool(category.include_in_statistics),
+                "created_at": category.created_at.isoformat() if category.created_at else None,
+            },
+            "references": {
+                "operation_ids": ids(Operation),
+                "receipt_item_ids": ids(OperationReceiptItem),
+                "plan_ids": ids(PlanOperation),
+                "plan_receipt_item_ids": ids(PlanReceiptItem),
+                "item_template_ids": template_ids,
+            },
+        }
+
+    def restore_deleted_category(self, *, user_id: int, category_id: int) -> Category:
+        if self.repo.get_by_id_for_user(user_id=user_id, category_id=category_id) is not None:
+            raise ValueError("Category already exists")
+        event = self.activity.get_restore_event(
+            user_id=user_id,
+            entity_type="category",
+            entity_id=category_id,
+        )
+        snapshot = dict((event.metadata_json or {})["_restore_snapshot"])
+        if snapshot.get("version") != 1 or not isinstance(snapshot.get("category"), dict):
+            raise ValueError("Unsupported category restore snapshot")
+        category_data = dict(snapshot["category"])
+        if int(category_data.get("id") or 0) != category_id:
+            raise ValueError("Category restore snapshot does not match the requested category")
+        group_id = category_data.get("group_id")
+        if group_id is not None and self.repo.get_group_by_id_for_user(user_id=user_id, group_id=int(group_id)) is None:
+            raise ValueError("The category group no longer exists")
+
+        category = Category(
+            id=category_id,
+            user_id=user_id,
+            name=category_data["name"],
+            kind=category_data["kind"],
+            icon=category_data.get("icon"),
+            group_id=group_id,
+            is_system=False,
+            include_in_statistics=bool(category_data.get("include_in_statistics", True)),
+        )
+        if category_data.get("created_at"):
+            category.created_at = datetime.fromisoformat(category_data["created_at"])
+        self.db.add(category)
+        self.db.flush()
+
+        references = snapshot.get("references") if isinstance(snapshot.get("references"), dict) else {}
+        self._restore_category_reference_ids(
+            model=Operation,
+            user_id=user_id,
+            category_id=category_id,
+            item_ids=references.get("operation_ids") or [],
+            field="category_id",
+        )
+        self._restore_category_reference_ids(
+            model=OperationReceiptItem,
+            user_id=user_id,
+            category_id=category_id,
+            item_ids=references.get("receipt_item_ids") or [],
+            field="category_id",
+        )
+        self._restore_category_reference_ids(
+            model=PlanOperation,
+            user_id=user_id,
+            category_id=category_id,
+            item_ids=references.get("plan_ids") or [],
+            field="category_id",
+        )
+        self._restore_category_reference_ids(
+            model=PlanReceiptItem,
+            user_id=user_id,
+            category_id=category_id,
+            item_ids=references.get("plan_receipt_item_ids") or [],
+            field="category_id",
+        )
+        self._restore_category_reference_ids(
+            model=OperationItemTemplate,
+            user_id=user_id,
+            category_id=category_id,
+            item_ids=references.get("item_template_ids") or [],
+            field="last_category_id",
+        )
+        self.activity.mark_restored(event, entity_id=category_id)
+        self.activity.record(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="category",
+            entity_id=category_id,
+            event_type="restored",
+            title="Категория восстановлена",
+        )
+        self.db.commit()
+        invalidate_dashboard_analytics_cache(user_id)
+        invalidate_categories_cache(user_id)
+        invalidate_operations_cache(user_id)
+        invalidate_plans_cache(user_id)
+        invalidate_item_templates_cache(user_id)
+        self.db.refresh(category)
+        return category
+
+    def _restore_category_reference_ids(
+        self,
+        *,
+        model,
+        user_id: int,
+        category_id: int,
+        item_ids: list[int],
+        field: str,
+    ) -> None:
+        normalized_ids = [int(item_id) for item_id in item_ids if int(item_id or 0) > 0]
+        if not normalized_ids:
+            return
+        rows = list(
+            self.db.scalars(
+                select(model).where(
+                    model.user_id == user_id,
+                    model.id.in_(normalized_ids),
+                )
+            )
+        )
+        for row in rows:
+            setattr(row, field, category_id)
+        self.db.flush()
 
     def update_category(self, user_id: int, category_id: int, updates: dict):
         category = self.repo.get_by_id_for_user(user_id=user_id, category_id=category_id)

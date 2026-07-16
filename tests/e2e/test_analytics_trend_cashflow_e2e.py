@@ -10,11 +10,10 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 import pytest
+from tests.e2e.test_analytics_mobile_e2e import _open_mobile_analytics, _set_mock_telegram
 
 sync_api = pytest.importorskip("playwright.sync_api", reason="playwright is not installed")
 expect = sync_api.expect
-
-from tests.e2e.test_analytics_mobile_e2e import _open_mobile_analytics, _restore_mock_telegram, _set_mock_telegram
 
 
 @pytest.fixture(scope="module")

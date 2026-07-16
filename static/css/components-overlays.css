@@ -751,6 +751,48 @@
   justify-content: flex-end;
 }
 
+.modal-head-icon-btn {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.modal-head-actions .operation-session-refresh-btn {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  border-radius: 8px;
+}
+
+.btn.session-renew-btn {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+}
+
+.modal-head-icon-btn > span[aria-hidden="true"] {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.modal-action-svg {
+  width: 17px;
+  height: 17px;
+  display: block;
+  color: #b9d4ff;
+}
+
 .item-template-modal-card .panel-head {
   align-items: flex-start;
   gap: var(--space-3);

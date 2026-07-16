@@ -14,6 +14,8 @@ from app.services.currency_service import CurrencyService
 
 
 class CurrencyRateRefreshService:
+    NORMALIZED_NBRB_SOURCES = {"nbrb_auto_unit", "nbrb_history_unit"}
+
     def __init__(self, db: Session):
         self.db = db
         self.repo = CurrencyRepository(db)
@@ -70,7 +72,12 @@ class CurrencyRateRefreshService:
         missing = [
             currency
             for currency in tracked
-            if force or not latest_rate_triplets.get(currency) or latest_rate_triplets[currency][0].rate_date < target_date
+            if (
+                force
+                or not latest_rate_triplets.get(currency)
+                or latest_rate_triplets[currency][0].rate_date < target_date
+                or latest_rate_triplets[currency][0].source not in self.NORMALIZED_NBRB_SOURCES
+            )
         ]
         if not missing:
             return []
@@ -102,6 +109,7 @@ class CurrencyRateRefreshService:
             if (
                 not force
                 and latest_row
+                and latest_row.source in self.NORMALIZED_NBRB_SOURCES
                 and effective_date_inferred
                 and latest_row.rate_date < target_date
                 and Decimal(str(rate)) == Decimal(str(latest_row.rate))
@@ -115,7 +123,12 @@ class CurrencyRateRefreshService:
                     latest_rate_date=latest_row.rate_date.isoformat(),
                 )
                 continue
-            if not force and latest_row and effective_date <= latest_row.rate_date:
+            if (
+                not force
+                and latest_row
+                and latest_row.source in self.NORMALIZED_NBRB_SOURCES
+                and effective_date <= latest_row.rate_date
+            ):
                 continue
             refreshed.append(
                 self.currency_service.upsert_rate(
@@ -123,7 +136,7 @@ class CurrencyRateRefreshService:
                     currency=currency,
                     rate=rate,
                     rate_date=effective_date,
-                    source="nbrb_auto",
+                    source="nbrb_auto_unit",
                 )
             )
         if refreshed:
@@ -158,7 +171,11 @@ class CurrencyRateRefreshService:
             date_from=date_from,
             date_to=date_to,
         )
-        existing_dates = {row.rate_date for row in existing_rows}
+        existing_dates = {
+            row.rate_date
+            for row in existing_rows
+            if row.source == "nbrb_history_unit"
+        }
         refreshed: list[dict] = []
         cursor = date_from
         while cursor <= date_to:
@@ -175,7 +192,7 @@ class CurrencyRateRefreshService:
                     currency=normalized_currency,
                     rate=rate,
                     rate_date=cursor,
-                    source="nbrb_history",
+                    source="nbrb_history_unit",
                 )
             )
             cursor += timedelta(days=1)
@@ -200,9 +217,10 @@ class CurrencyRateRefreshService:
                 raw_rate = payload.get("Cur_OfficialRate")
                 if raw_rate is None:
                     raise ValueError(f"Missing Cur_OfficialRate for {currency}")
+                normalized_rate = self._normalize_provider_rate(payload, currency=currency)
                 effective_date = self._extract_effective_date(payload)
                 results[currency] = {
-                    "rate": float(raw_rate),
+                    "rate": normalized_rate,
                     "effective_date": effective_date,
                     "effective_date_inferred": effective_date is None,
                 }
@@ -216,7 +234,17 @@ class CurrencyRateRefreshService:
             raw_rate = payload.get("Cur_OfficialRate")
             if raw_rate is None:
                 return None
-            return float(raw_rate)
+            return self._normalize_provider_rate(payload, currency=currency)
+
+    @staticmethod
+    def _normalize_provider_rate(payload: dict, *, currency: str) -> Decimal:
+        raw_rate = Decimal(str(payload.get("Cur_OfficialRate")))
+        scale = Decimal(str(payload.get("Cur_Scale") or 1))
+        if raw_rate <= 0:
+            raise ValueError(f"Invalid Cur_OfficialRate for {currency}")
+        if scale <= 0:
+            raise ValueError(f"Invalid Cur_Scale for {currency}")
+        return raw_rate / scale
 
     def _build_provider_url(self, currency: str, rate_date: date | None = None) -> str:
         base_url = self.settings.currency_rate_provider_url.format(code=currency)

@@ -36,6 +36,26 @@ def test_frontend_entrypoint_and_scripts_revalidate_after_deploy():
     assert css_response.headers.get("Cache-Control") == "no-cache"
 
 
+def test_versioned_frontend_assets_are_immutable():
+    client = TestClient(app)
+
+    response = client.get("/static/js/app-bootstrap.js?v=20260716l")
+
+    assert response.status_code == 200
+    assert response.headers.get("Cache-Control") == "public, max-age=31536000, immutable"
+
+
+def test_security_headers_are_applied_to_responses():
+    client = TestClient(app)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert "object-src 'none'" in response.headers.get("Content-Security-Policy", "")
+    assert response.headers.get("X-Content-Type-Options") == "nosniff"
+    assert response.headers.get("Referrer-Policy") == "same-origin"
+
+
 def test_api_request_completion_is_logged_with_request_context(caplog):
     client = TestClient(app)
 

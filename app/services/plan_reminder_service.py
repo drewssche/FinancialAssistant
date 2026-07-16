@@ -133,11 +133,11 @@ class PlanReminderService:
             )
         return jobs
 
-    def refresh_due_job_payload(self, payload: dict) -> dict | None:
+    def refresh_due_job_payload(self, payload: dict, *, status: str = "pending") -> dict | None:
         job = payload.get("job")
         if not job:
             return None
-        row = self.repo.get_pending_reminder_job_snapshot(job_id=int(job.id))
+        row = self.repo.get_reminder_job_snapshot(job_id=int(job.id), status=status)
         if not row:
             return None
         current_job, plan, identity, preference = row
@@ -154,13 +154,37 @@ class PlanReminderService:
             "config": config,
         }
 
+    def claim_job(self, payload: dict) -> dict | None:
+        job = payload.get("job")
+        if not job or not self.repo.claim_reminder_job(job_id=int(job.id)):
+            self.db.rollback()
+            return None
+        self.db.commit()
+        claimed = self.refresh_due_job_payload(payload, status="sending")
+        if claimed is None:
+            self.repo.release_reminder_job(job_id=int(job.id))
+            self.db.commit()
+            return None
+        claimed["_claimed"] = True
+        return claimed
+
+    def release_job(self, payload: dict) -> None:
+        job = payload.get("job")
+        if not job:
+            return
+        self.repo.release_reminder_job(job_id=int(job.id))
+        self.db.commit()
+
     def mark_job_sent(self, payload: dict) -> None:
         job = payload.get("job")
         plan = payload.get("plan")
         config = payload.get("config") or {}
         if not job or not plan:
             return
-        refreshed = self.refresh_due_job_payload(payload)
+        refreshed = self.refresh_due_job_payload(
+            payload,
+            status="sending" if payload.get("_claimed") else "pending",
+        )
         if not refreshed:
             return
         job = refreshed["job"]

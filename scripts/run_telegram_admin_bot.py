@@ -237,39 +237,47 @@ async def handle_callback_query(client: TelegramBotClient, query: dict[str, Any]
 async def process_plan_reminders(client: TelegramBotClient) -> None:
     db = SessionLocal()
     try:
-        service = TelegramPlanReminderBotService(db)
-        for delivery in service.list_due_deliveries():
-            try:
-                await client.call(
-                    "sendMessage",
-                    {
-                        "chat_id": delivery.chat_id,
-                        "text": delivery.text,
-                        "reply_markup": delivery.reply_markup,
-                        "disable_web_page_preview": True,
-                    },
-                )
-            except Exception as exc:  # noqa: BLE001
+        with try_background_job_lock(db, "telegram_plan_reminder_scan") as acquired:
+            if not acquired:
+                log_telegram_bot_event("plan_reminder_scan_skipped", reason="already_running")
+                return
+            service = TelegramPlanReminderBotService(db)
+            for candidate in service.list_due_deliveries():
+                delivery = service.claim_delivery(candidate)
+                if delivery is None:
+                    continue
+                try:
+                    await client.call(
+                        "sendMessage",
+                        {
+                            "chat_id": delivery.chat_id,
+                            "text": delivery.text,
+                            "reply_markup": delivery.reply_markup,
+                            "disable_web_page_preview": True,
+                        },
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    service.release_delivery(delivery)
+                    log_telegram_bot_event(
+                        "plan_reminder_failed",
+                        user_id=delivery.user_id,
+                        plan_id=delivery.plan_id,
+                        error=type(exc).__name__,
+                    )
+                    logger.warning(
+                        "telegram plan reminder failed for user %s plan %s: %s",
+                        delivery.user_id,
+                        delivery.plan_id,
+                        exc,
+                    )
+                    continue
+                service.mark_delivery_sent(delivery)
                 log_telegram_bot_event(
-                    "plan_reminder_failed",
+                    "plan_reminder_sent",
+                    chat_id=delivery.chat_id,
                     user_id=delivery.user_id,
                     plan_id=delivery.plan_id,
-                    error=type(exc).__name__,
                 )
-                logger.warning(
-                    "telegram plan reminder failed for user %s plan %s: %s",
-                    delivery.user_id,
-                    delivery.plan_id,
-                    exc,
-                )
-                continue
-            service.mark_delivery_sent(delivery)
-            log_telegram_bot_event(
-                "plan_reminder_sent",
-                chat_id=delivery.chat_id,
-                user_id=delivery.user_id,
-                plan_id=delivery.plan_id,
-            )
     finally:
         db.close()
 
@@ -277,38 +285,46 @@ async def process_plan_reminders(client: TelegramBotClient) -> None:
 async def process_debt_reminders(client: TelegramBotClient) -> None:
     db = SessionLocal()
     try:
-        service = TelegramDebtReminderBotService(db)
-        for delivery in service.list_due_deliveries():
-            try:
-                await client.call(
-                    "sendMessage",
-                    {
-                        "chat_id": delivery.chat_id,
-                        "text": delivery.text,
-                        "disable_web_page_preview": True,
-                    },
-                )
-            except Exception as exc:  # noqa: BLE001
+        with try_background_job_lock(db, "telegram_debt_reminder_scan") as acquired:
+            if not acquired:
+                log_telegram_bot_event("debt_reminder_scan_skipped", reason="already_running")
+                return
+            service = TelegramDebtReminderBotService(db)
+            for candidate in service.list_due_deliveries():
+                delivery = service.claim_delivery(candidate)
+                if delivery is None:
+                    continue
+                try:
+                    await client.call(
+                        "sendMessage",
+                        {
+                            "chat_id": delivery.chat_id,
+                            "text": delivery.text,
+                            "disable_web_page_preview": True,
+                        },
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    service.release_delivery(delivery)
+                    log_telegram_bot_event(
+                        "debt_reminder_failed",
+                        user_id=delivery.user_id,
+                        debt_id=delivery.debt_id,
+                        error=type(exc).__name__,
+                    )
+                    logger.warning(
+                        "telegram debt reminder failed for user %s debt %s: %s",
+                        delivery.user_id,
+                        delivery.debt_id,
+                        exc,
+                    )
+                    continue
+                service.mark_delivery_sent(delivery)
                 log_telegram_bot_event(
-                    "debt_reminder_failed",
+                    "debt_reminder_sent",
+                    chat_id=delivery.chat_id,
                     user_id=delivery.user_id,
                     debt_id=delivery.debt_id,
-                    error=type(exc).__name__,
                 )
-                logger.warning(
-                    "telegram debt reminder failed for user %s debt %s: %s",
-                    delivery.user_id,
-                    delivery.debt_id,
-                    exc,
-                )
-                continue
-            service.mark_delivery_sent(delivery)
-            log_telegram_bot_event(
-                "debt_reminder_sent",
-                chat_id=delivery.chat_id,
-                user_id=delivery.user_id,
-                debt_id=delivery.debt_id,
-            )
     finally:
         db.close()
 
@@ -324,36 +340,43 @@ async def process_currency_refresh() -> None:
 async def process_currency_digests(client: TelegramBotClient) -> None:
     db = SessionLocal()
     try:
-        service = TelegramCurrencyDigestBotService(db)
-        for delivery in service.list_due_deliveries():
-            try:
-                await client.call(
-                    "sendMessage",
-                    {
-                        "chat_id": delivery.chat_id,
-                        "text": delivery.text,
-                        "disable_web_page_preview": True,
-                    },
-                )
-            except Exception as exc:  # noqa: BLE001
+        with try_background_job_lock(db, "telegram_currency_digest_scan") as acquired:
+            if not acquired:
+                log_telegram_bot_event("currency_digest_scan_skipped", reason="already_running")
+                return
+            service = TelegramCurrencyDigestBotService(db)
+            for delivery in service.list_due_deliveries():
+                if not service.claim_delivery(delivery):
+                    continue
+                try:
+                    await client.call(
+                        "sendMessage",
+                        {
+                            "chat_id": delivery.chat_id,
+                            "text": delivery.text,
+                            "disable_web_page_preview": True,
+                        },
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    service.release_delivery(delivery)
+                    log_telegram_bot_event(
+                        "currency_digest_failed",
+                        user_id=delivery.user_id,
+                        error=type(exc).__name__,
+                    )
+                    logger.warning(
+                        "telegram currency digest failed for user %s: %s",
+                        delivery.user_id,
+                        exc,
+                    )
+                    continue
+                service.mark_delivery_sent(delivery)
                 log_telegram_bot_event(
-                    "currency_digest_failed",
+                    "currency_digest_sent",
+                    chat_id=delivery.chat_id,
                     user_id=delivery.user_id,
-                    error=type(exc).__name__,
+                    tracked_count=len(delivery.tracked_currencies),
                 )
-                logger.warning(
-                    "telegram currency digest failed for user %s: %s",
-                    delivery.user_id,
-                    exc,
-                )
-                continue
-            service.mark_delivery_sent(delivery)
-            log_telegram_bot_event(
-                "currency_digest_sent",
-                chat_id=delivery.chat_id,
-                user_id=delivery.user_id,
-                tracked_count=len(delivery.tracked_currencies),
-            )
     finally:
         db.close()
 

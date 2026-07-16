@@ -8,6 +8,7 @@
     const seriesColors = ["#ff8a2b", "#6ea8ff", "#62d39a", "#f7c65b", "#d78cff", "#ff7c98"];
     const minZoom = 1;
     const maxZoom = 2.8;
+    const formatRate = (value) => core.formatRateDisplay?.(value || 0, 4, 6) || Number(value || 0).toFixed(6);
 
     function createTooltipHost(svgNode) {
       const wrapper = svgNode?.parentElement;
@@ -178,12 +179,12 @@
         hoverYLabel?.setAttribute("x", String(width - padX));
         hoverYLabel?.setAttribute("y", String(Math.max(padY + 12, y - 8)));
         if (hoverYLabel) {
-          hoverYLabel.textContent = Number(point.rate || 0).toFixed(4);
+          hoverYLabel.textContent = formatRate(point.rate || 0);
         }
         tooltip.innerHTML = `
           <div class="analytics-chart-tooltip-title">${escapeHtml(core.formatDateRu(point.rate_date))}</div>
           <div class="analytics-chart-tooltip-grid analytics-chart-tooltip-grid-compact">
-            <span class="analytics-chart-tooltip-balance">Курс: ${escapeHtml(Number(point.rate || 0).toFixed(4))}</span>
+            <span class="analytics-chart-tooltip-balance">Курс: ${escapeHtml(formatRate(point.rate || 0))}</span>
           </div>
         `;
         tooltip.classList.remove("hidden");
@@ -244,7 +245,7 @@
           <div class="analytics-chart-tooltip-grid">
             ${rows.map((row) => `
               <span class="analytics-chart-tooltip-balance">
-                <span style="color:${escapeHtml(row.color)}">●</span> ${escapeHtml(core.formatCurrencyLabel(row.currency))}: ${escapeHtml(row.rate.toFixed(4))}
+                <span style="color:${escapeHtml(row.color)}">●</span> ${escapeHtml(core.formatCurrencyLabel(row.currency))}: ${escapeHtml(formatRate(row.rate))}
               </span>
             `).join("")}
           </div>
@@ -321,7 +322,7 @@
       const midRate = minRate + yRange / 2;
       const yMarks = [minRate, midRate, maxRate].map((value) => `
         <line x1="${width - padX - 8}" y1="${toY(value)}" x2="${width - padX}" y2="${toY(value)}" stroke="rgba(207, 219, 245, 0.28)" stroke-width="1"></line>
-        <text x="${width - padX}" y="${Math.max(padY + 10, toY(value) - 8)}" text-anchor="end" class="analytics-chart-empty">${Number(value).toFixed(4)}</text>
+        <text x="${width - padX}" y="${Math.max(padY + 10, toY(value) - 8)}" text-anchor="end" class="analytics-chart-empty">${formatRate(value)}</text>
       `).join("");
       const hitboxes = orderedDates.map((rateDate, index) => `
         <g class="trend-bucket" data-analytics-bucket-index="${index}" data-analytics-rate-date="${rateDate}">
@@ -399,14 +400,14 @@
           <line class="currency-chart-hover-y" x1="0" y1="0" x2="0" y2="0" stroke="rgba(255,255,255,0.28)" stroke-dasharray="4 4" stroke-width="1"></line>
           <circle class="currency-chart-hover-dot" cx="0" cy="0" r="5.5" fill="var(--accent, #6ea8ff)" stroke="#fff" stroke-width="2"></circle>
           <text class="analytics-chart-empty currency-chart-hover-x-label" x="0" y="0" text-anchor="middle">${core.formatDateRu(last.rate_date)}</text>
-          <text class="analytics-chart-empty currency-chart-hover-y-label" x="0" y="0" text-anchor="end">${Number(last.rate || 0).toFixed(4)}</text>
+          <text class="analytics-chart-empty currency-chart-hover-y-label" x="0" y="0" text-anchor="end">${formatRate(last.rate || 0)}</text>
         </g>
         <text x="${padX}" y="${height - 8}" class="analytics-chart-empty">${core.formatDateRu(first.rate_date)}</text>
         <text x="${toX(Math.floor(points.length / 2))}" y="${height - 8}" text-anchor="middle" class="analytics-chart-empty">${core.formatDateRu(middle.rate_date)}</text>
         <text x="${width - padX}" y="${height - 8}" text-anchor="end" class="analytics-chart-empty">${core.formatDateRu(last.rate_date)}</text>
-        <text x="${width - padX}" y="${padY + 4}" text-anchor="end" class="analytics-chart-empty">${Number(maxRate).toFixed(4)}</text>
-        <text x="${width - padX}" y="${height / 2}" text-anchor="end" class="analytics-chart-empty">${Number(midRate).toFixed(4)}</text>
-        <text x="${width - padX}" y="${height - padY - 8}" text-anchor="end" class="analytics-chart-empty">${Number(minRate).toFixed(4)}</text>
+        <text x="${width - padX}" y="${padY + 4}" text-anchor="end" class="analytics-chart-empty">${formatRate(maxRate)}</text>
+        <text x="${width - padX}" y="${height / 2}" text-anchor="end" class="analytics-chart-empty">${formatRate(midRate)}</text>
+        <text x="${width - padX}" y="${height - padY - 8}" text-anchor="end" class="analytics-chart-empty">${formatRate(minRate)}</text>
       `;
       bindSingleTooltip(chart, points, { toX, toY, width, height, padX, padY });
     }

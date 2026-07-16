@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_UP
 import re
 
@@ -16,7 +16,7 @@ from app.core.cache import (
     set_json,
 )
 from app.core.logging import log_background_job_event
-from app.db.models import Category, CategoryGroup
+from app.db.models import Category, CategoryGroup, FxTrade, OperationItemTemplate
 from app.repositories.currency_repo import CurrencyRepository
 from app.repositories.preference_repo import PreferenceRepository
 from app.repositories.operation_repo import OperationRepository
@@ -606,6 +606,21 @@ class OperationService:
         if not item:
             raise LookupError("Operation not found")
 
+        receipt_items = self.repo.list_receipt_items_for_operations(
+            user_id=user_id,
+            operation_ids=[operation_id],
+        ).get(operation_id, [])
+        linked_trade = self.currency_repo.get_trade_by_linked_operation_id(
+            user_id=user_id,
+            operation_id=operation_id,
+        )
+        restore_snapshot = self._build_operation_restore_snapshot(
+            item=item,
+            receipt_items=receipt_items,
+            linked_trade=linked_trade,
+            item_price_ids=self.repo.list_item_price_ids_for_operation(operation_id=operation_id),
+        )
+
         self.activity.record(
             user_id=user_id,
             actor_user_id=user_id,
@@ -613,8 +628,13 @@ class OperationService:
             entity_id=int(item.id),
             event_type="deleted",
             title="Операция удалена",
-            metadata=ActivityService.snapshot(item, self.ACTIVITY_FIELDS),
+            metadata={
+                **ActivityService.snapshot(item, self.ACTIVITY_FIELDS),
+                "_restore_snapshot": restore_snapshot,
+            },
         )
+        if linked_trade is not None:
+            self.currency_repo.delete_trade(linked_trade)
         self.repo.delete(item)
         self.db.commit()
         invalidate_dashboard_summary_cache(user_id)
@@ -630,6 +650,178 @@ class OperationService:
             category_id=item.category_id,
             currency=getattr(item, "currency", "BYN"),
         )
+
+    @staticmethod
+    def _build_operation_restore_snapshot(
+        *,
+        item,
+        receipt_items: list,
+        linked_trade,
+        item_price_ids: list[int],
+    ) -> dict:
+        def iso(value):
+            return value.isoformat() if value is not None else None
+
+        operation = {
+            "id": int(item.id),
+            "kind": item.kind,
+            "amount": str(item.amount),
+            "original_amount": str(item.original_amount),
+            "currency": item.currency,
+            "base_currency": item.base_currency,
+            "fx_rate": str(item.fx_rate),
+            "operation_date": iso(item.operation_date),
+            "category_id": item.category_id,
+            "note": item.note,
+            "created_at": iso(item.created_at),
+        }
+        receipts = [
+            {
+                "id": int(row.id),
+                "template_id": row.template_id,
+                "category_id": row.category_id,
+                "shop_name": row.shop_name,
+                "name": row.name,
+                "quantity": str(row.quantity),
+                "unit_price": str(row.unit_price),
+                "is_discounted": bool(row.is_discounted),
+                "regular_unit_price": str(row.regular_unit_price) if row.regular_unit_price is not None else None,
+                "discount_type": row.discount_type,
+                "line_total": str(row.line_total),
+                "note": row.note,
+                "created_at": iso(row.created_at),
+            }
+            for row in receipt_items
+        ]
+        trade = None
+        if linked_trade is not None:
+            trade = {
+                "id": int(linked_trade.id),
+                "side": linked_trade.side,
+                "asset_currency": linked_trade.asset_currency,
+                "quote_currency": linked_trade.quote_currency,
+                "quantity": str(linked_trade.quantity),
+                "unit_price": str(linked_trade.unit_price),
+                "fee": str(linked_trade.fee),
+                "trade_kind": linked_trade.trade_kind,
+                "trade_date": iso(linked_trade.trade_date),
+                "note": linked_trade.note,
+                "created_at": iso(linked_trade.created_at),
+            }
+        return {
+            "version": 1,
+            "operation": operation,
+            "receipt_items": receipts,
+            "fx_settlement": trade,
+            "item_price_ids": item_price_ids,
+        }
+
+    def restore_deleted_operation(self, *, user_id: int, operation_id: int) -> dict:
+        if self.repo.get_by_id(user_id=user_id, operation_id=operation_id) is not None:
+            raise ValueError("Operation already exists")
+        event = self.activity.get_restore_event(
+            user_id=user_id,
+            entity_type="operation",
+            entity_id=operation_id,
+        )
+        snapshot = dict((event.metadata_json or {})["_restore_snapshot"])
+        if snapshot.get("version") != 1 or not isinstance(snapshot.get("operation"), dict):
+            raise ValueError("Unsupported operation restore snapshot")
+        operation_data = dict(snapshot["operation"])
+        if int(operation_data.get("id") or 0) != operation_id:
+            raise ValueError("Operation restore snapshot does not match the requested operation")
+
+        category_ids = {
+            int(category_id)
+            for category_id in [operation_data.get("category_id")]
+            + [row.get("category_id") for row in snapshot.get("receipt_items") or []]
+            if int(category_id or 0) > 0
+        }
+        if category_ids:
+            available_category_ids = set(
+                self.db.scalars(
+                    select(Category.id).where(
+                        Category.id.in_(category_ids),
+                        (Category.user_id == user_id) | (Category.is_system.is_(True)),
+                    )
+                )
+            )
+            if category_ids != {int(item_id) for item_id in available_category_ids}:
+                raise ValueError("A category used by the deleted operation no longer exists")
+        template_ids = {
+            int(row["template_id"])
+            for row in snapshot.get("receipt_items") or []
+            if int(row.get("template_id") or 0) > 0
+        }
+        if template_ids:
+            available_template_ids = set(
+                self.db.scalars(
+                    select(OperationItemTemplate.id).where(
+                        OperationItemTemplate.user_id == user_id,
+                        OperationItemTemplate.id.in_(template_ids),
+                    )
+                )
+            )
+            if template_ids != {int(item_id) for item_id in available_template_ids}:
+                raise ValueError("A receipt template used by the deleted operation no longer exists")
+
+        item = self.repo.restore(user_id=user_id, snapshot=operation_data)
+        restored_receipts = self.repo.restore_receipt_items(
+            user_id=user_id,
+            operation_id=operation_id,
+            items=list(snapshot.get("receipt_items") or []),
+        )
+        trade_data = snapshot.get("fx_settlement")
+        if isinstance(trade_data, dict):
+            trade = FxTrade(
+                id=int(trade_data["id"]),
+                user_id=user_id,
+                side=trade_data["side"],
+                asset_currency=trade_data["asset_currency"],
+                quote_currency=trade_data["quote_currency"],
+                quantity=Decimal(trade_data["quantity"]),
+                unit_price=Decimal(trade_data["unit_price"]),
+                fee=Decimal(trade_data["fee"]),
+                trade_kind=trade_data["trade_kind"],
+                linked_operation_id=operation_id,
+                trade_date=date.fromisoformat(trade_data["trade_date"]),
+                note=trade_data.get("note"),
+            )
+            if trade_data.get("created_at"):
+                trade.created_at = datetime.fromisoformat(trade_data["created_at"])
+            self.db.add(trade)
+        self.repo.restore_item_price_links(
+            operation_id=operation_id,
+            price_ids=[int(item_id) for item_id in snapshot.get("item_price_ids") or []],
+        )
+        self.activity.mark_restored(event, entity_id=operation_id)
+        self.activity.record(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="operation",
+            entity_id=operation_id,
+            event_type="restored",
+            title="Операция восстановлена",
+            metadata={
+                "receipt_items": len(restored_receipts),
+                "has_fx_settlement": isinstance(trade_data, dict),
+            },
+        )
+        self.db.commit()
+        invalidate_dashboard_summary_cache(user_id)
+        invalidate_dashboard_analytics_cache(user_id)
+        invalidate_item_templates_cache(user_id)
+        invalidate_operations_cache(user_id)
+        self.db.refresh(item)
+        log_background_job_event(
+            "operation_service",
+            "operation_restored",
+            user_id=user_id,
+            operation_id=operation_id,
+            receipt_items=len(restored_receipts),
+            has_fx_settlement=isinstance(trade_data, dict),
+        )
+        return self._serialize_operation(user_id=user_id, operation=item, receipt_items=restored_receipts)
 
     def list_item_templates(
         self,

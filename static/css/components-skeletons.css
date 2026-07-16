@@ -3,6 +3,39 @@
   gap: var(--space-3);
 }
 
+.panel-load-state {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.panel-load-spinner {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  border: 2px solid rgba(149, 164, 196, 0.28);
+  border-top-color: #8fb4ff;
+  border-radius: 50%;
+  animation: panelLoadSpin 0.8s linear infinite;
+}
+
+.panel-load-state-error {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  color: #ff9eaa;
+}
+
+@keyframes panelLoadSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-load-spinner { animation: none; }
+}
+
 .skeleton-card-block,
 .skeleton-row-block,
 .skeleton-line,
@@ -185,6 +218,19 @@
 .analytics-trend-chart.analytics-trend-chart-skeleton {
   border-radius: var(--radius-lg);
   background: rgba(57, 74, 104, 0.08);
+}
+
+.panel-stale-indicator {
+  margin: 8px 12px 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 174, 66, 0.28);
+  color: #f1b35f;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.panel.is-stale {
+  border-color: rgba(255, 174, 66, 0.34);
 }
 
 @keyframes skeletonShimmer {

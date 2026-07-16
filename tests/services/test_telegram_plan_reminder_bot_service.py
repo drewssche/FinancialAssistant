@@ -123,3 +123,29 @@ def test_mark_delivery_sent_delegates_to_plan_reminder_service():
     finally:
         db.close()
         Base.metadata.drop_all(bind=engine)
+
+
+def test_delivery_claim_prevents_duplicate_sender_and_can_be_released():
+    engine, SessionLocal = _make_session()
+    db = SessionLocal()
+    try:
+        db.add(User(id=1, display_name="Tester", status="active"))
+        db.add(AuthIdentity(user_id=1, provider="telegram", provider_user_id="100500", username="tester"))
+        db.add(UserPreference(user_id=1, preferences_version=1, data={"plans": {"reminders_enabled": True}, "ui": {"timezone": "UTC"}}))
+        db.add(PlanOperation(id=1, user_id=1, kind="expense", amount="10.00", scheduled_date=date.today(), status="active"))
+        db.add(PlanReminderJob(id=1, plan_id=1, user_id=1, scheduled_for=datetime.now(timezone.utc), status="pending"))
+        db.commit()
+
+        service = TelegramPlanReminderBotService(db)
+        candidate = service.list_due_deliveries()[0]
+        claimed = service.claim_delivery(candidate)
+        assert claimed is not None
+        assert db.get(PlanReminderJob, 1).status == "sending"
+        assert service.claim_delivery(candidate) is None
+
+        service.release_delivery(claimed)
+        assert db.get(PlanReminderJob, 1).status == "pending"
+        assert service.claim_delivery(candidate) is not None
+    finally:
+        db.close()
+        Base.metadata.drop_all(bind=engine)

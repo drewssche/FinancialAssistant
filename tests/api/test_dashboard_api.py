@@ -156,6 +156,34 @@ def test_dashboard_all_time_uses_first_operation_date(client: TestClient):
     assert payload["balance"] == "150.00"
 
 
+def test_dashboard_all_time_normalizes_cached_debt_dates_before_comparison(client: TestClient):
+    client.post(
+        "/api/v1/debts",
+        json={
+            "counterparty": "Кешированная дата",
+            "direction": "lend",
+            "principal": "50.00",
+            "start_date": "2026-01-05",
+        },
+    )
+    cached_cards = client.get("/api/v1/debts/cards", params={"include_closed": "true"})
+    assert cached_cards.status_code == 200
+    client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "10.00",
+            "operation_date": "2026-02-10",
+            "note": "Операция после долга",
+        },
+    )
+
+    summary = client.get("/api/v1/dashboard/summary", params={"period": "all_time"})
+
+    assert summary.status_code == 200
+    assert summary.json()["date_from"] == "2026-01-05"
+
+
 def test_dashboard_summary_includes_debt_metrics(client: TestClient):
     client.post(
         "/api/v1/debts",
@@ -397,6 +425,14 @@ def test_dashboard_summary_metrics_track_cache_and_invalidation(client: TestClie
     assert payload["latency_total"]["samples"] >= 2
     assert isinstance(payload["endpoint_request_totals"], dict)
     assert payload["endpoint_request_totals"].get("GET /api/v1/dashboard/summary", 0) >= 2
+    response_sizes = payload["endpoint_response_bytes"]
+    assert response_sizes["GET /api/v1/dashboard/summary"]["samples"] >= 2
+    assert response_sizes["GET /api/v1/dashboard/summary"]["max_bytes"] > 0
+    assert payload["database_query_total"] > 0
+    assert payload["database_query_error_total"] >= 0
+    assert payload["database_query_latency"]["samples"] > 0
+    assert payload["cache_runtime"]["backend"] in {"redis", "local_fallback"}
+    assert isinstance(payload["cache_runtime"]["redis_available"], bool)
 
 
 def test_dashboard_summary_checks_redis_runtime_advisory(client: TestClient, monkeypatch):
@@ -1911,3 +1947,25 @@ def test_dashboard_analytics_highlights_cache_is_invalidated_after_category_muta
     )
     assert after_update.status_code == 200
     assert after_update.json()["category_breakdown"][0]["group_name"] == "Новое имя"
+
+
+def test_dashboard_does_not_cache_optional_panel_failure_as_zero(client: TestClient, monkeypatch):
+    calls = {"count": 0}
+
+    def fail_debt_summary(self, *, user_id):
+        _ = self, user_id
+        calls["count"] += 1
+        raise RuntimeError("temporary debt failure")
+
+    monkeypatch.setattr(
+        "app.services.debt_service.DebtService.summary_active_totals_current_base",
+        fail_debt_summary,
+    )
+    first = client.get("/api/v1/dashboard/summary", params={"period": "all_time"})
+    second = client.get("/api/v1/dashboard/summary", params={"period": "all_time"})
+
+    assert first.status_code == 200, first.text
+    assert second.status_code == 200, second.text
+    assert first.json()["debt_summary_available"] is False
+    assert second.json()["debt_summary_available"] is False
+    assert calls["count"] == 2

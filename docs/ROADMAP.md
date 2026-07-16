@@ -12,6 +12,87 @@
 - Keep Telegram-specific behavior in the client runtime; backend contracts stay shared between Web UI and Telegram.
 
 ## Current Sprint
+### Technical Debt Audit 2026-07-16
+- [x] Complete a read-only audit of data integrity, background delivery, deployment, performance, security, observability, and test coverage. Baseline: non-E2E tests pass; the isolated Telegram login-readiness race found by the combined browser run is fixed and covered by deterministic smoke CI.
+- [x] P0: make operation rollback lossless and transactional.
+  - Restore foreign-currency amounts, receipt positions, linked currency settlement, and every edited operation field from a server-side snapshot instead of reconstructing an operation in the browser.
+  - Preserve `icon` and `include_in_statistics` when rolling back category changes; add create/edit/delete rollback coverage for operations and categories.
+- [x] P1: make every scheduled Telegram delivery idempotent across overlapping bot instances.
+  - Apply the currency-alert locking pattern to plan reminders, debt reminders, and digest delivery; persist a delivery key before sending and cover restart/deploy races.
+- [ ] P1: add a tested PostgreSQL backup and recovery path.
+  - Stream a compressed encrypted daily dump to storage outside the VPS, keep no permanent local archive, apply bounded remote retention, monitor upload/cleanup failures, and verify restoration quarterly and before risky migrations.
+  - Implemented encrypted streaming backup and disposable restore-verification scripts with bounded retention; VPS scheduling, off-host `rclone` credentials, monitoring, and the first verified production restore remain operational tasks.
+- [x] P1: turn deployment checks into real readiness gates.
+  - Run the complete Alembic chain against a fresh PostgreSQL database in tests; add an application readiness check and make the bot wait for readiness rather than only for a started container.
+- [ ] P1: reduce frontend startup cost and stale-asset risk.
+  - Replace the sequential graph of more than 100 scripts with a bundled/versioned build, immutable asset caching, and a small versioned entry document.
+  - Manifest scripts now fetch in parallel while preserving execution order; versioned assets are immutable and the entry document revalidates. Replacing the manifest graph with a real bundle remains pending.
+- [x] P1: bound expensive and stalled requests.
+  - Keep `all_time` cashflow/search aggregation in SQL with pagination or explicit limits; add client request timeouts and cancellation without breaking coalesced dashboard panels.
+- [x] P1: distinguish dashboard loading, empty, stale, and failed states.
+  - Do not cache request failures as valid zero data; retain the last successful panel result, expose a local retry, and add structured timing/error logs per panel.
+- [ ] P2: harden runtime configuration without requiring a server `.env` migration.
+  - First add a non-secret preflight check and warning for the current VPS environment value. Preserve the existing valid `production`, `development`, or `test` values and do not enable a new startup failure in the same deployment.
+  - After production is verified, restrict `APP_ENV` to the explicit enum so future typos fail startup; require non-default secrets, database credentials, admin IDs, Telegram token, and allowed CORS origins only for the production profile.
+  - Added a non-secret runtime preflight; the current local production profile passes it without changing existing `.env` values. Strict enum/startup enforcement remains deferred until the VPS preflight is run.
+- [ ] P2: reduce browser-side injection impact.
+  - Remove dynamic HTML from toast rendering, define a Content Security Policy, and review long-lived token storage together with the existing in-place session recovery flow.
+  - Dynamic toast HTML is removed and CSP, MIME-sniffing, and referrer headers are active. The token-storage tradeoff remains pending because moving from persistent storage changes Telegram WebApp login behavior.
+- [x] P2: make optional infrastructure self-healing.
+  - Retry Redis initialization after an initial outage and expose cache availability in diagnostics without making Redis a hard dependency.
+- [x] P2: add continuous quality and performance gates.
+  - Run lint, type checks, dependency/security checks, migration tests, and deterministic browser smoke tests in CI; track SQL/query duration and response size in addition to request count.
+  - GitHub CI now enforces dependency consistency and vulnerability audit, Ruff, a clean core/schema mypy baseline, Python/JavaScript syntax, non-E2E tests, PostgreSQL migration round-trip, and deterministic browser smoke; runtime metrics expose SQL count/latency and endpoint response size.
+- [x] P2: keep local and production runtime definitions comparable.
+  - Add the same application health/readiness behavior to local Compose, document the intentional port/proxy differences, and remove the remaining combined-release login race.
+  - Local Compose now gates the bot on application readiness, and the delayed Telegram startup/session-recovery browser test is part of CI.
+
+#### Audit implementation status
+- Completed in code: lossless rollback, idempotent reminder/digest claims, readiness/migration gates, bounded requests, stale dashboard states, CSP-safe toasts, Redis retry/diagnostics, runtime metrics, and baseline CI.
+- Requires VPS setup or verification: backup schedule and off-host credentials, first restore drill, and `runtime_preflight.py --strict` against the deployed `.env`.
+- Remaining engineering backlog: frontend bundling, explicit `APP_ENV` enum after VPS verification, and persistent-token review.
+
+### Currency Rate Unit Audit 2026-07-16
+- [x] P0: normalize NBRB rates to the price of one currency unit.
+  - Divide `Cur_OfficialRate` by `Cur_Scale` for every provider response instead of treating the nominal quote as a single-unit rate.
+  - Keep USD/EUR unchanged and correctly normalize RUB `/100`, CNY `/10`, and PLN `/10` for the currently supported currencies.
+  - Add migration `20260716_0031` to normalize existing automatic NBRB snapshots without changing manual rates or historical trades.
+- [x] P0: preserve sufficient rate precision across the whole product.
+  - Use one adaptive 4-6 digit formatter in currency forms, operation FX fields, previews, dashboard, analytics charts, trade lists, and admin diagnostics.
+  - Cover `5500 RUB`, official single-unit rate `0.037044`, and an actual paid total of `194.70 BYN` producing a deal rate of `0.0354` in API and browser tests.
+
+### Session Timing 2026-07-16
+- [x] P1: show when the current session started and when its token was last renewed.
+  - Read the root session start and token issue time from JWT claims; keep `Начата HH:MM` stable and update `Обновлена HH:MM` after automatic or manual renewal.
+  - Preserve the open operation modal and every unsaved field while renewing.
+
+### Currency Balance Settlement 2026-07-16
+- [x] P0: make foreign-currency expenses optionally reduce the tracked currency balance.
+  - Replace the ambiguous `Оплата с валютной карты / Использовать` wording with one explicit switch: `Списать из валютного остатка`.
+  - Keep the switch off by default because an operation may use untracked cash or an external card.
+  - For an operation and settlement in the same foreign currency, synchronize settlement quantity with the original operation amount and settlement rate with the operation FX rate.
+  - For a base-currency operation or a different settlement currency, retain explicit currency, quantity, and rate controls.
+  - Show the amount available for historical settlement and the projected balance after the operation; exclude the operation's existing linked settlement while editing.
+  - Done 2026-07-16: the existing settlement switch now preserves the operation currency, directly synchronizes matching foreign amounts/rates, and shows a date-aware safe debit plus projected balance.
+- [x] P0: support retrospective changes safely.
+  - Enabling settlement on an old operation creates the linked currency debit without changing the operation's original currency.
+  - Editing amount, currency, rate, or date updates the linked debit; disabling settlement restores the balance; deleting the operation removes its linked debit.
+  - Preserve the single cashflow expense: the linked currency trade remains an inventory movement and is not counted as another expense.
+  - Done 2026-07-16: old foreign operations can add, update, disable, re-enable, and delete linked settlements without changing their original currency; operation deletion now removes the linked trade explicitly instead of relying only on database cascade settings.
+- [x] P1: cover same-currency, cross-currency, insufficient-balance, create, edit, disable, and delete flows in API/frontend/browser tests, including mobile modal geometry.
+  - Covered by the complete operations/currency API suites, frontend contracts, and a browser scenario for retrospective USD settlement with desktop and 390px overflow checks.
+
+### Dashboard Loading Recovery 2026-07-16
+- [x] P0: normalize cached debt issuance/repayment dates before all-time cashflow comparison; production traceback confirmed mixed cached strings and database `date` values caused dashboard summary `500` responses.
+- [x] P0: keep explicit loading states for dashboard plans/debts and their full sections, then show a local retry action only after the final failure.
+- [x] P0: version the complete frontend asset graph so Telegram WebView cannot mix new JavaScript with stale debt KPI or modal CSS.
+- [x] P1: keep debt KPI semantics consistent: receivables positive, payables negative, and net position colored from its sign.
+
+### Compact Modal Actions 2026-07-16
+- [x] P1: standardize modal-header utility actions as compact icon-only controls with equal dimensions, accessible labels, and tooltips while keeping primary form actions textual.
+- [x] P1: make sidebar and operation-modal session renewal controls icon-only without changing the in-place refresh behavior.
+- [x] P0: replace the remaining private BYN font entities in static currency selectors and previews with portable `Br` text.
+
 ### Currency, Debt KPI And Position Metrics 2026-07-16
 - [x] P0: replace the fragile private-font BYN glyph with the portable `Br` label in the shared currency formatter and cover the frontend contract.
 - [x] P1: add contextual debt KPI states: receivables positive, payables negative, and net position colored by sign while zero remains neutral.

@@ -105,3 +105,48 @@ def test_group_update_changes_category_group_fields_in_list(client: TestClient):
     assert updated_category["group_id"] == group_id
     assert updated_category["group_name"] == "Супермаркет"
     assert updated_category["group_accent_color"] == "#229955"
+
+
+def test_deleted_category_restore_preserves_visual_and_statistics_fields(client: TestClient):
+    group = client.post(
+        "/api/v1/categories/groups",
+        json={"name": "Optional", "kind": "expense", "accent_color": "#336699"},
+    )
+    assert group.status_code == 200, group.text
+    category = client.post(
+        "/api/v1/categories",
+        json={
+            "name": "Hidden expense",
+            "kind": "expense",
+            "group_id": group.json()["id"],
+            "icon": "ticket",
+            "include_in_statistics": False,
+        },
+    )
+    assert category.status_code == 200, category.text
+    category_id = category.json()["id"]
+    operation = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "amount": "12.00",
+            "operation_date": "2026-03-06",
+            "category_id": category_id,
+        },
+    )
+    assert operation.status_code == 201, operation.text
+
+    deleted = client.delete(f"/api/v1/categories/{category_id}")
+    assert deleted.status_code == 204, deleted.text
+    restored = client.post(f"/api/v1/categories/{category_id}/restore")
+    assert restored.status_code == 200, restored.text
+    payload = restored.json()
+    assert payload["id"] == category_id
+    assert payload["group_id"] == group.json()["id"]
+    assert payload["icon"] == "ticket"
+    assert payload["include_in_statistics"] is False
+
+    restored_operation = client.get(f"/api/v1/operations/{operation.json()['id']}")
+    assert restored_operation.status_code == 200, restored_operation.text
+    assert restored_operation.json()["category_id"] == category_id
+    assert client.post(f"/api/v1/categories/{category_id}/restore").status_code == 409

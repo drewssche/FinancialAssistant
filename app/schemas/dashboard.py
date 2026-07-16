@@ -30,6 +30,7 @@ class DashboardSummary(BaseModel):
     debt_borrow_outstanding: Decimal
     debt_net_position: Decimal
     active_debt_cards: int
+    debt_summary_available: bool = True
     currency_book_value: Decimal = Decimal("0")
     currency_current_value: Decimal = Decimal("0")
     currency_result_value: Decimal = Decimal("0")
@@ -44,6 +45,7 @@ class DashboardSummary(BaseModel):
     currency_sell_average_rate: Decimal = Decimal("0")
     active_currency_positions: int = 0
     tracked_currency_positions: list[DashboardCurrencyPosition] = Field(default_factory=list)
+    currency_summary_available: bool = True
 
 
 class DashboardLatencyStats(BaseModel):
@@ -55,6 +57,21 @@ class DashboardLatencyStats(BaseModel):
     p95_ms: float
 
 
+class DashboardResponseSizeStats(BaseModel):
+    samples: int
+    avg_bytes: int
+    max_bytes: int
+
+
+class DashboardCacheRuntime(BaseModel):
+    backend: str
+    redis_available: bool
+    redis_host: str
+    redis_port: int
+    local_entry_count: int
+    namespace_ttls: dict[str, int]
+
+
 class DashboardSummaryMetrics(BaseModel):
     cache_hit_total: int
     cache_miss_total: int
@@ -64,6 +81,11 @@ class DashboardSummaryMetrics(BaseModel):
     latency_total: DashboardLatencyStats
     latency_miss_compute: DashboardLatencyStats
     endpoint_request_totals: dict[str, int]
+    endpoint_response_bytes: dict[str, DashboardResponseSizeStats]
+    database_query_total: int
+    database_query_error_total: int
+    database_query_latency: DashboardLatencyStats
+    cache_runtime: DashboardCacheRuntime
 
 
 class DashboardDebtPreviewDebt(BaseModel):

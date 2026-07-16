@@ -172,6 +172,10 @@
   line-height: 1.2;
 }
 
+#sessionRenewedLabel {
+  color: #8fb7a8;
+}
+
 .session-status-copy > strong {
   min-width: 0;
   overflow: hidden;
@@ -191,9 +195,17 @@
 }
 
 .session-renew-btn {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
   min-height: 32px;
-  padding: 6px 10px;
-  font-size: 11px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 15px;
+  line-height: 1;
 }
 
 .operation-session-refresh-btn {

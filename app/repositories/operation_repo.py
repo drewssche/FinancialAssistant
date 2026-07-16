@@ -1,7 +1,7 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Select, and_, asc, case, delete, desc, func, or_, select
+from sqlalchemy import Select, and_, asc, case, delete, desc, func, or_, select, update
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import Session
 
@@ -158,6 +158,26 @@ class OperationRepository:
         self.db.flush()
         return operation
 
+    def restore(self, *, user_id: int, snapshot: dict) -> Operation:
+        operation = Operation(
+            id=int(snapshot["id"]),
+            user_id=user_id,
+            kind=snapshot["kind"],
+            amount=Decimal(snapshot["amount"]),
+            original_amount=Decimal(snapshot["original_amount"]),
+            currency=snapshot["currency"],
+            base_currency=snapshot["base_currency"],
+            fx_rate=Decimal(snapshot["fx_rate"]),
+            operation_date=date.fromisoformat(snapshot["operation_date"]),
+            category_id=snapshot.get("category_id"),
+            note=snapshot.get("note"),
+        )
+        if snapshot.get("created_at"):
+            operation.created_at = datetime.fromisoformat(snapshot["created_at"])
+        self.db.add(operation)
+        self.db.flush()
+        return operation
+
     def get_by_id(self, user_id: int, operation_id: int) -> Operation | None:
         stmt = select(Operation).where(Operation.user_id == user_id, Operation.id == operation_id)
         return self.db.scalar(stmt)
@@ -241,6 +261,7 @@ class OperationRepository:
         min_amount: Decimal | None = None,
         currency_scope: str = "all",
         base_currency: str = "BYN",
+        limit: int | None = None,
     ) -> list[Operation]:
         conditions = self._build_list_conditions(
             user_id=user_id,
@@ -268,6 +289,8 @@ class OperationRepository:
             .where(and_(*conditions))
             .order_by(order_expr, Operation.id.desc())
         )
+        if limit is not None:
+            stmt = stmt.limit(limit)
         return list(self.db.scalars(stmt))
 
     def summary_filtered(
@@ -320,6 +343,17 @@ class OperationRepository:
         return operation
 
     def delete(self, operation: Operation) -> None:
+        self.db.execute(
+            update(OperationItemPrice)
+            .where(OperationItemPrice.source_operation_id == operation.id)
+            .values(source_operation_id=None)
+        )
+        self.db.execute(
+            delete(OperationReceiptItem).where(
+                OperationReceiptItem.user_id == operation.user_id,
+                OperationReceiptItem.operation_id == operation.id,
+            )
+        )
         self.db.delete(operation)
         self.db.flush()
 
@@ -357,6 +391,62 @@ class OperationRepository:
             created.append(row)
         self.db.flush()
         return created
+
+    def restore_receipt_items(
+        self,
+        *,
+        user_id: int,
+        operation_id: int,
+        items: list[dict],
+    ) -> list[OperationReceiptItem]:
+        created: list[OperationReceiptItem] = []
+        for payload in items:
+            row = OperationReceiptItem(
+                id=int(payload["id"]),
+                operation_id=operation_id,
+                user_id=user_id,
+                template_id=payload.get("template_id"),
+                category_id=payload.get("category_id"),
+                shop_name=payload.get("shop_name"),
+                name=payload["name"],
+                quantity=Decimal(payload["quantity"]),
+                unit_price=Decimal(payload["unit_price"]),
+                is_discounted=bool(payload.get("is_discounted")),
+                regular_unit_price=(
+                    Decimal(payload["regular_unit_price"])
+                    if payload.get("regular_unit_price") not in (None, "")
+                    else None
+                ),
+                discount_type=payload.get("discount_type"),
+                line_total=Decimal(payload["line_total"]),
+                note=payload.get("note"),
+            )
+            if payload.get("created_at"):
+                row.created_at = datetime.fromisoformat(payload["created_at"])
+            self.db.add(row)
+            created.append(row)
+        self.db.flush()
+        return created
+
+    def list_item_price_ids_for_operation(self, *, operation_id: int) -> list[int]:
+        return [
+            int(item_id)
+            for item_id in self.db.scalars(
+                select(OperationItemPrice.id).where(OperationItemPrice.source_operation_id == operation_id)
+            )
+        ]
+
+    def restore_item_price_links(self, *, operation_id: int, price_ids: list[int]) -> None:
+        if not price_ids:
+            return
+        rows = list(
+            self.db.scalars(
+                select(OperationItemPrice).where(OperationItemPrice.id.in_(price_ids))
+            )
+        )
+        for row in rows:
+            row.source_operation_id = operation_id
+        self.db.flush()
 
     def list_receipt_items_for_operations(
         self,

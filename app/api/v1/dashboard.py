@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user_id
+from app.core.cache import get_cache_runtime_status
 from app.core.metrics import get_dashboard_summary_metrics
 from app.db.session import get_db
 from app.schemas.dashboard import (
@@ -39,7 +40,7 @@ def get_summary(
 @router.get("/summary/metrics", response_model=DashboardSummaryMetrics)
 def get_summary_metrics(user_id: int = Depends(get_current_user_id)):
     _ = user_id
-    return get_dashboard_summary_metrics()
+    return {**get_dashboard_summary_metrics(), "cache_runtime": get_cache_runtime_status()}
 
 
 @router.get("/debts/preview", response_model=list[DashboardDebtPreviewCard])

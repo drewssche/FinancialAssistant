@@ -42,3 +42,18 @@ class TelegramDebtReminderBotService:
 
     def mark_delivery_sent(self, delivery: TelegramDebtReminderDelivery) -> None:
         self.reminder_service.mark_job_sent(delivery.payload)
+
+    def claim_delivery(self, delivery: TelegramDebtReminderDelivery) -> TelegramDebtReminderDelivery | None:
+        payload = self.reminder_service.claim_job(delivery.payload)
+        if payload is None:
+            return None
+        return TelegramDebtReminderDelivery(
+            chat_id=str(payload["chat_id"]),
+            text=self.reminder_service.build_reminder_text(payload),
+            user_id=delivery.user_id,
+            debt_id=delivery.debt_id,
+            payload=payload,
+        )
+
+    def release_delivery(self, delivery: TelegramDebtReminderDelivery) -> None:
+        self.reminder_service.release_job(delivery.payload)

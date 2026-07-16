@@ -1,16 +1,5 @@
 .finance-calculator-modal-toggle {
-  gap: var(--space-2);
-}
-
-.finance-calculator-modal-toggle > span:first-child {
-  display: inline-grid;
-  place-items: center;
-  width: 1.25rem;
-  height: 1.25rem;
-  border-radius: 999px;
-  background: rgba(109, 168, 255, 0.14);
-  color: #b9d4ff;
-  font-weight: 800;
+  gap: 0;
 }
 
 .finance-calculator-overlay {
@@ -173,10 +162,6 @@ body.finance-calculator-open {
       max(var(--space-4), env(safe-area-inset-right))
       max(var(--space-5), env(safe-area-inset-bottom))
       max(var(--space-4), env(safe-area-inset-left));
-  }
-
-  .finance-calculator-modal-toggle > span:last-child {
-    display: none;
   }
 
   .finance-calculator-drawer.modal-attached {

@@ -56,6 +56,16 @@
     if (el.debtsCards && actions.openDebtRepaymentModal) {
       el.debtsCards.addEventListener("click", (event) => {
         const debtFeature = window.App.getRuntimeModule?.("debts") || {};
+        const retryButton = event.target.closest("button[data-debts-retry]");
+        if (retryButton) {
+          core.runAction({
+            button: retryButton,
+            pendingText: "Загрузка…",
+            errorPrefix: "Не удалось загрузить долги",
+            action: () => debtFeature.loadDebtsCards?.({ force: true }),
+          });
+          return;
+        }
         debtsUiCoordinator?.handleDebtsCardsClick?.({
           event,
           pickerUtils,

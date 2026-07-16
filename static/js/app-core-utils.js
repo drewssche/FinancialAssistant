@@ -37,6 +37,19 @@
     return num.toFixed(digits);
   }
 
+  function formatRateDisplay(value, minDigits = 4, maxDigits = 6) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return Number(0).toFixed(minDigits);
+    const boundedMin = Math.max(0, Math.min(Number(minDigits) || 0, 8));
+    const boundedMax = Math.max(boundedMin, Math.min(Number(maxDigits) || boundedMin, 8));
+    const [whole, fraction = ""] = numeric.toFixed(boundedMax).split(".");
+    let visibleFraction = fraction;
+    while (visibleFraction.length > boundedMin && visibleFraction.endsWith("0")) {
+      visibleFraction = visibleFraction.slice(0, -1);
+    }
+    return visibleFraction ? `${whole}.${visibleFraction}` : whole;
+  }
+
   function evaluateMathExpression(value, precisionDigits = 2) {
     const raw = String(value || "").trim();
     if (!raw) {
@@ -577,6 +590,7 @@
   window.App.coreUtils = {
     formatAmount,
     formatRateAmount,
+    formatRateDisplay,
     evaluateMathExpression,
     resolveMoneyInput,
     resolveRateInput,

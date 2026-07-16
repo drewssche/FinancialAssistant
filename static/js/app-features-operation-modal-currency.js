@@ -52,12 +52,12 @@
 
   function markCurrencyQuantitySource() {
     const wasAutoComputed = el.currencyQuantityField?.classList.contains("money-input-auto");
-    if (wasAutoComputed) {
+    const rateResolved = core.resolveRateInput(el.currencyUnitPrice?.value || 0, 0, 6);
+    const preserveRateDriver = currencyTradeRateDriver && rateResolved.valid && Number(rateResolved.previewValue || 0) > 0;
+    if (wasAutoComputed && preserveRateDriver) {
       currencyTradeManualOrder = currencyTradeManualOrder.filter((item) => item !== "quote");
     }
     rememberCurrencyTradeManualField("quantity");
-    const rateResolved = core.resolveRateInput(el.currencyUnitPrice?.value || 0, 0, 6);
-    const preserveRateDriver = rateResolved.valid && Number(rateResolved.previewValue || 0) > 0;
     if (wasAutoComputed && preserveRateDriver && !currencyTradeManualOrder.includes("rate")) {
       currencyTradeManualOrder = ["rate", "quantity"];
     }
@@ -70,12 +70,12 @@
 
   function markCurrencyQuoteSource() {
     const wasAutoComputed = el.currencyQuoteTotalField?.classList.contains("money-input-auto");
-    if (wasAutoComputed) {
+    const rateResolved = core.resolveRateInput(el.currencyUnitPrice?.value || 0, 0, 6);
+    const preserveRateDriver = currencyTradeRateDriver && rateResolved.valid && Number(rateResolved.previewValue || 0) > 0;
+    if (wasAutoComputed && preserveRateDriver) {
       currencyTradeManualOrder = currencyTradeManualOrder.filter((item) => item !== "quantity");
     }
     rememberCurrencyTradeManualField("quote");
-    const rateResolved = core.resolveRateInput(el.currencyUnitPrice?.value || 0, 0, 6);
-    const preserveRateDriver = rateResolved.valid && Number(rateResolved.previewValue || 0) > 0;
     if (wasAutoComputed && preserveRateDriver && !currencyTradeManualOrder.includes("rate")) {
       currencyTradeManualOrder = ["rate", "quote"];
     }
@@ -87,6 +87,9 @@
   }
 
   function formatTradeRateValue(value) {
+    if (core.formatRateDisplay) {
+      return core.formatRateDisplay(value, 4, 6);
+    }
     const numeric = Number(value || 0);
     if (!(numeric > 0)) {
       return "";
@@ -200,7 +203,7 @@
     if (!currentRate?.rate) {
       return;
     }
-    el.currencyUnitPrice.value = Number(currentRate.rate || 0).toFixed(4);
+    el.currencyUnitPrice.value = formatTradeRateValue(currentRate.rate || 0);
     syncCurrencyTradeFieldUi();
     updateCreatePreview();
   }
@@ -318,7 +321,8 @@
 
   const createOperationModalFxSettlementFeature = window.App.getRuntimeModule?.("operation-modal-fx-settlement-factory");
   const fxSettlement = createOperationModalFxSettlementFeature
-    ? createOperationModalFxSettlementFeature({
+      ? createOperationModalFxSettlementFeature({
+      state,
       el,
       core,
       updateCreatePreview,
@@ -495,7 +499,7 @@
         setOperationFxRateHint(mode, `Текущий курс ${core.formatCurrencyLabel(context.currency)} не найден`, "warning");
         return;
       }
-      fxRateInput.value = Number(currentRate.rate || 0).toFixed(4);
+      fxRateInput.value = formatTradeRateValue(currentRate.rate || 0);
       const rateDate = currentRate.rate_date ? core.formatDateRu(currentRate.rate_date) : "";
       setOperationFxRateHint(mode, `Текущий курс подставлен автоматически${rateDate ? ` · ${rateDate}` : ""}`, "auto");
       renderReceiptSummary(mode);
@@ -534,7 +538,7 @@
         return;
       }
       if (latestCurrentRate?.rate) {
-        fxRateInput.value = Number(latestCurrentRate.rate || 0).toFixed(4);
+        fxRateInput.value = formatTradeRateValue(latestCurrentRate.rate || 0);
         const rateDate = latestCurrentRate.rate_date ? core.formatDateRu(latestCurrentRate.rate_date) : "";
         setOperationFxRateHint(
           mode,
@@ -552,7 +556,7 @@
       setOperationFxRateHint(mode, `Курс на ${core.formatDateRu(operationDate)} не найден, укажи вручную`, "warning");
       return;
     }
-    fxRateInput.value = Number(rateRow.rate || 0).toFixed(4);
+    fxRateInput.value = formatTradeRateValue(rateRow.rate || 0);
     setOperationFxRateHint(mode, `Курс подставлен автоматически на ${core.formatDateRu(operationDate)}`, "auto");
     renderReceiptSummary(mode);
     if (context.isEdit) {
@@ -583,6 +587,8 @@
       if (!needsFxRate) {
         fxRateInput.value = "1";
         setOperationFxRateManual(mode, false);
+      } else if (isEdit && isOperationFxRateManual(mode)) {
+        // Opening an existing operation must preserve its historical rate.
       } else {
         setOperationFxRateManual(mode, false);
         await syncSuggestedOperationFxRate(mode, { force: true }).catch(() => {});

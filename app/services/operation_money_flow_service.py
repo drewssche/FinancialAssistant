@@ -8,6 +8,8 @@ from app.services.currency_service import CurrencyService
 class OperationMoneyFlowService:
     """Builds the unified read-only cashflow timeline exposed by OperationService."""
 
+    MAX_IN_MEMORY_FLOW_ITEMS = 5000
+
     def __init__(self, operation_service):
         self.operations = operation_service
         self.db = operation_service.db
@@ -64,6 +66,18 @@ class OperationMoneyFlowService:
             ),
             reverse=sort_dir != "asc",
         )
+
+    @classmethod
+    def _ensure_dataset_size(cls, items: list[dict]) -> None:
+        if len(items) > cls.MAX_IN_MEMORY_FLOW_ITEMS:
+            raise ValueError(
+                "Слишком много событий для общего поиска. Уточните период, источник или поисковый запрос."
+            )
+
+    @classmethod
+    def _append_bounded(cls, items: list[dict], item: dict) -> None:
+        items.append(item)
+        cls._ensure_dataset_size(items)
 
     def _build_dataset(
         self,
@@ -136,7 +150,9 @@ class OperationMoneyFlowService:
                 min_amount=None,
                 currency_scope=normalized_currency_scope,
                 base_currency=base_currency,
+                limit=self.MAX_IN_MEMORY_FLOW_ITEMS + 1,
             )
+            self._ensure_dataset_size(operations)
             receipt_by_operation = self.repo.list_receipt_items_for_operations(
                 user_id=user_id,
                 operation_ids=[int(item.id) for item in operations],
@@ -148,7 +164,7 @@ class OperationMoneyFlowService:
                     receipt_items=receipt_by_operation.get(int(operation.id), []),
                 )
                 if self._matches_query(item, q):
-                    items.append(item)
+                    self._append_bounded(items, item)
 
         if not operations_only_filter and normalized_source in {"all", "debt"}:
             from app.services.debt_service import DebtService
@@ -192,7 +208,7 @@ class OperationMoneyFlowService:
                             "open_label": "Движения долга",
                         }
                         if self._matches_query(item, q):
-                            items.append(item)
+                            self._append_bounded(items, item)
                     for repayment in debt.get("repayments", []) or []:
                         event_date = repayment.get("repayment_date")
                         if not include_event_date(event_date):
@@ -224,7 +240,7 @@ class OperationMoneyFlowService:
                             "open_label": "Движения долга",
                         }
                         if self._matches_query(item, q):
-                            items.append(item)
+                            self._append_bounded(items, item)
 
         if not operations_only_filter and normalized_source in {"all", "fx"}:
             currency_repo = CurrencyRepository(self.db)
@@ -277,7 +293,7 @@ class OperationMoneyFlowService:
                     "open_label": "Редактировать",
                 }
                 if self._matches_query(item, q):
-                    items.append(item)
+                    self._append_bounded(items, item)
 
         self._sort_items(items, sort_by=sort_by, sort_dir=sort_dir)
         return items
@@ -451,6 +467,7 @@ class OperationMoneyFlowService:
                 currency_scope=currency_scope,
             )
         )
+        self._ensure_dataset_size(non_operation_items)
         items.extend(non_operation_items)
         self._sort_items(items, sort_by=sort_by, sort_dir=sort_dir)
         total = operation_total + len(non_operation_items)

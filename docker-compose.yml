@@ -22,6 +22,12 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=5)"]
+      interval: 10s
+      timeout: 6s
+      retries: 12
+      start_period: 20s
     command: sh -lc "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
   bot:
@@ -35,7 +41,7 @@ services:
       PYTHONPATH: /app
     depends_on:
       app:
-        condition: service_started
+        condition: service_healthy
     mem_limit: 128m
     cpus: 0.15
     stop_grace_period: 20s

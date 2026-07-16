@@ -134,8 +134,8 @@
           amount_label: tradeContext?.amountColumnLabel || "Количество",
           unit_price: tradeContext?.unitPrice || unitPrice.previewValue || 0,
           unit_price_display: tradeContext?.sourceField === "pair"
-            ? Number(tradeContext?.unitPrice || 0).toFixed(4)
-            : (unitPrice.raw || tradeContext?.rateResolved?.raw || tradeContext?.rateResolved?.previewFormatted || unitPrice.previewFormatted || Number(unitPrice.previewValue || 0).toFixed(4)),
+            ? core.formatRateDisplay?.(tradeContext?.unitPrice || 0, 4, 6)
+            : (unitPrice.raw || tradeContext?.rateResolved?.raw || tradeContext?.rateResolved?.previewFormatted || unitPrice.previewFormatted || core.formatRateDisplay?.(unitPrice.previewValue || 0, 4, 6)),
           note: el.currencyNote?.value || "",
         };
       }
@@ -300,7 +300,7 @@
         row.appendChild(createPreviewCellButton("Действие", `<span class="kind-pill kind-pill-${sideClass}">${sideLabel}</span>`, "createCurrencySideSwitch"));
         row.appendChild(createPreviewCellButton("Валюта", directionLabel, "currencyAsset"));
         row.appendChild(createPreviewCellButton(item.amount_label || "Количество", amountValue, amountFocusTarget));
-        row.appendChild(createPreviewCellButton("Курс", item.unit_price_display || Number(item.unit_price || 0).toFixed(4), "currencyUnitPrice"));
+        row.appendChild(createPreviewCellButton("Курс", item.unit_price_display || core.formatRateDisplay?.(item.unit_price || 0, 4, 6), "currencyUnitPrice"));
         row.appendChild(createPreviewCellButton("Комментарий", core.highlightText(item.note || "", ""), "currencyNote", "preview-cell-note"));
         el.createPreviewBody.appendChild(row);
         return;

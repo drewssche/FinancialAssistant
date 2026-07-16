@@ -308,6 +308,13 @@ def page_with_money_flow_api_mock():
             return json_response(route, debt_cards)
         if path == "/api/v1/currency/overview" and method == "GET":
             return json_response(route, currency_overview)
+        if path == "/api/v1/currency/available-balance" and method == "GET":
+            return json_response(route, {
+                "currency": (query.get("currency") or ["USD"])[0],
+                "as_of": (query.get("as_of") or ["2026-03-05"])[0],
+                "available_quantity": "100.000000",
+                "current_quantity": "100.000000",
+            })
         if path == "/api/v1/currency/trades" and method == "GET":
             trades = currency_overview["recent_trades"]
             return json_response(route, {"items": trades, "total": len(trades), "page": 1, "page_size": 20})
@@ -373,7 +380,11 @@ def _open_app(page, static_server_url: str):
     )
     page.evaluate("() => window.App.getRuntimeModule('session')?.refreshTelegramLoginUi?.()")
     if page.locator("#loginScreen:not(.hidden)").count():
-        page.click("#telegramLoginBtn")
+        try:
+            page.click("#telegramLoginBtn", timeout=1200)
+        except sync_api.TimeoutError:
+            # Telegram auto-login may hide the button between the visibility check and click.
+            pass
     page.wait_for_selector("#appShell:not(.hidden)")
 
 
@@ -507,3 +518,84 @@ def test_operations_receipt_chip_opens_same_positions_modal_as_kebab(
 
     page.wait_for_selector("#operationReceiptModal:not(.hidden)")
     assert "Кофе" in page.locator("#operationReceiptModal").inner_text()
+
+
+@pytest.mark.e2e
+def test_old_foreign_operation_can_enable_direct_currency_settlement(
+    static_server_url: str,
+    page_with_money_flow_api_mock,
+):
+    page = page_with_money_flow_api_mock
+    _open_app(page, static_server_url)
+
+    page.evaluate(
+        """
+        async () => {
+          await window.App.getRuntimeModule('operation-modal').openEditModal({
+            id: 42,
+            kind: 'expense',
+            amount: '60.00',
+            original_amount: '20.00',
+            currency: 'USD',
+            base_currency: 'BYN',
+            fx_rate: '3.000000',
+            operation_date: '2026-03-05',
+            category_id: null,
+            note: 'Старая операция в USD',
+            receipt_items: [],
+            fx_settlement: null,
+          });
+        }
+        """
+    )
+    page.wait_for_selector("#editModal:not(.hidden)")
+    page.click("#editFxSettlementToggle")
+
+    page.wait_for_function("() => document.querySelector('#editFxSettlementBalance')?.textContent.includes('После операции')")
+    assert page.locator("#editCurrency").input_value() == "USD"
+    assert page.locator("#editFxSettlementAsset").input_value() == "USD"
+    assert page.locator("#editFxSettlementQuantity").input_value() == "20.00"
+    assert page.locator("#editFxSettlementUnitPrice").input_value() == "3.0000"
+    assert page.locator("#editFxSettlementQuantity").get_attribute("readonly") is not None
+    assert "80.00 USD" in page.locator("#editFxSettlementBalance").inner_text()
+
+    payload = page.evaluate("() => window.App.getRuntimeModule('operation-modal').getEditFxSettlementPayload()")
+    assert payload == {
+        "asset_currency": "USD",
+        "quantity": "20.00",
+        "quote_total": "60.00",
+        "unit_price": "3.000000",
+        "note": None,
+    }
+
+    desktop_geometry = page.evaluate(
+        """
+        () => {
+          const card = document.querySelector('#editModal .modal-card');
+          const balance = document.querySelector('#editFxSettlementBalance');
+          return {
+            pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+            cardOverflow: card.scrollWidth > card.clientWidth + 1,
+            balanceInside: balance.getBoundingClientRect().right <= card.getBoundingClientRect().right + 1,
+          };
+        }
+        """
+    )
+    assert desktop_geometry == {"pageOverflow": False, "cardOverflow": False, "balanceInside": True}
+
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.wait_for_timeout(100)
+    mobile_geometry = page.evaluate(
+        """
+        () => {
+          const card = document.querySelector('#editModal .modal-card');
+          const balance = document.querySelector('#editFxSettlementBalance');
+          return {
+            pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+            cardOverflow: card.scrollWidth > card.clientWidth + 1,
+            balanceInside: balance.getBoundingClientRect().right <= card.getBoundingClientRect().right + 1,
+          };
+        }
+        """
+    )
+    assert mobile_geometry == {"pageOverflow": False, "cardOverflow": False, "balanceInside": True}

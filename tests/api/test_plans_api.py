@@ -1,9 +1,13 @@
+import pytest
 from fastapi.testclient import TestClient
 from datetime import date
 from app.core.cache import reset_cache_for_tests
+from tests.api.test_operations_api import _client_lifecycle
 
-from tests.api.test_operations_api import client
 
+@pytest.fixture
+def client():
+    yield from _client_lifecycle()
 
 def test_plans_crud_confirm_and_history(client: TestClient):
     reset_cache_for_tests()

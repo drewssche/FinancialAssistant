@@ -44,3 +44,19 @@ class TelegramPlanReminderBotService:
 
     def mark_delivery_sent(self, delivery: TelegramPlanReminderDelivery) -> None:
         self.reminder_service.mark_job_sent(delivery.payload)
+
+    def claim_delivery(self, delivery: TelegramPlanReminderDelivery) -> TelegramPlanReminderDelivery | None:
+        payload = self.reminder_service.claim_job(delivery.payload)
+        if payload is None:
+            return None
+        return TelegramPlanReminderDelivery(
+            chat_id=str(payload["chat_id"]),
+            text=self.reminder_service.build_reminder_text(payload),
+            reply_markup=self.reminder_service.build_reminder_reply_markup(payload),
+            user_id=delivery.user_id,
+            plan_id=delivery.plan_id,
+            payload=payload,
+        )
+
+    def release_delivery(self, delivery: TelegramPlanReminderDelivery) -> None:
+        self.reminder_service.release_job(delivery.payload)

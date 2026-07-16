@@ -136,3 +136,42 @@ def test_mark_delivery_sent_persists_last_digest_sent_on(monkeypatch):
     finally:
         db.close()
         Base.metadata.drop_all(bind=engine)
+
+
+def test_digest_claim_is_persisted_before_send_and_release_allows_retry(monkeypatch):
+    engine, SessionLocal = _make_session()
+    db = SessionLocal()
+    try:
+        db.add(User(id=1, display_name="Tester", status="active"))
+        db.add(AuthIdentity(user_id=1, provider="telegram", provider_user_id="100500", username="tester"))
+        db.add(
+            UserPreference(
+                user_id=1,
+                preferences_version=1,
+                data={
+                    "currency": {
+                        "tracked_currencies": ["USD"],
+                        "telegram_digest_enabled": True,
+                        "telegram_digest_time": "00:00",
+                    },
+                    "ui": {"timezone": "UTC", "currency": "BYN"},
+                },
+            )
+        )
+        db.commit()
+        monkeypatch.setattr(
+            "app.services.telegram_currency_digest_bot_service.CurrencyRateRefreshService.refresh_user_tracked_rates",
+            lambda self, user_id, prefs=None: [],
+        )
+
+        service = TelegramCurrencyDigestBotService(db)
+        delivery = service.list_due_deliveries()[0]
+        assert service.claim_delivery(delivery) is True
+        assert TelegramCurrencyDigestBotService(db).list_due_deliveries() == []
+
+        service.release_delivery(delivery)
+        retry = TelegramCurrencyDigestBotService(db).list_due_deliveries()
+        assert len(retry) == 1
+    finally:
+        db.close()
+        Base.metadata.drop_all(bind=engine)

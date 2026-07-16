@@ -35,7 +35,7 @@ def verify_and_extract_telegram_user(
         raise ValueError("Invalid Telegram payload: missing auth_date")
 
     try:
-        auth_date = int(auth_date_raw)
+        auth_date = int(str(auth_date_raw))
     except ValueError as exc:
         raise ValueError("Invalid Telegram payload: bad auth_date") from exc
 
@@ -83,7 +83,7 @@ def verify_and_extract_telegram_login_widget_user(
         raise ValueError("Invalid Telegram login payload: missing auth_date")
 
     try:
-        auth_date = int(auth_date_raw)
+        auth_date = int(str(auth_date_raw))
     except (TypeError, ValueError) as exc:
         raise ValueError("Invalid Telegram login payload: bad auth_date") from exc
 

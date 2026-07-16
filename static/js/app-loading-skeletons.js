@@ -81,6 +81,7 @@
     }
     if (el.dashboardDebtsList) {
       el.dashboardDebtsList.innerHTML = `
+        <div class="panel-load-state" role="status"><span class="panel-load-spinner" aria-hidden="true"></span>Загружаем активные долги…</div>
         <div class="dashboard-skeleton-list">
           ${Array.from({ length: 2 }, () => `
             <article class="panel debt-card debt-card-compact dashboard-skeleton-debt-card skeleton-card-block">
@@ -117,6 +118,7 @@
     }
     if (el.dashboardPlansList) {
       el.dashboardPlansList.innerHTML = `
+        <div class="panel-load-state" role="status"><span class="panel-load-spinner" aria-hidden="true"></span>Загружаем ближайшие планы…</div>
         <div class="dashboard-skeleton-list">
           ${Array.from({ length: 3 }, () => `
             <article class="panel skeleton-card-block skeleton-stack-md dashboard-skeleton-list-item">
@@ -184,6 +186,7 @@
     }
     if (el.plansList) {
       el.plansList.innerHTML = `
+        <div class="panel-load-state" role="status"><span class="panel-load-spinner" aria-hidden="true"></span>Загружаем планы…</div>
         <div class="plans-skeleton-list">
           ${Array.from({ length: 4 }, () => `
             <article class="panel skeleton-card-block skeleton-stack-lg plans-skeleton-card">
@@ -356,6 +359,7 @@
     }
     if (el.debtsCards) {
       el.debtsCards.innerHTML = `
+        <div class="panel-load-state" role="status"><span class="panel-load-spinner" aria-hidden="true"></span>Загружаем долги…</div>
         <div class="debts-skeleton-list">
           ${Array.from({ length: 3 }, () => `
             <article class="panel debts-skeleton-card skeleton-card-block skeleton-stack-lg">

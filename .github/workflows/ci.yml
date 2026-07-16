@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: fin_user
+          POSTGRES_PASSWORD: fin_pass
+          POSTGRES_DB: financialassistant_migration_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fin_user -d financialassistant_migration_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      APP_ENV: test
+      POSTGRES_USER: fin_user
+      POSTGRES_PASSWORD: fin_pass
+      POSTGRES_DB: financialassistant_migration_test
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: 5432
+      MIGRATION_TEST_DATABASE_URL: postgresql+psycopg2://fin_user:fin_pass@127.0.0.1:5432/financialassistant_migration_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -r requirements.txt pip-audit==2.9.0 ruff==0.12.7 mypy==1.17.1
+      - name: Validate installed dependencies
+        run: .venv/bin/pip check
+      - name: Audit production dependencies
+        run: .venv/bin/pip-audit --cache-dir .cache/pip-audit --no-deps --disable-pip -r requirements.txt
+      - name: Compile Python sources
+        run: .venv/bin/python -m compileall -q app scripts tests
+      - name: Lint Python sources
+        run: .venv/bin/ruff check app scripts tests --output-format concise
+      - name: Type-check core contracts
+        run: .venv/bin/mypy app/core app/schemas --ignore-missing-imports --no-error-summary
+      - name: Validate JavaScript syntax
+        run: find static/js -name '*.js' -print0 | xargs -0 -n1 node --check
+      - name: Run API and service tests with migration round-trip
+        run: .venv/bin/pytest -m "not e2e"
+
+  browser-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install browser test dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -r requirements.txt playwright
+          .venv/bin/playwright install --with-deps chromium
+      - name: Run deterministic session and modal smoke test
+        run: .venv/bin/pytest tests/e2e/test_session_reliability_e2e.py -m e2e

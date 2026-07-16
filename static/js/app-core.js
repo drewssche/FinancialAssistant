@@ -219,6 +219,10 @@
     return getCoreUtils().formatRateAmount(value, digits);
   }
 
+  function formatRateDisplay(value, minDigits = 4, maxDigits = 6) {
+    return getCoreUtils().formatRateDisplay(value, minDigits, maxDigits);
+  }
+
   function getUiSettings() {
     const base = getCoreUtils().getUiSettings(state);
     const next = { ...base };
@@ -379,6 +383,7 @@
       syncAllPeriodTabs,
       formatAmount,
       formatRateAmount,
+      formatRateDisplay,
       formatMoney,
       formatCurrencyLabel,
       formatCurrencySymbol,

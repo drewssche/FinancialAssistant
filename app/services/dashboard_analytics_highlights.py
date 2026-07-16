@@ -247,8 +247,6 @@ class DashboardAnalyticsHighlightsService:
                 date_to=date_to,
             )
         month_start, month_end = self.timeline.month_bounds(resolved_from)
-        base_currency = self.get_user_base_currency(user_id)
-
         span_days = (resolved_to - resolved_from).days + 1
         prev_to = resolved_from - timedelta(days=1)
         prev_from = prev_to - timedelta(days=max(0, span_days - 1))

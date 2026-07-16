@@ -579,6 +579,26 @@
   gap: var(--space-2);
 }
 
+.fx-settlement-balance {
+  display: flex;
+  align-items: center;
+  min-height: 1.5rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid rgba(56, 73, 103, 0.62);
+  border-radius: var(--radius-sm);
+  background: rgba(21, 33, 53, 0.66);
+}
+
+.fx-settlement-balance[data-tone="positive"] {
+  color: #76ddb9;
+  border-color: rgba(98, 201, 169, 0.4);
+}
+
+.fx-settlement-balance[data-tone="danger"] {
+  color: var(--danger);
+  border-color: rgba(248, 113, 113, 0.42);
+}
+
 .fx-settlement-row-main {
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   align-items: center;

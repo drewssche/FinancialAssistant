@@ -128,19 +128,32 @@ class DashboardAnalyticsTimelineService:
 
     def first_cashflow_date(self, *, user_id: int) -> date | None:
         candidates: list[date] = []
+
+        def append_candidate(value) -> None:
+            if isinstance(value, datetime):
+                candidates.append(value.date())
+                return
+            if isinstance(value, date):
+                candidates.append(value)
+                return
+            if isinstance(value, str):
+                try:
+                    candidates.append(date.fromisoformat(value[:10]))
+                except ValueError:
+                    return
+
         first_operation = self.repo.first_operation_date(user_id)
-        if first_operation:
-            candidates.append(first_operation)
+        append_candidate(first_operation)
 
         debt_service = DebtService(self.db)
         for card in debt_service.list_cards(user_id=user_id, include_closed=True, q=None):
             for debt in card.get("debts", []) or []:
                 for issuance in debt.get("issuances", []) or []:
                     if issuance.get("issuance_date"):
-                        candidates.append(issuance["issuance_date"])
+                        append_candidate(issuance["issuance_date"])
                 for repayment in debt.get("repayments", []) or []:
                     if repayment.get("repayment_date"):
-                        candidates.append(repayment["repayment_date"])
+                        append_candidate(repayment["repayment_date"])
 
         for trade in self.currency_repo.list_trades_for_period(
             user_id=user_id,
@@ -150,7 +163,7 @@ class DashboardAnalyticsTimelineService:
             if not CurrencyService.is_cashflow_trade(trade):
                 continue
             if getattr(trade, "trade_date", None):
-                candidates.append(trade.trade_date)
+                append_candidate(trade.trade_date)
 
         return min(candidates) if candidates else None
 

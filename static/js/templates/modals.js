@@ -8,12 +8,15 @@
         <div class="panel-head row between">
           <h3 id="createTitle">Новая операция</h3>
           <div class="modal-head-actions">
-            <button id="createModalActivityBtn" class="btn btn-secondary hidden" type="button">Журнал</button>
+            <button id="createModalActivityBtn" class="btn btn-secondary modal-head-icon-btn hidden" type="button" title="Журнал" aria-label="Открыть журнал"><span aria-hidden="true">◷</span></button>
             <button id="createSessionRefreshBtn" class="btn btn-secondary operation-session-refresh-btn" type="button" title="Продлить сессию" aria-label="Продлить сессию">
               <span aria-hidden="true">⟳</span>
             </button>
-            <button id="createFinanceCalculatorToggle" class="btn btn-secondary finance-calculator-modal-toggle" type="button" aria-controls="financeCalculatorDrawer" aria-expanded="false" title="Калькулятор">
-              <span aria-hidden="true">%</span><span>Калькулятор</span>
+            <button id="createFinanceCalculatorToggle" class="btn btn-secondary finance-calculator-modal-toggle modal-head-icon-btn" type="button" aria-controls="financeCalculatorDrawer" aria-expanded="false" title="Калькулятор" aria-label="Открыть калькулятор">
+              <svg class="modal-action-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <rect x="5" y="3" width="14" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"></rect>
+                <path d="M8 7h8M8 11h2M14 11h2M8 15h2M14 15h2M8 18h2M14 18h2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+              </svg>
             </button>
             <button id="closeCreateModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
               <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
@@ -56,7 +59,7 @@
               <input id="opAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" required />
             </div>
             <select id="opCurrency" class="inline-currency-select" aria-label="Валюта суммы">
-              <option value="BYN">BYN (&#xe901;)</option>
+              <option value="BYN">BYN (Br)</option>
               <option value="USD">USD ($)</option>
               <option value="EUR">EUR (€)</option>
               <option value="RUB">RUB (₽)</option>
@@ -87,19 +90,20 @@
           <div id="opFxSettlementBlock" class="category-modal-form fx-settlement-block hidden">
             <div class="fx-settlement-switch-row">
               <div class="fx-settlement-switch-copy">
-                <div class="muted-small fx-settlement-switch-label">Оплата с валютной карты</div>
-                <div id="opFxSettlementBaseTotal" class="muted-small currency-trade-hint fx-settlement-base-total">Сумма операции в базовой валюте появится после ввода</div>
+                <div class="muted-small fx-settlement-switch-label">Списание из валютного остатка</div>
+                <div id="opFxSettlementBaseTotal" class="muted-small currency-trade-hint fx-settlement-base-total">Операция не изменит валютный остаток</div>
               </div>
               <label id="opFxSettlementToggle" class="analytics-visibility-toggle fx-settlement-toggle is-off" for="opUseFxSettlement" role="switch" aria-checked="false" aria-live="polite">
                 <input id="opUseFxSettlement" class="sr-only" type="checkbox" />
                 <span class="analytics-visibility-toggle-track"><span class="analytics-visibility-toggle-thumb"></span></span>
                 <span class="fx-settlement-toggle-copy">
-                  <span class="fx-settlement-toggle-title">Использовать</span>
+                  <span class="fx-settlement-toggle-title">Списать</span>
                   <span id="opFxSettlementState" class="analytics-visibility-toggle-label">Выкл</span>
                 </span>
               </label>
             </div>
             <div id="opFxSettlementFields" class="currency-modal-grid fx-settlement-fields hidden">
+              <div id="opFxSettlementBalance" class="fx-settlement-balance muted-small" aria-live="polite"></div>
               <div class="currency-modal-row fx-settlement-row-main">
                 <select id="opFxSettlementAsset" aria-label="Валюта списания">
                   <option value="USD">USD ($)</option>
@@ -207,7 +211,7 @@
                 <input id="debtPrincipal" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" />
               </div>
               <select id="debtCurrency" class="inline-currency-select" aria-label="Валюта долга">
-                <option value="BYN">BYN (&#xe901;)</option>
+                <option value="BYN">BYN (Br)</option>
                 <option value="USD">USD ($)</option>
                 <option value="EUR">EUR (€)</option>
                 <option value="RUB">RUB (₽)</option>
@@ -431,12 +435,15 @@
         <div class="panel-head row between">
           <h3 id="editTitle">Редактировать операцию</h3>
           <div class="modal-head-actions">
-            <button id="editModalActivityBtn" class="btn btn-secondary hidden" type="button">Журнал</button>
+            <button id="editModalActivityBtn" class="btn btn-secondary modal-head-icon-btn hidden" type="button" title="Журнал" aria-label="Открыть журнал"><span aria-hidden="true">◷</span></button>
             <button id="editSessionRefreshBtn" class="btn btn-secondary operation-session-refresh-btn" type="button" title="Продлить сессию" aria-label="Продлить сессию">
               <span aria-hidden="true">⟳</span>
             </button>
-            <button id="editFinanceCalculatorToggle" class="btn btn-secondary finance-calculator-modal-toggle" type="button" aria-controls="financeCalculatorDrawer" aria-expanded="false" title="Калькулятор">
-              <span aria-hidden="true">%</span><span>Калькулятор</span>
+            <button id="editFinanceCalculatorToggle" class="btn btn-secondary finance-calculator-modal-toggle modal-head-icon-btn" type="button" aria-controls="financeCalculatorDrawer" aria-expanded="false" title="Калькулятор" aria-label="Открыть калькулятор">
+              <svg class="modal-action-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <rect x="5" y="3" width="14" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"></rect>
+                <path d="M8 7h8M8 11h2M14 11h2M8 15h2M14 15h2M8 18h2M14 18h2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+              </svg>
             </button>
             <button id="closeEditModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
               <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
@@ -473,7 +480,7 @@
               <input id="editAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" required />
             </div>
             <select id="editCurrency" class="inline-currency-select" aria-label="Валюта суммы">
-              <option value="BYN">BYN (&#xe901;)</option>
+              <option value="BYN">BYN (Br)</option>
               <option value="USD">USD ($)</option>
               <option value="EUR">EUR (€)</option>
               <option value="RUB">RUB (₽)</option>
@@ -503,19 +510,20 @@
           <div id="editFxSettlementBlock" class="category-modal-form fx-settlement-block hidden">
             <div class="fx-settlement-switch-row">
               <div class="fx-settlement-switch-copy">
-                <div class="muted-small fx-settlement-switch-label">Оплата с валютной карты</div>
-                <div id="editFxSettlementBaseTotal" class="muted-small currency-trade-hint fx-settlement-base-total">Сумма операции в базовой валюте появится после ввода</div>
+                <div class="muted-small fx-settlement-switch-label">Списание из валютного остатка</div>
+                <div id="editFxSettlementBaseTotal" class="muted-small currency-trade-hint fx-settlement-base-total">Операция не изменит валютный остаток</div>
               </div>
               <label id="editFxSettlementToggle" class="analytics-visibility-toggle fx-settlement-toggle is-off" for="editUseFxSettlement" role="switch" aria-checked="false" aria-live="polite">
                 <input id="editUseFxSettlement" class="sr-only" type="checkbox" />
                 <span class="analytics-visibility-toggle-track"><span class="analytics-visibility-toggle-thumb"></span></span>
                 <span class="fx-settlement-toggle-copy">
-                  <span class="fx-settlement-toggle-title">Использовать</span>
+                  <span class="fx-settlement-toggle-title">Списать</span>
                   <span id="editFxSettlementState" class="analytics-visibility-toggle-label">Выкл</span>
                 </span>
               </label>
             </div>
             <div id="editFxSettlementFields" class="currency-modal-grid fx-settlement-fields hidden">
+              <div id="editFxSettlementBalance" class="fx-settlement-balance muted-small" aria-live="polite"></div>
               <div class="currency-modal-row fx-settlement-row-main">
                 <select id="editFxSettlementAsset" aria-label="Валюта списания">
                   <option value="USD">USD ($)</option>
@@ -642,8 +650,8 @@
         <div class="panel-head row between">
           <h3 id="editGroupTitle">Редактировать группу</h3>
           <div class="modal-head-actions">
-            <button id="editGroupCreateCategoryBtn" class="btn btn-secondary hidden" type="button">Добавить категорию</button>
-            <button id="editGroupActivityBtn" class="btn btn-secondary hidden" type="button">Журнал</button>
+            <button id="editGroupCreateCategoryBtn" class="btn btn-secondary modal-head-icon-btn hidden" type="button" title="Добавить категорию" aria-label="Добавить категорию"><span aria-hidden="true">+</span></button>
+            <button id="editGroupActivityBtn" class="btn btn-secondary modal-head-icon-btn hidden" type="button" title="Журнал" aria-label="Открыть журнал"><span aria-hidden="true">◷</span></button>
             <button id="closeEditGroupModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
               <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
             </button>
@@ -670,8 +678,8 @@
         <div class="panel-head row between">
           <h3 id="editCategoryTitle">Редактировать категорию</h3>
             <div class="modal-head-actions">
-              <button id="editCategoryActivityBtn" class="btn btn-secondary hidden" type="button">Журнал</button>
-              <button id="editCategoryUsageBtn" class="btn btn-secondary hidden" type="button">Операции</button>
+              <button id="editCategoryActivityBtn" class="btn btn-secondary modal-head-icon-btn hidden" type="button" title="Журнал" aria-label="Открыть журнал"><span aria-hidden="true">◷</span></button>
+              <button id="editCategoryUsageBtn" class="btn btn-secondary modal-head-icon-btn hidden" type="button" title="Операции" aria-label="Открыть операции"><span aria-hidden="true">↗</span></button>
               <button id="closeEditCategoryModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
               <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
             </button>

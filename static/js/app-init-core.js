@@ -697,6 +697,16 @@
     }
     if (el.plansList && getPlansFeature().handlePlanActionClick) {
       el.plansList.addEventListener("click", (event) => {
+        const retryButton = event.target.closest("button[data-plans-retry]");
+        if (retryButton) {
+          core.runAction({
+            button: retryButton,
+            pendingText: "Загрузка…",
+            errorPrefix: "Не удалось загрузить планы",
+            action: () => getPlansFeature().loadPlans?.({ force: true }),
+          });
+          return;
+        }
         getPlansFeature().handlePlanActionClick?.(event);
       });
     }

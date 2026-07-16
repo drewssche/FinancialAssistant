@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 from pathlib import Path
 
+import pytest
 from alembic.autogenerate import compare_metadata
+from alembic import command
 from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
@@ -78,3 +81,15 @@ def test_sqlalchemy_metadata_matches_a_fresh_database_schema():
         diffs = compare_metadata(context, Base.metadata)
 
     assert diffs == []
+
+
+def test_complete_migration_chain_on_postgresql():
+    database_url = os.getenv("MIGRATION_TEST_DATABASE_URL")
+    if not database_url:
+        pytest.skip("MIGRATION_TEST_DATABASE_URL is not configured")
+    assert "migration_test" in database_url, "Migration test must use a dedicated disposable database"
+
+    config = Config(str(ALEMBIC_INI))
+    command.upgrade(config, "head")
+    command.downgrade(config, "base")
+    command.upgrade(config, "head")

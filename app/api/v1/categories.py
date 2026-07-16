@@ -152,6 +152,30 @@ def delete_category(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.post("/{category_id}/restore", response_model=CategoryOut)
+def restore_category(
+    category_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = CategoryService(db)
+    try:
+        restored = service.restore_deleted_category(user_id=user_id, category_id=category_id)
+        return CategoryOut(
+            id=restored.id,
+            name=restored.name,
+            icon=restored.icon,
+            kind=restored.kind,
+            include_in_statistics=restored.include_in_statistics,
+            group_id=restored.group_id,
+            is_system=restored.is_system,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
 @router.patch("/{category_id}", response_model=CategoryOut)
 def update_category(
     category_id: int,

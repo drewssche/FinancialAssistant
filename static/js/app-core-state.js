@@ -3,6 +3,8 @@
     return {
       token: localStorage.getItem("access_token") || "",
       sessionExpiresAt: "",
+      sessionStartedAt: "",
+      sessionLastRenewedAt: "",
       sessionRefreshPending: false,
       sessionRecoveryVisible: false,
       mobileNavOpen: false,
@@ -121,6 +123,7 @@
       dashboardCategoryKind: "expense",
       dashboardPlansPeriod: "month",
       dashboardPlansPeriodAnchor: "current",
+      dashboardSummaryHydrated: false,
       dashboardCurrencyHydrated: false,
       dashboardAnalyticsHydrated: false,
       dashboardDebtsHydrated: false,

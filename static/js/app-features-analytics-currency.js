@@ -154,7 +154,7 @@
 
   function formatRateWithQuote(rate, quoteCurrency) {
     const quote = core.normalizeCurrencyCode?.(quoteCurrency, "BYN") || "BYN";
-    return `${Number(rate || 0).toFixed(4)} ${core.formatCurrencySymbol?.(quote) || quote}`;
+    return `${core.formatRateDisplay?.(rate || 0, 4, 6) || Number(rate || 0).toFixed(6)} ${core.formatCurrencySymbol?.(quote) || quote}`;
   }
 
   const createTradesFeature = window.App.getRuntimeModule?.("analytics-currency-trades-factory");
@@ -273,7 +273,7 @@
         <article class="currency-balance-card">
           <div class="muted-small">${core.formatCurrencyLabel(currency)}</div>
           <strong>${core.formatAmount(item?.quantity || 0)}</strong>
-          <div class="currency-balance-secondary">${core.formatMoney(item?.current_value || 0, { currency: baseCurrency })} по текущему курсу${currentRate?.rate ? ` · ${Number(currentRate.rate || 0).toFixed(4)}` : ""}</div>
+          <div class="currency-balance-secondary">${core.formatMoney(item?.current_value || 0, { currency: baseCurrency })} по текущему курсу${currentRate?.rate ? ` · ${core.formatRateDisplay?.(currentRate.rate || 0, 4, 6)}` : ""}</div>
         </article>
       `;
       });
@@ -298,12 +298,12 @@
         return `
           <span class="analytics-kpi-chip currency-position-compact ${resultTone.chipClass}">
             <span class="currency-position-primary">${core.formatCurrencyLabel(item.currency)}: ${core.formatAmount(item.quantity || 0)}</span>
-            <span class="currency-position-secondary">${core.formatMoney(item.current_value || 0)} · средняя ${Number(item.average_buy_rate || 0).toFixed(4)} · текущий ${Number(item.current_rate || 0).toFixed(4)} · ${currentRateDate}</span>
+            <span class="currency-position-secondary">${core.formatMoney(item.current_value || 0)} · средняя ${core.formatRateDisplay?.(item.average_buy_rate || 0, 4, 6)} · текущий ${core.formatRateDisplay?.(item.current_rate || 0, 4, 6)} · ${currentRateDate}</span>
           </span>
         `;
       }).concat([
-        `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Покупки: ${core.formatMoney(overview.buy_volume_base || 0)} · ${String(overview.buy_trades_count || 0)} сделок · средняя ${Number(overview.buy_average_rate || 0).toFixed(4)}</span>`,
-        `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Продажи: ${core.formatMoney(overview.sell_volume_base || 0)} · ${String(overview.sell_trades_count || 0)} сделок · средняя ${Number(overview.sell_average_rate || 0).toFixed(4)}</span>`,
+        `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Покупки: ${core.formatMoney(overview.buy_volume_base || 0)} · ${String(overview.buy_trades_count || 0)} сделок · средняя ${core.formatRateDisplay?.(overview.buy_average_rate || 0, 4, 6)}</span>`,
+        `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Продажи: ${core.formatMoney(overview.sell_volume_base || 0)} · ${String(overview.sell_trades_count || 0)} сделок · средняя ${core.formatRateDisplay?.(overview.sell_average_rate || 0, 4, 6)}</span>`,
       ]).join("");
     }
   }

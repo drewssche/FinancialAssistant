@@ -287,9 +287,6 @@ class DebtService:
         debt = self.repo.get_debt_by_id_for_user(user_id=user_id, debt_id=debt_id)
         if not debt:
             raise LookupError("Debt not found")
-        owner_telegram_id = self.user_repo.get_telegram_id_for_user(user_id)
-        counterparty = self.repo.get_counterparty_by_id(user_id=user_id, counterparty_id=debt.counterparty_id)
-
         repaid, forgiven, settled_total = self._current_totals(debt_id=debt_id)
         principal = Decimal(debt.principal)
         outstanding = principal - settled_total
@@ -580,7 +577,6 @@ class DebtService:
                 debt_issuances = issuances_by_debt.get(debt.id, [])
                 serialized_repayments = [self._serialize_repayment(item) for item in debt_repayments]
                 serialized_forgivenesses = [self._serialize_forgiveness(item) for item in debt_forgivenesses]
-                serialized_issuances = [self._serialize_issuance(item) for item in debt_issuances]
                 debt_repaid = sum((Decimal(item["amount"]) for item in serialized_repayments), Decimal("0"))
                 debt_forgiven = sum((Decimal(item["amount"]) for item in serialized_forgivenesses), Decimal("0"))
                 debt_outstanding = Decimal(debt.principal) - debt_repaid - debt_forgiven

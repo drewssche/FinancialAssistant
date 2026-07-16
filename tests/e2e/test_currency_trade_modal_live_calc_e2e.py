@@ -64,9 +64,9 @@ def test_currency_trade_modal_keeps_preview_and_live_recalculates(static_server_
         if path == "/api/v1/users/me" and method == "GET":
             return json_response(route, {"id": 1, "display_name": "Currency User", "username": "currency_user", "status": "approved", "is_admin": False})
         if path == "/api/v1/preferences" and method == "GET":
-            return json_response(route, {"preferences_version": 1, "data": {"ui": {"active_section": "dashboard", "timezone": "Europe/Minsk"}, "currency": {"tracked_currencies": ["USD", "EUR"]}}})
+            return json_response(route, {"preferences_version": 1, "data": {"ui": {"active_section": "dashboard", "timezone": "Europe/Minsk"}, "currency": {"tracked_currencies": ["USD", "EUR", "RUB"]}}})
         if path == "/api/v1/preferences" and method == "PUT":
-            return json_response(route, {"preferences_version": 1, "data": {"ui": {"active_section": "dashboard", "timezone": "Europe/Minsk"}, "currency": {"tracked_currencies": ["USD", "EUR"]}}})
+            return json_response(route, {"preferences_version": 1, "data": {"ui": {"active_section": "dashboard", "timezone": "Europe/Minsk"}, "currency": {"tracked_currencies": ["USD", "EUR", "RUB"]}}})
         if path == "/api/v1/categories/groups" and method == "GET":
             return json_response(route, [])
         if path == "/api/v1/categories" and method == "GET":
@@ -96,12 +96,15 @@ def test_currency_trade_modal_keeps_preview_and_live_recalculates(static_server_
             currency = "USD"
             if "currency=EUR" in query:
                 currency = "EUR"
+            if "currency=RUB" in query:
+                currency = "RUB"
+            rate = "0.037044" if currency == "RUB" else "2.9652"
             return json_response(route, {
                 "base_currency": "BYN",
-                "tracked_currencies": ["USD", "EUR"],
+                "tracked_currencies": ["USD", "EUR", "RUB"],
                 "positions": [],
                 "current_rates": [
-                    {"currency": currency, "rate": "2.9652", "rate_date": "2026-03-27", "source": "nb"}
+                    {"currency": currency, "rate": rate, "rate_date": "2026-03-27", "source": "nbrb_auto_unit"}
                 ],
                 "recent_trades": [],
                 "total_current_value": "0.00",
@@ -205,5 +208,20 @@ def test_currency_trade_modal_keeps_preview_and_live_recalculates(static_server_
             page.locator("#currencyQuoteTotal").fill("40")
             page.wait_for_timeout(200)
             assert page.locator("#currencyUnitPrice").input_value().startswith("4.0000")
+
+            page.click("#closeCreateModalBtn")
+            page.wait_for_selector("#createModal", state="hidden")
+            page.click("#addOperationCta")
+            page.wait_for_selector("#createModal:not(.hidden)")
+            page.locator('#createEntryModeSwitch button[data-entry-mode="currency"]').click()
+            page.locator("#currencyAsset").select_option("RUB")
+            page.wait_for_function("() => document.querySelector('#currencyUnitPrice')?.value.startsWith('0.0370')")
+            page.locator("#currencyQuantity").fill("5500")
+            page.wait_for_function("() => document.querySelector('#currencyQuoteTotal')?.value.startsWith('203.74')")
+            page.locator("#currencyQuoteTotal").fill("194.70")
+            page.wait_for_function("() => document.querySelector('#currencyUnitPrice')?.value.startsWith('0.0354')")
+            assert page.locator("#currencyQuoteTotal").input_value().startswith("194.70")
+            assert "5500.00 RUB" in page.locator("#createPreviewBody").text_content()
+            assert "194,70" in page.locator("#createPreviewBody").text_content()
         finally:
             browser.close()
