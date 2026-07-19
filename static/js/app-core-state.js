@@ -76,6 +76,7 @@
       pendingConfirm: null,
       toasts: new Map(),
       lastErrorToast: { message: "", ts: 0 },
+      lastActivityMutationAt: 0,
       uiRequestCache: new Map(),
       createReceiptItems: [],
       createReceiptSeq: 0,

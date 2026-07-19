@@ -469,6 +469,7 @@
     }
     const navigation = getNavigationActions();
     operationModal.closePeriodCustomModal();
+    window.App.getRuntimeModule?.("activity")?.closeActivityCenter?.();
     core.closeConfirm();
     core.closeAllMenus();
     el.toastArea.innerHTML = "";

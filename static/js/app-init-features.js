@@ -418,6 +418,12 @@
         core.dismissToast(closeBtn.dataset.toastClose);
         return;
       }
+      const activityBtn = event.target.closest("button[data-toast-activity]");
+      if (activityBtn) {
+        core.dismissToast?.(activityBtn.dataset.toastActivity);
+        window.App.getRuntimeModule?.("activity")?.toggleActivityCenter?.().catch((err) => core.setStatus(String(err)));
+        return;
+      }
       const btn = event.target.closest("button[data-toast-undo]");
       if (!btn) {
         return;

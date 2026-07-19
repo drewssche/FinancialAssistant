@@ -120,7 +120,8 @@
   color: var(--text);
 }
 
-.toast-close {
+.toast-close,
+.toast-activity-btn {
   width: 28px;
   height: 28px;
   border: 1px solid rgba(108, 127, 163, 0.5);
@@ -135,9 +136,15 @@
   line-height: 1;
 }
 
-.toast-close:hover {
+.toast-close:hover,
+.toast-activity-btn:hover {
   background: rgba(30, 44, 68, 0.95);
   color: #f1f5ff;
+}
+
+.toast-activity-btn {
+  margin-left: auto;
+  font-size: 15px;
 }
 
 .toast-progress {

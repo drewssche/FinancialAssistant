@@ -14,8 +14,8 @@ def test_index_html_uses_manifest_bootstrap_pair():
 
     script_sources = re.findall(r'<script[^>]+src="([^"]+)"', html)
 
-    assert "/static/js/app-manifest.js?v=20260719a" in script_sources
-    assert "/static/js/app-bootstrap.js?v=20260719a" in script_sources
+    assert "/static/js/app-manifest.js?v=20260720a" in script_sources
+    assert "/static/js/app-bootstrap.js?v=20260720a" in script_sources
     assert "/static/js/app-init.js" not in script_sources
 
 
@@ -70,7 +70,7 @@ def test_manifest_lists_bootstrap_scripts_in_stable_order():
 def test_bootstrap_fetches_manifest_scripts_in_parallel_with_ordered_execution():
     bootstrap = (REPO_ROOT / "static" / "js" / "app-bootstrap.js").read_text(encoding="utf-8")
 
-    assert 'const assetVersion = "20260719a"' in bootstrap
+    assert 'const assetVersion = "20260720a"' in bootstrap
     assert "script.async = false" in bootstrap
     assert "Promise.all(manifest.map((src) => loadScript(src)))" in bootstrap
 

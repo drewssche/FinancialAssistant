@@ -68,11 +68,20 @@
   - Preserve the open operation modal and every unsaved field while renewing.
   - Done 2026-07-19: the sidebar now labels the countdown as `Осталось`, shows the calculated token end time as `Завершится HH:MM`, and updates both after an in-place renewal.
 
-### Global Action History (Backlog)
-- [ ] P2: design a cross-section action stack that shows what the user changed across the product.
-  - Reuse the existing activity-journal records and human-readable display values instead of creating a second audit source.
-  - Agree the interaction model first: chronological feed, entity/action filters, drilldown to the affected record, and a clear distinction between audit history and reversible undo actions.
-  - Do not implement until retention, pagination, and access rules are agreed.
+### Global Action History 2026-07-20
+- [x] P2: add a compact cross-section action center without creating a second audit source.
+  - The title-bar history control opens a content-sized desktop drawer and a mobile bottom sheet with the seven latest persisted activity events; `Вся история` reuses the existing paginated activity modal.
+  - Activity responses now include entity labels, compact summaries, existence state, and backend-owned action capabilities.
+- [x] P2: add contextual navigation and safe quick actions.
+  - Existing operations, debts, plans, categories, groups, catalog positions, currency trades, and the currency portfolio open in their native section/modal.
+  - Desktop actions appear on hover/focus; mobile actions remain visible. Deleted operations and categories expose `Восстановить` only when an unused server-side restore snapshot exists.
+- [x] P2: connect successful mutations, toasts, and the action center.
+  - Confirmed financial POST/PATCH/DELETE requests refresh an open feed or set a session-local new-activity dot while collapsed; related success toasts expose a compact history action.
+  - Errors remain transient toasts and are not written into the audit feed as successful actions.
+- [ ] P2: add conflict-safe rollback for historical update events.
+  - Enable only for the latest compatible event when the current entity still matches that event's `after` state; reject stale rollback atomically on the backend.
+  - Receipt and linked FX changes require complete before/after snapshots. Do not expose a generic `Отменить` until those domain snapshots and conflict tests exist.
+- [ ] P3: add full-history filters and optional persistent read state after real-data usage validates the compact feed.
 
 ### Currency Balance Settlement 2026-07-16
 - [x] P0: make foreign-currency expenses optionally reduce the tracked currency balance.

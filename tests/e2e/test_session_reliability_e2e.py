@@ -7,6 +7,7 @@ import subprocess
 import sys
 import time
 import urllib.request
+from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -58,7 +59,7 @@ def static_server_url() -> str:
 
 @pytest.fixture()
 def session_page():
-    counters = {"telegram_auth": 0, "refresh": 0, "protected": 0}
+    counters = {"telegram_auth": 0, "refresh": 0, "protected": 0, "restore": 0}
     preferences = {
         "preferences_version": 1,
         "data": {
@@ -67,6 +68,8 @@ def session_page():
             "ui": {"active_section": "dashboard", "timezone": "Europe/Minsk", "currency": "BYN", "currency_position": "suffix"},
         },
     }
+    recent_time = (datetime.now().astimezone() - timedelta(minutes=3)).isoformat()
+    older_time = (datetime.now().astimezone() - timedelta(minutes=8)).isoformat()
 
     def json_response(route, payload: dict | list, status: int = 200):
         route.fulfill(status=status, content_type="application/json", body=json.dumps(payload, ensure_ascii=False))
@@ -93,6 +96,49 @@ def session_page():
             if method == "GET":
                 return json_response(route, preferences)
             return json_response(route, preferences)
+        if path == "/api/v1/activity" and method == "GET":
+            items = [
+                {
+                    "id": 301,
+                    "user_id": 1,
+                    "actor_user_id": 1,
+                    "entity_type": "operation",
+                    "entity_id": 51,
+                    "event_type": "updated",
+                    "title": "Операция изменена",
+                    "changes": [],
+                    "metadata": {},
+                    "metadata_display": [],
+                    "entity_label": "Операция #51",
+                    "entity_summary": "Расход · 15,89 BYN · 20.07.2026",
+                    "entity_exists": True,
+                    "available_actions": ["open", "edit"],
+                    "source": "web",
+                    "created_at": recent_time,
+                },
+                {
+                    "id": 300,
+                    "user_id": 1,
+                    "actor_user_id": 1,
+                    "entity_type": "operation",
+                    "entity_id": 50,
+                    "event_type": "deleted",
+                    "title": "Операция удалена",
+                    "changes": [],
+                    "metadata": {},
+                    "metadata_display": [],
+                    "entity_label": "Операция #50",
+                    "entity_summary": "Расход · 9,90 BYN · 20.07.2026",
+                    "entity_exists": False,
+                    "available_actions": ["details", "restore"],
+                    "source": "web",
+                    "created_at": older_time,
+                },
+            ]
+            return json_response(route, {"items": items, "total": len(items)})
+        if path == "/api/v1/operations/50/restore" and method == "POST":
+            counters["restore"] += 1
+            return json_response(route, {"id": 50})
         if path == "/api/v1/categories/groups":
             return json_response(route, [])
         if path == "/api/v1/categories":
@@ -268,3 +314,88 @@ def test_delayed_telegram_startup_and_session_refresh_preserve_operation_modal(s
     assert all(abs(height - 34) <= 1 for height in geometry["actionHeights"])
     assert geometry["bodyScrollWidth"] <= geometry["bodyClientWidth"] + 1
     page.screenshot(path="/tmp/finasist-session-refresh-modal.png", full_page=True)
+
+
+@pytest.mark.e2e
+def test_activity_center_desktop_mobile_and_restore(static_server_url: str, session_page):
+    page, counters = session_page
+    page.goto(f"{static_server_url}/static/index.html")
+    page.wait_for_selector("#appShell:not(.hidden)")
+
+    page.click("#activityCenterToggleBtn")
+    page.wait_for_selector("#activityCenterDrawer:not(.hidden)")
+    expect(page.locator("#activityCenterList .activity-center-event")).to_have_count(2)
+    expect(page.locator("#activityCenterList")).to_contain_text("Операция изменена")
+    expect(page.locator("#activityCenterList")).to_contain_text("Расход · 15,89 BYN")
+    expect(page.locator('[data-activity-center-action="restore"]')).to_be_visible()
+    desktop_geometry = page.evaluate(
+        """
+        () => {
+          const drawer = document.getElementById('activityCenterDrawer')?.getBoundingClientRect();
+          const overlay = document.getElementById('activityCenterOverlay');
+          return drawer && overlay ? {
+            left: drawer.left,
+            right: drawer.right,
+            top: drawer.top,
+            bottom: drawer.bottom,
+            overlayDisplay: getComputedStyle(overlay).display,
+            viewportWidth: innerWidth,
+            viewportHeight: innerHeight,
+          } : null;
+        }
+        """
+    )
+    assert desktop_geometry is not None
+    assert desktop_geometry["left"] >= 0
+    assert desktop_geometry["right"] <= desktop_geometry["viewportWidth"]
+    assert desktop_geometry["top"] >= 0
+    assert desktop_geometry["bottom"] <= desktop_geometry["viewportHeight"]
+    assert desktop_geometry["overlayDisplay"] == "none"
+    page.screenshot(path="/tmp/finasist-activity-center-desktop.png", full_page=True)
+
+    page.click("#activityCenterAllBtn")
+    page.wait_for_selector("#activityModal:not(.hidden)")
+    expect(page.locator("#activityModalSubtitle")).to_have_text("Все изменения по разделам")
+    page.click("#closeActivityModalBtn")
+    page.click("#activityCenterToggleBtn")
+    page.wait_for_selector("#activityCenterDrawer:not(.hidden)")
+    page.click('[data-activity-center-action="restore"]')
+    page.wait_for_selector("#confirmModal:not(.hidden)")
+    expect(page.locator("#confirmTitle")).to_have_text("Восстановление")
+    page.click("#confirmDeleteBtn")
+    page.wait_for_function("() => document.querySelector('#confirmModal')?.classList.contains('hidden')")
+    assert counters["restore"] == 1
+    expect(page.locator(".toast-activity-btn")).to_be_visible()
+
+    page.click("#activityCenterCloseBtn")
+    page.evaluate("() => document.dispatchEvent(new CustomEvent('app:activity-changed'))")
+    expect(page.locator("#activityCenterBadge")).to_be_visible()
+
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.click("#activityCenterToggleBtn")
+    page.wait_for_selector("#activityCenterDrawer:not(.hidden)")
+    mobile_geometry = page.evaluate(
+        """
+        () => {
+          const drawer = document.getElementById('activityCenterDrawer')?.getBoundingClientRect();
+          const overlay = document.getElementById('activityCenterOverlay');
+          return drawer && overlay ? {
+            left: drawer.left,
+            right: drawer.right,
+            bottom: drawer.bottom,
+            overlayDisplay: getComputedStyle(overlay).display,
+            viewportWidth: innerWidth,
+            viewportHeight: innerHeight,
+            bodyClientWidth: document.documentElement.clientWidth,
+            bodyScrollWidth: document.documentElement.scrollWidth,
+          } : null;
+        }
+        """
+    )
+    assert mobile_geometry is not None
+    assert abs(mobile_geometry["left"]) <= 1
+    assert abs(mobile_geometry["right"] - mobile_geometry["viewportWidth"]) <= 1
+    assert abs(mobile_geometry["bottom"] - mobile_geometry["viewportHeight"]) <= 1
+    assert mobile_geometry["overlayDisplay"] == "block"
+    assert mobile_geometry["bodyScrollWidth"] <= mobile_geometry["bodyClientWidth"] + 1
+    page.screenshot(path="/tmp/finasist-activity-center-mobile.png", full_page=True)

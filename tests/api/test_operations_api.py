@@ -154,6 +154,10 @@ def test_activity_journal_tracks_operation_create_update_delete(client: TestClie
     titles = [item["title"] for item in payload["items"]]
     assert titles == ["Операция изменена", "Операция создана"]
     update_event = payload["items"][0]
+    assert update_event["entity_exists"] is True
+    assert update_event["entity_label"] == f"Операция #{operation_id}"
+    assert "12,50 BYN" in update_event["entity_summary"]
+    assert update_event["available_actions"] == ["open", "edit"]
     assert "Чек: добавлено 1" in update_event["metadata_display"]
     assert "Добавлено: Бонус" in update_event["metadata_display"]
     assert update_event["metadata"]["receipt_changes"]["added"] == ["Бонус"]
@@ -179,7 +183,12 @@ def test_activity_journal_tracks_operation_create_update_delete(client: TestClie
         params={"entity_type": "operation", "entity_id": operation_id, "page_size": 20},
     )
     assert journal_after_delete.status_code == 200
-    assert [item["title"] for item in journal_after_delete.json()["items"]][0] == "Операция удалена"
+    deleted_event = journal_after_delete.json()["items"][0]
+    assert deleted_event["title"] == "Операция удалена"
+    assert deleted_event["entity_exists"] is False
+    assert "10,00 BYN" not in deleted_event["entity_summary"]
+    assert "12,50 BYN" in deleted_event["entity_summary"]
+    assert deleted_event["available_actions"] == ["details", "restore"]
 
 
 def test_operations_support_original_currency_and_base_conversion(client: TestClient):

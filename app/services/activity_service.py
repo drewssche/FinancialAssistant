@@ -5,11 +5,31 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import ActivityEvent, Category, CategoryGroup, DebtCounterparty
+from app.db.models import (
+    ActivityEvent,
+    Category,
+    CategoryGroup,
+    Debt,
+    DebtCounterparty,
+    FxTrade,
+    Operation,
+    OperationItemTemplate,
+    PlanOperation,
+)
 from app.repositories.activity_repo import ActivityRepository
 
 
 class ActivityService:
+    ENTITY_LABELS = {
+        "operation": "Операция",
+        "debt": "Долг",
+        "plan": "План",
+        "category": "Категория",
+        "category_group": "Группа категорий",
+        "item_template": "Позиция каталога",
+        "currency_trade": "Валютная сделка",
+        "currency_portfolio": "Валютный портфель",
+    }
     ENUM_LABELS = {
         "kind": {
             "expense": "Расход",
@@ -222,7 +242,8 @@ class ActivityService:
             limit=page_size,
             offset=(page - 1) * page_size,
         )
-        return [self._serialize(row) for row in items], total
+        contexts = self._build_entity_contexts(items=items, user_id=user_id)
+        return [self._serialize(row, contexts.get((row.entity_type, int(row.entity_id)))) for row in items], total
 
     def list_recent(self, *, user_id: int, page: int = 1, page_size: int = 50) -> tuple[list[dict], int]:
         items, total = self.repo.list_recent_for_user(
@@ -230,14 +251,19 @@ class ActivityService:
             limit=page_size,
             offset=(page - 1) * page_size,
         )
-        return [self._serialize(row) for row in items], total
+        contexts = self._build_entity_contexts(items=items, user_id=user_id)
+        return [self._serialize(row, contexts.get((row.entity_type, int(row.entity_id)))) for row in items], total
 
-    def _serialize(self, row: ActivityEvent) -> dict:
+    def _serialize(self, row: ActivityEvent, context: dict | None = None) -> dict:
         metadata = {
             key: value
             for key, value in (row.metadata_json or {}).items()
             if not str(key).startswith("_")
         }
+        entity_context = context or self._fallback_entity_context(row)
+        available_actions = list(entity_context.get("available_actions") or [])
+        if self._can_restore_event(row) and "restore" not in available_actions:
+            available_actions.append("restore")
         return {
             "id": int(row.id),
             "user_id": int(row.user_id),
@@ -249,9 +275,141 @@ class ActivityService:
             "changes": [self._serialize_change(change, row) for change in (row.changes_json or [])],
             "metadata": metadata,
             "metadata_display": self._metadata_display(metadata),
+            "entity_label": str(entity_context.get("entity_label") or self._entity_label(row.entity_type, row.entity_id)),
+            "entity_summary": str(entity_context.get("entity_summary") or ""),
+            "entity_exists": bool(entity_context.get("entity_exists")),
+            "available_actions": available_actions,
             "source": row.source,
             "created_at": row.created_at,
         }
+
+    @classmethod
+    def _entity_label(cls, entity_type: str, entity_id: int) -> str:
+        return f"{cls.ENTITY_LABELS.get(entity_type, 'Объект')} #{int(entity_id)}"
+
+    @staticmethod
+    def _money_label(value: Any, currency: Any) -> str:
+        try:
+            amount = Decimal(str(value or 0)).quantize(Decimal("0.01"))
+            text = f"{amount:,.2f}".replace(",", " ").replace(".", ",")
+        except Exception:
+            text = str(value or 0)
+        return f"{text} {str(currency or 'BYN').upper()}"
+
+    @staticmethod
+    def _date_label(value: Any) -> str:
+        if isinstance(value, datetime):
+            value = value.date()
+        if isinstance(value, date):
+            return value.strftime("%d.%m.%Y")
+        try:
+            return date.fromisoformat(str(value or "")[:10]).strftime("%d.%m.%Y")
+        except Exception:
+            return ""
+
+    def _build_entity_contexts(self, *, items: list[ActivityEvent], user_id: int) -> dict[tuple[str, int], dict]:
+        ids_by_type: dict[str, set[int]] = {}
+        for row in items:
+            ids_by_type.setdefault(str(row.entity_type), set()).add(int(row.entity_id))
+
+        model_by_type = {
+            "operation": Operation,
+            "debt": Debt,
+            "plan": PlanOperation,
+            "category": Category,
+            "category_group": CategoryGroup,
+            "item_template": OperationItemTemplate,
+            "currency_trade": FxTrade,
+        }
+        entities: dict[tuple[str, int], Any] = {}
+        for entity_type, model in model_by_type.items():
+            entity_ids = ids_by_type.get(entity_type) or set()
+            if not entity_ids:
+                continue
+            rows = self.db.scalars(
+                select(model).where(model.id.in_(entity_ids), model.user_id == user_id)
+            )
+            for entity in rows:
+                entities[(entity_type, int(entity.id))] = entity
+
+        contexts: dict[tuple[str, int], dict] = {}
+        for row in items:
+            key = (str(row.entity_type), int(row.entity_id))
+            if key in contexts:
+                continue
+            entity = entities.get(key)
+            contexts[key] = self._entity_context(row=row, entity=entity)
+        return contexts
+
+    def _entity_context(self, *, row: ActivityEvent, entity: Any | None) -> dict:
+        entity_type = str(row.entity_type)
+        entity_id = int(row.entity_id)
+        if entity_type == "currency_portfolio":
+            return {
+                "entity_label": "Валютный портфель",
+                "entity_summary": "Курсы, позиции и валютные сделки",
+                "entity_exists": True,
+                "available_actions": ["open"],
+            }
+        if isinstance(entity, OperationItemTemplate) and entity.is_archived:
+            entity = None
+        if entity is None:
+            return self._fallback_entity_context(row)
+
+        summary = ""
+        if isinstance(entity, Operation):
+            kind = "Доход" if entity.kind == "income" else "Расход"
+            summary = " · ".join(filter(None, [kind, self._money_label(entity.original_amount or entity.amount, entity.currency), self._date_label(entity.operation_date)]))
+        elif isinstance(entity, Debt):
+            direction = "Мне должны" if entity.direction == "lend" else "Я должен"
+            summary = f"{direction} · {self._money_label(entity.principal, entity.currency)}"
+        elif isinstance(entity, PlanOperation):
+            kind = "Доход" if entity.kind == "income" else "Расход"
+            summary = " · ".join(filter(None, [kind, self._money_label(entity.original_amount or entity.amount, entity.currency), self._date_label(entity.scheduled_date)]))
+        elif isinstance(entity, Category):
+            summary = entity.name
+        elif isinstance(entity, CategoryGroup):
+            summary = entity.name
+        elif isinstance(entity, OperationItemTemplate):
+            summary = " · ".join(filter(None, [entity.name, entity.shop_name]))
+        elif isinstance(entity, FxTrade):
+            side = "Покупка" if entity.side == "buy" else "Продажа"
+            summary = f"{side} · {self._money_label(entity.quantity, entity.asset_currency)} · {self._date_label(entity.trade_date)}"
+        available_actions = ["open", "edit"]
+        if isinstance(entity, PlanOperation) and entity.status in {"confirmed", "skipped"}:
+            available_actions = ["open"]
+        return {
+            "entity_label": self._entity_label(entity_type, entity_id),
+            "entity_summary": summary,
+            "entity_exists": True,
+            "available_actions": available_actions,
+        }
+
+    def _fallback_entity_context(self, row: ActivityEvent) -> dict:
+        summary = ""
+        metadata = row.metadata_json if isinstance(row.metadata_json, dict) else {}
+        snapshot = metadata.get("_restore_snapshot") if isinstance(metadata.get("_restore_snapshot"), dict) else {}
+        if row.entity_type == "operation" and isinstance(snapshot.get("operation"), dict):
+            operation = snapshot["operation"]
+            kind = "Доход" if operation.get("kind") == "income" else "Расход"
+            summary = " · ".join(filter(None, [kind, self._money_label(operation.get("original_amount") or operation.get("amount"), operation.get("currency")), self._date_label(operation.get("operation_date"))]))
+        elif row.entity_type == "category" and isinstance(snapshot.get("category"), dict):
+            summary = str(snapshot["category"].get("name") or "")
+        elif metadata:
+            summary = str(metadata.get("name") or metadata.get("note") or "")
+        return {
+            "entity_label": self._entity_label(row.entity_type, row.entity_id),
+            "entity_summary": summary,
+            "entity_exists": False,
+            "available_actions": ["details"],
+        }
+
+    @staticmethod
+    def _can_restore_event(row: ActivityEvent) -> bool:
+        if row.event_type != "deleted" or row.entity_type not in {"operation", "category"}:
+            return False
+        metadata = row.metadata_json if isinstance(row.metadata_json, dict) else {}
+        return isinstance(metadata.get("_restore_snapshot"), dict) and metadata.get("_restored_entity_id") is None
 
     def get_restore_event(
         self,

@@ -678,6 +678,20 @@
   gap: var(--space-3);
 }
 
+.activity-event-context {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  color: #aebddd;
+  font-size: 12px;
+}
+
+.activity-event-context > strong,
+.activity-event-context > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .usage-kpi {
   margin-top: 0;
   margin-bottom: var(--space-3);

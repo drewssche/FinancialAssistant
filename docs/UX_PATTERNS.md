@@ -94,6 +94,12 @@ Settings UX additions:
 - Currency setting supports at least `BYN`, `RUB`, `USD`, `EUR`
 - Currency symbol position is configurable (`prefix`/`suffix`)
 - For the current RU/BY UX baseline, the default display uses the official BYN sign in suffix position (`1 234,56 <BYN sign>`); the shared money formatter and bundled NBRB font own its rendering.
+
+## Activity And Toasts
+- Persisted activity is the source of truth for successful user and system actions; transient errors remain toasts only.
+- The compact action center shows seven recent events. Desktop quick actions appear on hover/focus, while touch layouts keep them visible.
+- Frontend code must render only backend-provided activity capabilities. `Restore` and future rollback actions must never be inferred from an event title.
+- A success toast may link to the action center, but dismissing a toast does not mark or delete the persisted activity event.
 - Amount inputs show currency adornment as visual hint only; raw numeric value remains clean for API payload
 
 ## Time Filters

@@ -58,7 +58,18 @@
     closeButton.dataset.toastClose = id;
     closeButton.setAttribute("aria-label", "Закрыть");
     closeButton.textContent = "×";
-    header.append(textNode, closeButton);
+    header.appendChild(textNode);
+    if (type === "success" && Date.now() - Number(state.lastActivityMutationAt || 0) < 2500) {
+      const activityButton = document.createElement("button");
+      activityButton.className = "toast-activity-btn";
+      activityButton.type = "button";
+      activityButton.dataset.toastActivity = id;
+      activityButton.setAttribute("aria-label", "Открыть последние действия");
+      activityButton.title = "Последние действия";
+      activityButton.textContent = "◷";
+      header.appendChild(activityButton);
+    }
+    header.appendChild(closeButton);
     const progress = document.createElement("div");
     progress.className = "toast-progress";
     const progressBar = document.createElement("div");
@@ -175,6 +186,23 @@
         throw new Error(`Ошибка запроса [${response.status}] ${path}: ${detail}`);
       }
       throw new Error(`Ошибка запроса [${response.status}] ${path}`);
+    }
+
+    const method = String(fetchOptions.method || "GET").toUpperCase();
+    let mutationPath = "";
+    try {
+      mutationPath = new URL(url, window.location.origin).pathname;
+    } catch {
+      mutationPath = String(url || "");
+    }
+    if (
+      !["GET", "HEAD", "OPTIONS"].includes(method)
+      && /^\/api\/v1\/(operations|categories|plans|debts|currency)(?:\/|$)/.test(mutationPath)
+    ) {
+      state.lastActivityMutationAt = Date.now();
+      document.dispatchEvent(new CustomEvent("app:activity-changed", {
+        detail: { method, path: mutationPath },
+      }));
     }
 
     return data;

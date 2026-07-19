@@ -24,6 +24,10 @@ class ActivityEventOut(BaseModel):
     changes: list[ActivityChangeOut] = Field(default_factory=list)
     metadata: dict = Field(default_factory=dict)
     metadata_display: list[str] = Field(default_factory=list)
+    entity_label: str = ""
+    entity_summary: str = ""
+    entity_exists: bool = False
+    available_actions: list[str] = Field(default_factory=list)
     source: str
     created_at: datetime
 

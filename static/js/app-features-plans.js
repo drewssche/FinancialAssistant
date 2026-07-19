@@ -526,6 +526,15 @@
     operationModal.setCreateModalActivity?.(null, null);
   }
 
+  async function openPlanEdit(planId) {
+    const item = await core.requestJson(`/api/v1/plans/${Number(planId)}`, {
+      headers: core.authHeaders(),
+    });
+    await operationModal.openCreateModal();
+    await fillPlanModal(item);
+    operationModal.setCreateModalActivity?.("plan", item.id);
+  }
+
   async function submitPlanForm(event) {
     event.preventDefault();
     const payload = getValidatedPlanPayload();
@@ -711,6 +720,7 @@
     openDashboardPlansPeriodPopover,
     applyPlansSearch,
     openCreatePlan,
+    openPlanEdit,
     submitPlanForm,
     handlePlanActionClick,
     syncPlanRecurrenceUi,

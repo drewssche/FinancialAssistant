@@ -13,6 +13,7 @@ def test_activity_journal_modal_is_available_in_frontend_templates():
     modals_item_catalog = (REPO_ROOT / "static" / "js" / "templates" / "modals-item-catalog.js").read_text(encoding="utf-8")
     shell_primary = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-primary.js").read_text(encoding="utf-8")
     shell_secondary = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-secondary.js").read_text(encoding="utf-8")
+    shell = (REPO_ROOT / "static" / "js" / "templates" / "shell.js").read_text(encoding="utf-8")
     activity = (REPO_ROOT / "static" / "js" / "app-activity.js").read_text(encoding="utf-8")
     usage = (REPO_ROOT / "static" / "js" / "app-usage.js").read_text(encoding="utf-8")
     overlays = (REPO_ROOT / "static" / "css" / "components-overlays.css").read_text(encoding="utf-8")
@@ -22,8 +23,16 @@ def test_activity_journal_modal_is_available_in_frontend_templates():
     elements = (REPO_ROOT / "static" / "js" / "app-core-elements.js").read_text(encoding="utf-8")
     session_auth = (REPO_ROOT / "static" / "js" / "app-features-session-auth.js").read_text(encoding="utf-8")
     init_core = (REPO_ROOT / "static" / "js" / "app-init-core.js").read_text(encoding="utf-8")
+    core_actions = (REPO_ROOT / "static" / "js" / "app-core-actions.js").read_text(encoding="utf-8")
+    init_features = (REPO_ROOT / "static" / "js" / "app-init-features.js").read_text(encoding="utf-8")
+    activity_center_css = (REPO_ROOT / "static" / "css" / "components-activity-center.css").read_text(encoding="utf-8")
+    styles = (REPO_ROOT / "static" / "styles.css").read_text(encoding="utf-8")
 
     assert 'id="activityModal"' in modals
+    assert 'id="activityCenterToggleBtn"' in shell
+    assert 'id="activityCenterDrawer"' in shell
+    assert 'id="activityCenterList"' in shell
+    assert 'id="activityCenterAllBtn"' in shell
     assert 'id="usageModal"' in modals
     assert 'id="activityList"' in modals
     assert 'id="usageList"' in modals
@@ -54,6 +63,17 @@ def test_activity_journal_modal_is_available_in_frontend_templates():
     assert 'activityModal: document.getElementById("activityModal")' in elements
     assert 'usageModal: document.getElementById("usageModal")' in elements
     assert "function configureActivityButton" in activity
+    assert "function loadRecentActivity" in activity
+    assert "function openActivityEntity" in activity
+    assert 'actionButton(item.id, "restore"' in activity
+    assert 'document.addEventListener("app:activity-changed"' in activity
+    assert 'new CustomEvent("app:activity-changed"' in core_actions
+    assert "dataset.toastActivity" in core_actions
+    assert 'button[data-toast-activity]' in init_features
+    assert ".activity-center-drawer" in activity_center_css
+    assert "@media (max-width: 900px)" in activity_center_css
+    assert "@media (hover: none), (pointer: coarse)" in activity_center_css
+    assert '@import url("/static/css/components-activity-center.css?v=20260720a");' in styles
     assert "function configureUsageButton" in usage
     assert "/api/v1/operations/money-flow?" in usage
     assert "item_template_id" in usage
