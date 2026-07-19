@@ -139,6 +139,20 @@ def session_page():
         if path == "/api/v1/operations/50/restore" and method == "POST":
             counters["restore"] += 1
             return json_response(route, {"id": 50})
+        if path == "/api/v1/operations/51" and method == "GET":
+            return json_response(route, {
+                "id": 51,
+                "amount": "15.89",
+                "original_amount": "15.89",
+                "currency": "BYN",
+                "fx_rate": "1",
+                "operation_date": "2026-07-20",
+                "kind": "expense",
+                "note": "",
+                "category_id": None,
+                "receipt_items": [],
+                "fx_settlement": None,
+            })
         if path == "/api/v1/categories/groups":
             return json_response(route, [])
         if path == "/api/v1/categories":
@@ -356,10 +370,21 @@ def test_activity_center_desktop_mobile_and_restore(static_server_url: str, sess
     page.click("#activityCenterAllBtn")
     page.wait_for_selector("#activityModal:not(.hidden)")
     expect(page.locator("#activityModalSubtitle")).to_have_text("Все изменения по разделам")
+    expect(page.locator('[data-activity-modal-event-id="301"]')).to_have_css("cursor", "pointer")
+    expect(page.locator('#activityList [data-activity-center-action="restore"]')).to_be_visible()
+    page.locator('[data-activity-modal-event-id="301"]').hover()
+    page.screenshot(path="/tmp/finasist-activity-history-modal.png", full_page=True)
+    page.click('[data-activity-modal-event-id="300"]')
+    expect(page.locator("#activityModalSubtitle")).to_have_text("История операции")
     page.click("#closeActivityModalBtn")
     page.click("#activityCenterToggleBtn")
     page.wait_for_selector("#activityCenterDrawer:not(.hidden)")
-    page.click('[data-activity-center-action="restore"]')
+    page.click('[data-activity-center-event-id="301"][data-activity-center-action="open"]')
+    page.wait_for_selector("#editModal:not(.hidden)")
+    expect(page.locator("#activityCenterDrawer")).to_be_visible()
+    expect(page.locator("#activityCenterDrawer")).not_to_have_class("hidden")
+    page.click("#closeEditModalBtn")
+    page.click('#activityCenterList [data-activity-center-action="restore"]')
     page.wait_for_selector("#confirmModal:not(.hidden)")
     expect(page.locator("#confirmTitle")).to_have_text("Восстановление")
     page.click("#confirmDeleteBtn")

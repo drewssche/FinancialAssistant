@@ -20,6 +20,11 @@
   flex: 0 0 38px;
 }
 
+.topbar-title-block:has(.activity-center-toggle) {
+  flex: 1 1 auto;
+  width: 100%;
+}
+
 .activity-center-toggle svg {
   width: 18px;
   height: 18px;
@@ -55,9 +60,9 @@
 
 .activity-center-drawer {
   position: fixed;
-  z-index: 85;
-  top: max(92px, env(safe-area-inset-top));
-  right: max(18px, env(safe-area-inset-right));
+  z-index: 145;
+  top: var(--activity-center-top, max(92px, env(safe-area-inset-top)));
+  right: var(--activity-center-right, max(18px, env(safe-area-inset-right)));
   width: min(370px, calc(100vw - 36px));
   max-height: min(560px, calc(100dvh - 110px));
   display: grid;
@@ -67,6 +72,19 @@
   border-radius: var(--radius-lg);
   background: rgba(14, 21, 34, 0.985);
   box-shadow: var(--shadow);
+}
+
+.activity-center-drawer::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  right: 12px;
+  width: 11px;
+  height: 11px;
+  border-top: 1px solid rgba(61, 78, 111, 0.92);
+  border-left: 1px solid rgba(61, 78, 111, 0.92);
+  background: rgba(14, 21, 34, 0.985);
+  transform: rotate(45deg);
 }
 
 .activity-center-head {
@@ -251,6 +269,7 @@ body.activity-center-open .toast-area {
   }
 
   .activity-center-drawer {
+    z-index: 85;
     top: auto;
     right: 0;
     bottom: 0;
@@ -263,6 +282,10 @@ body.activity-center-open .toast-area {
     border-left: 0;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .activity-center-drawer::before {
+    display: none;
   }
 
   .activity-center-list {

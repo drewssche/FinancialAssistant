@@ -1,8 +1,11 @@
 (() => {
   const { state, el, core } = window.App;
   let recentItems = [];
+  let modalItems = [];
   let recentLoadPromise = null;
   let recentRefreshTimer = null;
+  let activityModalEntityType = "";
+  let activityModalEntityId = 0;
   const entityLabels = {
     operation: "операции",
     debt: "долга",
@@ -77,6 +80,7 @@
 
   function setActivityCenterOpen(isOpen) {
     const next = Boolean(isOpen);
+    if (next) updateActivityCenterPosition();
     el.activityCenterDrawer?.classList.toggle("hidden", !next);
     el.activityCenterOverlay?.classList.toggle("hidden", !next);
     el.activityCenterDrawer?.setAttribute("aria-hidden", next ? "false" : "true");
@@ -90,6 +94,20 @@
 
   function closeActivityCenter() {
     setActivityCenterOpen(false);
+  }
+
+  function updateActivityCenterPosition() {
+    if (!el.activityCenterDrawer || !el.activityCenterToggleBtn) return;
+    if (window.matchMedia("(max-width: 900px)").matches) {
+      el.activityCenterDrawer.style.removeProperty("--activity-center-top");
+      el.activityCenterDrawer.style.removeProperty("--activity-center-right");
+      return;
+    }
+    const triggerRect = el.activityCenterToggleBtn.getBoundingClientRect();
+    const top = Math.max(12, Math.round(triggerRect.bottom + 9));
+    const right = Math.max(12, Math.round(window.innerWidth - triggerRect.right));
+    el.activityCenterDrawer.style.setProperty("--activity-center-top", `${top}px`);
+    el.activityCenterDrawer.style.setProperty("--activity-center-right", `${right}px`);
   }
 
   function actionButton(eventId, action, label, icon) {
@@ -162,11 +180,9 @@
   async function openActivityEntity(item) {
     if (!item) return;
     if (!item.entity_exists) {
-      closeActivityCenter();
       await openActivityModal(item.entity_type, item.entity_id);
       return;
     }
-    closeActivityCenter();
     const navigation = window.App.actions || {};
     const operationModal = window.App.getRuntimeModule?.("operation-modal") || {};
     if (item.entity_type === "operation") {
@@ -234,6 +250,9 @@
       core.invalidateUiRequestCache?.();
       core.notify("Запись восстановлена", { type: "success" });
       await loadRecentActivity({ force: true });
+      if (!el.activityModal?.classList.contains("hidden")) {
+        await openActivityModal(activityModalEntityType, activityModalEntityId);
+      }
     }, {
       title: "Восстановление",
       confirmLabel: "Восстановить",
@@ -284,12 +303,21 @@
     if (!el.activityList) {
       return;
     }
-    if (!Array.isArray(items) || !items.length) {
+    modalItems = Array.isArray(items) ? items : [];
+    if (!modalItems.length) {
       el.activityList.innerHTML = "<div class='muted-small'>Журнал пока пуст</div>";
       return;
     }
-    el.activityList.innerHTML = items.map((item) => `
-      <article class="activity-event">
+    el.activityList.innerHTML = modalItems.map((item) => {
+      const actions = Array.isArray(item.available_actions) ? item.available_actions : [];
+      const quickActions = [
+        actions.includes("edit") ? actionButton(item.id, "edit", "Редактировать", "✎") : "",
+        actions.includes("restore") ? actionButton(item.id, "restore", "Восстановить", "↶") : "",
+      ].join("");
+      const clickLabel = item.entity_exists ? "Открыть запись" : "Открыть подробности";
+      return `
+      <article class="activity-event activity-event-interactive" data-activity-modal-event-id="${Number(item.id)}" role="button" tabindex="0" aria-label="${clickLabel}">
+        ${quickActions ? `<div class="activity-modal-event-actions">${quickActions}</div>` : ""}
         <div class="activity-event-head">
           <strong>${core.escapeHtml(item.title || "Событие")}</strong>
           <span class="muted-small">${core.escapeHtml(formatEventDate(item.created_at))}</span>
@@ -303,7 +331,8 @@
         ${renderChanges(item.changes)}
         ${renderMetadataDisplay(item.metadata_display)}
       </article>
-    `).join("");
+    `;
+    }).join("");
   }
 
   async function openActivityModal(entityType = "", entityId = 0) {
@@ -312,6 +341,8 @@
     }
     const normalizedId = Number(entityId || 0);
     const isEntityHistory = Boolean(entityType && normalizedId);
+    activityModalEntityType = isEntityHistory ? entityType : "";
+    activityModalEntityId = isEntityHistory ? normalizedId : 0;
     const label = entityLabels[entityType] || "карточки";
     if (el.activityModalTitle) {
       el.activityModalTitle.textContent = "Журнал действий";
@@ -379,6 +410,32 @@
         action: () => handleActivityCenterAction(button.dataset.activityCenterAction, Number(button.dataset.activityCenterEventId)),
       });
     });
+    el.activityList?.addEventListener("click", (event) => {
+      const actionButtonElement = event.target.closest("button[data-activity-center-event-id][data-activity-center-action]");
+      const eventCard = event.target.closest("[data-activity-modal-event-id]");
+      const eventId = Number(actionButtonElement?.dataset.activityCenterEventId || eventCard?.dataset.activityModalEventId || 0);
+      const item = modalItems.find((entry) => Number(entry.id) === eventId);
+      if (!item) return;
+      event.stopPropagation();
+      core.runAction({
+        errorPrefix: "Не удалось выполнить действие",
+        action: () => actionButtonElement?.dataset.activityCenterAction === "restore"
+          ? restoreActivityEntity(item)
+          : openActivityEntity(item),
+      });
+    });
+    el.activityList?.addEventListener("keydown", (event) => {
+      if (event.target !== event.currentTarget && !event.target.matches?.("[data-activity-modal-event-id]")) return;
+      if (event.key !== "Enter" && event.key !== " ") return;
+      const eventId = Number(event.target.dataset.activityModalEventId || 0);
+      const item = modalItems.find((entry) => Number(entry.id) === eventId);
+      if (!item) return;
+      event.preventDefault();
+      core.runAction({
+        errorPrefix: "Не удалось открыть запись",
+        action: () => openActivityEntity(item),
+      });
+    });
     document.addEventListener("app:activity-changed", () => {
       clearTimeout(recentRefreshTimer);
       if (el.activityCenterDrawer?.classList.contains("hidden")) {
@@ -399,6 +456,8 @@
         closeActivityCenter();
       }
     });
+    window.addEventListener("resize", updateActivityCenterPosition);
+    window.addEventListener("scroll", updateActivityCenterPosition, true);
     el.activityModal?.addEventListener("click", (event) => {
       if (event.target === el.activityModal) {
         closeActivityModal();
