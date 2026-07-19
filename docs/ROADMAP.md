@@ -19,9 +19,10 @@
   - Preserve `icon` and `include_in_statistics` when rolling back category changes; add create/edit/delete rollback coverage for operations and categories.
 - [x] P1: make every scheduled Telegram delivery idempotent across overlapping bot instances.
   - Apply the currency-alert locking pattern to plan reminders, debt reminders, and digest delivery; persist a delivery key before sending and cover restart/deploy races.
-- [ ] P1: add a tested PostgreSQL backup and recovery path.
+- [x] P1: add a tested PostgreSQL backup and recovery path.
   - Stream a compressed encrypted daily dump to storage outside the VPS, keep no permanent local archive, apply bounded remote retention, monitor upload/cleanup failures, and verify restoration quarterly and before risky migrations.
-  - Implemented encrypted streaming backup and disposable restore-verification scripts with bounded retention; VPS scheduling, off-host `rclone` credentials, monitoring, and the first verified production restore remain operational tasks.
+  - Production uses a root-only `rclone` remote to Yandex Disk, an encrypted daily systemd timer at `04:15 Europe/Minsk`, and 30-day hard-delete retention with no permanent local dump.
+  - The first production archive and disposable restore drill passed on 2026-07-19 with 23 public tables; the encryption recovery key also has a protected copy outside the VPS.
 - [x] P1: turn deployment checks into real readiness gates.
   - Run the complete Alembic chain against a fresh PostgreSQL database in tests; add an application readiness check and make the bot wait for readiness rather than only for a started container.
 - [ ] P1: reduce frontend startup cost and stale-asset risk.
@@ -49,7 +50,7 @@
 
 #### Audit implementation status
 - Completed in code: lossless rollback, idempotent reminder/digest claims, readiness/migration gates, bounded requests, stale dashboard states, CSP-safe toasts, Redis retry/diagnostics, runtime metrics, and baseline CI.
-- Requires VPS setup or verification: backup schedule, off-host credentials, and the first restore drill. A protected one-time pre-deployment dump was created and `runtime_preflight.py --strict` passed on 2026-07-16.
+- Production operations verified: strict runtime preflight, off-host encrypted backup schedule, bounded retention, and the first restore drill.
 - Remaining engineering backlog: frontend bundling and persistent-token review.
 
 ### Currency Rate Unit Audit 2026-07-16

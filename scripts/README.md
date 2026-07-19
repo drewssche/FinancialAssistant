@@ -93,6 +93,21 @@ BACKUP_ENCRYPTION_PASSWORD_FILE=/secure/financialassistant-backup.pass \
 ./scripts/verify_postgres_restore.sh
 ```
 
+Production deployment status (2026-07-19):
+- remote: Yandex Disk via root-only `rclone` config
+- schedule: `financialassistant-backup.timer`, daily at `04:15 Europe/Minsk`
+- retention: 30 days with permanent deletion of expired backup objects
+- recovery key copy outside the VPS: `~/.config/financialassistant/backup-encryption.pass`
+- first restore drill: passed against a disposable PostgreSQL database with 23 public tables
+
+Inspect the latest run without exposing secrets:
+
+```bash
+systemctl list-timers financialassistant-backup.timer
+systemctl status financialassistant-backup.service
+journalctl -u financialassistant-backup.service -n 50 --no-pager
+```
+
 Run `./.venv/bin/python scripts/runtime_preflight.py` before enabling stricter production configuration checks. It prints only non-secret status and does not change `.env`.
 - `GET /api/v1/dashboard/summary` is available for authenticated user
 - `GET /api/v1/dashboard/summary/metrics` returns valid telemetry and basic thresholds
