@@ -765,6 +765,11 @@ def test_dashboard_position_ranking_routes_to_operations_and_full_analytics(page
     expect(page.locator("#dashboardPositionsRanking")).to_contain_text("Кофе зерновой")
     expect(page.locator("#dashboardPositionsRanking")).to_contain_text("12.00 ед.")
     expect(page.locator("#dashboardPositionsRanking")).to_contain_text("84,60\u00a0\ue901")
+    ranking_currency_font = page.locator("#dashboardPositionsRanking .analytics-position-ranking-copy small").first.evaluate(
+        "node => getComputedStyle(node).fontFamily"
+    )
+    assert "nbrb" in ranking_currency_font
+    assert page.evaluate("() => document.fonts.check('10px nbrb', '\ue901')") is True
     expect(page.locator("#dashboardDebtLendKpi")).to_have_class(re.compile(r"\bis-positive\b"))
     expect(page.locator("#dashboardDebtBorrowKpi")).to_have_class(re.compile(r"\bis-negative\b"))
     expect(page.locator("#dashboardDebtNetKpi")).to_have_class(re.compile(r"\bis-negative\b"))

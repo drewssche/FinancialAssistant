@@ -20,10 +20,10 @@
                   </div>
                 </div>
                 <div class="plans-financial-kpi-line">
-                  <div id="plansFinancialValue" class="plans-financial-kpi-value">0,00&nbsp;BYN</div>
-                  <div id="plansFinancialDelta" class="plans-financial-kpi-delta">+0,00&nbsp;BYN</div>
+                  <div id="plansFinancialValue" class="plans-financial-kpi-value">0,00&nbsp;\uE901</div>
+                  <div id="plansFinancialDelta" class="plans-financial-kpi-delta">+0,00&nbsp;\uE901</div>
                 </div>
-                <div id="plansFinancialMeta" class="subtitle plans-financial-kpi-meta">0,00&nbsp;BYN</div>
+                <div id="plansFinancialMeta" class="subtitle plans-financial-kpi-meta">0,00&nbsp;\uE901</div>
               </article>
             </div>
             <div class="plans-controls-row">

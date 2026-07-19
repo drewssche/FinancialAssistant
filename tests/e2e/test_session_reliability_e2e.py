@@ -207,6 +207,26 @@ def test_delayed_telegram_startup_and_session_refresh_preserve_operation_modal(s
     page.wait_for_selector("#appShell:not(.hidden)")
     assert counters["telegram_auth"] == 1
     assert page.evaluate("() => performance.getEntriesByType('navigation')[0]?.type") == "navigate"
+    currency_font = page.evaluate(
+        """
+        async () => {
+          await document.fonts.ready;
+          const probe = document.createElement('button');
+          probe.textContent = `15,89\u00a0\ue901`;
+          document.body.appendChild(probe);
+          const result = {
+            loaded: document.fonts.check('16px nbrb', '\ue901'),
+            bodyFamily: getComputedStyle(document.body).fontFamily,
+            buttonFamily: getComputedStyle(probe).fontFamily,
+          };
+          probe.remove();
+          return result;
+        }
+        """
+    )
+    assert currency_font["loaded"] is True
+    assert "nbrb" in currency_font["bodyFamily"]
+    assert "nbrb" in currency_font["buttonFamily"]
 
     expect(page.locator("#sessionRemainingLabel")).to_contain_text("Осталось")
     expect(page.locator("#sessionStartedLabel")).to_contain_text("Начата")

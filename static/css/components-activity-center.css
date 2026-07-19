@@ -23,6 +23,18 @@
   }
 }
 
+@media (min-width: 1200px) {
+  body.activity-center-open .modal:not(.hidden) {
+    padding-right: 404px;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1199px) {
+  .activity-center-drawer {
+    z-index: 139;
+  }
+}
+
 .activity-center-toggle,
 .activity-center-icon-btn {
   position: relative;

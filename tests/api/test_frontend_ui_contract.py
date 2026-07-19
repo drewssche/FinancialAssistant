@@ -91,20 +91,28 @@ def test_byn_uses_compact_currency_symbol_in_frontend_formatters():
     tokens_css = (REPO_ROOT / "static" / "css" / "tokens.css").read_text(encoding="utf-8")
     modal_templates = (REPO_ROOT / "static" / "js" / "templates" / "modals.js").read_text(encoding="utf-8")
     secondary_templates = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-secondary.js").read_text(encoding="utf-8")
+    primary_templates = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-primary.js").read_text(encoding="utf-8")
     core_css = (REPO_ROOT / "static" / "css" / "components-core.css").read_text(encoding="utf-8")
+    controls_css = (REPO_ROOT / "static" / "css" / "components-controls.css").read_text(encoding="utf-8")
 
     assert '@font-face {\n  font-family: "nbrb";' in tokens_css
     assert 'url("/static/fonts/nbrb.woff2") format("woff2")' in tokens_css
-    assert 'unicode-range: U+E901, U+42, U+59, U+4E;' in tokens_css
+    assert 'unicode-range: U+E901;' in tokens_css
     assert 'font-feature-settings: "liga"' in tokens_css
     assert 'BYN: { symbol: "\\uE901" }' in core_utils
     assert '--money-font-family: "nbrb", "Noto Sans", "DejaVu Sans", "Segoe UI Symbol", "Segoe UI", Tahoma, sans-serif;' in tokens_css
+    assert '--ui-font-family: "nbrb", "Segoe UI", Tahoma, "Noto Sans", "DejaVu Sans", sans-serif;' in tokens_css
+    assert 'font-family: var(--ui-font-family);' in tokens_css
     assert 'RU: "RUB"' in core_utils
     assert "function normalizeCurrencyCode" in core_utils
     assert "function formatCurrencySymbol" in core_utils
     assert r"`${formatted}\u00A0${cfg.symbol}`" in core_utils
     assert '<option value="BYN">BYN (\\uE901)</option>' in modal_templates
     assert "Пример: 1 234,56&nbsp;\\uE901" in secondary_templates
+    assert 'id="plansFinancialValue" class="plans-financial-kpi-value">0,00&nbsp;\\uE901' in secondary_templates
+    assert 'id="analyticsIncomeDelta">0&nbsp;\\uE901' in primary_templates
+    assert "button,\ninput," in controls_css
+    assert "font-family: var(--ui-font-family);" in controls_css
     assert "text-rendering: geometricPrecision" in core_css
     assert "руб." not in core_utils
 
@@ -165,7 +173,7 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert "body.finance-calculator-open" in calculator_css
     assert "@media (max-width: 640px)" in calculator_css
     assert "max-height: min(88dvh, 720px)" in calculator_css
-    assert '/static/styles.css?v=20260720d' in index_html
+    assert '/static/styles.css?v=20260720e' in index_html
     assert '/static/css/components-core.css?v=20260719a' in styles
     assert '/static/css/layout-debts.css?v=20260716j' in styles
     assert '/static/css/components-analytics-summary.css?v=20260716j' in styles
