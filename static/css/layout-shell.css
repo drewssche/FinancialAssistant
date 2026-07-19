@@ -146,11 +146,20 @@
 .telegram-browser-login {
   margin-top: var(--space-3);
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
+  gap: var(--space-2);
 }
 
 .telegram-browser-login-widget {
   min-height: 50px;
+}
+
+.telegram-mini-app-link {
+  min-height: 38px;
+  padding: var(--space-2) var(--space-3);
+  font-size: 13px;
 }
 
 .login-alert {

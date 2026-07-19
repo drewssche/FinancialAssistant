@@ -9,6 +9,7 @@
       loginTelegramHint: document.getElementById("loginTelegramHint"),
       telegramBrowserLoginWrap: document.getElementById("telegramBrowserLoginWrap"),
       telegramBrowserLogin: document.getElementById("telegramBrowserLogin"),
+      telegramMiniAppLink: document.getElementById("telegramMiniAppLink"),
       mobileNavToggleBtn: document.getElementById("mobileNavToggleBtn"),
       sectionBackBtn: document.getElementById("sectionBackBtn"),
       activityCenterToggleBtn: document.getElementById("activityCenterToggleBtn"),

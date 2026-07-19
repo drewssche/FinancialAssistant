@@ -401,10 +401,12 @@
       });
     }
 
-    el.bulkEditOperationsBtn.addEventListener("click", () => {
-      bulkUi.fillBulkOperationCategorySelect(el.bulkOpKind.value);
-      bulkUi.openBulkEditOperationsModal();
-    });
+    if (el.bulkEditOperationsBtn) {
+      el.bulkEditOperationsBtn.addEventListener("click", () => {
+        bulkUi.fillBulkOperationCategorySelect(el.bulkOpKind.value);
+        bulkUi.openBulkEditOperationsModal();
+      });
+    }
     el.closeBulkEditOperationsModalBtn.addEventListener("click", bulkUi.closeBulkEditOperationsModal);
     el.bulkEditOperationsModal.addEventListener("click", (event) => {
       if (event.target === el.bulkEditOperationsModal) {
@@ -424,14 +426,16 @@
       bulkUi.fillBulkOperationCategorySelect(el.bulkOpKind.value);
     });
 
-    el.bulkDeleteOperationsBtn.addEventListener("click", () => {
-      const ids = Array.from(state.selectedOperationIds);
-      core.runDestructiveAction({
-        confirmMessage: `Удалить выбранные операции (${ids.length})?`,
-        doDelete: async () => bulkDeleteOperations(ids),
-        onDeleteError: "Не удалось удалить выбранные операции",
+    if (el.bulkDeleteOperationsBtn) {
+      el.bulkDeleteOperationsBtn.addEventListener("click", () => {
+        const ids = Array.from(state.selectedOperationIds);
+        core.runDestructiveAction({
+          confirmMessage: `Удалить выбранные операции (${ids.length})?`,
+          doDelete: async () => bulkDeleteOperations(ids),
+          onDeleteError: "Не удалось удалить выбранные операции",
+        });
       });
-    });
+    }
 
     if (el.deleteAllOperationsBtn) {
       el.deleteAllOperationsBtn.addEventListener("click", () => {

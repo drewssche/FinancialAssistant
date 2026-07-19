@@ -62,7 +62,7 @@ async def http_metrics_middleware(request, call_next):
             response.headers["X-Request-ID"] = request_id
             response.headers["Content-Security-Policy"] = (
                 "default-src 'self'; "
-                "script-src 'self' https://telegram.org; "
+                "script-src 'self' 'unsafe-eval' https://telegram.org; "
                 "style-src 'self' 'unsafe-inline'; "
                 "img-src 'self' data:; "
                 "connect-src 'self' https://telegram.org https://oauth.telegram.org; "

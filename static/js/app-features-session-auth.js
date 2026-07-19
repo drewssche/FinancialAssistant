@@ -342,6 +342,12 @@
     script.setAttribute("data-userpic", "false");
     script.setAttribute("data-request-access", "write");
     script.setAttribute("data-onauth", "onTelegramAuth(user)");
+    script.addEventListener("error", () => {
+      state.browserTelegramLoginReady = false;
+      if (el.loginTelegramHint) {
+        el.loginTelegramHint.textContent = "Кнопка входа Telegram не загрузилась. Откройте Mini App по ссылке выше.";
+      }
+    }, { once: true });
     el.telegramBrowserLogin.appendChild(script);
     state.browserTelegramLoginReady = true;
   }
@@ -367,6 +373,11 @@
       if (showBrowserWidget) {
         ensureBrowserTelegramWidget();
       }
+    }
+    if (el.telegramMiniAppLink) {
+      const username = String(state.telegramBotUsername || "").replace(/^@/, "");
+      el.telegramMiniAppLink.href = username ? `https://t.me/${username}?startapp=reauth` : "#";
+      el.telegramMiniAppLink.classList.toggle("hidden", !username || hasInitData);
     }
     el.loginTelegramHint.classList.remove("hidden");
     el.loginTelegramHint.textContent = hasInitData

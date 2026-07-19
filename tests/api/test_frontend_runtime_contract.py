@@ -717,6 +717,15 @@ def test_telegram_auth_coalesces_readiness_wait_and_network_request():
     )
 
 
+def test_browser_telegram_login_has_mini_app_fallback():
+    index_html = (REPO_ROOT / "static" / "index.html").read_text(encoding="utf-8")
+    auth = (REPO_ROOT / "static" / "js" / "app-features-session-auth.js").read_text(encoding="utf-8")
+
+    assert 'id="telegramMiniAppLink"' in index_html
+    assert "https://t.me/${username}?startapp=reauth" in auth
+    assert 'script.addEventListener("error"' in auth
+
+
 def test_currency_rates_keep_precision_for_low_unit_values():
     core_utils = (REPO_ROOT / "static" / "js" / "app-core-utils.js").read_text(encoding="utf-8")
     currency_files = [

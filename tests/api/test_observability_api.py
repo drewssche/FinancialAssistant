@@ -51,7 +51,9 @@ def test_security_headers_are_applied_to_responses():
     response = client.get("/health")
 
     assert response.status_code == 200
-    assert "object-src 'none'" in response.headers.get("Content-Security-Policy", "")
+    content_security_policy = response.headers.get("Content-Security-Policy", "")
+    assert "object-src 'none'" in content_security_policy
+    assert "script-src 'self' 'unsafe-eval' https://telegram.org" in content_security_policy
     assert response.headers.get("X-Content-Type-Options") == "nosniff"
     assert response.headers.get("Referrer-Policy") == "same-origin"
 
