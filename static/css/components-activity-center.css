@@ -1,3 +1,28 @@
+.activity-rail {
+  position: fixed;
+  z-index: 83;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 52px;
+  padding-top: max(18px, env(safe-area-inset-top));
+  display: flex;
+  justify-content: center;
+  border-left: 1px solid rgba(39, 50, 72, 0.72);
+  background: rgba(9, 14, 24, 0.94);
+  box-shadow: -8px 0 22px rgba(3, 7, 13, 0.16);
+}
+
+@media (min-width: 901px) {
+  .app-shell {
+    padding-right: 52px;
+  }
+
+  .toast-area {
+    right: 70px;
+  }
+}
+
 .activity-center-toggle,
 .activity-center-icon-btn {
   position: relative;
@@ -16,13 +41,8 @@
 }
 
 .activity-center-toggle {
-  margin-left: auto;
+  margin: 0;
   flex: 0 0 38px;
-}
-
-.topbar-title-block:has(.activity-center-toggle) {
-  flex: 1 1 auto;
-  width: 100%;
 }
 
 .activity-center-toggle svg {
@@ -264,6 +284,18 @@ body.activity-center-open .toast-area {
 }
 
 @media (max-width: 900px) {
+  .activity-rail {
+    top: calc(env(safe-area-inset-top) + var(--space-3));
+    right: max(var(--space-3), env(safe-area-inset-right));
+    bottom: auto;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
   .activity-center-overlay {
     display: block;
   }

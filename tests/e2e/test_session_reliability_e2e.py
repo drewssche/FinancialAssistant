@@ -347,11 +347,21 @@ def test_activity_center_desktop_mobile_and_restore(static_server_url: str, sess
         () => {
           const drawer = document.getElementById('activityCenterDrawer')?.getBoundingClientRect();
           const overlay = document.getElementById('activityCenterOverlay');
-          return drawer && overlay ? {
+          const rail = document.querySelector('.activity-rail')?.getBoundingClientRect();
+          const trigger = document.getElementById('activityCenterToggleBtn')?.getBoundingClientRect();
+          const main = document.querySelector('.main')?.getBoundingClientRect();
+          return drawer && overlay && rail && trigger && main ? {
             left: drawer.left,
             right: drawer.right,
             top: drawer.top,
             bottom: drawer.bottom,
+            railLeft: rail.left,
+            railRight: rail.right,
+            railWidth: rail.width,
+            triggerLeft: trigger.left,
+            triggerRight: trigger.right,
+            triggerBottom: trigger.bottom,
+            mainRight: main.right,
             overlayDisplay: getComputedStyle(overlay).display,
             viewportWidth: innerWidth,
             viewportHeight: innerHeight,
@@ -364,6 +374,12 @@ def test_activity_center_desktop_mobile_and_restore(static_server_url: str, sess
     assert desktop_geometry["right"] <= desktop_geometry["viewportWidth"]
     assert desktop_geometry["top"] >= 0
     assert desktop_geometry["bottom"] <= desktop_geometry["viewportHeight"]
+    assert abs(desktop_geometry["railWidth"] - 52) <= 1
+    assert abs(desktop_geometry["railRight"] - desktop_geometry["viewportWidth"]) <= 1
+    assert desktop_geometry["mainRight"] <= desktop_geometry["railLeft"] + 1
+    assert desktop_geometry["triggerLeft"] >= desktop_geometry["railLeft"]
+    assert desktop_geometry["triggerRight"] <= desktop_geometry["railRight"]
+    assert abs(desktop_geometry["top"] - desktop_geometry["triggerBottom"] - 9) <= 1
     assert desktop_geometry["overlayDisplay"] == "none"
     page.screenshot(path="/tmp/finasist-activity-center-desktop.png", full_page=True)
 
@@ -404,7 +420,8 @@ def test_activity_center_desktop_mobile_and_restore(static_server_url: str, sess
         () => {
           const drawer = document.getElementById('activityCenterDrawer')?.getBoundingClientRect();
           const overlay = document.getElementById('activityCenterOverlay');
-          return drawer && overlay ? {
+          const rail = document.querySelector('.activity-rail')?.getBoundingClientRect();
+          return drawer && overlay && rail ? {
             left: drawer.left,
             right: drawer.right,
             bottom: drawer.bottom,
@@ -413,6 +430,8 @@ def test_activity_center_desktop_mobile_and_restore(static_server_url: str, sess
             viewportHeight: innerHeight,
             bodyClientWidth: document.documentElement.clientWidth,
             bodyScrollWidth: document.documentElement.scrollWidth,
+            railWidth: rail.width,
+            railRight: rail.right,
           } : null;
         }
         """
@@ -422,5 +441,7 @@ def test_activity_center_desktop_mobile_and_restore(static_server_url: str, sess
     assert abs(mobile_geometry["right"] - mobile_geometry["viewportWidth"]) <= 1
     assert abs(mobile_geometry["bottom"] - mobile_geometry["viewportHeight"]) <= 1
     assert mobile_geometry["overlayDisplay"] == "block"
+    assert abs(mobile_geometry["railWidth"] - 34) <= 1
+    assert mobile_geometry["railRight"] <= mobile_geometry["viewportWidth"] + 1
     assert mobile_geometry["bodyScrollWidth"] <= mobile_geometry["bodyClientWidth"] + 1
     page.screenshot(path="/tmp/finasist-activity-center-mobile.png", full_page=True)

@@ -73,13 +73,6 @@
             <h2 id="sectionTitle">Дашборд</h2>
             <p class="subtitle" id="sectionSubtitle">Доходы, расходы и быстрый контроль результата</p>
             </div>
-            <button id="activityCenterToggleBtn" class="activity-center-toggle" type="button" aria-label="Открыть последние действия" title="Последние действия" aria-controls="activityCenterDrawer" aria-expanded="false">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M3 12a9 9 0 1 0 3-6.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
-                <path d="M3 4.5v5h5M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
-              </svg>
-              <span id="activityCenterBadge" class="activity-center-badge hidden" aria-hidden="true"></span>
-            </button>
           </div>
           <div class="top-actions">
             <div class="cta-row">
@@ -100,6 +93,15 @@
         ${window.App.templates.shellSections || ""}
 
       </main>
+      <aside class="activity-rail" aria-label="Быстрые инструменты">
+        <button id="activityCenterToggleBtn" class="activity-center-toggle" type="button" aria-label="Открыть последние действия" title="Последние действия" aria-controls="activityCenterDrawer" aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M3 12a9 9 0 1 0 3-6.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+            <path d="M3 4.5v5h5M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+          <span id="activityCenterBadge" class="activity-center-badge hidden" aria-hidden="true"></span>
+        </button>
+      </aside>
       <div id="activityCenterOverlay" class="activity-center-overlay hidden" aria-hidden="true"></div>
       <aside id="activityCenterDrawer" class="activity-center-drawer hidden" aria-label="Последние действия" aria-hidden="true">
         <div class="activity-center-head">

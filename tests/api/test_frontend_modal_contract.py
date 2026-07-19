@@ -30,6 +30,7 @@ def test_activity_journal_modal_is_available_in_frontend_templates():
 
     assert 'id="activityModal"' in modals
     assert 'id="activityCenterToggleBtn"' in shell
+    assert 'class="activity-rail"' in shell
     assert 'id="activityCenterDrawer"' in shell
     assert 'id="activityCenterList"' in shell
     assert 'id="activityCenterAllBtn"' in shell
@@ -73,7 +74,7 @@ def test_activity_journal_modal_is_available_in_frontend_templates():
     assert ".activity-center-drawer" in activity_center_css
     assert "@media (max-width: 900px)" in activity_center_css
     assert "@media (hover: none), (pointer: coarse)" in activity_center_css
-    assert '@import url("/static/css/components-activity-center.css?v=20260720c");' in styles
+    assert '@import url("/static/css/components-activity-center.css?v=20260720d");' in styles
     assert "function configureUsageButton" in usage
     assert "/api/v1/operations/money-flow?" in usage
     assert "item_template_id" in usage
