@@ -148,8 +148,10 @@ def test_delayed_telegram_startup_and_session_refresh_preserve_operation_modal(s
     assert counters["telegram_auth"] == 1
     assert page.evaluate("() => performance.getEntriesByType('navigation')[0]?.type") == "navigate"
 
-    expect(page.locator("#sessionRemainingLabel")).to_contain_text("мин")
+    expect(page.locator("#sessionRemainingLabel")).to_contain_text("Осталось")
     expect(page.locator("#sessionStartedLabel")).to_contain_text("Начата")
+    expect(page.locator("#sessionExpiresLabel")).to_contain_text("Завершится")
+    initial_expiry_label = page.locator("#sessionExpiresLabel").inner_text()
     expect(page.locator("#sessionRenewedLabel")).to_be_hidden()
     session_geometry = page.evaluate(
         """
@@ -182,11 +184,12 @@ def test_delayed_telegram_startup_and_session_refresh_preserve_operation_modal(s
     page.fill("#opAmount", "129.90")
     page.fill("#opNote", "Большой чек не должен закрыться")
     page.click("#createSessionRefreshBtn")
-    page.wait_for_function("() => document.getElementById('sessionRemainingLabel')?.textContent.includes('30 мин')")
+    page.wait_for_function("() => document.getElementById('sessionRemainingLabel')?.textContent.includes('Осталось 30 мин')")
 
     assert counters["refresh"] == 1
     expect(page.locator("#sessionRenewedLabel")).to_be_visible()
     expect(page.locator("#sessionRenewedLabel")).to_contain_text("Обновлена")
+    expect(page.locator("#sessionExpiresLabel")).not_to_have_text(initial_expiry_label)
     expect(page.locator("#createModal")).to_be_visible()
     expect(page.locator("#opAmount")).to_have_value("129.90")
     expect(page.locator("#opNote")).to_have_value("Большой чек не должен закрыться")
@@ -213,6 +216,30 @@ def test_delayed_telegram_startup_and_session_refresh_preserve_operation_modal(s
     assert counters["refresh"] == 3
     expect(page.locator("#createModal")).to_be_visible()
     expect(page.locator("#opNote")).to_have_value("Большой чек не должен закрыться")
+    action_grouping = page.evaluate(
+        """
+        () => {
+          const calculator = document.getElementById('createFinanceCalculatorToggle')?.getBoundingClientRect();
+          const refresh = document.getElementById('createSessionRefreshBtn')?.getBoundingClientRect();
+          const close = document.getElementById('closeCreateModalBtn')?.getBoundingClientRect();
+          const calculatorStyle = document.getElementById('createFinanceCalculatorToggle')
+            ? getComputedStyle(document.getElementById('createFinanceCalculatorToggle'))
+            : null;
+          const refreshStyle = document.getElementById('createSessionRefreshBtn')
+            ? getComputedStyle(document.getElementById('createSessionRefreshBtn'))
+            : null;
+          return calculator && refresh && close && calculatorStyle && refreshStyle ? {
+            contextualGap: refresh.left - calculator.right,
+            systemGap: close.left - refresh.right,
+            contextualColor: calculatorStyle.color,
+            refreshColor: refreshStyle.color,
+          } : null;
+        }
+        """
+    )
+    assert action_grouping is not None
+    assert action_grouping["contextualGap"] > action_grouping["systemGap"]
+    assert action_grouping["refreshColor"] != action_grouping["contextualColor"]
     page.set_viewport_size({"width": 390, "height": 844})
     geometry = page.evaluate(
         """

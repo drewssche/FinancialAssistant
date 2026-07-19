@@ -1,6 +1,6 @@
 (() => {
   const CURRENCY_META = {
-    BYN: { symbol: "Br" },
+    BYN: { symbol: "\uE901" },
     RUB: { symbol: "₽" },
     USD: { symbol: "$" },
     EUR: { symbol: "€" },

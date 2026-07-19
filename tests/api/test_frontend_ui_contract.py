@@ -97,16 +97,14 @@ def test_byn_uses_compact_currency_symbol_in_frontend_formatters():
     assert 'url("/static/fonts/nbrb.woff2") format("woff2")' in tokens_css
     assert 'unicode-range: U+E901, U+42, U+59, U+4E;' in tokens_css
     assert 'font-feature-settings: "liga"' in tokens_css
-    assert 'BYN: { symbol: "Br" }' in core_utils
-    assert '--money-font-family: "Noto Sans", "DejaVu Sans", "Segoe UI Symbol", "Segoe UI", Tahoma, "nbrb", sans-serif;' in tokens_css
+    assert 'BYN: { symbol: "\\uE901" }' in core_utils
+    assert '--money-font-family: "nbrb", "Noto Sans", "DejaVu Sans", "Segoe UI Symbol", "Segoe UI", Tahoma, sans-serif;' in tokens_css
     assert 'RU: "RUB"' in core_utils
     assert "function normalizeCurrencyCode" in core_utils
     assert "function formatCurrencySymbol" in core_utils
     assert r"`${formatted}\u00A0${cfg.symbol}`" in core_utils
-    assert "<option value=\"BYN\">BYN (Br)</option>" in modal_templates
-    assert "Пример: 1 234,56&nbsp;Br" in secondary_templates
-    assert "&#xe901;" not in modal_templates
-    assert "&#xe901;" not in secondary_templates
+    assert '<option value="BYN">BYN (\\uE901)</option>' in modal_templates
+    assert "Пример: 1 234,56&nbsp;\\uE901" in secondary_templates
     assert "text-rendering: geometricPrecision" in core_css
     assert "руб." not in core_utils
 
@@ -133,6 +131,7 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert '<img src="/static/favicon.svg?v=2" alt="" width="40" height="40" />' in shell
     assert 'id="sessionStatusRow"' in shell
     assert 'id="sessionStartedLabel"' in shell
+    assert 'id="sessionExpiresLabel"' in shell
     assert 'id="sessionRenewedLabel" class="hidden"' in shell
     assert 'id="sessionRefreshBtn"' in shell
     assert 'id="sessionRefreshBtn" class="btn btn-secondary session-renew-btn" type="button" title="Продлить сессию" aria-label="Продлить сессию"><span aria-hidden="true">⟳</span></button>' in shell
@@ -166,8 +165,8 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert "body.finance-calculator-open" in calculator_css
     assert "@media (max-width: 640px)" in calculator_css
     assert "max-height: min(88dvh, 720px)" in calculator_css
-    assert '/static/styles.css?v=20260716l' in index_html
-    assert '/static/css/components-core.css?v=20260716j' in styles
+    assert '/static/styles.css?v=20260719a' in index_html
+    assert '/static/css/components-core.css?v=20260719a' in styles
     assert '/static/css/layout-debts.css?v=20260716j' in styles
     assert '/static/css/components-analytics-summary.css?v=20260716j' in styles
 
@@ -184,6 +183,8 @@ def test_session_refresh_preserves_runtime_ui_and_retries_unauthorized_requests(
     assert "if (bootstrapPromise) return bootstrapPromise" in session_auth
     assert "await refreshSession({ manual: true })" in session_auth
     assert "state.sessionStartedAt = tokenTimestampIso(claims.session_started_at || claims.iat)" in session_auth
+    assert '`Завершится ${expiresAt}`' in session_auth
+    assert '`Осталось ${formatRemainingTime(remainingMs)}`' in session_auth
     assert "storeAccessToken(data, { renewed: true })" in session_auth
     assert "operationModal.closeCreateModal()" not in session_auth.split("async function refreshSession", 1)[1].split("function authenticateTelegramInPlace", 1)[0]
     assert "recoverUnauthorized" in core_actions

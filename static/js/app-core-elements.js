@@ -174,6 +174,7 @@
       sessionStatusRow: document.getElementById("sessionStatusRow"),
       sessionRemainingLabel: document.getElementById("sessionRemainingLabel"),
       sessionStartedLabel: document.getElementById("sessionStartedLabel"),
+      sessionExpiresLabel: document.getElementById("sessionExpiresLabel"),
       sessionRenewedLabel: document.getElementById("sessionRenewedLabel"),
       sessionRefreshBtn: document.getElementById("sessionRefreshBtn"),
       sessionRecoveryOverlay: document.getElementById("sessionRecoveryOverlay"),

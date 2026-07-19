@@ -79,11 +79,18 @@
     const visible = Boolean(state.token && state.sessionExpiresAt);
     el.sessionStatusRow.classList.toggle("hidden", !visible);
     if (!visible) return;
-    el.sessionRemainingLabel.textContent = formatRemainingTime(remainingMs);
+    el.sessionRemainingLabel.textContent = remainingMs > 0
+      ? `Осталось ${formatRemainingTime(remainingMs)}`
+      : "Сессия истекла";
     const startedAt = formatSessionTime(state.sessionStartedAt);
+    const expiresAt = formatSessionTime(state.sessionExpiresAt);
     const renewedAt = formatSessionTime(state.sessionLastRenewedAt);
     if (el.sessionStartedLabel) {
       el.sessionStartedLabel.textContent = startedAt ? `Начата ${startedAt}` : "Сессия";
+    }
+    if (el.sessionExpiresLabel) {
+      el.sessionExpiresLabel.textContent = expiresAt ? `Завершится ${expiresAt}` : "";
+      el.sessionExpiresLabel.classList.toggle("hidden", !expiresAt);
     }
     if (el.sessionRenewedLabel) {
       el.sessionRenewedLabel.textContent = renewedAt ? `Обновлена ${renewedAt}` : "";

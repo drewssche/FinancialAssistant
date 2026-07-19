@@ -176,6 +176,10 @@
   color: #8fb7a8;
 }
 
+#sessionExpiresLabel {
+  color: #aebddd;
+}
+
 .session-status-copy > strong {
   min-width: 0;
   overflow: hidden;

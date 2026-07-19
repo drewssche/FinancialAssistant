@@ -9,14 +9,14 @@
           <h3 id="createTitle">Новая операция</h3>
           <div class="modal-head-actions">
             <button id="createModalActivityBtn" class="btn btn-secondary modal-head-icon-btn hidden" type="button" title="Журнал" aria-label="Открыть журнал"><span aria-hidden="true">◷</span></button>
-            <button id="createSessionRefreshBtn" class="btn btn-secondary operation-session-refresh-btn" type="button" title="Продлить сессию" aria-label="Продлить сессию">
-              <span aria-hidden="true">⟳</span>
-            </button>
             <button id="createFinanceCalculatorToggle" class="btn btn-secondary finance-calculator-modal-toggle modal-head-icon-btn" type="button" aria-controls="financeCalculatorDrawer" aria-expanded="false" title="Калькулятор" aria-label="Открыть калькулятор">
               <svg class="modal-action-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <rect x="5" y="3" width="14" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"></rect>
                 <path d="M8 7h8M8 11h2M14 11h2M8 15h2M14 15h2M8 18h2M14 18h2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
               </svg>
+            </button>
+            <button id="createSessionRefreshBtn" class="btn btn-secondary operation-session-refresh-btn modal-session-action" type="button" title="Продлить сессию" aria-label="Продлить сессию">
+              <span aria-hidden="true">⟳</span>
             </button>
             <button id="closeCreateModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
               <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
@@ -59,7 +59,7 @@
               <input id="opAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" required />
             </div>
             <select id="opCurrency" class="inline-currency-select" aria-label="Валюта суммы">
-              <option value="BYN">BYN (Br)</option>
+              <option value="BYN">BYN (\uE901)</option>
               <option value="USD">USD ($)</option>
               <option value="EUR">EUR (€)</option>
               <option value="RUB">RUB (₽)</option>
@@ -211,7 +211,7 @@
                 <input id="debtPrincipal" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" />
               </div>
               <select id="debtCurrency" class="inline-currency-select" aria-label="Валюта долга">
-                <option value="BYN">BYN (Br)</option>
+                <option value="BYN">BYN (\uE901)</option>
                 <option value="USD">USD ($)</option>
                 <option value="EUR">EUR (€)</option>
                 <option value="RUB">RUB (₽)</option>
@@ -436,14 +436,14 @@
           <h3 id="editTitle">Редактировать операцию</h3>
           <div class="modal-head-actions">
             <button id="editModalActivityBtn" class="btn btn-secondary modal-head-icon-btn hidden" type="button" title="Журнал" aria-label="Открыть журнал"><span aria-hidden="true">◷</span></button>
-            <button id="editSessionRefreshBtn" class="btn btn-secondary operation-session-refresh-btn" type="button" title="Продлить сессию" aria-label="Продлить сессию">
-              <span aria-hidden="true">⟳</span>
-            </button>
             <button id="editFinanceCalculatorToggle" class="btn btn-secondary finance-calculator-modal-toggle modal-head-icon-btn" type="button" aria-controls="financeCalculatorDrawer" aria-expanded="false" title="Калькулятор" aria-label="Открыть калькулятор">
               <svg class="modal-action-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <rect x="5" y="3" width="14" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"></rect>
                 <path d="M8 7h8M8 11h2M14 11h2M8 15h2M14 15h2M8 18h2M14 18h2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
               </svg>
+            </button>
+            <button id="editSessionRefreshBtn" class="btn btn-secondary operation-session-refresh-btn modal-session-action" type="button" title="Продлить сессию" aria-label="Продлить сессию">
+              <span aria-hidden="true">⟳</span>
             </button>
             <button id="closeEditModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
               <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
@@ -480,7 +480,7 @@
               <input id="editAmount" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" required />
             </div>
             <select id="editCurrency" class="inline-currency-select" aria-label="Валюта суммы">
-              <option value="BYN">BYN (Br)</option>
+              <option value="BYN">BYN (\uE901)</option>
               <option value="USD">USD ($)</option>
               <option value="EUR">EUR (€)</option>
               <option value="RUB">RUB (₽)</option>

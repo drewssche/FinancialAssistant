@@ -266,7 +266,7 @@
                     <span>Валюта</span>
                     <div class="settings-picker-field">
                       <select id="currencySelect">
-                        <option value="BYN">BYN (Br)</option>
+                        <option value="BYN">BYN (\uE901)</option>
                         <option value="RUB">RUB (₽)</option>
                         <option value="USD">USD ($)</option>
                         <option value="EUR">EUR (€)</option>
@@ -286,7 +286,7 @@
                     </div>
                   </label>
                 </div>
-                <div id="currencyPreview" class="settings-preview">Пример: 1 234,56&nbsp;Br</div>
+                <div id="currencyPreview" class="settings-preview">Пример: 1 234,56&nbsp;\uE901</div>
                 <label class="settings-switch-row">
                   <input id="showDashboardAnalyticsToggle" type="checkbox" checked />
                   <span>Показывать блок аналитики на дашборде</span>

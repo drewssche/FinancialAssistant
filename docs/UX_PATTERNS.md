@@ -93,7 +93,7 @@ Settings UX additions:
 - All money values must use one shared formatter driven by user settings
 - Currency setting supports at least `BYN`, `RUB`, `USD`, `EUR`
 - Currency symbol position is configurable (`prefix`/`suffix`)
-- For current RU/BY UX baseline, default display uses suffix style (`1 234,56 Br`)
+- For the current RU/BY UX baseline, the default display uses the official BYN sign in suffix position (`1 234,56 <BYN sign>`); the shared money formatter and bundled NBRB font own its rendering.
 - Amount inputs show currency adornment as visual hint only; raw numeric value remains clean for API payload
 
 ## Time Filters

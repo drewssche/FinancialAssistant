@@ -66,6 +66,13 @@
 - [x] P1: show when the current session started and when its token was last renewed.
   - Read the root session start and token issue time from JWT claims; keep `Начата HH:MM` stable and update `Обновлена HH:MM` after automatic or manual renewal.
   - Preserve the open operation modal and every unsaved field while renewing.
+  - Done 2026-07-19: the sidebar now labels the countdown as `Осталось`, shows the calculated token end time as `Завершится HH:MM`, and updates both after an in-place renewal.
+
+### Global Action History (Backlog)
+- [ ] P2: design a cross-section action stack that shows what the user changed across the product.
+  - Reuse the existing activity-journal records and human-readable display values instead of creating a second audit source.
+  - Agree the interaction model first: chronological feed, entity/action filters, drilldown to the affected record, and a clear distinction between audit history and reversible undo actions.
+  - Do not implement until retention, pagination, and access rules are agreed.
 
 ### Currency Balance Settlement 2026-07-16
 - [x] P0: make foreign-currency expenses optionally reduce the tracked currency balance.
@@ -92,10 +99,11 @@
 ### Compact Modal Actions 2026-07-16
 - [x] P1: standardize modal-header utility actions as compact icon-only controls with equal dimensions, accessible labels, and tooltips while keeping primary form actions textual.
 - [x] P1: make sidebar and operation-modal session renewal controls icon-only without changing the in-place refresh behavior.
-- [x] P0: replace the remaining private BYN font entities in static currency selectors and previews with portable `Br` text.
+- [x] P1: visually separate operation-modal session renewal from record-specific journal/calculator actions while preserving equal control dimensions.
+- [x] P0: render the official BYN sign through the bundled NBRB font in the shared formatter, selectors, previews, and every money surface.
 
 ### Currency, Debt KPI And Position Metrics 2026-07-16
-- [x] P0: replace the fragile private-font BYN glyph with the portable `Br` label in the shared currency formatter and cover the frontend contract.
+- [x] P0: keep BYN rendering centralized in the shared currency formatter and cover the bundled official glyph/font contract.
 - [x] P1: add contextual debt KPI states: receivables positive, payables negative, and net position colored by sign while zero remains neutral.
 - [x] P1: make quantity the default position-ranking metric, keep amount visible in ranking context, and leave purchase/event count in the KPI summary and optional metric switch.
 

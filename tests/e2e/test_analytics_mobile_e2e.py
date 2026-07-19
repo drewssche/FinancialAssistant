@@ -764,7 +764,7 @@ def test_dashboard_position_ranking_routes_to_operations_and_full_analytics(page
     expect(page.locator("#dashboardPositionsRanking .analytics-position-ranking-row")).to_have_count(2)
     expect(page.locator("#dashboardPositionsRanking")).to_contain_text("Кофе зерновой")
     expect(page.locator("#dashboardPositionsRanking")).to_contain_text("12.00 ед.")
-    expect(page.locator("#dashboardPositionsRanking")).to_contain_text("84,60\u00a0Br")
+    expect(page.locator("#dashboardPositionsRanking")).to_contain_text("84,60\u00a0\ue901")
     expect(page.locator("#dashboardDebtLendKpi")).to_have_class(re.compile(r"\bis-positive\b"))
     expect(page.locator("#dashboardDebtBorrowKpi")).to_have_class(re.compile(r"\bis-negative\b"))
     expect(page.locator("#dashboardDebtNetKpi")).to_have_class(re.compile(r"\bis-negative\b"))

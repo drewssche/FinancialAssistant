@@ -40,7 +40,8 @@
           <div id="sessionStatusRow" class="session-status-panel hidden">
             <div class="session-status-copy">
               <span id="sessionStartedLabel">Сессия</span>
-              <strong id="sessionRemainingLabel">30 мин</strong>
+              <strong id="sessionRemainingLabel">Осталось 30 мин</strong>
+              <span id="sessionExpiresLabel">Завершится --:--</span>
               <span id="sessionRenewedLabel" class="hidden"></span>
             </div>
             <button id="sessionRefreshBtn" class="btn btn-secondary session-renew-btn" type="button" title="Продлить сессию" aria-label="Продлить сессию"><span aria-hidden="true">⟳</span></button>
