@@ -751,6 +751,30 @@ def test_desktop_breakdown_lists_match_chart_height(page_with_analytics_api_mock
     assert abs(analytics_geometry["chartHeight"] - analytics_geometry["listHeight"]) <= 1
     assert analytics_geometry["donutTop"] >= analytics_geometry["chartTop"] - 1
     assert analytics_geometry["donutBottom"] <= analytics_geometry["chartBottom"] + 1
+    page.locator("#analyticsCategoryBreakdownSvg .analytics-category-slice").first.dispatch_event("pointerenter")
+    page.wait_for_selector("#analyticsCategoryBreakdownSvg .analytics-category-slice.is-active")
+    hover_geometry = page.evaluate(
+        """
+        () => {
+          const card = document.querySelector('#analyticsStructurePanel .analytics-category-breakdown-chart-card')?.getBoundingClientRect();
+          const svg = document.getElementById('analyticsCategoryBreakdownSvg');
+          const slice = svg?.querySelector('.analytics-category-slice.is-active');
+          const svgRect = svg?.getBoundingClientRect();
+          const sliceRect = slice?.getBoundingClientRect();
+          return card && svg && svgRect && sliceRect ? {
+            cardLeft: card.left,
+            cardRight: card.right,
+            sliceLeft: sliceRect.left,
+            sliceRight: sliceRect.right,
+            svgOverflow: getComputedStyle(svg).overflow,
+          } : null;
+        }
+        """
+    )
+    assert hover_geometry is not None
+    assert hover_geometry["svgOverflow"] == "visible"
+    assert hover_geometry["sliceLeft"] >= hover_geometry["cardLeft"] - 1
+    assert hover_geometry["sliceRight"] <= hover_geometry["cardRight"] + 1
     page.screenshot(path="/tmp/finasist-structure-donut-desktop.png", full_page=True)
 
 

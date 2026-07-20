@@ -429,6 +429,20 @@ def test_activity_center_desktop_mobile_and_restore(static_server_url: str, sess
     expect(page.locator(".toast-activity-btn")).to_be_visible()
 
     page.click("#activityCenterCloseBtn")
+    toast_geometry = page.evaluate(
+        """
+        () => {
+          const toast = document.querySelector('.toast-area')?.getBoundingClientRect();
+          const rail = document.querySelector('.activity-rail')?.getBoundingClientRect();
+          return toast && rail ? {
+            toastRight: toast.right,
+            railLeft: rail.left,
+          } : null;
+        }
+        """
+    )
+    assert toast_geometry is not None
+    assert toast_geometry["toastRight"] <= toast_geometry["railLeft"] - 12
     page.evaluate("() => document.dispatchEvent(new CustomEvent('app:activity-changed'))")
     expect(page.locator("#activityCenterBadge")).to_be_visible()
 

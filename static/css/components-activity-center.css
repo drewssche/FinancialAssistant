@@ -18,7 +18,7 @@
     padding-right: 52px;
   }
 
-  .toast-area {
+  body > .toast-area {
     right: 70px;
   }
 }
