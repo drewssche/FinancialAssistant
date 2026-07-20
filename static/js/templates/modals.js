@@ -435,6 +435,11 @@
         <div class="panel-head row between">
           <h3 id="editTitle">Редактировать операцию</h3>
           <div class="modal-head-actions">
+            <button id="editModalReceiptBtn" class="btn btn-secondary modal-head-icon-btn hidden" type="button" title="Позиции" aria-label="Открыть позиции чека">
+              <svg class="modal-action-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M7 5h10M7 9h10M7 13h10M7 17h6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+              </svg>
+            </button>
             <button id="editModalActivityBtn" class="btn btn-secondary modal-head-icon-btn hidden" type="button" title="Журнал" aria-label="Открыть журнал"><span aria-hidden="true">◷</span></button>
             <button id="editFinanceCalculatorToggle" class="btn btn-secondary finance-calculator-modal-toggle modal-head-icon-btn" type="button" aria-controls="financeCalculatorDrawer" aria-expanded="false" title="Калькулятор" aria-label="Открыть калькулятор">
               <svg class="modal-action-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">

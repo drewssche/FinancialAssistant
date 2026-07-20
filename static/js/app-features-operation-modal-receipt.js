@@ -330,31 +330,47 @@
       return getReceiptItems(mode).reduce((acc, item) => acc + receiptLineTotal(item), 0);
     }
 
-    function renderReceiptSummary(mode = "create") {
+    function syncReceiptNumericInputs(mode = "create") {
       const ctx = getReceiptContext(mode);
+      ctx.listNode?.querySelectorAll("[data-receipt-item-id]").forEach((row) => {
+        const draftId = Number(row.dataset.receiptItemId || 0);
+        for (const field of ["quantity", "unit_price", "regular_unit_price"]) {
+          const input = row.querySelector(`[data-receipt-field="${field}"]`);
+          if (input) {
+            updateReceiptItemField(draftId, field, input.value, mode);
+          }
+        }
+      });
+    }
+
+    function renderReceiptSummary(mode = "create", options = {}) {
+      const resolvedMode = mode === "edit" ? "edit" : "create";
+      const ctx = getReceiptContext(resolvedMode);
       if (!ctx.totalNode || !ctx.diffNode) {
         return;
       }
-      const total = getReceiptTotal(mode);
-      const receiptCurrency = getReceiptCurrency(mode);
-      const baseCurrency = getReceiptBaseCurrency(mode);
-      const fxRate = getReceiptFxRate(mode);
+      const total = getReceiptTotal(resolvedMode);
+      const receiptCurrency = getReceiptCurrency(resolvedMode);
+      const baseCurrency = getReceiptBaseCurrency(resolvedMode);
+      const fxRate = getReceiptFxRate(resolvedMode);
       const totalHtml = receiptCurrency === baseCurrency
-        ? formatReceiptMoney(total, mode)
-        : `${formatReceiptMoney(total, mode)} <span class="muted-small">· ≈ ${core.formatMoney(total * fxRate, { currency: baseCurrency })}</span>`;
+        ? formatReceiptMoney(total, resolvedMode)
+        : `${formatReceiptMoney(total, resolvedMode)} <span class="muted-small">· ≈ ${core.formatMoney(total * fxRate, { currency: baseCurrency })}</span>`;
       if (ctx.totalLabelNode) {
-        ctx.totalLabelNode.textContent = `Сумма чека (${getReceiptCurrencyLabel(mode)})`;
+        ctx.totalLabelNode.textContent = `Сумма чека (${getReceiptCurrencyLabel(resolvedMode)})`;
       }
       if (ctx.totalNode) {
         ctx.totalNode.innerHTML = totalHtml;
       }
       const resolvedAmount = core.resolveMoneyInput(ctx.amountNode?.value || 0);
-      const diff = !resolvedAmount.empty ? asMoney(resolvedAmount.previewValue - total) : 0;
+      const hasAmountOverride = Number.isFinite(Number(options?.amountValue));
+      const comparedAmount = hasAmountOverride ? Number(options.amountValue) : Number(resolvedAmount.previewValue || 0);
+      const diff = hasAmountOverride || !resolvedAmount.empty ? asMoney(comparedAmount - total) : 0;
       const diffHtml = receiptCurrency === baseCurrency
-        ? formatReceiptMoney(diff, mode)
-        : `${formatReceiptMoney(diff, mode)} <span class="muted-small">· ≈ ${core.formatMoney(diff * fxRate, { currency: baseCurrency })}</span>`;
+        ? formatReceiptMoney(diff, resolvedMode)
+        : `${formatReceiptMoney(diff, resolvedMode)} <span class="muted-small">· ≈ ${core.formatMoney(diff * fxRate, { currency: baseCurrency })}</span>`;
       if (ctx.diffLabelNode) {
-        ctx.diffLabelNode.textContent = `Расхождение (${getReceiptCurrencyLabel(mode)})`;
+        ctx.diffLabelNode.textContent = `Расхождение (${getReceiptCurrencyLabel(resolvedMode)})`;
       }
       if (ctx.diffNode) {
         ctx.diffNode.innerHTML = diffHtml;
@@ -388,12 +404,13 @@
         ? modeOrEvent
         : (modeOrEvent?.target?.dataset?.receiptMode || "create");
       const ctx = getReceiptContext(mode);
+      syncReceiptNumericInputs(mode);
       const total = getReceiptTotal(mode);
       if (!ctx.amountNode) {
         return;
       }
       ctx.amountNode.value = core.formatAmount(total);
-      renderReceiptSummary(mode);
+      renderReceiptSummary(mode, { amountValue: total });
       if (mode === "create") {
         syncCreateFxSettlementFieldUi?.();
       } else {

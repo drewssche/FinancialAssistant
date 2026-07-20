@@ -521,6 +521,34 @@ def test_operations_receipt_chip_opens_same_positions_modal_as_kebab(
 
 
 @pytest.mark.e2e
+def test_edit_operation_header_exposes_receipt_positions_action(
+    static_server_url: str,
+    page_with_money_flow_api_mock,
+):
+    page = page_with_money_flow_api_mock
+    _open_app(page, static_server_url)
+
+    page.evaluate(
+        """
+        async () => {
+          const item = await window.App.core.requestJson('/api/v1/operations/1', {
+            headers: window.App.core.authHeaders(),
+          });
+          await window.App.getRuntimeModule('operation-modal').openEditModal(item);
+        }
+        """
+    )
+    page.wait_for_selector("#editModal:not(.hidden)")
+    expect_positions = page.locator("#editModalReceiptBtn")
+    assert expect_positions.is_visible()
+    assert expect_positions.get_attribute("title") == "Позиции"
+
+    expect_positions.click()
+    page.wait_for_selector("#operationReceiptModal:not(.hidden)")
+    assert "Кофе" in page.locator("#operationReceiptModal").inner_text()
+
+
+@pytest.mark.e2e
 def test_old_foreign_operation_can_enable_direct_currency_settlement(
     static_server_url: str,
     page_with_money_flow_api_mock,

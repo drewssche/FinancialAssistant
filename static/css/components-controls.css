@@ -28,7 +28,6 @@
   border: 0;
 }
 
-button,
 input,
 textarea,
 select,
@@ -41,6 +40,10 @@ select,
   color: var(--text);
   font-family: var(--ui-font-family);
   font-size: 14px;
+}
+
+button {
+  font-family: var(--ui-font-family);
 }
 
 input[type="number"] {

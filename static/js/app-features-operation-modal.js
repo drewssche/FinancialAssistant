@@ -622,6 +622,12 @@
       state.editReceiptItems = [];
     }
     const hasReceipt = state.editReceiptItems.length > 0;
+    if (el.editModalReceiptBtn) {
+      const contextActions = window.App.getRuntimeModule?.("context-actions");
+      const showReceipt = hasReceipt && contextActions?.has?.("operation", "modal", "receipt");
+      el.editModalReceiptBtn.classList.toggle("hidden", !showReceipt);
+      el.editModalReceiptBtn.dataset.receiptViewId = showReceipt ? String(item.id) : "";
+    }
     el.editCategory.value = item.category_id ? String(item.category_id) : "";
     setOperationKind("edit", item.kind);
     syncOperationCurrencyFields("edit");
@@ -651,6 +657,10 @@
     window.App.getRuntimeModule?.("finance-calculator")?.closeIfAttachedToModal?.(el.editModal);
     state.editOperationId = null;
     setEditModalActivity(null, null);
+    if (el.editModalReceiptBtn) {
+      el.editModalReceiptBtn.classList.add("hidden");
+      el.editModalReceiptBtn.dataset.receiptViewId = "";
+    }
     clearReceiptItems("edit");
     setEditOperationMode("common");
     if (el.editUseFxSettlement) {

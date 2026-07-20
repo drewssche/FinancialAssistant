@@ -230,6 +230,7 @@ def test_receipt_picker_store_scoped_and_optimistic_create(static_server_url: st
         """
     )
     _login(page)
+    _ensure_categories_loaded(page)
     page.click("#addOperationCta")
     page.wait_for_selector("#createModal:not(.hidden)")
 
@@ -294,6 +295,17 @@ def test_receipt_picker_loads_catalog_sources_and_templates_beyond_first_page(st
     first_row.locator('[data-receipt-field="shop_name"]').click()
     page.wait_for_selector('.receipt-item-row:first-child .receipt-shop-picker:not(.hidden)')
     assert first_row.locator('.receipt-shop-picker .chip-btn:has-text("Пустой источник")').first.is_visible()
+    chip_geometry = first_row.locator(".receipt-shop-picker").evaluate(
+        """
+        node => ({
+          gap: parseFloat(getComputedStyle(node).rowGap || '0'),
+          heights: [...node.querySelectorAll('.chip-btn')].slice(0, 12).map((chip) => chip.getBoundingClientRect().height),
+        })
+        """
+    )
+    assert chip_geometry["gap"] <= 8
+    assert chip_geometry["heights"]
+    assert max(chip_geometry["heights"]) <= 32
 
     first_row.locator('[data-receipt-field="shop_name"]').fill("Дальний")
     page.wait_for_selector('.receipt-item-row:first-child .receipt-shop-picker:not(.hidden)')
@@ -303,6 +315,88 @@ def test_receipt_picker_loads_catalog_sources_and_templates_beyond_first_page(st
     first_row.locator('[data-receipt-field="name"]').click()
     page.wait_for_selector('.receipt-item-row:first-child .receipt-name-picker:not(.hidden)')
     assert first_row.locator('.receipt-name-picker .chip-btn:has-text("Дальняя позиция")').first.is_visible()
+
+
+@pytest.mark.e2e
+def test_pull_receipt_total_clears_discrepancy_after_multiple_rows(static_server_url: str, page_with_receipt_api_mock):
+    page = page_with_receipt_api_mock
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    _login(page)
+    _ensure_categories_loaded(page)
+    page.click("#addOperationCta")
+    page.wait_for_selector("#createModal:not(.hidden)")
+    page.locator('#createOperationModeSwitch button[data-operation-mode="receipt"]').click()
+    page.wait_for_selector("#opReceiptFields:not(.hidden)")
+
+    first_row = page.locator(".receipt-item-row").nth(0)
+    first_row.locator('[data-receipt-field="shop_name"]').fill("Green")
+    first_row.locator('[data-receipt-field="name"]').fill("Кофе")
+    first_row.locator('[data-receipt-field="quantity"]').fill("3")
+    first_row.locator('[data-receipt-field="unit_price"]').fill("7.70")
+
+    second_row = page.locator(".receipt-item-row").nth(1)
+    second_row.locator('[data-receipt-field="shop_name"]').fill("Green")
+    second_row.locator('[data-receipt-field="name"]').fill("Сироп")
+    second_row.locator('[data-receipt-field="quantity"]').fill("2")
+    second_row.locator('[data-receipt-field="unit_price"]').fill("5.11")
+
+    page.evaluate(
+        """
+        () => {
+          window.App.state.createReceiptItems[0].category_id = 101;
+          window.App.state.createReceiptItems[1].category_id = 102;
+          window.App.actions.renderReceiptItems('create');
+          window.App.actions.updateCreatePreview();
+        }
+        """
+    )
+    preview_geometry = page.locator("#createPreviewBody .preview-cell-btn").nth(2).evaluate(
+        """
+        node => {
+          const bounds = node.getBoundingClientRect();
+          const chips = [...node.querySelectorAll('.category-chip, .meta-chip')].map((chip) => {
+            const rect = chip.getBoundingClientRect();
+            return { top: rect.top, bottom: rect.bottom };
+          });
+          return {
+            top: bounds.top,
+            bottom: bounds.bottom,
+            clientHeight: node.clientHeight,
+            scrollHeight: node.scrollHeight,
+            chips,
+          };
+        }
+        """
+    )
+    assert preview_geometry["scrollHeight"] <= preview_geometry["clientHeight"] + 1
+    assert all(
+        preview_geometry["top"] - 1 <= chip["top"]
+        and chip["bottom"] <= preview_geometry["bottom"] + 1
+        for chip in preview_geometry["chips"]
+    )
+
+    page.locator("#opAmount").fill("999.00")
+    page.locator("#pullReceiptTotalBtn").click()
+
+    assert page.locator("#opAmount").input_value() == "33.32"
+    assert "33,32" in page.locator("#receiptTotalValue").inner_text()
+    assert "0,00" in page.locator("#receiptDiffValue").inner_text()
+    assert "receipt-diff-warn" not in (page.locator("#receiptDiffValue").get_attribute("class") or "")
+    page.locator("#createPreviewBody").scroll_into_view_if_needed()
+    page.screenshot(path="/tmp/finasist-create-receipt-preview.png")
 
 
 @pytest.mark.e2e

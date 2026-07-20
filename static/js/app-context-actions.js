@@ -1,5 +1,9 @@
 (() => {
   const registry = Object.freeze({
+    operation: Object.freeze({
+      row: Object.freeze(["receipt", "activity", "edit", "delete"]),
+      modal: Object.freeze(["receipt", "activity"]),
+    }),
     item_template: Object.freeze({
       row: Object.freeze(["activity", "usage", "history", "edit", "delete"]),
       modal: Object.freeze(["activity", "usage", "history"]),

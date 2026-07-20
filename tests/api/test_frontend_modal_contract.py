@@ -41,6 +41,7 @@ def test_activity_journal_modal_is_available_in_frontend_templates():
     assert 'id="closeUsageModalBtn"' in modals
     for button_id in (
         "createModalActivityBtn",
+        "editModalReceiptBtn",
         "editModalActivityBtn",
         "editGroupActivityBtn",
         "editCategoryActivityBtn",
@@ -109,6 +110,8 @@ def test_context_action_registry_keeps_row_and_modal_actions_explicit():
     catalog_init = (REPO_ROOT / "static" / "js" / "app-init-features-catalog.js").read_text(encoding="utf-8")
 
     assert 'item_template: Object.freeze({' in registry
+    assert 'operation: Object.freeze({' in registry
+    assert 'modal: Object.freeze(["receipt", "activity"])' in registry
     assert 'modal: Object.freeze(["activity", "usage", "history"])' in registry
     assert 'category_group: Object.freeze({' in registry
     assert 'item_source: Object.freeze({' in registry
@@ -120,6 +123,10 @@ def test_context_action_registry_keeps_row_and_modal_actions_explicit():
     assert "el.itemTemplateHistoryBtn?.addEventListener" in catalog_init
     assert "el.sourceGroupCreateItemBtn?.addEventListener" in catalog_init
     assert "el.editGroupCreateCategoryBtn?.addEventListener" in catalog_init
+    operations_init = (REPO_ROOT / "static" / "js" / "app-init-features-operations.js").read_text(
+        encoding="utf-8"
+    )
+    assert 'el.editModalReceiptBtn?.addEventListener("click", handleOperationActionClick)' in operations_init
 
 
 def test_debt_movements_and_add_amount_ui_contract():
@@ -191,6 +198,8 @@ def test_receipt_line_total_live_update_keeps_currency_symbol():
     assert "formatReceiptMoney," in interactions
     assert "${formatReceiptMoney(receiptLineTotal(updated.item), mode)}" in interactions
     assert "receiptLineTotal(updated.item), { withCurrency: false }" not in interactions
+    assert "syncReceiptNumericInputs(mode);" in receipt
+    assert 'renderReceiptSummary(mode, { amountValue: total });' in receipt
 
 
 def test_receipt_discount_ui_uses_discount_copy_and_prefills_regular_price():

@@ -629,6 +629,7 @@
       debtDueHint: document.getElementById("debtDueHint"),
       debtNote: document.getElementById("debtNote"),
       editModal: document.getElementById("editModal"),
+      editModalReceiptBtn: document.getElementById("editModalReceiptBtn"),
       editModalActivityBtn: document.getElementById("editModalActivityBtn"),
       closeEditModalBtn: document.getElementById("closeEditModalBtn"),
       editForm: document.getElementById("editOperationForm"),

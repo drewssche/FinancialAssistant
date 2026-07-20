@@ -111,7 +111,8 @@ def test_byn_uses_compact_currency_symbol_in_frontend_formatters():
     assert "Пример: 1 234,56&nbsp;\\uE901" in secondary_templates
     assert 'id="plansFinancialValue" class="plans-financial-kpi-value">0,00&nbsp;\\uE901' in secondary_templates
     assert 'id="analyticsIncomeDelta">0&nbsp;\\uE901' in primary_templates
-    assert "button,\ninput," in controls_css
+    assert "button,\ninput," not in controls_css
+    assert "button {\n  font-family: var(--ui-font-family);\n}" in controls_css
     assert "font-family: var(--ui-font-family);" in controls_css
     assert "text-rendering: geometricPrecision" in core_css
     assert "руб." not in core_utils
@@ -154,7 +155,7 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert modals.count('aria-label="Продлить сессию"') >= 2
     assert modals.count("modal-head-icon-btn") >= 8
     assert '<span aria-hidden="true">%</span><span>Калькулятор</span>' not in modals
-    assert modals.count('class="modal-action-svg"') == 2
+    assert modals.count('class="modal-action-svg"') == 3
     assert 'data-calculator-mode="discount"' in shell
     assert 'data-calculator-mode="split"' in shell
     assert '"/static/js/app-finance-calculator.js"' in manifest
@@ -173,7 +174,7 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert "body.finance-calculator-open" in calculator_css
     assert "@media (max-width: 640px)" in calculator_css
     assert "max-height: min(88dvh, 720px)" in calculator_css
-    assert '/static/styles.css?v=20260720f' in index_html
+    assert '/static/styles.css?v=20260720g' in index_html
     assert '/static/css/components-core.css?v=20260719a' in styles
     assert '/static/css/layout-debts.css?v=20260716j' in styles
     assert '/static/css/components-analytics-summary.css?v=20260720f' in styles

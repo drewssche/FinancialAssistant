@@ -466,6 +466,8 @@
       handleOperationActionClick(event);
     });
 
+    el.editModalReceiptBtn?.addEventListener("click", handleOperationActionClick);
+
     if (el.operationsInfiniteSentinel && "IntersectionObserver" in window) {
       const existingObserver = getOperationsObserver();
       if (existingObserver) {
