@@ -401,6 +401,23 @@ def test_activity_center_desktop_mobile_and_restore(static_server_url: str, sess
     assert desktop_geometry["triggerRight"] <= desktop_geometry["railRight"]
     assert abs(desktop_geometry["top"] - desktop_geometry["triggerBottom"] - 9) <= 1
     assert desktop_geometry["overlayDisplay"] == "none"
+    footer_geometry = page.evaluate(
+        """
+        () => {
+          const drawer = document.getElementById('activityCenterDrawer')?.getBoundingClientRect();
+          const footer = document.querySelector('.activity-center-footer')?.getBoundingClientRect();
+          const button = document.getElementById('activityCenterAllBtn')?.getBoundingClientRect();
+          return drawer && footer && button ? {
+            drawerBottom: drawer.bottom,
+            footerBottom: footer.bottom,
+            buttonBottom: button.bottom,
+          } : null;
+        }
+        """
+    )
+    assert footer_geometry is not None
+    assert footer_geometry["footerBottom"] <= footer_geometry["drawerBottom"] + 1
+    assert footer_geometry["buttonBottom"] <= footer_geometry["footerBottom"] + 1
     page.screenshot(path="/tmp/finasist-activity-center-desktop.png", full_page=True)
 
     page.click("#activityCenterAllBtn")
@@ -409,6 +426,17 @@ def test_activity_center_desktop_mobile_and_restore(static_server_url: str, sess
     expect(page.locator('[data-activity-modal-event-id="301"]')).to_have_css("cursor", "pointer")
     expect(page.locator('#activityList [data-activity-center-action="restore"]')).to_be_visible()
     page.locator('[data-activity-modal-event-id="301"]').hover()
+    history_geometry = page.evaluate(
+        """
+        () => {
+          const list = document.getElementById('activityList')?.getBoundingClientRect();
+          const first = document.querySelector('#activityList .activity-event')?.getBoundingClientRect();
+          return list && first ? { listTop: list.top, firstTop: first.top } : null;
+        }
+        """
+    )
+    assert history_geometry is not None
+    assert history_geometry["firstTop"] >= history_geometry["listTop"] + 1
     page.screenshot(path="/tmp/finasist-activity-history-modal.png", full_page=True)
     page.click('[data-activity-modal-event-id="300"]')
     expect(page.locator("#activityModalSubtitle")).to_have_text("История операции")

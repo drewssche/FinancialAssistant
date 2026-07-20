@@ -12,7 +12,7 @@
   }
 
   .kpi-card p {
-    font-size: 26px;
+    font-size: 1.625rem;
   }
 
   .panel,
@@ -30,7 +30,7 @@
   }
 
   .topbar-title-block #sectionTitle {
-    font-size: 22px;
+    font-size: 1.375rem;
   }
 
   .topbar {
@@ -178,7 +178,7 @@
 
   .mobile-card-table.categories-table .category-chip,
   .mobile-card-table.categories-table .kind-pill {
-    font-size: 11px;
+    font-size: 0.6875rem;
     padding: 4px 8px;
   }
 
@@ -198,12 +198,12 @@
   }
 
   .mobile-card-table.categories-table .item-catalog-group-meta {
-    font-size: 11px;
+    font-size: 0.6875rem;
     white-space: normal;
   }
 
   .mobile-card-table.categories-table .category-tree-mark {
-    font-size: 11px;
+    font-size: 0.6875rem;
   }
 
   .mobile-card-table.categories-table .table-hierarchy-parent-row {
@@ -381,11 +381,11 @@
   }
 
   .plans-financial-kpi-value {
-    font-size: 30px;
+    font-size: 1.875rem;
   }
 
   .plans-financial-kpi-delta {
-    font-size: 22px;
+    font-size: 1.375rem;
   }
 
   .plans-toolbar {
@@ -402,7 +402,7 @@
     min-width: 0;
     min-height: 2.5rem;
     padding-block: 0.5rem;
-    font-size: 14px;
+    font-size: 0.875rem;
   }
 
   #debtsSection .table-search-row,
@@ -419,7 +419,7 @@
     min-height: 2.5rem;
     height: 2.75rem;
     padding-block: 0.5rem;
-    font-size: 14px;
+    font-size: 0.875rem;
   }
 
   #debtsSection .debt-toolbar .segmented,
@@ -481,7 +481,7 @@
   }
 
   .mobile-card-table.item-catalog-table .item-catalog-group-meta {
-    font-size: 11px;
+    font-size: 0.6875rem;
     white-space: normal;
     max-width: 100%;
     overflow-wrap: anywhere;
@@ -569,7 +569,7 @@
   .mobile-card-actions-menu .btn {
     min-height: 2.5rem;
     padding: 10px 12px;
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   .debt-card {
@@ -582,7 +582,7 @@
   }
 
   .debt-mobile-entry-topline .debt-amount-principal {
-    font-size: 18px;
+    font-size: 1.125rem;
   }
 
   .plan-card-head {
@@ -662,7 +662,7 @@
 
   .analytics-kpi-card strong,
   .dashboard-analytics-kpi strong {
-    font-size: 16px;
+    font-size: 1rem;
   }
 
   .analytics-category-donut {
@@ -714,7 +714,7 @@
   }
 
   .preview-panel .preview-title {
-    font-size: 12px;
+    font-size: 0.75rem;
   }
 
   .plan-recurrence-grid {
@@ -767,7 +767,7 @@
   .settings-picker-btn {
     display: inline-flex;
     min-height: 3rem;
-    font-size: 16px;
+    font-size: 1rem;
     align-items: center;
   }
 
@@ -777,7 +777,7 @@
   .danger-zone-actions .btn {
     width: 100%;
     min-width: 0;
-    font-size: 16px;
+    font-size: 1rem;
   }
 
   .danger-zone-actions .btn {

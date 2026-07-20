@@ -87,7 +87,7 @@
   .mobile-card-table td[data-label]::before {
     content: attr(data-label);
     color: var(--muted);
-    font-size: 12px;
+    font-size: 0.75rem;
     line-height: 1.35;
   }
 

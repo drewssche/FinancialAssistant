@@ -96,7 +96,7 @@
   top: var(--activity-center-top, max(92px, env(safe-area-inset-top)));
   right: var(--activity-center-right, max(18px, env(safe-area-inset-right)));
   width: min(370px, calc(100vw - 36px));
-  max-height: min(560px, calc(100dvh - 110px));
+  max-height: min(610px, calc(100dvh - var(--activity-center-top, 92px) - 12px));
   display: grid;
   grid-template-rows: auto minmax(0, auto) auto;
   overflow: hidden;
@@ -130,7 +130,7 @@
 
 .activity-center-head h3 {
   margin: 0 0 3px;
-  font-size: 17px;
+  font-size: 1.0625rem;
 }
 
 .activity-center-head > div {
@@ -148,13 +148,13 @@
   min-width: 32px;
   height: 32px;
   min-height: 32px;
-  font-size: 18px;
+  font-size: 1.125rem;
   line-height: 1;
 }
 
 .activity-center-list {
   min-height: 0;
-  max-height: min(430px, 52dvh);
+  max-height: min(468px, 56dvh);
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: var(--space-2);
@@ -212,7 +212,7 @@
 .activity-center-event-title {
   min-width: 0;
   overflow: hidden;
-  font-size: 13px;
+  font-size: 0.8125rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -220,7 +220,7 @@
 .activity-center-event-time {
   flex: 0 0 auto;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 0.625rem;
 }
 
 .activity-center-event-entity,
@@ -228,7 +228,7 @@
   min-width: 0;
   overflow: hidden;
   color: #aebddd;
-  font-size: 11px;
+  font-size: 0.6875rem;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;

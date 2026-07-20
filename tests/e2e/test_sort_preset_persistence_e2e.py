@@ -285,18 +285,21 @@ def test_interface_currency_and_scale_persist_after_reload(static_server_url: st
     page.click("button[data-section='settings']")
     page.wait_for_selector("#settingsSection:not(.hidden)")
 
+    font_size_before = float(page.locator("#settingsSection .settings-block h3").first.evaluate("node => parseFloat(getComputedStyle(node).fontSize)"))
     page.select_option("#currencySelect", "USD")
     page.select_option("#currencyPositionSelect", "prefix")
     page.evaluate(
         """
         () => {
           const scale = document.getElementById('uiScaleRange');
-          scale.value = '92';
+          scale.value = '115';
           scale.dispatchEvent(new Event('input', { bubbles: true }));
         }
         """
     )
     page.wait_for_timeout(900)
+    font_size_after = float(page.locator("#settingsSection .settings-block h3").first.evaluate("node => parseFloat(getComputedStyle(node).fontSize)"))
+    assert font_size_after > font_size_before * 1.12
 
     page.reload()
     _open_app(page, static_server_url)
@@ -305,6 +308,10 @@ def test_interface_currency_and_scale_persist_after_reload(static_server_url: st
 
     assert page.locator("#currencySelect").input_value() == "USD"
     assert page.locator("#currencyPositionSelect").input_value() == "prefix"
-    assert page.locator("#uiScaleRange").input_value() == "92"
+    assert page.locator("#uiScaleRange").input_value() == "115"
     assert "$" in page.locator("#currencyPreview").inner_text()
-    assert "92%" in page.locator("#uiScaleValue").inner_text()
+    assert "115%" in page.locator("#uiScaleValue").inner_text()
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.wait_for_timeout(100)
+    assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1")
+    page.screenshot(path="/tmp/finasist-settings-scale-115-mobile.png", full_page=True)

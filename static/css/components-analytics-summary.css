@@ -46,7 +46,7 @@
 
 .analytics-chart-empty {
   fill: rgba(207, 219, 245, 0.72);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .analytics-trend-chart-wrap {
@@ -89,7 +89,7 @@
 }
 
 .dashboard-analytics-kpi strong {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-family: var(--money-font-family);
   font-variant-numeric: tabular-nums lining-nums;
 }
@@ -170,17 +170,17 @@
   border-radius: 999px;
   background: rgba(255, 179, 71, 0.16);
   color: #ffd18a;
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: 800;
 }
 
 .analytics-day-date {
   font-weight: 700;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .analytics-day-money {
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.1;
   font-family: var(--money-font-family);
   font-variant-numeric: tabular-nums lining-nums;
@@ -256,7 +256,7 @@
   display: flex;
   gap: calc(var(--space-3) + 0.125rem);
   color: var(--muted);
-  font-size: 12px;
+  font-size: 0.75rem;
   letter-spacing: 0.01em;
 }
 
@@ -361,7 +361,7 @@
 }
 
 .analytics-kpi-card strong {
-  font-size: 17px;
+  font-size: 1.0625rem;
   line-height: 1.15;
   font-family: var(--money-font-family);
   font-variant-numeric: tabular-nums lining-nums;
@@ -381,7 +381,7 @@
   justify-content: space-between;
   gap: var(--space-2);
   color: var(--muted);
-  font-size: 11px;
+  font-size: 0.6875rem;
   line-height: 1.2;
 }
 
@@ -413,7 +413,7 @@
 
 .analytics-kpi-delta {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .analytics-kpi-secondary {
@@ -466,7 +466,7 @@
 
 .currency-balance-card .currency-balance-secondary {
   color: #9db0d4;
-  font-size: 11px;
+  font-size: 0.6875rem;
   line-height: 1.25;
 }
 
@@ -601,7 +601,7 @@
 
 .currency-chart-legend-label {
   fill: #cfdaf5;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.01em;
 }
@@ -784,7 +784,7 @@
   border: 1px solid rgba(107, 131, 170, 0.38);
   background: rgba(31, 43, 63, 0.7);
   color: #d9e4f8;
-  font-size: 10px;
+  font-size: 0.625rem;
   line-height: 1;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -813,7 +813,7 @@
   padding: calc(var(--space-1) + 0.0625rem) calc(var(--space-2) + 0.0625rem);
   background: rgba(18, 27, 43, 0.72);
   color: #d3ddf3;
-  font-size: 11px;
+  font-size: 0.6875rem;
   line-height: 1.2;
   font-family: var(--money-font-family);
   font-variant-numeric: tabular-nums lining-nums;
@@ -856,20 +856,20 @@
 
 .operations-filter-chip > span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 0.625rem;
 }
 
 .operations-filter-chip > strong {
   max-width: 220px;
   overflow: hidden;
-  font-size: 11px;
+  font-size: 0.6875rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .operations-filter-chip > i {
   color: #aebbd4;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-style: normal;
   line-height: 1;
 }
@@ -891,7 +891,7 @@
   border-radius: 6px;
   background: rgba(18, 27, 43, 0.78);
   color: #cbd6eb;
-  font-size: 16px;
+  font-size: 1rem;
   cursor: pointer;
 }
 
@@ -911,7 +911,7 @@
 
 .currency-position-secondary {
   display: block;
-  font-size: 10px;
+  font-size: 0.625rem;
   line-height: 1.25;
   color: #9db0d4;
 }
@@ -1126,7 +1126,7 @@
   border-radius: 999px;
   background: rgba(255, 179, 71, 0.16);
   color: #ffd18a;
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: 800;
 }
 
@@ -1204,14 +1204,14 @@
 
 .analytics-position-kpi > span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 
 .analytics-position-kpi > strong {
   overflow: hidden;
   color: var(--text);
   font-family: var(--money-font-family);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-variant-numeric: tabular-nums lining-nums;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1245,7 +1245,7 @@
   position: sticky;
   top: 0;
   z-index: 3;
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--muted);
 }
 
@@ -1296,7 +1296,7 @@
 
 .analytics-position-name-btn span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 
 .analytics-position-cell {
@@ -1322,7 +1322,7 @@
 .analytics-position-cell span {
   position: relative;
   z-index: 1;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 700;
 }
 
@@ -1361,7 +1361,7 @@
 .analytics-position-total strong {
   position: relative;
   z-index: 1;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .analytics-positions-matrix tr.is-selected td {
@@ -1395,7 +1395,7 @@
 
 .analytics-position-ranking-head h4 {
   margin: 0 0 2px;
-  font-size: 15px;
+  font-size: 0.9375rem;
 }
 
 .analytics-position-sort-btn {
@@ -1407,7 +1407,7 @@
   border-radius: 6px;
   background: rgba(20, 31, 49, 0.82);
   color: var(--text);
-  font-size: 18px;
+  font-size: 1.125rem;
   cursor: pointer;
 }
 
@@ -1447,7 +1447,7 @@
 
 .analytics-position-ranking-index {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 0.75rem;
   text-align: center;
 }
 
@@ -1468,7 +1468,7 @@
 
 .analytics-position-ranking-copy small {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 0.625rem;
 }
 
 .analytics-position-ranking-copy i {
@@ -1488,7 +1488,7 @@
 
 .analytics-position-ranking-value {
   font-family: var(--money-font-family);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-variant-numeric: tabular-nums lining-nums;
   white-space: nowrap;
 }
@@ -1536,7 +1536,7 @@
 }
 
 .analytics-position-focus-bar span {
-  font-size: 9px;
+  font-size: 0.5625rem;
 }
 
 .analytics-commerce-discount-types {
@@ -1637,7 +1637,7 @@
 }
 
 .analytics-commerce-timeline-bar span {
-  font-size: 9px;
+  font-size: 0.5625rem;
 }
 
 .analytics-commerce-timeline-bar:hover,

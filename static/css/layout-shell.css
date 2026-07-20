@@ -116,7 +116,7 @@
 .login-card p {
   margin-top: 14px;
   color: var(--muted);
-  font-size: 18px;
+  font-size: 1.125rem;
   line-height: 1.45;
 }
 
@@ -134,7 +134,7 @@
 
 .field span {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .login-actions {
@@ -159,7 +159,7 @@
 .telegram-mini-app-link {
   min-height: 38px;
   padding: var(--space-2) var(--space-3);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .login-alert {
@@ -169,7 +169,7 @@
   color: #ffc4cf;
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-3);
-  font-size: 14px;
+  font-size: 0.875rem;
   line-height: 1.35;
   text-align: center;
 }
@@ -250,7 +250,7 @@
   place-items: center;
   cursor: pointer;
   padding: 0;
-  font-size: 22px;
+  font-size: 1.375rem;
   line-height: 1;
 }
 
@@ -267,7 +267,7 @@
   background: rgba(17, 28, 45, 0.9);
   color: #f0f6ff;
   cursor: pointer;
-  font-size: 22px;
+  font-size: 1.375rem;
   line-height: 1;
 }
 
@@ -276,7 +276,7 @@
 }
 
 .section-back-btn-icon {
-  font-size: 22px;
+  font-size: 1.375rem;
   line-height: 1;
 }
 
@@ -464,7 +464,7 @@
   justify-self: start;
   min-height: 2rem;
   padding: 5px 10px;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .inline-currency-select {

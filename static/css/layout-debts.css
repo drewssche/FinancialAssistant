@@ -73,7 +73,7 @@
 }
 
 .debt-cards-compact .debt-card-compact h3 {
-  font-size: 22px;
+  font-size: 1.375rem;
   line-height: 1.05;
   letter-spacing: -0.02em;
 }
@@ -227,14 +227,14 @@
 }
 
 .dashboard-debts-summary .kpi-card h3 {
-  font-size: 12px;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 
 .dashboard-debts-summary .kpi-card p {
   margin-top: var(--space-2);
-  font-size: 24px;
+  font-size: 1.5rem;
 }
 
 
@@ -325,7 +325,7 @@
   align-items: center;
   border-radius: var(--radius-pill);
   padding: var(--space-1) calc(var(--space-2) + 0.0625rem);
-  font-size: 12px;
+  font-size: 0.75rem;
   border: 1px solid var(--border);
 }
 
@@ -348,7 +348,7 @@
 }
 
 .debt-meta-chip {
-  font-size: 11px;
+  font-size: 0.6875rem;
   min-height: 22px;
   padding: 0 8px;
 }
@@ -419,7 +419,7 @@
   border-radius: var(--radius-pill);
   padding: calc(var(--space-1) + 0.0625rem) var(--space-3);
   border: 1px solid var(--border);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 700;
 }
 
@@ -559,7 +559,7 @@
   border-radius: var(--radius-pill);
   padding: var(--space-1) var(--space-2);
   border: 1px solid var(--border);
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 
 .debt-due-days-badge-none {
@@ -654,7 +654,7 @@
   align-items: center;
   border-radius: var(--radius-pill);
   padding: var(--space-1) calc(var(--space-2) + 0.0625rem);
-  font-size: 12px;
+  font-size: 0.75rem;
   border: 1px solid var(--border);
 }
 

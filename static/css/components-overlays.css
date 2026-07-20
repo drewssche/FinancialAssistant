@@ -62,7 +62,7 @@
   min-height: calc(var(--control-height-lg) + var(--space-1));
   padding: 0;
   justify-content: center;
-  font-size: 24px;
+  font-size: 1.5rem;
   font-weight: 700;
 }
 
@@ -71,6 +71,22 @@
   top: calc(100% + var(--space-2));
   left: 0;
   padding: var(--space-3);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.icon-option-group {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.icon-option-group-title {
+  color: var(--muted);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.icon-option-grid {
   display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: var(--space-2);
@@ -167,7 +183,7 @@
   background: #142038;
   color: var(--text);
   cursor: pointer;
-  font-size: 20px;
+  font-size: 1.25rem;
 }
 
 .icon-option.active {
@@ -176,7 +192,7 @@
 }
 
 .icon-option-empty {
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 700;
   color: #a9b8d4;
 }
@@ -228,7 +244,7 @@
   justify-content: center;
   width: 100%;
   line-height: 1;
-  font-size: 20px;
+  font-size: 1.25rem;
 }
 
 .table-kebab-popover {
@@ -286,7 +302,7 @@
   border: 1px solid rgba(85, 106, 145, 0.7);
   background: rgba(20, 31, 50, 0.85);
   color: #d5e2fb;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
@@ -444,7 +460,7 @@
 
 .preview-title {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
   margin-bottom: var(--space-2);
 }
 
@@ -574,18 +590,18 @@
   color: #c8d7fa;
   border-radius: var(--radius-sm);
   padding: var(--space-3);
-  font-size: 12px;
+  font-size: 0.75rem;
   overflow: auto;
 }
 
 .muted-small {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .cell-meta {
   margin-top: var(--space-1);
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--muted);
 }
 
@@ -599,7 +615,7 @@
 }
 
 .repayment-counterparty {
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 800;
 }
 
@@ -611,7 +627,7 @@
 
 .repayment-outstanding strong {
   color: #f3d2b3;
-  font-size: 20px;
+  font-size: 1.25rem;
 }
 
 .repayment-progress {
@@ -659,7 +675,7 @@
   gap: var(--space-3);
   max-height: min(62vh, 34rem);
   overflow: auto;
-  padding-right: var(--space-1);
+  padding: 2px var(--space-1) 0 0;
 }
 
 .activity-event {
@@ -743,7 +759,7 @@
   display: grid;
   gap: 3px;
   color: #aebddd;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .activity-event-context > strong,
@@ -802,7 +818,7 @@
   gap: var(--space-2);
   flex-wrap: wrap;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .activity-change-list strong {
@@ -881,7 +897,7 @@
 }
 
 .modal-head-icon-btn > span[aria-hidden="true"] {
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1;
 }
 

@@ -9,7 +9,7 @@
   align-items: center;
   gap: var(--space-2);
   color: var(--muted);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .panel-load-spinner {
@@ -225,7 +225,7 @@
   padding-top: 8px;
   border-top: 1px solid rgba(255, 174, 66, 0.28);
   color: #f1b35f;
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.35;
 }
 

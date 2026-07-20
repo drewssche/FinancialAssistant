@@ -579,6 +579,21 @@ def test_category_group_context_create_prefills_group_from_hover_action(page, st
     page.locator("#categoryGroupAll button[data-group-id='7']").click()
     assert page.locator("#categoryGroupSearch").input_value() == "Еда"
 
+    page.locator("#categoryIconToggle").click()
+    page.wait_for_selector("#categoryIconPopover:not(.hidden)")
+    assert page.locator("#categoryIconPopover .icon-option-group-title").count() >= 8
+    assert page.locator('#categoryIconPopover button[data-icon="🚿"]').count() == 1
+    assert page.locator('#categoryIconPopover button[data-icon="↩️"]').count() == 1
+    icon_picker_geometry = page.locator("#categoryIconPopover").evaluate(
+        "node => ({ height: node.getBoundingClientRect().height, scrollHeight: node.scrollHeight })"
+    )
+    assert icon_picker_geometry["height"] <= 522
+    assert icon_picker_geometry["scrollHeight"] > icon_picker_geometry["height"]
+    page.screenshot(path="/tmp/finasist-category-icon-picker.png", full_page=True)
+    page.locator('#categoryIconPopover button[data-icon="🚿"]').click()
+    assert page.locator("#categoryIcon").input_value() == "🚿"
+    assert "🚿" in page.locator("#categoryIconToggle").inner_text()
+
     geometry = page.evaluate(
         """
         () => {
@@ -602,6 +617,30 @@ def test_category_group_context_create_prefills_group_from_hover_action(page, st
     assert geometry is not None
     assert 0 <= geometry["createLeft"] - geometry["nameRight"] <= 24
     assert geometry["createFromRowLeft"] < 180
+
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.locator("#categoryIconToggle").click()
+    page.wait_for_selector("#categoryIconPopover:not(.hidden)")
+    mobile_icon_picker_geometry = page.locator("#categoryIconPopover").evaluate(
+        """
+        node => {
+          const rect = node.getBoundingClientRect();
+          return {
+            left: rect.left,
+            right: rect.right,
+            bodyClientWidth: document.documentElement.clientWidth,
+            bodyScrollWidth: document.documentElement.scrollWidth,
+          };
+        }
+        """
+    )
+    assert mobile_icon_picker_geometry["left"] >= 0
+    assert mobile_icon_picker_geometry["right"] <= 390
+    assert mobile_icon_picker_geometry["bodyScrollWidth"] <= mobile_icon_picker_geometry["bodyClientWidth"] + 1
+    page.screenshot(path="/tmp/finasist-category-icon-picker-mobile.png", full_page=True)
+    page.locator('#categoryIconPopover button[data-icon=""]').click()
+    page.wait_for_function("() => document.querySelector('#categoryIconPopover')?.classList.contains('hidden')")
+    page.set_viewport_size({"width": 1280, "height": 850})
 
     page.locator("#closeCreateCategoryModalBtn").click()
     page.wait_for_function("() => document.querySelector('#createCategoryModal')?.classList.contains('hidden')")

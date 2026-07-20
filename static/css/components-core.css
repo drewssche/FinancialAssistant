@@ -1,7 +1,7 @@
 .subtitle {
   margin-top: var(--space-2);
   color: var(--muted);
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .brand {
@@ -31,7 +31,7 @@
 .nav-group-title {
   margin-top: var(--space-2);
   color: #8ea2c9;
-  font-size: 11px;
+  font-size: 0.6875rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -92,7 +92,7 @@
   place-items: center;
   cursor: pointer;
   padding: 0;
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 .user-logout-icon {
@@ -144,7 +144,7 @@
 
 #userHandle {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .session-status-panel {
@@ -168,7 +168,7 @@
 
 .session-status-copy > span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 0.625rem;
   line-height: 1.2;
 }
 
@@ -184,7 +184,7 @@
   min-width: 0;
   overflow: hidden;
   color: #cfe0ff;
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -208,7 +208,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  font-size: 15px;
+  font-size: 0.9375rem;
   line-height: 1;
 }
 
@@ -221,11 +221,11 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .operation-session-refresh-btn > span[aria-hidden="true"] {
-  font-size: 15px;
+  font-size: 0.9375rem;
   line-height: 1;
 }
 
@@ -269,7 +269,7 @@
 
 .chevron {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 0.75rem;
   padding-right: 4px;
 }
 
@@ -288,7 +288,7 @@
   top: 50%;
   transform: translateY(-50%);
   color: #8fa2c7;
-  font-size: 13px;
+  font-size: 0.8125rem;
   pointer-events: none;
   font-family: var(--money-font-family);
   font-variant-numeric: tabular-nums lining-nums;
@@ -336,7 +336,7 @@
   border: 1px solid rgba(91, 211, 188, 0.34);
   background: #122e33;
   color: #a9f3e6;
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: 800;
   letter-spacing: 0.05em;
   line-height: 1;
@@ -423,7 +423,7 @@
   border-radius: calc(var(--radius-sm) - 2px);
   background: rgba(22, 33, 53, 0.96);
   color: #c9d6f0;
-  font-size: 20px;
+  font-size: 1.25rem;
   line-height: 1;
   cursor: pointer;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
@@ -481,13 +481,13 @@
 
 .kpi-card h3 {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 500;
 }
 
 .kpi-card p {
   margin-top: 10px;
-  font-size: 32px;
+  font-size: 2rem;
   font-weight: 700;
   font-family: var(--money-font-family);
   font-variant-numeric: tabular-nums lining-nums;
@@ -535,7 +535,7 @@
 }
 
 .plans-financial-kpi-value {
-  font-size: 38px;
+  font-size: 2.375rem;
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.03em;
@@ -554,7 +554,7 @@
 }
 
 .plans-financial-kpi-delta {
-  font-size: 24px;
+  font-size: 1.5rem;
   font-weight: 800;
   line-height: 1;
   font-family: var(--money-font-family);
@@ -579,7 +579,7 @@
 
 .plans-financial-kpi-meta {
   margin-top: 0;
-  font-size: 15px;
+  font-size: 0.9375rem;
 }
 
 .plans-controls-row {
@@ -674,7 +674,7 @@
   flex: 0 0 2.25rem;
   align-self: start;
   justify-content: center;
-  font-size: 20px;
+  font-size: 1.25rem;
   line-height: 1;
   display: inline-flex;
 }
@@ -883,7 +883,7 @@
   border: 0;
   background: transparent;
   color: #9ec8ff;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   line-height: 1.2;
   text-decoration: underline;

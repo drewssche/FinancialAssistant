@@ -83,6 +83,11 @@
   - Receipt and linked FX changes require complete before/after snapshots. Do not expose a generic `Отменить` until those domain snapshots and conflict tests exist.
 - [ ] P3: add full-history filters and optional persistent read state after real-data usage validates the compact feed.
 
+### Interface Settings And Activity Geometry 2026-07-21
+- [x] P1: make the interface scale affect text consistently instead of only rem-based layout dimensions; persistence, computed font growth, and 115% mobile overflow are browser-tested.
+- [x] P1: keep the complete `Вся история` footer inside the recent-actions drawer and give the first full-history event enough hover clearance below the modal header.
+- [x] P2: expand the category icon picker from current production category context and organize the larger pool into compact thematic groups with bounded scrolling on desktop and mobile.
+
 ### Currency Balance Settlement 2026-07-16
 - [x] P0: make foreign-currency expenses optionally reduce the tracked currency balance.
   - Replace the ambiguous `Оплата с валютной карты / Использовать` wording with one explicit switch: `Списать из валютного остатка`.

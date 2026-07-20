@@ -177,7 +177,11 @@
     clearFloatingPopoverStyles(popover);
     popover.style.position = "fixed";
     popover.style.zIndex = "220";
-    popover.style.maxHeight = `${Math.max(160, viewportHeight - margin * 2)}px`;
+    const viewportMaxHeight = Math.max(160, viewportHeight - margin * 2);
+    const popoverMaxHeight = popover.classList.contains("category-icon-popover")
+      ? Math.min(520, viewportMaxHeight)
+      : viewportMaxHeight;
+    popover.style.maxHeight = `${popoverMaxHeight}px`;
     popover.style.overflowY = "auto";
     const anchorRect = anchor.getBoundingClientRect();
     const isControlPopover = popover.classList.contains("app-popover-floating") || popover.classList.contains("period-control-popover");

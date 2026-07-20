@@ -2,104 +2,15 @@
   const { el } = window.App;
   const pickerUtils = window.App.getRuntimeModule?.("picker-utils") || window.App.pickerUtils;
 
-  const CATEGORY_ICON_POOL = [
-    "🍽️",
-    "🍔",
-    "🥐",
-    "🍞",
-    "🥩",
-    "🍣",
-    "🍰",
-    "🍺",
-    "🍷",
-    "☕",
-    "🫖",
-    "🏠",
-    "🛋️",
-    "🪑",
-    "🪴",
-    "🧹",
-    "🧺",
-    "🚬",
-    "🚭",
-    "🪒",
-    "🧴",
-    "🧼",
-    "🪥",
-    "🚕",
-    "🚇",
-    "🚌",
-    "🚗",
-    "🚙",
-    "🛵",
-    "🚲",
-    "⛽",
-    "🅿️",
-    "🛒",
-    "🏪",
-    "🏬",
-    "🛍️",
-    "🍎",
-    "🥗",
-    "🍕",
-    "🥤",
-    "💊",
-    "🏥",
-    "🦷",
-    "🩺",
-    "🧘",
-    "💇",
-    "💅",
-    "🎓",
-    "📚",
-    "💼",
-    "💻",
-    "🖥️",
-    "⌚",
-    "🎧",
-    "🎮",
-    "🎬",
-    "🎵",
-    "⚽",
-    "🏋️",
-    "🎨",
-    "🎁",
-    "💡",
-    "📱",
-    "📺",
-    "📶",
-    "🛠️",
-    "🧾",
-    "💰",
-    "💵",
-    "💶",
-    "💸",
-    "🪙",
-    "💎",
-    "📈",
-    "📉",
-    "🏦",
-    "💳",
-    "💷",
-    "🧮",
-    "🧠",
-    "🧳",
-    "✈️",
-    "🚆",
-    "🚢",
-    "🏨",
-    "🐾",
-    "👶",
-    "🧸",
-    "🔧",
-    "📦",
-    "📬",
-    "🔌",
-    "🔒",
-    "🌐",
-    "📣",
-    "❤️",
-    "🙏",
+  const CATEGORY_ICON_GROUPS = [
+    { label: "Еда и напитки", icons: ["🍽️", "🍔", "🥐", "🍞", "🥩", "🍣", "🍰", "🍎", "🥗", "🍕", "🥤", "☕", "🫖", "🍺", "🍷", "🔥"] },
+    { label: "Дом и счета", icons: ["🏠", "🛋️", "🪑", "🪴", "🧹", "🧺", "💡", "🚿", "🔌", "📱", "📺", "📶", "🌐", "🔁", "🧾", "⚠️"] },
+    { label: "Покупки и уход", icons: ["🛒", "🏪", "🏬", "🛍️", "👕", "👟", "📦", "💊", "🏥", "🦷", "🩺", "🧘", "💇", "💅", "🪒", "🧴", "🧼", "🪥", "🚬", "🚭"] },
+    { label: "Транспорт и поездки", icons: ["🚕", "🚇", "🚌", "🚗", "🚙", "🛵", "🚲", "⛽", "🅿️", "🔑", "🧳", "✈️", "🚆", "🚢", "🏨"] },
+    { label: "Работа и развитие", icons: ["💼", "💻", "🖥️", "🎓", "📚", "🧠", "🛠️", "🔧", "📣", "👥"] },
+    { label: "Досуг и события", icons: ["⌚", "🎧", "🎮", "🎬", "🎵", "⚽", "🏋️", "🎨", "🎯", "🎁", "🎂", "❤️", "🙏", "🐾", "👶", "🧸"] },
+    { label: "Финансы", icons: ["💰", "💵", "💶", "💷", "💸", "🪙", "💎", "📈", "📉", "🏦", "💳", "🧮", "↩️", "↔️", "⚖️"] },
+    { label: "Прочее", icons: ["📬", "🔒", "🔎", "❗", "🚻"] },
   ];
 
   function updateIconToggleLabel(toggleNode, iconValue) {
@@ -172,7 +83,7 @@
     }
     popoverNode.dataset.hiddenTarget = hiddenNode.id || "";
     popoverNode.dataset.toggleTarget = toggleNode.id || "";
-    popoverNode.classList.add("app-popover-floating");
+    popoverNode.classList.add("app-popover-floating", "category-icon-popover");
     bindIconPopoverOnce(popoverNode);
     popoverNode.innerHTML = "";
     const emptyButton = document.createElement("button");
@@ -184,17 +95,32 @@
     if (!hiddenNode.value) {
       emptyButton.classList.add("active");
     }
-    popoverNode.appendChild(emptyButton);
-    for (const icon of CATEGORY_ICON_POOL) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "icon-option";
-      button.dataset.icon = icon;
-      button.textContent = icon;
-      if (hiddenNode.value === icon) {
-        button.classList.add("active");
+    const emptyGroup = document.createElement("div");
+    emptyGroup.className = "icon-option-grid";
+    emptyGroup.appendChild(emptyButton);
+    popoverNode.appendChild(emptyGroup);
+    for (const groupConfig of CATEGORY_ICON_GROUPS) {
+      const group = document.createElement("section");
+      group.className = "icon-option-group";
+      const title = document.createElement("div");
+      title.className = "icon-option-group-title";
+      title.textContent = groupConfig.label;
+      const grid = document.createElement("div");
+      grid.className = "icon-option-grid";
+      for (const icon of groupConfig.icons) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "icon-option";
+        button.dataset.icon = icon;
+        button.textContent = icon;
+        button.title = `${groupConfig.label}: ${icon}`;
+        if (hiddenNode.value === icon) {
+          button.classList.add("active");
+        }
+        grid.appendChild(button);
       }
-      popoverNode.appendChild(button);
+      group.append(title, grid);
+      popoverNode.appendChild(group);
     }
   }
 

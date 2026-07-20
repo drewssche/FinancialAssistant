@@ -89,7 +89,7 @@
   }
 
   .topbar-title-block #sectionTitle {
-    font-size: 24px;
+    font-size: 1.5rem;
   }
 
   .cta-row,
@@ -200,7 +200,7 @@
   }
 
   .bulk-count-text {
-    font-size: 16px;
+    font-size: 1rem;
     min-height: 30px;
   }
 

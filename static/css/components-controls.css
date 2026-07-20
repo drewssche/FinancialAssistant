@@ -39,7 +39,7 @@ select,
   background: #101727;
   color: var(--text);
   font-family: var(--ui-font-family);
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 button {
@@ -168,7 +168,7 @@ textarea {
 }
 
 .today-weekday {
-  font-size: 22px;
+  font-size: 1.375rem;
   font-weight: 800;
   color: #f4f7ff;
   line-height: 1.05;
@@ -176,7 +176,7 @@ textarea {
 
 .today-date {
   margin-top: var(--space-1);
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--muted);
 }
 
@@ -207,7 +207,7 @@ textarea {
 }
 
 .modal-close-btn > span[aria-hidden="true"] {
-  font-size: 24px;
+  font-size: 1.5rem;
   line-height: 1;
   font-weight: 700;
 }
@@ -222,7 +222,7 @@ textarea {
   width: 100%;
   justify-content: space-between;
   text-align: left;
-  font-size: 15px;
+  font-size: 0.9375rem;
   min-height: 2.875rem;
   padding-inline: var(--space-3);
   line-height: 1.2;
@@ -231,7 +231,7 @@ textarea {
 .settings-picker-btn::after {
   content: "▾";
   color: #c6d4ef;
-  font-size: 14px;
+  font-size: 0.875rem;
   flex: 0 0 auto;
   align-self: center;
 }
