@@ -379,12 +379,17 @@
       el.telegramMiniAppLink.href = username ? `https://t.me/${username}?startapp=reauth` : "#";
       el.telegramMiniAppLink.classList.toggle("hidden", !username || hasInitData);
     }
-    el.loginTelegramHint.classList.remove("hidden");
+    const hasLoginError = Boolean(
+      el.loginAlert
+      && !el.loginAlert.classList.contains("hidden")
+      && String(el.loginAlert.textContent || "").trim(),
+    );
+    el.loginTelegramHint.classList.toggle("hidden", hasLoginError);
     el.loginTelegramHint.textContent = hasInitData
-      ? "Обнаружен Telegram Mini App. Нажмите «Войти через Telegram Mini App» или дождитесь авто-входа."
+      ? "Mini App обнаружен — вход выполнится автоматически или по кнопке выше."
       : state.browserTelegramLoginAvailable === true
-        ? "В браузере доступен вход через Telegram. Используйте виджет выше."
-        : "Вход без Telegram Mini App сейчас недоступен. Откройте приложение внутри Telegram или настройте TELEGRAM_BOT_USERNAME для browser login.";
+        ? "Войдите через Telegram или откройте Mini App по ссылке выше."
+        : "Откройте приложение внутри Telegram, чтобы войти.";
   }
 
   function refreshTelegramLoginUi() {

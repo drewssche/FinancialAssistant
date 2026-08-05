@@ -11,6 +11,9 @@ __pycache__/
 htmlcov/
 .DS_Store
 
+# Local codebase analysis artifacts
+.understand-anything/
+
 # Local / temporary planning notes
 docs/_local/
 docs/TEMP_*.md

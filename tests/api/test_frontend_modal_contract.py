@@ -217,3 +217,13 @@ def test_receipt_discount_ui_uses_discount_copy_and_prefills_regular_price():
     assert "Баллы" in receipt
     assert "if (latestPrice > 0)" in receipt
     assert "latestPrice > asMoney(item.unit_price || 0)" not in receipt
+
+
+def test_reopened_discounted_receipt_uses_purchase_price_for_total_and_discrepancy():
+    receipt = (REPO_ROOT / "static" / "js" / "app-features-operation-modal-receipt.js").read_text(encoding="utf-8")
+    modal = (REPO_ROOT / "static" / "js" / "app-features-operation-modal.js").read_text(encoding="utf-8")
+
+    assert "return asMoney(asQty(item.quantity) * asMoney(item.unit_price));" in receipt
+    assert "regular_unit_price: row.regular_unit_price || 0" in modal
+    assert "unit_price: row.unit_price || 0" in modal
+    assert "regular_unit_price" not in receipt.split("function receiptLineTotal(item)", 1)[1].split("}", 1)[0]

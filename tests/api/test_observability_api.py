@@ -39,7 +39,7 @@ def test_frontend_entrypoint_and_scripts_revalidate_after_deploy():
 def test_versioned_frontend_assets_are_immutable():
     client = TestClient(app)
 
-    response = client.get("/static/js/app-bootstrap.js?v=20260720g")
+    response = client.get("/static/js/app-bootstrap.js?v=20260805a")
 
     assert response.status_code == 200
     assert response.headers.get("Cache-Control") == "public, max-age=31536000, immutable"

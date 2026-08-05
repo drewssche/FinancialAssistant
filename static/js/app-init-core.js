@@ -532,19 +532,6 @@
       el.currencyDigestToggle.addEventListener("change", () => {
         const sessionFeature = getSessionFeature();
         sessionFeature.previewInterfaceSettingsUi?.();
-        sessionFeature.savePreferencesDebounced?.(300);
-      });
-    }
-    if (el.currencyDigestTimeInput) {
-      el.currencyDigestTimeInput.addEventListener("change", () => {
-        getSessionFeature().savePreferencesDebounced?.(300);
-      });
-    }
-    if (el.currencyAlertInputs?.length) {
-      Array.from(el.currencyAlertInputs).forEach((input) => {
-        input.addEventListener("change", () => {
-          getSessionFeature().savePreferencesDebounced?.(300);
-        });
       });
     }
     if (el.showDashboardAnalyticsToggle) {

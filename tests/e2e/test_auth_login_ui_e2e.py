@@ -106,10 +106,7 @@ def test_login_screen_prefers_mini_app_copy_and_hides_manual_button_without_init
             page.goto(f"{static_server_url}/static/index.html")
             expect_hidden = page.locator("#telegramLoginBtn")
             expect_hidden.wait_for(state="hidden")
-            assert page.locator("#loginTelegramHint").text_content() == (
-                "Вход без Telegram Mini App сейчас недоступен. Откройте приложение внутри Telegram "
-                "или настройте TELEGRAM_BOT_USERNAME для browser login."
-            )
+            assert page.locator("#loginTelegramHint").text_content() == "Откройте приложение внутри Telegram, чтобы войти."
         finally:
             browser.close()
 

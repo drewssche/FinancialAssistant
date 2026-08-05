@@ -34,6 +34,7 @@
     el.loginAlert.textContent = normalizeStatusMessage(message);
     el.loginAlert.classList.remove("hidden", "is-error", "is-success", "is-info");
     el.loginAlert.classList.add(`is-${type}`);
+    el.loginTelegramHint?.classList.add("hidden");
   }
 
   function setStatus(message, forLogin = false) {
