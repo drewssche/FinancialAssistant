@@ -161,6 +161,7 @@
         template_id: seed.template_id || null,
         category_id: seed.category_id ? Number(seed.category_id) : null,
         shop_name: normalizeReceiptName(seed.shop_name || ""),
+        shop_name_inherited: Boolean(seed.shop_name_inherited),
         name: normalizeReceiptName(seed.name || ""),
         quantity: hasQuantity ? asQty(seed.quantity) : 0,
         unit_price: hasUnitPrice ? asMoney(seed.unit_price) : 0,
@@ -206,6 +207,7 @@
           : "promo";
       } else if (key === "shop_name") {
         item.shop_name = normalizeReceiptName(value);
+        item.shop_name_inherited = false;
         item.template_id = null;
       } else if (key === "name") {
         item.name = normalizeReceiptName(value);
@@ -223,7 +225,7 @@
     }
 
     function isReceiptRowEmpty(item) {
-      const shopName = normalizeReceiptName(item?.shop_name || "");
+      const shopName = item?.shop_name_inherited ? "" : normalizeReceiptName(item?.shop_name || "");
       const name = normalizeReceiptName(item?.name || "");
       const qty = asQty(item?.quantity || 0);
       const price = asMoney(item?.unit_price || 0);
@@ -236,6 +238,41 @@
 
     function hasReceiptRowContent(item) {
       return !isReceiptRowEmpty(item);
+    }
+
+    function createTrailingReceiptDraft(mode = "create") {
+      const primaryShopName = normalizeReceiptName(getReceiptItems(mode)[0]?.shop_name || "");
+      return createReceiptDraft({
+        shop_name: primaryShopName,
+        shop_name_inherited: Boolean(primaryShopName),
+      }, mode);
+    }
+
+    function inheritReceiptShopFromFirstRow(changedDraftId, mode = "create") {
+      const rows = getReceiptItems(mode);
+      const firstRow = rows[0];
+      if (!firstRow || Number(firstRow.draft_id) !== Number(changedDraftId)) {
+        return false;
+      }
+      const primaryShopName = normalizeReceiptName(firstRow.shop_name || "");
+      let changed = false;
+      for (const item of rows.slice(1)) {
+        if (!normalizeReceiptName(item.shop_name || "") || item.shop_name_inherited) {
+          if (normalizeReceiptName(item.shop_name || "") !== primaryShopName) {
+            item.shop_name = primaryShopName;
+            item.template_id = null;
+            changed = true;
+          }
+          item.shop_name_inherited = true;
+          const input = getReceiptContext(mode).listNode?.querySelector(
+            `[data-receipt-item-id="${Number(item.draft_id)}"] [data-receipt-field="shop_name"]`,
+          );
+          if (input && input.value !== primaryShopName) {
+            input.value = primaryShopName;
+          }
+        }
+      }
+      return changed;
     }
 
     function ensureTrailingReceiptRow(mode = "create") {
@@ -252,7 +289,7 @@
       }
       const last = normalizedRows[normalizedRows.length - 1];
       if (hasReceiptRowName(last)) {
-        state[ctx.itemsKey] = [...normalizedRows, createReceiptDraft({}, mode)];
+        state[ctx.itemsKey] = [...normalizedRows, createTrailingReceiptDraft(mode)];
         return;
       }
       state[ctx.itemsKey] = normalizedRows;
@@ -448,6 +485,7 @@
         getReceiptItemByDraftId,
         getReceiptContext,
         updateReceiptItemField,
+        inheritReceiptShopFromFirstRow,
         ensureTrailingReceiptRow,
         renderReceiptItems,
         renderReceiptSummary,

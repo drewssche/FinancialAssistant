@@ -262,7 +262,7 @@ def test_receipt_picker_store_scoped_and_optimistic_create(static_server_url: st
     page.wait_for_timeout(100)
 
     second_row = page.locator(".receipt-item-row").nth(1)
-    second_row.locator('[data-receipt-field="shop_name"]').fill("Соседи")
+    assert second_row.locator('[data-receipt-field="shop_name"]').input_value() == "Соседи"
     second_row.locator('[data-receipt-field="name"]').click()
     page.wait_for_selector('.receipt-item-row:nth-child(2) .receipt-name-picker:not(.hidden)')
     second_name_picker = second_row.locator(".receipt-name-picker")
@@ -274,10 +274,14 @@ def test_receipt_picker_store_scoped_and_optimistic_create(static_server_url: st
     assert second_name_picker.is_hidden()
 
     second_row.locator('[data-receipt-field="shop_name"]').fill("Евроопт")
+    assert second_row.locator('[data-receipt-field="shop_name"]').input_value() == "Евроопт"
     second_row.locator('[data-receipt-field="name"]').click()
     page.wait_for_selector('.receipt-item-row:nth-child(2) .receipt-name-picker:not(.hidden)')
     assert second_name_picker.locator('.chip-btn:has-text("Хлеб")').first.is_visible()
     assert second_name_picker.locator('.chip-btn:has-text("Чипсы Лейс")').count() == 0
+
+    first_row.locator('[data-receipt-field="shop_name"]').fill("Корона")
+    assert second_row.locator('[data-receipt-field="shop_name"]').input_value() == "Евроопт"
 
 
 @pytest.mark.e2e

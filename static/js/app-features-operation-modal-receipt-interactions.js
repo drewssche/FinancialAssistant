@@ -10,6 +10,7 @@
       getReceiptItemByDraftId,
       getReceiptContext,
       updateReceiptItemField,
+      inheritReceiptShopFromFirstRow,
       ensureTrailingReceiptRow,
       renderReceiptItems,
       renderReceiptSummary,
@@ -94,6 +95,9 @@
         } else {
           updated.item.template_id = null;
         }
+      }
+      if (field === "shop_name" || field === "name") {
+        inheritReceiptShopFromFirstRow(draftId, mode);
       }
       let structureChanged = false;
       if (field === "name" && updated.hadName !== updated.hasName) {
@@ -241,7 +245,9 @@
         const shops = getReceiptShopSuggestions(query, 1);
         const firstShop = shops[0] || query;
         rowItem.shop_name = normalizeReceiptName(firstShop);
+        rowItem.shop_name_inherited = false;
         rowItem.template_id = null;
+        inheritReceiptShopFromFirstRow(draftId, mode);
         commitReceiptRowMutation(mode);
         return;
       }
@@ -275,6 +281,7 @@
         rowItem.name = query;
         rowItem.template_id = null;
       }
+      inheritReceiptShopFromFirstRow(draftId, mode);
       commitReceiptRowMutation(mode);
       const nextInput = getReceiptContext(mode).listNode?.querySelector(
         `[data-receipt-item-id="${rowItem.draft_id}"] [data-receipt-field="name"]`,
@@ -292,7 +299,9 @@
           rowItem.shop_name = normalizeReceiptName(
             shopBtn.dataset.receiptShopName || shopBtn.dataset.receiptCreateShop || "",
           );
+          rowItem.shop_name_inherited = false;
           rowItem.template_id = null;
+          inheritReceiptShopFromFirstRow(draftId, mode);
           receiptUiState.activePicker = null;
           commitReceiptRowMutation(mode);
         }
@@ -319,6 +328,7 @@
           if (!rowItem.quantity || Number(rowItem.quantity) <= 0) {
             rowItem.quantity = 1;
           }
+          inheritReceiptShopFromFirstRow(draftId, mode);
           upsertLocalReceiptTemplate(rowItem.name, rowItem.unit_price, rowItem.shop_name || "");
           receiptUiState.activePicker = null;
           commitReceiptRowMutation(mode);
