@@ -964,3 +964,112 @@ def test_dashboard_plans_period_tabs_switch_and_filter(static_server_url: str, p
         "() => { const text = document.querySelector('#dashboardPlansList')?.textContent || ''; return text.includes('Просроченный план') && text.includes('План недели') && !text.includes('План всех времен'); }"
     )
     assert "Планы на неделю:" in (page.locator("#dashboardPlansPeriodLabel").text_content() or "")
+
+
+@pytest.mark.e2e
+def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_server_url: str, page_with_plans_api_mock):
+    page, mock_state = page_with_plans_api_mock
+    mock_state["plans"] = [
+        {
+            "id": 3,
+            "kind": "income",
+            "amount": "1050.00",
+            "scheduled_date": "2026-08-20",
+            "note": "Аванс",
+            "recurrence_enabled": True,
+            "recurrence_frequency": "monthly",
+            "recurrence_interval": 1,
+        },
+        {
+            "id": 4,
+            "kind": "income",
+            "amount": "1176.00",
+            "scheduled_date": "2026-09-04",
+            "note": "Основная часть",
+            "recurrence_enabled": True,
+            "recurrence_frequency": "monthly",
+            "recurrence_interval": 1,
+        },
+    ]
+
+    days = []
+    for day_number in range(1, 32):
+        current = date(2026, 8, day_number)
+        is_workday = current.weekday() < 5
+        days.append(
+            {
+                "date": current.isoformat(),
+                "weekday": current.weekday(),
+                "status": "workday" if is_workday else "weekend",
+                "status_label": "Рабочий день" if is_workday else "Выходной",
+                "calendar_label": "Рабочий день" if is_workday else "Выходной",
+                "planned_hours": "8.00" if is_workday else "0.00",
+                "actual_hours": "8.00" if is_workday and day_number <= 9 else "0.00",
+                "credited_hours": "8.00" if is_workday and day_number <= 9 else "0.00",
+                "is_workday": is_workday,
+                "is_manual": False,
+                "is_future": day_number > 9,
+                "note": None,
+            }
+        )
+
+    month_payload = {
+        "year": 2026,
+        "month": 8,
+        "profile": {
+            "id": 1,
+            "company": "Битрикс",
+            "position": "Разработчик",
+            "employment_start_date": "2024-04-29",
+            "standard_hours_per_day": "8.00",
+            "workweek_days": [0, 1, 2, 3, 4],
+            "country_code": "BY",
+            "advance_plan_id": 3,
+            "salary_plan_id": 4,
+            "advance_nominal_day": 20,
+            "salary_nominal_day": 5,
+            "payment_shift_rule": "previous_workday",
+        },
+        "summary": {
+            "planned_days": 21,
+            "completed_days": 5,
+            "planned_hours": "168.00",
+            "actual_hours": "40.00",
+            "credited_hours": "40.00",
+            "vacation_days": 0,
+            "sick_days": 0,
+            "override_days": 0,
+        },
+        "payments": [
+            {"role": "salary", "label": "Основная часть", "plan_id": 4, "nominal_date": "2026-08-05", "effective_date": "2026-08-05", "shifted": False},
+            {"role": "advance", "label": "Аванс", "plan_id": 3, "nominal_date": "2026-08-20", "effective_date": "2026-08-20", "shifted": False},
+        ],
+        "days": days,
+    }
+
+    def work_handler(route, request):
+        path = urlparse(request.url).path
+        if path == "/api/v1/work/month":
+            return _json_response(route, month_payload)
+        if path == "/api/v1/work/contracts":
+            return _json_response(route, [])
+        return _json_response(route, {"detail": f"Unhandled work route: {request.method} {path}"}, status=404)
+
+    page.route("**/api/v1/work/**", work_handler)
+    _login_and_open_dashboard(page, static_server_url)
+    page.click('button[data-section="work"]')
+    page.wait_for_selector("#workSection:not(.hidden)")
+    page.wait_for_selector('#workCalendarGrid [data-work-date="2026-08-03"]')
+
+    assert page.locator("#workCalendarGrid .work-day-cell").count() == 36
+    assert "168 ч" in (page.locator("#workSummaryGrid").text_content() or "")
+    assert "Аванс" in (page.locator("#workPaymentsGrid").text_content() or "")
+
+    page.click('#workCalendarGrid [data-work-date="2026-08-03"]')
+    page.wait_for_selector("#workDayForm:not(.hidden)")
+    assert page.locator("#workDayStatus").input_value() == "workday"
+
+    page.click('button[data-work-view="settings"]')
+    page.wait_for_selector("#workSettingsForm:not(.hidden)")
+    assert page.locator("#workSalaryPlan").input_value() == "4"
+    assert page.locator("#workAdvancePlan").input_value() == "3"

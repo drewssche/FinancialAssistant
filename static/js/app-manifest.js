@@ -72,6 +72,7 @@
     "/static/js/app-features-plans-render.js",
     "/static/js/app-features-plans-dashboard.js",
     "/static/js/app-features-plans.js",
+    "/static/js/app-features-work.js",
     "/static/js/app-features-session-preferences.js",
     "/static/js/app-features-session-auth.js",
     "/static/js/app-features-session.js",

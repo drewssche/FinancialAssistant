@@ -27,6 +27,7 @@
             <button class="nav-btn" data-section="operations">Операции</button>
             <button class="nav-btn" data-section="currency">Валюта</button>
             <button class="nav-btn" data-section="plans">Планы</button>
+            <button class="nav-btn" data-section="work">Работа</button>
             <button class="nav-btn" data-section="debts">Долги</button>
             <button class="nav-btn" data-section="categories">Категории</button>
             <button class="nav-btn" data-section="item_catalog">Каталог позиций</button>

@@ -35,6 +35,10 @@
     return window.App.getRuntimeModule?.("plans") || {};
   }
 
+  function getWorkFeature() {
+    return window.App.getRuntimeModule?.("work") || {};
+  }
+
   function getDebtsFeature() {
     return window.App.getRuntimeModule?.("debts") || {};
   }
@@ -224,6 +228,7 @@
       { id: "operations", node: el.operationsSection, title: "Операции", subtitle: "Рабочий список операций, фильтры и массовые действия" },
       { id: "currency", node: el.currencySection, title: "Валюта", subtitle: "Позиции, сделки и текущие курсы валют" },
       { id: "plans", node: el.plansSection, title: "Планы", subtitle: "Будущие операции и регулярные обязательства до подтверждения" },
+      { id: "work", node: el.workSection, title: "Работа", subtitle: "Автоматический табель, условия работы и даты выплат" },
       { id: "debts", node: el.debtsSection, title: "Долги", subtitle: "Карточки задолженностей и погашения" },
       { id: "categories", node: el.categoriesSection, title: "Категории", subtitle: "Управление категориями доходов и расходов" },
       { id: "item_catalog", node: el.itemCatalogSection, title: "Каталог позиций", subtitle: "Справочник позиций чеков по источникам" },
@@ -405,6 +410,9 @@
     }
     if (sectionId === "plans" && getPlansFeature().loadPlans) {
       await getPlansFeature().loadPlans();
+    }
+    if (sectionId === "work" && getWorkFeature().loadWorkSection) {
+      await getWorkFeature().loadWorkSection();
     }
     if (sectionId === "categories" && getCategoryActions().loadCategories) {
       getCategoryActions().loadCategories().catch((err) => {

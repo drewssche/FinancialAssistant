@@ -3,6 +3,125 @@
   window.App.templates = window.App.templates || {};
   window.App.templates.shellSectionsSecondary = `
 
+        <section id="workSection" class="section-block hidden">
+          <section class="panel work-hero-panel">
+            <div class="panel-head row between work-section-head">
+              <div>
+                <h3>Табель</h3>
+                <p class="subtitle">Обычные рабочие дни считаются автоматически — отмечайте только исключения</p>
+              </div>
+              <div class="work-month-control">
+                <button id="workPrevMonthBtn" class="period-step-btn" type="button" aria-label="Предыдущий месяц">‹</button>
+                <strong id="workMonthLabel">Месяц</strong>
+                <button id="workNextMonthBtn" class="period-step-btn" type="button" aria-label="Следующий месяц">›</button>
+                <button id="workTodayBtn" class="btn btn-secondary btn-xs" type="button">Текущий</button>
+              </div>
+            </div>
+            <div id="workSummaryGrid" class="analytics-kpi-grid section-kpi-grid"></div>
+            <div id="workPaymentsGrid" class="work-payments-grid"></div>
+          </section>
+
+          <section class="panel">
+            <div class="segmented work-view-tabs" id="workViewTabs" role="tablist" aria-label="Разделы работы">
+              <button class="segmented-btn active" data-work-view="timesheet" type="button">Табель</button>
+              <button class="segmented-btn" data-work-view="settings" type="button">Настройки и планы</button>
+              <button class="segmented-btn" data-work-view="contracts" type="button">Должность и зарплата</button>
+            </div>
+
+            <div id="workTimesheetView">
+              <div class="work-calendar-weekdays" aria-hidden="true">
+                <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+              </div>
+              <div id="workCalendarGrid" class="work-calendar-grid"></div>
+              <div class="work-calendar-legend muted-small">
+                <span><i class="work-legend-dot work-legend-auto"></i> автоматически</span>
+                <span><i class="work-legend-dot work-legend-manual"></i> изменено вручную</span>
+                <span><i class="work-legend-dot work-legend-payment"></i> выплата</span>
+              </div>
+              <form id="workDayForm" class="work-day-editor hidden">
+                <div class="panel-head row between">
+                  <div><h3 id="workDayEditorTitle">День</h3><p class="subtitle">Ручная настройка имеет приоритет над календарём</p></div>
+                  <button id="closeWorkDayEditorBtn" class="btn btn-ghost btn-xs" type="button">Закрыть</button>
+                </div>
+                <input id="workDayDate" type="hidden" />
+                <div class="work-day-editor-grid">
+                  <label class="field"><span>Статус</span><select id="workDayStatus">
+                    <option value="workday">Рабочий день</option>
+                    <option value="vacation">Отпуск</option>
+                    <option value="sick_paid">Сикдей с оплатой</option>
+                    <option value="sick_unpaid">Больничный / сикдей без оплаты</option>
+                    <option value="company_day_off">Выходной за счёт компании</option>
+                    <option value="day_off">Отгул</option>
+                    <option value="unpaid_leave">Без сохранения зарплаты</option>
+                    <option value="transferred_workday">Перенесённый рабочий день</option>
+                    <option value="overtime">Сверхурочная работа</option>
+                    <option value="holiday">Праздник</option>
+                    <option value="weekend">Выходной</option>
+                  </select></label>
+                  <label class="field"><span>Применить по дату</span><input id="workDayDateTo" type="date" /></label>
+                  <label class="field"><span>План, ч</span><input id="workDayPlanned" type="number" min="0" max="24" step="0.25" /></label>
+                  <label class="field"><span>Факт, ч</span><input id="workDayActual" type="number" min="0" max="24" step="0.25" /></label>
+                  <label class="field"><span>Оплачивается, ч</span><input id="workDayCredited" type="number" min="0" max="24" step="0.25" /></label>
+                </div>
+                <label class="field"><span>Комментарий</span><input id="workDayNote" type="text" maxlength="500" placeholder="Причина или пояснение" /></label>
+                <div class="settings-actions">
+                  <button class="btn btn-primary" type="submit">Сохранить исключение</button>
+                  <button id="resetWorkDayBtn" class="btn btn-secondary" type="button">Вернуть по графику</button>
+                </div>
+              </form>
+            </div>
+
+            <form id="workSettingsForm" class="settings-form hidden">
+              <section class="settings-block">
+                <h3>График работы</h3>
+                <div class="settings-grid-2">
+                  <label class="field"><span>Компания</span><input id="workCompany" type="text" maxlength="160" placeholder="Битрикс" /></label>
+                  <label class="field"><span>Должность</span><input id="workPosition" type="text" maxlength="160" /></label>
+                  <label class="field"><span>Дата начала работы</span><input id="workStartDate" type="date" /></label>
+                  <label class="field"><span>Часов в обычный день</span><input id="workStandardHours" type="number" min="0.25" max="24" step="0.25" value="8" /></label>
+                </div>
+                <div class="work-weekday-picker" id="workWeekdayPicker">
+                  <label><input type="checkbox" value="0" checked /> Пн</label><label><input type="checkbox" value="1" checked /> Вт</label>
+                  <label><input type="checkbox" value="2" checked /> Ср</label><label><input type="checkbox" value="3" checked /> Чт</label>
+                  <label><input type="checkbox" value="4" checked /> Пт</label><label><input type="checkbox" value="5" /> Сб</label>
+                  <label><input type="checkbox" value="6" /> Вс</label>
+                </div>
+              </section>
+              <section class="settings-block">
+                <h3>Связь с финансовыми планами</h3>
+                <p class="muted-small">Номинальные даты сохраняются. Если они нерабочие, выплата переносится только назад до первого рабочего дня.</p>
+                <div class="settings-grid-2">
+                  <label class="field"><span>План основной части</span><select id="workSalaryPlan"><option value="">Не связан</option></select></label>
+                  <label class="field"><span>Номинальный день</span><input id="workSalaryDay" type="number" min="1" max="31" value="5" /></label>
+                  <label class="field"><span>План аванса</span><select id="workAdvancePlan"><option value="">Не связан</option></select></label>
+                  <label class="field"><span>Номинальный день</span><input id="workAdvanceDay" type="number" min="1" max="31" value="20" /></label>
+                </div>
+              </section>
+              <div class="settings-actions"><button class="btn btn-primary" type="submit">Сохранить настройки</button></div>
+            </form>
+
+            <div id="workContractsView" class="hidden">
+              <form id="workContractForm" class="settings-form">
+                <section class="settings-block">
+                  <h3>Новый период условий</h3>
+                  <p class="muted-small">Изменение должности или оклада создаёт новый период и не переписывает историю.</p>
+                  <div class="settings-grid-2">
+                    <label class="field"><span>Действует с</span><input id="workContractFrom" type="date" required /></label>
+                    <label class="field"><span>Действует до</span><input id="workContractTo" type="date" /></label>
+                    <label class="field"><span>Компания</span><input id="workContractCompany" type="text" maxlength="160" /></label>
+                    <label class="field"><span>Должность</span><input id="workContractPosition" type="text" maxlength="160" /></label>
+                    <label class="field"><span>Оклад на руки</span><input id="workContractSalary" type="number" min="0" step="0.01" /></label>
+                    <label class="field"><span>Валюта</span><select id="workContractCurrency"><option value="BYN">BYN</option><option value="USD">USD</option><option value="EUR">EUR</option></select></label>
+                  </div>
+                  <label class="field"><span>Комментарий</span><input id="workContractNote" type="text" maxlength="500" /></label>
+                  <div class="settings-actions"><button class="btn btn-primary" type="submit">Добавить период</button></div>
+                </section>
+              </form>
+              <div id="workContractsList" class="plans-list"></div>
+            </div>
+          </section>
+        </section>
+
         <section id="plansSection" class="section-block hidden">
           <section class="panel">
             <div class="panel-head row between">

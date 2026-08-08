@@ -199,6 +199,7 @@
       operationsSection: document.getElementById("operationsSection"),
       currencySection: document.getElementById("currencySection"),
       plansSection: document.getElementById("plansSection"),
+      workSection: document.getElementById("workSection"),
       debtsSection: document.getElementById("debtsSection"),
       categoriesSection: document.getElementById("categoriesSection"),
       itemCatalogSection: document.getElementById("itemCatalogSection"),

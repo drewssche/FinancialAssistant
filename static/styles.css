@@ -21,3 +21,51 @@
 @import url("/static/css/responsive-sm-tables.css?v=20260716j");
 @import url("/static/css/responsive-sm-core.css?v=20260716j");
 @import url("/static/css/responsive-sm-modals.css?v=20260716j");
+/* Work timesheet */
+.work-section-head { gap: 16px; align-items: flex-start; }
+.work-month-control { display: flex; align-items: center; gap: 10px; }
+.work-month-control strong { min-width: 150px; text-align: center; text-transform: capitalize; }
+.work-payments-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.work-payment-card { display: flex; justify-content: space-between; gap: 16px; padding: 15px 17px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); }
+.work-payment-card > div:first-child { display: grid; gap: 5px; }
+.work-payment-card strong { font-size: 20px; }
+.work-payment-card.is-shifted { border-color: rgba(255, 153, 52, .55); }
+.work-payment-meta { display: grid; align-content: center; gap: 4px; text-align: right; color: var(--muted); font-size: 12px; }
+.work-view-tabs { margin-bottom: 18px; }
+.work-calendar-weekdays, .work-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.work-calendar-weekdays { margin-bottom: 8px; color: var(--muted); font-size: 12px; text-align: center; }
+.work-day-cell { position: relative; min-height: 112px; padding: 10px; display: flex; flex-direction: column; align-items: flex-start; gap: 5px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); color: var(--text); text-align: left; }
+.work-day-cell:hover { border-color: var(--accent); transform: translateY(-1px); }
+.work-day-empty { border-color: transparent; background: transparent; }
+.work-day-number { align-self: flex-end; color: var(--muted); font-size: 12px; }
+.work-day-status, .work-day-fact { color: var(--muted); font-size: 11px; line-height: 1.25; }
+.work-day-cell.status-weekend, .work-day-cell.status-holiday, .work-day-cell.status-day_off { opacity: .68; background: rgba(120, 130, 150, .07); }
+.work-day-cell.status-vacation { background: rgba(86, 138, 255, .12); }
+.work-day-cell.status-sick_paid, .work-day-cell.status-sick_unpaid { background: rgba(221, 104, 128, .12); }
+.work-day-cell.is-future strong { opacity: .72; }
+.work-day-cell.is-manual { box-shadow: inset 3px 0 0 #9b7cff; }
+.work-day-cell.has-payment { border-color: rgba(255, 153, 52, .68); }
+.work-day-payment { margin-top: auto; padding: 3px 6px; border-radius: 999px; background: rgba(255, 153, 52, .16); color: #ffad58; font-size: 10px; }
+.work-day-manual-mark { position: absolute; top: 8px; left: 9px; color: #9b7cff; font-size: 9px; }
+.work-calendar-legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; }
+.work-calendar-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.work-legend-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+.work-legend-manual { background: #9b7cff; }.work-legend-payment { background: #ff9934; }
+.work-day-editor { margin-top: 18px; padding: 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); }
+.work-day-editor-grid { display: grid; grid-template-columns: 2fr repeat(4, 1fr); gap: 12px; }
+.work-weekday-picker { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.work-weekday-picker label { display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; }
+.work-contract-card { display: flex; justify-content: space-between; gap: 16px; }
+.work-contract-card .plan-card-main, .work-contract-side { display: grid; gap: 5px; }
+.work-contract-side { justify-items: end; align-content: center; }
+@media (max-width: 760px) {
+  .work-section-head, .work-payment-card { flex-direction: column; }
+  .work-month-control { width: 100%; justify-content: space-between; }
+  .work-payments-grid { grid-template-columns: 1fr; }
+  .work-calendar-weekdays, .work-calendar-grid { gap: 4px; }
+  .work-day-cell { min-height: 82px; padding: 7px; }
+  .work-day-status, .work-day-fact { display: none; }
+  .work-day-cell strong { font-size: 12px; }
+  .work-day-editor-grid { grid-template-columns: 1fr 1fr; }
+  .work-payment-meta { text-align: left; }
+}

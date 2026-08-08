@@ -2,6 +2,7 @@ import calendar
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.core.cache import (
@@ -12,11 +13,13 @@ from app.core.cache import (
     set_json,
 )
 from app.core.logging import log_background_job_event
+from app.db.models import WorkDayOverride, WorkProfile
 from app.repositories.currency_repo import CurrencyRepository
 from app.repositories.plan_repo import PlanRepository
 from app.services.activity_service import ActivityService
 from app.services.operation_service import OperationService
 from app.services.plan_reminder_service import PlanReminderService
+from app.services.work_calendar import PAYROLL_CALENDAR_OVERRIDE_STATUSES, next_linked_payment_date
 
 
 class PlanService:
@@ -412,7 +415,7 @@ class PlanService:
             },
         )
         if item.recurrence_enabled:
-            next_date = self._advance_recurrence(
+            next_date = self._advance_linked_payroll_date(item) or self._advance_recurrence(
                 scheduled_date=item.scheduled_date,
                 frequency=item.recurrence_frequency,
                 interval=item.recurrence_interval,
@@ -488,7 +491,7 @@ class PlanService:
             },
         )
         if item.recurrence_enabled:
-            next_date = self._advance_recurrence(
+            next_date = self._advance_linked_payroll_date(item) or self._advance_recurrence(
                 scheduled_date=item.scheduled_date,
                 frequency=item.recurrence_frequency,
                 interval=item.recurrence_interval,
@@ -774,6 +777,42 @@ class PlanService:
                 continue
             remaining -= 1
         return current
+
+    def _advance_linked_payroll_date(self, item) -> date | None:
+        profile = self.db.scalar(
+            select(WorkProfile).where(
+                WorkProfile.user_id == item.user_id,
+                or_(WorkProfile.advance_plan_id == item.id, WorkProfile.salary_plan_id == item.id),
+            )
+        )
+        if not profile:
+            return None
+        nominal_day = (
+            int(profile.advance_nominal_day)
+            if profile.advance_plan_id == item.id
+            else int(profile.salary_nominal_day)
+        )
+        window_from = date.fromordinal(item.scheduled_date.toordinal() - 10)
+        window_to = date.fromordinal(item.scheduled_date.toordinal() + 70)
+        overrides = self.db.scalars(
+            select(WorkDayOverride).where(
+                WorkDayOverride.user_id == item.user_id,
+                WorkDayOverride.work_date >= window_from,
+                WorkDayOverride.work_date <= window_to,
+            )
+        )
+        statuses = {
+            row.work_date: row.status
+            for row in overrides
+            if row.status in PAYROLL_CALENDAR_OVERRIDE_STATUSES
+        }
+        return next_linked_payment_date(
+            item.scheduled_date,
+            nominal_day,
+            workweek_mask=profile.workweek_mask,
+            country_code=profile.country_code,
+            override_statuses=statuses,
+        )
 
     def _normalize_weekdays(self, weekdays: list[int] | None, *, scheduled_date: date) -> str:
         raw_values = weekdays if isinstance(weekdays, list) else []
