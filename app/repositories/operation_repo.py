@@ -625,6 +625,20 @@ class OperationRepository:
     def list_recommendation_templates(self, *, user_id: int) -> list[OperationItemTemplate]:
         return self.item_templates.list_recommendation_templates(user_id=user_id)
 
+    def list_item_templates_for_recommendation_management(self, *, user_id: int) -> list[OperationItemTemplate]:
+        return self.item_templates.list_item_templates_for_recommendation_management(user_id=user_id)
+
+    def list_item_templates_by_ids(
+        self,
+        *,
+        user_id: int,
+        template_ids: list[int],
+    ) -> list[OperationItemTemplate]:
+        return self.item_templates.list_item_templates_by_ids(
+            user_id=user_id,
+            template_ids=template_ids,
+        )
+
     def get_latest_purchases_for_templates(
         self,
         *,

@@ -925,6 +925,7 @@
 
   function bindRecommendationActions() {
     el.openRecommendationCatalogBtn?.addEventListener("click", () => {
+      window.App.getRuntimeModule?.("item-recommendation-manager")?.setPreferredView?.("recommendations");
       window.App.getRuntimeModule?.("navigation")?.switchSection?.("item_catalog", { scrollToTop: true });
     });
     el.dashboardRecommendationsList?.addEventListener("click", (event) => {

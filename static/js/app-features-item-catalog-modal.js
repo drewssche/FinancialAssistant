@@ -239,6 +239,7 @@
       }
       await loadItemCatalog({ force: true });
       window.App.getRuntimeModule?.("dashboard")?.loadDashboardRecommendations?.().catch(() => {});
+      window.App.getRuntimeModule?.("item-recommendation-manager")?.load?.().catch(() => {});
     }
 
     function renderItemTemplateSourcePicker(query = "") {

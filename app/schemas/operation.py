@@ -223,6 +223,39 @@ class OperationItemRecommendationSnoozeIn(BaseModel):
     days: int = Field(default=7, ge=1, le=365)
 
 
+class OperationItemRecommendationManageOut(BaseModel):
+    template_id: int
+    shop_name: str | None = None
+    name: str
+    category_id: int | None = None
+    use_count: int = 0
+    latest_unit_price: Decimal | None = None
+    last_purchase_date: date | None = None
+    last_quantity: Decimal | None = None
+    recommendation_enabled: bool = False
+    recommendation_mode: Literal["manual", "automatic"] = "manual"
+    interval_days: int | None = None
+    base_quantity: Decimal = Decimal("1.000")
+    next_date: date | None = None
+    snoozed_until: date | None = None
+    effective_date: date | None = None
+    days_until: int | None = None
+    status: Literal["overdue", "due", "upcoming", "snoozed", "awaiting_purchase", "unconfigured"]
+    candidate: bool = False
+
+
+class OperationItemRecommendationBulkUpdateIn(BaseModel):
+    template_ids: list[int] = Field(min_length=1, max_length=500)
+    action: Literal["enable", "disable", "snooze"]
+    interval_days: int | None = Field(default=None, ge=1, le=3650)
+    base_quantity: Decimal | None = Field(default=None, gt=0, le=100000)
+    snooze_days: int = Field(default=7, ge=1, le=365)
+
+
+class OperationItemRecommendationBulkUpdateOut(BaseModel):
+    updated: int
+
+
 class OperationItemTemplateDeleteAllOut(BaseModel):
     deleted: int
 

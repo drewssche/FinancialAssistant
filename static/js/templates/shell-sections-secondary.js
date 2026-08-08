@@ -201,7 +201,11 @@
         </section>
 
         <section id="itemCatalogSection" class="section-block hidden">
-          <section class="panel">
+          <div id="itemCatalogViewTabs" class="segmented item-catalog-view-tabs" role="tablist" aria-label="Режим каталога позиций">
+            <button class="segmented-btn active" data-item-catalog-view="positions" type="button">Позиции</button>
+            <button class="segmented-btn" data-item-catalog-view="recommendations" type="button">Рекомендации</button>
+          </div>
+          <section id="itemCatalogPositionsView" class="panel">
             <div class="table-search-row">
               <input id="itemCatalogSearchQ" class="table-search-input" type="text" placeholder="Поиск по источнику и позиции" />
               <div class="toolbar section-action-toolbar search-toolbar item-catalog-controls">
@@ -228,6 +232,59 @@
                   </tr>
                 </thead>
                 <tbody id="itemCatalogBody"></tbody>
+              </table>
+            </div>
+          </section>
+          <section id="itemRecommendationsView" class="panel hidden">
+            <div class="item-recommendations-heading">
+              <div>
+                <h3>Управление рекомендациями</h3>
+                <p class="muted">Настройте повторные покупки сразу для нескольких позиций. Ничего не включается автоматически.</p>
+              </div>
+              <button id="refreshItemRecommendationsBtn" class="btn btn-secondary btn-xs" type="button">Обновить</button>
+            </div>
+            <div id="itemRecommendationsKpiGrid" class="analytics-kpi-grid section-kpi-grid" aria-label="Итоги рекомендаций"></div>
+            <div class="item-recommendations-toolbar">
+              <input id="itemRecommendationsSearchQ" class="table-search-input" type="text" placeholder="Поиск по позиции и источнику" />
+              <div id="itemRecommendationStatusTabs" class="segmented" role="tablist" aria-label="Фильтр рекомендаций">
+                <button class="segmented-btn active" data-recommendation-status="all" type="button">Все</button>
+                <button class="segmented-btn" data-recommendation-status="due" type="button">Пора</button>
+                <button class="segmented-btn" data-recommendation-status="upcoming" type="button">Скоро</button>
+                <button class="segmented-btn" data-recommendation-status="configured" type="button">Настроены</button>
+                <button class="segmented-btn" data-recommendation-status="unconfigured" type="button">Не настроены</button>
+                <button class="segmented-btn" data-recommendation-status="candidates" type="button">Кандидаты</button>
+              </div>
+            </div>
+            <div id="itemRecommendationBulkBar" class="bulk-bar item-recommendation-bulk-bar hidden">
+              <strong id="itemRecommendationSelectedCount">Выбрано: 0</strong>
+              <label class="item-recommendation-bulk-field">
+                <span>Запас</span>
+                <input id="itemRecommendationBulkInterval" type="number" min="1" max="3650" step="1" value="30" />
+                <span>дн.</span>
+              </label>
+              <label class="item-recommendation-bulk-field">
+                <span>На количество</span>
+                <input id="itemRecommendationBulkQuantity" type="number" min="0.001" max="100000" step="0.001" value="1" />
+              </label>
+              <button id="enableSelectedRecommendationsBtn" class="btn btn-primary btn-xs" type="button">Включить и применить</button>
+              <button id="snoozeSelectedRecommendationsBtn" class="btn btn-secondary btn-xs" type="button">Отложить на 7 дней</button>
+              <button id="disableSelectedRecommendationsBtn" class="btn btn-danger btn-xs" type="button">Отключить</button>
+              <button id="clearSelectedRecommendationsBtn" class="btn btn-ghost btn-xs" type="button">Снять выбор</button>
+            </div>
+            <div class="table-wrap">
+              <table class="table table-hover mobile-card-table item-recommendations-table">
+                <thead>
+                  <tr>
+                    <th><input id="itemRecommendationsSelectAll" type="checkbox" aria-label="Выбрать все видимые рекомендации" /></th>
+                    <th>Позиция</th>
+                    <th>Последняя покупка</th>
+                    <th>Настройка</th>
+                    <th>Следующая дата</th>
+                    <th>Статус</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="itemRecommendationsBody"></tbody>
               </table>
             </div>
           </section>

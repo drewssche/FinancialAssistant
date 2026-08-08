@@ -1,0 +1,201 @@
+.item-catalog-view-tabs {
+  margin-bottom: var(--space-3);
+}
+
+.item-recommendations-heading,
+.item-recommendations-toolbar,
+.item-recommendation-settings,
+.item-recommendation-actions,
+.item-recommendation-bulk-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.item-recommendations-heading {
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.item-recommendations-heading h3,
+.item-recommendations-heading p {
+  margin: 0;
+}
+
+.item-recommendations-heading p {
+  margin-top: var(--space-1);
+}
+
+.item-recommendations-toolbar {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin: var(--space-3) 0;
+}
+
+.item-recommendations-toolbar .table-search-input {
+  flex: 1 1 20rem;
+  max-width: 34rem;
+}
+
+.item-recommendations-toolbar .segmented {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.item-recommendation-bulk-bar {
+  padding: var(--space-3);
+  border: 1px solid rgba(255, 179, 71, 0.28);
+  border-radius: var(--radius-md);
+  background: rgba(255, 179, 71, 0.06);
+}
+
+.item-recommendation-bulk-field {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.item-recommendation-bulk-field input,
+.item-recommendation-settings input[type="number"] {
+  width: 5.4rem;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  background: #0f1729;
+}
+
+.item-recommendations-table th:first-child,
+.item-recommendations-table td:first-child {
+  width: 2.5rem;
+  text-align: center;
+}
+
+.item-recommendations-table td {
+  vertical-align: middle;
+}
+
+.item-recommendation-title {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.item-recommendation-candidate {
+  display: inline-flex;
+  margin-top: var(--space-1);
+  padding: 0.18rem 0.45rem;
+  border: 1px solid rgba(79, 209, 197, 0.28);
+  border-radius: 999px;
+  color: #8ee8df;
+  background: rgba(79, 209, 197, 0.08);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.item-recommendation-settings {
+  align-items: center;
+  flex-wrap: wrap;
+  min-width: 15rem;
+}
+
+.item-recommendation-settings label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.item-recommendation-enabled {
+  width: 100%;
+  color: var(--text) !important;
+}
+
+.item-recommendation-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  padding: 0.22rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(148, 163, 184, 0.08);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.item-recommendation-status.is-danger {
+  color: #ffadb5;
+  border-color: rgba(255, 103, 119, 0.32);
+  background: rgba(255, 103, 119, 0.1);
+}
+
+.item-recommendation-status.is-positive {
+  color: #8ee8df;
+  border-color: rgba(79, 209, 197, 0.3);
+  background: rgba(79, 209, 197, 0.08);
+}
+
+.item-recommendation-status.is-muted {
+  opacity: 0.78;
+}
+
+.item-recommendation-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  min-width: 15rem;
+}
+
+.item-recommendations-empty {
+  padding: var(--space-5) !important;
+  text-align: center;
+  color: var(--muted);
+}
+
+#itemRecommendationsView.is-loading {
+  opacity: 0.68;
+  pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  .item-catalog-view-tabs {
+    width: 100%;
+  }
+
+  .item-catalog-view-tabs .segmented-btn {
+    flex: 1 1 50%;
+  }
+
+  .item-recommendations-heading {
+    align-items: flex-start;
+  }
+
+  .item-recommendations-toolbar {
+    align-items: stretch;
+  }
+
+  .item-recommendations-toolbar .table-search-input,
+  .item-recommendations-toolbar .segmented {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .item-recommendation-bulk-bar {
+    align-items: stretch;
+  }
+
+  .item-recommendation-bulk-field {
+    justify-content: space-between;
+  }
+
+  .item-recommendation-actions,
+  .item-recommendation-settings {
+    min-width: 0;
+  }
+
+  .item-recommendation-actions .btn {
+    flex: 1 1 auto;
+  }
+}

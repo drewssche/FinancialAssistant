@@ -2219,3 +2219,88 @@ def test_repeat_purchase_recommendation_schedule_snooze_and_disable(client: Test
     )
     assert disabled.status_code == 200
     assert client.get("/api/v1/operations/item-recommendations").json() == []
+
+
+def test_repeat_purchase_recommendation_management_and_bulk_actions(client: TestClient):
+    purchase_date = date.today() - timedelta(days=12)
+    first_purchase = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "operation_date": purchase_date.isoformat(),
+            "receipt_items": [
+                {"shop_name": "Корона", "name": "Кофе", "quantity": "1", "unit_price": "18.00"},
+                {"shop_name": "Корона", "name": "Молоко", "quantity": "2", "unit_price": "3.20"},
+            ],
+        },
+    )
+    assert first_purchase.status_code == 201
+    receipt_items = first_purchase.json()["receipt_items"]
+    coffee_id = next(item["template_id"] for item in receipt_items if item["name"] == "Кофе")
+    milk_id = next(item["template_id"] for item in receipt_items if item["name"] == "Молоко")
+
+    repeat_purchase = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "operation_date": (purchase_date + timedelta(days=5)).isoformat(),
+            "receipt_items": [
+                {"shop_name": "Корона", "name": "Молоко", "quantity": "1", "unit_price": "3.30"},
+            ],
+        },
+    )
+    assert repeat_purchase.status_code == 201
+
+    configured = client.patch(
+        f"/api/v1/operations/item-templates/{coffee_id}",
+        json={
+            "recommendation_enabled": True,
+            "recommendation_interval_days": 7,
+            "recommendation_base_quantity": "1",
+        },
+    )
+    assert configured.status_code == 200
+
+    management = client.get("/api/v1/operations/item-recommendations/manage")
+    assert management.status_code == 200
+    by_id = {item["template_id"]: item for item in management.json()}
+    assert by_id[coffee_id]["status"] == "overdue"
+    assert by_id[coffee_id]["recommendation_enabled"] is True
+    assert by_id[milk_id]["status"] == "unconfigured"
+    assert by_id[milk_id]["candidate"] is True
+    assert by_id[milk_id]["last_purchase_date"] == (purchase_date + timedelta(days=5)).isoformat()
+
+    enabled = client.post(
+        "/api/v1/operations/item-recommendations/bulk",
+        json={
+            "template_ids": [coffee_id, milk_id],
+            "action": "enable",
+            "interval_days": 14,
+            "base_quantity": "2",
+        },
+    )
+    assert enabled.status_code == 200
+    assert enabled.json() == {"updated": 2}
+    after_enable = {item["template_id"]: item for item in client.get("/api/v1/operations/item-recommendations/manage").json()}
+    assert after_enable[coffee_id]["interval_days"] == 14
+    assert after_enable[milk_id]["recommendation_enabled"] is True
+    assert after_enable[milk_id]["base_quantity"] == "2.000"
+
+    snoozed = client.post(
+        "/api/v1/operations/item-recommendations/bulk",
+        json={"template_ids": [coffee_id], "action": "snooze", "snooze_days": 21},
+    )
+    assert snoozed.status_code == 200
+    assert snoozed.json() == {"updated": 1}
+    after_snooze = {item["template_id"]: item for item in client.get("/api/v1/operations/item-recommendations/manage").json()}
+    assert after_snooze[coffee_id]["status"] == "snoozed"
+
+    disabled = client.post(
+        "/api/v1/operations/item-recommendations/bulk",
+        json={"template_ids": [coffee_id, milk_id], "action": "disable"},
+    )
+    assert disabled.status_code == 200
+    assert disabled.json() == {"updated": 2}
+    after_disable = {item["template_id"]: item for item in client.get("/api/v1/operations/item-recommendations/manage").json()}
+    assert after_disable[coffee_id]["status"] == "unconfigured"
+    assert after_disable[milk_id]["status"] == "unconfigured"

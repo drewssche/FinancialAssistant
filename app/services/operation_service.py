@@ -900,6 +900,28 @@ class OperationService:
     def list_item_recommendations(self, *, user_id: int, limit: int = 12) -> list[dict]:
         return self.item_templates.list_item_recommendations(user_id=user_id, limit=limit)
 
+    def list_item_recommendation_management(self, *, user_id: int) -> list[dict]:
+        return self.item_templates.list_item_recommendation_management(user_id=user_id)
+
+    def bulk_update_item_recommendations(
+        self,
+        *,
+        user_id: int,
+        template_ids: list[int],
+        action: str,
+        interval_days: int | None,
+        base_quantity: Decimal | None,
+        snooze_days: int,
+    ) -> int:
+        return self.item_templates.bulk_update_item_recommendations(
+            user_id=user_id,
+            template_ids=template_ids,
+            action=action,
+            interval_days=interval_days,
+            base_quantity=base_quantity,
+            snooze_days=snooze_days,
+        )
+
     def snooze_item_recommendation(self, *, user_id: int, template_id: int, days: int) -> dict:
         return self.item_templates.snooze_item_recommendation(
             user_id=user_id,

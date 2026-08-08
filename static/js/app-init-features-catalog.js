@@ -37,6 +37,9 @@
     const categoriesSectionCoordinator = getCategoriesSectionCoordinator();
     const itemCatalogUiCoordinator = getItemCatalogUiCoordinator();
     const itemCatalogSectionCoordinator = getItemCatalogSectionCoordinator();
+    const itemRecommendationManager = window.App.getRuntimeModule?.("item-recommendation-manager");
+
+    itemRecommendationManager?.bind?.();
 
     el.itemTemplateHistoryBtn?.addEventListener("click", () => {
       const itemId = Number(el.itemTemplateHistoryBtn.dataset.itemTemplateHistoryId || 0);

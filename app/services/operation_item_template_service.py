@@ -417,6 +417,140 @@ class OperationItemTemplateService:
         payload.sort(key=lambda entry: (entry["effective_date"], entry["template_id"]))
         return payload[:limit]
 
+    def list_item_recommendation_management(self, *, user_id: int) -> list[dict]:
+        templates = self.repo.list_item_templates_for_recommendation_management(user_id=user_id)
+        template_ids = [int(item.id) for item in templates]
+        latest_purchases = self.repo.get_latest_purchases_for_templates(
+            user_id=user_id,
+            template_ids=template_ids,
+        )
+        latest_prices = self.repo.get_latest_prices_for_templates(template_ids=template_ids)
+        today = date.today()
+        payload: list[dict] = []
+        for item in templates:
+            template_id = int(item.id)
+            latest_purchase = latest_purchases.get(template_id)
+            last_purchase_date = latest_purchase[0] if latest_purchase else None
+            last_quantity = latest_purchase[1] if latest_purchase else None
+            interval_days = int(item.recommendation_interval_days) if item.recommendation_interval_days else None
+            base_quantity = Decimal(item.recommendation_base_quantity or 1)
+            next_date = None
+            effective_date = None
+            days_until = None
+            status = "unconfigured"
+            if item.recommendation_enabled and latest_purchase and interval_days:
+                scaled_days = self._scaled_recommendation_days(
+                    interval_days=interval_days,
+                    base_quantity=base_quantity,
+                    quantity=last_quantity,
+                )
+                next_date = last_purchase_date + timedelta(days=scaled_days)
+                snoozed_until = item.recommendation_snoozed_until
+                effective_date = max(next_date, snoozed_until) if snoozed_until else next_date
+                days_until = (effective_date - today).days
+                if snoozed_until and snoozed_until > next_date and snoozed_until > today:
+                    status = "snoozed"
+                else:
+                    status = "overdue" if days_until < 0 else "due" if days_until == 0 else "upcoming"
+            elif item.recommendation_enabled:
+                status = "awaiting_purchase"
+            latest_price = latest_prices.get(template_id)
+            payload.append(
+                {
+                    "template_id": template_id,
+                    "shop_name": item.shop_name,
+                    "name": item.name,
+                    "category_id": item.last_category_id,
+                    "use_count": int(item.use_count or 0),
+                    "latest_unit_price": self._money(latest_price.unit_price) if latest_price else None,
+                    "last_purchase_date": last_purchase_date,
+                    "last_quantity": last_quantity,
+                    "recommendation_enabled": bool(item.recommendation_enabled),
+                    "recommendation_mode": item.recommendation_mode or "manual",
+                    "interval_days": interval_days,
+                    "base_quantity": base_quantity,
+                    "next_date": next_date,
+                    "snoozed_until": item.recommendation_snoozed_until,
+                    "effective_date": effective_date,
+                    "days_until": days_until,
+                    "status": status,
+                    "candidate": bool(not item.recommendation_enabled and latest_purchase and int(item.use_count or 0) >= 2),
+                }
+            )
+        return payload
+
+    def bulk_update_item_recommendations(
+        self,
+        *,
+        user_id: int,
+        template_ids: list[int],
+        action: str,
+        interval_days: int | None,
+        base_quantity: Decimal | None,
+        snooze_days: int,
+    ) -> int:
+        normalized_ids = list(dict.fromkeys(int(item_id) for item_id in template_ids if int(item_id) > 0))
+        items = self.repo.list_item_templates_by_ids(user_id=user_id, template_ids=normalized_ids)
+        if len(items) != len(normalized_ids):
+            raise LookupError("One or more item templates were not found")
+        latest_purchases = (
+            self.repo.get_latest_purchases_for_templates(user_id=user_id, template_ids=normalized_ids)
+            if action == "enable"
+            else {}
+        )
+        updated_count = 0
+        for item in items:
+            before_activity = ActivityService.snapshot(item, self.ACTIVITY_FIELDS)
+            if action == "enable":
+                resolved_interval = interval_days or item.recommendation_interval_days
+                if resolved_interval is None:
+                    raise ValueError("Recommendation interval is required")
+                self._apply_recommendation_settings(
+                    item,
+                    {
+                        "recommendation_enabled": True,
+                        "recommendation_mode": "manual",
+                        "recommendation_interval_days": resolved_interval,
+                        "recommendation_base_quantity": base_quantity or item.recommendation_base_quantity or 1,
+                        "recommendation_snoozed_until": None,
+                    },
+                )
+                latest_purchase = latest_purchases.get(int(item.id))
+                if latest_purchase:
+                    self._schedule_recommendation_after_purchase(
+                        item,
+                        purchased_at=latest_purchase[0],
+                        quantity=latest_purchase[1],
+                    )
+            elif action == "disable":
+                self._apply_recommendation_settings(
+                    item,
+                    {
+                        "recommendation_enabled": False,
+                        "recommendation_snoozed_until": None,
+                    },
+                )
+            elif action == "snooze":
+                if not item.recommendation_enabled:
+                    continue
+                item.recommendation_snoozed_until = date.today() + timedelta(days=snooze_days)
+            else:
+                raise ValueError("Unsupported recommendation action")
+            self.activity.record_updated(
+                user_id=user_id,
+                actor_user_id=user_id,
+                entity_type="item_template",
+                entity_id=int(item.id),
+                before=before_activity,
+                after=ActivityService.snapshot(item, self.ACTIVITY_FIELDS),
+                labels=self.ACTIVITY_LABELS,
+                title="Рекомендация позиции изменена",
+            )
+            updated_count += 1
+        self.db.commit()
+        invalidate_item_templates_cache(user_id)
+        return updated_count
+
     def snooze_item_recommendation(self, *, user_id: int, template_id: int, days: int) -> dict:
         item = self.repo.get_item_template_by_id(user_id=user_id, template_id=template_id)
         if not item:

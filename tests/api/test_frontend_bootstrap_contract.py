@@ -14,7 +14,7 @@ def test_index_html_uses_manifest_bootstrap_pair():
 
     script_sources = re.findall(r'<script[^>]+src="([^"]+)"', html)
 
-    assert "/static/js/app-manifest.js?v=20260805a" in script_sources
+    assert "/static/js/app-manifest.js?v=20260809a" in script_sources
     assert "/static/js/app-bootstrap.js?v=20260805a" in script_sources
     assert "/static/js/app-init.js" not in script_sources
 

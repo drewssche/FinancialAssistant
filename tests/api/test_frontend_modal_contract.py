@@ -253,6 +253,25 @@ def test_repeat_purchase_recommendations_have_settings_dashboard_and_actions():
     assert 'data-recommendation-action="disable"' in dashboard
 
 
+def test_item_catalog_has_central_recommendation_management():
+    shell = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-secondary.js").read_text(encoding="utf-8")
+    manager = (REPO_ROOT / "static" / "js" / "app-features-item-recommendations.js").read_text(encoding="utf-8")
+    manifest = (REPO_ROOT / "static" / "js" / "app-manifest.js").read_text(encoding="utf-8")
+
+    assert 'data-item-catalog-view="recommendations"' in shell
+    assert 'id="itemRecommendationStatusTabs"' in shell
+    assert 'data-recommendation-status="candidates"' in shell
+    assert 'id="enableSelectedRecommendationsBtn"' in shell
+    assert 'id="snoozeSelectedRecommendationsBtn"' in shell
+    assert 'id="disableSelectedRecommendationsBtn"' in shell
+    assert "/api/v1/operations/item-recommendations/manage" in manager
+    assert "/api/v1/operations/item-recommendations/bulk" in manager
+    assert 'data-recommendation-manage-action="receipt"' in manager
+    assert 'data-recommendation-manage-action="plan"' in manager
+    assert 'registerRuntimeModule?.("item-recommendation-manager"' in manager
+    assert '"/static/js/app-features-item-recommendations.js"' in manifest
+
+
 def test_item_catalog_exposes_category_picker_and_discount_summary():
     modal = (REPO_ROOT / "static/js/templates/modals-item-catalog.js").read_text(encoding="utf-8")
     feature = (REPO_ROOT / "static/js/app-features-item-catalog-modal.js").read_text(encoding="utf-8")

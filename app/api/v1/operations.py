@@ -10,6 +10,9 @@ from app.schemas.operation import (
     OperationCreate,
     OperationItemTemplateCreate,
     OperationItemTemplateDeleteAllOut,
+    OperationItemRecommendationBulkUpdateIn,
+    OperationItemRecommendationBulkUpdateOut,
+    OperationItemRecommendationManageOut,
     OperationItemRecommendationOut,
     OperationItemRecommendationSnoozeIn,
     OperationItemPriceOut,
@@ -216,6 +219,37 @@ def list_operation_item_recommendations(
     db: Session = Depends(get_db),
 ):
     return OperationService(db).list_item_recommendations(user_id=user_id, limit=limit)
+
+
+@router.get("/item-recommendations/manage", response_model=list[OperationItemRecommendationManageOut])
+def list_operation_item_recommendation_management(
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    return OperationService(db).list_item_recommendation_management(user_id=user_id)
+
+
+@router.post("/item-recommendations/bulk", response_model=OperationItemRecommendationBulkUpdateOut)
+def bulk_update_operation_item_recommendations(
+    payload: OperationItemRecommendationBulkUpdateIn,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = OperationService(db)
+    try:
+        updated = service.bulk_update_item_recommendations(
+            user_id=user_id,
+            template_ids=payload.template_ids,
+            action=payload.action,
+            interval_days=payload.interval_days,
+            base_quantity=payload.base_quantity,
+            snooze_days=payload.snooze_days,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return OperationItemRecommendationBulkUpdateOut(updated=updated)
 
 
 @router.post("/item-recommendations/{template_id}/snooze", response_model=OperationItemTemplateOut)

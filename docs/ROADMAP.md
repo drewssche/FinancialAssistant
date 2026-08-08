@@ -18,6 +18,7 @@
   - For automatic mode, estimate consumption from at least 2-3 purchases using quantity-normalized median intervals and a confidence score; keep sensitive products such as cigarettes opt-in.
   - Show item, source, last price, due date, and a short explanation. Provide actions to add the item to a receipt or plan, snooze it, disable future suggestions, and open the catalog card.
   - [x] Deterministic manual-interval MVP with quantity scaling, snooze, disable, catalog settings, and shortcuts to a receipt or plan.
+  - [x] Central recommendation management in the item catalog with search, status/candidate filters, inline settings, and bulk enable, snooze, and disable actions.
   - [ ] Automatic cadence based on median purchase intervals once enough history exists.
 
 ### Technical Debt Audit 2026-07-16

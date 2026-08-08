@@ -293,6 +293,37 @@ class OperationItemTemplateRepository:
         )
         return list(self.db.scalars(stmt))
 
+    def list_item_templates_for_recommendation_management(self, *, user_id: int) -> list[OperationItemTemplate]:
+        stmt = (
+            select(OperationItemTemplate)
+            .where(
+                OperationItemTemplate.user_id == user_id,
+                OperationItemTemplate.is_archived.is_(False),
+            )
+            .order_by(
+                OperationItemTemplate.recommendation_enabled.desc(),
+                OperationItemTemplate.use_count.desc(),
+                OperationItemTemplate.last_used_at.desc().nullslast(),
+                OperationItemTemplate.id.desc(),
+            )
+        )
+        return list(self.db.scalars(stmt))
+
+    def list_item_templates_by_ids(
+        self,
+        *,
+        user_id: int,
+        template_ids: list[int],
+    ) -> list[OperationItemTemplate]:
+        if not template_ids:
+            return []
+        stmt = select(OperationItemTemplate).where(
+            OperationItemTemplate.user_id == user_id,
+            OperationItemTemplate.id.in_(template_ids),
+            OperationItemTemplate.is_archived.is_(False),
+        )
+        return list(self.db.scalars(stmt))
+
     def get_latest_purchases_for_templates(
         self,
         *,
