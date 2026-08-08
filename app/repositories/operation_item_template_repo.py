@@ -4,7 +4,7 @@ from decimal import Decimal
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.orm import Session
 
-from app.db.models import OperationItemPrice, OperationItemTemplate, OperationReceiptItem, PlanReceiptItem
+from app.db.models import Operation, OperationItemPrice, OperationItemTemplate, OperationReceiptItem, PlanReceiptItem
 
 
 class OperationItemTemplateRepository:
@@ -280,3 +280,44 @@ class OperationItemTemplateRepository:
             if key not in latest_by_template:
                 latest_by_template[key] = row
         return latest_by_template
+
+    def list_recommendation_templates(self, *, user_id: int) -> list[OperationItemTemplate]:
+        stmt = (
+            select(OperationItemTemplate)
+            .where(
+                OperationItemTemplate.user_id == user_id,
+                OperationItemTemplate.is_archived.is_(False),
+                OperationItemTemplate.recommendation_enabled.is_(True),
+            )
+            .order_by(OperationItemTemplate.recommendation_next_date.asc().nullslast(), OperationItemTemplate.id.asc())
+        )
+        return list(self.db.scalars(stmt))
+
+    def get_latest_purchases_for_templates(
+        self,
+        *,
+        user_id: int,
+        template_ids: list[int],
+    ) -> dict[int, tuple[date, Decimal]]:
+        if not template_ids:
+            return {}
+        stmt = (
+            select(OperationReceiptItem.template_id, Operation.operation_date, OperationReceiptItem.quantity)
+            .join(Operation, Operation.id == OperationReceiptItem.operation_id)
+            .where(
+                OperationReceiptItem.user_id == user_id,
+                OperationReceiptItem.template_id.in_(template_ids),
+                Operation.kind == "expense",
+            )
+            .order_by(
+                OperationReceiptItem.template_id.asc(),
+                Operation.operation_date.desc(),
+                OperationReceiptItem.id.desc(),
+            )
+        )
+        latest: dict[int, tuple[date, Decimal]] = {}
+        for template_id, operation_date, quantity in self.db.execute(stmt):
+            key = int(template_id)
+            if key not in latest:
+                latest[key] = (operation_date, Decimal(quantity))
+        return latest

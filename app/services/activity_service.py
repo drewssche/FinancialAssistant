@@ -66,7 +66,17 @@ class ActivityService:
     }
     MONEY_FIELDS = {"amount", "original_amount", "principal", "fee"}
     RATE_FIELDS = {"fx_rate", "unit_price"}
-    DATE_FIELDS = {"operation_date", "start_date", "due_date", "scheduled_date", "recurrence_end_date", "last_used_at", "trade_date"}
+    DATE_FIELDS = {
+        "operation_date",
+        "start_date",
+        "due_date",
+        "scheduled_date",
+        "recurrence_end_date",
+        "last_used_at",
+        "trade_date",
+        "recommendation_next_date",
+        "recommendation_snoozed_until",
+    }
     REFERENCE_FIELDS = {"category_id", "last_category_id", "group_id", "counterparty_id"}
 
     def __init__(self, db: Session):

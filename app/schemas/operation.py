@@ -167,6 +167,12 @@ class OperationItemTemplateOut(BaseModel):
     last_category_id: int | None = None
     latest_unit_price: Decimal | None = None
     latest_price_date: date | None = None
+    recommendation_enabled: bool = False
+    recommendation_mode: Literal["manual", "automatic"] = "manual"
+    recommendation_interval_days: int | None = None
+    recommendation_base_quantity: Decimal = Decimal("1.000")
+    recommendation_next_date: date | None = None
+    recommendation_snoozed_until: date | None = None
 
     model_config = {"extra": "allow"}
 
@@ -177,6 +183,10 @@ class OperationItemTemplateCreate(BaseModel):
     last_category_id: int | None = None
     latest_unit_price: Decimal | None = Field(default=None, gt=0)
     latest_price_date: date | None = None
+    recommendation_enabled: bool = False
+    recommendation_mode: Literal["manual", "automatic"] = "manual"
+    recommendation_interval_days: int | None = Field(default=None, ge=1, le=3650)
+    recommendation_base_quantity: Decimal = Field(default=Decimal("1"), gt=0, le=100000)
 
 
 class OperationItemTemplateUpdate(BaseModel):
@@ -185,6 +195,32 @@ class OperationItemTemplateUpdate(BaseModel):
     last_category_id: int | None = None
     latest_unit_price: Decimal | None = Field(default=None, gt=0)
     latest_price_date: date | None = None
+    recommendation_enabled: bool | None = None
+    recommendation_mode: Literal["manual", "automatic"] | None = None
+    recommendation_interval_days: int | None = Field(default=None, ge=1, le=3650)
+    recommendation_base_quantity: Decimal | None = Field(default=None, gt=0, le=100000)
+    recommendation_snoozed_until: date | None = None
+
+
+class OperationItemRecommendationOut(BaseModel):
+    template_id: int
+    shop_name: str | None = None
+    name: str
+    category_id: int | None = None
+    latest_unit_price: Decimal | None = None
+    last_purchase_date: date
+    last_quantity: Decimal
+    interval_days: int
+    base_quantity: Decimal
+    next_date: date
+    effective_date: date
+    days_until: int
+    status: Literal["overdue", "due", "upcoming"]
+    explanation: str
+
+
+class OperationItemRecommendationSnoozeIn(BaseModel):
+    days: int = Field(default=7, ge=1, le=365)
 
 
 class OperationItemTemplateDeleteAllOut(BaseModel):

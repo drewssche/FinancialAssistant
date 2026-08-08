@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -2124,3 +2126,96 @@ def test_operations_list_cache_is_invalidated_after_operation_mutations(client: 
     )
     assert after_delete.status_code == 200
     assert after_delete.json()["total"] == 0
+
+
+def test_repeat_purchase_recommendation_schedule_snooze_and_disable(client: TestClient):
+    purchase_date = date.today() - timedelta(days=10)
+    created = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "operation_date": purchase_date.isoformat(),
+            "receipt_items": [
+                {
+                    "shop_name": "Корона",
+                    "name": "Пачка сигарет",
+                    "quantity": "10",
+                    "unit_price": "6.60",
+                },
+            ],
+        },
+    )
+    assert created.status_code == 201
+    template_id = created.json()["receipt_items"][0]["template_id"]
+
+    missing_interval = client.patch(
+        f"/api/v1/operations/item-templates/{template_id}",
+        json={"recommendation_enabled": True},
+    )
+    assert missing_interval.status_code == 400
+
+    configured = client.patch(
+        f"/api/v1/operations/item-templates/{template_id}",
+        json={
+            "recommendation_enabled": True,
+            "recommendation_mode": "manual",
+            "recommendation_interval_days": 9,
+            "recommendation_base_quantity": "10",
+        },
+    )
+    assert configured.status_code == 200
+    assert configured.json()["recommendation_enabled"] is True
+    assert configured.json()["recommendation_next_date"] == (purchase_date + timedelta(days=9)).isoformat()
+
+    recommendations = client.get("/api/v1/operations/item-recommendations")
+    assert recommendations.status_code == 200
+    payload = recommendations.json()
+    assert len(payload) == 1
+    assert payload[0]["template_id"] == template_id
+    assert payload[0]["status"] == "overdue"
+    assert payload[0]["interval_days"] == 9
+    assert payload[0]["base_quantity"] == "10.000"
+    assert "расчётный запас на 9 дн." in payload[0]["explanation"]
+
+    snoozed = client.post(
+        f"/api/v1/operations/item-recommendations/{template_id}/snooze",
+        json={"days": 7},
+    )
+    assert snoozed.status_code == 200
+    assert snoozed.json()["recommendation_snoozed_until"] == (date.today() + timedelta(days=7)).isoformat()
+    after_snooze = client.get("/api/v1/operations/item-recommendations").json()[0]
+    assert after_snooze["status"] == "upcoming"
+    assert after_snooze["days_until"] == 7
+
+    repurchased = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "operation_date": date.today().isoformat(),
+            "receipt_items": [
+                {
+                    "shop_name": "Корона",
+                    "name": "Пачка сигарет",
+                    "quantity": "20",
+                    "unit_price": "6.80",
+                },
+            ],
+        },
+    )
+    assert repurchased.status_code == 201
+    repurchase_id = repurchased.json()["id"]
+    refreshed = client.get("/api/v1/operations/item-recommendations").json()[0]
+    assert refreshed["next_date"] == (date.today() + timedelta(days=18)).isoformat()
+    assert refreshed["days_until"] == 18
+
+    assert client.delete(f"/api/v1/operations/{repurchase_id}").status_code == 204
+    after_delete = client.get("/api/v1/operations/item-recommendations").json()[0]
+    assert after_delete["next_date"] == (purchase_date + timedelta(days=9)).isoformat()
+    assert after_delete["status"] == "overdue"
+
+    disabled = client.patch(
+        f"/api/v1/operations/item-templates/{template_id}",
+        json={"recommendation_enabled": False},
+    )
+    assert disabled.status_code == 200
+    assert client.get("/api/v1/operations/item-recommendations").json() == []

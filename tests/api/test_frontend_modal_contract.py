@@ -235,6 +235,24 @@ def test_plan_and_operation_history_are_linked_without_duplicate_money_flow_rows
     assert 'sourceKind: "operation"' in plans
 
 
+def test_repeat_purchase_recommendations_have_settings_dashboard_and_actions():
+    modal = (REPO_ROOT / "static" / "js" / "templates" / "modals-item-catalog.js").read_text(encoding="utf-8")
+    shell = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-primary.js").read_text(encoding="utf-8")
+    catalog = (REPO_ROOT / "static" / "js" / "app-features-item-catalog-modal.js").read_text(encoding="utf-8")
+    dashboard = (REPO_ROOT / "static" / "js" / "app-features-dashboard.js").read_text(encoding="utf-8")
+
+    assert 'id="itemTemplateRecommendationEnabled"' in modal
+    assert 'id="itemTemplateRecommendationInterval"' in modal
+    assert 'id="itemTemplateRecommendationQuantity"' in modal
+    assert 'id="dashboardRecommendationsPanel"' in shell
+    assert "Пора купить снова" in shell
+    assert "recommendation_interval_days" in catalog
+    assert 'data-recommendation-action="receipt"' in dashboard
+    assert 'data-recommendation-action="plan"' in dashboard
+    assert 'data-recommendation-action="snooze"' in dashboard
+    assert 'data-recommendation-action="disable"' in dashboard
+
+
 def test_item_catalog_exposes_category_picker_and_discount_summary():
     modal = (REPO_ROOT / "static/js/templates/modals-item-catalog.js").read_text(encoding="utf-8")
     feature = (REPO_ROOT / "static/js/app-features-item-catalog-modal.js").read_text(encoding="utf-8")

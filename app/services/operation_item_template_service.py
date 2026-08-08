@@ -1,5 +1,5 @@
-from datetime import date
-from decimal import Decimal, ROUND_HALF_UP
+from datetime import date, timedelta
+from decimal import Decimal, ROUND_CEILING, ROUND_HALF_UP
 
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
@@ -23,7 +23,20 @@ MONEY_Q = Decimal("0.01")
 
 
 class OperationItemTemplateService:
-    ACTIVITY_FIELDS = ["shop_name", "name", "last_category_id", "use_count", "is_archived", "last_used_at"]
+    ACTIVITY_FIELDS = [
+        "shop_name",
+        "name",
+        "last_category_id",
+        "use_count",
+        "is_archived",
+        "last_used_at",
+        "recommendation_enabled",
+        "recommendation_mode",
+        "recommendation_interval_days",
+        "recommendation_base_quantity",
+        "recommendation_next_date",
+        "recommendation_snoozed_until",
+    ]
     ACTIVITY_LABELS = {
         "shop_name": "Источник",
         "name": "Название",
@@ -31,6 +44,12 @@ class OperationItemTemplateService:
         "use_count": "Использований",
         "is_archived": "Архив",
         "last_used_at": "Последнее использование",
+        "recommendation_enabled": "Рекомендации",
+        "recommendation_mode": "Режим рекомендаций",
+        "recommendation_interval_days": "Запас в днях",
+        "recommendation_base_quantity": "Базовое количество",
+        "recommendation_next_date": "Следующая рекомендация",
+        "recommendation_snoozed_until": "Отложено до",
     }
 
     def __init__(self, db: Session, repo: OperationRepository):
@@ -76,6 +95,7 @@ class OperationItemTemplateService:
                     "last_category_id": item.last_category_id,
                     "latest_unit_price": self._money(latest.unit_price) if latest else None,
                     "latest_price_date": latest.recorded_at if latest else None,
+                    **self._serialize_recommendation_settings(item),
                 }
             )
         set_json(
@@ -132,6 +152,10 @@ class OperationItemTemplateService:
         last_category_id: int | None,
         latest_unit_price: Decimal | None,
         latest_price_date: date | None = None,
+        recommendation_enabled: bool = False,
+        recommendation_mode: str = "manual",
+        recommendation_interval_days: int | None = None,
+        recommendation_base_quantity: Decimal = Decimal("1"),
     ) -> dict:
         normalized_shop, normalized_name = self._normalize_item_template_fields(shop_name=shop_name, name=name)
         shop_name_ci = normalized_shop.casefold() if normalized_shop else None
@@ -153,6 +177,15 @@ class OperationItemTemplateService:
                 name_ci=name_ci,
                 last_category_id=validated_category_id,
             )
+            self._apply_recommendation_settings(
+                item,
+                {
+                    "recommendation_enabled": recommendation_enabled,
+                    "recommendation_mode": recommendation_mode,
+                    "recommendation_interval_days": recommendation_interval_days,
+                    "recommendation_base_quantity": recommendation_base_quantity,
+                },
+            )
             self.activity.record_created(
                 user_id=user_id,
                 actor_user_id=user_id,
@@ -172,6 +205,15 @@ class OperationItemTemplateService:
                 item.name_ci = name_ci
             if validated_category_id is not None:
                 item.last_category_id = validated_category_id
+            self._apply_recommendation_settings(
+                item,
+                {
+                    "recommendation_enabled": recommendation_enabled,
+                    "recommendation_mode": recommendation_mode,
+                    "recommendation_interval_days": recommendation_interval_days,
+                    "recommendation_base_quantity": recommendation_base_quantity,
+                },
+            )
             self.db.flush()
             self.activity.record_updated(
                 user_id=user_id,
@@ -183,6 +225,18 @@ class OperationItemTemplateService:
                 labels=self.ACTIVITY_LABELS,
                 title="Позиция каталога восстановлена",
             )
+        if item.recommendation_enabled:
+            latest_purchase = self.repo.get_latest_purchases_for_templates(
+                user_id=user_id,
+                template_ids=[int(item.id)],
+            ).get(int(item.id))
+            if latest_purchase:
+                self._schedule_recommendation_after_purchase(
+                    item,
+                    purchased_at=latest_purchase[0],
+                    quantity=latest_purchase[1],
+                    clear_snooze=False,
+                )
         if latest_unit_price is not None:
             next_price = self._money(latest_unit_price)
             recorded_at = latest_price_date or date.today()
@@ -241,6 +295,25 @@ class OperationItemTemplateService:
                 user_id=user_id,
                 category_id=updates.get("last_category_id"),
             )
+        recommendation_fields = {
+            key: value
+            for key, value in updates.items()
+            if key.startswith("recommendation_")
+        }
+        if recommendation_fields:
+            self._apply_recommendation_settings(item, recommendation_fields)
+            if item.recommendation_enabled:
+                latest_purchase = self.repo.get_latest_purchases_for_templates(
+                    user_id=user_id,
+                    template_ids=[int(item.id)],
+                ).get(int(item.id))
+                if latest_purchase:
+                    self._schedule_recommendation_after_purchase(
+                        item,
+                        purchased_at=latest_purchase[0],
+                        quantity=latest_purchase[1],
+                        clear_snooze=False,
+                    )
         if "shop_name" in updates or "name" in updates:
             self.repo.update_linked_receipt_item_identity(
                 user_id=user_id,
@@ -286,6 +359,73 @@ class OperationItemTemplateService:
             invalidate_operations_cache(user_id)
             invalidate_plans_cache(user_id)
             invalidate_dashboard_analytics_cache(user_id)
+        return self._serialize_item_template(item)
+
+    def list_item_recommendations(self, *, user_id: int, limit: int = 12) -> list[dict]:
+        templates = self.repo.list_recommendation_templates(user_id=user_id)
+        template_ids = [int(item.id) for item in templates]
+        latest_purchases = self.repo.get_latest_purchases_for_templates(
+            user_id=user_id,
+            template_ids=template_ids,
+        )
+        latest_prices = self.repo.get_latest_prices_for_templates(template_ids=template_ids)
+        today = date.today()
+        payload: list[dict] = []
+        for item in templates:
+            template_id = int(item.id)
+            latest_purchase = latest_purchases.get(template_id)
+            if not latest_purchase:
+                continue
+            last_purchase_date, last_quantity = latest_purchase
+            interval_days = int(item.recommendation_interval_days or 1)
+            base_quantity = Decimal(item.recommendation_base_quantity or 1)
+            scaled_days = self._scaled_recommendation_days(
+                interval_days=interval_days,
+                base_quantity=base_quantity,
+                quantity=last_quantity,
+            )
+            next_date = last_purchase_date + timedelta(days=scaled_days)
+            snoozed_until = item.recommendation_snoozed_until
+            effective_date = max(next_date, snoozed_until) if snoozed_until else next_date
+            days_until = (effective_date - today).days
+            status = "overdue" if days_until < 0 else "due" if days_until == 0 else "upcoming"
+            explanation = (
+                f"Последняя покупка: {self._format_quantity(last_quantity)} · "
+                f"расчётный запас на {scaled_days} дн."
+            )
+            if snoozed_until and snoozed_until > next_date:
+                explanation += f" · отложено до {snoozed_until.strftime('%d.%m.%Y')}"
+            latest_price = latest_prices.get(template_id)
+            payload.append(
+                {
+                    "template_id": template_id,
+                    "shop_name": item.shop_name,
+                    "name": item.name,
+                    "category_id": item.last_category_id,
+                    "latest_unit_price": self._money(latest_price.unit_price) if latest_price else None,
+                    "last_purchase_date": last_purchase_date,
+                    "last_quantity": last_quantity,
+                    "interval_days": interval_days,
+                    "base_quantity": base_quantity,
+                    "next_date": next_date,
+                    "effective_date": effective_date,
+                    "days_until": days_until,
+                    "status": status,
+                    "explanation": explanation,
+                }
+            )
+        payload.sort(key=lambda entry: (entry["effective_date"], entry["template_id"]))
+        return payload[:limit]
+
+    def snooze_item_recommendation(self, *, user_id: int, template_id: int, days: int) -> dict:
+        item = self.repo.get_item_template_by_id(user_id=user_id, template_id=template_id)
+        if not item:
+            raise LookupError("Item template not found")
+        if not item.recommendation_enabled:
+            raise ValueError("Recommendations are disabled for this item")
+        item.recommendation_snoozed_until = date.today() + timedelta(days=days)
+        self.db.commit()
+        invalidate_item_templates_cache(user_id)
         return self._serialize_item_template(item)
 
     def delete_item_template(self, *, user_id: int, template_id: int) -> None:
@@ -398,6 +538,11 @@ class OperationItemTemplateService:
                 item=template,
                 last_category_id=item.get("category_id", category_id),
                 flush=False,
+            )
+            self._schedule_recommendation_after_purchase(
+                template,
+                purchased_at=operation_date,
+                quantity=Decimal(item.get("quantity") or 0),
             )
             template_id = int(template.id)
             price_history_unit_price = self._receipt_item_price_for_history(item)
@@ -539,6 +684,71 @@ class OperationItemTemplateService:
             "last_category_id": item.last_category_id,
             "latest_unit_price": self._money(latest.unit_price) if latest else None,
             "latest_price_date": latest.recorded_at if latest else None,
+            **self._serialize_recommendation_settings(item),
+        }
+
+    def _apply_recommendation_settings(self, item, updates: dict) -> None:
+        enabled = bool(updates.get("recommendation_enabled", item.recommendation_enabled))
+        mode = str(updates.get("recommendation_mode", item.recommendation_mode or "manual"))
+        interval_value = updates.get("recommendation_interval_days", item.recommendation_interval_days)
+        base_value = updates.get("recommendation_base_quantity", item.recommendation_base_quantity or 1)
+        if enabled and mode != "manual":
+            raise ValueError("Automatic recommendations are not available yet")
+        if enabled and interval_value is None:
+            raise ValueError("Recommendation interval is required")
+        interval_days = int(interval_value) if interval_value is not None else None
+        if interval_days is not None and not 1 <= interval_days <= 3650:
+            raise ValueError("Recommendation interval must be between 1 and 3650 days")
+        base_quantity = Decimal(base_value or 0)
+        if base_quantity <= 0:
+            raise ValueError("Recommendation base quantity must be greater than zero")
+        item.recommendation_enabled = enabled
+        item.recommendation_mode = mode
+        item.recommendation_interval_days = interval_days
+        item.recommendation_base_quantity = base_quantity
+        if "recommendation_snoozed_until" in updates:
+            item.recommendation_snoozed_until = updates.get("recommendation_snoozed_until")
+
+    def _schedule_recommendation_after_purchase(
+        self,
+        item,
+        *,
+        purchased_at: date,
+        quantity: Decimal,
+        clear_snooze: bool = True,
+    ) -> None:
+        if not item.recommendation_enabled or not item.recommendation_interval_days:
+            return
+        days = self._scaled_recommendation_days(
+            interval_days=int(item.recommendation_interval_days),
+            base_quantity=Decimal(item.recommendation_base_quantity or 1),
+            quantity=quantity,
+        )
+        item.recommendation_next_date = purchased_at + timedelta(days=days)
+        if clear_snooze:
+            item.recommendation_snoozed_until = None
+
+    @staticmethod
+    def _scaled_recommendation_days(*, interval_days: int, base_quantity: Decimal, quantity: Decimal) -> int:
+        safe_base = max(Decimal(base_quantity), Decimal("0.001"))
+        safe_quantity = max(Decimal(quantity), Decimal("0.001"))
+        scaled = (Decimal(interval_days) * safe_quantity / safe_base).to_integral_value(rounding=ROUND_CEILING)
+        return max(1, int(scaled))
+
+    @staticmethod
+    def _format_quantity(value: Decimal) -> str:
+        normalized = Decimal(value).quantize(Decimal("0.001")).normalize()
+        return format(normalized, "f")
+
+    @staticmethod
+    def _serialize_recommendation_settings(item) -> dict:
+        return {
+            "recommendation_enabled": bool(item.recommendation_enabled),
+            "recommendation_mode": item.recommendation_mode or "manual",
+            "recommendation_interval_days": item.recommendation_interval_days,
+            "recommendation_base_quantity": Decimal(item.recommendation_base_quantity or 1),
+            "recommendation_next_date": item.recommendation_next_date,
+            "recommendation_snoozed_until": item.recommendation_snoozed_until,
         }
 
     def _normalize_item_template_fields(self, *, shop_name: str | None, name: str | None) -> tuple[str | None, str]:

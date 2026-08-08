@@ -526,6 +526,23 @@
     operationModal.setCreateModalActivity?.(null, null);
   }
 
+  async function openCreatePlanWithReceiptItem(item = {}) {
+    await openCreatePlan();
+    hydrateCreateReceiptItems([{
+      category_id: item.category_id || null,
+      shop_name: item.shop_name || "",
+      name: item.name || "",
+      quantity: item.base_quantity || item.quantity || 1,
+      unit_price: item.latest_unit_price || item.unit_price || 0,
+    }]);
+    operationModal.setCreateOperationMode("receipt");
+    const scheduledDate = item.effective_date || item.next_date || core.getTodayIso();
+    core.syncDateFieldValue(document.getElementById("opDate"), scheduledDate < core.getTodayIso() ? core.getTodayIso() : scheduledDate);
+    operationModal.renderReceiptItems?.("create");
+    operationModal.renderReceiptSummary?.("create");
+    operationModal.updateCreatePreview?.();
+  }
+
   async function openPlanEdit(planId) {
     const item = await core.requestJson(`/api/v1/plans/${Number(planId)}`, {
       headers: core.authHeaders(),
@@ -728,6 +745,7 @@
     openDashboardPlansPeriodPopover,
     applyPlansSearch,
     openCreatePlan,
+    openCreatePlanWithReceiptItem,
     openPlanEdit,
     submitPlanForm,
     handlePlanActionClick,

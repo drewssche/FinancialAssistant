@@ -188,6 +188,24 @@ def page_with_money_flow_api_mock():
             "can_open_source": False,
         },
     ]
+    recommendations = [
+        {
+            "template_id": 501,
+            "shop_name": "Корона",
+            "name": "Пачка сигарет",
+            "category_id": None,
+            "latest_unit_price": "6.60",
+            "last_purchase_date": "2026-02-20",
+            "last_quantity": "10.000",
+            "interval_days": 9,
+            "base_quantity": "10.000",
+            "next_date": "2026-03-01",
+            "effective_date": "2026-03-01",
+            "days_until": -7,
+            "status": "overdue",
+            "explanation": "Последняя покупка: 10 · расчётный запас на 9 дн.",
+        }
+    ]
     debt_cards = [
         {
             "counterparty_id": 1,
@@ -285,6 +303,8 @@ def page_with_money_flow_api_mock():
             return json_response(route, {"income_total": "0.00", "expense_total": "0.00", "balance": "0.00"})
         if path == "/api/v1/operations" and method == "GET":
             return json_response(route, {"items": operations, "total": len(operations), "page": 1, "page_size": 20})
+        if path == "/api/v1/operations/item-recommendations" and method == "GET":
+            return json_response(route, recommendations)
         if path == "/api/v1/operations/1" and method == "GET":
             return json_response(route, {
                 "id": 1,
@@ -408,6 +428,32 @@ def _open_app(page, static_server_url: str):
             # Telegram auto-login may hide the button between the visibility check and click.
             pass
     page.wait_for_selector("#appShell:not(.hidden)")
+
+
+@pytest.mark.e2e
+def test_dashboard_recommendation_opens_prefilled_receipt(static_server_url: str, page_with_money_flow_api_mock):
+    page = page_with_money_flow_api_mock
+    _open_app(page, static_server_url)
+
+    card = page.locator('[data-recommendation-template-id="501"]')
+    card.wait_for()
+    assert "Пачка сигарет" in (card.text_content() or "")
+    assert "Просрочено на 7 дн." in (card.text_content() or "")
+    card.locator('button[data-recommendation-action="receipt"]').click()
+
+    page.wait_for_selector("#createModal:not(.hidden)")
+    page.wait_for_selector("#opReceiptFields:not(.hidden)")
+    first_row = page.locator("#receiptItemsList .receipt-item-row").first
+    assert first_row.locator('[data-receipt-field="shop_name"]').input_value() == "Корона"
+    assert first_row.locator('[data-receipt-field="name"]').input_value() == "Пачка сигарет"
+    assert first_row.locator('[data-receipt-field="quantity"]').input_value() == "10"
+
+    page.locator("#closeCreateModalBtn").click()
+    card.locator('button[data-recommendation-action="plan"]').click()
+    page.wait_for_selector("#createModal:not(.hidden)")
+    page.wait_for_function("() => window.App.state.createFlowMode === 'plan'")
+    plan_row = page.locator("#receiptItemsList .receipt-item-row").first
+    assert plan_row.locator('[data-receipt-field="name"]').input_value() == "Пачка сигарет"
 
 
 @pytest.mark.e2e

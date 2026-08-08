@@ -45,6 +45,26 @@
               <button class="date-input-trigger" type="button" data-date-picker-trigger="itemTemplatePriceDate" aria-label="Открыть календарь"></button>
             </div>
           </div>
+          <section class="item-template-recommendation-settings">
+            <label class="settings-toggle-row" for="itemTemplateRecommendationEnabled">
+              <span>
+                <strong>Предлагать купить снова</strong>
+                <small>На главной будет видна расчётная дата следующей покупки</small>
+              </span>
+              <input id="itemTemplateRecommendationEnabled" type="checkbox" />
+            </label>
+            <div id="itemTemplateRecommendationFields" class="form-grid form-grid-2 hidden">
+              <label>
+                <span class="muted-small">На сколько дней хватает</span>
+                <input id="itemTemplateRecommendationInterval" type="number" min="1" max="3650" step="1" inputmode="numeric" placeholder="Например, 9" />
+              </label>
+              <label>
+                <span class="muted-small">При количестве</span>
+                <input id="itemTemplateRecommendationQuantity" type="number" min="0.001" max="100000" step="0.001" inputmode="decimal" placeholder="Например, 10" />
+              </label>
+            </div>
+            <p id="itemTemplateRecommendationHint" class="muted-small hidden"></p>
+          </section>
         </form>
         <div class="preview-panel">
           <div class="preview-title">Превью строки в каталоге</div>

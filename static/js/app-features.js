@@ -182,6 +182,7 @@
   const submitSourceGroupForm = itemCatalogFeatures.submitSourceGroupForm;
   const deleteItemSourceFlow = itemCatalogFeatures.deleteItemSourceFlow;
   const updateItemTemplatePreview = itemCatalogFeatures.updateItemTemplatePreview;
+  const syncItemTemplateRecommendationUi = itemCatalogFeatures.syncItemTemplateRecommendationUi;
   const handleItemTemplateSourceSearchFocus = itemCatalogFeatures.handleItemTemplateSourceSearchFocus;
   const handleItemTemplateSourceSearchInput = itemCatalogFeatures.handleItemTemplateSourceSearchInput;
   const handleItemTemplateSourceSearchKeydown = itemCatalogFeatures.handleItemTemplateSourceSearchKeydown;
@@ -407,6 +408,7 @@
     submitSourceGroupForm,
     deleteItemSourceFlow,
     updateItemTemplatePreview,
+    syncItemTemplateRecommendationUi,
     handleItemTemplateSourceSearchFocus,
     handleItemTemplateSourceSearchInput,
     handleItemTemplateSourceSearchKeydown,

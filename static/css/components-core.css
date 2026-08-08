@@ -626,6 +626,72 @@
   max-width: 10.5rem;
 }
 
+.recommendation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 12px;
+}
+
+.recommendation-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.recommendation-card-head,
+.recommendation-card-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.recommendation-card-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.recommendation-card-actions {
+  justify-content: flex-start;
+}
+
+.recommendation-due-overdue {
+  color: var(--danger);
+}
+
+.recommendation-due-due {
+  color: var(--accent-2);
+}
+
+.item-template-recommendation-settings {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.settings-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.settings-toggle-row span {
+  display: grid;
+  gap: 4px;
+}
+
+.settings-toggle-row small {
+  color: var(--muted);
+}
+
 .plan-card {
   --plan-card-rail: rgba(105, 190, 166, 0.72);
   display: grid;

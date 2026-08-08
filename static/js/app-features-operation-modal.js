@@ -520,6 +520,23 @@
     updateCreatePreview();
     el.createModal.classList.remove("hidden");
   }
+
+  async function openCreateReceiptWithItem(item = {}) {
+    await openCreateModal();
+    setOperationKind("create", "expense");
+    state.createReceiptItems = [createReceiptDraft({
+      template_id: item.template_id || item.id || null,
+      category_id: item.category_id || null,
+      shop_name: item.shop_name || "",
+      name: item.name || "",
+      quantity: item.base_quantity || item.quantity || 1,
+      unit_price: item.latest_unit_price || item.unit_price || 0,
+    }, "create")];
+    setCreateOperationMode("receipt");
+    renderReceiptItems("create");
+    renderReceiptSummary("create");
+    updateCreatePreview();
+  }
   function closeCreateModal() {
     window.App.getRuntimeModule?.("finance-calculator")?.closeIfAttachedToModal?.(el.createModal);
     state.createFlowMode = "operation";
@@ -858,6 +875,7 @@
     applyDebtCurrencyUi,
     updateDebtDueHint,
     openCreateModal,
+    openCreateReceiptWithItem,
     setCreateModalActivity,
     openCreateModalForCurrency,
     openCreateModalForCurrencyEdit,
