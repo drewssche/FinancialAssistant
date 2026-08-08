@@ -1713,11 +1713,15 @@ def test_operation_item_templates_are_scoped_by_shop(client: TestClient):
 
 
 def test_operation_item_templates_crud(client: TestClient):
+    category = client.post("/api/v1/categories", json={"name": "Табак", "kind": "expense"})
+    assert category.status_code == 200
+    category_id = category.json()["id"]
     created = client.post(
         "/api/v1/operations/item-templates",
         json={
             "shop_name": "Соседи",
             "name": "Ротманс",
+            "last_category_id": category_id,
             "latest_unit_price": "6.60",
             "latest_price_date": "2026-03-05",
         },
@@ -1727,6 +1731,7 @@ def test_operation_item_templates_crud(client: TestClient):
     template_id = created_payload["id"]
     assert created_payload["shop_name"] == "Соседи"
     assert created_payload["name"] == "Ротманс"
+    assert created_payload["last_category_id"] == category_id
     assert created_payload["latest_unit_price"] == "6.60"
     assert created_payload["latest_price_date"] == "2026-03-05"
 
@@ -1735,6 +1740,7 @@ def test_operation_item_templates_crud(client: TestClient):
         json={
             "shop_name": "Кафе",
             "name": "Ротманс синий",
+            "last_category_id": None,
             "latest_unit_price": "6.90",
             "latest_price_date": "2026-03-06",
         },
@@ -1743,6 +1749,7 @@ def test_operation_item_templates_crud(client: TestClient):
     updated_payload = updated.json()
     assert updated_payload["shop_name"] == "Кафе"
     assert updated_payload["name"] == "Ротманс синий"
+    assert updated_payload["last_category_id"] is None
     assert updated_payload["latest_unit_price"] == "6.90"
     assert updated_payload["latest_price_date"] == "2026-03-06"
 

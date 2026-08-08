@@ -27,6 +27,15 @@
             </div>
           </div>
           <input id="itemTemplateName" type="text" placeholder="Позиция" required />
+          <input id="itemTemplateCategory" type="hidden" />
+          <div id="itemTemplateCategoryField" class="create-category-field">
+            <input id="itemTemplateCategorySearch" type="text" placeholder="Категория позиции" autocomplete="off" />
+            <div id="itemTemplateCategoryPickerBlock" class="operation-category-picker app-popover hidden">
+              <div class="category-picker-block">
+                <div id="itemTemplateCategoryAll" class="category-chip-list"></div>
+              </div>
+            </div>
+          </div>
           <div class="form-grid form-grid-2 item-template-price-grid">
             <div id="itemTemplatePriceField" class="money-input-wrap" data-money-input-wrap>
               <input id="itemTemplatePrice" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" />
@@ -45,6 +54,7 @@
                 <tr>
                   <th>Источник</th>
                   <th>Позиция</th>
+                  <th>Категория</th>
                   <th>Последняя цена</th>
                 </tr>
               </thead>

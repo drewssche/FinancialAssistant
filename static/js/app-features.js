@@ -188,6 +188,11 @@
   const handleItemTemplateSourcePickerClick = itemCatalogFeatures.handleItemTemplateSourcePickerClick;
   const handleItemTemplateSourceOutsidePointer = itemCatalogFeatures.handleItemTemplateSourceOutsidePointer;
   const handleItemTemplateSourceSearchFocusOut = itemCatalogFeatures.handleItemTemplateSourceSearchFocusOut;
+  const handleItemTemplateCategorySearchFocus = itemCatalogFeatures.handleItemTemplateCategorySearchFocus;
+  const handleItemTemplateCategorySearchInput = itemCatalogFeatures.handleItemTemplateCategorySearchInput;
+  const handleItemTemplateCategorySearchKeydown = itemCatalogFeatures.handleItemTemplateCategorySearchKeydown;
+  const handleItemTemplateCategoryPickerClick = itemCatalogFeatures.handleItemTemplateCategoryPickerClick;
+  const handleItemTemplateCategorySearchFocusOut = itemCatalogFeatures.handleItemTemplateCategorySearchFocusOut;
   const openItemTemplateHistoryModal = itemCatalogFeatures.openItemTemplateHistoryModal;
   const closeItemTemplateHistoryModal = itemCatalogFeatures.closeItemTemplateHistoryModal;
   const cleanupItemCatalogRuntime = itemCatalogFeatures.cleanupItemCatalogRuntime;
@@ -408,6 +413,11 @@
     handleItemTemplateSourcePickerClick,
     handleItemTemplateSourceOutsidePointer,
     handleItemTemplateSourceSearchFocusOut,
+    handleItemTemplateCategorySearchFocus,
+    handleItemTemplateCategorySearchInput,
+    handleItemTemplateCategorySearchKeydown,
+    handleItemTemplateCategoryPickerClick,
+    handleItemTemplateCategorySearchFocusOut,
     openItemTemplateHistoryModal,
     closeItemTemplateHistoryModal,
     refreshOperationsView,

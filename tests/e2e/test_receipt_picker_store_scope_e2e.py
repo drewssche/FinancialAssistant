@@ -119,6 +119,7 @@ def page_with_receipt_api_mock():
             "id": 1,
             "shop_name": "Соседи",
             "name": "Ротманс",
+            "last_category_id": 101,
             "latest_unit_price": "6.60",
         },
         {
@@ -185,6 +186,17 @@ def page_with_receipt_api_mock():
             start = (page - 1) * page_size
             end = start + page_size
             return json_response(route, {"items": items[start:end], "total": len(items), "page": page, "page_size": page_size})
+        if path.startswith("/api/v1/operations/item-templates/") and method == "PATCH":
+            template_id = int(path.rsplit("/", 1)[-1])
+            item = next((row for row in templates if int(row["id"]) == template_id), None)
+            if item is None:
+                return json_response(route, {"detail": "not found"}, status=404)
+            item.update(json.loads(request.post_data or "{}"))
+            return json_response(route, item)
+        if path.startswith("/api/v1/operations/item-templates/") and method == "DELETE":
+            template_id = int(path.rsplit("/", 1)[-1])
+            templates[:] = [row for row in templates if int(row["id"]) != template_id]
+            return route.fulfill(status=204, body="")
 
         return json_response(route, {"detail": f"Unhandled mock route: {method} {path}"}, status=404)
 
@@ -422,6 +434,80 @@ def test_item_catalog_loads_templates_beyond_first_page(static_server_url: str, 
     page.wait_for_function("() => (window.App?.state?.itemCatalogItems || []).length >= 127")
 
     assert page.locator("#itemCatalogBody").get_by_text("Дальняя позиция").first.is_visible()
+
+
+@pytest.mark.e2e
+def test_item_catalog_shows_and_edits_template_category(static_server_url: str, page_with_receipt_api_mock):
+    page = page_with_receipt_api_mock
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    _login(page)
+    _ensure_categories_loaded(page)
+    page.click("button[data-section='item_catalog']")
+    page.wait_for_selector("#itemCatalogSection:not(.hidden)")
+
+    row = page.locator('tr[data-item-template-open-id="1"]')
+    assert "Еда" in (row.text_content() or "")
+    row.click()
+    page.wait_for_selector("#itemTemplateModal:not(.hidden)")
+    assert page.locator("#itemTemplateCategorySearch").input_value() == "Еда"
+
+    page.click("#itemTemplateCategorySearch")
+    page.locator('#itemTemplateCategoryAll button[data-item-template-category-id="102"]').click()
+    page.click("#submitItemTemplateBtn")
+    page.wait_for_function(
+        "() => (window.App.state.itemCatalogItems || []).find((item) => Number(item.id) === 1)?.last_category_id === 102"
+    )
+
+    assert "Транспорт" in (page.locator('tr[data-item-template-open-id="1"]').text_content() or "")
+
+
+@pytest.mark.e2e
+def test_deleting_item_catalog_source_archives_its_templates_instead_of_moving_them(
+    static_server_url: str,
+    page_with_receipt_api_mock,
+):
+    page = page_with_receipt_api_mock
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    _login(page)
+    page.click("button[data-section='item_catalog']")
+    page.wait_for_function("() => (window.App?.state?.itemCatalogItems || []).length >= 127")
+
+    page.evaluate("() => window.App.actions.deleteItemSourceFlow('Соседи')")
+    page.wait_for_selector("#confirmModal:not(.hidden)")
+    assert "1 поз." in page.locator("#confirmText").inner_text()
+    page.click("#confirmDeleteBtn")
+    page.wait_for_function(
+        "() => !(window.App?.state?.itemCatalogItems || []).some((item) => item.shop_name === 'Соседи')"
+    )
+
+    assert page.locator('tr[data-item-template-open-id="1"]').count() == 0
+    assert page.locator('tr[data-item-template-open-id="2"]').count() == 1
 
 
 @pytest.mark.e2e

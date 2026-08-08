@@ -142,11 +142,32 @@ def page_with_money_flow_api_mock():
                 {
                     "name": "Кофе",
                     "quantity": "1.000",
-                    "unit_price": "70.00",
-                    "line_total": "70.00",
+                    "unit_price": "20.00",
+                    "regular_unit_price": "25.00",
+                    "is_discounted": True,
+                    "line_total": "20.00",
                     "shop_name": "Кофейня",
                     "category_id": None,
-                }
+                    "category_name": "Напитки",
+                },
+                {
+                    "name": "Сэндвич",
+                    "quantity": "1.000",
+                    "unit_price": "20.00",
+                    "line_total": "20.00",
+                    "shop_name": "Кофейня",
+                    "category_id": None,
+                    "category_name": "Перекус",
+                },
+                {
+                    "name": "Яблоки",
+                    "quantity": "1.000",
+                    "unit_price": "30.00",
+                    "line_total": "30.00",
+                    "shop_name": "Кофейня",
+                    "category_id": None,
+                    "category_name": "Фрукты",
+                },
             ],
         },
         {
@@ -518,6 +539,30 @@ def test_operations_receipt_chip_opens_same_positions_modal_as_kebab(
 
     page.wait_for_selector("#operationReceiptModal:not(.hidden)")
     assert "Кофе" in page.locator("#operationReceiptModal").inner_text()
+
+
+@pytest.mark.e2e
+def test_operation_row_shows_receipt_categories_discount_and_clean_source(
+    static_server_url: str,
+    page_with_money_flow_api_mock,
+):
+    page = page_with_money_flow_api_mock
+    _open_app(page, static_server_url)
+
+    page.click("button[data-section='operations']")
+    page.wait_for_selector("#operationsSection:not(.hidden)")
+    row = page.locator(
+        "#operationsBody tr[data-money-flow-source='operation'][data-money-flow-source-id='1']"
+    )
+    context = row.locator('td[data-label="Контекст"]')
+    source = row.locator('td[data-label="Источник"]')
+
+    assert "Напитки" in (context.text_content() or "")
+    assert "Перекус" in (context.text_content() or "")
+    assert "Фрукты" in (context.text_content() or "")
+    assert "Скидка чека −6.7%" in (context.text_content() or "")
+    assert "Операция" in (source.text_content() or "")
+    assert "Без категории" not in (source.text_content() or "")
 
 
 @pytest.mark.e2e

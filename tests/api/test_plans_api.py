@@ -369,7 +369,7 @@ def test_discounted_plan_receipt_item_does_not_update_latest_price(client: TestC
     assert payload["items"][0]["latest_unit_price"] == "6.80"
 
 
-def test_item_catalog_backfills_from_existing_plan_receipt_items(client: TestClient):
+def test_deleted_item_catalog_template_is_not_restored_by_reading_old_plan_receipts(client: TestClient):
     reset_cache_for_tests()
     category_resp = client.post("/api/v1/categories", json={"name": "Фриланс", "kind": "income"})
     assert category_resp.status_code == 200
@@ -388,6 +388,7 @@ def test_item_catalog_backfills_from_existing_plan_receipt_items(client: TestCli
         },
     )
     assert created.status_code == 201
+    plan_id = created.json()["id"]
 
     cleared = client.delete("/api/v1/operations/item-templates")
     assert cleared.status_code == 200
@@ -396,8 +397,22 @@ def test_item_catalog_backfills_from_existing_plan_receipt_items(client: TestCli
     catalog = client.get("/api/v1/operations/item-templates", params={"page": 1, "page_size": 20, "q": "Подработка"})
     assert catalog.status_code == 200
     payload = catalog.json()
-    assert payload["total"] >= 1
-    assert any(item["shop_name"] == "Подработка" and item["name"] == "Проект" for item in payload["items"])
+    assert payload["total"] == 0
+
+    updated = client.patch(
+        f"/api/v1/plans/{plan_id}",
+        json={
+            "receipt_items": [
+                {"shop_name": "Новый источник", "name": "Проект", "quantity": "1", "unit_price": "800.00"},
+            ],
+        },
+    )
+    assert updated.status_code == 200
+
+    refreshed = client.get("/api/v1/operations/item-templates", params={"page": 1, "page_size": 20, "q": "Проект"})
+    assert refreshed.status_code == 200
+    assert refreshed.json()["total"] == 1
+    assert refreshed.json()["items"][0]["shop_name"] == "Новый источник"
 
 
 def test_plans_list_and_history_cache_are_invalidated_after_plan_mutation(client: TestClient):

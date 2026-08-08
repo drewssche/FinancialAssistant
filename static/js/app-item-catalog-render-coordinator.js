@@ -157,7 +157,7 @@
     }
     if (!groups.length) {
       syncItemCatalogControls({ el, queryActive, hasRows: false });
-      el.itemCatalogBody.innerHTML = '<tr><td colspan="4">Нет позиций</td></tr>';
+      el.itemCatalogBody.innerHTML = '<tr><td colspan="5">Нет позиций</td></tr>';
       return;
     }
     syncItemCatalogControls({ el, queryActive, hasRows: true });
@@ -170,10 +170,18 @@
       const sourceActions = renderContextActions("item_source", group, escapeHtml);
       const childRows = group.items.map((item) => {
         const itemActions = renderContextActions("item_template", item, escapeHtml);
+        const category = (state.categories || []).find((row) => Number(row?.id || 0) === Number(item?.last_category_id || 0));
+        const categoryHtml = category?.name
+          ? core.renderCategoryChip({
+            name: category.name,
+            icon: category.icon || category.group_icon || null,
+            accent_color: category.group_accent_color || null,
+          }, query)
+          : "<span class='muted-small'>Без категории</span>";
         if (compactMobile) {
           return `
             <tr class="item-catalog-item-row table-hierarchy-child-row item-catalog-mobile-item-row table-record-open-row ${isCollapsed ? "hidden" : ""}" data-item-template-row="1" data-item-template-open-id="${item.id}">
-              <td colspan="4" class="item-catalog-mobile-item-cell">
+              <td colspan="5" class="item-catalog-mobile-item-cell">
                 <div class="item-catalog-mobile-item-card">
                   <div class="item-catalog-mobile-item-head">
                     <div class="item-catalog-mobile-item-title">${core.highlightText(item.name || "—", query)}</div>
@@ -193,6 +201,10 @@
                       <span class="muted-small">Цена</span>
                       <strong>${core.formatMoney(item.latest_unit_price || 0)}</strong>
                     </div>
+                    <div class="item-catalog-mobile-item-meta">
+                      <span class="muted-small">Категория</span>
+                      ${categoryHtml}
+                    </div>
                   </div>
                 </div>
               </td>
@@ -203,6 +215,7 @@
           <tr class="item-catalog-item-row table-hierarchy-child-row table-record-open-row ${isCollapsed ? "hidden" : ""}" data-item-template-row="1" data-item-template-open-id="${item.id}">
             <td class="item-catalog-source-context-cell" data-label="Источник"><span class="hierarchy-child-label">↳ ${core.highlightText(group.shopName, query)}</span></td>
             <td data-label="Позиция">${core.highlightText(item.name || "—", query)}</td>
+            <td data-label="Категория">${categoryHtml}</td>
             <td data-label="Цена">${core.formatMoney(item.latest_unit_price || 0)}</td>
             <td class="mobile-actions-cell table-kebab-cell" data-label="Действия">
               ${core.renderInlineKebabMenu?.(
@@ -217,13 +230,13 @@
       }).join("");
       const emptyRow = !group.items.length && !isCollapsed
         ? compactMobile
-          ? `<tr class="item-catalog-item-row item-catalog-mobile-item-row"><td colspan="4" class="item-catalog-mobile-item-cell"><div class="item-catalog-mobile-empty muted-small">Позиции в источнике пока не добавлены</div></td></tr>`
-          : `<tr class="item-catalog-item-row"><td data-label="Источник">${core.highlightText(group.shopName, query)}</td><td data-label="Позиция" colspan="3" class="muted-small">Позиции в источнике пока не добавлены</td></tr>`
+          ? `<tr class="item-catalog-item-row item-catalog-mobile-item-row"><td colspan="5" class="item-catalog-mobile-item-cell"><div class="item-catalog-mobile-empty muted-small">Позиции в источнике пока не добавлены</div></td></tr>`
+          : `<tr class="item-catalog-item-row"><td data-label="Источник">${core.highlightText(group.shopName, query)}</td><td data-label="Позиция" colspan="4" class="muted-small">Позиции в источнике пока не добавлены</td></tr>`
         : "";
       if (compactMobile) {
         return `
           <tr class="item-catalog-group-row table-hierarchy-parent-row item-catalog-mobile-group-row">
-            <td colspan="4" class="item-catalog-group-cell item-catalog-mobile-group-cell">
+            <td colspan="5" class="item-catalog-group-cell item-catalog-mobile-group-cell">
               <div class="item-catalog-mobile-group-card">
                 <div class="item-catalog-mobile-group-head">
                   <button type="button" class="item-catalog-group-btn item-catalog-mobile-group-toggle" data-item-catalog-shop-key="${encodeURIComponent(group.shopKey)}" ${queryActive ? "disabled" : ""}>
@@ -258,7 +271,7 @@
       }
       return `
         <tr class="item-catalog-group-row table-hierarchy-parent-row">
-          <td colspan="4" class="item-catalog-group-cell">
+          <td colspan="5" class="item-catalog-group-cell">
             <div class="category-table-group-wrap item-catalog-source-wrap">
               <div class="category-table-group-content">
                 <div class="category-table-group-title">

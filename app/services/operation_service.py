@@ -857,6 +857,7 @@ class OperationService:
         user_id: int,
         shop_name: str | None,
         name: str,
+        last_category_id: int | None,
         latest_unit_price: Decimal | None,
         latest_price_date: date | None = None,
     ) -> dict:
@@ -864,6 +865,7 @@ class OperationService:
             user_id=user_id,
             shop_name=shop_name,
             name=name,
+            last_category_id=last_category_id,
             latest_unit_price=latest_unit_price,
             latest_price_date=latest_price_date,
         )

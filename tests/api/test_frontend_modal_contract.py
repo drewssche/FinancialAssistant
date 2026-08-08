@@ -205,7 +205,9 @@ def test_receipt_line_total_live_update_keeps_currency_symbol():
 def test_receipt_discount_ui_uses_discount_copy_and_prefills_regular_price():
     receipt = (REPO_ROOT / "static" / "js" / "app-features-operation-modal-receipt.js").read_text(encoding="utf-8")
 
-    assert ">Скидка</button>" in receipt
+    assert "receiptDiscountToggleLabel(item)" in receipt
+    assert "Скидка −${Number(percent.toFixed(1))}%" in receipt
+    assert 'return "Скидка —%"' in receipt
     assert "title=\"Скидка, купон, промокод или бонусы\"" in receipt
     assert 'type="text" inputmode="decimal" data-receipt-field="unit_price"' in receipt
     assert 'data-receipt-field="regular_unit_price"' in receipt
@@ -217,6 +219,21 @@ def test_receipt_discount_ui_uses_discount_copy_and_prefills_regular_price():
     assert "Баллы" in receipt
     assert "if (latestPrice > 0)" in receipt
     assert "latestPrice > asMoney(item.unit_price || 0)" not in receipt
+
+
+def test_item_catalog_exposes_category_picker_and_discount_summary():
+    modal = (REPO_ROOT / "static/js/templates/modals-item-catalog.js").read_text(encoding="utf-8")
+    feature = (REPO_ROOT / "static/js/app-features-item-catalog-modal.js").read_text(encoding="utf-8")
+    renderer = (REPO_ROOT / "static/js/app-renderers.js").read_text(encoding="utf-8")
+    sources = (REPO_ROOT / "static/js/app-features-item-catalog-sources.js").read_text(encoding="utf-8")
+
+    assert 'id="itemTemplateCategorySearch"' in modal
+    assert 'id="itemTemplateCategoryPickerBlock"' in modal
+    assert "last_category_id: Number(el.itemTemplateCategory?.value || 0) || null" in feature
+    assert "Скидка чека −${Number(discount.percent.toFixed(1))}%" in renderer
+    assert 'eventChips.push(renderMetaChip(title, "neutral"))' not in renderer
+    assert 'method: "DELETE"' in sources
+    assert 'body: JSON.stringify({ shop_name: null })' not in sources
 
 
 def test_reopened_discounted_receipt_uses_purchase_price_for_total_and_discrepancy():

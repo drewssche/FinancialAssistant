@@ -295,6 +295,7 @@ def test_create_operation_receipt_discount_math_and_type_payload(static_server_u
             assert unit_price.input_value() == "114.90"
             assert regular_price.input_value() == "129.90"
             assert first_row.locator('button[data-receipt-discount-type="coupon"]').get_attribute("aria-pressed") == "true"
+            assert first_row.locator('button[data-receipt-discount-toggle]').inner_text() == "Скидка −11.5%"
 
             page.click("#submitCreateOperationBtn")
             page.wait_for_timeout(300)

@@ -97,6 +97,34 @@
     return `<span class="meta-chip meta-chip-${escapeHtml(tone)}">${escapeHtml(label)}</span>`;
   }
 
+  function getReceiptDiscountSummary(receiptItems) {
+    let hasDiscount = false;
+    let purchaseTotal = 0;
+    let regularTotal = 0;
+    for (const row of Array.isArray(receiptItems) ? receiptItems : []) {
+      const quantity = Number(row.quantity || 0);
+      const purchasePrice = Number(row.unit_price || 0);
+      const regularPrice = Number(row.regular_unit_price || 0);
+      if (!(quantity > 0 && purchasePrice > 0)) {
+        continue;
+      }
+      const hasValidDiscount = Boolean(row?.is_discounted) && regularPrice > purchasePrice;
+      hasDiscount = hasDiscount || Boolean(row?.is_discounted);
+      purchaseTotal += purchasePrice * quantity;
+      regularTotal += (hasValidDiscount ? regularPrice : purchasePrice) * quantity;
+    }
+    if (!hasDiscount) {
+      return null;
+    }
+    if (!(regularTotal > purchaseTotal && regularTotal > 0)) {
+      return { percent: null, savings: 0 };
+    }
+    return {
+      percent: ((regularTotal - purchaseTotal) / regularTotal) * 100,
+      savings: regularTotal - purchaseTotal,
+    };
+  }
+
   function renderOperationContextChips(item) {
     const chips = [];
     const hasReceiptItems = Array.isArray(item?.receipt_items) && item.receipt_items.length > 0;
@@ -107,6 +135,13 @@
       chips.push(
         `<button class="meta-chip-btn meta-chip-btn-neutral" type="button" data-receipt-view-id="${operationId}">Чек</button>`,
       );
+      const discount = getReceiptDiscountSummary(item.receipt_items);
+      if (discount) {
+        const percentLabel = discount.percent === null
+          ? "Есть скидка"
+          : `Скидка чека −${Number(discount.percent.toFixed(1))}%`;
+        chips.push(renderMetaChip(percentLabel, "positive"));
+      }
     }
     if (hasFxSettlement) {
       chips.push(renderMetaChip(settlementCurrency ? `Валютная карта · ${settlementCurrency}` : "Валютная карта", "info"));
@@ -415,7 +450,6 @@
     } else if (sourceKind === "fx") {
       eventChips.push(renderMetaChip(String(item?.trade_side || "") === "sell" ? "FX: Продажа" : "FX: Покупка", eventTone));
     } else {
-      eventChips.push(renderMetaChip(title, "neutral"));
       if (item?.has_fx_settlement) {
         const settlementCurrency = String(item?.settlement_asset_currency || "").toUpperCase();
         eventChips.push(renderMetaChip(settlementCurrency ? `Валютная карта · ${settlementCurrency}` : "Валютная карта", "info"));
@@ -527,6 +561,7 @@
     renderCategoryChip,
     renderCategoryChipList,
     getReceiptCategoryMetas,
+    getReceiptDiscountSummary,
     renderMetaChip,
     renderInlineKebabMenu,
     createOperationRow,

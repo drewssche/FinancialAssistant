@@ -192,7 +192,11 @@
     return (Array.isArray(items) ? items : []).filter((item) => {
       const name = String(item?.name || "").toLowerCase();
       const source = String(item?.shop_name || "").toLowerCase();
-      return name.includes(query) || source.includes(query);
+      const category = (state.categories || []).find(
+        (row) => Number(row?.id || 0) === Number(item?.last_category_id || 0),
+      );
+      const categoryName = String(category?.name || "").toLowerCase();
+      return name.includes(query) || source.includes(query) || categoryName.includes(query);
     });
   }
 
@@ -220,6 +224,9 @@
   }
 
   async function loadItemCatalog(options = {}) {
+    if (!(state.categories || []).length) {
+      await window.App.getRuntimeModule?.("category-actions")?.loadCategories?.();
+    }
     const force = options.force === true;
     const query = String(el.itemCatalogSearchQ?.value || "").trim();
     if (query && !force && itemCatalogBaseTotal > 0 && itemCatalogBaseItems.length >= itemCatalogBaseTotal) {
@@ -336,6 +343,11 @@
     handleItemTemplateSourcePickerClick: itemCatalogModal.handleItemTemplateSourcePickerClick,
     handleItemTemplateSourceOutsidePointer: itemCatalogModal.handleItemTemplateSourceOutsidePointer,
     handleItemTemplateSourceSearchFocusOut: itemCatalogModal.handleItemTemplateSourceSearchFocusOut,
+    handleItemTemplateCategorySearchFocus: itemCatalogModal.handleItemTemplateCategorySearchFocus,
+    handleItemTemplateCategorySearchInput: itemCatalogModal.handleItemTemplateCategorySearchInput,
+    handleItemTemplateCategorySearchKeydown: itemCatalogModal.handleItemTemplateCategorySearchKeydown,
+    handleItemTemplateCategoryPickerClick: itemCatalogModal.handleItemTemplateCategoryPickerClick,
+    handleItemTemplateCategorySearchFocusOut: itemCatalogModal.handleItemTemplateCategorySearchFocusOut,
     openItemTemplateHistoryModal: itemCatalogModal.openItemTemplateHistoryModal,
     closeItemTemplateHistoryModal: itemCatalogModal.closeItemTemplateHistoryModal,
     cleanupItemCatalogRuntime,

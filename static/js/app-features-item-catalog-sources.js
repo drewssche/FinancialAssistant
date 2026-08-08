@@ -173,14 +173,13 @@
         return;
       }
       core.runDestructiveAction({
-        confirmMessage: `Удалить источник «${normalized}»? Позиции останутся, но перейдут в «Без источника».`,
+        confirmMessage: `Удалить источник «${normalized}» и ${matchedSourceItemCount(normalized)} поз.? История операций сохранится.`,
         doDelete: async () => {
           const matchedItems = (state.itemCatalogItems || []).filter((item) => getItemCatalogShopKey(item.shop_name || "") === getItemCatalogShopKey(normalized));
           for (const item of matchedItems) {
             await core.requestJson(`/api/v1/operations/item-templates/${item.id}`, {
-              method: "PATCH",
+              method: "DELETE",
               headers: core.authHeaders(),
-              body: JSON.stringify({ shop_name: null }),
             });
           }
           writeItemCatalogSourceGroups(
@@ -195,6 +194,11 @@
         toastMessage: "Источник удален",
         onDeleteError: "Не удалось удалить источник",
       });
+    }
+
+    function matchedSourceItemCount(sourceName) {
+      const sourceKey = getItemCatalogShopKey(sourceName || "");
+      return (state.itemCatalogItems || []).filter((item) => getItemCatalogShopKey(item.shop_name || "") === sourceKey).length;
     }
 
     async function openItemTemplateHistoryModal(item) {

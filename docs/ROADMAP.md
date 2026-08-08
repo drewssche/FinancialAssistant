@@ -12,6 +12,13 @@
 - Keep Telegram-specific behavior in the client runtime; backend contracts stay shared between Web UI and Telegram.
 
 ## Current Sprint
+### Repeat Purchase Recommendations
+- [ ] P2: add a `Пора купить снова` recommendation block based on receipt positions.
+  - Store per-template settings: enabled state, automatic/manual mode, manual interval, quantity scaling, snooze state, and the next recommendation date.
+  - For automatic mode, estimate consumption from at least 2-3 purchases using quantity-normalized median intervals and a confidence score; keep sensitive products such as cigarettes opt-in.
+  - Show item, source, last price, due date, and a short explanation. Provide actions to add the item to a receipt or plan, snooze it, disable future suggestions, and open the catalog card.
+  - Start with a deterministic manual-interval MVP, then enable automatic cadence only when enough purchase history exists.
+
 ### Technical Debt Audit 2026-07-16
 - [x] Complete a read-only audit of data integrity, background delivery, deployment, performance, security, observability, and test coverage. Baseline: non-E2E tests pass; the isolated Telegram login-readiness race found by the combined browser run is fixed and covered by deterministic smoke CI.
 - [x] P0: make operation rollback lossless and transactional.

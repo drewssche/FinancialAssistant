@@ -237,6 +237,7 @@ def create_operation_item_template(
             user_id=user_id,
             shop_name=payload.shop_name,
             name=payload.name,
+            last_category_id=payload.last_category_id,
             latest_unit_price=payload.latest_unit_price,
             latest_price_date=payload.latest_price_date,
         )

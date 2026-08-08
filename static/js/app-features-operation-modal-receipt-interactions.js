@@ -14,6 +14,7 @@
       renderReceiptItems,
       renderReceiptSummary,
       receiptLineTotal,
+      receiptDiscountToggleLabel,
       formatReceiptMoney,
       removeReceiptItem,
       updateCreatePreview,
@@ -102,6 +103,10 @@
         const totalCell = row.querySelector(".receipt-line-total");
         if (totalCell) {
           totalCell.innerHTML = `<span>Итого</span><strong>${formatReceiptMoney(receiptLineTotal(updated.item), mode)}</strong>`;
+        }
+        const discountToggle = row.querySelector("button[data-receipt-discount-toggle]");
+        if (discountToggle && receiptDiscountToggleLabel) {
+          discountToggle.textContent = receiptDiscountToggleLabel(updated.item);
         }
       }
       if (field === "category_search") {

@@ -385,6 +385,16 @@
         }
       });
     }
+    if (el.itemTemplateCategorySearch) {
+      el.itemTemplateCategorySearch.addEventListener("focus", () => actions.handleItemTemplateCategorySearchFocus?.());
+      el.itemTemplateCategorySearch.addEventListener("click", () => actions.handleItemTemplateCategorySearchFocus?.());
+      el.itemTemplateCategorySearch.addEventListener("input", () => actions.handleItemTemplateCategorySearchInput?.());
+      el.itemTemplateCategorySearch.addEventListener("keydown", (event) => actions.handleItemTemplateCategorySearchKeydown?.(event));
+      el.itemTemplateCategorySearch.addEventListener("focusout", (event) => actions.handleItemTemplateCategorySearchFocusOut?.(event));
+    }
+    if (el.itemTemplateCategoryAll) {
+      el.itemTemplateCategoryAll.addEventListener("click", (event) => actions.handleItemTemplateCategoryPickerClick?.(event));
+    }
     if (el.sourceGroupName && actions.updateSourceGroupPreview) {
       for (const eventName of ["input", "change"]) {
         el.sourceGroupName.addEventListener(eventName, actions.updateSourceGroupPreview);

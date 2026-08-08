@@ -27,6 +27,11 @@
       return window.App.getRuntimeModule?.("usage") || {};
     }
 
+    function getItemTemplateCategoryMeta(categoryId) {
+      const normalizedId = Number(categoryId || 0);
+      return (state.categories || []).find((item) => Number(item?.id || 0) === normalizedId) || null;
+    }
+
     function openItemTemplateModal(item = null) {
       if (!el.itemTemplateModal || !el.itemTemplateForm) {
         return;
@@ -55,6 +60,16 @@
       }
       if (el.itemTemplateName) {
         el.itemTemplateName.value = item?.name || "";
+      }
+      const categoryMeta = getItemTemplateCategoryMeta(item?.last_category_id);
+      if (el.itemTemplateCategory) {
+        el.itemTemplateCategory.value = categoryMeta?.id ? String(categoryMeta.id) : "";
+      }
+      if (el.itemTemplateCategorySearch) {
+        el.itemTemplateCategorySearch.value = categoryMeta?.name || "";
+      }
+      if (el.itemTemplateCategoryPickerBlock) {
+        pickerUtils.setPopoverOpen(el.itemTemplateCategoryPickerBlock, false, { owners: [el.itemTemplateCategoryField] });
       }
       if (el.itemTemplatePrice) {
         el.itemTemplatePrice.value = item?.latest_unit_price || "";
@@ -98,6 +113,9 @@
       if (el.itemTemplateSourcePickerBlock) {
         pickerUtils.setPopoverOpen(el.itemTemplateSourcePickerBlock, false, { owners: [el.itemTemplateSourceField] });
       }
+      if (el.itemTemplateCategoryPickerBlock) {
+        pickerUtils.setPopoverOpen(el.itemTemplateCategoryPickerBlock, false, { owners: [el.itemTemplateCategoryField] });
+      }
     }
 
     function closeItemTemplateSourcePicker() {
@@ -110,6 +128,14 @@
       }
       const source = normalizeItemCatalogShopName(el.itemTemplateSource?.value || el.itemTemplateSourceSearch?.value || "") || "Без источника";
       const name = String(el.itemTemplateName?.value || "").trim() || "—";
+      const categoryMeta = getItemTemplateCategoryMeta(el.itemTemplateCategory?.value);
+      const categoryHtml = categoryMeta?.name
+        ? core.renderCategoryChip({
+          name: categoryMeta.name,
+          icon: categoryMeta.icon || categoryMeta.group_icon || null,
+          accent_color: categoryMeta.group_accent_color || null,
+        }, "")
+        : "<span class='muted-small'>Без категории</span>";
       const parsedPrice = core.resolveMoneyInput(el.itemTemplatePrice?.value || 0);
       const validPrice = !parsedPrice.empty && parsedPrice.previewValue > 0 ? parsedPrice.previewValue : 0;
       const priceDate = core.parseDateInputValue(el.itemTemplatePriceDate?.value || "") || null;
@@ -117,6 +143,7 @@
         <tr class="preview-row">
           <td>${escapeHtml(source)}</td>
           <td>${escapeHtml(name)}</td>
+          <td>${categoryHtml}</td>
           <td>${core.formatMoney(validPrice)}${priceDate ? `<div class="muted-small">${core.formatDateRu(priceDate)}</div>` : ""}</td>
         </tr>
       `;
@@ -128,6 +155,7 @@
       const payload = {
         shop_name: sourceName || null,
         name: String(el.itemTemplateName?.value || "").trim(),
+        last_category_id: Number(el.itemTemplateCategory?.value || 0) || null,
       };
       const priceRaw = String(el.itemTemplatePrice?.value || "").trim();
       if (priceRaw) {
@@ -279,6 +307,122 @@
       }, 0);
     }
 
+    function closeItemTemplateCategoryPicker() {
+      pickerUtils.setPopoverOpen(el.itemTemplateCategoryPickerBlock, false, { owners: [el.itemTemplateCategoryField] });
+    }
+
+    function renderItemTemplateCategoryPicker(query = "") {
+      if (!el.itemTemplateCategoryPickerBlock || !el.itemTemplateCategoryAll) {
+        return;
+      }
+      const selectedId = Number(el.itemTemplateCategory?.value || 0) || null;
+      const selected = getItemTemplateCategoryMeta(selectedId);
+      const rawQuery = String(query || "").trim();
+      const normalizedQuery = selected && rawQuery.toLowerCase() === String(selected.name || "").toLowerCase()
+        ? ""
+        : rawQuery;
+      const categories = pickerUtils.sortCategoriesByUsage(
+        (state.categories || []).filter((item) => item?.kind === "expense"),
+        normalizedQuery,
+        pickerUtils.DEFAULT_CATEGORY_USAGE_KEY,
+      );
+      const noCategory = pickerUtils.createMetaChipButton({
+        datasetName: "itemTemplateCategoryId",
+        datasetValue: "",
+        selected: !selectedId,
+        label: "Без категории",
+        core,
+      });
+      el.itemTemplateCategoryAll.innerHTML = "";
+      el.itemTemplateCategoryAll.appendChild(noCategory);
+      for (const category of categories) {
+        el.itemTemplateCategoryAll.appendChild(pickerUtils.createChipButton({
+          datasetName: "itemTemplateCategoryId",
+          datasetValue: category.id,
+          selected: Number(category.id) === selectedId,
+          html: core.renderCategoryChip({
+            name: category.name,
+            icon: category.icon || category.group_icon || null,
+            accent_color: category.group_accent_color || null,
+          }, normalizedQuery),
+        }));
+      }
+      if (!categories.length && normalizedQuery) {
+        el.itemTemplateCategoryAll.insertAdjacentHTML("beforeend", "<span class='muted-small'>Ничего не найдено</span>");
+      }
+      pickerUtils.setPopoverOpen(el.itemTemplateCategoryPickerBlock, true, {
+        owners: [el.itemTemplateCategoryField],
+        onClose: closeItemTemplateCategoryPicker,
+      });
+    }
+
+    function selectItemTemplateCategory(categoryId, { keepPickerOpen = false } = {}) {
+      const normalizedId = Number(categoryId || 0) || null;
+      const categoryMeta = getItemTemplateCategoryMeta(normalizedId);
+      if (el.itemTemplateCategory) {
+        el.itemTemplateCategory.value = categoryMeta?.id ? String(categoryMeta.id) : "";
+      }
+      if (el.itemTemplateCategorySearch) {
+        el.itemTemplateCategorySearch.value = categoryMeta?.name || "";
+      }
+      updateItemTemplatePreview();
+      if (!keepPickerOpen) {
+        closeItemTemplateCategoryPicker();
+      }
+    }
+
+    function handleItemTemplateCategorySearchFocus() {
+      renderItemTemplateCategoryPicker(el.itemTemplateCategorySearch?.value || "");
+    }
+
+    function handleItemTemplateCategorySearchInput() {
+      if (el.itemTemplateCategory) {
+        el.itemTemplateCategory.value = "";
+      }
+      updateItemTemplatePreview();
+      renderItemTemplateCategoryPicker(el.itemTemplateCategorySearch?.value || "");
+    }
+
+    function handleItemTemplateCategorySearchKeydown(event) {
+      if (event.key === "Escape") {
+        closeItemTemplateCategoryPicker();
+        return;
+      }
+      if (event.key !== "Enter") {
+        return;
+      }
+      event.preventDefault();
+      const query = String(el.itemTemplateCategorySearch?.value || "").trim();
+      const firstMatch = pickerUtils.sortCategoriesByUsage(
+        (state.categories || []).filter((item) => item?.kind === "expense"),
+        query,
+        pickerUtils.DEFAULT_CATEGORY_USAGE_KEY,
+      )[0];
+      selectItemTemplateCategory(firstMatch?.id || null);
+    }
+
+    function handleItemTemplateCategoryPickerClick(event) {
+      const button = event.target.closest("button[data-item-template-category-id]");
+      if (!button) {
+        return;
+      }
+      selectItemTemplateCategory(button.dataset.itemTemplateCategoryId || null);
+    }
+
+    function handleItemTemplateCategorySearchFocusOut(event) {
+      const next = event.relatedTarget;
+      if (next && next.closest && next.closest("#itemTemplateCategoryField")) {
+        return;
+      }
+      setTimeout(() => {
+        const active = document.activeElement;
+        if (active && active.closest && active.closest("#itemTemplateCategoryField")) {
+          return;
+        }
+        closeItemTemplateCategoryPicker();
+      }, 0);
+    }
+
     async function deleteItemTemplateFlow(item) {
       core.runDestructiveAction({
         confirmMessage: `Удалить позицию «${item.name || "без названия"}»?`,
@@ -330,6 +474,11 @@
       handleItemTemplateSourcePickerClick,
       handleItemTemplateSourceOutsidePointer,
       handleItemTemplateSourceSearchFocusOut,
+      handleItemTemplateCategorySearchFocus,
+      handleItemTemplateCategorySearchInput,
+      handleItemTemplateCategorySearchKeydown,
+      handleItemTemplateCategoryPickerClick,
+      handleItemTemplateCategorySearchFocusOut,
       openSourceGroupModal: sourcesFeature?.openSourceGroupModal,
       openEditSourceGroupModal: sourcesFeature?.openEditSourceGroupModal,
       closeSourceGroupModal: sourcesFeature?.closeSourceGroupModal,

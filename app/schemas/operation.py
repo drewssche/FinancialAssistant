@@ -173,6 +173,7 @@ class OperationItemTemplateOut(BaseModel):
 class OperationItemTemplateCreate(BaseModel):
     shop_name: str | None = Field(default=None, max_length=160)
     name: str = Field(min_length=1, max_length=160)
+    last_category_id: int | None = None
     latest_unit_price: Decimal | None = Field(default=None, gt=0)
     latest_price_date: date | None = None
 
@@ -180,6 +181,7 @@ class OperationItemTemplateCreate(BaseModel):
 class OperationItemTemplateUpdate(BaseModel):
     shop_name: str | None = Field(default=None, max_length=160)
     name: str | None = Field(default=None, min_length=1, max_length=160)
+    last_category_id: int | None = None
     latest_unit_price: Decimal | None = Field(default=None, gt=0)
     latest_price_date: date | None = None
 

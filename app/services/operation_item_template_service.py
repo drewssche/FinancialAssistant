@@ -1,7 +1,7 @@
 from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.core.cache import (
@@ -11,7 +11,7 @@ from app.core.cache import (
     invalidate_item_templates_cache,
     set_json,
 )
-from app.db.models import PlanOperation, PlanReceiptItem
+from app.db.models import Category
 from app.repositories.operation_repo import OperationRepository
 from app.services.activity_service import ActivityService
 
@@ -43,9 +43,6 @@ class OperationItemTemplateService:
         page_size: int,
         q: str | None,
     ) -> tuple[list[dict], int]:
-        backfilled = self.backfill_templates_from_plan_receipts(user_id=user_id)
-        if backfilled:
-            invalidate_item_templates_cache(user_id)
         cache_key = build_item_templates_cache_key(
             user_id=user_id,
             view="list",
@@ -84,51 +81,6 @@ class OperationItemTemplateService:
             ttl_seconds=get_namespace_ttl_seconds("item_templates"),
         )
         return payload, total
-
-    def backfill_templates_from_plan_receipts(self, *, user_id: int) -> bool:
-        stmt = (
-            select(PlanOperation, PlanReceiptItem)
-            .join(PlanReceiptItem, PlanReceiptItem.plan_id == PlanOperation.id)
-            .where(
-                PlanOperation.user_id == user_id,
-                PlanReceiptItem.user_id == user_id,
-            )
-            .order_by(PlanOperation.id.asc(), PlanReceiptItem.id.asc())
-        )
-        grouped: dict[int, dict] = {}
-        for plan, receipt_item in self.db.execute(stmt).all():
-            bucket = grouped.setdefault(
-                int(plan.id),
-                {
-                    "category_id": plan.category_id,
-                    "recorded_at": plan.scheduled_date,
-                    "items": [],
-                },
-            )
-            bucket["items"].append(
-                {
-                    "category_id": receipt_item.category_id,
-                    "shop_name": receipt_item.shop_name,
-                    "name": receipt_item.name,
-                    "quantity": receipt_item.quantity,
-                    "unit_price": receipt_item.unit_price,
-                    "is_discounted": bool(getattr(receipt_item, "is_discounted", False)),
-                    "regular_unit_price": getattr(receipt_item, "regular_unit_price", None),
-                    "line_total": receipt_item.line_total,
-                    "note": receipt_item.note,
-                }
-            )
-        if not grouped:
-            return False
-        for payload in grouped.values():
-            self.sync_templates_from_receipt_items(
-                user_id=user_id,
-                category_id=payload["category_id"],
-                normalized_items=payload["items"],
-                recorded_at=payload["recorded_at"],
-            )
-        self.db.commit()
-        return True
 
     def list_item_template_prices(
         self,
@@ -174,12 +126,14 @@ class OperationItemTemplateService:
         user_id: int,
         shop_name: str | None,
         name: str,
+        last_category_id: int | None,
         latest_unit_price: Decimal | None,
         latest_price_date: date | None = None,
     ) -> dict:
         normalized_shop, normalized_name = self._normalize_item_template_fields(shop_name=shop_name, name=name)
         shop_name_ci = normalized_shop.casefold() if normalized_shop else None
         name_ci = normalized_name.casefold()
+        validated_category_id = self._validate_category_id(user_id=user_id, category_id=last_category_id)
         existing = self.repo.get_item_template_by_name_ci(
             user_id=user_id,
             name_ci=name_ci,
@@ -194,7 +148,7 @@ class OperationItemTemplateService:
                 shop_name_ci=shop_name_ci,
                 name=normalized_name,
                 name_ci=name_ci,
-                last_category_id=None,
+                last_category_id=validated_category_id,
             )
             self.activity.record_created(
                 user_id=user_id,
@@ -213,6 +167,8 @@ class OperationItemTemplateService:
             if item.name != normalized_name:
                 item.name = normalized_name
                 item.name_ci = name_ci
+            if validated_category_id is not None:
+                item.last_category_id = validated_category_id
             self.db.flush()
             self.activity.record_updated(
                 user_id=user_id,
@@ -277,6 +233,11 @@ class OperationItemTemplateService:
         item.shop_name_ci = shop_name_ci
         item.name = normalized_name
         item.name_ci = name_ci
+        if "last_category_id" in updates:
+            item.last_category_id = self._validate_category_id(
+                user_id=user_id,
+                category_id=updates.get("last_category_id"),
+            )
         self.db.flush()
 
         latest_unit_price = updates.get("latest_unit_price")
@@ -570,6 +531,18 @@ class OperationItemTemplateService:
         if not normalized_name:
             raise ValueError("template name must not be empty")
         return normalized_shop, normalized_name
+
+    def _validate_category_id(self, *, user_id: int, category_id: int | None) -> int | None:
+        if category_id is None:
+            return None
+        normalized_id = int(category_id)
+        stmt = select(Category.id).where(
+            Category.id == normalized_id,
+            or_(Category.user_id == user_id, Category.is_system.is_(True)),
+        )
+        if self.db.scalar(stmt) is None:
+            raise ValueError("Category not found")
+        return normalized_id
 
     @staticmethod
     def _money(value) -> Decimal:
