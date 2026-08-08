@@ -1046,11 +1046,39 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
         ],
         "days": days,
     }
+    statistics_payload = {
+        "period": "month",
+        "date_from": "2026-08-01",
+        "date_to": "2026-08-31",
+        "calendar_days": 31,
+        "planned_days": 21,
+        "completed_days": 5,
+        "planned_hours": "168.00",
+        "actual_hours": "40.00",
+        "credited_hours": "40.00",
+        "future_planned_hours": "128.00",
+        "completion_percent": "23.81",
+        "vacation_days": 0,
+        "sick_days": 0,
+        "overtime_hours": "0.00",
+        "override_days": 0,
+        "months": [{
+            "month": "2026-08",
+            "planned_days": 21,
+            "completed_days": 5,
+            "planned_hours": "168.00",
+            "actual_hours": "40.00",
+            "credited_hours": "40.00",
+            "override_days": 0,
+        }],
+    }
 
     def work_handler(route, request):
         path = urlparse(request.url).path
         if path == "/api/v1/work/month":
             return _json_response(route, month_payload)
+        if path == "/api/v1/work/statistics":
+            return _json_response(route, statistics_payload)
         if path == "/api/v1/work/contracts":
             return _json_response(route, [])
         return _json_response(route, {"detail": f"Unhandled work route: {request.method} {path}"}, status=404)
@@ -1059,17 +1087,25 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     _login_and_open_dashboard(page, static_server_url)
     page.click('button[data-section="work"]')
     page.wait_for_selector("#workSection:not(.hidden)")
+    page.wait_for_selector("#workStatisticsView:not(.hidden)")
+    assert "168 ч" in (page.locator("#workStatisticsKpi").text_content() or "")
+
+    page.click('button[data-work-view="timesheet"]')
     page.wait_for_selector('#workCalendarGrid [data-work-date="2026-08-03"]')
 
     assert page.locator("#workCalendarGrid .work-day-cell").count() == 36
     assert "168 ч" in (page.locator("#workSummaryGrid").text_content() or "")
     assert "Аванс" in (page.locator("#workPaymentsGrid").text_content() or "")
+    assert "is-completed" in (page.locator('[data-work-date="2026-08-03"]').get_attribute("class") or "")
+    assert "is-forecast" in (page.locator('[data-work-date="2026-08-10"]').get_attribute("class") or "")
+    assert "is-today" in (page.locator('[data-work-date="2026-08-09"]').get_attribute("class") or "")
+    assert "Сегодня" in (page.locator('[data-work-date="2026-08-09"]').text_content() or "")
 
     page.click('#workCalendarGrid [data-work-date="2026-08-03"]')
     page.wait_for_selector("#workDayForm:not(.hidden)")
     assert page.locator("#workDayStatus").input_value() == "workday"
 
-    page.click('button[data-work-view="settings"]')
+    page.click('[data-work-open-plan-picker="salary"]')
     page.wait_for_selector("#workSettingsForm:not(.hidden)")
     assert page.locator("#workSalaryPlan").input_value() == "4"
     assert page.locator("#workAdvancePlan").input_value() == "3"

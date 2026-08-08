@@ -22,6 +22,10 @@ TRANSFERRED_DAYS = {
     date(2026, 4, 25): (True, "Перенесённый рабочий день с 20 апреля"),
 }
 
+SHORTENED_TRANSFER_DAYS = {
+    date(2026, 4, 25),
+}
+
 NON_WORKING_OVERRIDE_STATUSES = {
     "holiday",
     "weekend",
@@ -72,7 +76,7 @@ def orthodox_easter(year: int) -> date:
     c = year % 19
     d = (19 * c + 15) % 30
     e = (2 * a + 4 * b - d + 34) % 7
-    julian_month = 3 + (d + e + 114) // 31
+    julian_month = (d + e + 114) // 31
     julian_day = ((d + e + 114) % 31) + 1
     # Difference is 13 days for the supported product range (2000-2099).
     return date(year, julian_month, julian_day) + timedelta(days=13)
@@ -89,6 +93,14 @@ def baseline_day(day: date, *, workweek_mask: str = "0,1,2,3,4", country_code: s
     if day.weekday() not in parse_workweek_mask(workweek_mask):
         return {"is_workday": False, "status": "weekend", "label": "Выходной"}
     return {"is_workday": True, "status": "workday", "label": "Рабочий день"}
+
+
+def is_shortened_workday(day: date, *, country_code: str = "BY") -> bool:
+    if country_code != "BY":
+        return False
+    if day in SHORTENED_TRANSFER_DAYS:
+        return True
+    return holiday_name(day + timedelta(days=1), country_code=country_code) is not None
 
 
 def effective_is_workday(

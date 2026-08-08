@@ -14,6 +14,7 @@ from app.schemas.work import (
     WorkMonthOut,
     WorkProfileOut,
     WorkProfileUpdate,
+    WorkStatisticsOut,
 )
 from app.services.work_service import WorkService
 
@@ -48,6 +49,27 @@ def get_work_month(
 ):
     try:
         return WorkService(db).get_month(user_id=user_id, year=year, month=month)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/statistics", response_model=WorkStatisticsOut)
+def get_work_statistics(
+    period: str = Query(default="month", pattern="^(month|year|all_time|custom)$"),
+    anchor: date | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        return WorkService(db).get_statistics(
+            user_id=user_id,
+            period=period,
+            anchor=anchor,
+            date_from=date_from,
+            date_to=date_to,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 

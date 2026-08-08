@@ -23,18 +23,50 @@
 
           <section class="panel">
             <div class="segmented work-view-tabs" id="workViewTabs" role="tablist" aria-label="Разделы работы">
-              <button class="segmented-btn active" data-work-view="timesheet" type="button">Табель</button>
+              <button class="segmented-btn active" data-work-view="statistics" type="button">Статистика</button>
+              <button class="segmented-btn" data-work-view="timesheet" type="button">Табель</button>
               <button class="segmented-btn" data-work-view="settings" type="button">Настройки и планы</button>
-              <button class="segmented-btn" data-work-view="contracts" type="button">Должность и зарплата</button>
+              <button class="segmented-btn" data-work-view="contracts" type="button">История работы</button>
             </div>
 
-            <div id="workTimesheetView">
+            <div id="workStatisticsView">
+              <div class="work-statistics-toolbar">
+                <div id="workStatisticsPeriodTabs" class="segmented" role="tablist" aria-label="Период рабочей статистики">
+                  <button class="segmented-btn active" data-work-stat-period="month" type="button">Месяц</button>
+                  <button class="segmented-btn" data-work-stat-period="year" type="button">Год</button>
+                  <button class="segmented-btn" data-work-stat-period="all_time" type="button">Всё время</button>
+                  <button class="segmented-btn" data-work-stat-period="custom" type="button">Период</button>
+                </div>
+                <div class="work-month-control">
+                  <button id="workStatisticsPrevBtn" class="period-step-btn" type="button" aria-label="Предыдущий период">‹</button>
+                  <strong id="workStatisticsPeriodLabel">Текущий месяц</strong>
+                  <button id="workStatisticsNextBtn" class="period-step-btn" type="button" aria-label="Следующий период">›</button>
+                  <button id="workStatisticsCurrentBtn" class="btn btn-secondary btn-xs" type="button">Текущий</button>
+                </div>
+              </div>
+              <form id="workStatisticsCustomForm" class="work-statistics-custom hidden">
+                <label class="field"><span>С</span><input id="workStatisticsDateFrom" type="date" required /></label>
+                <label class="field"><span>По</span><input id="workStatisticsDateTo" type="date" required /></label>
+                <button class="btn btn-primary" type="submit">Применить</button>
+              </form>
+              <div id="workStatisticsKpi" class="analytics-kpi-grid section-kpi-grid"></div>
+              <article class="work-statistics-progress-card">
+                <div class="row between"><span>Выполнение плана часов</span><strong id="workStatisticsProgressLabel">0%</strong></div>
+                <div class="work-statistics-progress"><i id="workStatisticsProgressBar"></i></div>
+              </article>
+              <div class="panel-head"><div><h3>Динамика по месяцам</h3><p class="subtitle">План, факт и оплачиваемые часы</p></div></div>
+              <div id="workStatisticsMonths" class="work-statistics-months"></div>
+            </div>
+
+            <div id="workTimesheetView" class="hidden">
               <div class="work-calendar-weekdays" aria-hidden="true">
                 <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
               </div>
               <div id="workCalendarGrid" class="work-calendar-grid"></div>
               <div class="work-calendar-legend muted-small">
-                <span><i class="work-legend-dot work-legend-auto"></i> автоматически</span>
+                <span><i class="work-legend-dot work-legend-completed"></i> отработано</span>
+                <span><i class="work-legend-dot work-legend-forecast"></i> рабочий прогноз</span>
+                <span><i class="work-legend-dot work-legend-today"></i> сегодня</span>
                 <span><i class="work-legend-dot work-legend-manual"></i> изменено вручную</span>
                 <span><i class="work-legend-dot work-legend-payment"></i> выплата</span>
               </div>
@@ -103,8 +135,8 @@
             <div id="workContractsView" class="hidden">
               <form id="workContractForm" class="settings-form">
                 <section class="settings-block">
-                  <h3>Новый период условий</h3>
-                  <p class="muted-small">Изменение должности или оклада создаёт новый период и не переписывает историю.</p>
+                  <h3>Новый период или смена работы</h3>
+                  <p class="muted-small">Новая текущая работа автоматически завершит предыдущий период днём раньше. История компании, должности и оклада сохранится.</p>
                   <div class="settings-grid-2">
                     <label class="field"><span>Действует с</span><input id="workContractFrom" type="date" required /></label>
                     <label class="field"><span>Действует до</span><input id="workContractTo" type="date" /></label>

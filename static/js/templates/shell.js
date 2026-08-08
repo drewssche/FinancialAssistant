@@ -27,10 +27,11 @@
             <button class="nav-btn" data-section="operations">Операции</button>
             <button class="nav-btn" data-section="currency">Валюта</button>
             <button class="nav-btn" data-section="plans">Планы</button>
-            <button class="nav-btn" data-section="work">Работа</button>
             <button class="nav-btn" data-section="debts">Долги</button>
             <button class="nav-btn" data-section="categories">Категории</button>
             <button class="nav-btn" data-section="item_catalog">Каталог позиций</button>
+            <div class="nav-group-title">Работа</div>
+            <button class="nav-btn" data-section="work">Табель и зарплата</button>
             <div class="nav-group-title">Система</div>
             <button id="adminNavBtn" class="nav-btn hidden" data-section="admin">Админ</button>
             <button class="nav-btn" data-section="settings">Настройки</button>

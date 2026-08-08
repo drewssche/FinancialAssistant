@@ -10,7 +10,7 @@ from app.repositories.work_repo import WorkRepository
 from app.services.plan_reminder_service import PlanReminderService
 from app.services.work_calendar import (
     baseline_day,
-    holiday_name,
+    is_shortened_workday,
     money_hours,
     PAYROLL_CALENDAR_OVERRIDE_STATUSES,
     parse_workweek_mask,
@@ -137,6 +137,69 @@ class WorkService:
             "days": days,
         }
 
+    def get_statistics(
+        self,
+        *,
+        user_id: int,
+        period: str,
+        anchor: date | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
+        today: date | None = None,
+    ) -> dict:
+        current_day = today or date.today()
+        profile = self.repo.get_profile(user_id=user_id)
+        profile_data = self._serialize_profile(profile)
+        contracts = self.repo.list_contracts(user_id=user_id)
+        known_starts = [item.effective_from for item in contracts]
+        if profile_data.get("employment_start_date"):
+            known_starts.append(profile_data["employment_start_date"])
+        range_from, range_to = self._statistics_bounds(
+            period=period,
+            anchor=anchor or current_day,
+            date_from=date_from,
+            date_to=date_to,
+            employment_start=min(known_starts) if known_starts else None,
+            today=current_day,
+        )
+        rows = self.repo.list_overrides(user_id=user_id, date_from=range_from, date_to=range_to)
+        overrides = {row.work_date: row for row in rows}
+        days = []
+        cursor = range_from
+        while cursor <= range_to:
+            days.append(
+                self._build_day(
+                    day=cursor,
+                    profile_data=profile_data,
+                    override=overrides.get(cursor),
+                    today=current_day,
+                )
+            )
+            cursor += timedelta(days=1)
+        summary = self._summarize_days(days)
+        planned_hours = money_hours(summary["planned_hours"])
+        actual_hours = money_hours(summary["actual_hours"])
+        completion = Decimal("0.00")
+        if planned_hours > 0:
+            completion = min(Decimal("100.00"), (actual_hours / planned_hours * Decimal("100")).quantize(Decimal("0.01")))
+        return {
+            "period": period,
+            "date_from": range_from,
+            "date_to": range_to,
+            "calendar_days": len(days),
+            **summary,
+            "future_planned_hours": sum(
+                (item["planned_hours"] for item in days if item["is_future"]),
+                Decimal("0.00"),
+            ),
+            "completion_percent": completion,
+            "overtime_hours": sum(
+                (max(Decimal("0.00"), item["actual_hours"] - item["planned_hours"]) for item in days),
+                Decimal("0.00"),
+            ),
+            "months": self._statistics_months(days),
+        }
+
     def upsert_override(self, *, user_id: int, work_date: date, payload: dict) -> dict:
         profile = self.repo.get_profile(user_id=user_id) or self.repo.create_profile(user_id=user_id)
         self._set_override(user_id=user_id, profile=profile, work_date=work_date, payload=payload)
@@ -177,16 +240,25 @@ class WorkService:
 
     def create_contract(self, *, user_id: int, payload: dict) -> EmploymentContract:
         profile = self.repo.get_profile(user_id=user_id) or self.repo.create_profile(user_id=user_id)
+        previous_open = None
+        if payload.get("effective_to") is None:
+            previous_open = self.repo.get_open_contract_before(
+                user_id=user_id,
+                effective_from=payload["effective_from"],
+            )
+            if previous_open:
+                previous_open.effective_to = payload["effective_from"] - timedelta(days=1)
         if self.repo.contracts_overlap(
             user_id=user_id,
             effective_from=payload["effective_from"],
             effective_to=payload.get("effective_to"),
+            exclude_id=int(previous_open.id) if previous_open else None,
         ):
             raise ValueError("Период контракта пересекается с существующим")
         item = EmploymentContract(user_id=user_id, work_profile_id=profile.id, **payload)
         self.db.add(item)
-        profile.company = payload.get("company") or profile.company
-        profile.position = payload.get("position") or profile.position
+        self.db.flush()
+        self._sync_profile_from_contracts(profile)
         self.db.commit()
         self.db.refresh(item)
         return item
@@ -195,7 +267,11 @@ class WorkService:
         item = self.repo.get_contract(user_id=user_id, contract_id=contract_id)
         if not item:
             raise LookupError("Контракт не найден")
+        profile = self.repo.get_profile(user_id=user_id)
         self.db.delete(item)
+        self.db.flush()
+        if profile:
+            self._sync_profile_from_contracts(profile)
         self.db.commit()
 
     def _serialize_profile(self, profile: WorkProfile | None) -> dict:
@@ -239,6 +315,23 @@ class WorkService:
                 setattr(item, field, payload[field])
         return item
 
+    def _sync_profile_from_contracts(self, profile: WorkProfile) -> None:
+        contracts = self.repo.list_contracts(user_id=profile.user_id)
+        today = date.today()
+        current = next(
+            (
+                item
+                for item in contracts
+                if item.effective_from <= today and (item.effective_to is None or item.effective_to >= today)
+            ),
+            contracts[0] if contracts else None,
+        )
+        if not current:
+            return
+        profile.company = current.company or profile.company
+        profile.position = current.position
+        profile.employment_start_date = current.effective_from
+
     def _build_day(self, *, day: date, profile_data: dict, override: WorkDayOverride | None, today: date) -> dict:
         standard = money_hours(profile_data["standard_hours_per_day"])
         baseline = baseline_day(
@@ -247,7 +340,7 @@ class WorkService:
             country_code=profile_data["country_code"],
         )
         baseline_planned = standard if baseline["is_workday"] else Decimal("0.00")
-        if baseline["is_workday"] and holiday_name(day + timedelta(days=1), country_code=profile_data["country_code"]):
+        if baseline["is_workday"] and is_shortened_workday(day, country_code=profile_data["country_code"]):
             baseline_planned = max(Decimal("0.00"), standard - Decimal("1.00"))
         status = override.status if override else baseline["status"]
         planned = money_hours(override.planned_hours) if override and override.planned_hours is not None else baseline_planned
@@ -296,6 +389,42 @@ class WorkService:
             "sick_days": sum(1 for item in days if item["status"] in {"sick_paid", "sick_unpaid"}),
             "override_days": sum(1 for item in days if item["is_manual"]),
         }
+
+    def _statistics_months(self, days: list[dict]) -> list[dict]:
+        grouped: dict[str, list[dict]] = {}
+        for item in days:
+            grouped.setdefault(item["date"].strftime("%Y-%m"), []).append(item)
+        result = []
+        for month, month_days in grouped.items():
+            summary = self._summarize_days(month_days)
+            result.append({"month": month, **summary})
+        return result
+
+    @staticmethod
+    def _statistics_bounds(
+        *,
+        period: str,
+        anchor: date,
+        date_from: date | None,
+        date_to: date | None,
+        employment_start: date | None,
+        today: date,
+    ) -> tuple[date, date]:
+        if period == "month":
+            return date(anchor.year, anchor.month, 1), date(anchor.year, anchor.month, calendar.monthrange(anchor.year, anchor.month)[1])
+        if period == "year":
+            return date(anchor.year, 1, 1), date(anchor.year, 12, 31)
+        if period == "all_time":
+            return employment_start or date(today.year, 1, 1), today
+        if period == "custom":
+            if not date_from or not date_to:
+                raise ValueError("Для произвольного периода нужны обе даты")
+            if date_to < date_from:
+                raise ValueError("Дата окончания не может быть раньше даты начала")
+            if (date_to - date_from).days > 3660:
+                raise ValueError("Период статистики не может превышать 10 лет")
+            return date_from, date_to
+        raise ValueError("period must be one of month, year, all_time, custom")
 
     def _sync_linked_plan(self, *, profile: WorkProfile, plan, nominal_day: int) -> None:
         overrides = self.repo.list_overrides(

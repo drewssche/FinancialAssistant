@@ -65,6 +65,18 @@ class WorkRepository:
             )
         )
 
+    def get_open_contract_before(self, *, user_id: int, effective_from: date) -> EmploymentContract | None:
+        return self.db.scalar(
+            select(EmploymentContract)
+            .where(
+                EmploymentContract.user_id == user_id,
+                EmploymentContract.effective_to.is_(None),
+                EmploymentContract.effective_from < effective_from,
+            )
+            .order_by(EmploymentContract.effective_from.desc(), EmploymentContract.id.desc())
+            .limit(1)
+        )
+
     def contracts_overlap(
         self,
         *,

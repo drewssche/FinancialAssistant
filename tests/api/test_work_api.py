@@ -71,6 +71,29 @@ def test_work_month_is_generated_automatically_and_manual_override_wins(client: 
     assert restored["is_manual"] is False
 
 
+def test_belarus_2026_calendar_and_work_statistics_match_production_hours(client: TestClient):
+    april = client.get("/api/v1/work/month", params={"year": 2026, "month": 4})
+    assert april.status_code == 200
+    april_payload = april.json()
+    assert april_payload["summary"]["planned_hours"] == "166.00"
+    assert april_payload["days"][24]["status"] == "transferred_workday"
+    assert april_payload["days"][24]["planned_hours"] == "7.00"
+
+    statistics = client.get(
+        "/api/v1/work/statistics",
+        params={"period": "month", "anchor": "2026-08-01"},
+    )
+    assert statistics.status_code == 200
+    payload = statistics.json()
+    assert payload["date_from"] == "2026-08-01"
+    assert payload["date_to"] == "2026-08-31"
+    assert payload["planned_days"] == 21
+    assert payload["planned_hours"] == "168.00"
+    assert payload["actual_hours"] == "40.00"
+    assert payload["future_planned_hours"] == "128.00"
+    assert len(payload["months"]) == 1
+
+
 def test_payroll_plans_keep_nominal_days_and_shift_only_backward(client: TestClient):
     salary_plan_id = _create_income_plan(
         client,
@@ -115,24 +138,39 @@ def test_payroll_plans_keep_nominal_days_and_shift_only_backward(client: TestCli
     assert confirmed.json()["plan"]["scheduled_date"] == "2026-10-05"
 
 
-def test_work_contract_periods_cannot_overlap(client: TestClient):
+def test_new_current_job_closes_previous_period_and_keeps_history(client: TestClient):
     first = client.post(
         "/api/v1/work/contracts",
         json={
-            "effective_from": "2026-04-29",
-            "company": "Битрикс",
-            "position": "Разработчик",
-            "salary_amount": "3000.00",
+            "effective_from": "2022-12-01",
+            "company": "Инолта",
             "currency": "BYN",
         },
     )
     assert first.status_code == 201
 
+    second = client.post(
+        "/api/v1/work/contracts",
+        json={
+            "effective_from": "2024-04-29",
+            "company": "Битрикс",
+            "currency": "BYN",
+        },
+    )
+    assert second.status_code == 201
+    history = client.get("/api/v1/work/contracts").json()
+    assert [item["company"] for item in history] == ["Битрикс", "Инолта"]
+    assert history[1]["effective_to"] == "2024-04-28"
+    profile = client.get("/api/v1/work/profile").json()
+    assert profile["company"] == "Битрикс"
+    assert profile["employment_start_date"] == "2024-04-29"
+
     overlap = client.post(
         "/api/v1/work/contracts",
         json={
-            "effective_from": "2026-05-01",
-            "salary_amount": "3200.00",
+            "effective_from": "2023-01-01",
+            "effective_to": "2023-12-31",
+            "company": "Другая компания",
             "currency": "BYN",
         },
     )

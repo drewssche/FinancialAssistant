@@ -110,6 +110,35 @@ class WorkMonthOut(BaseModel):
     days: list[WorkDayOut]
 
 
+class WorkStatisticsMonthOut(BaseModel):
+    month: str
+    planned_days: int
+    completed_days: int
+    planned_hours: Decimal
+    actual_hours: Decimal
+    credited_hours: Decimal
+    override_days: int
+
+
+class WorkStatisticsOut(BaseModel):
+    period: str
+    date_from: date
+    date_to: date
+    calendar_days: int
+    planned_days: int
+    completed_days: int
+    planned_hours: Decimal
+    actual_hours: Decimal
+    credited_hours: Decimal
+    future_planned_hours: Decimal
+    completion_percent: Decimal
+    vacation_days: int
+    sick_days: int
+    overtime_hours: Decimal
+    override_days: int
+    months: list[WorkStatisticsMonthOut]
+
+
 class EmploymentContractIn(BaseModel):
     effective_from: date
     effective_to: date | None = None

@@ -4,6 +4,9 @@
   let anchor = new Date();
   anchor = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
   let snapshot = null;
+  let statistics = null;
+  let statisticsPeriod = "month";
+  let statisticsAnchor = new Date(anchor);
   let contracts = [];
   let bound = false;
 
@@ -19,6 +22,10 @@
     const [year, month, day] = String(iso).split("-").map(Number);
     return new Date(year, month - 1, day).toLocaleDateString("ru-RU");
   }
+  function localTodayIso() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  }
 
   function collectNodes() {
     [
@@ -32,6 +39,10 @@
       "workContractForm", "workContractFrom", "workContractTo", "workContractCompany",
       "workContractPosition", "workContractSalary", "workContractCurrency", "workContractNote",
       "workContractsList",
+      "workStatisticsView", "workStatisticsPeriodTabs", "workStatisticsPrevBtn", "workStatisticsNextBtn",
+      "workStatisticsCurrentBtn", "workStatisticsPeriodLabel", "workStatisticsCustomForm",
+      "workStatisticsDateFrom", "workStatisticsDateTo", "workStatisticsKpi", "workStatisticsProgressLabel",
+      "workStatisticsProgressBar", "workStatisticsMonths",
     ].forEach((id) => { nodes[id] = byId(id); });
   }
 
@@ -55,7 +66,9 @@
         <div><span class="muted-small">${escape(item.label)}</span><strong>${formatDate(item.effective_date)}</strong></div>
         <div class="work-payment-meta">
           ${item.shifted ? `<span>перенесено назад с ${formatDate(item.nominal_date)}</span>` : "<span>по номинальной дате</span>"}
-          <span>${item.plan_id ? `план #${Number(item.plan_id)} связан` : "план не связан"}</span>
+          <button class="work-payment-plan-link" type="button" data-work-open-plan-picker="${escape(item.role)}">
+            ${item.plan_id ? `План #${Number(item.plan_id)} · изменить` : "Выбрать план вручную"}
+          </button>
         </div>
       </article>`).join("");
   }
@@ -70,9 +83,14 @@
       const classes = ["work-day-cell", `status-${item.status}`];
       if (item.is_manual) classes.push("is-manual");
       if (item.is_future) classes.push("is-future");
+      if (Number(item.actual_hours || 0) > 0) classes.push("is-completed");
+      if (item.is_future && Number(item.planned_hours || 0) > 0) classes.push("is-forecast");
       if (payment) classes.push("has-payment");
-      return `<button class="${classes.join(" ")}" type="button" data-work-date="${item.date}">
+      const isToday = item.date === localTodayIso();
+      if (isToday) classes.push("is-today");
+      return `<button class="${classes.join(" ")}" type="button" data-work-date="${item.date}"${isToday ? ' aria-current="date"' : ""}>
         <span class="work-day-number">${Number(String(item.date).slice(-2))}</span>
+        ${isToday ? '<span class="work-day-today-label">Сегодня</span>' : ""}
         <strong>${formatHours(item.planned_hours)} ч</strong>
         <span class="work-day-status">${escape(item.status_label)}</span>
         ${item.actual_hours > 0 ? `<span class="work-day-fact">факт ${formatHours(item.actual_hours)}</span>` : ""}
@@ -137,6 +155,64 @@
     renderContracts();
   }
 
+  function statisticsQuery() {
+    const params = new URLSearchParams({ period: statisticsPeriod });
+    if (["month", "year"].includes(statisticsPeriod)) {
+      params.set("anchor", `${statisticsAnchor.getFullYear()}-${String(statisticsAnchor.getMonth() + 1).padStart(2, "0")}-01`);
+    }
+    if (statisticsPeriod === "custom") {
+      params.set("date_from", nodes.workStatisticsDateFrom.value);
+      params.set("date_to", nodes.workStatisticsDateTo.value);
+    }
+    return params.toString();
+  }
+
+  function renderStatistics() {
+    const data = statistics || {};
+    const label = statisticsPeriod === "month"
+      ? monthFormatter.format(statisticsAnchor)
+      : statisticsPeriod === "year"
+        ? String(statisticsAnchor.getFullYear())
+        : statisticsPeriod === "all_time"
+          ? `Всё время · ${formatDate(data.date_from)} — ${formatDate(data.date_to)}`
+          : `${formatDate(data.date_from)} — ${formatDate(data.date_to)}`;
+    nodes.workStatisticsPeriodLabel.textContent = label.replace(/^./, (char) => char.toUpperCase());
+    const cards = [
+      ["План", `${formatHours(data.planned_hours)} ч`, `${data.planned_days || 0} рабочих дней`],
+      ["Отработано", `${formatHours(data.actual_hours)} ч`, `${data.completed_days || 0} дней`],
+      ["Оплачиваемые", `${formatHours(data.credited_hours)} ч`, `будущий план: ${formatHours(data.future_planned_hours)} ч`],
+      ["Отпуск и сикдей", `${data.vacation_days || 0} / ${data.sick_days || 0}`, `исключений: ${data.override_days || 0}`],
+      ["Сверх плана", `${formatHours(data.overtime_hours)} ч`, `${data.calendar_days || 0} календарных дней`],
+    ];
+    nodes.workStatisticsKpi.innerHTML = cards.map(([title, value, meta]) => `
+      <article class="analytics-kpi-card analytics-kpi-neutral"><div class="muted-small">${escape(title)}</div><strong>${escape(value)}</strong><div class="muted-small">${escape(meta)}</div></article>
+    `).join("");
+    const percent = Math.max(0, Math.min(100, Number(data.completion_percent || 0)));
+    nodes.workStatisticsProgressLabel.textContent = `${formatHours(percent)}%`;
+    nodes.workStatisticsProgressBar.style.width = `${percent}%`;
+    const monthLabel = new Intl.DateTimeFormat("ru-RU", { month: "short", year: "numeric" });
+    nodes.workStatisticsMonths.innerHTML = (data.months || []).map((item) => {
+      const [year, month] = item.month.split("-").map(Number);
+      const planned = Math.max(0, Number(item.planned_hours || 0));
+      const actual = Math.max(0, Number(item.actual_hours || 0));
+      const ratio = planned > 0 ? Math.min(100, actual / planned * 100) : 0;
+      return `<article class="work-statistics-month-row">
+        <div><strong>${escape(monthLabel.format(new Date(year, month - 1, 1)))}</strong><span class="muted-small">${item.completed_days || 0} из ${item.planned_days || 0} дней</span></div>
+        <div class="work-statistics-month-bars"><i style="width:100%"></i><b style="width:${ratio}%"></b></div>
+        <div class="work-statistics-month-values"><strong>${formatHours(actual)} ч</strong><span>из ${formatHours(planned)} ч</span></div>
+      </article>`;
+    }).join("") || '<div class="muted-small">За выбранный период данных нет</div>';
+    const movable = ["month", "year"].includes(statisticsPeriod);
+    nodes.workStatisticsPrevBtn.disabled = !movable;
+    nodes.workStatisticsNextBtn.disabled = !movable;
+    nodes.workStatisticsCurrentBtn.classList.toggle("hidden", !movable);
+  }
+
+  async function loadStatistics() {
+    statistics = await core.requestJson(`/api/v1/work/statistics?${statisticsQuery()}`, authOptions());
+    renderStatistics();
+  }
+
   async function loadWorkSection() {
     if (!bound) bind();
     const { year, month } = isoFromAnchor();
@@ -146,7 +222,7 @@
     renderPayments();
     renderCalendar();
     fillProfileForm();
-    await Promise.all([loadPlanOptions(), loadContracts()]);
+    await Promise.all([loadPlanOptions(), loadContracts(), loadStatistics()]);
   }
 
   function openDayEditor(iso) {
@@ -242,6 +318,7 @@
 
   function setView(view) {
     core.syncSegmentedActive?.(nodes.workViewTabs, "work-view", view);
+    nodes.workStatisticsView.classList.toggle("hidden", view !== "statistics");
     nodes.workTimesheetView.classList.toggle("hidden", view !== "timesheet");
     nodes.workSettingsForm.classList.toggle("hidden", view !== "settings");
     nodes.workContractsView.classList.toggle("hidden", view !== "contracts");
@@ -253,7 +330,44 @@
     nodes.workNextMonthBtn.addEventListener("click", () => { anchor = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1); loadWorkSection().catch(handleError); });
     nodes.workTodayBtn.addEventListener("click", () => { const now = new Date(); anchor = new Date(now.getFullYear(), now.getMonth(), 1); loadWorkSection().catch(handleError); });
     nodes.workCalendarGrid.addEventListener("click", (event) => { const button = event.target.closest("[data-work-date]"); if (button) openDayEditor(button.dataset.workDate); });
+    nodes.workPaymentsGrid.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-work-open-plan-picker]");
+      if (!button) return;
+      setView("settings");
+      const select = button.dataset.workOpenPlanPicker === "advance" ? nodes.workAdvancePlan : nodes.workSalaryPlan;
+      select?.focus();
+      select?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
     nodes.workViewTabs.addEventListener("click", (event) => { const button = event.target.closest("[data-work-view]"); if (button) setView(button.dataset.workView); });
+    nodes.workStatisticsPeriodTabs.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-work-stat-period]");
+      if (!button) return;
+      statisticsPeriod = button.dataset.workStatPeriod;
+      core.syncSegmentedActive?.(nodes.workStatisticsPeriodTabs, "work-stat-period", statisticsPeriod);
+      nodes.workStatisticsCustomForm.classList.toggle("hidden", statisticsPeriod !== "custom");
+      if (statisticsPeriod !== "custom") loadStatistics().catch(handleError);
+    });
+    nodes.workStatisticsPrevBtn.addEventListener("click", () => {
+      statisticsAnchor = statisticsPeriod === "year"
+        ? new Date(statisticsAnchor.getFullYear() - 1, 0, 1)
+        : new Date(statisticsAnchor.getFullYear(), statisticsAnchor.getMonth() - 1, 1);
+      loadStatistics().catch(handleError);
+    });
+    nodes.workStatisticsNextBtn.addEventListener("click", () => {
+      statisticsAnchor = statisticsPeriod === "year"
+        ? new Date(statisticsAnchor.getFullYear() + 1, 0, 1)
+        : new Date(statisticsAnchor.getFullYear(), statisticsAnchor.getMonth() + 1, 1);
+      loadStatistics().catch(handleError);
+    });
+    nodes.workStatisticsCurrentBtn.addEventListener("click", () => {
+      const now = new Date();
+      statisticsAnchor = new Date(now.getFullYear(), now.getMonth(), 1);
+      loadStatistics().catch(handleError);
+    });
+    nodes.workStatisticsCustomForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      loadStatistics().catch(handleError);
+    });
     nodes.workDayForm.addEventListener("submit", (event) => saveDay(event).catch(handleError));
     nodes.workDayStatus.addEventListener("change", () => {
       const status = nodes.workDayStatus.value;
