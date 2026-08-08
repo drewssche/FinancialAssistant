@@ -616,6 +616,21 @@ class OperationRepository:
             name=name,
         )
 
+    def update_linked_receipt_item_category(
+        self,
+        *,
+        user_id: int,
+        template_id: int,
+        previous_category_id: int | None,
+        category_id: int | None,
+    ) -> None:
+        self.item_templates.update_linked_receipt_item_category(
+            user_id=user_id,
+            template_id=template_id,
+            previous_category_id=previous_category_id,
+            category_id=category_id,
+        )
+
     def list_item_prices(self, *, template_id: int, limit: int = 200) -> list[OperationItemPrice]:
         return self.item_templates.list_item_prices(template_id=template_id, limit=limit)
 

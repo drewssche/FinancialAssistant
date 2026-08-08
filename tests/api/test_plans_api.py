@@ -425,13 +425,25 @@ def test_deleted_item_catalog_template_is_not_restored_by_reading_old_plan_recei
 
 def test_moving_item_catalog_template_updates_linked_operation_and_plan_history(client: TestClient):
     reset_cache_for_tests()
+    old_category = client.post("/api/v1/categories", json={"name": "Связь", "kind": "expense"})
+    new_category = client.post("/api/v1/categories", json={"name": "Коммунальные", "kind": "expense"})
+    assert old_category.status_code == 200
+    assert new_category.status_code == 200
+    old_category_id = old_category.json()["id"]
+    new_category_id = new_category.json()["id"]
     operation = client.post(
         "/api/v1/operations",
         json={
             "kind": "expense",
             "operation_date": "2026-03-20",
             "receipt_items": [
-                {"shop_name": "Палучка", "name": "Интернет", "quantity": "1", "unit_price": "28.00"},
+                {
+                    "shop_name": "Палучка",
+                    "name": "Интернет",
+                    "quantity": "1",
+                    "unit_price": "28.00",
+                    "category_id": old_category_id,
+                },
             ],
         },
     )
@@ -445,7 +457,13 @@ def test_moving_item_catalog_template_updates_linked_operation_and_plan_history(
             "kind": "expense",
             "scheduled_date": "2026-03-25",
             "receipt_items": [
-                {"shop_name": "Палучка", "name": "Интернет", "quantity": "1", "unit_price": "28.00"},
+                {
+                    "shop_name": "Палучка",
+                    "name": "Интернет",
+                    "quantity": "1",
+                    "unit_price": "28.00",
+                    "category_id": old_category_id,
+                },
             ],
         },
     )
@@ -457,26 +475,33 @@ def test_moving_item_catalog_template_updates_linked_operation_and_plan_history(
 
     moved = client.patch(
         f"/api/v1/operations/item-templates/{template_id}",
-        json={"shop_name": "Яндекс"},
+        json={"shop_name": "Яндекс", "last_category_id": new_category_id},
     )
     assert moved.status_code == 200
     assert moved.json()["id"] == template_id
     assert moved.json()["shop_name"] == "Яндекс"
+    assert moved.json()["last_category_id"] == new_category_id
 
     historical_operation = client.get(f"/api/v1/operations/{operation_id}")
     assert historical_operation.status_code == 200
     assert historical_operation.json()["receipt_items"][0]["template_id"] == template_id
     assert historical_operation.json()["receipt_items"][0]["shop_name"] == "Яндекс"
+    assert historical_operation.json()["receipt_items"][0]["category_id"] == new_category_id
+    assert historical_operation.json()["category_id"] == new_category_id
 
     current_plan = client.get(f"/api/v1/plans/{plan_id}")
     assert current_plan.status_code == 200
     assert current_plan.json()["receipt_items"][0]["template_id"] == template_id
     assert current_plan.json()["receipt_items"][0]["shop_name"] == "Яндекс"
+    assert current_plan.json()["receipt_items"][0]["category_id"] == new_category_id
+    assert current_plan.json()["category_id"] == new_category_id
 
     listed_operations = client.get("/api/v1/operations", params={"page": 1, "page_size": 20})
     assert listed_operations.json()["items"][0]["receipt_items"][0]["shop_name"] == "Яндекс"
+    assert listed_operations.json()["items"][0]["receipt_items"][0]["category_id"] == new_category_id
     listed_plans = client.get("/api/v1/plans")
     assert listed_plans.json()["items"][0]["receipt_items"][0]["shop_name"] == "Яндекс"
+    assert listed_plans.json()["items"][0]["receipt_items"][0]["category_id"] == new_category_id
 
 
 def test_plans_list_and_history_cache_are_invalidated_after_plan_mutation(client: TestClient):

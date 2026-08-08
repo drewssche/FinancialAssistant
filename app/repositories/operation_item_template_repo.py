@@ -4,7 +4,14 @@ from decimal import Decimal
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.orm import Session
 
-from app.db.models import Operation, OperationItemPrice, OperationItemTemplate, OperationReceiptItem, PlanReceiptItem
+from app.db.models import (
+    Operation,
+    OperationItemPrice,
+    OperationItemTemplate,
+    OperationReceiptItem,
+    PlanOperation,
+    PlanReceiptItem,
+)
 
 
 class OperationItemTemplateRepository:
@@ -248,6 +255,96 @@ class OperationItemTemplateRepository:
             .values(**values)
         )
         self.db.flush()
+
+    def update_linked_receipt_item_category(
+        self,
+        *,
+        user_id: int,
+        template_id: int,
+        previous_category_id: int | None,
+        category_id: int | None,
+    ) -> None:
+        operation_previous_categories: dict[int, set[int | None]] = {}
+        for operation_id, linked_category_id in self.db.execute(
+            select(OperationReceiptItem.operation_id, OperationReceiptItem.category_id).where(
+                OperationReceiptItem.user_id == user_id,
+                OperationReceiptItem.template_id == template_id,
+            )
+        ):
+            operation_previous_categories.setdefault(int(operation_id), set()).add(linked_category_id)
+        plan_previous_categories: dict[int, set[int | None]] = {}
+        for plan_id, linked_category_id in self.db.execute(
+            select(PlanReceiptItem.plan_id, PlanReceiptItem.category_id).where(
+                PlanReceiptItem.user_id == user_id,
+                PlanReceiptItem.template_id == template_id,
+            )
+        ):
+            plan_previous_categories.setdefault(int(plan_id), set()).add(linked_category_id)
+        self.db.execute(
+            update(OperationReceiptItem)
+            .where(
+                OperationReceiptItem.user_id == user_id,
+                OperationReceiptItem.template_id == template_id,
+            )
+            .values(category_id=category_id)
+        )
+        self.db.execute(
+            update(PlanReceiptItem)
+            .where(
+                PlanReceiptItem.user_id == user_id,
+                PlanReceiptItem.template_id == template_id,
+            )
+            .values(category_id=category_id)
+        )
+        self.db.flush()
+
+        for operation_id, linked_previous_categories in operation_previous_categories.items():
+            operation = self.db.scalar(
+                select(Operation).where(
+                    Operation.user_id == user_id,
+                    Operation.id == int(operation_id),
+                )
+            )
+            if operation and (
+                operation.category_id in {None, previous_category_id}
+                or operation.category_id in linked_previous_categories
+            ):
+                operation.category_id = self._single_receipt_category_id(
+                    model=OperationReceiptItem,
+                    parent_field=OperationReceiptItem.operation_id,
+                    parent_id=int(operation_id),
+                )
+
+        for plan_id, linked_previous_categories in plan_previous_categories.items():
+            plan = self.db.scalar(
+                select(PlanOperation).where(
+                    PlanOperation.user_id == user_id,
+                    PlanOperation.id == int(plan_id),
+                )
+            )
+            if plan and (
+                plan.category_id in {None, previous_category_id}
+                or plan.category_id in linked_previous_categories
+            ):
+                plan.category_id = self._single_receipt_category_id(
+                    model=PlanReceiptItem,
+                    parent_field=PlanReceiptItem.plan_id,
+                    parent_id=int(plan_id),
+                )
+        self.db.flush()
+
+    def _single_receipt_category_id(self, *, model, parent_field, parent_id: int) -> int | None:
+        category_ids = list(
+            self.db.scalars(
+                select(model.category_id)
+                .where(
+                    parent_field == parent_id,
+                    model.category_id.is_not(None),
+                )
+                .distinct()
+            )
+        )
+        return int(category_ids[0]) if len(category_ids) == 1 else None
 
     def list_item_prices(self, *, template_id: int, limit: int = 200) -> list[OperationItemPrice]:
         stmt = (

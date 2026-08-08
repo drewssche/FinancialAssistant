@@ -290,6 +290,7 @@ class OperationItemTemplateService:
         item.shop_name_ci = shop_name_ci
         item.name = normalized_name
         item.name_ci = name_ci
+        previous_category_id = item.last_category_id
         if "last_category_id" in updates:
             item.last_category_id = self._validate_category_id(
                 user_id=user_id,
@@ -320,6 +321,13 @@ class OperationItemTemplateService:
                 template_id=int(item.id),
                 shop_name=normalized_shop,
                 name=normalized_name,
+            )
+        if "last_category_id" in updates:
+            self.repo.update_linked_receipt_item_category(
+                user_id=user_id,
+                template_id=int(item.id),
+                previous_category_id=previous_category_id,
+                category_id=item.last_category_id,
             )
         self.db.flush()
 
@@ -355,7 +363,7 @@ class OperationItemTemplateService:
         )
         self.db.commit()
         invalidate_item_templates_cache(user_id)
-        if "shop_name" in updates or "name" in updates:
+        if "shop_name" in updates or "name" in updates or "last_category_id" in updates:
             invalidate_operations_cache(user_id)
             invalidate_plans_cache(user_id)
             invalidate_dashboard_analytics_cache(user_id)
