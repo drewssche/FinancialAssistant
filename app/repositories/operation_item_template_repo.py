@@ -4,7 +4,7 @@ from decimal import Decimal
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.orm import Session
 
-from app.db.models import OperationItemPrice, OperationItemTemplate
+from app.db.models import OperationItemPrice, OperationItemTemplate, OperationReceiptItem, PlanReceiptItem
 
 
 class OperationItemTemplateRepository:
@@ -221,6 +221,33 @@ class OperationItemTemplateRepository:
         result = self.db.execute(stmt)
         self.db.flush()
         return int(result.rowcount or 0)
+
+    def update_linked_receipt_item_identity(
+        self,
+        *,
+        user_id: int,
+        template_id: int,
+        shop_name: str | None,
+        name: str,
+    ) -> None:
+        values = {"shop_name": shop_name, "name": name}
+        self.db.execute(
+            update(OperationReceiptItem)
+            .where(
+                OperationReceiptItem.user_id == user_id,
+                OperationReceiptItem.template_id == template_id,
+            )
+            .values(**values)
+        )
+        self.db.execute(
+            update(PlanReceiptItem)
+            .where(
+                PlanReceiptItem.user_id == user_id,
+                PlanReceiptItem.template_id == template_id,
+            )
+            .values(**values)
+        )
+        self.db.flush()
 
     def list_item_prices(self, *, template_id: int, limit: int = 200) -> list[OperationItemPrice]:
         stmt = (

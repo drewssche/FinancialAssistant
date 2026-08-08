@@ -64,6 +64,14 @@ def test_plans_crud_confirm_and_history(client: TestClient):
     assert operations.json()["total"] == 1
     assert operations.json()["items"][0]["note"] == "Большой список покупок"
 
+    money_flow = client.get(
+        "/api/v1/operations/money-flow",
+        params={"page": 1, "page_size": 20, "source": "operation"},
+    )
+    assert money_flow.status_code == 200
+    assert money_flow.json()["total"] == 1
+    assert money_flow.json()["items"][0]["source_plan_id"] == plan_id
+
     history = client.get("/api/v1/plans/history")
     assert history.status_code == 200
     history_payload = history.json()
@@ -413,6 +421,62 @@ def test_deleted_item_catalog_template_is_not_restored_by_reading_old_plan_recei
     assert refreshed.status_code == 200
     assert refreshed.json()["total"] == 1
     assert refreshed.json()["items"][0]["shop_name"] == "Новый источник"
+
+
+def test_moving_item_catalog_template_updates_linked_operation_and_plan_history(client: TestClient):
+    reset_cache_for_tests()
+    operation = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "expense",
+            "operation_date": "2026-03-20",
+            "receipt_items": [
+                {"shop_name": "Палучка", "name": "Интернет", "quantity": "1", "unit_price": "28.00"},
+            ],
+        },
+    )
+    assert operation.status_code == 201
+    operation_id = operation.json()["id"]
+    template_id = operation.json()["receipt_items"][0]["template_id"]
+
+    plan = client.post(
+        "/api/v1/plans",
+        json={
+            "kind": "expense",
+            "scheduled_date": "2026-03-25",
+            "receipt_items": [
+                {"shop_name": "Палучка", "name": "Интернет", "quantity": "1", "unit_price": "28.00"},
+            ],
+        },
+    )
+    assert plan.status_code == 201
+    plan_id = plan.json()["id"]
+    assert plan.json()["receipt_items"][0]["template_id"] == template_id
+    assert client.get("/api/v1/operations", params={"page": 1, "page_size": 20}).status_code == 200
+    assert client.get("/api/v1/plans").status_code == 200
+
+    moved = client.patch(
+        f"/api/v1/operations/item-templates/{template_id}",
+        json={"shop_name": "Яндекс"},
+    )
+    assert moved.status_code == 200
+    assert moved.json()["id"] == template_id
+    assert moved.json()["shop_name"] == "Яндекс"
+
+    historical_operation = client.get(f"/api/v1/operations/{operation_id}")
+    assert historical_operation.status_code == 200
+    assert historical_operation.json()["receipt_items"][0]["template_id"] == template_id
+    assert historical_operation.json()["receipt_items"][0]["shop_name"] == "Яндекс"
+
+    current_plan = client.get(f"/api/v1/plans/{plan_id}")
+    assert current_plan.status_code == 200
+    assert current_plan.json()["receipt_items"][0]["template_id"] == template_id
+    assert current_plan.json()["receipt_items"][0]["shop_name"] == "Яндекс"
+
+    listed_operations = client.get("/api/v1/operations", params={"page": 1, "page_size": 20})
+    assert listed_operations.json()["items"][0]["receipt_items"][0]["shop_name"] == "Яндекс"
+    listed_plans = client.get("/api/v1/plans")
+    assert listed_plans.json()["items"][0]["receipt_items"][0]["shop_name"] == "Яндекс"
 
 
 def test_plans_list_and_history_cache_are_invalidated_after_plan_mutation(client: TestClient):

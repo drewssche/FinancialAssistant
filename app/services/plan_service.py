@@ -156,13 +156,13 @@ class PlanService:
             recurrence_end_date=recurrence_end_date,
         )
         if normalized_items:
-            self.repo.replace_receipt_items(user_id=user_id, plan_id=item.id, items=normalized_items)
-            self.operation_service.item_templates.sync_templates_from_receipt_items(
+            resolved_items = self.operation_service.item_templates.sync_templates_from_receipt_items(
                 user_id=user_id,
                 category_id=category_id,
                 normalized_items=normalized_items,
                 recorded_at=scheduled_date,
             )
+            self.repo.replace_receipt_items(user_id=user_id, plan_id=item.id, items=resolved_items)
             log_background_job_event(
                 "plan_service",
                 "plan_item_templates_synced",
@@ -257,15 +257,15 @@ class PlanService:
         updates["recurrence_enabled"] = bool(next_recurrence_enabled)
         self.repo.update(item, updates)
         if normalized_items is not None:
-            self.repo.replace_receipt_items(user_id=user_id, plan_id=item.id, items=normalized_items)
             if normalized_items:
                 next_category_id = updates.get("category_id", item.category_id)
-                self.operation_service.item_templates.sync_templates_from_receipt_items(
+                resolved_items = self.operation_service.item_templates.sync_templates_from_receipt_items(
                     user_id=user_id,
                     category_id=next_category_id,
                     normalized_items=normalized_items,
                     recorded_at=updates.get("scheduled_date", item.scheduled_date),
                 )
+                self.repo.replace_receipt_items(user_id=user_id, plan_id=item.id, items=resolved_items)
                 log_background_job_event(
                     "plan_service",
                     "plan_item_templates_synced",
@@ -273,6 +273,8 @@ class PlanService:
                     plan_id=int(item.id),
                     receipt_items_count=len(normalized_items),
                 )
+            else:
+                self.repo.replace_receipt_items(user_id=user_id, plan_id=item.id, items=[])
         self.reminder_service.sync_plan_job(item)
         activity_event = self.activity.record_updated(
             user_id=user_id,
@@ -537,7 +539,7 @@ class PlanService:
             receipt_payload.append(
                 {
                     "id": int(receipt_item.id),
-                    "template_id": None,
+                    "template_id": receipt_item.template_id,
                     "category_id": receipt_item.category_id,
                     "category_name": category_meta.get("name"),
                     "category_icon": category_meta.get("icon"),

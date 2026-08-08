@@ -121,6 +121,7 @@ class PlanRepository:
             row = PlanReceiptItem(
                 user_id=user_id,
                 plan_id=plan_id,
+                template_id=item.get("template_id"),
                 category_id=item.get("category_id"),
                 shop_name=item.get("shop_name"),
                 name=item["name"],

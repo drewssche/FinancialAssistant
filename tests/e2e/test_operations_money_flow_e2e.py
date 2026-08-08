@@ -137,6 +137,7 @@ def page_with_money_flow_api_mock():
             "title": "Без категории",
             "subtitle": "Обычная операция",
             "note": "salary",
+            "source_plan_id": 77,
             "can_open_source": False,
             "receipt_items": [
                 {
@@ -562,6 +563,7 @@ def test_operation_row_shows_receipt_categories_discount_and_clean_source(
     assert "Фрукты" in (context.text_content() or "")
     assert "Скидка чека −6.7%" in (context.text_content() or "")
     assert "Операция" in (source.text_content() or "")
+    assert "Из плана #77" in (source.text_content() or "")
     assert "Без категории" not in (source.text_content() or "")
 
 

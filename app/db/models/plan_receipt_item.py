@@ -12,6 +12,11 @@ class PlanReceiptItem(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     plan_id: Mapped[int] = mapped_column(ForeignKey("plan_operations.id", ondelete="CASCADE"), index=True)
+    template_id: Mapped[int | None] = mapped_column(
+        ForeignKey("operation_item_templates.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id", ondelete="SET NULL"), nullable=True)
     shop_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
     name: Mapped[str] = mapped_column(String(160))

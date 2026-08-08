@@ -652,6 +652,14 @@
       }
       return;
     }
+    const historyOperationBtn = event.target.closest("button[data-plan-history-operation-id]");
+    if (historyOperationBtn) {
+      getOperationsFeature().openMoneyFlowSource?.({
+        sourceKind: "operation",
+        sourceId: Number(historyOperationBtn.dataset.planHistoryOperationId || 0),
+      }).catch((err) => core.setStatus(String(err)));
+      return;
+    }
     const btn = event.target.closest("button[data-plan-action]");
     if (!btn) {
       const card = event.target.closest("article[data-plan-card-edit-id]");

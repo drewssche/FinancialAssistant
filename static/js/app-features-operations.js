@@ -748,6 +748,14 @@
       operationModal.openEditModal?.(item);
       return;
     }
+    if (sourceKind === "plan") {
+      const resolvedId = Number(sourceId || 0);
+      if (!(resolvedId > 0)) {
+        return;
+      }
+      window.App.getRuntimeModule?.("activity")?.openActivityModal?.("plan", resolvedId);
+      return;
+    }
     if (sourceKind === "debt") {
       navigation.pushSectionBackContext?.();
       await navigation.switchSection?.("debts", { preserveBackStack: true, scrollToTop: true });

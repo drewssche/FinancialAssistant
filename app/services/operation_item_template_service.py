@@ -8,7 +8,10 @@ from app.core.cache import (
     build_item_templates_cache_key,
     get_json,
     get_namespace_ttl_seconds,
+    invalidate_dashboard_analytics_cache,
     invalidate_item_templates_cache,
+    invalidate_operations_cache,
+    invalidate_plans_cache,
     set_json,
 )
 from app.db.models import Category
@@ -238,6 +241,13 @@ class OperationItemTemplateService:
                 user_id=user_id,
                 category_id=updates.get("last_category_id"),
             )
+        if "shop_name" in updates or "name" in updates:
+            self.repo.update_linked_receipt_item_identity(
+                user_id=user_id,
+                template_id=int(item.id),
+                shop_name=normalized_shop,
+                name=normalized_name,
+            )
         self.db.flush()
 
         latest_unit_price = updates.get("latest_unit_price")
@@ -272,6 +282,10 @@ class OperationItemTemplateService:
         )
         self.db.commit()
         invalidate_item_templates_cache(user_id)
+        if "shop_name" in updates or "name" in updates:
+            invalidate_operations_cache(user_id)
+            invalidate_plans_cache(user_id)
+            invalidate_dashboard_analytics_cache(user_id)
         return self._serialize_item_template(item)
 
     def delete_item_template(self, *, user_id: int, template_id: int) -> None:
@@ -420,9 +434,9 @@ class OperationItemTemplateService:
         category_id: int | None,
         normalized_items: list[dict],
         recorded_at: date | None = None,
-    ) -> None:
+    ) -> list[dict]:
         if not normalized_items:
-            return
+            return []
 
         key_order: list[tuple[str, str | None]] = []
         sample_by_key: dict[tuple[str, str | None], dict] = {}
@@ -473,6 +487,7 @@ class OperationItemTemplateService:
             }
 
         price_rows: list[dict] = []
+        resolved_items: list[dict] = []
         effective_date = recorded_at or date.today()
         for item in normalized_items:
             shop_name = item.get("shop_name")
@@ -485,6 +500,7 @@ class OperationItemTemplateService:
             if next_category_id is not None:
                 template.last_category_id = next_category_id
             template_id = int(template.id)
+            resolved_items.append({**item, "template_id": template_id})
             price_history_unit_price = self._receipt_item_price_for_history(item)
             if (
                 price_history_unit_price is not None
@@ -503,6 +519,7 @@ class OperationItemTemplateService:
             self.repo.add_item_template_prices_bulk(rows=price_rows)
         else:
             self.db.flush()
+        return resolved_items
 
     def _receipt_item_price_for_history(self, item: dict) -> Decimal | None:
         if bool(item.get("is_discounted")):

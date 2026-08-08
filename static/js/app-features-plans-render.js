@@ -309,7 +309,9 @@
       const eventLabel = historyEventLabel(item.event_type);
       const effectiveDate = item.effective_date ? core.formatDateRu(item.effective_date) : "Без даты";
       const createdAt = item.created_at ? formatDateTimeRu(item.created_at) : "";
-      const operationMeta = item.operation_id ? `<span class="muted-small">Операция #${item.operation_id}</span>` : "";
+      const operationMeta = item.operation_id
+        ? `<button class="meta-chip-btn meta-chip-btn-neutral" type="button" data-plan-history-operation-id="${Number(item.operation_id)}">Операция #${Number(item.operation_id)}</button>`
+        : "";
       return `
         <article class="panel plan-card plan-history-card plan-history-card-${item.event_type || "event"}">
           <div class="plan-card-main">
@@ -325,6 +327,9 @@
               <span class="muted-small">Дата плана: ${effectiveDate}</span>
               ${createdAt ? `<span class="muted-small">Событие: ${createdAt}</span>` : ""}
               ${operationMeta}
+            </div>
+            <div class="actions row-actions plan-card-actions">
+              <button class="btn btn-secondary" type="button" data-activity-entity-type="plan" data-activity-entity-id="${Number(item.plan_id)}">Журнал плана</button>
             </div>
           </div>
         </article>

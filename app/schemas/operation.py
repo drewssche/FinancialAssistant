@@ -145,6 +145,7 @@ class MoneyFlowItemOut(BaseModel):
     receipt_items: list[OperationReceiptItemOut] = []
     receipt_total: Decimal | None = None
     receipt_discrepancy: Decimal | None = None
+    source_plan_id: int | None = None
     can_open_source: bool = False
     open_section: str | None = None
     open_label: str | None = None

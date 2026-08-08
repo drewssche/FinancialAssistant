@@ -221,6 +221,20 @@ def test_receipt_discount_ui_uses_discount_copy_and_prefills_regular_price():
     assert "latestPrice > asMoney(item.unit_price || 0)" not in receipt
 
 
+def test_plan_and_operation_history_are_linked_without_duplicate_money_flow_rows():
+    renderers = (REPO_ROOT / "static" / "js" / "app-renderers.js").read_text(encoding="utf-8")
+    operations = (REPO_ROOT / "static" / "js" / "app-features-operations.js").read_text(encoding="utf-8")
+    plans_render = (REPO_ROOT / "static" / "js" / "app-features-plans-render.js").read_text(encoding="utf-8")
+    plans = (REPO_ROOT / "static" / "js" / "app-features-plans.js").read_text(encoding="utf-8")
+
+    assert 'data-open-source-kind="plan"' in renderers
+    assert "Из плана #${Number(item.source_plan_id)}" in renderers
+    assert 'openActivityModal?.("plan", resolvedId)' in operations
+    assert "data-plan-history-operation-id" in plans_render
+    assert "Журнал плана" in plans_render
+    assert 'sourceKind: "operation"' in plans
+
+
 def test_item_catalog_exposes_category_picker_and_discount_summary():
     modal = (REPO_ROOT / "static/js/templates/modals-item-catalog.js").read_text(encoding="utf-8")
     feature = (REPO_ROOT / "static/js/app-features-item-catalog-modal.js").read_text(encoding="utf-8")

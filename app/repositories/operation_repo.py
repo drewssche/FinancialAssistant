@@ -11,6 +11,7 @@ from app.db.models import (
     OperationItemPrice,
     OperationItemTemplate,
     OperationReceiptItem,
+    PlanOperationEvent,
 )
 from app.repositories.operation_item_template_repo import OperationItemTemplateRepository
 
@@ -470,6 +471,24 @@ class OperationRepository:
             grouped.setdefault(int(row.operation_id), []).append(row)
         return grouped
 
+    def list_source_plan_ids_for_operations(self, *, user_id: int, operation_ids: list[int]) -> dict[int, int]:
+        if not operation_ids:
+            return {}
+        stmt = (
+            select(PlanOperationEvent.operation_id, PlanOperationEvent.plan_id)
+            .where(
+                PlanOperationEvent.user_id == user_id,
+                PlanOperationEvent.event_type == "confirmed",
+                PlanOperationEvent.operation_id.in_(operation_ids),
+            )
+            .order_by(PlanOperationEvent.id.desc())
+        )
+        result: dict[int, int] = {}
+        for operation_id, plan_id in self.db.execute(stmt):
+            if operation_id is not None and int(operation_id) not in result:
+                result[int(operation_id)] = int(plan_id)
+        return result
+
     def get_item_template_by_name_ci(
         self,
         *,
@@ -581,6 +600,21 @@ class OperationRepository:
 
     def archive_all_item_templates(self, *, user_id: int) -> int:
         return self.item_templates.archive_all_item_templates(user_id=user_id)
+
+    def update_linked_receipt_item_identity(
+        self,
+        *,
+        user_id: int,
+        template_id: int,
+        shop_name: str | None,
+        name: str,
+    ) -> None:
+        self.item_templates.update_linked_receipt_item_identity(
+            user_id=user_id,
+            template_id=template_id,
+            shop_name=shop_name,
+            name=name,
+        )
 
     def list_item_prices(self, *, template_id: int, limit: int = 200) -> list[OperationItemPrice]:
         return self.item_templates.list_item_prices(template_id=template_id, limit=limit)

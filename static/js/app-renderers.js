@@ -450,6 +450,11 @@
     } else if (sourceKind === "fx") {
       eventChips.push(renderMetaChip(String(item?.trade_side || "") === "sell" ? "FX: Продажа" : "FX: Покупка", eventTone));
     } else {
+      if (Number(item?.source_plan_id || 0) > 0) {
+        eventChips.push(
+          `<button class="meta-chip-btn meta-chip-btn-neutral" type="button" data-open-source-kind="plan" data-open-source-id="${Number(item.source_plan_id)}">Из плана #${Number(item.source_plan_id)}</button>`,
+        );
+      }
       if (item?.has_fx_settlement) {
         const settlementCurrency = String(item?.settlement_asset_currency || "").toUpperCase();
         eventChips.push(renderMetaChip(settlementCurrency ? `Валютная карта · ${settlementCurrency}` : "Валютная карта", "info"));

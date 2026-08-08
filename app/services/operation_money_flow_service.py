@@ -157,11 +157,16 @@ class OperationMoneyFlowService:
                 user_id=user_id,
                 operation_ids=[int(item.id) for item in operations],
             )
+            source_plan_ids = self.repo.list_source_plan_ids_for_operations(
+                user_id=user_id,
+                operation_ids=[int(item.id) for item in operations],
+            )
             for operation in operations:
                 item = self._operation_to_money_flow_item(
                     user_id=user_id,
                     operation=operation,
                     receipt_items=receipt_by_operation.get(int(operation.id), []),
+                    source_plan_id=source_plan_ids.get(int(operation.id)),
                 )
                 if self._matches_query(item, q):
                     self._append_bounded(items, item)
@@ -298,7 +303,14 @@ class OperationMoneyFlowService:
         self._sort_items(items, sort_by=sort_by, sort_dir=sort_dir)
         return items
 
-    def _operation_to_money_flow_item(self, *, user_id: int, operation, receipt_items: list) -> dict:
+    def _operation_to_money_flow_item(
+        self,
+        *,
+        user_id: int,
+        operation,
+        receipt_items: list,
+        source_plan_id: int | None = None,
+    ) -> dict:
         payload = self.operations._serialize_operation(
             user_id=user_id,
             operation=operation,
@@ -332,6 +344,7 @@ class OperationMoneyFlowService:
             "receipt_items": payload.get("receipt_items") or [],
             "receipt_total": payload.get("receipt_total"),
             "receipt_discrepancy": payload.get("receipt_discrepancy"),
+            "source_plan_id": source_plan_id,
             "can_open_source": False,
             "open_section": "operations",
             "open_label": "Операция",
@@ -382,11 +395,16 @@ class OperationMoneyFlowService:
             user_id=user_id,
             operation_ids=[int(item.id) for item in rows],
         )
+        source_plan_ids = self.repo.list_source_plan_ids_for_operations(
+            user_id=user_id,
+            operation_ids=[int(item.id) for item in rows],
+        )
         return [
             self._operation_to_money_flow_item(
                 user_id=user_id,
                 operation=operation,
                 receipt_items=receipt_by_operation.get(int(operation.id), []),
+                source_plan_id=source_plan_ids.get(int(operation.id)),
             )
             for operation in rows
         ], total
@@ -435,11 +453,16 @@ class OperationMoneyFlowService:
             user_id=user_id,
             operation_ids=[int(item.id) for item in operation_rows],
         )
+        source_plan_ids = self.repo.list_source_plan_ids_for_operations(
+            user_id=user_id,
+            operation_ids=[int(item.id) for item in operation_rows],
+        )
         items = [
             self._operation_to_money_flow_item(
                 user_id=user_id,
                 operation=operation,
                 receipt_items=receipt_by_operation.get(int(operation.id), []),
+                source_plan_id=source_plan_ids.get(int(operation.id)),
             )
             for operation in operation_rows
         ]
