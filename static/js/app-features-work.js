@@ -7,6 +7,7 @@
   let statistics = null;
   let statisticsPeriod = "month";
   let statisticsAnchor = new Date(anchor);
+  let workPickerYear = anchor.getFullYear();
   let contracts = [];
   let bound = false;
 
@@ -26,10 +27,14 @@
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   }
+  function getPickerUtils() { return window.App.getRuntimeModule?.("picker-utils") || window.App.pickerUtils || {}; }
+  function monthValue(value) { return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}`; }
+  function formatMonthLabel(value) { return monthFormatter.format(value).replace(/^./, (char) => char.toUpperCase()); }
 
   function collectNodes() {
     [
-      "workMonthLabel", "workPrevMonthBtn", "workNextMonthBtn", "workTodayBtn", "workSummaryGrid",
+      "workMonthTrigger", "workMonthPopover", "workYearOptions", "workMonthOptions",
+      "workPrevMonthBtn", "workNextMonthBtn", "workTodayBtn", "workSummaryGrid",
       "workPaymentsGrid", "workCalendarGrid", "workViewTabs", "workTimesheetView", "workSettingsForm",
       "workContractsView", "workDayForm", "workDayEditorTitle", "workDayDate", "workDayStatus",
       "workDayDateTo",
@@ -58,6 +63,36 @@
       <article class="analytics-kpi-card analytics-kpi-neutral">
         <div class="muted-small">${escape(label)}</div><strong>${escape(value)}</strong><div class="muted-small">${escape(meta)}</div>
       </article>`).join("");
+  }
+
+  function renderWorkPeriodPicker() {
+    nodes.workMonthTrigger.textContent = formatMonthLabel(anchor);
+    const currentYear = new Date().getFullYear();
+    const years = Array.from(new Set([
+      currentYear,
+      ...Array.from({ length: 9 }, (_, index) => workPickerYear - 4 + index),
+    ])).sort((left, right) => right - left);
+    nodes.workYearOptions.innerHTML = years.map((year) => `
+      <button class="btn btn-secondary settings-picker-option ${workPickerYear === year ? "active" : ""}" type="button" data-work-picker-year="${year}">
+        ${year === currentYear ? `Текущий · ${year}` : year}
+      </button>
+    `).join("");
+    nodes.workMonthOptions.innerHTML = Array.from({ length: 12 }, (_, monthIndex) => {
+      const value = new Date(workPickerYear, monthIndex, 1);
+      const selected = anchor.getFullYear() === workPickerYear && anchor.getMonth() === monthIndex;
+      const label = value.toLocaleDateString("ru-RU", { month: "long" }).replace(/^./, (char) => char.toUpperCase());
+      return `<button class="btn btn-secondary settings-picker-option ${selected ? "active" : ""}" type="button" data-work-picker-month="${monthValue(value)}">${escape(label)}</button>`;
+    }).join("");
+  }
+
+  function setWorkMonthPopoverOpen(open) {
+    const pickerUtils = getPickerUtils();
+    if (pickerUtils.setPopoverOpen) {
+      pickerUtils.setPopoverOpen(nodes.workMonthPopover, open, { owners: [nodes.workMonthTrigger] });
+    } else {
+      nodes.workMonthPopover.classList.toggle("hidden", !open);
+    }
+    nodes.workMonthTrigger.setAttribute("aria-expanded", open ? "true" : "false");
   }
 
   function renderPayments() {
@@ -216,7 +251,8 @@
   async function loadWorkSection() {
     if (!bound) bind();
     const { year, month } = isoFromAnchor();
-    nodes.workMonthLabel.textContent = monthFormatter.format(anchor).replace(/^./, (char) => char.toUpperCase());
+    workPickerYear = anchor.getFullYear();
+    renderWorkPeriodPicker();
     snapshot = await core.requestJson(`/api/v1/work/month?year=${year}&month=${month}`, authOptions());
     renderSummary();
     renderPayments();
@@ -329,6 +365,25 @@
     nodes.workPrevMonthBtn.addEventListener("click", () => { anchor = new Date(anchor.getFullYear(), anchor.getMonth() - 1, 1); loadWorkSection().catch(handleError); });
     nodes.workNextMonthBtn.addEventListener("click", () => { anchor = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1); loadWorkSection().catch(handleError); });
     nodes.workTodayBtn.addEventListener("click", () => { const now = new Date(); anchor = new Date(now.getFullYear(), now.getMonth(), 1); loadWorkSection().catch(handleError); });
+    nodes.workMonthTrigger.addEventListener("click", () => {
+      workPickerYear = anchor.getFullYear();
+      renderWorkPeriodPicker();
+      setWorkMonthPopoverOpen(nodes.workMonthPopover.classList.contains("hidden"));
+    });
+    nodes.workMonthPopover.addEventListener("click", (event) => {
+      const yearButton = event.target.closest("[data-work-picker-year]");
+      if (yearButton) {
+        workPickerYear = Number(yearButton.dataset.workPickerYear);
+        renderWorkPeriodPicker();
+        return;
+      }
+      const monthButton = event.target.closest("[data-work-picker-month]");
+      if (!monthButton) return;
+      const [year, month] = String(monthButton.dataset.workPickerMonth).split("-").map(Number);
+      anchor = new Date(year, month - 1, 1);
+      setWorkMonthPopoverOpen(false);
+      loadWorkSection().catch(handleError);
+    });
     nodes.workCalendarGrid.addEventListener("click", (event) => { const button = event.target.closest("[data-work-date]"); if (button) openDayEditor(button.dataset.workDate); });
     nodes.workPaymentsGrid.addEventListener("click", (event) => {
       const button = event.target.closest("[data-work-open-plan-picker]");

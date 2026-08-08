@@ -25,6 +25,12 @@
 .work-section-head { gap: 16px; align-items: flex-start; }
 .work-month-control { display: flex; align-items: center; gap: 10px; }
 .work-month-control strong { min-width: 150px; text-align: center; text-transform: capitalize; }
+.work-month-control { position: relative; }
+.work-month-control .analytics-grid-picker-trigger { min-width: 170px; justify-content: center; text-transform: capitalize; }
+.work-month-control .analytics-grid-picker-popover { top: calc(100% + 8px); right: 0; width: min(360px, calc(100vw - 32px)); }
+.work-period-year-options { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.work-period-month-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.work-period-month-options .settings-picker-option, .work-period-year-options .settings-picker-option { min-width: 0; grid-template-columns: 1fr; justify-content: center; }
 .work-payments-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
 .work-payment-card { display: flex; justify-content: space-between; gap: 16px; padding: 15px 17px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); }
 .work-payment-card > div:first-child { display: grid; gap: 5px; }
@@ -83,6 +89,7 @@
 @media (max-width: 760px) {
   .work-section-head, .work-payment-card { flex-direction: column; }
   .work-month-control { width: 100%; justify-content: space-between; }
+  .work-month-control .analytics-grid-picker-trigger { min-width: 0; flex: 1; }
   .work-payments-grid { grid-template-columns: 1fr; }
   .work-calendar-weekdays, .work-calendar-grid { gap: 4px; }
   .work-day-cell { min-height: 82px; padding: 7px; }

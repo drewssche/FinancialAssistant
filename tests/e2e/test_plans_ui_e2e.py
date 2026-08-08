@@ -1089,6 +1089,13 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     page.wait_for_selector("#workSection:not(.hidden)")
     page.wait_for_selector("#workStatisticsView:not(.hidden)")
     assert "168 ч" in (page.locator("#workStatisticsKpi").text_content() or "")
+    assert "Август 2026" in (page.locator("#workMonthTrigger").text_content() or "")
+    page.click("#workMonthTrigger")
+    page.wait_for_selector("#workMonthPopover:not(.hidden)")
+    page.click('[data-work-picker-year="2024"]')
+    page.click('[data-work-picker-month="2024-05"]')
+    page.wait_for_function("() => document.querySelector('#workMonthTrigger')?.textContent?.includes('Май 2024')")
+    page.click("#workTodayBtn")
 
     page.click('button[data-work-view="timesheet"]')
     page.wait_for_selector('#workCalendarGrid [data-work-date="2026-08-03"]')
@@ -1104,6 +1111,7 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     page.click('#workCalendarGrid [data-work-date="2026-08-03"]')
     page.wait_for_selector("#workDayForm:not(.hidden)")
     assert page.locator("#workDayStatus").input_value() == "workday"
+    assert page.locator('[data-date-picker-trigger="workDayDateTo"]').count() == 1
 
     page.click('[data-work-open-plan-picker="salary"]')
     page.wait_for_selector("#workSettingsForm:not(.hidden)")

@@ -94,6 +94,20 @@ def test_belarus_2026_calendar_and_work_statistics_match_production_hours(client
     assert len(payload["months"]) == 1
 
 
+def test_belarus_historical_transfers_are_applied_to_timesheet(client: TestClient):
+    may_2024 = client.get("/api/v1/work/month", params={"year": 2024, "month": 5})
+    assert may_2024.status_code == 200
+    assert may_2024.json()["days"][12]["status"] == "day_off"
+    assert may_2024.json()["days"][17]["status"] == "transferred_workday"
+    assert may_2024.json()["days"][17]["planned_hours"] == "7.00"
+
+    july_2025 = client.get("/api/v1/work/month", params={"year": 2025, "month": 7})
+    assert july_2025.status_code == 200
+    assert july_2025.json()["days"][3]["status"] == "day_off"
+    assert july_2025.json()["days"][11]["status"] == "transferred_workday"
+    assert july_2025.json()["days"][11]["planned_hours"] == "8.00"
+
+
 def test_payroll_plans_keep_nominal_days_and_shift_only_backward(client: TestClient):
     salary_plan_id = _create_income_plan(
         client,

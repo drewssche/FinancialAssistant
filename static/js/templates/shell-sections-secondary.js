@@ -12,7 +12,11 @@
               </div>
               <div class="work-month-control">
                 <button id="workPrevMonthBtn" class="period-step-btn" type="button" aria-label="Предыдущий месяц">‹</button>
-                <strong id="workMonthLabel">Месяц</strong>
+                <button id="workMonthTrigger" class="btn btn-secondary analytics-grid-picker-trigger" type="button" aria-haspopup="dialog">Месяц</button>
+                <div id="workMonthPopover" class="app-popover app-popover-floating period-control-popover analytics-grid-picker-popover hidden" role="dialog" aria-label="Выбор месяца табеля">
+                  <div id="workYearOptions" class="settings-picker-options work-period-year-options"></div>
+                  <div id="workMonthOptions" class="settings-picker-options work-period-month-options"></div>
+                </div>
                 <button id="workNextMonthBtn" class="period-step-btn" type="button" aria-label="Следующий месяц">›</button>
                 <button id="workTodayBtn" class="btn btn-secondary btn-xs" type="button">Текущий</button>
               </div>
@@ -45,8 +49,8 @@
                 </div>
               </div>
               <form id="workStatisticsCustomForm" class="work-statistics-custom hidden">
-                <label class="field"><span>С</span><input id="workStatisticsDateFrom" type="date" required /></label>
-                <label class="field"><span>По</span><input id="workStatisticsDateTo" type="date" required /></label>
+                <label class="field"><span>С</span><div class="date-input-wrap"><input id="workStatisticsDateFrom" type="date" required /><button class="date-input-trigger" type="button" data-date-picker-trigger="workStatisticsDateFrom" aria-label="Открыть календарь"></button></div></label>
+                <label class="field"><span>По</span><div class="date-input-wrap"><input id="workStatisticsDateTo" type="date" required /><button class="date-input-trigger" type="button" data-date-picker-trigger="workStatisticsDateTo" aria-label="Открыть календарь"></button></div></label>
                 <button class="btn btn-primary" type="submit">Применить</button>
               </form>
               <div id="workStatisticsKpi" class="analytics-kpi-grid section-kpi-grid"></div>
@@ -90,7 +94,7 @@
                     <option value="holiday">Праздник</option>
                     <option value="weekend">Выходной</option>
                   </select></label>
-                  <label class="field"><span>Применить по дату</span><input id="workDayDateTo" type="date" /></label>
+                  <label class="field"><span>Применить по дату</span><div class="date-input-wrap"><input id="workDayDateTo" type="date" /><button class="date-input-trigger" type="button" data-date-picker-trigger="workDayDateTo" aria-label="Открыть календарь"></button></div></label>
                   <label class="field"><span>План, ч</span><input id="workDayPlanned" type="number" min="0" max="24" step="0.25" /></label>
                   <label class="field"><span>Факт, ч</span><input id="workDayActual" type="number" min="0" max="24" step="0.25" /></label>
                   <label class="field"><span>Оплачивается, ч</span><input id="workDayCredited" type="number" min="0" max="24" step="0.25" /></label>
@@ -109,7 +113,7 @@
                 <div class="settings-grid-2">
                   <label class="field"><span>Компания</span><input id="workCompany" type="text" maxlength="160" placeholder="Битрикс" /></label>
                   <label class="field"><span>Должность</span><input id="workPosition" type="text" maxlength="160" /></label>
-                  <label class="field"><span>Дата начала работы</span><input id="workStartDate" type="date" /></label>
+                  <label class="field"><span>Дата начала работы</span><div class="date-input-wrap"><input id="workStartDate" type="date" /><button class="date-input-trigger" type="button" data-date-picker-trigger="workStartDate" aria-label="Открыть календарь"></button></div></label>
                   <label class="field"><span>Часов в обычный день</span><input id="workStandardHours" type="number" min="0.25" max="24" step="0.25" value="8" /></label>
                 </div>
                 <div class="work-weekday-picker" id="workWeekdayPicker">
@@ -138,8 +142,8 @@
                   <h3>Новый период или смена работы</h3>
                   <p class="muted-small">Новая текущая работа автоматически завершит предыдущий период днём раньше. История компании, должности и оклада сохранится.</p>
                   <div class="settings-grid-2">
-                    <label class="field"><span>Действует с</span><input id="workContractFrom" type="date" required /></label>
-                    <label class="field"><span>Действует до</span><input id="workContractTo" type="date" /></label>
+                    <label class="field"><span>Действует с</span><div class="date-input-wrap"><input id="workContractFrom" type="date" required /><button class="date-input-trigger" type="button" data-date-picker-trigger="workContractFrom" aria-label="Открыть календарь"></button></div></label>
+                    <label class="field"><span>Действует до</span><div class="date-input-wrap"><input id="workContractTo" type="date" /><button class="date-input-trigger" type="button" data-date-picker-trigger="workContractTo" aria-label="Открыть календарь"></button></div></label>
                     <label class="field"><span>Компания</span><input id="workContractCompany" type="text" maxlength="160" /></label>
                     <label class="field"><span>Должность</span><input id="workContractPosition" type="text" maxlength="160" /></label>
                     <label class="field"><span>Оклад на руки</span><input id="workContractSalary" type="number" min="0" step="0.01" /></label>
