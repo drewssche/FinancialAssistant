@@ -131,6 +131,27 @@ def create_contract(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
+@router.put("/contracts/{contract_id}", response_model=EmploymentContractOut)
+def update_contract(
+    contract_id: int,
+    payload: EmploymentContractIn,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        return WorkService(db).update_contract(
+            user_id=user_id,
+            contract_id=contract_id,
+            payload=payload.model_dump(),
+        )
+    except LookupError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
 @router.delete("/contracts/{contract_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 def delete_contract(
     contract_id: int,

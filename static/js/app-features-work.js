@@ -9,6 +9,7 @@
   let statisticsAnchor = new Date(anchor);
   let workPickerYear = anchor.getFullYear();
   let contracts = [];
+  let editingContractId = null;
   let bound = false;
 
   const monthFormatter = new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric" });
@@ -43,7 +44,8 @@
       "workWeekdayPicker", "workSalaryPlan", "workSalaryDay", "workAdvancePlan", "workAdvanceDay",
       "workContractForm", "workContractFrom", "workContractTo", "workContractCompany",
       "workContractPosition", "workContractSalary", "workContractCurrency", "workContractNote",
-      "workContractsList",
+      "workContractFormHeading", "workContractFormSubtitle", "workContractSubmitBtn",
+      "cancelWorkContractEditBtn", "workContractsList",
       "workStatisticsView", "workStatisticsPeriodTabs", "workStatisticsPrevBtn", "workStatisticsNextBtn",
       "workStatisticsCurrentBtn", "workStatisticsPeriodLabel", "workStatisticsCustomForm",
       "workStatisticsDateFrom", "workStatisticsDateTo", "workStatisticsKpi", "workStatisticsProgressLabel",
@@ -123,12 +125,26 @@
       if (payment) classes.push("has-payment");
       const isToday = item.date === localTodayIso();
       if (isToday) classes.push("is-today");
+      const plannedHours = Number(item.planned_hours || 0);
+      const actualHours = Number(item.actual_hours || 0);
+      let hours = "";
+      if (item.is_future && plannedHours > 0) {
+        hours = `<span class="work-hours-chip work-hours-chip-forecast">Прогноз · ${formatHours(plannedHours)} ч</span>`;
+      } else if (!item.is_future && (plannedHours > 0 || actualHours > 0)) {
+        const plan = plannedHours !== actualHours
+          ? `<span class="work-hours-chip work-hours-chip-plan">План · ${formatHours(plannedHours)} ч</span>`
+          : "";
+        hours = `<span class="work-hours-chip work-hours-chip-fact">Факт · ${formatHours(actualHours)} ч</span>${plan}`;
+      }
+      const note = item.note
+        ? `<span class="work-day-note" title="${escape(item.note)}">${escape(item.note)}</span>`
+        : "";
       return `<button class="${classes.join(" ")}" type="button" data-work-date="${item.date}"${isToday ? ' aria-current="date"' : ""}>
         <span class="work-day-number">${Number(String(item.date).slice(-2))}</span>
         ${isToday ? '<span class="work-day-today-label">Сегодня</span>' : ""}
-        <strong>${formatHours(item.planned_hours)} ч</strong>
+        <span class="work-day-hours">${hours}</span>
         <span class="work-day-status">${escape(item.status_label)}</span>
-        ${item.actual_hours > 0 ? `<span class="work-day-fact">факт ${formatHours(item.actual_hours)}</span>` : ""}
+        ${note}
         ${payment ? `<span class="work-day-payment">${escape(payment.label)}</span>` : ""}
         ${item.is_manual ? '<span class="work-day-manual-mark" title="Изменено вручную">●</span>' : ""}
       </button>`;
@@ -171,18 +187,26 @@
       nodes.workContractsList.innerHTML = '<div class="muted-small">Периоды условий пока не добавлены</div>';
       return;
     }
-    nodes.workContractsList.innerHTML = contracts.map((item) => `
+    const today = localTodayIso();
+    nodes.workContractsList.innerHTML = contracts.map((item) => {
+      const isCurrent = item.effective_from <= today && (!item.effective_to || item.effective_to >= today);
+      return `
       <article class="plan-card work-contract-card">
         <div class="plan-card-main">
-          <strong>${escape(item.position || "Должность не указана")}</strong>
+          <div class="work-contract-title"><strong>${escape(item.position || "Должность не указана")}</strong>${isCurrent ? '<span class="work-contract-current">Текущая</span>' : ""}</div>
           <span>${escape(item.company || "Компания не указана")}</span>
           <span class="muted-small">с ${formatDate(item.effective_from)}${item.effective_to ? ` по ${formatDate(item.effective_to)}` : " · действует сейчас"}</span>
+          ${item.note ? `<span class="muted-small work-contract-note">${escape(item.note)}</span>` : ""}
         </div>
         <div class="work-contract-side">
           <strong>${item.salary_amount == null ? "—" : `${Number(item.salary_amount).toLocaleString("ru-RU")} ${escape(item.currency)}`}</strong>
-          <button class="btn btn-danger btn-xs" type="button" data-delete-work-contract="${Number(item.id)}">Удалить</button>
+          <div class="work-contract-actions">
+            <button class="btn btn-secondary btn-xs" type="button" data-edit-work-contract="${Number(item.id)}">Изменить</button>
+            <button class="btn btn-danger btn-xs" type="button" data-delete-work-contract="${Number(item.id)}">Удалить</button>
+          </div>
         </div>
-      </article>`).join("");
+      </article>`;
+    }).join("");
   }
 
   async function loadContracts() {
@@ -329,7 +353,35 @@
     await loadWorkSection();
   }
 
-  async function createContract(event) {
+  function resetContractForm() {
+    editingContractId = null;
+    nodes.workContractForm.reset();
+    nodes.workContractFormHeading.textContent = "Новый период или смена работы";
+    nodes.workContractFormSubtitle.textContent = "Новая текущая работа автоматически завершит предыдущий период днём раньше. История компании, должности и оклада сохранится.";
+    nodes.workContractSubmitBtn.textContent = "Добавить период";
+    nodes.cancelWorkContractEditBtn.classList.add("hidden");
+  }
+
+  function editContract(id) {
+    const item = contracts.find((contract) => Number(contract.id) === Number(id));
+    if (!item) return;
+    editingContractId = Number(item.id);
+    nodes.workContractFrom.value = item.effective_from || "";
+    nodes.workContractTo.value = item.effective_to || "";
+    nodes.workContractCompany.value = item.company || "";
+    nodes.workContractPosition.value = item.position || "";
+    nodes.workContractSalary.value = item.salary_amount == null ? "" : Number(item.salary_amount);
+    nodes.workContractCurrency.value = item.currency || "BYN";
+    nodes.workContractNote.value = item.note || "";
+    nodes.workContractFormHeading.textContent = "Редактировать период работы";
+    nodes.workContractFormSubtitle.textContent = "Изменения текущего периода сразу обновят компанию и должность в настройках табеля.";
+    nodes.workContractSubmitBtn.textContent = "Сохранить изменения";
+    nodes.cancelWorkContractEditBtn.classList.remove("hidden");
+    nodes.workContractForm.scrollIntoView({ behavior: "smooth", block: "start" });
+    nodes.workContractPosition.focus();
+  }
+
+  async function saveContract(event) {
     event.preventDefault();
     const payload = {
       effective_from: nodes.workContractFrom.value,
@@ -340,14 +392,17 @@
       currency: nodes.workContractCurrency.value,
       note: nodes.workContractNote.value.trim() || null,
     };
-    await core.requestJson("/api/v1/work/contracts", authOptions({ method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }));
-    nodes.workContractForm.reset();
-    core.notify?.("Период условий добавлен", { type: "success" });
-    await loadContracts();
+    const isEditing = editingContractId != null;
+    const url = isEditing ? `/api/v1/work/contracts/${editingContractId}` : "/api/v1/work/contracts";
+    await core.requestJson(url, authOptions({ method: isEditing ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }));
+    resetContractForm();
+    core.notify?.(isEditing ? "Период работы обновлён" : "Период условий добавлен", { type: "success" });
+    await loadWorkSection();
   }
 
   async function deleteContract(id) {
     await core.requestJson(`/api/v1/work/contracts/${id}`, authOptions({ method: "DELETE" }));
+    if (editingContractId === id) resetContractForm();
     core.notify?.("Период условий удалён", { type: "success" });
     await loadContracts();
   }
@@ -441,8 +496,17 @@
     nodes.closeWorkDayEditorBtn.addEventListener("click", () => nodes.workDayForm.classList.add("hidden"));
     nodes.resetWorkDayBtn.addEventListener("click", () => resetDay().catch(handleError));
     nodes.workSettingsForm.addEventListener("submit", (event) => saveSettings(event).catch(handleError));
-    nodes.workContractForm.addEventListener("submit", (event) => createContract(event).catch(handleError));
-    nodes.workContractsList.addEventListener("click", (event) => { const button = event.target.closest("[data-delete-work-contract]"); if (button) deleteContract(Number(button.dataset.deleteWorkContract)).catch(handleError); });
+    nodes.workContractForm.addEventListener("submit", (event) => saveContract(event).catch(handleError));
+    nodes.cancelWorkContractEditBtn.addEventListener("click", resetContractForm);
+    nodes.workContractsList.addEventListener("click", (event) => {
+      const editButton = event.target.closest("[data-edit-work-contract]");
+      if (editButton) {
+        editContract(Number(editButton.dataset.editWorkContract));
+        return;
+      }
+      const deleteButton = event.target.closest("[data-delete-work-contract]");
+      if (deleteButton) deleteContract(Number(deleteButton.dataset.deleteWorkContract)).catch(handleError);
+    });
     bound = true;
   }
 

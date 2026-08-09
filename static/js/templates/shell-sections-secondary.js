@@ -100,7 +100,7 @@
                   <label class="field"><span>Оплачивается, ч</span><input id="workDayCredited" type="number" min="0" max="24" step="0.25" /></label>
                 </div>
                 <label class="field"><span>Комментарий</span><input id="workDayNote" type="text" maxlength="500" placeholder="Причина или пояснение" /></label>
-                <div class="settings-actions">
+                <div class="settings-actions work-day-editor-actions">
                   <button class="btn btn-primary" type="submit">Сохранить исключение</button>
                   <button id="resetWorkDayBtn" class="btn btn-secondary" type="button">Вернуть по графику</button>
                 </div>
@@ -139,8 +139,8 @@
             <div id="workContractsView" class="hidden">
               <form id="workContractForm" class="settings-form">
                 <section class="settings-block">
-                  <h3>Новый период или смена работы</h3>
-                  <p class="muted-small">Новая текущая работа автоматически завершит предыдущий период днём раньше. История компании, должности и оклада сохранится.</p>
+                  <h3 id="workContractFormHeading">Новый период или смена работы</h3>
+                  <p id="workContractFormSubtitle" class="muted-small">Новая текущая работа автоматически завершит предыдущий период днём раньше. История компании, должности и оклада сохранится.</p>
                   <div class="settings-grid-2">
                     <label class="field"><span>Действует с</span><div class="date-input-wrap"><input id="workContractFrom" type="date" required /><button class="date-input-trigger" type="button" data-date-picker-trigger="workContractFrom" aria-label="Открыть календарь"></button></div></label>
                     <label class="field"><span>Действует до</span><div class="date-input-wrap"><input id="workContractTo" type="date" /><button class="date-input-trigger" type="button" data-date-picker-trigger="workContractTo" aria-label="Открыть календарь"></button></div></label>
@@ -150,7 +150,10 @@
                     <label class="field"><span>Валюта</span><select id="workContractCurrency"><option value="BYN">BYN</option><option value="USD">USD</option><option value="EUR">EUR</option></select></label>
                   </div>
                   <label class="field"><span>Комментарий</span><input id="workContractNote" type="text" maxlength="500" /></label>
-                  <div class="settings-actions"><button class="btn btn-primary" type="submit">Добавить период</button></div>
+                  <div class="settings-actions work-contract-form-actions">
+                    <button id="workContractSubmitBtn" class="btn btn-primary" type="submit">Добавить период</button>
+                    <button id="cancelWorkContractEditBtn" class="btn btn-secondary hidden" type="button">Отменить редактирование</button>
+                  </div>
                 </section>
               </form>
               <div id="workContractsList" class="plans-list"></div>

@@ -179,6 +179,23 @@ def test_new_current_job_closes_previous_period_and_keeps_history(client: TestCl
     assert profile["company"] == "Битрикс"
     assert profile["employment_start_date"] == "2024-04-29"
 
+    updated = client.put(
+        f"/api/v1/work/contracts/{second.json()['id']}",
+        json={
+            "effective_from": "2024-04-29",
+            "company": "Битрикс",
+            "position": "Разработчик",
+            "salary_amount": "3500.00",
+            "currency": "BYN",
+            "note": "Текущая должность",
+        },
+    )
+    assert updated.status_code == 200
+    assert updated.json()["position"] == "Разработчик"
+    assert updated.json()["salary_amount"] == "3500.00"
+    updated_profile = client.get("/api/v1/work/profile").json()
+    assert updated_profile["position"] == "Разработчик"
+
     overlap = client.post(
         "/api/v1/work/contracts",
         json={

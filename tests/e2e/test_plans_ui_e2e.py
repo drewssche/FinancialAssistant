@@ -1012,6 +1012,23 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
                 "note": None,
             }
         )
+    days[2]["note"] = "Встреча с командой"
+    days[2]["is_manual"] = True
+
+    contracts_payload = [
+        {
+            "id": 12,
+            "effective_from": "2024-04-29",
+            "effective_to": None,
+            "company": "Битрикс",
+            "position": None,
+            "salary_amount": "3200.00",
+            "currency": "BYN",
+            "note": None,
+            "created_at": "2024-04-29T09:00:00Z",
+        }
+    ]
+    updated_contracts = []
 
     month_payload = {
         "year": 2026,
@@ -1075,12 +1092,18 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
 
     def work_handler(route, request):
         path = urlparse(request.url).path
+        method = request.method.upper()
         if path == "/api/v1/work/month":
             return _json_response(route, month_payload)
         if path == "/api/v1/work/statistics":
             return _json_response(route, statistics_payload)
-        if path == "/api/v1/work/contracts":
-            return _json_response(route, [])
+        if path == "/api/v1/work/contracts" and method == "GET":
+            return _json_response(route, contracts_payload)
+        if path == "/api/v1/work/contracts/12" and method == "PUT":
+            payload = json.loads(request.post_data or "{}")
+            contracts_payload[0].update(payload)
+            updated_contracts.append(payload)
+            return _json_response(route, contracts_payload[0])
         return _json_response(route, {"detail": f"Unhandled work route: {request.method} {path}"}, status=404)
 
     page.route("**/api/v1/work/**", work_handler)
@@ -1107,6 +1130,9 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     assert "is-forecast" in (page.locator('[data-work-date="2026-08-10"]').get_attribute("class") or "")
     assert "is-today" in (page.locator('[data-work-date="2026-08-09"]').get_attribute("class") or "")
     assert "Сегодня" in (page.locator('[data-work-date="2026-08-09"]').text_content() or "")
+    assert "Факт · 8 ч" in (page.locator('[data-work-date="2026-08-03"] .work-hours-chip-fact').text_content() or "")
+    assert "Прогноз · 8 ч" in (page.locator('[data-work-date="2026-08-10"] .work-hours-chip-forecast').text_content() or "")
+    assert "Встреча с командой" in (page.locator('[data-work-date="2026-08-03"] .work-day-note').text_content() or "")
 
     page.click('#workCalendarGrid [data-work-date="2026-08-03"]')
     page.wait_for_selector("#workDayForm:not(.hidden)")
@@ -1117,3 +1143,13 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     page.wait_for_selector("#workSettingsForm:not(.hidden)")
     assert page.locator("#workSalaryPlan").input_value() == "4"
     assert page.locator("#workAdvancePlan").input_value() == "3"
+
+    page.click('button[data-work-view="contracts"]')
+    page.click('[data-edit-work-contract="12"]')
+    assert page.locator("#workContractPosition").input_value() == ""
+    assert page.locator("#workContractCompany").input_value() == "Битрикс"
+    assert page.locator("#workContractSubmitBtn").text_content() == "Сохранить изменения"
+    page.locator("#workContractPosition").fill("Ведущий разработчик")
+    page.click("#workContractSubmitBtn")
+    page.wait_for_function("() => document.querySelector('#workContractsList')?.textContent?.includes('Ведущий разработчик')")
+    assert updated_contracts[-1]["position"] == "Ведущий разработчик"

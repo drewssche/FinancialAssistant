@@ -263,6 +263,35 @@ class WorkService:
         self.db.refresh(item)
         return item
 
+    def update_contract(self, *, user_id: int, contract_id: int, payload: dict) -> EmploymentContract:
+        item = self.repo.get_contract(user_id=user_id, contract_id=contract_id)
+        if not item:
+            raise LookupError("Контракт не найден")
+        if self.repo.contracts_overlap(
+            user_id=user_id,
+            effective_from=payload["effective_from"],
+            effective_to=payload.get("effective_to"),
+            exclude_id=contract_id,
+        ):
+            raise ValueError("Период контракта пересекается с существующим")
+        for field in (
+            "effective_from",
+            "effective_to",
+            "company",
+            "position",
+            "salary_amount",
+            "currency",
+            "note",
+        ):
+            setattr(item, field, payload.get(field))
+        profile = self.repo.get_profile(user_id=user_id)
+        self.db.flush()
+        if profile:
+            self._sync_profile_from_contracts(profile)
+        self.db.commit()
+        self.db.refresh(item)
+        return item
+
     def delete_contract(self, *, user_id: int, contract_id: int) -> None:
         item = self.repo.get_contract(user_id=user_id, contract_id=contract_id)
         if not item:
