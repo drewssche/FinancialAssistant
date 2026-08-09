@@ -96,6 +96,26 @@
 .work-contract-title, .work-contract-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .work-contract-current { display: inline-flex; padding: 3px 7px; border-radius: 999px; background: rgba(85, 198, 169, .16); color: #8ce0c8; font-size: 10px; font-weight: 800; }
 .work-contract-note { max-width: 720px; }
+.work-contracts-list { margin-top: 18px; gap: 10px; }
+.work-companies-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.work-company-card { min-width: 0; display: grid; gap: 8px; padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); color: var(--text); text-align: left; cursor: pointer; }
+.work-company-card:hover, .work-company-card.is-selected { border-color: rgba(77, 141, 255, .68); background: linear-gradient(180deg, rgba(77, 141, 255, .14), rgba(77, 141, 255, .04)), var(--surface-2); }
+.work-company-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.work-company-card-head .work-contract-current { font-style: normal; }
+.work-company-card > b { color: #8ce0c8; font-size: 18px; }
+.work-company-card > span:not(.work-company-card-head), .work-company-card > small { color: var(--muted); }
+.work-company-details { margin-top: 16px; }
+.work-company-detail-card { display: grid; gap: 16px; padding: 18px; border: 1px solid var(--border); border-radius: 14px; background: rgba(18, 27, 43, .62); }
+.work-company-detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.work-company-detail-head h3 { margin: 3px 0 0; }
+.work-company-detail-head > strong { color: #8ce0c8; font-size: 20px; text-align: right; }
+.work-company-detail-meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.work-company-detail-meta > span { padding: 6px 9px; border-radius: 999px; background: rgba(111, 132, 169, .12); color: var(--muted); font-size: 11px; }
+.work-company-periods { display: grid; gap: 8px; }
+.work-company-period { display: flex; justify-content: space-between; gap: 14px; padding: 12px; border: 1px solid rgba(54, 74, 109, .65); border-radius: 10px; }
+.work-company-period > div { display: grid; gap: 4px; }
+.work-company-period span { color: var(--muted); font-size: 11px; }
+.work-company-calculation-note { margin: 0; }
 @media (max-width: 760px) {
   .work-section-head, .work-payment-card { flex-direction: column; }
   .work-month-control { width: 100%; justify-content: space-between; }
@@ -111,4 +131,7 @@
   .work-statistics-custom { grid-template-columns: 1fr; }
   .work-statistics-month-row { grid-template-columns: 1fr; gap: 8px; }
   .work-statistics-month-values { grid-template-columns: auto auto; justify-content: space-between; text-align: left; }
+  .work-companies-grid { grid-template-columns: 1fr; }
+  .work-company-detail-head, .work-company-period { flex-direction: column; }
+  .work-company-detail-head > strong { text-align: left; }
 }

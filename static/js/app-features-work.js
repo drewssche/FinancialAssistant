@@ -9,6 +9,8 @@
   let statisticsAnchor = new Date(anchor);
   let workPickerYear = anchor.getFullYear();
   let contracts = [];
+  let companies = [];
+  let selectedCompanyIndex = 0;
   let editingContractId = null;
   let bound = false;
 
@@ -37,10 +39,12 @@
       "workMonthTrigger", "workMonthPopover", "workYearOptions", "workMonthOptions",
       "workPrevMonthBtn", "workNextMonthBtn", "workTodayBtn", "workSummaryGrid",
       "workPaymentsGrid", "workCalendarGrid", "workViewTabs", "workTimesheetView", "workSettingsForm",
-      "workContractsView", "workDayForm", "workDayEditorTitle", "workDayDate", "workDayStatus",
+      "workCompaniesView", "workCompaniesGrid", "workCompanyDetails", "workContractsView",
+      "workDayForm", "workDayEditorTitle", "workDayDate", "workDayStatus",
       "workDayDateTo",
       "workDayPlanned", "workDayActual", "workDayCredited", "workDayNote", "closeWorkDayEditorBtn",
       "resetWorkDayBtn", "workCompany", "workPosition", "workStartDate", "workStandardHours",
+      "workCompanyOptions",
       "workWeekdayPicker", "workSalaryPlan", "workSalaryDay", "workAdvancePlan", "workAdvanceDay",
       "workContractForm", "workContractFrom", "workContractTo", "workContractCompany",
       "workContractPosition", "workContractSalary", "workContractCurrency", "workContractNote",
@@ -214,6 +218,60 @@
     renderContracts();
   }
 
+  function formatCompanyEarnings(item) {
+    const values = (item.earnings || []).map((earning) => (
+      `${Number(earning.amount || 0).toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ${escape(earning.currency)}`
+    ));
+    return values.length ? values.join(" · ") : "Нет зарплатных операций";
+  }
+
+  function renderCompanies() {
+    if (!companies.length) {
+      nodes.workCompaniesGrid.innerHTML = '<div class="muted-small">Добавьте период работы с компанией — карточка появится здесь автоматически.</div>';
+      nodes.workCompanyDetails.innerHTML = "";
+      return;
+    }
+    selectedCompanyIndex = Math.max(0, Math.min(selectedCompanyIndex, companies.length - 1));
+    nodes.workCompaniesGrid.innerHTML = companies.map((item, index) => `
+      <button class="work-company-card ${index === selectedCompanyIndex ? "is-selected" : ""}" type="button" data-work-company-index="${index}">
+        <span class="work-company-card-head"><strong>${escape(item.company)}</strong>${item.is_current ? '<i class="work-contract-current">Текущая</i>' : ""}</span>
+        <b>${formatCompanyEarnings(item)}</b>
+        <span>${item.salary_operation_count || 0} зарплатных операций</span>
+        <small>с ${formatDate(item.effective_from)}${item.effective_to ? ` по ${formatDate(item.effective_to)}` : " · работаете сейчас"}</small>
+      </button>
+    `).join("");
+    const selected = companies[selectedCompanyIndex];
+    const positions = (selected.positions || []).length ? selected.positions.join(" · ") : "Должности не указаны";
+    nodes.workCompanyDetails.innerHTML = `
+      <article class="work-company-detail-card">
+        <div class="work-company-detail-head">
+          <div><span class="muted-small">Выбранная компания</span><h3>${escape(selected.company)}</h3></div>
+          <strong>${formatCompanyEarnings(selected)}</strong>
+        </div>
+        <div class="work-company-detail-meta">
+          <span><b>${selected.contract_count || 0}</b> периодов</span>
+          <span><b>${selected.salary_operation_count || 0}</b> выплат</span>
+          <span>${escape(positions)}</span>
+        </div>
+        <div class="work-company-periods">
+          ${(selected.periods || []).map((period) => `
+            <div class="work-company-period">
+              <div><strong>${escape(period.position || "Должность не указана")}</strong><span>с ${formatDate(period.effective_from)}${period.effective_to ? ` по ${formatDate(period.effective_to)}` : " · действует сейчас"}</span></div>
+              <b>${period.salary_amount == null ? "Оклад не указан" : `${Number(period.salary_amount).toLocaleString("ru-RU")} ${escape(period.currency)}`}</b>
+            </div>
+          `).join("")}
+        </div>
+        <p class="muted-small work-company-calculation-note">Заработок рассчитан по фактическим доходным операциям категории «Зарплата», попавшим в периоды работы. День перехода относится к новому периоду.</p>
+      </article>`;
+  }
+
+  async function loadCompanies() {
+    companies = await core.requestJson("/api/v1/work/companies", authOptions());
+    nodes.workCompanyOptions.innerHTML = companies.map((item) => `<option value="${escape(item.company)}"></option>`).join("");
+    if (selectedCompanyIndex >= companies.length) selectedCompanyIndex = 0;
+    renderCompanies();
+  }
+
   function statisticsQuery() {
     const params = new URLSearchParams({ period: statisticsPeriod });
     if (["month", "year"].includes(statisticsPeriod)) {
@@ -282,7 +340,7 @@
     renderPayments();
     renderCalendar();
     fillProfileForm();
-    await Promise.all([loadPlanOptions(), loadContracts(), loadStatistics()]);
+    await Promise.all([loadPlanOptions(), loadContracts(), loadCompanies(), loadStatistics()]);
   }
 
   function openDayEditor(iso) {
@@ -357,7 +415,7 @@
     editingContractId = null;
     nodes.workContractForm.reset();
     nodes.workContractFormHeading.textContent = "Новый период или смена работы";
-    nodes.workContractFormSubtitle.textContent = "Новая текущая работа автоматически завершит предыдущий период днём раньше. История компании, должности и оклада сохранится.";
+    nodes.workContractFormSubtitle.textContent = "Новая текущая работа автоматически завершит предыдущий период этой же датой. Дата перехода будет относиться к новому периоду.";
     nodes.workContractSubmitBtn.textContent = "Добавить период";
     nodes.cancelWorkContractEditBtn.classList.add("hidden");
   }
@@ -404,7 +462,7 @@
     await core.requestJson(`/api/v1/work/contracts/${id}`, authOptions({ method: "DELETE" }));
     if (editingContractId === id) resetContractForm();
     core.notify?.("Период условий удалён", { type: "success" });
-    await loadContracts();
+    await loadWorkSection();
   }
 
   function setView(view) {
@@ -412,6 +470,7 @@
     nodes.workStatisticsView.classList.toggle("hidden", view !== "statistics");
     nodes.workTimesheetView.classList.toggle("hidden", view !== "timesheet");
     nodes.workSettingsForm.classList.toggle("hidden", view !== "settings");
+    nodes.workCompaniesView.classList.toggle("hidden", view !== "companies");
     nodes.workContractsView.classList.toggle("hidden", view !== "contracts");
   }
 
@@ -447,6 +506,12 @@
       const select = button.dataset.workOpenPlanPicker === "advance" ? nodes.workAdvancePlan : nodes.workSalaryPlan;
       select?.focus();
       select?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    nodes.workCompaniesGrid.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-work-company-index]");
+      if (!button) return;
+      selectedCompanyIndex = Number(button.dataset.workCompanyIndex || 0);
+      renderCompanies();
     });
     nodes.workViewTabs.addEventListener("click", (event) => { const button = event.target.closest("[data-work-view]"); if (button) setView(button.dataset.workView); });
     nodes.workStatisticsPeriodTabs.addEventListener("click", (event) => {

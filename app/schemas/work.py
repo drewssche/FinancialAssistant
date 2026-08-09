@@ -160,3 +160,30 @@ class EmploymentContractOut(EmploymentContractIn):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class WorkCompanyEarningOut(BaseModel):
+    currency: str
+    amount: Decimal
+
+
+class WorkCompanyPeriodOut(BaseModel):
+    id: int
+    effective_from: date
+    effective_to: date | None = None
+    position: str | None = None
+    salary_amount: Decimal | None = None
+    currency: str
+    note: str | None = None
+
+
+class WorkCompanyOut(BaseModel):
+    company: str
+    effective_from: date
+    effective_to: date | None = None
+    is_current: bool = False
+    contract_count: int
+    salary_operation_count: int
+    positions: list[str]
+    earnings: list[WorkCompanyEarningOut]
+    periods: list[WorkCompanyPeriodOut]

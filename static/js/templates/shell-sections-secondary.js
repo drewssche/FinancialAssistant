@@ -4,6 +4,7 @@
   window.App.templates.shellSectionsSecondary = `
 
         <section id="workSection" class="section-block hidden">
+          <datalist id="workCompanyOptions"></datalist>
           <section class="panel work-hero-panel">
             <div class="panel-head row between work-section-head">
               <div>
@@ -30,6 +31,7 @@
               <button class="segmented-btn active" data-work-view="statistics" type="button">Статистика</button>
               <button class="segmented-btn" data-work-view="timesheet" type="button">Табель</button>
               <button class="segmented-btn" data-work-view="settings" type="button">Настройки и планы</button>
+              <button class="segmented-btn" data-work-view="companies" type="button">Компании</button>
               <button class="segmented-btn" data-work-view="contracts" type="button">История работы</button>
             </div>
 
@@ -111,7 +113,7 @@
               <section class="settings-block">
                 <h3>График работы</h3>
                 <div class="settings-grid-2">
-                  <label class="field"><span>Компания</span><input id="workCompany" type="text" maxlength="160" placeholder="Битрикс" /></label>
+                  <label class="field"><span>Компания</span><input id="workCompany" type="text" maxlength="160" list="workCompanyOptions" placeholder="Битрикс" /></label>
                   <label class="field"><span>Должность</span><input id="workPosition" type="text" maxlength="160" /></label>
                   <label class="field"><span>Дата начала работы</span><div class="date-input-wrap"><input id="workStartDate" type="date" /><button class="date-input-trigger" type="button" data-date-picker-trigger="workStartDate" aria-label="Открыть календарь"></button></div></label>
                   <label class="field"><span>Часов в обычный день</span><input id="workStandardHours" type="number" min="0.25" max="24" step="0.25" value="8" /></label>
@@ -136,15 +138,23 @@
               <div class="settings-actions"><button class="btn btn-primary" type="submit">Сохранить настройки</button></div>
             </form>
 
+            <div id="workCompaniesView" class="hidden">
+              <div class="panel-head">
+                <div><h3>Компании</h3><p class="subtitle">Фактический заработок по операциям категории «Зарплата» и периодам работы</p></div>
+              </div>
+              <div id="workCompaniesGrid" class="work-companies-grid"></div>
+              <div id="workCompanyDetails" class="work-company-details"></div>
+            </div>
+
             <div id="workContractsView" class="hidden">
               <form id="workContractForm" class="settings-form">
                 <section class="settings-block">
                   <h3 id="workContractFormHeading">Новый период или смена работы</h3>
-                  <p id="workContractFormSubtitle" class="muted-small">Новая текущая работа автоматически завершит предыдущий период днём раньше. История компании, должности и оклада сохранится.</p>
+                  <p id="workContractFormSubtitle" class="muted-small">Новая текущая работа автоматически завершит предыдущий период этой же датой. Дата перехода будет относиться к новому периоду.</p>
                   <div class="settings-grid-2">
                     <label class="field"><span>Действует с</span><div class="date-input-wrap"><input id="workContractFrom" type="date" required /><button class="date-input-trigger" type="button" data-date-picker-trigger="workContractFrom" aria-label="Открыть календарь"></button></div></label>
                     <label class="field"><span>Действует до</span><div class="date-input-wrap"><input id="workContractTo" type="date" /><button class="date-input-trigger" type="button" data-date-picker-trigger="workContractTo" aria-label="Открыть календарь"></button></div></label>
-                    <label class="field"><span>Компания</span><input id="workContractCompany" type="text" maxlength="160" /></label>
+                    <label class="field"><span>Компания</span><input id="workContractCompany" type="text" maxlength="160" list="workCompanyOptions" /></label>
                     <label class="field"><span>Должность</span><input id="workContractPosition" type="text" maxlength="160" /></label>
                     <label class="field"><span>Оклад на руки</span><input id="workContractSalary" type="number" min="0" step="0.01" /></label>
                     <label class="field"><span>Валюта</span><select id="workContractCurrency"><option value="BYN">BYN</option><option value="USD">USD</option><option value="EUR">EUR</option></select></label>
@@ -156,7 +166,7 @@
                   </div>
                 </section>
               </form>
-              <div id="workContractsList" class="plans-list"></div>
+              <div id="workContractsList" class="plans-list work-contracts-list"></div>
             </div>
           </section>
         </section>

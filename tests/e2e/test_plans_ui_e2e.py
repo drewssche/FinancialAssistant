@@ -1028,6 +1028,29 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
             "created_at": "2024-04-29T09:00:00Z",
         }
     ]
+    companies_payload = [
+        {
+            "company": "Битрикс",
+            "effective_from": "2024-04-29",
+            "effective_to": None,
+            "is_current": True,
+            "contract_count": 1,
+            "salary_operation_count": 12,
+            "positions": ["Разработчик"],
+            "earnings": [{"currency": "BYN", "amount": "18450.00"}],
+            "periods": [
+                {
+                    "id": 12,
+                    "effective_from": "2024-04-29",
+                    "effective_to": None,
+                    "position": "Разработчик",
+                    "salary_amount": "3200.00",
+                    "currency": "BYN",
+                    "note": None,
+                }
+            ],
+        }
+    ]
     updated_contracts = []
 
     month_payload = {
@@ -1097,6 +1120,8 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
             return _json_response(route, month_payload)
         if path == "/api/v1/work/statistics":
             return _json_response(route, statistics_payload)
+        if path == "/api/v1/work/companies" and method == "GET":
+            return _json_response(route, companies_payload)
         if path == "/api/v1/work/contracts" and method == "GET":
             return _json_response(route, contracts_payload)
         if path == "/api/v1/work/contracts/12" and method == "PUT":
@@ -1143,6 +1168,12 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     page.wait_for_selector("#workSettingsForm:not(.hidden)")
     assert page.locator("#workSalaryPlan").input_value() == "4"
     assert page.locator("#workAdvancePlan").input_value() == "3"
+
+    page.click('button[data-work-view="companies"]')
+    company_grid_text = (page.locator("#workCompaniesGrid").text_content() or "").replace("\u00a0", " ")
+    assert "18 450 BYN" in company_grid_text
+    assert "Разработчик" in (page.locator("#workCompanyDetails").text_content() or "")
+    assert page.locator('#workCompanyOptions option[value="Битрикс"]').count() == 1
 
     page.click('button[data-work-view="contracts"]')
     page.click('[data-edit-work-contract="12"]')

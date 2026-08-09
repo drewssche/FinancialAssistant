@@ -3,7 +3,7 @@ from datetime import date
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
-from app.db.models import EmploymentContract, PlanOperation, WorkDayOverride, WorkProfile
+from app.db.models import Category, EmploymentContract, Operation, PlanOperation, WorkDayOverride, WorkProfile
 
 
 class WorkRepository:
@@ -57,6 +57,17 @@ class WorkRepository:
             )
         )
 
+    def list_income_operations_with_categories(self, *, user_id: int) -> list[tuple[Operation, str]]:
+        return [
+            (operation, category_name)
+            for operation, category_name in self.db.execute(
+                select(Operation, Category.name)
+                .join(Category, Category.id == Operation.category_id)
+                .where(Operation.user_id == user_id, Operation.kind == "income")
+                .order_by(Operation.operation_date.asc(), Operation.id.asc())
+            )
+        ]
+
     def get_contract(self, *, user_id: int, contract_id: int) -> EmploymentContract | None:
         return self.db.scalar(
             select(EmploymentContract).where(
@@ -85,12 +96,15 @@ class WorkRepository:
         effective_to: date | None,
         exclude_id: int | None = None,
     ) -> bool:
+        # Employment periods may touch at a transition date: the outgoing
+        # period ends on the same date the new one begins. A real overlap
+        # therefore requires both boundaries to cross strictly.
         stmt = select(EmploymentContract.id).where(
             EmploymentContract.user_id == user_id,
-            EmploymentContract.effective_from <= (effective_to or date.max),
+            EmploymentContract.effective_from < (effective_to or date.max),
             and_(
                 EmploymentContract.effective_to.is_(None)
-                | (EmploymentContract.effective_to >= effective_from)
+                | (EmploymentContract.effective_to > effective_from)
             ),
         )
         if exclude_id:

@@ -15,6 +15,7 @@ from app.schemas.work import (
     WorkProfileOut,
     WorkProfileUpdate,
     WorkStatisticsOut,
+    WorkCompanyOut,
 )
 from app.services.work_service import WorkService
 
@@ -116,6 +117,11 @@ def reset_work_day(
 @router.get("/contracts", response_model=list[EmploymentContractOut])
 def list_contracts(user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
     return WorkService(db).list_contracts(user_id=user_id)
+
+
+@router.get("/companies", response_model=list[WorkCompanyOut])
+def list_companies(user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    return WorkService(db).list_companies(user_id=user_id)
 
 
 @router.post("/contracts", response_model=EmploymentContractOut, status_code=status.HTTP_201_CREATED)

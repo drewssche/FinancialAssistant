@@ -156,7 +156,7 @@ def test_new_current_job_closes_previous_period_and_keeps_history(client: TestCl
     first = client.post(
         "/api/v1/work/contracts",
         json={
-            "effective_from": "2022-12-01",
+            "effective_from": "2024-04-12",
             "company": "Инолта",
             "currency": "BYN",
         },
@@ -174,7 +174,7 @@ def test_new_current_job_closes_previous_period_and_keeps_history(client: TestCl
     assert second.status_code == 201
     history = client.get("/api/v1/work/contracts").json()
     assert [item["company"] for item in history] == ["Битрикс", "Инолта"]
-    assert history[1]["effective_to"] == "2024-04-28"
+    assert history[1]["effective_to"] == "2024-04-29"
     profile = client.get("/api/v1/work/profile").json()
     assert profile["company"] == "Битрикс"
     assert profile["employment_start_date"] == "2024-04-29"
@@ -196,14 +196,76 @@ def test_new_current_job_closes_previous_period_and_keeps_history(client: TestCl
     updated_profile = client.get("/api/v1/work/profile").json()
     assert updated_profile["position"] == "Разработчик"
 
+    salary_category = client.post(
+        "/api/v1/categories",
+        json={"name": "Зарплата", "kind": "income"},
+    )
+    assert salary_category.status_code == 200
+    category_id = salary_category.json()["id"]
+    for operation_date, amount in (
+        ("2024-04-20", "200.00"),
+        ("2024-04-29", "1500.00"),
+        ("2024-05-03", "500.00"),
+    ):
+        created = client.post(
+            "/api/v1/operations",
+            json={
+                "kind": "income",
+                "amount": amount,
+                "operation_date": operation_date,
+                "category_id": category_id,
+            },
+        )
+        assert created.status_code == 201
+
+    companies = client.get("/api/v1/work/companies")
+    assert companies.status_code == 200
+    company_map = {item["company"]: item for item in companies.json()}
+    assert company_map["Инолта"]["earnings"] == [{"currency": "BYN", "amount": "200.00"}]
+    assert company_map["Битрикс"]["earnings"] == [{"currency": "BYN", "amount": "2000.00"}]
+    assert company_map["Битрикс"]["salary_operation_count"] == 2
+    assert company_map["Битрикс"]["is_current"] is True
+
     overlap = client.post(
         "/api/v1/work/contracts",
         json={
-            "effective_from": "2023-01-01",
-            "effective_to": "2023-12-31",
+            "effective_from": "2024-04-15",
+            "effective_to": "2024-04-20",
             "company": "Другая компания",
             "currency": "BYN",
         },
     )
     assert overlap.status_code == 400
     assert "пересекается" in overlap.json()["detail"]
+
+
+def test_raise_can_start_on_previous_period_end_without_resetting_employment_start(client: TestClient):
+    first = client.post(
+        "/api/v1/work/contracts",
+        json={
+            "effective_from": "2024-04-29",
+            "company": "Битрикс",
+            "position": "Специалист",
+            "salary_amount": "1500.00",
+            "currency": "BYN",
+        },
+    )
+    assert first.status_code == 201
+    raised = client.post(
+        "/api/v1/work/contracts",
+        json={
+            "effective_from": "2025-04-29",
+            "company": "Битрикс",
+            "position": "Ведущий специалист",
+            "salary_amount": "1800.00",
+            "currency": "BYN",
+        },
+    )
+    assert raised.status_code == 201
+
+    history = client.get("/api/v1/work/contracts").json()
+    assert history[1]["effective_to"] == "2025-04-29"
+    assert history[0]["effective_from"] == "2025-04-29"
+    profile = client.get("/api/v1/work/profile").json()
+    assert profile["position"] == "Ведущий специалист"
+    assert profile["employment_start_date"] == "2024-04-29"

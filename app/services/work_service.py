@@ -238,6 +238,102 @@ class WorkService:
     def list_contracts(self, *, user_id: int) -> list[EmploymentContract]:
         return self.repo.list_contracts(user_id=user_id)
 
+    def list_companies(self, *, user_id: int) -> list[dict]:
+        contracts = sorted(
+            self.repo.list_contracts(user_id=user_id),
+            key=lambda item: (item.effective_from, item.id),
+        )
+        profile = self.repo.get_profile(user_id=user_id)
+        companies: dict[str, dict] = {}
+        for item in contracts:
+            company = (item.company or "").strip()
+            if not company:
+                continue
+            key = company.casefold()
+            entry = companies.setdefault(
+                key,
+                {
+                    "company": company,
+                    "effective_from": item.effective_from,
+                    "effective_to": item.effective_to,
+                    "is_current": False,
+                    "contract_count": 0,
+                    "salary_operation_count": 0,
+                    "positions": [],
+                    "earnings": {},
+                    "periods": [],
+                },
+            )
+            entry["company"] = company
+            entry["effective_from"] = min(entry["effective_from"], item.effective_from)
+            if item.effective_to is None:
+                entry["effective_to"] = None
+            elif entry["effective_to"] is not None:
+                entry["effective_to"] = max(entry["effective_to"], item.effective_to)
+            entry["contract_count"] += 1
+            if item.position and item.position not in entry["positions"]:
+                entry["positions"].append(item.position)
+            entry["periods"].append(
+                {
+                    "id": int(item.id),
+                    "effective_from": item.effective_from,
+                    "effective_to": item.effective_to,
+                    "position": item.position,
+                    "salary_amount": item.salary_amount,
+                    "currency": item.currency,
+                    "note": item.note,
+                }
+            )
+
+        latest_contract = contracts[-1] if contracts else None
+        profile_company_key = (profile.company or "").strip().casefold() if profile else ""
+        for key, entry in companies.items():
+            has_open_period = any(period["effective_to"] is None for period in entry["periods"])
+            is_latest_profile_company = bool(
+                latest_contract
+                and (latest_contract.company or "").strip().casefold() == key
+                and profile_company_key == key
+            )
+            entry["is_current"] = has_open_period or is_latest_profile_company
+            if entry["is_current"]:
+                entry["effective_to"] = None
+
+        salary_operations = [
+            operation
+            for operation, category_name in self.repo.list_income_operations_with_categories(user_id=user_id)
+            if "зарплат" in (category_name or "").casefold()
+        ]
+        for operation in salary_operations:
+            candidates = [
+                item
+                for item in contracts
+                if item.effective_from <= operation.operation_date
+                and (item.effective_to is None or item.effective_to >= operation.operation_date)
+                and (item.company or "").strip()
+            ]
+            matched = max(candidates, key=lambda item: (item.effective_from, item.id)) if candidates else None
+            if not matched and latest_contract and profile_company_key:
+                if operation.operation_date >= latest_contract.effective_from and profile_company_key == (latest_contract.company or "").strip().casefold():
+                    matched = latest_contract
+            if not matched:
+                continue
+            entry = companies.get((matched.company or "").strip().casefold())
+            if not entry:
+                continue
+            currency = operation.base_currency or operation.currency
+            entry["earnings"][currency] = entry["earnings"].get(currency, Decimal("0.00")) + money_hours(operation.amount)
+            entry["salary_operation_count"] += 1
+
+        result = []
+        for entry in companies.values():
+            entry["earnings"] = [
+                {"currency": currency, "amount": amount}
+                for currency, amount in sorted(entry["earnings"].items())
+            ]
+            entry["periods"].sort(key=lambda item: (item["effective_from"], item["id"]), reverse=True)
+            result.append(entry)
+        return sorted(result, key=lambda item: (item["is_current"], item["effective_from"]), reverse=True)
+
     def create_contract(self, *, user_id: int, payload: dict) -> EmploymentContract:
         profile = self.repo.get_profile(user_id=user_id) or self.repo.create_profile(user_id=user_id)
         previous_open = None
@@ -247,7 +343,7 @@ class WorkService:
                 effective_from=payload["effective_from"],
             )
             if previous_open:
-                previous_open.effective_to = payload["effective_from"] - timedelta(days=1)
+                previous_open.effective_to = payload["effective_from"]
         if self.repo.contracts_overlap(
             user_id=user_id,
             effective_from=payload["effective_from"],
@@ -359,7 +455,26 @@ class WorkService:
             return
         profile.company = current.company or profile.company
         profile.position = current.position
-        profile.employment_start_date = current.effective_from
+        employment_start = current.effective_from
+        current_company = (current.company or "").strip().casefold()
+        if current_company:
+            earlier = sorted(
+                (
+                    item
+                    for item in contracts
+                    if item.id != current.id
+                    and (item.company or "").strip().casefold() == current_company
+                    and item.effective_from < employment_start
+                ),
+                key=lambda item: (item.effective_from, item.id),
+                reverse=True,
+            )
+            for item in earlier:
+                if item.effective_to is None or item.effective_to >= employment_start - timedelta(days=1):
+                    employment_start = item.effective_from
+                else:
+                    break
+        profile.employment_start_date = employment_start
 
     def _build_day(self, *, day: date, profile_data: dict, override: WorkDayOverride | None, today: date) -> dict:
         standard = money_hours(profile_data["standard_hours_per_day"])
