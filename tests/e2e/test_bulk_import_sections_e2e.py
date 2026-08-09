@@ -586,6 +586,8 @@ def test_category_group_context_create_prefills_group_from_hover_action(page, st
     assert page.locator('#categoryIconPopover button[data-icon="↩️"]').count() == 1
     assert page.locator('#categoryIconPopover button[data-icon="✂️"][aria-label="Барбер / стрижка"]').count() == 1
     assert page.locator('#categoryIconPopover button[data-icon="🎰"][aria-label="Ставки / азартные игры"]').count() == 1
+    assert page.locator('#categoryIconPopover button[data-icon="🌭"][aria-label="Колбаса / сосиски"]').count() == 1
+    assert page.locator('#categoryIconPopover button[data-icon="🥓"][aria-label="Колбасные и мясные изделия"]').count() == 1
     assert page.locator('#categoryIconPopover button[data-icon="🫖"]').count() == 0
     assert page.locator('#categoryIconPopover button[data-icon="🪴"]').count() == 0
     icon_picker_geometry = page.locator("#categoryIconPopover").evaluate(
