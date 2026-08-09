@@ -86,6 +86,7 @@
 
 .category-chip-icon {
   font-size: 0.8125rem;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
   flex: 0 0 auto;
 }
 

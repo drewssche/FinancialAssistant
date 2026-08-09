@@ -64,6 +64,7 @@
   justify-content: center;
   font-size: 1.5rem;
   font-weight: 700;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
 }
 
 .icon-popover {
@@ -184,6 +185,7 @@
   color: var(--text);
   cursor: pointer;
   font-size: 1.25rem;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
 }
 
 .icon-option.active {

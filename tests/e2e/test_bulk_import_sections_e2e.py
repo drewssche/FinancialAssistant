@@ -581,9 +581,13 @@ def test_category_group_context_create_prefills_group_from_hover_action(page, st
 
     page.locator("#categoryIconToggle").click()
     page.wait_for_selector("#categoryIconPopover:not(.hidden)")
-    assert page.locator("#categoryIconPopover .icon-option-group-title").count() >= 8
+    assert page.locator("#categoryIconPopover .icon-option-group-title").count() >= 10
     assert page.locator('#categoryIconPopover button[data-icon="🚿"]').count() == 1
     assert page.locator('#categoryIconPopover button[data-icon="↩️"]').count() == 1
+    assert page.locator('#categoryIconPopover button[data-icon="✂️"][aria-label="Барбер / стрижка"]').count() == 1
+    assert page.locator('#categoryIconPopover button[data-icon="🎰"][aria-label="Ставки / азартные игры"]').count() == 1
+    assert page.locator('#categoryIconPopover button[data-icon="🫖"]').count() == 0
+    assert page.locator('#categoryIconPopover button[data-icon="🪴"]').count() == 0
     icon_picker_geometry = page.locator("#categoryIconPopover").evaluate(
         "node => ({ height: node.getBoundingClientRect().height, scrollHeight: node.scrollHeight })"
     )
