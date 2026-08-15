@@ -1,6 +1,9 @@
+from datetime import date
+
 import pytest
 from fastapi.testclient import TestClient
 
+from app.services import work_service as work_service_module
 from tests.api.test_operations_api import _client_lifecycle
 
 
@@ -71,7 +74,17 @@ def test_work_month_is_generated_automatically_and_manual_override_wins(client: 
     assert restored["is_manual"] is False
 
 
-def test_belarus_2026_calendar_and_work_statistics_match_production_hours(client: TestClient):
+def test_belarus_2026_calendar_and_work_statistics_match_production_hours(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    class FixedDate(date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 8, 7)
+
+    monkeypatch.setattr(work_service_module, "date", FixedDate)
+
     april = client.get("/api/v1/work/month", params={"year": 2026, "month": 4})
     assert april.status_code == 200
     april_payload = april.json()
