@@ -272,6 +272,17 @@ def test_item_catalog_has_central_recommendation_management():
     assert '"/static/js/app-features-item-recommendations.js"' in manifest
 
 
+def test_saved_item_template_is_applied_immediately_to_catalog_and_receipt_hints():
+    catalog = (REPO_ROOT / "static/js/app-features-item-catalog.js").read_text(encoding="utf-8")
+    modal = (REPO_ROOT / "static/js/app-features-item-catalog-modal.js").read_text(encoding="utf-8")
+
+    assert "function applySavedItemCatalogItem(item)" in catalog
+    assert "const savedItem = await core.requestJson(url" in modal
+    assert "applySavedItemCatalogItem?.(savedItem);" in modal
+    assert "applySavedReceiptTemplateHint(savedItem);" in modal
+    assert 'core.invalidateUiRequestCache("op:receipt:templates");' in modal
+
+
 def test_item_catalog_exposes_category_picker_and_discount_summary():
     modal = (REPO_ROOT / "static/js/templates/modals-item-catalog.js").read_text(encoding="utf-8")
     feature = (REPO_ROOT / "static/js/app-features-item-catalog-modal.js").read_text(encoding="utf-8")

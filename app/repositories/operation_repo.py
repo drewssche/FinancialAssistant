@@ -558,8 +558,18 @@ class OperationRepository:
     def add_item_template_prices_bulk(self, *, rows: list[dict]) -> None:
         self.item_templates.add_item_template_prices_bulk(rows=rows)
 
-    def has_item_template_price(self, *, template_id: int, unit_price: Decimal) -> bool:
-        return self.item_templates.has_item_template_price(template_id=template_id, unit_price=unit_price)
+    def has_item_template_price(
+        self,
+        *,
+        template_id: int,
+        unit_price: Decimal,
+        recorded_at: date | None = None,
+    ) -> bool:
+        return self.item_templates.has_item_template_price(
+            template_id=template_id,
+            unit_price=unit_price,
+            recorded_at=recorded_at,
+        )
 
     def cleanup_duplicate_item_template_prices(self, *, template_id: int) -> int:
         return self.item_templates.cleanup_duplicate_item_template_prices(template_id=template_id)

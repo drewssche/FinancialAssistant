@@ -240,22 +240,27 @@ class OperationItemTemplateService:
         if latest_unit_price is not None:
             next_price = self._money(latest_unit_price)
             recorded_at = latest_price_date or date.today()
-            if not self.repo.has_item_template_price(template_id=int(item.id), unit_price=next_price):
+            price_added = not self.repo.has_item_template_price(
+                template_id=int(item.id),
+                unit_price=next_price,
+                recorded_at=recorded_at,
+            )
+            if price_added:
                 self.repo.add_item_template_price(
                     template_id=int(item.id),
                     unit_price=next_price,
                     recorded_at=recorded_at,
                     source_operation_id=None,
                 )
-            self.activity.record(
-                user_id=user_id,
-                actor_user_id=user_id,
-                entity_type="item_template",
-                entity_id=int(item.id),
-                event_type="price_added",
-                title="Цена позиции добавлена",
-                metadata={"unit_price": str(next_price), "recorded_at": recorded_at.isoformat()},
-            )
+                self.activity.record(
+                    user_id=user_id,
+                    actor_user_id=user_id,
+                    entity_type="item_template",
+                    entity_id=int(item.id),
+                    event_type="price_added",
+                    title="Цена позиции добавлена",
+                    metadata={"unit_price": str(next_price), "recorded_at": recorded_at.isoformat()},
+                )
         self.db.commit()
         invalidate_item_templates_cache(user_id)
         return self._serialize_item_template(item)
@@ -335,22 +340,27 @@ class OperationItemTemplateService:
         if latest_unit_price is not None:
             next_price = self._money(latest_unit_price)
             recorded_at = updates.get("latest_price_date") or date.today()
-            if not self.repo.has_item_template_price(template_id=int(item.id), unit_price=next_price):
+            price_added = not self.repo.has_item_template_price(
+                template_id=int(item.id),
+                unit_price=next_price,
+                recorded_at=recorded_at,
+            )
+            if price_added:
                 self.repo.add_item_template_price(
                     template_id=int(item.id),
                     unit_price=next_price,
                     recorded_at=recorded_at,
                     source_operation_id=None,
                 )
-            self.activity.record(
-                user_id=user_id,
-                actor_user_id=user_id,
-                entity_type="item_template",
-                entity_id=int(item.id),
-                event_type="price_added",
-                title="Цена позиции добавлена",
-                metadata={"unit_price": str(next_price), "recorded_at": recorded_at.isoformat()},
-            )
+                self.activity.record(
+                    user_id=user_id,
+                    actor_user_id=user_id,
+                    entity_type="item_template",
+                    entity_id=int(item.id),
+                    event_type="price_added",
+                    title="Цена позиции добавлена",
+                    metadata={"unit_price": str(next_price), "recorded_at": recorded_at.isoformat()},
+                )
         self.activity.record_updated(
             user_id=user_id,
             actor_user_id=user_id,

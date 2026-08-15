@@ -13,6 +13,7 @@
       buildItemCatalogGroups,
       renderItemCatalog,
       loadItemCatalog,
+      applySavedItemCatalogItem,
       savePreferencesDebounced,
     } = deps;
     const createItemCatalogSourcesFeature = window.App.getRuntimeModule?.("item-catalog-sources-factory");
@@ -174,6 +175,34 @@
         : "Дата появится после покупки этой позиции";
     }
 
+    function applySavedReceiptTemplateHint(item) {
+      const templateId = Number(item?.id || 0);
+      if (!templateId) {
+        return;
+      }
+      const normalizedShop = normalizeItemCatalogShopName(item?.shop_name || "");
+      const normalizedName = String(item?.name || "").trim();
+      const normalized = {
+        ...item,
+        id: templateId,
+        shop_name: normalizedShop || null,
+        shop_name_ci: normalizedShop.toLowerCase(),
+        name: normalizedName,
+        name_ci: normalizedName.toLowerCase(),
+        last_category_id: Number(item?.last_category_id || 0) || null,
+        latest_unit_price: Number(item?.latest_unit_price || 0) || 0,
+      };
+      const hints = Array.isArray(state.receiptTemplateHints) ? state.receiptTemplateHints.slice() : [];
+      const index = hints.findIndex((entry) => Number(entry?.id || 0) === templateId);
+      if (index >= 0) {
+        hints[index] = normalized;
+      } else {
+        hints.unshift(normalized);
+      }
+      state.receiptTemplateHints = hints;
+      core.invalidateUiRequestCache("op:receipt:templates");
+    }
+
     async function submitItemTemplateForm(event) {
       event.preventDefault();
       const sourceName = normalizeItemCatalogShopName(el.itemTemplateSource?.value || el.itemTemplateSourceSearch?.value || "");
@@ -221,7 +250,7 @@
       const isEdit = templateId > 0;
       const url = isEdit ? `/api/v1/operations/item-templates/${templateId}` : "/api/v1/operations/item-templates";
       const method = isEdit ? "PATCH" : "POST";
-      await core.requestJson(url, {
+      const savedItem = await core.requestJson(url, {
         method,
         headers: core.authHeaders(),
         body: JSON.stringify(payload),
@@ -234,10 +263,19 @@
         }
       }
       core.invalidateUiRequestCache("item-catalog");
+      applySavedItemCatalogItem?.(savedItem);
+      applySavedReceiptTemplateHint(savedItem);
       if (!isEdit) {
         closeItemTemplateModal();
+      } else {
+        if (el.itemTemplatePrice) {
+          el.itemTemplatePrice.value = savedItem?.latest_unit_price || "";
+        }
+        if (el.itemTemplatePriceDate) {
+          core.syncDateFieldValue(el.itemTemplatePriceDate, savedItem?.latest_price_date || core.getTodayIso());
+        }
+        updateItemTemplatePreview();
       }
-      await loadItemCatalog({ force: true });
       window.App.getRuntimeModule?.("dashboard")?.loadDashboardRecommendations?.().catch(() => {});
       window.App.getRuntimeModule?.("item-recommendation-manager")?.load?.().catch(() => {});
     }

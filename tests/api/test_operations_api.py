@@ -1764,7 +1764,7 @@ def test_operation_item_templates_crud(client: TestClient):
     assert history_payload[1]["unit_price"] == "6.60"
 
 
-def test_operation_item_template_history_skips_duplicate_manual_price(client: TestClient):
+def test_operation_item_template_history_records_reapplied_manual_price_on_new_date(client: TestClient):
     created = client.post(
         "/api/v1/operations/item-templates",
         json={
@@ -1789,9 +1789,22 @@ def test_operation_item_template_history_skips_duplicate_manual_price(client: Te
     history = client.get(f"/api/v1/operations/item-templates/{template_id}/prices")
     assert history.status_code == 200
     history_payload = history.json()
-    assert len(history_payload) == 1
+    assert len(history_payload) == 2
     assert history_payload[0]["unit_price"] == "6.60"
-    assert history_payload[0]["recorded_at"] == "2026-03-05"
+    assert history_payload[0]["recorded_at"] == "2026-03-07"
+    assert history_payload[1]["unit_price"] == "6.60"
+    assert history_payload[1]["recorded_at"] == "2026-03-05"
+
+    journal = client.get(
+        "/api/v1/activity",
+        params={"entity_type": "item_template", "entity_id": template_id, "page_size": 20},
+    )
+    assert journal.status_code == 200
+    price_events = [
+        item for item in journal.json()["items"]
+        if item["event_type"] == "price_added"
+    ]
+    assert len(price_events) == 2
 
 
 def test_operation_item_template_history_cleans_existing_same_day_duplicate_rows(client: TestClient):
@@ -1822,6 +1835,17 @@ def test_operation_item_template_history_cleans_existing_same_day_duplicate_rows
     assert len(history_payload) == 1
     assert history_payload[0]["unit_price"] == "6.60"
     assert history_payload[0]["recorded_at"] == "2026-03-05"
+
+    journal = client.get(
+        "/api/v1/activity",
+        params={"entity_type": "item_template", "entity_id": template_id, "page_size": 20},
+    )
+    assert journal.status_code == 200
+    price_events = [
+        item for item in journal.json()["items"]
+        if item["event_type"] == "price_added"
+    ]
+    assert len(price_events) == 1
 
 
 def test_operation_item_template_latest_price_uses_latest_recorded_date(client: TestClient):

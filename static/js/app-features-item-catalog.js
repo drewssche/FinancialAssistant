@@ -200,6 +200,37 @@
     });
   }
 
+  function applySavedItemCatalogItem(item) {
+    const templateId = Number(item?.id || 0);
+    if (!templateId) {
+      return;
+    }
+    const upsert = (items) => {
+      const rows = Array.isArray(items) ? items.slice() : [];
+      const index = rows.findIndex((entry) => Number(entry?.id || 0) === templateId);
+      if (index >= 0) {
+        rows[index] = { ...rows[index], ...item };
+      } else {
+        rows.unshift(item);
+      }
+      return rows;
+    };
+    const query = String(el.itemCatalogSearchQ?.value || "").trim();
+    const hadBaseItem = itemCatalogBaseItems.some((entry) => Number(entry?.id || 0) === templateId);
+    if (itemCatalogBaseItems.length || !query) {
+      itemCatalogBaseItems = upsert(itemCatalogBaseItems);
+      if (!hadBaseItem) {
+        itemCatalogBaseTotal = Math.max(itemCatalogBaseTotal + 1, itemCatalogBaseItems.length);
+      }
+      state.itemCatalogItems = query
+        ? filterItemCatalogLocally(itemCatalogBaseItems, query)
+        : itemCatalogBaseItems.slice();
+    } else {
+      state.itemCatalogItems = filterItemCatalogLocally(upsert(state.itemCatalogItems), query);
+    }
+    renderItemCatalog(state.itemCatalogItems);
+  }
+
   async function fetchItemCatalogPages(params, requestController) {
     const firstPayload = await core.requestJson(`/api/v1/operations/item-templates?${params.toString()}`, {
       headers: core.authHeaders(),
@@ -299,6 +330,7 @@
       buildItemCatalogGroups,
       renderItemCatalog,
       loadItemCatalog,
+      applySavedItemCatalogItem,
       savePreferencesDebounced,
     })
     : {};

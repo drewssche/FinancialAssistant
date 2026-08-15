@@ -479,6 +479,63 @@ def test_item_catalog_shows_and_edits_template_category(static_server_url: str, 
 
 
 @pytest.mark.e2e
+def test_item_catalog_price_update_is_applied_to_catalog_and_receipt_hints(
+    static_server_url: str,
+    page_with_receipt_api_mock,
+):
+    page = page_with_receipt_api_mock
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    _login(page)
+    _ensure_categories_loaded(page)
+    page.click("button[data-section='item_catalog']")
+    page.wait_for_selector("#itemCatalogSection:not(.hidden)")
+    page.evaluate(
+        """
+        () => {
+          window.App.state.receiptTemplateHints = [{
+            id: 1,
+            shop_name: "Соседи",
+            shop_name_ci: "соседи",
+            name: "Ротманс",
+            name_ci: "ротманс",
+            last_category_id: 101,
+            latest_unit_price: 6.60,
+          }];
+        }
+        """
+    )
+
+    page.locator('tr[data-item-template-open-id="1"]').click()
+    page.wait_for_selector("#itemTemplateModal:not(.hidden)")
+    page.fill("#itemTemplatePrice", "7.25")
+    page.evaluate(
+        "() => window.App.core.syncDateFieldValue(document.querySelector('#itemTemplatePriceDate'), '2026-08-16')"
+    )
+    page.click("#submitItemTemplateBtn")
+
+    page.wait_for_function(
+        "() => Number((window.App.state.itemCatalogItems || []).find((item) => Number(item.id) === 1)?.latest_unit_price) === 7.25"
+    )
+    assert "7,25" in (page.locator('tr[data-item-template-open-id="1"]').text_content() or "")
+    assert page.evaluate(
+        "() => Number((window.App.state.receiptTemplateHints || []).find((item) => Number(item.id) === 1)?.latest_unit_price)"
+    ) == 7.25
+
+
+@pytest.mark.e2e
 def test_deleting_item_catalog_source_archives_its_templates_instead_of_moving_them(
     static_server_url: str,
     page_with_receipt_api_mock,

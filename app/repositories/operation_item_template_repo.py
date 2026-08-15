@@ -116,11 +116,20 @@ class OperationItemTemplateRepository:
         self.db.add_all(payload)
         self.db.flush()
 
-    def has_item_template_price(self, *, template_id: int, unit_price: Decimal) -> bool:
-        stmt = select(OperationItemPrice.id).where(
+    def has_item_template_price(
+        self,
+        *,
+        template_id: int,
+        unit_price: Decimal,
+        recorded_at: date | None = None,
+    ) -> bool:
+        conditions = [
             OperationItemPrice.template_id == template_id,
             OperationItemPrice.unit_price == unit_price,
-        ).limit(1)
+        ]
+        if recorded_at is not None:
+            conditions.append(OperationItemPrice.recorded_at == recorded_at)
+        stmt = select(OperationItemPrice.id).where(*conditions).limit(1)
         return self.db.scalar(stmt) is not None
 
     def cleanup_duplicate_item_template_prices(self, *, template_id: int) -> int:
