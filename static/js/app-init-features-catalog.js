@@ -48,6 +48,16 @@
         actions.openItemTemplateHistoryModal?.(item).catch((err) => core.setStatus(String(err)));
       }
     });
+    el.itemTemplateHistoryBody?.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-delete-item-template-price-id]");
+      if (!button) {
+        return;
+      }
+      actions.deleteItemTemplatePriceFlow?.(
+        Number(button.dataset.itemTemplateId || 0),
+        Number(button.dataset.deleteItemTemplatePriceId || 0),
+      );
+    });
     el.sourceGroupCreateItemBtn?.addEventListener("click", () => {
       const sourceName = String(el.sourceGroupCreateItemBtn.dataset.createItemTemplateSourceName || "").trim();
       if (!sourceName) {

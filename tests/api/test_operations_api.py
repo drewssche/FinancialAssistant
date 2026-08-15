@@ -1764,6 +1764,55 @@ def test_operation_item_templates_crud(client: TestClient):
     assert history_payload[1]["unit_price"] == "6.60"
 
 
+def test_operation_item_template_price_can_be_deleted_and_latest_price_recalculates(client: TestClient):
+    created = client.post(
+        "/api/v1/operations/item-templates",
+        json={
+            "shop_name": "Соседи",
+            "name": "Ошибочная цена",
+            "latest_unit_price": "6.60",
+            "latest_price_date": "2026-03-05",
+        },
+    )
+    assert created.status_code == 201
+    template_id = created.json()["id"]
+
+    updated = client.patch(
+        f"/api/v1/operations/item-templates/{template_id}",
+        json={"latest_unit_price": "9.99", "latest_price_date": "2026-03-06"},
+    )
+    assert updated.status_code == 200
+    history = client.get(f"/api/v1/operations/item-templates/{template_id}/prices")
+    assert history.status_code == 200
+    newest_price_id = history.json()[0]["id"]
+
+    deleted = client.delete(
+        f"/api/v1/operations/item-templates/{template_id}/prices/{newest_price_id}"
+    )
+    assert deleted.status_code == 200
+    assert deleted.json()["latest_unit_price"] == "6.60"
+    assert deleted.json()["latest_price_date"] == "2026-03-05"
+
+    history_after = client.get(f"/api/v1/operations/item-templates/{template_id}/prices")
+    assert history_after.status_code == 200
+    assert [(row["unit_price"], row["recorded_at"]) for row in history_after.json()] == [
+        ("6.60", "2026-03-05")
+    ]
+    journal = client.get(
+        "/api/v1/activity",
+        params={"entity_type": "item_template", "entity_id": template_id, "page_size": 20},
+    )
+    assert journal.status_code == 200
+    deleted_events = [
+        item for item in journal.json()["items"] if item["event_type"] == "price_deleted"
+    ]
+    assert len(deleted_events) == 1
+    assert deleted_events[0]["metadata"]["unit_price"] == "9.99"
+    assert client.delete(
+        f"/api/v1/operations/item-templates/{template_id}/prices/{newest_price_id}"
+    ).status_code == 404
+
+
 def test_operation_item_template_history_records_reapplied_manual_price_on_new_date(client: TestClient):
     created = client.post(
         "/api/v1/operations/item-templates",

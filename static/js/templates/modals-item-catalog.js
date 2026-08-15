@@ -144,6 +144,7 @@
               <tr>
                 <th>Дата</th>
                 <th>Цена</th>
+                <th aria-label="Действия"></th>
               </tr>
             </thead>
             <tbody id="itemTemplateHistoryBody"></tbody>

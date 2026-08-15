@@ -14,6 +14,7 @@
       renderItemCatalog,
       loadItemCatalog,
       applySavedItemCatalogItem,
+      applySavedReceiptTemplateHint,
       savePreferencesDebounced,
     } = deps;
     const createItemCatalogSourcesFeature = window.App.getRuntimeModule?.("item-catalog-sources-factory");
@@ -173,34 +174,6 @@
       el.itemTemplateRecommendationHint.textContent = visibleDate
         ? `Следующая рекомендация: ${core.formatDateRu(visibleDate)}`
         : "Дата появится после покупки этой позиции";
-    }
-
-    function applySavedReceiptTemplateHint(item) {
-      const templateId = Number(item?.id || 0);
-      if (!templateId) {
-        return;
-      }
-      const normalizedShop = normalizeItemCatalogShopName(item?.shop_name || "");
-      const normalizedName = String(item?.name || "").trim();
-      const normalized = {
-        ...item,
-        id: templateId,
-        shop_name: normalizedShop || null,
-        shop_name_ci: normalizedShop.toLowerCase(),
-        name: normalizedName,
-        name_ci: normalizedName.toLowerCase(),
-        last_category_id: Number(item?.last_category_id || 0) || null,
-        latest_unit_price: Number(item?.latest_unit_price || 0) || 0,
-      };
-      const hints = Array.isArray(state.receiptTemplateHints) ? state.receiptTemplateHints.slice() : [];
-      const index = hints.findIndex((entry) => Number(entry?.id || 0) === templateId);
-      if (index >= 0) {
-        hints[index] = normalized;
-      } else {
-        hints.unshift(normalized);
-      }
-      state.receiptTemplateHints = hints;
-      core.invalidateUiRequestCache("op:receipt:templates");
     }
 
     async function submitItemTemplateForm(event) {
@@ -569,6 +542,7 @@
       updateSourceGroupPreview: sourcesFeature?.updateSourceGroupPreview,
       openItemTemplateHistoryModal: sourcesFeature?.openItemTemplateHistoryModal,
       closeItemTemplateHistoryModal: sourcesFeature?.closeItemTemplateHistoryModal,
+      deleteItemTemplatePriceFlow: sourcesFeature?.deleteItemTemplatePriceFlow,
     };
   }
 

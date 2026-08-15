@@ -196,6 +196,7 @@
   const handleItemTemplateCategorySearchFocusOut = itemCatalogFeatures.handleItemTemplateCategorySearchFocusOut;
   const openItemTemplateHistoryModal = itemCatalogFeatures.openItemTemplateHistoryModal;
   const closeItemTemplateHistoryModal = itemCatalogFeatures.closeItemTemplateHistoryModal;
+  const deleteItemTemplatePriceFlow = itemCatalogFeatures.deleteItemTemplatePriceFlow;
   const cleanupItemCatalogRuntime = itemCatalogFeatures.cleanupItemCatalogRuntime;
 
   const ensureAllTimeBounds = operationsFeatures.ensureAllTimeBounds;
@@ -422,6 +423,7 @@
     handleItemTemplateCategorySearchFocusOut,
     openItemTemplateHistoryModal,
     closeItemTemplateHistoryModal,
+    deleteItemTemplatePriceFlow,
     refreshOperationsView,
     getCurrentOperationItems,
     clearOperationsCategoryFilter,

@@ -207,6 +207,12 @@ def _build_handler(active_section: str):
     category_groups = _category_groups_payload()
     debt_cards = _debt_cards_payload()
     operations = _operations_payload()
+    item_price_history = {
+        1: [
+            {"id": 11, "unit_price": "5.10", "recorded_at": "2026-03-11", "source_operation_id": None},
+            {"id": 10, "unit_price": "5.00", "recorded_at": "2026-03-10", "source_operation_id": None},
+        ]
+    }
 
     def handler(route, request):
         parsed = urlparse(request.url)
@@ -247,7 +253,20 @@ def _build_handler(active_section: str):
         if path == "/api/v1/operations/item-templates" and method == "GET":
             return _json_response(route, item_templates)
         if path.startswith("/api/v1/operations/item-templates/") and path.endswith("/prices") and method == "GET":
-            return _json_response(route, [])
+            template_id = int(path.split("/")[-2])
+            return _json_response(route, item_price_history.get(template_id, []))
+        if path.startswith("/api/v1/operations/item-templates/") and "/prices/" in path and method == "DELETE":
+            parts = path.split("/")
+            template_id = int(parts[-3])
+            price_id = int(parts[-1])
+            item_price_history[template_id] = [
+                row for row in item_price_history.get(template_id, []) if int(row["id"]) != price_id
+            ]
+            item = next(row for row in item_templates["items"] if int(row["id"]) == template_id)
+            latest = item_price_history[template_id][0] if item_price_history[template_id] else None
+            item["latest_unit_price"] = latest["unit_price"] if latest else None
+            item["latest_price_date"] = latest["recorded_at"] if latest else None
+            return _json_response(route, item)
         if path == "/api/v1/dashboard/summary" and method == "GET":
             return _json_response(
                 route,
@@ -456,7 +475,19 @@ def test_item_catalog_kebab_actions_work_from_floating_popover(static_server_url
             page.locator("#itemTemplateHistoryBtn").click()
             page.wait_for_selector("#itemTemplateHistoryModal:not(.hidden)")
             assert page.locator("#itemTemplateHistoryTitle").inner_text().strip().startswith("История цен")
-            page.locator("#closeItemTemplateHistoryModalBtn").click()
+            page.wait_for_function(
+                """
+                () => Number(getComputedStyle(document.querySelector('#itemTemplateHistoryModal')).zIndex)
+                  > Number(getComputedStyle(document.querySelector('#itemTemplateModal')).zIndex)
+                """
+            )
+            expect(page.locator("#itemTemplateHistoryBody tr")).to_have_count(2)
+            page.locator("#itemTemplateHistoryBody button[data-delete-item-template-price-id='11']").click()
+            page.wait_for_selector("#confirmModal:not(.hidden)")
+            page.locator("#confirmDeleteBtn").click()
+            expect(page.locator("#itemTemplateHistoryBody tr")).to_have_count(1)
+            expect(page.locator("#itemTemplatePrice")).to_have_value("5.00")
+            page.keyboard.press("Escape")
             page.wait_for_selector("#itemTemplateHistoryModal", state="hidden")
             assert page.locator("#itemTemplateModal").is_visible()
             page.locator("#closeItemTemplateModalBtn").click()

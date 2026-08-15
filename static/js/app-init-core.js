@@ -803,6 +803,7 @@
       return;
     }
     bound = true;
+    core.installModalStackObserver?.();
     bindCoreHandlers();
     bindModalHandlers();
     getActivityFeature().bindActivityUi?.();

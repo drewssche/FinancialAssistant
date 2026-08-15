@@ -116,6 +116,22 @@ class OperationItemTemplateRepository:
         self.db.add_all(payload)
         self.db.flush()
 
+    def get_item_template_price(
+        self,
+        *,
+        template_id: int,
+        price_id: int,
+    ) -> OperationItemPrice | None:
+        stmt = select(OperationItemPrice).where(
+            OperationItemPrice.id == price_id,
+            OperationItemPrice.template_id == template_id,
+        )
+        return self.db.scalar(stmt)
+
+    def delete_item_template_price(self, *, row: OperationItemPrice) -> None:
+        self.db.delete(row)
+        self.db.flush()
+
     def has_item_template_price(
         self,
         *,

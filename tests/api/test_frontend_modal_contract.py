@@ -98,6 +98,32 @@ def test_activity_journal_modal_is_available_in_frontend_templates():
     core_js = (REPO_ROOT / "static" / "js" / "app-core.js").read_text(encoding="utf-8")
     assert "function bringModalToFront(modal)" in core_js
     assert "function getTopVisibleModal()" in core_js
+    assert "function installModalStackObserver()" in core_js
+    assert 'attributeFilter: ["class"]' in core_js
+    assert "core.installModalStackObserver?.();" in init_core
+
+
+def test_item_price_history_supports_safe_deletion_and_immediate_refresh():
+    template = (REPO_ROOT / "static" / "js" / "templates" / "modals-item-catalog.js").read_text(
+        encoding="utf-8"
+    )
+    sources = (REPO_ROOT / "static" / "js" / "app-features-item-catalog-sources.js").read_text(
+        encoding="utf-8"
+    )
+    catalog_init = (REPO_ROOT / "static" / "js" / "app-init-features-catalog.js").read_text(
+        encoding="utf-8"
+    )
+    features = (REPO_ROOT / "static" / "js" / "app-features.js").read_text(encoding="utf-8")
+
+    assert 'data-delete-item-template-price-id="${Number(row.id)}"' in sources
+    assert "deleteItemTemplatePriceFlow" in sources
+    assert "Цена в уже сохраненной операции не изменится" in sources
+    assert "method: \"DELETE\"" in sources
+    assert "applySavedItemCatalogItem?.(savedItem)" in sources
+    assert "applySavedReceiptTemplateHint?.(savedItem)" in sources
+    assert 'button[data-delete-item-template-price-id]' in catalog_init
+    assert "deleteItemTemplatePriceFlow = itemCatalogFeatures.deleteItemTemplatePriceFlow" in features
+    assert '<th aria-label="Действия"></th>' in template
 
 
 def test_context_action_registry_keeps_row_and_modal_actions_explicit():
@@ -280,7 +306,7 @@ def test_saved_item_template_is_applied_immediately_to_catalog_and_receipt_hints
     assert "const savedItem = await core.requestJson(url" in modal
     assert "applySavedItemCatalogItem?.(savedItem);" in modal
     assert "applySavedReceiptTemplateHint(savedItem);" in modal
-    assert 'core.invalidateUiRequestCache("op:receipt:templates");' in modal
+    assert 'core.invalidateUiRequestCache("op:receipt:templates");' in catalog
 
 
 def test_item_catalog_exposes_category_picker_and_discount_summary():

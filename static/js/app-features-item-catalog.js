@@ -231,6 +231,36 @@
     renderItemCatalog(state.itemCatalogItems);
   }
 
+  function applySavedReceiptTemplateHint(item) {
+    const templateId = Number(item?.id || 0);
+    if (!templateId) {
+      return;
+    }
+    const normalizedShop = normalizeItemCatalogShopName(item?.shop_name || "");
+    const normalizedName = String(item?.name || "").trim();
+    const normalized = {
+      ...item,
+      id: templateId,
+      shop_name: normalizedShop || null,
+      shop_name_ci: normalizedShop.toLowerCase(),
+      name: normalizedName,
+      name_ci: normalizedName.toLowerCase(),
+      last_category_id: Number(item?.last_category_id || 0) || null,
+      latest_unit_price: item?.latest_unit_price === null || item?.latest_unit_price === undefined
+        ? null
+        : Number(item.latest_unit_price),
+    };
+    const hints = Array.isArray(state.receiptTemplateHints) ? state.receiptTemplateHints.slice() : [];
+    const index = hints.findIndex((entry) => Number(entry?.id || 0) === templateId);
+    if (index >= 0) {
+      hints[index] = normalized;
+    } else {
+      hints.unshift(normalized);
+    }
+    state.receiptTemplateHints = hints;
+    core.invalidateUiRequestCache("op:receipt:templates");
+  }
+
   async function fetchItemCatalogPages(params, requestController) {
     const firstPayload = await core.requestJson(`/api/v1/operations/item-templates?${params.toString()}`, {
       headers: core.authHeaders(),
@@ -331,6 +361,7 @@
       renderItemCatalog,
       loadItemCatalog,
       applySavedItemCatalogItem,
+      applySavedReceiptTemplateHint,
       savePreferencesDebounced,
     })
     : {};
@@ -382,6 +413,7 @@
     handleItemTemplateCategorySearchFocusOut: itemCatalogModal.handleItemTemplateCategorySearchFocusOut,
     openItemTemplateHistoryModal: itemCatalogModal.openItemTemplateHistoryModal,
     closeItemTemplateHistoryModal: itemCatalogModal.closeItemTemplateHistoryModal,
+    deleteItemTemplatePriceFlow: itemCatalogModal.deleteItemTemplatePriceFlow,
     cleanupItemCatalogRuntime,
   };
 

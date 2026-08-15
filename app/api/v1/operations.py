@@ -290,6 +290,27 @@ def list_operation_item_template_prices(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
+@router.delete(
+    "/item-templates/{template_id}/prices/{price_id}",
+    response_model=OperationItemTemplateOut,
+)
+def delete_operation_item_template_price(
+    template_id: int,
+    price_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = OperationService(db)
+    try:
+        return service.delete_item_template_price(
+            user_id=user_id,
+            template_id=template_id,
+            price_id=price_id,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
 @router.post("/item-templates", response_model=OperationItemTemplateOut, status_code=status.HTTP_201_CREATED)
 def create_operation_item_template(
     payload: OperationItemTemplateCreate,

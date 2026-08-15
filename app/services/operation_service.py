@@ -851,6 +851,19 @@ class OperationService:
             limit=limit,
         )
 
+    def delete_item_template_price(
+        self,
+        *,
+        user_id: int,
+        template_id: int,
+        price_id: int,
+    ) -> dict:
+        return self.item_templates.delete_item_template_price(
+            user_id=user_id,
+            template_id=template_id,
+            price_id=price_id,
+        )
+
     def create_item_template(
         self,
         *,

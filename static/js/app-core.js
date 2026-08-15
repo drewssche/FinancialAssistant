@@ -149,6 +149,8 @@
   }
 
   let modalStackCounter = 0;
+  let modalStackObserver = null;
+  const MODAL_STACK_BASE_Z_INDEX = 200;
 
   function bringModalToFront(modal) {
     if (!modal || !modal.classList?.contains("modal")) {
@@ -156,7 +158,7 @@
     }
     modalStackCounter += 1;
     modal.dataset.modalStackIndex = String(modalStackCounter);
-    modal.style.zIndex = String(140 + modalStackCounter);
+    modal.style.zIndex = String(MODAL_STACK_BASE_Z_INDEX + modalStackCounter);
     document.querySelectorAll(".modal.modal-front").forEach((node) => {
       if (node !== modal) {
         node.classList.remove("modal-front");
@@ -200,6 +202,35 @@
     if (next) {
       bringModalToFront(next);
     }
+  }
+
+  function installModalStackObserver() {
+    if (modalStackObserver || !document.body || typeof MutationObserver === "undefined") {
+      return;
+    }
+    modalStackObserver = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        const modal = mutation.target;
+        if (!(modal instanceof HTMLElement) || !modal.classList.contains("modal")) {
+          continue;
+        }
+        const previousClasses = String(mutation.oldValue || "").split(/\s+/);
+        const wasHidden = previousClasses.includes("hidden");
+        const isHidden = modal.classList.contains("hidden");
+        if (wasHidden && !isHidden && !modal.dataset.modalStackIndex) {
+          bringModalToFront(modal);
+        } else if (!wasHidden && isHidden && modal.dataset.modalStackIndex) {
+          markModalClosed(modal);
+        }
+      }
+    });
+    modalStackObserver.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["class"],
+      attributeOldValue: true,
+      subtree: true,
+    });
+    document.querySelectorAll(".modal:not(.hidden)").forEach((modal) => bringModalToFront(modal));
   }
 
   function syncAllPeriodTabs(value) {
@@ -381,6 +412,7 @@
 	      bringModalToFront,
 	      getTopVisibleModal,
 	      markModalClosed,
+        installModalStackObserver,
       syncAllPeriodTabs,
       formatAmount,
       formatRateAmount,

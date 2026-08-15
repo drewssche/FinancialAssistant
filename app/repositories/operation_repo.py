@@ -558,6 +558,20 @@ class OperationRepository:
     def add_item_template_prices_bulk(self, *, rows: list[dict]) -> None:
         self.item_templates.add_item_template_prices_bulk(rows=rows)
 
+    def get_item_template_price(
+        self,
+        *,
+        template_id: int,
+        price_id: int,
+    ) -> OperationItemPrice | None:
+        return self.item_templates.get_item_template_price(
+            template_id=template_id,
+            price_id=price_id,
+        )
+
+    def delete_item_template_price(self, *, row: OperationItemPrice) -> None:
+        self.item_templates.delete_item_template_price(row=row)
+
     def has_item_template_price(
         self,
         *,

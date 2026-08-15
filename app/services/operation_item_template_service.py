@@ -143,6 +143,38 @@ class OperationItemTemplateService:
         )
         return payload
 
+    def delete_item_template_price(
+        self,
+        *,
+        user_id: int,
+        template_id: int,
+        price_id: int,
+    ) -> dict:
+        item = self.repo.get_item_template_by_id(user_id=user_id, template_id=template_id)
+        if not item:
+            raise LookupError("Item template not found")
+        price = self.repo.get_item_template_price(template_id=template_id, price_id=price_id)
+        if not price:
+            raise LookupError("Item template price not found")
+        metadata = {
+            "unit_price": str(self._money(price.unit_price)),
+            "recorded_at": price.recorded_at.isoformat(),
+            "source_operation_id": price.source_operation_id,
+        }
+        self.repo.delete_item_template_price(row=price)
+        self.activity.record(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="item_template",
+            entity_id=int(item.id),
+            event_type="price_deleted",
+            title="Цена позиции удалена",
+            metadata=metadata,
+        )
+        self.db.commit()
+        invalidate_item_templates_cache(user_id)
+        return self._serialize_item_template(item)
+
     def create_item_template(
         self,
         *,
