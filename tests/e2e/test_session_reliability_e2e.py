@@ -661,3 +661,54 @@ def test_usage_operation_opens_nested_and_returns_to_same_row(static_server_url:
     expect(page.locator("#usageModal")).to_be_visible()
     expect(row).to_be_focused()
     assert counters["usage_list"] == 2
+
+
+@pytest.mark.e2e
+def test_category_icon_picker_stays_above_long_lived_modal_and_aligns_to_toggle(
+    static_server_url: str,
+    session_page,
+):
+    page, _ = session_page
+    page.goto(f"{static_server_url}/static/index.html")
+    page.wait_for_selector("#appShell:not(.hidden)")
+
+    page.evaluate(
+        """
+        () => {
+          const modal = document.getElementById('editCategoryModal');
+          modal.classList.remove('hidden');
+          for (let index = 0; index < 30; index += 1) {
+            window.App.core.bringModalToFront(modal);
+          }
+        }
+        """
+    )
+    page.click("#editCategoryIconToggle")
+    picker = page.locator("#editCategoryIconPopover")
+    expect(picker).to_be_visible()
+
+    geometry = page.evaluate(
+        """
+        () => {
+          const modal = document.getElementById('editCategoryModal');
+          const picker = document.getElementById('editCategoryIconPopover');
+          const toggle = document.getElementById('editCategoryIconToggle');
+          const pickerRect = picker.getBoundingClientRect();
+          const toggleRect = toggle.getBoundingClientRect();
+          const topElement = document.elementFromPoint(pickerRect.left + 20, pickerRect.top + 20);
+          return {
+            modalZIndex: Number(getComputedStyle(modal).zIndex),
+            pickerZIndex: Number(getComputedStyle(picker).zIndex),
+            leftDelta: Math.abs(pickerRect.left - toggleRect.left),
+            pickerIsTopLayer: Boolean(topElement && picker.contains(topElement)),
+          };
+        }
+        """
+    )
+    assert geometry["pickerZIndex"] > geometry["modalZIndex"]
+    assert geometry["leftDelta"] <= 1
+    assert geometry["pickerIsTopLayer"] is True
+
+    page.locator("#editCategoryIconPopover button[data-icon='🚕']").click()
+    expect(page.locator("#editCategoryIconToggle")).to_have_text("🚕")
+    expect(picker).to_be_hidden()

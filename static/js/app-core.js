@@ -201,6 +201,8 @@
     const next = getTopVisibleModal();
     if (next) {
       bringModalToFront(next);
+    } else {
+      modalStackCounter = 0;
     }
   }
 

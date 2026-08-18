@@ -104,6 +104,7 @@ def test_activity_journal_modal_is_available_in_frontend_templates():
     assert "function bringModalToFront(modal)" in core_js
     assert "function getTopVisibleModal()" in core_js
     assert "function installModalStackObserver()" in core_js
+    assert "modalStackCounter = 0;" in core_js
     assert 'attributeFilter: ["class"]' in core_js
     assert "core.installModalStackObserver?.();" in init_core
 

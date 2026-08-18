@@ -82,6 +82,9 @@ def test_period_control_popovers_have_wide_floating_layout():
 
     assert "Math.min(360, Math.max(320, viewportWidth - margin * 2))" in picker_utils
     assert "Math.min(isControlPopover && !sizesToContent ? 320 : 168, preferredWidth)" in picker_utils
+    assert 'const ownerModal = anchor.closest(".modal:not(.hidden)");' in picker_utils
+    assert "Math.max(220, (Number.isFinite(ownerModalZIndex) ? ownerModalZIndex : 0) + 2)" in picker_utils
+    assert 'const alignToAnchorStart = popover.classList.contains("category-icon-popover");' in picker_utils
     assert ".period-control-popover .settings-picker-option" in overlays_css
     assert "white-space: nowrap" in overlays_css
 

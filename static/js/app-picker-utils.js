@@ -176,7 +176,6 @@
     const margin = 12;
     clearFloatingPopoverStyles(popover);
     popover.style.position = "fixed";
-    popover.style.zIndex = "220";
     const viewportMaxHeight = Math.max(160, viewportHeight - margin * 2);
     const popoverMaxHeight = popover.classList.contains("category-icon-popover")
       ? Math.min(520, viewportMaxHeight)
@@ -184,7 +183,11 @@
     popover.style.maxHeight = `${popoverMaxHeight}px`;
     popover.style.overflowY = "auto";
     const anchorRect = anchor.getBoundingClientRect();
+    const ownerModal = anchor.closest(".modal:not(.hidden)");
+    const ownerModalZIndex = ownerModal ? Number(window.getComputedStyle(ownerModal).zIndex || 0) : 0;
+    popover.style.zIndex = String(Math.max(220, (Number.isFinite(ownerModalZIndex) ? ownerModalZIndex : 0) + 2));
     const isControlPopover = popover.classList.contains("app-popover-floating") || popover.classList.contains("period-control-popover");
+    const alignToAnchorStart = popover.classList.contains("category-icon-popover");
     const sizesToContent = popover.classList.contains("analytics-grid-picker-popover");
     let preferredWidth = Math.min(360, Math.max(320, viewportWidth - margin * 2));
     if (!isControlPopover || sizesToContent) {
@@ -196,7 +199,8 @@
     }
     popover.style.width = `${preferredWidth}px`;
     popover.style.minWidth = `${Math.min(isControlPopover && !sizesToContent ? 320 : 168, preferredWidth)}px`;
-    popover.style.left = `${Math.max(margin, Math.min(anchorRect.right - preferredWidth, viewportWidth - preferredWidth - margin))}px`;
+    const preferredLeft = alignToAnchorStart ? anchorRect.left : anchorRect.right - preferredWidth;
+    popover.style.left = `${Math.max(margin, Math.min(preferredLeft, viewportWidth - preferredWidth - margin))}px`;
     popover.style.top = `${Math.min(anchorRect.bottom + 8, viewportHeight - margin)}px`;
     const rect = popover.getBoundingClientRect();
     const spaceBelow = viewportHeight - anchorRect.bottom - margin;
