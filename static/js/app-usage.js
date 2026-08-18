@@ -1,6 +1,8 @@
 (() => {
   const { el, core } = window.App;
   let currentUsage = null;
+  let usageLoadToken = 0;
+  let editModalObserver = null;
 
   const usageLabels = {
     category: {
@@ -134,6 +136,83 @@
     }).join("");
   }
 
+  function captureUsageReturnContext(operationId) {
+    if (!currentUsage || !el.usageList) {
+      return;
+    }
+    currentUsage.selectedOperationId = Number(operationId || 0) || null;
+    currentUsage.scrollTop = el.usageList.scrollTop;
+    el.usageList.querySelectorAll(".usage-event.is-context-selected").forEach((row) => {
+      row.classList.remove("is-context-selected");
+      row.removeAttribute("aria-current");
+    });
+    const row = el.usageList.querySelector(`[data-usage-operation-id="${currentUsage.selectedOperationId}"]`);
+    row?.classList.add("is-context-selected");
+    row?.setAttribute("aria-current", "true");
+  }
+
+  function restoreUsageReturnContext({ focus = false } = {}) {
+    if (!currentUsage || !el.usageList) {
+      return;
+    }
+    const operationId = Number(currentUsage.selectedOperationId || 0);
+    const scrollTop = Number(currentUsage.scrollTop || 0);
+    window.requestAnimationFrame(() => {
+      if (!currentUsage || !el.usageList || el.usageModal?.classList.contains("hidden")) {
+        return;
+      }
+      el.usageList.scrollTop = scrollTop;
+      if (!(operationId > 0)) {
+        return;
+      }
+      const row = el.usageList.querySelector(`[data-usage-operation-id="${operationId}"]`);
+      row?.classList.add("is-context-selected");
+      row?.setAttribute("aria-current", "true");
+      if (focus && row instanceof HTMLElement) {
+        row.focus({ preventScroll: true });
+        el.usageList.scrollTop = scrollTop;
+      }
+    });
+  }
+
+  async function loadCurrentUsage({ preserveContext = false, focusSelected = false } = {}) {
+    if (!currentUsage || !el.usageList) {
+      return;
+    }
+    const usageKey = `${currentUsage.entityType}:${currentUsage.entityId}`;
+    const loadToken = ++usageLoadToken;
+    const labels = usageLabels[currentUsage.entityType] || usageLabels.category;
+    const params = usageParams(currentUsage.entityType, currentUsage.entityId);
+    if (!preserveContext) {
+      if (el.usageKpi) {
+        el.usageKpi.innerHTML = "";
+      }
+      el.usageList.innerHTML = "<div class='muted-small'>Загрузка операций...</div>";
+    }
+    try {
+      const [listPayload, summaryPayload] = await Promise.all([
+        core.requestJson(`/api/v1/operations/money-flow?${params.toString()}`, {
+          headers: core.authHeaders(),
+        }),
+        core.requestJson(`/api/v1/operations/money-flow/summary?${params.toString()}`, {
+          headers: core.authHeaders(),
+        }),
+      ]);
+      if (loadToken !== usageLoadToken || !currentUsage || `${currentUsage.entityType}:${currentUsage.entityId}` !== usageKey) {
+        return;
+      }
+      const items = listPayload.items || [];
+      renderUsageKpi(summaryPayload, items);
+      renderUsageList(items, labels.empty);
+      restoreUsageReturnContext({ focus: focusSelected });
+    } catch (err) {
+      if (loadToken !== usageLoadToken || !currentUsage || `${currentUsage.entityType}:${currentUsage.entityId}` !== usageKey) {
+        return;
+      }
+      el.usageList.innerHTML = `<div class="form-error">Не удалось загрузить операции: ${core.escapeHtml(String(err?.message || err))}</div>`;
+    }
+  }
+
   async function openUsageModal(entityType, entityId, entityName = "") {
     const normalizedId = Number(entityId || 0);
     if (!el.usageModal || !el.usageList || !normalizedId) {
@@ -144,6 +223,9 @@
       entityType,
       entityId: normalizedId,
       entityName: entityName || "",
+      selectedOperationId: null,
+      scrollTop: 0,
+      needsRefresh: false,
     };
     if (el.usageModalTitle) {
       el.usageModalTitle.textContent = labels.title;
@@ -151,28 +233,9 @@
     if (el.usageModalSubtitle) {
       el.usageModalSubtitle.textContent = entityName ? `${labels.subtitle}: ${entityName}` : labels.subtitle;
     }
-    if (el.usageKpi) {
-      el.usageKpi.innerHTML = "";
-    }
-    el.usageList.innerHTML = "<div class='muted-small'>Загрузка операций...</div>";
     el.usageModal.classList.remove("hidden");
     core.bringModalToFront?.(el.usageModal);
-    const params = usageParams(entityType, normalizedId);
-    try {
-      const [listPayload, summaryPayload] = await Promise.all([
-        core.requestJson(`/api/v1/operations/money-flow?${params.toString()}`, {
-          headers: core.authHeaders(),
-        }),
-        core.requestJson(`/api/v1/operations/money-flow/summary?${params.toString()}`, {
-          headers: core.authHeaders(),
-        }),
-      ]);
-      const items = listPayload.items || [];
-      renderUsageKpi(summaryPayload, items);
-      renderUsageList(items, labels.empty);
-    } catch (err) {
-      el.usageList.innerHTML = `<div class="form-error">Не удалось загрузить операции: ${core.escapeHtml(String(err?.message || err))}</div>`;
-    }
+    await loadCurrentUsage();
   }
 
   function closeUsageModal() {
@@ -185,13 +248,40 @@
     if (!(resolvedId > 0)) {
       return;
     }
-    closeUsageModal();
+    captureUsageReturnContext(resolvedId);
     await getOperationsFeature().openMoneyFlowSource?.({
       sourceKind: "operation",
       sourceId: resolvedId,
       mode: "edit",
     });
     core.bringModalToFront?.(el.editModal);
+  }
+
+  function markUsageForRefresh(event) {
+    if (!currentUsage || el.usageModal?.classList.contains("hidden")) {
+      return;
+    }
+    const method = String(event?.detail?.method || "").toUpperCase();
+    const path = String(event?.detail?.path || "");
+    if (["PATCH", "DELETE"].includes(method) && /^\/api\/v1\/operations\/\d+$/.test(path)) {
+      currentUsage.needsRefresh = true;
+    }
+  }
+
+  function handleNestedOperationClosed() {
+    if (!currentUsage || el.usageModal?.classList.contains("hidden")) {
+      return;
+    }
+    core.bringModalToFront?.(el.usageModal);
+    if (!currentUsage.needsRefresh) {
+      restoreUsageReturnContext({ focus: true });
+      return;
+    }
+    currentUsage.needsRefresh = false;
+    core.runAction({
+      errorPrefix: "Ошибка обновления списка операций",
+      action: () => loadCurrentUsage({ preserveContext: true, focusSelected: true }),
+    });
   }
 
   function openCurrentUsageInOperations() {
@@ -210,6 +300,23 @@
   }
 
   function bindUsageUi() {
+    document.addEventListener("app:activity-changed", markUsageForRefresh);
+    if (el.editModal && typeof MutationObserver !== "undefined" && !editModalObserver) {
+      editModalObserver = new MutationObserver((mutations) => {
+        const wasClosed = mutations.some((mutation) => {
+          const previousClasses = String(mutation.oldValue || "").split(/\s+/);
+          return !previousClasses.includes("hidden") && el.editModal.classList.contains("hidden");
+        });
+        if (wasClosed) {
+          handleNestedOperationClosed();
+        }
+      });
+      editModalObserver.observe(el.editModal, {
+        attributes: true,
+        attributeFilter: ["class"],
+        attributeOldValue: true,
+      });
+    }
     document.addEventListener("click", (event) => {
       const btn = event.target.closest("button[data-usage-entity-type][data-usage-entity-id]");
       if (!btn) {

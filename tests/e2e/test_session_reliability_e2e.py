@@ -66,6 +66,7 @@ def session_page():
         "protected": 0,
         "restore": 0,
         "saved_preferences": None,
+        "usage_list": 0,
     }
     preferences = {
         "preferences_version": 1,
@@ -160,6 +161,37 @@ def session_page():
                 "category_id": None,
                 "receipt_items": [],
                 "fx_settlement": None,
+            })
+        if path == "/api/v1/operations/money-flow" and method == "GET":
+            counters["usage_list"] += 1
+            return json_response(route, {
+                "items": [
+                    {
+                        "id": "operation:51",
+                        "source_kind": "operation",
+                        "source_id": 51,
+                        "flow_direction": "outflow",
+                        "event_date": "2026-07-20",
+                        "amount": "15.89",
+                        "original_amount": "15.89",
+                        "currency": "BYN",
+                        "base_currency": "BYN",
+                        "title": "Игры/софт/курсы",
+                        "subtitle": "Обычная операция",
+                        "note": "",
+                        "receipt_items": [],
+                    }
+                ],
+                "total": 1,
+                "page": 1,
+                "page_size": 100,
+            })
+        if path == "/api/v1/operations/money-flow/summary" and method == "GET":
+            return json_response(route, {
+                "income_total": "0.00",
+                "expense_total": "15.89",
+                "balance": "-15.89",
+                "total": 1,
             })
         if path == "/api/v1/categories/groups":
             return json_response(route, [])
@@ -582,3 +614,50 @@ def test_bank_alert_add_and_remove_buttons_update_settings(static_server_url: st
 
     page.click("[data-remove-bank-alert]")
     expect(page.locator("[data-bank-alert-rule]")).to_have_count(0)
+
+
+@pytest.mark.e2e
+def test_usage_operation_opens_nested_and_returns_to_same_row(static_server_url: str, session_page):
+    page, counters = session_page
+    page.goto(f"{static_server_url}/static/index.html")
+    page.wait_for_selector("#appShell:not(.hidden)")
+
+    page.evaluate(
+        """
+        async () => window.App.getRuntimeModule('usage').openUsageModal(
+          'category',
+          7,
+          'Игры/софт/курсы'
+        )
+        """
+    )
+    row = page.locator('[data-usage-operation-id="51"]')
+    expect(row).to_be_visible()
+    row.click()
+
+    expect(page.locator("#usageModal")).to_be_visible()
+    expect(page.locator("#editModal")).to_be_visible()
+    page.wait_for_function(
+        """
+        () => Number(getComputedStyle(document.querySelector('#editModal')).zIndex)
+          > Number(getComputedStyle(document.querySelector('#usageModal')).zIndex)
+        """
+    )
+    expect(row).to_have_class(re.compile(r"\bis-context-selected\b"))
+    expect(row).to_have_attribute("aria-current", "true")
+
+    page.evaluate(
+        """
+        () => document.dispatchEvent(new CustomEvent('app:activity-changed', {
+          detail: { method: 'PATCH', path: '/api/v1/operations/51' },
+        }))
+        """
+    )
+    with page.expect_response(
+        lambda response: urlparse(response.url).path == "/api/v1/operations/money-flow"
+    ):
+        page.click("#closeEditModalBtn")
+    expect(page.locator("#editModal")).to_be_hidden()
+    expect(page.locator("#usageModal")).to_be_visible()
+    expect(row).to_be_focused()
+    assert counters["usage_list"] == 2

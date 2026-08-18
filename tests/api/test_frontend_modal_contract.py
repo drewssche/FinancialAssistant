@@ -82,10 +82,15 @@ def test_activity_journal_modal_is_available_in_frontend_templates():
     assert "matchingReceiptItem?.category_name" in usage
     assert "data-usage-operation-id" in usage
     assert "openMoneyFlowSource" in usage
+    assert "closeUsageModal();\n    await getOperationsFeature().openMoneyFlowSource" not in usage
+    assert "captureUsageReturnContext(resolvedId);" in usage
+    assert "handleNestedOperationClosed" in usage
+    assert 'document.addEventListener("app:activity-changed", markUsageForRefresh);' in usage
     assert "core.bringModalToFront?.(el.activityModal);" in activity
     assert "core.bringModalToFront?.(el.usageModal);" in usage
     assert "#usageModal {\n  z-index: 180;" in overlays
     assert ".modal.modal-front" in overlays
+    assert ".usage-event.is-context-selected" in overlays
     assert 'modal-medium item-template-modal-card' in item_modal
     assert "headers: core.authHeaders()" in activity
     assert "auth: true" not in activity
