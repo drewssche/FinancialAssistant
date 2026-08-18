@@ -51,6 +51,8 @@
     openSettingsPickerModal: preferences.openSettingsPickerModal,
     closeSettingsPickerModal: preferences.closeSettingsPickerModal,
     applySettingsPickerValue: preferences.applySettingsPickerValue,
+    addBankCurrencyAlertRule: preferences.addBankCurrencyAlertRule,
+    removeBankCurrencyAlertRule: preferences.removeBankCurrencyAlertRule,
     deleteMe,
     logout: auth.logout,
     bootstrapApp: auth.bootstrapApp,

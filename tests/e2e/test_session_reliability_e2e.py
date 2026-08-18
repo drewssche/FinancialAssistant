@@ -507,3 +507,22 @@ def test_activity_center_desktop_mobile_and_restore(static_server_url: str, sess
     assert mobile_geometry["railRight"] <= mobile_geometry["viewportWidth"] + 1
     assert mobile_geometry["bodyScrollWidth"] <= mobile_geometry["bodyClientWidth"] + 1
     page.screenshot(path="/tmp/finasist-activity-center-mobile.png", full_page=True)
+
+
+@pytest.mark.e2e
+def test_bank_alert_add_and_remove_buttons_update_settings(static_server_url: str, session_page):
+    page, _ = session_page
+    page.goto(f"{static_server_url}/static/index.html")
+    page.wait_for_selector("#appShell:not(.hidden)")
+    page.click('[data-section="settings"]')
+    page.wait_for_selector("#settingsSection:not(.hidden)")
+
+    expect(page.locator("[data-bank-alert-rule]")).to_have_count(0)
+    page.click("#addBankCurrencyAlertBtn")
+
+    expect(page.locator("[data-bank-alert-rule]")).to_have_count(1)
+    expect(page.locator('[data-bank-alert-field="action"]')).to_have_value("sell")
+    expect(page.locator('[data-bank-alert-field="bank_code"]')).to_have_value("best")
+
+    page.click("[data-remove-bank-alert]")
+    expect(page.locator("[data-bank-alert-rule]")).to_have_count(0)

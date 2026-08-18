@@ -484,6 +484,8 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert 'getRuntimeModule?.("session-preferences")' in session_auth
     assert 'getRuntimeModule?.("session-preferences")' in (REPO_ROOT / "static" / "js" / "app-features-session.js").read_text(encoding="utf-8")
     assert 'getRuntimeModule?.("session-auth")' in (REPO_ROOT / "static" / "js" / "app-features-session.js").read_text(encoding="utf-8")
+    assert "addBankCurrencyAlertRule: preferences.addBankCurrencyAlertRule" in session_feature
+    assert "removeBankCurrencyAlertRule: preferences.removeBankCurrencyAlertRule" in session_feature
     assert 'getRuntimeModule("dashboard")' in features
     assert 'getRuntimeModule("session")' in features
     assert 'getRuntimeModule("operation-modal")' in features
