@@ -117,6 +117,8 @@ def test_item_price_history_supports_safe_deletion_and_immediate_refresh():
 
     assert 'data-delete-item-template-price-id="${Number(row.id)}"' in sources
     assert "deleteItemTemplatePriceFlow" in sources
+    assert "core.bringModalToFront?.(el.itemTemplateHistoryModal);" in sources
+    assert "core.markModalClosed?.(el.itemTemplateHistoryModal);" in sources
     assert "Цена в уже сохраненной операции не изменится" in sources
     assert "method: \"DELETE\"" in sources
     assert "applySavedItemCatalogItem?.(savedItem)" in sources

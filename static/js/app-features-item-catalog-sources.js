@@ -219,6 +219,7 @@
       }
       el.itemTemplateHistoryBody.innerHTML = '<tr><td colspan="3">Загрузка...</td></tr>';
       el.itemTemplateHistoryModal.classList.remove("hidden");
+      core.bringModalToFront?.(el.itemTemplateHistoryModal);
       const rows = await core.requestJson(`/api/v1/operations/item-templates/${item.id}/prices?limit=200`, {
         headers: core.authHeaders(),
       });
@@ -293,6 +294,7 @@
     function closeItemTemplateHistoryModal() {
       if (el.itemTemplateHistoryModal) {
         el.itemTemplateHistoryModal.classList.add("hidden");
+        core.markModalClosed?.(el.itemTemplateHistoryModal);
       }
     }
 
