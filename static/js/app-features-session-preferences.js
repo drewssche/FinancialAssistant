@@ -141,17 +141,36 @@
     return raw.map((item, index) => {
       const config = item && typeof item === "object" ? item : {};
       const currency = core.normalizeCurrencyCode?.(config.currency, "") || "USD";
-      const action = config.action === "buy" ? "buy" : "sell";
+      const legacyAction = config.action === "buy" ? "buy" : "sell";
+      const rateKind = ["buy", "sell"].includes(config.rate_kind)
+        ? config.rate_kind
+        : legacyAction === "sell" ? "buy" : "sell";
       const bankCode = config.bank_code === "best"
         ? "best"
         : normalizeBankRateBanks([config.bank_code])[0] || "best";
+      let aboveRate = String(config.above_rate ?? "").trim();
+      let belowRate = String(config.below_rate ?? "").trim();
+      let lastAboveMarker = String(config.last_above_marker || "");
+      let lastBelowMarker = String(config.last_below_marker || "");
+      const legacyThreshold = String(config.threshold ?? "").trim();
+      if (!aboveRate && !belowRate && legacyThreshold) {
+        if (legacyAction === "sell") {
+          aboveRate = legacyThreshold;
+          lastAboveMarker = config.last_marker ? `active:above:${legacyThreshold}` : "";
+        } else {
+          belowRate = legacyThreshold;
+          lastBelowMarker = config.last_marker ? `active:below:${legacyThreshold}` : "";
+        }
+      }
       return {
         id: String(config.id || `bank-alert-${index + 1}`),
         currency: BANK_ALERT_CURRENCIES.includes(currency) ? currency : "USD",
-        action,
+        rate_kind: rateKind,
         bank_code: bankCode,
-        threshold: String(config.threshold ?? "").trim(),
-        last_marker: String(config.last_marker || ""),
+        above_rate: aboveRate,
+        below_rate: belowRate,
+        last_above_marker: lastAboveMarker,
+        last_below_marker: lastBelowMarker,
       };
     });
   }
@@ -177,34 +196,52 @@
       return;
     }
     const escape = (value) => core.escapeHtml ? core.escapeHtml(String(value ?? "")) : String(value ?? "");
+    const choiceButton = (field, value, label, selected) => `
+      <button
+        class="segmented-btn${selected ? " active" : ""}"
+        type="button"
+        data-bank-alert-choice="${field}"
+        data-bank-alert-value="${escape(value)}"
+        aria-pressed="${selected ? "true" : "false"}"
+      >${escape(label)}</button>
+    `;
     el.bankCurrencyAlertsList.innerHTML = rows.map((rule) => `
       <div class="settings-alert-row" data-bank-alert-rule="${escape(rule.id)}">
-        <div class="bank-alert-rule-fields">
-          <label class="field">
-            <span>Действие</span>
-            <select data-bank-alert-field="action">
-              <option value="sell"${rule.action === "sell" ? " selected" : ""}>Продать</option>
-              <option value="buy"${rule.action === "buy" ? " selected" : ""}>Купить</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Валюта</span>
-            <select data-bank-alert-field="currency">
-              ${BANK_ALERT_CURRENCIES.map((currency) => `<option value="${currency}"${currency === rule.currency ? " selected" : ""}>${currency === "RUB" ? "100 RUB" : currency}</option>`).join("")}
-            </select>
-          </label>
-          <label class="field">
-            <span>Банк</span>
-            <select data-bank-alert-field="bank_code">
-              <option value="best"${rule.bank_code === "best" ? " selected" : ""}>Лучший из выбранных</option>
-              ${BANK_RATE_BANK_OPTIONS.map(([code, label]) => `<option value="${code}"${code === rule.bank_code ? " selected" : ""}>${label}</option>`).join("")}
-            </select>
-          </label>
-          <label class="field">
-            <span>${rule.action === "buy" ? "Не выше" : "Не ниже"}, BYN</span>
-            <input type="number" inputmode="decimal" min="0" step="0.0001" value="${escape(rule.threshold)}" placeholder="Введите порог" data-bank-alert-field="threshold" />
-          </label>
+        <div class="bank-alert-rule-head">
+          <strong>Банковский курс</strong>
           <button class="btn btn-danger btn-xs bank-alert-rule-remove" type="button" data-remove-bank-alert="${escape(rule.id)}">Удалить</button>
+        </div>
+        <div class="bank-alert-rule-fields">
+          <div class="bank-alert-choice-block">
+            <span class="muted-small">Курс банка</span>
+            <div class="segmented bank-alert-choice-options" data-bank-alert-field="rate_kind">
+              ${choiceButton("rate_kind", "buy", "Покупка", rule.rate_kind === "buy")}
+              ${choiceButton("rate_kind", "sell", "Продажа", rule.rate_kind === "sell")}
+            </div>
+          </div>
+          <div class="bank-alert-choice-block">
+            <span class="muted-small">Валюта</span>
+            <div class="segmented bank-alert-choice-options" data-bank-alert-field="currency">
+              ${BANK_ALERT_CURRENCIES.map((currency) => choiceButton("currency", currency, currency === "RUB" ? "100 RUB" : currency, rule.currency === currency)).join("")}
+            </div>
+          </div>
+          <div class="bank-alert-choice-block bank-alert-choice-block-wide">
+            <span class="muted-small">Банк</span>
+            <div class="segmented bank-alert-choice-options bank-alert-bank-options" data-bank-alert-field="bank_code">
+              ${choiceButton("bank_code", "best", "Лучший", rule.bank_code === "best")}
+              ${BANK_RATE_BANK_OPTIONS.map(([code, label]) => choiceButton("bank_code", code, label, rule.bank_code === code)).join("")}
+            </div>
+          </div>
+        </div>
+        <div class="bank-alert-thresholds">
+          <label class="field">
+            <span>Курс выше, BYN</span>
+            <input type="number" inputmode="decimal" min="0" step="0.0001" value="${escape(rule.above_rate)}" placeholder="Например 3.5000" data-bank-alert-threshold="above" />
+          </label>
+          <label class="field">
+            <span>Курс ниже, BYN</span>
+            <input type="number" inputmode="decimal" min="0" step="0.0001" value="${escape(rule.below_rate)}" placeholder="Например 3.1000" data-bank-alert-threshold="below" />
+          </label>
         </div>
       </div>
     `).join("");
@@ -222,13 +259,19 @@
     return Array.from(el.bankCurrencyAlertsList.querySelectorAll("[data-bank-alert-rule]")).map((row) => {
       const id = String(row.dataset.bankAlertRule || "");
       const current = existing.get(id) || {};
+      const selectedValue = (field, fallback) => String(
+        row.querySelector(`[data-bank-alert-choice="${field}"].active`)?.dataset.bankAlertValue
+        || fallback
+      );
       return {
         id,
-        action: row.querySelector('[data-bank-alert-field="action"]')?.value === "buy" ? "buy" : "sell",
-        currency: core.normalizeCurrencyCode?.(row.querySelector('[data-bank-alert-field="currency"]')?.value, "USD") || "USD",
-        bank_code: String(row.querySelector('[data-bank-alert-field="bank_code"]')?.value || "best"),
-        threshold: String(row.querySelector('[data-bank-alert-field="threshold"]')?.value || "").trim(),
-        last_marker: String(current.last_marker || ""),
+        rate_kind: selectedValue("rate_kind", "buy") === "sell" ? "sell" : "buy",
+        currency: core.normalizeCurrencyCode?.(selectedValue("currency", "USD"), "USD") || "USD",
+        bank_code: selectedValue("bank_code", "best"),
+        above_rate: String(row.querySelector('[data-bank-alert-threshold="above"]')?.value || "").trim(),
+        below_rate: String(row.querySelector('[data-bank-alert-threshold="below"]')?.value || "").trim(),
+        last_above_marker: String(current.last_above_marker || ""),
+        last_below_marker: String(current.last_below_marker || ""),
       };
     });
   }
@@ -240,11 +283,13 @@
       .filter((item) => BANK_ALERT_CURRENCIES.includes(item));
     rows.push({
       id: bankAlertRuleId(),
-      action: "sell",
+      rate_kind: "buy",
       currency: tracked[0] || "USD",
       bank_code: "best",
-      threshold: "",
-      last_marker: "",
+      above_rate: "",
+      below_rate: "",
+      last_above_marker: "",
+      last_below_marker: "",
     });
     renderBankCurrencyAlerts(rows, { force: true });
     el.bankCurrencyAlertsList.dataset.dirty = "true";

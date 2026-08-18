@@ -30,7 +30,8 @@ class CurrencyAlertTrigger:
 class BankCurrencyAlertTrigger:
     rule_id: str
     currency: str
-    action: str
+    rate_kind: str
+    direction: str
     threshold: Decimal
     current_rate: Decimal
     bank_code: str
@@ -108,7 +109,7 @@ class TelegramCurrencyAlertBotService:
                 trigger_count=len(triggers) + len(bank_triggers),
                 directions=sorted(
                     {trigger.direction for trigger in triggers}
-                    | {trigger.action for trigger in bank_triggers}
+                    | {trigger.direction for trigger in bank_triggers}
                 ),
             )
             deliveries.append(
@@ -162,7 +163,8 @@ class TelegramCurrencyAlertBotService:
             config = bank_alerts_by_id.get(trigger.rule_id)
             if config is None:
                 continue
-            config["last_marker"] = trigger.marker
+            marker_key = f"last_{trigger.direction}_marker"
+            config[marker_key] = trigger.marker
             self.activity.record(
                 user_id=delivery.user_id,
                 actor_user_id=None,
@@ -175,7 +177,8 @@ class TelegramCurrencyAlertBotService:
                     "message_type": "bank_currency_alert",
                     "chat_id": delivery.chat_id,
                     "currency": trigger.currency,
-                    "action": trigger.action,
+                    "rate_kind": trigger.rate_kind,
+                    "direction": trigger.direction,
                     "threshold": str(trigger.threshold),
                     "current_rate": str(trigger.current_rate),
                     "bank_code": trigger.bank_code,
@@ -212,13 +215,13 @@ class TelegramCurrencyAlertBotService:
                 f"(дата курса {trigger.rate_date})"
             )
         for trigger in bank_triggers or []:
-            action_text = "можно продать" if trigger.action == "sell" else "можно купить"
-            comparison_text = "не ниже" if trigger.action == "sell" else "не выше"
+            rate_kind_text = "покупки банка" if trigger.rate_kind == "buy" else "продажи банка"
+            comparison_text = "выше" if trigger.direction == "above" else "ниже"
             scale = display_scale(trigger.currency)
             currency_label = f"{scale} {trigger.currency}" if scale > 1 else trigger.currency
             lines.append(
-                f"🏦 {currency_label}: {action_text} по {trigger.current_rate:.4f} {base_currency} "
-                f"в {trigger.bank_name} ({comparison_text} {trigger.threshold:.4f})"
+                f"🏦 {currency_label}: курс {rate_kind_text} {trigger.current_rate:.4f} {base_currency} "
+                f"в {trigger.bank_name} — {comparison_text} порога {trigger.threshold:.4f}"
             )
         return "\n".join(lines)
 
@@ -285,7 +288,11 @@ class TelegramCurrencyAlertBotService:
         *,
         bank_rates: list[dict],
         config: dict,
-    ) -> tuple[list[BankCurrencyAlertTrigger], list[str], list[str]]:
+    ) -> tuple[
+        list[BankCurrencyAlertTrigger],
+        list[tuple[str, str]],
+        list[tuple[str, str]],
+    ]:
         triggers = []
         rearmed = []
         suppressed = []
@@ -296,36 +303,41 @@ class TelegramCurrencyAlertBotService:
                 rows = [item for item in rows if item.get("bank_code") == rule["bank_code"]]
             if not rows:
                 continue
-            rate_key = "buy_rate" if rule["action"] == "sell" else "sell_rate"
-            selector = max if rule["action"] == "sell" else min
+            rate_key = "buy_rate" if rule["rate_kind"] == "buy" else "sell_rate"
+            selector = max if rule["rate_kind"] == "buy" else min
             row = selector(rows, key=lambda item: Decimal(item[rate_key]))
             current_rate = Decimal(row[rate_key])
-            threshold = rule["threshold"]
-            matches = current_rate >= threshold if rule["action"] == "sell" else current_rate <= threshold
-            marker = self._active_marker(direction=rule["action"], threshold=threshold)
-            if matches:
-                if not self._marker_is_active(
-                    rule["last_marker"],
-                    direction=rule["action"],
-                    threshold=threshold,
-                ):
-                    triggers.append(
-                        BankCurrencyAlertTrigger(
-                            rule_id=rule["id"],
-                            currency=rule["currency"],
-                            action=rule["action"],
-                            threshold=threshold,
-                            current_rate=current_rate,
-                            bank_code=str(row["bank_code"]),
-                            bank_name=str(row["bank_name"]),
-                            quoted_at=str(row.get("quoted_at") or row.get("fetched_at") or ""),
-                            marker=marker,
+            for direction in ("above", "below"):
+                threshold = rule.get(f"{direction}_rate")
+                if threshold is None:
+                    continue
+                matches = current_rate >= threshold if direction == "above" else current_rate <= threshold
+                marker = self._active_marker(direction=direction, threshold=threshold)
+                last_marker = rule.get(f"last_{direction}_marker")
+                if matches:
+                    if not self._marker_is_active(
+                        last_marker,
+                        direction=direction,
+                        threshold=threshold,
+                    ):
+                        triggers.append(
+                            BankCurrencyAlertTrigger(
+                                rule_id=rule["id"],
+                                currency=rule["currency"],
+                                rate_kind=rule["rate_kind"],
+                                direction=direction,
+                                threshold=threshold,
+                                current_rate=current_rate,
+                                bank_code=str(row["bank_code"]),
+                                bank_name=str(row["bank_name"]),
+                                quoted_at=str(row.get("quoted_at") or row.get("fetched_at") or ""),
+                                marker=marker,
+                            )
                         )
-                    )
-                else:
-                    suppressed.append(rule["id"])
-            elif rule["last_marker"]:
-                rearmed.append(rule["id"])
+                    else:
+                        suppressed.append((rule["id"], direction))
+                elif last_marker:
+                    rearmed.append((rule["id"], direction))
         return triggers, rearmed, suppressed
 
     def _persist_rearmed_directions(self, *, user_id: int, rearmed: list[tuple[str, str]]) -> None:
@@ -356,18 +368,29 @@ class TelegramCurrencyAlertBotService:
             direction_count=changed,
         )
 
-    def _persist_rearmed_bank_rules(self, *, user_id: int, rule_ids: list[str]) -> None:
+    def _persist_rearmed_bank_rules(
+        self,
+        *,
+        user_id: int,
+        rule_ids: list[tuple[str, str]],
+    ) -> None:
         preference = self.preferences.get_or_create(user_id)
         prefs = dict(preference.data) if isinstance(preference.data, dict) else {}
         currency_prefs = dict(prefs.get("currency")) if isinstance(prefs.get("currency"), dict) else {}
         raw_alerts = currency_prefs.get("bank_rate_alerts")
         alerts = [dict(item) for item in raw_alerts or [] if isinstance(item, dict)]
-        wanted_ids = set(rule_ids)
+        wanted = set(rule_ids)
         changed = 0
         for alert in alerts:
-            if str(alert.get("id") or "") in wanted_ids and alert.get("last_marker"):
-                alert["last_marker"] = ""
-                changed += 1
+            rule_id = str(alert.get("id") or "")
+            for direction in ("above", "below"):
+                marker_key = f"last_{direction}_marker"
+                if (rule_id, direction) in wanted and alert.get(marker_key):
+                    alert[marker_key] = ""
+                    changed += 1
+                elif (rule_id, direction) in wanted and alert.get("last_marker"):
+                    alert["last_marker"] = ""
+                    changed += 1
         if not changed:
             return
         currency_prefs["bank_rate_alerts"] = alerts
@@ -435,25 +458,48 @@ class TelegramCurrencyAlertBotService:
         for index, raw in enumerate(currency_prefs.get("bank_rate_alerts") or []):
             if not isinstance(raw, dict):
                 continue
-            action = str(raw.get("action") or "").strip().lower()
+            legacy_action = str(raw.get("action") or "").strip().lower()
+            rate_kind = str(raw.get("rate_kind") or "").strip().lower()
+            if rate_kind not in {"buy", "sell"}:
+                rate_kind = "buy" if legacy_action == "sell" else "sell"
             currency = str(raw.get("currency") or "").strip().upper()
             bank_code = str(raw.get("bank_code") or "best").strip().lower()
-            threshold = self._parse_rate(raw.get("threshold"))
+            above_rate = self._parse_rate(raw.get("above_rate"))
+            below_rate = self._parse_rate(raw.get("below_rate"))
+            legacy_threshold = self._parse_rate(raw.get("threshold"))
+            last_above_marker = str(raw.get("last_above_marker") or "").strip()
+            last_below_marker = str(raw.get("last_below_marker") or "").strip()
+            if above_rate is None and below_rate is None and legacy_threshold is not None:
+                if legacy_action == "sell":
+                    above_rate = legacy_threshold
+                    if raw.get("last_marker"):
+                        last_above_marker = self._active_marker(
+                            direction="above",
+                            threshold=legacy_threshold,
+                        )
+                else:
+                    below_rate = legacy_threshold
+                    if raw.get("last_marker"):
+                        last_below_marker = self._active_marker(
+                            direction="below",
+                            threshold=legacy_threshold,
+                        )
             if (
-                action not in {"buy", "sell"}
-                or currency not in tracked_currencies
-                or threshold is None
+                currency not in tracked_currencies
+                or (above_rate is None and below_rate is None)
                 or (bank_code != "best" and bank_code not in allowed_banks)
             ):
                 continue
             bank_alerts.append(
                 {
                     "id": str(raw.get("id") or f"bank-alert-{index}"),
-                    "action": action,
+                    "rate_kind": rate_kind,
                     "currency": currency,
                     "bank_code": bank_code,
-                    "threshold": threshold,
-                    "last_marker": str(raw.get("last_marker") or "").strip(),
+                    "above_rate": above_rate,
+                    "below_rate": below_rate,
+                    "last_above_marker": last_above_marker,
+                    "last_below_marker": last_below_marker,
                 }
             )
         return {

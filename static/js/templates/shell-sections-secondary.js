@@ -659,7 +659,7 @@
                   <div class="settings-alert-section-head">
                     <div>
                       <span>Алерты по курсам банков</span>
-                      <p class="muted-small">«Продать» сравнивает покупку банка, «Купить» — продажу банка.</p>
+                      <p class="muted-small">Как в банковских приложениях: «Покупка» — банк покупает валюту у вас, «Продажа» — банк продаёт валюту вам.</p>
                     </div>
                     <button id="addBankCurrencyAlertBtn" class="btn btn-secondary btn-xs" type="button">Добавить алерт</button>
                   </div>

@@ -75,8 +75,37 @@ class PreferencesService:
 
         current_bank_alerts = current_currency.get("bank_rate_alerts") if isinstance(current_currency.get("bank_rate_alerts"), list) else []
         incoming_bank_alerts = next_currency.get("bank_rate_alerts") if isinstance(next_currency.get("bank_rate_alerts"), list) else []
+
+        def normalize_bank_rule(raw_rule: dict) -> dict:
+            legacy_action = str(raw_rule.get("action") or "").strip().lower()
+            rate_kind = str(raw_rule.get("rate_kind") or "").strip().lower()
+            if rate_kind not in {"buy", "sell"}:
+                rate_kind = "buy" if legacy_action == "sell" else "sell"
+            above_rate = str(raw_rule.get("above_rate") or "").strip()
+            below_rate = str(raw_rule.get("below_rate") or "").strip()
+            last_above_marker = str(raw_rule.get("last_above_marker") or "").strip()
+            last_below_marker = str(raw_rule.get("last_below_marker") or "").strip()
+            legacy_threshold = str(raw_rule.get("threshold") or "").strip()
+            if not above_rate and not below_rate and legacy_threshold:
+                if legacy_action == "sell":
+                    above_rate = legacy_threshold
+                    if raw_rule.get("last_marker"):
+                        last_above_marker = f"active:above:{legacy_threshold}"
+                else:
+                    below_rate = legacy_threshold
+                    if raw_rule.get("last_marker"):
+                        last_below_marker = f"active:below:{legacy_threshold}"
+            return {
+                **raw_rule,
+                "rate_kind": rate_kind,
+                "above_rate": above_rate,
+                "below_rate": below_rate,
+                "last_above_marker": last_above_marker,
+                "last_below_marker": last_below_marker,
+            }
+
         current_by_id = {
-            str(item.get("id")): item
+            str(item.get("id")): normalize_bank_rule(item)
             for item in current_bank_alerts
             if isinstance(item, dict) and str(item.get("id") or "").strip()
         }
@@ -84,16 +113,29 @@ class PreferencesService:
         for raw_rule in incoming_bank_alerts:
             if not isinstance(raw_rule, dict):
                 continue
-            next_rule = dict(raw_rule)
+            next_rule = normalize_bank_rule(dict(raw_rule))
             rule_id = str(next_rule.get("id") or "").strip()
             current_rule = current_by_id.get(rule_id, {})
-            signature_keys = ("action", "currency", "bank_code", "threshold")
+            signature_keys = ("rate_kind", "currency", "bank_code")
             signature_unchanged = all(
                 str(next_rule.get(key) or "").strip().lower()
                 == str(current_rule.get(key) or "").strip().lower()
                 for key in signature_keys
             )
-            next_rule["last_marker"] = str(current_rule.get("last_marker") or "") if signature_unchanged else ""
+            for direction in ("above", "below"):
+                threshold_key = f"{direction}_rate"
+                marker_key = f"last_{direction}_marker"
+                threshold_unchanged = (
+                    str(next_rule.get(threshold_key) or "").strip()
+                    == str(current_rule.get(threshold_key) or "").strip()
+                )
+                next_rule[marker_key] = (
+                    str(current_rule.get(marker_key) or "")
+                    if signature_unchanged and threshold_unchanged
+                    else ""
+                )
+            for legacy_key in ("action", "threshold", "last_marker"):
+                next_rule.pop(legacy_key, None)
             merged_bank_alerts.append(next_rule)
         next_currency["bank_rate_alerts"] = merged_bank_alerts
         merged["currency"] = next_currency

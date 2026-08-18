@@ -174,10 +174,10 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert "body.finance-calculator-open" in calculator_css
     assert "@media (max-width: 640px)" in calculator_css
     assert "max-height: min(88dvh, 720px)" in calculator_css
-    assert '/static/styles.css?v=20260818b' in index_html
+    assert '/static/styles.css?v=20260818d' in index_html
     assert '/static/css/components-core.css?v=20260808a' in styles
     assert '/static/css/layout-debts.css?v=20260716j' in styles
-    assert '/static/css/components-analytics-summary.css?v=20260720f' in styles
+    assert '/static/css/components-analytics-summary.css?v=20260818d' in styles
 
 
 def test_session_refresh_preserves_runtime_ui_and_retries_unauthorized_requests():
@@ -439,6 +439,10 @@ def test_currency_kpi_and_settings_support_compact_bank_rates_and_alerts():
     assert 'name="bankRateBank"' in secondary
     assert 'id="bankCurrencyAlertsList"' in secondary
     assert 'id="addBankCurrencyAlertBtn"' in secondary
+    assert 'choiceButton("rate_kind"' in preferences
+    assert 'data-bank-alert-threshold="above"' in preferences
+    assert 'data-bank-alert-threshold="below"' in preferences
+    assert 'data-bank-alert-field="action"' not in preferences
     assert "Покупка" in dashboard
     assert "Продажа" in dashboard
     assert 'itemCurrency === "RUB" ? 100 : 1' in dashboard

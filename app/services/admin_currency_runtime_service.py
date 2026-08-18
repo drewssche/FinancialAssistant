@@ -71,10 +71,13 @@ class AdminCurrencyRuntimeService:
                 item["alert_rules"] += currency_alert_rules
                 alert_rules_count += currency_alert_rules
                 currency_bank_alert_rules = sum(
-                    1
+                    sum(
+                        bool(str(rule.get(key) or "").strip())
+                        for key in ("above_rate", "below_rate")
+                    )
+                    or int(bool(str(rule.get("threshold") or "").strip()))
                     for rule in bank_alerts
                     if str(rule.get("currency") or "").strip().upper() == currency
-                    and str(rule.get("threshold") or "").strip()
                 )
                 item["alert_rules"] += currency_bank_alert_rules
                 alert_rules_count += currency_bank_alert_rules

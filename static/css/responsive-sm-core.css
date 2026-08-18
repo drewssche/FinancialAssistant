@@ -740,6 +740,7 @@
   .settings-grid-2,
   .settings-alert-row-fields,
   .bank-alert-rule-fields,
+  .bank-alert-thresholds,
   .settings-scale-row,
   .danger-zone-actions {
     grid-template-columns: 1fr;
@@ -748,6 +749,14 @@
   .settings-alert-section-head {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .bank-alert-choice-options {
+    width: 100%;
+  }
+
+  .bank-alert-choice-block-wide {
+    grid-column: auto;
   }
 
   .danger-zone {

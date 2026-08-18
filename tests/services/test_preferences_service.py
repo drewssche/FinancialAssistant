@@ -204,5 +204,11 @@ def test_update_preferences_preserves_bank_alert_marker_only_for_same_rule():
     preserved = PreferencesService._preserve_currency_runtime_state(current, unchanged)
     reset = PreferencesService._preserve_currency_runtime_state(current, changed)
 
-    assert preserved["currency"]["bank_rate_alerts"][0]["last_marker"] == "active:sell:3.100000"
-    assert reset["currency"]["bank_rate_alerts"][0]["last_marker"] == ""
+    preserved_rule = preserved["currency"]["bank_rate_alerts"][0]
+    reset_rule = reset["currency"]["bank_rate_alerts"][0]
+    assert preserved_rule["rate_kind"] == "buy"
+    assert preserved_rule["above_rate"] == "3.1000"
+    assert preserved_rule["last_above_marker"] == "active:above:3.1000"
+    assert reset_rule["last_above_marker"] == ""
+    assert "action" not in preserved_rule
+    assert "threshold" not in preserved_rule

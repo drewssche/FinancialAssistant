@@ -76,7 +76,7 @@ def test_list_due_deliveries_builds_threshold_alert(monkeypatch):
         Base.metadata.drop_all(bind=engine)
 
 
-def test_bank_sell_alert_uses_best_bank_buy_rate_and_persists_marker(monkeypatch):
+def test_legacy_user_sell_alert_becomes_bank_buy_above_alert(monkeypatch):
     engine, SessionLocal = _make_session()
     db = SessionLocal()
     try:
@@ -143,12 +143,14 @@ def test_bank_sell_alert_uses_best_bank_buy_rate_and_persists_marker(monkeypatch
         assert delivery.triggers == []
         assert len(delivery.bank_triggers) == 1
         assert delivery.bank_triggers[0].bank_code == "technobank"
-        assert "можно продать по 3.0800 BYN в Технобанк" in delivery.text
+        assert delivery.bank_triggers[0].rate_kind == "buy"
+        assert delivery.bank_triggers[0].direction == "above"
+        assert "курс покупки банка 3.0800 BYN в Технобанк" in delivery.text
 
         service.mark_delivery_sent(delivery)
         prefs = db.get(UserPreference, 1)
         rule = prefs.data["currency"]["bank_rate_alerts"][0]
-        assert rule["last_marker"] == "active:sell:3.050000"
+        assert rule["last_above_marker"] == "active:above:3.050000"
         assert service.list_due_deliveries() == []
     finally:
         db.close()
@@ -174,6 +176,40 @@ def test_official_rub_alert_threshold_is_compared_per_100_rub():
 
     assert len(triggers) == 1
     assert triggers[0].current_rate == Decimal("3.560000")
+
+
+def test_bank_sale_rule_supports_above_and_below_thresholds():
+    service = TelegramCurrencyAlertBotService.__new__(TelegramCurrencyAlertBotService)
+    bank_rates = [
+        {
+            "bank_code": "priorbank",
+            "bank_name": "Приорбанк",
+            "currency": "EUR",
+            "buy_rate": Decimal("3.4800"),
+            "sell_rate": Decimal("3.5200"),
+            "stale": False,
+        }
+    ]
+    config = {
+        "bank_alerts": [
+            {
+                "id": "sale-eur",
+                "currency": "EUR",
+                "rate_kind": "sell",
+                "bank_code": "priorbank",
+                "above_rate": Decimal("3.5000"),
+                "below_rate": Decimal("3.6000"),
+                "last_above_marker": "",
+                "last_below_marker": "",
+            }
+        ]
+    }
+
+    triggers, _, _ = service._collect_bank_triggers(bank_rates=bank_rates, config=config)
+
+    assert [trigger.direction for trigger in triggers] == ["above", "below"]
+    assert all(trigger.rate_kind == "sell" for trigger in triggers)
+    assert all(trigger.current_rate == Decimal("3.5200") for trigger in triggers)
 
 
 def test_mark_delivery_sent_persists_marker_and_prevents_duplicates(monkeypatch):

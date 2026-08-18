@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 import socket
 import subprocess
 import sys
@@ -59,7 +60,13 @@ def static_server_url() -> str:
 
 @pytest.fixture()
 def session_page():
-    counters = {"telegram_auth": 0, "refresh": 0, "protected": 0, "restore": 0}
+    counters = {
+        "telegram_auth": 0,
+        "refresh": 0,
+        "protected": 0,
+        "restore": 0,
+        "saved_preferences": None,
+    }
     preferences = {
         "preferences_version": 1,
         "data": {
@@ -95,7 +102,8 @@ def session_page():
         if path == "/api/v1/preferences":
             if method == "GET":
                 return json_response(route, preferences)
-            return json_response(route, preferences)
+            counters["saved_preferences"] = request.post_data_json
+            return json_response(route, request.post_data_json)
         if path == "/api/v1/activity" and method == "GET":
             items = [
                 {
@@ -511,7 +519,7 @@ def test_activity_center_desktop_mobile_and_restore(static_server_url: str, sess
 
 @pytest.mark.e2e
 def test_bank_alert_add_and_remove_buttons_update_settings(static_server_url: str, session_page):
-    page, _ = session_page
+    page, counters = session_page
     page.goto(f"{static_server_url}/static/index.html")
     page.wait_for_selector("#appShell:not(.hidden)")
     page.click('[data-section="settings"]')
@@ -521,8 +529,56 @@ def test_bank_alert_add_and_remove_buttons_update_settings(static_server_url: st
     page.click("#addBankCurrencyAlertBtn")
 
     expect(page.locator("[data-bank-alert-rule]")).to_have_count(1)
-    expect(page.locator('[data-bank-alert-field="action"]')).to_have_value("sell")
-    expect(page.locator('[data-bank-alert-field="bank_code"]')).to_have_value("best")
+    expect(page.locator('[data-bank-alert-field="rate_kind"] [data-bank-alert-value="buy"]')).to_have_class(
+        re.compile(r"\bactive\b")
+    )
+    expect(page.locator('[data-bank-alert-field="bank_code"] [data-bank-alert-value="best"]')).to_have_class(
+        re.compile(r"\bactive\b")
+    )
+    expect(page.locator('[data-bank-alert-threshold="above"]')).to_be_visible()
+    expect(page.locator('[data-bank-alert-threshold="below"]')).to_be_visible()
+    page.click('[data-bank-alert-field="rate_kind"] [data-bank-alert-value="sell"]')
+    page.click('[data-bank-alert-field="currency"] [data-bank-alert-value="EUR"]')
+    page.click('[data-bank-alert-field="bank_code"] [data-bank-alert-value="technobank"]')
+    page.fill('[data-bank-alert-threshold="above"]', "3.6000")
+    page.fill('[data-bank-alert-threshold="below"]', "3.4000")
+    expect(page.locator('[data-bank-alert-field="rate_kind"] [data-bank-alert-value="sell"]')).to_have_class(
+        re.compile(r"\bactive\b")
+    )
+    expect(page.locator('[data-bank-alert-field="currency"] [data-bank-alert-value="EUR"]')).to_have_class(
+        re.compile(r"\bactive\b")
+    )
+    expect(page.locator('[data-bank-alert-field="bank_code"] [data-bank-alert-value="technobank"]')).to_have_class(
+        re.compile(r"\bactive\b")
+    )
+    with page.expect_response(
+        lambda response: urlparse(response.url).path == "/api/v1/preferences"
+        and response.request.method.upper() != "GET"
+    ):
+        page.click("#saveSettingsBtn")
+    saved_rule = counters["saved_preferences"]["data"]["currency"]["bank_rate_alerts"][0]
+    assert saved_rule == {
+        "id": saved_rule["id"],
+        "rate_kind": "sell",
+        "currency": "EUR",
+        "bank_code": "technobank",
+        "above_rate": "3.6000",
+        "below_rate": "3.4000",
+        "last_above_marker": "",
+        "last_below_marker": "",
+    }
+    page.screenshot(path="/tmp/finasist-bank-alert-settings.png", full_page=True)
+
+    page.set_viewport_size({"width": 390, "height": 844})
+    mobile_widths = page.evaluate(
+        """
+        () => ({
+          bodyClientWidth: document.documentElement.clientWidth,
+          bodyScrollWidth: document.documentElement.scrollWidth,
+        })
+        """
+    )
+    assert mobile_widths["bodyScrollWidth"] <= mobile_widths["bodyClientWidth"] + 1
 
     page.click("[data-remove-bank-alert]")
     expect(page.locator("[data-bank-alert-rule]")).to_have_count(0)

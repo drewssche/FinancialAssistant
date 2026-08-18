@@ -547,23 +547,25 @@
     }
     if (el.bankCurrencyAlertsList) {
       el.bankCurrencyAlertsList.addEventListener("click", (event) => {
-        const button = event.target.closest("[data-remove-bank-alert]");
-        if (!button) {
+        const removeButton = event.target.closest("[data-remove-bank-alert]");
+        if (removeButton) {
+          getSessionFeature().removeBankCurrencyAlertRule?.(removeButton.dataset.removeBankAlert || "");
           return;
         }
-        getSessionFeature().removeBankCurrencyAlertRule?.(button.dataset.removeBankAlert || "");
+        const choiceButton = event.target.closest("[data-bank-alert-choice]");
+        if (!choiceButton) {
+          return;
+        }
+        const group = choiceButton.closest("[data-bank-alert-field]");
+        group?.querySelectorAll("[data-bank-alert-choice]").forEach((button) => {
+          const active = button === choiceButton;
+          button.classList.toggle("active", active);
+          button.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+        el.bankCurrencyAlertsList.dataset.dirty = "true";
       });
       el.bankCurrencyAlertsList.addEventListener("change", (event) => {
         el.bankCurrencyAlertsList.dataset.dirty = "true";
-        const actionSelect = event.target.closest('[data-bank-alert-field="action"]');
-        if (!actionSelect) {
-          return;
-        }
-        const row = actionSelect.closest("[data-bank-alert-rule]");
-        const thresholdLabel = row?.querySelector('[data-bank-alert-field="threshold"]')?.closest("label")?.querySelector("span");
-        if (thresholdLabel) {
-          thresholdLabel.textContent = actionSelect.value === "buy" ? "Не выше, BYN" : "Не ниже, BYN";
-        }
       });
       el.bankCurrencyAlertsList.addEventListener("input", () => {
         el.bankCurrencyAlertsList.dataset.dirty = "true";
