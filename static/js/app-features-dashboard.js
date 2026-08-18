@@ -232,7 +232,7 @@
     return `${prefix}${Math.abs(numeric).toFixed(2)}%`;
   }
 
-  function renderDashboardCurrencyRates(currentRates = [], trackedCurrencies = []) {
+  function renderDashboardCurrencyRates(currentRates = [], trackedCurrencies = [], bankRates = []) {
     if (!el.dashboardCurrencyRates) {
       return;
     }
@@ -241,6 +241,7 @@
       .map((item) => core.normalizeCurrencyCode?.(item, "") || "")
       .filter(Boolean);
     const rows = Array.isArray(currentRates) ? currentRates : [];
+    const bankRows = Array.isArray(bankRates) ? bankRates : [];
     const rowsByCurrency = new Map(rows.map((item) => [core.normalizeCurrencyCode?.(item.currency, "") || "", item]));
     const visibleCurrencies = normalizedTracked.length
       ? normalizedTracked
@@ -280,8 +281,29 @@
       const rateDate = item.rate_date ? core.formatDateRu(item.rate_date) : "без даты";
       const source = item.source ? String(item.source).trim() : "manual";
       const itemCurrency = core.normalizeCurrencyCode?.(item.currency, "") || "";
-      const currencyLabel = core.formatCurrencyLabel(itemCurrency);
+      const displayScale = itemCurrency === "RUB" ? 100 : 1;
+      const currencyLabel = `${displayScale > 1 ? `${displayScale} ` : ""}${core.formatCurrencyLabel(itemCurrency)}`;
       const baseCurrencySymbol = core.formatCurrencySymbol?.(core.getCurrencyConfig?.().code || "BYN") || "BYN";
+      const currencyBankRows = bankRows.filter((row) => (core.normalizeCurrencyCode?.(row.currency, "") || "") === itemCurrency);
+      const bankRatesHtml = currencyBankRows.length ? `
+        <div class="dashboard-bank-rates" aria-label="Курсы банков для ${itemCurrency}">
+          <div class="dashboard-bank-rate-row dashboard-bank-rate-head">
+            <span>Банк</span><span>Покупка</span><span>Продажа</span>
+          </div>
+          ${currencyBankRows.map((row) => {
+            const bankName = String(row.bank_name || row.bank_code || "Банк");
+            const channelLabel = String(row.channel_label || row.channel || "");
+            const staleClass = row.stale ? " dashboard-bank-rate-stale" : "";
+            return `
+              <div class="dashboard-bank-rate-row${staleClass}" title="${core.escapeHtml ? core.escapeHtml(`${bankName}${channelLabel ? ` · ${channelLabel}` : ""}${row.stale ? " · данные устарели" : ""}`) : bankName}">
+                <span class="dashboard-bank-rate-name">${core.escapeHtml ? core.escapeHtml(bankName) : bankName}</span>
+                <strong>${core.formatRateDisplay?.(row.buy_rate || 0, 4, 6)}</strong>
+                <strong>${core.formatRateDisplay?.(row.sell_rate || 0, 4, 6)}</strong>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      ` : '<div class="dashboard-bank-rates-empty muted-small">Банковские курсы ещё загружаются</div>';
       return `
         <article class="dashboard-currency-rate-card">
           <div class="dashboard-currency-rate-head">
@@ -291,14 +313,15 @@
             </span>
           </div>
           <div class="dashboard-currency-rate-value-row">
-            <div class="dashboard-currency-rate-value">${core.formatRateDisplay?.(item.rate || 0, 4, 6)}</div>
+            <div class="dashboard-currency-rate-value">${core.formatRateDisplay?.(Number(item.rate || 0) * displayScale, 4, 6)}</div>
             <div class="dashboard-currency-rate-delta dashboard-currency-rate-delta-${deltaTone}">
-              ${hasDelta ? `${formatSignedRate(item.change_value)} · ${formatSignedPercent(item.change_pct || 0)}` : "—"}
+              ${hasDelta ? `${formatSignedRate(Number(item.change_value || 0) * displayScale)} · ${formatSignedPercent(item.change_pct || 0)}` : "—"}
             </div>
           </div>
           <div class="dashboard-currency-rate-meta muted-small">${isStale ? `Последний доступный курс к ${baseCurrencySymbol}` : `Официальный курс к ${baseCurrencySymbol}`} · ${rateDate}</div>
           <div class="dashboard-currency-rate-delta-caption muted-small">${hasDelta ? (isStale ? "К предыдущему курсу" : "За день") : "Нет предыдущего курса для сравнения"}</div>
           <div class="dashboard-currency-rate-source muted-small">Источник: ${core.escapeHtml ? core.escapeHtml(source) : source}</div>
+          ${bankRatesHtml}
           <div class="dashboard-currency-rate-actions">
             <button class="btn btn-secondary btn-xs" type="button" data-dashboard-refresh-currency="${item.currency}">Обновить</button>
           </div>
@@ -597,13 +620,17 @@
             setDashboardPanelState(el.dashboardCurrencyPanel, "stale");
             return;
           }
-          renderDashboardCurrencyRates([], []);
+          renderDashboardCurrencyRates([], [], []);
         } else {
           if (!isCurrentOptionalDashboardLoad()) {
             return;
           }
           const currencyOverview = currencyOverviewResult.value || {};
-          renderDashboardCurrencyRates(currencyOverview.current_rates, currencyOverview.tracked_currencies);
+          renderDashboardCurrencyRates(
+            currencyOverview.current_rates,
+            currencyOverview.tracked_currencies,
+            currencyOverview.bank_rates,
+          );
           state.dashboardCurrencyHydrated = true;
           setDashboardPanelState(el.dashboardCurrencyPanel, "ready");
         }

@@ -174,7 +174,7 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert "body.finance-calculator-open" in calculator_css
     assert "@media (max-width: 640px)" in calculator_css
     assert "max-height: min(88dvh, 720px)" in calculator_css
-    assert '/static/styles.css?v=20260809a' in index_html
+    assert '/static/styles.css?v=20260818b' in index_html
     assert '/static/css/components-core.css?v=20260808a' in styles
     assert '/static/css/layout-debts.css?v=20260716j' in styles
     assert '/static/css/components-analytics-summary.css?v=20260720f' in styles
@@ -423,6 +423,27 @@ def test_analytics_global_period_uses_compact_period_control():
     assert "el.dashboardAnalyticsPeriodControlLabel.textContent" in analytics_ui
     assert "el.analyticsGlobalPeriodControlLabel.textContent = rangeLabel;" in analytics_trend
     assert "if (period !== \"all_time\")" in analytics_trend
+
+
+def test_currency_kpi_and_settings_support_compact_bank_rates_and_alerts():
+    secondary = (
+        REPO_ROOT / "static" / "js" / "templates" / "shell-sections-secondary.js"
+    ).read_text(encoding="utf-8")
+    dashboard = (REPO_ROOT / "static" / "js" / "app-features-dashboard.js").read_text(
+        encoding="utf-8"
+    )
+    preferences = (
+        REPO_ROOT / "static" / "js" / "app-features-session-preferences.js"
+    ).read_text(encoding="utf-8")
+
+    assert 'name="bankRateBank"' in secondary
+    assert 'id="bankCurrencyAlertsList"' in secondary
+    assert 'id="addBankCurrencyAlertBtn"' in secondary
+    assert "Покупка" in dashboard
+    assert "Продажа" in dashboard
+    assert 'itemCurrency === "RUB" ? 100 : 1' in dashboard
+    assert "currencyOverview.bank_rates" in dashboard
+    assert "collectBankCurrencyAlerts()" in preferences
 
 
 def test_debts_section_has_filtered_base_currency_kpi():

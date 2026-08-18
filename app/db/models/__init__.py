@@ -9,6 +9,7 @@ from app.db.models.debt_issuance import DebtIssuance
 from app.db.models.debt_reminder_job import DebtReminderJob
 from app.db.models.debt_repayment import DebtRepayment
 from app.db.models.fx_rate_snapshot import FxRateSnapshot
+from app.db.models.fx_bank_rate import FxBankRate
 from app.db.models.fx_trade import FxTrade
 from app.db.models.operation import Operation
 from app.db.models.operation_item_price import OperationItemPrice
@@ -45,6 +46,7 @@ __all__ = [
     "DebtRepayment",
     "FxTrade",
     "FxRateSnapshot",
+    "FxBankRate",
     "WorkProfile",
     "EmploymentContract",
     "WorkDayOverride",

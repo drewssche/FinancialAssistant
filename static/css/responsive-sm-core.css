@@ -739,9 +739,15 @@
 
   .settings-grid-2,
   .settings-alert-row-fields,
+  .bank-alert-rule-fields,
   .settings-scale-row,
   .danger-zone-actions {
     grid-template-columns: 1fr;
+  }
+
+  .settings-alert-section-head {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .danger-zone {

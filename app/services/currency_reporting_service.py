@@ -312,6 +312,10 @@ class CurrencyReportingService:
             "positions": positions,
             "recent_trades": recent_trades,
             "current_rates": current_rates,
+            "bank_rates": service.get_bank_rates(
+                user_id=user_id,
+                currencies=[normalized_currency] if normalized_currency else computed["tracked_currencies"],
+            ),
         }
 
     def list_trades(

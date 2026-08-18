@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import create_engine
@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.db.base import Base
-from app.db.models import ActivityEvent, AuthIdentity, FxRateSnapshot, User, UserPreference
+from app.db.models import ActivityEvent, AuthIdentity, FxBankRate, FxRateSnapshot, User, UserPreference
 from app.services.telegram_currency_alert_bot_service import TelegramCurrencyAlertBotService
 
 
@@ -74,6 +74,106 @@ def test_list_due_deliveries_builds_threshold_alert(monkeypatch):
     finally:
         db.close()
         Base.metadata.drop_all(bind=engine)
+
+
+def test_bank_sell_alert_uses_best_bank_buy_rate_and_persists_marker(monkeypatch):
+    engine, SessionLocal = _make_session()
+    db = SessionLocal()
+    try:
+        db.add(User(id=1, display_name="Tester", status="active"))
+        db.add(AuthIdentity(user_id=1, provider="telegram", provider_user_id="100500"))
+        db.add(
+            UserPreference(
+                user_id=1,
+                preferences_version=1,
+                data={
+                    "currency": {
+                        "tracked_currencies": ["USD"],
+                        "bank_rate_banks": ["priorbank", "technobank"],
+                        "bank_rate_alerts": [
+                            {
+                                "id": "sell-usd",
+                                "action": "sell",
+                                "currency": "USD",
+                                "bank_code": "best",
+                                "threshold": "3.0500",
+                            }
+                        ],
+                    },
+                    "ui": {"currency": "BYN"},
+                },
+            )
+        )
+        now = datetime.now(timezone.utc)
+        db.add_all(
+            [
+                FxBankRate(
+                    bank_code="priorbank",
+                    bank_name="Приорбанк",
+                    currency="USD",
+                    base_currency="BYN",
+                    scale=1,
+                    buy_rate=Decimal("3.0600"),
+                    sell_rate=Decimal("3.1100"),
+                    channel="online",
+                    fetched_at=now,
+                ),
+                FxBankRate(
+                    bank_code="technobank",
+                    bank_name="Технобанк",
+                    currency="USD",
+                    base_currency="BYN",
+                    scale=1,
+                    buy_rate=Decimal("3.0800"),
+                    sell_rate=Decimal("3.1200"),
+                    channel="cash",
+                    fetched_at=now,
+                ),
+            ]
+        )
+        db.commit()
+        monkeypatch.setattr(
+            "app.services.telegram_currency_alert_bot_service.BankCurrencyRateRefreshService.refresh_user_selected_rates",
+            lambda self, user_id, prefs=None: [],
+        )
+
+        service = TelegramCurrencyAlertBotService(db)
+        delivery = service.list_due_deliveries()[0]
+
+        assert delivery.triggers == []
+        assert len(delivery.bank_triggers) == 1
+        assert delivery.bank_triggers[0].bank_code == "technobank"
+        assert "можно продать по 3.0800 BYN в Технобанк" in delivery.text
+
+        service.mark_delivery_sent(delivery)
+        prefs = db.get(UserPreference, 1)
+        rule = prefs.data["currency"]["bank_rate_alerts"][0]
+        assert rule["last_marker"] == "active:sell:3.050000"
+        assert service.list_due_deliveries() == []
+    finally:
+        db.close()
+        Base.metadata.drop_all(bind=engine)
+
+
+def test_official_rub_alert_threshold_is_compared_per_100_rub():
+    service = TelegramCurrencyAlertBotService.__new__(TelegramCurrencyAlertBotService)
+
+    triggers, _, _ = service._collect_triggers(
+        current_rates={"RUB": {"rate": "0.035600", "rate_date": "2026-08-18"}},
+        config={
+            "alerts": {
+                "RUB": {
+                    "above_rate": Decimal("3.550000"),
+                    "below_rate": None,
+                    "last_above_marker": "",
+                    "last_below_marker": "",
+                }
+            }
+        },
+    )
+
+    assert len(triggers) == 1
+    assert triggers[0].current_rate == Decimal("3.560000")
 
 
 def test_mark_delivery_sent_persists_marker_and_prevents_duplicates(monkeypatch):

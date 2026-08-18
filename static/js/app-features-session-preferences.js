@@ -19,7 +19,16 @@
     telegram_digest_enabled: false,
     telegram_digest_time: "10:00",
     currency_alerts: {},
+    bank_rate_banks: ["priorbank", "technobank", "bsb", "sber"],
+    bank_rate_alerts: [],
   };
+  const BANK_RATE_BANK_OPTIONS = [
+    ["priorbank", "Приорбанк"],
+    ["technobank", "Технобанк"],
+    ["bsb", "БСБ Банк"],
+    ["sber", "Сбер Банк"],
+  ];
+  const BANK_ALERT_CURRENCIES = ["USD", "EUR", "RUB", "CNY", "PLN"];
   const DEFAULT_DEBT_PREFS = {
     reminders_enabled: true,
     reminder_time: "09:00",
@@ -117,6 +126,134 @@
       };
     }
     return alerts;
+  }
+
+  function normalizeBankRateBanks(raw) {
+    const source = Array.isArray(raw) ? raw : DEFAULT_CURRENCY_PREFS.bank_rate_banks;
+    const allowed = new Set(BANK_RATE_BANK_OPTIONS.map(([code]) => code));
+    return Array.from(new Set(source.map((item) => String(item || "").trim().toLowerCase()).filter((item) => allowed.has(item))));
+  }
+
+  function normalizeBankCurrencyAlerts(raw) {
+    if (!Array.isArray(raw)) {
+      return [];
+    }
+    return raw.map((item, index) => {
+      const config = item && typeof item === "object" ? item : {};
+      const currency = core.normalizeCurrencyCode?.(config.currency, "") || "USD";
+      const action = config.action === "buy" ? "buy" : "sell";
+      const bankCode = config.bank_code === "best"
+        ? "best"
+        : normalizeBankRateBanks([config.bank_code])[0] || "best";
+      return {
+        id: String(config.id || `bank-alert-${index + 1}`),
+        currency: BANK_ALERT_CURRENCIES.includes(currency) ? currency : "USD",
+        action,
+        bank_code: bankCode,
+        threshold: String(config.threshold ?? "").trim(),
+        last_marker: String(config.last_marker || ""),
+      };
+    });
+  }
+
+  function bankAlertRuleId() {
+    if (globalThis.crypto?.randomUUID) {
+      return `bank-alert-${globalThis.crypto.randomUUID()}`;
+    }
+    return `bank-alert-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+
+  function renderBankCurrencyAlerts(alerts = null, { force = false } = {}) {
+    if (!el.bankCurrencyAlertsList) {
+      return;
+    }
+    if (!force && el.bankCurrencyAlertsList.dataset.dirty === "true") {
+      return;
+    }
+    const rows = normalizeBankCurrencyAlerts(alerts ?? getMergedCurrencyPrefs().bank_rate_alerts);
+    if (!rows.length) {
+      el.bankCurrencyAlertsList.innerHTML = '<div class="bank-alerts-empty muted-small">Банковских алертов пока нет</div>';
+      el.bankCurrencyAlertsList.dataset.dirty = "false";
+      return;
+    }
+    const escape = (value) => core.escapeHtml ? core.escapeHtml(String(value ?? "")) : String(value ?? "");
+    el.bankCurrencyAlertsList.innerHTML = rows.map((rule) => `
+      <div class="settings-alert-row" data-bank-alert-rule="${escape(rule.id)}">
+        <div class="bank-alert-rule-fields">
+          <label class="field">
+            <span>Действие</span>
+            <select data-bank-alert-field="action">
+              <option value="sell"${rule.action === "sell" ? " selected" : ""}>Продать</option>
+              <option value="buy"${rule.action === "buy" ? " selected" : ""}>Купить</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Валюта</span>
+            <select data-bank-alert-field="currency">
+              ${BANK_ALERT_CURRENCIES.map((currency) => `<option value="${currency}"${currency === rule.currency ? " selected" : ""}>${currency === "RUB" ? "100 RUB" : currency}</option>`).join("")}
+            </select>
+          </label>
+          <label class="field">
+            <span>Банк</span>
+            <select data-bank-alert-field="bank_code">
+              <option value="best"${rule.bank_code === "best" ? " selected" : ""}>Лучший из выбранных</option>
+              ${BANK_RATE_BANK_OPTIONS.map(([code, label]) => `<option value="${code}"${code === rule.bank_code ? " selected" : ""}>${label}</option>`).join("")}
+            </select>
+          </label>
+          <label class="field">
+            <span>${rule.action === "buy" ? "Не выше" : "Не ниже"}, BYN</span>
+            <input type="number" inputmode="decimal" min="0" step="0.0001" value="${escape(rule.threshold)}" placeholder="Введите порог" data-bank-alert-field="threshold" />
+          </label>
+          <button class="btn btn-danger btn-xs bank-alert-rule-remove" type="button" data-remove-bank-alert="${escape(rule.id)}">Удалить</button>
+        </div>
+      </div>
+    `).join("");
+    el.bankCurrencyAlertsList.dataset.dirty = "false";
+  }
+
+  function collectBankCurrencyAlerts() {
+    if (!el.bankCurrencyAlertsList) {
+      return normalizeBankCurrencyAlerts(getMergedCurrencyPrefs().bank_rate_alerts);
+    }
+    const existing = new Map(
+      normalizeBankCurrencyAlerts(getMergedCurrencyPrefs().bank_rate_alerts)
+        .map((rule) => [rule.id, rule])
+    );
+    return Array.from(el.bankCurrencyAlertsList.querySelectorAll("[data-bank-alert-rule]")).map((row) => {
+      const id = String(row.dataset.bankAlertRule || "");
+      const current = existing.get(id) || {};
+      return {
+        id,
+        action: row.querySelector('[data-bank-alert-field="action"]')?.value === "buy" ? "buy" : "sell",
+        currency: core.normalizeCurrencyCode?.(row.querySelector('[data-bank-alert-field="currency"]')?.value, "USD") || "USD",
+        bank_code: String(row.querySelector('[data-bank-alert-field="bank_code"]')?.value || "best"),
+        threshold: String(row.querySelector('[data-bank-alert-field="threshold"]')?.value || "").trim(),
+        last_marker: String(current.last_marker || ""),
+      };
+    });
+  }
+
+  function addBankCurrencyAlertRule() {
+    const rows = collectBankCurrencyAlerts();
+    const tracked = (getMergedCurrencyPrefs().tracked_currencies || [])
+      .map((item) => core.normalizeCurrencyCode?.(item, "") || "")
+      .filter((item) => BANK_ALERT_CURRENCIES.includes(item));
+    rows.push({
+      id: bankAlertRuleId(),
+      action: "sell",
+      currency: tracked[0] || "USD",
+      bank_code: "best",
+      threshold: "",
+      last_marker: "",
+    });
+    renderBankCurrencyAlerts(rows, { force: true });
+    el.bankCurrencyAlertsList.dataset.dirty = "true";
+  }
+
+  function removeBankCurrencyAlertRule(ruleId) {
+    const rows = collectBankCurrencyAlerts().filter((rule) => rule.id !== String(ruleId || ""));
+    renderBankCurrencyAlerts(rows, { force: true });
+    el.bankCurrencyAlertsList.dataset.dirty = "true";
   }
 
   function syncCurrencyAlertRows() {
@@ -243,6 +380,12 @@
       el.currencyDigestTimeInput.value = String(getMergedCurrencyPrefs().telegram_digest_time || "10:00");
       el.currencyDigestTimeInput.disabled = el.currencyDigestToggle ? !el.currencyDigestToggle.checked : false;
     }
+    if (el.bankRateBankInputs?.length) {
+      const selectedBanks = new Set(normalizeBankRateBanks(getMergedCurrencyPrefs().bank_rate_banks));
+      Array.from(el.bankRateBankInputs).forEach((input) => {
+        input.checked = selectedBanks.has(String(input.value || "").toLowerCase());
+      });
+    }
     if (el.currencyAlertInputs?.length) {
       const alerts = normalizeCurrencyAlerts(getMergedCurrencyPrefs().currency_alerts);
       Array.from(el.currencyAlertInputs).forEach((input) => {
@@ -253,6 +396,7 @@
       });
     }
     syncCurrencyAlertRows();
+    renderBankCurrencyAlerts();
     if (el.showDashboardAnalyticsToggle) {
       el.showDashboardAnalyticsToggle.checked = ui.show_dashboard_analytics !== false;
     }
@@ -501,6 +645,11 @@
       }
       currencyAlerts[currency] = config;
     });
+    const selectedBankRateBanks = el.bankRateBankInputs?.length
+      ? Array.from(el.bankRateBankInputs)
+        .filter((input) => input.checked)
+        .map((input) => String(input.value || "").trim().toLowerCase())
+      : normalizeBankRateBanks(getMergedCurrencyPrefs().bank_rate_banks);
     return {
       preferences_version: state.preferences?.preferences_version || 1,
       data: {
@@ -582,6 +731,8 @@
           telegram_digest_enabled: el.currencyDigestToggle ? el.currencyDigestToggle.checked : getMergedCurrencyPrefs().telegram_digest_enabled,
           telegram_digest_time: el.currencyDigestTimeInput ? String(el.currencyDigestTimeInput.value || "10:00") : getMergedCurrencyPrefs().telegram_digest_time,
           currency_alerts: currencyAlerts,
+          bank_rate_banks: selectedBankRateBanks,
+          bank_rate_alerts: collectBankCurrencyAlerts(),
         },
         ui: {
           ...(state.preferences?.data?.ui || {}),
@@ -619,6 +770,9 @@
       headers: core.authHeaders(),
       body: JSON.stringify(buildPreferencesPayload()),
     });
+    if (el.bankCurrencyAlertsList) {
+      el.bankCurrencyAlertsList.dataset.dirty = "false";
+    }
     core.invalidateUiRequestCache();
   }
 
@@ -646,6 +800,7 @@
     DEFAULT_UI_PREFS,
     DEFAULT_CURRENCY_PREFS,
     normalizeCurrencyAlerts,
+    normalizeBankCurrencyAlerts,
     normalizeStructureHidden,
     getMergedUiPrefs,
     getMergedCurrencyPrefs,
@@ -660,6 +815,8 @@
     savePreferences,
     savePreferencesDebounced,
     cancelDebouncedPreferencesSave,
+    addBankCurrencyAlertRule,
+    removeBankCurrencyAlertRule,
   };
 
   window.App.registerRuntimeModule?.("session-preferences", api);

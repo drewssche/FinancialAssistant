@@ -1,9 +1,9 @@
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
-from app.db.models import AuthIdentity, FxRateSnapshot, FxTrade, UserPreference
+from app.db.models import AuthIdentity, FxBankRate, FxRateSnapshot, FxTrade, UserPreference
 
 
 class CurrencyRepository:
@@ -202,6 +202,76 @@ class CurrencyRepository:
     def list_currency_preferences(self) -> list[UserPreference]:
         stmt = select(UserPreference).order_by(UserPreference.user_id.asc())
         return list(self.db.scalars(stmt))
+
+    def get_latest_bank_rate_map(self) -> dict[tuple[str, str, str], FxBankRate]:
+        rows = self.db.scalars(
+            select(FxBankRate).order_by(
+                FxBankRate.bank_code.asc(),
+                FxBankRate.currency.asc(),
+                FxBankRate.channel.asc(),
+            )
+        )
+        return {
+            (row.bank_code, row.currency, row.channel): row
+            for row in rows
+        }
+
+    def list_bank_rates(
+        self,
+        *,
+        bank_codes: list[str] | None = None,
+        currencies: list[str] | None = None,
+    ) -> list[FxBankRate]:
+        stmt = select(FxBankRate)
+        if bank_codes:
+            stmt = stmt.where(FxBankRate.bank_code.in_(bank_codes))
+        if currencies:
+            stmt = stmt.where(FxBankRate.currency.in_(currencies))
+        stmt = stmt.order_by(FxBankRate.bank_code.asc(), FxBankRate.currency.asc())
+        return list(self.db.scalars(stmt))
+
+    def upsert_bank_rate(
+        self,
+        *,
+        bank_code: str,
+        bank_name: str,
+        currency: str,
+        base_currency: str,
+        scale: int,
+        buy_rate,
+        sell_rate,
+        channel: str,
+        location_name: str | None,
+        source_url: str | None,
+        quoted_at: datetime | None,
+        fetched_at: datetime,
+    ) -> FxBankRate:
+        row = self.db.scalar(
+            select(FxBankRate).where(
+                FxBankRate.bank_code == bank_code,
+                FxBankRate.currency == currency,
+                FxBankRate.base_currency == base_currency,
+                FxBankRate.channel == channel,
+            )
+        )
+        if row is None:
+            row = FxBankRate(
+                bank_code=bank_code,
+                currency=currency,
+                base_currency=base_currency,
+                channel=channel,
+            )
+            self.db.add(row)
+        row.bank_name = bank_name
+        row.scale = scale
+        row.buy_rate = buy_rate
+        row.sell_rate = sell_rate
+        row.location_name = location_name
+        row.source_url = source_url
+        row.quoted_at = quoted_at
+        row.fetched_at = fetched_at
+        self.db.flush()
+        return row
 
     def list_telegram_digest_targets(self) -> list:
         stmt = (

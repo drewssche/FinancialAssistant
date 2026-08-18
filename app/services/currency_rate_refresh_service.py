@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.logging import log_background_job_event
 from app.repositories.currency_repo import CurrencyRepository
+from app.services.bank_currency_rate_refresh_service import BankCurrencyRateRefreshService
 from app.services.currency_service import CurrencyService
 
 
@@ -45,6 +46,7 @@ class CurrencyRateRefreshService:
                 refreshed_users=len(refreshed),
                 refreshed_rates=sum(len(item["rates"]) for item in refreshed),
             )
+        BankCurrencyRateRefreshService(self.db).refresh_due_selected_rates()
         return refreshed
 
     def refresh_user_tracked_rates(

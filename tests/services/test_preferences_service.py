@@ -155,3 +155,54 @@ def test_update_preferences_resets_alert_marker_when_threshold_changes():
     merged = PreferencesService._preserve_currency_runtime_state(current, incoming)
 
     assert merged["currency"]["currency_alerts"]["EUR"]["last_above_marker"] == ""
+
+
+def test_update_preferences_preserves_bank_alert_marker_only_for_same_rule():
+    current = {
+        "currency": {
+            "bank_rate_alerts": [
+                {
+                    "id": "sell-usd",
+                    "action": "sell",
+                    "currency": "USD",
+                    "bank_code": "best",
+                    "threshold": "3.1000",
+                    "last_marker": "active:sell:3.100000",
+                }
+            ]
+        }
+    }
+    unchanged = {
+        "currency": {
+            "bank_rate_alerts": [
+                {
+                    "id": "sell-usd",
+                    "action": "sell",
+                    "currency": "USD",
+                    "bank_code": "best",
+                    "threshold": "3.1000",
+                    "last_marker": "",
+                }
+            ]
+        }
+    }
+    changed = {
+        "currency": {
+            "bank_rate_alerts": [
+                {
+                    "id": "sell-usd",
+                    "action": "sell",
+                    "currency": "USD",
+                    "bank_code": "best",
+                    "threshold": "3.2000",
+                    "last_marker": "active:sell:3.100000",
+                }
+            ]
+        }
+    }
+
+    preserved = PreferencesService._preserve_currency_runtime_state(current, unchanged)
+    reset = PreferencesService._preserve_currency_runtime_state(current, changed)
+
+    assert preserved["currency"]["bank_rate_alerts"][0]["last_marker"] == "active:sell:3.100000"
+    assert reset["currency"]["bank_rate_alerts"][0]["last_marker"] == ""

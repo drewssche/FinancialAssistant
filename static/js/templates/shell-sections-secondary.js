@@ -554,6 +554,23 @@
                     </label>
                   </div>
                 </section>
+                <section class="settings-block">
+                  <h3>Банковские курсы</h3>
+                  <p class="muted-small">Банки, которые будут показаны в KPI, дайджесте и доступны для алертов.</p>
+                  <div id="bankRateBanksWrap" class="settings-grid-2">
+                    ${[
+                      ["priorbank", "Приорбанк · онлайн"],
+                      ["technobank", "Технобанк · наличные"],
+                      ["bsb", "БСБ Банк · наличные"],
+                      ["sber", "Сбер Банк · наличные"],
+                    ].map(([code, label]) => `
+                      <label class="settings-switch-row">
+                        <input name="bankRateBank" type="checkbox" value="${code}" checked />
+                        <span>${label}</span>
+                      </label>
+                    `).join("")}
+                  </div>
+                </section>
                 <label class="field">
                   <span>Строк планов на дашборде</span>
                   <div class="settings-picker-field">
@@ -600,13 +617,13 @@
                   <input id="currencyDigestTimeInput" type="time" value="10:00" />
                 </label>
                 <div class="field">
-                  <span>Алерты по курсам</span>
+                  <span>Алерты по официальным курсам НБРБ</span>
                   <div id="currencyAlertsSettings" class="settings-alerts-grid">
                     ${["USD", "EUR", "RUB", "CNY", "PLN"].map((currency) => `
                       <div class="settings-alert-row" data-currency-alert-row="${currency}">
                         <div class="settings-alert-row-head">
                           <strong>${currency}</strong>
-                          <span class="muted-small">Telegram при достижении порога</span>
+                          <span class="muted-small">${currency === "RUB" ? "за 100 RUB" : "за 1 единицу"}</span>
                         </div>
                         <div class="settings-alert-row-fields">
                           <label class="field">
@@ -637,6 +654,16 @@
                       </div>
                     `).join("")}
                   </div>
+                </div>
+                <div class="field">
+                  <div class="settings-alert-section-head">
+                    <div>
+                      <span>Алерты по курсам банков</span>
+                      <p class="muted-small">«Продать» сравнивает покупку банка, «Купить» — продажу банка.</p>
+                    </div>
+                    <button id="addBankCurrencyAlertBtn" class="btn btn-secondary btn-xs" type="button">Добавить алерт</button>
+                  </div>
+                  <div id="bankCurrencyAlertsList" class="settings-alerts-grid"></div>
                 </div>
               </section>
               <div class="settings-actions">

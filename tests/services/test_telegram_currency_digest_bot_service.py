@@ -1,6 +1,7 @@
 from datetime import date
 from decimal import Decimal
 
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -8,6 +9,14 @@ from sqlalchemy.pool import StaticPool
 from app.db.base import Base
 from app.db.models import ActivityEvent, AuthIdentity, FxRateSnapshot, FxTrade, User, UserPreference
 from app.services.telegram_currency_digest_bot_service import TelegramCurrencyDigestBotService
+
+
+@pytest.fixture(autouse=True)
+def _disable_bank_rate_network(monkeypatch):
+    monkeypatch.setattr(
+        "app.services.telegram_currency_digest_bot_service.BankCurrencyRateRefreshService.refresh_user_selected_rates",
+        lambda self, user_id, prefs=None: [],
+    )
 
 
 def _make_session():
@@ -80,6 +89,10 @@ def test_list_due_deliveries_builds_currency_digest(monkeypatch):
             "app.services.telegram_currency_digest_bot_service.CurrencyRateRefreshService.refresh_user_tracked_rates",
             lambda self, user_id, prefs=None: [],
         )
+        monkeypatch.setattr(
+            "app.services.telegram_currency_digest_bot_service.BankCurrencyRateRefreshService.refresh_user_selected_rates",
+            lambda self, user_id, prefs=None: [],
+        )
 
         deliveries = TelegramCurrencyDigestBotService(db).list_due_deliveries()
 
@@ -88,7 +101,7 @@ def test_list_due_deliveries_builds_currency_digest(monkeypatch):
         assert delivery.chat_id == "100500"
         assert delivery.text.startswith("💱 Курсы")
         assert "📈 USD:" in delivery.text
-        assert "USD: курс 3.2700, +0.0200 за день" in delivery.text
+        assert "USD: курс НБРБ 3.2700, +0.0200 за день" in delivery.text
         assert "позиция 100.00 USD" in delivery.text
         assert "оценка 327.00 BYN" in delivery.text
     finally:

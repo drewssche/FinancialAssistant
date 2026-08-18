@@ -583,6 +583,57 @@
   margin-top: auto;
 }
 
+.dashboard-bank-rates {
+  display: grid;
+  gap: 0.28rem;
+  margin-top: 0.1rem;
+  padding-top: var(--space-2);
+  border-top: 1px solid rgba(74, 94, 127, 0.42);
+}
+
+.dashboard-bank-rate-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.48rem;
+  align-items: baseline;
+  font-size: 0.7rem;
+  line-height: 1.25;
+}
+
+.dashboard-bank-rate-row > :nth-child(2),
+.dashboard-bank-rate-row > :nth-child(3) {
+  min-width: 3.45rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.dashboard-bank-rate-head {
+  color: #7389ae;
+  font-size: 0.62rem;
+}
+
+.dashboard-bank-rate-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #aebddd;
+}
+
+.dashboard-bank-rate-row strong {
+  color: #dde7fb;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.dashboard-bank-rate-stale {
+  opacity: 0.48;
+}
+
+.dashboard-bank-rates-empty {
+  padding-top: var(--space-2);
+  border-top: 1px solid rgba(74, 94, 127, 0.32);
+}
+
 .currency-trade-note {
   display: grid;
   gap: 0.4rem;

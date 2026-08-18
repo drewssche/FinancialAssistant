@@ -72,5 +72,29 @@ class PreferencesService:
                     next_config[marker_key] = ""
             merged_alerts[currency] = next_config
         next_currency["currency_alerts"] = merged_alerts
+
+        current_bank_alerts = current_currency.get("bank_rate_alerts") if isinstance(current_currency.get("bank_rate_alerts"), list) else []
+        incoming_bank_alerts = next_currency.get("bank_rate_alerts") if isinstance(next_currency.get("bank_rate_alerts"), list) else []
+        current_by_id = {
+            str(item.get("id")): item
+            for item in current_bank_alerts
+            if isinstance(item, dict) and str(item.get("id") or "").strip()
+        }
+        merged_bank_alerts = []
+        for raw_rule in incoming_bank_alerts:
+            if not isinstance(raw_rule, dict):
+                continue
+            next_rule = dict(raw_rule)
+            rule_id = str(next_rule.get("id") or "").strip()
+            current_rule = current_by_id.get(rule_id, {})
+            signature_keys = ("action", "currency", "bank_code", "threshold")
+            signature_unchanged = all(
+                str(next_rule.get(key) or "").strip().lower()
+                == str(current_rule.get(key) or "").strip().lower()
+                for key in signature_keys
+            )
+            next_rule["last_marker"] = str(current_rule.get("last_marker") or "") if signature_unchanged else ""
+            merged_bank_alerts.append(next_rule)
+        next_currency["bank_rate_alerts"] = merged_bank_alerts
         merged["currency"] = next_currency
         return merged

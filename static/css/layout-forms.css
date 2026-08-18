@@ -334,6 +334,35 @@
   gap: var(--space-3);
 }
 
+.settings-alert-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.settings-alert-section-head p {
+  margin: 4px 0 0;
+}
+
+.bank-alert-rule-fields {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.8fr) minmax(90px, 0.55fr) minmax(150px, 1.15fr) minmax(130px, 0.8fr) auto;
+  gap: var(--space-2);
+  align-items: end;
+}
+
+.bank-alert-rule-remove {
+  min-height: 42px;
+}
+
+.bank-alerts-empty {
+  border: 1px dashed rgba(86, 107, 143, 0.55);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  text-align: center;
+}
+
 .settings-actions {
   display: flex;
   justify-content: flex-start;

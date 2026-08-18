@@ -70,6 +70,22 @@ class CurrencyRateHistoryPointOut(BaseModel):
     rate_date: date
 
 
+class CurrencyBankRateOut(BaseModel):
+    bank_code: str
+    bank_name: str
+    currency: str
+    base_currency: str = "BYN"
+    scale: int = 1
+    buy_rate: Decimal
+    sell_rate: Decimal
+    channel: str
+    channel_label: str
+    location_name: str | None = None
+    quoted_at: datetime | None = None
+    fetched_at: datetime
+    stale: bool = False
+
+
 class CurrencyPositionOut(BaseModel):
     currency: str
     quantity: Decimal
@@ -110,6 +126,7 @@ class CurrencyOverviewOut(BaseModel):
     positions: list[CurrencyPositionOut]
     recent_trades: list[CurrencyTradeOut]
     current_rates: list[CurrencyRateOut]
+    bank_rates: list[CurrencyBankRateOut] = Field(default_factory=list)
 
 
 class CurrencyPerformancePointOut(BaseModel):

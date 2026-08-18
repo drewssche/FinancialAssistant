@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 import re
 
@@ -11,6 +11,11 @@ from app.db.models import FxTrade, Operation
 from app.repositories.currency_repo import CurrencyRepository
 from app.repositories.preference_repo import PreferenceRepository
 from app.services.activity_service import ActivityService
+from app.services.bank_currency_rate_registry import (
+    BANK_RATE_PROVIDERS,
+    BANK_RATE_STALE_MINUTES,
+    DEFAULT_BANK_RATE_BANKS,
+)
 from app.services.currency_reporting_service import CurrencyReportingService
 
 
@@ -25,6 +30,7 @@ _CURRENCY_ALIASES = {
 
 class CurrencyService:
     DEFAULT_TRACKED_CURRENCIES = ["USD", "EUR"]
+    DEFAULT_BANK_RATE_BANKS = list(DEFAULT_BANK_RATE_BANKS)
     TRADE_FIELDS = ["side", "asset_currency", "quote_currency", "quantity", "unit_price", "fee", "trade_kind", "trade_date", "note"]
     TRADE_LABELS = {
         "side": "Тип сделки",
@@ -291,7 +297,76 @@ class CurrencyService:
             "tracked_currencies": normalized or list(self.DEFAULT_TRACKED_CURRENCIES),
             "show_dashboard_kpi": raw.get("show_dashboard_kpi", True) is not False,
             "telegram_digest_enabled": raw.get("telegram_digest_enabled", False) is True,
+            "bank_rate_banks": self._normalize_bank_codes(raw.get("bank_rate_banks")),
         }
+
+    @staticmethod
+    def _normalize_bank_codes(value) -> list[str]:
+        source = value if isinstance(value, list) else list(DEFAULT_BANK_RATE_BANKS)
+        normalized = []
+        for item in source:
+            code = str(item or "").strip().lower()
+            if code in BANK_RATE_PROVIDERS and code not in normalized:
+                normalized.append(code)
+        return normalized
+
+    def get_bank_rates(
+        self,
+        *,
+        user_id: int,
+        currencies: list[str] | None = None,
+    ) -> list[dict]:
+        prefs = self.get_currency_preferences(user_id)
+        bank_codes = list(prefs.get("bank_rate_banks") or [])
+        if not bank_codes:
+            return []
+        target_currencies = []
+        for item in currencies or prefs.get("tracked_currencies") or []:
+            try:
+                code = self._normalize_currency(str(item))
+            except ValueError:
+                continue
+            if code != "BYN" and code not in target_currencies:
+                target_currencies.append(code)
+        if not target_currencies:
+            return []
+        rows = self.repo.list_bank_rates(
+            bank_codes=bank_codes,
+            currencies=target_currencies,
+        )
+        bank_order = {code: index for index, code in enumerate(bank_codes)}
+        currency_order = {code: index for index, code in enumerate(target_currencies)}
+        rows.sort(
+            key=lambda row: (
+                currency_order.get(row.currency, 999),
+                bank_order.get(row.bank_code, 999),
+            )
+        )
+        now = datetime.now(timezone.utc)
+        stale_cutoff = now - timedelta(minutes=BANK_RATE_STALE_MINUTES)
+        result = []
+        for row in rows:
+            fetched_at = row.fetched_at
+            aware_fetched_at = fetched_at if fetched_at.tzinfo else fetched_at.replace(tzinfo=timezone.utc)
+            provider = BANK_RATE_PROVIDERS.get(row.bank_code, {})
+            result.append(
+                {
+                    "bank_code": row.bank_code,
+                    "bank_name": row.bank_name,
+                    "currency": row.currency,
+                    "base_currency": row.base_currency,
+                    "scale": int(row.scale or 1),
+                    "buy_rate": self._rate(row.buy_rate),
+                    "sell_rate": self._rate(row.sell_rate),
+                    "channel": row.channel,
+                    "channel_label": str(provider.get("channel_label") or row.channel),
+                    "location_name": row.location_name,
+                    "quoted_at": row.quoted_at,
+                    "fetched_at": row.fetched_at,
+                    "stale": aware_fetched_at < stale_cutoff,
+                }
+            )
+        return result
 
     def create_trade(
         self,

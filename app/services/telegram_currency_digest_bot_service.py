@@ -11,6 +11,8 @@ from app.core.logging import log_background_job_event
 from app.repositories.currency_repo import CurrencyRepository
 from app.repositories.preference_repo import PreferenceRepository
 from app.services.activity_service import ActivityService
+from app.services.bank_currency_rate_refresh_service import BankCurrencyRateRefreshService
+from app.services.bank_currency_rate_registry import display_scale
 from app.services.currency_rate_refresh_service import CurrencyRateRefreshService
 from app.services.currency_service import CurrencyService
 from app.services.telegram_message_format import ICON_CURRENCY, signed_decimal, title, trend_icon
@@ -31,6 +33,7 @@ class TelegramCurrencyDigestBotService:
         self.preferences = PreferenceRepository(db)
         self.currency_service = CurrencyService(db)
         self.refresh_service = CurrencyRateRefreshService(db)
+        self.bank_refresh_service = BankCurrencyRateRefreshService(db)
         self.activity = ActivityService(db)
 
     def list_due_deliveries(self) -> list[TelegramCurrencyDigestDelivery]:
@@ -44,6 +47,7 @@ class TelegramCurrencyDigestBotService:
             if not self._is_due_now(config):
                 continue
             self.refresh_service.refresh_user_tracked_rates(user_id=user_id, prefs=prefs)
+            self.bank_refresh_service.refresh_user_selected_rates(user_id=user_id, prefs=prefs)
             overview = self.currency_service.get_overview(user_id=user_id, trades_limit=10)
             text = self.build_digest_text(overview=overview, config=config)
             deliveries.append(
@@ -130,15 +134,19 @@ class TelegramCurrencyDigestBotService:
             str(item["currency"]).upper(): item
             for item in overview.get("positions") or []
         }
+        bank_rates = [item for item in overview.get("bank_rates") or [] if not item.get("stale")]
         base_currency = str(overview.get("base_currency") or "BYN")
         for currency in config["tracked_currencies"]:
             rate_row = current_rates.get(currency)
             position_row = positions.get(currency)
             if rate_row:
                 line_icon = "ℹ️"
-                rate_part = f"{currency}: курс {Decimal(rate_row['rate']):.4f}"
+                scale = display_scale(currency)
+                rate = Decimal(rate_row["rate"]) * scale
+                currency_label = f"{scale} {currency}" if scale > 1 else currency
+                rate_part = f"{currency_label}: курс НБРБ {rate:.4f}"
                 if rate_row.get("change_value") is not None:
-                    delta = Decimal(rate_row["change_value"])
+                    delta = Decimal(rate_row["change_value"]) * scale
                     line_icon = trend_icon(delta)
                     rate_part += f", {signed_decimal(delta, places=4)} за день"
             else:
@@ -154,6 +162,15 @@ class TelegramCurrencyDigestBotService:
                     f"результат {signed_decimal(result_value, places=2)} {base_currency}"
                 )
             lines.append(f"{line_icon} {rate_part}")
+            currency_bank_rates = [item for item in bank_rates if item.get("currency") == currency]
+            if currency_bank_rates:
+                best_buy = max(currency_bank_rates, key=lambda item: Decimal(item["buy_rate"]))
+                best_sell = min(currency_bank_rates, key=lambda item: Decimal(item["sell_rate"]))
+                lines.append(
+                    "🏦 Банки: продать "
+                    f"{Decimal(best_buy['buy_rate']):.4f} в {best_buy['bank_name']}; "
+                    f"купить {Decimal(best_sell['sell_rate']):.4f} в {best_sell['bank_name']}"
+                )
         total_value = Decimal(overview.get("total_current_value") or 0)
         total_result = Decimal(overview.get("total_result_value") or 0)
         lines.append(
@@ -176,6 +193,7 @@ class TelegramCurrencyDigestBotService:
             "time": str(currency_prefs.get("telegram_digest_time") or "10:00"),
             "timezone": timezone_obj,
             "tracked_currencies": [str(item).strip().upper() for item in tracked if str(item).strip()],
+            "bank_rate_banks": list(currency_prefs.get("bank_rate_banks") or []),
             "last_digest_sent_on": str(currency_prefs.get("last_digest_sent_on") or "").strip(),
             "digest_delivery_claimed_on": str(currency_prefs.get("digest_delivery_claimed_on") or "").strip(),
         }

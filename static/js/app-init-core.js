@@ -528,6 +528,47 @@
         });
       });
     }
+    if (el.bankRateBankInputs?.length) {
+      Array.from(el.bankRateBankInputs).forEach((input) => {
+        input.addEventListener("change", () => {
+          const sessionFeature = getSessionFeature();
+          const dashboardFeature = getDashboardFeature();
+          sessionFeature.savePreferencesDebounced?.(300);
+          if (state.activeSection === "dashboard" && dashboardFeature.loadDashboard) {
+            dashboardFeature.loadDashboard().catch((err) => core.setStatus(String(err)));
+          }
+        });
+      });
+    }
+    if (el.addBankCurrencyAlertBtn) {
+      el.addBankCurrencyAlertBtn.addEventListener("click", () => {
+        getSessionFeature().addBankCurrencyAlertRule?.();
+      });
+    }
+    if (el.bankCurrencyAlertsList) {
+      el.bankCurrencyAlertsList.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-remove-bank-alert]");
+        if (!button) {
+          return;
+        }
+        getSessionFeature().removeBankCurrencyAlertRule?.(button.dataset.removeBankAlert || "");
+      });
+      el.bankCurrencyAlertsList.addEventListener("change", (event) => {
+        el.bankCurrencyAlertsList.dataset.dirty = "true";
+        const actionSelect = event.target.closest('[data-bank-alert-field="action"]');
+        if (!actionSelect) {
+          return;
+        }
+        const row = actionSelect.closest("[data-bank-alert-rule]");
+        const thresholdLabel = row?.querySelector('[data-bank-alert-field="threshold"]')?.closest("label")?.querySelector("span");
+        if (thresholdLabel) {
+          thresholdLabel.textContent = actionSelect.value === "buy" ? "Не выше, BYN" : "Не ниже, BYN";
+        }
+      });
+      el.bankCurrencyAlertsList.addEventListener("input", () => {
+        el.bankCurrencyAlertsList.dataset.dirty = "true";
+      });
+    }
     if (el.currencyDigestToggle) {
       el.currencyDigestToggle.addEventListener("change", () => {
         const sessionFeature = getSessionFeature();

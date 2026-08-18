@@ -39,6 +39,8 @@ class AdminCurrencyRuntimeService:
             if digest_enabled:
                 digest_enabled_users += 1
             raw_alerts = raw_currency_prefs.get("currency_alerts") if isinstance(raw_currency_prefs.get("currency_alerts"), dict) else {}
+            raw_bank_alerts = raw_currency_prefs.get("bank_rate_alerts")
+            bank_alerts = [item for item in raw_bank_alerts or [] if isinstance(item, dict)]
             latest_rate_map = self.repo.get_latest_rate_map(user_id=preference.user_id)
 
             for currency in tracked:
@@ -68,6 +70,14 @@ class AdminCurrencyRuntimeService:
                     currency_alert_rules += 1
                 item["alert_rules"] += currency_alert_rules
                 alert_rules_count += currency_alert_rules
+                currency_bank_alert_rules = sum(
+                    1
+                    for rule in bank_alerts
+                    if str(rule.get("currency") or "").strip().upper() == currency
+                    and str(rule.get("threshold") or "").strip()
+                )
+                item["alert_rules"] += currency_bank_alert_rules
+                alert_rules_count += currency_bank_alert_rules
 
                 latest_row = latest_rate_map.get(currency)
                 if not latest_row:

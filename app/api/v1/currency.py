@@ -18,6 +18,7 @@ from app.schemas.currency import (
     CurrencyTradeUpdate,
 )
 from app.services.currency_rate_refresh_service import CurrencyRateRefreshService
+from app.services.bank_currency_rate_refresh_service import BankCurrencyRateRefreshService
 from app.services.currency_service import CurrencyService
 
 router = APIRouter(prefix="/currency", tags=["currency"])
@@ -210,11 +211,17 @@ def refresh_currency_rates(
 ):
     service = CurrencyRateRefreshService(db)
     try:
-        return service.refresh_user_tracked_rates(
+        refreshed = service.refresh_user_tracked_rates(
             user_id=user_id,
             currencies=[currency] if currency else None,
             force=True,
         )
+        BankCurrencyRateRefreshService(db).refresh_user_selected_rates(
+            user_id=user_id,
+            currencies=[currency] if currency else None,
+            force=True,
+        )
+        return refreshed
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 

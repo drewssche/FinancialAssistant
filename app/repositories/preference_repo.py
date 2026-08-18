@@ -38,6 +38,8 @@ class PreferenceRepository:
                     "telegram_digest_enabled": False,
                     "telegram_digest_time": "10:00",
                     "currency_alerts": {},
+                    "bank_rate_banks": ["priorbank", "technobank", "bsb", "sber"],
+                    "bank_rate_alerts": [],
                 },
                 "ui": {
                     "timezone": "auto",
