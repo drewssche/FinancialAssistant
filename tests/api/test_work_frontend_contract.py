@@ -85,7 +85,7 @@ def test_work_payment_history_range_is_limited_to_ten_years():
     assert "profileStart < fallbackFrom ? fallbackFrom : profileStart" in history_loader
 
 
-def test_role_cards_use_only_embedded_links_while_category_matches_stay_in_calendar():
+def test_role_cards_prefer_embedded_links_and_use_exact_date_category_fallback():
     source = WORK_JS.read_text(encoding="utf-8")
     render = source.split("function renderPayments()", 1)[1].split(
         "function renderCalendar", 1
@@ -95,6 +95,11 @@ def test_role_cards_use_only_embedded_links_while_category_matches_stay_in_calen
     )[0]
 
     assert "const actuals = embeddedPaymentOperations(item);" in render
+    assert "function hasUniquePaymentEffectiveDate(item)" in source
+    assert "activeActuals.length || !hasUniquePaymentEffectiveDate(item)" in render
+    assert "categoryPaymentHeadline(categoryActuals)" in render
+    assert "paymentOperationDate(row) !== effectiveDate" in source
+    assert 'row.source === "category_match"' in render
     assert "allActualPayments()" not in render
     assert "allActualPayments().forEach((item)" in calendar
 

@@ -177,7 +177,7 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert "body.finance-calculator-open" in calculator_css
     assert "@media (max-width: 640px)" in calculator_css
     assert "max-height: min(88dvh, 720px)" in calculator_css
-    assert '/static/styles.css?v=20260819e' in index_html
+    assert '/static/styles.css?v=20260819f' in index_html
     assert '/static/css/components-core.css?v=20260808a' in styles
     assert '/static/css/layout-debts.css?v=20260716j' in styles
     assert '/static/css/components-analytics-summary.css?v=20260818d' in styles
@@ -483,6 +483,8 @@ def test_work_calendar_distinguishes_plan_forecasts_from_payroll_facts():
     assert "snapshot?.payroll_operations" in work
     assert 'source === "category_match"' in work
     assert "Определено по категории" in work
+    assert "function exactDatePayrollOperations(item)" in work
+    assert "Получено по категории" in work
     assert "Фактическая выплата не найдена" in work
     assert "payment.label || payment.category_name" in work
     assert "(?:operations|plans|categories)(?:\\/\\d+)?" in work

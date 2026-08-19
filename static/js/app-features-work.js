@@ -91,6 +91,27 @@
           : [];
     return rows.map((row) => ({ ...row, role: row.role || item.role, label: row.label || item.label, plan_id: row.plan_id || item.plan_id }));
   }
+  function exactDatePayrollOperations(item) {
+    const effectiveDate = String(item?.effective_date || "");
+    if (!effectiveDate) return [];
+    const seen = new Set();
+    return (Array.isArray(snapshot?.payroll_operations) ? snapshot.payroll_operations : []).filter((row) => {
+      const operationId = paymentOperationId(row);
+      if (row.is_deleted || !(operationId > 0) || paymentOperationDate(row) !== effectiveDate || seen.has(operationId)) return false;
+      seen.add(operationId);
+      return true;
+    });
+  }
+  function hasUniquePaymentEffectiveDate(item) {
+    const effectiveDate = String(item?.effective_date || "");
+    return Boolean(effectiveDate) && (snapshot?.payments || []).filter((row) => row.effective_date === effectiveDate).length === 1;
+  }
+  function categoryPaymentHeadline(rows) {
+    const currencies = [...new Set(rows.map(paymentOperationCurrency))];
+    if (currencies.length !== 1) return `Получено по категории · ${formatOperationCount(rows.length)}`;
+    const total = rows.reduce((sum, row) => sum + Number(paymentOperationAmount(row) || 0), 0);
+    return `Получено по категории · ${formatMoney(total, currencies[0])} · ${formatOperationCount(rows.length)}`;
+  }
   function allActualPayments() {
     const rows = [
       ...paymentHistory,
@@ -216,21 +237,26 @@
       const forecastAmount = paymentForecastAmount(item);
       const actuals = embeddedPaymentOperations(item);
       const activeActuals = actuals.filter((row) => !row.is_deleted && paymentOperationId(row) > 0);
+      const categoryActuals = activeActuals.length || !hasUniquePaymentEffectiveDate(item) ? [] : exactDatePayrollOperations(item);
+      const displayedActuals = activeActuals.length ? actuals : categoryActuals.length ? categoryActuals : actuals;
+      const hasActual = activeActuals.length > 0 || categoryActuals.length > 0;
       const showForecast = paymentForecastVisible(item);
       let headline = "Фактическая выплата не найдена";
-      if (showForecast) {
-        headline = forecastAmount == null
-          ? "Сумма прогноза не указана"
-          : `Прогноз · ${formatMoney(forecastAmount, paymentForecastCurrency(item))}`;
-      } else if (activeActuals.length === 1) {
+      if (activeActuals.length === 1) {
         headline = `Факт · ${formatMoney(paymentOperationAmount(activeActuals[0]), paymentOperationCurrency(activeActuals[0]))}`;
       } else if (activeActuals.length > 1) {
         headline = `Факт · ${formatOperationCount(activeActuals.length)}`;
+      } else if (categoryActuals.length) {
+        headline = categoryPaymentHeadline(categoryActuals);
+      } else if (showForecast) {
+        headline = forecastAmount == null
+          ? "Сумма прогноза не указана"
+          : `Прогноз · ${formatMoney(forecastAmount, paymentForecastCurrency(item))}`;
       } else if (actuals.some((row) => row.is_deleted)) {
         headline = "Фактическая операция удалена";
       }
       return `
-      <article class="work-payment-card ${item.shifted ? "is-shifted" : ""} ${activeActuals.length ? "has-actual" : ""} ${!showForecast && !actuals.length ? "is-missing" : ""}">
+      <article class="work-payment-card ${item.shifted ? "is-shifted" : ""} ${hasActual ? "has-actual" : ""} ${!showForecast && !displayedActuals.length ? "is-missing" : ""}">
         <div class="work-payment-primary">
           <span class="muted-small">${escape(item.label)}</span>
           <strong>${escape(headline)}</strong>
@@ -238,11 +264,19 @@
         </div>
         <div class="work-payment-meta">
           ${item.shifted ? `<span>перенесено назад с ${formatDate(item.nominal_date)}</span>` : "<span>по номинальной дате</span>"}
-          ${actuals.map((row) => {
+          ${displayedActuals.map((row) => {
             const operationId = paymentOperationId(row);
             const actualMoney = formatMoney(paymentOperationAmount(row), paymentOperationCurrency(row));
+            const isCategoryMatch = row.source === "category_match";
+            const operationLabel = isCategoryMatch
+              ? `${row.category_name || row.label || "Выплата"} · ${actualMoney} · ${formatDate(paymentOperationDate(row))}`
+              : `Получено · ${actualMoney} · ${formatDate(paymentOperationDate(row))}`;
+            const note = String(row.note || "").trim();
+            const operationTitle = isCategoryMatch
+              ? `${paymentSourceLabel(row.source)}${note ? ` · ${note}` : ""} · открыть операцию`
+              : "Открыть фактическую операцию";
             return operationId > 0 && !row.is_deleted
-              ? `<button class="work-payment-actual-link" type="button" data-work-operation-id="${operationId}">Получено · ${escape(actualMoney)} · ${formatDate(paymentOperationDate(row))}</button>`
+              ? `<button class="work-payment-actual-link" type="button" data-work-operation-id="${operationId}" title="${escape(operationTitle)}">${escape(operationLabel)}</button>`
               : `<span class="work-payment-actual-deleted">Фактическая операция удалена</span>`;
           }).join("")}
           <button class="work-payment-plan-link" type="button" data-work-open-plan-picker="${escape(item.role)}">

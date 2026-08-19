@@ -1101,6 +1101,21 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
         "is_deleted": False,
         "source": "category_match",
     }
+    detected_salary_adjustment = {
+        "label": "Зарплата",
+        "link_id": None,
+        "operation_id": 704,
+        "source_operation_id": 704,
+        "operation_date": "2026-08-05",
+        "amount": "348.00",
+        "currency": "BYN",
+        "base_amount": "348.00",
+        "base_currency": "BYN",
+        "note": "Корректировка зарплаты",
+        "category_name": "Зарплата",
+        "is_deleted": False,
+        "source": "category_match",
+    }
     manual_candidate = {
         "operation_id": 702,
         "operation_date": "2026-08-08",
@@ -1163,9 +1178,7 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
                 "forecast_currency": None,
                 "forecast_base_amount": None,
                 "forecast_base_currency": None,
-                "actual_operations": [
-                    {key: value for key, value in actual_salary.items() if key not in {"role", "label", "plan_id"}}
-                ],
+                "actual_operations": [],
             },
             {
                 "role": "advance",
@@ -1182,7 +1195,7 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
                 "actual_operations": [],
             },
         ],
-        "payroll_operations": [detected_salary],
+        "payroll_operations": [detected_salary, detected_salary_adjustment],
         "days": days,
     }
     statistics_payload = {
@@ -1354,8 +1367,12 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     assert page.locator("#workCalendarGrid .work-day-cell").count() == 36
     assert "168 ч" in (page.locator("#workSummaryGrid").text_content() or "")
     assert "Аванс" in (page.locator("#workPaymentsGrid").text_content() or "")
-    assert "Факт · 1 234,56" in (page.locator("#workPaymentsGrid").text_content() or "").replace("\u00a0", " ")
-    assert "Получено · 1 234,56" in (page.locator("#workPaymentsGrid").text_content() or "").replace("\u00a0", " ")
+    payment_cards_text = (page.locator("#workPaymentsGrid").text_content() or "").replace("\u00a0", " ")
+    assert "Получено по категории · 2 321,56" in payment_cards_text
+    assert "2 операции" in payment_cards_text
+    assert "Фактическая выплата не найдена" not in payment_cards_text
+    assert page.locator('#workPaymentsGrid [data-work-operation-id="703"]').count() == 1
+    assert page.locator('#workPaymentsGrid [data-work-operation-id="704"]').count() == 1
     assert "is-completed" in (page.locator('[data-work-date="2026-08-03"]').get_attribute("class") or "")
     assert "is-forecast" in (page.locator('[data-work-date="2026-08-11"]').get_attribute("class") or "")
     assert "is-today" in (page.locator('[data-work-date="2026-08-10"]').get_attribute("class") or "")
@@ -1366,7 +1383,9 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     assert "Прогноз · 8 ч" in (page.locator('[data-work-date="2026-08-11"] .work-hours-chip-forecast').text_content() or "")
     assert "Встреча с командой" in (page.locator('[data-work-date="2026-08-03"] .work-day-note').text_content() or "")
     assert page.locator('[data-work-date="2026-08-05"] .work-day-payment-forecast').count() == 0
-    detected_chip = page.locator('[data-work-date="2026-08-05"] .work-day-payment-actual')
+    detected_chips = page.locator('[data-work-date="2026-08-05"] .work-day-payment-actual')
+    assert detected_chips.count() == 2
+    detected_chip = detected_chips.first
     detected_chip_text = (detected_chip.text_content() or "").replace("\u00a0", " ")
     assert "Зарплата · получено 1 973,56" in detected_chip_text
     assert "Отпускные и премия" in detected_chip_text
@@ -1374,7 +1393,7 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     assert "Основная часть · получено 1 234,56" in (page.locator('[data-work-date="2026-08-07"] .work-day-payment-actual').text_content() or "").replace("\u00a0", " ")
     assert "Аванс · прогноз · 1 050" in (page.locator('[data-work-date="2026-08-20"] .work-day-payment-forecast').text_content() or "").replace("\u00a0", " ")
 
-    detected_chip.click()
+    page.locator('#workPaymentsGrid [data-work-operation-id="703"]').click()
     page.wait_for_selector("#editModal:not(.hidden)")
     assert page.locator("#editAmount").input_value() == "1973.56"
     page.click("#closeEditModalBtn")
