@@ -456,6 +456,12 @@ class OperationService:
         item = self.repo.get_by_id(user_id=user_id, operation_id=operation_id)
         if not item:
             raise LookupError("Operation not found")
+        if (
+            updates.get("kind") is not None
+            and updates["kind"] != "income"
+            and self.repo.has_work_payment_link(user_id=user_id, operation_id=operation_id)
+        ):
+            raise ValueError("Сначала отвяжите операцию от выплаты, затем измените её тип")
         before_activity = ActivityService.snapshot(item, self.ACTIVITY_FIELDS)
 
         receipt_items_input = updates.pop("receipt_items", None) if "receipt_items" in updates else None
@@ -551,6 +557,10 @@ class OperationService:
                     commit=False,
                 )
 
+        if item.kind == "income":
+            self.repo.reattach_work_payment_links(user_id=user_id, operation_id=int(item.id))
+        self.repo.sync_work_payment_link_snapshots(user_id=user_id, operation=item)
+
         after_activity = ActivityService.snapshot(item, self.ACTIVITY_FIELDS)
         activity_event = self.activity.record_updated(
             user_id=user_id,
@@ -605,6 +615,8 @@ class OperationService:
         item = self.repo.get_by_id(user_id=user_id, operation_id=operation_id)
         if not item:
             raise LookupError("Operation not found")
+
+        self.repo.sync_work_payment_link_snapshots(user_id=user_id, operation=item)
 
         receipt_items = self.repo.list_receipt_items_for_operations(
             user_id=user_id,
@@ -766,6 +778,8 @@ class OperationService:
                 raise ValueError("A receipt template used by the deleted operation no longer exists")
 
         item = self.repo.restore(user_id=user_id, snapshot=operation_data)
+        self.repo.reattach_work_payment_links(user_id=user_id, operation_id=operation_id)
+        self.repo.sync_work_payment_link_snapshots(user_id=user_id, operation=item)
         restored_receipts = self.repo.restore_receipt_items(
             user_id=user_id,
             operation_id=operation_id,

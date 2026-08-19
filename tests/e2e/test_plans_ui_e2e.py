@@ -1071,8 +1071,11 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     actual_salary = {
         "role": "salary",
         "label": "Основная часть",
-        "plan_id": 4,
+        # Историческая выплата должна оставаться видимой после смены текущего плана.
+        "plan_id": 44,
+        "link_id": 900,
         "operation_id": 701,
+        "source_operation_id": 701,
         "operation_date": "2026-08-07",
         "amount": "1234.56",
         "currency": "BYN",
@@ -1081,7 +1084,24 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
         "note": "Зарплата за июль",
         "category_name": "Зарплата",
         "is_deleted": False,
+        "source": "plan_confirmation",
     }
+    manual_candidate = {
+        "operation_id": 702,
+        "operation_date": "2026-08-08",
+        "amount": "850.00",
+        "currency": "BYN",
+        "base_amount": "850.00",
+        "base_currency": "BYN",
+        "note": "Аванс, добавленный вручную",
+        "category_name": "Зарплата",
+        "is_linked": False,
+        "link_id": None,
+        "linked_role": None,
+    }
+    payment_history_items = [actual_salary]
+    payment_link_requests = []
+    payment_unlink_requests = []
 
     month_payload = {
         "year": 2026,
@@ -1179,7 +1199,33 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
         if path == "/api/v1/work/month":
             return _json_response(route, month_payload)
         if path == "/api/v1/work/payments/history" and method == "GET":
-            return _json_response(route, {"items": [actual_salary], "total": 1})
+            return _json_response(route, {"items": payment_history_items, "total": len(payment_history_items)})
+        if path == "/api/v1/work/payments/candidates" and method == "GET":
+            return _json_response(route, {"items": [manual_candidate], "total": 1})
+        if path == "/api/v1/work/payments/links" and method == "POST":
+            payload = json.loads(request.post_data or "{}")
+            payment_link_requests.append(payload)
+            manual_candidate.update({"is_linked": True, "link_id": 901, "linked_role": payload["role"]})
+            linked_item = {
+                "role": payload["role"],
+                "label": "Аванс" if payload["role"] == "advance" else "Основная часть",
+                "plan_id": None,
+                **{
+                    key: value
+                    for key, value in manual_candidate.items()
+                    if key not in {"is_linked", "linked_role"}
+                },
+                "source": "manual",
+                "source_operation_id": manual_candidate["operation_id"],
+                "is_deleted": False,
+            }
+            payment_history_items.append(linked_item)
+            return _json_response(route, linked_item, status=201)
+        if path == "/api/v1/work/payments/links/901" and method == "DELETE":
+            payment_unlink_requests.append(901)
+            payment_history_items[:] = [item for item in payment_history_items if item.get("link_id") != 901]
+            manual_candidate.update({"is_linked": False, "link_id": None, "linked_role": None})
+            return route.fulfill(status=204, body="")
         if path == "/api/v1/work/statistics":
             return _json_response(route, statistics_payload)
         if path == "/api/v1/work/companies" and method == "GET":
@@ -1219,6 +1265,31 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
             },
         ),
     )
+    page.route(
+        "**/api/v1/operations/702",
+        lambda route: _json_response(
+            route,
+            {
+                "id": 702,
+                "kind": "income",
+                "amount": "850.00",
+                "original_amount": "850.00",
+                "currency": "BYN",
+                "base_currency": "BYN",
+                "fx_rate": "1.000000",
+                "operation_date": "2026-08-08",
+                "category_id": None,
+                "category_name": "Зарплата",
+                "category_icon": None,
+                "category_accent_color": None,
+                "note": "Аванс, добавленный вручную",
+                "receipt_items": [],
+                "receipt_total": None,
+                "receipt_discrepancy": None,
+                "fx_settlement": None,
+            },
+        ),
+    )
     _login_and_open_dashboard(page, static_server_url)
     page.click('button[data-section="work"]')
     page.wait_for_selector("#workSection:not(.hidden)")
@@ -1238,6 +1309,7 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     assert page.locator("#workCalendarGrid .work-day-cell").count() == 36
     assert "168 ч" in (page.locator("#workSummaryGrid").text_content() or "")
     assert "Аванс" in (page.locator("#workPaymentsGrid").text_content() or "")
+    assert "Получено · 1 234,56" in (page.locator("#workPaymentsGrid").text_content() or "").replace("\u00a0", " ")
     assert "is-completed" in (page.locator('[data-work-date="2026-08-03"]').get_attribute("class") or "")
     assert "is-forecast" in (page.locator('[data-work-date="2026-08-11"]').get_attribute("class") or "")
     assert "is-today" in (page.locator('[data-work-date="2026-08-10"]').get_attribute("class") or "")
@@ -1278,6 +1350,32 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     assert "Основная часть" in actual_payment_text
     assert "1 234,56" in actual_payment_text
     assert "Операция #701" in actual_payment_text
+    page.click("#workPaymentLinkToggle")
+    page.wait_for_selector("#workPaymentLinkPanel:not(.hidden)")
+    assert page.locator("#workPaymentCandidateDateFrom").input_value() == "2026-08-01"
+    assert page.locator("#workPaymentCandidateDateTo").input_value() == "2026-08-31"
+    assert "Аванс, добавленный вручную" in (page.locator("#workPaymentCandidatesList").text_content() or "")
+    page.click('[data-work-payment-link-role="advance"]')
+    page.click('[data-work-link-operation="702"]')
+    page.wait_for_function("() => document.querySelector('#workActualPaymentsList')?.textContent?.includes('Операция #702')")
+    assert payment_link_requests[-1] == {"operation_id": 702, "role": "advance"}
+    linked_text = (page.locator("#workActualPaymentsList").text_content() or "").replace("\u00a0", " ")
+    assert "Связано вручную" in linked_text
+    assert "850" in linked_text
+    assert "Аванс · получено 850" in (page.locator('[data-work-date="2026-08-08"] .work-day-payment-actual').text_content() or "").replace("\u00a0", " ")
+
+    page.click('#workActualPaymentsList [data-work-operation-id="702"]')
+    page.wait_for_selector("#editModal:not(.hidden)")
+    assert page.locator("#editAmount").input_value() == "850.00"
+    page.click("#closeEditModalBtn")
+    page.click('[data-work-unlink-payment="901"]')
+    page.wait_for_selector("#confirmModal:not(.hidden)")
+    assert page.locator("#confirmDeleteBtn").inner_text() == "Отвязать"
+    page.click("#confirmDeleteBtn")
+    page.wait_for_function("() => !document.querySelector('#workActualPaymentsList')?.textContent?.includes('Операция #702')")
+    assert payment_unlink_requests == [901]
+    page.wait_for_selector('[data-work-link-operation="702"]')
+
     page.click('[data-edit-work-contract="12"]')
     assert page.locator("#workContractPosition").input_value() == ""
     assert page.locator("#workContractCompany").input_value() == "Битрикс"

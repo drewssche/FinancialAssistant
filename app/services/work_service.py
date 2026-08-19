@@ -3,11 +3,13 @@ from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.cache import invalidate_plans_cache
-from app.db.models import EmploymentContract, WorkDayOverride, WorkProfile
+from app.db.models import EmploymentContract, WorkDayOverride, WorkPaymentLink, WorkProfile
 from app.repositories.work_repo import WorkRepository
+from app.services.activity_service import ActivityService
 from app.services.plan_reminder_service import PlanReminderService
 from app.services.work_calendar import (
     baseline_day,
@@ -41,6 +43,7 @@ PAYMENT_ROLES = (
     ("salary", "Основная часть", "salary_plan_id", "salary_nominal_day"),
     ("advance", "Аванс", "advance_plan_id", "advance_nominal_day"),
 )
+PAYMENT_ROLE_LABELS = {role: label for role, label, _, _ in PAYMENT_ROLES}
 
 
 class WorkService:
@@ -48,6 +51,7 @@ class WorkService:
         self.db = db
         self.repo = WorkRepository(db)
         self.reminders = PlanReminderService(db)
+        self.activity = ActivityService(db)
 
     def get_profile(self, *, user_id: int) -> dict:
         return self._serialize_profile(self.repo.get_profile(user_id=user_id))
@@ -129,15 +133,18 @@ class WorkService:
             for row in rows
             if row.status in PAYROLL_CALENDAR_OVERRIDE_STATUSES
         }
-        payment_history = self.list_payment_history(
+        payment_rows = self.repo.list_payment_links(
             user_id=user_id,
             date_from=start,
             date_to=end,
-            profile_data=profile_data,
-        )["items"]
-        actual_by_plan: dict[int, list[dict]] = {}
-        for history_item in payment_history:
-            actual_by_plan.setdefault(int(history_item["plan_id"]), []).append(history_item)
+        )
+        payment_history = [self._serialize_payment_link_row(row) for row in payment_rows]
+        actual_by_role: dict[str, list[dict]] = {}
+        frozen_forecast_by_role: dict[str, WorkPaymentLink] = {}
+        for row, history_item in zip(payment_rows, payment_history, strict=True):
+            role = str(history_item["role"])
+            actual_by_role.setdefault(role, []).append(history_item)
+            frozen_forecast_by_role.setdefault(role, row.WorkPaymentLink)
 
         payments = []
         for role, label, plan_key, nominal_key in PAYMENT_ROLES:
@@ -162,6 +169,20 @@ class WorkService:
                 forecast_currency = str(plan.currency or "BYN").upper()
                 forecast_base_amount = money_hours(plan.amount)
                 forecast_base_currency = str(plan.base_currency or forecast_currency).upper()
+            frozen_forecast = frozen_forecast_by_role.get(role)
+            if frozen_forecast and frozen_forecast.forecast_amount is not None:
+                forecast_amount = money_hours(frozen_forecast.forecast_amount)
+                forecast_currency = str(frozen_forecast.forecast_currency or "BYN").upper()
+                forecast_base_amount = money_hours(
+                    frozen_forecast.forecast_base_amount
+                    if frozen_forecast.forecast_base_amount is not None
+                    else frozen_forecast.forecast_amount
+                )
+                forecast_base_currency = str(
+                    frozen_forecast.forecast_base_currency
+                    or frozen_forecast.forecast_currency
+                    or "BYN"
+                ).upper()
             payments.append(
                 {
                     "role": role,
@@ -174,7 +195,14 @@ class WorkService:
                     "forecast_currency": forecast_currency,
                     "forecast_base_amount": forecast_base_amount,
                     "forecast_base_currency": forecast_base_currency,
-                    "actual_operations": actual_by_plan.get(int(plan_id), []) if plan_id else [],
+                    "actual_operations": [
+                        {
+                            key: value
+                            for key, value in item.items()
+                            if key not in {"role", "label", "plan_id"}
+                        }
+                        for item in actual_by_role.get(role, [])
+                    ],
                 }
             )
         return {
@@ -257,49 +285,159 @@ class WorkService:
         user_id: int,
         date_from: date,
         date_to: date,
-        profile_data: dict | None = None,
     ) -> dict:
-        if date_to < date_from:
-            raise ValueError("Дата окончания не может быть раньше даты начала")
-        if (date_to - date_from).days > 3660:
-            raise ValueError("История выплат не может превышать 10 лет")
-        profile = self.repo.get_profile(user_id=user_id)
-        profile_data = profile_data or self._serialize_profile(profile)
-        role_by_plan: dict[int, tuple[str, str]] = {}
-        plans = {}
-        for role, label, plan_key, _ in PAYMENT_ROLES:
-            plan_id = profile_data.get(plan_key)
-            if not plan_id:
-                continue
-            normalized_id = int(plan_id)
-            role_by_plan[normalized_id] = (role, label)
-            plans[normalized_id] = self.repo.get_plan(user_id=user_id, plan_id=normalized_id)
-        rows = self.repo.list_confirmed_payroll_events(
+        self._validate_payment_date_range(date_from=date_from, date_to=date_to)
+        rows = self.repo.list_payment_links(
             user_id=user_id,
-            plan_ids=list(role_by_plan),
             date_from=date_from,
             date_to=date_to,
         )
+        items = [self._serialize_payment_link_row(row) for row in rows]
+        return {"items": items, "total": len(items)}
+
+    def list_payment_candidates(
+        self,
+        *,
+        user_id: int,
+        date_from: date,
+        date_to: date,
+        q: str | None,
+        limit: int,
+    ) -> dict:
+        self._validate_payment_date_range(date_from=date_from, date_to=date_to)
+        received_through = min(date_to, datetime.now(WORK_TIMEZONE).date())
+        if date_from > received_through:
+            return {"items": [], "total": 0}
+        rows, total = self.repo.list_income_payment_candidates(
+            user_id=user_id,
+            date_from=date_from,
+            date_to=received_through,
+            q=q,
+            limit=limit,
+        )
         items = []
         for row in rows:
-            event = row.PlanOperationEvent
-            role_meta = role_by_plan.get(int(event.plan_id))
-            if not role_meta:
-                continue
-            role, label = role_meta
+            operation = row.Operation
+            link = row.WorkPaymentLink
+            amount = money_hours(getattr(operation, "original_amount", None) or 0)
+            if amount <= 0:
+                amount = money_hours(operation.amount)
             items.append(
                 {
-                    "role": role,
-                    "label": label,
-                    "plan_id": int(event.plan_id),
-                    **self._serialize_payment_operation(
-                        event=event,
-                        operation=row.Operation,
-                        plan=plans.get(int(event.plan_id)),
-                    ),
+                    "operation_id": int(operation.id),
+                    "operation_date": operation.operation_date,
+                    "amount": amount,
+                    "currency": str(operation.currency or "BYN").upper(),
+                    "base_amount": money_hours(operation.amount),
+                    "base_currency": str(operation.base_currency or operation.currency or "BYN").upper(),
+                    "note": operation.note,
+                    "category_name": row.Category.name if row.Category else None,
+                    "is_linked": link is not None,
+                    "link_id": int(link.id) if link else None,
+                    "linked_role": link.role if link else None,
                 }
             )
-        return {"items": items, "total": len(items)}
+        return {"items": items, "total": total}
+
+    def create_payment_link(self, *, user_id: int, operation_id: int, role: str) -> dict:
+        row = self.repo.get_operation_with_category(user_id=user_id, operation_id=operation_id)
+        if not row:
+            raise LookupError("Операция дохода не найдена")
+        operation = row.Operation
+        if operation.kind != "income":
+            raise ValueError("С выплатой можно связать только операцию дохода")
+        if operation.operation_date < date(2000, 1, 1):
+            raise ValueError("Дата операции выплаты должна быть не раньше 01.01.2000")
+        if operation.operation_date > datetime.now(WORK_TIMEZONE).date():
+            raise ValueError("Будущую операцию нельзя отметить как фактически полученную выплату")
+        if self.repo.get_payment_link_by_operation(user_id=user_id, operation_id=operation_id):
+            raise ValueError("Операция уже связана с выплатой")
+        try:
+            link = self._create_payment_link_record(
+                user_id=user_id,
+                role=role,
+                source="manual",
+                operation=operation,
+                category_name=row.Category.name if row.Category else None,
+                plan=None,
+            )
+        except IntegrityError as exc:
+            self.db.rollback()
+            raise ValueError("Операция уже связана с выплатой") from exc
+        self.activity.record_created(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="work_payment_link",
+            entity_id=int(link.id),
+            title="Выплата связана с операцией",
+            metadata={
+                "operation_id": int(operation.id),
+                "role": role,
+                "source": "manual",
+                "amount": str(link.snapshot_original_amount),
+                "currency": link.snapshot_currency,
+                "operation_date": link.snapshot_operation_date.isoformat(),
+            },
+        )
+        self.db.commit()
+        return self._serialize_payment_link(
+            link=link,
+            operation=operation,
+            category=row.Category,
+        )
+
+    def delete_payment_link(self, *, user_id: int, link_id: int) -> None:
+        link = self.repo.get_payment_link(user_id=user_id, link_id=link_id)
+        if not link:
+            raise LookupError("Связь выплаты не найдена")
+        audit_snapshot = {
+            "operation_id": link.snapshot_operation_id,
+            "role": link.role,
+            "source": link.source,
+            "plan_id": link.plan_id,
+            "amount": str(link.snapshot_original_amount),
+            "currency": link.snapshot_currency,
+            "operation_date": link.snapshot_operation_date.isoformat(),
+        }
+        self.activity.record(
+            user_id=user_id,
+            actor_user_id=user_id,
+            entity_type="work_payment_link",
+            entity_id=int(link.id),
+            event_type="deleted",
+            title="Связь выплаты удалена",
+            metadata=audit_snapshot,
+        )
+        self.repo.delete_payment_link(link)
+        self.db.commit()
+
+    def link_confirmed_plan_payment(
+        self,
+        *,
+        user_id: int,
+        plan,
+        operation_id: int,
+    ) -> WorkPaymentLink | None:
+        role = self.repo.payment_role_for_plan(user_id=user_id, plan_id=int(plan.id))
+        if not role:
+            return None
+        row = self.repo.get_operation_with_category(user_id=user_id, operation_id=operation_id)
+        if not row or row.Operation.kind != "income":
+            return None
+        existing = self.repo.get_payment_link_by_operation(
+            user_id=user_id,
+            operation_id=operation_id,
+        )
+        if existing:
+            return existing
+        return self._create_payment_link_record(
+            user_id=user_id,
+            role=role,
+            source="plan_confirmation",
+            operation=row.Operation,
+            category_name=row.Category.name if row.Category else None,
+            plan=plan,
+        )
 
     def upsert_override(self, *, user_id: int, work_date: date, payload: dict) -> dict:
         profile = self.repo.get_profile(user_id=user_id) or self.repo.create_profile(user_id=user_id)
@@ -609,18 +747,22 @@ class WorkService:
         if override and status in WORKING_STATUSES and override.planned_hours is None and planned == 0:
             planned = standard
         has_manual_actual = bool(override and override.actual_hours is not None)
+        shift_start = datetime.combine(day, profile_data["workday_start_time"], tzinfo=WORK_TIMEZONE)
         shift_end = datetime.combine(day, profile_data["workday_end_time"], tzinfo=WORK_TIMEZONE)
         is_live = bool(
             status in WORKING_STATUSES
             and day == today
             and not has_manual_actual
+            and now >= shift_start
             and now < shift_end
         )
         if has_manual_actual:
             actual = money_hours(override.actual_hours)
         elif is_live:
             actual = self._live_worked_hours(day=day, planned=planned, profile_data=profile_data, now=now)
-        elif status in WORKING_STATUSES and day <= today:
+        elif status in WORKING_STATUSES and (
+            day < today or (day == today and now >= shift_end)
+        ):
             actual = planned
         else:
             actual = Decimal("0.00")
@@ -642,7 +784,10 @@ class WorkService:
                 or (day == today and now >= shift_end)
             )
         )
-        if day > today and not has_manual_actual:
+        if (
+            not has_manual_actual
+            and (day > today or (day == today and now < shift_start))
+        ):
             hours_state = "forecast"
         elif is_live:
             hours_state = "live"
@@ -715,35 +860,121 @@ class WorkService:
         hours = Decimal(str((worked_seconds - break_seconds) / 3600))
         return min(money_hours(hours), money_hours(planned))
 
+    def _create_payment_link_record(
+        self,
+        *,
+        user_id: int,
+        role: str,
+        source: str,
+        operation,
+        category_name: str | None,
+        plan,
+    ) -> WorkPaymentLink:
+        operation_amount = money_hours(getattr(operation, "original_amount", None) or 0)
+        if operation_amount <= 0:
+            operation_amount = money_hours(operation.amount)
+        operation_currency = str(operation.currency or "BYN").upper()
+        operation_base_amount = money_hours(operation.amount)
+        operation_base_currency = str(operation.base_currency or operation.currency or "BYN").upper()
+
+        if plan is not None:
+            plan_id = int(plan.id)
+        else:
+            plan_id = None
+
+        if plan is not None and source == "plan_confirmation":
+            forecast_amount = money_hours(getattr(plan, "original_amount", None) or 0)
+            if forecast_amount <= 0:
+                forecast_amount = money_hours(plan.amount)
+            forecast_currency = str(plan.currency or "BYN").upper()
+            forecast_base_amount = money_hours(plan.amount)
+            forecast_base_currency = str(plan.base_currency or plan.currency or "BYN").upper()
+        else:
+            forecast_amount = operation_amount
+            forecast_currency = operation_currency
+            forecast_base_amount = operation_base_amount
+            forecast_base_currency = operation_base_currency
+
+        return self.repo.create_payment_link(
+            user_id=user_id,
+            operation_id=int(operation.id),
+            snapshot_operation_id=int(operation.id),
+            role=role,
+            source=source,
+            plan_id=plan_id,
+            snapshot_operation_date=operation.operation_date,
+            snapshot_original_amount=operation_amount,
+            snapshot_currency=operation_currency,
+            snapshot_base_amount=operation_base_amount,
+            snapshot_base_currency=operation_base_currency,
+            snapshot_note=operation.note,
+            snapshot_category_name=category_name,
+            forecast_amount=forecast_amount,
+            forecast_currency=forecast_currency,
+            forecast_base_amount=forecast_base_amount,
+            forecast_base_currency=forecast_base_currency,
+        )
+
+    def _serialize_payment_link_row(self, row) -> dict:
+        return self._serialize_payment_link(
+            link=row.WorkPaymentLink,
+            operation=row.Operation,
+            category=row.Category,
+        )
+
     @staticmethod
-    def _serialize_payment_operation(*, event, operation, plan) -> dict:
+    def _serialize_payment_link(*, link, operation, category) -> dict:
         if operation is not None:
             amount = money_hours(getattr(operation, "original_amount", None) or 0)
             if amount <= 0:
                 amount = money_hours(operation.amount)
             return {
+                "link_id": int(link.id),
+                "source": link.source,
+                "role": link.role,
+                "label": PAYMENT_ROLE_LABELS[link.role],
+                "plan_id": int(link.plan_id) if link.plan_id is not None else None,
                 "operation_id": int(operation.id),
+                "source_operation_id": int(link.snapshot_operation_id or operation.id),
                 "operation_date": operation.operation_date,
                 "amount": amount,
                 "currency": str(operation.currency or "BYN").upper(),
                 "base_amount": money_hours(operation.amount),
                 "base_currency": str(operation.base_currency or operation.currency or "BYN").upper(),
                 "note": operation.note,
-                "category_name": event.category_name,
+                "category_name": category.name if category else None,
                 "is_deleted": False,
             }
-        base_currency = str(getattr(plan, "base_currency", None) or "BYN").upper()
         return {
+            "link_id": int(link.id),
+            "source": link.source,
+            "role": link.role,
+            "label": PAYMENT_ROLE_LABELS[link.role],
+            "plan_id": int(link.plan_id) if link.plan_id is not None else None,
             "operation_id": None,
-            "operation_date": event.effective_date,
-            "amount": money_hours(event.amount),
-            "currency": base_currency,
-            "base_amount": money_hours(event.amount),
-            "base_currency": base_currency,
-            "note": event.note,
-            "category_name": event.category_name,
+            "source_operation_id": (
+                int(link.snapshot_operation_id)
+                if link.snapshot_operation_id is not None
+                else None
+            ),
+            "operation_date": link.snapshot_operation_date,
+            "amount": money_hours(link.snapshot_original_amount),
+            "currency": str(link.snapshot_currency or "BYN").upper(),
+            "base_amount": money_hours(link.snapshot_base_amount),
+            "base_currency": str(link.snapshot_base_currency or link.snapshot_currency or "BYN").upper(),
+            "note": link.snapshot_note,
+            "category_name": link.snapshot_category_name,
             "is_deleted": True,
         }
+
+    @staticmethod
+    def _validate_payment_date_range(*, date_from: date, date_to: date) -> None:
+        if date_from < date(2000, 1, 1) or date_to > date(2100, 12, 31):
+            raise ValueError("Диапазон выплат должен быть между 01.01.2000 и 31.12.2100")
+        if date_to < date_from:
+            raise ValueError("Дата окончания не может быть раньше даты начала")
+        if (date_to - date_from).days > 3660:
+            raise ValueError("История выплат не может превышать 10 лет")
 
     def _summarize_days(self, days: list[dict]) -> dict:
         return {

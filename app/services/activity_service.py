@@ -15,6 +15,7 @@ from app.db.models import (
     Operation,
     OperationItemTemplate,
     PlanOperation,
+    WorkPaymentLink,
 )
 from app.repositories.activity_repo import ActivityRepository
 
@@ -29,6 +30,7 @@ class ActivityService:
         "item_template": "Позиция каталога",
         "currency_trade": "Валютная сделка",
         "currency_portfolio": "Валютный портфель",
+        "work_payment_link": "Связь выплаты",
     }
     ENUM_LABELS = {
         "kind": {
@@ -330,6 +332,7 @@ class ActivityService:
             "category_group": CategoryGroup,
             "item_template": OperationItemTemplate,
             "currency_trade": FxTrade,
+            "work_payment_link": WorkPaymentLink,
         }
         entities: dict[tuple[str, int], Any] = {}
         for entity_type, model in model_by_type.items():
@@ -385,8 +388,22 @@ class ActivityService:
         elif isinstance(entity, FxTrade):
             side = "Покупка" if entity.side == "buy" else "Продажа"
             summary = f"{side} · {self._money_label(entity.quantity, entity.asset_currency)} · {self._date_label(entity.trade_date)}"
+        elif isinstance(entity, WorkPaymentLink):
+            role = "Основная часть" if entity.role == "salary" else "Аванс"
+            summary = " · ".join(
+                filter(
+                    None,
+                    [
+                        role,
+                        self._money_label(entity.snapshot_original_amount, entity.snapshot_currency),
+                        self._date_label(entity.snapshot_operation_date),
+                    ],
+                )
+            )
         available_actions = ["open", "edit"]
         if isinstance(entity, PlanOperation) and entity.status in {"confirmed", "skipped"}:
+            available_actions = ["open"]
+        elif isinstance(entity, WorkPaymentLink):
             available_actions = ["open"]
         return {
             "entity_label": self._entity_label(entity_type, entity_id),
@@ -405,6 +422,18 @@ class ActivityService:
             summary = " · ".join(filter(None, [kind, self._money_label(operation.get("original_amount") or operation.get("amount"), operation.get("currency")), self._date_label(operation.get("operation_date"))]))
         elif row.entity_type == "category" and isinstance(snapshot.get("category"), dict):
             summary = str(snapshot["category"].get("name") or "")
+        elif row.entity_type == "work_payment_link" and metadata:
+            role = "Основная часть" if metadata.get("role") == "salary" else "Аванс"
+            summary = " · ".join(
+                filter(
+                    None,
+                    [
+                        role,
+                        self._money_label(metadata.get("amount"), metadata.get("currency")),
+                        self._date_label(metadata.get("operation_date")),
+                    ],
+                )
+            )
         elif metadata:
             summary = str(metadata.get("name") or metadata.get("note") or "")
         return {

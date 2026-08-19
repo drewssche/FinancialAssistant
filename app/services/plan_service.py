@@ -20,6 +20,7 @@ from app.services.activity_service import ActivityService
 from app.services.operation_service import OperationService
 from app.services.plan_reminder_service import PlanReminderService
 from app.services.work_calendar import PAYROLL_CALENDAR_OVERRIDE_STATUSES, next_linked_payment_date
+from app.services.work_service import WorkService
 
 
 class PlanService:
@@ -399,6 +400,11 @@ class PlanService:
             effective_date=effective_date,
             note=item.note,
             category_name=category_name,
+        )
+        WorkService(self.db).link_confirmed_plan_payment(
+            user_id=user_id,
+            plan=item,
+            operation_id=int(operation["id"]),
         )
         self.activity.record(
             user_id=user_id,

@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.db.models import (
@@ -8,8 +8,8 @@ from app.db.models import (
     EmploymentContract,
     Operation,
     PlanOperation,
-    PlanOperationEvent,
     WorkDayOverride,
+    WorkPaymentLink,
     WorkProfile,
 )
 
@@ -32,29 +32,25 @@ class WorkRepository:
             select(PlanOperation).where(PlanOperation.user_id == user_id, PlanOperation.id == plan_id)
         )
 
-    def list_confirmed_payroll_events(
+    def list_payment_links(
         self,
         *,
         user_id: int,
-        plan_ids: list[int],
         date_from: date,
         date_to: date,
     ) -> list:
-        if not plan_ids:
-            return []
         stmt = (
-            select(PlanOperationEvent, Operation)
+            select(WorkPaymentLink, Operation, Category)
             .outerjoin(
                 Operation,
                 and_(
-                    Operation.id == PlanOperationEvent.operation_id,
+                    Operation.id == WorkPaymentLink.operation_id,
                     Operation.user_id == user_id,
                 ),
             )
+            .outerjoin(Category, Category.id == Operation.category_id)
             .where(
-                PlanOperationEvent.user_id == user_id,
-                PlanOperationEvent.plan_id.in_(plan_ids),
-                PlanOperationEvent.event_type == "confirmed",
+                WorkPaymentLink.user_id == user_id,
                 or_(
                     and_(
                         Operation.id.is_not(None),
@@ -63,18 +59,125 @@ class WorkRepository:
                     ),
                     and_(
                         Operation.id.is_(None),
-                        PlanOperationEvent.effective_date >= date_from,
-                        PlanOperationEvent.effective_date <= date_to,
+                        WorkPaymentLink.snapshot_operation_date >= date_from,
+                        WorkPaymentLink.snapshot_operation_date <= date_to,
                     ),
                 ),
             )
             .order_by(
-                Operation.operation_date.desc(),
-                PlanOperationEvent.effective_date.desc(),
-                PlanOperationEvent.id.desc(),
+                func.coalesce(
+                    Operation.operation_date,
+                    WorkPaymentLink.snapshot_operation_date,
+                ).desc(),
+                WorkPaymentLink.id.desc(),
             )
         )
         return list(self.db.execute(stmt).all())
+
+    def list_income_payment_candidates(
+        self,
+        *,
+        user_id: int,
+        date_from: date,
+        date_to: date,
+        q: str | None,
+        limit: int,
+    ) -> tuple[list, int]:
+        conditions = [
+            Operation.user_id == user_id,
+            Operation.kind == "income",
+            Operation.operation_date >= date_from,
+            Operation.operation_date <= date_to,
+        ]
+        normalized_q = (q or "").strip()
+        if normalized_q:
+            pattern = f"%{normalized_q}%"
+            conditions.append(
+                or_(
+                    Operation.note.ilike(pattern),
+                    Category.name.ilike(pattern),
+                    Operation.currency.ilike(pattern),
+                )
+            )
+        total = int(
+            self.db.scalar(
+                select(func.count(Operation.id))
+                .select_from(Operation)
+                .outerjoin(Category, Category.id == Operation.category_id)
+                .where(*conditions)
+            )
+            or 0
+        )
+        rows = list(
+            self.db.execute(
+                select(Operation, Category, WorkPaymentLink)
+                .outerjoin(Category, Category.id == Operation.category_id)
+                .outerjoin(
+                    WorkPaymentLink,
+                    and_(
+                        WorkPaymentLink.user_id == user_id,
+                        or_(
+                            WorkPaymentLink.operation_id == Operation.id,
+                            WorkPaymentLink.snapshot_operation_id == Operation.id,
+                        ),
+                    ),
+                )
+                .where(*conditions)
+                .order_by(Operation.operation_date.desc(), Operation.id.desc())
+                .limit(limit)
+            ).all()
+        )
+        return rows, total
+
+    def get_operation_with_category(self, *, user_id: int, operation_id: int):
+        return self.db.execute(
+            select(Operation, Category)
+            .outerjoin(Category, Category.id == Operation.category_id)
+            .where(Operation.user_id == user_id, Operation.id == operation_id)
+        ).first()
+
+    def get_payment_link(self, *, user_id: int, link_id: int) -> WorkPaymentLink | None:
+        return self.db.scalar(
+            select(WorkPaymentLink).where(
+                WorkPaymentLink.user_id == user_id,
+                WorkPaymentLink.id == link_id,
+            )
+        )
+
+    def get_payment_link_by_operation(
+        self,
+        *,
+        user_id: int,
+        operation_id: int,
+    ) -> WorkPaymentLink | None:
+        return self.db.scalar(
+            select(WorkPaymentLink).where(
+                WorkPaymentLink.user_id == user_id,
+                or_(
+                    WorkPaymentLink.operation_id == operation_id,
+                    WorkPaymentLink.snapshot_operation_id == operation_id,
+                ),
+            )
+        )
+
+    def create_payment_link(self, **values) -> WorkPaymentLink:
+        item = WorkPaymentLink(**values)
+        self.db.add(item)
+        self.db.flush()
+        return item
+
+    def delete_payment_link(self, item: WorkPaymentLink) -> None:
+        self.db.delete(item)
+
+    def payment_role_for_plan(self, *, user_id: int, plan_id: int) -> str | None:
+        profile = self.get_profile(user_id=user_id)
+        if not profile:
+            return None
+        if profile.salary_plan_id == plan_id:
+            return "salary"
+        if profile.advance_plan_id == plan_id:
+            return "advance"
+        return None
 
     def list_overrides(self, *, user_id: int, date_from: date, date_to: date) -> list[WorkDayOverride]:
         return list(

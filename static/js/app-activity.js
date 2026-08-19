@@ -15,6 +15,7 @@
     item_template: "позиции каталога",
     currency_trade: "валютной сделки",
     currency_portfolio: "валютного портфеля",
+    work_payment_link: "связи выплаты",
   };
 
   function configureActivityButton(button, entityType, entityId) {

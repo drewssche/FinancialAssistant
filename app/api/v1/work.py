@@ -12,7 +12,10 @@ from app.schemas.work import (
     WorkDayOverrideIn,
     WorkDayRangeOverrideIn,
     WorkMonthOut,
+    WorkPaymentCandidateListOut,
     WorkPaymentHistoryOut,
+    WorkPaymentHistoryItemOut,
+    WorkPaymentLinkIn,
     WorkProfileOut,
     WorkProfileUpdate,
     WorkStatisticsOut,
@@ -70,6 +73,69 @@ def get_work_payment_history(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/payments/candidates", response_model=WorkPaymentCandidateListOut)
+def get_work_payment_candidates(
+    date_from: date = Query(),
+    date_to: date = Query(),
+    q: str | None = Query(default=None, max_length=120),
+    limit: int = Query(default=50, ge=1, le=200),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        return WorkService(db).list_payment_candidates(
+            user_id=user_id,
+            date_from=date_from,
+            date_to=date_to,
+            q=q,
+            limit=limit,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post(
+    "/payments/links",
+    response_model=WorkPaymentHistoryItemOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_work_payment_link(
+    payload: WorkPaymentLinkIn,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        return WorkService(db).create_payment_link(
+            user_id=user_id,
+            operation_id=payload.operation_id,
+            role=payload.role,
+        )
+    except LookupError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.delete(
+    "/payments/links/{link_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+)
+def delete_work_payment_link(
+    link_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        WorkService(db).delete_payment_link(user_id=user_id, link_id=link_id)
+    except LookupError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/statistics", response_model=WorkStatisticsOut)

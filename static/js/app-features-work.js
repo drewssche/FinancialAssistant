@@ -11,6 +11,10 @@
   let contracts = [];
   let companies = [];
   let paymentHistory = [];
+  let paymentCandidates = [];
+  let paymentCandidateRole = "salary";
+  let paymentCandidatesRequestId = 0;
+  let paymentCandidatesSearchTimer = null;
   let selectedCompanyIndex = 0;
   let editingContractId = null;
   let liveTimerId = null;
@@ -18,6 +22,11 @@
   let lastLiveMinute = null;
   let selectedPaymentOperationId = null;
   let activityRefreshTimer = null;
+  let observedLocalDate = localTodayIso();
+  let midnightReloadPending = false;
+  let workLoadPromise = null;
+  let activeWorkLoadKey = "";
+  let queuedWorkLoad = null;
   let bound = false;
 
   const monthFormatter = new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric" });
@@ -26,7 +35,6 @@
   function byId(id) { return document.getElementById(id); }
   function escape(value) { return core.escapeHtml ? core.escapeHtml(String(value ?? "")) : String(value ?? ""); }
   function authOptions(extra = {}) { return { ...extra, headers: { ...core.authHeaders(), ...(extra.headers || {}) } }; }
-  function isoFromAnchor() { return { year: anchor.getFullYear(), month: anchor.getMonth() + 1 }; }
   function formatHours(value) { return Number(value || 0).toLocaleString("ru-RU", { maximumFractionDigits: 2 }); }
   function formatMoney(value, currency = "BYN") {
     if (value == null || value === "") return "";
@@ -39,7 +47,9 @@
     return new Date(year, month - 1, day).toLocaleDateString("ru-RU");
   }
   function localTodayIso() {
-    const now = new Date();
+    return localDateIso(new Date());
+  }
+  function localDateIso(now) {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   }
   function getPickerUtils() { return window.App.getRuntimeModule?.("picker-utils") || window.App.pickerUtils || {}; }
@@ -51,6 +61,8 @@
   function paymentOperationDate(item) { return item?.operation_date || item?.effective_date || item?.date || null; }
   function paymentOperationAmount(item) { return item?.amount ?? item?.original_amount ?? item?.base_amount ?? null; }
   function paymentOperationCurrency(item) { return item?.currency || item?.base_currency || "BYN"; }
+  function paymentRoleLabel(role) { return role === "advance" ? "Аванс" : "Основная часть"; }
+  function paymentSourceLabel(source) { return source === "manual" ? "Связано вручную" : "Из подтверждения плана"; }
   function embeddedPaymentOperations(item) {
     const rows = Array.isArray(item?.actual_operations)
       ? item.actual_operations
@@ -69,9 +81,12 @@
     const seen = new Set();
     return rows.filter((row) => {
       const operationId = paymentOperationId(row);
-      const key = operationId > 0
-        ? `operation:${operationId}`
-        : `${row.role || "payment"}:${paymentOperationDate(row) || ""}:${paymentOperationAmount(row) || ""}`;
+      const linkId = Number(row.link_id || 0);
+      const key = linkId > 0
+        ? `link:${linkId}`
+        : operationId > 0
+          ? `operation:${operationId}`
+          : `${row.role || "payment"}:${paymentOperationDate(row) || ""}:${paymentOperationAmount(row) || ""}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -102,6 +117,7 @@
     const rest = minutes % 60;
     return rest ? `${hours} ч ${rest} мин` : `${hours} ч`;
   }
+  function isoMonth(value) { return String(value || "").slice(0, 7); }
 
   function collectNodes() {
     [
@@ -125,6 +141,9 @@
       "workStatisticsProgressBar", "workStatisticsMonths",
       "workDayStartTime", "workDayEndTime", "workLunchStartTime", "workLunchEndTime",
       "workActualPaymentsList",
+      "workPaymentLinkToggle", "workPaymentLinkPanel", "workPaymentLinkRole",
+      "workPaymentCandidateDateFrom", "workPaymentCandidateDateTo", "workPaymentCandidateSearch",
+      "workPaymentCandidateForm", "workPaymentCandidatesList", "workPaymentLinkClose",
       "workSection",
     ].forEach((id) => { nodes[id] = byId(id); });
   }
@@ -180,8 +199,9 @@
       const actuals = allActualPayments().filter((row) => {
         const operationDate = paymentOperationDate(row);
         if (!operationDate?.startsWith(monthPrefix)) return false;
+        if (row.role && item.role) return String(row.role) === String(item.role);
         if (item.plan_id && row.plan_id) return Number(item.plan_id) === Number(row.plan_id);
-        return String(row.role || "") === String(item.role || "");
+        return false;
       });
       const forecast = forecastAmount == null
         ? "Сумма прогноза не указана"
@@ -246,6 +266,8 @@
       if (item.is_live && plannedHours > 0) {
         hours = `<span class="work-hours-chip work-hours-chip-live">Сейчас · ${escape(formatLiveHours(actualHours))}</span>`;
         if (actualHours < plannedHours) hours += `<span class="work-hours-chip work-hours-chip-plan">План · ${formatHours(plannedHours)} ч</span>`;
+      } else if (isToday && !item.is_completed && actualHours <= 0 && plannedHours > 0) {
+        hours = `<span class="work-hours-chip work-hours-chip-plan">План · ${formatHours(plannedHours)} ч</span>`;
       } else if (item.is_future && plannedHours > 0) {
         hours = `<span class="work-hours-chip work-hours-chip-forecast">Прогноз · ${formatHours(plannedHours)} ч</span>`;
       } else if (!item.is_future && (plannedHours > 0 || actualHours > 0)) {
@@ -294,18 +316,141 @@
       const deleted = Boolean(item.is_deleted) || !(operationId > 0);
       const money = formatMoney(paymentOperationAmount(item), paymentOperationCurrency(item));
       const category = item.category_name ? `<span class="meta-chip meta-chip-neutral">${escape(item.category_name)}</span>` : "";
-      return `<article class="work-actual-payment-card ${deleted ? "is-deleted" : ""} ${operationId > 0 ? "is-openable" : ""}" ${operationId > 0 && !deleted ? `data-work-operation-id="${operationId}" role="button" tabindex="0"` : ""}>
-        <div class="work-actual-payment-main">
-          <div class="work-actual-payment-title"><strong>${escape(item.label || "Выплата")}</strong>${category}</div>
+      const source = `<span class="meta-chip ${item.source === "manual" ? "meta-chip-info" : "meta-chip-neutral"}">${escape(paymentSourceLabel(item.source))}</span>`;
+      const mainTag = operationId > 0 && !deleted ? "button" : "div";
+      const mainAttributes = operationId > 0 && !deleted ? `type="button" data-work-operation-id="${operationId}" title="Открыть операцию"` : "";
+      return `<article class="work-actual-payment-card ${deleted ? "is-deleted" : ""} ${operationId > 0 ? "is-openable" : ""}">
+        <${mainTag} class="work-actual-payment-main work-actual-payment-open" ${mainAttributes}>
+          <div class="work-actual-payment-title"><strong>${escape(item.label || paymentRoleLabel(item.role))}</strong>${category}${source}</div>
           <span>${paymentOperationDate(item) ? formatDate(paymentOperationDate(item)) : "Дата не указана"}${item.note ? ` · ${escape(item.note)}` : ""}</span>
-        </div>
+        </${mainTag}>
         <div class="work-actual-payment-side">
           <strong>${escape(money || "Сумма не указана")}</strong>
           <span>${deleted ? "Операция удалена" : `Операция #${operationId}`}</span>
+          ${item.link_id && !deleted ? `<button class="btn btn-secondary btn-xs work-payment-unlink-btn" type="button" data-work-unlink-payment="${Number(item.link_id)}">Отвязать</button>` : ""}
         </div>
       </article>`;
-    }).join("") : '<div class="muted-small">Фактических выплат из связанных планов пока нет</div>';
+    }).join("") : '<div class="muted-small">Фактических выплат пока нет</div>';
     restorePaymentOperationContext();
+  }
+
+  function renderPaymentCandidates({ loading = false } = {}) {
+    if (!nodes.workPaymentCandidatesList) return;
+    if (loading) {
+      nodes.workPaymentCandidatesList.innerHTML = '<div class="muted-small">Ищем доходные операции…</div>';
+      return;
+    }
+    nodes.workPaymentCandidatesList.innerHTML = paymentCandidates.length ? paymentCandidates.map((item) => {
+      const operationId = paymentOperationId(item);
+      const linked = Boolean(item.is_linked);
+      const category = item.category_name ? `<span class="meta-chip meta-chip-neutral">${escape(item.category_name)}</span>` : '<span class="muted-small">Без категории</span>';
+      const baseMoney = item.base_currency && item.base_currency !== item.currency
+        ? `<span class="muted-small">≈ ${escape(formatMoney(item.base_amount, item.base_currency))}</span>`
+        : "";
+      return `<article class="work-payment-candidate ${linked ? "is-linked" : ""}">
+        <button class="work-payment-candidate-main" type="button" data-work-operation-id="${operationId}" title="Открыть операцию">
+          <span class="work-payment-candidate-title"><strong>${escape(formatMoney(item.amount, item.currency))}</strong>${category}</span>
+          <span class="muted-small">${formatDate(item.operation_date)}${item.note ? ` · ${escape(item.note)}` : ""}</span>
+          ${baseMoney}
+        </button>
+        <div class="work-payment-candidate-actions">
+          ${linked
+            ? `<span class="work-payment-linked-chip">Связано · ${escape(paymentRoleLabel(item.linked_role))}</span>`
+            : `<button class="btn btn-primary btn-xs" type="button" data-work-link-operation="${operationId}">Связать</button>`}
+        </div>
+      </article>`;
+    }).join("") : '<div class="muted-small">За выбранный период подходящих доходных операций нет</div>';
+  }
+
+  function initializePaymentCandidateRange() {
+    if (nodes.workPaymentCandidateDateFrom.value && nodes.workPaymentCandidateDateTo.value) return;
+    const year = Number(snapshot?.year || anchor.getFullYear());
+    const month = Number(snapshot?.month || anchor.getMonth() + 1);
+    const lastDay = new Date(year, month, 0).getDate();
+    nodes.workPaymentCandidateDateFrom.value = `${year}-${String(month).padStart(2, "0")}-01`;
+    nodes.workPaymentCandidateDateTo.value = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  }
+
+  function syncPaymentLinkRole() {
+    core.syncSegmentedActive?.(nodes.workPaymentLinkRole, "work-payment-link-role", paymentCandidateRole);
+    nodes.workPaymentLinkRole.querySelectorAll("[data-work-payment-link-role]").forEach((button) => {
+      button.setAttribute("aria-pressed", button.dataset.workPaymentLinkRole === paymentCandidateRole ? "true" : "false");
+    });
+  }
+
+  function setPaymentLinkPanelOpen(open) {
+    nodes.workPaymentLinkPanel.classList.toggle("hidden", !open);
+    nodes.workPaymentLinkToggle.setAttribute("aria-expanded", open ? "true" : "false");
+    if (!open) {
+      nodes.workPaymentLinkToggle.focus();
+      return;
+    }
+    initializePaymentCandidateRange();
+    syncPaymentLinkRole();
+    loadPaymentCandidates().catch(handleError);
+  }
+
+  async function loadPaymentCandidates() {
+    initializePaymentCandidateRange();
+    const requestId = ++paymentCandidatesRequestId;
+    renderPaymentCandidates({ loading: true });
+    const params = new URLSearchParams({
+      date_from: nodes.workPaymentCandidateDateFrom.value,
+      date_to: nodes.workPaymentCandidateDateTo.value,
+      limit: "100",
+    });
+    const query = nodes.workPaymentCandidateSearch.value.trim();
+    if (query) params.set("q", query);
+    const data = await core.requestJson(`/api/v1/work/payments/candidates?${params}`, authOptions());
+    if (requestId !== paymentCandidatesRequestId) return;
+    paymentCandidates = Array.isArray(data?.items) ? data.items : [];
+    renderPaymentCandidates();
+  }
+
+  async function refreshPayrollAfterLinkMutation() {
+    await loadWorkSection({ refresh: true });
+    if (!nodes.workPaymentLinkPanel.classList.contains("hidden")) await loadPaymentCandidates();
+  }
+
+  async function linkPaymentOperation(operationId, button) {
+    const resolvedId = Number(operationId || 0);
+    if (!(resolvedId > 0)) return;
+    button.disabled = true;
+    const previousText = button.textContent;
+    button.textContent = "Связываю…";
+    try {
+      selectedPaymentOperationId = resolvedId;
+      await core.requestJson("/api/v1/work/payments/links", authOptions({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ operation_id: resolvedId, role: paymentCandidateRole }),
+      }));
+      core.notify?.(`Операция связана как «${paymentRoleLabel(paymentCandidateRole)}»`, { type: "success" });
+      await refreshPayrollAfterLinkMutation();
+    } finally {
+      if (button.isConnected) {
+        button.disabled = false;
+        button.textContent = previousText;
+      }
+    }
+  }
+
+  async function unlinkPayment(linkId, button) {
+    const resolvedId = Number(linkId || 0);
+    if (!(resolvedId > 0)) return;
+    button.disabled = true;
+    const previousText = button.textContent;
+    button.textContent = "Отвязываю…";
+    try {
+      await core.requestJson(`/api/v1/work/payments/links/${resolvedId}`, authOptions({ method: "DELETE" }));
+      core.notify?.("Связь удалена, сама операция сохранена", { type: "success" });
+      await refreshPayrollAfterLinkMutation();
+    } finally {
+      if (button.isConnected) {
+        button.disabled = false;
+        button.textContent = previousText;
+      }
+    }
   }
 
   function restorePaymentOperationContext() {
@@ -338,7 +483,14 @@
   function resetLiveBaseline() {
     const today = localTodayIso();
     const day = (snapshot?.days || []).find((item) => item.date === today);
-    if (!day || !day.is_live || !day.is_workday || Number(day.planned_hours || 0) <= 0) {
+    const canStartLater = Boolean(
+      day
+      && day.date === today
+      && day.is_workday
+      && day.hours_state === "forecast"
+      && !day.is_completed,
+    );
+    if (!day || (!day.is_live && !canStartLater) || !day.is_workday || Number(day.planned_hours || 0) <= 0) {
       liveBaseline = null;
       return;
     }
@@ -354,7 +506,30 @@
     lastLiveMinute = null;
   }
 
+  function handleLocalDateRollover(now) {
+    const currentDate = localDateIso(now);
+    const previousDate = observedLocalDate;
+    const didRollOver = Boolean(previousDate && currentDate !== previousDate);
+    if (didRollOver) {
+      observedLocalDate = currentDate;
+      liveBaseline = null;
+      lastLiveMinute = null;
+      const snapshotMonth = snapshot
+        ? `${Number(snapshot.year)}-${String(Number(snapshot.month)).padStart(2, "0")}`
+        : "";
+      if (snapshotMonth === isoMonth(previousDate)) {
+        anchor = new Date(now.getFullYear(), now.getMonth(), 1);
+        midnightReloadPending = true;
+      }
+    }
+    if (!midnightReloadPending) return didRollOver;
+    if (nodes.workSection?.classList.contains("hidden")) return true;
+    loadWorkSection().catch(handleError);
+    return true;
+  }
+
   function updateLiveWorkday(now = new Date(), { force = false } = {}) {
+    if (handleLocalDateRollover(now)) return;
     if (!liveBaseline || !snapshot?.summary) return;
     const minuteKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${now.getHours()}-${now.getMinutes()}`;
     if (!force && minuteKey === lastLiveMinute) return;
@@ -362,9 +537,10 @@
     const day = (snapshot.days || []).find((item) => item.date === liveBaseline.date);
     if (!day || !day.is_workday) return;
     const actualHours = liveHoursForDay(day, now);
+    const shiftStart = parseClockMinutes(snapshot?.profile?.workday_start_time, "09:00");
     const shiftEnd = parseClockMinutes(snapshot?.profile?.workday_end_time, "18:00");
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    day.is_live = currentMinutes < shiftEnd;
+    day.is_live = currentMinutes >= shiftStart && currentMinutes < shiftEnd;
     day.is_completed = !day.is_live && actualHours > 0;
     day.hours_state = day.is_live ? "live" : "actual";
     day.actual_hours = actualHours.toFixed(2);
@@ -491,7 +667,9 @@
       const today = localTodayIso();
       const fallbackFrom = `${new Date().getFullYear() - 10}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")}`;
       const profileStart = snapshot?.profile?.employment_start_date;
-      const dateFrom = profileStart && profileStart <= today ? profileStart : fallbackFrom;
+      const dateFrom = profileStart && profileStart <= today
+        ? (profileStart < fallbackFrom ? fallbackFrom : profileStart)
+        : fallbackFrom;
       const params = new URLSearchParams({ date_from: dateFrom, date_to: today });
       const data = await core.requestJson(`/api/v1/work/payments/history?${params}`, authOptions());
       paymentHistory = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
@@ -562,12 +740,27 @@
     renderStatistics();
   }
 
-  async function loadWorkSection() {
-    if (!bound) bind();
-    const { year, month } = isoFromAnchor();
-    workPickerYear = anchor.getFullYear();
-    renderWorkPeriodPicker();
-    snapshot = await core.requestJson(`/api/v1/work/month?year=${year}&month=${month}`, authOptions());
+  function currentWorkLoadKey() {
+    return monthValue(anchor);
+  }
+
+  function createWorkLoadRequest({ refresh = false } = {}) {
+    const requestedAnchor = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+    return { anchor: requestedAnchor, key: monthValue(requestedAnchor), refresh: Boolean(refresh) };
+  }
+
+  async function performWorkSectionLoad(request) {
+    const year = request.anchor.getFullYear();
+    const month = request.anchor.getMonth() + 1;
+    if (request.key === currentWorkLoadKey()) {
+      workPickerYear = year;
+      renderWorkPeriodPicker();
+    }
+    const nextSnapshot = await core.requestJson(`/api/v1/work/month?year=${year}&month=${month}`, authOptions());
+    if (request.key !== currentWorkLoadKey()) return;
+    snapshot = nextSnapshot;
+    const loadedMonth = `${Number(snapshot.year)}-${String(Number(snapshot.month)).padStart(2, "0")}`;
+    if (loadedMonth === isoMonth(observedLocalDate)) midnightReloadPending = false;
     resetLiveBaseline();
     renderSummary();
     renderPayments();
@@ -575,6 +768,48 @@
     fillProfileForm();
     startLiveTimer();
     await Promise.all([loadPlanOptions(), loadContracts(), loadCompanies(), loadStatistics(), loadPaymentHistory()]);
+  }
+
+  async function drainWorkSectionLoads() {
+    let latestError = null;
+    while (queuedWorkLoad) {
+      const request = queuedWorkLoad;
+      queuedWorkLoad = null;
+      activeWorkLoadKey = request.key;
+      try {
+        await performWorkSectionLoad(request);
+        latestError = null;
+      } catch (error) {
+        latestError = error;
+      }
+    }
+    if (latestError) throw latestError;
+  }
+
+  function loadWorkSection({ refresh = false } = {}) {
+    if (!bound) bind();
+    const request = createWorkLoadRequest({ refresh });
+    if (workLoadPromise) {
+      if (!request.refresh && activeWorkLoadKey === request.key) {
+        const keepsQueuedRefresh = queuedWorkLoad?.key === request.key && queuedWorkLoad.refresh;
+        if (!keepsQueuedRefresh) queuedWorkLoad = null;
+        return workLoadPromise;
+      }
+      if (queuedWorkLoad?.key === request.key) {
+        queuedWorkLoad.refresh ||= request.refresh;
+        return workLoadPromise;
+      }
+      queuedWorkLoad = request;
+      return workLoadPromise;
+    }
+    queuedWorkLoad = request;
+    workLoadPromise = Promise.resolve()
+      .then(drainWorkSectionLoads)
+      .finally(() => {
+        workLoadPromise = null;
+        activeWorkLoadKey = "";
+      });
+    return workLoadPromise;
   }
 
   function openDayEditor(iso) {
@@ -614,7 +849,7 @@
     await core.requestJson(url, authOptions({ method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }));
     core.notify?.("Исключение сохранено", { type: "success" });
     nodes.workDayForm.classList.add("hidden");
-    await loadWorkSection();
+    await loadWorkSection({ refresh: true });
   }
 
   async function resetDay() {
@@ -623,7 +858,7 @@
     await core.requestJson(`/api/v1/work/days/${iso}`, authOptions({ method: "DELETE" }));
     core.notify?.("День возвращён по графику", { type: "success" });
     nodes.workDayForm.classList.add("hidden");
-    await loadWorkSection();
+    await loadWorkSection({ refresh: true });
   }
 
   async function saveSettings(event) {
@@ -646,7 +881,7 @@
     };
     await core.requestJson("/api/v1/work/profile", authOptions({ method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }));
     core.notify?.("Настройки табеля и планов сохранены", { type: "success" });
-    await loadWorkSection();
+    await loadWorkSection({ refresh: true });
   }
 
   function resetContractForm() {
@@ -693,14 +928,14 @@
     await core.requestJson(url, authOptions({ method: isEditing ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }));
     resetContractForm();
     core.notify?.(isEditing ? "Период работы обновлён" : "Период условий добавлен", { type: "success" });
-    await loadWorkSection();
+    await loadWorkSection({ refresh: true });
   }
 
   async function deleteContract(id) {
     await core.requestJson(`/api/v1/work/contracts/${id}`, authOptions({ method: "DELETE" }));
     if (editingContractId === id) resetContractForm();
     core.notify?.("Период условий удалён", { type: "success" });
-    await loadWorkSection();
+    await loadWorkSection({ refresh: true });
   }
 
   async function openPaymentOperation(operationId, sourceNode = null) {
@@ -721,7 +956,7 @@
     if (!/^\/api\/v1\/operations\/\d+/.test(path) || nodes.workSection?.classList.contains("hidden")) return;
     window.clearTimeout(activityRefreshTimer);
     activityRefreshTimer = window.setTimeout(() => {
-      loadWorkSection().catch(handleError);
+      refreshPayrollAfterLinkMutation().catch(handleError);
     }, 250);
   }
 
@@ -854,15 +1089,45 @@
       if (deleteButton) deleteContract(Number(deleteButton.dataset.deleteWorkContract)).catch(handleError);
     });
     nodes.workActualPaymentsList.addEventListener("click", (event) => {
+      const unlinkButton = event.target.closest("[data-work-unlink-payment]");
+      if (unlinkButton) {
+        event.stopPropagation();
+        core.showConfirm?.(
+          "Удалить связь с выплатой? Сама финансовая операция останется без изменений.",
+          () => unlinkPayment(unlinkButton.dataset.workUnlinkPayment, unlinkButton).catch(handleError),
+          { title: "Отвязать выплату", confirmLabel: "Отвязать", confirmTone: "danger" },
+        );
+        return;
+      }
       const card = event.target.closest("[data-work-operation-id]");
       if (card) openPaymentOperation(card.dataset.workOperationId, card).catch(handleError);
     });
-    nodes.workActualPaymentsList.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" && event.key !== " ") return;
-      const card = event.target.closest("[data-work-operation-id]");
-      if (!card) return;
+    nodes.workPaymentLinkToggle.addEventListener("click", () => {
+      setPaymentLinkPanelOpen(nodes.workPaymentLinkPanel.classList.contains("hidden"));
+    });
+    nodes.workPaymentLinkClose.addEventListener("click", () => setPaymentLinkPanelOpen(false));
+    nodes.workPaymentLinkRole.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-work-payment-link-role]");
+      if (!button) return;
+      paymentCandidateRole = button.dataset.workPaymentLinkRole === "advance" ? "advance" : "salary";
+      syncPaymentLinkRole();
+    });
+    nodes.workPaymentCandidateForm.addEventListener("submit", (event) => {
       event.preventDefault();
-      openPaymentOperation(card.dataset.workOperationId, card).catch(handleError);
+      loadPaymentCandidates().catch(handleError);
+    });
+    nodes.workPaymentCandidateSearch.addEventListener("input", () => {
+      window.clearTimeout(paymentCandidatesSearchTimer);
+      paymentCandidatesSearchTimer = window.setTimeout(() => loadPaymentCandidates().catch(handleError), 350);
+    });
+    nodes.workPaymentCandidatesList.addEventListener("click", (event) => {
+      const linkButton = event.target.closest("[data-work-link-operation]");
+      if (linkButton) {
+        linkPaymentOperation(linkButton.dataset.workLinkOperation, linkButton).catch(handleError);
+        return;
+      }
+      const operationButton = event.target.closest("[data-work-operation-id]");
+      if (operationButton) openPaymentOperation(operationButton.dataset.workOperationId, operationButton).catch(handleError);
     });
     document.addEventListener("app:activity-changed", scheduleRefreshAfterOperationMutation);
     bound = true;

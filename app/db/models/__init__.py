@@ -22,6 +22,7 @@ from app.db.models.plan_receipt_item import PlanReceiptItem
 from app.db.models.user import User
 from app.db.models.user_preference import UserPreference
 from app.db.models.work_profile import EmploymentContract, WorkDayOverride, WorkProfile
+from app.db.models.work_payment_link import WorkPaymentLink
 
 __all__ = [
     "User",
@@ -50,4 +51,5 @@ __all__ = [
     "WorkProfile",
     "EmploymentContract",
     "WorkDayOverride",
+    "WorkPaymentLink",
 ]

@@ -173,9 +173,27 @@
               </form>
               <div id="workContractsList" class="plans-list work-contracts-list"></div>
               <section class="work-actual-payments-section">
-                <div class="panel-head">
-                  <div><h3>Фактические выплаты</h3><p class="subtitle">Полученные деньги из связанных планов зарплаты и аванса</p></div>
+                <div class="panel-head row between work-payment-history-head">
+                  <div><h3>Фактические выплаты</h3><p class="subtitle">Полученные деньги из подтверждённых планов и операций, связанных вручную</p></div>
+                  <button id="workPaymentLinkToggle" class="btn btn-secondary" type="button" aria-expanded="false" aria-controls="workPaymentLinkPanel">Связать операцию</button>
                 </div>
+                <section id="workPaymentLinkPanel" class="work-payment-link-panel hidden">
+                  <div class="panel-head row between">
+                    <div><h3>Связать доходную операцию</h3><p class="subtitle">Выберите выплату и укажите, чем она является</p></div>
+                    <button id="workPaymentLinkClose" class="btn btn-ghost btn-xs" type="button">Закрыть</button>
+                  </div>
+                  <div id="workPaymentLinkRole" class="segmented work-payment-link-role" role="group" aria-label="Роль выплаты">
+                    <button class="segmented-btn active" data-work-payment-link-role="salary" type="button" aria-pressed="true">Основная часть</button>
+                    <button class="segmented-btn" data-work-payment-link-role="advance" type="button" aria-pressed="false">Аванс</button>
+                  </div>
+                  <form id="workPaymentCandidateForm" class="work-payment-candidate-controls">
+                    <label class="field"><span>С</span><div class="date-input-wrap"><input id="workPaymentCandidateDateFrom" type="date" required /><button class="date-input-trigger" type="button" data-date-picker-trigger="workPaymentCandidateDateFrom" aria-label="Открыть календарь"></button></div></label>
+                    <label class="field"><span>По</span><div class="date-input-wrap"><input id="workPaymentCandidateDateTo" type="date" required /><button class="date-input-trigger" type="button" data-date-picker-trigger="workPaymentCandidateDateTo" aria-label="Открыть календарь"></button></div></label>
+                    <label class="field work-payment-candidate-search"><span>Поиск</span><input id="workPaymentCandidateSearch" class="table-search-input" type="search" maxlength="100" placeholder="Комментарий или категория" /></label>
+                    <button class="btn btn-secondary" type="submit">Найти</button>
+                  </form>
+                  <div id="workPaymentCandidatesList" class="work-payment-candidates-list"></div>
+                </section>
                 <div id="workActualPaymentsList" class="work-actual-payments-list"></div>
               </section>
             </div>

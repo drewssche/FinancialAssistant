@@ -1,5 +1,6 @@
 from datetime import date, datetime, time
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -38,6 +39,21 @@ class WorkProfileUpdate(BaseModel):
             < self.workday_end_time
         ):
             raise ValueError("Рабочее время должно идти в порядке: начало, обед, конец обеда, конец дня")
+        shift_minutes = (
+            self.workday_end_time.hour * 60
+            + self.workday_end_time.minute
+            - self.workday_start_time.hour * 60
+            - self.workday_start_time.minute
+        )
+        lunch_minutes = (
+            self.lunch_end_time.hour * 60
+            + self.lunch_end_time.minute
+            - self.lunch_start_time.hour * 60
+            - self.lunch_start_time.minute
+        )
+        net_hours = Decimal(shift_minutes - lunch_minutes) / Decimal(60)
+        if self.standard_hours_per_day > net_hours:
+            raise ValueError("Норма часов не может превышать длительность смены без обеда")
         return self
 
 
@@ -100,7 +116,10 @@ class WorkDayOut(BaseModel):
 
 
 class WorkPaymentOperationOut(BaseModel):
+    link_id: int
+    source: Literal["plan_confirmation", "manual"]
     operation_id: int | None = None
+    source_operation_id: int | None = None
     operation_date: date
     amount: Decimal
     currency: str
@@ -126,14 +145,38 @@ class WorkPaymentOut(BaseModel):
 
 
 class WorkPaymentHistoryItemOut(WorkPaymentOperationOut):
-    role: str
+    role: Literal["salary", "advance"]
     label: str
-    plan_id: int
+    plan_id: int | None = None
 
 
 class WorkPaymentHistoryOut(BaseModel):
     items: list[WorkPaymentHistoryItemOut]
     total: int
+
+
+class WorkPaymentCandidateOut(BaseModel):
+    operation_id: int
+    operation_date: date
+    amount: Decimal
+    currency: str
+    base_amount: Decimal
+    base_currency: str
+    note: str | None = None
+    category_name: str | None = None
+    is_linked: bool = False
+    link_id: int | None = None
+    linked_role: Literal["salary", "advance"] | None = None
+
+
+class WorkPaymentCandidateListOut(BaseModel):
+    items: list[WorkPaymentCandidateOut]
+    total: int
+
+
+class WorkPaymentLinkIn(BaseModel):
+    operation_id: int = Field(gt=0)
+    role: Literal["salary", "advance"]
 
 
 class WorkMonthSummaryOut(BaseModel):

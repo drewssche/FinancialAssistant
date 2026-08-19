@@ -12,6 +12,7 @@ from app.db.models import (
     OperationItemTemplate,
     OperationReceiptItem,
     PlanOperationEvent,
+    WorkPaymentLink,
 )
 from app.repositories.operation_item_template_repo import OperationItemTemplateRepository
 
@@ -342,6 +343,65 @@ class OperationRepository:
             setattr(operation, key, value)
         self.db.flush()
         return operation
+
+    def sync_work_payment_link_snapshots(
+        self,
+        *,
+        user_id: int,
+        operation: Operation,
+    ) -> int:
+        category_name = None
+        if operation.category_id is not None:
+            category_name = self.db.scalar(
+                select(Category.name).where(Category.id == operation.category_id)
+            )
+        original_amount = Decimal(operation.original_amount or 0)
+        if original_amount <= 0:
+            original_amount = Decimal(operation.amount)
+        result = self.db.execute(
+            update(WorkPaymentLink)
+            .where(
+                WorkPaymentLink.user_id == user_id,
+                WorkPaymentLink.operation_id == operation.id,
+            )
+            .values(
+                snapshot_operation_id=int(operation.id),
+                snapshot_operation_date=operation.operation_date,
+                snapshot_original_amount=original_amount,
+                snapshot_currency=str(operation.currency or "BYN").upper(),
+                snapshot_base_amount=operation.amount,
+                snapshot_base_currency=str(
+                    operation.base_currency or operation.currency or "BYN"
+                ).upper(),
+                snapshot_note=operation.note,
+                snapshot_category_name=category_name,
+                updated_at=func.now(),
+            )
+        )
+        return int(result.rowcount or 0)
+
+    def has_work_payment_link(self, *, user_id: int, operation_id: int) -> bool:
+        return self.db.scalar(
+            select(WorkPaymentLink.id).where(
+                WorkPaymentLink.user_id == user_id,
+                WorkPaymentLink.operation_id == operation_id,
+            ).limit(1)
+        ) is not None
+
+    def reattach_work_payment_links(self, *, user_id: int, operation_id: int) -> int:
+        result = self.db.execute(
+            update(WorkPaymentLink)
+            .where(
+                WorkPaymentLink.user_id == user_id,
+                WorkPaymentLink.snapshot_operation_id == operation_id,
+                or_(
+                    WorkPaymentLink.operation_id.is_(None),
+                    WorkPaymentLink.operation_id == operation_id,
+                ),
+            )
+            .values(operation_id=operation_id, updated_at=func.now())
+        )
+        return int(result.rowcount or 0)
 
     def delete(self, operation: Operation) -> None:
         self.db.execute(
