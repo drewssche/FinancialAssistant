@@ -57,11 +57,15 @@
   function formatMonthLabel(value) { return monthFormatter.format(value).replace(/^./, (char) => char.toUpperCase()); }
   function paymentForecastAmount(item) { return item?.forecast_amount ?? item?.planned_amount ?? item?.amount ?? null; }
   function paymentForecastCurrency(item) { return item?.forecast_currency || item?.currency || item?.base_currency || "BYN"; }
+  function paymentForecastBaseAmount(item) { return item?.forecast_base_amount ?? paymentForecastAmount(item); }
+  function paymentForecastBaseCurrency(item) { return item?.forecast_base_currency || paymentForecastCurrency(item); }
   function paymentForecastVisible(item) { return item?.forecast_visible === true; }
   function paymentOperationId(item) { return Number(item?.operation_id || 0); }
   function paymentOperationDate(item) { return item?.operation_date || item?.effective_date || item?.date || null; }
   function paymentOperationAmount(item) { return item?.amount ?? item?.original_amount ?? item?.base_amount ?? null; }
   function paymentOperationCurrency(item) { return item?.currency || item?.base_currency || "BYN"; }
+  function paymentOperationBaseAmount(item) { return item?.base_amount ?? paymentOperationAmount(item); }
+  function paymentOperationBaseCurrency(item) { return item?.base_currency || paymentOperationCurrency(item); }
   function paymentRoleLabel(role) { return role === "advance" ? "Аванс" : "Основная часть"; }
   function formatOperationCount(value) {
     const count = Math.max(0, Number(value || 0));
@@ -163,7 +167,7 @@
     [
       "workMonthTrigger", "workMonthPopover", "workYearOptions", "workMonthOptions",
       "workPrevMonthBtn", "workNextMonthBtn", "workTodayBtn", "workSummaryGrid",
-      "workPaymentsGrid", "workCalendarGrid", "workViewTabs", "workTimesheetView", "workSettingsForm",
+      "workMoneySummaryGrid", "workPaymentsGrid", "workCalendarGrid", "workViewTabs", "workTimesheetView", "workSettingsForm",
       "workCompaniesView", "workCompaniesGrid", "workCompanyDetails", "workContractsView",
       "workDayForm", "workDayEditorTitle", "workDayDate", "workDayStatus",
       "workDayDateTo",
@@ -199,6 +203,87 @@
     nodes.workSummaryGrid.innerHTML = cards.map(([label, value, meta]) => `
       <article class="analytics-kpi-card analytics-kpi-neutral">
         <div class="muted-small">${escape(label)}</div><strong>${escape(value)}</strong><div class="muted-small">${escape(meta)}</div>
+      </article>`).join("");
+  }
+
+  function monthSnapshotPaymentOperations() {
+    const month = `${Number(snapshot?.year || anchor.getFullYear())}-${String(Number(snapshot?.month || anchor.getMonth() + 1)).padStart(2, "0")}`;
+    const rows = [
+      ...(snapshot?.payments || []).flatMap(embeddedPaymentOperations),
+      ...(Array.isArray(snapshot?.payroll_operations) ? snapshot.payroll_operations : []),
+    ];
+    const seenOperationIds = new Set();
+    const seenLinkIds = new Set();
+    return rows.filter((row) => {
+      if (row.is_deleted || isoMonth(paymentOperationDate(row)) !== month) return false;
+      const operationId = paymentOperationId(row);
+      const linkId = Number(row.link_id || 0);
+      if (!(operationId > 0) && !(linkId > 0)) return false;
+      if ((operationId > 0 && seenOperationIds.has(operationId)) || (linkId > 0 && seenLinkIds.has(linkId))) return false;
+      if (operationId > 0) seenOperationIds.add(operationId);
+      if (linkId > 0) seenLinkIds.add(linkId);
+      return true;
+    });
+  }
+
+  function monthVisibleForecasts() {
+    const month = `${Number(snapshot?.year || anchor.getFullYear())}-${String(Number(snapshot?.month || anchor.getMonth() + 1)).padStart(2, "0")}`;
+    const seen = new Set();
+    return (snapshot?.payments || []).filter((item) => {
+      if (!paymentForecastVisible(item) || isoMonth(item.effective_date) !== month) return false;
+      const key = `${Number(item.plan_id || 0)}:${item.role || "payment"}:${item.effective_date || ""}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function groupedMoney(rows, amountOf, currencyOf) {
+    const totals = new Map();
+    rows.forEach((row) => {
+      const rawAmount = amountOf(row);
+      if (rawAmount == null || rawAmount === "") return;
+      const amount = Number(rawAmount);
+      if (!Number.isFinite(amount)) return;
+      const currency = String(currencyOf(row) || "BYN").toUpperCase();
+      totals.set(currency, (totals.get(currency) || 0) + amount);
+    });
+    return totals;
+  }
+
+  function renderMoneyValues(group) {
+    const entries = [...group.entries()].sort(([left], [right]) => {
+      if (left === "BYN") return -1;
+      if (right === "BYN") return 1;
+      return left.localeCompare(right);
+    });
+    if (!entries.length) return '<strong class="work-money-empty">—</strong>';
+    return entries.map(([currency, amount]) => `<strong>${escape(formatMoney(amount, currency))}</strong>`).join("");
+  }
+
+  function formatPlanPaymentCount(value) {
+    const count = Math.max(0, Number(value || 0));
+    const mod100 = count % 100;
+    const mod10 = count % 10;
+    const paymentWord = mod100 >= 11 && mod100 <= 14 ? "выплат" : mod10 === 1 ? "выплата" : mod10 >= 2 && mod10 <= 4 ? "выплаты" : "выплат";
+    return `${count} ${paymentWord} по ${count === 1 ? "плану" : "планам"}`;
+  }
+
+  function renderMoneySummary() {
+    if (!nodes.workMoneySummaryGrid) return;
+    const actuals = monthSnapshotPaymentOperations();
+    const forecasts = monthVisibleForecasts();
+    const actualMoney = groupedMoney(actuals, paymentOperationBaseAmount, paymentOperationBaseCurrency);
+    const forecastMoney = groupedMoney(forecasts, paymentForecastBaseAmount, paymentForecastBaseCurrency);
+    const cards = [
+      ["Получено за месяц", actualMoney, formatOperationCount(actuals.length), "analytics-kpi-positive work-money-kpi-actual"],
+      ["Ещё ожидается", forecastMoney, formatPlanPaymentCount(forecasts.length), "analytics-kpi-neutral work-money-kpi-forecast"],
+    ];
+    nodes.workMoneySummaryGrid.innerHTML = cards.map(([label, values, meta, className]) => `
+      <article class="analytics-kpi-card work-money-kpi-card ${className}">
+        <div class="muted-small">${escape(label)}</div>
+        <div class="work-money-kpi-values">${renderMoneyValues(values)}</div>
+        <div class="muted-small">${escape(meta)}</div>
       </article>`).join("");
   }
 
@@ -824,6 +909,7 @@
     if (loadedMonth === isoMonth(observedLocalDate)) midnightReloadPending = false;
     resetLiveBaseline();
     renderSummary();
+    renderMoneySummary();
     renderPayments();
     renderCalendar();
     fillProfileForm();

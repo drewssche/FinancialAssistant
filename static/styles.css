@@ -31,6 +31,13 @@
 .work-period-year-options { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
 .work-period-month-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .work-period-month-options .settings-picker-option, .work-period-year-options .settings-picker-option { min-width: 0; grid-template-columns: 1fr; justify-content: center; }
+.work-money-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.work-money-kpi-card { min-height: 78px; padding: 12px 14px; gap: 5px; }
+.work-money-kpi-values { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
+.work-money-kpi-values strong { font-size: 18px; white-space: nowrap; }
+.work-money-kpi-card.work-money-kpi-actual { border-color: rgba(85, 198, 169, .3); background: linear-gradient(180deg, rgba(85, 198, 169, .08), rgba(18, 27, 43, .72)); }
+.work-money-kpi-card.work-money-kpi-forecast { border-color: rgba(77, 141, 255, .3); background: linear-gradient(180deg, rgba(77, 141, 255, .08), rgba(18, 27, 43, .72)); }
+.work-money-kpi-card .work-money-empty { color: var(--muted); }
 .work-payments-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
 .work-payment-card { display: flex; justify-content: space-between; gap: 16px; padding: 15px 17px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); }
 .work-payment-primary { display: grid; gap: 5px; align-content: start; }
@@ -165,6 +172,7 @@
   .work-section-head, .work-payment-card { flex-direction: column; }
   .work-month-control { width: 100%; justify-content: space-between; }
   .work-month-control .analytics-grid-picker-trigger { min-width: 0; flex: 1; }
+  .work-money-summary-grid { grid-template-columns: 1fr; }
   .work-payments-grid { grid-template-columns: 1fr; }
   .work-calendar-weekdays, .work-calendar-grid { gap: 4px; }
   .work-day-cell { min-height: 82px; padding: 7px; }

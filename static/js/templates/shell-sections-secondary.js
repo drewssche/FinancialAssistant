@@ -23,6 +23,7 @@
               </div>
             </div>
             <div id="workSummaryGrid" class="analytics-kpi-grid section-kpi-grid"></div>
+            <div id="workMoneySummaryGrid" class="analytics-kpi-grid work-money-summary-grid" aria-label="Доход за выбранный месяц" aria-live="polite"></div>
             <div id="workPaymentsGrid" class="work-payments-grid"></div>
           </section>
 

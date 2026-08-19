@@ -1366,6 +1366,16 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
 
     assert page.locator("#workCalendarGrid .work-day-cell").count() == 36
     assert "168 ч" in (page.locator("#workSummaryGrid").text_content() or "")
+    assert page.locator("#workMoneySummaryGrid .work-money-kpi-card").count() == 2
+    actual_kpi_text = (page.locator("#workMoneySummaryGrid .work-money-kpi-actual").text_content() or "").replace("\u00a0", " ")
+    forecast_kpi_text = (page.locator("#workMoneySummaryGrid .work-money-kpi-forecast").text_content() or "").replace("\u00a0", " ")
+    assert "Получено за месяц" in actual_kpi_text
+    assert "2 321,56" in actual_kpi_text
+    assert "2 операции" in actual_kpi_text
+    assert "1 234,56" not in actual_kpi_text  # Длинная история не должна повторно попадать в KPI снимка месяца.
+    assert "Ещё ожидается" in forecast_kpi_text
+    assert "1 050" in forecast_kpi_text
+    assert "1 выплата по плану" in forecast_kpi_text
     assert "Аванс" in (page.locator("#workPaymentsGrid").text_content() or "")
     payment_cards_text = (page.locator("#workPaymentsGrid").text_content() or "").replace("\u00a0", " ")
     assert "Получено по категории · 2 321,56" in payment_cards_text
@@ -1407,6 +1417,8 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     page.wait_for_function(
         """() => (document.querySelector('[data-work-date="2026-08-20"] .work-day-payment-forecast')?.textContent || '').replace(/\u00a0/g, ' ').includes('1 100')"""
     )
+    updated_forecast_kpi = (page.locator("#workMoneySummaryGrid .work-money-kpi-forecast").text_content() or "").replace("\u00a0", " ")
+    assert "1 100" in updated_forecast_kpi
     assert len(work_month_requests) > previous_month_request_count
 
     previous_month_request_count = len(work_month_requests)

@@ -104,6 +104,50 @@ def test_role_cards_prefer_embedded_links_and_use_exact_date_category_fallback()
     assert "allActualPayments().forEach((item)" in calendar
 
 
+def test_month_money_kpis_use_the_month_snapshot_without_mixing_currencies():
+    source = WORK_JS.read_text(encoding="utf-8")
+    template = WORK_TEMPLATE_JS.read_text(encoding="utf-8")
+    styles = (REPO_ROOT / "static" / "styles.css").read_text(encoding="utf-8")
+
+    assert 'id="workMoneySummaryGrid"' in template
+    assert 'aria-live="polite"' in template
+    assert '"workMoneySummaryGrid", "workPaymentsGrid"' in source
+    assert "function monthSnapshotPaymentOperations()" in source
+    assert "(snapshot?.payments || []).flatMap(embeddedPaymentOperations)" in source
+    assert "snapshot?.payroll_operations" in source
+    assert "seenOperationIds.has(operationId)" in source
+    assert "seenLinkIds.has(linkId)" in source
+    assert "row.is_deleted || isoMonth(paymentOperationDate(row)) !== month" in source
+    assert "function monthVisibleForecasts()" in source
+    assert "!paymentForecastVisible(item) || isoMonth(item.effective_date) !== month" in source
+    assert "function paymentOperationBaseAmount(item)" in source
+    assert "function paymentOperationBaseCurrency(item)" in source
+    assert "function paymentForecastBaseAmount(item)" in source
+    assert "function paymentForecastBaseCurrency(item)" in source
+    assert "function groupedMoney(rows, amountOf, currencyOf)" in source
+    assert "totals.set(currency, (totals.get(currency) || 0) + amount)" in source
+    assert "Получено за месяц" in source
+    assert "Ещё ожидается" in source
+    assert "function formatPlanPaymentCount(value)" in source
+    assert 'count === 1 ? "плану" : "планам"' in source
+    assert "Итого месяца" not in source
+    assert "renderMoneySummary();" in source
+    live_update = source.split("function updateLiveWorkday", 1)[1].split(
+        "function startLiveTimer", 1
+    )[0]
+    assert "renderMoneySummary();" not in live_update
+    month_load = source.split("async function performWorkSectionLoad", 1)[1].split(
+        "async function drainWorkSectionLoads", 1
+    )[0]
+    assert "renderMoneySummary();" in month_load
+    money_snapshot = source.split("function monthSnapshotPaymentOperations()", 1)[1].split(
+        "function monthVisibleForecasts", 1
+    )[0]
+    assert "paymentHistory" not in money_snapshot
+    assert ".work-money-summary-grid" in styles
+    assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in styles
+
+
 def test_payment_link_controls_and_activity_label_have_consistent_accessibility():
     source = WORK_JS.read_text(encoding="utf-8")
     template = WORK_TEMPLATE_JS.read_text(encoding="utf-8")
