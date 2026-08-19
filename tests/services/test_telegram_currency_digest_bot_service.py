@@ -109,6 +109,46 @@ def test_list_due_deliveries_builds_currency_digest(monkeypatch):
         Base.metadata.drop_all(bind=engine)
 
 
+def test_digest_bank_rates_are_labeled_from_the_bank_perspective():
+    engine, SessionLocal = _make_session()
+    db = SessionLocal()
+    try:
+        service = TelegramCurrencyDigestBotService(db)
+        text = service.build_digest_text(
+            overview={
+                "base_currency": "BYN",
+                "current_rates": [],
+                "positions": [],
+                "bank_rates": [
+                    {
+                        "currency": "USD",
+                        "bank_name": "Приорбанк",
+                        "buy_rate": "3.0200",
+                        "sell_rate": "3.0500",
+                        "stale": False,
+                    },
+                    {
+                        "currency": "USD",
+                        "bank_name": "Технобанк",
+                        "buy_rate": "3.0100",
+                        "sell_rate": "3.0400",
+                        "stale": False,
+                    },
+                ],
+                "total_current_value": "0",
+                "total_result_value": "0",
+            },
+            config={"tracked_currencies": ["USD"]},
+        )
+
+        assert "🏦 Банки: покупка 3.0200 в Приорбанк; продажа 3.0400 в Технобанк" in text
+        assert "Банки: продать" not in text
+        assert "; купить" not in text
+    finally:
+        db.close()
+        Base.metadata.drop_all(bind=engine)
+
+
 def test_mark_delivery_sent_persists_last_digest_sent_on(monkeypatch):
     engine, SessionLocal = _make_session()
     db = SessionLocal()

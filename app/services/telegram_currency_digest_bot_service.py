@@ -167,9 +167,9 @@ class TelegramCurrencyDigestBotService:
                 best_buy = max(currency_bank_rates, key=lambda item: Decimal(item["buy_rate"]))
                 best_sell = min(currency_bank_rates, key=lambda item: Decimal(item["sell_rate"]))
                 lines.append(
-                    "🏦 Банки: продать "
+                    "🏦 Банки: покупка "
                     f"{Decimal(best_buy['buy_rate']):.4f} в {best_buy['bank_name']}; "
-                    f"купить {Decimal(best_sell['sell_rate']):.4f} в {best_sell['bank_name']}"
+                    f"продажа {Decimal(best_sell['sell_rate']):.4f} в {best_sell['bank_name']}"
                 )
         total_value = Decimal(overview.get("total_current_value") or 0)
         total_result = Decimal(overview.get("total_result_value") or 0)
