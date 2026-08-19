@@ -1030,6 +1030,47 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
         )
     days[2]["note"] = "Встреча с командой"
     days[2]["is_manual"] = True
+    days[5].update({
+        "status": "sick_paid",
+        "status_label": "Сикдей с оплатой",
+        "actual_hours": "0.00",
+        "credited_hours": "8.00",
+        "is_workday": False,
+        "is_manual": True,
+        "is_completed": False,
+        "hours_state": "actual",
+        "note": "Сикдей оплачивается компанией",
+    })
+    days[6].update({
+        "status": "vacation",
+        "status_label": "Отпуск",
+        "actual_hours": "2.00",
+        "credited_hours": "8.00",
+        "is_workday": False,
+        "is_manual": True,
+        "is_completed": True,
+        "hours_state": "actual",
+    })
+    days[3].update({
+        "status": "company_day_off",
+        "status_label": "Выходной за счёт компании",
+        "actual_hours": "0.00",
+        "credited_hours": "6.00",
+        "is_workday": False,
+        "is_manual": True,
+        "is_completed": False,
+        "hours_state": "actual",
+    })
+    days[11].update({
+        "status": "vacation",
+        "status_label": "Отпуск",
+        "actual_hours": "0.00",
+        "credited_hours": "8.00",
+        "is_workday": False,
+        "is_manual": True,
+        "is_completed": False,
+        "hours_state": "forecast",
+    })
 
     contracts_payload = [
         {
@@ -1388,6 +1429,22 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     assert "is-today" in (page.locator('[data-work-date="2026-08-10"]').get_attribute("class") or "")
     assert "Сегодня" in (page.locator('[data-work-date="2026-08-10"]').text_content() or "")
     assert "Факт · 8 ч" in (page.locator('[data-work-date="2026-08-03"] .work-hours-chip-fact').text_content() or "")
+    paid_sickday = page.locator('[data-work-date="2026-08-06"]')
+    assert "Зачтено · 8 ч" in (paid_sickday.locator(".work-hours-chip-credited").text_content() or "")
+    assert paid_sickday.locator(".work-hours-chip-fact").count() == 0
+    assert paid_sickday.locator(".work-hours-chip-plan").count() == 0
+    assert "Сикдей оплачивается компанией" in (paid_sickday.locator(".work-day-note").text_content() or "")
+    partly_worked_vacation = page.locator('[data-work-date="2026-08-07"]')
+    assert "Факт · 2 ч" in (partly_worked_vacation.locator(".work-hours-chip-fact").text_content() or "")
+    assert "Зачтено · 8 ч" in (partly_worked_vacation.locator(".work-hours-chip-credited").text_content() or "")
+    assert partly_worked_vacation.locator(".work-hours-chip-plan").count() == 0
+    partially_credited_day_off = page.locator('[data-work-date="2026-08-04"]')
+    assert "Зачтено · 6 ч" in (partially_credited_day_off.locator(".work-hours-chip-credited").text_content() or "")
+    assert "План · 8 ч" in (partially_credited_day_off.locator(".work-hours-chip-plan").text_content() or "")
+    assert partially_credited_day_off.locator(".work-hours-chip-fact").count() == 0
+    future_paid_vacation = page.locator('[data-work-date="2026-08-12"]')
+    assert "К оплате · 8 ч" in (future_paid_vacation.locator(".work-hours-chip-credited").text_content() or "")
+    assert future_paid_vacation.locator(".work-hours-chip-fact").count() == 0
     assert "Сейчас · 2 ч 30 мин" in (page.locator('[data-work-date="2026-08-10"] .work-hours-chip-live').text_content() or "")
     assert "План · 8 ч" in (page.locator('[data-work-date="2026-08-10"] .work-hours-chip-plan').text_content() or "")
     assert "Прогноз · 8 ч" in (page.locator('[data-work-date="2026-08-11"] .work-hours-chip-forecast').text_content() or "")

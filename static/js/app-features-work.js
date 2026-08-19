@@ -31,6 +31,7 @@
 
   const monthFormatter = new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric" });
   const dayFormatter = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric", weekday: "long" });
+  const PAID_ABSENCE_STATUSES = new Set(["vacation", "sick_paid", "company_day_off"]);
 
   function byId(id) { return document.getElementById(id); }
   function escape(value) { return core.escapeHtml ? core.escapeHtml(String(value ?? "")) : String(value ?? ""); }
@@ -160,6 +161,47 @@
     const hours = Math.floor(minutes / 60);
     const rest = minutes % 60;
     return rest ? `${hours} ч ${rest} мин` : `${hours} ч`;
+  }
+  function sameHours(left, right) { return Math.abs(Number(left || 0) - Number(right || 0)) < 0.005; }
+  function workHoursChip(kind, label, value) {
+    return `<span class="work-hours-chip work-hours-chip-${kind}">${label} · ${formatHours(value)} ч</span>`;
+  }
+  function renderDayHourChips(item, isToday) {
+    const plannedHours = Number(item.planned_hours || 0);
+    const actualHours = Number(item.actual_hours || 0);
+    const creditedHours = Number(item.credited_hours || 0);
+
+    if (PAID_ABSENCE_STATUSES.has(String(item.status || ""))) {
+      let hours = "";
+      if (actualHours > 0) {
+        hours += workHoursChip("fact", "Факт", actualHours);
+      }
+      if (actualHours <= 0 || !sameHours(actualHours, creditedHours)) {
+        hours += workHoursChip("credited", item.is_future ? "К оплате" : "Зачтено", creditedHours);
+      }
+      if (plannedHours > 0 && !sameHours(plannedHours, creditedHours) && !sameHours(plannedHours, actualHours)) {
+        hours += workHoursChip("plan", "План", plannedHours);
+      }
+      return hours;
+    }
+    if (item.is_live && plannedHours > 0) {
+      let hours = `<span class="work-hours-chip work-hours-chip-live">Сейчас · ${escape(formatLiveHours(actualHours))}</span>`;
+      if (actualHours < plannedHours) hours += workHoursChip("plan", "План", plannedHours);
+      return hours;
+    }
+    if (isToday && !item.is_completed && actualHours <= 0 && plannedHours > 0) {
+      return workHoursChip("plan", "План", plannedHours);
+    }
+    if (item.is_future && plannedHours > 0) {
+      return workHoursChip("forecast", "Прогноз", plannedHours);
+    }
+    if (!item.is_future && (plannedHours > 0 || actualHours > 0)) {
+      const plan = !sameHours(plannedHours, actualHours)
+        ? workHoursChip("plan", "План", plannedHours)
+        : "";
+      return `${workHoursChip("fact", "Факт", actualHours)}${plan}`;
+    }
+    return "";
   }
   function isoMonth(value) { return String(value || "").slice(0, 7); }
 
@@ -403,22 +445,7 @@
       if (payments.length || actuals.length) classes.push("has-payment");
       const isToday = item.date === localTodayIso();
       if (isToday) classes.push("is-today");
-      const plannedHours = Number(item.planned_hours || 0);
-      const actualHours = Number(item.actual_hours || 0);
-      let hours = "";
-      if (item.is_live && plannedHours > 0) {
-        hours = `<span class="work-hours-chip work-hours-chip-live">Сейчас · ${escape(formatLiveHours(actualHours))}</span>`;
-        if (actualHours < plannedHours) hours += `<span class="work-hours-chip work-hours-chip-plan">План · ${formatHours(plannedHours)} ч</span>`;
-      } else if (isToday && !item.is_completed && actualHours <= 0 && plannedHours > 0) {
-        hours = `<span class="work-hours-chip work-hours-chip-plan">План · ${formatHours(plannedHours)} ч</span>`;
-      } else if (item.is_future && plannedHours > 0) {
-        hours = `<span class="work-hours-chip work-hours-chip-forecast">Прогноз · ${formatHours(plannedHours)} ч</span>`;
-      } else if (!item.is_future && (plannedHours > 0 || actualHours > 0)) {
-        const plan = plannedHours !== actualHours
-          ? `<span class="work-hours-chip work-hours-chip-plan">План · ${formatHours(plannedHours)} ч</span>`
-          : "";
-        hours = `<span class="work-hours-chip work-hours-chip-fact">Факт · ${formatHours(actualHours)} ч</span>${plan}`;
-      }
+      const hours = renderDayHourChips(item, isToday);
       const note = item.note
         ? `<span class="work-day-note" title="${escape(item.note)}">${escape(item.note)}</span>`
         : "";

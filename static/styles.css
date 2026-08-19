@@ -78,6 +78,7 @@
 .work-day-hours { display: flex; flex-wrap: wrap; gap: 4px; min-height: 20px; }
 .work-hours-chip { display: inline-flex; align-items: center; min-height: 20px; padding: 3px 7px; border: 1px solid transparent; border-radius: 999px; font-size: 10px; font-weight: 800; line-height: 1; white-space: nowrap; }
 .work-hours-chip-fact { border-color: rgba(85, 198, 169, .38); background: rgba(85, 198, 169, .16); color: #8ce0c8; }
+.work-hours-chip-credited { border-color: rgba(155, 124, 255, .42); background: rgba(155, 124, 255, .16); color: #c9bbff; }
 .work-hours-chip-live { border-color: rgba(255, 179, 71, .5); background: rgba(255, 179, 71, .16); color: #ffd18a; }
 .work-hours-chip-forecast { border-color: rgba(77, 141, 255, .4); background: rgba(77, 141, 255, .16); color: #9fc1ff; }
 .work-hours-chip-plan { border-color: rgba(145, 160, 190, .28); background: rgba(145, 160, 190, .1); color: #b8c4dc; }

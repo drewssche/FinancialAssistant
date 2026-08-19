@@ -177,7 +177,7 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert "body.finance-calculator-open" in calculator_css
     assert "@media (max-width: 640px)" in calculator_css
     assert "max-height: min(88dvh, 720px)" in calculator_css
-    assert '/static/styles.css?v=20260819g' in index_html
+    assert '/static/styles.css?v=20260819h' in index_html
     assert '/static/css/components-core.css?v=20260808a' in styles
     assert '/static/css/layout-debts.css?v=20260716j' in styles
     assert '/static/css/components-analytics-summary.css?v=20260818d' in styles
@@ -489,3 +489,16 @@ def test_work_calendar_distinguishes_plan_forecasts_from_payroll_facts():
     assert "payment.label || payment.category_name" in work
     assert "(?:operations|plans|categories)(?:\\/\\d+)?" in work
     assert ".work-payment-card.is-missing" in styles
+
+
+def test_work_calendar_shows_credited_hours_for_paid_absences():
+    work = (REPO_ROOT / "static" / "js" / "app-features-work.js").read_text(encoding="utf-8")
+    styles = (REPO_ROOT / "static" / "styles.css").read_text(encoding="utf-8")
+
+    assert 'const PAID_ABSENCE_STATUSES = new Set(["vacation", "sick_paid", "company_day_off"]);' in work
+    assert "function renderDayHourChips(item, isToday)" in work
+    assert 'workHoursChip("credited", item.is_future ? "К оплате" : "Зачтено", creditedHours)' in work
+    assert "if (actualHours > 0)" in work
+    assert "actualHours <= 0 || !sameHours(actualHours, creditedHours)" in work
+    assert "!sameHours(plannedHours, creditedHours) && !sameHours(plannedHours, actualHours)" in work
+    assert ".work-hours-chip-credited" in styles
