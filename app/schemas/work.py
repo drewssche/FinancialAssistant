@@ -116,8 +116,9 @@ class WorkDayOut(BaseModel):
 
 
 class WorkPaymentOperationOut(BaseModel):
-    link_id: int
-    source: Literal["plan_confirmation", "manual"]
+    link_id: int | None = None
+    source: Literal["plan_confirmation", "manual", "category_match"]
+    label: str | None = None
     operation_id: int | None = None
     source_operation_id: int | None = None
     operation_date: date
@@ -137,6 +138,7 @@ class WorkPaymentOut(BaseModel):
     nominal_date: date
     effective_date: date
     shifted: bool
+    forecast_visible: bool = False
     forecast_amount: Decimal | None = None
     forecast_currency: str | None = None
     forecast_base_amount: Decimal | None = None
@@ -196,6 +198,7 @@ class WorkMonthOut(BaseModel):
     profile: WorkProfileOut
     summary: WorkMonthSummaryOut
     payments: list[WorkPaymentOut]
+    payroll_operations: list[WorkPaymentOperationOut] = Field(default_factory=list)
     days: list[WorkDayOut]
 
 

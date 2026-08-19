@@ -140,13 +140,12 @@ class WorkService:
         )
         payment_history = [self._serialize_payment_link_row(row) for row in payment_rows]
         actual_by_role: dict[str, list[dict]] = {}
-        frozen_forecast_by_role: dict[str, WorkPaymentLink] = {}
-        for row, history_item in zip(payment_rows, payment_history, strict=True):
+        for history_item in payment_history:
             role = str(history_item["role"])
             actual_by_role.setdefault(role, []).append(history_item)
-            frozen_forecast_by_role.setdefault(role, row.WorkPaymentLink)
 
-        payments = []
+        payment_contexts = []
+        payroll_category_ids: set[int] = set()
         for role, label, plan_key, nominal_key in PAYMENT_ROLES:
             nominal, effective = resolve_payment_date(
                 year,
@@ -158,31 +157,68 @@ class WorkService:
             )
             plan_id = profile_data[plan_key]
             plan = self.repo.get_plan(user_id=user_id, plan_id=int(plan_id)) if plan_id else None
+            if plan is not None and plan.kind == "income" and plan.category_id is not None:
+                payroll_category_ids.add(int(plan.category_id))
+            payment_contexts.append(
+                {
+                    "role": role,
+                    "label": label,
+                    "plan_id": plan_id,
+                    "plan": plan,
+                    "nominal": nominal,
+                    "effective": effective,
+                }
+            )
+
+        payroll_operations = []
+        for row in self.repo.list_unlinked_payroll_income_operations(
+            user_id=user_id,
+            category_ids=list(payroll_category_ids),
+            date_from=start,
+            date_to=end,
+            received_through=current_day,
+        ):
+            operation = row.Operation
+            category = row.Category
+            payroll_operations.append(
+                self._serialize_category_payment_match(
+                    operation=operation,
+                    category_name=category.name,
+                )
+            )
+
+        payments = []
+        for context in payment_contexts:
+            role = context["role"]
+            label = context["label"]
+            plan_id = context["plan_id"]
+            plan = context["plan"]
+            nominal = context["nominal"]
+            effective = context["effective"]
+            actual_operations = [
+                {
+                    key: value
+                    for key, value in item.items()
+                    if key not in {"role", "plan_id"}
+                }
+                for item in actual_by_role.get(role, [])
+            ]
+            forecast_visible = bool(
+                effective >= current_day
+                and self._payment_occurrence_is_applicable(plan=plan, effective_date=effective)
+                and (effective > current_day or not actual_operations)
+            )
             forecast_amount = None
             forecast_currency = None
             forecast_base_amount = None
             forecast_base_currency = None
-            if plan:
+            if forecast_visible:
                 forecast_amount = money_hours(getattr(plan, "original_amount", None) or 0)
                 if forecast_amount <= 0:
                     forecast_amount = money_hours(plan.amount)
                 forecast_currency = str(plan.currency or "BYN").upper()
                 forecast_base_amount = money_hours(plan.amount)
                 forecast_base_currency = str(plan.base_currency or forecast_currency).upper()
-            frozen_forecast = frozen_forecast_by_role.get(role)
-            if frozen_forecast and frozen_forecast.forecast_amount is not None:
-                forecast_amount = money_hours(frozen_forecast.forecast_amount)
-                forecast_currency = str(frozen_forecast.forecast_currency or "BYN").upper()
-                forecast_base_amount = money_hours(
-                    frozen_forecast.forecast_base_amount
-                    if frozen_forecast.forecast_base_amount is not None
-                    else frozen_forecast.forecast_amount
-                )
-                forecast_base_currency = str(
-                    frozen_forecast.forecast_base_currency
-                    or frozen_forecast.forecast_currency
-                    or "BYN"
-                ).upper()
             payments.append(
                 {
                     "role": role,
@@ -191,18 +227,12 @@ class WorkService:
                     "nominal_date": nominal,
                     "effective_date": effective,
                     "shifted": nominal != effective,
+                    "forecast_visible": forecast_visible,
                     "forecast_amount": forecast_amount,
                     "forecast_currency": forecast_currency,
                     "forecast_base_amount": forecast_base_amount,
                     "forecast_base_currency": forecast_base_currency,
-                    "actual_operations": [
-                        {
-                            key: value
-                            for key, value in item.items()
-                            if key not in {"role", "label", "plan_id"}
-                        }
-                        for item in actual_by_role.get(role, [])
-                    ],
+                    "actual_operations": actual_operations,
                 }
             )
         return {
@@ -211,6 +241,7 @@ class WorkService:
             "profile": profile_data,
             "summary": self._summarize_days(days),
             "payments": payments,
+            "payroll_operations": payroll_operations,
             "days": days,
         }
 
@@ -921,6 +952,41 @@ class WorkService:
             operation=row.Operation,
             category=row.Category,
         )
+
+    @staticmethod
+    def _payment_occurrence_is_applicable(*, plan, effective_date: date) -> bool:
+        if plan is None or plan.kind != "income" or plan.status != "active":
+            return False
+        scheduled_date = plan.scheduled_date
+        if plan.recurrence_enabled:
+            if effective_date < scheduled_date:
+                return False
+            recurrence_end_date = getattr(plan, "recurrence_end_date", None)
+            return recurrence_end_date is None or effective_date <= recurrence_end_date
+        return effective_date == scheduled_date
+
+    @staticmethod
+    def _serialize_category_payment_match(*, operation, category_name: str) -> dict:
+        amount = money_hours(getattr(operation, "original_amount", None) or 0)
+        if amount <= 0:
+            amount = money_hours(operation.amount)
+        return {
+            "link_id": None,
+            "source": "category_match",
+            "label": category_name,
+            "operation_id": int(operation.id),
+            "source_operation_id": int(operation.id),
+            "operation_date": operation.operation_date,
+            "amount": amount,
+            "currency": str(operation.currency or "BYN").upper(),
+            "base_amount": money_hours(operation.amount),
+            "base_currency": str(
+                operation.base_currency or operation.currency or "BYN"
+            ).upper(),
+            "note": operation.note,
+            "category_name": category_name,
+            "is_deleted": False,
+        }
 
     @staticmethod
     def _serialize_payment_link(*, link, operation, category) -> dict:

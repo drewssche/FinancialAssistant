@@ -57,12 +57,30 @@
   function formatMonthLabel(value) { return monthFormatter.format(value).replace(/^./, (char) => char.toUpperCase()); }
   function paymentForecastAmount(item) { return item?.forecast_amount ?? item?.planned_amount ?? item?.amount ?? null; }
   function paymentForecastCurrency(item) { return item?.forecast_currency || item?.currency || item?.base_currency || "BYN"; }
+  function paymentForecastVisible(item) { return item?.forecast_visible === true; }
   function paymentOperationId(item) { return Number(item?.operation_id || 0); }
   function paymentOperationDate(item) { return item?.operation_date || item?.effective_date || item?.date || null; }
   function paymentOperationAmount(item) { return item?.amount ?? item?.original_amount ?? item?.base_amount ?? null; }
   function paymentOperationCurrency(item) { return item?.currency || item?.base_currency || "BYN"; }
   function paymentRoleLabel(role) { return role === "advance" ? "Аванс" : "Основная часть"; }
-  function paymentSourceLabel(source) { return source === "manual" ? "Связано вручную" : "Из подтверждения плана"; }
+  function formatOperationCount(value) {
+    const count = Math.max(0, Number(value || 0));
+    const mod100 = count % 100;
+    const mod10 = count % 10;
+    const suffix = mod100 >= 11 && mod100 <= 14
+      ? "операций"
+      : mod10 === 1
+        ? "операция"
+        : mod10 >= 2 && mod10 <= 4
+          ? "операции"
+          : "операций";
+    return `${count} ${suffix}`;
+  }
+  function paymentSourceLabel(source) {
+    if (source === "manual") return "Связано вручную";
+    if (source === "category_match") return "Определено по категории";
+    return "Из подтверждения плана";
+  }
   function embeddedPaymentOperations(item) {
     const rows = Array.isArray(item?.actual_operations)
       ? item.actual_operations
@@ -77,15 +95,16 @@
     const rows = [
       ...paymentHistory,
       ...(snapshot?.payments || []).flatMap(embeddedPaymentOperations),
+      ...(Array.isArray(snapshot?.payroll_operations) ? snapshot.payroll_operations : []),
     ];
     const seen = new Set();
     return rows.filter((row) => {
       const operationId = paymentOperationId(row);
       const linkId = Number(row.link_id || 0);
-      const key = linkId > 0
-        ? `link:${linkId}`
-        : operationId > 0
-          ? `operation:${operationId}`
+      const key = operationId > 0
+        ? `operation:${operationId}`
+        : linkId > 0
+          ? `link:${linkId}`
           : `${row.role || "payment"}:${paymentOperationDate(row) || ""}:${paymentOperationAmount(row) || ""}`;
       if (seen.has(key)) return false;
       seen.add(key);
@@ -193,24 +212,28 @@
   }
 
   function renderPayments() {
-    const monthPrefix = `${snapshot?.year || anchor.getFullYear()}-${String(snapshot?.month || anchor.getMonth() + 1).padStart(2, "0")}`;
     nodes.workPaymentsGrid.innerHTML = (snapshot?.payments || []).map((item) => {
       const forecastAmount = paymentForecastAmount(item);
-      const actuals = allActualPayments().filter((row) => {
-        const operationDate = paymentOperationDate(row);
-        if (!operationDate?.startsWith(monthPrefix)) return false;
-        if (row.role && item.role) return String(row.role) === String(item.role);
-        if (item.plan_id && row.plan_id) return Number(item.plan_id) === Number(row.plan_id);
-        return false;
-      });
-      const forecast = forecastAmount == null
-        ? "Сумма прогноза не указана"
-        : `Прогноз · ${formatMoney(forecastAmount, paymentForecastCurrency(item))}`;
+      const actuals = embeddedPaymentOperations(item);
+      const activeActuals = actuals.filter((row) => !row.is_deleted && paymentOperationId(row) > 0);
+      const showForecast = paymentForecastVisible(item);
+      let headline = "Фактическая выплата не найдена";
+      if (showForecast) {
+        headline = forecastAmount == null
+          ? "Сумма прогноза не указана"
+          : `Прогноз · ${formatMoney(forecastAmount, paymentForecastCurrency(item))}`;
+      } else if (activeActuals.length === 1) {
+        headline = `Факт · ${formatMoney(paymentOperationAmount(activeActuals[0]), paymentOperationCurrency(activeActuals[0]))}`;
+      } else if (activeActuals.length > 1) {
+        headline = `Факт · ${formatOperationCount(activeActuals.length)}`;
+      } else if (actuals.some((row) => row.is_deleted)) {
+        headline = "Фактическая операция удалена";
+      }
       return `
-      <article class="work-payment-card ${item.shifted ? "is-shifted" : ""} ${actuals.length ? "has-actual" : ""}">
+      <article class="work-payment-card ${item.shifted ? "is-shifted" : ""} ${activeActuals.length ? "has-actual" : ""} ${!showForecast && !actuals.length ? "is-missing" : ""}">
         <div class="work-payment-primary">
           <span class="muted-small">${escape(item.label)}</span>
-          <strong>${escape(forecast)}</strong>
+          <strong>${escape(headline)}</strong>
           <span class="work-payment-date">${formatDate(item.effective_date)}</span>
         </div>
         <div class="work-payment-meta">
@@ -235,6 +258,7 @@
     const days = snapshot?.days || [];
     const paymentsByDate = new Map();
     (snapshot?.payments || []).forEach((item) => {
+      if (!paymentForecastVisible(item)) return;
       const rows = paymentsByDate.get(item.effective_date) || [];
       rows.push(item);
       paymentsByDate.set(item.effective_date, rows);
@@ -287,9 +311,12 @@
       const actualMarkup = actuals.map((payment) => {
         const operationId = paymentOperationId(payment);
         const money = formatMoney(paymentOperationAmount(payment), paymentOperationCurrency(payment));
-        const label = `${payment.label || "Выплата"} · получено${money ? ` ${money}` : ""}`;
+        const note = String(payment.note || "").trim();
+        const label = `${payment.label || payment.category_name || "Выплата"} · получено${money ? ` ${money}` : ""}${note ? ` · ${note}` : ""}`;
+        const source = paymentSourceLabel(payment.source);
+        const title = `${source}${note ? ` · ${note}` : ""} · открыть фактическую операцию`;
         return operationId > 0 && !payment.is_deleted
-          ? `<button class="work-day-payment work-day-payment-actual" type="button" data-work-operation-id="${operationId}" title="Открыть фактическую операцию">${escape(label)}</button>`
+          ? `<button class="work-day-payment work-day-payment-actual" type="button" data-work-operation-id="${operationId}" title="${escape(title)}">${escape(label)}</button>`
           : `<span class="work-day-payment work-day-payment-deleted">${escape(label)} · операция удалена</span>`;
       }).join("");
       return `<article class="${classes.join(" ")}" tabindex="0" data-work-date="${item.date}"${isToday ? ' aria-current="date"' : ""}>
@@ -951,9 +978,10 @@
     }
   }
 
-  function scheduleRefreshAfterOperationMutation(event) {
+  function scheduleRefreshAfterPaymentMutation(event) {
     const path = String(event?.detail?.path || "");
-    if (!/^\/api\/v1\/operations\/\d+/.test(path) || nodes.workSection?.classList.contains("hidden")) return;
+    const changesPayroll = /^\/api\/v1\/(?:operations|plans|categories)(?:\/\d+)?(?:\/|$)/.test(path);
+    if (!changesPayroll || nodes.workSection?.classList.contains("hidden")) return;
     window.clearTimeout(activityRefreshTimer);
     activityRefreshTimer = window.setTimeout(() => {
       refreshPayrollAfterLinkMutation().catch(handleError);
@@ -1129,7 +1157,7 @@
       const operationButton = event.target.closest("[data-work-operation-id]");
       if (operationButton) openPaymentOperation(operationButton.dataset.workOperationId, operationButton).catch(handleError);
     });
-    document.addEventListener("app:activity-changed", scheduleRefreshAfterOperationMutation);
+    document.addEventListener("app:activity-changed", scheduleRefreshAfterPaymentMutation);
     bound = true;
   }
 

@@ -85,15 +85,18 @@ def test_work_payment_history_range_is_limited_to_ten_years():
     assert "profileStart < fallbackFrom ? fallbackFrom : profileStart" in history_loader
 
 
-def test_actual_payments_match_the_payroll_role_before_historical_plan_id():
+def test_role_cards_use_only_embedded_links_while_category_matches_stay_in_calendar():
     source = WORK_JS.read_text(encoding="utf-8")
     render = source.split("function renderPayments()", 1)[1].split(
         "function renderCalendar", 1
     )[0]
+    calendar = source.split("function renderCalendar()", 1)[1].split(
+        "function renderActualPayments", 1
+    )[0]
 
-    role_match = render.index("if (row.role && item.role)")
-    plan_match = render.index("if (item.plan_id && row.plan_id)")
-    assert role_match < plan_match
+    assert "const actuals = embeddedPaymentOperations(item);" in render
+    assert "allActualPayments()" not in render
+    assert "allActualPayments().forEach((item)" in calendar
 
 
 def test_payment_link_controls_and_activity_label_have_consistent_accessibility():

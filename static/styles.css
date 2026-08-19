@@ -37,6 +37,8 @@
 .work-payment-card strong { font-size: 20px; }
 .work-payment-card.is-shifted { border-color: rgba(255, 153, 52, .55); }
 .work-payment-card.has-actual { border-color: rgba(85, 198, 169, .46); }
+.work-payment-card.is-missing { border-color: rgba(221, 104, 128, .32); }
+.work-payment-card.is-missing .work-payment-primary strong { color: #d99aaa; font-size: 16px; }
 .work-payment-date { color: var(--muted); font-size: 12px; }
 .work-payment-meta { display: grid; align-content: center; gap: 4px; text-align: right; color: var(--muted); font-size: 12px; }
 .work-payment-plan-link { padding: 0; border: 0; background: transparent; color: #8fb4ff; font: inherit; text-align: right; cursor: pointer; }

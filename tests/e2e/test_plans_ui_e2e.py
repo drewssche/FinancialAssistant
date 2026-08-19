@@ -1086,6 +1086,21 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
         "is_deleted": False,
         "source": "plan_confirmation",
     }
+    detected_salary = {
+        "label": "Зарплата",
+        "link_id": None,
+        "operation_id": 703,
+        "source_operation_id": 703,
+        "operation_date": "2026-08-05",
+        "amount": "1973.56",
+        "currency": "BYN",
+        "base_amount": "1973.56",
+        "base_currency": "BYN",
+        "note": "Отпускные и премия",
+        "category_name": "Зарплата",
+        "is_deleted": False,
+        "source": "category_match",
+    }
     manual_candidate = {
         "operation_id": 702,
         "operation_date": "2026-08-08",
@@ -1102,6 +1117,7 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     payment_history_items = [actual_salary]
     payment_link_requests = []
     payment_unlink_requests = []
+    work_month_requests = []
 
     month_payload = {
         "year": 2026,
@@ -1142,10 +1158,11 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
                 "nominal_date": "2026-08-05",
                 "effective_date": "2026-08-05",
                 "shifted": False,
-                "forecast_amount": "1176.00",
-                "forecast_currency": "BYN",
-                "forecast_base_amount": "1176.00",
-                "forecast_base_currency": "BYN",
+                "forecast_visible": False,
+                "forecast_amount": None,
+                "forecast_currency": None,
+                "forecast_base_amount": None,
+                "forecast_base_currency": None,
                 "actual_operations": [
                     {key: value for key, value in actual_salary.items() if key not in {"role", "label", "plan_id"}}
                 ],
@@ -1157,6 +1174,7 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
                 "nominal_date": "2026-08-20",
                 "effective_date": "2026-08-20",
                 "shifted": False,
+                "forecast_visible": True,
                 "forecast_amount": "1050.00",
                 "forecast_currency": "BYN",
                 "forecast_base_amount": "1050.00",
@@ -1164,6 +1182,7 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
                 "actual_operations": [],
             },
         ],
+        "payroll_operations": [detected_salary],
         "days": days,
     }
     statistics_payload = {
@@ -1197,6 +1216,7 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
         path = urlparse(request.url).path
         method = request.method.upper()
         if path == "/api/v1/work/month":
+            work_month_requests.append(request.url)
             return _json_response(route, month_payload)
         if path == "/api/v1/work/payments/history" and method == "GET":
             return _json_response(route, {"items": payment_history_items, "total": len(payment_history_items)})
@@ -1290,6 +1310,31 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
             },
         ),
     )
+    page.route(
+        "**/api/v1/operations/703",
+        lambda route: _json_response(
+            route,
+            {
+                "id": 703,
+                "kind": "income",
+                "amount": "1973.56",
+                "original_amount": "1973.56",
+                "currency": "BYN",
+                "base_currency": "BYN",
+                "fx_rate": "1.000000",
+                "operation_date": "2026-08-05",
+                "category_id": 45,
+                "category_name": "Зарплата",
+                "category_icon": None,
+                "category_accent_color": None,
+                "note": "Отпускные и премия",
+                "receipt_items": [],
+                "receipt_total": None,
+                "receipt_discrepancy": None,
+                "fx_settlement": None,
+            },
+        ),
+    )
     _login_and_open_dashboard(page, static_server_url)
     page.click('button[data-section="work"]')
     page.wait_for_selector("#workSection:not(.hidden)")
@@ -1309,6 +1354,7 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     assert page.locator("#workCalendarGrid .work-day-cell").count() == 36
     assert "168 ч" in (page.locator("#workSummaryGrid").text_content() or "")
     assert "Аванс" in (page.locator("#workPaymentsGrid").text_content() or "")
+    assert "Факт · 1 234,56" in (page.locator("#workPaymentsGrid").text_content() or "").replace("\u00a0", " ")
     assert "Получено · 1 234,56" in (page.locator("#workPaymentsGrid").text_content() or "").replace("\u00a0", " ")
     assert "is-completed" in (page.locator('[data-work-date="2026-08-03"]').get_attribute("class") or "")
     assert "is-forecast" in (page.locator('[data-work-date="2026-08-11"]').get_attribute("class") or "")
@@ -1319,8 +1365,39 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     assert "План · 8 ч" in (page.locator('[data-work-date="2026-08-10"] .work-hours-chip-plan').text_content() or "")
     assert "Прогноз · 8 ч" in (page.locator('[data-work-date="2026-08-11"] .work-hours-chip-forecast').text_content() or "")
     assert "Встреча с командой" in (page.locator('[data-work-date="2026-08-03"] .work-day-note').text_content() or "")
-    assert "Основная часть · прогноз · 1 176" in (page.locator('[data-work-date="2026-08-05"] .work-day-payment-forecast').text_content() or "").replace("\u00a0", " ")
+    assert page.locator('[data-work-date="2026-08-05"] .work-day-payment-forecast').count() == 0
+    detected_chip = page.locator('[data-work-date="2026-08-05"] .work-day-payment-actual')
+    detected_chip_text = (detected_chip.text_content() or "").replace("\u00a0", " ")
+    assert "Зарплата · получено 1 973,56" in detected_chip_text
+    assert "Отпускные и премия" in detected_chip_text
+    assert "Определено по категории · Отпускные и премия" in (detected_chip.get_attribute("title") or "")
     assert "Основная часть · получено 1 234,56" in (page.locator('[data-work-date="2026-08-07"] .work-day-payment-actual').text_content() or "").replace("\u00a0", " ")
+    assert "Аванс · прогноз · 1 050" in (page.locator('[data-work-date="2026-08-20"] .work-day-payment-forecast').text_content() or "").replace("\u00a0", " ")
+
+    detected_chip.click()
+    page.wait_for_selector("#editModal:not(.hidden)")
+    assert page.locator("#editAmount").input_value() == "1973.56"
+    page.click("#closeEditModalBtn")
+
+    month_payload["payments"][1]["forecast_amount"] = "1100.00"
+    month_payload["payments"][1]["forecast_base_amount"] = "1100.00"
+    previous_month_request_count = len(work_month_requests)
+    page.evaluate(
+        """document.dispatchEvent(new CustomEvent("app:activity-changed", { detail: { method: "PATCH", path: "/api/v1/plans/3" } }))"""
+    )
+    page.wait_for_function(
+        """() => (document.querySelector('[data-work-date="2026-08-20"] .work-day-payment-forecast')?.textContent || '').replace(/\u00a0/g, ' ').includes('1 100')"""
+    )
+    assert len(work_month_requests) > previous_month_request_count
+
+    previous_month_request_count = len(work_month_requests)
+    with page.expect_response(
+        lambda response: urlparse(response.url).path == "/api/v1/work/month"
+    ):
+        page.evaluate(
+            """document.dispatchEvent(new CustomEvent("app:activity-changed", { detail: { method: "POST", path: "/api/v1/operations" } }))"""
+        )
+    assert len(work_month_requests) > previous_month_request_count
 
     page.click('[data-work-date="2026-08-07"] .work-day-payment-actual')
     page.wait_for_selector("#editModal:not(.hidden)")

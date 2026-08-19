@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.db.models import (
@@ -128,6 +128,49 @@ class WorkRepository:
             ).all()
         )
         return rows, total
+
+    def list_unlinked_payroll_income_operations(
+        self,
+        *,
+        user_id: int,
+        category_ids: list[int],
+        date_from: date,
+        date_to: date,
+        received_through: date,
+    ) -> list:
+        """Return display-only income operations from the current payroll categories.
+
+        These rows are deliberately not turned into ``WorkPaymentLink`` records.
+        A payroll category can contain salary, advance, bonuses, vacation pay, and
+        corrections, so these facts must stay role-neutral.
+        """
+        normalized_category_ids = sorted({int(category_id) for category_id in category_ids})
+        if not normalized_category_ids:
+            return []
+        linked_operation = exists(
+            select(WorkPaymentLink.id).where(
+                WorkPaymentLink.user_id == user_id,
+                or_(
+                    WorkPaymentLink.operation_id == Operation.id,
+                    WorkPaymentLink.snapshot_operation_id == Operation.id,
+                ),
+            )
+        )
+        stmt = (
+            select(Operation, Category)
+            .join(Category, Category.id == Operation.category_id)
+            .where(
+                Operation.user_id == user_id,
+                Operation.kind == "income",
+                Operation.category_id.in_(normalized_category_ids),
+                Operation.operation_date >= date_from,
+                Operation.operation_date <= date_to,
+                Operation.operation_date <= received_through,
+                ~linked_operation,
+            )
+            .order_by(Operation.operation_date.asc(), Operation.id.asc())
+        )
+        return list(self.db.execute(stmt).all())
 
     def get_operation_with_category(self, *, user_id: int, operation_id: int):
         return self.db.execute(
