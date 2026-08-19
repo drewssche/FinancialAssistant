@@ -23,6 +23,14 @@ class PlanOperation(Base):
     original_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=Decimal("0.00"))
     currency: Mapped[str] = mapped_column(String(3), default="BYN")
     base_currency: Mapped[str] = mapped_column(String(3), default="BYN")
+    # Plans keep a policy rather than a resolved quote.  A concrete immutable
+    # snapshot is written to the Operation created on confirmation.
+    fx_rate_source: Mapped[str] = mapped_column(String(16), default="nbrb", server_default="nbrb")
+    fx_bank_code: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    fx_bank_channel: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    fx_rate_kind: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    fx_manual_rate: Mapped[Decimal | None] = mapped_column(Numeric(18, 6), nullable=True)
+    fx_payment_mode: Mapped[str] = mapped_column(String(24), default="valuation", server_default="valuation")
     scheduled_date: Mapped[date] = mapped_column(Date, index=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), index=True, default="active", server_default="active")

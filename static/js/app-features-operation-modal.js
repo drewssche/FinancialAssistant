@@ -70,6 +70,11 @@
   function getOperationCurrencyContext(...args) { return callCurrencyFeature("getOperationCurrencyContext", null, args); }
   function syncSuggestedOperationFxRate(...args) { return callCurrencyFeature("syncSuggestedOperationFxRate", Promise.resolve(), args); }
   function syncOperationCurrencyFields(...args) { return callCurrencyFeature("syncOperationCurrencyFields", Promise.resolve(), args); }
+  function resetOperationFxPolicy(...args) { return callCurrencyFeature("resetOperationFxPolicy", undefined, args); }
+  function hydrateOperationFxPolicy(...args) { return callCurrencyFeature("hydrateOperationFxPolicy", undefined, args); }
+  function getOperationFxPolicyPayload(...args) { return callCurrencyFeature("getOperationFxPolicyPayload", {}, args); }
+  function getOperationFxPolicyPreview(...args) { return callCurrencyFeature("getOperationFxPolicyPreview", {}, args); }
+  function bindOperationFxPolicy(...args) { return callCurrencyFeature("bindOperationFxPolicy", undefined, args); }
   function applyDebtCurrencyUi(...args) { return callCurrencyFeature("applyDebtCurrencyUi", undefined, args); }
   function getCurrencyTradeContext(...args) { return callCurrencyFeature("getCurrencyTradeContext", null, args); }
   function markCurrencyRateManual(...args) { return callCurrencyFeature("markCurrencyRateManual", undefined, args); }
@@ -287,7 +292,9 @@
       }
     }
     if (opFxRateField) {
-      opFxRateField.classList.toggle("hidden", isDebt || isCurrency);
+      if (isDebt || isCurrency) {
+        opFxRateField.classList.add("hidden");
+      }
     }
     if (opDateField) {
       opDateField.classList.toggle("hidden", isDebt || isCurrency);
@@ -349,6 +356,7 @@
       }
       renderCreateCategoryPicker();
       syncReceiptCategoriesToKind("create");
+      currencyFeature.renderOperationFxPolicyUi?.("create");
       updateCreatePreview();
       return;
     }
@@ -364,6 +372,7 @@
       }
       renderEditCategoryPicker();
       syncReceiptCategoriesToKind("edit");
+      currencyFeature.renderOperationFxPolicyUi?.("edit");
       updateEditPreview();
     }
   }
@@ -461,6 +470,7 @@
     if (el.opFxRate) {
       el.opFxRate.value = "1";
     }
+    resetOperationFxPolicy("create");
     setOperationFxRateHint("create", "");
     setOperationFxRateManual("create", false);
     if (el.planRecurrenceBlock) {
@@ -510,7 +520,6 @@
     syncCurrencyTradeFieldUi();
     syncCreateFxSettlementFieldUi();
     syncOperationCurrencyFields("create").catch(() => {});
-    syncOperationCurrencyFields("edit").catch(() => {});
     await setCreateEntryMode(initialEntryMode);
     renderCreateCategoryPicker();
     renderDebtCounterpartyPicker();
@@ -614,11 +623,6 @@
     if (el.editCurrency) {
       el.editCurrency.value = item.currency || "BYN";
     }
-    if (el.editFxRate) {
-      el.editFxRate.value = item.fx_rate || "1";
-    }
-    setOperationFxRateHint("edit", item.currency && item.currency !== (core.getCurrencyConfig?.().code || "BYN") ? "Сохранившийся курс операции" : "");
-    setOperationFxRateManual("edit", true);
     core.syncDateFieldValue(document.getElementById("editDate"), item.operation_date);
     document.getElementById("editNote").value = item.note || "";
     clearReceiptItems("edit");
@@ -647,11 +651,14 @@
     }
     el.editCategory.value = item.category_id ? String(item.category_id) : "";
     setOperationKind("edit", item.kind);
+    hydrateOperationFxPolicy("edit", item, { preserveSnapshot: true });
     syncOperationCurrencyFields("edit");
     selectEditCategory(item.category_id ? Number(item.category_id) : null);
     setEditOperationMode(hasReceipt ? "receipt" : "common");
     if (el.editUseFxSettlement) {
-      el.editUseFxSettlement.checked = Boolean(item.fx_settlement);
+      const baseCurrency = String(core.getCurrencyConfig?.().code || "BYN").toUpperCase();
+      el.editUseFxSettlement.checked = String(item.currency || baseCurrency).toUpperCase() === baseCurrency
+        && Boolean(item.fx_settlement);
     }
     if (el.editFxSettlementAsset) {
       el.editFxSettlementAsset.value = String(item.fx_settlement?.asset_currency || buildSelectableCurrencyList(false)[0] || "USD").toUpperCase();
@@ -844,15 +851,18 @@
     setCreateOperationMode,
     setEditOperationMode,
     syncOperationCurrencyFields,
+    resetOperationFxPolicy,
+    hydrateOperationFxPolicy,
+    getOperationFxPolicyPayload,
+    getOperationFxPolicyPreview,
+    bindOperationFxPolicy,
     getOperationCurrencyContext,
     syncSuggestedOperationFxRate,
     markCreateOperationFxRateManual: () => {
-      setOperationFxRateManual("create", true);
-      setOperationFxRateHint("create", "Курс изменен вручную", "manual");
+      currencyFeature.markOperationFxRateManual?.("create");
     },
     markEditOperationFxRateManual: () => {
-      setOperationFxRateManual("edit", true);
-      setOperationFxRateHint("edit", "Курс изменен вручную", "manual");
+      currencyFeature.markOperationFxRateManual?.("edit");
     },
     resetCreateOperationFxRateAutofill: () => setOperationFxRateManual("create", false),
     resetEditOperationFxRateAutofill: () => setOperationFxRateManual("edit", false),

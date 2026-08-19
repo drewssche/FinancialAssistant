@@ -13,6 +13,7 @@
     bound = true;
     document.addEventListener("focusin", pickerCoordinator.scrollFocusedModalFieldIntoView);
     pickerCoordinator.bindDatePickerTriggers();
+    actions.bindOperationFxPolicy?.();
 
     for (const id of ["opAmount", "opDate", "opNote", "opCurrency", "opFxRate"]) {
       const node = document.getElementById(id);

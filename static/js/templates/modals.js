@@ -68,12 +68,60 @@
             </select>
             <button id="convertAmountToDiscountReceiptBtn" class="btn btn-secondary convert-discount-receipt-btn" type="button">Покупка со скидкой</button>
           </div>
-          <div id="opFxRateField" class="fx-rate-field hidden">
-            <div class="money-input-wrap money-input-no-suffix" data-money-input-wrap>
-              <input id="opFxRate" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс в базовую валюту" title="Курс конверсии в основную валюту" />
+          <section id="opFxRateField" class="fx-rate-field fx-policy-card hidden" aria-label="Пересчёт валюты в BYN">
+            <div class="fx-policy-head">
+              <div>
+                <strong>Пересчёт в BYN</strong>
+                <div class="muted-small">Курс и способ оплаты сохранятся вместе с операцией</div>
+              </div>
+              <button id="opFxRateRefreshBtn" class="btn btn-secondary fx-policy-refresh" type="button">Обновить курс</button>
             </div>
-            <span id="opFxRateHint" class="muted-small fx-rate-hint hidden"></span>
-          </div>
+            <div class="fx-policy-field">
+              <span class="muted-small">Источник курса</span>
+              <div id="opFxRateSourceSwitch" class="segmented fx-policy-segmented" aria-label="Источник курса">
+                <button class="segmented-btn active" data-fx-rate-source="nbrb" type="button">НБРБ</button>
+                <button class="segmented-btn" data-fx-rate-source="bank" type="button">Банк</button>
+                <button class="segmented-btn" data-fx-rate-source="manual" type="button">Вручную</button>
+              </div>
+              <input id="opFxRateSource" type="hidden" value="nbrb" />
+            </div>
+            <div id="opFxBankFields" class="fx-policy-bank-fields">
+              <div class="fx-policy-field">
+                <span class="muted-small">Банк</span>
+                <div id="opFxBankOptions" class="fx-policy-option-grid" aria-label="Банк для курса"></div>
+                <input id="opFxBankCode" type="hidden" value="technobank" />
+              </div>
+              <div class="fx-policy-field">
+                <span class="muted-small">Критерий</span>
+                <div id="opFxRateKindSwitch" class="segmented fx-policy-segmented" aria-label="Покупка или продажа банком">
+                  <button class="segmented-btn" data-fx-rate-kind="buy" type="button">Покупка банком</button>
+                  <button class="segmented-btn active" data-fx-rate-kind="sell" type="button">Продажа банком</button>
+                </div>
+                <input id="opFxRateKind" type="hidden" value="sell" />
+              </div>
+            </div>
+            <div class="fx-policy-field">
+              <span class="muted-small">Способ оплаты</span>
+              <div id="opFxPaymentModeSwitch" class="segmented fx-policy-payment-modes" aria-label="Способ оплаты валютной операции">
+                <button class="segmented-btn active" data-fx-payment-mode="valuation" type="button">Только пересчитать</button>
+                <button class="segmented-btn" data-fx-payment-mode="direct_conversion" type="button">Пополнить и оплатить</button>
+                <button class="segmented-btn" data-fx-payment-mode="foreign_balance" type="button">С валютного остатка</button>
+              </div>
+              <input id="opFxPaymentMode" type="hidden" value="valuation" />
+              <span id="opFxPaymentModeHint" class="muted-small fx-policy-mode-hint"></span>
+            </div>
+            <div class="fx-policy-rate-row">
+              <label class="fx-policy-rate-input">
+                <span id="opFxRateLabel" class="muted-small">Курс BYN за 1 EUR</span>
+                <span class="money-input-wrap money-input-no-suffix" data-money-input-wrap>
+                  <input id="opFxRate" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс в BYN" title="Курс конверсии в основную валюту" />
+                </span>
+              </label>
+              <div id="opFxRateMeta" class="fx-policy-rate-meta muted-small" aria-live="polite"></div>
+            </div>
+            <span id="opFxRateHint" class="muted-small fx-rate-hint hidden" aria-live="polite"></span>
+            <div id="opFxComputedAmount" class="fx-policy-computed" aria-live="polite"></div>
+          </section>
           <input id="opNote" class="create-note-field" type="text" placeholder="Комментарий" />
 
           <div id="opReceiptBlock" class="receipt-block">
@@ -493,12 +541,60 @@
               <option value="PLN">PLN (zł)</option>
             </select>
           </div>
-          <div id="editFxRateField" class="fx-rate-field hidden">
-            <div class="money-input-wrap money-input-no-suffix" data-money-input-wrap>
-              <input id="editFxRate" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс в базовую валюту" title="Курс конверсии в основную валюту" />
+          <section id="editFxRateField" class="fx-rate-field fx-policy-card hidden" aria-label="Пересчёт валюты в BYN">
+            <div class="fx-policy-head">
+              <div>
+                <strong>Пересчёт в BYN</strong>
+                <div class="muted-small">Сохранённый курс не обновляется без вашего действия</div>
+              </div>
+              <button id="editFxRateRefreshBtn" class="btn btn-secondary fx-policy-refresh" type="button">Обновить курс</button>
             </div>
-            <span id="editFxRateHint" class="muted-small fx-rate-hint hidden"></span>
-          </div>
+            <div class="fx-policy-field">
+              <span class="muted-small">Источник курса</span>
+              <div id="editFxRateSourceSwitch" class="segmented fx-policy-segmented" aria-label="Источник курса">
+                <button class="segmented-btn active" data-fx-rate-source="nbrb" type="button">НБРБ</button>
+                <button class="segmented-btn" data-fx-rate-source="bank" type="button">Банк</button>
+                <button class="segmented-btn" data-fx-rate-source="manual" type="button">Вручную</button>
+              </div>
+              <input id="editFxRateSource" type="hidden" value="nbrb" />
+            </div>
+            <div id="editFxBankFields" class="fx-policy-bank-fields hidden">
+              <div class="fx-policy-field">
+                <span class="muted-small">Банк</span>
+                <div id="editFxBankOptions" class="fx-policy-option-grid" aria-label="Банк для курса"></div>
+                <input id="editFxBankCode" type="hidden" value="technobank" />
+              </div>
+              <div class="fx-policy-field">
+                <span class="muted-small">Критерий</span>
+                <div id="editFxRateKindSwitch" class="segmented fx-policy-segmented" aria-label="Покупка или продажа банком">
+                  <button class="segmented-btn" data-fx-rate-kind="buy" type="button">Покупка банком</button>
+                  <button class="segmented-btn active" data-fx-rate-kind="sell" type="button">Продажа банком</button>
+                </div>
+                <input id="editFxRateKind" type="hidden" value="sell" />
+              </div>
+            </div>
+            <div class="fx-policy-field">
+              <span class="muted-small">Способ оплаты</span>
+              <div id="editFxPaymentModeSwitch" class="segmented fx-policy-payment-modes" aria-label="Способ оплаты валютной операции">
+                <button class="segmented-btn active" data-fx-payment-mode="valuation" type="button">Только пересчитать</button>
+                <button class="segmented-btn" data-fx-payment-mode="direct_conversion" type="button">Пополнить и оплатить</button>
+                <button class="segmented-btn" data-fx-payment-mode="foreign_balance" type="button">С валютного остатка</button>
+              </div>
+              <input id="editFxPaymentMode" type="hidden" value="valuation" />
+              <span id="editFxPaymentModeHint" class="muted-small fx-policy-mode-hint"></span>
+            </div>
+            <div class="fx-policy-rate-row">
+              <label class="fx-policy-rate-input">
+                <span id="editFxRateLabel" class="muted-small">Курс BYN за 1 EUR</span>
+                <span class="money-input-wrap money-input-no-suffix" data-money-input-wrap>
+                  <input id="editFxRate" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Курс в BYN" title="Курс конверсии в основную валюту" />
+                </span>
+              </label>
+              <div id="editFxRateMeta" class="fx-policy-rate-meta muted-small" aria-live="polite"></div>
+            </div>
+            <span id="editFxRateHint" class="muted-small fx-rate-hint hidden" aria-live="polite"></span>
+            <div id="editFxComputedAmount" class="fx-policy-computed" aria-live="polite"></div>
+          </section>
           <input id="editNote" class="create-note-field" type="text" placeholder="Комментарий" />
 
           <div id="editReceiptBlock" class="receipt-block">

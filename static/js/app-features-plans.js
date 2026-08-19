@@ -290,6 +290,7 @@
     if (el.opFxRate) {
       el.opFxRate.value = "1";
     }
+    operationModal.resetOperationFxPolicy?.("create");
   }
 
   function hydrateCreateReceiptItems(items) {
@@ -327,6 +328,13 @@
       el.opCurrency.value = plan?.currency || (core.getCurrencyConfig?.().code || "BYN");
     }
     operationModal.setOperationKind("create", plan?.kind || "expense");
+    if (plan) {
+      operationModal.hydrateOperationFxPolicy?.("create", plan, {
+        isPlan: true,
+        preserveSnapshot: false,
+        applyCurrent: true,
+      });
+    }
     operationModal.selectCreateCategory?.(plan?.category_id ? Number(plan.category_id) : null);
     hydrateCreateReceiptItems(plan?.receipt_items || []);
     operationModal.setCreateOperationMode(state.createReceiptItems.length ? "receipt" : "common");
@@ -385,6 +393,7 @@
       recurrence_workdays_only: recurrenceEnabled && (el.planRecurrenceFrequency?.value || "monthly") === "daily" ? isWorkdaysOnlyEnabled() : false,
       recurrence_month_end: recurrenceEnabled && (el.planRecurrenceFrequency?.value || "monthly") === "monthly" ? isMonthEndModeEnabled() : false,
       recurrence_end_date: recurrenceEnabled ? (recurrenceEndDate || null) : null,
+      ...operationModal.getOperationFxPolicyPayload?.("create", { isPlan: true }),
     };
   }
 

@@ -12,6 +12,8 @@
       getCreateFxSettlementPayload,
       getEditReceiptPayload,
       getEditFxSettlementPayload,
+      getOperationFxPolicyPayload,
+      getOperationCurrencyContext,
       closeCreateModal,
       closeEditModal,
       loadOperations,
@@ -98,7 +100,8 @@
       const receiptItems = receiptPayloadGetter ? receiptPayloadGetter() : [];
       const amount = core.resolveMoneyInput(document.getElementById(amountInputId).value);
       const currency = String(document.getElementById(currencySelectId)?.value || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
-      const fxRate = core.resolveRateInput(document.getElementById(fxRateInputId)?.value || 1, 1, 6);
+      const fxContext = getOperationCurrencyContext?.(mode);
+      const fxRate = core.resolveRateInput(fxContext?.fxRate || document.getElementById(fxRateInputId)?.value || 1, 1, 6);
       const baseCurrency = core.getCurrencyConfig?.().code || "BYN";
       const hasReceiptItems = receiptItems.length > 0;
       const canDeriveAmountFromReceipt = hasReceiptItems && amount.empty;
@@ -134,6 +137,11 @@
         fxRateInputId: "opFxRate",
       });
       payload.fx_settlement = getCreateFxSettlementPayload ? getCreateFxSettlementPayload() : null;
+      Object.assign(payload, getOperationFxPolicyPayload?.("create", { isPlan: false }) || {});
+      if (payload.fx_rate_source) {
+        delete payload.fx_rate;
+        payload.fx_settlement = null;
+      }
       delete payload._mode;
       return payload;
     }
@@ -151,6 +159,11 @@
         fxRateInputId: "editFxRate",
       });
       payload.fx_settlement = getEditFxSettlementPayload ? getEditFxSettlementPayload() : null;
+      Object.assign(payload, getOperationFxPolicyPayload?.("edit", { isPlan: false }) || {});
+      if (payload.fx_rate_source) {
+        delete payload.fx_rate;
+        payload.fx_settlement = null;
+      }
       delete payload._mode;
       return payload;
     }

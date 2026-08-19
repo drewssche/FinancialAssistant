@@ -3,7 +3,17 @@ from datetime import date, datetime
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
-from app.db.models import AuthIdentity, FxBankRate, FxRateSnapshot, FxTrade, UserPreference
+from app.db.models import (
+    AuthIdentity,
+    FxBankRate,
+    FxRateSnapshot,
+    FxTrade,
+    PlanOperation,
+    User,
+    UserPreference,
+)
+
+NBRB_RATE_SOURCES = ("nbrb_auto_unit", "nbrb_history_unit")
 
 
 class CurrencyRepository:
@@ -68,6 +78,11 @@ class CurrencyRepository:
         )
         return list(self.db.scalars(stmt))
 
+    def lock_user_currency_ledger(self, *, user_id: int) -> None:
+        # The user row is guaranteed to exist even when their ledger is empty,
+        # which makes it a stable lock target for concurrent balance changes.
+        self.db.scalar(select(User.id).where(User.id == user_id).with_for_update())
+
     def list_trades_for_period(
         self,
         *,
@@ -100,6 +115,46 @@ class CurrencyRepository:
         for row in rows:
             latest.setdefault(row.currency, row)
         return latest
+
+    def get_latest_nbrb_rate_map(self, *, user_id: int) -> dict[str, FxRateSnapshot]:
+        rows = self.db.execute(
+            select(FxRateSnapshot)
+            .where(
+                FxRateSnapshot.user_id == user_id,
+                FxRateSnapshot.source.in_(NBRB_RATE_SOURCES),
+            )
+            .order_by(FxRateSnapshot.currency.asc(), FxRateSnapshot.rate_date.desc(), FxRateSnapshot.id.desc())
+        ).scalars()
+        latest: dict[str, FxRateSnapshot] = {}
+        for row in rows:
+            latest.setdefault(row.currency, row)
+        return latest
+
+    def get_nbrb_rate_as_of(
+        self,
+        *,
+        user_id: int,
+        currency: str,
+        rate_date: date,
+    ) -> FxRateSnapshot | None:
+        """Return the latest known NBRB rate on or before ``rate_date``.
+
+        The preceding-day lookup is intentional: NBRB does not publish a new
+        snapshot for every weekend/holiday, while an operation still needs the
+        rate that was effective on that date.
+        """
+        stmt = (
+            select(FxRateSnapshot)
+            .where(
+                FxRateSnapshot.user_id == user_id,
+                FxRateSnapshot.currency == currency,
+                FxRateSnapshot.rate_date <= rate_date,
+                FxRateSnapshot.source.in_(NBRB_RATE_SOURCES),
+            )
+            .order_by(FxRateSnapshot.rate_date.desc(), FxRateSnapshot.id.desc())
+            .limit(1)
+        )
+        return self.db.scalar(stmt)
 
     def get_latest_rate_triplet_map(
         self,
@@ -203,6 +258,24 @@ class CurrencyRepository:
         stmt = select(UserPreference).order_by(UserPreference.user_id.asc())
         return list(self.db.scalars(stmt))
 
+    def list_active_plan_bank_requirements(self, *, user_id: int) -> list[tuple[str, str]]:
+        stmt = (
+            select(PlanOperation.fx_bank_code, PlanOperation.currency)
+            .where(
+                PlanOperation.user_id == user_id,
+                PlanOperation.status == "active",
+                PlanOperation.fx_rate_source == "bank",
+                PlanOperation.fx_bank_code.is_not(None),
+                PlanOperation.currency != PlanOperation.base_currency,
+            )
+            .distinct()
+        )
+        return [
+            (str(bank_code).lower(), str(currency).upper())
+            for bank_code, currency in self.db.execute(stmt).all()
+            if bank_code and currency
+        ]
+
     def get_latest_bank_rate_map(self) -> dict[tuple[str, str, str], FxBankRate]:
         rows = self.db.scalars(
             select(FxBankRate).order_by(
@@ -229,6 +302,23 @@ class CurrencyRepository:
             stmt = stmt.where(FxBankRate.currency.in_(currencies))
         stmt = stmt.order_by(FxBankRate.bank_code.asc(), FxBankRate.currency.asc())
         return list(self.db.scalars(stmt))
+
+    def get_bank_rate(
+        self,
+        *,
+        bank_code: str,
+        currency: str,
+        base_currency: str,
+        channel: str,
+    ) -> FxBankRate | None:
+        return self.db.scalar(
+            select(FxBankRate).where(
+                FxBankRate.bank_code == bank_code,
+                FxBankRate.currency == currency,
+                FxBankRate.base_currency == base_currency,
+                FxBankRate.channel == channel,
+            )
+        )
 
     def upsert_bank_rate(
         self,

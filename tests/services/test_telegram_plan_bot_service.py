@@ -1,5 +1,6 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import create_engine
@@ -8,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.db.base import Base
 from app.db.models import AuthIdentity, Operation, PlanOperation, User, UserPreference
+from app.repositories.currency_repo import CurrencyRepository
 from app.services.telegram_plan_bot_service import (
     TelegramPlanAlreadyCompletedError,
     TelegramPlanBotService,
@@ -63,6 +65,47 @@ def test_confirm_plan_from_telegram_confirms_operation(db_session: Session):
     assert "Купить кофе" in result.message_text
     operations = db_session.query(Operation).all()
     assert len(operations) == 1
+
+
+def test_confirm_plan_from_telegram_labels_bank_rate_from_bank_perspective(
+    db_session: Session,
+    monkeypatch,
+):
+    plan = db_session.get(PlanOperation, 1)
+    plan.amount = Decimal("229.00")
+    plan.original_amount = Decimal("229.00")
+    plan.currency = "EUR"
+    plan.base_currency = "BYN"
+    plan.fx_rate_source = "bank"
+    plan.fx_bank_code = "technobank"
+    plan.fx_bank_channel = "cash"
+    plan.fx_rate_kind = "sell"
+    plan.fx_payment_mode = "direct_conversion"
+    db_session.commit()
+    now = datetime.now(timezone.utc)
+    quote = SimpleNamespace(
+        bank_code="technobank",
+        bank_name="Технобанк",
+        currency="EUR",
+        base_currency="BYN",
+        scale=1,
+        buy_rate=Decimal("3.49"),
+        sell_rate=Decimal("3.53"),
+        channel="cash",
+        location_name="Минск",
+        quoted_at=now,
+        fetched_at=now,
+    )
+    monkeypatch.setattr(CurrencyRepository, "get_bank_rate", lambda _repo, **_kwargs: quote)
+
+    result = TelegramPlanBotService(db_session).confirm_plan_from_telegram(
+        telegram_id="100500",
+        plan_id=1,
+    )
+
+    assert "229.00 EUR → 808.37 BYN" in result.message_text
+    assert "Технобанк · продажа банком · наличные" in result.message_text
+    assert "3.530000 BYN за 1 EUR" in result.message_text
 
 
 def test_confirm_plan_from_telegram_rejects_missing_plan(db_session: Session):

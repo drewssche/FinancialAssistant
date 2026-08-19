@@ -185,7 +185,8 @@
     if (currency === baseCurrency) {
       return `<span class="amount-${kindClass}">${originalMoney}</span>`;
     }
-    return `<span class="amount-${kindClass}">${originalMoney}</span><div class="muted-small">≈ ${core.formatMoney(baseAmount, { currency: baseCurrency })}</div>`;
+    const provenance = window.App.getRuntimeModule?.("fx-policy-display")?.formatFxPolicyProvenance?.(item) || "";
+    return `<span class="amount-${kindClass}">${originalMoney}</span><div class="muted-small">≈ ${core.formatMoney(baseAmount, { currency: baseCurrency })}</div>${provenance ? `<div class="muted-small fx-policy-provenance">${escapeHtml(provenance)}</div>` : ""}`;
   }
 
   function formatFlowAmountHtml(item) {

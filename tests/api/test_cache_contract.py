@@ -138,7 +138,7 @@ def test_plans_cache_key_shape_is_namespaced_and_parameterized():
         q="коммуналка",
         kind="expense",
     )
-    assert key == "plans:v1:u:7:view:history:q:коммуналка:kind:expense"
+    assert key == "plans:v2:u:7:view:history:q:коммуналка:kind:expense"
 
 
 def test_item_templates_list_cache_key_shape_is_namespaced_and_parameterized():
@@ -189,7 +189,7 @@ def test_operations_summary_cache_key_shape_is_namespaced_and_parameterized():
     )
     assert (
         key
-        == "ops:v1:u:7:view:summary:page:-:page_size:-:sort_by:-:sort_dir:-:kind:expense:date_from:2026-03-01:date_to:2026-03-31:category_id:5:q:еда:quick_view:large:currency_scope:-"
+        == "ops:v2:u:7:view:summary:page:-:page_size:-:sort_by:-:sort_dir:-:kind:expense:date_from:2026-03-01:date_to:2026-03-31:category_id:5:q:еда:quick_view:large:currency_scope:-"
     )
 
 
@@ -210,7 +210,7 @@ def test_operations_list_cache_key_shape_is_namespaced_and_parameterized():
     )
     assert (
         key
-        == "ops:v1:u:7:view:list:page:2:page_size:20:sort_by:operation_date:sort_dir:desc:kind:expense:date_from:2026-03-01:date_to:2026-03-31:category_id:5:q:еда:quick_view:receipt:currency_scope:-"
+        == "ops:v2:u:7:view:list:page:2:page_size:20:sort_by:operation_date:sort_dir:desc:kind:expense:date_from:2026-03-01:date_to:2026-03-31:category_id:5:q:еда:quick_view:receipt:currency_scope:-"
     )
 
 

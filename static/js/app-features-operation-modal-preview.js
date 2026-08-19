@@ -7,6 +7,15 @@
     getCategoryMetaById,
     getDebtPreviewSnapshot,
   }) {
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
     function getPlansFeature() {
       return window.App.getRuntimeModule?.("plans") || {};
     }
@@ -111,7 +120,8 @@
       if (currency === baseCurrency) {
         return `<span class="amount-${kindClass}">${originalMoney}</span>`;
       }
-      return `<span class="amount-${kindClass}">${originalMoney}</span><div class="muted-small">≈ ${core.formatMoney(baseAmount, { currency: baseCurrency })}</div>`;
+      const provenance = window.App.getRuntimeModule?.("fx-policy-display")?.formatFxPolicyProvenance?.(item) || "";
+      return `<span class="amount-${kindClass}">${originalMoney}</span><div class="muted-small">≈ ${core.formatMoney(baseAmount, { currency: baseCurrency })}</div>${provenance ? `<div class="muted-small fx-policy-provenance">${escapeHtml(provenance)}</div>` : ""}`;
     }
 
     function getCreateFormPreviewItem() {
@@ -164,7 +174,10 @@
       const operationDate = core.parseDateInputValue(document.getElementById("opDate").value) || core.getTodayIso();
       const operationCurrency = String(el.opCurrency?.value || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
       const baseCurrency = core.getCurrencyConfig?.().code || "BYN";
-      const fxRate = Number(core.resolveRateInput(el.opFxRate?.value || 1, 1, 6).previewValue || 1);
+      const operationModal = window.App.getRuntimeModule?.("operation-modal") || {};
+      const fxContext = operationModal.getOperationCurrencyContext?.("create");
+      const fxPolicy = operationModal.getOperationFxPolicyPreview?.("create") || {};
+      const fxRate = Number(fxContext?.fxRate || 1);
       const baseAmount = operationCurrency === baseCurrency ? amountResolved : amountResolved * fxRate;
       return {
         id: 0,
@@ -175,7 +188,8 @@
         original_amount: core.formatAmount(amountResolved),
         currency: operationCurrency,
         base_currency: baseCurrency,
-        fx_rate: core.resolveRateInput(el.opFxRate?.value || 1, 1, 6).previewFormatted,
+        fx_rate: core.resolveRateInput(fxRate, 1, 6).previewFormatted,
+        ...fxPolicy,
         note: noteRaw,
         receipt_items: el.opOperationMode?.value === "receipt" ? receiptItems : [],
       };
@@ -186,7 +200,10 @@
       const amountResolved = core.resolveMoneyInput(document.getElementById("editAmount").value);
       const operationCurrency = String(el.editCurrency?.value || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
       const baseCurrency = core.getCurrencyConfig?.().code || "BYN";
-      const fxRate = Number(core.resolveRateInput(el.editFxRate?.value || 1, 1, 6).previewValue || 1);
+      const operationModal = window.App.getRuntimeModule?.("operation-modal") || {};
+      const fxContext = operationModal.getOperationCurrencyContext?.("edit");
+      const fxPolicy = operationModal.getOperationFxPolicyPreview?.("edit") || {};
+      const fxRate = Number(fxContext?.fxRate || 1);
       const originalAmount = Number(amountResolved.previewValue || 0);
       const baseAmount = operationCurrency === baseCurrency ? originalAmount : originalAmount * fxRate;
       return {
@@ -198,7 +215,8 @@
         original_amount: amountResolved.previewFormatted,
         currency: operationCurrency,
         base_currency: baseCurrency,
-        fx_rate: core.resolveRateInput(el.editFxRate?.value || 1, 1, 6).previewFormatted,
+        fx_rate: core.resolveRateInput(fxRate, 1, 6).previewFormatted,
+        ...fxPolicy,
         note: document.getElementById("editNote").value || "",
         receipt_items: el.editOperationMode?.value === "receipt" ? (state.editReceiptItems || []) : [],
       };

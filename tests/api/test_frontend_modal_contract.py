@@ -340,3 +340,58 @@ def test_reopened_discounted_receipt_uses_purchase_price_for_total_and_discrepan
     assert "regular_unit_price: row.regular_unit_price || 0" in modal
     assert "unit_price: row.unit_price || 0" in modal
     assert "regular_unit_price" not in receipt.split("function receiptLineTotal(item)", 1)[1].split("}", 1)[0]
+
+
+def test_foreign_operation_and_plan_forms_expose_explicit_fx_policy_contract():
+    modals = (REPO_ROOT / "static/js/templates/modals.js").read_text(encoding="utf-8")
+    policy = (REPO_ROOT / "static/js/app-features-operation-modal-fx-policy.js").read_text(encoding="utf-8")
+    mutations = (REPO_ROOT / "static/js/app-features-operations-mutations.js").read_text(encoding="utf-8")
+    plans = (REPO_ROOT / "static/js/app-features-plans.js").read_text(encoding="utf-8")
+    plan_render = (REPO_ROOT / "static/js/app-features-plans-render.js").read_text(encoding="utf-8")
+    preview = (REPO_ROOT / "static/js/app-features-operation-modal-preview.js").read_text(encoding="utf-8")
+    manifest = MANIFEST_JS.read_text(encoding="utf-8")
+
+    for prefix in ("op", "edit"):
+        for suffix in (
+            "FxRateSourceSwitch",
+            "FxBankOptions",
+            "FxRateKindSwitch",
+            "FxPaymentModeSwitch",
+            "FxRateRefreshBtn",
+            "FxRateMeta",
+            "FxComputedAmount",
+        ):
+            assert f'id="{prefix}{suffix}"' in modals
+    assert "Покупка банком" in modals
+    assert "Продажа банком" in modals
+    assert "Только пересчитать" in modals
+    assert "Пополнить и оплатить" in modals
+    assert "С валютного остатка" in modals
+    assert 'value="nbrb"' in modals
+    assert 'value="valuation"' in modals
+
+    assert '"/static/js/app-features-operation-modal-fx-policy.js"' in manifest
+    assert manifest.index("app-features-operation-modal-fx-policy.js") < manifest.index(
+        "app-features-operation-modal-currency.js"
+    )
+    assert "/api/v1/currency/rate-options?${params.toString()}" in policy
+    assert "/api/v1/currency/rate-options/refresh?" in policy
+    assert 'params.set("as_of", context.operationDate)' in policy
+    assert "/api/v1/currency/rates/history/fill?" in policy
+    assert "/api/v1/currency/rates/history?${params.toString()}" not in policy
+    assert 'params.set("bank_code", context.bankCode)' in policy
+    assert 'fx_manual_rate: context.source === "manual"' in policy
+    assert "core.resolveRateInput(context.displayRate, 1, 6).formatted" in policy
+    assert "fx_bank_channel:" in policy
+    assert "uiState[mode].refreshRequested || uiState[mode].policyDirty" in policy
+    assert "uiState[mode] === current" in policy
+    assert 'if (n.kind?.value === "income" && nextValue !== "valuation")' in policy
+    assert 'return {};' in policy
+
+    assert "delete payload.fx_rate;" in mutations
+    assert "payload.fx_settlement = null;" in mutations
+    assert "...operationModal.getOperationFxPolicyPayload?.(\"create\", { isPlan: true })" in plans
+    assert "item?.current_rate ?? item?.fx_rate ?? 0" in plan_render
+    assert "item?.current_rate_date || item?.fx_rate_date" in plan_render
+    assert "escapeHtml(provenance)" in plan_render
+    assert "escapeHtml(provenance)" in preview

@@ -17,6 +17,8 @@ from app.db.models import WorkDayOverride, WorkProfile
 from app.repositories.currency_repo import CurrencyRepository
 from app.repositories.plan_repo import PlanRepository
 from app.services.activity_service import ActivityService
+from app.services.bank_currency_rate_registry import BANK_RATE_PROVIDERS, display_scale
+from app.services.fx_rate_policy_service import FxRatePolicyService, FxRateResolution
 from app.services.operation_service import OperationService
 from app.services.plan_reminder_service import PlanReminderService
 from app.services.work_calendar import PAYROLL_CALENDAR_OVERRIDE_STATUSES, next_linked_payment_date
@@ -28,6 +30,12 @@ class PlanService:
         "kind",
         "original_amount",
         "currency",
+        "fx_rate_source",
+        "fx_bank_code",
+        "fx_bank_channel",
+        "fx_rate_kind",
+        "fx_manual_rate",
+        "fx_payment_mode",
         "scheduled_date",
         "category_id",
         "note",
@@ -43,6 +51,12 @@ class PlanService:
         "kind": "Тип",
         "original_amount": "Сумма",
         "currency": "Валюта",
+        "fx_rate_source": "Источник курса",
+        "fx_bank_code": "Банк",
+        "fx_bank_channel": "Канал курса",
+        "fx_rate_kind": "Курс банка",
+        "fx_manual_rate": "Ручной курс",
+        "fx_payment_mode": "Способ оплаты",
         "scheduled_date": "Дата",
         "category_id": "Категория",
         "note": "Комментарий",
@@ -114,6 +128,12 @@ class PlanService:
         kind: str,
         amount: Decimal | None,
         currency: str = "BYN",
+        fx_rate_source: str = "nbrb",
+        fx_bank_code: str | None = None,
+        fx_bank_channel: str | None = None,
+        fx_rate_kind: str | None = None,
+        fx_manual_rate: Decimal | None = None,
+        fx_payment_mode: str = "valuation",
         scheduled_date: date,
         category_id: int | None,
         note: str | None,
@@ -131,6 +151,17 @@ class PlanService:
         resolved_amount = self.operation_service._resolve_operation_amount(amount=amount, receipt_total=receipt_total)
         base_currency = self.operation_service._get_user_base_currency(user_id)
         normalized_currency = self.operation_service._normalize_currency(currency or base_currency, default=base_currency)
+        fx_policy = self._normalize_plan_fx_policy(
+            kind=kind,
+            currency=normalized_currency,
+            base_currency=base_currency,
+            fx_rate_source=fx_rate_source,
+            fx_bank_code=fx_bank_code,
+            fx_bank_channel=fx_bank_channel,
+            fx_rate_kind=fx_rate_kind,
+            fx_manual_rate=fx_manual_rate,
+            fx_payment_mode=fx_payment_mode,
+        )
         recurrence_frequency, recurrence_interval, recurrence_weekdays, recurrence_workdays_only, recurrence_month_end, recurrence_end_date = self._validate_recurrence(
             recurrence_enabled=recurrence_enabled,
             recurrence_frequency=recurrence_frequency,
@@ -148,6 +179,7 @@ class PlanService:
             original_amount=resolved_amount,
             currency=normalized_currency,
             base_currency=base_currency,
+            **fx_policy,
             scheduled_date=scheduled_date,
             category_id=category_id,
             note=note,
@@ -233,6 +265,48 @@ class PlanService:
         updates["base_currency"] = base_currency
         if "amount" in updates:
             updates["original_amount"] = updates["amount"]
+        next_kind = str(updates.get("kind", item.kind))
+        next_currency = self.operation_service._normalize_currency(
+            updates.get("currency", item.currency),
+            default=base_currency,
+        )
+        updates.update(
+            self._normalize_plan_fx_policy(
+                kind=next_kind,
+                currency=next_currency,
+                base_currency=base_currency,
+                fx_rate_source=(
+                    updates["fx_rate_source"]
+                    if "fx_rate_source" in updates
+                    else getattr(item, "fx_rate_source", "nbrb")
+                ),
+                fx_bank_code=(
+                    updates["fx_bank_code"]
+                    if "fx_bank_code" in updates
+                    else getattr(item, "fx_bank_code", None)
+                ),
+                fx_bank_channel=(
+                    updates["fx_bank_channel"]
+                    if "fx_bank_channel" in updates
+                    else getattr(item, "fx_bank_channel", None)
+                ),
+                fx_rate_kind=(
+                    updates["fx_rate_kind"]
+                    if "fx_rate_kind" in updates
+                    else getattr(item, "fx_rate_kind", None)
+                ),
+                fx_manual_rate=(
+                    updates["fx_manual_rate"]
+                    if "fx_manual_rate" in updates
+                    else getattr(item, "fx_manual_rate", None)
+                ),
+                fx_payment_mode=(
+                    updates["fx_payment_mode"]
+                    if "fx_payment_mode" in updates
+                    else getattr(item, "fx_payment_mode", "valuation")
+                ),
+            )
+        )
         next_scheduled_date = updates.get("scheduled_date", item.scheduled_date)
         next_recurrence_enabled = updates.get("recurrence_enabled", item.recurrence_enabled)
         next_recurrence_frequency = updates["recurrence_frequency"] if "recurrence_frequency" in updates else item.recurrence_frequency
@@ -351,7 +425,14 @@ class PlanService:
         )
 
     def confirm_plan(self, *, user_id: int, plan_id: int) -> dict:
-        row = self.repo.get_by_id(user_id=user_id, plan_id=plan_id)
+        try:
+            return self._confirm_plan_transaction(user_id=user_id, plan_id=plan_id)
+        except Exception:
+            self.db.rollback()
+            raise
+
+    def _confirm_plan_transaction(self, *, user_id: int, plan_id: int) -> dict:
+        row = self.repo.get_by_id_for_update(user_id=user_id, plan_id=plan_id)
         if not row:
             raise LookupError("Plan not found")
         item = row.PlanOperation
@@ -359,15 +440,33 @@ class PlanService:
         effective_date = date.today()
         if item.status in {"confirmed", "skipped"} and not item.recurrence_enabled:
             raise ValueError("Plan is already completed")
+        if (
+            item.recurrence_enabled
+            and item.last_confirmed_at is not None
+            and item.last_confirmed_at.date() == datetime.now(timezone.utc).date()
+        ):
+            raise ValueError("This recurring plan occurrence is already confirmed today")
         receipt_map = self.repo.list_receipt_items_for_plans(user_id=user_id, plan_ids=[plan_id])
         receipt_items = receipt_map.get(plan_id, [])
         original_amount = self._get_plan_original_amount(item)
+        resolution = self._resolve_plan_current_resolution(item=item, strict=True)
+        if resolution is None:  # pragma: no cover - strict resolver either returns or raises
+            raise ValueError("Unable to resolve plan FX rate")
+        payment_mode = FxRatePolicyService(self.db).normalize_payment_mode(
+            getattr(item, "fx_payment_mode", "valuation")
+        )
         operation = self.operation_service.create_operation(
             user_id=user_id,
             kind=item.kind,
             amount=original_amount,
             currency=getattr(item, "currency", "BYN"),
-            fx_rate=self._resolve_plan_current_rate(item=item),
+            fx_rate=resolution.rate,
+            fx_rate_source=resolution.source,
+            fx_bank_code=resolution.bank_code,
+            fx_bank_channel=resolution.bank_channel,
+            fx_rate_kind=resolution.rate_kind,
+            fx_payment_mode=payment_mode,
+            fx_policy_snapshot=resolution.operation_snapshot(payment_mode=payment_mode),
             operation_date=effective_date,
             category_id=item.category_id,
             note=item.note,
@@ -385,6 +484,7 @@ class PlanService:
                 }
                 for row_item in receipt_items
             ],
+            commit=False,
         )
         item.confirmed_operation_id = int(operation["id"])
         item.confirm_count = int(item.confirm_count or 0) + 1
@@ -396,7 +496,22 @@ class PlanService:
             operation_id=int(operation["id"]),
             event_type="confirmed",
             kind=item.kind,
-            amount=item.amount,
+            amount=operation["amount"],
+            original_amount=operation["original_amount"],
+            currency=operation["currency"],
+            base_currency=operation["base_currency"],
+            fx_rate=operation["fx_rate"],
+            fx_rate_source=operation.get("fx_rate_source"),
+            fx_bank_code=operation.get("fx_bank_code"),
+            fx_bank_name=operation.get("fx_bank_name"),
+            fx_bank_channel=operation.get("fx_bank_channel"),
+            fx_rate_kind=operation.get("fx_rate_kind"),
+            fx_rate_scale=operation.get("fx_rate_scale"),
+            fx_rate_date=operation.get("fx_rate_date"),
+            fx_quoted_at=operation.get("fx_quoted_at"),
+            fx_fetched_at=operation.get("fx_fetched_at"),
+            fx_rate_stale=operation.get("fx_rate_stale"),
+            fx_payment_mode=operation.get("fx_payment_mode"),
             effective_date=effective_date,
             note=item.note,
             category_name=category_name,
@@ -447,6 +562,7 @@ class PlanService:
         )
         self.db.commit()
         invalidate_plans_cache(user_id)
+        self.operation_service._invalidate_caches(user_id)
         log_background_job_event(
             "plan_service",
             "plan_completed",
@@ -472,13 +588,43 @@ class PlanService:
             raise ValueError("Plan is already completed")
         item.skip_count = int(item.skip_count or 0) + 1
         item.last_skipped_at = datetime.now(timezone.utc)
+        skipped_resolution = self._resolve_plan_current_resolution(item=item, strict=False)
+        skipped_original_amount = self._get_plan_original_amount(item)
+        skipped_base_amount = (
+            self.operation_service._money(skipped_original_amount * skipped_resolution.rate)
+            if skipped_resolution
+            else (
+                skipped_original_amount
+                if str(item.currency).upper() == str(item.base_currency).upper()
+                else Decimal("0.00")
+            )
+        )
         self.repo.create_event(
             user_id=user_id,
             plan_id=int(item.id),
             operation_id=None,
             event_type="skipped",
             kind=item.kind,
-            amount=item.amount,
+            amount=skipped_base_amount,
+            original_amount=skipped_original_amount,
+            currency=str(getattr(item, "currency", "BYN") or "BYN").upper(),
+            base_currency=str(getattr(item, "base_currency", "BYN") or "BYN").upper(),
+            fx_rate=skipped_resolution.rate if skipped_resolution else None,
+            fx_rate_source=getattr(item, "fx_rate_source", "nbrb"),
+            fx_bank_code=getattr(item, "fx_bank_code", None),
+            fx_bank_name=(
+                skipped_resolution.bank_name
+                if skipped_resolution
+                else BANK_RATE_PROVIDERS.get(getattr(item, "fx_bank_code", None) or "", {}).get("name")
+            ),
+            fx_bank_channel=getattr(item, "fx_bank_channel", None),
+            fx_rate_kind=getattr(item, "fx_rate_kind", None),
+            fx_rate_scale=skipped_resolution.scale if skipped_resolution else display_scale(item.currency),
+            fx_rate_date=skipped_resolution.rate_date if skipped_resolution else None,
+            fx_quoted_at=skipped_resolution.quoted_at if skipped_resolution else None,
+            fx_fetched_at=skipped_resolution.fetched_at if skipped_resolution else None,
+            fx_rate_stale=skipped_resolution.stale if skipped_resolution else None,
+            fx_payment_mode=getattr(item, "fx_payment_mode", "valuation"),
             effective_date=effective_date,
             note=item.note,
             category_name=category_name,
@@ -571,8 +717,8 @@ class PlanService:
         currency = str(getattr(item, "currency", "BYN") or "BYN").upper()
         base_currency = str(getattr(item, "base_currency", "BYN") or "BYN").upper()
         original_amount = self._get_plan_original_amount(item)
-        current_rate_row = self.currency_repo.get_latest_rate_map(user_id=int(item.user_id)).get(currency) if currency != base_currency else None
-        current_rate = self.operation_service._rate(current_rate_row.rate) if current_rate_row else None
+        resolution = self._resolve_plan_current_resolution(item=item, strict=False)
+        current_rate = resolution.rate if resolution else (Decimal("1.000000") if currency == base_currency else None)
         current_base_amount = self._resolve_live_plan_base_amount(
             amount=original_amount,
             currency=currency,
@@ -586,8 +732,32 @@ class PlanService:
             "original_amount": original_amount,
             "currency": currency,
             "base_currency": base_currency,
+            "fx_rate_source": getattr(item, "fx_rate_source", "nbrb") or "nbrb",
+            "fx_bank_code": getattr(item, "fx_bank_code", None),
+            "fx_bank_name": (
+                resolution.bank_name
+                if resolution
+                else (
+                    BANK_RATE_PROVIDERS.get(getattr(item, "fx_bank_code", None) or "", {}).get("name")
+                    if getattr(item, "fx_bank_code", None)
+                    else None
+                )
+            ),
+            "fx_bank_channel": getattr(item, "fx_bank_channel", None),
+            "fx_rate_kind": getattr(item, "fx_rate_kind", None),
+            "fx_manual_rate": (
+                self.operation_service._rate(item.fx_manual_rate)
+                if getattr(item, "fx_manual_rate", None) is not None
+                else None
+            ),
+            "fx_payment_mode": getattr(item, "fx_payment_mode", "valuation") or "valuation",
             "current_rate": current_rate,
-            "current_rate_date": current_rate_row.rate_date if current_rate_row else None,
+            "current_rate_scale": resolution.scale if resolution else display_scale(currency),
+            "current_rate_display": resolution.display_rate if resolution else None,
+            "current_rate_date": resolution.rate_date if resolution else None,
+            "current_rate_quoted_at": resolution.quoted_at if resolution else None,
+            "current_rate_fetched_at": resolution.fetched_at if resolution else None,
+            "current_rate_stale": bool(resolution.stale) if resolution else False,
             "current_base_amount": current_base_amount,
             "scheduled_date": item.scheduled_date,
             "due_date": item.scheduled_date,
@@ -631,6 +801,76 @@ class PlanService:
             return base_amount
         return original_amount
 
+    def _normalize_plan_fx_policy(
+        self,
+        *,
+        kind: str,
+        currency: str,
+        base_currency: str,
+        fx_rate_source: str | None,
+        fx_bank_code: str | None,
+        fx_bank_channel: str | None,
+        fx_rate_kind: str | None,
+        fx_manual_rate: Decimal | None,
+        fx_payment_mode: str | None,
+    ) -> dict:
+        policy = FxRatePolicyService(self.db)
+        source = policy.normalize_source(fx_rate_source, default="nbrb")
+        if source is None:  # defensive; default above always resolves it
+            source = "nbrb"
+        payment_mode = policy.normalize_payment_mode(fx_payment_mode)
+        policy.validate_payment_mode(
+            kind=kind,
+            currency=currency,
+            base_currency=base_currency,
+            payment_mode=payment_mode,
+        )
+        if currency == base_currency:
+            return {
+                "fx_rate_source": "nbrb",
+                "fx_bank_code": None,
+                "fx_bank_channel": None,
+                "fx_rate_kind": None,
+                "fx_manual_rate": None,
+                "fx_payment_mode": "valuation",
+            }
+        if source == "bank":
+            bank_code = policy.normalize_bank_code(fx_bank_code)
+            if bank_code is None:
+                raise ValueError("fx_bank_code is required for bank rate source")
+            channel = policy.normalize_bank_channel(bank_code=bank_code, value=fx_bank_channel)
+            rate_kind = policy.normalize_rate_kind(fx_rate_kind)
+            if rate_kind is None:
+                raise ValueError("fx_rate_kind is required for bank rate source")
+            return {
+                "fx_rate_source": source,
+                "fx_bank_code": bank_code,
+                "fx_bank_channel": channel,
+                "fx_rate_kind": rate_kind,
+                "fx_manual_rate": None,
+                "fx_payment_mode": payment_mode,
+            }
+        if source == "manual":
+            manual_rate = self.operation_service._rate(fx_manual_rate)
+            if manual_rate <= 0:
+                raise ValueError("fx_manual_rate is required for manual rate source")
+            return {
+                "fx_rate_source": source,
+                "fx_bank_code": None,
+                "fx_bank_channel": None,
+                "fx_rate_kind": None,
+                "fx_manual_rate": manual_rate,
+                "fx_payment_mode": payment_mode,
+            }
+        return {
+            "fx_rate_source": "nbrb",
+            "fx_bank_code": None,
+            "fx_bank_channel": None,
+            "fx_rate_kind": None,
+            "fx_manual_rate": None,
+            "fx_payment_mode": payment_mode,
+        }
+
     def _resolve_live_plan_base_amount(
         self,
         *,
@@ -645,15 +885,33 @@ class PlanService:
             return self.operation_service._money(0)
         return self.operation_service._money(Decimal(amount) * Decimal(current_rate))
 
-    def _resolve_plan_current_rate(self, *, item) -> Decimal | None:
+    def _resolve_plan_current_resolution(
+        self,
+        *,
+        item,
+        strict: bool = True,
+    ) -> FxRateResolution | None:
         currency = str(getattr(item, "currency", "BYN") or "BYN").upper()
         base_currency = str(getattr(item, "base_currency", "BYN") or "BYN").upper()
-        if currency == base_currency:
-            return Decimal("1.000000")
-        latest_rate = self.currency_repo.get_latest_rate_map(user_id=int(item.user_id)).get(currency)
-        if not latest_rate:
-            raise ValueError(f"Нет текущего курса для {currency}")
-        return self.operation_service._rate(latest_rate.rate)
+        try:
+            return FxRatePolicyService(self.db).resolve(
+                user_id=int(item.user_id),
+                currency=currency,
+                base_currency=base_currency,
+                source=getattr(item, "fx_rate_source", "nbrb") or "nbrb",
+                bank_code=getattr(item, "fx_bank_code", None),
+                bank_channel=getattr(item, "fx_bank_channel", None),
+                rate_kind=getattr(item, "fx_rate_kind", None),
+                manual_rate=getattr(item, "fx_manual_rate", None),
+            )
+        except ValueError:
+            if strict:
+                raise
+            return None
+
+    def _resolve_plan_current_rate(self, *, item) -> Decimal | None:
+        resolution = self._resolve_plan_current_resolution(item=item, strict=True)
+        return resolution.rate if resolution else None
 
     def _display_status(self, item) -> str:
         if item.status in {"confirmed", "skipped"}:
@@ -666,6 +924,12 @@ class PlanService:
         return "upcoming"
 
     def _serialize_event_row(self, item) -> dict:
+        fx_rate = (
+            self.operation_service._rate(item.fx_rate)
+            if getattr(item, "fx_rate", None) is not None
+            else None
+        )
+        fx_rate_scale = int(item.fx_rate_scale) if getattr(item, "fx_rate_scale", None) else None
         return {
             "id": int(item.id),
             "plan_id": int(item.plan_id),
@@ -673,6 +937,30 @@ class PlanService:
             "event_type": item.event_type,
             "kind": item.kind,
             "amount": self.operation_service._money(item.amount),
+            "original_amount": (
+                self.operation_service._money(item.original_amount)
+                if getattr(item, "original_amount", None) is not None
+                else None
+            ),
+            "currency": getattr(item, "currency", None),
+            "base_currency": getattr(item, "base_currency", None),
+            "fx_rate": fx_rate,
+            "fx_rate_source": getattr(item, "fx_rate_source", None),
+            "fx_bank_code": getattr(item, "fx_bank_code", None),
+            "fx_bank_name": getattr(item, "fx_bank_name", None),
+            "fx_bank_channel": getattr(item, "fx_bank_channel", None),
+            "fx_rate_kind": getattr(item, "fx_rate_kind", None),
+            "fx_rate_scale": fx_rate_scale,
+            "fx_rate_display": (
+                self.operation_service._rate(fx_rate * Decimal(fx_rate_scale))
+                if fx_rate is not None and fx_rate_scale is not None
+                else None
+            ),
+            "fx_rate_date": getattr(item, "fx_rate_date", None),
+            "fx_quoted_at": getattr(item, "fx_quoted_at", None),
+            "fx_fetched_at": getattr(item, "fx_fetched_at", None),
+            "fx_rate_stale": getattr(item, "fx_rate_stale", None),
+            "fx_payment_mode": getattr(item, "fx_payment_mode", None),
             "effective_date": item.effective_date,
             "note": item.note,
             "category_name": item.category_name,

@@ -157,6 +157,31 @@
     min-width: 0;
   }
 
+  .fx-policy-head,
+  .fx-policy-rate-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fx-policy-refresh,
+  .fx-policy-rate-input {
+    width: 100%;
+    max-width: none;
+  }
+
+  .fx-policy-bank-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fx-policy-option-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fx-policy-rate-meta {
+    justify-items: start;
+    text-align: left;
+  }
+
   .amount-currency-combo {
     grid-template-columns: minmax(0, 1fr) max-content;
   }

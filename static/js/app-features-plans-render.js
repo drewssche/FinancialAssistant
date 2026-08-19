@@ -7,6 +7,15 @@
       getPlanBaseAmountValue,
     } = deps;
 
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
     function getPlanDisplayCategories(item) {
       const categories = core.getReceiptCategoryMetas
         ? core.getReceiptCategoryMetas(item?.receipt_items, item?.category_id, getCategoryMetaById)
@@ -34,10 +43,15 @@
         return core.formatMoney(originalAmount, { currency });
       }
       const currentBaseAmount = getPlanBaseAmountValue(item);
-      const currentRate = Number(item?.current_rate || 0);
-      const rateDate = item?.current_rate_date ? core.formatDateRu(item.current_rate_date) : "";
+      const usesFrozenEventRate = item?.current_rate == null && item?.fx_rate != null;
+      const currentRate = Number(item?.current_rate ?? item?.fx_rate ?? 0);
+      const rateDateValue = item?.current_rate_date || item?.fx_rate_date;
+      const rateDate = rateDateValue ? core.formatDateRu(rateDateValue) : "";
+      const provenance = window.App.getRuntimeModule?.("fx-policy-display")?.formatFxPolicyProvenance?.(item) || "";
       const secondary = currentRate > 0
-        ? `≈ ${core.formatMoney(currentBaseAmount, { currency: baseCurrency })} по текущему курсу${rateDate ? ` · ${rateDate}` : ""}`
+        ? (provenance
+          ? `≈ ${core.formatMoney(currentBaseAmount, { currency: baseCurrency })} · ${escapeHtml(provenance)}`
+          : `≈ ${core.formatMoney(currentBaseAmount, { currency: baseCurrency })} по ${usesFrozenEventRate ? "сохранённому" : "текущему"} курсу${rateDate ? ` · ${rateDate}` : ""}`)
         : `≈ ${core.formatMoney(currentBaseAmount, { currency: baseCurrency })}`;
       return `
         <span class="plan-card-amount-primary">${core.formatMoney(originalAmount, { currency })}</span>

@@ -59,7 +59,17 @@ def page_with_money_flow_api_mock():
             "currency": {"tracked_currencies": ["USD", "EUR"]},
         },
     }
-    metrics = {"last_money_flow_source": "all", "last_money_flow_currency_scope": "all"}
+    metrics = {
+        "last_money_flow_source": "all",
+        "last_money_flow_currency_scope": "all",
+        "bank_rate_refreshes": 0,
+        "last_refreshed_bank": None,
+        "nbrb_rate_refreshes": 0,
+        "last_rate_options_as_of": None,
+        "history_fill_calls": 0,
+        "generic_history_calls": 0,
+        "historical_nbrb_ready": False,
+    }
     operations = []
     money_flow_items = [
         {
@@ -314,6 +324,52 @@ def page_with_money_flow_api_mock():
         "current_rates": [{"currency": "USD", "rate": "3.1000", "rate_date": "2026-03-27", "source": "nb"}],
     }
 
+    def rate_options(currency: str, as_of: str | None = None) -> dict:
+        scale = 100 if currency == "RUB" else 1
+        historical = bool(as_of)
+        nbrb_display = "3.560000" if currency == "RUB" else ("2.950000" if historical else "3.100000")
+        nbrb_unit = "0.035600" if currency == "RUB" else ("2.950000" if historical else "3.100000")
+        refreshed_sell = "3.300000" if metrics["bank_rate_refreshes"] else "3.240000"
+        sell_rate = "3.650000" if currency == "RUB" else refreshed_sell
+        sell_unit = "0.036500" if currency == "RUB" else refreshed_sell
+        return {
+            "currency": currency,
+            "base_currency": "BYN",
+            "display_scale": scale,
+            "nbrb_rate": ({
+                "rate": nbrb_display,
+                "unit_rate": nbrb_unit,
+                "scale": scale,
+                "rate_date": as_of or "2026-03-27",
+                "source": "nbrb_auto_unit",
+            } if not historical or metrics["historical_nbrb_ready"] else None),
+            "bank_rates": [
+                {
+                    "bank_code": "technobank",
+                    "bank_name": "Технобанк",
+                    "currency": currency,
+                    "base_currency": "BYN",
+                    "scale": scale,
+                    "buy_rate": "3.120000" if currency != "RUB" else "3.450000",
+                    "sell_rate": sell_rate,
+                    "buy_unit_rate": "3.120000" if currency != "RUB" else "0.034500",
+                    "sell_unit_rate": sell_unit,
+                    "channel": "cash",
+                    "channel_label": "наличные",
+                    "location_name": "Минск",
+                    "quoted_at": "2026-03-27T09:15:00Z",
+                    "fetched_at": "2026-03-27T09:16:00Z",
+                    "stale": False,
+                }
+            ],
+            "providers": [
+                {"bank_code": "priorbank", "bank_name": "Приорбанк", "channel": "online", "channel_label": "онлайн", "has_quote": False},
+                {"bank_code": "technobank", "bank_name": "Технобанк", "channel": "cash", "channel_label": "наличные", "has_quote": True},
+                {"bank_code": "bsb", "bank_name": "БСБ Банк", "channel": "cash", "channel_label": "наличные", "has_quote": False},
+                {"bank_code": "sber", "bank_name": "Сбер Банк", "channel": "cash", "channel_label": "наличные", "has_quote": False},
+            ],
+        }
+
     def json_response(route, payload: dict | list, status: int = 200):
         route.fulfill(status=status, content_type="application/json", body=json.dumps(payload, ensure_ascii=False))
 
@@ -416,6 +472,24 @@ def page_with_money_flow_api_mock():
             return json_response(route, debt_cards)
         if path == "/api/v1/currency/overview" and method == "GET":
             return json_response(route, currency_overview)
+        if path == "/api/v1/currency/rate-options" and method == "GET":
+            as_of = (query.get("as_of") or [None])[0]
+            metrics["last_rate_options_as_of"] = as_of
+            return json_response(route, rate_options((query.get("currency") or ["USD"])[0].upper(), as_of))
+        if path == "/api/v1/currency/rate-options/refresh" and method == "POST":
+            metrics["bank_rate_refreshes"] += 1
+            metrics["last_refreshed_bank"] = (query.get("bank_code") or [None])[0]
+            return json_response(route, rate_options((query.get("currency") or ["USD"])[0].upper()))
+        if path == "/api/v1/currency/rates/refresh" and method == "POST":
+            metrics["nbrb_rate_refreshes"] += 1
+            return json_response(route, [])
+        if path == "/api/v1/currency/rates/history" and method == "GET":
+            metrics["generic_history_calls"] += 1
+            return json_response(route, [{"currency": "EUR", "rate": "9.990000", "rate_date": "2026-03-05", "source": "manual"}])
+        if path == "/api/v1/currency/rates/history/fill" and method == "POST":
+            metrics["history_fill_calls"] += 1
+            metrics["historical_nbrb_ready"] = True
+            return json_response(route, [{"currency": "EUR", "rate": "2.950000", "rate_date": "2026-03-05", "source": "nbrb_history_unit"}])
         if path == "/api/v1/currency/available-balance" and method == "GET":
             return json_response(route, {
                 "currency": (query.get("currency") or ["USD"])[0],
@@ -729,7 +803,7 @@ def test_edit_operation_header_exposes_receipt_positions_action(
 
 
 @pytest.mark.e2e
-def test_old_foreign_operation_can_enable_direct_currency_settlement(
+def test_saved_bank_operation_keeps_snapshot_until_explicit_refresh(
     static_server_url: str,
     page_with_money_flow_api_mock,
 ):
@@ -742,14 +816,25 @@ def test_old_foreign_operation_can_enable_direct_currency_settlement(
           await window.App.getRuntimeModule('operation-modal').openEditModal({
             id: 42,
             kind: 'expense',
-            amount: '60.00',
+            amount: '63.60',
             original_amount: '20.00',
             currency: 'USD',
             base_currency: 'BYN',
-            fx_rate: '3.000000',
+            fx_rate: '3.180000',
+            fx_rate_source: 'bank',
+            fx_bank_code: 'technobank',
+            fx_bank_name: 'Технобанк',
+            fx_bank_channel: 'cash',
+            fx_rate_kind: 'sell',
+            fx_rate_scale: 1,
+            fx_rate_display: '3.180000',
+            fx_quoted_at: '2026-03-05T09:00:00Z',
+            fx_fetched_at: '2026-03-05T09:01:00Z',
+            fx_rate_stale: true,
+            fx_payment_mode: 'foreign_balance',
             operation_date: '2026-03-05',
             category_id: null,
-            note: 'Старая операция в USD',
+            note: 'Сохранённая операция в USD',
             receipt_items: [],
             fx_settlement: null,
           });
@@ -757,39 +842,110 @@ def test_old_foreign_operation_can_enable_direct_currency_settlement(
         """
     )
     page.wait_for_selector("#editModal:not(.hidden)")
-    page.click("#editFxSettlementToggle")
-
-    page.wait_for_function("() => document.querySelector('#editFxSettlementBalance')?.textContent.includes('После операции')")
+    page.wait_for_selector("#editFxRateField:not(.hidden)")
+    page.wait_for_function("() => document.querySelector('#editFxBankOptions')?.textContent.includes('Технобанк')")
     assert page.locator("#editCurrency").input_value() == "USD"
-    assert page.locator("#editFxSettlementAsset").input_value() == "USD"
-    assert page.locator("#editFxSettlementQuantity").input_value() == "20.00"
-    assert page.locator("#editFxSettlementUnitPrice").input_value() == "3.0000"
-    assert page.locator("#editFxSettlementQuantity").get_attribute("readonly") is not None
-    assert "80.00 USD" in page.locator("#editFxSettlementBalance").inner_text()
+    assert page.locator("#editFxRateSource").input_value() == "bank"
+    assert page.locator("#editFxRate").input_value() == "3.1800"
+    assert page.locator("#editFxSettlementBlock").is_hidden()
+    assert "Продажа банком" in page.locator("#editFxRateMeta").inner_text()
+    assert "наличные" in page.locator("#editFxRateMeta").inner_text()
+    assert "котировка устарела" in page.locator("#editFxRateMeta").inner_text()
 
-    payload = page.evaluate("() => window.App.getRuntimeModule('operation-modal').getEditFxSettlementPayload()")
-    assert payload == {
-        "asset_currency": "USD",
-        "quantity": "20.00",
-        "quote_total": "60.00",
-        "unit_price": "3.000000",
-        "note": None,
+    page.fill("#editAmount", "25")
+    page.fill("#editNote", "Меняется только сумма и комментарий")
+    frozen_payload = page.evaluate(
+        "() => window.App.getRuntimeModule('operation-modal').getOperationFxPolicyPayload('edit', { isPlan: false })"
+    )
+    assert frozen_payload == {
+        "fx_rate_source": "bank",
+        "fx_bank_code": "technobank",
+        "fx_bank_channel": "cash",
+        "fx_rate_kind": "sell",
+        "fx_payment_mode": "foreign_balance",
+        "fx_manual_rate": None,
+        "fx_refresh_rate": False,
     }
+    assert page.locator("#editFxRate").input_value() == "3.1800"
+
+    page.click('#editFxPaymentModeSwitch button[data-fx-payment-mode="direct_conversion"]')
+    mode_only_payload = page.evaluate(
+        "() => window.App.getRuntimeModule('operation-modal').getOperationFxPolicyPayload('edit', { isPlan: false })"
+    )
+    assert mode_only_payload["fx_payment_mode"] == "direct_conversion"
+    assert mode_only_payload["fx_refresh_rate"] is False
+    assert page.evaluate("() => window.App.getRuntimeModule('operation-modal').getEditFxSettlementPayload()") is None
+
+    page.evaluate(
+        """
+        () => {
+          const core = window.App.core;
+          const originalRequest = core.requestJson;
+          window.__restoreBankRefreshRequest = () => { core.requestJson = originalRequest; };
+          core.requestJson = (url, options) => {
+            if (String(url).includes('/currency/rate-options/refresh?')) {
+              return Promise.resolve({
+                currency: 'USD', base_currency: 'BYN', display_scale: 1,
+                nbrb_rate: null,
+                bank_rates: [{
+                  bank_code: 'technobank', bank_name: 'Технобанк', currency: 'USD', base_currency: 'BYN', scale: 1,
+                  buy_rate: '3.120000', sell_rate: '3.240000', buy_unit_rate: '3.120000', sell_unit_rate: '3.240000',
+                  channel: 'cash', channel_label: 'наличные', quoted_at: '2026-03-05T09:00:00Z',
+                  fetched_at: '2026-03-05T09:01:00Z', stale: true,
+                }],
+                providers: [{ bank_code: 'technobank', bank_name: 'Технобанк', channel: 'cash', channel_label: 'наличные', has_quote: true }],
+              });
+            }
+            return originalRequest(url, options);
+          };
+        }
+        """
+    )
+    page.click("#editFxRateRefreshBtn")
+    page.wait_for_function("() => document.querySelector('#editFxRateHint')?.textContent.includes('Сохранённый курс не изменён')")
+    assert page.locator("#editFxRate").input_value() == "3.1800"
+    rejected_refresh_payload = page.evaluate(
+        "() => window.App.getRuntimeModule('operation-modal').getOperationFxPolicyPayload('edit', { isPlan: false })"
+    )
+    assert rejected_refresh_payload["fx_refresh_rate"] is False
+    page.evaluate("() => window.__restoreBankRefreshRequest()")
+
+    page.click("#editFxRateRefreshBtn")
+    page.wait_for_function("() => document.querySelector('#editFxRate')?.value === '3.3000'")
+    assert "котировка устарела" not in page.locator("#editFxRateMeta").inner_text()
+    refreshed_payload = page.evaluate(
+        "() => window.App.getRuntimeModule('operation-modal').getOperationFxPolicyPayload('edit', { isPlan: false })"
+    )
+    assert refreshed_payload["fx_refresh_rate"] is True
+    assert refreshed_payload["fx_bank_channel"] == "cash"
+    refresh_metrics = page.evaluate(
+        "async () => (await fetch('/api/v1/test/money-flow-metrics')).json()"
+    )
+    assert refresh_metrics["bank_rate_refreshes"] == 1
+    assert refresh_metrics["last_refreshed_bank"] == "technobank"
+
+    page.evaluate("() => window.App.getRuntimeModule('operation-modal').setOperationKind('edit', 'income')")
+    assert page.locator("#editFxPaymentMode").input_value() == "valuation"
+    assert page.locator("#editFxRateKind").input_value() == "buy"
+    assert "Покупка банком" in page.locator("#editFxRateMeta").inner_text()
+    assert page.locator('#editFxPaymentModeSwitch button[data-fx-payment-mode="direct_conversion"]').is_disabled()
+    assert page.locator('#editFxPaymentModeSwitch button[data-fx-payment-mode="foreign_balance"]').is_disabled()
+    assert "только BYN-оценка" in page.locator("#editFxPaymentModeHint").inner_text()
 
     desktop_geometry = page.evaluate(
         """
         () => {
           const card = document.querySelector('#editModal .modal-card');
-          const balance = document.querySelector('#editFxSettlementBalance');
+          const policy = document.querySelector('#editFxRateField');
           return {
             pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
             cardOverflow: card.scrollWidth > card.clientWidth + 1,
-            balanceInside: balance.getBoundingClientRect().right <= card.getBoundingClientRect().right + 1,
+            policyInside: policy.getBoundingClientRect().right <= card.getBoundingClientRect().right + 1,
           };
         }
         """
     )
-    assert desktop_geometry == {"pageOverflow": False, "cardOverflow": False, "balanceInside": True}
+    assert desktop_geometry == {"pageOverflow": False, "cardOverflow": False, "policyInside": True}
 
     page.set_viewport_size({"width": 390, "height": 844})
     page.wait_for_timeout(100)
@@ -797,13 +953,161 @@ def test_old_foreign_operation_can_enable_direct_currency_settlement(
         """
         () => {
           const card = document.querySelector('#editModal .modal-card');
-          const balance = document.querySelector('#editFxSettlementBalance');
+          const policy = document.querySelector('#editFxRateField');
           return {
             pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
             cardOverflow: card.scrollWidth > card.clientWidth + 1,
-            balanceInside: balance.getBoundingClientRect().right <= card.getBoundingClientRect().right + 1,
+            policyInside: policy.getBoundingClientRect().right <= card.getBoundingClientRect().right + 1,
           };
         }
         """
     )
-    assert mobile_geometry == {"pageOverflow": False, "cardOverflow": False, "balanceInside": True}
+    assert mobile_geometry == {"pageOverflow": False, "cardOverflow": False, "policyInside": True}
+
+
+@pytest.mark.e2e
+def test_legacy_rub_operation_hydrates_as_saved_manual_rate_per_100(
+    static_server_url: str,
+    page_with_money_flow_api_mock,
+):
+    page = page_with_money_flow_api_mock
+    _open_app(page, static_server_url)
+
+    page.evaluate(
+        """
+        async () => {
+          await window.App.getRuntimeModule('operation-modal').openEditModal({
+            id: 43,
+            kind: 'expense',
+            amount: '35.60',
+            original_amount: '1000.00',
+            currency: 'RUB',
+            base_currency: 'BYN',
+            fx_rate: '0.035600',
+            fx_rate_source: null,
+            operation_date: '2026-03-05',
+            category_id: null,
+            note: 'Историческая операция в RUB',
+            receipt_items: [],
+            fx_settlement: null,
+          });
+        }
+        """
+    )
+    page.wait_for_selector("#editFxRateField:not(.hidden)")
+    assert page.locator("#editFxRateSource").input_value() == "manual"
+    assert page.locator("#editFxRateLabel").inner_text() == "Курс BYN за 100 RUB"
+    assert page.locator("#editFxRate").input_value() == "3.5600"
+
+    context = page.evaluate(
+        "() => window.App.getRuntimeModule('operation-modal').getOperationCurrencyContext('edit')"
+    )
+    assert context["scale"] == 100
+    assert context["fxRate"] == pytest.approx(0.0356)
+    payload = page.evaluate(
+        "() => window.App.getRuntimeModule('operation-modal').getOperationFxPolicyPayload('edit', { isPlan: false })"
+    )
+    assert payload["fx_rate_source"] == "manual"
+    assert payload["fx_manual_rate"] == "3.560000"
+    assert payload["fx_refresh_rate"] is False
+
+
+@pytest.mark.e2e
+def test_new_foreign_operation_defaults_to_nbrb_and_ignores_stale_currency_response(
+    static_server_url: str,
+    page_with_money_flow_api_mock,
+):
+    page = page_with_money_flow_api_mock
+    _open_app(page, static_server_url)
+    page.evaluate("() => window.App.getRuntimeModule('operation-modal').openCreateModal()")
+    page.wait_for_selector("#createModal:not(.hidden)")
+
+    page.evaluate(
+        """
+        () => {
+          const core = window.App.core;
+          const originalRequest = core.requestJson;
+          window.__restoreFxRequest = () => { core.requestJson = originalRequest; };
+          const options = (currency, rate) => ({
+            currency,
+            base_currency: 'BYN',
+            display_scale: 1,
+            nbrb_rate: { rate, unit_rate: rate, scale: 1, rate_date: '2026-08-19', source: 'nbrb_auto_unit' },
+            bank_rates: [{
+              bank_code: 'technobank', bank_name: 'Технобанк', currency, base_currency: 'BYN', scale: 1,
+              buy_rate: '3.120000', sell_rate: '3.250000', buy_unit_rate: '3.120000', sell_unit_rate: '3.250000',
+              channel: 'cash', channel_label: 'наличные', quoted_at: '2026-08-19T08:00:00Z',
+              fetched_at: '2026-08-19T08:01:00Z', stale: false,
+            }],
+            providers: [{ bank_code: 'technobank', bank_name: 'Технобанк', channel: 'cash', channel_label: 'наличные', has_quote: true }],
+          });
+          let resolveEur;
+          const eurPromise = new Promise((resolve) => { resolveEur = resolve; });
+          window.__resolveDelayedEur = () => resolveEur(options('EUR', '3.490000'));
+          core.requestJson = (url, requestOptions) => {
+            if (String(url).includes('/currency/rate-options?')) {
+              if (String(url).includes('currency=EUR')) return eurPromise;
+              if (String(url).includes('currency=USD')) return Promise.resolve(options('USD', '3.110000'));
+            }
+            return originalRequest(url, requestOptions);
+          };
+          const currency = document.querySelector('#opCurrency');
+          currency.value = 'EUR';
+          currency.dispatchEvent(new Event('change', { bubbles: true }));
+          currency.value = 'USD';
+          currency.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        """
+    )
+    page.wait_for_function(
+        "() => document.querySelector('#opCurrency')?.value === 'USD' && document.querySelector('#opFxRate')?.value === '3.1100'"
+    )
+    assert page.locator("#opFxRateSource").input_value() == "nbrb"
+    assert page.locator("#opFxPaymentMode").input_value() == "valuation"
+
+    page.evaluate("() => window.__resolveDelayedEur()")
+    page.wait_for_timeout(100)
+    assert page.locator("#opCurrency").input_value() == "USD"
+    assert page.locator("#opFxRate").input_value() == "3.1100"
+
+    page.click('#opFxRateSourceSwitch button[data-fx-rate-source="bank"]')
+    page.wait_for_function("() => document.querySelector('#opFxRate')?.value === '3.2500'")
+    payload = page.evaluate(
+        "() => window.App.getRuntimeModule('operation-modal').getOperationFxPolicyPayload('create', { isPlan: false })"
+    )
+    assert payload == {
+        "fx_rate_source": "bank",
+        "fx_bank_code": "technobank",
+        "fx_bank_channel": "cash",
+        "fx_rate_kind": "sell",
+        "fx_payment_mode": "valuation",
+        "fx_manual_rate": None,
+    }
+    page.evaluate("() => window.__restoreFxRequest()")
+
+
+@pytest.mark.e2e
+def test_past_nbrb_preview_uses_as_of_option_and_ignores_manual_history_row(
+    static_server_url: str,
+    page_with_money_flow_api_mock,
+):
+    page = page_with_money_flow_api_mock
+    _open_app(page, static_server_url)
+    page.evaluate("() => window.App.getRuntimeModule('operation-modal').openCreateModal()")
+    page.wait_for_selector("#createModal:not(.hidden)")
+    page.fill("#opDate", "2026-03-05")
+    page.select_option("#opCurrency", "EUR")
+
+    page.wait_for_function("() => document.querySelector('#opFxRate')?.value === '2.9500'")
+    assert page.locator("#opFxRateSource").input_value() == "nbrb"
+    assert "05.03.2026" in page.locator("#opFxRateMeta").inner_text()
+    payload = page.evaluate(
+        "() => window.App.getRuntimeModule('operation-modal').getOperationFxPolicyPayload('create', { isPlan: false })"
+    )
+    assert payload["fx_rate_source"] == "nbrb"
+    assert payload["fx_manual_rate"] is None
+
+    metrics = page.evaluate("async () => (await fetch('/api/v1/test/money-flow-metrics')).json()")
+    assert metrics["last_rate_options_as_of"] == "2026-03-05"
+    assert metrics["history_fill_calls"] == 1
+    assert metrics["generic_history_calls"] == 0

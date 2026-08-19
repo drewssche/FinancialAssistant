@@ -21,7 +21,9 @@ from app.repositories.currency_repo import CurrencyRepository
 from app.repositories.preference_repo import PreferenceRepository
 from app.repositories.operation_repo import OperationRepository
 from app.services.activity_service import ActivityService
+from app.services.bank_currency_rate_registry import display_scale
 from app.services.currency_service import CurrencyService
+from app.services.fx_rate_policy_service import FxRatePolicyService
 from app.services.operation_item_template_service import OperationItemTemplateService
 from app.services.operation_money_flow_service import OperationMoneyFlowService
 
@@ -34,12 +36,30 @@ _CURRENCY_RE = re.compile(r"^[A-Z]{3}$")
 
 class OperationService:
     LARGE_OPERATION_THRESHOLD = Decimal("100")
-    ACTIVITY_FIELDS = ["kind", "original_amount", "currency", "fx_rate", "operation_date", "category_id", "note"]
+    ACTIVITY_FIELDS = [
+        "kind",
+        "original_amount",
+        "currency",
+        "fx_rate",
+        "fx_rate_source",
+        "fx_bank_code",
+        "fx_bank_channel",
+        "fx_rate_kind",
+        "fx_payment_mode",
+        "operation_date",
+        "category_id",
+        "note",
+    ]
     ACTIVITY_LABELS = {
         "kind": "Тип",
         "original_amount": "Сумма",
         "currency": "Валюта",
         "fx_rate": "Курс",
+        "fx_rate_source": "Источник курса",
+        "fx_bank_code": "Банк",
+        "fx_bank_channel": "Канал курса",
+        "fx_rate_kind": "Курс банка",
+        "fx_payment_mode": "Способ оплаты",
         "operation_date": "Дата",
         "category_id": "Категория",
         "note": "Комментарий",
@@ -92,8 +112,16 @@ class OperationService:
         note: str | None,
         currency: str | None = None,
         fx_rate: Decimal | None = None,
+        fx_rate_source: str | None = None,
+        fx_bank_code: str | None = None,
+        fx_bank_channel: str | None = None,
+        fx_rate_kind: str | None = None,
+        fx_manual_rate: Decimal | None = None,
+        fx_payment_mode: str | None = None,
         receipt_items: list[dict] | None = None,
         fx_settlement: dict | None = None,
+        fx_policy_snapshot: dict | None = None,
+        commit: bool = True,
     ):
         self._validate_kind(kind)
         normalized_items, receipt_total = self._normalize_receipt_items(receipt_items or [])
@@ -103,47 +131,129 @@ class OperationService:
         )
         original_amount = self._resolve_operation_amount(amount=amount, receipt_total=receipt_total)
         base_currency = self._get_user_base_currency(user_id)
-        normalized_currency, normalized_fx_rate, base_amount = self._resolve_currency_amounts(
-            user_id=user_id,
-            original_amount=original_amount,
-            currency=currency,
-            fx_rate=fx_rate,
+        normalized_currency = self._normalize_currency(currency or base_currency, default=base_currency)
+        policy = FxRatePolicyService(self.db)
+        explicit_payment_mode = fx_payment_mode is not None
+        effective_payment_mode = policy.normalize_payment_mode(fx_payment_mode)
+        policy.validate_payment_mode(
+            kind=kind,
+            currency=normalized_currency,
             base_currency=base_currency,
+            payment_mode=effective_payment_mode,
         )
+        if normalized_currency == base_currency:
+            normalized_fx_rate = self._rate(Decimal("1"))
+            rate_snapshot = {
+                "fx_rate_source": None,
+                "fx_bank_code": None,
+                "fx_bank_name": None,
+                "fx_bank_channel": None,
+                "fx_rate_kind": None,
+                "fx_rate_scale": 1,
+                "fx_rate_date": None,
+                "fx_quoted_at": None,
+                "fx_fetched_at": None,
+                "fx_rate_stale": False,
+                "fx_payment_mode": "valuation",
+            }
+        elif fx_policy_snapshot is not None:
+            normalized_fx_rate = self._rate(fx_policy_snapshot.get("fx_rate"))
+            if normalized_fx_rate <= 0:
+                raise ValueError("fx policy snapshot rate must be positive")
+            rate_snapshot = {
+                "fx_rate_source": fx_policy_snapshot.get("fx_rate_source"),
+                "fx_bank_code": fx_policy_snapshot.get("fx_bank_code"),
+                "fx_bank_name": fx_policy_snapshot.get("fx_bank_name"),
+                "fx_bank_channel": fx_policy_snapshot.get("fx_bank_channel"),
+                "fx_rate_kind": fx_policy_snapshot.get("fx_rate_kind"),
+                "fx_rate_scale": max(1, int(fx_policy_snapshot.get("fx_rate_scale") or 1)),
+                "fx_rate_date": fx_policy_snapshot.get("fx_rate_date"),
+                "fx_quoted_at": fx_policy_snapshot.get("fx_quoted_at"),
+                "fx_fetched_at": fx_policy_snapshot.get("fx_fetched_at"),
+                "fx_rate_stale": bool(fx_policy_snapshot.get("fx_rate_stale", False)),
+                "fx_payment_mode": effective_payment_mode,
+            }
+        else:
+            effective_source = policy.normalize_source(
+                fx_rate_source,
+                default="manual" if fx_rate is not None or fx_manual_rate is not None else None,
+            )
+            if effective_source is None:
+                raise ValueError("fx_rate_source or legacy fx_rate is required for non-base currency operations")
+            resolution = policy.resolve(
+                user_id=user_id,
+                currency=normalized_currency,
+                base_currency=base_currency,
+                source=effective_source,
+                bank_code=fx_bank_code,
+                bank_channel=fx_bank_channel,
+                rate_kind=fx_rate_kind,
+                manual_rate=fx_manual_rate,
+                legacy_unit_rate=fx_rate,
+                as_of=operation_date,
+            )
+            normalized_fx_rate = resolution.rate
+            rate_snapshot = resolution.operation_snapshot(payment_mode=effective_payment_mode)
+        base_amount = self._money(Decimal(original_amount) * Decimal(normalized_fx_rate))
 
         item = self.repo.create(
-            user_id,
-            kind,
-            base_amount,
-            original_amount,
-            normalized_currency,
-            base_currency,
-            normalized_fx_rate,
-            operation_date,
-            category_id,
-            note,
+            user_id=user_id,
+            kind=kind,
+            amount=base_amount,
+            original_amount=original_amount,
+            currency=normalized_currency,
+            base_currency=base_currency,
+            fx_rate=normalized_fx_rate,
+            fx_rate_source=rate_snapshot["fx_rate_source"],
+            fx_bank_code=rate_snapshot["fx_bank_code"],
+            fx_bank_name=rate_snapshot["fx_bank_name"],
+            fx_bank_channel=rate_snapshot["fx_bank_channel"],
+            fx_rate_kind=rate_snapshot["fx_rate_kind"],
+            fx_rate_scale=rate_snapshot["fx_rate_scale"],
+            fx_rate_date=rate_snapshot["fx_rate_date"],
+            fx_quoted_at=rate_snapshot["fx_quoted_at"],
+            fx_fetched_at=rate_snapshot["fx_fetched_at"],
+            fx_rate_stale=rate_snapshot["fx_rate_stale"],
+            fx_payment_mode=rate_snapshot["fx_payment_mode"],
+            operation_date=operation_date,
+            category_id=category_id,
+            note=note,
         )
+        if explicit_payment_mode and effective_payment_mode != "foreign_balance" and fx_settlement:
+            raise ValueError(f"{effective_payment_mode} must not create a separate currency trade")
+        if effective_payment_mode == "foreign_balance":
+            fx_settlement = {
+                "asset_currency": normalized_currency,
+                "quantity": original_amount,
+                "quote_total": base_amount,
+                "unit_price": normalized_fx_rate,
+                "note": (fx_settlement or {}).get("note") if isinstance(fx_settlement, dict) else None,
+            }
         if fx_settlement:
-            normalized_settlement = self._normalize_fx_settlement(
-                user_id=user_id,
-                kind=kind,
-                operation_amount=base_amount,
-                operation_date=operation_date,
-                base_currency=base_currency,
-                payload=fx_settlement,
-            )
-            currency_service = CurrencyService(self.db)
-            currency_service.sync_linked_operation_trade(
-                user_id=user_id,
-                operation_id=item.id,
-                asset_currency=normalized_settlement["asset_currency"],
-                quote_currency=base_currency,
-                quantity=normalized_settlement["quantity"],
-                unit_price=normalized_settlement["unit_price"],
-                trade_date=operation_date,
-                note=normalized_settlement["note"],
-                commit=False,
-            )
+            try:
+                normalized_settlement = self._normalize_fx_settlement(
+                    user_id=user_id,
+                    kind=kind,
+                    operation_amount=base_amount,
+                    operation_date=operation_date,
+                    base_currency=base_currency,
+                    payload=fx_settlement,
+                )
+                currency_service = CurrencyService(self.db)
+                currency_service.sync_linked_operation_trade(
+                    user_id=user_id,
+                    operation_id=item.id,
+                    asset_currency=normalized_settlement["asset_currency"],
+                    quote_currency=base_currency,
+                    quantity=normalized_settlement["quantity"],
+                    unit_price=normalized_settlement["unit_price"],
+                    trade_date=operation_date,
+                    note=normalized_settlement["note"],
+                    commit=False,
+                )
+            except Exception:
+                self.db.rollback()
+                raise
         if normalized_items:
             storage_items = self.item_templates.resolve_templates_and_prices(
                 user_id=user_id,
@@ -167,12 +277,12 @@ class OperationService:
                 "has_fx_settlement": bool(fx_settlement),
             },
         )
-        self.db.commit()
-        invalidate_dashboard_summary_cache(user_id)
-        invalidate_dashboard_analytics_cache(user_id)
-        invalidate_item_templates_cache(user_id)
-        invalidate_operations_cache(user_id)
-        self.db.refresh(item)
+        if commit:
+            self.db.commit()
+            self._invalidate_caches(user_id)
+            self.db.refresh(item)
+        else:
+            self.db.flush()
         log_background_job_event(
             "operation_service",
             "operation_created",
@@ -185,6 +295,13 @@ class OperationService:
             has_fx_settlement=bool(fx_settlement),
         )
         return self._serialize_operation(user_id=user_id, operation=item)
+
+    @staticmethod
+    def _invalidate_caches(user_id: int) -> None:
+        invalidate_dashboard_summary_cache(user_id)
+        invalidate_dashboard_analytics_cache(user_id)
+        invalidate_item_templates_cache(user_id)
+        invalidate_operations_cache(user_id)
 
     def list_operations(
         self,
@@ -466,6 +583,9 @@ class OperationService:
 
         receipt_items_input = updates.pop("receipt_items", None) if "receipt_items" in updates else None
         fx_settlement_input = updates.pop("fx_settlement", None) if "fx_settlement" in updates else None
+        fx_manual_rate_present = "fx_manual_rate" in updates
+        fx_manual_rate = updates.pop("fx_manual_rate", None) if fx_manual_rate_present else None
+        fx_refresh_rate = bool(updates.pop("fx_refresh_rate", False))
         normalized_items: list[dict] | None = None
         before_receipt_items: list | None = None
         receipt_changes: dict | None = None
@@ -490,24 +610,154 @@ class OperationService:
             else:
                 updates["amount"] = self._resolve_operation_amount(amount=updates["amount"], receipt_total=None)
 
-        needs_currency_recalc = any(key in updates for key in ("amount", "currency", "fx_rate"))
-        if needs_currency_recalc:
-            base_currency = self._get_user_base_currency(user_id)
-            current_original_amount = updates.get("amount", self._money(getattr(item, "original_amount", item.amount)))
-            current_currency = updates.get("currency", getattr(item, "currency", base_currency))
-            current_fx_rate = updates.get("fx_rate", getattr(item, "fx_rate", Decimal("1.000000")))
-            normalized_currency, normalized_fx_rate, base_amount = self._resolve_currency_amounts(
+        policy = FxRatePolicyService(self.db)
+        base_currency = self._get_user_base_currency(user_id)
+        current_currency = self._normalize_currency(getattr(item, "currency", base_currency), default=base_currency)
+        normalized_currency = self._normalize_currency(
+            updates.get("currency", current_currency),
+            default=base_currency,
+        )
+        currency_changed = normalized_currency != current_currency
+        current_source = policy.normalize_source(getattr(item, "fx_rate_source", None))
+        requested_source = (
+            policy.normalize_source(updates.get("fx_rate_source"))
+            if "fx_rate_source" in updates
+            else current_source
+        )
+        current_bank_code = policy.normalize_bank_code(getattr(item, "fx_bank_code", None))
+        requested_bank_code = (
+            policy.normalize_bank_code(updates.get("fx_bank_code"))
+            if "fx_bank_code" in updates
+            else current_bank_code
+        )
+        current_bank_channel = str(getattr(item, "fx_bank_channel", None) or "").strip().lower() or None
+        requested_bank_channel = (
+            policy.normalize_bank_channel(bank_code=requested_bank_code, value=updates.get("fx_bank_channel"))
+            if "fx_bank_channel" in updates or requested_bank_code != current_bank_code
+            else current_bank_channel
+        )
+        current_rate_kind = policy.normalize_rate_kind(getattr(item, "fx_rate_kind", None))
+        requested_rate_kind = (
+            policy.normalize_rate_kind(updates.get("fx_rate_kind"))
+            if "fx_rate_kind" in updates
+            else current_rate_kind
+        )
+        current_payment_mode = policy.normalize_payment_mode(getattr(item, "fx_payment_mode", None))
+        requested_payment_mode = (
+            policy.normalize_payment_mode(updates.get("fx_payment_mode"))
+            if "fx_payment_mode" in updates
+            else current_payment_mode
+        )
+        next_kind = str(updates.get("kind", item.kind))
+        policy.validate_payment_mode(
+            kind=next_kind,
+            currency=normalized_currency,
+            base_currency=base_currency,
+            payment_mode=requested_payment_mode,
+        )
+        if (
+            "fx_payment_mode" in logged_fields
+            and requested_payment_mode != "foreign_balance"
+            and fx_settlement_input is not None
+        ):
+            raise ValueError(f"{requested_payment_mode} must not create a separate currency trade")
+        policy_changed = any(
+            (
+                requested_source != current_source,
+                requested_bank_code != current_bank_code,
+                requested_bank_channel != current_bank_channel,
+                requested_rate_kind != current_rate_kind,
+            )
+        )
+        current_rate = self._rate(getattr(item, "fx_rate", Decimal("1")))
+        current_scale = max(1, int(getattr(item, "fx_rate_scale", 1) or 1))
+        manual_rate_changed = False
+        if fx_manual_rate_present and fx_manual_rate is not None:
+            requested_manual_unit = self._rate(Decimal(fx_manual_rate) / Decimal(max(1, display_scale(normalized_currency))))
+            manual_rate_changed = requested_manual_unit != current_rate
+        explicit_unit_rate = updates.get("fx_rate") if "fx_rate" in updates else None
+        explicit_unit_rate_changed = (
+            explicit_unit_rate is not None and self._rate(explicit_unit_rate) != current_rate
+        )
+        should_resolve_rate = (
+            normalized_currency != base_currency
+            and (currency_changed or policy_changed or manual_rate_changed or explicit_unit_rate_changed or fx_refresh_rate)
+        )
+        if normalized_currency == base_currency:
+            normalized_fx_rate = self._rate(Decimal("1"))
+            updates.update(
+                {
+                    "fx_rate_source": None,
+                    "fx_bank_code": None,
+                    "fx_bank_name": None,
+                    "fx_bank_channel": None,
+                    "fx_rate_kind": None,
+                    "fx_rate_scale": 1,
+                    "fx_rate_date": None,
+                    "fx_quoted_at": None,
+                    "fx_fetched_at": None,
+                    "fx_rate_stale": False,
+                    "fx_payment_mode": "valuation",
+                }
+            )
+            requested_payment_mode = "valuation"
+        elif should_resolve_rate:
+            effective_source = requested_source
+            if effective_source is None:
+                if explicit_unit_rate is None and fx_manual_rate is None:
+                    raise ValueError("fx_rate_source is required when changing operation currency")
+                effective_source = "manual"
+            if explicit_unit_rate_changed and effective_source != "manual":
+                raise ValueError("fx_rate cannot override a bank or NBRB policy; choose manual source")
+            resolution = policy.resolve(
                 user_id=user_id,
-                original_amount=current_original_amount,
-                currency=current_currency,
-                fx_rate=current_fx_rate,
+                currency=normalized_currency,
                 base_currency=base_currency,
+                source=effective_source,
+                bank_code=requested_bank_code,
+                bank_channel=requested_bank_channel,
+                rate_kind=requested_rate_kind,
+                manual_rate=fx_manual_rate,
+                legacy_unit_rate=(explicit_unit_rate if explicit_unit_rate is not None else current_rate),
+                as_of=updates.get("operation_date", item.operation_date),
+            )
+            normalized_fx_rate = resolution.rate
+            updates.update(resolution.operation_snapshot(payment_mode=requested_payment_mode))
+        else:
+            # Historical operation snapshots are deliberately frozen.  Amount
+            # changes and broad unchanged form payloads use the saved rate.
+            normalized_fx_rate = current_rate
+            updates["fx_rate_source"] = requested_source
+            updates["fx_bank_code"] = requested_bank_code
+            updates["fx_bank_channel"] = requested_bank_channel
+            updates["fx_rate_kind"] = requested_rate_kind
+            updates["fx_rate_scale"] = current_scale
+            updates["fx_payment_mode"] = requested_payment_mode
+            updates["fx_rate"] = current_rate
+        needs_currency_recalc = any(
+            key in logged_fields
+            for key in (
+                "amount",
+                "currency",
+                "fx_rate",
+                "fx_rate_source",
+                "fx_bank_code",
+                "fx_bank_channel",
+                "fx_rate_kind",
+                "fx_manual_rate",
+                "fx_refresh_rate",
+            )
+        )
+        if needs_currency_recalc:
+            current_original_amount = updates.get(
+                "amount",
+                self._money(getattr(item, "original_amount", item.amount)),
             )
             updates["original_amount"] = self._money(current_original_amount)
             updates["currency"] = normalized_currency
             updates["base_currency"] = base_currency
             updates["fx_rate"] = normalized_fx_rate
-            updates["amount"] = base_amount
+            updates["amount"] = self._money(Decimal(current_original_amount) * Decimal(normalized_fx_rate))
 
         item = self.repo.update(item, updates)
 
@@ -527,35 +777,96 @@ class OperationService:
                 # Keep operation amount as source of truth; discrepancy is reported in output.
                 _ = receipt_total
 
-        if "fx_settlement" in logged_fields:
-            linked_trade = self.currency_repo.get_trade_by_linked_operation_id(user_id=user_id, operation_id=item.id)
-            if fx_settlement_input is None:
-                if linked_trade is not None:
-                    self.currency_repo.delete_trade(linked_trade)
-            else:
-                current_kind = str(getattr(item, "kind", updates.get("kind") or "expense"))
-                current_base_amount = self._money(getattr(item, "amount", 0))
-                current_base_currency = str(getattr(item, "base_currency", self._get_user_base_currency(user_id)) or self._get_user_base_currency(user_id)).upper()
+        linked_trade = self.currency_repo.get_trade_by_linked_operation_id(
+            user_id=user_id,
+            operation_id=item.id,
+        )
+        settlement_relevant_change = any(
+            key in logged_fields
+            for key in (
+                "amount",
+                "currency",
+                "fx_rate",
+                "fx_rate_source",
+                "fx_bank_code",
+                "fx_bank_channel",
+                "fx_rate_kind",
+                "fx_manual_rate",
+                "fx_refresh_rate",
+                "operation_date",
+                "fx_payment_mode",
+            )
+        )
+        try:
+            if requested_payment_mode == "foreign_balance" and (
+                linked_trade is None or settlement_relevant_change or "fx_settlement" in logged_fields
+            ):
+                settlement_payload = {
+                    "asset_currency": str(item.currency).upper(),
+                    "quantity": self._money(item.original_amount),
+                    "quote_total": self._money(item.amount),
+                    "unit_price": self._rate(item.fx_rate),
+                    "note": (
+                        fx_settlement_input.get("note")
+                        if isinstance(fx_settlement_input, dict)
+                        else (linked_trade.note if linked_trade is not None else None)
+                    ),
+                }
                 normalized_settlement = self._normalize_fx_settlement(
                     user_id=user_id,
-                    kind=current_kind,
-                    operation_amount=current_base_amount,
+                    kind=str(item.kind),
+                    operation_amount=self._money(item.amount),
                     operation_date=item.operation_date,
-                    base_currency=current_base_currency,
-                    payload=fx_settlement_input,
+                    base_currency=str(item.base_currency).upper(),
+                    payload=settlement_payload,
                 )
-                currency_service = CurrencyService(self.db)
-                currency_service.sync_linked_operation_trade(
+                CurrencyService(self.db).sync_linked_operation_trade(
                     user_id=user_id,
                     operation_id=item.id,
                     asset_currency=normalized_settlement["asset_currency"],
-                    quote_currency=current_base_currency,
+                    quote_currency=str(item.base_currency).upper(),
                     quantity=normalized_settlement["quantity"],
                     unit_price=normalized_settlement["unit_price"],
                     trade_date=item.operation_date,
                     note=normalized_settlement["note"],
                     commit=False,
                 )
+            elif "fx_payment_mode" in logged_fields and requested_payment_mode in {
+                "valuation",
+                "direct_conversion",
+            }:
+                if linked_trade is not None:
+                    self.currency_repo.delete_trade(linked_trade)
+            elif "fx_settlement" in logged_fields:
+                # Legacy BYN operation + explicit settlement remains supported
+                # when no new payment mode was selected.
+                if fx_settlement_input is None:
+                    if linked_trade is not None:
+                        self.currency_repo.delete_trade(linked_trade)
+                else:
+                    current_base_currency = str(item.base_currency).upper()
+                    normalized_settlement = self._normalize_fx_settlement(
+                        user_id=user_id,
+                        kind=str(item.kind),
+                        operation_amount=self._money(item.amount),
+                        operation_date=item.operation_date,
+                        base_currency=current_base_currency,
+                        payload=fx_settlement_input,
+                    )
+                    CurrencyService(self.db).sync_linked_operation_trade(
+                        user_id=user_id,
+                        operation_id=item.id,
+                        asset_currency=normalized_settlement["asset_currency"],
+                        quote_currency=current_base_currency,
+                        quantity=normalized_settlement["quantity"],
+                        unit_price=normalized_settlement["unit_price"],
+                        trade_date=item.operation_date,
+                        note=normalized_settlement["note"],
+                        commit=False,
+                    )
+        except Exception:
+            self.db.rollback()
+            raise
 
         if item.kind == "income":
             self.repo.reattach_work_payment_links(user_id=user_id, operation_id=int(item.id))
@@ -592,10 +903,7 @@ class OperationService:
                 },
             )
         self.db.commit()
-        invalidate_dashboard_summary_cache(user_id)
-        invalidate_dashboard_analytics_cache(user_id)
-        invalidate_item_templates_cache(user_id)
-        invalidate_operations_cache(user_id)
+        self._invalidate_caches(user_id)
         self.db.refresh(item)
         log_background_job_event(
             "operation_service",
@@ -682,6 +990,17 @@ class OperationService:
             "currency": item.currency,
             "base_currency": item.base_currency,
             "fx_rate": str(item.fx_rate),
+            "fx_rate_source": getattr(item, "fx_rate_source", None),
+            "fx_bank_code": getattr(item, "fx_bank_code", None),
+            "fx_bank_name": getattr(item, "fx_bank_name", None),
+            "fx_bank_channel": getattr(item, "fx_bank_channel", None),
+            "fx_rate_kind": getattr(item, "fx_rate_kind", None),
+            "fx_rate_scale": int(getattr(item, "fx_rate_scale", 1) or 1),
+            "fx_rate_date": iso(getattr(item, "fx_rate_date", None)),
+            "fx_quoted_at": iso(getattr(item, "fx_quoted_at", None)),
+            "fx_fetched_at": iso(getattr(item, "fx_fetched_at", None)),
+            "fx_rate_stale": bool(getattr(item, "fx_rate_stale", False)),
+            "fx_payment_mode": getattr(item, "fx_payment_mode", "valuation") or "valuation",
             "operation_date": iso(item.operation_date),
             "category_id": item.category_id,
             "note": item.note,
@@ -721,7 +1040,7 @@ class OperationService:
                 "created_at": iso(linked_trade.created_at),
             }
         return {
-            "version": 1,
+            "version": 2,
             "operation": operation,
             "receipt_items": receipts,
             "fx_settlement": trade,
@@ -737,11 +1056,22 @@ class OperationService:
             entity_id=operation_id,
         )
         snapshot = dict((event.metadata_json or {})["_restore_snapshot"])
-        if snapshot.get("version") != 1 or not isinstance(snapshot.get("operation"), dict):
+        snapshot_version = snapshot.get("version")
+        if snapshot_version not in {1, 2} or not isinstance(snapshot.get("operation"), dict):
             raise ValueError("Unsupported operation restore snapshot")
         operation_data = dict(snapshot["operation"])
         if int(operation_data.get("id") or 0) != operation_id:
             raise ValueError("Operation restore snapshot does not match the requested operation")
+        trade_data = snapshot.get("fx_settlement")
+        if snapshot_version == 1:
+            restored_currency = str(operation_data.get("currency") or "BYN").upper()
+            restored_base_currency = str(operation_data.get("base_currency") or "BYN").upper()
+            operation_data["fx_rate_scale"] = display_scale(restored_currency)
+            operation_data["fx_payment_mode"] = (
+                "foreign_balance"
+                if isinstance(trade_data, dict) and restored_currency != restored_base_currency
+                else "valuation"
+            )
 
         category_ids = {
             int(category_id)
@@ -785,7 +1115,6 @@ class OperationService:
             operation_id=operation_id,
             items=list(snapshot.get("receipt_items") or []),
         )
-        trade_data = snapshot.get("fx_settlement")
         if isinstance(trade_data, dict):
             trade = FxTrade(
                 id=int(trade_data["id"]),
@@ -803,6 +1132,14 @@ class OperationService:
             )
             if trade_data.get("created_at"):
                 trade.created_at = datetime.fromisoformat(trade_data["created_at"])
+            self.currency_repo.lock_user_currency_ledger(user_id=user_id)
+            try:
+                CurrencyService(self.db)._validate_trade_sequence(
+                    [*self.currency_repo.list_all_trades(user_id=user_id), trade]
+                )
+            except Exception:
+                self.db.rollback()
+                raise
             self.db.add(trade)
         self.repo.restore_item_price_links(
             operation_id=operation_id,
@@ -999,6 +1336,7 @@ class OperationService:
         currency = str(getattr(operation, "currency", "BYN") or "BYN").upper()
         base_currency = str(getattr(operation, "base_currency", "BYN") or "BYN").upper()
         fx_rate = self._rate(getattr(operation, "fx_rate", Decimal("1.000000")))
+        fx_rate_scale = max(1, int(getattr(operation, "fx_rate_scale", 1) or 1))
         receipt_total_value = self._money(receipt_total) if receipt_payload else None
         discrepancy = self._money(amount - receipt_total) if receipt_payload else None
         linked_trade = self.currency_repo.get_trade_by_linked_operation_id(
@@ -1030,6 +1368,18 @@ class OperationService:
             "currency": currency,
             "base_currency": base_currency,
             "fx_rate": fx_rate,
+            "fx_rate_source": getattr(operation, "fx_rate_source", None),
+            "fx_bank_code": getattr(operation, "fx_bank_code", None),
+            "fx_bank_name": getattr(operation, "fx_bank_name", None),
+            "fx_bank_channel": getattr(operation, "fx_bank_channel", None),
+            "fx_rate_kind": getattr(operation, "fx_rate_kind", None),
+            "fx_rate_scale": fx_rate_scale,
+            "fx_rate_display": self._rate(fx_rate * Decimal(fx_rate_scale)),
+            "fx_rate_date": getattr(operation, "fx_rate_date", None),
+            "fx_quoted_at": getattr(operation, "fx_quoted_at", None),
+            "fx_fetched_at": getattr(operation, "fx_fetched_at", None),
+            "fx_rate_stale": bool(getattr(operation, "fx_rate_stale", False)),
+            "fx_payment_mode": getattr(operation, "fx_payment_mode", "valuation") or "valuation",
             "operation_date": operation.operation_date,
             "category_id": effective_operation_category_id,
             "category_name": operation_category_meta.get("name"),

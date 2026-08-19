@@ -1,5 +1,5 @@
 @import url("/static/css/tokens.css?v=20260720e");
-@import url("/static/css/layout-shell.css?v=20260720b");
+@import url("/static/css/layout-shell.css?v=20260819c");
 @import url("/static/css/layout-forms.css?v=20260818d");
 @import url("/static/css/layout-debts.css?v=20260716j");
 @import url("/static/css/layout-receipts.css?v=20260716j");
@@ -20,7 +20,7 @@
 @import url("/static/css/responsive-md.css?v=20260716j");
 @import url("/static/css/responsive-sm-tables.css?v=20260716j");
 @import url("/static/css/responsive-sm-core.css?v=20260818d");
-@import url("/static/css/responsive-sm-modals.css?v=20260716j");
+@import url("/static/css/responsive-sm-modals.css?v=20260819i");
 /* Work timesheet */
 .work-section-head { gap: 16px; align-items: flex-start; }
 .work-month-control { display: flex; align-items: center; gap: 10px; }

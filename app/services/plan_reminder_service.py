@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta, timezone
+from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
@@ -8,6 +9,8 @@ from sqlalchemy.orm import Session
 from app.core.logging import log_background_job_event
 from app.repositories.plan_repo import PlanRepository
 from app.services.activity_service import ActivityService
+from app.services.bank_currency_rate_registry import BANK_RATE_PROVIDERS, display_scale
+from app.services.fx_rate_policy_service import FxRatePolicyService
 from app.services.telegram_message_format import ICON_RECEIPT, money_direction_icon, title
 
 
@@ -193,13 +196,53 @@ class PlanReminderService:
         now_utc = self._now_utc()
         self.repo.mark_reminder_job_sent(job, sent_at=now_utc)
         chat_id = refreshed.get("chat_id")
+        currency = str(getattr(plan, "currency", "BYN") or "BYN").upper()
+        base_currency = str(getattr(plan, "base_currency", "BYN") or "BYN").upper()
+        try:
+            rate_resolution = FxRatePolicyService(self.db).resolve(
+                user_id=int(plan.user_id),
+                currency=currency,
+                base_currency=base_currency,
+                source=getattr(plan, "fx_rate_source", "nbrb") or "nbrb",
+                bank_code=getattr(plan, "fx_bank_code", None),
+                bank_channel=getattr(plan, "fx_bank_channel", None),
+                rate_kind=getattr(plan, "fx_rate_kind", None),
+                manual_rate=getattr(plan, "fx_manual_rate", None),
+            )
+        except ValueError:
+            rate_resolution = None
+        original_amount = Decimal(getattr(plan, "original_amount", None) or plan.amount)
+        base_amount = (
+            (original_amount * rate_resolution.rate).quantize(Decimal("0.01"))
+            if rate_resolution
+            else (original_amount if currency == base_currency else Decimal("0.00"))
+        )
         self.repo.create_event(
             user_id=int(plan.user_id),
             plan_id=int(plan.id),
             operation_id=None,
             event_type="reminded",
             kind=plan.kind,
-            amount=plan.amount,
+            amount=base_amount,
+            original_amount=original_amount,
+            currency=currency,
+            base_currency=base_currency,
+            fx_rate=rate_resolution.rate if rate_resolution else None,
+            fx_rate_source=getattr(plan, "fx_rate_source", "nbrb"),
+            fx_bank_code=getattr(plan, "fx_bank_code", None),
+            fx_bank_name=(
+                rate_resolution.bank_name
+                if rate_resolution
+                else BANK_RATE_PROVIDERS.get(getattr(plan, "fx_bank_code", None) or "", {}).get("name")
+            ),
+            fx_bank_channel=getattr(plan, "fx_bank_channel", None),
+            fx_rate_kind=getattr(plan, "fx_rate_kind", None),
+            fx_rate_scale=rate_resolution.scale if rate_resolution else display_scale(currency),
+            fx_rate_date=rate_resolution.rate_date if rate_resolution else None,
+            fx_quoted_at=rate_resolution.quoted_at if rate_resolution else None,
+            fx_fetched_at=rate_resolution.fetched_at if rate_resolution else None,
+            fx_rate_stale=rate_resolution.stale if rate_resolution else None,
+            fx_payment_mode=getattr(plan, "fx_payment_mode", "valuation"),
             effective_date=plan.scheduled_date,
             note=plan.note,
             category_name=self.repo.get_category_name(category_id=plan.category_id),
@@ -260,7 +303,56 @@ class PlanReminderService:
             return title(ICON_RECEIPT, "План к подтверждению")
         kind_label = "Доход" if plan.kind == "income" else "Расход"
         lines = [title(ICON_RECEIPT, "План к подтверждению")]
-        lines.append(f"{money_direction_icon(plan.kind)} {kind_label} {plan.amount} на {plan.scheduled_date.isoformat()}")
+        currency = str(getattr(plan, "currency", "BYN") or "BYN").upper()
+        base_currency = str(getattr(plan, "base_currency", "BYN") or "BYN").upper()
+        original_amount = Decimal(getattr(plan, "original_amount", None) or plan.amount)
+        resolution = None
+        if currency != base_currency:
+            try:
+                resolution = FxRatePolicyService(self.db).resolve(
+                    user_id=int(plan.user_id),
+                    currency=currency,
+                    base_currency=base_currency,
+                    source=getattr(plan, "fx_rate_source", "nbrb") or "nbrb",
+                    bank_code=getattr(plan, "fx_bank_code", None),
+                    bank_channel=getattr(plan, "fx_bank_channel", None),
+                    rate_kind=getattr(plan, "fx_rate_kind", None),
+                    manual_rate=getattr(plan, "fx_manual_rate", None),
+                )
+            except ValueError:
+                resolution = None
+        amount_text = f"{original_amount:.2f} {currency}"
+        if resolution is not None:
+            base_amount = (original_amount * resolution.rate).quantize(Decimal("0.01"))
+            amount_text += f" → {base_amount:.2f} {base_currency}"
+        lines.append(
+            f"{money_direction_icon(plan.kind)} {kind_label} {amount_text} "
+            f"на {plan.scheduled_date.isoformat()}"
+        )
+        if resolution is not None and currency != base_currency:
+            if resolution.source == "bank":
+                kind_text = "покупка банком" if resolution.rate_kind == "buy" else "продажа банком"
+                channel_text = str(
+                    BANK_RATE_PROVIDERS.get(resolution.bank_code or "", {}).get("channel_label")
+                    or resolution.bank_channel
+                    or ""
+                )
+                provider_text = " · ".join(
+                    value
+                    for value in (resolution.bank_name, kind_text, channel_text)
+                    if value
+                )
+            elif resolution.source == "nbrb":
+                provider_text = "НБРБ"
+            else:
+                provider_text = "Ручной курс"
+            stale_text = " · котировка устарела" if resolution.stale else ""
+            lines.append(
+                f"Курс: {provider_text} · {resolution.display_rate:.6f} {base_currency} "
+                f"за {resolution.scale} {currency}{stale_text}"
+            )
+        elif currency != base_currency:
+            lines.append("⚠️ Текущий курс недоступен")
         if plan.note:
             lines.append(plan.note)
         return "\n".join(lines)

@@ -622,7 +622,7 @@ def test_payroll_forecast_and_history_follow_linked_plan_and_current_operation(c
             "currency": "USD",
             "rate": "3.25",
             "rate_date": "2026-08-01",
-            "source": "manual",
+            "source": "nbrb_auto_unit",
         },
     )
     assert rate.status_code == 200

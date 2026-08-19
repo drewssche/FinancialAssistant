@@ -13,6 +13,7 @@
       formatTradeRateValue,
       applyTradeFieldCurrency,
       setAutoComputedField,
+      getOperationFxContext,
     } = deps;
 
     let fxSettlementQuantityDriver = false;
@@ -86,8 +87,9 @@
     const isEdit = mode === "edit";
     const baseCurrency = String(core.getCurrencyConfig?.().code || "BYN").toUpperCase();
     const operationCurrency = String((isEdit ? el.editCurrency : el.opCurrency)?.value || baseCurrency).toUpperCase();
-    const rateState = core.resolveRateInput((isEdit ? el.editFxRate : el.opFxRate)?.value || 1, 1, 6);
-    const operationRate = operationCurrency === baseCurrency ? 1 : Number(rateState.previewValue || 0);
+    const policyContext = getOperationFxContext?.(mode);
+    const rateState = core.resolveRateInput(policyContext?.fxRate || (isEdit ? el.editFxRate : el.opFxRate)?.value || 1, 1, 6);
+    const operationRate = operationCurrency === baseCurrency ? 1 : Number(policyContext?.fxRate || rateState.previewValue || 0);
     return {
       amount: operationRate > 0 ? originalAmount * operationRate : 0,
       originalAmount,
@@ -233,7 +235,9 @@
   function syncCreateFxSettlementVisibility() {
     const isOperationEntry = el.opEntryMode?.value === "operation";
     const isExpense = el.opKind?.value === "expense";
-    const shouldShowBlock = isOperationEntry && isExpense;
+    const baseCurrency = String(core.getCurrencyConfig?.().code || "BYN").toUpperCase();
+    const operationCurrency = String(el.opCurrency?.value || baseCurrency).toUpperCase();
+    const shouldShowBlock = isOperationEntry && isExpense && operationCurrency === baseCurrency;
     el.opFxSettlementBlock?.classList.toggle("hidden", !shouldShowBlock);
     if (!shouldShowBlock && el.opUseFxSettlement) {
       el.opUseFxSettlement.checked = false;
@@ -410,7 +414,9 @@
 
   function syncEditFxSettlementVisibility() {
     const isExpense = el.editKind?.value === "expense";
-    const shouldShowBlock = isExpense;
+    const baseCurrency = String(core.getCurrencyConfig?.().code || "BYN").toUpperCase();
+    const operationCurrency = String(el.editCurrency?.value || baseCurrency).toUpperCase();
+    const shouldShowBlock = isExpense && operationCurrency === baseCurrency;
     el.editFxSettlementBlock?.classList.toggle("hidden", !shouldShowBlock);
     if (!shouldShowBlock && el.editUseFxSettlement) {
       el.editUseFxSettlement.checked = false;

@@ -86,6 +86,49 @@ class CurrencyBankRateOut(BaseModel):
     stale: bool = False
 
 
+class CurrencyNbrbRateOptionOut(BaseModel):
+    rate: Decimal
+    unit_rate: Decimal
+    scale: int
+    rate_date: date
+    source: str
+
+
+class CurrencyBankRateOptionOut(BaseModel):
+    bank_code: str
+    bank_name: str
+    currency: str
+    base_currency: str
+    scale: int
+    buy_rate: Decimal
+    sell_rate: Decimal
+    buy_unit_rate: Decimal
+    sell_unit_rate: Decimal
+    channel: str
+    channel_label: str
+    location_name: str | None = None
+    quoted_at: datetime | None = None
+    fetched_at: datetime
+    stale: bool
+
+
+class CurrencyRateProviderOptionOut(BaseModel):
+    bank_code: str
+    bank_name: str
+    channel: str
+    channel_label: str
+    has_quote: bool
+
+
+class CurrencyRateOptionsOut(BaseModel):
+    currency: str
+    base_currency: str
+    display_scale: int
+    nbrb_rate: CurrencyNbrbRateOptionOut | None = None
+    bank_rates: list[CurrencyBankRateOptionOut] = Field(default_factory=list)
+    providers: list[CurrencyRateProviderOptionOut] = Field(default_factory=list)
+
+
 class CurrencyPositionOut(BaseModel):
     currency: str
     quantity: Decimal

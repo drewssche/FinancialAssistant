@@ -38,6 +38,12 @@ class PlanRepository:
         original_amount: Decimal,
         currency: str,
         base_currency: str,
+        fx_rate_source: str,
+        fx_bank_code: str | None,
+        fx_bank_channel: str | None,
+        fx_rate_kind: str | None,
+        fx_manual_rate: Decimal | None,
+        fx_payment_mode: str,
         scheduled_date: date,
         category_id: int | None,
         note: str | None,
@@ -56,6 +62,12 @@ class PlanRepository:
             original_amount=original_amount,
             currency=currency,
             base_currency=base_currency,
+            fx_rate_source=fx_rate_source,
+            fx_bank_code=fx_bank_code,
+            fx_bank_channel=fx_bank_channel,
+            fx_rate_kind=fx_rate_kind,
+            fx_manual_rate=fx_manual_rate,
+            fx_payment_mode=fx_payment_mode,
             scheduled_date=scheduled_date,
             category_id=category_id,
             note=note,
@@ -73,6 +85,14 @@ class PlanRepository:
 
     def get_by_id(self, *, user_id: int, plan_id: int):
         stmt = self._base_stmt(user_id=user_id).where(PlanOperation.id == plan_id)
+        return self.db.execute(stmt).first()
+
+    def get_by_id_for_update(self, *, user_id: int, plan_id: int):
+        stmt = (
+            self._base_stmt(user_id=user_id)
+            .where(PlanOperation.id == plan_id)
+            .with_for_update(of=PlanOperation)
+        )
         return self.db.execute(stmt).first()
 
     def list_for_user(self, *, user_id: int, q: str | None = None, kind: str | None = None):
@@ -288,6 +308,21 @@ class PlanRepository:
         effective_date: date,
         note: str | None,
         category_name: str | None,
+        original_amount: Decimal | None = None,
+        currency: str | None = None,
+        base_currency: str | None = None,
+        fx_rate: Decimal | None = None,
+        fx_rate_source: str | None = None,
+        fx_bank_code: str | None = None,
+        fx_bank_name: str | None = None,
+        fx_bank_channel: str | None = None,
+        fx_rate_kind: str | None = None,
+        fx_rate_scale: int | None = None,
+        fx_rate_date: date | None = None,
+        fx_quoted_at: datetime | None = None,
+        fx_fetched_at: datetime | None = None,
+        fx_rate_stale: bool | None = None,
+        fx_payment_mode: str | None = None,
     ) -> PlanOperationEvent:
         row = PlanOperationEvent(
             user_id=user_id,
@@ -296,6 +331,21 @@ class PlanRepository:
             event_type=event_type,
             kind=kind,
             amount=amount,
+            original_amount=original_amount,
+            currency=currency,
+            base_currency=base_currency,
+            fx_rate=fx_rate,
+            fx_rate_source=fx_rate_source,
+            fx_bank_code=fx_bank_code,
+            fx_bank_name=fx_bank_name,
+            fx_bank_channel=fx_bank_channel,
+            fx_rate_kind=fx_rate_kind,
+            fx_rate_scale=fx_rate_scale,
+            fx_rate_date=fx_rate_date,
+            fx_quoted_at=fx_quoted_at,
+            fx_fetched_at=fx_fetched_at,
+            fx_rate_stale=fx_rate_stale,
+            fx_payment_mode=fx_payment_mode,
             effective_date=effective_date,
             note=note,
             category_name=category_name,

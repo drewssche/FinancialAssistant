@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import os
 from pathlib import Path
+from decimal import Decimal
 
 import pytest
 from alembic.autogenerate import compare_metadata
@@ -10,7 +11,7 @@ from alembic import command
 from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 from app.db.base import Base
 import app.db.models  # noqa: F401  # ensure all model tables are registered
@@ -81,6 +82,90 @@ def test_sqlalchemy_metadata_matches_a_fresh_database_schema():
         diffs = compare_metadata(context, Base.metadata)
 
     assert diffs == []
+
+
+def test_fx_policy_migration_backfills_confirmed_plan_event_from_operation():
+    database_url = os.getenv("MIGRATION_TEST_DATABASE_URL")
+    if not database_url:
+        pytest.skip("MIGRATION_TEST_DATABASE_URL is not configured")
+    assert "migration_test" in database_url, "Migration test must use a dedicated disposable database"
+
+    config = Config(str(ALEMBIC_INI))
+    command.downgrade(config, "base")
+    command.upgrade(config, "20260819_0037")
+    engine = create_engine(database_url)
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                INSERT INTO users (id, display_name, status)
+                VALUES (901, 'Migration snapshot user', 'active')
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO operations (
+                    id, user_id, kind, amount, original_amount, currency,
+                    base_currency, fx_rate, operation_date, note
+                ) VALUES (
+                    902, 901, 'expense', 808.37, 229.00, 'EUR',
+                    'BYN', 3.530000, DATE '2026-08-19', 'Confirmed subscription'
+                )
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO plan_operations (
+                    id, user_id, confirmed_operation_id, kind, amount,
+                    original_amount, currency, base_currency, scheduled_date,
+                    note
+                ) VALUES (
+                    903, 901, 902, 'expense', 229.00,
+                    229.00, 'EUR', 'BYN', DATE '2026-08-19',
+                    'Confirmed subscription'
+                )
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO plan_operation_events (
+                    id, user_id, plan_id, operation_id, event_type, kind,
+                    amount, effective_date, note
+                ) VALUES (
+                    904, 901, 903, 902, 'confirmed', 'expense',
+                    229.00, DATE '2026-08-19', 'Confirmed subscription'
+                )
+                """
+            )
+        )
+
+    command.upgrade(config, "head")
+    with engine.connect() as connection:
+        row = connection.execute(
+            text(
+                """
+                SELECT amount, original_amount, currency, base_currency,
+                       fx_rate, fx_rate_scale, fx_payment_mode
+                  FROM plan_operation_events
+                 WHERE id = 904
+                """
+            )
+        ).mappings().one()
+    engine.dispose()
+
+    assert row["amount"] == Decimal("808.37")
+    assert row["original_amount"] == Decimal("229.00")
+    assert row["currency"] == "EUR"
+    assert row["base_currency"] == "BYN"
+    assert row["fx_rate"] == Decimal("3.530000")
+    assert row["fx_rate_scale"] == 1
+    assert row["fx_payment_mode"] == "valuation"
 
 
 def test_complete_migration_chain_on_postgresql():

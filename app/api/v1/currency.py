@@ -11,6 +11,7 @@ from app.schemas.currency import (
     CurrencyPerformanceHistoryOut,
     CurrencyRateHistoryPointOut,
     CurrencyRateOut,
+    CurrencyRateOptionsOut,
     CurrencyTradeListOut,
     CurrencyRateUpsert,
     CurrencyTradeCreate,
@@ -20,6 +21,8 @@ from app.schemas.currency import (
 from app.services.currency_rate_refresh_service import CurrencyRateRefreshService
 from app.services.bank_currency_rate_refresh_service import BankCurrencyRateRefreshService
 from app.services.currency_service import CurrencyService
+from app.services.fx_rate_policy_service import FxRatePolicyService
+from app.services.bank_currency_rate_registry import BANK_RATE_PROVIDERS
 
 router = APIRouter(prefix="/currency", tags=["currency"])
 
@@ -56,6 +59,62 @@ def get_currency_overview(
         return service.get_overview(user_id=user_id, currency=currency, trades_limit=trades_limit)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/rate-options", response_model=CurrencyRateOptionsOut)
+def get_currency_rate_options(
+    currency: str = Query(min_length=3, max_length=3),
+    base_currency: str = Query(default="BYN", min_length=3, max_length=3),
+    as_of: date | None = Query(default=None),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        return FxRatePolicyService(db).get_rate_options(
+            user_id=user_id,
+            currency=currency,
+            base_currency=base_currency,
+            as_of=as_of,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post("/rate-options/refresh", response_model=CurrencyRateOptionsOut)
+def refresh_currency_rate_options(
+    currency: str = Query(min_length=3, max_length=3),
+    base_currency: str = Query(default="BYN", min_length=3, max_length=3),
+    bank_code: str | None = Query(default=None, max_length=32),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    policy = FxRatePolicyService(db)
+    try:
+        normalized_bank = policy.normalize_bank_code(bank_code)
+        refreshed = BankCurrencyRateRefreshService(db).refresh_user_selected_rates(
+            user_id=user_id,
+            currencies=[currency],
+            bank_codes=[normalized_bank] if normalized_bank else list(BANK_RATE_PROVIDERS),
+            force=True,
+        )
+        normalized_currency = currency.strip().upper()
+        refreshed_pairs = {
+            (str(item.get("bank_code") or "").lower(), str(item.get("currency") or "").upper())
+            for item in refreshed
+        }
+        if normalized_bank and (normalized_bank, normalized_currency) not in refreshed_pairs:
+            raise RuntimeError(f"Не удалось обновить курс {normalized_bank} для {normalized_currency}")
+        if not normalized_bank and not any(pair[1] == normalized_currency for pair in refreshed_pairs):
+            raise RuntimeError(f"Не удалось обновить банковские курсы для {normalized_currency}")
+        return policy.get_rate_options(
+            user_id=user_id,
+            currency=currency,
+            base_currency=base_currency,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
 
 @router.get("/trades", response_model=CurrencyTradeListOut)

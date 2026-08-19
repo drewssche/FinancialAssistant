@@ -19,6 +19,8 @@
   const getCreateFxSettlementPayload = operationModal.getCreateFxSettlementPayload;
   const getEditReceiptPayload = operationModal.getEditReceiptPayload;
   const getEditFxSettlementPayload = operationModal.getEditFxSettlementPayload;
+  const getOperationFxPolicyPayload = operationModal.getOperationFxPolicyPayload;
+  const getOperationCurrencyContext = operationModal.getOperationCurrencyContext;
   const closeCreateModal = operationModal.closeCreateModal;
   const closeEditModal = operationModal.closeEditModal;
   const savePreferences = sessionFeatures.savePreferences;
@@ -798,6 +800,8 @@
       getCreateFxSettlementPayload,
       getEditReceiptPayload,
       getEditFxSettlementPayload,
+      getOperationFxPolicyPayload,
+      getOperationCurrencyContext,
       closeCreateModal,
       closeEditModal,
       loadOperations,

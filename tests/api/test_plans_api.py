@@ -90,7 +90,7 @@ def test_plan_supports_original_currency_and_confirms_into_operation_snapshot(cl
             "currency": "USD",
             "rate": "3.25",
             "rate_date": "2026-03-28",
-            "source": "manual",
+            "source": "nbrb_auto_unit",
         },
     )
     assert rate_resp.status_code == 200

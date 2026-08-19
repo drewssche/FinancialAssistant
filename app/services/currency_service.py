@@ -5,7 +5,11 @@ import re
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.cache import invalidate_dashboard_analytics_cache, invalidate_dashboard_summary_cache
+from app.core.cache import (
+    invalidate_dashboard_analytics_cache,
+    invalidate_dashboard_summary_cache,
+    invalidate_plans_cache,
+)
 from app.core.logging import log_background_job_event
 from app.db.models import FxTrade, Operation
 from app.repositories.currency_repo import CurrencyRepository
@@ -190,7 +194,11 @@ class CurrencyService:
             key=lambda item: (
                 str(item.asset_currency or ""),
                 item.trade_date.isoformat() if item.trade_date else "",
-                int(item.id or 0),
+                # A not-yet-persisted candidate is the newest ledger action
+                # for its day.  Sorting ``None`` as zero would place a new
+                # linked card-payment sell before an existing same-day buy and
+                # reject a valid balance sequence.
+                int(item.id) if item.id is not None else 2**63 - 1,
             ),
         )
         for trade in ordered:
@@ -348,6 +356,13 @@ class CurrencyService:
         for row in rows:
             fetched_at = row.fetched_at
             aware_fetched_at = fetched_at if fetched_at.tzinfo else fetched_at.replace(tzinfo=timezone.utc)
+            quoted_at = row.quoted_at
+            aware_quoted_at = (
+                quoted_at if quoted_at is None or quoted_at.tzinfo else quoted_at.replace(tzinfo=timezone.utc)
+            )
+            freshness_timestamp = min(
+                value for value in (aware_fetched_at, aware_quoted_at) if value is not None
+            )
             provider = BANK_RATE_PROVIDERS.get(row.bank_code, {})
             result.append(
                 {
@@ -363,7 +378,7 @@ class CurrencyService:
                     "location_name": row.location_name,
                     "quoted_at": row.quoted_at,
                     "fetched_at": row.fetched_at,
-                    "stale": aware_fetched_at < stale_cutoff,
+                    "stale": freshness_timestamp < stale_cutoff,
                 }
             )
         return result
@@ -380,6 +395,7 @@ class CurrencyService:
         fee,
         trade_kind: str = "manual",
         linked_operation_id: int | None = None,
+        allow_linked_operation: bool = False,
         trade_date: date,
         note: str | None = None,
         commit: bool = True,
@@ -391,11 +407,16 @@ class CurrencyService:
         normalized_unit_price = self._rate(unit_price)
         normalized_fee = self._money(fee)
         normalized_trade_kind = self._normalize_trade_kind(trade_kind)
+        if normalized_trade_kind != "manual" and not allow_linked_operation:
+            raise ValueError("trade_kind is managed by operations")
+        if linked_operation_id is not None and not allow_linked_operation:
+            raise ValueError("linked_operation_id is managed by operations")
         if normalized_asset == normalized_quote:
             raise ValueError("asset_currency and quote_currency must differ")
         if normalized_quantity <= 0 or normalized_unit_price <= 0:
             raise ValueError("quantity and unit_price must be positive")
 
+        self.repo.lock_user_currency_ledger(user_id=user_id)
         trades = self.repo.list_all_trades(user_id=user_id)
         candidate = FxTrade(
             user_id=user_id,
@@ -469,6 +490,8 @@ class CurrencyService:
             raise ValueError("Currency trade not found")
         if getattr(item, "linked_operation_id", None) is not None and not allow_linked_trade_update:
             raise ValueError("Linked settlement trade must be edited from the operation")
+        if linked_operation_id is not None and not allow_linked_trade_update:
+            raise ValueError("linked_operation_id is managed by operations")
         before_activity = ActivityService.snapshot(item, self.TRADE_FIELDS)
         normalized_side = self._normalize_side(side)
         normalized_asset = self._normalize_currency(asset_currency)
@@ -477,10 +500,13 @@ class CurrencyService:
         normalized_unit_price = self._rate(unit_price)
         normalized_fee = self._money(fee)
         normalized_trade_kind = self._normalize_trade_kind(trade_kind)
+        if normalized_trade_kind != "manual" and not allow_linked_trade_update:
+            raise ValueError("trade_kind is managed by operations")
         if normalized_asset == normalized_quote:
             raise ValueError("asset_currency and quote_currency must differ")
         if normalized_quantity <= 0 or normalized_unit_price <= 0:
             raise ValueError("quantity and unit_price must be positive")
+        self.repo.lock_user_currency_ledger(user_id=user_id)
         trades = self.repo.list_all_trades(user_id=user_id)
         replacement = FxTrade(
             id=item.id,
@@ -579,6 +605,7 @@ class CurrencyService:
             fee=Decimal("0"),
             trade_kind="card_payment",
             linked_operation_id=operation_id,
+            allow_linked_operation=True,
             trade_date=trade_date,
             note=note,
             commit=commit,
@@ -593,6 +620,7 @@ class CurrencyService:
         item_side = item.side
         item_asset_currency = item.asset_currency
         item_quote_currency = item.quote_currency
+        self.repo.lock_user_currency_ledger(user_id=user_id)
         trades = self.repo.list_all_trades(user_id=user_id)
         self._validate_trade_sequence([trade for trade in trades if trade.id != item.id])
         self.activity.record(
@@ -634,6 +662,7 @@ class CurrencyService:
         self.db.refresh(item)
         invalidate_dashboard_summary_cache(user_id)
         invalidate_dashboard_analytics_cache(user_id)
+        invalidate_plans_cache(user_id)
         log_background_job_event(
             "currency_service",
             "fx_rate_upserted",

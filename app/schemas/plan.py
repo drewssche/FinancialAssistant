@@ -3,13 +3,26 @@ from decimal import Decimal
 
 from pydantic import BaseModel, Field
 
-from app.schemas.operation import OperationOut, OperationReceiptItemIn, OperationReceiptItemOut
+from app.schemas.operation import (
+    FxPaymentMode,
+    FxRateKind,
+    FxRateSource,
+    OperationOut,
+    OperationReceiptItemIn,
+    OperationReceiptItemOut,
+)
 
 
 class PlanCreate(BaseModel):
     kind: str
     amount: Decimal | None = None
     currency: str = Field(default="BYN", min_length=3, max_length=3)
+    fx_rate_source: FxRateSource = "nbrb"
+    fx_bank_code: str | None = Field(default=None, max_length=32)
+    fx_bank_channel: str | None = Field(default=None, max_length=20)
+    fx_rate_kind: FxRateKind | None = None
+    fx_manual_rate: Decimal | None = Field(default=None, gt=0)
+    fx_payment_mode: FxPaymentMode = "valuation"
     scheduled_date: date
     category_id: int | None = None
     note: str | None = None
@@ -27,6 +40,12 @@ class PlanUpdate(BaseModel):
     kind: str | None = None
     amount: Decimal | None = None
     currency: str | None = Field(default=None, min_length=3, max_length=3)
+    fx_rate_source: FxRateSource | None = None
+    fx_bank_code: str | None = Field(default=None, max_length=32)
+    fx_bank_channel: str | None = Field(default=None, max_length=20)
+    fx_rate_kind: FxRateKind | None = None
+    fx_manual_rate: Decimal | None = Field(default=None, gt=0)
+    fx_payment_mode: FxPaymentMode | None = None
     scheduled_date: date | None = None
     category_id: int | None = None
     note: str | None = None
@@ -47,8 +66,20 @@ class PlanOut(BaseModel):
     original_amount: Decimal
     currency: str
     base_currency: str
+    fx_rate_source: FxRateSource = "nbrb"
+    fx_bank_code: str | None = None
+    fx_bank_name: str | None = None
+    fx_bank_channel: str | None = None
+    fx_rate_kind: FxRateKind | None = None
+    fx_manual_rate: Decimal | None = None
+    fx_payment_mode: FxPaymentMode = "valuation"
     current_rate: Decimal | None = None
+    current_rate_scale: int = 1
+    current_rate_display: Decimal | None = None
     current_rate_date: date | None = None
+    current_rate_quoted_at: datetime | None = None
+    current_rate_fetched_at: datetime | None = None
+    current_rate_stale: bool = False
     current_base_amount: Decimal
     scheduled_date: date
     due_date: date
@@ -97,6 +128,22 @@ class PlanEventOut(BaseModel):
     event_type: str
     kind: str
     amount: Decimal
+    original_amount: Decimal | None = None
+    currency: str | None = None
+    base_currency: str | None = None
+    fx_rate: Decimal | None = None
+    fx_rate_source: FxRateSource | None = None
+    fx_bank_code: str | None = None
+    fx_bank_name: str | None = None
+    fx_bank_channel: str | None = None
+    fx_rate_kind: FxRateKind | None = None
+    fx_rate_scale: int | None = None
+    fx_rate_display: Decimal | None = None
+    fx_rate_date: date | None = None
+    fx_quoted_at: datetime | None = None
+    fx_fetched_at: datetime | None = None
+    fx_rate_stale: bool | None = None
+    fx_payment_mode: FxPaymentMode | None = None
     effective_date: date
     note: str | None = None
     category_name: str | None = None

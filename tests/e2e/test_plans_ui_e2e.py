@@ -158,8 +158,20 @@ def _make_plan_item(plan: dict) -> dict:
         "original_amount": plan.get("original_amount", plan["amount"]),
         "currency": plan.get("currency", "BYN"),
         "base_currency": plan.get("base_currency", "BYN"),
+        "fx_rate_source": plan.get("fx_rate_source", "nbrb"),
+        "fx_bank_code": plan.get("fx_bank_code"),
+        "fx_bank_name": plan.get("fx_bank_name"),
+        "fx_bank_channel": plan.get("fx_bank_channel"),
+        "fx_rate_kind": plan.get("fx_rate_kind"),
+        "fx_manual_rate": plan.get("fx_manual_rate"),
+        "fx_payment_mode": plan.get("fx_payment_mode", "valuation"),
         "current_rate": plan.get("current_rate"),
+        "current_rate_scale": plan.get("current_rate_scale", 1),
+        "current_rate_display": plan.get("current_rate_display"),
         "current_rate_date": plan.get("current_rate_date"),
+        "current_rate_quoted_at": plan.get("current_rate_quoted_at"),
+        "current_rate_fetched_at": plan.get("current_rate_fetched_at"),
+        "current_rate_stale": bool(plan.get("current_rate_stale", False)),
         "current_base_amount": plan.get("current_base_amount"),
         "scheduled_date": plan["scheduled_date"],
         "due_date": plan["scheduled_date"],
@@ -198,6 +210,7 @@ def page_with_plans_api_mock(page):
         "operations": [],
         "debt_cards": [],
         "last_create_payload": None,
+        "last_update_payload": None,
         "next_plan_id": 1,
         "next_operation_id": 100,
         "preferences": {
@@ -355,6 +368,49 @@ def page_with_plans_api_mock(page):
             if not include_closed:
                 cards = [card for card in cards if card.get("status") == "active"]
             return _json_response(route, cards)
+        if path == "/api/v1/currency/rate-options" and method == "GET":
+            currency = (query.get("currency") or ["EUR"])[0].upper()
+            scale = 100 if currency == "RUB" else 1
+            return _json_response(
+                route,
+                {
+                    "currency": currency,
+                    "base_currency": "BYN",
+                    "display_scale": scale,
+                    "nbrb_rate": {
+                        "rate": "3.490000",
+                        "unit_rate": "0.034900" if currency == "RUB" else "3.490000",
+                        "scale": scale,
+                        "rate_date": "2026-05-22",
+                        "source": "nbrb_auto_unit",
+                    },
+                    "bank_rates": [
+                        {
+                            "bank_code": "technobank",
+                            "bank_name": "Технобанк",
+                            "currency": currency,
+                            "base_currency": "BYN",
+                            "scale": scale,
+                            "buy_rate": "3.490000",
+                            "sell_rate": "3.520000",
+                            "buy_unit_rate": "0.034900" if currency == "RUB" else "3.490000",
+                            "sell_unit_rate": "0.035200" if currency == "RUB" else "3.520000",
+                            "channel": "cash",
+                            "channel_label": "наличные",
+                            "location_name": "Минск",
+                            "quoted_at": "2026-05-22T12:00:00Z",
+                            "fetched_at": "2026-05-22T12:01:00Z",
+                            "stale": False,
+                        }
+                    ],
+                    "providers": [
+                        {"bank_code": "priorbank", "bank_name": "Приорбанк", "channel": "online", "channel_label": "онлайн", "has_quote": False},
+                        {"bank_code": "technobank", "bank_name": "Технобанк", "channel": "cash", "channel_label": "наличные", "has_quote": True},
+                        {"bank_code": "bsb", "bank_name": "БСБ Банк", "channel": "cash", "channel_label": "наличные", "has_quote": False},
+                        {"bank_code": "sber", "bank_name": "Сбер Банк", "channel": "cash", "channel_label": "наличные", "has_quote": False},
+                    ],
+                },
+            )
         if path == "/api/v1/plans" and method == "GET":
             return _json_response(route, {"items": [_make_plan_item(item) for item in mock_state["plans"]], "total": len(mock_state["plans"])})
         if path == "/api/v1/plans/history" and method == "GET":
@@ -366,6 +422,15 @@ def page_with_plans_api_mock(page):
                 "id": mock_state["next_plan_id"],
                 "kind": payload["kind"],
                 "amount": payload["amount"],
+                "original_amount": payload["amount"],
+                "currency": payload.get("currency", "BYN"),
+                "base_currency": "BYN",
+                "fx_rate_source": payload.get("fx_rate_source", "nbrb"),
+                "fx_bank_code": payload.get("fx_bank_code"),
+                "fx_bank_channel": payload.get("fx_bank_channel"),
+                "fx_rate_kind": payload.get("fx_rate_kind"),
+                "fx_manual_rate": payload.get("fx_manual_rate"),
+                "fx_payment_mode": payload.get("fx_payment_mode", "valuation"),
                 "scheduled_date": payload["scheduled_date"],
                 "note": payload.get("note"),
                 "recurrence_enabled": bool(payload.get("recurrence_enabled")),
@@ -392,10 +457,19 @@ def page_with_plans_api_mock(page):
                 return _json_response(route, {"detail": "Plan not found"}, status=404)
             if method == "PATCH":
                 payload = json.loads(request.post_data or "{}")
+                mock_state["last_update_payload"] = payload
                 plan.update(
                     {
                         "kind": payload.get("kind", plan["kind"]),
                         "amount": payload.get("amount", plan["amount"]),
+                        "original_amount": payload.get("amount", plan.get("original_amount", plan["amount"])),
+                        "currency": payload.get("currency", plan.get("currency", "BYN")),
+                        "fx_rate_source": payload.get("fx_rate_source", plan.get("fx_rate_source", "nbrb")),
+                        "fx_bank_code": payload.get("fx_bank_code"),
+                        "fx_bank_channel": payload.get("fx_bank_channel"),
+                        "fx_rate_kind": payload.get("fx_rate_kind"),
+                        "fx_manual_rate": payload.get("fx_manual_rate"),
+                        "fx_payment_mode": payload.get("fx_payment_mode", plan.get("fx_payment_mode", "valuation")),
                         "scheduled_date": payload.get("scheduled_date", plan["scheduled_date"]),
                         "note": payload.get("note"),
                         "recurrence_enabled": bool(payload.get("recurrence_enabled")),
@@ -682,8 +756,19 @@ def test_plan_foreign_currency_amount_meta_wraps_inside_card(static_server_url: 
             "original_amount": "686.00",
             "currency": "EUR",
             "base_currency": "BYN",
+            "fx_rate_source": "bank",
+            "fx_bank_code": "technobank",
+            "fx_bank_name": "Технобанк",
+            "fx_bank_channel": "cash",
+            "fx_rate_kind": "sell",
+            "fx_payment_mode": "direct_conversion",
             "current_rate": "3.17600",
+            "current_rate_scale": 1,
+            "current_rate_display": "3.17600",
             "current_rate_date": "2026-05-22",
+            "current_rate_quoted_at": "2026-05-22T12:00:00Z",
+            "current_rate_fetched_at": "2026-05-22T12:01:00Z",
+            "current_rate_stale": False,
             "current_base_amount": "2178.74",
             "scheduled_date": "2026-06-30",
             "status": "upcoming",
@@ -715,6 +800,34 @@ def test_plan_foreign_currency_amount_meta_wraps_inside_card(static_server_url: 
     assert geometry["secondaryRight"] <= geometry["cardRight"] + 1
     assert geometry["amountLeft"] >= geometry["cardLeft"] - 1
     assert geometry["secondaryLeft"] >= geometry["cardLeft"] - 1
+    card_text = page.locator("#plansList .plan-card").inner_text()
+    assert "Технобанк" in card_text
+    assert "продажа банком" in card_text
+    assert "наличные" in card_text
+    assert "пополнить и оплатить" in card_text
+
+    page.locator('button[data-plan-menu-trigger="1"]').click()
+    page.locator('.plan-card-actions-popover:not(.hidden) button[data-plan-action="edit"][data-plan-id="1"]').click()
+    page.wait_for_selector("#createModal:not(.hidden)")
+    page.wait_for_function("() => document.querySelector('#opFxBankOptions')?.textContent.includes('Технобанк')")
+    assert page.locator("#opFxRateSource").input_value() == "bank"
+    assert page.locator("#opFxBankCode").input_value() == "technobank"
+    assert page.locator("#opFxRateKind").input_value() == "sell"
+    assert page.locator("#opFxPaymentMode").input_value() == "direct_conversion"
+    assert "Продажа банком" in page.locator("#opFxRateMeta").inner_text()
+    assert "наличные" in page.locator("#opFxRateMeta").inner_text()
+
+    page.fill("#opAmount", "700")
+    page.click("#submitCreateOperationBtn")
+    page.wait_for_function("() => document.querySelector('#submitCreateOperationBtn')?.disabled === false")
+    payload = mock_state["last_update_payload"]
+    assert payload["currency"] == "EUR"
+    assert payload["fx_rate_source"] == "bank"
+    assert payload["fx_bank_code"] == "technobank"
+    assert payload["fx_bank_channel"] == "cash"
+    assert payload["fx_rate_kind"] == "sell"
+    assert payload["fx_payment_mode"] == "direct_conversion"
+    assert "fx_rate" not in payload
 
 
 @pytest.mark.e2e
@@ -844,7 +957,23 @@ def test_plans_history_event_type_filters(static_server_url: str, page_with_plan
             "operation_id": 101,
             "event_type": "confirmed",
             "kind": "expense",
-            "amount": "15.00",
+            "amount": "70.40",
+            "original_amount": "20.00",
+            "currency": "EUR",
+            "base_currency": "BYN",
+            "fx_rate": "3.520000",
+            "fx_rate_source": "bank",
+            "fx_bank_code": "technobank",
+            "fx_bank_name": "Технобанк",
+            "fx_bank_channel": "cash",
+            "fx_rate_kind": "sell",
+            "fx_rate_scale": 1,
+            "fx_rate_display": "3.520000",
+            "fx_rate_date": "2026-03-16",
+            "fx_quoted_at": "2026-03-16T08:00:00Z",
+            "fx_fetched_at": "2026-03-16T08:01:00Z",
+            "fx_rate_stale": False,
+            "fx_payment_mode": "direct_conversion",
             "effective_date": "2026-03-16",
             "note": "Подтвержденный кофе",
             "category_name": None,
@@ -859,6 +988,10 @@ def test_plans_history_event_type_filters(static_server_url: str, page_with_plan
     assert "Подтвержденный кофе" in history_text
     assert "Пропущенный платеж" in history_text
     assert "Напомнить про кофе" in history_text
+    assert "Технобанк" in history_text
+    assert "продажа банком" in history_text
+    assert "наличные" in history_text
+    assert "пополнить и оплатить" in history_text
 
     page.click('button[data-plan-history-event="confirmed"]')
     page.wait_for_function(

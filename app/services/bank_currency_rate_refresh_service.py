@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 import httpx
 from sqlalchemy.orm import Session
 
+from app.core.cache import invalidate_plans_cache
 from app.core.logging import log_background_job_event
 from app.repositories.currency_repo import CurrencyRepository
 from app.services.bank_currency_rate_registry import (
@@ -86,9 +87,15 @@ class BankCurrencyRateRefreshService:
         user_id: int,
         prefs: dict | None = None,
         currencies: list[str] | None = None,
+        bank_codes: list[str] | None = None,
         force: bool = False,
     ) -> list[dict]:
-        config = self._resolve_config(user_id=user_id, prefs=prefs, currencies=currencies)
+        config = self._resolve_config(
+            user_id=user_id,
+            prefs=prefs,
+            currencies=currencies,
+            bank_codes=bank_codes,
+        )
         if not config["bank_codes"] or not config["currencies"]:
             return []
         now = datetime.now(timezone.utc)
@@ -151,6 +158,10 @@ class BankCurrencyRateRefreshService:
                 refreshed_count=len(refreshed_rows),
                 banks=sorted({row.bank_code for row in refreshed_rows}),
             )
+        # Bank quotes are global. Another user's refresh may have updated the
+        # same provider earlier in this batch, so invalidate this user's
+        # dynamic plan projection even when no fetch was needed here.
+        invalidate_plans_cache(user_id)
         return [self._serialize(row, now=now) for row in refreshed_rows]
 
     def list_user_rates(
@@ -160,7 +171,12 @@ class BankCurrencyRateRefreshService:
         prefs: dict | None = None,
         currencies: list[str] | None = None,
     ) -> list[dict]:
-        config = self._resolve_config(user_id=user_id, prefs=prefs, currencies=currencies)
+        config = self._resolve_config(
+            user_id=user_id,
+            prefs=prefs,
+            currencies=currencies,
+            bank_codes=None,
+        )
         if not config["bank_codes"] or not config["currencies"]:
             return []
         rows = self.repo.list_bank_rates(
@@ -184,18 +200,28 @@ class BankCurrencyRateRefreshService:
         user_id: int,
         prefs: dict | None,
         currencies: list[str] | None,
+        bank_codes: list[str] | None,
     ) -> dict:
         currency_config = self.currency_service.get_currency_preferences(user_id)
+        active_plan_requirements = self.repo.list_active_plan_bank_requirements(user_id=user_id)
         raw_currency = prefs.get("currency") if prefs and isinstance(prefs.get("currency"), dict) else {}
-        raw_banks = raw_currency.get("bank_rate_banks", currency_config.get("bank_rate_banks"))
+        raw_banks = (
+            bank_codes
+            if bank_codes is not None
+            else raw_currency.get("bank_rate_banks", currency_config.get("bank_rate_banks"))
+        )
         if not isinstance(raw_banks, list):
             raw_banks = list(DEFAULT_BANK_RATE_BANKS)
+        elif bank_codes is None:
+            raw_banks = [*raw_banks, *(code for code, _currency in active_plan_requirements)]
         bank_codes = []
         for item in raw_banks:
             code = str(item or "").strip().lower()
             if code in BANK_RATE_PROVIDERS and code not in bank_codes:
                 bank_codes.append(code)
-        target_currencies = currencies or currency_config.get("tracked_currencies") or []
+        target_currencies = list(currencies or currency_config.get("tracked_currencies") or [])
+        if currencies is None:
+            target_currencies.extend(currency for _code, currency in active_plan_requirements)
         normalized_currencies = []
         for item in target_currencies:
             try:
@@ -473,7 +499,11 @@ class BankCurrencyRateRefreshService:
     @classmethod
     def _serialize(cls, row, *, now: datetime) -> dict:
         fetched_at = cls._aware(row.fetched_at)
-        stale = fetched_at < now - timedelta(minutes=BANK_RATE_STALE_MINUTES)
+        quoted_at = cls._aware(row.quoted_at) if row.quoted_at else None
+        freshness_timestamp = min(
+            value for value in (fetched_at, quoted_at) if value is not None
+        )
+        stale = freshness_timestamp < now - timedelta(minutes=BANK_RATE_STALE_MINUTES)
         provider = BANK_RATE_PROVIDERS.get(row.bank_code, {})
         return {
             "bank_code": row.bank_code,

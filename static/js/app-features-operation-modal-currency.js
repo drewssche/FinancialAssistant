@@ -319,6 +319,7 @@
     setAutoComputedField(el.currencyUnitPriceField, context.sourceField === "pair" && context.unitPrice > 0);
   }
 
+  let fxPolicy = {};
   const createOperationModalFxSettlementFeature = window.App.getRuntimeModule?.("operation-modal-fx-settlement-factory");
   const fxSettlement = createOperationModalFxSettlementFeature
       ? createOperationModalFxSettlementFeature({
@@ -334,6 +335,7 @@
       formatTradeRateValue,
       applyTradeFieldCurrency,
       setAutoComputedField,
+      getOperationFxContext: (mode) => fxPolicy.getContext?.(mode) || null,
     })
     : {};
   const getCreateFxSettlementPayload = fxSettlement.getCreateFxSettlementPayload || (() => null);
@@ -348,6 +350,21 @@
   const toggleEditFxSettlement = fxSettlement.toggleEditFxSettlement || (() => {});
   const markEditFxSettlementQuantitySource = fxSettlement.markEditFxSettlementQuantitySource || (() => {});
   const markEditFxSettlementRateSource = fxSettlement.markEditFxSettlementRateSource || (() => {});
+
+  const createOperationModalFxPolicyFeature = window.App.getRuntimeModule?.("operation-modal-fx-policy-factory");
+  fxPolicy = createOperationModalFxPolicyFeature
+    ? createOperationModalFxPolicyFeature({
+      state,
+      el,
+      core,
+      formatTradeRateValue,
+      renderReceiptSummary,
+      updateCreatePreview,
+      updateEditPreview,
+      syncCreateFxSettlementFieldUi,
+      syncEditFxSettlementFieldUi,
+    })
+    : {};
 
   function buildSelectableCurrencyList(includeBase = true, preserveValue = "") {
     const baseCurrency = String(core.getCurrencyConfig?.().code || "BYN").toUpperCase();
@@ -649,10 +666,17 @@
       populateCurrencySelect,
       syncSelectableCurrencyFields,
       setOperationFxRateManual,
-      setOperationFxRateHint,
-      getOperationCurrencyContext,
-      syncSuggestedOperationFxRate,
-      syncOperationCurrencyFields,
+      setOperationFxRateHint: fxPolicy.setHint || setOperationFxRateHint,
+      getOperationCurrencyContext: fxPolicy.getContext || getOperationCurrencyContext,
+      syncSuggestedOperationFxRate: fxPolicy.syncFields || syncSuggestedOperationFxRate,
+      syncOperationCurrencyFields: fxPolicy.syncFields || syncOperationCurrencyFields,
+      resetOperationFxPolicy: fxPolicy.reset || (() => {}),
+      hydrateOperationFxPolicy: fxPolicy.hydrate || (() => {}),
+      getOperationFxPolicyPayload: fxPolicy.getPayload || (() => ({})),
+      getOperationFxPolicyPreview: fxPolicy.getPreview || (() => ({})),
+      bindOperationFxPolicy: fxPolicy.bind || (() => {}),
+      markOperationFxRateManual: fxPolicy.markManual || (() => {}),
+      renderOperationFxPolicyUi: fxPolicy.renderUi || (() => {}),
       applyDebtCurrencyUi,
       setCurrencyTradeState,
       resetCurrencyTradeState,

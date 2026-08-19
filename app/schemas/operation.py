@@ -5,6 +5,9 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 DiscountType = Literal["promo", "coupon", "loyalty_points"]
+FxRateSource = Literal["nbrb", "bank", "manual"]
+FxRateKind = Literal["buy", "sell"]
+FxPaymentMode = Literal["valuation", "direct_conversion", "foreign_balance"]
 
 
 class OperationReceiptItemIn(BaseModel):
@@ -61,6 +64,12 @@ class OperationCreate(BaseModel):
     amount: Decimal | None = None
     currency: str = Field(default="BYN", min_length=3, max_length=3)
     fx_rate: Decimal | None = Field(default=None, gt=0)
+    fx_rate_source: FxRateSource | None = None
+    fx_bank_code: str | None = Field(default=None, max_length=32)
+    fx_bank_channel: str | None = Field(default=None, max_length=20)
+    fx_rate_kind: FxRateKind | None = None
+    fx_manual_rate: Decimal | None = Field(default=None, gt=0)
+    fx_payment_mode: FxPaymentMode | None = None
     operation_date: date
     category_id: int | None = None
     note: str | None = None
@@ -73,6 +82,13 @@ class OperationUpdate(BaseModel):
     amount: Decimal | None = None
     currency: str | None = Field(default=None, min_length=3, max_length=3)
     fx_rate: Decimal | None = Field(default=None, gt=0)
+    fx_rate_source: FxRateSource | None = None
+    fx_bank_code: str | None = Field(default=None, max_length=32)
+    fx_bank_channel: str | None = Field(default=None, max_length=20)
+    fx_rate_kind: FxRateKind | None = None
+    fx_manual_rate: Decimal | None = Field(default=None, gt=0)
+    fx_payment_mode: FxPaymentMode | None = None
+    fx_refresh_rate: bool | None = None
     operation_date: date | None = None
     category_id: int | None = None
     note: str | None = None
@@ -88,6 +104,18 @@ class OperationOut(BaseModel):
     currency: str
     base_currency: str
     fx_rate: Decimal
+    fx_rate_source: FxRateSource | None = None
+    fx_bank_code: str | None = None
+    fx_bank_name: str | None = None
+    fx_bank_channel: str | None = None
+    fx_rate_kind: FxRateKind | None = None
+    fx_rate_scale: int = 1
+    fx_rate_display: Decimal = Decimal("1")
+    fx_rate_date: date | None = None
+    fx_quoted_at: datetime | None = None
+    fx_fetched_at: datetime | None = None
+    fx_rate_stale: bool = False
+    fx_payment_mode: FxPaymentMode = "valuation"
     operation_date: date
     category_id: int | None
     category_name: str | None = None
