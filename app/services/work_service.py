@@ -1,6 +1,7 @@
 import calendar
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
@@ -35,6 +36,11 @@ STATUS_LABELS = {
 PAID_ABSENCE_STATUSES = {"vacation", "sick_paid", "company_day_off"}
 UNPAID_ABSENCE_STATUSES = {"sick_unpaid", "day_off", "unpaid_leave", "holiday", "weekend"}
 WORKING_STATUSES = {"workday", "transferred_workday", "overtime"}
+WORK_TIMEZONE = ZoneInfo("Europe/Minsk")
+PAYMENT_ROLES = (
+    ("salary", "Основная часть", "salary_plan_id", "salary_nominal_day"),
+    ("advance", "Аванс", "advance_plan_id", "advance_nominal_day"),
+)
 
 
 class WorkService:
@@ -48,7 +54,16 @@ class WorkService:
 
     def update_profile(self, *, user_id: int, payload: dict) -> dict:
         profile = self.repo.get_profile(user_id=user_id) or self.repo.create_profile(user_id=user_id)
-        for field in ("company", "position", "employment_start_date", "standard_hours_per_day"):
+        for field in (
+            "company",
+            "position",
+            "employment_start_date",
+            "standard_hours_per_day",
+            "workday_start_time",
+            "workday_end_time",
+            "lunch_start_time",
+            "lunch_end_time",
+        ):
             if field in payload:
                 setattr(profile, field, payload[field])
         profile.workweek_mask = ",".join(str(day) for day in sorted(set(payload.get("workweek_days", [0, 1, 2, 3, 4]))))
@@ -79,7 +94,15 @@ class WorkService:
         invalidate_plans_cache(user_id)
         return self._serialize_profile(profile)
 
-    def get_month(self, *, user_id: int, year: int, month: int, today: date | None = None) -> dict:
+    def get_month(
+        self,
+        *,
+        user_id: int,
+        year: int,
+        month: int,
+        today: date | None = None,
+        now: datetime | None = None,
+    ) -> dict:
         if month < 1 or month > 12:
             raise ValueError("month must be between 1 and 12")
         if year < 2000 or year > 2100:
@@ -90,13 +113,14 @@ class WorkService:
         end = date(year, month, calendar.monthrange(year, month)[1])
         rows = self.repo.list_overrides(user_id=user_id, date_from=start - timedelta(days=10), date_to=end)
         overrides = {row.work_date: row for row in rows}
-        current_day = today or date.today()
+        current_day, local_now = self._resolve_current_time(today=today, now=now)
         days = [
             self._build_day(
                 day=date(year, month, day_number),
                 profile_data=profile_data,
                 override=overrides.get(date(year, month, day_number)),
                 today=current_day,
+                now=local_now,
             )
             for day_number in range(1, end.day + 1)
         ]
@@ -105,11 +129,18 @@ class WorkService:
             for row in rows
             if row.status in PAYROLL_CALENDAR_OVERRIDE_STATUSES
         }
+        payment_history = self.list_payment_history(
+            user_id=user_id,
+            date_from=start,
+            date_to=end,
+            profile_data=profile_data,
+        )["items"]
+        actual_by_plan: dict[int, list[dict]] = {}
+        for history_item in payment_history:
+            actual_by_plan.setdefault(int(history_item["plan_id"]), []).append(history_item)
+
         payments = []
-        for role, label, plan_key, nominal_key in (
-            ("salary", "Основная часть", "salary_plan_id", "salary_nominal_day"),
-            ("advance", "Аванс", "advance_plan_id", "advance_nominal_day"),
-        ):
+        for role, label, plan_key, nominal_key in PAYMENT_ROLES:
             nominal, effective = resolve_payment_date(
                 year,
                 month,
@@ -118,14 +149,32 @@ class WorkService:
                 country_code=profile_data["country_code"],
                 override_statuses=statuses,
             )
+            plan_id = profile_data[plan_key]
+            plan = self.repo.get_plan(user_id=user_id, plan_id=int(plan_id)) if plan_id else None
+            forecast_amount = None
+            forecast_currency = None
+            forecast_base_amount = None
+            forecast_base_currency = None
+            if plan:
+                forecast_amount = money_hours(getattr(plan, "original_amount", None) or 0)
+                if forecast_amount <= 0:
+                    forecast_amount = money_hours(plan.amount)
+                forecast_currency = str(plan.currency or "BYN").upper()
+                forecast_base_amount = money_hours(plan.amount)
+                forecast_base_currency = str(plan.base_currency or forecast_currency).upper()
             payments.append(
                 {
                     "role": role,
                     "label": label,
-                    "plan_id": profile_data[plan_key],
+                    "plan_id": plan_id,
                     "nominal_date": nominal,
                     "effective_date": effective,
                     "shifted": nominal != effective,
+                    "forecast_amount": forecast_amount,
+                    "forecast_currency": forecast_currency,
+                    "forecast_base_amount": forecast_base_amount,
+                    "forecast_base_currency": forecast_base_currency,
+                    "actual_operations": actual_by_plan.get(int(plan_id), []) if plan_id else [],
                 }
             )
         return {
@@ -146,8 +195,9 @@ class WorkService:
         date_from: date | None = None,
         date_to: date | None = None,
         today: date | None = None,
+        now: datetime | None = None,
     ) -> dict:
-        current_day = today or date.today()
+        current_day, local_now = self._resolve_current_time(today=today, now=now)
         profile = self.repo.get_profile(user_id=user_id)
         profile_data = self._serialize_profile(profile)
         contracts = self.repo.list_contracts(user_id=user_id)
@@ -173,6 +223,7 @@ class WorkService:
                     profile_data=profile_data,
                     override=overrides.get(cursor),
                     today=current_day,
+                    now=local_now,
                 )
             )
             cursor += timedelta(days=1)
@@ -199,6 +250,56 @@ class WorkService:
             ),
             "months": self._statistics_months(days),
         }
+
+    def list_payment_history(
+        self,
+        *,
+        user_id: int,
+        date_from: date,
+        date_to: date,
+        profile_data: dict | None = None,
+    ) -> dict:
+        if date_to < date_from:
+            raise ValueError("Дата окончания не может быть раньше даты начала")
+        if (date_to - date_from).days > 3660:
+            raise ValueError("История выплат не может превышать 10 лет")
+        profile = self.repo.get_profile(user_id=user_id)
+        profile_data = profile_data or self._serialize_profile(profile)
+        role_by_plan: dict[int, tuple[str, str]] = {}
+        plans = {}
+        for role, label, plan_key, _ in PAYMENT_ROLES:
+            plan_id = profile_data.get(plan_key)
+            if not plan_id:
+                continue
+            normalized_id = int(plan_id)
+            role_by_plan[normalized_id] = (role, label)
+            plans[normalized_id] = self.repo.get_plan(user_id=user_id, plan_id=normalized_id)
+        rows = self.repo.list_confirmed_payroll_events(
+            user_id=user_id,
+            plan_ids=list(role_by_plan),
+            date_from=date_from,
+            date_to=date_to,
+        )
+        items = []
+        for row in rows:
+            event = row.PlanOperationEvent
+            role_meta = role_by_plan.get(int(event.plan_id))
+            if not role_meta:
+                continue
+            role, label = role_meta
+            items.append(
+                {
+                    "role": role,
+                    "label": label,
+                    "plan_id": int(event.plan_id),
+                    **self._serialize_payment_operation(
+                        event=event,
+                        operation=row.Operation,
+                        plan=plans.get(int(event.plan_id)),
+                    ),
+                }
+            )
+        return {"items": items, "total": len(items)}
 
     def upsert_override(self, *, user_id: int, work_date: date, payload: dict) -> dict:
         profile = self.repo.get_profile(user_id=user_id) or self.repo.create_profile(user_id=user_id)
@@ -407,6 +508,10 @@ class WorkService:
                 "position": None,
                 "employment_start_date": None,
                 "standard_hours_per_day": Decimal("8.00"),
+                "workday_start_time": time(9, 0),
+                "workday_end_time": time(18, 0),
+                "lunch_start_time": time(13, 0),
+                "lunch_end_time": time(14, 0),
                 "workweek_days": [0, 1, 2, 3, 4],
                 "country_code": "BY",
                 "advance_plan_id": None,
@@ -421,6 +526,10 @@ class WorkService:
             "position": profile.position,
             "employment_start_date": profile.employment_start_date,
             "standard_hours_per_day": money_hours(profile.standard_hours_per_day),
+            "workday_start_time": profile.workday_start_time,
+            "workday_end_time": profile.workday_end_time,
+            "lunch_start_time": profile.lunch_start_time,
+            "lunch_end_time": profile.lunch_end_time,
             "workweek_days": sorted(parse_workweek_mask(profile.workweek_mask)),
             "country_code": profile.country_code,
             "advance_plan_id": profile.advance_plan_id,
@@ -476,7 +585,15 @@ class WorkService:
                     break
         profile.employment_start_date = employment_start
 
-    def _build_day(self, *, day: date, profile_data: dict, override: WorkDayOverride | None, today: date) -> dict:
+    def _build_day(
+        self,
+        *,
+        day: date,
+        profile_data: dict,
+        override: WorkDayOverride | None,
+        today: date,
+        now: datetime,
+    ) -> dict:
         standard = money_hours(profile_data["standard_hours_per_day"])
         baseline = baseline_day(
             day,
@@ -491,8 +608,18 @@ class WorkService:
         is_workday = status in WORKING_STATUSES
         if override and status in WORKING_STATUSES and override.planned_hours is None and planned == 0:
             planned = standard
-        if override and override.actual_hours is not None:
+        has_manual_actual = bool(override and override.actual_hours is not None)
+        shift_end = datetime.combine(day, profile_data["workday_end_time"], tzinfo=WORK_TIMEZONE)
+        is_live = bool(
+            status in WORKING_STATUSES
+            and day == today
+            and not has_manual_actual
+            and now < shift_end
+        )
+        if has_manual_actual:
             actual = money_hours(override.actual_hours)
+        elif is_live:
+            actual = self._live_worked_hours(day=day, planned=planned, profile_data=profile_data, now=now)
         elif status in WORKING_STATUSES and day <= today:
             actual = planned
         else:
@@ -507,6 +634,20 @@ class WorkService:
             credited = actual
         else:
             credited = Decimal("0.00")
+        is_completed = bool(
+            actual > 0
+            and (
+                has_manual_actual
+                or day < today
+                or (day == today and now >= shift_end)
+            )
+        )
+        if day > today and not has_manual_actual:
+            hours_state = "forecast"
+        elif is_live:
+            hours_state = "live"
+        else:
+            hours_state = "actual"
         return {
             "date": day,
             "weekday": day.weekday(),
@@ -519,13 +660,95 @@ class WorkService:
             "is_workday": is_workday,
             "is_manual": override is not None,
             "is_future": day > today,
+            "is_live": is_live,
+            "is_completed": is_completed,
+            "hours_state": hours_state,
             "note": override.note if override else None,
+        }
+
+    @staticmethod
+    def _resolve_current_time(
+        *,
+        today: date | None,
+        now: datetime | None,
+    ) -> tuple[date, datetime]:
+        if now is None:
+            local_now = datetime.now(WORK_TIMEZONE)
+        elif now.tzinfo is None:
+            local_now = now.replace(tzinfo=WORK_TIMEZONE)
+        else:
+            local_now = now.astimezone(WORK_TIMEZONE)
+
+        if today is not None:
+            current_day = today
+        elif now is not None:
+            current_day = local_now.date()
+        else:
+            # Keep deterministic date monkeypatches used by service tests while
+            # preferring the Belarus calendar day around UTC midnight.
+            process_day = date.today()
+            current_day = (
+                process_day
+                if abs((process_day - local_now.date()).days) > 1
+                else local_now.date()
+            )
+        if local_now.date() != current_day:
+            local_now = datetime.combine(current_day, time.max, tzinfo=WORK_TIMEZONE)
+        return current_day, local_now
+
+    @staticmethod
+    def _live_worked_hours(
+        *,
+        day: date,
+        planned: Decimal,
+        profile_data: dict,
+        now: datetime,
+    ) -> Decimal:
+        shift_start = datetime.combine(day, profile_data["workday_start_time"], tzinfo=WORK_TIMEZONE)
+        shift_end = datetime.combine(day, profile_data["workday_end_time"], tzinfo=WORK_TIMEZONE)
+        lunch_start = datetime.combine(day, profile_data["lunch_start_time"], tzinfo=WORK_TIMEZONE)
+        lunch_end = datetime.combine(day, profile_data["lunch_end_time"], tzinfo=WORK_TIMEZONE)
+        effective_end = min(max(now, shift_start), shift_end)
+        worked_seconds = max(0.0, (effective_end - shift_start).total_seconds())
+        break_end = min(effective_end, lunch_end)
+        break_seconds = max(0.0, (break_end - lunch_start).total_seconds())
+        hours = Decimal(str((worked_seconds - break_seconds) / 3600))
+        return min(money_hours(hours), money_hours(planned))
+
+    @staticmethod
+    def _serialize_payment_operation(*, event, operation, plan) -> dict:
+        if operation is not None:
+            amount = money_hours(getattr(operation, "original_amount", None) or 0)
+            if amount <= 0:
+                amount = money_hours(operation.amount)
+            return {
+                "operation_id": int(operation.id),
+                "operation_date": operation.operation_date,
+                "amount": amount,
+                "currency": str(operation.currency or "BYN").upper(),
+                "base_amount": money_hours(operation.amount),
+                "base_currency": str(operation.base_currency or operation.currency or "BYN").upper(),
+                "note": operation.note,
+                "category_name": event.category_name,
+                "is_deleted": False,
+            }
+        base_currency = str(getattr(plan, "base_currency", None) or "BYN").upper()
+        return {
+            "operation_id": None,
+            "operation_date": event.effective_date,
+            "amount": money_hours(event.amount),
+            "currency": base_currency,
+            "base_amount": money_hours(event.amount),
+            "base_currency": base_currency,
+            "note": event.note,
+            "category_name": event.category_name,
+            "is_deleted": True,
         }
 
     def _summarize_days(self, days: list[dict]) -> dict:
         return {
             "planned_days": sum(1 for item in days if item["planned_hours"] > 0),
-            "completed_days": sum(1 for item in days if item["actual_hours"] > 0),
+            "completed_days": sum(1 for item in days if item["is_completed"]),
             "planned_hours": sum((item["planned_hours"] for item in days), Decimal("0.00")),
             "actual_hours": sum((item["actual_hours"] for item in days), Decimal("0.00")),
             "credited_hours": sum((item["credited_hours"] for item in days), Decimal("0.00")),

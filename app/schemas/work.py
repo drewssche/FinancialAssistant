@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 
 from pydantic import BaseModel, Field, model_validator
@@ -15,6 +15,10 @@ class WorkProfileUpdate(BaseModel):
     position: str | None = Field(default=None, max_length=160)
     employment_start_date: date | None = None
     standard_hours_per_day: Decimal = Field(default=Decimal("8.00"), gt=0, le=24)
+    workday_start_time: time = time(9, 0)
+    workday_end_time: time = time(18, 0)
+    lunch_start_time: time = time(13, 0)
+    lunch_end_time: time = time(14, 0)
     workweek_days: list[int] = Field(default_factory=lambda: [0, 1, 2, 3, 4])
     advance_plan_id: int | None = None
     salary_plan_id: int | None = None
@@ -27,6 +31,13 @@ class WorkProfileUpdate(BaseModel):
             raise ValueError("Планы аванса и зарплаты должны быть разными")
         if not self.workweek_days or any(day < 0 or day > 6 for day in self.workweek_days):
             raise ValueError("workweek_days must contain values from 0 to 6")
+        if not (
+            self.workday_start_time
+            < self.lunch_start_time
+            < self.lunch_end_time
+            < self.workday_end_time
+        ):
+            raise ValueError("Рабочее время должно идти в порядке: начало, обед, конец обеда, конец дня")
         return self
 
 
@@ -36,6 +47,10 @@ class WorkProfileOut(BaseModel):
     position: str | None = None
     employment_start_date: date | None = None
     standard_hours_per_day: Decimal
+    workday_start_time: time = time(9, 0)
+    workday_end_time: time = time(18, 0)
+    lunch_start_time: time = time(13, 0)
+    lunch_end_time: time = time(14, 0)
     workweek_days: list[int]
     country_code: str = "BY"
     advance_plan_id: int | None = None
@@ -78,7 +93,22 @@ class WorkDayOut(BaseModel):
     is_workday: bool
     is_manual: bool
     is_future: bool
+    is_live: bool = False
+    is_completed: bool = False
+    hours_state: str = "actual"
     note: str | None = None
+
+
+class WorkPaymentOperationOut(BaseModel):
+    operation_id: int | None = None
+    operation_date: date
+    amount: Decimal
+    currency: str
+    base_amount: Decimal
+    base_currency: str
+    note: str | None = None
+    category_name: str | None = None
+    is_deleted: bool = False
 
 
 class WorkPaymentOut(BaseModel):
@@ -88,6 +118,22 @@ class WorkPaymentOut(BaseModel):
     nominal_date: date
     effective_date: date
     shifted: bool
+    forecast_amount: Decimal | None = None
+    forecast_currency: str | None = None
+    forecast_base_amount: Decimal | None = None
+    forecast_base_currency: str | None = None
+    actual_operations: list[WorkPaymentOperationOut] = Field(default_factory=list)
+
+
+class WorkPaymentHistoryItemOut(WorkPaymentOperationOut):
+    role: str
+    label: str
+    plan_id: int
+
+
+class WorkPaymentHistoryOut(BaseModel):
+    items: list[WorkPaymentHistoryItemOut]
+    total: int
 
 
 class WorkMonthSummaryOut(BaseModel):

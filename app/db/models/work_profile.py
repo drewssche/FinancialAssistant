@@ -1,7 +1,7 @@
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, func
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Text, Time, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -16,6 +16,10 @@ class WorkProfile(Base):
     position: Mapped[str | None] = mapped_column(String(160), nullable=True)
     employment_start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     standard_hours_per_day: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=Decimal("8.00"), server_default="8.00")
+    workday_start_time: Mapped[time] = mapped_column(Time, default=time(9, 0), server_default="09:00:00")
+    workday_end_time: Mapped[time] = mapped_column(Time, default=time(18, 0), server_default="18:00:00")
+    lunch_start_time: Mapped[time] = mapped_column(Time, default=time(13, 0), server_default="13:00:00")
+    lunch_end_time: Mapped[time] = mapped_column(Time, default=time(14, 0), server_default="14:00:00")
     workweek_mask: Mapped[str] = mapped_column(String(32), default="0,1,2,3,4", server_default="0,1,2,3,4")
     country_code: Mapped[str] = mapped_column(String(2), default="BY", server_default="BY")
     advance_plan_id: Mapped[int | None] = mapped_column(

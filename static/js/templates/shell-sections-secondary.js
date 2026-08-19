@@ -117,7 +117,12 @@
                   <label class="field"><span>Должность</span><input id="workPosition" type="text" maxlength="160" /></label>
                   <label class="field"><span>Дата начала работы</span><div class="date-input-wrap"><input id="workStartDate" type="date" /><button class="date-input-trigger" type="button" data-date-picker-trigger="workStartDate" aria-label="Открыть календарь"></button></div></label>
                   <label class="field"><span>Часов в обычный день</span><input id="workStandardHours" type="number" min="0.25" max="24" step="0.25" value="8" /></label>
+                  <label class="field"><span>Начало рабочего дня</span><input id="workDayStartTime" type="time" step="60" value="09:00" /></label>
+                  <label class="field"><span>Конец рабочего дня</span><input id="workDayEndTime" type="time" step="60" value="18:00" /></label>
+                  <label class="field"><span>Начало обеда</span><input id="workLunchStartTime" type="time" step="60" value="13:00" /></label>
+                  <label class="field"><span>Конец обеда</span><input id="workLunchEndTime" type="time" step="60" value="14:00" /></label>
                 </div>
+                <p class="muted-small work-schedule-hint">Сегодняшний факт обновляется автоматически по времени смены. Обед в отработанные часы не входит, а ручная настройка дня всегда имеет приоритет.</p>
                 <div class="work-weekday-picker" id="workWeekdayPicker">
                   <label><input type="checkbox" value="0" checked /> Пн</label><label><input type="checkbox" value="1" checked /> Вт</label>
                   <label><input type="checkbox" value="2" checked /> Ср</label><label><input type="checkbox" value="3" checked /> Чт</label>
@@ -167,6 +172,12 @@
                 </section>
               </form>
               <div id="workContractsList" class="plans-list work-contracts-list"></div>
+              <section class="work-actual-payments-section">
+                <div class="panel-head">
+                  <div><h3>Фактические выплаты</h3><p class="subtitle">Полученные деньги из связанных планов зарплаты и аванса</p></div>
+                </div>
+                <div id="workActualPaymentsList" class="work-actual-payments-list"></div>
+              </section>
             </div>
           </section>
         </section>

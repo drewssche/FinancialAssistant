@@ -33,12 +33,18 @@
 .work-period-month-options .settings-picker-option, .work-period-year-options .settings-picker-option { min-width: 0; grid-template-columns: 1fr; justify-content: center; }
 .work-payments-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
 .work-payment-card { display: flex; justify-content: space-between; gap: 16px; padding: 15px 17px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); }
-.work-payment-card > div:first-child { display: grid; gap: 5px; }
+.work-payment-primary { display: grid; gap: 5px; align-content: start; }
 .work-payment-card strong { font-size: 20px; }
 .work-payment-card.is-shifted { border-color: rgba(255, 153, 52, .55); }
+.work-payment-card.has-actual { border-color: rgba(85, 198, 169, .46); }
+.work-payment-date { color: var(--muted); font-size: 12px; }
 .work-payment-meta { display: grid; align-content: center; gap: 4px; text-align: right; color: var(--muted); font-size: 12px; }
 .work-payment-plan-link { padding: 0; border: 0; background: transparent; color: #8fb4ff; font: inherit; text-align: right; cursor: pointer; }
 .work-payment-plan-link:hover { color: #c6d7ff; text-decoration: underline; }
+.work-payment-actual-link { padding: 4px 8px; border: 1px solid rgba(85, 198, 169, .3); border-radius: 999px; background: rgba(85, 198, 169, .1); color: #8ce0c8; font: inherit; text-align: right; cursor: pointer; }
+.work-payment-actual-link:hover { border-color: rgba(85, 198, 169, .65); background: rgba(85, 198, 169, .17); }
+.work-payment-actual-deleted { color: #d8889a; }
+.work-payment-context-selected { box-shadow: 0 0 0 2px rgba(77, 141, 255, .42); }
 .work-view-tabs { margin-bottom: 18px; }
 .work-statistics-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 14px; }
 .work-statistics-custom { display: grid; grid-template-columns: minmax(160px, 1fr) minmax(160px, 1fr) auto; align-items: end; gap: 12px; margin-bottom: 16px; }
@@ -54,14 +60,16 @@
 .work-statistics-month-values { text-align: right; }
 .work-calendar-weekdays, .work-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
 .work-calendar-weekdays { margin-bottom: 8px; color: var(--muted); font-size: 12px; text-align: center; }
-.work-day-cell { position: relative; min-height: 132px; padding: 10px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); color: var(--text); text-align: left; }
+.work-day-cell { position: relative; min-height: 132px; padding: 10px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); color: var(--text); text-align: left; cursor: pointer; }
 .work-day-cell:hover { border-color: var(--accent); transform: translateY(-1px); }
-.work-day-empty { border-color: transparent; background: transparent; }
+.work-day-empty { border-color: transparent; background: transparent; cursor: default; pointer-events: none; }
+.work-day-cell:focus-visible { outline: 2px solid rgba(77, 141, 255, .8); outline-offset: 2px; }
 .work-day-number { align-self: flex-end; color: var(--muted); font-size: 12px; }
 .work-day-status { color: var(--muted); font-size: 11px; line-height: 1.25; }
 .work-day-hours { display: flex; flex-wrap: wrap; gap: 4px; min-height: 20px; }
 .work-hours-chip { display: inline-flex; align-items: center; min-height: 20px; padding: 3px 7px; border: 1px solid transparent; border-radius: 999px; font-size: 10px; font-weight: 800; line-height: 1; white-space: nowrap; }
 .work-hours-chip-fact { border-color: rgba(85, 198, 169, .38); background: rgba(85, 198, 169, .16); color: #8ce0c8; }
+.work-hours-chip-live { border-color: rgba(255, 179, 71, .5); background: rgba(255, 179, 71, .16); color: #ffd18a; }
 .work-hours-chip-forecast { border-color: rgba(77, 141, 255, .4); background: rgba(77, 141, 255, .16); color: #9fc1ff; }
 .work-hours-chip-plan { border-color: rgba(145, 160, 190, .28); background: rgba(145, 160, 190, .1); color: #b8c4dc; }
 .work-day-note { width: 100%; display: -webkit-box; overflow: hidden; padding-left: 7px; border-left: 2px solid rgba(155, 124, 255, .72); color: #c5cee0; font-size: 10px; line-height: 1.3; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
@@ -75,7 +83,11 @@
 .work-day-cell.has-payment { border-color: rgba(255, 153, 52, .68); }
 .work-day-cell.is-today { border-color: rgba(255, 179, 71, .9); background: linear-gradient(180deg, rgba(255, 179, 71, .18), rgba(255, 179, 71, .05)), var(--surface-2); box-shadow: 0 0 0 1px rgba(255, 179, 71, .24), 0 0 0 4px rgba(255, 179, 71, .08); }
 .work-day-today-label { display: inline-flex; padding: 2px 6px; border-radius: 999px; background: rgba(255, 179, 71, .16); color: #ffd18a; font-size: 9px; font-weight: 800; }
-.work-day-payment { margin-top: auto; padding: 3px 6px; border-radius: 999px; background: rgba(255, 153, 52, .16); color: #ffad58; font-size: 10px; }
+.work-day-payments { width: 100%; display: grid; gap: 4px; margin-top: auto; }
+.work-day-payment { max-width: 100%; padding: 3px 6px; overflow: hidden; border: 1px solid transparent; border-radius: 8px; background: rgba(255, 153, 52, .16); color: #ffad58; font: inherit; font-size: 10px; line-height: 1.25; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.work-day-payment-actual { border-color: rgba(85, 198, 169, .3); background: rgba(85, 198, 169, .14); color: #8ce0c8; cursor: pointer; }
+.work-day-payment-actual:hover { border-color: rgba(85, 198, 169, .68); background: rgba(85, 198, 169, .22); }
+.work-day-payment-deleted { color: #d8889a; }
 .work-day-manual-mark { position: absolute; top: 8px; left: 9px; color: #9b7cff; font-size: 9px; }
 .work-calendar-legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; }
 .work-calendar-legend span { display: inline-flex; align-items: center; gap: 6px; }
@@ -90,6 +102,7 @@
 .work-day-editor-actions, .work-contract-form-actions { gap: 10px; margin-top: 14px; }
 .work-weekday-picker { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
 .work-weekday-picker label { display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; }
+.work-schedule-hint { margin: 12px 0 0; }
 .work-contract-card { display: flex; justify-content: space-between; gap: 16px; }
 .work-contract-card .plan-card-main, .work-contract-side { display: grid; gap: 5px; }
 .work-contract-side { justify-items: end; align-content: center; }
@@ -97,6 +110,17 @@
 .work-contract-current { display: inline-flex; padding: 3px 7px; border-radius: 999px; background: rgba(85, 198, 169, .16); color: #8ce0c8; font-size: 10px; font-weight: 800; }
 .work-contract-note { max-width: 720px; }
 .work-contracts-list { margin-top: 18px; gap: 10px; }
+.work-actual-payments-section { margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--border); }
+.work-actual-payments-list { display: grid; gap: 9px; }
+.work-actual-payment-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 15px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+.work-actual-payment-card.is-openable { cursor: pointer; }
+.work-actual-payment-card.is-openable:hover { border-color: rgba(77, 141, 255, .62); background: linear-gradient(180deg, rgba(77, 141, 255, .1), rgba(77, 141, 255, .03)), var(--surface-2); }
+.work-actual-payment-card.is-deleted { opacity: .68; }
+.work-actual-payment-main, .work-actual-payment-side { display: grid; gap: 5px; }
+.work-actual-payment-title { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.work-actual-payment-main > span, .work-actual-payment-side > span { color: var(--muted); font-size: 11px; }
+.work-actual-payment-side { justify-items: end; text-align: right; }
+.work-actual-payment-side > strong { color: #8ce0c8; font-size: 17px; }
 .work-companies-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .work-company-card { min-width: 0; display: grid; gap: 8px; padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); color: var(--text); text-align: left; cursor: pointer; }
 .work-company-card:hover, .work-company-card.is-selected { border-color: rgba(77, 141, 255, .68); background: linear-gradient(180deg, rgba(77, 141, 255, .14), rgba(77, 141, 255, .04)), var(--surface-2); }
@@ -127,11 +151,14 @@
   .work-hours-chip { padding-inline: 5px; font-size: 9px; }
   .work-day-editor-grid { grid-template-columns: 1fr 1fr; }
   .work-payment-meta { text-align: left; }
+  .work-payment-plan-link, .work-payment-actual-link { text-align: left; justify-self: start; }
   .work-statistics-toolbar { align-items: stretch; flex-direction: column; }
   .work-statistics-custom { grid-template-columns: 1fr; }
   .work-statistics-month-row { grid-template-columns: 1fr; gap: 8px; }
   .work-statistics-month-values { grid-template-columns: auto auto; justify-content: space-between; text-align: left; }
   .work-companies-grid { grid-template-columns: 1fr; }
   .work-company-detail-head, .work-company-period { flex-direction: column; }
+  .work-actual-payment-card { align-items: flex-start; flex-direction: column; }
+  .work-actual-payment-side { justify-items: start; text-align: left; }
   .work-company-detail-head > strong { text-align: left; }
 }

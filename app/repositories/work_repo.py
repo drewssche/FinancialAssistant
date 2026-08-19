@@ -1,9 +1,17 @@
 from datetime import date
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
-from app.db.models import Category, EmploymentContract, Operation, PlanOperation, WorkDayOverride, WorkProfile
+from app.db.models import (
+    Category,
+    EmploymentContract,
+    Operation,
+    PlanOperation,
+    PlanOperationEvent,
+    WorkDayOverride,
+    WorkProfile,
+)
 
 
 class WorkRepository:
@@ -23,6 +31,50 @@ class WorkRepository:
         return self.db.scalar(
             select(PlanOperation).where(PlanOperation.user_id == user_id, PlanOperation.id == plan_id)
         )
+
+    def list_confirmed_payroll_events(
+        self,
+        *,
+        user_id: int,
+        plan_ids: list[int],
+        date_from: date,
+        date_to: date,
+    ) -> list:
+        if not plan_ids:
+            return []
+        stmt = (
+            select(PlanOperationEvent, Operation)
+            .outerjoin(
+                Operation,
+                and_(
+                    Operation.id == PlanOperationEvent.operation_id,
+                    Operation.user_id == user_id,
+                ),
+            )
+            .where(
+                PlanOperationEvent.user_id == user_id,
+                PlanOperationEvent.plan_id.in_(plan_ids),
+                PlanOperationEvent.event_type == "confirmed",
+                or_(
+                    and_(
+                        Operation.id.is_not(None),
+                        Operation.operation_date >= date_from,
+                        Operation.operation_date <= date_to,
+                    ),
+                    and_(
+                        Operation.id.is_(None),
+                        PlanOperationEvent.effective_date >= date_from,
+                        PlanOperationEvent.effective_date <= date_to,
+                    ),
+                ),
+            )
+            .order_by(
+                Operation.operation_date.desc(),
+                PlanOperationEvent.effective_date.desc(),
+                PlanOperationEvent.id.desc(),
+            )
+        )
+        return list(self.db.execute(stmt).all())
 
     def list_overrides(self, *, user_id: int, date_from: date, date_to: date) -> list[WorkDayOverride]:
         return list(

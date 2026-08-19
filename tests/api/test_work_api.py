@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -26,6 +26,62 @@ def _create_income_plan(client: TestClient, *, note: str, scheduled_date: str, a
     )
     assert response.status_code == 201
     return int(response.json()["id"])
+
+
+def test_work_profile_schedule_defaults_can_be_updated(client: TestClient):
+    default_profile = client.get("/api/v1/work/profile")
+    assert default_profile.status_code == 200
+    assert {
+        key: default_profile.json()[key]
+        for key in (
+            "workday_start_time",
+            "workday_end_time",
+            "lunch_start_time",
+            "lunch_end_time",
+        )
+    } == {
+        "workday_start_time": "09:00:00",
+        "workday_end_time": "18:00:00",
+        "lunch_start_time": "13:00:00",
+        "lunch_end_time": "14:00:00",
+    }
+
+    updated = client.put(
+        "/api/v1/work/profile",
+        json={
+            "company": "Битрикс",
+            "position": "Разработчик",
+            "standard_hours_per_day": "8.00",
+            "workday_start_time": "08:30",
+            "workday_end_time": "17:45",
+            "lunch_start_time": "12:15",
+            "lunch_end_time": "13:00",
+            "workweek_days": [0, 1, 2, 3, 4],
+            "advance_nominal_day": 20,
+            "salary_nominal_day": 5,
+        },
+    )
+    assert updated.status_code == 200
+    assert updated.json()["workday_start_time"] == "08:30:00"
+    assert updated.json()["workday_end_time"] == "17:45:00"
+    assert updated.json()["lunch_start_time"] == "12:15:00"
+    assert updated.json()["lunch_end_time"] == "13:00:00"
+
+    refreshed = client.get("/api/v1/work/profile")
+    assert refreshed.status_code == 200
+    assert refreshed.json()["workday_start_time"] == "08:30:00"
+    assert refreshed.json()["lunch_end_time"] == "13:00:00"
+
+    invalid = client.put(
+        "/api/v1/work/profile",
+        json={
+            "workday_start_time": "09:00",
+            "workday_end_time": "18:00",
+            "lunch_start_time": "14:00",
+            "lunch_end_time": "13:00",
+        },
+    )
+    assert invalid.status_code == 422
 
 
 def test_work_month_is_generated_automatically_and_manual_override_wins(client: TestClient):
@@ -72,6 +128,66 @@ def test_work_month_is_generated_automatically_and_manual_override_wins(client: 
     restored = client.get("/api/v1/work/month", params={"year": 2026, "month": 8}).json()["days"][9]
     assert restored["status"] == "workday"
     assert restored["is_manual"] is False
+
+
+def test_today_uses_live_elapsed_hours_until_manual_actual_override(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    class FixedDate(date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 8, 10)
+
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            current = cls(2026, 8, 10, 11, 30)
+            return current.replace(tzinfo=tz) if tz else current
+
+    monkeypatch.setattr(work_service_module, "date", FixedDate)
+    monkeypatch.setattr(work_service_module, "datetime", FixedDateTime)
+
+    profile = client.put(
+        "/api/v1/work/profile",
+        json={
+            "standard_hours_per_day": "8.00",
+            "workday_start_time": "09:00",
+            "workday_end_time": "18:00",
+            "lunch_start_time": "13:00",
+            "lunch_end_time": "14:00",
+            "workweek_days": [0, 1, 2, 3, 4],
+        },
+    )
+    assert profile.status_code == 200
+
+    month = client.get("/api/v1/work/month", params={"year": 2026, "month": 8})
+    assert month.status_code == 200
+    today = month.json()["days"][9]
+    assert today["date"] == "2026-08-10"
+    assert today["actual_hours"] == "2.50"
+    assert today["credited_hours"] == "2.50"
+    assert today["is_live"] is True
+    assert today["is_completed"] is False
+    assert today["hours_state"] == "live"
+
+    overridden = client.put(
+        "/api/v1/work/days/2026-08-10",
+        json={
+            "status": "workday",
+            "planned_hours": "8.00",
+            "actual_hours": "6.25",
+            "credited_hours": "6.25",
+            "note": "Указано вручную",
+        },
+    )
+    assert overridden.status_code == 200
+    manual_today = overridden.json()
+    assert manual_today["actual_hours"] == "6.25"
+    assert manual_today["is_manual"] is True
+    assert manual_today["is_live"] is False
+    assert manual_today["is_completed"] is True
+    assert manual_today["hours_state"] == "actual"
 
 
 def test_belarus_2026_calendar_and_work_statistics_match_production_hours(
@@ -163,6 +279,153 @@ def test_payroll_plans_keep_nominal_days_and_shift_only_backward(client: TestCli
     confirmed = client.post(f"/api/v1/plans/{salary_plan_id}/confirm")
     assert confirmed.status_code == 200
     assert confirmed.json()["plan"]["scheduled_date"] == "2026-10-05"
+
+
+def test_payroll_forecast_and_history_follow_linked_plan_and_current_operation(client: TestClient):
+    rate = client.put(
+        "/api/v1/currency/rates/current",
+        json={
+            "currency": "USD",
+            "rate": "3.25",
+            "rate_date": "2026-08-01",
+            "source": "manual",
+        },
+    )
+    assert rate.status_code == 200
+    salary_category = client.post(
+        "/api/v1/categories",
+        json={"name": "Зарплата", "kind": "income"},
+    )
+    assert salary_category.status_code == 200
+
+    plan = client.post(
+        "/api/v1/plans",
+        json={
+            "kind": "income",
+            "amount": "1000.00",
+            "currency": "USD",
+            "scheduled_date": "2026-08-05",
+            "category_id": salary_category.json()["id"],
+            "note": "Основная часть",
+            "recurrence_enabled": True,
+            "recurrence_frequency": "monthly",
+        },
+    )
+    assert plan.status_code == 201
+    plan_id = int(plan.json()["id"])
+
+    linked = client.put(
+        "/api/v1/work/profile",
+        json={
+            "standard_hours_per_day": "8.00",
+            "workweek_days": [0, 1, 2, 3, 4],
+            "salary_plan_id": plan_id,
+            "salary_nominal_day": 5,
+            "advance_nominal_day": 20,
+        },
+    )
+    assert linked.status_code == 200
+
+    august_before_payment = client.get(
+        "/api/v1/work/month",
+        params={"year": 2026, "month": 8},
+    )
+    assert august_before_payment.status_code == 200
+    salary_forecast = next(
+        item for item in august_before_payment.json()["payments"] if item["role"] == "salary"
+    )
+    assert salary_forecast["forecast_amount"] == "1000.00"
+    assert salary_forecast["forecast_currency"] == "USD"
+    assert salary_forecast["actual_operations"] == []
+
+    confirmed = client.post(f"/api/v1/plans/{plan_id}/confirm")
+    assert confirmed.status_code == 200
+    operation_id = int(confirmed.json()["operation"]["id"])
+    corrected = client.patch(
+        f"/api/v1/operations/{operation_id}",
+        json={
+            "amount": "1250.00",
+            "operation_date": "2026-08-07",
+            "note": "Скорректированная фактическая зарплата",
+        },
+    )
+    assert corrected.status_code == 200
+    assert corrected.json()["original_amount"] == "1250.00"
+    assert corrected.json()["amount"] == "4062.50"
+
+    history = client.get(
+        "/api/v1/work/payments/history",
+        params={"date_from": "2026-08-01", "date_to": "2026-08-31"},
+    )
+    assert history.status_code == 200
+    assert history.json()["total"] == 1
+    history_item = history.json()["items"][0]
+    assert history_item == {
+        "role": "salary",
+        "label": "Основная часть",
+        "plan_id": plan_id,
+        "operation_id": operation_id,
+        "operation_date": "2026-08-07",
+        "amount": "1250.00",
+        "currency": "USD",
+        "base_amount": "4062.50",
+        "base_currency": "BYN",
+        "note": "Скорректированная фактическая зарплата",
+        "category_name": "Зарплата",
+        "is_deleted": False,
+    }
+
+    august_after_payment = client.get(
+        "/api/v1/work/month",
+        params={"year": 2026, "month": 8},
+    )
+    assert august_after_payment.status_code == 200
+    salary_payment = next(
+        item for item in august_after_payment.json()["payments"] if item["role"] == "salary"
+    )
+    assert salary_payment["forecast_amount"] == "1000.00"
+    assert salary_payment["forecast_currency"] == "USD"
+    assert salary_payment["actual_operations"] == [
+        {
+            key: value
+            for key, value in history_item.items()
+            if key not in {"role", "label", "plan_id"}
+        }
+    ]
+
+    moved = client.patch(
+        f"/api/v1/operations/{operation_id}",
+        json={"operation_date": "2026-09-01"},
+    )
+    assert moved.status_code == 200
+
+    august_history = client.get(
+        "/api/v1/work/payments/history",
+        params={"date_from": "2026-08-01", "date_to": "2026-08-31"},
+    )
+    assert august_history.status_code == 200
+    assert august_history.json()["items"] == []
+
+    september_history = client.get(
+        "/api/v1/work/payments/history",
+        params={"date_from": "2026-09-01", "date_to": "2026-09-30"},
+    )
+    assert september_history.status_code == 200
+    assert september_history.json()["items"][0]["operation_date"] == "2026-09-01"
+
+    august_after_move = client.get(
+        "/api/v1/work/month",
+        params={"year": 2026, "month": 8},
+    ).json()
+    august_salary = next(item for item in august_after_move["payments"] if item["role"] == "salary")
+    assert august_salary["actual_operations"] == []
+
+    september_after_move = client.get(
+        "/api/v1/work/month",
+        params={"year": 2026, "month": 9},
+    ).json()
+    september_salary = next(item for item in september_after_move["payments"] if item["role"] == "salary")
+    assert september_salary["actual_operations"][0]["operation_date"] == "2026-09-01"
 
 
 def test_new_current_job_closes_previous_period_and_keeps_history(client: TestClient):

@@ -12,6 +12,7 @@ from app.schemas.work import (
     WorkDayOverrideIn,
     WorkDayRangeOverrideIn,
     WorkMonthOut,
+    WorkPaymentHistoryOut,
     WorkProfileOut,
     WorkProfileUpdate,
     WorkStatisticsOut,
@@ -50,6 +51,23 @@ def get_work_month(
 ):
     try:
         return WorkService(db).get_month(user_id=user_id, year=year, month=month)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/payments/history", response_model=WorkPaymentHistoryOut)
+def get_work_payment_history(
+    date_from: date = Query(),
+    date_to: date = Query(),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        return WorkService(db).list_payment_history(
+            user_id=user_id,
+            date_from=date_from,
+            date_to=date_to,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 

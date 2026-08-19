@@ -969,6 +969,19 @@ def test_dashboard_plans_period_tabs_switch_and_filter(static_server_url: str, p
 @pytest.mark.e2e
 def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_server_url: str, page_with_plans_api_mock):
     page, mock_state = page_with_plans_api_mock
+    page.add_init_script(
+        """
+        (() => {
+          const NativeDate = Date;
+          const fixedNow = new NativeDate('2026-08-10T11:30:00+03:00').valueOf();
+          class FixedDate extends NativeDate {
+            constructor(...args) { super(...(args.length ? args : [fixedNow])); }
+            static now() { return fixedNow; }
+          }
+          window.Date = FixedDate;
+        })();
+        """
+    )
     mock_state["plans"] = [
         {
             "id": 3,
@@ -1004,11 +1017,14 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
                 "status_label": "Рабочий день" if is_workday else "Выходной",
                 "calendar_label": "Рабочий день" if is_workday else "Выходной",
                 "planned_hours": "8.00" if is_workday else "0.00",
-                "actual_hours": "8.00" if is_workday and day_number <= 9 else "0.00",
-                "credited_hours": "8.00" if is_workday and day_number <= 9 else "0.00",
+                "actual_hours": "2.50" if day_number == 10 else ("8.00" if is_workday and day_number <= 9 else "0.00"),
+                "credited_hours": "2.50" if day_number == 10 else ("8.00" if is_workday and day_number <= 9 else "0.00"),
                 "is_workday": is_workday,
                 "is_manual": False,
-                "is_future": day_number > 9,
+                "is_future": day_number > 10,
+                "is_live": day_number == 10,
+                "is_completed": is_workday and day_number <= 9,
+                "hours_state": "live" if day_number == 10 else ("forecast" if day_number > 10 else "actual"),
                 "note": None,
             }
         )
@@ -1052,6 +1068,20 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
         }
     ]
     updated_contracts = []
+    actual_salary = {
+        "role": "salary",
+        "label": "Основная часть",
+        "plan_id": 4,
+        "operation_id": 701,
+        "operation_date": "2026-08-07",
+        "amount": "1234.56",
+        "currency": "BYN",
+        "base_amount": "1234.56",
+        "base_currency": "BYN",
+        "note": "Зарплата за июль",
+        "category_name": "Зарплата",
+        "is_deleted": False,
+    }
 
     month_payload = {
         "year": 2026,
@@ -1062,6 +1092,10 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
             "position": "Разработчик",
             "employment_start_date": "2024-04-29",
             "standard_hours_per_day": "8.00",
+            "workday_start_time": "09:00:00",
+            "workday_end_time": "18:00:00",
+            "lunch_start_time": "13:00:00",
+            "lunch_end_time": "14:00:00",
             "workweek_days": [0, 1, 2, 3, 4],
             "country_code": "BY",
             "advance_plan_id": 3,
@@ -1081,8 +1115,34 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
             "override_days": 0,
         },
         "payments": [
-            {"role": "salary", "label": "Основная часть", "plan_id": 4, "nominal_date": "2026-08-05", "effective_date": "2026-08-05", "shifted": False},
-            {"role": "advance", "label": "Аванс", "plan_id": 3, "nominal_date": "2026-08-20", "effective_date": "2026-08-20", "shifted": False},
+            {
+                "role": "salary",
+                "label": "Основная часть",
+                "plan_id": 4,
+                "nominal_date": "2026-08-05",
+                "effective_date": "2026-08-05",
+                "shifted": False,
+                "forecast_amount": "1176.00",
+                "forecast_currency": "BYN",
+                "forecast_base_amount": "1176.00",
+                "forecast_base_currency": "BYN",
+                "actual_operations": [
+                    {key: value for key, value in actual_salary.items() if key not in {"role", "label", "plan_id"}}
+                ],
+            },
+            {
+                "role": "advance",
+                "label": "Аванс",
+                "plan_id": 3,
+                "nominal_date": "2026-08-20",
+                "effective_date": "2026-08-20",
+                "shifted": False,
+                "forecast_amount": "1050.00",
+                "forecast_currency": "BYN",
+                "forecast_base_amount": "1050.00",
+                "forecast_base_currency": "BYN",
+                "actual_operations": [],
+            },
         ],
         "days": days,
     }
@@ -1118,6 +1178,8 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
         method = request.method.upper()
         if path == "/api/v1/work/month":
             return _json_response(route, month_payload)
+        if path == "/api/v1/work/payments/history" and method == "GET":
+            return _json_response(route, {"items": [actual_salary], "total": 1})
         if path == "/api/v1/work/statistics":
             return _json_response(route, statistics_payload)
         if path == "/api/v1/work/companies" and method == "GET":
@@ -1132,6 +1194,31 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
         return _json_response(route, {"detail": f"Unhandled work route: {request.method} {path}"}, status=404)
 
     page.route("**/api/v1/work/**", work_handler)
+    page.route(
+        "**/api/v1/operations/701",
+        lambda route: _json_response(
+            route,
+            {
+                "id": 701,
+                "kind": "income",
+                "amount": "1234.56",
+                "original_amount": "1234.56",
+                "currency": "BYN",
+                "base_currency": "BYN",
+                "fx_rate": "1.000000",
+                "operation_date": "2026-08-07",
+                "category_id": None,
+                "category_name": "Зарплата",
+                "category_icon": None,
+                "category_accent_color": None,
+                "note": "Зарплата за июль",
+                "receipt_items": [],
+                "receipt_total": None,
+                "receipt_discrepancy": None,
+                "fx_settlement": None,
+            },
+        ),
+    )
     _login_and_open_dashboard(page, static_server_url)
     page.click('button[data-section="work"]')
     page.wait_for_selector("#workSection:not(.hidden)")
@@ -1152,12 +1239,21 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     assert "168 ч" in (page.locator("#workSummaryGrid").text_content() or "")
     assert "Аванс" in (page.locator("#workPaymentsGrid").text_content() or "")
     assert "is-completed" in (page.locator('[data-work-date="2026-08-03"]').get_attribute("class") or "")
-    assert "is-forecast" in (page.locator('[data-work-date="2026-08-10"]').get_attribute("class") or "")
-    assert "is-today" in (page.locator('[data-work-date="2026-08-09"]').get_attribute("class") or "")
-    assert "Сегодня" in (page.locator('[data-work-date="2026-08-09"]').text_content() or "")
+    assert "is-forecast" in (page.locator('[data-work-date="2026-08-11"]').get_attribute("class") or "")
+    assert "is-today" in (page.locator('[data-work-date="2026-08-10"]').get_attribute("class") or "")
+    assert "Сегодня" in (page.locator('[data-work-date="2026-08-10"]').text_content() or "")
     assert "Факт · 8 ч" in (page.locator('[data-work-date="2026-08-03"] .work-hours-chip-fact').text_content() or "")
-    assert "Прогноз · 8 ч" in (page.locator('[data-work-date="2026-08-10"] .work-hours-chip-forecast').text_content() or "")
+    assert "Сейчас · 2 ч 30 мин" in (page.locator('[data-work-date="2026-08-10"] .work-hours-chip-live').text_content() or "")
+    assert "План · 8 ч" in (page.locator('[data-work-date="2026-08-10"] .work-hours-chip-plan').text_content() or "")
+    assert "Прогноз · 8 ч" in (page.locator('[data-work-date="2026-08-11"] .work-hours-chip-forecast').text_content() or "")
     assert "Встреча с командой" in (page.locator('[data-work-date="2026-08-03"] .work-day-note').text_content() or "")
+    assert "Основная часть · прогноз · 1 176" in (page.locator('[data-work-date="2026-08-05"] .work-day-payment-forecast').text_content() or "").replace("\u00a0", " ")
+    assert "Основная часть · получено 1 234,56" in (page.locator('[data-work-date="2026-08-07"] .work-day-payment-actual').text_content() or "").replace("\u00a0", " ")
+
+    page.click('[data-work-date="2026-08-07"] .work-day-payment-actual')
+    page.wait_for_selector("#editModal:not(.hidden)")
+    assert page.locator("#editAmount").input_value() == "1234.56"
+    page.click("#closeEditModalBtn")
 
     page.click('#workCalendarGrid [data-work-date="2026-08-03"]')
     page.wait_for_selector("#workDayForm:not(.hidden)")
@@ -1168,6 +1264,8 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     page.wait_for_selector("#workSettingsForm:not(.hidden)")
     assert page.locator("#workSalaryPlan").input_value() == "4"
     assert page.locator("#workAdvancePlan").input_value() == "3"
+    assert page.locator("#workDayStartTime").input_value() == "09:00:00"
+    assert page.locator("#workLunchEndTime").input_value() == "14:00:00"
 
     page.click('button[data-work-view="companies"]')
     company_grid_text = (page.locator("#workCompaniesGrid").text_content() or "").replace("\u00a0", " ")
@@ -1176,6 +1274,10 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     assert page.locator('#workCompanyOptions option[value="Битрикс"]').count() == 1
 
     page.click('button[data-work-view="contracts"]')
+    actual_payment_text = (page.locator("#workActualPaymentsList").text_content() or "").replace("\u00a0", " ")
+    assert "Основная часть" in actual_payment_text
+    assert "1 234,56" in actual_payment_text
+    assert "Операция #701" in actual_payment_text
     page.click('[data-edit-work-contract="12"]')
     assert page.locator("#workContractPosition").input_value() == ""
     assert page.locator("#workContractCompany").input_value() == "Битрикс"

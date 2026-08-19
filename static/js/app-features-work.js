@@ -10,8 +10,14 @@
   let workPickerYear = anchor.getFullYear();
   let contracts = [];
   let companies = [];
+  let paymentHistory = [];
   let selectedCompanyIndex = 0;
   let editingContractId = null;
+  let liveTimerId = null;
+  let liveBaseline = null;
+  let lastLiveMinute = null;
+  let selectedPaymentOperationId = null;
+  let activityRefreshTimer = null;
   let bound = false;
 
   const monthFormatter = new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric" });
@@ -22,6 +28,12 @@
   function authOptions(extra = {}) { return { ...extra, headers: { ...core.authHeaders(), ...(extra.headers || {}) } }; }
   function isoFromAnchor() { return { year: anchor.getFullYear(), month: anchor.getMonth() + 1 }; }
   function formatHours(value) { return Number(value || 0).toLocaleString("ru-RU", { maximumFractionDigits: 2 }); }
+  function formatMoney(value, currency = "BYN") {
+    if (value == null || value === "") return "";
+    return core.formatMoney
+      ? core.formatMoney(Number(value), { currency: String(currency || "BYN").toUpperCase() })
+      : `${Number(value).toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ${String(currency || "BYN").toUpperCase()}`;
+  }
   function formatDate(iso) {
     const [year, month, day] = String(iso).split("-").map(Number);
     return new Date(year, month - 1, day).toLocaleDateString("ru-RU");
@@ -33,6 +45,63 @@
   function getPickerUtils() { return window.App.getRuntimeModule?.("picker-utils") || window.App.pickerUtils || {}; }
   function monthValue(value) { return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}`; }
   function formatMonthLabel(value) { return monthFormatter.format(value).replace(/^./, (char) => char.toUpperCase()); }
+  function paymentForecastAmount(item) { return item?.forecast_amount ?? item?.planned_amount ?? item?.amount ?? null; }
+  function paymentForecastCurrency(item) { return item?.forecast_currency || item?.currency || item?.base_currency || "BYN"; }
+  function paymentOperationId(item) { return Number(item?.operation_id || 0); }
+  function paymentOperationDate(item) { return item?.operation_date || item?.effective_date || item?.date || null; }
+  function paymentOperationAmount(item) { return item?.amount ?? item?.original_amount ?? item?.base_amount ?? null; }
+  function paymentOperationCurrency(item) { return item?.currency || item?.base_currency || "BYN"; }
+  function embeddedPaymentOperations(item) {
+    const rows = Array.isArray(item?.actual_operations)
+      ? item.actual_operations
+      : Array.isArray(item?.operations)
+        ? item.operations
+        : item?.actual_operation
+          ? [item.actual_operation]
+          : [];
+    return rows.map((row) => ({ ...row, role: row.role || item.role, label: row.label || item.label, plan_id: row.plan_id || item.plan_id }));
+  }
+  function allActualPayments() {
+    const rows = [
+      ...paymentHistory,
+      ...(snapshot?.payments || []).flatMap(embeddedPaymentOperations),
+    ];
+    const seen = new Set();
+    return rows.filter((row) => {
+      const operationId = paymentOperationId(row);
+      const key = operationId > 0
+        ? `operation:${operationId}`
+        : `${row.role || "payment"}:${paymentOperationDate(row) || ""}:${paymentOperationAmount(row) || ""}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+  function parseClockMinutes(value, fallback) {
+    const match = /^(\d{1,2}):(\d{2})/.exec(String(value || fallback || ""));
+    if (!match) return 0;
+    return Math.min(24 * 60, Math.max(0, Number(match[1]) * 60 + Number(match[2])));
+  }
+  function liveHoursForDay(day, now = new Date()) {
+    const profile = snapshot?.profile || {};
+    const start = parseClockMinutes(profile.workday_start_time, "09:00");
+    const end = parseClockMinutes(profile.workday_end_time, "18:00");
+    const lunchStart = parseClockMinutes(profile.lunch_start_time, "13:00");
+    const lunchEnd = parseClockMinutes(profile.lunch_end_time, "14:00");
+    const current = now.getHours() * 60 + now.getMinutes();
+    const elapsed = Math.max(0, Math.min(current, end) - start);
+    const breakOverlap = lunchEnd > lunchStart
+      ? Math.max(0, Math.min(current, end, lunchEnd) - Math.max(start, lunchStart))
+      : 0;
+    const planned = Math.max(0, Number(day?.planned_hours || profile.standard_hours_per_day || 0));
+    return Math.min(planned, Math.max(0, elapsed - breakOverlap) / 60);
+  }
+  function formatLiveHours(value) {
+    const minutes = Math.max(0, Math.round(Number(value || 0) * 60));
+    const hours = Math.floor(minutes / 60);
+    const rest = minutes % 60;
+    return rest ? `${hours} ч ${rest} мин` : `${hours} ч`;
+  }
 
   function collectNodes() {
     [
@@ -54,6 +123,9 @@
       "workStatisticsCurrentBtn", "workStatisticsPeriodLabel", "workStatisticsCustomForm",
       "workStatisticsDateFrom", "workStatisticsDateTo", "workStatisticsKpi", "workStatisticsProgressLabel",
       "workStatisticsProgressBar", "workStatisticsMonths",
+      "workDayStartTime", "workDayEndTime", "workLunchStartTime", "workLunchEndTime",
+      "workActualPaymentsList",
+      "workSection",
     ].forEach((id) => { nodes[id] = byId(id); });
   }
 
@@ -102,37 +174,79 @@
   }
 
   function renderPayments() {
-    nodes.workPaymentsGrid.innerHTML = (snapshot?.payments || []).map((item) => `
-      <article class="work-payment-card ${item.shifted ? "is-shifted" : ""}">
-        <div><span class="muted-small">${escape(item.label)}</span><strong>${formatDate(item.effective_date)}</strong></div>
+    const monthPrefix = `${snapshot?.year || anchor.getFullYear()}-${String(snapshot?.month || anchor.getMonth() + 1).padStart(2, "0")}`;
+    nodes.workPaymentsGrid.innerHTML = (snapshot?.payments || []).map((item) => {
+      const forecastAmount = paymentForecastAmount(item);
+      const actuals = allActualPayments().filter((row) => {
+        const operationDate = paymentOperationDate(row);
+        if (!operationDate?.startsWith(monthPrefix)) return false;
+        if (item.plan_id && row.plan_id) return Number(item.plan_id) === Number(row.plan_id);
+        return String(row.role || "") === String(item.role || "");
+      });
+      const forecast = forecastAmount == null
+        ? "Сумма прогноза не указана"
+        : `Прогноз · ${formatMoney(forecastAmount, paymentForecastCurrency(item))}`;
+      return `
+      <article class="work-payment-card ${item.shifted ? "is-shifted" : ""} ${actuals.length ? "has-actual" : ""}">
+        <div class="work-payment-primary">
+          <span class="muted-small">${escape(item.label)}</span>
+          <strong>${escape(forecast)}</strong>
+          <span class="work-payment-date">${formatDate(item.effective_date)}</span>
+        </div>
         <div class="work-payment-meta">
           ${item.shifted ? `<span>перенесено назад с ${formatDate(item.nominal_date)}</span>` : "<span>по номинальной дате</span>"}
+          ${actuals.map((row) => {
+            const operationId = paymentOperationId(row);
+            const actualMoney = formatMoney(paymentOperationAmount(row), paymentOperationCurrency(row));
+            return operationId > 0 && !row.is_deleted
+              ? `<button class="work-payment-actual-link" type="button" data-work-operation-id="${operationId}">Получено · ${escape(actualMoney)} · ${formatDate(paymentOperationDate(row))}</button>`
+              : `<span class="work-payment-actual-deleted">Фактическая операция удалена</span>`;
+          }).join("")}
           <button class="work-payment-plan-link" type="button" data-work-open-plan-picker="${escape(item.role)}">
             ${item.plan_id ? `План #${Number(item.plan_id)} · изменить` : "Выбрать план вручную"}
           </button>
         </div>
-      </article>`).join("");
+      </article>`;
+    }).join("");
+    restorePaymentOperationContext();
   }
 
   function renderCalendar() {
     const days = snapshot?.days || [];
-    const paymentByDate = new Map((snapshot?.payments || []).map((item) => [item.effective_date, item]));
+    const paymentsByDate = new Map();
+    (snapshot?.payments || []).forEach((item) => {
+      const rows = paymentsByDate.get(item.effective_date) || [];
+      rows.push(item);
+      paymentsByDate.set(item.effective_date, rows);
+    });
+    const actualsByDate = new Map();
+    allActualPayments().forEach((item) => {
+      const operationDate = paymentOperationDate(item);
+      if (!operationDate) return;
+      const rows = actualsByDate.get(operationDate) || [];
+      rows.push(item);
+      actualsByDate.set(operationDate, rows);
+    });
     const firstOffset = days.length ? Number(days[0].weekday || 0) : 0;
     const placeholders = Array.from({ length: firstOffset }, () => '<div class="work-day-cell work-day-empty"></div>').join("");
     nodes.workCalendarGrid.innerHTML = placeholders + days.map((item) => {
-      const payment = paymentByDate.get(item.date);
+      const payments = paymentsByDate.get(item.date) || [];
+      const actuals = actualsByDate.get(item.date) || [];
       const classes = ["work-day-cell", `status-${item.status}`];
       if (item.is_manual) classes.push("is-manual");
       if (item.is_future) classes.push("is-future");
-      if (Number(item.actual_hours || 0) > 0) classes.push("is-completed");
+      if (item.is_completed) classes.push("is-completed");
       if (item.is_future && Number(item.planned_hours || 0) > 0) classes.push("is-forecast");
-      if (payment) classes.push("has-payment");
+      if (payments.length || actuals.length) classes.push("has-payment");
       const isToday = item.date === localTodayIso();
       if (isToday) classes.push("is-today");
       const plannedHours = Number(item.planned_hours || 0);
       const actualHours = Number(item.actual_hours || 0);
       let hours = "";
-      if (item.is_future && plannedHours > 0) {
+      if (item.is_live && plannedHours > 0) {
+        hours = `<span class="work-hours-chip work-hours-chip-live">Сейчас · ${escape(formatLiveHours(actualHours))}</span>`;
+        if (actualHours < plannedHours) hours += `<span class="work-hours-chip work-hours-chip-plan">План · ${formatHours(plannedHours)} ч</span>`;
+      } else if (item.is_future && plannedHours > 0) {
         hours = `<span class="work-hours-chip work-hours-chip-forecast">Прогноз · ${formatHours(plannedHours)} ч</span>`;
       } else if (!item.is_future && (plannedHours > 0 || actualHours > 0)) {
         const plan = plannedHours !== actualHours
@@ -143,16 +257,62 @@
       const note = item.note
         ? `<span class="work-day-note" title="${escape(item.note)}">${escape(item.note)}</span>`
         : "";
-      return `<button class="${classes.join(" ")}" type="button" data-work-date="${item.date}"${isToday ? ' aria-current="date"' : ""}>
+      const forecastMarkup = payments.map((payment) => {
+        const amount = paymentForecastAmount(payment);
+        const money = amount == null ? "" : ` · ${formatMoney(amount, paymentForecastCurrency(payment))}`;
+        return `<span class="work-day-payment work-day-payment-forecast">${escape(payment.label)} · прогноз${escape(money)}</span>`;
+      }).join("");
+      const actualMarkup = actuals.map((payment) => {
+        const operationId = paymentOperationId(payment);
+        const money = formatMoney(paymentOperationAmount(payment), paymentOperationCurrency(payment));
+        const label = `${payment.label || "Выплата"} · получено${money ? ` ${money}` : ""}`;
+        return operationId > 0 && !payment.is_deleted
+          ? `<button class="work-day-payment work-day-payment-actual" type="button" data-work-operation-id="${operationId}" title="Открыть фактическую операцию">${escape(label)}</button>`
+          : `<span class="work-day-payment work-day-payment-deleted">${escape(label)} · операция удалена</span>`;
+      }).join("");
+      return `<article class="${classes.join(" ")}" tabindex="0" data-work-date="${item.date}"${isToday ? ' aria-current="date"' : ""}>
         <span class="work-day-number">${Number(String(item.date).slice(-2))}</span>
         ${isToday ? '<span class="work-day-today-label">Сегодня</span>' : ""}
         <span class="work-day-hours">${hours}</span>
         <span class="work-day-status">${escape(item.status_label)}</span>
         ${note}
-        ${payment ? `<span class="work-day-payment">${escape(payment.label)}</span>` : ""}
+        ${(forecastMarkup || actualMarkup) ? `<span class="work-day-payments">${forecastMarkup}${actualMarkup}</span>` : ""}
         ${item.is_manual ? '<span class="work-day-manual-mark" title="Изменено вручную">●</span>' : ""}
-      </button>`;
+      </article>`;
     }).join("");
+    restorePaymentOperationContext();
+  }
+
+  function renderActualPayments() {
+    if (!nodes.workActualPaymentsList) return;
+    const rows = [...paymentHistory].sort((left, right) => (
+      String(paymentOperationDate(right) || "").localeCompare(String(paymentOperationDate(left) || ""))
+      || paymentOperationId(right) - paymentOperationId(left)
+    ));
+    nodes.workActualPaymentsList.innerHTML = rows.length ? rows.map((item) => {
+      const operationId = paymentOperationId(item);
+      const deleted = Boolean(item.is_deleted) || !(operationId > 0);
+      const money = formatMoney(paymentOperationAmount(item), paymentOperationCurrency(item));
+      const category = item.category_name ? `<span class="meta-chip meta-chip-neutral">${escape(item.category_name)}</span>` : "";
+      return `<article class="work-actual-payment-card ${deleted ? "is-deleted" : ""} ${operationId > 0 ? "is-openable" : ""}" ${operationId > 0 && !deleted ? `data-work-operation-id="${operationId}" role="button" tabindex="0"` : ""}>
+        <div class="work-actual-payment-main">
+          <div class="work-actual-payment-title"><strong>${escape(item.label || "Выплата")}</strong>${category}</div>
+          <span>${paymentOperationDate(item) ? formatDate(paymentOperationDate(item)) : "Дата не указана"}${item.note ? ` · ${escape(item.note)}` : ""}</span>
+        </div>
+        <div class="work-actual-payment-side">
+          <strong>${escape(money || "Сумма не указана")}</strong>
+          <span>${deleted ? "Операция удалена" : `Операция #${operationId}`}</span>
+        </div>
+      </article>`;
+    }).join("") : '<div class="muted-small">Фактических выплат из связанных планов пока нет</div>';
+    restorePaymentOperationContext();
+  }
+
+  function restorePaymentOperationContext() {
+    if (!(Number(selectedPaymentOperationId) > 0)) return;
+    document.querySelectorAll(`[data-work-operation-id="${Number(selectedPaymentOperationId)}"]`).forEach((node) => {
+      node.closest(".work-day-cell, .work-actual-payment-card, .work-payment-card")?.classList.add("work-payment-context-selected");
+    });
   }
 
   function fillProfileForm() {
@@ -169,6 +329,60 @@
     nodes.workAdvanceDay.value = Number(profile.advance_nominal_day || 20);
     nodes.workSalaryPlan.value = profile.salary_plan_id || "";
     nodes.workAdvancePlan.value = profile.advance_plan_id || "";
+    nodes.workDayStartTime.value = profile.workday_start_time || "09:00";
+    nodes.workDayEndTime.value = profile.workday_end_time || "18:00";
+    nodes.workLunchStartTime.value = profile.lunch_start_time || "13:00";
+    nodes.workLunchEndTime.value = profile.lunch_end_time || "14:00";
+  }
+
+  function resetLiveBaseline() {
+    const today = localTodayIso();
+    const day = (snapshot?.days || []).find((item) => item.date === today);
+    if (!day || !day.is_live || !day.is_workday || Number(day.planned_hours || 0) <= 0) {
+      liveBaseline = null;
+      return;
+    }
+    liveBaseline = {
+      date: today,
+      actualHours: Number(day.actual_hours || 0),
+      creditedHours: Number(day.credited_hours || 0),
+      completed: day.is_completed ? 1 : 0,
+      summaryActualHours: Number(snapshot?.summary?.actual_hours || 0),
+      summaryCreditedHours: Number(snapshot?.summary?.credited_hours || 0),
+      summaryCompletedDays: Number(snapshot?.summary?.completed_days || 0),
+    };
+    lastLiveMinute = null;
+  }
+
+  function updateLiveWorkday(now = new Date(), { force = false } = {}) {
+    if (!liveBaseline || !snapshot?.summary) return;
+    const minuteKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${now.getHours()}-${now.getMinutes()}`;
+    if (!force && minuteKey === lastLiveMinute) return;
+    lastLiveMinute = minuteKey;
+    const day = (snapshot.days || []).find((item) => item.date === liveBaseline.date);
+    if (!day || !day.is_workday) return;
+    const actualHours = liveHoursForDay(day, now);
+    const shiftEnd = parseClockMinutes(snapshot?.profile?.workday_end_time, "18:00");
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    day.is_live = currentMinutes < shiftEnd;
+    day.is_completed = !day.is_live && actualHours > 0;
+    day.hours_state = day.is_live ? "live" : "actual";
+    day.actual_hours = actualHours.toFixed(2);
+    day.credited_hours = actualHours.toFixed(2);
+    snapshot.summary.actual_hours = Math.max(0, liveBaseline.summaryActualHours - liveBaseline.actualHours + actualHours);
+    snapshot.summary.credited_hours = Math.max(0, liveBaseline.summaryCreditedHours - liveBaseline.creditedHours + actualHours);
+    snapshot.summary.completed_days = Math.max(
+      0,
+      liveBaseline.summaryCompletedDays - liveBaseline.completed + (day.is_completed ? 1 : 0),
+    );
+    renderSummary();
+    renderCalendar();
+  }
+
+  function startLiveTimer() {
+    if (liveTimerId) window.clearInterval(liveTimerId);
+    updateLiveWorkday(new Date(), { force: true });
+    liveTimerId = window.setInterval(() => updateLiveWorkday(new Date()), 60000);
   }
 
   async function loadPlanOptions() {
@@ -272,6 +486,24 @@
     renderCompanies();
   }
 
+  async function loadPaymentHistory() {
+    try {
+      const today = localTodayIso();
+      const fallbackFrom = `${new Date().getFullYear() - 10}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")}`;
+      const profileStart = snapshot?.profile?.employment_start_date;
+      const dateFrom = profileStart && profileStart <= today ? profileStart : fallbackFrom;
+      const params = new URLSearchParams({ date_from: dateFrom, date_to: today });
+      const data = await core.requestJson(`/api/v1/work/payments/history?${params}`, authOptions());
+      paymentHistory = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
+    } catch (error) {
+      paymentHistory = [];
+      if (!String(error?.message || error).includes("404")) throw error;
+    }
+    renderActualPayments();
+    renderPayments();
+    renderCalendar();
+  }
+
   function statisticsQuery() {
     const params = new URLSearchParams({ period: statisticsPeriod });
     if (["month", "year"].includes(statisticsPeriod)) {
@@ -336,11 +568,13 @@
     workPickerYear = anchor.getFullYear();
     renderWorkPeriodPicker();
     snapshot = await core.requestJson(`/api/v1/work/month?year=${year}&month=${month}`, authOptions());
+    resetLiveBaseline();
     renderSummary();
     renderPayments();
     renderCalendar();
     fillProfileForm();
-    await Promise.all([loadPlanOptions(), loadContracts(), loadCompanies(), loadStatistics()]);
+    startLiveTimer();
+    await Promise.all([loadPlanOptions(), loadContracts(), loadCompanies(), loadStatistics(), loadPaymentHistory()]);
   }
 
   function openDayEditor(iso) {
@@ -405,6 +639,10 @@
       advance_plan_id: nodes.workAdvancePlan.value ? Number(nodes.workAdvancePlan.value) : null,
       salary_nominal_day: Number(nodes.workSalaryDay.value || 5),
       advance_nominal_day: Number(nodes.workAdvanceDay.value || 20),
+      workday_start_time: nodes.workDayStartTime.value || "09:00",
+      workday_end_time: nodes.workDayEndTime.value || "18:00",
+      lunch_start_time: nodes.workLunchStartTime.value || "13:00",
+      lunch_end_time: nodes.workLunchEndTime.value || "14:00",
     };
     await core.requestJson("/api/v1/work/profile", authOptions({ method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }));
     core.notify?.("Настройки табеля и планов сохранены", { type: "success" });
@@ -465,6 +703,28 @@
     await loadWorkSection();
   }
 
+  async function openPaymentOperation(operationId, sourceNode = null) {
+    const resolvedId = Number(operationId || 0);
+    if (!(resolvedId > 0)) return;
+    selectedPaymentOperationId = resolvedId;
+    document.querySelectorAll(".work-payment-context-selected").forEach((node) => node.classList.remove("work-payment-context-selected"));
+    const contextNode = sourceNode?.closest?.(".work-day-cell, .work-actual-payment-card, .work-payment-card") || sourceNode;
+    contextNode?.classList?.add("work-payment-context-selected");
+    const operations = window.App.getRuntimeModule?.("operations") || {};
+    if (operations.openMoneyFlowSource) {
+      await operations.openMoneyFlowSource({ sourceKind: "operation", sourceId: resolvedId, mode: "edit" });
+    }
+  }
+
+  function scheduleRefreshAfterOperationMutation(event) {
+    const path = String(event?.detail?.path || "");
+    if (!/^\/api\/v1\/operations\/\d+/.test(path) || nodes.workSection?.classList.contains("hidden")) return;
+    window.clearTimeout(activityRefreshTimer);
+    activityRefreshTimer = window.setTimeout(() => {
+      loadWorkSection().catch(handleError);
+    }, 250);
+  }
+
   function setView(view) {
     core.syncSegmentedActive?.(nodes.workViewTabs, "work-view", view);
     nodes.workStatisticsView.classList.toggle("hidden", view !== "statistics");
@@ -498,8 +758,29 @@
       setWorkMonthPopoverOpen(false);
       loadWorkSection().catch(handleError);
     });
-    nodes.workCalendarGrid.addEventListener("click", (event) => { const button = event.target.closest("[data-work-date]"); if (button) openDayEditor(button.dataset.workDate); });
+    nodes.workCalendarGrid.addEventListener("click", (event) => {
+      const operationButton = event.target.closest("[data-work-operation-id]");
+      if (operationButton) {
+        event.stopPropagation();
+        openPaymentOperation(operationButton.dataset.workOperationId, operationButton).catch(handleError);
+        return;
+      }
+      const button = event.target.closest("[data-work-date]");
+      if (button) openDayEditor(button.dataset.workDate);
+    });
+    nodes.workCalendarGrid.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      const day = event.target.closest("[data-work-date]");
+      if (!day || event.target.closest("[data-work-operation-id]")) return;
+      event.preventDefault();
+      openDayEditor(day.dataset.workDate);
+    });
     nodes.workPaymentsGrid.addEventListener("click", (event) => {
+      const operationButton = event.target.closest("[data-work-operation-id]");
+      if (operationButton) {
+        openPaymentOperation(operationButton.dataset.workOperationId, operationButton).catch(handleError);
+        return;
+      }
       const button = event.target.closest("[data-work-open-plan-picker]");
       if (!button) return;
       setView("settings");
@@ -572,6 +853,18 @@
       const deleteButton = event.target.closest("[data-delete-work-contract]");
       if (deleteButton) deleteContract(Number(deleteButton.dataset.deleteWorkContract)).catch(handleError);
     });
+    nodes.workActualPaymentsList.addEventListener("click", (event) => {
+      const card = event.target.closest("[data-work-operation-id]");
+      if (card) openPaymentOperation(card.dataset.workOperationId, card).catch(handleError);
+    });
+    nodes.workActualPaymentsList.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      const card = event.target.closest("[data-work-operation-id]");
+      if (!card) return;
+      event.preventDefault();
+      openPaymentOperation(card.dataset.workOperationId, card).catch(handleError);
+    });
+    document.addEventListener("app:activity-changed", scheduleRefreshAfterOperationMutation);
     bound = true;
   }
 
