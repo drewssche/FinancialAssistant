@@ -1352,7 +1352,7 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
                 "forecast_currency": None,
                 "forecast_base_amount": None,
                 "forecast_base_currency": None,
-                "actual_operations": [],
+                "actual_operations": [actual_salary],
             },
             {
                 "role": "advance",
@@ -1370,6 +1370,62 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
             },
         ],
         "payroll_operations": [detected_salary, detected_salary_adjustment],
+        "salary_cycle": {
+            "reference_year": 2026,
+            "reference_month": 7,
+            "label": "Зарплата за июль 2026",
+            "window_from_exclusive": "2026-07-02",
+            "window_to_inclusive": "2026-08-05",
+            "status": "actual",
+            "components": [
+                {
+                    "role": "advance",
+                    "label": "Аванс",
+                    "nominal_date": "2026-07-20",
+                    "effective_date": "2026-07-20",
+                    "shifted": False,
+                    "status": "actual",
+                    "actual_operations": [{
+                        "role": "advance",
+                        "label": "Аванс",
+                        "operation_id": 700,
+                        "operation_date": "2026-07-20",
+                        "amount": "1050.00",
+                        "currency": "BYN",
+                        "base_amount": "1050.00",
+                        "base_currency": "BYN",
+                        "is_deleted": False,
+                    }],
+                    "actual_totals": [{"currency": "BYN", "amount": "1050.00"}],
+                    "forecast_amount": None,
+                    "forecast_currency": None,
+                    "forecast_base_amount": None,
+                    "forecast_base_currency": None,
+                },
+                {
+                    "role": "salary",
+                    "label": "Основная часть",
+                    "nominal_date": "2026-08-05",
+                    "effective_date": "2026-08-05",
+                    "shifted": False,
+                    "status": "actual",
+                    "actual_operations": [actual_salary],
+                    "actual_totals": [{"currency": "BYN", "amount": "1234.56"}],
+                    "forecast_amount": None,
+                    "forecast_currency": None,
+                    "forecast_base_amount": None,
+                    "forecast_base_currency": None,
+                },
+            ],
+            "extras": [detected_salary, detected_salary_adjustment],
+            "totals": [{
+                "currency": "BYN",
+                "actual_amount": "4606.12",
+                "forecast_amount": "0.00",
+                "expected_amount": "4606.12",
+                "extras_amount": "2321.56",
+            }],
+        },
         "days": days,
     }
     statistics_payload = {
@@ -1540,23 +1596,37 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
 
     assert page.locator("#workCalendarGrid .work-day-cell").count() == 36
     assert "168 ч" in (page.locator("#workSummaryGrid").text_content() or "")
-    assert page.locator("#workMoneySummaryGrid .work-money-kpi-card").count() == 2
+    assert page.locator("#workMoneySummaryGrid .work-money-kpi-card").count() == 3
     actual_kpi_text = (page.locator("#workMoneySummaryGrid .work-money-kpi-actual").text_content() or "").replace("\u00a0", " ")
     forecast_kpi_text = (page.locator("#workMoneySummaryGrid .work-money-kpi-forecast").text_content() or "").replace("\u00a0", " ")
     assert "Получено за месяц" in actual_kpi_text
-    assert "2 321,56" in actual_kpi_text
-    assert "2 операции" in actual_kpi_text
-    assert "1 234,56" not in actual_kpi_text  # Длинная история не должна повторно попадать в KPI снимка месяца.
+    assert "3 556,12" in actual_kpi_text
+    assert "3 операции" in actual_kpi_text
     assert "Ещё ожидается" in forecast_kpi_text
     assert "1 050" in forecast_kpi_text
     assert "1 выплата по плану" in forecast_kpi_text
+    salary_cycle = page.locator("#workMoneySummaryGrid .work-salary-cycle-card")
+    salary_cycle_text = (salary_cycle.text_content() or "").replace("\u00a0", " ")
+    assert "Зарплатный цикл" in salary_cycle_text
+    assert "Зарплата за июль 2026" in salary_cycle_text
+    assert "после 02.07.2026 и по 05.08.2026 включительно" in salary_cycle_text
+    assert "Итого цикла" in salary_cycle_text
+    assert "4 606,12" in salary_cycle_text
+    assert "Получено · 4 606,12" in salary_cycle_text
+    assert "Ещё ожидается" not in salary_cycle_text
+    assert "Аванс" in salary_cycle.locator(".work-salary-cycle-component-advance").text_content()
+    assert "Получено · 1 050" in salary_cycle.locator(".work-salary-cycle-component-advance").text_content().replace("\u00a0", " ")
+    assert "1 операция" in salary_cycle.locator(".work-salary-cycle-component-advance").text_content()
+    assert "Получено · факт 07.08.2026 · 1 234,56" in salary_cycle.locator(".work-salary-cycle-component-salary").text_content().replace("\u00a0", " ")
+    assert "Доплаты" in salary_cycle.locator(".work-salary-cycle-component-extras").text_content()
+    extras_cycle_text = salary_cycle.locator(".work-salary-cycle-component-extras").text_content().replace("\u00a0", " ")
+    assert "Получено · 2 321,56" in extras_cycle_text
+    assert "2 операции" in extras_cycle_text
     assert "Аванс" in (page.locator("#workPaymentsGrid").text_content() or "")
     payment_cards_text = (page.locator("#workPaymentsGrid").text_content() or "").replace("\u00a0", " ")
-    assert "Получено по категории · 2 321,56" in payment_cards_text
-    assert "2 операции" in payment_cards_text
+    assert "Факт · 1 234,56" in payment_cards_text
     assert "Фактическая выплата не найдена" not in payment_cards_text
-    assert page.locator('#workPaymentsGrid [data-work-operation-id="703"]').count() == 1
-    assert page.locator('#workPaymentsGrid [data-work-operation-id="704"]').count() == 1
+    assert page.locator('#workPaymentsGrid [data-work-operation-id="701"]').count() == 1
     assert "is-completed" in (page.locator('[data-work-date="2026-08-03"]').get_attribute("class") or "")
     assert "is-forecast" in (page.locator('[data-work-date="2026-08-11"]').get_attribute("class") or "")
     assert "is-today" in (page.locator('[data-work-date="2026-08-10"]').get_attribute("class") or "")
@@ -1593,7 +1663,7 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     assert "Основная часть · получено 1 234,56" in (page.locator('[data-work-date="2026-08-07"] .work-day-payment-actual').text_content() or "").replace("\u00a0", " ")
     assert "Аванс · прогноз · 1 050" in (page.locator('[data-work-date="2026-08-20"] .work-day-payment-forecast').text_content() or "").replace("\u00a0", " ")
 
-    page.locator('#workPaymentsGrid [data-work-operation-id="703"]').click()
+    page.locator('[data-work-date="2026-08-05"] [data-work-operation-id="703"]').click()
     page.wait_for_selector("#editModal:not(.hidden)")
     assert page.locator("#editAmount").input_value() == "1973.56"
     page.click("#closeEditModalBtn")

@@ -172,6 +172,52 @@ class WorkRepository:
         )
         return list(self.db.execute(stmt).all())
 
+    def list_known_payroll_category_ids(self, *, user_id: int) -> set[int]:
+        """Return categories durably evidenced by confirmed payroll plans.
+
+        Manual links intentionally do not promote their whole category to
+        payroll. A live linked operation gives the strongest identity; deleted
+        operations fall back to the immutable category-name snapshot.
+        """
+        rows = list(
+            self.db.execute(
+                select(Operation.category_id, WorkPaymentLink.snapshot_category_name)
+                .outerjoin(
+                    Operation,
+                    and_(
+                        Operation.id == WorkPaymentLink.operation_id,
+                        Operation.user_id == user_id,
+                    ),
+                )
+                .where(
+                    WorkPaymentLink.user_id == user_id,
+                    WorkPaymentLink.source == "plan_confirmation",
+                )
+            ).all()
+        )
+        category_ids = {
+            int(category_id)
+            for category_id, _ in rows
+            if category_id is not None
+        }
+        snapshot_names = {
+            str(snapshot_name).strip()
+            for category_id, snapshot_name in rows
+            if category_id is None and snapshot_name and str(snapshot_name).strip()
+        }
+        if snapshot_names:
+            category_ids.update(
+                int(category_id)
+                for category_id in self.db.scalars(
+                    select(Category.id).where(
+                        or_(Category.user_id == user_id, Category.user_id.is_(None)),
+                        Category.kind == "income",
+                        Category.name.in_(snapshot_names),
+                    )
+                )
+            )
+        return category_ids
+
     def get_operation_with_category(self, *, user_id: int, operation_id: int):
         return self.db.execute(
             select(Operation, Category)

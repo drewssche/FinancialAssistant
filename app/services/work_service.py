@@ -10,6 +10,7 @@ from app.core.cache import invalidate_plans_cache
 from app.db.models import EmploymentContract, WorkDayOverride, WorkPaymentLink, WorkProfile
 from app.repositories.work_repo import WorkRepository
 from app.services.activity_service import ActivityService
+from app.services.fx_rate_policy_service import FxRatePolicyService
 from app.services.plan_reminder_service import PlanReminderService
 from app.services.work_calendar import (
     baseline_day,
@@ -44,6 +45,21 @@ PAYMENT_ROLES = (
     ("advance", "Аванс", "advance_plan_id", "advance_nominal_day"),
 )
 PAYMENT_ROLE_LABELS = {role: label for role, label, _, _ in PAYMENT_ROLES}
+RUSSIAN_MONTHS_ACCUSATIVE = (
+    "",
+    "январь",
+    "февраль",
+    "март",
+    "апрель",
+    "май",
+    "июнь",
+    "июль",
+    "август",
+    "сентябрь",
+    "октябрь",
+    "ноябрь",
+    "декабрь",
+)
 
 
 class WorkService:
@@ -115,7 +131,11 @@ class WorkService:
         profile_data = self._serialize_profile(profile)
         start = date(year, month, 1)
         end = date(year, month, calendar.monthrange(year, month)[1])
-        rows = self.repo.list_overrides(user_id=user_id, date_from=start - timedelta(days=10), date_to=end)
+        rows = self.repo.list_overrides(
+            user_id=user_id,
+            date_from=start - timedelta(days=70),
+            date_to=end + timedelta(days=70),
+        )
         overrides = {row.work_date: row for row in rows}
         current_day, local_now = self._resolve_current_time(today=today, now=now)
         days = [
@@ -213,12 +233,9 @@ class WorkService:
             forecast_base_amount = None
             forecast_base_currency = None
             if forecast_visible:
-                forecast_amount = money_hours(getattr(plan, "original_amount", None) or 0)
-                if forecast_amount <= 0:
-                    forecast_amount = money_hours(plan.amount)
-                forecast_currency = str(plan.currency or "BYN").upper()
-                forecast_base_amount = money_hours(plan.amount)
-                forecast_base_currency = str(plan.base_currency or forecast_currency).upper()
+                forecast_amount, forecast_currency, forecast_base_amount, forecast_base_currency = (
+                    self._serialize_plan_forecast(plan)
+                )
             payments.append(
                 {
                     "role": role,
@@ -242,8 +259,406 @@ class WorkService:
             "summary": self._summarize_days(days),
             "payments": payments,
             "payroll_operations": payroll_operations,
+            "salary_cycle": self._build_salary_cycle(
+                user_id=user_id,
+                year=year,
+                month=month,
+                profile_data=profile_data,
+                override_statuses=statuses,
+                current_day=current_day,
+            ),
             "days": days,
         }
+
+    def _build_salary_cycle(
+        self,
+        *,
+        user_id: int,
+        year: int,
+        month: int,
+        profile_data: dict,
+        override_statuses: dict[date, str],
+        current_day: date,
+    ) -> dict:
+        """Build the cash-based salary cycle shown for a selected payment month.
+
+        A selected month represents salary earned in the previous calendar month.
+        Its attribution window is continuous and non-overlapping: after the
+        previous main salary's effective date through the selected month's main
+        salary effective date, inclusive. The advance inside that window belongs
+        to the same earned month.
+        """
+        reference_year, reference_month = self._previous_month(year=year, month=month)
+        workweek_mask = self._workweek_mask(profile_data["workweek_days"])
+        _, previous_salary_effective = resolve_payment_date(
+            reference_year,
+            reference_month,
+            profile_data["salary_nominal_day"],
+            workweek_mask=workweek_mask,
+            country_code=profile_data["country_code"],
+            override_statuses=override_statuses,
+        )
+        salary_nominal, salary_effective = resolve_payment_date(
+            year,
+            month,
+            profile_data["salary_nominal_day"],
+            workweek_mask=workweek_mask,
+            country_code=profile_data["country_code"],
+            override_statuses=override_statuses,
+        )
+        advance_nominal, advance_effective = resolve_payment_date(
+            reference_year,
+            reference_month,
+            profile_data["advance_nominal_day"],
+            workweek_mask=workweek_mask,
+            country_code=profile_data["country_code"],
+            override_statuses=override_statuses,
+        )
+        previous_advance_year, previous_advance_month = self._shift_month(
+            year=reference_year,
+            month=reference_month,
+            offset=-1,
+        )
+        _, previous_advance_effective = resolve_payment_date(
+            previous_advance_year,
+            previous_advance_month,
+            profile_data["advance_nominal_day"],
+            workweek_mask=workweek_mask,
+            country_code=profile_data["country_code"],
+            override_statuses=override_statuses,
+        )
+        next_advance_year, next_advance_month = self._shift_month(
+            year=reference_year,
+            month=reference_month,
+            offset=1,
+        )
+        _, next_advance_effective = resolve_payment_date(
+            next_advance_year,
+            next_advance_month,
+            profile_data["advance_nominal_day"],
+            workweek_mask=workweek_mask,
+            country_code=profile_data["country_code"],
+            override_statuses=override_statuses,
+        )
+        next_salary_year, next_salary_month = self._shift_month(
+            year=year,
+            month=month,
+            offset=1,
+        )
+        _, next_salary_effective = resolve_payment_date(
+            next_salary_year,
+            next_salary_month,
+            profile_data["salary_nominal_day"],
+            workweek_mask=workweek_mask,
+            country_code=profile_data["country_code"],
+            override_statuses=override_statuses,
+        )
+        cycle_start = previous_salary_effective + timedelta(days=1)
+        cycle_end = salary_effective
+        advance_in_cycle = cycle_start <= advance_effective <= cycle_end
+
+        plans = {
+            "advance": (
+                self.repo.get_plan(user_id=user_id, plan_id=int(profile_data["advance_plan_id"]))
+                if profile_data.get("advance_plan_id")
+                else None
+            ),
+            "salary": (
+                self.repo.get_plan(user_id=user_id, plan_id=int(profile_data["salary_plan_id"]))
+                if profile_data.get("salary_plan_id")
+                else None
+            ),
+        }
+        payroll_category_ids = {
+            int(plan.category_id)
+            for plan in plans.values()
+            if plan is not None and plan.kind == "income" and plan.category_id is not None
+        }
+        payroll_category_ids.update(
+            self.repo.list_known_payroll_category_ids(user_id=user_id)
+        )
+
+        component_specs = (
+            (
+                "advance",
+                "Аванс",
+                advance_nominal,
+                advance_effective,
+                previous_advance_effective,
+                next_advance_effective,
+            ),
+            (
+                "salary",
+                "Основная часть",
+                salary_nominal,
+                salary_effective,
+                previous_salary_effective,
+                next_salary_effective,
+            ),
+        )
+        occurrence_by_role = {
+            role: (previous_effective, effective, next_effective)
+            for role, _, _, effective, previous_effective, next_effective in component_specs
+        }
+        link_range_from = min(item[0] for item in occurrence_by_role.values())
+        link_range_to = max(item[2] for item in occurrence_by_role.values())
+        explicit_by_role: dict[str, list[dict]] = {"advance": [], "salary": []}
+        for row in self.repo.list_payment_links(
+            user_id=user_id,
+            date_from=link_range_from,
+            date_to=link_range_to,
+        ):
+            item = self._serialize_payment_link_row(row)
+            role = str(item["role"])
+            if (
+                role in explicit_by_role
+                and (role != "advance" or advance_in_cycle)
+                and not item["is_deleted"]
+                and self._payment_link_belongs_to_occurrence(
+                    operation_date=item["operation_date"],
+                    occurrences=occurrence_by_role[role],
+                )
+            ):
+                explicit_by_role[item["role"]].append(
+                    {key: value for key, value in item.items() if key not in {"role", "plan_id"}}
+                )
+
+        category_rows = self.repo.list_unlinked_payroll_income_operations(
+            user_id=user_id,
+            category_ids=list(payroll_category_ids),
+            date_from=min(cycle_start, advance_effective),
+            date_to=max(cycle_end, advance_effective),
+            received_through=min(max(cycle_end, advance_effective), current_day),
+        )
+        consumed_category_operation_ids: set[int] = set()
+        effective_date_counts: dict[date, int] = {}
+        for _, _, _, effective, _, _ in component_specs:
+            effective_date_counts[effective] = effective_date_counts.get(effective, 0) + 1
+        components = []
+        for role, label, nominal, effective, _, _ in component_specs:
+            plan = plans[role]
+            actual_operations = list(explicit_by_role[role])
+            occurrence_is_valid = role != "advance" or advance_in_cycle
+            if occurrence_is_valid and not actual_operations:
+                expected_category_id = (
+                    int(plan.category_id)
+                    if plan is not None and plan.kind == "income" and plan.category_id is not None
+                    else None
+                )
+                if expected_category_id is not None and effective_date_counts[effective] == 1:
+                    for row in category_rows:
+                        operation = row.Operation
+                        operation_id = int(operation.id)
+                        if operation_id in consumed_category_operation_ids:
+                            continue
+                        if operation.operation_date != effective:
+                            continue
+                        if int(operation.category_id) != expected_category_id:
+                            continue
+                        actual_operations.append(
+                            self._serialize_category_payment_match(
+                                operation=operation,
+                                category_name=row.Category.name,
+                            )
+                        )
+                        consumed_category_operation_ids.add(operation_id)
+
+            forecast_amount = None
+            forecast_currency = None
+            forecast_base_amount = None
+            forecast_base_currency = None
+            if not occurrence_is_valid:
+                component_status = "missing"
+            elif actual_operations:
+                component_status = "actual"
+            elif effective >= current_day and self._payment_occurrence_is_applicable(
+                plan=plan,
+                effective_date=effective,
+            ):
+                component_status = "forecast"
+                forecast_amount, forecast_currency, forecast_base_amount, forecast_base_currency = (
+                    self._serialize_plan_forecast(plan)
+                )
+            else:
+                component_status = "missing"
+
+            components.append(
+                {
+                    "role": role,
+                    "label": label,
+                    "nominal_date": nominal,
+                    "effective_date": effective,
+                    "shifted": nominal != effective,
+                    "status": component_status,
+                    "actual_operations": actual_operations,
+                    "actual_totals": self._operation_amount_totals(actual_operations),
+                    "forecast_amount": forecast_amount,
+                    "forecast_currency": forecast_currency,
+                    "forecast_base_amount": forecast_base_amount,
+                    "forecast_base_currency": forecast_base_currency,
+                }
+            )
+
+        extras = [
+            self._serialize_category_payment_match(
+                operation=row.Operation,
+                category_name=row.Category.name,
+            )
+            for row in category_rows
+            if int(row.Operation.id) not in consumed_category_operation_ids
+            and cycle_start <= row.Operation.operation_date <= cycle_end
+        ]
+        totals = self._salary_cycle_totals(components=components, extras=extras)
+        component_statuses = {component["status"] for component in components}
+        if component_statuses == {"actual"}:
+            cycle_status = "actual"
+        elif component_statuses == {"forecast"} and not extras:
+            cycle_status = "forecast"
+        elif component_statuses == {"missing"} and not extras:
+            cycle_status = "missing"
+        else:
+            cycle_status = "mixed"
+        return {
+            "reference_year": reference_year,
+            "reference_month": reference_month,
+            "label": (
+                f"Зарплата за {RUSSIAN_MONTHS_ACCUSATIVE[reference_month]} "
+                f"{reference_year} г."
+            ),
+            "window_from_exclusive": previous_salary_effective,
+            "window_to_inclusive": salary_effective,
+            "status": cycle_status,
+            "components": components,
+            "extras": extras,
+            "totals": totals,
+        }
+
+    def _serialize_plan_forecast(
+        self,
+        plan,
+    ) -> tuple[Decimal, str, Decimal | None, str]:
+        forecast_amount = money_hours(getattr(plan, "original_amount", None) or 0)
+        if forecast_amount <= 0:
+            forecast_amount = money_hours(plan.amount)
+        forecast_currency = str(plan.currency or "BYN").upper()
+        forecast_base_currency = str(plan.base_currency or forecast_currency).upper()
+        forecast_base_amount: Decimal | None
+        if forecast_currency == forecast_base_currency:
+            forecast_base_amount = forecast_amount
+        else:
+            try:
+                resolution = FxRatePolicyService(self.db).resolve(
+                    user_id=int(plan.user_id),
+                    currency=forecast_currency,
+                    base_currency=forecast_base_currency,
+                    source=getattr(plan, "fx_rate_source", "nbrb") or "nbrb",
+                    bank_code=getattr(plan, "fx_bank_code", None),
+                    bank_channel=getattr(plan, "fx_bank_channel", None),
+                    rate_kind=getattr(plan, "fx_rate_kind", None),
+                    manual_rate=getattr(plan, "fx_manual_rate", None),
+                )
+            except ValueError:
+                resolution = None
+            forecast_base_amount = (
+                money_hours(forecast_amount * resolution.rate)
+                if resolution is not None
+                else None
+            )
+        return (
+            forecast_amount,
+            forecast_currency,
+            forecast_base_amount,
+            forecast_base_currency,
+        )
+
+    @staticmethod
+    def _operation_amount_totals(operations: list[dict]) -> list[dict]:
+        totals: dict[str, Decimal] = {}
+        for operation in operations:
+            currency = str(operation["base_currency"]).upper()
+            totals[currency] = totals.get(currency, Decimal("0.00")) + money_hours(
+                operation["base_amount"]
+            )
+        return [
+            {"currency": currency, "amount": money_hours(amount)}
+            for currency, amount in sorted(totals.items())
+        ]
+
+    @staticmethod
+    def _salary_cycle_totals(*, components: list[dict], extras: list[dict]) -> list[dict]:
+        grouped: dict[str, dict[str, Decimal]] = {}
+
+        def bucket(currency: str) -> dict[str, Decimal]:
+            return grouped.setdefault(
+                currency.upper(),
+                {
+                    "actual_amount": Decimal("0.00"),
+                    "forecast_amount": Decimal("0.00"),
+                    "extras_amount": Decimal("0.00"),
+                },
+            )
+
+        for component in components:
+            for operation in component["actual_operations"]:
+                values = bucket(str(operation["base_currency"]))
+                values["actual_amount"] += money_hours(operation["base_amount"])
+            if (
+                component["forecast_base_amount"] is not None
+                and component["forecast_base_currency"]
+            ):
+                values = bucket(str(component["forecast_base_currency"]))
+                values["forecast_amount"] += money_hours(
+                    component["forecast_base_amount"]
+                )
+            elif component["forecast_amount"] is not None and component["forecast_currency"]:
+                values = bucket(str(component["forecast_currency"]))
+                values["forecast_amount"] += money_hours(component["forecast_amount"])
+        for operation in extras:
+            values = bucket(str(operation["base_currency"]))
+            amount = money_hours(operation["base_amount"])
+            values["actual_amount"] += amount
+            values["extras_amount"] += amount
+
+        return [
+            {
+                "currency": currency,
+                "actual_amount": money_hours(values["actual_amount"]),
+                "forecast_amount": money_hours(values["forecast_amount"]),
+                "expected_amount": money_hours(
+                    values["actual_amount"] + values["forecast_amount"]
+                ),
+                "extras_amount": money_hours(values["extras_amount"]),
+            }
+            for currency, values in sorted(grouped.items())
+        ]
+
+    @staticmethod
+    def _previous_month(*, year: int, month: int) -> tuple[int, int]:
+        return WorkService._shift_month(year=year, month=month, offset=-1)
+
+    @staticmethod
+    def _shift_month(*, year: int, month: int, offset: int) -> tuple[int, int]:
+        month_index = year * 12 + month - 1 + offset
+        return month_index // 12, month_index % 12 + 1
+
+    @staticmethod
+    def _payment_link_belongs_to_occurrence(
+        *,
+        operation_date: date,
+        occurrences: tuple[date, date, date],
+    ) -> bool:
+        """Assign an explicitly linked split payment to one monthly occurrence.
+
+        Role links carry durable user intent but do not store an occurrence id.
+        Nearest-date attribution keeps early/late payments with the intended
+        role occurrence and gives an exact midpoint to the earlier occurrence.
+        """
+        target = occurrences[1]
+        nearest = min(
+            occurrences,
+            key=lambda occurrence: (abs((operation_date - occurrence).days), occurrence),
+        )
+        return nearest == target
 
     def get_statistics(
         self,

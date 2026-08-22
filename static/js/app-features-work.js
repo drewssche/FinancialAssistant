@@ -59,7 +59,11 @@
   function paymentForecastAmount(item) { return item?.forecast_amount ?? item?.planned_amount ?? item?.amount ?? null; }
   function paymentForecastCurrency(item) { return item?.forecast_currency || item?.currency || item?.base_currency || "BYN"; }
   function paymentForecastBaseAmount(item) { return item?.forecast_base_amount ?? paymentForecastAmount(item); }
-  function paymentForecastBaseCurrency(item) { return item?.forecast_base_currency || paymentForecastCurrency(item); }
+  function paymentForecastBaseCurrency(item) {
+    return item?.forecast_base_amount != null
+      ? item?.forecast_base_currency || paymentForecastCurrency(item)
+      : paymentForecastCurrency(item);
+  }
   function paymentForecastVisible(item) { return item?.forecast_visible === true; }
   function paymentOperationId(item) { return Number(item?.operation_id || 0); }
   function paymentOperationDate(item) { return item?.operation_date || item?.effective_date || item?.date || null; }
@@ -303,6 +307,128 @@
     return entries.map(([currency, amount]) => `<strong>${escape(formatMoney(amount, currency))}</strong>`).join("");
   }
 
+  function moneyGroupFromTotals(rows, amountKey = "amount", { includeZero = true } = {}) {
+    const totals = new Map();
+    (Array.isArray(rows) ? rows : []).forEach((row) => {
+      const amount = Number(row?.[amountKey]);
+      if (!Number.isFinite(amount) || (!includeZero && Math.abs(amount) < 0.005)) return;
+      const currency = String(row?.currency || "BYN").toUpperCase();
+      totals.set(currency, (totals.get(currency) || 0) + amount);
+    });
+    return totals;
+  }
+
+  function inlineMoneyValues(group) {
+    const entries = [...group.entries()].sort(([left], [right]) => {
+      if (left === "BYN") return -1;
+      if (right === "BYN") return 1;
+      return left.localeCompare(right);
+    });
+    if (!entries.length) return "—";
+    return entries.map(([currency, amount]) => escape(formatMoney(amount, currency))).join(" · ");
+  }
+
+  function salaryCycleComponentActuals(component) {
+    const explicit = moneyGroupFromTotals(component?.actual_totals);
+    return explicit.size
+      ? explicit
+      : groupedMoney(activeSalaryCycleOperations(component), paymentOperationBaseAmount, paymentOperationBaseCurrency);
+  }
+
+  function activeSalaryCycleOperations(component) {
+    return (Array.isArray(component?.actual_operations) ? component.actual_operations : []).filter((row) => !row?.is_deleted);
+  }
+
+  function salaryCycleComponentForecast(component) {
+    const amount = component?.forecast_base_amount ?? component?.forecast_amount;
+    if (amount == null || amount === "") return new Map();
+    const hasBaseAmount = component?.forecast_base_amount != null;
+    return groupedMoney(
+      [component],
+      (row) => row.forecast_base_amount ?? row.forecast_amount,
+      (row) => hasBaseAmount
+        ? row.forecast_base_currency || row.forecast_currency || "BYN"
+        : row.forecast_currency || "BYN",
+    );
+  }
+
+  function renderSalaryCycleComponent(component) {
+    const role = String(component?.role || "extras");
+    const label = component?.label || (role === "advance" ? "Аванс" : role === "salary" ? "Основная часть" : "Доплаты");
+    const activeOperations = activeSalaryCycleOperations(component);
+    const actuals = role === "extras"
+      ? groupedMoney(activeOperations, paymentOperationBaseAmount, paymentOperationBaseCurrency)
+      : salaryCycleComponentActuals(component);
+    const forecast = role === "extras" ? new Map() : salaryCycleComponentForecast(component);
+    const date = component?.effective_date ? formatDate(component.effective_date) : "";
+    const nominalDate = component?.nominal_date ? formatDate(component.nominal_date) : "";
+    const dateLabel = date
+      ? component?.shifted && nominalDate
+        ? `${date} · перенесено с ${nominalDate}`
+        : date
+      : "";
+    const operationDates = [...new Set(activeOperations.map(paymentOperationDate).filter(Boolean))];
+    const actualDateLabel = role !== "extras" && operationDates.length === 1 && operationDates[0] !== component?.effective_date
+      ? ` · факт ${formatDate(operationDates[0])}`
+      : "";
+    const states = [];
+    if (actuals.size) {
+      const operationCount = activeOperations.length ? ` · ${escape(formatOperationCount(activeOperations.length))}` : "";
+      states.push(`<span class="work-salary-cycle-state is-actual">Получено${escape(actualDateLabel)} · ${inlineMoneyValues(actuals)}${operationCount}</span>`);
+    }
+    if (forecast.size) {
+      states.push(`<span class="work-salary-cycle-state is-forecast">Прогноз · ${inlineMoneyValues(forecast)}</span>`);
+    }
+    if (!states.length) {
+      states.push(`<span class="work-salary-cycle-state is-missing">${role === "extras" ? "Доплат нет" : "Выплата не найдена"}</span>`);
+    }
+    return `
+      <div class="work-salary-cycle-component work-salary-cycle-component-${escape(role)}">
+        <div class="work-salary-cycle-component-head">
+          <strong>${escape(label)}</strong>
+          ${dateLabel ? `<span>${escape(dateLabel)}</span>` : ""}
+        </div>
+        <div class="work-salary-cycle-component-values">${states.join("")}</div>
+      </div>`;
+  }
+
+  function renderSalaryCycleCard() {
+    const cycle = snapshot?.salary_cycle;
+    if (!cycle || !Array.isArray(cycle.totals)) return "";
+    const actual = moneyGroupFromTotals(cycle.totals, "actual_amount", { includeZero: false });
+    const forecast = moneyGroupFromTotals(cycle.totals, "forecast_amount", { includeZero: false });
+    const expected = moneyGroupFromTotals(cycle.totals, "expected_amount");
+    const componentsByRole = new Map((cycle.components || []).map((component) => [component.role, component]));
+    const components = [
+      componentsByRole.get("advance") || { role: "advance", label: "Аванс" },
+      componentsByRole.get("salary") || { role: "salary", label: "Основная часть" },
+      { role: "extras", label: "Доплаты", actual_operations: cycle.extras || [] },
+    ];
+    const windowLabel = cycle.window_from_exclusive && cycle.window_to_inclusive
+      ? `Выплаты после ${formatDate(cycle.window_from_exclusive)} и по ${formatDate(cycle.window_to_inclusive)} включительно`
+      : "Аванс прошлого месяца и основная часть текущего";
+    const explanation = "В цикл входят выплаты после основной части прошлого месяца и до основной части текущего месяца включительно.";
+    const summary = [];
+    if (actual.size) summary.push(`<span class="work-salary-cycle-summary-value is-actual">Получено · ${inlineMoneyValues(actual)}</span>`);
+    if (forecast.size) summary.push(`<span class="work-salary-cycle-summary-value is-forecast">Ещё ожидается · ${inlineMoneyValues(forecast)}</span>`);
+    return `
+      <article class="analytics-kpi-card work-money-kpi-card work-salary-cycle-card" title="${escape(explanation)}">
+        <div class="work-salary-cycle-head">
+          <div class="work-salary-cycle-title">
+            <span class="muted-small">Зарплатный цикл</span>
+            <strong>${escape(cycle.label || "Зарплата за предыдущий месяц")}</strong>
+            <span class="muted-small">${escape(windowLabel)}</span>
+          </div>
+          <div class="work-salary-cycle-total">
+            <span class="muted-small">Итого цикла</span>
+            <div class="work-money-kpi-values">${renderMoneyValues(expected)}</div>
+          </div>
+        </div>
+        ${summary.length ? `<div class="work-salary-cycle-summary">${summary.join("")}</div>` : ""}
+        <div class="work-salary-cycle-components">${components.map(renderSalaryCycleComponent).join("")}</div>
+      </article>`;
+  }
+
   function formatPlanPaymentCount(value) {
     const count = Math.max(0, Number(value || 0));
     const mod100 = count % 100;
@@ -326,7 +452,7 @@
         <div class="muted-small">${escape(label)}</div>
         <div class="work-money-kpi-values">${renderMoneyValues(values)}</div>
         <div class="muted-small">${escape(meta)}</div>
-      </article>`).join("");
+      </article>`).join("") + renderSalaryCycleCard();
   }
 
   function renderWorkPeriodPicker() {

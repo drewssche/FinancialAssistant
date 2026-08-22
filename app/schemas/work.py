@@ -30,6 +30,10 @@ class WorkProfileUpdate(BaseModel):
     def validate_plan_links(self):
         if self.advance_plan_id and self.advance_plan_id == self.salary_plan_id:
             raise ValueError("Планы аванса и зарплаты должны быть разными")
+        if self.advance_nominal_day <= self.salary_nominal_day:
+            raise ValueError(
+                "День аванса должен быть позже дня основной части зарплаты"
+            )
         if not self.workweek_days or any(day < 0 or day > 6 for day in self.workweek_days):
             raise ValueError("workweek_days must contain values from 0 to 6")
         if not (
@@ -146,6 +150,46 @@ class WorkPaymentOut(BaseModel):
     actual_operations: list[WorkPaymentOperationOut] = Field(default_factory=list)
 
 
+class WorkSalaryCycleAmountOut(BaseModel):
+    currency: str
+    amount: Decimal
+
+
+class WorkSalaryCycleComponentOut(BaseModel):
+    role: Literal["salary", "advance"]
+    label: str
+    nominal_date: date
+    effective_date: date
+    shifted: bool
+    status: Literal["actual", "forecast", "missing"]
+    actual_operations: list[WorkPaymentOperationOut] = Field(default_factory=list)
+    actual_totals: list[WorkSalaryCycleAmountOut] = Field(default_factory=list)
+    forecast_amount: Decimal | None = None
+    forecast_currency: str | None = None
+    forecast_base_amount: Decimal | None = None
+    forecast_base_currency: str | None = None
+
+
+class WorkSalaryCycleTotalOut(BaseModel):
+    currency: str
+    actual_amount: Decimal
+    forecast_amount: Decimal
+    expected_amount: Decimal
+    extras_amount: Decimal
+
+
+class WorkSalaryCycleOut(BaseModel):
+    reference_year: int
+    reference_month: int
+    label: str
+    window_from_exclusive: date
+    window_to_inclusive: date
+    status: Literal["actual", "forecast", "mixed", "missing"]
+    components: list[WorkSalaryCycleComponentOut]
+    extras: list[WorkPaymentOperationOut] = Field(default_factory=list)
+    totals: list[WorkSalaryCycleTotalOut] = Field(default_factory=list)
+
+
 class WorkPaymentHistoryItemOut(WorkPaymentOperationOut):
     role: Literal["salary", "advance"]
     label: str
@@ -199,6 +243,7 @@ class WorkMonthOut(BaseModel):
     summary: WorkMonthSummaryOut
     payments: list[WorkPaymentOut]
     payroll_operations: list[WorkPaymentOperationOut] = Field(default_factory=list)
+    salary_cycle: WorkSalaryCycleOut
     days: list[WorkDayOut]
 
 

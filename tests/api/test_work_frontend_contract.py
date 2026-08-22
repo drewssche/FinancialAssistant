@@ -124,6 +124,7 @@ def test_month_money_kpis_use_the_month_snapshot_without_mixing_currencies():
     assert "function paymentOperationBaseCurrency(item)" in source
     assert "function paymentForecastBaseAmount(item)" in source
     assert "function paymentForecastBaseCurrency(item)" in source
+    assert "item?.forecast_base_amount != null" in source
     assert "function groupedMoney(rows, amountOf, currencyOf)" in source
     assert "totals.set(currency, (totals.get(currency) || 0) + amount)" in source
     assert "Получено за месяц" in source
@@ -131,6 +132,23 @@ def test_month_money_kpis_use_the_month_snapshot_without_mixing_currencies():
     assert "function formatPlanPaymentCount(value)" in source
     assert 'count === 1 ? "плану" : "планам"' in source
     assert "Итого месяца" not in source
+    assert "function renderSalaryCycleCard()" in source
+    assert "const hasBaseAmount = component?.forecast_base_amount != null" in source
+    assert "snapshot?.salary_cycle" in source
+    assert 'cycle.totals, "actual_amount"' in source
+    assert 'cycle.totals, "forecast_amount"' in source
+    assert 'cycle.totals, "expected_amount"' in source
+    assert 'componentsByRole.get("advance")' in source
+    assert 'componentsByRole.get("salary")' in source
+    assert 'actual_operations: cycle.extras || []' in source
+    assert "function activeSalaryCycleOperations(component)" in source
+    assert ".filter((row) => !row?.is_deleted)" in source
+    assert "formatOperationCount(activeOperations.length)" in source
+    assert "window_from_exclusive" in source
+    assert "window_to_inclusive" in source
+    assert "Зарплатный цикл" in source
+    assert "Итого цикла" in source
+    assert "renderSalaryCycleCard();" in source
     assert "renderMoneySummary();" in source
     live_update = source.split("function updateLiveWorkday", 1)[1].split(
         "function startLiveTimer", 1
@@ -146,6 +164,9 @@ def test_month_money_kpis_use_the_month_snapshot_without_mixing_currencies():
     assert "paymentHistory" not in money_snapshot
     assert ".work-money-summary-grid" in styles
     assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in styles
+    assert ".work-salary-cycle-card" in styles
+    assert "grid-column: 1 / -1" in styles
+    assert "grid-template-columns: repeat(3, minmax(0, 1fr))" in styles
 
 
 def test_payment_link_controls_and_activity_label_have_consistent_accessibility():

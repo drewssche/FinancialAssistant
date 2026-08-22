@@ -2,7 +2,11 @@ from datetime import date, datetime
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
+from app.db.models import WorkProfile
+from app.db.session import get_db
+from app.main import app
 from app.services import work_service as work_service_module
 from tests.api.test_operations_api import _client_lifecycle
 
@@ -337,6 +341,769 @@ def test_payroll_plans_keep_nominal_days_and_shift_only_backward(client: TestCli
     confirmed = client.post(f"/api/v1/plans/{salary_plan_id}/confirm")
     assert confirmed.status_code == 200
     assert confirmed.json()["plan"]["scheduled_date"] == "2026-10-05"
+
+
+def test_salary_cycle_combines_previous_month_advance_current_salary_and_extras(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    class FixedDate(date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 8, 1)
+
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            current = cls(2026, 8, 1, 12, 0)
+            return current.replace(tzinfo=tz) if tz else current
+
+    monkeypatch.setattr(work_service_module, "date", FixedDate)
+    monkeypatch.setattr(work_service_module, "datetime", FixedDateTime)
+
+    payroll_category = client.post(
+        "/api/v1/categories",
+        json={"name": "Зарплата", "kind": "income"},
+    ).json()
+    salary_plan_id = _create_income_plan(
+        client,
+        note="Основная часть",
+        scheduled_date="2026-08-05",
+        amount="1200.00",
+    )
+    advance_plan_id = _create_income_plan(
+        client,
+        note="Аванс",
+        scheduled_date="2026-07-20",
+        amount="1000.00",
+    )
+    for plan_id in (salary_plan_id, advance_plan_id):
+        assert client.patch(
+            f"/api/v1/plans/{plan_id}",
+            json={"category_id": payroll_category["id"]},
+        ).status_code == 200
+    assert client.put(
+        "/api/v1/work/profile",
+        json={
+            "standard_hours_per_day": "8.00",
+            "workweek_days": [0, 1, 2, 3, 4],
+            "salary_plan_id": salary_plan_id,
+            "advance_plan_id": advance_plan_id,
+            "salary_nominal_day": 5,
+            "advance_nominal_day": 20,
+        },
+    ).status_code == 200
+    advance_operation = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "amount": "1050.00",
+            "operation_date": "2026-07-20",
+            "category_id": payroll_category["id"],
+            "note": "Фактический аванс",
+        },
+    ).json()
+    assert client.post(
+        "/api/v1/work/payments/links",
+        json={"operation_id": advance_operation["id"], "role": "advance"},
+    ).status_code == 201
+    vacation_pay = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "amount": "300.00",
+            "operation_date": "2026-07-25",
+            "category_id": payroll_category["id"],
+            "note": "Отпускные",
+        },
+    ).json()
+
+    response = client.get(
+        "/api/v1/work/month",
+        params={"year": 2026, "month": 8},
+    )
+    assert response.status_code == 200
+    cycle = response.json()["salary_cycle"]
+    assert cycle["reference_year"] == 2026
+    assert cycle["reference_month"] == 7
+    assert cycle["label"] == "Зарплата за июль 2026 г."
+    # July 5 was Sunday and July 3 is a Belarus holiday, so it moved to July 2.
+    assert cycle["window_from_exclusive"] == "2026-07-02"
+    assert cycle["window_to_inclusive"] == "2026-08-05"
+    assert cycle["status"] == "mixed"
+
+    advance = next(item for item in cycle["components"] if item["role"] == "advance")
+    salary = next(item for item in cycle["components"] if item["role"] == "salary")
+    assert advance["effective_date"] == "2026-07-20"
+    assert advance["status"] == "actual"
+    assert advance["actual_totals"] == [{"currency": "BYN", "amount": "1050.00"}]
+    assert [item["operation_id"] for item in advance["actual_operations"]] == [
+        advance_operation["id"]
+    ]
+    assert salary["effective_date"] == "2026-08-05"
+    assert salary["status"] == "forecast"
+    assert salary["forecast_amount"] == "1200.00"
+    assert salary["forecast_currency"] == "BYN"
+    assert [item["operation_id"] for item in cycle["extras"]] == [vacation_pay["id"]]
+    assert cycle["totals"] == [
+        {
+            "currency": "BYN",
+            "actual_amount": "1350.00",
+            "forecast_amount": "1200.00",
+            "expected_amount": "2550.00",
+            "extras_amount": "300.00",
+        }
+    ]
+
+
+def test_salary_cycle_exact_date_category_fallback_and_shifted_boundaries(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    class FixedDate(date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 9, 10)
+
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            current = cls(2026, 9, 10, 12, 0)
+            return current.replace(tzinfo=tz) if tz else current
+
+    monkeypatch.setattr(work_service_module, "date", FixedDate)
+    monkeypatch.setattr(work_service_module, "datetime", FixedDateTime)
+
+    payroll_category = client.post(
+        "/api/v1/categories",
+        json={"name": "ЗП и премии", "kind": "income"},
+    ).json()
+    salary_plan_id = _create_income_plan(
+        client,
+        note="Основная часть",
+        scheduled_date="2026-09-04",
+        amount="1500.00",
+    )
+    advance_plan_id = _create_income_plan(
+        client,
+        note="Аванс",
+        scheduled_date="2026-08-20",
+        amount="900.00",
+    )
+    for plan_id in (salary_plan_id, advance_plan_id):
+        assert client.patch(
+            f"/api/v1/plans/{plan_id}",
+            json={"category_id": payroll_category["id"]},
+        ).status_code == 200
+    assert client.put(
+        "/api/v1/work/profile",
+        json={
+            "standard_hours_per_day": "8.00",
+            "workweek_days": [0, 1, 2, 3, 4],
+            "salary_plan_id": salary_plan_id,
+            "advance_plan_id": advance_plan_id,
+            "salary_nominal_day": 5,
+            "advance_nominal_day": 20,
+        },
+    ).status_code == 200
+
+    extra = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "amount": "125.00",
+            "operation_date": "2026-08-10",
+            "category_id": payroll_category["id"],
+            "note": "Премия",
+        },
+    ).json()
+    advance = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "amount": "925.00",
+            "operation_date": "2026-08-20",
+            "category_id": payroll_category["id"],
+            "note": "Аванс",
+        },
+    ).json()
+    salary = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "amount": "1575.00",
+            "operation_date": "2026-09-04",
+            "category_id": payroll_category["id"],
+            "note": "Зарплата",
+        },
+    ).json()
+
+    cycle = client.get(
+        "/api/v1/work/month",
+        params={"year": 2026, "month": 9},
+    ).json()["salary_cycle"]
+    assert cycle["reference_month"] == 8
+    assert cycle["window_from_exclusive"] == "2026-08-05"
+    # September 5 was Saturday, so both the component and inclusive boundary use Sep 4.
+    assert cycle["window_to_inclusive"] == "2026-09-04"
+    assert cycle["status"] == "actual"
+    by_role = {item["role"]: item for item in cycle["components"]}
+    assert by_role["advance"]["status"] == "actual"
+    assert by_role["advance"]["actual_operations"][0]["source"] == "category_match"
+    assert by_role["advance"]["actual_operations"][0]["operation_id"] == advance["id"]
+    assert by_role["salary"]["effective_date"] == "2026-09-04"
+    assert by_role["salary"]["shifted"] is True
+    assert by_role["salary"]["actual_operations"][0]["operation_id"] == salary["id"]
+    assert [item["operation_id"] for item in cycle["extras"]] == [extra["id"]]
+    assert cycle["totals"] == [
+        {
+            "currency": "BYN",
+            "actual_amount": "2625.00",
+            "forecast_amount": "0.00",
+            "expected_amount": "2625.00",
+            "extras_amount": "125.00",
+        }
+    ]
+
+    # Removing the salary plan must not let that role consume another role's
+    # category merely because an operation happens on the salary due date.
+    assert client.put(
+        "/api/v1/work/profile",
+        json={
+            "standard_hours_per_day": "8.00",
+            "workweek_days": [0, 1, 2, 3, 4],
+            "advance_plan_id": advance_plan_id,
+            "salary_nominal_day": 5,
+            "advance_nominal_day": 20,
+        },
+    ).status_code == 200
+    without_salary_plan = client.get(
+        "/api/v1/work/month",
+        params={"year": 2026, "month": 9},
+    ).json()["salary_cycle"]
+    by_role = {item["role"]: item for item in without_salary_plan["components"]}
+    assert by_role["salary"]["status"] == "missing"
+    assert by_role["salary"]["actual_operations"] == []
+    assert [item["operation_id"] for item in without_salary_plan["extras"]] == [
+        extra["id"],
+        salary["id"],
+    ]
+
+
+def test_salary_cycle_assigns_late_explicit_salary_to_nearest_occurrence(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    class FixedDate(date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 8, 10)
+
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            current = cls(2026, 8, 10, 12, 0)
+            return current.replace(tzinfo=tz) if tz else current
+
+    monkeypatch.setattr(work_service_module, "date", FixedDate)
+    monkeypatch.setattr(work_service_module, "datetime", FixedDateTime)
+
+    category = client.post(
+        "/api/v1/categories",
+        json={"name": "Зарплата", "kind": "income"},
+    ).json()
+    salary_plan_id = _create_income_plan(
+        client,
+        note="Основная часть",
+        scheduled_date="2026-08-05",
+        amount="1500.00",
+    )
+    assert client.patch(
+        f"/api/v1/plans/{salary_plan_id}",
+        json={"category_id": category["id"]},
+    ).status_code == 200
+    assert client.put(
+        "/api/v1/work/profile",
+        json={
+            "standard_hours_per_day": "8.00",
+            "workweek_days": [0, 1, 2, 3, 4],
+            "salary_plan_id": salary_plan_id,
+            "salary_nominal_day": 5,
+            "advance_nominal_day": 20,
+        },
+    ).status_code == 200
+    assert client.put(
+        "/api/v1/work/days/2026-08-05",
+        json={"status": "company_day_off", "note": "Перенос выплаты назад"},
+    ).status_code == 200
+    late_salary = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "amount": "1245.68",
+            "operation_date": "2026-07-06",
+            "category_id": category["id"],
+            "note": "Корректировка основной части",
+        },
+    ).json()
+    assert client.post(
+        "/api/v1/work/payments/links",
+        json={"operation_id": late_salary["id"], "role": "salary"},
+    ).status_code == 201
+    exact_salary = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "amount": "1245.68",
+            "operation_date": "2026-07-02",
+            "category_id": category["id"],
+            "note": "Основная часть тем же размером",
+        },
+    ).json()
+    assert client.post(
+        "/api/v1/work/payments/links",
+        json={"operation_id": exact_salary["id"], "role": "salary"},
+    ).status_code == 201
+    next_occurrence_salary = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "amount": "100.00",
+            "operation_date": "2026-07-19",
+            "category_id": category["id"],
+            "note": "Ближе к следующей основной части",
+        },
+    ).json()
+    assert client.post(
+        "/api/v1/work/payments/links",
+        json={"operation_id": next_occurrence_salary["id"], "role": "salary"},
+    ).status_code == 201
+
+    july_cycle = client.get(
+        "/api/v1/work/month",
+        params={"year": 2026, "month": 7},
+    ).json()["salary_cycle"]
+    july_salary = next(
+        item for item in july_cycle["components"] if item["role"] == "salary"
+    )
+    assert july_salary["effective_date"] == "2026-07-02"
+    assert [item["operation_id"] for item in july_salary["actual_operations"]] == [
+        late_salary["id"],
+        exact_salary["id"],
+    ]
+    assert july_salary["actual_totals"] == [
+        {"currency": "BYN", "amount": "2491.36"}
+    ]
+
+    august_cycle = client.get(
+        "/api/v1/work/month",
+        params={"year": 2026, "month": 8},
+    ).json()["salary_cycle"]
+    august_salary = next(
+        item for item in august_cycle["components"] if item["role"] == "salary"
+    )
+    assert august_salary["effective_date"] == "2026-08-04"
+    assert [item["operation_id"] for item in august_salary["actual_operations"]] == [
+        next_occurrence_salary["id"]
+    ]
+    assert late_salary["id"] not in {
+        item["operation_id"] for item in august_salary["actual_operations"]
+    }
+    assert late_salary["id"] not in {
+        item["operation_id"] for item in august_cycle["extras"]
+    }
+    assert exact_salary["id"] not in {
+        item["operation_id"] for item in august_salary["actual_operations"]
+    }
+
+
+def test_salary_cycle_january_reference_and_payment_shift_cross_year(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    class FixedDate(date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 12, 20)
+
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            current = cls(2026, 12, 20, 12, 0)
+            return current.replace(tzinfo=tz) if tz else current
+
+    monkeypatch.setattr(work_service_module, "date", FixedDate)
+    monkeypatch.setattr(work_service_module, "datetime", FixedDateTime)
+    assert client.put(
+        "/api/v1/work/profile",
+        json={
+            "standard_hours_per_day": "8.00",
+            "workweek_days": [0, 1, 2, 3, 4],
+            "salary_nominal_day": 1,
+            "advance_nominal_day": 20,
+        },
+    ).status_code == 200
+
+    cycle = client.get(
+        "/api/v1/work/month",
+        params={"year": 2027, "month": 1},
+    ).json()["salary_cycle"]
+    assert (cycle["reference_year"], cycle["reference_month"]) == (2026, 12)
+    assert cycle["label"] == "Зарплата за декабрь 2026 г."
+    salary = next(item for item in cycle["components"] if item["role"] == "salary")
+    assert salary["nominal_date"] == "2027-01-01"
+    assert salary["effective_date"] == "2026-12-31"
+    assert salary["shifted"] is True
+    assert cycle["window_to_inclusive"] == "2026-12-31"
+
+
+def test_salary_cycle_ambiguous_shared_effective_date_stays_in_extras(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    class FixedDate(date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 8, 10)
+
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            current = cls(2026, 8, 10, 12, 0)
+            return current.replace(tzinfo=tz) if tz else current
+
+    monkeypatch.setattr(work_service_module, "date", FixedDate)
+    monkeypatch.setattr(work_service_module, "datetime", FixedDateTime)
+    category = client.post(
+        "/api/v1/categories",
+        json={"name": "Зарплата", "kind": "income"},
+    ).json()
+    salary_plan_id = _create_income_plan(
+        client,
+        note="Основная часть",
+        scheduled_date="2026-07-31",
+        amount="1500.00",
+    )
+    advance_plan_id = _create_income_plan(
+        client,
+        note="Аванс",
+        scheduled_date="2026-07-31",
+        amount="900.00",
+    )
+    for plan_id in (salary_plan_id, advance_plan_id):
+        assert client.patch(
+            f"/api/v1/plans/{plan_id}",
+            json={"category_id": category["id"]},
+        ).status_code == 200
+    assert client.put(
+        "/api/v1/work/profile",
+        json={
+            "standard_hours_per_day": "8.00",
+            "workweek_days": [0, 1, 2, 3, 4],
+            "salary_plan_id": salary_plan_id,
+            "advance_plan_id": advance_plan_id,
+            "salary_nominal_day": 1,
+            "advance_nominal_day": 31,
+        },
+    ).status_code == 200
+    ambiguous = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "amount": "500.00",
+            "operation_date": "2026-07-31",
+            "category_id": category["id"],
+            "note": "Нельзя определить роль только по дате",
+        },
+    ).json()
+
+    cycle = client.get(
+        "/api/v1/work/month",
+        params={"year": 2026, "month": 8},
+    ).json()["salary_cycle"]
+    assert {
+        item["effective_date"] for item in cycle["components"]
+    } == {"2026-07-31"}
+    assert all(item["status"] == "missing" for item in cycle["components"])
+    assert [item["operation_id"] for item in cycle["extras"]] == [ambiguous["id"]]
+
+
+def test_salary_cycle_totals_use_base_currency_for_fx_actual_and_forecast(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    class FixedDate(date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 8, 1)
+
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            current = cls(2026, 8, 1, 12, 0)
+            return current.replace(tzinfo=tz) if tz else current
+
+    monkeypatch.setattr(work_service_module, "date", FixedDate)
+    monkeypatch.setattr(work_service_module, "datetime", FixedDateTime)
+    assert client.put(
+        "/api/v1/currency/rates/current",
+        json={
+            "currency": "USD",
+            "rate": "3.25",
+            "rate_date": "2026-08-01",
+            "source": "nbrb_auto_unit",
+        },
+    ).status_code == 200
+    category = client.post(
+        "/api/v1/categories",
+        json={"name": "Зарплата", "kind": "income"},
+    ).json()
+    salary_plan = client.post(
+        "/api/v1/plans",
+        json={
+            "kind": "income",
+            "amount": "1000.00",
+            "currency": "USD",
+            "scheduled_date": "2026-08-05",
+            "category_id": category["id"],
+            "note": "Основная часть",
+            "recurrence_enabled": True,
+            "recurrence_frequency": "monthly",
+        },
+    )
+    assert salary_plan.status_code == 201
+    assert client.put(
+        "/api/v1/work/profile",
+        json={
+            "standard_hours_per_day": "8.00",
+            "workweek_days": [0, 1, 2, 3, 4],
+            "salary_plan_id": salary_plan.json()["id"],
+            "salary_nominal_day": 5,
+            "advance_nominal_day": 20,
+        },
+    ).status_code == 200
+    advance_operation = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "amount": "300.00",
+            "currency": "USD",
+            "fx_rate": "3.25",
+            "operation_date": "2026-07-20",
+            "category_id": category["id"],
+            "note": "Валютный аванс",
+        },
+    )
+    assert advance_operation.status_code == 201, advance_operation.text
+    advance_operation_id = advance_operation.json()["id"]
+    assert client.post(
+        "/api/v1/work/payments/links",
+        json={"operation_id": advance_operation_id, "role": "advance"},
+    ).status_code == 201
+
+    cycle = client.get(
+        "/api/v1/work/month",
+        params={"year": 2026, "month": 8},
+    ).json()["salary_cycle"]
+    advance = next(item for item in cycle["components"] if item["role"] == "advance")
+    salary = next(item for item in cycle["components"] if item["role"] == "salary")
+    assert advance["actual_operations"][0]["amount"] == "300.00"
+    assert advance["actual_operations"][0]["currency"] == "USD"
+    assert advance["actual_operations"][0]["base_amount"] == "975.00"
+    assert advance["actual_totals"] == [{"currency": "BYN", "amount": "975.00"}]
+    assert salary["forecast_amount"] == "1000.00"
+    assert salary["forecast_currency"] == "USD"
+    assert salary["forecast_base_amount"] == "3250.00"
+    assert cycle["totals"] == [
+        {
+            "currency": "BYN",
+            "actual_amount": "975.00",
+            "forecast_amount": "3250.00",
+            "expected_amount": "4225.00",
+            "extras_amount": "0.00",
+        }
+    ]
+
+
+def test_salary_cycle_rejects_invalid_order_and_legacy_data_does_not_double_count(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    class FixedDate(date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 8, 10)
+
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            current = cls(2026, 8, 10, 12, 0)
+            return current.replace(tzinfo=tz) if tz else current
+
+    monkeypatch.setattr(work_service_module, "date", FixedDate)
+    monkeypatch.setattr(work_service_module, "datetime", FixedDateTime)
+    category = client.post(
+        "/api/v1/categories",
+        json={"name": "Зарплата", "kind": "income"},
+    ).json()
+    salary_plan_id = _create_income_plan(
+        client,
+        note="Основная часть",
+        scheduled_date="2026-08-05",
+        amount="1500.00",
+    )
+    advance_plan_id = _create_income_plan(
+        client,
+        note="Аванс",
+        scheduled_date="2026-07-31",
+        amount="900.00",
+    )
+    for plan_id in (salary_plan_id, advance_plan_id):
+        assert client.patch(
+            f"/api/v1/plans/{plan_id}",
+            json={"category_id": category["id"]},
+        ).status_code == 200
+    invalid = client.put(
+        "/api/v1/work/profile",
+        json={
+            "standard_hours_per_day": "8.00",
+            "workweek_days": [0, 1, 2, 3, 4],
+            "salary_plan_id": salary_plan_id,
+            "advance_plan_id": advance_plan_id,
+            "salary_nominal_day": 5,
+            "advance_nominal_day": 1,
+        },
+    )
+    assert invalid.status_code == 422
+    assert "День аванса должен быть позже" in invalid.text
+    assert client.put(
+        "/api/v1/work/profile",
+        json={
+            "standard_hours_per_day": "8.00",
+            "workweek_days": [0, 1, 2, 3, 4],
+            "salary_plan_id": salary_plan_id,
+            "advance_plan_id": advance_plan_id,
+            "salary_nominal_day": 5,
+            "advance_nominal_day": 20,
+        },
+    ).status_code == 200
+
+    # Simulate a pre-validation profile already stored by an older release.
+    db_generator = app.dependency_overrides[get_db]()
+    db = next(db_generator)
+    try:
+        profile = db.scalar(select(WorkProfile).where(WorkProfile.user_id == 1))
+        assert profile is not None
+        profile.advance_nominal_day = 1
+        db.commit()
+    finally:
+        db_generator.close()
+
+    actual_advance = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "amount": "925.00",
+            "operation_date": "2026-07-01",
+            "category_id": category["id"],
+            "note": "Аванс за июль",
+        },
+    ).json()
+
+    july_cycle = client.get(
+        "/api/v1/work/month",
+        params={"year": 2026, "month": 7},
+    ).json()["salary_cycle"]
+    august_cycle = client.get(
+        "/api/v1/work/month",
+        params={"year": 2026, "month": 8},
+    ).json()["salary_cycle"]
+    advance = next(
+        item for item in august_cycle["components"] if item["role"] == "advance"
+    )
+    assert advance["nominal_date"] == "2026-07-01"
+    assert advance["effective_date"] == "2026-07-01"
+    assert advance["status"] == "missing"
+    assert advance["actual_operations"] == []
+    july_ids = {
+        item["operation_id"]
+        for item in july_cycle["extras"]
+    } | {
+        item["operation_id"]
+        for component in july_cycle["components"]
+        for item in component["actual_operations"]
+    }
+    august_ids = {
+        item["operation_id"]
+        for item in august_cycle["extras"]
+    } | {
+        item["operation_id"]
+        for component in august_cycle["components"]
+        for item in component["actual_operations"]
+    }
+    assert actual_advance["id"] in july_ids
+    assert actual_advance["id"] not in august_ids
+
+
+def test_salary_cycle_keeps_unresolved_fx_forecast_in_original_currency(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    class FixedDate(date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 8, 1)
+
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            current = cls(2026, 8, 1, 12, 0)
+            return current.replace(tzinfo=tz) if tz else current
+
+    monkeypatch.setattr(work_service_module, "date", FixedDate)
+    monkeypatch.setattr(work_service_module, "datetime", FixedDateTime)
+    plan = client.post(
+        "/api/v1/plans",
+        json={
+            "kind": "income",
+            "amount": "1000.00",
+            "currency": "CHF",
+            "scheduled_date": "2026-08-05",
+            "note": "Основная часть без доступного курса",
+            "recurrence_enabled": True,
+            "recurrence_frequency": "monthly",
+        },
+    )
+    assert plan.status_code == 201
+    assert client.put(
+        "/api/v1/work/profile",
+        json={
+            "standard_hours_per_day": "8.00",
+            "workweek_days": [0, 1, 2, 3, 4],
+            "salary_plan_id": plan.json()["id"],
+            "salary_nominal_day": 5,
+            "advance_nominal_day": 20,
+        },
+    ).status_code == 200
+
+    cycle = client.get(
+        "/api/v1/work/month",
+        params={"year": 2026, "month": 8},
+    ).json()["salary_cycle"]
+    salary = next(item for item in cycle["components"] if item["role"] == "salary")
+    assert salary["status"] == "forecast"
+    assert salary["forecast_amount"] == "1000.00"
+    assert salary["forecast_currency"] == "CHF"
+    assert salary["forecast_base_amount"] is None
+    assert cycle["totals"] == [
+        {
+            "currency": "CHF",
+            "actual_amount": "0.00",
+            "forecast_amount": "1000.00",
+            "expected_amount": "1000.00",
+            "extras_amount": "0.00",
+        }
+    ]
 
 
 def test_work_month_uses_past_payroll_operations_and_current_future_plan_amount(
@@ -832,6 +1599,16 @@ def test_payroll_link_survives_plan_relink_and_deletions_without_past_forecast(
     assert current_history["operation_date"] == "2026-08-08"
     assert current_history["category_name"] == "Зарплата после сверки"
     assert current_history["note"] == "Фактическая выплата после сверки"
+    durable_extra = client.post(
+        "/api/v1/operations",
+        json={
+            "kind": "income",
+            "amount": "100.00",
+            "operation_date": "2026-07-25",
+            "category_id": corrected_category["id"],
+            "note": "Премия старого зарплатного плана",
+        },
+    ).json()
 
     replacement_plan_id = _create_income_plan(
         client,
@@ -860,6 +1637,31 @@ def test_payroll_link_survives_plan_relink_and_deletions_without_past_forecast(
     assert item["role"] == "salary"
     assert item["plan_id"] == plan_id
     assert item["operation_id"] == operation_id
+    durable_cycle = client.get(
+        "/api/v1/work/month",
+        params={"year": 2026, "month": 8},
+    ).json()["salary_cycle"]
+    durable_salary = next(
+        item for item in durable_cycle["components"] if item["role"] == "salary"
+    )
+    assert [item["operation_id"] for item in durable_salary["actual_operations"]] == [
+        operation_id
+    ]
+    assert durable_salary["actual_totals"] == [
+        {"currency": "BYN", "amount": "1250.00"}
+    ]
+    assert [item["operation_id"] for item in durable_cycle["extras"]] == [
+        durable_extra["id"]
+    ]
+    assert durable_cycle["totals"] == [
+        {
+            "currency": "BYN",
+            "actual_amount": "1350.00",
+            "forecast_amount": "0.00",
+            "expected_amount": "1350.00",
+            "extras_amount": "100.00",
+        }
+    ]
 
     assert client.delete(f"/api/v1/operations/{operation_id}").status_code == 204
     after_operation_delete = client.get(
@@ -874,6 +1676,28 @@ def test_payroll_link_survives_plan_relink_and_deletions_without_past_forecast(
     assert after_operation_delete["category_name"] == "Зарплата после сверки"
     assert after_operation_delete["note"] == "Фактическая выплата после сверки"
     assert after_operation_delete["is_deleted"] is True
+    deleted_cycle = client.get(
+        "/api/v1/work/month",
+        params={"year": 2026, "month": 8},
+    ).json()["salary_cycle"]
+    deleted_salary = next(
+        item for item in deleted_cycle["components"] if item["role"] == "salary"
+    )
+    assert deleted_salary["status"] == "missing"
+    assert deleted_salary["actual_operations"] == []
+    assert deleted_salary["actual_totals"] == []
+    assert [item["operation_id"] for item in deleted_cycle["extras"]] == [
+        durable_extra["id"]
+    ]
+    assert deleted_cycle["totals"] == [
+        {
+            "currency": "BYN",
+            "actual_amount": "100.00",
+            "forecast_amount": "0.00",
+            "expected_amount": "100.00",
+            "extras_amount": "100.00",
+        }
+    ]
 
     restored = client.post(f"/api/v1/operations/{operation_id}/restore")
     assert restored.status_code == 200
@@ -888,18 +1712,46 @@ def test_payroll_link_survives_plan_relink_and_deletions_without_past_forecast(
     assert after_restore["category_name"] == "Зарплата после сверки"
     assert after_restore["note"] == "Фактическая выплата после сверки"
     assert after_restore["is_deleted"] is False
+    restored_cycle = client.get(
+        "/api/v1/work/month",
+        params={"year": 2026, "month": 8},
+    ).json()["salary_cycle"]
+    restored_salary = next(
+        item for item in restored_cycle["components"] if item["role"] == "salary"
+    )
+    assert [item["operation_id"] for item in restored_salary["actual_operations"]] == [
+        operation_id
+    ]
+    assert restored_salary["actual_totals"] == [
+        {"currency": "BYN", "amount": "1250.00"}
+    ]
+    assert restored_cycle["totals"] == [
+        {
+            "currency": "BYN",
+            "actual_amount": "1350.00",
+            "forecast_amount": "0.00",
+            "expected_amount": "1350.00",
+            "extras_amount": "100.00",
+        }
+    ]
 
 
 def test_manual_payroll_links_candidates_validation_and_audit(
     client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ):
+    class FixedDate(date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 8, 19)
+
     class FixedDateTime(datetime):
         @classmethod
         def now(cls, tz=None):
             current = cls(2026, 8, 19, 12, 0)
             return current.replace(tzinfo=tz) if tz else current
 
+    monkeypatch.setattr(work_service_module, "date", FixedDate)
     monkeypatch.setattr(work_service_module, "datetime", FixedDateTime)
     current_advance_plan_id = _create_income_plan(
         client,
