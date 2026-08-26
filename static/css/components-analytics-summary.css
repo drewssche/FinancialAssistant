@@ -849,8 +849,14 @@
   vertical-align: middle;
 }
 
+#analyticsCurrencyPanel .analytics-chart-tooltip.analytics-chart-tooltip-currency-comparison {
+  width: min(32rem, calc(100% - 1rem));
+  min-width: min(20rem, calc(100% - 1rem));
+  max-width: min(32rem, calc(100% - 1rem));
+}
+
 .currency-chart-comparison-tooltip {
-  min-width: min(20rem, 74vw);
+  min-width: 0;
 }
 
 .analytics-category-breakdown-grid {

@@ -1684,8 +1684,12 @@ def test_currency_analytics_bank_mode_compares_buy_sell_and_scales_rub(page_with
     page.click("button[data-analytics-bank-chart-currency='RUB']")
     expect(page.locator("#analyticsCurrencyChartContext")).to_contain_text("BYN за 100 RUB")
     page.wait_for_selector("#analyticsCurrencyChart [data-series-id='nbrb-reference']")
+    mobile_chart_wrapper = page.locator("#analyticsCurrencyPanel .analytics-trend-chart-wrap")
+    mobile_scroll_width_before = mobile_chart_wrapper.evaluate("node => node.scrollWidth")
     page.locator("#analyticsCurrencyChart .trend-bucket").last.hover()
     expect(page.locator("#analyticsCurrencyPanel .analytics-chart-tooltip")).to_contain_text("НБРБ · официальный курс: 3.5600 BYN за 100 RUB")
+    mobile_scroll_width_after = mobile_chart_wrapper.evaluate("node => node.scrollWidth")
+    assert mobile_scroll_width_after <= mobile_scroll_width_before + 1
 
     queries = getattr(page, "_bank_currency_history_queries", [])
     assert queries
@@ -1699,6 +1703,40 @@ def test_currency_analytics_bank_mode_compares_buy_sell_and_scales_rub(page_with
     assert len(bank_fill_queries) == 1
     assert bank_fill_queries[0].get("bank_code") == ["priorbank", "technobank", "bsb", "sber"]
     assert date.fromisoformat(bank_fill_queries[0]["date_to"][0]) - date.fromisoformat(bank_fill_queries[0]["date_from"][0]) <= timedelta(days=365)
+
+
+@pytest.mark.e2e
+def test_currency_chart_right_edge_tooltip_does_not_create_desktop_scrollbar(page_with_analytics_api_mock, static_server_url: str):
+    page = page_with_analytics_api_mock
+
+    _open_desktop_app(page, static_server_url)
+    page.click("button[data-section='analytics']")
+    page.wait_for_selector("#analyticsSection:not(.hidden)")
+    page.locator("button[data-analytics-tab='currency']").click()
+    page.wait_for_selector("#analyticsCurrencyPanel:not(.hidden)")
+    page.wait_for_selector("#analyticsCurrencyChart [data-series-id='priorbank-buy']")
+
+    wrapper = page.locator("#analyticsCurrencyPanel .analytics-trend-chart-wrap")
+    before = wrapper.evaluate("node => ({ clientWidth: node.clientWidth, scrollWidth: node.scrollWidth })")
+    page.locator("#analyticsCurrencyChart .trend-bucket").last.hover()
+    expect(wrapper.locator(".analytics-chart-tooltip")).to_be_visible()
+    after = wrapper.evaluate(
+        """
+        node => {
+          const tooltip = node.querySelector('.analytics-chart-tooltip');
+          return {
+            clientWidth: node.clientWidth,
+            scrollWidth: node.scrollWidth,
+            tooltipClientWidth: tooltip.clientWidth,
+            tooltipScrollWidth: tooltip.scrollWidth,
+          };
+        }
+        """
+    )
+
+    assert before["scrollWidth"] <= before["clientWidth"] + 1
+    assert after["scrollWidth"] <= after["clientWidth"] + 1
+    assert after["tooltipScrollWidth"] <= after["tooltipClientWidth"] + 1
 
 
 @pytest.mark.e2e

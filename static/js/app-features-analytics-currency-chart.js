@@ -30,7 +30,7 @@
         : parsed.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
     }
 
-    function createTooltipHost(svgNode) {
+    function createTooltipHost(svgNode, variant = "default") {
       const wrapper = svgNode?.parentElement;
       if (!wrapper) {
         return null;
@@ -41,6 +41,10 @@
         tooltip.className = "analytics-chart-tooltip hidden";
         wrapper.appendChild(tooltip);
       }
+      tooltip.classList.toggle(
+        "analytics-chart-tooltip-currency-comparison",
+        variant === "comparison",
+      );
       return tooltip;
     }
 
@@ -282,7 +286,7 @@
     }
 
     function bindComparisonTooltip(svgNode, seriesList, orderedDates, helpers) {
-      const tooltip = createTooltipHost(svgNode);
+      const tooltip = createTooltipHost(svgNode, "comparison");
       if (!svgNode || !tooltip) {
         return;
       }

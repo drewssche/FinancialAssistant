@@ -177,10 +177,10 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert "body.finance-calculator-open" in calculator_css
     assert "@media (max-width: 640px)" in calculator_css
     assert "max-height: min(88dvh, 720px)" in calculator_css
-    assert '/static/styles.css?v=20260826b' in index_html
+    assert '/static/styles.css?v=20260826c' in index_html
     assert '/static/css/components-core.css?v=20260808a' in styles
     assert '/static/css/layout-debts.css?v=20260716j' in styles
-    assert '/static/css/components-analytics-summary.css?v=20260826b' in styles
+    assert '/static/css/components-analytics-summary.css?v=20260826c' in styles
     assert '/static/css/responsive-sm-core.css?v=20260826b' in styles
 
 
@@ -494,10 +494,13 @@ def test_currency_analytics_supports_bank_history_comparison_controls():
     assert "dataset.originalText = idleText" in currency
     assert 'item?.capability === "accumulating" || item?.capability === "unavailable"' in currency
     assert "renderComparison" in chart
+    assert 'createTooltipHost(svgNode, "comparison")' in chart
+    assert '"analytics-chart-tooltip-currency-comparison"' in chart
     assert 'stroke-dasharray="${escapeHtml(series.dashArray)}"' in chart
     assert 'data-marker-shape="${escapeHtml(series.markerShape || "circle")}"' in chart
     assert ".currency-chart-legend-bank.is-unavailable" in analytics_css
     assert ".currency-chart-legend-series.is-sell > i::after" in analytics_css
+    assert ".analytics-chart-tooltip.analytics-chart-tooltip-currency-comparison" in analytics_css
 
 
 def test_debts_section_has_filtered_base_currency_kpi():
