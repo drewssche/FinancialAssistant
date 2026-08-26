@@ -454,6 +454,24 @@ def test_currency_kpi_and_settings_support_compact_bank_rates_and_alerts():
     assert "collectBankCurrencyAlerts()" in preferences
 
 
+def test_currency_digest_settings_support_seven_day_chart_preference():
+    secondary = (
+        REPO_ROOT / "static" / "js" / "templates" / "shell-sections-secondary.js"
+    ).read_text(encoding="utf-8")
+    elements = (REPO_ROOT / "static" / "js" / "app-core-elements.js").read_text(encoding="utf-8")
+    preferences = (
+        REPO_ROOT / "static" / "js" / "app-features-session-preferences.js"
+    ).read_text(encoding="utf-8")
+
+    assert 'id="currencyDigestChartToggle" type="checkbox" checked' in secondary
+    assert "Добавлять график курсов за последние 7 дней" in secondary
+    assert 'currencyDigestChartToggle: document.getElementById("currencyDigestChartToggle")' in elements
+    assert "telegram_digest_chart_enabled: true" in preferences
+    assert "getMergedCurrencyPrefs().telegram_digest_chart_enabled !== false" in preferences
+    assert "el.currencyDigestChartToggle.disabled = !el.currencyDigestToggle.checked" in preferences
+    assert "telegram_digest_chart_enabled: el.currencyDigestChartToggle" in preferences
+
+
 def test_currency_analytics_supports_bank_history_comparison_controls():
     primary = (
         REPO_ROOT / "static" / "js" / "templates" / "shell-sections-primary.js"

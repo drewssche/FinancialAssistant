@@ -18,6 +18,7 @@
     show_dashboard_kpi: true,
     telegram_digest_enabled: false,
     telegram_digest_time: "10:00",
+    telegram_digest_chart_enabled: true,
     currency_alerts: {},
     bank_rate_banks: ["priorbank", "technobank", "bsb", "sber"],
     bank_rate_alerts: [],
@@ -425,6 +426,10 @@
       el.currencyDigestTimeInput.value = String(getMergedCurrencyPrefs().telegram_digest_time || "10:00");
       el.currencyDigestTimeInput.disabled = el.currencyDigestToggle ? !el.currencyDigestToggle.checked : false;
     }
+    if (el.currencyDigestChartToggle) {
+      el.currencyDigestChartToggle.checked = getMergedCurrencyPrefs().telegram_digest_chart_enabled !== false;
+      el.currencyDigestChartToggle.disabled = el.currencyDigestToggle ? !el.currencyDigestToggle.checked : false;
+    }
     if (el.bankRateBankInputs?.length) {
       const selectedBanks = new Set(normalizeBankRateBanks(getMergedCurrencyPrefs().bank_rate_banks));
       Array.from(el.bankRateBankInputs).forEach((input) => {
@@ -521,6 +526,9 @@
     }
     if (el.currencyDigestTimeInput && el.currencyDigestToggle) {
       el.currencyDigestTimeInput.disabled = !el.currencyDigestToggle.checked;
+    }
+    if (el.currencyDigestChartToggle && el.currencyDigestToggle) {
+      el.currencyDigestChartToggle.disabled = !el.currencyDigestToggle.checked;
     }
     syncCurrencyAlertRows();
     syncSettingsPickerButtons();
@@ -775,6 +783,9 @@
           show_dashboard_kpi: el.showDashboardCurrencyToggle ? el.showDashboardCurrencyToggle.checked : getMergedCurrencyPrefs().show_dashboard_kpi,
           telegram_digest_enabled: el.currencyDigestToggle ? el.currencyDigestToggle.checked : getMergedCurrencyPrefs().telegram_digest_enabled,
           telegram_digest_time: el.currencyDigestTimeInput ? String(el.currencyDigestTimeInput.value || "10:00") : getMergedCurrencyPrefs().telegram_digest_time,
+          telegram_digest_chart_enabled: el.currencyDigestChartToggle
+            ? el.currencyDigestChartToggle.checked
+            : getMergedCurrencyPrefs().telegram_digest_chart_enabled,
           currency_alerts: currencyAlerts,
           bank_rate_banks: selectedBankRateBanks,
           bank_rate_alerts: collectBankCurrencyAlerts(),

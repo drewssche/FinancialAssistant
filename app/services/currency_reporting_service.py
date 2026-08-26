@@ -464,6 +464,7 @@ class CurrencyReportingService:
         limit: int = 120,
         date_from: date | None = None,
         date_to: date | None = None,
+        sources: tuple[str, ...] | None = None,
     ) -> list[dict]:
         service = self.currency
         normalized_currency = service._normalize_currency(currency)
@@ -473,6 +474,7 @@ class CurrencyReportingService:
             limit=limit,
             date_from=date_from,
             date_to=date_to,
+            sources=sources,
         )
         return [
             {

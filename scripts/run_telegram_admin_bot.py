@@ -15,7 +15,10 @@ from app.services.telegram_admin_bot_service import (
     TelegramAdminTargetUserNotFoundError,
 )
 from app.services.telegram_debt_reminder_bot_service import TelegramDebtReminderBotService
-from app.services.telegram_currency_digest_bot_service import TelegramCurrencyDigestBotService
+from app.services.telegram_currency_digest_bot_service import (
+    TelegramCurrencyDigestBotService,
+    TelegramCurrencyDigestDelivery,
+)
 from app.services.telegram_currency_alert_bot_service import TelegramCurrencyAlertBotService
 from app.services.telegram_plan_bot_service import (
     TelegramPlanAlreadyCompletedError,
@@ -64,9 +67,9 @@ class TelegramBotClient:
     async def close(self) -> None:
         await self.http.aclose()
 
-    async def call(self, method: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def _post(self, method: str, **request_kwargs: Any) -> dict[str, Any]:
         try:
-            response = await self.http.post(f"{self.base_url}/{method}", json=payload or {})
+            response = await self.http.post(f"{self.base_url}/{method}", **request_kwargs)
         except httpx.ReadTimeout:
             raise
         except httpx.RequestError as exc:
@@ -79,6 +82,24 @@ class TelegramBotClient:
         if not data.get("ok"):
             raise RuntimeError(f"Telegram API error for {method}: {data}")
         return data
+
+    async def call(self, method: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        return await self._post(method, json=payload or {})
+
+    async def send_photo(
+        self,
+        *,
+        chat_id: int | str,
+        png_bytes: bytes,
+        caption: str,
+    ) -> dict[str, Any]:
+        if not png_bytes:
+            raise ValueError("png_bytes must not be empty")
+        return await self._post(
+            "sendPhoto",
+            data={"chat_id": str(chat_id), "caption": caption},
+            files={"photo": ("currency-digest.png", png_bytes, "image/png")},
+        )
 
 
 async def _answer_callback(client: TelegramBotClient, callback_query_id: str, text: str) -> None:
@@ -337,6 +358,59 @@ async def process_currency_refresh() -> None:
         db.close()
 
 
+async def send_currency_digest_delivery(
+    client: TelegramBotClient,
+    delivery: TelegramCurrencyDigestDelivery,
+) -> str:
+    if delivery.photo_png:
+        try:
+            await client.send_photo(
+                chat_id=delivery.chat_id,
+                png_bytes=delivery.photo_png,
+                caption=delivery.photo_caption or delivery.text[:1024],
+            )
+            return "photo"
+        except httpx.ReadTimeout:
+            # Telegram may already have accepted the upload before the response timed out.
+            # Let the outer claim/retry flow handle this ambiguous outcome instead of
+            # immediately creating a guaranteed photo + text duplicate.
+            raise
+        except TelegramBotRequestError as exc:
+            if exc.error_type not in {"ConnectError", "ConnectTimeout", "PoolTimeout"}:
+                raise
+            log_telegram_bot_event(
+                "currency_digest_photo_failed",
+                user_id=delivery.user_id,
+                error=exc.error_type,
+            )
+            logger.warning(
+                "telegram currency digest photo connection failed for user %s, "
+                "falling back to text: %s",
+                delivery.user_id,
+                exc.error_type,
+            )
+        except Exception as exc:  # noqa: BLE001 - definite photo rejection keeps text available.
+            log_telegram_bot_event(
+                "currency_digest_photo_failed",
+                user_id=delivery.user_id,
+                error=type(exc).__name__,
+            )
+            logger.warning(
+                "telegram currency digest photo failed for user %s, falling back to text: %s",
+                delivery.user_id,
+                type(exc).__name__,
+            )
+    await client.call(
+        "sendMessage",
+        {
+            "chat_id": delivery.chat_id,
+            "text": delivery.text,
+            "disable_web_page_preview": True,
+        },
+    )
+    return "text"
+
+
 async def process_currency_digests(client: TelegramBotClient) -> None:
     db = SessionLocal()
     try:
@@ -349,14 +423,7 @@ async def process_currency_digests(client: TelegramBotClient) -> None:
                 if not service.claim_delivery(delivery):
                     continue
                 try:
-                    await client.call(
-                        "sendMessage",
-                        {
-                            "chat_id": delivery.chat_id,
-                            "text": delivery.text,
-                            "disable_web_page_preview": True,
-                        },
-                    )
+                    delivery_format = await send_currency_digest_delivery(client, delivery)
                 except Exception as exc:  # noqa: BLE001
                     service.release_delivery(delivery)
                     log_telegram_bot_event(
@@ -370,12 +437,13 @@ async def process_currency_digests(client: TelegramBotClient) -> None:
                         exc,
                     )
                     continue
-                service.mark_delivery_sent(delivery)
+                service.mark_delivery_sent(delivery, delivery_format=delivery_format)
                 log_telegram_bot_event(
                     "currency_digest_sent",
                     chat_id=delivery.chat_id,
                     user_id=delivery.user_id,
                     tracked_count=len(delivery.tracked_currencies),
+                    delivery_format=delivery_format,
                 )
     finally:
         db.close()

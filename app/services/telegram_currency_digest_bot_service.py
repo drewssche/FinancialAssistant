@@ -15,6 +15,8 @@ from app.services.bank_currency_rate_refresh_service import BankCurrencyRateRefr
 from app.services.bank_currency_rate_registry import display_scale
 from app.services.currency_rate_refresh_service import CurrencyRateRefreshService
 from app.services.currency_service import CurrencyService
+from app.services.telegram_currency_digest_chart_data_service import TelegramCurrencyDigestChartDataService
+from app.services.telegram_currency_digest_chart_renderer import TelegramCurrencyDigestChartRenderer
 from app.services.telegram_message_format import ICON_CURRENCY, signed_decimal, title, trend_icon
 
 
@@ -24,9 +26,13 @@ class TelegramCurrencyDigestDelivery:
     text: str
     user_id: int
     tracked_currencies: list[str]
+    photo_png: bytes | None = None
+    photo_caption: str | None = None
 
 
 class TelegramCurrencyDigestBotService:
+    PHOTO_CAPTION_LIMIT = 1024
+
     def __init__(self, db: Session):
         self.db = db
         self.repo = CurrencyRepository(db)
@@ -34,6 +40,8 @@ class TelegramCurrencyDigestBotService:
         self.currency_service = CurrencyService(db)
         self.refresh_service = CurrencyRateRefreshService(db)
         self.bank_refresh_service = BankCurrencyRateRefreshService(db)
+        self.chart_data_service = TelegramCurrencyDigestChartDataService(db)
+        self.chart_renderer: TelegramCurrencyDigestChartRenderer | None = None
         self.activity = ActivityService(db)
 
     def list_due_deliveries(self) -> list[TelegramCurrencyDigestDelivery]:
@@ -50,17 +58,29 @@ class TelegramCurrencyDigestBotService:
             self.bank_refresh_service.refresh_user_selected_rates(user_id=user_id, prefs=prefs)
             overview = self.currency_service.get_overview(user_id=user_id, trades_limit=10)
             text = self.build_digest_text(overview=overview, config=config)
+            photo_png = self._build_chart_png(
+                user_id=user_id,
+                overview=overview,
+                config=config,
+            )
             deliveries.append(
                 TelegramCurrencyDigestDelivery(
                     chat_id=str(identity.provider_user_id),
                     text=text,
                     user_id=user_id,
                     tracked_currencies=list(config["tracked_currencies"]),
+                    photo_png=photo_png,
+                    photo_caption=self.build_photo_caption(text) if photo_png else None,
                 )
             )
         return deliveries
 
-    def mark_delivery_sent(self, delivery: TelegramCurrencyDigestDelivery) -> None:
+    def mark_delivery_sent(
+        self,
+        delivery: TelegramCurrencyDigestDelivery,
+        *,
+        delivery_format: str = "text",
+    ) -> None:
         preference = self.preferences.get_or_create(delivery.user_id)
         prefs = dict(preference.data) if isinstance(preference.data, dict) else {}
         config = self._get_digest_config(prefs)
@@ -84,6 +104,7 @@ class TelegramCurrencyDigestBotService:
                 "sent_at": now_local.isoformat(),
                 "chat_id": delivery.chat_id,
                 "tracked_currencies": delivery.tracked_currencies,
+                "delivery_format": delivery_format,
             },
         )
         self.db.commit()
@@ -93,6 +114,7 @@ class TelegramCurrencyDigestBotService:
             user_id=delivery.user_id,
             tracked_count=len(delivery.tracked_currencies),
             sent_on=currency_prefs["last_digest_sent_on"],
+            delivery_format=delivery_format,
         )
 
     def claim_delivery(self, delivery: TelegramCurrencyDigestDelivery) -> bool:
@@ -178,6 +200,64 @@ class TelegramCurrencyDigestBotService:
         )
         return "\n".join(lines)
 
+    def build_photo_caption(self, text: str) -> str:
+        normalized = str(text or "").strip()
+        if self._telegram_text_units(normalized) <= self.PHOTO_CAPTION_LIMIT:
+            return normalized
+        suffix = "\n… Остальные детали — в приложении."
+        available = self.PHOTO_CAPTION_LIMIT - self._telegram_text_units(suffix)
+        kept_lines = []
+        for line in normalized.splitlines():
+            candidate = "\n".join([*kept_lines, line])
+            if self._telegram_text_units(candidate) > available:
+                break
+            kept_lines.append(line)
+        if kept_lines:
+            return "\n".join(kept_lines) + suffix
+        return self._truncate_to_telegram_units(normalized, available).rstrip() + suffix
+
+    @staticmethod
+    def _telegram_text_units(value: str) -> int:
+        return len(value.encode("utf-16-le")) // 2
+
+    @classmethod
+    def _truncate_to_telegram_units(cls, value: str, limit: int) -> str:
+        if limit <= 0:
+            return ""
+        lower = 0
+        upper = len(value)
+        while lower < upper:
+            middle = (lower + upper + 1) // 2
+            if cls._telegram_text_units(value[:middle]) <= limit:
+                lower = middle
+            else:
+                upper = middle - 1
+        return value[:lower]
+
+    def _build_chart_png(self, *, user_id: int, overview: dict, config: dict) -> bytes | None:
+        if not config["chart_enabled"]:
+            return None
+        try:
+            now_local = datetime.now(config["timezone"])
+            payload = self.chart_data_service.build_payload(
+                user_id=user_id,
+                tracked_currencies=config["tracked_currencies"],
+                bank_codes=config["bank_rate_banks"],
+                overview=overview,
+                as_of=now_local.date(),
+            )
+            if self.chart_renderer is None:
+                self.chart_renderer = TelegramCurrencyDigestChartRenderer()
+            return self.chart_renderer.render(payload)
+        except Exception as exc:  # noqa: BLE001 - a text digest must remain available.
+            log_background_job_event(
+                "currency_digest",
+                "chart_render_failed",
+                user_id=user_id,
+                error_type=type(exc).__name__,
+            )
+            return None
+
     def _get_digest_config(self, prefs: dict) -> dict:
         currency_prefs = prefs.get("currency") if isinstance(prefs.get("currency"), dict) else {}
         ui_prefs = prefs.get("ui") if isinstance(prefs.get("ui"), dict) else {}
@@ -194,6 +274,7 @@ class TelegramCurrencyDigestBotService:
             "timezone": timezone_obj,
             "tracked_currencies": [str(item).strip().upper() for item in tracked if str(item).strip()],
             "bank_rate_banks": list(currency_prefs.get("bank_rate_banks") or []),
+            "chart_enabled": currency_prefs.get("telegram_digest_chart_enabled", True) is not False,
             "last_digest_sent_on": str(currency_prefs.get("last_digest_sent_on") or "").strip(),
             "digest_delivery_claimed_on": str(currency_prefs.get("digest_delivery_claimed_on") or "").strip(),
         }

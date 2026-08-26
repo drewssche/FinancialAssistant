@@ -305,6 +305,7 @@ class CurrencyService:
             "tracked_currencies": normalized or list(self.DEFAULT_TRACKED_CURRENCIES),
             "show_dashboard_kpi": raw.get("show_dashboard_kpi", True) is not False,
             "telegram_digest_enabled": raw.get("telegram_digest_enabled", False) is True,
+            "telegram_digest_chart_enabled": raw.get("telegram_digest_chart_enabled", True) is not False,
             "bank_rate_banks": self._normalize_bank_codes(raw.get("bank_rate_banks")),
         }
 
@@ -768,6 +769,7 @@ class CurrencyService:
         limit: int = 120,
         date_from: date | None = None,
         date_to: date | None = None,
+        sources: tuple[str, ...] | None = None,
     ) -> list[dict]:
         return self.reporting.get_rate_history(
             user_id=user_id,
@@ -775,4 +777,5 @@ class CurrencyService:
             limit=limit,
             date_from=date_from,
             date_to=date_to,
+            sources=sources,
         )

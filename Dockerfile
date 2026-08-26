@@ -5,6 +5,10 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
+RUN apt-get update \
+    && apt-get install --no-install-recommends --yes fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN adduser --disabled-password --gecos '' appuser
 
 COPY requirements.txt ./

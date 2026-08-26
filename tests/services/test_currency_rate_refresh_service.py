@@ -8,6 +8,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.db.base import Base
 from app.db.models import User, UserPreference
+from app.repositories.currency_repo import NBRB_RATE_SOURCES
 from app.services.currency_rate_refresh_service import CurrencyRateRefreshService
 
 
@@ -166,6 +167,46 @@ def test_backfill_user_rate_history_saves_missing_days(monkeypatch):
             date_to=date(2026, 3, 3),
         )
         assert [item["rate_date"] for item in overview] == [date(2026, 3, 1), date(2026, 3, 2), date(2026, 3, 3)]
+    finally:
+        db.close()
+        Base.metadata.drop_all(bind=engine)
+
+
+def test_rate_history_can_exclude_manual_rows_for_official_nbrb_charts():
+    engine, SessionLocal = _make_session()
+    db = SessionLocal()
+    try:
+        db.add(User(id=1, display_name="Tester", status="active"))
+        db.commit()
+        service = CurrencyRateRefreshService(db).currency_service
+        service.upsert_rate(
+            user_id=1,
+            currency="USD",
+            rate="3.10",
+            rate_date=date(2026, 8, 25),
+            source="manual",
+        )
+        service.upsert_rate(
+            user_id=1,
+            currency="USD",
+            rate="3.20",
+            rate_date=date(2026, 8, 26),
+            source="nbrb_auto_unit",
+        )
+
+        history = service.get_rate_history(
+            user_id=1,
+            currency="USD",
+            sources=NBRB_RATE_SOURCES,
+        )
+
+        assert history == [
+            {
+                "currency": "USD",
+                "rate": service._rate("3.20"),
+                "rate_date": date(2026, 8, 26),
+            }
+        ]
     finally:
         db.close()
         Base.metadata.drop_all(bind=engine)

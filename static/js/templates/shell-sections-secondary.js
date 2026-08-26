@@ -646,6 +646,10 @@
                   <span>Время уведомления по курсам</span>
                   <input id="currencyDigestTimeInput" type="time" value="10:00" />
                 </label>
+                <label class="settings-switch-row">
+                  <input id="currencyDigestChartToggle" type="checkbox" checked />
+                  <span>Добавлять график курсов за последние 7 дней</span>
+                </label>
                 <div class="field">
                   <span>Алерты по официальным курсам НБРБ</span>
                   <div id="currencyAlertsSettings" class="settings-alerts-grid">

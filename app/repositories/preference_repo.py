@@ -37,6 +37,7 @@ class PreferenceRepository:
                     "show_dashboard_kpi": True,
                     "telegram_digest_enabled": False,
                     "telegram_digest_time": "10:00",
+                    "telegram_digest_chart_enabled": True,
                     "currency_alerts": {},
                     "bank_rate_banks": ["priorbank", "technobank", "bsb", "sber"],
                     "bank_rate_alerts": [],

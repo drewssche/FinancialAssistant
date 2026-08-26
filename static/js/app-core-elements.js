@@ -223,6 +223,7 @@
       showDashboardCurrencyToggle: document.getElementById("showDashboardCurrencyToggle"),
       currencyDigestToggle: document.getElementById("currencyDigestToggle"),
       currencyDigestTimeInput: document.getElementById("currencyDigestTimeInput"),
+      currencyDigestChartToggle: document.getElementById("currencyDigestChartToggle"),
       currencyAlertsSettings: document.getElementById("currencyAlertsSettings"),
       currencyAlertRows: document.querySelectorAll("[data-currency-alert-row]"),
       currencyAlertInputs: document.querySelectorAll("[data-currency-alert][data-currency-alert-kind]"),
