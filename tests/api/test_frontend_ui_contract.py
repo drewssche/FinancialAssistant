@@ -472,6 +472,25 @@ def test_currency_digest_settings_support_seven_day_chart_preference():
     assert "telegram_digest_chart_enabled: el.currencyDigestChartToggle" in preferences
 
 
+def test_currency_digest_manual_send_buttons_are_available_in_all_currency_views():
+    primary = (
+        REPO_ROOT / "static" / "js" / "templates" / "shell-sections-primary.js"
+    ).read_text(encoding="utf-8")
+    secondary = (
+        REPO_ROOT / "static" / "js" / "templates" / "shell-sections-secondary.js"
+    ).read_text(encoding="utf-8")
+    elements = (REPO_ROOT / "static" / "js" / "app-core-elements.js").read_text(encoding="utf-8")
+
+    assert 'id="dashboardSendCurrencyDigestBtn" class="btn btn-secondary btn-xs"' in primary
+    assert 'id="analyticsSendCurrencyDigestBtn" class="btn btn-secondary btn-xs"' in primary
+    assert 'id="currencySendDigestBtn" class="btn btn-secondary"' in secondary
+    assert primary.count("Отправить дайджест") == 2
+    assert secondary.count("Отправить дайджест") == 1
+    assert 'dashboardSendCurrencyDigestBtn: document.getElementById("dashboardSendCurrencyDigestBtn")' in elements
+    assert 'currencySendDigestBtn: document.getElementById("currencySendDigestBtn")' in elements
+    assert 'analyticsSendCurrencyDigestBtn: document.getElementById("analyticsSendCurrencyDigestBtn")' in elements
+
+
 def test_currency_analytics_supports_bank_history_comparison_controls():
     primary = (
         REPO_ROOT / "static" / "js" / "templates" / "shell-sections-primary.js"

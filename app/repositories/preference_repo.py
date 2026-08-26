@@ -59,6 +59,15 @@ class PreferenceRepository:
         self.db.flush()
         return item
 
+    def get_fresh(self, user_id: int, *, for_update: bool = False) -> UserPreference:
+        stmt = select(UserPreference).where(UserPreference.user_id == user_id)
+        if for_update:
+            stmt = stmt.with_for_update()
+        item = self.db.scalar(stmt.execution_options(populate_existing=True))
+        if item:
+            return item
+        return self.get_or_create(user_id)
+
     def update(self, user_id: int, preferences_version: int, data: dict) -> UserPreference:
         item = self.get_or_create(user_id)
         item.preferences_version = preferences_version

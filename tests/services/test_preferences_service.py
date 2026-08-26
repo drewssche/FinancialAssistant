@@ -136,6 +136,62 @@ def test_update_preferences_preserves_currency_bot_runtime_markers():
         Base.metadata.drop_all(bind=engine)
 
 
+def test_stale_settings_session_freshly_preserves_manual_digest_marker():
+    engine, SessionLocal = _make_session()
+    settings_db = SessionLocal()
+    delivery_db = SessionLocal()
+    verification_db = SessionLocal()
+    try:
+        settings_db.add(User(id=1, display_name="Tester", status="active"))
+        settings_db.add(
+            UserPreference(
+                user_id=1,
+                preferences_version=1,
+                data={
+                    "currency": {
+                        "tracked_currencies": ["USD"],
+                        "telegram_digest_enabled": True,
+                    }
+                },
+            )
+        )
+        settings_db.commit()
+
+        stale = settings_db.get(UserPreference, 1)
+        assert "last_digest_sent_on" not in stale.data["currency"]
+
+        delivered = delivery_db.get(UserPreference, 1)
+        latest = dict(delivered.data)
+        latest_currency = dict(latest["currency"])
+        latest_currency["last_digest_sent_on"] = "2026-08-26"
+        latest["currency"] = latest_currency
+        delivered.data = latest
+        delivery_db.commit()
+
+        updated = PreferencesService(settings_db).update_preferences(
+            user_id=1,
+            preferences_version=2,
+            data={
+                "currency": {
+                    "tracked_currencies": ["EUR"],
+                    "telegram_digest_enabled": True,
+                }
+            },
+        )
+
+        assert updated.data["currency"]["tracked_currencies"] == ["EUR"]
+        assert updated.data["currency"]["last_digest_sent_on"] == "2026-08-26"
+        verification_db.expire_all()
+        persisted = verification_db.get(UserPreference, 1)
+        assert persisted.data["currency"]["tracked_currencies"] == ["EUR"]
+        assert persisted.data["currency"]["last_digest_sent_on"] == "2026-08-26"
+    finally:
+        verification_db.close()
+        delivery_db.close()
+        settings_db.close()
+        Base.metadata.drop_all(bind=engine)
+
+
 def test_update_preferences_resets_alert_marker_when_threshold_changes():
     current = {
         "currency": {

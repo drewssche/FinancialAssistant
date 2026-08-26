@@ -8,6 +8,41 @@ INDEX_HTML = REPO_ROOT / "static" / "index.html"
 MANIFEST_JS = REPO_ROOT / "static" / "js" / "app-manifest.js"
 
 
+def test_currency_digest_manual_send_uses_one_shared_inflight_request():
+    source = (
+        REPO_ROOT / "static" / "js" / "app-features-currency-digest-actions.js"
+    ).read_text(encoding="utf-8")
+    manifest = MANIFEST_JS.read_text(encoding="utf-8")
+
+    assert "let sendPromise = null" in source
+    assert "if (sendPromise)" in source
+    assert "el.dashboardSendCurrencyDigestBtn" in source
+    assert "el.currencySendDigestBtn" in source
+    assert "el.analyticsSendCurrencyDigestBtn" in source
+    assert "sendButtons.forEach((button) =>" in source
+    assert 'core.requestJson("/api/v1/currency/telegram-digest/send"' in source
+    assert 'method: "POST"' in source
+    assert "timeoutMs: 120000" in source
+    assert 'button.textContent = "Отправляем..."' in source
+    assert "button.disabled = true" in source
+    assert 'button.setAttribute("aria-busy", "true")' in source
+    assert "setPendingState(true)" in source
+    assert "setPendingState(false)" in source
+    assert 'result?.message || "Валютный дайджест успешно отправлен в Telegram"' in source
+    assert "/telegram не подтвердил отправку/i.test(message)" in source
+    assert "Не удалось отправить валютный дайджест" in source
+    assert 'registerRuntimeModule?.("currency-digest-actions"' in source
+    assert manifest.index("app-features-currency-digest-actions.js") < manifest.index(
+        "app-features-dashboard.js"
+    )
+    assert manifest.index("app-features-currency-digest-actions.js") < manifest.index(
+        "app-features-analytics-currency.js"
+    )
+    assert manifest.index("app-features-currency-digest-actions.js") < manifest.index(
+        "app-features-currency.js"
+    )
+
+
 def test_dashboard_navigation_ignores_stale_section_loads():
     section_ui = (REPO_ROOT / "static" / "js" / "app-section-ui.js").read_text(encoding="utf-8")
     dashboard = (REPO_ROOT / "static" / "js" / "app-features-dashboard.js").read_text(encoding="utf-8")

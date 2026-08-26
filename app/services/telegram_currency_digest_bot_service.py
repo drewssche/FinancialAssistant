@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.logging import log_background_job_event
 from app.repositories.currency_repo import CurrencyRepository
 from app.repositories.preference_repo import PreferenceRepository
+from app.repositories.user_repo import UserRepository
 from app.services.activity_service import ActivityService
 from app.services.bank_currency_rate_refresh_service import BankCurrencyRateRefreshService
 from app.services.bank_currency_rate_registry import display_scale
@@ -30,6 +31,28 @@ class TelegramCurrencyDigestDelivery:
     photo_caption: str | None = None
 
 
+@dataclass(frozen=True)
+class TelegramCurrencyDigestManualReceipt:
+    sent_at: datetime
+    scheduled_slot_consumed: bool
+
+
+class TelegramCurrencyDigestManualError(ValueError):
+    pass
+
+
+class TelegramCurrencyDigestIdentityMissingError(TelegramCurrencyDigestManualError):
+    pass
+
+
+class TelegramCurrencyDigestTrackedCurrenciesMissingError(TelegramCurrencyDigestManualError):
+    pass
+
+
+def currency_digest_delivery_lock_name(user_id: int) -> str:
+    return f"telegram_currency_digest_delivery:{int(user_id)}"
+
+
 class TelegramCurrencyDigestBotService:
     PHOTO_CAPTION_LIMIT = 1024
 
@@ -37,6 +60,7 @@ class TelegramCurrencyDigestBotService:
         self.db = db
         self.repo = CurrencyRepository(db)
         self.preferences = PreferenceRepository(db)
+        self.users = UserRepository(db)
         self.currency_service = CurrencyService(db)
         self.refresh_service = CurrencyRateRefreshService(db)
         self.bank_refresh_service = BankCurrencyRateRefreshService(db)
@@ -56,24 +80,57 @@ class TelegramCurrencyDigestBotService:
                 continue
             self.refresh_service.refresh_user_tracked_rates(user_id=user_id, prefs=prefs)
             self.bank_refresh_service.refresh_user_selected_rates(user_id=user_id, prefs=prefs)
-            overview = self.currency_service.get_overview(user_id=user_id, trades_limit=10)
-            text = self.build_digest_text(overview=overview, config=config)
-            photo_png = self._build_chart_png(
-                user_id=user_id,
-                overview=overview,
-                config=config,
-            )
             deliveries.append(
-                TelegramCurrencyDigestDelivery(
-                    chat_id=str(identity.provider_user_id),
-                    text=text,
+                self._build_delivery(
                     user_id=user_id,
-                    tracked_currencies=list(config["tracked_currencies"]),
-                    photo_png=photo_png,
-                    photo_caption=self.build_photo_caption(text) if photo_png else None,
+                    chat_id=str(identity.provider_user_id),
+                    config=config,
                 )
             )
         return deliveries
+
+    def build_manual_delivery(self, *, user_id: int) -> TelegramCurrencyDigestDelivery:
+        """Build an on-demand digest from cached rates without changing schedule state."""
+        chat_id = self.users.get_telegram_id_for_user(user_id)
+        if not chat_id:
+            raise TelegramCurrencyDigestIdentityMissingError(
+                "К аккаунту не привязан Telegram для отправки дайджеста"
+            )
+        preference = self.preferences.get_or_create(user_id)
+        prefs = preference.data if isinstance(preference.data, dict) else {}
+        config = self._get_digest_config(prefs)
+        if not config["tracked_currencies"]:
+            raise TelegramCurrencyDigestTrackedCurrenciesMissingError(
+                "Выберите хотя бы одну отслеживаемую валюту"
+            )
+        return self._build_delivery(
+            user_id=user_id,
+            chat_id=str(chat_id),
+            config=config,
+        )
+
+    def _build_delivery(
+        self,
+        *,
+        user_id: int,
+        chat_id: str,
+        config: dict,
+    ) -> TelegramCurrencyDigestDelivery:
+        overview = self.currency_service.get_overview(user_id=user_id, trades_limit=10)
+        text = self.build_digest_text(overview=overview, config=config)
+        photo_png = self._build_chart_png(
+            user_id=user_id,
+            overview=overview,
+            config=config,
+        )
+        return TelegramCurrencyDigestDelivery(
+            chat_id=chat_id,
+            text=text,
+            user_id=user_id,
+            tracked_currencies=list(config["tracked_currencies"]),
+            photo_png=photo_png,
+            photo_caption=self.build_photo_caption(text) if photo_png else None,
+        )
 
     def mark_delivery_sent(
         self,
@@ -81,7 +138,7 @@ class TelegramCurrencyDigestBotService:
         *,
         delivery_format: str = "text",
     ) -> None:
-        preference = self.preferences.get_or_create(delivery.user_id)
+        preference = self.preferences.get_fresh(delivery.user_id, for_update=True)
         prefs = dict(preference.data) if isinstance(preference.data, dict) else {}
         config = self._get_digest_config(prefs)
         currency_prefs = dict(prefs.get("currency")) if isinstance(prefs.get("currency"), dict) else {}
@@ -101,6 +158,7 @@ class TelegramCurrencyDigestBotService:
             created_at=now_local,
             metadata={
                 "message_type": "currency_digest",
+                "delivery_trigger": "scheduled",
                 "sent_at": now_local.isoformat(),
                 "chat_id": delivery.chat_id,
                 "tracked_currencies": delivery.tracked_currencies,
@@ -117,12 +175,97 @@ class TelegramCurrencyDigestBotService:
             delivery_format=delivery_format,
         )
 
+    def mark_manual_delivery_sent(
+        self,
+        delivery: TelegramCurrencyDigestDelivery,
+        *,
+        delivery_format: str,
+    ) -> TelegramCurrencyDigestManualReceipt:
+        # Delivery rendering and Telegram upload can take several seconds. Reload
+        # the row after that network delay so runtime markers are merged into the
+        # latest browser-saved preferences instead of overwriting them.
+        preference = self.preferences.get_fresh(delivery.user_id, for_update=True)
+        prefs = dict(preference.data) if isinstance(preference.data, dict) else {}
+        config = self._get_digest_config(prefs)
+        now_local = datetime.now(config["timezone"])
+        scheduled_slot_consumed = self._should_consume_scheduled_slot(config, now_local=now_local)
+        if scheduled_slot_consumed:
+            currency_prefs = dict(prefs.get("currency")) if isinstance(prefs.get("currency"), dict) else {}
+            currency_prefs["last_digest_sent_on"] = now_local.date().isoformat()
+            currency_prefs.pop("digest_delivery_claimed_on", None)
+            prefs["currency"] = currency_prefs
+            preference.data = prefs
+        self.activity.record(
+            user_id=delivery.user_id,
+            actor_user_id=delivery.user_id,
+            entity_type="currency_portfolio",
+            entity_id=delivery.user_id,
+            event_type="telegram_sent",
+            title="Валютный дайджест Telegram отправлен вручную",
+            source="web",
+            created_at=now_local,
+            metadata={
+                "message_type": "currency_digest",
+                "delivery_trigger": "manual",
+                "sent_at": now_local.isoformat(),
+                "chat_id": delivery.chat_id,
+                "tracked_currencies": delivery.tracked_currencies,
+                "delivery_format": delivery_format,
+                "scheduled_slot_consumed": scheduled_slot_consumed,
+            },
+        )
+        self.db.commit()
+        log_background_job_event(
+            "currency_digest",
+            "manual_digest_marked_sent",
+            user_id=delivery.user_id,
+            tracked_count=len(delivery.tracked_currencies),
+            delivery_format=delivery_format,
+            scheduled_slot_consumed=scheduled_slot_consumed,
+        )
+        return TelegramCurrencyDigestManualReceipt(
+            sent_at=now_local,
+            scheduled_slot_consumed=scheduled_slot_consumed,
+        )
+
+    def mark_manual_delivery_unconfirmed(self, delivery: TelegramCurrencyDigestDelivery) -> bool:
+        """Close a due slot after an ambiguous Telegram timeout without claiming success."""
+        preference = self.preferences.get_fresh(delivery.user_id, for_update=True)
+        prefs = dict(preference.data) if isinstance(preference.data, dict) else {}
+        config = self._get_digest_config(prefs)
+        now_local = datetime.now(config["timezone"])
+        scheduled_slot_consumed = self._should_consume_scheduled_slot(config, now_local=now_local)
+        if scheduled_slot_consumed:
+            currency_prefs = dict(prefs.get("currency")) if isinstance(prefs.get("currency"), dict) else {}
+            currency_prefs["last_digest_sent_on"] = now_local.date().isoformat()
+            currency_prefs.pop("digest_delivery_claimed_on", None)
+            prefs["currency"] = currency_prefs
+            preference.data = prefs
+        self.db.commit()
+        log_background_job_event(
+            "currency_digest",
+            "manual_digest_delivery_unconfirmed",
+            user_id=delivery.user_id,
+            scheduled_slot_consumed=scheduled_slot_consumed,
+        )
+        return scheduled_slot_consumed
+
     def claim_delivery(self, delivery: TelegramCurrencyDigestDelivery) -> bool:
-        preference = self.preferences.get_or_create(delivery.user_id)
+        # The candidate was preloaded before the per-user delivery lock. Force a
+        # database round-trip now so a manual send committed by another Session
+        # can suppress this scheduled delivery.
+        preference = self.preferences.get_fresh(delivery.user_id, for_update=True)
         prefs = dict(preference.data) if isinstance(preference.data, dict) else {}
         config = self._get_digest_config(prefs)
         today = datetime.now(config["timezone"]).date().isoformat()
-        if config.get("last_digest_sent_on") == today or config.get("digest_delivery_claimed_on") == today:
+        if (
+            not config["enabled"]
+            or not config["tracked_currencies"]
+            or config.get("last_digest_sent_on") == today
+            or config.get("digest_delivery_claimed_on") == today
+            or not self._is_due_now(config)
+        ):
+            self.db.rollback()
             return False
         currency_prefs = dict(prefs.get("currency")) if isinstance(prefs.get("currency"), dict) else {}
         currency_prefs["digest_delivery_claimed_on"] = today
@@ -138,7 +281,7 @@ class TelegramCurrencyDigestBotService:
         return True
 
     def release_delivery(self, delivery: TelegramCurrencyDigestDelivery) -> None:
-        preference = self.preferences.get_or_create(delivery.user_id)
+        preference = self.preferences.get_fresh(delivery.user_id, for_update=True)
         prefs = dict(preference.data) if isinstance(preference.data, dict) else {}
         currency_prefs = dict(prefs.get("currency")) if isinstance(prefs.get("currency"), dict) else {}
         currency_prefs.pop("digest_delivery_claimed_on", None)
@@ -281,6 +424,20 @@ class TelegramCurrencyDigestBotService:
 
     def _is_due_now(self, config: dict) -> bool:
         now_local = datetime.now(config["timezone"])
+        today = now_local.date().isoformat()
+        if config.get("last_digest_sent_on") == today or config.get("digest_delivery_claimed_on") == today:
+            return False
+        return self._is_schedule_time_reached(config, now_local=now_local)
+
+    def _should_consume_scheduled_slot(self, config: dict, *, now_local: datetime) -> bool:
+        if not config.get("enabled"):
+            return False
+        if config.get("last_digest_sent_on") == now_local.date().isoformat():
+            return False
+        return self._is_schedule_time_reached(config, now_local=now_local)
+
+    @staticmethod
+    def _is_schedule_time_reached(config: dict, *, now_local: datetime) -> bool:
         time_str = str(config["time"] or "10:00")
         try:
             hours_str, minutes_str = time_str.split(":", 1)
@@ -289,7 +446,4 @@ class TelegramCurrencyDigestBotService:
         except (ValueError, TypeError):
             reminder_hour = 10
             reminder_minute = 0
-        today = now_local.date().isoformat()
-        if config.get("last_digest_sent_on") == today or config.get("digest_delivery_claimed_on") == today:
-            return False
         return (now_local.hour, now_local.minute) >= (reminder_hour, reminder_minute)

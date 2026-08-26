@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -62,6 +63,16 @@ class CurrencyRateOut(BaseModel):
     change_pct: float | None = None
     average_buy_rate: Decimal | None = None
     average_sell_rate: Decimal | None = None
+
+
+class CurrencyTelegramDigestSendOut(BaseModel):
+    status: Literal["sent"] = "sent"
+    delivery_format: Literal["photo", "text"]
+    sent_at: datetime
+    scheduled_slot_consumed: bool = False
+    tracked_currencies: list[str] = Field(default_factory=list)
+    audit_recorded: bool = True
+    message: str = "Валютный дайджест успешно отправлен в Telegram"
 
 
 class CurrencyRateHistoryPointOut(BaseModel):

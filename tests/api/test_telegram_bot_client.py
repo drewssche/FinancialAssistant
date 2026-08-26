@@ -7,13 +7,16 @@ import httpx
 import pytest
 
 from app.services.telegram_currency_digest_bot_service import TelegramCurrencyDigestDelivery
-import scripts.run_telegram_admin_bot as telegram_bot
-from scripts.run_telegram_admin_bot import (
+from app.services.telegram_bot_transport import (
     TelegramBotClient,
     TelegramBotHTTPError,
     TelegramBotRequestError,
-    process_currency_digests,
     send_currency_digest_delivery,
+    send_currency_digest_delivery_sync,
+)
+import scripts.run_telegram_admin_bot as telegram_bot
+from scripts.run_telegram_admin_bot import (
+    process_currency_digests,
 )
 
 
@@ -242,6 +245,39 @@ def test_currency_digest_delivery_keeps_existing_text_only_mode():
     assert delivery_format == "text"
     assert client.photo_calls == []
     assert client.message_calls[0][0] == "sendMessage"
+
+
+def test_sync_currency_digest_sender_uses_shared_transport(monkeypatch):
+    calls = []
+
+    class _Client:
+        def __init__(self, *, token, timeout_seconds):  # noqa: ANN001
+            calls.append(("init", token, timeout_seconds))
+
+        async def close(self):
+            calls.append(("close",))
+
+        async def send_photo(self, **kwargs):  # noqa: ANN003
+            calls.append(("photo", kwargs))
+
+        async def call(self, method, payload):  # noqa: ANN001
+            calls.append(("message", method, payload))
+
+    monkeypatch.setattr(
+        "app.services.telegram_bot_transport.TelegramBotClient",
+        _Client,
+    )
+
+    delivery_format = send_currency_digest_delivery_sync(
+        token="shared-token",
+        timeout_seconds=17,
+        delivery=_digest_delivery(),
+    )
+
+    assert delivery_format == "photo"
+    assert calls[0] == ("init", "shared-token", 17)
+    assert calls[1][0] == "photo"
+    assert calls[-1] == ("close",)
 
 
 def test_currency_digest_process_marks_successful_photo_delivery(monkeypatch):

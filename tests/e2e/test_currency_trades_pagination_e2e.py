@@ -88,6 +88,7 @@ def page_with_currency_pagination_api_mock():
     eur_trades = [_build_trade(100 + index, "EUR") for index in range(1, 8)]
     all_trades = list(reversed(eur_trades + usd_trades))
     trades_calls: list[dict[str, int | str]] = []
+    digest_calls: list[dict[str, str]] = []
 
     def json_response(route, payload: dict | list, status: int = 200):
         route.fulfill(status=status, content_type="application/json", body=json.dumps(payload, ensure_ascii=False))
@@ -276,6 +277,21 @@ def page_with_currency_pagination_api_mock():
             selected_currency = ((query.get("currency") or ["USD"])[0] or "USD").upper()
             return json_response(route, [{"currency": selected_currency, "rate": "3.200000", "rate_date": "2026-03-27", "source": "manual"}])
 
+        if path == "/api/v1/currency/telegram-digest/send" and method == "POST":
+            digest_calls.append({"method": method, "path": path})
+            time.sleep(0.35)
+            return json_response(
+                route,
+                {
+                    "delivery_format": "photo",
+                    "sent_at": "2026-08-26T13:00:00+03:00",
+                    "scheduled_slot_consumed": False,
+                    "tracked_currencies": ["USD", "EUR"],
+                    "audit_recorded": True,
+                    "message": "Ручной валютный дайджест доставлен из тестового ответа",
+                },
+            )
+
         return json_response(route, {"detail": f"Unhandled mock route: {method} {path}"}, status=404)
 
     with sync_api.sync_playwright() as p:
@@ -286,6 +302,7 @@ def page_with_currency_pagination_api_mock():
 
         page = browser.new_page(viewport={"width": 1280, "height": 720})
         page._currency_trades_calls = trades_calls
+        page._currency_digest_calls = digest_calls
         page.add_init_script(
             """
             window.localStorage.setItem("access_token", "e2e-token");
@@ -373,3 +390,89 @@ def test_analytics_currency_section_infinite_scroll_loads_second_page(static_ser
     calls = getattr(page, "_currency_trades_calls", [])
     assert {"currency": "USD", "page": 1, "page_size": 20} in calls
     assert {"currency": "USD", "page": 2, "page_size": 20} in calls
+
+
+@pytest.mark.e2e
+def test_manual_currency_digest_send_is_shared_across_currency_views(
+    static_server_url: str,
+    page_with_currency_pagination_api_mock,
+):
+    page = page_with_currency_pagination_api_mock
+    page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")
+    page.wait_for_selector("#appShell:not(.hidden)")
+    page.wait_for_selector("#dashboardSection:not(.hidden)")
+
+    dashboard_button = page.locator("#dashboardSendCurrencyDigestBtn")
+    currency_button = page.locator("#currencySendDigestBtn")
+    analytics_button = page.locator("#analyticsSendCurrencyDigestBtn")
+    expect = sync_api.expect
+
+    expect(dashboard_button).to_be_visible()
+    expect(currency_button).to_have_count(1)
+    expect(analytics_button).to_have_count(1)
+
+    pending_states = page.evaluate(
+        """
+        () => {
+          const ids = [
+            "dashboardSendCurrencyDigestBtn",
+            "currencySendDigestBtn",
+            "analyticsSendCurrencyDigestBtn",
+          ];
+          document.getElementById(ids[0]).click();
+          window.App.getRuntimeModule("currency-digest-actions").sendCurrencyDigest();
+          return ids.map((id) => {
+            const button = document.getElementById(id);
+            return {
+              id,
+              disabled: button.disabled,
+              ariaBusy: button.getAttribute("aria-busy"),
+              text: button.textContent.trim(),
+            };
+          });
+        }
+        """
+    )
+
+    assert pending_states == [
+        {
+            "id": "dashboardSendCurrencyDigestBtn",
+            "disabled": True,
+            "ariaBusy": "true",
+            "text": "Отправляем...",
+        },
+        {
+            "id": "currencySendDigestBtn",
+            "disabled": True,
+            "ariaBusy": "true",
+            "text": "Отправляем...",
+        },
+        {
+            "id": "analyticsSendCurrencyDigestBtn",
+            "disabled": True,
+            "ariaBusy": "true",
+            "text": "Отправляем...",
+        },
+    ]
+
+    expect(page.locator("#toastArea")).to_contain_text(
+        "Ручной валютный дайджест доставлен из тестового ответа",
+        timeout=5_000,
+    )
+    calls = getattr(page, "_currency_digest_calls", [])
+    assert calls == [{"method": "POST", "path": "/api/v1/currency/telegram-digest/send"}]
+
+    for button in (dashboard_button, currency_button, analytics_button):
+        expect(button).to_be_enabled()
+        assert button.get_attribute("aria-busy") is None
+        expect(button).to_have_text("Отправить дайджест")
+
+    page.evaluate("() => window.App.actions.switchSection?.('currency')")
+    page.wait_for_selector("#currencySection:not(.hidden)")
+    expect(currency_button).to_be_visible()
+
+    page.evaluate("() => window.App.actions.switchSection?.('analytics')")
+    page.wait_for_selector("#analyticsSection:not(.hidden)")
+    page.click("button[data-analytics-tab='currency']")
+    page.wait_for_selector("#analyticsCurrencyPanel:not(.hidden)")
+    expect(analytics_button).to_be_visible()

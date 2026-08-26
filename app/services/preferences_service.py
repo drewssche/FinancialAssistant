@@ -17,7 +17,10 @@ class PreferencesService:
         return self.repo.get_or_create(user_id)
 
     def update_preferences(self, user_id: int, preferences_version: int, data: dict):
-        current = self.repo.get_or_create(user_id)
+        # A settings request can start before a bot/manual delivery commits its
+        # runtime marker. Reload and lock the row immediately before merging so
+        # the browser's stale payload cannot erase that marker.
+        current = self.repo.get_fresh(user_id, for_update=True)
         merged_data = self._preserve_currency_runtime_state(current.data, data)
         item = self.repo.update(user_id=user_id, preferences_version=preferences_version, data=merged_data)
         self.plan_reminder_service.sync_user_jobs(user_id=user_id)

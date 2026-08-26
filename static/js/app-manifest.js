@@ -44,6 +44,7 @@
     "/static/js/app-features-operation-modal-fx-policy.js",
     "/static/js/app-features-operation-modal-currency.js",
     "/static/js/app-features-operation-modal.js",
+    "/static/js/app-features-currency-digest-actions.js",
     "/static/js/app-features-dashboard.js",
     "/static/js/app-features-analytics-calendar.js",
     "/static/js/app-features-analytics-shared.js",

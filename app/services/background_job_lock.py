@@ -6,6 +6,7 @@ from threading import Lock
 from typing import Iterator
 
 from sqlalchemy import text
+from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session
 
 
@@ -36,22 +37,26 @@ def try_background_job_lock(db: Session, name: str) -> Iterator[bool]:
                 lock.release()
         return
 
-    connection = db.connection()
+    # PostgreSQL advisory locks are connection-scoped rather than
+    # transaction-scoped. Keep a dedicated connection until the matching
+    # unlock, even if work inside the context commits its ORM Session.
+    engine = bind.engine if isinstance(bind, Connection) else bind
     lock_id = _lock_id(name)
-    acquired = bool(
-        connection.execute(
-            text("SELECT pg_try_advisory_lock(:lock_id)"),
-            {"lock_id": lock_id},
-        ).scalar()
-    )
-    try:
-        yield acquired
-    finally:
-        if acquired:
+    with engine.connect() as connection:
+        acquired = bool(
             connection.execute(
-                text("SELECT pg_advisory_unlock(:lock_id)"),
+                text("SELECT pg_try_advisory_lock(:lock_id)"),
                 {"lock_id": lock_id},
-            )
+            ).scalar()
+        )
+        try:
+            yield acquired
+        finally:
+            if acquired:
+                connection.execute(
+                    text("SELECT pg_advisory_unlock(:lock_id)"),
+                    {"lock_id": lock_id},
+                )
 
 
 @contextmanager

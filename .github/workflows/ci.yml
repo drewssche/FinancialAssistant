@@ -77,7 +77,7 @@ jobs:
           .venv/bin/pip install --upgrade pip
           .venv/bin/pip install -r requirements.txt -r requirements-e2e.txt
           .venv/bin/playwright install --with-deps chromium
-      - name: Run deterministic session, modal, and currency analytics smoke tests
+      - name: Run deterministic session, modal, currency analytics, and digest smoke tests
         run: |
           .venv/bin/pytest \
             tests/e2e/test_session_reliability_e2e.py \
@@ -85,4 +85,7 @@ jobs:
             tests/e2e/test_analytics_mobile_e2e.py::test_currency_analytics_bank_mode_compares_buy_sell_and_scales_rub \
             tests/e2e/test_analytics_mobile_e2e.py::test_currency_chart_right_edge_tooltip_does_not_create_desktop_scrollbar \
             tests/e2e/test_analytics_mobile_e2e.py::test_currency_bank_backfill_polling_does_not_overwrite_nbrb_mode \
+            -m e2e
+          .venv/bin/pytest \
+            tests/e2e/test_currency_trades_pagination_e2e.py::test_manual_currency_digest_send_is_shared_across_currency_views \
             -m e2e

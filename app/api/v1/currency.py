@@ -1,5 +1,7 @@
-from datetime import date
+from datetime import date, datetime, timezone
+from typing import Literal
 
+import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
@@ -19,7 +21,11 @@ from app.schemas.currency import (
     CurrencyTradeCreate,
     CurrencyTradeOut,
     CurrencyTradeUpdate,
+    CurrencyTelegramDigestSendOut,
 )
+from app.core.config import get_settings
+from app.core.logging import log_telegram_bot_event
+from app.services.background_job_lock import try_background_job_lock
 from app.services.currency_rate_refresh_service import CurrencyRateRefreshService
 from app.services.bank_currency_rate_refresh_service import BankCurrencyRateRefreshService
 from app.services.bank_currency_rate_history_backfill_service import (
@@ -29,8 +35,136 @@ from app.services.bank_currency_rate_history_backfill_service import (
 from app.services.currency_service import CurrencyService
 from app.services.fx_rate_policy_service import FxRatePolicyService
 from app.services.bank_currency_rate_registry import BANK_RATE_PROVIDERS
+from app.services.telegram_bot_transport import send_currency_digest_delivery_sync
+from app.services.telegram_currency_digest_bot_service import (
+    TelegramCurrencyDigestBotService,
+    TelegramCurrencyDigestIdentityMissingError,
+    TelegramCurrencyDigestTrackedCurrenciesMissingError,
+    currency_digest_delivery_lock_name,
+)
 
 router = APIRouter(prefix="/currency", tags=["currency"])
+
+
+@router.post("/telegram-digest/send", response_model=CurrencyTelegramDigestSendOut)
+def send_currency_telegram_digest(
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    settings = get_settings()
+    token = settings.telegram_bot_token.strip()
+    if not token or token == "change_me":
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Отправка в Telegram сейчас не настроена",
+        )
+
+    service = TelegramCurrencyDigestBotService(db)
+    with try_background_job_lock(
+        db,
+        currency_digest_delivery_lock_name(user_id),
+    ) as acquired:
+        if not acquired:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Валютный дайджест уже отправляется",
+            )
+        try:
+            delivery = service.build_manual_delivery(user_id=user_id)
+        except TelegramCurrencyDigestIdentityMissingError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        except TelegramCurrencyDigestTrackedCurrenciesMissingError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str(exc),
+            ) from exc
+
+        try:
+            delivery_format = send_currency_digest_delivery_sync(
+                token=token,
+                timeout_seconds=settings.telegram_bot_poll_timeout_seconds,
+                delivery=delivery,
+            )
+        except httpx.ReadTimeout as exc:
+            db.rollback()
+            scheduled_slot_consumed = False
+            try:
+                scheduled_slot_consumed = service.mark_manual_delivery_unconfirmed(delivery)
+            except Exception as marker_exc:  # noqa: BLE001 - preserve the honest timeout response.
+                db.rollback()
+                log_telegram_bot_event(
+                    "currency_digest_manual_unconfirmed_marker_failed",
+                    user_id=user_id,
+                    error=type(marker_exc).__name__,
+                )
+            log_telegram_bot_event(
+                "currency_digest_manual_unconfirmed",
+                user_id=user_id,
+                error="ReadTimeout",
+                scheduled_slot_consumed=scheduled_slot_consumed,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail=(
+                    "Telegram не подтвердил отправку. Проверьте чат перед повторной "
+                    "попыткой — дайджест мог быть доставлен"
+                ),
+            ) from exc
+        except Exception as exc:  # noqa: BLE001 - external transport details stay server-side.
+            db.rollback()
+            log_telegram_bot_event(
+                "currency_digest_manual_failed",
+                user_id=user_id,
+                error=type(exc).__name__,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Не удалось отправить валютный дайджест в Telegram",
+            ) from exc
+
+        normalized_delivery_format: Literal["photo", "text"] = (
+            "photo" if delivery_format == "photo" else "text"
+        )
+
+        try:
+            receipt = service.mark_manual_delivery_sent(
+                delivery,
+                delivery_format=normalized_delivery_format,
+            )
+        except Exception as exc:  # noqa: BLE001 - Telegram already confirmed the delivery.
+            db.rollback()
+            log_telegram_bot_event(
+                "currency_digest_manual_audit_failed",
+                user_id=user_id,
+                error=type(exc).__name__,
+                delivery_format=normalized_delivery_format,
+            )
+            return CurrencyTelegramDigestSendOut(
+                delivery_format=normalized_delivery_format,
+                sent_at=datetime.now(timezone.utc),
+                scheduled_slot_consumed=False,
+                tracked_currencies=delivery.tracked_currencies,
+                audit_recorded=False,
+                message=(
+                    "Дайджест отправлен в Telegram, но отметку о доставке сохранить не удалось. "
+                    "Возможна повторная отправка по расписанию"
+                ),
+            )
+        log_telegram_bot_event(
+            "currency_digest_manual_sent",
+            user_id=user_id,
+            tracked_count=len(delivery.tracked_currencies),
+            delivery_format=normalized_delivery_format,
+            scheduled_slot_consumed=receipt.scheduled_slot_consumed,
+        )
+        return CurrencyTelegramDigestSendOut(
+            delivery_format=normalized_delivery_format,
+            sent_at=receipt.sent_at,
+            scheduled_slot_consumed=receipt.scheduled_slot_consumed,
+            tracked_currencies=delivery.tracked_currencies,
+            audit_recorded=True,
+            message="Валютный дайджест успешно отправлен в Telegram",
+        )
 
 
 @router.get("/available-balance", response_model=CurrencyAvailableBalanceOut)
