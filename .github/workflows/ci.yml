@@ -75,7 +75,7 @@ jobs:
         run: |
           python -m venv .venv
           .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install -r requirements.txt playwright
+          .venv/bin/pip install -r requirements.txt -r requirements-e2e.txt
           .venv/bin/playwright install --with-deps chromium
       - name: Run deterministic session, modal, and currency analytics smoke tests
         run: |
