@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user_id
@@ -8,6 +8,7 @@ from app.db.session import get_db
 from app.schemas.currency import (
     CurrencyAvailableBalanceOut,
     CurrencyBankRateHistoryPointOut,
+    CurrencyBankRateHistoryBackfillJobOut,
     CurrencyOverviewOut,
     CurrencyPerformanceHistoryOut,
     CurrencyRateHistoryPointOut,
@@ -21,6 +22,10 @@ from app.schemas.currency import (
 )
 from app.services.currency_rate_refresh_service import CurrencyRateRefreshService
 from app.services.bank_currency_rate_refresh_service import BankCurrencyRateRefreshService
+from app.services.bank_currency_rate_history_backfill_service import (
+    BankCurrencyRateHistoryBackfillService,
+    run_bank_rate_history_backfill_job,
+)
 from app.services.currency_service import CurrencyService
 from app.services.fx_rate_policy_service import FxRatePolicyService
 from app.services.bank_currency_rate_registry import BANK_RATE_PROVIDERS
@@ -288,6 +293,55 @@ def get_bank_currency_rate_history(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post(
+    "/bank-rates/history/fill",
+    response_model=CurrencyBankRateHistoryBackfillJobOut,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def fill_bank_currency_rate_history(
+    background_tasks: BackgroundTasks,
+    bank_code: list[str] | None = Query(default=None),
+    bank_codes: str | None = Query(default=None, max_length=500),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    selected_codes = list(bank_code or [])
+    if bank_codes:
+        selected_codes.extend(item.strip() for item in bank_codes.split(","))
+    try:
+        payload, should_schedule = BankCurrencyRateHistoryBackfillService(db).request_job(
+            user_id=user_id,
+            bank_codes=selected_codes or None,
+            date_from=date_from,
+            date_to=date_to,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    if should_schedule:
+        background_tasks.add_task(
+            run_bank_rate_history_backfill_job,
+            int(payload["id"]),
+            db.get_bind(),
+        )
+    return payload
+
+
+@router.get(
+    "/bank-rates/history/fill/status",
+    response_model=CurrencyBankRateHistoryBackfillJobOut | None,
+)
+def get_bank_currency_rate_history_fill_status(
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    _ = user_id
+    return BankCurrencyRateHistoryBackfillService(db).get_status()
 
 
 @router.post("/rates/refresh", response_model=list[CurrencyRateOut])

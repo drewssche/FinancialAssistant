@@ -13,8 +13,10 @@
     buy: { label: "Покупка банком", shortLabel: "покупка", dashArray: "" },
     sell: { label: "Продажа банком", shortLabel: "продажа", dashArray: "8 5" },
   };
-  let bankChartAvailability = null;
   let currencyChartLoadSequence = 0;
+  let currentChartSnapshot = null;
+  let bankBackfillStatusChecked = false;
+  let bankBackfillCoverageNote = "";
 
   function getLoadingSkeletons() {
     return window.App.getRuntimeModule?.("loading-skeletons") || {};
@@ -160,7 +162,6 @@
   function applyAnalyticsCurrencyPeriod(period, anchor = "current") {
     state.analyticsCurrencyPeriod = period === "all_time" ? "all_time" : (["7d", "30d", "90d", "365d"].includes(period) ? period : "30d");
     state.analyticsCurrencyPeriodAnchor = state.analyticsCurrencyPeriod === "all_time" ? "current" : (anchor === "previous" ? "previous" : "current");
-    bankChartAvailability = null;
     syncCurrencyPeriodTabs();
     closeAnalyticsCurrencyPeriodPopover();
     loadAnalyticsCurrency({ force: true }).catch((err) => core.setStatus(String(err)));
@@ -200,6 +201,7 @@
     escapeHtml,
   }) || {};
   const getSeriesColor = chartFeature.getSeriesColor || (() => "#6ea8ff");
+  const renderEmptyChart = chartFeature.renderEmpty || (() => {});
   const renderMultiCurrencyChart = chartFeature.renderMulti || (() => {});
   const renderBankComparisonChart = chartFeature.renderComparison || (() => {});
   const renderChart = chartFeature.renderSingle || (() => {});
@@ -221,6 +223,51 @@
     return String(currency || "").toUpperCase() === "RUB" ? 100 : 1;
   }
 
+  function getChartCurrencyLabel(currency) {
+    const normalized = String(currency || "").toUpperCase();
+    const scale = getBankChartScale(normalized);
+    return `${scale > 1 ? `${scale} ` : ""}${core.formatCurrencyLabel(normalized)}`;
+  }
+
+  function getHiddenChartSeries() {
+    return new Set(Array.isArray(state.analyticsCurrencyChartHiddenSeries)
+      ? state.analyticsCurrencyChartHiddenSeries.map((item) => String(item || "")).filter(Boolean)
+      : []);
+  }
+
+  function setHiddenChartSeries(hidden) {
+    state.analyticsCurrencyChartHiddenSeries = Array.from(hidden).sort();
+  }
+
+  function formatCoverageDate(value) {
+    return value ? core.formatDateRu(value) : "—";
+  }
+
+  function renderChartCoverage(seriesList, { source = "НБРБ", loadingText = "" } = {}) {
+    if (!el.analyticsCurrencyChartCoverage) {
+      return;
+    }
+    if (loadingText) {
+      el.analyticsCurrencyChartCoverage.textContent = loadingText;
+      return;
+    }
+    const dates = Array.from(new Set((Array.isArray(seriesList) ? seriesList : [])
+      .flatMap((series) => (Array.isArray(series.points) ? series.points : []).map((point) => point.rate_date))
+      .filter(Boolean))).sort();
+    const note = source === "Банки" && bankBackfillCoverageNote ? ` ${bankBackfillCoverageNote}` : "";
+    if (!dates.length) {
+      el.analyticsCurrencyChartCoverage.textContent = (source === "Банки"
+        ? "История банков пока не загружена. Приорбанк и БСБ можно подгрузить кнопкой выше; Технобанк накапливает историю с обновлений, источник Сбер сейчас недоступен."
+        : "История НБРБ за выбранный период не найдена.") + note;
+      return;
+    }
+    if (dates.length === 1) {
+      el.analyticsCurrencyChartCoverage.textContent = `${source}: только ${formatCoverageDate(dates[0])} · 1 день. Линия появится после второй котировки.${note}`;
+      return;
+    }
+    el.analyticsCurrencyChartCoverage.textContent = `${source}: ${formatCoverageDate(dates[0])} — ${formatCoverageDate(dates[dates.length - 1])} · ${dates.length} дн.${note}`;
+  }
+
   function ensureBankChartState() {
     const currencies = getBankChartCurrencies();
     const preferredCurrency = currencies.includes("EUR") ? "EUR" : currencies[0];
@@ -230,17 +277,10 @@
     if (!currencies.includes(state.analyticsCurrencyChartCurrency)) {
       state.analyticsCurrencyChartCurrency = preferredCurrency;
     }
-    const configuredBanks = getConfiguredBankCodes();
-    const currentBanks = Array.isArray(state.analyticsCurrencyChartBankCodes)
-      ? state.analyticsCurrencyChartBankCodes.filter((code) => configuredBanks.includes(code))
-      : [];
-    state.analyticsCurrencyChartBankCodes = currentBanks.length ? currentBanks : [...configuredBanks];
-    const rateKinds = Array.isArray(state.analyticsCurrencyChartRateKinds)
-      ? state.analyticsCurrencyChartRateKinds.filter((kind) => BANK_CHART_RATE_KINDS[kind])
-      : [];
-    state.analyticsCurrencyChartRateKinds = rateKinds.length ? rateKinds : ["buy", "sell"];
     state.analyticsCurrencyChartMode = state.analyticsCurrencyChartMode === "nbrb" ? "nbrb" : "banks";
-    state.analyticsCurrencyChartShowNbrb = state.analyticsCurrencyChartShowNbrb !== false;
+    if (!Array.isArray(state.analyticsCurrencyChartHiddenSeries)) {
+      state.analyticsCurrencyChartHiddenSeries = [];
+    }
   }
 
   function syncBankChartControls() {
@@ -255,56 +295,85 @@
         <button class="segmented-btn ${currency === item ? "active" : ""}" data-analytics-bank-chart-currency="${escapeHtml(item)}" type="button" aria-pressed="${currency === item ? "true" : "false"}">${escapeHtml(core.formatCurrencyLabel(item))}</button>
       `).join("");
     }
-    if (el.analyticsCurrencyChartRateKindTabs) {
-      el.analyticsCurrencyChartRateKindTabs.querySelectorAll("[data-analytics-bank-rate-kind]").forEach((button) => {
-        const active = state.analyticsCurrencyChartRateKinds.includes(button.dataset.analyticsBankRateKind);
-        button.classList.toggle("active", active);
-        button.setAttribute("aria-pressed", active ? "true" : "false");
-      });
-    }
-    if (el.analyticsCurrencyChartBanks) {
-      const selected = new Set(state.analyticsCurrencyChartBankCodes);
-      const configured = new Set(getConfiguredBankCodes());
-      el.analyticsCurrencyChartBanks.innerHTML = BANK_CHART_BANKS.filter((bank) => configured.has(bank.code)).map((bank) => {
-        const available = bankChartAvailability === null || bankChartAvailability.has(bank.code);
-        const active = selected.has(bank.code);
-        const unavailableCopy = available ? `${bank.name} · ${bank.channelLabel}` : `${bank.name}: нет истории за выбранный период`;
-        return `
-          <button class="currency-chart-bank-chip ${active ? "active" : ""} ${available ? "" : "is-unavailable"}" type="button"
-            data-analytics-bank-chart-bank="${bank.code}" aria-pressed="${active ? "true" : "false"}"
-            ${available ? "" : "disabled"} title="${escapeHtml(unavailableCopy)}">
-            <i style="--bank-series-color:${bank.color}"></i>
-            <span>${escapeHtml(bank.name)}</span>
-            <small>${escapeHtml(bank.channelLabel)}</small>
-          </button>
-        `;
-      }).join("");
-    }
-    if (el.analyticsCurrencyChartNbrbBtn) {
-      const active = state.analyticsCurrencyChartShowNbrb;
-      el.analyticsCurrencyChartNbrbBtn.classList.toggle("active", active);
-      el.analyticsCurrencyChartNbrbBtn.setAttribute("aria-pressed", active ? "true" : "false");
+    if (el.analyticsCurrencyBackfillBtn) {
+      const idleText = isBankMode ? "Подгрузить историю банков" : "Подгрузить историю НБРБ";
+      if (el.analyticsCurrencyBackfillBtn.dataset.loading === "1") {
+        // runAction restores dataset.originalText in finally. Keep that value
+        // aligned with the currently selected chart mode even when a bank job
+        // continues polling in the background.
+        el.analyticsCurrencyBackfillBtn.dataset.originalText = idleText;
+        if (!isBankMode) {
+          el.analyticsCurrencyBackfillBtn.textContent = "Идёт подгрузка истории банков";
+        }
+      } else {
+        el.analyticsCurrencyBackfillBtn.textContent = idleText;
+      }
     }
     if (el.analyticsCurrencyChartContext) {
       el.analyticsCurrencyChartContext.textContent = isBankMode
-        ? `BYN за ${scale} ${currency} · сплошная — покупка банком, пунктир — продажа банком`
+        ? `BYN за ${scale} ${currency} · сплошная — покупка банком, пунктир и ромб — продажа банком`
         : state.analyticsCurrencyFilter === "all"
-          ? "Официальные курсы НБРБ по отслеживаемым валютам"
-          : `Официальный курс НБРБ для ${core.formatCurrencyLabel(state.analyticsCurrencyFilter)}`;
+          ? "Официальные курсы НБРБ: USD и EUR за 1, RUB за 100"
+          : `Официальный курс НБРБ: BYN за ${getChartCurrencyLabel(state.analyticsCurrencyFilter)}`;
     }
   }
 
-  function renderBankChartLegend(seriesList) {
+  function renderChartLegend(seriesList, mode = state.analyticsCurrencyChartMode) {
     if (!el.analyticsCurrencyChartLegend) {
       return;
     }
     const series = Array.isArray(seriesList) ? seriesList : [];
-    el.analyticsCurrencyChartLegend.innerHTML = series.map((item) => `
-      <span class="currency-chart-html-legend-item">
-        <i style="--legend-color:${item.color};--legend-style:${item.dashArray ? "dashed" : "solid"}"></i>
-        ${escapeHtml(item.legendLabel || item.label)}
-      </span>
-    `).join("");
+    const hidden = getHiddenChartSeries();
+    if (mode === "banks") {
+      const seriesById = new Map(series.map((item) => [item.id, item]));
+      const configured = new Set(getConfiguredBankCodes());
+      const bankGroups = BANK_CHART_BANKS.filter((bank) => configured.has(bank.code)).map((bank) => {
+        const availableIds = ["buy", "sell"].map((kind) => `${bank.code}-${kind}`).filter((id) => seriesById.has(id));
+        const visibleCount = availableIds.filter((id) => !hidden.has(id)).length;
+        const groupState = visibleCount === 0 ? "off" : visibleCount === availableIds.length ? "on" : "mixed";
+        const unavailable = !availableIds.length;
+        return `
+          <div class="currency-chart-legend-bank ${unavailable ? "is-unavailable" : ""}" style="--bank-series-color:${bank.color}">
+            <button class="currency-chart-legend-bank-name ${groupState === "on" ? "active" : ""} ${groupState === "mixed" ? "is-mixed" : ""}" type="button"
+              data-analytics-chart-bank-toggle="${bank.code}" aria-pressed="${groupState === "on" ? "true" : groupState === "off" ? "false" : "mixed"}"
+              ${unavailable ? "disabled" : ""} title="${escapeHtml(unavailable ? `${bank.name}: нет истории за выбранный период` : `Показать или скрыть все курсы ${bank.name}`)}">
+              <i></i><span>${escapeHtml(bank.name)}</span><small>${escapeHtml(bank.channelLabel)}</small>
+            </button>
+            ${["buy", "sell"].map((kind) => {
+              const item = seriesById.get(`${bank.code}-${kind}`);
+              const active = Boolean(item) && !hidden.has(item.id);
+              return `
+                <button class="currency-chart-legend-series ${kind === "sell" ? "is-sell" : "is-buy"} ${active ? "active" : ""}" type="button"
+                  data-analytics-chart-series-toggle="${bank.code}-${kind}" aria-pressed="${active ? "true" : "false"}" ${item ? "" : "disabled"}>
+                  <i></i><span>${kind === "buy" ? "Покупка" : "Продажа"}</span>
+                </button>
+              `;
+            }).join("")}
+          </div>
+        `;
+      }).join("");
+      const nbrb = seriesById.get("nbrb-reference");
+      const nbrbActive = Boolean(nbrb) && !hidden.has("nbrb-reference");
+      el.analyticsCurrencyChartLegend.innerHTML = `${bankGroups}
+        <button class="currency-chart-legend-item is-reference ${nbrbActive ? "active" : ""}" type="button"
+          data-analytics-chart-series-toggle="nbrb-reference" aria-pressed="${nbrbActive ? "true" : "false"}" ${nbrb ? "" : "disabled"}>
+          <i></i><span>НБРБ · ориентир</span>
+        </button>`;
+    } else {
+      el.analyticsCurrencyChartLegend.innerHTML = series.map((item) => {
+        const available = Array.isArray(item.points) && item.points.length > 0;
+        const active = available && !hidden.has(item.id);
+        return `
+          <button class="currency-chart-legend-item ${active ? "active" : ""} ${available ? "" : "is-unavailable"}" type="button" data-analytics-chart-series-toggle="${escapeHtml(item.id)}"
+            aria-pressed="${active ? "true" : "false"}" style="--legend-color:${item.color}" ${available ? "" : "disabled"}>
+            <i></i><span>${escapeHtml(item.legendLabel || item.label)}</span>
+          </button>
+        `;
+      }).join("");
+    }
+    const availableIds = series.filter((item) => Array.isArray(item.points) && item.points.length).map((item) => item.id);
+    const allHidden = Boolean(availableIds.length) && availableIds.every((id) => hidden.has(id));
+    el.analyticsCurrencyChartShowAllBtn?.classList.toggle("hidden", !allHidden);
   }
 
   async function fetchBankCurrencyHistory(currency, range, bankCodes) {
@@ -325,8 +394,8 @@
   }
 
   function buildBankChartSeries(rows, nbrbPoints = []) {
-    const selectedKinds = state.analyticsCurrencyChartRateKinds;
-    const selectedBanks = state.analyticsCurrencyChartBankCodes;
+    const selectedKinds = ["buy", "sell"];
+    const selectedBanks = getConfiguredBankCodes();
     const series = [];
     const bankByCode = new Map(BANK_CHART_BANKS.map((bank) => [bank.code, bank]));
     selectedBanks.forEach((bankCode) => {
@@ -341,6 +410,8 @@
         const points = bankRows.map((item) => ({
           rate_date: item.rate_date,
           rate: Number(item[rateField] || 0),
+          quoted_at: item.quoted_at || null,
+          fetched_at: item.fetched_at || null,
         })).filter((item) => item.rate_date && Number.isFinite(item.rate) && item.rate > 0)
           .sort((left, right) => String(left.rate_date).localeCompare(String(right.rate_date)));
         if (!points.length) {
@@ -354,18 +425,25 @@
           legendLabel: `${bank.name} · ${kindConfig.shortLabel}`,
           color: bank.color,
           dashArray: kindConfig.dashArray,
+          markerShape: kind === "sell" ? "diamond" : "circle",
+          markerFill: kind === "sell" ? "hollow" : "filled",
+          channelLabel: bankRows.find((item) => item?.channel_label)?.channel_label || bank.channelLabel,
+          valueSuffix: `BYN за ${getChartCurrencyLabel(state.analyticsCurrencyChartCurrency)}`,
           points,
           pointsByDate: new Map(points.map((point) => [point.rate_date, point])),
         });
       });
     });
-    if (state.analyticsCurrencyChartShowNbrb && nbrbPoints.length) {
+    if (nbrbPoints.length) {
       series.push({
         id: "nbrb-reference",
         label: "НБРБ · официальный курс",
         legendLabel: "НБРБ · ориентир",
         color: "#c9d4ec",
         dashArray: "2 5",
+        markerShape: "circle",
+        markerFill: "hollow",
+        valueSuffix: `BYN за ${getChartCurrencyLabel(state.analyticsCurrencyChartCurrency)}`,
         points: nbrbPoints,
         pointsByDate: new Map(nbrbPoints.map((point) => [point.rate_date, point])),
       });
@@ -373,14 +451,43 @@
     return series;
   }
 
+  function renderCurrentChartSnapshot() {
+    const snapshot = currentChartSnapshot;
+    if (!snapshot) {
+      return;
+    }
+    const hidden = getHiddenChartSeries();
+    const visibleSeries = snapshot.series.filter((item) => !hidden.has(item.id));
+    renderChartLegend(snapshot.series, snapshot.mode);
+    renderChartCoverage(
+      snapshot.mode === "banks" ? snapshot.series.filter((item) => item.bankCode) : snapshot.series,
+      { source: snapshot.mode === "banks" ? "Банки" : "НБРБ" },
+    );
+    if (!visibleSeries.length) {
+      renderEmptyChart("Все ряды скрыты. Выберите нужные в легенде или нажмите «Показать все».");
+      return;
+    }
+    if (snapshot.mode === "banks") {
+      renderBankComparisonChart(visibleSeries);
+      return;
+    }
+    if (snapshot.single) {
+      const series = visibleSeries[0];
+      renderChart(series?.points || [], {
+        label: series?.legendLabel || series?.label || "Курс НБРБ",
+        valueSuffix: series?.valueSuffix || "BYN",
+      });
+      return;
+    }
+    renderMultiCurrencyChart(visibleSeries);
+  }
+
   async function renderBankCurrencyChart(range, requestSequence) {
     ensureBankChartState();
     const currency = state.analyticsCurrencyChartCurrency;
     const bankCodes = getConfiguredBankCodes();
     const scale = getBankChartScale(currency);
-    const nbrbPromise = state.analyticsCurrencyChartShowNbrb
-      ? fetchCurrencyHistory(currency, range)
-      : Promise.resolve([]);
+    const nbrbPromise = fetchCurrencyHistory(currency, range);
     const [bankResult, nbrbResult] = await Promise.allSettled([
       fetchBankCurrencyHistory(currency, range, bankCodes),
       nbrbPromise,
@@ -397,15 +504,15 @@
       console.warn("NBRB currency history is unavailable", nbrbResult.reason);
     }
     const normalizedRows = Array.isArray(bankRows) ? bankRows : [];
-    bankChartAvailability = new Set(normalizedRows.map((item) => String(item?.bank_code || "").toLowerCase()).filter(Boolean));
     syncBankChartControls();
     const nbrbPoints = normalizeHistoryPoints(nbrbRaw, range.dateTo).map((point) => ({
       ...point,
       rate: Number(point.rate || 0) * scale,
     }));
     const series = buildBankChartSeries(normalizedRows, nbrbPoints);
-    renderBankChartLegend(series);
-    renderBankComparisonChart(series);
+    currentChartSnapshot = { mode: "banks", series, single: false };
+    renderCurrentChartSnapshot();
+    resumeBankHistoryBackfillOnce().catch((err) => console.warn("Bank history backfill status is unavailable", err));
   }
 
   function normalizeHistoryPoints(points, targetDate) {
@@ -423,6 +530,25 @@
       });
     }
     return sorted;
+  }
+
+  function buildNbrbChartSeries(currency, points, index = 0) {
+    const normalizedCurrency = String(currency || "").toUpperCase();
+    const scale = getBankChartScale(normalizedCurrency);
+    const normalizedPoints = (Array.isArray(points) ? points : []).map((point) => ({
+      ...point,
+      rate: Number(point.rate || 0) * scale,
+    }));
+    return {
+      id: `nbrb-${normalizedCurrency}`,
+      currency: normalizedCurrency,
+      label: `НБРБ · ${getChartCurrencyLabel(normalizedCurrency)}`,
+      legendLabel: getChartCurrencyLabel(normalizedCurrency),
+      valueSuffix: `BYN за ${getChartCurrencyLabel(normalizedCurrency)}`,
+      color: getSeriesColor(index),
+      points: normalizedPoints,
+      pointsByDate: new Map(normalizedPoints.map((point) => [point.rate_date, point])),
+    };
   }
 
   function renderSummary(overview) {
@@ -538,12 +664,136 @@
     }
   }
 
+  function updateBankBackfillProgress(job) {
+    const processed = Math.max(0, Number(job?.processed_steps || 0));
+    const total = Math.max(0, Number(job?.total_steps || 0));
+    const percent = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0;
+    const providerDetails = Object.values(job?.progress || {}).filter((item) => item?.capability === "backfill")
+      .map((item) => `${item.bank_name}: ${Number(item.processed_days || 0)}/${Number(item.total_days || 0)}`)
+      .join(" · ");
+    const progressText = `История банков: ${percent}%${providerDetails ? ` · ${providerDetails}` : ""}`;
+    // The polling job may outlive the bank chart view. Do not overwrite NBRB
+    // coverage or its contextual button while the bank import keeps running.
+    if (state.analyticsCurrencyChartMode !== "banks") {
+      return;
+    }
+    if (el.analyticsCurrencyBackfillBtn?.dataset.loading === "1") {
+      el.analyticsCurrencyBackfillBtn.textContent = `Подгрузка банков · ${percent}%`;
+    }
+    renderChartCoverage([], { source: "Банки", loadingText: progressText });
+  }
+
+  function rememberBankBackfillResult(job) {
+    const status = String(job?.status || "").toLowerCase();
+    const processed = Number(job?.processed_steps || 0);
+    const total = Number(job?.total_steps || 0);
+    const label = status === "completed"
+      ? "последняя подгрузка завершена"
+      : status === "partial"
+        ? "последняя подгрузка частичная"
+        : status === "interrupted"
+          ? "подгрузку можно продолжить"
+          : status === "failed"
+            ? "последняя подгрузка завершилась ошибкой"
+            : "";
+    const providerNotes = Object.values(job?.progress || {})
+      .filter((item) => item?.capability === "accumulating" || item?.capability === "unavailable")
+      .map((item) => item.capability === "accumulating"
+        ? `${item.bank_name}: история накапливается с обновлений`
+        : `${item.bank_name}: архив недоступен`);
+    const importNote = label
+      ? `Последний импорт: ${label}${total > 0 ? ` (${processed}/${total})` : ""}.`
+      : "";
+    bankBackfillCoverageNote = [importNote, providerNotes.length ? `${providerNotes.join("; ")}.` : ""]
+      .filter(Boolean)
+      .join(" ");
+  }
+
+  async function pollBankHistoryBackfill(initialJob) {
+    const terminalStatuses = new Set(["completed", "partial", "failed", "interrupted"]);
+    let job = initialJob || {};
+    for (let attempt = 0; attempt < 600; attempt += 1) {
+      updateBankBackfillProgress(job);
+      if (terminalStatuses.has(String(job.status || "").toLowerCase())) {
+        return job;
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 1000));
+      const next = await core.requestJson("/api/v1/currency/bank-rates/history/fill/status", {
+        headers: core.authHeaders(),
+      });
+      if (!next || (job.id && next.id && Number(next.id) !== Number(job.id))) {
+        throw new Error("Статус подгрузки банковской истории потерян");
+      }
+      job = next;
+    }
+    throw new Error("Подгрузка банковской истории продолжается слишком долго. Её статус сохранён, можно обновить страницу позже");
+  }
+
+  async function backfillBankCurrencyHistory(dateFrom, dateTo, isAllTime) {
+    const params = new URLSearchParams({ date_from: dateFrom, date_to: dateTo });
+    getConfiguredBankCodes().forEach((code) => params.append("bank_code", code));
+    const initialJob = await core.requestJson(`/api/v1/currency/bank-rates/history/fill?${params.toString()}`, {
+      method: "POST",
+      headers: core.authHeaders(),
+    });
+    const job = await pollBankHistoryBackfill(initialJob);
+    rememberBankBackfillResult(job);
+    const status = String(job?.status || "").toLowerCase();
+    if (status === "failed") {
+      throw new Error(job?.last_error || "Не удалось подгрузить историю банков");
+    }
+    await loadAnalyticsCurrency({ force: true });
+    syncBankChartControls();
+    const suffix = isAllTime ? " за последние 365 дней" : "";
+    if (status === "partial" || status === "interrupted") {
+      core.setStatus(`История банков подгружена частично${suffix}. Можно повторить загрузку для продолжения`);
+      return;
+    }
+    core.setStatus(`История банков подгружена${suffix}`);
+  }
+
+  async function resumeBankHistoryBackfillOnce() {
+    if (bankBackfillStatusChecked) {
+      return;
+    }
+    bankBackfillStatusChecked = true;
+    const job = await core.requestJson("/api/v1/currency/bank-rates/history/fill/status", {
+      headers: core.authHeaders(),
+    });
+    if (!job) {
+      return;
+    }
+    const status = String(job.status || "").toLowerCase();
+    if (status !== "queued" && status !== "running") {
+      rememberBankBackfillResult(job);
+      renderCurrentChartSnapshot();
+      return;
+    }
+    await core.runAction({
+      button: el.analyticsCurrencyBackfillBtn,
+      pendingText: "Подгрузка банков...",
+      errorPrefix: "Ошибка фоновой подгрузки банковской истории",
+      action: async () => {
+        const completed = await pollBankHistoryBackfill(job);
+        rememberBankBackfillResult(completed);
+        if (String(completed.status || "").toLowerCase() === "failed") {
+          throw new Error(completed.last_error || "Не удалось продолжить подгрузку истории банков");
+        }
+        await loadAnalyticsCurrency({ force: true });
+        syncBankChartControls();
+        core.setStatus("Фоновая подгрузка банковской истории завершена");
+      },
+    });
+  }
+
   async function backfillAnalyticsCurrencyHistory() {
     const isAllTime = state.analyticsCurrencyPeriod === "all_time";
     const { dateFrom, dateTo } = getBackfillHistoryRange();
-    const currencies = state.analyticsCurrencyChartMode === "banks"
-      ? [state.analyticsCurrencyChartCurrency].filter(Boolean)
-      : state.analyticsCurrencyFilter === "all"
+    if (state.analyticsCurrencyChartMode === "banks") {
+      await backfillBankCurrencyHistory(dateFrom, dateTo, isAllTime);
+      return;
+    }
+    const currencies = state.analyticsCurrencyFilter === "all"
       ? getTrackedCurrencies()
       : [state.analyticsCurrencyFilter].filter(Boolean);
     if (!currencies.length) {
@@ -615,24 +865,23 @@
         const tracked = getTrackedCurrencies();
         const histories = await Promise.all(tracked.map(async (currency, index) => ({
           currency,
-          color: getSeriesColor(index),
+          index,
           points: normalizeHistoryPoints(await fetchCurrencyHistory(currency, range), range.dateTo),
         })));
-        const seriesList = histories.map((item) => ({
-          currency: item.currency,
-          color: item.color,
-          points: Array.isArray(item.points) ? item.points : [],
-          pointsByDate: new Map((Array.isArray(item.points) ? item.points : []).map((point) => [point.rate_date, point])),
-        }));
+        const seriesList = histories.map((item) => buildNbrbChartSeries(item.currency, item.points, item.index));
         if (chartLoadSequence === currencyChartLoadSequence) {
-          renderBankChartLegend([]);
-          renderMultiCurrencyChart(seriesList);
+          currentChartSnapshot = { mode: "nbrb", series: seriesList, single: false };
+          renderCurrentChartSnapshot();
         }
       } else {
         const history = normalizeHistoryPoints(await fetchCurrencyHistory(state.analyticsCurrencyFilter, range), range.dateTo);
         if (chartLoadSequence === currencyChartLoadSequence) {
-          renderBankChartLegend([]);
-          renderChart(history);
+          currentChartSnapshot = {
+            mode: "nbrb",
+            series: [buildNbrbChartSeries(state.analyticsCurrencyFilter, history, 0)],
+            single: true,
+          };
+          renderCurrentChartSnapshot();
         }
       }
       skeletons.clearAnalyticsCurrencySkeletonState?.();
@@ -657,7 +906,6 @@
           return;
         }
         state.analyticsCurrencyChartMode = btn.dataset.analyticsCurrencyChartMode === "nbrb" ? "nbrb" : "banks";
-        bankChartAvailability = null;
         syncBankChartControls();
         loadAnalyticsCurrency({ force: true }).catch((err) => core.setStatus(String(err)));
       });
@@ -669,60 +917,49 @@
           return;
         }
         state.analyticsCurrencyChartCurrency = String(btn.dataset.analyticsBankChartCurrency || "EUR").toUpperCase();
-        bankChartAvailability = null;
         syncBankChartControls();
         loadAnalyticsCurrency({ force: true }).catch((err) => core.setStatus(String(err)));
       });
     }
-    if (el.analyticsCurrencyChartRateKindTabs) {
-      el.analyticsCurrencyChartRateKindTabs.addEventListener("click", (event) => {
-        const btn = event.target.closest("button[data-analytics-bank-rate-kind]");
-        if (!btn) {
+    if (el.analyticsCurrencyChartLegend) {
+      el.analyticsCurrencyChartLegend.addEventListener("click", (event) => {
+        const bankButton = event.target.closest("button[data-analytics-chart-bank-toggle]");
+        const seriesButton = event.target.closest("button[data-analytics-chart-series-toggle]");
+        if ((!bankButton && !seriesButton) || event.target.closest("button")?.disabled || !currentChartSnapshot) {
           return;
         }
-        const kind = btn.dataset.analyticsBankRateKind;
-        const selected = new Set(state.analyticsCurrencyChartRateKinds);
-        if (selected.has(kind) && selected.size === 1) {
-          core.setStatus("Оставьте на графике хотя бы один критерий курса");
-          return;
-        }
-        if (selected.has(kind)) {
-          selected.delete(kind);
+        const hidden = getHiddenChartSeries();
+        if (bankButton) {
+          const bankCode = String(bankButton.dataset.analyticsChartBankToggle || "");
+          const ids = currentChartSnapshot.series
+            .filter((item) => item.bankCode === bankCode)
+            .map((item) => item.id);
+          const everyHidden = ids.length > 0 && ids.every((id) => hidden.has(id));
+          ids.forEach((id) => everyHidden ? hidden.delete(id) : hidden.add(id));
         } else {
-          selected.add(kind);
+          const id = String(seriesButton.dataset.analyticsChartSeriesToggle || "");
+          if (!id) {
+            return;
+          }
+          if (hidden.has(id)) {
+            hidden.delete(id);
+          } else {
+            hidden.add(id);
+          }
         }
-        state.analyticsCurrencyChartRateKinds = ["buy", "sell"].filter((item) => selected.has(item));
-        syncBankChartControls();
-        loadAnalyticsCurrency({ force: true }).catch((err) => core.setStatus(String(err)));
+        setHiddenChartSeries(hidden);
+        renderCurrentChartSnapshot();
       });
     }
-    if (el.analyticsCurrencyChartBanks) {
-      el.analyticsCurrencyChartBanks.addEventListener("click", (event) => {
-        const btn = event.target.closest("button[data-analytics-bank-chart-bank]");
-        if (!btn || btn.disabled) {
+    if (el.analyticsCurrencyChartShowAllBtn) {
+      el.analyticsCurrencyChartShowAllBtn.addEventListener("click", () => {
+        if (!currentChartSnapshot) {
           return;
         }
-        const bankCode = btn.dataset.analyticsBankChartBank;
-        const selected = new Set(state.analyticsCurrencyChartBankCodes);
-        if (selected.has(bankCode) && selected.size === 1) {
-          core.setStatus("Оставьте на графике хотя бы один банк");
-          return;
-        }
-        if (selected.has(bankCode)) {
-          selected.delete(bankCode);
-        } else {
-          selected.add(bankCode);
-        }
-        state.analyticsCurrencyChartBankCodes = BANK_CHART_BANKS.map((bank) => bank.code).filter((code) => selected.has(code));
-        syncBankChartControls();
-        loadAnalyticsCurrency({ force: true }).catch((err) => core.setStatus(String(err)));
-      });
-    }
-    if (el.analyticsCurrencyChartNbrbBtn) {
-      el.analyticsCurrencyChartNbrbBtn.addEventListener("click", () => {
-        state.analyticsCurrencyChartShowNbrb = !state.analyticsCurrencyChartShowNbrb;
-        syncBankChartControls();
-        loadAnalyticsCurrency({ force: true }).catch((err) => core.setStatus(String(err)));
+        const hidden = getHiddenChartSeries();
+        currentChartSnapshot.series.forEach((item) => hidden.delete(item.id));
+        setHiddenChartSeries(hidden);
+        renderCurrentChartSnapshot();
       });
     }
     if (el.analyticsCurrencyTabs) {
@@ -734,7 +971,6 @@
         state.analyticsCurrencyFilter = btn.dataset.analyticsCurrencyFilter || "all";
         if (state.analyticsCurrencyFilter !== "all" && getBankChartCurrencies().includes(state.analyticsCurrencyFilter)) {
           state.analyticsCurrencyChartCurrency = state.analyticsCurrencyFilter;
-          bankChartAvailability = null;
           syncBankChartControls();
         }
         window.App.getRuntimeModule?.("session")?.savePreferencesDebounced?.(250);

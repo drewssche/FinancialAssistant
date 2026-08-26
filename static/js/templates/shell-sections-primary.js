@@ -542,28 +542,20 @@
               </div>
               <div id="analyticsCurrencyChartBankOptions" class="currency-chart-bank-options">
                 <div class="currency-chart-control-groups">
-                <div class="currency-chart-control-group">
-                  <span class="currency-chart-control-label">Валюта</span>
-                  <div id="analyticsCurrencyChartCurrencyTabs" class="segmented compact-segmented" role="group" aria-label="Валюта для сравнения банков"></div>
-                </div>
-                <div class="currency-chart-control-group">
-                  <span class="currency-chart-control-label">Критерий</span>
-                  <div id="analyticsCurrencyChartRateKindTabs" class="segmented compact-segmented" role="group" aria-label="Критерий банковского курса">
-                    <button class="segmented-btn active" data-analytics-bank-rate-kind="buy" type="button" aria-pressed="true">Покупка банком</button>
-                    <button class="segmented-btn active" data-analytics-bank-rate-kind="sell" type="button" aria-pressed="true">Продажа банком</button>
+                  <div class="currency-chart-control-group">
+                    <span class="currency-chart-control-label">Валюта</span>
+                    <div id="analyticsCurrencyChartCurrencyTabs" class="segmented compact-segmented" role="group" aria-label="Валюта для сравнения банков"></div>
                   </div>
                 </div>
-                <div class="currency-chart-control-group currency-chart-reference-group">
-                  <span class="currency-chart-control-label">Ориентир</span>
-                  <button id="analyticsCurrencyChartNbrbBtn" class="btn btn-secondary currency-chart-toggle active" type="button" aria-pressed="true">НБРБ</button>
+              </div>
+              <div class="currency-chart-legend-block">
+                <div class="currency-chart-legend-head">
+                  <span class="currency-chart-control-label">Ряды графика</span>
+                  <button id="analyticsCurrencyChartShowAllBtn" class="btn btn-secondary hidden" type="button">Показать все</button>
                 </div>
+                <div id="analyticsCurrencyChartLegend" class="currency-chart-html-legend" role="group" aria-label="Управление рядами графика"></div>
               </div>
-              <div class="currency-chart-bank-control">
-                <span class="currency-chart-control-label">Банки</span>
-                <div id="analyticsCurrencyChartBanks" class="currency-chart-bank-chips" role="group" aria-label="Банки на графике"></div>
-              </div>
-                <div id="analyticsCurrencyChartLegend" class="currency-chart-html-legend" aria-label="Легенда графика"></div>
-              </div>
+              <div id="analyticsCurrencyChartCoverage" class="currency-chart-coverage muted-small" aria-live="polite"></div>
             </section>
             <div class="analytics-trend-chart-wrap">
               <svg id="analyticsCurrencyChart" class="analytics-trend-chart" viewBox="0 0 980 280" preserveAspectRatio="none" aria-label="История курса валюты"></svg>

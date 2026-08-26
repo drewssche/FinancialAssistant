@@ -101,6 +101,38 @@ class CurrencyBankRateHistoryPointOut(BaseModel):
     fetched_at: datetime
 
 
+class CurrencyBankRateHistoryBackfillProviderOut(BaseModel):
+    bank_name: str
+    capability: str
+    status: str
+    processed_days: int = 0
+    total_days: int = 0
+    quotes_processed: int = 0
+    error_count: int = 0
+    last_processed_date: date | None = None
+    message: str | None = None
+
+
+class CurrencyBankRateHistoryBackfillJobOut(BaseModel):
+    id: int
+    status: str
+    resumable: bool = False
+    date_from: date
+    date_to: date
+    bank_codes: list[str] = Field(default_factory=list)
+    currencies: list[str] = Field(default_factory=list)
+    processed_steps: int = 0
+    total_steps: int = 0
+    quotes_processed: int = 0
+    error_count: int = 0
+    progress: dict[str, CurrencyBankRateHistoryBackfillProviderOut] = Field(default_factory=dict)
+    last_error: str | None = None
+    requested_at: datetime
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    updated_at: datetime
+
+
 class CurrencyNbrbRateOptionOut(BaseModel):
     rate: Decimal
     unit_rate: Decimal

@@ -10,6 +10,26 @@
     const maxZoom = 2.8;
     const formatRate = (value) => core.formatRateDisplay?.(value || 0, 4, 6) || Number(value || 0).toFixed(6);
 
+    function renderSeriesMarker(series, x, y, size = 3.5) {
+      const color = escapeHtml(series.color || "#6ea8ff");
+      if (series.markerShape === "diamond") {
+        const side = size * 1.75;
+        return `<rect x="${x - side / 2}" y="${y - side / 2}" width="${side}" height="${side}" rx="0.7" fill="rgba(17,29,48,0.96)" stroke="${color}" stroke-width="2" transform="rotate(45 ${x} ${y})"></rect>`;
+      }
+      const fill = series.markerFill === "hollow" ? "rgba(17,29,48,0.96)" : color;
+      return `<circle cx="${x}" cy="${y}" r="${size}" fill="${fill}" stroke="${series.markerFill === "hollow" ? color : "rgba(255,255,255,0.9)"}" stroke-width="${series.markerFill === "hollow" ? "2" : "1.5"}"></circle>`;
+    }
+
+    function formatQuotedAt(value) {
+      if (!value) {
+        return "";
+      }
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime())
+        ? ""
+        : parsed.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    }
+
     function createTooltipHost(svgNode) {
       const wrapper = svgNode?.parentElement;
       if (!wrapper) {
@@ -134,7 +154,7 @@
       }
       ensureZoom();
       el.analyticsCurrencyChart.innerHTML = `
-        <text x="490" y="140" text-anchor="middle" class="analytics-chart-empty">${message}</text>
+        <text x="490" y="140" text-anchor="middle" class="analytics-chart-empty">${escapeHtml(message)}</text>
       `;
     }
 
@@ -149,7 +169,7 @@
       const hoverDot = svgNode.querySelector(".currency-chart-hover-dot");
       const hoverXLabel = svgNode.querySelector(".currency-chart-hover-x-label");
       const hoverYLabel = svgNode.querySelector(".currency-chart-hover-y-label");
-      const { toX, toY, width, height, padX, padY } = helpers;
+      const { toX, toY, width, height, padX, padY, metadata = {} } = helpers;
       svgNode.onmousemove = (event) => {
         const index = Number(event.target.closest(".trend-bucket")?.dataset.analyticsBucketIndex ?? -1);
         const point = points[index];
@@ -184,7 +204,7 @@
         tooltip.innerHTML = `
           <div class="analytics-chart-tooltip-title">${escapeHtml(core.formatDateRu(point.rate_date))}</div>
           <div class="analytics-chart-tooltip-grid analytics-chart-tooltip-grid-compact">
-            <span class="analytics-chart-tooltip-balance">Курс: ${escapeHtml(formatRate(point.rate || 0))}</span>
+            <span class="analytics-chart-tooltip-balance">${escapeHtml(metadata.label || "Курс")}: ${escapeHtml(formatRate(point.rate || 0))} ${escapeHtml(metadata.valueSuffix || "BYN")}</span>
           </div>
         `;
         tooltip.classList.remove("hidden");
@@ -214,6 +234,8 @@
             const point = series.pointsByDate.get(rateDate);
             return point ? {
               currency: series.currency,
+              label: series.legendLabel || core.formatCurrencyLabel(series.currency),
+              valueSuffix: series.valueSuffix || "BYN",
               color: series.color,
               rate: Number(point.rate || 0),
             } : null;
@@ -245,7 +267,7 @@
           <div class="analytics-chart-tooltip-grid">
             ${rows.map((row) => `
               <span class="analytics-chart-tooltip-balance">
-                <span style="color:${escapeHtml(row.color)}">●</span> ${escapeHtml(core.formatCurrencyLabel(row.currency))}: ${escapeHtml(formatRate(row.rate))}
+                <span style="color:${escapeHtml(row.color)}">●</span> ${escapeHtml(row.label)}: ${escapeHtml(formatRate(row.rate))} ${escapeHtml(row.valueSuffix)}
               </span>
             `).join("")}
           </div>
@@ -280,6 +302,11 @@
               label: series.label,
               color: series.color,
               dashArray: series.dashArray,
+              markerShape: series.markerShape,
+              markerFill: series.markerFill,
+              channelLabel: series.channelLabel || "",
+              valueSuffix: series.valueSuffix || "BYN",
+              quotedAt: point.quoted_at || "",
               rate: Number(point.rate || 0),
             } : null;
           }).filter(Boolean)
@@ -301,9 +328,7 @@
           hoverXLabel.textContent = core.formatDateRu(rateDate);
         }
         if (hoverDotsGroup) {
-          hoverDotsGroup.innerHTML = rows.map((row) => `
-            <circle cx="${x}" cy="${toY(row.rate)}" r="5" fill="${row.color}" stroke="#fff" stroke-width="2"></circle>
-          `).join("");
+          hoverDotsGroup.innerHTML = rows.map((row) => renderSeriesMarker(row, x, toY(row.rate), 5)).join("");
         }
         tooltip.innerHTML = `
           <div class="analytics-chart-tooltip-title">${escapeHtml(core.formatDateRu(rateDate))}</div>
@@ -311,7 +336,7 @@
             ${rows.map((row) => `
               <span class="analytics-chart-tooltip-balance">
                 <i class="currency-chart-tooltip-line" style="--series-color:${escapeHtml(row.color)};--series-dash:${row.dashArray ? "dashed" : "solid"}"></i>
-                ${escapeHtml(row.label)}: ${escapeHtml(formatRate(row.rate))}
+                <span>${escapeHtml(row.label)}${row.channelLabel ? ` · ${escapeHtml(row.channelLabel)}` : ""}: <strong>${escapeHtml(formatRate(row.rate))}</strong> ${escapeHtml(row.valueSuffix)}${row.quotedAt ? ` · котировка ${escapeHtml(formatQuotedAt(row.quotedAt))}` : ""}</span>
               </span>
             `).join("")}
           </div>
@@ -345,7 +370,7 @@
       const width = 980;
       const height = 280;
       const padX = 56;
-      const padY = 36;
+      const padY = 28;
       const orderedDates = Array.from(new Set(
         visibleSeries.flatMap((series) => series.points.map((point) => point.rate_date)),
       )).sort();
@@ -363,12 +388,6 @@
       const toX = (index) => padX + index * xStep;
       const toY = (value) => height - padY - ((value - minRate) / yRange) * (height - padY * 2);
       const bucketWidth = orderedDates.length > 1 ? xStep : width - padX * 2;
-      const legend = visibleSeries.map((series, index) => `
-        <g transform="translate(${padX + index * 128}, 18)">
-          <line x1="0" y1="0" x2="18" y2="0" stroke="${series.color}" stroke-width="4" stroke-linecap="round"></line>
-          <text x="24" y="4" class="currency-chart-legend-label">${escapeHtml(core.formatCurrencyLabel(series.currency))}</text>
-        </g>
-      `).join("");
       const seriesMarkup = visibleSeries.map((series) => {
         const polyline = orderedDates.filter((date) => series.pointsByDate.has(date)).map((date) => {
           const point = series.pointsByDate.get(date);
@@ -398,7 +417,7 @@
       chart.innerHTML = `
         <line x1="${padX}" y1="${height - padY}" x2="${width - padX}" y2="${height - padY}" class="analytics-axis-line"></line>
         <line x1="${padX}" y1="${padY}" x2="${padX}" y2="${height - padY}" class="analytics-axis-line"></line>
-        ${legend}${seriesMarkup}${xTicks}${yMarks}${hitboxes}
+        ${seriesMarkup}${xTicks}${yMarks}${hitboxes}
         <g class="currency-chart-hover hidden">
           <line class="currency-chart-hover-y" x1="0" y1="0" x2="0" y2="0" stroke="rgba(255,255,255,0.28)" stroke-dasharray="4 4" stroke-width="1"></line>
           <g class="currency-chart-hover-dots"></g>
@@ -466,10 +485,8 @@
         const line = datedPoints.length >= 2
           ? `<polyline fill="none" stroke="${series.color}" stroke-width="3"${dash} stroke-linejoin="round" stroke-linecap="round" points="${polyline}"></polyline>`
           : "";
-        const dots = datedPoints.map((point) => `
-          <circle cx="${point.x}" cy="${point.y}" r="3.5" fill="${series.color}" stroke="rgba(255,255,255,0.88)" stroke-width="1.5"></circle>
-        `).join("");
-        return `<g class="currency-chart-series currency-chart-bank-series" data-series-id="${escapeHtml(series.id || "")}">${line}${dots}</g>`;
+        const dots = datedPoints.map((point) => renderSeriesMarker(series, point.x, point.y)).join("");
+        return `<g class="currency-chart-series currency-chart-bank-series" data-series-id="${escapeHtml(series.id || "")}" data-marker-shape="${escapeHtml(series.markerShape || "circle")}">${line}${dots}</g>`;
       }).join("");
       const xTickIndexes = [0, Math.floor(orderedDates.length / 2), orderedDates.length - 1]
         .filter((value, index, items) => items.indexOf(value) === index);
@@ -500,7 +517,7 @@
       bindComparisonTooltip(chart, visibleSeries, orderedDates, { toX, toY, height, padY });
     }
 
-    function renderSingle(points) {
+    function renderSingle(points, metadata = {}) {
       const chart = el.analyticsCurrencyChart;
       if (!chart) {
         return;
@@ -567,7 +584,7 @@
         <text x="${width - padX}" y="${height / 2}" text-anchor="end" class="analytics-chart-empty">${formatRate(midRate)}</text>
         <text x="${width - padX}" y="${height - padY - 8}" text-anchor="end" class="analytics-chart-empty">${formatRate(minRate)}</text>
       `;
-      bindSingleTooltip(chart, points, { toX, toY, width, height, padX, padY });
+      bindSingleTooltip(chart, points, { toX, toY, width, height, padX, padY, metadata });
     }
 
     return {

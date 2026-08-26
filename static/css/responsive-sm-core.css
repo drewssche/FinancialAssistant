@@ -165,9 +165,7 @@
   .currency-chart-controls-head,
   .currency-chart-controls-head > .toolbar,
   .currency-chart-control-groups,
-  .currency-chart-control-group,
-  .currency-chart-reference-group,
-  .currency-chart-bank-control {
+  .currency-chart-control-group {
     width: 100%;
   }
 
@@ -175,8 +173,7 @@
     justify-content: flex-start;
   }
 
-  .currency-chart-control-group > .segmented,
-  .currency-chart-reference-group .currency-chart-toggle {
+  .currency-chart-control-group > .segmented {
     max-width: 100%;
     width: 100%;
   }
@@ -186,18 +183,34 @@
     flex: 1 1 auto;
   }
 
-  .currency-chart-bank-control > .currency-chart-control-label {
-    padding-top: 0;
-  }
-
-  .currency-chart-bank-chips {
+  .currency-chart-legend-head,
+  .currency-chart-html-legend {
     width: 100%;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .currency-chart-bank-chip {
+  .currency-chart-html-legend {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .currency-chart-legend-bank {
+    width: 100%;
+  }
+
+  .currency-chart-legend-bank-name {
     min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .currency-chart-legend-bank button,
+  .currency-chart-legend-item,
+  .currency-chart-legend-head > .btn {
+    min-height: 2.75rem;
+  }
+
+  .currency-chart-legend-item {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .table-search-row,

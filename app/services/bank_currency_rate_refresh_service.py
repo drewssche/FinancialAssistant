@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import base64
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 import json
+import re
+from time import sleep
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -51,6 +53,13 @@ class BankCurrencyRateRefreshService:
         "&p_p_resource_id=ajaxPriorOnlineRatesGetRates"
         "&p_p_cacheability=cacheLevelPage"
     )
+    PRIORBANK_HISTORY_URL = (
+        "https://www.priorbank.by/offers/services/currency-exchange"
+        "?p_p_id=ExchangeRates_INSTANCE_jPgNnkSRcCLT"
+        "&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view"
+        "&p_p_resource_id=ajaxPriorOnlineRatesGetRatesByDate"
+        "&p_p_cacheability=cacheLevelPage"
+    )
     TECHNOBANK_URL = (
         "https://tb.by/individuals/service/currency/"
         "?bxajaxid=38b8791a0501db0a1bf0ff155f1b5bdd"
@@ -64,6 +73,21 @@ class BankCurrencyRateRefreshService:
         933: "BYN",
         978: "EUR",
         985: "PLN",
+    }
+    ISO_CODE_TO_NUMERIC = {currency: numeric for numeric, currency in ISO_NUMERIC_TO_CODE.items()}
+    TECHNOBANK_MONTHS = {
+        "января": 1,
+        "февраля": 2,
+        "марта": 3,
+        "апреля": 4,
+        "мая": 5,
+        "июня": 6,
+        "июля": 7,
+        "августа": 8,
+        "сентября": 9,
+        "октября": 10,
+        "ноября": 11,
+        "декабря": 12,
     }
 
     def __init__(self, db: Session):
@@ -353,9 +377,126 @@ class BankCurrencyRateRefreshService:
                 return self._parse_sber(response.json())
         raise ValueError(f"Unsupported bank provider: {bank_code}")
 
+    def fetch_historical_quotes_for_day(
+        self,
+        *,
+        client: httpx.Client,
+        bank_code: str,
+        target_date: date,
+        currencies: list[str],
+    ) -> tuple[list[BankCurrencyQuote], list[str]]:
+        """Fetch one provider-day without inventing synthetic calendar points.
+
+        Priorbank exposes one archive request per currency.  Its response may
+        also contain the preceding quote, so only the latest quote whose own
+        timestamp belongs to ``target_date`` is accepted.  BSB exposes all
+        currencies in one request and may return the last working-day quote on
+        a weekend; that quote keeps its provider timestamp/date and is therefore
+        safely deduplicated by the snapshot unique key.
+        """
+
+        normalized_currencies = [
+            code
+            for code in dict.fromkeys(str(item or "").strip().upper() for item in currencies)
+            if code and code != "BYN"
+        ]
+        if bank_code == "priorbank":
+            quotes: list[BankCurrencyQuote] = []
+            errors: list[str] = []
+            for currency in normalized_currencies:
+                numeric = self.ISO_CODE_TO_NUMERIC.get(currency)
+                if numeric is None:
+                    errors.append(f"{currency}: unsupported currency")
+                    continue
+                try:
+                    history_url = httpx.URL(self.PRIORBANK_HISTORY_URL).copy_merge_params(
+                        {
+                            "_ExchangeRates_INSTANCE_jPgNnkSRcCLT_currencyCode": numeric,
+                            "_ExchangeRates_INSTANCE_jPgNnkSRcCLT_date": target_date.strftime("%d.%m.%Y"),
+                        }
+                    )
+                    payload = self._request_json_with_retries(
+                        client,
+                        "GET",
+                        history_url,
+                    )
+                    candidates = [
+                        replace(item, source_url=self.PRIORBANK_HISTORY_URL)
+                        for item in self._parse_priorbank(payload)
+                        if item.currency == currency
+                        and item.quoted_at is not None
+                        and self._quote_date(quote=item, fetched_at=item.quoted_at) == target_date
+                    ]
+                    if candidates:
+                        quotes.append(
+                            max(
+                                candidates,
+                                key=lambda item: self._aware(item.quoted_at),
+                            )
+                        )
+                except Exception as exc:  # noqa: BLE001 - one currency must not abort the archive
+                    errors.append(f"{currency}: {type(exc).__name__}")
+            return quotes, errors
+
+        if bank_code == "bsb":
+            end_of_day = datetime.combine(
+                target_date,
+                datetime.max.time().replace(microsecond=0),
+                tzinfo=MINSK_TZ,
+            )
+            try:
+                payload = self._request_json_with_retries(
+                    client,
+                    "POST",
+                    self.BSB_URL,
+                    json={
+                        "type": "CASH",
+                        "bankDepartmentId": 7,
+                        "period": int(end_of_day.timestamp() * 1000),
+                    },
+                )
+                quotes = []
+                for item in self._parse_bsb(payload):
+                    if item.currency not in normalized_currencies or item.quoted_at is None:
+                        continue
+                    quote_date = self._quote_date(quote=item, fetched_at=item.quoted_at)
+                    if quote_date > target_date:
+                        continue
+                    quotes.append(replace(item, source_url=self.BSB_URL))
+                return quotes, []
+            except Exception as exc:  # noqa: BLE001 - caller persists provider-level progress
+                return [], [type(exc).__name__]
+
+        raise ValueError(f"Historical archive is unavailable for bank: {bank_code}")
+
+    @staticmethod
+    def _request_json_with_retries(
+        client: httpx.Client,
+        method: str,
+        url: str | httpx.URL,
+        *,
+        attempts: int = 3,
+        **kwargs,
+    ) -> Any:
+        last_error: Exception | None = None
+        for attempt in range(max(1, attempts)):
+            try:
+                response = client.request(method, url, **kwargs)
+                response.raise_for_status()
+                return response.json()
+            except (httpx.HTTPError, ValueError) as exc:
+                last_error = exc
+                if attempt + 1 < max(1, attempts):
+                    sleep(0.25 * (2**attempt))
+        if last_error is None:  # pragma: no cover - defensive guard
+            raise RuntimeError("Bank history request failed")
+        raise last_error
+
     @classmethod
     def _parse_priorbank(cls, payload: dict) -> list[BankCurrencyQuote]:
         raw = payload.get("resultEBank")
+        if raw is None:
+            raw = payload.get("resultByDateAndCurrencyEBank")
         data = json.loads(raw) if isinstance(raw, str) else (raw or {})
         rows = data.get("simpleCurrencyList") if isinstance(data, dict) else []
         quotes = []
@@ -402,6 +543,11 @@ class BankCurrencyRateRefreshService:
             department = next((item for item in items or [] if item.get("exchangeRates")), None)
         if not department:
             return []
+        quoted_at = None
+        for record in cls._walk_dicts(data):
+            quoted_at = cls._parse_technobank_datetime(record.get("subtitle"))
+            if quoted_at is not None:
+                break
         location = " · ".join(
             value
             for value in (
@@ -422,7 +568,7 @@ class BankCurrencyRateRefreshService:
                     sell_rate=(row.get("sale") or {}).get("value"),
                     location_name=location or None,
                     source_url=cls.TECHNOBANK_URL,
-                    quoted_at=None,
+                    quoted_at=quoted_at,
                 )
             )
         return quotes
@@ -558,6 +704,32 @@ class BankCurrencyRateRefreshService:
             )
             return parsed.replace(tzinfo=ZoneInfo("Europe/Minsk"))
         except (TypeError, ValueError):
+            return None
+
+    @classmethod
+    def _parse_technobank_datetime(cls, value) -> datetime | None:
+        raw = str(value or "").strip().lower().replace("ё", "е")
+        match = re.search(
+            r"(?P<day>\d{1,2})\s+(?P<month>[а-я]+)\s+(?P<year>\d{4})"
+            r"(?:\s*г?\.?\s*[,·]?\s*(?:в\s+)?)"
+            r"(?P<hour>\d{1,2}):(?P<minute>\d{2})",
+            raw,
+        )
+        if not match:
+            return None
+        month = cls.TECHNOBANK_MONTHS.get(match.group("month"))
+        if month is None:
+            return None
+        try:
+            return datetime(
+                int(match.group("year")),
+                month,
+                int(match.group("day")),
+                int(match.group("hour")),
+                int(match.group("minute")),
+                tzinfo=MINSK_TZ,
+            )
+        except ValueError:
             return None
 
     @staticmethod

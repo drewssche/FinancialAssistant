@@ -52,3 +52,35 @@ def try_background_job_lock(db: Session, name: str) -> Iterator[bool]:
                 text("SELECT pg_advisory_unlock(:lock_id)"),
                 {"lock_id": lock_id},
             )
+
+
+@contextmanager
+def try_background_transaction_job_lock(db: Session, name: str) -> Iterator[bool]:
+    """Try a lock that remains held until the current transaction finishes.
+
+    This variant is intended for short scheduling transactions that must commit
+    their durable checkpoint while still excluding concurrent schedulers.  The
+    session-level helper above remains the right choice for a long-running job
+    when the lock is kept in a dedicated, non-committing session.
+    """
+
+    bind = db.get_bind()
+    if bind.dialect.name != "postgresql":
+        lock = _get_local_lock(name)
+        acquired = lock.acquire(blocking=False)
+        try:
+            yield acquired
+        finally:
+            if acquired:
+                lock.release()
+        return
+
+    acquired = bool(
+        db.connection()
+        .execute(
+            text("SELECT pg_try_advisory_xact_lock(:lock_id)"),
+            {"lock_id": _lock_id(name)},
+        )
+        .scalar()
+    )
+    yield acquired

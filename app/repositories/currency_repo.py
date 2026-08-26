@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import desc, func, select
+from sqlalchemy import and_, desc, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.db.models import (
     AuthIdentity,
     FxBankRate,
+    FxBankRateHistoryJob,
     FxBankRateSnapshot,
     FxRateSnapshot,
     FxTrade,
@@ -292,6 +293,22 @@ class CurrencyRepository:
             for row in rows
         }
 
+    def get_bank_rate_history_job(
+        self,
+        *,
+        job_key: str,
+        for_update: bool = False,
+    ) -> FxBankRateHistoryJob | None:
+        stmt = select(FxBankRateHistoryJob).where(FxBankRateHistoryJob.job_key == job_key)
+        if for_update:
+            stmt = stmt.with_for_update()
+        return self.db.scalar(stmt.execution_options(populate_existing=True))
+
+    def add_bank_rate_history_job(self, job: FxBankRateHistoryJob) -> FxBankRateHistoryJob:
+        self.db.add(job)
+        self.db.flush()
+        return job
+
     def list_bank_rates(
         self,
         *,
@@ -411,6 +428,7 @@ class CurrencyRepository:
             model=FxBankRateSnapshot,
             values=values,
             conflict_columns=("bank_code", "currency", "base_currency", "channel", "rate_date"),
+            prefer_observed_at=True,
         )
         self.db.flush()
         row = self.db.scalar(
@@ -434,6 +452,7 @@ class CurrencyRepository:
         model,
         values: dict,
         conflict_columns: tuple[str, ...],
+        prefer_observed_at: bool = False,
     ) -> None:
         dialect_name = self.db.get_bind().dialect.name
         if dialect_name == "postgresql":
@@ -447,11 +466,25 @@ class CurrencyRepository:
             for key in values
             if key not in conflict_columns
         }
+        update_where = statement.excluded.fetched_at >= model.fetched_at
+        if prefer_observed_at:
+            excluded_observed_at = func.coalesce(
+                statement.excluded.quoted_at,
+                statement.excluded.fetched_at,
+            )
+            current_observed_at = func.coalesce(model.quoted_at, model.fetched_at)
+            update_where = or_(
+                excluded_observed_at > current_observed_at,
+                and_(
+                    excluded_observed_at == current_observed_at,
+                    statement.excluded.fetched_at >= model.fetched_at,
+                ),
+            )
         self.db.execute(
             statement.on_conflict_do_update(
                 index_elements=list(conflict_columns),
                 set_=update_values,
-                where=statement.excluded.fetched_at >= model.fetched_at,
+                where=update_where,
             )
         )
 

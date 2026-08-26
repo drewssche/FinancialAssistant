@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 import json
 
+import httpx
 from sqlalchemy import select
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -61,8 +62,46 @@ def test_parse_priorbank_online_rates():
     assert quotes[0].channel == "online"
 
 
+def test_parse_priorbank_archive_result_by_date_and_currency():
+    payload = {
+        "resultByDateAndCurrencyEBank": {
+            "code": 0,
+            "simpleCurrencyList": [
+                {
+                    "baseCurrency": 978,
+                    "baseCurrencyNominal": 1,
+                    "ratedCurrency": 933,
+                    "buyRate": "3.4910",
+                    "sellRate": "3.5580",
+                    "validFromDate": "25.08.2026",
+                    "validFromTime": "17:30",
+                }
+            ],
+        }
+    }
+
+    quotes = BankCurrencyRateRefreshService._parse_priorbank(payload)
+
+    assert len(quotes) == 1
+    assert quotes[0].currency == "EUR"
+    assert quotes[0].buy_rate == Decimal("3.491000")
+    assert quotes[0].sell_rate == Decimal("3.558000")
+    assert quotes[0].quoted_at == datetime(
+        2026,
+        8,
+        25,
+        17,
+        30,
+        tzinfo=BankCurrencyRateRefreshService._parse_priorbank_datetime(
+            "25.08.2026",
+            "17:30",
+        ).tzinfo,
+    )
+
+
 def test_parse_technobank_cash_rates():
     raw = {
+        "subtitle": "Обновлены 25 августа 2026 17:45",
         "items": [
             {
                 "cityId": 37,
@@ -93,6 +132,7 @@ def test_parse_technobank_cash_rates():
     assert quotes[0].currency == "EUR"
     assert quotes[0].location_name == "ЦБУ · Минск"
     assert quotes[0].buy_rate == Decimal("3.420000")
+    assert quotes[0].quoted_at == datetime(2026, 8, 25, 17, 45, tzinfo=BankCurrencyRateRefreshService._parse_priorbank_datetime("25.08.2026", "17:45").tzinfo)
     assert quotes[1].currency == "CNY"
     assert quotes[1].scale == 1
     assert quotes[1].buy_rate == Decimal("0.445000")
@@ -196,6 +236,136 @@ def test_quote_date_uses_minsk_boundary_and_prefers_provider_timestamp():
     ) == date(2026, 8, 27)
 
 
+def test_priorbank_history_keeps_latest_quote_from_exact_target_day(monkeypatch):
+    payload = {
+        "resultEBank": json.dumps(
+            {
+                "simpleCurrencyList": [
+                    {
+                        "baseCurrency": 978,
+                        "baseCurrencyNominal": 1,
+                        "ratedCurrency": 933,
+                        "buyRate": "3.40",
+                        "sellRate": "3.50",
+                        "validFromDate": "24.08.2026",
+                        "validFromTime": "18:00",
+                    },
+                    {
+                        "baseCurrency": 978,
+                        "baseCurrencyNominal": 1,
+                        "ratedCurrency": 933,
+                        "buyRate": "3.41",
+                        "sellRate": "3.51",
+                        "validFromDate": "25.08.2026",
+                        "validFromTime": "09:00",
+                    },
+                    {
+                        "baseCurrency": 978,
+                        "baseCurrencyNominal": 1,
+                        "ratedCurrency": 933,
+                        "buyRate": "3.42",
+                        "sellRate": "3.52",
+                        "validFromDate": "25.08.2026",
+                        "validFromTime": "17:00",
+                    },
+                ]
+            }
+        )
+    }
+    monkeypatch.setattr(
+        BankCurrencyRateRefreshService,
+        "_request_json_with_retries",
+        staticmethod(lambda *args, **kwargs: payload),
+    )
+    engine, SessionLocal = _make_session()
+    try:
+        with SessionLocal() as db:
+            quotes, errors = BankCurrencyRateRefreshService(db).fetch_historical_quotes_for_day(
+                client=object(),
+                bank_code="priorbank",
+                target_date=date(2026, 8, 25),
+                currencies=["EUR"],
+            )
+        assert errors == []
+        assert len(quotes) == 1
+        assert quotes[0].buy_rate == Decimal("3.420000")
+        assert quotes[0].quoted_at.hour == 17
+    finally:
+        Base.metadata.drop_all(bind=engine)
+
+
+def test_priorbank_history_request_merges_ajax_and_archive_query_params(monkeypatch):
+    captured = {}
+    payload = {"resultEBank": json.dumps({"simpleCurrencyList": []})}
+
+    def _fake_request(client, method, url, **kwargs):
+        captured.update(client=client, method=method, url=httpx.URL(url), kwargs=kwargs)
+        return payload
+
+    monkeypatch.setattr(
+        BankCurrencyRateRefreshService,
+        "_request_json_with_retries",
+        staticmethod(_fake_request),
+    )
+    engine, SessionLocal = _make_session()
+    try:
+        with SessionLocal() as db:
+            BankCurrencyRateRefreshService(db).fetch_historical_quotes_for_day(
+                client=object(),
+                bank_code="priorbank",
+                target_date=date(2026, 8, 25),
+                currencies=["EUR"],
+            )
+
+        params = captured["url"].params
+        assert captured["method"] == "GET"
+        assert params["p_p_resource_id"] == "ajaxPriorOnlineRatesGetRatesByDate"
+        assert params["p_p_id"] == "ExchangeRates_INSTANCE_jPgNnkSRcCLT"
+        assert params["_ExchangeRates_INSTANCE_jPgNnkSRcCLT_currencyCode"] == "978"
+        assert params["_ExchangeRates_INSTANCE_jPgNnkSRcCLT_date"] == "25.08.2026"
+        assert "params" not in captured["kwargs"]
+    finally:
+        Base.metadata.drop_all(bind=engine)
+
+
+def test_bsb_history_keeps_provider_date_for_weekend_quote(monkeypatch):
+    quoted_at = datetime(2026, 8, 21, 17, 0, tzinfo=timezone.utc)
+    payload = {
+        "fromTime": int(quoted_at.timestamp() * 1000),
+        "rates": [
+            {
+                "buyCurrencyName": "EUR",
+                "sellCurrencyName": "BYN",
+                "buyCurrencyScale": 1,
+                "scaledBuyAmount": "3.48",
+                "scaledSellAmount": "3.56",
+            }
+        ],
+    }
+    monkeypatch.setattr(
+        BankCurrencyRateRefreshService,
+        "_request_json_with_retries",
+        staticmethod(lambda *args, **kwargs: payload),
+    )
+    engine, SessionLocal = _make_session()
+    try:
+        with SessionLocal() as db:
+            quotes, errors = BankCurrencyRateRefreshService(db).fetch_historical_quotes_for_day(
+                client=object(),
+                bank_code="bsb",
+                target_date=date(2026, 8, 23),
+                currencies=["EUR"],
+            )
+        assert errors == []
+        assert len(quotes) == 1
+        assert quotes[0].quoted_at == quoted_at
+        assert BankCurrencyRateRefreshService._quote_date(
+            quote=quotes[0], fetched_at=datetime(2026, 8, 26, tzinfo=timezone.utc)
+        ) == date(2026, 8, 21)
+    finally:
+        Base.metadata.drop_all(bind=engine)
+
+
 def test_daily_history_upsert_keeps_one_latest_point_per_day_and_next_day_separate():
     engine, SessionLocal = _make_session()
     db = SessionLocal()
@@ -248,6 +418,47 @@ def test_daily_history_upsert_keeps_one_latest_point_per_day_and_next_day_separa
             (date(2026, 8, 26), Decimal("3.500000"), Decimal("3.540000")),
             (date(2026, 8, 27), Decimal("3.510000"), Decimal("3.550000")),
         ]
+    finally:
+        db.close()
+        Base.metadata.drop_all(bind=engine)
+
+
+def test_history_upsert_prefers_latest_provider_quote_over_later_import_time():
+    engine, SessionLocal = _make_session()
+    db = SessionLocal()
+    try:
+        repo = CurrencyRepository(db)
+        common = {
+            "bank_code": "priorbank",
+            "bank_name": "Приорбанк",
+            "currency": "EUR",
+            "base_currency": "BYN",
+            "rate_date": date(2026, 8, 25),
+            "scale": 1,
+            "channel": "online",
+            "location_name": None,
+            "source_url": "https://example.test/archive",
+        }
+        repo.upsert_bank_rate_snapshot(
+            **common,
+            buy_rate=Decimal("3.420000"),
+            sell_rate=Decimal("3.520000"),
+            quoted_at=datetime(2026, 8, 25, 17, tzinfo=timezone.utc),
+            fetched_at=datetime(2026, 8, 26, 8, tzinfo=timezone.utc),
+        )
+        repo.upsert_bank_rate_snapshot(
+            **common,
+            buy_rate=Decimal("3.410000"),
+            sell_rate=Decimal("3.510000"),
+            quoted_at=datetime(2026, 8, 25, 9, tzinfo=timezone.utc),
+            fetched_at=datetime(2026, 8, 26, 12, tzinfo=timezone.utc),
+        )
+        db.commit()
+
+        row = db.scalar(select(FxBankRateSnapshot))
+        assert row.buy_rate == Decimal("3.420000")
+        assert row.sell_rate == Decimal("3.520000")
+        assert row.quoted_at.hour == 17
     finally:
         db.close()
         Base.metadata.drop_all(bind=engine)

@@ -626,6 +626,68 @@ def test_currency_history_fill_endpoint_backfills_selected_range(client: TestCli
     assert payload[0]["source"] == "nbrb_history"
 
 
+def test_bank_currency_history_fill_starts_one_persistent_background_job(
+    client: TestClient,
+    monkeypatch,
+):
+    started_jobs = []
+
+    def _fake_runner(job_id, bind=None):
+        started_jobs.append((job_id, bind is not None))
+
+    monkeypatch.setattr(
+        "app.api.v1.currency.run_bank_rate_history_backfill_job",
+        _fake_runner,
+    )
+
+    response = client.post(
+        "/api/v1/currency/bank-rates/history/fill",
+        params={
+            "bank_codes": "priorbank,technobank",
+            "date_from": "2026-08-25",
+            "date_to": "2026-08-26",
+        },
+    )
+    assert response.status_code == 202, response.text
+    payload = response.json()
+    assert payload["status"] == "queued"
+    assert payload["bank_codes"] == ["priorbank", "technobank"]
+    assert payload["total_steps"] == 2
+    assert payload["progress"]["priorbank"]["capability"] == "backfill"
+    assert payload["progress"]["technobank"]["status"] == "accumulating"
+    assert started_jobs == [(payload["id"], True)]
+
+    status_response = client.get("/api/v1/currency/bank-rates/history/fill/status")
+    assert status_response.status_code == 200, status_response.text
+    assert status_response.json()["id"] == payload["id"]
+
+    repeated = client.post(
+        "/api/v1/currency/bank-rates/history/fill",
+        params={
+            "bank_codes": "priorbank",
+            "date_from": "2026-08-01",
+            "date_to": "2026-08-26",
+        },
+    )
+    assert repeated.status_code == 202, repeated.text
+    assert repeated.json()["id"] == payload["id"]
+    assert started_jobs == [(payload["id"], True)]
+
+
+def test_bank_currency_history_fill_rejects_invalid_range(client: TestClient):
+    response = client.post(
+        "/api/v1/currency/bank-rates/history/fill",
+        params={
+            "bank_codes": "priorbank",
+            "date_from": "2025-08-01",
+            "date_to": "2026-08-26",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "366" in response.json()["detail"]
+
+
 def test_currency_overview_tracks_buy_and_sell_kpi_totals(client: TestClient):
     buy_response = client.post(
         "/api/v1/currency/trades",

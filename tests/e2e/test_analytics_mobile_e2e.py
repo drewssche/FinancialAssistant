@@ -218,6 +218,9 @@ def page_with_analytics_api_mock(page):
     history_fill_queries = []
     currency_history_queries = []
     bank_history_queries = []
+    bank_history_fill_queries = []
+    bank_history_fill_post_overrides = []
+    bank_history_fill_status_responses = []
 
     def json_response(route, payload: dict | list, status: int = 200):
         route.fulfill(status=status, content_type="application/json", body=json.dumps(payload, ensure_ascii=False))
@@ -631,6 +634,29 @@ def page_with_analytics_api_mock(page):
             bank_history_queries.append(query)
             return json_response(route, bank_currency_history.get(selected_currency, []))
 
+        if path == "/api/v1/currency/bank-rates/history/fill/status" and method == "GET":
+            if bank_history_fill_status_responses:
+                return json_response(route, bank_history_fill_status_responses.pop(0))
+            return json_response(route, None)
+
+        if path == "/api/v1/currency/bank-rates/history/fill" and method == "POST":
+            bank_history_fill_queries.append(query)
+            if bank_history_fill_post_overrides:
+                return json_response(route, bank_history_fill_post_overrides.pop(0), status=202)
+            return json_response(route, {
+                "id": 1,
+                "status": "completed",
+                "date_from": (query.get("date_from") or ["2025-03-29"])[0],
+                "date_to": (query.get("date_to") or ["2026-03-28"])[0],
+                "bank_codes": query.get("bank_code", []),
+                "currencies": ["USD", "EUR", "RUB"],
+                "processed_steps": 10,
+                "total_steps": 10,
+                "quotes_processed": 30,
+                "error_count": 0,
+                "progress": {},
+            }, status=202)
+
         if path == "/api/v1/currency/rates/history/fill" and method == "POST":
             selected_currency = (query.get("currency") or ["USD"])[0]
             history_fill_calls.append(selected_currency)
@@ -701,6 +727,9 @@ def page_with_analytics_api_mock(page):
     page._currency_history_fill_queries = history_fill_queries
     page._currency_history_queries = currency_history_queries
     page._bank_currency_history_queries = bank_history_queries
+    page._bank_currency_history_fill_queries = bank_history_fill_queries
+    page._bank_currency_history_fill_post_overrides = bank_history_fill_post_overrides
+    page._bank_currency_history_fill_status_responses = bank_history_fill_status_responses
     page._analytics_money_flow_queries = money_flow_queries
     yield page
 
@@ -1573,9 +1602,21 @@ def test_currency_analytics_all_mode_renders_multi_currency_chart_and_backfill(p
     page.wait_for_selector("#analyticsCurrencyChart .currency-chart-series")
 
     assert page.locator("#analyticsCurrencyBalancesRow .currency-balance-card").count() >= 3
-    assert page.locator("#analyticsCurrencyChart .currency-chart-legend-label", has_text="USD").count() >= 1
-    assert page.locator("#analyticsCurrencyChart .currency-chart-legend-label", has_text="EUR").count() >= 1
+    expect(page.locator("#analyticsCurrencyChartLegend [data-analytics-chart-series-toggle='nbrb-USD']")).to_contain_text("USD")
+    expect(page.locator("#analyticsCurrencyChartLegend [data-analytics-chart-series-toggle='nbrb-EUR']")).to_contain_text("EUR")
+    expect(page.locator("#analyticsCurrencyChartLegend [data-analytics-chart-series-toggle='nbrb-RUB']")).to_contain_text("100 RUB")
     assert page.locator("#analyticsCurrencyChart .currency-chart-series").count() >= 2
+    history_query_count = len(getattr(page, "_currency_history_queries", []))
+    page.click("#analyticsCurrencyChartLegend [data-analytics-chart-series-toggle='nbrb-USD']")
+    expect(page.locator("#analyticsCurrencyChart .currency-chart-series")).to_have_count(2)
+    assert len(getattr(page, "_currency_history_queries", [])) == history_query_count
+    page.click("#analyticsCurrencyChartLegend [data-analytics-chart-series-toggle='nbrb-EUR']")
+    page.click("#analyticsCurrencyChartLegend [data-analytics-chart-series-toggle='nbrb-RUB']")
+    expect(page.locator("#analyticsCurrencyChartShowAllBtn")).to_be_visible()
+    page.click("#analyticsCurrencyChartShowAllBtn")
+    expect(page.locator("#analyticsCurrencyChart .currency-chart-series")).to_have_count(3)
+    page.locator("#analyticsCurrencyChart .trend-bucket").last.hover()
+    expect(page.locator("#analyticsCurrencyPanel .analytics-chart-tooltip")).to_contain_text("3.5600 BYN за 100 RUB")
     chart_geometry = page.locator("#analyticsCurrencyChart").evaluate(
         """
         node => {
@@ -1623,20 +1664,109 @@ def test_currency_analytics_bank_mode_compares_buy_sell_and_scales_rub(page_with
     sell_line = page.locator("#analyticsCurrencyChart [data-series-id='priorbank-sell'] polyline")
     expect(buy_line).to_have_count(1)
     expect(sell_line).to_have_attribute("stroke-dasharray", "8 5")
-    expect(page.locator("[data-analytics-bank-chart-bank='sber']")).to_be_disabled()
-    expect(page.locator("[data-analytics-bank-chart-bank='bsb']")).not_to_be_disabled()
+    expect(page.locator("#analyticsCurrencyChart [data-series-id='priorbank-buy']")).to_have_attribute("data-marker-shape", "circle")
+    expect(page.locator("#analyticsCurrencyChart [data-series-id='priorbank-sell']")).to_have_attribute("data-marker-shape", "diamond")
+    expect(page.locator("#analyticsCurrencyChart [data-series-id='priorbank-sell'] rect")).to_have_count(2)
+    expect(page.locator("[data-analytics-chart-bank-toggle='sber']")).to_be_disabled()
+    expect(page.locator("[data-analytics-chart-bank-toggle='bsb']")).not_to_be_disabled()
 
-    page.click("button[data-analytics-bank-rate-kind='sell']")
+    bank_query_count = len(getattr(page, "_bank_currency_history_queries", []))
+    page.click("button[data-analytics-chart-series-toggle='priorbank-sell']")
     page.wait_for_selector("#analyticsCurrencyChart [data-series-id='priorbank-buy']")
-    expect(page.locator("#analyticsCurrencyChart [data-series-id$='-sell']")).to_have_count(0)
+    expect(page.locator("#analyticsCurrencyChart [data-series-id='priorbank-sell']")).to_have_count(0)
+    assert len(getattr(page, "_bank_currency_history_queries", [])) == bank_query_count
+    page.click("button[data-analytics-chart-bank-toggle='priorbank']")
+    expect(page.locator("#analyticsCurrencyChart [data-series-id^='priorbank-']")).to_have_count(0)
+    page.click("button[data-analytics-chart-bank-toggle='priorbank']")
+    expect(page.locator("#analyticsCurrencyChart [data-series-id^='priorbank-']")).to_have_count(2)
+    assert len(getattr(page, "_bank_currency_history_queries", [])) == bank_query_count
 
     page.click("button[data-analytics-bank-chart-currency='RUB']")
     expect(page.locator("#analyticsCurrencyChartContext")).to_contain_text("BYN за 100 RUB")
     page.wait_for_selector("#analyticsCurrencyChart [data-series-id='nbrb-reference']")
     page.locator("#analyticsCurrencyChart .trend-bucket").last.hover()
-    expect(page.locator("#analyticsCurrencyPanel .analytics-chart-tooltip")).to_contain_text("НБРБ · официальный курс: 3.56")
+    expect(page.locator("#analyticsCurrencyPanel .analytics-chart-tooltip")).to_contain_text("НБРБ · официальный курс: 3.5600 BYN за 100 RUB")
 
     queries = getattr(page, "_bank_currency_history_queries", [])
     assert queries
     assert queries[-1].get("currency") == ["RUB"]
     assert queries[-1].get("bank_code") == ["priorbank", "technobank", "bsb", "sber"]
+
+    expect(page.locator("#analyticsCurrencyBackfillBtn")).to_have_text("Подгрузить историю банков")
+    page.click("#analyticsCurrencyBackfillBtn")
+    page.wait_for_timeout(250)
+    bank_fill_queries = getattr(page, "_bank_currency_history_fill_queries", [])
+    assert len(bank_fill_queries) == 1
+    assert bank_fill_queries[0].get("bank_code") == ["priorbank", "technobank", "bsb", "sber"]
+    assert date.fromisoformat(bank_fill_queries[0]["date_to"][0]) - date.fromisoformat(bank_fill_queries[0]["date_from"][0]) <= timedelta(days=365)
+
+
+@pytest.mark.e2e
+def test_currency_bank_backfill_polling_does_not_overwrite_nbrb_mode(page_with_analytics_api_mock, static_server_url: str):
+    page = page_with_analytics_api_mock
+
+    _open_mobile_analytics(page, static_server_url)
+    page.locator("button[data-analytics-tab='currency']").click()
+    page.wait_for_selector("#analyticsCurrencyPanel:not(.hidden)")
+    page.wait_for_selector("#analyticsCurrencyChart [data-series-id='priorbank-buy']")
+
+    queued_job = {
+        "id": 7,
+        "status": "queued",
+        "date_from": "2026-03-20",
+        "date_to": "2026-03-28",
+        "bank_codes": ["priorbank", "technobank", "bsb", "sber"],
+        "currencies": ["USD", "EUR", "RUB"],
+        "processed_steps": 0,
+        "total_steps": 18,
+        "quotes_processed": 0,
+        "error_count": 0,
+        "progress": {
+            "priorbank": {
+                "bank_name": "Приорбанк",
+                "capability": "backfill",
+                "status": "queued",
+                "processed_days": 0,
+                "total_days": 9,
+            },
+            "technobank": {
+                "bank_name": "Технобанк",
+                "capability": "accumulating",
+                "status": "accumulating",
+            },
+            "sber": {
+                "bank_name": "Сбер Банк",
+                "capability": "unavailable",
+                "status": "unavailable",
+            },
+        },
+    }
+    completed_job = {
+        **queued_job,
+        "status": "completed",
+        "processed_steps": 18,
+        "quotes_processed": 27,
+        "progress": {
+            **queued_job["progress"],
+            "priorbank": {
+                **queued_job["progress"]["priorbank"],
+                "status": "completed",
+                "processed_days": 9,
+            },
+        },
+    }
+    page._bank_currency_history_fill_post_overrides.append(queued_job)
+    page._bank_currency_history_fill_status_responses.append(completed_job)
+
+    page.click("#analyticsCurrencyBackfillBtn")
+    expect(page.locator("#analyticsCurrencyBackfillBtn")).to_be_disabled()
+    page.click("button[data-analytics-currency-chart-mode='nbrb']")
+    expect(page.locator("#analyticsCurrencyBackfillBtn")).to_contain_text("Идёт подгрузка истории банков")
+    expect(page.locator("button[data-analytics-currency-chart-mode='nbrb']")).to_have_class(re.compile(r"\bactive\b"))
+    page.wait_for_selector("#analyticsCurrencyChart .currency-chart-series")
+    expect(page.locator("#analyticsCurrencyChartContext")).to_contain_text("Официальные курсы НБРБ")
+    expect(page.locator("#analyticsCurrencyChartCoverage")).to_contain_text("НБРБ")
+    expect(page.locator("#analyticsCurrencyChartCoverage")).not_to_contain_text("История банков:")
+
+    expect(page.locator("#analyticsCurrencyBackfillBtn")).to_have_text("Подгрузить историю НБРБ", timeout=3_000)
+    expect(page.locator("#analyticsCurrencyChartCoverage")).to_contain_text("НБРБ")

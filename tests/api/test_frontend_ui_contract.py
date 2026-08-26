@@ -177,11 +177,11 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert "body.finance-calculator-open" in calculator_css
     assert "@media (max-width: 640px)" in calculator_css
     assert "max-height: min(88dvh, 720px)" in calculator_css
-    assert '/static/styles.css?v=20260826a' in index_html
+    assert '/static/styles.css?v=20260826b' in index_html
     assert '/static/css/components-core.css?v=20260808a' in styles
     assert '/static/css/layout-debts.css?v=20260716j' in styles
-    assert '/static/css/components-analytics-summary.css?v=20260826a' in styles
-    assert '/static/css/responsive-sm-core.css?v=20260826a' in styles
+    assert '/static/css/components-analytics-summary.css?v=20260826b' in styles
+    assert '/static/css/responsive-sm-core.css?v=20260826b' in styles
 
 
 def test_session_refresh_preserves_runtime_ui_and_retries_unauthorized_requests():
@@ -471,22 +471,33 @@ def test_currency_analytics_supports_bank_history_comparison_controls():
 
     assert 'data-analytics-currency-chart-mode="banks"' in primary
     assert 'id="analyticsCurrencyChartCurrencyTabs"' in primary
-    assert 'data-analytics-bank-rate-kind="buy"' in primary
-    assert 'data-analytics-bank-rate-kind="sell"' in primary
-    assert 'id="analyticsCurrencyChartNbrbBtn"' in primary
+    assert 'id="analyticsCurrencyChartLegend"' in primary
+    assert 'id="analyticsCurrencyChartShowAllBtn"' in primary
+    assert 'id="analyticsCurrencyChartCoverage"' in primary
     assert "analyticsCurrencyChartBankOptions: document.getElementById" in elements
+    assert "analyticsCurrencyChartShowAllBtn: document.getElementById" in elements
     assert "/api/v1/currency/bank-rates/history?" in currency
+    assert "/api/v1/currency/bank-rates/history/fill?" in currency
+    assert "/api/v1/currency/bank-rates/history/fill/status" in currency
     assert 'params.append("bank_code", code)' in currency
     assert 'String(currency || "").toUpperCase() === "RUB" ? 100 : 1' in currency
+    assert "buildNbrbChartSeries" in currency
+    assert "data-analytics-chart-series-toggle" in currency
+    assert "renderCurrentChartSnapshot" in currency
     assert 'buy: { label: "Покупка банком"' in currency
     assert 'sell: { label: "Продажа банком"' in currency
     assert "new Date(Date.UTC(year, month - 1, day))" in currency
     assert "setUTCDate" in currency
     assert "Promise.allSettled" in currency
     assert "requestSequence !== currencyChartLoadSequence" in currency
+    assert 'state.analyticsCurrencyChartMode !== "banks"' in currency
+    assert "dataset.originalText = idleText" in currency
+    assert 'item?.capability === "accumulating" || item?.capability === "unavailable"' in currency
     assert "renderComparison" in chart
     assert 'stroke-dasharray="${escapeHtml(series.dashArray)}"' in chart
-    assert ".currency-chart-bank-chip.is-unavailable" in analytics_css
+    assert 'data-marker-shape="${escapeHtml(series.markerShape || "circle")}"' in chart
+    assert ".currency-chart-legend-bank.is-unavailable" in analytics_css
+    assert ".currency-chart-legend-series.is-sell > i::after" in analytics_css
 
 
 def test_debts_section_has_filtered_base_currency_kpi():
