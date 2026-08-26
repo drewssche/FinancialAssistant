@@ -158,6 +158,48 @@
     max-width: none;
   }
 
+  .currency-chart-controls {
+    padding: var(--space-2);
+  }
+
+  .currency-chart-controls-head,
+  .currency-chart-controls-head > .toolbar,
+  .currency-chart-control-groups,
+  .currency-chart-control-group,
+  .currency-chart-reference-group,
+  .currency-chart-bank-control {
+    width: 100%;
+  }
+
+  .currency-chart-controls-head > .toolbar {
+    justify-content: flex-start;
+  }
+
+  .currency-chart-control-group > .segmented,
+  .currency-chart-reference-group .currency-chart-toggle {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .currency-chart-control-group > .segmented > .segmented-btn {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .currency-chart-bank-control > .currency-chart-control-label {
+    padding-top: 0;
+  }
+
+  .currency-chart-bank-chips {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .currency-chart-bank-chip {
+    min-width: 0;
+  }
+
   .table-search-row,
   .topbar,
   .panel-head,

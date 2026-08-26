@@ -526,9 +526,45 @@
             </div>
             <div id="analyticsCurrencyBalancesRow" class="currency-balance-grid"></div>
             <div id="analyticsCurrencySecondary" class="analytics-kpi-secondary"></div>
-            <div class="toolbar analytics-currency-chart-toolbar">
-              <button id="analyticsCurrencyBackfillBtn" class="btn btn-secondary" type="button">Подгрузить историю для графика</button>
-            </div>
+            <section class="currency-chart-controls" aria-label="Настройки сравнения банковских курсов">
+              <div class="currency-chart-controls-head">
+                <div>
+                  <strong>Сравнение курсов</strong>
+                  <div id="analyticsCurrencyChartContext" class="muted-small">BYN за 1 единицу валюты</div>
+                </div>
+                <div class="toolbar">
+                  <div id="analyticsCurrencyChartModeTabs" class="segmented compact-segmented" role="tablist" aria-label="Источник данных графика">
+                    <button class="segmented-btn" data-analytics-currency-chart-mode="nbrb" type="button">НБРБ</button>
+                    <button class="segmented-btn active" data-analytics-currency-chart-mode="banks" type="button">Банки</button>
+                  </div>
+                  <button id="analyticsCurrencyBackfillBtn" class="btn btn-secondary" type="button">Подгрузить историю НБРБ</button>
+                </div>
+              </div>
+              <div id="analyticsCurrencyChartBankOptions" class="currency-chart-bank-options">
+                <div class="currency-chart-control-groups">
+                <div class="currency-chart-control-group">
+                  <span class="currency-chart-control-label">Валюта</span>
+                  <div id="analyticsCurrencyChartCurrencyTabs" class="segmented compact-segmented" role="group" aria-label="Валюта для сравнения банков"></div>
+                </div>
+                <div class="currency-chart-control-group">
+                  <span class="currency-chart-control-label">Критерий</span>
+                  <div id="analyticsCurrencyChartRateKindTabs" class="segmented compact-segmented" role="group" aria-label="Критерий банковского курса">
+                    <button class="segmented-btn active" data-analytics-bank-rate-kind="buy" type="button" aria-pressed="true">Покупка банком</button>
+                    <button class="segmented-btn active" data-analytics-bank-rate-kind="sell" type="button" aria-pressed="true">Продажа банком</button>
+                  </div>
+                </div>
+                <div class="currency-chart-control-group currency-chart-reference-group">
+                  <span class="currency-chart-control-label">Ориентир</span>
+                  <button id="analyticsCurrencyChartNbrbBtn" class="btn btn-secondary currency-chart-toggle active" type="button" aria-pressed="true">НБРБ</button>
+                </div>
+              </div>
+              <div class="currency-chart-bank-control">
+                <span class="currency-chart-control-label">Банки</span>
+                <div id="analyticsCurrencyChartBanks" class="currency-chart-bank-chips" role="group" aria-label="Банки на графике"></div>
+              </div>
+                <div id="analyticsCurrencyChartLegend" class="currency-chart-html-legend" aria-label="Легенда графика"></div>
+              </div>
+            </section>
             <div class="analytics-trend-chart-wrap">
               <svg id="analyticsCurrencyChart" class="analytics-trend-chart" viewBox="0 0 980 280" preserveAspectRatio="none" aria-label="История курса валюты"></svg>
             </div>

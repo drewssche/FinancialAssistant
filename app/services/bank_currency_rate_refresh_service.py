@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import base64
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 import json
 from typing import Any
@@ -26,6 +26,7 @@ from app.services.currency_service import CurrencyService
 
 RATE_Q = Decimal("0.000001")
 _LAST_PROVIDER_ATTEMPT: dict[str, datetime] = {}
+MINSK_TZ = ZoneInfo("Europe/Minsk")
 
 
 @dataclass(frozen=True)
@@ -148,6 +149,21 @@ class BankCurrencyRateRefreshService:
                     quoted_at=quote.quoted_at,
                     fetched_at=now,
                 )
+                self.repo.upsert_bank_rate_snapshot(
+                    bank_code=quote.bank_code,
+                    bank_name=quote.bank_name,
+                    currency=quote.currency,
+                    base_currency="BYN",
+                    rate_date=self._quote_date(quote=quote, fetched_at=now),
+                    scale=quote.scale,
+                    buy_rate=quote.buy_rate,
+                    sell_rate=quote.sell_rate,
+                    channel=quote.channel,
+                    location_name=quote.location_name,
+                    source_url=quote.source_url,
+                    quoted_at=quote.quoted_at,
+                    fetched_at=now,
+                )
                 refreshed_rows.append(row)
         if refreshed_rows:
             self.db.commit()
@@ -193,6 +209,76 @@ class BankCurrencyRateRefreshService:
         )
         now = datetime.now(timezone.utc)
         return [self._serialize(row, now=now) for row in rows]
+
+    def get_user_rate_history(
+        self,
+        *,
+        user_id: int,
+        currency: str,
+        bank_codes: list[str] | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
+        limit: int = 365,
+    ) -> list[dict]:
+        normalized_currency = self.currency_service._normalize_currency(currency)
+        if normalized_currency == "BYN":
+            raise ValueError("Bank rate history is available only for foreign currencies")
+        if date_from is not None and date_to is not None and date_from > date_to:
+            raise ValueError("date_from must be on or before date_to")
+
+        currency_preferences = self.currency_service.get_currency_preferences(user_id)
+        allowed_codes = [
+            str(code).strip().lower()
+            for code in currency_preferences.get("bank_rate_banks") or []
+            if str(code).strip().lower() in BANK_RATE_PROVIDERS
+        ]
+        selected_codes = allowed_codes
+        if bank_codes is not None:
+            requested_codes = []
+            for item in bank_codes:
+                code = str(item or "").strip().lower()
+                if not code:
+                    continue
+                if code not in BANK_RATE_PROVIDERS:
+                    raise ValueError(f"Unsupported bank code: {code}")
+                if code not in requested_codes:
+                    requested_codes.append(code)
+            selected_codes = [code for code in requested_codes if code in allowed_codes]
+        if not selected_codes:
+            return []
+
+        rows = self.repo.list_bank_rate_history(
+            bank_codes=selected_codes,
+            currency=normalized_currency,
+            date_from=date_from,
+            date_to=date_to,
+        )
+        if limit > 0:
+            latest_dates = sorted({row.rate_date for row in rows}, reverse=True)[:limit]
+            included_dates = set(latest_dates)
+            rows = [row for row in rows if row.rate_date in included_dates]
+        bank_order = {code: index for index, code in enumerate(selected_codes)}
+        rows.sort(key=lambda row: (row.rate_date, bank_order.get(row.bank_code, 999), row.channel, row.id))
+        result = []
+        for row in rows:
+            provider = BANK_RATE_PROVIDERS.get(row.bank_code, {})
+            result.append(
+                {
+                    "bank_code": row.bank_code,
+                    "bank_name": row.bank_name,
+                    "currency": row.currency,
+                    "base_currency": row.base_currency,
+                    "rate_date": row.rate_date,
+                    "scale": int(row.scale or 1),
+                    "buy_rate": Decimal(row.buy_rate).quantize(RATE_Q),
+                    "sell_rate": Decimal(row.sell_rate).quantize(RATE_Q),
+                    "channel": row.channel,
+                    "channel_label": str(provider.get("channel_label") or row.channel),
+                    "quoted_at": row.quoted_at,
+                    "fetched_at": row.fetched_at,
+                }
+            )
+        return result
 
     def _resolve_config(
         self,
@@ -495,6 +581,11 @@ class BankCurrencyRateRefreshService:
     @staticmethod
     def _aware(value: datetime) -> datetime:
         return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+    @classmethod
+    def _quote_date(cls, *, quote: BankCurrencyQuote, fetched_at: datetime) -> date:
+        observed_at = quote.quoted_at or fetched_at
+        return cls._aware(observed_at).astimezone(MINSK_TZ).date()
 
     @classmethod
     def _serialize(cls, row, *, now: datetime) -> dict:

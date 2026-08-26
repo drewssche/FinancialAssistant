@@ -7,6 +7,7 @@ from app.api.deps import get_current_user_id
 from app.db.session import get_db
 from app.schemas.currency import (
     CurrencyAvailableBalanceOut,
+    CurrencyBankRateHistoryPointOut,
     CurrencyOverviewOut,
     CurrencyPerformanceHistoryOut,
     CurrencyRateHistoryPointOut,
@@ -243,7 +244,7 @@ def upsert_currency_rate(
 @router.get("/rates/history", response_model=list[CurrencyRateHistoryPointOut])
 def get_currency_rate_history(
     currency: str = Query(min_length=3, max_length=3),
-    limit: int = Query(default=120, ge=1, le=365),
+    limit: int = Query(default=120, ge=1, le=3660),
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
     user_id: int = Depends(get_current_user_id),
@@ -257,6 +258,33 @@ def get_currency_rate_history(
             limit=limit,
             date_from=date_from,
             date_to=date_to,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/bank-rates/history", response_model=list[CurrencyBankRateHistoryPointOut])
+def get_bank_currency_rate_history(
+    currency: str = Query(min_length=3, max_length=3),
+    bank_code: list[str] | None = Query(default=None),
+    bank_codes: str | None = Query(default=None, max_length=500),
+    limit: int = Query(default=365, ge=1, le=3660),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    selected_codes = list(bank_code or [])
+    if bank_codes:
+        selected_codes.extend(item.strip() for item in bank_codes.split(","))
+    try:
+        return BankCurrencyRateRefreshService(db).get_user_rate_history(
+            user_id=user_id,
+            currency=currency,
+            bank_codes=selected_codes or None,
+            date_from=date_from,
+            date_to=date_to,
+            limit=limit,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

@@ -263,6 +263,12 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert "function bindAnalyticsCurrencyTradesInfiniteScroll(" not in analytics_currency
     assert '"analytics-currency-chart-factory"' in analytics_currency_chart
     assert 'getRuntimeModule?.("analytics-currency-chart-factory")' in analytics_currency
+    assert "/api/v1/currency/bank-rates/history?" in analytics_currency
+    assert 'params.append("bank_code", code)' in analytics_currency
+    assert '=== "RUB" ? 100 : 1' in analytics_currency
+    assert "Promise.allSettled" in analytics_currency
+    assert "renderComparison" in analytics_currency_chart
+    assert "currency-chart-bank-series" in analytics_currency_chart
     assert "function ensureCurrencyChartZoom(" not in analytics_currency
     assert "function renderMultiCurrencyChart(" not in analytics_currency
     assert "function renderChart(" not in analytics_currency

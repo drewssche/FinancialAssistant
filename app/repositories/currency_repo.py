@@ -1,11 +1,14 @@
 from datetime import date, datetime
 
 from sqlalchemy import desc, func, select
+from sqlalchemy.dialects.postgresql import insert as postgresql_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
 
 from app.db.models import (
     AuthIdentity,
     FxBankRate,
+    FxBankRateSnapshot,
     FxRateSnapshot,
     FxTrade,
     PlanOperation,
@@ -312,12 +315,14 @@ class CurrencyRepository:
         channel: str,
     ) -> FxBankRate | None:
         return self.db.scalar(
-            select(FxBankRate).where(
+            select(FxBankRate)
+            .where(
                 FxBankRate.bank_code == bank_code,
                 FxBankRate.currency == currency,
                 FxBankRate.base_currency == base_currency,
                 FxBankRate.channel == channel,
             )
+            .execution_options(populate_existing=True)
         )
 
     def upsert_bank_rate(
@@ -336,32 +341,147 @@ class CurrencyRepository:
         quoted_at: datetime | None,
         fetched_at: datetime,
     ) -> FxBankRate:
+        values = {
+            "bank_code": bank_code,
+            "bank_name": bank_name,
+            "currency": currency,
+            "base_currency": base_currency,
+            "scale": scale,
+            "buy_rate": buy_rate,
+            "sell_rate": sell_rate,
+            "channel": channel,
+            "location_name": location_name,
+            "source_url": source_url,
+            "quoted_at": quoted_at,
+            "fetched_at": fetched_at,
+        }
+        self._execute_atomic_upsert(
+            model=FxBankRate,
+            values=values,
+            conflict_columns=("bank_code", "currency", "base_currency", "channel"),
+        )
+        self.db.flush()
         row = self.db.scalar(
-            select(FxBankRate).where(
+            select(FxBankRate)
+            .where(
                 FxBankRate.bank_code == bank_code,
                 FxBankRate.currency == currency,
                 FxBankRate.base_currency == base_currency,
                 FxBankRate.channel == channel,
             )
+            .execution_options(populate_existing=True)
         )
-        if row is None:
-            row = FxBankRate(
-                bank_code=bank_code,
-                currency=currency,
-                base_currency=base_currency,
-                channel=channel,
-            )
-            self.db.add(row)
-        row.bank_name = bank_name
-        row.scale = scale
-        row.buy_rate = buy_rate
-        row.sell_rate = sell_rate
-        row.location_name = location_name
-        row.source_url = source_url
-        row.quoted_at = quoted_at
-        row.fetched_at = fetched_at
-        self.db.flush()
+        if row is None:  # pragma: no cover - defensive guard for unsupported database dialects
+            raise RuntimeError("Bank rate upsert did not return a row")
         return row
+
+    def upsert_bank_rate_snapshot(
+        self,
+        *,
+        bank_code: str,
+        bank_name: str,
+        currency: str,
+        base_currency: str,
+        rate_date: date,
+        scale: int,
+        buy_rate,
+        sell_rate,
+        channel: str,
+        location_name: str | None,
+        source_url: str | None,
+        quoted_at: datetime | None,
+        fetched_at: datetime,
+    ) -> FxBankRateSnapshot:
+        values = {
+            "bank_code": bank_code,
+            "bank_name": bank_name,
+            "currency": currency,
+            "base_currency": base_currency,
+            "rate_date": rate_date,
+            "scale": scale,
+            "buy_rate": buy_rate,
+            "sell_rate": sell_rate,
+            "channel": channel,
+            "location_name": location_name,
+            "source_url": source_url,
+            "quoted_at": quoted_at,
+            "fetched_at": fetched_at,
+        }
+        self._execute_atomic_upsert(
+            model=FxBankRateSnapshot,
+            values=values,
+            conflict_columns=("bank_code", "currency", "base_currency", "channel", "rate_date"),
+        )
+        self.db.flush()
+        row = self.db.scalar(
+            select(FxBankRateSnapshot)
+            .where(
+                FxBankRateSnapshot.bank_code == bank_code,
+                FxBankRateSnapshot.currency == currency,
+                FxBankRateSnapshot.base_currency == base_currency,
+                FxBankRateSnapshot.channel == channel,
+                FxBankRateSnapshot.rate_date == rate_date,
+            )
+            .execution_options(populate_existing=True)
+        )
+        if row is None:  # pragma: no cover - defensive guard for unsupported database dialects
+            raise RuntimeError("Bank rate history upsert did not return a row")
+        return row
+
+    def _execute_atomic_upsert(
+        self,
+        *,
+        model,
+        values: dict,
+        conflict_columns: tuple[str, ...],
+    ) -> None:
+        dialect_name = self.db.get_bind().dialect.name
+        if dialect_name == "postgresql":
+            statement = postgresql_insert(model).values(**values)
+        elif dialect_name == "sqlite":
+            statement = sqlite_insert(model).values(**values)
+        else:  # pragma: no cover - production and tests use PostgreSQL/SQLite
+            raise RuntimeError(f"Bank rate upsert is unsupported for database dialect: {dialect_name}")
+        update_values = {
+            key: getattr(statement.excluded, key)
+            for key in values
+            if key not in conflict_columns
+        }
+        self.db.execute(
+            statement.on_conflict_do_update(
+                index_elements=list(conflict_columns),
+                set_=update_values,
+                where=statement.excluded.fetched_at >= model.fetched_at,
+            )
+        )
+
+    def list_bank_rate_history(
+        self,
+        *,
+        bank_codes: list[str],
+        currency: str,
+        base_currency: str = "BYN",
+        date_from: date | None = None,
+        date_to: date | None = None,
+    ) -> list[FxBankRateSnapshot]:
+        if not bank_codes:
+            return []
+        stmt = select(FxBankRateSnapshot).where(
+            FxBankRateSnapshot.bank_code.in_(bank_codes),
+            FxBankRateSnapshot.currency == currency,
+            FxBankRateSnapshot.base_currency == base_currency,
+        )
+        if date_from is not None:
+            stmt = stmt.where(FxBankRateSnapshot.rate_date >= date_from)
+        if date_to is not None:
+            stmt = stmt.where(FxBankRateSnapshot.rate_date <= date_to)
+        stmt = stmt.order_by(
+            FxBankRateSnapshot.rate_date.asc(),
+            FxBankRateSnapshot.bank_code.asc(),
+            FxBankRateSnapshot.channel.asc(),
+            FxBankRateSnapshot.id.asc(),
+        )
+        return list(self.db.scalars(stmt))
 
     def list_telegram_digest_targets(self) -> list:
         stmt = (

@@ -1,3 +1,6 @@
+from datetime import datetime, timezone
+from decimal import Decimal
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -10,6 +13,7 @@ from app.db.base import Base
 from app.db.models import User
 from app.db.session import get_db
 from app.main import app
+from app.services.bank_currency_rate_refresh_service import BankCurrencyQuote
 
 
 def _override_current_user_id() -> int:
@@ -407,6 +411,144 @@ def test_currency_rate_history_returns_chronological_points(client: TestClient):
     assert ranged.status_code == 200, ranged.text
     ranged_payload = ranged.json()
     assert [item["rate_date"] for item in ranged_payload] == ["2026-03-21", "2026-03-22"]
+
+    all_time = client.get(
+        "/api/v1/currency/rates/history",
+        params={"currency": "USD", "limit": 1000},
+    )
+    assert all_time.status_code == 200, all_time.text
+
+
+def test_bank_rate_history_is_daily_scaled_and_restricted_to_selected_banks(
+    client: TestClient,
+    monkeypatch,
+):
+    preferences = client.get("/api/v1/preferences").json()
+    preferences["data"]["currency"]["bank_rate_banks"] = ["technobank"]
+    updated = client.put(
+        "/api/v1/preferences",
+        json={
+            "preferences_version": preferences["preferences_version"],
+            "data": preferences["data"],
+        },
+    )
+    assert updated.status_code == 200, updated.text
+
+    technobank_buy = Decimal("3.490000")
+
+    def _fake_fetch(_service, bank_code):
+        if bank_code == "technobank":
+            return [
+                BankCurrencyQuote(
+                    bank_code="technobank",
+                    bank_name="Технобанк",
+                    currency="EUR",
+                    scale=1,
+                    buy_rate=technobank_buy,
+                    sell_rate=Decimal("3.530000"),
+                    channel="cash",
+                    location_name="Минск",
+                    source_url="https://example.test/technobank",
+                    quoted_at=datetime(2026, 8, 26, 8, tzinfo=timezone.utc),
+                ),
+                BankCurrencyQuote(
+                    bank_code="technobank",
+                    bank_name="Технобанк",
+                    currency="RUB",
+                    scale=100,
+                    buy_rate=Decimal("3.420000"),
+                    sell_rate=Decimal("3.550000"),
+                    channel="cash",
+                    location_name="Минск",
+                    source_url="https://example.test/technobank",
+                    quoted_at=datetime(2026, 8, 26, 8, tzinfo=timezone.utc),
+                ),
+            ]
+        if bank_code == "priorbank":
+            return [
+                BankCurrencyQuote(
+                    bank_code="priorbank",
+                    bank_name="Приорбанк",
+                    currency="EUR",
+                    scale=1,
+                    buy_rate=Decimal("3.480000"),
+                    sell_rate=Decimal("3.540000"),
+                    channel="online",
+                    location_name=None,
+                    source_url="https://example.test/priorbank",
+                    quoted_at=datetime(2026, 8, 26, 8, tzinfo=timezone.utc),
+                )
+            ]
+        raise AssertionError(bank_code)
+
+    monkeypatch.setattr(
+        "app.services.bank_currency_rate_refresh_service.BankCurrencyRateRefreshService._fetch_provider",
+        _fake_fetch,
+    )
+    for bank_code in ("technobank", "priorbank"):
+        refreshed = client.post(
+            "/api/v1/currency/rate-options/refresh",
+            params={"currency": "EUR", "bank_code": bank_code},
+        )
+        assert refreshed.status_code == 200, refreshed.text
+
+    technobank_buy = Decimal("3.500000")
+    refreshed_again = client.post(
+        "/api/v1/currency/rate-options/refresh",
+        params={"currency": "EUR", "bank_code": "technobank"},
+    )
+    assert refreshed_again.status_code == 200, refreshed_again.text
+
+    response = client.get(
+        "/api/v1/currency/bank-rates/history",
+        params={
+            "currency": "EUR",
+            "bank_codes": "priorbank,technobank",
+            "date_from": "2026-08-26",
+            "date_to": "2026-08-26",
+        },
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert len(payload) == 1
+    assert payload[0]["bank_code"] == "technobank"
+    assert payload[0]["bank_name"] == "Технобанк"
+    assert payload[0]["currency"] == "EUR"
+    assert payload[0]["base_currency"] == "BYN"
+    assert payload[0]["rate_date"] == "2026-08-26"
+    assert payload[0]["scale"] == 1
+    assert payload[0]["buy_rate"] == "3.500000"
+    assert payload[0]["sell_rate"] == "3.530000"
+    assert payload[0]["channel"] == "cash"
+    assert payload[0]["channel_label"] == "наличные"
+    assert payload[0]["quoted_at"].startswith("2026-08-26T08:00:00")
+    assert payload[0]["fetched_at"]
+
+    repeated_param = client.get(
+        "/api/v1/currency/bank-rates/history",
+        params=[("currency", "EUR"), ("bank_code", "priorbank"), ("bank_code", "technobank")],
+    )
+    assert repeated_param.status_code == 200, repeated_param.text
+    assert [item["bank_code"] for item in repeated_param.json()] == ["technobank"]
+
+    rub = client.get(
+        "/api/v1/currency/bank-rates/history",
+        params={"currency": "RUB", "bank_codes": "technobank"},
+    )
+    assert rub.status_code == 200, rub.text
+    assert rub.json()[0]["scale"] == 100
+    assert rub.json()[0]["buy_rate"] == "3.420000"
+
+    invalid_range = client.get(
+        "/api/v1/currency/bank-rates/history",
+        params={"currency": "EUR", "date_from": "2026-08-27", "date_to": "2026-08-26"},
+    )
+    assert invalid_range.status_code == 400
+    unknown_bank = client.get(
+        "/api/v1/currency/bank-rates/history",
+        params={"currency": "EUR", "bank_codes": "unknown"},
+    )
+    assert unknown_bank.status_code == 400
 
 
 def test_currency_overview_includes_day_change_from_previous_snapshot(client: TestClient):

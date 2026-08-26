@@ -177,10 +177,11 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert "body.finance-calculator-open" in calculator_css
     assert "@media (max-width: 640px)" in calculator_css
     assert "max-height: min(88dvh, 720px)" in calculator_css
-    assert '/static/styles.css?v=20260822a' in index_html
+    assert '/static/styles.css?v=20260826a' in index_html
     assert '/static/css/components-core.css?v=20260808a' in styles
     assert '/static/css/layout-debts.css?v=20260716j' in styles
-    assert '/static/css/components-analytics-summary.css?v=20260818d' in styles
+    assert '/static/css/components-analytics-summary.css?v=20260826a' in styles
+    assert '/static/css/responsive-sm-core.css?v=20260826a' in styles
 
 
 def test_session_refresh_preserves_runtime_ui_and_retries_unauthorized_requests():
@@ -451,6 +452,41 @@ def test_currency_kpi_and_settings_support_compact_bank_rates_and_alerts():
     assert 'itemCurrency === "RUB" ? 100 : 1' in dashboard
     assert "currencyOverview.bank_rates" in dashboard
     assert "collectBankCurrencyAlerts()" in preferences
+
+
+def test_currency_analytics_supports_bank_history_comparison_controls():
+    primary = (
+        REPO_ROOT / "static" / "js" / "templates" / "shell-sections-primary.js"
+    ).read_text(encoding="utf-8")
+    elements = (REPO_ROOT / "static" / "js" / "app-core-elements.js").read_text(encoding="utf-8")
+    currency = (
+        REPO_ROOT / "static" / "js" / "app-features-analytics-currency.js"
+    ).read_text(encoding="utf-8")
+    chart = (
+        REPO_ROOT / "static" / "js" / "app-features-analytics-currency-chart.js"
+    ).read_text(encoding="utf-8")
+    analytics_css = (
+        REPO_ROOT / "static" / "css" / "components-analytics-summary.css"
+    ).read_text(encoding="utf-8")
+
+    assert 'data-analytics-currency-chart-mode="banks"' in primary
+    assert 'id="analyticsCurrencyChartCurrencyTabs"' in primary
+    assert 'data-analytics-bank-rate-kind="buy"' in primary
+    assert 'data-analytics-bank-rate-kind="sell"' in primary
+    assert 'id="analyticsCurrencyChartNbrbBtn"' in primary
+    assert "analyticsCurrencyChartBankOptions: document.getElementById" in elements
+    assert "/api/v1/currency/bank-rates/history?" in currency
+    assert 'params.append("bank_code", code)' in currency
+    assert 'String(currency || "").toUpperCase() === "RUB" ? 100 : 1' in currency
+    assert 'buy: { label: "Покупка банком"' in currency
+    assert 'sell: { label: "Продажа банком"' in currency
+    assert "new Date(Date.UTC(year, month - 1, day))" in currency
+    assert "setUTCDate" in currency
+    assert "Promise.allSettled" in currency
+    assert "requestSequence !== currencyChartLoadSequence" in currency
+    assert "renderComparison" in chart
+    assert 'stroke-dasharray="${escapeHtml(series.dashArray)}"' in chart
+    assert ".currency-chart-bank-chip.is-unavailable" in analytics_css
 
 
 def test_debts_section_has_filtered_base_currency_kpi():

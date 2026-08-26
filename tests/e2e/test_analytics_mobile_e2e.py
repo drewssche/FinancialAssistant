@@ -17,6 +17,14 @@ sync_api = pytest.importorskip("playwright.sync_api", reason="playwright is not 
 expect = sync_api.expect
 
 
+@pytest.fixture(scope="session")
+def browser_context_args(browser_context_args):
+    return {
+        **browser_context_args,
+        "timezone_id": "Europe/Minsk",
+    }
+
+
 def _set_mock_telegram(page):
     page.add_init_script(
         """
@@ -96,6 +104,10 @@ def page_with_analytics_api_mock(page):
                 "period": "month",
                 "granularity": "day",
             },
+            "currency": {
+                "tracked_currencies": ["USD", "EUR", "RUB"],
+                "bank_rate_banks": ["priorbank", "technobank", "bsb", "sber"],
+            },
             "ui": {"active_section": "dashboard", "timezone": "Europe/Moscow"},
         },
     }
@@ -104,7 +116,7 @@ def page_with_analytics_api_mock(page):
     money_flow_queries = []
     currency_overview = {
         "base_currency": "BYN",
-        "tracked_currencies": ["USD", "EUR"],
+        "tracked_currencies": ["USD", "EUR", "RUB"],
         "active_positions": 1,
         "total_book_value": "320.00",
         "total_current_value": "336.00",
@@ -153,6 +165,17 @@ def page_with_analytics_api_mock(page):
                 "average_buy_rate": "0.0000",
                 "average_sell_rate": "0.0000",
             },
+            {
+                "currency": "RUB",
+                "rate": "0.0356",
+                "rate_date": "2026-03-28",
+                "source": "nbrb_auto",
+                "previous_rate": "0.0355",
+                "change_value": "0.0001",
+                "change_pct": 0.28,
+                "average_buy_rate": "0.0000",
+                "average_sell_rate": "0.0000",
+            },
         ],
     }
     currency_history = {
@@ -166,8 +189,35 @@ def page_with_analytics_api_mock(page):
             {"currency": "EUR", "rate": "3.4800", "rate_date": "2026-03-23"},
             {"currency": "EUR", "rate": "3.5200", "rate_date": "2026-03-28"},
         ],
+        "RUB": [
+            {"currency": "RUB", "rate": "0.0353", "rate_date": "2026-03-20"},
+            {"currency": "RUB", "rate": "0.0355", "rate_date": "2026-03-23"},
+            {"currency": "RUB", "rate": "0.0356", "rate_date": "2026-03-28"},
+        ],
+    }
+    bank_currency_history = {
+        "USD": [
+            {"bank_code": "priorbank", "bank_name": "Приорбанк", "currency": "USD", "base_currency": "BYN", "scale": 1, "buy_rate": "3.3000", "sell_rate": "3.3600", "channel": "online", "channel_label": "онлайн", "rate_date": "2026-03-23"},
+            {"bank_code": "priorbank", "bank_name": "Приорбанк", "currency": "USD", "base_currency": "BYN", "scale": 1, "buy_rate": "3.3200", "sell_rate": "3.3800", "channel": "online", "channel_label": "онлайн", "rate_date": "2026-03-28"},
+            {"bank_code": "technobank", "bank_name": "Технобанк", "currency": "USD", "base_currency": "BYN", "scale": 1, "buy_rate": "3.2900", "sell_rate": "3.3900", "channel": "cash", "channel_label": "наличные", "rate_date": "2026-03-28"},
+        ],
+        "EUR": [
+            {"bank_code": "priorbank", "bank_name": "Приорбанк", "currency": "EUR", "base_currency": "BYN", "scale": 1, "buy_rate": "3.4400", "sell_rate": "3.5200", "channel": "online", "channel_label": "онлайн", "rate_date": "2026-03-23"},
+            {"bank_code": "priorbank", "bank_name": "Приорбанк", "currency": "EUR", "base_currency": "BYN", "scale": 1, "buy_rate": "3.4600", "sell_rate": "3.5400", "channel": "online", "channel_label": "онлайн", "rate_date": "2026-03-28"},
+            {"bank_code": "technobank", "bank_name": "Технобанк", "currency": "EUR", "base_currency": "BYN", "scale": 1, "buy_rate": "3.4500", "sell_rate": "3.5500", "channel": "cash", "channel_label": "наличные", "rate_date": "2026-03-23"},
+            {"bank_code": "technobank", "bank_name": "Технобанк", "currency": "EUR", "base_currency": "BYN", "scale": 1, "buy_rate": "3.4700", "sell_rate": "3.5700", "channel": "cash", "channel_label": "наличные", "rate_date": "2026-03-28"},
+            {"bank_code": "bsb", "bank_name": "БСБ Банк", "currency": "EUR", "base_currency": "BYN", "scale": 1, "buy_rate": "3.4300", "sell_rate": "3.5800", "channel": "cash", "channel_label": "наличные", "rate_date": "2026-03-28"},
+        ],
+        "RUB": [
+            {"bank_code": "priorbank", "bank_name": "Приорбанк", "currency": "RUB", "base_currency": "BYN", "scale": 100, "buy_rate": "3.5000", "sell_rate": "3.6200", "channel": "online", "channel_label": "онлайн", "rate_date": "2026-03-23"},
+            {"bank_code": "priorbank", "bank_name": "Приорбанк", "currency": "RUB", "base_currency": "BYN", "scale": 100, "buy_rate": "3.5200", "sell_rate": "3.6400", "channel": "online", "channel_label": "онлайн", "rate_date": "2026-03-28"},
+            {"bank_code": "technobank", "bank_name": "Технобанк", "currency": "RUB", "base_currency": "BYN", "scale": 100, "buy_rate": "3.5100", "sell_rate": "3.6500", "channel": "cash", "channel_label": "наличные", "rate_date": "2026-03-28"},
+        ],
     }
     history_fill_calls = []
+    history_fill_queries = []
+    currency_history_queries = []
+    bank_history_queries = []
 
     def json_response(route, payload: dict | list, status: int = 200):
         route.fulfill(status=status, content_type="application/json", body=json.dumps(payload, ensure_ascii=False))
@@ -560,7 +610,7 @@ def page_with_analytics_api_mock(page):
                 payload = dict(currency_overview)
                 payload["positions"] = [item for item in currency_overview["positions"] if item["currency"] == selected_currency]
                 payload["current_rates"] = [item for item in currency_overview["current_rates"] if item["currency"] == selected_currency]
-                payload["tracked_currencies"] = ["USD", "EUR"]
+                payload["tracked_currencies"] = ["USD", "EUR", "RUB"]
                 payload["active_positions"] = len(payload["positions"])
                 payload["total_book_value"] = payload["positions"][0]["book_value"] if payload["positions"] else "0.00"
                 payload["total_current_value"] = payload["positions"][0]["current_value"] if payload["positions"] else "0.00"
@@ -573,11 +623,18 @@ def page_with_analytics_api_mock(page):
 
         if path == "/api/v1/currency/rates/history" and method == "GET":
             selected_currency = (query.get("currency") or ["USD"])[0]
+            currency_history_queries.append(query)
             return json_response(route, currency_history.get(selected_currency, []))
+
+        if path == "/api/v1/currency/bank-rates/history" and method == "GET":
+            selected_currency = (query.get("currency") or ["EUR"])[0]
+            bank_history_queries.append(query)
+            return json_response(route, bank_currency_history.get(selected_currency, []))
 
         if path == "/api/v1/currency/rates/history/fill" and method == "POST":
             selected_currency = (query.get("currency") or ["USD"])[0]
             history_fill_calls.append(selected_currency)
+            history_fill_queries.append(query)
             return json_response(route, currency_history.get(selected_currency, []), status=201)
 
         if path == "/api/v1/operations/money-flow" and method == "GET":
@@ -641,6 +698,9 @@ def page_with_analytics_api_mock(page):
     _set_mock_telegram(page)
     page.route("**/api/v1/**", handler)
     page._currency_history_fill_calls = history_fill_calls
+    page._currency_history_fill_queries = history_fill_queries
+    page._currency_history_queries = currency_history_queries
+    page._bank_currency_history_queries = bank_history_queries
     page._analytics_money_flow_queries = money_flow_queries
     yield page
 
@@ -1508,6 +1568,7 @@ def test_currency_analytics_all_mode_renders_multi_currency_chart_and_backfill(p
     page.wait_for_selector("#analyticsCurrencyPanel:not(.hidden)")
     page.wait_for_selector("button[data-analytics-currency-filter='all']")
     page.click("button[data-analytics-currency-filter='all']")
+    page.click("button[data-analytics-currency-chart-mode='nbrb']")
     page.click("button[data-analytics-currency-period='all_time']")
     page.wait_for_selector("#analyticsCurrencyChart .currency-chart-series")
 
@@ -1535,4 +1596,47 @@ def test_currency_analytics_all_mode_renders_multi_currency_chart_and_backfill(p
 
     page.click("#analyticsCurrencyBackfillBtn")
     page.wait_for_timeout(200)
-    assert sorted(getattr(page, "_currency_history_fill_calls", [])) == ["EUR", "USD"]
+    assert sorted(getattr(page, "_currency_history_fill_calls", [])) == ["EUR", "RUB", "USD"]
+    fill_queries = getattr(page, "_currency_history_fill_queries", [])
+    assert len(fill_queries) == 3
+    fill_dates_from = {query.get("date_from", [""])[0] for query in fill_queries}
+    fill_dates_to = {query.get("date_to", [""])[0] for query in fill_queries}
+    assert len(fill_dates_from) == 1
+    assert len(fill_dates_to) == 1
+    assert date.fromisoformat(next(iter(fill_dates_to))) - date.fromisoformat(next(iter(fill_dates_from))) == timedelta(days=364)
+    history_queries = getattr(page, "_currency_history_queries", [])
+    all_time_queries = [query for query in history_queries if query.get("limit") == ["3660"]]
+    assert {query.get("currency", [""])[0] for query in all_time_queries} >= {"EUR", "RUB", "USD"}
+
+
+@pytest.mark.e2e
+def test_currency_analytics_bank_mode_compares_buy_sell_and_scales_rub(page_with_analytics_api_mock, static_server_url: str):
+    page = page_with_analytics_api_mock
+
+    _open_mobile_analytics(page, static_server_url)
+    page.locator("button[data-analytics-tab='currency']").click()
+    page.wait_for_selector("#analyticsCurrencyPanel:not(.hidden)")
+    expect(page.locator("button[data-analytics-currency-chart-mode='banks']")).to_have_class(re.compile(r"\bactive\b"))
+    page.wait_for_selector("#analyticsCurrencyChart [data-series-id='priorbank-buy']")
+
+    buy_line = page.locator("#analyticsCurrencyChart [data-series-id='priorbank-buy'] polyline")
+    sell_line = page.locator("#analyticsCurrencyChart [data-series-id='priorbank-sell'] polyline")
+    expect(buy_line).to_have_count(1)
+    expect(sell_line).to_have_attribute("stroke-dasharray", "8 5")
+    expect(page.locator("[data-analytics-bank-chart-bank='sber']")).to_be_disabled()
+    expect(page.locator("[data-analytics-bank-chart-bank='bsb']")).not_to_be_disabled()
+
+    page.click("button[data-analytics-bank-rate-kind='sell']")
+    page.wait_for_selector("#analyticsCurrencyChart [data-series-id='priorbank-buy']")
+    expect(page.locator("#analyticsCurrencyChart [data-series-id$='-sell']")).to_have_count(0)
+
+    page.click("button[data-analytics-bank-chart-currency='RUB']")
+    expect(page.locator("#analyticsCurrencyChartContext")).to_contain_text("BYN за 100 RUB")
+    page.wait_for_selector("#analyticsCurrencyChart [data-series-id='nbrb-reference']")
+    page.locator("#analyticsCurrencyChart .trend-bucket").last.hover()
+    expect(page.locator("#analyticsCurrencyPanel .analytics-chart-tooltip")).to_contain_text("НБРБ · официальный курс: 3.56")
+
+    queries = getattr(page, "_bank_currency_history_queries", [])
+    assert queries
+    assert queries[-1].get("currency") == ["RUB"]
+    assert queries[-1].get("bank_code") == ["priorbank", "technobank", "bsb", "sber"]

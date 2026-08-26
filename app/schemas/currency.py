@@ -86,6 +86,21 @@ class CurrencyBankRateOut(BaseModel):
     stale: bool = False
 
 
+class CurrencyBankRateHistoryPointOut(BaseModel):
+    bank_code: str
+    bank_name: str
+    currency: str
+    base_currency: str = "BYN"
+    rate_date: date
+    scale: int = 1
+    buy_rate: Decimal
+    sell_rate: Decimal
+    channel: str
+    channel_label: str
+    quoted_at: datetime | None = None
+    fetched_at: datetime
+
+
 class CurrencyNbrbRateOptionOut(BaseModel):
     rate: Decimal
     unit_rate: Decimal
