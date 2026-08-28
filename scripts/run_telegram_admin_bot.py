@@ -300,48 +300,48 @@ async def process_currency_refresh() -> None:
 async def process_currency_digests(client: TelegramBotClient) -> None:
     db = SessionLocal()
     try:
-        with try_background_job_lock(db, "telegram_currency_digest_scan") as acquired:
-            if not acquired:
-                log_telegram_bot_event("currency_digest_scan_skipped", reason="already_running")
-                return
-            service = TelegramCurrencyDigestBotService(db)
-            for delivery in service.list_due_deliveries():
-                with try_background_job_lock(
-                    db,
-                    currency_digest_delivery_lock_name(delivery.user_id),
-                ) as delivery_lock_acquired:
-                    if not delivery_lock_acquired:
-                        log_telegram_bot_event(
-                            "currency_digest_send_skipped",
-                            user_id=delivery.user_id,
-                            reason="already_sending",
-                        )
-                        continue
-                    if not service.claim_delivery(delivery):
-                        continue
-                    try:
-                        delivery_format = await send_currency_digest_delivery(client, delivery)
-                    except Exception as exc:  # noqa: BLE001
-                        service.release_delivery(delivery)
-                        log_telegram_bot_event(
-                            "currency_digest_failed",
-                            user_id=delivery.user_id,
-                            error=type(exc).__name__,
-                        )
-                        logger.warning(
-                            "telegram currency digest failed for user %s: %s",
-                            delivery.user_id,
-                            exc,
-                        )
-                        continue
-                    service.mark_delivery_sent(delivery, delivery_format=delivery_format)
+        # Each advisory lock reserves a dedicated pool connection.  A global
+        # scan lock would therefore exhaust the small bot pool once the ORM
+        # session and per-user delivery lock are both active.  The per-user
+        # lock plus the durable daily claim below already prevent duplicates.
+        service = TelegramCurrencyDigestBotService(db)
+        for delivery in service.list_due_deliveries():
+            with try_background_job_lock(
+                db,
+                currency_digest_delivery_lock_name(delivery.user_id),
+            ) as delivery_lock_acquired:
+                if not delivery_lock_acquired:
                     log_telegram_bot_event(
-                        "currency_digest_sent",
-                        chat_id=delivery.chat_id,
+                        "currency_digest_send_skipped",
                         user_id=delivery.user_id,
-                        tracked_count=len(delivery.tracked_currencies),
-                        delivery_format=delivery_format,
+                        reason="already_sending",
                     )
+                    continue
+                if not service.claim_delivery(delivery):
+                    continue
+                try:
+                    delivery_format = await send_currency_digest_delivery(client, delivery)
+                except Exception as exc:  # noqa: BLE001
+                    service.release_delivery(delivery)
+                    log_telegram_bot_event(
+                        "currency_digest_failed",
+                        user_id=delivery.user_id,
+                        error=type(exc).__name__,
+                    )
+                    logger.warning(
+                        "telegram currency digest failed for user %s: %s",
+                        delivery.user_id,
+                        exc,
+                    )
+                    continue
+                service.mark_delivery_sent(delivery, delivery_format=delivery_format)
+                log_telegram_bot_event(
+                    "currency_digest_sent",
+                    chat_id=delivery.chat_id,
+                    user_id=delivery.user_id,
+                    tracked_count=len(delivery.tracked_currencies),
+                    delivery_format=delivery_format,
+                )
     finally:
         db.close()
 

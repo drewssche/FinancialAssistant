@@ -280,8 +280,14 @@ def test_sync_currency_digest_sender_uses_shared_transport(monkeypatch):
     assert calls[-1] == ("close",)
 
 
-def test_currency_digest_process_marks_successful_photo_delivery(monkeypatch):
+def test_currency_digest_process_uses_only_per_user_lock_and_marks_delivery(monkeypatch):
     delivery = _digest_delivery()
+    lock_names = []
+
+    @contextmanager
+    def _record_acquired_lock(_db, name):  # noqa: ANN001
+        lock_names.append(name)
+        yield True
 
     class _Db:
         closed = False
@@ -317,12 +323,55 @@ def test_currency_digest_process_marks_successful_photo_delivery(monkeypatch):
     service = _Service()
     monkeypatch.setattr(telegram_bot, "SessionLocal", lambda: db)
     monkeypatch.setattr(telegram_bot, "TelegramCurrencyDigestBotService", lambda _db: service)
+    monkeypatch.setattr(telegram_bot, "try_background_job_lock", _record_acquired_lock)
+
+    asyncio.run(process_currency_digests(_Client()))
+
+    assert lock_names == [telegram_bot.currency_digest_delivery_lock_name(delivery.user_id)]
+    assert service.marked == [(delivery, "photo")]
+    assert service.released == []
+    assert db.closed is True
+
+
+def test_currency_digest_process_honors_claim_duplicate_guard(monkeypatch):
+    delivery = _digest_delivery()
+
+    class _Db:
+        closed = False
+
+        def close(self):
+            self.closed = True
+
+    class _Service:
+        def __init__(self):
+            self.marked = []
+
+        def list_due_deliveries(self):
+            return [delivery]
+
+        def claim_delivery(self, candidate):  # noqa: ANN001
+            assert candidate is delivery
+            return False
+
+        def mark_delivery_sent(self, candidate, *, delivery_format):  # noqa: ANN001
+            self.marked.append((candidate, delivery_format))
+
+    class _Client:
+        async def send_photo(self, **kwargs):  # noqa: ANN003
+            raise AssertionError("a duplicate digest must not be sent")
+
+        async def call(self, method, payload):  # noqa: ANN001
+            raise AssertionError((method, payload))
+
+    db = _Db()
+    service = _Service()
+    monkeypatch.setattr(telegram_bot, "SessionLocal", lambda: db)
+    monkeypatch.setattr(telegram_bot, "TelegramCurrencyDigestBotService", lambda _db: service)
     monkeypatch.setattr(telegram_bot, "try_background_job_lock", _always_acquired)
 
     asyncio.run(process_currency_digests(_Client()))
 
-    assert service.marked == [(delivery, "photo")]
-    assert service.released == []
+    assert service.marked == []
     assert db.closed is True
 
 
