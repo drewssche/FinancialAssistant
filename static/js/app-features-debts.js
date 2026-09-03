@@ -57,16 +57,19 @@
   function getCurrentDebtIds() {
     const cards = Array.isArray(state.debtCardsCache) ? state.debtCardsCache : [];
     const statusFilter = state.debtStatusFilter || "active";
-    const filteredCards = cards.filter((card) => {
-      if (statusFilter === "active") {
-        return card?.status === "active";
-      }
-      if (statusFilter === "closed") {
-        return card?.status === "closed";
-      }
-      return true;
-    });
-    return filteredCards.flatMap((card) => (Array.isArray(card?.debts) ? card.debts : []))
+    return cards.flatMap((card) => (Array.isArray(card?.debts) ? card.debts : []))
+      .filter((debt) => {
+        const isClosed = debtCardsRenderer?.isClosedDebt
+          ? debtCardsRenderer.isClosedDebt(debt)
+          : Number(debt?.outstanding_total || 0) <= 0.000001;
+        if (statusFilter === "active") {
+          return !isClosed;
+        }
+        if (statusFilter === "closed") {
+          return isClosed;
+        }
+        return true;
+      })
       .map((debt) => Number(debt?.id || 0))
       .filter((id) => id > 0);
   }
@@ -152,6 +155,27 @@
     loadDebtsCards().catch((err) => core.setStatus(String(err)));
   }
 
+  function toggleDebtClosedRows(counterpartyId) {
+    const normalizedId = Number(counterpartyId || 0);
+    if (normalizedId <= 0) {
+      return;
+    }
+    if (!(state.expandedDebtClosedCounterpartyIds instanceof Set)) {
+      state.expandedDebtClosedCounterpartyIds = new Set();
+    }
+    if (state.expandedDebtClosedCounterpartyIds.has(normalizedId)) {
+      state.expandedDebtClosedCounterpartyIds.delete(normalizedId);
+    } else {
+      state.expandedDebtClosedCounterpartyIds.add(normalizedId);
+    }
+    renderDebtCards(state.debtCardsCache || []);
+    window.requestAnimationFrame(() => {
+      el.debtsCards
+        ?.querySelector(`[data-debt-closed-toggle-counterparty-id="${normalizedId}"]`)
+        ?.focus();
+    });
+  }
+
   function setDebtSortPreset(sortValue) {
     state.debtSortPreset = sortValue || "priority";
     core.syncSegmentedActive(el.debtSortTabs, "debt-sort", state.debtSortPreset);
@@ -214,6 +238,7 @@
     openDebtHistoryModal: debtModalsFeature?.openDebtHistoryModal,
     closeDebtHistoryModal: debtModalsFeature?.closeDebtHistoryModal,
     setDebtStatusFilter,
+    toggleDebtClosedRows,
     setDebtSortPreset,
     applyDebtSearch,
     loadMoreDebtCards,

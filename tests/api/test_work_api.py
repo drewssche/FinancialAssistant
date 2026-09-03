@@ -1566,6 +1566,10 @@ def test_payroll_link_survives_plan_relink_and_deletions_without_past_forecast(
     confirmed = client.post(f"/api/v1/plans/{plan_id}/confirm")
     assert confirmed.status_code == 200
     operation_id = int(confirmed.json()["operation"]["id"])
+    assert client.patch(
+        f"/api/v1/operations/{operation_id}",
+        json={"operation_date": "2026-08-05"},
+    ).status_code == 200
     assert client.patch(f"/api/v1/plans/{plan_id}", json={"amount": "2000.00"}).status_code == 200
 
     august = client.get(

@@ -560,6 +560,23 @@ def test_debts_section_has_filtered_base_currency_kpi():
     assert ".debts-section-kpi" in debts_css
 
 
+def test_debt_status_filter_applies_to_rows_inside_counterparty_cards():
+    state = (REPO_ROOT / "static" / "js" / "app-core-state.js").read_text(encoding="utf-8")
+    debts = (REPO_ROOT / "static" / "js" / "app-features-debts.js").read_text(encoding="utf-8")
+    debts_render = (REPO_ROOT / "static" / "js" / "app-features-debts-render.js").read_text(encoding="utf-8")
+    debts_init = (REPO_ROOT / "static" / "js" / "app-init-features-debts.js").read_text(encoding="utf-8")
+
+    assert "expandedDebtClosedCounterpartyIds: new Set()" in state
+    assert "function isClosedDebt(debt)" in debts_render
+    assert "const activeDebts = allDebts.filter" in debts_render
+    assert "const closedDebts = allDebts.filter" in debts_render
+    assert "data-debt-closed-toggle-counterparty-id" in debts_render
+    assert 'aria-expanded="${closedDebtsExpanded ? "true" : "false"}"' in debts_render
+    assert "function toggleDebtClosedRows(counterpartyId)" in debts
+    assert "debtCardsRenderer.isClosedDebt(debt)" in debts
+    assert "button[data-debt-closed-toggle-counterparty-id]" in debts_init
+
+
 def test_work_calendar_distinguishes_plan_forecasts_from_payroll_facts():
     work = (REPO_ROOT / "static" / "js" / "app-features-work.js").read_text(encoding="utf-8")
     styles = (REPO_ROOT / "static" / "styles.css").read_text(encoding="utf-8")

@@ -56,6 +56,11 @@
     if (el.debtsCards && actions.openDebtRepaymentModal) {
       el.debtsCards.addEventListener("click", (event) => {
         const debtFeature = window.App.getRuntimeModule?.("debts") || {};
+        const closedRowsToggle = event.target.closest("button[data-debt-closed-toggle-counterparty-id]");
+        if (closedRowsToggle) {
+          debtFeature.toggleDebtClosedRows?.(Number(closedRowsToggle.dataset.debtClosedToggleCounterpartyId || 0));
+          return;
+        }
         const retryButton = event.target.closest("button[data-debts-retry]");
         if (retryButton) {
           core.runAction({

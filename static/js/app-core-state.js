@@ -32,6 +32,7 @@
       debtStatusFilter: "active",
       debtSortPreset: "priority",
       debtCardsCache: [],
+      expandedDebtClosedCounterpartyIds: new Set(),
       dashboardDebtSummaryLoaded: false,
       debtCardsPageSize: 20,
       debtCardsVisibleLimit: 20,

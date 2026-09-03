@@ -85,6 +85,7 @@ jobs:
             tests/e2e/test_analytics_mobile_e2e.py::test_currency_analytics_bank_mode_compares_buy_sell_and_scales_rub \
             tests/e2e/test_analytics_mobile_e2e.py::test_currency_chart_right_edge_tooltip_does_not_create_desktop_scrollbar \
             tests/e2e/test_analytics_mobile_e2e.py::test_currency_bank_backfill_polling_does_not_overwrite_nbrb_mode \
+            tests/e2e/test_debts_flow_e2e.py::test_debt_status_tabs_filter_rows_inside_mixed_counterparty_card \
             -m e2e
           .venv/bin/pytest \
             tests/e2e/test_currency_trades_pagination_e2e.py::test_manual_currency_digest_send_is_shared_across_currency_views \

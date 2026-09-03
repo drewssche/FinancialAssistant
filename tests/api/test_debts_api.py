@@ -105,6 +105,47 @@ def test_debts_repayment_and_close_card(client: TestClient):
     assert payload[0]["outstanding_total"] == "0.00"
 
 
+def test_active_card_keeps_closed_children_available_for_counterparty_history(client: TestClient):
+    closed_debt = client.post(
+        "/api/v1/debts",
+        json={
+            "counterparty": "Анна",
+            "direction": "lend",
+            "principal": "100.00",
+            "start_date": "2026-03-01",
+        },
+    )
+    assert closed_debt.status_code == 201
+    closed_debt_id = closed_debt.json()["id"]
+    repayment = client.post(
+        f"/api/v1/debts/{closed_debt_id}/repayments",
+        json={"amount": "100.00", "repayment_date": "2026-03-02"},
+    )
+    assert repayment.status_code == 201
+
+    active_debt = client.post(
+        "/api/v1/debts",
+        json={
+            "counterparty": "Анна",
+            "direction": "lend",
+            "principal": "50.00",
+            "start_date": "2026-03-03",
+        },
+    )
+    assert active_debt.status_code == 201
+    active_debt_id = active_debt.json()["id"]
+
+    cards = client.get("/api/v1/debts/cards")
+    assert cards.status_code == 200
+    payload = cards.json()
+    assert len(payload) == 1
+    assert payload[0]["status"] == "active"
+    debts_by_id = {item["id"]: item for item in payload[0]["debts"]}
+    assert set(debts_by_id) == {closed_debt_id, active_debt_id}
+    assert debts_by_id[closed_debt_id]["outstanding_total"] == "0.00"
+    assert debts_by_id[active_debt_id]["outstanding_total"] == "50.00"
+
+
 def test_debts_add_issuance_increases_existing_debt(client: TestClient):
     created = client.post(
         "/api/v1/debts",

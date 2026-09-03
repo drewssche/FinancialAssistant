@@ -576,8 +576,13 @@
         syncDebtsControls();
         return;
       }
+      const scopeLabel = state.debtStatusFilter === "closed"
+        ? "все закрытые долги"
+        : state.debtStatusFilter === "all"
+          ? "все долги"
+          : "все активные долги";
       core.runDestructiveAction({
-        confirmMessage: `Удалить все долги в текущем списке (${ids.length})?`,
+        confirmMessage: `Удалить ${scopeLabel} текущего фильтра (${ids.length})?`,
         doDelete: async () => {
           for (const id of ids) {
             await core.requestJson(`/api/v1/debts/${id}`, {

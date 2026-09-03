@@ -78,18 +78,41 @@
     return 4;
   }
 
+  function isClosedDebt(debt) {
+    return Number(debt?.outstanding_total || 0) <= 0.000001;
+  }
+
   function filterCards(cards) {
     const statusFilter = state.debtStatusFilter || "active";
+    if (statusFilter === "all") {
+      return cards.slice();
+    }
     const filtered = [];
 
     for (const card of cards) {
-      if (statusFilter === "active" && card.status !== "active") {
+      const allDebts = card.debts || [];
+      const activeDebts = allDebts.filter((debt) => !isClosedDebt(debt));
+      const closedDebts = allDebts.filter(isClosedDebt);
+      const counterpartyId = Number(card.counterparty_id || 0);
+      const closedExpanded = statusFilter === "active"
+        && state.expandedDebtClosedCounterpartyIds?.has(counterpartyId);
+      const statusDebts = statusFilter === "closed" ? closedDebts : activeDebts;
+      if (!statusDebts.length) {
         continue;
       }
-      if (statusFilter === "closed" && card.status !== "closed") {
-        continue;
-      }
-      filtered.push(card);
+      const visibleDebts = closedExpanded ? [...activeDebts, ...closedDebts] : statusDebts;
+      const outstandingTotal = statusDebts.reduce(
+        (total, debt) => total + Number(debt.current_base_outstanding_total ?? debt.outstanding_total ?? 0),
+        0,
+      );
+      filtered.push({
+        ...card,
+        debts: visibleDebts,
+        outstanding_total: outstandingTotal,
+        status: statusFilter,
+        closed_debts_count: closedDebts.length,
+        closed_debts_expanded: closedExpanded,
+      });
     }
     return filtered;
   }
@@ -242,6 +265,7 @@
     for (const card of renderedCards) {
       const item = document.createElement("article");
       item.className = "panel debt-card";
+      item.dataset.debtCounterpartyId = String(card.counterparty_id || "");
       const now = new Date();
       const sortedDebts = (card.debts || []).slice().sort((a, b) => {
         const aState = debtDueState(a, now);
@@ -382,15 +406,26 @@
         })
         .join("");
 
+      const closedDebtsCount = Number(card.closed_debts_count || 0);
+      const closedDebtsExpanded = card.closed_debts_expanded === true;
+      const debtRowsId = `debt-card-rows-${Number(card.counterparty_id || 0)}`;
+      const closedDebtsToggle = (state.debtStatusFilter || "active") === "active" && closedDebtsCount > 0
+        ? `<button class="btn btn-secondary btn-xs debt-closed-toggle" type="button"
+            data-debt-closed-toggle-counterparty-id="${Number(card.counterparty_id || 0)}"
+            aria-expanded="${closedDebtsExpanded ? "true" : "false"}"
+            aria-controls="${debtRowsId}">${closedDebtsExpanded ? "Скрыть" : "Показать"} завершённые (${closedDebtsCount})</button>`
+        : "";
+
       item.innerHTML = compactMobile
         ? `
           <div class="debt-mobile-card-head">
             <div class="debt-mobile-card-title-block">
               <h3>${core.highlightText(card.counterparty, searchQuery)}</h3>
               <span class="debt-status debt-status-${card.status}">${card.status === "active" ? "Активный" : "Закрыт"}</span>
+              ${closedDebtsToggle}
             </div>
           </div>
-          <div class="debt-mobile-entries">${debtsRows}</div>
+          <div id="${debtRowsId}" class="debt-mobile-entries">${debtsRows}</div>
         `
         : `
           <div class="row between">
@@ -398,8 +433,9 @@
               <h3>${core.highlightText(card.counterparty, searchQuery)}</h3>
               <p class="subtitle">Статус: <span class="debt-status debt-status-${card.status}">${card.status === "active" ? "Активный" : "Закрыт"}</span></p>
             </div>
+            ${closedDebtsToggle}
           </div>
-          <div class="debt-card-children-wrap">
+          <div id="${debtRowsId}" class="debt-card-children-wrap">
             <table class="table table-hover">
               <thead>
                 <tr>
@@ -421,6 +457,7 @@
   }
 
   window.App.debtCardsRenderer = {
+    isClosedDebt,
     renderDebtCards,
   };
 })();

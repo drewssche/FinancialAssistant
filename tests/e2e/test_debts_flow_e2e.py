@@ -731,6 +731,71 @@ def test_repayment_moves_debt_to_closed(static_server_url: str, page_with_debts_
     page.click("#debtStatusTabs button[data-debt-status='closed']")
     page.wait_for_timeout(200)
     assert page.locator("#debtsCards .debt-card h3", has_text="Анна").count() == 1
+    assert page.locator("#debtsCards [data-debt-row-id='9001']").count() == 1
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize(("viewport_width", "viewport_height"), [(1280, 900), (390, 844)])
+def test_debt_status_tabs_filter_rows_inside_mixed_counterparty_card(
+    static_server_url: str,
+    page_with_debts_api_mock,
+    viewport_width: int,
+    viewport_height: int,
+):
+    page = page_with_debts_api_mock
+    page.set_viewport_size({"width": viewport_width, "height": viewport_height})
+    page.goto(f"{static_server_url}/static/index.html")
+    _login_via_mock_telegram(page)
+
+    page.evaluate(
+        """
+        async () => {
+          const headers = {"Content-Type": "application/json"};
+          await fetch("/api/v1/debts/9001/repayments", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({amount: "100", repayment_date: "2026-03-06"}),
+          });
+          await fetch("/api/v1/debts", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              counterparty: "Анна",
+              direction: "lend",
+              principal: "50",
+              currency: "BYN",
+              start_date: "2026-03-07",
+            }),
+          });
+        }
+        """
+    )
+
+    if viewport_width <= 640:
+        page.click("#mobileNavToggleBtn")
+    page.click("button[data-section='debts']")
+    page.wait_for_selector("#debtsSection:not(.hidden)")
+    page.wait_for_selector("#debtsCards [data-debt-row-id='9010']")
+
+    assert page.locator("#debtsCards [data-debt-row-id='9010']").count() == 1
+    assert page.locator("#debtsCards [data-debt-row-id='9001']").count() == 0
+
+    completed_toggle = page.locator("[data-debt-closed-toggle-counterparty-id='1']")
+    assert completed_toggle.get_attribute("aria-expanded") == "false"
+    assert "Показать завершённые (1)" in completed_toggle.inner_text()
+    completed_toggle.click()
+    assert page.locator("#debtsCards [data-debt-row-id='9001']").count() == 1
+    assert completed_toggle.get_attribute("aria-expanded") == "true"
+    completed_toggle.click()
+    assert page.locator("#debtsCards [data-debt-row-id='9001']").count() == 0
+
+    page.click("#debtStatusTabs button[data-debt-status='closed']")
+    page.wait_for_selector("#debtsCards [data-debt-row-id='9001']")
+    assert page.locator("#debtsCards [data-debt-row-id='9010']").count() == 0
+
+    page.click("#debtStatusTabs button[data-debt-status='all']")
+    page.wait_for_selector("#debtsCards [data-debt-row-id='9010']")
+    assert page.locator("#debtsCards [data-debt-row-id='9001']").count() == 1
 
 
 @pytest.mark.e2e

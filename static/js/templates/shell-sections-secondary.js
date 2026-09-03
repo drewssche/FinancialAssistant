@@ -263,7 +263,7 @@
             <div class="panel-head row between">
               <div>
                 <h3>Карточки долгов</h3>
-                <p class="subtitle">Активные долги по контрагентам</p>
+                <p class="subtitle">Долги по контрагентам</p>
               </div>
             </div>
             <div class="table-search-row">
