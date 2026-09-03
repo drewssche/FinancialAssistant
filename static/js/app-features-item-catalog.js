@@ -196,7 +196,11 @@
         (row) => Number(row?.id || 0) === Number(item?.last_category_id || 0),
       );
       const categoryName = String(category?.name || "").toLowerCase();
-      return name.includes(query) || source.includes(query) || categoryName.includes(query);
+      const brand = (state.itemBrands || []).find(
+        (row) => Number(row?.id || 0) === Number(item?.brand_id || 0),
+      );
+      const brandName = String(item?.brand_name || brand?.name || "").toLowerCase();
+      return name.includes(query) || source.includes(query) || categoryName.includes(query) || brandName.includes(query);
     });
   }
 
@@ -219,6 +223,7 @@
     const hadBaseItem = itemCatalogBaseItems.some((entry) => Number(entry?.id || 0) === templateId);
     if (itemCatalogBaseItems.length || !query) {
       itemCatalogBaseItems = upsert(itemCatalogBaseItems);
+      state.itemCatalogAllItems = itemCatalogBaseItems.slice();
       if (!hadBaseItem) {
         itemCatalogBaseTotal = Math.max(itemCatalogBaseTotal + 1, itemCatalogBaseItems.length);
       }
@@ -261,6 +266,22 @@
     core.invalidateUiRequestCache("op:receipt:templates");
   }
 
+  function invalidateItemCatalogDependentCaches() {
+    for (const prefix of [
+      "item-catalog",
+      "item-brands",
+      "op:receipt:templates",
+      "operations",
+      "plans",
+      "analytics",
+      "dashboard:highlights",
+    ]) {
+      core.invalidateUiRequestCache?.(prefix);
+    }
+    state.receiptTemplateHints = [];
+    state.itemBrandsLoaded = false;
+  }
+
   async function fetchItemCatalogPages(params, requestController) {
     const firstPayload = await core.requestJson(`/api/v1/operations/item-templates?${params.toString()}`, {
       headers: core.authHeaders(),
@@ -285,6 +306,9 @@
   }
 
   async function loadItemCatalog(options = {}) {
+    if (!state.itemBrandsLoaded) {
+      await window.App.getRuntimeModule?.("item-brands")?.ensureItemBrandsLoaded?.().catch(() => []);
+    }
     if (!(state.categories || []).length) {
       await window.App.getRuntimeModule?.("category-actions")?.loadCategories?.();
     }
@@ -309,6 +333,7 @@
         state.itemCatalogItems = cached.items.slice();
         if (!query) {
           itemCatalogBaseItems = state.itemCatalogItems.slice();
+          state.itemCatalogAllItems = itemCatalogBaseItems.slice();
           itemCatalogBaseTotal = Number(cached.total || state.itemCatalogItems.length || 0);
         }
         renderItemCatalog(state.itemCatalogItems);
@@ -329,6 +354,7 @@
       state.itemCatalogItems = Array.isArray(payload.items) ? payload.items.slice() : [];
       if (!query) {
         itemCatalogBaseItems = state.itemCatalogItems.slice();
+        state.itemCatalogAllItems = itemCatalogBaseItems.slice();
         itemCatalogBaseTotal = Number(payload.total || state.itemCatalogItems.length || 0);
       }
       core.setUiRequestCache(cacheKey, payload);
@@ -362,12 +388,14 @@
       loadItemCatalog,
       applySavedItemCatalogItem,
       applySavedReceiptTemplateHint,
+      invalidateItemCatalogDependentCaches,
       savePreferencesDebounced,
     })
     : {};
 
   function cleanupItemCatalogRuntime() {
     cancelDebouncedPreferencesSave();
+    window.App.getRuntimeModule?.("item-brands")?.cleanupRuntime?.();
     if (itemCatalogRequestController) {
       itemCatalogRequestController.abort();
       itemCatalogRequestController = null;
@@ -375,10 +403,20 @@
     itemCatalogRequestSeq = 0;
     itemCatalogBaseItems = [];
     itemCatalogBaseTotal = 0;
+    state.itemCatalogItems = [];
+    state.itemCatalogAllItems = [];
+    state.receiptTemplateHints = [];
+    state.itemBrands = [];
+    state.itemBrandsLoaded = false;
+    state.selectedItemCatalogIds = new Set();
+    state.itemCatalogView = "positions";
+    state.itemCatalogBrandFilter = "all";
+    state.editItemBrandId = null;
   }
 
   function refreshItemCatalogView() {
     renderItemCatalog(state.itemCatalogItems);
+    window.App.getRuntimeModule?.("item-brands")?.renderCatalogBulkState?.();
   }
 
   const api = {
@@ -411,10 +449,18 @@
     handleItemTemplateCategorySearchKeydown: itemCatalogModal.handleItemTemplateCategorySearchKeydown,
     handleItemTemplateCategoryPickerClick: itemCatalogModal.handleItemTemplateCategoryPickerClick,
     handleItemTemplateCategorySearchFocusOut: itemCatalogModal.handleItemTemplateCategorySearchFocusOut,
+    handleItemTemplateBrandSearchFocus: itemCatalogModal.handleItemTemplateBrandSearchFocus,
+    handleItemTemplateBrandSearchInput: itemCatalogModal.handleItemTemplateBrandSearchInput,
+    handleItemTemplateBrandSearchKeydown: itemCatalogModal.handleItemTemplateBrandSearchKeydown,
+    handleItemTemplateBrandPickerClick: itemCatalogModal.handleItemTemplateBrandPickerClick,
+    handleItemTemplateBrandSearchFocusOut: itemCatalogModal.handleItemTemplateBrandSearchFocusOut,
     openItemTemplateHistoryModal: itemCatalogModal.openItemTemplateHistoryModal,
     closeItemTemplateHistoryModal: itemCatalogModal.closeItemTemplateHistoryModal,
     deleteItemTemplatePriceFlow: itemCatalogModal.deleteItemTemplatePriceFlow,
     cleanupItemCatalogRuntime,
+    applySavedItemCatalogItem,
+    applySavedReceiptTemplateHint,
+    invalidateItemCatalogDependentCaches,
   };
 
   window.App.registerRuntimeModule?.("item-catalog", api);

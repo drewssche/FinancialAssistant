@@ -9,6 +9,15 @@ from app.services.plan_service import PlanService
 router = APIRouter(prefix="/plans", tags=["plans"])
 
 
+def _dump_receipt_item(item) -> dict:
+    data = item.model_dump()
+    fields_set = getattr(item, "model_fields_set", set())
+    for optional_link in ("template_id", "brand_id"):
+        if optional_link not in fields_set:
+            data.pop(optional_link, None)
+    return data
+
+
 @router.get("", response_model=PlanListOut)
 def list_plans(
     q: str | None = Query(default=None, max_length=100),
@@ -61,7 +70,7 @@ def create_plan(
             scheduled_date=payload.scheduled_date,
             category_id=payload.category_id,
             note=payload.note,
-            receipt_items=[item.model_dump() for item in payload.receipt_items],
+            receipt_items=[_dump_receipt_item(item) for item in payload.receipt_items],
             recurrence_enabled=payload.recurrence_enabled,
             recurrence_frequency=payload.recurrence_frequency,
             recurrence_interval=payload.recurrence_interval,
@@ -97,6 +106,8 @@ def update_plan(
     updates = payload.model_dump(exclude_unset=True)
     if not updates:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields provided for update")
+    if "receipt_items" in payload.model_fields_set and payload.receipt_items is not None:
+        updates["receipt_items"] = [_dump_receipt_item(item) for item in payload.receipt_items]
     service = PlanService(db)
     try:
         return service.update_plan(user_id=user_id, plan_id=plan_id, updates=updates)

@@ -35,7 +35,7 @@
     const hasHover = snapshot.hoveredIndex !== null;
     const hasDefault = !hasHover && snapshot.defaultIndex !== null;
     const resolvedColor = Number.isInteger(resolvedIndex)
-      ? palette[resolvedIndex % palette.length]
+      ? (snapshot.items?.[resolvedIndex]?.display_color || palette[resolvedIndex % palette.length])
       : "";
 
     if (chartNode) {
@@ -62,7 +62,7 @@
     setCenterText(
       titleNode,
       hoveredItem
-        ? String(hoveredItem.category_name || "Без категории")
+        ? String(hoveredItem.display_name || hoveredItem.category_name || "Без категории")
         : (snapshot.defaultTitle || "Итог периода"),
     );
     if (periodNode) {
@@ -75,10 +75,12 @@
     }
     if (metaNode) {
       const hoveredShare = Number((hoveredItem?.display_share_pct ?? hoveredItem?.share_pct) ?? 0);
+      const operationLabel = snapshot.level === "brand" ? "покуп." : "опер.";
+      const operationCount = Number(hoveredItem?.operations_count ?? hoveredItem?.purchases_count ?? 0);
       metaNode.textContent = hoveredItem
         ? snapshot.kind === "all"
-          ? `${String(hoveredItem.category_kind || "") === "income" ? "Доход" : "Расход"} · ${hoveredShare.toFixed(1)}% · ${Number(hoveredItem.operations_count || 0)} опер.`
-          : `${Number(hoveredItem.share_pct || 0).toFixed(1)}% · ${Number(hoveredItem.operations_count || 0)} опер.`
+          ? `${String(hoveredItem.category_kind || "") === "income" ? "Доход" : "Расход"} · ${hoveredShare.toFixed(1)}% · ${operationCount} ${operationLabel}`
+          : `${Number(hoveredItem.share_pct || 0).toFixed(1)}% · ${operationCount} ${operationLabel}`
         : snapshot.kind === "all"
           ? `Доход ${formatMoney(snapshot.defaultIncomeTotal || 0)} · Расход ${formatMoney(snapshot.defaultExpenseTotal || 0)}`
         : snapshot.items.length

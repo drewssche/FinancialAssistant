@@ -69,6 +69,8 @@
       operationsCategoryFilterName: state.operationsCategoryFilterName,
       operationsItemTemplateFilterId: state.operationsItemTemplateFilterId,
       operationsItemTemplateFilterName: state.operationsItemTemplateFilterName,
+      operationsBrandFilterId: state.operationsBrandFilterId,
+      operationsBrandFilterName: state.operationsBrandFilterName,
       currencyFilter: state.currencyFilter,
       analyticsTab: state.analyticsTab,
       analyticsCurrencyFilter: state.analyticsCurrencyFilter,
@@ -116,6 +118,8 @@
     state.operationsCategoryFilterName = snapshot.operationsCategoryFilterName || "";
     state.operationsItemTemplateFilterId = snapshot.operationsItemTemplateFilterId ?? null;
     state.operationsItemTemplateFilterName = snapshot.operationsItemTemplateFilterName || "";
+    state.operationsBrandFilterId = snapshot.operationsBrandFilterId ?? null;
+    state.operationsBrandFilterName = snapshot.operationsBrandFilterName || "";
     state.currencyFilter = snapshot.currencyFilter || "all";
     state.analyticsTab = snapshot.analyticsTab || "calendar";
     state.analyticsCurrencyFilter = snapshot.analyticsCurrencyFilter || "all";
@@ -231,7 +235,7 @@
       { id: "work", node: el.workSection, title: "Работа", subtitle: "Автоматический табель, условия работы и даты выплат" },
       { id: "debts", node: el.debtsSection, title: "Долги", subtitle: "Карточки задолженностей и погашения" },
       { id: "categories", node: el.categoriesSection, title: "Категории", subtitle: "Управление категориями доходов и расходов" },
-      { id: "item_catalog", node: el.itemCatalogSection, title: "Каталог позиций", subtitle: "Справочник позиций чеков по источникам" },
+      { id: "item_catalog", node: el.itemCatalogSection, title: "Каталог", subtitle: "Позиции, бренды и рекомендации по покупкам" },
       { id: "admin", node: el.adminSection, title: "Админ", subtitle: "Контроль доступа пользователей" },
       { id: "settings", node: el.settingsSection, title: "Настройки", subtitle: "Параметры интерфейса и безопасности" },
     ];
@@ -429,7 +433,7 @@
     if (sectionId === "item_catalog" && getItemCatalogFeature().loadItemCatalog) {
       getItemCatalogFeature().loadItemCatalog().catch((err) => {
         const message = core.errorMessage ? core.errorMessage(err) : String(err);
-        core.setStatus(`Не удалось открыть раздел «Каталог позиций»: ${message}`);
+        core.setStatus(`Не удалось открыть раздел «Каталог»: ${message}`);
       });
     }
     if (sectionId === "analytics" && getAnalyticsFeature().loadAnalyticsSection) {

@@ -26,6 +26,15 @@
               </div>
             </div>
           </div>
+          <input id="itemTemplateBrand" type="hidden" />
+          <div id="itemTemplateBrandField" class="create-category-field">
+            <input id="itemTemplateBrandSearch" type="text" placeholder="Бренд (необязательно)" autocomplete="off" />
+            <div id="itemTemplateBrandPickerBlock" class="operation-category-picker app-popover hidden">
+              <div class="category-picker-block">
+                <div id="itemTemplateBrandAll" class="category-chip-list"></div>
+              </div>
+            </div>
+          </div>
           <input id="itemTemplateName" type="text" placeholder="Позиция" required />
           <input id="itemTemplateCategory" type="hidden" />
           <div id="itemTemplateCategoryField" class="create-category-field">
@@ -73,6 +82,7 @@
               <thead>
                 <tr>
                   <th>Источник</th>
+                  <th>Бренд</th>
                   <th>Позиция</th>
                   <th>Категория</th>
                   <th>Последняя цена</th>
@@ -86,6 +96,69 @@
           <button id="submitItemTemplateBtn" class="btn btn-cta modal-main-cta" type="submit" form="itemTemplateForm">
             Сохранить
           </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="itemBrandModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="itemBrandModalTitle">
+      <div class="modal-card modal-small item-brand-modal-card">
+        <div class="panel-head row between">
+          <div>
+            <h3 id="itemBrandModalTitle">Новый бренд</h3>
+            <p class="subtitle">Название и цвет чипа бренда</p>
+          </div>
+          <button id="closeItemBrandModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
+        </div>
+        <form id="itemBrandForm" class="category-modal-form">
+          <label class="field">
+            <span>Название</span>
+            <input id="itemBrandName" type="text" maxlength="160" placeholder="Например, Vici" required />
+          </label>
+          <fieldset class="item-brand-color-fieldset">
+            <legend>Акцентный цвет</legend>
+            <div class="item-brand-color-control">
+              <input id="itemBrandAccentColor" type="color" value="#7aa8ff" aria-label="Акцентный цвет бренда" />
+              <div id="itemBrandColorPresets" class="item-brand-color-presets" aria-label="Готовые цвета">
+                <button type="button" data-item-brand-color="#7aa8ff" style="--brand-preset:#7aa8ff" aria-label="Синий"></button>
+                <button type="button" data-item-brand-color="#5fd3bc" style="--brand-preset:#5fd3bc" aria-label="Бирюзовый"></button>
+                <button type="button" data-item-brand-color="#ff8f6b" style="--brand-preset:#ff8f6b" aria-label="Коралловый"></button>
+                <button type="button" data-item-brand-color="#ffd166" style="--brand-preset:#ffd166" aria-label="Жёлтый"></button>
+                <button type="button" data-item-brand-color="#c084fc" style="--brand-preset:#c084fc" aria-label="Фиолетовый"></button>
+                <button type="button" data-item-brand-color="#fb7185" style="--brand-preset:#fb7185" aria-label="Розовый"></button>
+              </div>
+            </div>
+          </fieldset>
+          <div id="itemBrandPreview" class="item-brand-preview" aria-live="polite"></div>
+        </form>
+        <div class="modal-footer">
+          <button id="submitItemBrandBtn" class="btn btn-cta modal-main-cta" type="submit" form="itemBrandForm">Создать бренд</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="itemBrandDetailModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="itemBrandDetailTitle">
+      <div class="modal-card modal-medium item-brand-detail-card">
+        <div class="panel-head row between">
+          <div>
+            <h3 id="itemBrandDetailTitle">Бренд</h3>
+            <p id="itemBrandDetailSubtitle" class="subtitle">Связанные позиции по источникам</p>
+          </div>
+          <button id="closeItemBrandDetailModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
+        </div>
+        <div id="itemBrandDetailKpiGrid" class="analytics-kpi-grid section-kpi-grid" aria-label="Итоги бренда"></div>
+        <div class="item-brand-detail-actions">
+          <button id="openItemBrandOperationsBtn" class="btn btn-secondary" type="button">Открыть операции бренда</button>
+          <button id="editItemBrandFromDetailBtn" class="btn btn-secondary" type="button">Изменить бренд</button>
+        </div>
+        <div class="table-wrap">
+          <table class="table table-hover mobile-card-table item-brand-detail-table">
+            <thead><tr><th>Источник</th><th>Позиция</th><th>Категория</th><th>Последняя цена</th><th></th></tr></thead>
+            <tbody id="itemBrandDetailBody"></tbody>
+          </table>
         </div>
       </div>
     </div>

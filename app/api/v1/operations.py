@@ -6,9 +6,17 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user_id
 from app.db.session import get_db
 from app.schemas.operation import (
+    ItemBrandCreate,
+    ItemBrandListOut,
+    ItemBrandMergeIn,
+    ItemBrandMergeOut,
+    ItemBrandOut,
+    ItemBrandUpdate,
     MoneyFlowListOut,
     OperationCreate,
     OperationItemTemplateCreate,
+    OperationItemTemplateBulkBrandUpdateIn,
+    OperationItemTemplateBulkBrandUpdateOut,
     OperationItemTemplateDeleteAllOut,
     OperationItemRecommendationBulkUpdateIn,
     OperationItemRecommendationBulkUpdateOut,
@@ -24,9 +32,19 @@ from app.schemas.operation import (
     OperationSummaryOut,
     OperationUpdate,
 )
+from app.services.item_brand_service import ItemBrandService
 from app.services.operation_service import OperationService
 
 router = APIRouter(prefix="/operations", tags=["operations"])
+
+
+def _dump_receipt_item(item) -> dict:
+    data = item.model_dump()
+    fields_set = getattr(item, "model_fields_set", set())
+    for optional_link in ("template_id", "brand_id"):
+        if optional_link not in fields_set:
+            data.pop(optional_link, None)
+    return data
 
 
 @router.get("", response_model=OperationListOut)
@@ -39,6 +57,7 @@ def list_operations(
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
     category_id: int | None = Query(default=None),
+    brand_id: int | None = Query(default=None, ge=1),
     q: str | None = Query(default=None, max_length=100),
     quick_view: str | None = Query(default=None, pattern="^(all|receipt|large|uncategorized)$"),
     currency_scope: str | None = Query(default=None, pattern="^(all|base|foreign)$"),
@@ -57,6 +76,7 @@ def list_operations(
             date_from=date_from,
             date_to=date_to,
             category_id=category_id,
+            brand_id=brand_id,
             q=q,
             quick_view=quick_view,
             currency_scope=currency_scope,
@@ -81,6 +101,7 @@ def list_money_flow(
     currency_scope: str | None = Query(default=None, pattern="^(all|base|foreign)$"),
     category_id: int | None = Query(default=None),
     item_template_id: int | None = Query(default=None),
+    brand_id: int | None = Query(default=None, ge=1),
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
@@ -100,6 +121,7 @@ def list_money_flow(
             currency_scope=currency_scope,
             category_id=category_id,
             item_template_id=item_template_id,
+            brand_id=brand_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -113,6 +135,7 @@ def summarize_operations(
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
     category_id: int | None = Query(default=None),
+    brand_id: int | None = Query(default=None, ge=1),
     q: str | None = Query(default=None, max_length=100),
     quick_view: str | None = Query(default=None, pattern="^(all|receipt|large|uncategorized)$"),
     currency_scope: str | None = Query(default=None, pattern="^(all|base|foreign)$"),
@@ -127,6 +150,7 @@ def summarize_operations(
             date_from=date_from,
             date_to=date_to,
             category_id=category_id,
+            brand_id=brand_id,
             q=q,
             quick_view=quick_view,
             currency_scope=currency_scope,
@@ -145,6 +169,7 @@ def summarize_money_flow(
     currency_scope: str | None = Query(default=None, pattern="^(all|base|foreign)$"),
     category_id: int | None = Query(default=None),
     item_template_id: int | None = Query(default=None),
+    brand_id: int | None = Query(default=None, ge=1),
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
@@ -160,6 +185,7 @@ def summarize_money_flow(
             currency_scope=currency_scope,
             category_id=category_id,
             item_template_id=item_template_id,
+            brand_id=brand_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -188,7 +214,7 @@ def create_operation(
             operation_date=payload.operation_date,
             category_id=payload.category_id,
             note=payload.note,
-            receipt_items=[item.model_dump() for item in payload.receipt_items],
+            receipt_items=[_dump_receipt_item(item) for item in payload.receipt_items],
             fx_settlement=payload.fx_settlement.model_dump() if payload.fx_settlement else None,
         )
     except ValueError as exc:
@@ -200,6 +226,7 @@ def list_operation_item_templates(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     q: str | None = Query(default=None, max_length=120),
+    brand_id: int | None = Query(default=None, ge=1),
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
@@ -209,6 +236,7 @@ def list_operation_item_templates(
         page=page,
         page_size=page_size,
         q=q,
+        brand_id=brand_id,
     )
     return OperationItemTemplateListOut(
         items=items,
@@ -218,6 +246,107 @@ def list_operation_item_templates(
     )
 
 
+@router.get("/item-brands", response_model=ItemBrandListOut)
+def list_item_brands(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=100, ge=1, le=500),
+    q: str | None = Query(default=None, max_length=160),
+    include_archived: bool = Query(default=False),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    items, total = ItemBrandService(db).list(
+        user_id=user_id,
+        page=page,
+        page_size=page_size,
+        q=q,
+        include_archived=include_archived,
+    )
+    return ItemBrandListOut(items=items, total=total, page=page, page_size=page_size)
+
+
+@router.post("/item-brands", response_model=ItemBrandOut, status_code=status.HTTP_201_CREATED)
+def create_item_brand(
+    payload: ItemBrandCreate,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        return ItemBrandService(db).create(
+            user_id=user_id,
+            name=payload.name,
+            accent_color=payload.accent_color,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/item-brands/{brand_id}", response_model=ItemBrandOut)
+def get_item_brand(
+    brand_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Archived brands remain a valid historical dimension. Keep their detail
+        # readable even though they are omitted from active selectors and cannot
+        # be edited until explicitly restored.
+        return ItemBrandService(db).get(user_id=user_id, brand_id=brand_id, include_archived=True)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.patch("/item-brands/{brand_id}", response_model=ItemBrandOut)
+def update_item_brand(
+    brand_id: int,
+    payload: ItemBrandUpdate,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    updates = payload.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields provided for update")
+    try:
+        return ItemBrandService(db).update(user_id=user_id, brand_id=brand_id, updates=updates)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.post("/item-brands/{brand_id}/merge", response_model=ItemBrandMergeOut)
+def merge_item_brand(
+    brand_id: int,
+    payload: ItemBrandMergeIn,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        brand, reassigned = ItemBrandService(db).merge(
+            user_id=user_id,
+            source_brand_id=brand_id,
+            target_brand_id=payload.target_brand_id,
+        )
+        return ItemBrandMergeOut(brand=brand, reassigned_positions=reassigned)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.delete("/item-brands/{brand_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+def delete_item_brand(
+    brand_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        ItemBrandService(db).archive(user_id=user_id, brand_id=brand_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.get("/item-recommendations", response_model=list[OperationItemRecommendationOut])
 def list_operation_item_recommendations(
     limit: int = Query(default=12, ge=1, le=100),
@@ -225,6 +354,26 @@ def list_operation_item_recommendations(
     db: Session = Depends(get_db),
 ):
     return OperationService(db).list_item_recommendations(user_id=user_id, limit=limit)
+
+
+@router.post("/item-templates/bulk-brand", response_model=OperationItemTemplateBulkBrandUpdateOut)
+def bulk_update_operation_item_template_brand(
+    payload: OperationItemTemplateBulkBrandUpdateIn,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    service = OperationService(db)
+    try:
+        updated = service.bulk_update_item_template_brand(
+            user_id=user_id,
+            template_ids=payload.template_ids,
+            brand_id=payload.brand_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return OperationItemTemplateBulkBrandUpdateOut(updated=updated)
 
 
 @router.get("/item-recommendations/manage", response_model=list[OperationItemRecommendationManageOut])
@@ -330,6 +479,7 @@ def create_operation_item_template(
             shop_name=payload.shop_name,
             name=payload.name,
             last_category_id=payload.last_category_id,
+            brand_id=payload.brand_id,
             latest_unit_price=payload.latest_unit_price,
             latest_price_date=payload.latest_price_date,
             recommendation_enabled=payload.recommendation_enabled,
@@ -411,8 +561,8 @@ def update_operation(
     updates = payload.model_dump(exclude_unset=True)
     if not updates:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields provided for update")
-    if "receipt_items" in updates and updates["receipt_items"] is not None:
-        updates["receipt_items"] = [item.model_dump() if hasattr(item, "model_dump") else item for item in updates["receipt_items"]]
+    if "receipt_items" in payload.model_fields_set and payload.receipt_items is not None:
+        updates["receipt_items"] = [_dump_receipt_item(item) for item in payload.receipt_items]
     if "fx_settlement" in updates and updates["fx_settlement"] is not None and hasattr(updates["fx_settlement"], "model_dump"):
         updates["fx_settlement"] = updates["fx_settlement"].model_dump()
 

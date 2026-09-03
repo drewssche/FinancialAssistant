@@ -5,7 +5,9 @@ from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.money import allocate_largest_remainder
 from app.db.models import Category, CategoryGroup, UserPreference
+from app.repositories.item_brand_repo import ItemBrandRepository
 from app.repositories.currency_repo import CurrencyRepository
 from app.repositories.operation_repo import OperationRepository
 from app.services.dashboard_analytics_timeline import DashboardAnalyticsTimelineService
@@ -19,6 +21,7 @@ class DashboardAnalyticsHighlightsService:
         self.repo = repo
         self.timeline = timeline
         self.currency_repo = CurrencyRepository(db)
+        self.brand_repo = ItemBrandRepository(db)
 
     def get_user_base_currency(self, user_id: int) -> str:
         prefs = self.db.scalar(select(UserPreference).where(UserPreference.user_id == user_id))
@@ -151,15 +154,16 @@ class DashboardAnalyticsHighlightsService:
             allocated_receipt_total = receipt_total
             scaled_allocations: list[tuple[int | None, Decimal]] = []
             if receipt_total > 0 and allocation_amount > 0 and receipt_total > allocation_amount:
-                ratio = allocation_amount / receipt_total
-                running_total = Decimal("0")
-                last_index = len(receipt_allocation_rows) - 1
-                for index, (_row, effective_category_id, line_total) in enumerate(receipt_allocation_rows):
-                    if index == last_index:
-                        scaled_amount = allocation_amount - running_total
-                    else:
-                        scaled_amount = (line_total * ratio).quantize(self.MONEY_Q, rounding=ROUND_HALF_UP)
-                        running_total += scaled_amount
+                scaled_amounts = allocate_largest_remainder(
+                    [line_total for _row, _effective_category_id, line_total in receipt_allocation_rows],
+                    allocation_amount,
+                    quantum=self.MONEY_Q,
+                )
+                for (_row, effective_category_id, _line_total), scaled_amount in zip(
+                    receipt_allocation_rows,
+                    scaled_amounts,
+                    strict=True,
+                ):
                     scaled_allocations.append((effective_category_id, scaled_amount))
                 allocated_receipt_total = allocation_amount
             else:
@@ -197,6 +201,71 @@ class DashboardAnalyticsHighlightsService:
                     }
                 )
         return allocations, position_stats
+
+    def build_brand_analytics_snapshot(
+        self,
+        *,
+        user_id: int,
+        operations: list,
+        receipt_items_by_operation: dict[int, list] | None = None,
+    ) -> list[dict]:
+        """Allocate only receipt rows to their template's current brand in base currency."""
+        grouped_receipt_items = receipt_items_by_operation or {}
+        template_ids = [
+            int(row.template_id)
+            for rows in grouped_receipt_items.values()
+            for row in rows
+            if row.template_id is not None
+        ]
+        brand_meta = self.brand_repo.brand_meta_for_templates(
+            user_id=user_id,
+            template_ids=template_ids,
+        )
+        allocations: list[dict] = []
+        for operation in operations:
+            operation_id = int(operation["id"])
+            receipt_rows = grouped_receipt_items.get(operation_id, []) or []
+            if not receipt_rows:
+                continue
+            fx_rate = Decimal(operation.get("fx_rate") or 1)
+            base_line_totals = [
+                (Decimal(row.line_total or 0) * fx_rate).quantize(
+                    self.MONEY_Q,
+                    rounding=ROUND_HALF_UP,
+                )
+                for row in receipt_rows
+            ]
+            receipt_total = sum(base_line_totals, start=Decimal("0"))
+            allocation_amount = abs(Decimal(operation["amount"] or 0))
+            if receipt_total <= 0 or allocation_amount <= 0:
+                continue
+            scale_down = receipt_total > allocation_amount
+            allocated_amounts = (
+                allocate_largest_remainder(
+                    base_line_totals,
+                    allocation_amount,
+                    quantum=self.MONEY_Q,
+                )
+                if scale_down
+                else base_line_totals
+            )
+            for row, allocated_amount in zip(receipt_rows, allocated_amounts, strict=True):
+                template_id = int(row.template_id) if row.template_id is not None else None
+                meta = brand_meta.get(template_id or 0, {})
+                allocations.append(
+                    {
+                        "operation_id": operation_id,
+                        "operation_date": operation["operation_date"],
+                        "kind": operation["kind"],
+                        "template_id": template_id,
+                        "brand_id": meta.get("brand_id"),
+                        "brand_name": meta.get("brand_name"),
+                        "brand_accent_color": meta.get("brand_accent_color"),
+                        "brand_is_archived": bool(meta.get("brand_is_archived", False)),
+                        "amount": allocated_amount,
+                    }
+                )
+        return allocations
 
     def load_category_maps_for_allocations(
         self,
@@ -312,6 +381,20 @@ class DashboardAnalyticsHighlightsService:
             category_group_id_map,
             category_group_name_map,
         ) = self.load_category_maps_for_allocations([*current_category_allocations, *previous_category_allocations])
+        if category_breakdown_level == "brand":
+            current_breakdown_allocations = self.build_brand_analytics_snapshot(
+                user_id=user_id,
+                operations=operations,
+                receipt_items_by_operation=current_receipt_items,
+            )
+            previous_breakdown_allocations = self.build_brand_analytics_snapshot(
+                user_id=user_id,
+                operations=prev_operations,
+                receipt_items_by_operation=previous_receipt_items,
+            )
+        else:
+            current_breakdown_allocations = current_category_allocations
+            previous_breakdown_allocations = previous_category_allocations
 
         heavy_candidates = [item for item in operations if item["kind"] == "expense"] or operations
         top_operations = sorted(
@@ -334,28 +417,50 @@ class DashboardAnalyticsHighlightsService:
                 "category_name": "Без категории",
                 "group_id": None,
                 "group_name": None,
+                "brand_id": None,
+                "brand_name": None,
+                "brand_accent_color": None,
+                "brand_is_archived": False,
+                "template_ids": set(),
             }
         )
         previous_category_totals: dict[tuple[str, int | None], Decimal] = defaultdict(lambda: Decimal("0"))
 
-        def breakdown_key(category_id: int | None) -> tuple[str, int | None]:
+        def breakdown_key(allocation: dict) -> tuple[str, int | None]:
+            if category_breakdown_level == "brand":
+                brand_id = allocation.get("brand_id")
+                # Unlike categories, a brand is not tied to a single operation kind.
+                # Keep its income and expense slices separate in the combined view,
+                # just as the UI already does for income/expense categories.
+                brand_scope = allocation["kind"] if category_kind == "all" else "brand"
+                return (f"brand:{brand_scope}", int(brand_id) if brand_id is not None else None)
+            category_id = allocation["category_id"]
             if category_breakdown_level == "group":
                 if category_id is None:
                     return ("group", None)
                 return ("group", category_group_id_map.get(category_id))
             return ("category", category_id)
 
-        for allocation in current_category_allocations:
+        for allocation in current_breakdown_allocations:
             if not include_category_item(allocation["kind"]):
                 continue
-            category_id = allocation["category_id"]
-            key = breakdown_key(category_id)
+            category_id = allocation.get("category_id")
+            key = breakdown_key(allocation)
             bucket = current_category_totals[key]
             bucket["total_amount"] += Decimal(allocation["amount"] or 0)
             bucket.setdefault("operation_ids", set()).add(int(allocation["operation_id"]))
             bucket["operations_count"] = len(bucket["operation_ids"])
             bucket["category_kind"] = allocation["kind"]
-            if category_breakdown_level == "group":
+            if category_breakdown_level == "brand":
+                bucket["category_id"] = None
+                bucket["category_name"] = allocation.get("brand_name") or "Без бренда"
+                bucket["brand_id"] = allocation.get("brand_id")
+                bucket["brand_name"] = allocation.get("brand_name") or "Без бренда"
+                bucket["brand_accent_color"] = allocation.get("brand_accent_color")
+                bucket["brand_is_archived"] = bool(allocation.get("brand_is_archived", False))
+                if allocation.get("template_id") is not None:
+                    bucket["template_ids"].add(int(allocation["template_id"]))
+            elif category_breakdown_level == "group":
                 bucket["group_id"] = key[1]
                 bucket["group_name"] = (
                     category_group_name_map.get(category_id)
@@ -373,14 +478,33 @@ class DashboardAnalyticsHighlightsService:
                 )
                 bucket["group_id"] = category_group_id_map.get(category_id) if category_id is not None else None
                 bucket["group_name"] = category_group_name_map.get(category_id) if category_id is not None else None
-        for allocation in previous_category_allocations:
+        for allocation in previous_breakdown_allocations:
             if not include_category_item(allocation["kind"]):
                 continue
-            previous_category_totals[breakdown_key(allocation["category_id"])] += Decimal(allocation["amount"] or 0)
+            previous_category_totals[breakdown_key(allocation)] += Decimal(allocation["amount"] or 0)
 
         category_breakdown_total = sum(
             (bucket["total_amount"] for bucket in current_category_totals.values()),
             start=Decimal("0"),
+        )
+        branded_amount_total = sum(
+            (
+                Decimal(allocation["amount"] or 0)
+                for allocation in current_breakdown_allocations
+                if include_category_item(allocation["kind"])
+                and allocation.get("brand_id") is not None
+            ),
+            start=Decimal("0"),
+        ) if category_breakdown_level == "brand" else Decimal("0")
+        unbranded_amount_total = (
+            category_breakdown_total - branded_amount_total
+            if category_breakdown_level == "brand"
+            else Decimal("0")
+        )
+        brand_coverage_pct = (
+            float((branded_amount_total / category_breakdown_total) * Decimal("100"))
+            if category_breakdown_level == "brand" and category_breakdown_total > 0
+            else None
         )
         sorted_categories = sorted(
             current_category_totals.items(),
@@ -519,12 +643,23 @@ class DashboardAnalyticsHighlightsService:
             "fx_cashflow_change_pct": self.timeline.percent_change(fx_cashflow_total, prev_fx_cashflow_total),
             "cashflow_change_pct": self.timeline.percent_change(cashflow_total, prev_cashflow_total),
             "operations_change_pct": self.timeline.percent_change(Decimal(operations_count), Decimal(prev_operations_count)),
+            "receipt_amount_total": category_breakdown_total if category_breakdown_level == "brand" else Decimal("0"),
+            "branded_amount_total": branded_amount_total,
+            "unbranded_amount_total": unbranded_amount_total,
+            "brand_coverage_pct": brand_coverage_pct,
             "category_breakdown": [
                 {
                     "category_id": bucket["category_id"],
                     "category_name": bucket["category_name"],
                     "group_id": bucket["group_id"],
                     "group_name": bucket["group_name"],
+                    "brand_id": bucket["brand_id"],
+                    "brand_name": bucket["brand_name"],
+                    "brand_accent_color": bucket["brand_accent_color"],
+                    "brand_is_archived": bool(bucket["brand_is_archived"]),
+                    "positions_count": len(bucket["template_ids"]),
+                    "purchases_count": int(bucket["operations_count"]),
+                    "item_template_ids": sorted(bucket["template_ids"]),
                     "category_kind": (
                         category_kind_map.get(bucket["category_id"], bucket["category_kind"])
                         if bucket["category_id"] is not None
@@ -558,6 +693,13 @@ class DashboardAnalyticsHighlightsService:
                     "category_name": bucket["category_name"],
                     "group_id": bucket["group_id"],
                     "group_name": bucket["group_name"],
+                    "brand_id": bucket["brand_id"],
+                    "brand_name": bucket["brand_name"],
+                    "brand_accent_color": bucket["brand_accent_color"],
+                    "brand_is_archived": bool(bucket["brand_is_archived"]),
+                    "positions_count": len(bucket["template_ids"]),
+                    "purchases_count": int(bucket["operations_count"]),
+                    "item_template_ids": sorted(bucket["template_ids"]),
                     "category_kind": (
                         category_kind_map.get(bucket["category_id"], bucket["category_kind"])
                         if bucket["category_id"] is not None

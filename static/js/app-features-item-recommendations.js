@@ -1,9 +1,8 @@
 (() => {
-  const { el, core } = window.App;
+  const { state, el, core } = window.App;
   const escapeHtml = core.escapeHtml || ((value) => String(value ?? ""));
 
   let rows = [];
-  let activeView = "positions";
   let activeStatus = "all";
   let selectedIds = new Set();
   let requestController = null;
@@ -211,14 +210,20 @@
   }
 
   function setView(view, options = {}) {
-    activeView = view === "recommendations" ? "recommendations" : "positions";
+    const activeView = ["positions", "brands", "recommendations"].includes(view) ? view : "positions";
+    state.itemCatalogView = activeView;
     el.itemCatalogPositionsView?.classList.toggle("hidden", activeView !== "positions");
+    el.itemBrandsView?.classList.toggle("hidden", activeView !== "brands");
     el.itemRecommendationsView?.classList.toggle("hidden", activeView !== "recommendations");
     el.itemCatalogViewTabs?.querySelectorAll("[data-item-catalog-view]").forEach((button) => {
       button.classList.toggle("active", button.dataset.itemCatalogView === activeView);
     });
     if (activeView === "recommendations" && (options.force || rows.length === 0)) {
       load().catch((err) => core.setStatus(`Не удалось загрузить рекомендации: ${String(err)}`));
+    }
+    if (activeView === "brands") {
+      window.App.getRuntimeModule?.("item-brands")?.ensureItemBrandsLoaded?.({ force: options.force === true })
+        .catch((err) => core.setStatus(`Не удалось загрузить бренды: ${String(err)}`));
     }
   }
 
@@ -288,12 +293,18 @@
       return;
     }
     if (action === "edit") {
+      const catalogItem = (state.itemCatalogItems || []).find((entry) => Number(entry?.id || 0) === templateId) || {};
       getCatalogFeature().openItemTemplateModal?.({
+        ...catalogItem,
         id: templateId,
         shop_name: item.shop_name,
         name: item.name,
         last_category_id: item.category_id,
         latest_unit_price: item.latest_unit_price,
+        brand_id: item.brand_id ?? catalogItem.brand_id ?? null,
+        brand_name: item.brand_name ?? catalogItem.brand_name ?? null,
+        brand_accent_color: item.brand_accent_color ?? catalogItem.brand_accent_color ?? null,
+        brand_is_archived: item.brand_is_archived ?? catalogItem.brand_is_archived ?? false,
         recommendation_enabled: item.recommendation_enabled,
         recommendation_mode: item.recommendation_mode,
         recommendation_interval_days: item.interval_days,
@@ -421,7 +432,7 @@
         runBulkAction(el.disableSelectedRecommendationsBtn, "disable");
       }, { title: "Отключение рекомендаций", confirmLabel: "Отключить" });
     });
-    setView(activeView);
+    setView(state.itemCatalogView || "positions");
   }
 
   window.App.registerRuntimeModule?.("item-recommendation-manager", {

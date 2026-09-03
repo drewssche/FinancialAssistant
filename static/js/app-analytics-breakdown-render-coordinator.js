@@ -20,7 +20,7 @@
         <path
           class="analytics-category-slice"
           d="${buildDonutSegmentPath(center, center, outerRadius, innerRadius, startAngle, endAngle)}"
-          fill="${palette[idx % palette.length]}"
+          fill="${item.display_color || palette[idx % palette.length]}"
           style="--slice-shift-x:${shiftX.toFixed(2)}px; --slice-shift-y:${shiftY.toFixed(2)}px;"
           ${datasetBuilder(item, idx)}
         ></path>
@@ -53,7 +53,7 @@
           <path
             class="analytics-category-slice"
             d="${buildDonutSegmentPath(center, center, outerRadius, innerRadius, startAngle, endAngle)}"
-            fill="${palette[localIdx % palette.length]}"
+            fill="${item.display_color || palette[localIdx % palette.length]}"
             style="--slice-shift-x:${shiftX.toFixed(2)}px; --slice-shift-y:${shiftY.toFixed(2)}px;"
             ${datasetBuilder(item, globalIdx)}
           ></path>
@@ -90,6 +90,17 @@
     const kindBadge = (itemKind) => selectedKind === "all"
       ? `<span class="analytics-breakdown-kind-badge analytics-breakdown-kind-badge-${itemKind === "income" ? "income" : "expense"}">${escapeHtml(categoryKindShort(itemKind))}</span>`
       : "";
+    const identityDataset = (item) => `
+      data-analytics-category-id="${selectedLevel === "category" ? (item.category_id ?? "") : ""}"
+      data-analytics-brand-id="${selectedLevel === "brand" ? (item.brand_id ?? "") : ""}"
+      data-analytics-brand-color="${selectedLevel === "brand" ? (item.display_color || "") : ""}"
+      data-analytics-brand-spent="${selectedLevel === "brand" ? Number(item.total_amount || 0) : ""}"
+      data-analytics-brand-purchases="${selectedLevel === "brand" ? Number(item.purchases_count ?? item.operations_count ?? 0) : ""}"
+      data-analytics-brand-positions="${selectedLevel === "brand" ? Number(item.positions_count || 0) : ""}"
+      data-analytics-brand-archived="${selectedLevel === "brand" ? Boolean(item.brand_is_archived) : ""}"
+      data-analytics-entity-id="${item.entity_id ?? ""}"
+      data-analytics-entity-name="${escapeHtml(item.display_name || item.category_name || "Без категории")}"
+    `;
 
     if (el.analyticsCategoryBreakdownLabel) {
       el.analyticsCategoryBreakdownLabel.textContent = selectedKind === "all"
@@ -119,6 +130,24 @@
     }
     syncSegmentedActive(el.analyticsBreakdownLevelTabs, "analytics-breakdown-level", selectedLevel);
     syncSegmentedActive(el.analyticsCategoryKindTabs, "analytics-category-kind", selectedKind);
+    if (el.analyticsBrandCoverage) {
+      const payload = snapshot.payload || {};
+      const isBrand = selectedLevel === "brand";
+      el.analyticsBrandCoverage.classList.toggle("hidden", !isBrand);
+      if (isBrand) {
+        const branded = Number(payload.branded_amount_total || 0);
+        const unbranded = Number(payload.unbranded_amount_total || 0);
+        const receiptTotal = Number(payload.receipt_amount_total || branded + unbranded);
+        const coverage = payload.brand_coverage_pct === null || payload.brand_coverage_pct === undefined
+          ? (receiptTotal > 0 ? (branded / receiptTotal) * 100 : 0)
+          : Number(payload.brand_coverage_pct || 0);
+        el.analyticsBrandCoverage.innerHTML = `
+          <article class="analytics-brand-coverage-card"><span class="muted-small">Покрытие брендами</span><strong>${coverage.toFixed(1)}%</strong></article>
+          <article class="analytics-brand-coverage-card"><span class="muted-small">С брендом</span><strong>${formatMoney(branded)}</strong></article>
+          <article class="analytics-brand-coverage-card"><span class="muted-small">Без бренда</span><strong>${formatMoney(unbranded)}</strong></article>
+        `;
+      }
+    }
 
     if (el.analyticsCategoryBreakdownSvg) {
       if (visibleItems.length) {
@@ -128,8 +157,8 @@
             buildDonutSegmentPath,
             datasetBuilder: (item, idx) => `
               data-analytics-category-index="${idx}"
-              data-analytics-category-id="${item.category_id ?? ""}"
-              data-analytics-category-name="${escapeHtml(item.category_name || "Без категории")}"
+              ${identityDataset(item)}
+              data-analytics-category-name="${escapeHtml(item.display_name || item.category_name || "Без категории")}"
               data-analytics-category-kind="${item.category_kind || selectedKind}"
               data-analytics-breakdown-level="${selectedLevel}"
             `,
@@ -143,8 +172,8 @@
             buildDonutSegmentPath,
             datasetBuilder: (item, idx) => `
               data-analytics-category-index="${idx}"
-              data-analytics-category-id="${item.category_id ?? ""}"
-              data-analytics-category-name="${escapeHtml(item.category_name || "Без категории")}"
+              ${identityDataset(item)}
+              data-analytics-category-name="${escapeHtml(item.display_name || item.category_name || "Без категории")}"
               data-analytics-category-kind="${item.category_kind || selectedKind}"
               data-analytics-breakdown-level="${selectedLevel}"
             `,
@@ -174,8 +203,10 @@
       el.analyticsCategoryBreakdownList,
       listItems,
       (item) => {
-        const canDrilldown = selectedLevel === "category" && item.category_id !== null && item.category_id !== undefined;
-        const itemName = escapeHtml(item.category_name || "Без категории");
+        const canOpenCategory = selectedLevel === "category" && item.category_id !== null && item.category_id !== undefined;
+        const canOpenBrand = selectedLevel === "brand" && item.brand_id !== null && item.brand_id !== undefined;
+        const canDrilldown = canOpenCategory || canOpenBrand;
+        const itemName = escapeHtml(item.display_name || item.category_name || (selectedLevel === "brand" ? "Без бренда" : "Без категории"));
         const itemClasses = [
           "analytics-insight-item",
           "analytics-category-breakdown-item",
@@ -187,21 +218,22 @@
           ? `Доля в ${String(item.category_kind || "") === "income" ? "доходах" : "расходах"}: ${displayShare.toFixed(1)}%`
           : `Доля: ${Number(item.share_pct || 0).toFixed(1)}%`;
         return `
-          <article class="${itemClasses}" data-analytics-category-index="${item.is_visible_in_chart ? item.chart_index : ""}" data-analytics-category-id="${canDrilldown ? item.category_id : ""}" data-analytics-category-name="${itemName}" data-analytics-category-kind="${item.category_kind || selectedKind}" data-analytics-breakdown-level="${selectedLevel}">
+          <article class="${itemClasses}" data-analytics-category-index="${item.is_visible_in_chart ? item.chart_index : ""}" ${identityDataset(item)} data-analytics-category-name="${itemName}" data-analytics-category-kind="${item.category_kind || selectedKind}" data-analytics-breakdown-level="${selectedLevel}">
             <div class="analytics-insight-head">
               <div class="analytics-category-row-title">
                 <span class="analytics-category-color" style="background:${selectedKind === "all"
-                  ? (String(item.category_kind || "") === "income"
+                  ? (item.display_color || (String(item.category_kind || "") === "income"
                     ? INCOME_PALETTE[visibleIndex % INCOME_PALETTE.length]
-                    : EXPENSE_PALETTE[visibleIndex % EXPENSE_PALETTE.length])
-                  : palette[visibleIndex % palette.length]}"></span>
+                    : EXPENSE_PALETTE[visibleIndex % EXPENSE_PALETTE.length]))
+                  : (item.display_color || palette[visibleIndex % palette.length])}"></span>
                 <strong>${itemName}</strong>
                 ${kindBadge(item.category_kind || selectedKind)}
               </div>
               <span class="muted-small">${formatMoney(item.total_amount || 0)}</span>
             </div>
             <div class="muted-small">
-              ${shareText} · Операций: ${item.operations_count}
+              ${shareText} · ${selectedLevel === "brand" ? "Покупок" : "Операций"}: ${Number(item.operations_count ?? item.purchases_count ?? 0)}
+              ${selectedLevel === "brand" ? ` · Позиций: ${Number(item.positions_count || 0)}` : ""}
               ${selectedKind === "all" ? ` · Тип: ${categoryKindShort(item.category_kind)}` : ""}
             </div>
             <div class="analytics-insight-actions">
@@ -209,12 +241,14 @@
                 <span class="analytics-visibility-toggle-track"><span class="analytics-visibility-toggle-thumb"></span></span>
                 <span class="analytics-visibility-toggle-label">${item.is_visible_in_chart ? "Вкл" : "Выкл"}</span>
               </button>
-              ${canDrilldown ? '<button class="btn btn-secondary" type="button">Открыть операции</button>' : ""}
+              ${canDrilldown ? `<button class="btn btn-secondary" type="button">${canOpenBrand ? "Открыть бренд" : "Открыть операции"}</button>` : ""}
             </div>
           </article>
         `;
       },
-      selectedLevel === "group" ? "Нет групп за выбранный период" : "Нет категорий за выбранный период",
+      selectedLevel === "group"
+        ? "Нет групп за выбранный период"
+        : selectedLevel === "brand" ? "Нет брендов за выбранный период" : "Нет категорий за выбранный период",
     );
     breakdownUiCoordinator.bindListItemHover?.({
       container: el.analyticsCategoryBreakdownList,

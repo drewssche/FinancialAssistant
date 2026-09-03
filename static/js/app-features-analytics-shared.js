@@ -213,18 +213,31 @@
   }
 
   function breakdownEntityLabel(level) {
+    if (level === "brand") {
+      return "брендам";
+    }
     return level === "group" ? "группам" : "категориям";
   }
 
   function breakdownEntityCountLabel(level) {
+    if (level === "brand") {
+      return "бр.";
+    }
     return level === "group" ? "гр." : "кат.";
   }
 
   function breakdownTitle(level) {
+    if (level === "brand") {
+      return "Структура по брендам";
+    }
     return level === "group" ? "Структура по группам" : "Структура по категориям";
   }
 
-  function breakdownItemKey(level, item) {
+  function breakdownItemKey(level, item, selectedKind = "expense") {
+    if (level === "brand") {
+      const brandKey = item.brand_id !== null && item.brand_id !== undefined ? `brand:${item.brand_id}` : "brand:none";
+      return selectedKind === "all" ? `${brandKey}:${item.category_kind || "expense"}` : brandKey;
+    }
     if (level === "group") {
       return item.group_id !== null && item.group_id !== undefined ? `group:${item.group_id}` : "group:none";
     }

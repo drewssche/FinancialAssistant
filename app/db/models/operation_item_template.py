@@ -21,6 +21,11 @@ class OperationItemTemplate(Base):
         nullable=True,
         index=True,
     )
+    brand_id: Mapped[int | None] = mapped_column(
+        ForeignKey("item_brands.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     use_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

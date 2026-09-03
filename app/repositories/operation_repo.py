@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import (
     Category,
+    ItemBrand,
     Operation,
     OperationItemPrice,
     OperationItemTemplate,
@@ -32,6 +33,7 @@ class OperationRepository:
         category_id: int | None,
         q: str | None,
         item_template_id: int | None = None,
+        brand_id: int | None = None,
         receipt_only: bool = False,
         uncategorized_only: bool = False,
         min_amount: Decimal | None = None,
@@ -66,6 +68,18 @@ class OperationRepository:
                     OperationReceiptItem.user_id == user_id,
                     OperationReceiptItem.operation_id == Operation.id,
                     OperationReceiptItem.template_id == item_template_id,
+                )
+                .exists()
+            )
+        if brand_id is not None:
+            conditions.append(
+                select(OperationReceiptItem.id)
+                .join(OperationItemTemplate, OperationItemTemplate.id == OperationReceiptItem.template_id)
+                .where(
+                    OperationReceiptItem.user_id == user_id,
+                    OperationReceiptItem.operation_id == Operation.id,
+                    OperationItemTemplate.user_id == user_id,
+                    OperationItemTemplate.brand_id == brand_id,
                 )
                 .exists()
             )
@@ -107,6 +121,8 @@ class OperationRepository:
                 variants.add(search[:1].upper() + search[1:])
                 search_clauses = []
                 receipt_category = aliased(Category)
+                receipt_brand = aliased(ItemBrand)
+                receipt_template = aliased(OperationItemTemplate)
                 for variant in variants:
                     like = f"%{variant}%"
                     search_clauses.extend(
@@ -120,6 +136,17 @@ class OperationRepository:
                                 OperationReceiptItem.user_id == user_id,
                                 OperationReceiptItem.operation_id == Operation.id,
                                 receipt_category.name.like(like),
+                            )
+                            .exists(),
+                            select(OperationReceiptItem.id)
+                            .join(receipt_template, receipt_template.id == OperationReceiptItem.template_id)
+                            .join(receipt_brand, receipt_brand.id == receipt_template.brand_id)
+                            .where(
+                                OperationReceiptItem.user_id == user_id,
+                                OperationReceiptItem.operation_id == Operation.id,
+                                receipt_template.user_id == user_id,
+                                receipt_brand.user_id == user_id,
+                                receipt_brand.name.like(like),
                             )
                             .exists(),
                         ]
@@ -230,6 +257,7 @@ class OperationRepository:
         category_id: int | None,
         q: str | None,
         item_template_id: int | None = None,
+        brand_id: int | None = None,
         receipt_only: bool = False,
         uncategorized_only: bool = False,
         min_amount: Decimal | None = None,
@@ -244,6 +272,7 @@ class OperationRepository:
             category_id=category_id,
             q=q,
             item_template_id=item_template_id,
+            brand_id=brand_id,
             receipt_only=receipt_only,
             uncategorized_only=uncategorized_only,
             min_amount=min_amount,
@@ -291,6 +320,7 @@ class OperationRepository:
         category_id: int | None,
         q: str | None,
         item_template_id: int | None = None,
+        brand_id: int | None = None,
         receipt_only: bool = False,
         uncategorized_only: bool = False,
         min_amount: Decimal | None = None,
@@ -306,6 +336,7 @@ class OperationRepository:
             category_id=category_id,
             q=q,
             item_template_id=item_template_id,
+            brand_id=brand_id,
             receipt_only=receipt_only,
             uncategorized_only=uncategorized_only,
             min_amount=min_amount,
@@ -338,6 +369,7 @@ class OperationRepository:
         category_id: int | None,
         q: str | None,
         item_template_id: int | None = None,
+        brand_id: int | None = None,
         receipt_only: bool = False,
         uncategorized_only: bool = False,
         min_amount: Decimal | None = None,
@@ -352,6 +384,7 @@ class OperationRepository:
             category_id=category_id,
             q=q,
             item_template_id=item_template_id,
+            brand_id=brand_id,
             receipt_only=receipt_only,
             uncategorized_only=uncategorized_only,
             min_amount=min_amount,
@@ -606,6 +639,7 @@ class OperationRepository:
         name: str,
         name_ci: str,
         last_category_id: int | None,
+        brand_id: int | None = None,
         flush: bool = True,
     ) -> OperationItemTemplate:
         return self.item_templates.create_item_template(
@@ -615,6 +649,7 @@ class OperationRepository:
             name=name,
             name_ci=name_ci,
             last_category_id=last_category_id,
+            brand_id=brand_id,
             flush=flush,
         )
 
@@ -701,12 +736,14 @@ class OperationRepository:
         page: int,
         page_size: int,
         q: str | None,
+        brand_id: int | None = None,
     ) -> tuple[list[OperationItemTemplate], int]:
         return self.item_templates.list_item_templates(
             user_id=user_id,
             page=page,
             page_size=page_size,
             q=q,
+            brand_id=brand_id,
         )
 
     def get_item_template_by_id(self, *, user_id: int, template_id: int) -> OperationItemTemplate | None:
@@ -765,10 +802,12 @@ class OperationRepository:
         *,
         user_id: int,
         template_ids: list[int],
+        include_archived: bool = False,
     ) -> list[OperationItemTemplate]:
         return self.item_templates.list_item_templates_by_ids(
             user_id=user_id,
             template_ids=template_ids,
+            include_archived=include_archived,
         )
 
     def get_latest_purchases_for_templates(
@@ -912,6 +951,7 @@ class OperationRepository:
                 Operation.id,
                 Operation.kind,
                 Operation.amount,
+                Operation.fx_rate,
                 Operation.operation_date,
                 Operation.category_id,
                 Operation.note,
@@ -931,9 +971,10 @@ class OperationRepository:
                 "id": int(row[0]),
                 "kind": str(row[1]),
                 "amount": Decimal(row[2] or 0),
-                "operation_date": row[3],
-                "category_id": int(row[4]) if row[4] is not None else None,
-                "note": row[5],
+                "fx_rate": Decimal(row[3] or 1),
+                "operation_date": row[4],
+                "category_id": int(row[5]) if row[5] is not None else None,
+                "note": row[6],
             }
             for row in rows
         ]

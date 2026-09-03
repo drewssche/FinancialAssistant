@@ -74,6 +74,10 @@
         const categoryChip = row.category_id
           ? `<div class="operation-receipt-shop">${core.renderCategoryChip(getCategoryMetaById(row.category_id), "")}</div>`
           : "";
+        const brandRenderer = window.App.getRuntimeModule?.("item-brands")?.renderBrandChip;
+        const brandChip = row.brand_name
+          ? `<span class="operation-receipt-brand">${typeof brandRenderer === "function" ? brandRenderer({ name: row.brand_name, accent_color: row.brand_accent_color || null }) : core.renderCategoryChip({ name: row.brand_name, icon: null, accent_color: row.brand_accent_color || null }, "")}</span>`
+          : "";
         const discountLabel = receiptDiscountLabel(row);
         const discountChip = discountLabel
           ? `<span class="operation-receipt-discount-chip">${esc(discountLabel)}</span>`
@@ -85,7 +89,8 @@
           <article class="operation-receipt-item">
             <div class="operation-receipt-head">
               <div class="operation-receipt-title">
-                <strong>${esc(row.name || "Без названия")}</strong>
+                ${brandChip}
+                <strong title="${esc(row.name || "Без названия")}">${esc(row.name || "Без названия")}</strong>
                 ${discountChip}
               </div>
               <span class="muted-small">${core.formatMoney(total, { currency: receiptCurrency })}</span>

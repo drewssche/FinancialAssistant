@@ -13,6 +13,7 @@ from app.db.models.fx_bank_rate import FxBankRate
 from app.db.models.fx_bank_rate_history_job import FxBankRateHistoryJob
 from app.db.models.fx_bank_rate_snapshot import FxBankRateSnapshot
 from app.db.models.fx_trade import FxTrade
+from app.db.models.item_brand import ItemBrand
 from app.db.models.operation import Operation
 from app.db.models.operation_item_price import OperationItemPrice
 from app.db.models.operation_item_template import OperationItemTemplate
@@ -48,6 +49,7 @@ __all__ = [
     "DebtReminderJob",
     "DebtRepayment",
     "FxTrade",
+    "ItemBrand",
     "FxRateSnapshot",
     "FxBankRate",
     "FxBankRateHistoryJob",

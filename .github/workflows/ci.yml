@@ -92,3 +92,9 @@ jobs:
           .venv/bin/pytest \
             tests/e2e/test_currency_trades_pagination_e2e.py::test_manual_currency_digest_send_is_shared_across_currency_views \
             -m e2e
+          .venv/bin/pytest \
+            tests/e2e/test_item_brands_ui_e2e.py \
+            tests/e2e/test_receipt_picker_store_scope_e2e.py::test_receipt_brand_picker_long_name_and_mobile_layout \
+            tests/e2e/test_receipt_picker_store_scope_e2e.py::test_cancelled_receipt_brand_change_does_not_mutate_template_hint \
+            tests/e2e/test_receipt_picker_store_scope_e2e.py::test_receipt_brand_follows_new_identity_and_archived_brand_is_cleared \
+            -m e2e

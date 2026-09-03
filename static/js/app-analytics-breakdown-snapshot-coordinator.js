@@ -12,10 +12,18 @@
     const hiddenKeys = hiddenBreakdownKeys(selectedLevel, selectedKind);
     let chartIndex = 0;
     const listItems = items.map((item, idx) => {
-      const key = breakdownItemKey(selectedLevel, item);
+      const isBrand = selectedLevel === "brand";
+      const brandColor = String(item?.brand_accent_color || "").trim().toLowerCase();
+      const normalizedItem = {
+        ...item,
+        display_name: isBrand ? (item?.brand_name || "Без бренда") : (item?.category_name || "Без категории"),
+        display_color: isBrand && /^#[0-9a-f]{6}$/.test(brandColor) ? brandColor : null,
+        entity_id: isBrand ? item?.brand_id : item?.category_id,
+      };
+      const key = breakdownItemKey(selectedLevel, normalizedItem, selectedKind);
       const isVisible = !hiddenKeys.has(key);
       return {
-        ...item,
+        ...normalizedItem,
         palette_index: idx,
         breakdown_key: key,
         is_visible_in_chart: isVisible,
@@ -37,7 +45,7 @@
       });
     }
     const chartTotal = visibleItems.reduce((acc, item) => acc + Number(item.total_amount || 0), 0);
-    const totalOps = visibleItems.reduce((acc, item) => acc + Number(item.operations_count || 0), 0);
+    const totalOps = visibleItems.reduce((acc, item) => acc + Number(item.operations_count ?? item.purchases_count ?? 0), 0);
     const incomeTotal = Number(data.income_total || 0);
     const expenseTotal = Number(data.expense_total || 0);
     return {

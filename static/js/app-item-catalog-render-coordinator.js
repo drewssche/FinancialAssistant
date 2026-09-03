@@ -125,21 +125,33 @@
     if (!el.itemCatalogBody) {
       return;
     }
-    const rows = Array.isArray(items) ? items : [];
+    const allRows = Array.isArray(items) ? items : [];
     const query = String(el.itemCatalogSearchQ?.value || "").trim();
     const queryActive = Boolean(query);
+    const brandFilter = String(state.itemCatalogBrandFilter || "all");
+    const brandFilterActive = brandFilter !== "all";
+    const rows = allRows.filter((item) => {
+      if (brandFilter === "unassigned") {
+        return !Number(item?.brand_id || 0);
+      }
+      if (/^\d+$/.test(brandFilter)) {
+        return Number(item?.brand_id || 0) === Number(brandFilter);
+      }
+      return true;
+    });
     core.syncSegmentedActive(el.itemCatalogSortTabs, "item-sort", state.itemCatalogSortPreset || "usage");
     const groupsAll = buildItemCatalogGroups(rows);
-    const groups = queryActive
+    const groups = queryActive || brandFilterActive
       ? groupsAll.filter((group) => {
         const sourceMatch = group.shopName.toLowerCase().includes(query.toLowerCase());
-        return group.items.length > 0 || sourceMatch;
+        return group.items.length > 0 || (queryActive && sourceMatch && !brandFilterActive);
       })
       : groupsAll;
     if (el.itemCatalogKpiGrid) {
       const visibleItems = groups.flatMap((group) => group.items || []);
       const sourceCount = groups.filter((group) => group.shopKey !== "__no_shop__" && (group.items || []).length > 0).length;
       const totalUseCount = visibleItems.reduce((sum, item) => sum + Number(item.use_count || 0), 0);
+      const brandedCount = visibleItems.filter((item) => Number(item?.brand_id || 0)).length;
       el.itemCatalogKpiGrid.innerHTML = `
         <article class="analytics-kpi-card analytics-kpi-neutral">
           <div class="muted-small">Позиций</div>
@@ -153,19 +165,26 @@
           <div class="muted-small">Использований</div>
           <strong>${totalUseCount}</strong>
         </article>
+        <article class="analytics-kpi-card ${brandedCount === visibleItems.length ? "analytics-kpi-positive" : "analytics-kpi-neutral"}">
+          <div class="muted-small">С брендом</div>
+          <strong>${brandedCount} из ${visibleItems.length}</strong>
+        </article>
       `;
     }
     if (!groups.length) {
-      syncItemCatalogControls({ el, queryActive, hasRows: false });
-      el.itemCatalogBody.innerHTML = '<tr><td colspan="5">Нет позиций</td></tr>';
+      syncItemCatalogControls({ el, queryActive: queryActive || brandFilterActive, hasRows: false });
+      el.itemCatalogBody.innerHTML = '<tr><td colspan="7">Нет позиций</td></tr>';
       return;
     }
-    syncItemCatalogControls({ el, queryActive, hasRows: true });
+    syncItemCatalogControls({ el, queryActive: queryActive || brandFilterActive, hasRows: true });
     const collapsedShops = readItemCatalogCollapsedShops();
+    const selectedIds = state.selectedItemCatalogIds || new Set();
+    const brandsById = new Map((state.itemBrands || []).map((brand) => [Number(brand?.id || 0), brand]));
+    const brandFeature = window.App.getRuntimeModule?.("item-brands") || {};
 
     const compactMobile = isCompactMobileViewport();
     el.itemCatalogBody.innerHTML = groups.map((group) => {
-      const isCollapsed = !queryActive && collapsedShops.has(group.shopKey);
+      const isCollapsed = !queryActive && !brandFilterActive && collapsedShops.has(group.shopKey);
       const chevron = isCollapsed ? "▸" : "▾";
       const sourceActions = renderContextActions("item_source", group, escapeHtml);
       const childRows = group.items.map((item) => {
@@ -178,12 +197,23 @@
             accent_color: category.group_accent_color || null,
           }, query)
           : "<span class='muted-small'>Без категории</span>";
+        const brandMeta = brandsById.get(Number(item?.brand_id || 0)) || (item?.brand_name ? {
+          id: item.brand_id,
+          name: item.brand_name,
+          accent_color: item.brand_accent_color,
+          is_archived: Boolean(item.brand_is_archived),
+        } : null);
+        const brandHtml = brandFeature.renderBrandChip?.(brandMeta) || (brandMeta?.name
+          ? `<span class="item-brand-chip"><span class="item-brand-chip-name">${escapeHtml(brandMeta.name)}</span></span>`
+          : '<span class="item-brand-unassigned">Без бренда</span>');
+        const selected = selectedIds.has(Number(item.id));
         if (compactMobile) {
           return `
             <tr class="item-catalog-item-row table-hierarchy-child-row item-catalog-mobile-item-row table-record-open-row ${isCollapsed ? "hidden" : ""}" data-item-template-row="1" data-item-template-open-id="${item.id}">
-              <td colspan="5" class="item-catalog-mobile-item-cell">
+              <td colspan="7" class="item-catalog-mobile-item-cell">
                 <div class="item-catalog-mobile-item-card">
                   <div class="item-catalog-mobile-item-head">
+                    <label class="item-catalog-mobile-item-select"><input data-item-catalog-select-id="${Number(item.id)}" type="checkbox" ${selected ? "checked" : ""} aria-label="Выбрать ${escapeHtml(item.name || "позицию")}" /></label>
                     <div class="item-catalog-mobile-item-title">${core.highlightText(item.name || "—", query)}</div>
                     <div class="mobile-card-kebab-wrap">
                       <button class="btn btn-secondary mobile-card-kebab-trigger" data-mobile-card-menu-trigger="item-template-${item.id}" type="button" aria-label="Действия позиции">
@@ -202,6 +232,10 @@
                       <strong>${core.formatMoney(item.latest_unit_price || 0)}</strong>
                     </div>
                     <div class="item-catalog-mobile-item-meta">
+                      <span class="muted-small">Бренд</span>
+                      ${brandHtml}
+                    </div>
+                    <div class="item-catalog-mobile-item-meta">
                       <span class="muted-small">Категория</span>
                       ${categoryHtml}
                     </div>
@@ -213,7 +247,9 @@
         }
         return `
           <tr class="item-catalog-item-row table-hierarchy-child-row table-record-open-row ${isCollapsed ? "hidden" : ""}" data-item-template-row="1" data-item-template-open-id="${item.id}">
+            <td class="item-catalog-select-cell" data-label="Выбор"><input data-item-catalog-select-id="${Number(item.id)}" type="checkbox" ${selected ? "checked" : ""} aria-label="Выбрать ${escapeHtml(item.name || "позицию")}" /></td>
             <td class="item-catalog-source-context-cell" data-label="Источник"><span class="hierarchy-child-label">↳ ${core.highlightText(group.shopName, query)}</span></td>
+            <td class="item-catalog-brand-cell" data-label="Бренд">${brandHtml}</td>
             <td data-label="Позиция">${core.highlightText(item.name || "—", query)}</td>
             <td data-label="Категория">${categoryHtml}</td>
             <td data-label="Цена">${core.formatMoney(item.latest_unit_price || 0)}</td>
@@ -230,13 +266,13 @@
       }).join("");
       const emptyRow = !group.items.length && !isCollapsed
         ? compactMobile
-          ? `<tr class="item-catalog-item-row item-catalog-mobile-item-row"><td colspan="5" class="item-catalog-mobile-item-cell"><div class="item-catalog-mobile-empty muted-small">Позиции в источнике пока не добавлены</div></td></tr>`
-          : `<tr class="item-catalog-item-row"><td data-label="Источник">${core.highlightText(group.shopName, query)}</td><td data-label="Позиция" colspan="4" class="muted-small">Позиции в источнике пока не добавлены</td></tr>`
+          ? `<tr class="item-catalog-item-row item-catalog-mobile-item-row"><td colspan="7" class="item-catalog-mobile-item-cell"><div class="item-catalog-mobile-empty muted-small">Позиции в источнике пока не добавлены</div></td></tr>`
+          : `<tr class="item-catalog-item-row"><td></td><td data-label="Источник">${core.highlightText(group.shopName, query)}</td><td data-label="Позиция" colspan="5" class="muted-small">Позиции в источнике пока не добавлены</td></tr>`
         : "";
       if (compactMobile) {
         return `
           <tr class="item-catalog-group-row table-hierarchy-parent-row item-catalog-mobile-group-row">
-            <td colspan="5" class="item-catalog-group-cell item-catalog-mobile-group-cell">
+            <td colspan="7" class="item-catalog-group-cell item-catalog-mobile-group-cell">
               <div class="item-catalog-mobile-group-card">
                 <div class="item-catalog-mobile-group-head">
                   <button type="button" class="item-catalog-group-btn item-catalog-mobile-group-toggle" data-item-catalog-shop-key="${encodeURIComponent(group.shopKey)}" ${queryActive ? "disabled" : ""}>
@@ -271,7 +307,7 @@
       }
       return `
         <tr class="item-catalog-group-row table-hierarchy-parent-row">
-          <td colspan="5" class="item-catalog-group-cell">
+          <td colspan="7" class="item-catalog-group-cell">
             <div class="category-table-group-wrap item-catalog-source-wrap">
               <div class="category-table-group-content">
                 <div class="category-table-group-title">

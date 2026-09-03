@@ -15,6 +15,7 @@ from app.core.cache import (
     set_json,
 )
 from app.db.models import Category
+from app.repositories.item_brand_repo import ItemBrandRepository
 from app.repositories.operation_repo import OperationRepository
 from app.services.activity_service import ActivityService
 
@@ -27,6 +28,7 @@ class OperationItemTemplateService:
         "shop_name",
         "name",
         "last_category_id",
+        "brand_id",
         "use_count",
         "is_archived",
         "last_used_at",
@@ -41,6 +43,7 @@ class OperationItemTemplateService:
         "shop_name": "Источник",
         "name": "Название",
         "last_category_id": "Категория",
+        "brand_id": "Бренд",
         "use_count": "Использований",
         "is_archived": "Архив",
         "last_used_at": "Последнее использование",
@@ -55,6 +58,7 @@ class OperationItemTemplateService:
     def __init__(self, db: Session, repo: OperationRepository):
         self.db = db
         self.repo = repo
+        self.brand_repo = ItemBrandRepository(db)
         self.activity = ActivityService(db)
 
     def list_item_templates(
@@ -64,6 +68,7 @@ class OperationItemTemplateService:
         page: int,
         page_size: int,
         q: str | None,
+        brand_id: int | None = None,
     ) -> tuple[list[dict], int]:
         cache_key = build_item_templates_cache_key(
             user_id=user_id,
@@ -71,6 +76,7 @@ class OperationItemTemplateService:
             page=page,
             page_size=page_size,
             q=q,
+            brand_id=brand_id,
         )
         cached = get_json(cache_key)
         if cached is not None:
@@ -80,8 +86,13 @@ class OperationItemTemplateService:
             page=page,
             page_size=page_size,
             q=q,
+            brand_id=brand_id,
         )
         latest_prices = self.repo.get_latest_prices_for_templates(template_ids=[int(item.id) for item in templates])
+        brand_meta = self.brand_repo.brand_meta_for_templates(
+            user_id=user_id,
+            template_ids=[int(item.id) for item in templates],
+        )
         payload = []
         for item in templates:
             latest = latest_prices.get(int(item.id))
@@ -93,6 +104,15 @@ class OperationItemTemplateService:
                     "use_count": int(item.use_count or 0),
                     "last_used_at": item.last_used_at,
                     "last_category_id": item.last_category_id,
+                    **brand_meta.get(
+                        int(item.id),
+                        {
+                            "brand_id": None,
+                            "brand_name": None,
+                            "brand_accent_color": None,
+                            "brand_is_archived": False,
+                        },
+                    ),
                     "latest_unit_price": self._money(latest.unit_price) if latest else None,
                     "latest_price_date": latest.recorded_at if latest else None,
                     **self._serialize_recommendation_settings(item),
@@ -182,6 +202,7 @@ class OperationItemTemplateService:
         shop_name: str | None,
         name: str,
         last_category_id: int | None,
+        brand_id: int | None,
         latest_unit_price: Decimal | None,
         latest_price_date: date | None = None,
         recommendation_enabled: bool = False,
@@ -193,6 +214,7 @@ class OperationItemTemplateService:
         shop_name_ci = normalized_shop.casefold() if normalized_shop else None
         name_ci = normalized_name.casefold()
         validated_category_id = self._validate_category_id(user_id=user_id, category_id=last_category_id)
+        validated_brand_id = self._validate_brand_id(user_id=user_id, brand_id=brand_id)
         existing = self.repo.get_item_template_by_name_ci(
             user_id=user_id,
             name_ci=name_ci,
@@ -200,6 +222,7 @@ class OperationItemTemplateService:
             include_archived=True,
         )
         item = existing
+        previous_brand_id = item.brand_id if item is not None else None
         if not item:
             item = self.repo.create_item_template(
                 user_id=user_id,
@@ -208,6 +231,7 @@ class OperationItemTemplateService:
                 name=normalized_name,
                 name_ci=name_ci,
                 last_category_id=validated_category_id,
+                brand_id=validated_brand_id,
             )
             self._apply_recommendation_settings(
                 item,
@@ -237,6 +261,8 @@ class OperationItemTemplateService:
                 item.name_ci = name_ci
             if validated_category_id is not None:
                 item.last_category_id = validated_category_id
+            if validated_brand_id is not None:
+                item.brand_id = validated_brand_id
             self._apply_recommendation_settings(
                 item,
                 {
@@ -295,6 +321,10 @@ class OperationItemTemplateService:
                 )
         self.db.commit()
         invalidate_item_templates_cache(user_id)
+        if item is existing and previous_brand_id != item.brand_id:
+            invalidate_operations_cache(user_id)
+            invalidate_plans_cache(user_id)
+            invalidate_dashboard_analytics_cache(user_id)
         return self._serialize_item_template(item)
 
     def update_item_template(
@@ -332,6 +362,12 @@ class OperationItemTemplateService:
             item.last_category_id = self._validate_category_id(
                 user_id=user_id,
                 category_id=updates.get("last_category_id"),
+            )
+        if "brand_id" in updates:
+            item.brand_id = self._validate_brand_id(
+                user_id=user_id,
+                brand_id=updates.get("brand_id"),
+                unchanged_brand_id=item.brand_id,
             )
         recommendation_fields = {
             key: value
@@ -405,7 +441,7 @@ class OperationItemTemplateService:
         )
         self.db.commit()
         invalidate_item_templates_cache(user_id)
-        if "shop_name" in updates or "name" in updates or "last_category_id" in updates:
+        if "shop_name" in updates or "name" in updates or "last_category_id" in updates or "brand_id" in updates:
             invalidate_operations_cache(user_id)
             invalidate_plans_cache(user_id)
             invalidate_dashboard_analytics_cache(user_id)
@@ -419,6 +455,10 @@ class OperationItemTemplateService:
             template_ids=template_ids,
         )
         latest_prices = self.repo.get_latest_prices_for_templates(template_ids=template_ids)
+        brand_meta = self.brand_repo.brand_meta_for_templates(
+            user_id=user_id,
+            template_ids=template_ids,
+        )
         today = date.today()
         payload: list[dict] = []
         for item in templates:
@@ -452,6 +492,15 @@ class OperationItemTemplateService:
                     "shop_name": item.shop_name,
                     "name": item.name,
                     "category_id": item.last_category_id,
+                    **brand_meta.get(
+                        template_id,
+                        {
+                            "brand_id": None,
+                            "brand_name": None,
+                            "brand_accent_color": None,
+                            "brand_is_archived": False,
+                        },
+                    ),
                     "latest_unit_price": self._money(latest_price.unit_price) if latest_price else None,
                     "last_purchase_date": last_purchase_date,
                     "last_quantity": last_quantity,
@@ -475,6 +524,10 @@ class OperationItemTemplateService:
             template_ids=template_ids,
         )
         latest_prices = self.repo.get_latest_prices_for_templates(template_ids=template_ids)
+        brand_meta = self.brand_repo.brand_meta_for_templates(
+            user_id=user_id,
+            template_ids=template_ids,
+        )
         today = date.today()
         payload: list[dict] = []
         for item in templates:
@@ -511,6 +564,15 @@ class OperationItemTemplateService:
                     "shop_name": item.shop_name,
                     "name": item.name,
                     "category_id": item.last_category_id,
+                    **brand_meta.get(
+                        template_id,
+                        {
+                            "brand_id": None,
+                            "brand_name": None,
+                            "brand_accent_color": None,
+                            "brand_is_archived": False,
+                        },
+                    ),
                     "use_count": int(item.use_count or 0),
                     "latest_unit_price": self._money(latest_price.unit_price) if latest_price else None,
                     "last_purchase_date": last_purchase_date,
@@ -601,6 +663,54 @@ class OperationItemTemplateService:
         invalidate_item_templates_cache(user_id)
         return updated_count
 
+    def bulk_update_item_template_brand(
+        self,
+        *,
+        user_id: int,
+        template_ids: list[int],
+        brand_id: int | None,
+    ) -> int:
+        if any(int(template_id) <= 0 for template_id in template_ids):
+            raise ValueError("Template ids must be positive")
+        normalized_ids = list(dict.fromkeys(int(template_id) for template_id in template_ids))
+
+        # Resolve every user-scoped dependency before the first mutation so a
+        # malformed batch cannot leave a partially updated catalog behind.
+        validated_brand_id = self._validate_brand_id(user_id=user_id, brand_id=brand_id)
+        items = self.repo.list_item_templates_by_ids(
+            user_id=user_id,
+            template_ids=normalized_ids,
+        )
+        if len(items) != len(normalized_ids):
+            raise LookupError("One or more item templates were not found")
+
+        updated_count = 0
+        for item in items:
+            if item.brand_id == validated_brand_id:
+                continue
+            before_activity = ActivityService.snapshot(item, self.ACTIVITY_FIELDS)
+            item.brand_id = validated_brand_id
+            self.activity.record_updated(
+                user_id=user_id,
+                actor_user_id=user_id,
+                entity_type="item_template",
+                entity_id=int(item.id),
+                before=before_activity,
+                after=ActivityService.snapshot(item, self.ACTIVITY_FIELDS),
+                labels=self.ACTIVITY_LABELS,
+                title="Бренд позиции каталога изменён",
+                metadata={"bulk": True},
+            )
+            updated_count += 1
+
+        self.db.commit()
+        if updated_count:
+            invalidate_item_templates_cache(user_id)
+            invalidate_operations_cache(user_id)
+            invalidate_plans_cache(user_id)
+            invalidate_dashboard_analytics_cache(user_id)
+        return updated_count
+
     def snooze_item_recommendation(self, *, user_id: int, template_id: int, days: int) -> dict:
         item = self.repo.get_item_template_by_id(user_id=user_id, template_id=template_id)
         if not item:
@@ -647,6 +757,7 @@ class OperationItemTemplateService:
         normalized_items: list[dict],
     ) -> list[dict]:
         storage_items: list[dict] = []
+        self._validate_receipt_brand_ids(user_id=user_id, items=normalized_items)
         key_order: list[tuple[str, str | None]] = []
         sample_by_key: dict[tuple[str, str | None], dict] = {}
         for item in normalized_items:
@@ -666,6 +777,11 @@ class OperationItemTemplateService:
         template_by_key: dict[tuple[str, str | None], object] = {}
         for template in existing_templates:
             template_by_key[(str(template.name_ci), template.shop_name_ci)] = template
+        self._apply_explicit_template_links(
+            user_id=user_id,
+            items=normalized_items,
+            template_by_key=template_by_key,
+        )
 
         created_templates = []
         for name_ci, shop_name_ci in key_order:
@@ -682,6 +798,7 @@ class OperationItemTemplateService:
                 name=matched_item["name"],
                 name_ci=name_ci,
                 last_category_id=matched_item.get("category_id", category_id),
+                brand_id=matched_item.get("brand_id"),
                 flush=False,
             )
             template_by_key[key] = template
@@ -718,6 +835,8 @@ class OperationItemTemplateService:
             if template.shop_name != shop_name:
                 template.shop_name = shop_name
                 template.shop_name_ci = shop_name_ci
+            if "brand_id" in item:
+                template.brand_id = item.get("brand_id")
             self.repo.touch_item_template(
                 item=template,
                 last_category_id=item.get("category_id", category_id),
@@ -766,6 +885,7 @@ class OperationItemTemplateService:
     ) -> list[dict]:
         if not normalized_items:
             return []
+        self._validate_receipt_brand_ids(user_id=user_id, items=normalized_items)
 
         key_order: list[tuple[str, str | None]] = []
         sample_by_key: dict[tuple[str, str | None], dict] = {}
@@ -786,6 +906,11 @@ class OperationItemTemplateService:
         template_by_key: dict[tuple[str, str | None], object] = {}
         for template in existing_templates:
             template_by_key[(str(template.name_ci), template.shop_name_ci)] = template
+        self._apply_explicit_template_links(
+            user_id=user_id,
+            items=normalized_items,
+            template_by_key=template_by_key,
+        )
 
         created_templates = []
         for name_ci, shop_name_ci in key_order:
@@ -800,6 +925,7 @@ class OperationItemTemplateService:
                 name=matched_item["name"],
                 name_ci=name_ci,
                 last_category_id=matched_item.get("category_id", category_id),
+                brand_id=matched_item.get("brand_id"),
                 flush=False,
             )
             template_by_key[key] = template
@@ -828,6 +954,8 @@ class OperationItemTemplateService:
             next_category_id = item.get("category_id", category_id)
             if next_category_id is not None:
                 template.last_category_id = next_category_id
+            if "brand_id" in item:
+                template.brand_id = item.get("brand_id")
             template_id = int(template.id)
             resolved_items.append({**item, "template_id": template_id})
             price_history_unit_price = self._receipt_item_price_for_history(item)
@@ -859,6 +987,18 @@ class OperationItemTemplateService:
     def _serialize_item_template(self, item) -> dict:
         latest_map = self.repo.get_latest_prices_for_templates(template_ids=[int(item.id)])
         latest = latest_map.get(int(item.id))
+        brand_meta = self.brand_repo.brand_meta_for_templates(
+            user_id=int(item.user_id),
+            template_ids=[int(item.id)],
+        ).get(
+            int(item.id),
+            {
+                "brand_id": None,
+                "brand_name": None,
+                "brand_accent_color": None,
+                "brand_is_archived": False,
+            },
+        )
         return {
             "id": int(item.id),
             "shop_name": item.shop_name,
@@ -866,10 +1006,122 @@ class OperationItemTemplateService:
             "use_count": int(item.use_count or 0),
             "last_used_at": item.last_used_at,
             "last_category_id": item.last_category_id,
+            **brand_meta,
             "latest_unit_price": self._money(latest.unit_price) if latest else None,
             "latest_price_date": latest.recorded_at if latest else None,
             **self._serialize_recommendation_settings(item),
         }
+
+    def _validate_brand_id(
+        self,
+        *,
+        user_id: int,
+        brand_id: int | None,
+        unchanged_brand_id: int | None = None,
+    ) -> int | None:
+        if brand_id is None:
+            return None
+        normalized_id = int(brand_id)
+        if self.brand_repo.get_by_id(user_id=user_id, brand_id=normalized_id) is not None:
+            return normalized_id
+
+        # An archived brand remains a valid historical relation for the catalog
+        # position that already owns it. Let an edit round-trip that exact value,
+        # while keeping archived brands unavailable for every new assignment.
+        if unchanged_brand_id is not None and normalized_id == int(unchanged_brand_id):
+            archived = self.brand_repo.get_by_id(
+                user_id=user_id,
+                brand_id=normalized_id,
+                include_archived=True,
+            )
+            if archived is not None and archived.is_archived:
+                return normalized_id
+        raise ValueError("Brand not found")
+
+    def _validate_receipt_brand_ids(self, *, user_id: int, items: list[dict]) -> None:
+        explicit_brand_items = [
+            item
+            for item in items
+            if "brand_id" in item and item.get("brand_id") is not None
+        ]
+        if not explicit_brand_items:
+            return
+
+        template_ids = sorted(
+            {
+                int(item["template_id"])
+                for item in explicit_brand_items
+                if item.get("template_id") is not None
+            }
+        )
+        templates = self.repo.list_item_templates_by_ids(
+            user_id=user_id,
+            template_ids=template_ids,
+            include_archived=True,
+        )
+        template_brand_ids = {
+            int(template.id): int(template.brand_id) if template.brand_id is not None else None
+            for template in templates
+        }
+
+        for item in explicit_brand_items:
+            brand_id = int(item["brand_id"])
+            if self.brand_repo.get_by_id(user_id=user_id, brand_id=brand_id) is not None:
+                continue
+
+            # Archived brands stay visible on existing catalog positions. A receipt
+            # editor may round-trip that unchanged relation, but must not assign an
+            # archived brand to another or newly created position.
+            archived = self.brand_repo.get_by_id(
+                user_id=user_id,
+                brand_id=brand_id,
+                include_archived=True,
+            )
+            template_id = item.get("template_id")
+            if (
+                archived is None
+                or not archived.is_archived
+                or template_id is None
+                or template_brand_ids.get(int(template_id)) != brand_id
+            ):
+                raise ValueError("Brand not found")
+
+    def _apply_explicit_template_links(
+        self,
+        *,
+        user_id: int,
+        items: list[dict],
+        template_by_key: dict[tuple[str, str | None], object],
+    ) -> None:
+        explicit_ids = {
+            int(item["template_id"])
+            for item in items
+            if item.get("template_id") is not None
+        }
+        if not explicit_ids:
+            return
+        templates = self.repo.list_item_templates_by_ids(
+            user_id=user_id,
+            template_ids=sorted(explicit_ids),
+            include_archived=True,
+        )
+        by_id = {int(template.id): template for template in templates}
+        if set(by_id) != explicit_ids:
+            raise ValueError("Item template not found")
+        for item in items:
+            explicit_id = item.get("template_id")
+            if explicit_id is None:
+                continue
+            template = by_id[int(explicit_id)]
+            shop_name = item.get("shop_name")
+            key = (
+                item["name"].casefold(),
+                shop_name.casefold() if shop_name else None,
+            )
+            template_key = (str(template.name_ci), template.shop_name_ci)
+            if key != template_key:
+                raise ValueError("Selected item template does not match source and name")
+            template_by_key[key] = template
 
     def _apply_recommendation_settings(self, item, updates: dict) -> None:
         enabled = bool(updates.get("recommendation_enabled", item.recommendation_enabled))

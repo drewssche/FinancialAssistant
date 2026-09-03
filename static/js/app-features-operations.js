@@ -139,6 +139,10 @@
       params.set("item_template_id", String(state.operationsItemTemplateFilterId));
       params.set("source", "operation");
     }
+    if (state.operationsBrandFilterId !== null && state.operationsBrandFilterId !== undefined && state.operationsBrandFilterId !== "") {
+      params.set("brand_id", String(state.operationsBrandFilterId));
+      params.set("source", "operation");
+    }
     const query = el.filterQ.value.trim();
     if (query) {
       params.set("q", query);
@@ -168,6 +172,7 @@
     const baseCurrency = syncOperationsCurrencyScopeUi();
     const hasCategory = state.operationsCategoryFilterId !== null && state.operationsCategoryFilterId !== undefined && state.operationsCategoryFilterId !== "";
     const hasItemTemplate = state.operationsItemTemplateFilterId !== null && state.operationsItemTemplateFilterId !== undefined && state.operationsItemTemplateFilterId !== "";
+    const hasBrand = state.operationsBrandFilterId !== null && state.operationsBrandFilterId !== undefined && state.operationsBrandFilterId !== "";
     const sourceValue = isMoneyFlowMode && state.operationsSourceFilter === "operation"
       ? "Операции"
       : isMoneyFlowMode && state.operationsSourceFilter === "debt"
@@ -196,7 +201,7 @@
     const hasKind = Boolean(kindValue);
     const hasCurrencyScope = Boolean(currencyScopeValue);
     const hasSource = Boolean(sourceValue);
-    const hasAny = hasCategory || hasItemTemplate || hasQuickView || hasKind || hasCurrencyScope || hasSource;
+    const hasAny = hasCategory || hasItemTemplate || hasBrand || hasQuickView || hasKind || hasCurrencyScope || hasSource;
     const renderChip = (node, label, value, visible) => {
       if (!node) return;
       node.classList.toggle("hidden", !visible);
@@ -213,6 +218,7 @@
     renderChip(el.operationsCurrencyScopeChip, "Валюта", currencyScopeValue, hasCurrencyScope);
     renderChip(el.operationsCategoryFilterChip, "Категория", state.operationsCategoryFilterName || `#${state.operationsCategoryFilterId}`, hasCategory);
     renderChip(el.operationsItemTemplateFilterChip, "Позиция", state.operationsItemTemplateFilterName || `#${state.operationsItemTemplateFilterId}`, hasItemTemplate);
+    renderChip(el.operationsBrandFilterChip, "Бренд", state.operationsBrandFilterName || `#${state.operationsBrandFilterId}`, hasBrand);
     el.clearOperationsCategoryFilterBtn.classList.toggle("hidden", !hasAny);
     if (el.resetOperationsFiltersBtn) {
       const hasQuery = Boolean(el.filterQ?.value.trim());
@@ -304,6 +310,10 @@
     }
     if (state.operationsItemTemplateFilterId !== null && state.operationsItemTemplateFilterId !== undefined && state.operationsItemTemplateFilterId !== "") {
       params.set("item_template_id", String(state.operationsItemTemplateFilterId));
+      params.set("source", "operation");
+    }
+    if (state.operationsBrandFilterId !== null && state.operationsBrandFilterId !== undefined && state.operationsBrandFilterId !== "") {
+      params.set("brand_id", String(state.operationsBrandFilterId));
       params.set("source", "operation");
     }
     const query = el.filterQ.value.trim();
@@ -570,6 +580,8 @@
     state.operationsCategoryFilterName = "";
     state.operationsItemTemplateFilterId = null;
     state.operationsItemTemplateFilterName = "";
+    state.operationsBrandFilterId = null;
+    state.operationsBrandFilterName = "";
     renderOperationsActiveFilters();
     await loadOperations({ reset: true, force: true });
     await savePreferences();
@@ -587,6 +599,10 @@
     if (filterName === "position") {
       state.operationsItemTemplateFilterId = null;
       state.operationsItemTemplateFilterName = "";
+    }
+    if (filterName === "brand") {
+      state.operationsBrandFilterId = null;
+      state.operationsBrandFilterName = "";
     }
     core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
     core.syncSegmentedActive(el.operationsSourceTabs, "operations-source", state.operationsSourceFilter);
@@ -607,6 +623,8 @@
     state.operationsCategoryFilterName = "";
     state.operationsItemTemplateFilterId = null;
     state.operationsItemTemplateFilterName = "";
+    state.operationsBrandFilterId = null;
+    state.operationsBrandFilterName = "";
     if (el.filterQ) {
       el.filterQ.value = "";
     }
@@ -706,6 +724,8 @@
     state.operationsCategoryFilterName = categoryName || "";
     state.operationsItemTemplateFilterId = null;
     state.operationsItemTemplateFilterName = "";
+    state.operationsBrandFilterId = null;
+    state.operationsBrandFilterName = "";
     const navigation = getNavigationActions();
     const hasSourceContext = state.activeSection !== "operations";
     if (hasSourceContext) navigation.pushSectionBackContext?.();
@@ -726,6 +746,30 @@
     state.operationsCategoryFilterName = "";
     state.operationsItemTemplateFilterId = resolvedId;
     state.operationsItemTemplateFilterName = templateName || "";
+    state.operationsBrandFilterId = null;
+    state.operationsBrandFilterName = "";
+    const navigation = getNavigationActions();
+    const hasSourceContext = state.activeSection !== "operations";
+    if (hasSourceContext) navigation.pushSectionBackContext?.();
+    await navigation.switchSection?.("operations", { preserveBackStack: hasSourceContext, scrollToTop: hasSourceContext });
+    renderOperationsActiveFilters();
+    await loadOperations({ reset: true, force: true });
+    await savePreferences();
+  }
+
+  async function openOperationsForBrand(brandId, brandName = "") {
+    const resolvedId = Number(brandId || 0);
+    if (!(resolvedId > 0)) {
+      return;
+    }
+    state.operationsMode = "money_flow";
+    state.operationsSourceFilter = "operation";
+    state.operationsCategoryFilterId = null;
+    state.operationsCategoryFilterName = "";
+    state.operationsItemTemplateFilterId = null;
+    state.operationsItemTemplateFilterName = "";
+    state.operationsBrandFilterId = resolvedId;
+    state.operationsBrandFilterName = brandName || "";
     const navigation = getNavigationActions();
     const hasSourceContext = state.activeSection !== "operations";
     if (hasSourceContext) navigation.pushSectionBackContext?.();
@@ -864,6 +908,7 @@
     loadOperationsSummary,
     openOperationsForCategory,
     openOperationsForItemTemplate,
+    openOperationsForBrand,
     openOperationReceiptModal,
     closeOperationReceiptModal,
     openMoneyFlowSource,

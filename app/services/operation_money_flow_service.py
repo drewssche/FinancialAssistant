@@ -93,13 +93,14 @@ class OperationMoneyFlowService:
         currency_scope: str | None,
         category_id: int | None = None,
         item_template_id: int | None = None,
+        brand_id: int | None = None,
     ) -> list[dict]:
         if date_from and date_to and date_from > date_to:
             raise ValueError("date_from must be less than or equal to date_to")
         normalized_direction = self._normalize_direction(direction)
         normalized_source = self._normalize_source(source)
         normalized_currency_scope = self.operations._normalize_currency_scope(currency_scope)
-        operations_only_filter = category_id is not None or item_template_id is not None
+        operations_only_filter = category_id is not None or item_template_id is not None or brand_id is not None
         base_currency = self.operations._get_user_base_currency(user_id)
         items: list[dict] = []
 
@@ -145,6 +146,7 @@ class OperationMoneyFlowService:
                 category_id=category_id,
                 q=q,
                 item_template_id=item_template_id,
+                brand_id=brand_id,
                 receipt_only=False,
                 uncategorized_only=False,
                 min_amount=None,
@@ -365,6 +367,7 @@ class OperationMoneyFlowService:
         currency_scope: str | None,
         category_id: int | None,
         item_template_id: int | None,
+        brand_id: int | None,
     ) -> tuple[list[dict], int]:
         normalized_direction = self._normalize_direction(direction)
         operation_kind = None
@@ -385,6 +388,7 @@ class OperationMoneyFlowService:
             category_id=category_id,
             q=q,
             item_template_id=item_template_id,
+            brand_id=brand_id,
             receipt_only=False,
             uncategorized_only=False,
             min_amount=None,
@@ -519,6 +523,7 @@ class OperationMoneyFlowService:
         currency_scope: str | None,
         category_id: int | None,
         item_template_id: int | None,
+        brand_id: int | None,
     ) -> tuple[Decimal, Decimal, int]:
         normalized_direction = self._normalize_direction(direction)
         operation_kind = None
@@ -534,6 +539,7 @@ class OperationMoneyFlowService:
             category_id=category_id,
             q=q,
             item_template_id=item_template_id,
+            brand_id=brand_id,
             currency_scope=self.operations._normalize_currency_scope(currency_scope),
             base_currency=self.operations._get_user_base_currency(user_id),
         )
@@ -554,9 +560,10 @@ class OperationMoneyFlowService:
         currency_scope: str | None = None,
         category_id: int | None = None,
         item_template_id: int | None = None,
+        brand_id: int | None = None,
     ) -> tuple[list[dict], int]:
         normalized_source = self._normalize_source(source)
-        operations_only_filter = category_id is not None or item_template_id is not None
+        operations_only_filter = category_id is not None or item_template_id is not None or brand_id is not None
         if normalized_source == "operation" or operations_only_filter:
             return self._list_operation_flow_page(
                 user_id=user_id,
@@ -571,6 +578,7 @@ class OperationMoneyFlowService:
                 currency_scope=currency_scope,
                 category_id=category_id,
                 item_template_id=item_template_id,
+                brand_id=brand_id,
             )
         if normalized_source == "all" and not q:
             return self._list_mixed_flow_page(
@@ -596,6 +604,7 @@ class OperationMoneyFlowService:
             currency_scope=currency_scope,
             category_id=category_id,
             item_template_id=item_template_id,
+            brand_id=brand_id,
         )
         total = len(items)
         start = (page - 1) * page_size
@@ -613,9 +622,10 @@ class OperationMoneyFlowService:
         currency_scope: str | None = None,
         category_id: int | None = None,
         item_template_id: int | None = None,
+        brand_id: int | None = None,
     ) -> dict:
         normalized_source = self._normalize_source(source)
-        operations_only_filter = category_id is not None or item_template_id is not None
+        operations_only_filter = category_id is not None or item_template_id is not None or brand_id is not None
         if normalized_source == "operation" or operations_only_filter:
             income_total, expense_total, total = self._summarize_operations(
                 user_id=user_id,
@@ -626,6 +636,7 @@ class OperationMoneyFlowService:
                 currency_scope=currency_scope,
                 category_id=category_id,
                 item_template_id=item_template_id,
+                brand_id=brand_id,
             )
             return {
                 "income_total": self.operations._money(income_total),
@@ -643,6 +654,7 @@ class OperationMoneyFlowService:
                 currency_scope=currency_scope,
                 category_id=None,
                 item_template_id=None,
+                brand_id=None,
             )
             non_operation_items = self._build_dataset(
                 user_id=user_id,
@@ -690,6 +702,7 @@ class OperationMoneyFlowService:
             currency_scope=currency_scope,
             category_id=category_id,
             item_template_id=item_template_id,
+            brand_id=brand_id,
         )
         income_total, expense_total, total = self._summarize_items(items)
         return {

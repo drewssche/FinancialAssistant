@@ -236,8 +236,9 @@ def build_item_templates_cache_key(
     q: str | None = None,
     template_id: int | None = None,
     limit: int | None = None,
+    brand_id: int | None = None,
 ) -> str:
-    return build_user_scoped_cache_key(
+    key = build_user_scoped_cache_key(
         namespace="item_templates",
         user_id=user_id,
         view=view,
@@ -247,6 +248,7 @@ def build_item_templates_cache_key(
         template_id=template_id,
         limit=limit,
     )
+    return f"{key}:brand_id:{brand_id}" if brand_id is not None else key
 
 
 def build_debts_cache_key(
@@ -280,8 +282,9 @@ def build_operations_cache_key(
     q: str | None = None,
     quick_view: str | None = None,
     currency_scope: str | None = None,
+    brand_id: int | None = None,
 ) -> str:
-    return build_user_scoped_cache_key(
+    key = build_user_scoped_cache_key(
         namespace="operations",
         user_id=user_id,
         view=view,
@@ -297,6 +300,7 @@ def build_operations_cache_key(
         quick_view=quick_view,
         currency_scope=currency_scope,
     )
+    return f"{key}:brand_id:{brand_id}" if brand_id is not None else key
 
 
 def build_categories_cache_key(

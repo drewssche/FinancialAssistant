@@ -29,7 +29,7 @@
             <button class="nav-btn" data-section="plans">Планы</button>
             <button class="nav-btn" data-section="debts">Долги</button>
             <button class="nav-btn" data-section="categories">Категории</button>
-            <button class="nav-btn" data-section="item_catalog">Каталог позиций</button>
+            <button class="nav-btn" data-section="item_catalog">Каталог</button>
             <div class="nav-group-title">Работа</div>
             <button class="nav-btn" data-section="work">Табель и зарплата</button>
             <div class="nav-group-title">Система</div>

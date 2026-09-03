@@ -16,6 +16,11 @@
     };
   }
 
+  function clearOperationsBrandFilter() {
+    state.operationsBrandFilterId = null;
+    state.operationsBrandFilterName = "";
+  }
+
   function applyAnalyticsTabUi() {
     const tab = state.analyticsTab || "calendar";
     const panels = [
@@ -84,6 +89,7 @@
     state.operationsCurrencyScope = "all";
     state.operationsItemTemplateFilterId = null;
     state.operationsItemTemplateFilterName = "";
+    clearOperationsBrandFilter();
     core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
     core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
     core.syncSegmentedActive(el.operationsCurrencyScopeTabs, "operations-currency-scope", state.operationsCurrencyScope);
@@ -110,6 +116,7 @@
     state.operationsCurrencyScope = "all";
     state.operationsItemTemplateFilterId = null;
     state.operationsItemTemplateFilterName = "";
+    clearOperationsBrandFilter();
     core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
     core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
     core.syncSegmentedActive(el.operationsCurrencyScopeTabs, "operations-currency-scope", state.operationsCurrencyScope);
@@ -140,6 +147,7 @@
     state.operationsCategoryFilterName = "";
     state.operationsItemTemplateFilterId = Number(templateId || 0) || null;
     state.operationsItemTemplateFilterName = String(positionName || "").trim();
+    clearOperationsBrandFilter();
     if (el.filterQ) {
       el.filterQ.value = state.operationsItemTemplateFilterId ? "" : state.operationsItemTemplateFilterName;
     }
@@ -197,6 +205,7 @@
     state.operationsCurrencyScope = "all";
     state.operationsItemTemplateFilterId = null;
     state.operationsItemTemplateFilterName = "";
+    clearOperationsBrandFilter();
     core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
     core.syncSegmentedActive(el.operationsCurrencyScopeTabs, "operations-currency-scope", state.operationsCurrencyScope);
     state.operationsCategoryFilterId = Number(categoryId);

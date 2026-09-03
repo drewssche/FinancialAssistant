@@ -13,6 +13,7 @@ from app.core.cache import (
     invalidate_dashboard_summary_cache,
     invalidate_item_templates_cache,
     invalidate_operations_cache,
+    invalidate_plans_cache,
     set_json,
 )
 from app.core.logging import log_background_job_event
@@ -302,6 +303,7 @@ class OperationService:
         invalidate_dashboard_analytics_cache(user_id)
         invalidate_item_templates_cache(user_id)
         invalidate_operations_cache(user_id)
+        invalidate_plans_cache(user_id)
 
     def list_operations(
         self,
@@ -315,6 +317,7 @@ class OperationService:
         date_to: date | None,
         category_id: int | None,
         q: str | None,
+        brand_id: int | None = None,
         quick_view: str | None = None,
         currency_scope: str | None = None,
     ) -> tuple[list, int]:
@@ -337,6 +340,7 @@ class OperationService:
             date_from=date_from,
             date_to=date_to,
             category_id=category_id,
+            brand_id=brand_id,
             q=q,
             quick_view=quick_view_token,
             currency_scope=normalized_currency_scope,
@@ -355,6 +359,7 @@ class OperationService:
             date_from=date_from,
             date_to=date_to,
             category_id=category_id,
+            brand_id=brand_id,
             q=q,
             receipt_only=quick_view_filters["receipt_only"],
             uncategorized_only=quick_view_filters["uncategorized_only"],
@@ -367,11 +372,20 @@ class OperationService:
             user_id=user_id,
             operation_ids=operation_ids,
         )
+        brand_meta_map = self._get_brand_meta_map(
+            user_id=user_id,
+            template_ids=[
+                row.template_id
+                for rows in receipt_by_operation.values()
+                for row in rows
+            ],
+        )
         result = [
             self._serialize_operation(
                 user_id=user_id,
                 operation=item,
                 receipt_items=receipt_by_operation.get(int(item.id), []),
+                brand_meta_map=brand_meta_map,
             )
             for item in items
         ]
@@ -390,6 +404,7 @@ class OperationService:
         date_from: date | None,
         date_to: date | None,
         category_id: int | None,
+        brand_id: int | None = None,
         q: str | None,
         quick_view: str | None = None,
         currency_scope: str | None = None,
@@ -413,6 +428,7 @@ class OperationService:
             date_from=date_from,
             date_to=date_to,
             category_id=category_id,
+            brand_id=brand_id,
             q=q,
             quick_view=quick_view_token,
             currency_scope=normalized_currency_scope,
@@ -426,6 +442,7 @@ class OperationService:
             date_from=date_from,
             date_to=date_to,
             category_id=category_id,
+            brand_id=brand_id,
             q=q,
             receipt_only=quick_view_filters["receipt_only"],
             uncategorized_only=quick_view_filters["uncategorized_only"],
@@ -462,6 +479,7 @@ class OperationService:
         currency_scope: str | None = None,
         category_id: int | None = None,
         item_template_id: int | None = None,
+        brand_id: int | None = None,
     ) -> tuple[list[dict], int]:
         return self.money_flow.list(
             user_id=user_id,
@@ -477,6 +495,7 @@ class OperationService:
             currency_scope=currency_scope,
             category_id=category_id,
             item_template_id=item_template_id,
+            brand_id=brand_id,
         )
 
     def summarize_money_flow(
@@ -491,6 +510,7 @@ class OperationService:
         currency_scope: str | None = None,
         category_id: int | None = None,
         item_template_id: int | None = None,
+        brand_id: int | None = None,
     ) -> dict:
         return self.money_flow.summarize(
             user_id=user_id,
@@ -502,6 +522,7 @@ class OperationService:
             currency_scope=currency_scope,
             category_id=category_id,
             item_template_id=item_template_id,
+            brand_id=brand_id,
         )
 
     def _normalize_fx_settlement(
@@ -1181,12 +1202,14 @@ class OperationService:
         page: int,
         page_size: int,
         q: str | None,
+        brand_id: int | None = None,
     ) -> tuple[list[dict], int]:
         return self.item_templates.list_item_templates(
             user_id=user_id,
             page=page,
             page_size=page_size,
             q=q,
+            brand_id=brand_id,
         )
 
     def list_item_template_prices(
@@ -1222,6 +1245,7 @@ class OperationService:
         shop_name: str | None,
         name: str,
         last_category_id: int | None,
+        brand_id: int | None,
         latest_unit_price: Decimal | None,
         latest_price_date: date | None = None,
         recommendation_enabled: bool = False,
@@ -1234,6 +1258,7 @@ class OperationService:
             shop_name=shop_name,
             name=name,
             last_category_id=last_category_id,
+            brand_id=brand_id,
             latest_unit_price=latest_unit_price,
             latest_price_date=latest_price_date,
             recommendation_enabled=recommendation_enabled,
@@ -1253,6 +1278,19 @@ class OperationService:
             user_id=user_id,
             template_id=template_id,
             updates=updates,
+        )
+
+    def bulk_update_item_template_brand(
+        self,
+        *,
+        user_id: int,
+        template_ids: list[int],
+        brand_id: int | None,
+    ) -> int:
+        return self.item_templates.bulk_update_item_template_brand(
+            user_id=user_id,
+            template_ids=template_ids,
+            brand_id=brand_id,
         )
 
     def delete_item_template(self, *, user_id: int, template_id: int) -> None:
@@ -1293,7 +1331,14 @@ class OperationService:
             days=days,
         )
 
-    def _serialize_operation(self, *, user_id: int, operation, receipt_items: list | None = None) -> dict:
+    def _serialize_operation(
+        self,
+        *,
+        user_id: int,
+        operation,
+        receipt_items: list | None = None,
+        brand_meta_map: dict[int, dict] | None = None,
+    ) -> dict:
         loaded_items = receipt_items
         if loaded_items is None:
             loaded = self.repo.list_receipt_items_for_operations(
@@ -1302,16 +1347,26 @@ class OperationService:
             )
             loaded_items = loaded.get(int(operation.id), [])
         category_meta_map = self._get_category_meta_map([row.category_id for row in loaded_items or []] + [operation.category_id])
+        if brand_meta_map is None:
+            brand_meta_map = self._get_brand_meta_map(
+                user_id=user_id,
+                template_ids=[row.template_id for row in loaded_items or []],
+            )
         receipt_payload = []
         receipt_total = Decimal("0")
         for row in loaded_items or []:
             line_total = self._money(row.line_total)
             receipt_total += line_total
             category_meta = category_meta_map.get(int(row.category_id or 0), {})
+            brand_meta = brand_meta_map.get(int(row.template_id or 0), {})
             receipt_payload.append(
                 {
                     "id": int(row.id),
                     "template_id": row.template_id,
+                    "brand_id": brand_meta.get("brand_id"),
+                    "brand_name": brand_meta.get("brand_name"),
+                    "brand_accent_color": brand_meta.get("brand_accent_color"),
+                    "brand_is_archived": bool(brand_meta.get("brand_is_archived", False)),
                     "category_id": row.category_id,
                     "category_name": category_meta.get("name"),
                     "category_icon": category_meta.get("icon"),
@@ -1445,6 +1500,17 @@ class OperationService:
             }
         return result
 
+    def _get_brand_meta_map(
+        self,
+        *,
+        user_id: int,
+        template_ids: list[int | None],
+    ) -> dict[int, dict]:
+        return self.item_templates.brand_repo.brand_meta_for_templates(
+            user_id=user_id,
+            template_ids=[int(template_id) for template_id in template_ids if template_id is not None],
+        )
+
     def _normalize_receipt_items(self, receipt_items: list[dict]) -> tuple[list[dict], Decimal | None]:
         normalized: list[dict] = []
         receipt_total = Decimal("0")
@@ -1483,6 +1549,12 @@ class OperationService:
                     "discount_type": discount_type if is_discounted else None,
                     "line_total": line_total,
                     "note": note,
+                    **(
+                        {"template_id": int(item["template_id"])}
+                        if item.get("template_id") is not None
+                        else {}
+                    ),
+                    **({"brand_id": item.get("brand_id")} if "brand_id" in item else {}),
                 }
             )
             receipt_total += line_total

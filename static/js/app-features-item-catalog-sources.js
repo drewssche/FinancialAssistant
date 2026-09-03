@@ -14,8 +14,14 @@
       loadItemCatalog,
       applySavedItemCatalogItem,
       applySavedReceiptTemplateHint,
+      invalidateItemCatalogDependentCaches,
       savePreferencesDebounced,
     } = deps;
+
+    async function refreshItemBrandsAfterCatalogMutation() {
+      invalidateItemCatalogDependentCaches?.();
+      await window.App.getRuntimeModule?.("item-brands")?.loadItemBrands?.({ force: true });
+    }
 
     function openSourceGroupModal() {
       if (!el.sourceGroupModal || !el.sourceGroupForm) {
@@ -151,7 +157,7 @@
             .map((name) => (getItemCatalogShopKey(name) === getItemCatalogShopKey(originalName) ? sourceName : name))
             .filter((name, idx, arr) => name && arr.findIndex((item) => getItemCatalogShopKey(item) === getItemCatalogShopKey(name)) === idx),
         );
-        core.invalidateUiRequestCache("item-catalog");
+        invalidateItemCatalogDependentCaches?.();
         state.editItemSourceName = sourceName;
         if (el.sourceGroupOriginalName) {
           el.sourceGroupOriginalName.value = sourceName;
@@ -183,13 +189,15 @@
               method: "DELETE",
               headers: core.authHeaders(),
             });
+            state.selectedItemCatalogIds?.delete?.(Number(item.id));
           }
           writeItemCatalogSourceGroups(
             readItemCatalogSourceGroups().filter((name) => getItemCatalogShopKey(name) !== getItemCatalogShopKey(normalized)),
           );
-          core.invalidateUiRequestCache("item-catalog");
+          invalidateItemCatalogDependentCaches?.();
         },
         onAfterDelete: async () => {
+          await refreshItemBrandsAfterCatalogMutation();
           await loadItemCatalog({ force: true });
           savePreferencesDebounced(450);
         },

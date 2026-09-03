@@ -89,11 +89,20 @@ class PlanService:
         plan_ids = [int(row.PlanOperation.id) for row in rows]
         receipt_by_plan = self.repo.list_receipt_items_for_plans(user_id=user_id, plan_ids=plan_ids)
         reminder_jobs = self.repo.list_next_pending_jobs_for_plans(user_id=user_id, plan_ids=plan_ids)
+        brand_meta_map = self.operation_service._get_brand_meta_map(
+            user_id=user_id,
+            template_ids=[
+                receipt_item.template_id
+                for receipt_items in receipt_by_plan.values()
+                for receipt_item in receipt_items
+            ],
+        )
         items = [
             self._serialize_plan_row(
                 row=row,
                 receipt_items=receipt_by_plan.get(int(row.PlanOperation.id), []),
                 reminder_job=reminder_jobs.get(int(row.PlanOperation.id)),
+                brand_meta_map=brand_meta_map,
             )
             for row in rows
         ]
@@ -228,6 +237,8 @@ class PlanService:
         )
         self.db.commit()
         invalidate_plans_cache(user_id)
+        if normalized_items:
+            self.operation_service._invalidate_caches(user_id)
         log_background_job_event(
             "plan_service",
             "plan_created",
@@ -385,6 +396,8 @@ class PlanService:
         )
         self.db.commit()
         invalidate_plans_cache(user_id)
+        if normalized_items is not None:
+            self.operation_service._invalidate_caches(user_id)
         log_background_job_event(
             "plan_service",
             "plan_updated",
@@ -472,6 +485,7 @@ class PlanService:
             note=item.note,
             receipt_items=[
                 {
+                    "template_id": row_item.template_id,
                     "category_id": row_item.category_id,
                     "shop_name": row_item.shop_name,
                     "name": row_item.name,
@@ -680,21 +694,38 @@ class PlanService:
         )
         return self.get_plan(user_id=user_id, plan_id=plan_id)
 
-    def _serialize_plan_row(self, *, row, receipt_items: list, reminder_job=None) -> dict:
+    def _serialize_plan_row(
+        self,
+        *,
+        row,
+        receipt_items: list,
+        reminder_job=None,
+        brand_meta_map: dict[int, dict] | None = None,
+    ) -> dict:
         item = row.PlanOperation
         category = row.Category
         group = row[2]
         category_meta_map = self.operation_service._get_category_meta_map([receipt_item.category_id for receipt_item in receipt_items or []])
+        if brand_meta_map is None:
+            brand_meta_map = self.operation_service._get_brand_meta_map(
+                user_id=int(item.user_id),
+                template_ids=[receipt_item.template_id for receipt_item in receipt_items or []],
+            )
         receipt_payload = []
         receipt_total = Decimal("0")
         for receipt_item in receipt_items or []:
             line_total = self.operation_service._money(receipt_item.line_total)
             receipt_total += line_total
             category_meta = category_meta_map.get(int(receipt_item.category_id or 0), {})
+            brand_meta = brand_meta_map.get(int(receipt_item.template_id or 0), {})
             receipt_payload.append(
                 {
                     "id": int(receipt_item.id),
                     "template_id": receipt_item.template_id,
+                    "brand_id": brand_meta.get("brand_id"),
+                    "brand_name": brand_meta.get("brand_name"),
+                    "brand_accent_color": brand_meta.get("brand_accent_color"),
+                    "brand_is_archived": bool(brand_meta.get("brand_is_archived", False)),
                     "category_id": receipt_item.category_id,
                     "category_name": category_meta.get("name"),
                     "category_icon": category_meta.get("icon"),

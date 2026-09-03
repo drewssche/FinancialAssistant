@@ -400,14 +400,22 @@
         </section>
 
         <section id="itemCatalogSection" class="section-block hidden">
-          <div id="itemCatalogViewTabs" class="segmented item-catalog-view-tabs" role="tablist" aria-label="Режим каталога позиций">
+          <div id="itemCatalogViewTabs" class="segmented item-catalog-view-tabs" role="tablist" aria-label="Разделы каталога">
             <button class="segmented-btn active" data-item-catalog-view="positions" type="button">Позиции</button>
+            <button class="segmented-btn" data-item-catalog-view="brands" type="button">Бренды</button>
             <button class="segmented-btn" data-item-catalog-view="recommendations" type="button">Рекомендации</button>
           </div>
           <section id="itemCatalogPositionsView" class="panel">
             <div class="table-search-row">
-              <input id="itemCatalogSearchQ" class="table-search-input" type="text" placeholder="Поиск по источнику и позиции" />
+              <input id="itemCatalogSearchQ" class="table-search-input" type="search" placeholder="Поиск по источнику, бренду и позиции" />
               <div class="toolbar section-action-toolbar search-toolbar item-catalog-controls">
+                <label class="item-catalog-brand-filter-field">
+                  <span class="sr-only">Фильтр по бренду</span>
+                  <select id="itemCatalogBrandFilter" aria-label="Фильтр позиций по бренду">
+                    <option value="all">Все бренды</option>
+                    <option value="unassigned">Без бренда</option>
+                  </select>
+                </label>
                 <div class="segmented" id="itemCatalogSortTabs" role="tablist" aria-label="Сортировка каталога позиций">
                   <button class="segmented-btn active" data-item-sort="usage" type="button">Частота</button>
                   <button class="segmented-btn" data-item-sort="recent" type="button">Недавние</button>
@@ -419,11 +427,24 @@
               </div>
             </div>
             <div id="itemCatalogKpiGrid" class="analytics-kpi-grid section-kpi-grid" aria-label="Итоги каталога позиций"></div>
+            <div id="itemCatalogBulkBar" class="bulk-bar item-catalog-brand-bulk-bar hidden" aria-live="polite">
+              <strong id="itemCatalogSelectedCount">Выбрано: 0</strong>
+              <label class="item-catalog-brand-bulk-field">
+                <span>Назначить бренд</span>
+                <select id="itemCatalogBulkBrand" aria-label="Бренд для выбранных позиций">
+                  <option value="">Без бренда</option>
+                </select>
+              </label>
+              <button id="assignSelectedItemBrandBtn" class="btn btn-primary btn-xs" type="button">Применить</button>
+              <button id="clearSelectedItemCatalogBtn" class="btn btn-ghost btn-xs" type="button">Снять выбор</button>
+            </div>
             <div class="table-wrap">
               <table class="table table-hover mobile-card-table item-catalog-table">
                 <thead>
                   <tr>
+                    <th><input id="itemCatalogSelectAll" type="checkbox" aria-label="Выбрать все видимые позиции" /></th>
                     <th>Источник</th>
+                    <th>Бренд</th>
                     <th>Позиция</th>
                     <th>Категория</th>
                     <th>Последняя цена</th>
@@ -431,6 +452,35 @@
                   </tr>
                 </thead>
                 <tbody id="itemCatalogBody"></tbody>
+              </table>
+            </div>
+          </section>
+          <section id="itemBrandsView" class="panel hidden">
+            <div class="item-brands-heading">
+              <div>
+                <h3>Бренды</h3>
+                <p class="muted">Объединяйте позиции разных источников и следите за покупками брендов.</p>
+              </div>
+              <button id="addItemBrandBtn" class="btn btn-primary" type="button">Добавить бренд</button>
+            </div>
+            <div id="itemBrandsKpiGrid" class="analytics-kpi-grid section-kpi-grid" aria-label="Итоги по брендам"></div>
+            <div class="item-brands-toolbar">
+              <input id="itemBrandsSearchQ" class="table-search-input" type="search" placeholder="Поиск по бренду или позиции" />
+              <button id="refreshItemBrandsBtn" class="btn btn-secondary btn-xs" type="button">Обновить</button>
+            </div>
+            <div class="table-wrap">
+              <table class="table table-hover mobile-card-table item-brands-table">
+                <thead>
+                  <tr>
+                    <th>Бренд</th>
+                    <th>Позиций</th>
+                    <th>Покупок</th>
+                    <th>Потрачено</th>
+                    <th>Последняя покупка</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="itemBrandsBody"></tbody>
               </table>
             </div>
           </section>

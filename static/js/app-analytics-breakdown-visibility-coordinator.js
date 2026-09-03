@@ -8,6 +8,7 @@
     state.analyticsStructureHidden = state.analyticsStructureHidden || {
       category: { expense: [], income: [], all: [] },
       group: { expense: [], income: [], all: [] },
+      brand: { expense: [], income: [], all: [] },
     };
     state.analyticsStructureHidden[level] = state.analyticsStructureHidden[level] || { expense: [], income: [], all: [] };
     state.analyticsStructureHidden[level][kind] = Array.from(keys);

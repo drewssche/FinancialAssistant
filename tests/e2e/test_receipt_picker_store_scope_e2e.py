@@ -114,11 +114,19 @@ def page_with_receipt_api_mock():
         },
     ]
 
+    brands = [
+        {"id": 201, "name": "Vici", "accent_color": "#35B8D4", "is_archived": False},
+        {"id": 202, "name": "Савушкин", "accent_color": "#E7B349", "is_archived": False},
+    ]
+
     templates = [
         {
             "id": 1,
             "shop_name": "Соседи",
             "name": "Ротманс",
+            "brand_id": 201,
+            "brand_name": "Vici",
+            "brand_accent_color": "#35B8D4",
             "last_category_id": 101,
             "latest_unit_price": "6.60",
         },
@@ -126,6 +134,9 @@ def page_with_receipt_api_mock():
             "id": 2,
             "shop_name": "Евроопт",
             "name": "Хлеб",
+            "brand_id": 202,
+            "brand_name": "Савушкин",
+            "brand_accent_color": "#E7B349",
             "latest_unit_price": "2.20",
         },
     ]
@@ -137,6 +148,31 @@ def page_with_receipt_api_mock():
             "latest_unit_price": "1.00",
         }
         for idx in range(3, 128)
+    )
+    templates.append(
+        {
+            "id": 128,
+            "shop_name": "Green",
+            "name": "Крабовые палочки охлаждённые из сурими с мясом снежного краба в сливочной заливке — очень длинное полное название позиции",
+            "brand_id": 201,
+            "brand_name": "Vici",
+            "brand_accent_color": "#35B8D4",
+            "last_category_id": 101,
+            "latest_unit_price": "5.39",
+        }
+    )
+    templates.append(
+        {
+            "id": 129,
+            "shop_name": "Архивный источник",
+            "name": "Архивная позиция",
+            "brand_id": 203,
+            "brand_name": "Архивный бренд",
+            "brand_accent_color": "#777777",
+            "brand_is_archived": True,
+            "last_category_id": 101,
+            "latest_unit_price": "4.20",
+        }
     )
 
     def json_response(route, payload: dict | list, status: int = 200):
@@ -172,6 +208,8 @@ def page_with_receipt_api_mock():
             return json_response(route, [])
         if path == "/api/v1/operations" and method == "GET":
             return json_response(route, {"items": [], "total": 0, "page": 1, "page_size": 20})
+        if path == "/api/v1/operations/item-brands" and method == "GET":
+            return json_response(route, {"items": brands, "total": len(brands), "page": 1, "page_size": 100})
         if path == "/api/v1/operations/item-templates" and method == "GET":
             token = ((query.get("q") or [""])[0]).strip().casefold()
             if not token:
@@ -282,6 +320,244 @@ def test_receipt_picker_store_scoped_and_optimistic_create(static_server_url: st
 
     first_row.locator('[data-receipt-field="shop_name"]').fill("Корона")
     assert second_row.locator('[data-receipt-field="shop_name"]').input_value() == "Евроопт"
+
+
+@pytest.mark.e2e
+def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str, page_with_receipt_api_mock):
+    page = page_with_receipt_api_mock
+    page.set_viewport_size({"width": 1280, "height": 900})
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    _login(page)
+    _ensure_categories_loaded(page)
+    page.click("#addOperationCta")
+    page.wait_for_selector("#createModal:not(.hidden)")
+    page.locator('#createOperationModeSwitch button[data-operation-mode="receipt"]').click()
+    page.wait_for_selector("#opReceiptFields:not(.hidden)")
+
+    first_row = page.locator("#receiptItemsList .receipt-item-row").first
+    brand_input = first_row.locator('[data-receipt-field="brand_search"]')
+    brand_input.click()
+    page.wait_for_selector('.receipt-brand-picker:not(.hidden) button[data-receipt-brand-id="201"]')
+    first_row.locator('button[data-receipt-brand-id="201"]').click()
+    assert brand_input.input_value() == "Vici"
+
+    name_input = first_row.locator('[data-receipt-field="name"]')
+    name_input.click()
+    page.wait_for_selector('.receipt-name-picker:not(.hidden) button[data-receipt-template-id="128"]')
+    assert first_row.locator('button[data-receipt-template-id="2"]').count() == 0
+    long_name = "Крабовые палочки охлаждённые из сурими с мясом снежного краба в сливочной заливке — очень длинное полное название позиции"
+    long_suggestion = first_row.locator('button[data-receipt-template-id="128"]')
+    assert long_suggestion.get_attribute("title") == long_name
+    assert long_name in long_suggestion.inner_text()
+    long_suggestion.click()
+
+    assert name_input.input_value() == long_name
+    assert name_input.get_attribute("title") == long_name
+    name_geometry = name_input.evaluate(
+        """
+        node => ({
+          height: node.getBoundingClientRect().height,
+          maxHeight: parseFloat(getComputedStyle(node).maxHeight),
+          scrollHeight: node.scrollHeight,
+        })
+        """
+    )
+    assert name_geometry["height"] > 44
+    assert name_geometry["height"] <= name_geometry["maxHeight"] + 1
+
+    second_row = page.locator("#receiptItemsList .receipt-item-row").nth(1)
+    assert second_row.locator('[data-receipt-field="shop_name"]').input_value() == "Green"
+    assert second_row.locator('[data-receipt-field="brand_search"]').input_value() == ""
+
+    payload = page.evaluate("() => window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
+    assert payload[0]["template_id"] == 128
+    assert "brand_id" not in payload[0]
+
+    # Typing into the brand search is not an assignment. On blur the saved
+    # template brand is restored and the payload stays untouched.
+    brand_input.fill("Савуш")
+    name_input.focus()
+    page.wait_for_timeout(50)
+    assert brand_input.input_value() == "Vici"
+    search_only_payload = page.evaluate("() => window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
+    assert "brand_id" not in search_only_payload[0]
+
+    brand_input.click()
+    first_row.locator("button[data-receipt-brand-clear]").click()
+    cleared_payload = page.evaluate("() => window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
+    assert cleared_payload[0]["template_id"] == 128
+    assert cleared_payload[0]["brand_id"] is None
+
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.wait_for_timeout(120)
+    mobile_positions = first_row.evaluate(
+        """
+        node => {
+          const top = (selector) => node.querySelector(selector).getBoundingClientRect().top;
+          return {
+            source: top('.receipt-shop-cell'),
+            brand: top('.receipt-brand-cell'),
+            name: top('.receipt-name-cell'),
+            category: top('.receipt-category-cell'),
+            price: top('.receipt-price-cell'),
+            quantity: top('.receipt-quantity-cell'),
+          };
+        }
+        """
+    )
+    assert mobile_positions["source"] < mobile_positions["brand"]
+    assert mobile_positions["brand"] < mobile_positions["name"]
+    assert mobile_positions["name"] < mobile_positions["category"]
+    assert mobile_positions["category"] < mobile_positions["price"]
+    assert mobile_positions["price"] < mobile_positions["quantity"]
+
+    page.evaluate(
+        """
+        () => {
+          window.App.actions.closeCreateModal();
+          window.App.actions.openOperationReceiptModal({
+            id: 77,
+            kind: 'expense',
+            amount: '5.39',
+            currency: 'BYN',
+            base_currency: 'BYN',
+            operation_date: '2026-09-04',
+            receipt_items: [{
+              brand_id: 201,
+              brand_name: 'Vici',
+              brand_accent_color: '#35B8D4',
+              name: 'Крабовые палочки охлаждённые из сурими с мясом снежного краба',
+              quantity: '1',
+              unit_price: '5.39',
+              line_total: '5.39',
+            }],
+          });
+        }
+        """
+    )
+    page.wait_for_selector("#operationReceiptModal:not(.hidden)")
+    assert page.locator("#operationReceiptItems .operation-receipt-brand").inner_text() == "Vici"
+    receipt_title = page.locator("#operationReceiptItems .operation-receipt-title strong")
+    assert receipt_title.get_attribute("title") == "Крабовые палочки охлаждённые из сурими с мясом снежного краба"
+
+
+@pytest.mark.e2e
+def test_cancelled_receipt_brand_change_does_not_mutate_template_hint(static_server_url: str, page_with_receipt_api_mock):
+    page = page_with_receipt_api_mock
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    _login(page)
+
+    def open_receipt():
+        page.click("#addOperationCta")
+        page.wait_for_selector("#createModal:not(.hidden)")
+        page.locator('#createOperationModeSwitch button[data-operation-mode="receipt"]').click()
+        page.wait_for_selector("#opReceiptFields:not(.hidden)")
+
+    def select_saved_template():
+        row = page.locator("#receiptItemsList .receipt-item-row").first
+        row.locator('[data-receipt-field="shop_name"]').fill("Соседи")
+        row.locator('[data-receipt-field="name"]').click()
+        page.wait_for_selector('.receipt-name-picker:not(.hidden) button[data-receipt-template-id="1"]')
+        row.locator('button[data-receipt-template-id="1"]').click()
+        return row
+
+    open_receipt()
+    row = select_saved_template()
+    assert row.locator('[data-receipt-field="brand_search"]').input_value() == "Vici"
+    row.locator('[data-receipt-field="brand_search"]').click()
+    page.wait_for_selector('.receipt-brand-picker:not(.hidden) button[data-receipt-brand-id="202"]')
+    row.locator('button[data-receipt-brand-id="202"]').click()
+    assert row.locator('[data-receipt-field="brand_search"]').input_value() == "Савушкин"
+
+    page.click("#closeCreateModalBtn")
+    page.wait_for_selector("#createModal", state="hidden")
+    open_receipt()
+    reopened_row = select_saved_template()
+    assert reopened_row.locator('[data-receipt-field="brand_search"]').input_value() == "Vici"
+    payload = page.evaluate("() => window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
+    assert payload[0]["template_id"] == 1
+    assert "brand_id" not in payload[0]
+
+
+@pytest.mark.e2e
+def test_receipt_brand_follows_new_identity_and_archived_brand_is_cleared(static_server_url: str, page_with_receipt_api_mock):
+    page = page_with_receipt_api_mock
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    _login(page)
+
+    def open_receipt():
+        page.click("#addOperationCta")
+        page.wait_for_selector("#createModal:not(.hidden)")
+        page.locator('#createOperationModeSwitch button[data-operation-mode="receipt"]').click()
+        page.wait_for_selector("#opReceiptFields:not(.hidden)")
+        return page.locator("#receiptItemsList .receipt-item-row").first
+
+    row = open_receipt()
+    row.locator('[data-receipt-field="shop_name"]').fill("Соседи")
+    row.locator('[data-receipt-field="name"]').click()
+    page.wait_for_selector('.receipt-name-picker:not(.hidden) button[data-receipt-template-id="1"]')
+    row.locator('button[data-receipt-template-id="1"]').click()
+    row.locator('[data-receipt-field="name"]').fill("Ротманс новое название")
+
+    renamed_payload = page.evaluate("() => window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
+    assert "template_id" not in renamed_payload[0]
+    assert renamed_payload[0]["brand_id"] == 201
+    assert row.locator('[data-receipt-field="brand_search"]').input_value() == "Vici"
+
+    page.click("#closeCreateModalBtn")
+    page.wait_for_selector("#createModal", state="hidden")
+
+    archived_row = open_receipt()
+    archived_row.locator('[data-receipt-field="shop_name"]').fill("Архивный источник")
+    archived_row.locator('[data-receipt-field="name"]').click()
+    page.wait_for_selector('.receipt-name-picker:not(.hidden) button[data-receipt-template-id="129"]')
+    archived_row.locator('button[data-receipt-template-id="129"]').click()
+    assert archived_row.locator('[data-receipt-field="brand_search"]').input_value() == "Архивный бренд"
+
+    archived_row.locator('[data-receipt-field="name"]').fill("Новая позиция вместо архивной")
+    archived_payload = page.evaluate("() => window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
+    assert "template_id" not in archived_payload[0]
+    assert archived_payload[0]["brand_id"] is None
+    assert archived_row.locator('[data-receipt-field="brand_search"]').input_value() == ""
 
 
 @pytest.mark.e2e

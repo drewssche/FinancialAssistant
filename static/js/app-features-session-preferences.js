@@ -71,8 +71,9 @@
     const normalized = {
       category: { expense: [], income: [], all: [] },
       group: { expense: [], income: [], all: [] },
+      brand: { expense: [], income: [], all: [] },
     };
-    for (const level of ["category", "group"]) {
+    for (const level of ["category", "group", "brand"]) {
       const sourceLevel = raw && typeof raw === "object" ? raw[level] : null;
       for (const kind of ["expense", "income", "all"]) {
         const source = sourceLevel && Array.isArray(sourceLevel[kind]) ? sourceLevel[kind] : [];
@@ -559,6 +560,8 @@
     state.operationsCategoryFilterName = prefs.data?.operations?.filters?.category_name || "";
     state.operationsItemTemplateFilterId = prefs.data?.operations?.filters?.item_template_id ?? null;
     state.operationsItemTemplateFilterName = prefs.data?.operations?.filters?.item_template_name || "";
+    state.operationsBrandFilterId = prefs.data?.operations?.filters?.brand_id ?? null;
+    state.operationsBrandFilterName = prefs.data?.operations?.filters?.brand_name || "";
     state.operationSortPreset = prefs.data?.operations?.sort_preset || localStorage.getItem("operations_sort_preset") || "date";
     localStorage.setItem("operations_sort_preset", state.operationSortPreset);
     state.debtSortPreset = prefs.data?.debts?.sort_preset || "priority";
@@ -583,7 +586,7 @@
       ? prefs.data.analytics.commerce_discount_type
       : "all";
     state.analyticsCommerceSort = prefs.data?.analytics?.commerce_sort === "asc" ? "asc" : "desc";
-    state.analyticsBreakdownLevel = ["category", "group"].includes(prefs.data?.analytics?.breakdown_level)
+    state.analyticsBreakdownLevel = ["category", "group", "brand"].includes(prefs.data?.analytics?.breakdown_level)
       ? prefs.data.analytics.breakdown_level
       : "category";
     state.analyticsStructureHidden = normalizeStructureHidden(prefs.data?.analytics?.structure_hidden);
@@ -731,6 +734,8 @@
             category_name: state.operationsCategoryFilterName || "",
             item_template_id: state.operationsItemTemplateFilterId,
             item_template_name: state.operationsItemTemplateFilterName || "",
+            brand_id: state.operationsBrandFilterId,
+            brand_name: state.operationsBrandFilterName || "",
             q: el.filterQ.value.trim(),
           },
         },

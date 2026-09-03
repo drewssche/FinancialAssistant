@@ -217,6 +217,7 @@
                 <div class="segmented" id="analyticsBreakdownLevelTabs" role="tablist" aria-label="Уровень структуры">
                   <button class="segmented-btn active" data-analytics-breakdown-level="category" type="button">Категории</button>
                   <button class="segmented-btn" data-analytics-breakdown-level="group" type="button">Группы</button>
+                  <button class="segmented-btn" data-analytics-breakdown-level="brand" type="button">Бренды</button>
                 </div>
                 <div class="segmented" id="analyticsCategoryKindTabs" role="tablist" aria-label="Тип категорий">
                   <button class="segmented-btn active" data-analytics-category-kind="expense" type="button">Расход</button>
@@ -225,6 +226,7 @@
                 </div>
               </div>
             </div>
+            <div id="analyticsBrandCoverage" class="analytics-brand-coverage hidden" aria-label="Покрытие расходов брендами"></div>
             <div class="analytics-category-breakdown-grid">
               <div class="analytics-category-breakdown-chart-card">
                 <div id="analyticsCategoryBreakdownChart" class="analytics-category-donut">
@@ -593,6 +595,7 @@
                   <button id="operationsCurrencyScopeChip" class="operations-filter-chip hidden" data-clear-operations-filter="currency" type="button"></button>
                   <button id="operationsCategoryFilterChip" class="operations-filter-chip hidden" data-clear-operations-filter="category" type="button"></button>
                   <button id="operationsItemTemplateFilterChip" class="operations-filter-chip hidden" data-clear-operations-filter="position" type="button"></button>
+                  <button id="operationsBrandFilterChip" class="operations-filter-chip hidden" data-clear-operations-filter="brand" type="button"></button>
                   <button id="clearOperationsCategoryFilterBtn" class="operations-filter-reset hidden" type="button" title="Сбросить все фильтры" aria-label="Сбросить все фильтры">×</button>
                 </div>
               </div>

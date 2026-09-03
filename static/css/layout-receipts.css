@@ -39,6 +39,19 @@
 
 .operation-receipt-title strong {
   min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.operation-receipt-brand {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.operation-receipt-brand .category-chip,
+.operation-receipt-brand .item-brand-chip {
+  min-height: 1.45rem;
+  padding: 3px 8px;
+  font-size: 0.6875rem;
 }
 
 .operation-receipt-discount-chip {
@@ -172,9 +185,11 @@
 
 .receipt-item-row {
   display: grid;
-  grid-template-columns: minmax(140px, 0.72fr) minmax(190px, 1.16fr) minmax(170px, 0.9fr) minmax(360px, 1.4fr) 72px 104px 40px;
   gap: var(--space-2);
-  align-items: center;
+  padding: var(--space-2);
+  border: 1px solid rgba(39, 50, 72, 0.72);
+  border-radius: var(--radius-md);
+  background: rgba(14, 22, 36, 0.4);
   min-width: 0;
   position: relative;
   z-index: 0;
@@ -188,7 +203,33 @@
   z-index: 80;
 }
 
+.receipt-item-identity {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.7fr) minmax(130px, 0.62fr) minmax(280px, 1.8fr) minmax(165px, 0.85fr);
+  grid-template-areas: "shop brand name category";
+  gap: var(--space-2);
+  align-items: start;
+  min-width: 0;
+}
+
+.receipt-item-identity > * {
+  min-width: 0;
+}
+
+.receipt-item-money {
+  display: grid;
+  grid-template-columns: minmax(330px, 1fr) minmax(92px, 0.22fr) minmax(104px, max-content) 40px;
+  gap: var(--space-2);
+  align-items: end;
+  min-width: 0;
+}
+
+.receipt-item-money > * {
+  min-width: 0;
+}
+
 .receipt-shop-cell {
+  grid-area: shop;
   position: relative;
   min-width: 0;
   z-index: 0;
@@ -224,10 +265,82 @@
   max-width: 100%;
 }
 
-.receipt-name-cell {
+.receipt-brand-cell {
+  grid-area: brand;
   position: relative;
   min-width: 0;
-  padding-left: var(--space-1);
+  z-index: 0;
+}
+
+.receipt-brand-cell:focus-within {
+  z-index: 40;
+}
+
+.receipt-brand-cell.has-open-popover {
+  z-index: 90;
+}
+
+.receipt-brand-cell > input {
+  width: 100%;
+}
+
+.receipt-brand-cell.has-brand > input {
+  padding-left: calc(var(--space-3) + 14px);
+  border-color: color-mix(in srgb, var(--receipt-brand-accent) 62%, var(--border));
+}
+
+.receipt-brand-accent {
+  display: none;
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: var(--space-3);
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--receipt-brand-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--receipt-brand-accent) 18%, transparent);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.receipt-brand-cell.has-brand .receipt-brand-accent {
+  display: block;
+}
+
+.receipt-brand-picker {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  right: auto;
+  padding: var(--space-2);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-2);
+  overflow-y: auto;
+}
+
+.receipt-brand-picker .chip-btn {
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+
+.receipt-brand-picker .item-brand-chip-name {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+
+.receipt-picker-empty {
+  flex-basis: 100%;
+}
+
+.receipt-name-cell {
+  grid-area: name;
+  position: relative;
+  min-width: 0;
   z-index: 0;
 }
 
@@ -239,11 +352,23 @@
   z-index: 90;
 }
 
-.receipt-name-cell > input {
+.receipt-name-cell > textarea.receipt-name-input {
   width: 100%;
+  height: var(--control-height);
+  min-height: var(--control-height);
+  max-height: calc(3 * 1.25rem + 1.25rem + 2px);
+  padding: 0.625rem var(--space-3);
+  line-height: 1.25rem;
+  resize: none;
+  overflow-y: hidden;
+}
+
+.receipt-name-cell > textarea.receipt-name-input.is-overflowing {
+  overflow-y: auto;
 }
 
 .receipt-category-cell {
+  grid-area: category;
   position: relative;
   min-width: 0;
   z-index: 0;
@@ -290,11 +415,11 @@
 .receipt-name-picker {
   position: absolute;
   top: calc(100% + var(--space-2));
-  left: var(--space-1);
+  left: 0;
   right: auto;
   padding: var(--space-2);
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   align-items: flex-start;
   gap: var(--space-2);
   overflow-y: auto;
@@ -302,7 +427,37 @@
 
 .receipt-name-picker .chip-btn {
   flex: 0 0 auto;
+  width: 100%;
   max-width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+  white-space: normal;
+}
+
+.receipt-name-picker .category-chip,
+.receipt-name-picker .category-chip-text {
+  max-width: none;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+
+.receipt-template-suggestion {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.receipt-template-suggestion-name {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.receipt-template-suggestion-brand {
+  min-width: 0;
+  flex: 0 1 auto;
+  max-width: 34%;
 }
 
 .receipt-name-picker .chip-btn-create {
@@ -354,7 +509,8 @@
   padding: 3px 8px;
 }
 
-.receipt-item-row input {
+.receipt-item-row input,
+.receipt-item-row textarea {
   width: 100%;
 }
 
@@ -410,10 +566,6 @@
   grid-row: 2;
 }
 
-.receipt-item-row-discounted > :not(.receipt-price-cell) {
-  transform: translateY(12px);
-}
-
 .receipt-discount-toggle {
   width: auto;
   min-width: max-content;
@@ -464,6 +616,17 @@
   white-space: nowrap;
 }
 
+.receipt-quantity-cell {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.receipt-quantity-cell > span {
+  color: var(--muted);
+  font-size: 0.6875rem;
+}
+
 .receipt-item-row .receipt-line-total span {
   color: var(--muted);
   font-size: 0.6875rem;
@@ -501,14 +664,22 @@
   color: #ffb5c4;
 }
 
-@media (max-width: 900px) {
-  .receipt-item-row {
-    grid-template-columns: minmax(120px, 0.65fr) minmax(0, 1fr) minmax(140px, 0.86fr) minmax(300px, 1.25fr) 64px 86px 32px;
-    gap: 6px;
+@media (max-width: 1100px) {
+  .receipt-item-identity {
+    grid-template-columns: minmax(140px, 0.8fr) minmax(140px, 0.8fr) minmax(0, 1.4fr);
+    grid-template-areas:
+      "shop brand category"
+      "name name name";
+  }
+
+  .receipt-item-money {
+    grid-template-columns: minmax(280px, 1fr) 88px minmax(96px, max-content) 40px;
   }
 
   .receipt-shop-picker,
-  .receipt-name-picker {
+  .receipt-brand-picker,
+  .receipt-name-picker,
+  .receipt-category-picker {
     left: 0;
   }
 }

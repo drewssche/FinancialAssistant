@@ -12,6 +12,7 @@ from app.db.models import (
     Debt,
     DebtCounterparty,
     FxTrade,
+    ItemBrand,
     Operation,
     OperationItemTemplate,
     PlanOperation,
@@ -28,6 +29,7 @@ class ActivityService:
         "category": "Категория",
         "category_group": "Группа категорий",
         "item_template": "Позиция каталога",
+        "item_brand": "Бренд",
         "currency_trade": "Валютная сделка",
         "currency_portfolio": "Валютный портфель",
         "work_payment_link": "Связь выплаты",
@@ -331,6 +333,7 @@ class ActivityService:
             "category": Category,
             "category_group": CategoryGroup,
             "item_template": OperationItemTemplate,
+            "item_brand": ItemBrand,
             "currency_trade": FxTrade,
             "work_payment_link": WorkPaymentLink,
         }
@@ -385,6 +388,8 @@ class ActivityService:
             summary = entity.name
         elif isinstance(entity, OperationItemTemplate):
             summary = " · ".join(filter(None, [entity.name, entity.shop_name]))
+        elif isinstance(entity, ItemBrand):
+            summary = entity.name
         elif isinstance(entity, FxTrade):
             side = "Покупка" if entity.side == "buy" else "Продажа"
             summary = f"{side} · {self._money_label(entity.quantity, entity.asset_currency)} · {self._date_label(entity.trade_date)}"

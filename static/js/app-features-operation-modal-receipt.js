@@ -16,6 +16,8 @@
       localTemplateSeq: 0,
       hintsPromise: null,
       hintsLoadedAt: 0,
+      brandsPromise: null,
+      brandsLoadedAt: 0,
     };
     const RECEIPT_DISCOUNT_TYPES = [
       { value: "promo", label: "Акция" },
@@ -159,6 +161,11 @@
       return {
         draft_id: state[ctx.seqKey],
         template_id: seed.template_id || null,
+        brand_id: seed.brand_id ? Number(seed.brand_id) : null,
+        brand_name: normalizeReceiptName(seed.brand_name || ""),
+        brand_accent_color: seed.brand_accent_color || null,
+        brand_is_archived: Boolean(seed.brand_is_archived),
+        brand_touched: Boolean(seed.brand_touched),
         category_id: seed.category_id ? Number(seed.category_id) : null,
         shop_name: normalizeReceiptName(seed.shop_name || ""),
         shop_name_inherited: Boolean(seed.shop_name_inherited),
@@ -174,6 +181,42 @@
 
     function getReceiptItemByDraftId(draftId, mode = "create") {
       return getReceiptItems(mode).find((entry) => Number(entry.draft_id) === Number(draftId)) || null;
+    }
+
+    function unlinkReceiptTemplateIdentity(item) {
+      item.template_id = null;
+      if (item.brand_is_archived) {
+        item.brand_id = null;
+        item.brand_name = "";
+        item.brand_accent_color = null;
+        item.brand_is_archived = false;
+        item.brand_touched = true;
+        return true;
+      }
+      if (item.brand_id) {
+        // The visible active brand follows a newly named/sourced catalog item.
+        // Send it explicitly because there is no longer a template link from
+        // which the backend can infer that relation.
+        item.brand_touched = true;
+      }
+      return false;
+    }
+
+    function syncReceiptBrandField(item, mode = "create") {
+      const row = getReceiptContext(mode).listNode?.querySelector(
+        `[data-receipt-item-id="${Number(item?.draft_id || 0)}"]`,
+      );
+      const input = row?.querySelector('[data-receipt-field="brand_search"]');
+      const brandName = normalizeReceiptName(item?.brand_name || "");
+      if (input) {
+        input.value = brandName;
+        input.title = brandName || "Бренд не выбран";
+      }
+      const cell = row?.querySelector(".receipt-brand-cell");
+      if (cell) {
+        cell.classList.toggle("has-brand", Boolean(brandName));
+        cell.style.setProperty("--receipt-brand-accent", safeBrandAccent(item?.brand_accent_color));
+      }
     }
 
     function updateReceiptItemField(draftId, key, value, mode = "create") {
@@ -206,12 +249,37 @@
           ? value
           : "promo";
       } else if (key === "shop_name") {
-        item.shop_name = normalizeReceiptName(value);
+        const nextShopName = normalizeReceiptName(value);
+        const identityChanged = normalizeReceiptName(item.shop_name || "").toLowerCase() !== nextShopName.toLowerCase();
+        item.shop_name = nextShopName;
         item.shop_name_inherited = false;
-        item.template_id = null;
+        if (identityChanged) {
+          if (unlinkReceiptTemplateIdentity(item)) {
+            syncReceiptBrandField(item, mode);
+          }
+        }
       } else if (key === "name") {
-        item.name = normalizeReceiptName(value);
-        item.template_id = null;
+        const nextName = normalizeReceiptName(value);
+        const identityChanged = normalizeReceiptName(item.name || "").toLowerCase() !== nextName.toLowerCase();
+        item.name = nextName;
+        if (identityChanged) {
+          if (unlinkReceiptTemplateIdentity(item)) {
+            syncReceiptBrandField(item, mode);
+          }
+        }
+      } else if (key === "brand_id") {
+        const brandId = value ? Number(value) : null;
+        const brand = brandId
+          ? (state.itemBrands || []).find((entry) => Number(entry.id) === brandId)
+          : null;
+        item.brand_id = brand?.id ? Number(brand.id) : null;
+        item.brand_name = normalizeReceiptName(brand?.name || "");
+        item.brand_accent_color = brand?.accent_color || null;
+        item.brand_is_archived = Boolean(brand?.is_archived);
+        item.brand_touched = true;
+      } else if (key === "brand_search") {
+        // The text box is only a search query. Keep the persisted selection
+        // until the user explicitly picks a brand or chooses “Без бренда”.
       } else if (key === "category_id") {
         item.category_id = value ? Number(value) : null;
       } else if (key === "note") {
@@ -226,10 +294,12 @@
 
     function isReceiptRowEmpty(item) {
       const shopName = item?.shop_name_inherited ? "" : normalizeReceiptName(item?.shop_name || "");
+      const brandId = Number(item?.brand_id || 0);
+      const brandName = normalizeReceiptName(item?.brand_name || "");
       const name = normalizeReceiptName(item?.name || "");
       const qty = asQty(item?.quantity || 0);
       const price = asMoney(item?.unit_price || 0);
-      return !shopName && !name && qty <= 0 && price <= 0;
+      return !shopName && !brandId && !brandName && !name && qty <= 0 && price <= 0;
     }
 
     function hasReceiptRowName(item) {
@@ -260,7 +330,9 @@
         if (!normalizeReceiptName(item.shop_name || "") || item.shop_name_inherited) {
           if (normalizeReceiptName(item.shop_name || "") !== primaryShopName) {
             item.shop_name = primaryShopName;
-            item.template_id = null;
+            if (unlinkReceiptTemplateIdentity(item)) {
+              syncReceiptBrandField(item, mode);
+            }
             changed = true;
           }
           item.shop_name_inherited = true;
@@ -295,6 +367,25 @@
       state[ctx.itemsKey] = normalizedRows;
     }
 
+    function resizeReceiptNameTextarea(node) {
+      if (!node) {
+        return;
+      }
+      node.style.height = "auto";
+      const computed = window.getComputedStyle(node);
+      const lineHeight = Number.parseFloat(computed.lineHeight) || 20;
+      const padding = (Number.parseFloat(computed.paddingTop) || 0) + (Number.parseFloat(computed.paddingBottom) || 0);
+      const border = (Number.parseFloat(computed.borderTopWidth) || 0) + (Number.parseFloat(computed.borderBottomWidth) || 0);
+      const maxHeight = (lineHeight * 3) + padding + border;
+      node.style.height = `${Math.min(node.scrollHeight, maxHeight)}px`;
+      node.classList.toggle("is-overflowing", node.scrollHeight > maxHeight + 1);
+    }
+
+    function safeBrandAccent(value) {
+      const accent = String(value || "").trim();
+      return /^#[0-9a-f]{3,8}$/i.test(accent) ? accent : "#7aa2f7";
+    }
+
     function renderReceiptItems(mode = "create") {
       const ctx = getReceiptContext(mode);
       if (!ctx.listNode) {
@@ -316,14 +407,20 @@
         const activeField = receiptUiState.activePicker?.field || "";
         const shopPickerOpen = activeDraftId === Number(item.draft_id) && activeField === "shop_name" && pickerMode === mode;
         const namePickerOpen = activeDraftId === Number(item.draft_id) && activeField === "name" && pickerMode === mode;
+        const brandPickerOpen = activeDraftId === Number(item.draft_id) && activeField === "brand_id" && pickerMode === mode;
         const categoryPickerOpen = activeDraftId === Number(item.draft_id) && activeField === "category_id" && pickerMode === mode;
-        const hasOpenPicker = shopPickerOpen || namePickerOpen || categoryPickerOpen;
+        const hasOpenPicker = shopPickerOpen || brandPickerOpen || namePickerOpen || categoryPickerOpen;
         const explicitCategoryId = item.category_id ? Number(item.category_id) : null;
         const effectiveCategoryId = explicitCategoryId || getReceiptDefaultCategoryId(mode);
         const categoryMeta = effectiveCategoryId
           ? (state.categories || []).find((entry) => Number(entry.id) === effectiveCategoryId)
           : null;
         const categorySource = explicitCategoryId ? "explicit" : (categoryMeta ? "default" : "none");
+        const brandMeta = item.brand_id
+          ? (state.itemBrands || []).find((entry) => Number(entry.id) === Number(item.brand_id))
+          : null;
+        const brandName = normalizeReceiptName(brandMeta?.name || item.brand_name || "");
+        const brandAccent = safeBrandAccent(brandMeta?.accent_color || item.brand_accent_color);
         const activeDiscountType = item.discount_type || "promo";
         const discountTypeButtons = RECEIPT_DISCOUNT_TYPES.map((entry) => `
           <button
@@ -336,44 +433,59 @@
         `).join("");
         return `
           <div class="receipt-item-row ${item.is_discounted ? "receipt-item-row-discounted" : ""} ${hasOpenPicker ? "has-open-popover" : ""}" data-receipt-mode="${mode}" data-receipt-item-id="${item.draft_id}">
-            <div class="receipt-shop-cell ${shopPickerOpen ? "has-open-popover" : ""}">
-              <input type="text" data-receipt-field="shop_name" value="${esc(item.shop_name || "")}" placeholder="Источник" />
-              <div class="receipt-shop-picker app-popover ${shopPickerOpen ? "" : "hidden"}"></div>
-            </div>
-            <div class="receipt-name-cell ${namePickerOpen ? "has-open-popover" : ""}">
-              <input type="text" data-receipt-field="name" value="${esc(item.name)}" placeholder="Позиция" />
-              <span class="receipt-new-badge ${item.name && !item.template_id ? "" : "hidden"}">Новая позиция</span>
-              <div class="receipt-name-picker app-popover ${namePickerOpen ? "" : "hidden"}"></div>
-            </div>
-            <div class="receipt-category-cell ${categoryPickerOpen ? "has-open-popover" : ""}">
-              <span class="receipt-category-badge ${categorySource === "default" ? "" : "hidden"}">По умолчанию</span>
-              <input
-                type="text"
-                data-receipt-field="category_search"
-                value="${esc(categoryMeta?.name || "")}"
-                data-receipt-category-source="${categorySource}"
-                data-receipt-effective-category-id="${effectiveCategoryId || ""}"
-                placeholder="Категория"
-                autocomplete="off"
-              />
-              <div class="receipt-category-picker app-popover ${categoryPickerOpen ? "" : "hidden"}"></div>
-            </div>
-            <div class="receipt-price-cell ${item.is_discounted ? "receipt-price-cell-discounted" : ""}">
-              <div class="receipt-price-field">
-                <input type="text" inputmode="decimal" data-receipt-field="unit_price" value="${formatReceiptInputAmount(item.unit_price)}" placeholder="Цена" title="Цена покупки в ${esc(getReceiptCurrencyLabel(mode))}" />
+            <div class="receipt-item-identity">
+              <div class="receipt-shop-cell ${shopPickerOpen ? "has-open-popover" : ""}">
+                <input type="text" data-receipt-field="shop_name" value="${esc(item.shop_name || "")}" placeholder="Источник" title="${esc(item.shop_name || "Источник")}" autocomplete="off" aria-label="Источник позиции" />
+                <div class="receipt-shop-picker app-popover ${shopPickerOpen ? "" : "hidden"}"></div>
               </div>
-              <button class="receipt-discount-toggle ${item.is_discounted ? "is-active" : ""}" type="button" data-receipt-discount-toggle="${item.draft_id}" aria-pressed="${item.is_discounted ? "true" : "false"}" title="Скидка, купон, промокод или бонусы">${receiptDiscountToggleLabel(item)}</button>
-              <div class="receipt-discount-type-row ${item.is_discounted ? "" : "hidden"}" role="group" aria-label="Тип скидки">${discountTypeButtons}</div>
-              <div class="receipt-price-field receipt-regular-price-field ${item.is_discounted ? "" : "hidden"}">
-                <input class="receipt-regular-price" type="text" inputmode="decimal" data-receipt-field="regular_unit_price" value="${formatReceiptInputAmount(item.regular_unit_price)}" placeholder="До скидки" title="Обычная цена для истории" />
+              <div class="receipt-brand-cell ${brandPickerOpen ? "has-open-popover" : ""} ${brandName ? "has-brand" : ""}" style="--receipt-brand-accent: ${brandAccent}">
+                <span class="receipt-brand-accent" aria-hidden="true"></span>
+                <input type="text" data-receipt-field="brand_search" value="${esc(brandName)}" placeholder="Бренд" title="${esc(brandName || "Бренд не выбран")}" autocomplete="off" aria-label="Бренд позиции" />
+                <div class="receipt-brand-picker app-popover ${brandPickerOpen ? "" : "hidden"}"></div>
+              </div>
+              <div class="receipt-name-cell ${namePickerOpen ? "has-open-popover" : ""}">
+                <textarea class="receipt-name-input" rows="1" data-receipt-field="name" placeholder="Позиция" title="${esc(item.name || "Позиция")}" aria-label="Название позиции">${esc(item.name)}</textarea>
+                <span class="receipt-new-badge ${item.name && !item.template_id ? "" : "hidden"}">Новая позиция</span>
+                <div class="receipt-name-picker app-popover ${namePickerOpen ? "" : "hidden"}"></div>
+              </div>
+              <div class="receipt-category-cell ${categoryPickerOpen ? "has-open-popover" : ""}">
+                <span class="receipt-category-badge ${categorySource === "default" ? "" : "hidden"}">По умолчанию</span>
+                <input
+                  type="text"
+                  data-receipt-field="category_search"
+                  value="${esc(categoryMeta?.name || "")}"
+                  data-receipt-category-source="${categorySource}"
+                  data-receipt-effective-category-id="${effectiveCategoryId || ""}"
+                  placeholder="Категория"
+                  title="${esc(categoryMeta?.name || "Категория не выбрана")}"
+                  autocomplete="off"
+                  aria-label="Категория позиции"
+                />
+                <div class="receipt-category-picker app-popover ${categoryPickerOpen ? "" : "hidden"}"></div>
               </div>
             </div>
-            <input type="number" step="0.001" min="0" data-receipt-field="quantity" value="${item.quantity || ""}" placeholder="Кол-во" />
-            <div class="receipt-line-total"><span>Итого</span><strong>${formatReceiptMoney(total, mode)}</strong></div>
-            <button class="btn btn-danger receipt-remove-btn ${removeHidden ? "hidden" : ""}" type="button" data-receipt-remove-id="${item.draft_id}" title="Удалить">×</button>
+            <div class="receipt-item-money">
+              <div class="receipt-price-cell ${item.is_discounted ? "receipt-price-cell-discounted" : ""}">
+                <div class="receipt-price-field">
+                  <input type="text" inputmode="decimal" data-receipt-field="unit_price" value="${formatReceiptInputAmount(item.unit_price)}" placeholder="Цена" title="Цена покупки в ${esc(getReceiptCurrencyLabel(mode))}" aria-label="Цена позиции" />
+                </div>
+                <button class="receipt-discount-toggle ${item.is_discounted ? "is-active" : ""}" type="button" data-receipt-discount-toggle="${item.draft_id}" aria-pressed="${item.is_discounted ? "true" : "false"}" title="Скидка, купон, промокод или бонусы">${receiptDiscountToggleLabel(item)}</button>
+                <div class="receipt-discount-type-row ${item.is_discounted ? "" : "hidden"}" role="group" aria-label="Тип скидки">${discountTypeButtons}</div>
+                <div class="receipt-price-field receipt-regular-price-field ${item.is_discounted ? "" : "hidden"}">
+                  <input class="receipt-regular-price" type="text" inputmode="decimal" data-receipt-field="regular_unit_price" value="${formatReceiptInputAmount(item.regular_unit_price)}" placeholder="До скидки" title="Обычная цена для истории" aria-label="Цена до скидки" />
+                </div>
+              </div>
+              <div class="receipt-quantity-cell">
+                <span>Количество</span>
+                <input type="number" step="0.001" min="0" data-receipt-field="quantity" value="${item.quantity || ""}" placeholder="Кол-во" aria-label="Количество позиции" />
+              </div>
+              <div class="receipt-line-total"><span>Итого</span><strong>${formatReceiptMoney(total, mode)}</strong></div>
+              <button class="btn btn-danger receipt-remove-btn ${removeHidden ? "hidden" : ""}" type="button" data-receipt-remove-id="${item.draft_id}" title="Удалить позицию" aria-label="Удалить позицию">×</button>
+            </div>
           </div>
         `;
       }).join("");
+      ctx.listNode.querySelectorAll('textarea[data-receipt-field="name"]').forEach(resizeReceiptNameTextarea);
     }
 
     function getReceiptTotal(mode = "create") {
@@ -492,6 +604,7 @@
         receiptLineTotal,
         receiptDiscountToggleLabel,
         formatReceiptMoney,
+        resizeReceiptNameTextarea,
         removeReceiptItem,
         updateCreatePreview,
         updateEditPreview,
@@ -602,6 +715,8 @@
       const defaultCategoryId = el.opCategory?.value ? Number(el.opCategory.value) : null;
       return getReceiptItems("create")
         .map((item) => ({
+          ...(Number(item.template_id) > 0 ? { template_id: Number(item.template_id) } : {}),
+          ...(item.brand_touched ? { brand_id: item.brand_id ? Number(item.brand_id) : null } : {}),
           category_id: resolveReceiptPayloadCategoryId(item, "create", defaultCategoryId),
           shop_name: normalizeReceiptName(item.shop_name || "") || null,
           name: normalizeReceiptName(item.name),
@@ -623,6 +738,8 @@
       const defaultCategoryId = el.editCategory?.value ? Number(el.editCategory.value) : null;
       return getReceiptItems("edit")
         .map((item) => ({
+          ...(Number(item.template_id) > 0 ? { template_id: Number(item.template_id) } : {}),
+          ...(item.brand_touched ? { brand_id: item.brand_id ? Number(item.brand_id) : null } : {}),
           category_id: resolveReceiptPayloadCategoryId(item, "edit", defaultCategoryId),
           shop_name: normalizeReceiptName(item.shop_name || "") || null,
           name: normalizeReceiptName(item.name),
@@ -650,6 +767,7 @@
       handleReceiptItemsListKeydown,
       handleReceiptItemsListClick,
       handleReceiptOutsidePointer,
+      resizeReceiptNameTextarea,
       handlePullReceiptTotal,
       getCreateReceiptPayload,
       getEditReceiptPayload,

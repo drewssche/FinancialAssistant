@@ -40,11 +40,22 @@
     }
 
     async function refreshAfterOperationMutation() {
-      core.invalidateUiRequestCache?.("analytics");
-      core.invalidateUiRequestCache?.("dashboard:highlights");
+      const itemCatalogFeature = window.App.getRuntimeModule?.("item-catalog") || {};
+      if (itemCatalogFeature.invalidateItemCatalogDependentCaches) {
+        itemCatalogFeature.invalidateItemCatalogDependentCaches();
+      } else {
+        core.invalidateUiRequestCache?.("analytics");
+        core.invalidateUiRequestCache?.("dashboard:highlights");
+        core.invalidateUiRequestCache?.("item-catalog");
+        core.invalidateUiRequestCache?.("item-brands");
+        core.invalidateUiRequestCache?.("op:receipt:templates");
+        state.receiptTemplateHints = [];
+        state.itemBrandsLoaded = false;
+      }
       const tasks = [loadOperations({ reset: true })];
       const analyticsFeature = getAnalyticsFeature();
       const currencyFeature = window.App.getRuntimeModule?.("currency") || {};
+      const itemBrandsFeature = window.App.getRuntimeModule?.("item-brands") || {};
       if (isSectionVisible("dashboard")) {
         tasks.push(loadDashboard(), loadDashboardOperations());
         if (analyticsFeature.loadDashboardAnalyticsPreview) {
@@ -56,6 +67,12 @@
       }
       if (isSectionVisible("analytics") && analyticsFeature.loadAnalyticsSection) {
         tasks.push(analyticsFeature.loadAnalyticsSection({ force: true }));
+      }
+      if (isSectionVisible("item_catalog")) {
+        tasks.push((async () => {
+          await itemBrandsFeature.loadItemBrands?.({ force: true });
+          await loadItemCatalog({ force: true });
+        })());
       }
       await Promise.all(tasks);
     }

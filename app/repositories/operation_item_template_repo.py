@@ -50,6 +50,7 @@ class OperationItemTemplateRepository:
         name: str,
         name_ci: str,
         last_category_id: int | None,
+        brand_id: int | None = None,
         flush: bool = True,
     ) -> OperationItemTemplate:
         item = OperationItemTemplate(
@@ -59,6 +60,7 @@ class OperationItemTemplateRepository:
             name=name,
             name_ci=name_ci,
             last_category_id=last_category_id,
+            brand_id=brand_id,
             use_count=0,
         )
         self.db.add(item)
@@ -188,6 +190,7 @@ class OperationItemTemplateRepository:
         page: int,
         page_size: int,
         q: str | None,
+        brand_id: int | None = None,
     ) -> tuple[list[OperationItemTemplate], int]:
         conditions = [
             OperationItemTemplate.user_id == user_id,
@@ -203,6 +206,8 @@ class OperationItemTemplateRepository:
                         OperationItemTemplate.shop_name.ilike(like),
                     )
                 )
+        if brand_id is not None:
+            conditions.append(OperationItemTemplate.brand_id == brand_id)
         stmt = (
             select(OperationItemTemplate)
             .where(and_(*conditions))
@@ -436,14 +441,17 @@ class OperationItemTemplateRepository:
         *,
         user_id: int,
         template_ids: list[int],
+        include_archived: bool = False,
     ) -> list[OperationItemTemplate]:
         if not template_ids:
             return []
-        stmt = select(OperationItemTemplate).where(
+        conditions = [
             OperationItemTemplate.user_id == user_id,
             OperationItemTemplate.id.in_(template_ids),
-            OperationItemTemplate.is_archived.is_(False),
-        )
+        ]
+        if not include_archived:
+            conditions.append(OperationItemTemplate.is_archived.is_(False))
+        stmt = select(OperationItemTemplate).where(*conditions)
         return list(self.db.scalars(stmt))
 
     def get_latest_purchases_for_templates(

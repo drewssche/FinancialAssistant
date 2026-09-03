@@ -38,8 +38,20 @@
     const itemCatalogUiCoordinator = getItemCatalogUiCoordinator();
     const itemCatalogSectionCoordinator = getItemCatalogSectionCoordinator();
     const itemRecommendationManager = window.App.getRuntimeModule?.("item-recommendation-manager");
+    const itemCatalogFeature = window.App.getRuntimeModule?.("item-catalog") || {};
+    const itemBrandsFeature = window.App.getRuntimeModule?.("item-brands") || {};
 
     itemRecommendationManager?.bind?.();
+    itemBrandsFeature.bind?.();
+
+    if (el.itemTemplateBrandSearch) {
+      el.itemTemplateBrandSearch.addEventListener("focus", () => itemCatalogFeature.handleItemTemplateBrandSearchFocus?.());
+      el.itemTemplateBrandSearch.addEventListener("click", () => itemCatalogFeature.handleItemTemplateBrandSearchFocus?.());
+      el.itemTemplateBrandSearch.addEventListener("input", () => itemCatalogFeature.handleItemTemplateBrandSearchInput?.());
+      el.itemTemplateBrandSearch.addEventListener("keydown", (event) => itemCatalogFeature.handleItemTemplateBrandSearchKeydown?.(event));
+      el.itemTemplateBrandSearch.addEventListener("focusout", (event) => itemCatalogFeature.handleItemTemplateBrandSearchFocusOut?.(event));
+    }
+    el.itemTemplateBrandAll?.addEventListener("click", (event) => itemCatalogFeature.handleItemTemplateBrandPickerClick?.(event));
 
     el.itemTemplateHistoryBtn?.addEventListener("click", () => {
       const itemId = Number(el.itemTemplateHistoryBtn.dataset.itemTemplateHistoryId || 0);

@@ -15,11 +15,14 @@
       loadItemCatalog,
       applySavedItemCatalogItem,
       applySavedReceiptTemplateHint,
+      invalidateItemCatalogDependentCaches,
       savePreferencesDebounced,
     } = deps;
     const createItemCatalogSourcesFeature = window.App.getRuntimeModule?.("item-catalog-sources-factory");
     const sourcesFeature = createItemCatalogSourcesFeature ? createItemCatalogSourcesFeature(deps) : null;
     const pickerUtils = window.App.getRuntimeModule?.("picker-utils") || {};
+    let itemTemplateInitialBrandMeta = null;
+    let itemTemplateBrandSelectionTouched = false;
 
     function getActivityFeature() {
       return window.App.getRuntimeModule?.("activity") || {};
@@ -32,6 +35,49 @@
     function getItemTemplateCategoryMeta(categoryId) {
       const normalizedId = Number(categoryId || 0);
       return (state.categories || []).find((item) => Number(item?.id || 0) === normalizedId) || null;
+    }
+
+    function getItemTemplateBrandMeta(brandId) {
+      const normalizedId = Number(brandId || 0);
+      return (state.itemBrands || []).find((item) => Number(item?.id || 0) === normalizedId) || null;
+    }
+
+    function getSelectedItemTemplateBrandMeta() {
+      const selectedId = Number(el.itemTemplateBrand?.value || 0);
+      if (!selectedId) {
+        return null;
+      }
+      return getItemTemplateBrandMeta(selectedId)
+        || (Number(itemTemplateInitialBrandMeta?.id || 0) === selectedId ? itemTemplateInitialBrandMeta : null);
+    }
+
+    async function refreshItemBrandsAfterCatalogMutation() {
+      invalidateItemCatalogDependentCaches?.();
+      await window.App.getRuntimeModule?.("item-brands")?.loadItemBrands?.({ force: true });
+    }
+
+    function hydrateItemTemplateBrandFields(item) {
+      const brandMeta = getItemTemplateBrandMeta(item?.brand_id) || (item?.brand_name ? {
+        id: item?.brand_id,
+        name: item.brand_name,
+        accent_color: item.brand_accent_color,
+        is_archived: Boolean(item.brand_is_archived),
+      } : null);
+      itemTemplateInitialBrandMeta = brandMeta ? { ...brandMeta } : null;
+      itemTemplateBrandSelectionTouched = false;
+      if (el.itemTemplateBrand) {
+        el.itemTemplateBrand.value = brandMeta?.id ? String(brandMeta.id) : "";
+      }
+      if (el.itemTemplateBrandSearch) {
+        el.itemTemplateBrandSearch.value = brandMeta?.name || "";
+      }
+    }
+
+    function restoreItemTemplateBrandSearchLabel() {
+      if (el.itemTemplateBrandSearch) {
+        el.itemTemplateBrandSearch.value = getSelectedItemTemplateBrandMeta()?.name || "";
+      }
+      updateItemTemplatePreview();
     }
 
     function openItemTemplateModal(item = null) {
@@ -63,6 +109,17 @@
       if (el.itemTemplateName) {
         el.itemTemplateName.value = item?.name || "";
       }
+      hydrateItemTemplateBrandFields(item);
+      if (el.itemTemplateBrandPickerBlock) {
+        pickerUtils.setPopoverOpen(el.itemTemplateBrandPickerBlock, false, { owners: [el.itemTemplateBrandField] });
+      }
+      window.App.getRuntimeModule?.("item-brands")?.ensureItemBrandsLoaded?.().then(() => {
+        const loadedBrand = getItemTemplateBrandMeta(el.itemTemplateBrand?.value);
+        if (loadedBrand && el.itemTemplateBrandSearch && !el.itemTemplateBrandSearch.value) {
+          el.itemTemplateBrandSearch.value = loadedBrand.name || "";
+          updateItemTemplatePreview();
+        }
+      }).catch(() => {});
       const categoryMeta = getItemTemplateCategoryMeta(item?.last_category_id);
       if (el.itemTemplateCategory) {
         el.itemTemplateCategory.value = categoryMeta?.id ? String(categoryMeta.id) : "";
@@ -72,6 +129,9 @@
       }
       if (el.itemTemplateCategoryPickerBlock) {
         pickerUtils.setPopoverOpen(el.itemTemplateCategoryPickerBlock, false, { owners: [el.itemTemplateCategoryField] });
+      }
+      if (el.itemTemplateBrandPickerBlock) {
+        pickerUtils.setPopoverOpen(el.itemTemplateBrandPickerBlock, false, { owners: [el.itemTemplateBrandField] });
       }
       if (el.itemTemplatePrice) {
         el.itemTemplatePrice.value = item?.latest_unit_price || "";
@@ -107,6 +167,8 @@
 
     function closeItemTemplateModal() {
       state.editItemTemplateId = null;
+      itemTemplateInitialBrandMeta = null;
+      itemTemplateBrandSelectionTouched = false;
       getActivityFeature().configureActivityButton?.(el.itemTemplateActivityBtn, null, null);
       getUsageFeature().configureUsageButton?.(el.itemTemplateUsageBtn, null, null);
       if (el.itemTemplateHistoryBtn) {
@@ -140,6 +202,8 @@
       }
       const source = normalizeItemCatalogShopName(el.itemTemplateSource?.value || el.itemTemplateSourceSearch?.value || "") || "Без источника";
       const name = String(el.itemTemplateName?.value || "").trim() || "—";
+      const brandMeta = getSelectedItemTemplateBrandMeta();
+      const brandHtml = window.App.getRuntimeModule?.("item-brands")?.renderBrandChip?.(brandMeta) || "<span class='muted-small'>Без бренда</span>";
       const categoryMeta = getItemTemplateCategoryMeta(el.itemTemplateCategory?.value);
       const categoryHtml = categoryMeta?.name
         ? core.renderCategoryChip({
@@ -154,6 +218,7 @@
       el.itemTemplatePreviewBody.innerHTML = `
         <tr class="preview-row">
           <td>${escapeHtml(source)}</td>
+          <td>${brandHtml}</td>
           <td>${escapeHtml(name)}</td>
           <td>${categoryHtml}</td>
           <td>${core.formatMoney(validPrice)}${priceDate ? `<div class="muted-small">${core.formatDateRu(priceDate)}</div>` : ""}</td>
@@ -179,6 +244,8 @@
     async function submitItemTemplateForm(event) {
       event.preventDefault();
       const sourceName = normalizeItemCatalogShopName(el.itemTemplateSource?.value || el.itemTemplateSourceSearch?.value || "");
+      const templateId = Number(state.editItemTemplateId || 0);
+      const isEdit = templateId > 0;
       const payload = {
         shop_name: sourceName || null,
         name: String(el.itemTemplateName?.value || "").trim(),
@@ -186,6 +253,9 @@
         recommendation_enabled: Boolean(el.itemTemplateRecommendationEnabled?.checked),
         recommendation_mode: "manual",
       };
+      if (!isEdit || itemTemplateBrandSelectionTouched) {
+        payload.brand_id = Number(el.itemTemplateBrand?.value || 0) || null;
+      }
       if (payload.recommendation_enabled) {
         const intervalDays = Number(el.itemTemplateRecommendationInterval?.value || 0);
         const baseQuantity = Number(el.itemTemplateRecommendationQuantity?.value || 0);
@@ -219,8 +289,6 @@
         core.setStatus("Введите название позиции");
         return;
       }
-      const templateId = Number(state.editItemTemplateId || 0);
-      const isEdit = templateId > 0;
       const url = isEdit ? `/api/v1/operations/item-templates/${templateId}` : "/api/v1/operations/item-templates";
       const method = isEdit ? "PATCH" : "POST";
       const savedItem = await core.requestJson(url, {
@@ -238,6 +306,8 @@
       core.invalidateUiRequestCache("item-catalog");
       applySavedItemCatalogItem?.(savedItem);
       applySavedReceiptTemplateHint(savedItem);
+      await refreshItemBrandsAfterCatalogMutation();
+      hydrateItemTemplateBrandFields(savedItem);
       if (!isEdit) {
         closeItemTemplateModal();
       } else {
@@ -477,6 +547,136 @@
       }, 0);
     }
 
+    function closeItemTemplateBrandPicker() {
+      pickerUtils.setPopoverOpen(el.itemTemplateBrandPickerBlock, false, { owners: [el.itemTemplateBrandField] });
+    }
+
+    function renderItemTemplateBrandPicker(query = "") {
+      if (!el.itemTemplateBrandPickerBlock || !el.itemTemplateBrandAll) {
+        return;
+      }
+      const selectedId = Number(el.itemTemplateBrand?.value || 0) || null;
+      const activeSelected = getItemTemplateBrandMeta(selectedId);
+      const selected = activeSelected || getSelectedItemTemplateBrandMeta();
+      const linkedArchivedBrand = selectedId && selected
+        && Boolean(selected.is_archived ?? selected.brand_is_archived ?? false)
+        ? selected
+        : null;
+      const rawQuery = String(query || "").trim();
+      const normalizedQuery = selected && rawQuery.toLowerCase() === String(selected.name || "").toLowerCase()
+        ? ""
+        : rawQuery;
+      const brands = (state.itemBrands || [])
+        .filter((brand) => !normalizedQuery || String(brand?.name || "").toLowerCase().includes(normalizedQuery.toLowerCase()))
+        .sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || ""), "ru"));
+      const noBrand = pickerUtils.createMetaChipButton({
+        datasetName: "itemTemplateBrandId",
+        datasetValue: "",
+        selected: !selectedId,
+        label: "Без бренда",
+        core,
+      });
+      el.itemTemplateBrandAll.innerHTML = "";
+      el.itemTemplateBrandAll.appendChild(noBrand);
+      if (linkedArchivedBrand) {
+        el.itemTemplateBrandAll.appendChild(pickerUtils.createChipButton({
+          datasetName: "itemTemplateBrandId",
+          datasetValue: linkedArchivedBrand.id,
+          selected: true,
+          html: `${window.App.getRuntimeModule?.("item-brands")?.renderBrandChip?.(linkedArchivedBrand, { title: false }) || escapeHtml(linkedArchivedBrand.name || "Бренд")} <span class="muted-small">архив</span>`,
+        }));
+      }
+      for (const brand of brands) {
+        el.itemTemplateBrandAll.appendChild(pickerUtils.createChipButton({
+          datasetName: "itemTemplateBrandId",
+          datasetValue: brand.id,
+          selected: Number(brand.id) === selectedId,
+          html: window.App.getRuntimeModule?.("item-brands")?.renderBrandChip?.(brand, { title: false }) || escapeHtml(brand.name || "Бренд"),
+        }));
+      }
+      if (!brands.length && normalizedQuery) {
+        el.itemTemplateBrandAll.insertAdjacentHTML("beforeend", '<span class="muted-small">Бренд не найден. Создайте его во вкладке «Бренды».</span>');
+      }
+      pickerUtils.setPopoverOpen(el.itemTemplateBrandPickerBlock, true, {
+        owners: [el.itemTemplateBrandField],
+        onClose: closeItemTemplateBrandPicker,
+      });
+    }
+
+    function selectItemTemplateBrand(brandId, { keepPickerOpen = false } = {}) {
+      const normalizedId = Number(brandId || 0) || null;
+      const brand = getItemTemplateBrandMeta(normalizedId)
+        || (Number(itemTemplateInitialBrandMeta?.id || 0) === normalizedId ? itemTemplateInitialBrandMeta : null);
+      itemTemplateBrandSelectionTouched = true;
+      if (el.itemTemplateBrand) {
+        el.itemTemplateBrand.value = brand?.id ? String(brand.id) : "";
+      }
+      if (el.itemTemplateBrandSearch) {
+        el.itemTemplateBrandSearch.value = brand?.name || "";
+      }
+      updateItemTemplatePreview();
+      if (!keepPickerOpen) {
+        closeItemTemplateBrandPicker();
+      }
+    }
+
+    function handleItemTemplateBrandSearchFocus() {
+      window.App.getRuntimeModule?.("item-brands")?.ensureItemBrandsLoaded?.().then(() => {
+        renderItemTemplateBrandPicker(el.itemTemplateBrandSearch?.value || "");
+      }).catch((err) => core.setStatus(`Не удалось загрузить бренды: ${String(err)}`));
+    }
+
+    function handleItemTemplateBrandSearchInput() {
+      renderItemTemplateBrandPicker(el.itemTemplateBrandSearch?.value || "");
+    }
+
+    function handleItemTemplateBrandSearchKeydown(event) {
+      if (event.key === "Escape") {
+        restoreItemTemplateBrandSearchLabel();
+        closeItemTemplateBrandPicker();
+        return;
+      }
+      if (event.key !== "Enter") {
+        return;
+      }
+      event.preventDefault();
+      const query = String(el.itemTemplateBrandSearch?.value || "").trim().toLowerCase();
+      if (!query) {
+        selectItemTemplateBrand(null);
+        return;
+      }
+      const firstMatch = (state.itemBrands || []).find((brand) => String(brand?.name || "").toLowerCase().includes(query));
+      if (firstMatch) {
+        selectItemTemplateBrand(firstMatch.id);
+      } else {
+        restoreItemTemplateBrandSearchLabel();
+        closeItemTemplateBrandPicker();
+      }
+    }
+
+    function handleItemTemplateBrandPickerClick(event) {
+      const button = event.target.closest("button[data-item-template-brand-id]");
+      if (!button) {
+        return;
+      }
+      selectItemTemplateBrand(button.dataset.itemTemplateBrandId || null);
+    }
+
+    function handleItemTemplateBrandSearchFocusOut(event) {
+      const next = event.relatedTarget;
+      if (next && next.closest && next.closest("#itemTemplateBrandField")) {
+        return;
+      }
+      setTimeout(() => {
+        const active = document.activeElement;
+        if (active && active.closest && active.closest("#itemTemplateBrandField")) {
+          return;
+        }
+        restoreItemTemplateBrandSearchLabel();
+        closeItemTemplateBrandPicker();
+      }, 0);
+    }
+
     async function deleteItemTemplateFlow(item) {
       core.runDestructiveAction({
         confirmMessage: `Удалить позицию «${item.name || "без названия"}»?`,
@@ -485,9 +685,11 @@
             method: "DELETE",
             headers: core.authHeaders(),
           });
+          state.selectedItemCatalogIds?.delete?.(Number(item.id));
           core.invalidateUiRequestCache("item-catalog");
         },
         onAfterDelete: async () => {
+          await refreshItemBrandsAfterCatalogMutation();
           await loadItemCatalog({ force: true });
         },
         toastMessage: "Позиция удалена",
@@ -503,10 +705,12 @@
             method: "DELETE",
             headers: core.authHeaders(),
           });
+          state.selectedItemCatalogIds?.clear?.();
           writeItemCatalogSourceGroups([]);
           core.invalidateUiRequestCache("item-catalog");
         },
         onAfterDelete: async () => {
+          await refreshItemBrandsAfterCatalogMutation();
           await loadItemCatalog({ force: true });
           savePreferencesDebounced(450);
         },
@@ -534,6 +738,11 @@
       handleItemTemplateCategorySearchKeydown,
       handleItemTemplateCategoryPickerClick,
       handleItemTemplateCategorySearchFocusOut,
+      handleItemTemplateBrandSearchFocus,
+      handleItemTemplateBrandSearchInput,
+      handleItemTemplateBrandSearchKeydown,
+      handleItemTemplateBrandPickerClick,
+      handleItemTemplateBrandSearchFocusOut,
       openSourceGroupModal: sourcesFeature?.openSourceGroupModal,
       openEditSourceGroupModal: sourcesFeature?.openEditSourceGroupModal,
       closeSourceGroupModal: sourcesFeature?.closeSourceGroupModal,

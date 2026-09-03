@@ -334,8 +334,25 @@
           if (event.target.closest("[data-analytics-breakdown-toggle]")) {
             return;
           }
-          const card = event.target.closest("[data-analytics-category-id]");
+          const card = event.target.closest("[data-analytics-breakdown-level]");
           if (!card) {
+            return;
+          }
+          const level = String(card.dataset.analyticsBreakdownLevel || "category");
+          if (level === "brand") {
+            const brandId = Number(card.dataset.analyticsBrandId || 0);
+            if (!brandId) {
+              return;
+            }
+            window.App.getRuntimeModule?.("item-brands")?.openItemBrandDetail?.({
+              id: brandId,
+              name: card.dataset.analyticsEntityName || card.dataset.analyticsCategoryName || "Бренд",
+              accent_color: card.dataset.analyticsBrandColor || null,
+              spent_total: Number(card.dataset.analyticsBrandSpent || 0),
+              purchases_count: Number(card.dataset.analyticsBrandPurchases || 0),
+              positions_count: Number(card.dataset.analyticsBrandPositions || 0),
+              brand_is_archived: card.dataset.analyticsBrandArchived === "true",
+            }).catch((err) => core.setStatus(`Не удалось открыть бренд: ${String(err)}`));
             return;
           }
           const categoryId = String(card.dataset.analyticsCategoryId || "").trim();

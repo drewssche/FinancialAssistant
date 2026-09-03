@@ -300,7 +300,12 @@
       return;
     }
     state.createReceiptItems = (Array.isArray(items) ? items : []).map((row) => operationModal.createReceiptDraft({
+      template_id: row.template_id || null,
       category_id: row.category_id || null,
+      brand_id: row.brand_id || null,
+      brand_name: row.brand_name || "",
+      brand_accent_color: row.brand_accent_color || "",
+      brand_is_archived: Boolean(row.brand_is_archived),
       shop_name: row.shop_name || "",
       name: row.name || "",
       quantity: row.quantity || 0,
@@ -398,16 +403,25 @@
   }
 
   async function refreshAfterPlanMutation({ confirmed = false } = {}) {
-    core.invalidateUiRequestCache?.("plans");
-    core.invalidateUiRequestCache?.("item-catalog");
-    core.invalidateUiRequestCache?.("analytics");
-    core.invalidateUiRequestCache?.("dashboard:highlights");
+    const itemCatalogFeature = getItemCatalogFeature();
+    if (itemCatalogFeature.invalidateItemCatalogDependentCaches) {
+      itemCatalogFeature.invalidateItemCatalogDependentCaches();
+    } else {
+      core.invalidateUiRequestCache?.("plans");
+      core.invalidateUiRequestCache?.("item-catalog");
+      core.invalidateUiRequestCache?.("item-brands");
+      core.invalidateUiRequestCache?.("analytics");
+      core.invalidateUiRequestCache?.("dashboard:highlights");
+      core.invalidateUiRequestCache?.("op:receipt:templates");
+      state.receiptTemplateHints = [];
+      state.itemBrandsLoaded = false;
+    }
     if (confirmed) {
       state.plansAllTimeBalance = null;
       dashboardData.invalidateSummaryCache?.();
     }
     await loadPlans({ force: true });
-    const itemCatalogFeature = getItemCatalogFeature();
+    await window.App.getRuntimeModule?.("item-brands")?.loadItemBrands?.({ force: true });
     if (itemCatalogFeature.loadItemCatalog) {
       await itemCatalogFeature.loadItemCatalog({ force: true });
     }
@@ -538,7 +552,12 @@
   async function openCreatePlanWithReceiptItem(item = {}) {
     await openCreatePlan();
     hydrateCreateReceiptItems([{
+      template_id: item.template_id || item.id || null,
       category_id: item.category_id || null,
+      brand_id: item.brand_id || null,
+      brand_name: item.brand_name || "",
+      brand_accent_color: item.brand_accent_color || "",
+      brand_is_archived: Boolean(item.brand_is_archived),
       shop_name: item.shop_name || "",
       name: item.name || "",
       quantity: item.base_quantity || item.quantity || 1,

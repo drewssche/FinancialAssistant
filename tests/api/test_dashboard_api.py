@@ -1599,6 +1599,54 @@ def test_dashboard_analytics_highlights_category_breakdown_respects_kind_filter(
     assert len(income_payload["category_breakdown"]) == 1
 
 
+def test_dashboard_brand_breakdown_keeps_income_and_expense_separate_in_all_view(client: TestClient):
+    brand = client.post(
+        "/api/v1/operations/item-brands",
+        json={"name": "Shared brand", "accent_color": "#336699"},
+    )
+    assert brand.status_code == 201, brand.text
+    brand_id = brand.json()["id"]
+
+    for kind, name, amount, operation_date in (
+        ("expense", "Brand expense", "25.00", "2026-03-10"),
+        ("income", "Brand income", "100.00", "2026-03-11"),
+    ):
+        created = client.post(
+            "/api/v1/operations",
+            json={
+                "kind": kind,
+                "amount": amount,
+                "operation_date": operation_date,
+                "receipt_items": [
+                    {
+                        "name": name,
+                        "brand_id": brand_id,
+                        "quantity": "1",
+                        "unit_price": amount,
+                    }
+                ],
+            },
+        )
+        assert created.status_code == 201, created.text
+
+    response = client.get(
+        "/api/v1/dashboard/analytics/highlights",
+        params={
+            "month": "2026-03",
+            "category_kind": "all",
+            "category_breakdown_level": "brand",
+        },
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    shared_brand = [item for item in payload["category_breakdown"] if item["brand_id"] == brand_id]
+    assert len(shared_brand) == 2
+    assert {
+        (item["category_kind"], item["total_amount"])
+        for item in shared_brand
+    } == {("income", "100.00"), ("expense", "25.00")}
+
+
 def test_dashboard_analytics_highlights_uses_receipt_item_categories_for_structure(client: TestClient):
     food = client.post("/api/v1/categories", json={"name": "Еда", "kind": "expense"})
     transport = client.post("/api/v1/categories", json={"name": "Транспорт", "kind": "expense"})

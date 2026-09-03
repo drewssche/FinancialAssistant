@@ -11,6 +11,8 @@ FxPaymentMode = Literal["valuation", "direct_conversion", "foreign_balance"]
 
 
 class OperationReceiptItemIn(BaseModel):
+    template_id: int | None = Field(default=None, ge=1)
+    brand_id: int | None = Field(default=None, ge=1)
     category_id: int | None = None
     shop_name: str | None = Field(default=None, max_length=160)
     name: str = Field(min_length=1, max_length=160)
@@ -25,6 +27,10 @@ class OperationReceiptItemIn(BaseModel):
 class OperationReceiptItemOut(BaseModel):
     id: int
     template_id: int | None
+    brand_id: int | None = None
+    brand_name: str | None = None
+    brand_accent_color: str | None = None
+    brand_is_archived: bool = False
     category_id: int | None
     category_name: str | None = None
     category_icon: str | None = None
@@ -193,6 +199,10 @@ class OperationItemTemplateOut(BaseModel):
     use_count: int
     last_used_at: datetime | None = None
     last_category_id: int | None = None
+    brand_id: int | None = None
+    brand_name: str | None = None
+    brand_accent_color: str | None = None
+    brand_is_archived: bool = False
     latest_unit_price: Decimal | None = None
     latest_price_date: date | None = None
     recommendation_enabled: bool = False
@@ -209,6 +219,7 @@ class OperationItemTemplateCreate(BaseModel):
     shop_name: str | None = Field(default=None, max_length=160)
     name: str = Field(min_length=1, max_length=160)
     last_category_id: int | None = None
+    brand_id: int | None = Field(default=None, ge=1)
     latest_unit_price: Decimal | None = Field(default=None, gt=0)
     latest_price_date: date | None = None
     recommendation_enabled: bool = False
@@ -221,6 +232,7 @@ class OperationItemTemplateUpdate(BaseModel):
     shop_name: str | None = Field(default=None, max_length=160)
     name: str | None = Field(default=None, min_length=1, max_length=160)
     last_category_id: int | None = None
+    brand_id: int | None = Field(default=None, ge=1)
     latest_unit_price: Decimal | None = Field(default=None, gt=0)
     latest_price_date: date | None = None
     recommendation_enabled: bool | None = None
@@ -230,11 +242,24 @@ class OperationItemTemplateUpdate(BaseModel):
     recommendation_snoozed_until: date | None = None
 
 
+class OperationItemTemplateBulkBrandUpdateIn(BaseModel):
+    template_ids: list[int] = Field(min_length=1, max_length=500)
+    brand_id: int | None = Field(default=None, ge=1)
+
+
+class OperationItemTemplateBulkBrandUpdateOut(BaseModel):
+    updated: int
+
+
 class OperationItemRecommendationOut(BaseModel):
     template_id: int
     shop_name: str | None = None
     name: str
     category_id: int | None = None
+    brand_id: int | None = None
+    brand_name: str | None = None
+    brand_accent_color: str | None = None
+    brand_is_archived: bool = False
     latest_unit_price: Decimal | None = None
     last_purchase_date: date
     last_quantity: Decimal
@@ -256,6 +281,10 @@ class OperationItemRecommendationManageOut(BaseModel):
     shop_name: str | None = None
     name: str
     category_id: int | None = None
+    brand_id: int | None = None
+    brand_name: str | None = None
+    brand_accent_color: str | None = None
+    brand_is_archived: bool = False
     use_count: int = 0
     latest_unit_price: Decimal | None = None
     last_purchase_date: date | None = None
@@ -293,6 +322,45 @@ class OperationItemTemplateListOut(BaseModel):
     total: int
     page: int = Field(ge=1)
     page_size: int = Field(ge=1)
+
+
+class ItemBrandCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=160)
+    accent_color: str | None = Field(default=None, pattern=r"^#[0-9A-Fa-f]{6}$")
+
+
+class ItemBrandUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=160)
+    accent_color: str | None = Field(default=None, pattern=r"^#[0-9A-Fa-f]{6}$")
+
+
+class ItemBrandOut(BaseModel):
+    id: int
+    name: str
+    accent_color: str | None = None
+    is_archived: bool = False
+    positions_count: int = 0
+    purchases_count: int = 0
+    spent_total: Decimal = Decimal("0.00")
+    last_purchase_date: date | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ItemBrandListOut(BaseModel):
+    items: list[ItemBrandOut]
+    total: int
+    page: int = Field(ge=1)
+    page_size: int = Field(ge=1)
+
+
+class ItemBrandMergeIn(BaseModel):
+    target_brand_id: int = Field(ge=1)
+
+
+class ItemBrandMergeOut(BaseModel):
+    brand: ItemBrandOut
+    reassigned_positions: int
 
 
 class OperationItemPriceOut(BaseModel):

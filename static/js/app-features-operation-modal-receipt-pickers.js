@@ -30,6 +30,17 @@
         .replaceAll("'", "&#39;");
     }
 
+    function renderReceiptBrandChip(brand) {
+      const renderer = window.App.getRuntimeModule?.("item-brands")?.renderBrandChip;
+      const normalizedBrand = {
+        name: brand?.brand_name || brand?.name || "",
+        accent_color: brand?.brand_accent_color || brand?.accent_color || null,
+      };
+      return typeof renderer === "function"
+        ? renderer(normalizedBrand)
+        : core.renderCategoryChip({ ...normalizedBrand, icon: null }, "");
+    }
+
     function getReceiptCategoriesSorted(kind, query = "") {
       return pickerUtils.sortCategoriesByUsage(
         (state.categories || []).filter((item) => item.kind === kind),
@@ -64,27 +75,31 @@
       });
     }
 
-    function getReceiptTemplateMatch(token, shopName = "") {
+    function getReceiptTemplateMatch(token, shopName = "", brandId = null) {
       const normalizedToken = normalizeReceiptName(token).toLowerCase();
       if (!normalizedToken) {
         return null;
       }
       const shopCi = normalizeReceiptName(shopName).toLowerCase();
+      const selectedBrandId = brandId ? Number(brandId) : null;
       return (state.receiptTemplateHints || []).find((item) => (
         item.name_ci === normalizedToken
         && (!shopCi || (item.shop_name_ci || "") === shopCi)
+        && (!selectedBrandId || Number(item.brand_id || 0) === selectedBrandId)
       )) || null;
     }
 
-    function getReceiptTemplateSuggestions(query, shopName = "", limit = 6) {
+    function getReceiptTemplateSuggestions(query, shopName = "", limit = 50, brandId = null) {
       const normalized = normalizeReceiptName(query).toLowerCase();
       const shopCi = normalizeReceiptName(shopName).toLowerCase();
+      const selectedBrandId = brandId ? Number(brandId) : null;
       const templates = Array.isArray(state.receiptTemplateHints) ? state.receiptTemplateHints : [];
-      const scopedTemplates = shopCi
-        ? templates.filter((item) => (item.shop_name_ci || "") === shopCi)
-        : templates;
+      const scopedTemplates = templates.filter((item) => (
+        (!shopCi || (item.shop_name_ci || "") === shopCi)
+        && (!selectedBrandId || Number(item.brand_id || 0) === selectedBrandId)
+      ));
       if (!normalized) {
-        return scopedTemplates.slice(0, limit);
+        return limit > 0 ? scopedTemplates.slice(0, limit) : scopedTemplates;
       }
       const starts = [];
       const contains = [];
@@ -97,11 +112,17 @@
         } else if (item.name_ci.includes(normalized)) {
           contains.push(item);
         }
-        if (starts.length + contains.length >= limit) {
-          break;
-        }
       }
-      return [...starts, ...contains].slice(0, limit);
+      const matches = [...starts, ...contains];
+      return limit > 0 ? matches.slice(0, limit) : matches;
+    }
+
+    function getReceiptBrandSuggestions(query = "") {
+      const normalized = normalizeReceiptName(query).toLowerCase();
+      return (state.itemBrands || [])
+        .filter((item) => !item.is_archived)
+        .filter((item) => !normalized || normalizeReceiptName(item.name).toLowerCase().includes(normalized))
+        .sort((left, right) => normalizeReceiptName(left.name).localeCompare(normalizeReceiptName(right.name), "ru"));
     }
 
     function getReceiptShopSuggestions(query = "", limit = 100) {
@@ -142,7 +163,7 @@
       return limit > 0 ? Array.from(byShop.values()).slice(0, limit) : Array.from(byShop.values());
     }
 
-    function upsertLocalReceiptTemplate(name, latestUnitPrice = 0, shopName = "") {
+    function upsertLocalReceiptTemplate(name, latestUnitPrice = 0, shopName = "", brand = {}) {
       const normalizedName = normalizeReceiptName(name);
       if (!normalizedName) {
         return null;
@@ -157,6 +178,12 @@
         if (Number(latestUnitPrice || 0) > 0) {
           existing.latest_unit_price = Number(latestUnitPrice || 0);
         }
+        if (Object.prototype.hasOwnProperty.call(brand, "brand_id")) {
+          existing.brand_id = brand.brand_id ? Number(brand.brand_id) : null;
+          existing.brand_name = normalizeReceiptName(brand.brand_name || "") || null;
+          existing.brand_accent_color = brand.brand_accent_color || null;
+          existing.brand_is_archived = Boolean(brand.brand_is_archived);
+        }
         return existing;
       }
       receiptUiState.localTemplateSeq += 1;
@@ -166,6 +193,10 @@
         shop_name_ci: shopNameCi || "",
         name: normalizedName,
         name_ci: nameCi,
+        brand_id: brand.brand_id ? Number(brand.brand_id) : null,
+        brand_name: normalizeReceiptName(brand.brand_name || "") || null,
+        brand_accent_color: brand.brand_accent_color || null,
+        brand_is_archived: Boolean(brand.brand_is_archived),
         last_category_id: null,
         latest_unit_price: Number(latestUnitPrice || 0) || 0,
       };
@@ -180,6 +211,10 @@
         shop_name_ci: normalizeReceiptName(item.shop_name || "").toLowerCase(),
         name: normalizeReceiptName(item.name || ""),
         name_ci: normalizeReceiptName(item.name || "").toLowerCase(),
+        brand_id: item.brand_id ? Number(item.brand_id) : null,
+        brand_name: normalizeReceiptName(item.brand_name || "") || null,
+        brand_accent_color: item.brand_accent_color || null,
+        brand_is_archived: Boolean(item.brand_is_archived),
         last_category_id: item.last_category_id ? Number(item.last_category_id) : null,
         latest_unit_price: Number(item.latest_unit_price || 0) || 0,
       };
@@ -208,8 +243,8 @@
           continue;
         }
         listNode.querySelectorAll(".receipt-item-row").forEach((node) => node.classList.remove("has-open-popover"));
-        listNode.querySelectorAll(".receipt-shop-cell, .receipt-name-cell, .receipt-category-cell").forEach((node) => node.classList.remove("has-open-popover"));
-        listNode.querySelectorAll(".receipt-shop-picker, .receipt-name-picker, .receipt-category-picker").forEach((node) => {
+        listNode.querySelectorAll(".receipt-shop-cell, .receipt-brand-cell, .receipt-name-cell, .receipt-category-cell").forEach((node) => node.classList.remove("has-open-popover"));
+        listNode.querySelectorAll(".receipt-shop-picker, .receipt-brand-picker, .receipt-name-picker, .receipt-category-picker").forEach((node) => {
           pickerUtils.setPopoverOpen(node, false);
         });
       }
@@ -234,7 +269,7 @@
         return;
       }
       const suggestionsHtml = shopSuggestions.map((shopName) => `
-        <button type="button" class="chip-btn" data-receipt-shop-name="${escHtml(shopName)}" data-receipt-item-id="${rowItem.draft_id}">
+        <button type="button" class="chip-btn" data-receipt-shop-name="${escHtml(shopName)}" data-receipt-item-id="${rowItem.draft_id}" title="${escHtml(shopName)}">
           ${core.renderCategoryChip({ name: shopName, icon: null, accent_color: null }, normalizedQuery)}
         </button>
       `).join("");
@@ -251,6 +286,55 @@
       receiptUiState.activePicker = { draft_id: Number(rowItem.draft_id), field: "shop_name", mode: getReceiptModeFromNode(rowNode) };
     }
 
+    function renderReceiptBrandPickerForRow(rowNode, rowItem, query = "") {
+      if (!rowNode || !rowItem) {
+        return;
+      }
+      const picker = rowNode.querySelector(".receipt-brand-picker");
+      if (!picker) {
+        return;
+      }
+      hideAllReceiptPickers();
+      const rawQuery = normalizeReceiptName(query);
+      const normalizedQuery = rawQuery.toLowerCase() === normalizeReceiptName(rowItem.brand_name || "").toLowerCase()
+        ? ""
+        : rawQuery;
+      const suggestions = getReceiptBrandSuggestions(normalizedQuery);
+      const clearHtml = `
+        <button type="button" class="chip-btn ${rowItem.brand_id ? "" : "active"}" data-receipt-brand-clear="true" data-receipt-item-id="${rowItem.draft_id}" title="Не привязывать бренд">
+          ${core.renderCategoryChip({ name: "Без бренда", icon: null, accent_color: null }, normalizedQuery)}
+        </button>
+      `;
+      const suggestionsHtml = suggestions.map((brand) => `
+        <button type="button" class="chip-btn ${Number(rowItem.brand_id || 0) === Number(brand.id) ? "active" : ""}" data-receipt-brand-id="${Number(brand.id)}" data-receipt-item-id="${rowItem.draft_id}" title="${escHtml(brand.name)}">
+          ${renderReceiptBrandChip(brand)}
+        </button>
+      `).join("");
+      const emptyHtml = suggestions.length
+        ? ""
+        : "<span class='muted-small receipt-picker-empty'>Бренд не найден · создать можно в Каталоге → Бренды</span>";
+      picker.innerHTML = `${clearHtml}${suggestionsHtml}${emptyHtml}`;
+      pickerUtils.setPopoverOpen(picker, true, {
+        owners: [rowNode, rowNode.querySelector(".receipt-brand-cell")],
+        onClose: hideAllReceiptPickers,
+      });
+      receiptUiState.activePicker = { draft_id: Number(rowItem.draft_id), field: "brand_id", mode: getReceiptModeFromNode(rowNode) };
+      if (!(state.itemBrands || []).length) {
+        loadReceiptBrands()
+          .then(() => {
+            const active = receiptUiState.activePicker;
+            if (
+              active?.field === "brand_id"
+              && Number(active.draft_id) === Number(rowItem.draft_id)
+              && !picker.classList.contains("hidden")
+            ) {
+              renderReceiptBrandPickerForRow(rowNode, rowItem, query);
+            }
+          })
+          .catch(() => {});
+      }
+    }
+
     function renderReceiptNamePickerForRow(rowNode, rowItem, query) {
       if (!rowNode || !rowItem) {
         return;
@@ -262,8 +346,8 @@
       }
       hideAllReceiptPickers();
       const normalizedQuery = normalizeReceiptName(query);
-      const exact = getReceiptTemplateMatch(normalizedQuery, rowItem.shop_name || "");
-      const suggestions = getReceiptTemplateSuggestions(normalizedQuery, rowItem.shop_name || "");
+      const exact = getReceiptTemplateMatch(normalizedQuery, rowItem.shop_name || "", rowItem.brand_id);
+      const suggestions = getReceiptTemplateSuggestions(normalizedQuery, rowItem.shop_name || "", 50, rowItem.brand_id);
       if (!normalizedQuery) {
         if (badge) {
           badge.classList.add("hidden");
@@ -278,8 +362,9 @@
         badge.classList.toggle("hidden", Boolean(exact));
       }
       const suggestionsHtml = suggestions.map((item) => `
-        <button type="button" class="chip-btn" data-receipt-template-id="${item.id}" data-receipt-item-id="${rowItem.draft_id}">
-          ${core.renderCategoryChip({ name: item.name, icon: "🧾", accent_color: null }, normalizedQuery)}
+        <button type="button" class="chip-btn receipt-template-suggestion" data-receipt-template-id="${item.id}" data-receipt-item-id="${rowItem.draft_id}" title="${escHtml(item.name)}">
+          <span class="receipt-template-suggestion-name">${core.renderCategoryChip({ name: item.name, icon: "🧾", accent_color: null }, normalizedQuery)}</span>
+          ${item.brand_name ? `<span class="receipt-template-suggestion-brand">${renderReceiptBrandChip(item)}</span>` : ""}
         </button>
       `).join("");
       const createHtml = !normalizedQuery || exact ? "" : `
@@ -293,7 +378,7 @@
         onClose: hideAllReceiptPickers,
       });
       receiptUiState.activePicker = { draft_id: Number(rowItem.draft_id), field: "name", mode: getReceiptModeFromNode(rowNode) };
-      if (normalizedQuery && !exact && suggestions.length < 6) {
+      if (normalizedQuery && !exact && suggestions.length < 50) {
         loadReceiptTemplates(normalizedQuery)
           .then((items) => {
             const prevCount = Array.isArray(state.receiptTemplateHints) ? state.receiptTemplateHints.length : 0;
@@ -424,6 +509,60 @@
       return items;
     }
 
+    async function loadReceiptBrands(options = {}) {
+      const force = options.force === true;
+      const now = Date.now();
+      const brandsFresh = now - Number(receiptUiState.brandsLoadedAt || 0) < RECEIPT_TEMPLATES_CACHE_TTL_MS;
+      if (!force && brandsFresh && state.itemBrandsLoaded && Array.isArray(state.itemBrands)) {
+        return state.itemBrands;
+      }
+      if (receiptUiState.brandsPromise) {
+        return receiptUiState.brandsPromise;
+      }
+      receiptUiState.brandsPromise = (async () => {
+        const itemBrands = window.App.getRuntimeModule?.("item-brands");
+        const itemCatalog = window.App.getRuntimeModule?.("item-catalog");
+        const runtimeLoader = itemBrands?.ensureItemBrandsLoaded
+          || itemBrands?.ensureItemBrands
+          || itemBrands?.loadItemBrands
+          || itemCatalog?.loadItemBrands;
+        if (typeof runtimeLoader === "function") {
+          try {
+            await runtimeLoader({ force });
+          } catch {
+            // Fall through to the lightweight receipt loader.
+          }
+        }
+        if ((!Array.isArray(state.itemBrands) || (!state.itemBrands.length && !state.itemBrandsLoaded)) || force) {
+          const params = new URLSearchParams({ page: "1", page_size: "100", include_archived: "false" });
+          const firstPayload = await core.requestJson(`/api/v1/operations/item-brands?${params.toString()}`, {
+            headers: core.authHeaders(),
+          });
+          const brands = (Array.isArray(firstPayload) ? firstPayload : (firstPayload.items || [])).slice();
+          const total = Number(firstPayload?.total || brands.length || 0);
+          const pageSize = Number(firstPayload?.page_size || 100) || 100;
+          const pageCount = Math.ceil(total / pageSize);
+          for (let page = 2; page <= pageCount; page += 1) {
+            const pageParams = new URLSearchParams(params);
+            pageParams.set("page", String(page));
+            const payload = await core.requestJson(`/api/v1/operations/item-brands?${pageParams.toString()}`, {
+              headers: core.authHeaders(),
+            });
+            brands.push(...(Array.isArray(payload) ? payload : (payload.items || [])));
+          }
+          state.itemBrands = brands.filter((item) => !item.is_archived);
+          state.itemBrandsLoaded = true;
+        }
+        receiptUiState.brandsLoadedAt = Date.now();
+        return state.itemBrands || [];
+      })();
+      try {
+        return await receiptUiState.brandsPromise;
+      } finally {
+        receiptUiState.brandsPromise = null;
+      }
+    }
+
     async function loadReceiptTemplateHints() {
       const now = Date.now();
       const hintsFresh = now - Number(receiptUiState.hintsLoadedAt || 0) < RECEIPT_TEMPLATES_CACHE_TTL_MS;
@@ -436,11 +575,10 @@
       }
       receiptUiState.hintsPromise = (async () => {
         let templates = [];
-        try {
-          templates = await loadReceiptTemplates("", { allPages: true });
-        } catch {
-          templates = [];
-        }
+        await Promise.all([
+          loadReceiptTemplates("", { allPages: true }).then((items) => { templates = items; }).catch(() => {}),
+          loadReceiptBrands().catch(() => {}),
+        ]);
         mergeReceiptTemplateHints(templates);
         receiptUiState.hintsLoadedAt = Date.now();
       })();
@@ -455,15 +593,18 @@
       getReceiptCategoriesSorted,
       getReceiptTemplateMatch,
       getReceiptTemplateSuggestions,
+      getReceiptBrandSuggestions,
       getReceiptShopSuggestions,
       upsertLocalReceiptTemplate,
       mergeReceiptTemplateHints,
       hideAllReceiptPickers,
       renderReceiptShopPickerForRow,
+      renderReceiptBrandPickerForRow,
       renderReceiptNamePickerForRow,
       openCreateCategoryFromReceipt,
       renderReceiptCategoryPickerForRow,
       loadReceiptTemplateHints,
+      loadReceiptBrands,
     };
   }
 

@@ -308,6 +308,13 @@ class AnalyticsTopCategory(BaseModel):
     category_kind: str
     group_id: int | None = None
     group_name: str | None = None
+    brand_id: int | None = None
+    brand_name: str | None = None
+    brand_accent_color: str | None = None
+    brand_is_archived: bool = False
+    positions_count: int = 0
+    purchases_count: int = 0
+    item_template_ids: list[int] = Field(default_factory=list)
     total_amount: Decimal
     total_expense: Decimal
     share_pct: float
@@ -421,6 +428,10 @@ class AnalyticsHighlightsOut(BaseModel):
     fx_cashflow_change_pct: float | None = None
     cashflow_change_pct: float | None = None
     operations_change_pct: float | None
+    receipt_amount_total: Decimal = Decimal("0")
+    branded_amount_total: Decimal = Decimal("0")
+    unbranded_amount_total: Decimal = Decimal("0")
+    brand_coverage_pct: float | None = None
     category_breakdown: list[AnalyticsTopCategory]
     top_operations: list[AnalyticsTopOperation]
     top_categories: list[AnalyticsTopCategory]

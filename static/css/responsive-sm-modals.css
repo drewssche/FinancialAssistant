@@ -207,7 +207,7 @@
   }
 
   .receipt-item-row {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-2);
     padding: var(--space-2);
     border: 1px solid rgba(39, 50, 72, 0.75);
@@ -215,21 +215,64 @@
     background: rgba(14, 22, 36, 0.46);
   }
 
+  .receipt-item-identity,
+  .receipt-item-money {
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: none;
+  }
+
   .receipt-item-row .receipt-shop-cell,
+  .receipt-item-row .receipt-brand-cell,
   .receipt-item-row .receipt-name-cell,
   .receipt-item-row .receipt-category-cell,
   .receipt-item-row .receipt-price-cell,
+  .receipt-item-row .receipt-quantity-cell,
   .receipt-item-row .receipt-line-total {
     grid-column: 1 / -1;
+    grid-area: auto;
   }
 
   .receipt-item-row .receipt-line-total {
     justify-items: start;
   }
 
+  .receipt-item-row .receipt-price-cell {
+    grid-template-columns: minmax(0, 1fr) max-content;
+  }
+
+  .receipt-price-cell-discounted .receipt-discount-type-row {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .receipt-price-cell-discounted .receipt-price-field:first-child {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .receipt-price-cell-discounted .receipt-discount-toggle {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .receipt-price-cell-discounted .receipt-regular-price-field {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+
   .receipt-item-row .btn.receipt-remove-btn {
     width: 100%;
     min-width: 0;
+  }
+
+  .receipt-template-suggestion {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .receipt-template-suggestion-brand {
+    max-width: 100%;
   }
 
   .app-popover {
