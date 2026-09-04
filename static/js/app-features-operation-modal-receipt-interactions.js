@@ -114,6 +114,7 @@
       }
     }
     function commitReceiptRowMutation(mode) {
+      hideAllReceiptPickers();
       ensureTrailingReceiptRow(mode);
       renderReceiptItems(mode);
       renderReceiptSummary(mode);
@@ -346,15 +347,9 @@
       const rowItem = getReceiptItemByDraftId(draftId, mode);
       if (!rowItem) return;
       if (event.key === "Escape") {
-        const picker = input.dataset.receiptField === "shop_name"
-          ? row.querySelector(".receipt-shop-picker")
-          : input.dataset.receiptField === "brand_search"
-            ? row.querySelector(".receipt-brand-picker")
-          : input.dataset.receiptField === "category_search"
-            ? row.querySelector(".receipt-category-picker")
-            : row.querySelector(".receipt-name-picker");
-        picker?.classList.add("hidden");
-        receiptUiState.activePicker = null;
+        event.preventDefault();
+        event.stopPropagation();
+        hideAllReceiptPickers();
         if (input.dataset.receiptField === "brand_search") {
           input.value = normalizeReceiptName(rowItem.brand_name || "");
           input.title = input.value || "Бренд не выбран";

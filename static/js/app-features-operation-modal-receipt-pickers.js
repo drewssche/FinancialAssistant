@@ -20,6 +20,10 @@
 
     const pickerUtils = getPickerUtils();
     const CATEGORY_USAGE_KEY = pickerUtils.DEFAULT_CATEGORY_USAGE_KEY;
+    const RECEIPT_ENTITY_TOOLTIP_ID = "receiptEntityPickerTooltip";
+    let receiptEntityTooltipTarget = null;
+    let receiptEntityTooltipTimer = null;
+    let receiptEntityTooltipGlobalBound = false;
 
     function escHtml(value) {
       return String(value ?? "")
@@ -40,6 +44,135 @@
       return typeof renderer === "function"
         ? renderer(normalizedBrand)
         : core.renderCategoryChip({ ...normalizedBrand, icon: null }, "");
+    }
+
+    function receiptEntityMonogram(value) {
+      const words = normalizeReceiptName(value)
+        .split(/\s+/u)
+        .filter(Boolean);
+      if (!words.length) return "·";
+      if (words.length > 1) return `${words[0][0] || ""}${words[1][0] || ""}`.toUpperCase();
+      return Array.from(words[0]).slice(0, 2).join("").toUpperCase();
+    }
+
+    function receiptEntityHue(value) {
+      let hash = 0;
+      for (const character of normalizeReceiptName(value).toLowerCase()) {
+        hash = ((hash * 31) + character.codePointAt(0)) >>> 0;
+      }
+      return hash % 360;
+    }
+
+    function renderReceiptEntityAvatar(entity, kind) {
+      const name = normalizeReceiptName(entity?.name || "") || "Без названия";
+      const imageId = entity?.image_id || null;
+      const rendered = window.App.getRuntimeModule?.("catalog-media")?.renderThumb?.(imageId, {
+        kind,
+        size: "picker",
+        alt: name,
+        fallback: receiptEntityMonogram(name),
+      });
+      if (rendered) return rendered;
+      return `
+        <span class="catalog-media-thumb catalog-media-${kind} catalog-media-picker is-fallback" role="img" aria-label="${escHtml(name)}">
+          <span class="catalog-media-fallback" aria-hidden="true">${escHtml(receiptEntityMonogram(name))}</span>
+        </span>
+      `;
+    }
+
+    function ensureReceiptEntityTooltip() {
+      let tooltip = document.getElementById(RECEIPT_ENTITY_TOOLTIP_ID);
+      if (!tooltip) {
+        tooltip = document.createElement("div");
+        tooltip.id = RECEIPT_ENTITY_TOOLTIP_ID;
+        tooltip.className = "receipt-entity-tooltip";
+        tooltip.setAttribute("role", "tooltip");
+        tooltip.setAttribute("aria-hidden", "true");
+        document.body.appendChild(tooltip);
+      }
+      return tooltip;
+    }
+
+    function positionReceiptEntityTooltip(target, tooltip) {
+      if (!target?.isConnected || !tooltip) return;
+      const margin = 10;
+      const offset = 9;
+      const targetRect = target.getBoundingClientRect();
+      const tooltipRect = tooltip.getBoundingClientRect();
+      const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+      const centeredLeft = targetRect.left + ((targetRect.width - tooltipRect.width) / 2);
+      const left = Math.max(margin, Math.min(centeredLeft, viewportWidth - tooltipRect.width - margin));
+      const fitsAbove = targetRect.top - tooltipRect.height - offset >= margin;
+      const preferredTop = fitsAbove
+        ? targetRect.top - tooltipRect.height - offset
+        : targetRect.bottom + offset;
+      const top = Math.max(margin, Math.min(preferredTop, viewportHeight - tooltipRect.height - margin));
+      tooltip.style.left = `${Math.round(left)}px`;
+      tooltip.style.top = `${Math.round(top)}px`;
+      tooltip.dataset.placement = fitsAbove ? "top" : "bottom";
+    }
+
+    function hideReceiptEntityTooltip(target = null) {
+      if (target && receiptEntityTooltipTarget && target !== receiptEntityTooltipTarget) return;
+      if (receiptEntityTooltipTimer) {
+        window.clearTimeout(receiptEntityTooltipTimer);
+        receiptEntityTooltipTimer = null;
+      }
+      const tooltip = document.getElementById(RECEIPT_ENTITY_TOOLTIP_ID);
+      tooltip?.classList.remove("is-visible");
+      tooltip?.setAttribute("aria-hidden", "true");
+      receiptEntityTooltipTarget?.removeAttribute("aria-describedby");
+      receiptEntityTooltipTarget = null;
+    }
+
+    function showReceiptEntityTooltip(target, { immediate = false } = {}) {
+      const label = normalizeReceiptName(target?.dataset?.receiptPickerTooltip || "");
+      if (!label) return;
+      hideReceiptEntityTooltip();
+      receiptEntityTooltipTarget = target;
+      receiptEntityTooltipTimer = window.setTimeout(() => {
+        if (receiptEntityTooltipTarget !== target || !target.isConnected) return;
+        const tooltip = ensureReceiptEntityTooltip();
+        tooltip.textContent = label;
+        tooltip.setAttribute("aria-hidden", "false");
+        target.setAttribute("aria-describedby", RECEIPT_ENTITY_TOOLTIP_ID);
+        positionReceiptEntityTooltip(target, tooltip);
+        window.requestAnimationFrame(() => {
+          if (receiptEntityTooltipTarget === target) tooltip.classList.add("is-visible");
+        });
+        receiptEntityTooltipTimer = null;
+      }, immediate ? 0 : 100);
+    }
+
+    function bindReceiptEntityTooltip(picker) {
+      if (!picker || picker.dataset.receiptEntityTooltipBound === "true") return;
+      picker.dataset.receiptEntityTooltipBound = "true";
+      if (!receiptEntityTooltipGlobalBound) {
+        receiptEntityTooltipGlobalBound = true;
+        window.addEventListener("resize", () => hideReceiptEntityTooltip(), { passive: true });
+        window.addEventListener("scroll", () => hideReceiptEntityTooltip(), { passive: true, capture: true });
+      }
+      picker.addEventListener("pointerover", (event) => {
+        const target = event.target.closest?.("[data-receipt-picker-tooltip]");
+        if (!target || !picker.contains(target) || target.contains(event.relatedTarget)) return;
+        showReceiptEntityTooltip(target);
+      });
+      picker.addEventListener("pointerout", (event) => {
+        const target = event.target.closest?.("[data-receipt-picker-tooltip]");
+        if (!target || target.contains(event.relatedTarget)) return;
+        hideReceiptEntityTooltip(target);
+      });
+      picker.addEventListener("focusin", (event) => {
+        const target = event.target.closest?.("[data-receipt-picker-tooltip]");
+        if (target) showReceiptEntityTooltip(target, { immediate: true });
+      });
+      picker.addEventListener("focusout", (event) => {
+        const target = event.target.closest?.("[data-receipt-picker-tooltip]");
+        if (!target || target.contains(event.relatedTarget)) return;
+        hideReceiptEntityTooltip(target);
+      });
+      picker.addEventListener("scroll", () => hideReceiptEntityTooltip(), { passive: true });
     }
 
     function normalizeReceiptProduct(raw = {}) {
@@ -385,6 +518,7 @@
     }
 
     function hideAllReceiptPickers() {
+      hideReceiptEntityTooltip();
       for (const listNode of [el.receiptItemsList, el.editReceiptItemsList]) {
         if (!listNode) {
           continue;
@@ -415,20 +549,30 @@
         picker.innerHTML = "";
         return;
       }
-      const suggestionsHtml = shopSuggestions.map((shopName) => `
-        <button type="button" class="chip-btn" data-receipt-shop-name="${escHtml(shopName)}" data-receipt-item-id="${rowItem.draft_id}" title="${escHtml(shopName)}">
-          ${window.App.getRuntimeModule?.("catalog-media")?.renderThumb?.(getReceiptSourceMeta(shopName)?.image_id, { kind: "source", size: "chip", alt: shopName, fallback: shopName.slice(0, 1) }) || ""}
-          ${core.renderCategoryChip({ name: shopName, icon: null, accent_color: null }, normalizedQuery)}
+      const suggestionsHtml = shopSuggestions.map((shopName) => {
+        const source = getReceiptSourceMeta(shopName) || { name: shopName, image_id: null };
+        const selected = (
+          (Number(rowItem.source_id || 0) && Number(source.id || 0) === Number(rowItem.source_id))
+          || normalizeReceiptName(rowItem.shop_name || "").toLowerCase() === shopName.toLowerCase()
+        );
+        return `
+        <button type="button" class="chip-btn receipt-entity-option ${selected ? "active" : ""}" data-receipt-shop-name="${escHtml(shopName)}" data-receipt-item-id="${rowItem.draft_id}" data-receipt-picker-tooltip="${escHtml(shopName)}" aria-label="${escHtml(shopName)}" aria-pressed="${selected ? "true" : "false"}" style="--receipt-entity-hue:${receiptEntityHue(shopName)}">
+          ${renderReceiptEntityAvatar({ ...source, name: shopName }, "source")}
+          <span class="receipt-entity-option-label">${escHtml(shopName)}</span>
+          <span class="receipt-entity-option-check" aria-hidden="true">✓</span>
         </button>
-      `).join("");
+      `;
+      }).join("");
       const createHtml = !normalizedQuery || exact ? "" : `
         <button type="button" class="chip-btn chip-btn-create" data-receipt-create-shop="${escHtml(normalizedQuery)}" data-receipt-item-id="${rowItem.draft_id}">
           + Создать источник «${escHtml(normalizedQuery)}»
         </button>
       `;
       picker.innerHTML = `${suggestionsHtml}${createHtml}` || "<span class='muted-small'>Нет источников</span>";
+      bindReceiptEntityTooltip(picker);
       pickerUtils.setPopoverOpen(picker, true, {
         owners: [rowNode, rowNode.querySelector(".receipt-shop-cell")],
+        outsideScopes: [rowNode.querySelector(".receipt-shop-cell")],
         onClose: hideAllReceiptPickers,
       });
       receiptUiState.activePicker = { draft_id: Number(rowItem.draft_id), field: "shop_name", mode: getReceiptModeFromNode(rowNode) };
@@ -449,21 +593,28 @@
         : rawQuery;
       const suggestions = getReceiptBrandSuggestions(normalizedQuery);
       const clearHtml = `
-        <button type="button" class="chip-btn ${rowItem.brand_id ? "" : "active"}" data-receipt-brand-clear="true" data-receipt-item-id="${rowItem.draft_id}" title="Не привязывать бренд">
-          ${core.renderCategoryChip({ name: "Без бренда", icon: null, accent_color: null }, normalizedQuery)}
+        <button type="button" class="chip-btn receipt-entity-service-option ${rowItem.brand_id ? "" : "active"}" data-receipt-brand-clear="true" data-receipt-item-id="${rowItem.draft_id}">
+          <span aria-hidden="true">∅</span> Без бренда
         </button>
       `;
-      const suggestionsHtml = suggestions.map((brand) => `
-        <button type="button" class="chip-btn ${Number(rowItem.brand_id || 0) === Number(brand.id) ? "active" : ""}" data-receipt-brand-id="${Number(brand.id)}" data-receipt-item-id="${rowItem.draft_id}" title="${escHtml(brand.name)}">
-          ${renderReceiptBrandChip(brand)}
+      const suggestionsHtml = suggestions.map((brand) => {
+        const selected = Number(rowItem.brand_id || 0) === Number(brand.id);
+        return `
+        <button type="button" class="chip-btn receipt-entity-option ${selected ? "active" : ""}" data-receipt-brand-id="${Number(brand.id)}" data-receipt-item-id="${rowItem.draft_id}" data-receipt-picker-tooltip="${escHtml(brand.name)}" aria-label="${escHtml(brand.name)}" aria-pressed="${selected ? "true" : "false"}" style="--receipt-entity-hue:${receiptEntityHue(brand.name)}">
+          ${renderReceiptEntityAvatar(brand, "brand")}
+          <span class="receipt-entity-option-label">${escHtml(brand.name)}</span>
+          <span class="receipt-entity-option-check" aria-hidden="true">✓</span>
         </button>
-      `).join("");
+      `;
+      }).join("");
       const emptyHtml = suggestions.length
         ? ""
         : "<span class='muted-small receipt-picker-empty'>Бренд не найден · создать можно в Каталоге → Бренды</span>";
       picker.innerHTML = `${clearHtml}${suggestionsHtml}${emptyHtml}`;
+      bindReceiptEntityTooltip(picker);
       pickerUtils.setPopoverOpen(picker, true, {
         owners: [rowNode, rowNode.querySelector(".receipt-brand-cell")],
+        outsideScopes: [rowNode.querySelector(".receipt-brand-cell")],
         onClose: hideAllReceiptPickers,
       });
       receiptUiState.activePicker = { draft_id: Number(rowItem.draft_id), field: "brand_id", mode: getReceiptModeFromNode(rowNode) };
@@ -530,6 +681,7 @@
       picker.innerHTML = `${suggestionsHtml}${createHtml}` || "<span class='muted-small'>Нет совпадений</span>";
       pickerUtils.setPopoverOpen(picker, true, {
         owners: [rowNode, rowNode.querySelector(".receipt-name-cell")],
+        outsideScopes: [rowNode.querySelector(".receipt-name-cell")],
         onClose: hideAllReceiptPickers,
       });
       receiptUiState.activePicker = { draft_id: Number(rowItem.draft_id), field: "name", mode: getReceiptModeFromNode(rowNode) };
@@ -622,6 +774,7 @@
       }
       pickerUtils.setPopoverOpen(picker, true, {
         owners: [rowNode, rowNode.querySelector(".receipt-category-cell")],
+        outsideScopes: [rowNode.querySelector(".receipt-category-cell")],
         onClose: hideAllReceiptPickers,
       });
       receiptUiState.activePicker = { draft_id: Number(rowItem.draft_id), field: "category_id", mode };

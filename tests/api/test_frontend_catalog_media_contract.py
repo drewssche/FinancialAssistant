@@ -54,7 +54,7 @@ def test_thumbnails_and_nested_item_card_are_wired_through_receipt_surfaces():
 
     assert 'data-open-receipt-template-card="${Number(item.template_id)}"' in receipt
     assert "renderThumb?.(item.product_image_id || item.image_id" in pickers
-    assert "renderThumb?.(getReceiptSourceMeta(shopName)?.image_id" in pickers
+    assert 'renderReceiptEntityAvatar({ ...source, name: shopName }, "source")' in pickers
     assert 'button[data-open-receipt-template-card]' in interactions
     assert 'data-open-receipt-template-card="${Number(row.template_id)}"' in display
     assert "async function openItemTemplateCard(templateId)" in media
@@ -63,6 +63,29 @@ def test_thumbnails_and_nested_item_card_are_wired_through_receipt_surfaces():
     assert 'for (const mode of ["create", "edit"])' in receipt
     assert "applySavedTemplateToReceiptDrafts?.(savedItem)" in item_modal
     assert "refreshOpenReceiptTemplate?.(savedItem)" in item_modal
+
+
+def test_receipt_entity_pickers_use_compact_avatars_and_portal_tooltips():
+    pickers = _read("static/js/app-features-operation-modal-receipt-pickers.js")
+    styles = _read("static/css/layout-receipts.css")
+
+    assert "function receiptEntityMonogram(value)" in pickers
+    assert 'fallback: receiptEntityMonogram(name)' in pickers
+    assert 'class="chip-btn receipt-entity-option ${selected ? "active" : ""}"' in pickers
+    assert 'data-receipt-picker-tooltip="${escHtml(shopName)}"' in pickers
+    assert 'data-receipt-picker-tooltip="${escHtml(brand.name)}"' in pickers
+    assert 'document.body.appendChild(tooltip)' in pickers
+    assert 'tooltip.style.left = `${Math.round(left)}px`' in pickers
+    assert 'tooltip.style.top = `${Math.round(top)}px`' in pickers
+    assert 'title="${escHtml(shopName)}"' not in pickers
+    assert 'title="${escHtml(brand.name)}"' not in pickers
+    assert ".receipt-template-suggestion-name {" in styles
+    assert "color: #edf3ff;" in styles
+    assert "grid-template-columns: repeat(auto-fill, 2.75rem);" in styles
+    assert ".receipt-entity-tooltip {" in styles
+    assert "position: fixed;" in styles
+    assert "@media (hover: none), (pointer: coarse)" in styles
+    assert "@media (prefers-reduced-motion: reduce)" in styles
 
 
 def test_brand_rows_use_shared_kebab_with_delete_wording():

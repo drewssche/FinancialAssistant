@@ -1005,23 +1005,42 @@ def test_receipt_picker_loads_catalog_sources_and_templates_beyond_first_page(st
     first_row = page.locator(".receipt-item-row").first
     first_row.locator('[data-receipt-field="shop_name"]').click()
     page.wait_for_selector('.receipt-item-row:first-child .receipt-shop-picker:not(.hidden)')
-    assert first_row.locator('.receipt-shop-picker .chip-btn:has-text("Пустой источник")').first.is_visible()
+    empty_source_option = first_row.locator(
+        '.receipt-shop-picker .receipt-entity-option[data-receipt-shop-name="Пустой источник"]'
+    )
+    expect(empty_source_option).to_be_visible()
+    expect(empty_source_option).to_have_attribute("aria-label", "Пустой источник")
+    assert empty_source_option.get_attribute("title") is None
+    assert empty_source_option.locator(".catalog-media-fallback").inner_text() == "ПИ"
     chip_geometry = first_row.locator(".receipt-shop-picker").evaluate(
         """
         node => ({
           gap: parseFloat(getComputedStyle(node).rowGap || '0'),
-          heights: [...node.querySelectorAll('.chip-btn')].slice(0, 12).map((chip) => chip.getBoundingClientRect().height),
+          avatars: [...node.querySelectorAll('.receipt-entity-option')].slice(0, 12).map((option) => {
+            const rect = option.getBoundingClientRect();
+            return {
+              width: rect.width,
+              height: rect.height,
+              labelDisplay: getComputedStyle(option.querySelector('.receipt-entity-option-label')).display,
+            };
+          }),
         })
         """
     )
     assert chip_geometry["gap"] <= 8
-    assert chip_geometry["heights"]
-    assert max(chip_geometry["heights"]) <= 32
+    assert chip_geometry["avatars"]
+    assert all(40 <= avatar["width"] <= 48 for avatar in chip_geometry["avatars"])
+    assert all(abs(avatar["width"] - avatar["height"]) <= 1 for avatar in chip_geometry["avatars"])
+    assert all(avatar["labelDisplay"] == "none" for avatar in chip_geometry["avatars"])
 
     first_row.locator('[data-receipt-field="shop_name"]').fill("Дальний")
     page.wait_for_selector('.receipt-item-row:first-child .receipt-shop-picker:not(.hidden)')
-    assert first_row.locator('.receipt-shop-picker .chip-btn:has-text("Дальний источник")').first.is_visible()
-    first_row.locator('.receipt-shop-picker .chip-btn:has-text("Дальний источник")').first.click()
+    distant_source_option = first_row.locator(
+        '.receipt-shop-picker .receipt-entity-option[data-receipt-shop-name="Дальний источник"]'
+    )
+    expect(distant_source_option).to_be_visible()
+    expect(distant_source_option).to_have_attribute("aria-label", "Дальний источник")
+    distant_source_option.click()
 
     first_row.locator('[data-receipt-field="name"]').click()
     page.wait_for_selector('.receipt-item-row:first-child .receipt-name-picker:not(.hidden)')
@@ -1302,6 +1321,171 @@ def test_receipt_category_picker_closes_on_outside_click(static_server_url: str,
     page.wait_for_timeout(100)
 
     assert first_row.locator(".receipt-category-picker").is_hidden()
+
+
+@pytest.mark.e2e
+def test_receipt_entity_pickers_are_accessible_and_close_without_closing_modal(
+    static_server_url: str,
+    page_with_receipt_api_mock,
+):
+    page = page_with_receipt_api_mock
+    page.set_viewport_size({"width": 1380, "height": 900})
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    _login(page)
+    _ensure_categories_loaded(page)
+    page.click("#addOperationCta")
+    page.wait_for_selector("#createModal:not(.hidden)")
+    page.locator('#createOperationModeSwitch button[data-operation-mode="receipt"]').click()
+    page.wait_for_selector("#opReceiptFields:not(.hidden)")
+
+    first_row = page.locator("#receiptItemsList .receipt-item-row").first
+    source_cell = first_row.locator(".receipt-shop-cell")
+    source_input = first_row.locator('[data-receipt-field="shop_name"]')
+    source_input.click()
+    source_picker = first_row.locator(".receipt-shop-picker")
+    expect(source_picker).to_be_visible()
+    source_option = source_picker.locator(
+        '.receipt-entity-option[data-receipt-shop-name="Green"]'
+    )
+    expect(source_option).to_be_visible()
+    expect(source_option).to_have_attribute("aria-label", "Green")
+    assert source_option.get_attribute("title") is None
+    source_avatar = source_option.evaluate(
+        """
+        node => {
+          const rect = node.getBoundingClientRect();
+          return {
+            width: rect.width,
+            height: rect.height,
+            labelDisplay: getComputedStyle(node.querySelector('.receipt-entity-option-label')).display,
+            thumbCount: node.querySelectorAll('.catalog-media-thumb').length,
+          };
+        }
+        """
+    )
+    assert abs(source_avatar["width"] - source_avatar["height"]) <= 1
+    assert source_avatar["labelDisplay"] == "none"
+    assert source_avatar["thumbCount"] == 1
+    assert "has-open-popover" in (first_row.get_attribute("class") or "")
+    assert "has-open-popover" in (source_cell.get_attribute("class") or "")
+
+    document_width_before_tooltip = page.evaluate("() => document.documentElement.scrollWidth")
+    source_option.hover()
+    tooltip = page.locator("#receiptEntityPickerTooltip")
+    expect(tooltip).to_be_visible()
+    expect(tooltip).to_have_text("Green")
+    tooltip_geometry = tooltip.evaluate(
+        """
+        node => {
+          const rect = node.getBoundingClientRect();
+          return {
+            position: getComputedStyle(node).position,
+            left: rect.left,
+            top: rect.top,
+            right: rect.right,
+            bottom: rect.bottom,
+            viewportWidth: window.innerWidth,
+            viewportHeight: window.innerHeight,
+          };
+        }
+        """
+    )
+    assert tooltip_geometry["position"] == "fixed"
+    assert tooltip_geometry["left"] >= 0
+    assert tooltip_geometry["top"] >= 0
+    assert tooltip_geometry["right"] <= tooltip_geometry["viewportWidth"]
+    assert tooltip_geometry["bottom"] <= tooltip_geometry["viewportHeight"]
+    assert page.evaluate("() => document.documentElement.scrollWidth") <= document_width_before_tooltip + 1
+    page.mouse.move(1, 1)
+    expect(tooltip).to_be_hidden()
+
+    # Opening another picker in the same row closes the previous one and moves
+    # the ownership class to the newly active cell.
+    brand_input = first_row.locator('[data-receipt-field="brand_search"]')
+    brand_input.click()
+    brand_picker = first_row.locator(".receipt-brand-picker")
+    expect(source_picker).to_be_hidden()
+    expect(brand_picker).to_be_visible()
+    brand_option = brand_picker.locator(
+        '.receipt-entity-option[data-receipt-brand-id="201"]'
+    )
+    expect(brand_option).to_be_visible()
+    expect(brand_option).to_have_attribute("aria-label", "Vici")
+    assert brand_option.get_attribute("title") is None
+    brand_avatar = brand_option.evaluate(
+        """
+        node => {
+          const rect = node.getBoundingClientRect();
+          return {
+            width: rect.width,
+            height: rect.height,
+            labelDisplay: getComputedStyle(node.querySelector('.receipt-entity-option-label')).display,
+            thumbCount: node.querySelectorAll('.catalog-media-thumb').length,
+          };
+        }
+        """
+    )
+    assert abs(brand_avatar["width"] - brand_avatar["height"]) <= 1
+    assert brand_avatar["labelDisplay"] == "none"
+    assert brand_avatar["thumbCount"] == 1
+    assert "has-open-popover" not in (source_cell.get_attribute("class") or "")
+    assert "has-open-popover" in (
+        first_row.locator(".receipt-brand-cell").get_attribute("class") or ""
+    )
+
+    # Escape closes only the picker, not the operation modal, and clears all
+    # ownership classes left on the receipt row.
+    brand_input.press("Escape")
+    expect(brand_picker).to_be_hidden()
+    expect(page.locator("#createModal")).to_be_visible()
+    assert "has-open-popover" not in (first_row.get_attribute("class") or "")
+    assert first_row.locator(".has-open-popover").count() == 0
+
+    # Product suggestions inherit a light foreground instead of the browser's
+    # black default button text on the dark popover.
+    source_input.fill("Green")
+    green_option = source_picker.locator(
+        '.receipt-entity-option[data-receipt-shop-name="Green"]'
+    )
+    expect(green_option).to_be_visible()
+    green_option.click()
+    name_input = first_row.locator('[data-receipt-field="name"]')
+    name_input.click()
+    name_picker = first_row.locator(".receipt-name-picker")
+    expect(name_picker).to_be_visible()
+    suggestion_name = name_picker.locator(".receipt-template-suggestion-name").first
+    expect(suggestion_name).to_be_visible()
+    suggestion_color = suggestion_name.evaluate(
+        """
+        node => {
+          const color = getComputedStyle(node).color;
+          const channels = (color.match(/[\\d.]+/g) || []).slice(0, 3).map(Number);
+          return { color, minChannel: Math.min(...channels) };
+        }
+        """
+    )
+    assert suggestion_color["minChannel"] >= 180, suggestion_color["color"]
+
+    # A click elsewhere in the same receipt row is still outside the picker.
+    # It must close the popover and clear the row/cell ownership classes.
+    first_row.locator('[data-receipt-field="unit_price"]').click()
+    expect(name_picker).to_be_hidden()
+    expect(page.locator("#createModal")).to_be_visible()
+    assert "has-open-popover" not in (first_row.get_attribute("class") or "")
+    assert first_row.locator(".has-open-popover").count() == 0
 
 
 @pytest.mark.e2e

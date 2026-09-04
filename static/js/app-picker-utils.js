@@ -234,6 +234,9 @@
     if (owners.length) {
       popover.__appPopoverOwners = owners;
     }
+    if (Array.isArray(options.outsideScopes)) {
+      popover.__appPopoverOutsideScopes = options.outsideScopes.filter(Boolean);
+    }
     if (typeof options.onClose === "function") {
       popover.__appPopoverOnClose = options.onClose;
     }
@@ -285,7 +288,10 @@
     if (inside) {
       return false;
     }
-    setPopoverOpen(popover, false, { owners: allScopes.filter((scope) => scope !== popover) });
+    const activeOwners = Array.isArray(popover.__appPopoverOwners)
+      ? popover.__appPopoverOwners
+      : allScopes.filter((scope) => scope !== popover);
+    setPopoverOpen(popover, false, { owners: activeOwners });
     if (typeof onClose === "function") {
       onClose();
     }
@@ -297,10 +303,13 @@
     let closedAny = false;
     for (const popover of openPopovers) {
       const owners = Array.isArray(popover.__appPopoverOwners) ? popover.__appPopoverOwners : [];
+      const outsideScopes = Array.isArray(popover.__appPopoverOutsideScopes)
+        ? popover.__appPopoverOutsideScopes
+        : owners;
       const onClose = typeof popover.__appPopoverOnClose === "function" ? popover.__appPopoverOnClose : null;
       const didClose = closePopoverOnOutside(event, {
         popover,
-        scopes: owners,
+        scopes: outsideScopes,
         onClose,
       });
       closedAny = closedAny || didClose;
