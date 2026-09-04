@@ -105,8 +105,7 @@
 
 .catalog-item-identity,
 .catalog-source-identity,
-.operation-receipt-item-identity,
-.item-recommendation-identity {
+.operation-receipt-item-identity {
   min-width: 0;
   display: flex;
   align-items: center;
@@ -114,8 +113,7 @@
 }
 
 .catalog-item-identity-main,
-.operation-receipt-item-name,
-.item-recommendation-identity-main {
+.operation-receipt-item-name {
   min-width: 0;
 }
 

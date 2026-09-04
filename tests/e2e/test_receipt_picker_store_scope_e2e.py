@@ -282,12 +282,7 @@ def page_with_receipt_api_mock():
                 return json_response(route, {"detail": "not found"}, status=404)
             return json_response(
                 route,
-                {
-                    **item,
-                    "recommendation_enabled": False,
-                    "recommendation_mode": "manual",
-                    "recommendation_base_quantity": "1.000",
-                },
+                item,
             )
         if path.startswith("/api/v1/operations/item-templates/") and method == "PATCH":
             template_id = int(path.rsplit("/", 1)[-1])

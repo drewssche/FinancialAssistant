@@ -86,7 +86,6 @@
     "/static/js/app-item-catalog-render-coordinator.js",
     "/static/js/app-features-item-catalog.js",
     "/static/js/app-item-catalog-ui-coordinator.js",
-    "/static/js/app-features-item-recommendations.js",
     "/static/js/app-features-operations-display.js",
     "/static/js/app-features-operations-mutations.js",
     "/static/js/app-features-operations.js",

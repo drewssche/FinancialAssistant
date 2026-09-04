@@ -198,66 +198,6 @@ def page_with_money_flow_api_mock():
             "can_open_source": False,
         },
     ]
-    recommendations = [
-        {
-            "template_id": 501,
-            "shop_name": "Корона",
-            "name": "Пачка сигарет",
-            "category_id": None,
-            "latest_unit_price": "6.60",
-            "last_purchase_date": "2026-02-20",
-            "last_quantity": "10.000",
-            "interval_days": 9,
-            "base_quantity": "10.000",
-            "next_date": "2026-03-01",
-            "effective_date": "2026-03-01",
-            "days_until": -7,
-            "status": "overdue",
-            "explanation": "Последняя покупка: 10 · расчётный запас на 9 дн.",
-        }
-    ]
-    recommendation_management = [
-        {
-            "template_id": 501,
-            "shop_name": "Корона",
-            "name": "Пачка сигарет",
-            "category_id": None,
-            "use_count": 4,
-            "latest_unit_price": "6.60",
-            "last_purchase_date": "2026-02-20",
-            "last_quantity": "10.000",
-            "recommendation_enabled": True,
-            "recommendation_mode": "manual",
-            "interval_days": 9,
-            "base_quantity": "10.000",
-            "next_date": "2026-03-01",
-            "snoozed_until": None,
-            "effective_date": "2026-03-01",
-            "days_until": -7,
-            "status": "overdue",
-            "candidate": False,
-        },
-        {
-            "template_id": 502,
-            "shop_name": "Корона",
-            "name": "Молоко",
-            "category_id": None,
-            "use_count": 6,
-            "latest_unit_price": "3.30",
-            "last_purchase_date": "2026-03-06",
-            "last_quantity": "2.000",
-            "recommendation_enabled": False,
-            "recommendation_mode": "manual",
-            "interval_days": None,
-            "base_quantity": "1.000",
-            "next_date": None,
-            "snoozed_until": None,
-            "effective_date": None,
-            "days_until": None,
-            "status": "unconfigured",
-            "candidate": True,
-        },
-    ]
     debt_cards = [
         {
             "counterparty_id": 1,
@@ -401,32 +341,6 @@ def page_with_money_flow_api_mock():
             return json_response(route, {"income_total": "0.00", "expense_total": "0.00", "balance": "0.00"})
         if path == "/api/v1/operations" and method == "GET":
             return json_response(route, {"items": operations, "total": len(operations), "page": 1, "page_size": 20})
-        if path == "/api/v1/operations/item-recommendations" and method == "GET":
-            return json_response(route, recommendations)
-        if path == "/api/v1/operations/item-recommendations/manage" and method == "GET":
-            return json_response(route, recommendation_management)
-        if path == "/api/v1/operations/item-recommendations/bulk" and method == "POST":
-            payload = json.loads(request.post_data or "{}")
-            return json_response(route, {"updated": len(payload.get("template_ids") or [])})
-        if path == "/api/v1/operations/item-templates" and method == "GET":
-            items = [
-                {
-                    "id": row["template_id"],
-                    "shop_name": row["shop_name"],
-                    "name": row["name"],
-                    "use_count": row["use_count"],
-                    "last_category_id": row["category_id"],
-                    "latest_unit_price": row["latest_unit_price"],
-                    "recommendation_enabled": row["recommendation_enabled"],
-                    "recommendation_mode": row["recommendation_mode"],
-                    "recommendation_interval_days": row["interval_days"],
-                    "recommendation_base_quantity": row["base_quantity"],
-                    "recommendation_next_date": row["next_date"],
-                    "recommendation_snoozed_until": row["snoozed_until"],
-                }
-                for row in recommendation_management
-            ]
-            return json_response(route, {"items": items, "total": len(items), "page": 1, "page_size": 100})
         if path == "/api/v1/operations/1" and method == "GET":
             return json_response(route, {
                 "id": 1,
@@ -568,53 +482,6 @@ def _open_app(page, static_server_url: str):
             # Telegram auto-login may hide the button between the visibility check and click.
             pass
     page.wait_for_selector("#appShell:not(.hidden)")
-
-
-@pytest.mark.e2e
-def test_dashboard_recommendation_opens_prefilled_receipt(static_server_url: str, page_with_money_flow_api_mock):
-    page = page_with_money_flow_api_mock
-    _open_app(page, static_server_url)
-
-    card = page.locator('[data-recommendation-template-id="501"]')
-    card.wait_for()
-    assert "Пачка сигарет" in (card.text_content() or "")
-    assert "Просрочено на 7 дн." in (card.text_content() or "")
-    card.locator('button[data-recommendation-action="receipt"]').click()
-
-    page.wait_for_selector("#createModal:not(.hidden)")
-    page.wait_for_selector("#opReceiptFields:not(.hidden)")
-    first_row = page.locator("#receiptItemsList .receipt-item-row").first
-    assert first_row.locator('[data-receipt-field="shop_name"]').input_value() == "Корона"
-    assert first_row.locator('[data-receipt-field="name"]').input_value() == "Пачка сигарет"
-    assert first_row.locator('[data-receipt-field="quantity"]').input_value() == "10"
-
-    page.locator("#closeCreateModalBtn").click()
-    card.locator('button[data-recommendation-action="plan"]').click()
-    page.wait_for_selector("#createModal:not(.hidden)")
-    page.wait_for_function("() => window.App.state.createFlowMode === 'plan'")
-    plan_row = page.locator("#receiptItemsList .receipt-item-row").first
-    assert plan_row.locator('[data-receipt-field="name"]').input_value() == "Пачка сигарет"
-
-
-@pytest.mark.e2e
-def test_item_catalog_opens_central_recommendation_management(static_server_url: str, page_with_money_flow_api_mock):
-    page = page_with_money_flow_api_mock
-    _open_app(page, static_server_url)
-
-    page.locator("#openRecommendationCatalogBtn").click()
-    page.wait_for_selector("#itemRecommendationsView:not(.hidden)")
-    page.wait_for_selector('tr[data-recommendation-template-id="501"]')
-    assert "Пачка сигарет" in (page.locator("#itemRecommendationsBody").text_content() or "")
-    assert "Молоко" in (page.locator("#itemRecommendationsBody").text_content() or "")
-
-    page.locator('[data-recommendation-status="candidates"]').click()
-    page.wait_for_selector('tr[data-recommendation-template-id="502"]')
-    assert page.locator('tr[data-recommendation-template-id="501"]').count() == 0
-    candidate_row = page.locator('tr[data-recommendation-template-id="502"]')
-    assert "Часто покупается" in (candidate_row.text_content() or "")
-    candidate_row.locator(".item-recommendation-select").click()
-    page.wait_for_selector("#itemRecommendationBulkBar:not(.hidden)")
-    assert "Выбрано: 1" in (page.locator("#itemRecommendationSelectedCount").text_content() or "")
 
 
 @pytest.mark.e2e

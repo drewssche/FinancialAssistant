@@ -127,19 +127,6 @@
             <div id="dashboardDebtsList" class="debt-cards debt-cards-compact"></div>
           </section>
 
-          <section id="dashboardRecommendationsPanel" class="panel">
-            <div class="panel-head row between">
-              <div>
-                <h3>Пора купить снова</h3>
-                <p class="subtitle">Подсказки по расходу позиций из чеков</p>
-              </div>
-              <button id="openRecommendationCatalogBtn" class="btn btn-secondary" type="button">Настроить позиции</button>
-            </div>
-            <div id="dashboardRecommendationsList" class="recommendation-grid">
-              <div class="muted-small">Загрузка рекомендаций…</div>
-            </div>
-          </section>
-
           <section id="dashboardPlansPanel" class="panel">
             <div class="panel-head row between">
               <div>

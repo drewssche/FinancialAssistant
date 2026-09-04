@@ -37,12 +37,17 @@
     const categoriesSectionCoordinator = getCategoriesSectionCoordinator();
     const itemCatalogUiCoordinator = getItemCatalogUiCoordinator();
     const itemCatalogSectionCoordinator = getItemCatalogSectionCoordinator();
-    const itemRecommendationManager = window.App.getRuntimeModule?.("item-recommendation-manager");
     const itemCatalogFeature = window.App.getRuntimeModule?.("item-catalog") || {};
     const itemBrandsFeature = window.App.getRuntimeModule?.("item-brands") || {};
 
-    itemRecommendationManager?.bind?.();
     itemBrandsFeature.bind?.();
+    el.itemCatalogViewTabs?.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-item-catalog-view]");
+      if (button) {
+        actions.setItemCatalogView?.(button.dataset.itemCatalogView);
+      }
+    });
+    actions.setItemCatalogView?.(state.itemCatalogView || "positions");
 
     if (el.itemTemplateBrandSearch) {
       el.itemTemplateBrandSearch.addEventListener("focus", () => itemCatalogFeature.handleItemTemplateBrandSearchFocus?.());

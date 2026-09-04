@@ -1,5 +1,3 @@
-from datetime import date, timedelta
-
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -2201,179 +2199,20 @@ def test_operations_list_cache_is_invalidated_after_operation_mutations(client: 
     assert after_delete.json()["total"] == 0
 
 
-def test_repeat_purchase_recommendation_schedule_snooze_and_disable(client: TestClient):
-    purchase_date = date.today() - timedelta(days=10)
+def test_repeat_purchase_recommendation_api_is_removed(client: TestClient):
     created = client.post(
-        "/api/v1/operations",
-        json={
-            "kind": "expense",
-            "operation_date": purchase_date.isoformat(),
-            "receipt_items": [
-                {
-                    "shop_name": "Корона",
-                    "name": "Пачка сигарет",
-                    "quantity": "10",
-                    "unit_price": "6.60",
-                },
-            ],
-        },
+        "/api/v1/operations/item-templates",
+        json={"shop_name": "Корона", "name": "Молоко", "latest_unit_price": "3.20"},
     )
-    assert created.status_code == 201
-    template_id = created.json()["receipt_items"][0]["template_id"]
+    assert created.status_code == 201, created.text
+    assert not any(key.startswith("recommendation_") for key in created.json())
 
-    missing_interval = client.patch(
+    template_id = created.json()["id"]
+    obsolete_update = client.patch(
         f"/api/v1/operations/item-templates/{template_id}",
         json={"recommendation_enabled": True},
     )
-    assert missing_interval.status_code == 400
-
-    configured = client.patch(
-        f"/api/v1/operations/item-templates/{template_id}",
-        json={
-            "recommendation_enabled": True,
-            "recommendation_mode": "manual",
-            "recommendation_interval_days": 9,
-            "recommendation_base_quantity": "10",
-        },
-    )
-    assert configured.status_code == 200
-    assert configured.json()["recommendation_enabled"] is True
-    assert configured.json()["recommendation_next_date"] == (purchase_date + timedelta(days=9)).isoformat()
-
-    recommendations = client.get("/api/v1/operations/item-recommendations")
-    assert recommendations.status_code == 200
-    payload = recommendations.json()
-    assert len(payload) == 1
-    assert payload[0]["template_id"] == template_id
-    assert payload[0]["status"] == "overdue"
-    assert payload[0]["interval_days"] == 9
-    assert payload[0]["base_quantity"] == "10.000"
-    assert "расчётный запас на 9 дн." in payload[0]["explanation"]
-
-    snoozed = client.post(
-        f"/api/v1/operations/item-recommendations/{template_id}/snooze",
-        json={"days": 7},
-    )
-    assert snoozed.status_code == 200
-    assert snoozed.json()["recommendation_snoozed_until"] == (date.today() + timedelta(days=7)).isoformat()
-    after_snooze = client.get("/api/v1/operations/item-recommendations").json()[0]
-    assert after_snooze["status"] == "upcoming"
-    assert after_snooze["days_until"] == 7
-
-    repurchased = client.post(
-        "/api/v1/operations",
-        json={
-            "kind": "expense",
-            "operation_date": date.today().isoformat(),
-            "receipt_items": [
-                {
-                    "shop_name": "Корона",
-                    "name": "Пачка сигарет",
-                    "quantity": "20",
-                    "unit_price": "6.80",
-                },
-            ],
-        },
-    )
-    assert repurchased.status_code == 201
-    repurchase_id = repurchased.json()["id"]
-    refreshed = client.get("/api/v1/operations/item-recommendations").json()[0]
-    assert refreshed["next_date"] == (date.today() + timedelta(days=18)).isoformat()
-    assert refreshed["days_until"] == 18
-
-    assert client.delete(f"/api/v1/operations/{repurchase_id}").status_code == 204
-    after_delete = client.get("/api/v1/operations/item-recommendations").json()[0]
-    assert after_delete["next_date"] == (purchase_date + timedelta(days=9)).isoformat()
-    assert after_delete["status"] == "overdue"
-
-    disabled = client.patch(
-        f"/api/v1/operations/item-templates/{template_id}",
-        json={"recommendation_enabled": False},
-    )
-    assert disabled.status_code == 200
-    assert client.get("/api/v1/operations/item-recommendations").json() == []
-
-
-def test_repeat_purchase_recommendation_management_and_bulk_actions(client: TestClient):
-    purchase_date = date.today() - timedelta(days=12)
-    first_purchase = client.post(
-        "/api/v1/operations",
-        json={
-            "kind": "expense",
-            "operation_date": purchase_date.isoformat(),
-            "receipt_items": [
-                {"shop_name": "Корона", "name": "Кофе", "quantity": "1", "unit_price": "18.00"},
-                {"shop_name": "Корона", "name": "Молоко", "quantity": "2", "unit_price": "3.20"},
-            ],
-        },
-    )
-    assert first_purchase.status_code == 201
-    receipt_items = first_purchase.json()["receipt_items"]
-    coffee_id = next(item["template_id"] for item in receipt_items if item["name"] == "Кофе")
-    milk_id = next(item["template_id"] for item in receipt_items if item["name"] == "Молоко")
-
-    repeat_purchase = client.post(
-        "/api/v1/operations",
-        json={
-            "kind": "expense",
-            "operation_date": (purchase_date + timedelta(days=5)).isoformat(),
-            "receipt_items": [
-                {"shop_name": "Корона", "name": "Молоко", "quantity": "1", "unit_price": "3.30"},
-            ],
-        },
-    )
-    assert repeat_purchase.status_code == 201
-
-    configured = client.patch(
-        f"/api/v1/operations/item-templates/{coffee_id}",
-        json={
-            "recommendation_enabled": True,
-            "recommendation_interval_days": 7,
-            "recommendation_base_quantity": "1",
-        },
-    )
-    assert configured.status_code == 200
-
-    management = client.get("/api/v1/operations/item-recommendations/manage")
-    assert management.status_code == 200
-    by_id = {item["template_id"]: item for item in management.json()}
-    assert by_id[coffee_id]["status"] == "overdue"
-    assert by_id[coffee_id]["recommendation_enabled"] is True
-    assert by_id[milk_id]["status"] == "unconfigured"
-    assert by_id[milk_id]["candidate"] is True
-    assert by_id[milk_id]["last_purchase_date"] == (purchase_date + timedelta(days=5)).isoformat()
-
-    enabled = client.post(
-        "/api/v1/operations/item-recommendations/bulk",
-        json={
-            "template_ids": [coffee_id, milk_id],
-            "action": "enable",
-            "interval_days": 14,
-            "base_quantity": "2",
-        },
-    )
-    assert enabled.status_code == 200
-    assert enabled.json() == {"updated": 2}
-    after_enable = {item["template_id"]: item for item in client.get("/api/v1/operations/item-recommendations/manage").json()}
-    assert after_enable[coffee_id]["interval_days"] == 14
-    assert after_enable[milk_id]["recommendation_enabled"] is True
-    assert after_enable[milk_id]["base_quantity"] == "2.000"
-
-    snoozed = client.post(
-        "/api/v1/operations/item-recommendations/bulk",
-        json={"template_ids": [coffee_id], "action": "snooze", "snooze_days": 21},
-    )
-    assert snoozed.status_code == 200
-    assert snoozed.json() == {"updated": 1}
-    after_snooze = {item["template_id"]: item for item in client.get("/api/v1/operations/item-recommendations/manage").json()}
-    assert after_snooze[coffee_id]["status"] == "snoozed"
-
-    disabled = client.post(
-        "/api/v1/operations/item-recommendations/bulk",
-        json={"template_ids": [coffee_id, milk_id], "action": "disable"},
-    )
-    assert disabled.status_code == 200
-    assert disabled.json() == {"updated": 2}
-    after_disable = {item["template_id"]: item for item in client.get("/api/v1/operations/item-recommendations/manage").json()}
-    assert after_disable[coffee_id]["status"] == "unconfigured"
-    assert after_disable[milk_id]["status"] == "unconfigured"
+    assert obsolete_update.status_code == 400
+    api_paths = client.get("/openapi.json").json()["paths"]
+    assert "/api/v1/operations/item-recommendations" not in api_paths
+    assert "/api/v1/operations/item-recommendations/manage" not in api_paths

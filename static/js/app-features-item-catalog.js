@@ -453,9 +453,24 @@
     window.App.getRuntimeModule?.("item-brands")?.renderCatalogBulkState?.();
   }
 
+  function setItemCatalogView(view, options = {}) {
+    const activeView = view === "brands" ? "brands" : "positions";
+    state.itemCatalogView = activeView;
+    el.itemCatalogPositionsView?.classList.toggle("hidden", activeView !== "positions");
+    el.itemBrandsView?.classList.toggle("hidden", activeView !== "brands");
+    el.itemCatalogViewTabs?.querySelectorAll("[data-item-catalog-view]").forEach((button) => {
+      button.classList.toggle("active", button.dataset.itemCatalogView === activeView);
+    });
+    if (activeView === "brands") {
+      window.App.getRuntimeModule?.("item-brands")?.ensureItemBrandsLoaded?.({ force: options.force === true })
+        .catch((err) => core.setStatus(`Не удалось загрузить бренды: ${String(err)}`));
+    }
+  }
+
   const api = {
     loadItemCatalog,
     refreshItemCatalogView,
+    setItemCatalogView,
     setItemCatalogSortPreset,
     collapseAllItemCatalogGroups,
     expandAllItemCatalogGroups,

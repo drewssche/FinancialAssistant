@@ -793,12 +793,6 @@ class OperationRepository:
     def get_latest_prices_for_templates(self, *, template_ids: list[int]) -> dict[int, OperationItemPrice]:
         return self.item_templates.get_latest_prices_for_templates(template_ids=template_ids)
 
-    def list_recommendation_templates(self, *, user_id: int) -> list[OperationItemTemplate]:
-        return self.item_templates.list_recommendation_templates(user_id=user_id)
-
-    def list_item_templates_for_recommendation_management(self, *, user_id: int) -> list[OperationItemTemplate]:
-        return self.item_templates.list_item_templates_for_recommendation_management(user_id=user_id)
-
     def list_item_templates_by_ids(
         self,
         *,
@@ -810,17 +804,6 @@ class OperationRepository:
             user_id=user_id,
             template_ids=template_ids,
             include_archived=include_archived,
-        )
-
-    def get_latest_purchases_for_templates(
-        self,
-        *,
-        user_id: int,
-        template_ids: list[int],
-    ) -> dict[int, tuple[date, Decimal]]:
-        return self.item_templates.get_latest_purchases_for_templates(
-            user_id=user_id,
-            template_ids=template_ids,
         )
 
     def summary_for_period(self, user_id: int, date_from: date, date_to: date):

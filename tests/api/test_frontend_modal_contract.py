@@ -271,41 +271,19 @@ def test_plan_and_operation_history_are_linked_without_duplicate_money_flow_rows
     assert 'sourceKind: "operation"' in plans
 
 
-def test_repeat_purchase_recommendations_have_settings_dashboard_and_actions():
+def test_repeat_purchase_recommendations_are_removed_from_frontend():
     modal = (REPO_ROOT / "static" / "js" / "templates" / "modals-item-catalog.js").read_text(encoding="utf-8")
-    shell = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-primary.js").read_text(encoding="utf-8")
+    primary_shell = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-primary.js").read_text(encoding="utf-8")
+    secondary_shell = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-secondary.js").read_text(encoding="utf-8")
     catalog = (REPO_ROOT / "static" / "js" / "app-features-item-catalog-modal.js").read_text(encoding="utf-8")
     dashboard = (REPO_ROOT / "static" / "js" / "app-features-dashboard.js").read_text(encoding="utf-8")
-
-    assert 'id="itemTemplateRecommendationEnabled"' in modal
-    assert 'id="itemTemplateRecommendationInterval"' in modal
-    assert 'id="itemTemplateRecommendationQuantity"' in modal
-    assert 'id="dashboardRecommendationsPanel"' in shell
-    assert "Пора купить снова" in shell
-    assert "recommendation_interval_days" in catalog
-    assert 'data-recommendation-action="receipt"' in dashboard
-    assert 'data-recommendation-action="plan"' in dashboard
-    assert 'data-recommendation-action="snooze"' in dashboard
-    assert 'data-recommendation-action="disable"' in dashboard
-
-
-def test_item_catalog_has_central_recommendation_management():
-    shell = (REPO_ROOT / "static" / "js" / "templates" / "shell-sections-secondary.js").read_text(encoding="utf-8")
-    manager = (REPO_ROOT / "static" / "js" / "app-features-item-recommendations.js").read_text(encoding="utf-8")
     manifest = (REPO_ROOT / "static" / "js" / "app-manifest.js").read_text(encoding="utf-8")
 
-    assert 'data-item-catalog-view="recommendations"' in shell
-    assert 'id="itemRecommendationStatusTabs"' in shell
-    assert 'data-recommendation-status="candidates"' in shell
-    assert 'id="enableSelectedRecommendationsBtn"' in shell
-    assert 'id="snoozeSelectedRecommendationsBtn"' in shell
-    assert 'id="disableSelectedRecommendationsBtn"' in shell
-    assert "/api/v1/operations/item-recommendations/manage" in manager
-    assert "/api/v1/operations/item-recommendations/bulk" in manager
-    assert 'data-recommendation-manage-action="receipt"' in manager
-    assert 'data-recommendation-manage-action="plan"' in manager
-    assert 'registerRuntimeModule?.("item-recommendation-manager"' in manager
-    assert '"/static/js/app-features-item-recommendations.js"' in manifest
+    combined = "\n".join((modal, primary_shell, secondary_shell, catalog, dashboard, manifest))
+    assert "itemTemplateRecommendation" not in combined
+    assert "item-recommendations" not in combined
+    assert "data-recommendation" not in combined
+    assert "Пора купить снова" not in combined
 
 
 def test_saved_item_template_is_applied_immediately_to_catalog_and_receipt_hints():

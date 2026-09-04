@@ -149,7 +149,7 @@ def test_item_templates_list_cache_key_shape_is_namespaced_and_parameterized():
         page_size=50,
         q="Ротманс",
     )
-    assert key == "itemtpl:v1:u:7:view:list:page:2:page_size:50:q:Ротманс:template_id:-:limit:-"
+    assert key == "itemtpl:v2:u:7:view:list:page:2:page_size:50:q:Ротманс:template_id:-:limit:-"
 
 
 def test_item_templates_prices_cache_key_shape_is_namespaced_and_parameterized():
@@ -159,7 +159,7 @@ def test_item_templates_prices_cache_key_shape_is_namespaced_and_parameterized()
         template_id=13,
         limit=100,
     )
-    assert key == "itemtpl:v1:u:7:view:prices:page:-:page_size:-:q:-:template_id:13:limit:100"
+    assert key == "itemtpl:v2:u:7:view:prices:page:-:page_size:-:q:-:template_id:13:limit:100"
 
 
 def test_debts_cards_cache_key_shape_is_namespaced_and_parameterized():

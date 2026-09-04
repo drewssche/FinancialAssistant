@@ -64,7 +64,7 @@ def test_dashboard_navigation_ignores_stale_section_loads():
     assert "const loadSeq = ++dashboardLoadSeq" in dashboard
     assert 'state.activeSection === "dashboard"' in dashboard
     assert "if (!isCurrentDashboardLoad())" in dashboard
-    assert "Promise.allSettled([currencyOverviewTask, plansTask, debtCardsTask, recommendationsTask]).finally" in dashboard
+    assert "Promise.allSettled([currencyOverviewTask, plansTask, debtCardsTask]).finally" in dashboard
     assert "optionalPanelTasksStarted = true" in dashboard
     assert "let dashboardOptionalLoadController = null" in dashboard
     assert "let dashboardOptionalLoadPromise = null" in dashboard

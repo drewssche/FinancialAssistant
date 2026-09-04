@@ -167,6 +167,7 @@
 
   const loadItemCatalog = itemCatalogFeatures.loadItemCatalog;
   const refreshItemCatalogView = itemCatalogFeatures.refreshItemCatalogView;
+  const setItemCatalogView = itemCatalogFeatures.setItemCatalogView;
   const setItemCatalogSortPreset = itemCatalogFeatures.setItemCatalogSortPreset;
   const collapseAllItemCatalogGroups = itemCatalogFeatures.collapseAllItemCatalogGroups;
   const expandAllItemCatalogGroups = itemCatalogFeatures.expandAllItemCatalogGroups;
@@ -182,7 +183,6 @@
   const submitSourceGroupForm = itemCatalogFeatures.submitSourceGroupForm;
   const deleteItemSourceFlow = itemCatalogFeatures.deleteItemSourceFlow;
   const updateItemTemplatePreview = itemCatalogFeatures.updateItemTemplatePreview;
-  const syncItemTemplateRecommendationUi = itemCatalogFeatures.syncItemTemplateRecommendationUi;
   const handleItemTemplateSourceSearchFocus = itemCatalogFeatures.handleItemTemplateSourceSearchFocus;
   const handleItemTemplateSourceSearchInput = itemCatalogFeatures.handleItemTemplateSourceSearchInput;
   const handleItemTemplateSourceSearchKeydown = itemCatalogFeatures.handleItemTemplateSourceSearchKeydown;
@@ -394,6 +394,7 @@
     loadMoreOperations,
     loadItemCatalog,
     refreshItemCatalogView,
+    setItemCatalogView,
     setItemCatalogSortPreset,
     collapseAllItemCatalogGroups,
     expandAllItemCatalogGroups,
@@ -409,7 +410,6 @@
     submitSourceGroupForm,
     deleteItemSourceFlow,
     updateItemTemplatePreview,
-    syncItemTemplateRecommendationUi,
     handleItemTemplateSourceSearchFocus,
     handleItemTemplateSourceSearchInput,
     handleItemTemplateSourceSearchKeydown,

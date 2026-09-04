@@ -3,7 +3,7 @@
 ## Product Scope
 - MVP-1 is implemented: Telegram auth, dashboard summary, operations CRUD, categories/groups, batch operation creation, receipt items, item catalog, debts, plans, currency/FX, admin access states, persisted UI preferences, and Docker Compose runtime.
 - MVP-2 backlog: Google auth provider, budgets/limits, richer reports/charts, export/import.
-- MVP-3 backlog: deeper Telegram Mini App optimization, async jobs and notifications, advanced analytics/recommendations, optional position-level analytics.
+- MVP-3 backlog: deeper Telegram Mini App optimization, async jobs and notifications, advanced analytics, optional position-level analytics.
 
 ## Production Track
 - Keep Telegram WebApp auth as the primary production path; browser Telegram login remains an optional fallback only when `TELEGRAM_BOT_USERNAME` is configured.
@@ -12,15 +12,6 @@
 - Keep Telegram-specific behavior in the client runtime; backend contracts stay shared between Web UI and Telegram.
 
 ## Current Sprint
-### Repeat Purchase Recommendations
-- [x] P2: add a `Пора купить снова` recommendation block based on receipt positions.
-  - Store per-template settings: enabled state, automatic/manual mode, manual interval, quantity scaling, snooze state, and the next recommendation date.
-  - For automatic mode, estimate consumption from at least 2-3 purchases using quantity-normalized median intervals and a confidence score; keep sensitive products such as cigarettes opt-in.
-  - Show item, source, last price, due date, and a short explanation. Provide actions to add the item to a receipt or plan, snooze it, disable future suggestions, and open the catalog card.
-  - [x] Deterministic manual-interval MVP with quantity scaling, snooze, disable, catalog settings, and shortcuts to a receipt or plan.
-  - [x] Central recommendation management in the item catalog with search, status/candidate filters, inline settings, and bulk enable, snooze, and disable actions.
-  - [ ] Automatic cadence based on median purchase intervals once enough history exists.
-
 ### Technical Debt Audit 2026-07-16
 - [x] Complete a read-only audit of data integrity, background delivery, deployment, performance, security, observability, and test coverage. Baseline: non-E2E tests pass; the isolated Telegram login-readiness race found by the combined browser run is fixed and covered by deterministic smoke CI.
 - [x] P0: make operation rollback lossless and transactional.

@@ -22,60 +22,6 @@
     return window.App.getRuntimeModule?.("loading-skeletons") || {};
   }
 
-  function renderDashboardRecommendations(items) {
-    if (!el.dashboardRecommendationsList) {
-      return;
-    }
-    const list = Array.isArray(items) ? items : [];
-    state.dashboardRecommendations = list;
-    if (!list.length) {
-      el.dashboardRecommendationsList.innerHTML = `
-        <div class="muted-small">Рекомендаций пока нет. Включи их в карточке нужной позиции каталога.</div>
-      `;
-      return;
-    }
-    el.dashboardRecommendationsList.innerHTML = list.map((item) => {
-      const daysUntil = Number(item.days_until || 0);
-      const dueLabel = item.status === "overdue"
-        ? `Просрочено на ${Math.abs(daysUntil)} дн.`
-        : item.status === "due"
-          ? "Пора купить сегодня"
-          : `Через ${daysUntil} дн.`;
-      const source = item.shop_name || "Без источника";
-      const price = Number(item.latest_unit_price || 0) > 0
-        ? core.formatMoney(item.latest_unit_price)
-        : "Цена не указана";
-      return `
-        <article class="recommendation-card" data-recommendation-template-id="${Number(item.template_id)}">
-          <div class="recommendation-card-head">
-            <div class="recommendation-card-copy">
-              <strong>${core.escapeHtml(item.name || "Позиция")}</strong>
-              <span class="muted-small">${core.escapeHtml(source)} · ${price}</span>
-            </div>
-            <strong class="recommendation-due-${item.status}">${dueLabel}</strong>
-          </div>
-          <div class="muted-small">${core.escapeHtml(item.explanation || "")}</div>
-          <div class="recommendation-card-actions">
-            <button class="btn btn-primary btn-xs" type="button" data-recommendation-action="receipt">В чек</button>
-            <button class="btn btn-secondary btn-xs" type="button" data-recommendation-action="plan">В план</button>
-            <button class="btn btn-secondary btn-xs" type="button" data-recommendation-action="snooze">+7 дней</button>
-            <button class="btn btn-secondary btn-xs" type="button" data-recommendation-action="settings">Настроить</button>
-            <button class="btn btn-secondary btn-xs" type="button" data-recommendation-action="disable">Отключить</button>
-          </div>
-        </article>
-      `;
-    }).join("");
-  }
-
-  async function loadDashboardRecommendations({ signal } = {}) {
-    const items = await core.requestJson("/api/v1/operations/item-recommendations?limit=12", {
-      headers: core.authHeaders(),
-      signal,
-    });
-    renderDashboardRecommendations(items);
-    return items;
-  }
-
   function getInlineRefreshState() {
     return window.App.getRuntimeModule?.("inline-refresh-state") || {};
   }
@@ -589,16 +535,8 @@
           .then((value) => ({ value, error: null }))
           .catch((error) => ({ value: null, error }))
         : Promise.resolve({ value: null, error: null });
-      const recommendationsTask = el.dashboardRecommendationsList
-        ? core.requestJson("/api/v1/operations/item-recommendations?limit=12", {
-          headers: core.authHeaders(),
-          signal: optionalRequestSignal,
-        })
-          .then((value) => ({ value, error: null }))
-          .catch((error) => ({ value: null, error }))
-        : Promise.resolve({ value: [], error: null });
       optionalPanelTasksStarted = true;
-      dashboardOptionalLoadPromise = Promise.allSettled([currencyOverviewTask, plansTask, debtCardsTask, recommendationsTask]).finally(() => {
+      dashboardOptionalLoadPromise = Promise.allSettled([currencyOverviewTask, plansTask, debtCardsTask]).finally(() => {
         if (dashboardOptionalLoadController?.signal === optionalRequestSignal) {
           dashboardOptionalLoadController = null;
         }
@@ -641,23 +579,6 @@
       }).finally(() => {
         if (shouldRefreshCurrency && el.dashboardCurrencyPanel) {
           refreshState.end?.(el.dashboardCurrencyPanel);
-        }
-      });
-
-      recommendationsTask.then((recommendationsResult) => {
-        if (!isCurrentOptionalDashboardLoad()) {
-          return;
-        }
-        if (recommendationsResult.error) {
-          if (!core.isAbortError?.(recommendationsResult.error)) {
-            el.dashboardRecommendationsList.innerHTML = dashboardPanelError("Не удалось загрузить рекомендации");
-          }
-          return;
-        }
-        renderDashboardRecommendations(recommendationsResult.value);
-      }).catch((err) => {
-        if (!core.isAbortError?.(err)) {
-          reportOptionalDashboardPanelFailure("recommendations", err);
         }
       });
 
@@ -930,7 +851,7 @@
   }
 
   function bindDashboardRetryActions() {
-    [el.dashboardCurrencyPanel, el.dashboardPlansPanel, el.dashboardDebtsPanel, el.dashboardRecommendationsPanel].filter(Boolean).forEach((panel) => {
+    [el.dashboardCurrencyPanel, el.dashboardPlansPanel, el.dashboardDebtsPanel].filter(Boolean).forEach((panel) => {
       panel.addEventListener("click", (event) => {
         const button = event.target.closest("button[data-dashboard-retry]");
         if (!button) return;
@@ -950,74 +871,8 @@
     });
   }
 
-  function bindRecommendationActions() {
-    el.openRecommendationCatalogBtn?.addEventListener("click", () => {
-      window.App.getRuntimeModule?.("item-recommendation-manager")?.setPreferredView?.("recommendations");
-      window.App.getRuntimeModule?.("navigation")?.switchSection?.("item_catalog", { scrollToTop: true });
-    });
-    el.dashboardRecommendationsList?.addEventListener("click", (event) => {
-      const button = event.target.closest("button[data-recommendation-action]");
-      const card = button?.closest("[data-recommendation-template-id]");
-      if (!button || !card) {
-        return;
-      }
-      const templateId = Number(card.dataset.recommendationTemplateId || 0);
-      const item = (state.dashboardRecommendations || []).find((entry) => Number(entry.template_id) === templateId);
-      if (!item) {
-        return;
-      }
-      const action = button.dataset.recommendationAction;
-      if (action === "receipt") {
-        operationModal.openCreateReceiptWithItem?.(item);
-        return;
-      }
-      if (action === "plan") {
-        getPlansFeature()?.openCreatePlanWithReceiptItem?.(item);
-        return;
-      }
-      if (action === "settings") {
-        window.App.getRuntimeModule?.("item-catalog")?.openItemTemplateModal?.({
-          id: item.template_id,
-          shop_name: item.shop_name,
-          name: item.name,
-          last_category_id: item.category_id,
-          latest_unit_price: item.latest_unit_price,
-          recommendation_enabled: true,
-          recommendation_mode: "manual",
-          recommendation_interval_days: item.interval_days,
-          recommendation_base_quantity: item.base_quantity,
-          recommendation_next_date: item.next_date,
-          recommendation_snoozed_until: item.effective_date !== item.next_date ? item.effective_date : null,
-        });
-        return;
-      }
-      core.runAction({
-        button,
-        pendingText: action === "snooze" ? "Откладываем…" : "Отключаем…",
-        errorPrefix: "Не удалось обновить рекомендацию",
-        action: async () => {
-          if (action === "snooze") {
-            await core.requestJson(`/api/v1/operations/item-recommendations/${templateId}/snooze`, {
-              method: "POST",
-              headers: core.authHeaders(),
-              body: JSON.stringify({ days: 7 }),
-            });
-          } else if (action === "disable") {
-            await core.requestJson(`/api/v1/operations/item-templates/${templateId}`, {
-              method: "PATCH",
-              headers: core.authHeaders(),
-              body: JSON.stringify({ recommendation_enabled: false }),
-            });
-          }
-          await loadDashboardRecommendations();
-        },
-      });
-    });
-  }
-
   bindCurrencyActions();
   bindDashboardRetryActions();
-  bindRecommendationActions();
 
   const api = {
     loadDashboard,
@@ -1025,7 +880,6 @@
     refreshDashboardCurrencyRates,
     loadDashboardOperations: loadDashboardPlans,
     loadDashboardPlans,
-    loadDashboardRecommendations,
   };
 
   window.App.registerRuntimeModule?.("dashboard", api);

@@ -351,11 +351,6 @@
         el.itemTemplatePriceDate.addEventListener(eventName, actions.updateItemTemplatePreview);
       }
     }
-    if (el.itemTemplateRecommendationEnabled) {
-      el.itemTemplateRecommendationEnabled.addEventListener("change", () => {
-        actions.syncItemTemplateRecommendationUi?.();
-      });
-    }
 
     if (el.itemTemplateSourceSearch) {
       el.itemTemplateSourceSearch.addEventListener("focus", () => {

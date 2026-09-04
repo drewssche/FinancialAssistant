@@ -148,16 +148,6 @@
       if (el.itemTemplatePriceDate) {
         core.syncDateFieldValue(el.itemTemplatePriceDate, item?.latest_price_date || core.getTodayIso());
       }
-      if (el.itemTemplateRecommendationEnabled) {
-        el.itemTemplateRecommendationEnabled.checked = Boolean(item?.recommendation_enabled);
-      }
-      if (el.itemTemplateRecommendationInterval) {
-        el.itemTemplateRecommendationInterval.value = item?.recommendation_interval_days || "";
-      }
-      if (el.itemTemplateRecommendationQuantity) {
-        el.itemTemplateRecommendationQuantity.value = item?.recommendation_base_quantity || "1";
-      }
-      syncItemTemplateRecommendationUi(item);
       if (el.itemTemplatePreviewBody) {
         updateItemTemplatePreview();
       }
@@ -244,21 +234,6 @@
       `;
     }
 
-    function syncItemTemplateRecommendationUi(item = null) {
-      const enabled = Boolean(el.itemTemplateRecommendationEnabled?.checked);
-      el.itemTemplateRecommendationFields?.classList.toggle("hidden", !enabled);
-      if (!el.itemTemplateRecommendationHint) {
-        return;
-      }
-      const nextDate = item?.recommendation_next_date || null;
-      const snoozedUntil = item?.recommendation_snoozed_until || null;
-      const visibleDate = snoozedUntil && (!nextDate || snoozedUntil > nextDate) ? snoozedUntil : nextDate;
-      el.itemTemplateRecommendationHint.classList.toggle("hidden", !enabled);
-      el.itemTemplateRecommendationHint.textContent = visibleDate
-        ? `Следующая рекомендация: ${core.formatDateRu(visibleDate)}`
-        : "Дата появится после покупки этой позиции";
-    }
-
     async function submitItemTemplateForm(event) {
       event.preventDefault();
       const sourceName = normalizeItemCatalogShopName(el.itemTemplateSource?.value || el.itemTemplateSourceSearch?.value || "");
@@ -268,25 +243,9 @@
         shop_name: sourceName || null,
         name: String(el.itemTemplateName?.value || "").trim(),
         last_category_id: Number(el.itemTemplateCategory?.value || 0) || null,
-        recommendation_enabled: Boolean(el.itemTemplateRecommendationEnabled?.checked),
-        recommendation_mode: "manual",
       };
       if (!isEdit || itemTemplateBrandSelectionTouched) {
         payload.brand_id = Number(el.itemTemplateBrand?.value || 0) || null;
-      }
-      if (payload.recommendation_enabled) {
-        const intervalDays = Number(el.itemTemplateRecommendationInterval?.value || 0);
-        const baseQuantity = Number(el.itemTemplateRecommendationQuantity?.value || 0);
-        if (!Number.isInteger(intervalDays) || intervalDays < 1 || intervalDays > 3650) {
-          core.setStatus("Укажи, на сколько дней хватает покупки");
-          return;
-        }
-        if (!Number.isFinite(baseQuantity) || baseQuantity <= 0) {
-          core.setStatus("Укажи базовое количество для рекомендации");
-          return;
-        }
-        payload.recommendation_interval_days = intervalDays;
-        payload.recommendation_base_quantity = String(baseQuantity);
       }
       const priceRaw = String(el.itemTemplatePrice?.value || "").trim();
       if (priceRaw) {
@@ -345,8 +304,6 @@
         }
         updateItemTemplatePreview();
       }
-      window.App.getRuntimeModule?.("dashboard")?.loadDashboardRecommendations?.().catch(() => {});
-      window.App.getRuntimeModule?.("item-recommendation-manager")?.load?.().catch(() => {});
     }
 
     function renderItemTemplateSourcePicker(query = "") {
@@ -751,7 +708,6 @@
       deleteItemTemplateFlow,
       deleteAllItemTemplatesFlow,
       updateItemTemplatePreview,
-      syncItemTemplateRecommendationUi,
       handleItemTemplateSourceSearchFocus,
       handleItemTemplateSourceSearchInput,
       handleItemTemplateSourceSearchKeydown,

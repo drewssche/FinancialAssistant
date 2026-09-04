@@ -56,16 +56,6 @@ def test_archived_brand_status_survives_historical_api_payloads():
         )
         assert plan.status_code == 201, plan.text
 
-        configured = client.patch(
-            f"/api/v1/operations/item-templates/{template_id}",
-            json={
-                "recommendation_enabled": True,
-                "recommendation_mode": "manual",
-                "recommendation_interval_days": 30,
-                "recommendation_base_quantity": "1",
-            },
-        )
-        assert configured.status_code == 200, configured.text
         assert client.delete(f"/api/v1/operations/item-brands/{brand['id']}").status_code == 204
 
         detail = client.get(f"/api/v1/operations/item-brands/{brand['id']}")
@@ -83,15 +73,6 @@ def test_archived_brand_status_survives_historical_api_payloads():
         )
         assert templates.status_code == 200, templates.text
         assert templates.json()["items"][0]["brand_is_archived"] is True
-
-        recommendations = client.get("/api/v1/operations/item-recommendations")
-        managed = client.get("/api/v1/operations/item-recommendations/manage")
-        assert recommendations.status_code == 200, recommendations.text
-        assert managed.status_code == 200, managed.text
-        recommendation = next(item for item in recommendations.json() if item["template_id"] == template_id)
-        managed_item = next(item for item in managed.json() if item["template_id"] == template_id)
-        assert recommendation["brand_is_archived"] is True
-        assert managed_item["brand_is_archived"] is True
 
         analytics = client.get(
             "/api/v1/dashboard/analytics/highlights",

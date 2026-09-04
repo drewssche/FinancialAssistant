@@ -376,26 +376,6 @@ def test_brand_is_live_in_operations_and_plans_and_brand_filters_work():
         assert historical.json()["receipt_items"][0]["brand_accent_color"] == "#AA5500"
         assert planned.json()["receipt_items"][0]["brand_name"] == "Vici Group"
 
-        recommendation_settings = client.patch(
-            f"/api/v1/operations/item-templates/{template_id}",
-            json={
-                "recommendation_enabled": True,
-                "recommendation_mode": "manual",
-                "recommendation_interval_days": 30,
-                "recommendation_base_quantity": "1",
-            },
-        )
-        assert recommendation_settings.status_code == 200, recommendation_settings.text
-        recommendations = client.get("/api/v1/operations/item-recommendations")
-        managed_recommendations = client.get("/api/v1/operations/item-recommendations/manage")
-        assert recommendations.status_code == 200
-        assert managed_recommendations.status_code == 200
-        recommendation = next(item for item in recommendations.json() if item["template_id"] == template_id)
-        managed = next(item for item in managed_recommendations.json() if item["template_id"] == template_id)
-        assert recommendation["brand_name"] == "Vici Group"
-        assert recommendation["brand_accent_color"] == "#AA5500"
-        assert managed["brand_id"] == brand["id"]
-
         for path in ("/api/v1/operations", "/api/v1/operations/money-flow"):
             filtered = client.get(path, params={"brand_id": brand["id"], "page_size": 100})
             assert filtered.status_code == 200, filtered.text

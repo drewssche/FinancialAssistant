@@ -22,11 +22,6 @@ from app.schemas.operation import (
     OperationItemTemplateBulkBrandUpdateIn,
     OperationItemTemplateBulkBrandUpdateOut,
     OperationItemTemplateDeleteAllOut,
-    OperationItemRecommendationBulkUpdateIn,
-    OperationItemRecommendationBulkUpdateOut,
-    OperationItemRecommendationManageOut,
-    OperationItemRecommendationOut,
-    OperationItemRecommendationSnoozeIn,
     OperationItemPriceOut,
     OperationItemTemplateListOut,
     OperationItemTemplateOut,
@@ -550,15 +545,6 @@ def delete_item_brand_image(
     return ItemBrandService(db).get(user_id=user_id, brand_id=brand_id)
 
 
-@router.get("/item-recommendations", response_model=list[OperationItemRecommendationOut])
-def list_operation_item_recommendations(
-    limit: int = Query(default=12, ge=1, le=100),
-    user_id: int = Depends(get_current_user_id),
-    db: Session = Depends(get_db),
-):
-    return OperationService(db).list_item_recommendations(user_id=user_id, limit=limit)
-
-
 @router.post("/item-templates/bulk-brand", response_model=OperationItemTemplateBulkBrandUpdateOut)
 def bulk_update_operation_item_template_brand(
     payload: OperationItemTemplateBulkBrandUpdateIn,
@@ -577,57 +563,6 @@ def bulk_update_operation_item_template_brand(
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return OperationItemTemplateBulkBrandUpdateOut(updated=updated)
-
-
-@router.get("/item-recommendations/manage", response_model=list[OperationItemRecommendationManageOut])
-def list_operation_item_recommendation_management(
-    user_id: int = Depends(get_current_user_id),
-    db: Session = Depends(get_db),
-):
-    return OperationService(db).list_item_recommendation_management(user_id=user_id)
-
-
-@router.post("/item-recommendations/bulk", response_model=OperationItemRecommendationBulkUpdateOut)
-def bulk_update_operation_item_recommendations(
-    payload: OperationItemRecommendationBulkUpdateIn,
-    user_id: int = Depends(get_current_user_id),
-    db: Session = Depends(get_db),
-):
-    service = OperationService(db)
-    try:
-        updated = service.bulk_update_item_recommendations(
-            user_id=user_id,
-            template_ids=payload.template_ids,
-            action=payload.action,
-            interval_days=payload.interval_days,
-            base_quantity=payload.base_quantity,
-            snooze_days=payload.snooze_days,
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    except LookupError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    return OperationItemRecommendationBulkUpdateOut(updated=updated)
-
-
-@router.post("/item-recommendations/{template_id}/snooze", response_model=OperationItemTemplateOut)
-def snooze_operation_item_recommendation(
-    template_id: int,
-    payload: OperationItemRecommendationSnoozeIn,
-    user_id: int = Depends(get_current_user_id),
-    db: Session = Depends(get_db),
-):
-    service = OperationService(db)
-    try:
-        return service.snooze_item_recommendation(
-            user_id=user_id,
-            template_id=template_id,
-            days=payload.days,
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    except LookupError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
 @router.get("/item-templates/{template_id}/prices", response_model=list[OperationItemPriceOut])
@@ -686,10 +621,6 @@ def create_operation_item_template(
             brand_id=payload.brand_id,
             latest_unit_price=payload.latest_unit_price,
             latest_price_date=payload.latest_price_date,
-            recommendation_enabled=payload.recommendation_enabled,
-            recommendation_mode=payload.recommendation_mode,
-            recommendation_interval_days=payload.recommendation_interval_days,
-            recommendation_base_quantity=payload.recommendation_base_quantity,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

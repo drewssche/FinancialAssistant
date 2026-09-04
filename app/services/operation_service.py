@@ -1249,10 +1249,6 @@ class OperationService:
         brand_id: int | None,
         latest_unit_price: Decimal | None,
         latest_price_date: date | None = None,
-        recommendation_enabled: bool = False,
-        recommendation_mode: str = "manual",
-        recommendation_interval_days: int | None = None,
-        recommendation_base_quantity: Decimal = Decimal("1"),
     ) -> dict:
         return self.item_templates.create_item_template(
             user_id=user_id,
@@ -1263,10 +1259,6 @@ class OperationService:
             brand_id=brand_id,
             latest_unit_price=latest_unit_price,
             latest_price_date=latest_price_date,
-            recommendation_enabled=recommendation_enabled,
-            recommendation_mode=recommendation_mode,
-            recommendation_interval_days=recommendation_interval_days,
-            recommendation_base_quantity=recommendation_base_quantity,
         )
 
     def update_item_template(
@@ -1300,38 +1292,6 @@ class OperationService:
 
     def delete_all_item_templates(self, *, user_id: int) -> int:
         return self.item_templates.delete_all_item_templates(user_id=user_id)
-
-    def list_item_recommendations(self, *, user_id: int, limit: int = 12) -> list[dict]:
-        return self.item_templates.list_item_recommendations(user_id=user_id, limit=limit)
-
-    def list_item_recommendation_management(self, *, user_id: int) -> list[dict]:
-        return self.item_templates.list_item_recommendation_management(user_id=user_id)
-
-    def bulk_update_item_recommendations(
-        self,
-        *,
-        user_id: int,
-        template_ids: list[int],
-        action: str,
-        interval_days: int | None,
-        base_quantity: Decimal | None,
-        snooze_days: int,
-    ) -> int:
-        return self.item_templates.bulk_update_item_recommendations(
-            user_id=user_id,
-            template_ids=template_ids,
-            action=action,
-            interval_days=interval_days,
-            base_quantity=base_quantity,
-            snooze_days=snooze_days,
-        )
-
-    def snooze_item_recommendation(self, *, user_id: int, template_id: int, days: int) -> dict:
-        return self.item_templates.snooze_item_recommendation(
-            user_id=user_id,
-            template_id=template_id,
-            days=days,
-        )
 
     def _serialize_operation(
         self,

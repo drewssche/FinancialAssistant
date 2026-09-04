@@ -235,7 +235,7 @@
       { id: "work", node: el.workSection, title: "Работа", subtitle: "Автоматический табель, условия работы и даты выплат" },
       { id: "debts", node: el.debtsSection, title: "Долги", subtitle: "Карточки задолженностей и погашения" },
       { id: "categories", node: el.categoriesSection, title: "Категории", subtitle: "Управление категориями доходов и расходов" },
-      { id: "item_catalog", node: el.itemCatalogSection, title: "Каталог", subtitle: "Позиции, бренды и рекомендации по покупкам" },
+      { id: "item_catalog", node: el.itemCatalogSection, title: "Каталог", subtitle: "Позиции, бренды и источники покупок" },
       { id: "admin", node: el.adminSection, title: "Админ", subtitle: "Контроль доступа пользователей" },
       { id: "settings", node: el.settingsSection, title: "Настройки", subtitle: "Параметры интерфейса и безопасности" },
     ];

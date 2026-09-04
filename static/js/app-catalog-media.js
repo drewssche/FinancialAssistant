@@ -336,7 +336,7 @@
     let item = (state.itemCatalogItems || []).find((entry) => Number(entry?.id || 0) === id)
       || (state.itemCatalogAllItems || []).find((entry) => Number(entry?.id || 0) === id)
       || (state.receiptTemplateHints || []).find((entry) => Number(entry?.id || 0) === id);
-    if (!item || !Object.prototype.hasOwnProperty.call(item, "recommendation_enabled")) {
+    if (!item || !Object.prototype.hasOwnProperty.call(item, "latest_price_date")) {
       item = await core.requestJson(`/api/v1/operations/item-templates/${id}`, { headers: core.authHeaders() });
     }
     const catalog = window.App.getRuntimeModule?.("item-catalog") || {};

@@ -15,8 +15,8 @@ def test_catalog_exposes_brand_management_and_assignment_controls():
 
     positions_at = shell.index('data-item-catalog-view="positions"')
     brands_at = shell.index('data-item-catalog-view="brands"')
-    recommendations_at = shell.index('data-item-catalog-view="recommendations"')
-    assert positions_at < brands_at < recommendations_at
+    assert positions_at < brands_at
+    assert 'data-item-catalog-view="recommendations"' not in shell
     assert 'id="itemBrandsView"' in shell
     assert 'id="itemBrandsKpiGrid"' in shell
     assert 'id="itemBrandsSearchQ"' in shell

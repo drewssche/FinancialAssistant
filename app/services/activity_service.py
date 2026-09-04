@@ -80,8 +80,6 @@ class ActivityService:
         "recurrence_end_date",
         "last_used_at",
         "trade_date",
-        "recommendation_next_date",
-        "recommendation_snoozed_until",
     }
     REFERENCE_FIELDS = {"category_id", "last_category_id", "group_id", "counterparty_id"}
 
