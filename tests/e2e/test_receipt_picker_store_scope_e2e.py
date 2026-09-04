@@ -446,17 +446,22 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
     desktop_geometry = first_row.evaluate(
         """
         node => {
-          const selectors = [
-            '.receipt-shop-cell',
-            '.receipt-brand-cell',
-            '.receipt-name-cell',
-            '.receipt-category-cell',
-            '.receipt-price-cell',
-            '.receipt-quantity-cell',
-            '.receipt-line-total',
-            '.receipt-remove-btn',
-          ];
-          const tops = selectors.map((selector) => node.querySelector(selector).getBoundingClientRect().top);
+          const selectors = {
+            source: '.receipt-shop-cell',
+            brand: '.receipt-brand-cell',
+            name: '.receipt-name-cell',
+            category: '.receipt-category-cell',
+            price: '.receipt-price-cell',
+            quantity: '.receipt-quantity-cell',
+            total: '.receipt-line-total',
+            remove: '.receipt-remove-btn',
+          };
+          const entries = Object.entries(selectors).map(([key, selector]) => {
+            const rect = node.querySelector(selector).getBoundingClientRect();
+            return [key, { top: rect.top, width: rect.width }];
+          });
+          const rects = Object.fromEntries(entries);
+          const tops = entries.map(([, rect]) => rect.top);
           return {
             clientWidth: node.clientWidth,
             scrollWidth: node.scrollWidth,
@@ -464,6 +469,8 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
             identityDisplay: getComputedStyle(node.querySelector('.receipt-item-identity')).display,
             moneyDisplay: getComputedStyle(node.querySelector('.receipt-item-money')).display,
             columns: getComputedStyle(node).gridTemplateColumns,
+            widths: Object.fromEntries(Object.entries(rects).map(([key, rect]) => [key, rect.width])),
+            unitPriceWidth: node.querySelector('[data-receipt-field="unit_price"]').getBoundingClientRect().width,
           };
         }
         """
@@ -473,6 +480,71 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
     assert desktop_geometry["identityDisplay"] == "contents"
     assert desktop_geometry["moneyDisplay"] == "contents"
     assert len(desktop_geometry["columns"].split()) == 8
+    assert desktop_geometry["widths"]["source"] <= 114
+    assert desktop_geometry["widths"]["brand"] <= 102
+    assert 315 <= desktop_geometry["widths"]["name"] <= 345
+    assert desktop_geometry["widths"]["category"] <= 134
+    assert desktop_geometry["widths"]["quantity"] <= 82
+    assert desktop_geometry["unitPriceWidth"] <= 106
+    assert desktop_geometry["widths"]["price"] > desktop_geometry["unitPriceWidth"]
+
+    # Supporting identity fields stay compact when the modal grows. The spare
+    # width belongs to the price/discount area, while the price input itself
+    # remains short and the position keeps its useful reading width.
+    page.set_viewport_size({"width": 1260, "height": 900})
+    page.wait_for_timeout(80)
+    compact_geometry = first_row.evaluate(
+        """
+        node => {
+          const width = (selector) => node.querySelector(selector).getBoundingClientRect().width;
+          return {
+            row: node.getBoundingClientRect().width,
+            source: width('.receipt-shop-cell'),
+            brand: width('.receipt-brand-cell'),
+            name: width('.receipt-name-cell'),
+            category: width('.receipt-category-cell'),
+            price: width('.receipt-price-cell'),
+            quantity: width('.receipt-quantity-cell'),
+            unitPrice: width('[data-receipt-field="unit_price"]'),
+          };
+        }
+        """
+    )
+    page.set_viewport_size({"width": 1380, "height": 900})
+    page.wait_for_timeout(80)
+    row_growth = desktop_geometry["clientWidth"] - compact_geometry["row"]
+    assert row_growth > 60
+    for field in ("source", "brand", "name", "category", "quantity"):
+        assert abs(desktop_geometry["widths"][field] - compact_geometry[field]) <= 16
+    assert desktop_geometry["widths"]["price"] - compact_geometry["price"] >= row_growth * 0.7
+    assert abs(desktop_geometry["unitPriceWidth"] - compact_geometry["unitPrice"]) <= 8
+
+    first_row.locator(".receipt-discount-toggle").click()
+    page.wait_for_selector("#receiptItemsList .receipt-item-row.receipt-item-row-discounted")
+    discounted_geometry = first_row.evaluate(
+        """
+        node => {
+          const price = node.querySelector('.receipt-price-cell');
+          const inputs = [...price.querySelectorAll('.receipt-price-field input')];
+          return {
+            rowClientWidth: node.clientWidth,
+            rowScrollWidth: node.scrollWidth,
+            priceClientWidth: price.clientWidth,
+            priceScrollWidth: price.scrollWidth,
+            priceWidth: price.getBoundingClientRect().width,
+            nameWidth: node.querySelector('.receipt-name-cell').getBoundingClientRect().width,
+            inputWidths: inputs.map((input) => input.getBoundingClientRect().width),
+          };
+        }
+        """
+    )
+    assert discounted_geometry["rowScrollWidth"] <= discounted_geometry["rowClientWidth"] + 2
+    assert discounted_geometry["priceScrollWidth"] <= discounted_geometry["priceClientWidth"] + 2
+    assert discounted_geometry["priceWidth"] > discounted_geometry["nameWidth"]
+    assert len(discounted_geometry["inputWidths"]) == 2
+    assert max(discounted_geometry["inputWidths"]) <= 106
+    first_row.locator(".receipt-discount-toggle").click()
+    assert "receipt-item-row-discounted" not in (first_row.get_attribute("class") or "")
 
     second_row = page.locator("#receiptItemsList .receipt-item-row").nth(1)
     assert second_row.locator('[data-receipt-field="shop_name"]').input_value() == "Green"

@@ -322,6 +322,23 @@
   grid-template-columns: minmax(0, 1fr) max-content;
 }
 
+@media (min-width: 1181px) {
+  #opReceiptFields .receipt-price-cell-discounted,
+  #editReceiptFields .receipt-price-cell-discounted {
+    grid-template-columns:
+      minmax(4.75rem, 6.5rem)
+      max-content
+      minmax(4.75rem, 6.5rem)
+      minmax(0, 1fr);
+  }
+
+  #opReceiptFields .receipt-price-cell:not(.receipt-price-cell-discounted),
+  #editReceiptFields .receipt-price-cell:not(.receipt-price-cell-discounted) {
+    grid-template-columns: minmax(5rem, 6.5rem) max-content minmax(0, 1fr);
+    justify-content: start;
+  }
+}
+
 #opReceiptFields .receipt-quantity-cell > span,
 #editReceiptFields .receipt-quantity-cell > span,
 #opReceiptFields .receipt-line-total > span,
