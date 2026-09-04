@@ -256,7 +256,8 @@
         `[data-receipt-item-id="${Number(item?.draft_id || 0)}"]`,
       );
       const input = row?.querySelector('[data-receipt-field="brand_search"]');
-      const brandName = normalizeReceiptName(item?.brand_name || "");
+      const brand = getReceiptBrandPresentation(item);
+      const brandName = brand.name;
       if (input) {
         input.value = brandName;
         input.title = brandName || "Бренд не выбран";
@@ -264,7 +265,20 @@
       const cell = row?.querySelector(".receipt-brand-cell");
       if (cell) {
         cell.classList.toggle("has-brand", Boolean(brandName));
-        cell.style.setProperty("--receipt-brand-accent", safeBrandAccent(item?.brand_accent_color));
+        cell.style.setProperty("--receipt-brand-accent", brand.accent);
+        let thumb = cell.querySelector(".receipt-brand-thumb");
+        if (!brandName) {
+          thumb?.remove();
+          return;
+        }
+        if (!thumb) {
+          thumb = document.createElement("span");
+          thumb.className = "receipt-brand-thumb";
+          input?.before(thumb);
+        }
+        thumb.title = `Логотип ${brandName}`;
+        thumb.innerHTML = renderReceiptBrandThumb(brand);
+        window.App.getRuntimeModule?.("catalog-media")?.hydrate?.(thumb);
       }
     }
 
@@ -445,6 +459,35 @@
       return /^#[0-9a-f]{3,8}$/i.test(accent) ? accent : "#7aa2f7";
     }
 
+    function getReceiptBrandPresentation(item) {
+      const brandMeta = item?.brand_id
+        ? (state.itemBrands || []).find((entry) => Number(entry.id) === Number(item.brand_id))
+        : null;
+      const name = normalizeReceiptName(brandMeta?.name || item?.brand_name || "");
+      const imageId = brandMeta
+        ? (brandMeta.image_id ?? brandMeta.brand_image_id ?? null)
+        : (item?.brand_image_id ?? null);
+      return {
+        meta: brandMeta,
+        name,
+        accent: safeBrandAccent(brandMeta?.accent_color || item?.brand_accent_color),
+        imageId,
+      };
+    }
+
+    function renderReceiptBrandThumb(brand) {
+      if (!brand?.name) {
+        return "";
+      }
+      return window.App.getRuntimeModule?.("catalog-media")?.renderThumb?.(brand.imageId, {
+        kind: "brand",
+        size: "chip",
+        className: "receipt-brand-media",
+        alt: `Логотип ${brand.name}`,
+        fallback: brand.name.slice(0, 1),
+      }) || "";
+    }
+
     function renderReceiptItems(mode = "create") {
       const ctx = getReceiptContext(mode);
       if (!ctx.listNode) {
@@ -475,11 +518,10 @@
           ? (state.categories || []).find((entry) => Number(entry.id) === effectiveCategoryId)
           : null;
         const categorySource = explicitCategoryId ? "explicit" : (categoryMeta ? "default" : "none");
-        const brandMeta = item.brand_id
-          ? (state.itemBrands || []).find((entry) => Number(entry.id) === Number(item.brand_id))
-          : null;
-        const brandName = normalizeReceiptName(brandMeta?.name || item.brand_name || "");
-        const brandAccent = safeBrandAccent(brandMeta?.accent_color || item.brand_accent_color);
+        const brand = getReceiptBrandPresentation(item);
+        const brandName = brand.name;
+        const brandAccent = brand.accent;
+        const brandThumb = renderReceiptBrandThumb(brand);
         const activeDiscountType = item.discount_type || "promo";
         const media = window.App.getRuntimeModule?.("catalog-media") || {};
         const linkedItemThumb = item.template_id ? media.renderThumb?.(item.item_image_id, {
@@ -505,7 +547,7 @@
                 <div class="receipt-shop-picker app-popover ${shopPickerOpen ? "" : "hidden"}"></div>
               </div>
               <div class="receipt-brand-cell ${brandPickerOpen ? "has-open-popover" : ""} ${brandName ? "has-brand" : ""}" style="--receipt-brand-accent: ${brandAccent}">
-                <span class="receipt-brand-accent" aria-hidden="true"></span>
+                ${brandName ? `<span class="receipt-brand-thumb" title="${esc(`Логотип ${brandName}`)}">${brandThumb}</span>` : ""}
                 <input type="text" data-receipt-field="brand_search" value="${esc(brandName)}" placeholder="Бренд" title="${esc(brandName || "Бренд не выбран")}" autocomplete="off" aria-label="Бренд позиции" />
                 <div class="receipt-brand-picker app-popover ${brandPickerOpen ? "" : "hidden"}"></div>
               </div>

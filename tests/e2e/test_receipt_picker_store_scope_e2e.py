@@ -418,6 +418,12 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
     page.wait_for_selector('.receipt-brand-picker:not(.hidden) button[data-receipt-brand-id="201"]')
     first_row.locator('button[data-receipt-brand-id="201"]').click()
     assert brand_input.input_value() == "Vici"
+    brand_thumb = first_row.locator(".receipt-brand-thumb .catalog-media-thumb")
+    expect(brand_thumb).to_have_count(1)
+    expect(brand_thumb).to_have_attribute("data-catalog-media-id", "9201")
+    page.wait_for_function(
+        "() => document.querySelector('#receiptItemsList .receipt-item-row:first-child .receipt-brand-thumb .catalog-media-thumb')?.classList.contains('is-loaded')"
+    )
 
     name_input = first_row.locator('[data-receipt-field="name"]')
     name_input.click()
@@ -470,6 +476,7 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
             moneyDisplay: getComputedStyle(node.querySelector('.receipt-item-money')).display,
             columns: getComputedStyle(node).gridTemplateColumns,
             widths: Object.fromEntries(Object.entries(rects).map(([key, rect]) => [key, rect.width])),
+            brandInputWidth: node.querySelector('[data-receipt-field="brand_search"]').getBoundingClientRect().width,
             unitPriceWidth: node.querySelector('[data-receipt-field="unit_price"]').getBoundingClientRect().width,
           };
         }
@@ -480,12 +487,13 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
     assert desktop_geometry["identityDisplay"] == "contents"
     assert desktop_geometry["moneyDisplay"] == "contents"
     assert len(desktop_geometry["columns"].split()) == 8
-    assert desktop_geometry["widths"]["source"] <= 114
-    assert desktop_geometry["widths"]["brand"] <= 102
+    assert 75 <= desktop_geometry["widths"]["source"] <= 82
+    assert 95 <= desktop_geometry["widths"]["brand"] <= 102
+    assert desktop_geometry["brandInputWidth"] <= 72
     assert 315 <= desktop_geometry["widths"]["name"] <= 345
-    assert desktop_geometry["widths"]["category"] <= 134
-    assert desktop_geometry["widths"]["quantity"] <= 82
-    assert desktop_geometry["unitPriceWidth"] <= 106
+    assert 83 <= desktop_geometry["widths"]["category"] <= 90
+    assert desktop_geometry["widths"]["quantity"] <= 66
+    assert 71 <= desktop_geometry["unitPriceWidth"] <= 82
     assert desktop_geometry["widths"]["price"] > desktop_geometry["unitPriceWidth"]
 
     # Supporting identity fields stay compact when the modal grows. The spare
@@ -515,9 +523,9 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
     row_growth = desktop_geometry["clientWidth"] - compact_geometry["row"]
     assert row_growth > 60
     for field in ("source", "brand", "name", "category", "quantity"):
-        assert abs(desktop_geometry["widths"][field] - compact_geometry[field]) <= 16
-    assert desktop_geometry["widths"]["price"] - compact_geometry["price"] >= row_growth * 0.7
-    assert abs(desktop_geometry["unitPriceWidth"] - compact_geometry["unitPrice"]) <= 8
+        assert abs(desktop_geometry["widths"][field] - compact_geometry[field]) <= 2
+    assert desktop_geometry["widths"]["price"] - compact_geometry["price"] >= row_growth * 0.9
+    assert abs(desktop_geometry["unitPriceWidth"] - compact_geometry["unitPrice"]) <= 2
 
     first_row.locator(".receipt-discount-toggle").click()
     page.wait_for_selector("#receiptItemsList .receipt-item-row.receipt-item-row-discounted")
@@ -542,13 +550,28 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
     assert discounted_geometry["priceScrollWidth"] <= discounted_geometry["priceClientWidth"] + 2
     assert discounted_geometry["priceWidth"] > discounted_geometry["nameWidth"]
     assert len(discounted_geometry["inputWidths"]) == 2
-    assert max(discounted_geometry["inputWidths"]) <= 106
+    assert min(discounted_geometry["inputWidths"]) >= 71
+    assert max(discounted_geometry["inputWidths"]) <= 82
     first_row.locator(".receipt-discount-toggle").click()
     assert "receipt-item-row-discounted" not in (first_row.get_attribute("class") or "")
 
     second_row = page.locator("#receiptItemsList .receipt-item-row").nth(1)
     assert second_row.locator('[data-receipt-field="shop_name"]').input_value() == "Green"
     assert second_row.locator('[data-receipt-field="brand_search"]').input_value() == ""
+    expect(second_row.locator(".receipt-brand-thumb")).to_have_count(0)
+
+    second_brand_input = second_row.locator('[data-receipt-field="brand_search"]')
+    second_brand_input.click()
+    page.wait_for_selector('.receipt-item-row:nth-child(2) .receipt-brand-picker:not(.hidden) button[data-receipt-brand-id="202"]')
+    second_row.locator('button[data-receipt-brand-id="202"]').click()
+    fallback_thumb = second_row.locator(".receipt-brand-thumb .catalog-media-thumb")
+    expect(fallback_thumb).to_have_count(1)
+    assert "is-fallback" in (fallback_thumb.get_attribute("class") or "")
+    assert fallback_thumb.get_attribute("data-catalog-media-id") is None
+    assert fallback_thumb.locator(".catalog-media-fallback").inner_text() == "С"
+    second_brand_input.click()
+    second_row.locator("button[data-receipt-brand-clear]").click()
+    expect(second_row.locator(".receipt-brand-thumb")).to_have_count(0)
 
     payload = page.evaluate("() => window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
     assert payload[0]["template_id"] == 128

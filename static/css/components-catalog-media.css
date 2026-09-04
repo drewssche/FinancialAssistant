@@ -160,6 +160,43 @@
   margin-left: -0.18rem;
 }
 
+#opReceiptFields .receipt-brand-cell.has-brand,
+#editReceiptFields .receipt-brand-cell.has-brand {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.25rem;
+}
+
+#opReceiptFields .receipt-brand-cell.has-brand > input,
+#editReceiptFields .receipt-brand-cell.has-brand > input {
+  min-width: 0;
+  padding-inline: 0.4rem;
+}
+
+.receipt-brand-thumb {
+  display: inline-flex;
+  width: 1.5rem;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  user-select: none;
+}
+
+.receipt-brand-thumb .catalog-media-thumb {
+  --catalog-media-size: 1.5rem;
+  border-color: color-mix(in srgb, var(--receipt-brand-accent) 58%, rgba(91, 113, 151, 0.45));
+  border-radius: 0.42rem;
+  font-size: 0.56rem;
+}
+
+.receipt-brand-thumb .catalog-media-thumb.is-fallback {
+  background: color-mix(in srgb, var(--receipt-brand-accent) 24%, rgba(24, 35, 54, 0.88));
+  color: color-mix(in srgb, var(--receipt-brand-accent) 38%, #eaf1ff);
+}
+
 .receipt-name-field-wrap {
   min-width: 0;
   display: grid;
@@ -326,15 +363,15 @@
   #opReceiptFields .receipt-price-cell-discounted,
   #editReceiptFields .receipt-price-cell-discounted {
     grid-template-columns:
-      minmax(4.75rem, 6.5rem)
+      minmax(4.5rem, 5rem)
       max-content
-      minmax(4.75rem, 6.5rem)
+      minmax(4.5rem, 5rem)
       minmax(0, 1fr);
   }
 
   #opReceiptFields .receipt-price-cell:not(.receipt-price-cell-discounted),
   #editReceiptFields .receipt-price-cell:not(.receipt-price-cell-discounted) {
-    grid-template-columns: minmax(5rem, 6.5rem) max-content minmax(0, 1fr);
+    grid-template-columns: minmax(4.5rem, 5rem) max-content minmax(0, 1fr);
     justify-content: start;
   }
 }
