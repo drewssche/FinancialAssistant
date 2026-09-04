@@ -390,7 +390,7 @@ def test_receipt_picker_store_scoped_and_optimistic_create(static_server_url: st
 @pytest.mark.e2e
 def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str, page_with_receipt_api_mock):
     page = page_with_receipt_api_mock
-    page.set_viewport_size({"width": 1280, "height": 900})
+    page.set_viewport_size({"width": 1380, "height": 900})
     page.goto(f"{static_server_url}/static/index.html")
     page.evaluate(
         """
@@ -442,6 +442,37 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
     )
     assert name_geometry["height"] > 44
     assert name_geometry["height"] <= name_geometry["maxHeight"] + 1
+
+    desktop_geometry = first_row.evaluate(
+        """
+        node => {
+          const selectors = [
+            '.receipt-shop-cell',
+            '.receipt-brand-cell',
+            '.receipt-name-cell',
+            '.receipt-category-cell',
+            '.receipt-price-cell',
+            '.receipt-quantity-cell',
+            '.receipt-line-total',
+            '.receipt-remove-btn',
+          ];
+          const tops = selectors.map((selector) => node.querySelector(selector).getBoundingClientRect().top);
+          return {
+            clientWidth: node.clientWidth,
+            scrollWidth: node.scrollWidth,
+            topSpread: Math.max(...tops) - Math.min(...tops),
+            identityDisplay: getComputedStyle(node.querySelector('.receipt-item-identity')).display,
+            moneyDisplay: getComputedStyle(node.querySelector('.receipt-item-money')).display,
+            columns: getComputedStyle(node).gridTemplateColumns,
+          };
+        }
+        """
+    )
+    assert desktop_geometry["scrollWidth"] <= desktop_geometry["clientWidth"] + 2
+    assert desktop_geometry["topSpread"] <= 2
+    assert desktop_geometry["identityDisplay"] == "contents"
+    assert desktop_geometry["moneyDisplay"] == "contents"
+    assert len(desktop_geometry["columns"].split()) == 8
 
     second_row = page.locator("#receiptItemsList .receipt-item-row").nth(1)
     assert second_row.locator('[data-receipt-field="shop_name"]').input_value() == "Green"

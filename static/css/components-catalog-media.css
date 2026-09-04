@@ -182,9 +182,9 @@
 .receipt-linked-thumb,
 .receipt-template-card-btn {
   display: inline-flex;
-  width: 2.35rem;
-  min-width: 2.35rem;
-  height: 2.35rem;
+  width: 2.1rem;
+  min-width: 2.1rem;
+  height: 2.1rem;
   align-items: center;
   justify-content: center;
   padding: 0;
@@ -196,14 +196,15 @@
 }
 
 .receipt-template-card-btn {
-  width: 1.8rem;
-  min-width: 1.8rem;
-  height: 2.35rem;
-  font-size: 0.72rem;
+  width: 1.55rem;
+  min-width: 1.55rem;
+  height: 2.1rem;
+  font-size: 0.68rem;
   font-weight: 800;
 }
 
 .receipt-linked-thumb .catalog-media-thumb {
+  --catalog-media-size: 1.7rem;
   border: 0;
 }
 
@@ -247,6 +248,12 @@
 #opReceiptFields,
 #editReceiptFields {
   --catalog-control-height: 2.35rem;
+}
+
+#opReceiptFields,
+#editReceiptFields {
+  --catalog-control-height: 2.1rem;
+  font-size: 0.72rem;
 }
 
 #itemCatalogSection input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]),
@@ -294,9 +301,61 @@
 #editReceiptFields .receipt-name-input {
   height: var(--catalog-control-height);
   min-height: var(--catalog-control-height);
-  padding: 0.5rem 0.65rem;
-  font-size: 0.78rem;
-  line-height: 1.18rem;
+  padding: 0.42rem 0.55rem;
+  font-size: 0.72rem;
+  line-height: 1.05rem;
+}
+
+#opReceiptFields .receipt-item-row,
+#editReceiptFields .receipt-item-row {
+  border-radius: var(--radius-sm);
+}
+
+#opReceiptFields .receipt-price-cell,
+#editReceiptFields .receipt-price-cell {
+  grid-template-columns: minmax(3.75rem, 1fr) max-content minmax(4.25rem, 1fr);
+  column-gap: var(--space-1);
+}
+
+#opReceiptFields .receipt-price-cell:not(.receipt-price-cell-discounted),
+#editReceiptFields .receipt-price-cell:not(.receipt-price-cell-discounted) {
+  grid-template-columns: minmax(0, 1fr) max-content;
+}
+
+#opReceiptFields .receipt-quantity-cell > span,
+#editReceiptFields .receipt-quantity-cell > span,
+#opReceiptFields .receipt-line-total > span,
+#editReceiptFields .receipt-line-total > span {
+  font-size: 0.6rem;
+}
+
+#opReceiptFields .receipt-line-total > strong,
+#editReceiptFields .receipt-line-total > strong {
+  font-size: 0.88rem;
+}
+
+#opReceiptFields .receipt-discount-toggle,
+#editReceiptFields .receipt-discount-toggle {
+  min-height: var(--catalog-control-height);
+  padding: 4px 6px;
+  font-size: 0.68rem;
+}
+
+#opReceiptFields .btn.receipt-remove-btn,
+#editReceiptFields .btn.receipt-remove-btn {
+  width: 1.9rem;
+  min-width: 1.9rem;
+  height: var(--catalog-control-height);
+  min-height: var(--catalog-control-height);
+  padding: 0;
+}
+
+#opReceiptFields .receipt-new-badge,
+#editReceiptFields .receipt-new-badge,
+#opReceiptFields .receipt-category-badge,
+#editReceiptFields .receipt-category-badge {
+  padding: 2px 6px;
+  font-size: 0.56rem;
 }
 
 .item-template-price-grid {

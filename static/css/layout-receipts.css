@@ -185,8 +185,19 @@
 
 .receipt-item-row {
   display: grid;
-  gap: var(--space-2);
-  padding: var(--space-2);
+  grid-template-columns:
+    minmax(6.25rem, 0.68fr)
+    minmax(5.5rem, 0.6fr)
+    minmax(11rem, 1.55fr)
+    minmax(7.5rem, 0.8fr)
+    minmax(9.5rem, 1.05fr)
+    minmax(4rem, 0.42fr)
+    minmax(4.5rem, max-content)
+    1.9rem;
+  grid-template-areas: "shop brand name category price quantity total remove";
+  align-items: start;
+  gap: 0.375rem;
+  padding: 0.375rem;
   border: 1px solid rgba(39, 50, 72, 0.72);
   border-radius: var(--radius-md);
   background: rgba(14, 22, 36, 0.4);
@@ -203,12 +214,20 @@
   z-index: 80;
 }
 
+.receipt-item-row-discounted {
+  grid-template-columns:
+    minmax(6rem, 0.62fr)
+    minmax(5.25rem, 0.56fr)
+    minmax(10rem, 1.35fr)
+    minmax(7rem, 0.72fr)
+    minmax(12.25rem, 1.18fr)
+    minmax(4rem, 0.4fr)
+    minmax(4.5rem, max-content)
+    1.9rem;
+}
+
 .receipt-item-identity {
-  display: grid;
-  grid-template-columns: minmax(130px, 0.7fr) minmax(130px, 0.62fr) minmax(280px, 1.8fr) minmax(165px, 0.85fr);
-  grid-template-areas: "shop brand name category";
-  gap: var(--space-2);
-  align-items: start;
+  display: contents;
   min-width: 0;
 }
 
@@ -217,10 +236,7 @@
 }
 
 .receipt-item-money {
-  display: grid;
-  grid-template-columns: minmax(330px, 1fr) minmax(92px, 0.22fr) minmax(104px, max-content) 40px;
-  gap: var(--space-2);
-  align-items: end;
+  display: contents;
   min-width: 0;
 }
 
@@ -520,12 +536,17 @@
 }
 
 .receipt-price-cell {
+  grid-area: price;
   display: grid;
   grid-template-columns: minmax(96px, 1fr) max-content minmax(112px, 1fr);
   column-gap: var(--space-2);
   row-gap: 4px;
   align-items: center;
   min-width: 0;
+}
+
+.receipt-price-cell:not(.receipt-price-cell-discounted) {
+  grid-template-columns: minmax(0, 1fr) max-content;
 }
 
 .receipt-price-field {
@@ -609,6 +630,7 @@
 }
 
 .receipt-item-row .receipt-line-total {
+  grid-area: total;
   display: grid;
   justify-items: end;
   font-weight: 700;
@@ -617,6 +639,7 @@
 }
 
 .receipt-quantity-cell {
+  grid-area: quantity;
   display: grid;
   gap: 4px;
   min-width: 0;
@@ -637,6 +660,7 @@
 }
 
 .receipt-item-row .btn.receipt-remove-btn {
+  grid-area: remove;
   width: 34px;
   min-width: 34px;
   height: 34px;
@@ -664,16 +688,40 @@
   color: #ffb5c4;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1180px) {
+  .receipt-item-row {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "identity"
+      "money";
+    gap: var(--space-2);
+    padding: var(--space-2);
+  }
+
   .receipt-item-identity {
+    grid-area: identity;
+    display: grid;
     grid-template-columns: minmax(140px, 0.8fr) minmax(140px, 0.8fr) minmax(0, 1.4fr);
     grid-template-areas:
       "shop brand category"
       "name name name";
+    gap: var(--space-2);
+    align-items: start;
   }
 
   .receipt-item-money {
+    grid-area: money;
+    display: grid;
     grid-template-columns: minmax(280px, 1fr) 88px minmax(96px, max-content) 40px;
+    gap: var(--space-2);
+    align-items: end;
+  }
+
+  .receipt-price-cell,
+  .receipt-quantity-cell,
+  .receipt-item-row .receipt-line-total,
+  .receipt-item-row .btn.receipt-remove-btn {
+    grid-area: auto;
   }
 
   .receipt-shop-picker,
