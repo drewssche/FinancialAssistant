@@ -99,6 +99,7 @@
   const clearReceiptItems = receipt.clearReceiptItems || (() => {});
   const setReceiptEnabled = receipt.setReceiptEnabled || (() => {});
   const renderReceiptItems = receipt.renderReceiptItems || (() => {});
+  const applySavedTemplateToReceiptDrafts = receipt.applySavedTemplateToReceiptDrafts || (() => false);
   const renderReceiptSummary = receipt.renderReceiptSummary || (() => {});
   const loadReceiptTemplateHints = receipt.loadReceiptTemplateHints || (async () => {});
   const handleReceiptItemsListInput = receipt.handleReceiptItemsListInput || (() => {});
@@ -535,10 +536,14 @@
     setOperationKind("create", "expense");
     state.createReceiptItems = [createReceiptDraft({
       template_id: item.template_id || item.id || null,
+      item_image_id: item.item_image_id || item.image_id || null,
+      source_id: item.source_id || null,
+      source_image_id: item.source_image_id || null,
       category_id: item.category_id || null,
       brand_id: item.brand_id || null,
       brand_name: item.brand_name || "",
       brand_accent_color: item.brand_accent_color || "",
+      brand_image_id: item.brand_image_id || null,
       brand_is_archived: Boolean(item.brand_is_archived),
       shop_name: item.shop_name || "",
       name: item.name || "",
@@ -633,10 +638,14 @@
     if (typeof createReceiptDraft === "function") {
       state.editReceiptItems = (Array.isArray(item.receipt_items) ? item.receipt_items : []).map((row) => createReceiptDraft({
         template_id: row.template_id || null,
+        item_image_id: row.item_image_id || null,
+        source_id: row.source_id || null,
+        source_image_id: row.source_image_id || null,
         category_id: row.category_id || null,
         brand_id: row.brand_id || null,
         brand_name: row.brand_name || "",
         brand_accent_color: row.brand_accent_color || "",
+        brand_image_id: row.brand_image_id || null,
         brand_is_archived: Boolean(row.brand_is_archived),
         shop_name: row.shop_name || "",
         name: row.name || "",
@@ -851,6 +860,7 @@
     createReceiptDraft,
     clearReceiptItems,
     renderReceiptItems,
+    applySavedTemplateToReceiptDrafts,
     handleCreatePreviewClick,
     setDebtDirection,
     setCurrencySide,

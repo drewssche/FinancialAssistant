@@ -2,6 +2,7 @@ from app.db.models.auth_identity import AuthIdentity
 from app.db.models.activity_event import ActivityEvent
 from app.db.models.category import Category
 from app.db.models.category_group import CategoryGroup
+from app.db.models.catalog_media_asset import CatalogMediaAsset
 from app.db.models.debt import Debt
 from app.db.models.debt_counterparty import DebtCounterparty
 from app.db.models.debt_forgiveness import DebtForgiveness
@@ -14,6 +15,7 @@ from app.db.models.fx_bank_rate_history_job import FxBankRateHistoryJob
 from app.db.models.fx_bank_rate_snapshot import FxBankRateSnapshot
 from app.db.models.fx_trade import FxTrade
 from app.db.models.item_brand import ItemBrand
+from app.db.models.item_source import ItemSource
 from app.db.models.operation import Operation
 from app.db.models.operation_item_price import OperationItemPrice
 from app.db.models.operation_item_template import OperationItemTemplate
@@ -33,6 +35,7 @@ __all__ = [
     "ActivityEvent",
     "CategoryGroup",
     "Category",
+    "CatalogMediaAsset",
     "Operation",
     "OperationItemTemplate",
     "OperationItemPrice",
@@ -50,6 +53,7 @@ __all__ = [
     "DebtRepayment",
     "FxTrade",
     "ItemBrand",
+    "ItemSource",
     "FxRateSnapshot",
     "FxBankRate",
     "FxBankRateHistoryJob",

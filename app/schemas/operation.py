@@ -12,6 +12,7 @@ FxPaymentMode = Literal["valuation", "direct_conversion", "foreign_balance"]
 
 class OperationReceiptItemIn(BaseModel):
     template_id: int | None = Field(default=None, ge=1)
+    source_id: int | None = Field(default=None, ge=1)
     brand_id: int | None = Field(default=None, ge=1)
     category_id: int | None = None
     shop_name: str | None = Field(default=None, max_length=160)
@@ -31,6 +32,11 @@ class OperationReceiptItemOut(BaseModel):
     brand_name: str | None = None
     brand_accent_color: str | None = None
     brand_is_archived: bool = False
+    item_image_id: int | None = None
+    brand_image_id: int | None = None
+    source_id: int | None = None
+    source_name: str | None = None
+    source_image_id: int | None = None
     category_id: int | None
     category_name: str | None = None
     category_icon: str | None = None
@@ -194,7 +200,11 @@ class MoneyFlowListOut(BaseModel):
 
 class OperationItemTemplateOut(BaseModel):
     id: int
+    image_id: int | None = None
     shop_name: str | None = None
+    source_id: int | None = None
+    source_name: str | None = None
+    source_image_id: int | None = None
     name: str
     use_count: int
     last_used_at: datetime | None = None
@@ -203,6 +213,7 @@ class OperationItemTemplateOut(BaseModel):
     brand_name: str | None = None
     brand_accent_color: str | None = None
     brand_is_archived: bool = False
+    brand_image_id: int | None = None
     latest_unit_price: Decimal | None = None
     latest_price_date: date | None = None
     recommendation_enabled: bool = False
@@ -217,6 +228,7 @@ class OperationItemTemplateOut(BaseModel):
 
 class OperationItemTemplateCreate(BaseModel):
     shop_name: str | None = Field(default=None, max_length=160)
+    source_id: int | None = Field(default=None, ge=1)
     name: str = Field(min_length=1, max_length=160)
     last_category_id: int | None = None
     brand_id: int | None = Field(default=None, ge=1)
@@ -230,6 +242,7 @@ class OperationItemTemplateCreate(BaseModel):
 
 class OperationItemTemplateUpdate(BaseModel):
     shop_name: str | None = Field(default=None, max_length=160)
+    source_id: int | None = Field(default=None, ge=1)
     name: str | None = Field(default=None, min_length=1, max_length=160)
     last_category_id: int | None = None
     brand_id: int | None = Field(default=None, ge=1)
@@ -260,6 +273,11 @@ class OperationItemRecommendationOut(BaseModel):
     brand_name: str | None = None
     brand_accent_color: str | None = None
     brand_is_archived: bool = False
+    image_id: int | None = None
+    brand_image_id: int | None = None
+    source_id: int | None = None
+    source_name: str | None = None
+    source_image_id: int | None = None
     latest_unit_price: Decimal | None = None
     last_purchase_date: date
     last_quantity: Decimal
@@ -285,6 +303,11 @@ class OperationItemRecommendationManageOut(BaseModel):
     brand_name: str | None = None
     brand_accent_color: str | None = None
     brand_is_archived: bool = False
+    image_id: int | None = None
+    brand_image_id: int | None = None
+    source_id: int | None = None
+    source_name: str | None = None
+    source_image_id: int | None = None
     use_count: int = 0
     latest_unit_price: Decimal | None = None
     last_purchase_date: date | None = None
@@ -297,7 +320,9 @@ class OperationItemRecommendationManageOut(BaseModel):
     snoozed_until: date | None = None
     effective_date: date | None = None
     days_until: int | None = None
-    status: Literal["overdue", "due", "upcoming", "snoozed", "awaiting_purchase", "unconfigured"]
+    status: Literal[
+        "overdue", "due", "upcoming", "snoozed", "awaiting_purchase", "unconfigured"
+    ]
     candidate: bool = False
 
 
@@ -338,6 +363,7 @@ class ItemBrandOut(BaseModel):
     id: int
     name: str
     accent_color: str | None = None
+    image_id: int | None = None
     is_archived: bool = False
     positions_count: int = 0
     purchases_count: int = 0
@@ -361,6 +387,31 @@ class ItemBrandMergeIn(BaseModel):
 class ItemBrandMergeOut(BaseModel):
     brand: ItemBrandOut
     reassigned_positions: int
+
+
+class ItemSourceCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=160)
+
+
+class ItemSourceUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=160)
+
+
+class ItemSourceOut(BaseModel):
+    id: int
+    name: str
+    image_id: int | None = None
+    is_archived: bool = False
+    positions_count: int = 0
+    created_at: datetime
+    updated_at: datetime
+
+
+class ItemSourceListOut(BaseModel):
+    items: list[ItemSourceOut]
+    total: int
+    page: int = Field(ge=1)
+    page_size: int = Field(ge=1)
 
 
 class OperationItemPriceOut(BaseModel):

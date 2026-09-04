@@ -135,6 +135,23 @@
   vertical-align: middle;
 }
 
+.item-brands-table .table-kebab-cell {
+  width: 3.25rem;
+  text-align: right;
+}
+
+.item-brands-table .table-kebab-wrap {
+  margin-left: auto;
+}
+
+.item-brand-detail-title {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+  vertical-align: middle;
+}
+
 .item-brand-name-button {
   padding: 0;
   border: 0;
@@ -274,5 +291,38 @@
 
   .analytics-brand-coverage {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .mobile-card-table.item-brands-table tr {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2) var(--space-3);
+    padding-right: 3.5rem;
+  }
+
+  .mobile-card-table.item-brands-table td,
+  .mobile-card-table.item-brands-table td + td {
+    margin: 0;
+  }
+
+  .mobile-card-table.item-brands-table td[data-label] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.2rem;
+  }
+
+  .mobile-card-table.item-brands-table td[data-label="Бренд"],
+  .mobile-card-table.item-brands-table td[data-label="Последняя покупка"] {
+    grid-column: 1 / -1;
+  }
+
+  .mobile-card-table.item-brands-table .table-kebab-cell {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+    width: auto;
   }
 }

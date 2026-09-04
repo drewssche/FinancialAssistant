@@ -12,6 +12,7 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 
 sync_api = pytest.importorskip("playwright.sync_api", reason="playwright is not installed")
+expect = sync_api.expect
 
 
 def _login(page):
@@ -161,6 +162,7 @@ def page_with_receipt_api_mock():
             "latest_unit_price": "5.39",
         }
     )
+
     templates.append(
         {
             "id": 129,
@@ -174,6 +176,33 @@ def page_with_receipt_api_mock():
             "latest_unit_price": "4.20",
         }
     )
+
+    sources = [
+        {"id": 301, "name": "Пустой источник", "image_id": None, "is_archived": False},
+        {"id": 302, "name": "Соседи", "image_id": None, "is_archived": False},
+        {"id": 303, "name": "Евроопт", "image_id": None, "is_archived": False},
+        {"id": 304, "name": "Green", "image_id": 9304, "is_archived": False},
+        {"id": 305, "name": "Дальний источник", "image_id": None, "is_archived": False},
+        {"id": 306, "name": "Архивный источник", "image_id": None, "is_archived": False},
+    ]
+    source_by_name = {source["name"]: source for source in sources}
+    for item in templates:
+        source = source_by_name.get(item.get("shop_name"))
+        if source:
+            item["source_id"] = source["id"]
+            item["source_name"] = source["name"]
+            item["source_image_id"] = source["image_id"]
+    templates[-2]["image_id"] = 9128
+    templates[-2]["brand_image_id"] = 9201
+    brands[0]["image_id"] = 9201
+
+    def source_payload(source: dict) -> dict:
+        return {
+            **source,
+            "positions_count": len(
+                [item for item in templates if int(item.get("source_id") or 0) == int(source["id"])]
+            ),
+        }
 
     def json_response(route, payload: dict | list, status: int = 200):
         route.fulfill(status=status, content_type="application/json", body=json.dumps(payload, ensure_ascii=False))
@@ -210,6 +239,22 @@ def page_with_receipt_api_mock():
             return json_response(route, {"items": [], "total": 0, "page": 1, "page_size": 20})
         if path == "/api/v1/operations/item-brands" and method == "GET":
             return json_response(route, {"items": brands, "total": len(brands), "page": 1, "page_size": 100})
+        if path == "/api/v1/operations/item-sources" and method == "GET":
+            active_sources = [source_payload(source) for source in sources if not source["is_archived"]]
+            return json_response(
+                route,
+                {"items": active_sources, "total": len(active_sources), "page": 1, "page_size": 500},
+            )
+        if path.startswith("/api/v1/operations/item-sources/") and method == "DELETE":
+            source_id = int(path.rsplit("/", 1)[-1])
+            source = next((row for row in sources if int(row["id"]) == source_id), None)
+            if source is None:
+                return json_response(route, {"detail": "not found"}, status=404)
+            source["is_archived"] = True
+            templates[:] = [
+                item for item in templates if int(item.get("source_id") or 0) != source_id
+            ]
+            return route.fulfill(status=204, body="")
         if path == "/api/v1/operations/item-templates" and method == "GET":
             token = ((query.get("q") or [""])[0]).strip().casefold()
             if not token:
@@ -224,6 +269,26 @@ def page_with_receipt_api_mock():
             start = (page - 1) * page_size
             end = start + page_size
             return json_response(route, {"items": items[start:end], "total": len(items), "page": page, "page_size": page_size})
+        if path.startswith("/api/v1/operations/media/") and method == "GET":
+            return route.fulfill(
+                status=200,
+                content_type="image/svg+xml",
+                body='<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#5fd3bc"/></svg>',
+            )
+        if path.startswith("/api/v1/operations/item-templates/") and method == "GET":
+            template_id = int(path.rsplit("/", 1)[-1])
+            item = next((row for row in templates if int(row["id"]) == template_id), None)
+            if item is None:
+                return json_response(route, {"detail": "not found"}, status=404)
+            return json_response(
+                route,
+                {
+                    **item,
+                    "recommendation_enabled": False,
+                    "recommendation_mode": "manual",
+                    "recommendation_base_quantity": "1.000",
+                },
+            )
         if path.startswith("/api/v1/operations/item-templates/") and method == "PATCH":
             template_id = int(path.rsplit("/", 1)[-1])
             item = next((row for row in templates if int(row["id"]) == template_id), None)
@@ -452,6 +517,106 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
     assert page.locator("#operationReceiptItems .operation-receipt-brand").inner_text() == "Vici"
     receipt_title = page.locator("#operationReceiptItems .operation-receipt-title strong")
     assert receipt_title.get_attribute("title") == "Крабовые палочки охлаждённые из сурими с мясом снежного краба"
+
+
+@pytest.mark.e2e
+def test_receipt_thumbnail_opens_nested_item_card_and_live_syncs_saved_item(
+    static_server_url: str,
+    page_with_receipt_api_mock,
+):
+    page = page_with_receipt_api_mock
+    page.set_viewport_size({"width": 1280, "height": 900})
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    _login(page)
+    _ensure_categories_loaded(page)
+
+    page.click("#addOperationCta")
+    page.wait_for_selector("#createModal:not(.hidden)")
+    page.locator('#createOperationModeSwitch button[data-operation-mode="receipt"]').click()
+    first_row = page.locator("#receiptItemsList .receipt-item-row").first
+    first_row.locator('[data-receipt-field="shop_name"]').fill("Green")
+
+    with page.expect_request(
+        lambda request: "/api/v1/operations/media/9128/thumb" in request.url
+    ) as image_request:
+        first_row.locator('[data-receipt-field="name"]').click()
+        page.wait_for_selector(
+            '.receipt-name-picker:not(.hidden) button[data-receipt-template-id="128"]'
+        )
+    assert image_request.value.headers.get("authorization") == "Bearer e2e-token"
+    expect(
+        first_row.locator(
+            'button[data-receipt-template-id="128"] [data-catalog-media-id="9128"]'
+        )
+    ).to_be_visible()
+    first_row.locator('button[data-receipt-template-id="128"]').click()
+    first_row.locator('[data-receipt-field="quantity"]').fill("2")
+    expect(first_row.locator('[data-open-receipt-template-card="128"]')).to_have_count(2)
+
+    first_row.locator(".receipt-template-card-btn").click()
+    expect(page.locator("#itemTemplateModal")).to_be_visible()
+    expect(page.locator("#createModal")).to_be_visible()
+    stack = page.evaluate(
+        """
+        () => ({
+          base: Number(document.querySelector('#createModal').style.zIndex || 0),
+          item: Number(document.querySelector('#itemTemplateModal').style.zIndex || 0),
+        })
+        """
+    )
+    assert stack["item"] > stack["base"]
+
+    geometry = page.evaluate(
+        """
+        () => {
+          const modal = document.querySelector('#itemTemplateModal .modal-card');
+          const grid = document.querySelector('.item-template-price-grid');
+          const price = document.querySelector('#itemTemplatePriceField');
+          const date = document.querySelector('#itemTemplatePriceDateField');
+          return {
+            modalClientWidth: modal.clientWidth,
+            modalScrollWidth: modal.scrollWidth,
+            priceWidth: price.getBoundingClientRect().width,
+            dateWidth: date.getBoundingClientRect().width,
+            priceTop: price.getBoundingClientRect().top,
+            dateTop: date.getBoundingClientRect().top,
+            columns: getComputedStyle(grid).gridTemplateColumns,
+          };
+        }
+        """
+    )
+    assert geometry["modalScrollWidth"] <= geometry["modalClientWidth"] + 2
+    assert geometry["priceWidth"] >= 176
+    assert geometry["dateWidth"] >= 280
+    assert abs(geometry["priceTop"] - geometry["dateTop"]) <= 2
+    assert len(geometry["columns"].split()) == 2
+
+    updated_name = "Крабовые палочки Vici — обновлённая карточка"
+    page.fill("#itemTemplateName", updated_name)
+    page.click("#submitItemTemplateBtn")
+    expect(first_row.locator('[data-receipt-field="name"]')).to_have_value(updated_name)
+    expect(first_row.locator('[data-receipt-field="quantity"]')).to_have_value("2")
+    expect(page.locator("#itemTemplateModal")).to_be_visible()
+
+    page.click("#closeItemTemplateModalBtn")
+    expect(page.locator("#itemTemplateModal")).to_be_hidden()
+    expect(page.locator("#createModal")).to_be_visible()
+    assert page.locator("#createModal").evaluate(
+        "node => node.classList.contains('modal-front')"
+    )
 
 
 @pytest.mark.e2e

@@ -17,6 +17,20 @@
           </div>
         </div>
         <form id="itemTemplateForm" class="category-modal-form">
+          <section class="catalog-image-field" data-catalog-image-picker="item-template" aria-label="Фотография позиции">
+            <div class="catalog-image-picker-preview" data-catalog-image-preview></div>
+            <div class="catalog-image-picker-actions">
+              <strong>Фото позиции</strong>
+              <div class="catalog-image-picker-buttons">
+                <label class="btn btn-secondary btn-xs catalog-image-upload-btn">
+                  <span>Загрузить</span>
+                  <input data-catalog-image-input type="file" accept="image/jpeg,image/png,image/webp" />
+                </label>
+                <button class="btn btn-danger btn-xs hidden" data-catalog-image-remove type="button">Удалить</button>
+              </div>
+              <small class="muted-small" data-catalog-image-status>JPEG, PNG или WebP · до 8 МБ</small>
+            </div>
+          </section>
           <input id="itemTemplateSource" type="hidden" />
           <div id="itemTemplateSourceField" class="create-category-field">
             <input id="itemTemplateSourceSearch" type="text" placeholder="Источник" autocomplete="off" />
@@ -45,14 +59,20 @@
               </div>
             </div>
           </div>
-          <div class="form-grid form-grid-2 item-template-price-grid">
-            <div id="itemTemplatePriceField" class="money-input-wrap" data-money-input-wrap>
-              <input id="itemTemplatePrice" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" />
-            </div>
-            <div id="itemTemplatePriceDateField" class="date-input-wrap" data-date-stepper>
-              <input id="itemTemplatePriceDate" class="input" type="date" aria-label="Дата цены" />
-              <button class="date-input-trigger" type="button" data-date-picker-trigger="itemTemplatePriceDate" aria-label="Открыть календарь"></button>
-            </div>
+          <div class="form-grid item-template-price-grid">
+            <label class="field item-template-price-field">
+              <span>Последняя цена</span>
+              <div id="itemTemplatePriceField" class="money-input-wrap" data-money-input-wrap>
+                <input id="itemTemplatePrice" data-money-input type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Сумма" title="Можно вводить выражения: 1000+250/2" />
+              </div>
+            </label>
+            <label class="field item-template-date-field">
+              <span>Дата цены</span>
+              <div id="itemTemplatePriceDateField" class="date-input-wrap" data-date-stepper>
+                <input id="itemTemplatePriceDate" class="input" type="date" aria-label="Дата цены" />
+                <button class="date-input-trigger" type="button" data-date-picker-trigger="itemTemplatePriceDate" aria-label="Открыть календарь"></button>
+              </div>
+            </label>
           </div>
           <section class="item-template-recommendation-settings">
             <label class="settings-toggle-row" for="itemTemplateRecommendationEnabled">
@@ -112,6 +132,20 @@
           </button>
         </div>
         <form id="itemBrandForm" class="category-modal-form">
+          <section class="catalog-image-field" data-catalog-image-picker="item-brand" aria-label="Логотип бренда">
+            <div class="catalog-image-picker-preview" data-catalog-image-preview></div>
+            <div class="catalog-image-picker-actions">
+              <strong>Логотип</strong>
+              <div class="catalog-image-picker-buttons">
+                <label class="btn btn-secondary btn-xs catalog-image-upload-btn">
+                  <span>Загрузить</span>
+                  <input data-catalog-image-input type="file" accept="image/jpeg,image/png,image/webp" />
+                </label>
+                <button class="btn btn-danger btn-xs hidden" data-catalog-image-remove type="button">Удалить</button>
+              </div>
+              <small class="muted-small" data-catalog-image-status>JPEG, PNG или WebP · до 8 МБ</small>
+            </div>
+          </section>
           <label class="field">
             <span>Название</span>
             <input id="itemBrandName" type="text" maxlength="160" placeholder="Например, Vici" required />
@@ -176,6 +210,20 @@
         </div>
         <form id="sourceGroupForm" class="category-modal-form">
           <input id="sourceGroupOriginalName" type="hidden" />
+          <section class="catalog-image-field" data-catalog-image-picker="item-source" aria-label="Логотип источника">
+            <div class="catalog-image-picker-preview" data-catalog-image-preview></div>
+            <div class="catalog-image-picker-actions">
+              <strong>Логотип магазина или источника</strong>
+              <div class="catalog-image-picker-buttons">
+                <label class="btn btn-secondary btn-xs catalog-image-upload-btn">
+                  <span>Загрузить</span>
+                  <input data-catalog-image-input type="file" accept="image/jpeg,image/png,image/webp" />
+                </label>
+                <button class="btn btn-danger btn-xs hidden" data-catalog-image-remove type="button">Удалить</button>
+              </div>
+              <small class="muted-small" data-catalog-image-status>JPEG, PNG или WebP · до 8 МБ</small>
+            </div>
+          </section>
           <input id="sourceGroupName" type="text" placeholder="Название источника" required />
         </form>
         <div class="preview-panel">

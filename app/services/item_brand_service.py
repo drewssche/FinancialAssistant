@@ -11,10 +11,11 @@ from app.services.activity_service import ActivityService
 
 
 class ItemBrandService:
-    ACTIVITY_FIELDS = ["name", "accent_color", "is_archived"]
+    ACTIVITY_FIELDS = ["name", "accent_color", "image_id", "is_archived"]
     ACTIVITY_LABELS = {
         "name": "Название",
         "accent_color": "Цвет",
+        "image_id": "Логотип",
         "is_archived": "Архив",
     }
 
@@ -41,6 +42,7 @@ class ItemBrandService:
             "id": int(item.id),
             "name": item.name,
             "accent_color": item.accent_color,
+            "image_id": item.image_id,
             "is_archived": bool(item.is_archived),
             "positions_count": int(values.get("positions_count") or 0),
             "purchases_count": int(values.get("purchases_count") or 0),

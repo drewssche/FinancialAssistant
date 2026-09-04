@@ -16,7 +16,13 @@
       applySavedReceiptTemplateHint,
       invalidateItemCatalogDependentCaches,
       savePreferencesDebounced,
+      loadItemSources,
     } = deps;
+
+    function findSourceByName(sourceName) {
+      const key = getItemCatalogShopKey(sourceName || "");
+      return (state.itemSources || []).find((item) => getItemCatalogShopKey(item?.name || "") === key) || null;
+    }
 
     async function refreshItemBrandsAfterCatalogMutation() {
       invalidateItemCatalogDependentCaches?.();
@@ -28,6 +34,7 @@
         return;
       }
       state.editItemSourceName = "";
+      state.editItemSourceId = null;
       el.sourceGroupCreateItemBtn?.classList.add("hidden");
       el.sourceGroupForm.reset();
       if (el.sourceGroupOriginalName) {
@@ -39,8 +46,14 @@
       if (el.submitSourceGroupBtn) {
         el.submitSourceGroupBtn.textContent = "Создать источник";
       }
+      window.App.getRuntimeModule?.("catalog-media")?.resetPicker?.("item-source", {
+        imageId: null,
+        kind: "source",
+        label: "Логотип источника",
+      });
       updateSourceGroupPreview();
       el.sourceGroupModal.classList.remove("hidden");
+      core.bringModalToFront?.(el.sourceGroupModal);
       setTimeout(() => {
         if (el.sourceGroupName) {
           el.sourceGroupName.focus();
@@ -50,12 +63,14 @@
 
     function closeSourceGroupModal() {
       state.editItemSourceName = "";
+      state.editItemSourceId = null;
       el.sourceGroupCreateItemBtn?.classList.add("hidden");
       if (el.sourceGroupCreateItemBtn) {
         el.sourceGroupCreateItemBtn.dataset.createItemTemplateSourceName = "";
       }
       if (el.sourceGroupModal) {
         el.sourceGroupModal.classList.add("hidden");
+        core.markModalClosed?.(el.sourceGroupModal);
       }
     }
 
@@ -65,6 +80,8 @@
         return;
       }
       state.editItemSourceName = normalized;
+      const source = findSourceByName(normalized);
+      state.editItemSourceId = Number(source?.id || 0) || null;
       const contextActions = window.App.getRuntimeModule?.("context-actions");
       if (el.sourceGroupCreateItemBtn) {
         const showCreate = contextActions?.has?.("item_source", "modal", "create_child");
@@ -84,8 +101,14 @@
       if (el.submitSourceGroupBtn) {
         el.submitSourceGroupBtn.textContent = "Сохранить источник";
       }
+      window.App.getRuntimeModule?.("catalog-media")?.resetPicker?.("item-source", {
+        imageId: source?.image_id,
+        kind: "source",
+        label: `Логотип ${normalized}`,
+      });
       updateSourceGroupPreview();
       el.sourceGroupModal.classList.remove("hidden");
+      core.bringModalToFront?.(el.sourceGroupModal);
       setTimeout(() => {
         if (el.sourceGroupName) {
           el.sourceGroupName.focus();
@@ -112,7 +135,7 @@
         : "—";
       el.sourceGroupPreviewBody.innerHTML = `
         <tr class="preview-row">
-          <td>${escapeHtml(sourceName)}</td>
+          <td><span class="catalog-source-identity">${window.App.getRuntimeModule?.("catalog-media")?.renderThumb?.(findSourceByName(sourceName)?.image_id, { kind: "source", size: "row", alt: sourceName, fallback: sourceName.slice(0, 1) }) || ""}<span>${escapeHtml(sourceName)}</span></span></td>
           <td>${positions}</td>
           <td>${usage}</td>
           <td>${avg}</td>
@@ -128,51 +151,56 @@
         return;
       }
       const originalName = normalizeItemCatalogShopName(state.editItemSourceName || el.sourceGroupOriginalName?.value || "");
-      const groups = readItemCatalogSourceGroups();
-      const exists = groups.some((name) => getItemCatalogShopKey(name) === getItemCatalogShopKey(sourceName));
-      if (!originalName && exists) {
+      const sourceId = Number(state.editItemSourceId || findSourceByName(originalName)?.id || 0);
+      const isEdit = sourceId > 0;
+      const existing = findSourceByName(sourceName);
+      if (!sourceId && existing) {
         closeSourceGroupModal();
         renderItemCatalog(state.itemCatalogItems);
         return;
       }
-      if (originalName) {
-        if (getItemCatalogShopKey(originalName) === getItemCatalogShopKey(sourceName)) {
-          renderItemCatalog(state.itemCatalogItems);
-          return;
-        }
-        if (getItemCatalogShopKey(originalName) !== getItemCatalogShopKey(sourceName) && exists) {
-          core.setStatus("Источник с таким названием уже существует");
-          return;
-        }
-        const matchedItems = (state.itemCatalogItems || []).filter((item) => getItemCatalogShopKey(item.shop_name || "") === getItemCatalogShopKey(originalName));
-        for (const item of matchedItems) {
-          await core.requestJson(`/api/v1/operations/item-templates/${item.id}`, {
-            method: "PATCH",
-            headers: core.authHeaders(),
-            body: JSON.stringify({ shop_name: sourceName || null }),
-          });
-        }
-        writeItemCatalogSourceGroups(
-          groups
-            .map((name) => (getItemCatalogShopKey(name) === getItemCatalogShopKey(originalName) ? sourceName : name))
-            .filter((name, idx, arr) => name && arr.findIndex((item) => getItemCatalogShopKey(item) === getItemCatalogShopKey(name)) === idx),
-        );
-        invalidateItemCatalogDependentCaches?.();
-        state.editItemSourceName = sourceName;
-        if (el.sourceGroupOriginalName) {
-          el.sourceGroupOriginalName.value = sourceName;
-        }
-        if (el.sourceGroupName) {
-          el.sourceGroupName.value = sourceName;
-        }
-        await loadItemCatalog({ force: true });
-        savePreferencesDebounced(450);
+      if (sourceId && existing && Number(existing.id) !== sourceId) {
+        core.setStatus("Источник с таким названием уже существует");
         return;
       }
-      writeItemCatalogSourceGroups([...groups, sourceName]);
-      closeSourceGroupModal();
-      renderItemCatalog(state.itemCatalogItems);
-      savePreferencesDebounced(450);
+      let saved = await core.requestJson(
+        sourceId ? `/api/v1/operations/item-sources/${sourceId}` : "/api/v1/operations/item-sources",
+        {
+          method: sourceId ? "PATCH" : "POST",
+          headers: core.authHeaders(),
+          body: JSON.stringify({ name: sourceName }),
+        },
+      );
+      try {
+        saved = await window.App.getRuntimeModule?.("catalog-media")?.commitPicker?.(
+          "item-source",
+          "source",
+          saved?.id || sourceId,
+        ) || saved;
+      } catch (err) {
+        core.showToast?.(`Источник сохранён, но логотип не обновлён: ${String(err?.message || err)}`, { type: "error" });
+      }
+      invalidateItemCatalogDependentCaches?.();
+      state.itemSourcesLoaded = false;
+      await loadItemSources?.({ force: true });
+      await loadItemCatalog({ force: true });
+      if (!isEdit) {
+        closeSourceGroupModal();
+      } else {
+        const refreshed = (state.itemSources || []).find((item) => Number(item?.id || 0) === sourceId) || saved;
+        const savedName = normalizeItemCatalogShopName(refreshed?.name || sourceName);
+        state.editItemSourceId = Number(refreshed?.id || sourceId);
+        state.editItemSourceName = savedName;
+        if (el.sourceGroupOriginalName) el.sourceGroupOriginalName.value = savedName;
+        if (el.sourceGroupName) el.sourceGroupName.value = savedName;
+        window.App.getRuntimeModule?.("catalog-media")?.resetPicker?.("item-source", {
+          imageId: refreshed?.image_id,
+          kind: "source",
+          label: `Логотип ${savedName}`,
+        });
+        updateSourceGroupPreview();
+      }
+      core.showToast?.(isEdit ? "Источник обновлён" : "Источник создан", { type: "success" });
     }
 
     async function deleteItemSourceFlow(sourceName) {
@@ -180,26 +208,23 @@
       if (!normalized) {
         return;
       }
+      const linkedCount = matchedSourceItemCount(normalized);
       core.runDestructiveAction({
-        confirmMessage: `Удалить источник «${normalized}» и ${matchedSourceItemCount(normalized)} поз.? История операций сохранится.`,
+        confirmMessage: `Удалить источник «${normalized}»? ${linkedCount} поз. останутся в истории.`,
         doDelete: async () => {
-          const matchedItems = (state.itemCatalogItems || []).filter((item) => getItemCatalogShopKey(item.shop_name || "") === getItemCatalogShopKey(normalized));
-          for (const item of matchedItems) {
-            await core.requestJson(`/api/v1/operations/item-templates/${item.id}`, {
-              method: "DELETE",
-              headers: core.authHeaders(),
-            });
-            state.selectedItemCatalogIds?.delete?.(Number(item.id));
-          }
-          writeItemCatalogSourceGroups(
-            readItemCatalogSourceGroups().filter((name) => getItemCatalogShopKey(name) !== getItemCatalogShopKey(normalized)),
-          );
+          const source = findSourceByName(normalized);
+          if (!source?.id) throw new Error("Источник не найден");
+          await core.requestJson(`/api/v1/operations/item-sources/${Number(source.id)}`, {
+            method: "DELETE",
+            headers: core.authHeaders(),
+          });
           invalidateItemCatalogDependentCaches?.();
+          state.itemSourcesLoaded = false;
         },
         onAfterDelete: async () => {
+          await loadItemSources?.({ force: true });
           await refreshItemBrandsAfterCatalogMutation();
           await loadItemCatalog({ force: true });
-          savePreferencesDebounced(450);
         },
         toastMessage: "Источник удален",
         onDeleteError: "Не удалось удалить источник",
@@ -220,7 +245,9 @@
       }
       if (el.itemTemplateHistoryMeta) {
         const source = normalizeItemCatalogShopName(item.shop_name || "") || "Без источника";
+        const image = window.App.getRuntimeModule?.("catalog-media")?.renderThumb?.(item.image_id, { kind: "item", size: "row", alt: item.name || "Позиция" }) || "";
         el.itemTemplateHistoryMeta.innerHTML = `
+          ${image}
           <div class="muted-small">Источник</div>
           <div class="operation-receipt-shop">${core.renderCategoryChip({ name: source, icon: null, accent_color: null }, "")}</div>
         `;

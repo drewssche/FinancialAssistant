@@ -7,7 +7,7 @@ from sqlalchemy import and_, func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.money import allocate_largest_remainder
-from app.db.models import ItemBrand, Operation, OperationItemTemplate, OperationReceiptItem
+from app.db.models import ItemBrand, ItemSource, Operation, OperationItemTemplate, OperationReceiptItem
 
 
 class ItemBrandRepository:
@@ -203,12 +203,24 @@ class ItemBrandRepository:
                 ItemBrand.name,
                 ItemBrand.accent_color,
                 ItemBrand.is_archived,
+                ItemBrand.image_id,
+                OperationItemTemplate.image_id,
+                ItemSource.id,
+                ItemSource.name,
+                ItemSource.image_id,
             )
             .outerjoin(
                 ItemBrand,
                 and_(
                     ItemBrand.id == OperationItemTemplate.brand_id,
                     ItemBrand.user_id == user_id,
+                ),
+            )
+            .outerjoin(
+                ItemSource,
+                and_(
+                    ItemSource.id == OperationItemTemplate.source_id,
+                    ItemSource.user_id == user_id,
                 ),
             )
             .where(
@@ -222,6 +234,23 @@ class ItemBrandRepository:
                 "brand_name": name,
                 "brand_accent_color": accent_color,
                 "brand_is_archived": bool(is_archived) if brand_id is not None else False,
+                "brand_image_id": brand_image_id,
+                "item_image_id": item_image_id,
+                "image_id": item_image_id,
+                "source_id": int(source_id) if source_id is not None else None,
+                "source_name": source_name,
+                "source_image_id": source_image_id,
             }
-            for template_id, brand_id, name, accent_color, is_archived in rows
+            for (
+                template_id,
+                brand_id,
+                name,
+                accent_color,
+                is_archived,
+                brand_image_id,
+                item_image_id,
+                source_id,
+                source_name,
+                source_image_id,
+            ) in rows
         }

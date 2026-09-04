@@ -161,9 +161,13 @@
       return {
         draft_id: state[ctx.seqKey],
         template_id: seed.template_id || null,
+        item_image_id: seed.item_image_id || seed.image_id || null,
+        source_id: seed.source_id || null,
+        source_image_id: seed.source_image_id || null,
         brand_id: seed.brand_id ? Number(seed.brand_id) : null,
         brand_name: normalizeReceiptName(seed.brand_name || ""),
         brand_accent_color: seed.brand_accent_color || null,
+        brand_image_id: seed.brand_image_id || null,
         brand_is_archived: Boolean(seed.brand_is_archived),
         brand_touched: Boolean(seed.brand_touched),
         category_id: seed.category_id ? Number(seed.category_id) : null,
@@ -185,10 +189,12 @@
 
     function unlinkReceiptTemplateIdentity(item) {
       item.template_id = null;
+      item.item_image_id = null;
       if (item.brand_is_archived) {
         item.brand_id = null;
         item.brand_name = "";
         item.brand_accent_color = null;
+        item.brand_image_id = null;
         item.brand_is_archived = false;
         item.brand_touched = true;
         return true;
@@ -200,6 +206,49 @@
         item.brand_touched = true;
       }
       return false;
+    }
+
+    function applySavedTemplateToReceiptDrafts(template) {
+      const templateId = Number(template?.id || 0);
+      if (!templateId) {
+        return false;
+      }
+      let changedAny = false;
+      for (const mode of ["create", "edit"]) {
+        const rows = getReceiptItems(mode);
+        const linkedRows = rows.filter((item) => Number(item?.template_id || 0) === templateId);
+        if (!linkedRows.length) {
+          continue;
+        }
+        const ctx = getReceiptContext(mode);
+        const scrollNodes = [ctx.listNode, ctx.fieldsNode?.closest?.(".modal-card")].filter(Boolean);
+        const scrollPositions = scrollNodes.map((node) => [node, node.scrollTop]);
+        for (const item of linkedRows) {
+          item.name = normalizeReceiptName(template?.name || item.name || "");
+          item.item_image_id = template?.image_id || null;
+          item.shop_name = normalizeReceiptName(template?.source_name || template?.shop_name || "");
+          item.source_id = template?.source_id || null;
+          item.source_image_id = template?.source_image_id || null;
+          item.category_id = template?.last_category_id ? Number(template.last_category_id) : null;
+          item.brand_id = template?.brand_id ? Number(template.brand_id) : null;
+          item.brand_name = normalizeReceiptName(template?.brand_name || "");
+          item.brand_accent_color = template?.brand_accent_color || null;
+          item.brand_image_id = template?.brand_image_id || null;
+          item.brand_is_archived = Boolean(template?.brand_is_archived);
+          item.brand_touched = false;
+        }
+        renderReceiptItems(mode);
+        scrollPositions.forEach(([node, scrollTop]) => {
+          node.scrollTop = scrollTop;
+        });
+        if (mode === "create") {
+          updateCreatePreview();
+        } else {
+          updateEditPreview();
+        }
+        changedAny = true;
+      }
+      return changedAny;
     }
 
     function syncReceiptBrandField(item, mode = "create") {
@@ -252,6 +301,10 @@
         const nextShopName = normalizeReceiptName(value);
         const identityChanged = normalizeReceiptName(item.shop_name || "").toLowerCase() !== nextShopName.toLowerCase();
         item.shop_name = nextShopName;
+        const source = (state.itemSources || []).find((entry) => normalizeReceiptName(entry?.name || "").toLowerCase() === nextShopName.toLowerCase())
+          || (state.receiptTemplateHints || []).find((entry) => normalizeReceiptName(entry?.source_name || entry?.shop_name || "").toLowerCase() === nextShopName.toLowerCase());
+        item.source_id = source?.source_id || source?.id || null;
+        item.source_image_id = source?.source_image_id || source?.image_id || null;
         item.shop_name_inherited = false;
         if (identityChanged) {
           if (unlinkReceiptTemplateIdentity(item)) {
@@ -263,6 +316,7 @@
         const identityChanged = normalizeReceiptName(item.name || "").toLowerCase() !== nextName.toLowerCase();
         item.name = nextName;
         if (identityChanged) {
+          item.item_image_id = null;
           if (unlinkReceiptTemplateIdentity(item)) {
             syncReceiptBrandField(item, mode);
           }
@@ -275,6 +329,7 @@
         item.brand_id = brand?.id ? Number(brand.id) : null;
         item.brand_name = normalizeReceiptName(brand?.name || "");
         item.brand_accent_color = brand?.accent_color || null;
+        item.brand_image_id = brand?.image_id || null;
         item.brand_is_archived = Boolean(brand?.is_archived);
         item.brand_touched = true;
       } else if (key === "brand_search") {
@@ -314,6 +369,8 @@
       const primaryShopName = normalizeReceiptName(getReceiptItems(mode)[0]?.shop_name || "");
       return createReceiptDraft({
         shop_name: primaryShopName,
+        source_id: getReceiptItems(mode)[0]?.source_id || null,
+        source_image_id: getReceiptItems(mode)[0]?.source_image_id || null,
         shop_name_inherited: Boolean(primaryShopName),
       }, mode);
     }
@@ -330,6 +387,8 @@
         if (!normalizeReceiptName(item.shop_name || "") || item.shop_name_inherited) {
           if (normalizeReceiptName(item.shop_name || "") !== primaryShopName) {
             item.shop_name = primaryShopName;
+            item.source_id = firstRow.source_id || null;
+            item.source_image_id = firstRow.source_image_id || null;
             if (unlinkReceiptTemplateIdentity(item)) {
               syncReceiptBrandField(item, mode);
             }
@@ -422,6 +481,13 @@
         const brandName = normalizeReceiptName(brandMeta?.name || item.brand_name || "");
         const brandAccent = safeBrandAccent(brandMeta?.accent_color || item.brand_accent_color);
         const activeDiscountType = item.discount_type || "promo";
+        const media = window.App.getRuntimeModule?.("catalog-media") || {};
+        const linkedItemThumb = item.template_id ? media.renderThumb?.(item.item_image_id, {
+          kind: "item",
+          size: "picker",
+          alt: item.name || "Позиция",
+          fallback: String(item.name || "П").slice(0, 1),
+        }) || "" : "";
         const discountTypeButtons = RECEIPT_DISCOUNT_TYPES.map((entry) => `
           <button
             class="receipt-discount-type-chip ${activeDiscountType === entry.value ? "is-active" : ""}"
@@ -444,7 +510,11 @@
                 <div class="receipt-brand-picker app-popover ${brandPickerOpen ? "" : "hidden"}"></div>
               </div>
               <div class="receipt-name-cell ${namePickerOpen ? "has-open-popover" : ""}">
-                <textarea class="receipt-name-input" rows="1" data-receipt-field="name" placeholder="Позиция" title="${esc(item.name || "Позиция")}" aria-label="Название позиции">${esc(item.name)}</textarea>
+                <div class="receipt-name-field-wrap">
+                  ${item.template_id ? `<button class="receipt-linked-thumb" type="button" data-open-receipt-template-card="${Number(item.template_id)}" title="Открыть карточку позиции" aria-label="Открыть карточку ${esc(item.name || "позиции")}">${linkedItemThumb}</button>` : ""}
+                  <textarea class="receipt-name-input" rows="1" data-receipt-field="name" placeholder="Позиция" title="${esc(item.name || "Позиция")}" aria-label="Название позиции">${esc(item.name)}</textarea>
+                  ${item.template_id ? `<button class="receipt-template-card-btn" type="button" data-open-receipt-template-card="${Number(item.template_id)}" title="Открыть карточку позиции" aria-label="Открыть карточку позиции">↗</button>` : ""}
+                </div>
                 <span class="receipt-new-badge ${item.name && !item.template_id ? "" : "hidden"}">Новая позиция</span>
                 <div class="receipt-name-picker app-popover ${namePickerOpen ? "" : "hidden"}"></div>
               </div>
@@ -716,6 +786,7 @@
       return getReceiptItems("create")
         .map((item) => ({
           ...(Number(item.template_id) > 0 ? { template_id: Number(item.template_id) } : {}),
+          ...(Number(item.source_id) > 0 ? { source_id: Number(item.source_id) } : {}),
           ...(item.brand_touched ? { brand_id: item.brand_id ? Number(item.brand_id) : null } : {}),
           category_id: resolveReceiptPayloadCategoryId(item, "create", defaultCategoryId),
           shop_name: normalizeReceiptName(item.shop_name || "") || null,
@@ -739,6 +810,7 @@
       return getReceiptItems("edit")
         .map((item) => ({
           ...(Number(item.template_id) > 0 ? { template_id: Number(item.template_id) } : {}),
+          ...(Number(item.source_id) > 0 ? { source_id: Number(item.source_id) } : {}),
           ...(item.brand_touched ? { brand_id: item.brand_id ? Number(item.brand_id) : null } : {}),
           category_id: resolveReceiptPayloadCategoryId(item, "edit", defaultCategoryId),
           shop_name: normalizeReceiptName(item.shop_name || "") || null,
@@ -759,6 +831,7 @@
       clearReceiptItems,
       setReceiptEnabled,
       renderReceiptItems,
+      applySavedTemplateToReceiptDrafts,
       renderReceiptSummary,
       loadReceiptTemplateHints,
       handleReceiptItemsListInput,

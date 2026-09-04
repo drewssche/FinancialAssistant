@@ -36,10 +36,13 @@
     const grouped = new Map();
     for (const sourceName of readItemCatalogSourceGroups()) {
       const sourceKey = getItemCatalogShopKey(sourceName);
+      const sourceMeta = (state.itemSources || []).find((item) => getItemCatalogShopKey(item?.name || "") === sourceKey);
       if (!grouped.has(sourceKey)) {
         grouped.set(sourceKey, {
           shopKey: sourceKey,
           shopName: sourceName || "Без источника",
+          sourceId: Number(sourceMeta?.id || 0) || null,
+          sourceImageId: Number(sourceMeta?.image_id || 0) || null,
           items: [],
         });
       }
@@ -51,10 +54,15 @@
         grouped.set(shopKey, {
           shopKey,
           shopName: shopNameRaw || "Без источника",
+          sourceId: Number(item?.source_id || 0) || null,
+          sourceImageId: Number(item?.source_image_id || 0) || null,
           items: [],
         });
       }
-      grouped.get(shopKey).items.push(item);
+      const group = grouped.get(shopKey);
+      if (!group.sourceId && item?.source_id) group.sourceId = Number(item.source_id);
+      if (!group.sourceImageId && item?.source_image_id) group.sourceImageId = Number(item.source_image_id);
+      group.items.push(item);
     }
     const preset = state.itemCatalogSortPreset || "usage";
     const groups = Array.from(grouped.values()).map((group) => {
@@ -181,6 +189,7 @@
     const selectedIds = state.selectedItemCatalogIds || new Set();
     const brandsById = new Map((state.itemBrands || []).map((brand) => [Number(brand?.id || 0), brand]));
     const brandFeature = window.App.getRuntimeModule?.("item-brands") || {};
+    const media = window.App.getRuntimeModule?.("catalog-media") || {};
 
     const compactMobile = isCompactMobileViewport();
     el.itemCatalogBody.innerHTML = groups.map((group) => {
@@ -201,12 +210,19 @@
           id: item.brand_id,
           name: item.brand_name,
           accent_color: item.brand_accent_color,
+          image_id: item.brand_image_id,
           is_archived: Boolean(item.brand_is_archived),
         } : null);
         const brandHtml = brandFeature.renderBrandChip?.(brandMeta) || (brandMeta?.name
           ? `<span class="item-brand-chip"><span class="item-brand-chip-name">${escapeHtml(brandMeta.name)}</span></span>`
           : '<span class="item-brand-unassigned">Без бренда</span>');
         const selected = selectedIds.has(Number(item.id));
+        const itemThumb = media.renderThumb?.(item.image_id, {
+          kind: "item",
+          size: "row",
+          alt: item.name || "Позиция",
+          fallback: String(item.name || "П").slice(0, 1),
+        }) || "";
         if (compactMobile) {
           return `
             <tr class="item-catalog-item-row table-hierarchy-child-row item-catalog-mobile-item-row table-record-open-row ${isCollapsed ? "hidden" : ""}" data-item-template-row="1" data-item-template-open-id="${item.id}">
@@ -214,7 +230,7 @@
                 <div class="item-catalog-mobile-item-card">
                   <div class="item-catalog-mobile-item-head">
                     <label class="item-catalog-mobile-item-select"><input data-item-catalog-select-id="${Number(item.id)}" type="checkbox" ${selected ? "checked" : ""} aria-label="Выбрать ${escapeHtml(item.name || "позицию")}" /></label>
-                    <div class="item-catalog-mobile-item-title">${core.highlightText(item.name || "—", query)}</div>
+                    <button class="item-catalog-mobile-item-title catalog-item-open catalog-item-identity" data-edit-item-template-id="${Number(item.id)}" type="button">${itemThumb}<span class="catalog-item-identity-main">${core.highlightText(item.name || "—", query)}</span></button>
                     <div class="mobile-card-kebab-wrap">
                       <button class="btn btn-secondary mobile-card-kebab-trigger" data-mobile-card-menu-trigger="item-template-${item.id}" type="button" aria-label="Действия позиции">
                         <span aria-hidden="true">⋮</span>
@@ -250,7 +266,7 @@
             <td class="item-catalog-select-cell" data-label="Выбор"><input data-item-catalog-select-id="${Number(item.id)}" type="checkbox" ${selected ? "checked" : ""} aria-label="Выбрать ${escapeHtml(item.name || "позицию")}" /></td>
             <td class="item-catalog-source-context-cell" data-label="Источник"><span class="hierarchy-child-label">↳ ${core.highlightText(group.shopName, query)}</span></td>
             <td class="item-catalog-brand-cell" data-label="Бренд">${brandHtml}</td>
-            <td data-label="Позиция">${core.highlightText(item.name || "—", query)}</td>
+            <td data-label="Позиция"><button class="catalog-item-open catalog-item-identity" data-edit-item-template-id="${Number(item.id)}" type="button">${itemThumb}<span class="catalog-item-identity-main">${core.highlightText(item.name || "—", query)}</span></button></td>
             <td data-label="Категория">${categoryHtml}</td>
             <td data-label="Цена">${core.formatMoney(item.latest_unit_price || 0)}</td>
             <td class="mobile-actions-cell table-kebab-cell" data-label="Действия">
@@ -269,6 +285,12 @@
           ? `<tr class="item-catalog-item-row item-catalog-mobile-item-row"><td colspan="7" class="item-catalog-mobile-item-cell"><div class="item-catalog-mobile-empty muted-small">Позиции в источнике пока не добавлены</div></td></tr>`
           : `<tr class="item-catalog-item-row"><td></td><td data-label="Источник">${core.highlightText(group.shopName, query)}</td><td data-label="Позиция" colspan="5" class="muted-small">Позиции в источнике пока не добавлены</td></tr>`
         : "";
+      const sourceThumb = media.renderThumb?.(group.sourceImageId, {
+        kind: "source",
+        size: "row",
+        alt: group.shopName,
+        fallback: String(group.shopName || "И").slice(0, 1),
+      }) || "";
       if (compactMobile) {
         return `
           <tr class="item-catalog-group-row table-hierarchy-parent-row item-catalog-mobile-group-row">
@@ -277,6 +299,7 @@
                 <div class="item-catalog-mobile-group-head">
                   <button type="button" class="item-catalog-group-btn item-catalog-mobile-group-toggle" data-item-catalog-shop-key="${encodeURIComponent(group.shopKey)}" ${queryActive ? "disabled" : ""}>
                     <span class="item-catalog-group-chevron">${chevron}</span>
+                    ${sourceThumb}
                     <span class="item-catalog-group-main">
                       <span class="item-catalog-group-name">${core.highlightText(group.shopName, query)}</span>
                       <span class="item-catalog-group-metas item-catalog-mobile-group-metas">
@@ -313,6 +336,7 @@
                 <div class="category-table-group-title">
                   <button type="button" class="item-catalog-group-btn" data-item-catalog-shop-key="${encodeURIComponent(group.shopKey)}" ${queryActive ? "disabled" : ""}>
                     <span class="item-catalog-group-chevron">${chevron}</span>
+                    ${sourceThumb}
                     <span class="item-catalog-group-name">${core.highlightText(group.shopName, query)}</span>
                   </button>
                   ${group.shopKey !== "__no_shop__" ? `<button class="btn btn-secondary category-context-create-btn item-source-context-create-btn" data-create-item-template-source-name="${escapeHtml(group.shopName)}" type="button" aria-label="Добавить позицию в источник">+</button>` : ""}

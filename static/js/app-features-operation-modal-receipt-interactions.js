@@ -58,6 +58,7 @@
         brand_id: item?.brand_id ? Number(item.brand_id) : null,
         brand_name: normalizeReceiptName(item?.brand_name || "") || null,
         brand_accent_color: item?.brand_accent_color || null,
+        brand_image_id: item?.brand_image_id || null,
         brand_is_archived: Boolean(item?.brand_is_archived),
       };
     }
@@ -68,10 +69,14 @@
       }
       rowItem.name = template.name;
       rowItem.template_id = template.id;
+      rowItem.item_image_id = template.image_id || null;
+      rowItem.source_id = template.source_id || null;
+      rowItem.source_image_id = template.source_image_id || null;
       rowItem.shop_name = normalizeReceiptName(template.shop_name || rowItem.shop_name || "");
       rowItem.brand_id = template.brand_id ? Number(template.brand_id) : null;
       rowItem.brand_name = normalizeReceiptName(template.brand_name || "");
       rowItem.brand_accent_color = template.brand_accent_color || null;
+      rowItem.brand_image_id = template.brand_image_id || null;
       rowItem.brand_is_archived = Boolean(template.brand_is_archived);
       rowItem.brand_touched = false;
       if (!rowItem.category_id && template.last_category_id) {
@@ -359,6 +364,17 @@
       nextInput?.blur();
     }
     function handleReceiptItemsListClick(event) {
+      const cardButton = event.target.closest("button[data-open-receipt-template-card]");
+      if (cardButton) {
+        hideAllReceiptPickers();
+        core.runAction({
+          errorPrefix: "Не удалось открыть карточку позиции",
+          action: () => window.App.getRuntimeModule?.("catalog-media")?.openItemTemplateCard?.(
+            Number(cardButton.dataset.openReceiptTemplateCard || 0),
+          ),
+        });
+        return;
+      }
       const shopBtn = event.target.closest("button[data-receipt-shop-name], button[data-receipt-create-shop]");
       if (shopBtn) {
         const draftId = Number(shopBtn.dataset.receiptItemId || 0);

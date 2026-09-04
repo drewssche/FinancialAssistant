@@ -11,6 +11,7 @@
   let itemCatalogRequestSeq = 0;
   let itemCatalogBaseItems = [];
   let itemCatalogBaseTotal = 0;
+  let itemSourcesRequestController = null;
   const ITEM_CATALOG_CACHE_TTL_MS = 20000;
   const ITEM_CATALOG_NO_SHOP_KEY = "__no_shop__";
 
@@ -43,13 +44,12 @@
   }
 
   function readItemCatalogSourceGroups() {
-    const list = state.preferences?.data?.ui?.item_catalog_sources;
-    if (!Array.isArray(list)) {
-      return [];
-    }
+    const apiNames = (state.itemSources || []).filter((item) => !item?.is_archived).map((item) => item?.name);
+    const preferenceNames = state.preferences?.data?.ui?.item_catalog_sources;
+    const list = state.itemSourcesLoaded ? apiNames : (Array.isArray(preferenceNames) ? preferenceNames : []);
     return list
       .map((item) => normalizeItemCatalogShopName(item))
-      .filter((item, idx, arr) => item && arr.indexOf(item) === idx);
+      .filter((item, idx, arr) => item && arr.findIndex((entry) => getItemCatalogShopKey(entry) === getItemCatalogShopKey(item)) === idx);
   }
 
   function listItemCatalogSourceNames(limit = 24) {
@@ -83,6 +83,29 @@
     state.preferences.data = state.preferences.data || {};
     state.preferences.data.ui = state.preferences.data.ui || {};
     state.preferences.data.ui.item_catalog_sources = items;
+  }
+
+  async function loadItemSources(options = {}) {
+    if (!options.force && state.itemSourcesLoaded) {
+      return state.itemSources || [];
+    }
+    itemSourcesRequestController?.abort();
+    const controller = new AbortController();
+    itemSourcesRequestController = controller;
+    try {
+      const payload = await core.requestJson("/api/v1/operations/item-sources?page=1&page_size=500", {
+        headers: core.authHeaders(),
+        signal: controller.signal,
+      });
+      state.itemSources = Array.isArray(payload?.items) ? payload.items.slice() : [];
+      state.itemSourcesLoaded = true;
+      return state.itemSources;
+    } catch (err) {
+      if (core.isAbortError?.(err)) return state.itemSources || [];
+      throw err;
+    } finally {
+      if (itemSourcesRequestController === controller) itemSourcesRequestController = null;
+    }
   }
 
   function itemCatalogLastUsedMs(item) {
@@ -270,6 +293,7 @@
     for (const prefix of [
       "item-catalog",
       "item-brands",
+      "item-sources",
       "op:receipt:templates",
       "operations",
       "plans",
@@ -280,6 +304,7 @@
     }
     state.receiptTemplateHints = [];
     state.itemBrandsLoaded = false;
+    state.itemSourcesLoaded = false;
   }
 
   async function fetchItemCatalogPages(params, requestController) {
@@ -306,13 +331,16 @@
   }
 
   async function loadItemCatalog(options = {}) {
+    const force = options.force === true;
+    if (force || !state.itemSourcesLoaded) {
+      await loadItemSources({ force }).catch(() => []);
+    }
     if (!state.itemBrandsLoaded) {
       await window.App.getRuntimeModule?.("item-brands")?.ensureItemBrandsLoaded?.().catch(() => []);
     }
     if (!(state.categories || []).length) {
       await window.App.getRuntimeModule?.("category-actions")?.loadCategories?.();
     }
-    const force = options.force === true;
     const query = String(el.itemCatalogSearchQ?.value || "").trim();
     if (query && !force && itemCatalogBaseTotal > 0 && itemCatalogBaseItems.length >= itemCatalogBaseTotal) {
       state.itemCatalogItems = filterItemCatalogLocally(itemCatalogBaseItems, query);
@@ -390,16 +418,20 @@
       applySavedReceiptTemplateHint,
       invalidateItemCatalogDependentCaches,
       savePreferencesDebounced,
+      loadItemSources,
     })
     : {};
 
   function cleanupItemCatalogRuntime() {
     cancelDebouncedPreferencesSave();
     window.App.getRuntimeModule?.("item-brands")?.cleanupRuntime?.();
+    window.App.getRuntimeModule?.("catalog-media")?.clear?.();
     if (itemCatalogRequestController) {
       itemCatalogRequestController.abort();
       itemCatalogRequestController = null;
     }
+    itemSourcesRequestController?.abort();
+    itemSourcesRequestController = null;
     itemCatalogRequestSeq = 0;
     itemCatalogBaseItems = [];
     itemCatalogBaseTotal = 0;
@@ -408,6 +440,8 @@
     state.receiptTemplateHints = [];
     state.itemBrands = [];
     state.itemBrandsLoaded = false;
+    state.itemSources = [];
+    state.itemSourcesLoaded = false;
     state.selectedItemCatalogIds = new Set();
     state.itemCatalogView = "positions";
     state.itemCatalogBrandFilter = "all";
@@ -461,6 +495,7 @@
     applySavedItemCatalogItem,
     applySavedReceiptTemplateHint,
     invalidateItemCatalogDependentCaches,
+    loadItemSources,
   };
 
   window.App.registerRuntimeModule?.("item-catalog", api);

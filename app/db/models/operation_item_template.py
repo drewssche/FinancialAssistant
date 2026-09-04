@@ -13,7 +13,12 @@ class OperationItemTemplate(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     shop_name: Mapped[str | None] = mapped_column(Text, nullable=True)
-    shop_name_ci: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    shop_name_ci: Mapped[str | None] = mapped_column(String(320), nullable=True, index=True)
+    source_id: Mapped[int | None] = mapped_column(
+        ForeignKey("item_sources.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     name: Mapped[str] = mapped_column(Text)
     name_ci: Mapped[str] = mapped_column(String(255), index=True)
     last_category_id: Mapped[int | None] = mapped_column(
@@ -23,6 +28,11 @@ class OperationItemTemplate(Base):
     )
     brand_id: Mapped[int | None] = mapped_column(
         ForeignKey("item_brands.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    image_id: Mapped[int | None] = mapped_column(
+        ForeignKey("catalog_media_assets.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )

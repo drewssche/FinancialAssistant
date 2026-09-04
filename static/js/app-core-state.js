@@ -89,6 +89,8 @@
       itemCatalogAllItems: [],
       itemBrands: [],
       itemBrandsLoaded: false,
+      itemSources: [],
+      itemSourcesLoaded: false,
       itemCatalogView: "positions",
       itemCatalogBrandFilter: "all",
       selectedItemCatalogIds: new Set(),

@@ -28,6 +28,7 @@
     for (const prefix of [
       "item-catalog",
       "item-brands",
+      "item-sources",
       "op:receipt:templates",
       "operations",
       "plans",
@@ -37,6 +38,7 @@
       core.invalidateUiRequestCache?.(prefix);
     }
     state.itemBrandsLoaded = false;
+    state.itemSourcesLoaded = false;
   }
 
   function isBrandArchived(brand) {
@@ -54,8 +56,15 @@
       return '<span class="item-brand-unassigned">Без бренда</span>';
     }
     const color = normalizeBrandColor(brand?.accent_color || brand?.brand_accent_color);
+    const imageId = options.image === false
+      ? null
+      : Number(brand?.image_id || brand?.brand_image_id || 0) || null;
+    const media = window.App.getRuntimeModule?.("catalog-media") || {};
     const title = options.title === false ? "" : ` title="${escapeHtml(name)}"`;
-    return `<span class="item-brand-chip" style="--brand-color:${color}"${title}><span class="item-brand-chip-name">${escapeHtml(name)}</span></span>`;
+    const logo = imageId && media.renderThumb
+      ? media.renderThumb(imageId, { kind: "brand", size: "chip", alt: `Логотип ${name}`, fallback: name.slice(0, 1) })
+      : "";
+    return `<span class="item-brand-chip ${imageId ? "has-image" : ""}" style="--brand-color:${color}"${title}>${logo}<span class="item-brand-chip-name">${escapeHtml(name)}</span></span>`;
   }
 
   function payloadItems(payload) {
@@ -158,6 +167,12 @@
   function renderBrandRow(brand) {
     const id = Number(brand?.id || 0);
     const positionsCount = Number(brand?.positions_count || 0);
+    const contextActions = window.App.getRuntimeModule?.("context-actions");
+    const actions = (contextActions?.keys?.("item_brand", "row") || []).map((key) => {
+      if (key === "edit") return `<button class="btn btn-secondary" data-edit-item-brand-id="${id}" type="button">Изменить</button>`;
+      if (key === "delete") return `<button class="btn btn-danger" data-delete-item-brand-id="${id}" type="button">Удалить</button>`;
+      return "";
+    }).join("");
     return `
       <tr class="table-record-open-row" data-item-brand-id="${id}">
         <td data-label="Бренд">
@@ -169,10 +184,9 @@
         <td data-label="Покупок">${brandPurchaseCount(brand)}</td>
         <td data-label="Потрачено"><strong>${core.formatMoney(brandSpentTotal(brand))}</strong></td>
         <td data-label="Последняя покупка">${brand?.last_purchase_date ? core.formatDateRu(brand.last_purchase_date) : "—"}</td>
-        <td data-label="Действия"><div class="item-brand-actions">
-          <button class="btn btn-secondary btn-xs" data-edit-item-brand-id="${id}" type="button">Изменить</button>
-          <button class="btn btn-danger btn-xs" data-delete-item-brand-id="${id}" type="button">Архивировать</button>
-        </div></td>
+        <td class="mobile-actions-cell table-kebab-cell" data-label="Действия">
+          ${core.renderInlineKebabMenu?.(`item-brand-${id}`, actions, "Действия бренда", "item-brand-kebab") || ""}
+        </td>
       </tr>
     `;
   }
@@ -190,6 +204,15 @@
     el.itemBrandsBody.innerHTML = rows.length
       ? rows.map(renderBrandRow).join("")
       : '<tr><td colspan="6" class="muted-small">Бренды не найдены</td></tr>';
+  }
+
+  function closeBrandActionMenu(target) {
+    const menu = target?.closest?.(".table-kebab-popover");
+    if (!menu) return;
+    const pickerUtils = window.App.getRuntimeModule?.("picker-utils");
+    pickerUtils?.setPopoverOpen?.(menu, false, {
+      owners: Array.isArray(menu.__appPopoverOwners) ? menu.__appPopoverOwners : [],
+    });
   }
 
   async function loadItemBrands(options = {}) {
@@ -274,8 +297,14 @@
     if (el.itemBrandAccentColor) {
       el.itemBrandAccentColor.value = normalizeBrandColor(brand?.accent_color);
     }
+    window.App.getRuntimeModule?.("catalog-media")?.resetPicker?.("item-brand", {
+      imageId: brand?.image_id,
+      kind: "brand",
+      label: brand?.name ? `Логотип ${brand.name}` : "Логотип бренда",
+    });
     renderBrandPreview();
     el.itemBrandModal.classList.remove("hidden");
+    core.bringModalToFront?.(el.itemBrandModal);
     setTimeout(() => {
       el.itemBrandName?.focus();
       el.itemBrandName?.select();
@@ -286,6 +315,7 @@
     state.editItemBrandId = null;
     el.itemBrandForm?.reset();
     el.itemBrandModal?.classList.add("hidden");
+    core.markModalClosed?.(el.itemBrandModal);
   }
 
   async function submitItemBrandForm(event) {
@@ -296,11 +326,16 @@
       return;
     }
     const id = Number(state.editItemBrandId || 0);
-    const saved = await core.requestJson(id ? `/api/v1/operations/item-brands/${id}` : "/api/v1/operations/item-brands", {
+    let saved = await core.requestJson(id ? `/api/v1/operations/item-brands/${id}` : "/api/v1/operations/item-brands", {
       method: id ? "PATCH" : "POST",
       headers: core.authHeaders(),
       body: JSON.stringify({ name, accent_color: normalizeBrandColor(el.itemBrandAccentColor?.value) }),
     });
+    try {
+      saved = await window.App.getRuntimeModule?.("catalog-media")?.commitPicker?.("item-brand", "brand", saved?.id || id) || saved;
+    } catch (err) {
+      core.showToast?.(`Бренд сохранён, но логотип не обновлён: ${String(err?.message || err)}`, { type: "error" });
+    }
     invalidateBrandDependentCaches();
     closeItemBrandModal();
     await loadItemBrands({ force: true });
@@ -313,7 +348,7 @@
 
   async function deleteItemBrandFlow(brand) {
     const linkedCount = Number(brand?.positions_count || 0);
-    const actionLabel = "Архивировать";
+    const actionLabel = "Удалить";
     const explanation = linkedCount > 0
       ? `Бренд останется в истории ${linkedCount} связанных позиций, но исчезнет из списка выбора.`
       : "Бренд будет убран из активного справочника и при необходимости его можно будет восстановить повторным созданием.";
@@ -329,7 +364,7 @@
           closeItemBrandDetail();
           await loadItemBrands({ force: true });
           await window.App.getRuntimeModule?.("item-catalog")?.loadItemCatalog?.({ force: true });
-          core.showToast?.("Бренд архивирован", { type: "success" });
+          core.showToast?.("Бренд удалён", { type: "success" });
         },
       });
     }, { title: `${actionLabel} бренд`, confirmLabel: actionLabel });
@@ -364,7 +399,9 @@
       return sourceDiff || String(a?.name || "").localeCompare(String(b?.name || ""), "ru");
     });
     if (el.itemBrandDetailTitle) {
-      el.itemBrandDetailTitle.innerHTML = `${renderBrandChip(brand, { title: false })}${archived ? '<span class="item-brand-archive-badge">Архивный</span>' : ""}`;
+      const media = window.App.getRuntimeModule?.("catalog-media") || {};
+      const logo = media.renderThumb?.(brand?.image_id, { kind: "brand", size: "row", alt: `Логотип ${brand?.name || "бренда"}` }) || "";
+      el.itemBrandDetailTitle.innerHTML = `<span class="item-brand-detail-title">${logo}${renderBrandChip(brand, { title: false, image: false })}</span>${archived ? '<span class="item-brand-archive-badge">Архивный</span>' : ""}`;
     }
     if (el.itemBrandDetailSubtitle) {
       const statusPrefix = archived ? "Сохранён в истории · " : "";
@@ -398,7 +435,7 @@
       return `
         <tr class="table-record-open-row" data-item-brand-template-id="${Number(item.id)}">
           <td data-label="Источник" class="item-brand-detail-source">${escapeHtml(item.shop_name || "Без источника")}</td>
-          <td data-label="Позиция"><strong>${escapeHtml(item.name || "—")}</strong></td>
+          <td data-label="Позиция"><button class="catalog-item-open catalog-item-identity" data-open-brand-template-id="${Number(item.id)}" type="button">${window.App.getRuntimeModule?.("catalog-media")?.renderThumb?.(item.image_id, { kind: "item", size: "row", alt: item.name || "Позиция" }) || ""}<strong>${escapeHtml(item.name || "—")}</strong></button></td>
           <td data-label="Категория">${categoryHtml}</td>
           <td data-label="Последняя цена">${core.formatMoney(item.latest_unit_price || 0)}</td>
           <td data-label="Действия"><button class="btn btn-secondary btn-xs" data-open-brand-template-id="${Number(item.id)}" type="button">Открыть</button></td>
@@ -423,6 +460,7 @@
     activeDetailBrand = provisionalBrand;
     activeDetailItems = [];
     el.itemBrandDetailModal.classList.remove("hidden");
+    core.bringModalToFront?.(el.itemBrandDetailModal);
     renderBrandDetail(provisionalBrand, []);
     if (el.itemBrandDetailBody) {
       el.itemBrandDetailBody.innerHTML = '<tr><td colspan="5" class="muted-small">Загружаем позиции…</td></tr>';
@@ -460,6 +498,7 @@
     activeDetailBrand = null;
     activeDetailItems = [];
     el.itemBrandDetailModal?.classList.add("hidden");
+    core.markModalClosed?.(el.itemBrandDetailModal);
     if (el.itemBrandDetailBody) {
       el.itemBrandDetailBody.innerHTML = "";
     }
@@ -597,13 +636,23 @@
       brandSearchTimer = setTimeout(renderItemBrands, 140);
     });
     el.itemBrandsBody?.addEventListener("click", (event) => {
+      const menuTrigger = event.target.closest("button[data-table-menu-trigger]");
+      if (menuTrigger) {
+        window.App.getRuntimeModule?.("item-catalog-ui-coordinator")?.toggleItemCatalogCardMenu?.({
+          trigger: menuTrigger,
+          pickerUtils: window.App.getRuntimeModule?.("picker-utils"),
+        });
+        return;
+      }
       const editButton = event.target.closest("[data-edit-item-brand-id]");
       if (editButton) {
+        closeBrandActionMenu(editButton);
         openItemBrandModal(brandFromId(editButton.dataset.editItemBrandId));
         return;
       }
       const deleteButton = event.target.closest("[data-delete-item-brand-id]");
       if (deleteButton) {
+        closeBrandActionMenu(deleteButton);
         deleteItemBrandFlow(brandFromId(deleteButton.dataset.deleteItemBrandId));
         return;
       }

@@ -1243,6 +1243,7 @@ class OperationService:
         *,
         user_id: int,
         shop_name: str | None,
+        source_id: int | None,
         name: str,
         last_category_id: int | None,
         brand_id: int | None,
@@ -1256,6 +1257,7 @@ class OperationService:
         return self.item_templates.create_item_template(
             user_id=user_id,
             shop_name=shop_name,
+            source_id=source_id,
             name=name,
             last_category_id=last_category_id,
             brand_id=brand_id,
@@ -1367,6 +1369,11 @@ class OperationService:
                     "brand_name": brand_meta.get("brand_name"),
                     "brand_accent_color": brand_meta.get("brand_accent_color"),
                     "brand_is_archived": bool(brand_meta.get("brand_is_archived", False)),
+                    "item_image_id": brand_meta.get("item_image_id"),
+                    "brand_image_id": brand_meta.get("brand_image_id"),
+                    "source_id": brand_meta.get("source_id"),
+                    "source_name": brand_meta.get("source_name") or row.shop_name,
+                    "source_image_id": brand_meta.get("source_image_id"),
                     "category_id": row.category_id,
                     "category_name": category_meta.get("name"),
                     "category_icon": category_meta.get("icon"),
@@ -1554,6 +1561,7 @@ class OperationService:
                         if item.get("template_id") is not None
                         else {}
                     ),
+                    **({"source_id": int(item["source_id"])} if item.get("source_id") is not None else {}),
                     **({"brand_id": item.get("brand_id")} if "brand_id" in item else {}),
                 }
             )

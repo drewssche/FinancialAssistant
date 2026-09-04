@@ -409,6 +409,16 @@
         }
       });
     }
+    el.operationReceiptItems?.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-open-receipt-template-card]");
+      if (!button) return;
+      core.runAction({
+        errorPrefix: "Не удалось открыть карточку позиции",
+        action: () => window.App.getRuntimeModule?.("catalog-media")?.openItemTemplateCard?.(
+          Number(button.dataset.openReceiptTemplateCard || 0),
+        ),
+      });
+    });
     if (el.closeItemTemplateModalBtn && getItemCatalogFeature().closeItemTemplateModal) {
       el.closeItemTemplateModalBtn.addEventListener("click", () => getItemCatalogFeature().closeItemTemplateModal?.());
     }

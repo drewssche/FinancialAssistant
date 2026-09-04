@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user_id
@@ -12,6 +12,10 @@ from app.schemas.operation import (
     ItemBrandMergeOut,
     ItemBrandOut,
     ItemBrandUpdate,
+    ItemSourceCreate,
+    ItemSourceListOut,
+    ItemSourceOut,
+    ItemSourceUpdate,
     MoneyFlowListOut,
     OperationCreate,
     OperationItemTemplateCreate,
@@ -32,7 +36,13 @@ from app.schemas.operation import (
     OperationSummaryOut,
     OperationUpdate,
 )
+from app.services.catalog_media_service import (
+    CatalogMediaService,
+    CatalogMediaTooLargeError,
+    CatalogMediaValidationError,
+)
 from app.services.item_brand_service import ItemBrandService
+from app.services.item_source_service import ItemSourceService
 from app.services.operation_service import OperationService
 
 router = APIRouter(prefix="/operations", tags=["operations"])
@@ -41,10 +51,48 @@ router = APIRouter(prefix="/operations", tags=["operations"])
 def _dump_receipt_item(item) -> dict:
     data = item.model_dump()
     fields_set = getattr(item, "model_fields_set", set())
-    for optional_link in ("template_id", "brand_id"):
+    for optional_link in ("template_id", "brand_id", "source_id"):
         if optional_link not in fields_set:
             data.pop(optional_link, None)
     return data
+
+
+def _read_catalog_image(file: UploadFile) -> bytes:
+    raw = file.file.read(CatalogMediaService.MAX_UPLOAD_BYTES + 1)
+    if len(raw) > CatalogMediaService.MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Image file must be at most 8 MiB",
+        )
+    return raw
+
+
+def _upload_catalog_image(*, db: Session, user_id: int, owner_kind: str, owner_id: int, file: UploadFile):
+    try:
+        return CatalogMediaService(db).upload(
+            user_id=user_id,
+            owner_kind=owner_kind,
+            owner_id=owner_id,
+            content_type=file.content_type,
+            raw=_read_catalog_image(file),
+        )
+    except CatalogMediaTooLargeError as exc:
+        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail=str(exc)) from exc
+    except CatalogMediaValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+def _delete_catalog_image(*, db: Session, user_id: int, owner_kind: str, owner_id: int):
+    try:
+        return CatalogMediaService(db).delete(
+            user_id=user_id,
+            owner_kind=owner_kind,
+            owner_id=owner_id,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
 @router.get("", response_model=OperationListOut)
@@ -246,6 +294,134 @@ def list_operation_item_templates(
     )
 
 
+@router.get("/media/{asset_id}/{variant}")
+def get_catalog_media(
+    asset_id: int,
+    variant: str,
+    if_none_match: str | None = Header(default=None),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        payload, checksum = CatalogMediaService(db).get_variant(
+            user_id=user_id,
+            asset_id=asset_id,
+            variant=variant,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    etag = f'"{checksum}-{variant}"'
+    headers = {
+        "Cache-Control": "private, max-age=31536000, immutable",
+        "ETag": etag,
+        "X-Content-Type-Options": "nosniff",
+    }
+    if if_none_match == etag:
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=headers)
+    return Response(content=payload, media_type="image/webp", headers=headers)
+
+
+@router.get("/item-sources", response_model=ItemSourceListOut)
+def list_item_sources(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=100, ge=1, le=500),
+    q: str | None = Query(default=None, max_length=160),
+    include_archived: bool = Query(default=False),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    items, total = ItemSourceService(db).list(
+        user_id=user_id,
+        page=page,
+        page_size=page_size,
+        q=q,
+        include_archived=include_archived,
+    )
+    return ItemSourceListOut(items=items, total=total, page=page, page_size=page_size)
+
+
+@router.post("/item-sources", response_model=ItemSourceOut, status_code=status.HTTP_201_CREATED)
+def create_item_source(
+    payload: ItemSourceCreate,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        return ItemSourceService(db).create(user_id=user_id, name=payload.name)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/item-sources/{source_id}", response_model=ItemSourceOut)
+def get_item_source(
+    source_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        return ItemSourceService(db).get(user_id=user_id, source_id=source_id, include_archived=True)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.patch("/item-sources/{source_id}", response_model=ItemSourceOut)
+def update_item_source(
+    source_id: int,
+    payload: ItemSourceUpdate,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    updates = payload.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields provided for update")
+    try:
+        return ItemSourceService(db).update(user_id=user_id, source_id=source_id, updates=updates)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.delete("/item-sources/{source_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+def delete_item_source(
+    source_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        ItemSourceService(db).archive(user_id=user_id, source_id=source_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put("/item-sources/{source_id}/image", response_model=ItemSourceOut)
+def upload_item_source_image(
+    source_id: int,
+    file: UploadFile = File(...),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    _upload_catalog_image(
+        db=db,
+        user_id=user_id,
+        owner_kind="source",
+        owner_id=source_id,
+        file=file,
+    )
+    return ItemSourceService(db).get(user_id=user_id, source_id=source_id)
+
+
+@router.delete("/item-sources/{source_id}/image", response_model=ItemSourceOut)
+def delete_item_source_image(
+    source_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    _delete_catalog_image(db=db, user_id=user_id, owner_kind="source", owner_id=source_id)
+    return ItemSourceService(db).get(user_id=user_id, source_id=source_id)
+
+
 @router.get("/item-brands", response_model=ItemBrandListOut)
 def list_item_brands(
     page: int = Query(default=1, ge=1),
@@ -345,6 +521,33 @@ def delete_item_brand(
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put("/item-brands/{brand_id}/image", response_model=ItemBrandOut)
+def upload_item_brand_image(
+    brand_id: int,
+    file: UploadFile = File(...),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    _upload_catalog_image(
+        db=db,
+        user_id=user_id,
+        owner_kind="brand",
+        owner_id=brand_id,
+        file=file,
+    )
+    return ItemBrandService(db).get(user_id=user_id, brand_id=brand_id)
+
+
+@router.delete("/item-brands/{brand_id}/image", response_model=ItemBrandOut)
+def delete_item_brand_image(
+    brand_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    _delete_catalog_image(db=db, user_id=user_id, owner_kind="brand", owner_id=brand_id)
+    return ItemBrandService(db).get(user_id=user_id, brand_id=brand_id)
 
 
 @router.get("/item-recommendations", response_model=list[OperationItemRecommendationOut])
@@ -477,6 +680,7 @@ def create_operation_item_template(
         return service.create_item_template(
             user_id=user_id,
             shop_name=payload.shop_name,
+            source_id=payload.source_id,
             name=payload.name,
             last_category_id=payload.last_category_id,
             brand_id=payload.brand_id,
@@ -489,6 +693,48 @@ def create_operation_item_template(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/item-templates/{template_id}", response_model=OperationItemTemplateOut)
+def get_operation_item_template(
+    template_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        return OperationService(db).item_templates.get_item_template(
+            user_id=user_id,
+            template_id=template_id,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.put("/item-templates/{template_id}/image", response_model=OperationItemTemplateOut)
+def upload_operation_item_template_image(
+    template_id: int,
+    file: UploadFile = File(...),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    _upload_catalog_image(
+        db=db,
+        user_id=user_id,
+        owner_kind="template",
+        owner_id=template_id,
+        file=file,
+    )
+    return OperationService(db).item_templates.get_item_template(user_id=user_id, template_id=template_id)
+
+
+@router.delete("/item-templates/{template_id}/image", response_model=OperationItemTemplateOut)
+def delete_operation_item_template_image(
+    template_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    _delete_catalog_image(db=db, user_id=user_id, owner_kind="template", owner_id=template_id)
+    return OperationService(db).item_templates.get_item_template(user_id=user_id, template_id=template_id)
 
 
 @router.patch("/item-templates/{template_id}", response_model=OperationItemTemplateOut)

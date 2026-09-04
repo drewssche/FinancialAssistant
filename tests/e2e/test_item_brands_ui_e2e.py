@@ -247,6 +247,15 @@ def test_brand_catalog_assignment_detail_and_analytics_drilldown(static_server_u
             expect(page.locator("#itemBrandsBody")).to_contain_text("Vici")
             expect(page.locator("#itemBrandsKpiGrid")).to_contain_text("Без бренда")
 
+            brand_row = page.locator('#itemBrandsBody tr[data-item-brand-id="1"]')
+            brand_row.locator("button[data-table-menu-trigger]").click()
+            brand_menu = page.locator('[data-table-menu="item-brand-1"]')
+            expect(brand_menu).to_be_visible()
+            expect(brand_menu.locator("button")).to_have_text(["Изменить", "Удалить"])
+            assert "Архивировать" not in brand_menu.inner_text()
+            brand_row.locator("button[data-table-menu-trigger]").click()
+            expect(brand_menu).to_be_hidden()
+
             page.locator('[data-open-item-brand-id="1"]').click()
             expect(page.locator("#itemBrandDetailModal")).to_be_visible()
             expect(page.locator("#itemBrandDetailBody")).to_contain_text("Крабовые палочки")

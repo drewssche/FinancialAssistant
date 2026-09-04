@@ -212,8 +212,10 @@ def test_edit_modals_keep_open_after_successful_save():
     assert "categoryUi.closeEditCategoryModal();" not in categories_data
     assert "categoryUi.closeEditGroupModal();" not in categories_data
     assert "if (!isEdit) {\n        closeItemTemplateModal();" in item_template_modal
-    source_edit_block = item_sources.split("if (originalName)", 1)[1].split("writeItemCatalogSourceGroups([...groups", 1)[0]
-    assert "closeSourceGroupModal();" not in source_edit_block
+    source_submit_block = item_sources.split("async function submitSourceGroupForm", 1)[1].split(
+        "async function deleteItemSourceFlow", 1
+    )[0]
+    assert "if (!isEdit) {\n        closeSourceGroupModal();" in source_submit_block
     assert "function closeVisibleModalOnEscape" in init_core
     assert "getOperationModal().closeEditModal" in init_core
     assert 'data-activity-entity-type="operation"' in renderers
@@ -311,7 +313,7 @@ def test_saved_item_template_is_applied_immediately_to_catalog_and_receipt_hints
     modal = (REPO_ROOT / "static/js/app-features-item-catalog-modal.js").read_text(encoding="utf-8")
 
     assert "function applySavedItemCatalogItem(item)" in catalog
-    assert "const savedItem = await core.requestJson(url" in modal
+    assert "savedItem = await core.requestJson(url" in modal
     assert "applySavedItemCatalogItem?.(savedItem);" in modal
     assert "applySavedReceiptTemplateHint(savedItem);" in modal
     assert 'core.invalidateUiRequestCache("op:receipt:templates");' in catalog

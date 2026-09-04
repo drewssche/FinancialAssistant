@@ -18,6 +18,7 @@ from app.db.models import Category
 from app.repositories.item_brand_repo import ItemBrandRepository
 from app.repositories.operation_repo import OperationRepository
 from app.services.activity_service import ActivityService
+from app.services.item_source_service import ItemSourceService
 
 
 MONEY_Q = Decimal("0.01")
@@ -26,9 +27,11 @@ MONEY_Q = Decimal("0.01")
 class OperationItemTemplateService:
     ACTIVITY_FIELDS = [
         "shop_name",
+        "source_id",
         "name",
         "last_category_id",
         "brand_id",
+        "image_id",
         "use_count",
         "is_archived",
         "last_used_at",
@@ -41,9 +44,11 @@ class OperationItemTemplateService:
     ]
     ACTIVITY_LABELS = {
         "shop_name": "Источник",
+        "source_id": "Источник",
         "name": "Название",
         "last_category_id": "Категория",
         "brand_id": "Бренд",
+        "image_id": "Изображение",
         "use_count": "Использований",
         "is_archived": "Архив",
         "last_used_at": "Последнее использование",
@@ -59,6 +64,7 @@ class OperationItemTemplateService:
         self.db = db
         self.repo = repo
         self.brand_repo = ItemBrandRepository(db)
+        self.source_service = ItemSourceService(db)
         self.activity = ActivityService(db)
 
     def list_item_templates(
@@ -99,6 +105,7 @@ class OperationItemTemplateService:
             payload.append(
                 {
                     "id": int(item.id),
+                    "image_id": item.image_id,
                     "shop_name": item.shop_name,
                     "name": item.name,
                     "use_count": int(item.use_count or 0),
@@ -111,6 +118,10 @@ class OperationItemTemplateService:
                             "brand_name": None,
                             "brand_accent_color": None,
                             "brand_is_archived": False,
+                            "brand_image_id": None,
+                            "source_id": item.source_id,
+                            "source_name": item.shop_name,
+                            "source_image_id": None,
                         },
                     ),
                     "latest_unit_price": self._money(latest.unit_price) if latest else None,
@@ -200,6 +211,7 @@ class OperationItemTemplateService:
         *,
         user_id: int,
         shop_name: str | None,
+        source_id: int | None,
         name: str,
         last_category_id: int | None,
         brand_id: int | None,
@@ -210,7 +222,15 @@ class OperationItemTemplateService:
         recommendation_interval_days: int | None = None,
         recommendation_base_quantity: Decimal = Decimal("1"),
     ) -> dict:
-        normalized_shop, normalized_name = self._normalize_item_template_fields(shop_name=shop_name, name=name)
+        source = self.source_service.resolve(
+            user_id=user_id,
+            source_id=source_id,
+            shop_name=shop_name,
+        )
+        normalized_shop, normalized_name = self._normalize_item_template_fields(
+            shop_name=source.name if source is not None else shop_name,
+            name=name,
+        )
         shop_name_ci = normalized_shop.casefold() if normalized_shop else None
         name_ci = normalized_name.casefold()
         validated_category_id = self._validate_category_id(user_id=user_id, category_id=last_category_id)
@@ -228,6 +248,7 @@ class OperationItemTemplateService:
                 user_id=user_id,
                 shop_name=normalized_shop,
                 shop_name_ci=shop_name_ci,
+                source_id=int(source.id) if source is not None else None,
                 name=normalized_name,
                 name_ci=name_ci,
                 last_category_id=validated_category_id,
@@ -256,6 +277,7 @@ class OperationItemTemplateService:
             if item.shop_name != normalized_shop:
                 item.shop_name = normalized_shop
                 item.shop_name_ci = shop_name_ci
+            item.source_id = int(source.id) if source is not None else None
             if item.name != normalized_name:
                 item.name = normalized_name
                 item.name_ci = name_ci
@@ -338,7 +360,19 @@ class OperationItemTemplateService:
         if not item:
             raise LookupError("Item template not found")
         before_activity = ActivityService.snapshot(item, self.ACTIVITY_FIELDS)
-        next_shop = updates["shop_name"] if "shop_name" in updates else item.shop_name
+        if "source_id" in updates:
+            requested_source_id = updates.get("source_id")
+            requested_shop = updates.get("shop_name")
+        else:
+            requested_source_id = None
+            requested_shop = updates["shop_name"] if "shop_name" in updates else item.shop_name
+        source = self.source_service.resolve(
+            user_id=user_id,
+            source_id=requested_source_id,
+            shop_name=requested_shop,
+            unchanged_source_id=item.source_id,
+        )
+        next_shop = source.name if source is not None else requested_shop
         next_name = updates["name"] if "name" in updates else item.name
         normalized_shop, normalized_name = self._normalize_item_template_fields(shop_name=next_shop, name=next_name)
         shop_name_ci = normalized_shop.casefold() if normalized_shop else None
@@ -355,6 +389,7 @@ class OperationItemTemplateService:
 
         item.shop_name = normalized_shop
         item.shop_name_ci = shop_name_ci
+        item.source_id = int(source.id) if source is not None else None
         item.name = normalized_name
         item.name_ci = name_ci
         previous_category_id = item.last_category_id
@@ -388,7 +423,7 @@ class OperationItemTemplateService:
                         quantity=latest_purchase[1],
                         clear_snooze=False,
                     )
-        if "shop_name" in updates or "name" in updates:
+        if "shop_name" in updates or "source_id" in updates or "name" in updates:
             self.repo.update_linked_receipt_item_identity(
                 user_id=user_id,
                 template_id=int(item.id),
@@ -441,7 +476,7 @@ class OperationItemTemplateService:
         )
         self.db.commit()
         invalidate_item_templates_cache(user_id)
-        if "shop_name" in updates or "name" in updates or "last_category_id" in updates or "brand_id" in updates:
+        if "shop_name" in updates or "source_id" in updates or "name" in updates or "last_category_id" in updates or "brand_id" in updates:
             invalidate_operations_cache(user_id)
             invalidate_plans_cache(user_id)
             invalidate_dashboard_analytics_cache(user_id)
@@ -499,6 +534,11 @@ class OperationItemTemplateService:
                             "brand_name": None,
                             "brand_accent_color": None,
                             "brand_is_archived": False,
+                            "image_id": item.image_id,
+                            "brand_image_id": None,
+                            "source_id": item.source_id,
+                            "source_name": item.shop_name,
+                            "source_image_id": None,
                         },
                     ),
                     "latest_unit_price": self._money(latest_price.unit_price) if latest_price else None,
@@ -571,6 +611,11 @@ class OperationItemTemplateService:
                             "brand_name": None,
                             "brand_accent_color": None,
                             "brand_is_archived": False,
+                            "image_id": item.image_id,
+                            "brand_image_id": None,
+                            "source_id": item.source_id,
+                            "source_name": item.shop_name,
+                            "source_image_id": None,
                         },
                     ),
                     "use_count": int(item.use_count or 0),
@@ -758,6 +803,7 @@ class OperationItemTemplateService:
     ) -> list[dict]:
         storage_items: list[dict] = []
         self._validate_receipt_brand_ids(user_id=user_id, items=normalized_items)
+        self._ensure_item_sources(user_id=user_id, items=normalized_items)
         key_order: list[tuple[str, str | None]] = []
         sample_by_key: dict[tuple[str, str | None], dict] = {}
         for item in normalized_items:
@@ -795,6 +841,7 @@ class OperationItemTemplateService:
                 user_id=user_id,
                 shop_name=matched_item.get("shop_name"),
                 shop_name_ci=shop_name_ci,
+                source_id=matched_item.get("source_id"),
                 name=matched_item["name"],
                 name_ci=name_ci,
                 last_category_id=matched_item.get("category_id", category_id),
@@ -835,6 +882,8 @@ class OperationItemTemplateService:
             if template.shop_name != shop_name:
                 template.shop_name = shop_name
                 template.shop_name_ci = shop_name_ci
+            if "source_id" in item:
+                template.source_id = item.get("source_id")
             if "brand_id" in item:
                 template.brand_id = item.get("brand_id")
             self.repo.touch_item_template(
@@ -886,6 +935,7 @@ class OperationItemTemplateService:
         if not normalized_items:
             return []
         self._validate_receipt_brand_ids(user_id=user_id, items=normalized_items)
+        self._ensure_item_sources(user_id=user_id, items=normalized_items)
 
         key_order: list[tuple[str, str | None]] = []
         sample_by_key: dict[tuple[str, str | None], dict] = {}
@@ -922,6 +972,7 @@ class OperationItemTemplateService:
                 user_id=user_id,
                 shop_name=matched_item.get("shop_name"),
                 shop_name_ci=shop_name_ci,
+                source_id=matched_item.get("source_id"),
                 name=matched_item["name"],
                 name_ci=name_ci,
                 last_category_id=matched_item.get("category_id", category_id),
@@ -956,6 +1007,8 @@ class OperationItemTemplateService:
                 template.last_category_id = next_category_id
             if "brand_id" in item:
                 template.brand_id = item.get("brand_id")
+            if "source_id" in item:
+                template.source_id = item.get("source_id")
             template_id = int(template.id)
             resolved_items.append({**item, "template_id": template_id})
             price_history_unit_price = self._receipt_item_price_for_history(item)
@@ -997,10 +1050,15 @@ class OperationItemTemplateService:
                 "brand_name": None,
                 "brand_accent_color": None,
                 "brand_is_archived": False,
+                "brand_image_id": None,
+                "source_id": item.source_id,
+                "source_name": item.shop_name,
+                "source_image_id": None,
             },
         )
         return {
             "id": int(item.id),
+            "image_id": item.image_id,
             "shop_name": item.shop_name,
             "name": item.name,
             "use_count": int(item.use_count or 0),
@@ -1011,6 +1069,60 @@ class OperationItemTemplateService:
             "latest_price_date": latest.recorded_at if latest else None,
             **self._serialize_recommendation_settings(item),
         }
+
+    def get_item_template(self, *, user_id: int, template_id: int) -> dict:
+        item = self.repo.get_item_template_by_id(user_id=user_id, template_id=template_id)
+        if item is None:
+            raise LookupError("Item template not found")
+        return self._serialize_item_template(item)
+
+    def _ensure_item_sources(self, *, user_id: int, items: list[dict]) -> None:
+        template_ids = sorted(
+            {
+                int(item["template_id"])
+                for item in items
+                if item.get("template_id") is not None
+            }
+        )
+        templates = self.repo.list_item_templates_by_ids(
+            user_id=user_id,
+            template_ids=template_ids,
+            include_archived=True,
+        )
+        template_by_id = {int(template.id): template for template in templates}
+        for item in items:
+            template = template_by_id.get(int(item.get("template_id") or 0))
+            unchanged_source_id = (
+                int(template.source_id)
+                if template is not None and template.source_id is not None
+                else None
+            )
+            requested_source_id = item.get("source_id")
+            shop_name = item.get("shop_name")
+            # Older clients do not send source_id. Preserve the stable relation
+            # when their source label still matches the linked catalog item,
+            # including an archived source shown in historical receipts.
+            if (
+                requested_source_id is None
+                and unchanged_source_id is not None
+                and shop_name
+                and template is not None
+            ):
+                _, requested_name_ci = self.source_service.normalize_name(shop_name)
+                if requested_name_ci == template.shop_name_ci:
+                    requested_source_id = unchanged_source_id
+            source = self.source_service.resolve(
+                user_id=user_id,
+                source_id=requested_source_id,
+                shop_name=shop_name,
+                unchanged_source_id=unchanged_source_id,
+            )
+            if source is None:
+                item.pop("source_id", None)
+                item["shop_name"] = None
+                continue
+            item["source_id"] = int(source.id)
+            item["shop_name"] = source.name
 
     def _validate_brand_id(
         self,

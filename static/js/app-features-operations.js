@@ -880,6 +880,7 @@
   const getOperationDisplayCategories = displayFeature.getOperationDisplayCategories || (() => []);
   const openOperationReceiptModal = displayFeature.openOperationReceiptModal || (() => {});
   const closeOperationReceiptModal = displayFeature.closeOperationReceiptModal || (() => {});
+  const refreshOpenReceiptTemplate = displayFeature.refreshOpenReceiptTemplate || (() => false);
   const api = {
     ensureAllTimeBounds,
     invalidateAllTimeAnchor,
@@ -911,6 +912,7 @@
     openOperationsForBrand,
     openOperationReceiptModal,
     closeOperationReceiptModal,
+    refreshOpenReceiptTemplate,
     openMoneyFlowSource,
     cleanupOperationsRuntime,
   };

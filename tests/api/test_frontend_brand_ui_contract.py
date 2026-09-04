@@ -72,7 +72,8 @@ def test_item_brand_runtime_covers_crud_detail_and_bulk_assignment():
     assert "loadItemBrands?.({ force: true })" in sources
     assert "state.selectedItemCatalogIds?.delete?.(Number(item.id))" in catalog
     assert "state.selectedItemCatalogIds?.clear?.()" in catalog
-    assert "state.selectedItemCatalogIds?.delete?.(Number(item.id))" in sources
+    assert "`/api/v1/operations/item-sources/${Number(source.id)}`" in sources
+    assert "for (const item of matchedItems)" not in sources
     assert "data-item-catalog-select-id" in renderer
     assert 'data-label="Бренд"' in renderer
     assert "itemBrandsFeature.bind?.()" in init

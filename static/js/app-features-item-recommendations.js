@@ -110,6 +110,16 @@
   }
 
   function renderRow(row) {
+    const catalogItem = (state.itemCatalogItems || []).find((entry) => Number(entry?.id || 0) === Number(row.template_id))
+      || (state.itemCatalogAllItems || []).find((entry) => Number(entry?.id || 0) === Number(row.template_id))
+      || {};
+    const imageId = row.image_id || catalogItem.image_id;
+    const itemThumb = window.App.getRuntimeModule?.("catalog-media")?.renderThumb?.(imageId, {
+      kind: "item",
+      size: "row",
+      alt: row.name || "Позиция",
+      fallback: String(row.name || "П").slice(0, 1),
+    }) || "";
     const status = STATUS_META[row.status] || STATUS_META.unconfigured;
     const lastPurchase = row.last_purchase_date
       ? `${core.formatDateRu(row.last_purchase_date)} · ${formatQuantity(row.last_quantity)} шт.`
@@ -133,9 +143,14 @@
           <input class="item-recommendation-select" type="checkbox" ${selectedIds.has(Number(row.template_id)) ? "checked" : ""} aria-label="Выбрать ${escapeHtml(row.name)}" />
         </td>
         <td data-label="Позиция">
-          <div class="item-recommendation-title">${escapeHtml(row.name)}</div>
-          <div class="muted-small">${escapeHtml(row.shop_name || "Без источника")} · ${Number(row.use_count || 0)} покупок</div>
-          ${candidate}
+          <div class="item-recommendation-identity">
+            ${itemThumb}
+            <div class="item-recommendation-identity-main">
+              <button class="catalog-item-open item-recommendation-title" data-recommendation-manage-action="edit" type="button">${escapeHtml(row.name)}</button>
+              <div class="muted-small">${escapeHtml(row.shop_name || "Без источника")} · ${Number(row.use_count || 0)} покупок</div>
+              ${candidate}
+            </div>
+          </div>
         </td>
         <td data-label="Последняя покупка">
           <span>${escapeHtml(lastPurchase)}</span>
@@ -301,9 +316,13 @@
         name: item.name,
         last_category_id: item.category_id,
         latest_unit_price: item.latest_unit_price,
+        image_id: item.image_id ?? catalogItem.image_id ?? null,
+        source_id: item.source_id ?? catalogItem.source_id ?? null,
+        source_image_id: item.source_image_id ?? catalogItem.source_image_id ?? null,
         brand_id: item.brand_id ?? catalogItem.brand_id ?? null,
         brand_name: item.brand_name ?? catalogItem.brand_name ?? null,
         brand_accent_color: item.brand_accent_color ?? catalogItem.brand_accent_color ?? null,
+        brand_image_id: item.brand_image_id ?? catalogItem.brand_image_id ?? null,
         brand_is_archived: item.brand_is_archived ?? catalogItem.brand_is_archived ?? false,
         recommendation_enabled: item.recommendation_enabled,
         recommendation_mode: item.recommendation_mode,

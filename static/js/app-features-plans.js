@@ -301,10 +301,14 @@
     }
     state.createReceiptItems = (Array.isArray(items) ? items : []).map((row) => operationModal.createReceiptDraft({
       template_id: row.template_id || null,
+      item_image_id: row.item_image_id || null,
+      source_id: row.source_id || null,
+      source_image_id: row.source_image_id || null,
       category_id: row.category_id || null,
       brand_id: row.brand_id || null,
       brand_name: row.brand_name || "",
       brand_accent_color: row.brand_accent_color || "",
+      brand_image_id: row.brand_image_id || null,
       brand_is_archived: Boolean(row.brand_is_archived),
       shop_name: row.shop_name || "",
       name: row.name || "",

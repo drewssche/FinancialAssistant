@@ -35,6 +35,7 @@
       const normalizedBrand = {
         name: brand?.brand_name || brand?.name || "",
         accent_color: brand?.brand_accent_color || brand?.accent_color || null,
+        image_id: brand?.brand_image_id || brand?.image_id || null,
       };
       return typeof renderer === "function"
         ? renderer(normalizedBrand)
@@ -125,11 +126,28 @@
         .sort((left, right) => normalizeReceiptName(left.name).localeCompare(normalizeReceiptName(right.name), "ru"));
     }
 
+    function getReceiptSourceMeta(shopName) {
+      const normalized = normalizeReceiptName(shopName).toLowerCase();
+      if (!normalized) return null;
+      const source = (state.itemSources || []).find(
+        (item) => normalizeReceiptName(item?.name || "").toLowerCase() === normalized,
+      );
+      if (source) return source;
+      const template = (state.receiptTemplateHints || []).find(
+        (item) => normalizeReceiptName(item?.source_name || item?.shop_name || "").toLowerCase() === normalized,
+      );
+      return template ? {
+        id: template.source_id || null,
+        name: template.source_name || template.shop_name || shopName,
+        image_id: template.source_image_id || null,
+      } : null;
+    }
+
     function getReceiptShopSuggestions(query = "", limit = 100) {
       const normalized = normalizeReceiptName(query).toLowerCase();
       const byShop = new Map();
       const preferenceSources = state.preferences?.data?.ui?.item_catalog_sources;
-      if (Array.isArray(preferenceSources)) {
+      if (!state.itemSourcesLoaded && Array.isArray(preferenceSources)) {
         for (const sourceName of preferenceSources) {
           const shopName = normalizeReceiptName(sourceName || "");
           if (!shopName) {
@@ -143,6 +161,13 @@
             byShop.set(shopNameCi, shopName);
           }
         }
+      }
+      for (const source of state.itemSources || []) {
+        if (source?.is_archived) continue;
+        const shopName = normalizeReceiptName(source?.name || "");
+        const shopNameCi = shopName.toLowerCase();
+        if (!shopName || (normalized && !shopNameCi.includes(normalized))) continue;
+        if (!byShop.has(shopNameCi)) byShop.set(shopNameCi, shopName);
       }
       for (const item of state.receiptTemplateHints || []) {
         const shopName = normalizeReceiptName(item.shop_name || "");
@@ -182,6 +207,7 @@
           existing.brand_id = brand.brand_id ? Number(brand.brand_id) : null;
           existing.brand_name = normalizeReceiptName(brand.brand_name || "") || null;
           existing.brand_accent_color = brand.brand_accent_color || null;
+          existing.brand_image_id = brand.brand_image_id || null;
           existing.brand_is_archived = Boolean(brand.brand_is_archived);
         }
         return existing;
@@ -196,7 +222,11 @@
         brand_id: brand.brand_id ? Number(brand.brand_id) : null,
         brand_name: normalizeReceiptName(brand.brand_name || "") || null,
         brand_accent_color: brand.brand_accent_color || null,
+        brand_image_id: brand.brand_image_id || null,
         brand_is_archived: Boolean(brand.brand_is_archived),
+        image_id: null,
+        source_id: null,
+        source_image_id: null,
         last_category_id: null,
         latest_unit_price: Number(latestUnitPrice || 0) || 0,
       };
@@ -214,7 +244,11 @@
         brand_id: item.brand_id ? Number(item.brand_id) : null,
         brand_name: normalizeReceiptName(item.brand_name || "") || null,
         brand_accent_color: item.brand_accent_color || null,
+        brand_image_id: item.brand_image_id || null,
         brand_is_archived: Boolean(item.brand_is_archived),
+        image_id: item.image_id || null,
+        source_id: item.source_id || null,
+        source_image_id: item.source_image_id || null,
         last_category_id: item.last_category_id ? Number(item.last_category_id) : null,
         latest_unit_price: Number(item.latest_unit_price || 0) || 0,
       };
@@ -270,6 +304,7 @@
       }
       const suggestionsHtml = shopSuggestions.map((shopName) => `
         <button type="button" class="chip-btn" data-receipt-shop-name="${escHtml(shopName)}" data-receipt-item-id="${rowItem.draft_id}" title="${escHtml(shopName)}">
+          ${window.App.getRuntimeModule?.("catalog-media")?.renderThumb?.(getReceiptSourceMeta(shopName)?.image_id, { kind: "source", size: "chip", alt: shopName, fallback: shopName.slice(0, 1) }) || ""}
           ${core.renderCategoryChip({ name: shopName, icon: null, accent_color: null }, normalizedQuery)}
         </button>
       `).join("");
@@ -363,8 +398,14 @@
       }
       const suggestionsHtml = suggestions.map((item) => `
         <button type="button" class="chip-btn receipt-template-suggestion" data-receipt-template-id="${item.id}" data-receipt-item-id="${rowItem.draft_id}" title="${escHtml(item.name)}">
-          <span class="receipt-template-suggestion-name">${core.renderCategoryChip({ name: item.name, icon: "🧾", accent_color: null }, normalizedQuery)}</span>
-          ${item.brand_name ? `<span class="receipt-template-suggestion-brand">${renderReceiptBrandChip(item)}</span>` : ""}
+          ${window.App.getRuntimeModule?.("catalog-media")?.renderThumb?.(item.image_id, { kind: "item", size: "picker", alt: item.name, fallback: String(item.name || "П").slice(0, 1) }) || ""}
+          <span class="receipt-template-suggestion-main">
+            <span class="receipt-template-suggestion-name">${core.highlightText?.(item.name, normalizedQuery) || escHtml(item.name)}</span>
+            <span class="receipt-template-suggestion-meta">
+              ${item.brand_name ? `<span class="receipt-template-suggestion-brand">${renderReceiptBrandChip(item)}</span>` : ""}
+              ${Number(item.latest_unit_price || 0) > 0 ? `<span>${core.formatMoney(item.latest_unit_price)}</span>` : ""}
+            </span>
+          </span>
         </button>
       `).join("");
       const createHtml = !normalizedQuery || exact ? "" : `
@@ -578,6 +619,7 @@
         await Promise.all([
           loadReceiptTemplates("", { allPages: true }).then((items) => { templates = items; }).catch(() => {}),
           loadReceiptBrands().catch(() => {}),
+          Promise.resolve(window.App.getRuntimeModule?.("item-catalog")?.loadItemSources?.()).catch(() => {}),
         ]);
         mergeReceiptTemplateHints(templates);
         receiptUiState.hintsLoadedAt = Date.now();

@@ -17,12 +17,14 @@
       applySavedReceiptTemplateHint,
       invalidateItemCatalogDependentCaches,
       savePreferencesDebounced,
+      loadItemSources,
     } = deps;
     const createItemCatalogSourcesFeature = window.App.getRuntimeModule?.("item-catalog-sources-factory");
     const sourcesFeature = createItemCatalogSourcesFeature ? createItemCatalogSourcesFeature(deps) : null;
     const pickerUtils = window.App.getRuntimeModule?.("picker-utils") || {};
     let itemTemplateInitialBrandMeta = null;
     let itemTemplateBrandSelectionTouched = false;
+    let itemTemplateInitialImageId = null;
 
     function getActivityFeature() {
       return window.App.getRuntimeModule?.("activity") || {};
@@ -61,6 +63,7 @@
         id: item?.brand_id,
         name: item.brand_name,
         accent_color: item.brand_accent_color,
+        image_id: item.brand_image_id,
         is_archived: Boolean(item.brand_is_archived),
       } : null);
       itemTemplateInitialBrandMeta = brandMeta ? { ...brandMeta } : null;
@@ -109,6 +112,12 @@
       if (el.itemTemplateName) {
         el.itemTemplateName.value = item?.name || "";
       }
+      itemTemplateInitialImageId = Number(item?.image_id || 0) || null;
+      window.App.getRuntimeModule?.("catalog-media")?.resetPicker?.("item-template", {
+        imageId: itemTemplateInitialImageId,
+        kind: "item",
+        label: item?.name ? `Фото ${item.name}` : "Фото позиции",
+      });
       hydrateItemTemplateBrandFields(item);
       if (el.itemTemplateBrandPickerBlock) {
         pickerUtils.setPopoverOpen(el.itemTemplateBrandPickerBlock, false, { owners: [el.itemTemplateBrandField] });
@@ -153,6 +162,7 @@
         updateItemTemplatePreview();
       }
       el.itemTemplateModal.classList.remove("hidden");
+      core.bringModalToFront?.(el.itemTemplateModal);
       setTimeout(() => {
         if (!isEdit && !normalizeItemCatalogShopName(item?.shop_name || "") && el.itemTemplateSourceSearch) {
           el.itemTemplateSourceSearch.focus();
@@ -169,6 +179,7 @@
       state.editItemTemplateId = null;
       itemTemplateInitialBrandMeta = null;
       itemTemplateBrandSelectionTouched = false;
+      itemTemplateInitialImageId = null;
       getActivityFeature().configureActivityButton?.(el.itemTemplateActivityBtn, null, null);
       getUsageFeature().configureUsageButton?.(el.itemTemplateUsageBtn, null, null);
       if (el.itemTemplateHistoryBtn) {
@@ -180,6 +191,7 @@
       }
       if (el.itemTemplateModal) {
         el.itemTemplateModal.classList.add("hidden");
+        core.markModalClosed?.(el.itemTemplateModal);
       }
       if (el.itemTemplatePreviewBody) {
         el.itemTemplatePreviewBody.innerHTML = "";
@@ -215,11 +227,17 @@
       const parsedPrice = core.resolveMoneyInput(el.itemTemplatePrice?.value || 0);
       const validPrice = !parsedPrice.empty && parsedPrice.previewValue > 0 ? parsedPrice.previewValue : 0;
       const priceDate = core.parseDateInputValue(el.itemTemplatePriceDate?.value || "") || null;
+      const itemImage = window.App.getRuntimeModule?.("catalog-media")?.renderThumb?.(itemTemplateInitialImageId, {
+        kind: "item",
+        size: "row",
+        alt: name,
+        fallback: name.slice(0, 1),
+      }) || "";
       el.itemTemplatePreviewBody.innerHTML = `
         <tr class="preview-row">
           <td>${escapeHtml(source)}</td>
           <td>${brandHtml}</td>
-          <td>${escapeHtml(name)}</td>
+          <td><span class="catalog-item-identity">${itemImage}<span class="catalog-item-identity-main">${escapeHtml(name)}</span></span></td>
           <td>${categoryHtml}</td>
           <td>${core.formatMoney(validPrice)}${priceDate ? `<div class="muted-small">${core.formatDateRu(priceDate)}</div>` : ""}</td>
         </tr>
@@ -296,17 +314,25 @@
         headers: core.authHeaders(),
         body: JSON.stringify(payload),
       });
-      if (sourceName) {
-        const groups = readItemCatalogSourceGroups();
-        if (!groups.some((name) => getItemCatalogShopKey(name) === getItemCatalogShopKey(sourceName))) {
-          writeItemCatalogSourceGroups([...groups, sourceName]);
-          savePreferencesDebounced(450);
-        }
+      try {
+        const mediaSavedItem = await window.App.getRuntimeModule?.("catalog-media")?.commitPicker?.(
+          "item-template",
+          "template",
+          savedItem?.id || templateId,
+        );
+        if (mediaSavedItem) Object.assign(savedItem, mediaSavedItem);
+      } catch (err) {
+        core.showToast?.(`Позиция сохранена, но фото не обновлено: ${String(err?.message || err)}`, { type: "error" });
       }
+      itemTemplateInitialImageId = Number(savedItem?.image_id || 0) || null;
       core.invalidateUiRequestCache("item-catalog");
+      await refreshItemBrandsAfterCatalogMutation();
+      state.itemSourcesLoaded = false;
+      await loadItemSources?.({ force: true }).catch(() => []);
       applySavedItemCatalogItem?.(savedItem);
       applySavedReceiptTemplateHint(savedItem);
-      await refreshItemBrandsAfterCatalogMutation();
+      window.App.getRuntimeModule?.("operation-modal")?.applySavedTemplateToReceiptDrafts?.(savedItem);
+      window.App.getRuntimeModule?.("operations")?.refreshOpenReceiptTemplate?.(savedItem);
       hydrateItemTemplateBrandFields(savedItem);
       if (!isEdit) {
         closeItemTemplateModal();
@@ -335,8 +361,15 @@
         : sources.slice(0, 24);
       const exact = Boolean(normalizedQuery) && sources.some((name) => getItemCatalogShopKey(name) === getItemCatalogShopKey(normalizedQuery));
       const chips = matched.map((sourceName) => {
+        const sourceMeta = (state.itemSources || []).find((item) => getItemCatalogShopKey(item?.name || "") === getItemCatalogShopKey(sourceName));
+        const logo = window.App.getRuntimeModule?.("catalog-media")?.renderThumb?.(sourceMeta?.image_id, {
+          kind: "source",
+          size: "chip",
+          alt: sourceName,
+          fallback: sourceName.slice(0, 1),
+        }) || "";
         const chip = core.renderCategoryChip({ name: sourceName, icon: null, accent_color: null }, normalizedQuery);
-        return `<button type="button" class="chip-btn" data-item-template-source-name="${escapeHtml(sourceName)}">${chip}</button>`;
+        return `<button type="button" class="chip-btn catalog-source-identity" data-item-template-source-name="${escapeHtml(sourceName)}">${logo}${chip}</button>`;
       }).join("");
       const createChip = normalizedQuery && !exact
         ? `<button type="button" class="chip-btn chip-btn-create" data-item-template-source-create="${escapeHtml(normalizedQuery)}">+ Создать источник «${escapeHtml(normalizedQuery)}»</button>`
@@ -398,14 +431,6 @@
       if (createBtn) {
         const createdName = createBtn.dataset.itemTemplateSourceCreate || "";
         selectItemTemplateSource(createdName);
-        const normalized = normalizeItemCatalogShopName(createdName);
-        if (normalized) {
-          const groups = readItemCatalogSourceGroups();
-          if (!groups.some((name) => getItemCatalogShopKey(name) === getItemCatalogShopKey(normalized))) {
-            writeItemCatalogSourceGroups([...groups, normalized]);
-            savePreferencesDebounced(450);
-          }
-        }
       }
     }
 
