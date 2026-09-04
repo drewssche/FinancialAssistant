@@ -7,7 +7,14 @@ from sqlalchemy import and_, func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.money import allocate_largest_remainder
-from app.db.models import ItemBrand, ItemSource, Operation, OperationItemTemplate, OperationReceiptItem
+from app.db.models import (
+    CatalogProduct,
+    ItemBrand,
+    ItemSource,
+    Operation,
+    OperationItemTemplate,
+    OperationReceiptItem,
+)
 
 
 class ItemBrandRepository:
@@ -85,16 +92,42 @@ class ItemBrandRepository:
         self.db.flush()
 
     def reassign_templates(self, *, user_id: int, source_brand_id: int, target_brand_id: int) -> int:
-        result = self.db.execute(
+        product_ids = list(
+            self.db.scalars(
+                select(CatalogProduct.id).where(
+                    CatalogProduct.user_id == user_id,
+                    CatalogProduct.brand_id == source_brand_id,
+                )
+            )
+        )
+        if product_ids:
+            self.db.execute(
+                update(CatalogProduct)
+                .where(
+                    CatalogProduct.user_id == user_id,
+                    CatalogProduct.id.in_(product_ids),
+                )
+                .values(brand_id=target_brand_id)
+            )
+            self.db.execute(
+                update(OperationItemTemplate)
+                .where(
+                    OperationItemTemplate.user_id == user_id,
+                    OperationItemTemplate.product_id.in_(product_ids),
+                )
+                .values(brand_id=target_brand_id)
+            )
+        legacy_result = self.db.execute(
             update(OperationItemTemplate)
             .where(
                 OperationItemTemplate.user_id == user_id,
+                OperationItemTemplate.product_id.is_(None),
                 OperationItemTemplate.brand_id == source_brand_id,
             )
             .values(brand_id=target_brand_id)
         )
         self.db.flush()
-        return int(result.rowcount or 0)
+        return len(product_ids) + int(legacy_result.rowcount or 0)
 
     def metrics_for_brands(self, *, user_id: int, brand_ids: list[int]) -> dict[int, dict]:
         normalized_ids = sorted({int(brand_id) for brand_id in brand_ids if int(brand_id) > 0})
@@ -110,25 +143,45 @@ class ItemBrandRepository:
         if not normalized_ids:
             return metrics
 
-        position_rows = self.db.execute(
-            select(OperationItemTemplate.brand_id, func.count(OperationItemTemplate.id))
+        product_position_rows = self.db.execute(
+            select(
+                CatalogProduct.brand_id,
+                func.count(CatalogProduct.id),
+            )
+            .where(
+                CatalogProduct.user_id == user_id,
+                CatalogProduct.brand_id.in_(normalized_ids),
+                CatalogProduct.is_archived.is_(False),
+            )
+            .group_by(CatalogProduct.brand_id)
+        )
+        for brand_id, count in product_position_rows:
+            metrics[int(brand_id)]["positions_count"] = int(count or 0)
+
+        legacy_position_rows = self.db.execute(
+            select(
+                OperationItemTemplate.brand_id,
+                func.count(OperationItemTemplate.id),
+            )
             .where(
                 OperationItemTemplate.user_id == user_id,
+                OperationItemTemplate.product_id.is_(None),
                 OperationItemTemplate.brand_id.in_(normalized_ids),
                 OperationItemTemplate.is_archived.is_(False),
             )
             .group_by(OperationItemTemplate.brand_id)
         )
-        for brand_id, count in position_rows:
-            metrics[int(brand_id)]["positions_count"] = int(count or 0)
+        for brand_id, count in legacy_position_rows:
+            metrics[int(brand_id)]["positions_count"] += int(count or 0)
 
         relevant_operation_ids = (
             select(OperationReceiptItem.operation_id)
             .join(OperationItemTemplate, OperationItemTemplate.id == OperationReceiptItem.template_id)
+            .outerjoin(CatalogProduct, CatalogProduct.id == OperationItemTemplate.product_id)
             .where(
                 OperationReceiptItem.user_id == user_id,
                 OperationItemTemplate.user_id == user_id,
-                OperationItemTemplate.brand_id.in_(normalized_ids),
+                func.coalesce(CatalogProduct.brand_id, OperationItemTemplate.brand_id).in_(normalized_ids),
             )
             .distinct()
         )
@@ -139,10 +192,11 @@ class ItemBrandRepository:
                 Operation.amount,
                 Operation.fx_rate,
                 OperationReceiptItem.line_total,
-                OperationItemTemplate.brand_id,
+                func.coalesce(CatalogProduct.brand_id, OperationItemTemplate.brand_id).label("brand_id"),
             )
             .join(OperationReceiptItem, OperationReceiptItem.operation_id == Operation.id)
             .outerjoin(OperationItemTemplate, OperationItemTemplate.id == OperationReceiptItem.template_id)
+            .outerjoin(CatalogProduct, CatalogProduct.id == OperationItemTemplate.product_id)
             .where(
                 Operation.user_id == user_id,
                 Operation.kind == "expense",
@@ -199,20 +253,31 @@ class ItemBrandRepository:
         rows = self.db.execute(
             select(
                 OperationItemTemplate.id,
+                CatalogProduct.id,
+                CatalogProduct.name,
+                CatalogProduct.image_id,
                 ItemBrand.id,
                 ItemBrand.name,
                 ItemBrand.accent_color,
                 ItemBrand.is_archived,
                 ItemBrand.image_id,
-                OperationItemTemplate.image_id,
+                func.coalesce(CatalogProduct.image_id, OperationItemTemplate.image_id),
                 ItemSource.id,
                 ItemSource.name,
                 ItemSource.image_id,
             )
             .outerjoin(
+                CatalogProduct,
+                and_(
+                    CatalogProduct.id == OperationItemTemplate.product_id,
+                    CatalogProduct.user_id == user_id,
+                ),
+            )
+            .outerjoin(
                 ItemBrand,
                 and_(
-                    ItemBrand.id == OperationItemTemplate.brand_id,
+                    ItemBrand.id
+                    == func.coalesce(CatalogProduct.brand_id, OperationItemTemplate.brand_id),
                     ItemBrand.user_id == user_id,
                 ),
             )
@@ -230,6 +295,9 @@ class ItemBrandRepository:
         )
         return {
             int(template_id): {
+                "product_id": int(product_id) if product_id is not None else None,
+                "product_name": product_name,
+                "product_image_id": product_image_id,
                 "brand_id": int(brand_id) if brand_id is not None else None,
                 "brand_name": name,
                 "brand_accent_color": accent_color,
@@ -243,6 +311,9 @@ class ItemBrandRepository:
             }
             for (
                 template_id,
+                product_id,
+                product_name,
+                product_image_id,
                 brand_id,
                 name,
                 accent_color,

@@ -285,8 +285,11 @@ class AnalyticsPositionBucket(BaseModel):
 
 class AnalyticsPositionRow(BaseModel):
     template_id: int | None
+    product_id: int | None = None
     name: str
     shop_name: str | None
+    source_names: list[str] = Field(default_factory=list)
+    sources_count: int = 0
     purchases_count: int
     quantity_total: Decimal
     amount_total: Decimal

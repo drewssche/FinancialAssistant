@@ -100,6 +100,89 @@
       </div>
     </div>
 
+    <div id="catalogProductModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="catalogProductModalTitle">
+      <div class="modal-card modal-medium catalog-product-modal-card">
+        <div class="panel-head row between">
+          <div>
+            <h3 id="catalogProductModalTitle">Новый товар</h3>
+            <p class="subtitle">Общая карточка товара для предложений из разных источников</p>
+          </div>
+          <div class="modal-head-actions">
+            <button id="catalogProductActivityBtn" class="btn btn-secondary modal-head-icon-btn hidden" type="button" title="Журнал" aria-label="Открыть журнал"><span aria-hidden="true">◷</span></button>
+            <button id="closeCatalogProductModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+              <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+            </button>
+          </div>
+        </div>
+        <form id="catalogProductForm" class="category-modal-form">
+          <section class="catalog-image-field" data-catalog-image-picker="catalog-product" aria-label="Фотография товара">
+            <div class="catalog-image-picker-preview" data-catalog-image-preview></div>
+            <div class="catalog-image-picker-actions">
+              <strong>Фото товара</strong>
+              <div class="catalog-image-picker-buttons">
+                <label class="btn btn-secondary btn-xs catalog-image-upload-btn">
+                  <span>Загрузить</span>
+                  <input data-catalog-image-input type="file" accept="image/jpeg,image/png,image/webp" />
+                </label>
+                <button class="btn btn-danger btn-xs hidden" data-catalog-image-remove type="button">Удалить</button>
+              </div>
+              <small class="muted-small" data-catalog-image-status>JPEG, PNG или WebP · до 8 МБ</small>
+            </div>
+          </section>
+          <label class="field">
+            <span>Название товара</span>
+            <input id="catalogProductName" type="text" maxlength="160" placeholder="Например, Сырок с печеньем клубника 40 г" required />
+          </label>
+          <div class="form-grid catalog-product-meta-grid">
+            <label class="field">
+              <span>Бренд</span>
+              <select id="catalogProductBrand"><option value="">Без бренда</option></select>
+            </label>
+            <label class="field">
+              <span>Категория</span>
+              <select id="catalogProductCategory"><option value="">Без категории</option></select>
+            </label>
+          </div>
+        </form>
+        <section id="catalogProductOffersSection" class="catalog-product-modal-offers hidden">
+          <div class="row between">
+            <div>
+              <strong>Предложения источников</strong>
+              <div class="muted-small">Цена и история остаются отдельными для каждого магазина</div>
+            </div>
+            <button id="openCatalogProductOperationsBtn" class="btn btn-secondary btn-xs" type="button">Все операции товара</button>
+          </div>
+          <div id="catalogProductOffersList" class="catalog-product-offers-list"></div>
+        </section>
+        <div class="modal-footer catalog-product-modal-footer">
+          <button id="deleteCatalogProductBtn" class="btn btn-danger hidden" type="button">Удалить товар</button>
+          <button id="submitCatalogProductBtn" class="btn btn-cta modal-main-cta" type="submit" form="catalogProductForm">Создать товар</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="catalogProductMergeModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="catalogProductMergeTitle">
+      <div class="modal-card modal-small catalog-product-merge-card">
+        <div class="panel-head row between">
+          <div>
+            <h3 id="catalogProductMergeTitle">Объединить товары</h3>
+            <p class="subtitle">Выберите карточку, которая останется главной</p>
+          </div>
+          <button id="closeCatalogProductMergeModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
+            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
+          </button>
+        </div>
+        <form id="catalogProductMergeForm" class="catalog-product-merge-form">
+          <div id="catalogProductMergeOptions" class="catalog-product-merge-options"></div>
+          <div id="catalogProductMergeWarning" class="catalog-product-merge-warning hidden"></div>
+          <p class="muted-small">Все предложения и история операций перейдут в выбранную карточку. Отменить объединение целиком нельзя, но отдельное предложение можно отделить.</p>
+        </form>
+        <div class="modal-footer">
+          <button id="submitCatalogProductMergeBtn" class="btn btn-cta modal-main-cta" type="submit" form="catalogProductMergeForm">Объединить</button>
+        </div>
+      </div>
+    </div>
+
     <div id="itemBrandModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="itemBrandModalTitle">
       <div class="modal-card modal-small item-brand-modal-card">
         <div class="panel-head row between">

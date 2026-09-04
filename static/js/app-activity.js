@@ -13,6 +13,7 @@
     category: "категории",
     category_group: "группы категорий",
     item_template: "позиции каталога",
+    catalog_product: "товара",
     currency_trade: "валютной сделки",
     currency_portfolio: "валютного портфеля",
     work_payment_link: "связи выплаты",
@@ -224,6 +225,13 @@
       await catalog.loadItemCatalog?.({ force: true });
       const entity = (state.itemCatalogItems || []).find((row) => Number(row.id) === Number(item.entity_id));
       if (entity) catalog.openItemTemplateModal?.(entity);
+      return;
+    }
+    if (item.entity_type === "catalog_product") {
+      await navigation.switchSection?.("item_catalog");
+      const products = window.App.getRuntimeModule?.("catalog-products") || {};
+      await products.load?.({ force: true });
+      await products.openEditor?.(Number(item.entity_id));
       return;
     }
     if (item.entity_type === "currency_trade") {

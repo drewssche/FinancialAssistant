@@ -15,6 +15,7 @@ from app.core.cache import (
     set_json,
 )
 from app.db.models import (
+    CatalogProduct,
     Category,
     Operation,
     OperationItemTemplate,
@@ -187,6 +188,9 @@ class CategoryService:
         self.db.commit()
         invalidate_dashboard_analytics_cache(user_id)
         invalidate_categories_cache(user_id)
+        invalidate_operations_cache(user_id)
+        invalidate_plans_cache(user_id)
+        invalidate_item_templates_cache(user_id)
 
     def _build_category_restore_snapshot(self, *, user_id: int, category: Category) -> dict:
         def ids(model) -> list[int]:
@@ -221,6 +225,7 @@ class CategoryService:
                 "created_at": category.created_at.isoformat() if category.created_at else None,
             },
             "references": {
+                "catalog_product_ids": ids(CatalogProduct),
                 "operation_ids": ids(Operation),
                 "receipt_item_ids": ids(OperationReceiptItem),
                 "plan_ids": ids(PlanOperation),
@@ -263,6 +268,35 @@ class CategoryService:
         self.db.flush()
 
         references = snapshot.get("references") if isinstance(snapshot.get("references"), dict) else {}
+        template_ids = [
+            int(item_id)
+            for item_id in (references.get("item_template_ids") or [])
+            if int(item_id or 0) > 0
+        ]
+        catalog_product_ids = {
+            int(item_id)
+            for item_id in (references.get("catalog_product_ids") or [])
+            if int(item_id or 0) > 0
+        }
+        if template_ids:
+            catalog_product_ids.update(
+                int(product_id)
+                for product_id in self.db.scalars(
+                    select(OperationItemTemplate.product_id).where(
+                        OperationItemTemplate.user_id == user_id,
+                        OperationItemTemplate.id.in_(template_ids),
+                        OperationItemTemplate.product_id.is_not(None),
+                    )
+                )
+                if product_id is not None
+            )
+        self._restore_category_reference_ids(
+            model=CatalogProduct,
+            user_id=user_id,
+            category_id=category_id,
+            item_ids=sorted(catalog_product_ids),
+            field="category_id",
+        )
         self._restore_category_reference_ids(
             model=Operation,
             user_id=user_id,
@@ -295,7 +329,7 @@ class CategoryService:
             model=OperationItemTemplate,
             user_id=user_id,
             category_id=category_id,
-            item_ids=references.get("item_template_ids") or [],
+            item_ids=template_ids,
             field="last_category_id",
         )
         self.activity.mark_restored(event, entity_id=category_id)

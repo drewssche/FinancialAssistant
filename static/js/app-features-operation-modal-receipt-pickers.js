@@ -42,6 +42,99 @@
         : core.renderCategoryChip({ ...normalizedBrand, icon: null }, "");
     }
 
+    function normalizeReceiptProduct(raw = {}) {
+      const normalizer = window.App.getRuntimeModule?.("catalog-products")?.normalizeProduct;
+      if (typeof normalizer === "function") return normalizer(raw);
+      return {
+        ...raw,
+        id: Number(raw.id || raw.product_id || 0) || null,
+        name: normalizeReceiptName(raw.name || raw.product_name || ""),
+        image_id: raw.image_id || raw.product_image_id || null,
+        brand_id: raw.brand_id ? Number(raw.brand_id) : null,
+        brand_name: normalizeReceiptName(raw.brand_name || "") || null,
+        brand_accent_color: raw.brand_accent_color || null,
+        brand_image_id: raw.brand_image_id || null,
+        category_id: raw.category_id || raw.last_category_id || null,
+        offers: Array.isArray(raw.offers) ? raw.offers : [],
+      };
+    }
+
+    function rebuildReceiptProductHints(extraProducts = []) {
+      const byId = new Map();
+      const upsert = (raw) => {
+        const product = normalizeReceiptProduct(raw);
+        const productId = Number(product?.id || 0);
+        if (!productId) return;
+        const previous = byId.get(productId);
+        const offerById = new Map();
+        for (const offer of [...(previous?.offers || []), ...(product.offers || [])]) {
+          const offerId = Number(offer?.template_id || offer?.id || 0);
+          if (offerId) offerById.set(offerId, { ...offer, id: offerId, template_id: offerId });
+        }
+        byId.set(productId, {
+          ...previous,
+          ...product,
+          id: productId,
+          name: normalizeReceiptName(product.name || previous?.name || ""),
+          name_ci: normalizeReceiptName(product.name || previous?.name || "").toLowerCase(),
+          offers: Array.from(offerById.values()),
+        });
+      };
+      for (const product of state.receiptProductHints || []) upsert(product);
+      for (const product of extraProducts || []) upsert(product);
+      for (const template of state.receiptTemplateHints || []) {
+        const productId = Number(template.product_id || 0);
+        if (!productId) continue;
+        upsert({
+          id: productId,
+          name: template.product_name || template.name,
+          image_id: template.product_image_id || template.image_id || null,
+          brand_id: template.brand_id || null,
+          brand_name: template.brand_name || null,
+          brand_accent_color: template.brand_accent_color || null,
+          brand_image_id: template.brand_image_id || null,
+          category_id: template.product_category_id || template.last_category_id || null,
+          offers: [template],
+        });
+      }
+      state.receiptProductHints = Array.from(byId.values());
+      return state.receiptProductHints;
+    }
+
+    function receiptProductOfferForSource(product, shopName = "", sourceId = null) {
+      const offers = Array.isArray(product?.offers) ? product.offers : [];
+      const selectedSourceId = Number(sourceId || 0);
+      if (selectedSourceId) {
+        const match = offers.find((offer) => Number(offer.source_id || 0) === selectedSourceId);
+        if (match) return match;
+      }
+      const shopCi = normalizeReceiptName(shopName).toLowerCase();
+      if (shopCi) {
+        const match = offers.find((offer) => normalizeReceiptName(offer.source_name || offer.shop_name || "").toLowerCase() === shopCi);
+        if (match) return match;
+        return null;
+      }
+      return selectedSourceId ? null : (offers.length === 1 ? offers[0] : null);
+    }
+
+    function receiptProductPresentation(product, shopName = "", sourceId = null) {
+      const offer = receiptProductOfferForSource(product, shopName, sourceId);
+      return {
+        ...offer,
+        ...product,
+        id: Number(product.id || 0),
+        product_id: Number(product.id || 0),
+        product_name: product.name,
+        product_image_id: product.image_id || null,
+        name: product.name,
+        name_ci: normalizeReceiptName(product.name).toLowerCase(),
+        image_id: product.image_id || offer?.image_id || null,
+        selected_offer: offer || null,
+        offers: product.offers || [],
+        latest_unit_price: offer?.latest_unit_price || null,
+      };
+    }
+
     function getReceiptCategoriesSorted(kind, query = "") {
       return pickerUtils.sortCategoriesByUsage(
         (state.categories || []).filter((item) => item.kind === kind),
@@ -76,29 +169,44 @@
       });
     }
 
-    function getReceiptTemplateMatch(token, shopName = "", brandId = null) {
+    function getReceiptTemplateMatch(token, shopName = "", brandId = null, sourceId = null) {
       const normalizedToken = normalizeReceiptName(token).toLowerCase();
       if (!normalizedToken) {
         return null;
       }
-      const shopCi = normalizeReceiptName(shopName).toLowerCase();
       const selectedBrandId = brandId ? Number(brandId) : null;
+      const matchingProducts = (state.receiptProductHints || []).filter((item) => (
+        normalizeReceiptName(item.name).toLowerCase() === normalizedToken
+        && (!selectedBrandId || Number(item.brand_id || 0) === selectedBrandId)
+      ));
+      const hasSourceScope = Boolean(Number(sourceId || 0) || normalizeReceiptName(shopName));
+      const product = hasSourceScope
+        ? matchingProducts.find((item) => receiptProductOfferForSource(item, shopName, sourceId))
+        : matchingProducts[0];
+      if (product) return receiptProductPresentation(product, shopName, sourceId);
+      const shopCi = normalizeReceiptName(shopName).toLowerCase();
       return (state.receiptTemplateHints || []).find((item) => (
-        item.name_ci === normalizedToken
+        !item.product_id && item.name_ci === normalizedToken
+        && (!sourceId || Number(item.source_id || 0) === Number(sourceId))
         && (!shopCi || (item.shop_name_ci || "") === shopCi)
         && (!selectedBrandId || Number(item.brand_id || 0) === selectedBrandId)
       )) || null;
     }
 
-    function getReceiptTemplateSuggestions(query, shopName = "", limit = 50, brandId = null) {
+    function getReceiptTemplateSuggestions(query, shopName = "", limit = 50, brandId = null, sourceId = null) {
       const normalized = normalizeReceiptName(query).toLowerCase();
-      const shopCi = normalizeReceiptName(shopName).toLowerCase();
       const selectedBrandId = brandId ? Number(brandId) : null;
-      const templates = Array.isArray(state.receiptTemplateHints) ? state.receiptTemplateHints : [];
-      const scopedTemplates = templates.filter((item) => (
-        (!shopCi || (item.shop_name_ci || "") === shopCi)
+      const products = (state.receiptProductHints || [])
+        .filter((item) => !selectedBrandId || Number(item.brand_id || 0) === selectedBrandId)
+        .map((item, index) => ({ item, index, sourceMatch: Boolean(receiptProductOfferForSource(item, shopName, sourceId)) }))
+        .sort((left, right) => Number(right.sourceMatch) - Number(left.sourceMatch) || left.index - right.index)
+        .map(({ item }) => receiptProductPresentation(item, shopName, sourceId));
+      const legacy = (state.receiptTemplateHints || []).filter((item) => (
+        !item.product_id
         && (!selectedBrandId || Number(item.brand_id || 0) === selectedBrandId)
       ));
+      const shopCi = normalizeReceiptName(shopName).toLowerCase();
+      const scopedTemplates = [...products, ...legacy.filter((item) => !shopCi || (item.shop_name_ci || "") === shopCi)];
       if (!normalized) {
         return limit > 0 ? scopedTemplates.slice(0, limit) : scopedTemplates;
       }
@@ -237,6 +345,10 @@
     function normalizeServerReceiptTemplate(item) {
       return {
         id: Number(item.id || 0),
+        product_id: item.product_id ? Number(item.product_id) : null,
+        product_name: normalizeReceiptName(item.product_name || "") || null,
+        product_image_id: item.product_image_id || null,
+        product_category_id: item.product_category_id ? Number(item.product_category_id) : null,
         shop_name: normalizeReceiptName(item.shop_name || "") || null,
         shop_name_ci: normalizeReceiptName(item.shop_name || "").toLowerCase(),
         name: normalizeReceiptName(item.name || ""),
@@ -268,6 +380,7 @@
         }
       }
       state.receiptTemplateHints = Array.from(byKey.values());
+      rebuildReceiptProductHints();
       return state.receiptTemplateHints;
     }
 
@@ -381,8 +494,8 @@
       }
       hideAllReceiptPickers();
       const normalizedQuery = normalizeReceiptName(query);
-      const exact = getReceiptTemplateMatch(normalizedQuery, rowItem.shop_name || "", rowItem.brand_id);
-      const suggestions = getReceiptTemplateSuggestions(normalizedQuery, rowItem.shop_name || "", 50, rowItem.brand_id);
+      const exact = getReceiptTemplateMatch(normalizedQuery, rowItem.shop_name || "", rowItem.brand_id, rowItem.source_id);
+      const suggestions = getReceiptTemplateSuggestions(normalizedQuery, rowItem.shop_name || "", 50, rowItem.brand_id, rowItem.source_id);
       if (!normalizedQuery) {
         if (badge) {
           badge.classList.add("hidden");
@@ -397,13 +510,14 @@
         badge.classList.toggle("hidden", Boolean(exact));
       }
       const suggestionsHtml = suggestions.map((item) => `
-        <button type="button" class="chip-btn receipt-template-suggestion" data-receipt-template-id="${item.id}" data-receipt-item-id="${rowItem.draft_id}" title="${escHtml(item.name)}">
-          ${window.App.getRuntimeModule?.("catalog-media")?.renderThumb?.(item.image_id, { kind: "item", size: "picker", alt: item.name, fallback: String(item.name || "П").slice(0, 1) }) || ""}
+        <button type="button" class="chip-btn receipt-template-suggestion" ${item.product_id ? `data-receipt-product-id="${item.product_id}"` : `data-receipt-template-id="${item.id}"`} data-receipt-item-id="${rowItem.draft_id}" title="${escHtml(item.name)}">
+          ${window.App.getRuntimeModule?.("catalog-media")?.renderThumb?.(item.product_image_id || item.image_id, { kind: "item", size: "picker", alt: item.name, fallback: String(item.name || "П").slice(0, 1) }) || ""}
           <span class="receipt-template-suggestion-main">
             <span class="receipt-template-suggestion-name">${core.highlightText?.(item.name, normalizedQuery) || escHtml(item.name)}</span>
             <span class="receipt-template-suggestion-meta">
               ${item.brand_name ? `<span class="receipt-template-suggestion-brand">${renderReceiptBrandChip(item)}</span>` : ""}
               ${Number(item.latest_unit_price || 0) > 0 ? `<span>${core.formatMoney(item.latest_unit_price)}</span>` : ""}
+              ${item.product_id ? `<span>${Number(item.offers?.length || 0)} источн.</span>` : ""}
             </span>
           </span>
         </button>
@@ -420,16 +534,18 @@
       });
       receiptUiState.activePicker = { draft_id: Number(rowItem.draft_id), field: "name", mode: getReceiptModeFromNode(rowNode) };
       if (normalizedQuery && !exact && suggestions.length < 50) {
-        loadReceiptTemplates(normalizedQuery)
-          .then((items) => {
+        Promise.all([loadReceiptTemplates(normalizedQuery), loadReceiptProducts(normalizedQuery).catch(() => [])])
+          .then(([items, products]) => {
             const prevCount = Array.isArray(state.receiptTemplateHints) ? state.receiptTemplateHints.length : 0;
+            const prevProductCount = Array.isArray(state.receiptProductHints) ? state.receiptProductHints.length : 0;
             mergeReceiptTemplateHints(items);
+            rebuildReceiptProductHints(products);
             const active = receiptUiState.activePicker;
             if (
               active?.field === "name"
               && Number(active.draft_id) === Number(rowItem.draft_id)
               && !picker.classList.contains("hidden")
-              && state.receiptTemplateHints.length !== prevCount
+              && (state.receiptTemplateHints.length !== prevCount || state.receiptProductHints.length !== prevProductCount)
             ) {
               renderReceiptNamePickerForRow(rowNode, rowItem, query);
             }
@@ -550,6 +666,30 @@
       return items;
     }
 
+    async function loadReceiptProducts(query = "", options = {}) {
+      const normalized = String(query || "").trim().toLowerCase();
+      const allPages = options.allPages === true && !normalized;
+      const cacheKey = `op:receipt:products:q=${normalized}:all=${allPages ? "1" : "0"}`;
+      const cached = core.getUiRequestCache?.(cacheKey, RECEIPT_TEMPLATES_CACHE_TTL_MS);
+      if (cached) return cached.items || [];
+      const params = new URLSearchParams({ page: "1", page_size: "100" });
+      if (normalized) params.set("q", normalized);
+      const payload = await core.requestJson(`/api/v1/operations/catalog-products?${params.toString()}`, { headers: core.authHeaders() });
+      const items = (Array.isArray(payload) ? payload : (payload.items || [])).slice();
+      const total = Number(payload?.total || items.length);
+      const pageSize = Number(payload?.page_size || 100) || 100;
+      if (allPages && total > items.length) {
+        for (let page = 2; page <= Math.ceil(total / pageSize); page += 1) {
+          const next = new URLSearchParams(params);
+          next.set("page", String(page));
+          const part = await core.requestJson(`/api/v1/operations/catalog-products?${next.toString()}`, { headers: core.authHeaders() });
+          items.push(...(Array.isArray(part) ? part : (part.items || [])));
+        }
+      }
+      core.setUiRequestCache?.(cacheKey, { ...payload, items });
+      return items;
+    }
+
     async function loadReceiptBrands(options = {}) {
       const force = options.force === true;
       const now = Date.now();
@@ -616,12 +756,15 @@
       }
       receiptUiState.hintsPromise = (async () => {
         let templates = [];
+        let products = [];
         await Promise.all([
           loadReceiptTemplates("", { allPages: true }).then((items) => { templates = items; }).catch(() => {}),
+          loadReceiptProducts("", { allPages: true }).then((items) => { products = items; }).catch(() => {}),
           loadReceiptBrands().catch(() => {}),
           Promise.resolve(window.App.getRuntimeModule?.("item-catalog")?.loadItemSources?.()).catch(() => {}),
         ]);
         mergeReceiptTemplateHints(templates);
+        rebuildReceiptProductHints(products);
         receiptUiState.hintsLoadedAt = Date.now();
       })();
       try {
@@ -639,6 +782,9 @@
       getReceiptShopSuggestions,
       upsertLocalReceiptTemplate,
       mergeReceiptTemplateHints,
+      rebuildReceiptProductHints,
+      receiptProductOfferForSource,
+      loadReceiptProducts,
       hideAllReceiptPickers,
       renderReceiptShopPickerForRow,
       renderReceiptBrandPickerForRow,

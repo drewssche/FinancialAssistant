@@ -560,6 +560,8 @@
     state.operationsCategoryFilterName = prefs.data?.operations?.filters?.category_name || "";
     state.operationsItemTemplateFilterId = prefs.data?.operations?.filters?.item_template_id ?? null;
     state.operationsItemTemplateFilterName = prefs.data?.operations?.filters?.item_template_name || "";
+    state.operationsProductFilterId = prefs.data?.operations?.filters?.product_id ?? null;
+    state.operationsProductFilterName = prefs.data?.operations?.filters?.product_name || "";
     state.operationsBrandFilterId = prefs.data?.operations?.filters?.brand_id ?? null;
     state.operationsBrandFilterName = prefs.data?.operations?.filters?.brand_name || "";
     state.operationSortPreset = prefs.data?.operations?.sort_preset || localStorage.getItem("operations_sort_preset") || "date";
@@ -734,6 +736,8 @@
             category_name: state.operationsCategoryFilterName || "",
             item_template_id: state.operationsItemTemplateFilterId,
             item_template_name: state.operationsItemTemplateFilterName || "",
+            product_id: state.operationsProductFilterId,
+            product_name: state.operationsProductFilterName || "",
             brand_id: state.operationsBrandFilterId,
             brand_name: state.operationsBrandFilterName || "",
             q: el.filterQ.value.trim(),

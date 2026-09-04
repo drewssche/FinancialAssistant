@@ -6,6 +6,7 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import Session
 
 from app.db.models import (
+    CatalogProduct,
     Category,
     ItemBrand,
     Operation,
@@ -33,6 +34,7 @@ class OperationRepository:
         category_id: int | None,
         q: str | None,
         item_template_id: int | None = None,
+        product_id: int | None = None,
         brand_id: int | None = None,
         receipt_only: bool = False,
         uncategorized_only: bool = False,
@@ -71,15 +73,37 @@ class OperationRepository:
                 )
                 .exists()
             )
-        if brand_id is not None:
+        if product_id is not None:
             conditions.append(
                 select(OperationReceiptItem.id)
-                .join(OperationItemTemplate, OperationItemTemplate.id == OperationReceiptItem.template_id)
+                .join(
+                    OperationItemTemplate,
+                    OperationItemTemplate.id == OperationReceiptItem.template_id,
+                )
                 .where(
                     OperationReceiptItem.user_id == user_id,
                     OperationReceiptItem.operation_id == Operation.id,
                     OperationItemTemplate.user_id == user_id,
-                    OperationItemTemplate.brand_id == brand_id,
+                    OperationItemTemplate.product_id == product_id,
+                )
+                .exists()
+            )
+        if brand_id is not None:
+            conditions.append(
+                select(OperationReceiptItem.id)
+                .join(OperationItemTemplate, OperationItemTemplate.id == OperationReceiptItem.template_id)
+                .outerjoin(CatalogProduct, CatalogProduct.id == OperationItemTemplate.product_id)
+                .where(
+                    OperationReceiptItem.user_id == user_id,
+                    OperationReceiptItem.operation_id == Operation.id,
+                    OperationItemTemplate.user_id == user_id,
+                    or_(
+                        CatalogProduct.brand_id == brand_id,
+                        and_(
+                            OperationItemTemplate.product_id.is_(None),
+                            OperationItemTemplate.brand_id == brand_id,
+                        ),
+                    ),
                 )
                 .exists()
             )
@@ -123,6 +147,7 @@ class OperationRepository:
                 receipt_category = aliased(Category)
                 receipt_brand = aliased(ItemBrand)
                 receipt_template = aliased(OperationItemTemplate)
+                receipt_product = aliased(CatalogProduct)
                 for variant in variants:
                     like = f"%{variant}%"
                     search_clauses.extend(
@@ -139,8 +164,31 @@ class OperationRepository:
                             )
                             .exists(),
                             select(OperationReceiptItem.id)
+                            .join(
+                                receipt_template,
+                                receipt_template.id
+                                == OperationReceiptItem.template_id,
+                            )
+                            .join(
+                                receipt_product,
+                                receipt_product.id == receipt_template.product_id,
+                            )
+                            .where(
+                                OperationReceiptItem.user_id == user_id,
+                                OperationReceiptItem.operation_id == Operation.id,
+                                receipt_template.user_id == user_id,
+                                receipt_product.user_id == user_id,
+                                receipt_product.name.like(like),
+                            )
+                            .exists(),
+                            select(OperationReceiptItem.id)
                             .join(receipt_template, receipt_template.id == OperationReceiptItem.template_id)
-                            .join(receipt_brand, receipt_brand.id == receipt_template.brand_id)
+                            .outerjoin(receipt_product, receipt_product.id == receipt_template.product_id)
+                            .join(
+                                receipt_brand,
+                                receipt_brand.id
+                                == func.coalesce(receipt_product.brand_id, receipt_template.brand_id),
+                            )
                             .where(
                                 OperationReceiptItem.user_id == user_id,
                                 OperationReceiptItem.operation_id == Operation.id,
@@ -257,6 +305,7 @@ class OperationRepository:
         category_id: int | None,
         q: str | None,
         item_template_id: int | None = None,
+        product_id: int | None = None,
         brand_id: int | None = None,
         receipt_only: bool = False,
         uncategorized_only: bool = False,
@@ -272,6 +321,7 @@ class OperationRepository:
             category_id=category_id,
             q=q,
             item_template_id=item_template_id,
+            product_id=product_id,
             brand_id=brand_id,
             receipt_only=receipt_only,
             uncategorized_only=uncategorized_only,
@@ -320,6 +370,7 @@ class OperationRepository:
         category_id: int | None,
         q: str | None,
         item_template_id: int | None = None,
+        product_id: int | None = None,
         brand_id: int | None = None,
         receipt_only: bool = False,
         uncategorized_only: bool = False,
@@ -336,6 +387,7 @@ class OperationRepository:
             category_id=category_id,
             q=q,
             item_template_id=item_template_id,
+            product_id=product_id,
             brand_id=brand_id,
             receipt_only=receipt_only,
             uncategorized_only=uncategorized_only,
@@ -369,6 +421,7 @@ class OperationRepository:
         category_id: int | None,
         q: str | None,
         item_template_id: int | None = None,
+        product_id: int | None = None,
         brand_id: int | None = None,
         receipt_only: bool = False,
         uncategorized_only: bool = False,
@@ -384,6 +437,7 @@ class OperationRepository:
             category_id=category_id,
             q=q,
             item_template_id=item_template_id,
+            product_id=product_id,
             brand_id=brand_id,
             receipt_only=receipt_only,
             uncategorized_only=uncategorized_only,
@@ -641,6 +695,7 @@ class OperationRepository:
         name_ci: str,
         last_category_id: int | None,
         brand_id: int | None = None,
+        product_id: int | None = None,
         flush: bool = True,
     ) -> OperationItemTemplate:
         return self.item_templates.create_item_template(
@@ -652,6 +707,7 @@ class OperationRepository:
             name_ci=name_ci,
             last_category_id=last_category_id,
             brand_id=brand_id,
+            product_id=product_id,
             flush=flush,
         )
 
@@ -875,11 +931,23 @@ class OperationRepository:
         ]
 
     def aggregate_positions_for_period(self, *, user_id: int, date_from: date, date_to: date) -> list[dict]:
-        display_name = func.coalesce(OperationItemTemplate.name, OperationReceiptItem.name)
-        display_shop = func.coalesce(OperationItemTemplate.shop_name, OperationReceiptItem.shop_name)
+        display_name = func.coalesce(
+            CatalogProduct.name,
+            OperationItemTemplate.name,
+            OperationReceiptItem.name,
+        )
+        fallback_template_id = case(
+            (OperationItemTemplate.product_id.is_(None), OperationReceiptItem.template_id),
+            else_=None,
+        )
+        display_shop = func.coalesce(
+            OperationItemTemplate.shop_name,
+            OperationReceiptItem.shop_name,
+        )
         stmt = (
             select(
-                OperationReceiptItem.template_id,
+                OperationItemTemplate.product_id,
+                fallback_template_id.label("template_id"),
                 display_name.label("position_name"),
                 display_shop.label("shop_name"),
                 Operation.operation_date,
@@ -889,14 +957,25 @@ class OperationRepository:
             )
             .join(Operation, Operation.id == OperationReceiptItem.operation_id)
             .outerjoin(OperationItemTemplate, OperationItemTemplate.id == OperationReceiptItem.template_id)
+            .outerjoin(CatalogProduct, CatalogProduct.id == OperationItemTemplate.product_id)
             .where(
+                OperationReceiptItem.user_id == user_id,
                 Operation.user_id == user_id,
+                or_(
+                    OperationItemTemplate.id.is_(None),
+                    OperationItemTemplate.user_id == user_id,
+                ),
+                or_(
+                    CatalogProduct.id.is_(None),
+                    CatalogProduct.user_id == user_id,
+                ),
                 Operation.kind == "expense",
                 Operation.operation_date >= date_from,
                 Operation.operation_date <= date_to,
             )
             .group_by(
-                OperationReceiptItem.template_id,
+                OperationItemTemplate.product_id,
+                fallback_template_id,
                 display_name,
                 display_shop,
                 Operation.operation_date,
@@ -905,6 +984,7 @@ class OperationRepository:
         )
         return [
             {
+                "product_id": int(row.product_id) if row.product_id is not None else None,
                 "template_id": int(row.template_id) if row.template_id is not None else None,
                 "name": str(row.position_name or "Позиция"),
                 "shop_name": str(row.shop_name) if row.shop_name else None,

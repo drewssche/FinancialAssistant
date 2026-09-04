@@ -139,6 +139,10 @@
       params.set("item_template_id", String(state.operationsItemTemplateFilterId));
       params.set("source", "operation");
     }
+    if (state.operationsProductFilterId !== null && state.operationsProductFilterId !== undefined && state.operationsProductFilterId !== "") {
+      params.set("product_id", String(state.operationsProductFilterId));
+      params.set("source", "operation");
+    }
     if (state.operationsBrandFilterId !== null && state.operationsBrandFilterId !== undefined && state.operationsBrandFilterId !== "") {
       params.set("brand_id", String(state.operationsBrandFilterId));
       params.set("source", "operation");
@@ -172,6 +176,7 @@
     const baseCurrency = syncOperationsCurrencyScopeUi();
     const hasCategory = state.operationsCategoryFilterId !== null && state.operationsCategoryFilterId !== undefined && state.operationsCategoryFilterId !== "";
     const hasItemTemplate = state.operationsItemTemplateFilterId !== null && state.operationsItemTemplateFilterId !== undefined && state.operationsItemTemplateFilterId !== "";
+    const hasProduct = state.operationsProductFilterId !== null && state.operationsProductFilterId !== undefined && state.operationsProductFilterId !== "";
     const hasBrand = state.operationsBrandFilterId !== null && state.operationsBrandFilterId !== undefined && state.operationsBrandFilterId !== "";
     const sourceValue = isMoneyFlowMode && state.operationsSourceFilter === "operation"
       ? "Операции"
@@ -201,7 +206,7 @@
     const hasKind = Boolean(kindValue);
     const hasCurrencyScope = Boolean(currencyScopeValue);
     const hasSource = Boolean(sourceValue);
-    const hasAny = hasCategory || hasItemTemplate || hasBrand || hasQuickView || hasKind || hasCurrencyScope || hasSource;
+    const hasAny = hasCategory || hasItemTemplate || hasProduct || hasBrand || hasQuickView || hasKind || hasCurrencyScope || hasSource;
     const renderChip = (node, label, value, visible) => {
       if (!node) return;
       node.classList.toggle("hidden", !visible);
@@ -217,7 +222,12 @@
     renderChip(el.operationsQuickViewChip, "Срез", quickViewValue, hasQuickView);
     renderChip(el.operationsCurrencyScopeChip, "Валюта", currencyScopeValue, hasCurrencyScope);
     renderChip(el.operationsCategoryFilterChip, "Категория", state.operationsCategoryFilterName || `#${state.operationsCategoryFilterId}`, hasCategory);
-    renderChip(el.operationsItemTemplateFilterChip, "Позиция", state.operationsItemTemplateFilterName || `#${state.operationsItemTemplateFilterId}`, hasItemTemplate);
+    renderChip(
+      el.operationsItemTemplateFilterChip,
+      hasProduct ? "Товар" : "Позиция",
+      hasProduct ? (state.operationsProductFilterName || `#${state.operationsProductFilterId}`) : (state.operationsItemTemplateFilterName || `#${state.operationsItemTemplateFilterId}`),
+      hasItemTemplate || hasProduct,
+    );
     renderChip(el.operationsBrandFilterChip, "Бренд", state.operationsBrandFilterName || `#${state.operationsBrandFilterId}`, hasBrand);
     el.clearOperationsCategoryFilterBtn.classList.toggle("hidden", !hasAny);
     if (el.resetOperationsFiltersBtn) {
@@ -310,6 +320,10 @@
     }
     if (state.operationsItemTemplateFilterId !== null && state.operationsItemTemplateFilterId !== undefined && state.operationsItemTemplateFilterId !== "") {
       params.set("item_template_id", String(state.operationsItemTemplateFilterId));
+      params.set("source", "operation");
+    }
+    if (state.operationsProductFilterId !== null && state.operationsProductFilterId !== undefined && state.operationsProductFilterId !== "") {
+      params.set("product_id", String(state.operationsProductFilterId));
       params.set("source", "operation");
     }
     if (state.operationsBrandFilterId !== null && state.operationsBrandFilterId !== undefined && state.operationsBrandFilterId !== "") {
@@ -580,6 +594,8 @@
     state.operationsCategoryFilterName = "";
     state.operationsItemTemplateFilterId = null;
     state.operationsItemTemplateFilterName = "";
+    state.operationsProductFilterId = null;
+    state.operationsProductFilterName = "";
     state.operationsBrandFilterId = null;
     state.operationsBrandFilterName = "";
     renderOperationsActiveFilters();
@@ -599,6 +615,8 @@
     if (filterName === "position") {
       state.operationsItemTemplateFilterId = null;
       state.operationsItemTemplateFilterName = "";
+      state.operationsProductFilterId = null;
+      state.operationsProductFilterName = "";
     }
     if (filterName === "brand") {
       state.operationsBrandFilterId = null;
@@ -623,6 +641,8 @@
     state.operationsCategoryFilterName = "";
     state.operationsItemTemplateFilterId = null;
     state.operationsItemTemplateFilterName = "";
+    state.operationsProductFilterId = null;
+    state.operationsProductFilterName = "";
     state.operationsBrandFilterId = null;
     state.operationsBrandFilterName = "";
     if (el.filterQ) {
@@ -724,6 +744,8 @@
     state.operationsCategoryFilterName = categoryName || "";
     state.operationsItemTemplateFilterId = null;
     state.operationsItemTemplateFilterName = "";
+    state.operationsProductFilterId = null;
+    state.operationsProductFilterName = "";
     state.operationsBrandFilterId = null;
     state.operationsBrandFilterName = "";
     const navigation = getNavigationActions();
@@ -746,6 +768,30 @@
     state.operationsCategoryFilterName = "";
     state.operationsItemTemplateFilterId = resolvedId;
     state.operationsItemTemplateFilterName = templateName || "";
+    state.operationsProductFilterId = null;
+    state.operationsProductFilterName = "";
+    state.operationsBrandFilterId = null;
+    state.operationsBrandFilterName = "";
+    const navigation = getNavigationActions();
+    const hasSourceContext = state.activeSection !== "operations";
+    if (hasSourceContext) navigation.pushSectionBackContext?.();
+    await navigation.switchSection?.("operations", { preserveBackStack: hasSourceContext, scrollToTop: hasSourceContext });
+    renderOperationsActiveFilters();
+    await loadOperations({ reset: true, force: true });
+    await savePreferences();
+  }
+
+  async function openOperationsForProduct(productId, productName = "") {
+    const resolvedId = Number(productId || 0);
+    if (!(resolvedId > 0)) return;
+    state.operationsMode = "money_flow";
+    state.operationsSourceFilter = "operation";
+    state.operationsCategoryFilterId = null;
+    state.operationsCategoryFilterName = "";
+    state.operationsItemTemplateFilterId = null;
+    state.operationsItemTemplateFilterName = "";
+    state.operationsProductFilterId = resolvedId;
+    state.operationsProductFilterName = productName || "";
     state.operationsBrandFilterId = null;
     state.operationsBrandFilterName = "";
     const navigation = getNavigationActions();
@@ -768,6 +814,8 @@
     state.operationsCategoryFilterName = "";
     state.operationsItemTemplateFilterId = null;
     state.operationsItemTemplateFilterName = "";
+    state.operationsProductFilterId = null;
+    state.operationsProductFilterName = "";
     state.operationsBrandFilterId = resolvedId;
     state.operationsBrandFilterName = brandName || "";
     const navigation = getNavigationActions();
@@ -909,6 +957,7 @@
     loadOperationsSummary,
     openOperationsForCategory,
     openOperationsForItemTemplate,
+    openOperationsForProduct,
     openOperationsForBrand,
     openOperationReceiptModal,
     closeOperationReceiptModal,

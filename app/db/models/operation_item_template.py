@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -8,6 +8,10 @@ from app.db.base import Base
 
 class OperationItemTemplate(Base):
     __tablename__ = "operation_item_templates"
+    __table_args__ = (
+        Index("ix_operation_item_templates_product_source", "product_id", "source_id"),
+        Index("ix_operation_item_templates_user_product", "user_id", "product_id"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
@@ -32,6 +36,11 @@ class OperationItemTemplate(Base):
     )
     image_id: Mapped[int | None] = mapped_column(
         ForeignKey("catalog_media_assets.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    product_id: Mapped[int | None] = mapped_column(
+        ForeignKey("catalog_products.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )

@@ -1130,6 +1130,7 @@ def test_item_catalog_loads_templates_beyond_first_page(static_server_url: str, 
     _login(page)
     page.click("button[data-section='item_catalog']")
     page.wait_for_selector("#itemCatalogSection:not(.hidden)")
+    page.click('[data-item-catalog-view="sources"]')
     page.wait_for_function("() => (window.App?.state?.itemCatalogItems || []).length >= 127")
 
     assert page.locator("#itemCatalogBody").get_by_text("Дальняя позиция").first.is_visible()
@@ -1156,6 +1157,7 @@ def test_item_catalog_shows_and_edits_template_category(static_server_url: str, 
     _ensure_categories_loaded(page)
     page.click("button[data-section='item_catalog']")
     page.wait_for_selector("#itemCatalogSection:not(.hidden)")
+    page.click('[data-item-catalog-view="sources"]')
 
     row = page.locator('tr[data-item-template-open-id="1"]')
     assert "Еда" in (row.text_content() or "")
@@ -1197,6 +1199,7 @@ def test_item_catalog_price_update_is_applied_to_catalog_and_receipt_hints(
     _ensure_categories_loaded(page)
     page.click("button[data-section='item_catalog']")
     page.wait_for_selector("#itemCatalogSection:not(.hidden)")
+    page.click('[data-item-catalog-view="sources"]')
     page.evaluate(
         """
         () => {
@@ -1252,6 +1255,8 @@ def test_deleting_item_catalog_source_archives_its_templates_instead_of_moving_t
     )
     _login(page)
     page.click("button[data-section='item_catalog']")
+    page.wait_for_selector("#itemCatalogSection:not(.hidden)")
+    page.click('[data-item-catalog-view="sources"]')
     page.wait_for_function("() => (window.App?.state?.itemCatalogItems || []).length >= 127")
 
     page.evaluate("() => window.App.actions.deleteItemSourceFlow('Соседи')")
@@ -1594,6 +1599,7 @@ def test_mobile_item_template_modal_preview_stays_above_sticky_cta(static_server
     page.click("#mobileNavToggleBtn")
     page.click("button[data-section='item_catalog']")
     page.wait_for_selector("#itemCatalogSection:not(.hidden)")
+    page.click('[data-item-catalog-view="sources"]')
     page.click("#addItemTemplateCta")
     page.wait_for_selector("#itemTemplateModal:not(.hidden)")
 
@@ -1653,6 +1659,7 @@ def test_mobile_source_group_modal_preview_stays_above_sticky_cta(static_server_
     page.click("#mobileNavToggleBtn")
     page.click("button[data-section='item_catalog']")
     page.wait_for_selector("#itemCatalogSection:not(.hidden)")
+    page.click('[data-item-catalog-view="sources"]')
     page.click("#addItemSourceCta")
     page.wait_for_selector("#sourceGroupModal:not(.hidden)")
 
@@ -1687,3 +1694,155 @@ def test_mobile_source_group_modal_preview_stays_above_sticky_cta(static_server_
     assert geometry["previewPanelTop"] < geometry["footerTop"]
     assert geometry["previewRowTop"] < geometry["footerTop"]
     assert geometry["previewRowBottom"] <= geometry["footerTop"] + 2
+
+
+@pytest.mark.e2e
+def test_catalog_products_default_view_offers_merge_labels_and_source_matched_picker(
+    static_server_url: str,
+    page_with_receipt_api_mock,
+):
+    page = page_with_receipt_api_mock
+    product_name = "Сырок с печеньем клубника 40г"
+
+    def make_offer(offer_id: int, product_id: int, source_id: int, source_name: str, price: str):
+        return {
+            "id": offer_id,
+            "template_id": offer_id,
+            "product_id": product_id,
+            "product_name": product_name,
+            "name": product_name,
+            "source_id": source_id,
+            "source_name": source_name,
+            "shop_name": source_name,
+            "latest_unit_price": price,
+            "latest_price_date": "2026-09-04",
+            "use_count": 2,
+        }
+
+    def make_product(product_id: int, offers: list[dict]):
+        prices = [float(item["latest_unit_price"]) for item in offers]
+        return {
+            "id": product_id,
+            "name": product_name,
+            "image_id": None,
+            "brand_id": None,
+            "category_id": 101,
+            "category_name": "Еда",
+            "is_archived": False,
+            "offers_count": len(offers),
+            "sources_count": len({item["source_id"] for item in offers}),
+            "use_count": sum(item["use_count"] for item in offers),
+            "last_used_at": "2026-09-04",
+            "min_unit_price": str(min(prices)),
+            "max_unit_price": str(max(prices)),
+            "offers": offers,
+        }
+
+    green_offer = make_offer(501, 401, 304, "Green", "0.82")
+    euroopt_offer = make_offer(502, 401, 303, "Евроопт", "0.81")
+    catalog_product = make_product(401, [green_offer, euroopt_offer])
+    duplicate_green = make_product(411, [make_offer(511, 411, 304, "Green", "0.82")])
+    duplicate_euroopt = make_product(412, [make_offer(512, 412, 303, "Евроопт", "0.81")])
+
+    def catalog_products_handler(route, request):
+        path = urlparse(request.url).path
+        if request.method.upper() != "GET":
+            return route.fallback()
+        if path == "/api/v1/operations/catalog-products/merge-candidates":
+            return route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=json.dumps({
+                    "items": [{
+                        "name": product_name,
+                        "products": [duplicate_green, duplicate_euroopt],
+                        "reasons": ["exact_name", "different_sources"],
+                    }],
+                    "total": 1,
+                }, ensure_ascii=False),
+            )
+        if path == "/api/v1/operations/catalog-products/401":
+            return route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=json.dumps(catalog_product, ensure_ascii=False),
+            )
+        if path == "/api/v1/operations/catalog-products":
+            return route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=json.dumps({"items": [catalog_product], "total": 1, "page": 1, "page_size": 100}, ensure_ascii=False),
+            )
+        return route.fallback()
+
+    page.route("**/api/v1/operations/catalog-products/**", catalog_products_handler)
+    page.route("**/api/v1/operations/catalog-products**", catalog_products_handler)
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate(
+        """
+        () => {
+          window.Telegram = {
+            WebApp: {
+              initData: "mock-init-data",
+              ready() {},
+              expand() {},
+            }
+          };
+        }
+        """
+    )
+    _login(page)
+    page.click("button[data-section='item_catalog']")
+    page.wait_for_selector("#itemCatalogSection:not(.hidden)")
+
+    assert "active" in (page.locator('[data-item-catalog-view="products"]').get_attribute("class") or "")
+    expect(page.locator("#catalogProductsView")).to_be_visible()
+    product_row = page.locator('[data-catalog-product-id="401"]')
+    expect(product_row).to_be_visible()
+    product_row.locator('[data-toggle-catalog-product="401"]').click()
+
+    green_row = page.locator('[data-catalog-product-offer-id="501"]')
+    euroopt_row = page.locator('[data-catalog-product-offer-id="502"]')
+    expect(green_row).to_contain_text("Green")
+    expect(green_row).to_contain_text("0,82")
+    expect(euroopt_row).to_contain_text("Евроопт")
+    expect(euroopt_row).to_contain_text("0,81")
+
+    product_row.locator('[data-open-catalog-product="401"]').first.click()
+    expect(page.locator("#catalogProductModal")).to_be_visible()
+    expect(page.locator("#catalogProductOffersList")).to_contain_text("Green")
+    expect(page.locator("#catalogProductOffersList")).to_contain_text("Евроопт")
+    page.click("#closeCatalogProductModalBtn")
+
+    page.click("#refreshCatalogProductsBtn")
+    page.wait_for_selector("#catalogProductsCandidatesBtn:not(.hidden)")
+    page.click("#catalogProductsCandidatesBtn")
+    candidate_panel = page.locator("#catalogProductsCandidatesPanel")
+    expect(candidate_panel).to_be_visible()
+    expect(candidate_panel).to_contain_text("Green")
+    expect(candidate_panel).to_contain_text("Евроопт")
+    expect(candidate_panel).to_contain_text("0,82")
+    expect(candidate_panel).to_contain_text("0,81")
+    candidate_panel.locator("[data-merge-candidate-index='0']").click()
+    merge_options = page.locator("#catalogProductMergeOptions")
+    expect(page.locator("#catalogProductMergeModal")).to_be_visible()
+    expect(merge_options).to_contain_text("Green")
+    expect(merge_options).to_contain_text("Евроопт")
+    page.click("#closeCatalogProductMergeModalBtn")
+
+    page.click("button[data-section='operations']")
+    page.wait_for_selector("#operationsSection:not(.hidden)")
+    page.click("#addOperationCta")
+    page.wait_for_selector("#createModal:not(.hidden)")
+    page.locator('#createOperationModeSwitch button[data-operation-mode="receipt"]').click()
+    page.wait_for_function("() => (window.App.state.receiptProductHints || []).some((item) => Number(item.id) === 401)")
+    receipt_row = page.locator("#receiptItemsList .receipt-item-row").first
+    receipt_row.locator('[data-receipt-field="shop_name"]').fill("Green")
+    page.wait_for_function("() => Number(window.App.state.createReceiptItems[0]?.source_id) === 304")
+    receipt_row.locator('[data-receipt-field="name"]').click()
+    receipt_row.locator('[data-receipt-product-id="401"]').click()
+    payload = page.evaluate("() => window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
+    assert payload[0]["product_id"] == 401
+    assert payload[0]["template_id"] == 501
+    assert payload[0]["source_id"] == 304
+    assert payload[0]["unit_price"] == "0.82"

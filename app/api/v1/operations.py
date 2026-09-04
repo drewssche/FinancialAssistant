@@ -6,6 +6,15 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user_id
 from app.db.session import get_db
 from app.schemas.operation import (
+    CatalogProductCreate,
+    CatalogProductDetachIn,
+    CatalogProductDetachOut,
+    CatalogProductListOut,
+    CatalogProductMergeCandidateListOut,
+    CatalogProductMergeIn,
+    CatalogProductMergeOut,
+    CatalogProductOut,
+    CatalogProductUpdate,
     ItemBrandCreate,
     ItemBrandListOut,
     ItemBrandMergeIn,
@@ -36,6 +45,7 @@ from app.services.catalog_media_service import (
     CatalogMediaTooLargeError,
     CatalogMediaValidationError,
 )
+from app.services.catalog_product_service import CatalogProductService
 from app.services.item_brand_service import ItemBrandService
 from app.services.item_source_service import ItemSourceService
 from app.services.operation_service import OperationService
@@ -46,7 +56,7 @@ router = APIRouter(prefix="/operations", tags=["operations"])
 def _dump_receipt_item(item) -> dict:
     data = item.model_dump()
     fields_set = getattr(item, "model_fields_set", set())
-    for optional_link in ("template_id", "brand_id", "source_id"):
+    for optional_link in ("template_id", "product_id", "brand_id", "source_id"):
         if optional_link not in fields_set:
             data.pop(optional_link, None)
     return data
@@ -101,6 +111,7 @@ def list_operations(
     date_to: date | None = Query(default=None),
     category_id: int | None = Query(default=None),
     brand_id: int | None = Query(default=None, ge=1),
+    product_id: int | None = Query(default=None, ge=1),
     q: str | None = Query(default=None, max_length=100),
     quick_view: str | None = Query(default=None, pattern="^(all|receipt|large|uncategorized)$"),
     currency_scope: str | None = Query(default=None, pattern="^(all|base|foreign)$"),
@@ -120,6 +131,7 @@ def list_operations(
             date_to=date_to,
             category_id=category_id,
             brand_id=brand_id,
+            product_id=product_id,
             q=q,
             quick_view=quick_view,
             currency_scope=currency_scope,
@@ -145,6 +157,7 @@ def list_money_flow(
     category_id: int | None = Query(default=None),
     item_template_id: int | None = Query(default=None),
     brand_id: int | None = Query(default=None, ge=1),
+    product_id: int | None = Query(default=None, ge=1),
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
@@ -165,6 +178,7 @@ def list_money_flow(
             category_id=category_id,
             item_template_id=item_template_id,
             brand_id=brand_id,
+            product_id=product_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -179,6 +193,7 @@ def summarize_operations(
     date_to: date | None = Query(default=None),
     category_id: int | None = Query(default=None),
     brand_id: int | None = Query(default=None, ge=1),
+    product_id: int | None = Query(default=None, ge=1),
     q: str | None = Query(default=None, max_length=100),
     quick_view: str | None = Query(default=None, pattern="^(all|receipt|large|uncategorized)$"),
     currency_scope: str | None = Query(default=None, pattern="^(all|base|foreign)$"),
@@ -194,6 +209,7 @@ def summarize_operations(
             date_to=date_to,
             category_id=category_id,
             brand_id=brand_id,
+            product_id=product_id,
             q=q,
             quick_view=quick_view,
             currency_scope=currency_scope,
@@ -213,6 +229,7 @@ def summarize_money_flow(
     category_id: int | None = Query(default=None),
     item_template_id: int | None = Query(default=None),
     brand_id: int | None = Query(default=None, ge=1),
+    product_id: int | None = Query(default=None, ge=1),
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
@@ -229,6 +246,7 @@ def summarize_money_flow(
             category_id=category_id,
             item_template_id=item_template_id,
             brand_id=brand_id,
+            product_id=product_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -262,6 +280,244 @@ def create_operation(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/catalog-products", response_model=CatalogProductListOut)
+def list_catalog_products(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200),
+    q: str | None = Query(default=None, max_length=160),
+    brand_id: int | None = Query(default=None, ge=1),
+    category_id: int | None = Query(default=None, ge=1),
+    include_archived: bool = Query(default=False),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    items, total = CatalogProductService(db).list(
+        user_id=user_id,
+        page=page,
+        page_size=page_size,
+        q=q,
+        brand_id=brand_id,
+        category_id=category_id,
+        include_archived=include_archived,
+    )
+    return CatalogProductListOut(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.post(
+    "/catalog-products",
+    response_model=CatalogProductOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_catalog_product(
+    payload: CatalogProductCreate,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        return CatalogProductService(db).create(
+            user_id=user_id,
+            name=payload.name,
+            brand_id=payload.brand_id,
+            category_id=payload.category_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/catalog-products/merge-candidates",
+    response_model=CatalogProductMergeCandidateListOut,
+)
+def list_catalog_product_merge_candidates(
+    limit: int = Query(default=100, ge=1, le=500),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    items, total = CatalogProductService(db).list_merge_candidates(
+        user_id=user_id,
+        limit=limit,
+    )
+    return CatalogProductMergeCandidateListOut(items=items, total=total)
+
+
+@router.get("/catalog-products/{product_id}", response_model=CatalogProductOut)
+def get_catalog_product(
+    product_id: int,
+    include_archived: bool = Query(default=False),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        return CatalogProductService(db).get(
+            user_id=user_id,
+            product_id=product_id,
+            include_archived=include_archived,
+        )
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.patch("/catalog-products/{product_id}", response_model=CatalogProductOut)
+def update_catalog_product(
+    product_id: int,
+    payload: CatalogProductUpdate,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    updates = payload.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No fields provided for update",
+        )
+    try:
+        return CatalogProductService(db).update(
+            user_id=user_id,
+            product_id=product_id,
+            updates=updates,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.delete(
+    "/catalog-products/{product_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+)
+def delete_catalog_product(
+    product_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        CatalogProductService(db).archive(
+            user_id=user_id,
+            product_id=product_id,
+        )
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/catalog-products/{product_id}/merge",
+    response_model=CatalogProductMergeOut,
+)
+def merge_catalog_products(
+    product_id: int,
+    payload: CatalogProductMergeIn,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        return CatalogProductService(db).merge(
+            user_id=user_id,
+            target_product_id=product_id,
+            source_product_ids=payload.source_product_ids,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/catalog-products/{product_id}/offers/{template_id}/detach",
+    response_model=CatalogProductDetachOut,
+)
+def detach_catalog_product_offer(
+    product_id: int,
+    template_id: int,
+    payload: CatalogProductDetachIn,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        return CatalogProductService(db).detach_offer(
+            user_id=user_id,
+            product_id=product_id,
+            offer_id=template_id,
+            updates=payload.model_dump(exclude_unset=True),
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.put(
+    "/catalog-products/{product_id}/image",
+    response_model=CatalogProductOut,
+)
+def upload_catalog_product_image(
+    product_id: int,
+    file: UploadFile = File(...),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    _upload_catalog_image(
+        db=db,
+        user_id=user_id,
+        owner_kind="product",
+        owner_id=product_id,
+        file=file,
+    )
+    return CatalogProductService(db).get(user_id=user_id, product_id=product_id)
+
+
+@router.delete(
+    "/catalog-products/{product_id}/image",
+    response_model=CatalogProductOut,
+)
+def delete_catalog_product_image(
+    product_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    _delete_catalog_image(
+        db=db,
+        user_id=user_id,
+        owner_kind="product",
+        owner_id=product_id,
+    )
+    return CatalogProductService(db).get(user_id=user_id, product_id=product_id)
 
 
 @router.get("/item-templates", response_model=OperationItemTemplateListOut)
@@ -614,6 +870,7 @@ def create_operation_item_template(
     try:
         return service.create_item_template(
             user_id=user_id,
+            product_id=payload.product_id,
             shop_name=payload.shop_name,
             source_id=payload.source_id,
             name=payload.name,

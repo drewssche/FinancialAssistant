@@ -16,6 +16,65 @@ def _create_brand(client: TestClient, name: str, color: str | None = None) -> di
     return response.json()
 
 
+def test_brand_positions_count_includes_standalone_product_once_with_many_offers():
+    lifecycle = _client_lifecycle()
+    client = next(lifecycle)
+    try:
+        brand = _create_brand(client, "Standalone brand")
+        product = client.post(
+            "/api/v1/operations/catalog-products",
+            json={"name": "Standalone product", "brand_id": brand["id"]},
+        )
+        assert product.status_code == 201, product.text
+        product_id = product.json()["id"]
+
+        listed = client.get(
+            "/api/v1/operations/item-brands",
+            params={"page_size": 100},
+        )
+        assert listed.status_code == 200, listed.text
+        row = next(item for item in listed.json()["items"] if item["id"] == brand["id"])
+        assert row["positions_count"] == 1
+
+        for source_name in ("Green", "Евроопт"):
+            source = client.post(
+                "/api/v1/operations/item-sources",
+                json={"name": source_name},
+            )
+            assert source.status_code == 201, source.text
+            offer = client.post(
+                "/api/v1/operations/item-templates",
+                json={
+                    "product_id": product_id,
+                    "source_id": source.json()["id"],
+                    "name": f"Offer {source_name}",
+                },
+            )
+            assert offer.status_code == 201, offer.text
+
+        listed = client.get(
+            "/api/v1/operations/item-brands",
+            params={"page_size": 100},
+        )
+        row = next(item for item in listed.json()["items"] if item["id"] == brand["id"])
+        assert row["positions_count"] == 1
+
+        target = _create_brand(client, "Merged target")
+        merged = client.post(
+            f"/api/v1/operations/item-brands/{brand['id']}/merge",
+            json={"target_brand_id": target["id"]},
+        )
+        assert merged.status_code == 200, merged.text
+        assert merged.json()["reassigned_positions"] == 1
+        assert merged.json()["brand"]["positions_count"] == 1
+    finally:
+        client.close()
+        try:
+            next(lifecycle)
+        except StopIteration:
+            pass
+
+
 def test_item_brand_crud_archive_reactivate_merge_and_template_filter():
     lifecycle = _client_lifecycle()
     client = next(lifecycle)

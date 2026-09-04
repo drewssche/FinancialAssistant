@@ -12,6 +12,7 @@
     brand: "item-brands",
     template: "item-templates",
     source: "item-sources",
+    product: "catalog-products",
   });
 
   function escapeHtml(value) {
@@ -347,6 +348,13 @@
     core.bringModalToFront?.(modal);
   }
 
+  async function openCatalogProductCard(productId) {
+    const id = Number(productId || 0);
+    if (!(id > 0)) return;
+    await window.App.getRuntimeModule?.("catalog-products")?.openEditor?.(id);
+    core.bringModalToFront?.(document.getElementById("catalogProductModal"));
+  }
+
   document.addEventListener("change", (event) => {
     const input = event.target.closest?.("[data-catalog-image-input]");
     if (!input) return;
@@ -381,6 +389,7 @@
     resetPicker,
     commitPicker,
     openItemTemplateCard,
+    openCatalogProductCard,
   });
   hydrate(document);
 })();

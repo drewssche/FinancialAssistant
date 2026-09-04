@@ -5,6 +5,7 @@ from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.db.models import (
+    CatalogProduct,
     Operation,
     OperationItemPrice,
     OperationItemTemplate,
@@ -52,6 +53,7 @@ class OperationItemTemplateRepository:
         name_ci: str,
         last_category_id: int | None,
         brand_id: int | None = None,
+        product_id: int | None = None,
         flush: bool = True,
     ) -> OperationItemTemplate:
         item = OperationItemTemplate(
@@ -63,6 +65,7 @@ class OperationItemTemplateRepository:
             name_ci=name_ci,
             last_category_id=last_category_id,
             brand_id=brand_id,
+            product_id=product_id,
             use_count=0,
         )
         self.db.add(item)
@@ -206,12 +209,22 @@ class OperationItemTemplateRepository:
                     or_(
                         OperationItemTemplate.name.ilike(like),
                         OperationItemTemplate.shop_name.ilike(like),
+                        CatalogProduct.name.ilike(like),
                     )
                 )
         if brand_id is not None:
-            conditions.append(OperationItemTemplate.brand_id == brand_id)
+            conditions.append(
+                or_(
+                    CatalogProduct.brand_id == brand_id,
+                    and_(
+                        OperationItemTemplate.product_id.is_(None),
+                        OperationItemTemplate.brand_id == brand_id,
+                    ),
+                )
+            )
         stmt = (
             select(OperationItemTemplate)
+            .outerjoin(CatalogProduct, CatalogProduct.id == OperationItemTemplate.product_id)
             .where(and_(*conditions))
             .order_by(
                 OperationItemTemplate.use_count.desc(),
@@ -221,7 +234,12 @@ class OperationItemTemplateRepository:
             .offset((page - 1) * page_size)
             .limit(page_size)
         )
-        count_stmt = select(func.count()).select_from(OperationItemTemplate).where(and_(*conditions))
+        count_stmt = (
+            select(func.count())
+            .select_from(OperationItemTemplate)
+            .outerjoin(CatalogProduct, CatalogProduct.id == OperationItemTemplate.product_id)
+            .where(and_(*conditions))
+        )
         items = list(self.db.scalars(stmt))
         total = int(self.db.scalar(count_stmt) or 0)
         return items, total
@@ -233,6 +251,68 @@ class OperationItemTemplateRepository:
             OperationItemTemplate.is_archived.is_(False),
         )
         return self.db.scalar(stmt)
+
+    def list_item_templates_for_product(
+        self,
+        *,
+        user_id: int,
+        product_id: int,
+        include_archived: bool = False,
+    ) -> list[OperationItemTemplate]:
+        conditions = [
+            OperationItemTemplate.user_id == user_id,
+            OperationItemTemplate.product_id == product_id,
+        ]
+        if not include_archived:
+            conditions.append(OperationItemTemplate.is_archived.is_(False))
+        return list(
+            self.db.scalars(
+                select(OperationItemTemplate)
+                .where(*conditions)
+                .order_by(
+                    OperationItemTemplate.use_count.desc(),
+                    OperationItemTemplate.last_used_at.desc().nullslast(),
+                    OperationItemTemplate.id.asc(),
+                )
+            )
+        )
+
+    def list_item_templates_for_product_source(
+        self,
+        *,
+        user_id: int,
+        product_id: int,
+        source_id: int | None,
+        shop_name_ci: str | None,
+        include_archived: bool = False,
+    ) -> list[OperationItemTemplate]:
+        source_condition = (
+            OperationItemTemplate.source_id == source_id
+            if source_id is not None
+            else (
+                OperationItemTemplate.shop_name_ci.is_(None)
+                if shop_name_ci is None
+                else OperationItemTemplate.shop_name_ci == shop_name_ci
+            )
+        )
+        conditions = [
+            OperationItemTemplate.user_id == user_id,
+            OperationItemTemplate.product_id == product_id,
+            source_condition,
+        ]
+        if not include_archived:
+            conditions.append(OperationItemTemplate.is_archived.is_(False))
+        return list(
+            self.db.scalars(
+                select(OperationItemTemplate)
+                .where(*conditions)
+                .order_by(
+                    OperationItemTemplate.use_count.desc(),
+                    OperationItemTemplate.last_used_at.desc().nullslast(),
+                    OperationItemTemplate.id.asc(),
+                )
+            )
+        )
 
     def archive_item_template(self, *, user_id: int, template_id: int) -> bool:
         stmt = (

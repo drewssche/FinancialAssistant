@@ -318,6 +318,7 @@ class OperationService:
         category_id: int | None,
         q: str | None,
         brand_id: int | None = None,
+        product_id: int | None = None,
         quick_view: str | None = None,
         currency_scope: str | None = None,
     ) -> tuple[list, int]:
@@ -341,6 +342,7 @@ class OperationService:
             date_to=date_to,
             category_id=category_id,
             brand_id=brand_id,
+            product_id=product_id,
             q=q,
             quick_view=quick_view_token,
             currency_scope=normalized_currency_scope,
@@ -360,6 +362,7 @@ class OperationService:
             date_to=date_to,
             category_id=category_id,
             brand_id=brand_id,
+            product_id=product_id,
             q=q,
             receipt_only=quick_view_filters["receipt_only"],
             uncategorized_only=quick_view_filters["uncategorized_only"],
@@ -405,6 +408,7 @@ class OperationService:
         date_to: date | None,
         category_id: int | None,
         brand_id: int | None = None,
+        product_id: int | None = None,
         q: str | None,
         quick_view: str | None = None,
         currency_scope: str | None = None,
@@ -429,6 +433,7 @@ class OperationService:
             date_to=date_to,
             category_id=category_id,
             brand_id=brand_id,
+            product_id=product_id,
             q=q,
             quick_view=quick_view_token,
             currency_scope=normalized_currency_scope,
@@ -443,6 +448,7 @@ class OperationService:
             date_to=date_to,
             category_id=category_id,
             brand_id=brand_id,
+            product_id=product_id,
             q=q,
             receipt_only=quick_view_filters["receipt_only"],
             uncategorized_only=quick_view_filters["uncategorized_only"],
@@ -479,6 +485,7 @@ class OperationService:
         currency_scope: str | None = None,
         category_id: int | None = None,
         item_template_id: int | None = None,
+        product_id: int | None = None,
         brand_id: int | None = None,
     ) -> tuple[list[dict], int]:
         return self.money_flow.list(
@@ -495,6 +502,7 @@ class OperationService:
             currency_scope=currency_scope,
             category_id=category_id,
             item_template_id=item_template_id,
+            product_id=product_id,
             brand_id=brand_id,
         )
 
@@ -510,6 +518,7 @@ class OperationService:
         currency_scope: str | None = None,
         category_id: int | None = None,
         item_template_id: int | None = None,
+        product_id: int | None = None,
         brand_id: int | None = None,
     ) -> dict:
         return self.money_flow.summarize(
@@ -522,6 +531,7 @@ class OperationService:
             currency_scope=currency_scope,
             category_id=category_id,
             item_template_id=item_template_id,
+            product_id=product_id,
             brand_id=brand_id,
         )
 
@@ -1249,6 +1259,7 @@ class OperationService:
         brand_id: int | None,
         latest_unit_price: Decimal | None,
         latest_price_date: date | None = None,
+        product_id: int | None = None,
     ) -> dict:
         return self.item_templates.create_item_template(
             user_id=user_id,
@@ -1259,6 +1270,7 @@ class OperationService:
             brand_id=brand_id,
             latest_unit_price=latest_unit_price,
             latest_price_date=latest_price_date,
+            product_id=product_id,
         )
 
     def update_item_template(
@@ -1325,6 +1337,9 @@ class OperationService:
                 {
                     "id": int(row.id),
                     "template_id": row.template_id,
+                    "product_id": brand_meta.get("product_id"),
+                    "product_name": brand_meta.get("product_name"),
+                    "product_image_id": brand_meta.get("product_image_id"),
                     "brand_id": brand_meta.get("brand_id"),
                     "brand_name": brand_meta.get("brand_name"),
                     "brand_accent_color": brand_meta.get("brand_accent_color"),
@@ -1507,6 +1522,7 @@ class OperationService:
             normalized.append(
                 {
                     "category_id": item.get("category_id"),
+                    "category_touched": bool(item.get("category_touched")),
                     "shop_name": shop_name,
                     "name": name,
                     "quantity": quantity,
@@ -1521,6 +1537,7 @@ class OperationService:
                         if item.get("template_id") is not None
                         else {}
                     ),
+                    **({"product_id": int(item["product_id"])} if item.get("product_id") is not None else {}),
                     **({"source_id": int(item["source_id"])} if item.get("source_id") is not None else {}),
                     **({"brand_id": item.get("brand_id")} if "brand_id" in item else {}),
                 }

@@ -267,7 +267,7 @@ def test_brand_catalog_assignment_detail_and_analytics_drilldown(static_server_u
             page.locator("#submitItemBrandBtn").click()
             expect(page.locator("#itemBrandsBody")).to_contain_text("Bonfesto")
 
-            page.locator('[data-item-catalog-view="positions"]').click()
+            page.locator('[data-item-catalog-view="sources"]').click()
             expect(page.locator('#itemCatalogBody [data-item-template-open-id="1"]')).to_contain_text("Vici")
 
             page.locator('[data-item-template-open-id="3"]').click()
@@ -336,7 +336,7 @@ def test_brand_catalog_assignment_detail_and_analytics_drilldown(static_server_u
 
             page.set_viewport_size({"width": 390, "height": 844})
             page.locator('button[data-section="item_catalog"]').evaluate("node => node.click()")
-            page.locator('[data-item-catalog-view="positions"]').click()
+            page.locator('[data-item-catalog-view="sources"]').click()
             mobile_head = page.locator(".item-catalog-mobile-item-head").first
             expect(mobile_head).to_be_visible()
             checkbox_box = mobile_head.locator(".item-catalog-mobile-item-select").bounding_box()

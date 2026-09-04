@@ -88,13 +88,15 @@
         const regularPrice = row.is_discounted && Number(row.regular_unit_price || 0) > 0
           ? ` · обычная цена ${core.formatMoney(row.regular_unit_price, { currency: receiptCurrency })}`
           : "";
-        const itemThumb = media.renderThumb?.(row.item_image_id, {
+        const itemThumb = media.renderThumb?.(row.product_image_id || row.item_image_id, {
           kind: "item",
           size: "receipt",
           alt: row.name || "Позиция",
           fallback: String(row.name || "П").slice(0, 1),
         }) || "";
-        const itemName = row.template_id
+        const itemName = row.product_id
+          ? `<button class="operation-receipt-item-open" type="button" data-open-receipt-product-card="${Number(row.product_id)}" title="Открыть карточку ${esc(row.product_name || row.name || "товара")}">${itemThumb}<strong>${esc(row.product_name || row.name || "Без названия")}</strong></button>`
+          : row.template_id
           ? `<button class="operation-receipt-item-open" type="button" data-open-receipt-template-card="${Number(row.template_id)}" title="Открыть карточку ${esc(row.name || "позиции")}">${itemThumb}<strong>${esc(row.name || "Без названия")}</strong></button>`
           : `<span class="operation-receipt-item-identity">${itemThumb}<strong title="${esc(row.name || "Без названия")}">${esc(row.name || "Без названия")}</strong></span>`;
         return `
@@ -141,8 +143,11 @@
         changed = true;
         return {
           ...row,
-          name: template?.name || row.name,
-          item_image_id: template?.image_id || null,
+          name: template?.product_name || template?.name || row.name,
+          product_id: template?.product_id || row.product_id || null,
+          product_name: template?.product_name || row.product_name || null,
+          product_image_id: template?.product_image_id || row.product_image_id || null,
+          item_image_id: template?.product_image_id || template?.image_id || null,
           shop_name: template?.source_name || template?.shop_name || null,
           source_id: template?.source_id || null,
           source_image_id: template?.source_image_id || null,

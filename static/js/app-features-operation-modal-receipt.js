@@ -161,6 +161,9 @@
       return {
         draft_id: state[ctx.seqKey],
         template_id: seed.template_id || null,
+        product_id: seed.product_id || null,
+        product_name: normalizeReceiptName(seed.product_name || ""),
+        product_image_id: seed.product_image_id || null,
         item_image_id: seed.item_image_id || seed.image_id || null,
         source_id: seed.source_id || null,
         source_image_id: seed.source_image_id || null,
@@ -171,11 +174,13 @@
         brand_is_archived: Boolean(seed.brand_is_archived),
         brand_touched: Boolean(seed.brand_touched),
         category_id: seed.category_id ? Number(seed.category_id) : null,
+        category_touched: Boolean(seed.category_touched),
         shop_name: normalizeReceiptName(seed.shop_name || ""),
         shop_name_inherited: Boolean(seed.shop_name_inherited),
         name: normalizeReceiptName(seed.name || ""),
         quantity: hasQuantity ? asQty(seed.quantity) : 0,
         unit_price: hasUnitPrice ? asMoney(seed.unit_price) : 0,
+        price_touched: seed.price_touched === undefined ? hasUnitPrice : Boolean(seed.price_touched),
         is_discounted: Boolean(seed.is_discounted),
         regular_unit_price: seed.regular_unit_price ? asMoney(seed.regular_unit_price) : 0,
         discount_type: seed.discount_type || (seed.is_discounted ? "promo" : null),
@@ -187,9 +192,16 @@
       return getReceiptItems(mode).find((entry) => Number(entry.draft_id) === Number(draftId)) || null;
     }
 
-    function unlinkReceiptTemplateIdentity(item) {
+    function unlinkReceiptTemplateIdentity(item, options = {}) {
       item.template_id = null;
-      item.item_image_id = null;
+      if (!options.preserveProduct) {
+        item.product_id = null;
+        item.product_name = "";
+        item.product_image_id = null;
+        item.item_image_id = null;
+      } else {
+        item.item_image_id = item.product_image_id || null;
+      }
       if (item.brand_is_archived) {
         item.brand_id = null;
         item.brand_name = "";
@@ -206,6 +218,19 @@
         item.brand_touched = true;
       }
       return false;
+    }
+
+    function resolveReceiptProductOffer(item) {
+      const productId = Number(item?.product_id || 0);
+      if (!productId) return null;
+      const product = (state.receiptProductHints || []).find((entry) => Number(entry.id) === productId);
+      if (!product) return null;
+      const sourceId = Number(item.source_id || 0);
+      const shopCi = normalizeReceiptName(item.shop_name || "").toLowerCase();
+      return (product.offers || []).find((offer) => (
+        (sourceId && Number(offer.source_id || 0) === sourceId)
+        || (shopCi && normalizeReceiptName(offer.source_name || offer.shop_name || "").toLowerCase() === shopCi)
+      )) || null;
     }
 
     function applySavedTemplateToReceiptDrafts(template) {
@@ -225,11 +250,15 @@
         const scrollPositions = scrollNodes.map((node) => [node, node.scrollTop]);
         for (const item of linkedRows) {
           item.name = normalizeReceiptName(template?.name || item.name || "");
-          item.item_image_id = template?.image_id || null;
+          item.product_id = template?.product_id || item.product_id || null;
+          item.product_name = normalizeReceiptName(template?.product_name || item.product_name || item.name || "");
+          item.product_image_id = template?.product_image_id || item.product_image_id || null;
+          item.item_image_id = item.product_image_id || template?.image_id || null;
           item.shop_name = normalizeReceiptName(template?.source_name || template?.shop_name || "");
           item.source_id = template?.source_id || null;
           item.source_image_id = template?.source_image_id || null;
           item.category_id = template?.last_category_id ? Number(template.last_category_id) : null;
+          item.category_touched = false;
           item.brand_id = template?.brand_id ? Number(template.brand_id) : null;
           item.brand_name = normalizeReceiptName(template?.brand_name || "");
           item.brand_accent_color = template?.brand_accent_color || null;
@@ -320,8 +349,16 @@
         item.source_image_id = source?.source_image_id || source?.image_id || null;
         item.shop_name_inherited = false;
         if (identityChanged) {
-          if (unlinkReceiptTemplateIdentity(item)) {
+          const keepProduct = Boolean(item.product_id);
+          if (unlinkReceiptTemplateIdentity(item, { preserveProduct: keepProduct })) {
             syncReceiptBrandField(item, mode);
+          }
+          if (keepProduct) {
+            const offer = resolveReceiptProductOffer(item);
+            item.template_id = Number(offer?.template_id || offer?.id || 0) || null;
+            item.name = normalizeReceiptName(offer?.name || item.product_name || item.name || "");
+            item.item_image_id = item.product_image_id || offer?.image_id || null;
+            if (!item.price_touched) item.unit_price = offer?.latest_unit_price || 0;
           }
         }
       } else if (key === "name") {
@@ -350,6 +387,7 @@
         // until the user explicitly picks a brand or chooses “Без бренда”.
       } else if (key === "category_id") {
         item.category_id = value ? Number(value) : null;
+        item.category_touched = true;
       } else if (key === "note") {
         item.note = value || "";
       }
@@ -402,9 +440,14 @@
             item.shop_name = primaryShopName;
             item.source_id = firstRow.source_id || null;
             item.source_image_id = firstRow.source_image_id || null;
-            if (unlinkReceiptTemplateIdentity(item)) {
+            if (unlinkReceiptTemplateIdentity(item, { preserveProduct: Boolean(item.product_id) })) {
               syncReceiptBrandField(item, mode);
             }
+            const offer = resolveReceiptProductOffer(item);
+            item.template_id = Number(offer?.template_id || offer?.id || 0) || null;
+            item.name = normalizeReceiptName(offer?.name || item.product_name || item.name || "");
+            item.item_image_id = item.product_image_id || offer?.image_id || null;
+            if (!item.price_touched) item.unit_price = offer?.latest_unit_price || 0;
             changed = true;
           }
           item.shop_name_inherited = true;
@@ -521,7 +564,7 @@
         const brandThumb = renderReceiptBrandThumb(brand);
         const activeDiscountType = item.discount_type || "promo";
         const media = window.App.getRuntimeModule?.("catalog-media") || {};
-        const linkedItemThumb = item.template_id ? media.renderThumb?.(item.item_image_id, {
+        const linkedItemThumb = (item.product_id || item.template_id) ? media.renderThumb?.(item.product_image_id || item.item_image_id, {
           kind: "item",
           size: "picker",
           alt: item.name || "Позиция",
@@ -550,11 +593,11 @@
               </div>
               <div class="receipt-name-cell ${namePickerOpen ? "has-open-popover" : ""}">
                 <div class="receipt-name-field-wrap">
-                  ${item.template_id ? `<button class="receipt-linked-thumb" type="button" data-open-receipt-template-card="${Number(item.template_id)}" title="Открыть карточку позиции" aria-label="Открыть карточку ${esc(item.name || "позиции")}">${linkedItemThumb}</button>` : ""}
+                  ${item.product_id ? `<button class="receipt-linked-thumb" type="button" data-open-receipt-product-card="${Number(item.product_id)}" title="Открыть карточку товара" aria-label="Открыть карточку ${esc(item.name || "товара")}">${linkedItemThumb}</button>` : (item.template_id ? `<button class="receipt-linked-thumb" type="button" data-open-receipt-template-card="${Number(item.template_id)}" title="Открыть карточку позиции" aria-label="Открыть карточку ${esc(item.name || "позиции")}">${linkedItemThumb}</button>` : "")}
                   <textarea class="receipt-name-input" rows="1" data-receipt-field="name" placeholder="Позиция" title="${esc(item.name || "Позиция")}" aria-label="Название позиции">${esc(item.name)}</textarea>
-                  ${item.template_id ? `<button class="receipt-template-card-btn" type="button" data-open-receipt-template-card="${Number(item.template_id)}" title="Открыть карточку позиции" aria-label="Открыть карточку позиции">↗</button>` : ""}
+                  ${item.product_id ? `<button class="receipt-template-card-btn" type="button" data-open-receipt-product-card="${Number(item.product_id)}" title="Открыть карточку товара" aria-label="Открыть карточку товара">↗</button>` : (item.template_id ? `<button class="receipt-template-card-btn" type="button" data-open-receipt-template-card="${Number(item.template_id)}" title="Открыть карточку позиции" aria-label="Открыть карточку позиции">↗</button>` : "")}
                 </div>
-                <span class="receipt-new-badge ${item.name && !item.template_id ? "" : "hidden"}">Новая позиция</span>
+                <span class="receipt-new-badge ${item.name && !item.template_id ? "" : "hidden"}">${item.product_id ? "Новое предложение" : "Новая позиция"}</span>
                 <div class="receipt-name-picker app-popover ${namePickerOpen ? "" : "hidden"}"></div>
               </div>
               <div class="receipt-category-cell ${categoryPickerOpen ? "has-open-popover" : ""}">
@@ -785,6 +828,7 @@
       for (const item of getReceiptItems(mode)) {
         if (item.category_id && !allowedIds.has(Number(item.category_id))) {
           item.category_id = null;
+          item.category_touched = false;
         }
       }
       renderReceiptItems(mode);
@@ -825,9 +869,11 @@
       return getReceiptItems("create")
         .map((item) => ({
           ...(Number(item.template_id) > 0 ? { template_id: Number(item.template_id) } : {}),
+          ...(Number(item.product_id) > 0 ? { product_id: Number(item.product_id) } : {}),
           ...(Number(item.source_id) > 0 ? { source_id: Number(item.source_id) } : {}),
           ...(item.brand_touched ? { brand_id: item.brand_id ? Number(item.brand_id) : null } : {}),
           category_id: resolveReceiptPayloadCategoryId(item, "create", defaultCategoryId),
+          category_touched: Boolean(item.category_touched),
           shop_name: normalizeReceiptName(item.shop_name || "") || null,
           name: normalizeReceiptName(item.name),
           quantity: String(asQty(item.quantity || 0)),
@@ -849,9 +895,11 @@
       return getReceiptItems("edit")
         .map((item) => ({
           ...(Number(item.template_id) > 0 ? { template_id: Number(item.template_id) } : {}),
+          ...(Number(item.product_id) > 0 ? { product_id: Number(item.product_id) } : {}),
           ...(Number(item.source_id) > 0 ? { source_id: Number(item.source_id) } : {}),
           ...(item.brand_touched ? { brand_id: item.brand_id ? Number(item.brand_id) : null } : {}),
           category_id: resolveReceiptPayloadCategoryId(item, "edit", defaultCategoryId),
+          category_touched: Boolean(item.category_touched),
           shop_name: normalizeReceiptName(item.shop_name || "") || null,
           name: normalizeReceiptName(item.name),
           quantity: String(asQty(item.quantity || 0)),

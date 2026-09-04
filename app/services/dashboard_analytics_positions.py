@@ -26,20 +26,31 @@ class DashboardAnalyticsPositionsService:
             date_from=date_from,
             date_to=date_to,
         ):
+            product_id = row.get("product_id")
             template_id = row["template_id"]
             name = str(row["name"] or "Позиция").strip() or "Позиция"
             shop_name = str(row["shop_name"]).strip() if row["shop_name"] else None
             identity = (
-                ("template", template_id)
-                if template_id is not None
-                else ("legacy", name.casefold(), shop_name.casefold() if shop_name else "")
+                ("product", product_id)
+                if product_id is not None
+                else (
+                    ("template", template_id)
+                    if template_id is not None
+                    else (
+                        "legacy",
+                        name.casefold(),
+                        shop_name.casefold() if shop_name else "",
+                    )
+                )
             )
             position = positions.setdefault(
                 identity,
                 {
+                    "product_id": product_id,
                     "template_id": template_id,
                     "name": name,
                     "shop_name": shop_name,
+                    "source_names": set(),
                     "purchases_count": 0,
                     "quantity_total": Decimal("0"),
                     "amount_total": Decimal("0"),
@@ -52,6 +63,8 @@ class DashboardAnalyticsPositionsService:
                     ),
                 },
             )
+            if shop_name:
+                position["source_names"].add(shop_name)
             bucket_key = bucket_by_date.get(row["operation_date"])
             if not bucket_key:
                 continue
@@ -65,6 +78,10 @@ class DashboardAnalyticsPositionsService:
 
         rows = []
         for position in positions.values():
+            source_names = sorted(
+                position["source_names"],
+                key=str.casefold,
+            )
             values = []
             for bucket in buckets:
                 metrics = position["buckets"].get(bucket["key"], {})
@@ -78,9 +95,12 @@ class DashboardAnalyticsPositionsService:
                 )
             rows.append(
                 {
+                    "product_id": position["product_id"],
                     "template_id": position["template_id"],
                     "name": position["name"],
-                    "shop_name": position["shop_name"],
+                    "shop_name": source_names[0] if len(source_names) == 1 else None,
+                    "source_names": source_names,
+                    "sources_count": len(source_names),
                     "purchases_count": int(position["purchases_count"]),
                     "quantity_total": Decimal(position["quantity_total"]),
                     "amount_total": Decimal(position["amount_total"]),

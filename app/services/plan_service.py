@@ -722,6 +722,9 @@ class PlanService:
                 {
                     "id": int(receipt_item.id),
                     "template_id": receipt_item.template_id,
+                    "product_id": brand_meta.get("product_id"),
+                    "product_name": brand_meta.get("product_name"),
+                    "product_image_id": brand_meta.get("product_image_id"),
                     "brand_id": brand_meta.get("brand_id"),
                     "brand_name": brand_meta.get("brand_name"),
                     "brand_accent_color": brand_meta.get("brand_accent_color"),

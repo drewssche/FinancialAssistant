@@ -12,9 +12,11 @@ FxPaymentMode = Literal["valuation", "direct_conversion", "foreign_balance"]
 
 class OperationReceiptItemIn(BaseModel):
     template_id: int | None = Field(default=None, ge=1)
+    product_id: int | None = Field(default=None, ge=1)
     source_id: int | None = Field(default=None, ge=1)
     brand_id: int | None = Field(default=None, ge=1)
     category_id: int | None = None
+    category_touched: bool = False
     shop_name: str | None = Field(default=None, max_length=160)
     name: str = Field(min_length=1, max_length=160)
     quantity: Decimal = Field(default=Decimal("1"), gt=0)
@@ -28,6 +30,9 @@ class OperationReceiptItemIn(BaseModel):
 class OperationReceiptItemOut(BaseModel):
     id: int
     template_id: int | None
+    product_id: int | None = None
+    product_name: str | None = None
+    product_image_id: int | None = None
     brand_id: int | None = None
     brand_name: str | None = None
     brand_accent_color: str | None = None
@@ -200,6 +205,9 @@ class MoneyFlowListOut(BaseModel):
 
 class OperationItemTemplateOut(BaseModel):
     id: int
+    product_id: int | None = None
+    product_name: str | None = None
+    product_image_id: int | None = None
     image_id: int | None = None
     shop_name: str | None = None
     source_id: int | None = None
@@ -220,6 +228,7 @@ class OperationItemTemplateOut(BaseModel):
 
 
 class OperationItemTemplateCreate(BaseModel):
+    product_id: int | None = Field(default=None, ge=1)
     shop_name: str | None = Field(default=None, max_length=160)
     source_id: int | None = Field(default=None, ge=1)
     name: str = Field(min_length=1, max_length=160)
@@ -257,6 +266,90 @@ class OperationItemTemplateListOut(BaseModel):
     total: int
     page: int = Field(ge=1)
     page_size: int = Field(ge=1)
+
+
+class CatalogProductCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=160)
+    brand_id: int | None = Field(default=None, ge=1)
+    category_id: int | None = Field(default=None, ge=1)
+
+
+class CatalogProductUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=160)
+    brand_id: int | None = Field(default=None, ge=1)
+    category_id: int | None = Field(default=None, ge=1)
+
+
+class CatalogProductOut(BaseModel):
+    id: int
+    name: str
+    image_id: int | None = None
+    brand_id: int | None = None
+    brand_name: str | None = None
+    brand_accent_color: str | None = None
+    brand_image_id: int | None = None
+    category_id: int | None = None
+    category_name: str | None = None
+    category_icon: str | None = None
+    category_accent_color: str | None = None
+    is_archived: bool = False
+    offers_count: int = 0
+    sources_count: int = 0
+    use_count: int = 0
+    last_used_at: datetime | None = None
+    min_unit_price: Decimal | None = None
+    max_unit_price: Decimal | None = None
+    offers: list[OperationItemTemplateOut] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime
+
+
+class CatalogProductListOut(BaseModel):
+    items: list[CatalogProductOut]
+    total: int
+    page: int = Field(ge=1)
+    page_size: int = Field(ge=1)
+
+
+class CatalogProductMergeIn(BaseModel):
+    source_product_ids: list[int] = Field(min_length=1, max_length=100)
+
+
+class CatalogProductSourceConflictOut(BaseModel):
+    source_id: int | None = None
+    source_name: str | None = None
+    offer_ids: list[int]
+
+
+class CatalogProductMergeOut(BaseModel):
+    product: CatalogProductOut
+    merged_product_ids: list[int]
+    reassigned_offers: int
+    source_conflicts: list[CatalogProductSourceConflictOut] = Field(
+        default_factory=list
+    )
+
+
+class CatalogProductDetachIn(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=160)
+    brand_id: int | None = Field(default=None, ge=1)
+    category_id: int | None = Field(default=None, ge=1)
+
+
+class CatalogProductDetachOut(BaseModel):
+    product: CatalogProductOut
+    moved_offer_id: int
+
+
+class CatalogProductMergeCandidateOut(BaseModel):
+    name: str
+    products: list[CatalogProductOut]
+    reasons: list[str]
+
+
+class CatalogProductMergeCandidateListOut(BaseModel):
+    items: list[CatalogProductMergeCandidateOut]
+    total: int
 
 
 class ItemBrandCreate(BaseModel):

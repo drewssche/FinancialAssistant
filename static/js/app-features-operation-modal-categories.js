@@ -357,6 +357,7 @@
         : null;
       if (rowItem) {
         rowItem.category_id = Number(createdCategory.id);
+        rowItem.category_touched = true;
       }
       state.pendingCreateCategoryFromReceipt = null;
       renderReceiptItems(pendingReceipt.mode === "edit" ? "edit" : "create");

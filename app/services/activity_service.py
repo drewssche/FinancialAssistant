@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import (
     ActivityEvent,
+    CatalogProduct,
     Category,
     CategoryGroup,
     Debt,
@@ -30,6 +31,7 @@ class ActivityService:
         "category": "Категория",
         "category_group": "Группа категорий",
         "item_template": "Позиция каталога",
+        "catalog_product": "Товар",
         "item_brand": "Бренд",
         "item_source": "Источник",
         "currency_trade": "Валютная сделка",
@@ -81,7 +83,14 @@ class ActivityService:
         "last_used_at",
         "trade_date",
     }
-    REFERENCE_FIELDS = {"category_id", "last_category_id", "group_id", "counterparty_id"}
+    REFERENCE_FIELDS = {
+        "category_id",
+        "last_category_id",
+        "group_id",
+        "counterparty_id",
+        "brand_id",
+        "product_id",
+    }
 
     def __init__(self, db: Session):
         self.db = db
@@ -333,6 +342,7 @@ class ActivityService:
             "category": Category,
             "category_group": CategoryGroup,
             "item_template": OperationItemTemplate,
+            "catalog_product": CatalogProduct,
             "item_brand": ItemBrand,
             "item_source": ItemSource,
             "currency_trade": FxTrade,
@@ -368,7 +378,7 @@ class ActivityService:
                 "entity_exists": True,
                 "available_actions": ["open"],
             }
-        if isinstance(entity, OperationItemTemplate) and entity.is_archived:
+        if isinstance(entity, (CatalogProduct, OperationItemTemplate)) and entity.is_archived:
             entity = None
         if entity is None:
             return self._fallback_entity_context(row)
@@ -389,6 +399,8 @@ class ActivityService:
             summary = entity.name
         elif isinstance(entity, OperationItemTemplate):
             summary = " · ".join(filter(None, [entity.name, entity.shop_name]))
+        elif isinstance(entity, CatalogProduct):
+            summary = entity.name
         elif isinstance(entity, ItemBrand):
             summary = entity.name
         elif isinstance(entity, ItemSource):
@@ -627,4 +639,20 @@ class ActivityService:
                 )
             )
             return item.name if item else f"Контрагент #{entity_id} (удален)"
+        if field == "brand_id":
+            item = self.db.scalar(
+                select(ItemBrand).where(
+                    ItemBrand.user_id == row.user_id,
+                    ItemBrand.id == entity_id,
+                )
+            )
+            return item.name if item else f"Бренд #{entity_id} (удален)"
+        if field == "product_id":
+            item = self.db.scalar(
+                select(CatalogProduct).where(
+                    CatalogProduct.user_id == row.user_id,
+                    CatalogProduct.id == entity_id,
+                )
+            )
+            return item.name if item else f"Товар #{entity_id} (удален)"
         return str(value)

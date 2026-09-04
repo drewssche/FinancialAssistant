@@ -13,9 +13,10 @@ def test_catalog_exposes_brand_management_and_assignment_controls():
     modals = _read("static/js/templates/modals-item-catalog.js")
     elements = _read("static/js/app-core-elements.js")
 
-    positions_at = shell.index('data-item-catalog-view="positions"')
+    products_at = shell.index('data-item-catalog-view="products"')
+    positions_at = shell.index('data-item-catalog-view="sources"')
     brands_at = shell.index('data-item-catalog-view="brands"')
-    assert positions_at < brands_at
+    assert products_at < positions_at < brands_at
     assert 'data-item-catalog-view="recommendations"' not in shell
     assert 'id="itemBrandsView"' in shell
     assert 'id="itemBrandsKpiGrid"' in shell
@@ -117,7 +118,7 @@ def test_catalog_cleanup_drops_user_scoped_brand_and_template_state():
     assert "state.itemBrands = []" in cleanup
     assert "state.itemBrandsLoaded = false" in cleanup
     assert "state.selectedItemCatalogIds = new Set()" in cleanup
-    assert 'state.itemCatalogView = "positions"' in cleanup
+    assert 'state.itemCatalogView = "products"' in cleanup
     assert 'state.itemCatalogBrandFilter = "all"' in cleanup
 
 

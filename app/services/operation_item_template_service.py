@@ -15,9 +15,11 @@ from app.core.cache import (
     set_json,
 )
 from app.db.models import Category
+from app.repositories.catalog_product_repo import CatalogProductRepository
 from app.repositories.item_brand_repo import ItemBrandRepository
 from app.repositories.operation_repo import OperationRepository
 from app.services.activity_service import ActivityService
+from app.services.catalog_product_service import CatalogProductService
 from app.services.item_source_service import ItemSourceService
 
 
@@ -32,6 +34,7 @@ class OperationItemTemplateService:
         "last_category_id",
         "brand_id",
         "image_id",
+        "product_id",
         "use_count",
         "is_archived",
         "last_used_at",
@@ -43,6 +46,7 @@ class OperationItemTemplateService:
         "last_category_id": "Категория",
         "brand_id": "Бренд",
         "image_id": "Изображение",
+        "product_id": "Товар",
         "use_count": "Использований",
         "is_archived": "Архив",
         "last_used_at": "Последнее использование",
@@ -52,6 +56,8 @@ class OperationItemTemplateService:
         self.db = db
         self.repo = repo
         self.brand_repo = ItemBrandRepository(db)
+        self.product_repo = CatalogProductRepository(db)
+        self.products = CatalogProductService(db)
         self.source_service = ItemSourceService(db)
         self.activity = ActivityService(db)
 
@@ -93,6 +99,7 @@ class OperationItemTemplateService:
             payload.append(
                 {
                     "id": int(item.id),
+                    "product_id": item.product_id,
                     "image_id": item.image_id,
                     "shop_name": item.shop_name,
                     "name": item.name,
@@ -110,6 +117,9 @@ class OperationItemTemplateService:
                             "source_id": item.source_id,
                             "source_name": item.shop_name,
                             "source_image_id": None,
+                            "product_id": item.product_id,
+                            "product_name": None,
+                            "product_image_id": None,
                         },
                     ),
                     "latest_unit_price": self._money(latest.unit_price) if latest else None,
@@ -204,6 +214,7 @@ class OperationItemTemplateService:
         brand_id: int | None,
         latest_unit_price: Decimal | None,
         latest_price_date: date | None = None,
+        product_id: int | None = None,
     ) -> dict:
         source = self.source_service.resolve(
             user_id=user_id,
@@ -225,6 +236,21 @@ class OperationItemTemplateService:
             include_archived=True,
         )
         item = existing
+        product = self._resolve_catalog_product(
+            user_id=user_id,
+            product_id=product_id,
+            name=normalized_name,
+            brand_id=validated_brand_id,
+            category_id=validated_category_id,
+            existing_template=item,
+        )
+        if product_id is None and item is not None:
+            if validated_category_id is not None:
+                product.category_id = validated_category_id
+            if validated_brand_id is not None:
+                product.brand_id = validated_brand_id
+        resolved_category_id = product.category_id
+        resolved_brand_id = product.brand_id
         previous_brand_id = item.brand_id if item is not None else None
         if not item:
             item = self.repo.create_item_template(
@@ -234,8 +260,9 @@ class OperationItemTemplateService:
                 source_id=int(source.id) if source is not None else None,
                 name=normalized_name,
                 name_ci=name_ci,
-                last_category_id=validated_category_id,
-                brand_id=validated_brand_id,
+                last_category_id=resolved_category_id,
+                brand_id=resolved_brand_id,
+                product_id=int(product.id),
             )
             self.activity.record_created(
                 user_id=user_id,
@@ -252,13 +279,14 @@ class OperationItemTemplateService:
                 item.shop_name = normalized_shop
                 item.shop_name_ci = shop_name_ci
             item.source_id = int(source.id) if source is not None else None
+            item.product_id = int(product.id)
             if item.name != normalized_name:
                 item.name = normalized_name
                 item.name_ci = name_ci
-            if validated_category_id is not None:
-                item.last_category_id = validated_category_id
-            if validated_brand_id is not None:
-                item.brand_id = validated_brand_id
+            if resolved_category_id is not None:
+                item.last_category_id = resolved_category_id
+            if resolved_brand_id is not None:
+                item.brand_id = resolved_brand_id
             self.db.flush()
             self.activity.record_updated(
                 user_id=user_id,
@@ -270,6 +298,7 @@ class OperationItemTemplateService:
                 labels=self.ACTIVITY_LABELS,
                 title="Позиция каталога восстановлена",
             )
+        self._sync_product_compatibility(product=product)
         if latest_unit_price is not None:
             next_price = self._money(latest_unit_price)
             recorded_at = latest_price_date or date.today()
@@ -340,6 +369,15 @@ class OperationItemTemplateService:
         if duplicate and int(duplicate.id) != int(item.id):
             raise ValueError("Template with same source and name already exists")
 
+        product = self._resolve_catalog_product(
+            user_id=user_id,
+            product_id=None,
+            name=normalized_name,
+            brand_id=item.brand_id,
+            category_id=item.last_category_id,
+            existing_template=item,
+        )
+
         item.shop_name = normalized_shop
         item.shop_name_ci = shop_name_ci
         item.source_id = int(source.id) if source is not None else None
@@ -347,16 +385,18 @@ class OperationItemTemplateService:
         item.name_ci = name_ci
         previous_category_id = item.last_category_id
         if "last_category_id" in updates:
-            item.last_category_id = self._validate_category_id(
+            product.category_id = self._validate_category_id(
                 user_id=user_id,
                 category_id=updates.get("last_category_id"),
             )
         if "brand_id" in updates:
-            item.brand_id = self._validate_brand_id(
+            product.brand_id = self._validate_brand_id(
                 user_id=user_id,
                 brand_id=updates.get("brand_id"),
                 unchanged_brand_id=item.brand_id,
             )
+        item.product_id = int(product.id)
+        self._sync_product_compatibility(product=product)
         if "shop_name" in updates or "source_id" in updates or "name" in updates:
             self.repo.update_linked_receipt_item_identity(
                 user_id=user_id,
@@ -369,7 +409,7 @@ class OperationItemTemplateService:
                 user_id=user_id,
                 template_id=int(item.id),
                 previous_category_id=previous_category_id,
-                category_id=item.last_category_id,
+                category_id=product.category_id,
             )
         self.db.flush()
 
@@ -438,10 +478,21 @@ class OperationItemTemplateService:
             raise LookupError("One or more item templates were not found")
 
         updated_count = 0
+        touched_products = {}
         for item in items:
             if item.brand_id == validated_brand_id:
                 continue
             before_activity = ActivityService.snapshot(item, self.ACTIVITY_FIELDS)
+            product = self._resolve_catalog_product(
+                user_id=user_id,
+                product_id=None,
+                name=item.name,
+                brand_id=item.brand_id,
+                category_id=item.last_category_id,
+                existing_template=item,
+            )
+            product.brand_id = validated_brand_id
+            touched_products[int(product.id)] = product
             item.brand_id = validated_brand_id
             self.activity.record_updated(
                 user_id=user_id,
@@ -455,6 +506,9 @@ class OperationItemTemplateService:
                 metadata={"bulk": True},
             )
             updated_count += 1
+
+        for product in touched_products.values():
+            self._sync_product_compatibility(product=product)
 
         self.db.commit()
         if updated_count:
@@ -500,6 +554,11 @@ class OperationItemTemplateService:
     ) -> list[dict]:
         storage_items: list[dict] = []
         self._validate_receipt_brand_ids(user_id=user_id, items=normalized_items)
+        self._validate_receipt_category_ids(
+            user_id=user_id,
+            items=normalized_items,
+            fallback_category_id=category_id,
+        )
         self._ensure_item_sources(user_id=user_id, items=normalized_items)
         key_order: list[tuple[str, str | None]] = []
         sample_by_key: dict[tuple[str, str | None], dict] = {}
@@ -525,6 +584,11 @@ class OperationItemTemplateService:
             items=normalized_items,
             template_by_key=template_by_key,
         )
+        self._apply_explicit_product_links(
+            user_id=user_id,
+            items=normalized_items,
+            template_by_key=template_by_key,
+        )
 
         created_templates = []
         for name_ci, shop_name_ci in key_order:
@@ -534,6 +598,21 @@ class OperationItemTemplateService:
             matched_item = sample_by_key.get(key)
             if not matched_item:
                 continue
+            requested_product_id = matched_item.get("product_id")
+            if requested_product_id is not None:
+                product = self.product_repo.get_by_id(
+                    user_id=user_id,
+                    product_id=int(requested_product_id),
+                )
+                if product is None:
+                    raise ValueError("Catalog product not found")
+            else:
+                product = self.products.create_for_offer(
+                    user_id=user_id,
+                    name=matched_item["name"],
+                    brand_id=matched_item.get("brand_id"),
+                    category_id=matched_item.get("category_id") or category_id,
+                )
             template = self.repo.create_item_template(
                 user_id=user_id,
                 shop_name=matched_item.get("shop_name"),
@@ -541,8 +620,9 @@ class OperationItemTemplateService:
                 source_id=matched_item.get("source_id"),
                 name=matched_item["name"],
                 name_ci=name_ci,
-                last_category_id=matched_item.get("category_id", category_id),
-                brand_id=matched_item.get("brand_id"),
+                last_category_id=product.category_id,
+                brand_id=product.brand_id,
+                product_id=int(product.id),
                 flush=False,
             )
             template_by_key[key] = template
@@ -573,6 +653,16 @@ class OperationItemTemplateService:
             template = template_by_key.get((name_ci, shop_name_ci))
             if not template:
                 continue
+            product = self.products.ensure_for_template(
+                user_id=user_id,
+                template=template,
+            )
+            previous_categories = self._apply_receipt_product_metadata(
+                user_id=user_id,
+                product=product,
+                item=item,
+                fallback_category_id=category_id,
+            )
             template.is_archived = False
             if template.name != name:
                 template.name = name
@@ -581,11 +671,16 @@ class OperationItemTemplateService:
                 template.shop_name_ci = shop_name_ci
             if "source_id" in item:
                 template.source_id = item.get("source_id")
-            if "brand_id" in item:
-                template.brand_id = item.get("brand_id")
+            self._sync_product_compatibility(product=product)
+            if previous_categories is not None:
+                self.products._sync_linked_item_categories(
+                    user_id=user_id,
+                    previous_categories=previous_categories,
+                    category_id=product.category_id,
+                )
             self.repo.touch_item_template(
                 item=template,
-                last_category_id=item.get("category_id", category_id),
+                last_category_id=product.category_id,
                 flush=False,
             )
             template_id = int(template.id)
@@ -608,6 +703,7 @@ class OperationItemTemplateService:
                 {
                     **item,
                     "template_id": template_id,
+                    "product_id": int(product.id),
                 }
             )
         if price_rows:
@@ -627,6 +723,11 @@ class OperationItemTemplateService:
         if not normalized_items:
             return []
         self._validate_receipt_brand_ids(user_id=user_id, items=normalized_items)
+        self._validate_receipt_category_ids(
+            user_id=user_id,
+            items=normalized_items,
+            fallback_category_id=category_id,
+        )
         self._ensure_item_sources(user_id=user_id, items=normalized_items)
 
         key_order: list[tuple[str, str | None]] = []
@@ -653,6 +754,11 @@ class OperationItemTemplateService:
             items=normalized_items,
             template_by_key=template_by_key,
         )
+        self._apply_explicit_product_links(
+            user_id=user_id,
+            items=normalized_items,
+            template_by_key=template_by_key,
+        )
 
         created_templates = []
         for name_ci, shop_name_ci in key_order:
@@ -660,6 +766,21 @@ class OperationItemTemplateService:
             if key in template_by_key:
                 continue
             matched_item = sample_by_key[key]
+            requested_product_id = matched_item.get("product_id")
+            if requested_product_id is not None:
+                product = self.product_repo.get_by_id(
+                    user_id=user_id,
+                    product_id=int(requested_product_id),
+                )
+                if product is None:
+                    raise ValueError("Catalog product not found")
+            else:
+                product = self.products.create_for_offer(
+                    user_id=user_id,
+                    name=matched_item["name"],
+                    brand_id=matched_item.get("brand_id"),
+                    category_id=matched_item.get("category_id") or category_id,
+                )
             template = self.repo.create_item_template(
                 user_id=user_id,
                 shop_name=matched_item.get("shop_name"),
@@ -667,8 +788,9 @@ class OperationItemTemplateService:
                 source_id=matched_item.get("source_id"),
                 name=matched_item["name"],
                 name_ci=name_ci,
-                last_category_id=matched_item.get("category_id", category_id),
-                brand_id=matched_item.get("brand_id"),
+                last_category_id=product.category_id,
+                brand_id=product.brand_id,
+                product_id=int(product.id),
                 flush=False,
             )
             template_by_key[key] = template
@@ -693,16 +815,34 @@ class OperationItemTemplateService:
             template = template_by_key.get((item["name"].casefold(), shop_name_ci))
             if not template:
                 continue
+            product = self.products.ensure_for_template(
+                user_id=user_id,
+                template=template,
+            )
+            previous_categories = self._apply_receipt_product_metadata(
+                user_id=user_id,
+                product=product,
+                item=item,
+                fallback_category_id=category_id,
+            )
             template.is_archived = False
-            next_category_id = item.get("category_id", category_id)
-            if next_category_id is not None:
-                template.last_category_id = next_category_id
-            if "brand_id" in item:
-                template.brand_id = item.get("brand_id")
             if "source_id" in item:
                 template.source_id = item.get("source_id")
+            self._sync_product_compatibility(product=product)
+            if previous_categories is not None:
+                self.products._sync_linked_item_categories(
+                    user_id=user_id,
+                    previous_categories=previous_categories,
+                    category_id=product.category_id,
+                )
             template_id = int(template.id)
-            resolved_items.append({**item, "template_id": template_id})
+            resolved_items.append(
+                {
+                    **item,
+                    "template_id": template_id,
+                    "product_id": int(product.id),
+                }
+            )
             price_history_unit_price = self._receipt_item_price_for_history(item)
             if (
                 price_history_unit_price is not None
@@ -746,11 +886,17 @@ class OperationItemTemplateService:
                 "source_id": item.source_id,
                 "source_name": item.shop_name,
                 "source_image_id": None,
+                "product_id": item.product_id,
+                "product_name": None,
+                "product_image_id": None,
             },
         )
         return {
             "id": int(item.id),
-            "image_id": item.image_id,
+            "product_id": brand_meta.get("product_id", item.product_id),
+            "product_name": brand_meta.get("product_name"),
+            "product_image_id": brand_meta.get("product_image_id"),
+            "image_id": brand_meta.get("item_image_id", item.image_id),
             "shop_name": item.shop_name,
             "name": item.name,
             "use_count": int(item.use_count or 0),
@@ -889,6 +1035,24 @@ class OperationItemTemplateService:
             ):
                 raise ValueError("Brand not found")
 
+    def _validate_receipt_category_ids(
+        self,
+        *,
+        user_id: int,
+        items: list[dict],
+        fallback_category_id: int | None,
+    ) -> None:
+        """Validate snapshots and the fallback before mutating any catalog rows."""
+        category_ids = {
+            int(item["category_id"])
+            for item in items
+            if item.get("category_id") is not None
+        }
+        if fallback_category_id is not None:
+            category_ids.add(int(fallback_category_id))
+        for category_id in category_ids:
+            self._validate_category_id(user_id=user_id, category_id=category_id)
+
     def _apply_explicit_template_links(
         self,
         *,
@@ -924,7 +1088,80 @@ class OperationItemTemplateService:
             template_key = (str(template.name_ci), template.shop_name_ci)
             if key != template_key:
                 raise ValueError("Selected item template does not match source and name")
+            requested_product_id = item.get("product_id")
+            if (
+                requested_product_id is not None
+                and template.product_id is not None
+                and int(template.product_id) != int(requested_product_id)
+            ):
+                raise ValueError("Selected item template belongs to another product")
             template_by_key[key] = template
+
+    def _apply_explicit_product_links(
+        self,
+        *,
+        user_id: int,
+        items: list[dict],
+        template_by_key: dict[tuple[str, str | None], object],
+    ) -> None:
+        product_ids = sorted(
+            {
+                int(item["product_id"])
+                for item in items
+                if item.get("product_id") is not None
+            }
+        )
+        if not product_ids:
+            return
+        products = self.product_repo.list_by_ids(
+            user_id=user_id,
+            product_ids=product_ids,
+        )
+        if {int(product.id) for product in products} != set(product_ids):
+            raise ValueError("Catalog product not found")
+        offers = self.product_repo.list_offers_for_products(
+            user_id=user_id,
+            product_ids=product_ids,
+            include_archived=True,
+        )
+        offers_by_product_and_key: dict[
+            tuple[int, str, str | None], list
+        ] = {}
+        for offer in offers:
+            key = (
+                int(offer.product_id),
+                str(offer.name_ci),
+                offer.shop_name_ci,
+            )
+            offers_by_product_and_key.setdefault(key, []).append(offer)
+
+        for item in items:
+            requested_product_id = item.get("product_id")
+            if requested_product_id is None:
+                continue
+            shop_name = item.get("shop_name")
+            item_key = (
+                item["name"].casefold(),
+                shop_name.casefold() if shop_name else None,
+            )
+            selected = template_by_key.get(item_key)
+            if selected is not None:
+                current_product_id = getattr(selected, "product_id", None)
+                if current_product_id is None:
+                    selected.product_id = int(requested_product_id)
+                elif int(current_product_id) != int(requested_product_id):
+                    raise ValueError(
+                        "Offer identity already belongs to another product; use merge"
+                    )
+                continue
+            candidates = offers_by_product_and_key.get(
+                (int(requested_product_id), item_key[0], item_key[1]),
+                [],
+            )
+            if len(candidates) > 1:
+                raise ValueError("Multiple product offers match source and name")
+            if candidates:
+                template_by_key[item_key] = candidates[0]
 
     def _normalize_item_template_fields(self, *, shop_name: str | None, name: str | None) -> tuple[str | None, str]:
         normalized_shop_raw = " ".join(str(shop_name or "").split())
@@ -933,6 +1170,93 @@ class OperationItemTemplateService:
         if not normalized_name:
             raise ValueError("template name must not be empty")
         return normalized_shop, normalized_name
+
+    def _resolve_catalog_product(
+        self,
+        *,
+        user_id: int,
+        product_id: int | None,
+        name: str,
+        brand_id: int | None,
+        category_id: int | None,
+        existing_template=None,
+    ):
+        """Resolve the canonical owner without silently moving an existing offer."""
+        if product_id is not None:
+            product = self.product_repo.get_by_id(
+                user_id=user_id,
+                product_id=int(product_id),
+                include_archived=False,
+            )
+            if product is None:
+                raise ValueError("Catalog product not found")
+            current_product_id = getattr(existing_template, "product_id", None)
+            if current_product_id is not None and int(current_product_id) != int(product.id):
+                raise ValueError(
+                    "Offer already belongs to another product; use merge or detach"
+                )
+            return product
+        if existing_template is not None:
+            return self.products.ensure_for_template(
+                user_id=user_id,
+                template=existing_template,
+            )
+        return self.products.create_for_offer(
+            user_id=user_id,
+            name=name,
+            brand_id=brand_id,
+            category_id=category_id,
+        )
+
+    def _sync_product_compatibility(self, *, product) -> None:
+        """Keep legacy offer fields readable for older clients and reports."""
+        offers = self.product_repo.list_offers(
+            user_id=int(product.user_id),
+            product_id=int(product.id),
+            include_archived=True,
+        )
+        for offer in offers:
+            offer.brand_id = product.brand_id
+            offer.last_category_id = product.category_id
+            offer.image_id = product.image_id
+        self.db.flush()
+
+    def _apply_receipt_product_metadata(
+        self,
+        *,
+        user_id: int,
+        product,
+        item: dict,
+        fallback_category_id: int | None,
+    ) -> dict[int, int | None] | None:
+        if "brand_id" in item:
+            product.brand_id = item.get("brand_id")
+
+        category_requested = False
+        requested_category_id = None
+        if item.get("product_id") is None:
+            requested_category_id = item.get("category_id") or fallback_category_id
+            category_requested = requested_category_id is not None
+        elif bool(item.get("category_touched")):
+            requested_category_id = item.get("category_id")
+            category_requested = True
+        if not category_requested:
+            return None
+
+        validated_category_id = self._validate_category_id(
+            user_id=user_id,
+            category_id=requested_category_id,
+        )
+        offers = self.product_repo.list_offers(
+            user_id=user_id,
+            product_id=int(product.id),
+            include_archived=True,
+        )
+        previous_categories = {
+            int(offer.id): offer.last_category_id for offer in offers
+        }
+        product.category_id = validated_category_id
+        return previous_categories
 
     def _validate_category_id(self, *, user_id: int, category_id: int | None) -> int | None:
         if category_id is None:

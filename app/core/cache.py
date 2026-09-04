@@ -15,15 +15,15 @@ from app.core.metrics import increment_counter
 
 _DASHBOARD_SUMMARY_PREFIX = "dashsum:v1"
 _DASHBOARD_SUMMARY_TTL_SECONDS = 60
-_DASHBOARD_ANALYTICS_PREFIX = "dashanalytics:v1"
+_DASHBOARD_ANALYTICS_PREFIX = "dashanalytics:v2"
 _DASHBOARD_ANALYTICS_TTL_SECONDS = 60
-_PLANS_PREFIX = "plans:v2"
+_PLANS_PREFIX = "plans:v3"
 _PLANS_TTL_SECONDS = 60
-_ITEM_TEMPLATES_PREFIX = "itemtpl:v2"
+_ITEM_TEMPLATES_PREFIX = "itemtpl:v3"
 _ITEM_TEMPLATES_TTL_SECONDS = 60
 _DEBTS_PREFIX = "debts:v1"
 _DEBTS_TTL_SECONDS = 60
-_OPERATIONS_PREFIX = "ops:v2"
+_OPERATIONS_PREFIX = "ops:v3"
 _OPERATIONS_TTL_SECONDS = 60
 _CATEGORIES_PREFIX = "cats:v1"
 _CATEGORIES_TTL_SECONDS = 60
@@ -283,6 +283,7 @@ def build_operations_cache_key(
     quick_view: str | None = None,
     currency_scope: str | None = None,
     brand_id: int | None = None,
+    product_id: int | None = None,
 ) -> str:
     key = build_user_scoped_cache_key(
         namespace="operations",
@@ -299,6 +300,7 @@ def build_operations_cache_key(
         q=q,
         quick_view=quick_view,
         currency_scope=currency_scope,
+        product_id=product_id,
     )
     return f"{key}:brand_id:{brand_id}" if brand_id is not None else key
 

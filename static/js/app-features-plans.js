@@ -301,6 +301,9 @@
     }
     state.createReceiptItems = (Array.isArray(items) ? items : []).map((row) => operationModal.createReceiptDraft({
       template_id: row.template_id || null,
+      product_id: row.product_id || null,
+      product_name: row.product_name || "",
+      product_image_id: row.product_image_id || null,
       item_image_id: row.item_image_id || null,
       source_id: row.source_id || null,
       source_image_id: row.source_image_id || null,

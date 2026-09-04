@@ -535,7 +535,10 @@
     await openCreateModal();
     setOperationKind("create", "expense");
     state.createReceiptItems = [createReceiptDraft({
-      template_id: item.template_id || item.id || null,
+      template_id: item.template_id || (!item.product_id && !item.offers ? item.id : null),
+      product_id: item.product_id || (item.offers ? item.id : null),
+      product_name: item.product_name || (item.offers ? item.name : ""),
+      product_image_id: item.product_image_id || (item.offers ? item.image_id : null),
       item_image_id: item.item_image_id || item.image_id || null,
       source_id: item.source_id || null,
       source_image_id: item.source_image_id || null,
@@ -638,6 +641,9 @@
     if (typeof createReceiptDraft === "function") {
       state.editReceiptItems = (Array.isArray(item.receipt_items) ? item.receipt_items : []).map((row) => createReceiptDraft({
         template_id: row.template_id || null,
+        product_id: row.product_id || null,
+        product_name: row.product_name || "",
+        product_image_id: row.product_image_id || null,
         item_image_id: row.item_image_id || null,
         source_id: row.source_id || null,
         source_image_id: row.source_image_id || null,

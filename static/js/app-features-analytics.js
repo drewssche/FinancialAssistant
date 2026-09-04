@@ -89,6 +89,8 @@
     state.operationsCurrencyScope = "all";
     state.operationsItemTemplateFilterId = null;
     state.operationsItemTemplateFilterName = "";
+    state.operationsProductFilterId = null;
+    state.operationsProductFilterName = "";
     clearOperationsBrandFilter();
     core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
     core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
@@ -116,6 +118,8 @@
     state.operationsCurrencyScope = "all";
     state.operationsItemTemplateFilterId = null;
     state.operationsItemTemplateFilterName = "";
+    state.operationsProductFilterId = null;
+    state.operationsProductFilterName = "";
     clearOperationsBrandFilter();
     core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
     core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
@@ -130,7 +134,7 @@
     await navigation.switchSection("operations", { preserveBackStack: true, scrollToTop: true });
   }
 
-  async function openOperationsForAnalyticsPositionRange(templateId, positionName, dateFrom, dateTo) {
+  async function openOperationsForAnalyticsPositionRange(templateId, productId, positionName, dateFrom, dateTo) {
     const navigation = getNavigationActions();
     if (!navigation.switchSection || !dateFrom || !dateTo) {
       return;
@@ -145,11 +149,13 @@
     state.operationsCurrencyScope = "all";
     state.operationsCategoryFilterId = null;
     state.operationsCategoryFilterName = "";
-    state.operationsItemTemplateFilterId = Number(templateId || 0) || null;
-    state.operationsItemTemplateFilterName = String(positionName || "").trim();
+    state.operationsProductFilterId = Number(productId || 0) || null;
+    state.operationsProductFilterName = state.operationsProductFilterId ? String(positionName || "").trim() : "";
+    state.operationsItemTemplateFilterId = state.operationsProductFilterId ? null : (Number(templateId || 0) || null);
+    state.operationsItemTemplateFilterName = state.operationsProductFilterId ? "" : String(positionName || "").trim();
     clearOperationsBrandFilter();
     if (el.filterQ) {
-      el.filterQ.value = state.operationsItemTemplateFilterId ? "" : state.operationsItemTemplateFilterName;
+      el.filterQ.value = state.operationsItemTemplateFilterId || state.operationsProductFilterId ? "" : state.operationsItemTemplateFilterName;
     }
     core.syncAllPeriodTabs("custom");
     core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
@@ -205,6 +211,8 @@
     state.operationsCurrencyScope = "all";
     state.operationsItemTemplateFilterId = null;
     state.operationsItemTemplateFilterName = "";
+    state.operationsProductFilterId = null;
+    state.operationsProductFilterName = "";
     clearOperationsBrandFilter();
     core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
     core.syncSegmentedActive(el.operationsCurrencyScopeTabs, "operations-currency-scope", state.operationsCurrencyScope);

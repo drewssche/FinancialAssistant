@@ -9,7 +9,9 @@
   ];
 
   function positionKey(item) {
-    return item?.template_id
+    return item?.product_id
+      ? `product:${Number(item.product_id)}`
+      : item?.template_id
       ? `template:${Number(item.template_id)}`
       : `legacy:${String(item?.name || "").toLowerCase()}:${String(item?.shop_name || "").toLowerCase()}`;
   }
@@ -81,7 +83,7 @@
   }
 
   function rankingMeta(item) {
-    const parts = [item.shop_name || "Без источника"];
+    const parts = [item.product_id && !item.shop_name ? "Все источники" : (item.shop_name || "Без источника")];
     if (state.analyticsPositionsMetric !== "quantity") {
       parts.push(`${core.formatAmount(item.quantity_total || 0)} ед.`);
     }
@@ -139,7 +141,7 @@
     const max = Math.max(1, ...(selected.buckets || []).map((bucket) => metricValue(bucket)));
     el.analyticsPositionsMobileFocus.innerHTML = `
       <div class="analytics-positions-focus-head">
-        <div><strong>${core.escapeHtml(selected.name || "Позиция")}</strong><span class="muted-small">${core.escapeHtml(selected.shop_name || "Без источника")}</span></div>
+        <div><strong>${core.escapeHtml(selected.name || "Позиция")}</strong><span class="muted-small">${core.escapeHtml(selected.product_id && !selected.shop_name ? "Все источники" : (selected.shop_name || "Без источника"))}</span></div>
         <strong>${formatMetric(metricValue(selected))}</strong>
       </div>
       <div class="analytics-positions-focus-chart">
@@ -147,7 +149,7 @@
           const value = metricValue(bucket);
           const height = value > 0 ? Math.max(8, Math.round((value / max) * 100)) : 2;
           const meta = data.buckets?.[index] || {};
-          return `<button class="analytics-position-focus-bar" type="button" style="--bar-height:${height}%" data-position-template-id="${selected.template_id || ""}" data-position-name="${core.escapeHtml(selected.name || "")}" data-position-date-from="${meta.date_from || ""}" data-position-date-to="${meta.date_to || ""}" title="${core.escapeHtml(meta.label || "")} · ${core.escapeHtml(formatMetric(value))} · Открыть операции"${value > 0 ? "" : " disabled"}><i></i><span>${core.escapeHtml(meta.label || "")}</span></button>`;
+          return `<button class="analytics-position-focus-bar" type="button" style="--bar-height:${height}%" data-position-template-id="${selected.template_id || ""}" data-position-product-id="${selected.product_id || ""}" data-position-name="${core.escapeHtml(selected.name || "")}" data-position-date-from="${meta.date_from || ""}" data-position-date-to="${meta.date_to || ""}" title="${core.escapeHtml(meta.label || "")} · ${core.escapeHtml(formatMetric(value))} · Открыть операции"${value > 0 ? "" : " disabled"}><i></i><span>${core.escapeHtml(meta.label || "")}</span></button>`;
         }).join("")}
       </div>
     `;
@@ -162,12 +164,12 @@
     el.analyticsPositionsMatrixBody.innerHTML = rows.map((item) => {
       const key = positionKey(item);
       return `<tr class="${key === state.analyticsPositionsSelectedKey ? "is-selected" : ""}">
-        <td class="analytics-position-sticky-name"><button type="button" class="analytics-position-name-btn" data-position-select-key="${core.escapeHtml(key)}"><strong>${core.escapeHtml(item.name || "Позиция")}</strong><span>${core.escapeHtml(item.shop_name || "Без источника")}</span></button></td>
+        <td class="analytics-position-sticky-name"><button type="button" class="analytics-position-name-btn" data-position-select-key="${core.escapeHtml(key)}"><strong>${core.escapeHtml(item.name || "Позиция")}</strong><span>${core.escapeHtml(item.product_id && !item.shop_name ? "Все источники" : (item.shop_name || "Без источника"))}</span></button></td>
         ${(item.buckets || []).map((bucket, index) => {
           const value = metricValue(bucket);
           const intensity = value > 0 ? Math.max(0.12, value / bucketMax) : 0;
           const meta = buckets[index] || {};
-          return `<td><button class="analytics-position-cell${value > 0 ? " has-value" : ""}" type="button" style="--cell-intensity:${intensity.toFixed(3)}" data-position-template-id="${item.template_id || ""}" data-position-name="${core.escapeHtml(item.name || "")}" data-position-date-from="${meta.date_from || ""}" data-position-date-to="${meta.date_to || ""}" title="${core.escapeHtml(item.name || "")} · ${core.escapeHtml(meta.label || "")} · ${core.escapeHtml(formatMetric(value))} · Открыть операции"${value > 0 ? "" : " disabled"}><i></i><span>${value > 0 ? core.escapeHtml(formatMetric(value)) : "·"}</span></button></td>`;
+          return `<td><button class="analytics-position-cell${value > 0 ? " has-value" : ""}" type="button" style="--cell-intensity:${intensity.toFixed(3)}" data-position-template-id="${item.template_id || ""}" data-position-product-id="${item.product_id || ""}" data-position-name="${core.escapeHtml(item.name || "")}" data-position-date-from="${meta.date_from || ""}" data-position-date-to="${meta.date_to || ""}" title="${core.escapeHtml(item.name || "")} · ${core.escapeHtml(meta.label || "")} · ${core.escapeHtml(formatMetric(value))} · Открыть операции"${value > 0 ? "" : " disabled"}><i></i><span>${value > 0 ? core.escapeHtml(formatMetric(value)) : "·"}</span></button></td>`;
         }).join("")}
         <td class="analytics-position-sticky-total"><div class="analytics-position-total" style="--total-width:${Math.max(4, Math.round((metricValue(item) / totalMax) * 100))}%"><i></i><strong>${formatMetric(metricValue(item))}</strong></div></td>
       </tr>`;
@@ -257,9 +259,9 @@
       const quantity = Number(item.quantity_total || 0);
       const purchases = Number(item.purchases_count || 0);
       const width = Math.max(5, Math.round((quantity / maxValue) * 100));
-      return `<button class="analytics-position-ranking-row" type="button" data-dashboard-position-template-id="${item.template_id || ""}" data-dashboard-position-name="${core.escapeHtml(item.name || "")}" data-dashboard-position-date-from="${data.date_from || ""}" data-dashboard-position-date-to="${data.date_to || ""}">
+      return `<button class="analytics-position-ranking-row" type="button" data-dashboard-position-template-id="${item.template_id || ""}" data-dashboard-position-product-id="${item.product_id || ""}" data-dashboard-position-name="${core.escapeHtml(item.name || "")}" data-dashboard-position-date-from="${data.date_from || ""}" data-dashboard-position-date-to="${data.date_to || ""}">
         <span class="analytics-position-ranking-index">${index + 1}</span>
-        <span class="analytics-position-ranking-copy"><strong>${core.escapeHtml(item.name || "Позиция")}</strong><small>${core.escapeHtml(item.shop_name || "Без источника")} · ${core.formatMoney(item.amount_total || 0)} · ${purchases} пок.</small><i style="--ranking-width:${width}%"></i></span>
+        <span class="analytics-position-ranking-copy"><strong>${core.escapeHtml(item.name || "Позиция")}</strong><small>${core.escapeHtml(item.product_id && !item.shop_name ? "Все источники" : (item.shop_name || "Без источника"))} · ${core.formatMoney(item.amount_total || 0)} · ${purchases} пок.</small><i style="--ranking-width:${width}%"></i></span>
         <strong class="analytics-position-ranking-value">${core.formatAmount(quantity)} ед.</strong>
       </button>`;
     }).join("");

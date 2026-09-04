@@ -8,6 +8,10 @@
       row: Object.freeze(["activity", "usage", "history", "edit", "delete"]),
       modal: Object.freeze(["activity", "usage", "history"]),
     }),
+    catalog_product: Object.freeze({
+      row: Object.freeze(["edit", "merge", "delete"]),
+      modal: Object.freeze(["edit"]),
+    }),
     item_brand: Object.freeze({
       row: Object.freeze(["edit", "delete"]),
       modal: Object.freeze(["edit"]),

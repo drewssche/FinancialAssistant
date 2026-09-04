@@ -3,6 +3,7 @@ from app.db.models.activity_event import ActivityEvent
 from app.db.models.category import Category
 from app.db.models.category_group import CategoryGroup
 from app.db.models.catalog_media_asset import CatalogMediaAsset
+from app.db.models.catalog_product import CatalogProduct
 from app.db.models.debt import Debt
 from app.db.models.debt_counterparty import DebtCounterparty
 from app.db.models.debt_forgiveness import DebtForgiveness
@@ -36,6 +37,7 @@ __all__ = [
     "CategoryGroup",
     "Category",
     "CatalogMediaAsset",
+    "CatalogProduct",
     "Operation",
     "OperationItemTemplate",
     "OperationItemPrice",

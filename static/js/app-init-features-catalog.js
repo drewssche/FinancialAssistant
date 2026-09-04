@@ -39,15 +39,17 @@
     const itemCatalogSectionCoordinator = getItemCatalogSectionCoordinator();
     const itemCatalogFeature = window.App.getRuntimeModule?.("item-catalog") || {};
     const itemBrandsFeature = window.App.getRuntimeModule?.("item-brands") || {};
+    const catalogProductsFeature = window.App.getRuntimeModule?.("catalog-products") || {};
 
     itemBrandsFeature.bind?.();
+    catalogProductsFeature.bind?.();
     el.itemCatalogViewTabs?.addEventListener("click", (event) => {
       const button = event.target.closest("button[data-item-catalog-view]");
       if (button) {
         actions.setItemCatalogView?.(button.dataset.itemCatalogView);
       }
     });
-    actions.setItemCatalogView?.(state.itemCatalogView || "positions");
+    actions.setItemCatalogView?.(state.itemCatalogView || "products");
 
     if (el.itemTemplateBrandSearch) {
       el.itemTemplateBrandSearch.addEventListener("focus", () => itemCatalogFeature.handleItemTemplateBrandSearchFocus?.());

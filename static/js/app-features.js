@@ -224,6 +224,7 @@
   const setOperationsKindFilter = operationsFeatures.setOperationsKindFilter;
   const openOperationsForCategory = operationsFeatures.openOperationsForCategory;
   const openOperationsForItemTemplate = operationsFeatures.openOperationsForItemTemplate;
+  const openOperationsForProduct = operationsFeatures.openOperationsForProduct;
   const openMoneyFlowSource = operationsFeatures.openMoneyFlowSource;
   const openOperationReceiptModal = operationsFeatures.openOperationReceiptModal;
   const closeOperationReceiptModal = operationsFeatures.closeOperationReceiptModal;
@@ -438,6 +439,7 @@
     setOperationsKindFilter,
     openOperationsForCategory,
     openOperationsForItemTemplate,
+    openOperationsForProduct,
     openMoneyFlowSource,
     createOperation,
     updateOperation,

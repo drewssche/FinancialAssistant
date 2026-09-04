@@ -522,6 +522,7 @@
         errorPrefix: "Ошибка перехода в операции",
         action: () => actions.openOperationsForAnalyticsPositionRange?.(
           cell.dataset.positionTemplateId,
+          cell.dataset.positionProductId,
           cell.dataset.positionName,
           cell.dataset.positionDateFrom,
           cell.dataset.positionDateTo,
@@ -576,6 +577,7 @@
         errorPrefix: "Ошибка перехода в операции",
         action: () => actions.openOperationsForAnalyticsPositionRange?.(
           selected.template_id,
+          selected.product_id,
           selected.name,
           dateFrom,
           dateTo,

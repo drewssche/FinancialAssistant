@@ -81,7 +81,7 @@ def test_dashboard_analytics_key_shape_is_namespaced_and_parameterized():
         category_breakdown_level="group",
     )
     assert key == (
-        "dashanalytics:v1:u:7:view:highlights:period:month:from:-:to:-:"
+        "dashanalytics:v2:u:7:view:highlights:period:month:from:-:to:-:"
         "month:-:category_kind:expense:category_breakdown_level:group:granularity:-:year:-"
     )
 
@@ -96,7 +96,7 @@ def test_dashboard_analytics_trend_key_shape_is_parameterized_by_granularity():
         granularity="day",
     )
     assert key == (
-        "dashanalytics:v1:u:7:view:trend:period:custom:from:2026-03-01:to:2026-03-03:"
+        "dashanalytics:v2:u:7:view:trend:period:custom:from:2026-03-01:to:2026-03-03:"
         "month:-:category_kind:-:category_breakdown_level:-:granularity:day:year:-"
     )
 
@@ -111,7 +111,7 @@ def test_dashboard_analytics_calendar_key_shape_is_parameterized_by_month_anchor
         month_anchor="2026-03-01",
     )
     assert key == (
-        "dashanalytics:v1:u:7:view:calendar:period:month:from:-:to:-:"
+        "dashanalytics:v2:u:7:view:calendar:period:month:from:-:to:-:"
         "month:2026-03-01:category_kind:-:category_breakdown_level:-:granularity:-:year:-"
     )
 
@@ -126,7 +126,7 @@ def test_dashboard_analytics_calendar_year_key_shape_is_parameterized_by_year_an
         year_anchor=2026,
     )
     assert key == (
-        "dashanalytics:v1:u:7:view:calendar_year:period:year:from:-:to:-:"
+        "dashanalytics:v2:u:7:view:calendar_year:period:year:from:-:to:-:"
         "month:-:category_kind:-:category_breakdown_level:-:granularity:-:year:2026"
     )
 
@@ -138,7 +138,7 @@ def test_plans_cache_key_shape_is_namespaced_and_parameterized():
         q="коммуналка",
         kind="expense",
     )
-    assert key == "plans:v2:u:7:view:history:q:коммуналка:kind:expense"
+    assert key == "plans:v3:u:7:view:history:q:коммуналка:kind:expense"
 
 
 def test_item_templates_list_cache_key_shape_is_namespaced_and_parameterized():
@@ -149,7 +149,7 @@ def test_item_templates_list_cache_key_shape_is_namespaced_and_parameterized():
         page_size=50,
         q="Ротманс",
     )
-    assert key == "itemtpl:v2:u:7:view:list:page:2:page_size:50:q:Ротманс:template_id:-:limit:-"
+    assert key == "itemtpl:v3:u:7:view:list:page:2:page_size:50:q:Ротманс:template_id:-:limit:-"
 
 
 def test_item_templates_prices_cache_key_shape_is_namespaced_and_parameterized():
@@ -159,7 +159,7 @@ def test_item_templates_prices_cache_key_shape_is_namespaced_and_parameterized()
         template_id=13,
         limit=100,
     )
-    assert key == "itemtpl:v2:u:7:view:prices:page:-:page_size:-:q:-:template_id:13:limit:100"
+    assert key == "itemtpl:v3:u:7:view:prices:page:-:page_size:-:q:-:template_id:13:limit:100"
 
 
 def test_debts_cards_cache_key_shape_is_namespaced_and_parameterized():
@@ -189,7 +189,7 @@ def test_operations_summary_cache_key_shape_is_namespaced_and_parameterized():
     )
     assert (
         key
-        == "ops:v2:u:7:view:summary:page:-:page_size:-:sort_by:-:sort_dir:-:kind:expense:date_from:2026-03-01:date_to:2026-03-31:category_id:5:q:еда:quick_view:large:currency_scope:-"
+        == "ops:v3:u:7:view:summary:page:-:page_size:-:sort_by:-:sort_dir:-:kind:expense:date_from:2026-03-01:date_to:2026-03-31:category_id:5:q:еда:quick_view:large:currency_scope:-:product_id:-"
     )
 
 
@@ -210,8 +210,17 @@ def test_operations_list_cache_key_shape_is_namespaced_and_parameterized():
     )
     assert (
         key
-        == "ops:v2:u:7:view:list:page:2:page_size:20:sort_by:operation_date:sort_dir:desc:kind:expense:date_from:2026-03-01:date_to:2026-03-31:category_id:5:q:еда:quick_view:receipt:currency_scope:-"
+        == "ops:v3:u:7:view:list:page:2:page_size:20:sort_by:operation_date:sort_dir:desc:kind:expense:date_from:2026-03-01:date_to:2026-03-31:category_id:5:q:еда:quick_view:receipt:currency_scope:-:product_id:-"
     )
+
+
+def test_operations_cache_key_is_parameterized_by_product():
+    first = build_operations_cache_key(user_id=7, view="list", product_id=11)
+    second = build_operations_cache_key(user_id=7, view="list", product_id=12)
+
+    assert first.endswith(":product_id:11")
+    assert second.endswith(":product_id:12")
+    assert first != second
 
 
 def test_categories_groups_cache_key_shape_is_namespaced_and_parameterized():

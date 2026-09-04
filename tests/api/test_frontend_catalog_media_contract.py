@@ -53,7 +53,7 @@ def test_thumbnails_and_nested_item_card_are_wired_through_receipt_surfaces():
     media = _read("static/js/app-catalog-media.js")
 
     assert 'data-open-receipt-template-card="${Number(item.template_id)}"' in receipt
-    assert "renderThumb?.(item.image_id" in pickers
+    assert "renderThumb?.(item.product_image_id || item.image_id" in pickers
     assert "renderThumb?.(getReceiptSourceMeta(shopName)?.image_id" in pickers
     assert 'button[data-open-receipt-template-card]' in interactions
     assert 'data-open-receipt-template-card="${Number(row.template_id)}"' in display

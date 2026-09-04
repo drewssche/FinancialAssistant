@@ -1,12 +1,13 @@
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.api.deps import get_current_user_id
 from app.db.base import Base
-from app.db.models import User
+from app.db.models import ActivityEvent, CatalogProduct, OperationItemTemplate, User
 from app.db.session import get_db
 from app.main import app
 
@@ -41,6 +42,7 @@ def client():
     db.close()
 
     test_client = TestClient(app)
+    test_client._testing_session = testing_session
     yield test_client
 
     app.dependency_overrides.clear()
@@ -135,6 +137,11 @@ def test_deleted_category_restore_preserves_visual_and_statistics_fields(client:
         },
     )
     assert operation.status_code == 201, operation.text
+    product = client.post(
+        "/api/v1/operations/catalog-products",
+        json={"name": "Linked product", "category_id": category_id},
+    )
+    assert product.status_code == 201, product.text
 
     deleted = client.delete(f"/api/v1/categories/{category_id}")
     assert deleted.status_code == 204, deleted.text
@@ -149,4 +156,63 @@ def test_deleted_category_restore_preserves_visual_and_statistics_fields(client:
     restored_operation = client.get(f"/api/v1/operations/{operation.json()['id']}")
     assert restored_operation.status_code == 200, restored_operation.text
     assert restored_operation.json()["category_id"] == category_id
+    restored_product = client.get(
+        f"/api/v1/operations/catalog-products/{product.json()['id']}"
+    )
+    assert restored_product.status_code == 200, restored_product.text
+    assert restored_product.json()["category_id"] == category_id
     assert client.post(f"/api/v1/categories/{category_id}/restore").status_code == 409
+
+
+def test_legacy_category_restore_snapshot_derives_canonical_product_from_offer(
+    client: TestClient,
+):
+    category = client.post(
+        "/api/v1/categories",
+        json={"name": "Legacy restore", "kind": "expense"},
+    )
+    assert category.status_code == 200, category.text
+    category_id = int(category.json()["id"])
+    product = client.post(
+        "/api/v1/operations/catalog-products",
+        json={"name": "Legacy linked product", "category_id": category_id},
+    )
+    assert product.status_code == 201, product.text
+    offer = client.post(
+        "/api/v1/operations/item-templates",
+        json={"product_id": product.json()["id"], "name": "Legacy offer"},
+    )
+    assert offer.status_code == 201, offer.text
+    assert client.delete(f"/api/v1/categories/{category_id}").status_code == 204
+
+    session_factory = getattr(client, "_testing_session")
+    with session_factory() as db:
+        event = db.scalar(
+            select(ActivityEvent)
+            .where(
+                ActivityEvent.user_id == 1,
+                ActivityEvent.entity_type == "category",
+                ActivityEvent.entity_id == category_id,
+                ActivityEvent.event_type == "deleted",
+            )
+            .order_by(ActivityEvent.id.desc())
+        )
+        assert event is not None
+        metadata = dict(event.metadata_json or {})
+        snapshot = dict(metadata["_restore_snapshot"])
+        references = dict(snapshot["references"])
+        references.pop("catalog_product_ids", None)
+        snapshot["references"] = references
+        metadata["_restore_snapshot"] = snapshot
+        event.metadata_json = metadata
+        db.get(CatalogProduct, int(product.json()["id"])).category_id = None
+        db.get(OperationItemTemplate, int(offer.json()["id"])).last_category_id = None
+        db.commit()
+
+    restored = client.post(f"/api/v1/categories/{category_id}/restore")
+    assert restored.status_code == 200, restored.text
+    restored_product = client.get(
+        f"/api/v1/operations/catalog-products/{product.json()['id']}"
+    )
+    assert restored_product.status_code == 200, restored_product.text
+    assert restored_product.json()["category_id"] == category_id

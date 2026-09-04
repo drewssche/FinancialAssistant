@@ -269,6 +269,9 @@
     const normalized = {
       ...item,
       id: templateId,
+      product_id: Number(item?.product_id || 0) || null,
+      product_name: String(item?.product_name || "").trim() || null,
+      product_image_id: Number(item?.product_image_id || 0) || null,
       shop_name: normalizedShop || null,
       shop_name_ci: normalizedShop.toLowerCase(),
       name: normalizedName,
@@ -286,12 +289,16 @@
       hints.unshift(normalized);
     }
     state.receiptTemplateHints = hints;
+    state.receiptProductHints = [];
+    core.invalidateUiRequestCache("op:receipt:products");
     core.invalidateUiRequestCache("op:receipt:templates");
   }
 
   function invalidateItemCatalogDependentCaches() {
     for (const prefix of [
       "item-catalog",
+      "catalog-products",
+      "op:receipt:products",
       "item-brands",
       "item-sources",
       "op:receipt:templates",
@@ -303,6 +310,7 @@
       core.invalidateUiRequestCache?.(prefix);
     }
     state.receiptTemplateHints = [];
+    state.receiptProductHints = [];
     state.itemBrandsLoaded = false;
     state.itemSourcesLoaded = false;
   }
@@ -425,6 +433,7 @@
   function cleanupItemCatalogRuntime() {
     cancelDebouncedPreferencesSave();
     window.App.getRuntimeModule?.("item-brands")?.cleanupRuntime?.();
+    window.App.getRuntimeModule?.("catalog-products")?.cleanupRuntime?.();
     window.App.getRuntimeModule?.("catalog-media")?.clear?.();
     if (itemCatalogRequestController) {
       itemCatalogRequestController.abort();
@@ -438,25 +447,28 @@
     state.itemCatalogItems = [];
     state.itemCatalogAllItems = [];
     state.receiptTemplateHints = [];
+    state.receiptProductHints = [];
     state.itemBrands = [];
     state.itemBrandsLoaded = false;
     state.itemSources = [];
     state.itemSourcesLoaded = false;
     state.selectedItemCatalogIds = new Set();
-    state.itemCatalogView = "positions";
+    state.itemCatalogView = "products";
     state.itemCatalogBrandFilter = "all";
     state.editItemBrandId = null;
   }
 
   function refreshItemCatalogView() {
     renderItemCatalog(state.itemCatalogItems);
+    window.App.getRuntimeModule?.("catalog-products")?.render?.();
     window.App.getRuntimeModule?.("item-brands")?.renderCatalogBulkState?.();
   }
 
   function setItemCatalogView(view, options = {}) {
-    const activeView = view === "brands" ? "brands" : "positions";
+    const activeView = view === "brands" ? "brands" : (view === "sources" || view === "positions" ? "sources" : "products");
     state.itemCatalogView = activeView;
-    el.itemCatalogPositionsView?.classList.toggle("hidden", activeView !== "positions");
+    el.catalogProductsView?.classList.toggle("hidden", activeView !== "products");
+    el.itemCatalogPositionsView?.classList.toggle("hidden", activeView !== "sources");
     el.itemBrandsView?.classList.toggle("hidden", activeView !== "brands");
     el.itemCatalogViewTabs?.querySelectorAll("[data-item-catalog-view]").forEach((button) => {
       button.classList.toggle("active", button.dataset.itemCatalogView === activeView);
@@ -464,6 +476,22 @@
     if (activeView === "brands") {
       window.App.getRuntimeModule?.("item-brands")?.ensureItemBrandsLoaded?.({ force: options.force === true })
         .catch((err) => core.setStatus(`Не удалось загрузить бренды: ${String(err)}`));
+    } else if (activeView === "products") {
+      window.App.getRuntimeModule?.("catalog-products")?.load?.({ force: options.force === true })
+        .catch((err) => core.setStatus(`Не удалось загрузить товары: ${String(err)}`));
+    } else if (activeView === "sources" && options.load !== false) {
+      loadItemCatalog({ force: options.force === true })
+        .catch((err) => core.setStatus(`Не удалось загрузить предложения: ${String(err)}`));
+    }
+    if (el.addItemTemplateCta) {
+      el.addItemTemplateCta.textContent = activeView === "products" ? "+ Добавить товар" : "+ Создать позицию";
+      el.addItemTemplateCta.classList.toggle("hidden", activeView === "brands");
+    }
+    if (el.addItemSourceCta) {
+      el.addItemSourceCta.classList.toggle("hidden", activeView !== "sources");
+    }
+    if (el.batchItemCatalogCta) {
+      el.batchItemCatalogCta.classList.toggle("hidden", activeView !== "sources");
     }
   }
 

@@ -6,7 +6,7 @@ from io import BytesIO
 import warnings
 
 from PIL import Image, ImageOps, UnidentifiedImageError
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.core.cache import (
     invalidate_dashboard_analytics_cache,
@@ -14,7 +14,7 @@ from app.core.cache import (
     invalidate_operations_cache,
     invalidate_plans_cache,
 )
-from app.db.models import ItemBrand, ItemSource, OperationItemTemplate
+from app.db.models import CatalogProduct, ItemBrand, ItemSource, OperationItemTemplate
 from app.repositories.catalog_media_repo import CatalogMediaRepository
 from app.services.activity_service import ActivityService
 
@@ -53,11 +53,13 @@ class CatalogMediaService:
     }
     OWNER_MODELS = {
         "brand": ItemBrand,
+        "product": CatalogProduct,
         "source": ItemSource,
         "template": OperationItemTemplate,
     }
     OWNER_ENTITY_TYPES = {
         "brand": "item_brand",
+        "product": "catalog_product",
         "source": "item_source",
         "template": "item_template",
     }
@@ -81,6 +83,35 @@ class CatalogMediaService:
             conditions.append(model.is_archived.is_(False))
         return self.db.scalar(select(model).where(*conditions))
 
+    def _resolve_owner(
+        self,
+        *,
+        user_id: int,
+        owner_kind: str,
+        owner_id: int,
+        include_archived: bool = False,
+    ) -> tuple[str, object | None]:
+        owner = self.get_owner(
+            user_id=user_id,
+            owner_kind=owner_kind,
+            owner_id=owner_id,
+            include_archived=include_archived,
+        )
+        if (
+            owner_kind == "template"
+            and owner is not None
+            and owner.product_id is not None
+        ):
+            product = self.get_owner(
+                user_id=user_id,
+                owner_kind="product",
+                owner_id=int(owner.product_id),
+                include_archived=include_archived,
+            )
+            if product is not None:
+                return "product", product
+        return owner_kind, owner
+
     def upload(
         self,
         *,
@@ -90,8 +121,10 @@ class CatalogMediaService:
         content_type: str | None,
         raw: bytes,
     ):
-        owner = self.get_owner(
-            user_id=user_id, owner_kind=owner_kind, owner_id=owner_id
+        resolved_kind, owner = self._resolve_owner(
+            user_id=user_id,
+            owner_kind=owner_kind,
+            owner_id=owner_id,
         )
         if owner is None:
             raise LookupError("Catalog entity not found")
@@ -102,7 +135,17 @@ class CatalogMediaService:
             else None
         )
         old_size = int(old_asset.byte_size or 0) if old_asset is not None else 0
-        next_total = self.repo.total_bytes(user_id=user_id) - old_size
+        reclaimable_old_size = (
+            old_size
+            if old_asset is not None
+            and not self._asset_is_externally_referenced(
+                asset_id=int(old_asset.id),
+                owner_kind=resolved_kind,
+                owner_id=int(owner.id),
+            )
+            else 0
+        )
+        next_total = self.repo.total_bytes(user_id=user_id) - reclaimable_old_size
         next_total += len(processed.thumb_bytes) + len(processed.detail_bytes)
         if next_total > self.MAX_USER_BYTES:
             raise CatalogMediaTooLargeError("Catalog image storage limit exceeded")
@@ -111,12 +154,20 @@ class CatalogMediaService:
         asset = self.repo.create(user_id=user_id, processed=processed)
         owner.image_id = int(asset.id)
         self.db.flush()
-        if old_asset is not None:
+        if resolved_kind == "product":
+            self._sync_product_offer_images(
+                user_id=user_id,
+                product_id=int(owner.id),
+                image_id=int(asset.id),
+            )
+        if old_asset is not None and not self._asset_is_referenced(
+            asset_id=int(old_asset.id)
+        ):
             self.repo.delete(old_asset)
         self.activity.record(
             user_id=user_id,
             actor_user_id=user_id,
-            entity_type=self.OWNER_ENTITY_TYPES[owner_kind],
+            entity_type=self.OWNER_ENTITY_TYPES[resolved_kind],
             entity_id=int(owner.id),
             event_type="image_updated",
             title="Изображение обновлено",
@@ -127,7 +178,7 @@ class CatalogMediaService:
         return owner
 
     def delete(self, *, user_id: int, owner_kind: str, owner_id: int):
-        owner = self.get_owner(
+        resolved_kind, owner = self._resolve_owner(
             user_id=user_id,
             owner_kind=owner_kind,
             owner_id=owner_id,
@@ -142,13 +193,19 @@ class CatalogMediaService:
         previous_id = owner.image_id
         owner.image_id = None
         self.db.flush()
-        if asset is not None:
+        if resolved_kind == "product":
+            self._sync_product_offer_images(
+                user_id=user_id,
+                product_id=int(owner.id),
+                image_id=None,
+            )
+        if asset is not None and not self._asset_is_referenced(asset_id=int(asset.id)):
             self.repo.delete(asset)
         if previous_id is not None:
             self.activity.record(
                 user_id=user_id,
                 actor_user_id=user_id,
-                entity_type=self.OWNER_ENTITY_TYPES[owner_kind],
+                entity_type=self.OWNER_ENTITY_TYPES[resolved_kind],
                 entity_id=int(owner.id),
                 event_type="image_deleted",
                 title="Изображение удалено",
@@ -168,6 +225,50 @@ class CatalogMediaService:
             raise LookupError("Image not found")
         payload = asset.thumb_bytes if variant == "thumb" else asset.detail_bytes
         return payload, asset.checksum
+
+    def _sync_product_offer_images(
+        self,
+        *,
+        user_id: int,
+        product_id: int,
+        image_id: int | None,
+    ) -> None:
+        self.db.execute(
+            update(OperationItemTemplate)
+            .where(
+                OperationItemTemplate.user_id == user_id,
+                OperationItemTemplate.product_id == product_id,
+            )
+            .values(image_id=image_id)
+        )
+        self.db.flush()
+
+    def _asset_is_referenced(self, *, asset_id: int) -> bool:
+        for model in (CatalogProduct, ItemBrand, ItemSource, OperationItemTemplate):
+            if self.db.scalar(
+                select(model.id).where(model.image_id == asset_id).limit(1)
+            ) is not None:
+                return True
+        return False
+
+    def _asset_is_externally_referenced(
+        self,
+        *,
+        asset_id: int,
+        owner_kind: str,
+        owner_id: int,
+    ) -> bool:
+        for kind, model in self.OWNER_MODELS.items():
+            conditions = [model.image_id == asset_id]
+            if kind == owner_kind:
+                conditions.append(model.id != owner_id)
+            if kind == "template" and owner_kind == "product":
+                conditions.append(
+                    (model.product_id.is_(None)) | (model.product_id != owner_id)
+                )
+            if self.db.scalar(select(model.id).where(*conditions).limit(1)) is not None:
+                return True
+        return False
 
     @classmethod
     def process_image(

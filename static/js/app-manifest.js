@@ -81,6 +81,7 @@
     "/static/js/app-features-session.js",
     "/static/js/app-features-item-catalog-sources.js",
     "/static/js/app-features-item-brands.js",
+    "/static/js/app-features-catalog-products.js",
     "/static/js/app-features-item-catalog-modal.js",
     "/static/js/app-item-catalog-section-coordinator.js",
     "/static/js/app-item-catalog-render-coordinator.js",

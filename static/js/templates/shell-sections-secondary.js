@@ -401,10 +401,55 @@
 
         <section id="itemCatalogSection" class="section-block hidden">
           <div id="itemCatalogViewTabs" class="segmented item-catalog-view-tabs" role="tablist" aria-label="Разделы каталога">
-            <button class="segmented-btn active" data-item-catalog-view="positions" type="button">Позиции</button>
+            <button class="segmented-btn active" data-item-catalog-view="products" type="button">Товары</button>
+            <button class="segmented-btn" data-item-catalog-view="sources" type="button">По источникам</button>
             <button class="segmented-btn" data-item-catalog-view="brands" type="button">Бренды</button>
           </div>
-          <section id="itemCatalogPositionsView" class="panel">
+          <section id="catalogProductsView" class="panel catalog-products-view">
+            <div class="catalog-products-heading">
+              <div>
+                <h3>Товары</h3>
+                <p class="muted">Один товар может иметь несколько предложений и свою историю цены в каждом источнике.</p>
+              </div>
+              <div class="row catalog-products-heading-actions">
+                <button id="catalogProductsCandidatesBtn" class="btn btn-secondary btn-xs hidden" type="button">Возможные совпадения <span id="catalogProductsCandidatesCount"></span></button>
+              </div>
+            </div>
+            <div class="table-search-row catalog-products-toolbar">
+              <input id="catalogProductsSearchQ" class="table-search-input" type="search" placeholder="Поиск по товару, бренду или источнику" />
+              <div class="toolbar section-action-toolbar search-toolbar">
+                <button id="catalogProductsCollapseAllBtn" class="btn btn-secondary btn-xs" type="button">Свернуть все</button>
+                <button id="catalogProductsExpandAllBtn" class="btn btn-secondary btn-xs" type="button">Развернуть все</button>
+                <button id="refreshCatalogProductsBtn" class="btn btn-secondary btn-xs" type="button">Обновить</button>
+              </div>
+            </div>
+            <div id="catalogProductsKpiGrid" class="analytics-kpi-grid section-kpi-grid" aria-label="Итоги каталога товаров"></div>
+            <div id="catalogProductsCandidatesPanel" class="catalog-product-candidates hidden" aria-live="polite"></div>
+            <div id="catalogProductsBulkBar" class="bulk-bar hidden" aria-live="polite">
+              <strong id="catalogProductsSelectedCount">Выбрано: 0</strong>
+              <span class="muted-small">Выберите главную карточку при объединении</span>
+              <button id="mergeCatalogProductsBtn" class="btn btn-primary btn-xs" type="button">Объединить</button>
+              <button id="clearSelectedCatalogProductsBtn" class="btn btn-ghost btn-xs" type="button">Снять выбор</button>
+            </div>
+            <div class="table-wrap">
+              <table class="table table-hover mobile-card-table catalog-products-table">
+                <thead>
+                  <tr>
+                    <th><input id="catalogProductsSelectAll" type="checkbox" aria-label="Выбрать все видимые товары" /></th>
+                    <th>Товар</th>
+                    <th>Бренд</th>
+                    <th>Категория</th>
+                    <th>Источники</th>
+                    <th>Цена</th>
+                    <th>Последняя покупка</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="catalogProductsBody"></tbody>
+              </table>
+            </div>
+          </section>
+          <section id="itemCatalogPositionsView" class="panel hidden">
             <div class="table-search-row">
               <input id="itemCatalogSearchQ" class="table-search-input" type="search" placeholder="Поиск по источнику, бренду и позиции" />
               <div class="toolbar section-action-toolbar search-toolbar item-catalog-controls">

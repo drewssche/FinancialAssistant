@@ -289,7 +289,11 @@
       state.itemSourcesLoaded = false;
       await loadItemSources?.({ force: true }).catch(() => []);
       applySavedItemCatalogItem?.(savedItem);
+      window.App.getRuntimeModule?.("catalog-products")?.invalidate?.();
       applySavedReceiptTemplateHint(savedItem);
+      if (state.itemCatalogView === "products") {
+        await window.App.getRuntimeModule?.("catalog-products")?.load?.({ force: true }).catch(() => []);
+      }
       window.App.getRuntimeModule?.("operation-modal")?.applySavedTemplateToReceiptDrafts?.(savedItem);
       window.App.getRuntimeModule?.("operations")?.refreshOpenReceiptTemplate?.(savedItem);
       hydrateItemTemplateBrandFields(savedItem);

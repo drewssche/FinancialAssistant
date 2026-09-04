@@ -69,6 +69,8 @@
       operationsCategoryFilterName: state.operationsCategoryFilterName,
       operationsItemTemplateFilterId: state.operationsItemTemplateFilterId,
       operationsItemTemplateFilterName: state.operationsItemTemplateFilterName,
+      operationsProductFilterId: state.operationsProductFilterId,
+      operationsProductFilterName: state.operationsProductFilterName,
       operationsBrandFilterId: state.operationsBrandFilterId,
       operationsBrandFilterName: state.operationsBrandFilterName,
       currencyFilter: state.currencyFilter,
@@ -118,6 +120,8 @@
     state.operationsCategoryFilterName = snapshot.operationsCategoryFilterName || "";
     state.operationsItemTemplateFilterId = snapshot.operationsItemTemplateFilterId ?? null;
     state.operationsItemTemplateFilterName = snapshot.operationsItemTemplateFilterName || "";
+    state.operationsProductFilterId = snapshot.operationsProductFilterId ?? null;
+    state.operationsProductFilterName = snapshot.operationsProductFilterName || "";
     state.operationsBrandFilterId = snapshot.operationsBrandFilterId ?? null;
     state.operationsBrandFilterName = snapshot.operationsBrandFilterName || "";
     state.currencyFilter = snapshot.currencyFilter || "all";
@@ -431,6 +435,7 @@
       });
     }
     if (sectionId === "item_catalog" && getItemCatalogFeature().loadItemCatalog) {
+      getItemCatalogFeature().setItemCatalogView?.(state.itemCatalogView || "products", { load: false });
       getItemCatalogFeature().loadItemCatalog().catch((err) => {
         const message = core.errorMessage ? core.errorMessage(err) : String(err);
         core.setStatus(`Не удалось открыть раздел «Каталог»: ${message}`);

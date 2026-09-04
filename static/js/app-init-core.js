@@ -186,6 +186,7 @@
       if (!row) return;
       getAnalyticsFeature().openOperationsForAnalyticsPositionRange?.(
         row.dataset.dashboardPositionTemplateId,
+        row.dataset.dashboardPositionProductId,
         row.dataset.dashboardPositionName,
         row.dataset.dashboardPositionDateFrom,
         row.dataset.dashboardPositionDateTo,
@@ -259,6 +260,10 @@
     }
     if (el.addItemTemplateCta && getItemCatalogFeature().openItemTemplateModal) {
       el.addItemTemplateCta.addEventListener("click", () => {
+        if (state.itemCatalogView === "products") {
+          window.App.getRuntimeModule?.("catalog-products")?.openEditor?.();
+          return;
+        }
         getItemCatalogFeature().openItemTemplateModal?.();
       });
     }
@@ -410,6 +415,16 @@
       });
     }
     el.operationReceiptItems?.addEventListener("click", (event) => {
+      const productButton = event.target.closest("button[data-open-receipt-product-card]");
+      if (productButton) {
+        core.runAction({
+          errorPrefix: "Не удалось открыть карточку товара",
+          action: () => window.App.getRuntimeModule?.("catalog-media")?.openCatalogProductCard?.(
+            Number(productButton.dataset.openReceiptProductCard || 0),
+          ),
+        });
+        return;
+      }
       const button = event.target.closest("button[data-open-receipt-template-card]");
       if (!button) return;
       core.runAction({
