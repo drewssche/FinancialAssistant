@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import case, func, select, update
@@ -223,14 +223,18 @@ class DebtRepository:
         user_id: int,
         debt_id: int,
         event_type: str,
-        canceled_at,
+        canceled_at: datetime,
+        scheduled_before: datetime | None = None,
     ) -> None:
-        stmt = select(DebtReminderJob).where(
+        conditions = [
             DebtReminderJob.user_id == user_id,
             DebtReminderJob.debt_id == debt_id,
             DebtReminderJob.event_type == event_type,
             DebtReminderJob.status == "pending",
-        )
+        ]
+        if scheduled_before is not None:
+            conditions.append(DebtReminderJob.scheduled_for < scheduled_before)
+        stmt = select(DebtReminderJob).where(*conditions)
         for row in self.db.scalars(stmt):
             row.status = "canceled"
             row.canceled_at = canceled_at
@@ -239,16 +243,24 @@ class DebtRepository:
         job.status = "sent"
         job.sent_at = sent_at
 
-    def get_latest_sent_reminder_job(self, *, user_id: int, debt_id: int, event_type: str) -> DebtReminderJob | None:
+    def get_latest_sent_reminder_job(
+        self,
+        *,
+        user_id: int,
+        debt_id: int,
+        event_type: str | None = None,
+    ) -> DebtReminderJob | None:
+        conditions = [
+            DebtReminderJob.user_id == user_id,
+            DebtReminderJob.debt_id == debt_id,
+            DebtReminderJob.status == "sent",
+            DebtReminderJob.sent_at.is_not(None),
+        ]
+        if event_type is not None:
+            conditions.append(DebtReminderJob.event_type == event_type)
         stmt = (
             select(DebtReminderJob)
-            .where(
-                DebtReminderJob.user_id == user_id,
-                DebtReminderJob.debt_id == debt_id,
-                DebtReminderJob.event_type == event_type,
-                DebtReminderJob.status == "sent",
-                DebtReminderJob.sent_at.is_not(None),
-            )
+            .where(*conditions)
             .order_by(DebtReminderJob.sent_at.desc(), DebtReminderJob.id.desc())
             .limit(1)
         )
@@ -330,6 +342,14 @@ class DebtRepository:
             update(DebtReminderJob)
             .where(DebtReminderJob.id == job_id, DebtReminderJob.status == "sending")
             .values(status="pending")
+        )
+        return bool(result.rowcount)
+
+    def cancel_claimed_reminder_job(self, *, job_id: int, canceled_at: datetime) -> bool:
+        result = self.db.execute(
+            update(DebtReminderJob)
+            .where(DebtReminderJob.id == job_id, DebtReminderJob.status == "sending")
+            .values(status="canceled", canceled_at=canceled_at)
         )
         return bool(result.rowcount)
 

@@ -67,12 +67,25 @@ class DebtReminderService:
             )
             return
 
+        sent_today = self._was_reminder_sent_today(
+            user_id=user_id,
+            debt_id=debt_id,
+            user_tz=config["timezone"],
+            now_utc=now_utc,
+        )
         due_soon_scheduled_for = self._compute_due_soon_reminder_at(
             due_date=debt.due_date,
             reminder_time=config["time"],
             user_tz=config["timezone"],
             now_utc=now_utc,
         )
+        if (
+            sent_today
+            and due_soon_scheduled_for is not None
+            and due_soon_scheduled_for.astimezone(config["timezone"]).date()
+            == now_utc.astimezone(config["timezone"]).date()
+        ):
+            due_soon_scheduled_for = None
         overdue_scheduled_for = self._compute_overdue_reminder_at(
             user_id=user_id,
             debt_id=debt_id,
@@ -199,6 +212,32 @@ class DebtReminderService:
             self.repo.release_reminder_job(job_id=int(job.id))
             self.db.commit()
             return None
+        now_utc = self._now_utc()
+        debt = claimed["debt"]
+        config = claimed.get("config") or {}
+        if self._was_reminder_sent_today(
+            user_id=int(debt.user_id),
+            debt_id=int(debt.id),
+            user_tz=config["timezone"],
+            now_utc=now_utc,
+        ):
+            self.repo.cancel_claimed_reminder_job(job_id=int(job.id), canceled_at=now_utc)
+            self._cancel_pending_debt_jobs(
+                user_id=int(debt.user_id),
+                debt_id=int(debt.id),
+                canceled_at=now_utc,
+                user_tz=config["timezone"],
+            )
+            self.db.commit()
+            log_background_job_event(
+                "debt_reminder",
+                "job_skipped",
+                user_id=int(debt.user_id),
+                debt_id=int(debt.id),
+                job_id=int(job.id),
+                reason="daily_limit_reached",
+            )
+            return None
         claimed["_claimed"] = True
         return claimed
 
@@ -223,6 +262,15 @@ class DebtReminderService:
         chat_id = refreshed.get("chat_id")
         now_utc = self._now_utc()
         self.repo.mark_reminder_job_sent(job, sent_at=now_utc)
+        # Sessions use autoflush=False. Persist the sent marker before selecting
+        # other pending jobs so the current delivery cannot cancel itself.
+        self.db.flush()
+        self._cancel_pending_debt_jobs(
+            user_id=int(debt.user_id),
+            debt_id=int(debt.id),
+            canceled_at=now_utc,
+            user_tz=config["timezone"],
+        )
         if event_type == self.EVENT_TYPE_OVERDUE and debt.due_date:
             next_scheduled_for = self._compute_next_overdue_after_send(
                 reminder_time=config["time"],
@@ -338,20 +386,14 @@ class DebtReminderService:
         now_local = now_utc.astimezone(user_tz)
         if due_date >= now_local.date():
             return None
-        last_job = self.repo.get_latest_sent_reminder_job(
+        if self._was_reminder_sent_today(
             user_id=user_id,
             debt_id=debt_id,
-            event_type=self.EVENT_TYPE_OVERDUE,
-        )
-        if last_job and last_job.sent_at:
-            sent_at = (
-                last_job.sent_at.replace(tzinfo=timezone.utc)
-                if last_job.sent_at.tzinfo is None
-                else last_job.sent_at.astimezone(timezone.utc)
-            )
-            if sent_at.astimezone(user_tz).date() == now_local.date():
-                target_local = datetime.combine(now_local.date() + timedelta(days=1), reminder_time, tzinfo=user_tz)
-                return target_local.astimezone(timezone.utc)
+            user_tz=user_tz,
+            now_utc=now_utc,
+        ):
+            target_local = datetime.combine(now_local.date() + timedelta(days=1), reminder_time, tzinfo=user_tz)
+            return target_local.astimezone(timezone.utc)
         target_local = datetime.combine(now_local.date(), reminder_time, tzinfo=user_tz)
         if target_local <= now_local:
             return (now_utc + timedelta(minutes=1)).replace(second=0, microsecond=0)
@@ -362,6 +404,50 @@ class DebtReminderService:
         now_local = now_utc.astimezone(user_tz)
         target_local = datetime.combine(now_local.date() + timedelta(days=1), reminder_time, tzinfo=user_tz)
         return target_local.astimezone(timezone.utc)
+
+    def _was_reminder_sent_today(
+        self,
+        *,
+        user_id: int,
+        debt_id: int,
+        user_tz,
+        now_utc: datetime,
+    ) -> bool:
+        last_job = self.repo.get_latest_sent_reminder_job(
+            user_id=user_id,
+            debt_id=debt_id,
+        )
+        if last_job is None or last_job.sent_at is None:
+            return False
+        sent_at = (
+            last_job.sent_at.replace(tzinfo=timezone.utc)
+            if last_job.sent_at.tzinfo is None
+            else last_job.sent_at.astimezone(timezone.utc)
+        )
+        return sent_at.astimezone(user_tz).date() == now_utc.astimezone(user_tz).date()
+
+    def _cancel_pending_debt_jobs(
+        self,
+        *,
+        user_id: int,
+        debt_id: int,
+        canceled_at: datetime,
+        user_tz,
+    ) -> None:
+        now_local = canceled_at.astimezone(user_tz)
+        next_local_day = datetime.combine(
+            now_local.date() + timedelta(days=1),
+            time.min,
+            tzinfo=user_tz,
+        ).astimezone(timezone.utc)
+        for event_type in (self.EVENT_TYPE_DUE_SOON, self.EVENT_TYPE_OVERDUE):
+            self.repo.cancel_pending_reminder_jobs(
+                user_id=user_id,
+                debt_id=debt_id,
+                event_type=event_type,
+                canceled_at=canceled_at,
+                scheduled_before=next_local_day,
+            )
 
     @staticmethod
     def _resolve_timezone(timezone_name: str | None, browser_timezone: str | None = None):
