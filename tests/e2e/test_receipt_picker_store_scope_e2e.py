@@ -424,6 +424,20 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
     page.wait_for_function(
         "() => document.querySelector('#receiptItemsList .receipt-item-row:first-child .receipt-brand-thumb .catalog-media-thumb')?.classList.contains('is-loaded')"
     )
+    first_row.locator("button.receipt-brand-thumb").click()
+    expect(page.locator("#itemBrandDetailModal")).to_be_visible()
+    expect(page.locator("#createModal")).to_be_visible()
+    brand_modal_stack = page.evaluate(
+        """
+        () => ({
+          base: Number(document.querySelector('#createModal').style.zIndex || 0),
+          brand: Number(document.querySelector('#itemBrandDetailModal').style.zIndex || 0),
+        })
+        """
+    )
+    assert brand_modal_stack["brand"] > brand_modal_stack["base"]
+    page.locator("#closeItemBrandDetailModalBtn").click()
+    expect(page.locator("#itemBrandDetailModal")).to_be_hidden()
 
     name_input = first_row.locator('[data-receipt-field="name"]')
     name_input.click()
@@ -477,6 +491,14 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
             columns: getComputedStyle(node).gridTemplateColumns,
             widths: Object.fromEntries(Object.entries(rects).map(([key, rect]) => [key, rect.width])),
             brandInputWidth: node.querySelector('[data-receipt-field="brand_search"]').getBoundingClientRect().width,
+            brandThumb: (() => {
+              const rect = node.querySelector('.receipt-brand-thumb').getBoundingClientRect();
+              return { width: rect.width, height: rect.height };
+            })(),
+            itemOpenButton: (() => {
+              const rect = node.querySelector('.receipt-template-card-btn').getBoundingClientRect();
+              return { width: rect.width, height: rect.height };
+            })(),
             unitPriceWidth: node.querySelector('[data-receipt-field="unit_price"]').getBoundingClientRect().width,
           };
         }
@@ -488,10 +510,13 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
     assert desktop_geometry["moneyDisplay"] == "contents"
     assert len(desktop_geometry["columns"].split()) == 8
     assert 75 <= desktop_geometry["widths"]["source"] <= 82
-    assert 95 <= desktop_geometry["widths"]["brand"] <= 102
-    assert desktop_geometry["brandInputWidth"] <= 72
+    assert 103 <= desktop_geometry["widths"]["brand"] <= 110
+    assert 63 <= desktop_geometry["brandInputWidth"] <= 72
+    assert abs(desktop_geometry["brandThumb"]["width"] - desktop_geometry["brandThumb"]["height"]) <= 1
+    assert 33 <= desktop_geometry["brandThumb"]["width"] <= 35
+    assert abs(desktop_geometry["itemOpenButton"]["width"] - desktop_geometry["itemOpenButton"]["height"]) <= 1
     assert 315 <= desktop_geometry["widths"]["name"] <= 345
-    assert 83 <= desktop_geometry["widths"]["category"] <= 90
+    assert 111 <= desktop_geometry["widths"]["category"] <= 122
     assert desktop_geometry["widths"]["quantity"] <= 66
     assert 71 <= desktop_geometry["unitPriceWidth"] <= 82
     assert desktop_geometry["widths"]["price"] > desktop_geometry["unitPriceWidth"]
@@ -527,6 +552,39 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
     assert desktop_geometry["widths"]["price"] - compact_geometry["price"] >= row_growth * 0.9
     assert abs(desktop_geometry["unitPriceWidth"] - compact_geometry["unitPrice"]) <= 2
 
+    stable_selectors = {
+        "source": ".receipt-shop-cell",
+        "brand": ".receipt-brand-cell",
+        "name": ".receipt-name-cell",
+        "category": ".receipt-category-cell",
+        "quantity": ".receipt-quantity-cell",
+        "total": ".receipt-line-total",
+        "remove": ".receipt-remove-btn",
+        "unit": '[data-receipt-field="unit_price"]',
+        "toggle": ".receipt-discount-toggle",
+    }
+
+    def receipt_geometry(row):
+        return row.evaluate(
+            """
+            (node, selectors) => {
+              const box = (selector) => {
+                const rect = node.querySelector(selector).getBoundingClientRect();
+                return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+              };
+              const rowRect = node.getBoundingClientRect();
+              return {
+                row: { left: rowRect.left, top: rowRect.top, width: rowRect.width, height: rowRect.height },
+                clientWidth: node.clientWidth,
+                scrollWidth: node.scrollWidth,
+                elements: Object.fromEntries(Object.entries(selectors).map(([key, selector]) => [key, box(selector)])),
+              };
+            }
+            """,
+            stable_selectors,
+        )
+
+    normal_wide_geometry = receipt_geometry(first_row)
     first_row.locator(".receipt-discount-toggle").click()
     page.wait_for_selector("#receiptItemsList .receipt-item-row.receipt-item-row-discounted")
     discounted_geometry = first_row.evaluate(
@@ -542,6 +600,14 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
             priceWidth: price.getBoundingClientRect().width,
             nameWidth: node.querySelector('.receipt-name-cell').getBoundingClientRect().width,
             inputWidths: inputs.map((input) => input.getBoundingClientRect().width),
+            discountTypes: (() => {
+              const rect = price.querySelector('.receipt-discount-type-row').getBoundingClientRect();
+              return { top: rect.top, bottom: rect.bottom };
+            })(),
+            unitPrice: (() => {
+              const rect = price.querySelector('[data-receipt-field="unit_price"]').getBoundingClientRect();
+              return { top: rect.top, bottom: rect.bottom };
+            })(),
           };
         }
         """
@@ -552,13 +618,51 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
     assert len(discounted_geometry["inputWidths"]) == 2
     assert min(discounted_geometry["inputWidths"]) >= 71
     assert max(discounted_geometry["inputWidths"]) <= 82
+    discounted_wide_geometry = receipt_geometry(first_row)
+    for key, before in normal_wide_geometry["elements"].items():
+        after = discounted_wide_geometry["elements"][key]
+        for dimension in ("left", "top", "width"):
+            assert abs(before[dimension] - after[dimension]) <= 1.5, (key, dimension, before, after)
+    assert abs(normal_wide_geometry["row"]["height"] - discounted_wide_geometry["row"]["height"]) <= 1.5
+    assert discounted_geometry["discountTypes"]["top"] >= discounted_geometry["unitPrice"]["top"] - 1
+    assert discounted_geometry["discountTypes"]["bottom"] <= discounted_geometry["unitPrice"]["bottom"] + 1
     first_row.locator(".receipt-discount-toggle").click()
     assert "receipt-item-row-discounted" not in (first_row.get_attribute("class") or "")
+
+    # Below the inline discount threshold only the chips move to a second row;
+    # the primary money controls and all outer columns stay anchored.
+    page.set_viewport_size({"width": 1260, "height": 900})
+    page.wait_for_timeout(80)
+    normal_compact_discount_geometry = receipt_geometry(first_row)
+    first_row.locator(".receipt-discount-toggle").click()
+    page.wait_for_selector("#receiptItemsList .receipt-item-row.receipt-item-row-discounted")
+    compact_discount_geometry = receipt_geometry(first_row)
+    compact_discount_rows = first_row.evaluate(
+        """
+        node => {
+          const unit = node.querySelector('[data-receipt-field="unit_price"]').getBoundingClientRect();
+          const chips = node.querySelector('.receipt-discount-type-row').getBoundingClientRect();
+          return { unitBottom: unit.bottom, chipsTop: chips.top };
+        }
+        """
+    )
+    for key, before in normal_compact_discount_geometry["elements"].items():
+        after = compact_discount_geometry["elements"][key]
+        for dimension in ("left", "top", "width"):
+            assert abs(before[dimension] - after[dimension]) <= 1.5, (key, dimension, before, after)
+    assert compact_discount_geometry["scrollWidth"] <= compact_discount_geometry["clientWidth"] + 2
+    assert compact_discount_rows["chipsTop"] >= compact_discount_rows["unitBottom"] + 2
+    first_row.locator(".receipt-discount-toggle").click()
+    page.set_viewport_size({"width": 1380, "height": 900})
+    page.wait_for_timeout(80)
 
     second_row = page.locator("#receiptItemsList .receipt-item-row").nth(1)
     assert second_row.locator('[data-receipt-field="shop_name"]').input_value() == "Green"
     assert second_row.locator('[data-receipt-field="brand_search"]').input_value() == ""
-    expect(second_row.locator(".receipt-brand-thumb")).to_have_count(0)
+    empty_brand_thumb = second_row.locator(".receipt-brand-thumb .catalog-media-thumb")
+    expect(empty_brand_thumb).to_have_count(1)
+    assert "is-fallback" in (empty_brand_thumb.get_attribute("class") or "")
+    assert empty_brand_thumb.locator(".catalog-media-fallback").inner_text() == "Б"
 
     second_brand_input = second_row.locator('[data-receipt-field="brand_search"]')
     second_brand_input.click()
@@ -571,7 +675,13 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
     assert fallback_thumb.locator(".catalog-media-fallback").inner_text() == "С"
     second_brand_input.click()
     second_row.locator("button[data-receipt-brand-clear]").click()
-    expect(second_row.locator(".receipt-brand-thumb")).to_have_count(0)
+    cleared_brand_thumb = second_row.locator(".receipt-brand-thumb .catalog-media-thumb")
+    expect(cleared_brand_thumb).to_have_count(1)
+    assert cleared_brand_thumb.locator(".catalog-media-fallback").inner_text() == "Б"
+    second_row.locator("button.receipt-brand-thumb").click()
+    expect(second_row.locator(".receipt-brand-picker")).to_be_visible()
+    page.locator("#createTitle").click()
+    expect(second_row.locator(".receipt-brand-picker")).to_be_hidden()
 
     payload = page.evaluate("() => window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
     assert payload[0]["template_id"] == 128
@@ -614,6 +724,29 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
     assert mobile_positions["name"] < mobile_positions["category"]
     assert mobile_positions["category"] < mobile_positions["price"]
     assert mobile_positions["price"] < mobile_positions["quantity"]
+
+    first_row.locator(".receipt-discount-toggle").click()
+    mobile_discount_geometry = first_row.evaluate(
+        """
+        node => {
+          const price = node.querySelector('.receipt-price-cell');
+          const unit = price.querySelector('[data-receipt-field="unit_price"]').getBoundingClientRect();
+          const chips = price.querySelector('.receipt-discount-type-row').getBoundingClientRect();
+          return {
+            rowClientWidth: node.clientWidth,
+            rowScrollWidth: node.scrollWidth,
+            priceClientWidth: price.clientWidth,
+            priceScrollWidth: price.scrollWidth,
+            unitBottom: unit.bottom,
+            chipsTop: chips.top,
+          };
+        }
+        """
+    )
+    assert mobile_discount_geometry["rowScrollWidth"] <= mobile_discount_geometry["rowClientWidth"] + 2
+    assert mobile_discount_geometry["priceScrollWidth"] <= mobile_discount_geometry["priceClientWidth"] + 2
+    assert mobile_discount_geometry["chipsTop"] >= mobile_discount_geometry["unitBottom"] + 2
+    first_row.locator(".receipt-discount-toggle").click()
 
     page.evaluate(
         """

@@ -23,7 +23,7 @@ def test_catalog_media_runtime_uses_authenticated_bounded_blob_cache():
     assert "URL.createObjectURL(blob)" in media
     assert "URL.revokeObjectURL" in media
     assert 'cache: "force-cache"' in media
-    assert '@import url("/static/css/components-catalog-media.css?v=20260904d");' in styles
+    assert '@import url("/static/css/components-catalog-media.css?v=20260904e");' in styles
 
 
 def test_all_catalog_entities_offer_image_picker_and_media_mutations():

@@ -267,16 +267,15 @@
         cell.classList.toggle("has-brand", Boolean(brandName));
         cell.style.setProperty("--receipt-brand-accent", brand.accent);
         let thumb = cell.querySelector(".receipt-brand-thumb");
-        if (!brandName) {
-          thumb?.remove();
-          return;
-        }
         if (!thumb) {
-          thumb = document.createElement("span");
+          thumb = document.createElement("button");
+          thumb.type = "button";
           thumb.className = "receipt-brand-thumb";
+          thumb.dataset.receiptBrandThumb = "true";
           input?.before(thumb);
         }
-        thumb.title = `Логотип ${brandName}`;
+        thumb.title = brandName ? `Открыть бренд ${brandName}` : "Выбрать бренд";
+        thumb.setAttribute("aria-label", thumb.title);
         thumb.innerHTML = renderReceiptBrandThumb(brand);
         window.App.getRuntimeModule?.("catalog-media")?.hydrate?.(thumb);
       }
@@ -476,15 +475,13 @@
     }
 
     function renderReceiptBrandThumb(brand) {
-      if (!brand?.name) {
-        return "";
-      }
+      const name = normalizeReceiptName(brand?.name || "");
       return window.App.getRuntimeModule?.("catalog-media")?.renderThumb?.(brand.imageId, {
         kind: "brand",
-        size: "chip",
+        size: "picker",
         className: "receipt-brand-media",
-        alt: `Логотип ${brand.name}`,
-        fallback: brand.name.slice(0, 1),
+        alt: name ? `Логотип ${name}` : "Бренд не выбран",
+        fallback: name.slice(0, 1) || "Б",
       }) || "";
     }
 
@@ -547,7 +544,7 @@
                 <div class="receipt-shop-picker app-popover ${shopPickerOpen ? "" : "hidden"}"></div>
               </div>
               <div class="receipt-brand-cell ${brandPickerOpen ? "has-open-popover" : ""} ${brandName ? "has-brand" : ""}" style="--receipt-brand-accent: ${brandAccent}">
-                ${brandName ? `<span class="receipt-brand-thumb" title="${esc(`Логотип ${brandName}`)}">${brandThumb}</span>` : ""}
+                <button class="receipt-brand-thumb" type="button" data-receipt-brand-thumb="true" title="${esc(brandName ? `Открыть бренд ${brandName}` : "Выбрать бренд")}" aria-label="${esc(brandName ? `Открыть бренд ${brandName}` : "Выбрать бренд")}">${brandThumb}</button>
                 <input type="text" data-receipt-field="brand_search" value="${esc(brandName)}" placeholder="Бренд" title="${esc(brandName || "Бренд не выбран")}" autocomplete="off" aria-label="Бренд позиции" />
                 <div class="receipt-brand-picker app-popover ${brandPickerOpen ? "" : "hidden"}"></div>
               </div>

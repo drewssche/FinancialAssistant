@@ -160,41 +160,66 @@
   margin-left: -0.18rem;
 }
 
-#opReceiptFields .receipt-brand-cell.has-brand,
-#editReceiptFields .receipt-brand-cell.has-brand {
+#opReceiptFields .receipt-brand-cell,
+#editReceiptFields .receipt-brand-cell {
   display: grid;
-  grid-template-columns: 1.5rem minmax(0, 1fr);
+  grid-template-columns: 2.1rem minmax(0, 1fr);
   align-items: center;
   gap: 0.25rem;
 }
 
-#opReceiptFields .receipt-brand-cell.has-brand > input,
-#editReceiptFields .receipt-brand-cell.has-brand > input {
+#opReceiptFields .receipt-brand-cell > input,
+#editReceiptFields .receipt-brand-cell > input {
   min-width: 0;
   padding-inline: 0.4rem;
 }
 
 .receipt-brand-thumb {
   display: inline-flex;
-  width: 1.5rem;
-  min-width: 1.5rem;
-  height: 1.5rem;
+  width: 2.1rem;
+  min-width: 2.1rem;
+  height: 2.1rem;
   align-items: center;
   justify-content: center;
-  pointer-events: none;
+  padding: 0;
+  border: 1px solid rgba(78, 101, 141, 0.5);
+  border-radius: 0.55rem;
+  background: rgba(18, 29, 48, 0.82);
+  color: #b8c8e7;
+  cursor: pointer;
   user-select: none;
 }
 
 .receipt-brand-thumb .catalog-media-thumb {
-  --catalog-media-size: 1.5rem;
-  border-color: color-mix(in srgb, var(--receipt-brand-accent) 58%, rgba(91, 113, 151, 0.45));
+  --catalog-media-size: 1.7rem;
+  border: 0;
   border-radius: 0.42rem;
   font-size: 0.56rem;
+}
+
+.receipt-brand-cell.has-brand .receipt-brand-thumb {
+  border-color: color-mix(in srgb, var(--receipt-brand-accent) 58%, rgba(91, 113, 151, 0.45));
 }
 
 .receipt-brand-thumb .catalog-media-thumb.is-fallback {
   background: color-mix(in srgb, var(--receipt-brand-accent) 24%, rgba(24, 35, 54, 0.88));
   color: color-mix(in srgb, var(--receipt-brand-accent) 38%, #eaf1ff);
+}
+
+.receipt-brand-cell:not(.has-brand) .receipt-brand-thumb .catalog-media-thumb.is-fallback {
+  background: linear-gradient(145deg, rgba(55, 73, 103, 0.62), rgba(24, 35, 54, 0.88));
+  color: #91a1bc;
+}
+
+.receipt-brand-thumb:hover,
+.receipt-brand-thumb:focus-visible {
+  border-color: rgba(99, 145, 224, 0.84);
+  color: #d9e7ff;
+}
+
+.receipt-brand-thumb:focus-visible {
+  outline: 2px solid rgba(98, 145, 226, 0.78);
+  outline-offset: 2px;
 }
 
 .receipt-name-field-wrap {
@@ -233,9 +258,10 @@
 }
 
 .receipt-template-card-btn {
-  width: 1.55rem;
-  min-width: 1.55rem;
+  width: 2.1rem;
+  min-width: 2.1rem;
   height: 2.1rem;
+  aspect-ratio: 1;
   font-size: 0.68rem;
   font-weight: 800;
 }

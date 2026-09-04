@@ -364,6 +364,37 @@
       nextInput?.blur();
     }
     function handleReceiptItemsListClick(event) {
+      const brandThumbButton = event.target.closest("button[data-receipt-brand-thumb]");
+      if (brandThumbButton) {
+        const row = brandThumbButton.closest("[data-receipt-item-id]");
+        const draftId = Number(row?.dataset.receiptItemId || 0);
+        const mode = getReceiptModeFromNode(row);
+        const rowItem = getReceiptItemByDraftId(draftId, mode);
+        const brandId = Number(rowItem?.brand_id || 0);
+        const itemBrands = window.App.getRuntimeModule?.("item-brands") || {};
+        if (brandId && itemBrands.openItemBrandDetail) {
+          hideAllReceiptPickers();
+          const brand = (state.itemBrands || []).find((entry) => Number(entry?.id || 0) === brandId) || {
+            id: brandId,
+            name: rowItem?.brand_name || "Бренд",
+            accent_color: rowItem?.brand_accent_color || null,
+            image_id: rowItem?.brand_image_id || null,
+            is_archived: Boolean(rowItem?.brand_is_archived),
+          };
+          core.runAction({
+            errorPrefix: "Не удалось открыть карточку бренда",
+            action: () => itemBrands.openItemBrandDetail(brand),
+          });
+          return;
+        }
+        const input = row?.querySelector('[data-receipt-field="brand_search"]');
+        const wasFocused = document.activeElement === input;
+        input?.focus();
+        if (wasFocused && row && rowItem && input) {
+          renderReceiptBrandPickerForRow(row, rowItem, input.value);
+        }
+        return;
+      }
       const cardButton = event.target.closest("button[data-open-receipt-template-card]");
       if (cardButton) {
         hideAllReceiptPickers();
