@@ -1479,6 +1479,16 @@ def test_receipt_entity_pickers_are_accessible_and_close_without_closing_modal(
     )
     assert suggestion_color["minChannel"] >= 180, suggestion_color["color"]
 
+    # Matching text must stay readable as well, including WebKit's text-fill.
+    name_input.fill("Краб")
+    highlight = name_picker.locator(".receipt-template-suggestion-name .search-highlight").first
+    expect(highlight).to_be_visible()
+    for node in [suggestion_name, highlight]:
+        colors = node.evaluate("node => { const s = getComputedStyle(node); return [s.color, s.webkitTextFillColor]; }")
+        for color in colors:
+            channels = [float(channel.strip()) for channel in color.removeprefix("rgb(").removesuffix(")").split(",")]
+            assert min(channels[:3]) >= 180, color
+
     # A click elsewhere in the same receipt row is still outside the picker.
     # It must close the popover and clear the row/cell ownership classes.
     first_row.locator('[data-receipt-field="unit_price"]').click()

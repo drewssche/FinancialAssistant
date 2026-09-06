@@ -515,7 +515,7 @@
     } else if (sourceKind === "debt" && item?.source_id) {
       menuItems = [
         `<button class="btn btn-secondary" type="button" data-activity-entity-type="debt" data-activity-entity-id="${item.source_id || ""}">Журнал</button>`,
-        `<button class="btn btn-secondary" type="button" data-open-source-kind="debt" data-open-source-id="${item.source_id || ""}" data-open-source-mode="edit">Редактировать</button>`,
+        `<button class="btn btn-secondary" type="button" data-open-source-kind="debt" data-open-source-id="${item.source_id || ""}" data-money-flow-id="${escapeHtml(item.id)}" data-open-source-mode="edit">Редактировать</button>`,
         `<button class="btn btn-secondary" type="button" data-open-source-kind="debt" data-open-source-id="${item.source_id || ""}" data-open-source-mode="history">Движения</button>`,
         `<button class="btn btn-danger" type="button" data-delete-debt-source-id="${item.source_id || ""}">Удалить</button>`,
       ].join("");

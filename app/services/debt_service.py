@@ -219,6 +219,92 @@ class DebtService:
         forgiven = self.repo.forgiveness_total_for_debt(debt_id=debt_id)
         return repaid, forgiven, repaid + forgiven
 
+    def _movement_out(self, debt, movement, movement_kind: str) -> dict:
+        counterparty = self.repo.get_counterparty_by_id(debt.user_id, debt.counterparty_id)
+        is_inflow = (debt.direction == "lend") == (movement_kind == "repayment")
+        titles = {
+            ("lend", "issuance"): "Я дал в долг",
+            ("borrow", "issuance"): "Я взял в долг",
+            ("lend", "repayment"): "Мне вернули долг",
+            ("borrow", "repayment"): "Я вернул долг",
+        }
+        return {
+            "id": movement.id,
+            "debt_id": debt.id,
+            "movement_kind": movement_kind,
+            "amount": movement.amount,
+            "event_date": getattr(movement, f"{movement_kind}_date"),
+            "note": movement.note,
+            "currency": debt.currency,
+            "title": titles[(debt.direction, movement_kind)],
+            "counterparty": counterparty.name,
+            "flow_direction": "inflow" if is_inflow else "outflow",
+        }
+
+    def get_movement(self, *, user_id: int, debt_id: int, movement_kind: str, movement_id: int) -> dict:
+        debt, movement = self.repo.get_movement_for_user(
+            user_id=user_id, debt_id=debt_id, movement_kind=movement_kind, movement_id=movement_id,
+        )
+        if debt is None or movement is None:
+            raise LookupError("Движение долга не найдено")
+        return self._movement_out(debt, movement, movement_kind)
+
+    def update_movement(
+        self, *, user_id: int, debt_id: int, movement_kind: str, movement_id: int,
+        amount: Decimal, event_date: date, note: str | None,
+    ) -> dict:
+        self._validate_positive_amount(amount, "amount")
+        debt, movement = self.repo.get_movement_for_user(
+            user_id=user_id, debt_id=debt_id, movement_kind=movement_kind, movement_id=movement_id, lock=True,
+        )
+        if debt is None or movement is None:
+            raise LookupError("Движение долга не найдено")
+        date_field = f"{movement_kind}_date"
+        activity_fields = ["amount", date_field, "note"]
+        before = ActivityService.snapshot(movement, activity_fields)
+        delta = Decimal(amount) - Decimal(movement.amount)
+        _, _, settled = self._current_totals(debt_id=debt_id)
+        principal = Decimal(debt.principal)
+        new_start = debt.start_date
+        if movement_kind == "repayment":
+            if settled + delta > principal:
+                raise ValueError("Сумма превышает остаток долга с учётом остальных погашений и прощений")
+            settled += delta
+        else:
+            principal += delta
+            if principal <= 0 or principal < settled:
+                raise ValueError("Сумма долга не может быть меньше уже погашенной и прощённой суммы")
+            if event_date != movement.issuance_date:
+                issuances = self.repo.list_issuances_for_debts([debt_id])
+                dates = [event_date if item.id == movement.id else item.issuance_date for item in issuances]
+                new_start = min(dates)
+            if debt.due_date and new_start > debt.due_date:
+                raise ValueError("Дата выдачи не может быть позже срока возврата долга")
+
+        # Validate before changing either the movement or the debt totals.
+        movement.amount = amount
+        setattr(movement, f"{movement_kind}_date", event_date)
+        movement.note = note
+        if movement_kind == "issuance":
+            debt.principal = principal
+            debt.original_principal = Decimal(debt.original_principal) + delta
+            debt.start_date = new_start
+        if principal > settled:
+            debt.closure_reason = None
+        self.activity.record_updated(
+            user_id=user_id, actor_user_id=user_id, entity_type="debt", entity_id=debt_id,
+            before=before, after=ActivityService.snapshot(movement, activity_fields),
+            labels={"amount": "Сумма", date_field: "Дата операции", "note": "Комментарий"},
+            metadata={"movement_kind": movement_kind, "movement_id": movement_id},
+            title="Погашение долга изменено" if movement_kind == "repayment" else "Выдача долга изменена",
+        )
+        self.db.commit()
+        invalidate_dashboard_summary_cache(user_id)
+        invalidate_dashboard_analytics_cache(user_id)
+        invalidate_debts_cache(user_id)
+        self.debt_reminder_service.sync_debt_job(user_id=user_id, debt_id=debt_id)
+        return self._movement_out(debt, movement, movement_kind)
+
     def add_issuance(
         self,
         user_id: int,

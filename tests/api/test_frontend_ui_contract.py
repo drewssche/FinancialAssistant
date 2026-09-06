@@ -177,7 +177,7 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert "body.finance-calculator-open" in calculator_css
     assert "@media (max-width: 640px)" in calculator_css
     assert "max-height: min(88dvh, 720px)" in calculator_css
-    assert '/static/styles.css?v=20260905a' in index_html
+    assert '/static/styles.css?v=20260906a' in index_html
     assert '/static/css/components-core.css?v=20260904f' in styles
     assert '/static/css/layout-debts.css?v=20260716j' in styles
     assert '/static/css/components-analytics-summary.css?v=20260826c' in styles
@@ -364,7 +364,7 @@ def test_operations_section_is_money_flow_first_without_bulk_select():
     assert "gap: 10px;" in operations_css
     assert ".period-control {" in operations_css
     assert "grid-template-columns: 2.25rem minmax(10rem, 1fr) 2.25rem;" in operations_css
-    assert '@import url("/static/css/components-operation-controls.css?v=20260716j");' in styles
+    assert '@import url("/static/css/components-operation-controls.css?v=20260906a");' in styles
     assert styles.index("components-operation-controls.css") < styles.index("components-analytics-summary.css")
     assert ".period-control {" not in analytics_css
     assert ".operations-controls-grid {" not in analytics_css

@@ -280,6 +280,19 @@
   gap: 0.2rem;
 }
 
+/* Set the foreground on the actual picker button and its name, including WebViews. */
+.receipt-name-picker .receipt-template-suggestion,
+.receipt-name-picker .receipt-template-suggestion-name {
+  color: var(--text, #edf3ff);
+  -webkit-text-fill-color: currentColor;
+}
+
+.receipt-name-picker .receipt-template-suggestion-name .search-highlight {
+  color: #edf3ff;
+  background: #29466d;
+  -webkit-text-fill-color: currentColor;
+}
+
 .receipt-template-suggestion-meta {
   display: flex;
   align-items: center;

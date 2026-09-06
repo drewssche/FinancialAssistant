@@ -162,6 +162,7 @@
 }
 
 .chip-btn {
+  color: inherit;
   border: 1px solid transparent;
   border-radius: var(--radius-pill);
   background: transparent;

@@ -151,3 +151,32 @@
 .operations-search-row {
   grid-template-columns: minmax(16rem, 32rem);
 }
+
+/* Debt cash movements use the operation editor without unrelated receipt/category controls. */
+#editModal.editing-debt-movement .operation-modal-card {
+  width: min(100%, 36rem);
+}
+
+#editModal.editing-debt-movement #editOperationModeSwitch,
+#editModal.editing-debt-movement #editKindSwitch,
+#editModal.editing-debt-movement #editCategoryField,
+#editModal.editing-debt-movement #editReceiptBlock,
+#editModal.editing-debt-movement #editFxRateField,
+#editModal.editing-debt-movement #editFxSettlementBlock,
+#editModal.editing-debt-movement .preview-panel {
+  display: none !important;
+}
+
+#editModal.editing-debt-movement #editDebtMovementInfo {
+  display: block !important;
+  grid-column: 1 / -1;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+#editDebtMovementInfo p { margin: var(--space-2) 0 0; }
+
+#editModal.editing-debt-movement #editDateField,
+#editModal.editing-debt-movement #editAmountCompound { grid-column: 1 / -1; }

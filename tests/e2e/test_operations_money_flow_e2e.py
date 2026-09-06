@@ -69,6 +69,7 @@ def page_with_money_flow_api_mock():
         "history_fill_calls": 0,
         "generic_history_calls": 0,
         "historical_nbrb_ready": False,
+        "movement_updates": [],
     }
     operations = []
     money_flow_items = [
@@ -384,6 +385,20 @@ def page_with_money_flow_api_mock():
             })
         if path == "/api/v1/debts/cards" and method == "GET":
             return json_response(route, debt_cards)
+        if path.startswith("/api/v1/debts/9001/movements/") and method in {"GET", "PATCH"}:
+            movement_kind, movement_id = path.split("/")[-2:]
+            item = next(item for item in money_flow_items if item["id"] == f"debt-{movement_kind}:{movement_id}")
+            if method == "PATCH":
+                payload = json.loads(request.post_data or "{}")
+                metrics["movement_updates"].append({"path": path, **payload})
+                item.update(amount=str(payload["amount"]), original_amount=str(payload["amount"]),
+                            event_date=payload["event_date"], note=payload.get("note"))
+            return json_response(route, {
+                "id": int(movement_id), "debt_id": 9001, "movement_kind": movement_kind,
+                "amount": item["original_amount"], "currency": item["currency"],
+                "event_date": item["event_date"], "note": item["note"], "title": item["title"],
+                "counterparty": item["counterparty_name"], "flow_direction": item["flow_direction"],
+            })
         if path == "/api/v1/currency/overview" and method == "GET":
             return json_response(route, currency_overview)
         if path == "/api/v1/currency/rate-options" and method == "GET":
@@ -482,6 +497,63 @@ def _open_app(page, static_server_url: str):
             # Telegram auto-login may hide the button between the visibility check and click.
             pass
     page.wait_for_selector("#appShell:not(.hidden)")
+
+
+@pytest.mark.e2e
+def test_debt_movement_opens_and_saves_in_operations_even_when_debt_is_hidden(
+    static_server_url: str, page_with_money_flow_api_mock,
+):
+    page = page_with_money_flow_api_mock
+    expect = sync_api.expect
+    # Closed debts are absent from the default cards endpoint.
+    page.route("**/api/v1/debts/cards*", lambda route: route.fulfill(
+        content_type="application/json", body="[]",
+    ))
+    _open_app(page, static_server_url)
+    page.click("button[data-section='operations']")
+    row = page.locator('#operationsBody [data-money-flow-row-id="debt-repayment:9102"]')
+    row.click()
+    expect(page.locator("#editModal")).to_be_visible()
+    expect(page.locator("#operationsSection")).to_be_visible()
+    expect(page.locator("#editDebtMovementContext")).to_have_text("Мне вернули долг · Иван")
+    expect(page.locator("#editAmount")).to_have_value("30.00")
+    expect(page.locator("#editDate")).to_have_value("2026-03-04")
+    expect(page.locator("#editNote")).to_have_value("частично")
+    expect(page.locator("#editCurrency")).to_be_disabled()
+    expect(page.locator("#editKindSwitch")).to_be_hidden()
+    expect(page.locator("#editOperationModeSwitch")).to_be_hidden()
+    expect(page.locator("#editCategoryField")).to_be_hidden()
+    page.fill("#editAmount", "22")
+    page.fill("#editDate", "2026-03-05")
+    page.fill("#editNote", "Уточнён возврат")
+    with page.expect_response(lambda response: "/movements/repayment/9102" in response.url
+                              and response.request.method == "PATCH") as saved:
+        page.locator('button[type="submit"][form="editOperationForm"]').click()
+    assert saved.value.status == 200
+    expect(row).to_contain_text("Уточнён возврат")
+    expect(row).to_contain_text("22,00")
+    expect(row).to_contain_text("05.03.2026")
+    expect(page.locator("#operationsSection")).to_be_visible()
+    metrics = page.evaluate("async () => (await fetch('/api/v1/test/money-flow-metrics')).json()")
+    assert metrics["movement_updates"] == [{
+        "path": "/api/v1/debts/9001/movements/repayment/9102",
+        "amount": 22, "event_date": "2026-03-05", "note": "Уточнён возврат",
+    }]
+    page.click("#closeEditModalBtn")
+    # The kebab edit action must use the same movement editor, not the whole debt.
+    issuance = page.locator('#operationsBody [data-money-flow-row-id="debt-issuance:9101"]')
+    issuance.locator(".table-kebab-trigger").click()
+    page.locator('button[data-open-source-kind="debt"][data-money-flow-id="debt-issuance:9101"]').click()
+    expect(page.locator("#editDebtMovementContext")).to_have_text("Я дал в долг · Иван")
+    expect(page.locator("#editAmount")).to_have_value("100.00")
+    page.click("#closeEditModalBtn")
+    # Ordinary operations keep their full editor after closing a debt movement.
+    page.locator('#operationsBody [data-money-flow-row-id="operation:1"] td').first.click()
+    expect(page.locator("#editModal")).to_be_visible()
+    expect(page.locator("#editDebtMovementInfo")).to_be_hidden()
+    expect(page.locator("#editCurrency")).to_be_enabled()
+    expect(page.locator("#editOperationModeSwitch")).to_be_visible()
+    expect(page.locator("#editAmount")).to_have_value("70.00")
 
 
 @pytest.mark.e2e

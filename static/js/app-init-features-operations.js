@@ -188,6 +188,7 @@
         actions.openMoneyFlowSource({
           sourceKind: openSourceBtn.dataset.openSourceKind,
           sourceId: openSourceBtn.dataset.openSourceId,
+          flowId: openSourceBtn.dataset.moneyFlowId || "",
           mode: openSourceBtn.dataset.openSourceMode || "edit",
         }).catch((err) => core.setStatus(String(err)));
         return true;
@@ -450,6 +451,7 @@
         actions.openMoneyFlowSource({
           sourceKind: moneyFlowSource || "operation",
           sourceId: moneyFlowSourceId,
+          flowId: row.dataset.moneyFlowRowId,
           mode: "edit",
         }).catch((err) => core.setStatus(String(err)));
         return;

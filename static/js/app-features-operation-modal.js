@@ -627,6 +627,7 @@
     updateCreatePreview();
   }
   async function openEditModal(item) {
+    window.App.getRuntimeModule?.("debt-movement-editor")?.reset();
     await ensureCategoryCatalogReady("edit");
     state.editOperationId = item.id;
     setEditModalActivity("operation", item.id);
@@ -701,6 +702,7 @@
     el.editModal.classList.remove("hidden");
   }
   function closeEditModal() {
+    window.App.getRuntimeModule?.("debt-movement-editor")?.reset();
     window.App.getRuntimeModule?.("finance-calculator")?.closeIfAttachedToModal?.(el.editModal);
     state.editOperationId = null;
     setEditModalActivity(null, null);

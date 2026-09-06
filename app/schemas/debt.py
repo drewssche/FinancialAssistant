@@ -1,7 +1,24 @@
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class DebtMovementUpdate(BaseModel):
+    amount: Decimal = Field(gt=0, max_digits=14, decimal_places=2)
+    event_date: date
+    note: str | None = None
+
+
+class DebtMovementOut(DebtMovementUpdate):
+    id: int
+    debt_id: int
+    movement_kind: Literal["issuance", "repayment"]
+    currency: str
+    title: str
+    counterparty: str
+    flow_direction: Literal["inflow", "outflow"]
 
 
 class DebtCreate(BaseModel):

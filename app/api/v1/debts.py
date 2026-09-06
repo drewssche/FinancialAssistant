@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session
@@ -11,6 +13,8 @@ from app.schemas.debt import (
     DebtForgivenessOut,
     DebtIssuanceCreate,
     DebtIssuanceOut,
+    DebtMovementOut,
+    DebtMovementUpdate,
     DebtOut,
     DebtRepaymentCreate,
     DebtRepaymentOut,
@@ -19,6 +23,35 @@ from app.schemas.debt import (
 from app.services.debt_service import DebtService
 
 router = APIRouter(prefix="/debts", tags=["debts"])
+
+
+@router.get("/{debt_id}/movements/{movement_kind}/{movement_id}", response_model=DebtMovementOut)
+def get_debt_movement(
+    debt_id: int, movement_kind: Literal["issuance", "repayment"], movement_id: int,
+    user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db),
+):
+    try:
+        return DebtService(db).get_movement(
+            user_id=user_id, debt_id=debt_id, movement_kind=movement_kind, movement_id=movement_id,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.patch("/{debt_id}/movements/{movement_kind}/{movement_id}", response_model=DebtMovementOut)
+def update_debt_movement(
+    debt_id: int, movement_kind: Literal["issuance", "repayment"], movement_id: int, payload: DebtMovementUpdate,
+    user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db),
+):
+    try:
+        return DebtService(db).update_movement(
+            user_id=user_id, debt_id=debt_id, movement_kind=movement_kind, movement_id=movement_id,
+            **payload.model_dump(),
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.get("/cards", response_model=list[DebtCardOut])

@@ -401,6 +401,7 @@
     }
 
     function updateEditPreview() {
+      if (state.editDebtMovement) return;
       if (!el.editPreviewBody) {
         return;
       }

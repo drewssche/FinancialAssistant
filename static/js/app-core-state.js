@@ -47,6 +47,7 @@
       editCurrencyTradeId: null,
       editPlanId: null,
       editOperationId: null,
+      editDebtMovement: null,
       editCategoryId: null,
       period: "day",
       customDateFrom: "",

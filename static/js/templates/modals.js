@@ -505,6 +505,10 @@
         </div>
 
         <form id="editOperationForm" class="form-grid modal-grid edit-modal-grid">
+          <div id="editDebtMovementInfo" class="hidden">
+            <strong id="editDebtMovementContext"></strong>
+            <p class="muted-small">Дата, сумма и комментарий относятся к этому движению. Остаток долга пересчитается после сохранения.</p>
+          </div>
           <div class="segmented compact-segmented" id="editOperationModeSwitch" aria-label="Формат операции">
             <button class="segmented-btn active" data-operation-mode="common" type="button">Общая</button>
             <button class="segmented-btn" data-operation-mode="receipt" type="button">Чек</button>

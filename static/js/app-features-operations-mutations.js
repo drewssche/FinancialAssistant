@@ -325,6 +325,10 @@
 
     async function updateOperation(event) {
       event.preventDefault();
+      if (state.editDebtMovement) {
+        await window.App.getRuntimeModule("debt-movement-editor").save();
+        return;
+      }
       if (!state.editOperationId) {
         return;
       }

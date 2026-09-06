@@ -74,6 +74,90 @@ def test_debts_create_and_list_cards(client: TestClient):
     assert payload[0]["debts"][0]["repayments"] == []
 
 
+def test_edit_closed_debt_repayment_updates_one_movement_and_cashflow(client: TestClient):
+    debt = client.post("/api/v1/debts", json={
+        "counterparty": "Дима", "direction": "lend", "principal": "50.00",
+        "start_date": "2026-09-03", "note": "Комментарий долга",
+    }).json()
+    first = client.post(f"/api/v1/debts/{debt['id']}/repayments", json={
+        "amount": "28.00", "repayment_date": "2026-09-04", "note": "Первый платёж",
+    }).json()
+    second = client.post(f"/api/v1/debts/{debt['id']}/repayments", json={
+        "amount": "22.00", "repayment_date": "2026-09-05",
+    }).json()
+    assert client.get("/api/v1/debts/cards").json() == []
+    client.get("/api/v1/operations/money-flow")  # warm cashflow caches
+    url = f"/api/v1/debts/{debt['id']}/movements/repayment/{second['id']}"
+    detail = client.get(url)
+    assert detail.status_code == 200
+    assert detail.json()["counterparty"] == "Дима"
+    assert detail.json()["amount"] == "22.00"
+    edited = client.patch(url, json={"amount": "20.00", "event_date": "2026-09-06", "note": "Уточнено"})
+    assert edited.status_code == 200
+    card = client.get("/api/v1/debts/cards").json()[0]
+    assert card["status"] == "active"
+    assert card["outstanding_total"] == "2.00"
+    repayments = {item["id"]: item for item in card["debts"][0]["repayments"]}
+    assert len(repayments) == 2
+    assert repayments[first["id"]]["amount"] == "28.00"
+    assert repayments[second["id"]]["repayment_date"] == "2026-09-06"
+    flows = client.get("/api/v1/operations/money-flow").json()["items"]
+    row = next(item for item in flows if item["id"] == f"debt-repayment:{second['id']}")
+    assert row["amount"] == "20.00"
+    assert row["note"] == "Уточнено"
+    assert client.get("/api/v1/operations").json()["total"] == 0
+    # Clearing the movement note must not bring back the parent debt note.
+    assert client.patch(url, json={"amount": "22.00", "event_date": "2026-09-05", "note": None}).status_code == 200
+    row = next(item for item in client.get("/api/v1/operations/money-flow").json()["items"]
+               if item["id"] == f"debt-repayment:{second['id']}")
+    assert row["note"] is None
+    assert client.get("/api/v1/debts/cards").json() == []
+
+
+def test_edit_debt_issuance_adjusts_principal_without_creating_another_issuance(client: TestClient):
+    debt = client.post("/api/v1/debts", json={
+        "counterparty": "Иван", "direction": "borrow", "principal": "50.00",
+        "currency": "EUR", "start_date": "2026-09-03",
+    }).json()
+    issuance = debt["issuances"][0]
+    url = f"/api/v1/debts/{debt['id']}/movements/issuance/{issuance['id']}"
+    assert client.get(url).json()["currency"] == "EUR"
+    edited = client.patch(url, json={"amount": "55.00", "event_date": "2026-09-02", "note": "Уточнение"})
+    assert edited.status_code == 200
+    # No EUR/BYN rate is seeded in this test; inspect the native-currency values.
+    updated = client.get("/api/v1/debts/cards?include_closed=true").json()[0]["debts"][0]
+    assert updated["principal"] == "55.00"
+    assert updated["original_principal"] == "55.00"
+    assert updated["start_date"] == "2026-09-02"
+    assert len(updated["issuances"]) == 1
+    assert updated["issuances"][0]["id"] == issuance["id"]
+    assert updated["issuances"][0]["amount"] == "55.00"
+
+
+def test_edit_debt_movement_rejects_overpayment_and_wrong_owner(client: TestClient):
+    debt = client.post("/api/v1/debts", json={
+        "counterparty": "Олег", "direction": "lend", "principal": "50.00", "start_date": "2026-09-01",
+    }).json()
+    repayment = client.post(f"/api/v1/debts/{debt['id']}/repayments", json={
+        "amount": "40.00", "repayment_date": "2026-09-05",
+    }).json()
+    url = f"/api/v1/debts/{debt['id']}/movements/repayment/{repayment['id']}"
+    assert client.patch(url, json={"amount": "51.00", "event_date": "2026-09-05"}).status_code == 400
+    issuance_url = f"/api/v1/debts/{debt['id']}/movements/issuance/{debt['issuances'][0]['id']}"
+    assert client.patch(issuance_url, json={"amount": "39.00", "event_date": "2026-09-01"}).status_code == 400
+    assert client.get(url).json()["amount"] == "40.00"
+    assert client.get(issuance_url).json()["amount"] == "50.00"
+    for invalid in ("0", "-1", "0.001", "NaN", "Infinity"):
+        assert client.patch(url, json={"amount": invalid, "event_date": "2026-09-05"}).status_code == 422
+    assert client.get(f"/api/v1/debts/{debt['id'] + 100}/movements/repayment/{repayment['id']}").status_code == 404
+    app.dependency_overrides[get_current_user_id] = lambda: 2
+    try:
+        assert client.get(url).status_code == 404
+        assert client.patch(url, json={"amount": "1.00", "event_date": "2026-09-05"}).status_code == 404
+    finally:
+        app.dependency_overrides[get_current_user_id] = _override_current_user_id
+
+
 def test_debts_repayment_and_close_card(client: TestClient):
     created = client.post(
         "/api/v1/debts",

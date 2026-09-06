@@ -827,7 +827,7 @@
     await savePreferences();
   }
 
-  async function openMoneyFlowSource({ sourceKind, sourceId, mode = "edit" }) {
+  async function openMoneyFlowSource({ sourceKind, sourceId, mode = "edit", flowId = "" }) {
     const navigation = getNavigationActions();
     const debtsFeature = window.App.getRuntimeModule?.("debts") || {};
     const currencyFeature = window.App.getRuntimeModule?.("currency") || {};
@@ -851,6 +851,10 @@
       return;
     }
     if (sourceKind === "debt") {
+      if (mode === "edit" && flowId) {
+        await window.App.getRuntimeModule("debt-movement-editor").open(sourceId, flowId);
+        return;
+      }
       navigation.pushSectionBackContext?.();
       await navigation.switchSection?.("debts", { preserveBackStack: true, scrollToTop: true });
       if (mode === "history") {
@@ -942,6 +946,7 @@
     applyRealtimeSearch,
     setOperationsSortPreset,
     refreshAll,
+    refreshAfterDebtMutation: mutationFeature.refreshAfterDebtMutation,
     refreshOperationsView,
     getCurrentOperationItems,
     clearOperationsCategoryFilter,

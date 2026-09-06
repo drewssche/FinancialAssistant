@@ -140,6 +140,17 @@ class DebtRepository:
         self.db.flush()
         return item
 
+    def get_movement_for_user(self, *, user_id: int, debt_id: int, movement_kind: str, movement_id: int, lock: bool = False):
+        model = {"issuance": DebtIssuance, "repayment": DebtRepayment}[movement_kind]
+        debt_stmt = select(Debt).where(Debt.id == debt_id, Debt.user_id == user_id)
+        if lock:
+            debt_stmt = debt_stmt.with_for_update()
+        debt = self.db.scalar(debt_stmt)
+        if debt is None:
+            return None, None
+        movement = self.db.scalar(select(model).where(model.id == movement_id, model.debt_id == debt_id))
+        return debt, movement
+
     def create_forgiveness(self, debt_id: int, amount: Decimal, forgiven_date: date, note: str | None) -> DebtForgiveness:
         item = DebtForgiveness(debt_id=debt_id, amount=amount, forgiven_date=forgiven_date, note=note)
         self.db.add(item)
