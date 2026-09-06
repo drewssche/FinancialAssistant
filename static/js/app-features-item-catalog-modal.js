@@ -83,11 +83,16 @@
       updateItemTemplatePreview();
     }
 
-    function openItemTemplateModal(item = null) {
+    function openItemTemplateModal(item = null, { product = null } = {}) {
       if (!el.itemTemplateModal || !el.itemTemplateForm) {
         return;
       }
       const isEdit = Boolean(item?.id);
+      state.itemTemplateProductContext = !isEdit && product?.id ? product : null;
+      const addingSource = Boolean(state.itemTemplateProductContext);
+      el.itemTemplateModal.classList.toggle("adding-product-source", addingSource);
+      if (el.itemTemplateName) el.itemTemplateName.readOnly = addingSource;
+      if (el.submitItemTemplateBtn) el.submitItemTemplateBtn.textContent = addingSource ? "Добавить источник" : "Сохранить";
       state.editItemTemplateId = isEdit ? Number(item.id) : null;
       getActivityFeature().configureActivityButton?.(el.itemTemplateActivityBtn, isEdit ? "item_template" : null, item?.id);
       getUsageFeature().configureUsageButton?.(el.itemTemplateUsageBtn, isEdit ? "item_template" : null, item?.id, item?.name || "");
@@ -98,7 +103,7 @@
         el.itemTemplateHistoryBtn.dataset.itemTemplateHistoryId = showHistory ? String(item.id) : "";
       }
       if (el.itemTemplateModalTitle) {
-        el.itemTemplateModalTitle.textContent = isEdit ? "Редактировать позицию" : "Новая позиция";
+        el.itemTemplateModalTitle.textContent = addingSource ? "Добавить источник товара" : (isEdit ? "Редактировать позицию" : "Новая позиция");
       }
       if (el.itemTemplateSource) {
         el.itemTemplateSource.value = normalizeItemCatalogShopName(item?.shop_name || "");
@@ -167,6 +172,9 @@
 
     function closeItemTemplateModal() {
       state.editItemTemplateId = null;
+      state.itemTemplateProductContext = null;
+      el.itemTemplateModal?.classList.remove("adding-product-source");
+      if (el.itemTemplateName) el.itemTemplateName.readOnly = false;
       itemTemplateInitialBrandMeta = null;
       itemTemplateBrandSelectionTouched = false;
       itemTemplateInitialImageId = null;
@@ -239,6 +247,11 @@
       const sourceName = normalizeItemCatalogShopName(el.itemTemplateSource?.value || el.itemTemplateSourceSearch?.value || "");
       const templateId = Number(state.editItemTemplateId || 0);
       const isEdit = templateId > 0;
+      const productContext = state.itemTemplateProductContext;
+      if (productContext && !sourceName) {
+        core.setStatus("Выберите или введите источник");
+        return;
+      }
       const payload = {
         shop_name: sourceName || null,
         name: String(el.itemTemplateName?.value || "").trim(),
@@ -266,15 +279,22 @@
         core.setStatus("Введите название позиции");
         return;
       }
-      const url = isEdit ? `/api/v1/operations/item-templates/${templateId}` : "/api/v1/operations/item-templates";
+      const url = productContext
+        ? `/api/v1/operations/catalog-products/${productContext.id}/offers`
+        : (isEdit ? `/api/v1/operations/item-templates/${templateId}` : "/api/v1/operations/item-templates");
       const method = isEdit ? "PATCH" : "POST";
+      const requestPayload = productContext ? {
+        shop_name: sourceName,
+        latest_unit_price: payload.latest_unit_price,
+        latest_price_date: payload.latest_price_date,
+      } : payload;
       const savedItem = await core.requestJson(url, {
         method,
         headers: core.authHeaders(),
-        body: JSON.stringify(payload),
+        body: JSON.stringify(requestPayload),
       });
       try {
-        const mediaSavedItem = await window.App.getRuntimeModule?.("catalog-media")?.commitPicker?.(
+        const mediaSavedItem = !productContext && await window.App.getRuntimeModule?.("catalog-media")?.commitPicker?.(
           "item-template",
           "template",
           savedItem?.id || templateId,
@@ -294,6 +314,7 @@
       if (state.itemCatalogView === "products") {
         await window.App.getRuntimeModule?.("catalog-products")?.load?.({ force: true }).catch(() => []);
       }
+      await window.App.getRuntimeModule?.("catalog-products")?.refreshOpenOffers?.(savedItem?.product_id);
       window.App.getRuntimeModule?.("operation-modal")?.applySavedTemplateToReceiptDrafts?.(savedItem);
       window.App.getRuntimeModule?.("operations")?.refreshOpenReceiptTemplate?.(savedItem);
       hydrateItemTemplateBrandFields(savedItem);
@@ -316,7 +337,10 @@
       }
       const normalizedQuery = normalizeItemCatalogShopName(query);
       const normalizedQueryCi = normalizedQuery.toLowerCase();
-      const sources = listItemCatalogSourceNames(80);
+      const sources = Array.from(new Set([
+        ...(state.itemTemplateProductContext?.offers || []).map((offer) => offer.source_name || offer.shop_name).filter(Boolean),
+        ...listItemCatalogSourceNames(80),
+      ]));
       const matched = normalizedQuery
         ? sources.filter((name) => name.toLowerCase().includes(normalizedQueryCi))
         : sources.slice(0, 24);
@@ -330,7 +354,8 @@
           fallback: sourceName.slice(0, 1),
         }) || "";
         const chip = core.renderCategoryChip({ name: sourceName, icon: null, accent_color: null }, normalizedQuery);
-        return `<button type="button" class="chip-btn catalog-source-identity" data-item-template-source-name="${escapeHtml(sourceName)}">${logo}${chip}</button>`;
+        const alreadyAdded = (state.itemTemplateProductContext?.offers || []).some((offer) => getItemCatalogShopKey(offer.source_name || offer.shop_name || "") === getItemCatalogShopKey(sourceName));
+        return `<button type="button" class="chip-btn catalog-source-identity" data-item-template-source-name="${escapeHtml(sourceName)}" ${alreadyAdded ? 'disabled title="Источник уже добавлен"' : ""}>${logo}${chip}${alreadyAdded ? '<span class="muted-small">Уже добавлен</span>' : ""}</button>`;
       }).join("");
       const createChip = normalizedQuery && !exact
         ? `<button type="button" class="chip-btn chip-btn-create" data-item-template-source-create="${escapeHtml(normalizedQuery)}">+ Создать источник «${escapeHtml(normalizedQuery)}»</button>`

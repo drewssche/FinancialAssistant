@@ -174,3 +174,65 @@ def test_exact_candidates_merge_and_detach_preserve_offer_prices(client: TestCli
         json={},
     )
     assert cannot_detach_archived.status_code == 404
+
+
+def test_add_source_to_product_preserves_metadata_and_rejects_duplicate_source(client: TestClient):
+    green = _source(client, "Green")
+    brand = client.post("/api/v1/operations/item-brands", json={"name": "Молочная страна"}).json()
+    product = client.post("/api/v1/operations/catalog-products", json={
+        "name": "Сырок клубника 40г", "brand_id": brand["id"],
+    }).json()
+    url = f"/api/v1/operations/catalog-products/{product['id']}/offers"
+    first = client.post(url, json={
+        "source_id": green, "latest_unit_price": "0.82", "latest_price_date": "2026-09-03",
+    })
+    assert first.status_code == 201, first.text
+    assert first.json()["product_id"] == product["id"]
+    assert first.json()["brand_id"] == brand["id"]
+    assert first.json()["name"] == product["name"]
+    second = client.post(url, json={"shop_name": "Санта"})
+    assert second.status_code == 201, second.text
+    assert second.json()["latest_unit_price"] is None
+    assert second.json()["use_count"] == 0
+    for source_payload in ({"source_id": green}, {"shop_name": " green "}):
+        duplicate = client.post(url, json={
+            **source_payload, "latest_unit_price": "9.99", "latest_price_date": "2026-09-06",
+        })
+        assert duplicate.status_code == 400
+        assert "уже добавлен" in duplicate.json()["detail"]
+    prices = client.get(f"/api/v1/operations/item-templates/{first.json()['id']}/prices").json()
+    assert [item["unit_price"] for item in prices] == ["0.82"]
+    result = client.get(f"/api/v1/operations/catalog-products/{product['id']}").json()
+    assert result["sources_count"] == result["offers_count"] == 2
+    assert {offer["product_id"] for offer in result["offers"]} == {product["id"]}
+    assert client.get("/api/v1/operations/catalog-products").json()["total"] == 1
+    assert client.get("/api/v1/operations").json()["total"] == 0
+
+
+def test_add_product_source_validates_owner_and_conflicting_legacy_product(client: TestClient):
+    green = _source(client, "Green")
+    existing = _offer(client, source_id=green, name="Сырок 40г", price="0.82")
+    product = client.post("/api/v1/operations/catalog-products", json={"name": "Сырок 40г"}).json()
+    url = f"/api/v1/operations/catalog-products/{product['id']}/offers"
+    conflict = client.post(url, json={"source_id": green})
+    assert conflict.status_code == 400
+    assert "объедините" in conflict.json()["detail"]
+    assert client.get(f"/api/v1/operations/item-templates/{existing['id']}").json()["product_id"] == existing["product_id"]
+    assert client.post(url, json={}).status_code == 400
+    assert client.post(url, json={"shop_name": "Санта", "latest_unit_price": "0.82"}).status_code == 400
+    assert client.post(url, json={"shop_name": "Санта", "latest_unit_price": "0"}).status_code == 422
+    assert client.get(f"/api/v1/operations/catalog-products/{product['id']}").json()["offers_count"] == 0
+    app.dependency_overrides[get_current_user_id] = lambda: 2
+    try:
+        assert client.post(url, json={"shop_name": "Санта"}).status_code == 404
+    finally:
+        app.dependency_overrides[get_current_user_id] = lambda: 1
+
+
+def test_add_product_source_does_not_duplicate_an_existing_offer_with_a_different_name(client: TestClient):
+    green = _source(client, "Green")
+    product = client.post("/api/v1/operations/catalog-products", json={"name": "Сырок 40г"}).json()
+    _offer(client, source_id=green, product_id=product["id"], name="Сырок клубника 40 грамм", price="0.82")
+    result = client.post(f"/api/v1/operations/catalog-products/{product['id']}/offers", json={"source_id": green})
+    assert result.status_code == 400
+    assert client.get(f"/api/v1/operations/catalog-products/{product['id']}").json()["offers_count"] == 1

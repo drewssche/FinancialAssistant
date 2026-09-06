@@ -7,6 +7,7 @@
   let requestController = null;
   let searchTimer = null;
   let bound = false;
+  let editorProduct = null;
 
   function esc(value) {
     return String(value ?? "")
@@ -339,7 +340,7 @@
         <div class="catalog-product-source-cell">${media().renderThumb?.(offer.source_image_id, { kind: "source", size: "chip", alt: offer.source_name, fallback: offer.source_name?.slice(0, 1) }) || ""}<div><strong>${esc(offer.source_name || "Без источника")}</strong><span class="muted-small">${esc(offer.name)}</span></div></div>
         <div><strong>${Number(offer.latest_unit_price || 0) > 0 ? core.formatMoney(offer.latest_unit_price) : "—"}</strong><span class="muted-small">${offer.latest_price_date ? esc(core.formatDateRu(offer.latest_price_date)) : "Нет цены"}</span></div>
         <button class="btn btn-secondary btn-xs" type="button" data-product-modal-offer-edit="${offer.template_id}">Изменить</button>
-      </article>`).join("") || "<div class='empty'>Предложений пока нет. Они появятся после добавления товара в чек конкретного источника.</div>";
+      </article>`).join("") || "<div class='empty'>Предложений пока нет. Нажмите «Добавить источник» или выберите этот товар в чеке магазина.</div>";
     media().hydrate?.(el.catalogProductOffersList);
   }
 
@@ -350,6 +351,7 @@
       product = normalizeProduct(await core.requestJson(`/api/v1/operations/catalog-products/${id}`, { headers: core.authHeaders() }));
     }
     state.editCatalogProductId = product?.id || null;
+    editorProduct = product;
     window.App.getRuntimeModule?.("activity")?.configureActivityButton?.(el.catalogProductActivityBtn, product ? "catalog_product" : null, product?.id);
     if (el.catalogProductModalTitle) el.catalogProductModalTitle.textContent = product ? "Редактировать товар" : "Новый товар";
     if (el.catalogProductName) el.catalogProductName.value = product?.name || "";
@@ -365,10 +367,35 @@
 
   function closeEditor() {
     state.editCatalogProductId = null;
+    editorProduct = null;
     window.App.getRuntimeModule?.("activity")?.configureActivityButton?.(el.catalogProductActivityBtn, null, null);
     el.catalogProductModal?.classList.add("hidden");
     core.markModalClosed?.(el.catalogProductModal);
     el.catalogProductForm?.reset();
+  }
+
+  async function refreshOpenOffers(productId) {
+    if (Number(state.editCatalogProductId) !== Number(productId) || el.catalogProductModal?.classList.contains("hidden")) return;
+    const product = normalizeProduct(await core.requestJson(`/api/v1/operations/catalog-products/${productId}`, { headers: core.authHeaders() }));
+    if (Number(state.editCatalogProductId) !== Number(productId)) return;
+    editorProduct = product;
+    state.catalogProducts = (state.catalogProducts || []).map((item) => Number(item.id) === Number(productId) ? product : item);
+    // Refresh just the offers, preserving unsaved name/brand/photo edits above.
+    renderModalOffers(product);
+    render();
+  }
+
+  async function addSource() {
+    const product = editorProduct;
+    if (!product) return;
+    await catalog().loadItemSources?.();
+    if (editorProduct !== product) return;
+    catalog().openItemTemplateModal?.({
+      name: product.name, last_category_id: product.category_id,
+      brand_id: product.brand_id, brand_name: product.brand_name,
+      brand_accent_color: product.brand_accent_color, brand_image_id: product.brand_image_id,
+      image_id: product.image_id,
+    }, { product });
   }
 
   function invalidate() {
@@ -574,6 +601,7 @@
       searchTimer = setTimeout(() => core.runAction({ errorPrefix: "Не удалось найти товары", action: () => load({ force: true }) }), 220);
     });
     el.closeCatalogProductModalBtn?.addEventListener("click", closeEditor);
+    el.addCatalogProductSourceBtn?.addEventListener("click", () => core.runAction({ errorPrefix: "Не удалось открыть добавление источника", action: addSource }));
     el.catalogProductForm?.addEventListener("submit", (event) => core.runAction({ errorPrefix: "Не удалось сохранить товар", action: () => save(event) }));
     el.deleteCatalogProductBtn?.addEventListener("click", removeCurrent);
     el.catalogProductOffersList?.addEventListener("click", (event) => {
@@ -603,10 +631,11 @@
     state.catalogProductExpandedIds = new Set();
     state.selectedCatalogProductIds = new Set();
     state.editCatalogProductId = null;
+    editorProduct = null;
   }
 
   window.App.registerRuntimeModule?.("catalog-products", {
-    bind, load, render, invalidate, openEditor, closeEditor, openMerge, closeMerge, cleanupRuntime,
+    bind, load, render, invalidate, openEditor, closeEditor, openMerge, closeMerge, cleanupRuntime, refreshOpenOffers,
     normalizeProduct, normalizeOffer, productById,
   });
 })();

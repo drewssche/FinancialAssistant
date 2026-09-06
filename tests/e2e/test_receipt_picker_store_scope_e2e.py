@@ -1891,6 +1891,110 @@ def test_mobile_source_group_modal_preview_stays_above_sticky_cta(static_server_
 
 
 @pytest.mark.e2e
+@pytest.mark.parametrize("viewport_width", [1280, 390])
+def test_catalog_product_add_source_keeps_parent_edits_and_updates_sources(
+    static_server_url: str, page_with_receipt_api_mock, viewport_width: int,
+):
+    page = page_with_receipt_api_mock
+    page.set_viewport_size({"width": viewport_width, "height": 900})
+    product = {
+        "id": 401, "name": "Сырок клубника 40г", "category_id": 101,
+        "category_name": "Еда", "offers": [{
+            "id": 501, "template_id": 501, "product_id": 401, "name": "Сырок клубника 40г",
+            "source_id": 304, "source_name": "Green", "shop_name": "Green",
+            "latest_unit_price": "0.82", "latest_price_date": "2026-09-03",
+        }],
+    }
+    mutations = []
+
+    def handler(route, request):
+        path = urlparse(request.url).path
+        payload = None
+        status = 200
+        if path.endswith("/401/offers") and request.method == "POST":
+            data = json.loads(request.post_data or "{}")
+            mutations.append(data)
+            if data["shop_name"].lower() == "green":
+                status, payload = 400, {"detail": "Этот источник уже добавлен"}
+            else:
+                payload = {
+                    "id": 502, "template_id": 502, "product_id": 401, "name": product["name"],
+                    "source_id": 305, "source_name": data["shop_name"], "shop_name": data["shop_name"],
+                    "latest_unit_price": data.get("latest_unit_price"),
+                    "latest_price_date": data.get("latest_price_date"), "use_count": 0,
+                }
+                product["offers"].append(payload)
+                status = 201
+        elif path.endswith("/merge-candidates"):
+            payload = {"items": [], "total": 0}
+        elif path.endswith("/catalog-products/401"):
+            payload = product
+        elif path.endswith("/catalog-products"):
+            payload = {"items": [product], "total": 1, "page": 1, "page_size": 100}
+        if payload is None:
+            return route.fallback()
+        return route.fulfill(status=status, content_type="application/json", body=json.dumps(payload, ensure_ascii=False))
+
+    page.route("**/api/v1/operations/catalog-products/**", handler)
+    page.route("**/api/v1/operations/catalog-products**", handler)
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate("() => { window.Telegram = { WebApp: { initData: 'mock-init-data', ready() {}, expand() {} } }; }")
+    _login(page)
+    page.evaluate("() => window.App.getRuntimeModule('catalog-products').openEditor(401)")
+    parent = page.locator("#catalogProductModal")
+    child = page.locator("#itemTemplateModal")
+    expect(parent).to_be_visible()
+    expect(parent.locator("#catalogProductOffersList")).to_contain_text("Green")
+    page.fill("#catalogProductName", "Несохранённое название")
+    page.click("#addCatalogProductSourceBtn")
+    expect(child).to_be_visible()
+    expect(parent).to_be_visible()
+    expect(page.locator("#itemTemplateModalTitle")).to_have_text("Добавить источник товара")
+    expect(page.locator("#itemTemplateName")).to_have_value("Сырок клубника 40г")
+    expect(page.locator("#itemTemplateName")).to_have_attribute("readonly", "")
+    expect(page.locator("#itemTemplatePrice")).to_be_empty()
+    expect(child.locator(".item-template-product-help")).to_be_visible()
+    expect(page.locator("#itemTemplateBrandField")).to_be_hidden()
+    layers = page.evaluate("() => [Number(document.querySelector('#itemTemplateModal').style.zIndex), Number(document.querySelector('#catalogProductModal').style.zIndex)]")
+    assert layers[0] > layers[1]
+    page.fill("#itemTemplateSourceSearch", "Green")
+    expect(page.locator('[data-item-template-source-name="Green"]')).to_be_disabled()
+    page.fill("#itemTemplatePrice", "9.99")
+    with page.expect_response(lambda r: r.url.endswith("/401/offers") and r.request.method == "POST") as duplicate:
+        page.click("#submitItemTemplateBtn")
+    assert duplicate.value.status == 400
+    expect(child).to_be_visible()
+    assert len(product["offers"]) == 1
+
+    page.fill("#itemTemplateSourceSearch", "Санта")
+    page.fill("#itemTemplatePrice", "0.79")
+    page.fill("#itemTemplatePriceDate", "2026-09-06")
+    with page.expect_response(lambda r: r.url.endswith("/401/offers") and r.request.method == "POST") as saved:
+        page.click("#submitItemTemplateBtn")
+    assert saved.value.status == 201
+    expect(child).to_be_hidden()
+    expect(parent).to_be_visible()
+    expect(page.locator("#catalogProductName")).to_have_value("Несохранённое название")
+    expect(parent.locator("#catalogProductOffersList")).to_contain_text("Санта")
+    expect(parent.locator("#catalogProductOffersList")).to_contain_text("0,79")
+    expect(parent.locator("#catalogProductOffersList")).to_contain_text("06.09.2026")
+    assert mutations[-1] == {"shop_name": "Санта", "latest_unit_price": "0.79", "latest_price_date": "2026-09-06"}
+    assert len(product["offers"]) == 2
+    geometry = parent.locator(".modal-card").evaluate("node => ({width: node.clientWidth, content: node.scrollWidth})")
+    assert geometry["content"] <= geometry["width"] + 1
+    # Opening/canceling another source does not close or reset the parent.
+    page.click("#addCatalogProductSourceBtn")
+    expect(page.locator("#itemTemplatePrice")).to_be_empty()
+    page.click("#closeItemTemplateModalBtn")
+    expect(page.locator("#catalogProductName")).to_have_value("Несохранённое название")
+    page.click("#closeCatalogProductModalBtn")
+    page.evaluate("() => window.App.getRuntimeModule('item-catalog').openItemTemplateModal()")
+    expect(page.locator("#itemTemplateBrandField")).to_be_visible()
+    assert not page.locator("#itemTemplateName").evaluate("node => node.readOnly")
+    expect(page.locator("#submitItemTemplateBtn")).to_have_text("Сохранить")
+
+
+@pytest.mark.e2e
 def test_catalog_products_default_view_offers_merge_labels_and_source_matched_picker(
     static_server_url: str,
     page_with_receipt_api_mock,

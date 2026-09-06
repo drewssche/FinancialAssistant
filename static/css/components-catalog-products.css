@@ -37,6 +37,18 @@
 .catalog-product-candidate-product small { color: var(--muted); white-space: normal; }
 .catalog-product-meta-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .catalog-product-modal-offers { display: grid; gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.catalog-product-modal-offers > .row { flex-wrap: wrap; gap: 10px; }
+.catalog-product-offers-actions { flex-wrap: wrap; gap: 6px; }
+.item-template-product-help { display: none; }
+.adding-product-source .catalog-image-field,
+.adding-product-source #itemTemplateBrandField,
+.adding-product-source #itemTemplateCategoryField,
+.adding-product-source .preview-panel { display: none; }
+.adding-product-source .item-template-product-help { display: block; margin: 0; line-height: 1.5; }
+.adding-product-source #itemTemplateName { grid-column: 1 / -1; color: var(--muted); }
+.adding-product-source #itemTemplateSourceField { width: 100%; max-width: none; }
+.adding-product-source .item-template-modal-card { width: min(100%, 36rem); }
+.adding-product-source .chip-btn:disabled { opacity: .55; cursor: default; }
 .catalog-product-offers-list { display: grid; gap: 7px; max-height: 290px; overflow: auto; }
 .catalog-product-modal-offer { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 10px 11px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); }
 .catalog-product-modal-offer > div { min-width: 0; display: grid; gap: 3px; }

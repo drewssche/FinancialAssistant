@@ -274,6 +274,13 @@ class CatalogProductCreate(BaseModel):
     category_id: int | None = Field(default=None, ge=1)
 
 
+class CatalogProductSourceCreate(BaseModel):
+    source_id: int | None = Field(default=None, ge=1)
+    shop_name: str | None = Field(default=None, max_length=160)
+    latest_unit_price: Decimal | None = Field(default=None, gt=0, max_digits=14, decimal_places=2)
+    latest_price_date: date | None = None
+
+
 class CatalogProductUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=160)
     brand_id: int | None = Field(default=None, ge=1)

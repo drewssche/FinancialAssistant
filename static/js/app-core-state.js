@@ -111,6 +111,7 @@
       editItemBrandId: null,
       itemCatalogSortPreset: "usage",
       editItemTemplateId: null,
+      itemTemplateProductContext: null,
       editItemSourceName: "",
       analyticsMonthAnchor: "",
       analyticsTab: "calendar",

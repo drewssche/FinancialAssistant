@@ -14,7 +14,7 @@ from app.core.cache import (
     invalidate_plans_cache,
     set_json,
 )
-from app.db.models import Category
+from app.db.models import CatalogProduct, Category
 from app.repositories.catalog_product_repo import CatalogProductRepository
 from app.repositories.item_brand_repo import ItemBrandRepository
 from app.repositories.operation_repo import OperationRepository
@@ -202,6 +202,41 @@ class OperationItemTemplateService:
         self.db.commit()
         invalidate_item_templates_cache(user_id)
         return self._serialize_item_template(item)
+
+    def add_product_source(
+        self, *, user_id: int, product_id: int, source_id: int | None,
+        shop_name: str | None, latest_unit_price: Decimal | None,
+        latest_price_date: date | None,
+    ) -> dict:
+        # Serialize additions from this flow so a double submit cannot create
+        # another offer or change an already-saved price for the same source.
+        product = self.db.scalar(select(CatalogProduct).where(
+            CatalogProduct.id == product_id,
+            CatalogProduct.user_id == user_id,
+            CatalogProduct.is_archived.is_(False),
+        ).with_for_update())
+        if product is None:
+            raise LookupError("Товар не найден")
+        if source_id is None and not str(shop_name or "").strip():
+            raise ValueError("Выберите или введите источник")
+        if latest_unit_price is not None and latest_price_date is None:
+            raise ValueError("Укажите дату цены")
+        source = self.source_service.resolve(user_id=user_id, source_id=source_id, shop_name=shop_name)
+        offers = self.product_repo.list_offers(user_id=user_id, product_id=product_id)
+        if any(offer.source_id == source.id or str(offer.shop_name or "").casefold() == source.name.casefold() for offer in offers):
+            raise ValueError("Этот источник уже добавлен. Измените его предложение в карточке товара")
+        existing = self.repo.get_item_template_by_name_ci(
+            user_id=user_id, name_ci=product.name.casefold(),
+            shop_name_ci=source.name.casefold(), include_archived=True,
+        )
+        if existing is not None and existing.product_id not in (None, product_id):
+            raise ValueError("В этом источнике уже есть отдельная карточка этого товара. Сначала объедините товары")
+        return self.create_item_template(
+            user_id=user_id, product_id=product_id, source_id=source.id,
+            shop_name=source.name, name=product.name, brand_id=product.brand_id,
+            last_category_id=product.category_id, latest_unit_price=latest_unit_price,
+            latest_price_date=latest_price_date,
+        )
 
     def create_item_template(
         self,

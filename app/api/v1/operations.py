@@ -14,6 +14,7 @@ from app.schemas.operation import (
     CatalogProductMergeIn,
     CatalogProductMergeOut,
     CatalogProductOut,
+    CatalogProductSourceCreate,
     CatalogProductUpdate,
     ItemBrandCreate,
     ItemBrandListOut,
@@ -368,6 +369,23 @@ def get_catalog_product(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
+
+
+@router.post("/catalog-products/{product_id}/offers", response_model=OperationItemTemplateOut, status_code=status.HTTP_201_CREATED)
+def add_catalog_product_source(
+    product_id: int,
+    payload: CatalogProductSourceCreate,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        return OperationService(db).item_templates.add_product_source(
+            user_id=user_id, product_id=product_id, **payload.model_dump(),
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.patch("/catalog-products/{product_id}", response_model=CatalogProductOut)

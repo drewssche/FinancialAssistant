@@ -17,6 +17,7 @@
           </div>
         </div>
         <form id="itemTemplateForm" class="category-modal-form">
+          <p class="muted-small item-template-product-help">Добавляется магазин для существующего товара. Бренд, категория и фото общие. Цена необязательна; покупка или операция не создаётся.</p>
           <section class="catalog-image-field" data-catalog-image-picker="item-template" aria-label="Фотография позиции">
             <div class="catalog-image-picker-preview" data-catalog-image-preview></div>
             <div class="catalog-image-picker-actions">
@@ -147,10 +148,13 @@
         <section id="catalogProductOffersSection" class="catalog-product-modal-offers hidden">
           <div class="row between">
             <div>
-              <strong>Предложения источников</strong>
+              <strong>Источники товара</strong>
               <div class="muted-small">Цена и история остаются отдельными для каждого магазина</div>
             </div>
-            <button id="openCatalogProductOperationsBtn" class="btn btn-secondary btn-xs" type="button">Все операции товара</button>
+            <div class="row catalog-product-offers-actions">
+              <button id="addCatalogProductSourceBtn" class="btn btn-primary btn-xs" type="button">Добавить источник</button>
+              <button id="openCatalogProductOperationsBtn" class="btn btn-secondary btn-xs" type="button">Все операции товара</button>
+            </div>
           </div>
           <div id="catalogProductOffersList" class="catalog-product-offers-list"></div>
         </section>
