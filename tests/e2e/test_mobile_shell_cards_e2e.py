@@ -454,6 +454,7 @@ def test_item_catalog_kebab_actions_work_from_floating_popover(static_server_url
 
             page.evaluate("() => window.App.actions.switchSection('item_catalog')")
             page.wait_for_selector("#itemCatalogSection:not(.hidden)")
+            page.locator('[data-item-catalog-view="sources"]').click()
             page.wait_for_selector("button[data-mobile-card-menu-trigger='item-template-1']")
 
             page.locator("button[data-mobile-card-menu-trigger='item-template-1']").click()
@@ -467,7 +468,7 @@ def test_item_catalog_kebab_actions_work_from_floating_popover(static_server_url
 
             page.locator("button[data-mobile-card-menu-trigger='item-template-1']").click()
             page.locator(".mobile-card-actions-popover[data-mobile-card-menu='item-template-1']:not(.hidden)").wait_for(state="visible")
-            page.locator("button[data-edit-item-template-id='1']").click()
+            page.locator(".mobile-card-actions-popover[data-mobile-card-menu='item-template-1']:not(.hidden) button[data-edit-item-template-id='1']").click()
             page.wait_for_selector("#itemTemplateModal:not(.hidden)")
             assert page.locator("#itemTemplateModalTitle").inner_text().strip() == "Редактировать позицию"
             assert page.locator("#itemTemplateName").input_value() == "Позиция 1"

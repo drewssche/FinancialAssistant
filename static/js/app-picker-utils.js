@@ -153,6 +153,8 @@
       window.removeEventListener("scroll", popover.__appPopoverFloatingReposition, true);
     }
     delete popover.__appPopoverFloatingReposition;
+    cancelAnimationFrame(popover.__appPopoverPositionFrame || 0);
+    delete popover.__appPopoverPositionFrame;
   }
 
   function positionFloatingActionPopover(popover, owners = []) {
@@ -174,12 +176,13 @@
     const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
     const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
     const margin = 12;
+    const scrollTop = popover.scrollTop;
     clearFloatingPopoverStyles(popover);
     popover.style.position = "fixed";
     const viewportMaxHeight = Math.max(160, viewportHeight - margin * 2);
-    const popoverMaxHeight = popover.classList.contains("category-icon-popover")
-      ? Math.min(520, viewportMaxHeight)
-      : viewportMaxHeight;
+    const requestedMaxHeight = Number(popover.dataset.popoverMaxHeight || 0)
+      || (popover.classList.contains("category-icon-popover") ? 520 : viewportMaxHeight);
+    const popoverMaxHeight = Math.min(requestedMaxHeight, viewportMaxHeight);
     popover.style.maxHeight = `${popoverMaxHeight}px`;
     popover.style.overflowY = "auto";
     const anchorRect = anchor.getBoundingClientRect();
@@ -206,6 +209,8 @@
     const spaceBelow = viewportHeight - anchorRect.bottom - margin;
     const spaceAbove = anchorRect.top - margin;
     const shouldOpenUp = rect.height > spaceBelow && spaceAbove > spaceBelow;
+    // Keep the anchor clickable even when a picker contains hundreds of options.
+    popover.style.maxHeight = `${Math.max(0, Math.min(popoverMaxHeight, (shouldOpenUp ? spaceAbove : spaceBelow) - 8))}px`;
     if (shouldOpenUp) {
       popover.style.top = "auto";
       popover.style.bottom = `${Math.max(margin, viewportHeight - anchorRect.top + 8)}px`;
@@ -224,6 +229,7 @@
       popover.style.bottom = "auto";
       popover.style.top = `${margin}px`;
     }
+    popover.scrollTop = scrollTop;
   }
 
   function setPopoverOpen(popover, isOpen, options = {}) {
@@ -240,8 +246,10 @@
     if (typeof options.onClose === "function") {
       popover.__appPopoverOnClose = options.onClose;
     }
+    // A search input can reopen/reposition the same popover on every keystroke.
+    // Replace, rather than accumulate, its window listeners and pending frame.
+    detachFloatingPopoverObservers(popover);
     if (!isOpen) {
-      detachFloatingPopoverObservers(popover);
       clearFloatingPopoverStyles(popover);
       restoreFloatingPopoverMount(popover);
     }
@@ -253,10 +261,15 @@
     if (isOpen && isFloatingActionPopover(popover)) {
       ensureFloatingPopoverMounted(popover);
       popover.classList.remove("hidden");
-      const reposition = () => positionFloatingActionPopover(popover, activeOwners);
+      const reposition = (event) => {
+        // Scrolling the list does not move its anchor. Reflow here resets the
+        // browser's scroll offset and can chain the wheel to the page underneath.
+        if (event?.type === "scroll" && event.target instanceof Node && popover.contains(event.target)) return;
+        positionFloatingActionPopover(popover, activeOwners);
+      };
       popover.__appPopoverFloatingReposition = reposition;
       reposition();
-      requestAnimationFrame(reposition);
+      popover.__appPopoverPositionFrame = requestAnimationFrame(reposition);
       window.addEventListener("resize", reposition);
       window.addEventListener("scroll", reposition, true);
     } else if (isOpen) {

@@ -139,13 +139,13 @@
               <label for="catalogProductBrandSearch">Бренд</label>
               <input id="catalogProductBrand" type="hidden" />
               <input id="catalogProductBrandSearch" type="text" placeholder="Без бренда" autocomplete="off" aria-haspopup="dialog" aria-expanded="false" aria-controls="catalogProductBrandPicker" />
-              <div id="catalogProductBrandPicker" class="app-popover app-popover-floating catalog-product-picker hidden" role="dialog" aria-label="Выбор бренда"><div class="chip-list"></div></div>
+              <div id="catalogProductBrandPicker" class="app-popover app-popover-floating catalog-product-picker hidden" data-popover-max-height="420" role="dialog" aria-label="Выбор бренда"><div class="chip-list"></div></div>
             </div>
             <div id="catalogProductCategoryField" class="field create-category-field">
               <label for="catalogProductCategorySearch">Категория</label>
               <input id="catalogProductCategory" type="hidden" />
               <input id="catalogProductCategorySearch" type="text" placeholder="Без категории" autocomplete="off" aria-haspopup="dialog" aria-expanded="false" aria-controls="catalogProductCategoryPicker" />
-              <div id="catalogProductCategoryPicker" class="app-popover app-popover-floating catalog-product-picker hidden" role="dialog" aria-label="Выбор категории"><div class="chip-list"></div></div>
+              <div id="catalogProductCategoryPicker" class="app-popover app-popover-floating catalog-product-picker hidden" data-popover-max-height="420" role="dialog" aria-label="Выбор категории"><div class="chip-list"></div></div>
             </div>
           </div>
         </form>

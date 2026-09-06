@@ -9,6 +9,7 @@
   let searchTimer = null;
   let bound = false;
   let editorProduct = null;
+  let tableColumns = null;
 
   function esc(value) {
     return String(value ?? "")
@@ -220,6 +221,7 @@
   }
 
   function render() {
+    tableColumns?.apply();
     if (!el.catalogProductsBody) return;
     const products = state.catalogProducts || [];
     el.catalogProductsBody.innerHTML = products.length
@@ -699,6 +701,12 @@
       clearTimeout(searchTimer);
       searchTimer = setTimeout(() => core.runAction({ errorPrefix: "Не удалось найти товары", action: () => load({ force: true }) }), 220);
     });
+    tableColumns = window.App.getRuntimeModule?.("table-column-widths")?.bind(el.catalogProductsBody?.closest("table"), {
+      defaults: [3, 27, 9, 15, 9, 10, 12, 15],
+      minimums: [32, 160, 56, 90, 58, 72, 88, 86],
+      storageKey: "fa_table_columns_v1:catalog-products",
+      resetButton: document.getElementById("resetCatalogProductWidthsBtn"),
+    });
     el.closeCatalogProductModalBtn?.addEventListener("click", closeEditor);
     bindMetaPickers();
     el.addCatalogProductSourceBtn?.addEventListener("click", () => core.runAction({ errorPrefix: "Не удалось открыть добавление источника", action: addSource }));
@@ -719,6 +727,7 @@
   }
 
   function cleanupRuntime() {
+    tableColumns?.cancel();
     ["Brand", "Category"].forEach(closeMetaPicker);
     requestController?.abort();
     requestController = null;

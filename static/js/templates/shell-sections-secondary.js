@@ -421,6 +421,7 @@
                 <button id="catalogProductsCollapseAllBtn" class="btn btn-secondary btn-xs" type="button">Свернуть все</button>
                 <button id="catalogProductsExpandAllBtn" class="btn btn-secondary btn-xs" type="button">Развернуть все</button>
                 <button id="refreshCatalogProductsBtn" class="btn btn-secondary btn-xs" type="button">Обновить</button>
+                <button id="resetCatalogProductWidthsBtn" class="btn btn-secondary btn-xs" type="button" title="Вернуть исходные размеры колонок">Сбросить ширину</button>
               </div>
             </div>
             <div id="catalogProductsKpiGrid" class="analytics-kpi-grid section-kpi-grid" aria-label="Итоги каталога товаров"></div>
@@ -433,6 +434,7 @@
             </div>
             <div class="table-wrap">
               <table class="table table-hover mobile-card-table catalog-products-table">
+                <colgroup><col /><col /><col /><col /><col /><col /><col /><col /></colgroup>
                 <thead>
                   <tr>
                     <th><input id="catalogProductsSelectAll" type="checkbox" aria-label="Выбрать все видимые товары" /></th>
