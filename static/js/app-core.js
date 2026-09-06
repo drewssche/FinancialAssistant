@@ -426,6 +426,7 @@
       resolveMoneyInput,
       resolveRateInput,
       formatDateRu,
+      formatDateTimeRu: (value) => getCoreUtils().formatDateTimeRu(value, state),
       parseDateInputValue,
       normalizeDateInputValue,
       normalizeDateFieldValue,

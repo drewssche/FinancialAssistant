@@ -3,6 +3,7 @@
   const media = () => window.App.getRuntimeModule?.("catalog-media") || {};
   const catalog = () => window.App.getRuntimeModule?.("item-catalog") || {};
   const operations = () => window.App.getRuntimeModule?.("operations") || {};
+  const pickers = () => window.App.getRuntimeModule?.("picker-utils") || {};
   const CACHE_TTL_MS = 20000;
   let requestController = null;
   let searchTimer = null;
@@ -21,6 +22,21 @@
   function asId(value) {
     const id = Number(value || 0);
     return Number.isInteger(id) && id > 0 ? id : null;
+  }
+
+  function renderLastUsed(value) {
+    if (!value) return "—";
+    const formatted = core.formatDateTimeRu(value);
+    const [date, time] = formatted.split(", ");
+    return `<time datetime="${esc(value)}">${esc(date)}${time ? `<span class="muted-small">${esc(time)}</span>` : ""}</time>`;
+  }
+
+  function openProductUsage(product) {
+    if (!product) return;
+    core.runAction({
+      errorPrefix: "Не удалось открыть операции товара",
+      action: () => window.App.getRuntimeModule?.("usage")?.openUsageModal?.("catalog_product", product.id, product.name),
+    });
   }
 
   function normalizeOffer(raw = {}, product = {}) {
@@ -171,7 +187,7 @@
         <td data-label="Категория">${renderCategory(product)}</td>
         <td data-label="Источники"><strong>${product.sources_count}</strong><span class="muted-small"> · ${product.offers_count} предл.</span></td>
         <td data-label="Цена"><strong>${formatPriceRange(product)}</strong></td>
-        <td data-label="Последняя покупка">${product.last_used_at ? esc(core.formatDateRu(product.last_used_at)) : "—"}</td>
+        <td data-label="Последняя покупка" class="catalog-product-last-used">${renderLastUsed(product.last_used_at)}</td>
         <td class="catalog-product-row-actions"><button class="btn btn-secondary btn-xs" type="button" data-open-catalog-product-operations="${product.id}">Операции</button><button class="btn btn-secondary btn-xs" type="button" data-open-catalog-product="${product.id}">Изменить</button></td>
       </tr>${offerRows}`;
   }
@@ -319,16 +335,91 @@
     return null;
   }
 
-  function fillSelects(product = {}) {
-    if (el.catalogProductBrand) {
-      const brands = (state.itemBrands || []).filter((item) => !item.is_archived);
-      el.catalogProductBrand.innerHTML = `<option value="">Без бренда</option>${brands.map((item) => `<option value="${item.id}">${esc(item.name)}</option>`).join("")}`;
-      el.catalogProductBrand.value = product.brand_id ? String(product.brand_id) : "";
+  function metaPicker(kind) {
+    const prefix = `catalogProduct${kind}`;
+    return { value: el[prefix], input: el[`${prefix}Search`], field: el[`${prefix}Field`], popover: el[`${prefix}Picker`] };
+  }
+
+  function metaItems(kind) {
+    const items = kind === "Brand" ? state.itemBrands || [] : (state.categories || []).filter((item) => item.kind === "expense");
+    const key = kind.toLowerCase();
+    const linkedId = editorProduct?.[`${key}_id`];
+    const linked = linkedId && !items.some((item) => Number(item.id) === Number(linkedId))
+      ? [{ id: linkedId, name: editorProduct[`${key}_name`] || (kind === "Brand" ? "Бренд" : "Категория"), is_archived: true }]
+      : [];
+    return [...linked, ...items.filter((item) => !item.is_archived || Number(item.id) === Number(linkedId))];
+  }
+
+  function closeMetaPicker(kind) {
+    const { value, input, field, popover } = metaPicker(kind);
+    pickers().setPopoverOpen?.(popover, false, { owners: [field] });
+    if (input) {
+      input.setAttribute("aria-expanded", "false");
+      input.value = metaItems(kind).find((item) => Number(item.id) === Number(value?.value))?.name || "";
     }
-    if (el.catalogProductCategory) {
-      const categories = (state.categories || []).filter((item) => item.kind === "expense");
-      el.catalogProductCategory.innerHTML = `<option value="">Без категории</option>${categories.map((item) => `<option value="${item.id}">${esc(item.name)}</option>`).join("")}`;
-      el.catalogProductCategory.value = product.category_id ? String(product.category_id) : "";
+  }
+
+  function renderMetaPicker(kind) {
+    const { value, input, field, popover } = metaPicker(kind);
+    if (!popover || !input) return;
+    const selectedId = asId(value.value);
+    const selected = metaItems(kind).find((item) => Number(item.id) === selectedId);
+    const rawQuery = input.value.trim();
+    const query = rawQuery.toLowerCase() === selected?.name?.toLowerCase() ? "" : rawQuery;
+    const items = kind === "Category"
+      ? pickers().sortCategoriesByUsage(metaItems(kind), query)
+      : metaItems(kind).filter((item) => item.name.toLowerCase().includes(query.toLowerCase())).sort((a, b) => a.name.localeCompare(b.name, "ru"));
+    const list = popover.querySelector(".chip-list");
+    list.replaceChildren(pickers().createMetaChipButton({
+      datasetName: "productMetaId", selected: !selectedId, label: kind === "Brand" ? "Без бренда" : "Без категории", core,
+    }));
+    for (const item of items) {
+      const html = kind === "Brand"
+        ? window.App.getRuntimeModule?.("item-brands")?.renderBrandChip?.(item, { title: false }) || esc(item.name)
+        : core.renderCategoryChip({ name: item.name, icon: item.icon || item.group_icon, accent_color: item.group_accent_color }, query);
+      list.append(pickers().createChipButton({ datasetName: "productMetaId", datasetValue: item.id, selected: Number(item.id) === selectedId, html }));
+    }
+    if (!items.length) list.insertAdjacentHTML("beforeend", "<span class='muted-small'>Ничего не найдено</span>");
+    input.setAttribute("aria-expanded", "true");
+    pickers().setPopoverOpen(popover, true, { owners: [field], onClose: () => closeMetaPicker(kind) });
+    media().hydrate?.(popover);
+  }
+
+  function bindMetaPickers() {
+    for (const kind of ["Brand", "Category"]) {
+      const { value, input, popover } = metaPicker(kind);
+      input?.addEventListener("focus", () => renderMetaPicker(kind));
+      input?.addEventListener("click", () => { if (popover.classList.contains("hidden")) renderMetaPicker(kind); });
+      input?.addEventListener("input", () => renderMetaPicker(kind));
+      input?.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !popover.classList.contains("hidden")) {
+          event.preventDefault();
+          event.stopPropagation();
+          closeMetaPicker(kind);
+        } else if (event.key === "ArrowDown") {
+          event.preventDefault();
+          if (popover.classList.contains("hidden")) renderMetaPicker(kind);
+          popover.querySelector("button")?.focus();
+        } else if (event.key === "Enter" && !popover.classList.contains("hidden")) {
+          event.preventDefault();
+          const matches = popover.querySelectorAll("button[data-product-meta-id]");
+          (input.value.trim() ? matches[1] : matches[0])?.click();
+        }
+      });
+      popover?.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-product-meta-id]");
+        if (!button) return;
+        value.value = button.dataset.productMetaId;
+        input.focus({ preventScroll: true });
+        closeMetaPicker(kind);
+      });
+      popover?.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+        event.preventDefault();
+        event.stopPropagation();
+        input.focus({ preventScroll: true });
+        closeMetaPicker(kind);
+      });
     }
   }
 
@@ -345,6 +436,10 @@
   }
 
   async function openEditor(productOrId = null) {
+    await Promise.all([
+      window.App.getRuntimeModule?.("item-brands")?.ensureItemBrandsLoaded?.(),
+      state.categories?.length ? null : window.App.getRuntimeModule?.("category-actions")?.loadCategories?.(),
+    ]);
     const id = asId(productOrId?.id || productOrId);
     let product = id ? productById(id) : null;
     if (id && !product) {
@@ -355,7 +450,10 @@
     window.App.getRuntimeModule?.("activity")?.configureActivityButton?.(el.catalogProductActivityBtn, product ? "catalog_product" : null, product?.id);
     if (el.catalogProductModalTitle) el.catalogProductModalTitle.textContent = product ? "Редактировать товар" : "Новый товар";
     if (el.catalogProductName) el.catalogProductName.value = product?.name || "";
-    fillSelects(product || {});
+    for (const kind of ["Brand", "Category"]) {
+      metaPicker(kind).value.value = product?.[`${kind.toLowerCase()}_id`] || "";
+      closeMetaPicker(kind);
+    }
     renderModalOffers(product);
     el.deleteCatalogProductBtn?.classList.toggle("hidden", !product);
     if (el.submitCatalogProductBtn) el.submitCatalogProductBtn.textContent = product ? "Сохранить" : "Создать товар";
@@ -366,6 +464,7 @@
   }
 
   function closeEditor() {
+    ["Brand", "Category"].forEach(closeMetaPicker);
     state.editCatalogProductId = null;
     editorProduct = null;
     window.App.getRuntimeModule?.("activity")?.configureActivityButton?.(el.catalogProductActivityBtn, null, null);
@@ -549,7 +648,7 @@
     const productOperations = event.target.closest("[data-open-catalog-product-operations]");
     if (productOperations) {
       const product = productById(productOperations.dataset.openCatalogProductOperations);
-      if (product) operations().openOperationsForProduct?.(product.id, product.name);
+      openProductUsage(product);
       return;
     }
     const offerAction = event.target.closest("[data-product-offer-action]");
@@ -601,6 +700,7 @@
       searchTimer = setTimeout(() => core.runAction({ errorPrefix: "Не удалось найти товары", action: () => load({ force: true }) }), 220);
     });
     el.closeCatalogProductModalBtn?.addEventListener("click", closeEditor);
+    bindMetaPickers();
     el.addCatalogProductSourceBtn?.addEventListener("click", () => core.runAction({ errorPrefix: "Не удалось открыть добавление источника", action: addSource }));
     el.catalogProductForm?.addEventListener("submit", (event) => core.runAction({ errorPrefix: "Не удалось сохранить товар", action: () => save(event) }));
     el.deleteCatalogProductBtn?.addEventListener("click", removeCurrent);
@@ -609,8 +709,7 @@
       if (button) editOffer(button.dataset.productModalOfferEdit);
     });
     el.openCatalogProductOperationsBtn?.addEventListener("click", () => {
-      const product = productById(state.editCatalogProductId);
-      if (product) operations().openOperationsForProduct?.(product.id, product.name);
+      openProductUsage(editorProduct);
     });
     el.closeCatalogProductMergeModalBtn?.addEventListener("click", closeMerge);
     el.catalogProductMergeForm?.addEventListener("submit", (event) => core.runAction({ errorPrefix: "Не удалось объединить товары", action: () => merge(event) }));
@@ -620,6 +719,7 @@
   }
 
   function cleanupRuntime() {
+    ["Brand", "Category"].forEach(closeMetaPicker);
     requestController?.abort();
     requestController = null;
     clearTimeout(searchTimer);

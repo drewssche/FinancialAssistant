@@ -95,7 +95,7 @@
       return;
     }
     const { dateFrom, dateTo } = core.getPeriodBounds(state.period);
-    const label = core.formatPeriodLabel(dateFrom, dateTo);
+    const label = state.period === "all_time" ? "За всё время" : core.formatPeriodLabel(dateFrom, dateTo);
     el.operationsPeriodLabel.textContent = label;
     if (el.operationsPeriodControlLabel) {
       el.operationsPeriodControlLabel.textContent = label || "Период";
@@ -115,6 +115,10 @@
       date_from: dateFrom,
       date_to: dateTo,
     });
+    if (state.period === "all_time") {
+      params.delete("date_from");
+      params.delete("date_to");
+    }
 
     if (state.filterKind) {
       if (isMoneyFlowMode) {
@@ -299,6 +303,10 @@
       date_from: dateFrom,
       date_to: dateTo,
     });
+    if (state.period === "all_time") {
+      params.delete("date_from");
+      params.delete("date_to");
+    }
     if (state.filterKind) {
       if (isMoneyFlowMode) {
         params.set("direction", state.filterKind === "income" ? "inflow" : "outflow");
@@ -784,6 +792,14 @@
   async function openOperationsForProduct(productId, productName = "") {
     const resolvedId = Number(productId || 0);
     if (!(resolvedId > 0)) return;
+    const navigation = getNavigationActions();
+    const hasSourceContext = state.activeSection !== "operations";
+    if (hasSourceContext) navigation.pushSectionBackContext?.();
+    state.period = "all_time";
+    state.filterKind = "";
+    state.operationsQuickView = "all";
+    state.operationsCurrencyScope = "all";
+    if (el.filterQ) el.filterQ.value = "";
     state.operationsMode = "money_flow";
     state.operationsSourceFilter = "operation";
     state.operationsCategoryFilterId = null;
@@ -794,10 +810,9 @@
     state.operationsProductFilterName = productName || "";
     state.operationsBrandFilterId = null;
     state.operationsBrandFilterName = "";
-    const navigation = getNavigationActions();
-    const hasSourceContext = state.activeSection !== "operations";
-    if (hasSourceContext) navigation.pushSectionBackContext?.();
     await navigation.switchSection?.("operations", { preserveBackStack: hasSourceContext, scrollToTop: hasSourceContext });
+    core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
+    core.syncSegmentedActive(el.operationsCurrencyScopeTabs, "operations-currency-scope", state.operationsCurrencyScope);
     renderOperationsActiveFilters();
     await loadOperations({ reset: true, force: true });
     await savePreferences();

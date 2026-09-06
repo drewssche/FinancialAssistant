@@ -402,11 +402,24 @@
     if (/^\d{2}\.\d{2}\.\d{4}$/.test(raw)) {
       return raw;
     }
-    const [year, month, day] = raw.split("-");
-    if (!year || !month || !day) {
-      return raw;
-    }
+    const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:T.*)?$/);
+    if (!match) return raw;
+    const [, year, month, day] = match;
     return `${day}.${month}.${year}`;
+  }
+
+  function formatDateTimeRu(value, state = {}) {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    if (isIsoDate(raw)) return formatDateRu(raw);
+    const date = new Date(raw);
+    if (!Number.isFinite(date.getTime())) return "—";
+    const options = { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" };
+    try {
+      return date.toLocaleString("ru-RU", { ...options, timeZone: getPreferenceTimeZone(state) });
+    } catch {
+      return date.toLocaleString("ru-RU", { ...options, timeZone: "UTC" });
+    }
   }
 
   function isValidDisplayDateValue(value) {
@@ -607,6 +620,7 @@
     applyMoneyInputs,
     isDashboardDebtsVisible,
     formatDateRu,
+    formatDateTimeRu,
     isDisplayDate,
     parseDateInputValue,
     normalizeDateInputValue,

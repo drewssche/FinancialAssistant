@@ -15,6 +15,11 @@
       subtitle: "Где используется позиция каталога",
       empty: "Операций с этой позицией пока нет",
     },
+    catalog_product: {
+      title: "Все операции товара",
+      subtitle: "За всё время, по всем источникам",
+      empty: "Операций с этим товаром пока нет",
+    },
   };
 
   function getOperationsFeature() {
@@ -70,6 +75,9 @@
     if (entityType === "item_template") {
       params.set("item_template_id", String(entityId));
     }
+    if (entityType === "catalog_product") {
+      params.set("product_id", String(entityId));
+    }
     return params;
   }
 
@@ -108,7 +116,9 @@
       const direction = item.flow_direction === "inflow" ? "Приток" : "Отток";
       const tone = item.flow_direction === "inflow" ? "income" : "expense";
       const receiptItems = Array.isArray(item.receipt_items) ? item.receipt_items : [];
-      const matchingReceiptItem = currentUsage?.entityType === "item_template"
+      const matchingReceiptItem = currentUsage?.entityType === "catalog_product"
+        ? receiptItems.find((row) => Number(row.product_id || 0) === Number(currentUsage.entityId || 0))
+        : currentUsage?.entityType === "item_template"
         ? receiptItems.find((row) => Number(row.template_id || 0) === Number(currentUsage.entityId || 0))
         : currentUsage?.entityType === "category"
           ? receiptItems.find((row) => Number(row.category_id || 0) === Number(currentUsage.entityId || 0))
@@ -128,6 +138,7 @@
             <span class="kind-pill kind-pill-${tone}">${direction}</span>
             <strong>${core.formatMoney(item.amount || 0, { currency: item.base_currency || item.currency || undefined })}</strong>
             ${receiptItemName ? `<span class="muted-small">${core.escapeHtml(receiptItemName)}</span>` : ""}
+            ${currentUsage?.entityType === "catalog_product" && matchingReceiptItem?.shop_name ? `<span class="muted-small">${core.escapeHtml(matchingReceiptItem.shop_name)}</span>` : ""}
             ${subtitle ? `<span class="muted-small">${core.escapeHtml(subtitle)}</span>` : ""}
             ${item.note ? `<span class="muted-small">${core.escapeHtml(item.note)}</span>` : ""}
           </div>
@@ -201,7 +212,19 @@
       if (loadToken !== usageLoadToken || !currentUsage || `${currentUsage.entityType}:${currentUsage.entityId}` !== usageKey) {
         return;
       }
-      const items = listPayload.items || [];
+      const items = [...(listPayload.items || [])];
+      // Product usage is independent of the page's dates, store and pagination.
+      // Follow all pages instead of silently dropping receipts after the first 100.
+      if (currentUsage.entityType === "catalog_product") {
+        let page = 1;
+        while (items.length < Number(listPayload.total || 0)) {
+          params.set("page", String(++page));
+          const next = await core.requestJson(`/api/v1/operations/money-flow?${params.toString()}`, { headers: core.authHeaders() });
+          if (loadToken !== usageLoadToken || !currentUsage || `${currentUsage.entityType}:${currentUsage.entityId}` !== usageKey) return;
+          if (!next.items?.length) break;
+          items.push(...next.items);
+        }
+      }
       renderUsageKpi(summaryPayload, items);
       renderUsageList(items, labels.empty);
       restoreUsageReturnContext({ focus: focusSelected });
@@ -232,6 +255,7 @@
     }
     if (el.usageModalSubtitle) {
       el.usageModalSubtitle.textContent = entityName ? `${labels.subtitle}: ${entityName}` : labels.subtitle;
+      if (entityType === "catalog_product") el.usageModalSubtitle.textContent += ". Суммы показаны за операции целиком.";
     }
     el.usageModal.classList.remove("hidden");
     core.bringModalToFront?.(el.usageModal);
@@ -239,6 +263,7 @@
   }
 
   function closeUsageModal() {
+    usageLoadToken += 1;
     el.usageModal?.classList.add("hidden");
     core.markModalClosed?.(el.usageModal);
   }
@@ -296,6 +321,10 @@
     }
     if (currentUsage.entityType === "item_template") {
       operations.openOperationsForItemTemplate?.(currentUsage.entityId, currentUsage.entityName);
+    }
+    if (currentUsage.entityType === "catalog_product") {
+      window.App.getRuntimeModule?.("catalog-products")?.closeEditor?.();
+      operations.openOperationsForProduct?.(currentUsage.entityId, currentUsage.entityName);
     }
   }
 

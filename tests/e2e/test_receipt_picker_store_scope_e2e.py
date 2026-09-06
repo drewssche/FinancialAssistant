@@ -1892,6 +1892,157 @@ def test_mobile_source_group_modal_preview_stays_above_sticky_cta(static_server_
 
 @pytest.mark.e2e
 @pytest.mark.parametrize("viewport_width", [1280, 390])
+def test_product_metadata_popovers_and_normalized_last_purchase(
+    static_server_url: str, page_with_receipt_api_mock, viewport_width: int,
+):
+    page = page_with_receipt_api_mock
+    page.set_viewport_size({"width": viewport_width, "height": 1000})
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate("() => { window.Telegram = { WebApp: { initData: 'mock-init-data', ready() {}, expand() {} } }; }")
+    _login(page)
+    page.evaluate("""async () => {
+      const product = {id: 401, name: 'Сырок клубника 40г', category_id: 101, offers: [],
+        last_used_at: '2026-09-06T21:26:35.469774Z'};
+      window.App.state.catalogProducts = [window.App.getRuntimeModule('catalog-products').normalizeProduct(product)];
+      window.App.getRuntimeModule('catalog-products').render();
+      await window.App.getRuntimeModule('catalog-products').openEditor(401);
+    }""")
+    date = page.locator('[data-catalog-product-id="401"] [data-label="Последняя покупка"]')
+    expect(date).to_contain_text("07.09.2026")
+    expect(date).to_contain_text("00:26")
+    assert "T21:" not in date.text_content()
+    assert page.evaluate("window.App.core.formatDateTimeRu('2026-09-06')") == "06.09.2026"
+    assert page.evaluate("window.App.core.formatDateTimeRu('bad date')") == "—"
+    assert page.evaluate("window.App.core.formatDateRu('2026-09-06T21:26:35.469774Z')") == "06.09.2026"
+
+    parent = page.locator("#catalogProductModal")
+    page.click("#catalogProductBrandSearch")
+    brand = page.locator("#catalogProductBrandPicker")
+    expect(brand).to_be_visible()
+    page.fill("#catalogProductBrandSearch", "Сав")
+    expect(brand.locator('[data-product-meta-id="201"]')).to_have_count(0)
+    brand.locator('[data-product-meta-id="202"]').click()
+    expect(page.locator("#catalogProductBrand")).to_have_value("202")
+    expect(page.locator("#catalogProductBrandSearch")).to_have_value("Савушкин")
+    expect(brand).to_be_hidden()
+    # Typing is search, not an implicit change to the saved relation.
+    page.click("#catalogProductBrandSearch")
+    page.fill("#catalogProductBrandSearch", "не найдено")
+    expect(brand).to_contain_text("Ничего не найдено")
+    page.click("#catalogProductName")
+    expect(brand).to_be_hidden()
+    expect(page.locator("#catalogProductBrandSearch")).to_have_value("Савушкин")
+
+    page.click("#catalogProductCategorySearch")
+    category = page.locator("#catalogProductCategoryPicker")
+    expect(category).to_be_visible()
+    page.fill("#catalogProductCategorySearch", "Коф")
+    page.press("#catalogProductCategorySearch", "Enter")
+    expect(page.locator("#catalogProductCategory")).to_have_value("103")
+    expect(category).to_be_hidden()
+    page.click("#catalogProductCategorySearch")
+    expect(category).to_be_visible()
+    geometry = category.evaluate("node => ({left: node.getBoundingClientRect().left, right: node.getBoundingClientRect().right, z: +getComputedStyle(node).zIndex})")
+    assert geometry["left"] >= 0 and geometry["right"] <= viewport_width
+    assert geometry["z"] > parent.evaluate("node => +getComputedStyle(node).zIndex")
+    page.keyboard.press("Escape")
+    expect(category).to_be_hidden()
+    expect(parent).to_be_visible()
+
+    page.click("#catalogProductBrandSearch")
+    brand.locator('[data-product-meta-id=""]').click()
+    expect(page.locator("#catalogProductBrand")).to_be_empty()
+    # Persist the IDs selected by the popovers through the real form submit path.
+    def save_product(route, request):
+        if request.method == "PATCH":
+            payload = json.loads(request.post_data)
+            assert payload["brand_id"] is None and payload["category_id"] == 103
+            return route.fulfill(status=200, content_type="application/json", body=json.dumps({"id": 401, **payload, "offers": []}))
+        return route.fallback()
+    page.route("**/api/v1/operations/catalog-products/401", save_product)
+    with page.expect_request(lambda r: r.method == "PATCH" and r.url.endswith("/catalog-products/401")):
+        page.click("#submitCatalogProductBtn")
+    expect(parent).to_be_hidden()
+
+
+@pytest.mark.e2e
+def test_product_usage_all_stores_all_pages_stacked_and_section_filters(
+    static_server_url: str, page_with_receipt_api_mock,
+):
+    page = page_with_receipt_api_mock
+    queries = []
+    def handler(route, request):
+        path = urlparse(request.url).path
+        query = parse_qs(urlparse(request.url).query)
+        if path.startswith("/api/v1/operations/money-flow"):
+            queries.append(query)
+            if path.endswith("/summary"):
+                payload = {"total": 101, "income_total": "0", "expense_total": "101", "balance": "-101"}
+            elif path.endswith("/bounds"):
+                payload = {"first_date": "2024-01-01", "last_date": "2026-09-06"}
+            else:
+                size = int(query.get("page_size", [100])[0])
+                start = (int(query.get("page", [1])[0]) - 1) * size
+                payload = {"total": 101, "page": start // size + 1, "page_size": size, "items": [
+                    {"source_kind": "operation", "source_id": i + 1, "event_date": "2024-01-01",
+                     "flow_direction": "outflow", "amount": "1", "currency": "BYN", "title": "Чек",
+                     "receipt_items": [{"product_id": 401, "template_id": 501 + i % 4,
+                                        "name": "Сырок клубника", "shop_name": ["Green", "Санта", "Соседи", "Евроопт"][i % 4]}]}
+                    for i in range(start, min(start + size, 101))]}
+        elif path == "/api/v1/operations/101":
+            payload = {"id": 101, "operation_date": "2024-01-01", "kind": "expense", "amount": "1", "currency": "BYN", "receipt_items": [], "note": "Сырок"}
+        else:
+            return route.fallback()
+        return route.fulfill(status=200, content_type="application/json", body=json.dumps(payload, ensure_ascii=False))
+    page.route("**/api/v1/operations/**", handler)
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate("() => { window.Telegram = { WebApp: { initData: 'mock-init-data', ready() {}, expand() {} } }; }")
+    _login(page)
+    page.evaluate("""async () => {
+      // Open by direct ID, without loading the catalog list (same as a receipt drill-down).
+      window.App.state.catalogProducts = [];
+      window.App.state.period = 'day';
+      window.App.state.filterKind = 'income';
+      window.App.state.operationsCurrencyScope = 'foreign';
+      document.querySelector('#filterQ').value = 'несвязанный поиск';
+    }""")
+    page.route("**/api/v1/operations/catalog-products/401", lambda route: route.fulfill(
+        status=200, content_type="application/json", body=json.dumps({"id": 401, "name": "Сырок клубника", "offers": [], "category_id": 101})))
+    page.evaluate("window.App.getRuntimeModule('catalog-products').openEditor(401)")
+    page.fill("#catalogProductName", "Несохранённое название")
+    page.click("#openCatalogProductOperationsBtn")
+    usage = page.locator("#usageModal")
+    expect(usage).to_be_visible()
+    expect(page.locator("#usageList [data-usage-operation-id]")).to_have_count(101)
+    expect(page.locator("#usageList")).to_contain_text("Санта")
+    expect(page.locator("#usageList")).to_contain_text("Евроопт")
+    expect(page.locator("#usageKpi")).to_contain_text("101")
+    assert page.evaluate("+getComputedStyle(document.querySelector('#usageModal')).zIndex > +getComputedStyle(document.querySelector('#catalogProductModal')).zIndex")
+    usage_queries = [q for q in queries if "product_id" in q]
+    assert any(q.get("page") == ["2"] for q in usage_queries)
+    assert all(q["product_id"] == ["401"] and not any(k in q for k in ("date_from", "date_to", "q", "direction", "item_template_id", "currency_scope")) for q in usage_queries)
+    page.locator('[data-usage-operation-id="101"]').click()
+    expect(page.locator("#editModal")).to_be_visible()
+    assert page.evaluate("+getComputedStyle(document.querySelector('#editModal')).zIndex > +getComputedStyle(document.querySelector('#usageModal')).zIndex")
+    page.click("#closeEditModalBtn")
+    expect(page.locator('[data-usage-operation-id="101"]')).to_be_focused()
+    page.click("#closeUsageModalBtn")
+    expect(usage).to_be_hidden()
+    expect(page.locator("#catalogProductName")).to_have_value("Несохранённое название")
+    page.click("#openCatalogProductOperationsBtn")
+    expect(page.locator("#usageList [data-usage-operation-id]")).to_have_count(101)
+    page.click("#openUsageInOperationsBtn")
+    expect(usage).to_be_hidden()
+    expect(page.locator("#catalogProductModal")).to_be_hidden()
+    expect(page.locator("#operationsSection")).to_be_visible()
+    page.wait_for_function("window.App.state.period === 'all_time' && window.App.state.operationsProductFilterId === 401")
+    expect(page.locator("#operationsPeriodControlLabel")).to_have_text("За всё время")
+    assert queries[-1]["product_id"] == ["401"]
+    assert not any(k in queries[-1] for k in ("date_from", "date_to", "q", "direction", "currency_scope"))
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize("viewport_width", [1280, 390])
 def test_catalog_product_add_source_keeps_parent_edits_and_updates_sources(
     static_server_url: str, page_with_receipt_api_mock, viewport_width: int,
 ):
