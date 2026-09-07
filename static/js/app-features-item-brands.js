@@ -213,6 +213,8 @@
     pickerUtils?.setPopoverOpen?.(menu, false, {
       owners: Array.isArray(menu.__appPopoverOwners) ? menu.__appPopoverOwners : [],
     });
+    menu.__appPopoverOnClose?.();
+    (menu.__appPopoverOwners || []).forEach((owner) => owner?.blur?.());
   }
 
   async function loadItemBrands(options = {}) {
@@ -644,23 +646,23 @@
         });
         return;
       }
-      const editButton = event.target.closest("[data-edit-item-brand-id]");
-      if (editButton) {
-        closeBrandActionMenu(editButton);
-        openItemBrandModal(brandFromId(editButton.dataset.editItemBrandId));
-        return;
-      }
-      const deleteButton = event.target.closest("[data-delete-item-brand-id]");
-      if (deleteButton) {
-        closeBrandActionMenu(deleteButton);
-        deleteItemBrandFlow(brandFromId(deleteButton.dataset.deleteItemBrandId));
-        return;
-      }
       const openButton = event.target.closest("[data-open-item-brand-id]");
       const row = event.target.closest("tr[data-item-brand-id]");
       if (openButton || (row && !event.target.closest("button, a, input, select, textarea, label"))) {
         openItemBrandDetail(Number(openButton?.dataset.openItemBrandId || row?.dataset.itemBrandId || 0)).catch((err) => core.setStatus(String(err)));
       }
+    });
+    // The floating menu is portalled to body, outside itemBrandsBody.
+    // Delegate its actions here, not to the table, and only to brand menus.
+    document.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-edit-item-brand-id], [data-delete-item-brand-id]");
+      if (!button || button.disabled || !button.closest('.table-kebab-popover[data-table-menu^="item-brand-"]')) return;
+      const isEdit = button.hasAttribute("data-edit-item-brand-id");
+      const brand = brandFromId(isEdit ? button.dataset.editItemBrandId : button.dataset.deleteItemBrandId);
+      closeBrandActionMenu(button);
+      if (!brand) return;
+      if (isEdit) openItemBrandModal(brand);
+      else deleteItemBrandFlow(brand);
     });
     el.itemBrandForm?.addEventListener("submit", (event) => {
       event.preventDefault();

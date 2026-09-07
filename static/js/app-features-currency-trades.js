@@ -182,6 +182,7 @@
     }
 
     function handleActionClick(event) {
+      if (event.__currencyTradeActionHandled) return true;
       const actionMap = [
         ["[data-edit-currency-trade-id]", "editCurrencyTradeId", openCurrencyTradeEdit, "Ошибка открытия валютной сделки"],
         ["[data-delete-currency-trade-id]", "deleteCurrencyTradeId", deleteCurrencyTrade, ""],
@@ -190,8 +191,16 @@
       ];
       for (const [selector, dataKey, action, errorPrefix] of actionMap) {
         const button = event.target.closest(selector);
-        if (!button) {
+        if (!button || button.disabled) {
           continue;
+        }
+        event.__currencyTradeActionHandled = true;
+        const menu = button.closest('.table-kebab-popover[data-table-menu^="currency-trade-"]');
+        if (menu) {
+          const owners = Array.isArray(menu.__appPopoverOwners) ? menu.__appPopoverOwners : [];
+          pickerUtils?.setPopoverOpen?.(menu, false, { owners });
+          menu.__appPopoverOnClose?.();
+          owners.forEach((owner) => owner?.blur?.());
         }
         const id = Number(button.dataset[dataKey] || 0);
         if (errorPrefix) {

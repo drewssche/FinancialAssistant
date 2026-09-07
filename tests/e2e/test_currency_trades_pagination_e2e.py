@@ -323,6 +323,32 @@ def page_with_currency_pagination_api_mock():
 
 
 @pytest.mark.e2e
+@pytest.mark.parametrize("width", [1280, 430])
+def test_currency_trade_kebab_edit_and_delete_close_menu(static_server_url, page_with_currency_pagination_api_mock, width):
+    page = page_with_currency_pagination_api_mock
+    page.set_viewport_size({"width": width, "height": 950})
+    page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")
+    page.wait_for_selector("#appShell:not(.hidden)")
+    page.evaluate("window.App.actions.switchSection('currency')")
+    trigger = page.locator('#currencyTradesBody [data-table-menu-trigger="currency-trade-25"]')
+    menu = page.locator('[data-table-menu="currency-trade-25"]')
+    trigger.click()
+    assert menu.evaluate("node => node.parentElement === document.body")
+    menu.locator("[data-edit-currency-trade-id]").click()
+    sync_api.expect(page.locator("#createModal")).to_be_visible()
+    sync_api.expect(page.locator("#currencyAsset")).to_have_value("USD")
+    assert float(page.locator("#currencyQuantity").input_value().replace(",", ".")) == 125
+    sync_api.expect(menu).to_be_hidden()
+    page.locator("#closeCreateModalBtn").click()
+    trigger.click()
+    menu.locator("[data-delete-currency-trade-id]").click()
+    sync_api.expect(page.locator("#confirmModal")).to_be_visible()
+    sync_api.expect(menu).to_be_hidden()
+    page.locator("#confirmCancelBtn").click()
+    sync_api.expect(page.locator('#currencyTradesBody [data-currency-trade-row-id="25"]')).to_be_visible()
+
+
+@pytest.mark.e2e
 def test_currency_section_infinite_scroll_loads_second_page(static_server_url: str, page_with_currency_pagination_api_mock):
     page = page_with_currency_pagination_api_mock
     page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")

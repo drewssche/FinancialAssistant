@@ -132,7 +132,7 @@
       });
     }
     document.addEventListener("click", (event) => {
-      if (!event.target.closest(".mobile-card-actions-popover[data-mobile-card-menu^=\"item-\"], .table-kebab-popover[data-table-menu^=\"item-\"]")) {
+      if (!event.target.closest('.mobile-card-actions-popover[data-mobile-card-menu^="item-template-"], .mobile-card-actions-popover[data-mobile-card-menu^="item-source-"], .table-kebab-popover[data-table-menu^="item-template-"], .table-kebab-popover[data-table-menu^="item-source-"]')) {
         return;
       }
       itemCatalogUiCoordinator?.handleItemCatalogBodyClick?.({

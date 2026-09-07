@@ -395,7 +395,8 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert "toggleItemCatalogCardMenu({" in item_catalog_ui_coordinator
     assert "handleItemCatalogBodyClick({" in item_catalog_ui_coordinator
     assert "resolveItemTemplateFromButton(" in item_catalog_ui_coordinator
-    assert ".mobile-card-actions-popover[data-mobile-card-menu^=\\\"item-\\\"]" in catalog_init
+    assert '.mobile-card-actions-popover[data-mobile-card-menu^="item-template-"]' in catalog_init
+    assert '.table-kebab-popover[data-table-menu^="item-source-"]' in catalog_init
     assert "syncItemCatalogControls({" in item_catalog_section_coordinator
     assert "handleItemCatalogGroupToggle({" in item_catalog_section_coordinator
     assert "setItemCatalogSortPreset({" in item_catalog_section_coordinator

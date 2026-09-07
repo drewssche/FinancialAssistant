@@ -54,7 +54,7 @@
     }
 
     if (el.debtsCards && actions.openDebtRepaymentModal) {
-      el.debtsCards.addEventListener("click", (event) => {
+      const handleDebtCardsClick = (event) => {
         const debtFeature = window.App.getRuntimeModule?.("debts") || {};
         const closedRowsToggle = event.target.closest("button[data-debt-closed-toggle-counterparty-id]");
         if (closedRowsToggle) {
@@ -81,6 +81,13 @@
           openDebtRepaymentModal: actions.openDebtRepaymentModal,
           openDebtIssuanceModal: actions.openDebtIssuanceModal,
         });
+      };
+      el.debtsCards.addEventListener("click", handleDebtCardsClick);
+      document.addEventListener("click", (event) => {
+        const menu = event.target.closest('.mobile-card-actions-popover[data-mobile-card-menu^="debt-"], .table-kebab-popover[data-table-menu^="debt-"]');
+        // Inline events are already handled above. Floating menus are outside
+        // debtsCards, so edit/delete need the same handler on the document.
+        if (menu && !el.debtsCards.contains(menu)) handleDebtCardsClick(event);
       });
     }
     if (actions.openDebtIssuanceModal) {

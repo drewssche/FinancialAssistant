@@ -24,6 +24,88 @@ def _json_response(route, payload: dict | list, status: int = 200):
 
 
 @pytest.mark.e2e
+@pytest.mark.parametrize("width", [1280, 430])
+def test_brand_portal_menu_edits_correct_brand_and_deletes_only_after_confirmation(static_server_url, width):
+    brands = [{"id": i, "name": name, "accent_color": "#5fd3bc", "is_archived": False} for i, name in [(1, "Савушкин"), (2, "Санта Бремор")]]
+    mutations = []
+    base_handler = _build_handler("item_catalog")
+
+    def handler(route, request):
+        path = urlparse(request.url).path
+        if path == "/api/v1/operations/item-brands":
+            return _json_response(route, {"items": brands, "total": len(brands), "page": 1, "page_size": 100})
+        if path.startswith("/api/v1/operations/item-brands/"):
+            brand_id = int(path.rsplit("/", 1)[1])
+            brand = next(b for b in brands if b["id"] == brand_id)
+            if request.method == "PATCH":
+                mutations.append(("PATCH", brand_id))
+                brand.update(request.post_data_json)
+            elif request.method == "DELETE":
+                mutations.append(("DELETE", brand_id))
+                brands.remove(brand)
+                return route.fulfill(status=204)
+            return _json_response(route, brand)
+        return base_handler(route, request)
+
+    with sync_api.sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page(viewport={"width": width, "height": 950})
+        _set_mock_telegram(page)
+        page.route("**/api/v1/**", handler)
+        try:
+            page.goto(f"{static_server_url}/static/index.html")
+            _login_via_mock_telegram(page)
+            page.locator('[data-item-catalog-view="brands"]').click()
+            page.evaluate("""() => {
+              window.__brandMenuMisroutes = 0;
+              const coordinator = window.App.getRuntimeModule('item-catalog-ui-coordinator');
+              const original = coordinator.handleItemCatalogBodyClick;
+              coordinator.handleItemCatalogBodyClick = function(options) {
+                if (options.event.target.closest('[data-table-menu^="item-brand-"]')) window.__brandMenuMisroutes++;
+                return original(options);
+              };
+            }""")
+            for brand_id in (1, 2, 1):
+                trigger = page.locator(f'[data-table-menu-trigger="item-brand-{brand_id}"]')
+                menu = page.locator(f'[data-table-menu="item-brand-{brand_id}"]')
+                trigger.click()
+                expect(menu).to_be_visible()
+                assert menu.evaluate("node => node.parentElement === document.body")
+                page.locator("#itemBrandsSearchQ").click()
+                expect(menu).to_be_hidden()
+                trigger.click()
+                menu.locator("[data-edit-item-brand-id]").click()
+                expect(page.locator("#itemBrandModal")).to_be_visible()
+                expect(page.locator("#itemBrandName")).to_have_value(brands[brand_id - 1]["name"])
+                expect(menu).to_be_hidden()
+                assert page.locator("#itemBrandsBody .table-menu-open-row, #itemBrandsBody .table-menu-open-cell").count() == 0
+                page.locator("#closeItemBrandModalBtn").click()
+            trigger.click()
+            menu.locator("[data-edit-item-brand-id]").click()
+            page.locator("#itemBrandName").fill("Савушкин продукт")
+            page.locator("#submitItemBrandBtn").click()
+            expect(page.locator("#itemBrandModal")).to_be_hidden()
+            expect(page.locator('#itemBrandsBody tr[data-item-brand-id="1"]')).to_contain_text("Савушкин продукт")
+            assert mutations == [("PATCH", 1)]
+            trigger = page.locator('[data-table-menu-trigger="item-brand-2"]')
+            menu = page.locator('[data-table-menu="item-brand-2"]')
+            for confirm in (False, True):
+                trigger.click()
+                menu.locator("[data-delete-item-brand-id]").click()
+                expect(page.locator("#confirmModal")).to_be_visible()
+                expect(page.locator("#confirmModal")).to_contain_text("Санта Бремор")
+                expect(menu).to_be_hidden()
+                assert mutations == [("PATCH", 1)]
+                page.locator("#confirmDeleteBtn" if confirm else "#confirmCancelBtn").click()
+                expect(page.locator("#confirmModal")).to_be_hidden()
+            expect(page.locator('#itemBrandsBody tr[data-item-brand-id="2"]')).to_have_count(0)
+            assert mutations == [("PATCH", 1), ("DELETE", 2)]
+            assert page.evaluate("window.__brandMenuMisroutes") == 0
+        finally:
+            browser.close()
+
+
+@pytest.mark.e2e
 def test_brand_catalog_assignment_detail_and_analytics_drilldown(static_server_url: str):
     brands = [
         {

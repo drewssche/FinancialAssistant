@@ -1079,6 +1079,38 @@ def test_debt_history_uses_directional_event_labels(static_server_url: str, page
 
 
 @pytest.mark.e2e
+@pytest.mark.parametrize("width", [1280, 430])
+def test_debt_portal_menu_edit_and_delete_are_actionable(static_server_url, page_with_debts_api_mock, width):
+    page = page_with_debts_api_mock
+    page.set_viewport_size({"width": width, "height": 950})
+    page.goto(f"{static_server_url}/static/index.html")
+    _login_via_mock_telegram(page)
+    page.evaluate("window.App.getRuntimeModule('navigation').switchSection('debts')")
+    trigger = page.locator("#debtsCards button[data-table-menu-trigger='debt-9001']:visible, #debtsCards button[data-mobile-card-menu-trigger='debt-9001']:visible")
+    menu = page.locator(".table-kebab-popover[data-table-menu='debt-9001']:visible, .mobile-card-actions-popover[data-mobile-card-menu='debt-9001']:visible")
+    deletes = []
+    page.on("request", lambda request: deletes.append(request.url) if request.method == "DELETE" and request.url.endswith("/debts/9001") else None)
+    for _ in range(2):
+        trigger.click()
+        assert menu.evaluate("node => node.parentElement === document.body")
+        menu.locator("[data-edit-debt-id]").click()
+        sync_api.expect(page.locator("#createModal")).to_be_visible()
+        assert page.locator("#debtCounterparty").input_value() == "Анна"
+        assert menu.count() == 0
+        page.locator("#closeCreateModalBtn").click()
+    for confirm in (False, True):
+        trigger.click()
+        menu.locator("[data-delete-debt-id]").click()
+        sync_api.expect(page.locator("#confirmModal")).to_be_visible()
+        assert menu.count() == 0
+        assert deletes == []
+        page.locator("#confirmDeleteBtn" if confirm else "#confirmCancelBtn").click()
+        sync_api.expect(page.locator("#confirmModal")).to_be_hidden()
+    sync_api.expect(page.locator("#debtsCards")).to_contain_text("Долги не найдены")
+    assert len(deletes) == 1
+
+
+@pytest.mark.e2e
 def test_edit_and_delete_debt(static_server_url: str, page_with_debts_api_mock):
     page = page_with_debts_api_mock
     page.goto(f"{static_server_url}/static/index.html")

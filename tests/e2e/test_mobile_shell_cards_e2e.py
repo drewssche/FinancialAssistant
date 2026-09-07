@@ -506,6 +506,39 @@ def test_item_catalog_kebab_actions_work_from_floating_popover(static_server_url
 
 
 @pytest.mark.e2e
+@pytest.mark.parametrize("width", [1280, 430])
+@pytest.mark.parametrize("section,menu_id,actions", [
+    ("categories", "category-1", [("[data-edit-category-id]", "editCategoryModal", "closeEditCategoryModalBtn"), ("[data-delete-category-id]", "confirmModal", "confirmCancelBtn")]),
+    ("categories", "category-group-101", [("[data-edit-group-id]", "editGroupModal", "closeEditGroupModalBtn"), ("[data-create-category-group-id]", "createCategoryModal", "closeCreateCategoryModalBtn"), ("[data-delete-group-id]", "confirmModal", "confirmCancelBtn")]),
+    ("item_catalog", "item-source-cofix", [("[data-edit-item-source-name]", "sourceGroupModal", "closeSourceGroupModalBtn"), ("[data-create-item-template-source-name]", "itemTemplateModal", "closeItemTemplateModalBtn"), ("[data-delete-item-source-name]", "confirmModal", "confirmCancelBtn")]),
+    ("item_catalog", "item-template-1", [("[data-edit-item-template-id]", "itemTemplateModal", "closeItemTemplateModalBtn"), ("[data-item-template-history-id]", "itemTemplateHistoryModal", "closeItemTemplateHistoryModalBtn"), ("[data-delete-item-template-id]", "confirmModal", "confirmCancelBtn")]),
+])
+def test_catalog_context_menu_actions_from_real_portals(static_server_url, width, section, menu_id, actions):
+    with sync_api.sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page(viewport={"width": width, "height": 950})
+        _set_mock_telegram(page)
+        page.route("**/api/v1/**", _build_handler(section))
+        try:
+            page.goto(f"{static_server_url}/static/index.html")
+            _login_via_mock_telegram(page)
+            if section == "item_catalog":
+                page.locator('[data-item-catalog-view="sources"]').click()
+            trigger = page.locator(f'[data-table-menu-trigger="{menu_id}"]:visible, [data-mobile-card-menu-trigger="{menu_id}"]:visible')
+            menu = page.locator(f'.table-kebab-popover[data-table-menu="{menu_id}"]:visible, .mobile-card-actions-popover[data-mobile-card-menu="{menu_id}"]:visible')
+            for action, modal_id, close_id in actions:
+                trigger.click()
+                assert menu.evaluate("node => node.parentElement === document.body")
+                menu.locator(action).click()
+                expect(page.locator(f"#{modal_id}")).to_be_visible()
+                assert menu.count() == 0
+                page.locator(f"#{close_id}").click()
+                expect(page.locator(f"#{modal_id}")).to_be_hidden()
+        finally:
+            browser.close()
+
+
+@pytest.mark.e2e
 def test_mobile_category_edit_icon_picker_opens_from_plus(static_server_url: str):
     with sync_api.sync_playwright() as p:
         try:

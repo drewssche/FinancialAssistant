@@ -557,6 +557,31 @@ def test_debt_movement_opens_and_saves_in_operations_even_when_debt_is_hidden(
 
 
 @pytest.mark.e2e
+@pytest.mark.parametrize("width", [1280, 430])
+def test_operation_kebab_edit_and_delete_confirmation(static_server_url, page_with_money_flow_api_mock, width):
+    page = page_with_money_flow_api_mock
+    page.set_viewport_size({"width": width, "height": 950})
+    _open_app(page, static_server_url)
+    page.evaluate("window.App.actions.switchSection('operations')")
+    row = page.locator('#operationsBody [data-money-flow-row-id="operation:1"]')
+    trigger = row.locator(".table-kebab-trigger")
+    trigger.click()
+    menu = page.locator('.table-kebab-popover:not(.hidden)[data-table-menu^="money-flow-"]')
+    assert menu.evaluate("node => node.parentElement === document.body")
+    menu.locator('[data-open-source-kind="operation"]').click()
+    sync_api.expect(page.locator("#editModal")).to_be_visible()
+    sync_api.expect(page.locator("#editAmount")).to_have_value("70.00")
+    assert menu.count() == 0
+    page.locator("#closeEditModalBtn").click()
+    trigger.click()
+    menu.locator("[data-delete-operation-source-id]").click()
+    sync_api.expect(page.locator("#confirmModal")).to_be_visible()
+    assert menu.count() == 0
+    page.locator("#confirmCancelBtn").click()
+    sync_api.expect(row).to_be_visible()
+
+
+@pytest.mark.e2e
 def test_operations_period_popover_changes_period(static_server_url: str, page_with_money_flow_api_mock):
     page = page_with_money_flow_api_mock
     _open_app(page, static_server_url)
