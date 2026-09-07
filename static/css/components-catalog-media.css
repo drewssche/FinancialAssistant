@@ -24,7 +24,7 @@
   width: 100%;
   height: 100%;
   opacity: 0;
-  object-fit: cover;
+  object-fit: contain;
   transition: opacity 0.16s ease;
 }
 
@@ -32,12 +32,16 @@
   opacity: 1;
 }
 
+.catalog-media-thumb.is-loaded .catalog-media-fallback { visibility: hidden; }
+
 .catalog-media-brand img,
 .catalog-media-source img {
   object-fit: contain;
-  padding: 0.12rem;
-  background: rgba(245, 248, 255, 0.95);
+  padding: 0;
 }
+
+.catalog-media-brand.has-media,
+.catalog-media-source.has-media { background: #f5f8ff; }
 
 .catalog-media-fallback {
   max-width: 90%;
@@ -48,6 +52,8 @@
 }
 
 .catalog-media-chip { --catalog-media-size: 1rem; border-radius: 50%; font-size: 0.42rem; }
+.catalog-media-brand.catalog-media-chip,
+.catalog-media-source.catalog-media-chip { border-radius: .22rem; }
 .catalog-media-row { --catalog-media-size: 2rem; }
 .catalog-media-picker { --catalog-media-size: 2rem; }
 .catalog-media-receipt { --catalog-media-size: 2.35rem; }
@@ -66,6 +72,27 @@
 
 .catalog-image-picker-preview {
   display: flex;
+}
+
+.catalog-image-field.has-image { grid-template-columns: auto minmax(0, 1fr); }
+
+.has-image .catalog-image-picker-preview { cursor: grab; touch-action: none; align-self: start; }
+.has-image .catalog-image-picker-preview.is-dragging { cursor: grabbing; }
+.has-image .catalog-image-picker-preview .catalog-media-detail { --catalog-media-size: 8rem; }
+.catalog-image-picker-preview img { pointer-events: none; user-select: none; }
+.catalog-image-picker-preview:focus-visible { outline: 2px solid #8bb6ff; outline-offset: 3px; border-radius: .8rem; }
+.catalog-image-framing-controls { display: grid; gap: 8px; min-width: 0; }
+.catalog-image-fit { width: fit-content; max-width: 100%; }
+.catalog-image-fit .segmented-btn { min-width: 0; padding: 5px 8px; font-size: 11px; }
+.catalog-image-zoom { min-width: 0; display: grid; gap: 3px; }
+.catalog-image-zoom > span { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+.catalog-image-framing-help { display: flex; align-items: center; gap: 8px; }
+.catalog-image-framing-help .btn { min-width: 0; flex-shrink: 0; padding: 6px 8px; }
+.catalog-image-framing-help small { line-height: 1.35; }
+.catalog-image-framing-controls input[type="range"] { width: 100%; min-width: 0; min-height: 24px; height: 24px; padding: 0; border: 0; background: transparent; accent-color: #ff982f; cursor: ew-resize; }
+@media (max-width: 440px) {
+  .has-image .catalog-image-picker-preview .catalog-media-detail { --catalog-media-size: 6rem; }
+  .catalog-image-framing-help { align-items: start; flex-direction: column; }
 }
 
 .catalog-image-picker-actions {
@@ -330,20 +357,20 @@
   font-size: 0.72rem;
 }
 
-#itemCatalogSection input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]),
+#itemCatalogSection input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]):not([type="range"]),
 #itemCatalogSection select,
 #itemCatalogSection .btn,
-#itemTemplateModal input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]),
+#itemTemplateModal input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]):not([type="range"]),
 #itemTemplateModal select,
 #itemTemplateModal .btn:not(.modal-close-btn):not(.modal-head-icon-btn),
-#itemBrandModal input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]),
+#itemBrandModal input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]):not([type="range"]),
 #itemBrandModal .btn:not(.modal-close-btn),
 #itemBrandDetailModal .btn:not(.modal-close-btn),
-#sourceGroupModal input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]),
+#sourceGroupModal input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]):not([type="range"]),
 #sourceGroupModal .btn:not(.modal-close-btn):not(.modal-head-icon-btn),
-#opReceiptFields input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]),
+#opReceiptFields input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]):not([type="range"]),
 #opReceiptFields .btn,
-#editReceiptFields input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]),
+#editReceiptFields input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]):not([type="range"]),
 #editReceiptFields .btn,
 #operationReceiptModal .btn:not(.modal-close-btn) {
   height: var(--catalog-control-height);
@@ -464,20 +491,20 @@
 }
 
 @media (max-width: 760px) {
-  #itemCatalogSection input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]),
+  #itemCatalogSection input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]):not([type="range"]),
   #itemCatalogSection select,
   #itemCatalogSection .btn,
-  #itemTemplateModal input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]),
+  #itemTemplateModal input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]):not([type="range"]),
   #itemTemplateModal select,
   #itemTemplateModal .btn:not(.modal-close-btn):not(.modal-head-icon-btn),
-  #itemBrandModal input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]),
+  #itemBrandModal input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]):not([type="range"]),
   #itemBrandModal .btn:not(.modal-close-btn),
   #itemBrandDetailModal .btn:not(.modal-close-btn),
-  #sourceGroupModal input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]),
+  #sourceGroupModal input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]):not([type="range"]),
   #sourceGroupModal .btn:not(.modal-close-btn):not(.modal-head-icon-btn),
-  #opReceiptFields input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]),
+  #opReceiptFields input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]):not([type="range"]),
   #opReceiptFields .btn,
-  #editReceiptFields input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]),
+  #editReceiptFields input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]):not([type="range"]),
   #editReceiptFields .btn,
   #operationReceiptModal .btn:not(.modal-close-btn),
   #opReceiptFields .receipt-name-input,
@@ -502,7 +529,7 @@
 }
 
 @media (max-width: 420px) {
-  #itemTemplateModal input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]),
+  #itemTemplateModal input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]):not([type="range"]),
   #itemTemplateModal select,
   #itemTemplateModal .btn:not(.modal-close-btn):not(.modal-head-icon-btn) {
     min-height: 2.5rem;

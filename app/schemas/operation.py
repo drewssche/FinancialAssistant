@@ -10,6 +10,15 @@ FxRateKind = Literal["buy", "sell"]
 FxPaymentMode = Literal["valuation", "direct_conversion", "foreign_balance"]
 
 
+class CatalogImageFraming(BaseModel):
+    """Reversible thumbnail framing; offsets use half the square's width/height."""
+
+    mode: Literal["contain", "cover"] = "contain"
+    zoom: float = Field(default=1, ge=1, le=4, allow_inf_nan=False)
+    offset_x: float = Field(default=0, ge=-1, le=1, allow_inf_nan=False)
+    offset_y: float = Field(default=0, ge=-1, le=1, allow_inf_nan=False)
+
+
 class OperationReceiptItemIn(BaseModel):
     template_id: int | None = Field(default=None, ge=1)
     product_id: int | None = Field(default=None, ge=1)

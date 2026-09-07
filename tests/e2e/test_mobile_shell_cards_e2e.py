@@ -391,6 +391,7 @@ def test_mobile_card_kebab_stays_top_right_and_menu_escapes_card(static_server_u
 
             page.locator("#mobileNavToggleBtn").evaluate("node => node.click()")
             page.locator("button[data-section='item_catalog']").click()
+            page.locator('[data-item-catalog-view="sources"]').click()
             item_card = page.locator(".item-catalog-mobile-group-card").first
             item_trigger = page.locator(".item-catalog-mobile-group-card .mobile-card-kebab-trigger").first
             item_trigger.wait_for(state="visible")
@@ -408,7 +409,7 @@ def test_mobile_card_kebab_stays_top_right_and_menu_escapes_card(static_server_u
             assert item_menu_box["y"] + item_menu_box["height"] <= page.viewport_size["height"]
             assert page.locator(".item-catalog-mobile-group-row").first.evaluate("node => getComputedStyle(node).overflow") == "visible"
             assert page.locator(".item-catalog-mobile-group-cell").first.evaluate("node => getComputedStyle(node).overflow") == "visible"
-            page.mouse.click(20, 20)
+            page.locator("#itemCatalogViewTabs").click(position={"x": 2, "y": 2})
             page.wait_for_timeout(100)
             assert "mobile-card-menu-open" not in (page.locator(".item-catalog-mobile-group-card").first.get_attribute("class") or "")
 

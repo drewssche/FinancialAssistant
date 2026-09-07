@@ -1,11 +1,13 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, Response, UploadFile, status
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user_id
 from app.db.session import get_db
 from app.schemas.operation import (
+    CatalogImageFraming,
     CatalogProductCreate,
     CatalogProductDetachIn,
     CatalogProductDetachOut,
@@ -73,15 +75,19 @@ def _read_catalog_image(file: UploadFile) -> bytes:
     return raw
 
 
-def _upload_catalog_image(*, db: Session, user_id: int, owner_kind: str, owner_id: int, file: UploadFile):
+def _upload_catalog_image(*, db: Session, user_id: int, owner_kind: str, owner_id: int, file: UploadFile | None, framing: str = "{}"):
     try:
+        settings = CatalogImageFraming.model_validate_json(framing).model_dump()
         return CatalogMediaService(db).upload(
             user_id=user_id,
             owner_kind=owner_kind,
             owner_id=owner_id,
-            content_type=file.content_type,
-            raw=_read_catalog_image(file),
+            content_type=file.content_type if file else None,
+            raw=_read_catalog_image(file) if file else None,
+            framing=settings,
         )
+    except ValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Некорректные параметры миниатюры") from exc
     except CatalogMediaTooLargeError as exc:
         raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail=str(exc)) from exc
     except CatalogMediaValidationError as exc:
@@ -506,7 +512,8 @@ def detach_catalog_product_offer(
 )
 def upload_catalog_product_image(
     product_id: int,
-    file: UploadFile = File(...),
+    file: UploadFile | None = File(default=None),
+    framing: str = Form(default="{}"),
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
@@ -516,6 +523,7 @@ def upload_catalog_product_image(
         owner_kind="product",
         owner_id=product_id,
         file=file,
+        framing=framing,
     )
     return CatalogProductService(db).get(user_id=user_id, product_id=product_id)
 
@@ -561,6 +569,18 @@ def list_operation_item_templates(
         page=page,
         page_size=page_size,
     )
+
+
+@router.get("/media/{asset_id}/framing")
+def get_catalog_image_framing(
+    asset_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        return CatalogMediaService(db).get_framing(user_id=user_id, asset_id=asset_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
 @router.get("/media/{asset_id}/{variant}")
@@ -667,7 +687,8 @@ def delete_item_source(
 @router.put("/item-sources/{source_id}/image", response_model=ItemSourceOut)
 def upload_item_source_image(
     source_id: int,
-    file: UploadFile = File(...),
+    file: UploadFile | None = File(default=None),
+    framing: str = Form(default="{}"),
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
@@ -677,6 +698,7 @@ def upload_item_source_image(
         owner_kind="source",
         owner_id=source_id,
         file=file,
+        framing=framing,
     )
     return ItemSourceService(db).get(user_id=user_id, source_id=source_id)
 
@@ -795,7 +817,8 @@ def delete_item_brand(
 @router.put("/item-brands/{brand_id}/image", response_model=ItemBrandOut)
 def upload_item_brand_image(
     brand_id: int,
-    file: UploadFile = File(...),
+    file: UploadFile | None = File(default=None),
+    framing: str = Form(default="{}"),
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
@@ -805,6 +828,7 @@ def upload_item_brand_image(
         owner_kind="brand",
         owner_id=brand_id,
         file=file,
+        framing=framing,
     )
     return ItemBrandService(db).get(user_id=user_id, brand_id=brand_id)
 
@@ -919,7 +943,8 @@ def get_operation_item_template(
 @router.put("/item-templates/{template_id}/image", response_model=OperationItemTemplateOut)
 def upload_operation_item_template_image(
     template_id: int,
-    file: UploadFile = File(...),
+    file: UploadFile | None = File(default=None),
+    framing: str = Form(default="{}"),
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
@@ -929,6 +954,7 @@ def upload_operation_item_template_image(
         owner_kind="template",
         owner_id=template_id,
         file=file,
+        framing=framing,
     )
     return OperationService(db).item_templates.get_item_template(user_id=user_id, template_id=template_id)
 

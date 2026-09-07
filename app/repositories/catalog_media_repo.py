@@ -31,6 +31,7 @@ class CatalogMediaRepository:
             user_id=user_id,
             content_type="image/webp",
             checksum=processed.checksum,
+            framing=processed.framing,
             byte_size=len(processed.thumb_bytes) + len(processed.detail_bytes),
             thumb_bytes=processed.thumb_bytes,
             thumb_width=processed.thumb_width,

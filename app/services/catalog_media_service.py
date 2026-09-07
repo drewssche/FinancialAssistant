@@ -17,6 +17,7 @@ from app.core.cache import (
 from app.db.models import CatalogProduct, ItemBrand, ItemSource, OperationItemTemplate
 from app.repositories.catalog_media_repo import CatalogMediaRepository
 from app.services.activity_service import ActivityService
+from app.schemas.operation import CatalogImageFraming
 
 
 class CatalogMediaValidationError(ValueError):
@@ -36,6 +37,7 @@ class ProcessedCatalogImage:
     detail_width: int
     detail_height: int
     checksum: str
+    framing: dict
 
 
 class CatalogMediaService:
@@ -119,7 +121,8 @@ class CatalogMediaService:
         owner_kind: str,
         owner_id: int,
         content_type: str | None,
-        raw: bytes,
+        raw: bytes | None,
+        framing: dict | None = None,
     ):
         resolved_kind, owner = self._resolve_owner(
             user_id=user_id,
@@ -128,12 +131,20 @@ class CatalogMediaService:
         )
         if owner is None:
             raise LookupError("Catalog entity not found")
-        processed = self.process_image(raw=raw, content_type=content_type)
         old_asset = (
             self.repo.get(user_id=user_id, asset_id=int(owner.image_id))
             if owner.image_id
             else None
         )
+        if raw is None:
+            if old_asset is None:
+                raise LookupError("Image not found")
+            # Never reframe a previous thumbnail: retain the uncropped source
+            # bytes unchanged, even after repeated saves and resets.
+            with Image.open(BytesIO(old_asset.detail_bytes)) as source:
+                processed = self._process_source(source, framing, detail_bytes=old_asset.detail_bytes)
+        else:
+            processed = self.process_image(raw=raw, content_type=content_type, framing=framing)
         old_size = int(old_asset.byte_size or 0) if old_asset is not None else 0
         reclaimable_old_size = (
             old_size
@@ -226,6 +237,16 @@ class CatalogMediaService:
         payload = asset.thumb_bytes if variant == "thumb" else asset.detail_bytes
         return payload, asset.checksum
 
+    def get_framing(self, *, user_id: int, asset_id: int) -> dict:
+        asset = self.repo.get(user_id=user_id, asset_id=asset_id)
+        if asset is None:
+            raise LookupError("Image not found")
+        return {
+            "framing": CatalogImageFraming.model_validate(asset.framing or {}).model_dump(),
+            "width": asset.detail_width,
+            "height": asset.detail_height,
+        }
+
     def _sync_product_offer_images(
         self,
         *,
@@ -272,7 +293,7 @@ class CatalogMediaService:
 
     @classmethod
     def process_image(
-        cls, *, raw: bytes, content_type: str | None
+        cls, *, raw: bytes, content_type: str | None, framing: dict | None = None
     ) -> ProcessedCatalogImage:
         if not raw:
             raise CatalogMediaValidationError("Image file is empty")
@@ -332,9 +353,25 @@ class CatalogMediaService:
                 "Image file is corrupt or unsupported"
             ) from exc
 
+        return cls._process_source(image, framing)
+
+    @classmethod
+    def _process_source(cls, image: Image.Image, framing: dict | None, *, detail_bytes: bytes | None = None) -> ProcessedCatalogImage:
+        settings = CatalogImageFraming.model_validate(framing or {}).model_dump()
         detail = cls._resized(image, cls.DETAIL_SIZE)
-        thumb = cls._resized(image, cls.THUMB_SIZE)
-        detail_bytes = cls._encode_webp(detail)
+        # Render directly into a bounded square; avoid allocating enormous
+        # intermediate images when a very tall/wide source is zoomed to cover.
+        size = cls.THUMB_SIZE[0]
+        fit = min if settings["mode"] == "contain" else max
+        scale = fit(size / image.width, size / image.height) * settings["zoom"]
+        left = (size - image.width * scale) / 2 + settings["offset_x"] * size / 2
+        top = (size - image.height * scale) / 2 + settings["offset_y"] * size / 2
+        thumb = image.convert("RGBA").transform(
+            cls.THUMB_SIZE, Image.Transform.AFFINE,
+            (1 / scale, 0, -left / scale, 0, 1 / scale, -top / scale),
+            resample=Image.Resampling.BICUBIC, fillcolor=(0, 0, 0, 0),
+        )
+        detail_bytes = detail_bytes if detail_bytes is not None else cls._encode_webp(detail)
         thumb_bytes = cls._encode_webp(thumb)
         digest = sha256(thumb_bytes + detail_bytes).hexdigest()
         return ProcessedCatalogImage(
@@ -345,6 +382,7 @@ class CatalogMediaService:
             detail_width=detail.width,
             detail_height=detail.height,
             checksum=digest,
+            framing=settings,
         )
 
     @staticmethod
