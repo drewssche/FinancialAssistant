@@ -8,7 +8,7 @@
           <section class="panel work-hero-panel">
             <div class="panel-head row between work-section-head">
               <div>
-                <h3>Табель</h3>
+                <h3 id="workTimesheetPeriodTitle">Табель</h3>
                 <p class="subtitle">Обычные рабочие дни считаются автоматически — отмечайте только исключения</p>
               </div>
               <div class="work-month-control">
@@ -22,9 +22,11 @@
                 <button id="workTodayBtn" class="btn btn-secondary btn-xs" type="button">Текущий</button>
               </div>
             </div>
-            <div id="workSummaryGrid" class="analytics-kpi-grid section-kpi-grid"></div>
-            <div id="workMoneySummaryGrid" class="analytics-kpi-grid work-money-summary-grid" aria-label="Доход за выбранный месяц и зарплатный цикл" aria-live="polite"></div>
-            <div id="workPaymentsGrid" class="work-payments-grid"></div>
+            <div id="workSummaryGrid" class="analytics-kpi-grid section-kpi-grid work-time-summary-grid" aria-live="polite"></div>
+            <section class="work-salary-cycle-card" aria-label="Зарплата за расчётный период">
+              <div id="workMoneySummaryGrid" aria-live="polite"></div>
+              <div id="workPaymentsGrid" class="work-salary-cycle-components"></div>
+            </section>
           </section>
 
           <section class="panel">

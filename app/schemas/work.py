@@ -178,6 +178,17 @@ class WorkSalaryCycleTotalOut(BaseModel):
     extras_amount: Decimal
 
 
+class WorkSalaryCycleEarningsOut(BaseModel):
+    status: Literal["actual", "forecast", "unavailable"]
+    reason: Literal["missing_payment", "unresolved_currency", "missing_work_norm"] | None = None
+    currency: str = "BYN"
+    planned_days: int
+    planned_hours: Decimal
+    basis_amount: Decimal | None = None
+    daily_amount: Decimal | None = None
+    hourly_amount: Decimal | None = None
+
+
 class WorkSalaryCycleOut(BaseModel):
     reference_year: int
     reference_month: int
@@ -188,6 +199,7 @@ class WorkSalaryCycleOut(BaseModel):
     components: list[WorkSalaryCycleComponentOut]
     extras: list[WorkPaymentOperationOut] = Field(default_factory=list)
     totals: list[WorkSalaryCycleTotalOut] = Field(default_factory=list)
+    earnings_estimate: WorkSalaryCycleEarningsOut
 
 
 class WorkPaymentHistoryItemOut(WorkPaymentOperationOut):

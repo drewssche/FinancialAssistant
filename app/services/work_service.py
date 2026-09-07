@@ -252,6 +252,29 @@ class WorkService:
                     "actual_operations": actual_operations,
                 }
             )
+        salary_cycle = self._build_salary_cycle(
+            user_id=user_id,
+            year=year,
+            month=month,
+            profile_data=profile_data,
+            override_statuses=statuses,
+            current_day=current_day,
+        )
+        reference_year = salary_cycle["reference_year"]
+        reference_month = salary_cycle["reference_month"]
+        reference_days = [
+            self._build_day(
+                day=date(reference_year, reference_month, day_number),
+                profile_data=profile_data,
+                override=overrides.get(date(reference_year, reference_month, day_number)),
+                today=current_day,
+                now=local_now,
+            )
+            for day_number in range(1, calendar.monthrange(reference_year, reference_month)[1] + 1)
+        ]
+        salary_cycle["earnings_estimate"] = self._salary_cycle_earnings(
+            cycle=salary_cycle, summary=self._summarize_days(reference_days),
+        )
         return {
             "year": year,
             "month": month,
@@ -259,14 +282,7 @@ class WorkService:
             "summary": self._summarize_days(days),
             "payments": payments,
             "payroll_operations": payroll_operations,
-            "salary_cycle": self._build_salary_cycle(
-                user_id=user_id,
-                year=year,
-                month=month,
-                profile_data=profile_data,
-                override_statuses=statuses,
-                current_day=current_day,
-            ),
+            "salary_cycle": salary_cycle,
             "days": days,
         }
 
@@ -631,6 +647,55 @@ class WorkService:
             }
             for currency, values in sorted(grouped.items())
         ]
+
+    @staticmethod
+    def _salary_cycle_earnings(*, cycle: dict, summary: dict) -> dict:
+        """A salary-based estimate, not a contractual rate. Extras are excluded."""
+        estimate = {
+            "status": "unavailable",
+            "reason": None,
+            "currency": "BYN",
+            "planned_days": summary["planned_days"],
+            "planned_hours": money_hours(summary["planned_hours"]),
+            "basis_amount": None,
+            "daily_amount": None,
+            "hourly_amount": None,
+        }
+        components = {item["role"]: item for item in cycle["components"]}
+        basis = Decimal("0.00")
+        has_forecast = False
+        for role in ("advance", "salary"):
+            component = components.get(role)
+            if not component or component["status"] == "missing":
+                estimate["reason"] = "missing_payment"
+                return estimate
+            if component["status"] == "actual":
+                amounts = component["actual_totals"]
+            else:
+                has_forecast = True
+                amount = component["forecast_base_amount"]
+                currency = component["forecast_base_currency"]
+                if amount is None:
+                    amount = component["forecast_amount"]
+                    currency = component["forecast_currency"]
+                amounts = [] if amount is None else [{"currency": currency, "amount": amount}]
+            if not amounts:
+                estimate["reason"] = "missing_payment"
+                return estimate
+            if any(str(item["currency"]).upper() != "BYN" for item in amounts):
+                estimate["reason"] = "unresolved_currency"
+                return estimate
+            basis += sum((Decimal(str(item["amount"])) for item in amounts), Decimal("0.00"))
+        if estimate["planned_days"] <= 0 or estimate["planned_hours"] <= 0:
+            estimate["reason"] = "missing_work_norm"
+            return estimate
+        estimate.update(
+            status="forecast" if has_forecast else "actual",
+            basis_amount=money_hours(basis),
+            daily_amount=money_hours(basis / estimate["planned_days"]),
+            hourly_amount=money_hours(basis / estimate["planned_hours"]),
+        )
+        return estimate
 
     @staticmethod
     def _previous_month(*, year: int, month: int) -> tuple[int, int]:

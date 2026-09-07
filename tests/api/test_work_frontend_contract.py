@@ -85,88 +85,54 @@ def test_work_payment_history_range_is_limited_to_ten_years():
     assert "profileStart < fallbackFrom ? fallbackFrom : profileStart" in history_loader
 
 
-def test_role_cards_prefer_embedded_links_and_use_exact_date_category_fallback():
+def test_role_cards_use_salary_cycle_and_keep_operation_and_plan_actions():
     source = WORK_JS.read_text(encoding="utf-8")
-    render = source.split("function renderPayments()", 1)[1].split(
-        "function renderCalendar", 1
-    )[0]
-    calendar = source.split("function renderCalendar()", 1)[1].split(
-        "function renderActualPayments", 1
-    )[0]
-
-    assert "const actuals = embeddedPaymentOperations(item);" in render
-    assert "function hasUniquePaymentEffectiveDate(item)" in source
-    assert "activeActuals.length || !hasUniquePaymentEffectiveDate(item)" in render
-    assert "categoryPaymentHeadline(categoryActuals)" in render
-    assert "paymentOperationDate(row) !== effectiveDate" in source
-    assert 'row.source === "category_match"' in render
-    assert "allActualPayments()" not in render
-    assert "allActualPayments().forEach((item)" in calendar
+    render = source.split("function renderPayments()", 1)[1].split("function renderCalendar", 1)[0]
+    assert "snapshot?.salary_cycle?.components" in render
+    assert "snapshot?.salary_cycle?.extras" in render
+    assert "snapshot?.payments" not in render
+    assert 'componentsByRole.get("advance")' in render
+    assert 'componentsByRole.get("salary")' in render
+    component = source.split("function renderSalaryCycleComponent(", 1)[1].split("function renderSalaryCycleCard", 1)[0]
+    assert 'data-work-operation-id=' in component
+    assert 'data-work-open-plan-picker=' in component
+    assert 'paymentSourceLabel(row.source)' in component
+    assert 'activeSalaryCycleOperations(component)' in component
 
 
-def test_month_money_kpis_use_the_month_snapshot_without_mixing_currencies():
+def test_money_kpis_and_rates_use_only_salary_cycle():
     source = WORK_JS.read_text(encoding="utf-8")
     template = WORK_TEMPLATE_JS.read_text(encoding="utf-8")
-    styles = (REPO_ROOT / "static" / "styles.css").read_text(encoding="utf-8")
-
     assert 'id="workMoneySummaryGrid"' in template
     assert 'aria-live="polite"' in template
-    assert '"workMoneySummaryGrid", "workPaymentsGrid"' in source
-    assert "function monthSnapshotPaymentOperations()" in source
-    assert "(snapshot?.payments || []).flatMap(embeddedPaymentOperations)" in source
-    assert "snapshot?.payroll_operations" in source
-    assert "seenOperationIds.has(operationId)" in source
-    assert "seenLinkIds.has(linkId)" in source
-    assert "row.is_deleted || isoMonth(paymentOperationDate(row)) !== month" in source
-    assert "function monthVisibleForecasts()" in source
-    assert "!paymentForecastVisible(item) || isoMonth(item.effective_date) !== month" in source
-    assert "function paymentOperationBaseAmount(item)" in source
-    assert "function paymentOperationBaseCurrency(item)" in source
-    assert "function paymentForecastBaseAmount(item)" in source
-    assert "function paymentForecastBaseCurrency(item)" in source
-    assert "item?.forecast_base_amount != null" in source
-    assert "function groupedMoney(rows, amountOf, currencyOf)" in source
-    assert "totals.set(currency, (totals.get(currency) || 0) + amount)" in source
-    assert "Получено за месяц" in source
-    assert "Ещё ожидается" in source
-    assert "function formatPlanPaymentCount(value)" in source
-    assert 'count === 1 ? "плану" : "планам"' in source
-    assert "Итого месяца" not in source
-    assert "function renderSalaryCycleCard()" in source
-    assert "const hasBaseAmount = component?.forecast_base_amount != null" in source
-    assert "snapshot?.salary_cycle" in source
-    assert 'cycle.totals, "actual_amount"' in source
-    assert 'cycle.totals, "forecast_amount"' in source
-    assert 'cycle.totals, "expected_amount"' in source
-    assert 'componentsByRole.get("advance")' in source
-    assert 'componentsByRole.get("salary")' in source
-    assert 'actual_operations: cycle.extras || []' in source
-    assert "function activeSalaryCycleOperations(component)" in source
-    assert ".filter((row) => !row?.is_deleted)" in source
-    assert "formatOperationCount(activeOperations.length)" in source
-    assert "window_from_exclusive" in source
-    assert "window_to_inclusive" in source
-    assert "Зарплатный цикл" in source
-    assert "Итого цикла" in source
-    assert "renderSalaryCycleCard();" in source
-    assert "renderMoneySummary();" in source
-    live_update = source.split("function updateLiveWorkday", 1)[1].split(
-        "function startLiveTimer", 1
-    )[0]
+    assert "monthSnapshotPaymentOperations" not in source
+    assert "monthVisibleForecasts" not in source
+    assert "Получено за месяц" not in source
+    for field in ["actual_amount", "forecast_amount", "expected_amount"]:
+        assert f'cycle.totals, "{field}"' in source
+    assert "Получено за период" in source
+    assert "Итого за период" in source
+    assert "Недостаточно данных" in source
+    assert "Неполный итог" in source
+    assert "cycle.earnings_estimate" in source
+    assert "без разовых доплат" in source
+    assert "snapshot?.summary" not in source.split("function renderEarningsEstimate", 1)[1].split("function renderMoneySummary", 1)[0]
+    live_update = source.split("function updateLiveWorkday", 1)[1].split("function startLiveTimer", 1)[0]
     assert "renderMoneySummary();" not in live_update
-    month_load = source.split("async function performWorkSectionLoad", 1)[1].split(
-        "async function drainWorkSectionLoads", 1
-    )[0]
+    month_load = source.split("async function performWorkSectionLoad", 1)[1].split("async function drainWorkSectionLoads", 1)[0]
     assert "renderMoneySummary();" in month_load
-    money_snapshot = source.split("function monthSnapshotPaymentOperations()", 1)[1].split(
-        "function monthVisibleForecasts", 1
-    )[0]
-    assert "paymentHistory" not in money_snapshot
-    assert ".work-money-summary-grid" in styles
-    assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in styles
-    assert ".work-salary-cycle-card" in styles
-    assert "grid-column: 1 / -1" in styles
-    assert "grid-template-columns: repeat(3, minmax(0, 1fr))" in styles
+
+
+def test_time_summary_separates_days_and_hours_without_extra_kpis():
+    source = WORK_JS.read_text(encoding="utf-8")
+    summary = source.split("function renderSummary()", 1)[1].split("function groupedMoney", 1)[0]
+    assert "Отработано часов" in summary
+    assert "Отработано дней" in summary
+    assert "summary.completed_days" in summary
+    assert "summary.planned_days" in summary
+    assert "сегодня в процессе" in summary
+    assert "К оплате" not in summary
+    assert "Исключения" not in summary
 
 
 def test_payment_link_controls_and_activity_label_have_consistent_accessibility():

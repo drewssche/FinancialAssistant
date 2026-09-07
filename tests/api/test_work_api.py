@@ -299,7 +299,13 @@ def test_belarus_historical_transfers_are_applied_to_timesheet(client: TestClien
     assert july_2025.json()["days"][11]["planned_hours"] == "8.00"
 
 
-def test_payroll_plans_keep_nominal_days_and_shift_only_backward(client: TestClient):
+def test_payroll_plans_keep_nominal_days_and_shift_only_backward(client: TestClient, monkeypatch):
+    class FixedDate(date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 8, 10)
+
+    monkeypatch.setattr(work_service_module, "date", FixedDate)
     salary_plan_id = _create_income_plan(
         client,
         note="Основная часть",
@@ -444,6 +450,8 @@ def test_salary_cycle_combines_previous_month_advance_current_salary_and_extras(
     assert salary["status"] == "forecast"
     assert salary["forecast_amount"] == "1200.00"
     assert salary["forecast_currency"] == "BYN"
+    assert cycle["earnings_estimate"]["status"] == "forecast"
+    assert cycle["earnings_estimate"]["basis_amount"] == "2250.00"
     assert [item["operation_id"] for item in cycle["extras"]] == [vacation_pay["id"]]
     assert cycle["totals"] == [
         {
@@ -555,6 +563,11 @@ def test_salary_cycle_exact_date_category_fallback_and_shifted_boundaries(
     assert by_role["salary"]["shifted"] is True
     assert by_role["salary"]["actual_operations"][0]["operation_id"] == salary["id"]
     assert [item["operation_id"] for item in cycle["extras"]] == [extra["id"]]
+    assert cycle["earnings_estimate"] == {
+        "status": "actual", "reason": None, "currency": "BYN",
+        "planned_days": 21, "planned_hours": "168.00",
+        "basis_amount": "2500.00", "daily_amount": "119.05", "hourly_amount": "14.88",
+    }
     assert cycle["totals"] == [
         {
             "currency": "BYN",
@@ -584,6 +597,8 @@ def test_salary_cycle_exact_date_category_fallback_and_shifted_boundaries(
     by_role = {item["role"]: item for item in without_salary_plan["components"]}
     assert by_role["salary"]["status"] == "missing"
     assert by_role["salary"]["actual_operations"] == []
+    assert without_salary_plan["earnings_estimate"]["reason"] == "missing_payment"
+    assert without_salary_plan["earnings_estimate"]["daily_amount"] is None
     assert [item["operation_id"] for item in without_salary_plan["extras"]] == [
         extra["id"],
         salary["id"],
@@ -914,6 +929,8 @@ def test_salary_cycle_totals_use_base_currency_for_fx_actual_and_forecast(
     assert salary["forecast_amount"] == "1000.00"
     assert salary["forecast_currency"] == "USD"
     assert salary["forecast_base_amount"] == "3250.00"
+    assert cycle["earnings_estimate"]["basis_amount"] == "4225.00"
+    assert cycle["earnings_estimate"]["currency"] == "BYN"
     assert cycle["totals"] == [
         {
             "currency": "BYN",

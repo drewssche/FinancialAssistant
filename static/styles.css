@@ -35,44 +35,38 @@
 .work-period-year-options { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
 .work-period-month-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .work-period-month-options .settings-picker-option, .work-period-year-options .settings-picker-option { min-width: 0; grid-template-columns: 1fr; justify-content: center; }
-.work-money-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.work-time-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.work-money-summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 12px 0; }
 .work-money-kpi-card { min-height: 78px; padding: 12px 14px; gap: 5px; }
 .work-money-kpi-values { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
 .work-money-kpi-values strong { font-size: 18px; white-space: nowrap; }
 .work-money-kpi-card.work-money-kpi-actual { border-color: rgba(85, 198, 169, .3); background: linear-gradient(180deg, rgba(85, 198, 169, .08), rgba(18, 27, 43, .72)); }
 .work-money-kpi-card.work-money-kpi-forecast { border-color: rgba(77, 141, 255, .3); background: linear-gradient(180deg, rgba(77, 141, 255, .08), rgba(18, 27, 43, .72)); }
 .work-money-kpi-card .work-money-empty { color: var(--muted); }
-.work-salary-cycle-card { grid-column: 1 / -1; gap: 10px; border-color: rgba(255, 153, 52, .32); background: linear-gradient(180deg, rgba(255, 153, 52, .075), rgba(18, 27, 43, .75)); }
+.work-salary-cycle-card { min-width: 0; display: grid; gap: 10px; padding: 12px; border: 1px solid rgba(255, 153, 52, .32); border-radius: 12px; background: linear-gradient(180deg, rgba(255, 153, 52, .075), rgba(18, 27, 43, .75)); }
 .work-salary-cycle-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
-.work-salary-cycle-title, .work-salary-cycle-total { display: grid; gap: 4px; }
+.work-salary-cycle-title { display: grid; gap: 4px; }
 .work-salary-cycle-title > strong { font-size: 18px; }
-.work-salary-cycle-total { justify-items: end; text-align: right; }
-.work-salary-cycle-summary { display: flex; flex-wrap: wrap; gap: 6px; }
-.work-salary-cycle-summary-value, .work-salary-cycle-state { display: inline-flex; align-items: center; min-height: 23px; padding: 4px 8px; border: 1px solid transparent; border-radius: 999px; font-size: 11px; font-weight: 700; line-height: 1.2; }
-.work-salary-cycle-summary-value.is-actual, .work-salary-cycle-state.is-actual { border-color: rgba(85, 198, 169, .32); background: rgba(85, 198, 169, .12); color: #8ce0c8; }
-.work-salary-cycle-summary-value.is-forecast, .work-salary-cycle-state.is-forecast { border-color: rgba(77, 141, 255, .32); background: rgba(77, 141, 255, .12); color: #9ebdff; }
+.work-salary-cycle-state { display: inline-flex; align-items: center; min-height: 23px; padding: 4px 8px; border: 1px solid transparent; border-radius: 999px; font-size: 11px; font-weight: 700; line-height: 1.2; }
+.work-salary-cycle-state.is-actual { border-color: rgba(85, 198, 169, .32); background: rgba(85, 198, 169, .12); color: #8ce0c8; }
+.work-salary-cycle-state.is-forecast { border-color: rgba(77, 141, 255, .32); background: rgba(77, 141, 255, .12); color: #9ebdff; }
 .work-salary-cycle-state.is-missing { border-color: rgba(111, 132, 169, .24); background: rgba(111, 132, 169, .1); color: var(--muted); }
 .work-salary-cycle-components { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .work-salary-cycle-component { min-width: 0; display: grid; align-content: start; gap: 7px; padding: 9px 10px; border: 1px solid rgba(54, 74, 109, .62); border-radius: 10px; background: rgba(18, 27, 43, .56); }
-.work-salary-cycle-component-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.work-salary-cycle-component-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 8px; }
 .work-salary-cycle-component-head > strong { min-width: 0; font-size: 12px; }
-.work-salary-cycle-component-head > span { flex: none; color: var(--muted); font-size: 10px; }
+.work-salary-cycle-component-head > span { min-width: 0; color: var(--muted); font-size: 10px; }
 .work-salary-cycle-component-values { display: flex; flex-wrap: wrap; gap: 5px; }
-.work-payments-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
-.work-payment-card { display: flex; justify-content: space-between; gap: 16px; padding: 15px 17px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); }
-.work-payment-primary { display: grid; gap: 5px; align-content: start; }
-.work-payment-card strong { font-size: 20px; }
-.work-payment-card.is-shifted { border-color: rgba(255, 153, 52, .55); }
-.work-payment-card.has-actual { border-color: rgba(85, 198, 169, .46); }
-.work-payment-card.is-missing { border-color: rgba(221, 104, 128, .32); }
-.work-payment-card.is-missing .work-payment-primary strong { color: #d99aaa; font-size: 16px; }
-.work-payment-date { color: var(--muted); font-size: 12px; }
-.work-payment-meta { display: grid; align-content: center; gap: 4px; text-align: right; color: var(--muted); font-size: 12px; }
+.work-salary-cycle-operation-links { display: flex; flex-wrap: wrap; gap: 4px; font-size: 11px; }
+.work-salary-cycle-component .work-payment-plan-link { justify-self: start; font-size: 11px; }
+.work-earnings-estimate { display: grid; gap: 7px; margin-bottom: 4px; }
+.work-earnings-values { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.work-earnings-values > div { display: grid; gap: 3px; min-width: 0; }
+.work-earnings-values strong { font-size: 16px; color: var(--text); }
 .work-payment-plan-link { padding: 0; border: 0; background: transparent; color: #8fb4ff; font: inherit; text-align: right; cursor: pointer; }
 .work-payment-plan-link:hover { color: #c6d7ff; text-decoration: underline; }
 .work-payment-actual-link { padding: 4px 8px; border: 1px solid rgba(85, 198, 169, .3); border-radius: 999px; background: rgba(85, 198, 169, .1); color: #8ce0c8; font: inherit; text-align: right; cursor: pointer; }
 .work-payment-actual-link:hover { border-color: rgba(85, 198, 169, .65); background: rgba(85, 198, 169, .17); }
-.work-payment-actual-deleted { color: #d8889a; }
 .work-payment-context-selected { box-shadow: 0 0 0 2px rgba(77, 141, 255, .42); }
 .work-view-tabs { margin-bottom: 18px; }
 .work-statistics-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 14px; }
@@ -190,15 +184,12 @@
 .work-company-period span { color: var(--muted); font-size: 11px; }
 .work-company-calculation-note { margin: 0; }
 @media (max-width: 760px) {
-  .work-section-head, .work-payment-card { flex-direction: column; }
+  .work-section-head { flex-direction: column; }
   .work-month-control { width: 100%; justify-content: space-between; }
   .work-month-control .analytics-grid-picker-trigger { min-width: 0; flex: 1; }
-  .work-money-summary-grid { grid-template-columns: 1fr; }
-  .work-salary-cycle-card { grid-column: auto; }
+  .work-money-summary-grid, .work-time-summary-grid { grid-template-columns: 1fr; }
   .work-salary-cycle-head { flex-direction: column; gap: 10px; }
-  .work-salary-cycle-total { justify-items: start; text-align: left; }
   .work-salary-cycle-components { grid-template-columns: 1fr; }
-  .work-payments-grid { grid-template-columns: 1fr; }
   .work-calendar-weekdays, .work-calendar-grid { gap: 4px; }
   .work-day-cell { min-height: 82px; padding: 7px; }
   .work-day-status, .work-day-note, .work-hours-chip-plan { display: none; }

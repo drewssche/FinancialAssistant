@@ -58,12 +58,6 @@
   function formatMonthLabel(value) { return monthFormatter.format(value).replace(/^./, (char) => char.toUpperCase()); }
   function paymentForecastAmount(item) { return item?.forecast_amount ?? item?.planned_amount ?? item?.amount ?? null; }
   function paymentForecastCurrency(item) { return item?.forecast_currency || item?.currency || item?.base_currency || "BYN"; }
-  function paymentForecastBaseAmount(item) { return item?.forecast_base_amount ?? paymentForecastAmount(item); }
-  function paymentForecastBaseCurrency(item) {
-    return item?.forecast_base_amount != null
-      ? item?.forecast_base_currency || paymentForecastCurrency(item)
-      : paymentForecastCurrency(item);
-  }
   function paymentForecastVisible(item) { return item?.forecast_visible === true; }
   function paymentOperationId(item) { return Number(item?.operation_id || 0); }
   function paymentOperationDate(item) { return item?.operation_date || item?.effective_date || item?.date || null; }
@@ -99,27 +93,6 @@
           ? [item.actual_operation]
           : [];
     return rows.map((row) => ({ ...row, role: row.role || item.role, label: row.label || item.label, plan_id: row.plan_id || item.plan_id }));
-  }
-  function exactDatePayrollOperations(item) {
-    const effectiveDate = String(item?.effective_date || "");
-    if (!effectiveDate) return [];
-    const seen = new Set();
-    return (Array.isArray(snapshot?.payroll_operations) ? snapshot.payroll_operations : []).filter((row) => {
-      const operationId = paymentOperationId(row);
-      if (row.is_deleted || !(operationId > 0) || paymentOperationDate(row) !== effectiveDate || seen.has(operationId)) return false;
-      seen.add(operationId);
-      return true;
-    });
-  }
-  function hasUniquePaymentEffectiveDate(item) {
-    const effectiveDate = String(item?.effective_date || "");
-    return Boolean(effectiveDate) && (snapshot?.payments || []).filter((row) => row.effective_date === effectiveDate).length === 1;
-  }
-  function categoryPaymentHeadline(rows) {
-    const currencies = [...new Set(rows.map(paymentOperationCurrency))];
-    if (currencies.length !== 1) return `Получено по категории · ${formatOperationCount(rows.length)}`;
-    const total = rows.reduce((sum, row) => sum + Number(paymentOperationAmount(row) || 0), 0);
-    return `Получено по категории · ${formatMoney(total, currencies[0])} · ${formatOperationCount(rows.length)}`;
   }
   function allActualPayments() {
     const rows = [
@@ -212,7 +185,7 @@
   function collectNodes() {
     [
       "workMonthTrigger", "workMonthPopover", "workYearOptions", "workMonthOptions",
-      "workPrevMonthBtn", "workNextMonthBtn", "workTodayBtn", "workSummaryGrid",
+      "workPrevMonthBtn", "workNextMonthBtn", "workTodayBtn", "workSummaryGrid", "workTimesheetPeriodTitle",
       "workMoneySummaryGrid", "workPaymentsGrid", "workCalendarGrid", "workViewTabs", "workTimesheetView", "workSettingsForm",
       "workCompaniesView", "workCompaniesGrid", "workCompanyDetails", "workContractsView",
       "workDayForm", "workDayEditorTitle", "workDayDate", "workDayStatus",
@@ -240,11 +213,12 @@
 
   function renderSummary() {
     const summary = snapshot?.summary || {};
+    const period = monthFormatter.format(new Date(snapshot?.year || anchor.getFullYear(), (snapshot?.month || anchor.getMonth() + 1) - 1, 1));
+    nodes.workTimesheetPeriodTitle.textContent = `Табель за ${period}`;
+    const liveDay = (snapshot?.days || []).find((day) => day.is_live);
     const cards = [
-      ["План месяца", `${formatHours(summary.planned_hours)} ч`, `${summary.planned_days || 0} раб. дн.`],
-      ["Отработано", `${formatHours(summary.actual_hours)} ч`, `${summary.completed_days || 0} дней`],
-      ["К оплате", `${formatHours(summary.credited_hours)} ч`, "зачтённые часы"],
-      ["Исключения", String(summary.override_days || 0), `отпуск: ${summary.vacation_days || 0} · сикдей: ${summary.sick_days || 0}`],
+      ["Отработано часов", `${formatHours(summary.actual_hours)} из ${formatHours(summary.planned_hours)} ч`, liveDay ? "Включая часы текущей смены" : "Факт / план выбранного месяца"],
+      ["Отработано дней", `${summary.completed_days || 0} из ${summary.planned_days || 0}`, liveDay ? "Завершённые дни · сегодня в процессе" : "Завершённые дни / план выбранного месяца"],
     ];
     nodes.workSummaryGrid.innerHTML = cards.map(([label, value, meta]) => `
       <article class="analytics-kpi-card analytics-kpi-neutral">
@@ -252,37 +226,6 @@
       </article>`).join("");
   }
 
-  function monthSnapshotPaymentOperations() {
-    const month = `${Number(snapshot?.year || anchor.getFullYear())}-${String(Number(snapshot?.month || anchor.getMonth() + 1)).padStart(2, "0")}`;
-    const rows = [
-      ...(snapshot?.payments || []).flatMap(embeddedPaymentOperations),
-      ...(Array.isArray(snapshot?.payroll_operations) ? snapshot.payroll_operations : []),
-    ];
-    const seenOperationIds = new Set();
-    const seenLinkIds = new Set();
-    return rows.filter((row) => {
-      if (row.is_deleted || isoMonth(paymentOperationDate(row)) !== month) return false;
-      const operationId = paymentOperationId(row);
-      const linkId = Number(row.link_id || 0);
-      if (!(operationId > 0) && !(linkId > 0)) return false;
-      if ((operationId > 0 && seenOperationIds.has(operationId)) || (linkId > 0 && seenLinkIds.has(linkId))) return false;
-      if (operationId > 0) seenOperationIds.add(operationId);
-      if (linkId > 0) seenLinkIds.add(linkId);
-      return true;
-    });
-  }
-
-  function monthVisibleForecasts() {
-    const month = `${Number(snapshot?.year || anchor.getFullYear())}-${String(Number(snapshot?.month || anchor.getMonth() + 1)).padStart(2, "0")}`;
-    const seen = new Set();
-    return (snapshot?.payments || []).filter((item) => {
-      if (!paymentForecastVisible(item) || isoMonth(item.effective_date) !== month) return false;
-      const key = `${Number(item.plan_id || 0)}:${item.role || "payment"}:${item.effective_date || ""}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }
 
   function groupedMoney(rows, amountOf, currencyOf) {
     const totals = new Map();
@@ -382,6 +325,14 @@
     if (!states.length) {
       states.push(`<span class="work-salary-cycle-state is-missing">${role === "extras" ? "Доплат нет" : "Выплата не найдена"}</span>`);
     }
+    const operationLinks = activeOperations.map((row) => {
+      const id = paymentOperationId(row);
+      if (!(id > 0)) return "";
+      const title = `${paymentSourceLabel(row.source)}${row.note ? ` · ${row.note}` : ""} · открыть операцию`;
+      return `<button type="button" class="work-payment-actual-link" data-work-operation-id="${id}" title="${escape(title)}">${escape(formatDate(paymentOperationDate(row)))} · ${escape(formatMoney(paymentOperationAmount(row), paymentOperationCurrency(row)))}</button>`;
+    }).join("");
+    const planId = snapshot?.profile?.[role === "advance" ? "advance_plan_id" : "salary_plan_id"];
+    const planLink = role === "extras" ? "" : `<button type="button" class="work-payment-plan-link" data-work-open-plan-picker="${escape(role)}">${planId ? `План #${Number(planId)} · изменить` : "Выбрать план"}</button>`;
     return `
       <div class="work-salary-cycle-component work-salary-cycle-component-${escape(role)}">
         <div class="work-salary-cycle-component-head">
@@ -389,70 +340,73 @@
           ${dateLabel ? `<span>${escape(dateLabel)}</span>` : ""}
         </div>
         <div class="work-salary-cycle-component-values">${states.join("")}</div>
+        ${operationLinks ? `<div class="work-salary-cycle-operation-links">${operationLinks}</div>` : ""}
+        ${planLink}
       </div>`;
   }
 
   function renderSalaryCycleCard() {
     const cycle = snapshot?.salary_cycle;
     if (!cycle || !Array.isArray(cycle.totals)) return "";
-    const actual = moneyGroupFromTotals(cycle.totals, "actual_amount", { includeZero: false });
+    const actual = moneyGroupFromTotals(cycle.totals, "actual_amount");
     const forecast = moneyGroupFromTotals(cycle.totals, "forecast_amount", { includeZero: false });
     const expected = moneyGroupFromTotals(cycle.totals, "expected_amount");
-    const componentsByRole = new Map((cycle.components || []).map((component) => [component.role, component]));
-    const components = [
-      componentsByRole.get("advance") || { role: "advance", label: "Аванс" },
-      componentsByRole.get("salary") || { role: "salary", label: "Основная часть" },
-      { role: "extras", label: "Доплаты", actual_operations: cycle.extras || [] },
-    ];
+    const components = cycle.components || [];
+    const incomplete = ["advance", "salary"].some((role) => {
+      const component = components.find((item) => item.role === role);
+      return !component || component.status === "missing"
+        || (component.status === "forecast" && !salaryCycleComponentForecast(component).size);
+    });
+    const hasForecast = components.some((item) => item.status === "forecast");
     const windowLabel = cycle.window_from_exclusive && cycle.window_to_inclusive
       ? `Выплаты после ${formatDate(cycle.window_from_exclusive)} и по ${formatDate(cycle.window_to_inclusive)} включительно`
       : "Аванс прошлого месяца и основная часть текущего";
-    const explanation = "В цикл входят выплаты после основной части прошлого месяца и до основной части текущего месяца включительно.";
-    const summary = [];
-    if (actual.size) summary.push(`<span class="work-salary-cycle-summary-value is-actual">Получено · ${inlineMoneyValues(actual)}</span>`);
-    if (forecast.size) summary.push(`<span class="work-salary-cycle-summary-value is-forecast">Ещё ожидается · ${inlineMoneyValues(forecast)}</span>`);
+    if (!actual.size) actual.set("BYN", 0);
+    if (!forecast.size && !incomplete) forecast.set("BYN", 0);
+    const cards = [
+      ["Получено за период", actual, "Аванс + основная часть + доплаты", "work-money-kpi-actual"],
+      ["Ещё ожидается", forecast, incomplete ? "Не все выплаты найдены — остаток неизвестен" : hasForecast ? "По планам этого зарплатного цикла" : "Все части зарплаты получены", "work-money-kpi-forecast"],
+      ["Итого за период", expected, incomplete ? "Неполный итог · недостаточно данных" : hasForecast ? "Получено + прогноз" : "Фактические выплаты", ""],
+    ];
     return `
-      <article class="analytics-kpi-card work-money-kpi-card work-salary-cycle-card" title="${escape(explanation)}">
         <div class="work-salary-cycle-head">
           <div class="work-salary-cycle-title">
             <span class="muted-small">Зарплатный цикл</span>
             <strong>${escape(cycle.label || "Зарплата за предыдущий месяц")}</strong>
             <span class="muted-small">${escape(windowLabel)}</span>
           </div>
-          <div class="work-salary-cycle-total">
-            <span class="muted-small">Итого цикла</span>
-            <div class="work-money-kpi-values">${renderMoneyValues(expected)}</div>
-          </div>
         </div>
-        ${summary.length ? `<div class="work-salary-cycle-summary">${summary.join("")}</div>` : ""}
-        <div class="work-salary-cycle-components">${components.map(renderSalaryCycleComponent).join("")}</div>
-      </article>`;
+        <div class="work-money-summary-grid">${cards.map(([label, values, meta, className]) => `
+          <article class="analytics-kpi-card work-money-kpi-card ${className}">
+            <div class="muted-small">${escape(label)}</div>
+            <div class="work-money-kpi-values">${renderMoneyValues(values)}</div>
+            <div class="muted-small">${escape(meta)}</div>
+          </article>`).join("")}</div>
+        ${renderEarningsEstimate(cycle)}`;
   }
 
-  function formatPlanPaymentCount(value) {
-    const count = Math.max(0, Number(value || 0));
-    const mod100 = count % 100;
-    const mod10 = count % 10;
-    const paymentWord = mod100 >= 11 && mod100 <= 14 ? "выплат" : mod10 === 1 ? "выплата" : mod10 >= 2 && mod10 <= 4 ? "выплаты" : "выплат";
-    return `${count} ${paymentWord} по ${count === 1 ? "плану" : "планам"}`;
+  function renderEarningsEstimate(cycle) {
+    const estimate = cycle.earnings_estimate;
+    const available = estimate && estimate.status !== "unavailable";
+    const reasons = {
+      missing_payment: "Не хватает выплаты или суммы прогноза",
+      unresolved_currency: "Нет пересчёта всей зарплаты в BYN",
+      missing_work_norm: "Не задана норма рабочих дней или часов",
+    };
+    const note = available
+      ? `${estimate.status === "forecast" ? "С учётом прогноза" : "По фактической зарплате"} · без разовых доплат · норма: ${estimate.planned_days} дн. / ${formatHours(estimate.planned_hours)} ч`
+      : reasons[estimate?.reason] || "Недостаточно данных";
+    return `<div class="work-earnings-estimate" aria-label="Ориентир дохода за день и час">
+      <div class="work-earnings-values">${[["За рабочий день", "daily_amount"], ["За рабочий час", "hourly_amount"]].map(([label, key]) => `
+        <div><span class="muted-small">${label}</span><strong>${available && estimate[key] != null ? `≈ ${escape(formatMoney(estimate[key], estimate.currency))}` : "Недостаточно данных"}</strong></div>`).join("")}</div>
+      <div class="muted-small">${escape(note)}. Ориентир за месяц зарплаты, не договорная ставка.</div>
+    </div>`;
   }
+
 
   function renderMoneySummary() {
     if (!nodes.workMoneySummaryGrid) return;
-    const actuals = monthSnapshotPaymentOperations();
-    const forecasts = monthVisibleForecasts();
-    const actualMoney = groupedMoney(actuals, paymentOperationBaseAmount, paymentOperationBaseCurrency);
-    const forecastMoney = groupedMoney(forecasts, paymentForecastBaseAmount, paymentForecastBaseCurrency);
-    const cards = [
-      ["Получено за месяц", actualMoney, formatOperationCount(actuals.length), "analytics-kpi-positive work-money-kpi-actual"],
-      ["Ещё ожидается", forecastMoney, formatPlanPaymentCount(forecasts.length), "analytics-kpi-neutral work-money-kpi-forecast"],
-    ];
-    nodes.workMoneySummaryGrid.innerHTML = cards.map(([label, values, meta, className]) => `
-      <article class="analytics-kpi-card work-money-kpi-card ${className}">
-        <div class="muted-small">${escape(label)}</div>
-        <div class="work-money-kpi-values">${renderMoneyValues(values)}</div>
-        <div class="muted-small">${escape(meta)}</div>
-      </article>`).join("") + renderSalaryCycleCard();
+    nodes.workMoneySummaryGrid.innerHTML = renderSalaryCycleCard();
   }
 
   function renderWorkPeriodPicker() {
@@ -486,58 +440,13 @@
   }
 
   function renderPayments() {
-    nodes.workPaymentsGrid.innerHTML = (snapshot?.payments || []).map((item) => {
-      const forecastAmount = paymentForecastAmount(item);
-      const actuals = embeddedPaymentOperations(item);
-      const activeActuals = actuals.filter((row) => !row.is_deleted && paymentOperationId(row) > 0);
-      const categoryActuals = activeActuals.length || !hasUniquePaymentEffectiveDate(item) ? [] : exactDatePayrollOperations(item);
-      const displayedActuals = activeActuals.length ? actuals : categoryActuals.length ? categoryActuals : actuals;
-      const hasActual = activeActuals.length > 0 || categoryActuals.length > 0;
-      const showForecast = paymentForecastVisible(item);
-      let headline = "Фактическая выплата не найдена";
-      if (activeActuals.length === 1) {
-        headline = `Факт · ${formatMoney(paymentOperationAmount(activeActuals[0]), paymentOperationCurrency(activeActuals[0]))}`;
-      } else if (activeActuals.length > 1) {
-        headline = `Факт · ${formatOperationCount(activeActuals.length)}`;
-      } else if (categoryActuals.length) {
-        headline = categoryPaymentHeadline(categoryActuals);
-      } else if (showForecast) {
-        headline = forecastAmount == null
-          ? "Сумма прогноза не указана"
-          : `Прогноз · ${formatMoney(forecastAmount, paymentForecastCurrency(item))}`;
-      } else if (actuals.some((row) => row.is_deleted)) {
-        headline = "Фактическая операция удалена";
-      }
-      return `
-      <article class="work-payment-card ${item.shifted ? "is-shifted" : ""} ${hasActual ? "has-actual" : ""} ${!showForecast && !displayedActuals.length ? "is-missing" : ""}">
-        <div class="work-payment-primary">
-          <span class="muted-small">${escape(item.label)}</span>
-          <strong>${escape(headline)}</strong>
-          <span class="work-payment-date">${formatDate(item.effective_date)}</span>
-        </div>
-        <div class="work-payment-meta">
-          ${item.shifted ? `<span>перенесено назад с ${formatDate(item.nominal_date)}</span>` : "<span>по номинальной дате</span>"}
-          ${displayedActuals.map((row) => {
-            const operationId = paymentOperationId(row);
-            const actualMoney = formatMoney(paymentOperationAmount(row), paymentOperationCurrency(row));
-            const isCategoryMatch = row.source === "category_match";
-            const operationLabel = isCategoryMatch
-              ? `${row.category_name || row.label || "Выплата"} · ${actualMoney} · ${formatDate(paymentOperationDate(row))}`
-              : `Получено · ${actualMoney} · ${formatDate(paymentOperationDate(row))}`;
-            const note = String(row.note || "").trim();
-            const operationTitle = isCategoryMatch
-              ? `${paymentSourceLabel(row.source)}${note ? ` · ${note}` : ""} · открыть операцию`
-              : "Открыть фактическую операцию";
-            return operationId > 0 && !row.is_deleted
-              ? `<button class="work-payment-actual-link" type="button" data-work-operation-id="${operationId}" title="${escape(operationTitle)}">${escape(operationLabel)}</button>`
-              : `<span class="work-payment-actual-deleted">Фактическая операция удалена</span>`;
-          }).join("")}
-          <button class="work-payment-plan-link" type="button" data-work-open-plan-picker="${escape(item.role)}">
-            ${item.plan_id ? `План #${Number(item.plan_id)} · изменить` : "Выбрать план вручную"}
-          </button>
-        </div>
-      </article>`;
-    }).join("");
+    const componentsByRole = new Map((snapshot?.salary_cycle?.components || []).map((component) => [component.role, component]));
+    const components = [
+      componentsByRole.get("advance") || { role: "advance", label: "Аванс" },
+      componentsByRole.get("salary") || { role: "salary", label: "Основная часть" },
+      { role: "extras", label: "Доплаты", actual_operations: snapshot?.salary_cycle?.extras || [] },
+    ];
+    nodes.workPaymentsGrid.innerHTML = components.map(renderSalaryCycleComponent).join("");
     restorePaymentOperationContext();
   }
 
@@ -755,7 +664,7 @@
   function restorePaymentOperationContext() {
     if (!(Number(selectedPaymentOperationId) > 0)) return;
     document.querySelectorAll(`[data-work-operation-id="${Number(selectedPaymentOperationId)}"]`).forEach((node) => {
-      node.closest(".work-day-cell, .work-actual-payment-card, .work-payment-card")?.classList.add("work-payment-context-selected");
+      node.closest(".work-day-cell, .work-actual-payment-card, .work-salary-cycle-component")?.classList.add("work-payment-context-selected");
     });
   }
 
@@ -1243,7 +1152,7 @@
     if (!(resolvedId > 0)) return;
     selectedPaymentOperationId = resolvedId;
     document.querySelectorAll(".work-payment-context-selected").forEach((node) => node.classList.remove("work-payment-context-selected"));
-    const contextNode = sourceNode?.closest?.(".work-day-cell, .work-actual-payment-card, .work-payment-card") || sourceNode;
+    const contextNode = sourceNode?.closest?.(".work-day-cell, .work-actual-payment-card, .work-salary-cycle-component") || sourceNode;
     contextNode?.classList?.add("work-payment-context-selected");
     const operations = window.App.getRuntimeModule?.("operations") || {};
     if (operations.openMoneyFlowSource) {
