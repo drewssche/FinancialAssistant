@@ -8,11 +8,21 @@
       formatRateWithQuote,
     } = deps;
     let tradesObserver = null;
+    let requestSeq = 0;
+    const sorting = window.App.getRuntimeModule("table-sort");
+    const columns = ["trade_date", "side", "asset_currency", "quantity", "unit_price", "note"].map((key) => ({ key }));
+    const fallback = { by: "trade_date", dir: "desc" };
+    function bindSorting() {
+      sorting.bind(el.analyticsCurrencyTradesBody?.closest("table"), { key: "analytics-currency-trades", columns, fallback,
+        onChange: () => loadTradesPage(1, { reset: true }),
+      });
+    }
 
     function renderTrades(overview) {
       if (!el.analyticsCurrencyTradesBody) {
         return;
       }
+      bindSorting();
       const trades = Array.isArray(overview.recent_trades) ? overview.recent_trades : [];
       if (!trades.length) {
         const emptyLabel = state.analyticsCurrencyFilter && state.analyticsCurrencyFilter !== "all"
@@ -25,7 +35,7 @@
       el.analyticsCurrencyTradesBody.innerHTML = trades.map((item) => `
         <tr>
           <td>${core.formatDateRu(item.trade_date)}</td>
-          <td>${item.side === "sell" ? "Продажа" : "Покупка"}</td>
+          <td>${item.trade_kind === "card_payment" ? "Оплата картой" : item.side === "sell" ? "Продажа" : "Покупка"}</td>
           <td>${core.formatCurrencyLabel(item.asset_currency)}</td>
           <td>${core.formatAmount(item.quantity || 0)} ${escapeHtml(item.asset_currency || "")}</td>
           <td>${formatRateWithQuote(item.unit_price || 0, item.quote_currency || "BYN")}</td>
@@ -63,10 +73,15 @@
         return;
       }
       state.analyticsCurrencyTradesLoading = true;
+      const seq = ++requestSeq;
+      bindSorting();
       try {
+        const choice = sorting.get("analytics-currency-trades", fallback);
         const params = new URLSearchParams({
           page: String(page),
           page_size: String(state.analyticsCurrencyTradesPageSize || 20),
+          sort_by: choice.by,
+          sort_dir: choice.dir,
         });
         if (state.analyticsCurrencyFilter && state.analyticsCurrencyFilter !== "all") {
           params.set("currency", state.analyticsCurrencyFilter);
@@ -74,6 +89,7 @@
         const data = await core.requestJson(`/api/v1/currency/trades?${params.toString()}`, {
           headers: core.authHeaders(),
         });
+        if (seq !== requestSeq) return;
         if (reset) {
           state.analyticsCurrencyTradesItems = Array.isArray(data.items) ? data.items : [];
         } else {
@@ -86,7 +102,7 @@
         );
         renderTrades({ recent_trades: state.analyticsCurrencyTradesItems });
       } finally {
-        state.analyticsCurrencyTradesLoading = false;
+        if (seq === requestSeq) state.analyticsCurrencyTradesLoading = false;
       }
     }
 

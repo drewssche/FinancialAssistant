@@ -423,7 +423,12 @@
     const queryRaw = String(el.categorySearchQ.value || "").trim();
     const queryLower = queryRaw.toLowerCase();
     const queryActive = Boolean(queryRaw);
-    const groups = getCategoriesDisplayGroups(queryRaw, queryLower);
+    const sorting = window.App.getRuntimeModule("table-sort");
+    const columns = [{ key: "group", value: (item) => item.group_name }, { key: "name" }, { key: "kind", value: (item) => core.kindLabel(item.kind) }];
+    sorting.bind(el.categoriesBody?.closest("table"), { key: "categories", columns, onChange: renderCategories });
+    const groups = sorting.sort(getCategoriesDisplayGroups(queryRaw, queryLower), "categories", [
+      { key: "group", value: (group) => group.name }, columns[2],
+    ]).map((group) => ({ ...group, children: sorting.sort(group.children, "categories", columns) }));
     if (el.categoriesKpiGrid) {
       const categories = Array.isArray(state.categories) ? state.categories : [];
       const visibleCategoryIds = new Set();

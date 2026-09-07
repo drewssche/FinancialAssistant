@@ -242,6 +242,15 @@
       return;
     }
     el.debtsCards.innerHTML = "";
+    const sorting = window.App.getRuntimeModule("table-sort");
+    const columns = [
+      { key: "start_date", type: "date" },
+      { key: "direction", value: (d) => d.direction === "lend" ? "Я дал" : "Я взял" },
+      { key: "principal", type: "number", value: (d) => d.current_base_principal ?? d.principal, hint: "В базовой валюте" },
+      { key: "repaid_total", type: "number", value: (d) => d.current_base_repaid_total ?? d.repaid_total, hint: "В базовой валюте" },
+      { key: "outstanding_total", type: "number", value: (d) => d.current_base_outstanding_total ?? d.outstanding_total, hint: "В базовой валюте" },
+      { key: "due_date", type: "date" },
+    ];
     const visibleCards = sortCards(filterCards(cards));
     renderDebtsSectionKpi(visibleCards);
     const pageSize = Number(state.debtCardsPageSize || 20);
@@ -288,7 +297,7 @@
         return b.id - a.id;
       });
 
-      const debtsRows = sortedDebts
+      const debtsRows = sorting.sort(sortedDebts, "debts", columns)
         .map((debt) => {
           const dueState = debtDueState(debt, now);
           const dueProgress = debtDueProgress(debt, dueState, now);
@@ -453,6 +462,7 @@
           </div>
         `;
       el.debtsCards.appendChild(item);
+      sorting.bind(item.querySelector("table"), { key: "debts", columns, onChange: () => renderDebtCards(cards) });
     }
   }
 

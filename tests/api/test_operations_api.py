@@ -55,6 +55,42 @@ def client():
     yield from _client_lifecycle()
 
 
+@pytest.mark.parametrize("source", ["all", "operation"])
+@pytest.mark.parametrize("field,expected_asc", [
+    ("amount", [2, 3, 1]), ("operation_date", [3, 1, 2]),
+    ("note", [2, 1, 3]), ("flow_direction", [2, 3, 1]),
+])
+def test_money_flow_column_sort_before_pagination(client, source, field, expected_asc):
+    ids = []
+    for amount, when, note, kind in [
+        ("12", "2026-01-30", "Яблоко", "income"),
+        ("2", "2026-02-01", "Арбуз", "expense"),
+        ("4", "2026-01-01", None, "expense"),
+    ]:
+        response = client.post("/api/v1/operations", json={
+            "amount": amount, "operation_date": when, "note": note, "kind": kind,
+        })
+        assert response.status_code == 201, response.text
+        ids.append(response.json()["id"])
+    for direction in ["asc", "desc"]:
+        # Equal directions retain the existing date/ID tie-break ordering.
+        expected = expected_asc if direction == "asc" else list(reversed(expected_asc))
+        if field == "flow_direction":
+            expected = [3, 2, 1] if direction == "asc" else [1, 2, 3]
+        if field == "note" and direction == "desc":
+            expected = [1, 2, 3]  # Missing comments always last.
+        actual = []
+        for page in range(1, 4):
+            response = client.get("/api/v1/operations/money-flow", params={
+                "source": source, "sort_by": field, "sort_dir": direction, "page": page, "page_size": 1,
+            })
+            assert response.status_code == 200, response.text
+            assert response.json()["total"] == 3
+            actual.extend(item["source_id"] for item in response.json()["items"])
+        assert actual == [ids[index - 1] for index in expected]
+    assert client.get("/api/v1/operations/money-flow?sort_by=invalid").status_code == 422
+
+
 def test_operations_crud_and_filters(client: TestClient):
     created_income = client.post(
         "/api/v1/operations",
@@ -784,6 +820,22 @@ def test_operations_money_flow_combines_operations_debts_and_fx(client: TestClie
     assert payload["items"][1]["flow_direction"] == "inflow"
     assert payload["items"][2]["flow_direction"] == "outflow"
     assert all(item["note"] != "списал" for item in payload["items"])
+
+    # A textual column also sorts the complete mixed dataset, not the current page.
+    for field in ["source_kind", "title"]:
+        for direction in ["asc", "desc"]:
+            expected = payload["items"].copy()
+            OperationMoneyFlowService._sort_items(expected, sort_by=field, sort_dir=direction)
+            actual = []
+            for page in range(1, 6):
+                response = client.get("/api/v1/operations/money-flow", params={
+                    "page": page, "page_size": 1, "sort_by": field, "sort_dir": direction,
+                    "date_from": "2026-03-01", "date_to": "2026-03-10",
+                })
+                assert response.status_code == 200, response.text
+                assert response.json()["total"] == 5
+                actual.extend(item["id"] for item in response.json()["items"])
+            assert actual == [item["id"] for item in expected]
 
     summary = client.get(
         "/api/v1/operations/money-flow/summary",

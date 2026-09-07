@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import and_, desc, func, or_, select
+from sqlalchemy import and_, case, desc, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
@@ -57,17 +57,34 @@ class CurrencyRepository:
         asset_currency: str | None = None,
         page: int,
         page_size: int,
+        sort_by: str = "trade_date",
+        sort_dir: str = "desc",
     ) -> tuple[list[FxTrade], int]:
         stmt = select(FxTrade).where(FxTrade.user_id == user_id)
         count_stmt = select(func.count()).select_from(FxTrade).where(FxTrade.user_id == user_id)
         if asset_currency:
             stmt = stmt.where(FxTrade.asset_currency == asset_currency)
             count_stmt = count_stmt.where(FxTrade.asset_currency == asset_currency)
+        columns = {
+            "trade_date": FxTrade.trade_date,
+            "side": case(
+                (FxTrade.trade_kind == "card_payment", "Оплата картой"),
+                (FxTrade.side == "buy", "Покупка"), else_="Продажа",
+            ),
+            "asset_currency": FxTrade.asset_currency,
+            "quantity": FxTrade.quantity,
+            "unit_price": FxTrade.unit_price,
+            "note": func.nullif(func.lower(FxTrade.note), ""),
+        }
+        if sort_by not in columns or sort_dir not in {"asc", "desc"}:
+            raise ValueError("Неизвестная сортировка валютных сделок")
+        column = columns[sort_by]
+        order = (column.asc() if sort_dir == "asc" else column.desc()).nulls_last()
         total = int(self.db.scalar(count_stmt) or 0)
         items = list(
             self.db.scalars(
                 stmt
-                .order_by(FxTrade.trade_date.desc(), FxTrade.id.desc())
+                .order_by(order, FxTrade.trade_date.desc(), FxTrade.id.desc())
                 .offset((page - 1) * page_size)
                 .limit(page_size)
             )

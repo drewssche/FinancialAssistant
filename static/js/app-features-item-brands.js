@@ -197,10 +197,18 @@
     if (!el.itemBrandsBody) {
       return;
     }
-    const rows = getVisibleBrandRows().sort((a, b) => {
+    const sorting = window.App.getRuntimeModule("table-sort");
+    const columns = [
+      { key: "name" }, { key: "positions_count", type: "number" },
+      { key: "purchases", type: "number", value: brandPurchaseCount },
+      { key: "spent", type: "number", value: brandSpentTotal },
+      { key: "last_purchase_date", type: "date" },
+    ];
+    sorting.bind(el.itemBrandsBody.closest("table"), { key: "brands", columns, onChange: renderItemBrands });
+    const rows = sorting.sort(getVisibleBrandRows().sort((a, b) => {
       const spendDiff = brandSpentTotal(b) - brandSpentTotal(a);
       return spendDiff || String(a?.name || "").localeCompare(String(b?.name || ""), "ru");
-    });
+    }), "brands", columns);
     el.itemBrandsBody.innerHTML = rows.length
       ? rows.map(renderBrandRow).join("")
       : '<tr><td colspan="6" class="muted-small">Бренды не найдены</td></tr>';
@@ -396,10 +404,15 @@
 
   function renderBrandDetail(brand, items) {
     const archived = isBrandArchived(brand);
-    const sortedItems = items.slice().sort((a, b) => {
+    const sorting = window.App.getRuntimeModule("table-sort");
+    const columns = [{ key: "shop_name" }, { key: "name" },
+      { key: "category", value: (item) => (state.categories || []).find((c) => Number(c.id) === Number(item.last_category_id))?.name },
+      { key: "latest_unit_price", type: "number" }];
+    sorting.bind(el.itemBrandDetailBody?.closest("table"), { key: "brand-items", columns, onChange: () => renderBrandDetail(brand, items) });
+    const sortedItems = sorting.sort(items.slice().sort((a, b) => {
       const sourceDiff = String(a?.shop_name || "").localeCompare(String(b?.shop_name || ""), "ru");
       return sourceDiff || String(a?.name || "").localeCompare(String(b?.name || ""), "ru");
-    });
+    }), "brand-items", columns);
     if (el.itemBrandDetailTitle) {
       const media = window.App.getRuntimeModule?.("catalog-media") || {};
       const logo = media.renderThumb?.(brand?.image_id, { kind: "brand", size: "row", alt: `Логотип ${brand?.name || "бренда"}` }) || "";

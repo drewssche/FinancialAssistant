@@ -56,6 +56,12 @@ class OperationMoneyFlowService:
                 return Decimal(item.get("amount") or 0)
             if sort_by == "created_at":
                 return item.get("source_id") or 0
+            if sort_by == "flow_direction":
+                return "Приток" if item.get("flow_direction") == "inflow" else "Отток"
+            if sort_by == "source_kind":
+                return {"operation": "Операция", "debt": "Долг", "fx": "Валюта"}.get(item.get("source_kind"), "")
+            if sort_by in {"title", "note"}:
+                return str(item.get(sort_by) or "").casefold()
             return str(item.get("event_date") or "")
 
         items.sort(
@@ -66,6 +72,8 @@ class OperationMoneyFlowService:
             ),
             reverse=sort_dir != "asc",
         )
+        if sort_by in {"title", "note"}:
+            items.sort(key=lambda item: not bool(str(item.get(sort_by) or "").strip()))
 
     @classmethod
     def _ensure_dataset_size(cls, items: list[dict]) -> None:
@@ -144,7 +152,7 @@ class OperationMoneyFlowService:
                 operation_kind = "expense"
             operations = self.repo.list_filtered_all(
                 user_id=user_id,
-                sort_by=sort_by,
+                sort_by=sort_by if sort_by in {"operation_date", "amount", "created_at"} else "operation_date",
                 sort_dir=sort_dir,
                 kind=operation_kind,
                 date_from=date_from,
@@ -581,7 +589,8 @@ class OperationMoneyFlowService:
             or product_id is not None
             or brand_id is not None
         )
-        if normalized_source == "operation" or operations_only_filter:
+        database_sort = sort_by in {"operation_date", "amount", "created_at"}
+        if database_sort and (normalized_source == "operation" or operations_only_filter):
             return self._list_operation_flow_page(
                 user_id=user_id,
                 page=page,
@@ -598,7 +607,7 @@ class OperationMoneyFlowService:
                 product_id=product_id,
                 brand_id=brand_id,
             )
-        if normalized_source == "all" and not q:
+        if database_sort and normalized_source == "all" and not q:
             return self._list_mixed_flow_page(
                 user_id=user_id,
                 page=page,

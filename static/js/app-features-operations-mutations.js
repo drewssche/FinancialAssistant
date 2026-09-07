@@ -391,6 +391,7 @@
 
     async function setOperationsSortPreset(value, savePreferences) {
       state.operationSortPreset = value || "date";
+      window.App.getRuntimeModule("table-sort").set("operations", null);
       localStorage.setItem("operations_sort_preset", state.operationSortPreset);
       core.syncSegmentedActive(el.operationsSortTabs, "op-sort", state.operationSortPreset);
       await loadOperations({ reset: true });

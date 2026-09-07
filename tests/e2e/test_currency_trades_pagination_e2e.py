@@ -220,6 +220,11 @@ def page_with_currency_pagination_api_mock():
             page = max(1, int((query.get("page") or ["1"])[0]))
             page_size = max(1, int((query.get("page_size") or ["20"])[0]))
             items = resolve_trade_items(selected_currency)
+            sort_by = (query.get("sort_by") or ["trade_date"])[0]
+            if sort_by != "trade_date":
+                numeric = sort_by in {"quantity", "unit_price"}
+                items = sorted(items, key=lambda item: float(item[sort_by]) if numeric else item.get(sort_by, ""),
+                               reverse=(query.get("sort_dir") or ["desc"])[0] == "desc")
             start = (page - 1) * page_size
             stop = start + page_size
             trades_calls.append({"currency": selected_currency or "all", "page": page, "page_size": page_size})
@@ -349,6 +354,34 @@ def test_currency_trade_kebab_edit_and_delete_close_menu(static_server_url, page
 
 
 @pytest.mark.e2e
+@pytest.mark.parametrize("analytics", [False, True])
+def test_currency_column_sort_survives_pagination(static_server_url, page_with_currency_pagination_api_mock, analytics):
+    page = page_with_currency_pagination_api_mock
+    page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")
+    page.wait_for_selector("#appShell:not(.hidden)")
+    page.evaluate(f"window.App.actions.switchSection?.('{ 'analytics' if analytics else 'currency' }')")
+    if analytics:
+        page.click("button[data-analytics-tab='currency']")
+    prefix = "analyticsCurrency" if analytics else "currency"
+    filter_attr = "analytics-currency-filter" if analytics else "currency-filter"
+    page.click(f"button[data-{filter_attr}='USD']")
+    page.wait_for_function(f"document.querySelectorAll('#{prefix}TradesBody tr').length === 20")
+    table = page.locator(f"#{prefix}TradesBody").locator("xpath=ancestor::table")
+    quantity = table.locator('th[data-sort-key="quantity"]')
+    quantity.locator("button").click()
+    sync_api.expect(quantity).to_have_attribute("aria-sort", "ascending")
+    sync_api.expect(page.locator(f"#{prefix}TradesBody tr").first).to_contain_text("101")
+    loader = "window.App.getRuntimeModule('analytics-currency-module').loadMoreAnalyticsCurrencyTrades()" if analytics else "window.App.getRuntimeModule('currency').loadMoreCurrencyTrades()"
+    page.evaluate(loader)
+    page.wait_for_function(f"document.querySelectorAll('#{prefix}TradesBody tr').length === 25")
+    sync_api.expect(page.locator(f"#{prefix}TradesBody tr").last).to_contain_text("125")
+    quantity.locator("button").click()
+    sync_api.expect(page.locator(f"#{prefix}TradesBody tr").first).to_contain_text("125")
+    sync_api.expect(quantity).to_have_attribute("aria-sort", "descending")
+    assert page.locator(f"#{prefix}TradesBody tr").count() == 20
+
+
+@pytest.mark.e2e
 def test_currency_section_infinite_scroll_loads_second_page(static_server_url: str, page_with_currency_pagination_api_mock):
     page = page_with_currency_pagination_api_mock
     page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")
@@ -379,6 +412,32 @@ def test_currency_section_infinite_scroll_loads_second_page(static_server_url: s
     calls = getattr(page, "_currency_trades_calls", [])
     assert {"currency": "USD", "page": 1, "page_size": 20} in calls
     assert {"currency": "USD", "page": 2, "page_size": 20} in calls
+
+
+@pytest.mark.e2e
+def test_currency_sort_ignores_out_of_order_response(static_server_url, page_with_currency_pagination_api_mock):
+    page = page_with_currency_pagination_api_mock
+    page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")
+    page.wait_for_selector("#appShell:not(.hidden)")
+    page.evaluate("window.App.actions.switchSection('currency')")
+    page.click("button[data-currency-filter='USD']")
+    page.wait_for_function("!window.App.state.currencyTradesLoading")
+    pending = []
+    page.route("**/api/v1/currency/trades?**", lambda route: pending.append(route))
+    header = page.locator('#currencyTradesBody').locator('xpath=ancestor::table').locator('th[data-sort-key="quantity"]')
+    header.locator("button").click()
+    page.wait_for_timeout(100)
+    header.locator("button").click()
+    page.wait_for_timeout(100)
+    assert len(pending) == 2
+    for route, ident in [(pending[1], 25), (pending[0], 1)]:
+        route.fulfill(status=200, content_type="application/json", body=json.dumps({
+            "items": [_build_trade(ident, "USD")], "total": 1, "page": 1, "page_size": 20,
+        }))
+        page.wait_for_timeout(100)
+    sync_api.expect(header).to_have_attribute("aria-sort", "descending")
+    sync_api.expect(page.locator('#currencyTradesBody tr').first).to_contain_text("125")
+    assert page.evaluate("window.App.state.currencyTradesItems[0].id") == 25
 
 
 @pytest.mark.e2e

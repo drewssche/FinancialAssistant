@@ -6,6 +6,21 @@
   const itemCatalogFeatures = window.App.getRuntimeModule?.("item-catalog") || {};
   const operationModal = window.App.getRuntimeModule?.("operation-modal") || {};
   let operationsRawItems = [];
+  const tableSort = window.App.getRuntimeModule("table-sort");
+  const operationSortColumns = [
+    { key: "operation_date" }, { key: "flow_direction" }, { key: "title" },
+    { key: "source_kind" }, { key: "amount", hint: "В базовой валюте" }, { key: "note" },
+  ];
+  const defaultOperationSort = () => ({ by: state.operationSortPreset === "amount" ? "amount" : "operation_date", dir: "desc" });
+  function bindOperationSorting() {
+    tableSort.bind(el.operationsBody?.closest("table"), {
+      key: "operations", columns: operationSortColumns, fallback: defaultOperationSort(),
+      onChange: async (choice) => {
+        if (["amount", "operation_date"].includes(choice.by)) state.operationSortPreset = choice.by === "amount" ? "amount" : "date";
+        await loadOperations({ reset: true });
+      },
+    });
+  }
   let operationsRequestController = null;
   let operationsRequestSeq = 0;
   let operationsSummaryRequestController = null;
@@ -107,11 +122,12 @@
     updateOperationsPeriodLabel();
     state.operationsMode = "money_flow";
     const isMoneyFlowMode = true;
+    const choice = tableSort.get("operations", defaultOperationSort());
     const params = new URLSearchParams({
       page: String(page),
       page_size: String(state.pageSize),
-      sort_by: state.operationSortPreset === "amount" ? "amount" : "operation_date",
-      sort_dir: "desc",
+      sort_by: choice.by,
+      sort_dir: choice.dir,
       date_from: dateFrom,
       date_to: dateTo,
     });
@@ -475,6 +491,7 @@
     const sortedItems = applyOperationsSort(items);
     const query = el.filterQ.value.trim();
     applyOperationsModeUi();
+    bindOperationSorting();
     renderOperationsActiveFilters();
     if (el.deleteAllOperationsBtn) {
       el.deleteAllOperationsBtn.disabled = isMoneyFlowMode || sortedItems.length === 0;
@@ -514,8 +531,10 @@
   async function loadOperations(options = {}) {
     await ensureAllTimeBounds();
     applyOperationsModeUi();
+    bindOperationSorting();
     syncOperationsCurrencyScopeUi();
-    core.syncSegmentedActive(el.operationsSortTabs, "op-sort", state.operationSortPreset || "date");
+    const sortBy = tableSort.get("operations", defaultOperationSort()).by;
+    core.syncSegmentedActive(el.operationsSortTabs, "op-sort", sortBy === "amount" ? "amount" : sortBy === "operation_date" ? "date" : "");
     updateOperationsPeriodLabel();
     renderOperationsActiveFilters();
     const reset = options.reset !== false;

@@ -14,6 +14,15 @@
     } = deps;
     const tradeItemsById = new Map();
     let tradesObserver = null;
+    let requestSeq = 0;
+    const sorting = window.App.getRuntimeModule("table-sort");
+    const columns = ["trade_date", "side", "asset_currency", "quantity", "unit_price", "note"].map((key) => ({ key }));
+    const fallback = { by: "trade_date", dir: "desc" };
+    function bindSorting() {
+      sorting.bind(el.currencyTradesBody?.closest("table"), { key: "currency-trades", columns, fallback,
+        onChange: () => loadTradesPage(1, { reset: true }),
+      });
+    }
 
     function toggleTableMenu(trigger) {
       const menuId = String(trigger?.dataset.tableMenuTrigger || "");
@@ -58,6 +67,7 @@
       if (!el.currencyTradesBody) {
         return;
       }
+      bindSorting();
       const trades = Array.isArray(data.recent_trades) ? data.recent_trades : [];
       tradeItemsById.clear();
       trades.forEach((item) => {
@@ -132,10 +142,15 @@
         return;
       }
       state.currencyTradesLoading = true;
+      const seq = ++requestSeq;
+      bindSorting();
       try {
+        const choice = sorting.get("currency-trades", fallback);
         const params = new URLSearchParams({
           page: String(page),
           page_size: String(state.currencyTradesPageSize || 20),
+          sort_by: choice.by,
+          sort_dir: choice.dir,
         });
         if (state.currencyFilter && state.currencyFilter !== "all") {
           params.set("currency", state.currencyFilter);
@@ -143,6 +158,7 @@
         const data = await core.requestJson(`/api/v1/currency/trades?${params.toString()}`, {
           headers: core.authHeaders(),
         });
+        if (seq !== requestSeq) return;
         if (reset) {
           state.currencyTradesItems = Array.isArray(data.items) ? data.items : [];
         } else {
@@ -153,7 +169,7 @@
         state.currencyTradesHasMore = state.currencyTradesItems.length < state.currencyTradesTotal;
         renderTrades({ recent_trades: state.currencyTradesItems });
       } finally {
-        state.currencyTradesLoading = false;
+        if (seq === requestSeq) state.currencyTradesLoading = false;
       }
     }
 

@@ -59,6 +59,44 @@ def reset_cache():
     reset_cache_for_tests()
 
 
+@pytest.mark.parametrize("field", ["trade_date", "side", "asset_currency", "quantity", "unit_price", "note"])
+@pytest.mark.parametrize("direction", ["asc", "desc"])
+def test_trade_sort_is_applied_before_pagination(client, field, direction):
+    from app.db.models import FxTrade
+
+    db = next(app.dependency_overrides[get_db]())
+    # Deliberately unrelated ID/date/value order, including an empty comment.
+    data = [
+        (1, "2026-01-30", "sell", "USD", "12", "2", "Яблоко"),
+        (2, "2026-02-01", "buy", "EUR", "2", "12", "Арбуз"),
+        (3, "2026-01-01", "buy", "RUB", "4", "4", None),
+    ]
+    from datetime import date
+
+    for ident, when, side, currency, quantity, price, note in data:
+        db.add(FxTrade(id=ident, user_id=1, trade_date=date.fromisoformat(when), side=side,
+                       asset_currency=currency, quote_currency="BYN", quantity=Decimal(quantity),
+                       unit_price=Decimal(price), fee=Decimal(0), note=note, trade_kind="manual"))
+    db.commit()
+    db.close()
+    expected = {
+        "trade_date": [3, 1, 2], "side": [2, 3, 1], "asset_currency": [2, 3, 1],
+        "quantity": [2, 3, 1], "unit_price": [1, 3, 2], "note": [2, 1, 3],
+    }[field]
+    if direction == "desc":
+        expected = {"side": [1, 2, 3], "note": [1, 2, 3]}.get(field, list(reversed(expected)))
+    actual = []
+    for page in range(1, 4):
+        response = client.get("/api/v1/currency/trades", params={
+            "sort_by": field, "sort_dir": direction, "page": page, "page_size": 1,
+        })
+        assert response.status_code == 200, response.text
+        assert response.json()["total"] == 3
+        actual.extend(item["id"] for item in response.json()["items"])
+    assert actual == expected
+    assert client.get("/api/v1/currency/trades?sort_by=invalid").status_code == 422
+
+
 def test_currency_trade_overview_and_current_rate(client: TestClient):
     created = client.post(
         "/api/v1/currency/trades",

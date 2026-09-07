@@ -325,6 +325,8 @@ class CurrencyReportingService:
         currency: str | None = None,
         page: int = 1,
         page_size: int = 20,
+        sort_by: str = "trade_date",
+        sort_dir: str = "desc",
     ) -> dict:
         normalized_currency = (
             self.currency._normalize_currency(currency) if currency else None
@@ -334,6 +336,8 @@ class CurrencyReportingService:
             asset_currency=normalized_currency,
             page=page,
             page_size=page_size,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
         )
         return {
             "items": [self._serialize_trade(trade) for trade in items],

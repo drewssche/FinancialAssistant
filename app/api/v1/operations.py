@@ -153,7 +153,7 @@ def list_operations(
 def list_money_flow(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    sort_by: str = Query(default="operation_date", pattern="^(operation_date|amount|created_at)$"),
+    sort_by: str = Query(default="operation_date", pattern="^(operation_date|amount|created_at|flow_direction|title|source_kind|note)$"),
     sort_dir: str = Query(default="desc", pattern="^(asc|desc)$"),
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),

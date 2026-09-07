@@ -10,6 +10,15 @@
   let bound = false;
   let editorProduct = null;
   let tableColumns = null;
+  const sorting = window.App.getRuntimeModule("table-sort");
+  const sortColumns = [null,
+    { key: "name" },
+    { key: "brand", value: (p) => brandMeta(p).name },
+    { key: "category", value: (p) => categoryMeta(p).name },
+    { key: "sources_count", type: "number" },
+    { key: "min_unit_price", type: "number", hint: "По минимальной цене среди источников" },
+    { key: "last_used_at", type: "date" },
+  ];
 
   function esc(value) {
     return String(value ?? "")
@@ -223,7 +232,8 @@
   function render() {
     tableColumns?.apply();
     if (!el.catalogProductsBody) return;
-    const products = state.catalogProducts || [];
+    sorting.bind(el.catalogProductsBody.closest("table"), { key: "products", columns: sortColumns, onChange: render });
+    const products = sorting.sort(state.catalogProducts || [], "products", sortColumns);
     el.catalogProductsBody.innerHTML = products.length
       ? products.map(renderProduct).join("")
       : `<tr><td colspan="8"><div class="empty">${state.catalogProductsLoading ? "Загрузка товаров…" : "Товары не найдены"}</div></td></tr>`;

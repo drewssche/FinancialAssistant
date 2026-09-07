@@ -149,12 +149,27 @@
     });
     core.syncSegmentedActive(el.itemCatalogSortTabs, "item-sort", state.itemCatalogSortPreset || "usage");
     const groupsAll = buildItemCatalogGroups(rows);
-    const groups = queryActive || brandFilterActive
+    let groups = queryActive || brandFilterActive
       ? groupsAll.filter((group) => {
         const sourceMatch = group.shopName.toLowerCase().includes(query.toLowerCase());
         return group.items.length > 0 || (queryActive && sourceMatch && !brandFilterActive);
       })
       : groupsAll;
+    const sorting = window.App.getRuntimeModule("table-sort");
+    const columns = [null,
+      { key: "source", value: (item) => item.shop_name },
+      { key: "brand", value: (item) => (state.itemBrands || []).find((b) => Number(b.id) === Number(item.brand_id))?.name || item.brand_name },
+      { key: "name" },
+      { key: "category", value: (item) => (state.categories || []).find((c) => Number(c.id) === Number(item.last_category_id))?.name },
+      { key: "price", type: "number", value: (item) => item.latest_unit_price, hint: "Позиции — по цене; источники — по средней цене" },
+    ];
+    sorting.bind(el.itemCatalogBody.closest("table"), { key: "catalog-sources", columns,
+      onChange: () => renderItemCatalog({ items, el, state, core, escapeHtml, readItemCatalogCollapsedShops, buildItemCatalogGroups, syncItemCatalogControls }),
+    });
+    groups = sorting.sort(groups, "catalog-sources", [
+      { key: "source", value: (group) => group.shopName },
+      { key: "price", type: "number", value: (group) => group.avgPrice },
+    ]).map((group) => ({ ...group, items: sorting.sort(group.items, "catalog-sources", columns) }));
     if (el.itemCatalogKpiGrid) {
       const visibleItems = groups.flatMap((group) => group.items || []);
       const sourceCount = groups.filter((group) => group.shopKey !== "__no_shop__" && (group.items || []).length > 0).length;

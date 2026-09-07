@@ -153,6 +153,7 @@
   }
 
   function setItemCatalogSortPreset(value) {
+    window.App.getRuntimeModule("table-sort").set("catalog-sources", null);
     itemCatalogSectionCoordinator?.setItemCatalogSortPreset?.({
       value,
       state,

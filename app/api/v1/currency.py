@@ -262,12 +262,17 @@ def list_currency_trades(
     currency: str | None = Query(default=None, min_length=3, max_length=3),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
+    sort_by: str = Query(default="trade_date", pattern="^(trade_date|side|asset_currency|quantity|unit_price|note)$"),
+    sort_dir: str = Query(default="desc", pattern="^(asc|desc)$"),
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     service = CurrencyService(db)
     try:
-        return service.list_trades(user_id=user_id, currency=currency, page=page, page_size=page_size)
+        return service.list_trades(
+            user_id=user_id, currency=currency, page=page, page_size=page_size,
+            sort_by=sort_by, sort_dir=sort_dir,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
