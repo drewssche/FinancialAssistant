@@ -309,7 +309,8 @@
       return state.catalogProducts;
     }
     requestController?.abort();
-    requestController = new AbortController();
+    const controller = new AbortController();
+    requestController = controller;
     state.catalogProductsLoading = true;
     render();
     try {
@@ -317,7 +318,9 @@
         window.App.getRuntimeModule?.("item-brands")?.ensureItemBrandsLoaded?.().catch(() => []),
         (state.categories || []).length ? Promise.resolve() : window.App.getRuntimeModule?.("category-actions")?.loadCategories?.().catch(() => []),
       ]);
-      const payload = await fetchAllProducts(query, requestController.signal);
+      if (controller.signal.aborted) return state.catalogProducts;
+      const payload = await fetchAllProducts(query, controller.signal);
+      if (controller.signal.aborted || requestController !== controller) return state.catalogProducts;
       state.catalogProducts = payload.items.map(normalizeProduct).filter((item) => item.id);
       state.catalogProductsTotal = payload.total;
       state.catalogProductsLoaded = true;
@@ -329,9 +332,11 @@
       if (core.isAbortError?.(err)) return state.catalogProducts;
       throw err;
     } finally {
-      state.catalogProductsLoading = false;
-      requestController = null;
-      render();
+      if (requestController === controller) {
+        state.catalogProductsLoading = false;
+        requestController = null;
+        render();
+      }
     }
   }
 
@@ -509,7 +514,10 @@
     }, { product });
   }
 
-  function invalidate() {
+  function invalidateLocal() {
+    requestController?.abort();
+    requestController = null;
+    state.catalogProductsLoading = false;
     core.invalidateUiRequestCache?.("catalog-products");
     core.invalidateUiRequestCache?.("op:receipt:products");
     core.invalidateUiRequestCache?.("op:receipt:templates");
@@ -517,6 +525,11 @@
     state.catalogProductsLoaded = false;
     state.receiptProductHints = [];
     state.receiptTemplateHints = [];
+  }
+
+  function invalidate() {
+    invalidateLocal();
+    catalog().invalidateItemCatalogDependentCaches?.();
   }
 
   async function save(event) {
@@ -535,7 +548,11 @@
       body: JSON.stringify(payload),
     });
     const savedId = asId(saved?.id || id);
-    if (savedId) await media().commitPicker?.("catalog-product", "product", savedId);
+    try {
+      if (savedId) await media().commitPicker?.("catalog-product", "product", savedId);
+    } catch (err) {
+      core.showToast?.(`Товар сохранён, но фото не обновлено: ${String(err?.message || err)}`, { type: "error" });
+    }
     invalidate();
     closeEditor();
     await Promise.all([load({ force: true }), catalog().loadItemCatalog?.({ force: true }).catch(() => {})]);
@@ -549,7 +566,7 @@
       await core.requestJson(`/api/v1/operations/catalog-products/${product.id}`, { method: "DELETE", headers: core.authHeaders() });
       closeEditor();
       invalidate();
-      await load({ force: true });
+      await Promise.all([load({ force: true }), catalog().loadItemCatalog?.({ force: true })]);
       core.showToast?.("Товар удалён", { type: "success" });
     });
   }
@@ -754,7 +771,7 @@
   }
 
   window.App.registerRuntimeModule?.("catalog-products", {
-    bind, load, render, invalidate, openEditor, closeEditor, openMerge, closeMerge, cleanupRuntime, refreshOpenOffers,
+    bind, load, render, invalidate, invalidateLocal, openEditor, closeEditor, openMerge, closeMerge, cleanupRuntime, refreshOpenOffers,
     normalizeProduct, normalizeOffer, productById,
   });
 })();

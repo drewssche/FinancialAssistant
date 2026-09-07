@@ -110,6 +110,36 @@ def _operation(
     return response.json()
 
 
+def test_brand_metrics_follow_product_assignment_reassignment_and_removal(client):
+    first_brand = _brand(client, "Бабушкина крынка")
+    second_brand = _brand(client, "Савушкин")
+    product = client.post("/api/v1/operations/catalog-products", json={"name": "Сырок 40 г"}).json()
+    product_id = product["id"]
+    for shop, price in [("Green", "0.82"), ("Санта", "0.81")]:
+        _operation(client, product_id=product_id, source_id=_source(client, shop),
+                   name="Сырок 40 г", price=price, operation_date="2026-09-07")
+
+    def metrics():
+        response = client.get("/api/v1/operations/item-brands")
+        assert response.status_code == 200
+        return {row["id"]: row for row in response.json()["items"]}
+
+    assert metrics()[first_brand]["positions_count"] == 0
+    for selected in [first_brand, second_brand, None]:
+        response = client.patch(f"/api/v1/operations/catalog-products/{product_id}", json={"brand_id": selected})
+        assert response.status_code == 200, response.text
+        rows = metrics()
+        for brand_id in [first_brand, second_brand]:
+            row = rows[brand_id]
+            # One canonical product in two shops, not two positions.
+            assert row["positions_count"] == (1 if brand_id == selected else 0)
+            assert row["purchases_count"] == (2 if brand_id == selected else 0)
+            assert float(row["spent_total"]) == (1.63 if brand_id == selected else 0)
+        offers = client.get(f"/api/v1/operations/catalog-products/{product_id}").json()["offers"]
+        assert len(offers) == 2
+        assert all(offer["brand_id"] == selected for offer in offers)
+
+
 def test_receipts_create_source_offers_and_filter_by_canonical_product(
     client: TestClient,
 ):

@@ -469,6 +469,7 @@
                 </div>
                 <button id="itemCatalogCollapseAllBtn" class="btn btn-secondary btn-xs" type="button">Свернуть все</button>
                 <button id="itemCatalogExpandAllBtn" class="btn btn-secondary btn-xs" type="button">Развернуть все</button>
+                <button id="resetItemCatalogWidthsBtn" class="btn btn-secondary btn-xs" type="button" title="Вернуть исходные размеры колонок">Сбросить ширину</button>
                 <button id="deleteAllItemTemplatesBtn" class="btn btn-danger" type="button">Удалить все</button>
               </div>
             </div>
@@ -486,6 +487,7 @@
             </div>
             <div class="table-wrap">
               <table class="table table-hover mobile-card-table item-catalog-table">
+                <colgroup><col /><col /><col /><col /><col /><col /><col /></colgroup>
                 <thead>
                   <tr>
                     <th><input id="itemCatalogSelectAll" type="checkbox" aria-label="Выбрать все видимые позиции" /></th>
@@ -512,10 +514,14 @@
             <div id="itemBrandsKpiGrid" class="analytics-kpi-grid section-kpi-grid" aria-label="Итоги по брендам"></div>
             <div class="item-brands-toolbar">
               <input id="itemBrandsSearchQ" class="table-search-input" type="search" placeholder="Поиск по бренду или позиции" />
-              <button id="refreshItemBrandsBtn" class="btn btn-secondary btn-xs" type="button">Обновить</button>
+              <div class="toolbar section-action-toolbar search-toolbar">
+                <button id="refreshItemBrandsBtn" class="btn btn-secondary btn-xs" type="button">Обновить</button>
+                <button id="resetItemBrandWidthsBtn" class="btn btn-secondary btn-xs" type="button" title="Вернуть исходные размеры колонок">Сбросить ширину</button>
+              </div>
             </div>
             <div class="table-wrap">
               <table class="table table-hover mobile-card-table item-brands-table">
+                <colgroup><col /><col /><col /><col /><col /><col /></colgroup>
                 <thead>
                   <tr>
                     <th>Бренд</th>

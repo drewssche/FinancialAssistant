@@ -1,9 +1,10 @@
 (() => {
   const bindings = new WeakMap();
 
-  function bind(table, { defaults, minimums, storageKey, resetButton } = {}) {
+  function bind(table, { defaults, minimums, storageKey, resetButton, firstResizableColumn = 1 } = {}) {
     if (!table) return null;
     if (bindings.has(table)) return bindings.get(table);
+    table.classList.add("catalog-resizable-table");
     const columns = Array.from(table.querySelectorAll("colgroup > col"));
     const headers = Array.from(table.querySelectorAll("thead th"));
     let widths = [...defaults];
@@ -72,17 +73,18 @@
       draw();
     }
 
-    // The checkbox column stays fixed; each grip shares space with its neighbour.
+    // Skip a leading checkbox when present; each grip shares space with its neighbour.
     // Total width stays 100%, so dragging never pushes actions off the screen.
-    headers.slice(1, -1).forEach((header, offset) => {
-      const index = offset + 1;
-      header.title = header.textContent.trim();
+    headers.slice(firstResizableColumn, -1).forEach((header, offset) => {
+      const index = offset + firstResizableColumn;
+      const label = header.querySelector(".table-sort-button > span:first-child")?.textContent.trim() || header.textContent.trim();
+      header.title = label;
       const handle = document.createElement("span");
       handle.className = "catalog-column-resizer";
       handle.tabIndex = 0;
       handle.setAttribute("role", "separator");
       handle.setAttribute("aria-orientation", "vertical");
-      handle.setAttribute("aria-label", `Ширина колонки «${header.textContent.trim()}»`);
+      handle.setAttribute("aria-label", `Ширина колонки «${label}»`);
       handle.title = "Перетащите для изменения ширины. Двойной клик — сброс. С клавиатуры: ← / →";
       header.append(handle);
       handles.push({ handle, index });

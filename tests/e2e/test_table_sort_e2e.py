@@ -1,3 +1,4 @@
+import json
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -136,15 +137,18 @@ def test_grouped_catalog_and_categories_sort_inside_their_groups(request):
     table.locator('th[data-sort-key="price"] button').click()
     expect(rows.first).to_have_attribute("data-item-template-open-id", "901")
     expect(rows.nth(1)).to_have_attribute("data-item-template-open-id", "902")
+    groups = [{"id": 991, "name": "Продукты", "kind": "expense"}]
+    categories = [
+        {"id": 992, "name": "Яблоки", "kind": "expense", "group_id": 991, "group_name": "Продукты"},
+        {"id": 993, "name": "Арбузы", "kind": "expense", "group_id": 991, "group_name": "Продукты"},
+    ]
+    page.route("**/api/v1/categories/groups", lambda route: route.fulfill(
+        status=200, content_type="application/json", body=json.dumps(groups)))
+    page.route("**/api/v1/categories", lambda route: route.fulfill(
+        status=200, content_type="application/json", body=json.dumps(categories)))
+    page.evaluate("window.App.core.invalidateUiRequestCache('categories')")
     page.evaluate("window.App.getRuntimeModule('navigation').switchSection('categories')")
-    page.evaluate("""() => {
-      window.App.state.categoryGroups = [{id: 991, name: 'Продукты', kind: 'expense'}];
-      window.App.state.categories = [
-        {id: 992, name: 'Яблоки', kind: 'expense', group_id: 991, group_name: 'Продукты'},
-        {id: 993, name: 'Арбузы', kind: 'expense', group_id: 991, group_name: 'Продукты'},
-      ];
-      window.App.categoryTableUi.renderCategories();
-    }""")
+    expect(page.locator('#categoriesBody [data-category-id="993"]')).to_be_visible()
     table = page.locator("#categoriesBody").locator("xpath=ancestor::table")
     table.locator('th[data-sort-key="name"] button').click()
     rows = table.locator('tr[data-item-type="category"]')

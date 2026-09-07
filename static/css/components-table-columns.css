@@ -1,0 +1,30 @@
+/* One compact, width-constrained table layout for all three catalog views. */
+@media (min-width: 641px) {
+  .table.catalog-resizable-table { width: 100%; min-width: 0; table-layout: fixed; }
+  .table.catalog-resizable-table th,
+  .table.catalog-resizable-table td { min-width: 0; overflow-wrap: anywhere; font-size: 13px; padding: 10px 6px; }
+  .table.catalog-resizable-table th { position: relative; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 12px; }
+  .table.catalog-resizable-table.item-catalog-table th:first-child,
+  .table.catalog-resizable-table .item-catalog-select-cell { padding-left: 0; padding-right: 0; text-align: center; }
+  .table.catalog-resizable-table input[type="checkbox"] { width: 16px; height: 16px; min-height: 16px; padding: 0; margin: 0; vertical-align: middle; }
+  /* Tree connectors are decoration, not a click target over the checkbox. */
+  .table.catalog-resizable-table .item-catalog-select-cell::before,
+  .table.catalog-resizable-table .item-catalog-select-cell::after { pointer-events: none; left: 0; }
+  .table.catalog-resizable-table .item-catalog-select-cell::after { width: 4px; }
+  .catalog-resizable-table .item-brand-name-button,
+  .catalog-resizable-table .catalog-item-identity { min-width: 0; max-width: 100%; }
+  .catalog-resizable-table .catalog-item-identity-main,
+  .catalog-resizable-table .item-brand-chip-name,
+  .catalog-resizable-table .category-chip > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .catalog-resizable-table .item-catalog-source-context-cell .hierarchy-child-label { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .catalog-resizable-table .table-kebab-cell { width: auto; }
+  .catalog-resizable-table td[data-label="Последняя покупка"],
+  .catalog-resizable-table td[data-label="Цена"],
+  .catalog-resizable-table td[data-label="Потрачено"] { font-variant-numeric: tabular-nums; }
+}
+@media (max-width: 640px) {
+  .catalog-resizable-table colgroup,
+  #resetItemCatalogWidthsBtn,
+  #resetItemBrandWidthsBtn { display: none; }
+  .item-brands-toolbar { flex-wrap: wrap; }
+}

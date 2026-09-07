@@ -11,6 +11,7 @@
   let itemCatalogRequestSeq = 0;
   let itemCatalogBaseItems = [];
   let itemCatalogBaseTotal = 0;
+  let itemCatalogBaseFresh = false;
   let itemSourcesRequestController = null;
   const ITEM_CATALOG_CACHE_TTL_MS = 20000;
   const ITEM_CATALOG_NO_SHOP_KEY = "__no_shop__";
@@ -206,6 +207,7 @@
       buildItemCatalogGroups,
       syncItemCatalogControls: itemCatalogSectionCoordinator?.syncItemCatalogControls,
     });
+    window.App.getRuntimeModule?.("item-brands")?.renderItemBrands?.();
   }
 
   function filterItemCatalogLocally(items, queryRaw) {
@@ -296,6 +298,14 @@
   }
 
   function invalidateItemCatalogDependentCaches() {
+    itemCatalogRequestController?.abort();
+    itemCatalogRequestController = null;
+    itemCatalogRequestSeq += 1;
+    // Keep rows on screen for local upserts, but never use this snapshot as a
+    // fresh search result until it has been reloaded after the mutation.
+    itemCatalogBaseFresh = false;
+    window.App.getRuntimeModule?.("item-brands")?.invalidate?.();
+    window.App.getRuntimeModule?.("catalog-products")?.invalidateLocal?.();
     for (const prefix of [
       "item-catalog",
       "catalog-products",
@@ -351,7 +361,7 @@
       await window.App.getRuntimeModule?.("category-actions")?.loadCategories?.();
     }
     const query = String(el.itemCatalogSearchQ?.value || "").trim();
-    if (query && !force && itemCatalogBaseTotal > 0 && itemCatalogBaseItems.length >= itemCatalogBaseTotal) {
+    if (query && !force && itemCatalogBaseFresh && itemCatalogBaseTotal > 0 && itemCatalogBaseItems.length >= itemCatalogBaseTotal) {
       state.itemCatalogItems = filterItemCatalogLocally(itemCatalogBaseItems, query);
       renderItemCatalog(state.itemCatalogItems);
       return;
@@ -360,19 +370,24 @@
       page: "1",
       page_size: "100",
     });
-    if (query) {
+    // Mutations must refresh the full snapshot used by brand KPIs/search even
+    // when the source tab has an active search. Keep that search in the UI.
+    const fetchAll = force || !query || !itemCatalogBaseFresh;
+    if (query && !fetchAll) {
       params.set("q", query);
     }
     const cacheKey = `item-catalog:${params.toString()}`;
     if (!force) {
       const cached = core.getUiRequestCache(cacheKey, ITEM_CATALOG_CACHE_TTL_MS);
       if (cached?.items) {
-        state.itemCatalogItems = cached.items.slice();
-        if (!query) {
-          itemCatalogBaseItems = state.itemCatalogItems.slice();
+        const items = cached.items.slice();
+        if (fetchAll) {
+          itemCatalogBaseItems = items.slice();
           state.itemCatalogAllItems = itemCatalogBaseItems.slice();
-          itemCatalogBaseTotal = Number(cached.total || state.itemCatalogItems.length || 0);
+          itemCatalogBaseTotal = Number(cached.total || items.length || 0);
+          itemCatalogBaseFresh = true;
         }
+        state.itemCatalogItems = fetchAll ? filterItemCatalogLocally(items, query) : items;
         renderItemCatalog(state.itemCatalogItems);
         return;
       }
@@ -388,12 +403,14 @@
       if (requestSeq !== itemCatalogRequestSeq) {
         return;
       }
-      state.itemCatalogItems = Array.isArray(payload.items) ? payload.items.slice() : [];
-      if (!query) {
-        itemCatalogBaseItems = state.itemCatalogItems.slice();
+      const items = Array.isArray(payload.items) ? payload.items.slice() : [];
+      if (fetchAll) {
+        itemCatalogBaseItems = items.slice();
         state.itemCatalogAllItems = itemCatalogBaseItems.slice();
-        itemCatalogBaseTotal = Number(payload.total || state.itemCatalogItems.length || 0);
+        itemCatalogBaseTotal = Number(payload.total || items.length || 0);
+        itemCatalogBaseFresh = true;
       }
+      state.itemCatalogItems = fetchAll ? filterItemCatalogLocally(items, query) : items;
       core.setUiRequestCache(cacheKey, payload);
       renderItemCatalog(state.itemCatalogItems);
     } catch (err) {
@@ -443,6 +460,7 @@
     itemSourcesRequestController?.abort();
     itemSourcesRequestController = null;
     itemCatalogRequestSeq = 0;
+    itemCatalogBaseFresh = false;
     itemCatalogBaseItems = [];
     itemCatalogBaseTotal = 0;
     state.itemCatalogItems = [];
@@ -475,7 +493,7 @@
       button.classList.toggle("active", button.dataset.itemCatalogView === activeView);
     });
     if (activeView === "brands") {
-      window.App.getRuntimeModule?.("item-brands")?.ensureItemBrandsLoaded?.({ force: options.force === true })
+      window.App.getRuntimeModule?.("item-brands")?.loadItemBrands?.({ force: true })
         .catch((err) => core.setStatus(`Не удалось загрузить бренды: ${String(err)}`));
     } else if (activeView === "products") {
       window.App.getRuntimeModule?.("catalog-products")?.load?.({ force: options.force === true })

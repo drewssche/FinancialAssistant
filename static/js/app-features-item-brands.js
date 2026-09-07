@@ -5,6 +5,7 @@
   const BRANDS_CACHE_TTL_MS = 20000;
 
   let requestController = null;
+  let loadPromise = null;
   let activeDetailBrand = null;
   let activeDetailItems = [];
   let brandSearchTimer = null;
@@ -197,6 +198,13 @@
     if (!el.itemBrandsBody) {
       return;
     }
+    window.App.getRuntimeModule?.("table-column-widths")?.bind(el.itemBrandsBody.closest("table"), {
+      defaults: [29, 12, 12, 17, 24, 6],
+      minimums: [110, 65, 65, 85, 105, 42],
+      firstResizableColumn: 0,
+      storageKey: "catalog-brand-column-widths-v1",
+      resetButton: document.getElementById("resetItemBrandWidthsBtn"),
+    })?.apply();
     const sorting = window.App.getRuntimeModule("table-sort");
     const columns = [
       { key: "name" }, { key: "positions_count", type: "number" },
@@ -225,7 +233,27 @@
     (menu.__appPopoverOwners || []).forEach((owner) => owner?.blur?.());
   }
 
-  async function loadItemBrands(options = {}) {
+  function invalidate() {
+    requestController?.abort();
+    requestController = null;
+    loadPromise = null;
+    state.itemBrandsLoaded = false;
+    core.invalidateUiRequestCache?.("item-brands");
+    el.itemBrandsView?.classList.remove("is-loading");
+  }
+
+  function loadItemBrands(options = {}) {
+    // Products and source offers refresh together after a mutation. Share the
+    // same brand request instead of aborting each other's refresh.
+    if (!options.force && loadPromise) return loadPromise;
+    const promise = fetchItemBrands(options);
+    loadPromise = promise;
+    const clear = () => { if (loadPromise === promise) loadPromise = null; };
+    promise.then(clear, clear);
+    return promise;
+  }
+
+  async function fetchItemBrands(options = {}) {
     const force = options.force === true;
     const cacheKey = "item-brands:active";
     if (!force) {
@@ -261,8 +289,8 @@
     } finally {
       if (requestController === controller) {
         requestController = null;
+        el.itemBrandsView?.classList.remove("is-loading");
       }
-      el.itemBrandsView?.classList.remove("is-loading");
     }
   }
 
@@ -740,8 +768,7 @@
   }
 
   function cleanupRuntime() {
-    requestController?.abort();
-    requestController = null;
+    invalidate();
     clearTimeout(brandSearchTimer);
     brandSearchTimer = null;
     closeItemBrandModal();
@@ -751,6 +778,7 @@
   window.App.registerRuntimeModule?.("item-brands", {
     bind,
     loadItemBrands,
+    invalidate,
     ensureItemBrandsLoaded,
     renderItemBrands,
     renderBrandChip,

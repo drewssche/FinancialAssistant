@@ -309,7 +309,7 @@
       state.itemSourcesLoaded = false;
       await loadItemSources?.({ force: true }).catch(() => []);
       applySavedItemCatalogItem?.(savedItem);
-      window.App.getRuntimeModule?.("catalog-products")?.invalidate?.();
+      window.App.getRuntimeModule?.("catalog-products")?.invalidateLocal?.();
       applySavedReceiptTemplateHint(savedItem);
       if (state.itemCatalogView === "products") {
         await window.App.getRuntimeModule?.("catalog-products")?.load?.({ force: true }).catch(() => []);

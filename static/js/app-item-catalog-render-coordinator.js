@@ -133,6 +133,12 @@
     if (!el.itemCatalogBody) {
       return;
     }
+    window.App.getRuntimeModule?.("table-column-widths")?.bind(el.itemCatalogBody.closest("table"), {
+      defaults: [3, 16, 13, 29, 20, 13, 6],
+      minimums: [26, 80, 80, 150, 100, 75, 42],
+      storageKey: "catalog-source-column-widths-v1",
+      resetButton: document.getElementById("resetItemCatalogWidthsBtn"),
+    })?.apply();
     const allRows = Array.isArray(items) ? items : [];
     const query = String(el.itemCatalogSearchQ?.value || "").trim();
     const queryActive = Boolean(query);
