@@ -299,7 +299,8 @@ def test_batch_item_template_modal_imports_multiple_rows(page):
     page.add_init_script("""window.localStorage.setItem("access_token", "test-token");""")
 
     page.goto("http://127.0.0.1:8001/", wait_until="networkidle")
-    page.get_by_role("button", name="Каталог позиций").click()
+    page.locator('button[data-section="item_catalog"]').click()
+    page.locator('[data-item-catalog-view="sources"]').click()
     page.get_by_role("button", name="+ Массовое добавление").click()
     page.locator("#batchItemTemplateInput").fill(
         "Евроопт;Сигареты Rothmans;9,40\n"
@@ -454,7 +455,8 @@ def test_mobile_batch_item_template_modal_preview_stays_above_sticky_cta(page):
 
     page.goto("http://127.0.0.1:8001/", wait_until="networkidle")
     page.click("#mobileNavToggleBtn")
-    page.get_by_role("button", name="Каталог позиций").click()
+    page.locator('button[data-section="item_catalog"]').click()
+    page.locator('[data-item-catalog-view="sources"]').click()
     page.get_by_role("button", name="+ Массовое добавление").click()
     page.locator("#batchItemTemplateInput").fill(
         "Евроопт;Сигареты Rothmans;9,40\n"
@@ -712,7 +714,8 @@ def test_item_source_context_create_prefills_source_from_hover_action(page, stat
     page.set_viewport_size({"width": 1280, "height": 850})
 
     page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")
-    page.get_by_role("button", name="Каталог позиций").click()
+    page.locator('button[data-section="item_catalog"]').click()
+    page.locator('[data-item-catalog-view="sources"]').click()
     page.wait_for_selector(".item-catalog-source-wrap", state="visible")
     page.wait_for_selector("tr.item-catalog-item-row", state="visible")
     page.wait_for_selector("button[data-create-item-template-source-name='Евроопт']", state="attached")

@@ -12,6 +12,7 @@ from app.repositories.work_repo import WorkRepository
 from app.services.activity_service import ActivityService
 from app.services.fx_rate_policy_service import FxRatePolicyService
 from app.services.plan_reminder_service import PlanReminderService
+from app.services.work_earnings_service import WorkEarningsService
 from app.services.work_calendar import (
     baseline_day,
     is_shortened_workday,
@@ -743,6 +744,11 @@ class WorkService:
         known_starts = [item.effective_from for item in contracts]
         if profile_data.get("employment_start_date"):
             known_starts.append(profile_data["employment_start_date"])
+        earnings_service = WorkEarningsService(self.db, user_id=user_id)
+        if period == "all_time":
+            first_payment = earnings_service.first_payment_date(today=current_day)
+            if first_payment:
+                known_starts.append(first_payment)
         range_from, range_to = self._statistics_bounds(
             period=period,
             anchor=anchor or current_day,
@@ -772,6 +778,9 @@ class WorkService:
         completion = Decimal("0.00")
         if planned_hours > 0:
             completion = min(Decimal("100.00"), (actual_hours / planned_hours * Decimal("100")).quantize(Decimal("0.01")))
+        earnings, monthly_earnings = earnings_service.summarize(
+            date_from=range_from, date_to=range_to, today=current_day,
+        )
         return {
             "period": period,
             "date_from": range_from,
@@ -787,7 +796,11 @@ class WorkService:
                 (max(Decimal("0.00"), item["actual_hours"] - item["planned_hours"]) for item in days),
                 Decimal("0.00"),
             ),
-            "months": self._statistics_months(days),
+            "earnings": earnings,
+            "months": [
+                {**item, "earnings": monthly_earnings.get(item["month"], [])}
+                for item in self._statistics_months(days)
+            ],
         }
 
     def list_payment_history(

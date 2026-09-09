@@ -79,6 +79,7 @@ jobs:
           .venv/bin/playwright install --with-deps chromium
       - name: Run deterministic session, modal, currency analytics, and digest smoke tests
         run: |
+          .venv/bin/pytest tests/e2e/test_work_cycle_kpis_e2e.py -m e2e
           .venv/bin/pytest \
             tests/e2e/test_session_reliability_e2e.py \
             tests/e2e/test_analytics_mobile_e2e.py::test_currency_analytics_all_mode_renders_multi_currency_chart_and_backfill \

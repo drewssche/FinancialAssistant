@@ -4,6 +4,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WORK_JS = REPO_ROOT / "static" / "js" / "app-features-work.js"
 WORK_TEMPLATE_JS = REPO_ROOT / "static" / "js" / "templates" / "shell-sections-secondary.js"
+SUMMARY_JS = REPO_ROOT / "static" / "js" / "app-work-summary-ui.js"
 ACTIVITY_JS = REPO_ROOT / "static" / "js" / "app-activity.js"
 
 
@@ -93,7 +94,7 @@ def test_role_cards_use_salary_cycle_and_keep_operation_and_plan_actions():
     assert "snapshot?.payments" not in render
     assert 'componentsByRole.get("advance")' in render
     assert 'componentsByRole.get("salary")' in render
-    component = source.split("function renderSalaryCycleComponent(", 1)[1].split("function renderSalaryCycleCard", 1)[0]
+    component = SUMMARY_JS.read_text(encoding="utf-8").split("function renderSalaryCycleComponent(", 1)[1].split("function renderSalaryCycleCard", 1)[0]
     assert 'data-work-operation-id=' in component
     assert 'data-work-open-plan-picker=' in component
     assert 'paymentSourceLabel(row.source)' in component
@@ -108,15 +109,16 @@ def test_money_kpis_and_rates_use_only_salary_cycle():
     assert "monthSnapshotPaymentOperations" not in source
     assert "monthVisibleForecasts" not in source
     assert "Получено за месяц" not in source
+    presentation = SUMMARY_JS.read_text(encoding="utf-8")
     for field in ["actual_amount", "forecast_amount", "expected_amount"]:
-        assert f'cycle.totals, "{field}"' in source
-    assert "Получено за период" in source
-    assert "Итого за период" in source
-    assert "Недостаточно данных" in source
-    assert "Неполный итог" in source
-    assert "cycle.earnings_estimate" in source
-    assert "без разовых доплат" in source
-    assert "snapshot?.summary" not in source.split("function renderEarningsEstimate", 1)[1].split("function renderMoneySummary", 1)[0]
+        assert f'cycle.totals, "{field}"' in presentation
+    assert "Получено за период" in presentation
+    assert "Итого с прогнозом" in presentation
+    assert "Недостаточно данных" in presentation
+    assert "Неполный итог" in presentation
+    assert "cycle?.earnings_estimate" in presentation
+    assert "без разовых доплат" in presentation
+    assert "snapshot?.summary" not in presentation.split("function renderEarningsRate", 1)[1]
     live_update = source.split("function updateLiveWorkday", 1)[1].split("function startLiveTimer", 1)[0]
     assert "renderMoneySummary();" not in live_update
     month_load = source.split("async function performWorkSectionLoad", 1)[1].split("async function drainWorkSectionLoads", 1)[0]
@@ -125,7 +127,7 @@ def test_money_kpis_and_rates_use_only_salary_cycle():
 
 def test_time_summary_separates_days_and_hours_without_extra_kpis():
     source = WORK_JS.read_text(encoding="utf-8")
-    summary = source.split("function renderSummary()", 1)[1].split("function groupedMoney", 1)[0]
+    summary = source.split("function renderSummary()", 1)[1].split("function renderMoneySummary", 1)[0]
     assert "Отработано часов" in summary
     assert "Отработано дней" in summary
     assert "summary.completed_days" in summary

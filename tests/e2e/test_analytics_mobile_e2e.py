@@ -552,6 +552,9 @@ def page_with_analytics_api_mock(page):
                 preferences["data"] = payload.get("data", preferences["data"])
                 return json_response(route, preferences)
 
+        if path == "/api/v1/operations/catalog-products" and method == "GET":
+            return json_response(route, {"items": [], "total": 0, "page": 1, "page_size": 20})
+
         if path == "/api/v1/categories/groups" and method == "GET":
             return json_response(route, [])
 

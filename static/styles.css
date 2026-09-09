@@ -36,7 +36,21 @@
 .work-period-month-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .work-period-month-options .settings-picker-option, .work-period-year-options .settings-picker-option { min-width: 0; grid-template-columns: 1fr; justify-content: center; }
 .work-time-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.work-money-summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 12px 0; }
+.work-time-kpi { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: start; gap: 14px; }
+.work-time-kpi-main, .work-time-kpi-rate { display: grid; gap: 6px; min-width: 0; }
+.work-time-kpi-main > strong { font-size: 20px; }
+.work-time-kpi-rate { border-left: 1px solid var(--border); padding-left: 14px; }
+.work-time-kpi-rate > strong { color: #8ce0c8; font-size: 18px; }
+.work-time-kpi .muted-small { overflow-wrap: anywhere; }
+@media (max-width: 400px) {
+  .work-time-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .work-time-kpi-rate { padding-left: 10px; }
+  .work-time-kpi-main > strong, .work-time-kpi-rate > strong { font-size: 16px; }
+  .work-month-control { gap: 6px; }
+  .work-month-control .btn-xs { min-width: 76px; padding-inline: 8px; }
+  .work-month-control .analytics-grid-picker-trigger { font-size: 12px; padding-inline: 8px; }
+}
+.work-money-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 10px; margin: 12px 0 0; }
 .work-money-kpi-card { min-height: 78px; padding: 12px 14px; gap: 5px; }
 .work-money-kpi-values { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
 .work-money-kpi-values strong { font-size: 18px; white-space: nowrap; }
@@ -51,7 +65,7 @@
 .work-salary-cycle-state.is-actual { border-color: rgba(85, 198, 169, .32); background: rgba(85, 198, 169, .12); color: #8ce0c8; }
 .work-salary-cycle-state.is-forecast { border-color: rgba(77, 141, 255, .32); background: rgba(77, 141, 255, .12); color: #9ebdff; }
 .work-salary-cycle-state.is-missing { border-color: rgba(111, 132, 169, .24); background: rgba(111, 132, 169, .1); color: var(--muted); }
-.work-salary-cycle-components { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.work-salary-cycle-components { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 8px; }
 .work-salary-cycle-component { min-width: 0; display: grid; align-content: start; gap: 7px; padding: 9px 10px; border: 1px solid rgba(54, 74, 109, .62); border-radius: 10px; background: rgba(18, 27, 43, .56); }
 .work-salary-cycle-component-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 8px; }
 .work-salary-cycle-component-head > strong { min-width: 0; font-size: 12px; }
@@ -59,10 +73,6 @@
 .work-salary-cycle-component-values { display: flex; flex-wrap: wrap; gap: 5px; }
 .work-salary-cycle-operation-links { display: flex; flex-wrap: wrap; gap: 4px; font-size: 11px; }
 .work-salary-cycle-component .work-payment-plan-link { justify-self: start; font-size: 11px; }
-.work-earnings-estimate { display: grid; gap: 7px; margin-bottom: 4px; }
-.work-earnings-values { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.work-earnings-values > div { display: grid; gap: 3px; min-width: 0; }
-.work-earnings-values strong { font-size: 16px; color: var(--text); }
 .work-payment-plan-link { padding: 0; border: 0; background: transparent; color: #8fb4ff; font: inherit; text-align: right; cursor: pointer; }
 .work-payment-plan-link:hover { color: #c6d7ff; text-decoration: underline; }
 .work-payment-actual-link { padding: 4px 8px; border: 1px solid rgba(85, 198, 169, .3); border-radius: 999px; background: rgba(85, 198, 169, .1); color: #8ce0c8; font: inherit; text-align: right; cursor: pointer; }
@@ -70,6 +80,7 @@
 .work-payment-context-selected { box-shadow: 0 0 0 2px rgba(77, 141, 255, .42); }
 .work-view-tabs { margin-bottom: 18px; }
 .work-statistics-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 14px; }
+.work-statistics-toolbar .work-month-control strong { min-width: 0; flex: 1; }
 .work-statistics-custom { display: grid; grid-template-columns: minmax(160px, 1fr) minmax(160px, 1fr) auto; align-items: end; gap: 12px; margin-bottom: 16px; }
 .work-statistics-progress-card { padding: 16px; margin: 14px 0 20px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); }
 .work-statistics-progress { height: 10px; margin-top: 12px; overflow: hidden; border-radius: 999px; background: rgba(96, 118, 158, .2); }
@@ -81,6 +92,9 @@
 .work-statistics-month-bars i, .work-statistics-month-bars b { position: absolute; inset: 0 auto 0 0; display: block; border-radius: inherit; }
 .work-statistics-month-bars i { background: rgba(77, 141, 255, .2); }.work-statistics-month-bars b { background: linear-gradient(90deg, #4d8dff, #55c6a9); }
 .work-statistics-month-values { text-align: right; }
+.work-statistics-month-earnings { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 10px; color: #8ce0c8; font-size: 13px; }
+.work-statistics-month-earnings > strong { white-space: nowrap; }
+#workStatisticsView[aria-busy="true"] .work-statistics-progress-card { visibility: hidden; }
 .work-calendar-weekdays, .work-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
 .work-calendar-weekdays { margin-bottom: 8px; color: var(--muted); font-size: 12px; text-align: center; }
 .work-day-cell { position: relative; min-height: 132px; padding: 10px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); color: var(--text); text-align: left; cursor: pointer; }
@@ -201,6 +215,7 @@
   .work-statistics-custom { grid-template-columns: 1fr; }
   .work-statistics-month-row { grid-template-columns: 1fr; gap: 8px; }
   .work-statistics-month-values { grid-template-columns: auto auto; justify-content: space-between; text-align: left; }
+  .work-statistics-month-earnings { grid-column: 1 / -1; justify-content: flex-start; }
   .work-companies-grid { grid-template-columns: 1fr; }
   .work-company-detail-head, .work-company-period { flex-direction: column; }
   .work-payment-history-head { align-items: stretch; flex-direction: column; }

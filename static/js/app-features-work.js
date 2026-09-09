@@ -30,6 +30,13 @@
   let bound = false;
 
   const monthFormatter = new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric" });
+  const summaryUi = window.App.getRuntimeModule("work-summary-ui").createWorkSummaryUi({
+    getSnapshot: () => snapshot, escape, formatMoney, formatHours, formatDate,
+    paymentOperationId, paymentOperationDate, paymentOperationAmount, paymentOperationCurrency,
+    paymentOperationBaseAmount, paymentOperationBaseCurrency, paymentSourceLabel,
+  });
+  let statisticsRequestId = 0;
+  let statisticsController = null;
   const dayFormatter = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric", weekday: "long" });
   const PAID_ABSENCE_STATUSES = new Set(["vacation", "sick_paid", "company_day_off"]);
 
@@ -220,193 +227,17 @@
       ["Отработано часов", `${formatHours(summary.actual_hours)} из ${formatHours(summary.planned_hours)} ч`, liveDay ? "Включая часы текущей смены" : "Факт / план выбранного месяца"],
       ["Отработано дней", `${summary.completed_days || 0} из ${summary.planned_days || 0}`, liveDay ? "Завершённые дни · сегодня в процессе" : "Завершённые дни / план выбранного месяца"],
     ];
-    nodes.workSummaryGrid.innerHTML = cards.map(([label, value, meta]) => `
-      <article class="analytics-kpi-card analytics-kpi-neutral">
-        <div class="muted-small">${escape(label)}</div><strong>${escape(value)}</strong><div class="muted-small">${escape(meta)}</div>
+    nodes.workSummaryGrid.innerHTML = cards.map(([label, value, meta], index) => `
+      <article class="analytics-kpi-card analytics-kpi-neutral work-time-kpi">
+        <div class="work-time-kpi-main"><div class="muted-small">${escape(label)}</div><strong>${escape(value)}</strong><div class="muted-small">${escape(meta)}</div></div>
+        ${summaryUi.renderEarningsRate(index === 0 ? "hourly_amount" : "daily_amount", index === 0 ? "За рабочий час" : "За рабочий день")}
       </article>`).join("");
-  }
-
-
-  function groupedMoney(rows, amountOf, currencyOf) {
-    const totals = new Map();
-    rows.forEach((row) => {
-      const rawAmount = amountOf(row);
-      if (rawAmount == null || rawAmount === "") return;
-      const amount = Number(rawAmount);
-      if (!Number.isFinite(amount)) return;
-      const currency = String(currencyOf(row) || "BYN").toUpperCase();
-      totals.set(currency, (totals.get(currency) || 0) + amount);
-    });
-    return totals;
-  }
-
-  function renderMoneyValues(group) {
-    const entries = [...group.entries()].sort(([left], [right]) => {
-      if (left === "BYN") return -1;
-      if (right === "BYN") return 1;
-      return left.localeCompare(right);
-    });
-    if (!entries.length) return '<strong class="work-money-empty">—</strong>';
-    return entries.map(([currency, amount]) => `<strong>${escape(formatMoney(amount, currency))}</strong>`).join("");
-  }
-
-  function moneyGroupFromTotals(rows, amountKey = "amount", { includeZero = true } = {}) {
-    const totals = new Map();
-    (Array.isArray(rows) ? rows : []).forEach((row) => {
-      const amount = Number(row?.[amountKey]);
-      if (!Number.isFinite(amount) || (!includeZero && Math.abs(amount) < 0.005)) return;
-      const currency = String(row?.currency || "BYN").toUpperCase();
-      totals.set(currency, (totals.get(currency) || 0) + amount);
-    });
-    return totals;
-  }
-
-  function inlineMoneyValues(group) {
-    const entries = [...group.entries()].sort(([left], [right]) => {
-      if (left === "BYN") return -1;
-      if (right === "BYN") return 1;
-      return left.localeCompare(right);
-    });
-    if (!entries.length) return "—";
-    return entries.map(([currency, amount]) => escape(formatMoney(amount, currency))).join(" · ");
-  }
-
-  function salaryCycleComponentActuals(component) {
-    const explicit = moneyGroupFromTotals(component?.actual_totals);
-    return explicit.size
-      ? explicit
-      : groupedMoney(activeSalaryCycleOperations(component), paymentOperationBaseAmount, paymentOperationBaseCurrency);
-  }
-
-  function activeSalaryCycleOperations(component) {
-    return (Array.isArray(component?.actual_operations) ? component.actual_operations : []).filter((row) => !row?.is_deleted);
-  }
-
-  function salaryCycleComponentForecast(component) {
-    const amount = component?.forecast_base_amount ?? component?.forecast_amount;
-    if (amount == null || amount === "") return new Map();
-    const hasBaseAmount = component?.forecast_base_amount != null;
-    return groupedMoney(
-      [component],
-      (row) => row.forecast_base_amount ?? row.forecast_amount,
-      (row) => hasBaseAmount
-        ? row.forecast_base_currency || row.forecast_currency || "BYN"
-        : row.forecast_currency || "BYN",
-    );
-  }
-
-  function renderSalaryCycleComponent(component) {
-    const role = String(component?.role || "extras");
-    const label = component?.label || (role === "advance" ? "Аванс" : role === "salary" ? "Основная часть" : "Доплаты");
-    const activeOperations = activeSalaryCycleOperations(component);
-    const actuals = role === "extras"
-      ? groupedMoney(activeOperations, paymentOperationBaseAmount, paymentOperationBaseCurrency)
-      : salaryCycleComponentActuals(component);
-    const forecast = role === "extras" ? new Map() : salaryCycleComponentForecast(component);
-    const date = component?.effective_date ? formatDate(component.effective_date) : "";
-    const nominalDate = component?.nominal_date ? formatDate(component.nominal_date) : "";
-    const dateLabel = date
-      ? component?.shifted && nominalDate
-        ? `${date} · перенесено с ${nominalDate}`
-        : date
-      : "";
-    const operationDates = [...new Set(activeOperations.map(paymentOperationDate).filter(Boolean))];
-    const actualDateLabel = role !== "extras" && operationDates.length === 1 && operationDates[0] !== component?.effective_date
-      ? ` · факт ${formatDate(operationDates[0])}`
-      : "";
-    const states = [];
-    if (actuals.size) {
-      const operationCount = activeOperations.length ? ` · ${escape(formatOperationCount(activeOperations.length))}` : "";
-      states.push(`<span class="work-salary-cycle-state is-actual">Получено${escape(actualDateLabel)} · ${inlineMoneyValues(actuals)}${operationCount}</span>`);
-    }
-    if (forecast.size) {
-      states.push(`<span class="work-salary-cycle-state is-forecast">Прогноз · ${inlineMoneyValues(forecast)}</span>`);
-    }
-    if (!states.length) {
-      states.push(`<span class="work-salary-cycle-state is-missing">${role === "extras" ? "Доплат нет" : "Выплата не найдена"}</span>`);
-    }
-    const operationLinks = activeOperations.map((row) => {
-      const id = paymentOperationId(row);
-      if (!(id > 0)) return "";
-      const title = `${paymentSourceLabel(row.source)}${row.note ? ` · ${row.note}` : ""} · открыть операцию`;
-      return `<button type="button" class="work-payment-actual-link" data-work-operation-id="${id}" title="${escape(title)}">${escape(formatDate(paymentOperationDate(row)))} · ${escape(formatMoney(paymentOperationAmount(row), paymentOperationCurrency(row)))}</button>`;
-    }).join("");
-    const planId = snapshot?.profile?.[role === "advance" ? "advance_plan_id" : "salary_plan_id"];
-    const planLink = role === "extras" ? "" : `<button type="button" class="work-payment-plan-link" data-work-open-plan-picker="${escape(role)}">${planId ? `План #${Number(planId)} · изменить` : "Выбрать план"}</button>`;
-    return `
-      <div class="work-salary-cycle-component work-salary-cycle-component-${escape(role)}">
-        <div class="work-salary-cycle-component-head">
-          <strong>${escape(label)}</strong>
-          ${dateLabel ? `<span>${escape(dateLabel)}</span>` : ""}
-        </div>
-        <div class="work-salary-cycle-component-values">${states.join("")}</div>
-        ${operationLinks ? `<div class="work-salary-cycle-operation-links">${operationLinks}</div>` : ""}
-        ${planLink}
-      </div>`;
-  }
-
-  function renderSalaryCycleCard() {
-    const cycle = snapshot?.salary_cycle;
-    if (!cycle || !Array.isArray(cycle.totals)) return "";
-    const actual = moneyGroupFromTotals(cycle.totals, "actual_amount");
-    const forecast = moneyGroupFromTotals(cycle.totals, "forecast_amount", { includeZero: false });
-    const expected = moneyGroupFromTotals(cycle.totals, "expected_amount");
-    const components = cycle.components || [];
-    const incomplete = ["advance", "salary"].some((role) => {
-      const component = components.find((item) => item.role === role);
-      return !component || component.status === "missing"
-        || (component.status === "forecast" && !salaryCycleComponentForecast(component).size);
-    });
-    const hasForecast = components.some((item) => item.status === "forecast");
-    const windowLabel = cycle.window_from_exclusive && cycle.window_to_inclusive
-      ? `Выплаты после ${formatDate(cycle.window_from_exclusive)} и по ${formatDate(cycle.window_to_inclusive)} включительно`
-      : "Аванс прошлого месяца и основная часть текущего";
-    if (!actual.size) actual.set("BYN", 0);
-    if (!forecast.size && !incomplete) forecast.set("BYN", 0);
-    const cards = [
-      ["Получено за период", actual, "Аванс + основная часть + доплаты", "work-money-kpi-actual"],
-      ["Ещё ожидается", forecast, incomplete ? "Не все выплаты найдены — остаток неизвестен" : hasForecast ? "По планам этого зарплатного цикла" : "Все части зарплаты получены", "work-money-kpi-forecast"],
-      ["Итого за период", expected, incomplete ? "Неполный итог · недостаточно данных" : hasForecast ? "Получено + прогноз" : "Фактические выплаты", ""],
-    ];
-    return `
-        <div class="work-salary-cycle-head">
-          <div class="work-salary-cycle-title">
-            <span class="muted-small">Зарплатный цикл</span>
-            <strong>${escape(cycle.label || "Зарплата за предыдущий месяц")}</strong>
-            <span class="muted-small">${escape(windowLabel)}</span>
-          </div>
-        </div>
-        <div class="work-money-summary-grid">${cards.map(([label, values, meta, className]) => `
-          <article class="analytics-kpi-card work-money-kpi-card ${className}">
-            <div class="muted-small">${escape(label)}</div>
-            <div class="work-money-kpi-values">${renderMoneyValues(values)}</div>
-            <div class="muted-small">${escape(meta)}</div>
-          </article>`).join("")}</div>
-        ${renderEarningsEstimate(cycle)}`;
-  }
-
-  function renderEarningsEstimate(cycle) {
-    const estimate = cycle.earnings_estimate;
-    const available = estimate && estimate.status !== "unavailable";
-    const reasons = {
-      missing_payment: "Не хватает выплаты или суммы прогноза",
-      unresolved_currency: "Нет пересчёта всей зарплаты в BYN",
-      missing_work_norm: "Не задана норма рабочих дней или часов",
-    };
-    const note = available
-      ? `${estimate.status === "forecast" ? "С учётом прогноза" : "По фактической зарплате"} · без разовых доплат · норма: ${estimate.planned_days} дн. / ${formatHours(estimate.planned_hours)} ч`
-      : reasons[estimate?.reason] || "Недостаточно данных";
-    return `<div class="work-earnings-estimate" aria-label="Ориентир дохода за день и час">
-      <div class="work-earnings-values">${[["За рабочий день", "daily_amount"], ["За рабочий час", "hourly_amount"]].map(([label, key]) => `
-        <div><span class="muted-small">${label}</span><strong>${available && estimate[key] != null ? `≈ ${escape(formatMoney(estimate[key], estimate.currency))}` : "Недостаточно данных"}</strong></div>`).join("")}</div>
-      <div class="muted-small">${escape(note)}. Ориентир за месяц зарплаты, не договорная ставка.</div>
-    </div>`;
   }
 
 
   function renderMoneySummary() {
     if (!nodes.workMoneySummaryGrid) return;
-    nodes.workMoneySummaryGrid.innerHTML = renderSalaryCycleCard();
+    nodes.workMoneySummaryGrid.innerHTML = summaryUi.renderSalaryCycleCard();
   }
 
   function renderWorkPeriodPicker() {
@@ -446,7 +277,7 @@
       componentsByRole.get("salary") || { role: "salary", label: "Основная часть" },
       { role: "extras", label: "Доплаты", actual_operations: snapshot?.salary_cycle?.extras || [] },
     ];
-    nodes.workPaymentsGrid.innerHTML = components.map(renderSalaryCycleComponent).join("");
+    nodes.workPaymentsGrid.innerHTML = components.filter((item) => item.role !== "extras" || item.actual_operations.length).map(summaryUi.renderSalaryCycleComponent).join("");
     restorePaymentOperationContext();
   }
 
@@ -922,6 +753,14 @@
     nodes.workStatisticsKpi.innerHTML = cards.map(([title, value, meta]) => `
       <article class="analytics-kpi-card analytics-kpi-neutral"><div class="muted-small">${escape(title)}</div><strong>${escape(value)}</strong><div class="muted-small">${escape(meta)}</div></article>
     `).join("");
+    const earnings = data.earnings;
+    const earningsValues = summaryUi.moneyGroupFromTotals(earnings?.totals);
+    const earned = earningsValues.size ? summaryUi.renderMoneyValues(earningsValues) : '<strong class="work-money-empty">Нет выплат</strong>';
+    nodes.workStatisticsKpi.insertAdjacentHTML("afterbegin", `
+      <article class="analytics-kpi-card work-money-kpi-card work-money-kpi-actual work-statistics-earnings">
+        <div class="muted-small">Заработано за период</div><div class="work-money-kpi-values">${earned}</div>
+        <div class="muted-small">${earnings?.operation_count ? `${escape(formatOperationCount(earnings.operation_count))} · ` : ""}По датам выплат · без прогнозов</div>
+      </article>`);
     const percent = Math.max(0, Math.min(100, Number(data.completion_percent || 0)));
     nodes.workStatisticsProgressLabel.textContent = `${formatHours(percent)}%`;
     nodes.workStatisticsProgressBar.style.width = `${percent}%`;
@@ -934,7 +773,9 @@
       return `<article class="work-statistics-month-row">
         <div><strong>${escape(monthLabel.format(new Date(year, month - 1, 1)))}</strong><span class="muted-small">${item.completed_days || 0} из ${item.planned_days || 0} дней</span></div>
         <div class="work-statistics-month-bars"><i style="width:100%"></i><b style="width:${ratio}%"></b></div>
-        <div class="work-statistics-month-values"><strong>${formatHours(actual)} ч</strong><span>из ${formatHours(planned)} ч</span></div>
+        <div class="work-statistics-month-values"><strong>${formatHours(actual)} ч</strong><span>из ${formatHours(planned)} ч</span>
+          <div class="work-statistics-month-earnings" aria-label="Заработано за месяц">${item.earnings?.length ? summaryUi.renderMoneyValues(summaryUi.moneyGroupFromTotals(item.earnings)) : "Нет выплат"}</div>
+        </div>
       </article>`;
     }).join("") || '<div class="muted-small">За выбранный период данных нет</div>';
     const movable = ["month", "year"].includes(statisticsPeriod);
@@ -944,8 +785,31 @@
   }
 
   async function loadStatistics() {
-    statistics = await core.requestJson(`/api/v1/work/statistics?${statisticsQuery()}`, authOptions());
-    renderStatistics();
+    const query = statisticsQuery();
+    const requestId = ++statisticsRequestId;
+    statisticsController?.abort();
+    const controller = new AbortController();
+    statisticsController = controller;
+    nodes.workStatisticsView.setAttribute("aria-busy", "true");
+    nodes.workStatisticsKpi.classList.add("hidden");
+    nodes.workStatisticsMonths.classList.add("hidden");
+    try {
+      const next = await core.requestJson(`/api/v1/work/statistics?${query}`, authOptions({ signal: controller.signal }));
+      if (requestId !== statisticsRequestId || query !== statisticsQuery()) return;
+      statistics = next;
+      renderStatistics();
+    } catch (error) {
+      if (controller.signal.aborted || requestId !== statisticsRequestId || query !== statisticsQuery()) return;
+      nodes.workStatisticsKpi.innerHTML = '<div class="muted-small">Не удалось загрузить статистику за выбранный период</div>';
+      nodes.workStatisticsMonths.innerHTML = "";
+      throw error;
+    } finally {
+      if (requestId === statisticsRequestId) {
+        nodes.workStatisticsView.setAttribute("aria-busy", "false");
+        nodes.workStatisticsKpi.classList.remove("hidden");
+        nodes.workStatisticsMonths.classList.remove("hidden");
+      }
+    }
   }
 
   function currentWorkLoadKey() {

@@ -1,6 +1,6 @@
 import json
 from datetime import datetime, timezone
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
@@ -49,7 +49,14 @@ def work_page(request):
         if path in {"/api/v1/work/contracts", "/api/v1/work/companies"}:
             return respond(route, [])
         if path == "/api/v1/work/statistics":
-            return respond(route, {"months": []})
+            query = parse_qs(urlparse(req.url).query)
+            period = query.get("period", ["month"])[0]
+            amount = {"month": "2854.78", "year": "32474.78", "all_time": "52474.78", "custom": "1420.00"}[period]
+            return respond(route, {
+                "date_from": "2026-01-01", "date_to": "2026-12-31", "planned_hours": "2072", "actual_hours": "1223",
+                "earnings": {"totals": [{"currency": "BYN", "amount": amount}], "operation_count": 16, "received_through": "2026-09-09"},
+                "months": [{"month": "2026-09", "planned_hours": "176", "actual_hours": "36.5", "earnings": [{"currency": "BYN", "amount": "2854.78"}]}],
+            })
         if path.startswith("/api/v1/work/payments/"):
             return respond(route, {"items": [], "total": 0})
         route.fallback()
@@ -68,7 +75,7 @@ def work_page(request):
 
 
 @pytest.mark.e2e
-@pytest.mark.parametrize("width", [390, 768, 1280, 1920])
+@pytest.mark.parametrize("width", [320, 390, 768, 1280, 1920])
 def test_work_cycle_kpis_keep_one_period_and_fit_viewport(request, width):
     page, _ = request.getfixturevalue("work_page")
     page.set_viewport_size({"width": width, "height": 1100})
@@ -77,14 +84,20 @@ def test_work_cycle_kpis_keep_one_period_and_fit_viewport(request, width):
     expect(page.locator("#workSummaryGrid article").nth(1)).to_contain_text("4 из 22")
     expect(page.locator("#workSummaryGrid")).to_contain_text("сегодня в процессе")
     kpis = page.locator("#workMoneySummaryGrid .work-money-kpi-card")
-    expect(kpis).to_have_count(3)
+    expect(kpis).to_have_count(1)
     expect(kpis.nth(0)).to_contain_text("4 274,78")
-    expect(kpis.nth(1).locator("strong")).to_contain_text("0,00")
-    expect(kpis.nth(2)).to_contain_text("4 274,78")
-    expect(page.locator(".work-earnings-values")).to_contain_text("203,56")
-    expect(page.locator(".work-earnings-values")).to_contain_text("25,45")
-    expect(page.locator(".work-earnings-estimate")).to_contain_text("21 дн. / 168 ч")
-    expect(page.locator("#workPaymentsGrid .work-salary-cycle-component")).to_have_count(3)
+    expect(page.locator("#workMoneySummaryGrid")).not_to_contain_text("Итого")
+    expect(page.locator("#workSummaryGrid")).to_contain_text("203,56")
+    expect(page.locator("#workSummaryGrid")).to_contain_text("25,45")
+    expect(page.locator("#workSummaryGrid .work-time-kpi-rate")).to_have_count(2)
+    expect(page.locator("#workSummaryGrid article").nth(0)).to_contain_text("25,45")
+    expect(page.locator("#workSummaryGrid article").nth(1)).to_contain_text("203,56")
+    expect(page.locator("#workSummaryGrid article").nth(0)).to_contain_text("август 2026")
+    assert "21 дн. / 168 ч" in page.locator(".work-time-kpi-rate").first.get_attribute("title")
+    expect(page.locator("#workMoneySummaryGrid .work-time-kpi-rate")).to_have_count(0)
+    expect(page.locator("#workPaymentsGrid .work-salary-cycle-component")).to_have_count(2)
+    assert page.locator(".work-salary-cycle-component-advance").inner_text().replace("\u00a0", " ").count("1 420,00") == 1
+    assert page.locator(".work-salary-cycle-component-advance").inner_text().count("20.08.2026") == 1
     expect(page.locator("#workPaymentsGrid")).to_contain_text("20.08.2026")
     expect(page.locator("#workPaymentsGrid")).not_to_contain_text("18.09.2026")
     expect(page.locator("#workPaymentsGrid .work-payment-card")).to_have_count(0)
@@ -128,14 +141,65 @@ def test_cycle_kpis_explain_forecast_and_unavailable_rates(request, mode):
     cycle["earnings_estimate"].update(status="forecast" if mode == "forecast" else "unavailable", reason=None if mode == "forecast" else "missing_payment" if mode == "missing" else "unresolved_currency", daily_amount="124.76" if mode == "forecast" else None, hourly_amount="15.60" if mode == "forecast" else None)
     page.evaluate("window.App.getRuntimeModule('work').loadWorkSection({refresh:true})")
     if mode == "forecast":
-        expect(page.locator(".work-earnings-estimate")).to_contain_text("С учётом прогноза")
-        expect(page.locator(".work-earnings-values")).to_contain_text("124,76")
+        expect(page.locator("#workSummaryGrid")).to_contain_text("прогноз")
+        expect(page.locator("#workSummaryGrid")).to_contain_text("124,76")
         expect(page.locator(".work-money-kpi-forecast")).to_contain_text("1 200,00")
     else:
-        expect(page.locator(".work-earnings-values")).to_contain_text("Недостаточно данных")
-        expect(page.locator(".work-earnings-values")).not_to_contain_text("203,56")
+        expect(page.locator(".work-time-kpi-rate strong").first).to_have_text("—")
+        expect(page.locator("#workSummaryGrid")).not_to_contain_text("203,56")
         if mode == "missing":
             expect(page.locator(".work-money-kpi-forecast .work-money-kpi-values")).to_have_text("—")
-            expect(page.locator("#workMoneySummaryGrid")).to_contain_text("Неполный итог")
+            expect(page.locator("#workMoneySummaryGrid")).to_contain_text("Не все выплаты найдены")
         else:
-            expect(page.locator(".work-earnings-estimate")).to_contain_text("Нет пересчёта всей зарплаты в BYN")
+            expect(page.locator("#workSummaryGrid")).to_contain_text("Нет пересчёта всей зарплаты в BYN")
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize("width", [320, 390, 1280])
+def test_work_statistics_earnings_follow_selected_period(request, width):
+    page, _ = request.getfixturevalue("work_page")
+    page.set_viewport_size({"width": width, "height": 1100})
+    page.click('[data-work-view="statistics"]')
+    earnings = page.locator(".work-statistics-earnings")
+    expect(earnings).to_contain_text("2 854,78")
+    for period, amount in [("year", "32 474,78"), ("all_time", "52 474,78"), ("month", "2 854,78")]:
+        page.click(f'[data-work-stat-period="{period}"]')
+        expect(earnings).to_contain_text(amount)
+        expect(earnings).to_contain_text("без прогнозов")
+    page.click('[data-work-stat-period="custom"]')
+    page.fill('#workStatisticsDateFrom', '2026-08-20')
+    page.fill('#workStatisticsDateTo', '2026-08-20')
+    page.locator('#workStatisticsCustomForm button[type="submit"]').click()
+    expect(earnings).to_contain_text("1 420,00")
+    expect(page.locator(".work-statistics-month-earnings")).to_contain_text("2 854,78")
+    page.click('[data-work-stat-period="year"]')
+    expect(earnings).to_contain_text("32 474,78")
+    section = page.locator('#workStatisticsView')
+    section.screenshot(path=f"/tmp/work-statistics-earnings-{width}.png")
+    assert section.evaluate("el => el.scrollWidth <= el.clientWidth + 1"), section.evaluate("el => [...el.querySelectorAll('*')].filter(n => n.getBoundingClientRect().right > el.getBoundingClientRect().right + 1).map(n => [n.className, n.getBoundingClientRect().width]).slice(0, 15)")
+
+
+@pytest.mark.e2e
+def test_work_statistics_ignore_old_response_even_if_transport_ignores_abort(request):
+    page, _ = request.getfixturevalue("work_page")
+    page.click('[data-work-view="statistics"]')
+    page.click('[data-work-stat-period="year"]')
+    expect(page.locator(".work-statistics-earnings")).to_contain_text("32 474,78")
+    page.evaluate("""() => {
+        const original = window.App.core.requestJson;
+        window.App.core.requestJson = (url, options) => {
+            if (url.includes('/work/statistics?') && url.includes('anchor=2025')) {
+                return new Promise(resolve => { window.resolveOldWorkStatistics = resolve; });
+            }
+            return original(url, options);
+        };
+    }""")
+    page.click('#workStatisticsPrevBtn')
+    expect(page.locator('#workStatisticsView')).to_have_attribute('aria-busy', 'true')
+    page.click('#workStatisticsNextBtn')
+    expect(page.locator(".work-statistics-earnings")).to_contain_text("32 474,78")
+    page.evaluate("""() => window.resolveOldWorkStatistics({
+        earnings: {totals: [{currency: 'BYN', amount: '999999'}]}, months: []
+    })""")
+    expect(page.locator(".work-statistics-earnings")).to_contain_text("32 474,78")
+    expect(page.locator("#workStatisticsPeriodLabel")).to_have_text("2026")

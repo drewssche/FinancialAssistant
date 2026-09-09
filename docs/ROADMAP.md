@@ -12,6 +12,12 @@
 - Keep Telegram-specific behavior in the client runtime; backend contracts stay shared between Web UI and Telegram.
 
 ## Current Sprint
+### Work KPI And Period Earnings 2026-09-09
+- Hourly and daily salary estimates are integrated into the corresponding hours/days KPI cards. Their salary month and fact/forecast basis remain explicit; the denominator stays the salary month's work norm, excluding one-off extras.
+- The salary cycle shows each actual payment amount once, with its operation action preserved. Empty extras and duplicate received/total/zero-remaining cards are hidden; incomplete and forecast states remain visible.
+- Work statistics now show actual earnings for month, year, all-time, and custom dates, plus monthly amounts. Earnings follow payment dates and include explicit payroll links and current/historically confirmed payroll categories, once per live income operation. Deleted operations, unrelated income, future payments, and forecasts are excluded. Currency conversion uses stored base-currency snapshots; different base currencies stay separate.
+- All-time statistics include the earliest known payroll payment. Rapid period changes cancel old requests and prevent stale responses from replacing the selected period's earnings.
+
 ### Technical Debt Audit 2026-07-16
 - [x] Complete a read-only audit of data integrity, background delivery, deployment, performance, security, observability, and test coverage. Baseline: non-E2E tests pass; the isolated Telegram login-readiness race found by the combined browser run is fixed and covered by deterministic smoke CI.
 - [x] P0: make operation rollback lossless and transactional.

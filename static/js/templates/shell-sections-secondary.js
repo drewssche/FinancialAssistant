@@ -63,7 +63,7 @@
                 <div class="row between"><span>Выполнение плана часов</span><strong id="workStatisticsProgressLabel">0%</strong></div>
                 <div class="work-statistics-progress"><i id="workStatisticsProgressBar"></i></div>
               </article>
-              <div class="panel-head"><div><h3>Динамика по месяцам</h3><p class="subtitle">План, факт и оплачиваемые часы</p></div></div>
+              <div class="panel-head"><div><h3>Динамика по месяцам</h3><p class="subtitle">Рабочие часы и фактические выплаты</p></div></div>
               <div id="workStatisticsMonths" class="work-statistics-months"></div>
             </div>
 

@@ -267,6 +267,13 @@ class WorkStatisticsMonthOut(BaseModel):
     actual_hours: Decimal
     credited_hours: Decimal
     override_days: int
+    earnings: list[WorkSalaryCycleAmountOut] = Field(default_factory=list)
+
+
+class WorkPeriodEarningsOut(BaseModel):
+    totals: list[WorkSalaryCycleAmountOut]
+    operation_count: int
+    received_through: date
 
 
 class WorkStatisticsOut(BaseModel):
@@ -286,6 +293,7 @@ class WorkStatisticsOut(BaseModel):
     overtime_hours: Decimal
     override_days: int
     months: list[WorkStatisticsMonthOut]
+    earnings: WorkPeriodEarningsOut
 
 
 class EmploymentContractIn(BaseModel):

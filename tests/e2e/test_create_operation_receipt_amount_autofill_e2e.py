@@ -163,6 +163,7 @@ def test_create_operation_allows_receipt_only_amount(static_server_url: str):
             assert created_payloads[0]["receipt_items"] == [
                 {
                     "category_id": None,
+                    "category_touched": False,
                     "shop_name": "Соседи",
                     "name": "Хлеб",
                     "quantity": "2",
@@ -304,6 +305,7 @@ def test_create_operation_receipt_discount_math_and_type_payload(static_server_u
             assert created_payloads[0]["receipt_items"] == [
                 {
                     "category_id": None,
+                    "category_touched": False,
                     "shop_name": "Соседи",
                     "name": "Кофе",
                     "quantity": "1",
@@ -435,6 +437,7 @@ def test_common_operation_amount_can_convert_to_single_discount_receipt(static_s
             assert created_payloads[0]["receipt_items"] == [
                 {
                     "category_id": None,
+                    "category_touched": False,
                     "shop_name": "Green",
                     "name": "Капучино",
                     "quantity": "1",
