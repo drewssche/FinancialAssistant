@@ -76,6 +76,7 @@
     "/static/js/app-features-plans-recurrence.js",
     "/static/js/app-features-plans-render.js",
     "/static/js/app-features-plans-dashboard.js",
+    "/static/js/app-features-plans-editor.js",
     "/static/js/app-features-plans.js",
     "/static/js/app-work-summary-ui.js",
     "/static/js/app-features-work.js",

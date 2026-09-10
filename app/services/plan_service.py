@@ -1,6 +1,7 @@
 import calendar
 from datetime import date, datetime, timezone
 from decimal import Decimal
+from types import SimpleNamespace
 
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
@@ -21,6 +22,7 @@ from app.services.bank_currency_rate_registry import BANK_RATE_PROVIDERS, displa
 from app.services.fx_rate_policy_service import FxRatePolicyService, FxRateResolution
 from app.services.operation_service import OperationService
 from app.services.plan_reminder_service import PlanReminderService
+from app.services.plan_resumption import next_resumption_date
 from app.services.work_calendar import PAYROLL_CALENDAR_OVERRIDE_STATUSES, next_linked_payment_date
 from app.services.work_service import WorkService
 
@@ -251,7 +253,9 @@ class PlanService:
         return self.get_plan(user_id=user_id, plan_id=int(item.id))
 
     def update_plan(self, *, user_id: int, plan_id: int, updates: dict) -> dict:
-        row = self.repo.get_by_id(user_id=user_id, plan_id=plan_id)
+        updates = dict(updates)
+        resume = updates.pop("resume", False)
+        row = self.repo.get_by_id_for_update(user_id=user_id, plan_id=plan_id)
         if not row:
             raise LookupError("Plan not found")
         item = row.PlanOperation
@@ -318,32 +322,7 @@ class PlanService:
                 ),
             )
         )
-        next_scheduled_date = updates.get("scheduled_date", item.scheduled_date)
-        next_recurrence_enabled = updates.get("recurrence_enabled", item.recurrence_enabled)
-        next_recurrence_frequency = updates["recurrence_frequency"] if "recurrence_frequency" in updates else item.recurrence_frequency
-        next_recurrence_interval = updates.get("recurrence_interval", item.recurrence_interval)
-        next_recurrence_weekdays = updates["recurrence_weekdays"] if "recurrence_weekdays" in updates else self._parse_weekdays(item.recurrence_weekdays)
-        next_recurrence_workdays_only = updates.get("recurrence_workdays_only", bool(item.recurrence_workdays_only))
-        next_recurrence_month_end = updates.get("recurrence_month_end", bool(item.recurrence_month_end))
-        next_recurrence_end_date = updates["recurrence_end_date"] if "recurrence_end_date" in updates else item.recurrence_end_date
-        (
-            updates["recurrence_frequency"],
-            updates["recurrence_interval"],
-            updates["recurrence_weekdays"],
-            updates["recurrence_workdays_only"],
-            updates["recurrence_month_end"],
-            updates["recurrence_end_date"],
-        ) = self._validate_recurrence(
-            recurrence_enabled=next_recurrence_enabled,
-            recurrence_frequency=next_recurrence_frequency,
-            recurrence_interval=next_recurrence_interval,
-            recurrence_weekdays=next_recurrence_weekdays,
-            recurrence_workdays_only=next_recurrence_workdays_only,
-            recurrence_month_end=next_recurrence_month_end,
-            scheduled_date=next_scheduled_date,
-            recurrence_end_date=next_recurrence_end_date,
-        )
-        updates["recurrence_enabled"] = bool(next_recurrence_enabled)
+        self._normalize_recurrence_update(item, updates, resume=resume)
         self.repo.update(item, updates)
         if normalized_items is not None:
             if normalized_items:
@@ -373,7 +352,7 @@ class PlanService:
             before=before_activity,
             after=ActivityService.snapshot(item, self.ACTIVITY_FIELDS),
             labels=self.ACTIVITY_LABELS,
-            title="План изменен",
+            title="План возобновлён" if resume else "План изменен",
             metadata={"receipt_updated": normalized_items is not None},
         )
         if activity_event is None and normalized_items is not None:
@@ -383,7 +362,7 @@ class PlanService:
                 entity_type="plan",
                 entity_id=int(item.id),
                 event_type="updated",
-                title="План изменен",
+                title="План возобновлён" if resume else "План изменен",
                 metadata={"receipt_updated": True},
             )
         log_background_job_event(
@@ -408,6 +387,72 @@ class PlanService:
             recurrence_enabled=bool(item.recurrence_enabled),
         )
         return self.get_plan(user_id=user_id, plan_id=plan_id)
+
+    def preview_resumption(self, *, user_id: int, plan_id: int, updates: dict) -> dict:
+        row = self.repo.get_by_id(user_id=user_id, plan_id=plan_id)
+        if not row:
+            raise LookupError("Plan not found")
+        updates = {**updates, "recurrence_enabled": True}
+        self._normalize_recurrence_update(row.PlanOperation, updates, resume=True)
+        return {"scheduled_date": updates["scheduled_date"]}
+
+    def _normalize_recurrence_update(self, item, updates: dict, *, resume: bool = False) -> None:
+        next_scheduled_date = updates.get("scheduled_date") or item.scheduled_date
+        next_recurrence_enabled = updates.get("recurrence_enabled", item.recurrence_enabled)
+        next_recurrence_frequency = updates["recurrence_frequency"] if "recurrence_frequency" in updates else item.recurrence_frequency
+        next_recurrence_interval = updates.get("recurrence_interval", item.recurrence_interval)
+        next_recurrence_weekdays = updates["recurrence_weekdays"] if "recurrence_weekdays" in updates else self._parse_weekdays(item.recurrence_weekdays)
+        next_recurrence_workdays_only = updates.get("recurrence_workdays_only", bool(item.recurrence_workdays_only))
+        next_recurrence_month_end = updates.get("recurrence_month_end", bool(item.recurrence_month_end))
+        next_recurrence_end_date = updates["recurrence_end_date"] if "recurrence_end_date" in updates else item.recurrence_end_date
+        (
+            updates["recurrence_frequency"],
+            updates["recurrence_interval"],
+            updates["recurrence_weekdays"],
+            updates["recurrence_workdays_only"],
+            updates["recurrence_month_end"],
+            updates["recurrence_end_date"],
+        ) = self._validate_recurrence(
+            recurrence_enabled=next_recurrence_enabled,
+            recurrence_frequency=next_recurrence_frequency,
+            recurrence_interval=next_recurrence_interval,
+            recurrence_weekdays=next_recurrence_weekdays,
+            recurrence_workdays_only=next_recurrence_workdays_only,
+            recurrence_month_end=next_recurrence_month_end,
+            scheduled_date=next_scheduled_date,
+            recurrence_end_date=None if resume else next_recurrence_end_date,
+        )
+        updates["recurrence_enabled"] = bool(next_recurrence_enabled)
+        if resume:
+            if not next_recurrence_enabled:
+                raise ValueError("Для возобновления включите повторение плана.")
+
+            linked_payroll = self.db.scalar(
+                select(WorkProfile.id).where(
+                    WorkProfile.user_id == item.user_id,
+                    or_(WorkProfile.advance_plan_id == item.id, WorkProfile.salary_plan_id == item.id),
+                )
+            ) if not updates.get("scheduled_date") else None
+
+            def advance(scheduled_date):
+                payroll_item = SimpleNamespace(id=item.id, user_id=item.user_id, scheduled_date=scheduled_date)
+                payroll_date = self._advance_linked_payroll_date(payroll_item) if linked_payroll else None
+                return payroll_date or self._advance_recurrence(
+                    scheduled_date=scheduled_date,
+                    frequency=updates["recurrence_frequency"],
+                    interval=updates["recurrence_interval"],
+                    weekdays=self._parse_weekdays(updates["recurrence_weekdays"]),
+                    workdays_only=updates["recurrence_workdays_only"],
+                    month_end=updates["recurrence_month_end"],
+                )
+
+            updates["scheduled_date"] = next_resumption_date(
+                plan=item, requested_date=updates.get("scheduled_date"),
+                end_date=next_recurrence_end_date, today=date.today(), advance=advance,
+                month_end=updates["recurrence_month_end"],
+            )
+            updates["recurrence_end_date"] = next_recurrence_end_date
+            updates["status"] = "active"
 
     def delete_plan(self, *, user_id: int, plan_id: int) -> None:
         row = self.repo.get_by_id(user_id=user_id, plan_id=plan_id)
@@ -451,7 +496,7 @@ class PlanService:
         item = row.PlanOperation
         category_name = row.Category.name if row.Category else self.repo.get_category_name(category_id=item.category_id)
         effective_date = date.today()
-        if item.status in {"confirmed", "skipped"} and not item.recurrence_enabled:
+        if item.status in {"confirmed", "skipped"}:
             raise ValueError("Plan is already completed")
         if (
             item.recurrence_enabled
@@ -592,13 +637,13 @@ class PlanService:
         }
 
     def skip_plan(self, *, user_id: int, plan_id: int) -> dict:
-        row = self.repo.get_by_id(user_id=user_id, plan_id=plan_id)
+        row = self.repo.get_by_id_for_update(user_id=user_id, plan_id=plan_id)
         if not row:
             raise LookupError("Plan not found")
         item = row.PlanOperation
         category_name = row.Category.name if row.Category else self.repo.get_category_name(category_id=item.category_id)
         effective_date = item.scheduled_date
-        if item.status in {"confirmed", "skipped"} and not item.recurrence_enabled:
+        if item.status in {"confirmed", "skipped"}:
             raise ValueError("Plan is already completed")
         item.skip_count = int(item.skip_count or 0) + 1
         item.last_skipped_at = datetime.now(timezone.utc)

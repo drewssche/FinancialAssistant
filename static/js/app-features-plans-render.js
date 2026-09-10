@@ -343,6 +343,7 @@
               ${operationMeta}
             </div>
             <div class="actions row-actions plan-card-actions">
+              <button class="btn btn-secondary" type="button" data-open-plan-id="${Number(item.plan_id)}">Открыть план</button>
               <button class="btn btn-secondary" type="button" data-activity-entity-type="plan" data-activity-entity-id="${Number(item.plan_id)}">Журнал плана</button>
             </div>
           </div>

@@ -37,6 +37,7 @@ class PlanCreate(BaseModel):
 
 
 class PlanUpdate(BaseModel):
+    resume: bool = False
     kind: str | None = None
     amount: Decimal | None = None
     currency: str | None = Field(default=None, min_length=3, max_length=3)
@@ -57,6 +58,20 @@ class PlanUpdate(BaseModel):
     recurrence_workdays_only: bool | None = None
     recurrence_month_end: bool | None = None
     recurrence_end_date: date | None = None
+
+
+class PlanResumePreview(BaseModel):
+    scheduled_date: date | None = None
+    recurrence_frequency: str = Field(default="monthly", pattern="^(daily|weekly|monthly|yearly)$")
+    recurrence_interval: int = Field(default=1, ge=1, le=365)
+    recurrence_weekdays: list[int] = Field(default_factory=list)
+    recurrence_workdays_only: bool = False
+    recurrence_month_end: bool = False
+    recurrence_end_date: date | None = None
+
+
+class PlanResumePreviewOut(BaseModel):
+    scheduled_date: date
 
 
 class PlanOut(BaseModel):

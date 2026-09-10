@@ -407,6 +407,7 @@
         : "operation";
     await ensureCategoryCatalogReady("create");
     state.createFlowMode = "operation";
+    window.App.getRuntimeModule?.("plans")?.resetEditorContext?.();
     state.editPlanId = null;
     state.editDebtCreateId = null;
     state.editCurrencyTradeId = null;
@@ -561,6 +562,7 @@
   function closeCreateModal() {
     window.App.getRuntimeModule?.("finance-calculator")?.closeIfAttachedToModal?.(el.createModal);
     state.createFlowMode = "operation";
+    window.App.getRuntimeModule?.("plans")?.resetEditorContext?.();
     state.editPlanId = null;
     state.editDebtCreateId = null;
     state.editCurrencyTradeId = null;

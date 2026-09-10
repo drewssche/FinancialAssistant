@@ -53,7 +53,7 @@ def test_receipt_picker_uses_one_product_and_resolves_source_offer_without_overw
     pickers = _read("static/js/app-features-operation-modal-receipt-pickers.js")
     interactions = _read("static/js/app-features-operation-modal-receipt-interactions.js")
     receipt = _read("static/js/app-features-operation-modal-receipt.js")
-    plans = _read("static/js/app-features-plans.js")
+    plans = _read("static/js/app-features-plans-editor.js")
 
     assert "rebuildReceiptProductHints" in pickers
     assert 'data-receipt-product-id="${item.product_id}"' in pickers

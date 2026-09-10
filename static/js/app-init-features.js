@@ -109,7 +109,9 @@
         const isEditPlan = Number(state.editPlanId || 0) > 0;
         return {
           pendingText: isEditPlan ? "Сохранение..." : "Добавление...",
-          successMessage: isEditPlan ? "План обновлён" : "План создан",
+          successMessage: getPlansFeature().isResumingPlan?.()
+            ? "План возобновлён и добавлен в регулярные"
+            : isEditPlan ? "План обновлён" : "План создан",
           errorPrefix: isEditPlan ? "Ошибка сохранения плана" : "Ошибка создания плана",
         };
       }

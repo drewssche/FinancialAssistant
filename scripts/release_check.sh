@@ -29,7 +29,7 @@ if [[ "${RUN_E2E}" == "1" ]]; then
     -m e2e
   run_pytest "E2E: mobile shell" tests/e2e/test_mobile_shell_cards_e2e.py -m e2e
   run_pytest "E2E: debts" tests/e2e/test_debts_flow_e2e.py -m e2e
-  run_pytest "E2E: plans" tests/e2e/test_plans_ui_e2e.py -m e2e
+  run_pytest "E2E: plans" tests/e2e/test_plans_ui_e2e.py tests/e2e/test_plan_resumption_e2e.py -m e2e
   run_pytest "E2E: work KPIs and period earnings" tests/e2e/test_work_cycle_kpis_e2e.py -m e2e
   run_pytest "E2E: currency" \
     tests/e2e/test_currency_trade_modal_e2e.py \

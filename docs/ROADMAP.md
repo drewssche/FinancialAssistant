@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] 2026-09-10: completed plans open for editing directly from operation source chips, plan history, and the activity journal. Enabling recurrence offers the next date and an explicit “Сохранить и возобновить” action; saving reactivates the same plan with its history and linked operations preserved. A read-only server preview and locked save validate dates/end dates, prevent replay of completed occurrences and duplicate reactivation, and refresh reminders. Ordinary edits keep completed plans completed.
+
 ## Product Scope
 - MVP-1 is implemented: Telegram auth, dashboard summary, operations CRUD, categories/groups, batch operation creation, receipt items, item catalog, debts, plans, currency/FX, admin access states, persisted UI preferences, and Docker Compose runtime.
 - MVP-2 backlog: Google auth provider, budgets/limits, richer reports/charts, export/import.

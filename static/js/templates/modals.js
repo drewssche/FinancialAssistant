@@ -31,6 +31,17 @@
             <button class="segmented-btn" data-entry-mode="debt" type="button">Долг</button>
           </div>
           <input id="opEntryMode" type="hidden" value="operation" />
+          <div id="planEditorContext" class="category-modal-form hidden">
+            <div class="plan-editor-heading">
+              <strong id="planEditorStatus"></strong>
+              <div class="actions">
+                <button id="planLinkedOperation" class="btn btn-secondary hidden" type="button">Открыть операцию</button>
+                <button id="planShowInList" class="btn btn-secondary" type="button">Показать в планах</button>
+              </div>
+            </div>
+            <span id="planCompletedHint" class="muted-small hidden">Изменения плана не меняют проведённые операции. Включите повторение, чтобы запланировать следующие платежи.</span>
+          </div>
+
           <div class="segmented" id="createOperationModeSwitch" aria-label="Формат операции">
             <button class="segmented-btn active" data-operation-mode="common" type="button">Общая</button>
             <button class="segmented-btn" data-operation-mode="receipt" type="button">Чек</button>
@@ -180,6 +191,17 @@
               <button class="segmented-btn" data-plan-schedule-mode="recurring" type="button">Повторяющаяся</button>
             </div>
             <input id="planScheduleMode" type="hidden" value="oneoff" />
+            <div id="planResumeControls" class="category-modal-form hidden">
+              <label class="plan-resume-toggle"><input id="planResumeEnabled" type="checkbox" /> Возобновить план</label>
+              <div id="planResumeFields" class="category-modal-form hidden">
+                <label for="planResumeDate" class="muted-small">Следующий платёж</label>
+                <div class="date-input-wrap">
+                  <input id="planResumeDate" type="date" aria-label="Следующий платёж" />
+                  <button class="date-input-trigger" type="button" data-date-picker-trigger="planResumeDate" aria-label="Изменить дату следующего платежа"></button>
+                </div>
+                <span id="planResumeHint" class="muted-small" role="status" aria-live="polite"></span>
+              </div>
+            </div>
             <div id="planRecurrenceFields" class="category-modal-form hidden">
               <div class="plan-recurrence-grid">
                 <label class="plan-recurrence-field">

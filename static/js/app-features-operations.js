@@ -881,7 +881,7 @@
       if (!(resolvedId > 0)) {
         return;
       }
-      window.App.getRuntimeModule?.("activity")?.openActivityModal?.("plan", resolvedId);
+      await window.App.getRuntimeModule("plans").openPlanEdit(resolvedId);
       return;
     }
     if (sourceKind === "debt") {

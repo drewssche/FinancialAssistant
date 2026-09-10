@@ -421,9 +421,7 @@ class ActivityService:
                 )
             )
         available_actions = ["open", "edit"]
-        if isinstance(entity, PlanOperation) and entity.status in {"confirmed", "skipped"}:
-            available_actions = ["open"]
-        elif isinstance(entity, WorkPaymentLink):
+        if isinstance(entity, WorkPaymentLink):
             available_actions = ["open"]
         return {
             "entity_label": self._entity_label(entity_type, entity_id),

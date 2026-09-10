@@ -34,13 +34,7 @@
   const plansRecurrence = createPlansRecurrenceFeature
     ? createPlansRecurrenceFeature({ el, core })
     : {};
-  const isWorkdaysOnlyEnabled = plansRecurrence.isWorkdaysOnlyEnabled || (() => false);
-  const isMonthEndModeEnabled = plansRecurrence.isMonthEndModeEnabled || (() => false);
-  const setMonthEndMode = plansRecurrence.setMonthEndMode || (() => {});
-  const setWorkdaysOnlyMode = plansRecurrence.setWorkdaysOnlyMode || (() => {});
   const syncPlanRecurrenceUi = plansRecurrence.syncPlanRecurrenceUi || (() => {});
-  const getSelectedPlanWeekdays = plansRecurrence.getSelectedPlanWeekdays || (() => []);
-  const setSelectedPlanWeekdays = plansRecurrence.setSelectedPlanWeekdays || (() => {});
   const togglePlanWeekday = plansRecurrence.togglePlanWeekday || (() => {});
   let plansRender = {};
   let plansDashboard = {};
@@ -277,137 +271,8 @@
       : `<div class='panel muted-small'>${isHistoryTab ? "История по выбранному фильтру пока пуста" : "Планов для выбранного фильтра пока нет"}</div>`;
   }
 
-  function resetPlanModalState() {
-    state.createFlowMode = "plan";
-    state.editPlanId = null;
-    el.createEntryModeSwitch?.classList.add("hidden");
-    el.planRecurrenceBlock?.classList.remove("hidden");
-    if (el.opCurrency) {
-      el.opCurrency.value = core.getCurrencyConfig?.().code || "BYN";
-      el.opCurrency.disabled = false;
-      el.opCurrency.title = "";
-    }
-    if (el.opFxRate) {
-      el.opFxRate.value = "1";
-    }
-    operationModal.resetOperationFxPolicy?.("create");
-  }
-
-  function hydrateCreateReceiptItems(items) {
-    operationModal.clearReceiptItems?.("create");
-    if (typeof operationModal.createReceiptDraft !== "function") {
-      state.createReceiptItems = [];
-      return;
-    }
-    state.createReceiptItems = (Array.isArray(items) ? items : []).map((row) => operationModal.createReceiptDraft({
-      template_id: row.template_id || null,
-      product_id: row.product_id || null,
-      product_name: row.product_name || "",
-      product_image_id: row.product_image_id || null,
-      item_image_id: row.item_image_id || null,
-      source_id: row.source_id || null,
-      source_image_id: row.source_image_id || null,
-      category_id: row.category_id || null,
-      brand_id: row.brand_id || null,
-      brand_name: row.brand_name || "",
-      brand_accent_color: row.brand_accent_color || "",
-      brand_image_id: row.brand_image_id || null,
-      brand_is_archived: Boolean(row.brand_is_archived),
-      shop_name: row.shop_name || "",
-      name: row.name || "",
-      quantity: row.quantity || 0,
-      unit_price: row.unit_price || 0,
-      is_discounted: Boolean(row.is_discounted),
-      regular_unit_price: row.regular_unit_price || 0,
-      note: row.note || "",
-    }, "create"));
-  }
-
-  async function fillPlanModal(plan = null) {
-    resetPlanModalState();
-    const createTitle = document.getElementById("createTitle");
-    const submitBtn = document.getElementById("submitCreateOperationBtn");
-    if (createTitle) {
-      createTitle.textContent = plan?.id ? "Редактировать план" : "Новый план";
-    }
-    if (submitBtn) {
-      submitBtn.textContent = plan?.id ? "Сохранить план" : "Создать план";
-    }
-    core.syncDateFieldValue(document.getElementById("opDate"), plan?.scheduled_date || core.getTodayIso());
-    document.getElementById("opAmount").value = plan?.original_amount || plan?.amount || "";
-    document.getElementById("opNote").value = plan?.note || "";
-    if (el.opCurrency) {
-      el.opCurrency.value = plan?.currency || (core.getCurrencyConfig?.().code || "BYN");
-    }
-    operationModal.setOperationKind("create", plan?.kind || "expense");
-    if (plan) {
-      operationModal.hydrateOperationFxPolicy?.("create", plan, {
-        isPlan: true,
-        preserveSnapshot: false,
-        applyCurrent: true,
-      });
-    }
-    operationModal.selectCreateCategory?.(plan?.category_id ? Number(plan.category_id) : null);
-    hydrateCreateReceiptItems(plan?.receipt_items || []);
-    operationModal.setCreateOperationMode(state.createReceiptItems.length ? "receipt" : "common");
-    await operationModal.syncOperationCurrencyFields?.("create");
-    operationModal.renderReceiptItems?.("create");
-    operationModal.renderReceiptSummary?.("create");
-    state.editPlanId = plan?.id ? Number(plan.id) : null;
-    if (el.planScheduleMode) {
-      el.planScheduleMode.value = plan?.recurrence_enabled ? "recurring" : "oneoff";
-    }
-    if (el.planScheduleModeSwitch) {
-      core.syncSegmentedActive(el.planScheduleModeSwitch, "plan-schedule-mode", el.planScheduleMode?.value || "oneoff");
-    }
-    if (el.planRecurrenceFrequency) {
-      el.planRecurrenceFrequency.value = plan?.recurrence_frequency || "monthly";
-    }
-    if (el.planRecurrenceInterval) {
-      el.planRecurrenceInterval.value = String(plan?.recurrence_interval || 1);
-    }
-    setWorkdaysOnlyMode(Boolean(plan?.recurrence_workdays_only));
-    setMonthEndMode(Boolean(plan?.recurrence_month_end));
-    setSelectedPlanWeekdays(plan?.recurrence_weekdays || []);
-    if (el.planRecurrenceEndDate) {
-      core.syncDateFieldValue(el.planRecurrenceEndDate, plan?.recurrence_end_date || "");
-    }
-    syncPlanRecurrenceUi();
-    operationModal.updateCreatePreview?.();
-  }
-
-  function getValidatedPlanPayload() {
-    const scheduledDate = core.parseDateInputValue(document.getElementById("opDate").value);
-    if (!scheduledDate) {
-      throw new Error("Проверь дату плана");
-    }
-    const receiptItems = operationModal.getCreateReceiptPayload ? operationModal.getCreateReceiptPayload() : [];
-    const amount = core.resolveMoneyInput(document.getElementById("opAmount").value);
-    const hasReceiptItems = receiptItems.length > 0;
-    const canDeriveAmountFromReceipt = hasReceiptItems && amount.empty;
-    if (!canDeriveAmountFromReceipt && (!amount.valid || amount.value <= 0)) {
-      throw new Error("Проверь сумму плана");
-    }
-    const recurrenceEnabled = (el.planScheduleMode?.value || "oneoff") === "recurring";
-    const recurrenceEndDate = core.parseDateInputValue(el.planRecurrenceEndDate?.value || "");
-    return {
-      kind: el.opKind.value,
-      category_id: el.opCategory.value ? Number(el.opCategory.value) : null,
-      amount: canDeriveAmountFromReceipt ? null : amount.formatted,
-      currency: String(el.opCurrency?.value || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase(),
-      scheduled_date: scheduledDate,
-      note: String(document.getElementById("opNote").value || "").trim() || null,
-      receipt_items: receiptItems,
-      recurrence_enabled: recurrenceEnabled,
-      recurrence_frequency: recurrenceEnabled ? (el.planRecurrenceFrequency?.value || "monthly") : null,
-      recurrence_interval: recurrenceEnabled ? Math.max(1, Number(el.planRecurrenceInterval?.value || 1)) : 1,
-      recurrence_weekdays: recurrenceEnabled && (el.planRecurrenceFrequency?.value || "monthly") === "weekly" ? getSelectedPlanWeekdays() : [],
-      recurrence_workdays_only: recurrenceEnabled && (el.planRecurrenceFrequency?.value || "monthly") === "daily" ? isWorkdaysOnlyEnabled() : false,
-      recurrence_month_end: recurrenceEnabled && (el.planRecurrenceFrequency?.value || "monthly") === "monthly" ? isMonthEndModeEnabled() : false,
-      recurrence_end_date: recurrenceEnabled ? (recurrenceEndDate || null) : null,
-      ...operationModal.getOperationFxPolicyPayload?.("create", { isPlan: true }),
-    };
-  }
+  const editor = window.App.getRuntimeModule("plans-editor")({ state, el, core, operationModal, plansRecurrence });
+  const { fillPlanModal, hydrateCreateReceiptItems, getValidatedPlanPayload } = editor;
 
   async function refreshAfterPlanMutation({ confirmed = false } = {}) {
     const itemCatalogFeature = getItemCatalogFeature();
@@ -578,11 +443,15 @@
     operationModal.updateCreatePreview?.();
   }
 
+  let planOpenGeneration = 0;
   async function openPlanEdit(planId) {
+    const generation = ++planOpenGeneration;
     const item = await core.requestJson(`/api/v1/plans/${Number(planId)}`, {
       headers: core.authHeaders(),
     });
+    if (generation !== planOpenGeneration) return;
     await operationModal.openCreateModal();
+    if (generation !== planOpenGeneration) return;
     await fillPlanModal(item);
     operationModal.setCreateModalActivity?.("plan", item.id);
   }
@@ -590,16 +459,22 @@
   async function submitPlanForm(event) {
     event.preventDefault();
     const payload = getValidatedPlanPayload();
+    const editorVersion = editor.getContextVersion();
     const planId = Number(state.editPlanId || 0);
     const method = planId > 0 ? "PATCH" : "POST";
     const url = planId > 0 ? `/api/v1/plans/${planId}` : "/api/v1/plans";
-    await core.requestJson(url, {
+    const saved = await core.requestJson(url, {
       method,
       headers: core.authHeaders(),
       body: JSON.stringify(payload),
     });
-    if (planId <= 0) {
-      operationModal.closeCreateModal();
+    if (editor.getContextVersion() === editorVersion) {
+      if (planId <= 0) {
+        operationModal.closeCreateModal();
+      } else {
+        await fillPlanModal(saved);
+        operationModal.setCreateModalActivity?.("plan", saved.id);
+      }
     }
     await refreshAfterPlanMutation();
   }
@@ -704,6 +579,11 @@
       }
       return;
     }
+    const openPlanBtn = event.target.closest("button[data-open-plan-id]");
+    if (openPlanBtn) {
+      openPlanEdit(Number(openPlanBtn.dataset.openPlanId)).catch((err) => core.setStatus(String(err)));
+      return;
+    }
     const historyOperationBtn = event.target.closest("button[data-plan-history-operation-id]");
     if (historyOperationBtn) {
       getOperationsFeature().openMoneyFlowSource?.({
@@ -782,6 +662,8 @@
     openCreatePlan,
     openCreatePlanWithReceiptItem,
     openPlanEdit,
+    resetEditorContext: editor.clearContext,
+    isResumingPlan: editor.isResuming,
     submitPlanForm,
     handlePlanActionClick,
     syncPlanRecurrenceUi,

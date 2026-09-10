@@ -208,7 +208,8 @@ def test_edit_modals_keep_open_after_successful_save():
         "async function deleteOperationFlow", 1
     )[0]
     assert "closeEditModal();" not in update_operation_block
-    assert "if (planId <= 0) {\n      operationModal.closeCreateModal();" in plans
+    assert "if (planId <= 0) {\n        operationModal.closeCreateModal();" in plans
+    assert "editor.getContextVersion() === editorVersion" in plans
     assert "categoryUi.closeEditCategoryModal();" not in categories_data
     assert "categoryUi.closeEditGroupModal();" not in categories_data
     assert "if (!isEdit) {\n        closeItemTemplateModal();" in item_template_modal
@@ -265,7 +266,7 @@ def test_plan_and_operation_history_are_linked_without_duplicate_money_flow_rows
 
     assert 'data-open-source-kind="plan"' in renderers
     assert "Из плана #${Number(item.source_plan_id)}" in renderers
-    assert 'openActivityModal?.("plan", resolvedId)' in operations
+    assert 'getRuntimeModule("plans").openPlanEdit(resolvedId)' in operations
     assert "data-plan-history-operation-id" in plans_render
     assert "Журнал плана" in plans_render
     assert 'sourceKind: "operation"' in plans
@@ -326,7 +327,7 @@ def test_foreign_operation_and_plan_forms_expose_explicit_fx_policy_contract():
     modals = (REPO_ROOT / "static/js/templates/modals.js").read_text(encoding="utf-8")
     policy = (REPO_ROOT / "static/js/app-features-operation-modal-fx-policy.js").read_text(encoding="utf-8")
     mutations = (REPO_ROOT / "static/js/app-features-operations-mutations.js").read_text(encoding="utf-8")
-    plans = (REPO_ROOT / "static/js/app-features-plans.js").read_text(encoding="utf-8")
+    plans = (REPO_ROOT / "static/js/app-features-plans-editor.js").read_text(encoding="utf-8")
     plan_render = (REPO_ROOT / "static/js/app-features-plans-render.js").read_text(encoding="utf-8")
     preview = (REPO_ROOT / "static/js/app-features-operation-modal-preview.js").read_text(encoding="utf-8")
     manifest = MANIFEST_JS.read_text(encoding="utf-8")

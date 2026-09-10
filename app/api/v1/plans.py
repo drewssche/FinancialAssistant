@@ -3,7 +3,10 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user_id
 from app.db.session import get_db
-from app.schemas.plan import PlanConfirmOut, PlanCreate, PlanEventListOut, PlanListOut, PlanOut, PlanUpdate
+from app.schemas.plan import (
+    PlanConfirmOut, PlanCreate, PlanEventListOut, PlanListOut, PlanOut,
+    PlanResumePreview, PlanResumePreviewOut, PlanUpdate,
+)
 from app.services.plan_service import PlanService
 
 router = APIRouter(prefix="/plans", tags=["plans"])
@@ -111,6 +114,21 @@ def update_plan(
     service = PlanService(db)
     try:
         return service.update_plan(user_id=user_id, plan_id=plan_id, updates=updates)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.post("/{plan_id}/resume-preview", response_model=PlanResumePreviewOut)
+def preview_plan_resumption(
+    plan_id: int,
+    payload: PlanResumePreview,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        return PlanService(db).preview_resumption(user_id=user_id, plan_id=plan_id, updates=payload.model_dump())
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except LookupError as exc:

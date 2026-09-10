@@ -198,6 +198,7 @@
     if (
       !["GET", "HEAD", "OPTIONS"].includes(method)
       && /^\/api\/v1\/(operations|categories|plans|debts|currency)(?:\/|$)/.test(mutationPath)
+      && !/^\/api\/v1\/plans\/\d+\/resume-preview$/.test(mutationPath)
     ) {
       state.lastActivityMutationAt = Date.now();
       document.dispatchEvent(new CustomEvent("app:activity-changed", {
