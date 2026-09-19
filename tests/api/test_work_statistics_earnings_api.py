@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 import pytest
@@ -13,11 +13,17 @@ from tests.api.test_operations_api import _client_lifecycle
 
 @pytest.fixture
 def client(monkeypatch):
+    class FixedDate(date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 9, 9)
+
     class FixedDateTime(datetime):
         @classmethod
         def now(cls, tz=None):
             return cls(2026, 9, 9, 12, 0, tzinfo=tz)
 
+    monkeypatch.setattr(work_module, "date", FixedDate)
     monkeypatch.setattr(work_module, "datetime", FixedDateTime)
     yield from _client_lifecycle()
 
