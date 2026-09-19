@@ -162,7 +162,7 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert 'data-calculator-mode="discount"' in shell
     assert 'data-calculator-mode="split"' in shell
     assert '"/static/js/app-finance-calculator.js"' in manifest
-    assert '@import url("/static/css/components-finance-calculator.css?v=20260716j");' in styles
+    assert '@import url("/static/css/components-finance-calculator.css?v=20260919a");' in styles
     assert "registerRuntimeModule?.(\"finance-calculator\"" in calculator_js
     assert "calculateDiscount" in calculator_js
     assert "calculateChange" in calculator_js
@@ -177,7 +177,7 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert "body.finance-calculator-open" in calculator_css
     assert "@media (max-width: 640px)" in calculator_css
     assert "max-height: min(88dvh, 720px)" in calculator_css
-    assert '/static/styles.css?v=20260910a' in index_html
+    assert '/static/styles.css?v=20260919a' in index_html
     assert '/static/css/components-core.css?v=20260904f' in styles
     assert '/static/css/layout-debts.css?v=20260716j' in styles
     assert '/static/css/components-analytics-summary.css?v=20260826c' in styles

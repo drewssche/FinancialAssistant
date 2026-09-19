@@ -151,15 +151,21 @@
   let modalStackCounter = 0;
   let modalStackObserver = null;
   const MODAL_STACK_BASE_Z_INDEX = 200;
+  const MODAL_LAYER_SELECTOR = ".modal, [data-modal-layer]";
+
+  function getVisibleModalLayers() {
+    return Array.from(document.querySelectorAll(MODAL_LAYER_SELECTOR))
+      .filter((node) => !node.classList.contains("hidden"));
+  }
 
   function bringModalToFront(modal) {
-    if (!modal || !modal.classList?.contains("modal")) {
+    if (!modal?.matches?.(MODAL_LAYER_SELECTOR)) {
       return;
     }
     modalStackCounter += 1;
     modal.dataset.modalStackIndex = String(modalStackCounter);
     modal.style.zIndex = String(MODAL_STACK_BASE_Z_INDEX + modalStackCounter);
-    document.querySelectorAll(".modal.modal-front").forEach((node) => {
+    document.querySelectorAll(".modal-front").forEach((node) => {
       if (node !== modal) {
         node.classList.remove("modal-front");
       }
@@ -168,7 +174,7 @@
   }
 
   function getTopVisibleModal() {
-    const visible = Array.from(document.querySelectorAll(".modal:not(.hidden)"));
+    const visible = getVisibleModalLayers();
     if (!visible.length) {
       return null;
     }
@@ -192,7 +198,7 @@
   }
 
   function markModalClosed(modal) {
-    if (!modal || !modal.classList?.contains("modal")) {
+    if (!modal?.matches?.(MODAL_LAYER_SELECTOR)) {
       return;
     }
     modal.classList.remove("modal-front");
@@ -213,7 +219,7 @@
     modalStackObserver = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         const modal = mutation.target;
-        if (!(modal instanceof HTMLElement) || !modal.classList.contains("modal")) {
+        if (!(modal instanceof HTMLElement) || !modal.matches(MODAL_LAYER_SELECTOR)) {
           continue;
         }
         const previousClasses = String(mutation.oldValue || "").split(/\s+/);
@@ -232,7 +238,7 @@
       attributeOldValue: true,
       subtree: true,
     });
-    document.querySelectorAll(".modal:not(.hidden)").forEach((modal) => bringModalToFront(modal));
+    getVisibleModalLayers().forEach((modal) => bringModalToFront(modal));
   }
 
   function syncAllPeriodTabs(value) {

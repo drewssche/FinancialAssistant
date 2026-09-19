@@ -40,7 +40,6 @@ body.finance-calculator-open {
   top: var(--finance-calculator-modal-top, 20px);
   left: var(--finance-calculator-modal-left, auto);
   right: auto;
-  z-index: 142;
   width: min(360px, calc(100vw - 24px));
   height: var(--finance-calculator-modal-height, min(720px, calc(100dvh - 40px)));
   max-height: calc(100dvh - 24px);

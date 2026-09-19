@@ -86,7 +86,7 @@
   function closeVisibleModalOnEscape() {
     const topModal = core.getTopVisibleModal?.();
     if (topModal) {
-      const closeButton = topModal.querySelector(".modal-close-btn");
+      const closeButton = topModal.querySelector(".modal-close-btn, [data-modal-close]");
       if (closeButton instanceof HTMLElement && !closeButton.disabled) {
         closeButton.click();
         return true;

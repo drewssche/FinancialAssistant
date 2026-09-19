@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] 2026-09-19: the operation calculator participates in the shared modal stack, so its fields, tabs, and close button remain clickable above create/edit forms and after nested windows. Escape closes only the top eligible window, preserves the operation draft, and returns focus to the calculator button. Browser regressions cover real clicks at 320, 390, and 1440px.
+
 - [x] 2026-09-10: completed plans open for editing directly from operation source chips, plan history, and the activity journal. Enabling recurrence offers the next date and an explicit “Сохранить и возобновить” action; saving reactivates the same plan with its history and linked operations preserved. A read-only server preview and locked save validate dates/end dates, prevent replay of completed occurrences and duplicate reactivation, and refresh reminders. Ordinary edits keep completed plans completed.
 
 ## Product Scope

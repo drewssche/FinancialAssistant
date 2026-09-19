@@ -119,6 +119,10 @@ def page_with_calculator_mock():
             };
             """
         )
+        page.route(
+            "https://telegram.org/js/telegram-web-app.js*",
+            lambda route: route.fulfill(status=200, content_type="application/javascript", body=""),
+        )
         page.route("**/api/v1/**", handler)
         try:
             yield page
@@ -126,36 +130,8 @@ def page_with_calculator_mock():
             browser.close()
 
 
-def _restore_mock_telegram(page):
-    page.evaluate(
-        """
-        () => {
-          window.Telegram = {
-            WebApp: {
-              initData: "mock-init-data",
-              ready() {},
-              expand() {},
-            }
-          };
-        }
-        """
-    )
-
-
 def _open_app(page, static_server_url: str):
     page.goto(f"{static_server_url}/static/index.html")
-    _restore_mock_telegram(page)
-    page.evaluate("() => window.App.getRuntimeModule('session')?.refreshTelegramLoginUi?.()")
-    try:
-        page.locator("#telegramLoginBtn").wait_for(state="visible", timeout=1200)
-        page.click("#telegramLoginBtn")
-        page.wait_for_selector("#appShell:not(.hidden)")
-    except Exception:
-        page.evaluate(
-            """
-            () => window.App.getRuntimeModule('session')?.tryAutoTelegramLogin?.().catch(() => null)
-            """
-        )
     page.wait_for_selector("#appShell:not(.hidden)")
 
 
@@ -172,7 +148,9 @@ def test_finance_calculator_modal_drawer_calculates_discount_without_horizontal_
     page.wait_for_selector("#createModal:not(.hidden)")
     page.click("#createFinanceCalculatorToggle")
     page.wait_for_selector("#financeCalculatorDrawer:not(.hidden).modal-attached")
+    page.click("#financeCalculatorInput-price")
     page.fill("#financeCalculatorInput-price", "100")
+    page.click("#financeCalculatorInput-discount")
     page.fill("#financeCalculatorInput-discount", "15")
 
     expect(page.locator("#financeCalculatorResult")).to_contain_text("Итоговая цена")
@@ -227,7 +205,9 @@ def test_finance_calculator_attaches_to_operation_modal_without_global_overlay(s
     page.wait_for_selector("#financeCalculatorDrawer:not(.hidden).modal-attached")
 
     assert page.locator("#financeCalculatorOverlay").evaluate("node => node.classList.contains('hidden')")
+    page.click("#financeCalculatorInput-price")
     page.fill("#financeCalculatorInput-price", "200")
+    page.click("#financeCalculatorInput-discount")
     page.fill("#financeCalculatorInput-discount", "10")
     expect(page.locator("#financeCalculatorResult")).to_contain_text("180,00")
 
@@ -264,3 +244,93 @@ def test_finance_calculator_attaches_to_operation_modal_without_global_overlay(s
 
     page.click("#closeCreateModalBtn")
     page.wait_for_function("() => document.querySelector('#financeCalculatorDrawer')?.classList.contains('hidden')")
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize("width", [320, 390, 1440])
+@pytest.mark.parametrize("operation_mode", ["create", "edit"])
+def test_calculator_receives_clicks_and_closes_without_losing_operation_draft(
+    static_server_url: str, page_with_calculator_mock, width: int, operation_mode: str,
+):
+    page = page_with_calculator_mock
+    page.set_viewport_size({"width": width, "height": 900})
+    _open_app(page, static_server_url)
+    if operation_mode == "create":
+        page.click("#addOperationCta")
+    else:
+        page.evaluate("""() => window.App.getRuntimeModule('operation-modal').openEditModal({
+          id: 1, kind: 'expense', amount: '2.99', original_amount: '2.99',
+          currency: 'BYN', base_currency: 'BYN', operation_date: '2026-09-19',
+          note: '', category_id: null, receipt_items: [],
+        })""")
+    modal = page.locator(f"#{operation_mode}Modal")
+    note = page.locator("#opNote" if operation_mode == "create" else "#editNote")
+    trigger = page.locator(f"#{operation_mode}FinanceCalculatorToggle")
+    drawer = page.locator("#financeCalculatorDrawer")
+    expect(modal).to_be_visible()
+    note.fill("Несохранённая операция")
+
+    for close_with_escape in [True, False]:
+        trigger.click()
+        expect(drawer).to_be_visible()
+        price = page.locator("#financeCalculatorInput-price")
+        price.click(timeout=2000)
+        expect(price).to_be_focused()
+        price.fill("100")
+        page.click("#financeCalculatorInput-discount")
+        page.fill("#financeCalculatorInput-discount", "15")
+        expect(page.locator("#financeCalculatorResult")).to_contain_text("85,00")
+        page.click('[data-calculator-mode="unit"]')
+        page.click("#financeCalculatorInput-total")
+        page.fill("#financeCalculatorInput-total", "12")
+        page.click("#financeCalculatorInput-quantity")
+        page.fill("#financeCalculatorInput-quantity", "3")
+        expect(page.locator("#financeCalculatorResult")).to_contain_text("4,00")
+        page.click('[data-calculator-mode="discount"]')
+        if close_with_escape:
+            page.keyboard.press("Escape")
+        else:
+            page.click("#financeCalculatorClose")
+        expect(drawer).to_be_hidden()
+        expect(modal).to_be_visible()
+        expect(note).to_have_value("Несохранённая операция")
+        expect(trigger).to_be_focused()
+        expect(trigger).to_have_attribute("aria-expanded", "false")
+
+    trigger.click()
+    page.click(f"#close{operation_mode.capitalize()}ModalBtn")
+    expect(modal).to_be_hidden()
+    expect(drawer).to_be_hidden()
+
+
+@pytest.mark.e2e
+def test_calculator_respects_modal_stack_and_confirmation_above_it(
+    static_server_url: str, page_with_calculator_mock,
+):
+    page = page_with_calculator_mock
+    page.set_viewport_size({"width": 1440, "height": 900})
+    _open_app(page, static_server_url)
+    page.click("#addOperationCta")
+    expect(page.locator("#createModal")).to_be_visible()
+    # Simulate a long session with many nested windows; a fixed z-index is insufficient.
+    page.evaluate("""() => {
+      const modal = document.getElementById('createModal');
+      for (let i = 0; i < 30; i += 1) window.App.core.bringModalToFront(modal);
+    }""")
+    page.click("#createFinanceCalculatorToggle")
+    page.click("#financeCalculatorInput-price", timeout=2000)
+    page.fill("#financeCalculatorInput-price", "100")
+    page.evaluate("() => window.App.core.showConfirm('Проверка вложенного окна', () => {})")
+    expect(page.locator("#confirmModal")).to_be_visible()
+    page.keyboard.press("Escape")
+    expect(page.locator("#confirmModal")).to_be_visible()
+    expect(page.locator("#financeCalculatorDrawer")).to_be_visible()
+    page.click("#confirmCancelBtn")
+    expect(page.locator("#confirmModal")).to_be_hidden()
+    page.click("#financeCalculatorInput-price")
+    expect(page.locator("#financeCalculatorInput-price")).to_have_value("100")
+    page.keyboard.press("Escape")
+    expect(page.locator("#financeCalculatorDrawer")).to_be_hidden()
+    expect(page.locator("#createModal")).to_be_visible()
+    page.keyboard.press("Escape")
+    expect(page.locator("#createModal")).to_be_hidden()

@@ -226,9 +226,11 @@
     syncModalToggleState(open);
     document.body.classList.toggle("finance-calculator-open", open && openSource !== "modal");
     if (open) {
+      getCore().bringModalToFront?.(drawer);
       positionModalDrawer();
       renderFields();
     } else {
+      getCore().markModalClosed?.(drawer);
       drawer?.classList.remove("modal-attached");
       clearModalPosition();
       document.body.classList.remove("finance-calculator-open");
@@ -280,11 +282,6 @@
         return;
       }
       setMode(String(button.dataset.calculatorMode || "discount"));
-    });
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape" && !getNode("financeCalculatorDrawer")?.classList.contains("hidden")) {
-        setOpen(false);
-      }
     });
     window.addEventListener("resize", positionModalDrawer);
     document.addEventListener("scroll", positionModalDrawer, true);

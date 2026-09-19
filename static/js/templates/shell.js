@@ -133,13 +133,13 @@
         </section>
       </div>
       <div id="financeCalculatorOverlay" class="finance-calculator-overlay hidden" aria-hidden="true"></div>
-      <aside id="financeCalculatorDrawer" class="finance-calculator-drawer hidden" aria-label="Финансовый калькулятор" aria-hidden="true">
+      <aside id="financeCalculatorDrawer" class="finance-calculator-drawer hidden" data-modal-layer role="dialog" aria-label="Финансовый калькулятор" aria-hidden="true">
         <div class="finance-calculator-head">
           <div>
             <h3>Калькулятор</h3>
             <p class="muted-small">Скидки, изменения цены и быстрые расчеты</p>
           </div>
-          <button id="financeCalculatorClose" class="btn btn-secondary finance-calculator-close" type="button" aria-label="Закрыть калькулятор">×</button>
+          <button id="financeCalculatorClose" class="btn btn-secondary finance-calculator-close" data-modal-close type="button" aria-label="Закрыть калькулятор">×</button>
         </div>
         <div id="financeCalculatorTabs" class="segmented finance-calculator-tabs" role="tablist" aria-label="Режим калькулятора">
           <button class="segmented-btn active" type="button" data-calculator-mode="discount">Скидка</button>
