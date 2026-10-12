@@ -49,6 +49,8 @@ from app.services.catalog_media_service import (
     CatalogMediaTooLargeError,
     CatalogMediaValidationError,
 )
+from app.schemas.catalog_price_changes import CatalogPriceChangesOut
+from app.services.catalog_price_changes_service import CatalogPriceChangesService
 from app.schemas.product_price_history import ProductPriceHistoryOut
 from app.services.product_price_history_service import ProductPriceHistoryService
 from app.services.catalog_product_service import CatalogProductService
@@ -363,6 +365,28 @@ def list_catalog_product_merge_candidates(
         limit=limit,
     )
     return CatalogProductMergeCandidateListOut(items=items, total=total)
+
+
+@router.get("/catalog-products/price-changes", response_model=CatalogPriceChangesOut)
+def get_catalog_price_changes(
+    basis: Literal["unit", "normalized"] = "unit",
+    price_kind: Literal["paid", "regular"] = "paid",
+    comparison: Literal["period", "previous"] = "period",
+    direction: Literal["all", "up", "down", "same"] = "all",
+    q: str | None = Query(default=None, max_length=160),
+    date_from: date | None = None,
+    date_to: date | None = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    if date_from and date_to and date_from > date_to:
+        raise HTTPException(status_code=422, detail="Начало периода позже конца")
+    return CatalogPriceChangesService(db).get(
+        user_id=user_id, basis=basis, price_kind=price_kind, comparison=comparison,
+        direction=direction, q=q, date_from=date_from, date_to=date_to, page=page, page_size=page_size,
+    )
 
 
 @router.get("/catalog-products/{product_id}", response_model=CatalogProductOut)

@@ -542,6 +542,7 @@
   }
 
   function invalidateLocal() {
+    window.App.getRuntimeModule("catalog-price-changes").invalidate();
     requestController?.abort();
     requestController = null;
     state.catalogProductsLoading = false;
@@ -730,6 +731,7 @@
   function bind() {
     if (bound) return;
     bound = true;
+    window.App.getRuntimeModule("catalog-price-changes").bind();
     el.catalogProductsBody?.addEventListener("click", handleBodyClick);
     el.catalogProductsBody?.addEventListener("change", (event) => {
       const input = event.target.closest("[data-select-catalog-product-id]");
@@ -783,6 +785,7 @@
   }
 
   function cleanupRuntime() {
+    window.App.getRuntimeModule("catalog-price-changes").cleanup();
     editorRequest += 1;
     editorReturnFocus = null;
     tableColumns?.cancel();

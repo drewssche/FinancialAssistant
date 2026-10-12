@@ -1,6 +1,6 @@
 # Product Context
 
-Baseline reviewed against `e5eaee1` on 2026-10-12; purchase semantics and product UI updated through stage 4b2 on 2026-10-13. Current implementation is described here; agreed future changes are in [RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md](RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md).
+Baseline reviewed against `e5eaee1` on 2026-10-12; purchase semantics and product UI updated through stage 4c on 2026-10-13. Current implementation is described here; agreed future changes are in [RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md](RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md).
 
 ## Product Idea
 Financial Assistant is a web-first personal finance tracker for income and expenses. The same backend API is designed to support both:
@@ -41,7 +41,7 @@ Current delivery direction:
 ## Plans, Catalog and Work
 
 - Completed plans can be edited through linked operations, history and activity. Resuming recurrence is an explicit action; ordinary edits preserve completed status.
-- A catalog product groups source offers while retaining source-specific names. Merge, separate, price-history and operation drilldown actions exist. The consolidated product modal provides product, offers, purchase-price observations/saved offer prices and purchases views. Known receipt rows keep money controls inline and expand extra properties with «Изменить». Optional manually entered package variants, GTIN codes and retailer links/codes are now editable in the product card. Receipt measurements now offer explicit package selection and preserve the selected name/codes in the purchase or plan, independently of subsequent catalog edits. Changing quantity keeps that identity; manual package-size edits clear it. Verified package replacement, receipt OCR and website-price monitoring remain future work.
+- A catalog product groups source offers while retaining source-specific names. Merge, separate, price-history and operation drilldown actions exist. The consolidated product modal provides product, offers, purchase-price observations/saved offer prices and purchases views. Known receipt rows keep money controls inline and expand extra properties with «Изменить». Optional manually entered package variants, GTIN codes and retailer links/codes are now editable in the product card. Receipt measurements now offer explicit package selection and preserve the selected name/codes in the purchase or plan, independently of subsequent catalog edits. Changing quantity keeps that identity; manual package-size edits clear it. Catalog → Products now also has a collapsed summary of price changes across actual purchases, with period/last-step comparisons and the latest purchased volume priced at the previous reference price. Confirmed package replacement, receipt-time price hints, receipt OCR and website-price monitoring remain future work.
 - Work estimates use the salary cycle and employment settings. Actual earnings statistics use payment dates and payroll linkage; they do not count forecast salary as received money.
 - Structure and financial calendar remain in their current analytics locations. Rarely used analytics views will be consolidated only after their useful workflows have replacements.
 

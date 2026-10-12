@@ -31,11 +31,11 @@
   }
   function excluded() { return payload?.excluded_count ? `<p class="muted-small">Не показано позиций: ${Number(payload.excluded_count)} — нет нужных единиц, обычной цены или положительного количества.</p>` : ""; }
   window.App.registerRuntimeModule("catalog-price-history", {
-    render(value, preserve = false) {
-      const key = (s) => s ? JSON.stringify([s.currency, s.shop_name, s.unit, s.package_quantity, s.package_unit]) : "";
+    render(value, preserve = false, preferred = null) {
+      const key = (s) => s ? JSON.stringify([s.currency, s.shop_name, s.unit, s.package_quantity == null ? null : Number(s.package_quantity), s.package_unit]) : "";
       const previous = key(payload?.series?.[selected]);
       payload = value;
-      selected = preserve ? Math.max(0, (payload?.series || []).findIndex((s) => key(s) === previous)) : 0;
+      selected = preserve || preferred ? Math.max(0, (payload?.series || []).findIndex((s) => key(s) === (preserve ? previous : key(preferred)))) : 0;
       if (!preserve) count = 50;
       render();
     },

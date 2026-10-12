@@ -141,6 +141,8 @@ def test_product_columns_fit_resize_persist_and_reset(catalog_page, viewport_wid
         return
     assert initial["columns"][1] < initial["table"] * .32
     handle = table.locator(".catalog-column-resizer").first
+    # A long table may be centered with its header outside the viewport.
+    handle.scroll_into_view_if_needed()
     box = handle.bounding_box()
     page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
     page.mouse.down()

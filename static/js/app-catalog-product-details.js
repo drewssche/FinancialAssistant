@@ -6,6 +6,7 @@
   let product = null, tab = "product", controller = null, generation = 0, page = 0, bound = false;
   let purchaseRows = [], purchaseTotal = 0, nestedOperation = false, returnTarget = null, purchasesDirty = false;
   let offerReturnId = null, workspaceGeneration = 0;
+  let preferredPriceSeries = null;
   const rememberedTabs = new Map();
   const visible = () => product && !el.catalogProductModal.classList.contains("hidden");
 
@@ -38,7 +39,7 @@
       const url = purchases ? `/api/v1/operations/catalog-products/${product.id}/price-observations?${params}` : `/api/v1/operations/item-templates/${offerId}/prices?limit=200`;
       const rows = await core.requestJson(url, {headers: core.authHeaders(), signal: controller.signal});
       if (token !== generation || !visible()) return;
-      if (purchases) { window.App.getRuntimeModule("catalog-price-history").render(rows, preserve); return; }
+      if (purchases) { window.App.getRuntimeModule("catalog-price-history").render(rows, preserve, preferredPriceSeries); preferredPriceSeries = null; return; }
       target.innerHTML = (rows || []).map((row) => `<article class="catalog-product-price-row"><span>${esc(core.formatDateRu(row.recorded_at))}</span><strong>${core.formatMoney(row.unit_price)}</strong><details><summary aria-label="Действия с ценой за ${esc(core.formatDateRu(row.recorded_at))}">Ещё</summary><button class="btn btn-danger btn-xs" type="button" data-product-price-delete="${Number(row.id)}" data-offer-id="${offerId}">Удалить цену</button></details></article>`).join("") || '<div class="empty">История цен пока пустая</div>';
       if (rows?.length === 200) target.insertAdjacentHTML("beforeend", '<p class="muted-small">Показаны последние 200 записей.</p>');
     } catch (error) { if (token === generation && error.name !== "AbortError") target.innerHTML = errorHtml(error); }
@@ -178,13 +179,19 @@
   }
   function open(value, options = {}) {
     workspaceGeneration += 1;
-    bind(); product = value; nestedOperation = false;
+    bind(); product = value; nestedOperation = false; preferredPriceSeries = options.priceSeries || null;
     window.App.getRuntimeModule("catalog-identity").open(value);
     node("catalogProductTabs").classList.toggle("hidden", !product);
     node("catalogProductPriceOffer").innerHTML = ""; node("catalogProductPurchaseOffer").innerHTML = "";
     node("catalogProductPriceMode").value = "purchases";
     node("catalogProductPriceKind").value = "paid"; node("catalogProductPriceBasis").value = "unit";
     node("catalogProductPriceFrom").value = ""; node("catalogProductPriceTo").value = "";
+    if (options.priceFilters) {
+      node("catalogProductPriceKind").value = options.priceFilters.price_kind || "paid";
+      node("catalogProductPriceBasis").value = options.priceFilters.basis || "unit";
+      node("catalogProductPriceFrom").value = options.priceFilters.date_from || "";
+      node("catalogProductPriceTo").value = options.priceFilters.date_to || "";
+    }
     resetOptions(); select(options.tab || rememberedTabs.get(product?.id) || "product", options.offerId);
   }
   function close() { window.App.getRuntimeModule("catalog-identity").close(); window.App.getRuntimeModule("catalog-price-history").cleanup(); workspaceGeneration += 1; cancel(); product = null; nestedOperation = false; returnTarget = null; }

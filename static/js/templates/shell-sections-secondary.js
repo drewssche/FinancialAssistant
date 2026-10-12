@@ -417,6 +417,25 @@
                 <button id="catalogProductsCandidatesBtn" class="btn btn-secondary btn-xs hidden" type="button">Возможные совпадения <span id="catalogProductsCandidatesCount"></span></button>
               </div>
             </div>
+            <details id="catalogPriceChanges" class="catalog-price-changes">
+              <summary>Изменения цен по моим покупкам</summary>
+              <p class="muted-small">Действующие товары и предложения. Магазины, валюты и единицы считаются отдельно. Дата покупки показывает наблюдение цены, а не дату её изменения магазином.</p>
+              <details class="catalog-price-changes-options"><summary>Поиск и условия сравнения</summary>
+              <form id="catalogPriceChangesForm" class="catalog-price-changes-filters">
+                <label class="field"><span>Товар или магазин</span><input name="q" type="search" maxlength="160" placeholder="Поиск в изменениях цен" /></label>
+                <label class="field"><span>Сравнение</span><select name="comparison"><option value="period">От первой до последней покупки</option><option value="previous">Последняя с предыдущей</option></select></label>
+                <label class="field"><span>Цена</span><select name="price_kind"><option value="paid">Оплаченная</option><option value="regular">Обычная, если известна</option></select></label>
+                <label class="field"><span>Единица сравнения</span><select name="basis"><option value="unit">За единицу продажи / упаковку</option><option value="normalized">За кг, литр или штуку содержимого</option></select></label>
+                <label class="field"><span>Изменение</span><select name="direction"><option value="all">Все</option><option value="up">Подорожало</option><option value="down">Подешевело</option><option value="same">Цена вернулась / не изменилась</option></select></label>
+                <label class="field"><span>С даты (необязательно)</span><input type="date" name="date_from" /></label>
+                <label class="field"><span>По дату (необязательно)</span><input type="date" name="date_to" /></label>
+                <button type="submit" class="btn btn-secondary">Показать</button>
+              </form>
+              </details>
+              <p id="catalogPriceChangesStatus" class="muted-small" role="status"></p>
+              <div id="catalogPriceChangesList" class="catalog-price-changes-list"></div>
+              <button id="catalogPriceChangesMore" type="button" class="btn btn-secondary" hidden>Показать ещё</button>
+            </details>
             <div class="table-search-row catalog-products-toolbar">
               <input id="catalogProductsSearchQ" class="table-search-input" type="search" placeholder="Товар, бренд, источник, штрихкод или артикул" />
               <div class="toolbar section-action-toolbar search-toolbar">
