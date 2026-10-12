@@ -26,6 +26,7 @@ def browser_context_args(browser_context_args):
 
 
 def _set_mock_telegram(page):
+    page.route("https://telegram.org/js/telegram-web-app.js", lambda route: route.fulfill(content_type="application/javascript", body="/* Mocked Telegram SDK. */"))
     page.add_init_script(
         """
         window.Telegram = {
@@ -63,7 +64,7 @@ def static_server_url() -> str:
         port = s.getsockname()[1]
 
     process = subprocess.Popen(
-        [sys.executable, "-m", "http.server", str(port), "--bind", "127.0.0.1"],
+        [sys.executable, "-m", "tests.e2e.static_server", str(port), "--bind", "127.0.0.1"],
         cwd=str(repo_root),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -369,8 +370,8 @@ def page_with_analytics_api_mock(page):
                 {"name": "Кофе", "shop_name": "Соседи", "max_unit_price": "12.50", "purchases_count": 4, "total_spent": "41.50", "avg_unit_price": "10.38"}
             ],
             "frequent_positions": [
-                {"template_id": 11, "name": "Кофе зерновой", "shop_name": "Соседи", "purchases_count": 8, "quantity_total": "12.000", "amount_total": "84.60"},
-                {"template_id": 12, "name": "Молоко", "shop_name": "Green", "purchases_count": 5, "quantity_total": "5.000", "amount_total": "20.00"},
+                {"template_id": 11, "name": "Кофе зерновой", "shop_name": "Соседи", "purchases_count": 8, "quantity_total": "12.000", "amount_total": "84.60", "quantity_totals": {"pieces": "12", "rows_count": 8}, "amount_totals": {"BYN": "84.60"}},
+                {"template_id": 12, "name": "Молоко", "shop_name": "Green", "purchases_count": 5, "quantity_total": "5.000", "amount_total": "20.00", "quantity_totals": {"pieces": "5", "rows_count": 5}, "amount_totals": {"BYN": "20.00"}},
             ],
             "price_increases": [
                 {
@@ -493,6 +494,8 @@ def page_with_analytics_api_mock(page):
                     "key": bucket["key"],
                     "purchases_count": 1 if index in active_indexes else 0,
                     "quantity_total": str(quantity if index in active_indexes else 0),
+                    "quantity_totals": {"pieces": str(quantity if index in active_indexes else 0)},
+                    "amount_totals": {"BYN": amount if index in active_indexes else "0.00"},
                     "amount_total": amount if index in active_indexes else "0.00",
                 }
                 for index, bucket in enumerate(buckets)
@@ -506,6 +509,9 @@ def page_with_analytics_api_mock(page):
             "date_from": date_from,
             "date_to": date_to,
             "buckets": buckets,
+            "summary": {"purchases_count": len(first_active) + len(second_active),
+                        "quantity_totals": {"pieces": str(len(first_active) * 2 + len(second_active))},
+                        "amount_totals": {"BYN": str(len(first_active) * 18 + len(second_active) * 4)}},
             "positions": [
                 {
                     "template_id": 11,
@@ -513,6 +519,8 @@ def page_with_analytics_api_mock(page):
                     "shop_name": "Соседи",
                     "purchases_count": len(first_active),
                     "quantity_total": str(len(first_active) * 2),
+                    "quantity_totals": {"pieces": str(len(first_active) * 2)},
+                    "amount_totals": {"BYN": str(len(first_active) * 18)},
                     "amount_total": str(len(first_active) * 18),
                     "buckets": values(first_active, 2, "18.00"),
                 },
@@ -522,6 +530,8 @@ def page_with_analytics_api_mock(page):
                     "shop_name": "Green",
                     "purchases_count": len(second_active),
                     "quantity_total": str(len(second_active)),
+                    "quantity_totals": {"pieces": str(len(second_active))},
+                    "amount_totals": {"BYN": str(len(second_active) * 4)},
                     "amount_total": str(len(second_active) * 4),
                     "buckets": values(second_active, 1, "4.00"),
                 },
@@ -737,22 +747,20 @@ def page_with_analytics_api_mock(page):
     yield page
 
 
+def _login_analytics(page):
+    page.wait_for_function("() => Boolean(window.App?.getRuntimeModule?.('session'))")
+    _restore_mock_telegram(page)
+    page.evaluate("() => window.App.getRuntimeModule('session').refreshTelegramLoginUi?.()")
+    page.wait_for_function("() => !document.getElementById('appShell').classList.contains('hidden') || (document.getElementById('telegramLoginBtn')?.offsetWidth > 0)")
+    if page.locator("#telegramLoginBtn").is_visible():
+        page.locator("#telegramLoginBtn").click()
+    page.wait_for_selector("#appShell:not(.hidden)")
+
+
 def _open_mobile_analytics(page, static_server_url: str):
     page.set_viewport_size({"width": 390, "height": 844})
     page.goto(f"{static_server_url}/static/index.html")
-    _restore_mock_telegram(page)
-    page.evaluate("() => window.App.getRuntimeModule('session')?.refreshTelegramLoginUi?.()")
-    try:
-        page.locator("#telegramLoginBtn").wait_for(state="visible", timeout=1200)
-        page.click("#telegramLoginBtn")
-        page.wait_for_selector("#appShell:not(.hidden)")
-    except Exception:
-        page.evaluate(
-            """
-            () => window.App.getRuntimeModule('session')?.tryAutoTelegramLogin?.().catch(() => null)
-            """
-        )
-    page.wait_for_selector("#appShell:not(.hidden)")
+    _login_analytics(page)
     page.click("#mobileNavToggleBtn")
     page.click("button[data-section='analytics']")
     page.wait_for_selector("#analyticsSection:not(.hidden)")
@@ -761,19 +769,7 @@ def _open_mobile_analytics(page, static_server_url: str):
 def _open_desktop_app(page, static_server_url: str):
     page.set_viewport_size({"width": 1440, "height": 900})
     page.goto(f"{static_server_url}/static/index.html")
-    _restore_mock_telegram(page)
-    page.evaluate("() => window.App.getRuntimeModule('session')?.refreshTelegramLoginUi?.()")
-    try:
-        page.locator("#telegramLoginBtn").wait_for(state="visible", timeout=1200)
-        page.click("#telegramLoginBtn")
-        page.wait_for_selector("#appShell:not(.hidden)")
-    except Exception:
-        page.evaluate(
-            """
-            () => window.App.getRuntimeModule('session')?.tryAutoTelegramLogin?.().catch(() => null)
-            """
-        )
-        page.wait_for_selector("#appShell:not(.hidden)")
+    _login_analytics(page)
 
 
 @pytest.mark.e2e
@@ -879,7 +875,7 @@ def test_dashboard_position_ranking_routes_to_operations_and_full_analytics(page
     page.wait_for_selector("#dashboardPositionsRanking .analytics-position-ranking-row")
     expect(page.locator("#dashboardPositionsRanking .analytics-position-ranking-row")).to_have_count(2)
     expect(page.locator("#dashboardPositionsRanking")).to_contain_text("Кофе зерновой")
-    expect(page.locator("#dashboardPositionsRanking")).to_contain_text("12.00 ед.")
+    expect(page.locator("#dashboardPositionsRanking")).to_contain_text("8 пок.")
     expect(page.locator("#dashboardPositionsRanking")).to_contain_text("84,60\u00a0\ue901")
     ranking_currency_font = page.locator("#dashboardPositionsRanking .analytics-position-ranking-copy small").first.evaluate(
         "node => getComputedStyle(node).fontFamily"
@@ -1012,7 +1008,7 @@ def test_mobile_position_analytics_renders_matrix_and_drills_into_operations(pag
     expect(page.locator("#analyticsPositionsSummary .analytics-position-kpi")).to_have_count(5)
     expect(page.locator("#analyticsPositionsSummary")).to_contain_text("Позиций")
     expect(page.locator("#analyticsPositionsMobileFocus")).to_contain_text("Кофе зерновой")
-    page.locator("button[data-analytics-positions-metric='quantity']").click()
+    page.locator("button[data-analytics-positions-metric='pieces']").click()
     expect(page.locator("#analyticsPositionsMobileFocus .analytics-positions-focus-head")).to_contain_text("4")
 
     page.locator("#analyticsPositionsPeriodTrigger").click()
@@ -1044,12 +1040,12 @@ def test_mobile_position_analytics_renders_matrix_and_drills_into_operations(pag
     assert control_geometry["currentWidth"] > control_geometry["previousWidth"]
 
     expect(page.locator("#analyticsPositionsRanking .analytics-position-ranking-row")).to_have_count(2)
-    expect(page.locator("#analyticsPositionsRankingTitle")).to_have_text("Больше всего единиц")
+    expect(page.locator("#analyticsPositionsRankingTitle")).to_have_text("Больше всего: шт. товара")
     page.locator("#analyticsPositionsSortBtn").click()
-    expect(page.locator("#analyticsPositionsRankingTitle")).to_have_text("Меньше всего единиц")
+    expect(page.locator("#analyticsPositionsRankingTitle")).to_have_text("Меньше всего: шт. товара")
     expect(page.locator("#analyticsPositionsRanking .analytics-position-ranking-row").first).to_contain_text("Молоко")
     page.locator("#analyticsPositionsSortBtn").click()
-    expect(page.locator("#analyticsPositionsRankingTitle")).to_have_text("Больше всего единиц")
+    expect(page.locator("#analyticsPositionsRankingTitle")).to_have_text("Больше всего: шт. товара")
 
     anchor_before_shift = date.fromisoformat(page.evaluate("() => window.App.state.analyticsPositionsAnchor"))
     page.locator("#analyticsPositionsPrevBtn").click()

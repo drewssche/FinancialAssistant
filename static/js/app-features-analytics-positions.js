@@ -16,16 +16,30 @@
       : `legacy:${String(item?.name || "").toLowerCase()}:${String(item?.shop_name || "").toLowerCase()}`;
   }
 
+  const metrics = window.App.purchaseMetrics;
+
   function metricValue(item, metric = state.analyticsPositionsMetric) {
-    if (metric === "quantity") return Number(item?.quantity_total || 0);
-    if (metric === "amount") return Number(item?.amount_total || 0);
+    if (metric === "amount") return Number(item?.amount_totals?.[state.analyticsPositionsCurrency] || 0);
+    if (metrics.units[metric]) return Number(item?.quantity_totals?.[metric] || 0);
     return Number(item?.purchases_count || 0);
   }
 
   function formatMetric(value, metric = state.analyticsPositionsMetric) {
-    if (metric === "amount") return core.formatMoney(value || 0);
-    if (metric === "quantity") return core.formatAmount(value || 0);
-    return String(Number(value || 0));
+    if (metric === "amount") return core.formatMoney(value || 0, {currency: state.analyticsPositionsCurrency});
+    return metrics.units[metric] ? `${metrics.number(value)} ${metrics.units[metric]}` : String(Number(value || 0));
+  }
+
+  function syncCurrency(data) {
+    const currencies = Object.keys(data.summary?.amount_totals || {}).sort();
+    if (!currencies.includes(state.analyticsPositionsCurrency)) {
+      const base = core.getCurrencyConfig?.().code || "BYN";
+      state.analyticsPositionsCurrency = currencies.includes(base) ? base : currencies[0] || base;
+    }
+    if (el.analyticsPositionsCurrency) {
+      const options = currencies.length ? currencies : [state.analyticsPositionsCurrency];
+      el.analyticsPositionsCurrency.innerHTML = options.map((currency) => `<option value="${core.escapeHtml(currency)}"${currency === state.analyticsPositionsCurrency ? " selected" : ""}>${core.escapeHtml(currency)}</option>`).join("");
+      el.analyticsPositionsCurrency.closest("label")?.classList.toggle("hidden", state.analyticsPositionsMetric !== "amount");
+    }
   }
 
   function formatCompactPeriodLabel(dateFrom, dateTo) {
@@ -67,7 +81,7 @@
     const sourceQuery = String(el.analyticsPositionsSourceSearch?.value || "").trim().toLowerCase();
     const rows = (data.positions || []).filter((item) => {
       const nameMatches = !positionQuery || window.App.search.matches(item.name, positionQuery);
-      const sourceMatches = !sourceQuery || window.App.search.matches(item.shop_name, sourceQuery);
+      const sourceMatches = !sourceQuery || window.App.search.matches((item.source_names || [item.shop_name]).join(" "), sourceQuery);
       return nameMatches && sourceMatches;
     });
     const direction = state.analyticsPositionsSort === "asc" ? 1 : -1;
@@ -77,19 +91,17 @@
 
   function rankingTitle() {
     const ascending = state.analyticsPositionsSort === "asc";
-    if (state.analyticsPositionsMetric === "quantity") return ascending ? "Меньше всего единиц" : "Больше всего единиц";
+    if (metrics.units[state.analyticsPositionsMetric]) {
+      return `${ascending ? "Меньше" : "Больше"} всего: ${metrics.units[state.analyticsPositionsMetric]}`;
+    }
     if (state.analyticsPositionsMetric === "amount") return ascending ? "Меньше всего потратили" : "Больше всего потратили";
     return ascending ? "Реже всего покупали" : "Чаще всего покупали";
   }
 
   function rankingMeta(item) {
     const parts = [item.product_id && !item.shop_name ? "Все источники" : (item.shop_name || "Без источника")];
-    if (state.analyticsPositionsMetric !== "quantity") {
-      parts.push(`${core.formatAmount(item.quantity_total || 0)} ед.`);
-    }
-    if (state.analyticsPositionsMetric !== "amount") {
-      parts.push(core.formatMoney(item.amount_total || 0));
-    }
+    parts.push(metrics.summary(item));
+    if (state.analyticsPositionsMetric !== "amount") parts.push(metrics.amounts(item));
     return parts.join(" · ");
   }
 
@@ -118,14 +130,12 @@
   function renderSummary(data, rows) {
     if (!el.analyticsPositionsSummary) return;
     const allRows = data.positions || [];
-    const purchases = allRows.reduce((sum, item) => sum + Number(item.purchases_count || 0), 0);
-    const quantity = allRows.reduce((sum, item) => sum + Number(item.quantity_total || 0), 0);
-    const amount = allRows.reduce((sum, item) => sum + Number(item.amount_total || 0), 0);
+    const summary = data.summary || {};
     el.analyticsPositionsSummary.innerHTML = `
       <span class="analytics-position-kpi"><span>Позиций</span><strong>${allRows.length}</strong></span>
-      <span class="analytics-position-kpi"><span>Покупок</span><strong>${purchases}</strong></span>
-      <span class="analytics-position-kpi"><span>Количество</span><strong>${core.formatAmount(quantity)}</strong></span>
-      <span class="analytics-position-kpi"><span>Сумма</span><strong>${core.formatMoney(amount)}</strong></span>
+      <span class="analytics-position-kpi"><span>Чеков с товарами</span><strong>${summary.purchases_count ?? "—"}</strong></span>
+      <span class="analytics-position-kpi"><span>Количество по единицам</span><strong>${core.escapeHtml(metrics.summary(summary))}</strong></span>
+      <span class="analytics-position-kpi"><span>Суммы позиций</span><strong>${core.escapeHtml(metrics.amounts(summary))}</strong></span>
       <span class="analytics-position-kpi"><span>Показано</span><strong>${rows.length}</strong></span>
     `;
   }
@@ -178,9 +188,11 @@
 
   function renderPositions() {
     const data = state.analyticsPositionsData || { buckets: [], positions: [] };
+    state.analyticsPositionsMetric = metrics.normalizeMetric(state.analyticsPositionsMetric);
+    syncCurrency(data);
     const rows = filteredPositions();
     if (!state.analyticsPositionsSelectedKey && rows[0]) state.analyticsPositionsSelectedKey = positionKey(rows[0]);
-    core.syncSegmentedActive(el.analyticsPositionsMetricTabs, "analytics-positions-metric", state.analyticsPositionsMetric || "quantity");
+    core.syncSegmentedActive(el.analyticsPositionsMetricTabs, "analytics-positions-metric", state.analyticsPositionsMetric || "purchases");
     core.syncSegmentedActive(el.analyticsPositionsLimitTabs, "analytics-positions-limit", state.analyticsPositionsLimit || "top");
     const periodLabel = data.date_from ? `${core.formatDateRu(data.date_from)} - ${core.formatDateRu(data.date_to)}` : "Нет периода";
     if (el.analyticsPositionsRangeLabel) el.analyticsPositionsRangeLabel.textContent = periodLabel;
@@ -198,7 +210,7 @@
   async function loadAnalyticsPositions(options = {}) {
     const period = state.analyticsPositionsPeriod || "month";
     const anchor = currentAnchor();
-    const cacheKey = `analytics:positions:${period}:${anchor}`;
+    const cacheKey = `analytics:positions:quantities-v1:${period}:${anchor}`;
     if (!options.force) {
       const cached = core.getUiRequestCache(cacheKey, CACHE_TTL_MS);
       if (cached) {
@@ -251,18 +263,17 @@
   function renderDashboardRanking(data) {
     if (!el.dashboardPositionsRanking) return;
     const rows = (data?.frequent_positions || []).slice(0, 5);
-    const maxValue = Math.max(1, ...rows.map((item) => Number(item.quantity_total || 0)));
+    const maxValue = Math.max(1, ...rows.map((item) => Number(item.purchases_count || 0)));
     if (el.dashboardPositionsPeriodLabel && data?.date_from) {
       el.dashboardPositionsPeriodLabel.textContent = `${core.formatDateRu(data.date_from)} - ${core.formatDateRu(data.date_to)}`;
     }
     el.dashboardPositionsRanking.innerHTML = rows.map((item, index) => {
-      const quantity = Number(item.quantity_total || 0);
       const purchases = Number(item.purchases_count || 0);
-      const width = Math.max(5, Math.round((quantity / maxValue) * 100));
+      const width = Math.max(5, Math.round((purchases / maxValue) * 100));
       return `<button class="analytics-position-ranking-row" type="button" data-dashboard-position-template-id="${item.template_id || ""}" data-dashboard-position-product-id="${item.product_id || ""}" data-dashboard-position-name="${core.escapeHtml(item.name || "")}" data-dashboard-position-date-from="${data.date_from || ""}" data-dashboard-position-date-to="${data.date_to || ""}">
         <span class="analytics-position-ranking-index">${index + 1}</span>
-        <span class="analytics-position-ranking-copy"><strong>${core.escapeHtml(item.name || "Позиция")}</strong><small>${core.escapeHtml(item.product_id && !item.shop_name ? "Все источники" : (item.shop_name || "Без источника"))} · ${core.formatMoney(item.amount_total || 0)} · ${purchases} пок.</small><i style="--ranking-width:${width}%"></i></span>
-        <strong class="analytics-position-ranking-value">${core.formatAmount(quantity)} ед.</strong>
+        <span class="analytics-position-ranking-copy"><strong>${core.escapeHtml(item.name || "Позиция")}</strong><small>${core.escapeHtml(item.product_id && !item.shop_name ? "Все источники" : (item.shop_name || "Без источника"))} · ${core.escapeHtml(metrics.amounts(item))} · ${core.escapeHtml(metrics.summary(item))}</small><i style="--ranking-width:${width}%"></i></span>
+        <strong class="analytics-position-ranking-value">${purchases} пок.</strong>
       </button>`;
     }).join("");
     el.dashboardPositionsEmpty?.classList.toggle("hidden", rows.length > 0);

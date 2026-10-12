@@ -21,6 +21,7 @@ if [[ "${RUN_E2E}" == "1" ]]; then
   run_pytest "E2E: operations money flow" tests/e2e/test_operations_money_flow_e2e.py -m e2e
   run_pytest "E2E: analytics" \
     tests/e2e/test_analytics_mobile_e2e.py \
+    tests/e2e/test_purchase_quantity_metrics_e2e.py \
     tests/e2e/test_analytics_trend_cashflow_e2e.py \
     -m e2e
   run_pytest "E2E: bulk and batch forms" \

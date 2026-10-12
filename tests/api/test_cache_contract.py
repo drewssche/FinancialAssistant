@@ -81,7 +81,7 @@ def test_dashboard_analytics_key_shape_is_namespaced_and_parameterized():
         category_breakdown_level="group",
     )
     assert key == (
-        "dashanalytics:v2:u:7:view:highlights:period:month:from:-:to:-:"
+        "dashanalytics:v2:u:7:view:highlights-quantities-v1:period:month:from:-:to:-:"
         "month:-:category_kind:expense:category_breakdown_level:group:granularity:-:year:-"
     )
 

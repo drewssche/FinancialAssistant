@@ -433,6 +433,7 @@
       analyticsPositionsPeriodControlLabel: document.getElementById("analyticsPositionsPeriodControlLabel"),
       analyticsPositionsPeriodPopover: document.getElementById("analyticsPositionsPeriodPopover"),
       analyticsPositionsPeriodOptions: document.getElementById("analyticsPositionsPeriodOptions"),
+      analyticsPositionsCurrency: document.getElementById("analyticsPositionsCurrency"),
       analyticsPositionsMetricTabs: document.getElementById("analyticsPositionsMetricTabs"),
       analyticsPositionsLimitTabs: document.getElementById("analyticsPositionsLimitTabs"),
       analyticsPositionsSearch: document.getElementById("analyticsPositionsSearch"),

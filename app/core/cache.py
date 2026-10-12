@@ -197,7 +197,7 @@ def build_dashboard_analytics_cache_key(
         build_user_scoped_cache_key(
             namespace="dashboard_analytics",
             user_id=user_id,
-            view=view,
+            view=f"{view}-quantities-v1" if view in {"positions", "highlights"} else view,
             period=period,
             from_=date_from,
             to=date_to,

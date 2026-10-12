@@ -93,8 +93,8 @@
           <section id="dashboardPositionsPanel" class="panel">
             <div class="panel-head row between">
               <div>
-                <h3>Больше всего купили</h3>
-                <p id="dashboardPositionsPeriodLabel" class="subtitle">Топ по количеству за выбранный период</p>
+                <h3>Чаще всего покупали</h3>
+                <p id="dashboardPositionsPeriodLabel" class="subtitle">Топ по числу чеков за выбранный период</p>
               </div>
               <button id="openPositionsAnalyticsBtn" class="btn btn-secondary" type="button">Все позиции</button>
             </div>
@@ -299,14 +299,19 @@
                 <div class="analytics-switch-group">
                   <span class="muted-small">Метрика</span>
                   <div class="segmented" id="analyticsPositionsMetricTabs" role="tablist" aria-label="Метрика позиций">
-                    <button class="segmented-btn" data-analytics-positions-metric="purchases" type="button">Покупки</button>
-                    <button class="segmented-btn active" data-analytics-positions-metric="quantity" type="button">Количество</button>
+                    <button class="segmented-btn active" data-analytics-positions-metric="purchases" type="button">Покупки</button>
+                    <button class="segmented-btn" data-analytics-positions-metric="pieces" type="button">Шт. товара</button>
+                    <button class="segmented-btn" data-analytics-positions-metric="packs" type="button">Упаковки</button>
+                    <button class="segmented-btn" data-analytics-positions-metric="mass_kg" type="button">Вес, кг</button>
+                    <button class="segmented-btn" data-analytics-positions-metric="volume_l" type="button">Объём, л</button>
+                    <button class="segmented-btn" data-analytics-positions-metric="content_pieces" type="button">Шт. внутри</button>
                     <button class="segmented-btn" data-analytics-positions-metric="amount" type="button">Сумма</button>
                   </div>
                 </div>
               </div>
             </div>
             <div class="analytics-positions-filters">
+              <label class="field hidden"><span>Валюта сумм</span><select id="analyticsPositionsCurrency" aria-label="Валюта сумм позиций"></select></label>
               <input id="analyticsPositionsSearch" type="search" placeholder="Поиск позиции" autocomplete="off" />
               <input id="analyticsPositionsSourceSearch" type="search" placeholder="Источник" autocomplete="off" />
               <div class="segmented" id="analyticsPositionsLimitTabs" role="tablist" aria-label="Количество позиций">

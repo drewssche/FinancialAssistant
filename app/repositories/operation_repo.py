@@ -959,7 +959,12 @@ class OperationRepository:
                 display_name.label("position_name"),
                 display_shop.label("shop_name"),
                 Operation.operation_date,
-                func.count(func.distinct(Operation.id)).label("purchases_count"),
+                Operation.id.label("operation_id"),
+                Operation.currency,
+                OperationReceiptItem.sale_unit,
+                OperationReceiptItem.package_quantity,
+                OperationReceiptItem.package_unit,
+                func.count(OperationReceiptItem.id).label("rows_count"),
                 func.coalesce(func.sum(OperationReceiptItem.quantity), 0).label("quantity_total"),
                 func.coalesce(func.sum(OperationReceiptItem.line_total), 0).label("amount_total"),
             )
@@ -987,6 +992,11 @@ class OperationRepository:
                 display_name,
                 display_shop,
                 Operation.operation_date,
+                Operation.id,
+                Operation.currency,
+                OperationReceiptItem.sale_unit,
+                OperationReceiptItem.package_quantity,
+                OperationReceiptItem.package_unit,
             )
             .order_by(Operation.operation_date.asc(), display_name.asc())
         )
@@ -997,7 +1007,12 @@ class OperationRepository:
                 "name": str(row.position_name or "Позиция"),
                 "shop_name": str(row.shop_name) if row.shop_name else None,
                 "operation_date": row.operation_date,
-                "purchases_count": int(row.purchases_count or 0),
+                "operation_id": int(row.operation_id),
+                "currency": row.currency,
+                "rows_count": int(row.rows_count),
+                "sale_unit": row.sale_unit,
+                "package_quantity": row.package_quantity,
+                "package_unit": row.package_unit,
                 "quantity_total": Decimal(row.quantity_total or 0),
                 "amount_total": Decimal(row.amount_total or 0),
             }

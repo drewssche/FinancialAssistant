@@ -1132,10 +1132,10 @@ def test_dashboard_analytics_highlights_returns_kpis_and_top_blocks(client: Test
     assert len(payload["top_positions"]) >= 2
     assert payload["top_positions"][0]["name"] == "Steak"
     assert len(payload["frequent_positions"]) == 2
-    assert payload["frequent_positions"][0]["name"] == "Steak"
+    assert payload["frequent_positions"][0]["name"] == "Milk"  # tied frequency sorts by name
     assert payload["frequent_positions"][0]["purchases_count"] == 1
     assert payload["frequent_positions"][0]["quantity_total"] == "1.000"
-    assert payload["frequent_positions"][0]["amount_total"] == "25.00"
+    assert payload["frequent_positions"][0]["amount_total"] == "2.40"
     milk_increase = next(item for item in payload["price_increases"] if item["name"] == "Milk")
     assert milk_increase["change_amount"] != "0"
     assert milk_increase["previous_samples_count"] >= 1

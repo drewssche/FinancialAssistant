@@ -86,6 +86,7 @@
       analyticsPositionsPeriod: state.analyticsPositionsPeriod,
       analyticsPositionsAnchor: state.analyticsPositionsAnchor,
       analyticsPositionsMetric: state.analyticsPositionsMetric,
+      analyticsPositionsCurrency: state.analyticsPositionsCurrency,
       analyticsPositionsLimit: state.analyticsPositionsLimit,
       analyticsPositionsSort: state.analyticsPositionsSort,
       analyticsPositionsSelectedKey: state.analyticsPositionsSelectedKey,
@@ -136,7 +137,8 @@
     state.analyticsMonthAnchor = snapshot.analyticsMonthAnchor || "";
     state.analyticsPositionsPeriod = snapshot.analyticsPositionsPeriod || "month";
     state.analyticsPositionsAnchor = snapshot.analyticsPositionsAnchor || "";
-    state.analyticsPositionsMetric = snapshot.analyticsPositionsMetric || "quantity";
+    state.analyticsPositionsMetric = window.App.purchaseMetrics.normalizeMetric(snapshot.analyticsPositionsMetric);
+    state.analyticsPositionsCurrency = snapshot.analyticsPositionsCurrency || "";
     state.analyticsPositionsLimit = snapshot.analyticsPositionsLimit || "top";
     state.analyticsPositionsSort = snapshot.analyticsPositionsSort || "desc";
     state.analyticsPositionsSelectedKey = snapshot.analyticsPositionsSelectedKey || "";

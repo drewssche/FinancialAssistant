@@ -1,6 +1,6 @@
 # Product Context
 
-Baseline reviewed against `e5eaee1` on 2026-10-12; purchase semantics updated through line-discount release `1a5bce1`. Current implementation is described here; agreed future changes are in [RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md](RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md).
+Baseline reviewed against `e5eaee1` on 2026-10-12; purchase semantics updated through comparable quantity metrics (stage 2c). Current implementation is described here; agreed future changes are in [RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md](RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md).
 
 ## Product Idea
 Financial Assistant is a web-first personal finance tracker for income and expenses. The same backend API is designed to support both:
@@ -36,7 +36,7 @@ Current delivery direction:
 - Example: two `Еда` entries on the same date are stored as two separate operations.
 - Period totals are calculated as sums of all operations in selected date range.
 - Monthly totals work the same way: sum of all operation rows in that month range.
-- Legacy receipt totals derive from quantity and paid unit price. New line discounts support an amount, percentage, or authoritative paid line total; a derived six-decimal unit price never overwrites that total. In the receipt editor, enable «Скидка», expand «Скидка от суммы позиции», and choose the calculation method. Amount/percent modes require an explicitly entered regular price; direct final can leave that price unknown. Optional sale units and package contents are available in product/receipt forms and preserved as independent purchase/plan snapshots. Unknown historic units remain unknown. Normalized quantity metrics and shrinkflation comparisons remain planned.
+- Legacy receipt totals derive from quantity and paid unit price. New line discounts support an amount, percentage, or authoritative paid line total; a derived six-decimal unit price never overwrites that total. In the receipt editor, enable «Скидка», expand «Скидка от суммы позиции», and choose the calculation method. Amount/percent modes require an explicitly entered regular price; direct final can leave that price unknown. Optional sale units and package contents are available in product/receipt forms and preserved as independent purchase/plan snapshots. Unknown historic units remain unknown. Purchase frequency, sale pieces/packages, mass, volume and spending per currency are now separate metrics; shrinkflation comparisons remain planned.
 
 ## Plans, Catalog and Work
 
@@ -67,6 +67,7 @@ Current delivery direction:
 - Keep raw operations atomic (event-level records) as the source of truth.
 - For trend analytics, use aggregated views/queries on top (`day/week/month` buckets by kind/category), without merging original records.
 - This keeps edit/delete auditability and avoids data loss, while still allowing fast trend calculations.
+- «Чаще всего покупали» ranks products by distinct expense receipts. «Позиции» separately shows packages, pieces, kg/l and paid line totals in each original currency. Repeated lines count once per product/receipt; missing historic units remain visibly unknown. Catalog edits do not alter past measurement totals.
 - Trend/calendar/highlight queries and `/api/v1/dashboard/analytics/positions` are implemented. Catalog offers also link to price history and filtered operations. The future product view should consolidate these workflows without losing access to the underlying receipts.
 
 ## Debt Domain (Implemented MVP Baseline)

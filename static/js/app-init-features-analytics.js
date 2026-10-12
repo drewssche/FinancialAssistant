@@ -492,6 +492,10 @@
       actions.toggleAnalyticsPositionsSort?.();
       window.App.getRuntimeModule?.("session")?.savePreferencesDebounced?.(250);
     });
+    el.analyticsPositionsCurrency?.addEventListener("change", () => {
+      state.analyticsPositionsCurrency = el.analyticsPositionsCurrency.value;
+      actions.renderAnalyticsPositions?.();
+    });
     el.analyticsPositionsMetricTabs?.addEventListener("click", (event) => {
       const btn = event.target.closest("button[data-analytics-positions-metric]");
       if (!btn) return;

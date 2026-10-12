@@ -1,6 +1,6 @@
 # Architecture
 
-Reviewed on 2026-10-12, including reliability, keyboard search, optional purchase measurements and exact line discounts (`1a5bce1`). Release status is recorded in the roadmap. This document describes implemented behavior. Proposed receipt, catalog and analytics changes remain in [the product plan](RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md); dated production findings are in [the operations review](OPERATIONS_REVIEW_2026-10-12.md).
+Reviewed on 2026-10-12, including reliability, keyboard search, optional purchase measurements, exact line discounts and comparable purchase metrics (stage 2c). Release status is recorded in the roadmap. This document describes implemented behavior. Proposed receipt, catalog and analytics changes remain in [the product plan](RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md); dated production findings are in [the operations review](OPERATIONS_REVIEW_2026-10-12.md).
 
 ## Runtime and boundaries
 
@@ -62,14 +62,14 @@ flowchart LR
 ```
 
 - `catalog_products` holds the common product; `operation_item_templates` represents reusable source offers. Brands, sources, categories and images have their own records.
-- `operation_receipt_items` stores purchase lines, including quantity, paid unit price, optional regular unit price, discount metadata and calculated line total. The current calculation rounds the unit price to money precision, then calculates `quantity * unit_price`; independent authoritative line totals are not implemented yet.
+- `operation_receipt_items` stores purchase lines, including quantity, paid unit price, optional regular unit price, discount metadata and calculated line total. Legacy rows round unit price to money precision before multiplication. Explicit discount modes retain an authoritative paid line total; see the exact line discount contract below.
 - Optional `sale_unit`, `package_quantity` and `package_unit` live on products (defaults) and independently on operation/plan receipt rows (snapshots). Units are piece/pack/kg/g/l/ml; package content uses piece/kg/g/l/ml, with a positive quantity up to three decimal places and a sale unit of piece/pack. Catalog edits do not propagate these fields to past purchases or plans. Plan confirmation, operation editing, deletion and restoration preserve the snapshot. Missing legacy data remains null; the server does not infer it from a product name or today's catalog defaults.
 - Receipt/product forms expose measurements in an optional disclosure. Selecting a product can seed a new untouched receipt row; loading a saved row preserves its own values, including unknown units. A stale client replacing a measured receipt without measurement fields is rejected instead of erasing them. Products with different measurement defaults cannot be merged until explicit package variants are implemented. Separation copies defaults to the new card and preserves purchase snapshots.
-- Migration `20261012_0046` adds nine nullable columns without a data backfill. It does not change money calculations or existing price-history semantics. Normalized price/quantity analytics and package-variant comparison are subsequent steps; do not treat current aggregate quantity as a sum of comparable mass/volume.
+- Migration `20261012_0046` adds nine nullable columns without a data backfill. It does not change money calculations or existing price-history semantics. Comparable quantity analytics now use these snapshots. Normalized price comparisons and package variants remain subsequent steps; never treat legacy aggregate quantity as comparable mass/volume.
 - `CatalogProductService` and `OperationItemTemplateService` own linkage, merging, separation and metadata synchronization. Category/brand changes can propagate to linked records under existing rules; not all historical product metadata is immutable.
 - `operation_item_prices` is the existing price store. Receipt synchronization suppresses a price already present among up to 500 recent records; it is not a complete observation timeline. A discounted line contributes its known regular price, or no price if regular price is unknown. Paid discounted prices remain in receipt snapshots.
 - Consequently, a return to a previous price can be omitted from this history. Do not document a guaranteed append on every purchase or infer complete price changes from these records.
-- Template resolution batches names/source matches and price inserts to limit query growth. Optional product units, package variants, GTINs, website links, OCR and external product-price monitoring are planned, not implemented.
+- Template resolution batches names/source matches and price inserts to limit query growth. Optional product units are implemented; package variants, GTINs, website links, OCR and external product-price monitoring remain planned.
 
 ### Exact line discount contract (`20261012_0047`)
 
@@ -104,6 +104,12 @@ Successful quotes update current rates and historical snapshots, keeping scale, 
 ## Analytics and caching
 
 Implemented dashboard routes include summary, calendar/month, calendar/year, trend, highlights and positions. Commerce and currency views use related feature APIs. Current analytics tabs include calendar, structure, positions, prices/discounts, trends and currency; consolidation is planned after useful workflows have replacements. Calendar and structure remain in place.
+
+`DashboardAnalyticsPositionsService.summarize_period` is shared by positions and the dashboard frequent-products widget. The repository groups paid expense receipt rows by operation, product/offer, currency and measurement snapshot in one query. Unique operation-ID sets count a product once per receipt, and count receipts once across the whole summary. Income rows and unconfirmed plans are excluded. Product grouping spans source offers; legacy unlinked rows retain their fallback identity. Frequency ties use product name, not mixed quantities or currencies.
+
+`app/core/purchase_quantities.py` separately accumulates sale pieces, packages, kilograms, litres and pieces inside packages. Package contents multiply the snapshot quantity; grams/millilitres normalize to kg/l. Decimal arithmetic preserves up to nine fractional places. Unknown units and missing package contents have coverage counters and are never guessed from current catalog metadata. `amount_totals` sums authoritative paid line totals by original receipt currency; this is receipt spending, which can differ from operation totals. No exchange-rate conversion or cross-currency sum is used in the new UI. Legacy `quantity_total` and `amount_total` fields remain for API compatibility only.
+
+`app-purchase-metrics.js` formats these metrics. Positions defaults to receipt frequency and offers separate unit metrics plus an explicit currency selector for spending. Dashboard «Чаще всего покупали» uses the same receipt count and canonical product drilldown. Old untyped quantity preferences migrate to frequency; price/discount redesign remains a later stage. Discount-product/type/timeline purchase counts also deduplicate receipt IDs. Cache keys for positions/highlights add `quantities-v1` within the existing user namespace; normal mutation invalidation still applies. This release requires no schema migration or historical writes.
 
 `app/core/cache.py` provides user-scoped namespaces `dashboard_summary`, `dashboard_analytics`, `plans`, `item_templates`, `debts`, `operations` and `categories`. Redis is optional; in-process fallback supports the small single-process deployment. Mutations invalidate the relevant namespaces. Cache availability and local-fallback pressure are observable; failed requests must not become valid zero results.
 

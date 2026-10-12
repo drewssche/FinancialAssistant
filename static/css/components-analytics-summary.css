@@ -1934,15 +1934,15 @@
   }
 
   #analyticsPositionsSummary {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   #analyticsPositionsSummary .analytics-position-kpi {
-    grid-column: span 2;
+    grid-column: span 1;
   }
 
-  #analyticsPositionsSummary .analytics-position-kpi:nth-last-child(-n + 2) {
-    grid-column: span 3;
+  #analyticsPositionsSummary .analytics-position-kpi:nth-child(3) {
+    grid-column: span 2;
   }
 
   .analytics-positions-toolbar,
@@ -1982,3 +1982,8 @@
     min-width: 104px;
   }
 }
+
+/* Comparable purchase metrics wrap rather than overflow on narrow screens. */
+#analyticsPositionsMetricTabs { display: flex; flex-wrap: wrap; }
+#analyticsPositionsMetricTabs > button { flex: 1 1 auto; }
+#analyticsPositionsSummary .analytics-position-kpi > strong { white-space: normal; overflow-wrap: anywhere; }

@@ -6,6 +6,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from app.repositories.operation_repo import OperationRepository
+from app.core.purchase_quantities import add_quantities, empty_quantities
 
 
 class DashboardAnalyticsPositionsService:
@@ -18,112 +19,72 @@ class DashboardAnalyticsPositionsService:
         resolved_anchor = anchor or date.today()
         date_from, date_to = self._period_bounds(period=period, anchor=resolved_anchor)
         buckets = self._build_buckets(period=period, date_from=date_from, date_to=date_to)
-        bucket_by_date = self._bucket_by_date(buckets)
-        positions: dict[tuple, dict] = {}
+        result = self.summarize_period(user_id=user_id, date_from=date_from, date_to=date_to, buckets=buckets)
+        return {
+            "period": period, "anchor": resolved_anchor.isoformat(),
+            "date_from": date_from.isoformat(), "date_to": date_to.isoformat(),
+            "buckets": buckets, **result,
+        }
 
-        for row in self.repo.aggregate_positions_for_period(
-            user_id=user_id,
-            date_from=date_from,
-            date_to=date_to,
-        ):
-            product_id = row.get("product_id")
-            template_id = row["template_id"]
+    def summarize_period(self, *, user_id: int, date_from: date, date_to: date, buckets=None) -> dict:
+        buckets = buckets or []
+        bucket_by_date = self._bucket_by_date(buckets)
+        positions = {}
+        summary = self._empty_totals()
+        for row in self.repo.aggregate_positions_for_period(user_id=user_id, date_from=date_from, date_to=date_to):
+            product_id, template_id = row.get("product_id"), row["template_id"]
             name = str(row["name"] or "Позиция").strip() or "Позиция"
             shop_name = str(row["shop_name"]).strip() if row["shop_name"] else None
-            identity = (
-                ("product", product_id)
-                if product_id is not None
-                else (
-                    ("template", template_id)
-                    if template_id is not None
-                    else (
-                        "legacy",
-                        name.casefold(),
-                        shop_name.casefold() if shop_name else "",
-                    )
-                )
-            )
-            position = positions.setdefault(
-                identity,
-                {
-                    "product_id": product_id,
-                    "template_id": template_id,
-                    "name": name,
-                    "shop_name": shop_name,
-                    "source_names": set(),
-                    "purchases_count": 0,
-                    "quantity_total": Decimal("0"),
-                    "amount_total": Decimal("0"),
-                    "buckets": defaultdict(
-                        lambda: {
-                            "purchases_count": 0,
-                            "quantity_total": Decimal("0"),
-                            "amount_total": Decimal("0"),
-                        }
-                    ),
-                },
-            )
+            identity = (("product", product_id) if product_id is not None else
+                        ("template", template_id) if template_id is not None else
+                        ("legacy", name.casefold(), (shop_name or "").casefold()))
+            position = positions.setdefault(identity, {
+                "product_id": product_id, "template_id": template_id, "name": name,
+                "source_names": set(), "buckets": defaultdict(self._empty_totals), **self._empty_totals(),
+            })
             if shop_name:
                 position["source_names"].add(shop_name)
+            self._add_row(position, row)
+            self._add_row(summary, row)
             bucket_key = bucket_by_date.get(row["operation_date"])
-            if not bucket_key:
-                continue
-            position["purchases_count"] += int(row["purchases_count"] or 0)
-            position["quantity_total"] += Decimal(row["quantity_total"] or 0)
-            position["amount_total"] += Decimal(row["amount_total"] or 0)
-            position_bucket = position["buckets"][bucket_key]
-            position_bucket["purchases_count"] += int(row["purchases_count"] or 0)
-            position_bucket["quantity_total"] += Decimal(row["quantity_total"] or 0)
-            position_bucket["amount_total"] += Decimal(row["amount_total"] or 0)
-
-        rows = []
+            if bucket_key:
+                self._add_row(position["buckets"][bucket_key], row)
+        result = []
         for position in positions.values():
-            source_names = sorted(
-                position["source_names"],
-                key=str.casefold,
-            )
-            values = []
-            for bucket in buckets:
-                metrics = position["buckets"].get(bucket["key"], {})
-                values.append(
-                    {
-                        "key": bucket["key"],
-                        "purchases_count": int(metrics.get("purchases_count", 0)),
-                        "quantity_total": Decimal(metrics.get("quantity_total", 0)),
-                        "amount_total": Decimal(metrics.get("amount_total", 0)),
-                    }
-                )
-            rows.append(
-                {
-                    "product_id": position["product_id"],
-                    "template_id": position["template_id"],
-                    "name": position["name"],
-                    "shop_name": source_names[0] if len(source_names) == 1 else None,
-                    "source_names": source_names,
-                    "sources_count": len(source_names),
-                    "purchases_count": int(position["purchases_count"]),
-                    "quantity_total": Decimal(position["quantity_total"]),
-                    "amount_total": Decimal(position["amount_total"]),
-                    "buckets": values,
-                }
-            )
-        rows.sort(
-            key=lambda item: (
-                item["purchases_count"],
-                item["quantity_total"],
-                item["amount_total"],
-                item["name"].casefold(),
-            ),
-            reverse=True,
-        )
-        return {
-            "period": period,
-            "anchor": resolved_anchor.isoformat(),
-            "date_from": date_from.isoformat(),
-            "date_to": date_to.isoformat(),
-            "buckets": buckets,
-            "positions": rows,
-        }
+            sources = sorted(position["source_names"], key=str.casefold)
+            result.append({
+                "product_id": position["product_id"], "template_id": position["template_id"],
+                "name": position["name"], "shop_name": sources[0] if len(sources) == 1 else None,
+                "source_names": sources, "sources_count": len(sources),
+                **self._serialize_totals(position),
+                "buckets": [{"key": bucket["key"], **self._serialize_totals(position["buckets"].get(bucket["key"]))}
+                            for bucket in buckets],
+            })
+        result.sort(key=lambda item: (-item["purchases_count"], item["name"].casefold()))
+        return {"positions": result, "summary": self._serialize_totals(summary)}
+
+    @staticmethod
+    def _empty_totals():
+        return {"operation_ids": set(), "quantity_totals": empty_quantities(),
+                "quantity_total": Decimal("0"), "amount_total": Decimal("0"), "amount_totals": defaultdict(Decimal)}
+
+    @staticmethod
+    def _add_row(target, row):
+        target["operation_ids"].add(row["operation_id"])
+        add_quantities(target["quantity_totals"], {**row, "quantity": row["quantity_total"]}, rows_count=row["rows_count"])
+        target["amount_totals"][row["currency"]] += row["amount_total"]
+        # Legacy API compatibility only. New UI must never compare these untyped sums.
+        target["quantity_total"] += row["quantity_total"]
+        target["amount_total"] += row["amount_total"]
+
+    @staticmethod
+    def _serialize_totals(totals):
+        if totals is None:
+            return {"purchases_count": 0, "quantity_total": Decimal("0"), "amount_total": Decimal("0"),
+                    "quantity_totals": None, "amount_totals": {}}
+        return {"purchases_count": len(totals["operation_ids"]),
+                "quantity_total": totals["quantity_total"], "amount_total": totals["amount_total"],
+                "quantity_totals": totals["quantity_totals"], "amount_totals": dict(totals["amount_totals"])}
 
     @staticmethod
     def _period_bounds(*, period: str, anchor: date) -> tuple[date, date]:

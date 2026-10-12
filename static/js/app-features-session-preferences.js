@@ -597,11 +597,7 @@
       ? prefs.data.analytics.positions_period
       : "month";
     state.analyticsPositionsAnchor = prefs.data?.analytics?.positions_anchor || "";
-    const positionsMetricVersion = Number(prefs.data?.analytics?.positions_metric_version || 0);
-    state.analyticsPositionsMetric = positionsMetricVersion >= 2
-      && ["purchases", "quantity", "amount"].includes(prefs.data?.analytics?.positions_metric)
-      ? prefs.data.analytics.positions_metric
-      : "quantity";
+    state.analyticsPositionsMetric = window.App.purchaseMetrics.normalizeMetric(prefs.data?.analytics?.positions_metric);
     state.analyticsPositionsLimit = prefs.data?.analytics?.positions_limit === "all" ? "all" : "top";
     state.analyticsPositionsSort = prefs.data?.analytics?.positions_sort === "asc" ? "asc" : "desc";
     if ((state.analyticsGlobalPeriod === "year" || state.analyticsGlobalPeriod === "all_time") && state.analyticsGranularity === "day") {
@@ -763,8 +759,8 @@
           granularity: state.analyticsGranularity || "day",
           positions_period: state.analyticsPositionsPeriod || "month",
           positions_anchor: state.analyticsPositionsAnchor || "",
-          positions_metric: state.analyticsPositionsMetric || "quantity",
-          positions_metric_version: 2,
+          positions_metric: state.analyticsPositionsMetric || "purchases",
+          positions_metric_version: 3,
           positions_limit: state.analyticsPositionsLimit || "top",
           commerce_mode: state.analyticsCommerceMode || "prices",
           commerce_metric: state.analyticsCommerceMetric || "change_pct",

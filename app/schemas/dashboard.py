@@ -264,7 +264,29 @@ class AnalyticsTopPosition(BaseModel):
     purchases_count: int
 
 
-class AnalyticsFrequentPosition(BaseModel):
+class PurchaseQuantityTotals(BaseModel):
+    pieces: Decimal = Decimal("0")
+    packs: Decimal = Decimal("0")
+    mass_kg: Decimal = Decimal("0")
+    volume_l: Decimal = Decimal("0")
+    content_pieces: Decimal = Decimal("0")
+    rows_count: int = 0
+    unknown_rows_count: int = 0
+    unmeasured_package_rows_count: int = 0
+
+
+class PurchaseMetrics(BaseModel):
+    quantity_totals: PurchaseQuantityTotals | None = None
+    amount_totals: dict[str, Decimal] = Field(default_factory=dict)
+
+
+class PurchaseMetricsSummary(PurchaseMetrics):
+    purchases_count: int = 0
+
+
+class AnalyticsFrequentPosition(PurchaseMetrics):
+    product_id: int | None = None
+    source_names: list[str] = Field(default_factory=list)
     template_id: int | None = None
     name: str
     shop_name: str | None = None
@@ -273,7 +295,7 @@ class AnalyticsFrequentPosition(BaseModel):
     amount_total: Decimal
 
 
-class AnalyticsPositionBucket(BaseModel):
+class AnalyticsPositionBucket(PurchaseMetrics):
     key: str
     label: str | None = None
     date_from: str | None = None
@@ -283,7 +305,7 @@ class AnalyticsPositionBucket(BaseModel):
     amount_total: Decimal | None = None
 
 
-class AnalyticsPositionRow(BaseModel):
+class AnalyticsPositionRow(PurchaseMetrics):
     template_id: int | None
     product_id: int | None = None
     name: str
@@ -303,6 +325,7 @@ class AnalyticsPositionsOut(BaseModel):
     date_to: str
     buckets: list[AnalyticsPositionBucket]
     positions: list[AnalyticsPositionRow]
+    summary: PurchaseMetricsSummary = Field(default_factory=PurchaseMetricsSummary)
 
 
 class AnalyticsTopCategory(BaseModel):
@@ -371,7 +394,7 @@ class AnalyticsDiscountTimelinePoint(BaseModel):
     purchases_count: int
 
 
-class AnalyticsTopDiscountSaving(BaseModel):
+class AnalyticsTopDiscountSaving(PurchaseMetrics):
     template_id: int | None = None
     name: str
     shop_name: str | None
