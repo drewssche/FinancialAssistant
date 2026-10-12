@@ -410,3 +410,7 @@
   - `./.venv/bin/pytest -q tests/e2e/test_plans_ui_e2e.py::test_plan_kebab_menu_actions_work_from_floating_popover -m e2e`
   - `./.venv/bin/pytest -q tests/e2e/test_mobile_shell_cards_e2e.py -m e2e`
   - `./.venv/bin/pytest -q tests/e2e/test_analytics_mobile_e2e.py::test_mobile_analytics_calendar_scroll_wrap_reaches_last_columns tests/e2e/test_analytics_mobile_e2e.py::test_mobile_analytics_year_view_card_opens_month_view -m e2e`
+
+### CI notification policy — 2026-10-13
+
+Automatic GitHub CI runs on pushes and pull requests are disabled at the owner’s request. The workflow remains available through `workflow_dispatch`; local/release checks remain required. Latest failed run `38318224189` stopped at the python-jose advisory `GHSA-3qf3-8w2g-rqmx` and a browser screenshot path `/private/tmp` unavailable on Linux; this change does not claim those failures are resolved. Review the advisory separately and make screenshot paths portable before a future manual full-CI run.
