@@ -339,10 +339,10 @@
       const normalizedQueryCi = normalizedQuery.toLowerCase();
       const sources = Array.from(new Set([
         ...(state.itemTemplateProductContext?.offers || []).map((offer) => offer.source_name || offer.shop_name).filter(Boolean),
-        ...listItemCatalogSourceNames(80),
+        ...listItemCatalogSourceNames(0),
       ]));
       const matched = normalizedQuery
-        ? sources.filter((name) => name.toLowerCase().includes(normalizedQueryCi))
+        ? window.App.search.prioritize(sources.filter((name) => window.App.search.matches(name, normalizedQueryCi)), query, (name) => name)
         : sources.slice(0, 24);
       const exact = Boolean(normalizedQuery) && sources.some((name) => getItemCatalogShopKey(name) === getItemCatalogShopKey(normalizedQuery));
       const chips = matched.map((sourceName) => {
@@ -403,7 +403,7 @@
       if (!query) {
         return;
       }
-      const firstMatch = listItemCatalogSourceNames(80).find((name) => name.toLowerCase().includes(query.toLowerCase()));
+      const firstMatch = window.App.search.prioritize(listItemCatalogSourceNames(0), query, (name) => name).find((name) => window.App.search.matches(name, query));
       selectItemTemplateSource(firstMatch || query);
     }
 
@@ -578,8 +578,8 @@
         ? ""
         : rawQuery;
       const brands = (state.itemBrands || [])
-        .filter((brand) => !normalizedQuery || String(brand?.name || "").toLowerCase().includes(normalizedQuery.toLowerCase()))
-        .sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || ""), "ru"));
+        .filter((brand) => !normalizedQuery || window.App.search.matches(brand?.name, normalizedQuery.toLowerCase()))
+        .sort((a, b) => window.App.search.compare(normalizedQuery, a?.name, b?.name) || String(a?.name || "").localeCompare(String(b?.name || ""), "ru"));
       const noBrand = pickerUtils.createMetaChipButton({
         datasetName: "itemTemplateBrandId",
         datasetValue: "",
@@ -656,7 +656,7 @@
         selectItemTemplateBrand(null);
         return;
       }
-      const firstMatch = (state.itemBrands || []).find((brand) => String(brand?.name || "").toLowerCase().includes(query));
+      const firstMatch = window.App.search.prioritize(state.itemBrands || [], query).find((brand) => window.App.search.matches(brand?.name, query));
       if (firstMatch) {
         selectItemTemplateBrand(firstMatch.id);
       } else {

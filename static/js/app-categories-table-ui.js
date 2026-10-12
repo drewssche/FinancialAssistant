@@ -168,9 +168,9 @@
       }
       const groupName = String(item.group_name || "").toLowerCase();
       return (
-        String(item.name || "").toLowerCase().includes(queryLower)
-        || core.kindLabel(item.kind).toLowerCase().includes(queryLower)
-        || groupName.includes(queryLower)
+        window.App.search.matches(item.name, queryLower)
+        || window.App.search.matches(core.kindLabel(item.kind), queryLower)
+        || window.App.search.matches(groupName, queryLower)
       );
     });
 
@@ -195,7 +195,7 @@
       .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "ru"));
 
     for (const group of filteredGroups) {
-      const groupMatchesQuery = queryLower ? String(group.name || "").toLowerCase().includes(queryLower) : false;
+      const groupMatchesQuery = queryLower ? window.App.search.matches(group.name, queryLower) : false;
       const childrenSource = groupMatchesQuery ? sourceRows : filteredRows;
       const children = childrenSource
         .filter((item) => item.group_id === group.id)
@@ -429,6 +429,10 @@
     const groups = sorting.sort(getCategoriesDisplayGroups(queryRaw, queryLower), "categories", [
       { key: "group", value: (group) => group.name }, columns[2],
     ]).map((group) => ({ ...group, children: sorting.sort(group.children, "categories", columns) }));
+    const searchValues = (item) => [item.name, item.group_name, core.kindLabel(item.kind)];
+    groups.forEach((group) => group.children.sort((a, b) => window.App.search.compare(queryRaw, searchValues(a), searchValues(b))));
+    groups.sort((a, b) => window.App.search.compare(queryRaw,
+      [a.name, ...a.children.flatMap(searchValues)], [b.name, ...b.children.flatMap(searchValues)]));
     if (el.categoriesKpiGrid) {
       const categories = Array.isArray(state.categories) ? state.categories : [];
       const visibleCategoryIds = new Set();

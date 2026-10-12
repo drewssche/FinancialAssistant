@@ -140,12 +140,12 @@
       return (state.itemBrands || []).slice();
     }
     return (state.itemBrands || []).filter((brand) => {
-      if (String(brand?.name || "").toLowerCase().includes(query)) {
+      if (window.App.search.matches(brand?.name, query)) {
         return true;
       }
       return relatedCatalogItems(brand?.id).some((item) => (
-        String(item?.name || "").toLowerCase().includes(query)
-        || String(item?.shop_name || "").toLowerCase().includes(query)
+        window.App.search.matches(item?.name, query)
+        || window.App.search.matches(item?.shop_name, query)
       ));
     });
   }
@@ -217,6 +217,9 @@
       const spendDiff = brandSpentTotal(b) - brandSpentTotal(a);
       return spendDiff || String(a?.name || "").localeCompare(String(b?.name || ""), "ru");
     }), "brands", columns);
+    const query = el.itemBrandsSearchQ?.value || "";
+    const searchValues = (brand) => [brand.name, ...relatedCatalogItems(brand.id).flatMap((item) => [item.name, item.shop_name])];
+    rows.sort((a, b) => window.App.search.compare(query, searchValues(a), searchValues(b)));
     el.itemBrandsBody.innerHTML = rows.length
       ? rows.map(renderBrandRow).join("")
       : '<tr><td colspan="6" class="muted-small">Бренды не найдены</td></tr>';
@@ -441,6 +444,10 @@
       const sourceDiff = String(a?.shop_name || "").localeCompare(String(b?.shop_name || ""), "ru");
       return sourceDiff || String(a?.name || "").localeCompare(String(b?.name || ""), "ru");
     }), "brand-items", columns);
+    const query = el.itemCatalogSearchQ?.value || "";
+    const searchValues = (item) => [item.name, item.shop_name, item.brand_name || brand.name,
+      (state.categories || []).find((category) => Number(category.id) === Number(item.last_category_id))?.name];
+    sortedItems.sort((a, b) => window.App.search.compare(query, searchValues(a), searchValues(b)));
     if (el.itemBrandDetailTitle) {
       const media = window.App.getRuntimeModule?.("catalog-media") || {};
       const logo = media.renderThumb?.(brand?.image_id, { kind: "brand", size: "row", alt: `Логотип ${brand?.name || "бренда"}` }) || "";
@@ -577,10 +584,10 @@
       }
       const brand = brandFromId(item?.brand_id);
       const category = (state.categories || []).find((entry) => Number(entry?.id || 0) === Number(item?.last_category_id || 0));
-      return String(item?.name || "").toLowerCase().includes(query)
-        || String(item?.shop_name || "").toLowerCase().includes(query)
-        || String(item?.brand_name || brand?.name || "").toLowerCase().includes(query)
-        || String(category?.name || "").toLowerCase().includes(query);
+      return window.App.search.matches(item?.name, query)
+        || window.App.search.matches(item?.shop_name, query)
+        || window.App.search.matches(item?.brand_name || brand?.name, query)
+        || window.App.search.matches(category?.name, query);
     });
   }
 

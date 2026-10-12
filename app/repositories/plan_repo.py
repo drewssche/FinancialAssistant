@@ -4,6 +4,8 @@ from decimal import Decimal
 from sqlalchemy import and_, delete, desc, or_, select, update
 from sqlalchemy.orm import Session, aliased
 
+from app.repositories.search import search_any, search_order
+
 from app.db.models import (
     AuthIdentity,
     Category,
@@ -100,14 +102,9 @@ class PlanRepository:
         if kind:
             stmt = stmt.where(PlanOperation.kind == kind)
         if q:
-            like = f"%{q.strip()}%"
-            stmt = stmt.where(
-                or_(
-                    PlanOperation.note.like(like),
-                    Category.name.like(like),
-                )
-            )
+            stmt = stmt.where(search_any(q, PlanOperation.note, Category.name))
         stmt = stmt.order_by(
+            *search_order(q, PlanOperation.note, Category.name),
             PlanOperation.status.asc(),
             PlanOperation.scheduled_date.asc(),
             desc(PlanOperation.id),
@@ -359,14 +356,8 @@ class PlanRepository:
         if kind:
             stmt = stmt.where(PlanOperationEvent.kind == kind)
         if q:
-            like = f"%{q.strip()}%"
-            stmt = stmt.where(
-                or_(
-                    PlanOperationEvent.note.like(like),
-                    PlanOperationEvent.category_name.like(like),
-                )
-            )
-        stmt = stmt.order_by(PlanOperationEvent.created_at.desc(), PlanOperationEvent.id.desc())
+            stmt = stmt.where(search_any(q, PlanOperationEvent.note, PlanOperationEvent.category_name))
+        stmt = stmt.order_by(*search_order(q, PlanOperationEvent.note, PlanOperationEvent.category_name), PlanOperationEvent.created_at.desc(), PlanOperationEvent.id.desc())
         return list(self.db.scalars(stmt))
 
     def list_active_plans_for_user(self, *, user_id: int) -> list[PlanOperation]:

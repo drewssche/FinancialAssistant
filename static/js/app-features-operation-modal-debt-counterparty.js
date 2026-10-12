@@ -55,7 +55,7 @@
           continue;
         }
         const key = name.toLowerCase();
-        if (normalizedQuery && !key.includes(normalizedQuery)) {
+        if (normalizedQuery && !window.App.search.matches(key, normalizedQuery)) {
           continue;
         }
         if (!byName.has(key)) {
@@ -67,6 +67,8 @@
         }
       }
       return Array.from(byName.values()).sort((a, b) => {
+        const relevance = window.App.search.compare(query, a.counterparty, b.counterparty);
+        if (relevance) return relevance;
         if (a.status !== b.status) {
           return a.status === "active" ? -1 : 1;
         }

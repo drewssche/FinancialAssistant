@@ -343,19 +343,11 @@
       if (!normalized) {
         return limit > 0 ? scopedTemplates.slice(0, limit) : scopedTemplates;
       }
-      const starts = [];
-      const contains = [];
-      for (const item of scopedTemplates) {
-        if (!item.name_ci) {
-          continue;
-        }
-        if (item.name_ci.startsWith(normalized)) {
-          starts.push(item);
-        } else if (item.name_ci.includes(normalized)) {
-          contains.push(item);
-        }
-      }
-      const matches = [...starts, ...contains];
+      const matches = scopedTemplates
+        .filter((item) => window.App.search.matches(item.name_ci, normalized))
+        .sort((a, b) => window.App.search.compare(query, a.name_ci, b.name_ci)
+          || Number(window.App.search.normalize(b.name_ci).startsWith(window.App.search.normalize(query)))
+          - Number(window.App.search.normalize(a.name_ci).startsWith(window.App.search.normalize(query))));
       return limit > 0 ? matches.slice(0, limit) : matches;
     }
 
@@ -363,8 +355,8 @@
       const normalized = normalizeReceiptName(query).toLowerCase();
       return (state.itemBrands || [])
         .filter((item) => !item.is_archived)
-        .filter((item) => !normalized || normalizeReceiptName(item.name).toLowerCase().includes(normalized))
-        .sort((left, right) => normalizeReceiptName(left.name).localeCompare(normalizeReceiptName(right.name), "ru"));
+        .filter((item) => !normalized || window.App.search.matches(item.name, normalized))
+        .sort((left, right) => window.App.search.compare(query, left.name, right.name) || normalizeReceiptName(left.name).localeCompare(normalizeReceiptName(right.name), "ru"));
     }
 
     function getReceiptSourceMeta(shopName) {
@@ -395,7 +387,7 @@
             continue;
           }
           const shopNameCi = shopName.toLowerCase();
-          if (normalized && !shopNameCi.includes(normalized)) {
+          if (normalized && !window.App.search.matches(shopNameCi, normalized)) {
             continue;
           }
           if (!byShop.has(shopNameCi)) {
@@ -407,7 +399,7 @@
         if (source?.is_archived) continue;
         const shopName = normalizeReceiptName(source?.name || "");
         const shopNameCi = shopName.toLowerCase();
-        if (!shopName || (normalized && !shopNameCi.includes(normalized))) continue;
+        if (!shopName || (normalized && !window.App.search.matches(shopNameCi, normalized))) continue;
         if (!byShop.has(shopNameCi)) byShop.set(shopNameCi, shopName);
       }
       for (const item of state.receiptTemplateHints || []) {
@@ -416,17 +408,15 @@
           continue;
         }
         const shopNameCi = shopName.toLowerCase();
-        if (normalized && !shopNameCi.includes(normalized)) {
+        if (normalized && !window.App.search.matches(shopNameCi, normalized)) {
           continue;
         }
         if (!byShop.has(shopNameCi)) {
           byShop.set(shopNameCi, shopName);
         }
-        if (limit > 0 && byShop.size >= limit) {
-          break;
-        }
       }
-      return limit > 0 ? Array.from(byShop.values()).slice(0, limit) : Array.from(byShop.values());
+      const matches = window.App.search.prioritize(Array.from(byShop.values()), query, (name) => name);
+      return limit > 0 ? matches.slice(0, limit) : matches;
     }
 
     function upsertLocalReceiptTemplate(name, latestUnitPrice = 0, shopName = "", brand = {}) {

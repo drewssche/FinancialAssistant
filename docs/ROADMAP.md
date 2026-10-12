@@ -29,7 +29,11 @@
 - [x] Perform scoped disk cleanup: unused build cache older than seven days (2 GB reserve), journal older than 30 days after retaining incident evidence, and downloaded APT archives. About 4 GiB freed by filesystem reporting; FinancialAssistant, poopbot, volumes and rollback images preserved.
 
 ### Purchases And Product Analytics 2026-10-12
-- Implementation authorized on 2026-10-12; the first reliability release is deployed (`c86c196`). Product stages remain pending; [the free OCR pilot](OCR_PILOT_2026-10-12.md) is complete as an experiment, not a production scanning feature. See [the decision record](RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md).
+- [x] Implement shared RU/EN keyboard search, case/whitespace/ё normalization, literal wildcard handling and safe highlighting across server lists and local pickers/tables. Keep identity matching exact.
+- [x] Verify new API search scenarios against SQLite and disposable PostgreSQL (including C locale), priority before pagination, related catalog fields and user isolation.
+- [x] Browser checks: receipt/category pickers, operations, plans, brands, table sorting and debts; the new wrong-layout receipt/category scenarios pass. Initial combined-suite fixture conflicts and intermittent timeouts were investigated and affected cases pass in isolation.
+- [ ] Deploy the verified search iteration with versioned assets; no schema change.
+- Implementation authorized on 2026-10-12; the first reliability release is deployed (`c86c196`). Stage 1 (keyboard-layout search) is implemented locally and under release verification; later product stages remain pending; [the free OCR pilot](OCR_PILOT_2026-10-12.md) is complete as an experiment, not a production scanning feature. See [the decision record](RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md).
 - Agreed direction: optional units and package sizes with purchase snapshots, discounts on receipt line totals, complete price observations, compact known-product receipt cards, RU/EN keyboard-layout search, and consolidation of rarely used analytics views.
 - Confirmed after clarification: preserve structure and calendar in their current locations; receipt recognition should produce a reviewable draft before saving. Provider selection and integration details remain to be designed.
 - Include retailer links, product identifiers, catalog matching, price-change charts and configurable notifications in planning. No production catalog changes, polling schedules or external integrations have been activated.

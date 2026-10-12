@@ -72,9 +72,8 @@
         byKey.set(key, normalized);
       }
     }
-    return Array.from(byKey.values())
-      .sort((a, b) => a.localeCompare(b, "ru"))
-      .slice(0, limit);
+    const names = Array.from(byKey.values()).sort((a, b) => a.localeCompare(b, "ru"));
+    return limit > 0 ? names.slice(0, limit) : names;
   }
 
   function writeItemCatalogSourceGroups(items) {
@@ -226,7 +225,7 @@
         (row) => Number(row?.id || 0) === Number(item?.brand_id || 0),
       );
       const brandName = String(item?.brand_name || brand?.name || "").toLowerCase();
-      return name.includes(query) || source.includes(query) || categoryName.includes(query) || brandName.includes(query);
+      return window.App.search.matches(name, query) || window.App.search.matches(source, query) || window.App.search.matches(categoryName, query) || window.App.search.matches(brandName, query);
     });
   }
 

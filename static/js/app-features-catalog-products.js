@@ -234,6 +234,10 @@
     if (!el.catalogProductsBody) return;
     sorting.bind(el.catalogProductsBody.closest("table"), { key: "products", columns: sortColumns, onChange: render });
     const products = sorting.sort(state.catalogProducts || [], "products", sortColumns);
+    const query = el.catalogProductsSearchQ?.value || "";
+    const searchValues = (item) => [item.name, item.brand_name, item.category_name,
+      ...(item.offers || []).flatMap((offer) => [offer.name, offer.shop_name, offer.source_name])];
+    products.sort((a, b) => window.App.search.compare(query, searchValues(a), searchValues(b)));
     el.catalogProductsBody.innerHTML = products.length
       ? products.map(renderProduct).join("")
       : `<tr><td colspan="8"><div class="empty">${state.catalogProductsLoading ? "Загрузка товаров…" : "Товары не найдены"}</div></td></tr>`;
@@ -385,7 +389,7 @@
     const query = rawQuery.toLowerCase() === selected?.name?.toLowerCase() ? "" : rawQuery;
     const items = kind === "Category"
       ? pickers().sortCategoriesByUsage(metaItems(kind), query)
-      : metaItems(kind).filter((item) => item.name.toLowerCase().includes(query.toLowerCase())).sort((a, b) => a.name.localeCompare(b.name, "ru"));
+      : metaItems(kind).filter((item) => window.App.search.matches(item.name, query.toLowerCase())).sort((a, b) => window.App.search.compare(query, a.name, b.name) || a.name.localeCompare(b.name, "ru"));
     const list = popover.querySelector(".chip-list");
     list.replaceChildren(pickers().createMetaChipButton({
       datasetName: "productMetaId", selected: !selectedId, label: kind === "Brand" ? "Без бренда" : "Без категории", core,

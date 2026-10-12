@@ -14,8 +14,10 @@ def test_index_html_uses_manifest_bootstrap_pair():
 
     script_sources = re.findall(r'<script[^>]+src="([^"]+)"', html)
 
-    assert "/static/js/app-manifest.js?v=20260919a" in script_sources
-    assert "/static/js/app-bootstrap.js?v=20260919a" in script_sources
+    bootstrap = (REPO_ROOT / "static/js/app-bootstrap.js").read_text(encoding="utf-8")
+    version = re.search(r'const assetVersion = "([^"]+)"', bootstrap).group(1)
+    assert f"/static/js/app-manifest.js?v={version}" in script_sources
+    assert f"/static/js/app-bootstrap.js?v={version}" in script_sources
     assert "/static/js/app-init.js" not in script_sources
 
 
@@ -24,6 +26,8 @@ def test_manifest_lists_bootstrap_scripts_in_stable_order():
     script_sources = re.findall(r'"(/static/js/[^"]+\.js)"', manifest)
 
     assert script_sources, "frontend script manifest must not be empty"
+    assert script_sources.index("/static/js/app-search-utils.js") < script_sources.index("/static/js/app-renderers.js")
+    assert script_sources.index("/static/js/app-search-utils.js") < script_sources.index("/static/js/app-picker-utils.js")
     assert script_sources[0] == "/static/js/templates/shell-sections-primary.js"
     assert script_sources[-1] == "/static/js/app-init.js"
     assert len(script_sources) == len(set(script_sources)), "frontend script manifest must not contain duplicates"
@@ -70,7 +74,7 @@ def test_manifest_lists_bootstrap_scripts_in_stable_order():
 def test_bootstrap_fetches_manifest_scripts_in_parallel_with_ordered_execution():
     bootstrap = (REPO_ROOT / "static" / "js" / "app-bootstrap.js").read_text(encoding="utf-8")
 
-    assert 'const assetVersion = "20260919a"' in bootstrap
+    assert re.search(r'const assetVersion = "[^" ]+"', bootstrap)
     assert "script.async = false" in bootstrap
     assert "Promise.all(manifest.map((src) => loadScript(src)))" in bootstrap
 

@@ -5,6 +5,8 @@ from collections.abc import Sequence
 from sqlalchemy import and_, exists, func, or_, select, update
 from sqlalchemy.orm import Session
 
+from app.repositories.search import search_match, search_order
+
 from app.db.models import (
     CatalogProduct,
     Category,
@@ -104,29 +106,27 @@ class CatalogProductRepository:
             conditions.append(CatalogProduct.brand_id == brand_id)
         if category_id is not None:
             conditions.append(CatalogProduct.category_id == category_id)
-        search = " ".join((q or "").split())
-        if search:
-            like = f"%{search}%"
+        def matches_query(original_only=False):
             offer_search_conditions = [
                 OperationItemTemplate.product_id == CatalogProduct.id,
                 OperationItemTemplate.user_id == user_id,
                 or_(
-                    OperationItemTemplate.name.ilike(like),
-                    OperationItemTemplate.shop_name.ilike(like),
+                    search_match(OperationItemTemplate.name, q, original_only=original_only),
+                    search_match(OperationItemTemplate.shop_name, q, original_only=original_only),
                 ),
             ]
             if not include_archived:
                 offer_search_conditions.append(
                     OperationItemTemplate.is_archived.is_(False)
                 )
-            conditions.append(
+            return (
                 or_(
-                    CatalogProduct.name.ilike(like),
+                    search_match(CatalogProduct.name, q, original_only=original_only),
                     exists(
                         select(ItemBrand.id).where(
                             ItemBrand.id == CatalogProduct.brand_id,
                             ItemBrand.user_id == user_id,
-                            ItemBrand.name.ilike(like),
+                            search_match(ItemBrand.name, q, original_only=original_only),
                         )
                     ),
                     exists(
@@ -136,7 +136,7 @@ class CatalogProductRepository:
                                 Category.user_id == user_id,
                                 Category.user_id.is_(None),
                             ),
-                            Category.name.ilike(like),
+                            search_match(Category.name, q, original_only=original_only),
                         )
                     ),
                     exists(
@@ -146,6 +146,9 @@ class CatalogProductRepository:
                     ),
                 )
             )
+
+        if q:
+            conditions.append(matches_query())
         where = and_(*conditions)
         latest_use = (
             select(
@@ -163,6 +166,7 @@ class CatalogProductRepository:
                 .outerjoin(latest_use, latest_use.c.product_id == CatalogProduct.id)
                 .where(where)
                 .order_by(
+                    *search_order(q, predicate=matches_query(original_only=True)),
                     CatalogProduct.is_archived.asc(),
                     latest_use.c.last_used_at.desc().nullslast(),
                     latest_use.c.use_count.desc().nullslast(),

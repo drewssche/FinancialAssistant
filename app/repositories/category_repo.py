@@ -1,6 +1,8 @@
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
+from app.repositories.search import search_any, search_order
+
 from app.db.models import Category, CategoryGroup
 
 
@@ -40,18 +42,7 @@ class CategoryRepository:
         if kind:
             conditions.append(Category.kind == kind)
         if q:
-            search = q.strip()
-            variants = {search}
-            if search:
-                variants.add(search.lower())
-                variants.add(search.upper())
-                variants.add(search[:1].upper() + search[1:])
-            like_clauses = []
-            for variant in variants:
-                like = f"%{variant}%"
-                like_clauses.append(Category.name.like(like))
-                like_clauses.append(CategoryGroup.name.like(like))
-            conditions.append(or_(*like_clauses))
+            conditions.append(search_any(q, Category.name, CategoryGroup.name))
 
         base_stmt = (
             select(
@@ -72,7 +63,7 @@ class CategoryRepository:
         count_stmt = select(func.count()).select_from(Category).outerjoin(CategoryGroup, CategoryGroup.id == Category.group_id).where(and_(*conditions))
         stmt = (
             base_stmt
-            .order_by(Category.name, Category.id)
+            .order_by(*search_order(q, Category.name, CategoryGroup.name), Category.name, Category.id)
             .offset((page - 1) * page_size)
             .limit(page_size)
         )

@@ -1,6 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
+from app.core.search import matches_search, search_rank
 from app.repositories.currency_repo import CurrencyRepository
 from app.services.currency_service import CurrencyService
 
@@ -30,11 +31,8 @@ class OperationMoneyFlowService:
         return value
 
     @staticmethod
-    def _matches_query(item: dict, q: str | None) -> bool:
-        query = " ".join((q or "").strip().split()).casefold()
-        if not query:
-            return True
-        haystack = " ".join(
+    def _query_text(item: dict) -> str:
+        return " ".join(
             [
                 str(item.get("title") or ""),
                 str(item.get("subtitle") or ""),
@@ -45,9 +43,15 @@ class OperationMoneyFlowService:
                 str(item.get("quote_currency") or ""),
                 str(item.get("trade_side") or ""),
                 str(item.get("source_kind") or ""),
+                ("расход expense" if item.get("flow_direction") == "outflow" else "доход income") if item.get("source_kind") == "operation" else "",
+                " ".join(str(row.get(key) or "") for row in item.get("receipt_items", [])
+                         for key in ("name", "category_name", "brand_name", "product_name")),
             ]
         ).casefold()
-        return query in haystack
+
+    @classmethod
+    def _matches_query(cls, item: dict, q: str | None) -> bool:
+        return matches_search(cls._query_text(item), q)
 
     @staticmethod
     def _sort_items(items: list[dict], *, sort_by: str, sort_dir: str) -> None:
@@ -185,8 +189,9 @@ class OperationMoneyFlowService:
                     receipt_items=receipt_by_operation.get(int(operation.id), []),
                     source_plan_id=source_plan_ids.get(int(operation.id)),
                 )
-                if self._matches_query(item, q):
-                    self._append_bounded(items, item)
+                # The repository already checked receipt products/brands/categories.
+                # A second filter on the short display title can discard valid hits.
+                self._append_bounded(items, item)
 
         if not operations_only_filter and normalized_source in {"all", "debt"}:
             from app.services.debt_service import DebtService
@@ -318,6 +323,8 @@ class OperationMoneyFlowService:
                     self._append_bounded(items, item)
 
         self._sort_items(items, sort_by=sort_by, sort_dir=sort_dir)
+        if q:
+            items.sort(key=lambda item: search_rank(self._query_text(item), q))
         return items
 
     def _operation_to_money_flow_item(

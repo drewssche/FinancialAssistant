@@ -177,7 +177,8 @@ def _login_via_mock_telegram(page):
 
 
 @pytest.mark.e2e
-def test_operation_category_search_renders_single_chip_without_duplicates(static_server_url: str, page_with_api_mock):
+@pytest.mark.parametrize("query", ["еда", "tlf"])
+def test_operation_category_search_renders_single_chip_without_duplicates(static_server_url: str, page_with_api_mock, query):
     page = page_with_api_mock
     page.goto(f"{static_server_url}/static/index.html")
     page.evaluate(
@@ -198,7 +199,7 @@ def test_operation_category_search_renders_single_chip_without_duplicates(static
     page.click("#addOperationCta")
     page.wait_for_selector("#createModal:not(.hidden)")
 
-    page.fill("#opCategorySearch", "еда")
+    page.fill("#opCategorySearch", query)
     page.wait_for_timeout(200)
 
     chips = page.locator("#opCategoryQuick button[data-category-id], #opCategoryAll button[data-category-id]")

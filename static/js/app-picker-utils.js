@@ -19,10 +19,12 @@
         if (!normalizedQuery) {
           return true;
         }
-        return item.name.toLowerCase().includes(normalizedQuery) || (item.group_name || "").toLowerCase().includes(normalizedQuery);
+        return window.App.search.matches(item.name, normalizedQuery) || window.App.search.matches(item.group_name, normalizedQuery);
       })
       .map((item) => ({ ...item, usage: Number(usage[String(item.id)] || 0) }))
       .sort((a, b) => {
+        const relevance = window.App.search.compare(query, [a.name, a.group_name], [b.name, b.group_name]);
+        if (relevance) return relevance;
         if (b.usage !== a.usage) {
           return b.usage - a.usage;
         }

@@ -10,17 +10,16 @@
       .replaceAll("'", "&#39;");
   }
 
-  function escapeRegExp(value) {
-    return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  }
-
   function highlightText(value, query) {
-    const safeText = escapeHtml(value);
-    if (!query) {
-      return safeText;
+    const text = String(value ?? "");
+    let cursor = 0;
+    let html = "";
+    for (const [start, end] of window.App.search.highlightRanges(text, query)) {
+      html += escapeHtml(text.slice(cursor, start));
+      html += `<mark class="search-highlight">${escapeHtml(text.slice(start, end))}</mark>`;
+      cursor = end;
     }
-    const pattern = new RegExp(`(${escapeRegExp(query)})`, "ig");
-    return safeText.replace(pattern, "<mark class=\"search-highlight\">$1</mark>");
+    return html + escapeHtml(text.slice(cursor));
   }
 
   function renderCategoryChip(category, searchQuery = "") {

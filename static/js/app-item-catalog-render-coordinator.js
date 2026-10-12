@@ -157,7 +157,7 @@
     const groupsAll = buildItemCatalogGroups(rows);
     let groups = queryActive || brandFilterActive
       ? groupsAll.filter((group) => {
-        const sourceMatch = group.shopName.toLowerCase().includes(query.toLowerCase());
+        const sourceMatch = window.App.search.matches(group.shopName, query.toLowerCase());
         return group.items.length > 0 || (queryActive && sourceMatch && !brandFilterActive);
       })
       : groupsAll;
@@ -176,6 +176,12 @@
       { key: "source", value: (group) => group.shopName },
       { key: "price", type: "number", value: (group) => group.avgPrice },
     ]).map((group) => ({ ...group, items: sorting.sort(group.items, "catalog-sources", columns) }));
+    const searchValues = (item) => [item.name, item.shop_name,
+      item.brand_name || (state.itemBrands || []).find((brand) => Number(brand.id) === Number(item.brand_id))?.name,
+      (state.categories || []).find((category) => Number(category.id) === Number(item.last_category_id))?.name];
+    groups.forEach((group) => group.items.sort((a, b) => window.App.search.compare(query, searchValues(a), searchValues(b))));
+    groups.sort((a, b) => window.App.search.compare(query,
+      [a.shopName, ...a.items.flatMap(searchValues)], [b.shopName, ...b.items.flatMap(searchValues)]));
     if (el.itemCatalogKpiGrid) {
       const visibleItems = groups.flatMap((group) => group.items || []);
       const sourceCount = groups.filter((group) => group.shopKey !== "__no_shop__" && (group.items || []).length > 0).length;

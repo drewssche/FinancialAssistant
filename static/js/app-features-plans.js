@@ -134,8 +134,9 @@
         item.note || "",
         item.title || "",
       ].join(" ").toLowerCase();
-      return haystack.includes(query);
-    });
+      return window.App.search.matches(haystack, query);
+    }).sort((a, b) => window.App.search.compare(query,
+      [a.category_name, a.note, a.title, a.event_type], [b.category_name, b.note, b.title, b.event_type]));
   }
 
   function getFilteredHistoryItems() {
@@ -157,8 +158,9 @@
         item.note || "",
         item.event_type || "",
       ].join(" ").toLowerCase();
-      return haystack.includes(query);
-    });
+      return window.App.search.matches(haystack, query);
+    }).sort((a, b) => window.App.search.compare(query,
+      [a.category_name, a.note, a.title, a.event_type], [b.category_name, b.note, b.title, b.event_type]));
   }
 
   function summarizePlans(items) {

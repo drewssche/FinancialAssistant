@@ -7,6 +7,8 @@ from sqlalchemy import and_, func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.money import allocate_largest_remainder
+from app.repositories.search import search_match, search_order
+
 from app.db.models import (
     CatalogProduct,
     ItemBrand,
@@ -73,13 +75,16 @@ class ItemBrandRepository:
             conditions.append(ItemBrand.is_archived.is_(False))
         search = " ".join((q or "").split())
         if search:
-            conditions.append(ItemBrand.name.ilike(f"%{search}%"))
+            conditions.append(search_match(ItemBrand.name, search))
         where = and_(*conditions)
         rows = list(
             self.db.scalars(
                 select(ItemBrand)
                 .where(where)
-                .order_by(ItemBrand.is_archived.asc(), ItemBrand.name_ci.asc(), ItemBrand.id.asc())
+                .order_by(
+                    *search_order(q, ItemBrand.name),
+                    ItemBrand.is_archived.asc(), ItemBrand.name_ci.asc(), ItemBrand.id.asc(),
+                )
                 .offset((page - 1) * page_size)
                 .limit(page_size)
             )

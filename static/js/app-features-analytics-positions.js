@@ -66,12 +66,12 @@
     const positionQuery = String(el.analyticsPositionsSearch?.value || "").trim().toLowerCase();
     const sourceQuery = String(el.analyticsPositionsSourceSearch?.value || "").trim().toLowerCase();
     const rows = (data.positions || []).filter((item) => {
-      const nameMatches = !positionQuery || String(item.name || "").toLowerCase().includes(positionQuery);
-      const sourceMatches = !sourceQuery || String(item.shop_name || "").toLowerCase().includes(sourceQuery);
+      const nameMatches = !positionQuery || window.App.search.matches(item.name, positionQuery);
+      const sourceMatches = !sourceQuery || window.App.search.matches(item.shop_name, sourceQuery);
       return nameMatches && sourceMatches;
     });
     const direction = state.analyticsPositionsSort === "asc" ? 1 : -1;
-    rows.sort((a, b) => direction * (metricValue(a) - metricValue(b)) || String(a.name || "").localeCompare(String(b.name || ""), "ru"));
+    rows.sort((a, b) => window.App.search.compare(positionQuery, a.name, b.name) || window.App.search.compare(sourceQuery, a.shop_name, b.shop_name) || direction * (metricValue(a) - metricValue(b)) || String(a.name || "").localeCompare(String(b.name || ""), "ru"));
     return state.analyticsPositionsLimit === "all" ? rows : rows.slice(0, 10);
   }
 

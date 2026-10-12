@@ -11,6 +11,8 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 
+from app.core.search import matches_search
+
 sync_api = pytest.importorskip("playwright.sync_api", reason="playwright is not installed")
 expect = sync_api.expect
 
@@ -262,7 +264,7 @@ def page_with_receipt_api_mock():
             else:
                 items = [
                     item for item in templates
-                    if token in item["name"].casefold() or token in (item.get("shop_name") or "").casefold()
+                    if matches_search(item["name"], token) or matches_search(item.get("shop_name"), token)
                 ]
             page = int((query.get("page") or ["1"])[0])
             page_size = int((query.get("page_size") or ["20"])[0])
@@ -2295,3 +2297,40 @@ def test_catalog_products_default_view_offers_merge_labels_and_source_matched_pi
     assert payload[0]["template_id"] == 501
     assert payload[0]["source_id"] == 304
     assert payload[0]["unit_price"] == "0.82"
+
+
+@pytest.mark.e2e
+def test_receipt_keyboard_layout_search_and_safe_highlight(static_server_url, page_with_receipt_api_mock):
+    page = page_with_receipt_api_mock
+    errors = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    page.goto(f"{static_server_url}/static/index.html")
+    page.evaluate("() => { window.Telegram = {WebApp: {initData: 'mock-init-data', ready() {}, expand() {}}}; }")
+    _login(page)
+    _ensure_categories_loaded(page)
+    page.click("#addOperationCta")
+    page.locator('#createOperationModeSwitch button[data-operation-mode="receipt"]').click()
+    row = page.locator(".receipt-item-row").first
+    shop = row.locator('[data-receipt-field="shop_name"]')
+    shop.fill("tdhjjgn")
+    option = page.locator('button[data-receipt-shop-name="Евроопт"]').first
+    expect(option).to_be_visible()
+    assert shop.input_value() == "tdhjjgn"
+    option.click()
+    assert shop.input_value() == "Евроопт"
+    name = row.locator('[data-receipt-field="name"]')
+    name.fill("[kt,")
+    suggestion = page.locator('.receipt-template-suggestion:has-text("Хлеб")').first
+    expect(suggestion).to_be_visible()
+    expect(suggestion.locator("mark.search-highlight")).to_have_text("Хлеб")
+    assert name.input_value() == "[kt,"
+    suggestion.click()
+    assert name.input_value() == "Хлеб"
+    result = page.evaluate("""() => {
+      const box = document.createElement('div');
+      box.innerHTML = window.App.core.highlightText('<img src=x onerror=alert(1)> & МОЛОКО', 'vjkjrj');
+      return {images: box.querySelectorAll('img').length, marks: box.querySelectorAll('mark').length,
+        text: box.textContent, matched: box.querySelector('mark').textContent};
+    }""")
+    assert result == {'images': 0, 'marks': 1, 'text': '<img src=x onerror=alert(1)> & МОЛОКО', 'matched': 'МОЛОКО'}
+    assert errors == []

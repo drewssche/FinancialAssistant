@@ -13,6 +13,7 @@ from app.core.cache import (
     invalidate_debts_cache,
     set_json,
 )
+from app.core.search import matches_search, search_rank
 from app.repositories.debt_repo import DebtRepository
 from app.repositories.user_repo import UserRepository
 from app.repositories.currency_repo import CurrencyRepository
@@ -62,12 +63,13 @@ class DebtService:
 
     @staticmethod
     def _matches_search_token(text: str, token: str) -> bool:
-        return token in text.casefold()
+        return matches_search(text, token)
 
-    def _debt_matches_query(self, debt: dict, query_token: str) -> bool:
+    @staticmethod
+    def _debt_search_terms(debt: dict) -> list[str]:
         direction = str(debt.get("direction") or "")
         note = str(debt.get("note") or "")
-        terms = [
+        return [
             direction,
             note,
             "долг" if direction else "",
@@ -76,10 +78,9 @@ class DebtService:
             "дал" if direction == "lend" else "",
             "взял" if direction == "borrow" else "",
         ]
-        for term in terms:
-            if term and self._matches_search_token(term, query_token):
-                return True
-        return False
+
+    def _debt_matches_query(self, debt: dict, query_token: str) -> bool:
+        return any(matches_search(term, query_token) for term in self._debt_search_terms(debt) if term)
 
     @staticmethod
     def _serialize_repayment(repayment) -> dict:
@@ -715,6 +716,9 @@ class DebtService:
 
         cards.sort(
             key=lambda item: (
+                min([search_rank(item["counterparty"], query_token)] + [
+                    search_rank(term, query_token) for debt in item["debts"] for term in self._debt_search_terms(debt)
+                ]) if query_token else 0,
                 0 if item["status"] == "active" else 1,
                 item["nearest_due_date"] is None,
                 item["nearest_due_date"] or date.max,

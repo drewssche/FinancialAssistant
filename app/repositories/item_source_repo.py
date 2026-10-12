@@ -3,6 +3,8 @@ from __future__ import annotations
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.orm import Session
 
+from app.repositories.search import search_match, search_order
+
 from app.db.models import (
     ItemSource,
     OperationItemTemplate,
@@ -61,13 +63,14 @@ class ItemSourceRepository:
             conditions.append(ItemSource.is_archived.is_(False))
         search = " ".join((q or "").split())
         if search:
-            conditions.append(ItemSource.name.ilike(f"%{search}%"))
+            conditions.append(search_match(ItemSource.name, search))
         where = and_(*conditions)
         rows = list(
             self.db.scalars(
                 select(ItemSource)
                 .where(where)
                 .order_by(
+                    *search_order(q, ItemSource.name),
                     ItemSource.is_archived.asc(),
                     ItemSource.name_ci.asc(),
                     ItemSource.id.asc(),

@@ -251,7 +251,10 @@
       { key: "outstanding_total", type: "number", value: (d) => d.current_base_outstanding_total ?? d.outstanding_total, hint: "В базовой валюте" },
       { key: "due_date", type: "date" },
     ];
-    const visibleCards = sortCards(filterCards(cards));
+    const searchValues = (card) => [card.counterparty, ...(card.debts || []).flatMap((debt) => [
+      debt.note, debt.direction, "долг", debt.direction === "lend" ? "дал" : "взял",
+    ])];
+    const visibleCards = window.App.search.prioritize(sortCards(filterCards(cards)), el.debtSearchQ?.value || "", searchValues);
     renderDebtsSectionKpi(visibleCards);
     const pageSize = Number(state.debtCardsPageSize || 20);
     const visibleLimit = Number(state.debtCardsVisibleLimit || pageSize);

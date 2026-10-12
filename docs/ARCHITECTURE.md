@@ -35,6 +35,14 @@ Cross-module code should resolve the owning runtime module or a narrow dependenc
 
 Modals use the shared stack. The operation calculator participates in that stack; Escape closes the top eligible window, preserves the underlying operation draft and restores focus. Product and receipt redesign must preserve those contracts. UI rules live in [UI_SYSTEM.md](UI_SYSTEM.md) and [UX_PATTERNS.md](UX_PATTERNS.md).
 
+## Search
+
+`app/core/search.py` and `static/js/app-search-utils.js` share a literal substring contract: original query first, RU→EN and EN→RU keyboard variants, lowercase, collapsed whitespace and ё/е equivalence. Query correction never changes input or stored product/source identities. Pure numbers and punctuation do not trigger layout conversion. This is not typo correction, transliteration or independent correction of each word in a mixed-layout phrase.
+
+`app/repositories/search.py` applies equivalent SQL expressions and relevance **before pagination**, including correlated offer/brand/category matches. PostgreSQL explicitly folds Cyrillic even under C locale; SQLite registers a connection-local normalizer because its built-in lower() is ASCII-only. `%`, `_` and backslash are literal search characters. No schema migration or database extension is required. Normalization is evaluated at query time; larger catalogues may need measured indexing work later.
+
+Local tables/pickers use `App.search`; existing ordering is retained within relevance groups. Grouped tables retain their groups. Highlighting finds spans in the original text and escapes each span before inserting markup. The unified money-flow view must not discard repository hits by re-filtering only the short displayed operation title. Frontend releases change asset versions in both index and bootstrap, since versioned assets are cached as immutable.
+
 ## Operations, receipts and catalog
 
 `OperationService` owns money-flow creation and edits. Operations retain currency and exchange-rate snapshots. The operation amount is authoritative for financial totals; receipt totals and discrepancies are exposed separately, and a discrepancy can be saved with a warning.

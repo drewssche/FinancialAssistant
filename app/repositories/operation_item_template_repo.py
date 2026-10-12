@@ -4,6 +4,8 @@ from decimal import Decimal
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.orm import Session
 
+from app.repositories.search import search_any, search_order
+
 from app.db.models import (
     CatalogProduct,
     Operation,
@@ -202,16 +204,7 @@ class OperationItemTemplateRepository:
             OperationItemTemplate.is_archived.is_(False),
         ]
         if q:
-            search = " ".join(q.split())
-            if search:
-                like = f"%{search}%"
-                conditions.append(
-                    or_(
-                        OperationItemTemplate.name.ilike(like),
-                        OperationItemTemplate.shop_name.ilike(like),
-                        CatalogProduct.name.ilike(like),
-                    )
-                )
+            conditions.append(search_any(q, OperationItemTemplate.name, OperationItemTemplate.shop_name, CatalogProduct.name))
         if brand_id is not None:
             conditions.append(
                 or_(
@@ -227,6 +220,7 @@ class OperationItemTemplateRepository:
             .outerjoin(CatalogProduct, CatalogProduct.id == OperationItemTemplate.product_id)
             .where(and_(*conditions))
             .order_by(
+                *search_order(q, OperationItemTemplate.name, OperationItemTemplate.shop_name, CatalogProduct.name),
                 OperationItemTemplate.use_count.desc(),
                 OperationItemTemplate.last_used_at.desc().nullslast(),
                 OperationItemTemplate.id.desc(),

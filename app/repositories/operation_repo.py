@@ -5,6 +5,9 @@ from sqlalchemy import Select, and_, asc, case, delete, desc, func, or_, select,
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import Session
 
+from app.core.search import search_variants
+from app.repositories.search import search_match, search_order
+
 from app.db.models import (
     CatalogProduct,
     Category,
@@ -136,75 +139,72 @@ class OperationRepository:
                 .exists()
             )
         if q:
-            search = q.strip()
-            if search:
-                search_cf = search.casefold()
-                variants = {search}
-                variants.add(search.lower())
-                variants.add(search.upper())
-                variants.add(search[:1].upper() + search[1:])
-                search_clauses = []
-                receipt_category = aliased(Category)
-                receipt_brand = aliased(ItemBrand)
-                receipt_template = aliased(OperationItemTemplate)
-                receipt_product = aliased(CatalogProduct)
-                for variant in variants:
-                    like = f"%{variant}%"
-                    search_clauses.extend(
-                        [
-                            Operation.note.like(like),
-                            Category.name.like(like),
-                            Operation.kind.ilike(like),
-                            select(OperationReceiptItem.id)
-                            .join(receipt_category, receipt_category.id == OperationReceiptItem.category_id)
-                            .where(
-                                OperationReceiptItem.user_id == user_id,
-                                OperationReceiptItem.operation_id == Operation.id,
-                                receipt_category.name.like(like),
-                            )
-                            .exists(),
-                            select(OperationReceiptItem.id)
-                            .join(
-                                receipt_template,
-                                receipt_template.id
-                                == OperationReceiptItem.template_id,
-                            )
-                            .join(
-                                receipt_product,
-                                receipt_product.id == receipt_template.product_id,
-                            )
-                            .where(
-                                OperationReceiptItem.user_id == user_id,
-                                OperationReceiptItem.operation_id == Operation.id,
-                                receipt_template.user_id == user_id,
-                                receipt_product.user_id == user_id,
-                                receipt_product.name.like(like),
-                            )
-                            .exists(),
-                            select(OperationReceiptItem.id)
-                            .join(receipt_template, receipt_template.id == OperationReceiptItem.template_id)
-                            .outerjoin(receipt_product, receipt_product.id == receipt_template.product_id)
-                            .join(
-                                receipt_brand,
-                                receipt_brand.id
-                                == func.coalesce(receipt_product.brand_id, receipt_template.brand_id),
-                            )
-                            .where(
-                                OperationReceiptItem.user_id == user_id,
-                                OperationReceiptItem.operation_id == Operation.id,
-                                receipt_template.user_id == user_id,
-                                receipt_brand.user_id == user_id,
-                                receipt_brand.name.like(like),
-                            )
-                            .exists(),
-                        ]
-                    )
-                if "доход".startswith(search_cf):
-                    search_clauses.append(Operation.kind == "income")
-                if "расход".startswith(search_cf):
-                    search_clauses.append(Operation.kind == "expense")
-                conditions.append(or_(*search_clauses))
+            conditions.append(self._search_condition(user_id, q))
         return conditions
+
+    @staticmethod
+    def _search_condition(user_id: int, q: str | None, *, original_only: bool = False):
+        search_clauses = []
+        receipt_category = aliased(Category)
+        receipt_brand = aliased(ItemBrand)
+        receipt_template = aliased(OperationItemTemplate)
+        receipt_product = aliased(CatalogProduct)
+        search_clauses.extend(
+            [
+                search_match(Operation.note, q, original_only=original_only),
+                search_match(Category.name, q, original_only=original_only),
+                search_match(Operation.kind, q, original_only=original_only),
+                select(OperationReceiptItem.id)
+                .join(receipt_category, receipt_category.id == OperationReceiptItem.category_id)
+                .where(
+                    OperationReceiptItem.user_id == user_id,
+                    OperationReceiptItem.operation_id == Operation.id,
+                    search_match(receipt_category.name, q, original_only=original_only),
+                )
+                .exists(),
+                select(OperationReceiptItem.id)
+                .join(
+                    receipt_template,
+                    receipt_template.id
+                    == OperationReceiptItem.template_id,
+                )
+                .join(
+                    receipt_product,
+                    receipt_product.id == receipt_template.product_id,
+                )
+                .where(
+                    OperationReceiptItem.user_id == user_id,
+                    OperationReceiptItem.operation_id == Operation.id,
+                    receipt_template.user_id == user_id,
+                    receipt_product.user_id == user_id,
+                    search_match(receipt_product.name, q, original_only=original_only),
+                )
+                .exists(),
+                select(OperationReceiptItem.id)
+                .join(receipt_template, receipt_template.id == OperationReceiptItem.template_id)
+                .outerjoin(receipt_product, receipt_product.id == receipt_template.product_id)
+                .join(
+                    receipt_brand,
+                    receipt_brand.id
+                    == func.coalesce(receipt_product.brand_id, receipt_template.brand_id),
+                )
+                .where(
+                    OperationReceiptItem.user_id == user_id,
+                    OperationReceiptItem.operation_id == Operation.id,
+                    receipt_template.user_id == user_id,
+                    receipt_brand.user_id == user_id,
+                    search_match(receipt_brand.name, q, original_only=original_only),
+                )
+                .exists(),
+            ]
+        )
+        variants = search_variants(q)
+        for variant in (variants[:1] if original_only else variants):
+            if variant and "доход".startswith(variant):
+                search_clauses.append(Operation.kind == "income")
+            if variant and "расход".startswith(variant):
+                search_clauses.append(Operation.kind == "expense")
+        return or_(*search_clauses)
 
     def create(
         self,
@@ -350,7 +350,7 @@ class OperationRepository:
         order_expr = asc(sort_column) if sort_dir == "asc" else desc(sort_column)
 
         stmt = (
-            base_stmt.order_by(order_expr, Operation.id.desc())
+            base_stmt.order_by(*search_order(q, predicate=self._search_condition(user_id, q, original_only=True)), order_expr, Operation.id.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
         )
@@ -405,7 +405,7 @@ class OperationRepository:
             select(Operation)
             .outerjoin(Category, Category.id == Operation.category_id)
             .where(and_(*conditions))
-            .order_by(order_expr, Operation.id.desc())
+            .order_by(*search_order(q, predicate=self._search_condition(user_id, q, original_only=True)), order_expr, Operation.id.desc())
         )
         if limit is not None:
             stmt = stmt.limit(limit)

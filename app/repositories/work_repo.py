@@ -3,6 +3,8 @@ from datetime import date
 from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.orm import Session
 
+from app.repositories.search import search_any, search_order
+
 from app.db.models import (
     Category,
     EmploymentContract,
@@ -89,16 +91,8 @@ class WorkRepository:
             Operation.operation_date >= date_from,
             Operation.operation_date <= date_to,
         ]
-        normalized_q = (q or "").strip()
-        if normalized_q:
-            pattern = f"%{normalized_q}%"
-            conditions.append(
-                or_(
-                    Operation.note.ilike(pattern),
-                    Category.name.ilike(pattern),
-                    Operation.currency.ilike(pattern),
-                )
-            )
+        if q:
+            conditions.append(search_any(q, Operation.note, Category.name, Operation.currency))
         total = int(
             self.db.scalar(
                 select(func.count(Operation.id))
@@ -123,7 +117,7 @@ class WorkRepository:
                     ),
                 )
                 .where(*conditions)
-                .order_by(Operation.operation_date.desc(), Operation.id.desc())
+                .order_by(*search_order(q, Operation.note, Category.name, Operation.currency), Operation.operation_date.desc(), Operation.id.desc())
                 .limit(limit)
             ).all()
         )

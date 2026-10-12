@@ -68,9 +68,9 @@
         if (!normalizedQuery) {
           return true;
         }
-        return String(group.name || "").toLowerCase().includes(normalizedQuery);
+        return window.App.search.matches(group.name, normalizedQuery);
       })
-      .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "ru"));
+      .sort((a, b) => window.App.search.compare(query, a.name, b.name) || String(a.name || "").localeCompare(String(b.name || ""), "ru"));
   }
 
   function openCreateGroupPopover() {
