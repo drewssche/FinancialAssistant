@@ -2338,7 +2338,7 @@ def test_receipt_keyboard_layout_search_and_safe_highlight(static_server_url, pa
 
 
 @pytest.mark.e2e
-@pytest.mark.parametrize('width', [390, 1440])
+@pytest.mark.parametrize('width', [320, 390, 1440])
 def test_measurement_defaults_manual_edit_and_saved_snapshot(static_server_url, page_with_receipt_api_mock, width):
     page = page_with_receipt_api_mock
     page.set_viewport_size({'width': width, 'height': 1100})
