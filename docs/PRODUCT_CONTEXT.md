@@ -1,6 +1,6 @@
 # Product Context
 
-Reviewed against `e5eaee1` on 2026-10-12. Current implementation is described here; agreed future changes are in [RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md](RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md).
+Baseline reviewed against `e5eaee1` on 2026-10-12; purchase semantics updated through line-discount release `1a5bce1`. Current implementation is described here; agreed future changes are in [RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md](RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md).
 
 ## Product Idea
 Financial Assistant is a web-first personal finance tracker for income and expenses. The same backend API is designed to support both:

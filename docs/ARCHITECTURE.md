@@ -1,6 +1,6 @@
 # Architecture
 
-Reviewed on 2026-10-12, including reliability, keyboard search and optional purchase measurements. Release status is recorded in the roadmap. This document describes implemented behavior. Proposed receipt, catalog and analytics changes remain in [the product plan](RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md); dated production findings are in [the operations review](OPERATIONS_REVIEW_2026-10-12.md).
+Reviewed on 2026-10-12, including reliability, keyboard search, optional purchase measurements and exact line discounts (`1a5bce1`). Release status is recorded in the roadmap. This document describes implemented behavior. Proposed receipt, catalog and analytics changes remain in [the product plan](RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md); dated production findings are in [the operations review](OPERATIONS_REVIEW_2026-10-12.md).
 
 ## Runtime and boundaries
 
