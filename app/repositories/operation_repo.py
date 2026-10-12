@@ -149,53 +149,55 @@ class OperationRepository:
         receipt_brand = aliased(ItemBrand)
         receipt_template = aliased(OperationItemTemplate)
         receipt_product = aliased(CatalogProduct)
+        # Independent receipt ID sets avoid costly correlated plans when the
+        # same predicate is also used to rank original matches before pagination.
         search_clauses.extend(
             [
                 search_match(Operation.note, q, original_only=original_only),
                 search_match(Category.name, q, original_only=original_only),
                 search_match(Operation.kind, q, original_only=original_only),
-                select(OperationReceiptItem.id)
-                .join(receipt_category, receipt_category.id == OperationReceiptItem.category_id)
-                .where(
-                    OperationReceiptItem.user_id == user_id,
-                    OperationReceiptItem.operation_id == Operation.id,
-                    search_match(receipt_category.name, q, original_only=original_only),
-                )
-                .exists(),
-                select(OperationReceiptItem.id)
-                .join(
-                    receipt_template,
-                    receipt_template.id
-                    == OperationReceiptItem.template_id,
-                )
-                .join(
-                    receipt_product,
-                    receipt_product.id == receipt_template.product_id,
-                )
-                .where(
-                    OperationReceiptItem.user_id == user_id,
-                    OperationReceiptItem.operation_id == Operation.id,
-                    receipt_template.user_id == user_id,
-                    receipt_product.user_id == user_id,
-                    search_match(receipt_product.name, q, original_only=original_only),
-                )
-                .exists(),
-                select(OperationReceiptItem.id)
-                .join(receipt_template, receipt_template.id == OperationReceiptItem.template_id)
-                .outerjoin(receipt_product, receipt_product.id == receipt_template.product_id)
-                .join(
-                    receipt_brand,
-                    receipt_brand.id
-                    == func.coalesce(receipt_product.brand_id, receipt_template.brand_id),
-                )
-                .where(
-                    OperationReceiptItem.user_id == user_id,
-                    OperationReceiptItem.operation_id == Operation.id,
-                    receipt_template.user_id == user_id,
-                    receipt_brand.user_id == user_id,
-                    search_match(receipt_brand.name, q, original_only=original_only),
-                )
-                .exists(),
+                Operation.id.in_(
+                    select(OperationReceiptItem.operation_id)
+                    .join(receipt_category, receipt_category.id == OperationReceiptItem.category_id)
+                    .where(
+                        OperationReceiptItem.user_id == user_id,
+                        search_match(receipt_category.name, q, original_only=original_only),
+                    )
+                ),
+                Operation.id.in_(
+                    select(OperationReceiptItem.operation_id)
+                    .join(
+                        receipt_template,
+                        receipt_template.id
+                        == OperationReceiptItem.template_id,
+                    )
+                    .join(
+                        receipt_product,
+                        receipt_product.id == receipt_template.product_id,
+                    )
+                    .where(
+                        OperationReceiptItem.user_id == user_id,
+                        receipt_template.user_id == user_id,
+                        receipt_product.user_id == user_id,
+                        search_match(receipt_product.name, q, original_only=original_only),
+                    )
+                ),
+                Operation.id.in_(
+                    select(OperationReceiptItem.operation_id)
+                    .join(receipt_template, receipt_template.id == OperationReceiptItem.template_id)
+                    .outerjoin(receipt_product, receipt_product.id == receipt_template.product_id)
+                    .join(
+                        receipt_brand,
+                        receipt_brand.id
+                        == func.coalesce(receipt_product.brand_id, receipt_template.brand_id),
+                    )
+                    .where(
+                        OperationReceiptItem.user_id == user_id,
+                        receipt_template.user_id == user_id,
+                        receipt_brand.user_id == user_id,
+                        search_match(receipt_brand.name, q, original_only=original_only),
+                    )
+                ),
             ]
         )
         variants = search_variants(q)

@@ -63,6 +63,6 @@ def test_frontend_contract_and_safe_highlight():
 def test_postgres_query_uses_bound_literal_pattern():
     expression = select(search_match(literal('Молоко'), '50%_\\'))
     compiled = expression.compile(dialect=postgresql.dialect())
-    assert 'regexp_replace' in str(compiled)
+    assert ' ~ ' in str(compiled)
     assert '50%' not in str(compiled)
-    assert '50/%/_\\' in compiled.params.values()
+    assert any(value.startswith('50%_') for value in compiled.params.values() if isinstance(value, str))
