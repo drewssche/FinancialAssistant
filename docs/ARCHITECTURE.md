@@ -168,3 +168,9 @@ Deployment and restore conditions are in [RELEASE_CHECKLIST.md](RELEASE_CHECKLIS
 The existing `.understand-anything/knowledge-graph.json` metadata is dated 2026-08-05 at `e98e731`; it is 67 commits behind this review baseline. Treat it as historical navigation and verify each relevant link in current code. A full graph refresh remains a separate planned task; this documentation update does not falsely mark it current.
 
 Update the affected behavior/architecture document alongside code changes. Keep future features in the roadmap until implemented, and retain graph commit, generation date and scope when rebuilding the derived graph.
+
+## Receipt price hints
+
+`POST /operations/catalog-products/{product_id}/price-hint` is a read-only comparison request (`ReceiptPriceHintService`). It validates ownership of the offer/product and optional edited operation, then streams candidate expense receipt rows in descending date/operation/row order. Currency and exact measurement snapshots are filtered in SQL; normalized shop text and historical variant ID must also match. Unknown sale units/package content return an explicit status. Excluding an edited operation also excludes later-created same-day receipts. Plans never provide observations. No catalog defaults, historical values or financial totals are written.
+
+`app-receipt-price-hints.js` loads after the runtime registry and is instantiated by the receipt feature. A WeakMap holds draft-specific comparison state; context changes abort requests and generation/object checks reject stale responses. Changing amount/quantity recalculates the paid-price ratio locally using integer cents/thousandths in `receiptPricing.compare`; zero previous price has no percentage. The backend returns the exact paid total and quantity. UI reload is explicit and does not apply a historical price to the draft.

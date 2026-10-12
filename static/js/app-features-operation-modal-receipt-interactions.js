@@ -5,6 +5,7 @@
       el,
       core,
       receiptUiState,
+      priceHints,
       normalizeReceiptName,
       getReceiptModeFromNode,
       getReceiptItemByDraftId,
@@ -483,6 +484,8 @@
       }
     }
     function handleReceiptItemsListClick(event) {
+      const hintButton = event.target.closest('[data-receipt-price-hint]');
+      if (hintButton) { priceHints?.load(hintButton); return; }
       const variantButton = event.target.closest('[data-receipt-variants-load]');
       if (variantButton) { loadReceiptVariants(variantButton); return; }
       const detailsButton = event.target.closest("[data-receipt-details-toggle]");

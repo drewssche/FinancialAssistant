@@ -1,3 +1,5 @@
+from app.schemas.receipt_price_hint import ReceiptPriceHintInput, ReceiptPriceHintOut
+from app.services.receipt_price_hint_service import ReceiptPriceHintService
 from datetime import date
 from typing import Literal
 
@@ -407,6 +409,19 @@ def get_catalog_product(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
+
+
+@router.post("/catalog-products/{product_id}/price-hint", response_model=ReceiptPriceHintOut)
+def get_receipt_price_hint(
+    product_id: int,
+    payload: ReceiptPriceHintInput,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        return ReceiptPriceHintService(db).get(user_id=user_id, product_id=product_id, request=payload)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("/catalog-products/{product_id}/price-observations", response_model=ProductPriceHistoryOut)

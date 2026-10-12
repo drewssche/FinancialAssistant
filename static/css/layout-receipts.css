@@ -1024,7 +1024,7 @@
 /* Known receipt lines retain inline money fields; optional editors expand in place. */
 :is(#opReceiptFields, #editReceiptFields) .receipt-item-row.receipt-item-known {
   display: grid; grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "summary" "identity" "money" "measurements" "discount";
+  grid-template-areas: "summary" "identity" "money" "hint" "measurements" "discount";
 }
 .receipt-compact-heading { grid-area: summary; display: flex; align-items: start; justify-content: space-between; gap: 8px; min-width: 0; }
 .receipt-compact-heading > div { min-width: 0; }
@@ -1051,7 +1051,7 @@
 :is(#opReceiptFields, #editReceiptFields) .receipt-item-known:not(.is-compact) .receipt-item-money .receipt-price-cell { grid-column: 1 / -1; }
 @media (min-width: 900px) {
   :is(#opReceiptFields, #editReceiptFields) .receipt-item-row.receipt-item-known.is-compact {
-    grid-template-columns: minmax(0, 1fr) minmax(370px, .9fr); grid-template-areas: "summary money"; align-items: center; gap: 16px;
+    grid-template-columns: minmax(0, 1fr) minmax(370px, .9fr); grid-template-areas: "summary money" "hint hint"; align-items: center; gap: 16px;
   }
   :is(#opReceiptFields, #editReceiptFields) .receipt-item-known.is-compact .receipt-item-money { grid-template-columns: minmax(160px, 1fr) 70px minmax(75px, max-content) 30px; }
   :is(#opReceiptFields, #editReceiptFields) .receipt-item-known.is-compact .receipt-item-money .receipt-price-cell {
@@ -1063,3 +1063,11 @@
 .receipt-variant-controls { display: grid; gap: .5rem; margin-bottom: .75rem; min-width: 0; }
 .receipt-variant-controls small { overflow-wrap: anywhere; }
 .receipt-variant-controls select, .receipt-variant-controls button { max-width: 100%; min-width: 0; white-space: normal; }
+
+.receipt-price-hint { grid-column: 1 / -1; min-width: 0; display: grid; gap: 6px; }
+.receipt-price-hint[hidden] { display: none; }
+.receipt-price-hint button { justify-self: start; max-width: 100%; white-space: normal; text-align: left; }
+.receipt-price-hint small { line-height: 1.5; overflow-wrap: anywhere; color: var(--muted); }
+.receipt-price-hint small:empty { display: none; }
+
+:is(#opReceiptFields, #editReceiptFields) .receipt-item-known .receipt-price-hint { grid-area: hint; }

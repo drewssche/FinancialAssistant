@@ -25,6 +25,21 @@
       subtotal !== null && total > subtotal ? "Итог превышает сумму до скидки" : "";
     return { total: Number(total) / 100, subtotal: subtotal === null ? null : Number(subtotal) / 100, error };
   }
+  function compare(item, previous) {
+    const current = calculate(item);
+    const qty = scaled(item.quantity, 3), oldQty = scaled(previous.quantity, 3);
+    const paid = scaled(current.total, 2), oldPaid = scaled(previous.line_total, 2);
+    if (current.error || qty <= 0n || oldQty <= 0n || paid <= 0n || oldPaid < 0n) return null;
+    const numerator = paid * oldQty - oldPaid * qty;
+    const denominator = oldPaid * qty;
+    const signedRound = (n, d) => n < 0n ? -roundedDivide(-n, d) : roundedDivide(n, d);
+    return {
+      percent: denominator > 0n ? Number(signedRound(numerator * 10000n, denominator)) / 100 : null,
+      direction: numerator > 0n ? 1 : numerator < 0n ? -1 : 0,
+      difference: Number(paid - roundedDivide(oldPaid * qty, oldQty)) / 100,
+      currentPrice: Number(paid) * 10 / Number(qty),
+    };
+  }
   function payload(item) {
     const price = calculate(item);
     return {
@@ -34,5 +49,5 @@
     };
   }
   window.App = window.App || {};
-  window.App.receiptPricing = { calculate, payload };
+  window.App.receiptPricing = { calculate, payload, compare };
 })();

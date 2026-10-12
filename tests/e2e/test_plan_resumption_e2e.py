@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import tempfile
+
 import json
 from urllib.parse import urlparse
 
@@ -74,7 +76,7 @@ def test_completed_plan_opens_from_history_and_resumes(static_server_url, comple
     expect(page.locator("#submitCreateOperationBtn")).to_have_text("Сохранить и возобновить")
     expect(page.locator("#submitCreateOperationBtn")).to_be_enabled()
     assert page.evaluate("window.App.state.lastActivityMutationAt") == activity_before
-    page.screenshot(path=f"/private/tmp/financialassistant-plan-resume-{width}.png")
+    page.screenshot(path=f"{tempfile.gettempdir()}/financialassistant-plan-resume-{width}.png")
     page.locator("#planResumeDate").fill("2026-10-05")
     page.locator("#planResumeDate").dispatch_event("change")
     expect(page.locator("#planResumeHint")).to_contain_text("05.10.2026")

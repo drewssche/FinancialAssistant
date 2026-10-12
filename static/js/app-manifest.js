@@ -41,6 +41,7 @@
     "/static/js/app-section-ui.js",
     "/static/js/app-features-operation-modal-preview.js",
     "/static/js/app-features-operation-modal-receipt-pickers.js",
+    "/static/js/app-receipt-price-hints.js",
     "/static/js/app-features-operation-modal-receipt-interactions.js",
     "/static/js/app-features-operation-modal-receipt.js",
     "/static/js/app-features-operation-modal-categories.js",

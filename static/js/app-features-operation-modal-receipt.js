@@ -708,6 +708,7 @@
         `;
       }).join("");
       ctx.listNode.querySelectorAll('textarea[data-receipt-field="name"]').forEach(resizeReceiptNameTextarea);
+      priceHints?.refresh(mode);
     }
 
     function getReceiptTotal(mode = "create") {
@@ -728,6 +729,7 @@
     }
 
     function renderReceiptSummary(mode = "create", options = {}) {
+      priceHints?.refresh(mode);
       const resolvedMode = mode === "edit" ? "edit" : "create";
       const ctx = getReceiptContext(resolvedMode);
       if (!ctx.totalNode || !ctx.diffNode) {
@@ -807,6 +809,10 @@
       }
     }
 
+    const priceHints = window.App.getRuntimeModule?.("receipt-price-hints-factory")?.({
+      state, core, getReceiptItems, getReceiptContext, getReceiptCurrency, getReceiptOperationKind,
+    });
+
     const createOperationModalReceiptInteractionsFeature = window.App.getRuntimeModule?.("operation-modal-receipt-interactions-factory");
     const interactions = createOperationModalReceiptInteractionsFeature
       ? createOperationModalReceiptInteractionsFeature({
@@ -814,6 +820,7 @@
         el,
         core,
         receiptUiState,
+        priceHints,
         normalizeReceiptName,
         getReceiptModeFromNode,
         getReceiptItemByDraftId,
