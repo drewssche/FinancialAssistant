@@ -215,7 +215,7 @@ Settings UX additions:
 - `Позиция` (item chips filtered by selected source when source is set)
 - Editing rule:
 - on chip insert, prefill name + latest known price, both editable
-- Receipt edits retain their pricing contract. The current price store may suppress repeated prices; do not imply it is a complete purchase timeline. The planned observation history will address that separately.
+- Receipt edits retain their pricing contract. The current price store may suppress repeated prices; do not imply it is a complete purchase timeline. The product Prices tab therefore defaults to actual receipt observations with a stepped graph, per-step/period percentages and receipt links; saved offer prices remain an explicitly separate mode.
 - if user creates a missing position from picker (`+ Создать позицию`), it must be available in subsequent receipt rows immediately (optimistic local template list update before operation save)
 - Amount/discrepancy rule:
 - save is allowed when operation amount and receipt total differ

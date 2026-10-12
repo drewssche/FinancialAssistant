@@ -16,7 +16,8 @@ def test_price_graph_filters_receipt_link_and_draft(static_server_url, page_with
     rows=[dict(operation_id=i+1,receipt_item_id=i+1,recorded_at=f'2026-10-0{i+1}',price=str(price),change_percent=change,direction=direction,package_quantity='900',package_unit='ml',sale_unit='pack',is_discounted=i==2,package_changed=False) for i,(price,change,direction) in enumerate([(3,None,0),(4,'33.33',1),(3,'-25',-1)])]
     def handler(route,req):
         path=urlparse(req.url).path
-        if path.endswith('/401'): result=product
+        if path.endswith('/catalog-products'): result={'items':[product], 'total':1, 'page':1, 'page_size':100}
+        elif path.endswith('/401'): result=product
         elif path.endswith('/price-observations'):
             query=parse_qs(urlparse(req.url).query);queries.append(query)
             if query['price_kind']==['regular']: result={'series':[],'excluded_count':3}

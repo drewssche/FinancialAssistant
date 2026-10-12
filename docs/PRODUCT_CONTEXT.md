@@ -31,7 +31,7 @@ Current delivery direction:
 - operation amount can be entered manually or auto-derived from receipt items total
 - if manual amount differs from receipt total, discrepancy is stored and shown as warning (non-blocking save)
 - receipt items are reusable through per-user item templates with price history
-- each purchase line keeps its paid price in the receipt snapshot; template price history is incomplete as an observation timeline because repeated price values are suppressed. For discounted lines it records a known regular price, not necessarily the paid price. Full observation history is planned.
+- each purchase line keeps its paid price in the receipt snapshot; template price history is incomplete as an observation timeline because repeated price values are suppressed. For discounted lines it records a known regular price, not necessarily the paid price. The product workspace now derives a complete actual-purchase history directly from receipt snapshots, separately from that template price store.
 - receipt template identity supports optional store grouping (`shop_name + position_name`) for more precise chip reuse
 - Example: two `Еда` entries on the same date are stored as two separate operations.
 - Period totals are calculated as sums of all operations in selected date range.
@@ -41,7 +41,7 @@ Current delivery direction:
 ## Plans, Catalog and Work
 
 - Completed plans can be edited through linked operations, history and activity. Resuming recurrence is an explicit action; ordinary edits preserve completed status.
-- A catalog product groups source offers while retaining source-specific names. Merge, separate, price-history and operation drilldown actions exist. The consolidated product modal provides product, offers, saved prices and purchases views. Known receipt rows keep money controls inline and expand extra properties with «Изменить». GTINs, retailer links, full price-observation graphs, receipt OCR and website-price monitoring remain future work.
+- A catalog product groups source offers while retaining source-specific names. Merge, separate, price-history and operation drilldown actions exist. The consolidated product modal provides product, offers, purchase-price observations/saved offer prices and purchases views. Known receipt rows keep money controls inline and expand extra properties with «Изменить». GTINs, retailer links, confirmed package variants, receipt OCR and website-price monitoring remain future work.
 - Work estimates use the salary cycle and employment settings. Actual earnings statistics use payment dates and payroll linkage; they do not count forecast salary as received money.
 - Structure and financial calendar remain in their current analytics locations. Rarely used analytics views will be consolidated only after their useful workflows have replacements.
 
@@ -68,7 +68,7 @@ Current delivery direction:
 - For trend analytics, use aggregated views/queries on top (`day/week/month` buckets by kind/category), without merging original records.
 - This keeps edit/delete auditability and avoids data loss, while still allowing fast trend calculations.
 - «Чаще всего покупали» ranks products by distinct expense receipts. «Позиции» separately shows packages, pieces, kg/l and paid line totals in each original currency. Repeated lines count once per product/receipt; missing historic units remain visibly unknown. Catalog edits do not alter past measurement totals.
-- Trend/calendar/highlight queries and `/api/v1/dashboard/analytics/positions` are implemented. Catalog offers also link to price history and filtered operations. The future product view should consolidate these workflows without losing access to the underlying receipts.
+- Trend/calendar/highlight queries and `/api/v1/dashboard/analytics/positions` are implemented. Catalog offers also link to price history and filtered operations. The unified product view now consolidates these workflows and keeps links to the underlying receipts.
 
 ## Debt Domain (Implemented MVP Baseline)
 - Debt records are not expense/income categories; they are a separate workflow with dedicated fields:
