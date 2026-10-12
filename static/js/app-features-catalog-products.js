@@ -2,6 +2,7 @@
   const { state, el, core } = window.App;
   const media = () => window.App.getRuntimeModule?.("catalog-media") || {};
   const catalog = () => window.App.getRuntimeModule?.("item-catalog") || {};
+  const details = () => window.App.getRuntimeModule?.("catalog-product-details") || {};
   const operations = () => window.App.getRuntimeModule?.("operations") || {};
   const pickers = () => window.App.getRuntimeModule?.("picker-utils") || {};
   const CACHE_TTL_MS = 20000;
@@ -9,6 +10,8 @@
   let searchTimer = null;
   let bound = false;
   let editorProduct = null;
+  let editorRequest = 0;
+  let editorReturnFocus = null;
   let tableColumns = null;
   const sorting = window.App.getRuntimeModule("table-sort");
   const sortColumns = [null,
@@ -171,10 +174,7 @@
         <td data-label="Дата">${offer.latest_price_date ? esc(core.formatDateRu(offer.latest_price_date)) : "—"}</td>
         <td data-label="Покупок">${Number(offer.use_count || 0)}</td>
         <td colspan="2" class="catalog-product-offer-actions">
-          <button class="btn btn-secondary btn-xs" type="button" data-product-offer-action="history" data-template-id="${templateId}">История цен</button>
-          <button class="btn btn-secondary btn-xs" type="button" data-product-offer-action="operations" data-template-id="${templateId}">Операции</button>
-          <button class="btn btn-secondary btn-xs" type="button" data-product-offer-action="edit" data-template-id="${templateId}">Изменить</button>
-          <button class="btn btn-danger btn-xs" type="button" data-product-offer-action="detach" data-template-id="${templateId}" data-product-id="${product.id}">Отделить</button>
+          <button class="btn btn-secondary btn-xs" type="button" data-open-catalog-product="${product.id}" data-open-product-tab="offers" data-open-product-offer="${templateId}">Открыть</button>
         </td>
       </tr>`;
   }
@@ -198,7 +198,7 @@
         <td data-label="Источники"><strong>${product.sources_count}</strong><span class="muted-small"> · ${product.offers_count} предл.</span></td>
         <td data-label="Цена"><strong>${formatPriceRange(product)}</strong></td>
         <td data-label="Последняя покупка" class="catalog-product-last-used">${renderLastUsed(product.last_used_at)}</td>
-        <td class="catalog-product-row-actions"><button class="btn btn-secondary btn-xs" type="button" data-open-catalog-product-operations="${product.id}">Операции</button><button class="btn btn-secondary btn-xs" type="button" data-open-catalog-product="${product.id}">Изменить</button></td>
+        <td data-label="Фасовка" class="catalog-product-row-actions"><span class="muted-small">${esc(window.App.measurements.summary(product))}</span></td>
       </tr>${offerRows}`;
   }
 
@@ -349,7 +349,7 @@
   }
 
   function offerById(templateId) {
-    for (const product of state.catalogProducts || []) {
+    for (const product of [editorProduct, ...(state.catalogProducts || [])].filter(Boolean)) {
       const offer = product.offers.find((item) => Number(item.template_id || item.id) === Number(templateId));
       if (offer) return { product, offer };
     }
@@ -446,17 +446,26 @@
 
   function renderModalOffers(product) {
     if (!el.catalogProductOffersList || !el.catalogProductOffersSection) return;
-    el.catalogProductOffersSection.classList.toggle("hidden", !product?.id);
+
     el.catalogProductOffersList.innerHTML = (product?.offers || []).map((offer) => `
-      <article class="catalog-product-modal-offer">
+      <article class="catalog-product-modal-offer" data-catalog-product-parent-id="${product.id}" data-modal-offer-id="${offer.template_id}">
         <div class="catalog-product-source-cell">${media().renderThumb?.(offer.source_image_id, { kind: "source", size: "chip", alt: offer.source_name, fallback: offer.source_name?.slice(0, 1) }) || ""}<div><strong>${esc(offer.source_name || "Без источника")}</strong><span class="muted-small">${esc(offer.name)}</span></div></div>
         <div><strong>${Number(offer.latest_unit_price || 0) > 0 ? core.formatMoney(offer.latest_unit_price) : "—"}</strong><span class="muted-small">${offer.latest_price_date ? esc(core.formatDateRu(offer.latest_price_date)) : "Нет цены"}</span></div>
-        <button class="btn btn-secondary btn-xs" type="button" data-product-modal-offer-edit="${offer.template_id}">Изменить</button>
+        <div class="catalog-product-offer-menu">
+          <button class="btn btn-secondary btn-xs" type="button" data-product-offer-action="edit" data-template-id="${offer.template_id}">Изменить</button>
+          <details><summary aria-label="Действия предложения ${esc(offer.source_name || offer.name)}">Ещё</summary><div class="catalog-product-menu-actions">
+            <button class="btn btn-secondary btn-xs" type="button" data-product-offer-action="history" data-template-id="${offer.template_id}">История цен</button>
+            <button class="btn btn-secondary btn-xs" type="button" data-product-offer-action="operations" data-template-id="${offer.template_id}">Покупки</button>
+            <button class="btn btn-danger btn-xs" type="button" data-product-offer-action="detach" data-template-id="${offer.template_id}" data-product-id="${product.id}">Отделить</button>
+          </div></details>
+        </div>
       </article>`).join("") || "<div class='empty'>Предложений пока нет. Нажмите «Добавить источник» или выберите этот товар в чеке магазина.</div>";
     media().hydrate?.(el.catalogProductOffersList);
   }
 
-  async function openEditor(productOrId = null) {
+  async function openEditor(productOrId = null, options = {}) {
+    const request = ++editorRequest;
+    const trigger = document.activeElement;
     await Promise.all([
       window.App.getRuntimeModule?.("item-brands")?.ensureItemBrandsLoaded?.(),
       state.categories?.length ? null : window.App.getRuntimeModule?.("category-actions")?.loadCategories?.(),
@@ -466,10 +475,12 @@
     if (id && !product) {
       product = normalizeProduct(await core.requestJson(`/api/v1/operations/catalog-products/${id}`, { headers: core.authHeaders() }));
     }
+    if (request !== editorRequest) return;
+    editorReturnFocus = trigger;
     state.editCatalogProductId = product?.id || null;
     editorProduct = product;
     window.App.getRuntimeModule?.("activity")?.configureActivityButton?.(el.catalogProductActivityBtn, product ? "catalog_product" : null, product?.id);
-    if (el.catalogProductModalTitle) el.catalogProductModalTitle.textContent = product ? "Редактировать товар" : "Новый товар";
+    if (el.catalogProductModalTitle) el.catalogProductModalTitle.textContent = product ? product.name : "Новый товар";
     if (el.catalogProductName) el.catalogProductName.value = product?.name || "";
     el.catalogProductSaleUnit.value = product?.sale_unit || "";
     el.catalogProductPackageQuantity.value = product?.package_quantity || "";
@@ -480,14 +491,20 @@
     }
     renderModalOffers(product);
     el.deleteCatalogProductBtn?.classList.toggle("hidden", !product);
+    el.deleteCatalogProductBtn?.closest("details")?.classList.toggle("hidden", !product);
     if (el.submitCatalogProductBtn) el.submitCatalogProductBtn.textContent = product ? "Сохранить" : "Создать товар";
     media().resetPicker?.("catalog-product", { imageId: product?.image_id, kind: "item", label: product?.name || "Товар" });
     el.catalogProductModal?.classList.remove("hidden");
     core.bringModalToFront?.(el.catalogProductModal);
-    setTimeout(() => el.catalogProductName?.focus(), 0);
+    details().open?.(product, options);
+    setTimeout(() => {
+      if (!el.catalogProductForm?.classList.contains("hidden")) el.catalogProductName?.focus();
+    }, 0);
   }
 
   function closeEditor() {
+    editorRequest += 1;
+    details().close?.();
     ["Brand", "Category"].forEach(closeMetaPicker);
     state.editCatalogProductId = null;
     editorProduct = null;
@@ -495,6 +512,8 @@
     el.catalogProductModal?.classList.add("hidden");
     core.markModalClosed?.(el.catalogProductModal);
     el.catalogProductForm?.reset();
+    if (editorReturnFocus?.isConnected) editorReturnFocus.focus({preventScroll: true});
+    editorReturnFocus = null;
   }
 
   async function refreshOpenOffers(productId) {
@@ -505,6 +524,7 @@
     state.catalogProducts = (state.catalogProducts || []).map((item) => Number(item.id) === Number(productId) ? product : item);
     // Refresh just the offers, preserving unsaved name/brand/photo edits above.
     renderModalOffers(product);
+    details().refresh?.(product);
     render();
   }
 
@@ -570,7 +590,7 @@
   }
 
   function removeCurrent() {
-    const product = productById(state.editCatalogProductId);
+    const product = editorProduct;
     if (!product) return;
     core.showConfirm?.(`Удалить товар «${product.name}»? Его предложения будут скрыты из каталога, а история покупок и цен сохранится.`, async () => {
       await core.requestJson(`/api/v1/operations/catalog-products/${product.id}`, { method: "DELETE", headers: core.authHeaders() });
@@ -649,6 +669,7 @@
     });
     invalidate();
     await Promise.all([load({ force: true }), catalog().loadItemCatalog?.({ force: true }).catch(() => {})]);
+    await refreshOpenOffers(productId);
     core.showToast?.("Предложение отделено в самостоятельный товар", { type: "success" });
   }
 
@@ -681,7 +702,7 @@
     }
     const open = event.target.closest("[data-open-catalog-product]");
     if (open) {
-      core.runAction({ errorPrefix: "Не удалось открыть товар", action: () => openEditor(open.dataset.openCatalogProduct) });
+      core.runAction({ errorPrefix: "Не удалось открыть товар", action: () => openEditor(open.dataset.openCatalogProduct, {tab: open.dataset.openProductTab, offerId: open.dataset.openProductOffer}) });
       return;
     }
     const productOperations = event.target.closest("[data-open-catalog-product-operations]");
@@ -692,12 +713,13 @@
     }
     const offerAction = event.target.closest("[data-product-offer-action]");
     if (!offerAction) return;
+    offerAction.closest("details")?.removeAttribute("open");
     const templateId = asId(offerAction.dataset.templateId);
     const productId = asId(offerAction.dataset.productId || offerAction.closest("[data-catalog-product-parent-id]")?.dataset.catalogProductParentId);
     const found = offerById(templateId);
     if (offerAction.dataset.productOfferAction === "edit") editOffer(templateId);
-    if (offerAction.dataset.productOfferAction === "history" && found) catalog().openItemTemplateHistoryModal?.({ ...found.offer, id: templateId });
-    if (offerAction.dataset.productOfferAction === "operations" && found) operations().openOperationsForItemTemplate?.(templateId, found.offer.name);
+    if (offerAction.dataset.productOfferAction === "history" && found) details().select?.("prices", templateId);
+    if (offerAction.dataset.productOfferAction === "operations" && found) details().select?.("purchases", templateId);
     if (offerAction.dataset.productOfferAction === "detach" && productId && templateId) {
       core.showConfirm?.(`Отделить предложение «${found?.offer?.name || "позиция"}» от товара?`, () => detach(productId, templateId), {
         title: "Отделить предложение", confirmLabel: "Отделить", confirmTone: "primary",
@@ -749,10 +771,7 @@
     el.addCatalogProductSourceBtn?.addEventListener("click", () => core.runAction({ errorPrefix: "Не удалось открыть добавление источника", action: addSource }));
     el.catalogProductForm?.addEventListener("submit", (event) => core.runAction({ errorPrefix: "Не удалось сохранить товар", action: () => save(event) }));
     el.deleteCatalogProductBtn?.addEventListener("click", removeCurrent);
-    el.catalogProductOffersList?.addEventListener("click", (event) => {
-      const button = event.target.closest("[data-product-modal-offer-edit]");
-      if (button) editOffer(button.dataset.productModalOfferEdit);
-    });
+    el.catalogProductOffersList?.addEventListener("click", handleBodyClick);
     el.openCatalogProductOperationsBtn?.addEventListener("click", () => {
       openProductUsage(editorProduct);
     });
@@ -764,6 +783,8 @@
   }
 
   function cleanupRuntime() {
+    editorRequest += 1;
+    editorReturnFocus = null;
     tableColumns?.cancel();
     ["Brand", "Category"].forEach(closeMetaPicker);
     requestController?.abort();
@@ -778,6 +799,7 @@
     state.selectedCatalogProductIds = new Set();
     state.editCatalogProductId = null;
     editorProduct = null;
+    details().cleanup?.();
   }
 
   window.App.registerRuntimeModule?.("catalog-products", {

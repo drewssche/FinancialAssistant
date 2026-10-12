@@ -446,7 +446,7 @@
                     <th>Источники</th>
                     <th>Цена</th>
                     <th>Последняя покупка</th>
-                    <th></th>
+                    <th>Фасовка</th>
                   </tr>
                 </thead>
                 <tbody id="catalogProductsBody"></tbody>

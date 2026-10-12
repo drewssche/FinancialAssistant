@@ -472,6 +472,10 @@
     const catalog = window.App.getRuntimeModule?.("item-catalog") || {};
     catalog.applySavedItemCatalogItem?.(item);
     catalog.applySavedReceiptTemplateHint?.(item);
+    if (Number(item.product_id) > 0) {
+      await window.App.getRuntimeModule?.("catalog-products")?.openEditor?.(item.product_id, {tab: "offers", offerId: id});
+      return;
+    }
     catalog.openItemTemplateModal?.(item);
     const modal = document.getElementById("itemTemplateModal");
     core.bringModalToFront?.(modal);

@@ -84,6 +84,7 @@
       if (!rowItem || !template) {
         return;
       }
+      rowItem.details_expanded = false;
       const productId = Number(template.product_id || 0) || null;
       const product = productId
         ? (state.receiptProductHints || []).find((item) => Number(item.id) === productId) || template
@@ -174,6 +175,8 @@
         const matched = getReceiptTemplateMatch(token, updated.item.shop_name || "", updated.item.brand_id, updated.item.source_id);
         if (matched) {
           applyReceiptTemplateToItem(updated.item, matched);
+          // Typing an exact name must keep its picker/editor open until selection.
+          updated.item.details_expanded = true;
           if (event.target.value !== updated.item.name) {
             event.target.value = updated.item.name;
             event.target.title = updated.item.name || "Позиция";
@@ -429,6 +432,17 @@
       nextInput?.blur();
     }
     function handleReceiptItemsListClick(event) {
+      const detailsButton = event.target.closest("[data-receipt-details-toggle]");
+      if (detailsButton) {
+        const row = detailsButton.closest(".receipt-item-row"), mode = getReceiptModeFromNode(row);
+        const id = Number(detailsButton.dataset.receiptDetailsToggle), item = getReceiptItemByDraftId(id, mode);
+        if (item) {
+          item.details_expanded = !item.details_expanded;
+          commitReceiptRowMutation(mode);
+          getReceiptContext(mode).listNode?.querySelector(`[data-receipt-details-toggle="${id}"]`)?.focus({preventScroll: true});
+        }
+        return;
+      }
       const brandThumbButton = event.target.closest("button[data-receipt-brand-thumb]");
       if (brandThumbButton) {
         const row = brandThumbButton.closest("[data-receipt-item-id]");
@@ -599,7 +613,9 @@
         const mode = getReceiptModeFromNode(row);
         const rowItem = getReceiptItemByDraftId(draftId, mode);
         if (rowItem) {
-          updateReceiptItemField(draftId, "is_discounted", !rowItem.is_discounted, mode);
+          const expanding = row.classList.contains("is-compact");
+          rowItem.details_expanded = true;
+          updateReceiptItemField(draftId, "is_discounted", expanding ? true : !rowItem.is_discounted, mode);
           commitReceiptRowMutation(mode);
         }
         return;

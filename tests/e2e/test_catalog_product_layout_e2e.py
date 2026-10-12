@@ -98,7 +98,7 @@ def test_product_long_pickers_repeat_open_scroll_and_do_not_move_background(cata
                 page.mouse.wheel(0, delta)
                 page.wait_for_timeout(100)
                 assert page.evaluate("[window.scrollY, document.querySelector('#catalogProductModal .modal-card').scrollTop]") == background
-            page.locator("#catalogProductName").click()
+            page.keyboard.press("Escape")
             expect(picker).to_be_hidden()
             assert page.evaluate("window.__pickerScrollListeners.size") == 0
         input_node.click()

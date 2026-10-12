@@ -381,6 +381,7 @@ def test_receipt_picker_store_scoped_and_optimistic_create(static_server_url: st
     assert second_name_picker.locator('.chip-btn:has-text("Хлеб")').first.is_visible()
     assert second_name_picker.locator('.chip-btn:has-text("Чипсы Лейс")').count() == 0
 
+    first_row.locator("[data-receipt-details-toggle]").click()
     first_row.locator('[data-receipt-field="shop_name"]').fill("Корона")
     assert second_row.locator('[data-receipt-field="shop_name"]').input_value() == "Евроопт"
 
@@ -446,6 +447,7 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
     assert long_suggestion.get_attribute("title") == long_name
     assert long_name in long_suggestion.inner_text()
     long_suggestion.click()
+    first_row.locator("[data-receipt-details-toggle]").click()
 
     assert name_input.input_value() == long_name
     assert name_input.get_attribute("title") == long_name
@@ -461,198 +463,15 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
     assert name_geometry["height"] > 44
     assert name_geometry["height"] <= name_geometry["maxHeight"] + 1
 
-    desktop_geometry = first_row.evaluate(
-        """
-        node => {
-          const selectors = {
-            source: '.receipt-shop-cell',
-            brand: '.receipt-brand-cell',
-            name: '.receipt-name-cell',
-            category: '.receipt-category-cell',
-            price: '.receipt-price-cell',
-            quantity: '.receipt-quantity-cell',
-            total: '.receipt-line-total',
-            remove: '.receipt-remove-btn',
-          };
-          const entries = Object.entries(selectors).map(([key, selector]) => {
-            const rect = node.querySelector(selector).getBoundingClientRect();
-            return [key, { top: rect.top, width: rect.width }];
-          });
-          const rects = Object.fromEntries(entries);
-          const tops = entries.map(([, rect]) => rect.top);
-          return {
-            clientWidth: node.clientWidth,
-            scrollWidth: node.scrollWidth,
-            topSpread: Math.max(...tops) - Math.min(...tops),
-            identityDisplay: getComputedStyle(node.querySelector('.receipt-item-identity')).display,
-            moneyDisplay: getComputedStyle(node.querySelector('.receipt-item-money')).display,
-            columns: getComputedStyle(node).gridTemplateColumns,
-            widths: Object.fromEntries(Object.entries(rects).map(([key, rect]) => [key, rect.width])),
-            brandInputWidth: node.querySelector('[data-receipt-field="brand_search"]').getBoundingClientRect().width,
-            brandThumb: (() => {
-              const rect = node.querySelector('.receipt-brand-thumb').getBoundingClientRect();
-              return { width: rect.width, height: rect.height };
-            })(),
-            itemOpenButton: (() => {
-              const rect = node.querySelector('.receipt-template-card-btn').getBoundingClientRect();
-              return { width: rect.width, height: rect.height };
-            })(),
-            unitPriceWidth: node.querySelector('[data-receipt-field="unit_price"]').getBoundingClientRect().width,
-          };
-        }
-        """
-    )
-    assert desktop_geometry["scrollWidth"] <= desktop_geometry["clientWidth"] + 2
-    assert desktop_geometry["topSpread"] <= 2
-    assert desktop_geometry["identityDisplay"] == "contents"
-    assert desktop_geometry["moneyDisplay"] == "contents"
-    assert len(desktop_geometry["columns"].split()) == 8
-    assert 75 <= desktop_geometry["widths"]["source"] <= 82
-    assert 103 <= desktop_geometry["widths"]["brand"] <= 110
-    assert 63 <= desktop_geometry["brandInputWidth"] <= 72
-    assert abs(desktop_geometry["brandThumb"]["width"] - desktop_geometry["brandThumb"]["height"]) <= 1
-    assert 33 <= desktop_geometry["brandThumb"]["width"] <= 35
-    assert abs(desktop_geometry["itemOpenButton"]["width"] - desktop_geometry["itemOpenButton"]["height"]) <= 1
-    assert 315 <= desktop_geometry["widths"]["name"] <= 345
-    assert 111 <= desktop_geometry["widths"]["category"] <= 122
-    assert desktop_geometry["widths"]["quantity"] <= 66
-    assert 71 <= desktop_geometry["unitPriceWidth"] <= 82
-    assert desktop_geometry["widths"]["price"] > desktop_geometry["unitPriceWidth"]
-
-    # Supporting identity fields stay compact when the modal grows. The spare
-    # width belongs to the price/discount area, while the price input itself
-    # remains short and the position keeps its useful reading width.
-    page.set_viewport_size({"width": 1260, "height": 900})
-    page.wait_for_timeout(80)
-    compact_geometry = first_row.evaluate(
-        """
-        node => {
-          const width = (selector) => node.querySelector(selector).getBoundingClientRect().width;
-          return {
-            row: node.getBoundingClientRect().width,
-            source: width('.receipt-shop-cell'),
-            brand: width('.receipt-brand-cell'),
-            name: width('.receipt-name-cell'),
-            category: width('.receipt-category-cell'),
-            price: width('.receipt-price-cell'),
-            quantity: width('.receipt-quantity-cell'),
-            unitPrice: width('[data-receipt-field="unit_price"]'),
-          };
-        }
-        """
-    )
+    for width in (1380, 1260, 390):
+        page.set_viewport_size({"width": width, "height": 900})
+        for _ in range(2):
+            first_row.locator(".receipt-discount-toggle").click()
+            geometry = first_row.evaluate("node => ({width: node.clientWidth, content: node.scrollWidth})")
+            assert geometry["content"] <= geometry["width"] + 2
+            for field in ("shop_name", "brand_search", "name", "category_search", "quantity", "unit_price"):
+                expect(first_row.locator(f'[data-receipt-field="{field}"]')).to_be_visible()
     page.set_viewport_size({"width": 1380, "height": 900})
-    page.wait_for_timeout(80)
-    row_growth = desktop_geometry["clientWidth"] - compact_geometry["row"]
-    assert row_growth > 60
-    for field in ("source", "brand", "name", "category", "quantity"):
-        assert abs(desktop_geometry["widths"][field] - compact_geometry[field]) <= 2
-    assert desktop_geometry["widths"]["price"] - compact_geometry["price"] >= row_growth * 0.9
-    assert abs(desktop_geometry["unitPriceWidth"] - compact_geometry["unitPrice"]) <= 2
-
-    stable_selectors = {
-        "source": ".receipt-shop-cell",
-        "brand": ".receipt-brand-cell",
-        "name": ".receipt-name-cell",
-        "category": ".receipt-category-cell",
-        "quantity": ".receipt-quantity-cell",
-        "total": ".receipt-line-total",
-        "remove": ".receipt-remove-btn",
-        "unit": '[data-receipt-field="unit_price"]',
-        "toggle": ".receipt-discount-toggle",
-    }
-
-    def receipt_geometry(row):
-        return row.evaluate(
-            """
-            (node, selectors) => {
-              const box = (selector) => {
-                const rect = node.querySelector(selector).getBoundingClientRect();
-                return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
-              };
-              const rowRect = node.getBoundingClientRect();
-              return {
-                row: { left: rowRect.left, top: rowRect.top, width: rowRect.width, height: rowRect.height },
-                clientWidth: node.clientWidth,
-                scrollWidth: node.scrollWidth,
-                elements: Object.fromEntries(Object.entries(selectors).map(([key, selector]) => [key, box(selector)])),
-              };
-            }
-            """,
-            stable_selectors,
-        )
-
-    normal_wide_geometry = receipt_geometry(first_row)
-    first_row.locator(".receipt-discount-toggle").click()
-    page.wait_for_selector("#receiptItemsList .receipt-item-row.receipt-item-row-discounted")
-    discounted_geometry = first_row.evaluate(
-        """
-        node => {
-          const price = node.querySelector('.receipt-price-cell');
-          const inputs = [...price.querySelectorAll('.receipt-price-field input')];
-          return {
-            rowClientWidth: node.clientWidth,
-            rowScrollWidth: node.scrollWidth,
-            priceClientWidth: price.clientWidth,
-            priceScrollWidth: price.scrollWidth,
-            priceWidth: price.getBoundingClientRect().width,
-            nameWidth: node.querySelector('.receipt-name-cell').getBoundingClientRect().width,
-            inputWidths: inputs.map((input) => input.getBoundingClientRect().width),
-            discountTypes: (() => {
-              const rect = price.querySelector('.receipt-discount-type-row').getBoundingClientRect();
-              return { top: rect.top, bottom: rect.bottom };
-            })(),
-            unitPrice: (() => {
-              const rect = price.querySelector('[data-receipt-field="unit_price"]').getBoundingClientRect();
-              return { top: rect.top, bottom: rect.bottom };
-            })(),
-          };
-        }
-        """
-    )
-    assert discounted_geometry["rowScrollWidth"] <= discounted_geometry["rowClientWidth"] + 2
-    assert discounted_geometry["priceScrollWidth"] <= discounted_geometry["priceClientWidth"] + 2
-    assert discounted_geometry["priceWidth"] > discounted_geometry["nameWidth"]
-    assert len(discounted_geometry["inputWidths"]) == 2
-    assert min(discounted_geometry["inputWidths"]) >= 71
-    assert max(discounted_geometry["inputWidths"]) <= 82
-    discounted_wide_geometry = receipt_geometry(first_row)
-    for key, before in normal_wide_geometry["elements"].items():
-        after = discounted_wide_geometry["elements"][key]
-        for dimension in ("left", "top", "width"):
-            assert abs(before[dimension] - after[dimension]) <= 1.5, (key, dimension, before, after)
-    expect(first_row.locator(".receipt-discount-calculation summary")).to_be_visible()
-    assert discounted_geometry["discountTypes"]["top"] >= discounted_geometry["unitPrice"]["top"] - 1
-    assert discounted_geometry["discountTypes"]["bottom"] <= discounted_geometry["unitPrice"]["bottom"] + 1
-    first_row.locator(".receipt-discount-toggle").click()
-    assert "receipt-item-row-discounted" not in (first_row.get_attribute("class") or "")
-
-    # Below the inline discount threshold only the chips move to a second row;
-    # the primary money controls and all outer columns stay anchored.
-    page.set_viewport_size({"width": 1260, "height": 900})
-    page.wait_for_timeout(80)
-    normal_compact_discount_geometry = receipt_geometry(first_row)
-    first_row.locator(".receipt-discount-toggle").click()
-    page.wait_for_selector("#receiptItemsList .receipt-item-row.receipt-item-row-discounted")
-    compact_discount_geometry = receipt_geometry(first_row)
-    compact_discount_rows = first_row.evaluate(
-        """
-        node => {
-          const unit = node.querySelector('[data-receipt-field="unit_price"]').getBoundingClientRect();
-          const chips = node.querySelector('.receipt-discount-type-row').getBoundingClientRect();
-          return { unitBottom: unit.bottom, chipsTop: chips.top };
-        }
-        """
-    )
-    for key, before in normal_compact_discount_geometry["elements"].items():
-        after = compact_discount_geometry["elements"][key]
-        for dimension in ("left", "top", "width"):
-            assert abs(before[dimension] - after[dimension]) <= 1.5, (key, dimension, before, after)
-    assert compact_discount_geometry["scrollWidth"] <= compact_discount_geometry["clientWidth"] + 2
-    assert compact_discount_rows["chipsTop"] >= compact_discount_rows["unitBottom"] + 2
-    first_row.locator(".receipt-discount-toggle").click()
-    page.set_viewport_size({"width": 1380, "height": 900})
-    page.wait_for_timeout(80)
 
     second_row = page.locator("#receiptItemsList .receipt-item-row").nth(1)
     assert second_row.locator('[data-receipt-field="shop_name"]').input_value() == "Green"
@@ -820,8 +639,9 @@ def test_receipt_thumbnail_opens_nested_item_card_and_live_syncs_saved_item(
         )
     ).to_be_visible()
     first_row.locator('button[data-receipt-template-id="128"]').click()
+    first_row.locator("[data-receipt-details-toggle]").click()
     first_row.locator('[data-receipt-field="quantity"]').fill("2")
-    expect(first_row.locator('[data-open-receipt-template-card="128"]')).to_have_count(2)
+    expect(first_row.locator('[data-open-receipt-template-card="128"]:visible')).to_have_count(3)
 
     first_row.locator(".receipt-template-card-btn").click()
     expect(page.locator("#itemTemplateModal")).to_be_visible()
@@ -907,6 +727,7 @@ def test_cancelled_receipt_brand_change_does_not_mutate_template_hint(static_ser
         row.locator('[data-receipt-field="name"]').click()
         page.wait_for_selector('.receipt-name-picker:not(.hidden) button[data-receipt-template-id="1"]')
         row.locator('button[data-receipt-template-id="1"]').click()
+        row.locator("[data-receipt-details-toggle]").click()
         return row
 
     open_receipt()
@@ -958,6 +779,7 @@ def test_receipt_brand_follows_new_identity_and_archived_brand_is_cleared(static
     row.locator('[data-receipt-field="name"]').click()
     page.wait_for_selector('.receipt-name-picker:not(.hidden) button[data-receipt-template-id="1"]')
     row.locator('button[data-receipt-template-id="1"]').click()
+    row.locator("[data-receipt-details-toggle]").click()
     row.locator('[data-receipt-field="name"]').fill("Ротманс новое название")
 
     renamed_payload = page.evaluate("() => window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
@@ -973,6 +795,7 @@ def test_receipt_brand_follows_new_identity_and_archived_brand_is_cleared(static
     archived_row.locator('[data-receipt-field="name"]').click()
     page.wait_for_selector('.receipt-name-picker:not(.hidden) button[data-receipt-template-id="129"]')
     archived_row.locator('button[data-receipt-template-id="129"]').click()
+    archived_row.locator("[data-receipt-details-toggle]").click()
     assert archived_row.locator('[data-receipt-field="brand_search"]').input_value() == "Архивный бренд"
 
     archived_row.locator('[data-receipt-field="name"]').fill("Новая позиция вместо архивной")
@@ -1735,6 +1558,8 @@ def test_edit_receipt_mixed_categories_keep_inheritance_and_preview_summary(stat
     first_row = page.locator(".receipt-item-row").first
     second_row = page.locator(".receipt-item-row").nth(1)
 
+    first_row.locator("[data-receipt-details-toggle]").click()
+    second_row.locator("[data-receipt-details-toggle]").click()
     expect_badge_first = first_row.locator(".receipt-category-badge")
     expect_badge_second = second_row.locator(".receipt-category-badge")
     assert expect_badge_first.is_visible()
@@ -2013,6 +1838,7 @@ def test_product_usage_all_stores_all_pages_stacked_and_section_filters(
         status=200, content_type="application/json", body=json.dumps({"id": 401, "name": "Сырок клубника", "offers": [], "category_id": 101})))
     page.evaluate("window.App.getRuntimeModule('catalog-products').openEditor(401)")
     page.fill("#catalogProductName", "Несохранённое название")
+    page.locator('[data-product-tab="purchases"]').click()
     page.click("#openCatalogProductOperationsBtn")
     usage = page.locator("#usageModal")
     expect(usage).to_be_visible()
@@ -2032,6 +1858,7 @@ def test_product_usage_all_stores_all_pages_stacked_and_section_filters(
     page.click("#closeUsageModalBtn")
     expect(usage).to_be_hidden()
     expect(page.locator("#catalogProductName")).to_have_value("Несохранённое название")
+    page.locator('[data-product-tab="purchases"]').click()
     page.click("#openCatalogProductOperationsBtn")
     expect(page.locator("#usageList [data-usage-operation-id]")).to_have_count(101)
     page.click("#openUsageInOperationsBtn")
@@ -2100,6 +1927,7 @@ def test_catalog_product_add_source_keeps_parent_edits_and_updates_sources(
     expect(parent).to_be_visible()
     expect(parent.locator("#catalogProductOffersList")).to_contain_text("Green")
     page.fill("#catalogProductName", "Несохранённое название")
+    page.locator('[data-product-tab="offers"]').click()
     page.click("#addCatalogProductSourceBtn")
     expect(child).to_be_visible()
     expect(parent).to_be_visible()
@@ -2137,6 +1965,7 @@ def test_catalog_product_add_source_keeps_parent_edits_and_updates_sources(
     geometry = parent.locator(".modal-card").evaluate("node => ({width: node.clientWidth, content: node.scrollWidth})")
     assert geometry["content"] <= geometry["width"] + 1
     # Opening/canceling another source does not close or reset the parent.
+    page.locator('[data-product-tab="offers"]').click()
     page.click("#addCatalogProductSourceBtn")
     expect(page.locator("#itemTemplatePrice")).to_be_empty()
     page.click("#closeItemTemplateModalBtn")
@@ -2358,6 +2187,7 @@ def test_measurement_defaults_manual_edit_and_saved_snapshot(static_server_url, 
     # Use the actual product picker to apply the catalog defaults.
     row.locator('[data-receipt-field="name"]').fill('Крупа')
     page.locator('[data-receipt-product-id="401"]').first.click()
+    row.locator('[data-receipt-details-toggle]').click()
     row.locator('.receipt-measurements summary').click()
     expect(row.locator('[data-receipt-field="sale_unit"]')).to_have_value('pack')
     expect(row.locator('[data-receipt-field="package_quantity"]')).to_have_value('900')
@@ -2383,6 +2213,7 @@ def test_measurement_defaults_manual_edit_and_saved_snapshot(static_server_url, 
       });
     }''', payload[0])
     saved = page.locator('#editReceiptItemsList .receipt-item-row').first
+    saved.locator('[data-receipt-details-toggle]').click()
     saved.locator('.receipt-measurements summary').click()
     expect(saved.locator('[data-receipt-field="package_quantity"]')).to_have_value('800')
     assert errors == []
@@ -2407,7 +2238,7 @@ def test_catalog_measurements_save_optional_defaults(static_server_url, page_wit
     _ensure_categories_loaded(page)
     page.evaluate("window.App.getRuntimeModule('catalog-products').openEditor()")
     page.locator('#catalogProductName').fill('Молоко')
-    page.locator('#catalogProductModal details summary').click()
+    page.locator('#catalogProductForm details summary').click()
     page.locator('#catalogProductSaleUnit').select_option('piece')
     page.locator('#catalogProductPackageQuantity').fill('0.9')
     page.locator('#catalogProductPackageUnit').select_option('l')

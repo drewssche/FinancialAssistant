@@ -1020,3 +1020,42 @@
 @media (max-width: 1180px) {
   .receipt-discount-calculation { grid-row: 4; }
 }
+
+/* Known receipt lines retain inline money fields; optional editors expand in place. */
+:is(#opReceiptFields, #editReceiptFields) .receipt-item-row.receipt-item-known {
+  display: grid; grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "summary" "identity" "money" "measurements" "discount";
+}
+.receipt-compact-heading { grid-area: summary; display: flex; align-items: start; justify-content: space-between; gap: 8px; min-width: 0; }
+.receipt-compact-heading > div { min-width: 0; }
+.receipt-compact-heading small { display: block; color: var(--muted); font-size: 0.75rem; overflow-wrap: anywhere; margin-top: 4px; }
+.receipt-compact-name { padding: 0; border: 0; background: transparent; color: var(--text); text-align: left; font-weight: 600; cursor: pointer; overflow-wrap: anywhere; }
+:is(#opReceiptFields, #editReceiptFields) .receipt-item-known .receipt-item-identity {
+  grid-area: identity; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "shop brand" "name category"; gap: 8px;
+}
+:is(#opReceiptFields, #editReceiptFields) .receipt-item-known .receipt-item-money {
+  grid-area: money; display: grid; grid-template-columns: minmax(0, 1fr) minmax(55px, .65fr) minmax(65px, .8fr) 30px; gap: 6px; align-items: end;
+}
+:is(#opReceiptFields, #editReceiptFields) .receipt-item-known .receipt-item-money > * { grid-area: auto; grid-column: auto; min-width: 0; width: auto; }
+:is(#opReceiptFields, #editReceiptFields) .receipt-item-known .receipt-item-money .receipt-price-cell { display: flex; flex-direction: column; align-items: stretch; min-width: 0; }
+:is(#opReceiptFields, #editReceiptFields) .receipt-item-known .receipt-item-money input { min-width: 0; width: 100%; }
+:is(#opReceiptFields, #editReceiptFields) .receipt-item-known .receipt-measurements { grid-area: measurements; }
+:is(#opReceiptFields, #editReceiptFields) .receipt-item-known .receipt-discount-calculation { grid-area: discount; }
+:is(#opReceiptFields, #editReceiptFields) .receipt-item-known .receipt-line-total strong { overflow-wrap: anywhere; white-space: normal; }
+:is(#opReceiptFields, #editReceiptFields) .receipt-item-known.is-compact :is(.receipt-item-identity, .receipt-measurements, .receipt-discount-calculation, .receipt-discount-type-row, .receipt-regular-price-field) { display: none; }
+@media (max-width: 600px) {
+  :is(#opReceiptFields, #editReceiptFields) .receipt-item-known .receipt-item-identity { grid-template-columns: minmax(0, 1fr); grid-template-areas: "shop" "brand" "name" "category"; }
+}
+.receipt-known-price-label { font-size: 0.6875rem; color: var(--muted); }
+:is(#opReceiptFields, #editReceiptFields) .receipt-item-known:not(.is-compact) .receipt-item-money { grid-template-columns: minmax(60px, 1fr) minmax(65px, 1fr) 30px; }
+:is(#opReceiptFields, #editReceiptFields) .receipt-item-known:not(.is-compact) .receipt-item-money .receipt-price-cell { grid-column: 1 / -1; }
+@media (min-width: 900px) {
+  :is(#opReceiptFields, #editReceiptFields) .receipt-item-row.receipt-item-known.is-compact {
+    grid-template-columns: minmax(0, 1fr) minmax(370px, .9fr); grid-template-areas: "summary money"; align-items: center; gap: 16px;
+  }
+  :is(#opReceiptFields, #editReceiptFields) .receipt-item-known.is-compact .receipt-item-money { grid-template-columns: minmax(160px, 1fr) 70px minmax(75px, max-content) 30px; }
+  :is(#opReceiptFields, #editReceiptFields) .receipt-item-known.is-compact .receipt-item-money .receipt-price-cell {
+    display: grid; grid-template-columns: minmax(65px, 1fr) auto; grid-template-areas: "price-label price-label" "unit-price discount-toggle"; gap: 4px;
+  }
+  .receipt-item-known.is-compact .receipt-known-price-label { grid-area: price-label; }
+}

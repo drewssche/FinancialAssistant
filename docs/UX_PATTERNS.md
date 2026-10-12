@@ -207,6 +207,7 @@ Settings UX additions:
 - outside click close must also work for clicks in modal area outside picker
 
 ## Receipt Line Items (MVP)
+- Known products/offers initially use compact rows: name, brand, source, package summary and inline quantity/price/total. «Изменить» exposes identity, measurement and discount controls. New rows keep the full editor; typing an exact known name does not prematurely hide its picker.
 - Receipt details are optional inside operation create/edit flow.
 - Receipt item picker reuses chip-picker mechanics (search, debounce, single list, create-if-missing).
 - Receipt row has two linked pickers:
@@ -214,7 +215,7 @@ Settings UX additions:
 - `Позиция` (item chips filtered by selected source when source is set)
 - Editing rule:
 - on chip insert, prefill name + latest known price, both editable
-- user edits must not overwrite historical prices; new price is appended to history
+- Receipt edits retain their pricing contract. The current price store may suppress repeated prices; do not imply it is a complete purchase timeline. The planned observation history will address that separately.
 - if user creates a missing position from picker (`+ Создать позицию`), it must be available in subsequent receipt rows immediately (optimistic local template list update before operation save)
 - Amount/discrepancy rule:
 - save is allowed when operation amount and receipt total differ

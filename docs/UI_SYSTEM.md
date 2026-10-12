@@ -4,7 +4,9 @@
 
 - The operation calculator participates in the shared modal stack alongside create/edit forms and pickers. The top eligible window receives input; Escape closes that window and returns focus to its opener while preserving the underlying draft.
 - Changes to product or receipt forms must preserve nested picker/calculator clicks, scrolling, focus and draft state at 320, 390 and 1440 px. Existing calculator and catalog layout E2E scenarios are regression references.
-- The consolidated product modal and compact known-product receipt rows are agreed future work in [RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md](RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md), not the current layout contract.
+- The product modal now has «Товар», «Предложения», «Цены» and «Покупки» views. Switching views keeps unsaved product/photo fields in the same DOM. Offer editing, confirmations and the full operation explorer remain nested workflows under the shared stack. Closing returns focus to the opener; the last product view is remembered for the current session.
+- Known receipt products/offers collapse after explicit picker selection or when a saved receipt opens. Quantity, price, paid total and removal remain inline; «Изменить» expands identity, measurements and discount settings. Exact-name typing keeps the editor/picker open until explicit selection. Unknown/new rows retain the full form. Compact mode is presentation state only and is never sent as financial data.
+- Product purchase browsing uses paged, date-independent results. Opening a receipt cannot replace an already open operation edit draft. Returning from a nested operation preserves list context; actual edits refresh loaded pages. Price/purchase requests are cancelled and generation-checked on context changes. Price graphs, identifiers and retailer integrations remain future work in [the plan](RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md).
 
 ## Layout
 - Left sidebar for global navigation

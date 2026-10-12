@@ -115,7 +115,13 @@
             </button>
           </div>
         </div>
-        <form id="catalogProductForm" class="category-modal-form">
+        <nav id="catalogProductTabs" class="segmented catalog-product-tabs hidden" aria-label="Разделы товара">
+          <button type="button" class="segmented-btn active" data-product-tab="product" aria-pressed="true">Товар</button>
+          <button type="button" class="segmented-btn" data-product-tab="offers" aria-pressed="false">Предложения</button>
+          <button type="button" class="segmented-btn" data-product-tab="prices" aria-pressed="false">Цены</button>
+          <button type="button" class="segmented-btn" data-product-tab="purchases" aria-pressed="false">Покупки</button>
+        </nav>
+        <form data-product-panel="product" id="catalogProductForm" class="category-modal-form">
           <section class="catalog-image-field" data-catalog-image-picker="catalog-product" aria-label="Фотография товара">
             <div class="catalog-image-picker-preview" data-catalog-image-preview></div>
             <div class="catalog-image-picker-actions">
@@ -158,7 +164,7 @@
             </div>
           </div>
         </form>
-        <section id="catalogProductOffersSection" class="catalog-product-modal-offers hidden">
+        <section data-product-panel="offers" id="catalogProductOffersSection" class="catalog-product-modal-offers hidden">
           <div class="row between">
             <div>
               <strong>Источники товара</strong>
@@ -166,13 +172,24 @@
             </div>
             <div class="row catalog-product-offers-actions">
               <button id="addCatalogProductSourceBtn" class="btn btn-primary btn-xs" type="button">Добавить источник</button>
-              <button id="openCatalogProductOperationsBtn" class="btn btn-secondary btn-xs" type="button">Все операции товара</button>
             </div>
           </div>
           <div id="catalogProductOffersList" class="catalog-product-offers-list"></div>
         </section>
-        <div class="modal-footer catalog-product-modal-footer">
-          <button id="deleteCatalogProductBtn" class="btn btn-danger hidden" type="button">Удалить товар</button>
+        <section data-product-panel="prices" class="catalog-product-detail-panel hidden">
+          <label class="field"><span>Предложение магазина</span><select id="catalogProductPriceOffer" aria-label="Предложение для истории цен"></select></label>
+          <p class="muted-small">Сохранённые цены предложения. Фактически оплаченные суммы и скидки смотрите в покупках.</p>
+          <div id="catalogProductPricesList" aria-live="polite"></div>
+        </section>
+        <section data-product-panel="purchases" class="catalog-product-detail-panel hidden">
+          <label class="field"><span>Предложения</span><select id="catalogProductPurchaseOffer" aria-label="Предложения в покупках"></select></label>
+          <p class="muted-small">За всё время. Суммы указаны за операции целиком; откройте операцию, чтобы увидеть чек.</p>
+          <div id="catalogProductPurchasesList" aria-live="polite"></div>
+          <button id="catalogProductMorePurchases" class="btn btn-secondary hidden" type="button">Показать ещё</button>
+          <button id="openCatalogProductOperationsBtn" class="btn btn-secondary" type="button">Открыть полный список операций</button>
+        </section>
+        <div data-product-panel="product" class="modal-footer catalog-product-modal-footer">
+          <details class="catalog-product-more"><summary>Ещё</summary><button id="deleteCatalogProductBtn" class="btn btn-danger hidden" type="button">Удалить товар</button></details>
           <button id="submitCatalogProductBtn" class="btn btn-cta modal-main-cta" type="submit" form="catalogProductForm">Создать товар</button>
         </div>
       </div>
