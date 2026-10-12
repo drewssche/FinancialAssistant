@@ -300,6 +300,7 @@ def list_catalog_products(
     brand_id: int | None = Query(default=None, ge=1),
     category_id: int | None = Query(default=None, ge=1),
     include_archived: bool = Query(default=False),
+    include_identifiers: bool = False,
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
@@ -311,6 +312,7 @@ def list_catalog_products(
         brand_id=brand_id,
         category_id=category_id,
         include_archived=include_archived,
+        include_identifiers=include_identifiers,
     )
     return CatalogProductListOut(
         items=items,

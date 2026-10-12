@@ -2,7 +2,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.db.models import (
-    AuthIdentity,
+    AuthIdentity, CatalogOfferIdentity, CatalogVariantCode, CatalogVariant,
     CatalogMediaAsset,
     Category,
     CategoryGroup,
@@ -30,6 +30,9 @@ def hard_delete_user(db: Session, *, user_id: int) -> bool:
     db.execute(delete(Debt).where(Debt.user_id == user_id))
     db.execute(delete(DebtCounterparty).where(DebtCounterparty.user_id == user_id))
 
+    db.execute(delete(CatalogOfferIdentity).where(CatalogOfferIdentity.user_id == user_id))
+    db.execute(delete(CatalogVariantCode).where(CatalogVariantCode.user_id == user_id))
+    db.execute(delete(CatalogVariant).where(CatalogVariant.user_id == user_id))
     db.execute(delete(OperationReceiptItem).where(OperationReceiptItem.user_id == user_id))
     db.execute(delete(Operation).where(Operation.user_id == user_id))
     db.execute(delete(OperationItemPrice).where(OperationItemPrice.template_id.in_(template_ids_subq)))

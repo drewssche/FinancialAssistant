@@ -418,7 +418,7 @@
               </div>
             </div>
             <div class="table-search-row catalog-products-toolbar">
-              <input id="catalogProductsSearchQ" class="table-search-input" type="search" placeholder="Поиск по товару, бренду или источнику" />
+              <input id="catalogProductsSearchQ" class="table-search-input" type="search" placeholder="Товар, бренд, источник, штрихкод или артикул" />
               <div class="toolbar section-action-toolbar search-toolbar">
                 <button id="catalogProductsCollapseAllBtn" class="btn btn-secondary btn-xs" type="button">Свернуть все</button>
                 <button id="catalogProductsExpandAllBtn" class="btn btn-secondary btn-xs" type="button">Развернуть все</button>

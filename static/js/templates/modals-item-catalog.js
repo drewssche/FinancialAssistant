@@ -164,6 +164,37 @@
             </div>
           </div>
         </form>
+        <section data-product-panel="product">
+          <details id="catalogIdentityDetails" class="hidden">
+            <summary>Фасовки, штрихкоды и соответствия магазинов</summary>
+            <p id="catalogIdentityStatus" class="muted-small" role="status"></p>
+            <div id="catalogIdentityForms" class="hidden">
+              <form id="catalogVariantForm" class="category-modal-form">
+                <label class="field"><span>Фасовка</span><select id="catalogVariantSelect"></select></label>
+                <label class="field"><span>Название варианта</span><input id="catalogVariantName" maxlength="160" required placeholder="Например, пакет 900 мл" /></label>
+                <div class="form-grid">
+                  <label class="field"><span>Единица продажи</span><select id="catalogVariant_sale_unit"><option value="">Не указана</option><option value="pack">упак.</option><option value="piece">шт.</option><option value="kg">кг</option><option value="g">г</option><option value="l">л</option><option value="ml">мл</option></select></label>
+                  <label class="field"><span>Содержимое упаковки</span><input id="catalogVariant_package_quantity" type="number" min="0.001" step="0.001" /></label>
+                  <label class="field"><span>Единица содержимого</span><select id="catalogVariant_package_unit"><option value="">Не указана</option><option value="piece">шт.</option><option value="kg">кг</option><option value="g">г</option><option value="l">л</option><option value="ml">мл</option></select></label>
+                </div>
+                <small class="muted-small">Здесь — штрихкод конкретной упаковки. Весовой или внутренний код магазина укажите ниже в соответствии предложения.</small>
+                <label class="field"><span>Штрихкоды GTIN/EAN · по одному на строку</span><textarea id="catalogVariantCodes" rows="3" maxlength="600" placeholder="Напечатанные цифры под штрихкодом"></textarea></label>
+                <label><input id="catalogVariantArchived" type="checkbox" /> Архивная фасовка</label>
+                <button type="submit" class="btn btn-secondary">Сохранить фасовку</button>
+              </form>
+              <form id="catalogOfferIdentityForm" class="category-modal-form">
+                <h4>Соответствие предложения</h4>
+                <label class="field"><span>Предложение магазина</span><select id="catalogIdentityOffer"></select></label>
+                <label class="field"><span>Подтверждённая фасовка</span><select id="catalogIdentityVariant"></select></label>
+                <label class="field"><span>Артикул / кассовый код магазина</span><input id="catalogIdentityCode" maxlength="160" /></label>
+                <label class="field"><span>Название на сайте / в чеке</span><input id="catalogIdentityName" maxlength="320" /></label>
+                <label class="field"><span>Ссылка на товар</span><input id="catalogIdentityUrl" type="url" maxlength="2048" placeholder="https://…" /></label>
+                <small class="muted-small">Связь задаётся вручную. Ссылка пока не включает проверку цен; фасовка в чеке сохраняется отдельно.</small>
+                <button type="submit" class="btn btn-secondary">Сохранить соответствие</button>
+              </form>
+            </div>
+          </details>
+        </section>
         <section data-product-panel="offers" id="catalogProductOffersSection" class="catalog-product-modal-offers hidden">
           <div class="row between">
             <div>

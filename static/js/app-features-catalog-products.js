@@ -271,7 +271,7 @@
   }
 
   async function fetchAllProducts(query, signal) {
-    const params = new URLSearchParams({ page: "1", page_size: "100" });
+    const params = new URLSearchParams({ page: "1", page_size: "100", include_identifiers: "true" });
     if (query) params.set("q", query);
     const first = await core.requestJson(`/api/v1/operations/catalog-products?${params}`, { headers: core.authHeaders(), signal });
     const items = (Array.isArray(first) ? first : (first.items || [])).slice();
@@ -721,7 +721,7 @@
     if (offerAction.dataset.productOfferAction === "history" && found) details().select?.("prices", templateId);
     if (offerAction.dataset.productOfferAction === "operations" && found) details().select?.("purchases", templateId);
     if (offerAction.dataset.productOfferAction === "detach" && productId && templateId) {
-      core.showConfirm?.(`Отделить предложение «${found?.offer?.name || "позиция"}» от товара?`, () => detach(productId, templateId), {
+      core.showConfirm?.(`Отделить предложение «${found?.offer?.name || "позиция"}» от товара? Связь с фасовкой будет снята; штрихкоды останутся у исходного товара.`, () => detach(productId, templateId), {
         title: "Отделить предложение", confirmLabel: "Отделить", confirmTone: "primary",
       });
     }

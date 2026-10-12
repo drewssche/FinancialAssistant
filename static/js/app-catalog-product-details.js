@@ -179,6 +179,7 @@
   function open(value, options = {}) {
     workspaceGeneration += 1;
     bind(); product = value; nestedOperation = false;
+    window.App.getRuntimeModule("catalog-identity").open(value);
     node("catalogProductTabs").classList.toggle("hidden", !product);
     node("catalogProductPriceOffer").innerHTML = ""; node("catalogProductPurchaseOffer").innerHTML = "";
     node("catalogProductPriceMode").value = "purchases";
@@ -186,7 +187,7 @@
     node("catalogProductPriceFrom").value = ""; node("catalogProductPriceTo").value = "";
     resetOptions(); select(options.tab || rememberedTabs.get(product?.id) || "product", options.offerId);
   }
-  function close() { window.App.getRuntimeModule("catalog-price-history").cleanup(); workspaceGeneration += 1; cancel(); product = null; nestedOperation = false; returnTarget = null; }
-  function refresh(value) { product = value; resetOptions(); select(tab); }
+  function close() { window.App.getRuntimeModule("catalog-identity").close(); window.App.getRuntimeModule("catalog-price-history").cleanup(); workspaceGeneration += 1; cancel(); product = null; nestedOperation = false; returnTarget = null; }
+  function refresh(value) { window.App.getRuntimeModule("catalog-identity").refresh(value); product = value; resetOptions(); select(tab); }
   window.App.registerRuntimeModule("catalog-product-details", {open, close, refresh, select, cleanup: () => {close(); rememberedTabs.clear();}});
 })();

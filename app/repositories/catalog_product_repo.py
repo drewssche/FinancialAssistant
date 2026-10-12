@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.repositories.search import search_match, search_order
 
 from app.db.models import (
-    CatalogProduct,
+    CatalogProduct, CatalogVariant, CatalogVariantCode, CatalogOfferIdentity,
     Category,
     CategoryGroup,
     ItemBrand,
@@ -98,6 +98,7 @@ class CatalogProductRepository:
         brand_id: int | None,
         category_id: int | None,
         include_archived: bool,
+        include_identifiers: bool = False,
     ) -> tuple[list[CatalogProduct], int]:
         conditions = [CatalogProduct.user_id == user_id]
         if not include_archived:
@@ -122,6 +123,16 @@ class CatalogProductRepository:
             return (
                 or_(
                     search_match(CatalogProduct.name, q, original_only=original_only),
+                    (or_(
+                        exists(select(CatalogVariantCode.id).join(CatalogVariant, CatalogVariant.id == CatalogVariantCode.variant_id).where(
+                            CatalogVariant.product_id == CatalogProduct.id, CatalogVariant.user_id == user_id,
+                            CatalogVariantCode.user_id == user_id, CatalogVariant.is_archived.is_(False),
+                            or_(search_match(CatalogVariantCode.code, q, original_only=original_only), CatalogVariantCode.gtin14 == str(q or '').strip().zfill(14)))),
+                        exists(select(CatalogOfferIdentity.template_id).join(OperationItemTemplate, OperationItemTemplate.id == CatalogOfferIdentity.template_id).where(
+                            OperationItemTemplate.product_id == CatalogProduct.id, OperationItemTemplate.user_id == user_id,
+                            CatalogOfferIdentity.user_id == user_id, OperationItemTemplate.is_archived.is_(False),
+                            search_match(CatalogOfferIdentity.retailer_code, q, original_only=original_only))),
+                    ) if include_identifiers else False),
                     exists(
                         select(ItemBrand.id).where(
                             ItemBrand.id == CatalogProduct.brand_id,

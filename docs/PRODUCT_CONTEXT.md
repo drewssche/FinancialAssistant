@@ -41,7 +41,7 @@ Current delivery direction:
 ## Plans, Catalog and Work
 
 - Completed plans can be edited through linked operations, history and activity. Resuming recurrence is an explicit action; ordinary edits preserve completed status.
-- A catalog product groups source offers while retaining source-specific names. Merge, separate, price-history and operation drilldown actions exist. The consolidated product modal provides product, offers, purchase-price observations/saved offer prices and purchases views. Known receipt rows keep money controls inline and expand extra properties with «Изменить». GTINs, retailer links, confirmed package variants, receipt OCR and website-price monitoring remain future work.
+- A catalog product groups source offers while retaining source-specific names. Merge, separate, price-history and operation drilldown actions exist. The consolidated product modal provides product, offers, purchase-price observations/saved offer prices and purchases views. Known receipt rows keep money controls inline and expand extra properties with «Изменить». Optional manually entered package variants, GTIN codes and retailer links/codes are now editable in the product card. Explicit receipt variant selection, verified package replacement, receipt OCR and website-price monitoring remain future work.
 - Work estimates use the salary cycle and employment settings. Actual earnings statistics use payment dates and payroll linkage; they do not count forecast salary as received money.
 - Structure and financial calendar remain in their current analytics locations. Rarely used analytics views will be consolidated only after their useful workflows have replacements.
 
@@ -123,3 +123,7 @@ No password storage in MVP-1.
 ### 13 октября: история фактических цен
 
 В единой карточке товара реализована история по строкам совершённых покупок, включая возврат к прежней цене. Есть ступенчатый график, проценты этапов и всего периода, фильтры дат, валютные/размерные серии, цена за кг/л/штуку содержимого и переход к чеку. Обычная цена берётся только из явно сохранённых данных. Справочник цен предложения остаётся отдельным режимом. Идентификаторы и подтверждённые варианты товара, список изменений всего каталога и внешние наблюдения ещё в плане.
+
+### 13 октября: фасовки и идентификаторы
+
+Карточка товара → «Товар» → «Фасовки, штрихкоды и соответствия магазинов»: ручное создание/изменение/архивирование вариантов, несколько штрихкодов с сохранением ведущих нулей, артикул и исходное название магазина, ссылка и явная связь предложения с фасовкой. Формы сохраняются отдельно от основных свойств. Поиск по кодам доступен в каталоге; автоподстановка фасовки в чек и автоматическое сопоставление пока не включены.

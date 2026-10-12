@@ -5,7 +5,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 from decimal import Decimal, ROUND_HALF_UP
 
-from sqlalchemy import or_, select
+from sqlalchemy import or_, select, update
 
 from app.core.measurement import MEASUREMENT_FIELDS, measurement_snapshot, normalize_measurement
 from app.core.cache import (
@@ -14,7 +14,7 @@ from app.core.cache import (
     invalidate_operations_cache,
     invalidate_plans_cache,
 )
-from app.db.models import CatalogProduct, Category, ItemBrand
+from app.db.models import CatalogProduct, Category, ItemBrand, CatalogVariant, CatalogOfferIdentity
 from app.repositories.catalog_product_repo import CatalogProductRepository
 from app.repositories.operation_item_template_repo import (
     OperationItemTemplateRepository,
@@ -99,6 +99,7 @@ class CatalogProductService:
         brand_id: int | None,
         category_id: int | None,
         include_archived: bool,
+        include_identifiers: bool = False,
     ) -> tuple[list[dict], int]:
         products, total = self.repo.list(
             user_id=user_id,
@@ -108,6 +109,7 @@ class CatalogProductService:
             brand_id=brand_id,
             category_id=category_id,
             include_archived=include_archived,
+            include_identifiers=include_identifiers,
         )
         return (
             self._serialize_many(
@@ -474,6 +476,7 @@ class CatalogProductService:
             previous_categories=previous_categories,
             category_id=target.category_id,
         )
+        self.db.execute(update(CatalogVariant).where(CatalogVariant.user_id == user_id, CatalogVariant.product_id.in_(source_ids)).values(product_id=target_product_id))
         self.repo.archive_many(user_id=user_id, product_ids=source_ids)
         self.activity.record(
             user_id=user_id,
@@ -542,6 +545,9 @@ class CatalogProductService:
             target_product_id=int(product.id),
         ):
             raise LookupError("Catalog product offer not found")
+        # A detached offer belongs to a different product. Keep retailer metadata,
+        # but do not move shared variant codes or leave a cross-product mapping.
+        self.db.execute(update(CatalogOfferIdentity).where(CatalogOfferIdentity.user_id == user_id, CatalogOfferIdentity.template_id == offer_id).values(variant_id=None))
         self.repo.sync_offer_compatibility(
             user_id=user_id,
             product_id=int(product.id),

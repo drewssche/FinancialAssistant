@@ -577,3 +577,7 @@ At the bottom-left sidebar, show compact static user block:
 - top categories
 - anomaly block
 - expensive positions and price-increase highlights
+
+### Catalog variant and identifier forms
+
+The existing product tab contains a collapsible, lazy-loaded identity block. Variant and retailer-mapping forms save independently and label that behavior; the main product draft survives. Variants can be archived/reactivated, without deleting their codes. Internal store codes are entered on the offer, separate from package GTINs. Mapping links are plain saved references and do not activate polling. The catalog search placeholder lists barcode/SKU support. Receipt barcode selection is deferred until an explicit variant-selection flow is ready.

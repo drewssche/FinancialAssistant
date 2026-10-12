@@ -138,3 +138,8 @@
 .product-price-summary { line-height: 1.6; }
 .product-price-events .catalog-product-purchase-row { width: 100%; }
 @media (max-width: 480px) { .product-price-controls { grid-template-columns: minmax(0, 1fr); } .product-price-chart text { font-size: 23px; } }
+
+#catalogIdentityDetails { margin: 10px 0; }
+#catalogIdentityForms form { padding: 12px 0; }
+#catalogIdentityForms textarea { width: 100%; min-width: 0; resize: vertical; }
+#catalogIdentityForms .field { min-width: 0; }
