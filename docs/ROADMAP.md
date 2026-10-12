@@ -16,6 +16,26 @@
 - Keep Telegram-specific behavior in the client runtime; backend contracts stay shared between Web UI and Telegram.
 
 ## Current Sprint
+### Reliability And Documentation 2026-10-12
+- [x] Investigate the 6420 bot restarts: retained `IndexError` failures match the counter; missing/empty message text reaches unchecked token indexing. Documented in [the operations review](OPERATIONS_REVIEW_2026-10-12.md).
+- [x] Activate the existing 2 GiB swap file and persist it in fstab; retain swappiness 10 and verify the generated active swap unit. No application restarts required.
+- [x] Update current architecture, product semantics, documentation status and release/VPS checks against `e5eaee1`; distinguish incomplete price history from future observation history.
+- [x] Diagnose external providers without modifying them: Sber API host has no address records in checked DNS responses; Yandex quota succeeds while file-resource API returns 410, including direct API access.
+- [x] Implement locally: bot non-text/service-message guard, isolated update handling, bounded retries and event-type diagnostics. Retry response delivery after a completed action without replaying the action; tested against a real plan confirmation transaction. Deployment remains pending.
+- [ ] Worker progress/poll freshness healthcheck implemented and tested locally. Remaining: deployment, restart-burst monitoring and alert delivery; Docker healthcheck alone does not notify/restart.
+- [ ] Verify a supported Sber cash-rate source; add bounded provider backoff and actionable DNS/network/HTTP/parse diagnostics without changing historical FX snapshots.
+- [ ] Encrypted retry spool, separate upload/retention status and backup-age check implemented/tested locally. Remaining: deploy and integrate alert delivery. User selected a one-off encrypted copy on this computer; created and successfully restored into an isolated PostgreSQL 16 container, then removed the test container. Regular retention remains 30 days.
+- [ ] Refresh the generated architecture graph with verified scope and commit metadata; current graph remains historical rather than being relabeled as up to date.
+- [x] Perform scoped disk cleanup: unused build cache older than seven days (2 GB reserve), journal older than 30 days after retaining incident evidence, and downloaded APT archives. About 4 GiB freed by filesystem reporting; FinancialAssistant, poopbot, volumes and rollback images preserved.
+
+### Purchases And Product Analytics 2026-10-12
+- Implementation authorized on 2026-10-12; reliability changes are in progress locally. Product stages remain pending. See [the decision record](RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md).
+- Agreed direction: optional units and package sizes with purchase snapshots, discounts on receipt line totals, complete price observations, compact known-product receipt cards, RU/EN keyboard-layout search, and consolidation of rarely used analytics views.
+- Confirmed after clarification: preserve structure and calendar in their current locations; receipt recognition should produce a reviewable draft before saving. Provider selection and integration details remain to be designed.
+- Include retailer links, product identifiers, catalog matching, price-change charts and configurable notifications in planning. No production catalog changes, polling schedules or external integrations have been activated.
+- Consolidate product and offer actions into one product modal while preserving existing workflows; keep common receipt edits directly accessible. Browser access to Edostavka is confirmed; automated integration remains to be evaluated.
+- Follow the staged plan with regression gates, compatible schema changes and verified off-host backup restoration before migrations. The October 11–12 upload failures remain open despite the earlier completed backup milestone below; a different explicitly chosen destination can satisfy the release requirement.
+
 ### Work KPI And Period Earnings 2026-09-09
 - Hourly and daily salary estimates are integrated into the corresponding hours/days KPI cards. Their salary month and fact/forecast basis remain explicit; the denominator stays the salary month's work norm, excluding one-off extras.
 - The salary cycle shows each actual payment amount once, with its operation action preserved. Empty extras and duplicate received/total/zero-remaining cards are hidden; incomplete and forecast states remain visible.

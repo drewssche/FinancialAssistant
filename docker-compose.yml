@@ -50,6 +50,12 @@ services:
         max-size: "10m"
         max-file: "3"
     command: python scripts/run_telegram_admin_bot.py
+    healthcheck:
+      test: ["CMD", "python", "scripts/check_telegram_bot_health.py"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
 
   db:
     image: postgres:16-alpine

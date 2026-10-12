@@ -1,12 +1,14 @@
 # Product Context
 
+Reviewed against `e5eaee1` on 2026-10-12. Current implementation is described here; agreed future changes are in [RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md](RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md).
+
 ## Product Idea
 Financial Assistant is a web-first personal finance tracker for income and expenses. The same backend API is designed to support both:
 - Web application (primary UI)
 - Telegram Mini App client (secondary UI)
 
 Current delivery direction:
-- near-term goal is controlled transition to production with Telegram-first authentication
+- the application is deployed for a small controlled audience with Telegram-first authentication
 - Telegram Mini App adaptation is not limited to responsive layout; it also includes Telegram WebApp runtime behavior and mobile-first interaction rules
 
 ## Core Jobs To Be Done
@@ -15,6 +17,9 @@ Current delivery direction:
 - Keep a clean category structure
 - View simple but actionable dashboard totals
 - Preserve user-selected display preferences between sessions
+- Manage planned operations and recurring confirmations without mixing forecasts with completed money flows
+- Reuse common catalog products and source-specific offers, brands and categories
+- Track work days, salary-cycle estimates and actual payroll payments
 - Track personal debts with transparent progress:
 - create debt records (`я дал` / `я взял`)
 - record partial repayments (`мне вернули` / `я вернул`)
@@ -26,17 +31,26 @@ Current delivery direction:
 - operation amount can be entered manually or auto-derived from receipt items total
 - if manual amount differs from receipt total, discrepancy is stored and shown as warning (non-blocking save)
 - receipt items are reusable through per-user item templates with price history
-- on operation save, each line item price is persisted both in operation snapshot (`receipt_items.unit_price`) and in template price history timeline
+- each purchase line keeps its paid price in the receipt snapshot; template price history is incomplete as an observation timeline because repeated price values are suppressed. For discounted lines it records a known regular price, not necessarily the paid price. Full observation history is planned.
 - receipt template identity supports optional store grouping (`shop_name + position_name`) for more precise chip reuse
 - Example: two `Еда` entries on the same date are stored as two separate operations.
 - Period totals are calculated as sums of all operations in selected date range.
 - Monthly totals work the same way: sum of all operation rows in that month range.
+- Current receipt totals derive from quantity and paid unit price. Optional units/package snapshots and independent final line amounts with discounts applied after weighing remain planned.
+
+## Plans, Catalog and Work
+
+- Completed plans can be edited through linked operations, history and activity. Resuming recurrence is an explicit action; ordinary edits preserve completed status.
+- A catalog product groups source offers while retaining source-specific names. Merge, separate, price-history and operation drilldown actions exist. The consolidated product modal, GTINs, retailer links, receipt OCR and website-price monitoring are future work.
+- Work estimates use the salary cycle and employment settings. Actual earnings statistics use payment dates and payroll linkage; they do not count forecast salary as received money.
+- Structure and financial calendar remain in their current analytics locations. Rarely used analytics views will be consolidated only after their useful workflows have replacements.
 
 ## List Loading Standard
-- For tables/lists with potentially large volume, UI standard is:
+- For paginated tables/lists with potentially large volume, the default UI pattern is:
 - initial load `20` rows
 - incremental load `+20` on scroll (infinite scroll)
 - Backend pagination semantics stay internal (`page/page_size` or cursor), while classic numbered pagination controls are hidden.
+- This is not universal implementation parity: the current product catalog fetches server pages of up to 100 until it has the full result set. Preserve correct search/sort behavior when changing that loading strategy.
 - Grouped/collapsible table pattern is now validated in Position Catalog:
 - parent group rows + nested child rows
 - parent/child hierarchy should be visually explicit:
@@ -49,11 +63,11 @@ Current delivery direction:
 - explicit group actions (`collapse all / expand all / reset`) for fast navigation in larger catalogs
 - this pattern is a reusable baseline candidate for future Categories table refactor.
 
-## Aggregation Strategy for Trends (Planned)
+## Aggregation and Analytics
 - Keep raw operations atomic (event-level records) as the source of truth.
 - For trend analytics, use aggregated views/queries on top (`day/week/month` buckets by kind/category), without merging original records.
 - This keeps edit/delete auditability and avoids data loss, while still allowing fast trend calculations.
-- Position analytics is currently limited to aggregated highlights (`top positions`, `price increases`) derived from receipt items; dedicated per-position drilldown remains backlog.
+- Trend/calendar/highlight queries and `/api/v1/dashboard/analytics/positions` are implemented. Catalog offers also link to price history and filtered operations. The future product view should consolidate these workflows without losing access to the underlying receipts.
 
 ## Debt Domain (Implemented MVP Baseline)
 - Debt records are not expense/income categories; they are a separate workflow with dedicated fields:

@@ -1,5 +1,11 @@
 # UI System
 
+## Shared Modal Stack
+
+- The operation calculator participates in the shared modal stack alongside create/edit forms and pickers. The top eligible window receives input; Escape closes that window and returns focus to its opener while preserving the underlying draft.
+- Changes to product or receipt forms must preserve nested picker/calculator clicks, scrolling, focus and draft state at 320, 390 and 1440 px. Existing calculator and catalog layout E2E scenarios are regression references.
+- The consolidated product modal and compact known-product receipt rows are agreed future work in [RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md](RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md), not the current layout contract.
+
 ## Layout
 - Left sidebar for global navigation
 - Central working area for content and forms

@@ -33,32 +33,7 @@ fi
 command -v docker >/dev/null
 command -v openssl >/dev/null
 command -v rclone >/dev/null
+command -v python3 >/dev/null
 
-dump_file="$(mktemp "${TMPDIR:-/tmp}/financialassistant-db.XXXXXX.dump")"
-encrypted_file="$(mktemp "${TMPDIR:-/tmp}/financialassistant-db.XXXXXX.dump.enc")"
-cleanup() {
-  rm -f "${dump_file}" "${encrypted_file}"
-}
-trap cleanup EXIT INT TERM
-
-timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
-remote_name="financialassistant-${timestamp}.dump.enc"
-
-docker compose exec -T db pg_dump \
-  --username "${POSTGRES_USER}" \
-  --dbname "${POSTGRES_DB}" \
-  --format custom \
-  --no-owner \
-  --no-acl >"${dump_file}"
-
-openssl enc -aes-256-cbc -salt -pbkdf2 \
-  -pass "file:${BACKUP_ENCRYPTION_PASSWORD_FILE}" \
-  -in "${dump_file}" \
-  -out "${encrypted_file}"
-
-rclone copyto "${encrypted_file}" "${BACKUP_REMOTE_DIR%/}/${remote_name}"
-rclone delete "${BACKUP_REMOTE_DIR}" \
-  --include "financialassistant-*.dump.enc" \
-  --min-age "${BACKUP_RETENTION_DAYS}d"
-
-echo "Encrypted PostgreSQL backup uploaded: ${remote_name}"
+export BACKUP_REMOTE_DIR BACKUP_ENCRYPTION_PASSWORD_FILE BACKUP_RETENTION_DAYS
+exec python3 "$(dirname "${BASH_SOURCE[0]}")/backup_queue.py"

@@ -1,207 +1,102 @@
 # Architecture
 
-## High-Level
-- Backend: FastAPI
-- DB: PostgreSQL
-- Migrations: Alembic
-- Migration smoke test: `tests/test_migration_consistency.py` checks Alembic heads and SQLAlchemy metadata parity on a safe in-memory schema bootstrap
-- Cache/queue-ready: Redis (optional; app has local fallback for dashboard cache, and admin-only advisory is reserved for measured local-fallback pressure that grows beyond the small-install baseline)
-- Runtime: Docker Compose
-- Observability baseline: API responses now carry `X-Request-ID`, API request-completion logs include `method`, `path`, `status_code`, `duration_ms`, and `request_id`, Telegram bot emits structured event logs for callback/reminder/polling outcomes, Telegram inline plan confirmation emits structured service-level events through `app/services/telegram_plan_bot_service.py`, admin governance mutations emit structured service-level events through `app/services/admin_user_service.py`, plan-reminder job lifecycle emits structured background-job events from `app/services/plan_reminder_service.py`, debt due-soon reminder lifecycle emits structured background-job events from `app/services/debt_reminder_service.py`, preferences updates emit structured background-job events before/after reminder resync through `app/services/preferences_service.py`, HTTP totals remain tracked separately in `app/core/metrics.py`, and cache runtime now also exposes Redis/local-fallback pressure signals used by the admin-only Redis advisory path
+Reviewed against application code at `e5eaee1` on 2026-10-12. This document describes implemented behavior. Proposed receipt, catalog and analytics changes remain in [the product plan](RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md); dated production findings are in [the operations review](OPERATIONS_REVIEW_2026-10-12.md).
 
-## Layering
-- `api`: transport and validation
-- `services`: business workflows
-- `repositories`: DB access patterns
-- `db/models`: persistence schema
-- `schemas`: API contracts
+## Runtime and boundaries
 
-## Auth Model
-- Provider-first identities (`auth_identities`)
-- Single internal user profile (`users`)
-- Telegram provider in MVP-1
-- Google provider planned with same identity model
-- Access control statuses for users:
-- `pending` (no product access yet)
-- `approved` (full access)
-- `rejected` (access denied)
-- Admin users are resolved from env (`ADMIN_TELEGRAM_IDS`) via Telegram identity mapping
-- Admin-only API surface: `/api/v1/admin/*`
-- In production mode, primary auth flow is Telegram WebApp `initData` verification
-- Optional browser Telegram auth is exposed via `/api/v1/auth/telegram/browser` only when `TELEGRAM_BOT_USERNAME` is configured; availability is advertised by `/api/v1/auth/public-config`
-- Telegram plan reminders can now include an inline `Подтвердить` action; the confirmation source of truth remains `app/services/plan_service.py`, while the bot shell only delivers the reminder and forwards callback handling into service-layer Telegram adapters
-- Debt Telegram notifications are limited to due-date reminders; immediate owner-only notifications after manual repayment are intentionally disabled to avoid redundant noise after a user action in the UI.
-- due-date debt reminders now have a dedicated queue path through `app/services/debt_reminder_service.py`, `app/db/models/debt_reminder_job.py`, and `app/services/telegram_debt_reminder_bot_service.py`
-- current debt reminder event types:
-  - `due_soon`: one-shot, one day before `due_date`
-  - `overdue`: at most once per user-local day, with automatic next-day reschedule after a send
+- FastAPI exposes one API to the browser and Telegram Mini App. SQLAlchemy repositories persist data in PostgreSQL 16; Alembic owns schema migrations.
+- `app/api` handles HTTP transport, validation and dependency adaptation. `app/services` owns business workflows, `app/repositories` data access, `app/db/models` persistence and `app/schemas` API contracts.
+- `tests/api/test_backend_boundary_guards.py` checks layer imports. Services and repositories do not depend on API handlers; the bot shell delegates mutations to service adapters.
+- Docker Compose runs `app`, `bot`, `db` and optional `redis` under the `cache` profile. App startup runs migrations before Uvicorn; bot startup depends on app readiness. Redis supplies a cache, not a separately deployed job worker queue.
+- `/health` is the lightweight liveness endpoint. `/ready` verifies database access and migration readiness. A running bot process currently has no dedicated Docker healthcheck or freshness heartbeat.
+- `tests/test_migration_consistency.py` checks revision structure and metadata; complete PostgreSQL migration checks require a dedicated disposable `MIGRATION_TEST_DATABASE_URL`. Skipped database tests are not migration validation.
 
-## Shared API for Multi-Client
-One API serves both Web and Telegram Mini App clients.
-Client-specific logic stays at UI layer; domain logic stays in backend services.
+## Authentication and access
 
-## Frontend Runtime Composition
-- Frontend remains plain server-served HTML/CSS/JS without a bundler framework.
-- `static/index.html` is reduced to a minimal bootstrap surface and does not enumerate the full runtime script chain anymore.
-- Frontend boot is now split into:
-- `static/js/app-manifest.js` as the ordered script inventory
-- `static/js/app-bootstrap.js` as the sequential loader and bootstrap error surface
-- `static/js/app-init-registry.js` for init-stage module registration (`core`, `features`, `startup`, feature init binders)
-- `static/js/app-runtime-registry.js` for runtime module registration (`session`, `dashboard`, `analytics`, `plans`, `operations`, `item-catalog`, `operation-modal`, etc.)
-- the same runtime registry is now also used for selected frontend factories, including operations and item-catalog factories
-- shared frontend UI helpers are now also resolved through the same runtime registry layer (`bulk-ui`, `category-ui`)
-- shared runtime helpers/data modules are now also resolved there (`picker-utils`, `dashboard-data`, analytics submodules)
-- analytics init state transitions now also pass through a dedicated runtime helper boundary: `static/js/app-analytics-ui-coordinator.js` owns repeated analytics/dashboard segmented-state transitions and preference-persisted reload flows
-- picker/modal input binding glue now also passes through a dedicated runtime helper boundary: `static/js/app-picker-ui-coordinator.js` owns repeated date-field normalization, date-trigger opening, search-picker wiring, and receipt-list event delegation
-- those coordinator modules now also resolve `core`/`session` through narrow local getters instead of reaching into `window.App.actions` / `window.App.core` throughout their hot paths
-- `static/js/app-init-features-pickers.js` now also narrows its global surface through local `actions/core/picker-utils` getters, and its fallback date-field binder no longer reaches into `window.App.core` directly
-- `static/js/app-init-features-analytics.js` now also narrows its fallback coordinator through local `core/session` getters, so the fallback path no longer reaches directly into `window.App.core` or `window.App.actions.savePreferences`
-- startup bootstrap now also resolves Telegram adapter, session boot/login calls, and category-startup actions through narrow local getters in `static/js/app-init-startup.js`
-- receipt-picker runtime glue now also resolves `picker-utils` and category-modal opening through local getters in `static/js/app-features-operation-modal-receipt-pickers.js`
-- session preferences now resolve `renderTodayLabel()` through a narrow category-action getter instead of directly reading `window.App.actions` in the settings/apply path
-- `static/js/app-features-session-auth.js` no longer keeps a top-level snapshot of `window.App.actions`; category-modal cleanup now resolves through a narrow local getter at use time
-- `static/js/app-features-session.js` now also keeps `renderTodayLabel()` behind a narrow category-action getter, while leaving `refreshAll()` on the broader public action facade intentionally
-- `static/js/app-features-operation-modal.js` no longer keeps a top-level snapshot of category actions; category catalog/select calls now resolve through a narrow getter at use time, while the modal flow itself stays unchanged
-- `static/js/app-features-operations.js` also no longer keeps a top-level snapshot of category actions; mutation-feature wiring now resolves category actions through a narrow getter at assembly time
-- `static/js/app-init-features-catalog.js` now also resolves `actions`, `picker-utils`, and `categories-ui-coordinator` through local getters instead of reading them directly from `window.App` at module top level
-- analytics highlights UI is now also available as a runtime module: `static/js/app-features-analytics-highlights-ui.js` registers `analytics-highlights-ui`, and `static/js/app-features-analytics-highlights.js` now resolves UI rendering through registry-first lookup instead of depending directly on the legacy `window.App.featureAnalyticsHighlightsUi` global
-- item-catalog body click/menu orchestration now also has its own runtime boundary: `static/js/app-item-catalog-ui-coordinator.js` owns item-catalog card-menu toggle and row-level click dispatch, while `static/js/app-item-catalog-section-coordinator.js` owns item-catalog search/sort/collapse section glue and `app-init-features-catalog.js` keeps only cross-section binding
-- item-catalog grouped render orchestration now also has its own runtime boundary: `static/js/app-item-catalog-render-coordinator.js` owns grouped render/build logic, so `static/js/app-features-item-catalog.js` is now primarily a data/cache/modal assembly layer instead of a grouped-render hot spot
-- category section controls now also have their own runtime boundary: `static/js/app-categories-section-coordinator.js` owns category-kind filter transition, search debounce/reload, collapse-expand wiring, and infinite-scroll observer lifecycle, while `app-init-features-catalog.js` keeps cross-section binding
-- at this point, the remaining `window.App` usage is mostly concentrated in intentional facade/orchestrator layers rather than scattered hot-path feature files; the category bridge itself has moved to runtime-only registration, and the remaining broad surface is mostly the explicit facade in `static/js/app-features.js`
-- `static/js/app-categories.js` now makes its legacy bridge explicit through runtime registration: category actions are assembled in `publicCategoryActions` and registered as a runtime module instead of being republished through the broad public action facade
-- category-specific consumers in `static/js/app-bulk-bindings-categories.js`, `static/js/app-bulk-bindings-operations.js`, and `static/js/app-section-ui.js` now read through the runtime-registered `category-actions` bridge instead of the broad `window.App.actions` bag
-- `static/js/app-features-session-auth.js` now also reads category modal closers through the runtime-registered `category-actions` bridge, which allowed `static/js/app-features.js` to drop those category modal helpers from the broad compatibility facade
-- category edit-modal open flows now follow the same rule: `static/js/app-features.js` no longer republishes them broadly, and they stay behind the runtime-registered category bridge plus category UI coordinators
-- category loading, group creation, and category bulk-delete flows now follow that same rule too: `static/js/app-features.js` no longer republishes them through the broad facade, and they stay behind the runtime-registered `category-actions` bridge
-- the receipt-picker create-category path now follows the same bridge: `static/js/app-features-operation-modal-receipt-pickers.js` reads `openCreateCategoryModal` from the runtime-registered `category-actions` module instead of the removed broad facade export
-- `static/js/app-categories-data.js` now also uses narrow runtime getters for category side-effects (`category-ui`, `operation-modal`, `dashboard`, `operations`) instead of routing those refresh/picker hooks through a broad action getter
-- `static/js/app-features-operation-modal.js` now also resolves its category bridge through the runtime-registered `category-actions` module instead of a broad `window.App.actions` getter
-- `static/js/app-init-features-catalog.js` now also consumes category-specific section/table behavior through that runtime-registered category bridge, so category section glue no longer depends on the broad `window.App.actions` bag for its primary path
-- `static/js/app-init-core.js` now also consumes category-specific modal/render/icon behavior through that runtime-registered category bridge, so core modal wiring no longer depends on the broad `window.App.actions` bag for those paths
-- `static/js/app-init-features.js` now also consumes category/group submit flows through that runtime-registered category bridge, so feature-form glue no longer depends on the broad `window.App.actions` bag for those paths
-- `static/js/app-init-features-pickers.js` now also consumes category group-search/group-picker handlers through that runtime-registered category bridge, while `static/js/app-init-startup.js` now keeps category-specific startup wiring separate from generic facade actions
-- after those cuts, the remaining frontend hardening work is mostly residual compatibility/facade polish in `static/js/app-features.js` and a small tail of fallback/getter-heavy files such as `app-features-analytics.js`, `app-section-ui.js`, and some coordinator/core getter paths that still read `window.App.actions` or `window.App.core` intentionally for compatibility
-- `static/js/app-features.js` is no longer only the place where the explicit facade is documented; it has also started shrinking in code, with category helper/picker/render subclusters now staying behind the runtime-registered category bridge instead of being republished broadly through `window.App.actions`
-- `static/js/app-features.js` now exposes only the remaining explicit public facade categories that are still intentionally broad; the category bridge itself is now runtime-only and no longer part of that broad compatibility contract
-- categories table orchestration now also passes through a dedicated runtime helper boundary: `static/js/app-categories-ui-coordinator.js` owns grouped table render orchestration, collapsed-group state transitions, edit modal open/close coordination, and categories-body click/menu dispatch, while `app-categories-table-ui.js` keeps row/group rendering
-- debts cards/menu orchestration now also passes through a dedicated runtime helper boundary: `static/js/app-debts-ui-coordinator.js` owns debt-card menu toggle and debts-cards click dispatch, while `app-init-features-debts.js` keeps section-level search, filters, observers, and form bindings
-- analytics hover/focus lifecycle for category breakdown chart/list now also passes through a dedicated runtime helper boundary: `static/js/app-analytics-hover-coordinator.js` owns init-side hover/focus event orchestration, while `app-features-analytics-highlights-ui.js` still owns derived hover state application, DOM class updates, and render-time SVG/list binding
-- analytics render-time breakdown hover binding now also passes through a dedicated runtime helper boundary: `static/js/app-analytics-breakdown-ui-coordinator.js` owns SVG-slice and rendered-list hover/focus binding, while `app-features-analytics-highlights-ui.js` still owns derived hover-state application and breakdown rendering
-- analytics hover-state DOM application now also passes through a dedicated runtime helper boundary: `static/js/app-analytics-hover-state-coordinator.js` owns shared chart/list hover-state UI application for analytics and dashboard breakdowns, while `app-features-analytics-highlights-ui.js` still owns snapshot construction and visibility persistence
-- analytics breakdown visibility persistence now also passes through a dedicated runtime helper boundary: `static/js/app-analytics-breakdown-visibility-coordinator.js` owns hidden-key read/write and visibility-toggle persistence, while `app-features-analytics-highlights-ui.js` is now more focused on snapshot construction and breakdown rendering
-- analytics breakdown snapshot assembly now also passes through a dedicated runtime helper boundary: `static/js/app-analytics-breakdown-snapshot-coordinator.js` owns category/dashboard breakdown snapshot construction, while `app-features-analytics-highlights-ui.js` is now more focused on rendering, DOM binding, and hover application
-- analytics breakdown render/presenter logic now also passes through a dedicated runtime helper boundary: `static/js/app-analytics-breakdown-render-coordinator.js` owns donut-markup and breakdown list/chart rendering for analytics and dashboard surfaces
-- `static/js/app-features-analytics-highlights-ui.js` is no longer a broad mixed hot spot and no longer publishes the legacy `window.App.featureAnalyticsHighlightsUi` compatibility export; the main remaining frontend hardening hub is now the explicit public action facade in `static/js/app-features.js`, rather than mixed analytics/category UI modules
-- Telegram bot runtime boundary is now guarded in tests: `scripts/run_telegram_admin_bot.py` is expected to stay a thin shell over `app.core.*`, `app.db.session`, and `app.services.*`, without direct `repositories` / `db.models` / `api` imports
-- auth service now also emits structured service-level auth events for login success, new/existing Telegram-user upsert, admin auto-approve, and pending-user creation, which gives observability on the critical user-entry flow without pushing that logic into API handlers
-- admin-notification delivery now also emits structured notifier-level events from `app/services/telegram_admin_notifier.py` for send attempt / success / failure, which makes the pending-user approval fan-out observable separately from the auth upsert path
-- admin user lifecycle now also emits structured service-level events from `app/services/admin_user_service.py` for status transitions, no-op status writes, hard-delete outcomes, and blocked self-actions, so access-governance decisions are observable independently from auth upsert and notifier delivery
-- plan service now also emits structured service-level events for create/update/delete/confirm/skip flows and for downstream reminder-sync / item-template-sync requests, which makes plan orchestration observable without pushing that concern into API routes
-- operation service now also emits structured service-level events for create/update/delete flows, which makes the critical operation mutation path observable without pushing that concern into API routes
-- Telegram inline plan confirmation now also emits structured service-level events from `app/services/telegram_plan_bot_service.py` for confirm attempt / success / missing-user / missing-plan / already-completed outcomes, so callback-path failures are observable independently from the bot shell transport logs
-- backend cache contract now also covers `plans` list/history reads through the shared user-scoped cache namespace in `app/core/cache.py`, with invalidation from create/update/delete/confirm/skip mutations in `app/services/plan_service.py`
-- backend cache contract now also covers operations item-template reads through the shared user-scoped cache namespace in `app/core/cache.py`: `list_item_templates()` and `list_item_template_prices()` now read through the `item_templates` namespace, while both template CRUD and receipt-driven operation mutations invalidate that namespace to keep template list / price-history views coherent
-- backend cache contract now also covers debt-card reads through the shared user-scoped cache namespace in `app/core/cache.py`: `DebtService.list_cards()` now reads through the `debts` namespace, while debt create/update/delete and repayment mutations invalidate that namespace to keep cards coherent
-- backend cache contract now also covers operations summary/list reads through the shared user-scoped cache namespace in `app/core/cache.py`: `OperationService.summarize_operations()` and `OperationService.list_operations()` now read through the `operations` namespace, while operation create/update/delete mutations invalidate that namespace
-- backend cache contract now also covers category catalog/group/table reads through the shared user-scoped cache namespace in `app/core/cache.py`: `CategoryService.list_categories()`, `list_groups()`, and `list_categories_paginated()` now read through the `categories` namespace, while category/group create/update/delete mutations invalidate that namespace
-- operation modal category search now treats `Без категории` as a dedicated clear action instead of a pseudo-category chip, which keeps search results and chip-count semantics aligned with the actual category dataset
-- `operationModal` internals are being migrated the same way: receipt/category/debt-counterparty factories are now registry-addressable
-- `operationModal` preview is also registry-addressable now, so the modal family is converging on one runtime resolution path and no longer needs several legacy factory globals for its main flow
-- Migration rule:
-- new cross-module code should prefer registry lookups or local dependency getters over direct global calls
-- legacy `window.App.*` exports are being removed once a provider/consumer path is fully covered by manifest order, registry registration, and regression checks
-- Current frontend hardening status:
-- hot navigation/session/analytics flows already use local action getters
-- repeated analytics UI state transitions (period/view/granularity/breakdown selections) are now funneled through `analytics-ui-coordinator` instead of being repeated as separate state-sync handlers
-- operations mutation, categories data, and plans refresh flows also use local action getters instead of direct `window.App.actions.*` hot-path calls
-- dashboard, plans, debts modals, item catalog, and operations now resolve key runtime collaborators through registry access instead of hardwiring old globals
-- operations and item-catalog factories now resolve through runtime registry as the primary path, and their old `window.App.create*` exports have been removed where no live consumer remains
-- category/bulk shared UI helpers, picker utils, dashboard cached-read helpers, and analytics submodules are now consumed through runtime registry in stabilized paths
-- the old `featureAnalyticsModules` shared global and several legacy helper/data globals (`dashboardData`, `pickerUtils`, `bulkUi`) have already been removed from the active frontend runtime path
-- all main feature providers are now registry-addressable without top-level `window.App.feature*` exports inside `static/js`; the frontend runtime now relies on the registry path rather than legacy feature globals
-- low-risk `window.App.actions` consumers are also being reduced: where a call can target `dashboard`, `session`, `analytics`, `operations`, or `item-catalog` directly through runtime registry, the bus indirection is being removed
-- `app-init-features.js` and `app-section-ui.js` now call runtime modules directly for period refresh, section loading, and preference persistence; the top-level `actions` facade is now narrower and increasingly focused on navigation/category glue instead of routine data loading
-- `app-init-core.js` now also resolves session/settings, dashboard preview reloads, plans controls, modal open/close flows, and item-catalog modal flows through registry-backed runtime modules; `actions` remains mainly for navigation, category glue, debt-specific modal glue, and batch/category orchestration that has not been extracted yet
-- `app-core-actions.js` now handles `401` logout through the `session` runtime module too; the remaining `actions` surface is effectively centered on navigation (`switchSection`, back-stack helpers) and legacy category/batch/debt orchestration that still spans multiple subsystems
-- `app-bulk-bindings-operations.js` and `app-bulk-bindings-item-catalog.js` now refresh through direct runtime modules (`dashboard`, `operations`, `item-catalog`) after imports and mass updates; ordinary post-mutation reloads are no longer routed through the broad action bus there
-- `static/js/app-features.js` now documents the leftover `window.App.actions` surface as a public facade contract instead of an implicit export bag; at this point that contract is mainly navigation/back-stack orchestration plus debt/batch orchestration
-- the public facade contract is now also frozen in code to discourage accidental expansion or silent mutation during future cleanup passes
-- Working rule for future cleanup: before removing keys from the public facade, first build a repo-wide consumer map; using an `explorer` subagent for this scan is recommended because it is fast and reduces the chance of deleting a still-live action by local inspection only
-- Two leftover edge cases were also removed after that mapping pass: `app-init-core.js` no longer uses `actions.telegramLogin` even as a guard, and `app-features-operations.js` no longer uses `actions.updateOperationsBulkUi`; both now use their direct runtime owners
-- backend layer boundaries now have a lightweight import guard test: services/repositories must not depend on `app.api`, repositories/services must not pull in `fastapi` or `starlette`, and direct `app.repositories` imports in `app/api` are now expected to be zero
-- `app/api/v1/admin.py` was moved off direct repository access: user-listing, status changes, and hard delete now go through `app/services/admin_user_service.py`, which owns the `UserRepository` interaction and admin-specific guardrails
-- `app/api/deps.py` was also moved off direct repository access: bearer token decoding and current-user resolution now go through `app/services/auth_context_service.py`, leaving `deps.py` responsible only for HTTP dependency adaptation and approval/admin gating
-- `scripts/run_telegram_admin_bot.py` now routes admin approval callback mutation through `app/services/telegram_admin_bot_service.py`; the bot script stays focused on Telegram transport, polling, message delivery, and structured event logging instead of mutating user state directly in the callback loop
-- plan reminder inline confirmation follows the same pattern: reminder message markup is built in `app/services/plan_reminder_service.py`, and Telegram callback confirmation goes through `app/services/telegram_plan_bot_service.py` instead of duplicating plan-confirm business rules in the bot shell
-- reminder delivery orchestration is now also outside the bot shell: due reminder collection, payload refresh, ready-to-send message assembly, and post-send success marking go through `app/services/telegram_plan_reminder_bot_service.py`
-- the bot shell is now also guarded against importing `PlanReminderService` directly, so reminder lifecycle/domain logic stays behind service-layer adapters instead of drifting back into the shell
+Telegram WebApp `initData` is the primary production login path. Browser Telegram login is optional and advertised by `/api/v1/auth/public-config` when `TELEGRAM_BOT_USERNAME` is configured. Google auth remains planned.
 
-## Admin Access Workflow (Implemented Baseline)
-- New users are created with `pending` status by default.
-- Admin can:
-- approve (`pending -> approved`)
-- reject (`pending/approved -> rejected`)
-- hard-delete user with all related records
-- Hard-delete is centralized in `user_cleanup_service` and reused by:
-- `DELETE /api/v1/users/me`
-- `DELETE /api/v1/admin/users/{user_id}`
+Provider identities in `auth_identities` resolve to one internal `users` record. Access states are `pending`, `approved` and `rejected`; admin Telegram identities are configured separately. `app/api/deps.py` adapts `auth_context_service` for authenticated, approved and admin access. `/api/v1/admin/*` uses service-level access governance. User removal is centralized in `user_cleanup_service` for both self-removal and admin removal.
 
-## Operations Receipt Extension (MVP)
-- Add receipt-detail entities linked to operation:
-- `operation_receipt_items` (snapshot line items inside operation)
-- `operation_item_templates` (reusable chip catalog per user)
-- `operation_item_prices` (immutable price history per template)
-- Service-level rules:
-- operation amount is source-of-truth for totals, but receipt total/discrepancy are computed and exposed
-- save is allowed with discrepancy (warning use-case)
-- template price history appends on each use; old prices are preserved
-- template resolution for receipt items is batch-oriented (prefetch by `(name_ci, source_ci)` + bulk price inserts) to avoid N+1 query growth on long receipts
-- receipt line items may carry their own optional `category_id`
+## Frontend runtime
 
-## Debt Module (Implemented MVP Baseline)
-- Dedicated domain objects (separate from category semantics):
-- debt counterparty card (`debt_counterparties`)
-- debt entries (`debts`) with principal, dates, direction (`lend`/`borrow`)
-- repayment entries (`debt_repayments`) linked to debt entry
-- Aggregation rules in service layer:
-- card outstanding = sum(principal) - sum(repayments)
-- card status (`active`/`closed`) is computed from outstanding
-- API-first reuse:
-- web and Telegram Mini App use same debt endpoints
-- dashboard receives compact active-debt summary endpoint (not full debt history payload)
+The frontend is plain server-served HTML/CSS/JS without a framework bundler. `static/index.html` loads the bootstrap, and `static/js/app-manifest.js` specifies the ordered inventory. `app-bootstrap.js` starts script loads concurrently with `Promise.all`; `script.async = false` preserves execution order. Asset versioning and entry-document caching behavior must remain compatible during releases.
 
-## Analytics Module (Implemented Baseline)
-- Read-focused analytics endpoints are implemented over existing operations/debts data.
-- Endpoint groups:
-- calendar aggregates (monthly matrix with week totals, Monday-first grid contract)
-- calendar year aggregates (12 month cards with per-month income/expense/ops/balance)
-- trend aggregates (day/week/month/year buckets for income/expense/balance)
-- highlights aggregates with category breakdown (`category` or `group` level)
-- highlights aggregates for analytics tabs:
-- month KPI summary (income/expense/balance/ops/avg day expense/max day)
-- top heavy operations
-- top expensive positions from receipt items
-- position price-change markers
-- Implemented API surface:
-- `GET /api/v1/dashboard/analytics/calendar`
-- `GET /api/v1/dashboard/analytics/calendar/year`
-- `GET /api/v1/dashboard/analytics/trend`
-- `GET /api/v1/dashboard/analytics/highlights`
-- Query dimensions currently used by code:
-- `period`, `date_from`, `date_to`, `month`, `year`, `granularity`, `category_kind`, `category_breakdown_level`
-- API serves both `Dashboard` compact preview and full `Аналитика` section.
-- Performance strategy:
-- rely on existing indexed operation date/kind filters
-- keep backend cache under a namespaced user-scoped contract in `app/core/cache.py`
-- current active backend cache namespace is `dashboard_summary`
-- `dashboard_analytics` is now active for `analytics/highlights`, `analytics/trend`, `analytics/calendar`, and `analytics/calendar/year`
-- `plans` is now active for plan list/history reads
-- `item_templates` is now active for operation item-template list / price-history reads
-- `debts` is now active for debt cards reads
-- `operations` is now active for operations summary/list reads
-- `categories` is now active for category catalog/groups/paginated-table reads
-- keep dashboard summary cache in Redis for repeated aggregate reads when Redis profile is enabled
-- otherwise fall back to in-process cache for single-process/small-VPS mode
-- when the app stays in local-fallback mode and measured pressure exceeds the small-install baseline (`entries`, `fallback reads`, `fallback writes`, optional `dashboard summary p95`), `app/services/redis_runtime_advisory_service.py` can send an admin-only Telegram advisory through `app/services/telegram_admin_notifier.py`
-- keep cache keys parameterized by `user + period/range + version`
+| Boundary | Responsibility |
+| --- | --- |
+| `app-init-registry.js` | Registration of core, feature and startup initialization stages. |
+| `app-runtime-registry.js` | Runtime modules, shared helpers and factory lookup. |
+| `app-features.js` | Explicit, frozen public action facade for remaining cross-section navigation and orchestration. |
+| Category actions and section/UI coordinators | Category-specific actions, grouped tables, pickers, collapse state and event dispatch. |
+| Item catalog/product modules and coordinators | Product and source-offer data, rendering, selection, editing and linkage. |
+| Analytics coordinators | Persisted view state, breakdown rendering, visibility and hover/focus coordination. |
+| Operation and plan modal modules | Receipt editing, category/source pickers, preview, calculator and form lifecycle. |
+
+Cross-module code should resolve the owning runtime module or a narrow dependency getter. Do not remove facade keys or compatibility fallbacks without a repository-wide consumer check, manifest-order verification and affected regressions. Module boundaries are protected by frontend contract tests.
+
+Modals use the shared stack. The operation calculator participates in that stack; Escape closes the top eligible window, preserves the underlying operation draft and restores focus. Product and receipt redesign must preserve those contracts. UI rules live in [UI_SYSTEM.md](UI_SYSTEM.md) and [UX_PATTERNS.md](UX_PATTERNS.md).
+
+## Operations, receipts and catalog
+
+`OperationService` owns money-flow creation and edits. Operations retain currency and exchange-rate snapshots. The operation amount is authoritative for financial totals; receipt totals and discrepancies are exposed separately, and a discrepancy can be saved with a warning.
+
+The current product relationship is:
+
+```mermaid
+flowchart LR
+    Product[Catalog product] --> Offer[Source offer / item template]
+    Source[Item source] --> Offer
+    Operation[Operation] --> Receipt[Receipt snapshots]
+    Receipt --> Offer
+    Offer --> History[Stored price records]
+    Plan[Plan] --> PlannedReceipt[Plan receipt items]
+    PlannedReceipt --> Offer
+    Plan -->|confirmation| Operation
+```
+
+- `catalog_products` holds the common product; `operation_item_templates` represents reusable source offers. Brands, sources, categories and images have their own records.
+- `operation_receipt_items` stores purchase lines, including quantity, paid unit price, optional regular unit price, discount metadata and calculated line total. The current calculation rounds the unit price to money precision, then calculates `quantity * unit_price`; independent authoritative line totals are not implemented yet.
+- `CatalogProductService` and `OperationItemTemplateService` own linkage, merging, separation and metadata synchronization. Category/brand changes can propagate to linked records under existing rules; not all historical product metadata is immutable.
+- `operation_item_prices` is the existing price store. Receipt synchronization suppresses a price already present among up to 500 recent records; it is not a complete observation timeline. A discounted line contributes its known regular price, or no price if regular price is unknown. Paid discounted prices remain in receipt snapshots.
+- Consequently, a return to a previous price can be omitted from this history. Do not document a guaranteed append on every purchase or infer complete price changes from these records.
+- Template resolution batches names/source matches and price inserts to limit query growth. Optional product units, package variants, GTINs, website links, OCR and external product-price monitoring are planned, not implemented.
+
+## Plans, debts, work and activity
+
+- `PlanService` owns scheduling, confirmation, skipping, receipt linkage and repeat behavior. Confirming a plan creates the actual operation through domain services. Completed plans can be opened from operation source links, history and activity; explicit resumption preserves the same plan and its history, validates the next date and resynchronizes reminders.
+- Debt counterparties aggregate individual lend/borrow debts and repayment entries. Outstanding balances and active/closed status derive from principal and repayments. Debt workflows are separate from expense/income categories. Telegram notifications concern due dates; immediate notifications after manual repayment are intentionally disabled.
+- Work profiles, contracts, calendar days and payment links are handled by `WorkService`, `work_calendar` and `WorkEarningsService`. Salary estimates follow the salary cycle; actual earnings statistics follow payment dates and explicit/historical payroll linkage. Existing currency snapshots and base-currency separation are preserved.
+- `ActivityService` exposes the activity/restore workflows. Changes to receipt fields and catalog linkage must include operation/plan edit, deletion and restoration paths.
+
+## Telegram worker and background jobs
+
+`scripts/run_telegram_admin_bot.py` runs long polling and periodic job scans in the same process. It calls Telegram service adapters for access-review callbacks, plan confirmation, plan/debt reminders, currency digests and currency alerts. Job claims and advisory locks prevent conflicting delivery work; `PlanService` remains the source of truth for financial confirmation.
+
+Polling requests `message` and `callback_query`. `/start` uses the message handler; access-review and plan buttons use the callback handler. The `message` event can be non-textual, including Telegram service messages. Outgoing delivery responses are not routed into `handle_message`; a callback's embedded original bot message is handled within the callback path.
+
+Network/HTTP failures in polling and failures of individual background scans have retry/logging paths. The local reliability patch skips empty/non-text messages and isolates each update with bounded retries. After a domain action returns successfully, only Telegram response delivery is retried; its failure must not replay the financial action. Exhausted failures are logged without message contents. Worker health requires both loop progress and a successful poll within five minutes, plus a live process. Docker health status reports failure; it does not itself restart or notify. These changes are not yet deployed; the September incident is documented in the operations review.
+
+## Currency sources
+
+`BankCurrencyRateRefreshService` fetches selected bank sources via individual adapters. Current channels are Priorbank online and Technobank, BSB and Sber cash. The nominal refresh interval is 15 minutes; staleness is 45 minutes. Provider-attempt throttling currently uses process-local state.
+
+Successful quotes update current rates and historical snapshots, keeping scale, buy/sell direction, channel and observation timestamps. Failed providers log an error and do not stop other providers. Sber currently points to `developer.sber-bank.by`; DNS failure of that endpoint was verified on 2026-10-12. A supported replacement endpoint is not yet verified. The local patch adds failure intervals of 15, 30, 60, 120, 240 and at most 360 minutes, reset after recovery. Explicit forced refresh bypasses throttling; state remains per process and resets on restart. Diagnostics distinguish DNS (when the exception chain retains it), network, timeout, HTTP status and invalid payload. Bank rates and product price observations are different domains.
+
+## Analytics and caching
+
+Implemented dashboard routes include summary, calendar/month, calendar/year, trend, highlights and positions. Commerce and currency views use related feature APIs. Current analytics tabs include calendar, structure, positions, prices/discounts, trends and currency; consolidation is planned after useful workflows have replacements. Calendar and structure remain in place.
+
+`app/core/cache.py` provides user-scoped namespaces `dashboard_summary`, `dashboard_analytics`, `plans`, `item_templates`, `debts`, `operations` and `categories`. Redis is optional; in-process fallback supports the small single-process deployment. Mutations invalidate the relevant namespaces. Cache availability and local-fallback pressure are observable; failed requests must not become valid zero results.
+
+## Observability and recovery
+
+API responses carry `X-Request-ID`; completion logs include method, path, status, duration and request ID. Domain and bot services emit structured events; `app/core/metrics.py` tracks HTTP totals. The local worker health file contains process ID and progress/poll timestamps only. Restart-burst and external notification delivery still require monitoring integration.
+
+`scripts/backup_postgres.sh` makes a custom PostgreSQL dump, encrypts it and uploads it through rclone, then applies remote retention. The local patch delegates to `scripts/backup_queue.py`: a private encrypted retry spool, exclusive run lock, bounded commands, seven-day/512 MiB default queue, and separate creation/upload/retention statuses. Uploaded copies retain the existing 30-day policy. `check_backup_health.py` checks the age of the snapshot, not merely upload time, with a 36-hour default threshold. A successful restore remains a separate check. These scripts have not yet replaced the VPS deployment. `scripts/verify_postgres_restore.sh` downloads/decrypts a selected backup and restores it into a separately named temporary database in the existing DB service. It checks for public tables; it is not full application/data validation or a completely separate PostgreSQL server.
+
+Deployment and restore conditions are in [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) and [VPS_UPDATE_CHECKLIST.md](VPS_UPDATE_CHECKLIST.md). Production snapshots must include timestamps; a completed implementation milestone does not prove that the last backup or delivery succeeded.
+
+## Documentation and generated graph
+
+The existing `.understand-anything/knowledge-graph.json` metadata is dated 2026-08-05 at `e98e731`; it is 67 commits behind this review baseline. Treat it as historical navigation and verify each relevant link in current code. A full graph refresh remains a separate planned task; this documentation update does not falsely mark it current.
+
+Update the affected behavior/architecture document alongside code changes. Keep future features in the roadmap until implemented, and retain graph commit, generation date and scope when rebuilding the derived graph.

@@ -2,6 +2,8 @@
 
 Use this checklist before each release/deploy.
 
+Reviewed 2026-10-12. Combine application checks below with [VPS_UPDATE_CHECKLIST.md](VPS_UPDATE_CHECKLIST.md); a passed local suite does not establish backup recoverability or worker progress on the server.
+
 ## One-Command Run
 Preferred:
 
@@ -39,6 +41,7 @@ Run the non-e2e baseline directly only when you need a lower-level pytest check:
 Expected:
 - all tests pass
 - no unexpected warnings/regressions
+- schema-changing releases run the full migration-chain checks with a dedicated disposable PostgreSQL `MIGRATION_TEST_DATABASE_URL`; two such tests skip when that variable is absent. Do not treat skips as successful migration verification or point the tests at production.
 
 Do not use a single mixed `./.venv/bin/pytest -q` command for the complete suite. Some browser e2e files intentionally own their own Playwright lifecycle and must stay in isolated pytest processes. Use `RUN_E2E=1 ./scripts/release_check.sh` for the complete local release pass.
 
@@ -85,6 +88,7 @@ TOKEN=... BASE_URL=http://localhost:8001 ./scripts/health_check.sh
 
 Expected:
 - `/health` is `ok`
+- independently check `/ready` for database access and the intended schema revision; do not assume the lightweight health script covers all readiness/worker checks
 - `dashboard/summary` and `dashboard/summary/metrics` are reachable
 - threshold checks in script pass (`p95`, `cache_hit_ratio`, optional request-total cap)
 
@@ -103,6 +107,10 @@ Expected:
 - browser Telegram login works only when `TELEGRAM_BOT_USERNAME` is configured and Telegram-side domain setup is valid
 - admin approval flow works for a newly created `pending` user
 - non-approved users cannot access workspace sections
+
+Before a schema/data release, record the selected off-host backup, restore-check result, previous app/bot images and rollback compatibility. A historical completed backup milestone or enabled timer is insufficient. Restore tests must use an isolated target; never the working database.
+
+After a bot release, compare restart counters and confirm job/polling progress. A process that is merely `Up` may be stalled or parked. Avoid a competing `getUpdates` call while the production poller runs. Fixes to message handling require fixtures for missing text, whitespace and Telegram service messages, plus callback/idempotency regressions.
 
 ## 5. Telegram Mini App Readiness Gate
 Before exposing the app inside Telegram WebApp, verify:

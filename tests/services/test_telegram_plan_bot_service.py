@@ -1,6 +1,8 @@
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from types import SimpleNamespace
+import asyncio
+from unittest.mock import AsyncMock
 
 import pytest
 from sqlalchemy import create_engine
@@ -65,6 +67,37 @@ def test_confirm_plan_from_telegram_confirms_operation(db_session: Session):
     assert "Купить кофе" in result.message_text
     operations = db_session.query(Operation).all()
     assert len(operations) == 1
+
+
+def test_update_retry_after_response_failure_does_not_repeat_financial_write(db_session, monkeypatch):
+    import scripts.run_telegram_admin_bot as bot
+
+    # Use real sessions/transactions. The first confirmation commits, then its
+    # Telegram edit fails; only the response may be retried, never the action.
+    sessions = sessionmaker(bind=db_session.get_bind(), class_=Session)
+    monkeypatch.setattr(bot, "SessionLocal", sessions)
+    monkeypatch.setattr(bot.asyncio, "sleep", AsyncMock())
+    calls = []
+
+    async def call(method, payload):
+        calls.append((method, payload))
+        if method == "editMessageText":
+            raise ConnectionError("response lost after commit")
+        return {"ok": True}
+
+    client = SimpleNamespace(call=AsyncMock(side_effect=call))
+    assert not asyncio.run(bot.process_update(client, {
+        "update_id": 25,
+        "callback_query": {
+            "id": "cb", "data": "planc:1", "from": {"id": 100500},
+            "message": {"message_id": 7, "chat": {"id": 100500, "type": "private"}},
+        },
+    }, retry_delay_seconds=0))
+    db_session.expire_all()
+    assert db_session.query(Operation).count() == 1
+    assert calls[-1][0] == "answerCallbackQuery"
+    assert calls[-1][1]["text"] == "Действие выполнено. Обновите приложение, чтобы проверить результат."
+    assert [method for method, _ in calls] == ["editMessageText"] * 3 + ["answerCallbackQuery"]
 
 
 def test_confirm_plan_from_telegram_labels_bank_rate_from_bank_perspective(

@@ -8,3 +8,5 @@ __pycache__
 .venv
 .pytest_cache
 .mypy_cache
+docs/_local
+.understand-anything

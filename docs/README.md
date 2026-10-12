@@ -17,11 +17,13 @@ Keep this list short. If an item is implemented, promote durable decisions into 
 
 - `CURRENCY_FEATURE_PLAN.md` - compact current currency feature contract and backlog.
 - `RESULT_AND_CASHFLOW_SEMANTICS_PLAN.md` - pending naming/semantics guardrails for result and cashflow surfaces.
+- `RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md` - agreed purchase units, receipt discounts, price history, search, receipt scanning and analytics direction; preserve structure/calendar and plan retailer matching and price monitoring before implementation.
 
 ## Operations
 
 - `RELEASE_CHECKLIST.md` - pre-release test and deploy checks.
 - `VPS_UPDATE_CHECKLIST.md` - VPS update and Telegram/BotFather checks.
+- `OPERATIONS_REVIEW_2026-10-12.md` - dated bot incident findings, completed swap activation, Sber/Yandex diagnostics and planned reliability work; not a live health dashboard.
 - `REQUEST_BUDGETS.md` - request-count budget source consumed by tests.
 
 ## Historical And Local
@@ -31,3 +33,6 @@ Keep this list short. If an item is implemented, promote durable decisions into 
 - `_local/` is ignored by git.
 - Use it for temporary Codex investigations, local backlogs, drafts, and one-off working notes.
 - Do not place durable product or architecture decisions only in `_local/`; promote them to a tracked doc when they become real project policy.
+- The generated graph in `.understand-anything/` was last analyzed on 2026-08-05 at `e98e731`; it is historical until rebuilt. Current architecture was reviewed against `e5eaee1` on 2026-10-12. Do not update graph metadata without regenerating and validating the graph.
+
+- [OCR pilot, 2026-10-12](OCR_PILOT_2026-10-12.md): local free-engine measurements and quality limitations on the supplied receipts.

@@ -6,6 +6,7 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 import json
 import re
+import socket
 from time import sleep
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -28,7 +29,33 @@ from app.services.currency_service import CurrencyService
 
 RATE_Q = Decimal("0.000001")
 _LAST_PROVIDER_ATTEMPT: dict[str, datetime] = {}
+_PROVIDER_FAILURES: dict[str, int] = {}
+MAX_PROVIDER_RETRY_MINUTES = 360
 MINSK_TZ = ZoneInfo("Europe/Minsk")
+
+
+def _provider_retry_minutes(bank_code: str) -> int:
+    failures = _PROVIDER_FAILURES.get(bank_code, 0)
+    return min(MAX_PROVIDER_RETRY_MINUTES, BANK_RATE_REFRESH_MINUTES * 2 ** min(max(0, failures - 1), 5))
+
+
+def _provider_error_category(exc: Exception) -> str:
+    cause: BaseException | None = exc
+    seen = set()
+    while cause is not None and id(cause) not in seen:
+        seen.add(id(cause))
+        if isinstance(cause, socket.gaierror):
+            return "dns"
+        cause = cause.__cause__ or cause.__context__
+    if isinstance(exc, httpx.TimeoutException):
+        return "timeout"
+    if isinstance(exc, httpx.HTTPStatusError):
+        return f"http_{exc.response.status_code}"
+    if isinstance(exc, httpx.RequestError):
+        return "network"
+    if isinstance(exc, (ValueError, TypeError, KeyError)):
+        return "invalid_payload"
+    return "unexpected"
 
 
 @dataclass(frozen=True)
@@ -136,6 +163,7 @@ class BankCurrencyRateRefreshService:
                 if row_bank == bank_code and row_channel == channel
             ]
             last_attempt = _LAST_PROVIDER_ATTEMPT.get(bank_code)
+            retry_cutoff = now - timedelta(minutes=_provider_retry_minutes(bank_code))
             available_currencies = {row.currency for row in provider_rows}
             due = force or (
                 (
@@ -143,21 +171,29 @@ class BankCurrencyRateRefreshService:
                     or not provider_rows
                     or max(self._aware(row.fetched_at) for row in provider_rows) < cutoff
                 )
-                and (last_attempt is None or last_attempt < cutoff)
+                and (last_attempt is None or last_attempt <= retry_cutoff)
             )
             if not due:
                 continue
             _LAST_PROVIDER_ATTEMPT[bank_code] = now
             try:
                 quotes = self._fetch_provider(bank_code)
+                if not quotes:
+                    raise ValueError("Provider returned no usable quotes")
             except Exception as exc:  # noqa: BLE001
+                _PROVIDER_FAILURES[bank_code] = min(6, _PROVIDER_FAILURES.get(bank_code, 0) + 1)
                 log_background_job_event(
                     "bank_currency_rate_refresh",
                     "provider_failed",
                     bank=bank_code,
                     error=type(exc).__name__,
+                    reason=_provider_error_category(exc),
+                    consecutive_failures=_PROVIDER_FAILURES[bank_code],
+                    retry_after_minutes=_provider_retry_minutes(bank_code),
                 )
                 continue
+            if _PROVIDER_FAILURES.pop(bank_code, 0):
+                log_background_job_event("bank_currency_rate_refresh", "provider_recovered", bank=bank_code)
             for quote in quotes:
                 row = self.repo.upsert_bank_rate(
                     bank_code=quote.bank_code,

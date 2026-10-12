@@ -89,5 +89,8 @@
 ## Reliability
 - DB constraints and indexes from day one
 - Alembic migrations required for schema changes
-- Structured logging and request tracing ids (next iterations)
+- Structured API completion logs, `X-Request-ID`, service/background-job events and cache/HTTP metrics are implemented. Worker heartbeat and alerts on new bot restarts remain planned; process uptime alone is not proof of successful polling or delivery.
+- External-provider failure must preserve the last successful observation with its original timestamp and stale state. Do not replace missing quotes with zero or silently switch the financial meaning/source.
+- Before a data migration, verify a recent encrypted off-host copy and restoration into an isolated target. A timer invocation or upload-success log alone does not establish recoverability.
+- Update the affected contract documentation with code changes. Keep implementation plans separate from current behavior and retain the commit/date/scope of generated architecture graphs.
 - Pre-release execution checklist: `docs/RELEASE_CHECKLIST.md`

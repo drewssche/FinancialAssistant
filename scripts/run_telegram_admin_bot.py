@@ -9,6 +9,7 @@ import httpx
 
 from app.core.config import get_settings
 from app.core.logging import configure_logging, log_telegram_bot_event
+from app.core.worker_health import WorkerHealth
 from app.db.session import SessionLocal
 from app.services.telegram_admin_bot_service import (
     TelegramAdminBotService,
@@ -41,6 +42,31 @@ logger = logging.getLogger("financial_assistant_admin_bot")
 configure_logging()
 
 
+class ActionResponseDeliveryError(Exception):
+    """The domain action finished; never replay it to redeliver a response."""
+
+
+async def _deliver_action_result(client, *, callback_id, chat_id, message_id, result) -> None:
+    requests = []
+    if chat_id and message_id:
+        requests.append(("editMessageText", {
+            "chat_id": chat_id, "message_id": message_id, "text": result.message_text,
+        }))
+    requests.append(("answerCallbackQuery", {
+        "callback_query_id": callback_id, "text": result.callback_text, "show_alert": False,
+    }))
+    for method, payload in requests:
+        for attempt in range(1, 4):
+            try:
+                await client.call(method, payload)
+                break
+            except Exception as exc:  # noqa: BLE001
+                log_telegram_bot_event("action_response_failed", method=method, attempt=attempt, error=type(exc).__name__)
+                if attempt == 3:
+                    raise ActionResponseDeliveryError from exc
+                await asyncio.sleep(max(1, get_settings().telegram_bot_retry_delay_seconds))
+
+
 async def _answer_callback(client: TelegramBotClient, callback_query_id: str, text: str) -> None:
     await client.call(
         "answerCallbackQuery",
@@ -53,11 +79,16 @@ async def _answer_callback(client: TelegramBotClient, callback_query_id: str, te
 
 
 async def handle_message(client: TelegramBotClient, message: dict[str, Any]) -> None:
-    settings = get_settings()
-    text = str(message.get("text") or "").strip().split(maxsplit=1)[0]
+    raw_text = message.get("text")
+    words = raw_text.strip().split(maxsplit=1) if isinstance(raw_text, str) else []
+    if not words:
+        log_telegram_bot_event("message_ignored", message_kind=_message_kind(message))
+        return
+    text = words[0]
     chat_id = (message.get("chat") or {}).get("id")
     if text != "/start" or not chat_id:
         return
+    settings = get_settings()
     is_admin = str(chat_id) in settings.admin_telegram_id_set
     reply = (
         "Уведомления о новых заявках включены."
@@ -66,6 +97,82 @@ async def handle_message(client: TelegramBotClient, message: dict[str, Any]) -> 
     )
     await client.call("sendMessage", {"chat_id": chat_id, "text": reply})
     log_telegram_bot_event("start_message_sent", chat_id=chat_id, is_admin=is_admin)
+
+
+def _message_kind(message: dict[str, Any]) -> str:
+    # Only emit known field names, never message text or arbitrary payload keys.
+    for field in (
+        "text", "photo", "sticker", "voice", "video", "document", "audio",
+        "write_access_allowed", "web_app_data", "new_chat_members", "left_chat_member",
+        "message_auto_delete_timer_changed", "pinned_message", "chat_shared", "users_shared",
+    ):
+        if field in message:
+            return field
+    return "other"
+
+
+async def process_update(
+    client: TelegramBotClient,
+    item: dict[str, Any],
+    *,
+    max_attempts: int = 3,
+    retry_delay_seconds: float = 2,
+) -> bool:
+    """Isolate a failed update, with bounded retries and explicit failure reporting.
+
+    Domain adapters must retain their own idempotency guards: a Telegram response
+    can fail after a plan confirmation has committed. Do not replay money writes
+    directly here or pretend that exhausted retries succeeded.
+    """
+    message = item.get("message")
+    callback = item.get("callback_query")
+    event_type = "message" if isinstance(message, dict) else "callback_query" if isinstance(callback, dict) else "unsupported"
+    if event_type == "unsupported":
+        log_telegram_bot_event("update_ignored", update_id=item["update_id"], update_type=event_type)
+        return True
+    envelope = message if event_type == "message" else callback.get("message")
+    chat = envelope.get("chat") if isinstance(envelope, dict) else None
+    chat = chat if isinstance(chat, dict) else {}
+    chat_type = chat.get("type")
+    if chat_type not in {"private", "group", "supergroup", "channel"}:
+        chat_type = "unknown"
+    metadata = {
+        "update_id": item["update_id"],
+        "update_type": event_type,
+        "chat_type": chat_type,
+    }
+    attempts = max(1, max_attempts)
+    action_finished = False
+    for attempt in range(1, attempts + 1):
+        try:
+            if event_type == "message":
+                await handle_message(client, message)
+            else:
+                await handle_callback_query(client, callback)
+            log_telegram_bot_event("update_processed", **metadata, attempt=attempt)
+            return True
+        except ActionResponseDeliveryError:
+            action_finished = True
+            log_telegram_bot_event("action_finished_response_failed", **metadata)
+            break
+        except Exception as exc:  # noqa: BLE001
+            log_telegram_bot_event("update_failed", **metadata, attempt=attempt, error=type(exc).__name__)
+            if attempt < attempts:
+                await asyncio.sleep(max(0, retry_delay_seconds))
+    # Keep the worker alive and make the failure visible instead of looping on
+    # the same unacknowledged update forever. Users can retry the domain action.
+    logger.error("telegram update retries exhausted: update_id=%s update_type=%s", item["update_id"], event_type)
+    if event_type == "callback_query" and callback.get("id"):
+        try:
+            await _answer_callback(
+                client,
+                str(callback["id"]),
+                "Действие выполнено. Обновите приложение, чтобы проверить результат."
+                if action_finished else "Не удалось завершить обработку. Проверьте состояние в приложении перед повтором.",
+            )
+        except Exception as exc:  # noqa: BLE001
+            log_telegram_bot_event("update_failure_notice_failed", **metadata, error=type(exc).__name__)
+    return False
 
 
 async def handle_callback_query(client: TelegramBotClient, query: dict[str, Any]) -> None:
@@ -109,16 +216,7 @@ async def handle_callback_query(client: TelegramBotClient, query: dict[str, Any]
                     user_id=user_id,
                 )
                 return
-            if chat_id and message_id:
-                await client.call(
-                    "editMessageText",
-                    {
-                        "chat_id": chat_id,
-                        "message_id": message_id,
-                        "text": result.message_text,
-                    },
-                )
-            await _answer_callback(client, callback_id, result.callback_text)
+            await _deliver_action_result(client, callback_id=callback_id, chat_id=chat_id, message_id=message_id, result=result)
             log_telegram_bot_event(
                 "callback_processed",
                 admin_telegram_id=actor_telegram_id,
@@ -174,16 +272,7 @@ async def handle_callback_query(client: TelegramBotClient, query: dict[str, Any]
                 plan_id=plan_id,
             )
             return
-        if chat_id and message_id:
-            await client.call(
-                "editMessageText",
-                {
-                    "chat_id": chat_id,
-                    "message_id": message_id,
-                    "text": result.message_text,
-                },
-            )
-        await _answer_callback(client, callback_id, result.callback_text)
+        await _deliver_action_result(client, callback_id=callback_id, chat_id=chat_id, message_id=message_id, result=result)
         log_telegram_bot_event(
             "plan_confirm_processed",
             telegram_id=actor_telegram_id or "unknown",
@@ -394,6 +483,8 @@ async def run() -> None:
         raise RuntimeError("TELEGRAM_BOT_TOKEN is not configured")
     client = TelegramBotClient(token=token, timeout_seconds=settings.telegram_bot_poll_timeout_seconds)
     offset = 0
+    health = WorkerHealth()
+    health.tick()
     last_plan_reminder_scan_at = 0.0
     reminder_scan_interval_seconds = max(15, int(settings.telegram_plan_reminder_scan_interval_seconds))
     retry_delay_seconds = max(1, int(settings.telegram_bot_retry_delay_seconds))
@@ -405,6 +496,7 @@ async def run() -> None:
     )
     try:
         while True:
+            health.tick()
             now_mono = monotonic()
             if now_mono - last_plan_reminder_scan_at >= reminder_scan_interval_seconds:
                 try:
@@ -486,12 +578,14 @@ async def run() -> None:
                 logger.warning("telegram getUpdates request failed, retrying: %s", exc.error_type)
                 await asyncio.sleep(retry_delay_seconds)
                 continue
+            health.tick(poll_succeeded=True)
             for item in data.get("result", []):
-                offset = max(offset, int(item["update_id"]) + 1)
-                if item.get("message"):
-                    await handle_message(client, item["message"])
-                if item.get("callback_query"):
-                    await handle_callback_query(client, item["callback_query"])
+                if not isinstance(item, dict) or type(item.get("update_id")) is not int:
+                    log_telegram_bot_event("update_invalid", reason="invalid_update_id")
+                    continue
+                await process_update(client, item, retry_delay_seconds=retry_delay_seconds)
+                offset = max(offset, item["update_id"] + 1)
+                health.tick()
     finally:
         await client.close()
 
