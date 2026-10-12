@@ -42,10 +42,13 @@
         name: row.name || "",
         ...window.App.measurements.snapshot(row),
         measurement_touched: true,
+        discount_mode: row.discount_mode || null,
+        discount_value: row.discount_value ?? null,
         quantity: row.quantity || 0,
         unit_price: row.unit_price || 0,
         is_discounted: Boolean(row.is_discounted),
         regular_unit_price: row.regular_unit_price || 0,
+        discount_type: row.discount_type || null,
         note: row.note || "",
       }, "create"));
     }

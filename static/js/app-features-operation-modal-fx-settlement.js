@@ -56,9 +56,7 @@
       return enrichOperationAmountContext("create", 0, isCreateReceiptMode() ? "receipt" : "operation");
     }
     return enrichOperationAmountContext("create", receiptItems.reduce((sum, row) => {
-        const qty = Number(row?.quantity || 0);
-        const unitPrice = Number(row?.unit_price || 0);
-        return sum + (qty > 0 && unitPrice > 0 ? qty * unitPrice : 0);
+        return sum + window.App.receiptPricing.calculate(row).total;
       }, 0), "receipt");
   }
 
@@ -77,9 +75,7 @@
       return enrichOperationAmountContext("edit", 0, isEditReceiptMode() ? "receipt" : "operation");
     }
     return enrichOperationAmountContext("edit", receiptItems.reduce((sum, row) => {
-        const qty = Number(row?.quantity || 0);
-        const unitPrice = Number(row?.unit_price || 0);
-        return sum + (qty > 0 && unitPrice > 0 ? qty * unitPrice : 0);
+        return sum + window.App.receiptPricing.calculate(row).total;
       }, 0), "receipt");
   }
 
@@ -208,9 +204,7 @@
       return 0;
     }
     return rows.reduce((sum, row) => {
-      const qty = Number(row?.quantity || 0);
-      const unitPrice = Number(row?.unit_price || 0);
-      return sum + (qty > 0 && unitPrice > 0 ? qty * unitPrice : 0);
+      return sum + window.App.receiptPricing.calculate(row).total;
     }, 0);
   }
 

@@ -1007,3 +1007,16 @@
 @media (max-width: 1180px) {
   .receipt-measurements { grid-row: 3; }
 }
+
+/* Line-discount controls stay below the money row at every viewport width. */
+.receipt-discount-calculation {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  min-width: 0;
+}
+.receipt-discount-calculation summary { cursor: pointer; }
+.receipt-discount-calculation .form-grid { margin-top: 8px; }
+.receipt-discount-calculation input, .receipt-discount-calculation select { min-width: 0; width: 100%; }
+@media (max-width: 1180px) {
+  .receipt-discount-calculation { grid-row: 4; }
+}

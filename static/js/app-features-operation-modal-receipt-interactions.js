@@ -16,6 +16,7 @@
       renderReceiptSummary,
       receiptLineTotal,
       receiptDiscountToggleLabel,
+      receiptPricingExplanation,
       formatReceiptMoney,
       resizeReceiptNameTextarea,
       removeReceiptItem,
@@ -143,7 +144,20 @@
       if (!updated?.item) {
         return;
       }
-      if (field === "unit_price") updated.item.price_touched = true;
+      if (field === "unit_price" || field === "regular_unit_price" || field === "discount_value") updated.item.price_touched = true;
+      if (field === "discount_mode") {
+        renderReceiptItems(mode);
+        renderReceiptSummary(mode);
+        if (mode === "create") updateCreatePreview(); else updateEditPreview();
+        getReceiptContext(mode).listNode?.querySelector(`[data-receipt-item-id="${draftId}"] [data-receipt-field="discount_value"]`)?.focus();
+        return;
+      }
+      const explanation = row.querySelector(".receipt-pricing-explanation");
+      if (explanation) explanation.textContent = receiptPricingExplanation(updated.item, mode);
+      if (updated.item.discount_mode) {
+        const derivedPrice = row.querySelector('[data-receipt-field="unit_price"]');
+        if (derivedPrice) derivedPrice.value = core.formatAmount(receiptLineTotal(updated.item) / (updated.item.quantity || 1));
+      }
       if (window.App.measurements.fields.includes(field)) {
         const summary = row.querySelector(".receipt-measurements summary");
         if (summary) summary.textContent = window.App.measurements.summary(updated.item);
@@ -291,7 +305,7 @@
         }, 0);
         return;
       }
-      const input = event.target.closest('[data-receipt-field="unit_price"], [data-receipt-field="regular_unit_price"]');
+      const input = event.target.closest('[data-receipt-field="unit_price"], [data-receipt-field="regular_unit_price"], [data-receipt-field="discount_value"]');
       if (!input) {
         return;
       }
@@ -302,6 +316,7 @@
       const draftId = Number(row.dataset.receiptItemId || 0);
       const field = input.dataset.receiptField;
       const mode = getReceiptModeFromNode(row);
+      if (input.readOnly || (field === "discount_value" && getReceiptItemByDraftId(draftId, mode)?.discount_mode === "percent")) return;
       const resolved = core.resolveMoneyInput?.(input.value || "");
       if (!resolved || resolved.empty) {
         return;

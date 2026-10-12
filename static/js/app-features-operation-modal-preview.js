@@ -150,21 +150,16 @@
         };
       }
       const receiptItems = (Array.isArray(state.createReceiptItems) ? state.createReceiptItems : [])
-        .filter((item) => Number(item?.quantity || 0) > 0 && Number(item?.unit_price || 0) > 0 && String(item?.name || "").trim())
+        .filter((item) => Number(item?.quantity || 0) > 0 && (item?.discount_mode || Number(item?.unit_price || 0) > 0) && String(item?.name || "").trim())
         .map((item) => ({
+          ...item,
+          line_total: window.App.receiptPricing.calculate(item).total,
           category_id: item.category_id ? Number(item.category_id) : null,
           quantity: item.quantity,
           unit_price: item.unit_price,
           name: item.name,
         }));
-      const receiptTotal = receiptItems.reduce((acc, item) => {
-        const qty = Number(item.quantity || 0);
-        const price = Number(item.unit_price || 0);
-        if (!Number.isFinite(qty) || !Number.isFinite(price)) {
-          return acc;
-        }
-        return acc + qty * price;
-      }, 0);
+      const receiptTotal = receiptItems.reduce((acc, item) => acc + item.line_total, 0);
       const amountRaw = document.getElementById("opAmount").value;
       const parsedAmount = core.resolveMoneyInput(amountRaw);
       const amountResolved = !parsedAmount.empty

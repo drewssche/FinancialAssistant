@@ -123,3 +123,10 @@ Develop on a feature branch, fetch the current `origin/main`, integrate changes 
 - Preserved `before-units-20261012` app/bot tags; applied additive migration `20261012_0046`, then recreated only app/bot. Production read-only pre/post fingerprints match for all five checked tables. Readiness reports the new revision and the served measurement helper, bootstrap and receipt stylesheet match local SHA-256 hashes.
 - Validation details are in the roadmap. The rollback compatibility restriction above applies once users save measurements; do not drop these columns to roll back the interface.
 - Final post-release healthcheck: app, bot, PostgreSQL, Redis and both poopbot containers healthy; all inspected restart counters zero. This is a short post-release check, not a claim about long-term stability. Subsequent documentation/test-only commits may advance the checkout without rebuilding the runtime image from `067f240`.
+
+## Line discount migration (`20261012_0047`)
+
+- Adds nullable mode/value/subtotal to purchase and plan lines and widens their unit prices from `Numeric(14,2)` to `Numeric(18,6)`. No historical values are recalculated. Compare all prior fields in five core tables, normalizing only numeric trailing zeros when hashing unit prices.
+- Refresh and restore the authorized encrypted computer backup before migration. After GitHub publication and server pull, build the exact image, run isolated tests, restore a separate copy and upgrade it with that image before touching production. Do not run destructive migration tests on production.
+- Preserve `before-discounts-20261012` app/bot image tags. Apply the migration before starting the new app/bot and verify `/ready` revision `20261012_0047` plus served pricing-helper/bootstrap/receipt-CSS hashes. Recreate only app/bot using `--no-deps`; preserve DB, Redis and poopbot.
+- Downgrade intentionally refuses while new-mode rows exist; even an application-only old-image rollback can silently rewrite exact totals through old receipt replacement. Use a forward fix or compatibility-patched writer after these fields have been used.

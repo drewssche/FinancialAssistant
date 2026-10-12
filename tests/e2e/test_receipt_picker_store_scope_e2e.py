@@ -621,7 +621,7 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
         after = discounted_wide_geometry["elements"][key]
         for dimension in ("left", "top", "width"):
             assert abs(before[dimension] - after[dimension]) <= 1.5, (key, dimension, before, after)
-    assert abs(normal_wide_geometry["row"]["height"] - discounted_wide_geometry["row"]["height"]) <= 1.5
+    expect(first_row.locator(".receipt-discount-calculation summary")).to_be_visible()
     assert discounted_geometry["discountTypes"]["top"] >= discounted_geometry["unitPrice"]["top"] - 1
     assert discounted_geometry["discountTypes"]["bottom"] <= discounted_geometry["unitPrice"]["bottom"] + 1
     first_row.locator(".receipt-discount-toggle").click()

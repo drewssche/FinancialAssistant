@@ -5,6 +5,7 @@ import re
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.receipt_pricing import calculate_line_pricing, guard_pricing_replacement, pricing_snapshot
 from app.core.measurement import guard_measurement_replacement, measurement_snapshot, normalize_measurement
 from app.core.cache import (
     build_operations_cache_key,
@@ -628,6 +629,7 @@ class OperationService:
                 operation_ids=[int(item.id)],
             ).get(int(item.id), [])
             guard_measurement_replacement(receipt_items_input, before_receipt_items)
+            guard_pricing_replacement(receipt_items_input, before_receipt_items)
             normalized_items, receipt_total = self._normalize_receipt_items(receipt_items_input)
             current_category_id = updates.get("category_id", getattr(item, "category_id", None))
             updates["category_id"] = self._resolve_effective_operation_category_id(
@@ -1047,6 +1049,7 @@ class OperationService:
                 "shop_name": row.shop_name,
                 "name": row.name,
                 **measurement_snapshot(row, json_safe=True),
+                **pricing_snapshot(row, json_safe=True),
                 "quantity": str(row.quantity),
                 "unit_price": str(row.unit_price),
                 "is_discounted": bool(row.is_discounted),
@@ -1359,8 +1362,9 @@ class OperationService:
                     "shop_name": row.shop_name,
                     "name": row.name,
                     **measurement_snapshot(row),
+                    **pricing_snapshot(row),
                     "quantity": self._qty(row.quantity),
-                    "unit_price": self._money(row.unit_price),
+                    "unit_price": row.unit_price if getattr(row, "discount_mode", None) else self._money(row.unit_price),
                     "is_discounted": bool(getattr(row, "is_discounted", False)),
                     "regular_unit_price": (
                         self._money(row.regular_unit_price)
@@ -1509,8 +1513,9 @@ class OperationService:
             quantity = self._qty(item.get("quantity") or Decimal("0"))
             if quantity <= 0:
                 raise ValueError("receipt item quantity must be greater than 0")
-            unit_price = self._money(item.get("unit_price") or Decimal("0"))
-            if unit_price <= 0:
+            unit_price = (Decimal(str(item.get("unit_price") or "0")) if item.get("discount_mode")
+                          else self._money(item.get("unit_price") or Decimal("0")))
+            if not unit_price.is_finite() or unit_price <= 0:
                 raise ValueError("receipt item unit_price must be greater than 0")
             is_discounted = bool(item.get("is_discounted"))
             regular_unit_price = None
@@ -1521,7 +1526,9 @@ class OperationService:
             discount_type = str(item.get("discount_type") or "").strip() or None
             if discount_type not in (None, "promo", "coupon", "loyalty_points"):
                 raise ValueError("receipt item discount_type is invalid")
-            line_total = self._money(quantity * unit_price)
+            pricing = calculate_line_pricing(item, quantity=quantity, unit_price=unit_price,
+                                             regular_unit_price=regular_unit_price, is_discounted=is_discounted)
+            line_total = pricing["line_total"]
             note = item.get("note")
             normalized.append(
                 {
@@ -1531,7 +1538,7 @@ class OperationService:
                     "name": name,
                     **normalize_measurement(item),
                     "quantity": quantity,
-                    "unit_price": unit_price,
+                    **pricing,
                     "is_discounted": is_discounted,
                     "regular_unit_price": regular_unit_price if is_discounted else None,
                     "discount_type": discount_type if is_discounted else None,

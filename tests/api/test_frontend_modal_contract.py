@@ -239,7 +239,7 @@ def test_receipt_line_total_live_update_keeps_currency_symbol():
     assert 'renderReceiptSummary(mode, { amountValue: total });' in receipt
 
 
-def test_receipt_discount_ui_uses_discount_copy_and_prefills_regular_price():
+def test_receipt_discount_ui_keeps_reason_separate_and_does_not_guess_regular_price():
     receipt = (REPO_ROOT / "static" / "js" / "app-features-operation-modal-receipt.js").read_text(encoding="utf-8")
 
     assert "receiptDiscountToggleLabel(item)" in receipt
@@ -254,8 +254,8 @@ def test_receipt_discount_ui_uses_discount_copy_and_prefills_regular_price():
     assert "Акция" in receipt
     assert "Купон" in receipt
     assert "Баллы" in receipt
-    assert "if (latestPrice > 0)" in receipt
-    assert "latestPrice > asMoney(item.unit_price || 0)" not in receipt
+    assert "item.regular_unit_price = latestPrice" not in receipt
+    assert 'data-receipt-field="discount_mode"' in receipt
 
 
 def test_plan_and_operation_history_are_linked_without_duplicate_money_flow_rows():
@@ -317,7 +317,7 @@ def test_reopened_discounted_receipt_uses_purchase_price_for_total_and_discrepan
     receipt = (REPO_ROOT / "static" / "js" / "app-features-operation-modal-receipt.js").read_text(encoding="utf-8")
     modal = (REPO_ROOT / "static" / "js" / "app-features-operation-modal.js").read_text(encoding="utf-8")
 
-    assert "return asMoney(asQty(item.quantity) * asMoney(item.unit_price));" in receipt
+    assert "return window.App.receiptPricing.calculate(item).total;" in receipt
     assert "regular_unit_price: row.regular_unit_price || 0" in modal
     assert "unit_price: row.unit_price || 0" in modal
     assert "regular_unit_price" not in receipt.split("function receiptLineTotal(item)", 1)[1].split("}", 1)[0]

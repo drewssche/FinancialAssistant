@@ -5,6 +5,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.receipt_pricing import discount_totals
 from app.core.money import allocate_largest_remainder
 from app.db.models import Category, CategoryGroup, UserPreference
 from app.repositories.item_brand_repo import ItemBrandRepository
@@ -782,14 +783,12 @@ class DashboardAnalyticsHighlightsService:
         items_count = 0
         for receipt_rows in (receipt_items_by_operation or {}).values():
             for row in receipt_rows or []:
-                if not bool(getattr(row, "is_discounted", False)):
+                totals = discount_totals(row)
+                if totals is None:
                     continue
+                regular_total, actual_total = totals
                 quantity = Decimal(getattr(row, "quantity", 0) or 0)
-                unit_price = Decimal(getattr(row, "unit_price", 0) or 0)
-                regular_unit_price = Decimal(getattr(row, "regular_unit_price", 0) or 0)
-                if quantity <= 0 or unit_price <= 0 or regular_unit_price <= unit_price:
-                    continue
-                savings_total += (regular_unit_price - unit_price) * quantity
+                savings_total += regular_total - actual_total
                 items_count += 1
         return savings_total.quantize(Decimal("0.01")), items_count
 
@@ -806,18 +805,16 @@ class DashboardAnalyticsHighlightsService:
         )
         for receipt_rows in (receipt_items_by_operation or {}).values():
             for row in receipt_rows or []:
-                if not bool(getattr(row, "is_discounted", False)):
+                totals = discount_totals(row)
+                if totals is None:
                     continue
+                regular_total, actual_total = totals
                 quantity = Decimal(getattr(row, "quantity", 0) or 0)
-                unit_price = Decimal(getattr(row, "unit_price", 0) or 0)
-                regular_unit_price = Decimal(getattr(row, "regular_unit_price", 0) or 0)
-                if quantity <= 0 or unit_price <= 0 or regular_unit_price <= unit_price:
-                    continue
                 discount_type = getattr(row, "discount_type", None)
                 if discount_type not in ("promo", "coupon", "loyalty_points"):
                     discount_type = None
                 bucket = buckets[discount_type]
-                bucket["savings_total"] += (regular_unit_price - unit_price) * quantity
+                bucket["savings_total"] += regular_total - actual_total
                 bucket["items_count"] += 1
         items = [
             {
@@ -863,13 +860,11 @@ class DashboardAnalyticsHighlightsService:
         )
         for operation_id, receipt_rows in (receipt_items_by_operation or {}).items():
             for row in receipt_rows or []:
-                if not bool(getattr(row, "is_discounted", False)):
+                totals = discount_totals(row)
+                if totals is None:
                     continue
+                regular_total, actual_total = totals
                 quantity = Decimal(getattr(row, "quantity", 0) or 0)
-                unit_price = Decimal(getattr(row, "unit_price", 0) or 0)
-                regular_unit_price = Decimal(getattr(row, "regular_unit_price", 0) or 0)
-                if quantity <= 0 or unit_price <= 0 or regular_unit_price <= unit_price:
-                    continue
                 name = str(getattr(row, "name", "") or "").strip()
                 if not name:
                     continue
@@ -878,8 +873,6 @@ class DashboardAnalyticsHighlightsService:
                 bucket = buckets[key]
                 bucket["name"] = name
                 bucket["shop_name"] = shop_name
-                regular_total = regular_unit_price * quantity
-                actual_total = unit_price * quantity
                 bucket["regular_total"] += regular_total
                 bucket["actual_total"] += actual_total
                 bucket["savings_total"] += regular_total - actual_total

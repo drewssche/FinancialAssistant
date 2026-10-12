@@ -36,7 +36,7 @@ Current delivery direction:
 - Example: two `Еда` entries on the same date are stored as two separate operations.
 - Period totals are calculated as sums of all operations in selected date range.
 - Monthly totals work the same way: sum of all operation rows in that month range.
-- Current receipt totals derive from quantity and paid unit price. Optional sale units and package contents are available in product/receipt forms and preserved as independent purchase/plan snapshots. Unknown historic units remain unknown. Independent final line amounts with discounts applied after weighing, normalized quantity metrics and shrinkflation comparisons remain planned.
+- Legacy receipt totals derive from quantity and paid unit price. New line discounts support an amount, percentage, or authoritative paid line total; a derived six-decimal unit price never overwrites that total. In the receipt editor, enable «Скидка», expand «Скидка от суммы позиции», and choose the calculation method. Amount/percent modes require an explicitly entered regular price; direct final can leave that price unknown. Optional sale units and package contents are available in product/receipt forms and preserved as independent purchase/plan snapshots. Unknown historic units remain unknown. Normalized quantity metrics and shrinkflation comparisons remain planned.
 
 ## Plans, Catalog and Work
 

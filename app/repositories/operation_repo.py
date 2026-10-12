@@ -5,6 +5,7 @@ from sqlalchemy import Select, and_, asc, case, delete, desc, func, or_, select,
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import Session
 
+from app.core.receipt_pricing import pricing_snapshot
 from app.core.measurement import normalize_measurement
 from app.core.search import search_variants
 from app.repositories.search import search_match, search_order
@@ -563,6 +564,7 @@ class OperationRepository:
                 category_id=payload.get("category_id"),
                 shop_name=payload.get("shop_name"),
                 **normalize_measurement(payload),
+                **pricing_snapshot(payload),
                 name=payload["name"],
                 quantity=payload["quantity"],
                 unit_price=payload["unit_price"],
@@ -594,6 +596,7 @@ class OperationRepository:
                 category_id=payload.get("category_id"),
                 shop_name=payload.get("shop_name"),
                 **normalize_measurement(payload),
+                **pricing_snapshot(payload),
                 name=payload["name"],
                 quantity=Decimal(payload["quantity"]),
                 unit_price=Decimal(payload["unit_price"]),

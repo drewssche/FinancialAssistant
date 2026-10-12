@@ -15,7 +15,7 @@ router = APIRouter(prefix="/plans", tags=["plans"])
 def _dump_receipt_item(item) -> dict:
     data = item.model_dump()
     fields_set = getattr(item, "model_fields_set", set())
-    for optional_link in ("template_id", "product_id", "brand_id", "source_id", "sale_unit", "package_quantity", "package_unit"):
+    for optional_link in ("template_id", "product_id", "brand_id", "source_id", "sale_unit", "package_quantity", "package_unit", "discount_mode", "discount_value"):
         if optional_link not in fields_set:
             data.pop(optional_link, None)
     return data

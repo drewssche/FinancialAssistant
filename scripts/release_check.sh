@@ -40,6 +40,7 @@ if [[ "${RUN_E2E}" == "1" ]]; then
     tests/e2e/test_receipt_picker_store_scope_e2e.py \
     tests/e2e/test_chip_picker_no_duplicates_e2e.py \
     tests/e2e/test_create_operation_receipt_amount_autofill_e2e.py \
+    tests/e2e/test_receipt_line_discounts_e2e.py \
     -m e2e
   run_pytest "E2E: preferences and sort presets (isolated sync Playwright)" \
     tests/e2e/test_sort_preset_persistence_e2e.py \

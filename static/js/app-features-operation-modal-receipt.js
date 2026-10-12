@@ -49,29 +49,29 @@
     }
 
     function receiptLineTotal(item) {
-      return asMoney(asQty(item.quantity) * asMoney(item.unit_price));
+      return window.App.receiptPricing.calculate(item).total;
+    }
+
+    function receiptPricingExplanation(item, mode) {
+      if (!item.discount_mode) return "Можно применить скидку после взвешивания или ввести оплаченный итог из чека.";
+      const price = window.App.receiptPricing.calculate(item);
+      if (price.error) return price.error;
+      const before = price.subtotal == null ? "Цена до скидки неизвестна" : `До скидки: ${core.formatAmount(price.subtotal)}; скидка: ${core.formatAmount(price.subtotal - price.total)}`;
+      return `${before}. Итого: ${core.formatAmount(price.total)} ${getReceiptCurrencyLabel(mode)}. ${item.discount_mode === "final" ? "При изменении количества введённый итог сохраняется." : "При изменении количества скидка пересчитывается выбранным способом."}`;
     }
 
     function receiptDiscountToggleLabel(item) {
       if (!item?.is_discounted) {
         return "Скидка";
       }
-      const purchasePrice = asMoney(item.unit_price || 0);
-      const regularPrice = asMoney(item.regular_unit_price || 0);
+      const calculation = window.App.receiptPricing.calculate(item);
+      const purchasePrice = item.discount_mode ? calculation.total : asMoney(item.unit_price || 0);
+      const regularPrice = item.discount_mode ? calculation.subtotal : asMoney(item.regular_unit_price || 0);
       if (!(regularPrice > purchasePrice && purchasePrice > 0)) {
         return "Скидка —%";
       }
       const percent = ((regularPrice - purchasePrice) / regularPrice) * 100;
       return `Скидка −${Number(percent.toFixed(1))}%`;
-    }
-
-    function getReceiptLatestTemplatePrice(item) {
-      const templateId = Number(item?.template_id || 0);
-      if (!templateId) {
-        return 0;
-      }
-      const template = (state.receiptTemplateHints || []).find((entry) => Number(entry.id) === templateId);
-      return asMoney(template?.latest_unit_price || 0);
     }
 
     function getReceiptCurrency(mode = "create") {
@@ -181,11 +181,13 @@
         ...window.App.measurements.snapshot(seed),
         measurement_touched: Boolean(seed.measurement_touched),
         quantity: hasQuantity ? asQty(seed.quantity) : 0,
-        unit_price: hasUnitPrice ? asMoney(seed.unit_price) : 0,
+        unit_price: hasUnitPrice ? (seed.discount_mode ? Number(seed.unit_price) : asMoney(seed.unit_price)) : 0,
         price_touched: seed.price_touched === undefined ? hasUnitPrice : Boolean(seed.price_touched),
         is_discounted: Boolean(seed.is_discounted),
         regular_unit_price: seed.regular_unit_price ? asMoney(seed.regular_unit_price) : 0,
         discount_type: seed.discount_type || (seed.is_discounted ? "promo" : null),
+        discount_mode: seed.discount_mode || null,
+        discount_value: seed.discount_value == null ? null : Number(seed.discount_value),
         note: seed.note || "",
       };
     }
@@ -326,18 +328,27 @@
         item.quantity = asQty(value);
       } else if (key === "unit_price") {
         item.unit_price = asMoney(value);
+      } else if (key === "discount_mode") {
+        const total = receiptLineTotal(item);
+        const subtotal = asMoney(item.regular_unit_price * asQty(item.quantity));
+        item.discount_mode = ["amount", "percent", "final"].includes(value) ? value : null;
+        item.discount_value = value === "final" ? total : value === "percent"
+          ? (subtotal > 0 ? Number(((subtotal - total) / subtotal * 100).toFixed(4)) : 0)
+          : value === "amount" ? Math.max(0, asMoney(subtotal - total)) : null;
+        if (!item.discount_mode) item.unit_price = asMoney(total / (item.quantity || 1));
+        item.price_touched = true;
+      } else if (key === "discount_value") {
+        item.discount_value = item.discount_mode === "percent"
+          ? Number(String(value).replace(",", ".")) : asMoney(value);
       } else if (key === "regular_unit_price") {
         item.regular_unit_price = asMoney(value);
       } else if (key === "is_discounted") {
         item.is_discounted = Boolean(value);
         item.discount_type = item.is_discounted ? (item.discount_type || "promo") : null;
-        if (item.is_discounted && !item.regular_unit_price) {
-          const latestPrice = getReceiptLatestTemplatePrice(item);
-          if (latestPrice > 0) {
-            item.regular_unit_price = latestPrice;
-          }
-        }
         if (!item.is_discounted) {
+          if (item.discount_mode) item.unit_price = asMoney(item.regular_unit_price || receiptLineTotal(item) / (item.quantity || 1));
+          item.discount_mode = null;
+          item.discount_value = null;
           item.regular_unit_price = 0;
         }
       } else if (key === "discount_type") {
@@ -629,10 +640,20 @@
                 <label class="field"><span>Единица содержимого</span><select data-receipt-field="package_unit" aria-label="Единица содержимого">${window.App.measurements.options(item.package_unit, true)}</select></label>
               </div>
             </details>
+            ${item.is_discounted ? `<details class="receipt-discount-calculation" ${item.discount_mode ? "open" : ""}>
+              <summary>Скидка от суммы позиции${item.discount_mode ? " · " + (item.discount_mode === "final" ? "итог из чека" : item.discount_mode === "percent" ? "процент" : "сумма") : ""}</summary>
+              <div class="form-grid">
+                <label class="field"><span>Способ расчёта</span><select data-receipt-field="discount_mode" aria-label="Способ расчёта скидки">
+                  ${[["", "Цена за единицу"], ["amount", "Скидка на сумму"], ["percent", "Скидка в процентах"], ["final", "Оплаченный итог"]].map(([value, label]) => `<option value="${value}" ${(item.discount_mode || "") === value ? "selected" : ""}>${label}</option>`).join("")}
+                </select></label>
+                ${item.discount_mode ? `<label class="field"><span>${item.discount_mode === "final" ? "Оплачено за позицию" : item.discount_mode === "percent" ? "Скидка, %" : "Скидка за всю позицию"}</span><input type="text" inputmode="decimal" data-receipt-field="discount_value" value="${esc(String(item.discount_value ?? 0))}" aria-label="Значение скидки или итог" /></label>` : ""}
+              </div>
+              <div class="muted-small receipt-pricing-explanation">${esc(receiptPricingExplanation(item, mode))}</div>
+            </details>` : ""}
             <div class="receipt-item-money">
               <div class="receipt-price-cell ${item.is_discounted ? "receipt-price-cell-discounted" : ""}">
                 <div class="receipt-price-field">
-                  <input type="text" inputmode="decimal" data-receipt-field="unit_price" value="${formatReceiptInputAmount(item.unit_price)}" placeholder="Цена" title="Цена покупки в ${esc(getReceiptCurrencyLabel(mode))}" aria-label="Цена позиции" />
+                  <input type="text" inputmode="decimal" data-receipt-field="unit_price" ${item.discount_mode ? "readonly" : ""} value="${formatReceiptInputAmount(item.discount_mode ? total / (item.quantity || 1) : item.unit_price)}" placeholder="Цена" title="${item.discount_mode ? "Эффективная цена после скидки; итог рассчитывается отдельно" : "Цена покупки в " + esc(getReceiptCurrencyLabel(mode))}" aria-label="Цена позиции" />
                 </div>
                 <button class="receipt-discount-toggle ${item.is_discounted ? "is-active" : ""}" type="button" data-receipt-discount-toggle="${item.draft_id}" aria-pressed="${item.is_discounted ? "true" : "false"}" title="Скидка, купон, промокод или бонусы">${receiptDiscountToggleLabel(item)}</button>
                 <div class="receipt-discount-type-row ${item.is_discounted ? "" : "hidden"}" role="group" aria-label="Тип скидки">${discountTypeButtons}</div>
@@ -661,9 +682,9 @@
       const ctx = getReceiptContext(mode);
       ctx.listNode?.querySelectorAll("[data-receipt-item-id]").forEach((row) => {
         const draftId = Number(row.dataset.receiptItemId || 0);
-        for (const field of ["quantity", "unit_price", "regular_unit_price", ...window.App.measurements.fields]) {
+        for (const field of ["quantity", "unit_price", "regular_unit_price", "discount_value", ...window.App.measurements.fields]) {
           const input = row.querySelector(`[data-receipt-field="${field}"]`);
-          if (input) {
+          if (input && !input.readOnly) {
             updateReceiptItemField(draftId, field, input.value, mode);
           }
         }
@@ -768,6 +789,7 @@
         renderReceiptSummary,
         receiptLineTotal,
         receiptDiscountToggleLabel,
+        receiptPricingExplanation,
         formatReceiptMoney,
         resizeReceiptNameTextarea,
         removeReceiptItem,
@@ -897,8 +919,9 @@
             ? core.formatAmount(item.regular_unit_price)
             : null,
           discount_type: item.is_discounted ? (item.discount_type || "promo") : null,
+          ...window.App.receiptPricing.payload(item),
         }))
-        .filter((item) => item.name && Number(item.quantity) > 0 && Number(item.unit_price) > 0);
+        .filter((item) => item.name && (item.discount_mode || (Number(item.quantity) > 0 && Number(item.unit_price) > 0)));
     }
 
     function getEditReceiptPayload() {
@@ -924,8 +947,9 @@
             ? core.formatAmount(item.regular_unit_price)
             : null,
           discount_type: item.is_discounted ? (item.discount_type || "promo") : null,
+          ...window.App.receiptPricing.payload(item),
         }))
-        .filter((item) => item.name && Number(item.quantity) > 0 && Number(item.unit_price) > 0);
+        .filter((item) => item.name && (item.discount_mode || (Number(item.quantity) > 0 && Number(item.unit_price) > 0)));
     }
 
     return {

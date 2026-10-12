@@ -71,6 +71,15 @@ flowchart LR
 - Consequently, a return to a previous price can be omitted from this history. Do not document a guaranteed append on every purchase or infer complete price changes from these records.
 - Template resolution batches names/source matches and price inserts to limit query growth. Optional product units, package variants, GTINs, website links, OCR and external product-price monitoring are planned, not implemented.
 
+### Exact line discount contract (`20261012_0047`)
+
+- `app/core/receipt_pricing.py` owns deterministic line arithmetic. `discount_mode` is nullable (`amount`, `percent`, `final`); `discount_value` stores currency amounts to two decimals or percentage to four. `discount_type` remains the independent promo/coupon/loyalty reason.
+- With a new mode, `regular_unit_price` is the explicitly known original price, `line_subtotal = ROUND_HALF_UP(quantity × regular_unit_price, 2)`. Amount subtracts the fixed discount; percent first rounds the discount amount to cents, then subtracts it. Final stores the entered paid total and retains it when quantity changes. Final may omit regular price/subtotal; never infer them from catalog history. All new paid totals must be positive; a discount cannot exceed its known subtotal. Free lines/whole-receipt discount allocation are outside this change.
+- Backend derives `unit_price = line_total / quantity` at six decimals (`Numeric(18,6)`). Incoming unit price remains required for compatibility but is not authoritative in new modes. It must never reconstruct the paid line total. Client `line_subtotal`/`line_total` are ignored on input: the server computes them from the explicit mode/value; legacy null-mode lines retain their previous two-decimal price calculation.
+- Operations, plan snapshots/confirmation, delete/restore and activity preserve the new fields. Stale receipt replacements lacking explicit mode/value keys are rejected when any existing line uses new pricing. New clients send both keys, including null to intentionally revert to legacy mode; unrelated PATCHes remain compatible.
+- `static/js/app-receipt-pricing.js` uses integer cents/thousandths for matching previews. Receipt sum, operation preview and FX funding use that calculation. Discount analytics use stored subtotal/paid total for new lines and preserve legacy behavior for old ones. Unknown regular prices contribute no guessed savings.
+- Migration adds six nullable columns and widens only receipt/plan unit-price precision, with no historical backfill/recalculation. Downgrade refuses if new-mode rows exist. Old application images do not preserve the new semantics when replacing rows: after usage, prefer a forward fix or compatibility-patched rollback; do not deploy an unpatched old writer against these rows.
+
 ## Plans, debts, work and activity
 
 - `PlanService` owns scheduling, confirmation, skipping, receipt linkage and repeat behavior. Confirming a plan creates the actual operation through domain services. Completed plans can be opened from operation source links, history and activity; explicit resumption preserves the same plan and its history, validates the next date and resynchronizes reminders.

@@ -39,6 +39,8 @@ class OperationReceiptItemIn(MeasurementFields):
     is_discounted: bool = False
     regular_unit_price: Decimal | None = Field(default=None, gt=0)
     discount_type: DiscountType | None = None
+    discount_mode: Literal["amount", "percent", "final"] | None = None
+    discount_value: Decimal | None = Field(default=None, ge=0, max_digits=16, decimal_places=4)
     note: str | None = Field(default=None, max_length=300)
 
 
@@ -68,6 +70,9 @@ class OperationReceiptItemOut(MeasurementFields):
     is_discounted: bool = False
     regular_unit_price: Decimal | None = None
     discount_type: DiscountType | None = None
+    discount_mode: Literal["amount", "percent", "final"] | None = None
+    discount_value: Decimal | None = Field(default=None, ge=0, max_digits=16, decimal_places=4)
+    line_subtotal: Decimal | None = None
     line_total: Decimal
     note: str | None
 
