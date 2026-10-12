@@ -90,6 +90,12 @@
         ? (state.receiptProductHints || []).find((item) => Number(item.id) === productId) || template
         : null;
       const offer = product ? (template.selected_offer || resolveOffer(product, rowItem)) : template;
+      if (Number(rowItem.product_id) !== Number(productId)) {
+        rowItem.variant_id = null;
+        rowItem.variant_snapshot = null;
+        rowItem.variant_options = null;
+        rowItem.variant_status = "";
+      }
       if (!rowItem.measurement_touched) {
         Object.assign(rowItem, window.App.measurements.snapshot(product || template));
       }
@@ -146,6 +152,11 @@
         return;
       }
       if (field === "unit_price" || field === "regular_unit_price" || field === "discount_value") updated.item.price_touched = true;
+      if (field === "variant_id") {
+        updated.item.variant_picker_open = true;
+        commitReceiptRowMutation(mode);
+        return;
+      }
       if (field === "discount_mode") {
         renderReceiptItems(mode);
         renderReceiptSummary(mode);
@@ -162,6 +173,12 @@
       if (window.App.measurements.fields.includes(field)) {
         const summary = row.querySelector(".receipt-measurements summary");
         if (summary) summary.textContent = window.App.measurements.summary(updated.item);
+        const selector = row.querySelector('[data-receipt-field="variant_id"]');
+        if (selector) selector.value = "";
+        const label = row.querySelector('[data-receipt-variant-snapshot]');
+        if (label) label.textContent = "Размеры изменены вручную — связь с фасовкой снята";
+        const status = row.querySelector('.receipt-variant-controls [role="status"]');
+        if (status) status.textContent = updated.item.variant_status;
       }
       if (field === "name") {
         event.target.title = updated.item.name || "Позиция";
@@ -191,8 +208,19 @@
         } else {
           updated.item.template_id = null;
           updated.item.product_id = null;
+          updated.item.variant_id = null;
+          updated.item.variant_snapshot = null;
+          updated.item.variant_options = null;
           updated.item.product_name = "";
           updated.item.product_image_id = null;
+        }
+        const variantButton = row.querySelector('[data-receipt-variants-load]');
+        if (variantButton) variantButton.hidden = !updated.item.product_id;
+        if (!updated.item.variant_snapshot) {
+          const label = row.querySelector('[data-receipt-variant-snapshot]');
+          if (label) label.textContent = "Фасовка не выбрана";
+          const selector = row.querySelector('[data-receipt-field="variant_id"]');
+          if (selector) selector.value = "";
         }
         resizeReceiptNameTextarea?.(event.target);
       }
@@ -431,7 +459,32 @@
       );
       nextInput?.blur();
     }
+    async function loadReceiptVariants(button) {
+      const row = button.closest('[data-receipt-item-id]'), mode = getReceiptModeFromNode(row);
+      const draftId = Number(row.dataset.receiptItemId), item = getReceiptItemByDraftId(draftId, mode);
+      const productId = Number(item?.product_id);
+      if (!productId || item.variant_loading) return;
+      item.variant_loading = true;
+      item.variant_picker_open = true;
+      item.variant_status = "";
+      commitReceiptRowMutation(mode);
+      const stillCurrent = () => getReceiptItemByDraftId(draftId, mode) === item && Number(item.product_id) === productId;
+      try {
+        const data = await core.requestJson(`/api/v1/operations/catalog-products/${productId}/identity`, {headers: core.authHeaders()});
+        if (!stillCurrent()) return;
+        item.variant_options = (data.variants || []).filter((v) => !v.is_archived);
+        // Refreshing choices must never silently replace an existing historical snapshot.
+        item.variant_status = item.variant_options.length ? "Выберите нужную фасовку. Текущий чек пока не изменён." : "Активных фасовок нет. Добавьте их в карточке товара или укажите размеры вручную.";
+      } catch (error) {
+        if (stillCurrent()) item.variant_status = `Не удалось загрузить фасовки: ${error.message}. Можно повторить загрузку.`;
+      } finally {
+        item.variant_loading = false;
+        if (stillCurrent()) commitReceiptRowMutation(mode);
+      }
+    }
     function handleReceiptItemsListClick(event) {
+      const variantButton = event.target.closest('[data-receipt-variants-load]');
+      if (variantButton) { loadReceiptVariants(variantButton); return; }
       const detailsButton = event.target.closest("[data-receipt-details-toggle]");
       if (detailsButton) {
         const row = detailsButton.closest(".receipt-item-row"), mode = getReceiptModeFromNode(row);

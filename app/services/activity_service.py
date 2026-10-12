@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.receipt_pricing import PRICING_FIELDS, pricing_snapshot
+from app.core.receipt_variant import variant_snapshot
 from app.core.measurement import MEASUREMENT_FIELDS, measurement_snapshot
 from app.db.models import (
     ActivityEvent,
@@ -565,10 +566,13 @@ class ActivityService:
     @classmethod
     def _receipt_item_map(cls, rows: list[Any]) -> dict[str, dict]:
         result: dict[str, dict] = {}
+        occurrences: dict[str, int] = {}
         for index, row in enumerate(rows):
             payload = cls._receipt_item_payload(row)
             key = payload.get("template_id") or f"{payload.get('shop_name', '').casefold()}|{payload.get('name', '').casefold()}|{index}"
-            result[str(key)] = payload
+            key = str(key)
+            occurrences[key] = occurrences.get(key, 0) + 1
+            result[f"{key}:{occurrences[key]}"] = payload
         return result
 
     @staticmethod
@@ -580,6 +584,7 @@ class ActivityService:
             "shop_name": str(get("shop_name") or ""),
             "name": str(get("name") or "Без названия"),
             **measurement_snapshot(row, json_safe=True),
+            **variant_snapshot(row),
             **pricing_snapshot(row, json_safe=True),
             "quantity": str(get("quantity") or "0"),
             "unit_price": str(Decimal(str(get("unit_price") or "0")).quantize(Decimal("0.000001") if get("discount_mode") else Decimal("0.01"))),
@@ -597,6 +602,7 @@ class ActivityService:
             payload.get("shop_name"),
             payload.get("name"),
             *(payload.get(key) for key in MEASUREMENT_FIELDS),
+            payload.get("variant_snapshot"),
             *(payload.get(key) for key in PRICING_FIELDS),
             payload.get("quantity"),
             payload.get("unit_price"),

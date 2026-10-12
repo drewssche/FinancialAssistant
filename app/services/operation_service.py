@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.receipt_pricing import calculate_line_pricing, guard_pricing_replacement, pricing_snapshot
+from app.core.receipt_variant import guard_variant_replacement, variant_snapshot
 from app.core.measurement import guard_measurement_replacement, measurement_snapshot, normalize_measurement
 from app.core.cache import (
     build_operations_cache_key,
@@ -628,6 +629,7 @@ class OperationService:
                 user_id=user_id,
                 operation_ids=[int(item.id)],
             ).get(int(item.id), [])
+            guard_variant_replacement(receipt_items_input, before_receipt_items)
             guard_measurement_replacement(receipt_items_input, before_receipt_items)
             guard_pricing_replacement(receipt_items_input, before_receipt_items)
             normalized_items, receipt_total = self._normalize_receipt_items(receipt_items_input)
@@ -1049,6 +1051,7 @@ class OperationService:
                 "shop_name": row.shop_name,
                 "name": row.name,
                 **measurement_snapshot(row, json_safe=True),
+                **variant_snapshot(row),
                 **pricing_snapshot(row, json_safe=True),
                 "quantity": str(row.quantity),
                 "unit_price": str(row.unit_price),
@@ -1362,6 +1365,7 @@ class OperationService:
                     "shop_name": row.shop_name,
                     "name": row.name,
                     **measurement_snapshot(row),
+                    **variant_snapshot(row),
                     **pricing_snapshot(row),
                     "quantity": self._qty(row.quantity),
                     "unit_price": row.unit_price if getattr(row, "discount_mode", None) else self._money(row.unit_price),
@@ -1537,6 +1541,8 @@ class OperationService:
                     "shop_name": shop_name,
                     "name": name,
                     **normalize_measurement(item),
+                    **variant_snapshot(item),
+                    **({"variant_id": int(item["variant_id"])} if item.get("variant_id") is not None else {}),
                     "quantity": quantity,
                     **pricing,
                     "is_discounted": is_discounted,

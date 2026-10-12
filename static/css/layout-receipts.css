@@ -1059,3 +1059,7 @@
   }
   .receipt-item-known.is-compact .receipt-known-price-label { grid-area: price-label; }
 }
+
+.receipt-variant-controls { display: grid; gap: .5rem; margin-bottom: .75rem; min-width: 0; }
+.receipt-variant-controls small { overflow-wrap: anywhere; }
+.receipt-variant-controls select, .receipt-variant-controls button { max-width: 100%; min-width: 0; white-space: normal; }

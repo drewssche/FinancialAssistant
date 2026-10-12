@@ -41,6 +41,7 @@
         shop_name: row.shop_name || "",
         name: row.name || "",
         ...window.App.measurements.snapshot(row),
+        variant_snapshot: row.variant_snapshot || null,
         measurement_touched: true,
         discount_mode: row.discount_mode || null,
         discount_value: row.discount_value ?? null,

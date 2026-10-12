@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from sqlalchemy import Boolean, ForeignKey, Numeric, String, Text
+from sqlalchemy import JSON, Boolean, ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -19,6 +19,7 @@ class PlanReceiptItem(Base):
     )
     category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id", ondelete="SET NULL"), nullable=True)
     shop_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    variant_snapshot: Mapped[dict | None] = mapped_column(JSON(none_as_null=True), nullable=True)
     sale_unit: Mapped[str | None] = mapped_column(String(8), nullable=True)
     package_quantity: Mapped[Decimal | None] = mapped_column(Numeric(14, 3), nullable=True)
     package_unit: Mapped[str | None] = mapped_column(String(8), nullable=True)

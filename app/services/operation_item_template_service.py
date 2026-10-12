@@ -692,6 +692,7 @@ class OperationItemTemplateService:
                 user_id=user_id,
                 template=template,
             )
+            self._resolve_receipt_variant(user_id=user_id, product_id=int(product.id), item=item)
             previous_categories = self._apply_receipt_product_metadata(
                 user_id=user_id,
                 product=product,
@@ -854,6 +855,7 @@ class OperationItemTemplateService:
                 user_id=user_id,
                 template=template,
             )
+            self._resolve_receipt_variant(user_id=user_id, product_id=int(product.id), item=item)
             previous_categories = self._apply_receipt_product_metadata(
                 user_id=user_id,
                 product=product,
@@ -897,6 +899,25 @@ class OperationItemTemplateService:
         else:
             self.db.flush()
         return resolved_items
+
+    def _resolve_receipt_variant(self, *, user_id: int, product_id: int, item: dict) -> None:
+        # Historical snapshots are copied verbatim. Only explicit new selections consult the registry.
+        variant_id = item.get("variant_id")
+        if variant_id is None:
+            return
+        from app.db.models.catalog_identity import CatalogVariant, CatalogVariantCode
+        from app.core.measurement import measurement_snapshot, normalize_measurement
+        variant = self.db.scalar(select(CatalogVariant).where(
+            CatalogVariant.id == variant_id, CatalogVariant.user_id == user_id,
+            CatalogVariant.product_id == product_id, CatalogVariant.is_archived.is_(False)))
+        if variant is None:
+            raise ValueError("Фасовка недоступна для выбранного товара. Выберите её заново.")
+        if normalize_measurement(item) != normalize_measurement(measurement_snapshot(variant)):
+            raise ValueError("Фасовка изменилась в каталоге. Выберите её заново перед сохранением.")
+        codes = self.db.scalars(select(CatalogVariantCode.code).where(
+            CatalogVariantCode.variant_id == variant.id, CatalogVariantCode.user_id == user_id
+        ).order_by(CatalogVariantCode.id)).all()
+        item["variant_snapshot"] = {"variant_id": int(variant.id), "name": variant.name, "codes": list(codes)}
 
     def _receipt_item_price_for_history(self, item: dict) -> Decimal | None:
         if bool(item.get("is_discounted")):

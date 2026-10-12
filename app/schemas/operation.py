@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
@@ -25,7 +25,16 @@ class MeasurementFields(BaseModel):
     package_unit: Literal["piece", "kg", "g", "l", "ml"] | None = None
 
 
+class ReceiptVariantSnapshot(BaseModel):
+    # An editable historical label, not a live catalog relation.
+    variant_id: int = Field(ge=1)
+    name: str = Field(min_length=1, max_length=160)
+    codes: list[Annotated[str, Field(min_length=8, max_length=14, pattern=r"^[0-9]+$")]] = Field(default_factory=list, max_length=30)
+
+
 class OperationReceiptItemIn(MeasurementFields):
+    variant_id: int | None = Field(default=None, ge=1)
+    variant_snapshot: ReceiptVariantSnapshot | None = None
     template_id: int | None = Field(default=None, ge=1)
     product_id: int | None = Field(default=None, ge=1)
     source_id: int | None = Field(default=None, ge=1)
@@ -45,6 +54,7 @@ class OperationReceiptItemIn(MeasurementFields):
 
 
 class OperationReceiptItemOut(MeasurementFields):
+    variant_snapshot: ReceiptVariantSnapshot | None = None
     id: int
     template_id: int | None
     product_id: int | None = None

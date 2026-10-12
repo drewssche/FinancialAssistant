@@ -180,6 +180,8 @@
         shop_name_inherited: Boolean(seed.shop_name_inherited),
         name: normalizeReceiptName(seed.name || ""),
         ...window.App.measurements.snapshot(seed),
+        variant_id: seed.variant_id || null,
+        variant_snapshot: seed.variant_snapshot ? structuredClone(seed.variant_snapshot) : null,
         measurement_touched: Boolean(seed.measurement_touched),
         quantity: hasQuantity ? asQty(seed.quantity) : 0,
         unit_price: hasUnitPrice ? (seed.discount_mode ? Number(seed.unit_price) : asMoney(seed.unit_price)) : 0,
@@ -201,6 +203,10 @@
       item.template_id = null;
       if (!options.preserveProduct) {
         item.product_id = null;
+        item.variant_id = null;
+        item.variant_snapshot = null;
+        item.variant_options = null;
+        item.variant_status = "";
         item.product_name = "";
         item.product_image_id = null;
         item.item_image_id = null;
@@ -325,6 +331,17 @@
       if (window.App.measurements.fields.includes(key)) {
         item[key] = value || null;
         item.measurement_touched = true;
+        item.variant_id = null;
+        item.variant_snapshot = null;
+        item.variant_status = "Размеры изменены вручную — связь с фасовкой снята";
+      } else if (key === "variant_id") {
+        if (value === "saved") return {item, hadName, hasName: hasReceiptRowName(item)};
+        const variant = (item.variant_options || []).find((v) => String(v.id) === value);
+        item.variant_id = variant?.id || null;
+        item.variant_snapshot = variant ? {variant_id: variant.id, name: variant.name, codes: [...(variant.codes || [])]} : null;
+        if (variant) Object.assign(item, window.App.measurements.snapshot(variant));
+        item.measurement_touched = true;
+        item.variant_status = variant ? "Фасовка выбрана. Проверьте количество и цену." : "Фасовка не связана с каталогом. Размеры можно указать вручную.";
       } else if (key === "quantity") {
         item.quantity = asQty(value);
       } else if (key === "unit_price") {
@@ -602,7 +619,7 @@
           <div class="receipt-item-row ${known ? "receipt-item-known" : ""} ${compact ? "is-compact" : ""} ${item.is_discounted ? "receipt-item-row-discounted" : ""} ${hasOpenPicker ? "has-open-popover" : ""}" data-receipt-mode="${mode}" data-receipt-item-id="${item.draft_id}">
             ${known ? `<div class="receipt-compact-heading">
               <div><button class="receipt-compact-name" type="button" ${item.product_id ? `data-open-receipt-product-card="${Number(item.product_id)}"` : `data-open-receipt-template-card="${Number(item.template_id)}"`}>${esc(item.product_name || item.name)}</button>
-              <small>${esc([brandName, item.shop_name || "Без источника", window.App.measurements.summary(item)].filter(Boolean).join(" · "))}</small></div>
+              <small>${esc([brandName, item.shop_name || "Без источника", item.variant_snapshot?.name, window.App.measurements.summary(item)].filter(Boolean).join(" · "))}</small></div>
               <button class="btn btn-secondary btn-xs" type="button" data-receipt-details-toggle="${item.draft_id}" aria-expanded="${!compact}">${compact ? "Изменить" : "Свернуть"}</button>
             </div>` : ""}
             <div class="receipt-item-identity">
@@ -640,8 +657,18 @@
                 <div class="receipt-category-picker app-popover ${categoryPickerOpen ? "" : "hidden"}"></div>
               </div>
             </div>
-            <details class="receipt-measurements">
+            <details class="receipt-measurements" ${item.variant_picker_open ? "open" : ""}>
               <summary>${esc(window.App.measurements.summary(item))}</summary>
+              <div class="receipt-variant-controls">
+                <small data-receipt-variant-snapshot>${esc(item.variant_snapshot ? `Фасовка: ${item.variant_snapshot.name}${item.variant_snapshot.codes?.length ? " · " + item.variant_snapshot.codes.join(", ") : ""}` : "Фасовка не выбрана")}</small>
+                ${item.product_id ? `<button class="btn btn-secondary btn-xs" type="button" data-receipt-variants-load ${item.variant_loading ? "disabled" : ""}>${item.variant_loading ? "Загрузка…" : item.variant_options ? "Обновить фасовки" : "Выбрать фасовку из каталога"}</button>` : ""}
+                ${item.variant_options || item.variant_snapshot ? `<label class="field"><span>Фасовка</span><select data-receipt-field="variant_id" aria-label="Фасовка товара">
+                  <option value="">Без связи — ручной ввод</option>
+                  ${item.variant_snapshot && !item.variant_id ? `<option value="saved" selected>Сохранено: ${esc(item.variant_snapshot.name)}</option>` : ""}
+                  ${(item.variant_options || []).map((v) => `<option value="${Number(v.id)}" ${Number(item.variant_id) === Number(v.id) ? "selected" : ""}>${esc(v.name)} · ${esc(window.App.measurements.summary(v))}${v.codes?.length ? " · " + esc(v.codes.join(", ")) : ""}</option>`).join("")}
+                </select></label>` : ""}
+                <small role="status">${esc(item.variant_status || "Размер и штрихкоды сохраняются в чеке на момент выбора.")}</small>
+              </div>
               <div class="form-grid">
                 <label class="field"><span>Единица продажи</span><select data-receipt-field="sale_unit" aria-label="Единица продажи">${window.App.measurements.options(item.sale_unit)}</select></label>
                 <label class="field"><span>В одной штуке / упаковке</span><input type="number" min="0.001" step="0.001" data-receipt-field="package_quantity" value="${esc(item.package_quantity || "")}" placeholder="Например, 900" aria-label="Содержимое упаковки" /></label>
@@ -921,6 +948,8 @@
           shop_name: normalizeReceiptName(item.shop_name || "") || null,
           name: normalizeReceiptName(item.name),
           ...window.App.measurements.snapshot(item),
+          variant_id: item.variant_id || null,
+          variant_snapshot: item.variant_snapshot || null,
           quantity: String(asQty(item.quantity || 0)),
           unit_price: core.formatAmount(item.unit_price || 0),
           is_discounted: Boolean(item.is_discounted),
@@ -949,6 +978,8 @@
           shop_name: normalizeReceiptName(item.shop_name || "") || null,
           name: normalizeReceiptName(item.name),
           ...window.App.measurements.snapshot(item),
+          variant_id: item.variant_id || null,
+          variant_snapshot: item.variant_snapshot || null,
           quantity: String(asQty(item.quantity || 0)),
           unit_price: core.formatAmount(item.unit_price || 0),
           is_discounted: Boolean(item.is_discounted),
