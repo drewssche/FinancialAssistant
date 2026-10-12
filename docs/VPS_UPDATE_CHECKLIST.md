@@ -1,6 +1,6 @@
 # VPS Update Checklist
 
-Reviewed: 2026-10-12 against `e5eaee1` and reliability release `c86c196`.
+Reviewed: 2026-10-12, including reliability release `c86c196`, search release `918f486` and the GitHub deployment workflow.
 
 Use this with [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md). Dated production facts and open issues are in [OPERATIONS_REVIEW_2026-10-12.md](OPERATIONS_REVIEW_2026-10-12.md); recheck them before deployment.
 
@@ -42,9 +42,13 @@ Mini App login via `initData` is unaffected by this change as long as the Mini A
 
 ## VPS Update Steps
 
+GitHub `origin/main` (`https://github.com/drewssche/FinancialAssistant`) is the source of production updates. Publish reviewed and tested changes there before updating the VPS. Do not deploy local Git bundles, copied source files or unpublished commits. Keep credentials, backups and local diagnostic artifacts outside Git.
+
+Develop on a feature branch, fetch the current `origin/main`, integrate changes without overwriting others, and run the required checks on the resulting release. Advance `main` without a force push (use the repository's PR process if required). Record the published commit SHA. On the server, use a clean `main` tracking `origin/main` and `git pull --ff-only origin main`; verify that `HEAD` equals the tested, published SHA before rebuilding. If it differs or the checkout is dirty/diverged, stop the release and reconcile it explicitly. A documentation-only pull does not require rebuilding running application images; record their code revision separately.
+
 1. Record the current commit, running image IDs/tags, dirty files, migration revision and restart counters. Confirm the intended checkout and release; do not overwrite local server changes or recreate unrelated projects.
 2. Before changing schema or financial data, confirm a recent encrypted off-host backup and a successful restore check in an isolated target. If Yandex is unavailable, explicitly choose another destination before the release. Preserve the current images needed for rollback.
-3. Fetch the reviewed release and inspect its migrations/config changes before checkout or rebuild. Run the appropriate local release/regression checks; PostgreSQL migration tests must use a disposable database, never production.
+3. Publish the checked release to GitHub, then pull `origin/main` on the VPS with `--ff-only` as described above. Verify the exact release SHA and inspect its migrations/config changes before rebuild. Run the appropriate local release/regression checks; PostgreSQL migration tests must use a disposable database, never production.
 4. Confirm production env still contains:
    - `APP_ENV=production`
    - valid `APP_SECRET_KEY`
@@ -97,7 +101,7 @@ Mini App login via `initData` is unaffected by this change as long as the Mini A
 
 ## Release c86c196 — 2026-10-12
 
-- Transferred by a local Git bundle; nothing was pushed to GitHub. VPS checkout is detached at the release commit (later documentation-only commits may advance the checkout without rebuilding the image).
+- Originally transferred by a local Git bundle without a GitHub push, with a detached VPS checkout. This records the historical release method; it is superseded by the mandatory GitHub-first workflow above.
 - Saved rollback tags: `financialassistant-app:before-reliability-20261012` and `financialassistant-bot:before-reliability-20261012`. Rebuilt one common image and recreated only app/bot with `--no-deps`; DB/Redis/poopbot were not recreated.
 - Readiness returned `ready`, database `ok`, revision `20260907_0045`; app and bot health are healthy. New containers have zero restarts on the short post-release check. The previous bot's 6420 restarts are historical and its incident log was retained before recreation.
 - Local non-browser suite: 626 passed, two PostgreSQL migration tests skipped. The final backup-diagnostic addition passed its focused suite; 49 focused checks also passed in the exact Linux release image, isolated from the network/production volumes. Request-budget guard passed. No migration or UI changes were included; a full browser suite was not run.

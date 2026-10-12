@@ -50,6 +50,10 @@ Production startup fails fast if critical config is unsafe or incomplete:
 - Historical plans and investigations live in `docs/archive/`.
 - Local temporary notes belong in ignored `docs/_local/`.
 
+## Production Updates
+- GitHub `origin/main` is the source of production releases: test and push changes first, then run `git pull --ff-only origin main` on the clean server checkout and verify the release commit before rebuilding.
+- Follow `docs/VPS_UPDATE_CHECKLIST.md` for backups, deployment and rollback checks. Do not deploy unpublished code using Git bundles or copied source files.
+
 ## Access Approval
 - New users are created with `pending` status.
 - Only `approved` users can access data sections.

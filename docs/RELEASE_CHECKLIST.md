@@ -4,6 +4,8 @@ Use this checklist before each release/deploy.
 
 Reviewed 2026-10-12. Combine application checks below with [VPS_UPDATE_CHECKLIST.md](VPS_UPDATE_CHECKLIST.md); a passed local suite does not establish backup recoverability or worker progress on the server.
 
+GitHub `origin/main` is the production source of truth. After checks, publish the release to GitHub; only then update the clean VPS `main` with `git pull --ff-only origin main` and verify the published SHA before rebuilding. Do not transfer unpublished code by Git bundle or file copy. See the VPS checklist for the full sequence and rollback checks.
+
 ## One-Command Run
 Preferred:
 
