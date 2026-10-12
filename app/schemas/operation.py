@@ -19,7 +19,13 @@ class CatalogImageFraming(BaseModel):
     offset_y: float = Field(default=0, ge=-1, le=1, allow_inf_nan=False)
 
 
-class OperationReceiptItemIn(BaseModel):
+class MeasurementFields(BaseModel):
+    sale_unit: Literal["piece", "pack", "kg", "g", "l", "ml"] | None = None
+    package_quantity: Decimal | None = Field(default=None, gt=0, max_digits=14, decimal_places=3)
+    package_unit: Literal["piece", "kg", "g", "l", "ml"] | None = None
+
+
+class OperationReceiptItemIn(MeasurementFields):
     template_id: int | None = Field(default=None, ge=1)
     product_id: int | None = Field(default=None, ge=1)
     source_id: int | None = Field(default=None, ge=1)
@@ -36,7 +42,7 @@ class OperationReceiptItemIn(BaseModel):
     note: str | None = Field(default=None, max_length=300)
 
 
-class OperationReceiptItemOut(BaseModel):
+class OperationReceiptItemOut(MeasurementFields):
     id: int
     template_id: int | None
     product_id: int | None = None
@@ -277,7 +283,7 @@ class OperationItemTemplateListOut(BaseModel):
     page_size: int = Field(ge=1)
 
 
-class CatalogProductCreate(BaseModel):
+class CatalogProductCreate(MeasurementFields):
     name: str = Field(min_length=1, max_length=160)
     brand_id: int | None = Field(default=None, ge=1)
     category_id: int | None = Field(default=None, ge=1)
@@ -290,13 +296,13 @@ class CatalogProductSourceCreate(BaseModel):
     latest_price_date: date | None = None
 
 
-class CatalogProductUpdate(BaseModel):
+class CatalogProductUpdate(MeasurementFields):
     name: str | None = Field(default=None, min_length=1, max_length=160)
     brand_id: int | None = Field(default=None, ge=1)
     category_id: int | None = Field(default=None, ge=1)
 
 
-class CatalogProductOut(BaseModel):
+class CatalogProductOut(MeasurementFields):
     id: int
     name: str
     image_id: int | None = None

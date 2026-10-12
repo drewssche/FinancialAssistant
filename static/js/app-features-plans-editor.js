@@ -40,6 +40,8 @@
         brand_is_archived: Boolean(row.brand_is_archived),
         shop_name: row.shop_name || "",
         name: row.name || "",
+        ...window.App.measurements.snapshot(row),
+        measurement_touched: true,
         quantity: row.quantity || 0,
         unit_price: row.unit_price || 0,
         is_discounted: Boolean(row.is_discounted),

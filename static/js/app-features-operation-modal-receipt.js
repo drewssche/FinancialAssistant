@@ -178,6 +178,8 @@
         shop_name: normalizeReceiptName(seed.shop_name || ""),
         shop_name_inherited: Boolean(seed.shop_name_inherited),
         name: normalizeReceiptName(seed.name || ""),
+        ...window.App.measurements.snapshot(seed),
+        measurement_touched: Boolean(seed.measurement_touched),
         quantity: hasQuantity ? asQty(seed.quantity) : 0,
         unit_price: hasUnitPrice ? asMoney(seed.unit_price) : 0,
         price_touched: seed.price_touched === undefined ? hasUnitPrice : Boolean(seed.price_touched),
@@ -317,7 +319,10 @@
         return null;
       }
       const hadName = hasReceiptRowName(item);
-      if (key === "quantity") {
+      if (window.App.measurements.fields.includes(key)) {
+        item[key] = value || null;
+        item.measurement_touched = true;
+      } else if (key === "quantity") {
         item.quantity = asQty(value);
       } else if (key === "unit_price") {
         item.unit_price = asMoney(value);
@@ -616,6 +621,14 @@
                 <div class="receipt-category-picker app-popover ${categoryPickerOpen ? "" : "hidden"}"></div>
               </div>
             </div>
+            <details class="receipt-measurements">
+              <summary>${esc(window.App.measurements.summary(item))}</summary>
+              <div class="form-grid">
+                <label class="field"><span>Единица продажи</span><select data-receipt-field="sale_unit" aria-label="Единица продажи">${window.App.measurements.options(item.sale_unit)}</select></label>
+                <label class="field"><span>В одной штуке / упаковке</span><input type="number" min="0.001" step="0.001" data-receipt-field="package_quantity" value="${esc(item.package_quantity || "")}" placeholder="Например, 900" aria-label="Содержимое упаковки" /></label>
+                <label class="field"><span>Единица содержимого</span><select data-receipt-field="package_unit" aria-label="Единица содержимого">${window.App.measurements.options(item.package_unit, true)}</select></label>
+              </div>
+            </details>
             <div class="receipt-item-money">
               <div class="receipt-price-cell ${item.is_discounted ? "receipt-price-cell-discounted" : ""}">
                 <div class="receipt-price-field">
@@ -648,7 +661,7 @@
       const ctx = getReceiptContext(mode);
       ctx.listNode?.querySelectorAll("[data-receipt-item-id]").forEach((row) => {
         const draftId = Number(row.dataset.receiptItemId || 0);
-        for (const field of ["quantity", "unit_price", "regular_unit_price"]) {
+        for (const field of ["quantity", "unit_price", "regular_unit_price", ...window.App.measurements.fields]) {
           const input = row.querySelector(`[data-receipt-field="${field}"]`);
           if (input) {
             updateReceiptItemField(draftId, field, input.value, mode);
@@ -876,6 +889,7 @@
           category_touched: Boolean(item.category_touched),
           shop_name: normalizeReceiptName(item.shop_name || "") || null,
           name: normalizeReceiptName(item.name),
+          ...window.App.measurements.snapshot(item),
           quantity: String(asQty(item.quantity || 0)),
           unit_price: core.formatAmount(item.unit_price || 0),
           is_discounted: Boolean(item.is_discounted),
@@ -902,6 +916,7 @@
           category_touched: Boolean(item.category_touched),
           shop_name: normalizeReceiptName(item.shop_name || "") || null,
           name: normalizeReceiptName(item.name),
+          ...window.App.measurements.snapshot(item),
           quantity: String(asQty(item.quantity || 0)),
           unit_price: core.formatAmount(item.unit_price || 0),
           is_discounted: Boolean(item.is_discounted),

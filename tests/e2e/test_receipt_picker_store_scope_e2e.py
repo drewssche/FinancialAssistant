@@ -18,13 +18,13 @@ expect = sync_api.expect
 
 
 def _login(page):
+    page.wait_for_function("() => typeof window.App?.getRuntimeModule === 'function' && !!window.App.getRuntimeModule('session')")
     page.evaluate("() => window.App.getRuntimeModule('session')?.refreshTelegramLoginUi?.()")
-    try:
-        page.locator("#telegramLoginBtn").wait_for(state="visible", timeout=1200)
-        page.click("#telegramLoginBtn")
-        page.wait_for_selector("#appShell:not(.hidden)")
-    except Exception:
-        page.wait_for_selector("#appShell:not(.hidden)")
+    page.wait_for_function("""() => !document.getElementById('appShell').classList.contains('hidden')
+        || document.getElementById('telegramLoginBtn')?.offsetParent !== null""")
+    if page.locator('#telegramLoginBtn').is_visible():
+        page.locator('#telegramLoginBtn').click()
+    page.wait_for_selector('#appShell:not(.hidden)')
 
 
 def _ensure_categories_loaded(page):
@@ -40,7 +40,7 @@ def static_server_url() -> str:
         port = s.getsockname()[1]
 
     process = subprocess.Popen(
-        [sys.executable, "-m", "http.server", str(port), "--bind", "127.0.0.1"],
+        [sys.executable, "-m", "tests.e2e.static_server", str(port), "--bind", "127.0.0.1"],
         cwd=str(repo_root),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -306,6 +306,7 @@ def page_with_receipt_api_mock():
         except Exception as exc:  # pragma: no cover
             pytest.skip(f"Chromium is not available for Playwright: {exc}")
         page = browser.new_page()
+        page.route("https://telegram.org/js/telegram-web-app.js", lambda route: route.fulfill(content_type="application/javascript", body="/* Telegram is mocked below. */"))
         page.add_init_script(
             """
             window.Telegram = {
@@ -2334,3 +2335,83 @@ def test_receipt_keyboard_layout_search_and_safe_highlight(static_server_url, pa
     }""")
     assert result == {'images': 0, 'marks': 1, 'text': '<img src=x onerror=alert(1)> & МОЛОКО', 'matched': 'МОЛОКО'}
     assert errors == []
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width', [390, 1440])
+def test_measurement_defaults_manual_edit_and_saved_snapshot(static_server_url, page_with_receipt_api_mock, width):
+    page = page_with_receipt_api_mock
+    page.set_viewport_size({'width': width, 'height': 1100})
+    errors = []
+    page.on('pageerror', lambda error: errors.append(str(error)))
+    product = {'id': 401, 'name': 'Крупа', 'category_id': 101, 'sale_unit': 'pack',
+               'package_quantity': '900', 'package_unit': 'g', 'offers': []}
+    page.route('**/api/v1/operations/catalog-products?**', lambda route: route.fulfill(
+        json={'items': [product], 'total': 1, 'page': 1, 'page_size': 100}))
+    page.goto(f'{static_server_url}/static/index.html')
+    page.evaluate("() => { window.Telegram = {WebApp: {initData: 'mock-init-data', ready() {}, expand() {}}}; }")
+    _login(page)
+    _ensure_categories_loaded(page)
+    page.click('#addOperationCta')
+    page.locator('#createOperationModeSwitch button[data-operation-mode="receipt"]').click()
+    row = page.locator('#receiptItemsList .receipt-item-row').first
+    # Use the actual product picker to apply the catalog defaults.
+    row.locator('[data-receipt-field="name"]').fill('Крупа')
+    page.locator('[data-receipt-product-id="401"]').first.click()
+    row.locator('.receipt-measurements summary').click()
+    expect(row.locator('[data-receipt-field="sale_unit"]')).to_have_value('pack')
+    expect(row.locator('[data-receipt-field="package_quantity"]')).to_have_value('900')
+    row.locator('[data-receipt-field="package_quantity"]').fill('800')
+    row.locator('[data-receipt-field="quantity"]').fill('2')
+    row.locator('[data-receipt-field="unit_price"]').fill('3.25')
+    payload = page.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
+    assert payload[0]['sale_unit'] == 'pack'
+    assert payload[0]['package_quantity'] == '800'
+    assert payload[0]['package_unit'] == 'g'
+    box = row.locator('.receipt-measurements').bounding_box()
+    assert box['width'] <= width
+    for control in row.locator('.receipt-measurements input, .receipt-measurements select').all():
+        bounds = control.bounding_box()
+        assert bounds['x'] >= box['x'] - 1
+        assert bounds['x'] + bounds['width'] <= box['x'] + box['width'] + 1
+    page.screenshot(path=f'/tmp/fa-units-receipt-{width}.png', full_page=True)
+    # Reopening a saved purchase must use its snapshot, not the catalog's 900 g.
+    page.evaluate('''async (receipt) => {
+      await window.App.getRuntimeModule('operation-modal').openEditModal({
+        id: 777, kind: 'expense', amount: '6.50', original_amount: '6.50', currency: 'BYN',
+        operation_date: '2026-10-12', receipt_items: [receipt]
+      });
+    }''', payload[0])
+    saved = page.locator('#editReceiptItemsList .receipt-item-row').first
+    saved.locator('.receipt-measurements summary').click()
+    expect(saved.locator('[data-receipt-field="package_quantity"]')).to_have_value('800')
+    assert errors == []
+
+
+@pytest.mark.e2e
+def test_catalog_measurements_save_optional_defaults(static_server_url, page_with_receipt_api_mock):
+    page = page_with_receipt_api_mock
+    page.set_viewport_size({'width': 390, 'height': 1000})
+    saved = []
+    def save_product(route, request):
+        if request.method == 'POST':
+            data = request.post_data_json
+            saved.append(data)
+            route.fulfill(json={**data, 'id': 401, 'offers': []})
+        else:
+            route.fallback()
+    page.route('**/api/v1/operations/catalog-products', save_product)
+    page.goto(f'{static_server_url}/static/index.html')
+    page.evaluate("() => { window.Telegram = {WebApp: {initData: 'mock-init-data', ready() {}, expand() {}}}; }")
+    _login(page)
+    _ensure_categories_loaded(page)
+    page.evaluate("window.App.getRuntimeModule('catalog-products').openEditor()")
+    page.locator('#catalogProductName').fill('Молоко')
+    page.locator('#catalogProductModal details summary').click()
+    page.locator('#catalogProductSaleUnit').select_option('piece')
+    page.locator('#catalogProductPackageQuantity').fill('0.9')
+    page.locator('#catalogProductPackageUnit').select_option('l')
+    page.locator('#submitCatalogProductBtn').click()
+    page.wait_for_function("document.getElementById('catalogProductModal').classList.contains('hidden')")
+    assert saved == [{'name': 'Молоко', 'brand_id': None, 'category_id': None,
+                      'sale_unit': 'piece', 'package_quantity': '0.9', 'package_unit': 'l'}]

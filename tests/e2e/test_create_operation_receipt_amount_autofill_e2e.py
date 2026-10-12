@@ -22,7 +22,7 @@ def static_server_url() -> str:
         port = s.getsockname()[1]
 
     process = subprocess.Popen(
-        [sys.executable, "-m", "http.server", str(port), "--bind", "127.0.0.1"],
+        [sys.executable, "-m", "tests.e2e.static_server", str(port), "--bind", "127.0.0.1"],
         cwd=str(repo_root),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -164,6 +164,9 @@ def test_create_operation_allows_receipt_only_amount(static_server_url: str):
                 {
                     "category_id": None,
                     "category_touched": False,
+                    "sale_unit": None,
+                    "package_quantity": None,
+                    "package_unit": None,
                     "shop_name": "Соседи",
                     "name": "Хлеб",
                     "quantity": "2",
@@ -306,6 +309,9 @@ def test_create_operation_receipt_discount_math_and_type_payload(static_server_u
                 {
                     "category_id": None,
                     "category_touched": False,
+                    "sale_unit": None,
+                    "package_quantity": None,
+                    "package_unit": None,
                     "shop_name": "Соседи",
                     "name": "Кофе",
                     "quantity": "1",
@@ -438,6 +444,9 @@ def test_common_operation_amount_can_convert_to_single_discount_receipt(static_s
                 {
                     "category_id": None,
                     "category_touched": False,
+                    "sale_unit": None,
+                    "package_quantity": None,
+                    "package_unit": None,
                     "shop_name": "Green",
                     "name": "Капучино",
                     "quantity": "1",

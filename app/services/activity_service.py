@@ -5,6 +5,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.measurement import MEASUREMENT_FIELDS, measurement_snapshot
 from app.db.models import (
     ActivityEvent,
     CatalogProduct,
@@ -577,6 +578,7 @@ class ActivityService:
             "category_id": get("category_id"),
             "shop_name": str(get("shop_name") or ""),
             "name": str(get("name") or "Без названия"),
+            **measurement_snapshot(row, json_safe=True),
             "quantity": str(get("quantity") or "0"),
             "unit_price": str(get("unit_price") or "0"),
             "line_total": str(get("line_total") or "0"),
@@ -592,6 +594,7 @@ class ActivityService:
             payload.get("category_id"),
             payload.get("shop_name"),
             payload.get("name"),
+            *(payload.get(key) for key in MEASUREMENT_FIELDS),
             payload.get("quantity"),
             payload.get("unit_price"),
             payload.get("line_total"),

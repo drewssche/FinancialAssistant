@@ -1,6 +1,6 @@
 # Architecture
 
-Reviewed against `e5eaee1` and the deployed reliability update `c86c196` on 2026-10-12. This document describes implemented behavior. Proposed receipt, catalog and analytics changes remain in [the product plan](RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md); dated production findings are in [the operations review](OPERATIONS_REVIEW_2026-10-12.md).
+Reviewed on 2026-10-12, including reliability, keyboard search and optional purchase measurements. Release status is recorded in the roadmap. This document describes implemented behavior. Proposed receipt, catalog and analytics changes remain in [the product plan](RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md); dated production findings are in [the operations review](OPERATIONS_REVIEW_2026-10-12.md).
 
 ## Runtime and boundaries
 
@@ -63,6 +63,9 @@ flowchart LR
 
 - `catalog_products` holds the common product; `operation_item_templates` represents reusable source offers. Brands, sources, categories and images have their own records.
 - `operation_receipt_items` stores purchase lines, including quantity, paid unit price, optional regular unit price, discount metadata and calculated line total. The current calculation rounds the unit price to money precision, then calculates `quantity * unit_price`; independent authoritative line totals are not implemented yet.
+- Optional `sale_unit`, `package_quantity` and `package_unit` live on products (defaults) and independently on operation/plan receipt rows (snapshots). Units are piece/pack/kg/g/l/ml; package content uses piece/kg/g/l/ml, with a positive quantity up to three decimal places and a sale unit of piece/pack. Catalog edits do not propagate these fields to past purchases or plans. Plan confirmation, operation editing, deletion and restoration preserve the snapshot. Missing legacy data remains null; the server does not infer it from a product name or today's catalog defaults.
+- Receipt/product forms expose measurements in an optional disclosure. Selecting a product can seed a new untouched receipt row; loading a saved row preserves its own values, including unknown units. A stale client replacing a measured receipt without measurement fields is rejected instead of erasing them. Products with different measurement defaults cannot be merged until explicit package variants are implemented. Separation copies defaults to the new card and preserves purchase snapshots.
+- Migration `20261012_0046` adds nine nullable columns without a data backfill. It does not change money calculations or existing price-history semantics. Normalized price/quantity analytics and package-variant comparison are subsequent steps; do not treat current aggregate quantity as a sum of comparable mass/volume.
 - `CatalogProductService` and `OperationItemTemplateService` own linkage, merging, separation and metadata synchronization. Category/brand changes can propagate to linked records under existing rules; not all historical product metadata is immutable.
 - `operation_item_prices` is the existing price store. Receipt synchronization suppresses a price already present among up to 500 recent records; it is not a complete observation timeline. A discounted line contributes its known regular price, or no price if regular price is unknown. Paid discounted prices remain in receipt snapshots.
 - Consequently, a return to a previous price can be omitted from this history. Do not document a guaranteed append on every purchase or infer complete price changes from these records.

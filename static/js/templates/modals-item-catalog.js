@@ -134,6 +134,15 @@
             <span>Название товара</span>
             <input id="catalogProductName" type="text" maxlength="160" placeholder="Например, Сырок с печеньем клубника 40 г" required />
           </label>
+          <details>
+            <summary>Единицы и фасовка · необязательно</summary>
+            <div class="form-grid">
+              <label class="field"><span>Единица продажи</span><select id="catalogProductSaleUnit"><option value="">Не указана</option><option value="piece">шт.</option><option value="pack">упак.</option><option value="kg">кг</option><option value="g">г</option><option value="l">л</option><option value="ml">мл</option></select></label>
+              <label class="field"><span>В одной штуке / упаковке</span><input id="catalogProductPackageQuantity" type="number" min="0.001" step="0.001" placeholder="Например, 900" /></label>
+              <label class="field"><span>Единица содержимого</span><select id="catalogProductPackageUnit"><option value="">Не указана</option><option value="piece">шт.</option><option value="kg">кг</option><option value="g">г</option><option value="l">л</option><option value="ml">мл</option></select></label>
+            </div>
+            <small class="muted-small">Например: 2 упаковки по 900 г или 0,742 кг весового товара. Старые покупки не изменятся.</small>
+          </details>
           <div class="form-grid catalog-product-meta-grid">
             <div id="catalogProductBrandField" class="field create-category-field">
               <label for="catalogProductBrandSearch">Бренд</label>

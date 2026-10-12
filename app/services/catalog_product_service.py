@@ -7,6 +7,7 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from sqlalchemy import or_, select
 
+from app.core.measurement import MEASUREMENT_FIELDS, measurement_snapshot, normalize_measurement
 from app.core.cache import (
     invalidate_dashboard_analytics_cache,
     invalidate_item_templates_cache,
@@ -23,6 +24,7 @@ from app.services.activity_service import ActivityService
 
 class CatalogProductService:
     ACTIVITY_FIELDS = [
+        *MEASUREMENT_FIELDS,
         "name",
         "brand_id",
         "category_id",
@@ -30,6 +32,9 @@ class CatalogProductService:
         "is_archived",
     ]
     ACTIVITY_LABELS = {
+        "sale_unit": "Единица продажи",
+        "package_quantity": "Содержимое упаковки",
+        "package_unit": "Единица содержимого",
         "name": "Название",
         "brand_id": "Бренд",
         "category_id": "Категория",
@@ -140,12 +145,21 @@ class CatalogProductService:
         name: str,
         brand_id: int | None,
         category_id: int | None,
+        sale_unit: str | None = None,
+        package_quantity: Decimal | None = None,
+        package_unit: str | None = None,
     ) -> dict:
+        measurement = normalize_measurement({
+            "sale_unit": sale_unit,
+            "package_quantity": package_quantity,
+            "package_unit": package_unit,
+        })
         product = self.create_for_offer(
             user_id=user_id,
             name=name,
             brand_id=brand_id,
             category_id=category_id,
+            measurement=measurement,
         )
         self.db.commit()
         self._invalidate(user_id)
@@ -160,6 +174,7 @@ class CatalogProductService:
         category_id: int | None,
         image_id: int | None = None,
         record_activity: bool = True,
+        measurement: dict | None = None,
     ) -> CatalogProduct:
         normalized_name, name_ci = self._normalize_name(name)
         product = self.repo.create(
@@ -173,6 +188,8 @@ class CatalogProductService:
             ),
             image_id=image_id,
         )
+        for key, value in normalize_measurement(measurement or {}).items():
+            setattr(product, key, value)
         if record_activity:
             self.activity.record_created(
                 user_id=user_id,
@@ -303,7 +320,13 @@ class CatalogProductService:
         product = self.repo.get_by_id(user_id=user_id, product_id=product_id)
         if product is None:
             raise LookupError("Catalog product not found")
+        measurement = normalize_measurement({
+            **measurement_snapshot(product),
+            **{key: updates[key] for key in MEASUREMENT_FIELDS if key in updates},
+        })
         before = ActivityService.snapshot(product, self.ACTIVITY_FIELDS)
+        for key, value in measurement.items():
+            setattr(product, key, value)
         offers = self.repo.list_offers(
             user_id=user_id,
             product_id=product_id,
@@ -395,6 +418,8 @@ class CatalogProductService:
         )
         if target is None or len(sources) != len(source_ids):
             raise LookupError("One or more catalog products were not found")
+        if any(measurement_snapshot(source) != measurement_snapshot(target) for source in sources):
+            raise ValueError("Нельзя объединять товары с разными единицами или фасовкой; сохраните их отдельными карточками")
         source_by_id = {int(product.id): product for product in sources}
         ordered_sources = [source_by_id[product_id] for product_id in source_ids]
         if target.brand_id is None:
@@ -508,6 +533,7 @@ class CatalogProductService:
             brand_id=brand_id,
             category_id=category_id,
             image_id=source.image_id,
+            measurement=measurement_snapshot(source),
         )
         if not self.repo.move_offer(
             user_id=user_id,
@@ -596,7 +622,8 @@ class CatalogProductService:
                     if not product_sources.isdisjoint(cluster_sources[index]):
                         continue
                     if not all(
-                        self._compatible_dimension(item.brand_id, product.brand_id)
+                        measurement_snapshot(item) == measurement_snapshot(product)
+                        and self._compatible_dimension(item.brand_id, product.brand_id)
                         and self._compatible_dimension(
                             item.category_id,
                             product.category_id,
@@ -725,6 +752,7 @@ class CatalogProductService:
             result.append(
                 {
                     "id": int(product.id),
+                    **measurement_snapshot(product),
                     "name": product.name,
                     "image_id": product.image_id,
                     "brand_id": product.brand_id,

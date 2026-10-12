@@ -471,6 +471,9 @@
     window.App.getRuntimeModule?.("activity")?.configureActivityButton?.(el.catalogProductActivityBtn, product ? "catalog_product" : null, product?.id);
     if (el.catalogProductModalTitle) el.catalogProductModalTitle.textContent = product ? "Редактировать товар" : "Новый товар";
     if (el.catalogProductName) el.catalogProductName.value = product?.name || "";
+    el.catalogProductSaleUnit.value = product?.sale_unit || "";
+    el.catalogProductPackageQuantity.value = product?.package_quantity || "";
+    el.catalogProductPackageUnit.value = product?.package_unit || "";
     for (const kind of ["Brand", "Category"]) {
       metaPicker(kind).value.value = product?.[`${kind.toLowerCase()}_id`] || "";
       closeMetaPicker(kind);
@@ -545,6 +548,9 @@
       name,
       brand_id: asId(el.catalogProductBrand?.value),
       category_id: asId(el.catalogProductCategory?.value),
+      sale_unit: el.catalogProductSaleUnit.value || null,
+      package_quantity: el.catalogProductPackageQuantity.value || null,
+      package_unit: el.catalogProductPackageUnit.value || null,
     };
     const saved = await core.requestJson(id ? `/api/v1/operations/catalog-products/${id}` : "/api/v1/operations/catalog-products", {
       method: id ? "PATCH" : "POST",

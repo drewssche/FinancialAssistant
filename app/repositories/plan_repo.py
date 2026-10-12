@@ -4,6 +4,7 @@ from decimal import Decimal
 from sqlalchemy import and_, delete, desc, or_, select, update
 from sqlalchemy.orm import Session, aliased
 
+from app.core.measurement import normalize_measurement
 from app.repositories.search import search_any, search_order
 
 from app.db.models import (
@@ -141,6 +142,7 @@ class PlanRepository:
                 template_id=item.get("template_id"),
                 category_id=item.get("category_id"),
                 shop_name=item.get("shop_name"),
+                **normalize_measurement(item),
                 name=item["name"],
                 quantity=item["quantity"],
                 unit_price=item["unit_price"],

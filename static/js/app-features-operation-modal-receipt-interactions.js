@@ -88,6 +88,9 @@
         ? (state.receiptProductHints || []).find((item) => Number(item.id) === productId) || template
         : null;
       const offer = product ? (template.selected_offer || resolveOffer(product, rowItem)) : template;
+      if (!rowItem.measurement_touched) {
+        Object.assign(rowItem, window.App.measurements.snapshot(product || template));
+      }
       rowItem.product_id = productId;
       rowItem.product_name = normalizeReceiptName(template.product_name || product?.name || template.name || "");
       rowItem.product_image_id = template.product_image_id || product?.image_id || null;
@@ -141,6 +144,10 @@
         return;
       }
       if (field === "unit_price") updated.item.price_touched = true;
+      if (window.App.measurements.fields.includes(field)) {
+        const summary = row.querySelector(".receipt-measurements summary");
+        if (summary) summary.textContent = window.App.measurements.summary(updated.item);
+      }
       if (field === "name") {
         event.target.title = updated.item.name || "Позиция";
       } else if (field === "shop_name") {

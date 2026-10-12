@@ -27,6 +27,9 @@ class OperationReceiptItem(Base):
         index=True,
     )
     shop_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sale_unit: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    package_quantity: Mapped[Decimal | None] = mapped_column(Numeric(14, 3), nullable=True)
+    package_unit: Mapped[str | None] = mapped_column(String(8), nullable=True)
     name: Mapped[str] = mapped_column(Text)
     quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3))
     unit_price: Mapped[Decimal] = mapped_column(Numeric(14, 2))

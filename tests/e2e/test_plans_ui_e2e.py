@@ -20,6 +20,7 @@ def _json_response(route, payload: dict | list, status: int = 200):
 
 
 def _set_mock_telegram(page):
+    page.route("https://telegram.org/js/telegram-web-app.js", lambda route: route.fulfill(content_type="application/javascript", body="/* Telegram is mocked below. */"))
     page.add_init_script(
         """
         window.Telegram = {
@@ -57,7 +58,7 @@ def static_server_url() -> str:
         port = s.getsockname()[1]
 
     process = subprocess.Popen(
-        [sys.executable, "-m", "http.server", str(port), "--bind", "127.0.0.1"],
+        [sys.executable, "-m", "tests.e2e.static_server", str(port), "--bind", "127.0.0.1"],
         cwd=str(repo_root),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -569,14 +570,14 @@ def page_with_plans_api_mock(page):
 
 def _login_and_open_plans(page, static_server_url: str):
     page.goto(f"{static_server_url}/static/index.html")
+    page.wait_for_function("() => typeof window.App?.getRuntimeModule === 'function' && !!window.App.getRuntimeModule('session')")
     _restore_mock_telegram(page)
     page.evaluate("() => window.App.getRuntimeModule('session')?.refreshTelegramLoginUi?.()")
-    try:
-        page.locator("#telegramLoginBtn").wait_for(state="visible", timeout=1200)
-        page.click("#telegramLoginBtn")
-        page.wait_for_selector("#appShell:not(.hidden)")
-    except Exception:
-        page.wait_for_selector("#appShell:not(.hidden)")
+    page.wait_for_function("""() => !document.getElementById('appShell').classList.contains('hidden')
+        || document.getElementById('telegramLoginBtn')?.offsetParent !== null""")
+    if page.locator('#telegramLoginBtn').is_visible():
+        page.locator('#telegramLoginBtn').click()
+    page.wait_for_selector('#appShell:not(.hidden)')
     page.click('button[data-section="plans"]')
     page.wait_for_selector("#plansSection:not(.hidden)")
     page.wait_for_selector("#addPlanCta:not(.hidden)")
@@ -584,14 +585,14 @@ def _login_and_open_plans(page, static_server_url: str):
 
 def _login_and_open_dashboard(page, static_server_url: str):
     page.goto(f"{static_server_url}/static/index.html")
+    page.wait_for_function("() => typeof window.App?.getRuntimeModule === 'function' && !!window.App.getRuntimeModule('session')")
     _restore_mock_telegram(page)
     page.evaluate("() => window.App.getRuntimeModule('session')?.refreshTelegramLoginUi?.()")
-    try:
-      page.locator("#telegramLoginBtn").wait_for(state="visible", timeout=1200)
-      page.click("#telegramLoginBtn")
-      page.wait_for_selector("#appShell:not(.hidden)")
-    except Exception:
-      page.wait_for_selector("#appShell:not(.hidden)")
+    page.wait_for_function("""() => !document.getElementById('appShell').classList.contains('hidden')
+        || document.getElementById('telegramLoginBtn')?.offsetParent !== null""")
+    if page.locator('#telegramLoginBtn').is_visible():
+        page.locator('#telegramLoginBtn').click()
+    page.wait_for_selector('#appShell:not(.hidden)')
     page.wait_for_selector("#dashboardSection:not(.hidden)")
     page.wait_for_selector("#dashboardPlansPanel:not(.hidden)")
 

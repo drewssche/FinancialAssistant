@@ -108,3 +108,10 @@ Develop on a feature branch, fetch the current `origin/main`, integrate changes 
 - Manual backup run: creation succeeded, upload returned `http_410`, retention did not run, one encrypted archive remained. Its decryption and PostgreSQL archive listing were checked successfully. The daily timer stays active; a failed upload is still reported as failure.
 - One-off off-host copy was restored in a separate temporary PostgreSQL 16 instance with no production volumes/network; the test container was removed. Regular remote retention remains 30 days.
 - Remaining reliability work: supported Sber endpoint, automatic alert delivery/restart-burst monitoring, architecture graph rebuild. Product features remain in the staged plan.
+
+## Measurement migration (`20261012_0046`)
+
+- Adds three nullable fields to each of products, purchase rows and plan rows. Old values remain null; there is no inference, financial recalculation or destructive upgrade.
+- Before rollout, restore a recent encrypted off-host copy in an isolated PostgreSQL 16 and apply the migration there; compare record counts and monetary totals before/after. Test the exact release image separately from production.
+- Save app/bot rollback images before replacing them. Do not automatically downgrade this migration: downgrade drops the new snapshots. Older images can read the expanded schema, but do not preserve measurements when replacing receipt rows. After measurements have been saved, use a forward fix or a compatibility-patched rollback rather than allowing the old editor to overwrite those rows.
+- Update from GitHub first. Confirm `/ready` reports `20261012_0046`, serve the new JS/CSS assets, and check app/bot health. Preserve PostgreSQL, Redis and poopbot containers/volumes.

@@ -996,3 +996,14 @@
     left: 0;
   }
 }
+
+.receipt-measurements {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  font-size: 0.8125rem;
+}
+.receipt-measurements summary { cursor: pointer; }
+.receipt-measurements .form-grid { margin-top: var(--space-2); }
+@media (max-width: 1180px) {
+  .receipt-measurements { grid-row: 3; }
+}

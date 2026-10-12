@@ -59,7 +59,7 @@ router = APIRouter(prefix="/operations", tags=["operations"])
 def _dump_receipt_item(item) -> dict:
     data = item.model_dump()
     fields_set = getattr(item, "model_fields_set", set())
-    for optional_link in ("template_id", "product_id", "brand_id", "source_id"):
+    for optional_link in ("template_id", "product_id", "brand_id", "source_id", "sale_unit", "package_quantity", "package_unit"):
         if optional_link not in fields_set:
             data.pop(optional_link, None)
     return data
@@ -333,6 +333,9 @@ def create_catalog_product(
             name=payload.name,
             brand_id=payload.brand_id,
             category_id=payload.category_id,
+            sale_unit=payload.sale_unit,
+            package_quantity=payload.package_quantity,
+            package_unit=payload.package_unit,
         )
     except ValueError as exc:
         raise HTTPException(
