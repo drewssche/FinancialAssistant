@@ -165,6 +165,26 @@
           </div>
         </form>
         <section data-product-panel="product">
+          <details id="catalogReplacementsDetails" class="hidden">
+            <summary>Подтверждённые замены фасовки</summary>
+            <p class="muted-small">Подтвердите только замену упаковки, а не два размера, которые продаются одновременно. Исторические чеки и каталог не изменяются.</p>
+            <button type="button" class="btn btn-secondary btn-xs" id="catalogReplacementsRefresh">Обновить данные</button>
+            <p id="catalogReplacementsStatus" role="status" class="muted-small"></p>
+            <div id="catalogReplacementsBody" class="hidden">
+              <div id="catalogReplacementsList" class="catalog-replacements-list"></div>
+              <form id="catalogReplacementForm" class="category-modal-form">
+                <div class="form-grid">
+                  <label class="field"><span>Старая фасовка</span><select id="catalogReplacementOld" required></select></label>
+                  <label class="field"><span>Новая фасовка</span><select id="catalogReplacementNew" required></select></label>
+                </div>
+                <label class="field"><span>Дата замеченной замены</span><input type="date" id="catalogReplacementDate" required /></label>
+                <label class="field"><span>Примечание · необязательно</span><input id="catalogReplacementNote" maxlength="300" /></label>
+                <label><input id="catalogReplacementConfirmed" type="checkbox" required /> Подтверждаю, что новая фасовка заменила старую</label>
+                <small class="muted-small">Для цен используются последний чек старой фасовки до этой даты включительно и первый чек новой после неё включительно, отдельно по магазину и валюте.</small>
+                <button type="submit" class="btn btn-secondary">Подтвердить замену</button>
+              </form>
+            </div>
+          </details>
           <details id="catalogIdentityDetails" class="hidden">
             <summary>Фасовки, штрихкоды и соответствия магазинов</summary>
             <p id="catalogIdentityStatus" class="muted-small" role="status"></p>

@@ -1,3 +1,5 @@
+from app.schemas.catalog_package_replacement import PackageReplacementInput
+from app.services.catalog_package_replacement_service import CatalogPackageReplacementService
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.api.deps import get_current_user_id
@@ -35,3 +37,20 @@ def update_variant(product_id: int, variant_id: int, payload: VariantInput, user
 @router.put('/{product_id}/offers/{template_id}/identity')
 def save_offer_identity(product_id: int, template_id: int, payload: OfferIdentityInput, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
     return run(lambda: CatalogIdentityService(db).save_offer(user_id=user_id, product_id=product_id, template_id=template_id, data=payload.model_dump()))
+
+
+
+
+@router.get('/{product_id}/package-replacements')
+def get_replacements(product_id: int, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    return run(lambda: CatalogPackageReplacementService(db).get(user_id=user_id, product_id=product_id))
+
+
+@router.post('/{product_id}/package-replacements', status_code=201)
+def confirm_replacement(product_id: int, payload: PackageReplacementInput, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    return run(lambda: CatalogPackageReplacementService(db).create(user_id=user_id, product_id=product_id, data=payload.model_dump()))
+
+
+@router.delete('/{product_id}/package-replacements/{replacement_id}')
+def remove_replacement(product_id: int, replacement_id: int, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    return run(lambda: CatalogPackageReplacementService(db).remove(user_id=user_id, product_id=product_id, replacement_id=replacement_id))

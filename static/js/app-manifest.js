@@ -94,6 +94,7 @@
     "/static/js/app-catalog-price-history.js",
     "/static/js/app-catalog-price-changes.js",
     "/static/js/app-catalog-identity.js",
+    "/static/js/app-catalog-replacements.js",
     "/static/js/app-catalog-product-details.js",
     "/static/js/app-features-catalog-products.js",
     "/static/js/app-features-item-catalog-modal.js",

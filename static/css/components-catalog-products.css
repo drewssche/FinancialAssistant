@@ -157,3 +157,12 @@
 
 .catalog-price-changes-options { margin-top: .75rem; }
 .catalog-price-changes-options > summary { cursor: pointer; margin-bottom: .5rem; }
+
+.catalog-replacements-list { display: grid; gap: 12px; margin-block: 12px; }
+.catalog-replacement-card { display: grid; gap: 8px; min-width: 0; padding: 12px; border: 1px solid var(--border); border-radius: 10px; overflow-wrap: anywhere; }
+.catalog-replacement-card p { margin: 0; }
+.catalog-replacement-card small { color: var(--muted); }
+.catalog-replacement-comparison { display: grid; gap: 8px; border-top: 1px solid var(--border); padding-top: 8px; }
+.catalog-replacement-comparison .row { flex-wrap: wrap; }
+#catalogReplacementsDetails :is(button, select, input) { max-width: 100%; min-width: 0; }
+#catalogReplacementsDetails button { white-space: normal; }

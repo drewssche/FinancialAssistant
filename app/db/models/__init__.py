@@ -1,3 +1,4 @@
+from app.db.models.catalog_package_replacement import CatalogPackageReplacement
 from app.db.models.catalog_identity import CatalogVariant, CatalogVariantCode, CatalogOfferIdentity
 from app.db.models.auth_identity import AuthIdentity
 from app.db.models.activity_event import ActivityEvent
@@ -32,7 +33,7 @@ from app.db.models.work_profile import EmploymentContract, WorkDayOverride, Work
 from app.db.models.work_payment_link import WorkPaymentLink
 
 __all__ = [
-    "CatalogVariant", "CatalogVariantCode", "CatalogOfferIdentity",
+    "CatalogPackageReplacement", "CatalogVariant", "CatalogVariantCode", "CatalogOfferIdentity",
     "User",
     "AuthIdentity",
     "ActivityEvent",

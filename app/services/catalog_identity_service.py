@@ -24,8 +24,9 @@ class CatalogIdentityService:
     def __init__(self, db):
         self.db = db
 
-    def product(self, user_id, product_id):
-        product = self.db.scalar(select(CatalogProduct).where(CatalogProduct.id == product_id, CatalogProduct.user_id == user_id))
+    def product(self, user_id, product_id, *, lock=False):
+        stmt = select(CatalogProduct).where(CatalogProduct.id == product_id, CatalogProduct.user_id == user_id)
+        product = self.db.scalar(stmt.with_for_update() if lock else stmt)
         if product is None:
             raise LookupError('Товар не найден')
         return product
@@ -42,7 +43,7 @@ class CatalogIdentityService:
                 'offers': [dict(template_id=m.template_id, variant_id=m.variant_id, retailer_code=m.retailer_code, external_name=m.external_name, product_url=m.product_url) for m in mappings]}
 
     def save_variant(self, *, user_id, product_id, data, variant_id=None):
-        product = self.product(user_id, product_id)
+        product = self.product(user_id, product_id, lock=True)
         if product.is_archived:
             raise ValueError('Сначала восстановите товар из архива')
         measurement = normalize_measurement(data)

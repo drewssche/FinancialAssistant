@@ -14,7 +14,7 @@ from app.core.cache import (
     invalidate_operations_cache,
     invalidate_plans_cache,
 )
-from app.db.models import CatalogProduct, Category, ItemBrand, CatalogVariant, CatalogOfferIdentity
+from app.db.models import CatalogProduct, Category, ItemBrand, CatalogPackageReplacement, CatalogVariant, CatalogOfferIdentity
 from app.repositories.catalog_product_repo import CatalogProductRepository
 from app.repositories.operation_item_template_repo import (
     OperationItemTemplateRepository,
@@ -410,6 +410,9 @@ class CatalogProductService:
         source_ids = list(dict.fromkeys(int(value) for value in source_product_ids))
         if target_product_id in source_ids:
             raise ValueError("Target product cannot be merged into itself")
+        # Serialize merges with package confirmations/variant edits in stable ID order.
+        list(self.db.scalars(select(CatalogProduct).where(CatalogProduct.user_id == user_id,
+            CatalogProduct.id.in_([target_product_id, *source_ids])).order_by(CatalogProduct.id).with_for_update()))
         target = self.repo.get_by_id(
             user_id=user_id,
             product_id=target_product_id,
@@ -477,6 +480,7 @@ class CatalogProductService:
             category_id=target.category_id,
         )
         self.db.execute(update(CatalogVariant).where(CatalogVariant.user_id == user_id, CatalogVariant.product_id.in_(source_ids)).values(product_id=target_product_id))
+        self.db.execute(update(CatalogPackageReplacement).where(CatalogPackageReplacement.user_id == user_id, CatalogPackageReplacement.product_id.in_(source_ids)).values(product_id=target_product_id))
         self.repo.archive_many(user_id=user_id, product_ids=source_ids)
         self.activity.record(
             user_id=user_id,

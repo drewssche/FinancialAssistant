@@ -45,6 +45,7 @@ if [[ "${RUN_E2E}" == "1" ]]; then
     tests/e2e/test_product_workspace_e2e.py \
     tests/e2e/test_product_price_history_e2e.py \
     tests/e2e/test_catalog_identity_e2e.py \
+    tests/e2e/test_catalog_replacements_e2e.py \
     tests/e2e/test_catalog_price_changes_e2e.py \
     tests/e2e/test_receipt_variant_e2e.py \
     tests/e2e/test_receipt_price_hints_e2e.py \
