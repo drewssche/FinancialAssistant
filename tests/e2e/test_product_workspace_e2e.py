@@ -66,6 +66,7 @@ def test_product_workspace_and_compact_receipt_preserve_drafts(static_server_url
     page.locator('[data-modal-offer-id="502"] summary').click()
     page.locator('[data-modal-offer-id="502"] [data-product-offer-action="history"]').click()
     expect(page.locator('#catalogProductPriceOffer')).to_have_value('502')
+    page.locator('#catalogProductPriceMode').select_option('offers')
     expect(page.locator('#catalogProductPricesList')).to_contain_text('4,00')
     page.screenshot(path=f'/tmp/fa-product-prices-{width}.png', full_page=False)
     page.locator('[data-product-tab="purchases"]').click()
@@ -79,6 +80,7 @@ def test_product_workspace_and_compact_receipt_preserve_drafts(static_server_url
     expect(page.locator('[data-product-purchase-id="51"]')).to_be_focused()
     expect(page.locator('[data-product-purchase-id]')).to_have_count(51)
     page.locator('[data-product-tab="prices"]').click()
+    page.locator('#catalogProductPriceMode').select_option('offers')
     page.locator('#catalogProductPricesList summary').click()
     page.locator('[data-product-price-delete]').click()
     # Cancel keeps the record and parent draft intact.
@@ -166,6 +168,7 @@ def test_offer_detach_price_delete_and_bulk_merge_stay_available(static_server_u
     expect(page.locator('[data-modal-offer-id="502"]')).to_be_visible()
     assert ('POST', '/api/v1/operations/catalog-products/401/offers/501/detach') in calls
     page.locator('[data-product-tab="prices"]').click()
+    page.locator('#catalogProductPriceMode').select_option('offers')
     page.locator('#catalogProductPricesList summary').click()
     page.locator('[data-product-price-delete]').click()
     page.locator('#confirmDeleteBtn').click()
@@ -206,6 +209,7 @@ def test_late_price_response_and_nested_purchase_cannot_replace_draft(static_ser
     before=page.evaluate("window.App.getRuntimeModule('operation-modal').getEditReceiptPayload()")
     page.locator('#editReceiptItemsList .receipt-compact-name').click()
     page.locator('[data-product-tab="prices"]').click()
+    page.locator('#catalogProductPriceMode').select_option('offers')
     page.wait_for_function("typeof window.releaseOldPrice === 'function'")
     page.locator('#catalogProductPriceOffer').select_option('502')
     expect(page.locator('#catalogProductPricesList')).to_contain_text('22,00')

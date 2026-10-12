@@ -90,6 +90,7 @@
     "/static/js/app-features-item-catalog-sources.js",
     "/static/js/app-features-item-brands.js",
     "/static/js/app-table-column-widths.js",
+    "/static/js/app-catalog-price-history.js",
     "/static/js/app-catalog-product-details.js",
     "/static/js/app-features-catalog-products.js",
     "/static/js/app-features-item-catalog-modal.js",

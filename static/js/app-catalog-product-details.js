@@ -21,16 +21,24 @@
   function errorHtml(error) {
     return `<div class="form-error">Не удалось загрузить данные: ${esc(error?.message || error)}</div><button class="btn btn-secondary" type="button" data-product-detail-retry>Повторить</button>`;
   }
-  async function loadPrices() {
+  async function loadPrices({preserve = false} = {}) {
     cancel();
     const token = generation, target = node("catalogProductPricesList");
     const offerId = Number(node("catalogProductPriceOffer").value);
     if (!offerId) { target.innerHTML = '<div class="empty">Добавьте предложение во вкладке «Предложения».</div>'; return; }
+    const purchases = node("catalogProductPriceMode").value === "purchases";
+    node("catalogProductHistoryControls").classList.toggle("hidden", !purchases);
+    node("catalogProductLegacyPriceNote").classList.toggle("hidden", purchases);
+    const params = new URLSearchParams({template_id: offerId, basis: node("catalogProductPriceBasis").value, price_kind: node("catalogProductPriceKind").value});
+    if (node("catalogProductPriceFrom").value) params.set("date_from", node("catalogProductPriceFrom").value);
+    if (node("catalogProductPriceTo").value) params.set("date_to", node("catalogProductPriceTo").value);
     controller = new AbortController();
     target.innerHTML = '<div class="muted-small">Загрузка цен…</div>';
     try {
-      const rows = await core.requestJson(`/api/v1/operations/item-templates/${offerId}/prices?limit=200`, {headers: core.authHeaders(), signal: controller.signal});
+      const url = purchases ? `/api/v1/operations/catalog-products/${product.id}/price-observations?${params}` : `/api/v1/operations/item-templates/${offerId}/prices?limit=200`;
+      const rows = await core.requestJson(url, {headers: core.authHeaders(), signal: controller.signal});
       if (token !== generation || !visible()) return;
+      if (purchases) { window.App.getRuntimeModule("catalog-price-history").render(rows, preserve); return; }
       target.innerHTML = (rows || []).map((row) => `<article class="catalog-product-price-row"><span>${esc(core.formatDateRu(row.recorded_at))}</span><strong>${core.formatMoney(row.unit_price)}</strong><details><summary aria-label="Действия с ценой за ${esc(core.formatDateRu(row.recorded_at))}">Ещё</summary><button class="btn btn-danger btn-xs" type="button" data-product-price-delete="${Number(row.id)}" data-offer-id="${offerId}">Удалить цену</button></details></article>`).join("") || '<div class="empty">История цен пока пустая</div>';
       if (rows?.length === 200) target.insertAdjacentHTML("beforeend", '<p class="muted-small">Показаны последние 200 записей.</p>');
     } catch (error) { if (token === generation && error.name !== "AbortError") target.innerHTML = errorHtml(error); }
@@ -124,7 +132,7 @@
       const button = event.target.closest("[data-product-tab]");
       if (button) select(button.dataset.productTab);
     });
-    node("catalogProductPriceOffer").addEventListener("change", loadPrices);
+    for (const id of ["catalogProductPriceOffer", "catalogProductPriceMode", "catalogProductPriceKind", "catalogProductPriceBasis", "catalogProductPriceFrom", "catalogProductPriceTo"]) node(id).addEventListener("change", loadPrices);
     node("catalogProductPurchaseOffer").addEventListener("change", () => loadPurchases());
     node("catalogProductMorePurchases").addEventListener("click", () => loadPurchases(true));
     el.catalogProductModal.addEventListener("click", (event) => {
@@ -143,6 +151,16 @@
       if (!visible()) return;
       core.bringModalToFront?.(el.catalogProductModal);
       returnTarget?.focus({preventScroll: true});
+      if (tab === "prices" && purchasesDirty) {
+        const id = returnTarget?.dataset.productPurchaseId, workspace = workspaceGeneration;
+        const card = el.catalogProductModal.querySelector(".modal-card"), scrollTop = card.scrollTop;
+        loadPrices({preserve: true}).then(() => {
+          if (workspace === workspaceGeneration && visible() && tab === "prices") {
+            node("catalogProductPricesList").querySelector(`[data-product-purchase-id="${Number(id)}"]`)?.focus({preventScroll: true});
+            card.scrollTop = scrollTop;
+          }
+        });
+      }
       // Keep the product draft and reload current receipt results after an edit/delete.
       if (tab === "purchases" && purchasesDirty) {
         const pages = page, id = returnTarget?.dataset.productPurchaseId;
@@ -163,9 +181,12 @@
     bind(); product = value; nestedOperation = false;
     node("catalogProductTabs").classList.toggle("hidden", !product);
     node("catalogProductPriceOffer").innerHTML = ""; node("catalogProductPurchaseOffer").innerHTML = "";
+    node("catalogProductPriceMode").value = "purchases";
+    node("catalogProductPriceKind").value = "paid"; node("catalogProductPriceBasis").value = "unit";
+    node("catalogProductPriceFrom").value = ""; node("catalogProductPriceTo").value = "";
     resetOptions(); select(options.tab || rememberedTabs.get(product?.id) || "product", options.offerId);
   }
-  function close() { workspaceGeneration += 1; cancel(); product = null; nestedOperation = false; returnTarget = null; }
+  function close() { window.App.getRuntimeModule("catalog-price-history").cleanup(); workspaceGeneration += 1; cancel(); product = null; nestedOperation = false; returnTarget = null; }
   function refresh(value) { product = value; resetOptions(); select(tab); }
   window.App.registerRuntimeModule("catalog-product-details", {open, close, refresh, select, cleanup: () => {close(); rememberedTabs.clear();}});
 })();

@@ -178,7 +178,14 @@
         </section>
         <section data-product-panel="prices" class="catalog-product-detail-panel hidden">
           <label class="field"><span>Предложение магазина</span><select id="catalogProductPriceOffer" aria-label="Предложение для истории цен"></select></label>
-          <p class="muted-small">Сохранённые цены предложения. Фактически оплаченные суммы и скидки смотрите в покупках.</p>
+          <label class="field"><span>История</span><select id="catalogProductPriceMode"><option value="purchases">По покупкам</option><option value="offers">Сохранённые цены предложения</option></select></label>
+          <details id="catalogProductHistoryControls"><summary>Сравнение и период</summary><div class="product-price-controls">
+            <label class="field"><span>Цена</span><select id="catalogProductPriceKind"><option value="paid">Фактически оплаченная</option><option value="regular">Обычная, если указана</option></select></label>
+            <label class="field"><span>Сравнение</span><select id="catalogProductPriceBasis"><option value="unit">За единицу продажи / упаковку</option><option value="normalized">За кг / л / штуку содержимого</option></select></label>
+            <label class="field"><span>С даты</span><input id="catalogProductPriceFrom" type="date"></label>
+            <label class="field"><span>По дату</span><input id="catalogProductPriceTo" type="date"></label>
+          </div></details>
+          <p id="catalogProductLegacyPriceNote" class="muted-small hidden">Сохранённые цены предложения — отдельный справочник; он может не содержать повторных изменений и не используется для графика покупок.</p>
           <div id="catalogProductPricesList" aria-live="polite"></div>
         </section>
         <section data-product-panel="purchases" class="catalog-product-detail-panel hidden">

@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Literal
 
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, Response, UploadFile, status
 from pydantic import ValidationError
@@ -48,6 +49,8 @@ from app.services.catalog_media_service import (
     CatalogMediaTooLargeError,
     CatalogMediaValidationError,
 )
+from app.schemas.product_price_history import ProductPriceHistoryOut
+from app.services.product_price_history_service import ProductPriceHistoryService
 from app.services.catalog_product_service import CatalogProductService
 from app.services.item_brand_service import ItemBrandService
 from app.services.item_source_service import ItemSourceService
@@ -378,6 +381,28 @@ def get_catalog_product(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
+
+
+@router.get("/catalog-products/{product_id}/price-observations", response_model=ProductPriceHistoryOut)
+def get_product_price_observations(
+    product_id: int,
+    template_id: int = Query(gt=0),
+    basis: Literal["unit", "normalized"] = "unit",
+    price_kind: Literal["paid", "regular"] = "paid",
+    date_from: date | None = None,
+    date_to: date | None = None,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    if date_from and date_to and date_from > date_to:
+        raise HTTPException(status_code=422, detail="Начало периода позже конца")
+    try:
+        return ProductPriceHistoryService(db).get(
+            user_id=user_id, product_id=product_id, template_id=template_id,
+            basis=basis, price_kind=price_kind, date_from=date_from, date_to=date_to,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("/catalog-products/{product_id}/offers", response_model=OperationItemTemplateOut, status_code=status.HTTP_201_CREATED)
