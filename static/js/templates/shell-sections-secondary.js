@@ -681,7 +681,6 @@
                 <button id="itemCatalogCollapseAllBtn" class="btn-icon btn btn-secondary btn-xs" type="button" title="Свернуть все" aria-label="Свернуть все">${window.App.icons.svg("collapse")}</button>
                 <button id="itemCatalogExpandAllBtn" class="btn-icon btn btn-secondary btn-xs" type="button" title="Развернуть все" aria-label="Развернуть все">${window.App.icons.svg("expand")}</button>
                 <button id="resetItemCatalogWidthsBtn" class="btn-icon btn btn-secondary btn-xs" type="button" title="Сбросить ширину колонок" aria-label="Сбросить ширину колонок">${window.App.icons.svg("width")}</button>
-                <button id="deleteAllItemTemplatesBtn" class="btn-icon btn btn-danger" type="button" title="Удалить все позиции" aria-label="Удалить все позиции">${window.App.icons.svg("trash")}</button>
               </div>
             </div>
             <div id="itemCatalogKpiGrid" class="analytics-kpi-grid section-kpi-grid catalog-compact-kpis" aria-label="Итоги каталога позиций"></div>
@@ -713,6 +712,7 @@
                 <tbody id="itemCatalogBody"></tbody>
               </table>
             </div>
+            <div class="catalog-directory-footer"><button id="deleteAllItemTemplatesBtn" class="btn-icon btn btn-danger" type="button" title="Удалить все позиции" aria-label="Удалить все позиции">${window.App.icons.svg("trash")}</button></div>
           </section>
           <section id="itemBrandsView" class="panel hidden">
             <div class="item-brands-heading">

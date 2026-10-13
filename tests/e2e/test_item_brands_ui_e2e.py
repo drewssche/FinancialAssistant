@@ -25,7 +25,7 @@ def _json_response(route, payload: dict | list, status: int = 200):
 
 @pytest.mark.e2e
 @pytest.mark.parametrize("width", [1280, 430])
-def test_brand_portal_menu_edits_correct_brand_and_deletes_only_after_confirmation(static_server_url, width):
+def test_brand_direct_actions_edit_correct_brand_and_confirm_delete(static_server_url, width):
     brands = [{"id": i, "name": name, "accent_color": "#5fd3bc", "is_archived": False} for i, name in [(1, "Савушкин"), (2, "Санта Бремор")]]
     mutations = []
     base_handler = _build_handler("item_catalog")
@@ -56,51 +56,30 @@ def test_brand_portal_menu_edits_correct_brand_and_deletes_only_after_confirmati
             page.goto(f"{static_server_url}/static/index.html")
             _login_via_mock_telegram(page)
             page.locator('[data-item-catalog-view="brands"]').click()
-            page.evaluate("""() => {
-              window.__brandMenuMisroutes = 0;
-              const coordinator = window.App.getRuntimeModule('item-catalog-ui-coordinator');
-              const original = coordinator.handleItemCatalogBodyClick;
-              coordinator.handleItemCatalogBodyClick = function(options) {
-                if (options.event.target.closest('[data-table-menu^="item-brand-"]')) window.__brandMenuMisroutes++;
-                return original(options);
-              };
-            }""")
+            expect(page.locator('#itemBrandsBody [data-table-menu-trigger]')).to_have_count(0)
             for brand_id in (1, 2, 1):
-                trigger = page.locator(f'[data-table-menu-trigger="item-brand-{brand_id}"]')
-                menu = page.locator(f'[data-table-menu="item-brand-{brand_id}"]')
-                trigger.click()
-                expect(menu).to_be_visible()
-                assert menu.evaluate("node => node.parentElement === document.body")
-                page.locator("#itemBrandsSearchQ").click()
-                expect(menu).to_be_hidden()
-                trigger.click()
-                menu.locator("[data-edit-item-brand-id]").click()
+                button = page.locator(f'#itemBrandsBody [data-edit-item-brand-id="{brand_id}"]')
+                expect(button).to_have_attribute('aria-label', 'Изменить бренд')
+                button.click()
                 expect(page.locator("#itemBrandModal")).to_be_visible()
                 expect(page.locator("#itemBrandName")).to_have_value(brands[brand_id - 1]["name"])
-                expect(menu).to_be_hidden()
-                assert page.locator("#itemBrandsBody .table-menu-open-row, #itemBrandsBody .table-menu-open-cell").count() == 0
+                expect(page.locator('#itemBrandDetailModal')).to_be_hidden()
                 page.locator("#closeItemBrandModalBtn").click()
-            trigger.click()
-            menu.locator("[data-edit-item-brand-id]").click()
+            page.locator('#itemBrandsBody [data-edit-item-brand-id="1"]').click()
             page.locator("#itemBrandName").fill("Савушкин продукт")
             page.locator("#submitItemBrandBtn").click()
             expect(page.locator("#itemBrandModal")).to_be_hidden()
             expect(page.locator('#itemBrandsBody tr[data-item-brand-id="1"]')).to_contain_text("Савушкин продукт")
             assert mutations == [("PATCH", 1)]
-            trigger = page.locator('[data-table-menu-trigger="item-brand-2"]')
-            menu = page.locator('[data-table-menu="item-brand-2"]')
             for confirm in (False, True):
-                trigger.click()
-                menu.locator("[data-delete-item-brand-id]").click()
+                page.locator('#itemBrandsBody [data-delete-item-brand-id="2"]').click()
                 expect(page.locator("#confirmModal")).to_be_visible()
                 expect(page.locator("#confirmModal")).to_contain_text("Санта Бремор")
-                expect(menu).to_be_hidden()
                 assert mutations == [("PATCH", 1)]
                 page.locator("#confirmDeleteBtn" if confirm else "#confirmCancelBtn").click()
                 expect(page.locator("#confirmModal")).to_be_hidden()
             expect(page.locator('#itemBrandsBody tr[data-item-brand-id="2"]')).to_have_count(0)
             assert mutations == [("PATCH", 1), ("DELETE", 2)]
-            assert page.evaluate("window.__brandMenuMisroutes") == 0
         finally:
             browser.close()
 
@@ -330,13 +309,9 @@ def test_brand_catalog_assignment_detail_and_analytics_drilldown(static_server_u
             expect(page.locator("#itemBrandsKpiGrid")).to_contain_text("Без бренда")
 
             brand_row = page.locator('#itemBrandsBody tr[data-item-brand-id="1"]')
-            brand_row.locator("button[data-table-menu-trigger]").click()
-            brand_menu = page.locator('[data-table-menu="item-brand-1"]')
-            expect(brand_menu).to_be_visible()
-            expect(brand_menu.locator("button")).to_have_text(["Изменить", "Удалить"])
-            assert "Архивировать" not in brand_menu.inner_text()
-            brand_row.locator("button[data-table-menu-trigger]").click()
-            expect(brand_menu).to_be_hidden()
+            expect(brand_row.locator('.catalog-directory-actions button')).to_have_count(2)
+            assert [b.get_attribute('aria-label') for b in brand_row.locator('.catalog-directory-actions button').all()] == ['Изменить бренд', 'Удалить бренд']
+
 
             page.locator('[data-open-item-brand-id="1"]').click()
             expect(page.locator("#itemBrandDetailModal")).to_be_visible()

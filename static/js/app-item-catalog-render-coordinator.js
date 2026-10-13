@@ -11,9 +11,9 @@
       }
       if (entityType === "item_source") {
         const sourceName = escapeHtml(entity.shopName || "");
-        if (key === "create_child") return `<button class="btn btn-secondary" data-create-item-template-source-name="${sourceName}" type="button">Добавить позицию</button>`;
-        if (key === "edit") return `<button class="btn btn-secondary" data-edit-item-source-name="${sourceName}" type="button">Редактировать</button>`;
-        if (key === "delete") return `<button class="btn btn-danger" data-delete-item-source-name="${sourceName}" type="button">Удалить</button>`;
+        if (key === "create_child") return `<button class="btn btn-secondary btn-icon item-source-context-create-btn" data-create-item-template-source-name="${sourceName}" type="button" title="Добавить позицию" aria-label="Добавить позицию">${window.App.icons.svg("plus")}</button>`;
+        if (key === "edit") return `<button class="btn btn-secondary btn-icon" data-edit-item-source-name="${sourceName}" type="button" title="Изменить источник" aria-label="Изменить источник">${window.App.icons.svg("edit")}</button>`;
+        if (key === "delete") return `<button class="btn btn-danger btn-icon" data-delete-item-source-name="${sourceName}" type="button" title="Удалить источник" aria-label="Удалить источник">${window.App.icons.svg("trash")}</button>`;
       }
       return "";
     }).join("");
@@ -324,29 +324,19 @@
             <td colspan="7" class="item-catalog-group-cell item-catalog-mobile-group-cell">
               <div class="item-catalog-mobile-group-card">
                 <div class="item-catalog-mobile-group-head">
-                  <button type="button" class="item-catalog-group-btn item-catalog-mobile-group-toggle" data-item-catalog-shop-key="${encodeURIComponent(group.shopKey)}" ${queryActive ? "disabled" : ""}>
+                  <button type="button" class="item-catalog-group-btn item-catalog-mobile-group-toggle" data-item-catalog-shop-key="${encodeURIComponent(group.shopKey)}" aria-expanded="${!isCollapsed}" ${queryActive ? "disabled" : ""}>
                     <span class="item-catalog-group-chevron">${chevron}</span>
                     ${sourceThumb}
                     <span class="item-catalog-group-main">
                       <span class="item-catalog-group-name">${core.highlightText(group.shopName, query)}</span>
                       <span class="item-catalog-group-metas item-catalog-mobile-group-metas">
                         <span class="item-catalog-group-meta">${group.items.length} поз.</span>
-                        <span class="item-catalog-group-meta">исп: ${group.useCountTotal}</span>
-                        <span class="item-catalog-group-meta">ср: ${group.avgPrice !== null ? core.formatMoney(group.avgPrice, { withCurrency: false }) : "—"}</span>
-                        <span class="item-catalog-group-meta">посл: ${group.lastUsedLabel}</span>
+                        <span class="item-catalog-group-meta">${group.useCountTotal} использ.</span>
+                        <span class="item-catalog-group-meta">${group.lastUsedLabel}</span>
                       </span>
                     </span>
                   </button>
-                  ${group.shopKey !== "__no_shop__" ? `<div class="mobile-card-kebab-wrap">
-                    <button class="btn btn-secondary mobile-card-kebab-trigger" data-mobile-card-menu-trigger="item-source-${escapeHtml(group.shopKey)}" type="button" aria-label="Действия источника">
-                      <span aria-hidden="true">⋮</span>
-                    </button>
-                    <div class="app-popover hidden mobile-card-actions-popover" data-mobile-card-menu="item-source-${escapeHtml(group.shopKey)}">
-                      <div class="mobile-card-actions-menu">
-                        ${sourceActions}
-                      </div>
-                    </div>
-                  </div>` : ""}
+                  ${group.shopKey !== "__no_shop__" ? `<div class="catalog-directory-actions">${sourceActions}</div>` : ""}
                 </div>
               </div>
             </td>
@@ -361,26 +351,19 @@
             <div class="category-table-group-wrap item-catalog-source-wrap">
               <div class="category-table-group-content">
                 <div class="category-table-group-title">
-                  <button type="button" class="item-catalog-group-btn" data-item-catalog-shop-key="${encodeURIComponent(group.shopKey)}" ${queryActive ? "disabled" : ""}>
+                  <button type="button" class="item-catalog-group-btn" data-item-catalog-shop-key="${encodeURIComponent(group.shopKey)}" aria-expanded="${!isCollapsed}" ${queryActive ? "disabled" : ""}>
                     <span class="item-catalog-group-chevron">${chevron}</span>
                     ${sourceThumb}
                     <span class="item-catalog-group-name">${core.highlightText(group.shopName, query)}</span>
                   </button>
-                  ${group.shopKey !== "__no_shop__" ? `<button class="btn btn-secondary category-context-create-btn item-source-context-create-btn" data-create-item-template-source-name="${escapeHtml(group.shopName)}" type="button" aria-label="Добавить позицию в источник">+</button>` : ""}
                 </div>
                 <span class="item-catalog-group-metas">
                   <span class="item-catalog-group-meta">${group.items.length} поз.</span>
-                  <span class="item-catalog-group-meta">исп: ${group.useCountTotal}</span>
-                  <span class="item-catalog-group-meta">ср: ${group.avgPrice !== null ? core.formatMoney(group.avgPrice, { withCurrency: false }) : "—"}</span>
-                  <span class="item-catalog-group-meta">посл: ${group.lastUsedLabel}</span>
+                  <span class="item-catalog-group-meta">${group.useCountTotal} использ.</span>
+                  <span class="item-catalog-group-meta">${group.lastUsedLabel}</span>
                 </span>
               </div>
-              ${group.shopKey !== "__no_shop__" ? core.renderInlineKebabMenu?.(
-                `item-source-${escapeHtml(group.shopKey)}`,
-                sourceActions,
-                "Действия источника",
-                "item-source-kebab",
-              ) : ""}
+              ${group.shopKey !== "__no_shop__" ? `<div class="catalog-directory-actions">${sourceActions}</div>` : ""}
             </div>
           </td>
         </tr>

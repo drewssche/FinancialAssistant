@@ -280,11 +280,9 @@
         <div class="panel-head row between">
           <div>
             <h3 id="itemBrandModalTitle">Новый бренд</h3>
-            <p class="subtitle">Название и цвет чипа бренда</p>
+
           </div>
-          <button id="closeItemBrandModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-          </button>
+          <button id="closeItemBrandModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
         </div>
         <form id="itemBrandForm" class="category-modal-form">
           <section class="catalog-image-field" data-catalog-image-picker="item-brand" aria-label="Логотип бренда">
@@ -322,7 +320,7 @@
           <div id="itemBrandPreview" class="item-brand-preview" aria-live="polite"></div>
         </form>
         <div class="modal-footer">
-          <button id="submitItemBrandBtn" class="btn btn-cta modal-main-cta" type="submit" form="itemBrandForm">Создать бренд</button>
+          <button id="submitItemBrandBtn" class="btn btn-cta modal-main-cta btn-icon" type="submit" form="itemBrandForm" title="Создать бренд" aria-label="Создать бренд">${window.App.icons.svg("save")}</button>
         </div>
       </div>
     </div>
@@ -334,14 +332,12 @@
             <h3 id="itemBrandDetailTitle">Бренд</h3>
             <p id="itemBrandDetailSubtitle" class="subtitle">Связанные позиции по источникам</p>
           </div>
-          <button id="closeItemBrandDetailModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-          </button>
+          <button id="closeItemBrandDetailModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
         </div>
         <div id="itemBrandDetailKpiGrid" class="analytics-kpi-grid section-kpi-grid" aria-label="Итоги бренда"></div>
         <div class="item-brand-detail-actions">
-          <button id="openItemBrandOperationsBtn" class="btn btn-secondary" type="button">Открыть операции бренда</button>
-          <button id="editItemBrandFromDetailBtn" class="btn btn-secondary" type="button">Изменить бренд</button>
+          <button id="openItemBrandOperationsBtn" class="btn btn-secondary btn-icon" type="button" title="Открыть операции бренда" aria-label="Открыть операции бренда">${window.App.icons.svg("receipt")}</button>
+          <button id="editItemBrandFromDetailBtn" class="btn btn-secondary btn-icon" type="button" title="Изменить бренд" aria-label="Изменить бренд">${window.App.icons.svg("edit")}</button>
         </div>
         <div class="table-wrap">
           <table class="table table-hover mobile-card-table item-brand-detail-table">
@@ -357,10 +353,8 @@
         <div class="panel-head row between">
           <h3 id="sourceGroupTitle">Новый источник</h3>
           <div class="modal-head-actions">
-            <button id="sourceGroupCreateItemBtn" class="btn btn-secondary modal-head-icon-btn hidden" type="button" title="Добавить позицию" aria-label="Добавить позицию"><span aria-hidden="true">+</span></button>
-            <button id="closeSourceGroupModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-              <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-            </button>
+            <button id="sourceGroupCreateItemBtn" class="btn btn-secondary modal-head-icon-btn hidden btn-icon" type="button" title="Добавить позицию" aria-label="Добавить позицию">${window.App.icons.svg("plus")}</button>
+            <button id="closeSourceGroupModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
           </div>
         </div>
         <form id="sourceGroupForm" class="category-modal-form">
@@ -379,28 +373,11 @@
               <small class="muted-small" data-catalog-image-status>JPEG, PNG или WebP · до 8 МБ</small>
             </div>
           </section>
-          <input id="sourceGroupName" type="text" placeholder="Название источника" required />
+          <label class="field"><span>Название</span><input id="sourceGroupName" type="text" placeholder="Название источника" required /></label>
         </form>
-        <div class="preview-panel">
-          <div class="preview-title">Превью группы в каталоге</div>
-          <div class="table-wrap">
-            <table class="table table-hover">
-              <thead>
-                <tr>
-                  <th>Источник</th>
-                  <th>Позиции</th>
-                  <th>Использования</th>
-                  <th>Ср. цена</th>
-                </tr>
-              </thead>
-              <tbody id="sourceGroupPreviewBody"></tbody>
-            </table>
-          </div>
-        </div>
+        <div id="sourceGroupPreviewBody" class="catalog-directory-summary" aria-live="polite"></div>
         <div class="modal-footer">
-          <button id="submitSourceGroupBtn" class="btn btn-cta modal-main-cta" type="submit" form="sourceGroupForm">
-            Создать источник
-          </button>
+          <button id="submitSourceGroupBtn" class="btn btn-cta modal-main-cta btn-icon" type="submit" form="sourceGroupForm" title="Создать источник" aria-label="Создать источник">${window.App.icons.svg("save")}</button>
         </div>
       </div>
     </div>

@@ -109,3 +109,74 @@
   #catalogProductsBody .catalog-product-row > td:nth-child(5) { display: flex; gap: 5px; font-size: 12px; color: var(--muted); }
 }
 .catalog-image-upload-btn:focus-within { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/* Source and brand directories keep everyday actions visible. */
+.catalog-directory-actions { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; }
+#itemCatalogBody .item-source-context-create-btn { opacity: 1; visibility: visible; pointer-events: auto; transform: none; }
+#itemCatalogBody .item-catalog-source-wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: center; }
+#itemCatalogBody .category-table-group-content { min-width: 0; }
+#itemCatalogBody .item-catalog-group-btn { min-width: 0; max-width: 100%; }
+#itemCatalogBody .item-catalog-group-name { white-space: normal; overflow-wrap: anywhere; }
+#itemCatalogBody .item-catalog-group-metas { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+#itemBrandsBody .item-brand-chip { max-width: 100%; }
+#itemBrandsBody .item-brand-chip-name { white-space: normal; overflow-wrap: anywhere; }
+.catalog-directory-footer { display: flex; justify-content: flex-end; margin-top: 18px; }
+.catalog-directory-summary { display: flex; flex-wrap: wrap; gap: 10px 18px; color: var(--muted); font-size: 13px; }
+.catalog-directory-summary:empty { display: none; }
+:is(#sourceGroupModal, #itemBrandModal, #itemBrandDetailModal) .panel-head { display: flex; align-items: flex-start; gap: 12px; }
+:is(#sourceGroupModal, #itemBrandModal, #itemBrandDetailModal) .panel-head > :first-child { min-width: 0; overflow-wrap: anywhere; }
+:is(#sourceGroupModal, #itemBrandModal) .catalog-image-field { padding: 8px; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; }
+:is(#sourceGroupModal, #itemBrandModal) .catalog-media-detail { --catalog-media-size: 64px; }
+:is(#sourceGroupModal, #itemBrandModal) .catalog-image-picker-actions > strong { display: none; }
+:is(#sourceGroupModal, #itemBrandModal) .catalog-image-picker-actions { min-width: 0; gap: 6px; }
+:is(#sourceGroupModal, #itemBrandModal) .catalog-image-picker-preview { min-width: 0; }
+#itemBrandDetailModal .item-brand-detail-actions { display: flex; justify-content: flex-end; gap: 8px; }
+@media (max-width: 640px) {
+  #itemCatalogBody .item-catalog-mobile-group-head { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  #itemCatalogBody .item-catalog-mobile-group-toggle { display: grid; grid-template-columns: 16px 36px minmax(0, 1fr); width: 100%; gap: 8px; align-items: start; }
+  #itemCatalogBody .item-catalog-group-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  #itemCatalogBody .item-catalog-group-name { font-size: 14px; text-align: left; }
+  #itemCatalogBody .item-catalog-group-metas { font-size: 11px; margin: 0; }
+  #itemCatalogBody .catalog-directory-actions { justify-content: flex-end; }
+  #itemBrandsView .item-brands-toolbar { display: flex; flex-direction: row; flex-wrap: wrap; gap: 10px; }
+  #itemBrandsSearchQ { width: 100%; min-width: 0; height: 44px; flex: 1 1 100%; }
+  #itemBrandsView .search-toolbar { width: auto; }
+  :is(#sourceGroupModal, #itemBrandModal, #itemBrandDetailModal) .modal-head-actions { display: flex; flex-direction: row; width: auto; gap: 6px; }
+  #itemBrandDetailKpiGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #itemBrandDetailModal .item-brand-detail-title { flex-wrap: wrap; }
+}
+#itemBrandsBody .catalog-directory-actions-cell { width: 102px; }
+#itemBrandsBody .catalog-directory-actions { flex-wrap: nowrap; }
+:is(#sourceGroupModal, #itemBrandModal, #itemBrandDetailModal) .panel-head { flex-direction: row; }
+:is(#sourceGroupModal, #itemBrandModal, #itemBrandDetailModal) .panel-head > :first-child { flex: 1 1 auto; }
+:is(#sourceGroupModal, #itemBrandModal, #itemBrandDetailModal) .panel-head .modal-head-actions { flex: 0 0 auto; flex-wrap: nowrap; }
+:is(#sourceGroupModal, #itemBrandModal, #itemBrandDetailModal) .modal-close-btn { position: static; width: 42px; min-width: 42px; height: 42px; padding: 0; }
+#itemBrandDetailTitle .item-brand-chip, #itemBrandPreview .item-brand-chip { max-width: 100%; min-width: 0; }
+#itemBrandDetailTitle .item-brand-chip-name, #itemBrandPreview .item-brand-chip-name { white-space: normal; overflow-wrap: anywhere; }
+#itemBrandDetailTitle .item-brand-detail-title { max-width: 100%; }
+@media (max-width: 640px) {
+  :is(#sourceGroupModal, #itemBrandModal) .modal-card { min-height: 0; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+  :is(#sourceGroupModal, #itemBrandModal) .modal-card > form { padding-bottom: 0; }
+  :is(#sourceGroupModal, #itemBrandModal) .modal-footer { display: flex; justify-content: flex-end; margin: 14px 0 0; padding: 12px 0 0; position: static; background: none; box-shadow: none; }
+  :is(#sourceGroupModal, #itemBrandModal) .modal-footer::before { display: none; }
+  :is(#sourceGroupModal, #itemBrandModal, #itemBrandDetailModal) .modal-close-btn { width: 44px; min-width: 44px; height: 44px; }
+  #itemBrandDetailModal .table-wrap { min-width: 0; }
+  #itemBrandDetailBody td[data-label] { grid-template-columns: minmax(0, 1fr); white-space: normal; overflow-wrap: anywhere; }
+  #itemBrandDetailBody .catalog-item-identity { min-width: 0; max-width: 100%; }
+  #itemBrandDetailBody .catalog-item-identity strong { min-width: 0; white-space: normal; overflow-wrap: anywhere; text-align: left; }
+  .main:has(#itemCatalogSection:not(.hidden)) .top-actions { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; }
+}
+@media (max-width: 640px) {
+  .main:has(#itemCatalogSection:not(.hidden)) .cta-row { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; }
+  #itemCatalogBody .item-catalog-mobile-group-card, #itemCatalogBody .item-catalog-mobile-item-card { padding-right: 0; }
+  #itemCatalogBody .item-catalog-mobile-item-head { display: grid; grid-template-columns: 20px minmax(0, 1fr) 36px; gap: 6px; }
+  #itemCatalogBody .mobile-card-kebab-wrap { position: static; }
+  #itemCatalogBody .catalog-item-identity-main { white-space: normal; overflow-wrap: anywhere; }
+  #itemCatalogBody .item-brand-chip { max-width: 100%; min-width: 0; }
+  #itemCatalogBody .item-brand-chip-name { white-space: normal; overflow-wrap: anywhere; }
+  #itemBrandsBody tr { padding-right: 12px; }
+  #itemBrandsBody .catalog-directory-actions-cell { position: static; width: auto; grid-column: 1 / -1; }
+  #itemBrandsBody .catalog-directory-actions { justify-content: flex-end; }
+}
+
+#itemBrandsView .item-brands-heading { flex-direction: row; align-items: center; }

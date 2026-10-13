@@ -170,8 +170,8 @@
     const positionsCount = Number(brand?.positions_count || 0);
     const contextActions = window.App.getRuntimeModule?.("context-actions");
     const actions = (contextActions?.keys?.("item_brand", "row") || []).map((key) => {
-      if (key === "edit") return `<button class="btn btn-secondary" data-edit-item-brand-id="${id}" type="button">Изменить</button>`;
-      if (key === "delete") return `<button class="btn btn-danger" data-delete-item-brand-id="${id}" type="button">Удалить</button>`;
+      if (key === "edit") return `<button class="btn btn-secondary btn-icon" data-edit-item-brand-id="${id}" type="button" title="Изменить бренд" aria-label="Изменить бренд">${window.App.icons.svg("edit")}</button>`;
+      if (key === "delete") return `<button class="btn btn-danger btn-icon" data-delete-item-brand-id="${id}" type="button" title="Удалить бренд" aria-label="Удалить бренд">${window.App.icons.svg("trash")}</button>`;
       return "";
     }).join("");
     return `
@@ -185,8 +185,8 @@
         <td data-label="Покупок">${brandPurchaseCount(brand)}</td>
         <td data-label="Потрачено"><strong>${core.formatMoney(brandSpentTotal(brand))}</strong></td>
         <td data-label="Последняя покупка">${brand?.last_purchase_date ? core.formatDateRu(brand.last_purchase_date) : "—"}</td>
-        <td class="mobile-actions-cell table-kebab-cell" data-label="Действия">
-          ${core.renderInlineKebabMenu?.(`item-brand-${id}`, actions, "Действия бренда", "item-brand-kebab") || ""}
+        <td class="mobile-actions-cell catalog-directory-actions-cell" data-label="Действия">
+          <div class="catalog-directory-actions">${actions}</div>
         </td>
       </tr>
     `;
@@ -223,17 +223,6 @@
     el.itemBrandsBody.innerHTML = rows.length
       ? rows.map(renderBrandRow).join("")
       : '<tr><td colspan="6" class="muted-small">Бренды не найдены</td></tr>';
-  }
-
-  function closeBrandActionMenu(target) {
-    const menu = target?.closest?.(".table-kebab-popover");
-    if (!menu) return;
-    const pickerUtils = window.App.getRuntimeModule?.("picker-utils");
-    pickerUtils?.setPopoverOpen?.(menu, false, {
-      owners: Array.isArray(menu.__appPopoverOwners) ? menu.__appPopoverOwners : [],
-    });
-    menu.__appPopoverOnClose?.();
-    (menu.__appPopoverOwners || []).forEach((owner) => owner?.blur?.());
   }
 
   function invalidate() {
@@ -488,7 +477,7 @@
           <td data-label="Позиция"><button class="catalog-item-open catalog-item-identity" data-open-brand-template-id="${Number(item.id)}" type="button">${window.App.getRuntimeModule?.("catalog-media")?.renderThumb?.(item.image_id, { kind: "item", size: "row", alt: item.name || "Позиция" }) || ""}<strong>${escapeHtml(item.name || "—")}</strong></button></td>
           <td data-label="Категория">${categoryHtml}</td>
           <td data-label="Последняя цена">${core.formatMoney(item.latest_unit_price || 0)}</td>
-          <td data-label="Действия"><button class="btn btn-secondary btn-xs" data-open-brand-template-id="${Number(item.id)}" type="button">Открыть</button></td>
+          <td data-label="Действия"><button class="btn btn-secondary btn-icon" data-open-brand-template-id="${Number(item.id)}" type="button" title="Открыть позицию" aria-label="Открыть позицию">${window.App.icons.svg("forward")}</button></td>
         </tr>
       `;
     }).join("") : '<tr><td colspan="5" class="muted-small">У бренда пока нет позиций</td></tr>';
@@ -700,14 +689,12 @@
         openItemBrandDetail(Number(openButton?.dataset.openItemBrandId || row?.dataset.itemBrandId || 0)).catch((err) => core.setStatus(String(err)));
       }
     });
-    // The floating menu is portalled to body, outside itemBrandsBody.
-    // Delegate its actions here, not to the table, and only to brand menus.
+    // Handle direct brand actions without opening the row detail.
     document.addEventListener("click", (event) => {
       const button = event.target.closest("[data-edit-item-brand-id], [data-delete-item-brand-id]");
-      if (!button || button.disabled || !button.closest('.table-kebab-popover[data-table-menu^="item-brand-"]')) return;
+      if (!button || button.disabled || !el.itemBrandsBody?.contains(button)) return;
       const isEdit = button.hasAttribute("data-edit-item-brand-id");
       const brand = brandFromId(isEdit ? button.dataset.editItemBrandId : button.dataset.deleteItemBrandId);
-      closeBrandActionMenu(button);
       if (!brand) return;
       if (isEdit) openItemBrandModal(brand);
       else deleteItemBrandFlow(brand);

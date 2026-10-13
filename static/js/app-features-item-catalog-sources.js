@@ -130,17 +130,9 @@
       const existingGroup = buildItemCatalogGroups(state.itemCatalogItems || []).find((group) => group.shopKey === sourceKey);
       const positions = existingGroup?.items?.length || 0;
       const usage = existingGroup?.useCountTotal || 0;
-      const avg = existingGroup?.avgPrice !== null && existingGroup?.avgPrice !== undefined
-        ? core.formatMoney(existingGroup.avgPrice, { withCurrency: false })
-        : "—";
-      el.sourceGroupPreviewBody.innerHTML = `
-        <tr class="preview-row">
-          <td><span class="catalog-source-identity">${window.App.getRuntimeModule?.("catalog-media")?.renderThumb?.(findSourceByName(sourceName)?.image_id, { kind: "source", size: "row", alt: sourceName, fallback: sourceName.slice(0, 1) }) || ""}<span>${escapeHtml(sourceName)}</span></span></td>
-          <td>${positions}</td>
-          <td>${usage}</td>
-          <td>${avg}</td>
-        </tr>
-      `;
+      el.sourceGroupPreviewBody.innerHTML = existingGroup
+        ? `<span>${positions} позиций</span><span>${usage} использований</span>`
+        : "";
     }
 
     async function submitSourceGroupForm(event) {

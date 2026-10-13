@@ -516,6 +516,8 @@ def test_catalog_context_menu_actions_from_real_portals(static_server_url, width
                     entity_id = menu_id.split("-")[-1]
                     attr = "data-category-id" if menu_id.startswith("category-") and "group" not in menu_id else "data-group-id"
                     page.locator(f'#categoriesBody tr[{attr}="{entity_id}"] {action}').first.click()
+                elif menu_id.startswith("item-source-"):
+                    page.locator(f"#itemCatalogBody .item-catalog-group-row {action}").first.click()
                 else:
                     trigger.click()
                     assert menu.evaluate("node => node.parentElement === document.body")

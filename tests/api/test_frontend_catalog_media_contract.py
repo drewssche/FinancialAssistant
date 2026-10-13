@@ -88,13 +88,13 @@ def test_receipt_entity_pickers_use_compact_avatars_and_portal_tooltips():
     assert "@media (prefers-reduced-motion: reduce)" in styles
 
 
-def test_brand_rows_use_shared_kebab_with_delete_wording():
+def test_brand_rows_use_direct_icons_with_delete_wording():
     brands = _read("static/js/app-features-item-brands.js")
 
-    assert "core.renderInlineKebabMenu?.(`item-brand-${id}`" in brands
+    assert '<div class="catalog-directory-actions">${actions}</div>' in brands
     assert 'data-edit-item-brand-id="${id}"' in brands
     assert 'data-delete-item-brand-id="${id}"' in brands
-    assert ">Удалить</button>" in brands
+    assert 'aria-label="Удалить бренд"' in brands
     assert 'const actionLabel = "Удалить"' in brands
     assert "Архивировать" not in brands
     assert "Бренд удалён" in brands
