@@ -72,6 +72,9 @@
 - Redis included in compose for cache/session/queue evolution
 - Dockerized local stack matching production concepts
 
+## UI Changes
+- Follow [the visual consistency contract](UI_VISUAL_CONTRACT.md) when changing interface components; reuse shared controls and inspect rendered states before release.
+
 ## Code Organization
 - Keep files small and focused by responsibility
 - Soft file size target: 300-400 lines

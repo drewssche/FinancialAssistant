@@ -6,6 +6,7 @@ This folder keeps durable product, architecture, engineering, and operations con
 
 - `PRODUCT_CONTEXT.md` - product scope, domain semantics, and current MVP behavior.
 - `ARCHITECTURE.md` - backend/frontend architecture, runtime boundaries, and cache contracts.
+- `UI_VISUAL_CONTRACT.md` - visual consistency, icon actions, hint density, control sizing and visual release checks.
 - `UI_SYSTEM.md` - layout, component, modal, mobile, and Telegram Mini App UI rules.
 - `UX_PATTERNS.md` - persisted state, controls, navigation, and interaction patterns.
 - `ENGINEERING_PRINCIPLES.md` - engineering guardrails, cache strategy, testing and release expectations.

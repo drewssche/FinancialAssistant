@@ -16,6 +16,13 @@
 - Keep Telegram-specific behavior in the client runtime; backend contracts stay shared between Web UI and Telegram.
 
 ## Current Sprint
+### Visual consistency — 2026-10-13
+- [x] Add [visual contract](UI_VISUAL_CONTRACT.md) to the UI and engineering source-of-truth docs: shared styling, icon actions, low hint density, sizing and mandatory rendered-state review.
+- [x] Replace browser-native receipt store suggestions with an app-styled combobox using shared popup positioning and search normalization; retain manual names and the existing store inheritance flow. Clamp floating popup width to the viewport at 320 px.
+- [x] Fill the receipt-mode segmented track with equal buttons. Remove «Ещё» from operation headers and show available preview/history/receipt/session/calculator actions directly as icons; retain accessible names and header wrapping on phones.
+- [x] Local validation: 56 selected browser scenarios passed (18 UX, 3 discounts, 21 money-flow/calculator, 14 plans/resumption). One calculator scenario timed out during mock startup before reaching the form and passed in isolation; final 18 UX cases passed after header sizing and ArrowUp corrections. Mobile and desktop screenshots reviewed; syntax/diff checks pass.
+- [ ] Record production verification after rollout.
+
 ### Operation entry UX — 2026-10-13
 - [x] Reproduce mobile clutter and overlapping long receipts on local test data.
 - [x] Implement adaptive creation/editing forms, shared receipt store, compact product search, independent discount details, optional comments/FX/preview and natural receipt height.

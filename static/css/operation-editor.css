@@ -6,10 +6,6 @@
 .operation-disclosure { min-width: 0; grid-column: 1 / -1; }
 .operation-disclosure > summary { padding: 10px 0; cursor: pointer; color: var(--muted); font-size: .85rem; }
 .operation-disclosure > :not(summary) { margin-top: 8px; }
-.operation-tools { position: relative; }
-.operation-tools > summary { list-style: none; padding: 12px 8px; }
-.operation-tools[open] { display: flex; gap: 6px; flex-wrap: wrap; }
-.operation-tools > button { width: 42px; min-width: 42px; }
 .operation-extra > input, .operation-extra > .create-category-field { width: 100%; }
 .operation-extra > .create-category-field { margin-bottom: 8px; }
 .operation-entry, .operation-preview { border-top: 1px solid var(--border); }
@@ -106,8 +102,6 @@
 :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .is-compact:not(.receipt-item-known):not(.receipt-item-empty) { grid-template-areas: "summary" "identity" "money"; }
 :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .is-compact:not(.receipt-item-known).discount-open { grid-template-areas: "summary" "identity" "money" "discount"; }
 .operation-entry:has(#createEntryModeSwitch.hidden) { display: none; }
-.operation-tools[open] { display: block; }
-.operation-tools-menu { position: absolute; right: 0; top: 100%; z-index: 80; display: flex; gap: 6px; padding: 8px; background: var(--surface-2, #111b2b); border: 1px solid var(--border); border-radius: 8px; }
 @media (min-width: 900px) {
   :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .is-compact.receipt-item-known { grid-template-areas: "summary money"; }
   :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .is-compact.receipt-item-known.discount-open { grid-template-areas: "summary money" "discount discount"; }
@@ -125,7 +119,6 @@
 :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-line-total .receipt-discount-toggle { display: block; margin-top: 2px; width: auto; white-space: normal; }
 
 /* Desktop: visible receipt and totals, one optional settings section. */
-.operation-preview-action { display: none; }
 @media (min-width: 900px) {
   :is(#createModal, #editModal).operation-editor .panel-head.row.between { flex-direction: row; justify-content: space-between; }
   :is(#createModal, #editModal).operation-editor :is(.create-modal-grid, .edit-modal-grid) { grid-template-columns: repeat(12, minmax(0, 1fr)); }
@@ -136,7 +129,6 @@
   :is(#createModal, #editModal).operation-editor .operation-preview > summary { display: none; }
   :is(#createModal, #editModal).operation-editor .operation-entry > .segmented { margin: 0; width: max-content; }
   :is(#createModal, #editModal).operation-editor .operation-preview:not([open]) { display: none; }
-  :is(#createModal, #editModal).operation-editor .operation-preview-action { display: block; white-space: nowrap; }
   :is(#createModal, #editModal).operation-editor .operation-summary-column { grid-column: 1 / -1; display: grid; gap: 16px; min-width: 0; }
   :is(#createModal, #editModal).operation-editor .operation-summary-column.hidden { display: none; }
   .operation-note-label { display: grid; gap: 6px; font-size: .8rem; color: var(--muted); }
@@ -161,4 +153,22 @@
 @media (min-width: 1100px) {
   :is(#createModal, #editModal).operation-editor.is-receipt-editor :is(#opReceiptBlock, #editReceiptBlock) { grid-column: span 8; }
   :is(#createModal, #editModal).operation-editor.is-receipt-editor .operation-summary-column { grid-column: span 4; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2, #111b2b); position: sticky; top: 80px; }
+}
+
+/* Shared control treatment: fill segmented tracks and expose compact header actions. */
+:is(#createModal, #editModal).operation-editor :is(#createOperationModeSwitch, #editOperationModeSwitch) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+:is(#createModal, #editModal).operation-editor :is(#createOperationModeSwitch, #editOperationModeSwitch) > button { width: 100%; min-width: 0; }
+:is(#createModal, #editModal).operation-editor .operation-preview-action { display: inline-flex; }
+:is(#createModal, #editModal).operation-editor .operation-preview > summary { display: none; }
+:is(#createModal, #editModal).operation-editor .operation-preview:not([open]) { display: none; }
+:is(#createModal, #editModal).operation-editor .panel-head.row.between { flex-wrap: wrap; }
+.receipt-store-options { padding: 4px; }
+.receipt-store-options .receipt-store-option { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 40px; padding: 8px 12px; border: 1px solid transparent; border-radius: var(--radius-sm); background: transparent; color: var(--text); text-align: left; }
+.receipt-store-option > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.receipt-store-options .receipt-store-option:is(:hover, .is-focused, [aria-selected="true"]) { background: var(--surface); border-color: var(--border); }
+.receipt-store-options > .muted-small { display: block; padding: 8px; }
+@media (max-width: 640px) {
+  :is(#createModal, #editModal).operation-editor .operation-modal-card > .panel-head { padding-inline: 12px; }
+  :is(#createModal, #editModal).operation-editor .modal-head-actions { margin-left: auto; }
+  .receipt-store-options .receipt-store-option { min-height: 44px; }
 }

@@ -201,7 +201,6 @@ def test_desktop_sidebar_resize_and_preview_preserve_draft(static_server_url, pa
                 assert geometry['sidebarLeft'] >= geometry['receiptRight']
                 assert abs(geometry['sidebarTop'] - geometry['receiptTop']) < 2
             page.screenshot(path=f'/tmp/fa-desktop-receipt-{width}.png')
-    page.locator('#createModal .operation-tools > summary').click()
     page.locator('#createModal .operation-preview-action').click()
     assert page.locator('#createPreviewBody').is_visible()
     page.locator('#createEntryModeSwitch [data-entry-mode="debt"]').click()
@@ -213,3 +212,64 @@ def test_desktop_sidebar_resize_and_preview_preserve_draft(static_server_url, pa
     assert page.locator('#opAmount').is_visible()
     assert page.locator('#opCurrency').is_visible()
     assert page.locator('#receiptTotalValue').is_hidden()
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width', [320, 390, 1100, 1440])
+def test_store_picker_and_header_follow_visual_contract(static_server_url, page_with_receipt_api_mock, width):
+    page = page_with_receipt_api_mock
+    open_editor(page, static_server_url, width)
+    page.locator('#createOperationModeSwitch [data-operation-mode="receipt"]').click()
+    store = page.locator('[data-receipt-store="create"]')
+    assert store.get_attribute('list') is None
+    store.click()
+    popup = page.locator('#createReceiptStoreOptions')
+    assert popup.is_visible()
+    page.wait_for_timeout(50)
+    box = popup.bounding_box()
+    assert box['x'] >= 0 and box['x'] + box['width'] <= width
+    assert box['height'] <= 281
+    page.screenshot(path=f'/tmp/fa-consistent-store-{width}.png')
+    popup.get_by_role('option', name='Соседи', exact=True).click()
+    assert store.input_value() == 'Соседи'
+    assert popup.is_hidden()
+    assert page.evaluate('()=>window.App.state.createReceiptItems[0].shop_name') == 'Соседи'
+    store.fill('Пкуут')  # Green entered with the wrong keyboard layout.
+    assert popup.get_by_role('option', name='Green', exact=True).is_visible()
+    store.press('ArrowDown')
+    store.press('Enter')
+    assert store.input_value() == 'Green'
+    assert page.evaluate('()=>window.App.state.createReceiptItems[0].shop_name') == 'Green'
+    store.click()
+    store.press('Escape')
+    assert popup.is_hidden()
+    assert page.locator('#createModal').is_visible()
+    store.click()
+    last_name = popup.get_by_role('option').last.inner_text().replace('✓', '').strip()
+    store.press('ArrowUp')
+    store.press('Enter')
+    assert store.input_value() == last_name
+    store.fill('Новый магазин')
+    popup.get_by_role('option', name='+ Новый магазин', exact=True).click()
+    assert page.evaluate('()=>window.App.state.createReceiptItems[0].shop_name') == 'Новый магазин'
+    store.click()
+    store.press('Tab')
+    assert popup.is_hidden()
+    assert page.locator('#createModal .operation-tools').count() == 0
+    preview = page.locator('#createModal .operation-preview-action')
+    assert preview.is_visible()
+    assert page.locator('#createSessionRefreshBtn').is_visible()
+    preview.click()
+    assert page.locator('#createPreviewBody').is_visible()
+    preview.click()
+    assert page.locator('#createPreviewBody').is_hidden()
+    geometry = page.locator('#createOperationModeSwitch').evaluate('''n=>{
+      const r=n.getBoundingClientRect(), buttons=[...n.querySelectorAll('button')].map(x=>x.getBoundingClientRect());
+      return {left:buttons[0].left-r.left,right:r.right-buttons[1].right,widths:buttons.map(x=>x.width)};
+    }''')
+    assert geometry['left'] <= 6 and geometry['right'] <= 6
+    assert abs(geometry['widths'][0] - geometry['widths'][1]) <= 1
+    assert page.locator('#createModal .modal-card').evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+    store.click()
+    page.locator('#closeCreateModalBtn').click()
+    assert popup.is_hidden()

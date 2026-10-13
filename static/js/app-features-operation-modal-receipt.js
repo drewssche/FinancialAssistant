@@ -726,8 +726,6 @@
       });
       const store = ctx.fieldsNode?.querySelector('[data-receipt-store]');
       if (store && document.activeElement !== store) store.value = rows[0]?.shop_name || '';
-      const list = ctx.fieldsNode?.querySelector('datalist');
-      if (list) list.innerHTML = [...new Set((state.itemSources || []).map(s => s.name).filter(Boolean))].map(name => `<option value="${esc(name)}"></option>`).join('');
       priceHints?.refresh(mode);
     }
 

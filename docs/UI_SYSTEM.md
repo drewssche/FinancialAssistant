@@ -1,16 +1,18 @@
 # UI System
 
+Обязательные правила для изменений интерфейса: [контракт визуальной консистентности](UI_VISUAL_CONTRACT.md).
+
 ## Operation entry, October 2026
 
-- Creating/editing an operation uses an adaptive layout: short stacked mobile fields and a wider desktop receipt grid. Header history/session/receipt actions live under «Ещё»; the calculator stays directly accessible.
-- Receipt store and currency are selected above the items. The store follows the first row; inherited rows follow its changes, while explicitly different stores remain unchanged and visible in row details. No catalog matching is inferred.
+- Creating/editing an operation uses an adaptive layout: short stacked mobile fields and a wider desktop receipt grid. Header history/session/receipt/preview actions are directly accessible as icon buttons alongside the calculator; no «Ещё» menu.
+- Receipt store and currency are selected above the items. Store suggestions use a themed keyboard-accessible popup, not a native datalist; wrong-layout search and manual names remain supported. The store follows the first row; inherited rows follow its changes, while explicitly different stores remain unchanged and visible in row details. No catalog matching is inferred.
 - The trailing empty row is a compact product search. New products do not require brand, package or identifier setup. Named new rows start at quantity one; the quantity remains editable.
 - «Детали» reveals catalog metadata, measurements and historical comparisons. The separate discount action beside the paid total reveals line-discount controls without expanding catalog metadata. Existing unit-price discounts, amount/percent discounts and exact paid totals retain their financial semantics.
 - On mobile, comment, receipt default category and FX settlement are under additional parameters; saved comments/settlements open this block on entry. Receipt amount overrides are under «Сверить сумму чека»; mismatches remain visible and explicit overrides are preserved. A blank receipt amount continues to derive from its items.
 - Receipt containers grow naturally with no maximum-height clipping. Hidden fields retain their existing DOM identities/listeners. No database migration or historical data conversion accompanies this layout.
 
 - Desktop (900 px+) shows entry modes as tabs and keeps the comment visible. From 1100 px, receipt items occupy the left two thirds and a sticky right column shows calculated total, mismatch, optional paid amount and comment. At 900–1099 px these summary fields form a visible row below the items. Common operations use a narrower 920 px window; receipts can use 1240 px.
-- Desktop retains one optional section for receipt category/FX settlement. Preview is available under «Ещё → Предпросмотр»; plan preview remains visible. Saving stays in a sticky footer. Header actions remain horizontal even under the older 1200 px responsive rules.
+- Desktop retains one optional section for receipt category/FX settlement. Preview is available from the eye icon in the header; plan preview remains visible. Saving stays in a sticky footer. Header actions remain horizontal even under the older 1200 px responsive rules.
 - Resizing moves the existing controls, preserving receipt payload, comment, explicit amount, field IDs and listeners. Mobile returns to the short disclosure layout. Desktop amount-check labels are static and cannot collapse their field.
 
 ## Shared Modal Stack

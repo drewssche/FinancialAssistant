@@ -50,6 +50,7 @@
     "/static/js/app-features-operation-modal-fx-settlement.js",
     "/static/js/app-features-operation-modal-fx-policy.js",
     "/static/js/app-features-operation-modal-currency.js",
+    "/static/js/app-operation-store-picker.js",
     "/static/js/app-operation-layout.js",
     "/static/js/app-features-operation-modal.js",
     "/static/js/app-features-debt-movement-editor.js",

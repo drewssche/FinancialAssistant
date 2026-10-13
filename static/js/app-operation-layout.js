@@ -17,14 +17,6 @@
     if (!modal || !form) return null;
     modal.classList.add('operation-editor');
     const header = modal.querySelector('.modal-head-actions');
-    const tools = disclosure('Ещё', 'operation-tools');
-    header.prepend(tools);
-    const toolMenu = document.createElement("div");
-    toolMenu.className = "operation-tools-menu"; tools.append(toolMenu);
-    for (const id of [`${mode}ModalReceiptBtn`, `${mode}ModalActivityBtn`, `${mode}SessionRefreshBtn`]) {
-      const node = byId(id);
-      if (node) toolMenu.append(node);
-    }
     const extra = disclosure('Комментарий и дополнительные параметры', 'operation-extra');
     form.append(extra);
     extra.append(byId(`${prefix}Note`), byId(`${prefix}FxSettlementBlock`));
@@ -33,18 +25,19 @@
     if (preview) { preview.before(previewDetails); previewDetails.append(preview); }
     const previewButton = document.createElement('button');
     previewButton.type = 'button';
-    previewButton.className = 'btn btn-secondary operation-preview-action';
-    previewButton.textContent = 'Предпросмотр';
+    previewButton.className = 'btn btn-secondary modal-head-icon-btn operation-preview-action';
+    previewButton.title = 'Предпросмотр';
+    previewButton.setAttribute('aria-label', 'Предпросмотр');
+    previewButton.innerHTML = '<svg class="modal-action-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>';
     previewDetails.id = `${mode}OperationPreview`;
     previewButton.setAttribute('aria-controls', previewDetails.id);
     previewButton.setAttribute('aria-expanded', 'false');
     previewButton.addEventListener('click', () => {
       previewDetails.open = !previewDetails.open;
-      tools.open = false;
       if (previewDetails.open) previewDetails.scrollIntoView({block: 'nearest'});
     });
     previewDetails.addEventListener('toggle', () => previewButton.setAttribute('aria-expanded', String(previewDetails.open)));
-    toolMenu.append(previewButton);
+    header.prepend(previewButton);
     const entry = create ? disclosure('Другие операции: валюта, долг', 'operation-entry') : null;
     if (entry) { form.append(entry); entry.append(byId('createEntryModeSwitch')); }
     const check = disclosure('Сверить сумму чека', 'operation-receipt-check');
@@ -60,8 +53,9 @@
     receipt.append(check);
     const store = document.createElement('label');
     store.className = 'receipt-store';
-    store.innerHTML = `<span>Магазин</span><input data-receipt-store="${mode}" aria-label="Магазин чека" placeholder="Выбрать или ввести магазин" list="${mode}ReceiptStores" autocomplete="off"><datalist id="${mode}ReceiptStores"></datalist>`;
+    store.innerHTML = `<span>Магазин</span><input data-receipt-store="${mode}" aria-label="Магазин чека" placeholder="Выбрать или ввести магазин" autocomplete="off">`;
     receipt.prepend(store);
+    window.App.getRuntimeModule('operation-store-picker').bind(store, mode);
     const currency = byId(`${prefix}Currency`), currencyAnchor = document.createComment('operation currency');
     currency.before(currencyAnchor);
     const receiptCurrency = document.createElement('label');

@@ -757,7 +757,6 @@ def test_edit_operation_header_exposes_receipt_positions_action(
         """
     )
     page.wait_for_selector("#editModal:not(.hidden)")
-    page.locator("#editModal .operation-tools > summary").click()
     expect_positions = page.locator("#editModalReceiptBtn")
     assert expect_positions.is_visible()
     assert expect_positions.get_attribute("title") == "Позиции"

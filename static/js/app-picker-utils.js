@@ -192,9 +192,9 @@
     const ownerModalZIndex = ownerModal ? Number(window.getComputedStyle(ownerModal).zIndex || 0) : 0;
     popover.style.zIndex = String(Math.max(220, (Number.isFinite(ownerModalZIndex) ? ownerModalZIndex : 0) + 2));
     const isControlPopover = popover.classList.contains("app-popover-floating") || popover.classList.contains("period-control-popover");
-    const alignToAnchorStart = popover.classList.contains("category-icon-popover");
+    const alignToAnchorStart = popover.classList.contains("category-icon-popover") || popover.dataset.popoverAlign === "start";
     const sizesToContent = popover.classList.contains("analytics-grid-picker-popover");
-    let preferredWidth = Math.min(360, Math.max(320, viewportWidth - margin * 2));
+    let preferredWidth = Math.min(360, Math.max(0, viewportWidth - margin * 2));
     if (!isControlPopover || sizesToContent) {
       popover.style.width = "max-content";
       popover.style.minWidth = "10.5rem";
