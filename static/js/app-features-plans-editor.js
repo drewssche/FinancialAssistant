@@ -107,6 +107,7 @@
       syncPlanRecurrenceUi();
       operationModal.updateCreatePreview?.();
       setContext(plan);
+      window.App.getRuntimeModule("operation-layout")?.sync("create", true);
     }
 
     function getValidatedPlanPayload() {

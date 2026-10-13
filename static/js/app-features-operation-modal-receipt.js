@@ -161,6 +161,7 @@
       return {
         draft_id: state[ctx.seqKey],
         details_expanded: Boolean(seed.details_expanded),
+        discount_expanded: false,
         template_id: seed.template_id || null,
         product_id: seed.product_id || null,
         product_name: normalizeReceiptName(seed.product_name || ""),
@@ -605,7 +606,7 @@
           fallback: String(item.name || "П").slice(0, 1),
         }) || "" : "";
         const known = Boolean(item.product_id || item.template_id);
-        const compact = known && !item.details_expanded;
+        const compact = !item.details_expanded;
         const discountTypeButtons = RECEIPT_DISCOUNT_TYPES.map((entry) => `
           <button
             class="receipt-discount-type-chip ${activeDiscountType === entry.value ? "is-active" : ""}"
@@ -616,12 +617,13 @@
           >${esc(entry.label)}</button>
         `).join("");
         return `
-          <div class="receipt-item-row ${known ? "receipt-item-known" : ""} ${compact ? "is-compact" : ""} ${item.is_discounted ? "receipt-item-row-discounted" : ""} ${hasOpenPicker ? "has-open-popover" : ""}" data-receipt-mode="${mode}" data-receipt-item-id="${item.draft_id}">
+          <div class="receipt-item-row ${known ? "receipt-item-known" : ""} ${compact ? "is-compact" : ""} ${!item.name && !item.details_expanded && !item.is_discounted && !item.unit_price && !item.quantity ? "receipt-item-empty" : ""} ${item.discount_expanded ? "discount-open" : ""} ${item.is_discounted ? "receipt-item-row-discounted" : ""} ${hasOpenPicker ? "has-open-popover" : ""}" data-receipt-mode="${mode}" data-receipt-item-id="${item.draft_id}">
             ${known ? `<div class="receipt-compact-heading">
               <div><button class="receipt-compact-name" type="button" ${item.product_id ? `data-open-receipt-product-card="${Number(item.product_id)}"` : `data-open-receipt-template-card="${Number(item.template_id)}"`}>${esc(item.product_name || item.name)}</button>
               <small>${esc([brandName, item.shop_name || "Без источника", item.variant_snapshot?.name, window.App.measurements.summary(item)].filter(Boolean).join(" · "))}</small></div>
-              <button class="btn btn-secondary btn-xs" type="button" data-receipt-details-toggle="${item.draft_id}" aria-expanded="${!compact}">${compact ? "Изменить" : "Свернуть"}</button>
+              <button class="btn btn-secondary btn-xs" type="button" data-receipt-details-toggle="${item.draft_id}" aria-label="Подробности товара" aria-expanded="${!compact}">${compact ? "Детали" : "Свернуть"}</button>
             </div>` : ""}
+            ${!known ? `<div class="receipt-compact-heading receipt-new-heading"><span>${item.name ? "Новый товар" : "Добавить товар"}</span><button class="btn btn-secondary btn-xs" type="button" data-receipt-details-toggle="${item.draft_id}" aria-label="Подробности товара" aria-expanded="${!compact}">${compact ? "Детали" : "Свернуть"}</button></div>` : ""}
             <div class="receipt-item-identity">
               <div class="receipt-shop-cell ${shopPickerOpen ? "has-open-popover" : ""}">
                 <input type="text" data-receipt-field="shop_name" value="${esc(item.shop_name || "")}" placeholder="Источник" title="${esc(item.shop_name || "Источник")}" autocomplete="off" aria-label="Источник позиции" />
@@ -635,7 +637,7 @@
               <div class="receipt-name-cell ${namePickerOpen ? "has-open-popover" : ""}">
                 <div class="receipt-name-field-wrap">
                   ${item.product_id ? `<button class="receipt-linked-thumb" type="button" data-open-receipt-product-card="${Number(item.product_id)}" title="Открыть карточку товара" aria-label="Открыть карточку ${esc(item.name || "товара")}">${linkedItemThumb}</button>` : (item.template_id ? `<button class="receipt-linked-thumb" type="button" data-open-receipt-template-card="${Number(item.template_id)}" title="Открыть карточку позиции" aria-label="Открыть карточку ${esc(item.name || "позиции")}">${linkedItemThumb}</button>` : "")}
-                  <textarea class="receipt-name-input" rows="1" data-receipt-field="name" placeholder="Позиция" title="${esc(item.name || "Позиция")}" aria-label="Название позиции">${esc(item.name)}</textarea>
+                  <textarea class="receipt-name-input" rows="1" data-receipt-field="name" placeholder="Найти или ввести товар" title="${esc(item.name || "Позиция")}" aria-label="Название позиции">${esc(item.name)}</textarea>
                   ${item.product_id ? `<button class="receipt-template-card-btn" type="button" data-open-receipt-product-card="${Number(item.product_id)}" title="Открыть карточку товара" aria-label="Открыть карточку товара">↗</button>` : (item.template_id ? `<button class="receipt-template-card-btn" type="button" data-open-receipt-template-card="${Number(item.template_id)}" title="Открыть карточку позиции" aria-label="Открыть карточку позиции">↗</button>` : "")}
                 </div>
                 <span class="receipt-new-badge ${item.name && !item.template_id ? "" : "hidden"}">${item.product_id ? "Новое предложение" : "Новая позиция"}</span>
@@ -675,19 +677,19 @@
                 <label class="field"><span>Единица содержимого</span><select data-receipt-field="package_unit" aria-label="Единица содержимого">${window.App.measurements.options(item.package_unit, true)}</select></label>
               </div>
             </details>
-            ${item.is_discounted ? `<details class="receipt-discount-calculation" ${item.discount_mode ? "open" : ""}>
-              <summary>Скидка от суммы позиции${item.discount_mode ? " · " + (item.discount_mode === "final" ? "итог из чека" : item.discount_mode === "percent" ? "процент" : "сумма") : ""}</summary>
+            ${item.is_discounted ? `<details class="receipt-discount-calculation" open>
+              <summary>Скидка на позицию</summary>
               <div class="form-grid">
                 <label class="field"><span>Способ расчёта</span><select data-receipt-field="discount_mode" aria-label="Способ расчёта скидки">
                   ${[["", "Цена за единицу"], ["amount", "Скидка на сумму"], ["percent", "Скидка в процентах"], ["final", "Оплаченный итог"]].map(([value, label]) => `<option value="${value}" ${(item.discount_mode || "") === value ? "selected" : ""}>${label}</option>`).join("")}
                 </select></label>
                 ${item.discount_mode ? `<label class="field"><span>${item.discount_mode === "final" ? "Оплачено за позицию" : item.discount_mode === "percent" ? "Скидка, %" : "Скидка за всю позицию"}</span><input type="text" inputmode="decimal" data-receipt-field="discount_value" value="${esc(String(item.discount_value ?? 0))}" aria-label="Значение скидки или итог" /></label>` : ""}
               </div>
-              <div class="muted-small receipt-pricing-explanation">${esc(receiptPricingExplanation(item, mode))}</div>
+              <div class="muted-small receipt-pricing-explanation">${esc(receiptPricingExplanation(item, mode))}</div><button class="btn btn-secondary btn-xs" type="button" data-receipt-discount-remove="${item.draft_id}">Убрать скидку</button>
             </details>` : ""}
             <div class="receipt-item-money">
               <div class="receipt-price-cell ${item.is_discounted ? "receipt-price-cell-discounted" : ""}">
-                ${known ? `<span class="receipt-known-price-label">Цена</span>` : ""}
+                <span class="receipt-known-price-label">${item.discount_mode ? "Цена после скидки" : "Цена за ед."}</span>
                 <div class="receipt-price-field">
                   <input type="text" inputmode="decimal" data-receipt-field="unit_price" ${item.discount_mode ? "readonly" : ""} value="${formatReceiptInputAmount(item.discount_mode ? total / (item.quantity || 1) : item.unit_price)}" placeholder="Цена" title="${item.discount_mode ? "Эффективная цена после скидки; итог рассчитывается отдельно" : "Цена покупки в " + esc(getReceiptCurrencyLabel(mode))}" aria-label="Цена позиции" />
                 </div>
@@ -698,7 +700,7 @@
                 </div>
               </div>
               <div class="receipt-quantity-cell">
-                <span>Количество</span>
+                <span>Кол-во${item.sale_unit ? " · " + esc(({piece:"шт.",pack:"уп.",kg:"кг",g:"г",l:"л",ml:"мл"})[item.sale_unit] || item.sale_unit) : ""}</span>
                 <input type="number" step="0.001" min="0" data-receipt-field="quantity" value="${item.quantity || ""}" placeholder="Кол-во" aria-label="Количество позиции" />
               </div>
               <div class="receipt-line-total"><span>Итого</span><strong>${formatReceiptMoney(total, mode)}</strong></div>
@@ -708,8 +710,39 @@
         `;
       }).join("");
       ctx.listNode.querySelectorAll('textarea[data-receipt-field="name"]').forEach(resizeReceiptNameTextarea);
+      ctx.listNode.querySelectorAll('.receipt-item-row').forEach(row => {
+        row.querySelector('.receipt-line-total')?.append(row.querySelector('.receipt-discount-toggle'));
+      });
+      // Discount editing is independent of catalog details.
+      ctx.listNode.querySelectorAll('.receipt-item-row-discounted').forEach(row => {
+        const panel = row.querySelector('.receipt-discount-calculation');
+        const price = row.querySelector('.receipt-regular-price-field');
+        const types = row.querySelector('.receipt-discount-type-row');
+        if (panel && price) {
+          const label = document.createElement('span'); label.textContent = 'Цена за единицу до скидки';
+          price.prepend(label); panel.querySelector('.form-grid').prepend(price);
+          panel.append(types);
+        }
+      });
+      const store = ctx.fieldsNode?.querySelector('[data-receipt-store]');
+      if (store && document.activeElement !== store) store.value = rows[0]?.shop_name || '';
+      const list = ctx.fieldsNode?.querySelector('datalist');
+      if (list) list.innerHTML = [...new Set((state.itemSources || []).map(s => s.name).filter(Boolean))].map(name => `<option value="${esc(name)}"></option>`).join('');
       priceHints?.refresh(mode);
     }
+
+    document.addEventListener('change', event => {
+      const store = event.target.closest('[data-receipt-store]');
+      if (!store) return;
+      const mode = store.dataset.receiptStore;
+      const first = getReceiptItems(mode)[0];
+      if (!first) return;
+      updateReceiptItemField(first.draft_id, 'shop_name', store.value, mode);
+      inheritReceiptShopFromFirstRow(first.draft_id, mode);
+      renderReceiptItems(mode);
+      renderReceiptSummary(mode);
+      if (mode === 'create') updateCreatePreview(); else updateEditPreview();
+    });
 
     function getReceiptTotal(mode = "create") {
       return getReceiptItems(mode).reduce((acc, item) => acc + receiptLineTotal(item), 0);
@@ -760,7 +793,11 @@
       }
       if (ctx.diffNode) {
         ctx.diffNode.innerHTML = diffHtml;
-        ctx.diffNode.classList.toggle("receipt-diff-warn", !resolvedAmount.empty && Math.abs(diff) >= 0.01);
+        const mismatch = !resolvedAmount.empty && Math.abs(diff) >= 0.01;
+        ctx.diffNode.classList.toggle("receipt-diff-warn", mismatch);
+        ctx.diffNode.parentElement.hidden = !mismatch;
+        const pull = document.getElementById(mode === 'edit' ? 'editPullReceiptTotalBtn' : 'pullReceiptTotalBtn');
+        if (pull) pull.hidden = !mismatch;
       }
     }
 

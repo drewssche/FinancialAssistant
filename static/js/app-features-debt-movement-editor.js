@@ -28,6 +28,7 @@
     el.editCurrency.disabled = true;
     window.App.getRuntimeModule?.("activity")?.configureActivityButton?.(el.editModalActivityBtn, "debt", item.debt_id);
     el.editModal.classList.add("editing-debt-movement");
+    window.App.getRuntimeModule("operation-layout")?.sync("edit", true);
     el.editModal.classList.remove("hidden");
     core.bringModalToFront?.(el.editModal);
   }

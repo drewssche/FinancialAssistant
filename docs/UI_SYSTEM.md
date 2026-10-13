@@ -1,12 +1,21 @@
 # UI System
 
+## Operation entry, October 2026
+
+- Creating/editing an operation uses an adaptive layout: short stacked mobile fields and a wider desktop receipt grid. Header history/session/receipt actions live under «Ещё»; the calculator stays directly accessible.
+- Receipt store and currency are selected above the items. The store follows the first row; inherited rows follow its changes, while explicitly different stores remain unchanged and visible in row details. No catalog matching is inferred.
+- The trailing empty row is a compact product search. New products do not require brand, package or identifier setup. Named new rows start at quantity one; the quantity remains editable.
+- «Детали» reveals catalog metadata, measurements and historical comparisons. The separate discount action beside the paid total reveals line-discount controls without expanding catalog metadata. Existing unit-price discounts, amount/percent discounts and exact paid totals retain their financial semantics.
+- Comment, receipt default category and FX settlement are under additional parameters; saved comments/settlements open this block on entry. Receipt amount overrides are under «Сверить сумму чека»; mismatches remain visible and explicit overrides are preserved. A blank receipt amount continues to derive from its items.
+- Receipt containers grow naturally with no maximum-height clipping. Hidden fields retain their existing DOM identities/listeners. No database migration or historical data conversion accompanies this layout.
+
 ## Shared Modal Stack
 
 - The operation calculator participates in the shared modal stack alongside create/edit forms and pickers. The top eligible window receives input; Escape closes that window and returns focus to its opener while preserving the underlying draft.
 - Changes to product or receipt forms must preserve nested picker/calculator clicks, scrolling, focus and draft state at 320, 390 and 1440 px. Existing calculator and catalog layout E2E scenarios are regression references.
 - The product modal now has «Товар», «Предложения», «Цены» and «Покупки» views. Switching views keeps unsaved product/photo fields in the same DOM. Offer editing, confirmations and the full operation explorer remain nested workflows under the shared stack. Closing returns focus to the opener; the last product view is remembered for the current session.
 - Product «Цены» defaults to purchase observations: stepped chart, per-step and overall percentages, currency/measurement series and links to receipts. «Сравнение и период» contains price type, unit normalization and inclusive dates. Saved offer prices remain a separate mode with their original actions. Unknown measurements/prices are explicit; a packaging change is not labelled proven shrinkflation.
-- Known receipt products/offers collapse after explicit picker selection or when a saved receipt opens. Quantity, price, paid total and removal remain inline; «Изменить» expands identity, measurements and discount settings. Exact-name typing keeps the editor/picker open until explicit selection. Unknown/new rows retain the full form. Compact mode is presentation state only and is never sent as financial data.
+- Known receipt products/offers collapse after explicit picker selection or when a saved receipt opens. Quantity, price, paid total and removal remain inline; «Детали» expands identity and measurements; the discount action independently opens its calculation settings. Exact-name typing keeps the editor/picker open until explicit selection. Unknown/new rows expose product search first, with optional details. Compact mode is presentation state only and is never sent as financial data.
 - Product purchase browsing uses paged, date-independent results. Opening a receipt cannot replace an already open operation edit draft. Returning from a nested operation preserves list context; actual edits refresh loaded pages. Price/purchase requests are cancelled and generation-checked on context changes. Purchase price graphs and manual identifiers are available; automated retailer integrations remain in [the plan](RECEIPTS_AND_PRODUCT_ANALYTICS_PLAN.md).
 
 ## Layout

@@ -35,6 +35,7 @@ def test_receipt_comparison_lazy_exact_live_invalidated_and_retry(static_server_
       modal.renderReceiptItems('create');modal.renderReceiptSummary('create');
     }''')
     row=page.locator('#receiptItemsList .receipt-item-row').first
+    row.locator('[data-receipt-details-toggle]').click()
     hint=row.locator('.receipt-price-hint');button=hint.locator('button');label=hint.locator('small')
     expect(button).to_be_visible()
     assert requests==[]
@@ -72,10 +73,10 @@ def test_receipt_comparison_lazy_exact_live_invalidated_and_retry(static_server_
       await modal.openEditModal({id:777,kind:'expense',amount:'3',original_amount:'3',currency:'BYN',operation_date:'2026-10-02',receipt_items:[{name:'Сыр',product_id:401,template_id:501,shop_name:'Магазин',quantity:1,unit_price:3,sale_unit:'kg'}]});
     }''')
     saved=page.locator('#editReceiptItemsList .receipt-item-row').first
+    saved.locator('[data-receipt-details-toggle]').click()
     saved.locator('[data-receipt-price-hint]').click()
     expect(saved.locator('.receipt-price-hint small')).to_contain_text('01.10.2026')
     assert requests[-1]['exclude_operation_id']==777 and requests[-1]['as_of']=='2026-10-02'
-    saved.locator('[data-receipt-details-toggle]').click()
     saved.locator('.receipt-measurements summary').click()
     saved.locator('[data-receipt-field="sale_unit"]').select_option('g')
     expect(saved.locator('.receipt-price-hint small')).to_have_text('')
@@ -98,6 +99,7 @@ def test_receipt_comparison_lazy_exact_live_invalidated_and_retry(static_server_
     page.evaluate("document.getElementById('closeEditModalBtn').click()")
     page.evaluate("window.App.getRuntimeModule('plans').openPlanEdit(777)")
     expect(page.locator('#createTitle')).to_contain_text('Редактировать план')
+    page.locator('#receiptItemsList [data-receipt-details-toggle]').first.click()
     page.locator('#receiptItemsList [data-receipt-price-hint]').first.click()
     expect(page.locator('#receiptItemsList .receipt-price-hint small').first).to_contain_text('01.10.2026')
     assert requests[-1]['exclude_operation_id'] is None and requests[-1]['as_of']=='2026-10-15'

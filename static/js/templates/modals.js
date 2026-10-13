@@ -43,8 +43,8 @@
           </div>
 
           <div class="segmented" id="createOperationModeSwitch" aria-label="Формат операции">
-            <button class="segmented-btn active" data-operation-mode="common" type="button">Общая</button>
-            <button class="segmented-btn" data-operation-mode="receipt" type="button">Чек</button>
+            <button class="segmented-btn active" data-operation-mode="common" type="button">Без позиций</button>
+            <button class="segmented-btn" data-operation-mode="receipt" type="button">Чек с товарами</button>
           </div>
           <input id="opOperationMode" type="hidden" value="common" />
           <div id="opDateField" class="date-input-wrap" data-date-stepper>
@@ -141,7 +141,7 @@
               <div class="receipt-summary">
                 <div class="muted-small"><span id="receiptTotalLabel">Сумма чека</span>: <strong id="receiptTotalValue">0.00</strong></div>
                 <div class="muted-small"><span id="receiptDiffLabel">Расхождение</span>: <strong id="receiptDiffValue">0.00</strong></div>
-                <button id="pullReceiptTotalBtn" class="btn btn-secondary" type="button">Подтянуть сумму из чека</button>
+                <button id="pullReceiptTotalBtn" class="btn btn-secondary" type="button">Использовать сумму позиций</button>
               </div>
             </div>
           </div>
@@ -532,8 +532,8 @@
             <p class="muted-small">Дата, сумма и комментарий относятся к этому движению. Остаток долга пересчитается после сохранения.</p>
           </div>
           <div class="segmented compact-segmented" id="editOperationModeSwitch" aria-label="Формат операции">
-            <button class="segmented-btn active" data-operation-mode="common" type="button">Общая</button>
-            <button class="segmented-btn" data-operation-mode="receipt" type="button">Чек</button>
+            <button class="segmented-btn active" data-operation-mode="common" type="button">Без позиций</button>
+            <button class="segmented-btn" data-operation-mode="receipt" type="button">Чек с товарами</button>
           </div>
           <input id="editOperationMode" type="hidden" value="common" />
           <div id="editDateField" class="date-input-wrap" data-date-stepper>
@@ -629,7 +629,7 @@
               <div class="receipt-summary">
                 <div class="muted-small"><span id="editReceiptTotalLabel">Сумма чека</span>: <strong id="editReceiptTotalValue">0.00</strong></div>
                 <div class="muted-small"><span id="editReceiptDiffLabel">Расхождение</span>: <strong id="editReceiptDiffValue">0.00</strong></div>
-                <button id="editPullReceiptTotalBtn" class="btn btn-secondary" type="button" data-receipt-mode="edit">Подтянуть сумму из чека</button>
+                <button id="editPullReceiptTotalBtn" class="btn btn-secondary" type="button" data-receipt-mode="edit">Использовать сумму позиций</button>
               </div>
             </div>
           </div>

@@ -27,7 +27,6 @@ def test_weighted_line_discount_modes_and_edit_roundtrip(static_server_url, page
     row.locator('[data-receipt-field="unit_price"]').fill('15.64')
     row.locator('[data-receipt-discount-toggle]').click()
     row.locator('[data-receipt-field="regular_unit_price"]').fill('15.64')
-    row.locator('.receipt-discount-calculation summary').click()
     row.locator('[data-receipt-field="discount_mode"]').select_option('amount')
     row.locator('[data-receipt-field="discount_value"]').fill('0.13')
     expect(row.locator('.receipt-line-total strong')).to_contain_text('3,65')
@@ -66,6 +65,7 @@ def test_weighted_line_discount_modes_and_edit_roundtrip(static_server_url, page
     expect(saved.locator('.receipt-line-total strong')).to_contain_text('3,65')
     after = page.evaluate("window.App.getRuntimeModule('operation-modal').getEditReceiptPayload()[0]")
     assert Decimal(after['discount_value']) == Decimal('3.65')
+    saved.locator('[data-receipt-discount-toggle]').click()
     # Removing known original price must keep the exact final, without guessing savings.
     saved.locator('[data-receipt-field="regular_unit_price"]').fill('')
     expect(saved.locator('.receipt-pricing-explanation')).to_contain_text('неизвестна')

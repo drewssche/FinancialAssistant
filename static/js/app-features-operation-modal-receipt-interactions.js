@@ -242,12 +242,13 @@
       }
       let structureChanged = false;
       if (field === "name" && updated.hadName !== updated.hasName) {
+        if (!updated.hadName && updated.hasName && !updated.item.quantity) updated.item.quantity = 1;
         commitReceiptRowMutation(mode);
         structureChanged = true;
       } else {
         const totalCell = row.querySelector(".receipt-line-total");
         if (totalCell) {
-          totalCell.innerHTML = `<span>Итого</span><strong>${formatReceiptMoney(receiptLineTotal(updated.item), mode)}</strong>`;
+          totalCell.querySelector("strong").innerHTML = formatReceiptMoney(receiptLineTotal(updated.item), mode);
         }
         const discountToggle = row.querySelector("button[data-receipt-discount-toggle]");
         if (discountToggle && receiptDiscountToggleLabel) {
@@ -662,6 +663,17 @@
         commitReceiptRowMutation(mode);
         return;
       }
+      const removeDiscount = event.target.closest('[data-receipt-discount-remove]');
+      if (removeDiscount) {
+        const row = removeDiscount.closest('[data-receipt-item-id]'), mode = getReceiptModeFromNode(row);
+        const id = Number(removeDiscount.dataset.receiptDiscountRemove);
+        updateReceiptItemField(id, 'is_discounted', false, mode);
+        const item = getReceiptItemByDraftId(id, mode);
+        if (item) item.discount_expanded = false;
+        commitReceiptRowMutation(mode);
+        getReceiptContext(mode).listNode?.querySelector(`[data-receipt-discount-toggle="${id}"]`)?.focus({preventScroll:true});
+        return;
+      }
       const discountBtn = event.target.closest("button[data-receipt-discount-toggle]");
       if (discountBtn) {
         const draftId = Number(discountBtn.dataset.receiptDiscountToggle || 0);
@@ -669,10 +681,14 @@
         const mode = getReceiptModeFromNode(row);
         const rowItem = getReceiptItemByDraftId(draftId, mode);
         if (rowItem) {
-          const expanding = row.classList.contains("is-compact");
-          rowItem.details_expanded = true;
-          updateReceiptItemField(draftId, "is_discounted", expanding ? true : !rowItem.is_discounted, mode);
+          if (!rowItem.is_discounted) {
+            rowItem.regular_unit_price = rowItem.unit_price || 0;
+            updateReceiptItemField(draftId, "is_discounted", true, mode);
+            updateReceiptItemField(draftId, "discount_mode", "amount", mode);
+          }
+          rowItem.discount_expanded = !rowItem.discount_expanded;
           commitReceiptRowMutation(mode);
+          getReceiptContext(mode).listNode?.querySelector(`[data-receipt-discount-toggle="${draftId}"]`)?.focus({preventScroll:true});
         }
         return;
       }

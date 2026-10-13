@@ -16,6 +16,12 @@
 - Keep Telegram-specific behavior in the client runtime; backend contracts stay shared between Web UI and Telegram.
 
 ## Current Sprint
+### Operation entry UX — 2026-10-13
+- [x] Reproduce mobile clutter and overlapping long receipts on local test data.
+- [x] Implement adaptive creation/editing forms, shared receipt store, compact product search, independent discount details, optional comments/FX/preview and natural receipt height.
+- [ ] Finish regression checks and release through GitHub → server pull; no database migration.
+- [ ] User evaluation with real receipts, then further refinement. OCR/retailer/analytics stages remain on hold in the existing plan.
+
 ### Reliability And Documentation 2026-10-12
 - [x] Investigate the 6420 bot restarts: retained `IndexError` failures match the counter; missing/empty message text reaches unchecked token indexing. Documented in [the operations review](OPERATIONS_REVIEW_2026-10-12.md).
 - [x] Activate the existing 2 GiB swap file and persist it in fstab; retain swappiness 10 and verify the generated active swap unit. No application restarts required.

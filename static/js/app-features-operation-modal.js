@@ -187,6 +187,7 @@
     el.opReceiptBlock?.classList.toggle("hidden", el.opEntryMode?.value === "debt" || el.opEntryMode?.value === "currency" || nextMode !== "receipt");
     el.convertAmountToDiscountReceiptBtn?.classList.toggle("hidden", nextMode !== "common");
     setReceiptEnabled(nextMode === "receipt", "create");
+    window.App.getRuntimeModule("operation-layout")?.sync("create");
     updateCreateCategoryFieldUi();
     renderCreateCategoryPicker();
     renderDebtCounterpartyPicker();
@@ -223,6 +224,7 @@
       : [createReceiptDraft ? createReceiptDraft(seed, "create") : seed];
     if (state.createReceiptItems[0]) {
       state.createReceiptItems[0].is_discounted = true;
+      state.createReceiptItems[0].discount_expanded = true;
       state.createReceiptItems[0].discount_type = state.createReceiptItems[0].discount_type || "promo";
       if (amountValue && Number(state.createReceiptItems[0].unit_price || 0) <= 0) {
         state.createReceiptItems[0].unit_price = Number(amountResolved.previewValue || 0);
@@ -253,6 +255,7 @@
     }
     el.editReceiptBlock?.classList.toggle("hidden", nextMode !== "receipt");
     setReceiptEnabled(nextMode === "receipt", "edit");
+    window.App.getRuntimeModule("operation-layout")?.sync("edit");
     updateEditCategoryFieldUi();
     renderEditCategoryPicker();
     syncEditFxSettlementFieldUi();
@@ -261,6 +264,7 @@
   async function setCreateEntryMode(mode) {
     const nextMode = mode === "debt" ? "debt" : mode === "currency" ? "currency" : "operation";
     el.opEntryMode.value = nextMode;
+    window.App.getRuntimeModule("operation-layout")?.sync("create");
     core.syncSegmentedActive(el.createEntryModeSwitch, "entry-mode", nextMode);
     const isDebt = nextMode === "debt";
     const isCurrency = nextMode === "currency";
@@ -529,6 +533,7 @@
     renderReceiptItems();
     renderReceiptSummary();
     updateCreatePreview();
+    window.App.getRuntimeModule("operation-layout")?.sync("create", true);
     el.createModal.classList.remove("hidden");
   }
 
@@ -706,6 +711,7 @@
     currencyFeature.resetEditFxSettlementDrivers?.();
     syncEditFxSettlementFieldUi();
     updateEditPreview();
+    window.App.getRuntimeModule("operation-layout")?.sync("edit", true);
     el.editModal.classList.remove("hidden");
   }
   function closeEditModal() {
