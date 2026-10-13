@@ -4,7 +4,6 @@
   window.App.templates.shellSectionsSecondary = `
 
         <section id="workSection" class="section-block hidden">
-          <datalist id="workCompanyOptions"></datalist>
           <section class="panel">
             <div class="segmented work-view-tabs" id="workViewTabs" role="tablist" aria-label="Разделы работы">
               <button class="segmented-btn active" data-work-view="timesheet" type="button">Табель</button>
@@ -118,7 +117,7 @@
               <section class="settings-block">
                 <h3>График работы</h3>
                 <div class="settings-grid-2">
-                  <label class="field"><span>Компания</span><input id="workCompany" type="text" maxlength="160" list="workCompanyOptions" placeholder="Битрикс" /></label>
+                  <label class="field"><span>Компания</span><input id="workCompany" type="text" maxlength="160" autocomplete="off" placeholder="Битрикс" /></label>
                   <label class="field"><span>Должность</span><input id="workPosition" type="text" maxlength="160" /></label>
                   <label class="field"><span>Дата начала работы</span><div class="date-input-wrap"><input id="workStartDate" type="date" /><button class="date-input-trigger" type="button" data-date-picker-trigger="workStartDate" aria-label="Открыть календарь"></button></div></label>
                   <label class="field"><span>Часов в обычный день</span><input id="workStandardHours" type="number" min="0.25" max="24" step="0.25" value="8" /></label>
@@ -191,7 +190,7 @@
                   <div class="settings-grid-2">
                     <label class="field"><span>Действует с</span><div class="date-input-wrap"><input id="workContractFrom" type="date" required /><button class="date-input-trigger" type="button" data-date-picker-trigger="workContractFrom" aria-label="Открыть календарь"></button></div></label>
                     <label class="field"><span>Действует до</span><div class="date-input-wrap"><input id="workContractTo" type="date" /><button class="date-input-trigger" type="button" data-date-picker-trigger="workContractTo" aria-label="Открыть календарь"></button></div></label>
-                    <label class="field"><span>Компания</span><input id="workContractCompany" type="text" maxlength="160" list="workCompanyOptions" /></label>
+                    <label class="field"><span>Компания</span><input id="workContractCompany" type="text" maxlength="160" autocomplete="off" /></label>
                     <label class="field"><span>Должность</span><input id="workContractPosition" type="text" maxlength="160" /></label>
                     <label class="field"><span>Оклад на руки</span><input id="workContractSalary" type="number" min="0" step="0.01" /></label>
                     <label class="field"><span>Валюта</span><select id="workContractCurrency"><option value="BYN">BYN</option><option value="USD">USD</option><option value="EUR">EUR</option></select></label>
@@ -781,8 +780,17 @@
         </section>
 
         <section id="settingsSection" class="section-block hidden">
-          <section class="panel">
+          <section class="panel settings-workspace">
+            <nav id="settingsViewTabs" class="segmented settings-navigation" aria-label="Разделы настроек">
+              <button class="segmented-btn active" type="button" data-settings-view="general" aria-controls="settings-general" aria-pressed="true">Общие</button>
+              <button class="segmented-btn" type="button" data-settings-view="dashboard" aria-controls="settings-dashboard" aria-pressed="false">Главная</button>
+              <button class="segmented-btn" type="button" data-settings-view="currency" aria-controls="settings-currency" aria-pressed="false">Валюты и банки</button>
+              <button class="segmented-btn" type="button" data-settings-view="notifications" aria-controls="settings-notifications" aria-pressed="false">Напоминания</button>
+              <button class="segmented-btn" type="button" data-settings-view="alerts" aria-controls="settings-alerts" aria-pressed="false">Пороги курсов</button>
+              <button class="segmented-btn" type="button" data-settings-view="data" aria-controls="settings-data" aria-pressed="false">Данные</button>
+            </nav>
             <form id="settingsForm" class="settings-form">
+              <div id="settings-general" data-settings-panel="general" class="settings-page">
               <section class="settings-block">
                 <h3>Регион</h3>
                 <label class="field">
@@ -807,8 +815,7 @@
                   </div>
                 </label>
               </section>
-              <section class="settings-block">
-                <h3>Интерфейс</h3>
+<section class="settings-block"><h3>Отображение сумм</h3>
                 <div class="settings-grid-2">
                   <label class="field">
                     <span>Валюта</span>
@@ -835,22 +842,51 @@
                   </label>
                 </div>
                 <div id="currencyPreview" class="settings-preview">Пример: 1 234,56&nbsp;\uE901</div>
+                </section>
+                <section class="settings-block">
+                  <h3>Интерфейс</h3>
+                <div class="settings-scale-row">
+                  <label class="field">
+                    <span>Масштаб интерфейса: <strong id="uiScaleValue">100%</strong></span>
+                    <input id="uiScaleRange" type="range" min="85" max="115" step="1" value="100" />
+                  </label>
+                  <button id="resetUiScaleBtn" class="btn btn-secondary btn-xs" type="button">Сбросить 100%</button>
+                </div>
+                </section>
+              </div>
+              <div id="settings-dashboard" data-settings-panel="dashboard" class="settings-page hidden">
+                <section class="settings-block">
+                  <h3>Блоки главной</h3>
                 <label class="settings-switch-row">
                   <input id="showDashboardAnalyticsToggle" type="checkbox" checked />
-                  <span>Показывать блок аналитики на дашборде</span>
+                  <span>Структура расходов</span>
                 </label>
                 <label class="settings-switch-row">
                   <input id="showDashboardOperationsToggle" type="checkbox" checked />
-                  <span>Показывать блок планов на дашборде</span>
+                  <span>Планы</span>
                 </label>
                 <label class="settings-switch-row">
                   <input id="showDashboardDebtsToggle" type="checkbox" checked />
-                  <span>Показывать карточки долгов на дашборде</span>
+                  <span>Долги</span>
                 </label>
                 <label class="settings-switch-row">
                   <input id="showDashboardCurrencyToggle" type="checkbox" checked />
-                  <span>Показывать валютный блок на дашборде</span>
+                  <span>Валюта</span>
                 </label>
+                <label class="field">
+                  <span>Планов на главной</span>
+                  <div class="settings-picker-field">
+                    <select id="dashboardOperationsLimitSelect">
+                      <option value="5">5</option>
+                      <option value="8">8</option>
+                      <option value="12">12</option>
+                    </select>
+                    <button id="dashboardOperationsLimitPickerBtn" class="btn btn-secondary settings-picker-btn hidden" type="button" aria-haspopup="dialog"></button>
+                  </div>
+                </label>
+                </section>
+              </div>
+              <div id="settings-currency" data-settings-panel="currency" class="settings-page hidden">
                 <section class="settings-block">
                   <h3>Отслеживаемые валюты</h3>
                   <div id="trackedCurrenciesWrap" class="settings-grid-2">
@@ -878,7 +914,7 @@
                 </section>
                 <section class="settings-block">
                   <h3>Банковские курсы</h3>
-                  <p class="muted-small">Банки, которые будут показаны в KPI, дайджесте и доступны для алертов.</p>
+                  <p class="muted-small">Для сводки курсов и уведомлений.</p>
                   <div id="bankRateBanksWrap" class="settings-grid-2">
                     ${[
                       ["priorbank", "Приорбанк · онлайн"],
@@ -893,26 +929,9 @@
                     `).join("")}
                   </div>
                 </section>
-                <label class="field">
-                  <span>Строк планов на дашборде</span>
-                  <div class="settings-picker-field">
-                    <select id="dashboardOperationsLimitSelect">
-                      <option value="5">5</option>
-                      <option value="8">8</option>
-                      <option value="12">12</option>
-                    </select>
-                    <button id="dashboardOperationsLimitPickerBtn" class="btn btn-secondary settings-picker-btn hidden" type="button" aria-haspopup="dialog"></button>
-                  </div>
-                </label>
-                <div class="settings-scale-row">
-                  <label class="field">
-                    <span>Масштаб интерфейса: <strong id="uiScaleValue">100%</strong></span>
-                    <input id="uiScaleRange" type="range" min="85" max="115" step="1" value="100" />
-                  </label>
-                  <button id="resetUiScaleBtn" class="btn btn-secondary btn-xs" type="button">Сбросить 100%</button>
-                </div>
-              </section>
-              <section class="settings-block">
+              </div>
+              <div id="settings-notifications" data-settings-panel="notifications" class="settings-page hidden">
+                <section class="settings-block">
                 <h3>Напоминания</h3>
                 <label class="settings-switch-row">
                   <input id="plansRemindersToggle" type="checkbox" checked />
@@ -932,7 +951,7 @@
                 </label>
                 <label class="settings-switch-row">
                   <input id="currencyDigestToggle" type="checkbox" />
-                  <span>Присылать раз в день курсы отслеживаемых валют в Telegram</span>
+                  <span>Ежедневные курсы в Telegram</span>
                 </label>
                 <label class="field">
                   <span>Время уведомления по курсам</span>
@@ -942,8 +961,13 @@
                   <input id="currencyDigestChartToggle" type="checkbox" checked />
                   <span>Добавлять график курсов за последние 7 дней</span>
                 </label>
+                </section>
+              </div>
+              <div id="settings-alerts" data-settings-panel="alerts" class="settings-page hidden">
+                <section class="settings-block">
+                  <h3>Пороги курсов</h3>
                 <div class="field">
-                  <span>Алерты по официальным курсам НБРБ</span>
+                  <span>Официальные курсы НБРБ</span>
                   <div id="currencyAlertsSettings" class="settings-alerts-grid">
                     ${["USD", "EUR", "RUB", "CNY", "PLN"].map((currency) => `
                       <div class="settings-alert-row" data-currency-alert-row="${currency}">
@@ -984,35 +1008,36 @@
                 <div class="field">
                   <div class="settings-alert-section-head">
                     <div>
-                      <span>Алерты по курсам банков</span>
-                      <p class="muted-small">Как в банковских приложениях: «Покупка» — банк покупает валюту у вас, «Продажа» — банк продаёт валюту вам.</p>
+                      <span>Курсы банков</span>
+                      <p class="muted-small">Покупка — банк покупает у вас; продажа — продаёт вам.</p>
                     </div>
                     <button id="addBankCurrencyAlertBtn" class="btn btn-secondary btn-xs" type="button">Добавить алерт</button>
                   </div>
                   <div id="bankCurrencyAlertsList" class="settings-alerts-grid"></div>
                 </div>
-              </section>
-              <div class="settings-actions">
-                <button id="saveSettingsBtn" class="btn btn-primary" type="submit">Сохранить настройки</button>
+                </section>
               </div>
+              <div class="settings-actions"><button id="saveSettingsBtn" class="btn btn-primary btn-icon" type="submit" aria-label="Сохранить настройки" title="Сохранить настройки">${window.App.icons.svg("save")}</button></div>
             </form>
+              <div id="settings-data" data-settings-panel="data" class="settings-page hidden">
             <section class="panel danger-zone">
-              <h3>Danger Zone</h3>
+              <h3>Удаление аккаунта</h3>
               <p class="subtitle">Удаление аккаунта удалит все операции, долги, категории и настройки без возможности восстановления.</p>
               <div class="danger-zone-actions">
-                <input id="deleteMePhrase" type="text" placeholder="Введите УДАЛИТЬ" />
-                <button id="deleteMeBtn" class="btn btn-danger" type="button">Удалить меня</button>
+                <input id="deleteMePhrase" type="text" aria-label="Подтверждение удаления аккаунта" placeholder="Введите УДАЛИТЬ" />
+                <button id="deleteMeBtn" class="btn btn-danger" type="button">Удалить аккаунт</button>
               </div>
             </section>
+            </div>
           </section>
         </section>
 
         <section id="adminSection" class="section-block hidden">
-          <section class="panel">
+          <nav id="adminViewTabs" class="segmented" aria-label="Разделы администрирования"><button class="segmented-btn active" type="button" data-admin-view="users" aria-controls="adminUsersPanel" aria-pressed="true">Доступ</button><button class="segmented-btn" type="button" data-admin-view="diagnostics" aria-controls="adminDiagnosticsPanel" aria-pressed="false">Диагностика курсов</button></nav>
+          <section id="adminUsersPanel" class="panel">
             <div class="panel-head row between">
               <div>
                 <h3>Управление доступом</h3>
-                <p class="subtitle">Апрув, отклонение и удаление пользователей</p>
               </div>
             </div>
             <div class="segmented" id="adminUserStatusTabs" role="tablist" aria-label="Статус пользователей">
@@ -1038,11 +1063,10 @@
               </table>
             </div>
           </section>
-          <section class="panel">
+          <section id="adminDiagnosticsPanel" class="panel hidden">
             <div class="panel-head row between">
               <div>
-                <h3>Диагностика валюты</h3>
-                <p class="subtitle">Freshness курсов, digest и alerts по tracked currencies</p>
+                <h3>Диагностика курсов</h3>
               </div>
               <button id="refreshAdminCurrencyDiagnosticsBtn" class="btn btn-secondary btn-xs" type="button">Обновить</button>
             </div>
@@ -1053,10 +1077,10 @@
                   <tr>
                     <th>Валюта</th>
                     <th>Пользователей</th>
-                    <th>Digest</th>
-                    <th>Alerts</th>
+                    <th>Рассылка</th>
+                    <th>Пороги</th>
                     <th>Последний курс</th>
-                    <th>Stale</th>
+                    <th>Устарели</th>
                     <th>Нет курса</th>
                   </tr>
                 </thead>

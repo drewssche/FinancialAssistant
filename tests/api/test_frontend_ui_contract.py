@@ -273,7 +273,7 @@ def test_contextual_create_actions_prefill_category_group_and_item_source():
     tables_css = (REPO_ROOT / "static" / "css" / "components-tables.css").read_text(encoding="utf-8")
 
     assert "data-create-category-group-id" in categories_table
-    assert "category-context-create-btn" in categories_table
+    assert "category-direct-actions" in categories_table
     assert "Добавить категорию" in categories_table
     assert "const preselectGroupId = options.groupId ? String(options.groupId) : \"\";" in categories_ui
     assert "el.categoryGroup.value = preselectGroupId;" in categories_ui

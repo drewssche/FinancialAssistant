@@ -193,7 +193,7 @@
     }
     const rows = normalizeBankCurrencyAlerts(alerts ?? getMergedCurrencyPrefs().bank_rate_alerts);
     if (!rows.length) {
-      el.bankCurrencyAlertsList.innerHTML = '<div class="bank-alerts-empty muted-small">Банковских алертов пока нет</div>';
+      el.bankCurrencyAlertsList.innerHTML = '<div class="bank-alerts-empty muted-small">Пороги банковских курсов не заданы</div>';
       el.bankCurrencyAlertsList.dataset.dirty = "false";
       return;
     }
@@ -211,7 +211,7 @@
       <div class="settings-alert-row" data-bank-alert-rule="${escape(rule.id)}">
         <div class="bank-alert-rule-head">
           <strong>Банковский курс</strong>
-          <button class="btn btn-danger btn-xs bank-alert-rule-remove" type="button" data-remove-bank-alert="${escape(rule.id)}">Удалить</button>
+          <button class="btn btn-danger btn-icon bank-alert-rule-remove" type="button" data-remove-bank-alert="${escape(rule.id)}" aria-label="Удалить порог курса" title="Удалить порог курса">${window.App.icons.svg("trash")}</button>
         </div>
         <div class="bank-alert-rule-fields">
           <div class="bank-alert-choice-block">

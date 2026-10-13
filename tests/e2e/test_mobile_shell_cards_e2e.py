@@ -372,22 +372,13 @@ def test_mobile_card_kebab_stays_top_right_and_menu_escapes_card(static_server_u
             page.goto(f"{static_server_url}/static/index.html")
             _login_via_mock_telegram(page)
 
-            category_card = page.locator(".category-mobile-group-card").first
-            category_trigger = page.locator(".category-mobile-group-card .mobile-card-kebab-trigger").first
-            category_trigger.wait_for(state="visible")
-            card_box = category_card.bounding_box()
-            trigger_box = category_trigger.bounding_box()
-            assert card_box is not None and trigger_box is not None
-            assert (card_box["x"] + card_box["width"]) - (trigger_box["x"] + trigger_box["width"]) <= 28
-            category_trigger.click()
-            category_menu = page.locator(".mobile-card-actions-popover:not(.hidden)").first
-            category_menu.wait_for(state="visible")
-            card_box = category_card.bounding_box()
-            menu_box = category_menu.bounding_box()
-            assert card_box is not None and menu_box is not None
-            assert menu_box["y"] + menu_box["height"] > card_box["y"] + card_box["height"] + 8
-            assert page.locator(".category-mobile-group-row").first.evaluate("node => getComputedStyle(node).overflow") == "visible"
-            assert page.locator(".category-mobile-group-cell").first.evaluate("node => getComputedStyle(node).overflow") == "visible"
+            actions = page.locator(".category-mobile-group-card .category-direct-actions button").first
+            actions.wait_for(state="visible")
+            expect(page.locator(".category-mobile-group-card .mobile-card-kebab-trigger")).to_have_count(0)
+            for button in page.locator(".category-mobile-group-card").first.locator("button.btn-icon").all():
+                box = button.bounding_box()
+                assert box and box["width"] >= 44 and box["height"] >= 44
+                assert button.get_attribute("aria-label")
 
             page.locator("#mobileNavToggleBtn").evaluate("node => node.click()")
             page.locator("button[data-section='item_catalog']").click()
@@ -521,9 +512,14 @@ def test_catalog_context_menu_actions_from_real_portals(static_server_url, width
             trigger = page.locator(f'[data-table-menu-trigger="{menu_id}"]:visible, [data-mobile-card-menu-trigger="{menu_id}"]:visible')
             menu = page.locator(f'.table-kebab-popover[data-table-menu="{menu_id}"]:visible, .mobile-card-actions-popover[data-mobile-card-menu="{menu_id}"]:visible')
             for action, modal_id, close_id in actions:
-                trigger.click()
-                assert menu.evaluate("node => node.parentElement === document.body")
-                menu.locator(action).click()
+                if section == "categories":
+                    entity_id = menu_id.split("-")[-1]
+                    attr = "data-category-id" if menu_id.startswith("category-") and "group" not in menu_id else "data-group-id"
+                    page.locator(f'#categoriesBody tr[{attr}="{entity_id}"] {action}').first.click()
+                else:
+                    trigger.click()
+                    assert menu.evaluate("node => node.parentElement === document.body")
+                    menu.locator(action).click()
                 expect(page.locator(f"#{modal_id}")).to_be_visible()
                 assert menu.count() == 0
                 page.locator(f"#{close_id}").click()
@@ -546,11 +542,7 @@ def test_mobile_category_edit_icon_picker_opens_from_plus(static_server_url: str
             page.goto(f"{static_server_url}/static/index.html")
             _login_via_mock_telegram(page)
 
-            category_trigger = page.locator("button[data-mobile-card-menu-trigger='category-1']").first
-            category_trigger.wait_for(state="visible")
-            category_trigger.click()
-            page.locator(".mobile-card-actions-popover[data-mobile-card-menu='category-1']:not(.hidden)").wait_for(state="visible")
-            page.locator(".mobile-card-actions-popover[data-mobile-card-menu='category-1'] button[data-edit-category-id='1']").evaluate("node => node.click()")
+            page.locator("#categoriesBody button[data-edit-category-id='1']").click()
             page.locator("#editCategoryModal:not(.hidden)").wait_for(state="visible")
 
             page.locator("#editCategoryIconToggle").click()
@@ -583,11 +575,7 @@ def test_nested_usage_modal_opens_above_edit_modal_and_escape_closes_top(static_
             page.goto(f"{static_server_url}/static/index.html")
             _login_via_mock_telegram(page)
 
-            category_trigger = page.locator("button[data-mobile-card-menu-trigger='category-1']").first
-            category_trigger.wait_for(state="visible")
-            category_trigger.click()
-            page.locator(".mobile-card-actions-popover[data-mobile-card-menu='category-1']:not(.hidden)").wait_for(state="visible")
-            page.locator(".mobile-card-actions-popover[data-mobile-card-menu='category-1'] button[data-edit-category-id='1']").evaluate("node => node.click()")
+            page.locator("#categoriesBody button[data-edit-category-id='1']").click()
             page.locator("#editCategoryModal:not(.hidden)").wait_for(state="visible")
             page.locator("#editCategoryUsageBtn").wait_for(state="visible")
             page.locator("#editCategoryUsageBtn").evaluate("node => node.click()")

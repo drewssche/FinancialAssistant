@@ -505,7 +505,6 @@
                 <button id="categoriesCollapseAllBtn" class="btn btn-secondary btn-xs" type="button">Свернуть все</button>
                 <button id="categoriesExpandAllBtn" class="btn btn-secondary btn-xs" type="button">Развернуть все</button>
               </div>
-              <button id="deleteAllCategoriesBtn" class="btn btn-danger" type="button">Удалить все</button>
             </div>
             <div id="categoriesKpiGrid" class="analytics-kpi-grid section-kpi-grid" aria-label="Итоги категорий"></div>
 
@@ -523,6 +522,7 @@
               </table>
             </div>
             <div id="categoriesInfiniteSentinel" class="infinite-sentinel" aria-hidden="true"></div>
+            <div class="directory-list-footer"><button id="deleteAllCategoriesBtn" class="btn btn-danger" type="button">Удалить все</button></div>
           </section>
         </section>
 `;

@@ -1699,7 +1699,10 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     company_grid_text = (page.locator("#workCompaniesGrid").text_content() or "").replace("\u00a0", " ")
     assert "18 450 BYN" in company_grid_text
     assert "Разработчик" in (page.locator("#workCompanyDetails").text_content() or "")
-    assert page.locator('#workCompanyOptions option[value="Битрикс"]').count() == 1
+    page.click('button[data-work-view="settings"]')
+    page.locator('#workCompany').click()
+    assert 'Битрикс' in page.locator('[role="listbox"][aria-label="Компании"]:visible').inner_text()
+    page.locator('#workCompany').press('Escape')
 
     page.click('button[data-work-view="payments"]')
     actual_payment_text = (page.locator("#workActualPaymentsList").text_content() or "").replace("\u00a0", " ")

@@ -20,21 +20,19 @@
   }
 
   function renderCategoryContextActions(entityType, entity) {
+    const category = entityType === "category";
+    const noun = category ? "категории" : "группы";
     const contextActions = window.App.getRuntimeModule?.("context-actions");
-    return (contextActions?.keys?.(entityType, "row") || []).map((key) => {
-      if (entityType === "category") {
-        if (key === "activity") return `<button class='btn btn-secondary' data-activity-entity-type='category' data-activity-entity-id='${entity.id}'>Журнал</button>`;
-        if (key === "usage") return `<button class='btn btn-secondary' data-usage-entity-type='category' data-usage-entity-id='${entity.id}' data-usage-entity-name='${core.escapeHtml(entity.name || "")}'>Операции</button>`;
-        if (key === "edit") return `<button class='btn btn-secondary' data-edit-category-id='${entity.id}'>Редактировать</button>`;
-        if (key === "delete") return `<button class='btn btn-danger' data-delete-category-id='${entity.id}'>Удалить</button>`;
-      }
-      if (entityType === "category_group") {
-        if (key === "create_child") return `<button class="btn btn-secondary" data-create-category-group-id="${entity.id}" data-create-category-kind="${core.escapeHtml(entity.kind || "expense")}" type="button">Добавить категорию</button>`;
-        if (key === "activity") return `<button class="btn btn-secondary" data-activity-entity-type="category_group" data-activity-entity-id="${entity.id}" type="button">Журнал</button>`;
-        if (key === "edit") return `<button class="btn btn-secondary" data-edit-group-id="${entity.id}" type="button">Редактировать</button>`;
-        if (key === "delete") return `<button class="btn btn-danger" data-delete-group-id="${entity.id}" type="button">Удалить</button>`;
-      }
-      return "";
+    return (contextActions?.keys?.(entityType, "row") || []).map(key => {
+      const actions = {
+        activity: ["history", `Журнал ${noun}`, `data-activity-entity-type="${entityType}" data-activity-entity-id="${entity.id}"`],
+        usage: ["receipt", `Операции ${noun}`, `data-usage-entity-type="${entityType}" data-usage-entity-id="${entity.id}" data-usage-entity-name="${core.escapeHtml(entity.name || "")}"`],
+        edit: ["edit", `Изменить ${category ? "категорию" : "группу"}`, `data-edit-${category ? "category" : "group"}-id="${entity.id}"`],
+        delete: ["trash", `Удалить ${category ? "категорию" : "группу"}`, `data-delete-${category ? "category" : "group"}-id="${entity.id}"`],
+        create_child: ["plus", "Добавить категорию в группу", `data-create-category-group-id="${entity.id}" data-create-category-kind="${core.escapeHtml(entity.kind || "expense")}"`],
+      };
+      const action = actions[key];
+      return action ? `<button class="btn ${key === "delete" ? "btn-danger" : "btn-secondary"} btn-icon" type="button" ${action[2]} aria-label="${action[1]}" title="${action[1]}">${window.App.icons.svg(action[0])}</button>` : "";
     }).join("");
   }
 
@@ -250,29 +248,15 @@
     const accent = resolveGroupAccent(options.groupAccentColor, item.kind);
     tr.style.setProperty("--category-group-accent", accent.accent);
     tr.style.setProperty("--category-group-accent-soft", accent.soft);
-    const categoryActions = renderCategoryContextActions("category", item);
-    const menuActions = item.is_system
-      ? ""
-      : `<div class="mobile-card-kebab-wrap">
-              <button class="btn btn-secondary mobile-card-kebab-trigger" data-mobile-card-menu-trigger="category-${item.id}" type="button" aria-label="Действия категории">
-                <span aria-hidden="true">⋮</span>
-              </button>
-              <div class="app-popover hidden mobile-card-actions-popover" data-mobile-card-menu="category-${item.id}">
-                <div class="mobile-card-actions-menu">
-                  ${categoryActions}
-                </div>
-              </div>
-            </div>`;
+    const menuActions = `<div class="category-direct-actions">${actionCell}</div>`;
     tr.innerHTML = `
       <td colspan="4" class="category-mobile-cell">
         <div class="category-mobile-card">
           <div class="category-mobile-item-head">
             <div class="category-mobile-item-title">${nameCell}</div>
-            ${menuActions}
+            <span class="kind-pill kind-pill-${kindClass}">${core.highlightText(core.kindLabel(item.kind), queryRaw)}</span>
           </div>
-          <div class="category-mobile-main">
-            <div class="category-mobile-item-meta"><span class="kind-pill kind-pill-${kindClass}">${core.highlightText(core.kindLabel(item.kind), queryRaw)}</span></div>
-          </div>
+          <div class="category-mobile-main">${menuActions}</div>
         </div>
       </td>
     `;
@@ -293,9 +277,7 @@
     const chevron = group.isUngrouped ? "•" : (isCollapsed ? "▸" : "▾");
     const toggleDisabled = queryActive || group.isUngrouped;
     const groupActionButtons = group.id ? renderCategoryContextActions("category_group", group) : "";
-    const groupActions = group.id
-      ? `<div class="mobile-card-kebab-wrap"><button class="btn btn-secondary mobile-card-kebab-trigger" data-mobile-card-menu-trigger="category-group-${group.id}" type="button" aria-label="Действия группы"><span aria-hidden="true">⋮</span></button><div class="app-popover hidden mobile-card-actions-popover" data-mobile-card-menu="category-group-${group.id}"><div class="mobile-card-actions-menu">${groupActionButtons}</div></div></div>`
-      : "";
+    const groupActions = `<div class="category-direct-actions">${groupActionButtons}</div>`;
     tr.innerHTML = `
       <td colspan="4" class="category-table-group-cell category-mobile-group-cell">
         <div class="category-mobile-group-card">
@@ -323,12 +305,7 @@
     const accent = resolveGroupAccent(options.groupAccentColor, item.kind);
     const actionCell = item.is_system
       ? "<span class='muted-small'>Защищено</span>"
-      : core.renderInlineKebabMenu?.(
-        `category-${item.id}`,
-        renderCategoryContextActions("category", item),
-        "Действия категории",
-        "category-row-kebab",
-      ) || "";
+      : `<div class="category-direct-actions">${renderCategoryContextActions("category", item)}</div>`;
     const groupCell = options.groupLabel || "<span class='muted-small'>Без группы</span>";
     const nameCell = core.renderCategoryChip(
       { name: item.name, icon: item.icon || item.group_icon, accent_color: item.group_accent_color || accent.accent },
@@ -385,16 +362,7 @@
     const chevron = group.isUngrouped ? "•" : (isCollapsed ? "▸" : "▾");
     const toggleDisabled = queryActive || group.isUngrouped;
     const groupActions = group.id
-      ? core.renderInlineKebabMenu?.(
-        `category-group-${group.id}`,
-        renderCategoryContextActions("category_group", group),
-        "Действия группы",
-        "category-group-kebab",
-      )
-      : "";
-    const createAction = group.id
-      ? `<button class="btn btn-secondary category-context-create-btn" data-create-category-group-id="${group.id}" data-create-category-kind="${core.escapeHtml(group.kind || "expense")}" type="button" aria-label="Добавить категорию в группу">+</button>`
-      : "";
+      ? `<div class="category-direct-actions">${renderCategoryContextActions("category_group", group)}</div>` : "";
     tr.innerHTML = `
       <td colspan="4" class="category-table-group-cell category-group-accent-cell">
         <div class="category-table-group-wrap" data-category-group-row-toggle-key="${group.key}">
@@ -404,7 +372,6 @@
                 <span class="item-catalog-group-chevron">${chevron}</span>
                 <span class="item-catalog-group-name">${groupName}</span>
               </button>
-              ${createAction}
             </div>
             <span class="item-catalog-group-metas">
               <span class="item-catalog-group-meta">${group.children.length} кат.</span>
@@ -437,7 +404,7 @@
       const categories = Array.isArray(state.categories) ? state.categories : [];
       const visibleCategoryIds = new Set();
       for (const group of groups) {
-        for (const item of group.items || []) {
+        for (const item of group.children || []) {
           if (item?.id) {
             visibleCategoryIds.add(Number(item.id));
           }
@@ -453,24 +420,7 @@
           .map((item) => Number(item.group_id || 0))
           .filter((groupId) => Number.isFinite(groupId) && groupId > 0),
       );
-      el.categoriesKpiGrid.innerHTML = `
-        <article class="analytics-kpi-card analytics-kpi-neutral">
-          <div class="muted-small">Категорий</div>
-          <strong>${visibleCategories.length}</strong>
-        </article>
-        <article class="analytics-kpi-card analytics-kpi-expense">
-          <div class="muted-small">Расходных</div>
-          <strong>${expenseCount}</strong>
-        </article>
-        <article class="analytics-kpi-card analytics-kpi-income">
-          <div class="muted-small">Доходных</div>
-          <strong>${incomeCount}</strong>
-        </article>
-        <article class="analytics-kpi-card analytics-kpi-neutral">
-          <div class="muted-small">Групп с категориями</div>
-          <strong>${activeGroupIds.size}</strong>
-        </article>
-      `;
+      el.categoriesKpiGrid.innerHTML = `<span>Категории <strong>${visibleCategories.length}</strong></span><span>Расход <strong>${expenseCount}</strong></span><span>Доход <strong>${incomeCount}</strong></span><span>Группы <strong>${activeGroupIds.size}</strong></span>`;
     }
     syncCategoryGroupControls(queryActive, groups);
     categoriesUiCoordinator.renderGroupedCategoryTable?.({

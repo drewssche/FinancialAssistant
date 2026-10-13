@@ -1,5 +1,5 @@
 (() => {
-  function bind(owner, mode) {
+  function bind(owner, mode, config = {}) {
     const input = owner.querySelector('input');
     const utils = window.App.getRuntimeModule('picker-utils');
     const popup = document.createElement('div');
@@ -8,7 +8,7 @@
     popup.dataset.popoverAlign = 'start';
     popup.dataset.popoverMaxHeight = '280';
     popup.setAttribute('role', 'listbox');
-    popup.setAttribute('aria-label', 'Магазины');
+    popup.setAttribute('aria-label', config.label || 'Магазины');
     owner.append(popup);
     input.setAttribute('role', 'combobox');
     input.setAttribute('aria-autocomplete', 'list');
@@ -29,7 +29,7 @@
       close();
     }
     function render(query = '') {
-      const names = [...new Set((window.App.state.itemSources || []).map(item => item.name).filter(Boolean))];
+      const names = [...new Set((config.getNames?.() || (window.App.state.itemSources || []).map(item => item.name)).filter(Boolean))];
       const matches = names.filter(name => window.App.search.matches(name, query))
         .sort((a, b) => window.App.search.compare(query, [a], [b]) || a.localeCompare(b, 'ru'));
       const custom = query.trim();
@@ -60,7 +60,7 @@
       if (!options.length) {
         const empty = document.createElement('span');
         empty.className = 'muted-small';
-        empty.textContent = 'Введите название магазина';
+        empty.textContent = config.emptyLabel || 'Введите название магазина';
         popup.append(empty);
       }
       utils.setPopoverOpen(popup, true, {owners: [input], outsideScopes: [owner], onClose: close});
@@ -92,9 +92,12 @@
       if (!popup.contains(event.relatedTarget)) close();
     });
     // A programmatic modal close must also remove its portalled suggestions.
-    const modal = owner.closest('.modal');
-    new MutationObserver(() => { if (modal.classList.contains('hidden')) close(); })
-      .observe(modal, {attributes: true, attributeFilter: ['class']});
+    // Also close company suggestions when their work view or section is hidden.
+    for (let parent = owner; parent; parent = parent.parentElement) {
+      const container = parent;
+      new MutationObserver(() => { if (container.classList.contains('hidden')) close(); })
+        .observe(container, {attributes: true, attributeFilter: ['class']});
+    }
   }
   window.App.registerRuntimeModule('operation-store-picker', {bind});
 })();

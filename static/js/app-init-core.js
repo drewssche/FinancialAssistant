@@ -871,6 +871,7 @@
       return;
     }
     bound = true;
+    window.App.getRuntimeModule('settings-layout')?.bind();
     core.installModalStackObserver?.();
     bindCoreHandlers();
     bindModalHandlers();

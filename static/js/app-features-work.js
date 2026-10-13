@@ -199,7 +199,6 @@
       "workDayDateTo",
       "workDayPlanned", "workDayActual", "workDayCredited", "workDayNote", "closeWorkDayEditorBtn",
       "resetWorkDayBtn", "workCompany", "workPosition", "workStartDate", "workStandardHours",
-      "workCompanyOptions",
       "workWeekdayPicker", "workSalaryPlan", "workSalaryDay", "workAdvancePlan", "workAdvanceDay",
       "workContractForm", "workContractFrom", "workContractTo", "workContractCompany",
       "workContractPosition", "workContractSalary", "workContractCurrency", "workContractNote",
@@ -698,7 +697,6 @@
 
   async function loadCompanies() {
     companies = await core.requestJson("/api/v1/work/companies", authOptions());
-    nodes.workCompanyOptions.innerHTML = companies.map((item) => `<option value="${escape(item.company)}"></option>`).join("");
     if (selectedCompanyIndex >= companies.length) selectedCompanyIndex = 0;
     renderCompanies();
   }
@@ -1049,6 +1047,12 @@
 
   function bind() {
     collectNodes();
+    for (const input of [nodes.workCompany, nodes.workContractCompany]) {
+      window.App.getRuntimeModule('operation-store-picker').bind(input.closest('.field'), input.id, {
+        label: 'Компании', emptyLabel: 'Введите название компании',
+        getNames: () => companies.map(item => item.company),
+      });
+    }
     nodes.workPrevMonthBtn.addEventListener("click", () => { anchor = new Date(anchor.getFullYear(), anchor.getMonth() - 1, 1); loadWorkSection().catch(handleError); });
     nodes.workNextMonthBtn.addEventListener("click", () => { anchor = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1); loadWorkSection().catch(handleError); });
     nodes.workTodayBtn.addEventListener("click", () => { const now = new Date(); anchor = new Date(now.getFullYear(), now.getMonth(), 1); loadWorkSection().catch(handleError); });

@@ -453,15 +453,10 @@
         core.setStatus(`Не удалось открыть раздел «Аналитика»: ${message}`);
       });
     }
-    if (sectionId === "admin" && getAdminFeature().loadAdminUsers) {
-      const adminFeature = getAdminFeature();
-      adminFeature.loadAdminUsers({ force: true }).catch((err) => {
+    if (sectionId === "admin" && getAdminFeature().setAdminView) {
+      getAdminFeature().setAdminView(undefined, {force: true}).catch(err => {
         const message = core.errorMessage ? core.errorMessage(err) : String(err);
         core.setStatus(`Не удалось открыть раздел «Админ»: ${message}`);
-      });
-      adminFeature.loadAdminCurrencyDiagnostics?.({ force: true }).catch((err) => {
-        const message = core.errorMessage ? core.errorMessage(err) : String(err);
-        core.setStatus(`Не удалось загрузить диагностику валют: ${message}`);
       });
     }
     await getSessionFeature().savePreferences?.();

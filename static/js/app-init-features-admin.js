@@ -1,5 +1,5 @@
 (() => {
-  const { state, el, core, actions } = window.App;
+  const { state, el, core } = window.App;
   let bound = false;
 
   function bindAdminFeatureHandlers() {
@@ -7,6 +7,15 @@
       return;
     }
     bound = true;
+    const actions = window.App.getRuntimeModule("admin");
+    window.App.icons.apply(el.refreshAdminCurrencyDiagnosticsBtn, "refresh", "Обновить диагностику курсов");
+    document.getElementById("adminViewTabs").addEventListener("click", event => {
+      const button = event.target.closest("[data-admin-view]");
+      if (button) core.runAction({
+        errorPrefix: "Ошибка загрузки раздела",
+        action: () => window.App.getRuntimeModule("admin").setAdminView(button.dataset.adminView),
+      });
+    });
 
     if (el.adminUserStatusTabs && actions.setAdminUserStatusFilter) {
       el.adminUserStatusTabs.addEventListener("click", (event) => {
@@ -29,7 +38,8 @@
         const approveBtn = event.target.closest("button[data-admin-approve-id]");
         if (approveBtn && actions.approveAdminUser) {
           core.runAction({
-            errorPrefix: "Ошибка апрува",
+            button: approveBtn,
+            errorPrefix: "Не удалось разрешить доступ",
             action: async () => {
               await actions.approveAdminUser(Number(approveBtn.dataset.adminApproveId));
             },
@@ -39,6 +49,7 @@
         const rejectBtn = event.target.closest("button[data-admin-reject-id]");
         if (rejectBtn && actions.rejectAdminUser) {
           core.runAction({
+            button: rejectBtn,
             errorPrefix: "Ошибка отклонения",
             action: async () => {
               await actions.rejectAdminUser(Number(rejectBtn.dataset.adminRejectId));
@@ -60,6 +71,7 @@
     if (el.refreshAdminCurrencyDiagnosticsBtn && actions.loadAdminCurrencyDiagnostics) {
       el.refreshAdminCurrencyDiagnosticsBtn.addEventListener("click", () => {
         core.runAction({
+          button: el.refreshAdminCurrencyDiagnosticsBtn,
           errorPrefix: "Ошибка обновления диагностики валют",
           action: async () => {
             await actions.loadAdminCurrencyDiagnostics({ force: true });

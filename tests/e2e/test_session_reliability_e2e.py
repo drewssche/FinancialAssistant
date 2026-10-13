@@ -384,8 +384,8 @@ def test_delayed_telegram_startup_and_session_refresh_preserve_operation_modal(s
     assert geometry is not None
     assert geometry["actionsLeft"] >= geometry["cardLeft"] - 1
     assert geometry["actionsRight"] <= geometry["cardRight"] + 1
-    assert all(abs(width - 34) <= 1 for width in geometry["actionWidths"])
-    assert all(abs(height - 34) <= 1 for height in geometry["actionHeights"])
+    assert all(width >= 42 for width in geometry["actionWidths"])
+    assert all(height >= 42 for height in geometry["actionHeights"])
     assert geometry["bodyScrollWidth"] <= geometry["bodyClientWidth"] + 1
     page.screenshot(path="/tmp/finasist-session-refresh-modal.png", full_page=True)
 
@@ -557,6 +557,7 @@ def test_bank_alert_add_and_remove_buttons_update_settings(static_server_url: st
     page.click('[data-section="settings"]')
     page.wait_for_selector("#settingsSection:not(.hidden)")
 
+    page.click('[data-settings-view="alerts"]')
     expect(page.locator("[data-bank-alert-rule]")).to_have_count(0)
     page.click("#addBankCurrencyAlertBtn")
 

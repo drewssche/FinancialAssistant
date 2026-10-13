@@ -117,6 +117,7 @@
     "/static/js/app-bulk-bindings.js",
     "/static/js/app-bulk.js",
     "/static/js/app-init-registry.js",
+    "/static/js/app-settings-layout.js",
     "/static/js/app-init-core.js",
     "/static/js/app-init-features-debts.js",
     "/static/js/app-init-features-operations.js",

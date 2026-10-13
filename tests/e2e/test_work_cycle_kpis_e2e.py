@@ -256,3 +256,44 @@ def test_work_contract_delete_requires_confirmation(request):
     page.locator('#confirmDeleteBtn').click()
     expect(action).to_have_count(0)
     assert len(deleted) == 1
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width', [320, 390, 1024, 1100, 1440])
+def test_company_picker_layout_keyboard_custom_and_view_dismissal(work_page, width):
+    page, _ = work_page
+    page.route('**/api/v1/work/companies', lambda r: r.fulfill(json=[{'company': 'Битрикс', 'periods': []}, {'company': 'Очень длинное название компании для проверки переноса', 'periods': []}]))
+    page.evaluate('window.App.getRuntimeModule("work").loadWorkSection()')
+    page.set_viewport_size({'width': width, 'height': 900})
+    page.evaluate('window.App.core.setMobileNavOpen(false)')
+    page.locator('[data-work-view="settings"]').click()
+    field = page.locator('#workCompany')
+    field.fill('Битрикс')
+    field.press('Escape')
+    expect(page.locator('[role="listbox"][aria-label="Компании"]:visible')).to_have_count(0)
+    field.fill('<b>Новая компания</b>')
+    field.press('ArrowDown')
+    field.press('Enter')
+    expect(field).to_have_value('<b>Новая компания</b>')
+    field.fill(',bnhbrc')  # wrong keyboard layout
+    popup = page.locator('[role="listbox"][aria-label="Компании"]:visible')
+    expect(popup).to_contain_text('Битрикс')
+    field.press('ArrowDown')
+    field.press('Enter')
+    expect(field).to_have_value('Битрикс')
+    field.click()
+    expect(popup).to_be_visible()
+    page.screenshot(path=f'/tmp/fa-company-picker-{width}.png', full_page=True)
+    box = popup.bounding_box()
+    assert box['x'] >= 0 and box['x'] + box['width'] <= width + 1
+    field.press('Tab')
+    expect(popup).to_have_count(0)
+    field.click()
+    page.locator('[data-work-view="contracts"]').click()
+    expect(popup).to_have_count(0)
+    page.locator('#workContractCompany').fill('Битрикс')
+    page.locator('#workContractCompany').press('ArrowDown')
+    page.locator('#workContractCompany').press('Enter')
+    expect(page.locator('#workContractCompany')).to_have_value('Битрикс')
+    page.locator('[data-work-view="settings"]').click()
+    expect(field).to_have_value('Битрикс')

@@ -1,0 +1,91 @@
+/* Direct navigation and flat directories share the existing component tokens. */
+#settingsSection .settings-workspace { display: grid; grid-template-columns: 190px minmax(0, 800px); gap: 28px; align-items: start; }
+#settingsSection .settings-navigation { display: grid; gap: 4px; padding: 0; border: 0; background: none; align-self: start; }
+#settingsSection .settings-navigation .segmented-btn { text-align: left; min-height: 44px; white-space: normal; }
+#settingsSection .settings-form { margin: 0; max-width: none; width: 100%; gap: 18px; }
+#settingsSection .settings-page { min-width: 0; display: grid; gap: 24px; }
+#settingsSection .settings-block { border: 0; padding: 0; background: none; border-radius: 0; gap: 14px; }
+#settingsSection .settings-block + .settings-block { padding-top: 20px; border-top: 1px solid var(--border); }
+#settingsSection .settings-block h3 { font-size: 16px; margin: 0; }
+#settingsSection .settings-actions { display: flex; flex-direction: row; justify-content: flex-end; }
+#settingsSection .settings-actions .btn-icon { width: 42px; min-width: 42px; }
+#settingsSection .settings-switch-row { min-height: 44px; padding: 4px 0; }
+#settingsSection .settings-preview { margin-top: -6px; }
+#settingsSection .settings-alert-row { background: none; box-shadow: none; padding: 12px 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; }
+#settingsSection .settings-alerts-grid { gap: 8px; }
+#settingsSection .settings-alert-section-head { align-items: flex-start; gap: 12px; }
+#settingsSection .settings-alert-section-head .btn-icon { flex: 0 0 42px; }
+#settingsSection .danger-zone { margin: 0; }
+#settingsSection .danger-zone-actions { flex-wrap: wrap; }
+#settingsSection .danger-zone-actions input { min-width: 0; }
+#adminViewTabs { width: fit-content; margin-bottom: 16px; }
+#adminSection .admin-row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+#adminSection #adminCurrencyDiagnosticsKpi { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 16px 0; }
+#adminSection .kpi-card { min-height: 0; padding: 0; background: none; border: 0; box-shadow: none; }
+#adminSection .kpi-value { font-size: 22px; }
+#categoriesSection .panel-head { margin-bottom: 10px; }
+#categoriesSection .panel-head > div:empty { display: none; }
+#categoriesSection .categories-search-row { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; border: 0; box-shadow: none; background: none; position: static; }
+#categoriesSection #categorySearchQ { flex: 1 1 180px; min-width: 0; }
+#categoriesSection .category-group-controls { flex: 0 0 auto; display: flex; gap: 6px; }
+#categoriesSection #categoriesKpiGrid { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 14px 0; color: var(--muted); font-size: 13px; }
+#categoriesSection #categoriesKpiGrid strong { color: var(--text); margin-left: 4px; }
+#categoriesSection .category-direct-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+#categoriesSection .category-direct-actions .category-direct-actions { display: contents; }
+#categoriesSection .category-table-group-wrap { gap: 12px; }
+#categoriesSection .category-table-group-content { min-width: 0; flex: 1; }
+#categoriesSection .category-group-context-cell { font-size: 12px; color: var(--muted); }
+#categoriesSection .directory-list-footer { display: flex; justify-content: flex-end; margin-top: 24px; padding-top: 12px; border-top: 1px solid var(--border); }
+#categoriesSection .btn-icon, #adminSection .btn-icon, #settingsSection .btn-icon { width: 42px; height: 42px; min-width: 42px; padding: 0; flex-shrink: 0; }
+@media (max-width: 1100px) {
+  #settingsSection .settings-workspace { grid-template-columns: 170px minmax(0, 1fr); gap: 20px; }
+  #adminSection .admin-users-table { font-size: 13px; }
+}
+@media (max-width: 760px) {
+  #settingsSection .settings-workspace { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  #settingsSection .settings-navigation { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+  #settingsSection .settings-navigation .segmented-btn { text-align: center; padding: 8px 6px; }
+  #settingsSection .settings-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  #settingsSection .settings-actions .btn-icon { width: 44px; min-width: 44px; }
+  #settingsSection .settings-alert-section-head .btn-icon { flex-basis: 44px; }
+  #adminSection #adminCurrencyDiagnosticsKpi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #categoriesSection .btn-icon, #adminSection .btn-icon, #settingsSection .btn-icon { width: 44px; height: 44px; min-width: 44px; }
+}
+@media (max-width: 640px) {
+  #categoriesSection .category-mobile-item-head, #categoriesSection .category-mobile-group-head { flex-wrap: wrap; gap: 10px; }
+  #categoriesSection .category-mobile-item-title, #categoriesSection .category-mobile-group-toggle { flex: 1 1 100%; min-width: 0; }
+  #categoriesSection .category-mobile-card, #categoriesSection .category-mobile-group-card { border: 0; background: none; box-shadow: none; padding: 10px 0; }
+  #categoriesSection .category-mobile-item-row, #categoriesSection .category-mobile-group-row { margin: 0; border-radius: 0; box-shadow: none; }
+  #categoriesSection .category-mobile-main { margin-top: 6px; }
+  #categoriesSection .category-mobile-item-head { display: grid; grid-template-columns: minmax(0, 1fr); }
+  #categoriesSection .category-mobile-item-head .category-direct-actions { grid-row: 2; }
+}
+#categoriesSection .categories-search-row, #categoriesSection .category-group-controls { flex-direction: row; }
+#categoriesSection #categorySearchQ { height: 44px; }
+#categoriesSection .category-direct-actions { justify-content: flex-end; }
+#categoriesSection .category-table-group-wrap > .category-direct-actions { min-width: 186px; }
+#settingsSection .settings-scale-row { display: flex; flex-direction: row; align-items: flex-end; gap: 12px; }
+#settingsSection .settings-scale-row .field { flex: 1; min-width: 0; }
+#settingsSection .settings-scale-row .btn-icon { margin-bottom: 0; }
+.section-head .directory-header-action, .directory-header-action.btn { width: 42px; height: 42px; min-width: 42px; padding: 0; flex: 0 0 42px; box-shadow: none; }
+@media (max-width: 640px) {
+  .section-head .directory-header-action, .directory-header-action.btn { width: 44px; height: 44px; min-width: 44px; flex-basis: 44px; }
+  #categoriesSection .category-direct-actions { justify-content: flex-start; }
+  #categoriesSection .categories-table tbody tr { padding: 0; border: 0; background: none; margin: 0; }
+  #categoriesSection .categories-table tbody tr.category-mobile-group-row { border-top: 1px solid var(--border); margin-top: 10px; }
+  #categoriesSection .categories-table tbody td.category-mobile-cell, #categoriesSection .categories-table tbody td.category-mobile-group-cell { border: 0; padding: 6px 0; background: none; }
+  #categoriesSection .category-mobile-card { border-left: 2px solid var(--category-group-accent); padding-left: 10px; }
+  #adminSection .admin-users-table tbody td { display: block; white-space: normal; overflow: visible; overflow-wrap: anywhere; padding: 6px 0; }
+  #adminSection .admin-users-table tbody td::before { display: block; margin-bottom: 2px; width: auto; }
+  #adminSection .admin-users-table tbody tr { background: none; border: 0; border-radius: 0; padding: 12px 0; border-bottom: 1px solid var(--border); }
+}
+.settings-navigation .segmented-btn { width: 100%; }
+@media (max-width: 640px) {
+  .cta-row:has(.directory-header-action:not(.hidden)) { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+  #categoriesSection .category-mobile-item-head { display: flex; align-items: center; }
+  #categoriesSection .category-mobile-item-title { flex: 1 1 auto; }
+  #categoriesSection .category-mobile-item-head > .kind-pill { flex: 0 0 auto; }
+  #adminSection .admin-users-table tbody td { display: grid; grid-template-columns: 94px minmax(0, 1fr); gap: 6px; }
+  #adminSection .admin-users-table tbody td.mobile-actions-cell { display: block; }
+  #adminSection .admin-users-table tbody td.mobile-actions-cell::before { display: none; }
+}
