@@ -237,11 +237,10 @@
               ${selectedKind === "all" ? ` · Тип: ${categoryKindShort(item.category_kind)}` : ""}
             </div>
             <div class="analytics-insight-actions">
-              <button class="analytics-visibility-toggle ${item.is_visible_in_chart ? "is-on" : "is-off"}" type="button" aria-pressed="${item.is_visible_in_chart ? "true" : "false"}" data-analytics-breakdown-toggle="${item.breakdown_key}">
-                <span class="analytics-visibility-toggle-track"><span class="analytics-visibility-toggle-thumb"></span></span>
-                <span class="analytics-visibility-toggle-label">${item.is_visible_in_chart ? "Вкл" : "Выкл"}</span>
+              <button class="btn btn-secondary btn-icon analytics-visibility-toggle ${item.is_visible_in_chart ? "is-on" : "is-off"}" type="button" aria-label="${item.is_visible_in_chart ? "Скрыть с диаграммы" : "Показать на диаграмме"}: ${itemName}" title="${item.is_visible_in_chart ? "Скрыть с диаграммы" : "Показать на диаграмме"}" aria-pressed="${item.is_visible_in_chart ? "true" : "false"}" data-analytics-breakdown-toggle="${item.breakdown_key}">
+                ${window.App.icons.svg(item.is_visible_in_chart ? "eye" : "eyeOff")}
               </button>
-              ${canDrilldown ? `<button class="btn btn-secondary" type="button">${canOpenBrand ? "Открыть бренд" : "Открыть операции"}</button>` : ""}
+              ${canDrilldown ? `<button class="btn btn-secondary btn-icon" type="button" aria-label="${canOpenBrand ? "Открыть бренд" : "Открыть операции"}: ${itemName}" title="${canOpenBrand ? "Открыть бренд" : "Открыть операции"}">${window.App.icons.svg("forward")}</button>` : ""}
             </div>
           </article>
         `;

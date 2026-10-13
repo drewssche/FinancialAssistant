@@ -74,6 +74,8 @@
       operationsBrandFilterId: state.operationsBrandFilterId,
       operationsBrandFilterName: state.operationsBrandFilterName,
       currencyFilter: state.currencyFilter,
+      itemCatalogView: state.itemCatalogView,
+      currencyView: state.currencyView,
       analyticsTab: state.analyticsTab,
       analyticsCurrencyFilter: state.analyticsCurrencyFilter,
       analyticsCalendarView: state.analyticsCalendarView,
@@ -110,6 +112,8 @@
     if (!snapshot) {
       return;
     }
+    state.itemCatalogView = snapshot.itemCatalogView || "products";
+    state.currencyView = snapshot.currencyView || "portfolio";
     state.period = snapshot.period || "day";
     state.customDateFrom = snapshot.customDateFrom || "";
     state.customDateTo = snapshot.customDateTo || "";
@@ -197,7 +201,7 @@
         plans: "к Планам",
         debts: "к Долгам",
         categories: "к Категориям",
-        item_catalog: "к Каталогу",
+        item_catalog: last?.itemCatalogView === "purchases" ? "к Покупкам" : last?.itemCatalogView === "discounts" ? "к Скидкам" : "к Каталогу",
         settings: "к Настройкам",
         admin: "к Админу",
       };
@@ -234,7 +238,7 @@
   function applySectionUi() {
     const sections = [
       { id: "dashboard", node: el.dashboardSection, title: "Дашборд", subtitle: "Доходы, расходы и операции за выбранный период" },
-      { id: "analytics", node: el.analyticsSection, title: "Аналитика", subtitle: "Календарь, тренды и динамика расходов/доходов" },
+      { id: "analytics", node: el.analyticsSection, title: "Аналитика", subtitle: "Структура и календарь" },
       { id: "operations", node: el.operationsSection, title: "Операции", subtitle: "Рабочий список операций, фильтры и массовые действия" },
       { id: "currency", node: el.currencySection, title: "Валюта", subtitle: "Позиции, сделки и текущие курсы валют" },
       { id: "plans", node: el.plansSection, title: "Планы", subtitle: "Будущие операции и регулярные обязательства до подтверждения" },

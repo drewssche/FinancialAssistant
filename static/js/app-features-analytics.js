@@ -1,5 +1,6 @@
 (() => {
   const { state, el, core } = window.App;
+  let sectionLoadSequence = 0;
 
   function getNavigationActions() {
     return window.App.getRuntimeModule?.("navigation") || {};
@@ -22,30 +23,20 @@
   }
 
   function applyAnalyticsTabUi() {
-    const tab = state.analyticsTab || "calendar";
-    const panels = [
-      { id: "structure", node: el.analyticsStructurePanel },
-      { id: "positions", node: el.analyticsPositionsPanel },
-      { id: "commerce", node: el.analyticsCommercePanel },
-      { id: "calendar", node: el.analyticsCalendarPanel },
-      { id: "trends", node: el.analyticsTrendsPanel },
-      { id: "currency", node: el.analyticsCurrencyPanel },
-    ];
-    for (const item of panels) {
-      if (!item.node) {
-        continue;
-      }
-      item.node.classList.toggle("hidden", item.id !== tab);
-    }
-    if (el.analyticsGlobalScopePanel) {
-      el.analyticsGlobalScopePanel.classList.toggle("hidden", tab === "calendar" || tab === "currency" || tab === "positions");
+    const tab = state.analyticsTab === "calendar" ? "calendar" : "structure";
+    state.analyticsTab = tab;
+    el.analyticsStructurePanel?.classList.toggle("hidden", tab !== "structure");
+    el.analyticsCalendarPanel?.classList.toggle("hidden", tab !== "calendar");
+    el.analyticsTrendsPanel?.classList.toggle("hidden", tab !== "structure");
+    if (state.activeSection !== "item_catalog") {
+      el.analyticsStructurePanel?.before(el.analyticsGlobalScopePanel);
+      el.analyticsGlobalScopePanel?.classList.toggle("hidden", tab !== "structure");
     }
     core.syncSegmentedActive(el.analyticsViewTabs, "analytics-tab", tab);
   }
 
   function setAnalyticsTab(tab) {
-    const allowed = new Set(["structure", "positions", "commerce", "calendar", "trends", "currency"]);
-    state.analyticsTab = allowed.has(tab) ? tab : "calendar";
+    state.analyticsTab = tab === "calendar" ? "calendar" : "structure";
     applyAnalyticsTabUi();
     if (state.analyticsTab === "structure") {
       getAnalyticsModules().highlights?.focusDefaultCategoryBreakdown?.();
@@ -53,27 +44,28 @@
   }
 
   async function loadAnalyticsSection(options = {}) {
-    const { calendar, trend, highlights, positions, currency } = getAnalyticsModules();
-    const tab = state.analyticsTab || "calendar";
-
+    const sequence = ++sectionLoadSequence;
+    const { calendar, trend, highlights, positions } = getAnalyticsModules();
+    if (state.activeSection === "item_catalog") {
+      return state.itemCatalogView === "purchases"
+        ? positions?.loadAnalyticsPositions?.(options)
+        : highlights?.loadAnalyticsHighlights?.(options);
+    }
     applyAnalyticsTabUi();
     calendar?.applyCalendarViewUi?.();
-    if (tab === "calendar") {
-      return calendar?.loadAnalyticsCalendar?.(options) || null;
+    if (state.analyticsTab === "calendar") return calendar?.loadAnalyticsCalendar?.(options) || null;
+    const results = await Promise.allSettled([
+      highlights?.loadAnalyticsHighlights?.(options),
+      trend?.loadAnalyticsTrend?.(options),
+    ]);
+    if (sequence !== sectionLoadSequence) return null;
+    if (results[1].status === "rejected") {
+      el.analyticsTrendChart?.replaceChildren();
+      if (el.analyticsTrendRangeLabel) el.analyticsTrendRangeLabel.textContent = "Не удалось загрузить график. Повторите выбор периода.";
+      core.setStatus("Не удалось обновить график доходов и расходов");
     }
-    if (tab === "trends") {
-      return trend?.loadAnalyticsTrend?.(options) || null;
-    }
-    if (tab === "positions") {
-      return positions?.loadAnalyticsPositions?.(options) || null;
-    }
-    if (tab === "commerce") {
-      return highlights?.loadAnalyticsHighlights?.(options) || null;
-    }
-    if (tab === "currency") {
-      return currency?.loadAnalyticsCurrency?.(options) || null;
-    }
-    return highlights?.loadAnalyticsHighlights?.(options) || null;
+    if (results[0].status === "rejected") throw results[0].reason;
+    return results[0].value;
   }
 
   async function openOperationsForAnalyticsDate(dayIso) {
@@ -176,8 +168,8 @@
     state.analyticsPositionsPeriod = period;
     state.analyticsPositionsAnchor = bounds.dateFrom || bounds.dateTo || "";
     navigation.pushSectionBackContext?.();
-    setAnalyticsTab("positions");
-    await navigation.switchSection?.("analytics", { preserveBackStack: true, scrollToTop: true });
+    state.itemCatalogView = "purchases";
+    await navigation.switchSection?.("item_catalog", { preserveBackStack: true, scrollToTop: true });
   }
 
   function applyAnalyticsScopeToOperations() {

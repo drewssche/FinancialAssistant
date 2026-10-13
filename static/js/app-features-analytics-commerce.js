@@ -156,7 +156,7 @@
     el.analyticsCommerceFocus.innerHTML = `
       <div class="analytics-commerce-focus-head">
         <div><strong>${core.escapeHtml(selected.name || "Позиция")}</strong><span class="muted-small">${core.escapeHtml(selected.shop_name || "Без источника")}</span></div>
-        <button class="btn btn-secondary analytics-commerce-open-btn" type="button" data-commerce-open-operations="true">Открыть операции</button>
+        <button class="btn btn-secondary btn-icon analytics-commerce-open-btn" type="button" data-commerce-open-operations="true" aria-label="Открыть операции" title="Открыть операции">${window.App.icons.svg("forward")}</button>
       </div>
       <p class="muted-small analytics-commerce-focus-meta">${core.escapeHtml(details)}</p>
       ${renderTimeline(selected, state.analyticsCommerceMode)}

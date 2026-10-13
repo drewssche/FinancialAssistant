@@ -107,11 +107,19 @@
     }
 
     function renderEmpty(message) {
-      if (el.currencyPerformanceChart) {
-        el.currencyPerformanceChart.innerHTML = `
-          <text x="490" y="140" text-anchor="middle" class="analytics-chart-empty">${escapeHtml(message)}</text>
-        `;
+      const chart = el.currencyPerformanceChart;
+      if (!chart) return;
+      chart.replaceChildren();
+      chart.style.display = "none";
+      const wrap = chart.parentElement;
+      wrap.classList.add("currency-performance-empty");
+      let label = wrap.querySelector(".currency-performance-empty-label");
+      if (!label) {
+        label = document.createElement("div");
+        label.className = "currency-performance-empty-label muted-small";
+        wrap.append(label);
       }
+      label.textContent = message;
     }
 
     function renderChart(history) {
@@ -119,6 +127,9 @@
       if (!chart) {
         return;
       }
+      chart.style.display = "";
+      chart.parentElement.classList.remove("currency-performance-empty");
+      chart.parentElement.querySelector(".currency-performance-empty-label")?.remove();
       const points = Array.isArray(history?.points) ? history.points : [];
       if (el.currencyPerformanceRangeLabel) {
         const scope = history?.currency ? core.formatCurrencyLabel(history.currency) : "Все валюты";

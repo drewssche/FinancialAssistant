@@ -324,7 +324,7 @@
         core.setStatus(mode === "day" ? "Проверь дату" : "Проверь диапазон дат");
         return;
       }
-      if (state.analyticsGlobalPendingCustom && state.activeSection === "analytics") {
+      if (state.analyticsGlobalPendingCustom && (state.activeSection === "analytics" || (state.activeSection === "item_catalog" && state.itemCatalogView === "discounts"))) {
         state.analyticsGlobalPendingCustom = false;
         state.analyticsGlobalPeriod = "custom";
         state.analyticsGlobalDateFrom = from;

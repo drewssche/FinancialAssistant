@@ -1,0 +1,176 @@
+/* Shared report destinations: calendar/structure, catalog purchases/discounts, currency. */
+#analyticsSection > .panel, #dashboardSection > .panel { margin-bottom: 14px; }
+#analyticsSection > .panel:first-child { padding-block: 10px; }
+#analyticsGlobalScopePanel { padding: 10px 16px; }
+#analyticsGlobalScopePanel .panel-head { margin: 0; }
+#analyticsGlobalScopePanel .panel-head > div:first-child,
+#analyticsStructurePanel .panel-head > div:first-child,
+#analyticsCalendarPanel .panel-head > div:first-child { display: none; }
+#analyticsStructurePanel .panel-head > .toolbar { width: 100%; justify-content: flex-start; }
+#analyticsSection .analytics-category-breakdown-grid,
+#dashboardSection .analytics-category-breakdown-grid { grid-template-columns: minmax(220px, .7fr) minmax(0, 1.3fr); gap: 18px; }
+#analyticsSection .analytics-category-breakdown-chart-card,
+#dashboardSection .analytics-category-breakdown-chart-card { height: 330px; min-height: 0; padding: 12px; border: 0; background: none; }
+#analyticsSection .analytics-category-breakdown-grid > .analytics-insight-list,
+#dashboardSection .analytics-category-breakdown-grid > .analytics-insight-list { height: 330px; max-height: 330px; min-height: 0; }
+#analyticsSection .analytics-category-donut,
+#dashboardSection .analytics-category-donut { width: min(100%, 280px); height: 280px; }
+#analyticsSection .analytics-insight-item,
+#dashboardSection .analytics-insight-item { background: none; border-radius: 0; box-shadow: none; }
+#analyticsTrendsPanel .analytics-trend-kpis { display: none; }
+#analyticsTrendsPanel .analytics-trend-chart-wrap { height: 230px; }
+#analyticsCalendarPanel .panel-head > .toolbar { display: flex; flex-wrap: wrap; gap: 10px; }
+#analyticsCalendarPanel .analytics-switch-group > .muted-small { display: none; }
+#analyticsCalendarPanel .analytics-switch-group { gap: 0; }
+#analyticsCalendarPanel .analytics-calendar-kpis,
+#dashboardSection #dashboardKpiPrimary,
+#currencySection #currencySummaryGrid { gap: 12px 20px; }
+#dashboardSection .analytics-kpi-card,
+#currencySection .analytics-kpi-card,
+#analyticsCalendarPanel .analytics-kpi-card { border: 0; border-radius: 0; background: none; padding: 0; min-height: 0; box-shadow: none; }
+#dashboardSection .analytics-kpi-card strong,
+#currencySection .analytics-kpi-card strong { font-size: 20px; }
+#dashboardSection .panel-head h3 { font-size: 16px; }
+#dashboardSection .panel-head .subtitle { display: none; }
+#dashboardSection .dashboard-debt-kpi { border: 0; background: none; padding: 0; box-shadow: none; }
+#dashboardSection #dashboardCurrencyPositions,
+#dashboardSection #dashboardCurrencyBalances { display: none; }
+#dashboardSection .dashboard-currency-panel .analytics-kpi-grid { margin-bottom: 12px; }
+#dashboardSection .currency-rate-card { border-radius: 8px; }
+#currencyWorkspaceTabs { width: fit-content; margin-bottom: 14px; }
+#currencySection #analyticsCurrencyKpiGrid,
+#currencySection #analyticsCurrencyBalancesRow,
+#currencySection #analyticsCurrencySecondary { display: none; }
+#currencySection .currency-chart-controls { border: 0; padding: 0; background: none; }
+#currencySection .currency-chart-controls-head { gap: 10px; }
+#currencySection .currency-chart-controls-head > div:first-child > strong { display: none; }
+#currencySection #currencyBalancesRow { margin-top: 14px; }
+#analyticsCommercePanel #analyticsGlobalScopePanel { padding: 0; border: 0; background: none; margin-bottom: 14px; }
+#analyticsCommercePanel .analytics-switch-group:has(#analyticsCommerceModeTabs) { display: none; }
+#analyticsCommercePanel .analytics-commerce-ranking-block,
+#analyticsCommercePanel .analytics-commerce-focus,
+#analyticsPositionsPanel .analytics-position-ranking-block,
+#analyticsPositionsPanel .analytics-positions-mobile-focus { border: 0; background: none; padding: 0; }
+#analyticsCommercePanel .analytics-position-ranking-row,
+#analyticsPositionsPanel .analytics-position-ranking-row { border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none; padding: 10px 0; }
+#analyticsCommercePanel .analytics-position-ranking-copy > i,
+#analyticsPositionsPanel .analytics-position-ranking-copy > i { display: none; }
+#analyticsPositionsPanel .analytics-positions-toolbar { align-items: end; }
+#analyticsPositionsPanel .analytics-switch-group > .muted-small { display: none; }
+#analyticsPositionsMetricTabs { max-width: 100%; flex-wrap: wrap; }
+#analyticsPositionsSummary, #analyticsCommerceSummary { gap: 10px 18px; }
+#analyticsPositionsSummary .analytics-position-kpi,
+#analyticsCommerceSummary .analytics-position-kpi { background: none; border: 0; padding: 0; }
+#analyticsSection .btn.btn-icon, #dashboardSection .btn.btn-icon, #currencySection .btn.btn-icon { width: 42px; min-width: 42px; height: 42px; padding: 0; flex: 0 0 42px; }
+@media (max-width: 640px) {
+  #analyticsSection .analytics-category-breakdown-grid,
+  #dashboardSection .analytics-category-breakdown-grid { display: flex; flex-direction: column; gap: 10px; }
+  #analyticsSection .analytics-category-breakdown-chart-card,
+  #dashboardSection .analytics-category-breakdown-chart-card { height: 185px; padding: 0; }
+  #analyticsSection .analytics-category-donut,
+  #dashboardSection .analytics-category-donut { width: 185px; height: 185px; }
+  #analyticsSection .analytics-category-breakdown-grid > .analytics-insight-list,
+  #dashboardSection .analytics-category-breakdown-grid > .analytics-insight-list { height: auto; max-height: 330px; }
+  #dashboardSection #dashboardKpiPrimary,
+  #currencySection #currencySummaryGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #analyticsSection .btn.btn-icon, #dashboardSection .btn.btn-icon, #currencySection .btn.btn-icon { width: 44px; min-width: 44px; height: 44px; flex-basis: 44px; }
+  #dashboardSection .panel-head > .toolbar { flex-direction: row; flex-wrap: wrap; justify-content: flex-start; width: auto; }
+  #analyticsCalendarPanel .panel-head > .toolbar { width: 100%; flex-direction: row; }
+  #analyticsCalendarPanel .analytics-switch-group { width: auto; }
+  #analyticsCalendarPanel .analytics-switch-group > .toolbar { flex-direction: row; flex-wrap: nowrap; }
+  #analyticsCalendarPanel .analytics-grid-picker-trigger { min-width: 0; }
+  #analyticsCommercePanel .analytics-commerce-toolbar { flex-direction: row; }
+  #analyticsCommercePanel .analytics-commerce-layout { gap: 18px; }
+  #analyticsPositionsPanel .analytics-positions-toolbar { width: 100%; }
+  #analyticsPositionsPanel .analytics-positions-toolbar .analytics-switch-group { width: 100%; }
+  #analyticsPositionsPanel #analyticsPositionsMetricTabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+  #analyticsPositionsMetricTabs > button { min-width: 0; white-space: normal; }
+  #currencySection .panel-head > .toolbar { flex-direction: row; flex-wrap: wrap; justify-content: flex-start; }
+}
+#analyticsCategoryBreakdownList .analytics-insight-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; border: 0; border-bottom: 1px solid var(--border); padding: 12px 0; }
+#analyticsCategoryBreakdownList .analytics-insight-head { grid-column: 1; display: flex; flex-wrap: wrap; flex-direction: row; justify-content: space-between; gap: 4px 10px; }
+#analyticsCategoryBreakdownList .analytics-insight-item > .muted-small { grid-column: 1; font-size: 11px; }
+#analyticsCategoryBreakdownList .analytics-insight-actions { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: row; align-items: center; gap: 5px; }
+#analyticsCategoryBreakdownList .analytics-insight-actions .btn-icon { width: 42px; min-width: 42px; max-width: 42px; padding: 0; border-radius: 8px; }
+#analyticsCategoryBreakdownList .analytics-category-row-title { flex: 1; min-width: 0; }
+#analyticsCategoryBreakdownList .analytics-category-row-title strong { overflow-wrap: anywhere; }
+#analyticsSection .analytics-category-breakdown-grid > .analytics-insight-list,
+#dashboardSection .analytics-category-breakdown-grid > .analytics-insight-list { background: none; }
+#dashboardSection .panel-controls { flex-direction: row; align-items: center; flex-wrap: wrap; }
+#dashboardSection #dashboardPositionsRanking .analytics-position-ranking-copy > i { display: none; }
+@media (max-width: 640px) {
+  #analyticsStructurePanel .panel-head > .toolbar { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; }
+  #analyticsStructurePanel #analyticsBreakdownShowAllBtn { order: 3; }
+  #analyticsSection .analytics-category-donut-hole > :not(strong),
+  #dashboardSection .analytics-category-donut-hole > :not(strong) { display: none; }
+  #analyticsSection .analytics-category-donut-hole strong,
+  #dashboardSection .analytics-category-donut-hole strong { font-size: 13px; }
+  #analyticsCategoryBreakdownList .analytics-insight-actions { flex-direction: column; }
+  #analyticsCategoryBreakdownList .analytics-insight-actions .btn-icon { width: 44px; min-width: 44px; max-width: 44px; height: 44px; }
+  #analyticsCalendarPanel .panel-head > .toolbar { display: grid; grid-template-columns: minmax(0, 1fr); }
+  #analyticsCalendarPanel .analytics-switch-group > .toolbar { gap: 4px; }
+  #analyticsCalendarPanel #analyticsGridMonthTrigger { flex: 1; padding-inline: 6px; }
+  #analyticsCalendarPanel #analyticsGridYearTrigger { flex: 1; }
+  .main:has(#analyticsSection:not(.hidden), #dashboardSection:not(.hidden), #currencySection:not(.hidden)) #sectionSubtitle { display: none; }
+}
+#analyticsBreakdownShowAllBtn:disabled { display: none; }
+#analyticsCommercePanel #analyticsCommerceRangeLabel,
+#analyticsCommercePanel .analytics-switch-group > .muted-small,
+#analyticsCommercePanel .analytics-position-ranking-head .muted-small,
+#analyticsPositionsPanel .analytics-position-ranking-head .muted-small { display: none; }
+#analyticsCommercePanel .analytics-commerce-focus-head { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+@media (max-width: 640px) {
+  #analyticsCategoryBreakdownList .analytics-insight-actions { flex-direction: row; }
+  #analyticsCategoryBreakdownList .analytics-insight-head { flex-direction: column; align-items: flex-start; }
+  #analyticsCategoryBreakdownList .analytics-insight-item { gap: 4px; }
+}
+#analyticsCalendarPanel .analytics-switch-group { padding: 0; border: 0; background: none; min-width: 0; }
+#analyticsCalendarPanel .analytics-switch-group .toolbar { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; }
+#analyticsCalendarPanel #analyticsCalendarTotals { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 12px 0; }
+#analyticsCalendarPanel #analyticsCalendarTotalsSecondary { display: flex; flex-wrap: wrap; gap: 8px; }
+#analyticsCalendarPanel #analyticsCalendarTotalsSecondary .analytics-kpi-chip { width: auto; }
+#analyticsCalendarPanel > .panel-head:has(#analyticsCalendarTotalsTitle) { display: none; }
+#analyticsPositionsPanel .analytics-switch-group,
+#analyticsCommercePanel .analytics-switch-group { border: 0; background: none; padding: 0; }
+#analyticsPositionsPanel #analyticsPositionsRangeLabel { display: none; }
+@media (max-width: 640px) {
+  #analyticsCalendarPanel #analyticsCalendarTotals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #analyticsCalendarPanel .analytics-switch-group .toolbar .btn-icon { flex: 0 0 44px; width: 44px; min-width: 44px; height: 44px; }
+  #analyticsCalendarPanel .analytics-switch-group .toolbar .analytics-grid-picker-trigger { flex: 1 1 auto; width: auto; min-width: 0; min-height: 44px; }
+}
+#dashboardSection #dashboardKpiPrimary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#dashboardSection #dashboardPlansKpi { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+#dashboardSection #dashboardPlansKpi > span { width: auto; border: 0; padding: 0; background: none; }
+#dashboardSection #dashboardDebtKpiGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+#dashboardSection #dashboardDebtKpiGrid p { font-size: 20px; }
+#dashboardSection .dashboard-currency-rate-card { padding: 12px 0; border: 0; border-top: 1px solid var(--border); background: none; border-radius: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 10px; }
+#dashboardSection .dashboard-currency-rate-card > :not(.dashboard-currency-rate-actions) { grid-column: 1; }
+#dashboardSection .dashboard-currency-rate-actions { grid-column: 2; grid-row: 1 / span 4; align-self: center; }
+#dashboardSection .dashboard-bank-rates, #dashboardSection .dashboard-bank-rates-empty, #dashboardSection .dashboard-currency-rate-delta-caption { display: none; }
+#currencySection #currencyPositionsList > .panel { border: 0; border-bottom: 1px solid var(--border); border-radius: 0; padding: 12px 0; background: none; }
+#currencySection #currencyBalancesRow .currency-balance-card { border: 0; border-radius: 0; padding: 8px 0; background: none; }
+#currencySection #currencyBalancesRow .currency-balance-card strong { font-size: 18px; }
+@media (max-width: 640px) {
+  #dashboardSection #dashboardKpiPrimary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #dashboardSection .panel-head { display: flex; flex-direction: row; align-items: flex-start; gap: 8px; }
+  #dashboardSection #dashboardPlansPanel .panel-head { flex-wrap: wrap; }
+  #dashboardSection .dashboard-debt-kpi h3 { font-size: 10px; }
+  .main:has(#dashboardSection:not(.hidden)) > .topbar { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .main:has(#dashboardSection:not(.hidden)) .top-actions { width: auto; margin-left: auto; }
+  .main:has(#dashboardSection:not(.hidden)) .cta-row { display: flex; flex-direction: row; width: auto; }
+  #dashboardSection #dashboardCurrencyRates { display: grid; grid-template-columns: minmax(0, 1fr); }
+}
+#currencySection .currency-performance-empty { height: auto; min-height: 64px; display: grid; place-items: center; padding: 16px; border: 0; }
+#currencySection .currency-performance-empty-label { white-space: normal; text-align: center; }
+@media (max-width: 640px) {
+  #currencySection #currencyPositionsList .analytics-kpi-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  #currencySection #currencyBalancesRow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  #currencySection #currencyBalancesRow .currency-balance-secondary { font-size: 10px; overflow-wrap: anywhere; }
+  #dashboardSection #dashboardAnalyticsPanel .panel-head,
+  #dashboardSection #dashboardStructurePanel .panel-head,
+  #dashboardSection #dashboardCurrencyPanel .panel-head { flex-wrap: wrap; }
+  #dashboardSection #dashboardAnalyticsPanel .panel-head > div,
+  #dashboardSection #dashboardStructurePanel .panel-head > div,
+  #dashboardSection #dashboardCurrencyPanel .panel-head > div { width: 100%; }
+  #dashboardSection #dashboardCurrencyPanel .toolbar { display: flex; flex-wrap: nowrap; }
+}

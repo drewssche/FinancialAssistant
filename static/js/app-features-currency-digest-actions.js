@@ -10,16 +10,16 @@
   function setPendingState(isPending) {
     sendButtons.forEach((button) => {
       if (isPending) {
-        button.dataset.currencyDigestIdleText = button.textContent || "Отправить дайджест";
+        button.dataset.currencyDigestIdleText = button.getAttribute("aria-label") || "Отправить дайджест";
         button.dataset.currencyDigestWasDisabled = button.disabled ? "1" : "0";
-        button.textContent = "Отправляем...";
+        button.setAttribute("aria-label", "Отправляем дайджест");
         button.disabled = true;
         button.classList.add("is-loading");
         button.setAttribute("aria-busy", "true");
         return;
       }
 
-      button.textContent = button.dataset.currencyDigestIdleText || "Отправить дайджест";
+      button.setAttribute("aria-label", button.dataset.currencyDigestIdleText || "Отправить дайджест");
       button.disabled = button.dataset.currencyDigestWasDisabled === "1";
       button.classList.remove("is-loading");
       button.removeAttribute("aria-busy");

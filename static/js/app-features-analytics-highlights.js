@@ -1,6 +1,7 @@
 (() => {
   const { state, el, core } = window.App;
   const HIGHLIGHTS_CACHE_TTL_MS = 20000;
+  let highlightsLoadSequence = 0;
   let dashboardAnalyticsPreviewController = null;
 
   function getHighlightsUi() {
@@ -154,6 +155,7 @@
   }
 
   async function loadAnalyticsHighlights(options = {}) {
+    const sequence = ++highlightsLoadSequence;
     const force = options.force === true;
     const calendarModule = getAnalyticsModules().calendar;
     const month = state.analyticsMonthAnchor || calendarModule?.serializeMonthAnchor?.(calendarModule.currentAnchorDate()) || "";
@@ -161,6 +163,7 @@
     if (operationsFeature.ensureAllTimeBounds) {
       await operationsFeature.ensureAllTimeBounds(false, state.analyticsGlobalPeriod || "month");
     }
+    if (sequence !== highlightsLoadSequence) return null;
     const params = buildHighlightsParams(month);
     const cacheKey = `analytics:highlights:${params.toString()}`;
     const skeletons = getLoadingSkeletons();
@@ -189,12 +192,14 @@
         headers: core.authHeaders(),
       });
       core.setUiRequestCache(cacheKey, data);
+      if (sequence !== highlightsLoadSequence) return data;
       const highlightsUi = getHighlightsUi();
       highlightsUi.renderAnalyticsHighlights?.(data);
       skeletons.clearAnalyticsStructureSkeletonState?.();
       state.analyticsStructureHydrated = true;
       return data;
     } catch (err) {
+      if (sequence !== highlightsLoadSequence) return null;
       const message = core.errorMessage ? core.errorMessage(err) : String(err);
       if (!String(message).includes("[404]")) {
         throw err;

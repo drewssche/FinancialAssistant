@@ -298,15 +298,12 @@
     if (el.analyticsCurrencyBackfillBtn) {
       const idleText = isBankMode ? "Подгрузить историю банков" : "Подгрузить историю НБРБ";
       if (el.analyticsCurrencyBackfillBtn.dataset.loading === "1") {
-        // runAction restores dataset.originalText in finally. Keep that value
-        // aligned with the currently selected chart mode even when a bank job
-        // continues polling in the background.
-        el.analyticsCurrencyBackfillBtn.dataset.originalText = idleText;
+        // The icon stays unchanged; sync the current mode label after runAction restores it.
         if (!isBankMode) {
-          el.analyticsCurrencyBackfillBtn.textContent = "Идёт подгрузка истории банков";
+          el.analyticsCurrencyBackfillBtn.setAttribute("aria-label", "Идёт подгрузка истории банков");
         }
       } else {
-        el.analyticsCurrencyBackfillBtn.textContent = idleText;
+        window.App.icons.apply(el.analyticsCurrencyBackfillBtn, "history", idleText);
       }
     }
     if (el.analyticsCurrencyChartContext) {
@@ -678,7 +675,7 @@
       return;
     }
     if (el.analyticsCurrencyBackfillBtn?.dataset.loading === "1") {
-      el.analyticsCurrencyBackfillBtn.textContent = `Подгрузка банков · ${percent}%`;
+      el.analyticsCurrencyBackfillBtn.setAttribute("aria-label", `Подгрузка банков · ${percent}%`);
     }
     renderChartCoverage([], { source: "Банки", loadingText: progressText });
   }
@@ -837,11 +834,11 @@
     const chartLoadSequence = ++currencyChartLoadSequence;
     const skeletons = getLoadingSkeletons();
     const refreshState = getInlineRefreshState();
-    const coldLoad = !state.analyticsCurrencyHydrated && state.activeSection === "analytics" && state.analyticsTab === "currency";
+    const coldLoad = !state.analyticsCurrencyHydrated && state.activeSection === "currency" && state.currencyView === "rates";
     if (coldLoad) {
       skeletons.renderAnalyticsCurrencySkeleton?.();
     }
-    const shouldRefreshInline = !coldLoad && state.analyticsCurrencyHydrated && state.activeSection === "analytics" && state.analyticsTab === "currency";
+    const shouldRefreshInline = !coldLoad && state.analyticsCurrencyHydrated && state.activeSection === "currency" && state.currencyView === "rates";
     if (shouldRefreshInline) {
       refreshState.begin?.(el.analyticsCurrencyPanel, "Обновляется");
     }
@@ -1012,7 +1009,7 @@
           action: async () => {
             await backfillAnalyticsCurrencyHistory();
           },
-        });
+        }).finally(syncBankChartControls);
       });
     }
   }

@@ -245,7 +245,7 @@ def test_analytics_trend_uses_cashflow_total_for_result(page_with_analytics_tren
     page = page_with_analytics_trend_cashflow_mock
 
     _open_mobile_analytics(page, static_server_url)
-    page.locator("button[data-analytics-tab='trends']").click()
+    page.locator("button[data-analytics-tab='structure']").click()
     page.wait_for_selector("#analyticsTrendsPanel:not(.hidden)")
 
     expect(page.locator("#analyticsResultLabel")).to_have_text("Денежный поток")

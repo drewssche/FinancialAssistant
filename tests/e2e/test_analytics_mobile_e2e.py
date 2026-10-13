@@ -603,7 +603,11 @@ def page_with_analytics_api_mock(page):
         if path == "/api/v1/dashboard/analytics/highlights" and method == "GET":
             month = (query.get("month") or ["2026-03"])[0]
             period = (query.get("period") or ["month"])[0]
-            return json_response(route, highlights_payload(month, period))
+            payload = highlights_payload(month, period)
+            if period == "custom":
+                payload["date_from"] = query["date_from"][0]
+                payload["date_to"] = query["date_to"][0]
+            return json_response(route, payload)
 
         if path == "/api/v1/dashboard/analytics/trend" and method == "GET":
             period = (query.get("period") or ["month"])[0]
@@ -736,6 +740,7 @@ def page_with_analytics_api_mock(page):
 
     _set_mock_telegram(page)
     page.route("**/api/v1/**", handler)
+    page.route("**/api/v1/currency/performance/history?*", lambda route: route.fulfill(json={"points": [], "date_from": "2026-01-01", "date_to": "2026-03-31"}))
     page._currency_history_fill_calls = history_fill_calls
     page._currency_history_fill_queries = history_fill_queries
     page._currency_history_queries = currency_history_queries
@@ -755,6 +760,17 @@ def _login_analytics(page):
     if page.locator("#telegramLoginBtn").is_visible():
         page.locator("#telegramLoginBtn").click()
     page.wait_for_selector("#appShell:not(.hidden)")
+
+
+
+def _open_context_report(page, report):
+    section, attr, view = {
+        "positions": ("item_catalog", "item-catalog-view", "purchases"),
+        "commerce": ("item_catalog", "item-catalog-view", "discounts"),
+        "currency": ("currency", "currency-view", "rates"),
+    }[report]
+    page.evaluate("section => window.App.getRuntimeModule('navigation').switchSection(section)", section)
+    page.locator(f"button[data-{attr}='{view}']").click()
 
 
 def _open_mobile_analytics(page, static_server_url: str):
@@ -780,7 +796,7 @@ def test_structure_donut_defaults_to_period_total_in_center(page_with_analytics_
     page.locator("button[data-analytics-tab='structure']").click()
     page.wait_for_selector("#analyticsStructurePanel:not(.hidden)")
 
-    page.wait_for_selector("#analyticsCategoryBreakdownChartTitle")
+    page.wait_for_selector("#analyticsCategoryBreakdownChartValue")
     expect(page.locator("#analyticsCategoryBreakdownChartTitle")).to_have_text("Итог периода")
     expect(page.locator("#analyticsCategoryBreakdownChartValue")).to_contain_text("1\u00a0210,00")
 
@@ -897,7 +913,7 @@ def test_dashboard_position_ranking_routes_to_operations_and_full_analytics(page
     page.wait_for_selector("#dashboardPositionsRanking .analytics-position-ranking-row")
     page.locator("#openPositionsAnalyticsBtn").click()
     page.wait_for_selector("#analyticsPositionsPanel:not(.hidden)")
-    assert page.evaluate("() => window.App.state.analyticsTab") == "positions"
+    assert page.evaluate("() => window.App.state.itemCatalogView") == "purchases"
 
 
 @pytest.mark.e2e
@@ -908,7 +924,7 @@ def test_mobile_analytics_structure_excludes_price_and_discount_insights(page_wi
     page.locator("button[data-analytics-tab='structure']").click()
     page.wait_for_selector("#analyticsStructurePanel:not(.hidden)")
     assert page.locator("#analyticsStructurePanel .analytics-price-insight-block").count() == 0
-    expect(page.locator("button[data-analytics-tab='commerce']")).to_be_visible()
+    expect(page.locator("#analyticsViewTabs button")).to_have_count(2)
 
 
 @pytest.mark.e2e
@@ -981,7 +997,7 @@ def test_mobile_analytics_trend_period_arrows_update_visible_label(page_with_ana
     page = page_with_analytics_api_mock
 
     _open_mobile_analytics(page, static_server_url)
-    page.locator("button[data-analytics-tab='trends']").click()
+    page.locator("button[data-analytics-tab='structure']").click()
     page.wait_for_selector("#analyticsTrendsPanel:not(.hidden)")
     expect(page.locator("#analyticsGlobalPeriodControlLabel")).to_have_text("01.03.2026 - 31.03.2026")
 
@@ -1001,7 +1017,7 @@ def test_mobile_position_analytics_renders_matrix_and_drills_into_operations(pag
     page = page_with_analytics_api_mock
 
     _open_mobile_analytics(page, static_server_url)
-    page.locator("button[data-analytics-tab='positions']").click()
+    _open_context_report(page, "positions")
     page.wait_for_selector("#analyticsPositionsPanel:not(.hidden)")
     page.wait_for_selector("#analyticsPositionsMatrixBody .analytics-position-cell.has-value")
 
@@ -1111,10 +1127,10 @@ def test_mobile_position_analytics_renders_matrix_and_drills_into_operations(pag
     expect(page.locator("#operationsKindFilterChip")).to_be_hidden()
     expect(page.locator("#operationsItemTemplateFilterChip")).to_be_visible()
     expect(page.locator("#sectionBackBtn")).to_be_visible()
-    expect(page.locator("#sectionBackBtn")).to_have_attribute("aria-label", "Назад к Позициям")
+    expect(page.locator("#sectionBackBtn")).to_have_attribute("aria-label", "Назад к Покупкам")
     page.locator("#sectionBackBtn").click()
     page.wait_for_selector("#analyticsPositionsPanel:not(.hidden)")
-    expect(page.locator("button[data-analytics-tab='positions']")).to_have_class(re.compile(r"\bactive\b"))
+    expect(page.locator("button[data-item-catalog-view='purchases']")).to_have_class(re.compile(r"\bactive\b"))
 
 
 @pytest.mark.e2e
@@ -1122,16 +1138,9 @@ def test_mobile_prices_and_discounts_tab_renders_rankings_and_restores_context(p
     page = page_with_analytics_api_mock
 
     _open_mobile_analytics(page, static_server_url)
-    page.locator("button[data-analytics-tab='commerce']").click()
+    _open_context_report(page, "commerce")
     page.wait_for_selector("#analyticsCommercePanel:not(.hidden)")
 
-    expect(page.locator("#analyticsCommerceRankingTitle")).to_have_text("Топ подорожаний")
-    expect(page.locator("#analyticsCommerceRanking .analytics-commerce-ranking-row")).to_have_count(1)
-    expect(page.locator("#analyticsCommerceFocus")).to_contain_text("9,00")
-    expect(page.locator("#analyticsCommerceFocus .analytics-commerce-timeline-bar")).to_have_count(2)
-    assert page.locator("#analyticsStructurePanel #analyticsPriceIncreasesList").count() == 0
-
-    page.locator("button[data-analytics-commerce-mode='discounts']").click()
     expect(page.locator("#analyticsCommerceRankingTitle")).to_have_text("Лучшие скидки")
     page.locator("button[data-analytics-commerce-discount-type='coupon']").click()
     expect(page.locator("#analyticsCommerceRanking")).to_contain_text("Капучино 0,2")
@@ -1140,7 +1149,7 @@ def test_mobile_prices_and_discounts_tab_renders_rankings_and_restores_context(p
 
     page.locator("#analyticsCommerceFocus .analytics-commerce-timeline-bar").click()
     page.wait_for_selector("#operationsSection:not(.hidden)")
-    expect(page.locator("#sectionBackBtn")).to_have_attribute("aria-label", "Назад к Ценам и скидкам")
+    expect(page.locator("#sectionBackBtn")).to_have_attribute("aria-label", "Назад к Скидкам")
     page.locator("#sectionBackBtn").click()
     page.wait_for_selector("#analyticsCommercePanel:not(.hidden)")
     expect(page.locator("button[data-analytics-commerce-mode='discounts']")).to_have_class(re.compile(r"\bactive\b"))
@@ -1163,13 +1172,13 @@ def test_prices_discounts_tab_has_no_page_overflow(
         page.evaluate("() => window.App.actions.switchSection('analytics')")
         page.wait_for_selector("#analyticsSection:not(.hidden)")
 
-    page.locator("button[data-analytics-tab='commerce']").click()
+    _open_context_report(page, "commerce")
     page.wait_for_selector("#analyticsCommercePanel:not(.hidden)")
     geometry = page.evaluate(
         """
         () => {
           const panel = document.getElementById('analyticsCommercePanel')?.getBoundingClientRect();
-          const tabs = document.getElementById('analyticsViewTabs')?.getBoundingClientRect();
+          const tabs = document.getElementById('itemCatalogViewTabs')?.getBoundingClientRect();
           const body = document.documentElement;
           return panel && tabs ? {
             viewportWidth: window.innerWidth,
@@ -1201,8 +1210,8 @@ def test_desktop_position_analytics_keeps_sticky_columns_inside_panel(page_with_
     page.evaluate(
         """
         async () => {
-          await window.App.actions.switchSection('analytics');
-          window.App.actions.setAnalyticsTab('positions');
+          window.App.state.itemCatalogView = 'purchases';
+          await window.App.actions.switchSection('item_catalog');
           await window.App.actions.loadAnalyticsPositions({ force: true });
         }
         """
@@ -1259,7 +1268,7 @@ def test_position_analytics_has_no_page_overflow_at_boundary_widths(
     page.evaluate("() => window.App.core.closeMobileNav()")
     page.set_viewport_size({"width": width, "height": height})
     page.wait_for_timeout(250)
-    page.locator("button[data-analytics-tab='positions']").click()
+    _open_context_report(page, "positions")
     page.wait_for_selector("#analyticsPositionsPanel:not(.hidden)")
     page.wait_for_selector("#analyticsPositionsMatrixBody .analytics-position-cell.has-value")
 
@@ -1359,6 +1368,7 @@ def test_opening_analytics_calendar_does_not_fail_when_other_tabs_endpoints_are_
 
     _set_mock_telegram(page)
     page.route("**/api/v1/**", handler)
+    page.route("**/api/v1/currency/performance/history?*", lambda route: route.fulfill(json={"points": [], "date_from": "2026-01-01", "date_to": "2026-03-31"}))
     page.goto(f"{static_server_url}/static/index.html")
     _restore_mock_telegram(page)
     page.evaluate("() => window.App.getRuntimeModule('session')?.refreshTelegramLoginUi?.()")
@@ -1592,7 +1602,7 @@ def test_currency_analytics_all_mode_renders_multi_currency_chart_and_backfill(p
     page = page_with_analytics_api_mock
 
     _open_mobile_analytics(page, static_server_url)
-    page.locator("button[data-analytics-tab='currency']").click()
+    _open_context_report(page, "currency")
     page.wait_for_selector("#analyticsCurrencyPanel:not(.hidden)")
     page.wait_for_selector("button[data-analytics-currency-filter='all']")
     page.click("button[data-analytics-currency-filter='all']")
@@ -1654,7 +1664,7 @@ def test_currency_analytics_bank_mode_compares_buy_sell_and_scales_rub(page_with
     page = page_with_analytics_api_mock
 
     _open_mobile_analytics(page, static_server_url)
-    page.locator("button[data-analytics-tab='currency']").click()
+    _open_context_report(page, "currency")
     page.wait_for_selector("#analyticsCurrencyPanel:not(.hidden)")
     expect(page.locator("button[data-analytics-currency-chart-mode='banks']")).to_have_class(re.compile(r"\bactive\b"))
     page.wait_for_selector("#analyticsCurrencyChart [data-series-id='priorbank-buy']")
@@ -1695,7 +1705,7 @@ def test_currency_analytics_bank_mode_compares_buy_sell_and_scales_rub(page_with
     assert queries[-1].get("currency") == ["RUB"]
     assert queries[-1].get("bank_code") == ["priorbank", "technobank", "bsb", "sber"]
 
-    expect(page.locator("#analyticsCurrencyBackfillBtn")).to_have_text("Подгрузить историю банков")
+    expect(page.locator("#analyticsCurrencyBackfillBtn")).to_have_attribute("aria-label", "Подгрузить историю банков")
     page.click("#analyticsCurrencyBackfillBtn")
     page.wait_for_timeout(250)
     bank_fill_queries = getattr(page, "_bank_currency_history_fill_queries", [])
@@ -1711,7 +1721,7 @@ def test_currency_chart_right_edge_tooltip_does_not_create_desktop_scrollbar(pag
     _open_desktop_app(page, static_server_url)
     page.click("button[data-section='analytics']")
     page.wait_for_selector("#analyticsSection:not(.hidden)")
-    page.locator("button[data-analytics-tab='currency']").click()
+    _open_context_report(page, "currency")
     page.wait_for_selector("#analyticsCurrencyPanel:not(.hidden)")
     page.wait_for_selector("#analyticsCurrencyChart [data-series-id='priorbank-buy']")
 
@@ -1743,7 +1753,7 @@ def test_currency_bank_backfill_polling_does_not_overwrite_nbrb_mode(page_with_a
     page = page_with_analytics_api_mock
 
     _open_mobile_analytics(page, static_server_url)
-    page.locator("button[data-analytics-tab='currency']").click()
+    _open_context_report(page, "currency")
     page.wait_for_selector("#analyticsCurrencyPanel:not(.hidden)")
     page.wait_for_selector("#analyticsCurrencyChart [data-series-id='priorbank-buy']")
 
@@ -1798,12 +1808,76 @@ def test_currency_bank_backfill_polling_does_not_overwrite_nbrb_mode(page_with_a
     page.click("#analyticsCurrencyBackfillBtn")
     expect(page.locator("#analyticsCurrencyBackfillBtn")).to_be_disabled()
     page.click("button[data-analytics-currency-chart-mode='nbrb']")
-    expect(page.locator("#analyticsCurrencyBackfillBtn")).to_contain_text("Идёт подгрузка истории банков")
+    expect(page.locator("#analyticsCurrencyBackfillBtn")).to_have_attribute("aria-label", "Идёт подгрузка истории банков")
     expect(page.locator("button[data-analytics-currency-chart-mode='nbrb']")).to_have_class(re.compile(r"\bactive\b"))
     page.wait_for_selector("#analyticsCurrencyChart .currency-chart-series")
     expect(page.locator("#analyticsCurrencyChartContext")).to_contain_text("Официальные курсы НБРБ")
     expect(page.locator("#analyticsCurrencyChartCoverage")).to_contain_text("НБРБ")
     expect(page.locator("#analyticsCurrencyChartCoverage")).not_to_contain_text("История банков:")
 
-    expect(page.locator("#analyticsCurrencyBackfillBtn")).to_have_text("Подгрузить историю НБРБ", timeout=3_000)
+    expect(page.locator("#analyticsCurrencyBackfillBtn")).to_have_attribute("aria-label", "Подгрузить историю НБРБ", timeout=3_000)
     expect(page.locator("#analyticsCurrencyChartCoverage")).to_contain_text("НБРБ")
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width', [320, 390, 1440])
+def test_catalog_discount_custom_period_and_analytics_ownership(page_with_analytics_api_mock, static_server_url, width):
+    page = page_with_analytics_api_mock
+    _open_mobile_analytics(page, static_server_url)
+    page.set_viewport_size({'width': width, 'height': 900})
+    page.evaluate('window.App.core.setMobileNavOpen(false)')
+    expect(page.locator('#analyticsViewTabs button')).to_have_count(2)
+    _open_context_report(page, 'commerce')
+    page.locator('#analyticsGlobalPeriodTrigger').click()
+    page.locator('[data-quick-period-scope="analytics"][data-quick-period-action="custom"]').click()
+    page.locator('[data-period-custom-mode="range"]').click()
+    page.locator('#customDateFrom').fill('2026-03-10')
+    page.locator('#customDateTo').fill('2026-03-20')
+    page.locator('#submitPeriodCustomBtn').click()
+    expect(page.locator('#periodCustomModal')).to_be_hidden()
+    expect(page.locator('#analyticsGlobalPeriodControlLabel')).to_have_text('10.03.2026 - 20.03.2026')
+    assert page.evaluate('window.App.state.analyticsGlobalPeriod') == 'custom'
+    assert page.evaluate('window.App.state.activeSection') == 'item_catalog'
+    page.evaluate("window.App.getRuntimeModule('navigation').switchSection('analytics')")
+    page.locator('[data-analytics-tab="structure"]').click()
+    expect(page.locator('#analyticsSection #analyticsGlobalScopePanel')).to_be_visible()
+    expect(page.locator('#analyticsTrendsPanel')).to_be_visible()
+    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
+
+
+@pytest.mark.e2e
+def test_structure_remains_available_when_trend_fails(page_with_analytics_api_mock, static_server_url):
+    page = page_with_analytics_api_mock
+    page.route('**/api/v1/dashboard/analytics/trend?*', lambda route: route.fulfill(status=503, json={'detail':'Temporary outage'}))
+    _open_mobile_analytics(page, static_server_url)
+    page.locator('[data-analytics-tab="structure"]').click()
+    expect(page.locator('#analyticsCategoryBreakdownList')).to_contain_text('Еда')
+    expect(page.locator('#analyticsTrendRangeLabel')).to_contain_text('Не удалось загрузить график')
+    expect(page.locator('#analyticsTrendChart .trend-bucket')).to_have_count(0)
+
+
+@pytest.mark.e2e
+def test_shared_structure_period_ignores_late_report_responses(page_with_analytics_api_mock, static_server_url):
+    page = page_with_analytics_api_mock
+    _open_mobile_analytics(page, static_server_url)
+    page.locator('[data-analytics-tab="structure"]').click()
+    expect(page.locator('#analyticsCategoryBreakdownList')).to_contain_text('Еда')
+    base = page.evaluate('window.App.state.analyticsHighlightsData')
+    pending = []
+    page.route('**/api/v1/dashboard/analytics/highlights?*', lambda route: pending.append(route))
+    page.route('**/api/v1/dashboard/analytics/trend?*', lambda route: pending.append(route))
+    for month in ['04', '05']:
+        page.evaluate('''month => {
+            Object.assign(window.App.state, {analyticsGlobalPeriod:'custom', analyticsGlobalDateFrom:`2026-${month}-01`, analyticsGlobalDateTo:`2026-${month}-28`});
+            window.App.getRuntimeModule('analytics').loadAnalyticsSection({force:true});
+        }''', month)
+        page.wait_for_timeout(150)
+    assert len(pending) == 4
+    for month in ['05', '04']:
+        for route in [r for r in pending if f'2026-{month}-01' in r.request.url]:
+            payload = dict(base) if '/highlights?' in route.request.url else {'points':[], 'granularity':'day'}
+            payload.update(date_from=f'2026-{month}-01', date_to=f'2026-{month}-28', period='custom')
+            route.fulfill(json=payload)
+        page.wait_for_timeout(150)
+    expect(page.locator('#analyticsGlobalPeriodControlLabel')).to_have_text('01.05.2026 - 28.05.2026')
+    expect(page.locator('#analyticsTrendRangeLabel')).to_contain_text('01.05.2026 - 28.05.2026')

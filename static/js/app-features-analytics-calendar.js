@@ -162,13 +162,13 @@
     const view = state.analyticsCalendarView || "month";
     core.syncSegmentedActive(el.analyticsCalendarViewTabs, "analytics-calendar-view", view);
     if (el.analyticsPrevGridBtn) {
-      el.analyticsPrevGridBtn.textContent = view === "year" ? "← Год" : "← Месяц";
+      window.App.icons.apply(el.analyticsPrevGridBtn, "back", view === "year" ? "Предыдущий год" : "Предыдущий месяц");
     }
     if (el.analyticsNextGridBtn) {
-      el.analyticsNextGridBtn.textContent = view === "year" ? "Год →" : "Месяц →";
+      window.App.icons.apply(el.analyticsNextGridBtn, "forward", view === "year" ? "Следующий год" : "Следующий месяц");
     }
     if (el.analyticsTodayGridBtn) {
-      el.analyticsTodayGridBtn.textContent = view === "year" ? "Текущий год" : "Текущий месяц";
+      window.App.icons.apply(el.analyticsTodayGridBtn, "calendar", view === "year" ? "Текущий год" : "Текущий месяц");
     }
     if (el.analyticsMonthGridWrap) {
       el.analyticsMonthGridWrap.classList.toggle("hidden", view !== "month");

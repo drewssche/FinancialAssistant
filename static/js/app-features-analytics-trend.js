@@ -1,6 +1,7 @@
 (() => {
   const { state, el, core } = window.App;
   const shared = window.App.analyticsShared || {};
+  let trendLoadSequence = 0;
   const TREND_CACHE_TTL_MS = 20000;
   const escapeHtml = shared.escapeHtml || ((value) => String(value ?? ""));
   const sharedFormatPct = shared.formatPct || ((value) => String(value ?? ""));
@@ -320,6 +321,7 @@
   }
 
   async function loadAnalyticsTrend(options = {}) {
+    const sequence = ++trendLoadSequence;
     const force = options.force === true;
     const skeletons = getLoadingSkeletons();
     if (!state.analyticsTrendHydrated && state.activeSection === "analytics" && (state.analyticsTab || "calendar") === "trends") {
@@ -346,6 +348,7 @@
         headers: core.authHeaders(),
       });
       core.setUiRequestCache(cacheKey, data);
+      if (sequence !== trendLoadSequence) return data;
       renderAnalyticsTrend(data);
       skeletons.clearAnalyticsTrendSkeletonState?.();
       state.analyticsTrendHydrated = true;

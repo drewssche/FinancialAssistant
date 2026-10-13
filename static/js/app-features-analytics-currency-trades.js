@@ -124,7 +124,7 @@
           if (!entry?.isIntersecting) {
             return;
           }
-          if (state.activeSection !== "analytics" || state.analyticsTab !== "currency") {
+          if (state.activeSection !== "currency" || state.currencyView !== "rates") {
             return;
           }
           if (!state.analyticsCurrencyTradesHasMore || state.analyticsCurrencyTradesLoading) {

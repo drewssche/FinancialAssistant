@@ -214,7 +214,7 @@
             <div class="dashboard-currency-rate-value">—</div>
             <div class="dashboard-currency-rate-meta muted-small">Сохрани текущий курс в разделе Валюта</div>
             <div class="dashboard-currency-rate-actions">
-              <button class="btn btn-secondary btn-xs" type="button" data-dashboard-refresh-currency="${currency}">Обновить</button>
+              <button class="btn btn-secondary btn-xs btn-icon" type="button" data-dashboard-refresh-currency="${currency}" aria-label="Обновить курс" title="Обновить курс">${window.App.icons.svg("refresh")}</button>
             </div>
           </article>
         `;
@@ -269,7 +269,7 @@
           <div class="dashboard-currency-rate-source muted-small">Источник: ${core.escapeHtml ? core.escapeHtml(source) : source}</div>
           ${bankRatesHtml}
           <div class="dashboard-currency-rate-actions">
-            <button class="btn btn-secondary btn-xs" type="button" data-dashboard-refresh-currency="${item.currency}">Обновить</button>
+            <button class="btn btn-secondary btn-xs btn-icon" type="button" data-dashboard-refresh-currency="${item.currency}" aria-label="Обновить курс" title="Обновить курс">${window.App.icons.svg("refresh")}</button>
           </div>
         </article>
       `;
@@ -364,7 +364,7 @@
   function dashboardPanelError(message) {
     return `<div class="panel-load-state panel-load-state-error" role="alert">
       <span>${core.escapeHtml?.(message) || message}</span>
-      <button class="btn btn-secondary btn-xs" type="button" data-dashboard-retry>Повторить</button>
+      <button class="btn btn-secondary btn-xs btn-icon" type="button" data-dashboard-retry aria-label="Повторить загрузку" title="Повторить загрузку">${window.App.icons.svg("refresh")}</button>
     </div>`;
   }
 
@@ -720,7 +720,7 @@
                         }
                         <div class="dashboard-debt-actions">
                           <button class="btn btn-repay btn-xs" type="button" data-dashboard-repay-debt-id="${debt.id}" ${outstanding <= 0 ? "disabled" : ""}>Погашение</button>
-                          <button class="btn btn-secondary btn-xs" type="button" data-dashboard-history-debt-id="${debt.id}">Движения</button>
+                          <button class="btn btn-secondary btn-xs" type="button" data-dashboard-history-debt-id="${debt.id}" aria-label="Движения долга" title="Движения долга">${window.App.icons.svg("history")}</button>
                         </div>
                       </div>
                     </div>

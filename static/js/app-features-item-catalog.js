@@ -483,8 +483,20 @@
   }
 
   function setItemCatalogView(view, options = {}) {
-    const activeView = view === "changes" ? "changes" : view === "brands" ? "brands" : (view === "sources" || view === "positions" ? "sources" : "products");
+    const activeView = ["purchases", "discounts"].includes(view) ? view : view === "changes" ? "changes" : view === "brands" ? "brands" : (view === "sources" || view === "positions" ? "sources" : "products");
     state.itemCatalogView = activeView;
+    el.analyticsPositionsPanel?.classList.toggle("hidden", activeView !== "purchases");
+    el.analyticsCommercePanel?.classList.toggle("hidden", activeView !== "discounts");
+    if (activeView === "discounts") {
+      state.analyticsCommerceMode = "discounts";
+      el.analyticsCommercePanel?.prepend(el.analyticsGlobalScopePanel);
+      el.analyticsGlobalScopePanel?.classList.remove("hidden");
+    }
+    if (["purchases", "discounts"].includes(activeView)) {
+      const report = window.App.getRuntimeModule?.(activeView === "purchases" ? "analytics-positions-module" : "analytics-highlights-module");
+      const load = activeView === "purchases" ? report?.loadAnalyticsPositions : report?.loadAnalyticsHighlights;
+      load?.({ force: options.force === true }).catch((err) => core.setStatus(`Не удалось загрузить покупки: ${String(err)}`));
+    }
     window.App.getRuntimeModule?.("catalog-price-changes")?.setActive(activeView === "changes");
     el.catalogProductsView?.classList.toggle("hidden", activeView !== "products");
     el.itemCatalogPositionsView?.classList.toggle("hidden", activeView !== "sources");
@@ -505,7 +517,7 @@
     }
     if (el.addItemTemplateCta) {
       window.App.icons.apply(el.addItemTemplateCta, "plus", activeView === "products" ? "Добавить товар" : "Создать позицию");
-      el.addItemTemplateCta.classList.toggle("hidden", ["brands", "changes"].includes(activeView));
+      el.addItemTemplateCta.classList.toggle("hidden", ["brands", "changes", "purchases", "discounts"].includes(activeView));
     }
     window.App.icons.apply(el.addItemSourceCta, "plus", "Создать источник");
     window.App.icons.apply(el.batchItemCatalogCta, "receipt", "Массовое добавление");

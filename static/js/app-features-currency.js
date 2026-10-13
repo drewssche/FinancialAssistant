@@ -344,7 +344,18 @@
     }
   }
 
+  function setCurrencyView(view, { load = true } = {}) {
+    state.currencyView = view === "rates" ? "rates" : "portfolio";
+    document.getElementById("currencyPortfolioView")?.classList.toggle("hidden", state.currencyView !== "portfolio");
+    el.analyticsCurrencyPanel?.classList.toggle("hidden", state.currencyView !== "rates");
+    const tabs = document.getElementById("currencyWorkspaceTabs");
+    core.syncSegmentedActive(tabs, "currency-view", state.currencyView);
+    if (load) loadCurrencySection({ force: true }).catch((err) => core.setStatus(String(err)));
+  }
+
   async function loadCurrencySection(options = {}) {
+    setCurrencyView(state.currencyView, { load: false });
+    if (state.currencyView === "rates") return getAnalyticsCurrencyFeature().loadAnalyticsCurrency?.(options);
     const skeletons = getLoadingSkeletons();
     const refreshState = getInlineRefreshState();
     const coldLoad = !state.currencySectionHydrated && state.activeSection === "currency";
@@ -446,6 +457,10 @@
   }
 
   function bind() {
+    document.getElementById("currencyWorkspaceTabs")?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-currency-view]");
+      if (button) setCurrencyView(button.dataset.currencyView);
+    });
     if (el.currencyFilterTabs) {
       el.currencyFilterTabs.addEventListener("click", (event) => {
         const btn = event.target.closest("button[data-currency-filter]");
@@ -494,6 +509,7 @@
 
   window.App.registerRuntimeModule?.("currency", {
     loadCurrencySection,
+    setCurrencyView,
     loadMoreCurrencyTrades,
     syncFilterTabs,
     openTradePanel,

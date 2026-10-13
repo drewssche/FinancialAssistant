@@ -23,7 +23,7 @@ def test_currency_digest_manual_send_uses_one_shared_inflight_request():
     assert 'core.requestJson("/api/v1/currency/telegram-digest/send"' in source
     assert 'method: "POST"' in source
     assert "timeoutMs: 120000" in source
-    assert 'button.textContent = "Отправляем..."' in source
+    assert 'button.setAttribute("aria-label", "Отправляем дайджест")' in source
     assert "button.disabled = true" in source
     assert 'button.setAttribute("aria-busy", "true")' in source
     assert "setPendingState(true)" in source

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from tests.e2e.test_analytics_mobile_e2e import _open_context_report
 
 import json
 import socket
@@ -361,7 +362,7 @@ def test_currency_column_sort_survives_pagination(static_server_url, page_with_c
     page.wait_for_selector("#appShell:not(.hidden)")
     page.evaluate(f"window.App.actions.switchSection?.('{ 'analytics' if analytics else 'currency' }')")
     if analytics:
-        page.click("button[data-analytics-tab='currency']")
+        _open_context_report(page, "currency")
     prefix = "analyticsCurrency" if analytics else "currency"
     filter_attr = "analytics-currency-filter" if analytics else "currency-filter"
     page.click(f"button[data-{filter_attr}='USD']")
@@ -448,7 +449,7 @@ def test_analytics_currency_section_infinite_scroll_loads_second_page(static_ser
 
     page.evaluate("() => window.App.actions.switchSection?.('analytics')")
     page.wait_for_selector("#analyticsSection:not(.hidden)")
-    page.click("button[data-analytics-tab='currency']")
+    _open_context_report(page, "currency")
     page.wait_for_selector("#analyticsCurrencyPanel:not(.hidden)")
     page.click("button[data-analytics-currency-filter='USD']")
     page.wait_for_function("() => document.querySelectorAll('#analyticsCurrencyTradesBody tr').length === 20", timeout=5000)
@@ -458,14 +459,14 @@ def test_analytics_currency_section_infinite_scroll_loads_second_page(static_ser
         """
         () => ({
           activeSection: window.App.state.activeSection,
-          analyticsTab: window.App.state.analyticsTab,
+          currencyView: window.App.state.currencyView,
           hasMore: window.App.state.analyticsCurrencyTradesHasMore,
           sentinelHidden: document.getElementById('analyticsCurrencyTradesInfiniteSentinel')?.classList.contains('hidden'),
         })
         """
     )
-    assert state["activeSection"] == "analytics"
-    assert state["analyticsTab"] == "currency"
+    assert state["activeSection"] == "currency"
+    assert state["currencyView"] == "rates"
     assert state["hasMore"] is True
     assert state["sentinelHidden"] is False
     page.evaluate("() => window.App.getRuntimeModule('analytics-currency-module')?.loadMoreAnalyticsCurrencyTrades?.()")
@@ -512,7 +513,7 @@ def test_manual_currency_digest_send_is_shared_across_currency_views(
               id,
               disabled: button.disabled,
               ariaBusy: button.getAttribute("aria-busy"),
-              text: button.textContent.trim(),
+              text: button.getAttribute("aria-label"),
             };
           });
         }
@@ -524,19 +525,19 @@ def test_manual_currency_digest_send_is_shared_across_currency_views(
             "id": "dashboardSendCurrencyDigestBtn",
             "disabled": True,
             "ariaBusy": "true",
-            "text": "Отправляем...",
+            "text": "Отправляем дайджест",
         },
         {
             "id": "currencySendDigestBtn",
             "disabled": True,
             "ariaBusy": "true",
-            "text": "Отправляем...",
+            "text": "Отправляем дайджест",
         },
         {
             "id": "analyticsSendCurrencyDigestBtn",
             "disabled": True,
             "ariaBusy": "true",
-            "text": "Отправляем...",
+            "text": "Отправляем дайджест",
         },
     ]
 
@@ -550,7 +551,7 @@ def test_manual_currency_digest_send_is_shared_across_currency_views(
     for button in (dashboard_button, currency_button, analytics_button):
         expect(button).to_be_enabled()
         assert button.get_attribute("aria-busy") is None
-        expect(button).to_have_text("Отправить дайджест")
+        expect(button).to_have_attribute("aria-label", "Отправить дайджест")
 
     page.evaluate("() => window.App.actions.switchSection?.('currency')")
     page.wait_for_selector("#currencySection:not(.hidden)")
@@ -558,6 +559,6 @@ def test_manual_currency_digest_send_is_shared_across_currency_views(
 
     page.evaluate("() => window.App.actions.switchSection?.('analytics')")
     page.wait_for_selector("#analyticsSection:not(.hidden)")
-    page.click("button[data-analytics-tab='currency']")
+    _open_context_report(page, "currency")
     page.wait_for_selector("#analyticsCurrencyPanel:not(.hidden)")
     expect(analytics_button).to_be_visible()

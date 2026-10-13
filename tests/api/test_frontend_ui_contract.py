@@ -29,10 +29,12 @@ def test_prices_discounts_tab_and_context_navigation_contract():
     manifest = MANIFEST_JS.read_text(encoding="utf-8")
     navigation = (REPO_ROOT / "static" / "js" / "app-section-ui.js").read_text(encoding="utf-8")
 
-    assert 'data-analytics-tab="commerce"' in shell_primary
-    assert 'id="analyticsCommercePanel"' in shell_primary
-    assert 'data-analytics-commerce-mode="prices"' in shell_primary
-    assert 'data-analytics-commerce-mode="discounts"' in shell_primary
+    shell_secondary = (REPO_ROOT / "static/js/templates/shell-sections-secondary.js").read_text(encoding="utf-8")
+    assert 'data-item-catalog-view="discounts"' in shell_secondary
+    assert 'data-analytics-tab="commerce"' not in shell_primary
+    assert 'id="analyticsCommercePanel"' in shell_secondary
+    assert 'data-analytics-commerce-mode="prices"' in shell_secondary
+    assert 'data-analytics-commerce-mode="discounts"' in shell_secondary
     assert 'id="analyticsPriceIncreasesList"' not in shell_primary
     assert 'id="analyticsTopDiscountSavingsList"' not in shell_primary
     assert '"/static/js/app-features-analytics-commerce.js"' in manifest
@@ -398,7 +400,7 @@ def test_analytics_global_period_uses_compact_period_control():
 
     assert 'data-period-control="analytics-global"' in shell_primary
     assert 'data-period-control="dashboard-analytics"' in shell_primary
-    assert 'data-period-control="analytics-positions"' in shell_primary
+    assert 'data-period-control="analytics-positions"' in (REPO_ROOT / "static/js/templates/shell-sections-secondary.js").read_text()
     assert 'id="dashboardAnalyticsPeriodTrigger"' in shell_primary
     assert 'id="dashboardAnalyticsPeriodControlLabel"' in shell_primary
     assert 'id="analyticsGlobalPeriodTrigger"' in shell_primary
@@ -484,11 +486,11 @@ def test_currency_digest_manual_send_buttons_are_available_in_all_currency_views
     ).read_text(encoding="utf-8")
     elements = (REPO_ROOT / "static" / "js" / "app-core-elements.js").read_text(encoding="utf-8")
 
-    assert 'id="dashboardSendCurrencyDigestBtn" class="btn btn-secondary btn-xs"' in primary
-    assert 'id="analyticsSendCurrencyDigestBtn" class="btn btn-secondary btn-xs"' in primary
-    assert 'id="currencySendDigestBtn" class="btn btn-secondary"' in secondary
+    assert 'id="dashboardSendCurrencyDigestBtn" class="btn-icon btn btn-secondary btn-xs"' in primary
+    assert 'id="analyticsSendCurrencyDigestBtn" class="btn-icon btn btn-secondary btn-xs"' in secondary
+    assert 'id="currencySendDigestBtn" class="btn-icon btn btn-secondary"' in secondary
     assert primary.count("Отправить дайджест") == 2
-    assert secondary.count("Отправить дайджест") == 1
+    assert secondary.count("Отправить дайджест") == 4
     assert 'dashboardSendCurrencyDigestBtn: document.getElementById("dashboardSendCurrencyDigestBtn")' in elements
     assert 'currencySendDigestBtn: document.getElementById("currencySendDigestBtn")' in elements
     assert 'analyticsSendCurrencyDigestBtn: document.getElementById("analyticsSendCurrencyDigestBtn")' in elements
@@ -496,7 +498,7 @@ def test_currency_digest_manual_send_buttons_are_available_in_all_currency_views
 
 def test_currency_analytics_supports_bank_history_comparison_controls():
     primary = (
-        REPO_ROOT / "static" / "js" / "templates" / "shell-sections-primary.js"
+        REPO_ROOT / "static" / "js" / "templates" / "shell-sections-secondary.js"
     ).read_text(encoding="utf-8")
     elements = (REPO_ROOT / "static" / "js" / "app-core-elements.js").read_text(encoding="utf-8")
     currency = (
@@ -531,7 +533,7 @@ def test_currency_analytics_supports_bank_history_comparison_controls():
     assert "Promise.allSettled" in currency
     assert "requestSequence !== currencyChartLoadSequence" in currency
     assert 'state.analyticsCurrencyChartMode !== "banks"' in currency
-    assert "dataset.originalText = idleText" in currency
+    assert ".finally(syncBankChartControls)" in currency
     assert 'item?.capability === "accumulating" || item?.capability === "unavailable"' in currency
     assert "renderComparison" in chart
     assert 'createTooltipHost(svgNode, "comparison")' in chart

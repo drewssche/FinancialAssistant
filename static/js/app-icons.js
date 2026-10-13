@@ -7,6 +7,11 @@
   paths.calendar = "M5 5h14v16H5V5Zm3-2v4m8-4v4M5 10h14m-9 5h4";
   paths.link = "m9 15 6-6M7 14l-2 2a3 3 0 0 0 4 4l4-4M11 8l4-4a3 3 0 0 1 4 4l-2 2";
   paths.search = "M21 21l-6-6M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0";
+  paths.forward = "M4 12h16m-6-6 6 6-6 6";
+  paths.send = "m3 3 18 9-18 9 4-9-4-9Zm4 9h14";
+  paths.eye = "M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Zm7 0a3 3 0 1 0 6 0 3 3 0 0 0-6 0";
+  paths.eyeOff = "m3 3 18 18M10 5h2c7 0 10 7 10 7a19 19 0 0 1-3 4M6 6a20 20 0 0 0-4 6s3 7 10 7c2 0 4-1 5-2";
+  paths.back = "M20 12H4m6-6-6 6 6 6";
   const svg = name => `<svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="${paths[name] || paths.plus}"/></svg>`;
   function apply(button, name, label) {
     if (!button) return;
