@@ -1,0 +1,137 @@
+/* Daily lists: controls and totals support the records, without nested panels. */
+#operationsSection .operations-controls-grid { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-end; }
+#operationsSection .control-section { border: 0; border-radius: 0; background: none; padding: 0; gap: 5px; }
+#operationsSection .operations-period-section { flex: 0 1 270px; }
+#operationsSection .period-control { width: 100%; grid-template-columns: 42px minmax(0, 1fr) 42px; min-height: 42px; padding: 0; }
+#operationsSection .period-step-btn { width: 42px; min-height: 42px; }
+#operationsSection .operations-filter-section { flex: 1 1 auto; display: flex; flex-direction: row-reverse; align-items: flex-end; justify-content: flex-end; gap: 8px; }
+#operationsSection .operations-filter-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+#operationsSection .operations-control-card { align-self: auto; }
+#operationsSection .operations-sort-section { margin-left: auto; }
+#operationsSection .operations-sort-section .segmented { width: fit-content; }
+#operationsSection .operations-control-head { padding: 0; }
+#operationsSection .operations-summary-grid, #debtsSection .debts-section-kpi { display: flex; flex-wrap: wrap; gap: 10px 24px; margin: 14px 0; }
+#operationsSection .operations-summary-grid > article, #debtsSection .debts-section-kpi > article { border: 0; border-radius: 0; background: none; box-shadow: none; padding: 0; min-height: 0; display: grid; gap: 3px; }
+#operationsSection .operations-summary-grid strong, #debtsSection .debts-section-kpi strong { font-size: 16px; line-height: 1.4; }
+#operationsSection .operations-search-row { padding: 0; border: 0; background: none; margin: 12px 0; }
+#operationsSection > .panel > .panel-head:has(#operationsActiveFilters.hidden) { display: none; }
+.record-icon-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 4px; }
+#operationsSection .record-icon-actions { min-width: 138px; }
+#operationsSection .table-kebab-cell { width: auto; }
+#operationsSection .operations-table td { vertical-align: middle; }
+#operationsSection .operations-table th:last-child { min-width: 146px; }
+/* Plans: explicitly labelled summary and a single date per record. */
+#plansSection .plans-kpi-shell { margin: 8px 0 14px; }
+#plansSection .plans-financial-kpi-card { padding: 0; border: 0; background: none; box-shadow: none; min-height: 0; display: flex; flex-wrap: wrap; gap: 10px 24px; align-items: flex-start; }
+#plansSection .plans-financial-kpi-head { width: 100%; margin: 0; }
+#plansSection .plans-financial-kpi-line { display: contents; }
+#plansSection .plans-summary-item { display: grid; gap: 3px; }
+#plansSection .plans-financial-kpi-value, #plansSection .plans-financial-kpi-delta, #plansSection .plans-financial-kpi-meta { font-size: 16px; font-weight: 650; line-height: 1.4; padding: 0; margin: 0; border: 0; background: none; }
+#plansSection .plans-status-chips { margin: 0; gap: 12px; }
+#plansSection .plans-status-chips > span { border: 0; background: none; padding: 0; }
+#plansSection .plans-toolbar { display: flex; flex-wrap: wrap; gap: 10px 16px; }
+#plansSection .plans-toolbar .segmented { flex: 0 1 auto; width: fit-content; }
+#plansSection .plans-toolbar .segmented-btn { flex: 0 1 auto; }
+#plansSection .plans-search-row { margin: 12px 0; }
+#plansSection .plans-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
+#plansSection .plan-card { padding: 14px 0; margin: 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none; box-shadow: none; }
+#plansSection .plan-card-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, .5fr); gap: 14px; align-items: center; }
+#plansSection .plan-card-summary { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 12px; }
+#plansSection .plan-card-date { min-width: 0; padding: 0; border: 0; background: none; }
+#plansSection .plan-card-date strong { font-size: 14px; }
+#plansSection .plan-card-side { display: grid; justify-items: end; gap: 8px; min-width: 0; width: auto; padding: 0; border: 0; background: none; }
+#plansSection .plan-card-amount { font-size: 17px; }
+#plansSection .plan-card-amount-secondary { white-space: normal; overflow-wrap: anywhere; }
+#plansSection .plan-card-top-meta { display: flex; flex-wrap: wrap; gap: 5px 10px; margin-top: 6px; }
+#plansSection .plan-card-actions { display: flex; flex-direction: row; flex-wrap: wrap; gap: 4px; width: auto; margin: 0; }
+/* Debts: one group per person, flat records within it. */
+#debtsSection .debt-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+#debtsSection .debt-toolbar-search { flex: 1 1 250px; width: auto; }
+#debtsSection .debt-toolbar .segmented { width: fit-content; flex: 0 1 auto; }
+#debtsSection .debt-toolbar .segmented-btn { flex: 0 1 auto; }
+#debtsSection .debt-cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+#debtsSection .debt-card { padding: 12px 0 0; background: none; border: 0; border-top: 1px solid var(--border); border-radius: 0; box-shadow: none; }
+#debtsSection .debt-card-children-wrap { margin-top: 8px; border: 0; border-radius: 0; }
+#debtsSection .debt-card h3 { font-size: 16px; overflow-wrap: anywhere; }
+#debtsSection .debt-card .table td { vertical-align: middle; }
+#debtsSection .debt-direct-actions { max-width: 180px; min-width: 134px; margin-left: auto; }
+.debt-list-maintenance { display: flex; justify-content: flex-end; margin-top: 24px; }
+@media (max-width: 1100px) {
+  #operationsSection .operations-period-section { flex-basis: 240px; }
+  #operationsSection .operations-filter-section { flex: 1 1 100%; order: 2; }
+  #operationsSection .operations-sort-section { order: 1; }
+  #operationsSection .operations-filter-grid { flex: 1; }
+}
+@media (max-width: 640px) {
+  #operationsSection .operations-controls-grid { gap: 10px; }
+  #operationsSection .operations-period-section { flex: 1 1 100%; }
+  #operationsSection .period-control { grid-template-columns: 44px minmax(0, 1fr) 44px; }
+  #operationsSection .period-step-btn { width: 44px; min-height: 44px; }
+  #operationsSection .operations-filter-section { display: grid; grid-template-columns: minmax(0, 1fr) 44px; width: 100%; gap: 8px; }
+  #operationsSection .operations-filter-section > .control-section-head { grid-column: 2; grid-row: 1; align-self: end; }
+  #operationsSection .operations-filter-grid { display: grid; grid-template-columns: minmax(0, 1fr); grid-column: 1; grid-row: 1; gap: 8px; }
+  #operationsSection .operations-control-head { display: none; }
+  #operationsSection .operations-filter-grid .segmented { width: 100%; display: flex; }
+  #operationsSection .operations-filter-grid .segmented-btn { flex: 1 1 auto; padding: 8px; min-height: 44px; }
+  #operationsSection .operations-sort-section { order: 3; margin: 0; }
+  #operationsSection .operations-summary-grid, #debtsSection .debts-section-kpi { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; margin: 12px 0; }
+  #operationsSection .operations-summary-grid strong, #debtsSection .debts-section-kpi strong { font-size: 15px; }
+  #operationsSection .operations-table .mobile-actions-cell { position: static; display: block; width: auto; grid-column: 1 / -1; padding: 6px 0 0; }
+  #operationsSection .mobile-actions-cell::before { display: none; }
+  #operationsSection .record-icon-actions { justify-content: flex-end; min-width: 0; }
+  #plansSection .plans-financial-kpi-card { gap: 8px 18px; }
+  #plansSection .plans-toolbar { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  #plansSection .plans-toolbar .segmented { width: 100%; display: flex; flex-wrap: wrap; }
+  #plansSection .plans-toolbar .segmented-btn { flex: 1 1 auto; min-height: 44px; padding: 8px; }
+  #plansSection .plan-card-row, #plansSection .plan-card-summary { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  #plansSection .plan-card-date { display: block; }
+  #plansSection .plan-card-side { justify-items: start; gap: 10px; }
+  #plansSection .plan-card-amount-block { align-items: flex-start; text-align: left; }
+  #plansSection .plan-card-actions { justify-content: flex-start; }
+  #debtsSection .debt-toolbar { flex-direction: row; }
+  #debtsSection .debt-toolbar-search { flex: 1 1 100%; width: 100%; }
+  #debtsSection .debt-toolbar .segmented { display: flex; width: 100%; }
+  #debtsSection .debt-toolbar .segmented-btn { flex: 1; min-height: 44px; }
+  #debtsSection .debt-mobile-entry { padding: 12px 0; background: none; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; }
+  #debtsSection .debt-mobile-entry-head { display: block; }
+  #debtsSection .debt-mobile-entry-body { margin: 8px 0; padding: 0; border: 0; }
+  #debtsSection .debt-direct-actions { max-width: none; min-width: 0; justify-content: flex-start; margin: 8px 0 0; }
+}
+#plansSection > .panel > .panel-head, #debtsSection > .panel > .panel-head { display: none; }
+#plansSection .plans-status-chips { display: flex; flex-direction: row; flex-wrap: wrap; }
+#debtsSection .debt-toolbar { justify-content: flex-start; }
+#debtsSection .debt-toolbar > * { margin: 0; }
+#debtsSection .debt-card-children-wrap { padding: 0; border-left: 0; }
+#debtsSection .debt-card tr.debt-record-row { background: none; }
+@media (min-width: 641px) and (max-width: 1200px) {
+  #debtsSection .debt-toolbar-search { flex-basis: 100%; }
+  #debtsSection .debt-card th:nth-child(1), #debtsSection .debt-card td:nth-child(1),
+  #debtsSection .debt-card th:nth-child(3), #debtsSection .debt-card td:nth-child(3),
+  #debtsSection .debt-card th:nth-child(4), #debtsSection .debt-card td:nth-child(4) { display: none; }
+  #debtsSection .debt-direct-actions { max-width: 138px; }
+  #debtsSection .debt-card .table { min-width: 0; width: 100%; }
+  #debtsSection .debt-card td { padding: 10px 6px; white-space: normal; }
+  #debtsSection .debt-due-head { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+}
+@media (max-width: 640px) {
+  #operationsSection .operations-table tr[data-operation-row-id] { display: flex; flex-direction: column; gap: 4px; }
+  #operationsSection .operations-table tr[data-operation-row-id] > td.mobile-actions-cell { width: 100% !important; min-width: 0; max-width: none; margin: 6px 0 0; }
+  #operationsSection .operations-table tr[data-operation-row-id] > td[data-label] { width: 100%; margin: 0; }
+  #operationsSection .record-icon-actions { flex-direction: row; }
+  #plansSection .plans-status-chips { gap: 6px 12px; }
+  #plansSection .plans-status-chips > span { width: auto; flex: none; }
+  #debtsSection .debt-mobile-entry-stats { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+}
+#plansSection .plan-card-actions { min-width: 0; max-width: none; }
+#plansSection .plans-toolbar { justify-content: flex-start; }
+#debtsSection .debt-toolbar { flex-direction: row; }
+.main:has(:is(#operationsSection, #plansSection, #debtsSection):not(.hidden)) .topbar { display: flex; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 10px; }
+.main:has(:is(#operationsSection, #plansSection, #debtsSection):not(.hidden)) #sectionSubtitle { display: none; }
+.main:has(:is(#operationsSection, #plansSection, #debtsSection):not(.hidden)) .top-actions { width: auto; margin-left: auto; }
+.main:has(:is(#operationsSection, #plansSection, #debtsSection):not(.hidden)) .cta-row { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; }
+#operationsSection .operations-sort-section { display: flex; flex-direction: row; align-items: center; gap: 8px; }
+@media (max-width: 640px) {
+  #operationsSection .operations-filter-section, #operationsSection .operations-filter-grid { display: grid; grid-template-columns: minmax(0, 1fr); width: 100%; }
+  .main:has(:is(#operationsSection, #plansSection, #debtsSection):not(.hidden)) .top-actions { margin-right: 48px; }
+  #plansSection #plansTabTabs { display: grid; grid-template-columns: 1fr 1fr; }
+}

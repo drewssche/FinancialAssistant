@@ -416,25 +416,19 @@ def test_mobile_card_kebab_stays_top_right_and_menu_escapes_card(static_server_u
             page.locator("#mobileNavToggleBtn").evaluate("node => node.click()")
             page.locator("button[data-section='debts']").click()
             debt_card = page.locator(".debt-mobile-entry").first
-            debt_trigger = page.locator(".debt-mobile-entry .mobile-card-kebab-trigger").first
-            debt_trigger.wait_for(state="visible")
-            debt_card_box = debt_card.bounding_box()
-            debt_trigger_box = debt_trigger.bounding_box()
-            assert debt_card_box is not None and debt_trigger_box is not None
-            assert (debt_card_box["x"] + debt_card_box["width"]) - (debt_trigger_box["x"] + debt_trigger_box["width"]) <= 28
-            debt_trigger.click()
-            debt_id = debt_card.get_attribute("data-debt-row-id")
-            assert debt_id
-            debt_menu = page.locator(f".mobile-card-actions-popover[data-mobile-card-menu='debt-{debt_id}']:not(.hidden)").first
-            debt_menu.wait_for(state="visible")
-            debt_card_box = debt_card.bounding_box()
-            debt_trigger_box = debt_trigger.bounding_box()
-            debt_menu_box = debt_menu.bounding_box()
-            assert debt_card_box is not None and debt_trigger_box is not None and debt_menu_box is not None
-            assert debt_menu_box["x"] >= debt_card_box["x"]
-            assert debt_menu_box["y"] >= 0
-            assert debt_menu_box["y"] + debt_menu_box["height"] <= page.viewport_size["height"]
-            assert page.locator(".debt-mobile-entry").first.evaluate("node => getComputedStyle(node).overflow") == "visible"
+            actions = debt_card.locator(".debt-direct-actions button")
+            actions.first.wait_for(state="visible")
+            assert actions.count() == 7
+            for button in actions.all():
+                box = button.bounding_box()
+                card_box = debt_card.bounding_box()
+                assert box and card_box
+                assert box["width"] >= 44 and box["height"] >= 44
+                assert box["x"] >= card_box["x"] - 1
+                assert box["x"] + box["width"] <= card_box["x"] + card_box["width"] + 1
+                assert button.get_attribute("aria-label")
+            actions.filter(has=page.locator("svg")).first.click()
+            page.wait_for_selector("#debtRepaymentModal:not(.hidden)")
         finally:
             browser.close()
 
@@ -618,7 +612,7 @@ def test_nested_usage_modal_opens_above_edit_modal_and_escape_closes_top(static_
 
 
 @pytest.mark.e2e
-def test_desktop_debt_children_wrap_does_not_clip_kebab_menu(static_server_url: str):
+def test_desktop_debt_direct_actions_fit_and_open_history(static_server_url: str):
     with sync_api.sync_playwright() as p:
         try:
             browser = p.chromium.launch(headless=True)
@@ -632,16 +626,15 @@ def test_desktop_debt_children_wrap_does_not_clip_kebab_menu(static_server_url: 
             _login_via_mock_telegram(page)
             debt_wrap = page.locator(".debt-card-children-wrap").first
             debt_wrap.wait_for(state="visible")
-            assert debt_wrap.evaluate("node => getComputedStyle(node).overflowX") == "visible"
-            assert debt_wrap.evaluate("node => getComputedStyle(node).overflowY") == "visible"
-            debt_trigger = page.locator(".debt-card-children-wrap .table-kebab-trigger").first
-            debt_trigger.scroll_into_view_if_needed()
-            debt_trigger.click(force=True)
-            menu = page.locator(".table-kebab-popover[data-table-menu^='debt-']:not(.hidden)").first
-            menu.wait_for(state="visible")
+            actions = debt_wrap.locator(".debt-direct-actions button")
+            assert actions.count() == 7
             wrap_box = debt_wrap.bounding_box()
-            menu_box = menu.bounding_box()
-            assert wrap_box is not None and menu_box is not None
-            assert menu_box["y"] + menu_box["height"] > wrap_box["y"] + wrap_box["height"]
+            for button in actions.all():
+                box = button.bounding_box()
+                assert box and wrap_box
+                assert box["x"] >= wrap_box["x"] - 1
+                assert box["x"] + box["width"] <= wrap_box["x"] + wrap_box["width"] + 1
+            debt_wrap.locator("[data-history-debt-id]").first.click()
+            page.wait_for_selector("#debtHistoryModal:not(.hidden)")
         finally:
             browser.close()

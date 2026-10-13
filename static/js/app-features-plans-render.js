@@ -241,7 +241,7 @@
         ? `<span class="meta-chip meta-chip-neutral">${core.escapeHtml(reminderText)}</span>`
         : "";
       const positionsMeta = hasReceiptItems
-        ? `<button class="meta-chip-btn meta-chip-btn-neutral" type="button" data-plan-receipt-view-id="${item.id}">Чек</button>`
+        ? `<button class="btn btn-secondary btn-icon" type="button" data-plan-receipt-view-id="${item.id}" aria-label="Чек" title="Чек">${window.App.icons.svg("receipt")}</button>`
         : "";
       const noteMeta = item.note ? `<span class="muted-small">${core.highlightText(item.note, "")}</span>` : "";
       const showConfirm = item.status !== "confirmed" && item.status !== "skipped";
@@ -253,32 +253,11 @@
       const interactiveAttrs = canEdit ? ` data-plan-card-edit-id="${item.id}" tabindex="0"` : "";
       return `
         <article class="panel plan-card plan-card-kind-${kindClass} plan-card-${item.status || "upcoming"}${interactiveClass}"${interactiveAttrs}>
-          <div class="plan-card-topline">
-            <div class="plan-card-top-meta">
-              <span class="meta-chip meta-chip-neutral">${recurrenceLabel(item)}</span>
-              <span class="meta-chip meta-chip-neutral">${statusLabel(item.status)}</span>
-              ${reminderMeta}
-            </div>
-            ${showMenu ? `
-              <div class="plan-card-menu-wrap">
-                <button class="btn btn-secondary plan-card-menu-trigger" type="button" data-plan-menu-trigger="${item.id}" aria-label="Дополнительные действия">
-                  <span aria-hidden="true">⋮</span>
-                </button>
-                <div class="app-popover hidden plan-card-actions-popover table-kebab-popover" data-plan-menu="${item.id}">
-                  <div class="plan-card-actions-menu table-kebab-menu">
-                    <button class="btn btn-secondary" type="button" data-activity-entity-type="plan" data-activity-entity-id="${item.id}">Журнал</button>
-                    ${canEdit ? `<button class="btn btn-secondary" type="button" data-plan-action="edit" data-plan-id="${item.id}">Редактировать</button>` : ""}
-                    ${canSkip ? `<button class="btn btn-secondary" type="button" data-plan-action="skip" data-plan-id="${item.id}">Пропустить</button>` : ""}
-                    ${canDelete ? `<button class="btn btn-danger" type="button" data-plan-action="delete" data-plan-id="${item.id}">Удалить</button>` : ""}
-                  </div>
-                </div>
-              </div>` : ""}
-          </div>
           <div class="plan-card-row">
             <div class="plan-card-primary">
               <div class="plan-card-summary">
                 <div class="plan-card-date">
-                  <span class="muted-small">Дата</span>
+
                   <strong>${dateLabel}</strong>
                 </div>
                 <div class="plan-card-context">
@@ -290,24 +269,24 @@
                   ${noteMeta ? `<div class="plan-card-meta">${noteMeta}</div>` : ""}
                 </div>
               </div>
-              <div class="plan-card-progress">
-                <div class="plan-card-progress-head">
-                  <span class="muted-small">${progress.label}</span>
-                  ${dueDays ? `<span class="debt-due-days-badge debt-due-days-badge-${dueDaysTone}">${dueDays}</span>` : ""}
-                </div>
-                <div class="plan-card-progress-track">
-                  <span class="plan-card-progress-bar plan-card-progress-bar-${progress.tone}" style="width:${progress.percent}%"></span>
-                </div>
+              <div class="plan-card-top-meta">
+                ${item.recurrence_enabled ? `<span class="muted-small">${escapeHtml(recurrenceLabel(item))}</span>` : ""}
+                <span class="debt-due-days-badge debt-due-days-badge-${dueDaysTone}">${escapeHtml(dueDays || statusLabel(item.status))}</span>
+                ${reminderMeta}
               </div>
             </div>
             <div class="plan-card-side">
               <div class="plan-card-amount-block">
-                <span class="muted-small">Сумма</span>
+
                 <strong class="plan-card-amount amount-${kindClass}">${formatPlanAmountHtml(item)}</strong>
               </div>
             ${hideActions ? "" : `
               <div class="actions row-actions plan-card-actions">
-                ${showConfirm ? `<button class="btn btn-primary" type="button" data-plan-action="confirm" data-plan-id="${item.id}">В операцию</button>` : ""}
+                ${showConfirm ? `<button class="btn btn-primary btn-icon" type="button" data-plan-action="confirm" data-plan-id="${item.id}" aria-label="В операцию" title="В операцию">${window.App.icons.svg("save")}</button>` : ""}
+                ${canEdit ? `<button class="btn btn-secondary btn-icon" type="button" data-plan-action="edit" data-plan-id="${item.id}" aria-label="Редактировать" title="Редактировать">${window.App.icons.svg("edit")}</button>` : ""}
+                ${canSkip ? `<button class="btn btn-secondary btn-icon" type="button" data-plan-action="skip" data-plan-id="${item.id}" aria-label="Пропустить" title="Пропустить">${window.App.icons.svg("skip")}</button>` : ""}
+                ${showMenu ? `<button class="btn btn-secondary btn-icon" type="button" data-activity-entity-type="plan" data-activity-entity-id="${item.id}" aria-label="Журнал" title="Журнал">${window.App.icons.svg("history")}</button>` : ""}
+                ${canDelete ? `<button class="btn btn-danger btn-icon" type="button" data-plan-action="delete" data-plan-id="${item.id}" aria-label="Удалить" title="Удалить">${window.App.icons.svg("trash")}</button>` : ""}
               </div>`}
             </div>
           </div>
@@ -343,8 +322,8 @@
               ${operationMeta}
             </div>
             <div class="actions row-actions plan-card-actions">
-              <button class="btn btn-secondary" type="button" data-open-plan-id="${Number(item.plan_id)}">Открыть план</button>
-              <button class="btn btn-secondary" type="button" data-activity-entity-type="plan" data-activity-entity-id="${Number(item.plan_id)}">Журнал плана</button>
+              <button class="btn btn-secondary btn-icon" type="button" data-open-plan-id="${Number(item.plan_id)}" aria-label="Открыть план" title="Открыть план">${window.App.icons.svg("edit")}</button>
+              <button class="btn btn-secondary btn-icon" type="button" data-activity-entity-type="plan" data-activity-entity-id="${Number(item.plan_id)}" aria-label="Журнал плана" title="Журнал плана">${window.App.icons.svg("history")}</button>
             </div>
           </div>
         </article>

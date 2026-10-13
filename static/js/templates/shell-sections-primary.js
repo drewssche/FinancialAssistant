@@ -579,7 +579,7 @@
           <section class="panel">
             <div class="panel-head row between">
               <div>
-                <p id="operationsPeriodLabel" class="subtitle"></p>
+                <p id="operationsPeriodLabel" class="sr-only"></p>
                 <div id="operationsActiveFilters" class="analytics-kpi-secondary hidden">
                   <button id="operationsKindFilterChip" class="operations-filter-chip hidden" data-clear-operations-filter="kind" type="button"></button>
                   <button id="operationsSourceFilterChip" class="operations-filter-chip hidden" data-clear-operations-filter="source" type="button"></button>
@@ -594,13 +594,9 @@
             </div>
             <div class="operations-controls-grid control-section-grid">
               <section class="control-section operations-period-section" aria-label="Период операций">
-                <div class="control-section-head">
-                  <span>Период</span>
-                </div>
                 <div class="period-control" data-period-control="operations">
                   <button class="period-step-btn" data-operations-period-step="-1" type="button" aria-label="Предыдущий период">‹</button>
                   <button id="operationsPeriodTrigger" class="period-current-btn" type="button" aria-haspopup="dialog" aria-controls="operationsPeriodPopover">
-                    <span class="period-current-label">Период</span>
                     <strong id="operationsPeriodControlLabel">Сегодня</strong>
                   </button>
                   <button class="period-step-btn" data-operations-period-step="1" type="button" aria-label="Следующий период">›</button>
@@ -618,10 +614,6 @@
                 </div>
               </section>
               <section class="control-section operations-filter-section" aria-label="Фильтры операций">
-                <div class="control-section-head">
-                  <span>Фильтры</span>
-                  <button id="resetOperationsFiltersBtn" class="btn btn-secondary btn-xs" type="button">Сбросить фильтры</button>
-                </div>
                 <div class="control-section-body operations-filter-grid">
                   <div class="operations-control-card">
                     <div class="operations-control-head">
@@ -657,15 +649,13 @@
                 </div>
               </section>
               <section class="control-section operations-sort-section" aria-label="Сортировка операций">
-                <div class="control-section-head">
-                  <span>Сортировка</span>
-                </div>
                 <div class="operations-control-card operations-control-card-sort">
                   <div class="segmented" id="operationsSortTabs" role="tablist" aria-label="Сортировка операций">
                     <button class="segmented-btn active" data-op-sort="date" type="button">По дате</button>
                     <button class="segmented-btn" data-op-sort="amount" type="button">По сумме</button>
                   </div>
                 </div>
+                <button id="resetOperationsFiltersBtn" class="btn btn-secondary btn-icon" type="button" aria-label="Сбросить фильтры" title="Сбросить фильтры">${window.App.icons.svg("refresh")}</button>
               </section>
             </div>
             <div id="operationsSummaryGrid" class="analytics-kpi-grid operations-summary-grid">

@@ -207,7 +207,7 @@
           <section class="panel">
             <div class="panel-head row between">
               <div>
-                <h3>Плановые операции</h3>
+                <h3>Планы</h3>
               </div>
             </div>
             <div id="plansKpiGrid" class="plans-kpi-shell">
@@ -220,10 +220,10 @@
                   </div>
                 </div>
                 <div class="plans-financial-kpi-line">
-                  <div id="plansFinancialValue" class="plans-financial-kpi-value">0,00&nbsp;\uE901</div>
-                  <div id="plansFinancialDelta" class="plans-financial-kpi-delta">+0,00&nbsp;\uE901</div>
+                  <div class="plans-summary-item"><span class="muted-small">Результат операций</span><div id="plansFinancialValue" class="plans-financial-kpi-value">0,00&nbsp;\uE901</div></div>
+                  <div class="plans-summary-item"><span class="muted-small">Активные планы</span><div id="plansFinancialDelta" class="plans-financial-kpi-delta">+0,00&nbsp;\uE901</div></div>
                 </div>
-                <div id="plansFinancialMeta" class="subtitle plans-financial-kpi-meta">0,00&nbsp;\uE901</div>
+                <div class="plans-summary-item"><span class="muted-small">После планов</span><div id="plansFinancialMeta" class="subtitle plans-financial-kpi-meta">0,00&nbsp;\uE901</div></div>
               </article>
             </div>
             <div class="plans-controls-row">
@@ -264,8 +264,7 @@
           <section class="panel">
             <div class="panel-head row between">
               <div>
-                <h3>Карточки долгов</h3>
-                <p class="subtitle">Долги по контрагентам</p>
+                <h3>Долги</h3>
               </div>
             </div>
             <div class="table-search-row">
@@ -281,11 +280,12 @@
                   <button class="segmented-btn" data-debt-sort="amount" type="button">По сумме</button>
                   <button class="segmented-btn" data-debt-sort="name" type="button">По имени</button>
                 </div>
-                <button id="deleteAllDebtsBtn" class="btn btn-danger debt-toolbar-danger" type="button">Удалить все</button>
+
               </div>
             </div>
             <div id="debtsSectionKpi" class="analytics-kpi-grid section-kpi-grid debts-section-kpi" aria-label="Итоги долгов"></div>
             <div id="debtsCards" class="debt-cards"></div>
+            <div class="debt-list-maintenance"><button id="deleteAllDebtsBtn" class="btn btn-danger btn-icon" type="button" aria-label="Удалить все долги текущей выборки" title="Удалить все долги текущей выборки">${window.App.icons.svg("trash")}</button></div>
             <div id="debtsInfiniteSentinel" class="infinite-sentinel" aria-hidden="true"></div>
           </section>
         </section>

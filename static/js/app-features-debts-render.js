@@ -4,9 +4,7 @@
   const formatMoney = debtUi.formatMoney;
   const parseIsoDateEnd = debtUi.parseIsoDateEnd;
   const debtDueState = debtUi.debtDueState;
-  const debtDueProgress = debtUi.debtDueProgress;
   const debtDueDaysBadge = debtUi.debtDueDaysBadge;
-  const debtRepaymentProgress = debtUi.debtRepaymentProgress;
 
   function formatDebtMoney(value, currency = "BYN") {
     return core.formatMoney(value, { currency });
@@ -22,7 +20,7 @@
 
   function debtDueLabel(stateValue, dueDate) {
     if (stateValue === "overdue") {
-      return "Просрочено";
+      return `Просрочено: ${core.formatDateRu(dueDate)}`;
     }
     if (stateValue === "soon") {
       return `Скоро срок: ${core.formatDateRu(dueDate)}`;
@@ -237,6 +235,19 @@
     `;
   }
 
+  function renderDebtActions(debt) {
+    const disabled = Number(debt.outstanding_total) <= 0 ? "disabled" : "";
+    return `<div class="record-icon-actions debt-direct-actions">
+      <button class="btn btn-repay btn-icon" type="button" data-repay-debt-id="${debt.id}" ${disabled} aria-label="Погашение" title="Погашение">${window.App.icons.svg("repay")}</button>
+      <button class="btn btn-secondary btn-icon" type="button" data-add-debt-issuance-id="${debt.id}" aria-label="Добавить сумму" title="Добавить сумму">${window.App.icons.svg("plus")}</button>
+      <button class="btn btn-secondary btn-icon" type="button" data-history-debt-id="${debt.id}" aria-label="Движения" title="Движения">${window.App.icons.svg("receipt")}</button>
+      <button class="btn btn-secondary btn-icon" type="button" data-edit-debt-id="${debt.id}" aria-label="Редактировать" title="Редактировать">${window.App.icons.svg("edit")}</button>
+      <button class="btn btn-secondary btn-icon" type="button" data-activity-entity-type="debt" data-activity-entity-id="${debt.id}" aria-label="Журнал" title="Журнал">${window.App.icons.svg("history")}</button>
+      <button class="btn btn-secondary btn-icon" type="button" data-forgive-debt-id="${debt.id}" ${disabled} aria-label="Простить" title="Простить">${window.App.icons.svg("forgive")}</button>
+      <button class="btn btn-danger btn-icon" type="button" data-delete-debt-id="${debt.id}" aria-label="Удалить" title="Удалить">${window.App.icons.svg("trash")}</button>
+    </div>`;
+  }
+
   function renderDebtCards(cards) {
     if (!el.debtsCards) {
       return;
@@ -303,11 +314,7 @@
       const debtsRows = sorting.sort(sortedDebts, "debts", columns)
         .map((debt) => {
           const dueState = debtDueState(debt, now);
-          const dueProgress = debtDueProgress(debt, dueState, now);
           const dueDays = debtDueDaysBadge(debt, dueState, now);
-          const repayProgress = debtRepaymentProgress(debt);
-          const repayments = debt.repayments || [];
-          const issuances = debt.issuances || [];
           const direction = debt.direction === "borrow" ? "borrow" : "lend";
           const directionLabel = debtUi.debtDirectionActionLabel(direction);
           const repaidClass = debtRepaidClass(debt);
@@ -328,21 +335,6 @@
                       ${dueDays ? `<span class="debt-due-days-badge debt-due-days-badge-${dueState}">${dueDays}</span>` : ""}
                     </div>
                   </div>
-                  <div class="mobile-card-kebab-wrap">
-                    <button class="btn btn-secondary mobile-card-kebab-trigger" data-mobile-card-menu-trigger="debt-${debt.id}" type="button" aria-label="Действия долга">
-                      <span aria-hidden="true">⋮</span>
-                    </button>
-                    <div class="app-popover hidden mobile-card-actions-popover" data-mobile-card-menu="debt-${debt.id}">
-                      <div class="mobile-card-actions-menu">
-                        <button class="btn btn-secondary" type="button" data-history-debt-id="${debt.id}">Движения</button>
-                        <button class="btn btn-secondary" type="button" data-add-debt-issuance-id="${debt.id}">Добавить сумму</button>
-                        <button class="btn btn-secondary" type="button" data-activity-entity-type="debt" data-activity-entity-id="${debt.id}">Журнал</button>
-                        <button class="btn btn-secondary" type="button" data-forgive-debt-id="${debt.id}" ${Number(debt.outstanding_total) <= 0 ? "disabled" : ""}>Простить</button>
-                        <button class="btn btn-secondary" type="button" data-edit-debt-id="${debt.id}">Редактировать</button>
-                        <button class="btn btn-danger" type="button" data-delete-debt-id="${debt.id}">Удалить</button>
-                      </div>
-                    </div>
-                  </div>
                 </div>
                 <div class="debt-mobile-entry-body">
                   <div class="debt-mobile-entry-stats">
@@ -350,23 +342,9 @@
                     <span class="muted-small">Погашено: <strong class="debt-amount-repaid ${repaidClass}">${formatDebtMoney(debt.repaid_total, debt.currency || "BYN")}</strong></span>
                     ${debtClosureMeta(debt)}
                   </div>
-                  <div class="debt-repay-progress">
-                    <div class="debt-repay-progress-track">
-                      <span class="debt-repay-progress-bar debt-repay-progress-bar-${repayProgress.tone}" style="width:${repayProgress.percent}%"></span>
-                    </div>
-                    <span class="muted-small">Погашено: ${repayProgress.percent}%</span>
-                  </div>
-                  ${
-                    dueProgress
-                      ? `<div class="debt-due-progress"><div class="debt-due-progress-track"><span class="debt-due-progress-bar debt-due-progress-bar-${dueProgress.tone}" style="width:${dueProgress.percent}%"></span></div><span class="muted-small">Срок: ${dueProgress.percent}%</span></div>`
-                      : ""
-                  }
                   ${noteText ? `<div class="muted-small debt-mobile-entry-note">${noteText}</div>` : ""}
                 </div>
-                <div class="debt-mobile-entry-actions">
-                  <button class="btn btn-secondary" type="button" data-add-debt-issuance-id="${debt.id}">+ Сумма</button>
-                  <button class="btn btn-repay" type="button" data-repay-debt-id="${debt.id}" ${Number(debt.outstanding_total) <= 0 ? "disabled" : ""}>Погашение</button>
-                </div>
+                ${renderDebtActions(debt)}
               </article>
             `;
           }
@@ -377,42 +355,17 @@
             <td>${formatDebtAmountBlock(debt.repaid_total, debt.currency || "BYN", debt.current_base_repaid_total, debt.base_currency || "BYN", `debt-amount-repaid ${repaidClass}`)}</td>
             <td>
               ${formatDebtAmountBlock(debt.outstanding_total, debt.currency || "BYN", debt.current_base_outstanding_total, debt.base_currency || "BYN", `debt-amount-outstanding debt-amount-outstanding-${direction}`)}
-              <div class="debt-repay-progress">
-                <div class="debt-repay-progress-track">
-                  <span class="debt-repay-progress-bar debt-repay-progress-bar-${repayProgress.tone}" style="width:${repayProgress.percent}%"></span>
-                </div>
-                <span class="muted-small">Погашено: ${repayProgress.percent}%</span>
-              </div>
             </td>
             <td>
               <div class="row debt-due-head">
                 <span class="muted-small">${debtDueLabel(dueState, debt.due_date)}</span>
                 ${dueDays ? `<span class="debt-due-days-badge debt-due-days-badge-${dueState}">${dueDays}</span>` : ""}
               </div>
-              ${
-                dueProgress
-                  ? `<div class="debt-due-progress"><div class="debt-due-progress-track"><span class="debt-due-progress-bar debt-due-progress-bar-${dueProgress.tone}" style="width:${dueProgress.percent}%"></span></div><span class="muted-small">Прогресс срока: ${dueProgress.percent}%</span></div>`
-                  : ""
-              }
               ${debtClosureMeta(debt)}
               ${noteText ? `<div class="muted-small">${noteText}</div>` : ""}
             </td>
             <td>
-              <div class="debt-desktop-actions">
-                <button class="btn btn-secondary btn-xs" type="button" data-add-debt-issuance-id="${debt.id}">+ Сумма</button>
-                <button class="btn btn-repay btn-xs" type="button" data-repay-debt-id="${debt.id}" ${Number(debt.outstanding_total) <= 0 ? "disabled" : ""}>Погашение</button>
-                ${core.renderInlineKebabMenu?.(
-                  `debt-${debt.id}`,
-                  `<button class="btn btn-secondary" type="button" data-history-debt-id="${debt.id}">Движения</button>
-                  <button class="btn btn-secondary" type="button" data-add-debt-issuance-id="${debt.id}">Добавить сумму</button>
-                  <button class="btn btn-secondary" type="button" data-activity-entity-type="debt" data-activity-entity-id="${debt.id}">Журнал</button>
-                  <button class="btn btn-secondary" type="button" data-forgive-debt-id="${debt.id}" ${Number(debt.outstanding_total) <= 0 ? "disabled" : ""}>Простить</button>
-                  <button class="btn btn-secondary" type="button" data-edit-debt-id="${debt.id}">Редактировать</button>
-                  <button class="btn btn-danger" type="button" data-delete-debt-id="${debt.id}">Удалить</button>`,
-                  "Действия долга",
-                  "debt-row-kebab",
-                ) || ""}
-              </div>
+              ${renderDebtActions(debt)}
             </td>
           </tr>`;
         })

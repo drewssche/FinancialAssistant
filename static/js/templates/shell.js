@@ -78,10 +78,10 @@
           </div>
           <div class="top-actions">
             <div class="cta-row">
-              <button id="addOperationCta" class="btn btn-cta" type="button">+ Добавить операцию</button>
-              <button id="batchOperationCta" class="btn btn-secondary" type="button">+ Массовое добавление</button>
-              <button id="addPlanCta" class="btn btn-cta hidden" type="button">+ Создать план</button>
-              <button id="addDebtCta" class="btn btn-cta hidden" type="button">+ Новый долг</button>
+              <button id="addOperationCta" class="btn btn-cta btn-icon" type="button" aria-label="Добавить операцию" title="Добавить операцию">${window.App.icons.svg("plus")}</button>
+              <button id="batchOperationCta" class="btn btn-secondary btn-icon" type="button" aria-label="Массовое добавление операций" title="Массовое добавление операций">${window.App.icons.svg("upload")}</button>
+              <button id="addPlanCta" class="btn btn-cta hidden btn-icon" type="button" aria-label="Создать план" title="Создать план">${window.App.icons.svg("plus")}</button>
+              <button id="addDebtCta" class="btn btn-cta hidden btn-icon" type="button" aria-label="Новый долг" title="Новый долг">${window.App.icons.svg("plus")}</button>
               <button id="addCategoryCta" class="btn btn-cta hidden" type="button">+ Создать категорию</button>
               <button id="addGroupCta" class="btn btn-secondary hidden" type="button">+ Создать группу</button>
               <button id="batchCategoryCta" class="btn btn-secondary hidden" type="button">+ Массовое добавление</button>

@@ -395,8 +395,15 @@
         return false;
       }
       button.dataset.loading = "1";
+      button.__loadingSnapshot = { html: button.innerHTML, text: button.textContent, label: button.getAttribute("aria-label"), title: button.getAttribute("title") };
       button.dataset.originalText = button.textContent || "";
-      button.textContent = pendingText;
+      if (button.classList.contains("btn-icon")) {
+        button.setAttribute("aria-label", pendingText);
+        button.title = pendingText;
+      } else {
+        button.textContent = pendingText;
+      }
+      button.setAttribute("aria-busy", "true");
       button.disabled = true;
       button.classList.add("is-loading");
       return true;
@@ -404,11 +411,20 @@
 
     button.disabled = false;
     button.classList.remove("is-loading");
-    if (button.dataset.originalText) {
-      button.textContent = button.dataset.originalText;
+    const snapshot = button.__loadingSnapshot;
+    if (snapshot && Object.prototype.hasOwnProperty.call(button.dataset, "originalText")) {
+      // Editors may update the idle label while a request is pending.
+      if (button.dataset.originalText !== snapshot.text) button.textContent = button.dataset.originalText ?? "";
+      else button.innerHTML = snapshot.html;
+      for (const [attribute, value] of [["aria-label", snapshot.label], ["title", snapshot.title]]) {
+        if (value === null) button.removeAttribute(attribute);
+        else button.setAttribute(attribute, value);
+      }
     }
-    delete button.dataset.loading;
+    button.removeAttribute("aria-busy");
+    delete button.__loadingSnapshot;
     delete button.dataset.originalText;
+    delete button.dataset.loading;
     return true;
   }
 

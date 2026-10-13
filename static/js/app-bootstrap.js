@@ -1,6 +1,6 @@
 (() => {
   const manifest = Array.isArray(window.__APP_SCRIPT_MANIFEST__) ? window.__APP_SCRIPT_MANIFEST__ : [];
-  const assetVersion = "20261013-catalog-compact1";
+  const assetVersion = "20261013-daily-lists1";
 
   function showBootstrapError(message) {
     const text = String(message || "Не удалось загрузить приложение.");

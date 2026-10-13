@@ -106,7 +106,7 @@
     const note = byId(`${prefix}Note`);
     if (plan && note.parentElement !== view.form) extra.before(note);
     if (!plan && note.parentElement !== extra) extra.prepend(note);
-    if (plan) modal.querySelector('.operation-preview').open = true;
+    if (plan && reset) modal.querySelector('.operation-preview').open = false;
     extra.querySelector('summary').textContent = plan ? 'Дополнительные параметры' : 'Комментарий и дополнительные параметры';
     extra.classList.toggle('hidden', !operation);
     if (entry) {

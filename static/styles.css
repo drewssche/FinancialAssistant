@@ -27,6 +27,7 @@
 @import url("/static/css/responsive-sm-modals.css?v=20260904a");
 @import url("/static/css/operation-editor.css?v=20261013-visual-consistency1");
 @import url("/static/css/catalog-compact.css?v=20261013-catalog-compact1");
+@import url("/static/css/daily-lists.css?v=20261013-daily-lists1");
 /* Work timesheet */
 .work-section-head { gap: 16px; align-items: flex-start; }
 .work-month-control { display: flex; align-items: center; gap: 10px; }

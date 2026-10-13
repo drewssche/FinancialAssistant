@@ -676,7 +676,7 @@ def test_plans_ui_creates_month_end_plan_and_confirms_to_history(static_server_u
 
 
 @pytest.mark.e2e
-def test_plan_kebab_menu_actions_work_from_floating_popover(static_server_url: str, page_with_plans_api_mock):
+def test_plan_direct_actions_edit_skip_and_delete(static_server_url: str, page_with_plans_api_mock):
     page, mock_state = page_with_plans_api_mock
     mock_state["plans"][:] = [
         {
@@ -723,23 +723,20 @@ def test_plan_kebab_menu_actions_work_from_floating_popover(static_server_url: s
     _login_and_open_plans(page, static_server_url)
     page.wait_for_function("() => document.querySelector('#plansList')?.textContent.includes('Кебаб редактировать')")
 
-    page.locator('button[data-plan-menu-trigger="1"]').click()
-    page.locator('.plan-card-actions-popover:not(.hidden) button[data-plan-action="edit"][data-plan-id="1"]').click()
+    page.locator('#plansList button[data-plan-action="edit"][data-plan-id="1"]').click()
     page.wait_for_selector("#createModal:not(.hidden)")
     assert page.locator("#createTitle").text_content() == "Редактировать план"
     page.click("#closeCreateModalBtn")
     page.wait_for_selector("#createModal", state="hidden")
 
-    page.locator('button[data-plan-menu-trigger="1"]').click()
-    page.locator('.plan-card-actions-popover:not(.hidden) button[data-plan-action="skip"][data-plan-id="1"]').click()
+    page.locator('#plansList button[data-plan-action="skip"][data-plan-id="1"]').click()
     deadline = time.time() + 5
     while time.time() < deadline and mock_state["plans"][0]["status"] != "skipped":
         time.sleep(0.1)
     assert mock_state["plans"][0]["status"] == "skipped"
     page.wait_for_function("() => document.querySelector('#plansList')?.textContent.includes('Кебаб удалить')")
 
-    page.locator('button[data-plan-menu-trigger="2"]').click()
-    page.locator('.plan-card-actions-popover:not(.hidden) button[data-plan-action="delete"][data-plan-id="2"]').click()
+    page.locator('#plansList button[data-plan-action="delete"][data-plan-id="2"]').click()
     page.wait_for_selector("#confirmModal:not(.hidden)")
     page.click("#confirmDeleteBtn")
     page.wait_for_function("() => !(document.querySelector('#plansList')?.textContent || '').includes('Кебаб удалить')")
@@ -807,8 +804,7 @@ def test_plan_foreign_currency_amount_meta_wraps_inside_card(static_server_url: 
     assert "наличные" in card_text
     assert "пополнить и оплатить" in card_text
 
-    page.locator('button[data-plan-menu-trigger="1"]').click()
-    page.locator('.plan-card-actions-popover:not(.hidden) button[data-plan-action="edit"][data-plan-id="1"]').click()
+    page.locator('#plansList button[data-plan-action="edit"][data-plan-id="1"]').click()
     page.wait_for_selector("#createModal:not(.hidden)")
     page.wait_for_function("() => document.querySelector('#opFxBankOptions')?.textContent.includes('Технобанк')")
     assert page.locator("#opFxRateSource").input_value() == "bank"
@@ -1744,3 +1740,29 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     page.click("#workContractSubmitBtn")
     page.wait_for_function("() => document.querySelector('#workContractsList')?.textContent?.includes('Ведущий разработчик')")
     assert updated_contracts[-1]["position"] == "Ведущий разработчик"
+
+
+@pytest.mark.e2e
+def test_plan_icon_restores_after_failed_skip_and_can_retry(static_server_url, page_with_plans_api_mock):
+    page, mock_state = page_with_plans_api_mock
+    mock_state["plans"][:] = [{
+        "id": 1, "kind": "expense", "amount": "15.00", "scheduled_date": "2026-03-20",
+        "note": "Проверка повторного действия", "recurrence_enabled": True,
+        "recurrence_frequency": "monthly", "recurrence_interval": 1,
+        "recurrence_weekdays": [], "recurrence_workdays_only": False,
+        "recurrence_month_end": False, "status": "upcoming", "confirm_count": 0, "skip_count": 0,
+        "created_at": "2026-03-16T12:00:00Z",
+    }]
+    _login_and_open_plans(page, static_server_url)
+    page.route("**/api/v1/plans/1/skip", lambda route: _json_response(route, {"detail": "Temporary failure"}, 503))
+    skip = page.locator('#plansList [data-plan-action="skip"][data-plan-id="1"]')
+    skip.click()
+    sync_api.expect(skip).to_be_enabled()
+    sync_api.expect(skip).to_have_attribute("aria-label", "Пропустить")
+    assert skip.locator("svg").count() == 1
+    assert skip.inner_text() == ""
+    page.unroute("**/api/v1/plans/1/skip")
+    with page.expect_response(lambda response: response.url.endswith("/plans/1/skip") and response.request.method == "POST") as result:
+        skip.click()
+    assert result.value.status == 200
+    assert mock_state["plans"][0]["status"] == "skipped"

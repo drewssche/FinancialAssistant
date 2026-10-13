@@ -540,9 +540,8 @@ def test_debt_movement_opens_and_saves_in_operations_even_when_debt_is_hidden(
         "amount": 22, "event_date": "2026-03-05", "note": "Уточнён возврат",
     }]
     page.click("#closeEditModalBtn")
-    # The kebab edit action must use the same movement editor, not the whole debt.
+    # The direct edit action must use the same movement editor, not the whole debt.
     issuance = page.locator('#operationsBody [data-money-flow-row-id="debt-issuance:9101"]')
-    issuance.locator(".table-kebab-trigger").click()
     page.locator('button[data-open-source-kind="debt"][data-money-flow-id="debt-issuance:9101"]').click()
     expect(page.locator("#editDebtMovementContext")).to_have_text("Я дал в долг · Иван")
     expect(page.locator("#editAmount")).to_have_value("100.00")
@@ -558,25 +557,19 @@ def test_debt_movement_opens_and_saves_in_operations_even_when_debt_is_hidden(
 
 @pytest.mark.e2e
 @pytest.mark.parametrize("width", [1280, 430])
-def test_operation_kebab_edit_and_delete_confirmation(static_server_url, page_with_money_flow_api_mock, width):
+def test_operation_direct_actions_edit_and_delete_confirmation(static_server_url, page_with_money_flow_api_mock, width):
     page = page_with_money_flow_api_mock
     page.set_viewport_size({"width": width, "height": 950})
     _open_app(page, static_server_url)
     page.evaluate("window.App.actions.switchSection('operations')")
     row = page.locator('#operationsBody [data-money-flow-row-id="operation:1"]')
-    trigger = row.locator(".table-kebab-trigger")
-    trigger.click()
-    menu = page.locator('.table-kebab-popover:not(.hidden)[data-table-menu^="money-flow-"]')
-    assert menu.evaluate("node => node.parentElement === document.body")
+    menu = row.locator(".record-icon-actions")
     menu.locator('[data-open-source-kind="operation"]').click()
     sync_api.expect(page.locator("#editModal")).to_be_visible()
     sync_api.expect(page.locator("#editAmount")).to_have_value("70.00")
-    assert menu.count() == 0
     page.locator("#closeEditModalBtn").click()
-    trigger.click()
     menu.locator("[data-delete-operation-source-id]").click()
     sync_api.expect(page.locator("#confirmModal")).to_be_visible()
-    assert menu.count() == 0
     page.locator("#confirmCancelBtn").click()
     sync_api.expect(row).to_be_visible()
 

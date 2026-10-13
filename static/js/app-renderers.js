@@ -390,13 +390,12 @@
       : "";
 
     const receiptCellHtml = hasReceiptItems
-      ? `<button class="meta-chip-btn meta-chip-btn-neutral" type="button" data-receipt-view-id="${item.id}">Чек</button>`
+      ? `<button class="btn btn-secondary btn-icon" type="button" data-receipt-view-id="${item.id}" aria-label="Чек" title="Чек">${window.App.icons.svg("receipt")}</button>`
       : "<span class='muted-small'>—</span>";
     const menuItems = `
-      ${hasReceiptItems ? `<button class="btn btn-secondary" type="button" data-receipt-view-id="${item.id}">Позиции</button>` : ""}
-      <button class="btn btn-secondary" type="button" data-activity-entity-type="operation" data-activity-entity-id="${item.id}">Журнал</button>
-      <button class="btn btn-secondary" type="button" data-edit-id="${item.id}">Редактировать</button>
-      <button class="btn btn-danger" type="button" data-delete-id="${item.id}">Удалить</button>
+      <button class="btn btn-secondary btn-icon" type="button" data-activity-entity-type="operation" data-activity-entity-id="${item.id}" aria-label="Журнал" title="Журнал">${window.App.icons.svg("history")}</button>
+      <button class="btn btn-secondary btn-icon" type="button" data-edit-id="${item.id}" aria-label="Редактировать" title="Редактировать">${window.App.icons.svg("edit")}</button>
+      <button class="btn btn-danger btn-icon" type="button" data-delete-id="${item.id}" aria-label="Удалить" title="Удалить">${window.App.icons.svg("trash")}</button>
     `;
     row.innerHTML = `
       ${selectCell}
@@ -407,7 +406,7 @@
       <td data-label="Сумма">${formatOperationAmountHtml(item, kindClass)}</td>
       <td class="mobile-note-cell" data-label="Комментарий">${highlightText(noteText, searchQuery)}</td>
       <td class="mobile-actions-cell table-kebab-cell" data-label="Действия">
-        ${renderInlineKebabMenu(`operation-${item.id}`, menuItems, "Действия операции", "operation-row-kebab")}
+        <div class="record-icon-actions">${menuItems}</div>
       </td>
     `;
     row.dataset.item = JSON.stringify(item);
@@ -506,23 +505,23 @@
     const hasReceiptItems = sourceKind === "operation" && Array.isArray(item?.receipt_items) && item.receipt_items.length > 0;
     if (sourceKind === "operation" && item?.source_id) {
       menuItems = [
-        ...(hasReceiptItems ? [`<button class="btn btn-secondary" type="button" data-receipt-view-id="${item.source_id || ""}">Позиции</button>`] : []),
-        `<button class="btn btn-secondary" type="button" data-activity-entity-type="operation" data-activity-entity-id="${item.source_id || ""}">Журнал</button>`,
-        `<button class="btn btn-secondary" type="button" data-open-source-kind="operation" data-open-source-id="${item.source_id || ""}">Редактировать</button>`,
-        `<button class="btn btn-danger" type="button" data-delete-operation-source-id="${item.source_id || ""}">Удалить</button>`,
+        ...(hasReceiptItems ? [`<button class="btn btn-secondary btn-icon" type="button" data-receipt-view-id="${item.source_id || ""}" aria-label="Позиции" title="Позиции">${window.App.icons.svg("receipt")}</button>`] : []),
+        `<button class="btn btn-secondary btn-icon" type="button" data-activity-entity-type="operation" data-activity-entity-id="${item.source_id || ""}" aria-label="Журнал" title="Журнал">${window.App.icons.svg("history")}</button>`,
+        `<button class="btn btn-secondary btn-icon" type="button" data-open-source-kind="operation" data-open-source-id="${item.source_id || ""}" aria-label="Редактировать" title="Редактировать">${window.App.icons.svg("edit")}</button>`,
+        `<button class="btn btn-danger btn-icon" type="button" data-delete-operation-source-id="${item.source_id || ""}" aria-label="Удалить" title="Удалить">${window.App.icons.svg("trash")}</button>`,
       ].join("");
     } else if (sourceKind === "debt" && item?.source_id) {
       menuItems = [
-        `<button class="btn btn-secondary" type="button" data-activity-entity-type="debt" data-activity-entity-id="${item.source_id || ""}">Журнал</button>`,
-        `<button class="btn btn-secondary" type="button" data-open-source-kind="debt" data-open-source-id="${item.source_id || ""}" data-money-flow-id="${escapeHtml(item.id)}" data-open-source-mode="edit">Редактировать</button>`,
-        `<button class="btn btn-secondary" type="button" data-open-source-kind="debt" data-open-source-id="${item.source_id || ""}" data-open-source-mode="history">Движения</button>`,
-        `<button class="btn btn-danger" type="button" data-delete-debt-source-id="${item.source_id || ""}">Удалить</button>`,
+        `<button class="btn btn-secondary btn-icon" type="button" data-activity-entity-type="debt" data-activity-entity-id="${item.source_id || ""}" aria-label="Журнал" title="Журнал">${window.App.icons.svg("history")}</button>`,
+        `<button class="btn btn-secondary btn-icon" type="button" data-open-source-kind="debt" data-open-source-id="${item.source_id || ""}" data-money-flow-id="${escapeHtml(item.id)}" data-open-source-mode="edit" aria-label="Редактировать" title="Редактировать">${window.App.icons.svg("edit")}</button>`,
+        `<button class="btn btn-secondary btn-icon" type="button" data-open-source-kind="debt" data-open-source-id="${item.source_id || ""}" data-open-source-mode="history" aria-label="Движения" title="Движения">${window.App.icons.svg("receipt")}</button>`,
+        `<button class="btn btn-danger btn-icon" type="button" data-delete-debt-source-id="${item.source_id || ""}" aria-label="Удалить" title="Удалить">${window.App.icons.svg("trash")}</button>`,
       ].join("");
     } else if (sourceKind === "fx" && item?.source_id) {
       menuItems = [
-        `<button class="btn btn-secondary" type="button" data-activity-entity-type="currency_trade" data-activity-entity-id="${item.source_id || ""}">Журнал</button>`,
-        `<button class="btn btn-secondary" type="button" data-open-source-kind="fx" data-open-source-id="${item.source_id || ""}" data-open-source-mode="edit">Редактировать</button>`,
-        `<button class="btn btn-danger" type="button" data-delete-fx-source-id="${item.source_id || ""}">Удалить</button>`,
+        `<button class="btn btn-secondary btn-icon" type="button" data-activity-entity-type="currency_trade" data-activity-entity-id="${item.source_id || ""}" aria-label="Журнал" title="Журнал">${window.App.icons.svg("history")}</button>`,
+        `<button class="btn btn-secondary btn-icon" type="button" data-open-source-kind="fx" data-open-source-id="${item.source_id || ""}" data-open-source-mode="edit" aria-label="Редактировать" title="Редактировать">${window.App.icons.svg("edit")}</button>`,
+        `<button class="btn btn-danger btn-icon" type="button" data-delete-fx-source-id="${item.source_id || ""}" aria-label="Удалить" title="Удалить">${window.App.icons.svg("trash")}</button>`,
       ].join("");
     } else if (item?.can_open_source) {
       menuItems = `<button class="btn btn-secondary" type="button" data-open-source-kind="${sourceKind}" data-open-source-id="${item.source_id || ""}" data-open-source-mode="edit">${escapeHtml(item?.open_label || "Редактировать")}</button>`;
@@ -541,7 +540,7 @@
       <td data-label="Сумма">${formatFlowAmountHtml(item)}</td>
       <td class="mobile-note-cell" data-label="Комментарий">${highlightText(noteText, searchQuery)}</td>
       <td class="mobile-actions-cell table-kebab-cell" data-label="Действия">
-        ${menuItems ? renderInlineKebabMenu(`money-flow-${escapeHtml(item.id)}`, menuItems, "Действия движения", "operation-row-kebab") : "<span class='muted-small'>—</span>"}
+        ${menuItems ? `<div class="record-icon-actions">${menuItems}</div>` : "<span class='muted-small'>—</span>"}
       </td>
     `;
     row.dataset.item = JSON.stringify(item);
