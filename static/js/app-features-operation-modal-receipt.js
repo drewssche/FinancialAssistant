@@ -784,7 +784,9 @@
       const resolvedAmount = core.resolveMoneyInput(ctx.amountNode?.value || 0);
       const hasAmountOverride = Number.isFinite(Number(options?.amountValue));
       const comparedAmount = hasAmountOverride ? Number(options.amountValue) : Number(resolvedAmount.previewValue || 0);
-      const diff = hasAmountOverride || !resolvedAmount.empty ? asMoney(comparedAmount - total) : 0;
+      // Compare cents: floating-point residue such as 3.55e-15 must never enter the expression parser.
+      const diff = hasAmountOverride || !resolvedAmount.empty
+        ? (Math.round(comparedAmount * 100) - Math.round(total * 100)) / 100 : 0;
       const diffHtml = receiptCurrency === baseCurrency
         ? formatReceiptMoney(diff, resolvedMode)
         : `${formatReceiptMoney(diff, resolvedMode)} <span class="muted-small">· ≈ ${core.formatMoney(diff * fxRate, { currency: baseCurrency })}</span>`;

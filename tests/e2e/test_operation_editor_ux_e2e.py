@@ -83,6 +83,8 @@ def test_long_receipt_has_natural_height_and_preserves_saved_data(static_server_
     first.locator('[data-receipt-details-toggle]').click()
     first.locator('[data-receipt-details-toggle]').click()
     assert page.evaluate("() => window.App.getRuntimeModule('operation-modal').getEditReceiptPayload()") == before
+    assert page.locator('#editReceiptDiffValue').is_hidden()
+    assert not page.locator('#editReceiptDiffValue').evaluate("n=>n.classList.contains('receipt-diff-warn')")
     geometry = page.evaluate('''()=>{
       const fields=document.querySelector('#editReceiptFields').getBoundingClientRect();
       const rows=document.querySelector('#editReceiptItemsList').getBoundingClientRect();
