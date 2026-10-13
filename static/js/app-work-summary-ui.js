@@ -107,7 +107,8 @@
         return `<button type="button" class="work-payment-actual-link" data-work-operation-id="${id}" title="${escape(title)}">${operationDateLabel(row)}${escape(formatMoney(paymentOperationAmount(row), paymentOperationCurrency(row)))}</button>`;
       }).join("");
       const planId = getSnapshot()?.profile?.[role === "advance" ? "advance_plan_id" : "salary_plan_id"];
-      const planLink = role === "extras" ? "" : `<button type="button" class="work-payment-plan-link" data-work-open-plan-picker="${escape(role)}">${planId ? `План #${Number(planId)} · изменить` : "Выбрать план"}</button>`;
+      const planLabel = `${planId ? `Изменить план #${Number(planId)}` : "Выбрать план"} · ${label}`;
+      const planLink = role === "extras" ? "" : `<button type="button" class="btn btn-secondary btn-icon work-payment-plan-link" data-work-open-plan-picker="${escape(role)}" aria-label="${escape(planLabel)}" title="${escape(planLabel)}">${window.App.icons.svg("edit")}</button>`;
       return `
         <div class="work-salary-cycle-component work-salary-cycle-component-${escape(role)}">
           <div class="work-salary-cycle-component-head">

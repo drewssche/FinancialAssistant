@@ -148,7 +148,7 @@
   }
   function sameHours(left, right) { return Math.abs(Number(left || 0) - Number(right || 0)) < 0.005; }
   function workHoursChip(kind, label, value) {
-    return `<span class="work-hours-chip work-hours-chip-${kind}">${label} · ${formatHours(value)} ч</span>`;
+    return `<span class="work-hours-chip work-hours-chip-${kind}" title="${escape(label)} · ${formatHours(value)} ч"><span class="work-hours-kind">${label} · </span><span>${formatHours(value)} ч</span></span>`;
   }
   function renderDayHourChips(item, isToday) {
     const plannedHours = Number(item.planned_hours || 0);
@@ -169,7 +169,7 @@
       return hours;
     }
     if (item.is_live && plannedHours > 0) {
-      let hours = `<span class="work-hours-chip work-hours-chip-live">Сейчас · ${escape(formatLiveHours(actualHours))}</span>`;
+      let hours = `<span class="work-hours-chip work-hours-chip-live" title="Сейчас · ${escape(formatLiveHours(actualHours))}"><span class="work-hours-live-full">Сейчас · ${escape(formatLiveHours(actualHours))}</span><span class="work-hours-live-short">${formatHours(actualHours)} ч</span></span>`;
       if (actualHours < plannedHours) hours += workHoursChip("plan", "План", plannedHours);
       return hours;
     }
@@ -194,7 +194,7 @@
       "workMonthTrigger", "workMonthPopover", "workYearOptions", "workMonthOptions",
       "workPrevMonthBtn", "workNextMonthBtn", "workTodayBtn", "workSummaryGrid", "workTimesheetPeriodTitle",
       "workMoneySummaryGrid", "workPaymentsGrid", "workCalendarGrid", "workViewTabs", "workTimesheetView", "workSettingsForm",
-      "workCompaniesView", "workCompaniesGrid", "workCompanyDetails", "workContractsView",
+      "workPaymentsView", "workEarningsRates", "workCompaniesView", "workCompaniesGrid", "workCompanyDetails", "workContractsView",
       "workDayForm", "workDayEditorTitle", "workDayDate", "workDayStatus",
       "workDayDateTo",
       "workDayPlanned", "workDayActual", "workDayCredited", "workDayNote", "closeWorkDayEditorBtn",
@@ -224,14 +224,16 @@
     nodes.workTimesheetPeriodTitle.textContent = `Табель за ${period}`;
     const liveDay = (snapshot?.days || []).find((day) => day.is_live);
     const cards = [
-      ["Отработано часов", `${formatHours(summary.actual_hours)} из ${formatHours(summary.planned_hours)} ч`, liveDay ? "Включая часы текущей смены" : "Факт / план выбранного месяца"],
-      ["Отработано дней", `${summary.completed_days || 0} из ${summary.planned_days || 0}`, liveDay ? "Завершённые дни · сегодня в процессе" : "Завершённые дни / план выбранного месяца"],
+      ["Отработано часов", `${formatHours(summary.actual_hours)} из ${formatHours(summary.planned_hours)} ч`, liveDay ? "Включая текущую смену" : ""],
+      ["Отработано дней", `${summary.completed_days || 0} из ${summary.planned_days || 0}`, liveDay ? "сегодня в процессе" : ""],
     ];
-    nodes.workSummaryGrid.innerHTML = cards.map(([label, value, meta], index) => `
+    nodes.workSummaryGrid.innerHTML = cards.map(([label, value, meta]) => `
       <article class="analytics-kpi-card analytics-kpi-neutral work-time-kpi">
         <div class="work-time-kpi-main"><div class="muted-small">${escape(label)}</div><strong>${escape(value)}</strong><div class="muted-small">${escape(meta)}</div></div>
-        ${summaryUi.renderEarningsRate(index === 0 ? "hourly_amount" : "daily_amount", index === 0 ? "За рабочий час" : "За рабочий день")}
+
       </article>`).join("");
+    nodes.workEarningsRates.innerHTML = summaryUi.renderEarningsRate("hourly_amount", "За рабочий час")
+      + summaryUi.renderEarningsRate("daily_amount", "За рабочий день");
   }
 
 
@@ -331,7 +333,7 @@
           ? `<button class="work-day-payment work-day-payment-actual" type="button" data-work-operation-id="${operationId}" title="${escape(title)}">${escape(label)}</button>`
           : `<span class="work-day-payment work-day-payment-deleted">${escape(label)} · операция удалена</span>`;
       }).join("");
-      return `<article class="${classes.join(" ")}" tabindex="0" data-work-date="${item.date}"${isToday ? ' aria-current="date"' : ""}>
+      return `<article class="${classes.join(" ")}" tabindex="0" aria-label="${escape(formatDate(item.date))} · ${escape(item.status_label)} · факт ${formatHours(item.actual_hours)} ч · план ${formatHours(item.planned_hours)} ч" data-work-date="${item.date}"${isToday ? ' aria-current="date"' : ""}>
         <span class="work-day-number">${Number(String(item.date).slice(-2))}</span>
         ${isToday ? '<span class="work-day-today-label">Сегодня</span>' : ""}
         <span class="work-day-hours">${hours}</span>
@@ -366,7 +368,7 @@
         <div class="work-actual-payment-side">
           <strong>${escape(money || "Сумма не указана")}</strong>
           <span>${deleted ? "Операция удалена" : `Операция #${operationId}`}</span>
-          ${item.link_id && !deleted ? `<button class="btn btn-secondary btn-xs work-payment-unlink-btn" type="button" data-work-unlink-payment="${Number(item.link_id)}">Отвязать</button>` : ""}
+          ${item.link_id && !deleted ? `<button class="btn btn-secondary btn-xs work-payment-unlink-btn btn-icon" type="button" data-work-unlink-payment="${Number(item.link_id)}" aria-label="Отвязать" title="Отвязать">${window.App.icons.svg("unlink")}</button>` : ""}
         </div>
       </article>`;
     }).join("") : '<div class="muted-small">Фактических выплат пока нет</div>';
@@ -395,7 +397,7 @@
         <div class="work-payment-candidate-actions">
           ${linked
             ? `<span class="work-payment-linked-chip">Связано · ${escape(paymentRoleLabel(item.linked_role))}</span>`
-            : `<button class="btn btn-primary btn-xs" type="button" data-work-link-operation="${operationId}">Связать</button>`}
+            : `<button class="btn btn-primary btn-xs btn-icon" type="button" data-work-link-operation="${operationId}" aria-label="Связать" title="Связать">${window.App.icons.svg("link")}</button>`}
         </div>
       </article>`;
     }).join("") : '<div class="muted-small">За выбранный период подходящих доходных операций нет</div>';
@@ -454,9 +456,9 @@
   async function linkPaymentOperation(operationId, button) {
     const resolvedId = Number(operationId || 0);
     if (!(resolvedId > 0)) return;
+    if (button.disabled) return;
     button.disabled = true;
-    const previousText = button.textContent;
-    button.textContent = "Связываю…";
+    button.setAttribute("aria-busy", "true");
     try {
       selectedPaymentOperationId = resolvedId;
       await core.requestJson("/api/v1/work/payments/links", authOptions({
@@ -469,7 +471,7 @@
     } finally {
       if (button.isConnected) {
         button.disabled = false;
-        button.textContent = previousText;
+        button.removeAttribute("aria-busy");
       }
     }
   }
@@ -477,9 +479,9 @@
   async function unlinkPayment(linkId, button) {
     const resolvedId = Number(linkId || 0);
     if (!(resolvedId > 0)) return;
+    if (button.disabled) return;
     button.disabled = true;
-    const previousText = button.textContent;
-    button.textContent = "Отвязываю…";
+    button.setAttribute("aria-busy", "true");
     try {
       await core.requestJson(`/api/v1/work/payments/links/${resolvedId}`, authOptions({ method: "DELETE" }));
       core.notify?.("Связь удалена, сама операция сохранена", { type: "success" });
@@ -487,7 +489,7 @@
     } finally {
       if (button.isConnected) {
         button.disabled = false;
-        button.textContent = previousText;
+        button.removeAttribute("aria-busy");
       }
     }
   }
@@ -634,8 +636,8 @@
         <div class="work-contract-side">
           <strong>${item.salary_amount == null ? "—" : `${Number(item.salary_amount).toLocaleString("ru-RU")} ${escape(item.currency)}`}</strong>
           <div class="work-contract-actions">
-            <button class="btn btn-secondary btn-xs" type="button" data-edit-work-contract="${Number(item.id)}">Изменить</button>
-            <button class="btn btn-danger btn-xs" type="button" data-delete-work-contract="${Number(item.id)}">Удалить</button>
+            <button class="btn btn-secondary btn-xs btn-icon" type="button" data-edit-work-contract="${Number(item.id)}" aria-label="Изменить" title="Изменить">${window.App.icons.svg("edit")}</button>
+            <button class="btn btn-danger btn-xs btn-icon" type="button" data-delete-work-contract="${Number(item.id)}" aria-label="Удалить" title="Удалить">${window.App.icons.svg("trash")}</button>
           </div>
         </div>
       </article>`;
@@ -962,7 +964,7 @@
     nodes.workContractForm.reset();
     nodes.workContractFormHeading.textContent = "Новый период или смена работы";
     nodes.workContractFormSubtitle.textContent = "Новая текущая работа автоматически завершит предыдущий период этой же датой. Дата перехода будет относиться к новому периоду.";
-    nodes.workContractSubmitBtn.textContent = "Добавить период";
+    window.App.icons.apply(nodes.workContractSubmitBtn, "plus", "Добавить период");
     nodes.cancelWorkContractEditBtn.classList.add("hidden");
   }
 
@@ -979,7 +981,7 @@
     nodes.workContractNote.value = item.note || "";
     nodes.workContractFormHeading.textContent = "Редактировать период работы";
     nodes.workContractFormSubtitle.textContent = "Изменения текущего периода сразу обновят компанию и должность в настройках табеля.";
-    nodes.workContractSubmitBtn.textContent = "Сохранить изменения";
+    window.App.icons.apply(nodes.workContractSubmitBtn, "save", "Сохранить изменения");
     nodes.cancelWorkContractEditBtn.classList.remove("hidden");
     nodes.workContractForm.scrollIntoView({ behavior: "smooth", block: "start" });
     nodes.workContractPosition.focus();
@@ -1035,7 +1037,9 @@
   }
 
   function setView(view) {
+    setWorkMonthPopoverOpen(false);
     core.syncSegmentedActive?.(nodes.workViewTabs, "work-view", view);
+    nodes.workPaymentsView.classList.toggle("hidden", view !== "payments");
     nodes.workStatisticsView.classList.toggle("hidden", view !== "statistics");
     nodes.workTimesheetView.classList.toggle("hidden", view !== "timesheet");
     nodes.workSettingsForm.classList.toggle("hidden", view !== "settings");
@@ -1160,7 +1164,11 @@
         return;
       }
       const deleteButton = event.target.closest("[data-delete-work-contract]");
-      if (deleteButton) deleteContract(Number(deleteButton.dataset.deleteWorkContract)).catch(handleError);
+      if (deleteButton) core.showConfirm?.(
+        "Удалить период работы? Это изменит историю условий и расчёт табеля. Финансовые операции останутся.",
+        () => deleteContract(Number(deleteButton.dataset.deleteWorkContract)).catch(handleError),
+        { title: "Удалить период работы", confirmLabel: "Удалить период", confirmTone: "danger" },
+      );
     });
     nodes.workActualPaymentsList.addEventListener("click", (event) => {
       const unlinkButton = event.target.closest("[data-work-unlink-payment]");

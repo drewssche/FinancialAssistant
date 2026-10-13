@@ -69,7 +69,6 @@ def work_page(request):
     _login(page)
     page.evaluate("window.App.getRuntimeModule('navigation').switchSection('work')")
     page.evaluate("window.App.getRuntimeModule('work').loadWorkSection()")
-    page.evaluate("window.App.getRuntimeModule('work').setView('timesheet')")
     expect(page.locator(".work-salary-cycle-title strong")).to_have_text(cycle["label"])
     return page, snapshot
 
@@ -87,12 +86,12 @@ def test_work_cycle_kpis_keep_one_period_and_fit_viewport(request, width):
     expect(kpis).to_have_count(1)
     expect(kpis.nth(0)).to_contain_text("4 274,78")
     expect(page.locator("#workMoneySummaryGrid")).not_to_contain_text("Итого")
-    expect(page.locator("#workSummaryGrid")).to_contain_text("203,56")
-    expect(page.locator("#workSummaryGrid")).to_contain_text("25,45")
-    expect(page.locator("#workSummaryGrid .work-time-kpi-rate")).to_have_count(2)
-    expect(page.locator("#workSummaryGrid article").nth(0)).to_contain_text("25,45")
-    expect(page.locator("#workSummaryGrid article").nth(1)).to_contain_text("203,56")
-    expect(page.locator("#workSummaryGrid article").nth(0)).to_contain_text("август 2026")
+    expect(page.locator("#workEarningsRates")).to_contain_text("203,56")
+    expect(page.locator("#workEarningsRates")).to_contain_text("25,45")
+    expect(page.locator("#workEarningsRates .work-time-kpi-rate")).to_have_count(2)
+    expect(page.locator("#workEarningsRates .work-time-kpi-rate").nth(0)).to_contain_text("25,45")
+    expect(page.locator("#workEarningsRates .work-time-kpi-rate").nth(1)).to_contain_text("203,56")
+    expect(page.locator("#workEarningsRates .work-time-kpi-rate").nth(0)).to_contain_text("август 2026")
     assert "21 дн. / 168 ч" in page.locator(".work-time-kpi-rate").first.get_attribute("title")
     expect(page.locator("#workMoneySummaryGrid .work-time-kpi-rate")).to_have_count(0)
     expect(page.locator("#workPaymentsGrid .work-salary-cycle-component")).to_have_count(2)
@@ -141,17 +140,17 @@ def test_cycle_kpis_explain_forecast_and_unavailable_rates(request, mode):
     cycle["earnings_estimate"].update(status="forecast" if mode == "forecast" else "unavailable", reason=None if mode == "forecast" else "missing_payment" if mode == "missing" else "unresolved_currency", daily_amount="124.76" if mode == "forecast" else None, hourly_amount="15.60" if mode == "forecast" else None)
     page.evaluate("window.App.getRuntimeModule('work').loadWorkSection({refresh:true})")
     if mode == "forecast":
-        expect(page.locator("#workSummaryGrid")).to_contain_text("прогноз")
-        expect(page.locator("#workSummaryGrid")).to_contain_text("124,76")
+        expect(page.locator("#workEarningsRates")).to_contain_text("прогноз")
+        expect(page.locator("#workEarningsRates")).to_contain_text("124,76")
         expect(page.locator(".work-money-kpi-forecast")).to_contain_text("1 200,00")
     else:
         expect(page.locator(".work-time-kpi-rate strong").first).to_have_text("—")
-        expect(page.locator("#workSummaryGrid")).not_to_contain_text("203,56")
+        expect(page.locator("#workEarningsRates")).not_to_contain_text("203,56")
         if mode == "missing":
             expect(page.locator(".work-money-kpi-forecast .work-money-kpi-values")).to_have_text("—")
             expect(page.locator("#workMoneySummaryGrid")).to_contain_text("Не все выплаты найдены")
         else:
-            expect(page.locator("#workSummaryGrid")).to_contain_text("Нет пересчёта всей зарплаты в BYN")
+            expect(page.locator("#workEarningsRates")).to_contain_text("Нет пересчёта всей зарплаты в BYN")
 
 
 @pytest.mark.e2e
@@ -203,3 +202,57 @@ def test_work_statistics_ignore_old_response_even_if_transport_ignores_abort(req
     })""")
     expect(page.locator(".work-statistics-earnings")).to_contain_text("32 474,78")
     expect(page.locator("#workStatisticsPeriodLabel")).to_have_text("2026")
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize("width", [320, 390, 1024, 1100, 1440])
+def test_work_views_keep_calendar_first_and_day_draft(request, width):
+    page, _ = request.getfixturevalue("work_page")
+    page.set_viewport_size({"width": width, "height": 844})
+    page.evaluate("window.App.core.setMobileNavOpen(false)")
+    expect(page.locator('#workTimesheetView')).to_be_visible()
+    geometry = page.evaluate('''() => {
+      const calendar = document.querySelector('#workCalendarGrid').getBoundingClientRect();
+      const payroll = document.querySelector('.work-payroll-sidebar').getBoundingClientRect();
+      return {top: calendar.top, calendarBottom: calendar.bottom, payrollTop: payroll.top};
+    }''')
+    assert geometry['top'] < 520
+    if width < 1400:
+        assert geometry['payrollTop'] >= geometry['calendarBottom']
+    page.locator('[data-work-date="2026-09-07"]').click()
+    page.fill('#workDayNote', 'Черновик исключения')
+    for view, selector in [('payments', '#workPaymentsView'), ('settings', '#workSettingsForm'), ('contracts', '#workContractsView')]:
+        page.locator(f'[data-work-view="{view}"]').click()
+        expect(page.locator(selector)).to_be_visible()
+        expect(page.locator('#workMoneySummaryGrid')).to_be_hidden()
+    page.locator('[data-work-view="timesheet"]').click()
+    expect(page.locator('#workDayForm')).to_be_visible()
+    expect(page.locator('#workDayNote')).to_have_value('Черновик исключения')
+    assert page.locator('#workDayForm button[type="submit"]').get_attribute('aria-label') == 'Сохранить исключение'
+
+
+@pytest.mark.e2e
+def test_work_contract_delete_requires_confirmation(request):
+    page, _ = request.getfixturevalue('work_page')
+    deleted = []
+    def contracts(route):
+        if route.request.method == 'DELETE':
+            deleted.append(route.request.url)
+            route.fulfill(status=204)
+        else:
+            route.fulfill(json=[] if deleted else [{'id': 8, 'company': 'Работа', 'effective_from': '2026-01-01', 'currency': 'BYN', 'salary_amount': '2000'}])
+    page.route('**/api/v1/work/contracts', contracts)
+    page.route('**/api/v1/work/contracts/8', contracts)
+    page.evaluate("window.App.getRuntimeModule('work').loadWorkSection({refresh:true})")
+    page.locator('[data-work-view="contracts"]').click()
+    action = page.locator('[data-delete-work-contract="8"]')
+    action.click()
+    expect(page.locator('#confirmModal')).to_be_visible()
+    assert not deleted
+    page.locator('#confirmCancelBtn').click()
+    expect(action).to_be_visible()
+    assert not deleted
+    action.click()
+    page.locator('#confirmDeleteBtn').click()
+    expect(action).to_have_count(0)
+    assert len(deleted) == 1

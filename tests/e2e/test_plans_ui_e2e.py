@@ -1578,7 +1578,7 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     _login_and_open_dashboard(page, static_server_url)
     page.click('button[data-section="work"]')
     page.wait_for_selector("#workSection:not(.hidden)")
-    page.wait_for_selector("#workStatisticsView:not(.hidden)")
+    page.wait_for_selector("#workTimesheetView:not(.hidden)")
     assert "168 ч" in (page.locator("#workStatisticsKpi").text_content() or "")
     assert "Август 2026" in (page.locator("#workMonthTrigger").text_content() or "")
     page.click("#workMonthTrigger")
@@ -1598,7 +1598,7 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     assert "Получено за период" in actual_kpi_text
     assert "4 606,12" in actual_kpi_text
     assert page.locator("#workMoneySummaryGrid .work-money-kpi-forecast").count() == 0
-    salary_cycle = page.locator(".work-hero-panel > .work-salary-cycle-card")
+    salary_cycle = page.locator(".work-hero-panel .work-salary-cycle-card")
     salary_cycle_text = (salary_cycle.text_content() or "").replace("\u00a0", " ")
     assert "Зарплата за июль 2026" in salary_cycle_text
     assert "после 02.07.2026 и по 05.08.2026 включительно" in salary_cycle_text
@@ -1701,7 +1701,7 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     assert "Разработчик" in (page.locator("#workCompanyDetails").text_content() or "")
     assert page.locator('#workCompanyOptions option[value="Битрикс"]').count() == 1
 
-    page.click('button[data-work-view="contracts"]')
+    page.click('button[data-work-view="payments"]')
     actual_payment_text = (page.locator("#workActualPaymentsList").text_content() or "").replace("\u00a0", " ")
     assert "Основная часть" in actual_payment_text
     assert "1 234,56" in actual_payment_text
@@ -1732,10 +1732,11 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     assert payment_unlink_requests == [901]
     page.wait_for_selector('[data-work-link-operation="702"]')
 
+    page.click('button[data-work-view="contracts"]')
     page.click('[data-edit-work-contract="12"]')
     assert page.locator("#workContractPosition").input_value() == ""
     assert page.locator("#workContractCompany").input_value() == "Битрикс"
-    assert page.locator("#workContractSubmitBtn").text_content() == "Сохранить изменения"
+    assert page.locator("#workContractSubmitBtn").get_attribute("aria-label") == "Сохранить изменения"
     page.locator("#workContractPosition").fill("Ведущий разработчик")
     page.click("#workContractSubmitBtn")
     page.wait_for_function("() => document.querySelector('#workContractsList')?.textContent?.includes('Ведущий разработчик')")

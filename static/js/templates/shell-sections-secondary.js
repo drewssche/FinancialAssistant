@@ -5,40 +5,17 @@
 
         <section id="workSection" class="section-block hidden">
           <datalist id="workCompanyOptions"></datalist>
-          <section class="panel work-hero-panel">
-            <div class="panel-head row between work-section-head">
-              <div>
-                <h3 id="workTimesheetPeriodTitle">Табель</h3>
-                <p class="subtitle">Обычные рабочие дни считаются автоматически — отмечайте только исключения</p>
-              </div>
-              <div class="work-month-control">
-                <button id="workPrevMonthBtn" class="period-step-btn" type="button" aria-label="Предыдущий месяц">‹</button>
-                <button id="workMonthTrigger" class="btn btn-secondary analytics-grid-picker-trigger" type="button" aria-haspopup="dialog">Месяц</button>
-                <div id="workMonthPopover" class="app-popover app-popover-floating period-control-popover analytics-grid-picker-popover hidden" role="dialog" aria-label="Выбор месяца табеля">
-                  <div id="workYearOptions" class="settings-picker-options work-period-year-options"></div>
-                  <div id="workMonthOptions" class="settings-picker-options work-period-month-options"></div>
-                </div>
-                <button id="workNextMonthBtn" class="period-step-btn" type="button" aria-label="Следующий месяц">›</button>
-                <button id="workTodayBtn" class="btn btn-secondary btn-xs" type="button">Текущий</button>
-              </div>
-            </div>
-            <div id="workSummaryGrid" class="analytics-kpi-grid section-kpi-grid work-time-summary-grid" aria-live="polite"></div>
-            <section class="work-salary-cycle-card" aria-label="Зарплата за расчётный период">
-              <div id="workMoneySummaryGrid" aria-live="polite"></div>
-              <div id="workPaymentsGrid" class="work-salary-cycle-components"></div>
-            </section>
-          </section>
-
           <section class="panel">
             <div class="segmented work-view-tabs" id="workViewTabs" role="tablist" aria-label="Разделы работы">
-              <button class="segmented-btn active" data-work-view="statistics" type="button">Статистика</button>
-              <button class="segmented-btn" data-work-view="timesheet" type="button">Табель</button>
-              <button class="segmented-btn" data-work-view="settings" type="button">Настройки и планы</button>
+              <button class="segmented-btn active" data-work-view="timesheet" type="button">Табель</button>
+              <button class="segmented-btn" data-work-view="payments" type="button">Выплаты</button>
+              <button class="segmented-btn" data-work-view="statistics" type="button">Статистика</button>
+              <button class="segmented-btn" data-work-view="settings" type="button">Настройки</button>
               <button class="segmented-btn" data-work-view="companies" type="button">Компании</button>
               <button class="segmented-btn" data-work-view="contracts" type="button">История работы</button>
             </div>
 
-            <div id="workStatisticsView">
+            <div id="workStatisticsView" class="hidden">
               <div class="work-statistics-toolbar">
                 <div id="workStatisticsPeriodTabs" class="segmented" role="tablist" aria-label="Период рабочей статистики">
                   <button class="segmented-btn active" data-work-stat-period="month" type="button">Месяц</button>
@@ -50,13 +27,13 @@
                   <button id="workStatisticsPrevBtn" class="period-step-btn" type="button" aria-label="Предыдущий период">‹</button>
                   <strong id="workStatisticsPeriodLabel">Текущий месяц</strong>
                   <button id="workStatisticsNextBtn" class="period-step-btn" type="button" aria-label="Следующий период">›</button>
-                  <button id="workStatisticsCurrentBtn" class="btn btn-secondary btn-xs" type="button">Текущий</button>
+                  <button id="workStatisticsCurrentBtn" class="btn btn-secondary btn-xs btn-icon" type="button" aria-label="Текущий период" title="Текущий период">${window.App.icons.svg("calendar")}</button>
                 </div>
               </div>
               <form id="workStatisticsCustomForm" class="work-statistics-custom hidden">
                 <label class="field"><span>С</span><div class="date-input-wrap"><input id="workStatisticsDateFrom" type="date" required /><button class="date-input-trigger" type="button" data-date-picker-trigger="workStatisticsDateFrom" aria-label="Открыть календарь"></button></div></label>
                 <label class="field"><span>По</span><div class="date-input-wrap"><input id="workStatisticsDateTo" type="date" required /><button class="date-input-trigger" type="button" data-date-picker-trigger="workStatisticsDateTo" aria-label="Открыть календарь"></button></div></label>
-                <button class="btn btn-primary" type="submit">Применить</button>
+                <button class="btn btn-primary btn-icon" type="submit" aria-label="Применить период" title="Применить период">${window.App.icons.svg("save")}</button>
               </form>
               <div id="workStatisticsKpi" class="analytics-kpi-grid section-kpi-grid"></div>
               <article class="work-statistics-progress-card">
@@ -67,7 +44,25 @@
               <div id="workStatisticsMonths" class="work-statistics-months"></div>
             </div>
 
-            <div id="workTimesheetView" class="hidden">
+            <div id="workTimesheetView" class="work-hero-panel">
+            <div class="panel-head row between work-section-head">
+              <div>
+                <h3 id="workTimesheetPeriodTitle" class="sr-only">Табель</h3>
+              </div>
+              <div class="work-month-control">
+                <button id="workPrevMonthBtn" class="period-step-btn" type="button" aria-label="Предыдущий месяц">‹</button>
+                <button id="workMonthTrigger" class="btn btn-secondary analytics-grid-picker-trigger" type="button" aria-haspopup="dialog">Месяц</button>
+                <div id="workMonthPopover" class="app-popover app-popover-floating period-control-popover analytics-grid-picker-popover hidden" role="dialog" aria-label="Выбор месяца табеля">
+                  <div id="workYearOptions" class="settings-picker-options work-period-year-options"></div>
+                  <div id="workMonthOptions" class="settings-picker-options work-period-month-options"></div>
+                </div>
+                <button id="workNextMonthBtn" class="period-step-btn" type="button" aria-label="Следующий месяц">›</button>
+                <button id="workTodayBtn" class="btn btn-secondary btn-xs btn-icon" type="button" aria-label="Текущий период" title="Текущий период">${window.App.icons.svg("calendar")}</button>
+              </div>
+            </div>
+<div class="work-timesheet-layout"><div class="work-calendar-main">
+            <div id="workSummaryGrid" class="analytics-kpi-grid section-kpi-grid work-time-summary-grid" aria-live="polite"></div>
+
               <div class="work-calendar-weekdays" aria-hidden="true">
                 <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
               </div>
@@ -82,7 +77,7 @@
               <form id="workDayForm" class="work-day-editor hidden">
                 <div class="panel-head row between">
                   <div><h3 id="workDayEditorTitle">День</h3><p class="subtitle">Ручная настройка имеет приоритет над календарём</p></div>
-                  <button id="closeWorkDayEditorBtn" class="btn btn-ghost btn-xs" type="button">Закрыть</button>
+                  <button id="closeWorkDayEditorBtn" class="btn btn-ghost btn-xs btn-icon" type="button" aria-label="Закрыть" title="Закрыть">${window.App.icons.svg("close")}</button>
                 </div>
                 <input id="workDayDate" type="hidden" />
                 <div class="work-day-editor-grid">
@@ -106,10 +101,17 @@
                 </div>
                 <label class="field"><span>Комментарий</span><input id="workDayNote" type="text" maxlength="500" placeholder="Причина или пояснение" /></label>
                 <div class="settings-actions work-day-editor-actions">
-                  <button class="btn btn-primary" type="submit">Сохранить исключение</button>
-                  <button id="resetWorkDayBtn" class="btn btn-secondary" type="button">Вернуть по графику</button>
+                  <button class="btn btn-primary btn-icon" type="submit" aria-label="Сохранить исключение" title="Сохранить исключение">${window.App.icons.svg("save")}</button>
+                  <button id="resetWorkDayBtn" class="btn btn-secondary btn-icon" type="button" aria-label="Вернуть по графику" title="Вернуть по графику">${window.App.icons.svg("refresh")}</button>
                 </div>
               </form>
+              </div><aside class="work-payroll-sidebar" aria-label="Зарплата и оценка заработка">
+            <section class="work-salary-cycle-card" aria-label="Зарплата за расчётный период">
+              <div id="workMoneySummaryGrid" aria-live="polite"></div>
+              <div id="workPaymentsGrid" class="work-salary-cycle-components"></div>
+            </section>
+                  <div id="workEarningsRates" class="work-earnings-rates"></div>
+              </aside></div>
             </div>
 
             <form id="workSettingsForm" class="settings-form hidden">
@@ -125,7 +127,7 @@
                   <label class="field"><span>Начало обеда</span><input id="workLunchStartTime" type="time" step="60" value="13:00" /></label>
                   <label class="field"><span>Конец обеда</span><input id="workLunchEndTime" type="time" step="60" value="14:00" /></label>
                 </div>
-                <p class="muted-small work-schedule-hint">Сегодняшний факт обновляется автоматически по времени смены. Обед в отработанные часы не входит, а ручная настройка дня всегда имеет приоритет.</p>
+                <p class="muted-small work-schedule-hint">Часы текущей смены обновляются автоматически, без обеда. Ручное исключение имеет приоритет.</p>
                 <div class="work-weekday-picker" id="workWeekdayPicker">
                   <label><input type="checkbox" value="0" checked /> Пн</label><label><input type="checkbox" value="1" checked /> Вт</label>
                   <label><input type="checkbox" value="2" checked /> Ср</label><label><input type="checkbox" value="3" checked /> Чт</label>
@@ -143,7 +145,7 @@
                   <label class="field"><span>Номинальный день</span><input id="workAdvanceDay" type="number" min="1" max="31" value="20" /></label>
                 </div>
               </section>
-              <div class="settings-actions"><button class="btn btn-primary" type="submit">Сохранить настройки</button></div>
+              <div class="settings-actions"><button class="btn btn-primary btn-icon" type="submit" aria-label="Сохранить настройки" title="Сохранить настройки">${window.App.icons.svg("save")}</button></div>
             </form>
 
             <div id="workCompaniesView" class="hidden">
@@ -152,6 +154,33 @@
               </div>
               <div id="workCompaniesGrid" class="work-companies-grid"></div>
               <div id="workCompanyDetails" class="work-company-details"></div>
+            </div>
+
+            <div id="workPaymentsView" class="hidden">
+              <section class="work-actual-payments-section">
+                <div class="panel-head row between work-payment-history-head">
+                  <div><h3>Фактические выплаты</h3><p class="subtitle">Полученные деньги из подтверждённых планов и операций, связанных вручную</p></div>
+                  <button id="workPaymentLinkToggle" class="btn btn-secondary btn-icon" type="button" aria-expanded="false" aria-controls="workPaymentLinkPanel" aria-label="Связать операцию" title="Связать операцию">${window.App.icons.svg("link")}</button>
+                </div>
+                <section id="workPaymentLinkPanel" class="work-payment-link-panel hidden">
+                  <div class="panel-head row between">
+                    <div><h3>Связать доходную операцию</h3><p class="subtitle">Выберите выплату и укажите, чем она является</p></div>
+                    <button id="workPaymentLinkClose" class="btn btn-ghost btn-xs btn-icon" type="button" aria-label="Закрыть" title="Закрыть">${window.App.icons.svg("close")}</button>
+                  </div>
+                  <div id="workPaymentLinkRole" class="segmented work-payment-link-role" role="group" aria-label="Роль выплаты">
+                    <button class="segmented-btn active" data-work-payment-link-role="salary" type="button" aria-pressed="true">Основная часть</button>
+                    <button class="segmented-btn" data-work-payment-link-role="advance" type="button" aria-pressed="false">Аванс</button>
+                  </div>
+                  <form id="workPaymentCandidateForm" class="work-payment-candidate-controls">
+                    <label class="field"><span>С</span><div class="date-input-wrap"><input id="workPaymentCandidateDateFrom" type="date" required /><button class="date-input-trigger" type="button" data-date-picker-trigger="workPaymentCandidateDateFrom" aria-label="Открыть календарь"></button></div></label>
+                    <label class="field"><span>По</span><div class="date-input-wrap"><input id="workPaymentCandidateDateTo" type="date" required /><button class="date-input-trigger" type="button" data-date-picker-trigger="workPaymentCandidateDateTo" aria-label="Открыть календарь"></button></div></label>
+                    <label class="field work-payment-candidate-search"><span>Поиск</span><input id="workPaymentCandidateSearch" class="table-search-input" type="search" maxlength="100" placeholder="Комментарий или категория" /></label>
+                    <button class="btn btn-secondary btn-icon" type="submit" aria-label="Найти выплаты" title="Найти выплаты">${window.App.icons.svg("search")}</button>
+                  </form>
+                  <div id="workPaymentCandidatesList" class="work-payment-candidates-list"></div>
+                </section>
+                <div id="workActualPaymentsList" class="work-actual-payments-list"></div>
+              </section>
             </div>
 
             <div id="workContractsView" class="hidden">
@@ -169,36 +198,12 @@
                   </div>
                   <label class="field"><span>Комментарий</span><input id="workContractNote" type="text" maxlength="500" /></label>
                   <div class="settings-actions work-contract-form-actions">
-                    <button id="workContractSubmitBtn" class="btn btn-primary" type="submit">Добавить период</button>
-                    <button id="cancelWorkContractEditBtn" class="btn btn-secondary hidden" type="button">Отменить редактирование</button>
+                    <button id="workContractSubmitBtn" class="btn btn-primary btn-icon" type="submit" aria-label="Добавить период" title="Добавить период">${window.App.icons.svg("plus")}</button>
+                    <button id="cancelWorkContractEditBtn" class="btn btn-secondary hidden btn-icon" type="button" aria-label="Отменить редактирование" title="Отменить редактирование">${window.App.icons.svg("close")}</button>
                   </div>
                 </section>
               </form>
               <div id="workContractsList" class="plans-list work-contracts-list"></div>
-              <section class="work-actual-payments-section">
-                <div class="panel-head row between work-payment-history-head">
-                  <div><h3>Фактические выплаты</h3><p class="subtitle">Полученные деньги из подтверждённых планов и операций, связанных вручную</p></div>
-                  <button id="workPaymentLinkToggle" class="btn btn-secondary" type="button" aria-expanded="false" aria-controls="workPaymentLinkPanel">Связать операцию</button>
-                </div>
-                <section id="workPaymentLinkPanel" class="work-payment-link-panel hidden">
-                  <div class="panel-head row between">
-                    <div><h3>Связать доходную операцию</h3><p class="subtitle">Выберите выплату и укажите, чем она является</p></div>
-                    <button id="workPaymentLinkClose" class="btn btn-ghost btn-xs" type="button">Закрыть</button>
-                  </div>
-                  <div id="workPaymentLinkRole" class="segmented work-payment-link-role" role="group" aria-label="Роль выплаты">
-                    <button class="segmented-btn active" data-work-payment-link-role="salary" type="button" aria-pressed="true">Основная часть</button>
-                    <button class="segmented-btn" data-work-payment-link-role="advance" type="button" aria-pressed="false">Аванс</button>
-                  </div>
-                  <form id="workPaymentCandidateForm" class="work-payment-candidate-controls">
-                    <label class="field"><span>С</span><div class="date-input-wrap"><input id="workPaymentCandidateDateFrom" type="date" required /><button class="date-input-trigger" type="button" data-date-picker-trigger="workPaymentCandidateDateFrom" aria-label="Открыть календарь"></button></div></label>
-                    <label class="field"><span>По</span><div class="date-input-wrap"><input id="workPaymentCandidateDateTo" type="date" required /><button class="date-input-trigger" type="button" data-date-picker-trigger="workPaymentCandidateDateTo" aria-label="Открыть календарь"></button></div></label>
-                    <label class="field work-payment-candidate-search"><span>Поиск</span><input id="workPaymentCandidateSearch" class="table-search-input" type="search" maxlength="100" placeholder="Комментарий или категория" /></label>
-                    <button class="btn btn-secondary" type="submit">Найти</button>
-                  </form>
-                  <div id="workPaymentCandidatesList" class="work-payment-candidates-list"></div>
-                </section>
-                <div id="workActualPaymentsList" class="work-actual-payments-list"></div>
-              </section>
             </div>
           </section>
         </section>
