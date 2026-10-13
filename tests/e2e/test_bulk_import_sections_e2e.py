@@ -44,7 +44,7 @@ def static_server_url() -> str:
 
 
 @pytest.mark.e2e
-def test_delete_all_categories_removes_groups_and_categories_in_one_pass(page):
+def test_delete_all_categories_removes_groups_and_categories_in_one_pass(page, static_server_url: str):
     deleted_category_ids = []
     deleted_group_ids = []
 
@@ -105,7 +105,7 @@ def test_delete_all_categories_removes_groups_and_categories_in_one_pass(page):
     page.route("**/api/**", handle_request)
     page.add_init_script("""window.localStorage.setItem("access_token", "test-token");""")
 
-    page.goto("http://127.0.0.1:8001/", wait_until="networkidle")
+    page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")
     page.locator("#mainNav button[data-section='categories']").click()
     page.locator("#deleteAllCategoriesBtn").click()
     page.locator("#confirmDeleteBtn").click()
@@ -117,7 +117,7 @@ def test_delete_all_categories_removes_groups_and_categories_in_one_pass(page):
 
 
 @pytest.mark.e2e
-def test_batch_category_modal_imports_categories_with_group_fallback(page):
+def test_batch_category_modal_imports_categories_with_group_fallback(page, static_server_url: str):
     created_categories = []
 
     def handle_request(route):
@@ -162,9 +162,9 @@ def test_batch_category_modal_imports_categories_with_group_fallback(page):
     page.route("**/api/**", handle_request)
     page.add_init_script("""window.localStorage.setItem("access_token", "test-token");""")
 
-    page.goto("http://127.0.0.1:8001/", wait_until="networkidle")
+    page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")
     page.locator("#mainNav button[data-section='categories']").click()
-    page.get_by_role("button", name="+ Массовое добавление").click()
+    page.locator("#batchCategoryCta").click()
     page.locator("#batchCategoryInput").fill(
         "Расход;Такси;Транспорт\n"
         "Доход;Подработка;Неизвестная группа"
@@ -184,7 +184,7 @@ def test_batch_category_modal_imports_categories_with_group_fallback(page):
 
 
 @pytest.mark.e2e
-def test_batch_category_groups_mode_accepts_trailing_semicolon(page):
+def test_batch_category_groups_mode_accepts_trailing_semicolon(page, static_server_url: str):
     created_groups = []
 
     def handle_request(route):
@@ -229,10 +229,10 @@ def test_batch_category_groups_mode_accepts_trailing_semicolon(page):
     page.route("**/api/**", handle_request)
     page.add_init_script("""window.localStorage.setItem("access_token", "test-token");""")
 
-    page.goto("http://127.0.0.1:8001/", wait_until="networkidle")
+    page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")
     page.locator("#mainNav button[data-section='categories']").click()
-    page.get_by_role("button", name="+ Массовое добавление").click()
-    page.get_by_role("button", name="Группы").click()
+    page.locator("#batchCategoryCta").click()
+    page.get_by_role("button", name="Группы", exact=True).click()
     page.locator("#batchCategoryInput").fill(
         "Расход;Еда;\n"
         "Доход;Зарплата;"
@@ -250,7 +250,7 @@ def test_batch_category_groups_mode_accepts_trailing_semicolon(page):
 
 
 @pytest.mark.e2e
-def test_batch_item_template_modal_imports_multiple_rows(page):
+def test_batch_item_template_modal_imports_multiple_rows(page, static_server_url: str):
     created_templates = []
 
     def handle_request(route):
@@ -298,10 +298,10 @@ def test_batch_item_template_modal_imports_multiple_rows(page):
     page.route("**/api/**", handle_request)
     page.add_init_script("""window.localStorage.setItem("access_token", "test-token");""")
 
-    page.goto("http://127.0.0.1:8001/", wait_until="networkidle")
+    page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")
     page.locator('button[data-section="item_catalog"]').click()
     page.locator('[data-item-catalog-view="sources"]').click()
-    page.get_by_role("button", name="+ Массовое добавление").click()
+    page.locator("#batchItemCatalogCta").click()
     page.locator("#batchItemTemplateInput").fill(
         "Евроопт;Сигареты Rothmans;9,40\n"
         "WB;USB кабель;"
@@ -321,7 +321,7 @@ def test_batch_item_template_modal_imports_multiple_rows(page):
 
 
 @pytest.mark.e2e
-def test_mobile_batch_category_modal_preview_stays_above_sticky_cta(page):
+def test_mobile_batch_category_modal_preview_stays_above_sticky_cta(page, static_server_url: str):
     def handle_request(route):
         request = route.request
         url = request.url
@@ -360,10 +360,10 @@ def test_mobile_batch_category_modal_preview_stays_above_sticky_cta(page):
     page.add_init_script("""window.localStorage.setItem("access_token", "test-token");""")
     page.set_viewport_size({"width": 390, "height": 844})
 
-    page.goto("http://127.0.0.1:8001/", wait_until="networkidle")
+    page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")
     page.click("#mobileNavToggleBtn")
     page.locator("#mainNav button[data-section='categories']").click()
-    page.get_by_role("button", name="+ Массовое добавление").click()
+    page.locator("#batchCategoryCta").click()
     page.locator("#batchCategoryInput").fill(
         "Расход;Такси;Транспорт\n"
         "Доход;Подработка;Неизвестная группа"
@@ -411,7 +411,7 @@ def test_mobile_batch_category_modal_preview_stays_above_sticky_cta(page):
 
 
 @pytest.mark.e2e
-def test_mobile_batch_item_template_modal_preview_stays_above_sticky_cta(page):
+def test_mobile_batch_item_template_modal_preview_stays_above_sticky_cta(page, static_server_url: str):
     def handle_request(route):
         request = route.request
         url = request.url
@@ -453,11 +453,11 @@ def test_mobile_batch_item_template_modal_preview_stays_above_sticky_cta(page):
     page.add_init_script("""window.localStorage.setItem("access_token", "test-token");""")
     page.set_viewport_size({"width": 390, "height": 844})
 
-    page.goto("http://127.0.0.1:8001/", wait_until="networkidle")
+    page.goto(f"{static_server_url}/static/index.html", wait_until="networkidle")
     page.click("#mobileNavToggleBtn")
     page.locator('button[data-section="item_catalog"]').click()
     page.locator('[data-item-catalog-view="sources"]').click()
-    page.get_by_role("button", name="+ Массовое добавление").click()
+    page.locator("#batchItemCatalogCta").click()
     page.locator("#batchItemTemplateInput").fill(
         "Евроопт;Сигареты Rothmans;9,40\n"
         "WB;USB кабель;"
@@ -505,7 +505,7 @@ def test_mobile_batch_item_template_modal_preview_stays_above_sticky_cta(page):
 
 
 @pytest.mark.e2e
-def test_category_group_context_create_prefills_group_from_hover_action(page, static_server_url: str):
+def test_category_group_context_create_prefills_group_from_direct_action(page, static_server_url: str):
     created_groups = []
 
     def handle_request(route):
@@ -567,7 +567,7 @@ def test_category_group_context_create_prefills_group_from_hover_action(page, st
     page.wait_for_function("() => document.querySelector('tr.category-child-row')?.classList.contains('hidden')")
     page.locator(".category-table-group-wrap", has_text="Еда").click(position={"x": 520, "y": 20})
     page.wait_for_selector("tr.category-child-row:not(.hidden)", state="visible")
-    page.locator("button.category-context-create-btn[data-create-category-group-id='7']").click()
+    page.locator("button[data-create-category-group-id='7']").click()
 
     page.wait_for_selector("#createCategoryModal:not(.hidden)")
     assert page.locator("#categoryGroup").input_value() == "7"
@@ -610,7 +610,7 @@ def test_category_group_context_create_prefills_group_from_hover_action(page, st
         () => {
           const row = document.querySelector('.category-table-group-wrap');
           const name = row?.querySelector('.item-catalog-group-name');
-          const create = row?.querySelector('.category-context-create-btn');
+          const create = row?.querySelector('[data-create-category-group-id]');
           if (!row || !name || !create) {
             return null;
           }
@@ -621,13 +621,16 @@ def test_category_group_context_create_prefills_group_from_hover_action(page, st
             nameRight: nameRect.right,
             createLeft: createRect.left,
             createFromRowLeft: createRect.left - rowRect.left,
+            createRight: createRect.right,
+            rowRight: rowRect.right,
           };
         }
         """
     )
     assert geometry is not None
-    assert 0 <= geometry["createLeft"] - geometry["nameRight"] <= 24
-    assert geometry["createFromRowLeft"] < 180
+    assert geometry["createLeft"] >= geometry["nameRight"]
+    assert geometry["createFromRowLeft"] >= 0
+    assert geometry["createRight"] <= geometry["rowRight"]
 
     page.set_viewport_size({"width": 390, "height": 844})
     page.locator("#categoryIconToggle").click()
@@ -667,7 +670,7 @@ def test_category_group_context_create_prefills_group_from_hover_action(page, st
 
 
 @pytest.mark.e2e
-def test_item_source_context_create_prefills_source_from_hover_action(page, static_server_url: str):
+def test_item_source_context_create_prefills_source_from_direct_action(page, static_server_url: str):
     def handle_request(route):
         request = route.request
         url = request.url
@@ -730,7 +733,7 @@ def test_item_source_context_create_prefills_source_from_hover_action(page, stat
         () => {
           const row = document.querySelector('.item-catalog-source-wrap');
           const name = row?.querySelector('.item-catalog-group-name');
-          const create = row?.querySelector('.item-source-context-create-btn');
+          const create = row?.querySelector('[data-create-item-template-source-name]');
           if (!row || !name || !create) {
             return null;
           }
@@ -741,15 +744,18 @@ def test_item_source_context_create_prefills_source_from_hover_action(page, stat
             nameRight: nameRect.right,
             createLeft: createRect.left,
             createFromRowLeft: createRect.left - rowRect.left,
+            createRight: createRect.right,
+            rowRight: rowRect.right,
           };
         }
         """
     )
     assert geometry is not None
-    assert 0 <= geometry["createLeft"] - geometry["nameRight"] <= 24
-    assert geometry["createFromRowLeft"] < 220
+    assert geometry["createLeft"] >= geometry["nameRight"]
+    assert geometry["createFromRowLeft"] >= 0
+    assert geometry["createRight"] <= geometry["rowRight"]
 
-    page.locator("button.item-source-context-create-btn[data-create-item-template-source-name='Евроопт']").click()
+    page.locator("button[data-create-item-template-source-name='Евроопт']").click()
 
     page.wait_for_selector("#itemTemplateModal:not(.hidden)")
     assert page.locator("#itemTemplateSource").input_value() == "Евроопт"

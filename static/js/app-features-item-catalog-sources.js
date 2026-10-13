@@ -261,12 +261,12 @@
           <td>${core.formatMoney(row.unit_price || 0)}</td>
           <td class="table-actions-cell">
             <button
-              class="btn btn-danger btn-xs"
+              class="btn btn-danger btn-icon"
               type="button"
               data-delete-item-template-price-id="${Number(row.id)}"
               data-item-template-id="${Number(item.id)}"
               aria-label="Удалить цену за ${escapeHtml(core.formatDateRu(row.recorded_at))}"
-            >Удалить</button>
+              title="Удалить цену">${window.App.icons.svg("trash")}</button>
           </td>
         </tr>
       `).join("");

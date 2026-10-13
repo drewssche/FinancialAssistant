@@ -15,6 +15,25 @@ def open_editor(page, url, width):
 
 
 @pytest.mark.e2e
+@pytest.mark.parametrize('width', [320, 1440])
+def test_empty_receipt_details_preserve_draft_and_payload(static_server_url, page_with_receipt_api_mock, width):
+    page = page_with_receipt_api_mock
+    open_editor(page, static_server_url, width)
+    page.locator('#createOperationModeSwitch [data-operation-mode="receipt"]').click()
+    row = page.locator('#receiptItemsList .receipt-item-row').first
+    draft_id = row.get_attribute('data-receipt-item-id')
+    payload = page.evaluate("() => window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
+    row.locator('[data-receipt-details-toggle]').click()
+    assert row.locator('[data-receipt-field="shop_name"]').is_visible()
+    assert row.get_attribute('data-receipt-item-id') == draft_id
+    row.locator('[data-receipt-details-toggle]').click()
+    assert row.locator('[data-receipt-field="shop_name"]').is_hidden()
+    assert row.get_attribute('data-receipt-item-id') == draft_id
+    assert page.locator('#receiptItemsList .receipt-item-row').count() == 1
+    assert page.evaluate("() => window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()") == payload
+
+
+@pytest.mark.e2e
 @pytest.mark.parametrize('width', [320, 390, 1024, 1100, 1440])
 def test_simple_and_receipt_editors_keep_main_path_short(static_server_url, page_with_receipt_api_mock, width):
     page = page_with_receipt_api_mock

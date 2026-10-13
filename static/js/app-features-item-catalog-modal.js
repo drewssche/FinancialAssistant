@@ -87,6 +87,8 @@
       if (!el.itemTemplateModal || !el.itemTemplateForm) {
         return;
       }
+      el.itemTemplatePreviewPanel?.classList.add("hidden");
+      el.itemTemplatePreviewBtn?.setAttribute("aria-expanded", "false");
       const isEdit = Boolean(item?.id);
       state.itemTemplateProductContext = !isEdit && product?.id ? product : null;
       const addingSource = Boolean(state.itemTemplateProductContext);

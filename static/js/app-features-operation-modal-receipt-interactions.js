@@ -495,7 +495,9 @@
         const id = Number(detailsButton.dataset.receiptDetailsToggle), item = getReceiptItemByDraftId(id, mode);
         if (item) {
           item.details_expanded = !item.details_expanded;
-          commitReceiptRowMutation(mode);
+          // A visibility change must not normalize away the empty trailing draft.
+          hideAllReceiptPickers();
+          renderReceiptItems(mode);
           getReceiptContext(mode).listNode?.querySelector(`[data-receipt-details-toggle="${id}"]`)?.focus({preventScroll: true});
         }
         return;

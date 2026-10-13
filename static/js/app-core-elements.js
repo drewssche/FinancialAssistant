@@ -834,6 +834,8 @@
       itemTemplateCategoryAll: document.getElementById("itemTemplateCategoryAll"),
       itemTemplatePrice: document.getElementById("itemTemplatePrice"),
       itemTemplatePriceDate: document.getElementById("itemTemplatePriceDate"),
+      itemTemplatePreviewBtn: document.getElementById("itemTemplatePreviewBtn"),
+      itemTemplatePreviewPanel: document.getElementById("itemTemplatePreviewPanel"),
       itemTemplatePreviewBody: document.getElementById("itemTemplatePreviewBody"),
       catalogProductModal: document.getElementById("catalogProductModal"),
       catalogProductModalTitle: document.getElementById("catalogProductModalTitle"),

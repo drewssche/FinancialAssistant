@@ -32,6 +32,7 @@
 @import url("./css/insights-compact.css?v=20261014-structure1");
 @import url("./css/directories-settings.css?v=20261014-kpi1");
 @import url("./css/kpi-cards.css?v=20261014-kpi1");
+@import url("./css/secondary-editors.css?v=20261014-secondary1");
 /* Work timesheet */
 .work-section-head { gap: 16px; align-items: flex-start; }
 .work-month-control { display: flex; align-items: center; gap: 10px; }

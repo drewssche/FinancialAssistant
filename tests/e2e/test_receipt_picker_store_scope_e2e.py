@@ -327,6 +327,12 @@ def page_with_receipt_api_mock():
             browser.close()
 
 
+def _expand_receipt_row(row):
+    toggle = row.locator('[data-receipt-details-toggle]')
+    if toggle.get_attribute('aria-expanded') != 'true':
+        toggle.click()
+
+
 @pytest.mark.e2e
 def test_receipt_picker_store_scoped_and_optimistic_create(static_server_url: str, page_with_receipt_api_mock):
     page = page_with_receipt_api_mock
@@ -353,6 +359,7 @@ def test_receipt_picker_store_scoped_and_optimistic_create(static_server_url: st
     page.wait_for_selector("#opReceiptFields:not(.hidden)")
 
     first_row = page.locator(".receipt-item-row").first
+    _expand_receipt_row(first_row)
     first_row.locator('[data-receipt-field="shop_name"]').fill("Соседи")
     first_row.locator('[data-receipt-field="name"]').click()
     page.wait_for_selector('.receipt-item-row:first-child .receipt-name-picker:not(.hidden)')
@@ -376,6 +383,8 @@ def test_receipt_picker_store_scoped_and_optimistic_create(static_server_url: st
     page.wait_for_timeout(100)
     assert second_name_picker.is_hidden()
 
+    _expand_receipt_row(second_row)
+
     second_row.locator('[data-receipt-field="shop_name"]').fill("Евроопт")
     assert second_row.locator('[data-receipt-field="shop_name"]').input_value() == "Евроопт"
     second_row.locator('[data-receipt-field="name"]').click()
@@ -383,7 +392,8 @@ def test_receipt_picker_store_scoped_and_optimistic_create(static_server_url: st
     assert second_name_picker.locator('.chip-btn:has-text("Хлеб")').first.is_visible()
     assert second_name_picker.locator('.chip-btn:has-text("Чипсы Лейс")').count() == 0
 
-    first_row.locator("[data-receipt-details-toggle]").click()
+    _expand_receipt_row(first_row)
+    _expand_receipt_row(first_row)
     first_row.locator('[data-receipt-field="shop_name"]').fill("Корона")
     assert second_row.locator('[data-receipt-field="shop_name"]').input_value() == "Евроопт"
 
@@ -414,6 +424,7 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
     page.wait_for_selector("#opReceiptFields:not(.hidden)")
 
     first_row = page.locator("#receiptItemsList .receipt-item-row").first
+    _expand_receipt_row(first_row)
     brand_input = first_row.locator('[data-receipt-field="brand_search"]')
     brand_input.click()
     page.wait_for_selector('.receipt-brand-picker:not(.hidden) button[data-receipt-brand-id="201"]')
@@ -449,7 +460,7 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
     assert long_suggestion.get_attribute("title") == long_name
     assert long_name in long_suggestion.inner_text()
     long_suggestion.click()
-    first_row.locator("[data-receipt-details-toggle]").click()
+    _expand_receipt_row(first_row)
 
     assert name_input.input_value() == long_name
     assert name_input.get_attribute("title") == long_name
@@ -483,6 +494,7 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
     assert "is-fallback" in (empty_brand_thumb.get_attribute("class") or "")
     assert empty_brand_thumb.locator(".catalog-media-fallback").inner_text() == "Б"
 
+    _expand_receipt_row(second_row)
     second_brand_input = second_row.locator('[data-receipt-field="brand_search"]')
     second_brand_input.click()
     page.wait_for_selector('.receipt-item-row:nth-child(2) .receipt-brand-picker:not(.hidden) button[data-receipt-brand-id="202"]')
@@ -497,6 +509,7 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
     cleared_brand_thumb = second_row.locator(".receipt-brand-thumb .catalog-media-thumb")
     expect(cleared_brand_thumb).to_have_count(1)
     assert cleared_brand_thumb.locator(".catalog-media-fallback").inner_text() == "Б"
+    _expand_receipt_row(second_row)
     second_row.locator("button.receipt-brand-thumb").click()
     expect(second_row.locator(".receipt-brand-picker")).to_be_visible()
     page.locator("#createTitle").click()
@@ -523,26 +536,16 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
 
     page.set_viewport_size({"width": 390, "height": 844})
     page.wait_for_timeout(120)
-    mobile_positions = first_row.evaluate(
-        """
-        node => {
-          const top = (selector) => node.querySelector(selector).getBoundingClientRect().top;
-          return {
-            source: top('.receipt-shop-cell'),
-            brand: top('.receipt-brand-cell'),
-            name: top('.receipt-name-cell'),
-            category: top('.receipt-category-cell'),
-            price: top('.receipt-price-cell'),
-            quantity: top('.receipt-quantity-cell'),
-          };
-        }
-        """
-    )
-    assert mobile_positions["source"] < mobile_positions["brand"]
-    assert mobile_positions["brand"] < mobile_positions["name"]
-    assert mobile_positions["name"] < mobile_positions["category"]
-    assert mobile_positions["category"] < mobile_positions["price"]
-    assert mobile_positions["price"] < mobile_positions["quantity"]
+    boxes = first_row.evaluate("""node =>
+      ['shop', 'brand', 'name', 'category', 'price', 'quantity'].map(field => {
+        const r = node.querySelector('.receipt-' + field + '-cell').getBoundingClientRect();
+        return {field, left:r.left, right:r.right, top:r.top, bottom:r.bottom, width:r.width, height:r.height};
+      })""")
+    for index, box in enumerate(boxes):
+        assert box['width'] > 0 and box['height'] > 0
+        for other in boxes[index + 1:]:
+            assert (box['right'] <= other['left'] + 1 or other['right'] <= box['left'] + 1
+                    or box['bottom'] <= other['top'] + 1 or other['bottom'] <= box['top'] + 1), (box, other)
 
     first_row.locator(".receipt-discount-toggle").click()
     mobile_discount_geometry = first_row.evaluate(
@@ -550,7 +553,7 @@ def test_receipt_brand_picker_long_name_and_mobile_layout(static_server_url: str
         node => {
           const price = node.querySelector('.receipt-price-cell');
           const unit = price.querySelector('[data-receipt-field="unit_price"]').getBoundingClientRect();
-          const chips = price.querySelector('.receipt-discount-type-row').getBoundingClientRect();
+          const chips = node.querySelector('.receipt-discount-type-row').getBoundingClientRect();
           return {
             rowClientWidth: node.clientWidth,
             rowScrollWidth: node.scrollWidth,
@@ -625,6 +628,7 @@ def test_receipt_thumbnail_opens_nested_item_card_and_live_syncs_saved_item(
     page.wait_for_selector("#createModal:not(.hidden)")
     page.locator('#createOperationModeSwitch button[data-operation-mode="receipt"]').click()
     first_row = page.locator("#receiptItemsList .receipt-item-row").first
+    _expand_receipt_row(first_row)
     first_row.locator('[data-receipt-field="shop_name"]').fill("Green")
 
     with page.expect_request(
@@ -641,7 +645,7 @@ def test_receipt_thumbnail_opens_nested_item_card_and_live_syncs_saved_item(
         )
     ).to_be_visible()
     first_row.locator('button[data-receipt-template-id="128"]').click()
-    first_row.locator("[data-receipt-details-toggle]").click()
+    _expand_receipt_row(first_row)
     first_row.locator('[data-receipt-field="quantity"]').fill("2")
     expect(first_row.locator('[data-open-receipt-template-card="128"]:visible')).to_have_count(3)
 
@@ -725,11 +729,12 @@ def test_cancelled_receipt_brand_change_does_not_mutate_template_hint(static_ser
 
     def select_saved_template():
         row = page.locator("#receiptItemsList .receipt-item-row").first
+        _expand_receipt_row(row)
         row.locator('[data-receipt-field="shop_name"]').fill("Соседи")
         row.locator('[data-receipt-field="name"]').click()
         page.wait_for_selector('.receipt-name-picker:not(.hidden) button[data-receipt-template-id="1"]')
         row.locator('button[data-receipt-template-id="1"]').click()
-        row.locator("[data-receipt-details-toggle]").click()
+        _expand_receipt_row(row)
         return row
 
     open_receipt()
@@ -777,11 +782,12 @@ def test_receipt_brand_follows_new_identity_and_archived_brand_is_cleared(static
         return page.locator("#receiptItemsList .receipt-item-row").first
 
     row = open_receipt()
+    _expand_receipt_row(row)
     row.locator('[data-receipt-field="shop_name"]').fill("Соседи")
     row.locator('[data-receipt-field="name"]').click()
     page.wait_for_selector('.receipt-name-picker:not(.hidden) button[data-receipt-template-id="1"]')
     row.locator('button[data-receipt-template-id="1"]').click()
-    row.locator("[data-receipt-details-toggle]").click()
+    _expand_receipt_row(row)
     row.locator('[data-receipt-field="name"]').fill("Ротманс новое название")
 
     renamed_payload = page.evaluate("() => window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
@@ -793,11 +799,12 @@ def test_receipt_brand_follows_new_identity_and_archived_brand_is_cleared(static
     page.wait_for_selector("#createModal", state="hidden")
 
     archived_row = open_receipt()
+    _expand_receipt_row(archived_row)
     archived_row.locator('[data-receipt-field="shop_name"]').fill("Архивный источник")
     archived_row.locator('[data-receipt-field="name"]').click()
     page.wait_for_selector('.receipt-name-picker:not(.hidden) button[data-receipt-template-id="129"]')
     archived_row.locator('button[data-receipt-template-id="129"]').click()
-    archived_row.locator("[data-receipt-details-toggle]").click()
+    _expand_receipt_row(archived_row)
     assert archived_row.locator('[data-receipt-field="brand_search"]').input_value() == "Архивный бренд"
 
     archived_row.locator('[data-receipt-field="name"]').fill("Новая позиция вместо архивной")
@@ -868,12 +875,14 @@ def test_pull_receipt_total_clears_discrepancy_after_multiple_rows(static_server
     page.wait_for_selector("#opReceiptFields:not(.hidden)")
 
     first_row = page.locator(".receipt-item-row").nth(0)
+    _expand_receipt_row(first_row)
     first_row.locator('[data-receipt-field="shop_name"]').fill("Green")
     first_row.locator('[data-receipt-field="name"]').fill("Кофе")
     first_row.locator('[data-receipt-field="quantity"]').fill("3")
     first_row.locator('[data-receipt-field="unit_price"]').fill("7.70")
 
     second_row = page.locator(".receipt-item-row").nth(1)
+    _expand_receipt_row(second_row)
     second_row.locator('[data-receipt-field="shop_name"]').fill("Green")
     second_row.locator('[data-receipt-field="name"]').fill("Сироп")
     second_row.locator('[data-receipt-field="quantity"]').fill("2")
@@ -889,6 +898,7 @@ def test_pull_receipt_total_clears_discrepancy_after_multiple_rows(static_server
         }
         """
     )
+    page.locator("#createModal .operation-preview-action").click()
     preview_geometry = page.locator("#createPreviewBody .preview-cell-btn").nth(2).evaluate(
         """
         node => {
@@ -1110,6 +1120,7 @@ def test_receipt_category_picker_closes_on_outside_click(static_server_url: str,
     page.wait_for_selector("#opReceiptFields:not(.hidden)")
 
     first_row = page.locator(".receipt-item-row").first
+    _expand_receipt_row(first_row)
     first_row.locator('[data-receipt-field="category_search"]').click()
     page.wait_for_selector('.receipt-item-row:first-child .receipt-category-picker:not(.hidden)')
 
@@ -1148,6 +1159,7 @@ def test_receipt_entity_pickers_are_accessible_and_close_without_closing_modal(
     page.wait_for_selector("#opReceiptFields:not(.hidden)")
 
     first_row = page.locator("#receiptItemsList .receipt-item-row").first
+    _expand_receipt_row(first_row)
     source_cell = first_row.locator(".receipt-shop-cell")
     source_input = first_row.locator('[data-receipt-field="shop_name"]')
     source_input.click()
@@ -1210,6 +1222,7 @@ def test_receipt_entity_pickers_are_accessible_and_close_without_closing_modal(
 
     # Opening another picker in the same row closes the previous one and moves
     # the ownership class to the newly active cell.
+    _expand_receipt_row(first_row)
     brand_input = first_row.locator('[data-receipt-field="brand_search"]')
     brand_input.click()
     brand_picker = first_row.locator(".receipt-brand-picker")
@@ -1287,7 +1300,7 @@ def test_receipt_entity_pickers_are_accessible_and_close_without_closing_modal(
 
     # A click elsewhere in the same receipt row is still outside the picker.
     # It must close the popover and clear the row/cell ownership classes.
-    first_row.locator('[data-receipt-field="unit_price"]').click()
+    first_row.locator(".receipt-new-heading > span").click()
     expect(name_picker).to_be_hidden()
     expect(page.locator("#createModal")).to_be_visible()
     assert "has-open-popover" not in (first_row.get_attribute("class") or "")
@@ -1318,17 +1331,20 @@ def test_mobile_create_modal_preview_stays_above_sticky_cta(static_server_url: s
 
     page.fill("#opDate", "2026-03-08")
     page.fill("#opAmount", "123.45")
+    page.locator("#createModal .operation-extra > summary").click()
     page.fill("#opNote", "Мобильная проверка превью")
     page.locator('#createOperationModeSwitch button[data-operation-mode="receipt"]').click()
     page.wait_for_selector("#opReceiptFields:not(.hidden)")
 
     first_row = page.locator(".receipt-item-row").first
+    _expand_receipt_row(first_row)
     first_row.locator('[data-receipt-field="shop_name"]').fill("Соседи")
     first_row.locator('[data-receipt-field="name"]').fill("Длинная тестовая позиция")
     first_row.locator('[data-receipt-field="quantity"]').fill("2")
     first_row.locator('[data-receipt-field="unit_price"]').fill("11.20")
     page.wait_for_timeout(150)
 
+    page.locator("#createModal .operation-preview-action").click()
     page.evaluate(
         """
         () => {
@@ -1427,6 +1443,7 @@ def test_mobile_edit_modal_preview_stays_above_sticky_cta(static_server_url: str
     page.wait_for_selector("#editModal:not(.hidden)")
     page.wait_for_selector("#editReceiptFields:not(.hidden)")
 
+    page.locator("#editModal .operation-preview-action").click()
     page.evaluate(
         """
         () => {
@@ -1528,8 +1545,8 @@ def test_edit_receipt_mixed_categories_keep_inheritance_and_preview_summary(stat
     first_row = page.locator(".receipt-item-row").first
     second_row = page.locator(".receipt-item-row").nth(1)
 
-    first_row.locator("[data-receipt-details-toggle]").click()
-    second_row.locator("[data-receipt-details-toggle]").click()
+    _expand_receipt_row(first_row)
+    _expand_receipt_row(second_row)
     expect_badge_first = first_row.locator(".receipt-category-badge")
     expect_badge_second = second_row.locator(".receipt-category-badge")
     assert expect_badge_first.is_visible()
@@ -1546,6 +1563,8 @@ def test_edit_receipt_mixed_categories_keep_inheritance_and_preview_summary(stat
     first_active = first_row.locator(".receipt-category-picker .chip-btn.active").first
     assert "Еда" in (first_active.text_content() or "")
 
+    if not page.locator("#editCategorySearch").is_visible():
+        page.locator("#editModal .operation-extra > summary").click()
     page.click("#editCategorySearch")
     page.wait_for_selector("#editCategoryPickerBlock:not(.hidden)")
     page.locator('#editCategoryAll button[data-category-id="103"]').click()
@@ -1600,6 +1619,8 @@ def test_mobile_item_template_modal_preview_stays_above_sticky_cta(static_server
     page.fill("#itemTemplatePrice", "15.40")
     page.wait_for_timeout(150)
 
+    page.locator("#itemTemplatePreviewBtn").click()
+    page.wait_for_timeout(300)
     geometry = page.evaluate(
         """
         () => {
@@ -1630,7 +1651,7 @@ def test_mobile_item_template_modal_preview_stays_above_sticky_cta(static_server
 
 
 @pytest.mark.e2e
-def test_mobile_source_group_modal_preview_stays_above_sticky_cta(static_server_url: str, page_with_receipt_api_mock):
+def test_mobile_source_group_modal_uses_counters_without_preview_table(static_server_url: str, page_with_receipt_api_mock):
     page = page_with_receipt_api_mock
     page.set_viewport_size({"width": 390, "height": 844})
     page.goto(f"{static_server_url}/static/index.html")
@@ -1659,33 +1680,9 @@ def test_mobile_source_group_modal_preview_stays_above_sticky_cta(static_server_
     page.evaluate("() => window.App.getRuntimeModule('item-catalog')?.updateSourceGroupPreview?.()")
     page.wait_for_timeout(150)
 
-    geometry = page.evaluate(
-        """
-        () => {
-          const previewRow = document.querySelector('#sourceGroupPreviewBody tr');
-          const previewPanel = document.querySelector('#sourceGroupModal .preview-panel');
-          const footer = document.querySelector('#sourceGroupModal .modal-footer');
-          if (!previewRow || !previewPanel || !footer) {
-            return null;
-          }
-          const previewRowRect = previewRow.getBoundingClientRect();
-          const previewPanelRect = previewPanel.getBoundingClientRect();
-          const footerRect = footer.getBoundingClientRect();
-          return {
-            previewRowTop: previewRowRect.top,
-            previewRowBottom: previewRowRect.bottom,
-            previewPanelTop: previewPanelRect.top,
-            footerTop: footerRect.top,
-            footerBottom: footerRect.bottom,
-          };
-        }
-        """
-    )
-
-    assert geometry is not None
-    assert geometry["previewPanelTop"] < geometry["footerTop"]
-    assert geometry["previewRowTop"] < geometry["footerTop"]
-    assert geometry["previewRowBottom"] <= geometry["footerTop"] + 2
+    expect(page.locator('#sourceGroupModal .preview-panel')).to_have_count(0)
+    expect(page.locator('#submitSourceGroupBtn')).to_be_visible()
+    assert page.locator('#sourceGroupModal .modal-card').evaluate('n => n.scrollWidth <= n.clientWidth')
 
 
 @pytest.mark.e2e
@@ -2088,6 +2085,7 @@ def test_catalog_products_default_view_offers_merge_labels_and_source_matched_pi
     page.locator('#createOperationModeSwitch button[data-operation-mode="receipt"]').click()
     page.wait_for_function("() => (window.App.state.receiptProductHints || []).some((item) => Number(item.id) === 401)")
     receipt_row = page.locator("#receiptItemsList .receipt-item-row").first
+    _expand_receipt_row(receipt_row)
     receipt_row.locator('[data-receipt-field="shop_name"]').fill("Green")
     page.wait_for_function("() => Number(window.App.state.createReceiptItems[0]?.source_id) === 304")
     receipt_row.locator('[data-receipt-field="name"]').click()
@@ -2111,6 +2109,7 @@ def test_receipt_keyboard_layout_search_and_safe_highlight(static_server_url, pa
     page.click("#addOperationCta")
     page.locator('#createOperationModeSwitch button[data-operation-mode="receipt"]').click()
     row = page.locator(".receipt-item-row").first
+    _expand_receipt_row(row)
     shop = row.locator('[data-receipt-field="shop_name"]')
     shop.fill("tdhjjgn")
     option = page.locator('button[data-receipt-shop-name="Евроопт"]').first
@@ -2157,7 +2156,7 @@ def test_measurement_defaults_manual_edit_and_saved_snapshot(static_server_url, 
     # Use the actual product picker to apply the catalog defaults.
     row.locator('[data-receipt-field="name"]').fill('Крупа')
     page.locator('[data-receipt-product-id="401"]').first.click()
-    row.locator('[data-receipt-details-toggle]').click()
+    _expand_receipt_row(row)
     row.locator('.receipt-measurements summary').click()
     expect(row.locator('[data-receipt-field="sale_unit"]')).to_have_value('pack')
     expect(row.locator('[data-receipt-field="package_quantity"]')).to_have_value('900')
@@ -2183,7 +2182,7 @@ def test_measurement_defaults_manual_edit_and_saved_snapshot(static_server_url, 
       });
     }''', payload[0])
     saved = page.locator('#editReceiptItemsList .receipt-item-row').first
-    saved.locator('[data-receipt-details-toggle]').click()
+    _expand_receipt_row(saved)
     saved.locator('.receipt-measurements summary').click()
     expect(saved.locator('[data-receipt-field="package_quantity"]')).to_have_value('800')
     assert errors == []

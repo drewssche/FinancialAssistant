@@ -20,7 +20,7 @@
       el.batchItemTemplatePreviewBody.innerHTML = "";
     }
     if (el.confirmBatchItemTemplateBtn) {
-      el.confirmBatchItemTemplateBtn.textContent = "Импортировать 0 строк";
+      window.App.icons.apply(el.confirmBatchItemTemplateBtn, "save", "Импортировать 0 строк");
       el.confirmBatchItemTemplateBtn.disabled = true;
       el.confirmBatchItemTemplateBtn.classList.add("hidden");
     }
@@ -68,7 +68,7 @@
     renderItemCatalogFeedback(plan);
     renderItemCatalogPreview(plan);
     if (el.confirmBatchItemTemplateBtn) {
-      el.confirmBatchItemTemplateBtn.textContent = `Импортировать ${plan.validRows.length} строк`;
+      window.App.icons.apply(el.confirmBatchItemTemplateBtn, "save", `Импортировать ${plan.validRows.length} строк`);
       el.confirmBatchItemTemplateBtn.disabled = plan.validRows.length === 0;
       el.confirmBatchItemTemplateBtn.classList.toggle("hidden", plan.validRows.length === 0);
     }

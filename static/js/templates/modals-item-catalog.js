@@ -8,16 +8,15 @@
         <div class="panel-head row between">
           <h3 id="itemTemplateModalTitle">Новая позиция</h3>
           <div class="modal-head-actions">
-            <button id="itemTemplateActivityBtn" class="btn btn-secondary modal-head-icon-btn hidden" type="button" title="Журнал" aria-label="Открыть журнал"><span aria-hidden="true">◷</span></button>
-            <button id="itemTemplateUsageBtn" class="btn btn-secondary modal-head-icon-btn hidden" type="button" title="Операции" aria-label="Открыть операции"><span aria-hidden="true">↗</span></button>
-            <button id="itemTemplateHistoryBtn" class="btn btn-secondary modal-head-icon-btn hidden" type="button" title="История цен" aria-label="Открыть историю цен"><span aria-hidden="true">⌁</span></button>
-            <button id="closeItemTemplateModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-              <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-            </button>
+            <button id="itemTemplateActivityBtn" class="btn btn-secondary modal-head-icon-btn hidden btn-icon" type="button" title="Открыть журнал" aria-label="Открыть журнал">${window.App.icons.svg("history")}</button>
+            <button id="itemTemplateUsageBtn" class="btn btn-secondary modal-head-icon-btn hidden btn-icon" type="button" title="Открыть операции" aria-label="Открыть операции">${window.App.icons.svg("receipt")}</button>
+            <button id="itemTemplateHistoryBtn" class="btn btn-secondary modal-head-icon-btn hidden btn-icon" type="button" title="Открыть историю цен" aria-label="Открыть историю цен">${window.App.icons.svg("chart")}</button>
+            <button id="itemTemplatePreviewBtn" class="btn btn-secondary btn-icon" type="button" title="Предпросмотр позиции" aria-label="Предпросмотр позиции" aria-expanded="false" aria-controls="itemTemplatePreviewPanel">${window.App.icons.svg("eye")}</button>
+            <button id="closeItemTemplateModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
           </div>
         </div>
         <form id="itemTemplateForm" class="category-modal-form">
-          <p class="muted-small item-template-product-help">Добавляется магазин для существующего товара. Бренд, категория и фото общие. Цена необязательна; покупка или операция не создаётся.</p>
+          <p class="muted-small item-template-product-help">Предложение магазина. Бренд, категория и фото общие с товаром; операция не создаётся.</p>
           <section class="catalog-image-field" data-catalog-image-picker="item-template" aria-label="Фотография позиции">
             <div class="catalog-image-picker-preview" data-catalog-image-preview></div>
             <div class="catalog-image-picker-actions">
@@ -34,7 +33,7 @@
           </section>
           <input id="itemTemplateSource" type="hidden" />
           <div id="itemTemplateSourceField" class="create-category-field">
-            <input id="itemTemplateSourceSearch" type="text" placeholder="Источник" autocomplete="off" />
+            <label class="field"><span>Источник</span><input id="itemTemplateSourceSearch" type="text" placeholder="Источник" autocomplete="off" /></label>
             <div id="itemTemplateSourcePickerBlock" class="operation-category-picker app-popover hidden">
               <div class="category-picker-block">
                 <div id="itemTemplateSourceAll" class="category-chip-list"></div>
@@ -43,17 +42,17 @@
           </div>
           <input id="itemTemplateBrand" type="hidden" />
           <div id="itemTemplateBrandField" class="create-category-field">
-            <input id="itemTemplateBrandSearch" type="text" placeholder="Бренд (необязательно)" autocomplete="off" />
+            <label class="field"><span>Бренд</span><input id="itemTemplateBrandSearch" type="text" placeholder="Бренд (необязательно)" autocomplete="off" /></label>
             <div id="itemTemplateBrandPickerBlock" class="operation-category-picker app-popover hidden">
               <div class="category-picker-block">
                 <div id="itemTemplateBrandAll" class="category-chip-list"></div>
               </div>
             </div>
           </div>
-          <input id="itemTemplateName" type="text" placeholder="Позиция" required />
+          <label class="field item-template-name-field"><span>Название позиции</span><input id="itemTemplateName" type="text" placeholder="Позиция" required /></label>
           <input id="itemTemplateCategory" type="hidden" />
           <div id="itemTemplateCategoryField" class="create-category-field">
-            <input id="itemTemplateCategorySearch" type="text" placeholder="Категория позиции" autocomplete="off" />
+            <label class="field"><span>Категория</span><input id="itemTemplateCategorySearch" type="text" placeholder="Категория позиции" autocomplete="off" /></label>
             <div id="itemTemplateCategoryPickerBlock" class="operation-category-picker app-popover hidden">
               <div class="category-picker-block">
                 <div id="itemTemplateCategoryAll" class="category-chip-list"></div>
@@ -76,7 +75,7 @@
             </label>
           </div>
         </form>
-        <div class="preview-panel">
+        <div id="itemTemplatePreviewPanel" class="preview-panel hidden">
           <div class="preview-title">Превью строки в каталоге</div>
           <div class="table-wrap">
             <table class="table table-hover">
@@ -94,9 +93,7 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button id="submitItemTemplateBtn" class="btn btn-cta modal-main-cta" type="submit" form="itemTemplateForm">
-            Сохранить
-          </button>
+          <button id="submitItemTemplateBtn" class="btn btn-cta modal-main-cta btn-icon" type="submit" form="itemTemplateForm" title="Сохранить позицию" aria-label="Сохранить позицию">${window.App.icons.svg("save")}</button>
         </div>
       </div>
     </div>
@@ -109,10 +106,8 @@
 
           </div>
           <div class="modal-head-actions">
-            <button id="catalogProductActivityBtn" class="btn btn-secondary modal-head-icon-btn hidden" type="button" title="Журнал" aria-label="Открыть журнал"><span aria-hidden="true">◷</span></button>
-            <button id="closeCatalogProductModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-              <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-            </button>
+            <button id="catalogProductActivityBtn" class="btn btn-secondary modal-head-icon-btn hidden btn-icon" type="button" title="Открыть журнал" aria-label="Открыть журнал">${window.App.icons.svg("history")}</button>
+            <button id="closeCatalogProductModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
           </div>
         </div>
         <nav id="catalogProductTabs" class="segmented catalog-product-tabs hidden" aria-label="Разделы товара">
@@ -260,9 +255,7 @@
             <h3 id="catalogProductMergeTitle">Объединить товары</h3>
             <p class="subtitle">Выберите карточку, которая останется главной</p>
           </div>
-          <button id="closeCatalogProductMergeModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-          </button>
+          <button id="closeCatalogProductMergeModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
         </div>
         <form id="catalogProductMergeForm" class="catalog-product-merge-form">
           <div id="catalogProductMergeOptions" class="catalog-product-merge-options"></div>
@@ -386,9 +379,7 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="itemTemplateHistoryTitle">История цен</h3>
-          <button id="closeItemTemplateHistoryModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-          </button>
+          <button id="closeItemTemplateHistoryModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
         </div>
         <div id="itemTemplateHistoryMeta" class="subtitle item-template-history-meta">—</div>
         <div class="table-wrap">
@@ -410,14 +401,11 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="batchItemTemplateTitle">Массовое добавление позиций</h3>
-          <button id="closeBatchItemTemplateModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-          </button>
+          <button id="closeBatchItemTemplateModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
         </div>
         <form id="batchItemTemplateForm" class="category-modal-form">
-          <p class="subtitle">Одна строка: <code>источник;позиция;цена</code>. Цена опциональна.</p>
-          <p class="muted-small">Новый источник будет создан автоматически. Сумма поддерживает <code>01,23</code> и <code>01.23</code>.</p>
-          <textarea id="batchItemTemplateInput" rows="8" placeholder="Евроопт;Сигареты Rothmans;9,40&#10;WB;USB кабель;12.99"></textarea>
+          <p class="subtitle"><code>Источник;позиция;цена</code> — по одной позиции на строку. Цена необязательна; новые источники создаются автоматически.</p>
+          <textarea aria-label="Строки позиций для импорта" id="batchItemTemplateInput" rows="8" placeholder="Евроопт;Сигареты Rothmans;9,40&#10;WB;USB кабель;12.99"></textarea>
           <div id="batchItemTemplateFeedback" class="status-box hidden"></div>
           <div id="batchItemTemplatePreview" class="bulk-import-preview hidden">
             <div class="preview-title">Предпросмотр строк</div>
@@ -438,12 +426,8 @@
           </div>
         </form>
         <div class="modal-footer">
-          <button id="previewBatchItemTemplateBtn" class="btn btn-secondary" type="submit" form="batchItemTemplateForm">
-            Проверить строки
-          </button>
-          <button id="confirmBatchItemTemplateBtn" class="btn btn-cta modal-main-cta hidden" type="button">
-            Импортировать 0 строк
-          </button>
+          <button id="previewBatchItemTemplateBtn" class="btn btn-secondary btn-icon" type="submit" form="batchItemTemplateForm" title="Проверить строки" aria-label="Проверить строки">${window.App.icons.svg("eye")}</button>
+          <button id="confirmBatchItemTemplateBtn" class="btn btn-cta modal-main-cta hidden btn-icon" type="button" title="Импортировать строки" aria-label="Импортировать строки">${window.App.icons.svg("save")}</button>
         </div>
       </div>
     </div>

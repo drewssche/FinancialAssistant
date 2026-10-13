@@ -60,6 +60,14 @@
     }
     el.itemTemplateBrandAll?.addEventListener("click", (event) => itemCatalogFeature.handleItemTemplateBrandPickerClick?.(event));
 
+    el.itemTemplatePreviewBtn?.addEventListener("click", () => {
+      const hidden = el.itemTemplatePreviewPanel.classList.toggle("hidden");
+      el.itemTemplatePreviewBtn.setAttribute("aria-expanded", String(!hidden));
+      if (!hidden) {
+        itemCatalogFeature.updateItemTemplatePreview?.();
+        el.itemTemplatePreviewPanel.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      }
+    });
     el.itemTemplateHistoryBtn?.addEventListener("click", () => {
       const itemId = Number(el.itemTemplateHistoryBtn.dataset.itemTemplateHistoryId || 0);
       const item = (state.itemCatalogItems || []).find((row) => Number(row?.id || 0) === itemId);
