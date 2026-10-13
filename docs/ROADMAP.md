@@ -21,7 +21,7 @@
 - [x] Replace browser-native receipt store suggestions with an app-styled combobox using shared popup positioning and search normalization; retain manual names and the existing store inheritance flow. Clamp floating popup width to the viewport at 320 px.
 - [x] Fill the receipt-mode segmented track with equal buttons. Remove «Ещё» from operation headers and show available preview/history/receipt/session/calculator actions directly as icons; retain accessible names and header wrapping on phones.
 - [x] Local validation: 56 selected browser scenarios passed (18 UX, 3 discounts, 21 money-flow/calculator, 14 plans/resumption). One calculator scenario timed out during mock startup before reaching the form and passed in isolation; final 18 UX cases passed after header sizing and ArrowUp corrections. Mobile and desktop screenshots reviewed; syntax/diff checks pass.
-- [ ] Record production verification after rollout.
+- [x] Released `531bc11` via GitHub → server `git pull --ff-only origin main` → build/run. Assets `20261013-visual-consistency1`; all nine changed static file hashes verified. Schema remains `20261013_0050`; full-field fingerprints of eight tables unchanged. All six containers healthy with zero restarts at the final short check; only app/bot recreated. Rollback image tags: `before-visual-consistency-20261013`. Manual CI policy retained.
 
 ### Operation entry UX — 2026-10-13
 - [x] Reproduce mobile clutter and overlapping long receipts on local test data.
