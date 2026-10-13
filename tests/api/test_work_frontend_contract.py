@@ -74,7 +74,12 @@ def test_work_section_loads_are_single_flight_and_keep_the_latest_anchor():
     assert "await performWorkSectionLoad(request)" in drain
 
     # A mutation during an in-flight read must schedule another pass for the same month.
-    assert source.count("loadWorkSection({ refresh: true })") >= 6
+    assert source.count("loadWorkSection({ refresh: true })") >= 5
+    day_mutation = source.split("async function submitDayChange", 1)[1].split("async function saveDay", 1)[0]
+    assert "await loadWorkSection({ refresh: true })" in day_mutation
+    for name, following in [("saveDay", "resetDay"), ("resetDay", "saveSettings")]:
+        handler = source.split(f"async function {name}", 1)[1].split(f"async function {following}", 1)[0]
+        assert "await submitDayChange(" in handler
 
 
 def test_work_payment_history_range_is_limited_to_ten_years():

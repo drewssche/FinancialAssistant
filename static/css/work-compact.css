@@ -26,12 +26,12 @@
 #workSection .work-time-kpi-rate { min-width: 0; }
 #workSection .work-time-kpi-rate > strong { font-size: 16px; }
 #workSection .work-calendar-legend { gap: 8px 14px; font-size: 11px; }
-#workSection .work-day-editor { padding: 16px 0 0; background: none; border: 0; border-top: 1px solid var(--border); border-radius: 0; }
-#workSection .work-day-editor .panel-head { gap: 10px; align-items: flex-start; }
-#workSection .work-day-editor h3 { font-size: 16px; }
-#workSection .work-day-editor .field { min-width: 0; }
-#workSection .work-day-editor-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-#workSection .work-day-editor-grid > .field:first-child { grid-column: span 2; }
+#workDayModal .work-day-editor { width: min(640px, 100%); margin: 0; padding: 20px; }
+#workDayModal .work-day-editor .panel-head { gap: 10px; align-items: flex-start; }
+#workDayModal .work-day-editor h3 { font-size: 16px; }
+#workDayModal .work-day-editor .field { min-width: 0; }
+#workDayModal .work-day-editor-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#workDayModal .work-day-editor-grid > .field:first-child { grid-column: span 2; }
 #workSection .settings-actions { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 #workSection .work-statistics-toolbar { flex-direction: row; flex-wrap: wrap; gap: 12px; }
 #workSection #workStatisticsKpi { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
@@ -64,9 +64,9 @@
   #workSection .work-day-today-label { display: none; }
   #workSection .work-day-payment { min-height: 24px; padding: 2px; }
   #workSection .work-hours-chip { padding: 2px; font-size: 10px; }
-  #workSection .work-day-editor-grid { grid-template-columns: 1fr 1fr; }
-  #workSection .work-day-editor-grid > .field:first-child { grid-column: 1 / -1; }
-  #workSection .work-day-editor .field input, #workSection .work-day-editor .field select { width: 100%; min-width: 0; }
+  #workDayModal .work-day-editor-grid { grid-template-columns: 1fr 1fr; }
+  #workDayModal .work-day-editor-grid > .field:first-child { grid-column: 1 / -1; }
+  #workDayModal .work-day-editor .field input, #workDayModal .work-day-editor .field select { width: 100%; min-width: 0; }
   #workSection #workStatisticsKpi { grid-template-columns: 1fr 1fr; gap: 14px; }
   #workSection .work-statistics-toolbar .work-month-control strong { flex: 1; min-width: 0; font-size: 13px; overflow-wrap: anywhere; }
   #workSection .work-payroll-sidebar { border-top: 1px solid var(--border); padding-top: 18px; }
@@ -94,4 +94,16 @@
   #workSettingsForm .field { min-width: 0; }
   #workSettingsForm .field:has(#workCompany, #workPosition, #workStartDate, #workSalaryPlan, #workAdvancePlan) { grid-column: 1 / -1; }
   #workSettingsForm input, #workSettingsForm select { min-width: 0; max-width: 100%; }
+}
+
+body:has(#workDayModal:not(.hidden)) { overflow: hidden; }
+#workDayModal .work-day-editor { background: linear-gradient(180deg, rgba(20, 29, 45, .96), rgba(14, 21, 34, .98)); }
+#workDayModal .work-day-editor .panel-head { margin-bottom: 18px; }
+#workDayModal .work-day-editor h3 { line-height: 1.4; }
+#workDayModal .work-day-editor > .field { margin-top: 14px; }
+#workDayModal .work-day-editor-actions { display: flex; justify-content: flex-end; gap: 8px; }
+#workDayModal .btn.btn-icon { width: 44px; min-width: 44px; height: 44px; padding: 0; flex: 0 0 44px; }
+@media (max-width: 640px) {
+  #workDayModal .work-day-editor { width: 100%; min-height: 0; padding: 16px 16px calc(20px + env(safe-area-inset-bottom)); }
+  #workDayModal .work-day-editor-grid { grid-template-columns: minmax(0, 1fr); }
 }

@@ -221,11 +221,16 @@ def test_work_views_keep_calendar_first_and_day_draft(request, width):
         assert geometry['payrollTop'] >= geometry['calendarBottom']
     page.locator('[data-work-date="2026-09-07"]').click()
     page.fill('#workDayNote', 'Черновик исключения')
+    expect(page.locator('#workDayModal')).to_be_visible()
+    page.keyboard.press('Escape')
+    expect(page.locator('#workDayModal')).to_be_hidden()
+    expect(page.locator('[data-work-date="2026-09-07"]')).to_be_focused()
     for view, selector in [('payments', '#workPaymentsView'), ('settings', '#workSettingsForm'), ('contracts', '#workContractsView')]:
         page.locator(f'[data-work-view="{view}"]').click()
         expect(page.locator(selector)).to_be_visible()
         expect(page.locator('#workMoneySummaryGrid')).to_be_hidden()
     page.locator('[data-work-view="timesheet"]').click()
+    page.locator('[data-work-date="2026-09-07"]').click()
     expect(page.locator('#workDayForm')).to_be_visible()
     expect(page.locator('#workDayNote')).to_have_value('Черновик исключения')
     assert page.locator('#workDayForm button[type="submit"]').get_attribute('aria-label') == 'Сохранить исключение'
@@ -297,3 +302,71 @@ def test_company_picker_layout_keyboard_custom_and_view_dismissal(work_page, wid
     expect(page.locator('#workContractCompany')).to_have_value('Битрикс')
     page.locator('[data-work-view="settings"]').click()
     expect(field).to_have_value('Битрикс')
+
+
+@pytest.mark.e2e
+def test_work_day_modal_save_retry_range_and_reset(request):
+    page, snapshot = request.getfixturevalue('work_page')
+    page.evaluate('window.App.core.setMobileNavOpen(false)')
+    writes = []
+    fail = True
+
+    def mutate(route):
+        nonlocal fail
+        writes.append((route.request.method, route.request.url, route.request.post_data_json))
+        if fail:
+            fail = False
+            return route.fulfill(status=500, json={'detail': 'Попробуйте ещё раз'})
+        snapshot['days'][-1]['is_manual'] = route.request.method != 'DELETE'
+        route.fulfill(json={})
+
+    page.route('**/api/v1/work/days', mutate)
+    page.route('**/api/v1/work/days/**', mutate)
+    day = page.locator('[data-work-date="2026-09-07"]')
+    before_height = page.locator('#workTimesheetView').bounding_box()['height']
+    day.click()
+    expect(page.locator('#workDayStatus')).to_be_focused()
+    assert page.locator('#workTimesheetView').bounding_box()['height'] == before_height
+    page.locator('#closeWorkDayEditorBtn').focus()
+    page.keyboard.press('Shift+Tab')
+    expect(page.locator('#workDayForm button[type="submit"]')).to_be_focused()
+    page.keyboard.press('Tab')
+    expect(page.locator('#closeWorkDayEditorBtn')).to_be_focused()
+    page.select_option('#workDayStatus', 'vacation')
+    page.fill('#workDayDateTo', '2026-09-09')
+    page.fill('#workDayNote', 'Отпуск')
+    page.locator('#workDayForm button[type="submit"]').click()
+    expect(page.locator('#workDayModal')).to_be_visible()
+    expect(page.locator('#workDayForm button[type="submit"]')).to_be_enabled()
+    expect(page.locator('#workDayNote')).to_have_value('Отпуск')
+    page.locator('#workDayForm button[type="submit"]').click()
+    expect(page.locator('#workDayModal')).to_be_hidden()
+    expect(day).to_be_focused()
+    assert len(writes) == 2
+    assert writes[1][2] == {'status': 'vacation', 'planned_hours': 8, 'actual_hours': 0, 'credited_hours': 8, 'note': 'Отпуск', 'date_from': '2026-09-07', 'date_to': '2026-09-09'}
+    day.click()
+    page.locator('#resetWorkDayBtn').click()
+    expect(page.locator('#workDayModal')).to_be_hidden()
+    assert writes[-1][0] == 'DELETE'
+    assert writes[-1][1].endswith('/days/2026-09-07')
+
+
+@pytest.mark.e2e
+def test_work_day_modal_blocks_duplicate_save_and_close_while_pending(request):
+    page, _ = request.getfixturevalue('work_page')
+    pending = []
+    page.route('**/api/v1/work/days/**', lambda route: pending.append(route))
+    page.locator('[data-work-date="2026-09-07"]').click()
+    page.fill('#workDayActual', '7.25')
+    page.locator('#workDayForm button[type="submit"]').click()
+    expect(page.locator('#workDayForm')).to_have_attribute('aria-busy', 'true')
+    expect(page.locator('#closeWorkDayEditorBtn')).to_be_disabled()
+    page.evaluate('document.getElementById("workDayForm").requestSubmit()')
+    page.keyboard.press('Tab')
+    expect(page.locator('#workDayForm')).to_be_focused()
+    page.keyboard.press('Escape')
+    expect(page.locator('#workDayModal')).to_be_visible()
+    assert len(pending) == 1
+    assert pending[0].request.post_data_json['actual_hours'] == 7.25
+    pending[0].fulfill(json={})
+    expect(page.locator('#workDayModal')).to_be_hidden()

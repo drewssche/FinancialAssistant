@@ -73,37 +73,7 @@
                 <span><i class="work-legend-dot work-legend-manual"></i> изменено вручную</span>
                 <span><i class="work-legend-dot work-legend-payment"></i> выплата</span>
               </div>
-              <form id="workDayForm" class="work-day-editor hidden">
-                <div class="panel-head row between">
-                  <div><h3 id="workDayEditorTitle">День</h3><p class="subtitle">Ручная настройка имеет приоритет над календарём</p></div>
-                  <button id="closeWorkDayEditorBtn" class="btn btn-ghost btn-xs btn-icon" type="button" aria-label="Закрыть" title="Закрыть">${window.App.icons.svg("close")}</button>
-                </div>
-                <input id="workDayDate" type="hidden" />
-                <div class="work-day-editor-grid">
-                  <label class="field"><span>Статус</span><select id="workDayStatus">
-                    <option value="workday">Рабочий день</option>
-                    <option value="vacation">Отпуск</option>
-                    <option value="sick_paid">Сикдей с оплатой</option>
-                    <option value="sick_unpaid">Больничный / сикдей без оплаты</option>
-                    <option value="company_day_off">Выходной за счёт компании</option>
-                    <option value="day_off">Отгул</option>
-                    <option value="unpaid_leave">Без сохранения зарплаты</option>
-                    <option value="transferred_workday">Перенесённый рабочий день</option>
-                    <option value="overtime">Сверхурочная работа</option>
-                    <option value="holiday">Праздник</option>
-                    <option value="weekend">Выходной</option>
-                  </select></label>
-                  <label class="field"><span>Применить по дату</span><div class="date-input-wrap"><input id="workDayDateTo" type="date" /><button class="date-input-trigger" type="button" data-date-picker-trigger="workDayDateTo" aria-label="Открыть календарь"></button></div></label>
-                  <label class="field"><span>План, ч</span><input id="workDayPlanned" type="number" min="0" max="24" step="0.25" /></label>
-                  <label class="field"><span>Факт, ч</span><input id="workDayActual" type="number" min="0" max="24" step="0.25" /></label>
-                  <label class="field"><span>Оплачивается, ч</span><input id="workDayCredited" type="number" min="0" max="24" step="0.25" /></label>
-                </div>
-                <label class="field"><span>Комментарий</span><input id="workDayNote" type="text" maxlength="500" placeholder="Причина или пояснение" /></label>
-                <div class="settings-actions work-day-editor-actions">
-                  <button class="btn btn-primary btn-icon" type="submit" aria-label="Сохранить исключение" title="Сохранить исключение">${window.App.icons.svg("save")}</button>
-                  <button id="resetWorkDayBtn" class="btn btn-secondary btn-icon" type="button" aria-label="Вернуть по графику" title="Вернуть по графику">${window.App.icons.svg("refresh")}</button>
-                </div>
-              </form>
+
               </div><aside class="work-payroll-sidebar" aria-label="Зарплата и оценка заработка">
             <section class="work-salary-cycle-card" aria-label="Зарплата за расчётный период">
               <div id="workMoneySummaryGrid" aria-live="polite"></div>

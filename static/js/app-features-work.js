@@ -28,6 +28,7 @@
   let activeWorkLoadKey = "";
   let queuedWorkLoad = null;
   let bound = false;
+  let dayEditorBusy = false;
 
   const monthFormatter = new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric" });
   const summaryUi = window.App.getRuntimeModule("work-summary-ui").createWorkSummaryUi({
@@ -195,7 +196,7 @@
       "workPrevMonthBtn", "workNextMonthBtn", "workTodayBtn", "workSummaryGrid", "workTimesheetPeriodTitle",
       "workMoneySummaryGrid", "workPaymentsGrid", "workCalendarGrid", "workViewTabs", "workTimesheetView", "workSettingsForm",
       "workPaymentsView", "workEarningsRates", "workCompaniesView", "workCompaniesGrid", "workCompanyDetails", "workContractsView",
-      "workDayForm", "workDayEditorTitle", "workDayDate", "workDayStatus",
+      "workDayModal", "workDayForm", "workDayEditorTitle", "workDayDate", "workDayStatus",
       "workDayDateTo",
       "workDayPlanned", "workDayActual", "workDayCredited", "workDayNote", "closeWorkDayEditorBtn",
       "resetWorkDayBtn", "workCompany", "workPosition", "workStartDate", "workStandardHours",
@@ -888,18 +889,66 @@
   function openDayEditor(iso) {
     const item = (snapshot?.days || []).find((day) => day.date === iso);
     if (!item) return;
+    if (dayEditorBusy) return;
+    if (nodes.workDayDate.value === iso) {
+      showDayEditor();
+      return;
+    }
     const [year, month, day] = iso.split("-").map(Number);
     nodes.workDayEditorTitle.textContent = dayFormatter.format(new Date(year, month - 1, day));
     nodes.workDayDate.value = iso;
     nodes.workDayDateTo.value = iso;
+    nodes.workDayDateTo.min = iso;
     nodes.workDayStatus.value = item.status;
     nodes.workDayPlanned.value = Number(item.planned_hours || 0);
     nodes.workDayActual.value = Number(item.actual_hours || 0);
     nodes.workDayCredited.value = Number(item.credited_hours || 0);
     nodes.workDayNote.value = item.note || "";
     nodes.resetWorkDayBtn.classList.toggle("hidden", !item.is_manual);
-    nodes.workDayForm.classList.remove("hidden");
-    nodes.workDayForm.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    showDayEditor();
+  }
+
+  function showDayEditor() {
+    nodes.workDayModal.classList.remove("hidden");
+    nodes.workDayStatus.focus({ preventScroll: true });
+  }
+
+  function focusDayCell(iso) {
+    nodes.workCalendarGrid.querySelector(`[data-work-date="${iso}"]`)?.focus({ preventScroll: true });
+  }
+
+  function closeDayEditor() {
+    if (dayEditorBusy) return;
+    nodes.workDayModal.classList.add("hidden");
+    focusDayCell(nodes.workDayDate.value);
+  }
+
+  async function submitDayChange(url, options) {
+    if (dayEditorBusy) return;
+    dayEditorBusy = true;
+    const iso = nodes.workDayDate.value;
+    const previousFocus = document.activeElement;
+    const controls = [...nodes.workDayForm.querySelectorAll("input, select, button")];
+    controls.forEach(control => { control.disabled = true; });
+    nodes.workDayForm.setAttribute("aria-busy", "true");
+    nodes.workDayForm.focus({ preventScroll: true });
+    let saved = false;
+    try {
+      await core.requestJson(url, authOptions(options));
+      saved = true;
+    } finally {
+      dayEditorBusy = false;
+      controls.forEach(control => { control.disabled = false; });
+      nodes.workDayForm.removeAttribute("aria-busy");
+      previousFocus?.focus({ preventScroll: true });
+    }
+    if (saved) {
+      closeDayEditor();
+      nodes.workDayDate.value = "";
+      core.notify?.(options.method === "DELETE" ? "День возвращён по графику" : "Исключение сохранено", { type: "success" });
+      await loadWorkSection({ refresh: true });
+      if (nodes.workDayModal.classList.contains("hidden")) focusDayCell(iso);
+    }
   }
 
   async function saveDay(event) {
@@ -919,19 +968,13 @@
       payload.date_from = iso;
       payload.date_to = dateTo;
     }
-    await core.requestJson(url, authOptions({ method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }));
-    core.notify?.("Исключение сохранено", { type: "success" });
-    nodes.workDayForm.classList.add("hidden");
-    await loadWorkSection({ refresh: true });
+    await submitDayChange(url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
   }
 
   async function resetDay() {
     const iso = nodes.workDayDate.value;
     if (!iso) return;
-    await core.requestJson(`/api/v1/work/days/${iso}`, authOptions({ method: "DELETE" }));
-    core.notify?.("День возвращён по графику", { type: "success" });
-    nodes.workDayForm.classList.add("hidden");
-    await loadWorkSection({ refresh: true });
+    await submitDayChange(`/api/v1/work/days/${iso}`, { method: "DELETE" });
   }
 
   async function saveSettings(event) {
@@ -1156,7 +1199,19 @@
         nodes.workDayCredited.value = planned;
       }
     });
-    nodes.closeWorkDayEditorBtn.addEventListener("click", () => nodes.workDayForm.classList.add("hidden"));
+    nodes.closeWorkDayEditorBtn.addEventListener("click", closeDayEditor);
+    nodes.workDayModal.addEventListener("click", (event) => {
+      if (event.target === nodes.workDayModal) closeDayEditor();
+    });
+    nodes.workDayModal.addEventListener("keydown", (event) => {
+      if (event.key !== "Tab" || core.getTopVisibleModal?.() !== nodes.workDayModal) return;
+      const controls = [...nodes.workDayForm.querySelectorAll('button, input:not([type="hidden"]), select')]
+        .filter(control => !control.disabled && control.getClientRects().length);
+      const first = controls[0], last = controls[controls.length - 1];
+      if (!first) { event.preventDefault(); return; }
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    });
     nodes.resetWorkDayBtn.addEventListener("click", () => resetDay().catch(handleError));
     nodes.workSettingsForm.addEventListener("submit", (event) => saveSettings(event).catch(handleError));
     nodes.workContractForm.addEventListener("submit", (event) => saveContract(event).catch(handleError));
