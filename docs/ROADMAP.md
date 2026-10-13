@@ -28,7 +28,7 @@
 - [x] Compact catalog counts/toolbars and mobile product rows. Show product measurements directly, move identity/replacements to a named tab, remove offer/product/price «Ещё» menus in favor of direct icon actions, and retain drafts across tabs.
 - [x] Prevent a repeated unchanged receipt-store event from replacing the item input during direct typing after selecting a store.
 - [x] Local validation: 733 non-E2E checks passed, 3 skipped; 42 targeted browser scenarios passed (14 product/price/identity/replacement, 4 source/measurement, 3 brand, 21 operation-entry/discount). Updated stale selectors/contracts from prior UI releases and the legacy catalog fixture. Inspected rendered product/list/offer states at 320/390/1024/1100/1440 px; corrected photo overlap, mobile toolbar stacking and title/button overlap. No schema/API or financial-calculation changes.
-- [ ] GitHub → VPS publication and final health/static/data checks. Other audit stages remain pending.
+- [x] Released `6d0d467` through GitHub `main` → clean server `git pull --ff-only origin main` → app-only build/recreation. Assets `20261013-catalog-compact1`; all 19 served file hashes verified. Schema remains `20261013_0050`; eight table fingerprints match. All six containers healthy with zero restarts at the short post-release check; bot, DB, Redis and poopbot start times unchanged. Rollback app image: `before-catalog-20261013`. Manual CI policy retained. Other audit stages remain pending.
 
 ### Visual consistency — 2026-10-13
 - [x] Add [visual contract](UI_VISUAL_CONTRACT.md) to the UI and engineering source-of-truth docs: shared styling, icon actions, low hint density, sizing and mandatory rendered-state review.
