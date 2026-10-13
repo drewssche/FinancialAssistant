@@ -92,7 +92,7 @@
       const addingSource = Boolean(state.itemTemplateProductContext);
       el.itemTemplateModal.classList.toggle("adding-product-source", addingSource);
       if (el.itemTemplateName) el.itemTemplateName.readOnly = addingSource;
-      if (el.submitItemTemplateBtn) el.submitItemTemplateBtn.textContent = addingSource ? "Добавить источник" : "Сохранить";
+      window.App.icons.apply(el.submitItemTemplateBtn, "save", addingSource ? "Добавить источник" : "Сохранить позицию");
       state.editItemTemplateId = isEdit ? Number(item.id) : null;
       getActivityFeature().configureActivityButton?.(el.itemTemplateActivityBtn, isEdit ? "item_template" : null, item?.id);
       getUsageFeature().configureUsageButton?.(el.itemTemplateUsageBtn, isEdit ? "item_template" : null, item?.id, item?.name || "");

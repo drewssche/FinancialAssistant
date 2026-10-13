@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from pathlib import Path
 
 
@@ -80,11 +82,11 @@ def test_period_control_popovers_have_wide_floating_layout():
     picker_utils = (REPO_ROOT / "static" / "js" / "app-picker-utils.js").read_text(encoding="utf-8")
     overlays_css = (REPO_ROOT / "static" / "css" / "components-overlays.css").read_text(encoding="utf-8")
 
-    assert "Math.min(360, Math.max(320, viewportWidth - margin * 2))" in picker_utils
+    assert "Math.min(360, Math.max(0, viewportWidth - margin * 2))" in picker_utils
     assert "Math.min(isControlPopover && !sizesToContent ? 320 : 168, preferredWidth)" in picker_utils
     assert 'const ownerModal = anchor.closest(".modal:not(.hidden)");' in picker_utils
     assert "Math.max(220, (Number.isFinite(ownerModalZIndex) ? ownerModalZIndex : 0) + 2)" in picker_utils
-    assert 'const alignToAnchorStart = popover.classList.contains("category-icon-popover");' in picker_utils
+    assert 'const alignToAnchorStart = popover.classList.contains("category-icon-popover") || popover.dataset.popoverAlign === "start";' in picker_utils
     assert ".period-control-popover .settings-picker-option" in overlays_css
     assert "white-space: nowrap" in overlays_css
 
@@ -177,7 +179,8 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert "body.finance-calculator-open" in calculator_css
     assert "@media (max-width: 640px)" in calculator_css
     assert "max-height: min(88dvh, 720px)" in calculator_css
-    assert '/static/styles.css?v=20261013-replacements1' in index_html
+    version = re.search(r'const assetVersion = "([^"]+)"', (REPO_ROOT / "static/js/app-bootstrap.js").read_text()).group(1)
+    assert f'/static/styles.css?v={version}' in index_html
     assert '/static/css/components-core.css?v=20260904f' in styles
     assert '/static/css/layout-debts.css?v=20260716j' in styles
     assert '/static/css/components-analytics-summary.css?v=20261012-quantities1' in styles

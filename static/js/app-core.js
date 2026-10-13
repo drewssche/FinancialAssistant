@@ -400,6 +400,7 @@
   }
 
   window.App = {
+    icons: window.App.icons,
     state,
     el,
     core: {

@@ -734,7 +734,7 @@
       if (!store) return;
       const mode = store.dataset.receiptStore;
       const first = getReceiptItems(mode)[0];
-      if (!first) return;
+      if (!first || normalizeReceiptName(first.shop_name || '') === normalizeReceiptName(store.value)) return;
       updateReceiptItemField(first.draft_id, 'shop_name', store.value, mode);
       inheritReceiptShopFromFirstRow(first.draft_id, mode);
       renderReceiptItems(mode);

@@ -40,10 +40,11 @@ def test_lazy_price_changes_filters_pagination_history_and_cleanup(static_server
     page.evaluate("window.App.getRuntimeModule('navigation').switchSection('item_catalog')")
     expect(page.locator('[data-catalog-product-id="401"]')).to_be_visible()
     assert requests==[]
-    page.locator('#catalogPriceChanges > summary').click()
+    page.locator('[data-item-catalog-view="changes"]').click()
     expect(page.locator('.catalog-price-change')).to_have_count(20)
-    expect(page.locator('.catalog-price-change').first).to_contain_text('последний шаг: -25%')
-    expect(page.locator('.catalog-price-change').first).to_contain_text('Замена упаковки не подтверждена')
+    expect(page.locator('.catalog-price-change').first).to_contain_text('Фасовка менялась')
+    expect(page.locator('.catalog-price-change').first).not_to_contain_text('последний шаг')
+    expect(page.locator('#catalogProductsView')).to_be_hidden()
     page.locator('#catalogPriceChangesMore').click()
     expect(page.locator('.catalog-price-change')).to_have_count(21)
     expect(page.locator('#catalogPriceChangesMore')).to_be_hidden()
@@ -66,6 +67,8 @@ def test_lazy_price_changes_filters_pagination_history_and_cleanup(static_server
         size=card.evaluate('n=>({width:n.clientWidth,scroll:n.scrollWidth})');assert size['scroll']<=size['width']+1
     page.locator('[data-open-price-change="0"]').click()
     expect(page.locator('#catalogProductModal')).to_be_visible()
+    expect(page.locator('#catalogProductComparisonSummary')).to_contain_text('последний шаг: -25%')
+    expect(page.locator('#catalogProductComparisonSummary')).to_contain_text('Замена упаковки не подтверждена')
     expect(page.locator('#catalogProductPriceBasis')).to_have_value('normalized')
     expect(page.locator('#catalogProductPriceFrom')).to_have_value('2026-10-01')
     expect(page.locator('#catalogProductPriceSeries')).to_have_value('1')
@@ -81,7 +84,13 @@ def test_lazy_price_changes_filters_pagination_history_and_cleanup(static_server
     fail[0]=False
     form.locator('button[type="submit"]').click()
     expect(page.locator('.catalog-price-change')).to_have_count(20)
+    page.locator('[data-item-catalog-view="products"]').click()
+    expect(page.locator('#catalogPriceChanges')).to_be_hidden()
+    expect(page.locator('#catalogProductsView')).to_be_visible()
+    page.locator('[data-item-catalog-view="changes"]').click()
+    expect(form.locator('[name="q"]')).to_have_value('vjkjrj')
+    expect(page.locator('.catalog-price-change')).to_have_count(20)
     page.evaluate("window.App.getRuntimeModule('catalog-products').cleanupRuntime()")
-    expect(page.locator('#catalogPriceChanges')).not_to_have_attribute('open','')
+    expect(page.locator('#catalogPriceChanges')).to_be_hidden()
     expect(page.locator('.catalog-price-change')).to_have_count(0)
     assert errors==[]

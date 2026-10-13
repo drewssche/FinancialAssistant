@@ -16,6 +16,20 @@
 - Keep Telegram-specific behavior in the client runtime; backend contracts stay shared between Web UI and Telegram.
 
 ## Current Sprint
+### Whole-app UX audit — 2026-10-13
+- [x] Inspect all 11 navigation sections, analytics/catalog/work subviews and selected entry forms against the visual contract using the current code, local mock renders at 390/1440 px and the user's populated catalog screenshot. Record findings, coverage limits and proposed stages in [the UX audit](UI_AUDIT_2026-10-13.md). No application/server changes in this audit.
+- [x] User approved the proposed order: catalog and product workspace → operations/plans/debts → timesheet → analytics/dashboard/currency → remaining directories/settings/admin. Do not treat the audit as a completed redesign.
+- [ ] Before removing analytics tabs, map useful functions to their retained destinations. Preserve Structure and Calendar; retain existing data and calculation semantics.
+- [ ] Apply the selected stages with filled-state visual review and scoped behavior checks. OCR/retailer work remains deferred while UX is the priority.
+
+### Catalog simplification and icon actions — 2026-10-13
+- [x] Make action icons the default in the visual contract, including add/save/edit/delete. Keep navigation and mode labels readable; preserve explicit destructive confirmations and accessible names.
+- [x] Separate purchase price changes from the product list. Use compact responsive rows, one selected comparison metric and visible uncertainty flags; retain comparison details with the product history.
+- [x] Compact catalog counts/toolbars and mobile product rows. Show product measurements directly, move identity/replacements to a named tab, remove offer/product/price «Ещё» menus in favor of direct icon actions, and retain drafts across tabs.
+- [x] Prevent a repeated unchanged receipt-store event from replacing the item input during direct typing after selecting a store.
+- [x] Local validation: 733 non-E2E checks passed, 3 skipped; 42 targeted browser scenarios passed (14 product/price/identity/replacement, 4 source/measurement, 3 brand, 21 operation-entry/discount). Updated stale selectors/contracts from prior UI releases and the legacy catalog fixture. Inspected rendered product/list/offer states at 320/390/1024/1100/1440 px; corrected photo overlap, mobile toolbar stacking and title/button overlap. No schema/API or financial-calculation changes.
+- [ ] GitHub → VPS publication and final health/static/data checks. Other audit stages remain pending.
+
 ### Visual consistency — 2026-10-13
 - [x] Add [visual contract](UI_VISUAL_CONTRACT.md) to the UI and engineering source-of-truth docs: shared styling, icon actions, low hint density, sizing and mandatory rendered-state review.
 - [x] Replace browser-native receipt store suggestions with an app-styled combobox using shared popup positioning and search normalization; retain manual names and the existing store inheritance flow. Clamp floating popup width to the viewport at 320 px.

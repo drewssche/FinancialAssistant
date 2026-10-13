@@ -63,7 +63,6 @@ def test_product_workspace_and_compact_receipt_preserve_drafts(static_server_url
     page.locator('#catalogProductName').fill('Несохранённый черновик')
     page.locator('[data-product-tab="offers"]').click()
     expect(page.locator('#catalogProductOffersList')).to_contain_text('Соседи')
-    page.locator('[data-modal-offer-id="502"] summary').click()
     page.locator('[data-modal-offer-id="502"] [data-product-offer-action="history"]').click()
     expect(page.locator('#catalogProductPriceOffer')).to_have_value('502')
     page.locator('#catalogProductPriceMode').select_option('offers')
@@ -81,7 +80,6 @@ def test_product_workspace_and_compact_receipt_preserve_drafts(static_server_url
     expect(page.locator('[data-product-purchase-id]')).to_have_count(51)
     page.locator('[data-product-tab="prices"]').click()
     page.locator('#catalogProductPriceMode').select_option('offers')
-    page.locator('#catalogProductPricesList summary').click()
     page.locator('[data-product-price-delete]').click()
     # Cancel keeps the record and parent draft intact.
     page.locator('#confirmCancelBtn').click()
@@ -101,7 +99,6 @@ def test_product_workspace_and_compact_receipt_preserve_drafts(static_server_url
     expect(row.locator('.receipt-compact-heading')).to_contain_text('800 г')
     # The inline discount action expands settings; money stays accessible.
     row.locator('[data-receipt-discount-toggle]').click()
-    row.locator('.receipt-discount-calculation summary').click()
     row.locator('[data-receipt-field="discount_mode"]').select_option('final')
     row.locator('[data-receipt-field="discount_value"]').fill('7.65')
     page.screenshot(path=f'/tmp/fa-expanded-receipt-{width}.png', full_page=False)
@@ -157,11 +154,9 @@ def test_offer_detach_price_delete_and_bulk_merge_stay_available(static_server_u
     expect(page.locator('#itemTemplateModal')).to_be_visible()
     page.keyboard.press('Escape')
     expect(page.locator('[data-modal-offer-id="501"] [data-product-offer-action="edit"]')).to_be_focused()
-    page.locator('[data-modal-offer-id="501"] summary').click()
     page.locator('[data-modal-offer-id="501"] [data-product-offer-action="detach"]').click()
     page.locator('#confirmCancelBtn').click()
     assert calls == []
-    page.locator('[data-modal-offer-id="501"] summary').click()
     page.locator('[data-modal-offer-id="501"] [data-product-offer-action="detach"]').click()
     page.locator('#confirmDeleteBtn').click()
     expect(page.locator('[data-modal-offer-id="501"]')).to_have_count(0)
@@ -169,7 +164,6 @@ def test_offer_detach_price_delete_and_bulk_merge_stay_available(static_server_u
     assert ('POST', '/api/v1/operations/catalog-products/401/offers/501/detach') in calls
     page.locator('[data-product-tab="prices"]').click()
     page.locator('#catalogProductPriceMode').select_option('offers')
-    page.locator('#catalogProductPricesList summary').click()
     page.locator('[data-product-price-delete]').click()
     page.locator('#confirmDeleteBtn').click()
     expect(page.locator('#catalogProductPricesList')).to_contain_text('пустая')

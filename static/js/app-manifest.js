@@ -1,5 +1,6 @@
 (() => {
   window.__APP_SCRIPT_MANIFEST__ = [
+    "/static/js/app-icons.js",
     "/static/js/templates/shell-sections-primary.js",
     "/static/js/templates/shell-sections-secondary.js",
     "/static/js/templates/shell-sections.js",

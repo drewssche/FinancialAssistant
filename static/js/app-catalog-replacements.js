@@ -61,7 +61,6 @@
       node('catalogReplacementsList').innerHTML = '<p class="muted-small">Данные изменились — обновите сравнение.</p>';
       node('catalogReplacementsStatus').textContent = 'Чеки или фасовки изменились. Нажмите «Обновить данные», черновик останется.';
     });
-    node('catalogReplacementsDetails').addEventListener('toggle', () => {if (node('catalogReplacementsDetails').open && product && !data) load();});
     node('catalogReplacementsRefresh').addEventListener('click', load);
     node('catalogReplacementForm').addEventListener('input', event => {dirty = true; if (['catalogReplacementOld','catalogReplacementNew','catalogReplacementDate'].includes(event.target.id)) node('catalogReplacementConfirmed').checked = false;});
     node('catalogReplacementForm').addEventListener('submit', event => {
@@ -80,10 +79,12 @@
       mutate(`${url()}/${Number(button.dataset.replacementRemove)}`, {method:'DELETE'});
     });
   }
-  function close() {generation++; controller?.abort(); product=null;data=null;dirty=false;saving=false;}
+  let active = false;
+  function activate(value) { active = value; if (active && product && !data && !dirty && !saving) load(); }
+  function close() {active = false;generation++; controller?.abort(); product=null;data=null;dirty=false;saving=false;}
   window.App.registerRuntimeModule('catalog-replacements', {
-    open(value) {close();bind();product=value;node('catalogReplacementsDetails').open=false;node('catalogReplacementsDetails').classList.toggle('hidden',!value);node('catalogReplacementsBody').querySelectorAll('button,input,select').forEach(b => b.disabled = false);node('catalogReplacementForm').reset();node('catalogReplacementDate').value=core.getTodayIso();node('catalogReplacementsBody').classList.add('hidden');},
-    refresh(value) {product=value;if (dirty || saving) return;data=null;if(node('catalogReplacementsDetails').open) load();},
-    close, cleanup:close,
+    open(value) {close();bind();product=value;node('catalogReplacementsDetails').classList.toggle('hidden',!value);node('catalogReplacementsBody').querySelectorAll('button,input,select').forEach(b => b.disabled = false);node('catalogReplacementForm').reset();node('catalogReplacementDate').value=core.getTodayIso();node('catalogReplacementsBody').classList.add('hidden');},
+    refresh(value) {product=value;if (dirty || saving) return;data=null;if(active) load();},
+    activate, close, cleanup:close,
   });
 })();

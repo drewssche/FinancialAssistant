@@ -23,11 +23,11 @@
             <div class="catalog-image-picker-actions">
               <strong>Фото позиции</strong>
               <div class="catalog-image-picker-buttons">
-                <label class="btn btn-secondary btn-xs catalog-image-upload-btn">
-                  <span>Загрузить</span>
-                  <input data-catalog-image-input type="file" accept="image/jpeg,image/png,image/webp" />
+                <label class="btn btn-secondary btn-icon catalog-image-upload-btn" title="Загрузить фото">
+                  ${window.App.icons.svg("upload")}
+                  <input data-catalog-image-input aria-label="Загрузить фото" type="file" accept="image/jpeg,image/png,image/webp" />
                 </label>
-                <button class="btn btn-danger btn-xs hidden" data-catalog-image-remove type="button">Удалить</button>
+                <button class="btn btn-danger btn-icon hidden" data-catalog-image-remove type="button" title="Удалить фото" aria-label="Удалить фото">${window.App.icons.svg("trash")}</button>
               </div>
               <small class="muted-small" data-catalog-image-status>JPEG, PNG или WebP · до 8 МБ</small>
             </div>
@@ -106,7 +106,7 @@
         <div class="panel-head row between">
           <div>
             <h3 id="catalogProductModalTitle">Новый товар</h3>
-            <p class="subtitle">Общая карточка товара для предложений из разных источников</p>
+
           </div>
           <div class="modal-head-actions">
             <button id="catalogProductActivityBtn" class="btn btn-secondary modal-head-icon-btn hidden" type="button" title="Журнал" aria-label="Открыть журнал"><span aria-hidden="true">◷</span></button>
@@ -120,6 +120,7 @@
           <button type="button" class="segmented-btn" data-product-tab="offers" aria-pressed="false">Предложения</button>
           <button type="button" class="segmented-btn" data-product-tab="prices" aria-pressed="false">Цены</button>
           <button type="button" class="segmented-btn" data-product-tab="purchases" aria-pressed="false">Покупки</button>
+          <button type="button" class="segmented-btn" data-product-tab="packages" aria-pressed="false">Фасовки и коды</button>
         </nav>
         <form data-product-panel="product" id="catalogProductForm" class="category-modal-form">
           <section class="catalog-image-field" data-catalog-image-picker="catalog-product" aria-label="Фотография товара">
@@ -127,11 +128,11 @@
             <div class="catalog-image-picker-actions">
               <strong>Фото товара</strong>
               <div class="catalog-image-picker-buttons">
-                <label class="btn btn-secondary btn-xs catalog-image-upload-btn">
-                  <span>Загрузить</span>
-                  <input data-catalog-image-input type="file" accept="image/jpeg,image/png,image/webp" />
+                <label class="btn btn-secondary btn-icon catalog-image-upload-btn" title="Загрузить фото">
+                  ${window.App.icons.svg("upload")}
+                  <input data-catalog-image-input aria-label="Загрузить фото" type="file" accept="image/jpeg,image/png,image/webp" />
                 </label>
-                <button class="btn btn-danger btn-xs hidden" data-catalog-image-remove type="button">Удалить</button>
+                <button class="btn btn-danger btn-icon hidden" data-catalog-image-remove type="button" title="Удалить фото" aria-label="Удалить фото">${window.App.icons.svg("trash")}</button>
               </div>
               <small class="muted-small" data-catalog-image-status>JPEG, PNG или WebP · до 8 МБ</small>
             </div>
@@ -140,15 +141,13 @@
             <span>Название товара</span>
             <input id="catalogProductName" type="text" maxlength="160" placeholder="Например, Сырок с печеньем клубника 40 г" required />
           </label>
-          <details>
-            <summary>Единицы и фасовка · необязательно</summary>
+          <section class="catalog-product-measurements" aria-label="Единицы и фасовка">
             <div class="form-grid">
               <label class="field"><span>Единица продажи</span><select id="catalogProductSaleUnit"><option value="">Не указана</option><option value="piece">шт.</option><option value="pack">упак.</option><option value="kg">кг</option><option value="g">г</option><option value="l">л</option><option value="ml">мл</option></select></label>
               <label class="field"><span>В одной штуке / упаковке</span><input id="catalogProductPackageQuantity" type="number" min="0.001" step="0.001" placeholder="Например, 900" /></label>
               <label class="field"><span>Единица содержимого</span><select id="catalogProductPackageUnit"><option value="">Не указана</option><option value="piece">шт.</option><option value="kg">кг</option><option value="g">г</option><option value="l">л</option><option value="ml">мл</option></select></label>
             </div>
-            <small class="muted-small">Например: 2 упаковки по 900 г или 0,742 кг весового товара. Старые покупки не изменятся.</small>
-          </details>
+          </section>
           <div class="form-grid catalog-product-meta-grid">
             <div id="catalogProductBrandField" class="field create-category-field">
               <label for="catalogProductBrandSearch">Бренд</label>
@@ -164,11 +163,40 @@
             </div>
           </div>
         </form>
-        <section data-product-panel="product">
-          <details id="catalogReplacementsDetails" class="hidden">
-            <summary>Подтверждённые замены фасовки</summary>
+        <section data-product-panel="packages" class="hidden">
+          <section id="catalogIdentityDetails" class="hidden">
+            <h4>Фасовки и соответствия</h4>
+            <p id="catalogIdentityStatus" class="muted-small" role="status"></p>
+            <div id="catalogIdentityForms" class="hidden">
+              <form id="catalogVariantForm" class="category-modal-form">
+                <label class="field"><span>Фасовка</span><select id="catalogVariantSelect"></select></label>
+                <label class="field"><span>Название варианта</span><input id="catalogVariantName" maxlength="160" required placeholder="Например, пакет 900 мл" /></label>
+                <div class="form-grid">
+                  <label class="field"><span>Единица продажи</span><select id="catalogVariant_sale_unit"><option value="">Не указана</option><option value="pack">упак.</option><option value="piece">шт.</option><option value="kg">кг</option><option value="g">г</option><option value="l">л</option><option value="ml">мл</option></select></label>
+                  <label class="field"><span>Содержимое упаковки</span><input id="catalogVariant_package_quantity" type="number" min="0.001" step="0.001" /></label>
+                  <label class="field"><span>Единица содержимого</span><select id="catalogVariant_package_unit"><option value="">Не указана</option><option value="piece">шт.</option><option value="kg">кг</option><option value="g">г</option><option value="l">л</option><option value="ml">мл</option></select></label>
+                </div>
+                <small class="muted-small">Здесь — штрихкод конкретной упаковки. Весовой или внутренний код магазина укажите ниже в соответствии предложения.</small>
+                <label class="field"><span>Штрихкоды GTIN/EAN · по одному на строку</span><textarea id="catalogVariantCodes" rows="3" maxlength="600" placeholder="Напечатанные цифры под штрихкодом"></textarea></label>
+                <label><input id="catalogVariantArchived" type="checkbox" /> Архивная фасовка</label>
+                <button type="submit" class="btn btn-secondary btn-icon" title="Сохранить фасовку" aria-label="Сохранить фасовку">${window.App.icons.svg("save")}</button>
+              </form>
+              <form id="catalogOfferIdentityForm" class="category-modal-form">
+                <h4>Соответствие предложения</h4>
+                <label class="field"><span>Предложение магазина</span><select id="catalogIdentityOffer"></select></label>
+                <label class="field"><span>Подтверждённая фасовка</span><select id="catalogIdentityVariant"></select></label>
+                <label class="field"><span>Артикул / кассовый код магазина</span><input id="catalogIdentityCode" maxlength="160" /></label>
+                <label class="field"><span>Название на сайте / в чеке</span><input id="catalogIdentityName" maxlength="320" /></label>
+                <label class="field"><span>Ссылка на товар</span><input id="catalogIdentityUrl" type="url" maxlength="2048" placeholder="https://…" /></label>
+                <small class="muted-small">Связь задаётся вручную. Ссылка пока не включает проверку цен; фасовка в чеке сохраняется отдельно.</small>
+                <button type="submit" class="btn btn-secondary btn-icon" title="Сохранить соответствие" aria-label="Сохранить соответствие">${window.App.icons.svg("save")}</button>
+              </form>
+            </div>
+          </section>
+          <section id="catalogReplacementsDetails" class="hidden">
+            <h4>Замена фасовки</h4>
             <p class="muted-small">Подтвердите только замену упаковки, а не два размера, которые продаются одновременно. Исторические чеки и каталог не изменяются.</p>
-            <button type="button" class="btn btn-secondary btn-xs" id="catalogReplacementsRefresh">Обновить данные</button>
+            <button type="button" class="btn-icon btn btn-secondary btn-xs" id="catalogReplacementsRefresh" title="Обновить замены" aria-label="Обновить замены">${window.App.icons.svg("refresh")}</button>
             <p id="catalogReplacementsStatus" role="status" class="muted-small"></p>
             <div id="catalogReplacementsBody" class="hidden">
               <div id="catalogReplacementsList" class="catalog-replacements-list"></div>
@@ -184,45 +212,16 @@
                 <button type="submit" class="btn btn-secondary">Подтвердить замену</button>
               </form>
             </div>
-          </details>
-          <details id="catalogIdentityDetails" class="hidden">
-            <summary>Фасовки, штрихкоды и соответствия магазинов</summary>
-            <p id="catalogIdentityStatus" class="muted-small" role="status"></p>
-            <div id="catalogIdentityForms" class="hidden">
-              <form id="catalogVariantForm" class="category-modal-form">
-                <label class="field"><span>Фасовка</span><select id="catalogVariantSelect"></select></label>
-                <label class="field"><span>Название варианта</span><input id="catalogVariantName" maxlength="160" required placeholder="Например, пакет 900 мл" /></label>
-                <div class="form-grid">
-                  <label class="field"><span>Единица продажи</span><select id="catalogVariant_sale_unit"><option value="">Не указана</option><option value="pack">упак.</option><option value="piece">шт.</option><option value="kg">кг</option><option value="g">г</option><option value="l">л</option><option value="ml">мл</option></select></label>
-                  <label class="field"><span>Содержимое упаковки</span><input id="catalogVariant_package_quantity" type="number" min="0.001" step="0.001" /></label>
-                  <label class="field"><span>Единица содержимого</span><select id="catalogVariant_package_unit"><option value="">Не указана</option><option value="piece">шт.</option><option value="kg">кг</option><option value="g">г</option><option value="l">л</option><option value="ml">мл</option></select></label>
-                </div>
-                <small class="muted-small">Здесь — штрихкод конкретной упаковки. Весовой или внутренний код магазина укажите ниже в соответствии предложения.</small>
-                <label class="field"><span>Штрихкоды GTIN/EAN · по одному на строку</span><textarea id="catalogVariantCodes" rows="3" maxlength="600" placeholder="Напечатанные цифры под штрихкодом"></textarea></label>
-                <label><input id="catalogVariantArchived" type="checkbox" /> Архивная фасовка</label>
-                <button type="submit" class="btn btn-secondary">Сохранить фасовку</button>
-              </form>
-              <form id="catalogOfferIdentityForm" class="category-modal-form">
-                <h4>Соответствие предложения</h4>
-                <label class="field"><span>Предложение магазина</span><select id="catalogIdentityOffer"></select></label>
-                <label class="field"><span>Подтверждённая фасовка</span><select id="catalogIdentityVariant"></select></label>
-                <label class="field"><span>Артикул / кассовый код магазина</span><input id="catalogIdentityCode" maxlength="160" /></label>
-                <label class="field"><span>Название на сайте / в чеке</span><input id="catalogIdentityName" maxlength="320" /></label>
-                <label class="field"><span>Ссылка на товар</span><input id="catalogIdentityUrl" type="url" maxlength="2048" placeholder="https://…" /></label>
-                <small class="muted-small">Связь задаётся вручную. Ссылка пока не включает проверку цен; фасовка в чеке сохраняется отдельно.</small>
-                <button type="submit" class="btn btn-secondary">Сохранить соответствие</button>
-              </form>
-            </div>
-          </details>
+          </section>
         </section>
         <section data-product-panel="offers" id="catalogProductOffersSection" class="catalog-product-modal-offers hidden">
           <div class="row between">
             <div>
               <strong>Источники товара</strong>
-              <div class="muted-small">Цена и история остаются отдельными для каждого магазина</div>
+
             </div>
             <div class="row catalog-product-offers-actions">
-              <button id="addCatalogProductSourceBtn" class="btn btn-primary btn-xs" type="button">Добавить источник</button>
+              <button id="addCatalogProductSourceBtn" class="btn-icon btn btn-primary btn-xs" type="button" title="Добавить источник" aria-label="Добавить источник">${window.App.icons.svg("plus")}</button>
             </div>
           </div>
           <div id="catalogProductOffersList" class="catalog-product-offers-list"></div>
@@ -237,18 +236,19 @@
             <label class="field"><span>По дату</span><input id="catalogProductPriceTo" type="date"></label>
           </div></details>
           <p id="catalogProductLegacyPriceNote" class="muted-small hidden">Сохранённые цены предложения — отдельный справочник; он может не содержать повторных изменений и не используется для графика покупок.</p>
+          <div id="catalogProductComparisonSummary" class="catalog-comparison-summary hidden"></div>
           <div id="catalogProductPricesList" aria-live="polite"></div>
         </section>
         <section data-product-panel="purchases" class="catalog-product-detail-panel hidden">
           <label class="field"><span>Предложения</span><select id="catalogProductPurchaseOffer" aria-label="Предложения в покупках"></select></label>
           <p class="muted-small">За всё время. Суммы указаны за операции целиком; откройте операцию, чтобы увидеть чек.</p>
           <div id="catalogProductPurchasesList" aria-live="polite"></div>
-          <button id="catalogProductMorePurchases" class="btn btn-secondary hidden" type="button">Показать ещё</button>
-          <button id="openCatalogProductOperationsBtn" class="btn btn-secondary" type="button">Открыть полный список операций</button>
+          <button id="catalogProductMorePurchases" class="btn-icon btn btn-secondary hidden" type="button" title="Показать ещё покупки" aria-label="Показать ещё покупки">${window.App.icons.svg("down")}</button>
+          <button id="openCatalogProductOperationsBtn" class="btn-icon btn btn-secondary" type="button" title="Открыть операции товара" aria-label="Открыть операции товара">${window.App.icons.svg("receipt")}</button>
         </section>
         <div data-product-panel="product" class="modal-footer catalog-product-modal-footer">
-          <details class="catalog-product-more"><summary>Ещё</summary><button id="deleteCatalogProductBtn" class="btn btn-danger hidden" type="button">Удалить товар</button></details>
-          <button id="submitCatalogProductBtn" class="btn btn-cta modal-main-cta" type="submit" form="catalogProductForm">Создать товар</button>
+          <button id="deleteCatalogProductBtn" class="btn-icon btn btn-danger hidden" type="button" title="Удалить товар" aria-label="Удалить товар">${window.App.icons.svg("trash")}</button>
+          <button id="submitCatalogProductBtn" class="btn-icon btn btn-cta modal-main-cta" type="submit" form="catalogProductForm" title="Сохранить товар" aria-label="Сохранить товар">${window.App.icons.svg("save")}</button>
         </div>
       </div>
     </div>
@@ -292,11 +292,11 @@
             <div class="catalog-image-picker-actions">
               <strong>Логотип</strong>
               <div class="catalog-image-picker-buttons">
-                <label class="btn btn-secondary btn-xs catalog-image-upload-btn">
-                  <span>Загрузить</span>
-                  <input data-catalog-image-input type="file" accept="image/jpeg,image/png,image/webp" />
+                <label class="btn btn-secondary btn-icon catalog-image-upload-btn" title="Загрузить фото">
+                  ${window.App.icons.svg("upload")}
+                  <input data-catalog-image-input aria-label="Загрузить фото" type="file" accept="image/jpeg,image/png,image/webp" />
                 </label>
-                <button class="btn btn-danger btn-xs hidden" data-catalog-image-remove type="button">Удалить</button>
+                <button class="btn btn-danger btn-icon hidden" data-catalog-image-remove type="button" title="Удалить фото" aria-label="Удалить фото">${window.App.icons.svg("trash")}</button>
               </div>
               <small class="muted-small" data-catalog-image-status>JPEG, PNG или WebP · до 8 МБ</small>
             </div>
@@ -370,11 +370,11 @@
             <div class="catalog-image-picker-actions">
               <strong>Логотип магазина или источника</strong>
               <div class="catalog-image-picker-buttons">
-                <label class="btn btn-secondary btn-xs catalog-image-upload-btn">
-                  <span>Загрузить</span>
-                  <input data-catalog-image-input type="file" accept="image/jpeg,image/png,image/webp" />
+                <label class="btn btn-secondary btn-icon catalog-image-upload-btn" title="Загрузить фото">
+                  ${window.App.icons.svg("upload")}
+                  <input data-catalog-image-input aria-label="Загрузить фото" type="file" accept="image/jpeg,image/png,image/webp" />
                 </label>
-                <button class="btn btn-danger btn-xs hidden" data-catalog-image-remove type="button">Удалить</button>
+                <button class="btn btn-danger btn-icon hidden" data-catalog-image-remove type="button" title="Удалить фото" aria-label="Удалить фото">${window.App.icons.svg("trash")}</button>
               </div>
               <small class="muted-small" data-catalog-image-status>JPEG, PNG или WebP · до 8 МБ</small>
             </div>

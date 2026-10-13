@@ -404,6 +404,7 @@
         <section id="itemCatalogSection" class="section-block hidden">
           <div id="itemCatalogViewTabs" class="segmented item-catalog-view-tabs" role="tablist" aria-label="Разделы каталога">
             <button class="segmented-btn active" data-item-catalog-view="products" type="button">Товары</button>
+            <button class="segmented-btn" data-item-catalog-view="changes" type="button">Изменения цен</button>
             <button class="segmented-btn" data-item-catalog-view="sources" type="button">По источникам</button>
             <button class="segmented-btn" data-item-catalog-view="brands" type="button">Бренды</button>
           </div>
@@ -411,47 +412,28 @@
             <div class="catalog-products-heading">
               <div>
                 <h3>Товары</h3>
-                <p class="muted">Один товар может иметь несколько предложений и свою историю цены в каждом источнике.</p>
+
               </div>
               <div class="row catalog-products-heading-actions">
                 <button id="catalogProductsCandidatesBtn" class="btn btn-secondary btn-xs hidden" type="button">Возможные совпадения <span id="catalogProductsCandidatesCount"></span></button>
               </div>
             </div>
-            <details id="catalogPriceChanges" class="catalog-price-changes">
-              <summary>Изменения цен по моим покупкам</summary>
-              <p class="muted-small">Действующие товары и предложения. Магазины, валюты и единицы считаются отдельно. Дата покупки показывает наблюдение цены, а не дату её изменения магазином.</p>
-              <details class="catalog-price-changes-options"><summary>Поиск и условия сравнения</summary>
-              <form id="catalogPriceChangesForm" class="catalog-price-changes-filters">
-                <label class="field"><span>Товар или магазин</span><input name="q" type="search" maxlength="160" placeholder="Поиск в изменениях цен" /></label>
-                <label class="field"><span>Сравнение</span><select name="comparison"><option value="period">От первой до последней покупки</option><option value="previous">Последняя с предыдущей</option></select></label>
-                <label class="field"><span>Цена</span><select name="price_kind"><option value="paid">Оплаченная</option><option value="regular">Обычная, если известна</option></select></label>
-                <label class="field"><span>Единица сравнения</span><select name="basis"><option value="unit">За единицу продажи / упаковку</option><option value="normalized">За кг, литр или штуку содержимого</option></select></label>
-                <label class="field"><span>Изменение</span><select name="direction"><option value="all">Все</option><option value="up">Подорожало</option><option value="down">Подешевело</option><option value="same">Цена вернулась / не изменилась</option></select></label>
-                <label class="field"><span>С даты (необязательно)</span><input type="date" name="date_from" /></label>
-                <label class="field"><span>По дату (необязательно)</span><input type="date" name="date_to" /></label>
-                <button type="submit" class="btn btn-secondary">Показать</button>
-              </form>
-              </details>
-              <p id="catalogPriceChangesStatus" class="muted-small" role="status"></p>
-              <div id="catalogPriceChangesList" class="catalog-price-changes-list"></div>
-              <button id="catalogPriceChangesMore" type="button" class="btn btn-secondary" hidden>Показать ещё</button>
-            </details>
             <div class="table-search-row catalog-products-toolbar">
               <input id="catalogProductsSearchQ" class="table-search-input" type="search" placeholder="Товар, бренд, источник, штрихкод или артикул" />
               <div class="toolbar section-action-toolbar search-toolbar">
-                <button id="catalogProductsCollapseAllBtn" class="btn btn-secondary btn-xs" type="button">Свернуть все</button>
-                <button id="catalogProductsExpandAllBtn" class="btn btn-secondary btn-xs" type="button">Развернуть все</button>
-                <button id="refreshCatalogProductsBtn" class="btn btn-secondary btn-xs" type="button">Обновить</button>
-                <button id="resetCatalogProductWidthsBtn" class="btn btn-secondary btn-xs" type="button" title="Вернуть исходные размеры колонок">Сбросить ширину</button>
+                <button id="catalogProductsCollapseAllBtn" class="btn-icon btn btn-secondary btn-xs" type="button" title="Свернуть все" aria-label="Свернуть все">${window.App.icons.svg("collapse")}</button>
+                <button id="catalogProductsExpandAllBtn" class="btn-icon btn btn-secondary btn-xs" type="button" title="Развернуть все" aria-label="Развернуть все">${window.App.icons.svg("expand")}</button>
+                <button id="refreshCatalogProductsBtn" class="btn-icon btn btn-secondary btn-xs" type="button" title="Обновить товары" aria-label="Обновить товары">${window.App.icons.svg("refresh")}</button>
+                <button id="resetCatalogProductWidthsBtn" class="btn-icon btn btn-secondary btn-xs" type="button" title="Сбросить ширину колонок" aria-label="Сбросить ширину колонок">${window.App.icons.svg("width")}</button>
               </div>
             </div>
-            <div id="catalogProductsKpiGrid" class="analytics-kpi-grid section-kpi-grid" aria-label="Итоги каталога товаров"></div>
+            <div id="catalogProductsKpiGrid" class="analytics-kpi-grid section-kpi-grid catalog-compact-kpis" aria-label="Итоги каталога товаров"></div>
             <div id="catalogProductsCandidatesPanel" class="catalog-product-candidates hidden" aria-live="polite"></div>
             <div id="catalogProductsBulkBar" class="bulk-bar hidden" aria-live="polite">
               <strong id="catalogProductsSelectedCount">Выбрано: 0</strong>
               <span class="muted-small">Выберите главную карточку при объединении</span>
-              <button id="mergeCatalogProductsBtn" class="btn btn-primary btn-xs" type="button">Объединить</button>
-              <button id="clearSelectedCatalogProductsBtn" class="btn btn-ghost btn-xs" type="button">Снять выбор</button>
+              <button id="mergeCatalogProductsBtn" class="btn-icon btn btn-primary btn-xs" type="button" title="Объединить товары" aria-label="Объединить товары">${window.App.icons.svg("merge")}</button>
+              <button id="clearSelectedCatalogProductsBtn" class="btn-icon btn btn-ghost btn-xs" type="button" title="Снять выбор" aria-label="Снять выбор">${window.App.icons.svg("close")}</button>
             </div>
             <div class="table-wrap">
               <table class="table table-hover mobile-card-table catalog-products-table">
@@ -472,6 +454,25 @@
               </table>
             </div>
           </section>
+            <section id="catalogPriceChanges" class="panel catalog-price-changes hidden">
+              <h3>Изменения цен</h3>
+              <p class="muted-small">По покупкам · дата чека, а не изменения магазинной цены</p>
+              <form id="catalogPriceChangesForm" class="catalog-price-changes-filters">
+                <label class="field"><span>Товар или магазин</span><input name="q" type="search" maxlength="160" placeholder="Поиск в изменениях цен" /></label>
+                <label class="field"><span>Сравнение</span><select name="comparison"><option value="period">От первой до последней покупки</option><option value="previous">Последняя с предыдущей</option></select></label>
+                <label class="field"><span>Изменение</span><select name="direction"><option value="all">Все</option><option value="up">Подорожало</option><option value="down">Подешевело</option><option value="same">Цена вернулась / не изменилась</option></select></label>
+                <button type="submit" class="btn btn-secondary btn-icon" title="Обновить сравнение" aria-label="Обновить сравнение">${window.App.icons.svg("refresh")}</button>
+                <details class="catalog-price-changes-options"><summary class="btn btn-secondary btn-icon" title="Условия сравнения" aria-label="Условия сравнения">${window.App.icons.svg("filter")}</summary><div class="catalog-price-changes-advanced">
+                <label class="field"><span>Цена</span><select name="price_kind"><option value="paid">Оплаченная</option><option value="regular">Обычная, если известна</option></select></label>
+                <label class="field"><span>Единица сравнения</span><select name="basis"><option value="unit">За единицу продажи / упаковку</option><option value="normalized">За кг, литр или штуку содержимого</option></select></label>
+                <label class="field"><span>С даты (необязательно)</span><input type="date" name="date_from" /></label>
+                <label class="field"><span>По дату (необязательно)</span><input type="date" name="date_to" /></label>
+                </div></details>
+              </form>
+              <p id="catalogPriceChangesStatus" class="muted-small" role="status"></p>
+              <div id="catalogPriceChangesList" class="catalog-price-changes-list"></div>
+              <button id="catalogPriceChangesMore" type="button" class="btn btn-secondary btn-icon" title="Показать ещё" aria-label="Показать ещё" hidden>${window.App.icons.svg("down")}</button>
+            </section>
           <section id="itemCatalogPositionsView" class="panel hidden">
             <div class="table-search-row">
               <input id="itemCatalogSearchQ" class="table-search-input" type="search" placeholder="Поиск по источнику, бренду и позиции" />
@@ -488,13 +489,13 @@
                   <button class="segmented-btn" data-item-sort="recent" type="button">Недавние</button>
                   <button class="segmented-btn" data-item-sort="name" type="button">Имя</button>
                 </div>
-                <button id="itemCatalogCollapseAllBtn" class="btn btn-secondary btn-xs" type="button">Свернуть все</button>
-                <button id="itemCatalogExpandAllBtn" class="btn btn-secondary btn-xs" type="button">Развернуть все</button>
-                <button id="resetItemCatalogWidthsBtn" class="btn btn-secondary btn-xs" type="button" title="Вернуть исходные размеры колонок">Сбросить ширину</button>
-                <button id="deleteAllItemTemplatesBtn" class="btn btn-danger" type="button">Удалить все</button>
+                <button id="itemCatalogCollapseAllBtn" class="btn-icon btn btn-secondary btn-xs" type="button" title="Свернуть все" aria-label="Свернуть все">${window.App.icons.svg("collapse")}</button>
+                <button id="itemCatalogExpandAllBtn" class="btn-icon btn btn-secondary btn-xs" type="button" title="Развернуть все" aria-label="Развернуть все">${window.App.icons.svg("expand")}</button>
+                <button id="resetItemCatalogWidthsBtn" class="btn-icon btn btn-secondary btn-xs" type="button" title="Сбросить ширину колонок" aria-label="Сбросить ширину колонок">${window.App.icons.svg("width")}</button>
+                <button id="deleteAllItemTemplatesBtn" class="btn-icon btn btn-danger" type="button" title="Удалить все позиции" aria-label="Удалить все позиции">${window.App.icons.svg("trash")}</button>
               </div>
             </div>
-            <div id="itemCatalogKpiGrid" class="analytics-kpi-grid section-kpi-grid" aria-label="Итоги каталога позиций"></div>
+            <div id="itemCatalogKpiGrid" class="analytics-kpi-grid section-kpi-grid catalog-compact-kpis" aria-label="Итоги каталога позиций"></div>
             <div id="itemCatalogBulkBar" class="bulk-bar item-catalog-brand-bulk-bar hidden" aria-live="polite">
               <strong id="itemCatalogSelectedCount">Выбрано: 0</strong>
               <label class="item-catalog-brand-bulk-field">
@@ -503,8 +504,8 @@
                   <option value="">Без бренда</option>
                 </select>
               </label>
-              <button id="assignSelectedItemBrandBtn" class="btn btn-primary btn-xs" type="button">Применить</button>
-              <button id="clearSelectedItemCatalogBtn" class="btn btn-ghost btn-xs" type="button">Снять выбор</button>
+              <button id="assignSelectedItemBrandBtn" class="btn-icon btn btn-primary btn-xs" type="button" title="Назначить бренд" aria-label="Назначить бренд">${window.App.icons.svg("save")}</button>
+              <button id="clearSelectedItemCatalogBtn" class="btn-icon btn btn-ghost btn-xs" type="button" title="Снять выбор" aria-label="Снять выбор">${window.App.icons.svg("close")}</button>
             </div>
             <div class="table-wrap">
               <table class="table table-hover mobile-card-table item-catalog-table">
@@ -528,16 +529,16 @@
             <div class="item-brands-heading">
               <div>
                 <h3>Бренды</h3>
-                <p class="muted">Объединяйте позиции разных источников и следите за покупками брендов.</p>
+
               </div>
-              <button id="addItemBrandBtn" class="btn btn-primary" type="button">Добавить бренд</button>
+              <button id="addItemBrandBtn" class="btn-icon btn btn-primary" type="button" title="Добавить бренд" aria-label="Добавить бренд">${window.App.icons.svg("plus")}</button>
             </div>
-            <div id="itemBrandsKpiGrid" class="analytics-kpi-grid section-kpi-grid" aria-label="Итоги по брендам"></div>
+            <div id="itemBrandsKpiGrid" class="analytics-kpi-grid section-kpi-grid catalog-compact-kpis" aria-label="Итоги по брендам"></div>
             <div class="item-brands-toolbar">
               <input id="itemBrandsSearchQ" class="table-search-input" type="search" placeholder="Поиск по бренду или позиции" />
               <div class="toolbar section-action-toolbar search-toolbar">
-                <button id="refreshItemBrandsBtn" class="btn btn-secondary btn-xs" type="button">Обновить</button>
-                <button id="resetItemBrandWidthsBtn" class="btn btn-secondary btn-xs" type="button" title="Вернуть исходные размеры колонок">Сбросить ширину</button>
+                <button id="refreshItemBrandsBtn" class="btn-icon btn btn-secondary btn-xs" type="button" title="Обновить бренды" aria-label="Обновить бренды">${window.App.icons.svg("refresh")}</button>
+                <button id="resetItemBrandWidthsBtn" class="btn-icon btn btn-secondary btn-xs" type="button" title="Сбросить ширину колонок" aria-label="Сбросить ширину колонок">${window.App.icons.svg("width")}</button>
               </div>
             </div>
             <div class="table-wrap">

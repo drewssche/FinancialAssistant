@@ -450,14 +450,14 @@
     el.catalogProductOffersList.innerHTML = (product?.offers || []).map((offer) => `
       <article class="catalog-product-modal-offer" data-catalog-product-parent-id="${product.id}" data-modal-offer-id="${offer.template_id}">
         <div class="catalog-product-source-cell">${media().renderThumb?.(offer.source_image_id, { kind: "source", size: "chip", alt: offer.source_name, fallback: offer.source_name?.slice(0, 1) }) || ""}<div><strong>${esc(offer.source_name || "Без источника")}</strong><span class="muted-small">${esc(offer.name)}</span></div></div>
-        <div><strong>${Number(offer.latest_unit_price || 0) > 0 ? core.formatMoney(offer.latest_unit_price) : "—"}</strong><span class="muted-small">${offer.latest_price_date ? esc(core.formatDateRu(offer.latest_price_date)) : "Нет цены"}</span></div>
+        <div><strong>${Number(offer.latest_unit_price || 0) > 0 ? core.formatMoney(offer.latest_unit_price) : "—"}</strong><span class="muted-small">${offer.latest_price_date ? esc(core.formatDateRu(offer.latest_price_date)) : ""}</span></div>
         <div class="catalog-product-offer-menu">
-          <button class="btn btn-secondary btn-xs" type="button" data-product-offer-action="edit" data-template-id="${offer.template_id}">Изменить</button>
-          <details><summary aria-label="Действия предложения ${esc(offer.source_name || offer.name)}">Ещё</summary><div class="catalog-product-menu-actions">
-            <button class="btn btn-secondary btn-xs" type="button" data-product-offer-action="history" data-template-id="${offer.template_id}">История цен</button>
-            <button class="btn btn-secondary btn-xs" type="button" data-product-offer-action="operations" data-template-id="${offer.template_id}">Покупки</button>
-            <button class="btn btn-danger btn-xs" type="button" data-product-offer-action="detach" data-template-id="${offer.template_id}" data-product-id="${product.id}">Отделить</button>
-          </div></details>
+          <button class="btn-icon btn btn-secondary btn-xs" type="button" data-product-offer-action="edit" data-template-id="${offer.template_id}" title="Изменить предложение" aria-label="Изменить предложение">${window.App.icons.svg("edit")}</button>
+
+            <button class="btn-icon btn btn-secondary btn-xs" type="button" data-product-offer-action="history" data-template-id="${offer.template_id}" title="История цен" aria-label="История цен">${window.App.icons.svg("chart")}</button>
+            <button class="btn-icon btn btn-secondary btn-xs" type="button" data-product-offer-action="operations" data-template-id="${offer.template_id}" title="Покупки" aria-label="Покупки">${window.App.icons.svg("receipt")}</button>
+            <button class="btn-icon btn btn-danger btn-xs" type="button" data-product-offer-action="detach" data-template-id="${offer.template_id}" data-product-id="${product.id}" title="Отделить предложение" aria-label="Отделить предложение">${window.App.icons.svg("unlink")}</button>
+
         </div>
       </article>`).join("") || "<div class='empty'>Предложений пока нет. Нажмите «Добавить источник» или выберите этот товар в чеке магазина.</div>";
     media().hydrate?.(el.catalogProductOffersList);
@@ -491,8 +491,8 @@
     }
     renderModalOffers(product);
     el.deleteCatalogProductBtn?.classList.toggle("hidden", !product);
-    el.deleteCatalogProductBtn?.closest("details")?.classList.toggle("hidden", !product);
-    if (el.submitCatalogProductBtn) el.submitCatalogProductBtn.textContent = product ? "Сохранить" : "Создать товар";
+
+    window.App.icons.apply(el.submitCatalogProductBtn, "save", product ? "Сохранить товар" : "Создать товар");
     media().resetPicker?.("catalog-product", { imageId: product?.image_id, kind: "item", label: product?.name || "Товар" });
     el.catalogProductModal?.classList.remove("hidden");
     core.bringModalToFront?.(el.catalogProductModal);

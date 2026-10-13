@@ -44,7 +44,7 @@
         el.sourceGroupTitle.textContent = "Новый источник";
       }
       if (el.submitSourceGroupBtn) {
-        el.submitSourceGroupBtn.textContent = "Создать источник";
+        window.App.icons.apply(el.submitSourceGroupBtn, "save", "Создать источник");
       }
       window.App.getRuntimeModule?.("catalog-media")?.resetPicker?.("item-source", {
         imageId: null,
@@ -99,7 +99,7 @@
         el.sourceGroupTitle.textContent = "Редактировать источник";
       }
       if (el.submitSourceGroupBtn) {
-        el.submitSourceGroupBtn.textContent = "Сохранить источник";
+        window.App.icons.apply(el.submitSourceGroupBtn, "save", "Сохранить источник");
       }
       window.App.getRuntimeModule?.("catalog-media")?.resetPicker?.("item-source", {
         imageId: source?.image_id,

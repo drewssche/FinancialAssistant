@@ -389,7 +389,8 @@ def test_brand_catalog_assignment_detail_and_analytics_drilldown(static_server_u
             page.locator('#createOperationModeSwitch button[data-operation-mode="receipt"]').click()
             page.wait_for_selector("#opReceiptFields:not(.hidden)")
             receipt_row = page.locator("#receiptItemsList .receipt-item-row").first
-            receipt_row.locator('[data-receipt-field="shop_name"]').fill("Green")
+            page.locator('[data-receipt-store="create"]').fill("Green")
+            page.locator('[data-receipt-store="create"]').press("Tab")
             receipt_row.locator('[data-receipt-field="name"]').click()
             page.wait_for_selector(
                 '.receipt-item-row:first-child .receipt-name-picker:not(.hidden) button[data-receipt-template-id="1"]'

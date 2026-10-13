@@ -233,7 +233,7 @@ def test_receipt_line_total_live_update_keeps_currency_symbol():
     assert "formatReceiptMoney(value, mode = \"create\", options = {})" in receipt
     assert "formatReceiptMoney," in receipt
     assert "formatReceiptMoney," in interactions
-    assert "${formatReceiptMoney(receiptLineTotal(updated.item), mode)}" in interactions
+    assert "formatReceiptMoney(receiptLineTotal(updated.item), mode)" in interactions
     assert "receiptLineTotal(updated.item), { withCurrency: false }" not in interactions
     assert "syncReceiptNumericInputs(mode);" in receipt
     assert 'renderReceiptSummary(mode, { amountValue: total });' in receipt

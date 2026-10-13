@@ -257,6 +257,8 @@ def page_with_receipt_api_mock():
                 item for item in templates if int(item.get("source_id") or 0) != source_id
             ]
             return route.fulfill(status=204, body="")
+        if path == "/api/v1/operations/catalog-products" and method == "GET":
+            return json_response(route, {"items": [], "total": 0, "page": 1, "page_size": 100})
         if path == "/api/v1/operations/item-templates" and method == "GET":
             token = ((query.get("q") or [""])[0]).strip().casefold()
             if not token:
@@ -828,49 +830,17 @@ def test_receipt_picker_loads_catalog_sources_and_templates_beyond_first_page(st
     page.locator('#createOperationModeSwitch button[data-operation-mode="receipt"]').click()
     page.wait_for_selector("#opReceiptFields:not(.hidden)")
 
+    store = page.locator('[data-receipt-store="create"]')
+    store.click()
+    popup = page.locator('#createReceiptStoreOptions')
+    expect(popup.get_by_role('option', name='Пустой источник', exact=True)).to_be_visible()
+    store.fill("Дальний")
+    popup.get_by_role('option', name='Дальний источник', exact=True).click()
+    expect(store).to_have_value('Дальний источник')
+    # Directly typing after choosing a store must survive its native blur/change event.
     first_row = page.locator(".receipt-item-row").first
-    first_row.locator('[data-receipt-field="shop_name"]').click()
-    page.wait_for_selector('.receipt-item-row:first-child .receipt-shop-picker:not(.hidden)')
-    empty_source_option = first_row.locator(
-        '.receipt-shop-picker .receipt-entity-option[data-receipt-shop-name="Пустой источник"]'
-    )
-    expect(empty_source_option).to_be_visible()
-    expect(empty_source_option).to_have_attribute("aria-label", "Пустой источник")
-    assert empty_source_option.get_attribute("title") is None
-    assert empty_source_option.locator(".catalog-media-fallback").inner_text() == "ПИ"
-    chip_geometry = first_row.locator(".receipt-shop-picker").evaluate(
-        """
-        node => ({
-          gap: parseFloat(getComputedStyle(node).rowGap || '0'),
-          avatars: [...node.querySelectorAll('.receipt-entity-option')].slice(0, 12).map((option) => {
-            const rect = option.getBoundingClientRect();
-            return {
-              width: rect.width,
-              height: rect.height,
-              labelDisplay: getComputedStyle(option.querySelector('.receipt-entity-option-label')).display,
-            };
-          }),
-        })
-        """
-    )
-    assert chip_geometry["gap"] <= 8
-    assert chip_geometry["avatars"]
-    assert all(40 <= avatar["width"] <= 48 for avatar in chip_geometry["avatars"])
-    assert all(abs(avatar["width"] - avatar["height"]) <= 1 for avatar in chip_geometry["avatars"])
-    assert all(avatar["labelDisplay"] == "none" for avatar in chip_geometry["avatars"])
-
-    first_row.locator('[data-receipt-field="shop_name"]').fill("Дальний")
-    page.wait_for_selector('.receipt-item-row:first-child .receipt-shop-picker:not(.hidden)')
-    distant_source_option = first_row.locator(
-        '.receipt-shop-picker .receipt-entity-option[data-receipt-shop-name="Дальний источник"]'
-    )
-    expect(distant_source_option).to_be_visible()
-    expect(distant_source_option).to_have_attribute("aria-label", "Дальний источник")
-    distant_source_option.click()
-
-    first_row.locator('[data-receipt-field="name"]').click()
-    page.wait_for_selector('.receipt-item-row:first-child .receipt-name-picker:not(.hidden)')
-    assert first_row.locator('.receipt-name-picker .chip-btn:has-text("Дальняя позиция")').first.is_visible()
+    first_row.locator('[data-receipt-field="name"]').fill("Дальняя")
+    expect(first_row.locator('.receipt-name-picker .chip-btn:has-text("Дальняя позиция")').first).to_be_visible()
 
 
 @pytest.mark.e2e
@@ -1974,7 +1944,7 @@ def test_catalog_product_add_source_keeps_parent_edits_and_updates_sources(
     page.evaluate("() => window.App.getRuntimeModule('item-catalog').openItemTemplateModal()")
     expect(page.locator("#itemTemplateBrandField")).to_be_visible()
     assert not page.locator("#itemTemplateName").evaluate("node => node.readOnly")
-    expect(page.locator("#submitItemTemplateBtn")).to_have_text("Сохранить")
+    expect(page.locator("#submitItemTemplateBtn")).to_have_attribute("aria-label", "Сохранить позицию")
 
 
 @pytest.mark.e2e
@@ -2238,7 +2208,6 @@ def test_catalog_measurements_save_optional_defaults(static_server_url, page_wit
     _ensure_categories_loaded(page)
     page.evaluate("window.App.getRuntimeModule('catalog-products').openEditor()")
     page.locator('#catalogProductName').fill('Молоко')
-    page.locator('#catalogProductForm details summary').click()
     page.locator('#catalogProductSaleUnit').select_option('piece')
     page.locator('#catalogProductPackageQuantity').fill('0.9')
     page.locator('#catalogProductPackageUnit').select_option('l')

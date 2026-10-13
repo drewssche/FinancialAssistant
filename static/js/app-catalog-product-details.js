@@ -40,7 +40,7 @@
       const rows = await core.requestJson(url, {headers: core.authHeaders(), signal: controller.signal});
       if (token !== generation || !visible()) return;
       if (purchases) { window.App.getRuntimeModule("catalog-price-history").render(rows, preserve, preferredPriceSeries); preferredPriceSeries = null; return; }
-      target.innerHTML = (rows || []).map((row) => `<article class="catalog-product-price-row"><span>${esc(core.formatDateRu(row.recorded_at))}</span><strong>${core.formatMoney(row.unit_price)}</strong><details><summary aria-label="Действия с ценой за ${esc(core.formatDateRu(row.recorded_at))}">Ещё</summary><button class="btn btn-danger btn-xs" type="button" data-product-price-delete="${Number(row.id)}" data-offer-id="${offerId}">Удалить цену</button></details></article>`).join("") || '<div class="empty">История цен пока пустая</div>';
+      target.innerHTML = (rows || []).map((row) => `<article class="catalog-product-price-row"><span>${esc(core.formatDateRu(row.recorded_at))}</span><strong>${core.formatMoney(row.unit_price)}</strong><button class="btn btn-danger btn-icon" title="Удалить цену" aria-label="Удалить цену" type="button" data-product-price-delete="${Number(row.id)}" data-offer-id="${offerId}">${window.App.icons.svg("trash")}</button></article>`).join("") || '<div class="empty">История цен пока пустая</div>';
       if (rows?.length === 200) target.insertAdjacentHTML("beforeend", '<p class="muted-small">Показаны последние 200 записей.</p>');
     } catch (error) { if (token === generation && error.name !== "AbortError") target.innerHTML = errorHtml(error); }
   }
@@ -76,8 +76,10 @@
   }
   function select(next, offerId) {
     cancel();
-    tab = product && ["product", "offers", "prices", "purchases"].includes(next) ? next : "product";
+    tab = product && ["product", "offers", "prices", "purchases", "packages"].includes(next) ? next : "product";
     if (product) rememberedTabs.set(product.id, tab);
+    window.App.getRuntimeModule("catalog-identity").activate(tab === "packages");
+    window.App.getRuntimeModule("catalog-replacements").activate(tab === "packages");
     for (const panel of el.catalogProductModal.querySelectorAll("[data-product-panel]")) panel.classList.toggle("hidden", panel.dataset.productPanel !== tab);
     for (const button of node("catalogProductTabs").querySelectorAll("button")) {
       button.classList.toggle("active", button.dataset.productTab === tab);
@@ -118,8 +120,10 @@
   }
   function bind() {
     if (bound) return; bound = true;
+    el.catalogProductModal.addEventListener("change", event => { if (event.target.closest('[data-product-panel="prices"]')) node("catalogProductComparisonSummary").classList.add("hidden"); });
     document.addEventListener("app:activity-changed", (event) => {
       const {method, path} = event.detail || {};
+      if (["POST", "PUT", "PATCH", "DELETE"].includes(method) && String(path).startsWith("/api/v1/operations")) node("catalogProductComparisonSummary").classList.add("hidden");
       if (nestedOperation && ["PATCH", "DELETE"].includes(method) && /^\/api\/v1\/operations\/\d+$/.test(path || "")) purchasesDirty = true;
     });
     new MutationObserver(() => {
@@ -152,7 +156,7 @@
       if (!visible()) return;
       core.bringModalToFront?.(el.catalogProductModal);
       returnTarget?.focus({preventScroll: true});
-      if (tab === "product" && purchasesDirty && node("catalogReplacementsDetails").open) {
+      if (tab === "packages" && purchasesDirty) {
         node("catalogReplacementsRefresh").focus({preventScroll: true});
       }
       if (tab === "prices" && purchasesDirty) {
@@ -196,6 +200,9 @@
       node("catalogProductPriceFrom").value = options.priceFilters.date_from || "";
       node("catalogProductPriceTo").value = options.priceFilters.date_to || "";
     }
+    const summary = node("catalogProductComparisonSummary");
+    summary.innerHTML = options.comparisonHtml || "";
+    summary.classList.toggle("hidden", !options.comparisonHtml);
     resetOptions(); select(options.tab || rememberedTabs.get(product?.id) || "product", options.offerId);
   }
   function close() { window.App.getRuntimeModule("catalog-replacements").close(); window.App.getRuntimeModule("catalog-identity").close(); window.App.getRuntimeModule("catalog-price-history").cleanup(); workspaceGeneration += 1; cancel(); product = null; nestedOperation = false; returnTarget = null; }

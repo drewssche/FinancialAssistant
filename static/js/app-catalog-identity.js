@@ -42,7 +42,7 @@
       options(); variantForm(); offerForm();
       node("catalogIdentityForms").classList.remove("hidden");
     } catch (error) {
-      if (token === generation && error.name !== "AbortError") node("catalogIdentityStatus").textContent = `Не удалось загрузить: ${error.message}. Закройте и раскройте блок для повтора.`;
+      if (token === generation && error.name !== "AbortError") node("catalogIdentityStatus").textContent = `Не удалось загрузить: ${error.message}. Вернитесь на вкладку для повтора.`;
     }
   }
   async function save(form, variant) {
@@ -75,17 +75,18 @@
   }
   function bind() {
     if (bound) return; bound = true;
-    node("catalogIdentityDetails").addEventListener("toggle", () => {if (node("catalogIdentityDetails").open && product && !data) load();});
     node("catalogIdentityForms").addEventListener("input", (event) => {dirtyForms.add(event.target.closest("form")?.id);});
     node("catalogVariantSelect").addEventListener("change", variantForm);
     node("catalogIdentityOffer").addEventListener("change", offerForm);
     node("catalogVariantForm").addEventListener("submit", (e) => {e.preventDefault(); save(e.currentTarget, true);});
     node("catalogOfferIdentityForm").addEventListener("submit", (e) => {e.preventDefault(); save(e.currentTarget, false);});
   }
-  function close() {generation++; controller?.abort(); product = null; data = null; dirtyForms.clear();}
+  let active = false;
+  function activate(value) { active = value; if (active && product && !data && !dirtyForms.size) load(); }
+  function close() {active = false;generation++; controller?.abort(); product = null; data = null; dirtyForms.clear();}
   window.App.registerRuntimeModule("catalog-identity", {
-    open(value) {close(); bind(); product = value; node("catalogIdentityDetails").open = false; node("catalogIdentityDetails").classList.toggle("hidden", !value); node("catalogVariantSelect").value = ""; node("catalogIdentityForms").querySelectorAll('button[type="submit"]').forEach((b) => b.disabled = false);},
-    refresh(value) {product = value; if (dirtyForms.size) return; data = null; if (node("catalogIdentityDetails").open) load();},
-    close, cleanup: close,
+    open(value) {close(); bind(); product = value; node("catalogIdentityDetails").classList.toggle("hidden", !value); node("catalogVariantSelect").value = ""; node("catalogIdentityForms").querySelectorAll('button[type="submit"]').forEach((b) => b.disabled = false);},
+    refresh(value) {product = value; if (dirtyForms.size) return; data = null; if (active) load();},
+    activate, close, cleanup: close,
   });
 })();

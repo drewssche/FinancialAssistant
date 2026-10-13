@@ -483,13 +483,15 @@
   }
 
   function setItemCatalogView(view, options = {}) {
-    const activeView = view === "brands" ? "brands" : (view === "sources" || view === "positions" ? "sources" : "products");
+    const activeView = view === "changes" ? "changes" : view === "brands" ? "brands" : (view === "sources" || view === "positions" ? "sources" : "products");
     state.itemCatalogView = activeView;
+    window.App.getRuntimeModule?.("catalog-price-changes")?.setActive(activeView === "changes");
     el.catalogProductsView?.classList.toggle("hidden", activeView !== "products");
     el.itemCatalogPositionsView?.classList.toggle("hidden", activeView !== "sources");
     el.itemBrandsView?.classList.toggle("hidden", activeView !== "brands");
     el.itemCatalogViewTabs?.querySelectorAll("[data-item-catalog-view]").forEach((button) => {
       button.classList.toggle("active", button.dataset.itemCatalogView === activeView);
+      button.setAttribute("aria-selected", String(button.dataset.itemCatalogView === activeView));
     });
     if (activeView === "brands") {
       window.App.getRuntimeModule?.("item-brands")?.loadItemBrands?.({ force: true })
@@ -502,9 +504,11 @@
         .catch((err) => core.setStatus(`Не удалось загрузить предложения: ${String(err)}`));
     }
     if (el.addItemTemplateCta) {
-      el.addItemTemplateCta.textContent = activeView === "products" ? "+ Добавить товар" : "+ Создать позицию";
-      el.addItemTemplateCta.classList.toggle("hidden", activeView === "brands");
+      window.App.icons.apply(el.addItemTemplateCta, "plus", activeView === "products" ? "Добавить товар" : "Создать позицию");
+      el.addItemTemplateCta.classList.toggle("hidden", ["brands", "changes"].includes(activeView));
     }
+    window.App.icons.apply(el.addItemSourceCta, "plus", "Создать источник");
+    window.App.icons.apply(el.batchItemCatalogCta, "receipt", "Массовое добавление");
     if (el.addItemSourceCta) {
       el.addItemSourceCta.classList.toggle("hidden", activeView !== "sources");
     }

@@ -28,7 +28,7 @@ def test_manifest_lists_bootstrap_scripts_in_stable_order():
     assert script_sources, "frontend script manifest must not be empty"
     assert script_sources.index("/static/js/app-search-utils.js") < script_sources.index("/static/js/app-renderers.js")
     assert script_sources.index("/static/js/app-search-utils.js") < script_sources.index("/static/js/app-picker-utils.js")
-    assert script_sources[0] == "/static/js/templates/shell-sections-primary.js"
+    assert script_sources.index("/static/js/app-icons.js") < script_sources.index("/static/js/templates/shell-sections-primary.js")
     assert script_sources[-1] == "/static/js/app-init.js"
     assert len(script_sources) == len(set(script_sources)), "frontend script manifest must not contain duplicates"
     assert "/static/js/app-init-registry.js" in script_sources

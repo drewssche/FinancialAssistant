@@ -330,7 +330,7 @@
       el.itemBrandModalTitle.textContent = isEdit ? "Редактировать бренд" : "Новый бренд";
     }
     if (el.submitItemBrandBtn) {
-      el.submitItemBrandBtn.textContent = isEdit ? "Сохранить" : "Создать бренд";
+      window.App.icons.apply(el.submitItemBrandBtn, "save", isEdit ? "Сохранить бренд" : "Создать бренд");
     }
     if (el.itemBrandName) {
       el.itemBrandName.value = brand?.name || "";
