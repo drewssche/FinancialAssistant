@@ -2,6 +2,7 @@
   // Move the existing controls, retaining their listeners, IDs and financial contracts.
   const layouts = new Map();
   const byId = id => document.getElementById(id);
+  const desktop = window.matchMedia('(min-width: 900px)');
   function disclosure(label, className = '') {
     const node = document.createElement('details');
     node.className = `operation-disclosure ${className}`;
@@ -30,9 +31,26 @@
     const preview = modal.querySelector(':scope > .operation-modal-card > .preview-panel');
     const previewDetails = disclosure('Предпросмотр', 'operation-preview');
     if (preview) { preview.before(previewDetails); previewDetails.append(preview); }
+    const previewButton = document.createElement('button');
+    previewButton.type = 'button';
+    previewButton.className = 'btn btn-secondary operation-preview-action';
+    previewButton.textContent = 'Предпросмотр';
+    previewDetails.id = `${mode}OperationPreview`;
+    previewButton.setAttribute('aria-controls', previewDetails.id);
+    previewButton.setAttribute('aria-expanded', 'false');
+    previewButton.addEventListener('click', () => {
+      previewDetails.open = !previewDetails.open;
+      tools.open = false;
+      if (previewDetails.open) previewDetails.scrollIntoView({block: 'nearest'});
+    });
+    previewDetails.addEventListener('toggle', () => previewButton.setAttribute('aria-expanded', String(previewDetails.open)));
+    toolMenu.append(previewButton);
     const entry = create ? disclosure('Другие операции: валюта, долг', 'operation-entry') : null;
     if (entry) { form.append(entry); entry.append(byId('createEntryModeSwitch')); }
     const check = disclosure('Сверить сумму чека', 'operation-receipt-check');
+    check.querySelector('summary').addEventListener('click', event => {
+      if (desktop.matches) event.preventDefault();
+    });
     const amount = byId(`${prefix}AmountCompound`), amountAnchor = document.createComment('operation amount');
     amount.before(amountAnchor);
     const category = byId(create ? 'createCategoryField' : 'editCategoryField');
@@ -51,7 +69,15 @@
     receiptCurrency.innerHTML = '<span>Валюта</span>';
     store.after(receiptCurrency);
     byId(`${prefix}Amount`).setAttribute('inputmode', 'decimal');
-    const layout = {modal, form, extra, entry, check, amount, amountAnchor, category, categoryAnchor, currency, currencyAnchor, receiptCurrency, prefix};
+    const sidebar = document.createElement('aside');
+    sidebar.className = 'operation-summary-column';
+    sidebar.setAttribute('aria-label', 'Сумма и комментарий');
+    const noteLabel = document.createElement('label');
+    noteLabel.className = 'operation-note-label';
+    noteLabel.innerHTML = `<span>Комментарий</span>`;
+    sidebar.append(noteLabel);
+    const receiptSummary = receipt.querySelector('.receipt-summary');
+    const layout = {modal, form, extra, entry, check, amount, amountAnchor, category, categoryAnchor, currency, currencyAnchor, receiptCurrency, prefix, sidebar, noteLabel, receipt, receiptSummary, previewDetails};
     layouts.set(mode, layout);
     return layout;
   }
@@ -63,6 +89,8 @@
     const store = modal.querySelector('[data-receipt-store]');
     if (store && document.activeElement !== store) store.value = window.App.state[mode === 'create' ? 'createReceiptItems' : 'editReceiptItems']?.[0]?.shop_name || '';
     const receipt = operation && !modal.classList.contains('editing-debt-movement') && byId(`${prefix}OperationMode`).value === 'receipt';
+    check.querySelector('summary').textContent = desktop.matches ? 'Оплачено по чеку' : 'Сверить сумму чека';
+    check.querySelector('summary').tabIndex = desktop.matches ? -1 : 0;
     modal.classList.toggle('is-receipt-editor', receipt);
     modal.classList.toggle('is-other-entry', !operation);
     if (receipt) {
@@ -74,10 +102,10 @@
       currencyAnchor.after(currency);
       categoryAnchor.after(category);
     }
-    byId(`${prefix}Amount`).placeholder = receipt ? 'Сумма в бумажном чеке (необязательно)' : 'Сумма';
+    byId(`${prefix}Amount`).placeholder = receipt ? (desktop.matches ? 'Необязательно' : 'Сумма в бумажном чеке (необязательно)') : 'Сумма';
     if (reset) {
       modal.querySelectorAll('.operation-disclosure').forEach(node => { node.open = false; });
-      extra.open = Boolean(byId(`${prefix}Note`).value || byId(mode === 'create' ? 'opUseFxSettlement' : 'editUseFxSettlement')?.checked);
+      extra.open = Boolean((!desktop.matches && byId(`${prefix}Note`).value) || byId(mode === 'create' ? 'opUseFxSettlement' : 'editUseFxSettlement')?.checked);
       check.open = Boolean(byId(mode === 'create' ? 'receiptDiffValue' : 'editReceiptDiffValue')?.classList.contains('receipt-diff-warn'));
     }
     const plan = mode === 'create' && window.App.state.createFlowMode === 'plan';
@@ -91,6 +119,34 @@
       entry.classList.toggle('hidden', byId('createEntryModeSwitch').classList.contains('hidden'));
       if (!operation) entry.open = true;
     }
+    // The same fields stay in the form across viewport changes; no draft is copied.
+    if (desktop.matches) {
+      if (entry) { view.form.prepend(entry); entry.open = true; }
+      view.form.insertBefore(view.sidebar, extra);
+      view.noteLabel.append(note);
+      view.sidebar.classList.toggle('hidden', !operation);
+      if (receipt) {
+        view.sidebar.prepend(view.receiptSummary, check);
+        check.open = true;
+      } else {
+        view.receipt.append(view.receiptSummary, check);
+      }
+      extra.querySelector('summary').textContent = 'Дополнительные параметры';
+    } else {
+      if (entry) view.form.append(entry);
+      view.receipt.append(view.receiptSummary, check);
+      view.sidebar.remove();
+      if (plan) extra.before(note); else extra.prepend(note);
+    }
   }
+  desktop.addEventListener('change', () => {
+    for (const [mode, view] of layouts) {
+      if (!desktop.matches) {
+        view.check.open = Boolean(byId(mode === 'create' ? 'receiptDiffValue' : 'editReceiptDiffValue')?.classList.contains('receipt-diff-warn'));
+        if (view.entry) view.entry.open = byId('opEntryMode').value !== 'operation';
+      }
+      sync(mode);
+    }
+  });
   window.App.registerRuntimeModule('operation-layout', {sync});
 })();

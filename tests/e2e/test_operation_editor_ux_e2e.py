@@ -15,17 +15,17 @@ def open_editor(page, url, width):
 
 
 @pytest.mark.e2e
-@pytest.mark.parametrize('width', [320, 390, 1440])
+@pytest.mark.parametrize('width', [320, 390, 1024, 1100, 1440])
 def test_simple_and_receipt_editors_keep_main_path_short(static_server_url, page_with_receipt_api_mock, width):
     page = page_with_receipt_api_mock
     open_editor(page, static_server_url, width)
     assert page.locator('#opAmount').is_visible()
-    assert page.locator('#opNote').is_hidden()
+    assert page.locator('#opNote').is_visible() == (width >= 900)
     assert page.locator('#opFxSettlementBlock').is_hidden()
     assert page.locator('#createModal .panel-head').bounding_box()['height'] < 90
     page.locator('#opAmount').fill('5.85')
     page.locator('#createOperationModeSwitch [data-operation-mode="receipt"]').click()
-    assert page.locator('#opAmount').is_hidden()
+    assert page.locator('#opAmount').is_visible() == (width >= 900)
     page.locator('[data-receipt-store="create"]').fill('Соседи')
     page.locator('[data-receipt-store="create"]').press('Tab')
     page.locator('#receiptItemsList [data-receipt-field="name"]').first.fill('Сыр Голландский')
@@ -52,7 +52,8 @@ def test_simple_and_receipt_editors_keep_main_path_short(static_server_url, page
     assert first.locator('[data-receipt-field="brand_search"]').is_visible()
     first.locator('[data-receipt-details-toggle]').click()
     assert page.evaluate("() => window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()") == payload
-    page.locator('#createModal .operation-receipt-check > summary').click()
+    if width < 900:
+        page.locator('#createModal .operation-receipt-check > summary').click()
     assert page.locator('#opAmount').input_value() == '5.85'
     page.locator('#pullReceiptTotalBtn').click()
     assert float(page.locator('#opAmount').input_value()) == 3.5
@@ -65,7 +66,7 @@ def test_simple_and_receipt_editors_keep_main_path_short(static_server_url, page
 
 
 @pytest.mark.e2e
-@pytest.mark.parametrize('width', [320, 390, 1440])
+@pytest.mark.parametrize('width', [320, 390, 1024, 1100, 1440])
 def test_long_receipt_has_natural_height_and_preserves_saved_data(static_server_url, page_with_receipt_api_mock, width):
     page = page_with_receipt_api_mock
     open_editor(page, static_server_url, width)
@@ -127,7 +128,8 @@ def test_store_inheritance_and_other_entry_modes_are_accessible(static_server_ur
 
 
 @pytest.mark.e2e
-def test_compact_receipt_submits_exact_total_with_optional_comment(static_server_url, page_with_receipt_api_mock):
+@pytest.mark.parametrize('width', [390, 1440])
+def test_compact_receipt_submits_exact_total_with_optional_comment(static_server_url, page_with_receipt_api_mock, width):
     import json
     page=page_with_receipt_api_mock
     captured=[]
@@ -139,7 +141,7 @@ def test_compact_receipt_submits_exact_total_with_optional_comment(static_server
             'id':778,**payload,'amount':'3.65','receipt_total':'3.65','receipt_discrepancy':'0.00',
         }))
     page.route('**/api/v1/operations',save)
-    open_editor(page,static_server_url,390)
+    open_editor(page,static_server_url,width)
     page.locator('#createOperationModeSwitch [data-operation-mode="receipt"]').click()
     row=page.locator('#receiptItemsList .receipt-item-row').first
     row.locator('[data-receipt-field="name"]').fill('Сыр')
@@ -148,7 +150,8 @@ def test_compact_receipt_submits_exact_total_with_optional_comment(static_server
     row.locator('[data-receipt-field="unit_price"]').fill('15.64')
     row.locator('[data-receipt-discount-toggle]').click()
     row.locator('[data-receipt-field="discount_value"]').fill('0.13')
-    page.locator('#createModal .operation-extra > summary').click()
+    if width < 900:
+        page.locator('#createModal .operation-extra > summary').click()
     page.locator('#opNote').fill('Проверка черновика')
     page.locator('#submitCreateOperationBtn').click()
     page.wait_for_function("()=>document.querySelector('#createModal').classList.contains('hidden')")
@@ -160,3 +163,53 @@ def test_compact_receipt_submits_exact_total_with_optional_comment(static_server
     assert item['discount_mode']=='amount'
     assert float(item['discount_value'])==0.13
     assert float(item['regular_unit_price'])==15.64
+
+
+@pytest.mark.e2e
+def test_desktop_sidebar_resize_and_preview_preserve_draft(static_server_url, page_with_receipt_api_mock):
+    page = page_with_receipt_api_mock
+    open_editor(page, static_server_url, 1440)
+    page.locator('#createOperationModeSwitch [data-operation-mode="receipt"]').click()
+    page.evaluate('''()=>{
+      const m=window.App.getRuntimeModule('operation-modal');
+      window.App.state.createReceiptItems=[m.createReceiptDraft({template_id:1,name:'Сыр Голландский выдержанный',shop_name:'Соседи',sale_unit:'kg',quantity:.242,unit_price:15.64,category_id:101})];
+      m.renderReceiptItems('create'); window.App.actions.updateCreatePreview();
+    }''')
+    page.locator('#opNote').fill('Семейные покупки')
+    page.locator('#opAmount').fill('3.79')
+    before = page.evaluate("() => window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
+    for width in [390, 1024, 1100, 1440]:
+        page.set_viewport_size({'width': width, 'height': 800})
+        page.wait_for_timeout(100)
+        assert page.locator('#opNote').count() == 1
+        assert page.locator('#opNote').input_value() == 'Семейные покупки'
+        assert page.locator('#opAmount').input_value() == '3.79'
+        assert page.evaluate("() => window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()") == before
+        assert page.locator('#createModal .modal-card').evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+        if width >= 900:
+            assert page.locator('#opNote').is_visible()
+            assert page.locator('#opAmount').is_visible()
+            assert page.locator('#createEntryModeSwitch').is_visible()
+            geometry = page.evaluate('''()=>{
+              const r=document.querySelector('#opReceiptBlock').getBoundingClientRect();
+              const s=document.querySelector('#createModal .operation-summary-column').getBoundingClientRect();
+              const h=document.querySelector('#createModal .panel-head').getBoundingClientRect();
+              return {receiptRight:r.right,receiptTop:r.top,sidebarLeft:s.left,sidebarTop:s.top,headerHeight:h.height};
+            }''')
+            assert geometry['headerHeight'] < 90
+            if width >= 1100:
+                assert geometry['sidebarLeft'] >= geometry['receiptRight']
+                assert abs(geometry['sidebarTop'] - geometry['receiptTop']) < 2
+            page.screenshot(path=f'/tmp/fa-desktop-receipt-{width}.png')
+    page.locator('#createModal .operation-tools > summary').click()
+    page.locator('#createModal .operation-preview-action').click()
+    assert page.locator('#createPreviewBody').is_visible()
+    page.locator('#createEntryModeSwitch [data-entry-mode="debt"]').click()
+    assert page.locator('#debtPrincipal').is_visible()
+    page.locator('#createEntryModeSwitch [data-entry-mode="operation"]').click()
+    assert page.locator('#opNote').input_value() == 'Семейные покупки'
+    assert page.locator('#opAmount').input_value() == '3.79'
+    page.locator('#createOperationModeSwitch [data-operation-mode="common"]').click()
+    assert page.locator('#opAmount').is_visible()
+    assert page.locator('#opCurrency').is_visible()
+    assert page.locator('#receiptTotalValue').is_hidden()

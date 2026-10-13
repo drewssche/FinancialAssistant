@@ -123,3 +123,42 @@
   :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .is-compact .receipt-known-price-label { grid-column: 1 / -1; }
 }
 :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-line-total .receipt-discount-toggle { display: block; margin-top: 2px; width: auto; white-space: normal; }
+
+/* Desktop: visible receipt and totals, one optional settings section. */
+.operation-preview-action { display: none; }
+@media (min-width: 900px) {
+  :is(#createModal, #editModal).operation-editor .panel-head.row.between { flex-direction: row; justify-content: space-between; }
+  :is(#createModal, #editModal).operation-editor :is(.create-modal-grid, .edit-modal-grid) { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+  :is(#createModal, #editModal).operation-editor .operation-modal-card { max-width: 1240px; }
+  :is(#createModal, #editModal).operation-editor:not(.is-receipt-editor) .operation-modal-card { max-width: 920px; }
+  :is(#createModal, #editModal).operation-editor .operation-entry { border: 0; margin: 0; }
+  :is(#createModal, #editModal).operation-editor .operation-entry > summary,
+  :is(#createModal, #editModal).operation-editor .operation-preview > summary { display: none; }
+  :is(#createModal, #editModal).operation-editor .operation-entry > .segmented { margin: 0; width: max-content; }
+  :is(#createModal, #editModal).operation-editor .operation-preview:not([open]) { display: none; }
+  :is(#createModal, #editModal).operation-editor .operation-preview-action { display: block; white-space: nowrap; }
+  :is(#createModal, #editModal).operation-editor .operation-summary-column { grid-column: 1 / -1; display: grid; gap: 16px; min-width: 0; }
+  :is(#createModal, #editModal).operation-editor .operation-summary-column.hidden { display: none; }
+  .operation-note-label { display: grid; gap: 6px; font-size: .8rem; color: var(--muted); }
+  .operation-note-label input { width: 100%; min-width: 0; }
+  :is(#createModal, #editModal).operation-editor .operation-receipt-check > summary { list-style: none; pointer-events: none; padding: 0; font-size: .8rem; }
+  :is(#createModal, #editModal).operation-editor .operation-receipt-check > summary::marker { content: ''; }
+  :is(#createModal, #editModal).operation-editor .operation-receipt-check input { font-size: .85rem; }
+  :is(#createModal, #editModal).operation-editor .operation-summary-column .receipt-summary { display: grid; border: 0; gap: 8px; padding: 0; }
+  :is(#createModal, #editModal).operation-editor .operation-summary-column .receipt-summary strong { font-size: 1.05rem; }
+  :is(#createModal, #editModal).operation-editor .modal-footer { position: sticky; bottom: -16px; z-index: 5; background: var(--surface); padding: 12px 0; margin-top: 12px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; }
+  :is(#createModal, #editModal).operation-editor .modal-footer > .btn { width: auto; min-width: 200px; min-height: 44px; }
+  :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-item-row { padding: 10px; }
+  :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .is-compact:not(.receipt-item-empty) { grid-template-columns: minmax(170px, 1fr) minmax(330px, 1.2fr); }
+  :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-compact-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; align-content: start; }
+  :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) [data-receipt-details-toggle] { width: auto; min-width: 0; padding: 4px 8px; min-height: 32px; font-size: .75rem; }
+  :is(#createModal, #editModal).operation-editor .operation-extra[open] { grid-template-columns: minmax(0, 1fr); }
+}
+@media (min-width: 900px) and (max-width: 1099px) {
+  :is(#createModal, #editModal).operation-editor.is-receipt-editor .operation-summary-column { grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--border); padding-top: 12px; align-items: start; }
+  :is(#createModal, #editModal).operation-editor .operation-summary-column > :is(.receipt-summary, .operation-receipt-check) { grid-column: auto; }
+}
+@media (min-width: 1100px) {
+  :is(#createModal, #editModal).operation-editor.is-receipt-editor :is(#opReceiptBlock, #editReceiptBlock) { grid-column: span 8; }
+  :is(#createModal, #editModal).operation-editor.is-receipt-editor .operation-summary-column { grid-column: span 4; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2, #111b2b); position: sticky; top: 80px; }
+}
