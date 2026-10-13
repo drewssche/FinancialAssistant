@@ -19,7 +19,7 @@
 ### Operation entry UX — 2026-10-13
 - [x] Reproduce mobile clutter and overlapping long receipts on local test data.
 - [x] Implement adaptive creation/editing forms, shared receipt store, compact product search, independent discount details, optional comments/FX/preview and natural receipt height.
-- [ ] Finish regression checks and release through GitHub → server pull; no database migration.
+- [x] Released `f1b9e28` through GitHub → server fast-forward pull; assets `20261013-operation-ux1`, unchanged schema `20261013_0050`. Main non-E2E suite passed; 54 selected browser scenarios passed across operation entry, discounts, calculator, money flow, plans/resumption, variants and price hints, with eight UX checks repeated after the cents-comparison fix. Run pytest-playwright plans and standalone Sync API receipt fixtures in separate processes. All 12 changed served assets match, all fields of eight data tables match pre-release fingerprints, and all six containers are healthy with zero restarts at the final short check. Only app/bot recreated; rollback images `before-operation-ux-20261013` retained. Actual Telegram keyboard behavior and user comfort still need real-device feedback.
 - [ ] User evaluation with real receipts, then further refinement. OCR/retailer/analytics stages remain on hold in the existing plan.
 
 ### Reliability And Documentation 2026-10-12
