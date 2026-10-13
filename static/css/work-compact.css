@@ -9,7 +9,7 @@
 #workSection .work-timesheet-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; }
 #workSection .work-calendar-main, #workSection .work-payroll-sidebar { min-width: 0; }
 #workSection #workSummaryGrid { display: flex; flex-wrap: wrap; gap: 12px 28px; margin: 0 0 14px; }
-#workSection #workSummaryGrid > article { border: 0; background: none; padding: 0; box-shadow: none; display: block; min-height: 0; }
+#workSection #workSummaryGrid > article { display: block; min-height: 0; }
 #workSection .work-time-kpi-main { gap: 3px; }
 #workSection .work-time-kpi-main strong { font-size: 17px; }
 #workSection .work-day-cell { min-height: 104px; border-radius: 8px; padding: 8px; }
@@ -18,12 +18,12 @@
 #workSection .work-salary-cycle-title { gap: 4px; }
 #workSection .work-salary-cycle-title > strong { font-size: 16px; }
 #workSection .work-money-summary-grid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
-#workSection .work-money-kpi-card { padding: 0; background: none; border: 0; border-radius: 0; min-height: 0; box-shadow: none; gap: 4px; }
+#workSection .work-money-kpi-card { min-height: 0; gap: 4px; }
 #workSection .work-money-kpi-values strong { font-size: 17px; }
 #workSection .work-salary-cycle-components { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
 #workSection .work-salary-cycle-component { border: 0; background: none; border-bottom: 1px solid var(--border); border-radius: 0; padding: 12px 0; }
 #workSection .work-earnings-rates { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
-#workSection .work-time-kpi-rate { padding: 0; border: 0; }
+#workSection .work-time-kpi-rate { min-width: 0; }
 #workSection .work-time-kpi-rate > strong { font-size: 16px; }
 #workSection .work-calendar-legend { gap: 8px 14px; font-size: 11px; }
 #workSection .work-day-editor { padding: 16px 0 0; background: none; border: 0; border-top: 1px solid var(--border); border-radius: 0; }
@@ -35,7 +35,7 @@
 #workSection .settings-actions { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 #workSection .work-statistics-toolbar { flex-direction: row; flex-wrap: wrap; gap: 12px; }
 #workSection #workStatisticsKpi { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-#workSection #workStatisticsKpi > article { border: 0; padding: 0; background: none; border-radius: 0; min-height: 0; }
+#workSection #workStatisticsKpi > article { min-height: 0; }
 #workSection #workStatisticsKpi > article > strong { font-size: 17px; }
 #workSection .work-statistics-progress-card { background: none; border: 0; padding: 12px 0; }
 #workSection .work-statistics-month-row { border: 0; border-bottom: 1px solid var(--border); background: none; border-radius: 0; padding: 12px 0; }

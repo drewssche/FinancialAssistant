@@ -21,7 +21,7 @@
 #adminViewTabs { width: fit-content; margin-bottom: 16px; }
 #adminSection .admin-row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 #adminSection #adminCurrencyDiagnosticsKpi { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 16px 0; }
-#adminSection .kpi-card { min-height: 0; padding: 0; background: none; border: 0; box-shadow: none; }
+#adminSection .kpi-card { min-height: 0; }
 #adminSection .kpi-value { font-size: 22px; }
 #categoriesSection .panel-head { margin-bottom: 10px; }
 #categoriesSection .panel-head > div:empty { display: none; }

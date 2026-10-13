@@ -1,0 +1,34 @@
+/* KPI surfaces are meaningful grouping, including in compact layouts. */
+.section-block :is(.analytics-kpi-card, .kpi-card, .analytics-position-kpi, .work-money-kpi-card, .work-time-kpi-rate, .plans-summary-item, .currency-balance-card) {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: rgba(18, 27, 43, 0.72);
+  padding: var(--space-3);
+  min-width: 0;
+  align-content: start;
+}
+#dashboardSection .analytics-kpi-card { gap: 8px; }
+#dashboardSection .analytics-kpi-card > strong { margin: 0; }
+#operationsSection .operations-summary-grid,
+#debtsSection .debts-section-kpi { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+#plansSection .plans-summary-item { flex: 1 1 180px; gap: 6px; }
+#workSection #workSummaryGrid { gap: 12px; }
+#workSection #workSummaryGrid > article { flex: 1 1 180px; }
+#workSection .work-money-kpi-card, #workSection .work-time-kpi-rate { padding: var(--space-3); }
+#itemCatalogSection .catalog-compact-kpis { gap: 10px; }
+#itemCatalogSection .catalog-compact-kpis > article { padding: 10px 12px; }
+#categoriesSection #categoriesKpiGrid { gap: 8px; }
+#categoriesSection #categoriesKpiGrid > span { padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: rgba(18, 27, 43, 0.72); }
+@media (max-width: 640px) {
+  .section-block :is(.analytics-kpi-card, .kpi-card, .analytics-position-kpi, .work-money-kpi-card, .work-time-kpi-rate, .plans-summary-item, .currency-balance-card) { padding: 10px; }
+  #operationsSection .operations-summary-grid,
+  #debtsSection .debts-section-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  #dashboardSection #dashboardKpiPrimary { gap: 8px; }
+  #dashboardSection .analytics-kpi-card strong { overflow-wrap: anywhere; }
+}
+@media (max-width: 640px) {
+  #dashboardSection #dashboardDebtKpiGrid,
+  #currencySection #currencyBalancesRow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #dashboardSection #dashboardDebtKpiGrid > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+  #dashboardSection .dashboard-debt-kpi p, #currencySection .currency-balance-card strong { white-space: normal; overflow-wrap: anywhere; }
+}

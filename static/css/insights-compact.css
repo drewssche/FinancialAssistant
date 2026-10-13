@@ -27,12 +27,12 @@
 #currencySection #currencySummaryGrid { gap: 12px 20px; }
 #dashboardSection .analytics-kpi-card,
 #currencySection .analytics-kpi-card,
-#analyticsCalendarPanel .analytics-kpi-card { border: 0; border-radius: 0; background: none; padding: 0; min-height: 0; box-shadow: none; }
+#analyticsCalendarPanel .analytics-kpi-card { min-height: 0; }
 #dashboardSection .analytics-kpi-card strong,
 #currencySection .analytics-kpi-card strong { font-size: 20px; }
 #dashboardSection .panel-head h3 { font-size: 16px; }
 #dashboardSection .panel-head .subtitle { display: none; }
-#dashboardSection .dashboard-debt-kpi { border: 0; background: none; padding: 0; box-shadow: none; }
+#dashboardSection .dashboard-debt-kpi { min-width: 0; }
 #dashboardSection #dashboardCurrencyPositions,
 #dashboardSection #dashboardCurrencyBalances { display: none; }
 #dashboardSection .dashboard-currency-panel .analytics-kpi-grid { margin-bottom: 12px; }
@@ -60,7 +60,7 @@
 #analyticsPositionsMetricTabs { max-width: 100%; flex-wrap: wrap; }
 #analyticsPositionsSummary, #analyticsCommerceSummary { gap: 10px 18px; }
 #analyticsPositionsSummary .analytics-position-kpi,
-#analyticsCommerceSummary .analytics-position-kpi { background: none; border: 0; padding: 0; }
+#analyticsCommerceSummary .analytics-position-kpi { min-width: 0; }
 #analyticsSection .btn.btn-icon, #dashboardSection .btn.btn-icon, #currencySection .btn.btn-icon { width: 42px; min-width: 42px; height: 42px; padding: 0; flex: 0 0 42px; }
 @media (max-width: 640px) {
   #analyticsSection .analytics-category-breakdown-grid,
@@ -140,7 +140,7 @@
 }
 #dashboardSection #dashboardKpiPrimary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 #dashboardSection #dashboardPlansKpi { display: flex; flex-wrap: wrap; gap: 6px 12px; }
-#dashboardSection #dashboardPlansKpi > span { width: auto; border: 0; padding: 0; background: none; }
+#dashboardSection #dashboardPlansKpi > span { width: auto; }
 #dashboardSection #dashboardDebtKpiGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 #dashboardSection #dashboardDebtKpiGrid p { font-size: 20px; }
 #dashboardSection .dashboard-currency-rate-card { padding: 12px 0; border: 0; border-top: 1px solid var(--border); background: none; border-radius: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 10px; }
@@ -148,7 +148,7 @@
 #dashboardSection .dashboard-currency-rate-actions { grid-column: 2; grid-row: 1 / span 4; align-self: center; }
 #dashboardSection .dashboard-bank-rates, #dashboardSection .dashboard-bank-rates-empty, #dashboardSection .dashboard-currency-rate-delta-caption { display: none; }
 #currencySection #currencyPositionsList > .panel { border: 0; border-bottom: 1px solid var(--border); border-radius: 0; padding: 12px 0; background: none; }
-#currencySection #currencyBalancesRow .currency-balance-card { border: 0; border-radius: 0; padding: 8px 0; background: none; }
+#currencySection #currencyBalancesRow .currency-balance-card { min-width: 0; }
 #currencySection #currencyBalancesRow .currency-balance-card strong { font-size: 18px; }
 @media (max-width: 640px) {
   #dashboardSection #dashboardKpiPrimary { grid-template-columns: repeat(2, minmax(0, 1fr)); }

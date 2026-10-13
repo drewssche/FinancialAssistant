@@ -11,7 +11,7 @@
 #operationsSection .operations-sort-section .segmented { width: fit-content; }
 #operationsSection .operations-control-head { padding: 0; }
 #operationsSection .operations-summary-grid, #debtsSection .debts-section-kpi { display: flex; flex-wrap: wrap; gap: 10px 24px; margin: 14px 0; }
-#operationsSection .operations-summary-grid > article, #debtsSection .debts-section-kpi > article { border: 0; border-radius: 0; background: none; box-shadow: none; padding: 0; min-height: 0; display: grid; gap: 3px; }
+#operationsSection .operations-summary-grid > article, #debtsSection .debts-section-kpi > article { min-height: 0; display: grid; gap: 3px; }
 #operationsSection .operations-summary-grid strong, #debtsSection .debts-section-kpi strong { font-size: 16px; line-height: 1.4; }
 #operationsSection .operations-search-row { padding: 0; border: 0; background: none; margin: 12px 0; }
 #operationsSection > .panel > .panel-head:has(#operationsActiveFilters.hidden) { display: none; }
