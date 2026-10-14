@@ -20,6 +20,7 @@
     "/static/js/app-core-utils.js",
     "/static/js/app-core-actions.js",
     "/static/js/app-runtime-registry.js",
+    "/static/js/app-choice-dialog.js",
     "/static/js/app-context-actions.js",
     "/static/js/app-table-sort.js",
     "/static/js/app-catalog-media.js",

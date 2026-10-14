@@ -34,7 +34,6 @@ def test_explicit_variant_selection_and_historical_edit(static_server_url, page_
       modal.renderReceiptItems('create');
     }''')
     row = page.locator('#receiptItemsList .receipt-item-row').first
-    row.locator('.receipt-measurements summary').click()
     assert requests == []
     row.locator('[data-receipt-variants-load]').click()
     selector = row.locator('[data-receipt-field="variant_id"]')
@@ -60,7 +59,6 @@ def test_explicit_variant_selection_and_historical_edit(static_server_url, page_
     }''', payload)
     saved = page.locator('#editReceiptItemsList .receipt-item-row').first
     saved.locator('[data-receipt-details-toggle]').click()
-    saved.locator('.receipt-measurements summary').click()
     saved.locator('[data-receipt-variants-load]').click()
     expect(saved.locator('[data-receipt-field="variant_id"]')).to_have_value('saved')
     expect(saved.locator('[data-receipt-field="package_quantity"]')).to_have_value('900')
@@ -68,7 +66,7 @@ def test_explicit_variant_selection_and_historical_edit(static_server_url, page_
     assert after['variant_id'] is None and after['variant_snapshot'] == payload['variant_snapshot']
     saved.locator('[data-receipt-field="quantity"]').fill('3')
     assert page.evaluate("window.App.getRuntimeModule('operation-modal').getEditReceiptPayload()[0].variant_snapshot") == payload['variant_snapshot']
-    saved.locator('[data-receipt-field="package_quantity"]').fill('850')
+    saved.locator('.measurement-editor input').fill('850')
     manual = page.evaluate("window.App.getRuntimeModule('operation-modal').getEditReceiptPayload()[0]")
     assert manual['variant_id'] is None and manual['variant_snapshot'] is None
     expect(saved.locator('[data-receipt-field="variant_id"]')).to_have_value('')

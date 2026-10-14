@@ -93,8 +93,7 @@ def test_product_workspace_and_compact_receipt_preserve_drafts(static_server_url
     assert page.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()") == before
     row.locator('[data-receipt-details-toggle]').click()
     expect(row.locator('[data-receipt-field="name"]')).to_be_visible()
-    row.locator('.receipt-measurements summary').click()
-    row.locator('[data-receipt-field="package_quantity"]').fill('800')
+    row.locator('.measurement-editor input').fill('800')
     row.locator('[data-receipt-details-toggle]').click()
     expect(row.locator('.receipt-compact-heading')).to_contain_text('800 г')
     # The inline discount action expands settings; money stays accessible.

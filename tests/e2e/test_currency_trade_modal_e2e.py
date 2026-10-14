@@ -231,8 +231,6 @@ def test_currency_trade_modal_keeps_preview_and_recalculates_both_fields(static_
 
     page.click("#addOperationCta")
     page.wait_for_selector("#createModal:not(.hidden)")
-    if not page.locator('#createEntryModeSwitch').is_visible():
-        page.locator('#createModal .operation-entry > summary').click()
     page.click("#createEntryModeSwitch button[data-entry-mode='currency']")
     page.click("#createModal .operation-preview-action")
     page.click("#createCurrencySideSwitch button[data-currency-side='sell']")
@@ -294,8 +292,6 @@ def test_currency_trade_modal_derives_rate_from_quantity_and_quote_total(static_
 
     page.click("#addOperationCta")
     page.wait_for_selector("#createModal:not(.hidden)")
-    if not page.locator('#createEntryModeSwitch').is_visible():
-        page.locator('#createModal .operation-entry > summary').click()
     page.click("#createEntryModeSwitch button[data-entry-mode='currency']")
     page.click("#createModal .operation-preview-action")
 

@@ -1331,7 +1331,6 @@ def test_mobile_create_modal_preview_stays_above_sticky_cta(static_server_url: s
 
     page.fill("#opDate", "2026-03-08")
     page.fill("#opAmount", "123.45")
-    page.locator("#createModal .operation-extra > summary").click()
     page.fill("#opNote", "Мобильная проверка превью")
     page.locator('#createOperationModeSwitch button[data-operation-mode="receipt"]').click()
     page.wait_for_selector("#opReceiptFields:not(.hidden)")
@@ -1563,8 +1562,6 @@ def test_edit_receipt_mixed_categories_keep_inheritance_and_preview_summary(stat
     first_active = first_row.locator(".receipt-category-picker .chip-btn.active").first
     assert "Еда" in (first_active.text_content() or "")
 
-    if not page.locator("#editCategorySearch").is_visible():
-        page.locator("#editModal .operation-extra > summary").click()
     page.click("#editCategorySearch")
     page.wait_for_selector("#editCategoryPickerBlock:not(.hidden)")
     page.locator('#editCategoryAll button[data-category-id="103"]').click()
@@ -2157,10 +2154,9 @@ def test_measurement_defaults_manual_edit_and_saved_snapshot(static_server_url, 
     row.locator('[data-receipt-field="name"]').fill('Крупа')
     page.locator('[data-receipt-product-id="401"]').first.click()
     _expand_receipt_row(row)
-    row.locator('.receipt-measurements summary').click()
     expect(row.locator('[data-receipt-field="sale_unit"]')).to_have_value('pack')
     expect(row.locator('[data-receipt-field="package_quantity"]')).to_have_value('900')
-    row.locator('[data-receipt-field="package_quantity"]').fill('800')
+    row.locator('.measurement-editor input').fill('800')
     row.locator('[data-receipt-field="quantity"]').fill('2')
     row.locator('[data-receipt-field="unit_price"]').fill('3.25')
     payload = page.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
@@ -2169,7 +2165,7 @@ def test_measurement_defaults_manual_edit_and_saved_snapshot(static_server_url, 
     assert payload[0]['package_unit'] == 'g'
     box = row.locator('.receipt-measurements').bounding_box()
     assert box['width'] <= width
-    for control in row.locator('.receipt-measurements input, .receipt-measurements select').all():
+    for control in row.locator('.receipt-measurements input:visible, .receipt-measurements select:visible').all():
         bounds = control.bounding_box()
         assert bounds['x'] >= box['x'] - 1
         assert bounds['x'] + bounds['width'] <= box['x'] + box['width'] + 1
@@ -2183,7 +2179,6 @@ def test_measurement_defaults_manual_edit_and_saved_snapshot(static_server_url, 
     }''', payload[0])
     saved = page.locator('#editReceiptItemsList .receipt-item-row').first
     _expand_receipt_row(saved)
-    saved.locator('.receipt-measurements summary').click()
     expect(saved.locator('[data-receipt-field="package_quantity"]')).to_have_value('800')
     assert errors == []
 
@@ -2207,9 +2202,8 @@ def test_catalog_measurements_save_optional_defaults(static_server_url, page_wit
     _ensure_categories_loaded(page)
     page.evaluate("window.App.getRuntimeModule('catalog-products').openEditor()")
     page.locator('#catalogProductName').fill('Молоко')
-    page.locator('#catalogProductSaleUnit').select_option('piece')
-    page.locator('#catalogProductPackageQuantity').fill('0.9')
-    page.locator('#catalogProductPackageUnit').select_option('l')
+    page.locator('.catalog-product-measurements .measurement-editor input').fill('0.9')
+    page.locator('.catalog-product-measurements [data-unit="l"]').click()
     page.locator('#submitCatalogProductBtn').click()
     page.wait_for_function("document.getElementById('catalogProductModal').classList.contains('hidden')")
     assert saved == [{'name': 'Молоко', 'brand_id': None, 'category_id': None,

@@ -48,18 +48,18 @@ def test_lazy_price_changes_filters_pagination_history_and_cleanup(static_server
     page.locator('#catalogPriceChangesMore').click()
     expect(page.locator('.catalog-price-change')).to_have_count(21)
     expect(page.locator('#catalogPriceChangesMore')).to_be_hidden()
-    page.locator('.catalog-price-changes-options > summary').click()
     form=page.locator('#catalogPriceChangesForm')
     form.locator('[name="q"]').fill('vjkjrj')
-    form.locator('[name="basis"]').select_option('normalized')
     form.locator('[name="comparison"]').select_option('previous')
     form.locator('[name="direction"]').select_option('down')
+    page.click("#catalogPriceConditionsButton")
+    form.locator('[name="basis"]').select_option('normalized')
     form.locator('[name="date_from"]').fill('2026-10-01')
     expect(page.locator('#catalogPriceChangesStatus')).to_contain_text('изменились')
-    form.locator('button[type="submit"]').click()
+    page.locator("#catalogPriceConditionsDialog").get_by_role("button", name="Применить условия").click()
     expect(page.locator('.catalog-price-change')).to_have_count(20)
     assert requests[-1]['q']==['vjkjrj'] and requests[-1]['basis']==['normalized'] and requests[-1]['page']==['1']
-    for control in form.locator('input,select,button').all():
+    for control in form.locator('input:visible,select:visible,button:visible').all():
         box=control.bounding_box();assert box['x']>=0 and box['x']+box['width']<=width+1
     page.locator('.catalog-price-change').first.scroll_into_view_if_needed()
     page.screenshot(path=f'/tmp/fa-price-changes-{width}.png')

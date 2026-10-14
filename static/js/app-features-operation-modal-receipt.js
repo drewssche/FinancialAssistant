@@ -334,7 +334,7 @@
         item.measurement_touched = true;
         item.variant_id = null;
         item.variant_snapshot = null;
-        item.variant_status = "Размеры изменены вручную — связь с фасовкой снята";
+        item.variant_status = "";
       } else if (key === "variant_id") {
         if (value === "saved") return {item, hadName, hasName: hasReceiptRowName(item)};
         const variant = (item.variant_options || []).find((v) => String(v.id) === value);
@@ -620,7 +620,7 @@
           <div class="receipt-item-row ${known ? "receipt-item-known" : ""} ${compact ? "is-compact" : ""} ${!item.name && !item.details_expanded && !item.is_discounted && !item.unit_price && !item.quantity ? "receipt-item-empty" : ""} ${item.discount_expanded ? "discount-open" : ""} ${item.is_discounted ? "receipt-item-row-discounted" : ""} ${hasOpenPicker ? "has-open-popover" : ""}" data-receipt-mode="${mode}" data-receipt-item-id="${item.draft_id}">
             ${known ? `<div class="receipt-compact-heading">
               <div><button class="receipt-compact-name" type="button" ${item.product_id ? `data-open-receipt-product-card="${Number(item.product_id)}"` : `data-open-receipt-template-card="${Number(item.template_id)}"`}>${esc(item.product_name || item.name)}</button>
-              <small>${esc([brandName, item.shop_name || "Без источника", item.variant_snapshot?.name, window.App.measurements.summary(item)].filter(Boolean).join(" · "))}</small></div>
+              <small>${esc([brandName, item.shop_name || "Без источника", item.variant_snapshot?.name, (item.sale_unit || item.package_quantity ? window.App.measurements.summary(item) : "")].filter(Boolean).join(" · "))}</small></div>
               <button class="btn btn-secondary btn-xs" type="button" data-receipt-details-toggle="${item.draft_id}" aria-label="Подробности товара" aria-expanded="${!compact}">${compact ? "Детали" : "Свернуть"}</button>
             </div>` : ""}
             ${!known ? `<div class="receipt-compact-heading receipt-new-heading"><span>${item.name ? "Новый товар" : "Добавить товар"}</span><button class="btn btn-secondary btn-xs" type="button" data-receipt-details-toggle="${item.draft_id}" aria-label="Подробности товара" aria-expanded="${!compact}">${compact ? "Детали" : "Свернуть"}</button></div>` : ""}
@@ -659,26 +659,24 @@
                 <div class="receipt-category-picker app-popover ${categoryPickerOpen ? "" : "hidden"}"></div>
               </div>
             </div>
-            <details class="receipt-measurements" ${item.variant_picker_open ? "open" : ""}>
-              <summary>${esc(window.App.measurements.summary(item))}</summary>
+            <section class="receipt-measurements">
               <div class="receipt-variant-controls">
-                <small data-receipt-variant-snapshot>${esc(item.variant_snapshot ? `Фасовка: ${item.variant_snapshot.name}${item.variant_snapshot.codes?.length ? " · " + item.variant_snapshot.codes.join(", ") : ""}` : "Фасовка не выбрана")}</small>
-                ${item.product_id ? `<button class="btn btn-secondary btn-xs" type="button" data-receipt-variants-load ${item.variant_loading ? "disabled" : ""}>${item.variant_loading ? "Загрузка…" : item.variant_options ? "Обновить фасовки" : "Выбрать фасовку из каталога"}</button>` : ""}
-                ${item.variant_options || item.variant_snapshot ? `<label class="field"><span>Фасовка</span><select data-receipt-field="variant_id" aria-label="Фасовка товара">
-                  <option value="">Без связи — ручной ввод</option>
+                <small data-receipt-variant-snapshot>${esc(item.variant_snapshot ? `Фасовка: ${item.variant_snapshot.name}${item.variant_snapshot.codes?.length ? " · " + item.variant_snapshot.codes.join(", ") : ""}` : "")}</small>
+                ${item.product_id ? `<button class="btn btn-secondary btn-xs" type="button" data-receipt-variants-load ${item.variant_loading ? "disabled" : ""}>${item.variant_loading ? "Загрузка…" : item.variant_options ? "Другие размеры" : "Другие размеры"}</button>` : ""}
+                ${item.variant_options || item.variant_snapshot ? `<label class="field"><span>Сохранённые размеры</span><select data-receipt-field="variant_id" aria-label="Фасовка товара">
+                  <option value="">Свой размер</option>
                   ${item.variant_snapshot && !item.variant_id ? `<option value="saved" selected>Сохранено: ${esc(item.variant_snapshot.name)}</option>` : ""}
                   ${(item.variant_options || []).map((v) => `<option value="${Number(v.id)}" ${Number(item.variant_id) === Number(v.id) ? "selected" : ""}>${esc(v.name)} · ${esc(window.App.measurements.summary(v))}${v.codes?.length ? " · " + esc(v.codes.join(", ")) : ""}</option>`).join("")}
                 </select></label>` : ""}
-                <small role="status">${esc(item.variant_status || "Размер и штрихкоды сохраняются в чеке на момент выбора.")}</small>
+                <small role="status">${esc(item.variant_status || "")}</small>
               </div>
               <div class="form-grid">
                 <label class="field"><span>Единица продажи</span><select data-receipt-field="sale_unit" aria-label="Единица продажи">${window.App.measurements.options(item.sale_unit)}</select></label>
                 <label class="field"><span>В одной штуке / упаковке</span><input type="number" min="0.001" step="0.001" data-receipt-field="package_quantity" value="${esc(item.package_quantity || "")}" placeholder="Например, 900" aria-label="Содержимое упаковки" /></label>
                 <label class="field"><span>Единица содержимого</span><select data-receipt-field="package_unit" aria-label="Единица содержимого">${window.App.measurements.options(item.package_unit, true)}</select></label>
               </div>
-            </details>
-            ${item.is_discounted ? `<details class="receipt-discount-calculation" open>
-              <summary>Скидка на позицию</summary>
+            </section>
+            ${item.is_discounted ? `<section class="receipt-discount-calculation">
               <div class="form-grid">
                 <label class="field"><span>Способ расчёта</span><select data-receipt-field="discount_mode" aria-label="Способ расчёта скидки">
                   ${[["", "Цена за единицу"], ["amount", "Скидка на сумму"], ["percent", "Скидка в процентах"], ["final", "Оплаченный итог"]].map(([value, label]) => `<option value="${value}" ${(item.discount_mode || "") === value ? "selected" : ""}>${label}</option>`).join("")}
@@ -686,7 +684,7 @@
                 ${item.discount_mode ? `<label class="field"><span>${item.discount_mode === "final" ? "Оплачено за позицию" : item.discount_mode === "percent" ? "Скидка, %" : "Скидка за всю позицию"}</span><input type="text" inputmode="decimal" data-receipt-field="discount_value" value="${esc(String(item.discount_value ?? 0))}" aria-label="Значение скидки или итог" /></label>` : ""}
               </div>
               <div class="muted-small receipt-pricing-explanation">${esc(receiptPricingExplanation(item, mode))}</div><button class="btn btn-secondary btn-xs" type="button" data-receipt-discount-remove="${item.draft_id}">Убрать скидку</button>
-            </details>` : ""}
+            </section>` : ""}
             <div class="receipt-item-money">
               <div class="receipt-price-cell ${item.is_discounted ? "receipt-price-cell-discounted" : ""}">
                 <span class="receipt-known-price-label">${item.discount_mode ? "Цена после скидки" : "Цена за ед."}</span>
@@ -709,6 +707,9 @@
           </div>
         `;
       }).join("");
+      ctx.listNode.querySelectorAll('.receipt-measurements .form-grid').forEach(grid => {
+        window.App.measurements.mount(grid, window.App.measurements.fields.map(key => grid.querySelector(`[data-receipt-field="${key}"]`)));
+      });
       ctx.listNode.querySelectorAll('textarea[data-receipt-field="name"]').forEach(resizeReceiptNameTextarea);
       ctx.listNode.querySelectorAll('.receipt-item-row').forEach(row => {
         row.querySelector('.receipt-line-total')?.append(row.querySelector('.receipt-discount-toggle'));
@@ -752,7 +753,7 @@
         const draftId = Number(row.dataset.receiptItemId || 0);
         for (const field of ["quantity", "unit_price", "regular_unit_price", "discount_value", ...window.App.measurements.fields]) {
           const input = row.querySelector(`[data-receipt-field="${field}"]`);
-          if (input && !input.readOnly) {
+          if (input && !input.readOnly && (!window.App.measurements.fields.includes(field) || String(getReceiptItems(mode).find(item => Number(item.draft_id) === draftId)?.[field] ?? "") !== input.value)) {
             updateReceiptItemField(draftId, field, input.value, mode);
           }
         }

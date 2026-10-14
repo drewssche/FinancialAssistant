@@ -177,7 +177,7 @@
         const selector = row.querySelector('[data-receipt-field="variant_id"]');
         if (selector) selector.value = "";
         const label = row.querySelector('[data-receipt-variant-snapshot]');
-        if (label) label.textContent = "Размеры изменены вручную — связь с фасовкой снята";
+        if (label) label.textContent = "";
         const status = row.querySelector('.receipt-variant-controls [role="status"]');
         if (status) status.textContent = updated.item.variant_status;
       }
@@ -476,7 +476,7 @@
         if (!stillCurrent()) return;
         item.variant_options = (data.variants || []).filter((v) => !v.is_archived);
         // Refreshing choices must never silently replace an existing historical snapshot.
-        item.variant_status = item.variant_options.length ? "Выберите нужную фасовку. Текущий чек пока не изменён." : "Активных фасовок нет. Добавьте их в карточке товара или укажите размеры вручную.";
+        item.variant_status = item.variant_options.length ? "" : "Других размеров нет — укажите размер ниже.";
       } catch (error) {
         if (stillCurrent()) item.variant_status = `Не удалось загрузить фасовки: ${error.message}. Можно повторить загрузку.`;
       } finally {

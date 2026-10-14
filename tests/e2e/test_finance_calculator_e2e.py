@@ -268,7 +268,6 @@ def test_calculator_receives_clicks_and_closes_without_losing_operation_draft(
     trigger = page.locator(f"#{operation_mode}FinanceCalculatorToggle")
     drawer = page.locator("#financeCalculatorDrawer")
     expect(modal).to_be_visible()
-    modal.locator(".operation-extra > summary").click()
     note.fill("Несохранённая операция")
 
     for close_with_escape in [True, False]:

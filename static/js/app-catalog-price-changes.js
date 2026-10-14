@@ -76,6 +76,13 @@
   }
   function bind() {
     if (bound) return; bound = true;
+    const conditions = window.App.taskDialogs.attach(form().querySelector('.catalog-price-changes-advanced'), 'Условия сравнения', form().querySelector('.catalog-price-changes-options'));
+    conditions.id = 'catalogPriceConditionsDialog';
+    conditions.trigger.id = 'catalogPriceConditionsButton';
+    const apply = document.createElement('button'); apply.type='button'; apply.className='btn btn-primary btn-icon';
+    apply.title='Применить условия'; apply.setAttribute('aria-label',apply.title); apply.innerHTML=window.App.icons.svg('save');
+    apply.addEventListener('click', () => {if(form().reportValidity()) {conditions.close(); form().requestSubmit();}});
+    const footer=document.createElement('footer'); footer.className='row'; footer.append(apply); conditions.append(footer);
     form().addEventListener("submit", (event) => { event.preventDefault(); load(); });
     form().addEventListener("input", invalidate);
     node("catalogPriceChangesMore").addEventListener("click", () => load(true));

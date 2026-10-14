@@ -77,8 +77,7 @@ def test_receipt_comparison_lazy_exact_live_invalidated_and_retry(static_server_
     saved.locator('[data-receipt-price-hint]').click()
     expect(saved.locator('.receipt-price-hint small')).to_contain_text('01.10.2026')
     assert requests[-1]['exclude_operation_id']==777 and requests[-1]['as_of']=='2026-10-02'
-    saved.locator('.receipt-measurements summary').click()
-    saved.locator('[data-receipt-field="sale_unit"]').select_option('g')
+    saved.locator('.measurement-editor [data-unit=g]').click()
     expect(saved.locator('.receipt-price-hint small')).to_have_text('')
     # Integer-ratio rounding, including a zero historical price.
     checks=page.evaluate('''() => {

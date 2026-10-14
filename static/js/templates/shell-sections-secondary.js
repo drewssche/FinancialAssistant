@@ -651,12 +651,12 @@
                 <label class="field"><span>Сравнение</span><select name="comparison"><option value="period">От первой до последней покупки</option><option value="previous">Последняя с предыдущей</option></select></label>
                 <label class="field"><span>Изменение</span><select name="direction"><option value="all">Все</option><option value="up">Подорожало</option><option value="down">Подешевело</option><option value="same">Цена вернулась / не изменилась</option></select></label>
                 <button type="submit" class="btn btn-secondary btn-icon" title="Обновить сравнение" aria-label="Обновить сравнение">${window.App.icons.svg("refresh")}</button>
-                <details class="catalog-price-changes-options"><summary class="btn btn-secondary btn-icon" title="Условия сравнения" aria-label="Условия сравнения">${window.App.icons.svg("filter")}</summary><div class="catalog-price-changes-advanced">
+                <section class="catalog-price-changes-options"><div class="catalog-price-changes-advanced">
                 <label class="field"><span>Цена</span><select name="price_kind"><option value="paid">Оплаченная</option><option value="regular">Обычная, если известна</option></select></label>
                 <label class="field"><span>Единица сравнения</span><select name="basis"><option value="unit">За единицу продажи / упаковку</option><option value="normalized">За кг, литр или штуку содержимого</option></select></label>
                 <label class="field"><span>С даты (необязательно)</span><input type="date" name="date_from" /></label>
                 <label class="field"><span>По дату (необязательно)</span><input type="date" name="date_to" /></label>
-                </div></details>
+                </div></section>
               </form>
               <p id="catalogPriceChangesStatus" class="muted-small" role="status"></p>
               <div id="catalogPriceChangesList" class="catalog-price-changes-list"></div>

@@ -485,6 +485,7 @@
     el.catalogProductSaleUnit.value = product?.sale_unit || "";
     el.catalogProductPackageQuantity.value = product?.package_quantity || "";
     el.catalogProductPackageUnit.value = product?.package_unit || "";
+    window.App.measurements.mount(el.catalogProductSaleUnit.closest(".form-grid"), [el.catalogProductSaleUnit, el.catalogProductPackageQuantity, el.catalogProductPackageUnit]);
     for (const kind of ["Brand", "Category"]) {
       metaPicker(kind).value.value = product?.[`${kind.toLowerCase()}_id`] || "";
       closeMetaPicker(kind);

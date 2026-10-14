@@ -41,6 +41,7 @@ def test_confirm_replacement_prices_undo_and_draft_safety(static_server_url,page
     page.locator('#catalogProductName').fill('Несохранённое название')
     assert requests==[]
     page.locator('[data-product-tab="packages"]').click()
+    page.locator('[data-package-task="replacements"]').click()
     old=page.locator('#catalogReplacementOld');new=page.locator('#catalogReplacementNew')
     expect(old.locator('option')).to_have_count(3)
     old.select_option('91');new.select_option('92')

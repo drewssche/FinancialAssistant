@@ -3,14 +3,16 @@
   const node = (id) => document.getElementById(id), esc = (s) => core.escapeHtml(String(s ?? ""));
   let product = null, data = null, generation = 0, controller = null, bound = false;
   const dirtyForms = new Set();
+  const variantDrafts = new Map();
   const fields = ["sale_unit", "package_quantity", "package_unit"];
   const url = () => `/api/v1/operations/catalog-products/${product.id}`;
   function variantForm() {
-    const v = data?.variants?.find((v) => String(v.id) === node("catalogVariantSelect").value);
+    const v = variantDrafts.get(node("catalogVariantSelect").value) || data?.variants?.find((v) => String(v.id) === node("catalogVariantSelect").value);
     node("catalogVariantName").value = v?.name || "";
     for (const key of fields) node(`catalogVariant_${key}`).value = v?.[key] ?? "";
     node("catalogVariantCodes").value = (v?.codes || []).join("\n");
     node("catalogVariantArchived").checked = Boolean(v?.is_archived);
+    window.App.measurements.mount(node("catalogVariant_sale_unit").closest('.form-grid'), fields.map(key => node(`catalogVariant_${key}`)));
   }
   function offerForm() {
     const m = data?.offers?.find((m) => String(m.template_id) === node("catalogIdentityOffer").value);
@@ -26,6 +28,7 @@
     node("catalogIdentityVariant").innerHTML = '<option value="">Без связи с фасовкой</option>'+variants;
     node("catalogVariantSelect").value = selected;
     node("catalogIdentityVariant").value = mapped;
+    node('catalogVariantList').innerHTML = (data?.variants || []).map(v => `<button type="button" class="package-list-row" data-edit-variant="${Number(v.id)}"><span><strong>${esc(v.name)}</strong><small>${esc(window.App.measurements.summary(v))}${v.is_archived?' · архив':''}</small></span>${window.App.icons.svg('edit')}</button>`).join('') || '<p class="muted-small">Дополнительных размеров нет. Обычный размер укажите во вкладке «Товар».</p>';
   }
   async function load() {
     controller?.abort(); controller = new AbortController();
@@ -35,8 +38,8 @@
     try {
       const payload = await core.requestJson(`${url()}/identity`, {headers: core.authHeaders(), signal: controller.signal});
       if (token !== generation) return;
-      data = payload; dirtyForms.clear();
-      node("catalogIdentityStatus").textContent = "Сохраняется отдельно от основной карточки. Прошлые чеки не изменяются.";
+      data = payload; dirtyForms.clear(); variantDrafts.clear();
+      node("catalogIdentityStatus").textContent = "";
       node("catalogIdentityOffer").innerHTML = (product.offers || []).map((o) => `<option value="${Number(o.template_id)}">${esc(o.source_name || "Без источника")} · ${esc(o.name)}</option>`).join("");
       node("catalogOfferIdentityForm").classList.toggle("hidden", !(product.offers || []).length);
       options(); variantForm(); offerForm();
@@ -51,7 +54,7 @@
     const buttons = [...node("catalogIdentityForms").querySelectorAll('button[type="submit"]')]; buttons.forEach((b) => b.disabled = true);
     let payload, path, method;
     if (variant) {
-      payload = {name: node("catalogVariantName").value, codes: node("catalogVariantCodes").value.split(/[\s,;]+/).filter(Boolean), is_archived: node("catalogVariantArchived").checked};
+      payload = {name: node("catalogVariantName").value.trim() || window.App.measurements.summary(Object.fromEntries(fields.map(key => [key,node(`catalogVariant_${key}`).value]))), codes: node("catalogVariantCodes").value.split(/[\s,;]+/).filter(Boolean), is_archived: node("catalogVariantArchived").checked};
       for (const key of fields) payload[key] = node(`catalogVariant_${key}`).value || null;
       path = `${url()}/variants${id ? `/${id}` : ""}`; method = id ? "PUT" : "POST";
     } else {
@@ -63,19 +66,41 @@
       const response = await core.requestJson(path, {method, headers: {...core.authHeaders(), "Content-Type": "application/json"}, body: JSON.stringify(payload)});
       window.App.getRuntimeModule("catalog-products").invalidate();
       if (token !== generation) return;
-      data = response; dirtyForms.delete(form.id); options();
+      data = response; dirtyForms.delete(form.id);
+      if (variant) variantDrafts.delete(id);
+      if (variantDrafts.size) dirtyForms.add("catalogVariantForm");
+      options();
       if (variant) {
         node("catalogVariantSelect").value = id || data.variants.find((v) => !previousIds.has(v.id))?.id || "";
         variantForm();
       }
-      node("catalogIdentityStatus").textContent = "Сохранено. Прошлые чеки не изменились.";
+      node("catalogIdentityStatus").textContent = "Сохранено";
+      if (variant) {showVariant(false); node("catalogVariantList").querySelector(`[data-edit-variant="${node("catalogVariantSelect").value}"]`)?.focus();}
     } catch (error) {
       if (token === generation) node("catalogIdentityStatus").textContent = `Не удалось сохранить: ${error.message}`;
     } finally { if (token === generation) buttons.forEach((b) => b.disabled = false); }
   }
+  function showVariant(show) {
+    node('catalogVariantForm').hidden = !show;
+    node('catalogVariantListView').hidden = show;
+  }
   function bind() {
     if (bound) return; bound = true;
-    node("catalogIdentityForms").addEventListener("input", (event) => {dirtyForms.add(event.target.closest("form")?.id);});
+    document.querySelector('.package-tasks').addEventListener('click', e => {
+      const button = e.target.closest('[data-package-task]'); if (!button) return;
+      button.closest('[data-product-panel]').dataset.packageView = button.dataset.packageTask;
+      document.querySelectorAll('[data-package-task]').forEach(b => {const active=b===button; b.classList.toggle('active',active); b.setAttribute('aria-pressed',String(active));});
+    });
+    node('catalogVariantAdd').addEventListener('click', () => {node('catalogVariantSelect').value=''; variantForm(); showVariant(true);});
+    node('catalogVariantBack').addEventListener('click', () => showVariant(false));
+    node('catalogVariantList').addEventListener('click', e => {const b=e.target.closest('[data-edit-variant]'); if(!b)return; node('catalogVariantSelect').value=b.dataset.editVariant; variantForm(); showVariant(true);});
+    node("catalogIdentityForms").addEventListener("input", (event) => {
+      const formId=event.target.closest('form')?.id; dirtyForms.add(formId);
+      if (formId==='catalogVariantForm') variantDrafts.set(node('catalogVariantSelect').value, {
+        name:node('catalogVariantName').value, codes:node('catalogVariantCodes').value.split(/\n/), is_archived:node('catalogVariantArchived').checked,
+        ...Object.fromEntries(fields.map(key => [key,node(`catalogVariant_${key}`).value])),
+      });
+    });
     node("catalogVariantSelect").addEventListener("change", variantForm);
     node("catalogIdentityOffer").addEventListener("change", offerForm);
     node("catalogVariantForm").addEventListener("submit", (e) => {e.preventDefault(); save(e.currentTarget, true);});
@@ -83,9 +108,9 @@
   }
   let active = false;
   function activate(value) { active = value; if (active && product && !data && !dirtyForms.size) load(); }
-  function close() {active = false;generation++; controller?.abort(); product = null; data = null; dirtyForms.clear();}
+  function close() {active = false;generation++; controller?.abort(); product = null; data = null; dirtyForms.clear(); variantDrafts.clear();}
   window.App.registerRuntimeModule("catalog-identity", {
-    open(value) {close(); bind(); product = value; node("catalogIdentityDetails").classList.toggle("hidden", !value); node("catalogVariantSelect").value = ""; node("catalogIdentityForms").querySelectorAll('button[type="submit"]').forEach((b) => b.disabled = false);},
+    open(value) {close(); bind(); showVariant(false); document.querySelector('[data-package-task="sizes"]').click(); product = value; node("catalogIdentityDetails").classList.toggle("hidden", !value); node("catalogVariantSelect").value = ""; node("catalogIdentityForms").querySelectorAll('button[type="submit"]').forEach((b) => b.disabled = false);},
     refresh(value) {product = value; if (dirtyForms.size) return; data = null; if (active) load();},
     activate, close, cleanup: close,
   });

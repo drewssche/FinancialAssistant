@@ -31,9 +31,9 @@ def _restore_mock_telegram(page):
 
 
 def _login_via_mock_telegram(page):
-    page.wait_for_function("typeof window.App?.getRuntimeModule?.('session')?.tryAutoTelegramLogin === 'function'")
+    # The fixture supplies Telegram before startup; let the real startup login finish.
+    # A second manual login raced with startup and could close a newly opened editor.
     _restore_mock_telegram(page)
-    page.evaluate("() => window.App.getRuntimeModule('session').tryAutoTelegramLogin({waitForReady: false})")
     page.wait_for_selector("#appShell:not(.hidden)")
 
 

@@ -34,27 +34,27 @@
 #plansSection .plans-toolbar .segmented-btn { flex: 0 1 auto; }
 #plansSection .plans-search-row { margin: 12px 0; }
 #plansSection .plans-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
-#plansSection .plan-card { padding: 14px 0; margin: 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none; box-shadow: none; }
-#plansSection .plan-card-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, .5fr); gap: 14px; align-items: center; }
-#plansSection .plan-card-summary { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 12px; }
-#plansSection .plan-card-date { min-width: 0; padding: 0; border: 0; background: none; }
-#plansSection .plan-card-date strong { font-size: 14px; }
-#plansSection .plan-card-side { display: grid; justify-items: end; gap: 8px; min-width: 0; width: auto; padding: 0; border: 0; background: none; }
-#plansSection .plan-card-amount { font-size: 17px; }
-#plansSection .plan-card-amount-secondary { white-space: normal; overflow-wrap: anywhere; }
-#plansSection .plan-card-top-meta { display: flex; flex-wrap: wrap; gap: 5px 10px; margin-top: 6px; }
-#plansSection .plan-card-actions { display: flex; flex-direction: row; flex-wrap: wrap; gap: 4px; width: auto; margin: 0; }
+:is(#plansSection, #dashboardPlansList) .plan-card { padding: 14px 0; margin: 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none; box-shadow: none; }
+:is(#plansSection, #dashboardPlansList) .plan-card-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, .5fr); gap: 14px; align-items: center; }
+:is(#plansSection, #dashboardPlansList) .plan-card-summary { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 12px; }
+:is(#plansSection, #dashboardPlansList) .plan-card-date { min-width: 0; padding: 0; border: 0; background: none; }
+:is(#plansSection, #dashboardPlansList) .plan-card-date strong { font-size: 14px; }
+:is(#plansSection, #dashboardPlansList) .plan-card-side { display: grid; justify-items: end; gap: 8px; min-width: 0; width: auto; padding: 0; border: 0; background: none; }
+:is(#plansSection, #dashboardPlansList) .plan-card-amount { font-size: 17px; }
+:is(#plansSection, #dashboardPlansList) .plan-card-amount-secondary { white-space: normal; overflow-wrap: anywhere; }
+:is(#plansSection, #dashboardPlansList) .plan-card-top-meta { display: flex; flex-wrap: wrap; gap: 5px 10px; margin-top: 6px; }
+:is(#plansSection, #dashboardPlansList) .plan-card-actions { display: flex; flex-direction: row; flex-wrap: wrap; gap: 4px; width: auto; margin: 0; }
 /* Debts: one group per person, flat records within it. */
 #debtsSection .debt-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 #debtsSection .debt-toolbar-search { flex: 1 1 250px; width: auto; }
 #debtsSection .debt-toolbar .segmented { width: fit-content; flex: 0 1 auto; }
 #debtsSection .debt-toolbar .segmented-btn { flex: 0 1 auto; }
-#debtsSection .debt-cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
-#debtsSection .debt-card { padding: 12px 0 0; background: none; border: 0; border-top: 1px solid var(--border); border-radius: 0; box-shadow: none; }
-#debtsSection .debt-card-children-wrap { margin-top: 8px; border: 0; border-radius: 0; }
-#debtsSection .debt-card h3 { font-size: 16px; overflow-wrap: anywhere; }
-#debtsSection .debt-card .table td { vertical-align: middle; }
-#debtsSection .debt-direct-actions { max-width: 180px; min-width: 134px; margin-left: auto; }
+:is(#debtsSection, #dashboardDebtsList) .debt-cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+:is(#debtsSection, #dashboardDebtsList) .debt-card { padding: 12px 0 0; background: none; border: 0; border-top: 1px solid var(--border); border-radius: 0; box-shadow: none; }
+:is(#debtsSection, #dashboardDebtsList) .debt-card-children-wrap { margin-top: 8px; border: 0; border-radius: 0; }
+:is(#debtsSection, #dashboardDebtsList) .debt-card h3 { font-size: 16px; overflow-wrap: anywhere; }
+:is(#debtsSection, #dashboardDebtsList) .debt-card .table td { vertical-align: middle; }
+:is(#debtsSection, #dashboardDebtsList) .debt-direct-actions { max-width: 180px; min-width: 134px; margin-left: auto; }
 .debt-list-maintenance { display: flex; justify-content: flex-end; margin-top: 24px; }
 @media (max-width: 1100px) {
   #operationsSection .operations-period-section { flex-basis: 240px; }
@@ -83,34 +83,34 @@
   #plansSection .plans-toolbar { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
   #plansSection .plans-toolbar .segmented { width: 100%; display: flex; flex-wrap: wrap; }
   #plansSection .plans-toolbar .segmented-btn { flex: 1 1 auto; min-height: 44px; padding: 8px; }
-  #plansSection .plan-card-row, #plansSection .plan-card-summary { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-  #plansSection .plan-card-date { display: block; }
-  #plansSection .plan-card-side { justify-items: start; gap: 10px; }
-  #plansSection .plan-card-amount-block { align-items: flex-start; text-align: left; }
-  #plansSection .plan-card-actions { justify-content: flex-start; }
+  :is(#plansSection, #dashboardPlansList) .plan-card-row, :is(#plansSection, #dashboardPlansList) .plan-card-summary { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  :is(#plansSection, #dashboardPlansList) .plan-card-date { display: block; }
+  :is(#plansSection, #dashboardPlansList) .plan-card-side { justify-items: start; gap: 10px; }
+  :is(#plansSection, #dashboardPlansList) .plan-card-amount-block { align-items: flex-start; text-align: left; }
+  :is(#plansSection, #dashboardPlansList) .plan-card-actions { justify-content: flex-start; }
   #debtsSection .debt-toolbar { flex-direction: row; }
   #debtsSection .debt-toolbar-search { flex: 1 1 100%; width: 100%; }
   #debtsSection .debt-toolbar .segmented { display: flex; width: 100%; }
   #debtsSection .debt-toolbar .segmented-btn { flex: 1; min-height: 44px; }
-  #debtsSection .debt-mobile-entry { padding: 12px 0; background: none; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; }
-  #debtsSection .debt-mobile-entry-head { display: block; }
-  #debtsSection .debt-mobile-entry-body { margin: 8px 0; padding: 0; border: 0; }
-  #debtsSection .debt-direct-actions { max-width: none; min-width: 0; justify-content: flex-start; margin: 8px 0 0; }
+  :is(#debtsSection, #dashboardDebtsList) .debt-mobile-entry { padding: 12px 0; background: none; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; }
+  :is(#debtsSection, #dashboardDebtsList) .debt-mobile-entry-head { display: block; }
+  :is(#debtsSection, #dashboardDebtsList) .debt-mobile-entry-body { margin: 8px 0; padding: 0; border: 0; }
+  :is(#debtsSection, #dashboardDebtsList) .debt-direct-actions { max-width: none; min-width: 0; justify-content: flex-start; margin: 8px 0 0; }
 }
 #plansSection > .panel > .panel-head, #debtsSection > .panel > .panel-head { display: none; }
 #plansSection .plans-status-chips { display: flex; flex-direction: row; flex-wrap: wrap; }
 #debtsSection .debt-toolbar { justify-content: flex-start; }
 #debtsSection .debt-toolbar > * { margin: 0; }
-#debtsSection .debt-card-children-wrap { padding: 0; border-left: 0; }
-#debtsSection .debt-card tr.debt-record-row { background: none; }
+:is(#debtsSection, #dashboardDebtsList) .debt-card-children-wrap { padding: 0; border-left: 0; }
+:is(#debtsSection, #dashboardDebtsList) .debt-card tr.debt-record-row { background: none; }
 @media (min-width: 641px) and (max-width: 1200px) {
   #debtsSection .debt-toolbar-search { flex-basis: 100%; }
-  #debtsSection .debt-card th:nth-child(1), #debtsSection .debt-card td:nth-child(1),
-  #debtsSection .debt-card th:nth-child(3), #debtsSection .debt-card td:nth-child(3),
-  #debtsSection .debt-card th:nth-child(4), #debtsSection .debt-card td:nth-child(4) { display: none; }
-  #debtsSection .debt-direct-actions { max-width: 138px; }
-  #debtsSection .debt-card .table { min-width: 0; width: 100%; }
-  #debtsSection .debt-card td { padding: 10px 6px; white-space: normal; }
+  :is(#debtsSection, #dashboardDebtsList) .debt-card th:nth-child(1), :is(#debtsSection, #dashboardDebtsList) .debt-card td:nth-child(1),
+  :is(#debtsSection, #dashboardDebtsList) .debt-card th:nth-child(3), :is(#debtsSection, #dashboardDebtsList) .debt-card td:nth-child(3),
+  :is(#debtsSection, #dashboardDebtsList) .debt-card th:nth-child(4), :is(#debtsSection, #dashboardDebtsList) .debt-card td:nth-child(4) { display: none; }
+  :is(#debtsSection, #dashboardDebtsList) .debt-direct-actions { max-width: 138px; }
+  :is(#debtsSection, #dashboardDebtsList) .debt-card .table { min-width: 0; width: 100%; }
+  :is(#debtsSection, #dashboardDebtsList) .debt-card td { padding: 10px 6px; white-space: normal; }
   #debtsSection .debt-due-head { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 }
 @media (max-width: 640px) {
@@ -120,9 +120,9 @@
   #operationsSection .record-icon-actions { flex-direction: row; }
   #plansSection .plans-status-chips { gap: 6px 12px; }
   #plansSection .plans-status-chips > span { width: auto; flex: none; }
-  #debtsSection .debt-mobile-entry-stats { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+  :is(#debtsSection, #dashboardDebtsList) .debt-mobile-entry-stats { display: flex; flex-wrap: wrap; gap: 6px 16px; }
 }
-#plansSection .plan-card-actions { min-width: 0; max-width: none; }
+:is(#plansSection, #dashboardPlansList) .plan-card-actions { min-width: 0; max-width: none; }
 #plansSection .plans-toolbar { justify-content: flex-start; }
 #debtsSection .debt-toolbar { flex-direction: row; }
 .main:has(:is(#operationsSection, #plansSection, #debtsSection):not(.hidden)) .topbar { display: flex; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 10px; }

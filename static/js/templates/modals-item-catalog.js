@@ -115,7 +115,7 @@
           <button type="button" class="segmented-btn" data-product-tab="offers" aria-pressed="false">Предложения</button>
           <button type="button" class="segmented-btn" data-product-tab="prices" aria-pressed="false">Цены</button>
           <button type="button" class="segmented-btn" data-product-tab="purchases" aria-pressed="false">Покупки</button>
-          <button type="button" class="segmented-btn" data-product-tab="packages" aria-pressed="false">Фасовки и коды</button>
+          <button type="button" class="segmented-btn" data-product-tab="packages" aria-pressed="false">Упаковки</button>
         </nav>
         <form data-product-panel="product" id="catalogProductForm" class="category-modal-form">
           <section class="catalog-image-field" data-catalog-image-picker="catalog-product" aria-label="Фотография товара">
@@ -158,39 +158,45 @@
             </div>
           </div>
         </form>
-        <section data-product-panel="packages" class="hidden">
+        <section data-product-panel="packages" data-package-view="sizes" class="hidden">
+          <nav class="segmented package-tasks" aria-label="Настройки упаковки">
+            <button type="button" class="segmented-btn active" data-package-task="sizes" aria-pressed="true">Размеры</button>
+            <button type="button" class="segmented-btn" data-package-task="shops" aria-pressed="false">Коды магазинов</button>
+            <button type="button" class="segmented-btn" data-package-task="replacements" aria-pressed="false">Замена размера</button>
+          </nav>
           <section id="catalogIdentityDetails" class="hidden">
-            <h4>Фасовки и соответствия</h4>
+            <div id="catalogVariantListView"><div class="row between"><h4>Размеры упаковки</h4><button type="button" class="btn btn-secondary btn-icon" id="catalogVariantAdd" title="Добавить размер" aria-label="Добавить размер">${window.App.icons.svg('plus')}</button></div><div id="catalogVariantList"></div></div>
             <p id="catalogIdentityStatus" class="muted-small" role="status"></p>
             <div id="catalogIdentityForms" class="hidden">
-              <form id="catalogVariantForm" class="category-modal-form">
-                <label class="field"><span>Фасовка</span><select id="catalogVariantSelect"></select></label>
-                <label class="field"><span>Название варианта</span><input id="catalogVariantName" maxlength="160" required placeholder="Например, пакет 900 мл" /></label>
+              <form id="catalogVariantForm" class="category-modal-form" hidden>
+                <div class="row between"><h4>Размер упаковки</h4><button type="button" class="btn btn-secondary btn-icon" id="catalogVariantBack" title="К списку размеров" aria-label="К списку размеров">${window.App.icons.svg('back')}</button></div>
+                <label class="field" hidden><span>Фасовка</span><select id="catalogVariantSelect"></select></label>
+                <label class="field"><span>Название · необязательно</span><input id="catalogVariantName" maxlength="160" placeholder="Например, бутылка" /></label>
                 <div class="form-grid">
                   <label class="field"><span>Единица продажи</span><select id="catalogVariant_sale_unit"><option value="">Не указана</option><option value="pack">упак.</option><option value="piece">шт.</option><option value="kg">кг</option><option value="g">г</option><option value="l">л</option><option value="ml">мл</option></select></label>
                   <label class="field"><span>Содержимое упаковки</span><input id="catalogVariant_package_quantity" type="number" min="0.001" step="0.001" /></label>
                   <label class="field"><span>Единица содержимого</span><select id="catalogVariant_package_unit"><option value="">Не указана</option><option value="piece">шт.</option><option value="kg">кг</option><option value="g">г</option><option value="l">л</option><option value="ml">мл</option></select></label>
                 </div>
-                <small class="muted-small">Здесь — штрихкод конкретной упаковки. Весовой или внутренний код магазина укажите ниже в соответствии предложения.</small>
-                <label class="field"><span>Штрихкоды GTIN/EAN · по одному на строку</span><textarea id="catalogVariantCodes" rows="3" maxlength="600" placeholder="Напечатанные цифры под штрихкодом"></textarea></label>
+
+                <label class="field"><span>Штрихкод упаковки · необязательно</span><textarea id="catalogVariantCodes" rows="1" maxlength="600" placeholder="Напечатанные цифры под штрихкодом"></textarea></label>
                 <label><input id="catalogVariantArchived" type="checkbox" /> Архивная фасовка</label>
                 <button type="submit" class="btn btn-secondary btn-icon" title="Сохранить фасовку" aria-label="Сохранить фасовку">${window.App.icons.svg("save")}</button>
               </form>
               <form id="catalogOfferIdentityForm" class="category-modal-form">
-                <h4>Соответствие предложения</h4>
+                <h4>Товар в магазине</h4>
                 <label class="field"><span>Предложение магазина</span><select id="catalogIdentityOffer"></select></label>
-                <label class="field"><span>Подтверждённая фасовка</span><select id="catalogIdentityVariant"></select></label>
-                <label class="field"><span>Артикул / кассовый код магазина</span><input id="catalogIdentityCode" maxlength="160" /></label>
+                <label class="field"><span>Размер упаковки</span><select id="catalogIdentityVariant"></select></label>
+                <label class="field"><span>Код товара в магазине</span><input id="catalogIdentityCode" maxlength="160" /></label>
                 <label class="field"><span>Название на сайте / в чеке</span><input id="catalogIdentityName" maxlength="320" /></label>
                 <label class="field"><span>Ссылка на товар</span><input id="catalogIdentityUrl" type="url" maxlength="2048" placeholder="https://…" /></label>
-                <small class="muted-small">Связь задаётся вручную. Ссылка пока не включает проверку цен; фасовка в чеке сохраняется отдельно.</small>
+                <small class="muted-small">Ссылка для сопоставления; автоматическая проверка цен пока не подключена.</small>
                 <button type="submit" class="btn btn-secondary btn-icon" title="Сохранить соответствие" aria-label="Сохранить соответствие">${window.App.icons.svg("save")}</button>
               </form>
             </div>
           </section>
           <section id="catalogReplacementsDetails" class="hidden">
             <h4>Замена фасовки</h4>
-            <p class="muted-small">Подтвердите только замену упаковки, а не два размера, которые продаются одновременно. Исторические чеки и каталог не изменяются.</p>
+            <p class="muted-small">Для случая, когда товар стал меньше: например, вместо 1 л теперь 900 мл.</p>
             <button type="button" class="btn-icon btn btn-secondary btn-xs" id="catalogReplacementsRefresh" title="Обновить замены" aria-label="Обновить замены">${window.App.icons.svg("refresh")}</button>
             <p id="catalogReplacementsStatus" role="status" class="muted-small"></p>
             <div id="catalogReplacementsBody" class="hidden">
@@ -224,12 +230,12 @@
         <section data-product-panel="prices" class="catalog-product-detail-panel hidden">
           <label class="field"><span>Предложение магазина</span><select id="catalogProductPriceOffer" aria-label="Предложение для истории цен"></select></label>
           <label class="field"><span>История</span><select id="catalogProductPriceMode"><option value="purchases">По покупкам</option><option value="offers">Сохранённые цены предложения</option></select></label>
-          <details id="catalogProductHistoryControls"><summary>Сравнение и период</summary><div class="product-price-controls">
+          <section id="catalogProductHistoryControls"><div class="product-price-controls">
             <label class="field"><span>Цена</span><select id="catalogProductPriceKind"><option value="paid">Фактически оплаченная</option><option value="regular">Обычная, если указана</option></select></label>
             <label class="field"><span>Сравнение</span><select id="catalogProductPriceBasis"><option value="unit">За единицу продажи / упаковку</option><option value="normalized">За кг / л / штуку содержимого</option></select></label>
             <label class="field"><span>С даты</span><input id="catalogProductPriceFrom" type="date"></label>
             <label class="field"><span>По дату</span><input id="catalogProductPriceTo" type="date"></label>
-          </div></details>
+          </div></section>
           <p id="catalogProductLegacyPriceNote" class="muted-small hidden">Сохранённые цены предложения — отдельный справочник; он может не содержать повторных изменений и не используется для графика покупок.</p>
           <div id="catalogProductComparisonSummary" class="catalog-comparison-summary hidden"></div>
           <div id="catalogProductPricesList" aria-live="polite"></div>

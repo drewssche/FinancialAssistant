@@ -120,6 +120,8 @@
   }
   function bind() {
     if (bound) return; bound = true;
+    const conditions = window.App.taskDialogs.attach(node('catalogProductHistoryControls').querySelector('.product-price-controls'), 'Сравнение и период', node('catalogProductHistoryControls'));
+    conditions.id = 'catalogProductConditionsDialog'; conditions.trigger.id = 'catalogProductConditionsButton';
     el.catalogProductModal.addEventListener("change", event => { if (event.target.closest('[data-product-panel="prices"]')) node("catalogProductComparisonSummary").classList.add("hidden"); });
     document.addEventListener("app:activity-changed", (event) => {
       const {method, path} = event.detail || {};

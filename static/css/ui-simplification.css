@@ -1,0 +1,89 @@
+/* Shared task controls: native value contracts, app-owned searchable choice UI. */
+.choice-dialog { box-sizing: border-box; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; width: min(480px, calc(100vw - 24px)); max-height: min(680px, calc(100dvh - 32px)); overflow: auto; box-shadow: 0 20px 80px #0008; }
+.choice-dialog::backdrop { background: #060b16b3; }
+.choice-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.choice-dialog h3 { font-size: 18px; margin: 0; }
+.choice-dialog input { width: 100%; position: sticky; top: 0; z-index: 1; background: var(--surface); }
+.choice-results { display: grid; gap: 4px; margin-top: 12px; }
+.choice-option { border: 0; border-radius: 8px; padding: 12px; min-height: 44px; text-align: left; color: var(--text); background: transparent; overflow-wrap: anywhere; cursor: pointer; }
+.choice-option:hover, .choice-option:focus-visible { background: var(--surface-2); }
+.choice-option[aria-pressed="true"] { background: #284771; box-shadow: inset 3px 0 #79acff; }
+.choice-dialog [role="status"]:empty { display: none; }
+.measurement-editor { display: grid; gap: 10px; grid-column: 1 / -1; min-width: 0; }
+.measurement-kind.segmented { display: flex; width: fit-content; max-width: 100%; }
+.measurement-size { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
+.measurement-size .field { flex: 1 1 150px; max-width: 240px; }
+.measurement-units { display: flex; flex-wrap: wrap; gap: 4px; }
+.measurement-unit.btn { padding: 8px 12px; min-width: 42px; min-height: 42px; }
+.measurement-unit.is-active { background: #233d60; border-color: #79acff; color: #e8f0ff; }
+.measurement-example { line-height: 1.4; }
+.measurement-editor ~ label, .measurement-editor input { min-width: 0; }
+:where(.catalog-product-measurements, #catalogVariantForm, .receipt-measurements) label[hidden] { display: none !important; }
+#catalogIdentityForms { display: block; }
+#catalogIdentityForms form { max-width: 660px; }
+#catalogIdentityForms form[hidden], #catalogVariantListView[hidden] { display: none !important; }
+.package-tasks { margin-bottom: 16px; display: flex; width: fit-content; flex-wrap: wrap; }
+[data-package-view="sizes"] :is(#catalogOfferIdentityForm, #catalogReplacementsDetails),
+[data-package-view="shops"] :is(#catalogVariantListView, #catalogVariantForm, #catalogReplacementsDetails),
+[data-package-view="replacements"] #catalogIdentityDetails { display: none !important; }
+#catalogVariantList { display: grid; }
+.package-list-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 0; background: none; border: 0; border-bottom: 1px solid var(--border); color: var(--text); text-align: left; cursor: pointer; }
+.package-list-row span { display: grid; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+.package-list-row small { color: var(--muted); }
+.package-list-row svg { width: 20px; height: 20px; flex-shrink: 0; }
+#catalogIdentityStatus:empty { display: none; }
+#catalogVariantForm .form-grid { order: 0; }
+#catalogVariantCodes { min-height: 44px; }
+:is(#createModal, #editModal) .operation-preview-action.is-active { background: #284771; border-color: #79acff; box-shadow: inset 0 -3px #79acff; color: #dceaff; }
+.operation-editor :is(.operation-extra, .operation-entry) > summary { display: none; }
+.operation-editor .operation-extra:not(:has(> :not(summary):not(.hidden):not([hidden]))) { display: none; }
+.operation-editor .operation-receipt-check > summary { display: block; pointer-events: none; list-style: none; }
+.operation-editor .operation-receipt-check > summary::marker { content: ''; }
+.operation-editor .operation-entry { border: 0; padding: 0; margin: 0; }
+.operation-editor .operation-extra { border: 0; padding: 0; }
+.operation-editor .receipt-measurements { border: 0; padding: 12px 0 0; }
+.operation-editor .receipt-measurements .form-grid { grid-template-columns: minmax(0,1fr); }
+.receipt-variant-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.receipt-variant-controls > small:empty { display: none; }
+.receipt-variant-controls .field { flex: 1 1 200px; }
+#catalogProductHistoryControls, .catalog-price-changes-options { border: 0; padding: 0; grid-column: 1 / -1; }
+.catalog-price-changes-advanced, .product-price-controls { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+#dashboardPlansList { display: grid; grid-template-columns: minmax(0,1fr); gap: 0; }
+#dashboardPlansList .plan-card-row { grid-template-columns: minmax(0,1fr) auto; }
+#dashboardPlansList .plan-card-summary { grid-template-columns: minmax(0,1fr); gap: 6px; }
+#dashboardDebtsList { display: grid; grid-template-columns: minmax(0,1fr); gap: 16px; }
+:is(#debtsSection, #dashboardDebtsList) .debt-mobile-entry { padding: 12px 0; background: none; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; }
+:is(#debtsSection, #dashboardDebtsList) .debt-mobile-entry-body { margin: 8px 0; padding: 0; background: none; border: 0; }
+:is(#debtsSection, #dashboardDebtsList) .debt-mobile-entry-stats { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+:is(#debtsSection, #dashboardDebtsList) .debt-mobile-entry-topline { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+:is(#debtsSection, #dashboardDebtsList) .debt-mobile-entry-meta { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+#dashboardDebtsList .debt-direct-actions { max-width: none; min-width: 0; }
+@media (max-width: 640px) {
+  .choice-dialog { padding: 16px; }
+  .measurement-kind.segmented { width: 100%; }
+  .measurement-kind .segmented-btn { flex: 1; padding: 8px; min-height: 44px; }
+  .measurement-unit.btn { min-width: 44px; min-height: 44px; padding: 8px; }
+  .measurement-size .field { max-width: none; }
+  .package-tasks { width: 100%; }
+  .package-tasks .segmented-btn { flex: 1 1 auto; min-height: 44px; padding: 8px; }
+  .catalog-price-changes-advanced, .product-price-controls { grid-template-columns: minmax(0,1fr); }
+  #dashboardPlansList .plan-card-row { grid-template-columns: minmax(0,1fr); }
+  #dashboardDebtsList .debt-direct-actions { justify-content: flex-start; margin-left: 0; }
+}
+
+#catalogVariantForm > label:has(#catalogVariantArchived) { display: flex; flex-direction: row; gap: 8px; align-items: center; }
+/* Expanded new and known rows share explicit named areas; no inherited row numbers. */
+:is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-measurements { grid-area: measurements; }
+.operation-extra > .task-dialog:not([open]) { display: none; }
+.task-dialog { width: min(660px, calc(100vw - 24px)); }
+.task-dialog .fx-settlement-block { margin: 0; padding: 0; background: none; border: 0; }
+:is(#createModal, #editModal).operation-editor .operation-extra:not(:has(> input, > .create-category-field:not(.hidden))) { display: none; }
+@media (max-width: 640px) {
+  :is(#createModal, #editModal).operation-editor .modal-head-actions { flex-wrap: wrap; max-width: 100%; justify-content: flex-end; }
+}
+.choice-dialog .btn-icon { width: 42px; min-width: 42px; height: 42px; padding: 0; }
+.task-dialog footer { justify-content: flex-end; margin-top: 16px; }
+.catalog-price-changes-options { display: contents; }
+.catalog-price-changes-options .task-dialog { display: none; }
+.catalog-price-changes-options .task-dialog[open] { display: block; }
+@media (max-width: 640px) { .choice-dialog .btn-icon { width: 44px; min-width: 44px; height: 44px; } }

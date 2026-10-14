@@ -51,7 +51,7 @@ def test_price_graph_filters_receipt_link_and_draft(static_server_url, page_with
     page.locator('#closeEditModalBtn').click()
     expect(page.locator('[data-product-purchase-id="3"]')).to_be_focused()
     expect(page.locator('#catalogProductPriceSeries')).to_have_value('1')
-    page.locator('#catalogProductHistoryControls summary').click()
+    page.click('#catalogProductConditionsButton')
     page.locator('#catalogProductPriceBasis').select_option('normalized')
     page.locator('#catalogProductPriceFrom').fill('2026-10-02')
     page.locator('#catalogProductPriceTo').fill('2026-10-03')
@@ -59,6 +59,7 @@ def test_price_graph_filters_receipt_link_and_draft(static_server_url, page_with
     page.wait_for_function("document.querySelector('.product-price-chart') !== null")
     assert queries[-1]['basis']==['normalized'] and queries[-1]['date_from']==['2026-10-02'] and queries[-1]['date_to']==['2026-10-03']
     page.locator('#catalogProductPriceKind').select_option('regular')
+    page.locator('#catalogProductConditionsDialog').get_by_role('button',name='Закрыть настройки').click()
     expect(page.locator('#catalogProductPricesList')).to_contain_text('Нет покупок')
     expect(page.locator('#catalogProductPricesList')).to_contain_text('Не показано позиций: 3')
     page.locator('[data-product-tab="product"]').click()

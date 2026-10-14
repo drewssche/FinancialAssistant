@@ -20,6 +20,7 @@
     const extra = disclosure('Комментарий и дополнительные параметры', 'operation-extra');
     form.append(extra);
     extra.append(byId(`${prefix}Note`), byId(`${prefix}FxSettlementBlock`));
+    form.append(window.App.taskDialogs.attach(byId(`${prefix}FxSettlementBlock`), 'Валютный остаток', header));
     const preview = modal.querySelector(':scope > .operation-modal-card > .preview-panel');
     const previewDetails = disclosure('Предпросмотр', 'operation-preview');
     if (preview) { preview.before(previewDetails); previewDetails.append(preview); }
@@ -36,13 +37,21 @@
       previewDetails.open = !previewDetails.open;
       if (previewDetails.open) previewDetails.scrollIntoView({block: 'nearest'});
     });
-    previewDetails.addEventListener('toggle', () => previewButton.setAttribute('aria-expanded', String(previewDetails.open)));
+    const syncPreview = () => {
+      const on = previewDetails.open;
+      previewButton.setAttribute('aria-expanded', String(on));
+      previewButton.setAttribute('aria-pressed', String(on));
+      previewButton.classList.toggle('is-active', on);
+      previewButton.title = on ? 'Скрыть предпросмотр' : 'Показать предпросмотр';
+      previewButton.setAttribute('aria-label', previewButton.title);
+    };
+    previewDetails.addEventListener('toggle', syncPreview); syncPreview();
     header.prepend(previewButton);
     const entry = create ? disclosure('Другие операции: валюта, долг', 'operation-entry') : null;
     if (entry) { form.append(entry); entry.append(byId('createEntryModeSwitch')); }
     const check = disclosure('Сверить сумму чека', 'operation-receipt-check');
     check.querySelector('summary').addEventListener('click', event => {
-      if (desktop.matches) event.preventDefault();
+      event.preventDefault();
     });
     const amount = byId(`${prefix}AmountCompound`), amountAnchor = document.createComment('operation amount');
     amount.before(amountAnchor);
@@ -84,7 +93,7 @@
     if (store && document.activeElement !== store) store.value = window.App.state[mode === 'create' ? 'createReceiptItems' : 'editReceiptItems']?.[0]?.shop_name || '';
     const receipt = operation && !modal.classList.contains('editing-debt-movement') && byId(`${prefix}OperationMode`).value === 'receipt';
     check.querySelector('summary').textContent = desktop.matches ? 'Оплачено по чеку' : 'Сверить сумму чека';
-    check.querySelector('summary').tabIndex = desktop.matches ? -1 : 0;
+    check.querySelector('summary').tabIndex = -1;
     modal.classList.toggle('is-receipt-editor', receipt);
     modal.classList.toggle('is-other-entry', !operation);
     if (receipt) {
@@ -102,6 +111,7 @@
       extra.open = Boolean((!desktop.matches && byId(`${prefix}Note`).value) || byId(mode === 'create' ? 'opUseFxSettlement' : 'editUseFxSettlement')?.checked);
       check.open = Boolean(byId(mode === 'create' ? 'receiptDiffValue' : 'editReceiptDiffValue')?.classList.contains('receipt-diff-warn'));
     }
+    extra.open = true; check.open = true; if (entry) entry.open = true;
     const plan = mode === 'create' && window.App.state.createFlowMode === 'plan';
     const note = byId(`${prefix}Note`);
     if (plan && note.parentElement !== view.form) extra.before(note);
@@ -127,7 +137,7 @@
       }
       extra.querySelector('summary').textContent = 'Дополнительные параметры';
     } else {
-      if (entry) view.form.append(entry);
+      if (entry) view.form.prepend(entry);
       view.receipt.append(view.receiptSummary, check);
       view.sidebar.remove();
       if (plan) extra.before(note); else extra.prepend(note);

@@ -183,7 +183,7 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert "max-height: min(88dvh, 720px)" in calculator_css
     version = re.search(r'const assetVersion = "([^"]+)"', (REPO_ROOT / "static/js/app-bootstrap.js").read_text()).group(1)
     assert f'/static/styles.css?v={version}' in index_html
-    assert '/static/css/components-core.css?v=20260904f' in styles
+    assert '/static/css/components-core.css?v=20261014-simple1' in styles
     assert '/static/css/layout-debts.css?v=20260716j' in styles
     assert '/static/css/components-analytics-summary.css?v=20261012-quantities1' in styles
     assert '/static/css/responsive-sm-core.css?v=20260826b' in styles

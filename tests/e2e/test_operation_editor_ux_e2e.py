@@ -39,12 +39,12 @@ def test_simple_and_receipt_editors_keep_main_path_short(static_server_url, page
     page = page_with_receipt_api_mock
     open_editor(page, static_server_url, width)
     assert page.locator('#opAmount').is_visible()
-    assert page.locator('#opNote').is_visible() == (width >= 900)
+    assert page.locator('#opNote').is_visible()
     assert page.locator('#opFxSettlementBlock').is_hidden()
     assert page.locator('#createModal .panel-head').bounding_box()['height'] < 90
     page.locator('#opAmount').fill('5.85')
     page.locator('#createOperationModeSwitch [data-operation-mode="receipt"]').click()
-    assert page.locator('#opAmount').is_visible() == (width >= 900)
+    assert page.locator('#opAmount').is_visible()
     page.locator('[data-receipt-store="create"]').fill('Соседи')
     page.locator('[data-receipt-store="create"]').press('Tab')
     page.locator('#receiptItemsList [data-receipt-field="name"]').first.fill('Сыр Голландский')
@@ -71,8 +71,6 @@ def test_simple_and_receipt_editors_keep_main_path_short(static_server_url, page
     assert first.locator('[data-receipt-field="brand_search"]').is_visible()
     first.locator('[data-receipt-details-toggle]').click()
     assert page.evaluate("() => window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()") == payload
-    if width < 900:
-        page.locator('#createModal .operation-receipt-check > summary').click()
     assert page.locator('#opAmount').input_value() == '5.85'
     page.locator('#pullReceiptTotalBtn').click()
     assert float(page.locator('#opAmount').input_value()) == 3.5
@@ -137,7 +135,6 @@ def test_store_inheritance_and_other_entry_modes_are_accessible(static_server_ur
     store.fill('Евроопт');store.press('Tab')
     shops=page.evaluate('()=>window.App.state.createReceiptItems.map(x=>x.shop_name)')
     assert shops[:3] == ['Евроопт','Green','Евроопт']
-    page.locator('#createModal .operation-entry > summary').click()
     page.locator('#createEntryModeSwitch [data-entry-mode="debt"]').click()
     assert page.locator('#debtPrincipal').is_visible()
     assert page.locator('#opReceiptBlock').is_hidden()
@@ -169,8 +166,6 @@ def test_compact_receipt_submits_exact_total_with_optional_comment(static_server
     row.locator('[data-receipt-field="unit_price"]').fill('15.64')
     row.locator('[data-receipt-discount-toggle]').click()
     row.locator('[data-receipt-field="discount_value"]').fill('0.13')
-    if width < 900:
-        page.locator('#createModal .operation-extra > summary').click()
     page.locator('#opNote').fill('Проверка черновика')
     page.locator('#submitCreateOperationBtn').click()
     page.wait_for_function("()=>document.querySelector('#createModal').classList.contains('hidden')")
