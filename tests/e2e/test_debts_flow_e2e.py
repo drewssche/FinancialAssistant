@@ -31,14 +31,10 @@ def _restore_mock_telegram(page):
 
 
 def _login_via_mock_telegram(page):
+    page.wait_for_function("typeof window.App?.getRuntimeModule?.('session')?.tryAutoTelegramLogin === 'function'")
     _restore_mock_telegram(page)
-    page.evaluate("() => window.App.getRuntimeModule('session')?.refreshTelegramLoginUi?.()")
-    try:
-        page.locator("#telegramLoginBtn").wait_for(state="visible", timeout=1200)
-        page.click("#telegramLoginBtn")
-        page.wait_for_selector("#appShell:not(.hidden)")
-    except Exception:
-        page.wait_for_selector("#appShell:not(.hidden)")
+    page.evaluate("() => window.App.getRuntimeModule('session').tryAutoTelegramLogin({waitForReady: false})")
+    page.wait_for_selector("#appShell:not(.hidden)")
 
 
 @pytest.fixture(scope="module")
@@ -664,6 +660,8 @@ def page_with_debts_api_mock():
             pytest.skip(f"Chromium is not available for Playwright: {exc}")
 
         page = browser.new_page()
+        # Keep the real Telegram SDK from replacing the local login fixture.
+        page.route("https://telegram.org/js/telegram-web-app.js*", lambda route: route.fulfill(body="", content_type="application/javascript"))
         page.add_init_script(
             """
             window.Telegram = {
@@ -994,9 +992,10 @@ def test_debt_history_infinite_scroll_loads_next_batch(static_server_url: str, p
 
 
 @pytest.mark.e2e
-def test_mobile_debt_history_modal_keeps_scroll_region_visible(static_server_url: str, page_with_debts_api_mock):
+@pytest.mark.parametrize("width", [320, 390])
+def test_mobile_debt_history_modal_keeps_scroll_region_visible(static_server_url: str, page_with_debts_api_mock, width):
     page = page_with_debts_api_mock
-    page.set_viewport_size({"width": 390, "height": 844})
+    page.set_viewport_size({"width": width, "height": 844})
     page.goto(f"{static_server_url}/static/index.html")
     _login_via_mock_telegram(page)
 
@@ -1040,6 +1039,7 @@ def test_mobile_debt_history_modal_keeps_scroll_region_visible(static_server_url
             listBottom: listRect.bottom,
             modalTop: modalRect.top,
             modalBottom: modalRect.bottom,
+            modalOverflow: modalCard.scrollWidth > modalCard.clientWidth + 1,
             itemsCount: items.length,
             scrollHeight: list.scrollHeight,
             clientHeight: list.clientHeight,
@@ -1050,6 +1050,7 @@ def test_mobile_debt_history_modal_keeps_scroll_region_visible(static_server_url
 
     assert geometry is not None
     assert geometry["itemsCount"] > 0
+    assert not geometry["modalOverflow"]
     assert geometry["listTop"] >= geometry["modalTop"]
     assert geometry["listBottom"] <= geometry["modalBottom"] + 2
     assert geometry["scrollHeight"] >= geometry["clientHeight"]
@@ -1192,6 +1193,7 @@ def test_dashboard_debts_toggle_applies_without_page_reload(static_server_url: s
 
     page.click("button[data-section='settings']")
     page.wait_for_selector("#settingsSection:not(.hidden)")
+    page.click('[data-settings-view="dashboard"]')
     page.uncheck("#showDashboardDebtsToggle")
     page.click("#saveSettingsBtn")
     page.wait_for_timeout(200)
@@ -1202,6 +1204,7 @@ def test_dashboard_debts_toggle_applies_without_page_reload(static_server_url: s
 
     page.click("button[data-section='settings']")
     page.wait_for_selector("#settingsSection:not(.hidden)")
+    page.click('[data-settings-view="dashboard"]')
     page.check("#showDashboardDebtsToggle")
     page.click("#saveSettingsBtn")
     page.wait_for_timeout(200)

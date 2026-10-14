@@ -17,6 +17,7 @@ This folder keeps durable product, architecture, engineering, and operations con
 Keep this list short. If an item is implemented, promote durable decisions into source-of-truth docs and remove the note.
 
 - `UI_AUDIT_2026-10-13.md` - all-section desktop/mobile UX audit, evidence limits and proposed simplification stages; approved direction; implementation progress is tracked separately in the roadmap.
+- `UI_AUDIT_2026-10-14.md` - cross-section follow-up audit, modal/action consistency fixes and scope of visual verification.
 
 - `CURRENCY_FEATURE_PLAN.md` - compact current currency feature contract and backlog.
 - `RESULT_AND_CASHFLOW_SEMANTICS_PLAN.md` - pending naming/semantics guardrails for result and cashflow surfaces.

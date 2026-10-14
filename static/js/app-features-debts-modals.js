@@ -44,7 +44,7 @@
         el.repaymentDirection.classList.remove("debt-direction-pill-lend", "debt-direction-pill-borrow");
         el.repaymentDirection.classList.add(isBorrow ? "debt-direction-pill-borrow" : "debt-direction-pill-lend");
         if (el.forgiveDebtFromRepaymentBtn) {
-          el.forgiveDebtFromRepaymentBtn.textContent = isBorrow ? "Мне простили" : "Простить остаток";
+          window.App.icons.apply(el.forgiveDebtFromRepaymentBtn, "forgive", isBorrow ? "Мне простили" : "Простить остаток");
         }
       }
       if (el.repaymentOutstanding) {

@@ -1687,6 +1687,8 @@ def test_work_timesheet_renders_auto_days_payroll_shift_and_plan_links(static_se
     page.wait_for_selector("#workDayForm:not(.hidden)")
     assert page.locator("#workDayStatus").input_value() == "workday"
     assert page.locator('[data-date-picker-trigger="workDayDateTo"]').count() == 1
+    page.click('#closeWorkDayEditorBtn')
+    page.wait_for_selector('#workDayModal.hidden', state='attached')
 
     page.click('[data-work-open-plan-picker="salary"]')
     page.wait_for_selector("#workSettingsForm:not(.hidden)")

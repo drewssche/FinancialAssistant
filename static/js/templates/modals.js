@@ -18,9 +18,7 @@
             <button id="createSessionRefreshBtn" class="btn btn-secondary operation-session-refresh-btn modal-session-action" type="button" title="Продлить сессию" aria-label="Продлить сессию">
               <span aria-hidden="true">⟳</span>
             </button>
-            <button id="closeCreateModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-              <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-            </button>
+            <button id="closeCreateModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
           </div>
         </div>
 
@@ -372,9 +370,7 @@
         </div>
 
         <div class="modal-footer">
-          <button id="submitCreateOperationBtn" class="btn btn-cta modal-main-cta" type="submit" form="createOperationForm">
-            Добавить
-          </button>
+          <button id="submitCreateOperationBtn" class="btn btn-cta modal-main-cta btn-icon" type="submit" form="createOperationForm" title="Добавить операцию" aria-label="Добавить операцию">${window.App.icons.svg("save")}</button>
         </div>
       </div>
     </div>
@@ -383,9 +379,7 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="batchCreateTitle">Массовое добавление операций</h3>
-          <button id="closeBatchCreateModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-          </button>
+          <button id="closeBatchCreateModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
         </div>
         <form id="batchCreateForm" class="category-modal-form">
           <p class="subtitle">Одна строка: <code>дата;тип;[группа];[категория];сумма;комментарий</code>.</p>
@@ -428,9 +422,7 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="batchCategoryTitle">Массовое добавление категорий и групп</h3>
-          <button id="closeBatchCategoryModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-          </button>
+          <button id="closeBatchCategoryModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
         </div>
         <form id="batchCategoryForm" class="category-modal-form">
           <div class="segmented" id="batchCategoryModeTabs" aria-label="Режим массового добавления категорий">
@@ -474,9 +466,7 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="bulkEditOperationsTitle">Массовое редактирование операций</h3>
-          <button id="closeBulkEditOperationsModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-          </button>
+          <button id="closeBulkEditOperationsModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
         </div>
         <form id="bulkEditOperationsForm" class="category-modal-form">
           <select id="bulkOpKind">
@@ -520,9 +510,7 @@
             <button id="editSessionRefreshBtn" class="btn btn-secondary operation-session-refresh-btn modal-session-action" type="button" title="Продлить сессию" aria-label="Продлить сессию">
               <span aria-hidden="true">⟳</span>
             </button>
-            <button id="closeEditModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-              <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-            </button>
+            <button id="closeEditModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
           </div>
         </div>
 
@@ -693,9 +681,7 @@
         </div>
 
         <div class="modal-footer">
-          <button id="submitEditOperationBtn" class="btn btn-cta modal-main-cta" type="submit" form="editOperationForm">
-            Сохранить
-          </button>
+          <button id="submitEditOperationBtn" class="btn btn-cta modal-main-cta btn-icon" type="submit" form="editOperationForm" title="Сохранить операцию" aria-label="Сохранить операцию">${window.App.icons.svg("save")}</button>
         </div>
       </div>
     </div>
@@ -704,9 +690,7 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="createCategoryTitle">Новая категория</h3>
-          <button id="closeCreateCategoryModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-          </button>
+          <button id="closeCreateCategoryModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
         </div>
         <form id="categoryModalForm" class="category-modal-form">
           <div class="category-name-row">
@@ -748,9 +732,7 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="createGroupTitle">Новая группа</h3>
-          <button id="closeCreateGroupModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-          </button>
+          <button id="closeCreateGroupModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
         </div>
         <form id="groupModalForm" class="category-modal-form">
           <input id="groupName" type="text" placeholder="Название группы" required />
@@ -779,9 +761,7 @@
           <div class="modal-head-actions">
             <button id="editGroupCreateCategoryBtn" class="btn btn-secondary modal-head-icon-btn hidden" type="button" title="Добавить категорию" aria-label="Добавить категорию"><span aria-hidden="true">+</span></button>
             <button id="editGroupActivityBtn" class="btn btn-secondary modal-head-icon-btn hidden" type="button" title="Журнал" aria-label="Открыть журнал"><span aria-hidden="true">◷</span></button>
-            <button id="closeEditGroupModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-              <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-            </button>
+            <button id="closeEditGroupModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
           </div>
         </div>
         <form id="editGroupForm" class="category-modal-form">
@@ -807,9 +787,7 @@
             <div class="modal-head-actions">
               <button id="editCategoryActivityBtn" class="btn btn-secondary modal-head-icon-btn hidden" type="button" title="Журнал" aria-label="Открыть журнал"><span aria-hidden="true">◷</span></button>
               <button id="editCategoryUsageBtn" class="btn btn-secondary modal-head-icon-btn hidden" type="button" title="Операции" aria-label="Открыть операции"><span aria-hidden="true">↗</span></button>
-              <button id="closeEditCategoryModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-              <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-            </button>
+              <button id="closeEditCategoryModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
           </div>
         </div>
         <form id="editCategoryForm" class="category-modal-form">
@@ -855,9 +833,7 @@
             <h3 id="activityModalTitle">Журнал действий</h3>
             <p id="activityModalSubtitle" class="subtitle">История изменений карточки</p>
           </div>
-          <button id="closeActivityModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-          </button>
+          <button id="closeActivityModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
         </div>
         <div id="activityList" class="activity-list">
           <div class="muted-small">Журнал пока пуст</div>
@@ -872,9 +848,7 @@
             <h3 id="usageModalTitle">Операции</h3>
             <p id="usageModalSubtitle" class="subtitle">Где используется карточка</p>
           </div>
-          <button id="closeUsageModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-          </button>
+          <button id="closeUsageModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
         </div>
         <div id="usageKpi" class="analytics-kpi-secondary usage-kpi"></div>
         <div class="usage-modal-actions">

@@ -335,10 +335,10 @@
       syncCurrencyTradeFieldUi();
       await syncSuggestedCurrencyRate().catch(() => {});
       if (submit) {
-        submit.textContent = state.editCurrencyTradeId ? "Сохранить валютную сделку" : "Создать валютную сделку";
+        window.App.icons.apply(submit, "save", state.editCurrencyTradeId ? "Сохранить валютную сделку" : "Создать валютную сделку");
       }
     } else if (submit) {
-      submit.textContent = "Добавить";
+      window.App.icons.apply(submit, "save", "Добавить операцию");
     }
     if (!isDebt && !isCurrency) {
       prepareDebtEntryMode({ isDebt: false, submit });
@@ -600,7 +600,7 @@
     }
     const submit = document.getElementById("submitCreateOperationBtn");
     if (submit) {
-      submit.textContent = "Сохранить валютную сделку";
+      window.App.icons.apply(submit, "save", "Сохранить валютную сделку");
     }
     if (el.currencyAsset) {
       el.currencyAsset.value = String(payload.asset_currency || buildSelectableCurrencyList(false)[0] || "USD").toUpperCase();
@@ -775,7 +775,7 @@
     el.customDayField?.classList.toggle("hidden", mode !== "day");
     el.customRangeFields?.classList.toggle("hidden", mode !== "range");
     if (el.submitPeriodCustomBtn) {
-      el.submitPeriodCustomBtn.textContent = mode === "day" ? "Показать день" : "Применить период";
+      window.App.icons.apply(el.submitPeriodCustomBtn, "save", mode === "day" ? "Показать день" : "Применить период");
     }
     el.periodCustomModal.classList.remove("hidden");
   }

@@ -68,7 +68,7 @@
       }
       renderDebtCounterpartyPicker();
       if (submit) {
-        submit.textContent = state.editDebtCreateId ? "Сохранить долг" : "Создать долг";
+        window.App.icons.apply(submit, "save", state.editDebtCreateId ? "Сохранить долг" : "Создать долг");
       }
     }
 
@@ -88,7 +88,7 @@
       }
       const submit = document.getElementById("submitCreateOperationBtn");
       if (submit) {
-        submit.textContent = "Сохранить долг";
+        window.App.icons.apply(submit, "save", "Сохранить долг");
       }
       selectDebtCounterparty(payload.counterparty || "", { keepOpen: false });
       if (el.debtPrincipal) {

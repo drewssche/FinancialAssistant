@@ -87,7 +87,7 @@
       el.customDayField?.classList.toggle("hidden", nextMode !== "day");
       el.customRangeFields?.classList.toggle("hidden", nextMode !== "range");
       if (el.submitPeriodCustomBtn) {
-        el.submitPeriodCustomBtn.textContent = nextMode === "day" ? "Показать день" : "Применить период";
+        window.App.icons.apply(el.submitPeriodCustomBtn, "save", nextMode === "day" ? "Показать день" : "Применить период");
       }
     }
 

@@ -73,7 +73,7 @@ def test_completed_plan_opens_from_history_and_resumes(static_server_url, comple
     page.click('[data-plan-schedule-mode="recurring"]')
     expect(page.locator("#planResumeEnabled")).to_be_checked()
     expect(page.locator("#planResumeDate")).to_have_value("2026-09-28")
-    expect(page.locator("#submitCreateOperationBtn")).to_have_text("Сохранить и возобновить")
+    expect(page.locator("#submitCreateOperationBtn")).to_have_attribute("aria-label", "Сохранить и возобновить")
     expect(page.locator("#submitCreateOperationBtn")).to_be_enabled()
     assert page.evaluate("window.App.state.lastActivityMutationAt") == activity_before
     page.screenshot(path=f"{tempfile.gettempdir()}/financialassistant-plan-resume-{width}.png")
@@ -82,7 +82,7 @@ def test_completed_plan_opens_from_history_and_resumes(static_server_url, comple
     expect(page.locator("#planResumeHint")).to_contain_text("05.10.2026")
     page.click("#submitCreateOperationBtn")
     expect(page.locator("#planEditorStatus")).to_have_text("План #12 · Активен")
-    expect(page.locator("#submitCreateOperationBtn")).to_have_text("Сохранить план")
+    expect(page.locator("#submitCreateOperationBtn")).to_have_attribute("aria-label", "Сохранить план")
     assert state["updates"][-1]["resume"] is True
     assert state["updates"][-1]["scheduled_date"] == "2026-10-05"
     page.click("#planShowInList")
@@ -120,7 +120,7 @@ def test_resume_preview_error_prevents_save_and_toggle_off_cancels_resume(static
     page.click('[data-plan-month-end="on"]')
     page.click('[data-plan-schedule-mode="oneoff"]')
     expect(page.locator("#planResumeFields")).to_be_hidden()
-    expect(page.locator("#submitCreateOperationBtn")).to_have_text("Сохранить план")
+    expect(page.locator("#submitCreateOperationBtn")).to_have_attribute("aria-label", "Сохранить план")
     page.click("#submitCreateOperationBtn")
     assert not state["updates"][-1].get("resume")
     assert state["updates"][-1]["scheduled_date"] == "2026-08-28"
@@ -193,4 +193,5 @@ def test_save_response_does_not_replace_new_plan_form(static_server_url, complet
     expect(page.locator("#submitCreateOperationBtn")).to_be_enabled()
     expect(page.locator("#createTitle")).to_have_text("Новый план")
     expect(page.locator("#opNote")).to_have_value("Новый несохранённый план")
-    expect(page.locator("#submitCreateOperationBtn")).to_have_text("Создать план")
+    expect(page.locator("#submitCreateOperationBtn")).to_have_attribute("aria-label", "Создать план")
+    expect(page.locator("#submitCreateOperationBtn svg")).to_have_count(1)

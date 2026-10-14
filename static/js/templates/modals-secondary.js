@@ -7,9 +7,7 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="periodCustomTitle">Настроить период</h3>
-          <button id="closePeriodCustomModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-          </button>
+          <button id="closePeriodCustomModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
         </div>
         <form id="periodCustomForm" class="category-modal-form">
           <input id="customPeriodMode" type="hidden" value="day" />
@@ -45,9 +43,7 @@
           </div>
         </form>
         <div class="modal-footer">
-          <button id="submitPeriodCustomBtn" class="btn btn-cta modal-main-cta" type="submit" form="periodCustomForm">
-            Показать день
-          </button>
+          <button id="submitPeriodCustomBtn" class="btn btn-cta modal-main-cta btn-icon" type="submit" form="periodCustomForm" title="Показать день" aria-label="Показать день">${window.App.icons.svg("save")}</button>
         </div>
       </div>
     </div>
@@ -56,9 +52,7 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="debtRepaymentTitle">Внести погашение</h3>
-          <button id="closeDebtRepaymentModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-          </button>
+          <button id="closeDebtRepaymentModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
         </div>
         <form id="debtRepaymentForm" class="category-modal-form">
           <input id="repaymentDebtId" type="hidden" />
@@ -97,12 +91,8 @@
           <input id="repaymentNote" type="text" placeholder="Комментарий" />
         </form>
         <div class="modal-footer">
-          <button id="forgiveDebtFromRepaymentBtn" class="btn btn-secondary" type="button">
-            Простить остаток
-          </button>
-          <button id="submitDebtRepaymentBtn" class="btn btn-cta modal-main-cta" type="submit" form="debtRepaymentForm">
-            Сохранить погашение
-          </button>
+          <button id="forgiveDebtFromRepaymentBtn" class="btn btn-secondary btn-icon" type="button" title="Простить остаток" aria-label="Простить остаток">${window.App.icons.svg("forgive")}</button>
+          <button id="submitDebtRepaymentBtn" class="btn btn-cta modal-main-cta btn-icon" type="submit" form="debtRepaymentForm" title="Сохранить погашение" aria-label="Сохранить погашение">${window.App.icons.svg("save")}</button>
         </div>
       </div>
     </div>
@@ -111,9 +101,7 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="debtIssuanceTitle">Добавить сумму</h3>
-          <button id="closeDebtIssuanceModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-          </button>
+          <button id="closeDebtIssuanceModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
         </div>
         <form id="debtIssuanceForm" class="category-modal-form">
           <input id="issuanceDebtId" type="hidden" />
@@ -144,9 +132,7 @@
           <input id="issuanceNote" type="text" placeholder="Комментарий" />
         </form>
         <div class="modal-footer">
-          <button id="submitDebtIssuanceBtn" class="btn btn-cta modal-main-cta" type="submit" form="debtIssuanceForm">
-            Добавить сумму
-          </button>
+          <button id="submitDebtIssuanceBtn" class="btn btn-cta modal-main-cta btn-icon" type="submit" form="debtIssuanceForm" title="Добавить сумму" aria-label="Добавить сумму">${window.App.icons.svg("save")}</button>
         </div>
       </div>
     </div>
@@ -155,9 +141,7 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="debtHistoryTitle">Движения долга</h3>
-          <button id="closeDebtHistoryModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-          </button>
+          <button id="closeDebtHistoryModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
         </div>
         <div class="debt-history-head">
           <div class="row between">
@@ -177,9 +161,7 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="debtForgivenessTitle">Простить долг</h3>
-          <button id="closeDebtForgivenessModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-          </button>
+          <button id="closeDebtForgivenessModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
         </div>
         <form id="debtForgivenessForm" class="category-modal-form">
           <input id="forgivenessDebtId" type="hidden" />
@@ -217,9 +199,7 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="operationReceiptTitle">Позиции чека</h3>
-          <button id="closeOperationReceiptModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-          </button>
+          <button id="closeOperationReceiptModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
         </div>
         <div id="operationReceiptMeta" class="subtitle">—</div>
         <div id="operationReceiptItems" class="operation-receipt-items"></div>
@@ -243,9 +223,7 @@
       <div class="modal-card modal-small">
         <div class="panel-head row between">
           <h3 id="settingsPickerTitle">Выбор значения</h3>
-          <button id="closeSettingsPickerModalBtn" class="btn btn-secondary modal-close-btn" type="button" aria-label="Закрыть">
-            <span aria-hidden="true">×</span><span class="modal-close-label">Закрыть</span>
-          </button>
+          <button id="closeSettingsPickerModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
         </div>
         <div id="settingsPickerOptions" class="settings-picker-options"></div>
       </div>

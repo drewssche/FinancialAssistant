@@ -159,8 +159,11 @@
 
     function setSubmitLabel(label) {
       const button = field("submitCreateOperationBtn");
-      if (button.dataset.loading === "1") button.dataset.originalText = label;
-      else button.textContent = label;
+      if (button.dataset.loading === "1" && button.__loadingSnapshot) {
+        // Keep the pending label visible, but restore the latest plan action after completion.
+        button.__loadingSnapshot = { html: window.App.icons.svg("save"), text: "", label, title: label };
+        button.dataset.originalText = "";
+      } else window.App.icons.apply(button, "save", label);
     }
 
     function clearContext() {
