@@ -48,9 +48,6 @@
 .receipt-variant-controls .field { flex: 1 1 200px; }
 #catalogProductHistoryControls, .catalog-price-changes-options { border: 0; padding: 0; grid-column: 1 / -1; }
 .catalog-price-changes-advanced, .product-price-controls { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
-#dashboardPlansList { display: grid; grid-template-columns: minmax(0,1fr); gap: 0; }
-#dashboardPlansList .plan-card-row { grid-template-columns: minmax(0,1fr) auto; }
-#dashboardPlansList .plan-card-summary { grid-template-columns: minmax(0,1fr); gap: 6px; }
 #dashboardDebtsList { display: grid; grid-template-columns: minmax(0,1fr); gap: 16px; }
 :is(#debtsSection, #dashboardDebtsList) .debt-mobile-entry { padding: 12px 0; background: none; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; }
 :is(#debtsSection, #dashboardDebtsList) .debt-mobile-entry-body { margin: 8px 0; padding: 0; background: none; border: 0; }
@@ -67,7 +64,6 @@
   .package-tasks { width: 100%; }
   .package-tasks .segmented-btn { flex: 1 1 auto; min-height: 44px; padding: 8px; }
   .catalog-price-changes-advanced, .product-price-controls { grid-template-columns: minmax(0,1fr); }
-  #dashboardPlansList .plan-card-row { grid-template-columns: minmax(0,1fr); }
   #dashboardDebtsList .debt-direct-actions { justify-content: flex-start; margin-left: 0; }
 }
 

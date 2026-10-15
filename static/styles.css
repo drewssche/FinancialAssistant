@@ -15,7 +15,7 @@
 @import url("/static/css/components-table-sort.css?v=20260907a");
 @import url("/static/css/components-table-columns.css?v=20260907a");
 @import url("/static/css/components-item-brands.css?v=20260904b");
-@import url("/static/css/components-catalog-products.css?v=20261016-receipt-units");
+@import url("/static/css/components-catalog-products.css?v=20261016-dashboard-cards");
 @import url("/static/css/components-catalog-media.css?v=20260907c");
 @import url("/static/css/components-overlays.css?v=20260910a");
 @import url("/static/css/components-activity-center.css?v=20260720f");
@@ -27,15 +27,15 @@
 @import url("/static/css/responsive-sm-modals.css?v=20260904a");
 @import url("/static/css/operation-editor.css?v=20261015-scan-catalog");
 @import url("/static/css/catalog-compact.css?v=20261014-source-brand1");
-@import url("/static/css/daily-lists.css?v=20261014-simple1");
+@import url("/static/css/daily-lists.css?v=20261016-dashboard-cards");
 @import url("/static/css/work-compact.css?v=20261014-work-day1");
 @import url("./css/insights-compact.css?v=20261014-structure1");
 @import url("./css/directories-settings.css?v=20261014-kpi1");
 @import url("./css/kpi-cards.css?v=20261014-kpi1");
 @import url("./css/secondary-editors.css?v=20261014-secondary1");
 @import url("./css/ui-final-audit.css?v=20261014-audit1");
-@import url("./css/ui-simplification.css?v=20261014-simple1");
-@import url("/static/css/receipt-scan.css?v=20261016-receipt-units");
+@import url("./css/ui-simplification.css?v=20261016-dashboard-cards");
+@import url("/static/css/receipt-scan.css?v=20261016-dashboard-cards");
 /* Work timesheet */
 .work-section-head { gap: 16px; align-items: flex-start; }
 .work-month-control { display: flex; align-items: center; gap: 10px; }

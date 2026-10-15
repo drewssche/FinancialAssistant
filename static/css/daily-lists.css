@@ -135,3 +135,40 @@
   .main:has(:is(#operationsSection, #plansSection, #debtsSection):not(.hidden)) .top-actions { margin-right: 48px; }
   #plansSection #plansTabTabs { display: grid; grid-template-columns: 1fr 1fr; }
 }
+
+/* A plan is a compact card in both its section and the dashboard. */
+:is(#plansList, #dashboardPlansList):has(.plan-card-row) {
+ display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,480px),1fr));gap:12px;align-items:start;
+}
+:is(#plansSection, #dashboardPlansList) .plan-card:has(.plan-card-row) {
+ padding:14px;margin:0;border:1px solid var(--border);border-radius:12px;background:var(--surface);box-shadow:none;min-width:0;
+}
+:is(#plansSection, #dashboardPlansList) .plan-card-row {
+ display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"date amount" "context context" "meta actions";gap:10px 12px;align-items:center;
+}
+:is(#plansSection, #dashboardPlansList) :is(.plan-card-primary,.plan-card-summary,.plan-card-side) {display:contents;}
+:is(#plansSection, #dashboardPlansList) .plan-card-date {grid-area:date;}
+:is(#plansSection, #dashboardPlansList) .plan-card-amount-block {grid-area:amount;justify-items:end;text-align:right;max-width:260px;}
+:is(#plansSection, #dashboardPlansList) .plan-card-amount {justify-items:end;font-size:17px;}
+:is(#plansSection, #dashboardPlansList) .plan-card-context {grid-area:context;gap:4px;}
+:is(#plansSection, #dashboardPlansList) .plan-card-title-row {gap:6px;min-height:28px;}
+:is(#plansSection, #dashboardPlansList) .plan-card-meta {overflow-wrap:anywhere;}
+:is(#plansSection, #dashboardPlansList) .plan-card-top-meta {grid-area:meta;gap:5px 8px;margin:0;align-items:center;}
+:is(#plansSection, #dashboardPlansList) .plan-card-actions {grid-area:actions;justify-content:flex-end;align-self:end;}
+:is(#plansSection, #dashboardPlansList) .plan-card-actions .btn-icon {width:36px;height:36px;min-width:36px;min-height:36px;padding:0;}
+:is(#plansSection, #dashboardPlansList) .plan-card-row:has(.plan-card-amount-secondary) {grid-template-columns:minmax(95px,1fr) minmax(0,1fr);}
+:is(#plansSection, #dashboardPlansList) .plan-card-row:has(.plan-card-amount-secondary) .plan-card-actions {grid-column:1/-1;grid-row:4;}
+:is(#plansSection, #dashboardPlansList) .plan-card-row:has(.plan-card-amount-secondary) .plan-card-top-meta {grid-column:1/-1;}
+@media(max-width:640px){
+ :is(#plansSection, #dashboardPlansList) .plan-card-row {grid-template-areas:"date amount" "context context" "meta meta" "actions actions";}
+ :is(#plansSection, #dashboardPlansList) .plan-card-actions .btn-icon {width:44px;height:44px;min-width:44px;min-height:44px;}
+ :is(#plansSection, #dashboardPlansList) .plan-card-amount-block {max-width:160px;}
+ :is(#plansSection, #dashboardPlansList) .plan-card-date strong {font-size:13px;}
+}
+/* Dashboard rows share the section table; the short action set stays together. */
+#dashboardDebtsList .debt-card .table {min-width:0;width:100%;}
+#dashboardDebtsList .debt-card td {white-space:normal;overflow-wrap:anywhere;}
+#dashboardDebtsList .debt-direct-actions {flex-wrap:nowrap;}
+#dashboardDebtsList .debt-card .debt-mobile-entry {padding-left:10px;}
+
+#dashboardPlansPanel .panel-controls {display:flex;flex-wrap:wrap;align-items:center;gap:8px;}

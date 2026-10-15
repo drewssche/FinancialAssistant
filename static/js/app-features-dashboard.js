@@ -673,10 +673,13 @@
                   return Number(b.id || 0) - Number(a.id || 0);
                 });
                 const visibleDebts = activeDebts.slice(0, 2);
-                const rowsHtml = visibleDebts.map(debt => window.App.debtCardsRenderer.renderCompactDebt(debt, {dashboard:true, now})).join('');
                 const compact = document.createElement('article');
                 compact.className = 'panel debt-card';
-                compact.innerHTML = `<div class="debt-mobile-card-head"><div class="debt-mobile-card-title-block"><h3>${core.highlightText(card.counterparty || '', '')}</h3></div></div><div class="debt-mobile-entries">${rowsHtml}</div>`;
+                compact.dataset.dashboardDebtCard = '';
+                compact.renderDebtRows = () => {
+                  compact.innerHTML = `<div class="debt-mobile-card-head"><div class="debt-mobile-card-title-block"><h3>${core.highlightText(card.counterparty || '', '')}</h3></div></div>${window.App.debtCardsRenderer.renderDebtRows(visibleDebts, {dashboard:true, now})}`;
+                };
+                compact.renderDebtRows();
                 el.dashboardDebtsList.appendChild(compact);
               }
             }

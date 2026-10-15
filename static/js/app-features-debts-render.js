@@ -235,7 +235,8 @@
     `;
   }
 
-  function renderDebtActions(debt) {
+  function renderDebtActions(debt, {dashboard=false} = {}) {
+    if (dashboard) return `<div class="record-icon-actions debt-direct-actions"><button class="btn btn-repay btn-icon" type="button" data-dashboard-repay-debt-id="${debt.id}" aria-label="Погасить долг" title="Погасить долг" ${Number(debt.outstanding_total)<=0?'disabled':''}>${window.App.icons.svg('repay')}</button><button class="btn btn-secondary btn-icon" type="button" data-dashboard-history-debt-id="${debt.id}" aria-label="Движения долга" title="Движения долга">${window.App.icons.svg('history')}</button></div>`;
     const disabled = Number(debt.outstanding_total) <= 0 ? "disabled" : "";
     return `<div class="record-icon-actions debt-direct-actions">
       <button class="btn btn-repay btn-icon" type="button" data-repay-debt-id="${debt.id}" ${disabled} aria-label="Погашение" title="Погашение">${window.App.icons.svg("repay")}</button>
@@ -313,33 +314,7 @@
 
       const debtsRows = sorting.sort(sortedDebts, "debts", columns)
         .map((debt) => {
-          const dueState = debtDueState(debt, now);
-          const dueDays = debtDueDaysBadge(debt, dueState, now);
-          const direction = debt.direction === "borrow" ? "borrow" : "lend";
-          const directionLabel = debtUi.debtDirectionActionLabel(direction);
-          const repaidClass = debtRepaidClass(debt);
-          const noteText = debt.note ? core.highlightText(String(debt.note), searchQuery) : "";
-          if (compactMobile) return renderCompactDebt(debt, {searchQuery, now});
-          return `<tr class="debt-row-${dueState} debt-row-${direction} debt-record-row table-record-open-row" data-debt-row-id="${debt.id}">
-            <td>${core.formatDateRu(debt.start_date)}</td>
-            <td><span class="debt-direction-pill debt-direction-pill-${direction}">${directionLabel}</span></td>
-            <td>${formatDebtAmountBlock(debt.principal, debt.currency || "BYN", debt.current_base_principal, debt.base_currency || "BYN", `debt-amount-principal debt-amount-principal-${direction}`)}</td>
-            <td>${formatDebtAmountBlock(debt.repaid_total, debt.currency || "BYN", debt.current_base_repaid_total, debt.base_currency || "BYN", `debt-amount-repaid ${repaidClass}`)}</td>
-            <td>
-              ${formatDebtAmountBlock(debt.outstanding_total, debt.currency || "BYN", debt.current_base_outstanding_total, debt.base_currency || "BYN", `debt-amount-outstanding debt-amount-outstanding-${direction}`)}
-            </td>
-            <td>
-              <div class="row debt-due-head">
-                <span class="muted-small">${debtDueLabel(dueState, debt.due_date)}</span>
-                ${dueDays ? `<span class="debt-due-days-badge debt-due-days-badge-${dueState}">${dueDays}</span>` : ""}
-              </div>
-              ${debtClosureMeta(debt)}
-              ${noteText ? `<div class="muted-small">${noteText}</div>` : ""}
-            </td>
-            <td>
-              ${renderDebtActions(debt)}
-            </td>
-          </tr>`;
+          return compactMobile ? renderCompactDebt(debt, {searchQuery, now}) : renderDebtTableRow(debt, {searchQuery, now});
         })
         .join("");
 
@@ -373,7 +348,44 @@
             ${closedDebtsToggle}
           </div>
           <div id="${debtRowsId}" class="debt-card-children-wrap">
-            <table class="table table-hover">
+            ${renderDebtTable(debtsRows)}
+          </div>
+        `;
+      el.debtsCards.appendChild(item);
+      sorting.bind(item.querySelector("table"), { key: "debts", columns, onChange: () => renderDebtCards(cards) });
+    }
+  }
+
+  function renderDebtTableRow(debt, {searchQuery='', dashboard=false, now=new Date()} = {}) {
+    const dueState = debtDueState(debt, now);
+    const dueDays = debtDueDaysBadge(debt, dueState, now);
+    const direction = debt.direction === "borrow" ? "borrow" : "lend";
+    const directionLabel = debtUi.debtDirectionActionLabel(direction);
+    const repaidClass = debtRepaidClass(debt);
+    const noteText = debt.note ? core.highlightText(String(debt.note), searchQuery) : "";
+    return `<tr class="debt-row-${dueState} debt-row-${direction} debt-record-row ${dashboard ? "" : "table-record-open-row"}" ${dashboard ? "" : `data-debt-row-id="${debt.id}"`}>
+      <td>${core.formatDateRu(debt.start_date)}</td>
+      <td><span class="debt-direction-pill debt-direction-pill-${direction}">${directionLabel}</span></td>
+      <td>${formatDebtAmountBlock(debt.principal, debt.currency || "BYN", debt.current_base_principal, debt.base_currency || "BYN", `debt-amount-principal debt-amount-principal-${direction}`)}</td>
+      <td>${formatDebtAmountBlock(debt.repaid_total, debt.currency || "BYN", debt.current_base_repaid_total, debt.base_currency || "BYN", `debt-amount-repaid ${repaidClass}`)}</td>
+      <td>
+        ${formatDebtAmountBlock(debt.outstanding_total, debt.currency || "BYN", debt.current_base_outstanding_total, debt.base_currency || "BYN", `debt-amount-outstanding debt-amount-outstanding-${direction}`)}
+      </td>
+      <td>
+        <div class="row debt-due-head">
+          <span class="muted-small">${debtDueLabel(dueState, debt.due_date)}</span>
+          ${dueDays ? `<span class="debt-due-days-badge debt-due-days-badge-${dueState}">${dueDays}</span>` : ""}
+        </div>
+        ${debtClosureMeta(debt)}
+        ${noteText ? `<div class="muted-small">${noteText}</div>` : ""}
+      </td>
+      <td>
+        ${renderDebtActions(debt, {dashboard})}
+      </td>
+    </tr>`;
+  }
+  function renderDebtTable(debtsRows) {
+    return `            <table class="table table-hover">
               <thead>
                 <tr>
                   <th>Дата</th>
@@ -386,12 +398,12 @@
                 </tr>
               </thead>
               <tbody>${debtsRows}</tbody>
-            </table>
-          </div>
-        `;
-      el.debtsCards.appendChild(item);
-      sorting.bind(item.querySelector("table"), { key: "debts", columns, onChange: () => renderDebtCards(cards) });
-    }
+            </table>`;
+  }
+  function renderDebtRows(debts, options = {}) {
+    return window.matchMedia('(max-width: 640px)').matches
+      ? `<div class="debt-mobile-entries">${debts.map(debt=>renderCompactDebt(debt,options)).join('')}</div>`
+      : `<div class="debt-card-children-wrap">${renderDebtTable(debts.map(debt=>renderDebtTableRow(debt,options)).join(''))}</div>`;
   }
 
   function renderCompactDebt(debt, {searchQuery='', dashboard=false, now=new Date()} = {}) {
@@ -423,13 +435,18 @@
                   </div>
                   ${noteText ? `<div class="muted-small debt-mobile-entry-note">${noteText}</div>` : ""}
                 </div>
-                ${dashboard ? `<div class="record-icon-actions debt-direct-actions"><button class="btn btn-repay btn-icon" type="button" data-dashboard-repay-debt-id="${debt.id}" aria-label="Погасить долг" title="Погасить долг" ${Number(debt.outstanding_total)<=0?'disabled':''}>${window.App.icons.svg('repay')}</button><button class="btn btn-secondary btn-icon" type="button" data-dashboard-history-debt-id="${debt.id}" aria-label="Движения долга" title="Движения долга">${window.App.icons.svg('history')}</button></div>` : renderDebtActions(debt)}
+                ${renderDebtActions(debt, {dashboard})}
               </article>
             `;
   }
 
+  window.matchMedia('(max-width: 640px)').addEventListener('change', () => {
+    document.querySelectorAll('[data-dashboard-debt-card]').forEach(card=>card.renderDebtRows?.());
+    if (Array.isArray(state.debtCardsCache)) renderDebtCards(state.debtCardsCache);
+  });
   window.App.debtCardsRenderer = {
     renderCompactDebt,
+    renderDebtRows,
     isClosedDebt,
     renderDebtCards,
   };

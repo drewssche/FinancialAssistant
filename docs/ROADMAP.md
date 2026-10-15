@@ -17,6 +17,13 @@
 - Keep Telegram-specific behavior in the client runtime; backend contracts stay shared between Web UI and Telegram.
 
 ## Current Sprint
+### Dashboard placement and shared record cards — 2026-10-16
+- [x] Currency portfolio moved before period analytics in the dashboard DOM.
+- [x] Plans use one compact responsive card grid in their section and on the dashboard; long notes and currency metadata wrap inside cards.
+- [x] Dashboard debt rows reuse the section table on desktop and mobile entries below 641px; resize updates cached content without requests.
+- [x] Validation: 24 UI contract checks; 15 plan/card and 25 debt/dashboard browser scenarios passed across runs. Three initial startup/loading timeouts passed on targeted retry; final four dashboard/section debt comparisons passed. Visuals checked at 320/390/1024/1440/2338px.
+- [ ] Publish through GitHub → server pull and verify served assets/readiness.
+
 ### Receipt units and price hover — 2026-10-16
 - [x] Direct unit choice for new/scanned items, catalog sale-unit defaults with manual override, explicit weight/volume price and quantity labels in scan and operation.
 - [x] New products inherit unambiguous explicit receipt/plan measurements; existing catalog settings and historical receipt snapshots stay unchanged.

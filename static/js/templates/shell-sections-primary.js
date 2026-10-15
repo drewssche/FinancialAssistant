@@ -4,6 +4,24 @@
   window.App.templates.shellSectionsPrimary = `
 
         <section id="dashboardSection" class="section-block">
+<section id="dashboardCurrencyPanel" class="panel dashboard-currency-panel hidden">
+            <div class="panel-head row between">
+              <div>
+                <h3>Валютный портфель</h3>
+                <p class="subtitle">Позиции и курсы по отслеживаемым валютам</p>
+              </div>
+              <div class="toolbar">
+                <button id="dashboardCurrencyActivityBtn" class="btn-icon btn btn-secondary btn-xs hidden" type="button" aria-label="Журнал валюты" title="Журнал валюты">${window.App.icons.svg("history")}</button>
+                <button id="dashboardRefreshAllCurrencyRatesBtn" class="btn-icon btn btn-secondary btn-xs" type="button" aria-label="Обновить курсы" title="Обновить курсы">${window.App.icons.svg("refresh")}</button>
+                <button id="dashboardSendCurrencyDigestBtn" class="btn-icon btn btn-secondary btn-xs" type="button" aria-label="Отправить дайджест" title="Отправить дайджест">${window.App.icons.svg("send")}</button>
+                <button id="openCurrencyTabBtn" class="btn-icon btn btn-secondary" type="button" aria-label="Открыть валюту" title="Открыть валюту">${window.App.icons.svg("forward")}</button>
+              </div>
+            </div>
+            <div id="dashboardCurrencyKpiGrid" class="analytics-kpi-grid"></div>
+            <div id="dashboardCurrencyBalances" class="currency-balance-grid"></div>
+            <div id="dashboardCurrencyRates" class="dashboard-currency-rates-grid"></div>
+            <div id="dashboardCurrencyPositions" class="analytics-kpi-secondary"></div>
+          </section>
 <section id="dashboardAnalyticsPanel" class="panel">
             <div class="panel-head row between">
               <div>
@@ -127,24 +145,7 @@
             <div id="dashboardPositionsRanking" class="analytics-position-ranking-list analytics-position-ranking-dashboard"></div>
             <div id="dashboardPositionsEmpty" class="muted-small hidden">За выбранный период покупок по позициям нет</div>
           </section>
-<section id="dashboardCurrencyPanel" class="panel dashboard-currency-panel hidden">
-            <div class="panel-head row between">
-              <div>
-                <h3>Валютный портфель</h3>
-                <p class="subtitle">Позиции и курсы по отслеживаемым валютам</p>
-              </div>
-              <div class="toolbar">
-                <button id="dashboardCurrencyActivityBtn" class="btn-icon btn btn-secondary btn-xs hidden" type="button" aria-label="Журнал валюты" title="Журнал валюты">${window.App.icons.svg("history")}</button>
-                <button id="dashboardRefreshAllCurrencyRatesBtn" class="btn-icon btn btn-secondary btn-xs" type="button" aria-label="Обновить курсы" title="Обновить курсы">${window.App.icons.svg("refresh")}</button>
-                <button id="dashboardSendCurrencyDigestBtn" class="btn-icon btn btn-secondary btn-xs" type="button" aria-label="Отправить дайджест" title="Отправить дайджест">${window.App.icons.svg("send")}</button>
-                <button id="openCurrencyTabBtn" class="btn-icon btn btn-secondary" type="button" aria-label="Открыть валюту" title="Открыть валюту">${window.App.icons.svg("forward")}</button>
-              </div>
-            </div>
-            <div id="dashboardCurrencyKpiGrid" class="analytics-kpi-grid"></div>
-            <div id="dashboardCurrencyBalances" class="currency-balance-grid"></div>
-            <div id="dashboardCurrencyRates" class="dashboard-currency-rates-grid"></div>
-            <div id="dashboardCurrencyPositions" class="analytics-kpi-secondary"></div>
-          </section>
+
         </section>
 
         <section id="analyticsSection" class="section-block hidden">
