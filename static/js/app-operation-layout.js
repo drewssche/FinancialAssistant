@@ -60,9 +60,13 @@
     category.before(categoryAnchor);
     const receipt = byId(`${prefix}ReceiptFields`);
     receipt.append(check);
-    const store = document.createElement('label');
+    const store = document.createElement('div');
     store.className = 'receipt-store';
     store.innerHTML = `<span>Магазин</span><input data-receipt-store="${mode}" aria-label="Магазин чека" placeholder="Выбрать или ввести магазин" autocomplete="off">`;
+    const storeInput = store.querySelector('input');
+    const storeRow = document.createElement('div'); storeRow.className = 'receipt-store-input-row';
+    store.append(storeRow); storeRow.append(storeInput);
+    if (create && byId('openReceiptScan')) storeRow.append(byId('openReceiptScan'));
     receipt.prepend(store);
     window.App.getRuntimeModule('operation-store-picker').bind(store, mode);
     const currency = byId(`${prefix}Currency`), currencyAnchor = document.createComment('operation currency');

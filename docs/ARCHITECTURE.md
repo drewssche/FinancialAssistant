@@ -35,6 +35,10 @@ Cross-module code should resolve the owning runtime module or a narrow dependenc
 
 Modals use the shared stack. The operation calculator participates in that stack; Escape closes the top eligible window, preserves the underlying operation draft and restores focus. Product and receipt redesign must preserve those contracts. UI rules live in [UI_SYSTEM.md](UI_SYSTEM.md) and [UX_PATTERNS.md](UX_PATTERNS.md).
 
+## Browser receipt OCR pilot (2026-10-15)
+
+`app-receipt-scan.js` owns the native review dialog and empty-operation transfer; `app-receipt-scan-image.js` handles bounded perspective correction. `app-receipt-scan-parser.js` extracts conservative candidates and validates integer-money arithmetic independently of OCR. `app-receipt-scan-engine.js` owns a disposable same-origin iframe (`receipt-ocr.html` / `receipt-ocr-runner.js`) and its Tesseract worker. Engine/models are pinned under `static/vendor/receipt-ocr/v7`, loaded on demand without a CDN or image-upload API. CSP allows same-origin frames. Closing/cancelling disposes processing; the app never auto-saves recognized data. Existing receipt notes retain a bounded raw-text excerpt in create/edit payloads. No migration or additional container. Scope and limitations: [browser pilot](OCR_BROWSER_PILOT_2026-10-15.md).
+
 ## Search
 
 `app/core/search.py` and `static/js/app-search-utils.js` share a literal substring contract: original query first, RU→EN and EN→RU keyboard variants, lowercase, collapsed whitespace and ё/е equivalence. Query correction never changes input or stored product/source identities. Pure numbers and punctuation do not trigger layout conversion. This is not typo correction, transliteration or independent correction of each word in a mixed-layout phrase.

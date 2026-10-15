@@ -35,6 +35,7 @@
 @import url("./css/secondary-editors.css?v=20261014-secondary1");
 @import url("./css/ui-final-audit.css?v=20261014-audit1");
 @import url("./css/ui-simplification.css?v=20261014-simple1");
+@import url("/static/css/receipt-scan.css?v=20261015-ocr1");
 /* Work timesheet */
 .work-section-head { gap: 16px; align-items: flex-start; }
 .work-month-control { display: flex; align-items: center; gap: 10px; }

@@ -66,7 +66,7 @@ async def http_metrics_middleware(request, call_next):
                 "style-src 'self' 'unsafe-inline'; "
                 "img-src 'self' data: blob:; "
                 "connect-src 'self' https://telegram.org https://oauth.telegram.org; "
-                "frame-src https://oauth.telegram.org https://telegram.org; "
+                "frame-src 'self' https://oauth.telegram.org https://telegram.org; "
                 "object-src 'none'; base-uri 'self'; frame-ancestors 'self' https://web.telegram.org"
             )
             response.headers["X-Content-Type-Options"] = "nosniff"

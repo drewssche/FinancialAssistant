@@ -1,0 +1,50 @@
+.receipt-scan-dialog { color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:18px;width:min(1200px,calc(100vw - 24px));max-height:calc(100dvh - 24px);padding:20px;overflow:auto;box-sizing:border-box; }
+.receipt-scan-dialog::backdrop { background:#060b16cc; }
+.receipt-scan-dialog > header, .scan-toolbar, .scan-review-toolbar {display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.receipt-scan-dialog > header {justify-content:space-between;}
+.receipt-scan-dialog h3 {margin:0;font-size:20px;}
+.receipt-scan-dialog .btn-icon {width:42px;min-width:42px;height:42px;padding:0;}
+.receipt-scan-dialog [hidden] {display:none !important;}
+.scan-toolbar {margin:16px 0;}
+#scanWorkspace {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:24px;align-items:start;}
+#scanWorkspace:has(#scanReview[hidden]) {grid-template-columns:minmax(0,600px);justify-content:center;}
+.scan-image-column {position:sticky;top:0;padding:16px;min-width:0;}
+#scanImageFrame {position:relative;width:fit-content;max-width:100%;margin:auto;}
+#scanCanvas {display:block;max-width:100%;max-height:70vh;width:auto;height:auto;}
+#scanOutline {position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+.scan-corner {position:absolute;transform:translate(-50%,-50%);width:36px;height:36px;border-radius:50%;border:2px solid #b4d2ff;background:#244878;color:white;cursor:grab;touch-action:none;z-index:1;}
+#scanReview {min-width:0;}
+.scan-meta,.scan-row-numbers {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.scan-review-toolbar {margin:18px 0 8px;}
+.scan-review-toolbar strong {margin-right:auto;}
+.scan-row {padding:16px 0;border-bottom:1px solid var(--border);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;}
+.scan-row-numbers,.scan-source,.scan-discount-type {grid-column:1/-1;}
+.scan-source {white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.4;}
+.scan-confirm {display:flex;align-items:start;gap:10px;margin:16px 0;}
+.scan-confirm input {width:auto;min-height:20px;flex-shrink:0;}
+.scan-error {color:#ffaaaa;}
+#scanReview footer {display:flex;justify-content:flex-end;}
+#scanText {width:100%;min-height:200px;box-sizing:border-box;}
+#scanTextDialog .btn-primary {margin-top:12px;}
+@media(max-width:700px){
+ .receipt-scan-dialog {padding:16px;}
+ .receipt-scan-dialog .btn-icon {width:44px;min-width:44px;height:44px;}
+ #scanWorkspace {grid-template-columns:minmax(0,1fr);}
+ .scan-image-column {position:static;}
+ #scanCanvas {max-height:55vh;}
+ .scan-corner {width:44px;height:44px;}
+ #scanTransfer {width:100%;}
+}
+.receipt-scan-dialog > header {flex-wrap:nowrap;}
+.receipt-scan-dialog h3 {flex:1;min-width:0;}
+.receipt-scan-dialog :is(input:not([type=checkbox]),select,textarea) {min-width:0;width:100%;box-sizing:border-box;}
+.receipt-scan-dialog .field {min-width:0;}
+#scanCropHint {margin-top:28px;}
+@media(max-width:450px){.scan-meta {grid-template-columns:minmax(0,1fr);}}
+.receipt-store-input-row {display:flex;align-items:center;gap:8px;min-width:0;}
+.receipt-store-input-row input {flex:1;min-width:0;}
+#openReceiptScan {flex:none;width:42px;height:42px;padding:0;}
+@media(max-width:640px){#openReceiptScan {width:44px;height:44px;}}
+#scanBack {display:none;}
+.receipt-scan-dialog[data-stage=review] #scanBack {display:inline-flex;}
+.receipt-scan-dialog[data-stage=review] :is(#scanUpload,#scanRotate,#scanReset,#scanRunBar,#scanCropHint,#scanOutline,.scan-corner) {display:none;}
