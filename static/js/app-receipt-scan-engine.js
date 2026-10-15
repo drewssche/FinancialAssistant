@@ -3,7 +3,7 @@
   // including cancellation before Tesseract's createWorker promise has resolved.
   function recognize(canvas, progress) {
     const frame=document.createElement('iframe');frame.hidden=true;frame.title='Локальное распознавание';
-    frame.src='/static/receipt-ocr.html?v=20261015-ocr1';
+    frame.src='/static/receipt-ocr.html?v=20261015-ocr2';
     const id=crypto.randomUUID();let settled=false, resolveResult, rejectResult;
     const promise=new Promise((resolve,reject)=>{resolveResult=resolve;rejectResult=reject;});
     function cleanup(){clearTimeout(timer);window.removeEventListener('message',receive);frame.remove();}
