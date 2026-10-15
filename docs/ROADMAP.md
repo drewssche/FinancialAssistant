@@ -625,3 +625,9 @@ Automatic GitHub CI runs on pushes and pull requests are disabled at the owner�
 - [x] Validation: 68 scoped Python/API and 35 browser cases passed, including 14 repeated real-engine rows across strip boundaries. No operation records created. Photos/private raw output retained only in gitignored local evaluation files.
 - [x] Released `d8ec002` (implementation `41f751a`) through GitHub main → clean fast-forward server pull → app-only rebuild. Assets `20261015-ocr2`: all eight served file hashes match. Ready on unchanged schema `20261013_0050`; all six containers healthy. Only app recreated (`2026-10-15T20:29:56Z`), restarts 0. Bot, poopbot, both databases and Redis retain their start times/restart counts; poopbot remains at its existing 1. Rollback image: `financialassistant-app:before-receipt-corrections-20261015`. CI remains manual.
 - [ ] Next: evaluate a more accurate engine and real phone cost/time before declaring OCR convenient. External processing, confirmed product matching and persistent duplicate detection remain pending.
+
+### Toast modal layering — 2026-10-16
+
+- [x] Keep normal/error/undo notifications above custom and native modal stacks through a shared manual popover host, owned by the foremost native modal while it is open. Retain a z-index/native-owner fallback without Popover API; preserve focus, pointer access, live-region announcements and mobile safe-area positioning.
+- [x] Validation: four browser cases at 320/1440 px with and without Popover API cover nested modal ordering, close/undo actions, focus preservation, expiry and cleanup. Desktop/mobile previews inspected; 24 frontend contract checks, JavaScript syntax and diff checks pass.
+- [ ] Release through GitHub main → clean server pull → app-only rebuild and served-asset/readiness verification.

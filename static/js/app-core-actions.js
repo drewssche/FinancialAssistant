@@ -31,6 +31,54 @@
     }
   }
 
+  // A single host for normal, error and undo notices, above every modal layer.
+  // Native modal dialogs make outside nodes inert, so the host must belong to
+  // the foremost dialog as well as being in the browser's top layer.
+  const toastHost = el.toastArea;
+  const toastPopover = typeof toastHost?.showPopover === "function";
+  let toastDialogs = [];
+  if (toastHost) {
+    toastHost.setAttribute("role", "status");
+    toastHost.setAttribute("aria-live", "polite");
+    toastHost.setAttribute("aria-relevant", "additions text");
+    if (toastPopover) toastHost.setAttribute("popover", "manual");
+  }
+  function syncToastLayer() {
+    if (!toastHost) return;
+    const dialogs = [...document.querySelectorAll('dialog[open]')].filter(dialog => dialog.matches(':modal'));
+    toastDialogs = toastDialogs.filter(dialog => dialogs.includes(dialog));
+    dialogs.forEach(dialog => {if (!toastDialogs.includes(dialog)) toastDialogs.push(dialog);});
+    const owner = toastHost.childElementCount ? toastDialogs.at(-1) || document.body : document.body;
+    if (toastHost.parentElement !== owner) owner.append(toastHost);
+    // Fallback for WebViews without Popover API; native dialogs still own the host.
+    const modal = core.getTopVisibleModal?.();
+    toastHost.style.zIndex = String(Math.max(1000, Number(modal?.style.zIndex || 0) + 1));
+    if (toastPopover) {
+      if (toastHost.childElementCount && !toastHost.matches(':popover-open')) toastHost.showPopover();
+      else if (!toastHost.childElementCount && toastHost.matches(':popover-open')) toastHost.hidePopover();
+    }
+  }
+  if (toastHost) {
+    new MutationObserver(mutations => {
+      let changed = false;
+      for (const mutation of mutations) {
+        const target = mutation.target;
+        if (mutation.type === 'attributes' && target.matches('dialog') && mutation.attributeName === 'open') {
+          toastDialogs = toastDialogs.filter(dialog => dialog !== target);
+          if (target.open && target.matches(':modal')) toastDialogs.push(target);
+          changed = true;
+        } else if (mutation.type === 'attributes' && target.matches('.modal, [data-modal-layer]')) {
+          changed = true;
+        } else if (mutation.type === 'childList' && (target === toastHost ||
+          [...mutation.addedNodes, ...mutation.removedNodes].some(node => node.nodeType === 1 &&
+            (node === toastHost || node.matches('dialog') || node.querySelector('dialog, #toastArea'))))) {
+          changed = true;
+        }
+      }
+      if (changed) syncToastLayer();
+    }).observe(document.body, {subtree:true, childList:true, attributes:true, attributeFilter:['open','class']});
+  }
+
   function dismissToast(toastId) {
     const item = state.toasts.get(toastId);
     if (!item) {
@@ -79,6 +127,7 @@
     toast.append(header, progress);
 
     el.toastArea.appendChild(toast);
+    syncToastLayer();
     const timeoutId = setTimeout(() => dismissToast(id), durationMs);
     state.toasts.set(id, { toast, timeoutId, onUndo: null });
     return id;
@@ -328,6 +377,7 @@
     toast.append(header, progress);
 
     el.toastArea.appendChild(toast);
+    syncToastLayer();
     const timeoutId = setTimeout(() => {
       state.toasts.delete(id);
       toast.remove();

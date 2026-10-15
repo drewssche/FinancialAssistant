@@ -1,6 +1,6 @@
 (() => {
   const manifest = Array.isArray(window.__APP_SCRIPT_MANIFEST__) ? window.__APP_SCRIPT_MANIFEST__ : [];
-  const assetVersion = "20261016-card-consistency";
+  const assetVersion = "20261016-toast-layers";
 
   function showBootstrapError(message) {
     const text = String(message || "Не удалось загрузить приложение.");
