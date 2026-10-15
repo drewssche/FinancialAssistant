@@ -14,6 +14,7 @@ from app.core.cache import (
     invalidate_plans_cache,
     set_json,
 )
+from app.core.measurement import normalize_measurement
 from app.db.models import CatalogProduct, Category
 from app.repositories.catalog_product_repo import CatalogProductRepository
 from app.repositories.item_brand_repo import ItemBrandRepository
@@ -578,6 +579,14 @@ class OperationItemTemplateService:
         invalidate_item_templates_cache(user_id)
         return deleted
 
+    @staticmethod
+    def _new_product_measurement(items: list[dict], key: tuple[str, str | None]) -> dict:
+        """Seed new catalog products only from unambiguous explicit receipt units."""
+        values = [normalize_measurement(item) for item in items if (
+            item["name"].casefold(), (item.get("shop_name") or "").casefold() or None
+        ) == key]
+        return values[0] if values and all(value == values[0] for value in values) else {}
+
     def resolve_templates_and_prices(
         self,
         *,
@@ -647,6 +656,7 @@ class OperationItemTemplateService:
                     name=matched_item["name"],
                     brand_id=matched_item.get("brand_id"),
                     category_id=matched_item.get("category_id") or category_id,
+                    measurement=self._new_product_measurement(normalized_items, key),
                 )
             template = self.repo.create_item_template(
                 user_id=user_id,
@@ -816,6 +826,7 @@ class OperationItemTemplateService:
                     name=matched_item["name"],
                     brand_id=matched_item.get("brand_id"),
                     category_id=matched_item.get("category_id") or category_id,
+                    measurement=self._new_product_measurement(normalized_items, key),
                 )
             template = self.repo.create_item_template(
                 user_id=user_id,

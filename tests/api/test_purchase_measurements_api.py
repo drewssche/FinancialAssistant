@@ -117,3 +117,41 @@ def test_merge_does_not_replace_a_different_package_default(client):
     assert response.status_code == 400, response.text
     assert_pack(client.get(f"/api/v1/operations/catalog-products/{first['id']}").json())
     assert_pack(client.get(f"/api/v1/operations/catalog-products/{second['id']}").json(), '800')
+
+
+def test_new_weighted_product_defaults_and_historical_snapshot(client):
+    purchase = operation(client, [dict(name='Колбаса Рубленая', shop_name='Green', quantity='0.530', unit_price='18.69', sale_unit='kg')])
+    row = purchase['receipt_items'][0]
+    assert Decimal(row['line_total']) == Decimal('9.91')
+    catalog = client.get(f"/api/v1/operations/catalog-products/{row['product_id']}").json()
+    assert catalog['sale_unit'] == 'kg'
+    assert catalog['package_quantity'] is None
+    changed = client.patch(f"/api/v1/operations/catalog-products/{row['product_id']}", json={
+        'name': 'Колбаса', 'sale_unit': 'piece', 'package_quantity': '1', 'package_unit': 'kg',
+    })
+    assert changed.status_code == 200, changed.text
+    saved = client.get(f"/api/v1/operations/{purchase['id']}").json()['receipt_items'][0]
+    assert saved['sale_unit'] == 'kg' and saved['name'] == 'Колбаса Рубленая'
+    assert Decimal(saved['line_total']) == Decimal('9.91')
+    # A later purchase with explicit units must not overwrite existing catalog defaults.
+    operation(client, [dict(name='Колбаса Рубленая', shop_name='Green', quantity='0.2', unit_price='18.69', sale_unit='kg')])
+    assert client.get(f"/api/v1/operations/catalog-products/{row['product_id']}").json()['sale_unit'] == 'piece'
+
+
+def test_conflicting_new_product_sizes_do_not_pick_arbitrary_default(client):
+    purchase = operation(client, [line(**PACK), line(**{**PACK, 'package_quantity': '800'})])
+    row = purchase['receipt_items'][0]
+    catalog = client.get(f"/api/v1/operations/catalog-products/{row['product_id']}").json()
+    assert all(catalog[key] is None for key in FIELDS)
+    assert_pack(row)
+    assert_pack(purchase['receipt_items'][1], '800')
+
+
+def test_new_plan_product_inherits_explicit_unit(client):
+    response = client.post('/api/v1/plans', json={
+        'kind': 'expense', 'scheduled_date': '2026-10-16',
+        'receipt_items': [dict(name='Бекон', quantity='0.53', unit_price='18.69', sale_unit='kg')],
+    })
+    assert response.status_code == 201, response.text
+    row = response.json()['receipt_items'][0]
+    assert client.get(f"/api/v1/operations/catalog-products/{row['product_id']}").json()['sale_unit'] == 'kg'

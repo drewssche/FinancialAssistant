@@ -166,3 +166,49 @@ def test_catalog_failure_is_not_reported_as_no_matches(static_server_url,page_wi
     expect(p.locator('.scan-match')).to_contain_text('Каталог загружен не полностью')
     expect(p.locator('.scan-match')).not_to_contain_text('нет совпадений')
     expect(p.locator('[data-scan-field=price]')).to_have_value('4.99')
+
+WEIGHTED='''ООО ГРИНРОЗНИЦА
+№ ДОК 179487
+Колбаса Рубленая варено-копченая в/с
+2231860229407 18.69 x0.530 9.91
+ИТОГО К ОПЛАТЕ 9.91
+13.10.2026 15:07:01'''
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width',[320,390,1440])
+def test_new_scan_weighted_unit_transfer_and_live_operation_labels(static_server_url,page_with_receipt_api_mock,width):
+    p=page_with_receipt_api_mock;start(p,static_server_url,width);stub(p,WEIGHTED);upload(p);p.click('#scanRun')
+    row=p.locator('.scan-row')
+    expect(row.locator('[data-scan-unit=""]')).to_have_attribute('aria-pressed','true')
+    row.locator('[data-scan-unit=kg]').click()
+    expect(row.locator('[data-scan-field=price]').locator('..')).to_contain_text('Цена за кг')
+    expect(row.locator('[data-scan-field=quantity]').locator('..')).to_contain_text('Вес, кг')
+    expect(row.locator('[data-scan-field=total]')).to_have_value('9.91')
+    p.screenshot(path=f'/tmp/fa-scan-unit-{width}.png',animations='disabled')
+    assert p.locator('#receiptScanDialog').evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+    p.locator('#scanConfirmed').check();p.click('#scanTransfer')
+    payload=p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
+    assert payload[0]['sale_unit']=='kg' and payload[0]['package_unit'] is None
+    assert float(payload[0]['quantity'])==.53 and float(payload[0]['unit_price'])==18.69
+    row=p.locator('#receiptItemsList .receipt-item-row').first
+    expect(row.locator('.receipt-known-price-label')).to_have_text('Цена за кг')
+    expect(row.locator('.receipt-quantity-cell > span')).to_have_text('Вес, кг')
+    # Change the unit without rebuilding the editor; labels must update immediately.
+    row.locator('[data-receipt-field=sale_unit]').evaluate("n=>{n.value='g';n.dispatchEvent(new Event('input',{bubbles:true}));}")
+    expect(row.locator('.receipt-known-price-label')).to_have_text('Цена за г')
+    expect(row.locator('.receipt-quantity-cell > span')).to_have_text('Вес, г')
+
+@pytest.mark.e2e
+def test_scan_catalog_unit_default_manual_override_and_unlink(static_server_url,page_with_receipt_api_mock):
+    p=page_with_receipt_api_mock;start(p,static_server_url);seed_catalog(p)
+    p.evaluate("Object.assign(window.App.state.receiptProductHints[0],{sale_unit:'piece',package_quantity:200,package_unit:'g'})")
+    stub(p,PIZZA);upload(p);p.click('#scanRun');row=p.locator('.scan-row')
+    row.locator('.scan-suggestion').first.click()
+    expect(row.locator('[data-scan-unit=piece]')).to_have_attribute('aria-pressed','true')
+    row.get_by_role('button',name='Отвязать товар каталога').click()
+    expect(row.locator('[data-scan-unit=""]')).to_have_attribute('aria-pressed','true')
+    row.locator('[data-scan-unit=kg]').click();row.locator('.scan-suggestion').first.click()
+    expect(row.locator('[data-scan-unit=kg]')).to_have_attribute('aria-pressed','true')
+    p.locator('#scanConfirmed').check();p.click('#scanTransfer')
+    payload=p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
+    assert payload[0]['sale_unit']=='kg' and payload[0]['package_quantity'] is None

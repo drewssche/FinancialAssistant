@@ -42,6 +42,21 @@ def test_price_graph_filters_receipt_link_and_draft(static_server_url, page_with
     for selector in ['.product-price-chart', '#catalogProductHistoryControls', '.product-price-events']:
         box=page.locator(selector).bounding_box()
         assert box['x']>=0 and box['x']+box['width']<=width+1
+    chart=page.locator('.product-price-chart')
+    chart.focus();chart.press('ArrowRight')
+    tip=page.locator('.product-price-chart-host .analytics-chart-tooltip')
+    expect(tip).to_be_visible();expect(tip).to_contain_text('+33,33%')
+    chart.press('End');expect(tip).to_contain_text('-25%')
+    chart.press('Escape');expect(tip).to_have_class('analytics-chart-tooltip hidden')
+    bounds=chart.bounding_box()
+    chart.dispatch_event('pointerdown',{'pointerType':'touch','clientX':bounds['x']+bounds['width']-12,'clientY':bounds['y']+30})
+    chart.dispatch_event('pointerleave',{'pointerType':'touch'})
+    expect(tip).to_be_visible();expect(tip).to_contain_text('-25%')
+    # Nearest purchase is selected across the full chart, without aiming at a dot.
+    chart.hover(position={'x':chart.bounding_box()['width']/2,'y':20})
+    expect(tip).to_contain_text('+33,33%')
+    box=tip.bounding_box();host=page.locator('.product-price-chart-host').bounding_box()
+    assert box['x']>=host['x'] and box['x']+box['width']<=host['x']+host['width']+1
     page.screenshot(path=f'/tmp/fa-price-history-{width}.png',full_page=False)
     page.locator('#catalogProductPriceSeries').select_option('1')
     expect(page.locator('.product-price-events')).to_contain_text('USD')

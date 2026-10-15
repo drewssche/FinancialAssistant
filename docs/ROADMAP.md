@@ -17,6 +17,13 @@
 - Keep Telegram-specific behavior in the client runtime; backend contracts stay shared between Web UI and Telegram.
 
 ## Current Sprint
+### Receipt units and price hover — 2026-10-16
+- [x] Direct unit choice for new/scanned items, catalog sale-unit defaults with manual override, explicit weight/volume price and quantity labels in scan and operation.
+- [x] New products inherit unambiguous explicit receipt/plan measurements; existing catalog settings and historical receipt snapshots stay unchanged.
+- [x] Purchase-price chart reuses analytics tooltip styling, nearest-point hover, touch and keyboard navigation; percentages are relative to the preceding purchase.
+- [x] Validation: 88 API/parser/search/contract checks; 50 scan/operation/chart browser cases plus 4 catalog measurement cases; visual review at 320/390/1440px.
+- [ ] GitHub → server pull release and served-asset verification.
+
 ### Receipt keyword matching and compact upload — 2026-10-16
 - [x] Rank OCR catalog candidates by individual meaningful words and aliases, with limited typo/layout tolerance. Ignore numeric codes, packaging and generic processing text; show matched words and up to three choices. Package-size agreement only affects ranking; different sizes are labelled and never copied into historical rows.
 - [x] Read-only server check found the existing tomato ketchup and traditional 450g loaf. The revised ranker returns both first for the photographed verbose names. No exact «Колбаса Рубленая» name in the inspected catalog subset: generic sausage matches remain explicit candidates.

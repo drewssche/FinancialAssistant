@@ -687,7 +687,7 @@
             </section>` : ""}
             <div class="receipt-item-money">
               <div class="receipt-price-cell ${item.is_discounted ? "receipt-price-cell-discounted" : ""}">
-                <span class="receipt-known-price-label">${item.discount_mode ? "Цена после скидки" : "Цена за ед."}</span>
+                <span class="receipt-known-price-label">${esc(window.App.measurements.priceLabel(item, Boolean(item.discount_mode)))}</span>
                 <div class="receipt-price-field">
                   <input type="text" inputmode="decimal" data-receipt-field="unit_price" ${item.discount_mode ? "readonly" : ""} value="${formatReceiptInputAmount(item.discount_mode ? total / (item.quantity || 1) : item.unit_price)}" placeholder="Цена" title="${item.discount_mode ? "Эффективная цена после скидки; итог рассчитывается отдельно" : "Цена покупки в " + esc(getReceiptCurrencyLabel(mode))}" aria-label="Цена позиции" />
                 </div>
@@ -698,7 +698,7 @@
                 </div>
               </div>
               <div class="receipt-quantity-cell">
-                <span>Кол-во${item.sale_unit ? " · " + esc(({piece:"шт.",pack:"уп.",kg:"кг",g:"г",l:"л",ml:"мл"})[item.sale_unit] || item.sale_unit) : ""}</span>
+                <span>${esc(window.App.measurements.quantityLabel(item))}</span>
                 <input type="number" step="0.001" min="0" data-receipt-field="quantity" value="${item.quantity || ""}" placeholder="Кол-во" aria-label="Количество позиции" />
               </div>
               <div class="receipt-line-total"><span>Итого</span><strong>${formatReceiptMoney(total, mode)}</strong></div>

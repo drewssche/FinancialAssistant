@@ -106,3 +106,16 @@
  #scanRunBar .btn-icon {min-height:44px;}
  .receipt-scan-dialog[data-stage=crop] .scan-image-column {padding:20px 8px 0;}
 }
+
+.scan-sale-units {grid-column:1/-1;display:flex;align-items:center;flex-wrap:wrap;gap:6px;}
+.scan-sale-units > span {font-size:.75rem;color:var(--muted);margin-right:4px;}
+.scan-sale-units .measurement-unit {min-height:36px;min-width:36px;padding:6px 10px;}
+.scan-sale-units .is-active {background:#244878;border-color:#79acff;}
+@media(max-width:700px){.scan-sale-units .measurement-unit {min-height:44px;min-width:44px;}}
+
+@media(max-width:700px){
+ .scan-sale-units {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));}
+ .scan-sale-units > span {grid-column:1/-1;}
+ .scan-sale-units [data-scan-unit=""] {grid-column:span 2;}
+ .scan-sale-units .measurement-unit {width:100%;padding:6px;}
+}

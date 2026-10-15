@@ -14,6 +14,15 @@
     return value.package_quantity && units[value.package_unit]
       ? `${value.package_quantity} ${units[value.package_unit]} в упаковке` : sale;
   }
+  function priceLabel(value, discounted = false) {
+    const unit = units[value.sale_unit] || 'ед.';
+    return `Цена за ${unit}${discounted ? ' · со скидкой' : ''}`;
+  }
+  function quantityLabel(value) {
+    const unit = units[value.sale_unit];
+    const label = ['kg','g'].includes(value.sale_unit) ? 'Вес' : ['l','ml'].includes(value.sale_unit) ? 'Объём' : 'Кол-во';
+    return unit ? `${label}, ${unit}` : label;
+  }
   // One visible editor, backed by the existing three persisted fields.
   // Mounting is read-only: legacy units and frozen receipt snapshots are preserved.
   function mount(container, controls) {
@@ -34,7 +43,7 @@
       }
     }
     function render() {
-      editor.innerHTML = `<div class="measurement-kind segmented" role="group" aria-label="Как продаётся товар"><button type="button" class="segmented-btn ${!weighted?'active':''}" aria-pressed="${!weighted}" data-measure-kind="pack">Упаковка / штука</button><button type="button" class="segmented-btn ${weighted?'active':''}" aria-pressed="${weighted}" data-measure-kind="weight">На вес / розлив</button></div><div class="measurement-size"><label class="field"><span>${weighted?'Цена и количество в чеке — за':'Размер одной упаковки'}</span>${weighted?'': '<input type="number" min="0.001" step="0.001" placeholder="Например, 1" aria-label="Размер одной упаковки">'}</label><div class="measurement-units" role="group" aria-label="Единица размера"></div></div><small class="muted-small measurement-example"></small>`;
+      editor.innerHTML = `<div class="measurement-kind segmented" role="group" aria-label="Как продаётся товар"><button type="button" class="segmented-btn ${!weighted?'active':''}" aria-pressed="${!weighted}" data-measure-kind="pack">Упаковка / штука</button><button type="button" class="segmented-btn ${weighted?'active':''}" aria-pressed="${weighted}" data-measure-kind="weight">На вес / розлив</button></div><div class="measurement-size"><label class="field"><span>${weighted?'Цена за единицу веса / объёма':'Размер одной упаковки'}</span>${weighted?'': '<input type="number" min="0.001" step="0.001" placeholder="Например, 1" aria-label="Размер одной упаковки">'}</label><div class="measurement-units" role="group" aria-label="Единица размера"></div></div><small class="muted-small measurement-example"></small>`;
       const input = editor.querySelector('input');
       if (input) {
         input.value = quantity.value;
@@ -66,11 +75,11 @@
         button.classList.toggle('is-active',active); button.setAttribute('aria-pressed',String(active));
       });
       editor.querySelector('.measurement-example').textContent = weighted
-        ? `Количество в чеке указывайте в ${units[sale.value] || 'кг'}`
+        ? `Цена за 1 ${units[sale.value] || 'кг'} · количество — фактический вес / объём`
         : quantity.value && unit.value ? `${summary(current())} · количество в чеке — число упаковок` : 'Необязательно · например, 1 л молока или 90 г пюре';
     }
     container.append(editor); render();
   }
   window.App = window.App || {};
-  window.App.measurements = { fields, units, snapshot, options, summary, mount };
+  window.App.measurements = { fields, units, snapshot, options, summary, priceLabel, quantityLabel, mount };
 })();

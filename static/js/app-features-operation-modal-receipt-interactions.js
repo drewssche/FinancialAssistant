@@ -172,6 +172,8 @@
         if (derivedPrice) derivedPrice.value = core.formatAmount(receiptLineTotal(updated.item) / (updated.item.quantity || 1));
       }
       if (window.App.measurements.fields.includes(field)) {
+        row.querySelector('.receipt-known-price-label').textContent = window.App.measurements.priceLabel(updated.item, Boolean(updated.item.discount_mode));
+        row.querySelector('.receipt-quantity-cell > span').textContent = window.App.measurements.quantityLabel(updated.item);
         const summary = row.querySelector(".receipt-measurements summary");
         if (summary) summary.textContent = window.App.measurements.summary(updated.item);
         const selector = row.querySelector('[data-receipt-field="variant_id"]');
@@ -736,7 +738,9 @@
           const item = {shop_name: shop, price_touched: true, measurement_touched: true};
           applyReceiptTemplateToItem(item, template);
           const keys = ['name', 'template_id', 'product_id', 'product_name', 'product_image_id', 'item_image_id', 'source_id', 'source_image_id', 'brand_id', 'brand_name', 'brand_accent_color', 'brand_image_id', 'category_id'];
-          return Object.fromEntries(keys.map(key => [key, item[key] ?? null]));
+          const product = (state.receiptProductHints || []).find(p => Number(p.id) === Number(item.product_id));
+          // Explicit catalog choice supplies only the sale unit; old package sizes remain unknown.
+          return {...Object.fromEntries(keys.map(key => [key, item[key] ?? null])), sale_unit: product?.sale_unit || null};
         },
       },
       loadReceiptTemplateHints,
