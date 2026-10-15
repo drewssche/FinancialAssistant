@@ -143,7 +143,7 @@
 #dashboardSection #dashboardPlansKpi > span { width: auto; }
 #dashboardSection #dashboardDebtKpiGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 #dashboardSection #dashboardDebtKpiGrid p { font-size: 20px; }
-#dashboardSection .dashboard-currency-rate-card { padding: 12px 0; border: 0; border-top: 1px solid var(--border); background: none; border-radius: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 10px; }
+#dashboardSection .dashboard-currency-rate-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 10px; }
 #dashboardSection .dashboard-currency-rate-card > :not(.dashboard-currency-rate-actions) { grid-column: 1; }
 #dashboardSection .dashboard-currency-rate-actions { grid-column: 2; grid-row: 1 / span 4; align-self: center; }
 #dashboardSection .dashboard-bank-rates, #dashboardSection .dashboard-bank-rates-empty, #dashboardSection .dashboard-currency-rate-delta-caption { display: none; }

@@ -25,13 +25,13 @@
 @import url("/static/css/responsive-sm-tables.css?v=20260716j");
 @import url("/static/css/responsive-sm-core.css?v=20260826b");
 @import url("/static/css/responsive-sm-modals.css?v=20260904a");
-@import url("/static/css/operation-editor.css?v=20261015-scan-catalog");
+@import url("/static/css/operation-editor.css?v=20261016-card-consistency");
 @import url("/static/css/catalog-compact.css?v=20261014-source-brand1");
-@import url("/static/css/daily-lists.css?v=20261016-receipt-refine");
+@import url("/static/css/daily-lists.css?v=20261016-card-consistency");
 @import url("/static/css/work-compact.css?v=20261014-work-day1");
-@import url("./css/insights-compact.css?v=20261014-structure1");
+@import url("./css/insights-compact.css?v=20261016-card-consistency");
 @import url("./css/directories-settings.css?v=20261014-kpi1");
-@import url("./css/kpi-cards.css?v=20261014-kpi1");
+@import url("./css/kpi-cards.css?v=20261016-card-consistency");
 @import url("./css/secondary-editors.css?v=20261014-secondary1");
 @import url("./css/ui-final-audit.css?v=20261014-audit1");
 @import url("./css/ui-simplification.css?v=20261016-receipt-refine");

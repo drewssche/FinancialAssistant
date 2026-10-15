@@ -18,10 +18,24 @@ def test_plan_cards_share_compact_grid_and_currency_is_first(static_server_url, 
         recurrence_weekdays=[], recurrence_workdays_only=False, recurrence_month_end=False,
         recurrence_end_date=None, status='upcoming', confirm_count=0, skip_count=0,
         next_reminder_at=today+'T09:00:00Z') for i in range(1, 4)]
+    state['plans'][1].update(currency='EUR',base_currency='BYN',original_amount='23.00',amount='77.74',
+        fx_rate_source='bank',fx_bank_code='technobank',fx_bank_name='Технобанк',fx_bank_channel='cash',
+        fx_rate_kind='sell',fx_payment_mode='direct_conversion',current_rate='3.38',current_rate_date=today,
+        current_base_amount='77.74')
+    page.route('**/api/v1/currency/overview?*',lambda route:route.fulfill(json={
+        'tracked_currencies':['USD','EUR','RUB'], 'current_rates':[
+            dict(currency=c,rate=r,change_value=d,change_percent='.13',rate_date=today,source='nbrb_auto_unit')
+            for c,r,d in [('USD','3.0091','-.0022'),('EUR','3.3749','.0043'),('RUB','.036038','.000028')]],
+        'bank_rates':[]}))
     page.route('**/api/v1/operations/catalog-products*', lambda route: route.fulfill(json={'items':[], 'total':0, 'page':1, 'page_size':100}))
     _login_and_open_dashboard(page, static_server_url)
     expect(page.locator('#dashboardPlansList .plan-card')).to_have_count(3)
     assert page.locator('#dashboardSection').evaluate("n=>n.firstElementChild.id") == 'dashboardCurrencyPanel'
+    rates=page.locator('#dashboardCurrencyRates .dashboard-currency-rate-card')
+    expect(rates).to_have_count(3)
+    for rate in rates.all():
+        assert rate.evaluate("n=>{const s=getComputedStyle(n);return parseFloat(s.borderLeftWidth)>0&&parseFloat(s.borderRadius)>0&&s.backgroundColor!=='rgba(0, 0, 0, 0)';}")
+    page.locator('#dashboardCurrencyPanel').screenshot(path=f'/tmp/fa-currency-kpi-{width}.png')
     layouts=[]
     for section, selector in [('dashboard','#dashboardPlansList'),('plans','#plansList')]:
         page.evaluate("name=>window.App.getRuntimeModule('navigation').switchSection(name)",section)
@@ -36,6 +50,11 @@ def test_plan_cards_share_compact_grid_and_currency_is_first(static_server_url, 
                 b=child.bounding_box()
                 assert b['x']>=box['x']-1 and b['x']+b['width']<=box['x']+box['width']+1
             assert card.evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+        if width>=1100:
+            heights=[c.bounding_box()['height'] for c in cards.all()]
+            assert max(heights)-min(heights)<2
+        offsets=cards.evaluate_all("cards=>cards.map(c=>c.querySelector('.plan-card-date').getBoundingClientRect().top-c.getBoundingClientRect().top)")
+        assert max(offsets)-min(offsets)<2
         layouts.append(cards.first.locator('.plan-card-row').evaluate('n=>getComputedStyle(n).gridTemplateAreas'))
         page.locator('#dashboardPlansPanel' if section=='dashboard' else '#plansList').screenshot(path=f'/tmp/fa-{section}-cards-{width}.png',animations='disabled')
     assert layouts[0]==layouts[1]

@@ -21,10 +21,17 @@ def test_empty_receipt_details_preserve_draft_and_payload(static_server_url, pag
     open_editor(page, static_server_url, width)
     page.locator('#createOperationModeSwitch [data-operation-mode="receipt"]').click()
     row = page.locator('#receiptItemsList .receipt-item-row').first
+    toggle=row.locator('[data-receipt-details-toggle]')
+    before=toggle.evaluate("n=>{const b=n.getBoundingClientRect(),r=n.closest('.receipt-item-row').getBoundingClientRect();return [b.x-r.x,b.y-r.y,b.width];}")
     draft_id = row.get_attribute('data-receipt-item-id')
     payload = page.evaluate("() => window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
     row.locator('[data-receipt-details-toggle]').click()
     assert row.locator('[data-receipt-field="shop_name"]').is_visible()
+    after=toggle.evaluate("n=>{const b=n.getBoundingClientRect(),r=n.closest('.receipt-item-row').getBoundingClientRect();return [b.x-r.x,b.y-r.y,b.width];}")
+    assert all(abs(a-b)<2 for a,b in zip(before,after))
+    assert toggle.inner_text()=='Детали'
+    assert toggle.get_attribute('aria-expanded')=='true'
+
     assert row.get_attribute('data-receipt-item-id') == draft_id
     row.locator('[data-receipt-details-toggle]').click()
     assert row.locator('[data-receipt-field="shop_name"]').is_hidden()
@@ -344,3 +351,27 @@ def test_discount_inspection_zero_and_removal_do_not_leave_discount_flag(static_
         page.wait_for_function("document.querySelector('#createModal').classList.contains('hidden')")
         assert len(captured)==1
         assert captured[0]['receipt_items'][0]==original
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width',[320,390,1024,1440])
+def test_known_receipt_details_stays_anchored_and_preserves_money(static_server_url,page_with_receipt_api_mock,width):
+    page=page_with_receipt_api_mock;open_editor(page,static_server_url,width)
+    page.locator('#createOperationModeSwitch [data-operation-mode="receipt"]').click()
+    page.evaluate("""()=>{const m=window.App.getRuntimeModule('operation-modal');
+      window.App.state.createReceiptItems=[m.createReceiptDraft({template_id:1,name:'Молоко',shop_name:'Green',quantity:2,unit_price:3.59,category_id:101})];m.renderReceiptItems('create');}""")
+    row=page.locator('#receiptItemsList .receipt-item-row').first
+    toggle=row.locator('[data-receipt-details-toggle]')
+    relative="n=>{const b=n.getBoundingClientRect(),r=n.closest('.receipt-item-row').getBoundingClientRect();return [b.x-r.x,b.y-r.y,b.width];}"
+    before=toggle.evaluate(relative)
+    payload=page.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
+    for expanded in [True,False,True]:
+        toggle.click()
+        after=toggle.evaluate(relative)
+        assert all(abs(a-b)<2 for a,b in zip(before,after)),(before,after)
+        assert toggle.inner_text()=='Детали'
+        assert toggle.get_attribute('aria-expanded')==str(expanded).lower()
+        assert toggle.evaluate('n=>document.activeElement===n')
+        assert page.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()") == payload
+    assert page.locator('#createModal .modal-card').evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+    page.screenshot(path=f'/tmp/fa-receipt-toggle-{width}.png')

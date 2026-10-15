@@ -627,13 +627,13 @@
           >${esc(entry.label)}</button>
         `).join("");
         return `
-          <div class="receipt-item-row ${known ? "receipt-item-known" : ""} ${compact ? "is-compact" : ""} ${!item.name && !item.details_expanded && !item.is_discounted && !item.unit_price && !item.quantity ? "receipt-item-empty" : ""} ${item.discount_expanded ? "discount-open" : ""} ${item.is_discounted ? "receipt-item-row-discounted" : ""} ${hasOpenPicker ? "has-open-popover" : ""}" data-receipt-mode="${mode}" data-receipt-item-id="${item.draft_id}">
+          <div class="receipt-item-row ${known ? "receipt-item-known" : ""} ${compact ? "is-compact" : ""} ${!item.name && !item.is_discounted && !item.unit_price && !item.quantity ? "receipt-item-empty" : ""} ${item.discount_expanded ? "discount-open" : ""} ${item.is_discounted ? "receipt-item-row-discounted" : ""} ${hasOpenPicker ? "has-open-popover" : ""}" data-receipt-mode="${mode}" data-receipt-item-id="${item.draft_id}">
             ${known ? `<div class="receipt-compact-heading">
               <div><button class="receipt-compact-name" type="button" ${item.product_id ? `data-open-receipt-product-card="${Number(item.product_id)}"` : `data-open-receipt-template-card="${Number(item.template_id)}"`}>${esc(item.product_name || item.name)}</button>
               <small>${esc([brandName, item.shop_name || "Без источника", item.variant_snapshot?.name, (item.sale_unit || item.package_quantity ? window.App.measurements.summary(item) : "")].filter(Boolean).join(" · "))}</small></div>
-              <button class="btn btn-secondary btn-xs" type="button" data-receipt-details-toggle="${item.draft_id}" aria-label="Подробности товара" aria-expanded="${!compact}">${compact ? "Детали" : "Свернуть"}</button>
+              <button class="btn btn-secondary btn-xs ${compact ? "" : "is-active"}" type="button" data-receipt-details-toggle="${item.draft_id}" aria-label="Подробности товара" aria-expanded="${!compact}" title="${compact ? "Показать подробности товара" : "Скрыть подробности товара"}">Детали</button>
             </div>` : ""}
-            ${!known ? `<div class="receipt-compact-heading receipt-new-heading"><span>${item.name ? "Новый товар" : "Добавить товар"}</span><button class="btn btn-secondary btn-xs" type="button" data-receipt-details-toggle="${item.draft_id}" aria-label="Подробности товара" aria-expanded="${!compact}">${compact ? "Детали" : "Свернуть"}</button></div>` : ""}
+            ${!known ? `<div class="receipt-compact-heading receipt-new-heading"><span>${item.name ? "Новый товар" : "Добавить товар"}</span><button class="btn btn-secondary btn-xs ${compact ? "" : "is-active"}" type="button" data-receipt-details-toggle="${item.draft_id}" aria-label="Подробности товара" aria-expanded="${!compact}" title="${compact ? "Показать подробности товара" : "Скрыть подробности товара"}">Детали</button></div>` : ""}
             <div class="receipt-item-identity">
               <div class="receipt-shop-cell ${shopPickerOpen ? "has-open-popover" : ""}">
                 <input type="text" data-receipt-field="shop_name" value="${esc(item.shop_name || "")}" placeholder="Источник" title="${esc(item.shop_name || "Источник")}" autocomplete="off" aria-label="Источник позиции" />
