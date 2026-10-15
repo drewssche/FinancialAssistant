@@ -103,7 +103,7 @@
       el.innerHTML=`<label class="field scan-name"><span>Позиция ${index+1}</span><input data-scan-field="name" maxlength="160" required></label>${iconButton('', 'trash', 'Удалить позицию '+(index+1))}<div class="scan-row-numbers">${[['price','Цена до скидки'],['quantity','Количество'],['discount','Скидка на строку'],['total','Оплачено']].map(([field,label])=>`<label class="field"><span>${label}</span><input data-scan-field="${field}" inputmode="decimal" required></label>`).join('')}</div><label class="field scan-discount-type"><span>Тип скидки</span><select data-scan-field="discount_type"><option value="promo">Акция</option><option value="loyalty_points">Баллы</option><option value="coupon">Купон</option></select></label><small class="muted-small scan-source"></small>`;
       el.querySelector('.scan-source').textContent=row.source;
       el.querySelector('[data-scan-field=name]').value=row.name;
-      for(const field of ['price','quantity','discount','total'])el.querySelector(`[data-scan-field=${field}]`).value=field==='quantity'?row.quantity:decimal(row[field]);
+      for(const field of ['price','quantity','discount','total']){const input=el.querySelector(`[data-scan-field=${field}]`);input.value=field==='quantity'?row.quantity??'':decimal(row[field]);input.placeholder='Не распознано';}
       el.querySelector('select').value=row.discount_type||'promo';el.querySelector('.scan-discount-type').hidden=!row.discount;
       el.addEventListener('input',e=>{
         const field=e.target.dataset.scanField;if(!field)return;

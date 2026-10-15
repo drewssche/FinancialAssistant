@@ -129,3 +129,47 @@ def test_crop_geometry_and_invalid_file(static_server_url,page_with_receipt_api_
     assert page.locator('#scanCanvas').evaluate('c=>c.width>c.height')
     result=page.evaluate("""()=>{try{window.App.receiptScanImage.prepare(document.querySelector('#scanCanvas'),[[0,0],[1,1],[1,0],[0,1]]);return false;}catch{return true;}}""")
     assert result
+
+@pytest.mark.e2e
+def test_unreadable_row_keeps_its_discount_and_requires_correction(static_server_url,page_with_receipt_api_mock):
+    page=page_with_receipt_api_mock;start(page,static_server_url,390)
+    stub(page,'ООО Тест\n№ ДОК\nМолоко\n3.00 x1.000 3.00\nХлеб\n1.99 х!.000 1.99\nСкидка -0.60\nИТОГО К ОПЛАТЕ 4.39\n14.10.2026 10:20:30')
+    upload(page);page.click('#scanRun')
+    rows=page.locator('#scanRows .scan-row');expect(rows).to_have_count(2)
+    expect(rows.nth(0).locator('[data-scan-field=discount]')).to_have_value('0.00')
+    expect(rows.nth(1).locator('[data-scan-field=price]')).to_have_value('')
+    expect(rows.nth(1).locator('[data-scan-field=price]')).to_have_attribute('placeholder','Не распознано')
+    expect(rows.nth(1).locator('[data-scan-field=discount]')).to_have_value('0.60')
+    page.locator('#scanConfirmed').check();expect(page.locator('#scanTransfer')).to_be_disabled()
+    rows.nth(1).locator('[data-scan-field=price]').fill('1.99')
+    rows.nth(1).locator('[data-scan-field=quantity]').fill('1')
+    expect(page.locator('#scanConfirmed')).not_to_be_checked()
+    page.locator('#scanConfirmed').check();expect(page.locator('#scanTransfer')).to_be_enabled()
+    page.click('#scanTransfer')
+    payload=page.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
+    assert len(payload)==2 and not payload[0]['is_discounted']
+    assert float(payload[1]['discount_value'])==.60
+    expect(page.locator('#opAmount')).to_have_value('4.39')
+
+
+@pytest.mark.e2e
+def test_real_engine_repeated_rows_across_strip_boundaries(static_server_url,page_with_receipt_api_mock):
+    page=page_with_receipt_api_mock;start(page,static_server_url)
+    value=page.evaluate('''() => {
+      const c=document.createElement('canvas');c.width=1000;c.height=2600;
+      const x=c.getContext('2d');x.fillStyle='white';x.fillRect(0,0,c.width,c.height);x.fillStyle='black';x.font='32px Arial';
+      x.fillText('ООО ТЕСТОВЫЙ МАГАЗИН',60,70);x.fillText('№ ДОК 123',60,120);
+      for(let i=0;i<14;i++){x.fillText('СЫРОК',60,200+i*140);x.fillText('1.10 x1.000 1.10',60,250+i*140);}
+      x.fillText('ИТОГО К ОПЛАТЕ 15.40',60,2240);x.fillText('15.10.2026 21:23:00',60,2300);
+      return c.toDataURL('image/png').split(',')[1];
+    }''')
+    page.locator('#scanFile').set_input_files({'name':'repeats.png','mimeType':'image/png','buffer':base64.b64decode(value)})
+    expect(page.locator('#scanRun')).to_be_enabled();page.click('#scanRun')
+    expect(page.locator('#scanReview')).to_be_visible(timeout=90000)
+    expect(page.locator('#scanRows .scan-row')).to_have_count(14)
+    expect(page.locator('#scanTotal')).to_have_value('15.40')
+    expect(page.locator('#scanArithmetic')).to_contain_text('Суммы сходятся')
+    names=page.locator('#scanRows [data-scan-field=name]').evaluate_all("ns=>ns.map(n=>n.value)")
+    # OCR may spell Cyrillic as Latin lookalikes; this checks seam ownership,
+    # not lexical accuracy (measured separately on actual photos).
+    assert all(len(name.split())==1 and 4<=len(name)<=12 for name in names), names
