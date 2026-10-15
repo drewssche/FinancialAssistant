@@ -359,11 +359,16 @@ def test_known_receipt_details_stays_anchored_and_preserves_money(static_server_
     page=page_with_receipt_api_mock;open_editor(page,static_server_url,width)
     page.locator('#createOperationModeSwitch [data-operation-mode="receipt"]').click()
     page.evaluate("""()=>{const m=window.App.getRuntimeModule('operation-modal');
-      window.App.state.createReceiptItems=[m.createReceiptDraft({template_id:1,name:'Молоко',shop_name:'Green',quantity:2,unit_price:3.59,category_id:101})];m.renderReceiptItems('create');}""")
+      window.App.state.createReceiptItems=[m.createReceiptDraft({template_id:1,name:'Молоко',shop_name:'Green',quantity:2,unit_price:3.59,category_id:101}),m.createReceiptDraft({name:'Пастила Белевская с брусникой 100г',quantity:1,unit_price:6.64}),m.createReceiptDraft()];m.renderReceiptItems('create');}""")
     row=page.locator('#receiptItemsList .receipt-item-row').first
     toggle=row.locator('[data-receipt-details-toggle]')
     relative="n=>{const b=n.getBoundingClientRect(),r=n.closest('.receipt-item-row').getBoundingClientRect();return [b.x-r.x,b.y-r.y,b.width];}"
     before=toggle.evaluate(relative)
+    buttons=page.locator('#receiptItemsList [data-receipt-details-toggle]')
+    positions=buttons.evaluate_all("nodes=>nodes.map(n=>{const b=n.getBoundingClientRect(),r=n.closest('.receipt-item-row').getBoundingClientRect();return [r.right-b.right,b.top-r.top,b.width];})")
+    assert len(positions)==3
+    assert all(abs(a-b)<2 for position in positions for a,b in zip(position,positions[0])),positions
+    page.screenshot(path=f'/tmp/fa-receipt-details-aligned-{width}.png')
     payload=page.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
     for expanded in [True,False,True]:
         toggle.click()

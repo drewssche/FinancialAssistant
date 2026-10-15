@@ -631,9 +631,9 @@
             ${known ? `<div class="receipt-compact-heading">
               <div><button class="receipt-compact-name" type="button" ${item.product_id ? `data-open-receipt-product-card="${Number(item.product_id)}"` : `data-open-receipt-template-card="${Number(item.template_id)}"`}>${esc(item.product_name || item.name)}</button>
               <small>${esc([brandName, item.shop_name || "Без источника", item.variant_snapshot?.name, (item.sale_unit || item.package_quantity ? window.App.measurements.summary(item) : "")].filter(Boolean).join(" · "))}</small></div>
-              <button class="btn btn-secondary btn-xs ${compact ? "" : "is-active"}" type="button" data-receipt-details-toggle="${item.draft_id}" aria-label="Подробности товара" aria-expanded="${!compact}" title="${compact ? "Показать подробности товара" : "Скрыть подробности товара"}">Детали</button>
             </div>` : ""}
-            ${!known ? `<div class="receipt-compact-heading receipt-new-heading"><span>${item.name ? "Новый товар" : "Добавить товар"}</span><button class="btn btn-secondary btn-xs ${compact ? "" : "is-active"}" type="button" data-receipt-details-toggle="${item.draft_id}" aria-label="Подробности товара" aria-expanded="${!compact}" title="${compact ? "Показать подробности товара" : "Скрыть подробности товара"}">Детали</button></div>` : ""}
+            ${!known ? `<div class="receipt-compact-heading receipt-new-heading"><span>${item.name ? "Новый товар" : "Добавить товар"}</span></div>` : ""}
+            <button class="btn btn-secondary btn-xs ${compact ? "" : "is-active"}" type="button" data-receipt-details-toggle="${item.draft_id}" aria-label="Подробности товара" aria-expanded="${!compact}" title="${compact ? "Показать подробности товара" : "Скрыть подробности товара"}">Детали</button>
             <div class="receipt-item-identity">
               <div class="receipt-shop-cell ${shopPickerOpen ? "has-open-popover" : ""}">
                 <input type="text" data-receipt-field="shop_name" value="${esc(item.shop_name || "")}" placeholder="Источник" title="${esc(item.shop_name || "Источник")}" autocomplete="off" aria-label="Источник позиции" />

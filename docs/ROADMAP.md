@@ -631,3 +631,9 @@ Automatic GitHub CI runs on pushes and pull requests are disabled at the owner�
 - [x] Keep normal/error/undo notifications above custom and native modal stacks through a shared manual popover host, owned by the foremost native modal while it is open. Retain a z-index/native-owner fallback without Popover API; preserve focus, pointer access, live-region announcements and mobile safe-area positioning.
 - [x] Validation: four browser cases at 320/1440 px with and without Popover API cover nested modal ordering, close/undo actions, focus preservation, expiry and cleanup. Desktop/mobile previews inspected; 24 frontend contract checks, JavaScript syntax and diff checks pass.
 - [x] Released `cb72a03` through GitHub main → clean server pull → app-only rebuild. Assets `20261016-toast-layers`: all six served hashes match; ready on unchanged schema `20261013_0050`; all six containers healthy. Only app recreated (`2026-10-15T22:42:43Z`, 16 October in Minsk), restarts 0. Companion service start times/restart counts unchanged. Rollback image `financialassistant-app:before-toast-layers-20261016`. CI remains manual.
+
+### Consistent receipt details placement — 2026-10-16
+
+- [x] Use one direct-child Details toggle and a shared right-hand action column for catalog, new and empty receipt rows. Preserve its position/label/focus on expansion, mobile financial-field width and the existing data flow; remove reserved empty rows from the compact add-item card.
+- [x] Validation: 26 distinct operation-editor browser cases passed across scoped runs; final 11-case run covers details and main paths at 320/390/1024/1100/1440 px. Existing geometry test now compares all three row types. Desktop/mobile screenshots inspected; payloads unchanged when toggling. All 24 frontend contracts, JavaScript syntax and diff checks pass.
+- [ ] Release details alignment through GitHub main → clean server pull → app-only rebuild and verification.
