@@ -237,19 +237,27 @@ def test_work_views_keep_calendar_first_and_day_draft(request, width):
 
 
 @pytest.mark.e2e
-def test_work_contract_delete_requires_confirmation(request):
+@pytest.mark.parametrize("width",[320,390,1440])
+def test_work_contract_delete_requires_confirmation(request,width):
     page, _ = request.getfixturevalue('work_page')
+    page.set_viewport_size({'width':width,'height':1000})
     deleted = []
     def contracts(route):
         if route.request.method == 'DELETE':
             deleted.append(route.request.url)
             route.fulfill(status=204)
         else:
-            route.fulfill(json=[] if deleted else [{'id': 8, 'company': 'Работа', 'effective_from': '2026-01-01', 'currency': 'BYN', 'salary_amount': '2000'}])
+            route.fulfill(json=[] if deleted else [{'id': 8, 'company': 'Компания с длинным названием', 'position': 'Ведущий специалист по компьютерной графике', 'note': 'Длинный комментарий об условиях работы и изменении оклада. ' * 5, 'effective_from': '2026-01-01', 'currency': 'BYN', 'salary_amount': '2000'}])
     page.route('**/api/v1/work/contracts', contracts)
     page.route('**/api/v1/work/contracts/8', contracts)
     page.evaluate("window.App.getRuntimeModule('work').loadWorkSection({refresh:true})")
     page.locator('[data-work-view="contracts"]').click()
+    card=page.locator('.work-contract-card')
+    expect(card).to_be_visible()
+    assert card.evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+    assert card.evaluate("n=>{const r=n.getBoundingClientRect();return [...n.querySelectorAll('strong,span,button')].every(e=>{const b=e.getBoundingClientRect();return b.left>=r.left+10&&b.right<=r.right-10;});}")
+    assert page.locator('#workSection').evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+    card.screenshot(path=f'/tmp/fa-work-history-card-{width}.png')
     action = page.locator('[data-delete-work-contract="8"]')
     action.click()
     expect(page.locator('#confirmModal')).to_be_visible()

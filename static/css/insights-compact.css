@@ -146,7 +146,9 @@
 #dashboardSection .dashboard-currency-rate-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 10px; }
 #dashboardSection .dashboard-currency-rate-card > :not(.dashboard-currency-rate-actions) { grid-column: 1; }
 #dashboardSection .dashboard-currency-rate-actions { grid-column: 2; grid-row: 1 / span 4; align-self: center; }
-#dashboardSection .dashboard-bank-rates, #dashboardSection .dashboard-bank-rates-empty, #dashboardSection .dashboard-currency-rate-delta-caption { display: none; }
+#dashboardSection .dashboard-currency-rate-delta-caption { display: none; }
+#dashboardSection .dashboard-currency-rate-card > :is(.dashboard-bank-rates, .dashboard-bank-rates-empty) { grid-column: 1 / -1; }
+#dashboardSection .dashboard-bank-rates { gap: 8px; }
 #currencySection #currencyPositionsList > .panel { border: 0; border-bottom: 1px solid var(--border); border-radius: 0; padding: 12px 0; background: none; }
 #currencySection #currencyBalancesRow .currency-balance-card { min-width: 0; }
 #currencySection #currencyBalancesRow .currency-balance-card strong { font-size: 18px; }

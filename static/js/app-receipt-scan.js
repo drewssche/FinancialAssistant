@@ -135,9 +135,16 @@
     draft=value;dialog.dataset.stage='review';node('scanStep').textContent='Проверьте поля по фото';node('scanDate').value=draft.date;node('scanShop').value=draft.shop;node('scanTotal').value=decimal(draft.total);
     node('scanReview').hidden=false;node('scanConfirmed').checked=false;renderRows();validate();
   }
+  function setCatalogOpen(list, open){
+    const owner=list.closest('.scan-name'), name=owner.querySelector('[data-scan-field=name]');
+    const syncClosed=()=>{list.hidden=true;name.setAttribute('aria-expanded','false');name.removeAttribute('aria-activedescendant');};
+    list.hidden=!open;
+    window.App.getRuntimeModule('picker-utils').setPopoverOpen(list,open,{owners:[owner],onClose:syncClosed});
+    name.setAttribute('aria-expanded',String(open));
+    if(!open)name.removeAttribute('aria-activedescendant');
+  }
   function closeCatalogLists(){
-    dialog.querySelectorAll('.scan-catalog-list').forEach(n=>n.hidden=true);
-    dialog.querySelectorAll('[data-scan-field=name]').forEach(n=>{n.setAttribute('aria-expanded','false');n.removeAttribute('aria-activedescendant');});
+    dialog.querySelectorAll('.scan-catalog-list').forEach(n=>setCatalogOpen(n,false));
   }
   function refreshCatalog(){
     node('scanRows').querySelectorAll('.scan-row').forEach(el=>{el.refreshCatalog?.();el.refreshSearch?.();});
@@ -146,7 +153,7 @@
     node('scanRows').replaceChildren();
     draft.rows.forEach((row,index)=>{
       const el=document.createElement('section');el.className='scan-row';
-      el.innerHTML=`<div class="scan-name"><label class="field"><span>Товар ${index+1}</span><input data-scan-field="name" maxlength="160" placeholder="Найти или ввести товар" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="scanCatalog${index}" required></label><div id="scanCatalog${index}" class="scan-catalog-list app-popover" role="listbox" hidden></div></div>${iconButton('', 'trash', 'Удалить позицию '+(index+1))}<div class="scan-match"></div><label class="field scan-category"><span>Категория</span><select data-scan-category aria-label="Категория позиции"></select></label><div class="scan-sale-units" role="group" aria-label="Единица цены и количества"></div><div class="scan-row-numbers">${[['price','Цена за ед.'],['quantity','Кол-во'],['discount','Скидка, сумма'],['total','Оплачено']].map(([field,label])=>`<label class="field"><span>${label}</span><input data-scan-field="${field}" inputmode="decimal" required></label>`).join('')}</div><label class="field scan-discount-type"><span>Тип скидки</span><select data-scan-field="discount_type"><option value="promo">Акция</option><option value="loyalty_points">Баллы</option><option value="coupon">Купон</option></select></label>`;
+      el.innerHTML=`<div class="scan-name"><label class="field"><span>Товар ${index+1}</span><input data-scan-field="name" maxlength="160" placeholder="Найти или ввести товар" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="scanCatalog${index}" required></label><div id="scanCatalog${index}" class="scan-catalog-list app-popover hidden" role="listbox" hidden></div></div>${iconButton('', 'trash', 'Удалить позицию '+(index+1))}<div class="scan-match"></div><label class="field scan-category"><span>Категория</span><select data-scan-category aria-label="Категория позиции"></select></label><div class="scan-sale-units" role="group" aria-label="Единица цены и количества"></div><div class="scan-row-numbers">${[['price','Цена за ед.'],['quantity','Кол-во'],['discount','Скидка, сумма'],['total','Оплачено']].map(([field,label])=>`<label class="field"><span>${label}</span><input data-scan-field="${field}" inputmode="decimal" required></label>`).join('')}</div><label class="field scan-discount-type"><span>Тип скидки</span><select data-scan-field="discount_type"><option value="promo">Акция</option><option value="loyalty_points">Баллы</option><option value="coupon">Купон</option></select></label>`;
       const name=el.querySelector('[data-scan-field=name]'), list=el.querySelector('.scan-catalog-list'), match=el.querySelector('.scan-match');
       name.value=row.name;name.title=row.source||'';
       el.querySelector('[data-scan-field=price]').title='Цена за единицу до скидки';
@@ -207,7 +214,7 @@
         closeCatalogLists();options=catalog().suggestions(name.value,node('scanShop').value,8);active=-1;list.replaceChildren();
         options.forEach((item,i)=>{const b=suggestionButton(item);b.id=`scanOption${index}-${i}`;b.setAttribute('role','option');b.setAttribute('aria-selected','false');b.tabIndex=-1;list.append(b);});
         if(!options.length){const empty=document.createElement('span');empty.className='muted-small';empty.textContent=catalogNotice()||'В каталоге нет совпадений по словам';list.append(empty);}
-        list.hidden=false;name.setAttribute('aria-expanded','true');
+        setCatalogOpen(list,true);
       }
       el.refreshSearch=()=>{if(document.activeElement===name&&!list.hidden)search();};
       name.onfocus=search;
@@ -219,7 +226,7 @@
           name.setAttribute('aria-activedescendant',list.children[active].id);list.children[active].scrollIntoView({block:'nearest'});
         }else if(e.key==='Enter'&&!list.hidden){e.preventDefault();if(active>=0)choose(options[active]);}
       };
-      el.addEventListener('focusout',()=>setTimeout(()=>{if(!el.querySelector('.scan-name').contains(document.activeElement)){list.hidden=true;name.setAttribute('aria-expanded','false');}},0));
+      el.addEventListener('focusout',()=>setTimeout(()=>{if(!el.querySelector('.scan-name').contains(document.activeElement)){setCatalogOpen(list,false);}},0));
       for(const field of ['price','quantity','discount','total']){const input=el.querySelector(`[data-scan-field=${field}]`);input.value=field==='quantity'?row.quantity??'':decimal(row[field]);input.placeholder='Не распознано';}
       el.querySelector('[data-scan-field=discount_type]').value=row.discount_type||'promo';el.querySelector('.scan-discount-type').hidden=!row.discount;
       el.addEventListener('input',e=>{

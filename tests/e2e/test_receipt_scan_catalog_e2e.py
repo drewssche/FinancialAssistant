@@ -45,12 +45,27 @@ def test_catalog_suggestion_preserves_money_and_identity_on_transfer(static_serv
     assert float(payload[0]['unit_price'])==4.99 and payload[0]['package_unit'] is None
 
 @pytest.mark.e2e
-def test_manual_row_search_keyboard_and_change_shop_unlinks(static_server_url,page_with_receipt_api_mock):
-    p=page_with_receipt_api_mock;start(p,static_server_url,390);seed_catalog(p);stub(p,PIZZA);upload(p);p.click('#scanRun')
+@pytest.mark.parametrize("width",[320,390,1440])
+def test_manual_row_search_keyboard_and_change_shop_unlinks(static_server_url,page_with_receipt_api_mock,width):
+    p=page_with_receipt_api_mock;start(p,static_server_url,width);seed_catalog(p);stub(p,PIZZA);upload(p);p.click('#scanRun')
     p.locator('.scan-row > button').click();p.click('#scanAddRow')
     row=p.locator('.scan-row');name=row.locator('[data-scan-field=name]')
+    name.click()
+    name.press_sequentially('пицца')
+    options=row.locator('.scan-catalog-option[role=option]')
+    expect(options).to_have_count(2)
+    expect(options.first).to_be_visible()
+    expect(name).to_be_focused()
+    assert options.first.evaluate("n=>{const b=n.getBoundingClientRect();return n.contains(document.elementFromPoint(b.x+b.width/2,b.y+b.height/2));}")
+    p.screenshot(path=f'/tmp/fa-scan-live-search-{width}.png')
+    p.locator('#scanShop').click()
+    expect(row.locator('.scan-catalog-list')).to_be_hidden()
+    name.click()
+    expect(options.first).to_be_visible()
+    name.fill('нетсовпадений')
+    expect(row.locator('.scan-catalog-list')).to_contain_text('В каталоге нет совпадений по словам')
+    expect(row.locator('.scan-catalog-list')).to_be_visible()
     name.fill('пицца')
-    expect(row.locator('.scan-catalog-option[role=option]')).to_have_count(2)
     name.press('ArrowUp')
     expect(row.locator('.scan-catalog-option[role=option]').last).to_have_attribute('aria-selected','true')
     name.fill('uhb,yjq') # грибной, wrong layout
@@ -63,7 +78,7 @@ def test_manual_row_search_keyboard_and_change_shop_unlinks(static_server_url,pa
     p.locator('#scanConfirmed').check();p.fill('#scanShop','Другой магазин')
     expect(p.locator('#scanConfirmed')).not_to_be_checked()
     expect(row.locator('.scan-match')).not_to_contain_text('Из каталога')
-    name.fill('черри');name.press('ArrowDown');name.press('Enter')
+    name.fill('черри');row.locator('.scan-catalog-option[role=option]').first.click()
     name.fill('Ручное название без каталога')
     name.press('Escape')
     expect(p.locator('#receiptScanDialog')).to_be_visible()

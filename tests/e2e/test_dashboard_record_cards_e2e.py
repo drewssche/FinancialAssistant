@@ -26,7 +26,7 @@ def test_plan_cards_share_compact_grid_and_currency_is_first(static_server_url, 
         'tracked_currencies':['USD','EUR','RUB'], 'current_rates':[
             dict(currency=c,rate=r,change_value=d,change_percent='.13',rate_date=today,source='nbrb_auto_unit')
             for c,r,d in [('USD','3.0091','-.0022'),('EUR','3.3749','.0043'),('RUB','.036038','.000028')]],
-        'bank_rates':[]}))
+        'bank_rates':[dict(currency=c,bank_code=b,bank_name=n,buy_rate=buy,sell_rate=sell,scale=100 if c=='RUB' else 1,stale=False) for c in ['USD','EUR','RUB'] for b,n,buy,sell in [('technobank','Технобанк','3.1','3.2'),('bsb','БСБ Банк','3.05','3.25')]]}))
     page.route('**/api/v1/operations/catalog-products*', lambda route: route.fulfill(json={'items':[], 'total':0, 'page':1, 'page_size':100}))
     _login_and_open_dashboard(page, static_server_url)
     expect(page.locator('#dashboardPlansList .plan-card')).to_have_count(3)
@@ -35,6 +35,16 @@ def test_plan_cards_share_compact_grid_and_currency_is_first(static_server_url, 
     expect(rates).to_have_count(3)
     for rate in rates.all():
         assert rate.evaluate("n=>{const s=getComputedStyle(n);return parseFloat(s.borderLeftWidth)>0&&parseFloat(s.borderRadius)>0&&s.backgroundColor!=='rgba(0, 0, 0, 0)';}")
+    for rate in rates.all():
+        bank_rows=rate.locator('.dashboard-bank-rate-row')
+        expect(bank_rows).to_have_count(3)
+        expect(bank_rows.first).to_contain_text('Покупка')
+        expect(bank_rows.first).to_contain_text('Продажа')
+        for bank in bank_rows.all():
+            expect(bank).to_be_visible()
+            assert bank.evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+        expect(bank_rows.nth(1)).to_contain_text('Технобанк')
+        expect(bank_rows.nth(1).locator('strong').first).to_contain_text('3.1')
     page.locator('#dashboardCurrencyPanel').screenshot(path=f'/tmp/fa-currency-kpi-{width}.png')
     layouts=[]
     for section, selector in [('dashboard','#dashboardPlansList'),('plans','#plansList')]:

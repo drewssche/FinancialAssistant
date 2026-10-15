@@ -41,7 +41,7 @@
 #workSection .work-statistics-month-row { border: 0; border-bottom: 1px solid var(--border); background: none; border-radius: 0; padding: 12px 0; }
 #workSection .work-actual-payments-section { margin-top: 0; border-top: 0; padding-top: 0; }
 #workSection .work-payment-history-head { flex-direction: row; align-items: flex-start; }
-#workSection .work-contract-card, #workSection .work-actual-payment-card { border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none; padding: 14px 0; }
+#workSection .work-actual-payment-card { border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none; padding: 14px 0; }
 #workSection .work-contract-form-actions { justify-content: flex-start; }
 #workSection .work-contract-actions { display: flex; flex-direction: row; flex-wrap: wrap; }
 #workSection .work-payment-candidate-controls { align-items: end; }
@@ -106,4 +106,16 @@ body:has(#workDayModal:not(.hidden)) { overflow: hidden; }
 @media (max-width: 640px) {
   #workDayModal .work-day-editor { width: 100%; min-height: 0; padding: 16px 16px calc(20px + env(safe-area-inset-bottom)); }
   #workDayModal .work-day-editor-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Employment periods are separate readable cards, with no rail over their text. */
+#workSection .work-contracts-list {display:grid;gap:12px;}
+#workSection .work-contract-card {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;padding:16px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2);box-shadow:none;}
+#workSection .work-contract-card .plan-card-main {min-width:0;gap:8px;overflow-wrap:anywhere;}
+#workSection .work-contract-title {align-items:baseline;line-height:1.4;}
+#workSection .work-contract-side {align-content:start;gap:12px;}
+#workSection .work-contract-note {line-height:1.5;}
+@media(max-width:640px){
+ #workSection .work-contract-card {grid-template-columns:minmax(0,1fr);padding:14px;gap:14px;}
+ #workSection .work-contract-side {display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
 }
