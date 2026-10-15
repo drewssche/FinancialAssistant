@@ -22,7 +22,7 @@
 - [x] Scan review has a category for each item through the shared searchable picker; catalog defaults yield to manual choices and survive transfer to the operation draft.
 - [x] Purchase history uses a smooth bounded curve and subtle fill, with exact observed points, immediate hover, touch and keyboard navigation. The caption distinguishes observations from the connecting line.
 - [x] Validation: 62 scoped API/parser/UI-contract checks and 45 distinct browser scenarios passed across runs. An existing 320px discount test left name suggestions over the action; it now finishes name entry before proceeding. Final focused checks also cover the actual save request with untouched discount settings. Scan/category and chart visuals inspected at desktop/mobile widths.
-- [ ] Release through GitHub main → clean server pull → app-only rebuild; verify readiness and served assets.
+- [x] Released `6abc046` via GitHub main → clean server fast-forward pull → app-only rebuild. Assets `20261016-receipt-refine`: all eight served hashes match; `/ready` reports unchanged schema `20261013_0050`; all six containers healthy. Only app recreated (`2026-10-15T22:14:47Z`), restarts 0; companion services unchanged. Initial probe preceded container healthcheck completion; a subsequent SSH timeout passed on retry. Rollback image: `financialassistant-app:before-receipt-refine-20261016`. CI remains manual.
 
 ### Dashboard placement and shared record cards — 2026-10-16
 - [x] Currency portfolio moved before period analytics in the dashboard DOM.
