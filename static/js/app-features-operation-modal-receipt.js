@@ -62,16 +62,16 @@
 
     function receiptDiscountToggleLabel(item) {
       if (!item?.is_discounted) {
-        return "Скидка";
+        return item?.discount_expanded ? "Закрыть настройки скидки" : "Настроить скидку";
       }
       const calculation = window.App.receiptPricing.calculate(item);
       const purchasePrice = item.discount_mode ? calculation.total : asMoney(item.unit_price || 0);
       const regularPrice = item.discount_mode ? calculation.subtotal : asMoney(item.regular_unit_price || 0);
       if (!(regularPrice > purchasePrice && purchasePrice > 0)) {
-        return "Скидка —%";
+        return item.discount_expanded ? "Убрать скидку" : "Изменить скидку";
       }
       const percent = ((regularPrice - purchasePrice) / regularPrice) * 100;
-      return `Скидка −${Number(percent.toFixed(1))}%`;
+      return `Скидка −${Number(percent.toFixed(1))}% · ${item.discount_expanded ? "убрать" : "изменить"}`;
     }
 
     function getReceiptCurrency(mode = "create") {
@@ -426,6 +426,16 @@
       } else if (key === "note") {
         item.note = value || "";
       }
+      // Opening the editor is not a purchase discount. Only edited price data
+      // can activate it; invalid values remain active so validation still blocks save.
+      if (["discount_mode", "discount_value", "regular_unit_price", "unit_price", "quantity"].includes(key) && item.discount_expanded) {
+        const calculation = window.App.receiptPricing.calculate(item);
+        item.is_discounted = item.discount_mode
+          ? Boolean(calculation.error || (calculation.subtotal == null ? item.discount_mode === "final" : calculation.total < calculation.subtotal))
+          : Number(item.regular_unit_price) > Number(item.unit_price);
+        item.discount_type = item.is_discounted ? (item.discount_type || "promo") : null;
+        if (!item.is_discounted && item.discount_mode) item.unit_price = item.regular_unit_price;
+      }
       return {
         item,
         hadName,
@@ -676,7 +686,7 @@
                 <label class="field"><span>Единица содержимого</span><select data-receipt-field="package_unit" aria-label="Единица содержимого">${window.App.measurements.options(item.package_unit, true)}</select></label>
               </div>
             </section>
-            ${item.is_discounted ? `<section class="receipt-discount-calculation">
+            ${item.is_discounted || item.discount_expanded ? `<section class="receipt-discount-calculation">
               <div class="form-grid">
                 <label class="field"><span>Способ расчёта</span><select data-receipt-field="discount_mode" aria-label="Способ расчёта скидки">
                   ${[["", "Цена за единицу"], ["amount", "Скидка на сумму"], ["percent", "Скидка в процентах"], ["final", "Оплаченный итог"]].map(([value, label]) => `<option value="${value}" ${(item.discount_mode || "") === value ? "selected" : ""}>${label}</option>`).join("")}
@@ -687,13 +697,13 @@
             </section>` : ""}
             <div class="receipt-item-money">
               <div class="receipt-price-cell ${item.is_discounted ? "receipt-price-cell-discounted" : ""}">
-                <span class="receipt-known-price-label">${esc(window.App.measurements.priceLabel(item, Boolean(item.discount_mode)))}</span>
+                <span class="receipt-known-price-label">${esc(window.App.measurements.priceLabel(item, Boolean(item.is_discounted)))}</span>
                 <div class="receipt-price-field">
-                  <input type="text" inputmode="decimal" data-receipt-field="unit_price" ${item.discount_mode ? "readonly" : ""} value="${formatReceiptInputAmount(item.discount_mode ? total / (item.quantity || 1) : item.unit_price)}" placeholder="Цена" title="${item.discount_mode ? "Эффективная цена после скидки; итог рассчитывается отдельно" : "Цена покупки в " + esc(getReceiptCurrencyLabel(mode))}" aria-label="Цена позиции" />
+                  <input type="text" inputmode="decimal" data-receipt-field="unit_price" ${item.discount_mode ? "readonly" : ""} value="${formatReceiptInputAmount(item.discount_mode && item.is_discounted ? total / (item.quantity || 1) : item.unit_price)}" placeholder="Цена" title="${item.discount_mode ? "Эффективная цена после скидки; итог рассчитывается отдельно" : "Цена покупки в " + esc(getReceiptCurrencyLabel(mode))}" aria-label="Цена позиции" />
                 </div>
                 <button class="receipt-discount-toggle ${item.is_discounted ? "is-active" : ""}" type="button" data-receipt-discount-toggle="${item.draft_id}" aria-pressed="${item.is_discounted ? "true" : "false"}" aria-expanded="${item.discount_expanded ? "true" : "false"}" aria-label="${receiptDiscountToggleLabel(item)}" title="${receiptDiscountToggleLabel(item)}">${window.App.icons.svg("discount")}</button>
-                <div class="receipt-discount-type-row ${item.is_discounted ? "" : "hidden"}" role="group" aria-label="Тип скидки">${discountTypeButtons}</div>
-                <div class="receipt-price-field receipt-regular-price-field ${item.is_discounted ? "" : "hidden"}">
+                <div class="receipt-discount-type-row ${item.is_discounted || item.discount_expanded ? "" : "hidden"}" role="group" aria-label="Тип скидки">${discountTypeButtons}</div>
+                <div class="receipt-price-field receipt-regular-price-field ${item.is_discounted || item.discount_expanded ? "" : "hidden"}">
                   <input class="receipt-regular-price" type="text" inputmode="decimal" data-receipt-field="regular_unit_price" value="${formatReceiptInputAmount(item.regular_unit_price)}" placeholder="До скидки" title="Обычная цена для истории" aria-label="Цена до скидки" />
                 </div>
               </div>
@@ -715,7 +725,7 @@
         row.querySelector('.receipt-price-field')?.append(row.querySelector('.receipt-discount-toggle'));
       });
       // Discount editing is independent of catalog details.
-      ctx.listNode.querySelectorAll('.receipt-item-row-discounted').forEach(row => {
+      ctx.listNode.querySelectorAll('.receipt-item-row-discounted, .discount-open').forEach(row => {
         const panel = row.querySelector('.receipt-discount-calculation');
         const price = row.querySelector('.receipt-regular-price-field');
         const types = row.querySelector('.receipt-discount-type-row');
@@ -1003,7 +1013,7 @@
             ? core.formatAmount(item.regular_unit_price)
             : null,
           discount_type: item.is_discounted ? (item.discount_type || "promo") : null,
-          ...window.App.receiptPricing.payload(item),
+          ...window.App.receiptPricing.payload(item.is_discounted ? item : {...item, discount_mode: null}),
         }))
         .filter((item) => item.name && (item.discount_mode || (Number(item.quantity) > 0 && Number(item.unit_price) > 0)));
     }
@@ -1034,7 +1044,7 @@
             ? core.formatAmount(item.regular_unit_price)
             : null,
           discount_type: item.is_discounted ? (item.discount_type || "promo") : null,
-          ...window.App.receiptPricing.payload(item),
+          ...window.App.receiptPricing.payload(item.is_discounted ? item : {...item, discount_mode: null}),
         }))
         .filter((item) => item.name && (item.discount_mode || (Number(item.quantity) > 0 && Number(item.unit_price) > 0)));
     }

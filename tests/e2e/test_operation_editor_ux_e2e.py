@@ -62,8 +62,7 @@ def test_simple_and_receipt_editors_keep_main_path_short(static_server_url, page
     first.locator('[data-receipt-field="discount_mode"]').select_option('final')
     first.locator('[data-receipt-field="discount_value"]').fill('3.50')
     first.locator('[data-receipt-field="quantity"]').fill('0.3')
-    first.locator('[data-receipt-discount-toggle]').click()
-    assert first.locator('.receipt-discount-calculation').is_hidden()
+    assert first.locator('.receipt-discount-calculation').is_visible()
     payload = page.evaluate("() => window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
     assert float(payload[0]['discount_value']) == 3.5
     assert '3,50' in first.locator('.receipt-line-total strong').inner_text()
@@ -287,3 +286,61 @@ def test_store_picker_and_header_follow_visual_contract(static_server_url, page_
     store.click()
     page.locator('#closeCreateModalBtn').click()
     assert popup.is_hidden()
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('mode', ['create', 'edit'])
+def test_discount_inspection_zero_and_removal_do_not_leave_discount_flag(static_server_url, page_with_receipt_api_mock, mode):
+    from playwright.sync_api import expect
+    page=page_with_receipt_api_mock
+    open_editor(page,static_server_url,390)
+    page.locator('#createOperationModeSwitch [data-operation-mode="receipt"]').click()
+    page.evaluate("""async mode=>{
+      const m=window.App.getRuntimeModule('operation-modal');
+      const item={name:'Сыр весовой',shop_name:'Green',quantity:.242,unit_price:15.64,sale_unit:'kg',category_id:101};
+      if(mode==='create'){window.App.state.createReceiptItems=[m.createReceiptDraft(item)];m.renderReceiptItems('create');}
+      else {window.App.actions.closeCreateModal();await m.openEditModal({id:777,kind:'expense',amount:'3.78',currency:'BYN',operation_date:'2026-10-13',receipt_items:[item]});}
+    }""",mode)
+    row=page.locator('#receiptItemsList .receipt-item-row' if mode=='create' else '#editReceiptItemsList .receipt-item-row').first
+    def payload():
+        return page.evaluate(f"window.App.getRuntimeModule('operation-modal').get{mode.title()}ReceiptPayload()[0]")
+    original=payload()
+    toggle=row.locator('[data-receipt-discount-toggle]')
+    toggle.click()
+    expect(toggle).to_have_attribute('aria-pressed','false')
+    expect(toggle).to_have_attribute('aria-expanded','true')
+    assert payload()==original
+    expect(row.locator('[data-receipt-field=unit_price]')).to_have_value('15.64')
+    toggle.click()
+    expect(toggle).to_have_attribute('aria-expanded','false')
+    assert payload()==original
+    toggle.click()
+    row.locator('[data-receipt-field=discount_value]').fill('0.13')
+    expect(toggle).to_have_attribute('aria-pressed','true')
+    expect(row.locator('.receipt-line-total strong')).to_contain_text('3,65')
+    assert payload()['is_discounted'] is True
+    row.locator('[data-receipt-field=discount_value]').fill('0')
+    expect(toggle).to_have_attribute('aria-pressed','false')
+    assert payload()==original
+    row.locator('[data-receipt-field=discount_value]').fill('0.13')
+    toggle.click()
+    expect(toggle).to_have_attribute('aria-pressed','false')
+    expect(row.locator('.receipt-line-total strong')).to_contain_text('3,78')
+    assert payload()==original
+    assert row.locator('[data-receipt-field=unit_price]').is_editable()
+
+    if mode=='create':
+        # Submit while the untouched editor is open: no hidden discount in the request.
+        import json
+        captured=[]
+        def save(route,request):
+            if request.method!='POST':
+                route.fallback();return
+            data=json.loads(request.post_data);captured.append(data)
+            route.fulfill(status=201,json={'id':778,**data,'amount':'3.78','receipt_total':'3.78','receipt_discrepancy':'0.00'})
+        page.route('**/api/v1/operations',save)
+        toggle.click()
+        page.locator('#submitCreateOperationBtn').click()
+        page.wait_for_function("document.querySelector('#createModal').classList.contains('hidden')")
+        assert len(captured)==1
+        assert captured[0]['receipt_items'][0]==original

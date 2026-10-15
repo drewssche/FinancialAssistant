@@ -10,8 +10,14 @@
     const values = rows.map((r) => Number(r.price)), low = values.reduce((a,b) => Math.min(a,b), Infinity), high = values.reduce((a,b) => Math.max(a,b), -Infinity);
     const x = (i) => 40 + (rows.length > 1 ? i / (rows.length - 1) : 0.5) * 620;
     const y = (v) => 135 - (high === low ? 0.5 : (v - low) / (high - low)) * 95;
-    const path = rows.map((r, i) => `${i ? "H" : "M"}${x(i).toFixed(2)} ${i ? "V" : ""}${y(Number(r.price)).toFixed(2)}`).join(" ");
-    return `<svg class="product-price-chart" viewBox="0 0 700 170" role="group" tabindex="0" aria-label="${esc(label)}. Стрелки — выбор покупки, Escape — скрыть подсказку"><text x="8" y="16">${esc(number(high))}</text><path d="${path}" fill="none" stroke="currentColor" stroke-width="2"/>${rows.map((r,i) => `<circle data-price-index="${i}" cx="${x(i)}" cy="${y(Number(r.price))}" r="3" fill="currentColor"></circle>`).join("")}<text x="40" y="160">${esc(core.formatDateRu(rows[0].recorded_at))}</text><text x="660" y="160" text-anchor="end">${esc(core.formatDateRu(rows.at(-1).recorded_at))}</text></svg>`;
+    // Horizontal handles stay inside each pair's price range: no invented peaks.
+    const path = rows.map((r, i) => {
+      const px=x(i), py=y(Number(r.price));
+      if (!i) return `M${px} ${py}`;
+      const mid=(x(i-1)+px)/2;
+      return `C${mid} ${y(Number(rows[i-1].price))} ${mid} ${py} ${px} ${py}`;
+    }).join(" ");
+    return `<svg class="product-price-chart" viewBox="0 0 700 170" role="group" tabindex="0" aria-label="${esc(label)}. Стрелки — выбор покупки, Escape — скрыть подсказку"><defs><linearGradient id="productPriceFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="currentColor" stop-opacity=".18"/><stop offset="100%" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs><text x="8" y="16">${esc(number(high))}</text><path d="${path} L${x(rows.length-1)} 140 L${x(0)} 140 Z" fill="url(#productPriceFill)" aria-hidden="true"/><path class="product-price-line" d="${path}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>${rows.map((r,i) => `<circle data-price-index="${i}" cx="${x(i)}" cy="${y(Number(r.price))}" r="3" fill="currentColor"></circle>`).join("")}<text x="40" y="160">${esc(core.formatDateRu(rows[0].recorded_at))}</text><text x="660" y="160" text-anchor="end">${esc(core.formatDateRu(rows.at(-1).recorded_at))}</text></svg>`;
   }
   function render() {
     const target = document.getElementById("catalogProductPricesList");
@@ -23,7 +29,7 @@
     const title = `${payload.price_kind === "paid" ? "Оплаченная" : "Обычная"} цена: ${label(group)}`;
     target.innerHTML = `<label class="field"><span>Сопоставимые покупки</span><select id="catalogProductPriceSeries">${series.map((s,i) => `<option value="${i}" ${i === selected ? "selected" : ""}>${esc(label(s))}</option>`).join("")}</select></label>
       <p class="product-price-summary"><strong>${esc(pct(group.change_percent))}</strong> от первой до последней покупки · повышений: ${group.increases} · снижений: ${group.decreases}</p>
-      <div class="product-price-chart-host">${graph(rows, title)}<div class="analytics-chart-tooltip hidden" role="status"></div></div><p class="muted-small">${esc(title)}. Шаг графика — позиция чека по порядку покупок. Дата — первое наблюдение, а не дата изменения магазином.</p>
+      <div class="product-price-chart-host">${graph(rows, title)}<div class="analytics-chart-tooltip hidden" role="status"></div></div><p class="muted-small">${esc(title)}. Точки — реальные покупки по порядку. Линия соединяет наблюдения; цены между покупками неизвестны.</p>
       <div class="product-price-events">${[...rows].reverse().slice(0, count).map((r) => `<button type="button" class="catalog-product-purchase-row" data-product-purchase-id="${Number(r.operation_id)}"><span><strong>${esc(core.formatDateRu(r.recorded_at))}</strong><small>${esc(pack(r) || units[r.sale_unit] || "Единица не указана")}${r.is_discounted ? " · со скидкой" : ""}${r.package_changed ? " · другая фасовка/единица" : ""}</small><small>Открыть чек</small></span><span><strong>${esc(number(r.price))} ${esc(group.currency)}/${esc(units[group.unit] || "ед.")}</strong><small>${r.direction > 0 ? "↑ " : r.direction < 0 ? "↓ " : ""}${r.change_percent == null ? "—" : esc(pct(r.change_percent))}</small></span></button>`).join("")}</div>
       ${rows.length > count ? '<button type="button" class="btn btn-secondary" data-price-history-more>Показать ещё</button>' : ""}${excluded()}`;
     bindChart(target, rows, group);

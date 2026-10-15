@@ -23,6 +23,7 @@ def test_weighted_line_discount_modes_and_edit_roundtrip(static_server_url, page
     page.locator('#createOperationModeSwitch button[data-operation-mode="receipt"]').click()
     row = page.locator('#receiptItemsList .receipt-item-row').first
     row.locator('[data-receipt-field="name"]').fill('Сыр весовой тестовый')
+    page.locator('#createTitle').click()  # Finish name entry and dismiss its suggestions.
     row.locator('[data-receipt-field="quantity"]').fill('0.242')
     row.locator('[data-receipt-field="unit_price"]').fill('15.64')
     row.locator('[data-receipt-discount-toggle]').click()

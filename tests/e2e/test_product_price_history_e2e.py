@@ -43,6 +43,12 @@ def test_price_graph_filters_receipt_link_and_draft(static_server_url, page_with
         box=page.locator(selector).bounding_box()
         assert box['x']>=0 and box['x']+box['width']<=width+1
     chart=page.locator('.product-price-chart')
+    # Smoothing must pass through observations and never overshoot their range.
+    assert chart.locator('.product-price-line').evaluate("""path=>{
+      const n=path.getTotalLength();
+      for(let i=0;i<=200;i++){const p=path.getPointAtLength(n*i/200);if(p.y<40-.01||p.y>135+.01)return false;}
+      return path.getAttribute('d').includes('C');
+    }""")
     chart.focus();chart.press('ArrowRight')
     tip=page.locator('.product-price-chart-host .analytics-chart-tooltip')
     expect(tip).to_be_visible();expect(tip).to_contain_text('+33,33%')

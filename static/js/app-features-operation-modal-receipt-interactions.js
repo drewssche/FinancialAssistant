@@ -169,10 +169,10 @@
       if (explanation) explanation.textContent = receiptPricingExplanation(updated.item, mode);
       if (updated.item.discount_mode) {
         const derivedPrice = row.querySelector('[data-receipt-field="unit_price"]');
-        if (derivedPrice) derivedPrice.value = core.formatAmount(receiptLineTotal(updated.item) / (updated.item.quantity || 1));
+        if (derivedPrice) derivedPrice.value = core.formatAmount(updated.item.is_discounted ? receiptLineTotal(updated.item) / (updated.item.quantity || 1) : updated.item.unit_price);
       }
       if (window.App.measurements.fields.includes(field)) {
-        row.querySelector('.receipt-known-price-label').textContent = window.App.measurements.priceLabel(updated.item, Boolean(updated.item.discount_mode));
+        row.querySelector('.receipt-known-price-label').textContent = window.App.measurements.priceLabel(updated.item, Boolean(updated.item.is_discounted));
         row.querySelector('.receipt-quantity-cell > span').textContent = window.App.measurements.quantityLabel(updated.item);
         const summary = row.querySelector(".receipt-measurements summary");
         if (summary) summary.textContent = window.App.measurements.summary(updated.item);
@@ -254,6 +254,10 @@
         }
         const discountToggle = row.querySelector("button[data-receipt-discount-toggle]");
         if (discountToggle && receiptDiscountToggleLabel) {
+          discountToggle.classList.toggle("is-active", Boolean(updated.item.is_discounted));
+          discountToggle.setAttribute("aria-pressed", String(Boolean(updated.item.is_discounted)));
+          row.classList.toggle("receipt-item-row-discounted", Boolean(updated.item.is_discounted));
+          row.querySelector('.receipt-known-price-label').textContent = window.App.measurements.priceLabel(updated.item, Boolean(updated.item.is_discounted));
           discountToggle.title = receiptDiscountToggleLabel(updated.item);
           discountToggle.setAttribute("aria-label", discountToggle.title);
         }
@@ -686,12 +690,17 @@
         const mode = getReceiptModeFromNode(row);
         const rowItem = getReceiptItemByDraftId(draftId, mode);
         if (rowItem) {
-          if (!rowItem.is_discounted) {
-            rowItem.regular_unit_price = rowItem.unit_price || 0;
-            updateReceiptItemField(draftId, "is_discounted", true, mode);
-            updateReceiptItemField(draftId, "discount_mode", "amount", mode);
+          if (rowItem.discount_expanded) {
+            updateReceiptItemField(draftId, "is_discounted", false, mode);
+            rowItem.discount_expanded = false;
+          } else {
+            if (!rowItem.is_discounted) {
+              rowItem.regular_unit_price = rowItem.unit_price || 0;
+              rowItem.discount_mode = "amount";
+              rowItem.discount_value = 0;
+            }
+            rowItem.discount_expanded = true;
           }
-          rowItem.discount_expanded = !rowItem.discount_expanded;
           commitReceiptRowMutation(mode);
           getReceiptContext(mode).listNode?.querySelector(`[data-receipt-discount-toggle="${draftId}"]`)?.focus({preventScroll:true});
         }

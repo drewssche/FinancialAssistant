@@ -212,3 +212,36 @@ def test_scan_catalog_unit_default_manual_override_and_unlink(static_server_url,
     p.locator('#scanConfirmed').check();p.click('#scanTransfer')
     payload=p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
     assert payload[0]['sale_unit']=='kg' and payload[0]['package_quantity'] is None
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width',[320,1440])
+def test_scan_category_search_manual_priority_and_transfer(static_server_url,page_with_receipt_api_mock,width):
+    p=page_with_receipt_api_mock;start(p,static_server_url,width);seed_catalog(p);stub(p,PIZZA);upload(p);p.click('#scanRun')
+    row=p.locator('.scan-row').first
+    category=row.locator('[data-scan-category]')
+    expect(category).to_have_value('')
+    row.locator('.scan-suggestion').first.click()
+    expect(category).to_have_value('101')
+    category.click()
+    picker=p.locator('#appChoiceDialog')
+    expect(picker).to_be_visible()
+    categories=p.evaluate("window.App.state.categories.filter(c=>c.kind==='expense'&&c.id!==101)")
+    chosen=categories[0]
+    picker.get_by_role('searchbox').fill(chosen['name'])
+    picker.get_by_role('button',name=chosen['name'],exact=True).click()
+    expect(category).to_have_value(str(chosen['id']))
+    row.get_by_role('button',name='Отвязать товар каталога').click()
+    expect(category).to_have_value(str(chosen['id']))
+    row.locator('.scan-suggestion').first.click()
+    expect(category).to_have_value(str(chosen['id']))
+    # New, uncatalogued items retain the user's category after editing the name.
+    row.locator('[data-scan-field=name]').fill('Новая пицца')
+    row.locator('[data-scan-field=name]').press('Escape')
+    expect(category).to_have_value(str(chosen['id']))
+    p.screenshot(path=f'/tmp/fa-scan-category-{width}.png')
+    assert p.locator('#receiptScanDialog').evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+    p.locator('#scanConfirmed').check();p.click('#scanTransfer')
+    item=p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[0]")
+    assert item['category_id']==chosen['id'] and item['category_touched'] is True
+    assert not item.get('product_id') and float(item['unit_price'])==4.99

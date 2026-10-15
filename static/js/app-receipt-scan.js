@@ -146,10 +146,16 @@
     node('scanRows').replaceChildren();
     draft.rows.forEach((row,index)=>{
       const el=document.createElement('section');el.className='scan-row';
-      el.innerHTML=`<div class="scan-name"><label class="field"><span>Товар ${index+1}</span><input data-scan-field="name" maxlength="160" placeholder="Найти или ввести товар" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="scanCatalog${index}" required></label><div id="scanCatalog${index}" class="scan-catalog-list app-popover" role="listbox" hidden></div></div>${iconButton('', 'trash', 'Удалить позицию '+(index+1))}<div class="scan-match"></div><div class="scan-sale-units" role="group" aria-label="Единица цены и количества"></div><div class="scan-row-numbers">${[['price','Цена за ед.'],['quantity','Кол-во'],['discount','Скидка, сумма'],['total','Оплачено']].map(([field,label])=>`<label class="field"><span>${label}</span><input data-scan-field="${field}" inputmode="decimal" required></label>`).join('')}</div><label class="field scan-discount-type"><span>Тип скидки</span><select data-scan-field="discount_type"><option value="promo">Акция</option><option value="loyalty_points">Баллы</option><option value="coupon">Купон</option></select></label>`;
+      el.innerHTML=`<div class="scan-name"><label class="field"><span>Товар ${index+1}</span><input data-scan-field="name" maxlength="160" placeholder="Найти или ввести товар" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="scanCatalog${index}" required></label><div id="scanCatalog${index}" class="scan-catalog-list app-popover" role="listbox" hidden></div></div>${iconButton('', 'trash', 'Удалить позицию '+(index+1))}<div class="scan-match"></div><label class="field scan-category"><span>Категория</span><select data-scan-category aria-label="Категория позиции"></select></label><div class="scan-sale-units" role="group" aria-label="Единица цены и количества"></div><div class="scan-row-numbers">${[['price','Цена за ед.'],['quantity','Кол-во'],['discount','Скидка, сумма'],['total','Оплачено']].map(([field,label])=>`<label class="field"><span>${label}</span><input data-scan-field="${field}" inputmode="decimal" required></label>`).join('')}</div><label class="field scan-discount-type"><span>Тип скидки</span><select data-scan-field="discount_type"><option value="promo">Акция</option><option value="loyalty_points">Баллы</option><option value="coupon">Купон</option></select></label>`;
       const name=el.querySelector('[data-scan-field=name]'), list=el.querySelector('.scan-catalog-list'), match=el.querySelector('.scan-match');
       name.value=row.name;name.title=row.source||'';
       el.querySelector('[data-scan-field=price]').title='Цена за единицу до скидки';
+      const category=el.querySelector('[data-scan-category]');
+      category.add(new Option('Без категории', ''));
+      (state.categories||[]).filter(c=>c.kind==='expense').sort((a,b)=>a.name.localeCompare(b.name,'ru')).forEach(c=>category.add(new Option(c.name,String(c.id))));
+      const refreshCategory=()=>{category.value=String(row.category_touched?row.category_id||'':row.catalog?.category_id||'');};
+      refreshCategory();
+      category.onchange=()=>{row.category_id=Number(category.value)||null;row.category_touched=true;node('scanConfirmed').checked=false;validate();};
       const unitHost=el.querySelector('.scan-sale-units');
       const unitTitle=document.createElement('span');unitTitle.textContent='Единица цены';unitHost.append(unitTitle);
       for(const [unit,label] of [['','Не указана'],...Object.entries(window.App.measurements.units)]){
@@ -163,12 +169,12 @@
           input.previousElementSibling.textContent=field==='price'?window.App.measurements.priceLabel(row):window.App.measurements.quantityLabel(row);
         }
       }
-      function unlink(){delete row.catalog;if(!row.measurement_touched)row.sale_unit=null;refreshUnits();}
+      function unlink(){delete row.catalog;refreshCategory();if(!row.measurement_touched)row.sale_unit=null;refreshUnits();}
       refreshUnits();
       let options=[],active=-1;
       function choose(item){
         row.catalog=catalog().identity(item,node('scanShop').value);
-        row.name=row.catalog.name;name.value=row.name;
+        row.name=row.catalog.name;name.value=row.name;refreshCategory();
         if(!row.measurement_touched)row.sale_unit=row.catalog.sale_unit;
         refreshUnits();
         closeCatalogLists();node('scanConfirmed').checked=false;el.refreshCatalog();validate();name.focus();closeCatalogLists();
@@ -215,7 +221,7 @@
       };
       el.addEventListener('focusout',()=>setTimeout(()=>{if(!el.querySelector('.scan-name').contains(document.activeElement)){list.hidden=true;name.setAttribute('aria-expanded','false');}},0));
       for(const field of ['price','quantity','discount','total']){const input=el.querySelector(`[data-scan-field=${field}]`);input.value=field==='quantity'?row.quantity??'':decimal(row[field]);input.placeholder='Не распознано';}
-      el.querySelector('select').value=row.discount_type||'promo';el.querySelector('.scan-discount-type').hidden=!row.discount;
+      el.querySelector('[data-scan-field=discount_type]').value=row.discount_type||'promo';el.querySelector('.scan-discount-type').hidden=!row.discount;
       el.addEventListener('input',e=>{
         const field=e.target.dataset.scanField;if(!field)return;
         row[field]=field==='name'||field==='discount_type'?e.target.value:field==='quantity'?(e.target.value.trim()?Number(e.target.value.replace(',','.')):null):inputMoney(e.target.value);
@@ -254,7 +260,7 @@
     modal.setOperationKind('create','expense');
     node('opDate').value=draft.date;node('opDate').dispatchEvent(new Event('change',{bubbles:true}));
     node('opCurrency').value=node('scanCurrency').value;node('opCurrency').dispatchEvent(new Event('change',{bubbles:true}));
-    state.createReceiptItems=draft.rows.map(r=>modal.createReceiptDraft({...r.catalog,name:r.name,quantity:r.quantity,shop_name:draft.shop,sale_unit:r.sale_unit||null,measurement_touched:true,
+    state.createReceiptItems=draft.rows.map(r=>modal.createReceiptDraft({...r.catalog,category_id:r.category_touched?r.category_id:r.catalog?.category_id,category_touched:Boolean(r.category_touched),name:r.name,quantity:r.quantity,shop_name:draft.shop,sale_unit:r.sale_unit||null,measurement_touched:true,
       unit_price:r.price/100, is_discounted:r.discount>0, regular_unit_price:r.discount>0?r.price/100:null,
       discount_mode:r.discount>0?'amount':null, discount_value:r.discount>0?r.discount/100:null,
       discount_type:r.discount>0?r.discount_type||'promo':null,note:('OCR: '+r.source).slice(0,300)},'create'));

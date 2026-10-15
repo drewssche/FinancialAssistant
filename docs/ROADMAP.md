@@ -17,6 +17,13 @@
 - Keep Telegram-specific behavior in the client runtime; backend contracts stay shared between Web UI and Telegram.
 
 ## Current Sprint
+### Reversible receipt discounts, categories and smooth history — 2026-10-16
+- [x] Opening discount settings does not mark a receipt line or operation discounted. Zero removes the flag; pressing the open percent button again cancels the discount and restores regular pricing. Saved discounts remain editable. Exact line-total arithmetic and invalid-value validation retained.
+- [x] Scan review has a category for each item through the shared searchable picker; catalog defaults yield to manual choices and survive transfer to the operation draft.
+- [x] Purchase history uses a smooth bounded curve and subtle fill, with exact observed points, immediate hover, touch and keyboard navigation. The caption distinguishes observations from the connecting line.
+- [x] Validation: 62 scoped API/parser/UI-contract checks and 45 distinct browser scenarios passed across runs. An existing 320px discount test left name suggestions over the action; it now finishes name entry before proceeding. Final focused checks also cover the actual save request with untouched discount settings. Scan/category and chart visuals inspected at desktop/mobile widths.
+- [ ] Release through GitHub main → clean server pull → app-only rebuild; verify readiness and served assets.
+
 ### Dashboard placement and shared record cards — 2026-10-16
 - [x] Currency portfolio moved before period analytics in the dashboard DOM.
 - [x] Plans use one compact responsive card grid in their section and on the dashboard; long notes and currency metadata wrap inside cards.
