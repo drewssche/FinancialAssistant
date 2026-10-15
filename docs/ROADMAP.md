@@ -22,7 +22,7 @@
 - [x] Shared plan cards stretch to equal height on wide screens, keep dates at the top and actions at the bottom, including long FX provenance. Mobile single-column cards retain content-based height.
 - [x] Receipt Details is a fixed-label, visibly active toggle. Header geometry stays unchanged on expand/collapse in new/edit layouts, including empty drafts; values and focus are preserved.
 - [x] Validation: 24 UI contracts and 31 distinct browser cases passed across scoped runs. Final 11 empty/known/long receipt checks passed after correcting a competing desktop column rule. Plan/rate snapshots inspected at 320/1440/2338px; receipt toggles at 390/1440px. Plan and receipt fixtures require separate pytest processes.
-- [ ] Release through GitHub main → server pull → app-only rebuild; verify readiness and served assets.
+- [x] Released `8971ea6` via GitHub main → clean server fast-forward pull → app-only rebuild. Assets `20261016-card-consistency`: all eight served hashes match; `/ready` reports unchanged schema `20261013_0050`; all six containers healthy. Only app recreated (`2026-10-15T22:26:20Z`), restarts 0; companion services unchanged. Rollback image: `financialassistant-app:before-card-consistency-20261016`. CI remains manual.
 
 ### Reversible receipt discounts, categories and smooth history — 2026-10-16
 - [x] Opening discount settings does not mark a receipt line or operation discounted. Zero removes the flag; pressing the open percent button again cancels the discount and restores regular pricing. Saved discounts remain editable. Exact line-total arithmetic and invalid-value validation retained.
