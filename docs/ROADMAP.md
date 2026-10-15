@@ -22,7 +22,7 @@
 - [x] Plans use one compact responsive card grid in their section and on the dashboard; long notes and currency metadata wrap inside cards.
 - [x] Dashboard debt rows reuse the section table on desktop and mobile entries below 641px; resize updates cached content without requests.
 - [x] Validation: 24 UI contract checks; 15 plan/card and 25 debt/dashboard browser scenarios passed across runs. Three initial startup/loading timeouts passed on targeted retry; final four dashboard/section debt comparisons passed. Visuals checked at 320/390/1024/1440/2338px.
-- [ ] Publish through GitHub → server pull and verify served assets/readiness.
+- [x] Released `d3351cc` via GitHub main → server `git pull --ff-only` → app-only rebuild. `/ready` and 8 served-static hashes verified; unchanged schema `20261013_0050`, all companion containers unchanged. Rollback image: `financialassistant-app:before-dashboard-cards-20261016`.
 
 ### Receipt units and price hover — 2026-10-16
 - [x] Direct unit choice for new/scanned items, catalog sale-unit defaults with manual override, explicit weight/volume price and quantity labels in scan and operation.
