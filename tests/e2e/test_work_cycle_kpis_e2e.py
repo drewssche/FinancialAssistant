@@ -378,3 +378,16 @@ def test_work_day_modal_blocks_duplicate_save_and_close_while_pending(request):
     assert pending[0].request.post_data_json['actual_hours'] == 7.25
     pending[0].fulfill(json={})
     expect(page.locator('#workDayModal')).to_be_hidden()
+
+
+@pytest.mark.e2e
+def test_work_payment_category_keeps_catalog_icon(work_page):
+    page,_=work_page
+    page.evaluate("window.App.state.categories.push({id:901,name:'Зарплата',kind:'income',icon:'💰'})")
+    page.route('**/api/v1/work/payments/history?*',lambda route: route.fulfill(status=200,content_type='application/json',body=json.dumps({
+        'items':[{'operation_id':701,'operation_date':'2026-09-04','amount':'1420.00','currency':'BYN',
+                  'category_name':'Зарплата','source':'manual','role':'salary'}],'total':1})))
+    page.evaluate("window.App.getRuntimeModule('work').loadWorkSection({refresh:true})")
+    page.locator('[data-work-view="payments"]').click()
+    expect(page.locator('#workActualPaymentsList .category-chip-icon')).to_have_text('💰')
+    expect(page.locator('#workActualPaymentsList .category-chip-text')).to_have_text('Зарплата')

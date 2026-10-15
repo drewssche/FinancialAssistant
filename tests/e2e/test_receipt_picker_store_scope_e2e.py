@@ -989,6 +989,7 @@ def test_item_catalog_shows_and_edits_template_category(static_server_url: str, 
     row.click()
     page.wait_for_selector("#itemTemplateModal:not(.hidden)")
     assert page.locator("#itemTemplateCategorySearch").input_value() == "Еда"
+    expect(page.locator("#itemTemplateCategorySearch").locator("..").locator(".category-field-icon")).to_have_text("🍔")
 
     page.click("#itemTemplateCategorySearch")
     page.locator('#itemTemplateCategoryAll button[data-item-template-category-id="102"]').click()
@@ -1553,6 +1554,8 @@ def test_edit_receipt_mixed_categories_keep_inheritance_and_preview_summary(stat
     assert not expect_badge_second.is_visible()
     assert first_row.locator('[data-receipt-field="category_search"]').input_value() == "Еда"
     assert second_row.locator('[data-receipt-field="category_search"]').input_value() == "Транспорт"
+    expect(first_row.locator(".category-field-icon")).to_have_text("🍔")
+    expect(second_row.locator(".category-field-icon")).to_have_text("🚌")
     preview_text = page.locator("#editPreviewBody").text_content() or ""
     assert "Еда" in preview_text
     assert "Транспорт" in preview_text
@@ -1569,6 +1572,8 @@ def test_edit_receipt_mixed_categories_keep_inheritance_and_preview_summary(stat
 
     assert first_row.locator('[data-receipt-field="category_search"]').input_value() == "Кофе"
     assert second_row.locator('[data-receipt-field="category_search"]').input_value() == "Транспорт"
+    expect(first_row.locator(".category-field-icon")).to_have_text("☕")
+    expect(second_row.locator(".category-field-icon")).to_have_text("🚌")
     assert expect_badge_first.is_visible()
     assert not expect_badge_second.is_visible()
     preview_text = page.locator("#editPreviewBody").text_content() or ""
@@ -1725,12 +1730,14 @@ def test_product_metadata_popovers_and_normalized_last_purchase(
     expect(brand).to_be_hidden()
     expect(page.locator("#catalogProductBrandSearch")).to_have_value("Савушкин")
 
+    expect(page.locator("#catalogProductCategorySearch").locator("..").locator(".category-field-icon")).to_have_text("🍔")
     page.click("#catalogProductCategorySearch")
     category = page.locator("#catalogProductCategoryPicker")
     expect(category).to_be_visible()
     page.fill("#catalogProductCategorySearch", "Коф")
     page.press("#catalogProductCategorySearch", "Enter")
     expect(page.locator("#catalogProductCategory")).to_have_value("103")
+    expect(page.locator("#catalogProductCategorySearch").locator("..").locator(".category-field-icon")).to_have_text("☕")
     expect(category).to_be_hidden()
     page.click("#catalogProductCategorySearch")
     expect(category).to_be_visible()

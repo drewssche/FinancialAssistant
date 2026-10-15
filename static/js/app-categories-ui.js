@@ -453,10 +453,7 @@
 
     const filtered = state.categories.filter((item) => item.kind === kind);
     for (const item of filtered) {
-      const option = document.createElement("option");
-      option.value = String(item.id);
-      option.textContent = item.name;
-      selectNode.appendChild(option);
+      selectNode.appendChild(core.createCategoryOption(item));
     }
 
     selectNode.value = selectedId ? String(selectedId) : "";

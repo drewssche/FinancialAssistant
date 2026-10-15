@@ -217,6 +217,7 @@
       const brandMeta = getSelectedItemTemplateBrandMeta();
       const brandHtml = window.App.getRuntimeModule?.("item-brands")?.renderBrandChip?.(brandMeta) || "<span class='muted-small'>Без бренда</span>";
       const categoryMeta = getItemTemplateCategoryMeta(el.itemTemplateCategory?.value);
+      core.setCategoryInputIcon(el.itemTemplateCategorySearch, categoryMeta);
       const categoryHtml = categoryMeta?.name
         ? core.renderCategoryChip({
           name: categoryMeta.name,

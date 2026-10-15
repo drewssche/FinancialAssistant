@@ -173,3 +173,65 @@ def test_real_engine_repeated_rows_across_strip_boundaries(static_server_url,pag
     # OCR may spell Cyrillic as Latin lookalikes; this checks seam ownership,
     # not lexical accuracy (measured separately on actual photos).
     assert all(len(name.split())==1 and 4<=len(name)<=12 for name in names), names
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width',[320,1440])
+def test_scan_numeric_expressions_and_invalid_results(static_server_url,page_with_receipt_api_mock,width):
+    page=page_with_receipt_api_mock;start(page,static_server_url,width)
+    stub(page,'''ООО Green
+№ ДОК 123
+Пельмени
+7.11 x1.000 7.11
+Скидка -0.71
+ИТОГО К ОПЛАТЕ 6.40
+13.10.2026 18:24:04''');upload(page);page.click('#scanRun')
+    row=page.locator('.scan-row').first
+    paid=row.locator('[data-scan-field=total]')
+    paid.fill('7,11−0,71');paid.press('Enter')
+    expect(paid).to_have_value('6.40')
+    expect(page.locator('#receiptScanDialog')).to_be_visible()
+    expect(page.locator('#scanArithmetic')).to_contain_text('Суммы сходятся')
+    for value in ['7,11-', '1/0', '-1', 'alert(1)', '10000000']:
+        paid.fill(value);paid.press('Enter')
+        expect(paid).to_have_value(value)
+        expect(paid).to_have_attribute('aria-invalid','true')
+        page.locator('#scanConfirmed').check()
+        expect(page.locator('#scanTransfer')).to_be_disabled()
+    paid.fill('(7,11 - 0,71) × 2 ÷ 2');paid.press('Tab')
+    expect(paid).to_have_value('6.40')
+    price=row.locator('[data-scan-field=price]');price.fill('14,22/2');price.press('Enter')
+    expect(price).to_have_value('7.11')
+    quantity=row.locator('[data-scan-field=quantity]');quantity.fill('(0,25+0,25)*2');quantity.press('Enter')
+    expect(quantity).to_have_value('1')
+    discount=row.locator('[data-scan-field=discount]');discount.fill('0,7+0,01');discount.press('Enter')
+    expect(discount).to_have_value('0.71')
+    page.locator('#scanTotal').fill('7,11-0,71');page.locator('#scanTotal').press('Tab')
+    expect(page.locator('#scanTotal')).to_have_value('6.40')
+    page.locator('#scanConfirmed').check();expect(page.locator('#scanTransfer')).to_be_enabled()
+    page.screenshot(path=f'/tmp/fa-scan-math-{width}.png')
+    page.click('#scanTransfer')
+    payload=page.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[0]")
+    assert float(payload['regular_unit_price'])==7.11 and float(payload['discount_value'])==.71
+    assert float(payload['quantity'])==1 and float(page.locator('#opAmount').input_value())==6.40
+
+
+@pytest.mark.e2e
+def test_scan_missing_paid_total_calculates_but_preserves_printed_totals(static_server_url,page_with_receipt_api_mock):
+    page=page_with_receipt_api_mock;start(page,static_server_url)
+    # Exercise a partially recognized row without fabricating a printed total.
+    page.evaluate("""()=>{window.App.receiptScanParser.parse=()=>({
+      date:'2026-10-13',shop:'Green',total:640,rows:[
+        {name:'Пельмени',price:711,quantity:1,discount:71,total:null,source:'Частично распознано'}
+      ]});}""")
+    stub(page);upload(page);page.click('#scanRun')
+    row=page.locator('.scan-row').first;paid=row.locator('[data-scan-field=total]')
+    expect(paid).to_have_value('6.40')
+    paid.focus();paid.press('Tab')
+    row.locator('[data-scan-field=discount]').fill('0,70')
+    expect(paid).to_have_value('6.41')
+    # A user override is kept and a mismatch is surfaced, never silently corrected.
+    paid.fill('6,40');row.locator('[data-scan-field=price]').fill('7,12')
+    expect(paid).to_have_value('6.40')
+    expect(page.locator('#scanArithmetic')).to_contain_text('Проверьте цену, количество и скидку')
+    expect(page.locator('#scanTransfer')).to_be_disabled()

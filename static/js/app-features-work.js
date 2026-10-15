@@ -356,7 +356,7 @@
       const operationId = paymentOperationId(item);
       const deleted = Boolean(item.is_deleted) || !(operationId > 0);
       const money = formatMoney(paymentOperationAmount(item), paymentOperationCurrency(item));
-      const category = item.category_name ? `<span class="meta-chip meta-chip-neutral">${escape(item.category_name)}</span>` : "";
+      const category = item.category_name ? core.renderCategoryChip(core.categoryMetaForLabel(item.category_name, "income")) : "";
       const source = `<span class="meta-chip ${item.source === "manual" ? "meta-chip-info" : "meta-chip-neutral"}">${escape(paymentSourceLabel(item.source))}</span>`;
       const mainTag = operationId > 0 && !deleted ? "button" : "div";
       const mainAttributes = operationId > 0 && !deleted ? `type="button" data-work-operation-id="${operationId}" title="Открыть операцию"` : "";
@@ -384,7 +384,7 @@
     nodes.workPaymentCandidatesList.innerHTML = paymentCandidates.length ? paymentCandidates.map((item) => {
       const operationId = paymentOperationId(item);
       const linked = Boolean(item.is_linked);
-      const category = item.category_name ? `<span class="meta-chip meta-chip-neutral">${escape(item.category_name)}</span>` : '<span class="muted-small">Без категории</span>';
+      const category = item.category_name ? core.renderCategoryChip(core.categoryMetaForLabel(item.category_name, "income")) : '<span class="muted-small">Без категории</span>';
       const baseMoney = item.base_currency && item.base_currency !== item.currency
         ? `<span class="muted-small">≈ ${escape(formatMoney(item.base_amount, item.base_currency))}</span>`
         : "";

@@ -718,6 +718,9 @@
           </div>
         `;
       }).join("");
+      ctx.listNode.querySelectorAll('[data-receipt-field="category_search"]').forEach(input => {
+        core.setCategoryInputIcon(input, state.categories.find(category => Number(category.id) === Number(input.dataset.receiptEffectiveCategoryId)));
+      });
       ctx.listNode.querySelectorAll('.receipt-measurements .form-grid').forEach(grid => {
         window.App.measurements.mount(grid, window.App.measurements.fields.map(key => grid.querySelector(`[data-receipt-field="${key}"]`)));
       });

@@ -377,6 +377,7 @@
     if (input) {
       input.setAttribute("aria-expanded", "false");
       input.value = metaItems(kind).find((item) => Number(item.id) === Number(value?.value))?.name || "";
+      if (kind === "Category") core.setCategoryInputIcon(input, metaItems(kind).find(item => Number(item.id) === Number(value?.value)));
     }
   }
 

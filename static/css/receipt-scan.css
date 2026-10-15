@@ -121,3 +121,5 @@
 }
 
 .scan-category {grid-column:1/-1;margin:0;}
+
+#scanMathHint {margin: 8px 0 12px; line-height: 1.4;}

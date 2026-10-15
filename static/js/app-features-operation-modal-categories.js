@@ -146,6 +146,7 @@
     }
 
     function renderCreateCategoryPicker() {
+      core.setCategoryInputIcon(el.opCategorySearch, getCreateFormCategoryMeta());
       renderCategoryPicker({
         kind: el.opKind.value || "expense",
         selectedId: getSelectedCreateCategoryId(),
@@ -156,6 +157,7 @@
     }
 
     function renderEditCategoryPicker() {
+      core.setCategoryInputIcon(el.editCategorySearch, getCategoryMetaById(Number(el.editCategory.value)));
       renderCategoryPicker({
         kind: el.editKind.value || "expense",
         selectedId: el.editCategory.value ? Number(el.editCategory.value) : null,

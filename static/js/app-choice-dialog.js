@@ -14,7 +14,10 @@
       if (option.hidden || !window.App.search.matches(option.textContent, search.value)) continue;
       const button = document.createElement('button');
       button.type = 'button'; button.className = 'choice-option';
-      button.textContent = option.textContent;
+      const category = option.dataset.categoryId
+        ? window.App.state.categories.find(item => String(item.id) === option.dataset.categoryId) : null;
+      if (category) button.innerHTML = window.App.core.renderCategoryChip(category, search.value);
+      else button.textContent = option.textContent;
       button.disabled = option.disabled || option.closest('optgroup')?.disabled || false;
       button.setAttribute('aria-pressed', String(option.selected));
       button.addEventListener('click', () => {

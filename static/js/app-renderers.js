@@ -1,5 +1,5 @@
 (() => {
-  const { core } = window.App;
+  const { core, state } = window.App;
 
   function escapeHtml(value) {
     return String(value ?? "")
@@ -22,6 +22,43 @@
     return html + escapeHtml(text.slice(cursor));
   }
 
+  function categoryIcon(category) {
+    return category?.icon || category?.group_icon || "";
+  }
+
+  function categoryLabel(category) {
+    return [categoryIcon(category), category?.name].filter(Boolean).join(" ");
+  }
+
+  function categoryMetaForLabel(name, kind) {
+    const matches = state.categories.filter(category => category.name === name && category.kind === kind);
+    return matches.length === 1 ? matches[0] : {name};
+  }
+
+  function createCategoryOption(category) {
+    const option = new Option(categoryLabel(category), String(category.id));
+    option.dataset.categoryId = String(category.id);
+    return option;
+  }
+
+  function setCategoryInputIcon(input, category) {
+    if (!input) return;
+    const icon = input.value === category?.name ? categoryIcon(category) : "";
+    let wrapper = input.parentElement;
+    if (!wrapper?.classList.contains("category-input-control")) {
+      if (!icon) return;
+      wrapper = document.createElement("div");
+      wrapper.className = "category-input-control";
+      const marker = document.createElement("span");
+      marker.className = "category-field-icon";
+      marker.setAttribute("aria-hidden", "true");
+      input.before(wrapper); wrapper.append(marker, input);
+      input.addEventListener("input", () => setCategoryInputIcon(input, null));
+    }
+    wrapper.querySelector(".category-field-icon").textContent = icon;
+    wrapper.classList.toggle("has-category-icon", Boolean(icon));
+  }
+
   function renderCategoryChip(category, searchQuery = "") {
     if (!category?.name) {
       return "<span class='muted-small'>Без категории</span>";
@@ -30,7 +67,7 @@
       ? ` style="border-color:${escapeHtml(category.accent_color)}66;background:${escapeHtml(category.accent_color)}22;"`
       : "";
     const title = ` title="${escapeHtml(category.name)}"`;
-    const icon = category.icon ? `<span class="category-chip-icon">${escapeHtml(category.icon)}</span>` : "";
+    const icon = categoryIcon(category) ? `<span class="category-chip-icon" aria-hidden="true">${escapeHtml(categoryIcon(category))}</span>` : "";
     return `<span class="category-chip"${style}${title}>${icon}<span class="category-chip-text">${highlightText(category.name, searchQuery)}</span></span>`;
   }
 
@@ -562,6 +599,11 @@
   Object.assign(core, {
     escapeHtml,
     highlightText,
+    categoryIcon,
+    categoryLabel,
+    categoryMetaForLabel,
+    createCategoryOption,
+    setCategoryInputIcon,
     renderCategoryChip,
     renderCategoryChipList,
     getReceiptCategoryMetas,

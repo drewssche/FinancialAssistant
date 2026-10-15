@@ -1772,3 +1772,15 @@ def test_plan_icon_restores_after_failed_skip_and_can_retry(static_server_url, p
         skip.click()
     assert result.value.status == 200
     assert mock_state["plans"][0]["status"] == "skipped"
+
+
+@pytest.mark.e2e
+def test_plan_history_restores_category_icon_from_catalog(static_server_url,page_with_plans_api_mock):
+    page,mock=page_with_plans_api_mock
+    mock['history']=[{'id':1,'plan_id':1,'event_type':'confirmed','kind':'expense','amount':'5.00',
+                     'currency':'BYN','effective_date':'2026-10-16','category_name':'Транспорт'}]
+    _login_and_open_plans(page,static_server_url)
+    page.evaluate("window.App.state.categories=[{id:102,name:'Транспорт',kind:'expense',icon:null,group_icon:'🚌'}]")
+    page.click('button[data-plan-tab="history"]')
+    sync_api.expect(page.locator('#plansList .category-chip-icon')).to_have_text('🚌')
+    sync_api.expect(page.locator('#plansList .category-chip-text')).to_have_text('Транспорт')

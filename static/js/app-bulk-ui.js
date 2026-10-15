@@ -163,10 +163,7 @@
     el.bulkOpCategory.innerHTML = '<option value="">Категория (не менять)</option>';
     const filtered = state.categories.filter((item) => !kind || item.kind === kind);
     for (const item of filtered) {
-      const option = document.createElement("option");
-      option.value = String(item.id);
-      option.textContent = item.name;
-      el.bulkOpCategory.appendChild(option);
+      el.bulkOpCategory.appendChild(core.createCategoryOption(item));
     }
   }
 

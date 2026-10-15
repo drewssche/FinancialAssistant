@@ -297,7 +297,7 @@
     function renderHistoryCard(item) {
       const kindClass = item.kind === "income" ? "income" : "expense";
       const categoryChip = item.category_name
-        ? core.renderCategoryChip({ name: item.category_name, icon: "", accent_color: null }, "")
+        ? core.renderCategoryChip(core.categoryMetaForLabel(item.category_name, item.kind), "")
         : "<span class='muted-small'>Без категории</span>";
       const eventLabel = historyEventLabel(item.event_type);
       const effectiveDate = item.effective_date ? core.formatDateRu(item.effective_date) : "Без даты";

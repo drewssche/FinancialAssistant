@@ -241,7 +241,8 @@
     renderChip(el.operationsSourceFilterChip, "Источник", sourceValue, hasSource);
     renderChip(el.operationsQuickViewChip, "Срез", quickViewValue, hasQuickView);
     renderChip(el.operationsCurrencyScopeChip, "Валюта", currencyScopeValue, hasCurrencyScope);
-    renderChip(el.operationsCategoryFilterChip, "Категория", state.operationsCategoryFilterName || `#${state.operationsCategoryFilterId}`, hasCategory);
+    const filterCategory = state.categories.find(category => String(category.id) === String(state.operationsCategoryFilterId));
+    renderChip(el.operationsCategoryFilterChip, "Категория", filterCategory ? core.categoryLabel(filterCategory) : state.operationsCategoryFilterName || `#${state.operationsCategoryFilterId}`, hasCategory);
     renderChip(
       el.operationsItemTemplateFilterChip,
       hasProduct ? "Товар" : "Позиция",
