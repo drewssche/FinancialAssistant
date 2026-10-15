@@ -57,7 +57,7 @@
 :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-line-total { padding-top: 0; }
 :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-line-total strong { display: block; margin-top: 10px; white-space: nowrap; }
 :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-remove-btn { min-height: 36px; height: 36px; width: 36px; min-width: 36px; margin-top: 20px; }
-:is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-discount-toggle { min-height: 30px; height: auto; padding: 4px; border: 0; background: transparent; text-align: left; font-size: .72rem; }
+:is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-discount-toggle { min-height: 36px; height: auto; min-width: 0; max-width: 100%; padding: 6px 10px; text-align: center; font-size: .75rem; }
 :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-discount-calculation { display: none; grid-area: discount; }
 :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .discount-open .receipt-discount-calculation { display: block; padding: 10px; border: 1px solid var(--border); border-radius: 8px; }
 :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-discount-calculation > summary { display: none; }
@@ -116,7 +116,7 @@
   :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .is-compact .receipt-item-money .receipt-price-cell { display: grid; grid-template-columns: minmax(70px, 1fr) auto; align-items: center; }
   :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .is-compact .receipt-known-price-label { grid-column: 1 / -1; }
 }
-:is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-line-total .receipt-discount-toggle { display: block; margin-top: 2px; width: auto; white-space: normal; }
+:is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-line-total .receipt-discount-toggle { display: block; margin-top: 6px; width: auto; white-space: normal; }
 
 /* Desktop: visible receipt and totals, one optional settings section. */
 @media (min-width: 900px) {
@@ -171,4 +171,9 @@
   :is(#createModal, #editModal).operation-editor .operation-modal-card > .panel-head { padding-inline: 12px; }
   :is(#createModal, #editModal).operation-editor .modal-head-actions { margin-left: auto; }
   .receipt-store-options .receipt-store-option { min-height: 44px; }
+}
+
+/* Keep the discount action a visible chip, including a finger-sized mobile target. */
+@media (max-width: 640px) {
+  :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-discount-toggle { min-height: 44px; }
 }
