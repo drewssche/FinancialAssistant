@@ -62,8 +62,12 @@
 :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-discount-calculation > summary { display: none; }
 :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-discount-calculation .form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 0; }
 :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-regular-price-field { display: grid; grid-area: auto; gap: 4px; font-size: .8rem; color: var(--muted); }
-:is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-discount-type-row { display: flex; margin-top: 8px; }
-:is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .is-compact .receipt-discount-type-row { display: none; }
+:is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-discount-type-row { display: flex; margin: 0 0 12px; gap: 8px; }
+:is(#createModal, #editModal).operation-editor .receipt-discount-type-chip { min-height: 32px; padding: 6px 12px; font-size: .75rem; }
+@media (max-width: 640px) {
+  :is(#createModal, #editModal).operation-editor .receipt-discount-type-chip { min-height: 44px; }
+  :is(#createModal, #editModal).operation-editor .receipt-discount-type-row > span { flex-basis: 100%; }
+}
 
 :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-item-empty.is-compact :is(.receipt-item-money, .receipt-new-heading > span) { display: none; }
 .receipt-new-heading { color: var(--muted); font-size: .8rem; align-items: center; }

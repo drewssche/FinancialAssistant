@@ -433,7 +433,8 @@
         item.is_discounted = item.discount_mode
           ? Boolean(calculation.error || (calculation.subtotal == null ? item.discount_mode === "final" : calculation.total < calculation.subtotal))
           : Number(item.regular_unit_price) > Number(item.unit_price);
-        item.discount_type = item.is_discounted ? (item.discount_type || "promo") : null;
+        // Keep the chosen type while entering a discount; payloads omit it until a discount exists.
+        item.discount_type = item.discount_type || (item.is_discounted ? "promo" : null);
         if (!item.is_discounted && item.discount_mode) item.unit_price = item.regular_unit_price;
       }
       return {
@@ -687,6 +688,7 @@
               </div>
             </section>
             ${item.is_discounted || item.discount_expanded ? `<section class="receipt-discount-calculation">
+              <div class="receipt-discount-type-row" role="group" aria-label="Тип скидки"><span class="muted-small">Тип скидки</span>${discountTypeButtons}</div>
               <div class="form-grid">
                 <label class="field"><span>Способ расчёта</span><select data-receipt-field="discount_mode" aria-label="Способ расчёта скидки">
                   ${[["", "Цена за единицу"], ["amount", "Скидка на сумму"], ["percent", "Скидка в процентах"], ["final", "Оплаченный итог"]].map(([value, label]) => `<option value="${value}" ${(item.discount_mode || "") === value ? "selected" : ""}>${label}</option>`).join("")}
@@ -702,7 +704,6 @@
                   <input type="text" inputmode="decimal" data-receipt-field="unit_price" ${item.discount_mode ? "readonly" : ""} value="${formatReceiptInputAmount(item.discount_mode && item.is_discounted ? total / (item.quantity || 1) : item.unit_price)}" placeholder="Цена" title="${item.discount_mode ? "Эффективная цена после скидки; итог рассчитывается отдельно" : "Цена покупки в " + esc(getReceiptCurrencyLabel(mode))}" aria-label="Цена позиции" />
                 </div>
                 <button class="receipt-discount-toggle ${item.is_discounted ? "is-active" : ""}" type="button" data-receipt-discount-toggle="${item.draft_id}" aria-pressed="${item.is_discounted ? "true" : "false"}" aria-expanded="${item.discount_expanded ? "true" : "false"}" aria-label="${receiptDiscountToggleLabel(item)}" title="${receiptDiscountToggleLabel(item)}">${window.App.icons.svg("discount")}</button>
-                <div class="receipt-discount-type-row ${item.is_discounted || item.discount_expanded ? "" : "hidden"}" role="group" aria-label="Тип скидки">${discountTypeButtons}</div>
                 <div class="receipt-price-field receipt-regular-price-field ${item.is_discounted || item.discount_expanded ? "" : "hidden"}">
                   <input class="receipt-regular-price" type="text" inputmode="decimal" data-receipt-field="regular_unit_price" value="${formatReceiptInputAmount(item.regular_unit_price)}" placeholder="До скидки" title="Обычная цена для истории" aria-label="Цена до скидки" />
                 </div>
@@ -728,11 +729,9 @@
       ctx.listNode.querySelectorAll('.receipt-item-row-discounted, .discount-open').forEach(row => {
         const panel = row.querySelector('.receipt-discount-calculation');
         const price = row.querySelector('.receipt-regular-price-field');
-        const types = row.querySelector('.receipt-discount-type-row');
         if (panel && price) {
           const label = document.createElement('span'); label.textContent = 'Цена за единицу до скидки';
           price.prepend(label); panel.querySelector('.form-grid').prepend(price);
-          panel.append(types);
         }
       });
       const store = ctx.fieldsNode?.querySelector('[data-receipt-store]');

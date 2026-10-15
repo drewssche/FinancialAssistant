@@ -27,6 +27,10 @@ def test_weighted_line_discount_modes_and_edit_roundtrip(static_server_url, page
     row.locator('[data-receipt-field="quantity"]').fill('0.242')
     row.locator('[data-receipt-field="unit_price"]').fill('15.64')
     row.locator('[data-receipt-discount-toggle]').click()
+    expect(row.locator('[data-receipt-details-toggle]')).to_have_attribute('aria-expanded', 'false')
+    expect(row.locator('.receipt-discount-type-row')).to_be_visible()
+    row.locator('[data-receipt-discount-type="coupon"]').click()
+    expect(row.locator('[data-receipt-discount-type="coupon"]')).to_have_attribute('aria-pressed', 'true')
     row.locator('[data-receipt-field="regular_unit_price"]').fill('15.64')
     row.locator('[data-receipt-field="discount_mode"]').select_option('amount')
     row.locator('[data-receipt-field="discount_value"]').fill('0.13')
@@ -34,6 +38,7 @@ def test_weighted_line_discount_modes_and_edit_roundtrip(static_server_url, page
     expect(row.locator('[data-receipt-field="unit_price"]')).to_have_attribute('readonly', '')
     payload = page.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[0]")
     assert payload['discount_mode'] == 'amount'
+    assert payload['discount_type'] == 'coupon'
     assert Decimal(payload['discount_value']) == Decimal('0.13')
     assert abs(Decimal(payload['unit_price']) - Decimal('3.65') / Decimal('0.242')) < Decimal('0.000001')
     # FX settlement and preview must use the exact line total as well.
@@ -58,7 +63,7 @@ def test_weighted_line_discount_modes_and_edit_roundtrip(static_server_url, page
       window.App.actions.closeCreateModal();
       await window.App.getRuntimeModule('operation-modal').openEditModal({
         id: 777, kind: 'expense', amount: '3.65', original_amount: '3.65', currency: 'BYN',
-        operation_date: '2026-10-12', receipt_items: [receipt]
+        operation_date: '2026-10-12', receipt_items: [{...receipt, template_id: 1}]
       });
     }''', payload)
     saved = page.locator('#editReceiptItemsList .receipt-item-row').first
@@ -67,6 +72,13 @@ def test_weighted_line_discount_modes_and_edit_roundtrip(static_server_url, page
     after = page.evaluate("window.App.getRuntimeModule('operation-modal').getEditReceiptPayload()[0]")
     assert Decimal(after['discount_value']) == Decimal('3.65')
     saved.locator('[data-receipt-discount-toggle]').click()
+    expect(saved.locator('[data-receipt-details-toggle]')).to_have_attribute('aria-expanded', 'false')
+    expect(saved.locator('[data-receipt-discount-type="coupon"]')).to_have_attribute('aria-pressed', 'true')
+    saved.locator('[data-receipt-discount-type="loyalty_points"]').click()
+    expect(saved.locator('[data-receipt-discount-type="loyalty_points"]')).to_have_attribute('aria-pressed', 'true')
+    assert page.evaluate("window.App.getRuntimeModule('operation-modal').getEditReceiptPayload()[0].discount_type") == 'loyalty_points'
+    expect(saved.locator('.receipt-line-total strong')).to_contain_text('3,65')
+    saved.locator('.receipt-discount-type-row').screenshot(path=f'/tmp/fa-discount-types-{width}.png')
     # Removing known original price must keep the exact final, without guessing savings.
     saved.locator('[data-receipt-field="regular_unit_price"]').fill('')
     expect(saved.locator('.receipt-pricing-explanation')).to_contain_text('неизвестна')
