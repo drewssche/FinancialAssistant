@@ -354,39 +354,61 @@
     function getReceiptScanSuggestions(query, shopName = "", limit = 6) {
       const search = window.App.search;
       const candidates = getReceiptTemplateSuggestions("", shopName, 0);
-      // OCR often mixes Latin lookalikes and Cyrillic, splits words and reorders them.
-      // Ranking only proposes a match; a click is required to bind an identity.
-      const clean = value => search.normalize(value).replace(/[aceopxykmthb]/g, c => ({a:'а',c:'с',e:'е',o:'о',p:'р',x:'х',y:'у',k:'к',m:'м',t:'т',h:'н',b:'в'})[c]).replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
-      const tokens = value => clean(value).split(/\s+/).filter(t => t.length >= 3);
-      function similarity(a, b) {
-        if (a === b) return 1;
-        if (Math.min(a.length,b.length) >= 4 && (a.startsWith(b) || b.startsWith(a))) return .86;
-        if (Math.abs(a.length-b.length)>2) return 0;
+      if (!query.trim()) return candidates.slice(0, limit);
+      // Extra receipt words must not dilute a useful keyword match. Numbers,
+      // packaging and generic processing terms cannot establish product identity.
+      const clean = value => search.normalize(value).replace(/[aceopxykmthb]/g, c => ({a:'а',c:'с',e:'е',o:'о',p:'р',x:'х',y:'у',k:'к',m:'м',t:'т',h:'н',b:'в'})[c]);
+      const ignored = new Set(['категория','первый','первая','второй','вторая','высший','сорт','новый','новая','новое','нар','нарезка','сдоб','пак','уп','упаковка','фас','дой','дозатор','дозатором','шт','штука','кг','мл','грамм','литр','варено','вареная','вареный','копченая','копченые','копченый','сырокопченая','полукопченая','охлажденная','охлажденные']);
+      const stem = word => word.length < 5 ? word : word.replace(/(?:ами|ями|ого|ему|ая|яя|ое|ые|ие|ий|ый|ой|ов|ев|ы|и|а|я|у|ю|е|о)$/u, '');
+      const tokens = value => [...new Set((clean(value).match(/[\p{L}]+/gu)||[]).filter(t=>t.length>=3&&!ignored.has(t)))];
+      const measures = value => Array.from(clean(value).matchAll(/(\d+(?:[.,]\d+)?)\s*(кг|мл|г|л)(?=$|[^\p{L}])/gu),m=>{
+        const factor=m[2]==='кг'||m[2]==='л'?1000:1;
+        return `${m[2]==='кг'||m[2]==='г'?'mass':'volume'}:${Math.round(Number(m[1].replace(',','.'))*factor*1000)/1000}`;
+      });
+      function similarity(a,b) {
+        if(a===b)return 1;
+        if(stem(a).length>=4&&stem(a)===stem(b))return .9;
+        // One/two OCR substitutions, not arbitrary shared prefixes (батон != батончик).
+        const allowed=Math.min(a.length,b.length)>=7?2:1;
+        if(Math.min(a.length,b.length)<4||Math.abs(a.length-b.length)>allowed)return 0;
         let row=Array.from({length:b.length+1},(_,i)=>i);
-        for(let i=1;i<=a.length;i++) {
-          const next=[i];
-          for(let j=1;j<=b.length;j++)next[j]=Math.min(next[j-1]+1,row[j]+1,row[j-1]+Number(a[i-1]!==b[j-1]));
-          row=next;
+        for(let i=1;i<=a.length;i++){
+          const next=[i];for(let j=1;j<=b.length;j++)next[j]=Math.min(next[j-1]+1,row[j]+1,row[j-1]+Number(a[i-1]!==b[j-1]));row=next;
         }
-        return 1-row[b.length]/Math.max(a.length,b.length);
+        return row[b.length] <= allowed ? .65 : 0;
       }
-      const variants = search.variants(query).filter(Boolean);
-      return candidates.map((item,index)=>{
-        const aliases=[item.name, item.selected_offer?.name, ...(item.offers || []).map(o=>o.name)].filter(Boolean);
-        let score=variants.length ? 0 : 1;
-        for(const alias of aliases) {
-          if(variants.some(v=>search.normalize(alias)===v))score=Math.max(score,3);
-          else if(variants.length && search.matches(alias,query))score=Math.max(score,2);
-          for(const variant of variants) {
-            const from=tokens(variant), to=tokens(alias);
-            if(!from.length||!to.length)continue;
-            const scores=from.map(a=>Math.max(...to.map(b=>similarity(a,b))));
-            const mean=scores.reduce((a,b)=>a+b,0)/from.length;
-            if(mean>=.68 && scores.some(s=>s>=.8))score=Math.max(score,mean);
+      const records=candidates.map((item,index)=>({item,index,aliases:[...new Set([item.name,item.selected_offer?.name,...(item.offers||[]).map(o=>o.name)].filter(Boolean))].map(name=>({name,words:tokens(name),measures:measures(name)}))}));
+      const frequency=new Map();
+      for(const r of records)for(const word of new Set(r.aliases.flatMap(a=>a.words.map(stem))))frequency.set(word,(frequency.get(word)||0)+1);
+      const variants=search.variants(query).map(v=>({raw:v,words:tokens(v)})).filter(v=>v.words.length);
+      const queryMeasures=measures(query);
+      return records.map(r=>{
+        let best={score:0,words:[],exact:false,sizeConflict:false};
+        for(const alias of r.aliases)for(const variant of variants){
+          const hits=new Map();
+          for(const word of variant.words){
+            let hit=null;
+            for(const other of alias.words){
+              const quality=similarity(word,other);
+              if(quality&&(!hit||quality>hit.quality))hit={word,other,quality};
+            }
+            if(hit&&(!hits.has(stem(hit.other))||hits.get(stem(hit.other)).quality<hit.quality))hits.set(stem(hit.other),hit);
           }
+          // Keep the ordinary typed substring/layout search alongside keyword matching.
+          const direct=search.matches(alias.name,variant.raw);
+          if(!hits.size&&!direct)continue;
+          const exact=clean(alias.name)===clean(variant.raw);
+          let score=exact?10000:0;
+          for(const hit of hits.values())score+=hit.quality*(1+Math.log(1+records.length/(frequency.get(stem(hit.other))||1)));
+          if(direct)score+=2;
+          const sizeConflict=!!(queryMeasures.length&&alias.measures.length&&!queryMeasures.some(m=>alias.measures.includes(m)));
+          if(queryMeasures.some(m=>alias.measures.includes(m)))score+=1;
+          if(sizeConflict)score-=.5;
+          if(score>best.score)best={score,words:[...hits.values()].map(h=>h.word),exact,sizeConflict};
         }
-        return {item,score,index};
-      }).filter(r=>r.score>0).sort((a,b)=>b.score-a.score||a.index-b.index).slice(0,limit).map(r=>r.item);
+        return {...r,...best};
+      }).filter(r=>r.score>0).sort((a,b)=>b.score-a.score||a.index-b.index).slice(0,limit)
+        .map(r=>({...r.item,scan_match:{words:r.words,exact:r.exact,sizeConflict:r.sizeConflict}}));
     }
 
     function getReceiptBrandSuggestions(query = "") {
@@ -928,7 +950,7 @@
     async function loadReceiptTemplateHints() {
       const now = Date.now();
       const hintsFresh = now - Number(receiptUiState.hintsLoadedAt || 0) < RECEIPT_TEMPLATES_CACHE_TTL_MS;
-      if (hintsFresh && Array.isArray(state.receiptTemplateHints) && state.receiptTemplateHints.length > 0) {
+      if (hintsFresh && !receiptUiState.hintsLoadFailed && Array.isArray(state.receiptTemplateHints) && state.receiptTemplateHints.length > 0) {
         return;
       }
       if (receiptUiState.hintsPromise) {
@@ -938,9 +960,10 @@
       receiptUiState.hintsPromise = (async () => {
         let templates = [];
         let products = [];
+        receiptUiState.hintsLoadFailed = false;
         await Promise.all([
-          loadReceiptTemplates("", { allPages: true }).then((items) => { templates = items; }).catch(() => {}),
-          loadReceiptProducts("", { allPages: true }).then((items) => { products = items; }).catch(() => {}),
+          loadReceiptTemplates("", { allPages: true }).then((items) => { templates = items; }).catch(() => { receiptUiState.hintsLoadFailed = true; }),
+          loadReceiptProducts("", { allPages: true }).then((items) => { products = items; }).catch(() => { receiptUiState.hintsLoadFailed = true; }),
           loadReceiptBrands().catch(() => {}),
           Promise.resolve(window.App.getRuntimeModule?.("item-catalog")?.loadItemSources?.()).catch(() => {}),
         ]);
@@ -960,6 +983,7 @@
       getReceiptTemplateMatch,
       getReceiptTemplateSuggestions,
       getReceiptScanSuggestions,
+      getReceiptCatalogStatus: () => ({loading: Boolean(receiptUiState.hintsPromise), incomplete: Boolean(receiptUiState.hintsLoadFailed)}),
       getReceiptBrandSuggestions,
       getReceiptShopSuggestions,
       upsertLocalReceiptTemplate,

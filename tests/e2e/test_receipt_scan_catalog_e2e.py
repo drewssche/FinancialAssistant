@@ -30,9 +30,9 @@ def seed_catalog(page):
 def test_catalog_suggestion_preserves_money_and_identity_on_transfer(static_server_url,page_with_receipt_api_mock,width):
     p=page_with_receipt_api_mock;start(p,static_server_url,width);seed_catalog(p);stub(p,PIZZA);upload(p);p.click('#scanRun')
     row=p.locator('.scan-row').first
-    expect(row.locator('.scan-suggestion')).to_contain_text('Черри-чеддер')
+    expect(row.locator('.scan-suggestion').first).to_contain_text('Черри-чеддер')
     assert p.evaluate('window.App.state.createReceiptItems.every(r=>!r.product_id)')
-    row.locator('.scan-suggestion').click()
+    row.locator('.scan-suggestion').first.click()
     expect(row.locator('[data-scan-field=price]')).to_have_value('4.99')
     expect(row.locator('[data-scan-field=total]')).to_have_value('4.99')
     expect(row.locator('.scan-match')).to_contain_text('Из каталога')
@@ -78,7 +78,7 @@ def test_other_store_and_unknown_price_never_import_catalog_price(static_server_
     p=page_with_receipt_api_mock;start(p,static_server_url);seed_catalog(p);stub(p,PIZZA);upload(p);p.click('#scanRun')
     p.fill('#scanShop','Новый магазин')
     row=p.locator('.scan-row').first;row.locator('[data-scan-field=price]').fill('')
-    row.locator('.scan-suggestion').click()
+    row.locator('.scan-suggestion').first.click()
     expect(row.locator('[data-scan-field=price]')).to_have_value('')
     p.locator('#scanConfirmed').check();expect(p.locator('#scanTransfer')).to_be_disabled()
     row.locator('[data-scan-field=price]').fill('4.99');p.locator('#scanConfirmed').check();p.click('#scanTransfer')
@@ -106,3 +106,63 @@ def test_paste_image_review_replacement_and_text_passthrough(static_server_url,p
     assert paste_image(p,picture['buffer']);p.click('#scanPasteAccept')
     expect(p.locator('#scanReview')).to_be_hidden();expect(p.locator('#scanRun')).to_be_enabled()
     p.click('#scanRun');expect(p.locator('.scan-row')).to_have_count(1)
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width',[320,390,1440])
+def test_upload_crop_fit_content_and_keyword_empty_state(static_server_url,page_with_receipt_api_mock,width):
+    p=page_with_receipt_api_mock;start(p,static_server_url,width);seed_catalog(p)
+    dialog=p.locator('#receiptScanDialog')
+    expect(p.locator('#scanDropzone')).to_be_visible()
+    expect(p.locator('#scanDropzone')).to_contain_text('Ctrl+V')
+    expect(p.locator('#scanRun')).to_be_hidden()
+    box=dialog.bounding_box();assert box['width']<=520 and box['height']<450
+    p.screenshot(path=f'/tmp/fa-scan-upload-compact-{width}.png')
+    with p.expect_file_chooser() as chooser:
+        p.locator('#scanDropzone').click()
+    chooser.value.set_files(image(p))
+    expect(dialog).to_have_attribute('data-stage','crop')
+    expect(p.locator('#scanDropzone')).to_be_hidden()
+    expect(p.locator('#scanRun')).to_be_enabled()
+    assert dialog.bounding_box()['width']<700
+    assert dialog.evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+    run=p.locator('#scanRun').bounding_box();bar=p.locator('#scanRunBar').bounding_box()
+    assert abs(run['x']+run['width']-bar['x']-bar['width'])<2
+    assert p.locator('#scanRun svg').count()==1
+    p.screenshot(path=f'/tmp/fa-scan-crop-compact-{width}.png')
+    stub(p,PIZZA.replace('ПИЦЦА КУСОК ЧЕРРИ ЧЕДЕР 200Г','Абрикосовый джем'))
+    p.click('#scanRun')
+    expect(p.locator('.scan-match')).to_contain_text('В каталоге нет совпадений по словам')
+    expect(p.locator('[data-scan-field=name]')).to_have_value('Абрикосовый джем')
+    expect(p.locator('[data-scan-field=price]')).to_have_value('4.99')
+    p.screenshot(path=f'/tmp/fa-scan-no-match-{width}.png')
+    # Background whitespace inside the dialog should not discard a review.
+    dialog.click(position={'x':4,'y':4})
+    expect(dialog).to_be_visible()
+
+@pytest.mark.e2e
+def test_drop_image_and_multiple_files_validation(static_server_url,page_with_receipt_api_mock):
+    p=page_with_receipt_api_mock;start(p,static_server_url)
+    picture=image(p)
+    encoded=base64.b64encode(picture['buffer']).decode()
+    def drop(count):
+        return p.evaluate('''({encoded,count})=>{
+          const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));const data=new DataTransfer();
+          for(let i=0;i<count;i++)data.items.add(new File([bytes],`receipt${i}.png`,{type:'image/png'}));
+          const target=document.querySelector('#scanDropzone');
+          target.dispatchEvent(new DragEvent('dragover',{dataTransfer:data,bubbles:true,cancelable:true}));
+          target.dispatchEvent(new DragEvent('drop',{dataTransfer:data,bubbles:true,cancelable:true}));
+        }''',{'encoded':encoded,'count':count})
+    drop(2);expect(p.locator('#scanStatus')).to_contain_text('одно фото')
+    expect(p.locator('#scanDropzone')).to_be_visible()
+    drop(1);expect(p.locator('#receiptScanDialog')).to_have_attribute('data-stage','crop')
+    expect(p.locator('#scanRun')).to_be_enabled()
+
+@pytest.mark.e2e
+def test_catalog_failure_is_not_reported_as_no_matches(static_server_url,page_with_receipt_api_mock):
+    p=page_with_receipt_api_mock
+    p.route('**/api/v1/operations/catalog-products?**',lambda route:route.fulfill(status=503,json={'detail':'Unavailable'}))
+    p.route('**/api/v1/operations/item-templates?**',lambda route:route.fulfill(status=503,json={'detail':'Unavailable'}))
+    start(p,static_server_url);stub(p,PIZZA);upload(p);p.click('#scanRun')
+    expect(p.locator('.scan-match')).to_contain_text('Каталог загружен не полностью')
+    expect(p.locator('.scan-match')).not_to_contain_text('нет совпадений')
+    expect(p.locator('[data-scan-field=price]')).to_have_value('4.99')

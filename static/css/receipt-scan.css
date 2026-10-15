@@ -1,4 +1,4 @@
-.receipt-scan-dialog { color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:18px;width:min(1200px,calc(100vw - 24px));max-height:calc(100dvh - 24px);padding:20px;overflow:auto;box-sizing:border-box; }
+.receipt-scan-dialog { color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:18px;width:min(520px,calc(100vw - 24px));max-height:calc(100dvh - 24px);padding:20px;overflow:auto;box-sizing:border-box; }
 .receipt-scan-dialog::backdrop { background:#060b16cc; }
 .receipt-scan-dialog > header, .scan-toolbar, .scan-review-toolbar {display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 .receipt-scan-dialog > header {justify-content:space-between;}
@@ -33,7 +33,7 @@
  .scan-image-column {position:static;}
  #scanCanvas {max-height:55vh;}
  .scan-corner {width:44px;height:44px;}
- #scanTransfer {width:100%;}
+ #scanTransfer {width:44px;}
 }
 .receipt-scan-dialog > header {flex-wrap:nowrap;}
 .receipt-scan-dialog h3 {flex:1;min-width:0;}
@@ -77,3 +77,32 @@
 }
 .scan-catalog-list {width:100%;max-width:none;box-sizing:border-box;}
 .scan-row:has(.scan-catalog-list:not([hidden])) .scan-match {visibility:hidden;}
+
+/* Each scan stage fits its content; only side-by-side review needs a wide dialog. */
+.receipt-scan-dialog[data-stage=crop] {width:min(var(--scan-crop-width, 520px),calc(100vw - 24px));}
+.receipt-scan-dialog[data-stage=upload] :is(#scanPhotoTools,#scanRunBar) {display:none;}
+.receipt-scan-dialog:not([data-stage=upload]) #scanDropzone {display:none;}
+.scan-dropzone {display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;width:100%;padding:28px 18px;margin-top:20px;border:1px dashed #6c83a6;border-radius:12px;background:var(--surface-2, #111b2b);color:var(--text);cursor:pointer;text-align:center;}
+.scan-dropzone > .action-icon {width:28px;height:28px;color:#a9c9ff;}
+.scan-dropzone strong {font-size:1rem;}
+.scan-dropzone span {font-size:.85rem;line-height:1.6;}
+.scan-dropzone small {color:var(--muted);font-size:.75rem;}
+.scan-dropzone kbd {display:inline-block;padding:1px 5px;border:1px solid var(--border);border-radius:4px;background:var(--surface);font-family:inherit;white-space:nowrap;}
+.scan-dropzone:hover,.scan-drag-over .scan-dropzone {background:#79acff18;border-color:#79acff;}
+.scan-dropzone:focus-visible {outline:2px solid #79acff;outline-offset:3px;}
+.scan-drag-over {outline:2px solid #79acff;outline-offset:-3px;}
+.receipt-scan-dialog[data-stage=crop] .scan-image-column {position:static;padding:20px 16px 0;}
+.receipt-scan-dialog[data-stage=crop] #scanCanvas {max-height:min(62dvh,calc(100dvh - 300px));}
+#scanCropHint {margin:24px 0 12px;text-align:center;font-size:.75rem;line-height:1.5;}
+#scanRunBar {display:flex;align-items:center;justify-content:flex-end;gap:8px;border-top:1px solid var(--border);margin:4px 0 0;padding:12px 0 0;}
+#scanRunBar .btn-icon {min-height:42px;}
+#scanStatus:empty {display:none;}
+.scan-match {display:grid;gap:6px;color:var(--muted);}
+.scan-match.is-linked {display:flex;color:#8cdbbd;}
+.scan-match-heading {display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.scan-suggestion {border-style:solid;}
+@media(max-width:700px){
+ .scan-dropzone {padding:24px 12px;}
+ #scanRunBar .btn-icon {min-height:44px;}
+ .receipt-scan-dialog[data-stage=crop] .scan-image-column {padding:20px 8px 0;}
+}

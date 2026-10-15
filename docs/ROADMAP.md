@@ -17,6 +17,14 @@
 - Keep Telegram-specific behavior in the client runtime; backend contracts stay shared between Web UI and Telegram.
 
 ## Current Sprint
+### Receipt keyword matching and compact upload — 2026-10-16
+- [x] Rank OCR catalog candidates by individual meaningful words and aliases, with limited typo/layout tolerance. Ignore numeric codes, packaging and generic processing text; show matched words and up to three choices. Package-size agreement only affects ranking; different sizes are labelled and never copied into historical rows.
+- [x] Read-only server check found the existing tomato ketchup and traditional 450g loaf. The revised ranker returns both first for the photographed verbose names. No exact «Колбаса Рубленая» name in the inspected catalog subset: generic sausage matches remain explicit candidates.
+- [x] Empty uploader fits its content, has a clickable/drop area and prominent Ctrl+V / ⌘V. Crop width follows image proportions; hint is centered under the photo, icon actions align right in a footer. Review alone uses a wide dialog.
+- [x] Explicit no-keyword-match feedback; loading/incomplete catalog feedback is separate. Catalog load retries after failure; refreshing hints updates an open search. Interior dialog whitespace no longer dismisses the draft.
+- [x] Validation: 73 scoped parser/search/API/UI-contract checks and 27 distinct browser scenarios passed, including real OCR, file/paste/drop handling, no-match versus catalog failure, keyboard selection and ordinary receipt catalog flows. Compact upload/crop reviewed at 320/390/1440px; all five existing review widths passed. A local browser check using a read-only catalog subset and the user’s real photo confirmed the ketchup/450g loaf rankings and unchanged monetary fields. Private photos/catalog extracts remain ignored and local.
+- [ ] Release verification pending this iteration; OCR engine, arithmetic, schema and saved operations are unchanged.
+
 ### Receipt review and discount placement — 2026-10-15
 - [x] Place a square percent icon beside the unit-price input in create/edit receipts; retain an orange active state, accessible percentage and 44px mobile target.
 - [x] Reuse receipt catalog loading, source-aware offer selection and identity mapping in OCR review. Rank canonical/offer names, layout variants and similar words; show a candidate and searchable keyboard-accessible list. Bind only on explicit selection; keep OCR money and unknown package sizes unchanged.

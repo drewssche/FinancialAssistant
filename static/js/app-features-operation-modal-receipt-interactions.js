@@ -730,6 +730,7 @@
       receiptCatalog: {
         load: loadReceiptTemplateHints,
         suggestions: pickerFeature.getReceiptScanSuggestions,
+        status: pickerFeature.getReceiptCatalogStatus,
         identity(template, shop) {
           // Reuse regular receipt selection, but never copy catalog money or today's package size into an OCR receipt.
           const item = {shop_name: shop, price_touched: true, measurement_touched: true};
