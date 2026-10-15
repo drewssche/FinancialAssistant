@@ -24,7 +24,7 @@
 - [x] Paste JPEG/PNG/WebP images with Ctrl+V / ⌘V in the scan window; reuse file validation/cropping. Keep normal text paste. Confirm replacement of an existing review or running OCR job inside the dialog.
 - [x] Compact scan review cards: four numeric columns on wide desktop, two on narrow/mobile; catalog source stays visible after selection. OCR text remains available separately.
 - [x] Validation: 68 scoped API/parser/UI-contract checks and 41 distinct browser scenarios passed, including real local OCR, catalog identity/money preservation and image/text paste. Discount geometry inspected at 320/390/1440px; scan review at 320/390/1024/1100/1440px.
-- [ ] Release verification: pending this iteration. No OCR-engine, schema or API changes; OCR quality comparison and the remaining stage-5 work stay open.
+- [x] Released `82fa715` via GitHub `main` → server `git pull --ff-only` → app-only rebuild/recreation. Assets `20261015-scan-catalog`; all 11 changed served static hashes match. `/ready` reports unchanged schema `20261013_0050`; all six containers healthy. Companion services, including poopbot, retained their start times/restart counts. Rollback image: `financialassistant-app:before-scan-catalog-20261015`. No OCR-engine, schema or API changes; OCR quality comparison and the remaining stage-5 work stay open.
 
 ### Whole-app UX audit — 2026-10-13
 - [x] Inspect all 11 navigation sections, analytics/catalog/work subviews and selected entry forms against the visual contract using the current code, local mock renders at 390/1440 px and the user's populated catalog screenshot. Record findings, coverage limits and proposed stages in [the UX audit](UI_AUDIT_2026-10-13.md). No application/server changes in this audit.
