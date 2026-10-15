@@ -878,6 +878,7 @@
     selectCreateCategory,
     selectDebtCounterparty,
     selectEditCategory,
+    receiptCatalog: receipt.receiptCatalog,
     createReceiptDraft,
     clearReceiptItems,
     renderReceiptItems,

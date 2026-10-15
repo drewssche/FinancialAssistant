@@ -10,12 +10,22 @@
 - MVP-3 backlog: deeper Telegram Mini App optimization, async jobs and notifications, advanced analytics, optional position-level analytics.
 
 ## Production Track
+
 - Keep Telegram WebApp auth as the primary production path; browser Telegram login remains an optional fallback only when `TELEGRAM_BOT_USERNAME` is configured.
 - Maintain release checks for `initData` freshness, admin approval, rejected/pending states, and admin actions.
 - Continue mobile-first validation for 320-430px viewports, tap targets, keyboard overlap, sticky actions, modal/sheet behavior, and hover-free critical flows.
 - Keep Telegram-specific behavior in the client runtime; backend contracts stay shared between Web UI and Telegram.
 
 ## Current Sprint
+### Receipt review and discount placement — 2026-10-15
+- [x] Place a square percent icon beside the unit-price input in create/edit receipts; retain an orange active state, accessible percentage and 44px mobile target.
+- [x] Reuse receipt catalog loading, source-aware offer selection and identity mapping in OCR review. Rank canonical/offer names, layout variants and similar words; show a candidate and searchable keyboard-accessible list. Bind only on explicit selection; keep OCR money and unknown package sizes unchanged.
+- [x] Manual scan rows use the same picker, and calculate the row total from entered price/quantity/discount until the total is manually overridden. Changing the name or shop removes the previous catalog binding.
+- [x] Paste JPEG/PNG/WebP images with Ctrl+V / ⌘V in the scan window; reuse file validation/cropping. Keep normal text paste. Confirm replacement of an existing review or running OCR job inside the dialog.
+- [x] Compact scan review cards: four numeric columns on wide desktop, two on narrow/mobile; catalog source stays visible after selection. OCR text remains available separately.
+- [x] Validation: 68 scoped API/parser/UI-contract checks and 41 distinct browser scenarios passed, including real local OCR, catalog identity/money preservation and image/text paste. Discount geometry inspected at 320/390/1440px; scan review at 320/390/1024/1100/1440px.
+- [ ] Release verification: pending this iteration. No OCR-engine, schema or API changes; OCR quality comparison and the remaining stage-5 work stay open.
+
 ### Whole-app UX audit — 2026-10-13
 - [x] Inspect all 11 navigation sections, analytics/catalog/work subviews and selected entry forms against the visual contract using the current code, local mock renders at 390/1440 px and the user's populated catalog screenshot. Record findings, coverage limits and proposed stages in [the UX audit](UI_AUDIT_2026-10-13.md). No application/server changes in this audit.
 - [x] User approved the proposed order: catalog and product workspace → operations/plans/debts → timesheet → analytics/dashboard/currency → remaining directories/settings/admin. Do not treat the audit as a completed redesign.

@@ -8,8 +8,8 @@
   const iconButton=(id,icon,label)=>`<button id="${id}" type="button" class="btn btn-secondary btn-icon" aria-label="${label}" title="${label}">${icons.svg(icon)}</button>`;
   dialog.innerHTML=`<header><h3 id="receiptScanTitle">Сканировать чек · пилот</h3>${iconButton('scanClose','close','Закрыть сканирование')}</header>
     <p class="muted-small" id="scanPrivacy">Фото обрабатывается на устройстве. Проверьте результат перед переносом в операцию.</p>
-    <div class="scan-toolbar">${iconButton('scanBack','back','Изменить фото и распознать заново')}${iconButton('scanUpload','upload','Загрузить фото чека')}${iconButton('scanRotate','refresh','Повернуть фото')}${iconButton('scanReset','expand','Сбросить углы')}<input id="scanFile" type="file" accept="image/jpeg,image/png,image/webp" hidden><span id="scanStep" class="muted-small">Один чек на фото · JPG, PNG или WebP до 20 МБ</span></div>
-    <div id="scanWorkspace" hidden><div class="scan-image-column"><div id="scanImageFrame"><canvas id="scanCanvas"></canvas><svg id="scanOutline" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polygon fill="#79acff18" stroke="#79acff" stroke-width=".5"/></svg>${[0,1,2,3].map((i)=>`<button type="button" class="scan-corner" data-corner="${i}" aria-label="Угол ${i+1} чека">${i+1}</button>`).join('')}</div><p id="scanCropHint" class="muted-small">Перетащите четыре угла к краям чека. Клавиатура: стрелки.</p></div>
+    <div class="scan-toolbar">${iconButton('scanBack','back','Изменить фото и распознать заново')}${iconButton('scanUpload','upload','Загрузить фото чека')}${iconButton('scanRotate','refresh','Повернуть фото')}${iconButton('scanReset','expand','Сбросить углы')}<input id="scanFile" type="file" accept="image/jpeg,image/png,image/webp" hidden><span id="scanStep" class="muted-small">Загрузите фото или вставьте Ctrl+V / ⌘V · до 20 МБ</span></div>
+    <div id="scanPasteReplace" class="scan-toolbar" hidden><span>Заменить фото и сбросить текущий черновик?</span>${iconButton("scanPasteAccept","save","Заменить фото")}${iconButton("scanPasteDismiss","close","Оставить текущий чек")}</div><div id="scanWorkspace" hidden><div class="scan-image-column"><div id="scanImageFrame"><canvas id="scanCanvas"></canvas><svg id="scanOutline" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polygon fill="#79acff18" stroke="#79acff" stroke-width=".5"/></svg>${[0,1,2,3].map((i)=>`<button type="button" class="scan-corner" data-corner="${i}" aria-label="Угол ${i+1} чека">${i+1}</button>`).join('')}</div><p id="scanCropHint" class="muted-small">Перетащите четыре угла к краям чека. Клавиатура: стрелки.</p></div>
     <form id="scanReview" hidden><div class="scan-meta"><label class="field"><span>Дата покупки</span><input id="scanDate" type="date" required></label><label class="field"><span>Магазин</span><input id="scanShop" maxlength="160" required></label><label class="field"><span>Итого по чеку</span><input id="scanTotal" inputmode="decimal" required></label><label class="field"><span>Валюта</span><select id="scanCurrency"><option>BYN</option><option>RUB</option><option>USD</option><option>EUR</option></select></label></div>
     <div class="scan-review-toolbar"><strong>Позиции</strong>${iconButton('scanAddRow','plus','Добавить строку')}${iconButton('scanShowText','receipt','Распознанный текст')}</div><div id="scanRows"></div>
     <p id="scanArithmetic" role="status"></p><label class="scan-confirm"><input id="scanConfirmed" type="checkbox">Сверил дату, магазин, валюту и позиции с фото</label>
@@ -17,7 +17,8 @@
     <p id="scanStatus" class="muted-small" role="status"></p><div class="scan-toolbar" id="scanRunBar"><button id="scanRun" type="button" class="btn btn-primary" disabled>Распознать</button><button id="scanCancel" type="button" class="btn btn-secondary" hidden>Отменить</button></div>
     <dialog id="scanTextDialog" class="choice-dialog task-dialog"><header><h3>Распознанный текст</h3>${iconButton('scanTextClose','close','Закрыть текст')}</header><textarea id="scanText" rows="15" maxlength="80000" aria-label="Распознанный текст"></textarea><button id="scanReparse" class="btn btn-primary" type="button">Разобрать исправленный текст</button></dialog>`;
   document.body.append(dialog);
-  let source=null, points=[], draft=null, job=null, generation=0, transferred=false, originalText='', busy=false;
+  let source=null, points=[], draft=null, job=null, generation=0, transferred=false, originalText='', busy=false, pendingPaste=null;
+  const catalog=()=>window.App.getRuntimeModule('operation-modal').receiptCatalog;
   const canvas=node('scanCanvas');
   function resetPoints(){points=[[0,0],[1,0],[1,1],[0,1]];draw();}
   function draw(){
@@ -33,10 +34,10 @@
     node('scanCancel').hidden=!value;
     dialog.querySelectorAll('[data-corner]').forEach(b=>b.disabled=value);
   }
-  function invalidateReview(){delete dialog.dataset.stage;node('scanStep').textContent='Один чек на фото · JPG, PNG или WebP до 20 МБ';draft=null;node('scanReview').hidden=true;node('scanConfirmed').checked=false;transferred=false;}
+  function invalidateReview(){delete dialog.dataset.stage;node('scanStep').textContent='Загрузите фото или вставьте Ctrl+V / ⌘V · до 20 МБ';draft=null;node('scanReview').hidden=true;node('scanConfirmed').checked=false;transferred=false;}
   function cancel(){generation++;job?.cancel();job=null;setBusy(false);status('Распознавание отменено');}
-  function cleanup(){cancel();node('scanTextDialog').close();if(source)source.width=source.height=1;source=null;canvas.width=canvas.height=1;node('scanFile').value='';node('scanText').value='';node('scanRows').replaceChildren();originalText='';invalidateReview();node('scanWorkspace').hidden=true;setBusy(false);status('');}
-  function open(){cleanup();dialog.showModal();node('scanUpload').focus();}
+  function cleanup(){pendingPaste=null;node('scanPasteReplace').hidden=true;cancel();node('scanTextDialog').close();if(source)source.width=source.height=1;source=null;canvas.width=canvas.height=1;node('scanFile').value='';node('scanText').value='';node('scanRows').replaceChildren();originalText='';invalidateReview();node('scanWorkspace').hidden=true;setBusy(false);status('');}
+  function open(){cleanup();dialog.showModal();node('scanUpload').focus();catalog().load().then(()=>{if(draft)refreshCatalog();}).catch(()=>{});}
   node('scanClose').onclick=()=>dialog.close();
   dialog.addEventListener('close',cleanup);
   dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close();});
@@ -44,11 +45,14 @@
   document.addEventListener('keydown',e=>{
     if(e.key!=='Escape'||!dialog.open||node('appChoiceDialog')?.open)return;
     e.preventDefault();e.stopImmediatePropagation();
+    const list=dialog.querySelector('.scan-catalog-list:not([hidden])');
+    if(list&&!node('scanTextDialog').open){closeCatalogLists();return;}
     if(node('scanTextDialog').open)node('scanTextDialog').close();else dialog.close();
   },true);
   node('scanUpload').onclick=()=>node('scanFile').click();
-  node('scanFile').onchange=async()=>{
-    const file=node('scanFile').files[0];if(!file)return;
+  async function loadImage(file){
+    if(!file)return;
+    pendingPaste=null;node('scanPasteReplace').hidden=true;
     if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>20*1024*1024){status('Выберите JPG, PNG или WebP размером до 20 МБ');node('scanFile').value='';return;}
     cancel();invalidateReview();const token=++generation;setBusy(true);status('Открываю фото…');
     let bitmap;
@@ -62,6 +66,17 @@
     }catch(e){if(token===generation)status(e.message||'Не удалось прочитать фото');}
     finally{bitmap?.close();if(token===generation){setBusy(false);node('scanFile').value='';}}
   };
+  node('scanFile').onchange=()=>loadImage(node('scanFile').files[0]);
+  dialog.addEventListener('paste',e=>{
+    if(node('scanTextDialog').open)return;
+    const file=Array.from(e.clipboardData?.items||[]).find(i=>i.kind==='file'&&i.type.startsWith('image/'))?.getAsFile() || Array.from(e.clipboardData?.files||[]).find(f=>f.type.startsWith('image/'));
+    if(!file)return; // Leave normal text paste in every input untouched.
+    e.preventDefault();
+    if(draft||busy){pendingPaste=file;node('scanPasteReplace').hidden=false;node('scanPasteAccept').focus();}
+    else loadImage(file);
+  });
+  node('scanPasteAccept').onclick=()=>{const file=pendingPaste;pendingPaste=null;node('scanPasteReplace').hidden=true;loadImage(file);};
+  node('scanPasteDismiss').onclick=()=>{pendingPaste=null;node('scanPasteReplace').hidden=true;};
   node('scanBack').onclick=()=>{invalidateReview();draw();status('');};
   node('scanRotate').onclick=()=>{
     if(!source||busy)return;const rotated=document.createElement('canvas');rotated.width=source.height;rotated.height=source.width;
@@ -96,24 +111,78 @@
     draft=value;dialog.dataset.stage='review';node('scanStep').textContent='Проверьте поля по фото';node('scanDate').value=draft.date;node('scanShop').value=draft.shop;node('scanTotal').value=decimal(draft.total);
     node('scanReview').hidden=false;node('scanConfirmed').checked=false;renderRows();validate();
   }
+  function closeCatalogLists(){
+    dialog.querySelectorAll('.scan-catalog-list').forEach(n=>n.hidden=true);
+    dialog.querySelectorAll('[data-scan-field=name]').forEach(n=>{n.setAttribute('aria-expanded','false');n.removeAttribute('aria-activedescendant');});
+  }
+  function refreshCatalog(){
+    node('scanRows').querySelectorAll('.scan-row').forEach(el=>el.refreshCatalog?.());
+  }
   function renderRows(){
     node('scanRows').replaceChildren();
     draft.rows.forEach((row,index)=>{
       const el=document.createElement('section');el.className='scan-row';
-      el.innerHTML=`<label class="field scan-name"><span>Позиция ${index+1}</span><input data-scan-field="name" maxlength="160" required></label>${iconButton('', 'trash', 'Удалить позицию '+(index+1))}<div class="scan-row-numbers">${[['price','Цена до скидки'],['quantity','Количество'],['discount','Скидка на строку'],['total','Оплачено']].map(([field,label])=>`<label class="field"><span>${label}</span><input data-scan-field="${field}" inputmode="decimal" required></label>`).join('')}</div><label class="field scan-discount-type"><span>Тип скидки</span><select data-scan-field="discount_type"><option value="promo">Акция</option><option value="loyalty_points">Баллы</option><option value="coupon">Купон</option></select></label><small class="muted-small scan-source"></small>`;
-      el.querySelector('.scan-source').textContent=row.source;
-      el.querySelector('[data-scan-field=name]').value=row.name;
+      el.innerHTML=`<div class="scan-name"><label class="field"><span>Товар ${index+1}</span><input data-scan-field="name" maxlength="160" placeholder="Найти или ввести товар" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="scanCatalog${index}" required></label><div id="scanCatalog${index}" class="scan-catalog-list app-popover" role="listbox" hidden></div></div>${iconButton('', 'trash', 'Удалить позицию '+(index+1))}<div class="scan-match"></div><div class="scan-row-numbers">${[['price','Цена за ед.'],['quantity','Кол-во'],['discount','Скидка, сумма'],['total','Оплачено']].map(([field,label])=>`<label class="field"><span>${label}</span><input data-scan-field="${field}" inputmode="decimal" required></label>`).join('')}</div><label class="field scan-discount-type"><span>Тип скидки</span><select data-scan-field="discount_type"><option value="promo">Акция</option><option value="loyalty_points">Баллы</option><option value="coupon">Купон</option></select></label>`;
+      const name=el.querySelector('[data-scan-field=name]'), list=el.querySelector('.scan-catalog-list'), match=el.querySelector('.scan-match');
+      name.value=row.name;name.title=row.source||'';
+      el.querySelector('[data-scan-field=price]').title='Цена за единицу до скидки';
+      let options=[],active=-1;
+      function choose(item){
+        row.catalog=catalog().identity(item,node('scanShop').value);
+        row.name=row.catalog.name;name.value=row.name;
+        closeCatalogLists();node('scanConfirmed').checked=false;el.refreshCatalog();validate();name.focus();closeCatalogLists();
+      }
+      function suggestionButton(item){
+        const b=document.createElement('button');b.type='button';b.className='scan-catalog-option';
+        const title=document.createElement('strong');title.textContent=item.name;
+        const sub=document.createElement('small');sub.textContent=[item.selected_offer?.shop_name||item.selected_offer?.source_name||item.shop_name, item.brand_name].filter(Boolean).join(' · ')||'Каталог';
+        b.append(title,sub);b.onclick=()=>choose(item);return b;
+      }
+      el.refreshCatalog=()=>{
+        match.replaceChildren();
+        if(row.catalog){
+          const label=document.createElement('span');label.textContent='Из каталога · '+(row.catalog.product_name||row.name);match.append(label);
+          const clear=document.createElement('button');clear.type='button';clear.className='btn btn-secondary btn-icon';window.App.icons.apply(clear,'unlink','Отвязать товар каталога');clear.onclick=()=>{delete row.catalog;node('scanConfirmed').checked=false;el.refreshCatalog();validate();};match.append(clear);
+        }else if(row.name.trim()){
+          const candidate=catalog().suggestions(row.name,node('scanShop').value,1)[0];
+          if(candidate){const b=suggestionButton(candidate);b.classList.add('scan-suggestion');b.title='Выбрать похожий товар из каталога';b.querySelector('small').textContent='Похожий товар · выбрать';match.append(b);}
+        }
+        match.hidden=!match.childElementCount;
+      };
+      function search(){
+        closeCatalogLists();options=catalog().suggestions(name.value,node('scanShop').value,8);active=-1;list.replaceChildren();
+        options.forEach((item,i)=>{const b=suggestionButton(item);b.id=`scanOption${index}-${i}`;b.setAttribute('role','option');b.setAttribute('aria-selected','false');b.tabIndex=-1;list.append(b);});
+        if(!options.length){const empty=document.createElement('span');empty.className='muted-small';empty.textContent='Нет совпадений — можно оставить своё название';list.append(empty);}
+        list.hidden=false;name.setAttribute('aria-expanded','true');
+      }
+      name.onfocus=search;
+      name.onkeydown=e=>{
+        if(['ArrowDown','ArrowUp'].includes(e.key)){
+          e.preventDefault();if(list.hidden)search();if(!options.length)return;
+          active=active<0?(e.key==='ArrowDown'?0:options.length-1):(active+(e.key==='ArrowDown'?1:-1)+options.length)%options.length;
+          Array.from(list.children).forEach((b,i)=>b.setAttribute('aria-selected',String(i===active)));
+          name.setAttribute('aria-activedescendant',list.children[active].id);list.children[active].scrollIntoView({block:'nearest'});
+        }else if(e.key==='Enter'&&!list.hidden){e.preventDefault();if(active>=0)choose(options[active]);}
+      };
+      el.addEventListener('focusout',()=>setTimeout(()=>{if(!el.querySelector('.scan-name').contains(document.activeElement)){list.hidden=true;name.setAttribute('aria-expanded','false');}},0));
       for(const field of ['price','quantity','discount','total']){const input=el.querySelector(`[data-scan-field=${field}]`);input.value=field==='quantity'?row.quantity??'':decimal(row[field]);input.placeholder='Не распознано';}
       el.querySelector('select').value=row.discount_type||'promo';el.querySelector('.scan-discount-type').hidden=!row.discount;
       el.addEventListener('input',e=>{
         const field=e.target.dataset.scanField;if(!field)return;
-        row[field]=field==='name'||field==='discount_type'?e.target.value:field==='quantity'?Number(e.target.value.replace(',','.')):inputMoney(e.target.value);
+        row[field]=field==='name'||field==='discount_type'?e.target.value:field==='quantity'?(e.target.value.trim()?Number(e.target.value.replace(',','.')):null):inputMoney(e.target.value);
+        if(field==='name'){delete row.catalog;el.refreshCatalog();search();}
+        if(field==='total')row.autoTotal=false;
+        if(row.manual&&row.autoTotal&&['price','quantity','discount'].includes(field)){
+          row.total=row.price!=null&&row.quantity>0&&row.discount!=null?Math.round(row.price*Math.round(row.quantity*1000)/1000)-row.discount:null;
+          el.querySelector('[data-scan-field=total]').value=decimal(row.total);
+        }
         el.querySelector('.scan-discount-type').hidden=!row.discount;node('scanConfirmed').checked=false;validate();
       });
-      el.querySelector('button').onclick=()=>{draft.rows.splice(index,1);node('scanConfirmed').checked=false;renderRows();validate();};
-      node('scanRows').append(el);
+      el.querySelector(':scope > button').onclick=()=>{draft.rows.splice(index,1);node('scanConfirmed').checked=false;renderRows();validate();};
+      node('scanRows').append(el);el.refreshCatalog();
     });
   }
+  dialog.addEventListener('pointerdown',e=>{if(!e.target.closest('.scan-name'))closeCatalogLists();});
   function readMeta(){if(!draft)return;draft.date=node('scanDate').value;draft.shop=node('scanShop').value;draft.total=inputMoney(node('scanTotal').value);}
   function validate(){
     if(!draft)return;readMeta();const errors=parser.validate(draft);
@@ -121,9 +190,9 @@
     node('scanArithmetic').classList.toggle('scan-error',!!errors.length);
     node('scanTransfer').disabled=errors.length>0||!node('scanConfirmed').checked||transferred;return errors;
   }
-  for(const id of ['scanDate','scanShop','scanTotal','scanCurrency'])node(id).addEventListener('input',()=>{node('scanConfirmed').checked=false;validate();});
+  for(const id of ['scanDate','scanShop','scanTotal','scanCurrency'])node(id).addEventListener('input',()=>{node('scanConfirmed').checked=false;if(id==='scanShop'){draft?.rows.forEach(r=>delete r.catalog);refreshCatalog();}validate();});
   node('scanConfirmed').onchange=validate;
-  node('scanAddRow').onclick=()=>{if(draft.rows.length>=150)return;draft.rows.push({name:'',price:null,quantity:1,discount:0,total:null,source:'Добавлено вручную',discount_type:'promo'});node('scanConfirmed').checked=false;renderRows();validate();node('scanRows').lastElementChild.querySelector('input').focus();};
+  node('scanAddRow').onclick=()=>{if(draft.rows.length>=150)return;draft.rows.push({name:'',price:null,quantity:1,discount:0,total:null,source:'Добавлено вручную',discount_type:'promo',manual:true,autoTotal:true});node('scanConfirmed').checked=false;renderRows();validate();node('scanRows').lastElementChild.querySelector('input').focus();};
   node('scanShowText').onclick=()=>node('scanTextDialog').showModal();
   node('scanTextClose').onclick=()=>node('scanTextDialog').close();
   node('scanReparse').onclick=()=>{showDraft(parser.parse(node('scanText').value));node('scanTextDialog').close();};
@@ -136,7 +205,7 @@
     modal.setOperationKind('create','expense');
     node('opDate').value=draft.date;node('opDate').dispatchEvent(new Event('change',{bubbles:true}));
     node('opCurrency').value=node('scanCurrency').value;node('opCurrency').dispatchEvent(new Event('change',{bubbles:true}));
-    state.createReceiptItems=draft.rows.map(r=>modal.createReceiptDraft({name:r.name,quantity:r.quantity,shop_name:draft.shop,
+    state.createReceiptItems=draft.rows.map(r=>modal.createReceiptDraft({...r.catalog,name:r.name,quantity:r.quantity,shop_name:draft.shop,
       unit_price:r.price/100, is_discounted:r.discount>0, regular_unit_price:r.discount>0?r.price/100:null,
       discount_mode:r.discount>0?'amount':null, discount_value:r.discount>0?r.discount/100:null,
       discount_type:r.discount>0?r.discount_type||'promo':null,note:('OCR: '+r.source).slice(0,300)},'create'));

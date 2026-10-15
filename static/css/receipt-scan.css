@@ -21,7 +21,7 @@
 .scan-row-numbers,.scan-source,.scan-discount-type {grid-column:1/-1;}
 .scan-source {white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.4;}
 .scan-confirm {display:flex;align-items:start;gap:10px;margin:16px 0;}
-.scan-confirm input {width:auto;min-height:20px;flex-shrink:0;}
+.scan-confirm input {width:20px;height:20px;min-height:20px;flex:0 0 20px;margin:0;}
 .scan-error {color:#ffaaaa;}
 #scanReview footer {display:flex;justify-content:flex-end;}
 #scanText {width:100%;min-height:200px;box-sizing:border-box;}
@@ -40,7 +40,7 @@
 .receipt-scan-dialog :is(input:not([type=checkbox]),select,textarea) {min-width:0;width:100%;box-sizing:border-box;}
 .receipt-scan-dialog .field {min-width:0;}
 #scanCropHint {margin-top:28px;}
-@media(max-width:450px){.scan-meta {grid-template-columns:minmax(0,1fr);}}
+@media(max-width:450px){.scan-meta > .field:nth-child(-n+2) {grid-column:1/-1;}}
 .receipt-store-input-row {display:flex;align-items:center;gap:8px;min-width:0;}
 .receipt-store-input-row input {flex:1;min-width:0;}
 #openReceiptScan {flex:none;width:42px;height:42px;padding:0;}
@@ -48,3 +48,32 @@
 #scanBack {display:none;}
 .receipt-scan-dialog[data-stage=review] #scanBack {display:inline-flex;}
 .receipt-scan-dialog[data-stage=review] :is(#scanUpload,#scanRotate,#scanReset,#scanRunBar,#scanCropHint,#scanOutline,.scan-corner) {display:none;}
+/* Review uses compact receipt rows and the same searchable catalog as operations. */
+.receipt-scan-dialog[data-stage=review] {width:min(1360px,calc(100vw - 24px));}
+.receipt-scan-dialog[data-stage=review] .scan-image-column {padding:0;top:12px;}
+.scan-row {padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2, #111b2b);margin-bottom:10px;gap:10px;}
+.scan-name {position:relative;min-width:0;}
+.scan-name .field {margin:0;}
+.scan-catalog-list {position:absolute;top:100%;left:0;right:0;z-index:8;max-height:260px;overflow:auto;padding:4px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2, #111b2b);box-shadow:0 8px 24px #0006;}
+.scan-catalog-option {display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:4px;width:100%;min-height:44px;padding:10px;border:0;border-radius:8px;background:transparent;color:var(--text);cursor:pointer;white-space:normal;}
+.scan-catalog-option strong {font-size:.85rem;overflow-wrap:anywhere;}
+.scan-catalog-option small {font-size:.72rem;color:var(--muted);}
+.scan-catalog-option:hover,.scan-catalog-option[aria-selected=true] {background:#79acff22;}
+.scan-catalog-option:focus-visible {outline:2px solid #79acff;outline-offset:-2px;}
+.scan-match {grid-column:1/-1;display:flex;align-items:center;gap:8px;min-width:0;font-size:.75rem;color:#8cdbbd;}
+.scan-match > span {flex:1;overflow-wrap:anywhere;}
+.scan-suggestion {border:1px dashed var(--border);padding:8px 10px;}
+.scan-row-numbers {grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;}
+.scan-row .field > span {font-size:.75rem;}
+.scan-row input {min-height:42px;}
+.scan-row [aria-invalid=true] {border-color:#f09696;}
+#scanReview footer {position:sticky;bottom:-20px;background:var(--surface);padding:12px 0;z-index:2;border-top:1px solid var(--border);}
+@media(max-width:1100px){.scan-row-numbers {grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:700px){
+ .receipt-scan-dialog[data-stage=review] #scanWorkspace {gap:12px;}
+ .receipt-scan-dialog[data-stage=review] .scan-image-column {position:static;}
+ .scan-row input {min-height:44px;}
+ #scanReview footer {bottom:-16px;}
+}
+.scan-catalog-list {width:100%;max-width:none;box-sizing:border-box;}
+.scan-row:has(.scan-catalog-list:not([hidden])) .scan-match {visibility:hidden;}

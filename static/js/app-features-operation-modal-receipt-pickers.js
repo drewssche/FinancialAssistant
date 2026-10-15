@@ -351,6 +351,44 @@
       return limit > 0 ? matches.slice(0, limit) : matches;
     }
 
+    function getReceiptScanSuggestions(query, shopName = "", limit = 6) {
+      const search = window.App.search;
+      const candidates = getReceiptTemplateSuggestions("", shopName, 0);
+      // OCR often mixes Latin lookalikes and Cyrillic, splits words and reorders them.
+      // Ranking only proposes a match; a click is required to bind an identity.
+      const clean = value => search.normalize(value).replace(/[aceopxykmthb]/g, c => ({a:'а',c:'с',e:'е',o:'о',p:'р',x:'х',y:'у',k:'к',m:'м',t:'т',h:'н',b:'в'})[c]).replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+      const tokens = value => clean(value).split(/\s+/).filter(t => t.length >= 3);
+      function similarity(a, b) {
+        if (a === b) return 1;
+        if (Math.min(a.length,b.length) >= 4 && (a.startsWith(b) || b.startsWith(a))) return .86;
+        if (Math.abs(a.length-b.length)>2) return 0;
+        let row=Array.from({length:b.length+1},(_,i)=>i);
+        for(let i=1;i<=a.length;i++) {
+          const next=[i];
+          for(let j=1;j<=b.length;j++)next[j]=Math.min(next[j-1]+1,row[j]+1,row[j-1]+Number(a[i-1]!==b[j-1]));
+          row=next;
+        }
+        return 1-row[b.length]/Math.max(a.length,b.length);
+      }
+      const variants = search.variants(query).filter(Boolean);
+      return candidates.map((item,index)=>{
+        const aliases=[item.name, item.selected_offer?.name, ...(item.offers || []).map(o=>o.name)].filter(Boolean);
+        let score=variants.length ? 0 : 1;
+        for(const alias of aliases) {
+          if(variants.some(v=>search.normalize(alias)===v))score=Math.max(score,3);
+          else if(variants.length && search.matches(alias,query))score=Math.max(score,2);
+          for(const variant of variants) {
+            const from=tokens(variant), to=tokens(alias);
+            if(!from.length||!to.length)continue;
+            const scores=from.map(a=>Math.max(...to.map(b=>similarity(a,b))));
+            const mean=scores.reduce((a,b)=>a+b,0)/from.length;
+            if(mean>=.68 && scores.some(s=>s>=.8))score=Math.max(score,mean);
+          }
+        }
+        return {item,score,index};
+      }).filter(r=>r.score>0).sort((a,b)=>b.score-a.score||a.index-b.index).slice(0,limit).map(r=>r.item);
+    }
+
     function getReceiptBrandSuggestions(query = "") {
       const normalized = normalizeReceiptName(query).toLowerCase();
       return (state.itemBrands || [])
@@ -921,6 +959,7 @@
       getReceiptCategoriesSorted,
       getReceiptTemplateMatch,
       getReceiptTemplateSuggestions,
+      getReceiptScanSuggestions,
       getReceiptBrandSuggestions,
       getReceiptShopSuggestions,
       upsertLocalReceiptTemplate,

@@ -252,7 +252,8 @@
         }
         const discountToggle = row.querySelector("button[data-receipt-discount-toggle]");
         if (discountToggle && receiptDiscountToggleLabel) {
-          discountToggle.textContent = receiptDiscountToggleLabel(updated.item);
+          discountToggle.title = receiptDiscountToggleLabel(updated.item);
+          discountToggle.setAttribute("aria-label", discountToggle.title);
         }
       }
       if (field === "category_search") {
@@ -726,6 +727,17 @@
       hideAllReceiptPickers();
     }
     return {
+      receiptCatalog: {
+        load: loadReceiptTemplateHints,
+        suggestions: pickerFeature.getReceiptScanSuggestions,
+        identity(template, shop) {
+          // Reuse regular receipt selection, but never copy catalog money or today's package size into an OCR receipt.
+          const item = {shop_name: shop, price_touched: true, measurement_touched: true};
+          applyReceiptTemplateToItem(item, template);
+          const keys = ['name', 'template_id', 'product_id', 'product_name', 'product_image_id', 'item_image_id', 'source_id', 'source_image_id', 'brand_id', 'brand_name', 'brand_accent_color', 'brand_image_id', 'category_id'];
+          return Object.fromEntries(keys.map(key => [key, item[key] ?? null]));
+        },
+      },
       loadReceiptTemplateHints,
       hideAllReceiptPickers,
       handleReceiptItemsListInput,

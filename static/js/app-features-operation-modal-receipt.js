@@ -691,7 +691,7 @@
                 <div class="receipt-price-field">
                   <input type="text" inputmode="decimal" data-receipt-field="unit_price" ${item.discount_mode ? "readonly" : ""} value="${formatReceiptInputAmount(item.discount_mode ? total / (item.quantity || 1) : item.unit_price)}" placeholder="Цена" title="${item.discount_mode ? "Эффективная цена после скидки; итог рассчитывается отдельно" : "Цена покупки в " + esc(getReceiptCurrencyLabel(mode))}" aria-label="Цена позиции" />
                 </div>
-                <button class="receipt-discount-toggle ${item.is_discounted ? "is-active" : ""}" type="button" data-receipt-discount-toggle="${item.draft_id}" aria-pressed="${item.is_discounted ? "true" : "false"}" title="Скидка, купон, промокод или бонусы">${receiptDiscountToggleLabel(item)}</button>
+                <button class="receipt-discount-toggle ${item.is_discounted ? "is-active" : ""}" type="button" data-receipt-discount-toggle="${item.draft_id}" aria-pressed="${item.is_discounted ? "true" : "false"}" aria-expanded="${item.discount_expanded ? "true" : "false"}" aria-label="${receiptDiscountToggleLabel(item)}" title="${receiptDiscountToggleLabel(item)}">${window.App.icons.svg("discount")}</button>
                 <div class="receipt-discount-type-row ${item.is_discounted ? "" : "hidden"}" role="group" aria-label="Тип скидки">${discountTypeButtons}</div>
                 <div class="receipt-price-field receipt-regular-price-field ${item.is_discounted ? "" : "hidden"}">
                   <input class="receipt-regular-price" type="text" inputmode="decimal" data-receipt-field="regular_unit_price" value="${formatReceiptInputAmount(item.regular_unit_price)}" placeholder="До скидки" title="Обычная цена для истории" aria-label="Цена до скидки" />
@@ -712,7 +712,7 @@
       });
       ctx.listNode.querySelectorAll('textarea[data-receipt-field="name"]').forEach(resizeReceiptNameTextarea);
       ctx.listNode.querySelectorAll('.receipt-item-row').forEach(row => {
-        row.querySelector('.receipt-line-total')?.append(row.querySelector('.receipt-discount-toggle'));
+        row.querySelector('.receipt-price-field')?.append(row.querySelector('.receipt-discount-toggle'));
       });
       // Discount editing is independent of catalog details.
       ctx.listNode.querySelectorAll('.receipt-item-row-discounted').forEach(row => {
@@ -1040,6 +1040,7 @@
     }
 
     return {
+      receiptCatalog: interactions.receiptCatalog,
       createReceiptDraft,
       clearReceiptItems,
       setReceiptEnabled,
