@@ -22,7 +22,7 @@
 - [x] New products inherit unambiguous explicit receipt/plan measurements; existing catalog settings and historical receipt snapshots stay unchanged.
 - [x] Purchase-price chart reuses analytics tooltip styling, nearest-point hover, touch and keyboard navigation; percentages are relative to the preceding purchase.
 - [x] Validation: 88 API/parser/search/contract checks; 50 scan/operation/chart browser cases plus 4 catalog measurement cases; visual review at 320/390/1440px.
-- [ ] GitHub → server pull release and served-asset verification.
+- [x] Released `1d82020` via GitHub main → server `git pull --ff-only` → app-only rebuild. `/ready` and 10 served-asset hashes verified; schema remains `20261013_0050`, companion services unchanged. Rollback image: `financialassistant-app:before-receipt-units-20261016`. Touch-tooltip follow-up: 3/3 browser cases passed.
 
 ### Receipt keyword matching and compact upload — 2026-10-16
 - [x] Rank OCR catalog candidates by individual meaningful words and aliases, with limited typo/layout tolerance. Ignore numeric codes, packaging and generic processing text; show matched words and up to three choices. Package-size agreement only affects ranking; different sizes are labelled and never copied into historical rows.
