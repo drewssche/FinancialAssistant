@@ -66,7 +66,6 @@
     const storeInput = store.querySelector('input');
     const storeRow = document.createElement('div'); storeRow.className = 'receipt-store-input-row';
     store.append(storeRow); storeRow.append(storeInput);
-    if (create && byId('openReceiptScan')) storeRow.append(byId('openReceiptScan'));
     receipt.prepend(store);
     window.App.getRuntimeModule('operation-store-picker').bind(store, mode);
     const currency = byId(`${prefix}Currency`), currencyAnchor = document.createComment('operation currency');
@@ -117,6 +116,7 @@
     }
     extra.open = true; check.open = true; if (entry) entry.open = true;
     const plan = mode === 'create' && window.App.state.createFlowMode === 'plan';
+    if (mode === 'create' && byId('openReceiptScan')) byId('openReceiptScan').hidden = !operation || plan;
     const note = byId(`${prefix}Note`);
     if (plan && note.parentElement !== view.form) extra.before(note);
     if (!plan && note.parentElement !== extra) extra.prepend(note);

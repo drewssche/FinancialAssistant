@@ -99,7 +99,9 @@
         rowItem.variant_status = "";
       }
       if (!rowItem.measurement_touched) {
-        Object.assign(rowItem, window.App.measurements.snapshot(product || template));
+        Object.assign(rowItem, window.App.measurements.snapshot(offer?.measurement_source ? offer : template.measurement_source ? template : product || template));
+        rowItem.variant_id = offer?.variant_id || template.variant_id || null;
+        rowItem.variant_snapshot = null;
       }
       rowItem.product_id = productId;
       rowItem.product_name = normalizeReceiptName(template.product_name || product?.name || template.name || "");
@@ -744,13 +746,11 @@
         suggestions: pickerFeature.getReceiptScanSuggestions,
         status: pickerFeature.getReceiptCatalogStatus,
         identity(template, shop) {
-          // Reuse regular receipt selection, but never copy catalog money or today's package size into an OCR receipt.
-          const item = {shop_name: shop, price_touched: true, measurement_touched: true};
+          // Explicit catalog choice uses the selected source size; OCR money remains untouched.
+          const item = {shop_name: shop, price_touched: true, measurement_touched: false};
           applyReceiptTemplateToItem(item, template);
           const keys = ['name', 'template_id', 'product_id', 'product_name', 'product_image_id', 'item_image_id', 'source_id', 'source_image_id', 'brand_id', 'brand_name', 'brand_accent_color', 'brand_image_id', 'category_id'];
-          const product = (state.receiptProductHints || []).find(p => Number(p.id) === Number(item.product_id));
-          // Explicit catalog choice supplies only the sale unit; old package sizes remain unknown.
-          return {...Object.fromEntries(keys.map(key => [key, item[key] ?? null])), sale_unit: product?.sale_unit || null};
+          return {...Object.fromEntries(keys.map(key => [key, item[key] ?? null])), ...window.App.measurements.snapshot(item), variant_id:item.variant_id||null};
         },
       },
       loadReceiptTemplateHints,

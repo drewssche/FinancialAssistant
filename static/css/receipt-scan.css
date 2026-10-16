@@ -125,3 +125,10 @@
 #scanMathHint {margin: 8px 0 12px; line-height: 1.4;}
 
 .scan-codes-host {grid-column:1 / -1;min-width:0;}
+
+#createModal .receipt-scan-entry { display: flex; align-items: center; justify-content: flex-start; gap: 12px; width: 100%; padding: 14px 16px; margin: 4px 0 16px; border: 1px solid #b47b39; background: linear-gradient(110deg, #54371d, #202d42); text-align: left; white-space: normal; }
+#createModal .receipt-scan-entry[hidden] { display: none; }
+.receipt-scan-entry svg { width: 26px; height: 26px; flex-shrink: 0; color: #ffaf58; }
+.receipt-scan-entry span { display: grid; gap: 4px; }
+.receipt-scan-entry strong { font-size: 15px; }
+.receipt-scan-entry small { color: var(--muted); font-weight: 400; }

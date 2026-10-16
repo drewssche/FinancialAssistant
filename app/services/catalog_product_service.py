@@ -742,6 +742,8 @@ class CatalogProductService:
             offer_ids=[int(offer.id) for offer in offers],
         )
 
+        from app.repositories.catalog_measurement_repo import offer_measurements
+        measurements = offer_measurements(self.db, user_id=user_id, template_ids=[int(o.id) for o in offers])
         result: list[dict] = []
         for product in products:
             product_offers = offers_by_product.get(int(product.id), [])
@@ -756,6 +758,8 @@ class CatalogProductService:
                 )
                 for offer in product_offers
             ]
+            for payload in offer_payloads:
+                payload.update(measurements.get(payload['id'], {}))
             current_prices = [
                 item["latest_unit_price"]
                 for item in offer_payloads

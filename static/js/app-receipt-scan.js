@@ -174,7 +174,7 @@
       const unitTitle=document.createElement('span');unitTitle.textContent='Единица цены';unitHost.append(unitTitle);
       for(const [unit,label] of [['','Не указана'],...Object.entries(window.App.measurements.units)]){
         const button=document.createElement('button');button.type='button';button.className='btn btn-secondary measurement-unit';button.dataset.scanUnit=unit;button.textContent=label;
-        button.onclick=()=>{row.sale_unit=unit||null;row.variant_id=null;row.variant_snapshot=null;row.code_save=false;row.measurement_touched=true;refreshUnits();node('scanConfirmed').checked=false;validate();};unitHost.append(button);
+        button.onclick=()=>{row.sale_unit=unit||null;row.package_quantity=null;row.package_unit=null;row.variant_id=null;row.variant_snapshot=null;row.code_save=false;row.measurement_touched=true;refreshUnits();node('scanConfirmed').checked=false;validate();};unitHost.append(button);
       }
       function refreshUnits(){
         unitHost.querySelectorAll('button').forEach(button=>{const active=button.dataset.scanUnit===(row.sale_unit||'');button.classList.toggle('is-active',active);button.setAttribute('aria-pressed',String(active));});
@@ -183,14 +183,14 @@
           input.previousElementSibling.textContent=field==='price'?window.App.measurements.priceLabel(row):window.App.measurements.quantityLabel(row);
         }
       }
-      function unlink(){delete row.catalog;row.variant_id=null;row.variant_snapshot=null;row.code_match_label='';row.code_save=false;refreshCategory();if(!row.measurement_touched)row.sale_unit=null;refreshUnits();}
+      function unlink(){delete row.catalog;row.variant_id=null;row.variant_snapshot=null;row.code_match_label='';row.code_save=false;refreshCategory();if(!row.measurement_touched)Object.assign(row,window.App.measurements.snapshot());refreshUnits();}
       refreshUnits();
       let options=[],active=-1;
       function choose(item){
         unlink();
         row.catalog=catalog().identity(item,node('scanShop').value);
         row.name=row.catalog.name;name.value=row.name;refreshCategory();
-        if(!row.measurement_touched)row.sale_unit=row.catalog.sale_unit;
+        if(!row.measurement_touched){Object.assign(row,window.App.measurements.snapshot(row.catalog));row.variant_id=row.catalog.variant_id||null;}
         refreshUnits();
         closeCatalogLists();node('scanConfirmed').checked=false;el.refreshCatalog();validate();name.focus();closeCatalogLists();
       }
@@ -307,9 +307,10 @@
     node('opAmount').value=decimal(draft.total);node('opAmount').dispatchEvent(new Event('input',{bubbles:true}));
     modal.renderReceiptSummary('create');dialog.close();
   };
-  const button=document.createElement('button');button.type='button';button.id='openReceiptScan';button.className='btn btn-secondary btn-icon';icons.apply(button,'receipt','Сканировать чек');button.onclick=open;
-  // Layout setup moves header controls but retains this button and its listener.
-  node('opReceiptFields').prepend(button);
+  const button=document.createElement('button');button.type='button';button.id='openReceiptScan';button.className='btn btn-secondary receipt-scan-entry';
+  button.innerHTML=icons.svg('receipt')+'<span><strong>Сканировать чек</strong><small>Фото, файл или вставка из буфера</small></span>';
+  button.onclick=open;
+  node('createOperationForm').before(button);
   const sync=()=>{button.hidden=node('opEntryMode').value!=='operation'||state.createFlowMode==='plan';if(node('createModal').classList.contains('hidden')&&dialog.open)dialog.close();};
   new MutationObserver(sync).observe(node('createModal'),{attributes:true,attributeFilter:['class']});
   node('createEntryModeSwitch').addEventListener('click',()=>queueMicrotask(sync));

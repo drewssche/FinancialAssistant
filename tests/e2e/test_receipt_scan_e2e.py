@@ -39,7 +39,7 @@ def stub(page,text=TEXT):
 def test_scan_review_to_unsaved_operation(static_server_url,page_with_receipt_api_mock,width):
     page=page_with_receipt_api_mock;errors=[];writes=[]
     page.on('pageerror',lambda e:errors.append(str(e)))
-    page.on('request',lambda r:writes.append(r.url) if r.method in ['POST','PUT','PATCH','DELETE'] and '/api/v1/operations' in r.url else None)
+    page.on('request',lambda r:writes.append(r.url) if r.method in ['POST','PUT','PATCH','DELETE'] and '/api/v1/operations' in r.url and not r.url.endswith('/lookup-codes') else None)
     start(page,static_server_url,width);stub(page);upload(page)
     page.screenshot(path=f'/tmp/fa-ocr-crop-{width}.png')
     page.click('#scanRun');expect(page.locator('#scanReview')).to_be_visible()

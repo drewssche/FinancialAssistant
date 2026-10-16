@@ -198,3 +198,8 @@
 .watch-toggle input[role="switch"]:checked::before { transform: translateX(16px); background: #121a29; }
 .watch-toggle input[role="switch"]:focus-visible { outline: 2px solid #a6caff; outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) { .watch-toggle input[role="switch"], .watch-toggle input[role="switch"]::before { transition: none; } }
+.offer-source-size { grid-column: 1 / -1; display: grid; gap: 8px; padding-bottom: 8px; }
+.offer-size-toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.offer-size-toggle input { width: 18px; height: 18px; accent-color: #ff942c; }
+.offer-size-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media(max-width:600px) { .offer-size-fields { grid-template-columns: 1fr; } }

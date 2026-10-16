@@ -315,7 +315,14 @@ class ProductRetailerEdit(BaseModel):
     retailer_code: str = Field(default='', max_length=160)
 
 
+class ProductOfferSizeEdit(MeasurementFields):
+    template_id: int = Field(ge=1)
+    use_product_size: bool = True
+    codes: list[str] | None = Field(default=None, max_length=30)
+
+
 class ProductCodesEdit(BaseModel):
+    offer_sizes: list[ProductOfferSizeEdit] = Field(default_factory=list, max_length=100)
     barcodes: list[ProductBarcodeEdit] = Field(default_factory=list, max_length=30)
     retailers: list[ProductRetailerEdit] = Field(default_factory=list, max_length=30)
 

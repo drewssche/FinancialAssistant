@@ -150,6 +150,7 @@ def test_create_operation_allows_receipt_only_amount(static_server_url: str):
             page.wait_for_selector("#opReceiptFields:not(.hidden)")
 
             first_row = page.locator(".receipt-item-row").first
+            first_row.locator('[data-receipt-details-toggle]').click()
             first_row.locator('[data-receipt-field="shop_name"]').fill("Соседи")
             first_row.locator('[data-receipt-field="name"]').fill("Хлеб")
             first_row.locator('[data-receipt-field="quantity"]').fill("2")
@@ -162,6 +163,9 @@ def test_create_operation_allows_receipt_only_amount(static_server_url: str):
             assert created_payloads[0]["amount"] is None
             assert created_payloads[0]["receipt_items"] == [
                 {
+                    "catalog_codes": [],
+                    "variant_id": None,
+                    "variant_snapshot": None,
                     "category_id": None,
                     "category_touched": False,
                     "sale_unit": None,

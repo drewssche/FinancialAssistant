@@ -148,3 +148,26 @@ class CatalogIdentityService:
             self.save_offer(user_id=user_id, product_id=product_id, template_id=offer.id, data=dict(
                 retailer_code=code, variant_id=mapping.variant_id if mapping else None,
                 external_name=mapping.external_name if mapping else None, product_url=mapping.product_url if mapping else None), commit=False)
+
+        for edit in data.get('offer_sizes', []):
+            offer = self.db.scalar(select(OperationItemTemplate).where(OperationItemTemplate.id == edit['template_id'], OperationItemTemplate.product_id == product_id, OperationItemTemplate.user_id == user_id, OperationItemTemplate.is_archived.is_(False)))
+            if offer is None:
+                raise ValueError('Предложение магазина не найдено')
+            mapping = self.db.get(CatalogOfferIdentity, offer.id)
+            variant = None
+            if not edit['use_product_size']:
+                size = normalize_measurement(edit)
+                if not size['sale_unit']:
+                    raise ValueError('Укажите единицу продажи для размера источника')
+                matches = [v for v in self.db.scalars(select(CatalogVariant).where(CatalogVariant.user_id == user_id, CatalogVariant.product_id == product_id, CatalogVariant.is_archived.is_(False))) if measurement_snapshot(v) == size]
+                linked = next((v for v in matches if mapping and v.id == mapping.variant_id), None)
+                if len(matches) > 1 and not linked:
+                    raise ValueError('У этого размера несколько записей. Сначала уточните фасовку источника.')
+                variant = linked or (matches[0] if matches else None)
+                # Never rewrite measurements/codes of the previous package.
+                if variant is None:
+                    variant = CatalogVariant(user_id=user_id, product_id=product_id, name=product.name[:160], is_archived=False, **size)
+                    self.db.add(variant); self.db.flush()
+                if edit.get('codes') is not None:
+                    self.save_variant(user_id=user_id, product_id=product_id, variant_id=variant.id, data=dict(name=variant.name, codes=edit['codes'], is_archived=False, **size), commit=False)
+            self.save_offer(user_id=user_id, product_id=product_id, template_id=offer.id, data=dict(variant_id=variant.id if variant else None, retailer_code=mapping.retailer_code if mapping else None, external_name=mapping.external_name if mapping else None, product_url=mapping.product_url if mapping else None), commit=False)

@@ -298,7 +298,7 @@ class ItemBrandRepository:
                 OperationItemTemplate.id.in_(ids),
             )
         )
-        return {
+        result = {
             int(template_id): {
                 "product_id": int(product_id) if product_id is not None else None,
                 "product_name": product_name,
@@ -330,3 +330,9 @@ class ItemBrandRepository:
                 source_image_id,
             ) in rows
         }
+
+        from app.repositories.catalog_measurement_repo import offer_measurements
+        measurements = offer_measurements(self.db, user_id=user_id, template_ids=ids)
+        for tid, payload in result.items():
+            payload.update(measurements.get(tid, {}))
+        return result
