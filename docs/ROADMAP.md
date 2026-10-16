@@ -20,6 +20,7 @@
 ### Remove the Structure income/expense chart — 2026-10-16
 - [x] Removed the chart without moving it to another section, including its JavaScript module, template, step preference, loading skeleton, styles, legacy dashboard preview and dedicated trend API/schema/aggregation/cache caller. Shared currency and product-price chart infrastructure remains in use.
 - [x] Validation: 85 API/contract/request-budget checks, 34 analytics browser cases, 3 product-price chart cases and the critical regression matrix (10 API + 10 browser) passed. Product-price cases ran separately after a combined-run Playwright fixture conflict. Structure reviewed at 320/1440px; tests verify period navigation and no removed chart/API/script requests.
+- [x] Released `2e49e5c` via GitHub main → clean server fast-forward pull → app-only rebuild/recreation. Image API/contract checks passed. Assets `20261016-no-structure-chart`: all 24 served hashes match; deleted script and trend API return 404. `/ready` reports unchanged schema `20261016_0051`; all six containers healthy, app restarts 0, five companion services unchanged. Rollback image: `financialassistant-app:before-no-structure-chart-20261016`.
 
 ### KPI surfaces and stable card layout — 2026-10-16
 - [x] Dashboard exchange rates use shared KPI borders/background/padding again; compact rate layout no longer removes the surface.
