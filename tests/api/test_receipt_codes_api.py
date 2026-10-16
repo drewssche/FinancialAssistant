@@ -48,6 +48,55 @@ def test_conflicting_codes_roll_back_all_receipt_changes(client):
     assert client.get('/api/v1/operations').json()['total']==before
     assert lookup(client,[{'kind':'retailer','code':'new-sku'}])['items']==[]
     assert len(get(client,p)['variants'])==1
+    detail=rejected.json()['detail']
+    assert detail['type']=='receipt_code_conflict'
+    assert detail['item_index']==0 and detail['item_name']=='Другой товар'
+    assert detail['codes']==[{'kind':'barcode','code':CODE}]
+    assert detail['owners'][0]['product_id']==p
+    assert detail['owners'][0]['product_name']=='Молоко'
+
+
+def test_conflict_reports_second_position_and_rolls_back_create_and_edit(client):
+    p=product(client);assert variant(client,p).status_code==201
+    original=receipt(client,[],name='Первый товар').json()
+    before=client.get('/api/v1/operations').json()['total']
+    rows=[{'name':'Первый товар','quantity':'1','unit_price':'1.23','shop_name':'Green'},
+          {'name':'Конфликтующий товар','quantity':'4','unit_price':'1.10','shop_name':'Green',
+           'catalog_codes':[{'kind':'barcode','code':CODE}]}]
+    rows=[{**row,'sale_unit':None,'package_quantity':None,'package_unit':None} for row in rows]
+    for method,url,payload in [('POST','/api/v1/operations',{'kind':'expense','operation_date':'2026-10-16','receipt_items':rows}),
+                               ('PATCH',f"/api/v1/operations/{original['id']}",{'receipt_items':rows})]:
+        result=client.request(method,url,json=payload)
+        assert result.status_code==400,result.text
+        detail=result.json()['detail']
+        assert isinstance(detail,dict), (method,detail)
+        assert detail['item_index']==1 and detail['item_name']=='Конфликтующий товар'
+        assert detail['codes'][0]['code']==CODE and detail['owners'][0]['product_id']==p
+        assert client.get('/api/v1/operations').json()['total']==before
+        assert client.get(f"/api/v1/operations/{original['id']}").json()==original
+
+
+def test_other_users_barcode_does_not_leak_owner_in_conflict(client):
+    owner=product(client,'Приватный товар');assert variant(client,owner).status_code==201
+    app.dependency_overrides[get_current_user_id]=lambda:2
+    result=receipt(client,[{'kind':'barcode','code':CODE}],name='Мой товар')
+    assert result.status_code==201,result.text
+    assert 'Приватный товар' not in result.text
+
+
+
+def test_sku_conflict_identifies_only_sku_and_owner(client):
+    first=receipt(client,[{'kind':'retailer','code':'00042'}])
+    assert first.status_code==201,first.text
+    owner=first.json()['receipt_items'][0]['product_id']
+    rejected=receipt(client,[{'kind':'barcode','code':CODE},{'kind':'retailer','code':'00042'}],name='Другой товар')
+    assert rejected.status_code==400,rejected.text
+    detail=rejected.json()['detail']
+    assert detail['item_index']==0
+    assert detail['codes']==[{'kind':'retailer','code':'00042'}]
+    assert detail['owners'][0]['product_id']==owner
+    # The barcode created earlier in the same transaction is rolled back too.
+    assert lookup(client,[{'kind':'barcode','code':CODE}])['items']==[]
 
 
 def test_sku_is_source_scoped_and_ambiguity_never_auto_matches(client):

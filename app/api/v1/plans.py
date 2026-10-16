@@ -7,6 +7,7 @@ from app.schemas.plan import (
     PlanConfirmOut, PlanCreate, PlanEventListOut, PlanListOut, PlanOut,
     PlanResumePreview, PlanResumePreviewOut, PlanUpdate,
 )
+from app.services.receipt_code_service import ReceiptCodeConflict
 from app.services.plan_service import PlanService
 
 router = APIRouter(prefix="/plans", tags=["plans"])
@@ -82,6 +83,8 @@ def create_plan(
             recurrence_month_end=payload.recurrence_month_end,
             recurrence_end_date=payload.recurrence_end_date,
         )
+    except ReceiptCodeConflict as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.detail) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -114,6 +117,8 @@ def update_plan(
     service = PlanService(db)
     try:
         return service.update_plan(user_id=user_id, plan_id=plan_id, updates=updates)
+    except ReceiptCodeConflict as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.detail) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except LookupError as exc:
@@ -144,6 +149,8 @@ def confirm_plan(
     service = PlanService(db)
     try:
         return service.confirm_plan(user_id=user_id, plan_id=plan_id)
+    except ReceiptCodeConflict as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.detail) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except LookupError as exc:

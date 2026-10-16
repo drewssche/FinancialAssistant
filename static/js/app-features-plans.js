@@ -465,11 +465,11 @@
     const planId = Number(state.editPlanId || 0);
     const method = planId > 0 ? "PATCH" : "POST";
     const url = planId > 0 ? `/api/v1/plans/${planId}` : "/api/v1/plans";
-    const saved = await core.requestJson(url, {
+    const saved = await window.App.receiptCodes.saveRequest(url, {
       method,
       headers: core.authHeaders(),
       body: JSON.stringify(payload),
-    });
+    }, "create", payload.receipt_items);
     if (editor.getContextVersion() === editorVersion) {
       if (planId <= 0) {
         operationModal.closeCreateModal();

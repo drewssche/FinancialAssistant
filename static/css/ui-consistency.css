@@ -138,3 +138,7 @@
   #dashboardProductWatches .watch-quote-actions .btn.btn-icon:not([hidden]) { width: 44px; min-width: 44px; max-width: 44px; height: 44px; min-height: 44px; flex-basis: 44px; }
   #dashboardProductWatches .watch-view-tabs .segmented-btn { min-height: 44px; }
 }
+
+:is(#createModal, #editModal, #receiptScanDialog) .receipt-code-line input[aria-invalid="true"] { border-color: #ee7f8b; box-shadow: 0 0 0 1px #ee7f8b; outline: 2px solid #ee7f8b; outline-offset: 2px; }
+:is(#createModal, #editModal, #receiptScanDialog) .receipt-codes .receipt-code-error { color: var(--danger); margin: 0; font-size: 12px; line-height: 1.45; }
+:is(#createModal, #editModal).operation-editor .receipt-codes { margin-top: 0; padding-top: 8px; border-top: 1px solid var(--border); }

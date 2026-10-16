@@ -690,7 +690,7 @@ class OperationItemTemplateService:
                 for row in self.repo.list_item_prices(template_id=template_id, limit=500)
             }
         price_rows: list[dict] = []
-        for item in normalized_items:
+        for receipt_index, item in enumerate(normalized_items):
             shop_name = item.get("shop_name")
             shop_name_ci = shop_name.casefold() if shop_name else None
             name = item["name"]
@@ -704,7 +704,7 @@ class OperationItemTemplateService:
             )
             if item.get("catalog_codes"):
                 from app.services.receipt_code_service import ReceiptCodeService
-                ReceiptCodeService(self.db).attach(user_id=user_id, product=product, template=template, item=item)
+                ReceiptCodeService(self.db).attach(user_id=user_id, product=product, template=template, item=item, item_index=receipt_index)
             self._resolve_receipt_variant(user_id=user_id, product_id=int(product.id), item=item)
             previous_categories = self._apply_receipt_product_metadata(
                 user_id=user_id,
@@ -859,7 +859,7 @@ class OperationItemTemplateService:
         price_rows: list[dict] = []
         resolved_items: list[dict] = []
         effective_date = recorded_at or date.today()
-        for item in normalized_items:
+        for receipt_index, item in enumerate(normalized_items):
             shop_name = item.get("shop_name")
             shop_name_ci = shop_name.casefold() if shop_name else None
             template = template_by_key.get((item["name"].casefold(), shop_name_ci))
@@ -871,7 +871,7 @@ class OperationItemTemplateService:
             )
             if item.get("catalog_codes"):
                 from app.services.receipt_code_service import ReceiptCodeService
-                ReceiptCodeService(self.db).attach(user_id=user_id, product=product, template=template, item=item)
+                ReceiptCodeService(self.db).attach(user_id=user_id, product=product, template=template, item=item, item_index=receipt_index)
             self._resolve_receipt_variant(user_id=user_id, product_id=int(product.id), item=item)
             previous_categories = self._apply_receipt_product_metadata(
                 user_id=user_id,

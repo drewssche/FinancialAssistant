@@ -17,6 +17,11 @@
 - Keep Telegram-specific behavior in the client runtime; backend contracts stay shared between Web UI and Telegram.
 
 ## Current Sprint
+### Receipt code conflicts in the operation editor — 2026-10-16
+- [x] Entered/scanned barcode and store SKU fields stay visible in compact receipt rows. Saving reports the exact position/code and the owner product; only affected fields are highlighted and focused. The matching catalog item can be selected in place without changing receipt prices, quantities or discounts.
+- [x] Operation and plan API errors include owner-scoped structured conflict details. Failed saves remain atomic; a delayed response cannot mark a code that the user already changed. Existing catalog identity ownership is never silently reassigned.
+- [x] Validation: 9 receipt-code API checks and 55 frontend contracts passed. 50 distinct browser scenarios passed across scoped runs: scan transfer, code registration/merging, create/edit correction at 320/1440px, editor layout and delayed responses. Mobile/desktop conflict screenshots reviewed. No schema migration.
+
 ### Remove the Structure income/expense chart — 2026-10-16
 - [x] Removed the chart without moving it to another section, including its JavaScript module, template, step preference, loading skeleton, styles, legacy dashboard preview and dedicated trend API/schema/aggregation/cache caller. Shared currency and product-price chart infrastructure remains in use.
 - [x] Validation: 85 API/contract/request-budget checks, 34 analytics browser cases, 3 product-price chart cases and the critical regression matrix (10 API + 10 browser) passed. Product-price cases ran separately after a combined-run Playwright fixture conflict. Structure reviewed at 320/1440px; tests verify period navigation and no removed chart/API/script requests.

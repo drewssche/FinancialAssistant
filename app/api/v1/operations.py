@@ -1,4 +1,5 @@
 from app.schemas.receipt_price_hint import ReceiptPriceHintInput, ReceiptPriceHintOut
+from app.services.receipt_code_service import ReceiptCodeConflict
 from app.services.receipt_price_hint_service import ReceiptPriceHintService
 from datetime import date
 from typing import Literal
@@ -292,6 +293,8 @@ def create_operation(
             receipt_items=[_dump_receipt_item(item) for item in payload.receipt_items],
             fx_settlement=payload.fx_settlement.model_dump() if payload.fx_settlement else None,
         )
+    except ReceiptCodeConflict as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.detail) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -1117,6 +1120,8 @@ def update_operation(
     service = OperationService(db)
     try:
         return service.update_operation(user_id=user_id, operation_id=operation_id, updates=updates)
+    except ReceiptCodeConflict as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.detail) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except LookupError as exc:

@@ -12,6 +12,14 @@ def variable_code(code):
     return len(code) == 13 and code[:2] in {str(n) for n in range(20, 30)}
 
 
+class ReceiptCodeConflict(ValueError):
+    """Actionable, owner-scoped receipt field error; no catalog writes are committed."""
+    def __init__(self, message, codes, owners=None):
+        super().__init__(message)
+        self.detail = {"type": "receipt_code_conflict", "message": message,
+                       "codes": codes, "owners": owners or []}
+
+
 class ReceiptCodeService:
     def __init__(self, db):
         self.db = db
@@ -89,12 +97,29 @@ class ReceiptCodeService:
         return dict(items=items[:20], auto_match=len(items) == 1 and len(matched) == len(codes) and not restricted,
                     warnings=list(dict.fromkeys(warnings)), unmatched=[c['code'] for i,c in enumerate(codes) if i not in matched])
 
-    def attach(self, *, user_id, product, template, item):
+    def attach(self, *, user_id, product, template, item, item_index=None):
         try:
             self._attach(user_id=user_id, product=product, template=template, item=item)
-        except IntegrityError as exc:
-            self.db.rollback()
-            raise ValueError('Код уже занят. Обновите поиск и выберите найденный товар.') from exc
+        except (ValueError, IntegrityError) as exc:
+            error = exc if isinstance(exc, ReceiptCodeConflict) else ReceiptCodeConflict(
+                'Код уже занят. Найдите товар по коду.' if isinstance(exc, IntegrityError) else str(exc),
+                [{"kind": e["kind"], "code": e["code"]} for e in item.get("catalog_codes", [])])
+            error.detail.update(item_index=item_index, item_name=item.get("name", ""))
+            if isinstance(exc, IntegrityError):
+                self.db.rollback()
+            raise error from (exc if error is not exc else None)
+
+    def _barcode_conflict(self, *, user_id, message, codes, existing):
+        owners = []
+        for code in existing:
+            variant = self.db.scalar(select(CatalogVariant).where(CatalogVariant.id == code.variant_id, CatalogVariant.user_id == user_id))
+            product = self.db.scalar(select(CatalogProduct).where(CatalogProduct.id == variant.product_id, CatalogProduct.user_id == user_id)) if variant else None
+            if product:
+                owners.append(dict(code=codes[code.gtin14], kind="barcode", product_id=product.id,
+                                   product_name=product.name, variant_id=variant.id,
+                                   variant_name=variant.name, archived=bool(product.is_archived or variant.is_archived)))
+        entries = [{"kind": "barcode", "code": codes[c.gtin14]} for c in existing]
+        raise ReceiptCodeConflict(message, entries or [{"kind": "barcode", "code": c} for c in codes.values()], owners)
 
     def _attach(self, *, user_id, product, template, item):
         entries = item.get('catalog_codes') or []
@@ -115,13 +140,19 @@ class ReceiptCodeService:
         if codes:
             existing = self.db.scalars(select(CatalogVariantCode).where(CatalogVariantCode.user_id == user_id, CatalogVariantCode.gtin14.in_(codes))).all()
             ids = {c.variant_id for c in existing}
-            if len(ids) > 1 or (variant and ids and ids != {variant.id}): raise ValueError('Штрихкоды относятся к разным фасовкам')
+            incompatible = []
+            for code in existing:
+                owner = self.db.scalar(select(CatalogVariant).where(CatalogVariant.id == code.variant_id, CatalogVariant.user_id == user_id))
+                if owner is None or owner.product_id != product.id or owner.is_archived or (variant and owner.id != variant.id):
+                    incompatible.append(code)
+            if incompatible or len(ids) > 1:
+                self._barcode_conflict(user_id=user_id, message='Штрихкод закреплён за другим товаром или фасовкой', codes=codes, existing=incompatible or existing)
             if ids and variant is None:
                 variant = self.db.scalar(select(CatalogVariant).where(CatalogVariant.id == next(iter(ids)), CatalogVariant.product_id == product.id, CatalogVariant.user_id == user_id, CatalogVariant.is_archived.is_(False)))
-                if variant is None: raise ValueError('Штрихкод уже закреплён за другим товаром или архивной фасовкой')
+                if variant is None: self._barcode_conflict(user_id=user_id, message='Штрихкод закреплён за другим товаром или архивной фасовкой', codes=codes, existing=existing)
             measurement = normalize_measurement(item)
             if variant and normalize_measurement(measurement_snapshot(variant)) != measurement:
-                raise ValueError('Штрихкод относится к другой фасовке. Выберите найденный вариант.')
+                self._barcode_conflict(user_id=user_id, message='Штрихкод относится к другой фасовке. Выберите найденный вариант.', codes=codes, existing=existing)
             if variant is None:
                 variants = self.db.scalars(select(CatalogVariant).where(CatalogVariant.user_id == user_id, CatalogVariant.product_id == product.id, CatalogVariant.is_archived.is_(False))).all()
                 matches = [v for v in variants if normalize_measurement(measurement_snapshot(v)) == measurement]
@@ -141,7 +172,11 @@ class ReceiptCodeService:
                 CatalogOfferIdentity.user_id == user_id, OperationItemTemplate.user_id == user_id,
                 OperationItemTemplate.source_id == template.source_id, CatalogOfferIdentity.retailer_code == code,
                 CatalogOfferIdentity.template_id != template.id))
-            if conflict: raise ValueError('Артикул этого магазина уже закреплён за другим предложением')
+            if conflict:
+                owner_offer = self.db.scalar(select(OperationItemTemplate).where(OperationItemTemplate.id == conflict.template_id, OperationItemTemplate.user_id == user_id))
+                owner_product = self.db.scalar(select(CatalogProduct).where(CatalogProduct.id == owner_offer.product_id, CatalogProduct.user_id == user_id)) if owner_offer else None
+                owners = [dict(kind="retailer", code=code, product_id=owner_product.id, product_name=owner_product.name)] if owner_product else []
+                raise ReceiptCodeConflict('Артикул этого магазина закреплён за другим предложением', [{"kind":"retailer", "code":code}], owners)
             mapping = self.db.get(CatalogOfferIdentity, template.id)
             if mapping and mapping.retailer_code and mapping.retailer_code != code:
                 raise ValueError('У предложения уже другой артикул. Измените его в карточке товара.')

@@ -37,7 +37,7 @@
     if(Number(row.template_id)!==Number(found.template_id)){
       const list=entries(row),kept=list.filter(e=>!e.from_catalog);list.splice(0,list.length,...kept);row.codes_loaded_entity=null;
     }
-    row.variant_id=null;row.variant_snapshot=null;row.variant_options=null;row.variant_status='';row.brand_touched=false;
+    row.code_errors=[];row.variant_id=null;row.variant_snapshot=null;row.variant_options=null;row.variant_status='';row.brand_touched=false;
     for(const key of ['product_id','product_name','name','template_id','source_id','brand_id']) row[key]=found[key]??null;
     if(!row.category_touched) row.category_id=found.category_id||null;
     if(found.variant_id){
@@ -60,10 +60,14 @@
     const hint=document.createElement('p');hint.className='form-error receipt-code-error';hint.id='receiptCodeError'+(++codeHintId);hint.setAttribute('aria-live','polite');details.append(hint);
     function refreshCodes(){
       const reason=validationError(payload(row),shop());
-      search.hidden=!list.length;hint.textContent=reason;hint.hidden=!reason;
-      for(const input of fields.querySelectorAll('input')){
+      search.hidden=!list.length;
+      const conflicts=(row.code_errors||[]).filter(error=>list.some(entry=>entry.code.trim()===error.code&&entry.kind===error.kind));
+      const messages=conflicts.map(error=>`${error.kind==='barcode'?'Штрихкод':'Артикул'} ${error.code}: ${error.message}${error.product_name?' · '+error.product_name:''}`);
+      hint.textContent=[reason,...new Set(messages)].filter(Boolean).join(' · ');hint.hidden=!hint.textContent;
+      for(const [index,input] of [...fields.querySelectorAll('input')].entries()){
         input.setAttribute('aria-describedby',hint.id);
-        input.setAttribute('aria-invalid',String(Boolean(reason)));
+        const entry=list[index], invalid=Boolean(reason && (validationError([{kind:entry.kind,code:entry.code}],shop()) || (entry.kind==='retailer'&&reason.startsWith('Оставьте')))) || conflicts.some(error=>error.code===entry.code.trim()&&error.kind===entry.kind);
+        input.setAttribute('aria-invalid',String(invalid));input.closest('.receipt-code-line').classList.toggle('is-invalid',invalid);
       }
     }
     host.refreshCodeState=refreshCodes;
@@ -71,7 +75,7 @@
     const results=document.createElement('div');results.className='receipt-code-results';details.append(results);host.replaceChildren(details);
     let timer,seq=0;
     const signature=()=>JSON.stringify([shop(),list,row.name,window.App.measurements.snapshot(row)]);
-    function changed(){seq++;row.code_match_label='';results.replaceChildren();status.textContent='';refreshCodes();onChange();}
+    function changed(){seq++;row.code_errors=[];row.code_match_label='';results.replaceChildren();status.textContent='';refreshCodes();onChange();}
     function draw(){
       fields.replaceChildren();
       list.forEach((entry,index)=>{
@@ -104,7 +108,7 @@
           onSelect(found);status.textContent=row.code_match_label||'Товар выбран по коду';results.replaceChildren();draw();if(!automatic&&host.isConnected)add.focus({preventScroll:true});
         }
         if(allowAuto&&data.auto_match&&!conflict(row,items[0])){choose(items[0],true);return;}
-        if(items.length===1&&Number(row.product_id)===Number(items[0].product_id)&&Number(row.variant_id||0)===Number(items[0].variant_id||0)){
+        if(items.length===1&&Number(row.product_id)===Number(items[0].product_id)&&Number(row.variant_id||0)===Number(items[0].variant_id||0)&&!conflict(row,items[0])){
           status.textContent=[status.textContent,'Код соответствует выбранному товару'].filter(Boolean).join(' · ');return;
         }
         for(const found of items){
@@ -117,6 +121,7 @@
     }
     add.onclick=()=>{list.push({kind:'unknown',code:''});changed();draw();fields.lastElementChild.querySelector('input').focus();};
     search.onclick=()=>{clearTimeout(timer);lookup(false);};
+    host.lookupCodes=()=>lookup(false);
     draw();if(auto&&list.some(e=>e.code))lookup(true);
     const entity=String(row.product_id||'')+':'+String(row.template_id||'');
     if(loadKnown&&row.product_id&&row.template_id&&row.codes_loaded_entity!==entity){
@@ -131,5 +136,32 @@
       }).catch(()=>{if(host.isConnected)status.textContent='Не удалось загрузить сохранённые коды. Можно повторить, открыв детали заново.';});
     }
   }
-  window.App.receiptCodes={validBarcode,entries,payload,validationError,mount,apply,conflict};
+  async function saveRequest(url, options, mode, items) {
+    const stateKey=mode==='edit'?'editReceiptItems':'createReceiptItems';
+    const remaining=[...(window.App.state[stateKey]||[])];
+    const signatures=(items||[]).map(item=>{
+      const index=remaining.findIndex(row=>row.name?.trim()===item.name&&JSON.stringify(payload(row))===JSON.stringify(item.catalog_codes||[]));
+      const row=index<0?null:remaining.splice(index,1)[0];
+      return {row, name:row?.name, codes:row?JSON.stringify(entries(row)):null, product:row?.product_id, variant:row?.variant_id, shop:row?.shop_name};
+    });
+    try {return await core.requestJson(url,options);}
+    catch(error){
+      const detail=error.detail, saved=signatures[detail?.item_index];
+      if(detail?.type==='receipt_code_conflict'&&saved?.row){
+        const row=saved.row;
+        const current=(window.App.state[stateKey]||[]).includes(row)&&row.name===saved.name&&JSON.stringify(entries(row))===saved.codes&&row.product_id===saved.product&&row.variant_id===saved.variant&&row.shop_name===saved.shop;
+        if(current){
+          row.code_errors=(detail.codes||[]).map(code=>({...code,message:detail.message,...(detail.owners||[]).find(owner=>owner.code===code.code&&owner.kind===code.kind)}));
+          window.App.getRuntimeModule('operation-modal').renderReceiptItems(mode);
+          const host=document.querySelector(`#${mode}Modal [data-receipt-item-id="${row.draft_id}"] .receipt-codes-host`);
+          host?.scrollIntoView({block:'center',behavior:'smooth'});
+          host?.querySelector('input[aria-invalid="true"]')?.focus({preventScroll:true});
+          host?.lookupCodes?.();
+          error.message=`Позиция ${detail.item_index+1} «${detail.item_name}»: ${detail.message}. Проверьте выделенный код.`;
+        }
+      }
+      throw error;
+    }
+  }
+  window.App.receiptCodes={validBarcode,entries,payload,validationError,mount,apply,conflict,saveRequest};
 })();

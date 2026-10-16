@@ -203,7 +203,7 @@
     }
 
     function unlinkReceiptTemplateIdentity(item, options = {}) {
-      item.code_match_label="";
+      item.code_match_label="";item.code_errors=[];
       item.code_entries=(item.code_entries||[]).filter(e=>!e.from_catalog);item.codes_loaded_entity=null;
       item.template_id = null;
       if (!options.preserveProduct) {
@@ -639,8 +639,8 @@
             </div>` : ""}
             ${!known ? `<div class="receipt-compact-heading receipt-new-heading"><span>${item.name ? "Новый товар" : "Добавить товар"}</span></div>` : ""}
             <button class="btn btn-secondary btn-xs btn-icon ${compact ? "" : "is-active"}" type="button" data-receipt-details-toggle="${item.draft_id}" aria-label="Подробности товара" aria-expanded="${!compact}" title="${compact ? "Показать подробности товара" : "Скрыть подробности товара"}">${window.App.icons.svg("sliders")}</button>
+            <div class="receipt-codes-host" ${compact && !item.code_entries?.length ? "hidden" : ""}></div>
             <div class="receipt-item-identity">
-              <div class="receipt-codes-host"></div>
               <div class="receipt-shop-cell ${shopPickerOpen ? "has-open-popover" : ""}">
                 <input type="text" data-receipt-field="shop_name" value="${esc(item.shop_name || "")}" placeholder="Источник" title="${esc(item.shop_name || "Источник")}" autocomplete="off" aria-label="Источник позиции" />
                 <div class="receipt-shop-picker app-popover ${shopPickerOpen ? "" : "hidden"}"></div>

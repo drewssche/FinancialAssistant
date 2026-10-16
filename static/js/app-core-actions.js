@@ -230,9 +230,11 @@
           return url;
         }
       })();
-      const detail = typeof data.detail === "string" ? data.detail.trim() : "";
+      const detail = typeof data.detail === "string" ? data.detail.trim() : String(data.detail?.message || "");
       if (detail) {
-        throw new Error(`Ошибка запроса [${response.status}] ${path}: ${detail}`);
+        const error = new Error(`Ошибка запроса [${response.status}] ${path}: ${detail}`);
+        error.detail = data.detail; error.status = response.status;
+        throw error;
       }
       throw new Error(`Ошибка запроса [${response.status}] ${path}`);
     }

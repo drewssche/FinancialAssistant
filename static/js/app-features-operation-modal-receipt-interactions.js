@@ -85,6 +85,7 @@
       if (!rowItem || !template) {
         return;
       }
+      rowItem.code_errors=[];
       rowItem.code_match_label="";
       rowItem.details_expanded = false;
       const productId = Number(template.product_id || 0) || null;

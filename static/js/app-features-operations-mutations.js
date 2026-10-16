@@ -312,11 +312,11 @@
         return;
       }
       const payload = getValidatedCreateOperationPayload();
-      await core.requestJson("/api/v1/operations", {
+      await window.App.receiptCodes.saveRequest("/api/v1/operations", {
         method: "POST",
         headers: core.authHeaders(),
         body: JSON.stringify(payload),
-      });
+      }, "create", payload.receipt_items);
       const dashboardData = getDashboardData();
       core.invalidateUiRequestCache("operations");
       dashboardData.invalidateSummaryCache?.();
@@ -342,11 +342,11 @@
         return;
       }
       const payload = getValidatedUpdateOperationPayload();
-      await core.requestJson(`/api/v1/operations/${state.editOperationId}`, {
+      await window.App.receiptCodes.saveRequest(`/api/v1/operations/${state.editOperationId}`, {
         method: "PATCH",
         headers: core.authHeaders(),
         body: JSON.stringify(payload),
-      });
+      }, "edit", payload.receipt_items);
       const dashboardData = getDashboardData();
       core.invalidateUiRequestCache("operations");
       dashboardData.invalidateSummaryCache?.();

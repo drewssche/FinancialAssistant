@@ -83,7 +83,7 @@ def test_receipt_compact_codes_selection_registration_and_cancel(static_server_u
     p.screenshot(path=f'/tmp/fa-receipt-codes-{width}.png')
     assert row.evaluate('n=>n.scrollWidth<=n.clientWidth+1')
     row.locator('[data-receipt-details-toggle]').click()
-    expect(row.locator('.receipt-codes-host')).to_be_hidden()
+    expect(row.locator('.receipt-codes-host')).to_be_visible()
     assert p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[0]")==payload
     p.keyboard.press('Escape')
     assert writes==[]
@@ -199,3 +199,82 @@ def test_entered_codes_are_saved_with_operation_and_errors_prevent_writes(static
     expect(p.locator('#createModal')).to_be_hidden()
     assert len(writes)==1
     assert writes[0]['receipt_items'][0]['catalog_codes']==[{'kind':'barcode','code':CODE},{'kind':'retailer','code':'000-42'}]
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width',[320,1440])
+@pytest.mark.parametrize('mode',['create','edit'])
+def test_save_conflict_highlights_exact_code_and_selects_owner_without_changing_money(static_server_url,page_with_receipt_api_mock,width,mode):
+    p=page_with_receipt_api_mock;writes=[]
+    error={'type':'receipt_code_conflict','message':'Штрихкод закреплён за другим товаром или фасовкой','item_index':1,'item_name':'Другое молоко',
+           'codes':[{'kind':'barcode','code':CODE}],'owners':[{'kind':'barcode','code':CODE,'product_id':901,'product_name':'Молоко из каталога'}]}
+    def save(route,request):
+        if request.method not in ('POST','PATCH'):return route.fallback()
+        data=request.post_data_json;writes.append(data)
+        if len(writes)==1:return route.fulfill(status=400,json={'detail':error})
+        route.fulfill(status=201 if mode=='create' else 200,json={'id':777,**data,'amount':'7.50','receipt_total':'7.50','receipt_discrepancy':'0.00'})
+    p.route('**/api/v1/operations',save);p.route('**/api/v1/operations/777',save)
+    open_editor(p,static_server_url,width);respond(p)
+    p.evaluate('''async mode=>{
+      const m=window.App.getRuntimeModule('operation-modal');
+      const items=[{name:'Первый товар',quantity:1,unit_price:3.1,shop_name:'Green'},
+        {name:'Другое молоко',product_name:'Другое молоко',product_id:902,quantity:4,unit_price:1.1,shop_name:'Green',
+         code_entries:[{kind:'barcode',code:'4006381333931'},{kind:'retailer',code:'sku-42',manual_kind:true}]}];
+      if(mode==='create'){
+        window.App.state.createReceiptItems=items.map(item=>m.createReceiptDraft(item));m.setCreateOperationMode('receipt');m.renderReceiptItems('create');m.renderReceiptSummary('create');
+      }else{
+        window.App.actions.closeCreateModal();await m.openEditModal({id:777,kind:'expense',amount:'7.50',currency:'BYN',operation_date:'2026-10-13',receipt_items:items});
+        window.App.state.editReceiptItems=items.map(item=>m.createReceiptDraft(item,'edit'));m.renderReceiptItems('edit');m.renderReceiptSummary('edit');
+      }
+    }''',mode)
+    modal=p.locator(f'#{mode}Modal');row=modal.locator('.receipt-item-row').nth(1)
+    fields=row.get_by_role('textbox',name='Код товара',exact=True)
+    expect(fields.first).to_be_visible()
+    expect(row).to_have_class(__import__('re').compile('is-compact'))
+    modal.locator(f'#submit{mode.title()}OperationBtn').click()
+    expect(row.locator('.receipt-code-error')).to_contain_text('Молоко из каталога')
+    expect(row.locator('.receipt-code-error')).to_contain_text(CODE)
+    expect(fields.first).to_have_attribute('aria-invalid','true')
+    expect(fields.last).to_have_attribute('aria-invalid','false')
+    expect(fields.first).to_be_focused()
+    expect(fields.first).to_have_css('outline-color','rgb(238, 127, 139)')
+    expect(modal).to_be_visible()
+    expect(row.locator('.receipt-code-result')).to_be_visible()
+    assert row.evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+    row.screenshot(path=f'/tmp/fa-code-conflict-{mode}-{width}.png')
+    row.locator('.receipt-code-result').click()
+    expect(row.locator('.receipt-code-error')).to_be_hidden()
+    expect(row.locator('.receipt-compact-name')).to_have_text('Молоко из каталога')
+    expect(row.locator('[data-receipt-field=quantity]')).to_have_value('4')
+    expect(row.locator('[data-receipt-field=unit_price]')).to_have_value('1.10')
+    modal.locator(f'#submit{mode.title()}OperationBtn').click()
+    p.wait_for_function('mode=>!document.querySelector(`#submit${mode[0].toUpperCase()+mode.slice(1)}OperationBtn`).disabled',arg=mode)
+    assert len(writes)==2
+    before,after=writes[0]['receipt_items'][1],writes[1]['receipt_items'][1]
+    assert after['product_id']==901
+    for key in ['quantity','unit_price','discount_mode','discount_value','is_discounted']:
+        assert before.get(key)==after.get(key)
+
+
+@pytest.mark.e2e
+def test_late_save_conflict_does_not_highlight_corrected_code(static_server_url,page_with_receipt_api_mock):
+    p=page_with_receipt_api_mock;pending=[]
+    p.route('**/api/v1/operations',lambda route:pending.append(route) if route.request.method=='POST' else route.fallback())
+    open_editor(p,static_server_url,390);respond(p,[],False)
+    p.evaluate('''()=>{
+      const m=window.App.getRuntimeModule('operation-modal');
+      window.App.state.createReceiptItems=[m.createReceiptDraft({name:'Молоко',quantity:1,unit_price:3.1,shop_name:'Green',code_entries:[{kind:'barcode',code:'4006381333931'}]})];
+      m.setCreateOperationMode('receipt');m.renderReceiptItems('create');m.renderReceiptSummary('create');
+    }''')
+    with p.expect_request(lambda r:r.url.endswith('/operations') and r.method=='POST'):
+        p.locator('#submitCreateOperationBtn').click()
+    row=p.locator('#receiptItemsList .receipt-item-row').first
+    field=row.get_by_role('textbox',name='Код товара',exact=True)
+    field.fill('4811040140757')
+    pending[0].fulfill(status=400,json={'detail':{'type':'receipt_code_conflict','message':'Штрихкод закреплён за другим товаром',
+        'item_index':0,'item_name':'Молоко','codes':[{'kind':'barcode','code':CODE}],'owners':[]}})
+    expect(p.locator('#submitCreateOperationBtn')).to_be_enabled()
+    expect(p.locator('#createModal')).to_be_visible()
+    expect(field).to_have_value('4811040140757')
+    expect(field).to_have_attribute('aria-invalid','false')
+    expect(row.locator('.receipt-code-error')).to_be_hidden()
