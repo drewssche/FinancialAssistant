@@ -186,7 +186,7 @@ def test_automatic_candidates_visible_without_search(static_server_url,page_with
     def route(r,req):
         path=urlparse(req.url).path
         if path.endswith('/catalog-watches'):
-            return r.fulfill(json={'tracked_count':1,'offers':[],'events':[],'unlinked':[{'product_id':401,'name':'Молоко','matching_state':'choice'}]})
+            return r.fulfill(json={'tracked_count':1,'offers':[],'events':[],'unlinked':[{'product_id':401,'name':'Молоко','matching_state':'choice','matching_sources':['Green']}]})
         if path.endswith('/preview'):return r.fulfill(json=snapshot)
         if req.method=='PUT':
             writes.append(req.post_data_json)
@@ -207,6 +207,8 @@ def test_automatic_candidates_visible_without_search(static_server_url,page_with
     host.locator('[data-watch-confirm]').click()
     expect(host.locator('[data-watch-remove]')).to_be_visible()
     assert writes[0]['url']==candidates[1]['url']
+    p.locator('#closeCatalogProductModalBtn').click()
+    expect(p.locator('#dashboardProductWatches')).to_contain_text('Green: Выберите подходящую карточку')
 
 
 @pytest.mark.e2e

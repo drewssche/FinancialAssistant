@@ -140,13 +140,15 @@ class CatalogWatchService:
         from app.services.catalog_match_service import CatalogMatchService
         unresolved = []
         for product_id in ids:
-            states = []
+            states, sources = [], {}
             for offer in self.db.scalars(select(OperationItemTemplate).where(OperationItemTemplate.user_id == user_id, OperationItemTemplate.product_id == product_id, OperationItemTemplate.is_archived.is_(False))):
                 if self.supports(offer) and not self.db.get(CatalogOfferWatch, offer.id):
-                    states.append(CatalogMatchService(self.db).status(offer)['state'])
+                    status = CatalogMatchService(self.db).status(offer)['state']
+                    states.append(status)
+                    sources.setdefault(status, []).append(provider.PROVIDERS[self.provider(offer)]['source'])
             if states or product_id not in connected_ids:
                 state = next((s for s in ('choice', 'pending', 'error', 'not_found', 'missing_codes', 'paused') if s in states), 'missing_codes')
-                unresolved.append({'product_id': product_id, 'name': names[product_id], 'matching_state': state})
+                unresolved.append({'product_id': product_id, 'name': names[product_id], 'matching_state': state, 'matching_sources': sorted(set(sources.get(state, [])))})
         return {'tracked_count': len(ids), 'offers': offers, 'events': [dict(e.data, id=e.id, product_id=e.product_id, created_at=e.created_at) for e in events], 'unlinked': unresolved, 'next_cursor': events[-1].id if len(page) > 20 else None}
 
     def record(self, w, snapshot):

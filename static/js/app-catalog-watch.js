@@ -114,7 +114,7 @@
       appendEvents(data);
       if(!data.events.length)eventHost.innerHTML='<p class="muted-small">Изменений цен пока нет</p>';
       if(data.offers.length)host.insertAdjacentHTML('beforeend',`<details><summary>Предложения с уведомлениями (${data.offers.length})</summary><div class="watch-grid">${data.offers.map(o=>`<article class="watch-card"><button type="button" class="catalog-product-name-btn" data-watch-open="${o.product_id}">${esc(o.product_name)}</button>${quote(o.snapshot)}<small class="muted-small">${esc(date(o.checked_at))}${o.error?' · '+esc(o.error):''}</small></article>`).join('')}</div></details>`);
-      host.insertAdjacentHTML('beforeend',data.unlinked.map(p=>`<p class="muted-small"><button type="button" class="btn btn-secondary btn-xs" data-watch-open="${p.product_id}">${esc(p.name)}</button> · ${esc(matchLabels[p.matching_state]||'Подбираем страницу по коду…')}</p>`).join(''));
+      host.insertAdjacentHTML('beforeend',data.unlinked.map(p=>`<p class="muted-small"><button type="button" class="btn btn-secondary btn-xs" data-watch-open="${p.product_id}">${esc(p.name)}</button> · ${p.matching_sources?.length?esc(p.matching_sources.join(', '))+': ':''}${esc(matchLabels[p.matching_state]||'Подбираем страницу по коду…')}</p>`).join(''));
       bindOpen();
     }catch(e){if(token===dashboardSeq&&authToken===window.App.state.token){host.innerHTML='<h3>Уведомления о ценах</h3><span class="muted-small">Не удалось загрузить предложения.</span> <button type="button" class="btn btn-secondary">Повторить</button>';host.querySelector('button').onclick=loadDashboard;}}
   }

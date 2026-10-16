@@ -144,3 +144,13 @@ def test_exact_article_without_barcode_and_cross_source_rejection(client,monkeyp
     with database() as db:
         assert not db.get(CatalogOfferWatch,tid)
         assert db.get(CatalogOfferMatch,tid).state=='error'
+
+
+def test_dashboard_names_unresolved_source_when_another_is_connected(client,monkeypatch):
+    pid,tid=setup(client,monkeypatch);assert run(tid)
+    client.put(f'/api/v1/catalog-watches/{pid}',json={'enabled':True})
+    changed=client.patch(f'/api/v1/operations/catalog-products/{pid}',json={'codes':{'retailers':[{'shop_name':'Е-доставка','retailer_code':'456'}]}})
+    assert changed.status_code==200,changed.text
+    dashboard=client.get('/api/v1/catalog-watches').json()
+    assert len(dashboard['offers'])==1
+    assert dashboard['unlinked'][0]['matching_sources']==['Е-доставка']
