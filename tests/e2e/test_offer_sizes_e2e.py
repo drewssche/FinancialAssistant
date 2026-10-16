@@ -72,7 +72,7 @@ def test_scan_catalog_selection_uses_source_size_and_preserves_paid_price(static
       Object.assign(product.offers[0],{measurement_source:'offer',sale_unit:'pack',package_quantity:200,package_unit:'g',variant_id:55});
     }""")
     stub(p,PIZZA);upload(p);p.click('#scanRun')
-    p.locator('.scan-row .scan-suggestion').first.click()
+    p.locator('.scan-row [data-scan-field=name]').focus();p.locator('.scan-row .receipt-template-suggestion').first.click()
     p.locator('#scanConfirmed').check();p.click('#scanTransfer')
     row=p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[0]")
     assert row['variant_id']==55 and float(row['package_quantity'])==200 and row['package_unit']=='g'

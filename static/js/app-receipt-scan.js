@@ -163,7 +163,7 @@
     node('scanRows').replaceChildren();
     draft.rows.forEach((row,index)=>{
       const el=document.createElement('section');el.className='scan-row';
-      el.innerHTML=`<div class="scan-name"><label class="field"><span>Товар ${index+1}</span><input data-scan-field="name" maxlength="160" placeholder="Найти или ввести товар" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="scanCatalog${index}" required></label><div id="scanCatalog${index}" class="scan-catalog-list app-popover hidden" role="listbox" hidden></div></div>${iconButton('', 'trash', 'Удалить позицию '+(index+1))}<div class="scan-match"></div><div class="scan-codes-host"></div><label class="field scan-category"><span>Категория</span><select data-scan-category aria-label="Категория позиции"></select></label><div class="scan-sale-units" role="group" aria-label="Единица цены и количества"></div><div class="scan-row-numbers">${[['price','Цена за ед.'],['quantity','Кол-во'],['discount','Скидка, сумма'],['total','Оплачено']].map(([field,label])=>`<label class="field"><span>${label}</span><input data-scan-field="${field}" inputmode="decimal" aria-describedby="scanMathHint" required></label>`).join('')}</div><label class="field scan-discount-type"><span>Тип скидки</span><select data-scan-field="discount_type"><option value="promo">Акция</option><option value="loyalty_points">Баллы</option><option value="coupon">Купон</option></select></label>`;
+      el.innerHTML=`<div class="scan-name"><label class="field"><span>Товар ${index+1}</span><input data-scan-field="name" maxlength="160" placeholder="Найти или ввести товар" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="scanCatalog${index}" required></label><div id="scanCatalog${index}" class="scan-catalog-list receipt-name-picker app-popover hidden" role="listbox" hidden></div></div>${iconButton('', 'trash', 'Удалить позицию '+(index+1))}<div class="scan-match"></div><div class="scan-codes-host"></div><label class="field scan-category"><span>Категория</span><select data-scan-category aria-label="Категория позиции"></select></label><div class="scan-sale-units" role="group" aria-label="Единица цены и количества"></div><div class="scan-row-numbers">${[['price','Цена за ед.'],['quantity','Кол-во'],['discount','Скидка, сумма'],['total','Оплачено']].map(([field,label])=>`<label class="field"><span>${label}</span><input data-scan-field="${field}" inputmode="decimal" aria-describedby="scanMathHint" required></label>`).join('')}</div><label class="field scan-discount-type"><span>Тип скидки</span><select data-scan-field="discount_type"><option value="promo">Акция</option><option value="loyalty_points">Баллы</option><option value="coupon">Купон</option></select></label>`;
       const name=el.querySelector('[data-scan-field=name]'), list=el.querySelector('.scan-catalog-list'), match=el.querySelector('.scan-match');
       name.value=row.name;name.title=row.source||'';
       if(row.merged_rows?.length){
@@ -197,10 +197,8 @@
       category.onchange=()=>{row.category_id=Number(category.value)||null;row.category_touched=true;node('scanConfirmed').checked=false;validate();};
       const unitHost=el.querySelector('.scan-sale-units');
       const unitTitle=document.createElement('span');unitTitle.textContent='Единица цены';unitHost.append(unitTitle);
-      for(const [unit,label] of [['','Не указана'],...Object.entries(window.App.measurements.units)]){
-        const button=document.createElement('button');button.type='button';button.className='btn btn-secondary measurement-unit';button.dataset.scanUnit=unit;button.textContent=label;
-        button.onclick=()=>{row.sale_unit=unit||null;row.package_quantity=null;row.package_unit=null;row.variant_id=null;row.variant_snapshot=null;row.measurement_touched=true;refreshUnits();node('scanConfirmed').checked=false;validate();};unitHost.append(button);
-      }
+      window.App.measurements.renderUnitButtons(unitHost,{choices:[['','Не указана'],...Object.entries(window.App.measurements.units)],dataset:'scanUnit',
+        onSelect:unit=>{row.sale_unit=unit||null;row.package_quantity=null;row.package_unit=null;row.variant_id=null;row.variant_snapshot=null;row.measurement_touched=true;refreshUnits();node('scanConfirmed').checked=false;validate();}});
       function refreshUnits(){
         unitHost.querySelectorAll('button').forEach(button=>{const active=button.dataset.scanUnit===(row.sale_unit||'');button.classList.toggle('is-active',active);button.setAttribute('aria-pressed',String(active));});
         for(const field of ['price','quantity']){
@@ -225,22 +223,7 @@
         closeCatalogLists();node('scanConfirmed').checked=false;el.refreshCatalog();el.refreshCodes?.();validate();
         name.focus({preventScroll:true});closeCatalogLists();
       }
-      function createButton(inList=false){
-        const button=document.createElement('button');button.type='button';button.className=inList?'scan-catalog-create':'btn btn-secondary scan-create-new';
-        button.innerHTML=icons.svg('plus');const label=document.createElement('span');label.textContent='Создать новый товар';button.append(label);
-        button.title=`Создать «${name.value.trim()}» при сохранении операции`;button.onclick=createNew;return button;
-      }
       function searchAgain(){row.catalog_new=false;el.refreshCatalog();name.focus();search();}
-      function suggestionButton(item){
-        const b=document.createElement('button');b.type='button';b.className='scan-catalog-option';
-        const title=document.createElement('strong');title.textContent=item.name;
-        const sub=document.createElement('small');sub.textContent=[item.selected_offer?.shop_name||item.selected_offer?.source_name||item.shop_name, item.brand_name].filter(Boolean).join(' · ')||'Каталог';
-        if(item.scan_match){
-          const words=item.scan_match.words.slice(0,3).join(', ');
-          sub.textContent=[item.scan_match.exact?'Название совпадает':words?`По словам: ${words}`:'Совпадение в названии',item.scan_match.sizeConflict?'Другой размер упаковки':''].filter(Boolean).join(' · ');
-        }
-        b.append(title,sub);b.onclick=()=>choose(item);return b;
-      }
       el.refreshCatalog=()=>{
         match.replaceChildren();match.classList.toggle('is-linked',!!row.catalog||!!row.catalog_new);
         if(row.catalog){
@@ -249,23 +232,17 @@
         }else if(row.catalog_new){
           const label=document.createElement('span');label.textContent='Новый товар';match.append(label);
           const change=document.createElement('button');change.type='button';change.className='btn btn-secondary btn-icon';icons.apply(change,'search','Выбрать из каталога');change.onclick=searchAgain;match.append(change);
-        }else if(row.name.trim()){
-          const candidates=catalog().suggestions(row.name,node('scanShop').value,3);
-          const heading=document.createElement('div');heading.className='scan-match-heading';
-          const label=document.createElement('span');label.textContent=catalogNotice()||(candidates.length?'Варианты из каталога':'В каталоге нет совпадений по словам');heading.append(label);
-          const more=document.createElement('button');more.type='button';more.className='btn btn-secondary btn-icon';icons.apply(more,'search','Искать товар в каталоге');more.onclick=async()=>{if(catalog().status().incomplete){await catalog().load();refreshCatalog();}name.focus();search();};heading.append(more);match.append(heading);if(!candidates.some(item=>item.scan_match?.exact))match.append(createButton());
-          candidates.forEach(candidate=>{const b=suggestionButton(candidate);b.classList.add('scan-suggestion');b.title='Выбрать товар из каталога';match.append(b);});
         }
         match.hidden=!match.childElementCount;
       };
       function search(){
         if(row.catalog_new){closeCatalogLists();return;}
-        closeCatalogLists();options=catalog().suggestions(name.value,node('scanShop').value,8);active=-1;list.replaceChildren();
-        options.forEach((item,i)=>{const b=suggestionButton(item);b.id=`scanOption${index}-${i}`;b.setAttribute('role','option');b.setAttribute('aria-selected','false');b.tabIndex=-1;list.append(b);});
-        if(!options.length){const empty=document.createElement('span');empty.className='muted-small';empty.textContent=catalogNotice()||'В каталоге нет совпадений по словам';list.append(empty);}
-        if(name.value.trim()&&!options.some(item=>item.scan_match?.exact)){
-          const create=createButton(true);create.id=`scanOption${index}-new`;create.setAttribute('role','option');create.setAttribute('aria-selected','false');create.tabIndex=-1;list.append(create);
-        }
+        closeCatalogLists();options=catalog().suggestions(name.value,node('scanShop').value,8);active=-1;
+        catalog().renderOptions(list,{suggestions:options,query:name.value.trim(),allowCreate:!options.some(item=>item.scan_match?.exact),showPrices:false,emptyText:catalogNotice()||'Нет совпадений'});
+        list.querySelectorAll('.receipt-template-suggestion').forEach((button,i)=>{button.onclick=()=>choose(options[i]);});
+        const create=list.querySelector('[data-receipt-create-name]');if(create)create.onclick=createNew;
+        if(catalogNotice()&&list.querySelector('button')){const notice=document.createElement('span');notice.className='muted-small receipt-picker-empty';notice.textContent=catalogNotice();list.prepend(notice);}
+        list.querySelectorAll('button').forEach((button,i)=>{button.id=`scanOption${index}-${i}`;button.setAttribute('role','option');button.setAttribute('aria-selected','false');button.tabIndex=-1;});
         setCatalogOpen(list,true);
       }
       el.refreshSearch=()=>{if(document.activeElement===name&&!list.hidden)search();};

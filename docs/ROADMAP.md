@@ -17,6 +17,11 @@
 - Keep Telegram-specific behavior in the client runtime; backend contracts stay shared between Web UI and Telegram.
 
 ## Current Sprint
+### Reuse operation controls in receipt scan review — 2026-10-17
+- [x] Manual operation entry and scan review share the product-option renderer: thumbnails, highlighted names, brand/source metadata and the existing “Создать позицию” action inside the name popover. Removed the scanner's separate creation button, inline candidate cards and their styles. OCR keyword ranking and package-mismatch indication remain; selecting an item never imports its catalog price into the scan.
+- [x] Product measurement editors and scan sale-unit controls share the unit-button builder/styles. Category selection, code fields/conflict handling and icon actions retain their existing shared components. The confirmation checkbox retains confirmation semantics.
+- [x] Validation: 66 parser/frontend contract checks and 30 browser cases across scan/catalog, operation search, source sizes and measurement editors passed in scoped runs. Mobile/desktop shared-popover screenshots reviewed; cancellation, keyboard selection, stale lookup protection and receipt-money preservation covered. No schema change.
+
 ### Explicit new product choice during receipt scan — 2026-10-17
 - [x] Scan review offers “Создать новый товар” both in the suggestions and below the name. Selection marks the draft as new, closes suggestions and prevents delayed barcode matching from overriding the decision. Search can be reopened explicitly; changing the name starts a fresh choice. An exact existing name offers catalog selection instead of a duplicate-creation action.
 - [x] Keep receipt amounts, quantities, discounts and codes until the operation is saved; the action itself writes nothing to the catalog. Splitting merged rows preserves the new-product choice. Name suggestions still search the entire active product catalog; the selected store supplies the matching offer, without importing another store's price.

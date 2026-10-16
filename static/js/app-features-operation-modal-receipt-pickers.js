@@ -684,6 +684,31 @@
       }
     }
 
+    // Shared product options for manual receipt entry and OCR review.
+    // Callers own draft selection; rendering never imports catalog prices or writes data.
+    function renderReceiptProductOptions(picker, {suggestions, query = "", draftId = "", allowCreate = false, showPrices = true, emptyText = "Нет совпадений"}) {
+      const suggestionsHtml = suggestions.map((item) => `
+        <button type="button" class="chip-btn receipt-template-suggestion" ${item.product_id ? `data-receipt-product-id="${item.product_id}"` : `data-receipt-template-id="${item.id}"`} data-receipt-item-id="${draftId}" title="${escHtml(item.name)}">
+          ${window.App.getRuntimeModule?.("catalog-media")?.renderThumb?.(item.product_image_id || item.image_id, { kind: "item", size: "picker", alt: item.name, fallback: String(item.name || "П").slice(0, 1) }) || ""}
+          <span class="receipt-template-suggestion-main">
+            <span class="receipt-template-suggestion-name">${core.highlightText?.(item.name, query) || escHtml(item.name)}</span>
+            <span class="receipt-template-suggestion-meta">
+              ${item.brand_name ? `<span class="receipt-template-suggestion-brand">${renderReceiptBrandChip(item)}</span>` : ""}
+              ${showPrices && Number(item.latest_unit_price || 0) > 0 ? `<span>${core.formatMoney(item.latest_unit_price)}</span>` : ""}
+              ${item.product_id ? `<span>${Number(item.offers?.length || 0)} источн.</span>` : ""}
+              ${item.scan_match?.sizeConflict ? "<span>Другая фасовка</span>" : ""}
+            </span>
+          </span>
+        </button>
+      `).join("");
+      const createHtml = !query || !allowCreate ? "" : `
+        <button type="button" class="chip-btn chip-btn-create" data-receipt-create-name="${escHtml(query)}" data-receipt-item-id="${draftId}">
+          + Создать позицию «${escHtml(query)}»
+        </button>
+      `;
+      picker.innerHTML = `${suggestionsHtml}${createHtml}` || `<span class="muted-small receipt-picker-empty">${escHtml(emptyText)}</span>`;
+    }
+
     function renderReceiptNamePickerForRow(rowNode, rowItem, query) {
       if (!rowNode || !rowItem) {
         return;
@@ -710,25 +735,7 @@
       if (badge) {
         badge.classList.toggle("hidden", Boolean(exact));
       }
-      const suggestionsHtml = suggestions.map((item) => `
-        <button type="button" class="chip-btn receipt-template-suggestion" ${item.product_id ? `data-receipt-product-id="${item.product_id}"` : `data-receipt-template-id="${item.id}"`} data-receipt-item-id="${rowItem.draft_id}" title="${escHtml(item.name)}">
-          ${window.App.getRuntimeModule?.("catalog-media")?.renderThumb?.(item.product_image_id || item.image_id, { kind: "item", size: "picker", alt: item.name, fallback: String(item.name || "П").slice(0, 1) }) || ""}
-          <span class="receipt-template-suggestion-main">
-            <span class="receipt-template-suggestion-name">${core.highlightText?.(item.name, normalizedQuery) || escHtml(item.name)}</span>
-            <span class="receipt-template-suggestion-meta">
-              ${item.brand_name ? `<span class="receipt-template-suggestion-brand">${renderReceiptBrandChip(item)}</span>` : ""}
-              ${Number(item.latest_unit_price || 0) > 0 ? `<span>${core.formatMoney(item.latest_unit_price)}</span>` : ""}
-              ${item.product_id ? `<span>${Number(item.offers?.length || 0)} источн.</span>` : ""}
-            </span>
-          </span>
-        </button>
-      `).join("");
-      const createHtml = !normalizedQuery || exact ? "" : `
-        <button type="button" class="chip-btn chip-btn-create" data-receipt-create-name="${escHtml(normalizedQuery)}" data-receipt-item-id="${rowItem.draft_id}">
-          + Создать позицию «${escHtml(normalizedQuery)}»
-        </button>
-      `;
-      picker.innerHTML = `${suggestionsHtml}${createHtml}` || "<span class='muted-small'>Нет совпадений</span>";
+      renderReceiptProductOptions(picker, {suggestions, query: normalizedQuery, draftId: rowItem.draft_id, allowCreate: !exact});
       pickerUtils.setPopoverOpen(picker, true, {
         owners: [rowNode, rowNode.querySelector(".receipt-name-cell")],
         outsideScopes: [rowNode.querySelector(".receipt-name-cell")],
@@ -983,6 +990,7 @@
       getReceiptTemplateMatch,
       getReceiptTemplateSuggestions,
       getReceiptScanSuggestions,
+      renderReceiptProductOptions,
       getReceiptCatalogStatus: () => ({loading: Boolean(receiptUiState.hintsPromise), incomplete: Boolean(receiptUiState.hintsLoadFailed)}),
       getReceiptBrandSuggestions,
       getReceiptShopSuggestions,

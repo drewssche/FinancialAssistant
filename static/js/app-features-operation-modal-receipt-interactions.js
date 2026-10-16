@@ -745,6 +745,7 @@
       receiptCatalog: {
         load: loadReceiptTemplateHints,
         suggestions: pickerFeature.getReceiptScanSuggestions,
+        renderOptions: pickerFeature.renderReceiptProductOptions,
         status: pickerFeature.getReceiptCatalogStatus,
         identity(template, shop) {
           // Explicit catalog choice uses the selected source size; OCR money remains untouched.

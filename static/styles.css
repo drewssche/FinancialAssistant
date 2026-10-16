@@ -15,7 +15,7 @@
 @import url("/static/css/components-table-sort.css?v=20260907a");
 @import url("/static/css/components-table-columns.css?v=20260907a");
 @import url("/static/css/components-item-brands.css?v=20260904b");
-@import url("/static/css/components-catalog-products.css?v=20261017-scan-new-product");
+@import url("/static/css/components-catalog-products.css?v=20261017-scan-shared-controls");
 @import url("/static/css/components-catalog-media.css?v=20260907c");
 @import url("/static/css/components-overlays.css?v=20261016-no-structure-chart");
 @import url("/static/css/components-activity-center.css?v=20261016-toast-layers");
@@ -25,8 +25,8 @@
 @import url("/static/css/responsive-sm-tables.css?v=20260716j");
 @import url("/static/css/responsive-sm-core.css?v=20261016-no-structure-chart");
 @import url("/static/css/responsive-sm-modals.css?v=20260904a");
-@import url("/static/css/operation-editor.css?v=20261017-scan-new-product");
-@import url("/static/css/catalog-compact.css?v=20261017-scan-new-product");
+@import url("/static/css/operation-editor.css?v=20261017-scan-shared-controls");
+@import url("/static/css/catalog-compact.css?v=20261017-scan-shared-controls");
 @import url("/static/css/daily-lists.css?v=20261016-card-consistency");
 @import url("/static/css/work-compact.css?v=20261016-scan-work-banks");
 @import url("./css/insights-compact.css?v=20261016-no-structure-chart");
@@ -34,9 +34,9 @@
 @import url("./css/kpi-cards.css?v=20261016-card-consistency");
 @import url("./css/secondary-editors.css?v=20261014-secondary1");
 @import url("./css/ui-final-audit.css?v=20261014-audit1");
-@import url("./css/ui-simplification.css?v=20261017-scan-new-product");
-@import url("/static/css/receipt-scan.css?v=20261016-multi-retailer-watch");
-@import url("/static/css/ui-consistency.css?v=20261017-scan-new-product");
+@import url("./css/ui-simplification.css?v=20261017-scan-shared-controls");
+@import url("/static/css/receipt-scan.css?v=20261017-scan-shared-controls");
+@import url("/static/css/ui-consistency.css?v=20261017-scan-shared-controls");
 /* Work timesheet */
 .work-section-head { gap: 16px; align-items: flex-start; }
 .work-month-control { display: flex; align-items: center; gap: 10px; }

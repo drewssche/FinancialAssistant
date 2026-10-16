@@ -23,6 +23,12 @@
     const label = ['kg','g'].includes(value.sale_unit) ? 'Вес' : ['l','ml'].includes(value.sale_unit) ? 'Объём' : 'Кол-во';
     return unit ? `${label}, ${unit}` : label;
   }
+  function renderUnitButtons(host, {choices, dataset = 'unit', onSelect}) {
+    for (const [key,label] of choices) {
+      const button=document.createElement('button');button.type='button';button.className='btn btn-secondary measurement-unit';
+      button.textContent=label;button.dataset[dataset]=key;button.addEventListener('click',()=>onSelect(key));host.append(button);
+    }
+  }
   // One visible editor, backed by the existing three persisted fields.
   // Mounting is read-only: legacy units and frozen receipt snapshots are preserved.
   function mount(container, controls) {
@@ -49,12 +55,8 @@
         input.addEventListener('input', () => {write({sale_unit: ['piece','pack'].includes(sale.value)?sale.value:'piece', package_quantity:input.value, package_unit:unit.value}); sync();});
       }
       const unitsNode = editor.querySelector('.measurement-units');
-      for (const key of (weighted ? ['kg','g','l','ml'] : ['g','kg','ml','l','piece'])) {
-        const button = document.createElement('button'); button.type='button'; button.className='btn btn-secondary measurement-unit';
-        button.textContent = units[key]; button.dataset.unit=key;
-        button.addEventListener('click', () => {write(weighted?{sale_unit:key,package_quantity:'',package_unit:''}:{sale_unit:['piece','pack'].includes(sale.value)?sale.value:'piece',package_unit:key}); sync();});
-        unitsNode.append(button);
-      }
+      renderUnitButtons(unitsNode,{choices:(weighted ? ['kg','g','l','ml'] : ['g','kg','ml','l','piece']).map(key=>[key,units[key]]),
+        onSelect:key=>{write(weighted?{sale_unit:key,package_quantity:'',package_unit:''}:{sale_unit:['piece','pack'].includes(sale.value)?sale.value:'piece',package_unit:key});sync();}});
       editor.querySelectorAll('[data-measure-kind]').forEach(button => button.addEventListener('click', () => {
         const next = button.dataset.measureKind==='weight'; if (next===weighted) return;
         weighted=next;
@@ -78,5 +80,5 @@
     container.append(editor); render();
   }
   window.App = window.App || {};
-  window.App.measurements = { fields, units, snapshot, options, summary, priceLabel, quantityLabel, mount };
+  window.App.measurements = { fields, units, snapshot, options, summary, priceLabel, quantityLabel, renderUnitButtons, mount };
 })();
