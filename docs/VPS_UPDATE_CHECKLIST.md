@@ -164,3 +164,11 @@ Develop on a feature branch, fetch the current `origin/main`, integrate changes 
 - Passed 34 targeted parser/API/bootstrap checks and 29 browser scenarios, including the user's five-line receipt becoming two lines with total 10.39. Critical matrix: ten API checks and nine browser checks passed initially; the rejected-user login case timed out. Its isolated repeat (both pending and rejected cases) passed without code changes. The exact isolated Linux image passed 12 API/bootstrap checks.
 - GitHub main published before server `git pull --ff-only`; rollback image retained as `financialassistant-app:before-receipt-code-merge-20261016`. Only app was recreated. Readiness is ready/database ok on unchanged schema `20261016_0051`; all six changed static hashes match.
 - All six containers healthy. App started `2026-10-16T10:31:20.188670258Z`, zero restarts. Five companion services retain their prior image/start/restart state; bot remains on `d2b20fb`. Running app code is `880f8f6`; documentation-only follow-up needs no rebuild.
+
+
+## Automatic receipt grouping and reversible split — release db7edf7, 2026-10-16
+
+- Compatible verified GTIN rows group on OCR/text reparse; the global merge button is removed. Each group can restore original lines and ordering while retaining catalog/category/unit/code edits. Monetary edits require an inline restore explanation; split rows stay separate during ordinary editing. No backend/schema or historical operation changes.
+- Passed 29 local parser/bootstrap checks and 32 browser checks; the final nine code-saving/split cases passed after order/lookup refinements. Critical matrix passed all ten API and ten browser cases. Mobile layout inspected. The exact isolated Linux release image passed 12 API/bootstrap tests.
+- Published through GitHub main, pulled with --ff-only, built and activated only app. Rollback image: `financialassistant-app:before-auto-merge-20261016`. Readiness ready/database ok/revision `20261016_0051`; six served static hashes match.
+- All six containers healthy. App started `2026-10-16T10:43:14.163242459Z`, zero restarts. All five companion services retain their previous image/start/restart state; bot remains on `d2b20fb`. Subsequent documentation-only pull requires no rebuild.
