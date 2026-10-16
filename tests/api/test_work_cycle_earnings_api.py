@@ -3,12 +3,12 @@ from decimal import Decimal
 import pytest
 
 from app.services.work_service import WorkService
-from tests.api.test_operations_api import _client_lifecycle
+from tests.api.test_work_api import _admin_client_lifecycle
 
 
 @pytest.fixture
 def client():
-    yield from _client_lifecycle()
+    yield from _admin_client_lifecycle()
 
 
 def test_earnings_norm_uses_salary_month_including_day_overrides(client):

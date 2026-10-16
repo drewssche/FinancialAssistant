@@ -861,6 +861,7 @@
   }
 
   function loadWorkSection({ refresh = false } = {}) {
+    if (!window.App.state.isAdmin) return Promise.resolve();
     if (!bound) bind();
     const request = createWorkLoadRequest({ refresh });
     if (workLoadPromise) {

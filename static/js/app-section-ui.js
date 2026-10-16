@@ -250,10 +250,10 @@
       { id: "settings", node: el.settingsSection, title: "Настройки", subtitle: "Параметры интерфейса и безопасности" },
     ];
 
-    if (el.adminNavBtn) {
-      el.adminNavBtn.classList.toggle("hidden", !state.isAdmin);
+    for (const node of el.mainNav.querySelectorAll("[data-admin-only]")) {
+      node.classList.toggle("hidden", !state.isAdmin);
     }
-    if (!state.isAdmin && state.activeSection === "admin") {
+    if (!state.isAdmin && ["admin", "work"].includes(state.activeSection)) {
       state.activeSection = "dashboard";
     }
 
@@ -355,7 +355,7 @@
     const sectionChanged = state.activeSection !== sectionId;
     const isCurrentSwitch = () => switchSeq === sectionSwitchSeq && state.activeSection === sectionId;
     const preserveBackStack = options.preserveBackStack === true;
-    if (sectionId === "admin" && !state.isAdmin) {
+    if (["admin", "work"].includes(sectionId) && !state.isAdmin) {
       return;
     }
     const core = getCore();

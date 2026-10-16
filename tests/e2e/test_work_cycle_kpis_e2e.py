@@ -64,6 +64,7 @@ def work_page(request):
     page.route("**/api/v1/work/**", handler)
     page.route("**/api/v1/operations/catalog-products?*", lambda route: respond(route, {"items": [], "total": 0}))
     page.route("**/api/v1/plans?*", lambda route: respond(route, {"items": [{"id": 3, "note": "Аванс", "amount": "1420", "currency": "BYN"}, {"id": 4, "note": "Основная часть", "amount": "2854.78", "currency": "BYN"}]}))
+    page.route("**/api/v1/users/me", lambda route: route.fulfill(json={"id":1,"display_name":"Admin","status":"approved","is_admin":True}))
     page.goto(f"{url}/static/index.html")
     page.evaluate("window.Telegram = {WebApp: {initData: 'mock-init-data', ready() {}, expand() {}}}")
     _login(page)

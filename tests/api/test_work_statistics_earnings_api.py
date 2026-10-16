@@ -8,7 +8,7 @@ from app.db.models import Operation, User
 from app.db.session import get_db
 from app.main import app
 from app.services import work_service as work_module
-from tests.api.test_operations_api import _client_lifecycle
+from tests.api.test_work_api import _admin_client_lifecycle
 
 
 @pytest.fixture
@@ -25,7 +25,7 @@ def client(monkeypatch):
 
     monkeypatch.setattr(work_module, "date", FixedDate)
     monkeypatch.setattr(work_module, "datetime", FixedDateTime)
-    yield from _client_lifecycle()
+    yield from _admin_client_lifecycle()
 
 
 def setup_payroll(client):

@@ -449,6 +449,8 @@
     sessionPreferences.cancelDebouncedPreferencesSave?.();
     localStorage.removeItem("access_token");
     state.token = "";
+    state.isAdmin = false;
+    state.currentUserId = null;
     stopSessionMonitor();
     hideSessionRecovery();
     state.preferences = null;
@@ -484,6 +486,7 @@
       getCategoryActions().closeEditCategoryModal();
     }
     const navigation = getNavigationActions();
+    navigation.applySectionUi?.();
     operationModal.closePeriodCustomModal();
     window.App.getRuntimeModule?.("activity")?.closeActivityCenter?.();
     core.closeConfirm();

@@ -3,7 +3,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user_id
+from app.api.deps import get_current_admin_user, get_current_user_id
 from app.db.session import get_db
 from app.schemas.work import (
     EmploymentContractIn,
@@ -24,7 +24,7 @@ from app.schemas.work import (
 from app.services.work_service import WorkService
 
 
-router = APIRouter(prefix="/work", tags=["work"])
+router = APIRouter(prefix="/work", tags=["work"], dependencies=[Depends(get_current_admin_user)])
 
 
 @router.get("/profile", response_model=WorkProfileOut)

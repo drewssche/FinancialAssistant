@@ -4,16 +4,23 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from app.db.models import WorkProfile
+from app.api.deps import get_current_admin_user
+from app.db.models import User, WorkProfile
 from app.db.session import get_db
 from app.main import app
 from app.services import work_service as work_service_module
 from tests.api.test_operations_api import _client_lifecycle
 
 
+def _admin_client_lifecycle():
+    for test_client in _client_lifecycle():
+        app.dependency_overrides[get_current_admin_user] = lambda: User(id=1, status="active")
+        yield test_client
+
+
 @pytest.fixture
 def client():
-    yield from _client_lifecycle()
+    yield from _admin_client_lifecycle()
 
 
 def _create_income_plan(client: TestClient, *, note: str, scheduled_date: str, amount: str) -> int:

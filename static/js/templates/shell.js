@@ -30,10 +30,10 @@
             <button class="nav-btn" data-section="debts">Долги</button>
             <button class="nav-btn" data-section="categories">Категории</button>
             <button class="nav-btn" data-section="item_catalog">Каталог</button>
-            <div class="nav-group-title">Работа</div>
-            <button class="nav-btn" data-section="work">Табель и зарплата</button>
+            <div class="nav-group-title hidden" data-admin-only>Работа</div>
+            <button class="nav-btn hidden" data-admin-only data-section="work">Табель и зарплата</button>
             <div class="nav-group-title">Система</div>
-            <button id="adminNavBtn" class="nav-btn hidden" data-section="admin">Админ</button>
+            <button id="adminNavBtn" class="nav-btn hidden" data-admin-only data-section="admin">Админ</button>
             <button class="nav-btn" data-section="settings">Настройки</button>
           </nav>
         </div>
