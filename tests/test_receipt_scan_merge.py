@@ -1,4 +1,4 @@
-"""Grouping is explicit and must preserve every cent and identifier."""
+"""Automatic grouping and reversal preserve every cent and identifier."""
 import json
 import subprocess
 from pathlib import Path
@@ -54,3 +54,25 @@ def test_canonical_gtin_and_rounding_and_variable_weight_codes():
     variable={**a,'code_entries':[{'kind':'barcode','code':code}]}
     assert len(merge([variable,variable]))==2
     assert len(merge([a]*151))==151
+
+
+def test_split_restores_original_money_and_keeps_independent_catalog_edits():
+    code='global.window={App:{core:{}}};'+Path('static/js/app-receipt-codes.js').read_text()+Path('static/js/app-receipt-scan-parser.js').read_text()
+    code+=r"""
+    const parser=window.App.receiptScanParser;
+    const original=parser.parse('ООО Тест\n№ ДОК\nСырок\n4810729017151 1.10 x1.000 1.10\nСырок другой текст\n4810729017151 1.10 x2.000 2.20\nИТОГО К ОПЛАТЕ 3.30\n15.10.2026 21:23:00').rows;
+    const merged=parser.mergeDuplicates(original,window.App.receiptCodes.validBarcode)[0];
+    const before=JSON.stringify(merged);
+    const initialChanged=parser.mergedMoneyChanged(merged);
+    merged.catalog={product_id:42};merged.category_id=101;merged.code_save=true;
+    const metadataChanged=parser.mergedMoneyChanged(merged);
+    merged.quantity=5;const moneyChanged=parser.mergedMoneyChanged(merged);
+    const split=parser.splitMergedRow(merged);
+    const money=split.map(r=>[r.quantity,r.price,r.total,r.source,r.name]);
+    split[0].code_entries[0].code='changed';split[0].catalog.product_id=99;
+    console.log(JSON.stringify({initialChanged,metadataChanged,moneyChanged,money,independent:split[1].code_entries[0].code==='4810729017151'&&split[1].catalog.product_id===42,category:split[1].category_id,save:split[1].code_save,original}));
+    """
+    result=json.loads(subprocess.check_output(['node','-e',code],text=True))
+    assert not result['initialChanged'] and not result['metadataChanged'] and result['moneyChanged']
+    assert result['money']==[[r['quantity'],r['price'],r['total'],r['source'],r['name']] for r in result['original']]
+    assert result['independent'] and result['category']==101 and result['save']

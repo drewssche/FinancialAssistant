@@ -132,3 +132,7 @@
 .receipt-scan-entry span { display: grid; gap: 4px; }
 .receipt-scan-entry strong { font-size: 15px; }
 .receipt-scan-entry small { color: var(--muted); font-weight: 400; }
+
+.scan-merged-actions {display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:8px;}
+.scan-split-confirm {display:flex;align-items:center;flex-wrap:wrap;gap:8px;width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;}
+.scan-split-confirm small {flex-basis:100%;}

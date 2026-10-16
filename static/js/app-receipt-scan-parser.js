@@ -114,7 +114,7 @@
     if (sum !== draft.total) errors.push(`Сумма позиций ${(sum / 100).toFixed(2)} не совпадает с итогом чека`);
     return errors;
   }
-  // Explicit review action: keep raw OCR rows intact until the user requests grouping.
+  // Group only compatible rows and retain independent originals for reversal.
   function mergeDuplicates(rows, validBarcode) {
     if(rows.length>150)return rows;
     const groups=new Map(),result=[];
@@ -136,16 +136,39 @@
       const id=key(row),previous=id&&groups.get(id);
       const quantity=previous?Math.round((previous.quantity+row.quantity)*1000)/1000:0;
       if(previous&&quantity<=100000&&subtotal(row.price,quantity)-previous.discount-row.discount===previous.total+row.total){
+        previous.merged_rows ||= [structuredClone(previous)];
+        previous.merged_rows.push(...structuredClone(row.merged_rows||[row]));
         previous.quantity=quantity;previous.total+=row.total;previous.discount+=row.discount;
         previous.printed_total=previous.total+previous.discount;
         previous.autoTotal=Boolean(previous.autoTotal&&row.autoTotal);
         previous.source=[previous.source,row.source].filter(Boolean).join('\n');
         previous.merged_count=(previous.merged_count||1)+(row.merged_count||1);
       }else{
-        const copy={...row};result.push(copy);if(id)groups.set(id,copy);
+        const copy=structuredClone(row);result.push(copy);if(id)groups.set(id,copy);
       }
     }
     return result;
   }
-  window.App.receiptScanParser = {parse, validate, money, mergeDuplicates};
+  function mergedMoneyChanged(row){
+    const originals=row.merged_rows;
+    if(!originals?.length)return false;
+    return row.price!==originals[0].price || Math.round(row.quantity*1000)!==originals.reduce((n,r)=>n+Math.round(r.quantity*1000),0)
+      || row.discount!==originals.reduce((n,r)=>n+r.discount,0) || row.total!==originals.reduce((n,r)=>n+r.total,0)
+      || (row.discount>0&&(row.discount_type||'promo')!==(originals[0].discount_type||'promo'));
+  }
+  function splitMergedRow(row){
+    if(!row.merged_rows?.length)return [structuredClone(row)];
+    // Keep catalog/category/code edits on every restored line. Money comes from the photo.
+    const shared=['catalog','product_id','product_name','template_id','source_id','brand_id','category_id','category_touched',
+      'sale_unit','package_quantity','package_unit','measurement_touched','variant_id','variant_snapshot',
+      'code_entries','code_save','code_match_label','code_auto_attempted','codes_open'];
+    return row.merged_rows.map(original=>{
+      const restored=structuredClone(original);
+      for(const key of shared){if(key in row)restored[key]=structuredClone(row[key]);else delete restored[key];}
+      if(row.name!==row.merged_rows[0].name)restored.name=row.name;
+      delete restored.merged_rows;delete restored.merged_count;
+      return restored;
+    });
+  }
+  window.App.receiptScanParser = {parse, validate, money, mergeDuplicates, mergedMoneyChanged, splitMergedRow};
 })();
