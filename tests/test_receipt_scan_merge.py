@@ -64,15 +64,15 @@ def test_split_restores_original_money_and_keeps_independent_catalog_edits():
     const merged=parser.mergeDuplicates(original,window.App.receiptCodes.validBarcode)[0];
     const before=JSON.stringify(merged);
     const initialChanged=parser.mergedMoneyChanged(merged);
-    merged.catalog={product_id:42};merged.category_id=101;merged.code_save=true;
+    merged.catalog={product_id:42};merged.category_id=101;
     const metadataChanged=parser.mergedMoneyChanged(merged);
     merged.quantity=5;const moneyChanged=parser.mergedMoneyChanged(merged);
     const split=parser.splitMergedRow(merged);
     const money=split.map(r=>[r.quantity,r.price,r.total,r.source,r.name]);
     split[0].code_entries[0].code='changed';split[0].catalog.product_id=99;
-    console.log(JSON.stringify({initialChanged,metadataChanged,moneyChanged,money,independent:split[1].code_entries[0].code==='4810729017151'&&split[1].catalog.product_id===42,category:split[1].category_id,save:split[1].code_save,original}));
+    console.log(JSON.stringify({initialChanged,metadataChanged,moneyChanged,money,independent:split[1].code_entries[0].code==='4810729017151'&&split[1].catalog.product_id===42,category:split[1].category_id,codes:window.App.receiptCodes.payload(split[1]),original}));
     """
     result=json.loads(subprocess.check_output(['node','-e',code],text=True))
     assert not result['initialChanged'] and not result['metadataChanged'] and result['moneyChanged']
     assert result['money']==[[r['quantity'],r['price'],r['total'],r['source'],r['name']] for r in result['original']]
-    assert result['independent'] and result['category']==101 and result['save']
+    assert result['independent'] and result['category']==101 and result['codes']==[{'kind':'barcode','code':'4810729017151'}]

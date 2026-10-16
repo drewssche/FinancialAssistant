@@ -40,9 +40,8 @@ def test_scan_exact_code_auto_match_preserves_money_and_transfers_variant(static
     expect(row.locator('[data-scan-field=discount]')).to_have_value('0.20')
     expect(row.locator('[data-scan-field=total]')).to_have_value('6.00')
     assert requests[0]['shop_name']=='Green' and requests[0]['codes'][0]['code']==CODE
-    assert row.locator('.receipt-code-save input').is_checked() is False
-    expect(row.locator('.receipt-codes')).not_to_have_attribute('open','')
-    row.locator('.receipt-codes summary').click()
+    expect(row.locator('.receipt-code-save')).to_have_count(0)
+    expect(row.get_by_role('textbox',name='Код товара',exact=True)).to_be_visible()
     row.locator('.receipt-codes').scroll_into_view_if_needed()
     row.screenshot(path=f'/tmp/fa-scan-code-card-{width}.png')
     p.screenshot(path=f'/tmp/fa-scan-codes-{width}.png')
@@ -51,7 +50,7 @@ def test_scan_exact_code_auto_match_preserves_money_and_transfers_variant(static
     item=p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[0]")
     assert item['product_id']==901 and item['variant_id']==41 and item['variant_snapshot']['codes']==[CODE]
     assert float(item['regular_unit_price'])==3.1 and float(item['discount_value'])==.2 and float(item['quantity'])==2
-    assert item['catalog_codes']==[]
+    assert item['catalog_codes']==[{'kind':'barcode','code':CODE}]
 
 
 @pytest.mark.e2e
@@ -64,7 +63,7 @@ def test_receipt_compact_codes_selection_registration_and_cancel(static_server_u
     row.locator('[data-receipt-field=name]').fill('Молоко вручную');p.locator('#createTitle').click()
     row.locator('[data-receipt-field=unit_price]').fill('3.10');row.locator('[data-receipt-field=quantity]').fill('2')
     row.locator('[data-receipt-details-toggle]').click()
-    row.locator('.receipt-codes summary').click()
+    row.get_by_role('button',name='Добавить код',exact=True).click()
     field=row.get_by_role('textbox',name='Код товара',exact=True)
     field.fill(CODE);field.press('Enter')
     row.locator('.receipt-code-result').click()
@@ -77,7 +76,6 @@ def test_receipt_compact_codes_selection_registration_and_cancel(static_server_u
     row.get_by_role('button',name='Ещё код',exact=True).click()
     row.get_by_role('textbox',name='Код товара',exact=True).last.fill('000-42')
     row.get_by_role('combobox',name='Тип кода').last.select_option('retailer')
-    row.locator('.receipt-code-save input').check()
     payload=p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[0]")
     assert payload['catalog_codes']==[{'kind':'barcode','code':CODE},{'kind':'retailer','code':'000-42'}]
     expect(row.locator('[data-receipt-field=category_search]')).to_have_value('Еда')
@@ -139,7 +137,7 @@ def test_code_can_start_empty_receipt_row_and_adds_trailing_row(static_server_ur
     p=page_with_receipt_api_mock;open_editor(p,static_server_url,390);respond(p)
     p.locator('#createOperationModeSwitch [data-operation-mode=receipt]').click()
     row=p.locator('#receiptItemsList .receipt-item-row').first
-    row.locator('[data-receipt-details-toggle]').click();row.locator('.receipt-codes summary').click()
+    row.locator('[data-receipt-details-toggle]').click();row.get_by_role('button',name='Добавить код',exact=True).click()
     field=row.get_by_role('textbox',name='Код товара',exact=True);field.fill(CODE);field.press('Enter')
     row.locator('.receipt-code-result').click()
     expect(row.locator('.receipt-compact-name')).to_have_text('Молоко из каталога')
@@ -165,7 +163,39 @@ def test_saved_store_code_loads_only_when_receipt_details_open(static_server_url
     assert loads==[]
     row.locator('[data-receipt-details-toggle]').click()
     expect(row.locator('input[aria-label="Код товара"]')).to_have_value('000-42')
-    row.locator('.receipt-codes summary').click()
     expect(row.get_by_role('textbox',name='Код товара',exact=True)).to_be_visible()
     assert len(loads)==1
     assert p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[0].catalog_codes")==[]
+
+
+@pytest.mark.e2e
+def test_entered_codes_are_saved_with_operation_and_errors_prevent_writes(static_server_url,page_with_receipt_api_mock):
+    p=page_with_receipt_api_mock;writes=[]
+    def save(route,request):
+        if request.method!='POST':return route.fallback()
+        data=request.post_data_json;writes.append(data)
+        route.fulfill(status=201,json={'id':778,**data,'amount':'3.10','receipt_total':'3.10','receipt_discrepancy':'0.00'})
+    p.route('**/api/v1/operations',save)
+    open_editor(p,static_server_url,390);respond(p,[],False)
+    p.locator('#createOperationModeSwitch [data-operation-mode=receipt]').click()
+    p.locator('[data-receipt-store=create]').fill('Green');p.locator('[data-receipt-store=create]').press('Tab')
+    row=p.locator('#receiptItemsList .receipt-item-row').first
+    row.locator('[data-receipt-field=name]').fill('Молоко вручную');p.locator('#createTitle').click()
+    row.locator('[data-receipt-field=unit_price]').fill('3.10');row.locator('[data-receipt-field=quantity]').fill('1')
+    row.locator('[data-receipt-details-toggle]').click()
+    row.get_by_role('button',name='Добавить код',exact=True).click()
+    code=row.get_by_role('textbox',name='Код товара',exact=True)
+    code.fill('4006381333932')
+    row.locator('[data-receipt-details-toggle]').click()
+    p.locator('#submitCreateOperationBtn').click()
+    expect(p.locator('#createModal')).to_be_visible()
+    expect(row.locator('.receipt-code-error')).to_contain_text('контрольную цифру')
+    assert writes==[]
+    expect(code).to_be_visible();expect(code).to_be_focused()
+    code.fill(CODE)
+    row.get_by_role('button',name='Ещё код',exact=True).click()
+    row.get_by_role('textbox',name='Код товара',exact=True).last.fill('000-42')
+    p.locator('#submitCreateOperationBtn').click()
+    expect(p.locator('#createModal')).to_be_hidden()
+    assert len(writes)==1
+    assert writes[0]['receipt_items'][0]['catalog_codes']==[{'kind':'barcode','code':CODE},{'kind':'retailer','code':'000-42'}]

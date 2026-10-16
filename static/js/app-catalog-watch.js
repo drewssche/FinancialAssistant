@@ -2,12 +2,15 @@
   const {core} = window.App;
   const esc = v => String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
   const api = '/api/v1/catalog-watches';
-  let product = null, generation = 0, dashboardSeq = 0, matchingTimer = null;
+  let product = null, generation = 0, dashboardSeq = 0, matchingTimer = null, dashboardView = null, dashboardOwner = null;
   const matchLabels = {pending:"Подбираем страницу по коду…", choice:"Выберите подходящую карточку", not_found:"По кодам пока не найдено", missing_codes:"Добавьте штрихкод или артикул", error:"Не удалось проверить сайт · повторим позже", paused:"Автоподключение отключено", linked:"Страница подключена"};
   const request = (path, method='GET', body) => core.requestJson(api+path,{method,headers:core.authHeaders(),...(body?{body:JSON.stringify(body)}:{})});
   const date = v => v ? core.formatDateTimeRu(v) : 'ещё не проверено';
-  function quote(s){
-    return `<div class="watch-quote"><strong>${esc(s.name)}</strong><div><b>${esc(s.price)} BYN / ${esc(s.unit)}</b> ${Number(s.regular_price)>Number(s.price)?`<s>${esc(s.regular_price)}</s><span class="watch-down"> −${Math.round((1-Number(s.price)/Number(s.regular_price))*100)}%</span>`:''}</div><small>${esc(s.source||'Е-доставка')}${s.normalized?' · '+esc(s.normalized):''} · ${s.available?'В наличии':'Нет в наличии'}</small><details class="watch-conditions ui-disclosure"><summary>Условия цены</summary><small>${esc(s.conditions)}</small></details><a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-icon" aria-label="Открыть на сайте магазина" title="Открыть на сайте магазина">${window.App.icons.svg("external")}</a></div>`;
+  function quote(s, compact=false){
+    const source=s.source||'Е-доставка';
+    const info=s.conditions?`<button type="button" class="btn btn-secondary btn-icon" title="Условия цены" aria-label="Условия цены" data-help-title="Условия цены" data-help-text="${esc(s.conditions)}">${window.App.icons.svg("info")}</button>`:'';
+    const external=`<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-icon" aria-label="Открыть на сайте магазина" title="Открыть на сайте магазина">${window.App.icons.svg("external")}</a>`;
+    return `<div class="watch-quote"><div class="watch-quote-head"><strong>${esc(compact?source:s.name)}</strong><div class="watch-quote-actions">${info}${external}</div></div><div><b>${esc(s.price)} BYN / ${esc(s.unit)}</b> ${Number(s.regular_price)>Number(s.price)?`<s>${esc(s.regular_price)}</s><span class="watch-down"> −${Math.round((1-Number(s.price)/Number(s.regular_price))*100)}%</span>`:''}</div><small>${[compact?'':source,s.normalized,s.available?'В наличии':'Нет в наличии'].filter(Boolean).map(esc).join(' · ')}</small></div>`;
   }
   function decorateActions(host) {
     const actions = {'watch-remove':['unlink','Отключить страницу'], 'watch-saved':['link','Подключить цену сайта'], 'watch-search':['search','Найти по кодам'], 'watch-name-search':['search','Найти по названию'], 'watch-preview':['eye','Проверить ссылку'], 'watch-confirm':['save','Подключить этот товар и размер'], 'watch-select':['link','Выбрать товар'], 'match-select':['link','Выбрать товар'], 'match-retry':['refresh','Повторить подбор']};
@@ -32,7 +35,13 @@
       }
       const meta=data.supported_offers?.[offerId]||{source:saved?.snapshot?.source||'Е-доставка',search:true,example_url:'https://edostavka.by/product/…'};
       target.hidden=false;
-      target.innerHTML=`<div class="watch-source-head"><strong>${esc(meta.source)} · цена на сайте</strong>${saved?'<button type="button" class="btn btn-secondary btn-xs" data-watch-remove>Отключить страницу</button>':meta.saved_url?'<button type="button" class="btn btn-secondary btn-xs" data-watch-saved>Подключить цену сайта</button>':meta.search?'<button type="button" class="btn btn-secondary btn-xs" data-watch-search>Найти по кодам</button>':''}</div>${saved?quote(saved.snapshot)+`<small class="muted-small">Проверено: ${esc(date(saved.checked_at))}${saved.error?' · '+esc(saved.error):''}</small>`:`<details class="watch-alternative ui-disclosure" ${!meta.search&&!meta.saved_url?'open':''}><summary>${meta.search?'По названию или ссылке':'Другая ссылка'}</summary>${meta.search?`${meta.saved_url?'<button type="button" class="btn btn-secondary btn-xs" data-watch-search>Найти по кодам</button>':''}<div class="watch-link-row"><label class="field"><span>Название: ${esc(meta.source)}</span><input type="text" maxlength="160" data-watch-name value="${esc(product.name)}"></label><button type="button" class="btn btn-secondary btn-xs" data-watch-name-search>Найти</button></div>`:''}<div class="watch-link-row"><label class="field"><span>Ссылка на товар</span><input type="url" placeholder="${esc(meta.example_url)}" aria-label="Ссылка на товар: ${esc(meta.source)}" data-watch-url></label><button type="button" class="btn btn-secondary btn-xs" data-watch-preview>Проверить</button></div></details><div data-watch-result aria-live="polite"></div>`}`;
+      target.innerHTML=`<div class="watch-source-head"><strong>${esc(meta.source)} · цена на сайте</strong>${saved?'<button type="button" class="btn btn-secondary btn-xs" data-watch-remove>Отключить страницу</button>':meta.saved_url?'<button type="button" class="btn btn-secondary btn-xs" data-watch-saved>Подключить цену сайта</button>':''}</div>${saved?quote(saved.snapshot)+`<small class="muted-small">Проверено: ${esc(date(saved.checked_at))}${saved.error?' · '+esc(saved.error):''}</small>`:`<div class="watch-connect-modes segmented" role="group" aria-label="Способ подключения: ${esc(meta.source)}">${meta.search?'<button type="button" class="segmented-btn active" aria-pressed="true" data-watch-method="code">По коду</button><button type="button" class="segmented-btn" aria-pressed="false" data-watch-method="name">По названию</button>':''}<button type="button" class="segmented-btn ${!meta.search?'active':''}" aria-pressed="${!meta.search}" data-watch-method="url">По ссылке</button></div>${meta.search?`<div class="watch-connect-panel" data-watch-method-panel="code"><button type="button" class="btn btn-secondary btn-xs" data-watch-search>Найти по кодам</button></div><div class="watch-link-row watch-connect-panel" data-watch-method-panel="name" hidden><label class="field"><span>Название: ${esc(meta.source)}</span><input type="text" maxlength="160" data-watch-name value="${esc(product.name)}"></label><button type="button" class="btn btn-secondary btn-xs" data-watch-name-search>Найти</button></div>`:''}<div class="watch-link-row watch-connect-panel" data-watch-method-panel="url" ${meta.search?'hidden':''}><label class="field"><span>Ссылка на товар</span><input type="url" placeholder="${esc(meta.example_url)}" aria-label="Ссылка на товар: ${esc(meta.source)}" data-watch-url></label><button type="button" class="btn btn-secondary btn-xs" data-watch-preview>Проверить</button></div><div data-watch-result aria-live="polite"></div>`}`;
+      for(const button of target.querySelectorAll('[data-watch-method]'))button.onclick=()=>{
+        for(const option of target.querySelectorAll('[data-watch-method]')){
+          const active=option===button;option.classList.toggle('active',active);option.setAttribute('aria-pressed',String(active));
+        }
+        for(const panel of target.querySelectorAll('[data-watch-method-panel]'))panel.hidden=panel.dataset.watchMethodPanel!==button.dataset.watchMethod;
+      };
       decorateActions(target);
       const remove=target.querySelector('[data-watch-remove]');
       if(remove)remove.onclick=()=>guarded(remove,async()=>{const d=await request(`/${id}/offers/${offerId}`,'DELETE');if(token===generation)render(d);loadDashboard();});
@@ -111,7 +120,31 @@
     const token=++dashboardSeq,authToken=window.App.state.token;
     try{
       const data=await request('');if(token!==dashboardSeq||authToken!==window.App.state.token)return;
-      host.innerHTML=`<div class="panel-head row between"><h3>Уведомления о ценах</h3><span class="muted-small">Включено товаров: ${data.tracked_count}</span></div><div class="watch-grid" data-watch-events tabindex="0" aria-label="История уведомлений о ценах"></div><div data-watch-more></div>`;
+      if(dashboardOwner!==authToken){dashboardOwner=authToken;dashboardView=null;}
+      const products=new Map();
+      for(const offer of data.offers){
+        if(!products.has(offer.product_id))products.set(offer.product_id,{id:offer.product_id,name:offer.product_name,offers:[],unlinked:[]});
+        products.get(offer.product_id).offers.push(offer);
+      }
+      for(const item of data.unlinked){
+        if(!products.has(item.product_id))products.set(item.product_id,{id:item.product_id,name:item.name,offers:[],unlinked:[]});
+        products.get(item.product_id).unlinked.push(item);
+      }
+      dashboardView ||= !data.events.length&&products.size?'products':'changes';
+      host.innerHTML=`<div class="panel-head row between"><h3>Уведомления о ценах</h3><span class="muted-small">Включено товаров: ${data.tracked_count}</span></div><div class="segmented watch-view-tabs" role="tablist" aria-label="Уведомления о ценах"><button type="button" class="segmented-btn" role="tab" id="watchChangesTab" aria-controls="watchChangesPanel" data-watch-view="changes">Изменения</button><button type="button" class="segmented-btn" role="tab" id="watchProductsTab" aria-controls="watchProductsPanel" data-watch-view="products">Товары · ${data.tracked_count}</button></div><section id="watchChangesPanel" role="tabpanel" aria-labelledby="watchChangesTab"><div class="watch-grid" data-watch-events tabindex="0" aria-label="История уведомлений о ценах"></div><div data-watch-more></div></section><section id="watchProductsPanel" role="tabpanel" aria-labelledby="watchProductsTab"><div class="watch-grid" data-watch-products></div></section>`;
+      const selectView=(view,focus=false)=>{
+        dashboardView=view;
+        for(const tab of host.querySelectorAll('[data-watch-view]')){
+          const active=tab.dataset.watchView===view;tab.classList.toggle('active',active);tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;
+          host.querySelector('#'+tab.getAttribute('aria-controls')).hidden=!active;
+          if(active&&focus)tab.focus();
+        }
+      };
+      for(const tab of host.querySelectorAll('[data-watch-view]')){
+        tab.onclick=()=>selectView(tab.dataset.watchView);
+        tab.onkeydown=e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();selectView(e.key==='Home'?'changes':e.key==='End'?'products':dashboardView==='changes'?'products':'changes',true);};
+      }
+      selectView(dashboardView);
       const eventHost=host.querySelector('[data-watch-events]'),more=host.querySelector('[data-watch-more]');
       const bindOpen=()=>{for(const b of host.querySelectorAll('[data-watch-open]'))b.onclick=()=>core.runAction({errorPrefix:'Не удалось открыть товар',action:()=>window.App.getRuntimeModule('catalog-products').openEditor(Number(b.dataset.watchOpen),{tab:'offers'})});};
       const appendEvents=page=>{
@@ -124,8 +157,7 @@
       };
       appendEvents(data);
       if(!data.events.length)eventHost.innerHTML='<p class="muted-small">Изменений цен пока нет</p>';
-      if(data.offers.length)host.insertAdjacentHTML('beforeend',`<details class="ui-disclosure"><summary>Предложения с уведомлениями (${data.offers.length})</summary><div class="watch-grid">${data.offers.map(o=>`<article class="watch-card"><button type="button" class="catalog-product-name-btn" data-watch-open="${o.product_id}">${esc(o.product_name)}</button>${quote(o.snapshot)}<small class="muted-small">${esc(date(o.checked_at))}${o.error?' · '+esc(o.error):''}</small></article>`).join('')}</div></details>`);
-      host.insertAdjacentHTML('beforeend',data.unlinked.map(p=>`<p class="muted-small"><button type="button" class="btn btn-secondary btn-xs" data-watch-open="${p.product_id}">${esc(p.name)}</button> · ${p.matching_sources?.length?esc(p.matching_sources.join(', '))+': ':''}${esc(matchLabels[p.matching_state]||'Подбираем страницу по коду…')}</p>`).join(''));
+      host.querySelector('[data-watch-products]').innerHTML=[...products.values()].map(p=>`<article class="watch-card watch-product-card"><button type="button" class="catalog-product-name-btn" data-watch-open="${p.id}">${esc(p.name)}</button>${p.offers.map(o=>`<div class="watch-product-source">${quote(o.snapshot,true)}<small class="muted-small">${esc(date(o.checked_at))}${o.error?' · '+esc(o.error):''}</small></div>`).join('')}${p.unlinked.map(item=>`<div class="watch-match-state"><strong>${esc(item.matching_sources?.join(', ')||'Источник')}</strong><span>${esc(matchLabels[item.matching_state]||'Подбираем страницу по коду…')}</span></div>`).join('')}</article>`).join('')||'<p class="muted-small">Уведомления о товарах пока не включены</p>';
       bindOpen();
     }catch(e){if(token===dashboardSeq&&authToken===window.App.state.token){host.innerHTML='<h3>Уведомления о ценах</h3><span class="muted-small">Не удалось загрузить предложения.</span> <button type="button" class="btn btn-secondary">Повторить</button>';window.App.icons.apply(host.querySelector('button'),'refresh','Повторить');host.querySelector('button').onclick=loadDashboard;}}
   }

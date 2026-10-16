@@ -21,10 +21,9 @@
 :where(.catalog-product-measurements, .receipt-measurements) label[hidden] { display: none !important; }
 
 :is(#createModal, #editModal) .operation-preview-action.is-active { background: #284771; border-color: #79acff; box-shadow: inset 0 -3px #79acff; color: #dceaff; }
-.operation-editor :is(.operation-extra, .operation-entry) > summary { display: none; }
-.operation-editor .operation-extra:not(:has(> :not(summary):not(.hidden):not([hidden]))) { display: none; }
-.operation-editor .operation-receipt-check > summary { display: block; pointer-events: none; list-style: none; }
-.operation-editor .operation-receipt-check > summary::marker { content: ''; }
+.operation-editor :is(.operation-extra, .operation-entry) > .operation-panel-label { display: none; }
+.operation-editor .operation-extra:not(:has(> :not(.operation-panel-label):not(.hidden):not([hidden]))) { display: none; }
+.operation-editor .operation-receipt-check > .operation-panel-label { display: block; pointer-events: none; list-style: none; }
 .operation-editor .operation-entry { border: 0; padding: 0; margin: 0; }
 .operation-editor .operation-extra { border: 0; padding: 0; }
 .operation-editor .receipt-measurements { border: 0; padding: 12px 0 0; }

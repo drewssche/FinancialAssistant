@@ -383,7 +383,7 @@
         </div>
         <form id="batchCreateForm" class="category-modal-form">
           <p class="subtitle">Одна строка: <code>дата;тип;[группа];[категория];сумма;комментарий</code>.</p>
-          <details class="ui-disclosure"><summary>Формат импорта</summary><p id="batchCreateHint" class="muted-small">Дата: <code>ДД.ММ.ГГГГ</code>. Тип: расход/доход или expense/income. Группа и категория опциональны, пустые значения можно оставить как <code>;;</code>. Сумма: <code>01,23</code> или <code>01.23</code>. Комментарий опционален и не должен содержать <code>;</code>.</p></details>
+          <button id="batchCreateHint" type="button" class="btn btn-secondary btn-icon" aria-label="Формат импорта" title="Формат импорта" data-help-title="Формат импорта" data-help-text="Дата: ДД.ММ.ГГГГ. Тип: расход/доход или expense/income. Группа и категория необязательны — оставьте ;;. Сумма: 01,23 или 01.23. Комментарий необязателен и не должен содержать ;.">${window.App.icons.svg("info")}</button>
           <textarea id="batchCreateInput" rows="8" placeholder="04.03.2026;Расход;Транспорт;Такси;150,50;Поездка&#10;05.03.2026;Доход;;;1000;Аванс"></textarea>
           <div id="batchCreateFeedback" class="status-box hidden"></div>
           <div id="batchCreatePreview" class="bulk-import-preview hidden">

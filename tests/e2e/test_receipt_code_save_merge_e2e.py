@@ -9,33 +9,36 @@ REPEATS='000 "ЕВРОТОРГ"\n№ ДОК\n2186323 Пельмени Бульв
 
 @pytest.mark.e2e
 @pytest.mark.parametrize('width',[320,1440])
-def test_save_codes_explains_unrecognized_type_and_syncs_after_unit_change(static_server_url,page_with_receipt_api_mock,width):
+def test_codes_save_with_receipt_and_invalid_barcode_blocks_transfer(static_server_url,page_with_receipt_api_mock,width):
     p=page_with_receipt_api_mock;start(p,static_server_url,width);respond(p,[],False)
     stub(p,TEXT.replace('Молоко 900 мл','2186323 Молоко 900 мл'));upload(p);p.click('#scanRun')
-    row=p.locator('.scan-row');save=row.locator('.receipt-code-save input');hint=row.locator('.receipt-code-save-hint')
-    expect(save).to_be_disabled();expect(hint).to_contain_text('Для кода 2186323 выберите тип')
-    row.get_by_role('combobox',name='Тип кода').first.select_option('retailer')
-    expect(save).to_be_enabled();save.check();expect(hint).to_be_hidden()
-    save.uncheck();expect(save).not_to_be_checked();save.check()
-    row.locator('[data-scan-unit=pack]').click();expect(save).not_to_be_checked()
-    save.check();row.locator('.receipt-codes').screenshot(path=f'/tmp/fa-code-save-{width}.png')
+    row=p.locator('.scan-row');hint=row.locator('.receipt-code-error')
+    expect(row.locator('.receipt-code-save')).to_have_count(0)
+    expect(row.get_by_role('combobox',name='Тип кода').first).to_have_value('retailer')
+    field=row.get_by_role('textbox',name='Код товара',exact=True).last
+    field.fill('4006381333932')
+    expect(hint).to_contain_text('Проверьте длину и контрольную цифру')
+    p.locator('#scanConfirmed').check();expect(p.locator('#scanTransfer')).to_be_disabled()
+    field.fill('4006381333931');expect(hint).to_be_hidden()
+    row.locator('[data-scan-unit=pack]').click()
+    row.locator('.receipt-codes').screenshot(path=f'/tmp/fa-auto-code-save-{width}.png')
     p.locator('#scanConfirmed').check();p.click('#scanTransfer')
     item=p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[0]")
     assert item['catalog_codes']==[{'kind':'retailer','code':'2186323'},{'kind':'barcode','code':'4006381333931'}]
 
 
 @pytest.mark.e2e
-def test_pending_auto_lookup_cannot_reset_explicit_save_choice(static_server_url,page_with_receipt_api_mock):
+def test_pending_auto_lookup_cannot_replace_manually_edited_code(static_server_url,page_with_receipt_api_mock):
     p=page_with_receipt_api_mock;start(p,static_server_url);pending=[]
     p.route('**/catalog-products/lookup-codes',lambda r:pending.append(r))
     stub(p,TEXT);upload(p)
     with p.expect_request(lambda r:r.url.endswith('/lookup-codes')):p.click('#scanRun')
-    row=p.locator('.scan-row');save=row.locator('.receipt-code-save input')
-    expect(save).to_be_enabled();save.check()
+    row=p.locator('.scan-row');field=row.get_by_role('textbox',name='Код товара',exact=True)
+    field.fill('4811040140757')
     pending[0].fulfill(json={'items':[FOUND],'auto_match':True,'warnings':[],'unmatched':[]})
-    p.wait_for_timeout(100)
-    expect(save).to_be_checked();expect(row.locator('[data-scan-field=name]')).to_have_value('Молоко 900 мл')
-    save.uncheck();expect(save).not_to_be_checked()
+    expect(field).to_have_value('4811040140757')
+    expect(row.locator('[data-scan-field=name]')).to_have_value('Молоко 900 мл')
+    expect(row.locator('.receipt-code-save')).to_have_count(0)
 
 
 @pytest.mark.e2e
@@ -70,7 +73,6 @@ def test_automatic_merge_can_split_without_remerging_or_losing_catalog_edits(sta
     row.locator('[data-scan-category]').select_option('101')
     row.locator('[data-scan-unit=pack]').click()
     row.get_by_role('combobox',name='Тип кода').first.select_option('retailer')
-    row.locator('.receipt-code-save input').check()
     p.locator('#scanConfirmed').check()
     row.locator('[data-scan-split]').click()
     expect(p.locator('.scan-row')).to_have_count(5)
@@ -81,7 +83,7 @@ def test_automatic_merge_can_split_without_remerging_or_losing_catalog_edits(sta
         expect(restored.locator('[data-scan-field=total]')).to_have_value('1.10')
         expect(restored.locator('[data-scan-category]')).to_have_value('101')
         expect(restored.locator('[data-scan-unit=pack]')).to_have_attribute('aria-pressed','true')
-        expect(restored.locator('.receipt-code-save input')).to_be_checked()
+        expect(restored.get_by_role('combobox',name='Тип кода').first).to_have_value('retailer')
     # Editing a split row and unrelated metadata must not group the rows again.
     p.locator('.scan-row').nth(1).locator('[data-scan-field=name]').fill('Сырок вручную')
     p.locator('#scanDate').fill('2026-10-14')

@@ -199,7 +199,7 @@
       const unitTitle=document.createElement('span');unitTitle.textContent='Единица цены';unitHost.append(unitTitle);
       for(const [unit,label] of [['','Не указана'],...Object.entries(window.App.measurements.units)]){
         const button=document.createElement('button');button.type='button';button.className='btn btn-secondary measurement-unit';button.dataset.scanUnit=unit;button.textContent=label;
-        button.onclick=()=>{row.sale_unit=unit||null;row.package_quantity=null;row.package_unit=null;row.variant_id=null;row.variant_snapshot=null;row.code_save=false;row.measurement_touched=true;refreshUnits();node('scanConfirmed').checked=false;validate();};unitHost.append(button);
+        button.onclick=()=>{row.sale_unit=unit||null;row.package_quantity=null;row.package_unit=null;row.variant_id=null;row.variant_snapshot=null;row.measurement_touched=true;refreshUnits();node('scanConfirmed').checked=false;validate();};unitHost.append(button);
       }
       function refreshUnits(){
         unitHost.querySelectorAll('button').forEach(button=>{const active=button.dataset.scanUnit===(row.sale_unit||'');button.classList.toggle('is-active',active);button.setAttribute('aria-pressed',String(active));});
@@ -208,7 +208,7 @@
           input.previousElementSibling.textContent=field==='price'?window.App.measurements.priceLabel(row):window.App.measurements.quantityLabel(row);
         }
       }
-      function unlink(){delete row.catalog;row.variant_id=null;row.variant_snapshot=null;row.code_match_label='';row.code_save=false;refreshCategory();if(!row.measurement_touched)Object.assign(row,window.App.measurements.snapshot());refreshUnits();}
+      function unlink(){delete row.catalog;row.variant_id=null;row.variant_snapshot=null;row.code_match_label='';refreshCategory();if(!row.measurement_touched)Object.assign(row,window.App.measurements.snapshot());refreshUnits();}
       refreshUnits();
       let options=[],active=-1;
       function choose(item){
@@ -292,6 +292,7 @@
   function readMeta(){if(!draft)return;draft.date=node('scanDate').value;draft.shop=node('scanShop').value;draft.total=inputMoney(node('scanTotal').value);}
   function validate(){
     if(!draft)return;readMeta();const errors=parser.validate(draft);
+    draft.rows.forEach((row,index)=>{const reason=window.App.receiptCodes.validationError(window.App.receiptCodes.payload(row),draft.shop);if(reason)errors.push(`Позиция ${index+1}: ${reason}`);});
     node('scanRows').querySelectorAll('.scan-codes-host').forEach(host=>host.refreshCodeState?.());
     node('scanArithmetic').textContent=errors.length?errors.join(' · '):'Суммы сходятся. Сверьте названия и цифры с фото.';
     node('scanArithmetic').classList.toggle('scan-error',!!errors.length);
@@ -325,7 +326,7 @@
     modal.setOperationKind('create','expense');
     node('opDate').value=draft.date;node('opDate').dispatchEvent(new Event('change',{bubbles:true}));
     node('opCurrency').value=node('scanCurrency').value;node('opCurrency').dispatchEvent(new Event('change',{bubbles:true}));
-    state.createReceiptItems=draft.rows.map(r=>modal.createReceiptDraft({...r.catalog,category_id:r.category_touched?r.category_id:r.catalog?.category_id,category_touched:Boolean(r.category_touched),name:r.name,quantity:r.quantity,shop_name:draft.shop,...window.App.measurements.snapshot(r),variant_id:r.variant_id||null,variant_snapshot:r.variant_snapshot||null,code_entries:r.code_entries||[],code_save:Boolean(r.code_save),code_match_label:r.code_match_label||'',measurement_touched:true,
+    state.createReceiptItems=draft.rows.map(r=>modal.createReceiptDraft({...r.catalog,category_id:r.category_touched?r.category_id:r.catalog?.category_id,category_touched:Boolean(r.category_touched),name:r.name,quantity:r.quantity,shop_name:draft.shop,...window.App.measurements.snapshot(r),variant_id:r.variant_id||null,variant_snapshot:r.variant_snapshot||null,code_entries:r.code_entries||[],code_match_label:r.code_match_label||'',measurement_touched:true,
       unit_price:r.price/100, is_discounted:r.discount>0, regular_unit_price:r.discount>0?r.price/100:null,
       discount_mode:r.discount>0?'amount':null, discount_value:r.discount>0?r.discount/100:null,
       discount_type:r.discount>0?r.discount_type||'promo':null,note:null},'create'));

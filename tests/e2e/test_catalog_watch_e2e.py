@@ -28,7 +28,7 @@ def test_watch_link_preview_confirm_toggle_dashboard(static_server_url,page_with
     toggle=p.locator('#catalogProductWatch input');expect(toggle).not_to_be_checked();toggle.check();expect(toggle).to_be_checked()
     p.locator('[data-product-tab=offers]').click()
     host=p.locator('[data-offer-watch="501"]')
-    host.locator('summary').click();host.locator('[data-watch-url]').fill(s['url']);host.locator('[data-watch-preview]').click()
+    host.locator('[data-watch-method=url]').click();host.locator('[data-watch-url]').fill(s['url']);host.locator('[data-watch-preview]').click()
     expect(host.get_by_text('Молоко 900 мл',exact=True)).to_be_visible()
     assert len(writes)==1
     host.locator('[data-watch-confirm]').click();expect(host.locator('[data-watch-remove]')).to_be_visible()
@@ -102,10 +102,10 @@ def test_search_empty_failure_name_fallback_and_stale_response(static_server_url
     button.click();expect(host.locator('[data-watch-result]')).to_contain_text('По кодам ничего не найдено')
     mode[0]='error';button.click();expect(host.locator('[data-watch-result]')).to_contain_text('Не удалось выполнить поиск')
     expect(button).to_be_enabled()
-    mode[0]='empty';host.locator('summary').click();host.locator('[data-watch-name]').fill('Пельмени')
+    mode[0]='empty';host.locator('[data-watch-method=name]').click();host.locator('[data-watch-name]').fill('Пельмени')
     host.locator('[data-watch-name-search]').click();expect(host.locator('[data-watch-result]')).to_contain_text('По названию ничего не найдено')
     assert searches[-1]=={'name':'Пельмени'}
-    mode[0]='pending'
+    mode[0]='pending';host.locator('[data-watch-method=code]').click()
     with p.expect_request(lambda r:r.url.endswith('/search')):button.click()
     p.locator('#closeCatalogProductModalBtn').click()
     p.evaluate("window.App.getRuntimeModule('catalog-products').openEditor(401)")
@@ -208,7 +208,8 @@ def test_automatic_candidates_visible_without_search(static_server_url,page_with
     expect(host.locator('[data-watch-remove]')).to_be_visible()
     assert writes[0]['url']==candidates[1]['url']
     p.locator('#closeCatalogProductModalBtn').click()
-    expect(p.locator('#dashboardProductWatches')).to_contain_text('Green: Выберите подходящую карточку')
+    expect(p.locator('#dashboardProductWatches .watch-match-state')).to_contain_text('Green')
+    expect(p.locator('#dashboardProductWatches .watch-match-state')).to_contain_text('Выберите подходящую карточку')
 
 
 @pytest.mark.e2e
@@ -228,3 +229,42 @@ def test_retry_discovery_targets_only_selected_source(static_server_url,page_wit
     p.locator('[data-match-retry]').click()
     expect(p.locator('[data-offer-watch="501"]')).to_contain_text('Подбираем страницу по коду')
     assert posts==['/api/v1/catalog-watches/401/offers/501/autolink']
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width',[320,1440])
+def test_dashboard_product_cards_tabs_and_price_conditions(static_server_url,page_with_receipt_api_mock,width):
+    p=page_with_receipt_api_mock
+    name='Сырок творожный глазированный Ясь Белоус Фундук-какао 45г'
+    snapshot={'name':name,'source':'Green','price':'1.10','regular_price':'1.49','unit':'шт.', 'available':True,'conditions':'Цена сайта без адреса доставки','url':'https://green-dostavka.by/product/cheese/'}
+    data={'tracked_count':1,'offers':[{'product_id':401,'product_name':name,'snapshot':snapshot,'checked_at':'2026-10-16T10:00:00Z'}],'unlinked':[{'product_id':401,'name':name,'matching_state':'not_found','matching_sources':['Е-доставка']}],'events':[]}
+    def route(r,req):
+        if urlparse(req.url).path.endswith('/catalog-watches'):return r.fulfill(json=data)
+        return r.fulfill(json={'enabled':True,'telegram_connected':True,'supported_offer_ids':[],'offers':[]})
+    p.route(re.compile(r'.*/api/v1/catalog-watches(?:/.*)?$'),route)
+    setup(p,static_server_url,width)
+    p.locator('#closeCatalogProductModalBtn').click()
+    host=p.locator('#dashboardProductWatches')
+    expect(host.get_by_role('tab',name='Товары · 1')).to_have_attribute('aria-selected','true')
+    expect(host.locator('details, summary')).to_have_count(0)
+    expect(host.locator('.watch-product-card')).to_have_count(1)
+    expect(host.locator('.watch-match-state')).to_be_visible()
+    expect(host.locator('.watch-match-state')).to_contain_text('По кодам пока не найдено')
+    expect(host.locator('.watch-product-source')).to_contain_text('Green')
+    assert host.evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+    host.scroll_into_view_if_needed();host.screenshot(path=f'/tmp/fa-explicit-dashboard-{width}.png')
+    info=host.get_by_role('button',name='Условия цены',exact=True)
+    info.click()
+    dialog=p.get_by_role('dialog',name='Условия цены',exact=True)
+    expect(dialog).to_be_visible();expect(dialog).to_contain_text(snapshot['conditions'])
+    p.keyboard.press('Escape');expect(dialog).to_be_hidden();expect(info).to_be_focused()
+    host.get_by_role('tab',name='Товары · 1').focus();p.keyboard.press('ArrowLeft')
+    expect(host.get_by_role('tab',name='Изменения')).to_be_focused()
+    expect(host.locator('#watchChangesPanel')).to_be_visible()
+    expect(host.locator('#watchProductsPanel')).to_be_hidden()
+    p.evaluate("window.App.getRuntimeModule('catalog-watch').loadDashboard()")
+    expect(host.get_by_role('tab',name='Изменения')).to_have_attribute('aria-selected','true')
+    host.get_by_role('tab',name='Товары · 1').click()
+    host.locator('[data-watch-open]').click()
+    expect(p.locator('#catalogProductModal')).to_be_visible()
+    expect(p.locator('[data-product-tab=offers]')).to_have_class(re.compile('active'))

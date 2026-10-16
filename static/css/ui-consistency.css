@@ -1,7 +1,7 @@
 /* Shared binary settings. Native inputs keep keyboard, form and disabled behavior. */
 :is(#appShell, .modal, dialog) input[type="checkbox"][role="switch"] {
   appearance: none; -webkit-appearance: none; position: relative;
-  width: 40px; min-width: 40px; max-width: 40px; height: 24px;
+  width: 40px; min-width: 40px; max-width: 40px; height: 24px; min-height: 24px; max-height: 24px;
   flex: 0 0 40px; padding: 0; margin: 0; border: 1px solid var(--border);
   border-radius: 999px; background: var(--surface-2); cursor: pointer;
   transition: background .15s ease, border-color .15s ease;
@@ -17,7 +17,7 @@
   transform: translateX(16px); background: #121a29;
 }
 :is(#appShell, .modal, dialog) input[type="checkbox"][role="switch"]:disabled { opacity: .45; cursor: not-allowed; }
-:is(.settings-switch-row, .watch-toggle, .offer-size-toggle, .receipt-code-save, .plan-resume-toggle) {
+:is(.settings-switch-row, .watch-toggle, .offer-size-toggle, .plan-resume-toggle) {
   display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer;
 }
 :is(#appShell, .modal, dialog) input[type="checkbox"]:focus-visible {
@@ -50,27 +50,9 @@
 :is(#appShell, .modal, dialog) input[type="checkbox"]:not([role="switch"]):not(.sr-only) { accent-color: #ff942c; }
 .scan-confirm { min-height: 44px; display: flex; align-items: center; gap: 10px; cursor: pointer; }
 .scan-confirm input { width: 20px; height: 20px; flex: 0 0 20px; }
-/* Secondary sections have the same compact disclosure affordance and focus ring. */
-details.ui-disclosure { min-width: 0; border-top: 1px solid var(--border); margin-top: 12px; }
-details.ui-disclosure > summary {
-  display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 0;
-  list-style: none; color: var(--muted); font-size: 13px; cursor: pointer; width: fit-content;
-}
-details.ui-disclosure > summary::-webkit-details-marker { display: none; }
-details.ui-disclosure > summary::before {
-  content: ''; width: 7px; height: 7px; flex: 0 0 7px; margin: 0 4px;
-  border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: rotate(-45deg);
-}
-details.ui-disclosure[open] > summary::before { transform: rotate(45deg); }
-details.ui-disclosure[open] > summary { color: var(--text); }
-details.ui-disclosure > summary:focus-visible { outline: 2px solid #a6caff; outline-offset: 2px; border-radius: 6px; }
-details.ui-disclosure > :not(summary) { margin-bottom: 10px; }
 .receipt-code-actions, .scan-merged-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.receipt-code-save { font-size: 13px; }
 .watch-source-head { align-items: center; gap: 12px; }
 .watch-source-head > strong { flex: 1; min-width: 0; }
-.watch-quote { position: relative; padding-right: 54px; }
-.watch-quote > a.btn-icon { position: absolute; top: 0; right: 0; text-decoration: none; }
 .watch-search-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: center; }
 .watch-search-card > :not(button) { grid-column: 1; }
 .watch-search-card > button { grid-column: 2; grid-row: 1 / span 3; }
@@ -96,4 +78,29 @@ details.ui-disclosure > :not(summary) { margin-bottom: 10px; }
 .receipt-scan-dialog .btn.btn-icon { width: 44px; min-width: 44px; height: 44px; padding: 0; flex: 0 0 44px; }
 #scanTextDialog > #scanReparse { display: flex; margin: 12px 0 0 auto; }
 
-.watch-quote > a.btn-icon { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; }
+
+/* Always-visible cards and explicit modes replace accordions. */
+.watch-view-tabs { width: fit-content; margin-bottom: 16px; }
+.watch-view-tabs .segmented-btn { min-height: 44px; }
+#dashboardProductWatches [role="tabpanel"][hidden], .watch-connect-panel[hidden] { display: none; }
+.watch-product-card { gap: 12px; }
+.watch-product-source + .watch-product-source, .watch-match-state { border-top: 1px solid var(--border); padding-top: 12px; }
+.watch-match-state { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+.watch-match-state strong { color: var(--text); }
+.watch-connect-modes { width: fit-content; max-width: 100%; flex-wrap: wrap; margin: 4px 0 12px; }
+.watch-connect-modes .segmented-btn { min-height: 44px; }
+.watch-connect-panel { margin: 0 0 12px; }
+.help-dialog { width: min(480px, calc(100vw - 24px)); }
+.help-dialog-text { line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; margin: 12px 0 0; }
+.receipt-codes { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; margin-top: 12px; }
+.receipt-codes > strong { font-size: 13px; color: var(--muted); }
+.receipt-codes > .receipt-code-actions { margin: 0; justify-content: flex-end; }
+.receipt-codes > :not(strong):not(.receipt-code-actions) { grid-column: 1 / -1; }
+.receipt-codes > [hidden], .receipt-code-actions > [hidden] { display: none !important; }
+.receipt-codes > p:empty, .receipt-code-results:empty, .receipt-code-fields:empty { display: none; }
+.operation-preview[hidden] { display: none; }
+
+.watch-quote-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.watch-quote-head > strong { min-width: 0; }
+.watch-quote-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.watch-quote-actions .btn-icon { display: inline-flex; align-items: center; justify-content: center; width: 44px; min-width: 44px; height: 44px; padding: 0; text-decoration: none; }

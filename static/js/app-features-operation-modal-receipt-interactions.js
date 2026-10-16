@@ -85,7 +85,7 @@
       if (!rowItem || !template) {
         return;
       }
-      rowItem.code_save=false;rowItem.code_match_label="";
+      rowItem.code_match_label="";
       rowItem.details_expanded = false;
       const productId = Number(template.product_id || 0) || null;
       const product = productId

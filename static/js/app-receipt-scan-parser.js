@@ -130,7 +130,7 @@
       const divisor=gcd(row.discount,quantity);
       const identifiers=codes.map(e=>[e.kind!=='retailer'&&validBarcode(e.code.trim())?'barcode':e.kind,e.kind!=='retailer'&&validBarcode(e.code.trim())?e.code.trim().padStart(14,'0'):e.code.trim()]).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)));
       return JSON.stringify([barcodes[0],identifiers,row.price,row.discount/divisor,quantity/divisor,row.discount?row.discount_type||'promo':null,
-        row.sale_unit||null,row.package_quantity||null,row.package_unit||null,row.variant_id||null,row.catalog||null,row.category_id||null,Boolean(row.category_touched),Boolean(row.measurement_touched),Boolean(row.code_save)]);
+        row.sale_unit||null,row.package_quantity||null,row.package_unit||null,row.variant_id||null,row.catalog||null,row.category_id||null,Boolean(row.category_touched),Boolean(row.measurement_touched)]);
     }
     for(const row of rows){
       const id=key(row),previous=id&&groups.get(id);
@@ -161,7 +161,7 @@
     // Keep catalog/category/code edits on every restored line. Money comes from the photo.
     const shared=['catalog','product_id','product_name','template_id','source_id','brand_id','category_id','category_touched',
       'sale_unit','package_quantity','package_unit','measurement_touched','variant_id','variant_snapshot',
-      'code_entries','code_save','code_match_label','code_auto_attempted','codes_open'];
+      'code_entries','code_match_label','code_auto_attempted'];
     return row.merged_rows.map(original=>{
       const restored=structuredClone(original);
       for(const key of shared){if(key in row)restored[key]=structuredClone(row[key]);else delete restored[key];}

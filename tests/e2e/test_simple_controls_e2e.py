@@ -21,7 +21,7 @@ def test_searchable_choice_keyboard_escape_and_preview(static_server_url, page_w
     select = page.locator('#opCurrency')
     original = select.input_value()
     select.click()
-    dialog = page.locator('.choice-dialog:not(.task-dialog)')
+    dialog = page.locator('#appChoiceDialog')
     expect(dialog).to_be_visible()
     search = dialog.get_by_role('searchbox')
     expect(search).to_be_focused()
@@ -90,3 +90,19 @@ def test_milk_litre_weight_and_untouched_snapshot(static_server_url, page_with_r
     assert payload['sale_unit'] == 'kg' and payload['package_quantity'] is None and payload['package_unit'] is None
     assert payload['quantity'] == '0.242'
     assert row.locator('.measurement-editor').evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+
+
+@pytest.mark.e2e
+def test_import_help_closes_independently_and_with_owner(static_server_url, page_with_receipt_api_mock):
+    page=page_with_receipt_api_mock
+    start(page,static_server_url,390)
+    page.evaluate("window.App.actions.closeCreateModal();window.App.getRuntimeModule('bulk-ui').openBatchCreateModal()")
+    owner=page.locator('#batchCreateModal');trigger=page.locator('#batchCreateHint')
+    trigger.click()
+    help=page.get_by_role('dialog',name='Формат импорта',exact=True)
+    expect(help).to_be_visible();expect(help).to_contain_text('Дата: ДД.ММ.ГГГГ')
+    page.keyboard.press('Escape')
+    expect(help).to_be_hidden();expect(owner).to_be_visible();expect(trigger).to_be_focused()
+    trigger.click()
+    page.evaluate("window.App.getRuntimeModule('bulk-ui').closeBatchCreateModal()")
+    expect(owner).to_be_hidden();expect(help).to_be_hidden()

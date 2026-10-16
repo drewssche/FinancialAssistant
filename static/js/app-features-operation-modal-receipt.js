@@ -160,8 +160,7 @@
       state[ctx.seqKey] = Number(state[ctx.seqKey] || 0) + 1;
       return {
         draft_id: state[ctx.seqKey],
-        code_entries: structuredClone(seed.code_entries || seed.catalog_codes || (seed.variant_snapshot?.codes || []).map(code=>({kind:"barcode",code}))),
-        code_save: Boolean(seed.code_save),
+        code_entries: structuredClone(seed.code_entries || seed.catalog_codes || (seed.variant_snapshot?.codes || []).map(code=>({kind:"barcode",code,from_catalog:true}))),
         code_match_label: seed.code_match_label || "",
         details_expanded: Boolean(seed.details_expanded),
         discount_expanded: false,
@@ -204,7 +203,7 @@
     }
 
     function unlinkReceiptTemplateIdentity(item, options = {}) {
-      item.code_save=false;item.code_match_label="";
+      item.code_match_label="";
       item.code_entries=(item.code_entries||[]).filter(e=>!e.from_catalog);item.codes_loaded_entity=null;
       item.template_id = null;
       if (!options.preserveProduct) {
@@ -728,7 +727,7 @@
         const id=Number(host.closest('[data-receipt-item-id]').dataset.receiptItemId);
         const item=getReceiptItems(mode).find(item=>item.draft_id===id);
         window.App.receiptCodes.mount(host,{row:item,shop:()=>item.shop_name||'',loadKnown:item.details_expanded,
-          onSelect:found=>{const empty=!hasReceiptRowName(item);window.App.receiptCodes.apply(item,found);if(empty&&!item.quantity)item.quantity=1;ensureTrailingReceiptRow(mode);renderReceiptItems(mode);renderReceiptSummary(mode);ctx.listNode.querySelector(`[data-receipt-item-id="${id}"] .receipt-codes summary`)?.focus({preventScroll:true});},
+          onSelect:found=>{const empty=!hasReceiptRowName(item);window.App.receiptCodes.apply(item,found);if(empty&&!item.quantity)item.quantity=1;ensureTrailingReceiptRow(mode);renderReceiptItems(mode);renderReceiptSummary(mode);ctx.listNode.querySelector(`[data-receipt-item-id="${id}"] .receipt-codes .receipt-code-actions button`)?.focus({preventScroll:true});},
         });
       });
       ctx.listNode.querySelectorAll('[data-receipt-field="category_search"]').forEach(input => {

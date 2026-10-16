@@ -10,9 +10,6 @@
 .catalog-price-changes { display: grid; gap: 14px; margin: 0; }
 .catalog-price-changes-filters { grid-template-columns: minmax(170px, 1fr) minmax(180px, 1fr) minmax(130px, .7fr) 42px 42px; gap: 10px; }
 .catalog-price-changes-options { display: contents; }
-.catalog-price-changes-options > summary { margin: 0; list-style: none; }
-.catalog-price-changes-options > summary::-webkit-details-marker { display: none; }
-.catalog-price-changes-options[open] > summary { border-color: var(--accent); }
 .catalog-price-changes-advanced { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding-block: 4px; }
 .catalog-price-changes-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; margin: 0; }
 .catalog-price-change { display: grid; grid-template-columns: minmax(0, 1fr) minmax(150px, auto) 110px 42px; gap: 18px; align-items: center; padding: 14px 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; }

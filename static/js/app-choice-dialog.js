@@ -102,3 +102,38 @@
   },true);
   window.App.taskDialogs={attach};
 })();
+
+(() => {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'choice-dialog help-dialog';
+  dialog.setAttribute('aria-labelledby', 'appHelpTitle');
+  dialog.innerHTML = `<header><h3 id="appHelpTitle"></h3><button type="button" class="btn btn-secondary btn-icon" aria-label="Закрыть справку" title="Закрыть справку">${window.App.icons.svg('close')}</button></header><p class="help-dialog-text"></p>`;
+  document.body.append(dialog);
+  let trigger = null, observer = null;
+  document.addEventListener('click', event => {
+    const button = event.target.closest('[data-help-text]');
+    if (!button) return;
+    trigger = button;
+    dialog.querySelector('h3').textContent = button.dataset.helpTitle || 'Справка';
+    dialog.querySelector('p').textContent = button.dataset.helpText;
+    observer?.disconnect();
+    const owner = button.closest('.modal, dialog, .section-block');
+    if (owner) {
+      observer = new MutationObserver(() => {
+        if (!button.isConnected || owner.classList.contains('hidden') || owner.hidden || (owner.tagName === 'DIALOG' && !owner.open)) dialog.close();
+      });
+      observer.observe(owner, {attributes:true, attributeFilter:['class','hidden','open'], childList:true, subtree:true});
+    }
+    dialog.showModal();
+  });
+  dialog.querySelector('button').onclick = () => dialog.close();
+  dialog.addEventListener('click', event => {if(event.target===dialog)dialog.close();});
+  document.addEventListener('keydown', event => {
+    if (!dialog.open || event.key !== 'Escape') return;
+    event.preventDefault();event.stopImmediatePropagation();dialog.close();
+  }, true);
+  dialog.addEventListener('close', () => {
+    observer?.disconnect();observer=null;
+    if(trigger?.isConnected)trigger.focus({preventScroll:true});trigger=null;
+  });
+})();

@@ -3,12 +3,13 @@
   const layouts = new Map();
   const byId = id => document.getElementById(id);
   const desktop = window.matchMedia('(min-width: 900px)');
-  function disclosure(label, className = '') {
-    const node = document.createElement('details');
-    node.className = `operation-disclosure ${className}`;
-    const summary = document.createElement('summary');
-    summary.textContent = label;
-    node.append(summary);
+  function panel(label, className = '') {
+    const node = document.createElement('section');
+    node.className = `operation-panel ${className}`;
+    const heading = document.createElement('div');
+    heading.className = 'operation-panel-label';
+    heading.textContent = label;
+    node.append(heading);
     return node;
   }
   function setup(mode) {
@@ -17,12 +18,12 @@
     if (!modal || !form) return null;
     modal.classList.add('operation-editor');
     const header = modal.querySelector('.modal-head-actions');
-    const extra = disclosure('Комментарий и дополнительные параметры', 'operation-extra');
+    const extra = panel('Комментарий и дополнительные параметры', 'operation-extra');
     form.append(extra);
     extra.append(byId(`${prefix}Note`), byId(`${prefix}FxSettlementBlock`));
     form.append(window.App.taskDialogs.attach(byId(`${prefix}FxSettlementBlock`), 'Валютный остаток', header));
     const preview = modal.querySelector(':scope > .operation-modal-card > .preview-panel');
-    const previewDetails = disclosure('Предпросмотр', 'operation-preview');
+    const previewDetails = panel('Предпросмотр', 'operation-preview');
     if (preview) { preview.before(previewDetails); previewDetails.append(preview); }
     const previewButton = document.createElement('button');
     previewButton.type = 'button';
@@ -34,25 +35,23 @@
     previewButton.setAttribute('aria-controls', previewDetails.id);
     previewButton.setAttribute('aria-expanded', 'false');
     previewButton.addEventListener('click', () => {
-      previewDetails.open = !previewDetails.open;
-      if (previewDetails.open) previewDetails.scrollIntoView({block: 'nearest'});
+      previewDetails.hidden = !previewDetails.hidden;
+      syncPreview();
+      if (!previewDetails.hidden) previewDetails.scrollIntoView({block: 'nearest'});
     });
     const syncPreview = () => {
-      const on = previewDetails.open;
+      const on = !previewDetails.hidden;
       previewButton.setAttribute('aria-expanded', String(on));
       previewButton.setAttribute('aria-pressed', String(on));
       previewButton.classList.toggle('is-active', on);
       previewButton.title = on ? 'Скрыть предпросмотр' : 'Показать предпросмотр';
       previewButton.setAttribute('aria-label', previewButton.title);
     };
-    previewDetails.addEventListener('toggle', syncPreview); syncPreview();
+    previewDetails.hidden = true; syncPreview();
     header.prepend(previewButton);
-    const entry = create ? disclosure('Другие операции: валюта, долг', 'operation-entry') : null;
+    const entry = create ? panel('Другие операции: валюта, долг', 'operation-entry') : null;
     if (entry) { form.append(entry); entry.append(byId('createEntryModeSwitch')); }
-    const check = disclosure('Сверить сумму чека', 'operation-receipt-check');
-    check.querySelector('summary').addEventListener('click', event => {
-      event.preventDefault();
-    });
+    const check = panel('Сверить сумму чека', 'operation-receipt-check');
     const amount = byId(`${prefix}AmountCompound`), amountAnchor = document.createComment('operation amount');
     amount.before(amountAnchor);
     const category = byId(create ? 'createCategoryField' : 'editCategoryField');
@@ -83,7 +82,7 @@
     noteLabel.innerHTML = `<span>Комментарий</span>`;
     sidebar.append(noteLabel);
     const receiptSummary = receipt.querySelector('.receipt-summary');
-    const layout = {modal, form, extra, entry, check, amount, amountAnchor, category, categoryAnchor, currency, currencyAnchor, receiptCurrency, prefix, sidebar, noteLabel, receipt, receiptSummary, previewDetails};
+    const layout = {modal, form, extra, entry, check, amount, amountAnchor, category, categoryAnchor, currency, currencyAnchor, receiptCurrency, prefix, sidebar, noteLabel, receipt, receiptSummary, previewDetails, syncPreview};
     layouts.set(mode, layout);
     return layout;
   }
@@ -95,8 +94,8 @@
     const store = modal.querySelector('[data-receipt-store]');
     if (store && document.activeElement !== store) store.value = window.App.state[mode === 'create' ? 'createReceiptItems' : 'editReceiptItems']?.[0]?.shop_name || '';
     const receipt = operation && !modal.classList.contains('editing-debt-movement') && byId(`${prefix}OperationMode`).value === 'receipt';
-    check.querySelector('summary').textContent = desktop.matches ? 'Оплачено по чеку' : 'Сверить сумму чека';
-    check.querySelector('summary').tabIndex = -1;
+    check.querySelector('.operation-panel-label').textContent = desktop.matches ? 'Оплачено по чеку' : 'Сверить сумму чека';
+    check.querySelector('.operation-panel-label').tabIndex = -1;
     modal.classList.toggle('is-receipt-editor', receipt);
     modal.classList.toggle('is-other-entry', !operation);
     if (receipt) {
@@ -109,37 +108,29 @@
       categoryAnchor.after(category);
     }
     byId(`${prefix}Amount`).placeholder = receipt ? (desktop.matches ? 'Необязательно' : 'Сумма в бумажном чеке (необязательно)') : 'Сумма';
-    if (reset) {
-      modal.querySelectorAll('.operation-disclosure').forEach(node => { node.open = false; });
-      extra.open = Boolean((!desktop.matches && byId(`${prefix}Note`).value) || byId(mode === 'create' ? 'opUseFxSettlement' : 'editUseFxSettlement')?.checked);
-      check.open = Boolean(byId(mode === 'create' ? 'receiptDiffValue' : 'editReceiptDiffValue')?.classList.contains('receipt-diff-warn'));
-    }
-    extra.open = true; check.open = true; if (entry) entry.open = true;
+    if (reset) {view.previewDetails.hidden=true;view.syncPreview();}
     const plan = mode === 'create' && window.App.state.createFlowMode === 'plan';
     if (mode === 'create' && byId('openReceiptScan')) byId('openReceiptScan').hidden = !operation || plan;
     const note = byId(`${prefix}Note`);
     if (plan && note.parentElement !== view.form) extra.before(note);
     if (!plan && note.parentElement !== extra) extra.prepend(note);
-    if (plan && reset) modal.querySelector('.operation-preview').open = false;
-    extra.querySelector('summary').textContent = plan ? 'Дополнительные параметры' : 'Комментарий и дополнительные параметры';
+    extra.querySelector('.operation-panel-label').textContent = plan ? 'Дополнительные параметры' : 'Комментарий и дополнительные параметры';
     extra.classList.toggle('hidden', !operation);
     if (entry) {
       entry.classList.toggle('hidden', byId('createEntryModeSwitch').classList.contains('hidden'));
-      if (!operation) entry.open = true;
     }
     // The same fields stay in the form across viewport changes; no draft is copied.
     if (desktop.matches) {
-      if (entry) { view.form.prepend(entry); entry.open = true; }
+      if (entry) view.form.prepend(entry);
       view.form.insertBefore(view.sidebar, extra);
       view.noteLabel.append(note);
       view.sidebar.classList.toggle('hidden', !operation);
       if (receipt) {
         view.sidebar.prepend(view.receiptSummary, check);
-        check.open = true;
       } else {
         view.receipt.append(view.receiptSummary, check);
       }
-      extra.querySelector('summary').textContent = 'Дополнительные параметры';
+      extra.querySelector('.operation-panel-label').textContent = 'Дополнительные параметры';
     } else {
       if (entry) view.form.prepend(entry);
       view.receipt.append(view.receiptSummary, check);
@@ -148,11 +139,7 @@
     }
   }
   desktop.addEventListener('change', () => {
-    for (const [mode, view] of layouts) {
-      if (!desktop.matches) {
-        view.check.open = Boolean(byId(mode === 'create' ? 'receiptDiffValue' : 'editReceiptDiffValue')?.classList.contains('receipt-diff-warn'));
-        if (view.entry) view.entry.open = byId('opEntryMode').value !== 'operation';
-      }
+    for (const mode of layouts.keys()) {
       sync(mode);
     }
   });

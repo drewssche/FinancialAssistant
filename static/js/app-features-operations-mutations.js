@@ -115,6 +115,15 @@
         throw new Error("Проверь дату операции");
       }
       const receiptItems = receiptPayloadGetter ? receiptPayloadGetter() : [];
+      for (const [index,item] of receiptItems.entries()) {
+        const reason=window.App.receiptCodes.validationError(item.catalog_codes||[],item.shop_name);
+        if(reason){
+          const row=document.querySelector(`#${mode}Modal .receipt-code-error:not([hidden])`)?.closest('.receipt-item-row');
+          if(row?.classList.contains('is-compact'))row.querySelector('[data-receipt-details-toggle]')?.click();
+          document.querySelector(`#${mode}Modal .receipt-code-error:not([hidden])`)?.closest('.receipt-item-row')?.querySelector('.receipt-code-line input')?.focus();
+          throw new Error(`Позиция ${index+1}: ${reason}`);
+        }
+      }
       const amount = core.resolveMoneyInput(document.getElementById(amountInputId).value);
       const currency = String(document.getElementById(currencySelectId)?.value || (core.getCurrencyConfig?.().code || "BYN")).toUpperCase();
       const fxContext = getOperationCurrencyContext?.(mode);
