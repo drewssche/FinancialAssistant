@@ -22,6 +22,7 @@
             <div id="dashboardCurrencyRates" class="dashboard-currency-rates-grid"></div>
             <div id="dashboardCurrencyPositions" class="analytics-kpi-secondary"></div>
           </section>
+<section id="dashboardProductWatches" class="panel"></section>
 <section id="dashboardAnalyticsPanel" class="panel">
             <div class="panel-head row between">
               <div>

@@ -698,3 +698,11 @@ User explicitly authorized the full cycle after every completed iteration: local
 - [x] Published the accumulated category icons/arithmetic, receipt identifier matching, main size/history simplification and final Offers-card code placement through GitHub main → clean server fast-forward pull → app-only build/recreate. Application code commit: `d2c695b` (includes implementation through `7cc4a26` and the standing authorization workflow).
 - [x] Verified all 27 changed static file hashes from the running application, including assets `20261016-offer-codes`. `/ready` reports ready, database OK and unchanged schema `20261013_0050`. All six containers healthy. App started `2026-10-16T08:07:33.987087731Z`, restarts 0. The other five containers retain exactly their previous image/start/restart state. Rollback image: `financialassistant-app:before-offer-codes-20261016`.
 - [x] The first asset probe overlapped startup and received a closed connection; the post-readiness verification completed successfully. No schema migration or companion-service restart was needed. This documentation-only release record is published and pulled after verification; the application image remains the verified code build above.
+
+### 16.10.2026 — отслеживание магазинных цен
+
+Согласовано: добровольный тоггл товара, несколько предложений источников, изменения цен на дашборде и в Telegram. Первый магазин — Е-доставка.
+
+Реализована первая итерация: публичная карточка по подтверждённой ссылке, проверка названия/фасовки перед привязкой, цена/обычная цена/наличие/цена за кг или л/время проверки, периодические проверки в существующем bot-worker, исходная цена без уведомления, отдельные события изменений и пакетная доставка Telegram с отметкой успешной отправки. История покупок не изменяется. По умолчанию никто не подписан. Другие сети не получают метку Е-доставки.
+
+Дальше: поиск на стороне магазина по GTIN/SKU с подтверждением совпадений, провайдеры Green/Соседи, подсказки часто покупаемых товаров, индивидуальные пороги и расписание, расширенная обработка купонов/карт/акций от количества. Текущий адаптер получает публичную цену сайта без адреса доставки; не обещает цену офлайн-магазина или персональную цену.

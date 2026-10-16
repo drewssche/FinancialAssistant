@@ -174,3 +174,27 @@
 @media(max-width:600px){.catalog-product-modal-offer > .catalog-offer-codes {grid-template-columns:minmax(0,1fr);}}
 
 .catalog-product-modal-footer #submitCatalogProductBtn {margin-left:auto;}
+
+/* Retailer monitoring: compact opt-in and source-local linking. */
+.catalog-product-watch { padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; margin: 12px 0; }
+.watch-toggle { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; cursor: pointer; }
+.watch-toggle input { width: 38px; height: 22px; accent-color: #ff942c; cursor: pointer; }
+.catalog-product-watch p { margin: 5px 0 0; }
+.catalog-offer-watch { grid-column: 1 / -1; width: 100%; min-width: 0; border-top: 1px solid var(--border); padding-top: 12px; }
+.watch-source-head, .watch-link-row { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.watch-link-row { align-items: end; }
+.watch-link-row .field { flex: 1; min-width: 0; }
+.watch-quote { display: grid; gap: 6px; margin: 8px 0; overflow-wrap: anywhere; }
+.watch-quote small, .watch-card>small { color: var(--muted); }
+.watch-quote a { color: #9ec5ff; }
+.watch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 10px; margin: 12px 0; }
+.watch-card { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; min-width: 0; }
+.watch-down { color: #85dbb0; } .watch-up { color: #f2a5ac; }
+#dashboardProductWatches summary { cursor: pointer; padding: 10px 0; }
+@media (max-width: 500px) { .watch-source-head { align-items: start; flex-wrap: wrap; } .watch-link-row { flex-wrap: wrap; } .watch-link-row .field { flex-basis: 100%; } }
+.watch-toggle input[role="switch"] { appearance: none; -webkit-appearance: none; position: relative; flex: 0 0 38px; width: 38px; min-width: 38px; height: 22px; padding: 0; border: 1px solid var(--border); border-radius: 20px; background: var(--surface-2); transition: background .15s; }
+.watch-toggle input[role="switch"]::before { content: ''; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #bdc9dd; transition: transform .15s; }
+.watch-toggle input[role="switch"]:checked { background: #ff942c; }
+.watch-toggle input[role="switch"]:checked::before { transform: translateX(16px); background: #121a29; }
+.watch-toggle input[role="switch"]:focus-visible { outline: 2px solid #a6caff; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .watch-toggle input[role="switch"], .watch-toggle input[role="switch"]::before { transition: none; } }

@@ -409,6 +409,7 @@
 
 
   async function loadDashboard() {
+    window.App.getRuntimeModule("catalog-watch")?.loadDashboard();
     if (dashboardLoadController) {
       dashboardLoadController.abort();
     }

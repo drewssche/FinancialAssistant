@@ -116,6 +116,7 @@
           <button type="button" class="segmented-btn" data-product-tab="prices" aria-pressed="false">Цены</button>
           <button type="button" class="segmented-btn" data-product-tab="purchases" aria-pressed="false">Покупки</button>
         </nav>
+        <div id="catalogProductWatch" class="catalog-product-watch hidden"></div>
         <form data-product-panel="product" id="catalogProductForm" class="category-modal-form">
           <section class="catalog-image-field" data-catalog-image-picker="catalog-product" aria-label="Фотография товара">
             <div class="catalog-image-picker-preview" data-catalog-image-preview></div>

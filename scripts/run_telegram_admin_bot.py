@@ -476,6 +476,31 @@ async def process_currency_alerts(client: TelegramBotClient) -> None:
         db.close()
 
 
+async def process_catalog_watches(client: TelegramBotClient) -> None:
+    # Network scraping runs in a thread so Telegram polling remains responsive.
+    def refresh():
+        from app.services.catalog_watch_service import CatalogWatchService
+        with SessionLocal() as db:
+            with try_background_job_lock(db, "catalog_watch_refresh") as acquired:
+                if acquired:
+                    CatalogWatchService(db).refresh_due()
+    await asyncio.to_thread(refresh)
+    from app.services.catalog_watch_service import CatalogWatchService, now
+    with SessionLocal() as db:
+        with try_background_job_lock(db, "catalog_watch_delivery") as acquired:
+            if not acquired:
+                return
+            for chat, events, text in CatalogWatchService(db).deliveries():
+                try:
+                    await client.call("sendMessage", {"chat_id": str(chat), "text": text, "disable_web_page_preview": True})
+                except Exception as exc:
+                    log_telegram_bot_event("catalog_watch_delivery_failed", error=type(exc).__name__)
+                    continue
+                for event in events:
+                    event.telegram_sent_at = now()
+                db.commit()
+
+
 async def run() -> None:
     settings = get_settings()
     token = settings.telegram_bot_token.strip()
@@ -524,6 +549,11 @@ async def run() -> None:
                 except Exception as exc:  # noqa: BLE001
                     log_telegram_bot_event("currency_alert_scan_failed", error=type(exc).__name__)
                     logger.warning("telegram currency alert scan failed: %s", exc)
+                try:
+                    await process_catalog_watches(client)
+                except Exception as exc:
+                    log_telegram_bot_event("catalog_watch_scan_failed", error=type(exc).__name__)
+                    logger.warning("catalog watch scan failed: %s", type(exc).__name__)
                 last_plan_reminder_scan_at = now_mono
             try:
                 data = await client.call(

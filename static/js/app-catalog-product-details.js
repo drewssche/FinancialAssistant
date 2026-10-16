@@ -185,6 +185,7 @@
     workspaceGeneration += 1;
     bind(); product = value; nestedOperation = false; preferredPriceSeries = options.priceSeries || null;
     window.App.getRuntimeModule("catalog-product-codes").open(value);
+    window.App.getRuntimeModule("catalog-watch").open(value);
     node("catalogProductTabs").classList.toggle("hidden", !product);
     node("catalogProductPriceOffer").innerHTML = ""; node("catalogProductPurchaseOffer").innerHTML = "";
     node("catalogProductPriceMode").value = "purchases";
@@ -201,7 +202,7 @@
     summary.classList.toggle("hidden", !options.comparisonHtml);
     resetOptions(); select(options.tab || "product", options.offerId);
   }
-  function close() { window.App.getRuntimeModule("catalog-product-codes").close(); window.App.getRuntimeModule("catalog-price-history").cleanup(); workspaceGeneration += 1; cancel(); product = null; nestedOperation = false; returnTarget = null; }
-  function refresh(value) { window.App.getRuntimeModule("catalog-product-codes").refresh(value); product = value; resetOptions(); select(tab); }
+  function close() { window.App.getRuntimeModule("catalog-watch").close(); window.App.getRuntimeModule("catalog-product-codes").close(); window.App.getRuntimeModule("catalog-price-history").cleanup(); workspaceGeneration += 1; cancel(); product = null; nestedOperation = false; returnTarget = null; }
+  function refresh(value) { window.App.getRuntimeModule("catalog-watch").open(value); window.App.getRuntimeModule("catalog-product-codes").refresh(value); product = value; resetOptions(); select(tab); }
   window.App.registerRuntimeModule("catalog-product-details", {open, close, refresh, select, cleanup: close});
 })();
