@@ -327,8 +327,8 @@
     return getCoreUtils().formatMoney(state, value, options);
   }
 
-  function evaluateMathExpression(value) {
-    return getCoreUtils().evaluateMathExpression(value);
+  function evaluateMathExpression(value, precisionDigits = 2) {
+    return getCoreUtils().evaluateMathExpression(value, precisionDigits);
   }
 
   function resolveMoneyInput(value, fallback = 0) {

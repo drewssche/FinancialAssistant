@@ -10,10 +10,10 @@ from tests.e2e.test_receipt_picker_store_scope_e2e import static_server_url, pag
 TEXT='''ООО Тестовый магазин
 № ДОК 123
 Молоко 1 л
-4810000000001 3.00 x2.000 6.00
+4006381333931 3.00 x2.000 6.00
 Скидка -0.50
 Хлеб
-4810000000002 2.00 x1.000 2.00
+4811040140757 2.00 x1.000 2.00
 ИТОГО К ОПЛАТЕ 7.50
 12.10.2026 18:24:04'''
 
@@ -217,7 +217,7 @@ def test_scan_numeric_expressions_and_invalid_results(static_server_url,page_wit
 
 
 @pytest.mark.e2e
-def test_scan_missing_paid_total_calculates_but_preserves_printed_totals(static_server_url,page_with_receipt_api_mock):
+def test_scan_missing_paid_total_and_manual_paid_recalculate_discount(static_server_url,page_with_receipt_api_mock):
     page=page_with_receipt_api_mock;start(page,static_server_url)
     # Exercise a partially recognized row without fabricating a printed total.
     page.evaluate("""()=>{window.App.receiptScanParser.parse=()=>({
@@ -230,8 +230,45 @@ def test_scan_missing_paid_total_calculates_but_preserves_printed_totals(static_
     paid.focus();paid.press('Tab')
     row.locator('[data-scan-field=discount]').fill('0,70')
     expect(paid).to_have_value('6.41')
-    # A user override is kept and a mismatch is surfaced, never silently corrected.
+    # Entering paid adjusts the discount; later edits retain that discount amount.
     paid.fill('6,40');row.locator('[data-scan-field=price]').fill('7,12')
-    expect(paid).to_have_value('6.40')
-    expect(page.locator('#scanArithmetic')).to_contain_text('Проверьте цену, количество и скидку')
+    expect(paid).to_have_value('6.41')
+    expect(row.locator('[data-scan-field=discount]')).to_have_value('0.71')
+    expect(page.locator('#scanArithmetic')).to_contain_text('не совпадает с итогом чека')
     expect(page.locator('#scanTransfer')).to_be_disabled()
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width',[320,1440])
+def test_scanned_amount_recalculates_on_edits_and_preserves_receipt_header(static_server_url,page_with_receipt_api_mock,width):
+    p=page_with_receipt_api_mock;start(p,static_server_url,width)
+    stub(p,"ООО Соседи\n№ ДОК 1\nКуриное филе\n14.59 x0.320 2.29\nИТОГО К ОПЛАТЕ 2.29\n16.10.2026 20:34:51")
+    upload(p);p.click('#scanRun');row=p.locator('.scan-row')
+    price=row.locator('[data-scan-field=price]');qty=row.locator('[data-scan-field=quantity]')
+    discount=row.locator('[data-scan-field=discount]');paid=row.locator('[data-scan-field=total]')
+    expect(paid).to_have_value('2.29')  # Do not silently repair OCR on load.
+    row.locator('[data-scan-unit=kg]').click();expect(paid).to_have_value('2.29')
+    qty.fill('0,32');expect(paid).to_have_value('4.67')
+    qty.fill('0,324');expect(paid).to_have_value('4.73')
+    discount.fill('0,73');expect(paid).to_have_value('4.00')
+    paid.fill('4-0,01');paid.press('Enter');expect(discount).to_have_value('0.74')
+    expect(paid).to_have_value('3.99')
+    qty.fill('0,32');expect(paid).to_have_value('3.93')
+    price.fill('15');expect(paid).to_have_value('4.06')
+    paid.fill('4,80');expect(discount).to_have_value('0.00')
+    expect(row.locator('.scan-discount-type')).to_be_hidden()
+    paid.fill('5');expect(discount).to_have_value('0.00')
+    expect(p.locator('#scanArithmetic')).to_contain_text('Проверьте цену, количество и скидку')
+    p.locator('#scanConfirmed').check();expect(p.locator('#scanTransfer')).to_be_disabled()
+    paid.fill('4,80');qty.fill('');expect(paid).to_have_value('')
+    expect(p.locator('#scanTransfer')).to_be_disabled()
+    qty.fill('0,32');expect(paid).to_have_value('4.80')
+    discount.fill('0,13');expect(paid).to_have_value('4.67')
+    expect(p.locator('#scanTotal')).to_have_value('2.29')
+    p.locator('#scanTotal').fill('4.67');p.locator('#scanConfirmed').check()
+    row.screenshot(path=f'/tmp/fa-scan-calculation-{width}.png')
+    p.click('#scanTransfer')
+    item=p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[0]")
+    assert float(item['quantity'])==.32 and float(item['regular_unit_price'])==15
+    assert float(item['discount_value'])==.13 and item['sale_unit']=='kg'
+    expect(p.locator('#opAmount')).to_have_value('4.67')

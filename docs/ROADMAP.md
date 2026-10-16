@@ -17,6 +17,11 @@
 - Keep Telegram-specific behavior in the client runtime; backend contracts stay shared between Web UI and Telegram.
 
 ## Current Sprint
+### Receipt line arithmetic and a single quantity after merging — 2026-10-17
+- [x] Editing price, quantity or discount recalculates the paid amount, including rows with a recognized OCR total. Editing the paid amount derives the discount when price/quantity are known; impossible totals remain invalid. Recognized amounts remain intact until an edit, and the receipt header remains an independent reconciliation total. Expressions use shared calculator parsing and cent rounding; fixed the core wrapper dropping three-decimal weight precision.
+- [x] Duplicate barcodes sum quantity and amounts into one ordinary item. Removed the merged-row label and redundant count; quantity is the only multiplier and merge metadata never enters the operation payload. A compact split icon beside delete retains reversal, with confirmation before restoring edited amounts.
+- [x] Validation: 80 parser/merge/frontend contract checks and 30 browser cases passed in scoped runs. Covered weighted/expression calculations, invalid and missing values, editable merged quantities, transfer without double multiplication, split restoration, deletion and shared product search. Mobile/desktop screenshots reviewed. Corrected two obsolete invalid-checksum barcode fixtures. No database migration.
+
 ### Reuse operation controls in receipt scan review — 2026-10-17
 - [x] Manual operation entry and scan review share the product-option renderer: thumbnails, highlighted names, brand/source metadata and the existing “Создать позицию” action inside the name popover. Removed the scanner's separate creation button, inline candidate cards and their styles. OCR keyword ranking and package-mismatch indication remain; selecting an item never imports its catalog price into the scan.
 - [x] Product measurement editors and scan sale-unit controls share the unit-button builder/styles. Category selection, code fields/conflict handling and icon actions retain their existing shared components. The confirmation checkbox retains confirmation semantics.

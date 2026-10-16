@@ -52,7 +52,8 @@ def test_merge_four_barcoded_items_preserves_receipt_total_and_transfer(static_s
     expect(row.locator('[data-scan-field=quantity]')).to_have_value('4')
     expect(row.locator('[data-scan-field=price]')).to_have_value('1.10')
     expect(row.locator('[data-scan-field=total]')).to_have_value('4.40')
-    expect(row.locator('.scan-merged-note')).to_contain_text('4')
+    expect(row.locator('.scan-merged-note')).to_have_count(0)
+    expect(row.locator('.scan-row-actions [data-scan-split]')).to_be_visible()
     expect(p.locator('#scanTotal')).to_have_value('10.39')
     row.scroll_into_view_if_needed();p.screenshot(path=f'/tmp/fa-merged-receipt-{width}.png')
     assert p.locator('#receiptScanDialog').evaluate('n=>n.scrollWidth<=n.clientWidth+1')
@@ -126,3 +127,17 @@ def test_split_restores_interleaved_receipt_order_and_reparse_groups_again(stati
     p.click('#scanShowText');p.click('#scanReparse')
     expect(p.locator('.scan-row')).to_have_count(2)
     expect(p.locator('[data-scan-split]')).to_have_count(1)
+
+
+@pytest.mark.e2e
+def test_merged_quantity_is_the_only_multiplier_when_edited(static_server_url,page_with_receipt_api_mock):
+    p=page_with_receipt_api_mock;start(p,static_server_url);respond(p,[],False)
+    stub(p,REPEATS);upload(p);p.click('#scanRun')
+    row=p.locator('.scan-row').last
+    row.locator('[data-scan-field=quantity]').fill('3')
+    expect(row.locator('[data-scan-field=total]')).to_have_value('3.30')
+    p.locator('#scanTotal').fill('9.29');p.locator('#scanConfirmed').check();p.click('#scanTransfer')
+    item=p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[1]")
+    assert item['quantity']=='3' and float(item['unit_price'])==1.1
+    assert 'merged_count' not in item and 'merged_rows' not in item
+    expect(p.locator('#opAmount')).to_have_value('9.29')

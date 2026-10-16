@@ -35,7 +35,7 @@
 @import url("./css/secondary-editors.css?v=20261014-secondary1");
 @import url("./css/ui-final-audit.css?v=20261014-audit1");
 @import url("./css/ui-simplification.css?v=20261017-scan-shared-controls");
-@import url("/static/css/receipt-scan.css?v=20261017-scan-shared-controls");
+@import url("/static/css/receipt-scan.css?v=20261017-scan-calculation");
 @import url("/static/css/ui-consistency.css?v=20261017-scan-shared-controls");
 /* Work timesheet */
 .work-section-head { gap: 16px; align-items: flex-start; }

@@ -179,3 +179,36 @@ def test_item_codes_preserve_zeroes_and_exclude_receipt_metadata():
     assert second['code_entries'][0]['kind']=='retailer'
     assert second['name']=='Молоко'
     assert first['price']==711 and first['total']==640
+
+
+def test_edit_recalculates_money_in_both_directions_without_changing_source():
+    script='global.window={App:{}};'+PARSER+r'''
+    const calc=window.App.receiptScanParser.recalculateRow;
+    const row={price:1459,quantity:.32,discount:0,total:229,printed_total:229};
+    const results=[];
+    for(const [field,value] of [['quantity',.32],['quantity',.324],['discount',73],['total',399],['quantity',.32],['price',1500],['total',480],['total',500]]){
+      row[field]=value;results.push({changed:calc(row,field),...row});
+    }
+    console.log(JSON.stringify(results));'''
+    rows=json.loads(subprocess.check_output(['node','-e',script],text=True))
+    assert [r['total'] for r in rows]==[467,473,400,399,393,406,480,500]
+    assert [r['discount'] for r in rows]==[0,0,73,74,74,74,0,0]
+    assert all(r['printed_total']==229 for r in rows)
+    assert rows[-1]['changed']==[]  # Above-subtotal payments never invent a negative discount.
+
+
+def test_edit_rounding_unknown_values_and_no_invented_price_or_quantity():
+    script='global.window={App:{}};'+PARSER+r'''
+    const calc=window.App.receiptScanParser.recalculateRow;
+    const half={price:1,quantity:.5,discount:0,total:99};calc(half,'quantity');
+    const unknown={price:null,quantity:1,discount:0,total:99};calc(unknown,'total');
+    const incomplete={price:711,quantity:1,discount:null,total:640};calc(incomplete,'price');
+    const overdiscount={price:100,quantity:1,discount:101,total:100};calc(overdiscount,'discount');
+    const unrelated={price:100,quantity:1,discount:0,total:99};calc(unrelated,'name');
+    console.log(JSON.stringify({half,unknown,incomplete,overdiscount,unrelated}));'''
+    data=json.loads(subprocess.check_output(['node','-e',script],text=True))
+    assert data['half']['total']==1
+    assert data['unknown']=={'price':None,'quantity':1,'discount':0,'total':99}
+    assert data['incomplete']['total'] is None
+    assert data['overdiscount']['total']==-1
+    assert data['unrelated']['total']==99

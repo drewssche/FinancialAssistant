@@ -121,8 +121,8 @@
 .receipt-scan-entry strong { font-size: 15px; }
 .receipt-scan-entry small { color: var(--muted); font-weight: 400; }
 
-.scan-merged-actions {display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:8px;}
-.scan-split-confirm {display:flex;align-items:center;flex-wrap:wrap;gap:8px;width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;}
+.scan-row-actions {display:flex;align-items:center;gap:6px;}
+.scan-split-confirm {grid-column:1/-1;display:flex;align-items:center;flex-wrap:wrap;gap:8px;width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;}
 .scan-split-confirm small {flex-basis:100%;}
 
 
@@ -130,3 +130,5 @@
 .scan-catalog-list .chip-btn {min-height:44px;}
 .scan-catalog-list [aria-selected=true] {outline:2px solid #79acff;outline-offset:-2px;}
 @media(max-width:700px){.scan-catalog-list {width:calc(100% + 54px);}}
+
+@media(max-width:700px){.scan-row:has([data-scan-split]) .scan-catalog-list {width:calc(100% + 104px);}}

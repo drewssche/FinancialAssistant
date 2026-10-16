@@ -22,7 +22,7 @@ def test_four_repeats_and_another_item_keep_order_and_totals():
     result=merge(rows)
     assert len(result)==2 and result[0]==other
     assert result[1]['quantity']==4 and result[1]['price']==110 and result[1]['total']==440
-    assert result[1]['merged_count']==4 and result[1]['code_entries']==rows[1]['code_entries']
+    assert len(result[1]['merged_rows'])==4 and result[1]['code_entries']==rows[1]['code_entries']
     assert sum(r['total'] for r in result)==1039
 
 

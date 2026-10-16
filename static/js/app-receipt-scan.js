@@ -6,7 +6,6 @@
     return result.ok && result.value >= 0 && result.value <= (quantity ? 100000 : 9999999.99) ? result.value : null;
   }
   const inputMoney = value => {const result = inputNumber(value);return result == null ? null : Math.round(result * 100);};
-  const rowTotal = row => row.price != null && row.quantity > 0 && row.discount != null ? Math.round(row.price * Math.round(row.quantity * 1000) / 1000) - row.discount : null;
   const node = id => document.getElementById(id);
   const dialog = document.createElement('dialog');
   dialog.id='receiptScanDialog';dialog.className='receipt-scan-dialog';dialog.setAttribute('aria-labelledby','receiptScanTitle');
@@ -139,7 +138,7 @@
   const codeLookupKey=row=>JSON.stringify([node('scanShop').value,(row.code_entries||[]).map(e=>[e.code,e.manual_kind?e.kind:'auto'])]);
   function showDraft(value){
     draft=value;
-    for(const row of draft.rows){if(row.total==null){row.autoTotal=true;row.total=rowTotal(row);}}
+    for(const row of draft.rows){if(row.total==null)parser.recalculateRow(row,'price');}
     draft.rows.forEach((row,index)=>row.scan_order=index);
     draft.rows=parser.mergeDuplicates(draft.rows,window.App.receiptCodes.validBarcode);
     dialog.dataset.stage='review';node('scanStep').textContent='Проверьте поля по фото';node('scanDate').value=draft.date;node('scanShop').value=draft.shop;node('scanTotal').value=decimal(draft.total);
@@ -163,12 +162,10 @@
     node('scanRows').replaceChildren();
     draft.rows.forEach((row,index)=>{
       const el=document.createElement('section');el.className='scan-row';
-      el.innerHTML=`<div class="scan-name"><label class="field"><span>Товар ${index+1}</span><input data-scan-field="name" maxlength="160" placeholder="Найти или ввести товар" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="scanCatalog${index}" required></label><div id="scanCatalog${index}" class="scan-catalog-list receipt-name-picker app-popover hidden" role="listbox" hidden></div></div>${iconButton('', 'trash', 'Удалить позицию '+(index+1))}<div class="scan-match"></div><div class="scan-codes-host"></div><label class="field scan-category"><span>Категория</span><select data-scan-category aria-label="Категория позиции"></select></label><div class="scan-sale-units" role="group" aria-label="Единица цены и количества"></div><div class="scan-row-numbers">${[['price','Цена за ед.'],['quantity','Кол-во'],['discount','Скидка, сумма'],['total','Оплачено']].map(([field,label])=>`<label class="field"><span>${label}</span><input data-scan-field="${field}" inputmode="decimal" aria-describedby="scanMathHint" required></label>`).join('')}</div><label class="field scan-discount-type"><span>Тип скидки</span><select data-scan-field="discount_type"><option value="promo">Акция</option><option value="loyalty_points">Баллы</option><option value="coupon">Купон</option></select></label>`;
+      el.innerHTML=`<div class="scan-name"><label class="field"><span>Товар ${index+1}</span><input data-scan-field="name" maxlength="160" placeholder="Найти или ввести товар" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="scanCatalog${index}" required></label><div id="scanCatalog${index}" class="scan-catalog-list receipt-name-picker app-popover hidden" role="listbox" hidden></div></div><div class="scan-row-actions">${iconButton('', 'trash', 'Удалить позицию '+(index+1))}</div><div class="scan-match"></div><div class="scan-codes-host"></div><label class="field scan-category"><span>Категория</span><select data-scan-category aria-label="Категория позиции"></select></label><div class="scan-sale-units" role="group" aria-label="Единица цены и количества"></div><div class="scan-row-numbers">${[['price','Цена за ед.'],['quantity','Кол-во'],['discount','Скидка, сумма'],['total','Оплачено']].map(([field,label])=>`<label class="field"><span>${label}</span><input data-scan-field="${field}" inputmode="decimal" aria-describedby="scanMathHint" required></label>`).join('')}</div><label class="field scan-discount-type"><span>Тип скидки</span><select data-scan-field="discount_type"><option value="promo">Акция</option><option value="loyalty_points">Баллы</option><option value="coupon">Купон</option></select></label>`;
       const name=el.querySelector('[data-scan-field=name]'), list=el.querySelector('.scan-catalog-list'), match=el.querySelector('.scan-match');
       name.value=row.name;name.title=row.source||'';
       if(row.merged_rows?.length){
-        const group=document.createElement('div');group.className='scan-merged-actions';
-        const note=document.createElement('small');note.className='scan-merged-note muted-small';note.textContent=`${row.merged_rows.length} строки вместе`;
         const split=document.createElement('button');split.type='button';split.className='btn btn-secondary btn-xs';window.App.icons.apply(split,'split','Разделить обратно');split.dataset.scanSplit='';
         const confirmation=document.createElement('div');confirmation.className='scan-split-confirm';confirmation.hidden=true;
         const hint=document.createElement('small');hint.className='muted-small';hint.textContent='Восстановить количество, цены и скидки исходных строк?';
@@ -186,7 +183,7 @@
         };
         split.onclick=()=>{if(parser.mergedMoneyChanged(row)){confirmation.hidden=false;accept.focus();}else restore();};
         accept.onclick=restore;cancel.onclick=()=>{confirmation.hidden=true;split.focus();};
-        confirmation.append(hint,accept,cancel);group.append(note,split,confirmation);el.querySelector('.scan-name').append(group);
+        confirmation.append(hint,accept,cancel);el.querySelector('.scan-row-actions').prepend(split);el.append(confirmation);
       }
       el.querySelector('[data-scan-field=price]').title='Цена за единицу до скидки';
       const category=el.querySelector('[data-scan-category]');
@@ -263,14 +260,13 @@
         const field=e.target.dataset.scanField;if(!field)return;
         row[field]=field==='name'||field==='discount_type'?e.target.value:field==='quantity'?inputNumber(e.target.value,true):inputMoney(e.target.value);
         if(field==='name'){row.catalog_new=false;unlink();el.refreshCatalog();search();}
-        if(field==='total')row.autoTotal=false;
-        if(row.autoTotal&&['price','quantity','discount'].includes(field)){
-          row.total=rowTotal(row);
-          el.querySelector('[data-scan-field=total]').value=decimal(row.total);
+        for(const changed of parser.recalculateRow(row,field)){
+          const input=el.querySelector(`[data-scan-field=${changed}]`);input.value=decimal(row[changed]);
+          input.setAttribute('aria-invalid',String(row[changed]==null||row[changed]<0||(changed==='total'&&row[changed]===0)));
         }
         el.querySelector('.scan-discount-type').hidden=!row.discount;node('scanConfirmed').checked=false;validate();
       });
-      el.querySelector(':scope > button').onclick=()=>{draft.rows.splice(index,1);node('scanConfirmed').checked=false;renderRows();validate();};
+      el.querySelector('.scan-row-actions > button:last-child').onclick=()=>{draft.rows.splice(index,1);node('scanConfirmed').checked=false;renderRows();validate();};
       el.unlinkCatalog=unlink;node('scanRows').append(el);el.refreshCatalog();
       el.refreshCodes=()=>{
         const key=codeLookupKey(row);
@@ -302,7 +298,7 @@
     if(result==null){input.setAttribute('aria-invalid','true');return;}
     input.removeAttribute('aria-invalid');
     input.value=quantity?String(result):result.toFixed(2);
-    // Typing already updated the draft; formatting must not turn an automatic total into a manual override.
+    // Input already recalculated dependent fields; formatting alone must not recalculate again.
     validate();
   }
   const numericField=input=>input.matches?.('#scanTotal, [data-scan-field=price], [data-scan-field=quantity], [data-scan-field=discount], [data-scan-field=total]');
@@ -310,7 +306,7 @@
   node('scanReview').addEventListener('keydown',e=>{if(e.key==='Enter'&&numericField(e.target)){e.preventDefault();commitCalculation(e.target);}});
   node('scanReview').addEventListener('input',e=>{if(numericField(e.target))e.target.setAttribute('aria-invalid',String(inputNumber(e.target.value,e.target.dataset.scanField==='quantity')==null));});
   node('scanConfirmed').onchange=validate;
-  node('scanAddRow').onclick=()=>{if(draft.rows.length>=150)return;draft.rows.push({name:'',price:null,quantity:1,discount:0,total:null,source:'Добавлено вручную',discount_type:'promo',manual:true,autoTotal:true});node('scanConfirmed').checked=false;renderRows();validate();node('scanRows').lastElementChild.querySelector('input').focus();};
+  node('scanAddRow').onclick=()=>{if(draft.rows.length>=150)return;draft.rows.push({name:'',price:null,quantity:1,discount:0,total:null,source:'Добавлено вручную',discount_type:'promo',manual:true});node('scanConfirmed').checked=false;renderRows();validate();node('scanRows').lastElementChild.querySelector('input').focus();};
   node('scanShowText').onclick=()=>node('scanTextDialog').showModal();
   node('scanTextClose').onclick=()=>node('scanTextDialog').close();
   node('scanReparse').onclick=()=>{showDraft(parser.parse(node('scanText').value));node('scanTextDialog').close();};

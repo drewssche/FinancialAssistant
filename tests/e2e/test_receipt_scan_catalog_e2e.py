@@ -49,7 +49,7 @@ def test_catalog_suggestion_preserves_money_and_identity_on_transfer(static_serv
 @pytest.mark.parametrize("width",[320,390,1440])
 def test_manual_row_search_keyboard_and_change_shop_unlinks(static_server_url,page_with_receipt_api_mock,width):
     p=page_with_receipt_api_mock;start(p,static_server_url,width);seed_catalog(p);stub(p,PIZZA);upload(p);p.click('#scanRun')
-    p.locator('.scan-row > button').click();p.click('#scanAddRow')
+    p.get_by_role('button',name='Удалить позицию 1',exact=True).click();p.click('#scanAddRow')
     row=p.locator('.scan-row');name=row.locator('[data-scan-field=name]')
     name.click()
     name.press_sequentially('пицца')

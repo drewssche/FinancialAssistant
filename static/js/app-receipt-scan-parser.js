@@ -98,6 +98,20 @@
     if (rows.some(r => r.issue)) warnings.push('Есть строки с несовпадением цены и количества');
     return {unsupported: unsupported || warnings.includes('Отрицательные позиции требуют ручного ввода'), date: dates.size === 1 ? [...dates][0] : '', shop, total: totals.size === 1 ? [...totals][0] : null, rows, warnings};
   }
+  // Recalculate only after a user edits a number. Printed OCR values stay intact on load.
+  function recalculateRow(row, field) {
+    const validQuantity=Number.isFinite(row.quantity)&&row.quantity>0&&row.quantity<=100000&&Math.abs(row.quantity*1000-Math.round(row.quantity*1000))<=1e-6;
+    const gross=Number.isSafeInteger(row.price)&&row.price>0&&row.price<=999999999&&validQuantity ? subtotal(row.price,row.quantity) : null;
+    if(['price','quantity','discount'].includes(field)){
+      row.total=gross!==null&&Number.isSafeInteger(row.discount)&&row.discount>=0 ? gross-row.discount : null;
+      return ['total'];
+    }
+    if(field==='total'&&gross!==null&&Number.isSafeInteger(row.total)&&row.total>=0&&row.total<=gross){
+      row.discount=gross-row.total;
+      return ['discount'];
+    }
+    return [];
+  }
   function validate(draft) {
     const errors = [];
     if (draft.unsupported) errors.push('Возврат или отрицательная позиция: используйте ручной ввод операции');
@@ -140,9 +154,7 @@
         previous.merged_rows.push(...structuredClone(row.merged_rows||[row]));
         previous.quantity=quantity;previous.total+=row.total;previous.discount+=row.discount;
         previous.printed_total=previous.total+previous.discount;
-        previous.autoTotal=Boolean(previous.autoTotal&&row.autoTotal);
         previous.source=[previous.source,row.source].filter(Boolean).join('\n');
-        previous.merged_count=(previous.merged_count||1)+(row.merged_count||1);
       }else{
         const copy=structuredClone(row);result.push(copy);if(id)groups.set(id,copy);
       }
@@ -166,9 +178,9 @@
       const restored=structuredClone(original);
       for(const key of shared){if(key in row)restored[key]=structuredClone(row[key]);else delete restored[key];}
       if(row.name!==row.merged_rows[0].name)restored.name=row.name;
-      delete restored.merged_rows;delete restored.merged_count;
+      delete restored.merged_rows;
       return restored;
     });
   }
-  window.App.receiptScanParser = {parse, validate, money, mergeDuplicates, mergedMoneyChanged, splitMergedRow};
+  window.App.receiptScanParser = {parse, validate, money, recalculateRow, mergeDuplicates, mergedMoneyChanged, splitMergedRow};
 })();
