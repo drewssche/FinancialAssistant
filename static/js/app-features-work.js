@@ -1005,7 +1005,7 @@
     editingContractId = null;
     nodes.workContractForm.reset();
     nodes.workContractFormHeading.textContent = "Новый период или смена работы";
-    nodes.workContractFormSubtitle.textContent = "Новая текущая работа автоматически завершит предыдущий период этой же датой. Дата перехода будет относиться к новому периоду.";
+    nodes.workContractFormSubtitle.textContent = "Новый период завершит предыдущий в дату перехода.";
     window.App.icons.apply(nodes.workContractSubmitBtn, "plus", "Добавить период");
     nodes.cancelWorkContractEditBtn.classList.add("hidden");
   }
@@ -1022,7 +1022,7 @@
     nodes.workContractCurrency.value = item.currency || "BYN";
     nodes.workContractNote.value = item.note || "";
     nodes.workContractFormHeading.textContent = "Редактировать период работы";
-    nodes.workContractFormSubtitle.textContent = "Изменения текущего периода сразу обновят компанию и должность в настройках табеля.";
+    nodes.workContractFormSubtitle.textContent = "Компания и должность обновятся в табеле.";
     window.App.icons.apply(nodes.workContractSubmitBtn, "save", "Сохранить изменения");
     nodes.cancelWorkContractEditBtn.classList.remove("hidden");
     nodes.workContractForm.scrollIntoView({ behavior: "smooth", block: "start" });

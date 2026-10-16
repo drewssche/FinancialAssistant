@@ -136,7 +136,7 @@
       if (state.activeSection === "debts" && el.debtsCards) {
         el.debtsCards.innerHTML = `<div class="panel-load-state panel-load-state-error" role="alert">
           <span>Не удалось загрузить долги</span>
-          <button class="btn btn-secondary btn-xs" type="button" data-debts-retry>Повторить</button>
+          <button class="btn btn-secondary btn-xs btn-icon" type="button" data-debts-retry title="Повторить" aria-label="Повторить">${window.App.icons.svg("refresh")}</button>
         </div>`;
       }
       throw err;

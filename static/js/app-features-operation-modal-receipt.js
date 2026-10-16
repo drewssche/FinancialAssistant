@@ -53,11 +53,11 @@
     }
 
     function receiptPricingExplanation(item, mode) {
-      if (!item.discount_mode) return "Можно применить скидку после взвешивания или ввести оплаченный итог из чека.";
+      if (!item.discount_mode) return "";
       const price = window.App.receiptPricing.calculate(item);
       if (price.error) return price.error;
       const before = price.subtotal == null ? "Цена до скидки неизвестна" : `До скидки: ${core.formatAmount(price.subtotal)}; скидка: ${core.formatAmount(price.subtotal - price.total)}`;
-      return `${before}. Итого: ${core.formatAmount(price.total)} ${getReceiptCurrencyLabel(mode)}. ${item.discount_mode === "final" ? "При изменении количества введённый итог сохраняется." : "При изменении количества скидка пересчитывается выбранным способом."}`;
+      return `${before}. Итого: ${core.formatAmount(price.total)} ${getReceiptCurrencyLabel(mode)}. ${item.discount_mode === "final" ? "Итог фиксирован." : ""}`;
     }
 
     function receiptDiscountToggleLabel(item) {
@@ -639,7 +639,7 @@
               <small>${esc([brandName, item.shop_name || "Без источника", item.code_match_label, item.variant_snapshot?.name, (item.sale_unit || item.package_quantity ? window.App.measurements.summary(item) : "")].filter(Boolean).join(" · "))}</small></div>
             </div>` : ""}
             ${!known ? `<div class="receipt-compact-heading receipt-new-heading"><span>${item.name ? "Новый товар" : "Добавить товар"}</span></div>` : ""}
-            <button class="btn btn-secondary btn-xs ${compact ? "" : "is-active"}" type="button" data-receipt-details-toggle="${item.draft_id}" aria-label="Подробности товара" aria-expanded="${!compact}" title="${compact ? "Показать подробности товара" : "Скрыть подробности товара"}">Детали</button>
+            <button class="btn btn-secondary btn-xs btn-icon ${compact ? "" : "is-active"}" type="button" data-receipt-details-toggle="${item.draft_id}" aria-label="Подробности товара" aria-expanded="${!compact}" title="${compact ? "Показать подробности товара" : "Скрыть подробности товара"}">${window.App.icons.svg("sliders")}</button>
             <div class="receipt-item-identity">
               <div class="receipt-codes-host"></div>
               <div class="receipt-shop-cell ${shopPickerOpen ? "has-open-popover" : ""}">
@@ -701,7 +701,7 @@
                 </select></label>
                 ${item.discount_mode ? `<label class="field"><span>${item.discount_mode === "final" ? "Оплачено за позицию" : item.discount_mode === "percent" ? "Скидка, %" : "Скидка за всю позицию"}</span><input type="text" inputmode="decimal" data-receipt-field="discount_value" value="${esc(String(item.discount_value ?? 0))}" aria-label="Значение скидки или итог" /></label>` : ""}
               </div>
-              <div class="muted-small receipt-pricing-explanation">${esc(receiptPricingExplanation(item, mode))}</div><button class="btn btn-secondary btn-xs" type="button" data-receipt-discount-remove="${item.draft_id}">Убрать скидку</button>
+              <div class="muted-small receipt-pricing-explanation">${esc(receiptPricingExplanation(item, mode))}</div><button class="btn btn-secondary btn-xs btn-icon" type="button" title="Убрать скидку" aria-label="Убрать скидку" data-receipt-discount-remove="${item.draft_id}">${window.App.icons.svg("close")}</button>
             </section>` : ""}
             <div class="receipt-item-money">
               <div class="receipt-price-cell ${item.is_discounted ? "receipt-price-cell-discounted" : ""}">

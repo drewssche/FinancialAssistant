@@ -387,7 +387,7 @@
 
     if (compact) {
       const selectCell = selectable
-        ? `<td class="select-col" data-label="Выбор"><input class="table-checkbox" type="checkbox" data-select-operation-id="${item.id}" ${selected ? "checked" : ""} /></td>`
+        ? `<td class="select-col" data-label="Выбор"><input class="table-checkbox" type="checkbox" aria-label="Выбрать операцию ${item.id}" data-select-operation-id="${item.id}" ${selected ? "checked" : ""} /></td>`
         : "";
       row.innerHTML = `
         ${selectCell}
@@ -423,7 +423,7 @@
     }
 
     const selectCell = selectable
-      ? `<td class="select-col" data-label="Выбор"><input class="table-checkbox" type="checkbox" data-select-operation-id="${item.id}" ${selected ? "checked" : ""} /></td>`
+      ? `<td class="select-col" data-label="Выбор"><input class="table-checkbox" type="checkbox" aria-label="Выбрать операцию ${item.id}" data-select-operation-id="${item.id}" ${selected ? "checked" : ""} /></td>`
       : "";
 
     const receiptCellHtml = hasReceiptItems

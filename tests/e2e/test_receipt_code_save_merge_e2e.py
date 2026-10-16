@@ -101,7 +101,7 @@ def test_split_modified_money_explains_restore_and_cancel_preserves_edits(static
     row.locator('[data-scan-field=quantity]').fill('3')
     row.locator('[data-scan-split]').click()
     expect(row.locator('.scan-split-confirm')).to_be_visible()
-    expect(row.locator('.scan-split-confirm')).to_contain_text('Цена, количество и скидки вернутся')
+    expect(row.locator('.scan-split-confirm')).to_contain_text('Восстановить количество, цены и скидки')
     row.get_by_role('button',name='Отмена',exact=True).click()
     expect(row.locator('.scan-split-confirm')).to_be_hidden()
     expect(row.locator('[data-scan-field=quantity]')).to_have_value('3')

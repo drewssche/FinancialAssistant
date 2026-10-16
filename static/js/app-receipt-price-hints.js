@@ -61,7 +61,7 @@
         host.hidden = !ctx.enabled;
         const button = host.querySelector('button');
         button.disabled = Boolean(record?.loading);
-        button.textContent = record?.loading ? 'Сравниваем…' : record ? 'Обновить сравнение' : 'Сравнить с прошлой покупкой';
+        window.App.icons.apply(button, record?.loading || record ? 'refresh' : 'chart', record?.loading ? 'Сравниваем…' : record ? 'Обновить сравнение' : 'Сравнить с прошлой покупкой');
         host.querySelector('small').textContent = message(item, record, mode);
       }
     }

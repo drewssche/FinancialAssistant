@@ -75,7 +75,7 @@ def test_activity_journal_modal_is_available_in_frontend_templates():
     assert ".activity-center-drawer" in activity_center_css
     assert "@media (max-width: 900px)" in activity_center_css
     assert "@media (hover: none), (pointer: coarse)" in activity_center_css
-    assert '@import url("/static/css/components-activity-center.css?v=20260720f");' in styles
+    assert '@import url("/static/css/components-activity-center.css?v=20261016-toast-layers");' in styles
     assert "function configureUsageButton" in usage
     assert "/api/v1/operations/money-flow?" in usage
     assert "item_template_id" in usage
@@ -244,8 +244,8 @@ def test_receipt_discount_ui_keeps_reason_separate_and_does_not_guess_regular_pr
 
     assert "receiptDiscountToggleLabel(item)" in receipt
     assert "Скидка −${Number(percent.toFixed(1))}%" in receipt
-    assert 'return "Скидка —%"' in receipt
-    assert "title=\"Скидка, купон, промокод или бонусы\"" in receipt
+    assert 'return item.discount_expanded ? "Убрать скидку" : "Изменить скидку"' in receipt
+    assert 'aria-label="${receiptDiscountToggleLabel(item)}"' in receipt
     assert 'type="text" inputmode="decimal" data-receipt-field="unit_price"' in receipt
     assert 'data-receipt-field="regular_unit_price"' in receipt
     assert "receipt-item-row-discounted" in receipt

@@ -464,7 +464,7 @@ def test_currency_digest_settings_support_seven_day_chart_preference():
         REPO_ROOT / "static" / "js" / "app-features-session-preferences.js"
     ).read_text(encoding="utf-8")
 
-    assert 'id="currencyDigestChartToggle" type="checkbox" checked' in secondary
+    assert 'id="currencyDigestChartToggle" type="checkbox" role="switch" checked' in secondary
     assert "Добавлять график курсов за последние 7 дней" in secondary
     assert 'currencyDigestChartToggle: document.getElementById("currencyDigestChartToggle")' in elements
     assert "telegram_digest_chart_enabled: true" in preferences

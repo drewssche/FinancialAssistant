@@ -170,7 +170,7 @@
             </div>
           </div>
           <p id="catalogProductCodesStatus" class="muted-small" role="status"></p>
-          <button id="catalogProductCodesRetry" type="button" class="btn btn-secondary btn-xs" hidden>Повторить загрузку кодов</button>
+          <button id="catalogProductCodesRetry" type="button" class="btn btn-secondary btn-xs btn-icon" hidden title="Повторить загрузку кодов" aria-label="Повторить загрузку кодов">${window.App.icons.svg("refresh")}</button>
           <div id="catalogProductOffersList" class="catalog-product-offers-list"></div>
         </section>
         <section data-product-panel="prices" class="catalog-product-detail-panel hidden">
@@ -182,7 +182,7 @@
             <label class="field"><span>С даты</span><input id="catalogProductPriceFrom" type="date"></label>
             <label class="field"><span>По дату</span><input id="catalogProductPriceTo" type="date"></label>
           </div></section>
-          <p id="catalogProductLegacyPriceNote" class="muted-small hidden">Сохранённые цены предложения — отдельный справочник; он может не содержать повторных изменений и не используется для графика покупок.</p>
+          <p id="catalogProductLegacyPriceNote" class="muted-small hidden">Справочные цены источника. История покупок — в отдельном режиме.</p>
           <div id="catalogProductComparisonSummary" class="catalog-comparison-summary hidden"></div>
           <div id="catalogProductPricesList" aria-live="polite"></div>
         </section>
@@ -215,7 +215,7 @@
           <p class="muted-small">Все предложения и история операций перейдут в выбранную карточку. Отменить объединение целиком нельзя, но отдельное предложение можно отделить.</p>
         </form>
         <div class="modal-footer">
-          <button id="submitCatalogProductMergeBtn" class="btn btn-cta modal-main-cta" type="submit" form="catalogProductMergeForm">Объединить</button>
+          <button id="submitCatalogProductMergeBtn" class="btn btn-cta modal-main-cta btn-icon" type="submit" form="catalogProductMergeForm" title="Объединить" aria-label="Объединить">${window.App.icons.svg("merge")}</button>
         </div>
       </div>
     </div>
@@ -275,7 +275,7 @@
         <div class="panel-head row between">
           <div>
             <h3 id="itemBrandDetailTitle">Бренд</h3>
-            <p id="itemBrandDetailSubtitle" class="subtitle">Связанные позиции по источникам</p>
+            <p id="itemBrandDetailSubtitle" class="subtitle"></p>
           </div>
           <button id="closeItemBrandDetailModalBtn" class="btn btn-secondary modal-close-btn btn-icon" type="button" title="Закрыть" aria-label="Закрыть">${window.App.icons.svg("close")}</button>
         </div>

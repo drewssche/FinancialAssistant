@@ -22,8 +22,8 @@
   function sizeFields(host,id,current){
     const section=document.createElement('div');section.className='offer-source-size';
     const label=document.createElement('label');label.className='offer-size-toggle';
-    const toggle=document.createElement('input');toggle.type='checkbox';toggle.dataset.offerOwnSize='';toggle.checked=Boolean(current.own);toggle.disabled=!data;
-    label.append(toggle,document.createTextNode('Свой размер для этого источника'));section.append(label);
+    const toggle=document.createElement('input');toggle.type='checkbox';toggle.setAttribute('role','switch');toggle.dataset.offerOwnSize='';toggle.checked=Boolean(current.own);toggle.disabled=!data;
+    label.append(toggle,document.createTextNode('Другой размер'));section.append(label);
     const note=document.createElement('small');note.className='muted-small';note.textContent=current.own?'':'Из товара: '+window.App.measurements.summary(measurement());if(note.textContent)section.append(note);
     toggle.onchange=()=>{sizes.set(id,toggle.checked?{...measurement(),sale_unit:measurement().sale_unit||'piece'}:null);choices.delete(id);render();};
     if(current.own){

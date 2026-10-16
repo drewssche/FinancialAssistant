@@ -14,6 +14,9 @@
   paths.eyeOff = "m3 3 18 18M10 5h2c7 0 10 7 10 7a19 19 0 0 1-3 4M6 6a20 20 0 0 0-4 6s3 7 10 7c2 0 4-1 5-2";
   paths.folderPlus = "M3 7V4h6l2 3h10v13H3V7Zm9 3v7m-3-3h6";
   paths.back = "M20 12H4m6-6-6 6 6 6";
+  paths.sliders = "M4 6h6m4 0h6M4 12h12m4 0h0M4 18h2m4 0h10M10 3v6m6 0v6M6 15v6";
+  paths.split = "M12 21V10M12 14 5 7m0 5V7h5m2 7 7-7m-5 0h5v5";
+  paths.external = "M14 3h7v7m0-7L10 14M10 3H3v18h18v-7";
   const svg = name => `<svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="${paths[name] || paths.plus}"/></svg>`;
   function apply(button, name, label) {
     if (!button) return;

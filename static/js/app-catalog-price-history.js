@@ -34,6 +34,7 @@
       ${rows.length > count ? '<button type="button" class="btn btn-secondary" data-price-history-more>Показать ещё</button>' : ""}${excluded()}`;
     bindChart(target, rows, group);
     target.querySelector("#catalogProductPriceSeries").addEventListener("change", (event) => {selected = Number(event.target.value); count = 50; render(); document.getElementById("catalogProductPriceSeries").focus();});
+    window.App.icons.apply(target.querySelector("[data-price-history-more]"), "down", "Показать ещё цены");
     target.querySelector("[data-price-history-more]")?.addEventListener("click", () => {count += 50; render(); target.querySelector("[data-price-history-more]")?.focus();});
   }
   function bindChart(target, rows, group) {

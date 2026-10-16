@@ -297,6 +297,7 @@
     });
     root.querySelector("[data-image-zoom]").addEventListener("input", (event) => setFraming(name, { zoom: Number(event.target.value) }));
     root.querySelectorAll("[data-image-fit]").forEach((button) => button.addEventListener("click", () => setFraming(name, { mode: button.dataset.imageFit })));
+    window.App.icons.apply(root.querySelector("[data-image-framing-reset]"), "refresh", "Сбросить кадрирование");
     root.querySelector("[data-image-framing-reset]").addEventListener("click", () => setFraming(name, DEFAULT_FRAMING));
   }
 

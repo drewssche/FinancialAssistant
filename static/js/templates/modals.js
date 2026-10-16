@@ -33,8 +33,8 @@
             <div class="plan-editor-heading">
               <strong id="planEditorStatus"></strong>
               <div class="actions">
-                <button id="planLinkedOperation" class="btn btn-secondary hidden" type="button">Открыть операцию</button>
-                <button id="planShowInList" class="btn btn-secondary" type="button">Показать в планах</button>
+                <button id="planLinkedOperation" class="btn btn-secondary hidden btn-icon" type="button" title="Открыть операцию" aria-label="Открыть операцию">${window.App.icons.svg("receipt")}</button>
+                <button id="planShowInList" class="btn btn-secondary btn-icon" type="button" title="Показать в планах" aria-label="Показать в планах">${window.App.icons.svg("calendar")}</button>
               </div>
             </div>
             <span id="planCompletedHint" class="muted-small hidden">Изменения плана не меняют проведённые операции. Включите повторение, чтобы запланировать следующие платежи.</span>
@@ -75,15 +75,15 @@
               <option value="CNY">CNY (¥)</option>
               <option value="PLN">PLN (zł)</option>
             </select>
-            <button id="convertAmountToDiscountReceiptBtn" class="btn btn-secondary convert-discount-receipt-btn" type="button">Покупка со скидкой</button>
+            <button id="convertAmountToDiscountReceiptBtn" class="btn btn-secondary convert-discount-receipt-btn btn-icon" type="button" title="Покупка со скидкой" aria-label="Покупка со скидкой">${window.App.icons.svg("discount")}</button>
           </div>
           <section id="opFxRateField" class="fx-rate-field fx-policy-card hidden" aria-label="Пересчёт валюты в BYN">
             <div class="fx-policy-head">
               <div>
                 <strong>Пересчёт в BYN</strong>
-                <div class="muted-small">Курс и способ оплаты сохранятся вместе с операцией</div>
+
               </div>
-              <button id="opFxRateRefreshBtn" class="btn btn-secondary fx-policy-refresh" type="button">Обновить курс</button>
+              <button id="opFxRateRefreshBtn" class="btn btn-secondary fx-policy-refresh btn-icon" type="button" title="Обновить курс" aria-label="Обновить курс">${window.App.icons.svg("refresh")}</button>
             </div>
             <div class="fx-policy-field">
               <span class="muted-small">Источник курса</span>
@@ -139,7 +139,7 @@
               <div class="receipt-summary">
                 <div class="muted-small"><span id="receiptTotalLabel">Сумма чека</span>: <strong id="receiptTotalValue">0.00</strong></div>
                 <div class="muted-small"><span id="receiptDiffLabel">Расхождение</span>: <strong id="receiptDiffValue">0.00</strong></div>
-                <button id="pullReceiptTotalBtn" class="btn btn-secondary" type="button">Использовать сумму позиций</button>
+                <button id="pullReceiptTotalBtn" class="btn btn-secondary btn-icon" type="button" title="Использовать сумму позиций" aria-label="Использовать сумму позиций">${window.App.icons.svg("save")}</button>
               </div>
             </div>
           </div>
@@ -190,7 +190,7 @@
             </div>
             <input id="planScheduleMode" type="hidden" value="oneoff" />
             <div id="planResumeControls" class="category-modal-form hidden">
-              <label class="plan-resume-toggle"><input id="planResumeEnabled" type="checkbox" /> Возобновить план</label>
+              <label class="plan-resume-toggle"><input id="planResumeEnabled" type="checkbox" role="switch" /> Возобновить план</label>
               <div id="planResumeFields" class="category-modal-form hidden">
                 <label for="planResumeDate" class="muted-small">Следующий платёж</label>
                 <div class="date-input-wrap">
@@ -383,7 +383,7 @@
         </div>
         <form id="batchCreateForm" class="category-modal-form">
           <p class="subtitle">Одна строка: <code>дата;тип;[группа];[категория];сумма;комментарий</code>.</p>
-          <details><summary>Формат импорта</summary><p id="batchCreateHint" class="muted-small">Дата: <code>ДД.ММ.ГГГГ</code>. Тип: расход/доход или expense/income. Группа и категория опциональны, пустые значения можно оставить как <code>;;</code>. Сумма: <code>01,23</code> или <code>01.23</code>. Комментарий опционален и не должен содержать <code>;</code>.</p></details>
+          <details class="ui-disclosure"><summary>Формат импорта</summary><p id="batchCreateHint" class="muted-small">Дата: <code>ДД.ММ.ГГГГ</code>. Тип: расход/доход или expense/income. Группа и категория опциональны, пустые значения можно оставить как <code>;;</code>. Сумма: <code>01,23</code> или <code>01.23</code>. Комментарий опционален и не должен содержать <code>;</code>.</p></details>
           <textarea id="batchCreateInput" rows="8" placeholder="04.03.2026;Расход;Транспорт;Такси;150,50;Поездка&#10;05.03.2026;Доход;;;1000;Аванс"></textarea>
           <div id="batchCreateFeedback" class="status-box hidden"></div>
           <div id="batchCreatePreview" class="bulk-import-preview hidden">
@@ -561,7 +561,7 @@
                 <strong>Пересчёт в BYN</strong>
 
               </div>
-              <button id="editFxRateRefreshBtn" class="btn btn-secondary fx-policy-refresh" type="button">Обновить курс</button>
+              <button id="editFxRateRefreshBtn" class="btn btn-secondary fx-policy-refresh btn-icon" type="button" title="Обновить курс" aria-label="Обновить курс">${window.App.icons.svg("refresh")}</button>
             </div>
             <div class="fx-policy-field">
               <span class="muted-small">Источник курса</span>
@@ -617,7 +617,7 @@
               <div class="receipt-summary">
                 <div class="muted-small"><span id="editReceiptTotalLabel">Сумма чека</span>: <strong id="editReceiptTotalValue">0.00</strong></div>
                 <div class="muted-small"><span id="editReceiptDiffLabel">Расхождение</span>: <strong id="editReceiptDiffValue">0.00</strong></div>
-                <button id="editPullReceiptTotalBtn" class="btn btn-secondary" type="button" data-receipt-mode="edit">Использовать сумму позиций</button>
+                <button id="editPullReceiptTotalBtn" class="btn btn-secondary btn-icon" type="button" data-receipt-mode="edit" title="Использовать сумму позиций" aria-label="Использовать сумму позиций">${window.App.icons.svg("save")}</button>
               </div>
             </div>
           </div>
@@ -852,7 +852,7 @@
         </div>
         <div id="usageKpi" class="analytics-kpi-secondary usage-kpi"></div>
         <div class="usage-modal-actions">
-          <button id="openUsageInOperationsBtn" class="btn btn-secondary" type="button">Открыть в разделе Операции</button>
+          <button id="openUsageInOperationsBtn" class="btn btn-secondary btn-icon" type="button" title="Открыть в разделе Операции" aria-label="Открыть в разделе Операции">${window.App.icons.svg("forward")}</button>
         </div>
         <div id="usageList" class="activity-list usage-list">
           <div class="muted-small">Операций пока нет</div>

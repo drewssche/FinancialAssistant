@@ -428,9 +428,9 @@
             <div id="operationsInfiniteSentinel" class="infinite-sentinel" aria-hidden="true"></div>
 
             <div class="pagination hidden" aria-hidden="true">
-              <button id="prevPageBtn" class="btn btn-secondary" type="button">Назад</button>
+              <button id="prevPageBtn" class="btn btn-secondary btn-icon" type="button" title="Назад" aria-label="Назад">${window.App.icons.svg("back")}</button>
               <span id="pageInfo">Показано 0 из 0</span>
-              <button id="nextPageBtn" class="btn btn-secondary" type="button">Вперёд</button>
+              <button id="nextPageBtn" class="btn btn-secondary btn-icon" type="button" title="Вперёд" aria-label="Вперёд">${window.App.icons.svg("forward")}</button>
             </div>
           </section>
         </section>
@@ -451,8 +451,8 @@
             <div class="table-search-row sticky-search categories-search-row">
               <input id="categorySearchQ" class="table-search-input" type="text" placeholder="Поиск" />
               <div class="toolbar section-action-toolbar search-toolbar category-group-controls">
-                <button id="categoriesCollapseAllBtn" class="btn btn-secondary btn-xs" type="button">Свернуть все</button>
-                <button id="categoriesExpandAllBtn" class="btn btn-secondary btn-xs" type="button">Развернуть все</button>
+                <button id="categoriesCollapseAllBtn" class="btn btn-secondary btn-xs btn-icon" type="button" title="Свернуть все" aria-label="Свернуть все">${window.App.icons.svg("collapse")}</button>
+                <button id="categoriesExpandAllBtn" class="btn btn-secondary btn-xs btn-icon" type="button" title="Развернуть все" aria-label="Развернуть все">${window.App.icons.svg("expand")}</button>
               </div>
             </div>
             <div id="categoriesKpiGrid" class="analytics-kpi-grid section-kpi-grid" aria-label="Итоги категорий"></div>
@@ -471,7 +471,7 @@
               </table>
             </div>
             <div id="categoriesInfiniteSentinel" class="infinite-sentinel" aria-hidden="true"></div>
-            <div class="directory-list-footer"><button id="deleteAllCategoriesBtn" class="btn btn-danger" type="button">Удалить все</button></div>
+            <div class="directory-list-footer"><button id="deleteAllCategoriesBtn" class="btn btn-danger btn-icon" type="button" title="Удалить все" aria-label="Удалить все">${window.App.icons.svg("trash")}</button></div>
           </section>
         </section>
 `;

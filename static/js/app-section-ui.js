@@ -234,17 +234,17 @@
 
   function applySectionUi() {
     const sections = [
-      { id: "dashboard", node: el.dashboardSection, title: "Дашборд", subtitle: "Доходы, расходы и операции за выбранный период" },
-      { id: "analytics", node: el.analyticsSection, title: "Аналитика", subtitle: "Структура и календарь" },
-      { id: "operations", node: el.operationsSection, title: "Операции", subtitle: "Рабочий список операций, фильтры и массовые действия" },
-      { id: "currency", node: el.currencySection, title: "Валюта", subtitle: "Позиции, сделки и текущие курсы валют" },
-      { id: "plans", node: el.plansSection, title: "Планы", subtitle: "Будущие операции и регулярные обязательства до подтверждения" },
-      { id: "work", node: el.workSection, title: "Работа", subtitle: "Автоматический табель, условия работы и даты выплат" },
-      { id: "debts", node: el.debtsSection, title: "Долги", subtitle: "Карточки задолженностей и погашения" },
-      { id: "categories", node: el.categoriesSection, title: "Категории", subtitle: "Управление категориями доходов и расходов" },
-      { id: "item_catalog", node: el.itemCatalogSection, title: "Каталог", subtitle: "Позиции, бренды и источники покупок" },
-      { id: "admin", node: el.adminSection, title: "Админ", subtitle: "Контроль доступа пользователей" },
-      { id: "settings", node: el.settingsSection, title: "Настройки", subtitle: "Параметры интерфейса и безопасности" },
+      { id: "dashboard", node: el.dashboardSection, title: "Дашборд" },
+      { id: "analytics", node: el.analyticsSection, title: "Аналитика" },
+      { id: "operations", node: el.operationsSection, title: "Операции" },
+      { id: "currency", node: el.currencySection, title: "Валюта" },
+      { id: "plans", node: el.plansSection, title: "Планы" },
+      { id: "work", node: el.workSection, title: "Работа" },
+      { id: "debts", node: el.debtsSection, title: "Долги" },
+      { id: "categories", node: el.categoriesSection, title: "Категории" },
+      { id: "item_catalog", node: el.itemCatalogSection, title: "Каталог" },
+      { id: "admin", node: el.adminSection, title: "Админ" },
+      { id: "settings", node: el.settingsSection, title: "Настройки" },
     ];
 
     for (const node of el.mainNav.querySelectorAll("[data-admin-only]")) {
@@ -265,7 +265,8 @@
       }
       if (section.id === state.activeSection) {
         el.sectionTitle.textContent = section.title;
-        el.sectionSubtitle.textContent = section.subtitle;
+        el.sectionSubtitle.textContent = "";
+        el.sectionSubtitle.hidden = true;
       }
     }
     updateSectionBackUi();

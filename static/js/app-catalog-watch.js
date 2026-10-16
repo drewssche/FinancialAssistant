@@ -7,7 +7,13 @@
   const request = (path, method='GET', body) => core.requestJson(api+path,{method,headers:core.authHeaders(),...(body?{body:JSON.stringify(body)}:{})});
   const date = v => v ? core.formatDateTimeRu(v) : 'ещё не проверено';
   function quote(s){
-    return `<div class="watch-quote"><strong>${esc(s.name)}</strong><div><b>${esc(s.price)} BYN / ${esc(s.unit)}</b> ${Number(s.regular_price)>Number(s.price)?`<s>${esc(s.regular_price)}</s><span class="watch-down"> −${Math.round((1-Number(s.price)/Number(s.regular_price))*100)}%</span>`:''}</div><small>${esc(s.source||'Е-доставка')}${s.normalized?' · '+esc(s.normalized):''} · ${s.available?'В наличии':'Нет в наличии'}</small><details class="watch-conditions"><summary>Условия цены</summary><small>${esc(s.conditions)}</small></details><a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">Открыть на сайте магазина ↗</a></div>`;
+    return `<div class="watch-quote"><strong>${esc(s.name)}</strong><div><b>${esc(s.price)} BYN / ${esc(s.unit)}</b> ${Number(s.regular_price)>Number(s.price)?`<s>${esc(s.regular_price)}</s><span class="watch-down"> −${Math.round((1-Number(s.price)/Number(s.regular_price))*100)}%</span>`:''}</div><small>${esc(s.source||'Е-доставка')}${s.normalized?' · '+esc(s.normalized):''} · ${s.available?'В наличии':'Нет в наличии'}</small><details class="watch-conditions ui-disclosure"><summary>Условия цены</summary><small>${esc(s.conditions)}</small></details><a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-icon" aria-label="Открыть на сайте магазина" title="Открыть на сайте магазина">${window.App.icons.svg("external")}</a></div>`;
+  }
+  function decorateActions(host) {
+    const actions = {'watch-remove':['unlink','Отключить страницу'], 'watch-saved':['link','Подключить цену сайта'], 'watch-search':['search','Найти по кодам'], 'watch-name-search':['search','Найти по названию'], 'watch-preview':['eye','Проверить ссылку'], 'watch-confirm':['save','Подключить этот товар и размер'], 'watch-select':['link','Выбрать товар'], 'match-select':['link','Выбрать товар'], 'match-retry':['refresh','Повторить подбор']};
+    for (const [key,[icon,label]] of Object.entries(actions)) {
+      for (const button of host.querySelectorAll(`[data-${key}]`)) window.App.icons.apply(button,icon,label);
+    }
   }
   async function guarded(button,action){
     button.disabled=true;
@@ -26,7 +32,8 @@
       }
       const meta=data.supported_offers?.[offerId]||{source:saved?.snapshot?.source||'Е-доставка',search:true,example_url:'https://edostavka.by/product/…'};
       target.hidden=false;
-      target.innerHTML=`<div class="watch-source-head"><strong>${esc(meta.source)} · цена на сайте</strong>${saved?'<button type="button" class="btn btn-secondary btn-xs" data-watch-remove>Отключить страницу</button>':meta.saved_url?'<button type="button" class="btn btn-secondary btn-xs" data-watch-saved>Подключить цену сайта</button>':meta.search?'<button type="button" class="btn btn-secondary btn-xs" data-watch-search>Найти по кодам</button>':''}</div>${saved?quote(saved.snapshot)+`<small class="muted-small">Проверено: ${esc(date(saved.checked_at))}${saved.error?' · '+esc(saved.error):''}</small>`:`<details class="watch-alternative" ${!meta.search&&!meta.saved_url?'open':''}><summary>${meta.search?'По названию или ссылке':'Другая ссылка'}</summary>${meta.search?`${meta.saved_url?'<button type="button" class="btn btn-secondary btn-xs" data-watch-search>Найти по кодам</button>':''}<div class="watch-link-row"><label class="field"><span>Название: ${esc(meta.source)}</span><input type="text" maxlength="160" data-watch-name value="${esc(product.name)}"></label><button type="button" class="btn btn-secondary btn-xs" data-watch-name-search>Найти</button></div>`:''}<div class="watch-link-row"><label class="field"><span>Ссылка на товар</span><input type="url" placeholder="${esc(meta.example_url)}" aria-label="Ссылка на товар: ${esc(meta.source)}" data-watch-url></label><button type="button" class="btn btn-secondary btn-xs" data-watch-preview>Проверить</button></div></details><div data-watch-result aria-live="polite"></div>`}`;
+      target.innerHTML=`<div class="watch-source-head"><strong>${esc(meta.source)} · цена на сайте</strong>${saved?'<button type="button" class="btn btn-secondary btn-xs" data-watch-remove>Отключить страницу</button>':meta.saved_url?'<button type="button" class="btn btn-secondary btn-xs" data-watch-saved>Подключить цену сайта</button>':meta.search?'<button type="button" class="btn btn-secondary btn-xs" data-watch-search>Найти по кодам</button>':''}</div>${saved?quote(saved.snapshot)+`<small class="muted-small">Проверено: ${esc(date(saved.checked_at))}${saved.error?' · '+esc(saved.error):''}</small>`:`<details class="watch-alternative ui-disclosure" ${!meta.search&&!meta.saved_url?'open':''}><summary>${meta.search?'По названию или ссылке':'Другая ссылка'}</summary>${meta.search?`${meta.saved_url?'<button type="button" class="btn btn-secondary btn-xs" data-watch-search>Найти по кодам</button>':''}<div class="watch-link-row"><label class="field"><span>Название: ${esc(meta.source)}</span><input type="text" maxlength="160" data-watch-name value="${esc(product.name)}"></label><button type="button" class="btn btn-secondary btn-xs" data-watch-name-search>Найти</button></div>`:''}<div class="watch-link-row"><label class="field"><span>Ссылка на товар</span><input type="url" placeholder="${esc(meta.example_url)}" aria-label="Ссылка на товар: ${esc(meta.source)}" data-watch-url></label><button type="button" class="btn btn-secondary btn-xs" data-watch-preview>Проверить</button></div></details><div data-watch-result aria-live="polite"></div>`}`;
+      decorateActions(target);
       const remove=target.querySelector('[data-watch-remove]');
       if(remove)remove.onclick=()=>guarded(remove,async()=>{const d=await request(`/${id}/offers/${offerId}`,'DELETE');if(token===generation)render(d);loadDashboard();});
       if(saved)continue;
@@ -38,6 +45,7 @@
           const snapshot=await request('/'+id+'/preview','POST',{url});
           if(!current(n))return;
           result.innerHTML=quote(snapshot)+'<button type="button" class="btn btn-cta" data-watch-confirm>Подключить этот товар и размер</button>';
+          decorateActions(result);
           const confirm=result.querySelector('[data-watch-confirm]');
           confirm.onclick=()=>guarded(confirm,async()=>{
             const d=await request(`/${id}/offers/${offerId}`,'PUT',{url:snapshot.url,expected_key:snapshot.comparison_key,expected_name:snapshot.name});
@@ -52,6 +60,7 @@
           if(!current(n))return;
           if(!found.items.length){result.textContent=body.name?'По названию ничего не найдено.':'По кодам ничего не найдено. Можно попробовать название.';return;}
           result.innerHTML='<div class="watch-search-results">'+found.items.map((hit,i)=>`<article class="watch-search-card"><strong>${esc(hit.name)}</strong><span>${esc(hit.price)} BYN / ${esc(hit.unit)} · ${hit.available?'В наличии':'Нет в наличии'}</span><small class="muted-small">${hit.match_kind==='barcode'?'Поиск по штрихкоду':hit.match_kind==='retailer'?'Поиск по артикулу':'Поиск по названию'}: ${esc(hit.matched_query)}</small><button type="button" class="btn btn-secondary btn-xs" data-watch-select="${i}">Выбрать</button></article>`).join('')+'</div>';
+          decorateActions(result);
           for(const button of result.querySelectorAll('[data-watch-select]'))button.onclick=()=>guarded(button,()=>previewCard(found.items[Number(button.dataset.watchSelect)].url));
         }catch(e){if(current(n)){result.textContent='Не удалось выполнить поиск. Повторите позже.';throw e;}}
       };
@@ -62,6 +71,7 @@
           result.insertAdjacentHTML('beforeend','<div class="watch-search-results">'+matching.candidates.map((hit,i)=>`<article class="watch-search-card"><strong>${esc(hit.name)}</strong><span>${esc(hit.price)} BYN / ${esc(hit.unit)}</span><small>${hit.conflict?'Коды расходятся':hit.exact?'Код подтверждён':'Совпадение кода не подтверждено'}</small><button type="button" class="btn btn-secondary btn-xs" data-match-select="${i}">Выбрать</button></article>`).join('')+'</div>');
           for(const button of result.querySelectorAll('[data-match-select]'))button.onclick=()=>guarded(button,()=>previewCard(matching.candidates[Number(button.dataset.matchSelect)].url));
         }
+        decorateActions(result);
         const retry=result.querySelector('[data-match-retry]');
         if(retry)retry.onclick=()=>guarded(retry,async()=>{const d=await request(`/${id}/offers/${offerId}/autolink`,'POST');if(token===generation)render(d);});
       }
@@ -94,7 +104,7 @@
     host.classList.toggle('hidden',!p);host.innerHTML=p?'<span class="muted-small">Загружаю цены…</span>':'';
     if(!p)return;
     try{const data=await request('/'+p.id);if(token===generation)render(data);}
-    catch(e){if(token===generation){host.innerHTML='<span class="form-error">Не удалось загрузить цены</span> <button class="btn btn-secondary" type="button">Повторить</button>';host.querySelector('button').onclick=()=>open(p);}}
+    catch(e){if(token===generation){host.innerHTML='<span class="form-error">Не удалось загрузить цены</span> <button class="btn btn-secondary" type="button">Повторить</button>';window.App.icons.apply(host.querySelector('button'),'refresh','Повторить');host.querySelector('button').onclick=()=>open(p);}}
   }
   async function loadDashboard(){
     const host=document.getElementById('dashboardProductWatches');if(!host)return;
@@ -108,15 +118,16 @@
         eventHost.insertAdjacentHTML('beforeend',page.events.map(e=>`<article class="watch-card"><button type="button" class="catalog-product-name-btn" data-watch-open="${e.product_id}">${esc(e.product_name)}</button><strong class="watch-${e.direction==='down'?'down':'up'}">${e.direction==='down'?'↓':'↑'} ${esc(e.old_price)} → ${esc(e.price)} BYN / ${esc(e.unit)} <small>(${esc(e.percent)}%)</small></strong><small>${esc(e.source||'Е-доставка')} · ${esc(date(e.created_at))}</small></article>`).join(''));
         more.innerHTML=page.next_cursor?'<button type="button" class="btn btn-secondary btn-xs">Ещё изменения</button>':'';
         const next=more.querySelector('button');
+        if(next)window.App.icons.apply(next,'down','Ещё изменения');
         if(next)next.onclick=()=>guarded(next,async()=>{const older=await request('?before_id='+page.next_cursor);if(token===dashboardSeq&&authToken===window.App.state.token)appendEvents(older);});
         bindOpen();
       };
       appendEvents(data);
       if(!data.events.length)eventHost.innerHTML='<p class="muted-small">Изменений цен пока нет</p>';
-      if(data.offers.length)host.insertAdjacentHTML('beforeend',`<details><summary>Предложения с уведомлениями (${data.offers.length})</summary><div class="watch-grid">${data.offers.map(o=>`<article class="watch-card"><button type="button" class="catalog-product-name-btn" data-watch-open="${o.product_id}">${esc(o.product_name)}</button>${quote(o.snapshot)}<small class="muted-small">${esc(date(o.checked_at))}${o.error?' · '+esc(o.error):''}</small></article>`).join('')}</div></details>`);
+      if(data.offers.length)host.insertAdjacentHTML('beforeend',`<details class="ui-disclosure"><summary>Предложения с уведомлениями (${data.offers.length})</summary><div class="watch-grid">${data.offers.map(o=>`<article class="watch-card"><button type="button" class="catalog-product-name-btn" data-watch-open="${o.product_id}">${esc(o.product_name)}</button>${quote(o.snapshot)}<small class="muted-small">${esc(date(o.checked_at))}${o.error?' · '+esc(o.error):''}</small></article>`).join('')}</div></details>`);
       host.insertAdjacentHTML('beforeend',data.unlinked.map(p=>`<p class="muted-small"><button type="button" class="btn btn-secondary btn-xs" data-watch-open="${p.product_id}">${esc(p.name)}</button> · ${p.matching_sources?.length?esc(p.matching_sources.join(', '))+': ':''}${esc(matchLabels[p.matching_state]||'Подбираем страницу по коду…')}</p>`).join(''));
       bindOpen();
-    }catch(e){if(token===dashboardSeq&&authToken===window.App.state.token){host.innerHTML='<h3>Уведомления о ценах</h3><span class="muted-small">Не удалось загрузить предложения.</span> <button type="button" class="btn btn-secondary">Повторить</button>';host.querySelector('button').onclick=loadDashboard;}}
+    }catch(e){if(token===dashboardSeq&&authToken===window.App.state.token){host.innerHTML='<h3>Уведомления о ценах</h3><span class="muted-small">Не удалось загрузить предложения.</span> <button type="button" class="btn btn-secondary">Повторить</button>';window.App.icons.apply(host.querySelector('button'),'refresh','Повторить');host.querySelector('button').onclick=loadDashboard;}}
   }
   window.App.registerRuntimeModule('catalog-watch',{open,close(){generation++;product=null;clearTimeout(matchingTimer);},loadDashboard});
 })();

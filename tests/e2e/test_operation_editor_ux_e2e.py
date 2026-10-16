@@ -29,7 +29,8 @@ def test_empty_receipt_details_preserve_draft_and_payload(static_server_url, pag
     assert row.locator('[data-receipt-field="shop_name"]').is_visible()
     after=toggle.evaluate("n=>{const b=n.getBoundingClientRect(),r=n.closest('.receipt-item-row').getBoundingClientRect();return [b.x-r.x,b.y-r.y,b.width];}")
     assert all(abs(a-b)<2 for a,b in zip(before,after))
-    assert toggle.inner_text()=='Детали'
+    assert toggle.get_attribute('aria-label') == 'Подробности товара'
+    assert toggle.locator('svg').count() == 1
     assert toggle.get_attribute('aria-expanded')=='true'
 
     assert row.get_attribute('data-receipt-item-id') == draft_id
@@ -374,7 +375,8 @@ def test_known_receipt_details_stays_anchored_and_preserves_money(static_server_
         toggle.click()
         after=toggle.evaluate(relative)
         assert all(abs(a-b)<2 for a,b in zip(before,after)),(before,after)
-        assert toggle.inner_text()=='Детали'
+        assert toggle.get_attribute('aria-label') == 'Подробности товара'
+        assert toggle.locator('svg').count() == 1
         assert toggle.get_attribute('aria-expanded')==str(expanded).lower()
         assert toggle.evaluate('n=>document.activeElement===n')
         assert page.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()") == payload

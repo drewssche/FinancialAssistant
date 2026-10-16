@@ -21,7 +21,7 @@
     <p id="scanArithmetic" role="status"></p><label class="scan-confirm"><input id="scanConfirmed" type="checkbox">Сверил дату, магазин, валюту и позиции с фото</label>
     <footer><button type="submit" class="btn btn-primary btn-icon" id="scanTransfer" aria-label="В черновик операции" title="В черновик операции" disabled>${icons.svg("save")}</button></footer></form></div>
     <p id="scanStatus" class="muted-small" role="status"></p><footer id="scanRunBar"><button id="scanCancel" type="button" class="btn btn-secondary btn-icon" aria-label="Отменить распознавание" title="Отменить распознавание" hidden>${icons.svg("close")}</button><button id="scanRun" type="button" class="btn btn-primary btn-icon" aria-label="Распознать чек" title="Распознать чек" disabled>${icons.svg("receipt")}</button></footer>
-    <dialog id="scanTextDialog" class="choice-dialog task-dialog"><header><h3>Распознанный текст</h3>${iconButton('scanTextClose','close','Закрыть текст')}</header><textarea id="scanText" rows="15" maxlength="80000" aria-label="Распознанный текст"></textarea><button id="scanReparse" class="btn btn-primary" type="button">Разобрать исправленный текст</button></dialog>`;
+    <dialog id="scanTextDialog" class="choice-dialog task-dialog"><header><h3>Распознанный текст</h3>${iconButton('scanTextClose','close','Закрыть текст')}</header><textarea id="scanText" rows="15" maxlength="80000" aria-label="Распознанный текст"></textarea><button id="scanReparse" class="btn btn-primary btn-icon" type="button" aria-label="Разобрать исправленный текст" title="Разобрать исправленный текст">${icons.svg("refresh")}</button></dialog>`;
   document.body.append(dialog);
   let source=null, points=[], draft=null, job=null, generation=0, transferred=false, originalText='', busy=false, pendingPaste=null;
   const catalog=()=>window.App.getRuntimeModule('operation-modal').receiptCatalog;
@@ -168,12 +168,12 @@
       name.value=row.name;name.title=row.source||'';
       if(row.merged_rows?.length){
         const group=document.createElement('div');group.className='scan-merged-actions';
-        const note=document.createElement('small');note.className='scan-merged-note muted-small';note.textContent=`Объединено строк по штрихкоду: ${row.merged_rows.length}`;
-        const split=document.createElement('button');split.type='button';split.className='btn btn-secondary btn-xs';split.textContent='Разделить обратно';split.dataset.scanSplit='';
+        const note=document.createElement('small');note.className='scan-merged-note muted-small';note.textContent=`${row.merged_rows.length} строки вместе`;
+        const split=document.createElement('button');split.type='button';split.className='btn btn-secondary btn-xs';window.App.icons.apply(split,'split','Разделить обратно');split.dataset.scanSplit='';
         const confirmation=document.createElement('div');confirmation.className='scan-split-confirm';confirmation.hidden=true;
-        const hint=document.createElement('small');hint.className='muted-small';hint.textContent='Цена, количество и скидки вернутся к исходным строкам чека. Выбранный товар, категория и коды сохранятся.';
-        const accept=document.createElement('button');accept.type='button';accept.className='btn btn-secondary btn-xs';accept.textContent='Вернуть строки из чека';
-        const cancel=document.createElement('button');cancel.type='button';cancel.className='btn btn-secondary btn-xs';cancel.textContent='Отмена';
+        const hint=document.createElement('small');hint.className='muted-small';hint.textContent='Восстановить количество, цены и скидки исходных строк?';
+        const accept=document.createElement('button');accept.type='button';accept.className='btn btn-secondary btn-xs';window.App.icons.apply(accept,'save','Вернуть строки из чека');
+        const cancel=document.createElement('button');cancel.type='button';cancel.className='btn btn-secondary btn-xs';window.App.icons.apply(cancel,'close','Отмена');
         const restore=()=>{
           const current=draft.rows.indexOf(row);if(current<0)return;
           const originals=parser.splitMergedRow(row);

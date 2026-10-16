@@ -1,0 +1,99 @@
+/* Shared binary settings. Native inputs keep keyboard, form and disabled behavior. */
+:is(#appShell, .modal, dialog) input[type="checkbox"][role="switch"] {
+  appearance: none; -webkit-appearance: none; position: relative;
+  width: 40px; min-width: 40px; max-width: 40px; height: 24px;
+  flex: 0 0 40px; padding: 0; margin: 0; border: 1px solid var(--border);
+  border-radius: 999px; background: var(--surface-2); cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+:is(#appShell, .modal, dialog) input[type="checkbox"][role="switch"]::before {
+  content: ''; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px;
+  border-radius: 50%; background: #bdc9dd; transition: transform .15s ease;
+}
+:is(#appShell, .modal, dialog) input[type="checkbox"][role="switch"]:checked {
+  background: #ff942c; border-color: #ff942c;
+}
+:is(#appShell, .modal, dialog) input[type="checkbox"][role="switch"]:checked::before {
+  transform: translateX(16px); background: #121a29;
+}
+:is(#appShell, .modal, dialog) input[type="checkbox"][role="switch"]:disabled { opacity: .45; cursor: not-allowed; }
+:is(.settings-switch-row, .watch-toggle, .offer-size-toggle, .receipt-code-save, .plan-resume-toggle) {
+  display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer;
+}
+:is(#appShell, .modal, dialog) input[type="checkbox"]:focus-visible {
+  outline: 2px solid #a6caff; outline-offset: 4px;
+}
+/* Multi-selection is expressed as chips, rather than a bank of on/off switches. */
+:is(#trackedCurrenciesWrap, #bankRateBanksWrap, #workWeekdayPicker) { display: flex; flex-wrap: wrap; gap: 8px; }
+:is(#trackedCurrenciesWrap, #bankRateBanksWrap, #workWeekdayPicker) > label {
+  position: relative; display: inline-flex; padding: 0; min-height: 44px;
+  border: 0; background: none; cursor: pointer; margin: 0;
+}
+:is(#trackedCurrenciesWrap, #bankRateBanksWrap, #workWeekdayPicker) > label > input {
+  position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer;
+}
+:is(#trackedCurrenciesWrap, #bankRateBanksWrap, #workWeekdayPicker) > label > span {
+  display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px;
+  padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px;
+  color: var(--muted); background: var(--surface-2); pointer-events: none;
+}
+:is(#trackedCurrenciesWrap, #bankRateBanksWrap, #workWeekdayPicker) input:checked + span {
+  color: var(--text); background: #223653; border-color: #7192c0;
+}
+:is(#trackedCurrenciesWrap, #bankRateBanksWrap) input + span::before { content: ''; width: 8px; height: 8px; border: 1px solid currentColor; border-radius: 50%; }
+:is(#trackedCurrenciesWrap, #bankRateBanksWrap) input:checked + span::before { width: 6px; height: 10px; border-width: 0 2px 2px 0; border-radius: 0; transform: rotate(45deg); margin-right: 2px; }
+:is(#trackedCurrenciesWrap, #bankRateBanksWrap, #workWeekdayPicker) input:focus-visible + span {
+  outline: 2px solid #a6caff; outline-offset: 3px;
+}
+:is(#trackedCurrenciesWrap, #bankRateBanksWrap, #workWeekdayPicker) input:disabled + span { opacity: .45; }
+/* Selections and explicit confirmation retain checkbox semantics. */
+:is(#appShell, .modal, dialog) input[type="checkbox"]:not([role="switch"]):not(.sr-only) { accent-color: #ff942c; }
+.scan-confirm { min-height: 44px; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.scan-confirm input { width: 20px; height: 20px; flex: 0 0 20px; }
+/* Secondary sections have the same compact disclosure affordance and focus ring. */
+details.ui-disclosure { min-width: 0; border-top: 1px solid var(--border); margin-top: 12px; }
+details.ui-disclosure > summary {
+  display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 0;
+  list-style: none; color: var(--muted); font-size: 13px; cursor: pointer; width: fit-content;
+}
+details.ui-disclosure > summary::-webkit-details-marker { display: none; }
+details.ui-disclosure > summary::before {
+  content: ''; width: 7px; height: 7px; flex: 0 0 7px; margin: 0 4px;
+  border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: rotate(-45deg);
+}
+details.ui-disclosure[open] > summary::before { transform: rotate(45deg); }
+details.ui-disclosure[open] > summary { color: var(--text); }
+details.ui-disclosure > summary:focus-visible { outline: 2px solid #a6caff; outline-offset: 2px; border-radius: 6px; }
+details.ui-disclosure > :not(summary) { margin-bottom: 10px; }
+.receipt-code-actions, .scan-merged-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.receipt-code-save { font-size: 13px; }
+.watch-source-head { align-items: center; gap: 12px; }
+.watch-source-head > strong { flex: 1; min-width: 0; }
+.watch-quote { position: relative; padding-right: 54px; }
+.watch-quote > a.btn-icon { position: absolute; top: 0; right: 0; text-decoration: none; }
+.watch-search-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: center; }
+.watch-search-card > :not(button) { grid-column: 1; }
+.watch-search-card > button { grid-column: 2; grid-row: 1 / span 3; }
+[data-watch-result] > .btn-cta { display: flex; margin: 12px 0 0 auto; }
+[data-watch-more] { display: flex; justify-content: center; margin-top: 8px; }
+:is(.modal, #appShell) .btn-icon:focus-visible { outline: 2px solid #a6caff; outline-offset: 3px; }
+:is(.modal, #appShell) .btn-icon .action-icon { width: 20px; height: 20px; flex: 0 0 20px; }
+@media (prefers-reduced-motion: reduce) {
+  :is(#appShell, .modal, dialog) input[type="checkbox"][role="switch"],
+  :is(#appShell, .modal, dialog) input[type="checkbox"][role="switch"]::before { transition: none; }
+}
+
+#workSection #workWeekdayPicker > label { padding: 0; }
+:is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) [data-receipt-details-toggle] {
+  width: 44px; min-width: 44px; max-width: 44px; height: 44px; padding: 0;
+}
+:is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-item-row { grid-template-columns: minmax(0, 1fr) 44px; }
+@media (min-width: 900px) {
+  :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-item-row:not(.receipt-item-empty) {
+    grid-template-columns: minmax(0, 1fr) minmax(330px, 1.2fr) 44px;
+  }
+}
+.receipt-scan-dialog .btn.btn-icon { width: 44px; min-width: 44px; height: 44px; padding: 0; flex: 0 0 44px; }
+#scanTextDialog > #scanReparse { display: flex; margin: 12px 0 0 auto; }
+
+.watch-quote > a.btn-icon { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; }

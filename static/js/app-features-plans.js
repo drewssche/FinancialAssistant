@@ -370,7 +370,7 @@
       if (state.activeSection === "plans" && el.plansList) {
         el.plansList.innerHTML = `<div class="panel-load-state panel-load-state-error" role="alert">
           <span>Не удалось загрузить планы</span>
-          <button class="btn btn-secondary btn-xs" type="button" data-plans-retry>Повторить</button>
+          <button class="btn btn-secondary btn-xs btn-icon" type="button" data-plans-retry title="Повторить" aria-label="Повторить">${window.App.icons.svg("refresh")}</button>
         </div>`;
       }
       throw err;

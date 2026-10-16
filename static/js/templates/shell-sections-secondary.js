@@ -98,10 +98,10 @@
                 </div>
 
                 <div class="work-weekday-picker" id="workWeekdayPicker">
-                  <label><input type="checkbox" value="0" checked /> Пн</label><label><input type="checkbox" value="1" checked /> Вт</label>
-                  <label><input type="checkbox" value="2" checked /> Ср</label><label><input type="checkbox" value="3" checked /> Чт</label>
-                  <label><input type="checkbox" value="4" checked /> Пт</label><label><input type="checkbox" value="5" /> Сб</label>
-                  <label><input type="checkbox" value="6" /> Вс</label>
+                  <label><input type="checkbox" value="0" checked /><span>Пн</span></label><label><input type="checkbox" value="1" checked /><span>Вт</span></label>
+                  <label><input type="checkbox" value="2" checked /><span>Ср</span></label><label><input type="checkbox" value="3" checked /><span>Чт</span></label>
+                  <label><input type="checkbox" value="4" checked /><span>Пт</span></label><label><input type="checkbox" value="5" /><span>Сб</span></label>
+                  <label><input type="checkbox" value="6" /><span>Вс</span></label>
                 </div>
               </section>
               <section class="settings-block">
@@ -156,7 +156,7 @@
               <form id="workContractForm" class="settings-form">
                 <section class="settings-block">
                   <h3 id="workContractFormHeading">Новый период или смена работы</h3>
-                  <p id="workContractFormSubtitle" class="muted-small">Новая текущая работа автоматически завершит предыдущий период этой же датой. Дата перехода будет относиться к новому периоду.</p>
+                  <p id="workContractFormSubtitle" class="muted-small">Новый период завершит предыдущий в дату перехода.</p>
                   <div class="settings-grid-2">
                     <label class="field"><span>Действует с</span><div class="date-input-wrap"><input id="workContractFrom" type="date" required /><button class="date-input-trigger" type="button" data-date-picker-trigger="workContractFrom" aria-label="Открыть календарь"></button></div></label>
                     <label class="field"><span>Действует до</span><div class="date-input-wrap"><input id="workContractTo" type="date" /><button class="date-input-trigger" type="button" data-date-picker-trigger="workContractTo" aria-label="Открыть календарь"></button></div></label>
@@ -270,7 +270,7 @@
             <div class="panel-head row between">
               <div>
                 <h3>Курсы и сделки</h3>
-                <p id="analyticsCurrencyRangeLabel" class="subtitle">Текущая позиция, курс и сделки по выбранной валюте</p>
+                <p id="analyticsCurrencyRangeLabel" class="subtitle"></p>
               </div>
               <div class="toolbar">
                 <div id="analyticsCurrencyTabs" class="segmented" role="tablist" aria-label="Фильтр валютной аналитики"></div>
@@ -820,7 +820,7 @@
                     <span>Масштаб интерфейса: <strong id="uiScaleValue">100%</strong></span>
                     <input id="uiScaleRange" type="range" min="85" max="115" step="1" value="100" />
                   </label>
-                  <button id="resetUiScaleBtn" class="btn btn-secondary btn-xs" type="button">Сбросить 100%</button>
+                  <button id="resetUiScaleBtn" class="btn btn-secondary btn-xs btn-icon" type="button" title="Сбросить 100%" aria-label="Сбросить 100%">${window.App.icons.svg("refresh")}</button>
                 </div>
                 </section>
               </div>
@@ -828,19 +828,19 @@
                 <section class="settings-block">
                   <h3>Блоки главной</h3>
                 <label class="settings-switch-row">
-                  <input id="showDashboardAnalyticsToggle" type="checkbox" checked />
+                  <input id="showDashboardAnalyticsToggle" type="checkbox" role="switch" checked />
                   <span>Структура расходов</span>
                 </label>
                 <label class="settings-switch-row">
-                  <input id="showDashboardOperationsToggle" type="checkbox" checked />
+                  <input id="showDashboardOperationsToggle" type="checkbox" role="switch" checked />
                   <span>Планы</span>
                 </label>
                 <label class="settings-switch-row">
-                  <input id="showDashboardDebtsToggle" type="checkbox" checked />
+                  <input id="showDashboardDebtsToggle" type="checkbox" role="switch" checked />
                   <span>Долги</span>
                 </label>
                 <label class="settings-switch-row">
-                  <input id="showDashboardCurrencyToggle" type="checkbox" checked />
+                  <input id="showDashboardCurrencyToggle" type="checkbox" role="switch" checked />
                   <span>Валюта</span>
                 </label>
                 <label class="field">
@@ -904,7 +904,7 @@
                 <section class="settings-block">
                 <h3>Напоминания</h3>
                 <label class="settings-switch-row">
-                  <input id="plansRemindersToggle" type="checkbox" checked />
+                  <input id="plansRemindersToggle" type="checkbox" role="switch" checked />
                   <span>Напоминать о планах в Telegram</span>
                 </label>
                 <label class="field">
@@ -912,7 +912,7 @@
                   <input id="plansReminderTimeInput" type="time" value="09:00" />
                 </label>
                 <label class="settings-switch-row">
-                  <input id="debtsRemindersToggle" type="checkbox" checked />
+                  <input id="debtsRemindersToggle" type="checkbox" role="switch" checked />
                   <span>Напоминать о долгах в Telegram</span>
                 </label>
                 <label class="field">
@@ -920,7 +920,7 @@
                   <input id="debtsReminderTimeInput" type="time" value="09:00" />
                 </label>
                 <label class="settings-switch-row">
-                  <input id="currencyDigestToggle" type="checkbox" />
+                  <input id="currencyDigestToggle" type="checkbox" role="switch" />
                   <span>Ежедневные курсы в Telegram</span>
                 </label>
                 <label class="field">
@@ -928,7 +928,7 @@
                   <input id="currencyDigestTimeInput" type="time" value="10:00" />
                 </label>
                 <label class="settings-switch-row">
-                  <input id="currencyDigestChartToggle" type="checkbox" checked />
+                  <input id="currencyDigestChartToggle" type="checkbox" role="switch" checked />
                   <span>Добавлять график курсов за последние 7 дней</span>
                 </label>
                 </section>
@@ -981,7 +981,7 @@
                       <span>Курсы банков</span>
 
                     </div>
-                    <button id="addBankCurrencyAlertBtn" class="btn btn-secondary btn-xs" type="button">Добавить алерт</button>
+                    <button id="addBankCurrencyAlertBtn" class="btn btn-secondary btn-xs btn-icon" type="button" title="Добавить алерт" aria-label="Добавить алерт">${window.App.icons.svg("plus")}</button>
                   </div>
                   <div id="bankCurrencyAlertsList" class="settings-alerts-grid"></div>
                 </div>

@@ -19,7 +19,7 @@
     }
   }
   function errorHtml(error) {
-    return `<div class="form-error">Не удалось загрузить данные: ${esc(error?.message || error)}</div><button class="btn btn-secondary" type="button" data-product-detail-retry>Повторить</button>`;
+    return `<div class="form-error">Не удалось загрузить данные: ${esc(error?.message || error)}</div><button class="btn btn-secondary btn-icon" type="button" data-product-detail-retry title="Повторить" aria-label="Повторить">${window.App.icons.svg("refresh")}</button>`;
   }
   async function loadPrices({preserve = false} = {}) {
     cancel();

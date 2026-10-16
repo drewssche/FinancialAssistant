@@ -42,16 +42,16 @@
   }
   function mount(host,{row,shop,onSelect,onChange=()=>{},auto=false,loadKnown=false}) {
     const list=entries(row);
-    const details=document.createElement('details');details.className='receipt-codes';details.open=row.codes_open==null?Boolean(list.length):Boolean(row.codes_open);
+    const details=document.createElement('details');details.className='receipt-codes ui-disclosure';details.open=row.codes_open==null?Boolean(list.length):Boolean(row.codes_open);
     const summary=document.createElement('summary');summary.textContent=list.length?'Коды товара':'Добавить код';details.append(summary);
     details.addEventListener('toggle',()=>row.codes_open=details.open);
     const fields=document.createElement('div');fields.className='receipt-code-fields';details.append(fields);
     const actions=document.createElement('div');actions.className='receipt-code-actions';
-    const add=document.createElement('button');add.type='button';add.className='btn btn-secondary btn-xs';add.textContent='Ещё код';
-    const search=document.createElement('button');search.type='button';search.className='btn btn-secondary btn-xs';search.textContent='Найти по коду';
+    const add=document.createElement('button');add.type='button';add.className='btn btn-secondary btn-xs';window.App.icons.apply(add,'plus','Ещё код');
+    const search=document.createElement('button');search.type='button';search.className='btn btn-secondary btn-xs';window.App.icons.apply(search,'search','Найти по коду');
     actions.append(add,search);details.append(actions);
     const saveLabel=document.createElement('label');saveLabel.className='receipt-code-save';
-    const save=document.createElement('input');save.type='checkbox';save.checked=Boolean(row.code_save);
+    const save=document.createElement('input');save.type='checkbox';save.setAttribute('role','switch');save.checked=Boolean(row.code_save);
     saveLabel.append(save,document.createTextNode('Добавить коды в каталог'));details.append(saveLabel);
     const saveHint=document.createElement('p');saveHint.className='muted-small receipt-code-save-hint';saveHint.id='receiptCodeSaveHint'+(++saveHintId);saveHint.setAttribute('aria-live','polite');details.append(saveHint);save.setAttribute('aria-describedby',saveHint.id);
     function refreshSave(){
