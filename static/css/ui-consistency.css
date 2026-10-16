@@ -104,3 +104,37 @@
 .watch-quote-head > strong { min-width: 0; }
 .watch-quote-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .watch-quote-actions .btn-icon { display: inline-flex; align-items: center; justify-content: center; width: 44px; min-width: 44px; height: 44px; padding: 0; text-decoration: none; }
+
+/* Dashboard notifications are a dense overview; catalog offer editors keep their spacing. */
+#dashboardProductWatches .panel-head { margin-bottom: 8px; gap: 8px; }
+#dashboardProductWatches h3 { font-size: 15px; }
+#dashboardProductWatches .panel-head .muted-small { font-size: 11px; }
+#dashboardProductWatches .watch-view-tabs { margin-bottom: 8px; }
+#dashboardProductWatches .watch-view-tabs .segmented-btn { min-height: 32px; padding: 6px 10px; font-size: 12px; }
+#dashboardProductWatches .watch-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 8px; margin: 0;
+}
+#dashboardProductWatches .watch-grid > p { grid-column: 1 / -1; }
+#dashboardProductWatches .watch-card { padding: 10px; gap: 8px; border-radius: 10px; font-size: 12px; line-height: 1.35; }
+#dashboardProductWatches .catalog-product-name-btn {
+  font-size: 13px; line-height: 1.35; padding: 0; min-height: 2.7em; max-width: 100%;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+}
+#dashboardProductWatches .watch-quote { grid-template-columns: minmax(0, 1fr) auto; gap: 3px 6px; margin: 0 0 4px; }
+#dashboardProductWatches .watch-quote-head { display: contents; }
+#dashboardProductWatches .watch-quote-head > strong { grid-column: 1; grid-row: 1; font-size: 12px; }
+#dashboardProductWatches .watch-quote-actions { grid-column: 2; grid-row: 1 / span 2; align-self: start; gap: 4px; }
+#dashboardProductWatches .watch-quote-price { grid-column: 1; grid-row: 2; font-size: 12px; }
+#dashboardProductWatches .watch-quote-price b { font-size: 13px; }
+#dashboardProductWatches .watch-quote > small { grid-column: 1 / -1; }
+#dashboardProductWatches .watch-card small { font-size: 11px; line-height: 1.35; }
+#dashboardProductWatches .watch-quote-actions .btn.btn-icon:not([hidden]) { width: 28px; min-width: 28px; max-width: 28px; height: 28px; min-height: 28px; flex-basis: 28px; border-radius: 7px; }
+#dashboardProductWatches .watch-quote-actions .action-icon { width: 15px; height: 15px; flex-basis: 15px; }
+#dashboardProductWatches .watch-product-source + .watch-product-source,
+#dashboardProductWatches .watch-match-state { padding-top: 7px; }
+#dashboardProductWatches .watch-match-state { display: flex; flex-wrap: wrap; gap: 2px 6px; font-size: 11px; }
+@media (pointer: coarse) {
+  #dashboardProductWatches .watch-quote-actions .btn.btn-icon:not([hidden]) { width: 44px; min-width: 44px; max-width: 44px; height: 44px; min-height: 44px; flex-basis: 44px; }
+  #dashboardProductWatches .watch-view-tabs .segmented-btn { min-height: 44px; }
+}
