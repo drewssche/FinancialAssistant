@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-import re
 from zoneinfo import ZoneInfo
 from sqlalchemy import select, update
 from app.db.models.catalog_product import CatalogProduct
@@ -9,7 +8,8 @@ from app.db.models.catalog_watch import CatalogWatch, CatalogOfferWatch, Catalog
 from app.db.models.auth_identity import AuthIdentity
 from app.db.models.item_source import ItemSource
 from app.db.models.user import User
-from app.services import edostavka_provider
+from app.services import retailer_price_provider as provider
+from app.db.models.catalog_identity import CatalogOfferIdentity
 from app.services.background_job_lock import try_background_job_lock
 
 
@@ -48,17 +48,22 @@ class CatalogWatchService:
         self.db.commit()
         return self.detail(user_id, product_id)
 
-    def supports(self, offer):
+    def provider(self, offer):
         source = self.db.get(ItemSource, offer.source_id) if offer.source_id else None
-        name = (source.name if source else offer.shop_name) or ''
-        normalized = re.sub(r'[^a-zа-яё]', '', name.lower())
-        return normalized in {'едоставка', 'евроопт', 'edostavka', 'edostavkaby', 'euroopt'}
+        return provider.source_provider(source.name if source else offer.shop_name)
+
+    def supports(self, offer):
+        return self.provider(offer) is not None
+
+    def validate_source(self, offer, url):
+        key, _ = provider.identify_url(url)
+        if self.provider(offer) != key:
+            raise ValueError('Сайт товара не соответствует источнику. Выберите источник этой сети.')
 
     def connect(self, user_id, product_id, template_id, url, expected_key, expected_name):
         offer = self.offer(user_id, product_id, template_id)
-        if not self.supports(offer):
-            raise ValueError('Добавьте источник «Е-доставка» для цены этого сайта. Другие сети пока не подключены.')
-        snapshot = edostavka_provider.fetch_product(url)
+        self.validate_source(offer, url)
+        snapshot = provider.fetch_product(url)
         if snapshot['comparison_key'] != expected_key or snapshot['name'] != expected_name:
             raise ValueError('Карточка изменилась. Проверьте товар ещё раз перед подключением.')
         with try_background_job_lock(self.db, f'catalog_offer_watch:{template_id}') as acquired:
@@ -100,7 +105,21 @@ class CatalogWatchService:
     def detail(self, user_id, product_id):
         self.product(user_id, product_id)
         w = self.db.get(CatalogWatch, product_id)
-        return {'supported_offer_ids': [t.id for t in self.db.scalars(select(OperationItemTemplate).where(OperationItemTemplate.user_id == user_id, OperationItemTemplate.product_id == product_id, OperationItemTemplate.is_archived.is_(False))) if self.supports(t)], 'enabled': bool(w and w.enabled), 'telegram_connected': bool(self.db.scalar(select(AuthIdentity.id).where(AuthIdentity.user_id == user_id, AuthIdentity.provider == 'telegram').limit(1))),
+        supported = {}
+        for t in self.db.scalars(select(OperationItemTemplate).where(OperationItemTemplate.user_id == user_id, OperationItemTemplate.product_id == product_id, OperationItemTemplate.is_archived.is_(False))):
+            key = self.provider(t)
+            if not key:
+                continue
+            identity = self.db.get(CatalogOfferIdentity, t.id)
+            url = None
+            if identity and identity.user_id == user_id and identity.product_url:
+                try:
+                    self.validate_source(t, identity.product_url)
+                    _, url = provider.identify_url(identity.product_url)
+                except ValueError:
+                    pass
+            supported[t.id] = dict(provider.PROVIDERS[key], provider=key, saved_url=url)
+        return {'supported_offer_ids': list(supported), 'supported_offers': supported, 'enabled': bool(w and w.enabled), 'telegram_connected': bool(self.db.scalar(select(AuthIdentity.id).where(AuthIdentity.user_id == user_id, AuthIdentity.provider == 'telegram').limit(1))),
                 'offers': [self.serialize(o) for o in self.db.scalars(self.valid_offers().where(CatalogOfferWatch.user_id == user_id, CatalogOfferWatch.product_id == product_id))]}
 
     def dashboard(self, user_id):
@@ -139,8 +158,10 @@ class CatalogWatchService:
                 if due > now():
                     continue
                 try:
-                    self.record(w, edostavka_provider.fetch_product(w.url))
-                except (edostavka_provider.RetailerUnavailable, ValueError) as exc:
+                    offer = self.offer(w.user_id, w.product_id, w.template_id)
+                    self.validate_source(offer, w.url)
+                    self.record(w, provider.fetch_product(w.url))
+                except (ValueError, LookupError) as exc:
                     w.error = str(exc)[:300]
                     w.next_check_at = now() + timedelta(hours=1)
                     self.db.commit()
@@ -156,20 +177,26 @@ class CatalogWatchService:
             chat = self.db.scalar(select(AuthIdentity.provider_user_id).join(User, User.id == AuthIdentity.user_id).where(AuthIdentity.user_id == user_id, AuthIdentity.provider == 'telegram', User.status.in_(['approved', 'active'])).limit(1))
             if not chat:
                 continue
-            # Bounded batches fit Telegram's 4096-character message limit.
-            for start in range(0, len(events), 4):
-                batch = events[start:start+4]
+            # Retailers use long slug URLs; count text as well as event count.
+            batch = []
+            for event in events:
+                candidate = batch + [event]
+                if batch and (len(candidate) > 4 or len(self.message(candidate).encode('utf-16-le')) // 2 > 3800):
+                    yield chat, batch, self.message(batch)
+                    batch = []
+                batch.append(event)
+            if batch:
                 yield chat, batch, self.message(batch)
 
     @staticmethod
     def message(events):
-        lines = ['Изменения цен · Е-доставка', '']
+        lines = ['Изменения цен', '']
         for event in events:
             d = event.data
             stamp = event.created_at
             if stamp.tzinfo is None:
                 stamp = stamp.replace(tzinfo=timezone.utc)
-            lines.extend([f"{'🟢 Снижение' if d['direction']=='down' else '🔺 Повышение'} · {d['percent']}%", d['product_name'][:100]])
+            lines.extend([f"{'🟢 Снижение' if d['direction']=='down' else '🔺 Повышение'} · {d['percent']}%", d['product_name'][:100], d.get('source', 'Е-доставка')])
             if d['name'] != d['product_name']:
                 lines.append(d['name'][:100])
             lines.extend([f"{d['old_price']} → {d['price']} BYN / {d['unit']}", d['normalized'], d['conditions'], 'Проверено: ' + stamp.astimezone(ZoneInfo('Europe/Minsk')).strftime('%d.%m.%Y %H:%M'), d['url'], ''])

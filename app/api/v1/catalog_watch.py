@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user_id
 from app.db.session import get_db
 from app.services.catalog_watch_service import CatalogWatchService
-from app.services.edostavka_provider import fetch_product, search_products
+from app.services.edostavka_provider import search_products
+from app.services.retailer_price_provider import fetch_product
 from app.services.catalog_identity_service import normalize_codes
 from app.api.v1.catalog_identity import run
 
@@ -72,7 +73,7 @@ def search(product_id: int, template_id: int, payload: SearchInput, user_id: int
     def action():
         service = CatalogWatchService(db)
         offer = service.offer(user_id, product_id, template_id)
-        if not service.supports(offer):
+        if service.provider(offer) != 'edostavka':
             raise ValueError('Поиск доступен для источника Е-доставка или Евроопт.')
         if bool(payload.codes) == bool(payload.name):
             raise ValueError('Укажите коды или название для поиска.')

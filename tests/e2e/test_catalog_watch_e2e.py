@@ -110,3 +110,38 @@ def test_search_empty_failure_name_fallback_and_stale_response(static_server_url
     p.locator('[data-product-tab=offers]').click()
     pending[0].fulfill(json={'items':[{'name':'Устаревший результат','url':'https://edostavka.by/product/1'}]})
     expect(host).not_to_contain_text('Устаревший результат')
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width',[320,390,1440])
+def test_green_sosedi_saved_links_and_source_labels(static_server_url,page_with_receipt_api_mock,width):
+    p=page_with_receipt_api_mock;writes=[]
+    meta={'501':{'provider':'green','source':'Green','search':False,'example_url':'https://green-dostavka.by/product/…','saved_url':'https://green-dostavka.by/product/moloko-123/'},'502':{'provider':'sosedi','source':'Соседи','search':False,'example_url':'https://sosedi-dostavka.by/products/…','saved_url':None}}
+    snapshots={tid:{'provider':m['provider'],'source':m['source'],'name':'Молоко 900 мл','price':'2.79','regular_price':'3.49','unit':'шт.','available':True,'normalized':'','conditions':'Публичная цена сайта · магазин по умолчанию','url':m['saved_url'] or 'https://sosedi-dostavka.by/products/moloko-456','comparison_key':tid} for tid,m in meta.items()}
+    data={'enabled':True,'telegram_connected':True,'supported_offer_ids':[501,502],'supported_offers':meta,'offers':[]}
+    def route(r,req):
+        path=urlparse(req.url).path
+        if path.endswith('/catalog-watches'):
+            return r.fulfill(json={'tracked_count':1,'offers':[],'events':[dict(s,product_id=401,product_name='Молоко',old_price='3.49',percent='-20.1',direction='down',created_at='2026-10-16T10:00:00Z') for s in snapshots.values()],'unlinked':[]})
+        if path.endswith('/preview'):
+            return r.fulfill(json=next(s for s in snapshots.values() if s['url']==req.post_data_json['url']))
+        if req.method=='PUT':
+            writes.append(req.post_data_json);tid=path.rsplit('/',1)[1]
+            data['offers'].append({'template_id':int(tid),'snapshot':snapshots[tid],'checked_at':'2026-10-16T10:00:00Z'})
+        return r.fulfill(json=data)
+    p.route(re.compile(r'.*/api/v1/catalog-watches(?:/.*)?$'),route)
+    setup(p,static_server_url,width,many=True);p.locator('[data-product-tab=offers]').click()
+    green=p.locator('[data-offer-watch="501"]');sosedi=p.locator('[data-offer-watch="502"]')
+    expect(green.locator('[data-watch-search]')).to_have_count(0)
+    expect(green).to_contain_text('Green · цена на сайте');expect(sosedi).to_contain_text('Соседи · цена на сайте')
+    green.locator('[data-watch-saved]').click();expect(green.locator('[data-watch-confirm]')).to_be_visible();assert writes==[]
+    green.locator('[data-watch-confirm]').click();expect(green.locator('[data-watch-remove]')).to_be_visible()
+    sosedi.locator('[data-watch-url]').fill(snapshots['502']['url']);sosedi.locator('[data-watch-preview]').click()
+    sosedi.locator('[data-watch-confirm]').click();expect(sosedi.locator('[data-watch-remove]')).to_be_visible()
+    for host in [green,sosedi]:
+        assert host.evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+        expect(host).not_to_contain_text('Е-доставка')
+    sosedi.scroll_into_view_if_needed();p.screenshot(path=f'/tmp/fa-multi-watch-{width}.png')
+    p.locator('#closeCatalogProductModalBtn').click()
+    dashboard=p.locator('#dashboardProductWatches');expect(dashboard).to_contain_text('Green');expect(dashboard).to_contain_text('Соседи');expect(dashboard).not_to_contain_text('Е-доставка')
+    assert len(writes)==2
