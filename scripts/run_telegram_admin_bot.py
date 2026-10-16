@@ -481,9 +481,9 @@ async def process_catalog_watches(client: TelegramBotClient) -> None:
     def refresh():
         from app.services.catalog_watch_service import CatalogWatchService
         with SessionLocal() as db:
-            with try_background_job_lock(db, "catalog_watch_refresh") as acquired:
-                if acquired:
-                    CatalogWatchService(db).refresh_due()
+            # refresh_due locks each offer and rechecks its due time under that
+            # lock. An outer lock would require a third database connection.
+            CatalogWatchService(db).refresh_due()
     await asyncio.to_thread(refresh)
     from app.services.catalog_watch_service import CatalogWatchService, now
     with SessionLocal() as db:

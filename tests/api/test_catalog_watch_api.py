@@ -174,3 +174,46 @@ def test_background_refresh_without_notifications_and_permanent_history(client,l
         clock[0]+=timedelta(hours=1)
         service.record(w,snapshot('3.99'))
         assert list(service.deliveries())
+
+
+def test_bot_refresh_fits_two_connection_pool(client, linked, monkeypatch):
+    import asyncio
+    from contextlib import contextmanager
+    import scripts.run_telegram_admin_bot as bot
+    import app.services.catalog_watch_service as service_module
+
+    pid, tid = linked
+    with database() as db:
+        watch = db.get(CatalogOfferWatch, tid)
+        watch.next_check_at = now() - timedelta(minutes=1)
+        db.commit()
+    monkeypatch.setattr(bot, 'SessionLocal', database)
+    monkeypatch.setattr(provider, 'fetch_product', lambda url: snapshot('6.49'))
+    active_locks = 0
+    original_lock = service_module.try_background_job_lock
+
+    @contextmanager
+    def bounded_lock(db, name):
+        nonlocal active_locks
+        # Production has two connections: one ORM session and one advisory lock.
+        assert active_locks == 0, 'Nested advisory locks exhaust the production pool'
+        active_locks += 1
+        try:
+            with original_lock(db, name) as acquired:
+                yield acquired
+        finally:
+            active_locks -= 1
+
+    monkeypatch.setattr(bot, 'try_background_job_lock', bounded_lock)
+    monkeypatch.setattr(service_module, 'try_background_job_lock', bounded_lock)
+
+    class Transport:
+        async def call(self, method, payload):
+            pytest.fail('Notifications are disabled')
+
+    asyncio.run(bot.process_catalog_watches(Transport()))
+    with database() as db:
+        watch = db.get(CatalogOfferWatch, tid)
+        assert watch.snapshot['price'] == '6.49'
+        assert not watch.error
+        assert not list(db.scalars(select(CatalogPriceEvent)))
