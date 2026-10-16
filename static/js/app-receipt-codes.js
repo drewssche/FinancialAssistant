@@ -1,5 +1,6 @@
 (() => {
   const {core} = window.App;
+  let saveHintId=0;
   function validBarcode(value) {
     if (!/^(?:\d{8}|\d{12,14})$/.test(value) || !Number(value)) return false;
     const digits=[...value].map(Number),check=digits.pop();
@@ -51,31 +52,45 @@
     actions.append(add,search);details.append(actions);
     const saveLabel=document.createElement('label');saveLabel.className='receipt-code-save';
     const save=document.createElement('input');save.type='checkbox';save.checked=Boolean(row.code_save);
-    saveLabel.append(save,document.createTextNode('Сохранить коды с чеком'));details.append(saveLabel);
+    saveLabel.append(save,document.createTextNode('Добавить коды в каталог'));details.append(saveLabel);
+    const saveHint=document.createElement('p');saveHint.className='muted-small receipt-code-save-hint';saveHint.id='receiptCodeSaveHint'+(++saveHintId);saveHint.setAttribute('aria-live','polite');details.append(saveHint);save.setAttribute('aria-describedby',saveHint.id);
+    function refreshSave(){
+      const codes=list.filter(e=>e.code.trim());
+      const unknown=codes.find(e=>!['barcode','retailer'].includes(e.kind));
+      const invalid=codes.find(e=>e.kind==='barcode'&&!validBarcode(e.code));
+      const retailers=new Set(codes.filter(e=>e.kind==='retailer').map(e=>e.code.trim()));
+      const reason=!codes.length?'Введите штрихкод или артикул.':unknown?`Для кода ${unknown.code} выберите тип: штрихкод или артикул.`:invalid?`Проверьте длину и контрольную цифру штрихкода ${invalid.code}.`:retailers.size>1?'Оставьте один артикул этого магазина.':retailers.size&&!shop()?.trim()?'Укажите магазин, чтобы сохранить его артикул.':'';
+      save.disabled=Boolean(reason);
+      if(reason)row.code_save=false;
+      save.checked=Boolean(row.code_save);
+      saveHint.textContent=reason||(row.code_save?'Коды будут добавлены в каталог вместе с сохранением операции. Отмена черновика ничего не изменит.':'Включите, чтобы запомнить новые коды для следующих чеков. Уже сохранённые коды повторно добавлять не нужно.');
+    }
+    host.refreshCodeState=refreshSave;
     const status=document.createElement('p');status.className='muted-small';status.setAttribute('role','status');details.append(status);
     const results=document.createElement('div');results.className='receipt-code-results';details.append(results);host.replaceChildren(details);
     let timer,seq=0;
     const signature=()=>JSON.stringify([shop(),list,row.name,window.App.measurements.snapshot(row)]);
-    function changed(){seq++;row.code_match_label='';row.code_save=false;save.checked=false;results.replaceChildren();status.textContent='';onChange();}
+    function changed(){seq++;row.code_match_label='';row.code_save=false;save.checked=false;results.replaceChildren();status.textContent='';refreshSave();onChange();}
     function draw(){
       fields.replaceChildren();
       list.forEach((entry,index)=>{
+        if(!entry.manual_kind&&entry.kind==='unknown'&&validBarcode(entry.code))entry.kind='barcode';
         const line=document.createElement('div');line.className='receipt-code-line';
         const input=document.createElement('input');input.type='text';input.maxLength=160;input.autocomplete='off';input.value=entry.code;input.placeholder='Штрихкод или артикул';input.setAttribute('aria-label','Код товара');
         const type=document.createElement('select');type.setAttribute('aria-label','Тип кода');
         for(const [value,label] of [['unknown','Определить'],['barcode','Штрихкод'],['retailer','Артикул']])type.add(new Option(label,value));
         type.value=entry.kind||'unknown';
         const remove=document.createElement('button');remove.type='button';remove.className='btn btn-secondary btn-icon';window.App.icons.apply(remove,'close','Удалить код');
-        input.oninput=()=>{entry.code=input.value.trim();if(!entry.manual_kind){entry.kind='unknown';type.value=entry.kind;}changed();clearTimeout(timer);timer=setTimeout(()=>lookup(false),300);};
+        input.oninput=()=>{entry.code=input.value.trim();if(!entry.manual_kind){entry.kind=validBarcode(entry.code)?'barcode':'unknown';type.value=entry.kind;}changed();clearTimeout(timer);timer=setTimeout(()=>lookup(false),300);};
         input.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();clearTimeout(timer);lookup(false);}};
-        type.onchange=()=>{entry.kind=type.value;entry.manual_kind=true;changed();lookup(false);};
+        type.onchange=()=>{entry.kind=type.value;entry.manual_kind=type.value!=='unknown';changed();draw();lookup(false);};
         remove.onclick=()=>{list.splice(index,1);changed();draw();};
         line.append(input,type,remove);fields.append(line);
       });
-      add.disabled=list.length>=10;
+      add.disabled=list.length>=10;refreshSave();
     }
     async function lookup(allowAuto){
-      const codes=list.filter(e=>e.code.trim()).map(e=>({kind:e.kind||'unknown',code:e.code.trim()}));
+      const codes=list.filter(e=>e.code.trim()).map(e=>({kind:e.manual_kind||e.from_catalog?e.kind:'unknown',code:e.code.trim()}));
       if(!codes.length)return;
       const token=++seq, before=signature();status.textContent='Ищу по кодам…';results.replaceChildren();
       try{
@@ -85,7 +100,7 @@
         status.textContent=[...(data.warnings||[]),...(data.unmatched?.length?['Не найдены коды: '+data.unmatched.join(', ')]:[]),items.length>1?'Найдены разные варианты — выберите подходящий':items.length?'':'Совпадений по кодам нет. Можно выбрать товар по названию.'].filter(Boolean).join(' · ');
         function choose(found,collapse=false){
           if(collapse)row.codes_open=false;
-          for(const entry of list){if(entry.kind==='unknown'&&found.matched_codes.includes(entry.code)&&found.matched_by.length===1)entry.kind=found.matched_by[0];}
+          for(const entry of list){if((entry.kind==='unknown'||!entry.manual_kind)&&found.matched_codes.includes(entry.code)&&found.matched_by.length===1)entry.kind=found.matched_by[0];}
           row.code_save=false;save.checked=false;onSelect(found);status.textContent=row.code_match_label||'Товар выбран по коду';results.replaceChildren();draw();if(collapse)details.open=false;else if(host.isConnected)summary.focus({preventScroll:true});
         }
         if(allowAuto&&data.auto_match&&!conflict(row,items[0])){choose(items[0],true);return;}
@@ -104,12 +119,9 @@
     summary.addEventListener('click',()=>{if(!details.open&&!list.length){list.push({kind:'unknown',code:''});draw();}});
     search.onclick=()=>{clearTimeout(timer);lookup(false);};
     save.onchange=()=>{
-      if(save.checked)for(const entry of list){if(entry.kind==='unknown'&&!entry.manual_kind&&validBarcode(entry.code))entry.kind='barcode';}
-      draw();
-      const invalid=list.some(e=>e.code.trim()&&(e.kind==='unknown'||(e.kind==='barcode'&&!validBarcode(e.code))));
-      if(save.checked&&invalid){save.checked=false;status.textContent='Уточните тип и цифры кода перед сохранением';}
-      row.code_save=save.checked;onChange();
-      if(save.checked)status.textContent='Коды будут связаны с выбранным товаром при сохранении чека. При отмене связь не создаётся.';
+      // An explicit save choice must not be undone by an earlier automatic lookup.
+      seq++;clearTimeout(timer);results.replaceChildren();status.textContent='';
+      row.code_save=save.checked;refreshSave();onChange();
     };
     draw();if(auto&&list.some(e=>e.code))lookup(true);
     const entity=String(row.product_id||'')+':'+String(row.template_id||'');

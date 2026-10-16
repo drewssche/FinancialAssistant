@@ -114,5 +114,38 @@
     if (sum !== draft.total) errors.push(`Сумма позиций ${(sum / 100).toFixed(2)} не совпадает с итогом чека`);
     return errors;
   }
-  window.App.receiptScanParser = {parse, validate, money};
+  // Explicit review action: keep raw OCR rows intact until the user requests grouping.
+  function mergeDuplicates(rows, validBarcode) {
+    if(rows.length>150)return rows;
+    const groups=new Map(),result=[];
+    const gcd=(a,b)=>b?gcd(b,a%b):a;
+    function key(row){
+      const quantity=Math.round(row.quantity*1000);
+      if(row.issue||!row.name?.trim()||!Number.isSafeInteger(row.price)||row.price<=0||!Number.isSafeInteger(quantity)||quantity<=0||quantity>100000000||Math.abs(row.quantity*1000-quantity)>1e-6||!Number.isSafeInteger(row.discount)||row.discount<0||!Number.isSafeInteger(row.total)||row.total<=0||subtotal(row.price,row.quantity)-row.discount!==row.total)return null;
+      const codes=(row.code_entries||[]).filter(e=>e.code?.trim());
+      const barcodes=codes.filter(e=>e.kind!=='retailer'&&validBarcode(e.code.trim())).map(e=>e.code.trim().padStart(14,'0'));
+      if(new Set(barcodes).size!==1)return null;
+      // In-store variable-weight/price codes are not stable product identifiers.
+      if(/^02\d{12}$/.test(barcodes[0]))return null;
+      const divisor=gcd(row.discount,quantity);
+      const identifiers=codes.map(e=>[e.kind!=='retailer'&&validBarcode(e.code.trim())?'barcode':e.kind,e.kind!=='retailer'&&validBarcode(e.code.trim())?e.code.trim().padStart(14,'0'):e.code.trim()]).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)));
+      return JSON.stringify([barcodes[0],identifiers,row.price,row.discount/divisor,quantity/divisor,row.discount?row.discount_type||'promo':null,
+        row.sale_unit||null,row.package_quantity||null,row.package_unit||null,row.variant_id||null,row.catalog||null,row.category_id||null,Boolean(row.category_touched),Boolean(row.measurement_touched),Boolean(row.code_save)]);
+    }
+    for(const row of rows){
+      const id=key(row),previous=id&&groups.get(id);
+      const quantity=previous?Math.round((previous.quantity+row.quantity)*1000)/1000:0;
+      if(previous&&quantity<=100000&&subtotal(row.price,quantity)-previous.discount-row.discount===previous.total+row.total){
+        previous.quantity=quantity;previous.total+=row.total;previous.discount+=row.discount;
+        previous.printed_total=previous.total+previous.discount;
+        previous.autoTotal=Boolean(previous.autoTotal&&row.autoTotal);
+        previous.source=[previous.source,row.source].filter(Boolean).join('\n');
+        previous.merged_count=(previous.merged_count||1)+(row.merged_count||1);
+      }else{
+        const copy={...row};result.push(copy);if(id)groups.set(id,copy);
+      }
+    }
+    return result;
+  }
+  window.App.receiptScanParser = {parse, validate, money, mergeDuplicates};
 })();
