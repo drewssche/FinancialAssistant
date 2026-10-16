@@ -317,6 +317,7 @@ class ProductRetailerEdit(BaseModel):
 
 class ProductOfferSizeEdit(MeasurementFields):
     template_id: int = Field(ge=1)
+    variant_id: int | None = Field(default=None, ge=1)
     use_product_size: bool = True
     codes: list[str] | None = Field(default=None, max_length=30)
 

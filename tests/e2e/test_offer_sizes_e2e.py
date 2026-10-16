@@ -77,3 +77,21 @@ def test_scan_catalog_selection_uses_source_size_and_preserves_paid_price(static
     row=p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[0]")
     assert row['variant_id']==55 and float(row['package_quantity'])==200 and row['package_unit']=='g'
     assert row['template_id']==701 and float(row['unit_price'])==4.99
+
+
+@pytest.mark.e2e
+def test_source_size_explicit_variant_choice_is_saved(static_server_url,page_with_receipt_api_mock):
+    p=page_with_receipt_api_mock;writes=setup(p,static_server_url,390)
+    expect(barcode(p)).to_have_value('4006381333931')
+    p.route('**/catalog-products/401/identity',lambda r:r.fulfill(json={'variants':[
+        {'id':41,'name':'900 мл A','sale_unit':'pack','package_quantity':'900','package_unit':'ml','codes':['4006381333931']},
+        {'id':42,'name':'900 мл B','sale_unit':'pack','package_quantity':'900','package_unit':'ml','codes':['5901234123457']}],
+        'offers':[{'template_id':501,'retailer_code':'001'}]}))
+    p.evaluate("window.App.getRuntimeModule('catalog-product-codes').reload()")
+    p.locator('[data-product-tab=offers]').click()
+    expect(card(p).locator('.offer-code-variant select')).to_be_visible()
+    card(p).locator('[data-offer-own-size]').check()
+    card(p).locator('.offer-code-variant select').select_option('42')
+    expect(barcode(p)).to_have_value('5901234123457')
+    p.locator('#submitCatalogProductBtn').click();expect(p.locator('#catalogProductModal')).to_be_hidden()
+    assert writes[-1]['codes']['offer_sizes'][0]['variant_id']==42

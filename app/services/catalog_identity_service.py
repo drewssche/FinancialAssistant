@@ -160,7 +160,10 @@ class CatalogIdentityService:
                 if not size['sale_unit']:
                     raise ValueError('Укажите единицу продажи для размера источника')
                 matches = [v for v in self.db.scalars(select(CatalogVariant).where(CatalogVariant.user_id == user_id, CatalogVariant.product_id == product_id, CatalogVariant.is_archived.is_(False))) if measurement_snapshot(v) == size]
-                linked = next((v for v in matches if mapping and v.id == mapping.variant_id), None)
+                selected_id = edit.get('variant_id') or (mapping.variant_id if mapping else None)
+                linked = next((v for v in matches if v.id == selected_id), None)
+                if edit.get('variant_id') and linked is None:
+                    raise ValueError('Выбранная фасовка не соответствует размеру источника')
                 if len(matches) > 1 and not linked:
                     raise ValueError('У этого размера несколько записей. Сначала уточните фасовку источника.')
                 variant = linked or (matches[0] if matches else None)

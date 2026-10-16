@@ -53,3 +53,15 @@ def test_saving_same_size_shares_variant_and_old_variants_are_immutable(client):
     identity=get(client,p)
     assert float(next(v for v in identity['variants'] if v['id']==old['id'])['package_quantity'])==200
     assert next(o for o in identity['offers'] if o['template_id']==b)['variant_id']==old['id']
+
+
+def test_duplicate_sizes_require_explicit_variant_and_reject_mismatched_size(client):
+    from tests.api.test_catalog_identity_api import variant
+    p,offers=setup(client);a=offers['Green']
+    duplicate=variant(client,p,codes=[]);assert duplicate.status_code==201
+    records=get(client,p)['variants'];chosen=records[-1]['id']
+    size=dict(template_id=a,use_product_size=False,sale_unit='pack',package_quantity='900',package_unit='ml')
+    assert save(client,p,[size]).status_code==400
+    assert save(client,p,[dict(size,variant_id=chosen,package_quantity='200')]).status_code==400
+    assert save(client,p,[dict(size,variant_id=chosen)]).status_code==200
+    assert next(o for o in get(client,p)['offers'] if o['template_id']==a)['variant_id']==chosen

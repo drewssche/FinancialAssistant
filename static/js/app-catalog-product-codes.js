@@ -96,7 +96,7 @@
       const selected=selection(id),codes=barcodes.get(selected.key);
       if(!sizes.has(id)&&!(selected.own&&selected.key.startsWith('new:')&&codes))continue;
       if(selected.own&&!selected.key)throw new Error('Уточните фасовку источника перед сохранением.');
-      const edit={template_id:id,use_product_size:!selected.own,...(selected.own?window.App.measurements.snapshot(selected.size):{})};
+      const edit={template_id:id,use_product_size:!selected.own,...(selected.own?{...window.App.measurements.snapshot(selected.size),variant_id:selected.variant?.id||null}:{})};
       if(selected.own&&selected.key.startsWith('new:')&&selected.key!==standardKey&&codes)edit.codes=codes;
       offerSizes.push(edit);
     }
