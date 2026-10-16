@@ -75,9 +75,7 @@
   }
   function select(next, offerId) {
     cancel();
-    tab = product && ["product", "offers", "prices", "purchases", "packages"].includes(next) ? next : "product";
-    window.App.getRuntimeModule("catalog-identity").activate(tab === "packages");
-    window.App.getRuntimeModule("catalog-replacements").activate(tab === "packages");
+    tab = product && ["product", "offers", "prices", "purchases"].includes(next) ? next : "product";
     for (const panel of el.catalogProductModal.querySelectorAll("[data-product-panel]")) panel.classList.toggle("hidden", panel.dataset.productPanel !== tab);
     for (const button of node("catalogProductTabs").querySelectorAll("button")) {
       button.classList.toggle("active", button.dataset.productTab === tab);
@@ -156,9 +154,6 @@
       if (!visible()) return;
       core.bringModalToFront?.(el.catalogProductModal);
       returnTarget?.focus({preventScroll: true});
-      if (tab === "packages" && purchasesDirty) {
-        node("catalogReplacementsRefresh").focus({preventScroll: true});
-      }
       if (tab === "prices" && purchasesDirty) {
         const id = returnTarget?.dataset.productPurchaseId, workspace = workspaceGeneration;
         const card = el.catalogProductModal.querySelector(".modal-card"), scrollTop = card.scrollTop;
@@ -187,8 +182,7 @@
   function open(value, options = {}) {
     workspaceGeneration += 1;
     bind(); product = value; nestedOperation = false; preferredPriceSeries = options.priceSeries || null;
-    window.App.getRuntimeModule("catalog-identity").open(value);
-    window.App.getRuntimeModule("catalog-replacements").open(value);
+    window.App.getRuntimeModule("catalog-product-codes").open(value);
     node("catalogProductTabs").classList.toggle("hidden", !product);
     node("catalogProductPriceOffer").innerHTML = ""; node("catalogProductPurchaseOffer").innerHTML = "";
     node("catalogProductPriceMode").value = "purchases";
@@ -205,7 +199,7 @@
     summary.classList.toggle("hidden", !options.comparisonHtml);
     resetOptions(); select(options.tab || "product", options.offerId);
   }
-  function close() { window.App.getRuntimeModule("catalog-replacements").close(); window.App.getRuntimeModule("catalog-identity").close(); window.App.getRuntimeModule("catalog-price-history").cleanup(); workspaceGeneration += 1; cancel(); product = null; nestedOperation = false; returnTarget = null; }
-  function refresh(value) { window.App.getRuntimeModule("catalog-replacements").refresh(value); window.App.getRuntimeModule("catalog-identity").refresh(value); product = value; resetOptions(); select(tab); }
+  function close() { window.App.getRuntimeModule("catalog-product-codes").close(); window.App.getRuntimeModule("catalog-price-history").cleanup(); workspaceGeneration += 1; cancel(); product = null; nestedOperation = false; returnTarget = null; }
+  function refresh(value) { window.App.getRuntimeModule("catalog-product-codes").refresh(value); product = value; resetOptions(); select(tab); }
   window.App.registerRuntimeModule("catalog-product-details", {open, close, refresh, select, cleanup: close});
 })();

@@ -50,3 +50,32 @@ def test_codes_cannot_edit_other_product_and_preserve_offer_extra_fields(client)
     assert changed.status_code==200,changed.text
     saved=get(client,first['id'])['offers'][0]
     assert saved['variant_id']==v['id'] and saved['external_name']=='МОЛОКО' and saved['product_url']=='https://example.com/milk'
+
+
+def test_size_change_records_history_and_keeps_receipt_snapshot(client):
+    from tests.api.test_receipt_codes_api import receipt
+    saved=receipt(client,[{'kind':'barcode','code':CODE}]).json()
+    row=saved['receipt_items'][0];p=row['product_id']
+    endpoint=f'/api/v1/operations/catalog-products/{p}'
+    changed=client.patch(endpoint,json={'package_quantity':'800'})
+    assert changed.status_code==200,changed.text
+    assert changed.json()['package_quantity']=='800.000'
+    history=client.get(f'/api/v1/activity?entity_type=catalog_product&entity_id={p}').json()['items']
+    changes=[e for e in history if e['title']=='Размер товара изменён']
+    assert len(changes)==1
+    quantity=next(c for c in changes[0]['changes'] if c['field']=='package_quantity')
+    assert float(quantity['old'])==900 and float(quantity['new'])==800
+    old=client.get(f"/api/v1/operations/{saved['id']}").json()
+    assert old['receipt_items'][0]['package_quantity']==row['package_quantity']
+    assert old['receipt_items'][0]['variant_snapshot']==row['variant_snapshot']
+    assert old['receipt_total']==saved['receipt_total']
+    assert get(client,p)['variants'][0]['package_quantity']=='900.000'
+    assert client.patch(endpoint,json={'package_quantity':'800'}).status_code==200
+    history=client.get(f'/api/v1/activity?entity_type=catalog_product&entity_id={p}').json()['items']
+    assert len([e for e in history if e['title']=='Размер товара изменён'])==1
+    # A failed code registration also rolls back the size and its history event.
+    failed=client.patch(endpoint,json={'package_quantity':'700','codes':{'barcodes':[{'codes':[CODE]}]}})
+    assert failed.status_code==400,failed.text
+    assert client.get(endpoint).json()['package_quantity']=='800.000'
+    history=client.get(f'/api/v1/activity?entity_type=catalog_product&entity_id={p}').json()['items']
+    assert len([e for e in history if e['title']=='Размер товара изменён'])==1

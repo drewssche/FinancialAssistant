@@ -18,22 +18,8 @@
 .measurement-unit.is-active { background: #233d60; border-color: #79acff; color: #e8f0ff; }
 .measurement-example { line-height: 1.4; }
 .measurement-editor ~ label, .measurement-editor input { min-width: 0; }
-:where(.catalog-product-measurements, #catalogVariantForm, .receipt-measurements) label[hidden] { display: none !important; }
-#catalogIdentityForms { display: block; }
-#catalogIdentityForms form { max-width: 660px; }
-#catalogIdentityForms form[hidden], #catalogVariantListView[hidden] { display: none !important; }
-.package-tasks { margin-bottom: 16px; display: flex; width: fit-content; flex-wrap: wrap; }
-[data-package-view="sizes"] :is(#catalogOfferIdentityForm, #catalogReplacementsDetails),
-[data-package-view="shops"] :is(#catalogVariantListView, #catalogVariantForm, #catalogReplacementsDetails),
-[data-package-view="replacements"] #catalogIdentityDetails { display: none !important; }
-#catalogVariantList { display: grid; }
-.package-list-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 0; background: none; border: 0; border-bottom: 1px solid var(--border); color: var(--text); text-align: left; cursor: pointer; }
-.package-list-row span { display: grid; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
-.package-list-row small { color: var(--muted); }
-.package-list-row svg { width: 20px; height: 20px; flex-shrink: 0; }
-#catalogIdentityStatus:empty { display: none; }
-#catalogVariantForm .form-grid { order: 0; }
-#catalogVariantCodes { min-height: 44px; }
+:where(.catalog-product-measurements, .receipt-measurements) label[hidden] { display: none !important; }
+
 :is(#createModal, #editModal) .operation-preview-action.is-active { background: #284771; border-color: #79acff; box-shadow: inset 0 -3px #79acff; color: #dceaff; }
 .operation-editor :is(.operation-extra, .operation-entry) > summary { display: none; }
 .operation-editor .operation-extra:not(:has(> :not(summary):not(.hidden):not([hidden]))) { display: none; }
@@ -61,13 +47,10 @@
   .measurement-kind .segmented-btn { flex: 1; padding: 8px; min-height: 44px; }
   .measurement-unit.btn { min-width: 44px; min-height: 44px; padding: 8px; }
   .measurement-size .field { max-width: none; }
-  .package-tasks { width: 100%; }
-  .package-tasks .segmented-btn { flex: 1 1 auto; min-height: 44px; padding: 8px; }
   .catalog-price-changes-advanced, .product-price-controls { grid-template-columns: minmax(0,1fr); }
   #dashboardDebtsList .debt-direct-actions { justify-content: flex-start; margin-left: 0; }
 }
 
-#catalogVariantForm > label:has(#catalogVariantArchived) { display: flex; flex-direction: row; gap: 8px; align-items: center; }
 /* Expanded new and known rows share explicit named areas; no inherited row numbers. */
 :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-measurements { grid-area: measurements; }
 .operation-extra > .task-dialog:not([open]) { display: none; }

@@ -139,10 +139,6 @@
 .product-price-events .catalog-product-purchase-row { width: 100%; }
 @media (max-width: 480px) { .product-price-controls { grid-template-columns: minmax(0, 1fr); } .product-price-chart text { font-size: 23px; } }
 
-#catalogIdentityDetails { margin: 10px 0; }
-#catalogIdentityForms form { padding: 12px 0; }
-#catalogIdentityForms textarea { width: 100%; min-width: 0; resize: vertical; }
-#catalogIdentityForms .field { min-width: 0; }
 
 .catalog-price-changes { margin: 1rem 0; padding: .75rem; border: 1px solid var(--border, #334155); border-radius: 12px; }
 .catalog-price-changes > summary { cursor: pointer; font-weight: 600; }
@@ -164,8 +160,6 @@
 .catalog-replacement-card small { color: var(--muted); }
 .catalog-replacement-comparison { display: grid; gap: 8px; border-top: 1px solid var(--border); padding-top: 8px; }
 .catalog-replacement-comparison .row { flex-wrap: wrap; }
-#catalogReplacementsDetails :is(button, select, input) { max-width: 100%; min-width: 0; }
-#catalogReplacementsDetails button { white-space: normal; }
 
 .product-price-chart-host {position:relative;min-width:0;}
 .product-price-chart-host .analytics-chart-tooltip {box-sizing:border-box;min-width:0;max-width:calc(100% - 16px);}

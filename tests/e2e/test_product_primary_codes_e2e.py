@@ -42,7 +42,7 @@ def test_codes_visible_on_product_tab_and_save_with_product(static_server_url,pa
     p.locator('#catalogProductName').fill('Молоко новое')
     p.locator('[data-product-tab=offers]').click();p.locator('[data-product-tab=product]').click()
     expect(p.locator('#catalogProductSku')).to_have_value('000-43')
-    for selector in ['#catalogProductBarcode','#catalogProductSku','#catalogProductCodeVariantHint','#catalogProductCodeOfferHint']:
+    for selector in ['#catalogProductBarcode','#catalogProductSku','#catalogProductCodeOfferHint']:
         box=p.locator(selector).bounding_box();assert box['x']>=0 and box['x']+box['width']<=width+1
     p.locator('.catalog-product-codes').scroll_into_view_if_needed();p.screenshot(path=f'/tmp/fa-primary-codes-{width}.png')
     assert writes==[]
@@ -55,18 +55,21 @@ def test_codes_visible_on_product_tab_and_save_with_product(static_server_url,pa
 @pytest.mark.e2e
 def test_multiple_packages_and_stores_keep_separate_drafts_and_cancel(static_server_url,page_with_receipt_api_mock):
     p=page_with_receipt_api_mock;writes=setup(p,static_server_url,390,many=True)
-    expect(p.locator('#catalogProductCodeVariant option')).to_have_count(4)
-    expect(p.locator('#catalogProductBarcode')).to_be_disabled();expect(p.locator('#catalogProductSku')).to_be_disabled()
-    p.locator('#catalogProductCodeVariant').select_option('41');p.locator('#catalogProductBarcode').fill('0'+CODE)
-    p.locator('#catalogProductCodeVariant').select_option('42');expect(p.locator('#catalogProductBarcode')).to_have_value('')
-    p.locator('#catalogProductCodeVariant').select_option('41');expect(p.locator('#catalogProductBarcode')).to_have_value('0'+CODE)
+    expect(p.locator('#catalogProductBarcode')).to_have_value(CODE)
+    expect(p.locator('#catalogProductCodeVariant')).to_be_hidden()
+    expect(p.locator('#catalogProductSku')).to_be_disabled()
+    size=p.locator('.catalog-product-measurements .measurement-editor input')
+    size.fill('800')
+    expect(p.locator('#catalogProductBarcode')).to_have_value('')
+    size.fill('900')
+    expect(p.locator('#catalogProductBarcode')).to_have_value(CODE)
     p.locator('#catalogProductCodeOffer').select_option('501');p.locator('#catalogProductSku').fill('00043')
     p.locator('#catalogProductCodeOffer').select_option('502');expect(p.locator('#catalogProductSku')).to_have_value('002')
     p.locator('#catalogProductCodeOffer').select_option('501');expect(p.locator('#catalogProductSku')).to_have_value('00043')
     p.locator('#closeCatalogProductModalBtn').click()
     assert writes==[]
     p.evaluate("window.App.getRuntimeModule('catalog-products').openEditor(401)")
-    expect(p.locator('#catalogProductCodeVariant option')).to_have_count(4)
+    expect(p.locator('#catalogProductBarcode')).to_have_value(CODE)
     p.locator('#catalogProductCodeOffer').select_option('501');expect(p.locator('#catalogProductSku')).to_have_value('000-42')
 
 
@@ -76,6 +79,9 @@ def test_new_product_supports_barcode_and_shop_sku_without_tabs(static_server_ur
     p.locator('#closeCatalogProductModalBtn').click();p.evaluate("window.App.getRuntimeModule('catalog-products').openEditor()")
     expect(p.locator('#catalogProductCodeVariant')).to_be_hidden()
     p.locator('#catalogProductName').fill('Новый товар');p.locator('#catalogProductBarcode').fill(CODE)
+    p.locator('.catalog-product-measurements .measurement-editor input').fill('250')
+    p.locator('.catalog-product-measurements [data-unit=g]').click()
+    expect(p.locator('#catalogProductBarcode')).to_have_value(CODE)
     p.locator('#catalogProductSku').fill('000123');p.locator('#catalogProductCodeShop').fill('Green')
     p.locator('#submitCatalogProductBtn').click();expect(p.locator('#catalogProductModal')).to_be_hidden()
     assert writes[-1]['codes']=={'barcodes':[{'variant_id':None,'codes':[CODE]}],'retailers':[{'template_id':None,'retailer_code':'000123','shop_name':'Green'}]}
@@ -101,7 +107,7 @@ def test_code_load_failure_retry_preserves_product_draft(static_server_url,page_
     p=page_with_receipt_api_mock;setup(p,static_server_url,390)
     expect(p.locator('#catalogProductBarcode')).to_have_value(CODE)
     p.route('**/catalog-products/401/identity',lambda r:r.fulfill(status=500,json={'detail':'offline'}))
-    p.evaluate("window.App.getRuntimeModule('catalog-identity').reload()")
+    p.evaluate("window.App.getRuntimeModule('catalog-product-codes').reload()")
     expect(p.locator('#catalogProductCodesRetry')).to_be_visible()
     expect(p.locator('#catalogProductBarcode')).to_be_disabled()
     p.locator('#catalogProductName').fill('Несохранённое имя')

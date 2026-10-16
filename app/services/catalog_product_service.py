@@ -330,6 +330,7 @@ class CatalogProductService:
             **measurement_snapshot(product),
             **{key: updates[key] for key in MEASUREMENT_FIELDS if key in updates},
         })
+        size_changed = measurement_snapshot(product) != measurement
         before = ActivityService.snapshot(product, self.ACTIVITY_FIELDS)
         for key, value in measurement.items():
             setattr(product, key, value)
@@ -374,7 +375,7 @@ class CatalogProductService:
             before=before,
             after=ActivityService.snapshot(product, self.ACTIVITY_FIELDS),
             labels=self.ACTIVITY_LABELS,
-            title="Товар изменён",
+            title="Размер товара изменён" if size_changed else "Товар изменён",
         )
         if updates.get("codes"):
             from app.services.catalog_identity_service import CatalogIdentityService
