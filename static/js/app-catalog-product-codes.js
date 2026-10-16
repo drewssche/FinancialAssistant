@@ -66,6 +66,17 @@
       const sku=inputField(host,'sku','Артикул магазина',160);
       sku.value=retailers.get(id)??data?.offers?.find(o=>Number(o.template_id)===id)?.retailer_code??'';sku.placeholder='Например, 000-42';sku.disabled=!data;
       sku.oninput=()=>retailers.set(id,sku.value);
+      const productUrl=data?.offers?.find(o=>Number(o.template_id)===id)?.product_url;
+      if(productUrl){
+        try{
+          const url=new URL(productUrl);
+          if(['https:','http:'].includes(url.protocol)&&!url.username&&!url.password){
+            const link=document.createElement('a');link.className='offer-code-size';
+            link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';
+            link.textContent='Открыть на сайте магазина ↗';host.append(link);
+          }
+        }catch(_){/* Invalid legacy links are not navigable. */}
+      }
       if(matches.length>1){
         const label=document.createElement('label');label.className='field offer-code-variant';
         const title=document.createElement('span');title.textContent='Запись штрихкода для этого размера';

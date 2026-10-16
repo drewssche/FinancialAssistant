@@ -38,6 +38,27 @@ def sku(p,id=501):return card(p,id).locator('[data-code=sku]')
 
 
 @pytest.mark.e2e
+@pytest.mark.parametrize('url,visible',[
+    ('https://green-dostavka.by/product/example-123/',True),
+    ('javascript:alert(1)',False),
+    ('https://user:password@example.com/',False),
+])
+def test_verified_source_link_and_unsafe_legacy_urls(static_server_url,page_with_receipt_api_mock,url,visible):
+    p=page_with_receipt_api_mock;setup(p,static_server_url,390)
+    p.route('**/catalog-products/401/identity',lambda r:r.fulfill(json={
+        'variants':[], 'offers':[{'template_id':501,'retailer_code':'123','product_url':url}]}))
+    p.evaluate("window.App.getRuntimeModule('catalog-product-codes').reload()")
+    p.locator('[data-product-tab=offers]').click()
+    expect(sku(p)).to_have_value('123')
+    link=card(p).get_by_role('link',name='Открыть на сайте магазина ↗')
+    expect(link).to_have_count(1 if visible else 0)
+    if visible:
+        expect(link).to_have_attribute('href',url)
+        expect(link).to_have_attribute('rel','noopener noreferrer')
+        box=link.bounding_box();assert box['x']>=0 and box['x']+box['width']<=391
+
+
+@pytest.mark.e2e
 @pytest.mark.parametrize('width',[320,390,1440])
 def test_codes_in_source_cards_only_and_save_together(static_server_url,page_with_receipt_api_mock,width):
     p=page_with_receipt_api_mock;writes=setup(p,static_server_url,width)
