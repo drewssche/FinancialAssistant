@@ -126,7 +126,6 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     item_catalog_modal = (REPO_ROOT / "static" / "js" / "app-features-item-catalog-modal.js").read_text(encoding="utf-8")
     item_catalog_sources = (REPO_ROOT / "static" / "js" / "app-features-item-catalog-sources.js").read_text(encoding="utf-8")
     analytics_calendar = (REPO_ROOT / "static" / "js" / "app-features-analytics-calendar.js").read_text(encoding="utf-8")
-    analytics_trend = (REPO_ROOT / "static" / "js" / "app-features-analytics-trend.js").read_text(encoding="utf-8")
     analytics_currency = (REPO_ROOT / "static" / "js" / "app-features-analytics-currency.js").read_text(encoding="utf-8")
     analytics_currency_trades = (
         REPO_ROOT / "static" / "js" / "app-features-analytics-currency-trades.js"
@@ -290,7 +289,6 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert 'registerRuntimeModule?.("item-catalog-sources-factory"' in item_catalog_sources
     assert 'registerRuntimeModule?.("item-catalog-modal-factory"' in item_catalog_modal
     assert 'registerRuntimeModule?.("analytics-calendar-module"' in analytics_calendar
-    assert 'registerRuntimeModule?.("analytics-trend-module"' in analytics_trend
     assert 'registerRuntimeModule?.(' in analytics_currency_trades
     assert '"analytics-currency-trades-factory"' in analytics_currency_trades
     assert 'getRuntimeModule?.("analytics-currency-trades-factory")' in analytics_currency
@@ -552,9 +550,7 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert '"bulkDeleteGroups"' not in features
     assert '"telegramLogin"' not in features
     assert '"updateOperationsBulkUi"' not in features
-    assert 'getRuntimeModule?.("analytics-trend-module")' in analytics_highlights
     assert 'getRuntimeModule?.("analytics-calendar-module")' in analytics_highlights
-    assert 'getRuntimeModule?.("analytics-trend-module")' in analytics_highlights_ui
     assert 'getRuntimeModule?.("picker-utils")' in init_core
     assert 'getRuntimeModule?.("analytics-highlights-module")' in (REPO_ROOT / "static" / "js" / "app-init-features-analytics.js").read_text(encoding="utf-8")
     assert 'getRuntimeModule?.("operation-modal-receipt-factory")' in op_modal
@@ -598,7 +594,6 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert "window.App.createPlansRecurrenceFeature" not in plans_recurrence
     assert "window.App.createPlansRenderFeature" not in plans_render
     assert "window.App.featureAnalyticsModules" not in analytics_calendar
-    assert "window.App.featureAnalyticsModules" not in analytics_trend
     assert "window.App.featureAnalyticsModules" not in analytics_highlights
     assert "window.App.featureAnalyticsModules" not in analytics_highlights_ui
     assert "window.App.featureAnalytics" not in analytics

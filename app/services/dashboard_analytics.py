@@ -30,9 +30,6 @@ class DashboardAnalyticsService:
     def get_calendar_year(self, **kwargs) -> dict:
         return self.timeline.get_calendar_year(**kwargs)
 
-    def get_trend(self, **kwargs) -> dict:
-        return self.timeline.get_trend(**kwargs)
-
     def get_highlights(self, **kwargs) -> dict:
         return self.highlights.get_highlights(**kwargs)
 

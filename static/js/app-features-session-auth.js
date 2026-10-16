@@ -472,7 +472,6 @@
     state.currencyFilter = "all";
     state.analyticsStructureHydrated = false;
     state.analyticsCalendarHydrated = false;
-    state.analyticsTrendHydrated = false;
     state.analyticsCurrencyHydrated = false;
     state.total = 0;
     state.uiRequestCache.clear();

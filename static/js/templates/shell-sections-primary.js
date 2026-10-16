@@ -299,59 +299,6 @@
             </div>
           </section>
 
-          <section id="analyticsTrendsPanel" class="panel analytics-tab-panel hidden">
-            <div class="panel-head row between">
-              <div>
-                <h3>Доходы и расходы</h3>
-                <p id="analyticsTrendRangeLabel" class="subtitle"></p>
-              </div>
-              <div class="toolbar">
-                <div class="analytics-switch-group">
-                  <span class="muted-small">Шаг</span>
-                  <div class="segmented" id="analyticsGranularityTabs" role="tablist" aria-label="Шаг графика">
-                    <button class="segmented-btn active" data-analytics-granularity="day" type="button">По дням</button>
-                    <button class="segmented-btn" data-analytics-granularity="week" type="button">По неделям</button>
-                    <button class="segmented-btn" data-analytics-granularity="month" type="button">По месяцам</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="analytics-trend-chart-wrap">
-              <svg id="analyticsTrendChart" class="analytics-trend-chart" viewBox="0 0 980 280" preserveAspectRatio="none" aria-label="Тренд доходов, расходов и денежного потока"></svg>
-            </div>
-            <div class="analytics-trend-legend">
-              <span><i class="legend-dot legend-income"></i>Доход</span>
-              <span><i class="legend-dot legend-expense"></i>Расход</span>
-              <span><i class="legend-dot legend-balance"></i>Денежный поток</span>
-            </div>
-            <div class="analytics-trend-kpis analytics-kpi-grid">
-              <article class="analytics-kpi-card analytics-kpi-income">
-                <div class="muted-small">Доход</div>
-                <strong id="analyticsIncomeDelta">0&nbsp;\uE901</strong>
-                <span class="analytics-kpi-delta">За выбранный период</span>
-              </article>
-              <article class="analytics-kpi-card analytics-kpi-expense">
-                <div class="muted-small">Расход</div>
-                <strong id="analyticsExpenseDelta">0&nbsp;\uE901</strong>
-                <span class="analytics-kpi-delta">За выбранный период</span>
-              </article>
-              <article id="analyticsOperatingResultCard" class="analytics-kpi-card analytics-kpi-neutral">
-                <div id="analyticsOperatingResultLabel" class="muted-small">Операционный результат</div>
-                <strong id="analyticsOperatingResultValue">0&nbsp;\uE901</strong>
-                <span class="analytics-kpi-delta">За выбранный период</span>
-              </article>
-              <article id="analyticsResultCard" class="analytics-kpi-card analytics-kpi-neutral">
-                <div id="analyticsResultLabel" class="muted-small">Денежный поток</div>
-                <strong id="analyticsBalanceDelta">0&nbsp;\uE901</strong>
-                <span class="analytics-kpi-delta">За выбранный период</span>
-              </article>
-              <article class="analytics-kpi-card analytics-kpi-neutral">
-                <div class="muted-small">Операции</div>
-                <strong id="analyticsOpsDelta">0</strong>
-                <span class="analytics-kpi-delta">За выбранный период</span>
-              </article>
-            </div>
-          </section>
 
 
         </section>

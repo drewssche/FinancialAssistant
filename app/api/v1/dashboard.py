@@ -12,7 +12,6 @@ from app.schemas.dashboard import (
     AnalyticsCalendarYearOut,
     AnalyticsHighlightsOut,
     AnalyticsPositionsOut,
-    AnalyticsTrendOut,
     DashboardDebtPreviewCard,
     DashboardSummary,
     DashboardSummaryMetrics,
@@ -67,28 +66,6 @@ def get_analytics_calendar(
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid month format") from exc
     return service.get_analytics_calendar(user_id=user_id, month_anchor=month_anchor)
-
-
-@router.get("/analytics/trend", response_model=AnalyticsTrendOut)
-def get_analytics_trend(
-    period: str = Query(default="month", pattern="^(day|week|month|year|all_time|custom)$"),
-    granularity: str = Query(default="day", pattern="^(day|week|month|year)$"),
-    date_from: date | None = Query(default=None),
-    date_to: date | None = Query(default=None),
-    user_id: int = Depends(get_current_user_id),
-    db: Session = Depends(get_db),
-):
-    service = DashboardService(db)
-    try:
-        return service.get_analytics_trend(
-            user_id=user_id,
-            period=period,
-            date_from=date_from,
-            date_to=date_to,
-            granularity=granularity,
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.get("/analytics/calendar/year", response_model=AnalyticsCalendarYearOut)

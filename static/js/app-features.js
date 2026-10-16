@@ -94,7 +94,6 @@
 
   const loadDashboard = dashboardFeatures.loadDashboard;
   const loadDashboardOperations = dashboardFeatures.loadDashboardOperations;
-  const loadAnalyticsTrend = analyticsFeatures.loadAnalyticsTrend;
   const loadAnalyticsPositions = analyticsFeatures.loadAnalyticsPositions;
   const loadDashboardAnalyticsPreview = analyticsFeatures.loadDashboardAnalyticsPreview;
   const loadAnalyticsSection = analyticsFeatures.loadAnalyticsSection;
@@ -108,7 +107,6 @@
   const setAnalyticsGridYearAnchor = analyticsFeatures.setAnalyticsGridYearAnchor;
   const openAnalyticsMonth = analyticsFeatures.openAnalyticsMonth;
   const openOperationsForAnalyticsDate = analyticsFeatures.openOperationsForAnalyticsDate;
-  const openOperationsForAnalyticsRange = analyticsFeatures.openOperationsForAnalyticsRange;
   const openOperationsForAnalyticsPositionRange = analyticsFeatures.openOperationsForAnalyticsPositionRange;
   const openPositionsAnalyticsFromDashboard = analyticsFeatures.openPositionsAnalyticsFromDashboard;
   const openOperationsForAnalyticsCategory = analyticsFeatures.openOperationsForAnalyticsCategory;
@@ -321,7 +319,6 @@
     renderTodayLabel: previousActions.renderTodayLabel,
     loadDashboard,
     loadDashboardOperations,
-    loadAnalyticsTrend,
     loadAnalyticsPositions,
     loadAnalyticsHighlights,
     loadDashboardAnalyticsPreview,
@@ -335,7 +332,6 @@
     setAnalyticsGridYearAnchor,
     openAnalyticsMonth,
     openOperationsForAnalyticsDate,
-    openOperationsForAnalyticsRange,
     openOperationsForAnalyticsPositionRange,
     openPositionsAnalyticsFromDashboard,
     openOperationsForAnalyticsCategory,

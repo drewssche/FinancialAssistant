@@ -17,6 +17,10 @@
 - Keep Telegram-specific behavior in the client runtime; backend contracts stay shared between Web UI and Telegram.
 
 ## Current Sprint
+### Remove the Structure income/expense chart — 2026-10-16
+- [x] Removed the chart without moving it to another section, including its JavaScript module, template, step preference, loading skeleton, styles, legacy dashboard preview and dedicated trend API/schema/aggregation/cache caller. Shared currency and product-price chart infrastructure remains in use.
+- [x] Validation: 85 API/contract/request-budget checks, 34 analytics browser cases, 3 product-price chart cases and the critical regression matrix (10 API + 10 browser) passed. Product-price cases ran separately after a combined-run Playwright fixture conflict. Structure reviewed at 320/1440px; tests verify period navigation and no removed chart/API/script requests.
+
 ### KPI surfaces and stable card layout — 2026-10-16
 - [x] Dashboard exchange rates use shared KPI borders/background/padding again; compact rate layout no longer removes the surface.
 - [x] Shared plan cards stretch to equal height on wide screens, keep dates at the top and actions at the bottom, including long FX provenance. Mobile single-column cards retain content-based height.

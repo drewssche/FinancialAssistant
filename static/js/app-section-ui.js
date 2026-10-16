@@ -83,7 +83,6 @@
       analyticsGlobalDateFrom: state.analyticsGlobalDateFrom,
       analyticsGlobalDateTo: state.analyticsGlobalDateTo,
       analyticsCategoryKind: state.analyticsCategoryKind,
-      analyticsGranularity: state.analyticsGranularity,
       analyticsMonthAnchor: state.analyticsMonthAnchor,
       analyticsPositionsPeriod: state.analyticsPositionsPeriod,
       analyticsPositionsAnchor: state.analyticsPositionsAnchor,
@@ -137,7 +136,6 @@
     state.analyticsGlobalDateFrom = snapshot.analyticsGlobalDateFrom || "";
     state.analyticsGlobalDateTo = snapshot.analyticsGlobalDateTo || "";
     state.analyticsCategoryKind = snapshot.analyticsCategoryKind || "expense";
-    state.analyticsGranularity = snapshot.analyticsGranularity || "day";
     state.analyticsMonthAnchor = snapshot.analyticsMonthAnchor || "";
     state.analyticsPositionsPeriod = snapshot.analyticsPositionsPeriod || "month";
     state.analyticsPositionsAnchor = snapshot.analyticsPositionsAnchor || "";
@@ -169,7 +167,6 @@
     core.syncSegmentedActive(el.analyticsCalendarViewTabs, "analytics-calendar-view", state.analyticsCalendarView);
     core.syncSegmentedActive(el.analyticsGlobalPeriodTabs, "analytics-global-period", state.analyticsGlobalPeriod);
     core.syncSegmentedActive(el.analyticsCategoryKindTabs, "analytics-category-kind", state.analyticsCategoryKind);
-    core.syncSegmentedActive(el.analyticsGranularityTabs, "analytics-granularity", state.analyticsGranularity);
     core.syncSegmentedActive(el.dashboardAnalyticsPeriodTabs, "dashboard-analytics-period", state.dashboardAnalyticsPeriod);
     core.syncSegmentedActive(el.dashboardBreakdownLevelTabs, "dashboard-breakdown-level", state.dashboardBreakdownLevel);
     core.syncSegmentedActive(el.dashboardCategoryKindTabs, "dashboard-category-kind", state.dashboardCategoryKind);

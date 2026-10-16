@@ -1,6 +1,5 @@
 (() => {
   const { state, el, core } = window.App;
-  let sectionLoadSequence = 0;
 
   function getNavigationActions() {
     return window.App.getRuntimeModule?.("navigation") || {};
@@ -9,7 +8,6 @@
   function getAnalyticsModules() {
     return {
       calendar: window.App.getRuntimeModule?.("analytics-calendar-module"),
-      trend: window.App.getRuntimeModule?.("analytics-trend-module"),
       highlights: window.App.getRuntimeModule?.("analytics-highlights-module"),
       positions: window.App.getRuntimeModule?.("analytics-positions-module"),
       commerce: window.App.getRuntimeModule?.("analytics-commerce-module"),
@@ -27,7 +25,6 @@
     state.analyticsTab = tab;
     el.analyticsStructurePanel?.classList.toggle("hidden", tab !== "structure");
     el.analyticsCalendarPanel?.classList.toggle("hidden", tab !== "calendar");
-    el.analyticsTrendsPanel?.classList.toggle("hidden", tab !== "structure");
     if (state.activeSection !== "item_catalog") {
       el.analyticsStructurePanel?.before(el.analyticsGlobalScopePanel);
       el.analyticsGlobalScopePanel?.classList.toggle("hidden", tab !== "structure");
@@ -44,8 +41,7 @@
   }
 
   async function loadAnalyticsSection(options = {}) {
-    const sequence = ++sectionLoadSequence;
-    const { calendar, trend, highlights, positions } = getAnalyticsModules();
+    const { calendar, highlights, positions } = getAnalyticsModules();
     if (state.activeSection === "item_catalog") {
       return state.itemCatalogView === "purchases"
         ? positions?.loadAnalyticsPositions?.(options)
@@ -54,18 +50,7 @@
     applyAnalyticsTabUi();
     calendar?.applyCalendarViewUi?.();
     if (state.analyticsTab === "calendar") return calendar?.loadAnalyticsCalendar?.(options) || null;
-    const results = await Promise.allSettled([
-      highlights?.loadAnalyticsHighlights?.(options),
-      trend?.loadAnalyticsTrend?.(options),
-    ]);
-    if (sequence !== sectionLoadSequence) return null;
-    if (results[1].status === "rejected") {
-      el.analyticsTrendChart?.replaceChildren();
-      if (el.analyticsTrendRangeLabel) el.analyticsTrendRangeLabel.textContent = "Не удалось загрузить график. Повторите выбор периода.";
-      core.setStatus("Не удалось обновить график доходов и расходов");
-    }
-    if (results[0].status === "rejected") throw results[0].reason;
-    return results[0].value;
+    return highlights?.loadAnalyticsHighlights?.(options) || null;
   }
 
   async function openOperationsForAnalyticsDate(dayIso) {
@@ -93,35 +78,6 @@
     state.period = "custom";
     state.customDateFrom = dayIso;
     state.customDateTo = dayIso;
-    core.syncAllPeriodTabs("custom");
-    await navigation.switchSection("operations", { preserveBackStack: true, scrollToTop: true });
-  }
-
-  async function openOperationsForAnalyticsRange(dateFrom, dateTo) {
-    const navigation = getNavigationActions();
-    if (!dateFrom || !dateTo || !navigation.switchSection) {
-      return;
-    }
-    navigation.pushSectionBackContext?.();
-    state.operationsCategoryFilterId = null;
-    state.operationsCategoryFilterName = "";
-    state.filterKind = "";
-    state.operationsQuickView = "all";
-    state.operationsCurrencyScope = "all";
-    state.operationsItemTemplateFilterId = null;
-    state.operationsItemTemplateFilterName = "";
-    state.operationsProductFilterId = null;
-    state.operationsProductFilterName = "";
-    clearOperationsBrandFilter();
-    core.syncSegmentedActive(el.kindFilters, "kind", state.filterKind);
-    core.syncSegmentedActive(el.operationsQuickViewTabs, "operations-quick-view", state.operationsQuickView);
-    core.syncSegmentedActive(el.operationsCurrencyScopeTabs, "operations-currency-scope", state.operationsCurrencyScope);
-    if (el.filterQ) {
-      el.filterQ.value = "";
-    }
-    state.period = "custom";
-    state.customDateFrom = dateFrom;
-    state.customDateTo = dateTo;
     core.syncAllPeriodTabs("custom");
     await navigation.switchSection("operations", { preserveBackStack: true, scrollToTop: true });
   }
@@ -218,11 +174,10 @@
     await navigation.switchSection("operations", { preserveBackStack: true, scrollToTop: true });
   }
 
-  const { calendar = {}, trend = {}, highlights = {}, positions = {}, currency = {} } = getAnalyticsModules();
+  const { calendar = {}, highlights = {}, positions = {}, currency = {} } = getAnalyticsModules();
 
   const api = {
     loadAnalyticsCalendar: calendar.loadAnalyticsCalendar,
-    loadAnalyticsTrend: trend.loadAnalyticsTrend,
     loadAnalyticsHighlights: highlights.loadAnalyticsHighlights,
     loadAnalyticsPositions: positions.loadAnalyticsPositions,
     loadAnalyticsCurrency: currency.loadAnalyticsCurrency,
@@ -238,7 +193,6 @@
     setAnalyticsGridYearAnchor: calendar.setAnalyticsGridYearAnchor,
     openAnalyticsMonth: calendar.openAnalyticsMonth,
     openOperationsForAnalyticsDate,
-    openOperationsForAnalyticsRange,
     openOperationsForAnalyticsPositionRange,
     openPositionsAnalyticsFromDashboard,
     openOperationsForAnalyticsCategory,

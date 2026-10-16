@@ -117,7 +117,6 @@ def test_byn_uses_compact_currency_symbol_in_frontend_formatters():
     assert '<option value="BYN">BYN (\\uE901)</option>' in modal_templates
     assert "Пример: 1 234,56&nbsp;\\uE901" in secondary_templates
     assert 'id="plansFinancialValue" class="plans-financial-kpi-value">0,00&nbsp;\\uE901' in secondary_templates
-    assert 'id="analyticsIncomeDelta">0&nbsp;\\uE901' in primary_templates
     assert "button,\ninput," not in controls_css
     assert "button {\n  font-family: var(--ui-font-family);\n}" in controls_css
     assert "font-family: var(--ui-font-family);" in controls_css
@@ -185,8 +184,8 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert f'/static/styles.css?v={version}' in index_html
     assert '/static/css/components-core.css?v=20261014-simple1' in styles
     assert '/static/css/layout-debts.css?v=20260716j' in styles
-    assert '/static/css/components-analytics-summary.css?v=20261012-quantities1' in styles
-    assert '/static/css/responsive-sm-core.css?v=20260826b' in styles
+    assert f'/static/css/components-analytics-summary.css?v={version}' in styles
+    assert f'/static/css/responsive-sm-core.css?v={version}' in styles
 
 
 def test_session_refresh_preserves_runtime_ui_and_retries_unauthorized_requests():
@@ -395,7 +394,6 @@ def test_analytics_global_period_uses_compact_period_control():
     analytics_ui = (REPO_ROOT / "static" / "js" / "app-features-analytics-highlights-ui.js").read_text(
         encoding="utf-8"
     )
-    analytics_trend = (REPO_ROOT / "static" / "js" / "app-features-analytics-trend.js").read_text(encoding="utf-8")
     preferences = (REPO_ROOT / "static" / "js" / "app-features-session-preferences.js").read_text(encoding="utf-8")
 
     assert 'data-period-control="analytics-global"' in shell_primary
@@ -430,8 +428,6 @@ def test_analytics_global_period_uses_compact_period_control():
     assert "function shiftDashboardPeriod" in analytics_period_controls
     assert "el.analyticsGlobalPeriodControlLabel.textContent = label;" in analytics_ui
     assert "el.dashboardAnalyticsPeriodControlLabel.textContent" in analytics_ui
-    assert "el.analyticsGlobalPeriodControlLabel.textContent = rangeLabel;" in analytics_trend
-    assert "if (period !== \"all_time\")" in analytics_trend
 
 
 def test_currency_kpi_and_settings_support_compact_bank_rates_and_alerts():

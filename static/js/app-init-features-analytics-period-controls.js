@@ -175,14 +175,6 @@ function createAnalyticsPeriodControls({ state, el, core, actions, coordinator, 
           state.analyticsGlobalDateTo = "";
           core.syncSegmentedActive(el.analyticsGlobalPeriodTabs, "analytics-global-period", period);
         }
-        if (((action === "current" ? period : "custom") === "year" || (action === "current" ? period : state.analyticsGlobalPeriod) === "all_time") && state.analyticsGranularity === "day") {
-          state.analyticsGranularity = "week";
-          core.syncSegmentedActive(el.analyticsGranularityTabs, "analytics-granularity", state.analyticsGranularity);
-        }
-        if (action === "current" && (period === "year" || period === "all_time") && state.analyticsGranularity === "day") {
-          state.analyticsGranularity = "week";
-          core.syncSegmentedActive(el.analyticsGranularityTabs, "analytics-granularity", state.analyticsGranularity);
-        }
         await actions.loadAnalyticsSection?.({ force: true });
       },
     });
@@ -206,10 +198,6 @@ function createAnalyticsPeriodControls({ state, el, core, actions, coordinator, 
         state.analyticsGlobalPeriod = value;
         state.analyticsGlobalDateFrom = "";
         state.analyticsGlobalDateTo = "";
-        if ((value === "year" || value === "all_time") && state.analyticsGranularity === "day") {
-          state.analyticsGranularity = "week";
-          core.syncSegmentedActive(el.analyticsGranularityTabs, "analytics-granularity", state.analyticsGranularity);
-        }
       },
       syncContainer: el.analyticsGlobalPeriodTabs,
       syncAttr: "analytics-global-period",

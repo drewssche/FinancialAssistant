@@ -289,39 +289,6 @@ def page_with_debts_api_mock():
                 },
             )
 
-        if path == "/api/v1/dashboard/analytics/trend" and method == "GET":
-            return json_response(
-                route,
-                {
-                    "period": (query.get("period") or ["month"])[0],
-                    "granularity": (query.get("granularity") or ["day"])[0],
-                    "date_from": "2026-03-01",
-                    "date_to": "2026-03-07",
-                    "income_total": "0.00",
-                    "expense_total": "0.00",
-                    "balance": "0.00",
-                    "operations_count": 0,
-                    "prev_income_total": "0.00",
-                    "prev_expense_total": "0.00",
-                    "prev_balance": "0.00",
-                    "prev_operations_count": 0,
-                    "income_change_pct": 0.0,
-                    "expense_change_pct": 0.0,
-                    "balance_change_pct": 0.0,
-                    "operations_change_pct": 0.0,
-                    "points": [
-                        {
-                            "bucket_start": "2026-03-01",
-                            "bucket_end": "2026-03-01",
-                            "label": "01.03.2026",
-                            "income_total": "0.00",
-                            "expense_total": "0.00",
-                            "balance": "0.00",
-                            "operations_count": 0,
-                        }
-                    ],
-                },
-            )
 
         if path == "/api/v1/operations" and method == "GET":
             return json_response(route, {"items": [], "total": 0, "page": 1, "page_size": 20})

@@ -393,9 +393,7 @@
 
 @media (max-width: 900px) {
   .analytics-category-breakdown-grid,
-  .dashboard-analytics-grid,
   .analytics-kpi-grid,
-  .analytics-trend-deltas,
   .analytics-positions-grid,
   .analytics-year-grid {
     grid-template-columns: 1fr;

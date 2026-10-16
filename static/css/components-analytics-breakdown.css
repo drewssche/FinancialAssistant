@@ -233,37 +233,6 @@
   cursor: pointer;
 }
 
-.trend-bar,
-.trend-balance-marker,
-.trend-bucket-band {
-  transition:
-    transform 0.18s ease,
-    opacity 0.18s ease,
-    filter 0.18s ease,
-    fill-opacity 0.18s ease;
-}
-
-.trend-bucket-band {
-  opacity: 0;
-}
-
-.analytics-trend-chart .trend-bucket:hover .trend-bucket-band,
-.dashboard-analytics-sparkline .trend-bucket:hover .trend-bucket-band {
-  opacity: 1;
-}
-
-.analytics-trend-chart .trend-bucket:hover .trend-bar,
-.dashboard-analytics-sparkline .trend-bucket:hover .trend-bar {
-  transform: translateY(-3px);
-  filter: saturate(1.1) brightness(1.08);
-}
-
-.analytics-trend-chart .trend-bucket:hover .trend-balance-marker,
-.dashboard-analytics-sparkline .trend-bucket:hover .trend-balance-marker {
-  transform: scale(1.3);
-  filter: brightness(1.18);
-}
-
 .analytics-chart-tooltip {
   position: absolute;
   z-index: 4;

@@ -418,43 +418,6 @@ def page_with_analytics_api_mock(page):
             ],
         }
 
-    def trend_payload(period: str, granularity: str, date_from: str = "2026-03-01", date_to: str = "2026-03-31") -> dict:
-        return {
-            "period": period,
-            "granularity": granularity,
-            "date_from": date_from,
-            "date_to": date_to,
-            "income_total": "1840.00",
-            "expense_total": "1210.00",
-            "balance": "630.00",
-            "operations_count": 18,
-            "prev_income_total": "1700.00",
-            "prev_expense_total": "1250.00",
-            "prev_balance": "450.00",
-            "prev_operations_count": 16,
-            "income_change_pct": 8.0,
-            "expense_change_pct": -3.0,
-            "balance_change_pct": 15.0,
-            "operations_change_pct": 5.0,
-            "points": [
-                {
-                    "bucket_start": "2026-03-01",
-                    "bucket_end": "2026-03-07",
-                    "income_total": "320.00",
-                    "expense_total": "190.00",
-                    "balance": "130.00",
-                    "operations_count": 4,
-                },
-                {
-                    "bucket_start": "2026-03-08",
-                    "bucket_end": "2026-03-14",
-                    "income_total": "450.00",
-                    "expense_total": "330.00",
-                    "balance": "120.00",
-                    "operations_count": 5,
-                },
-            ],
-        }
 
     def positions_payload(period: str, anchor: str = "2026-03-15") -> dict:
         if period == "year":
@@ -609,12 +572,6 @@ def page_with_analytics_api_mock(page):
                 payload["date_to"] = query["date_to"][0]
             return json_response(route, payload)
 
-        if path == "/api/v1/dashboard/analytics/trend" and method == "GET":
-            period = (query.get("period") or ["month"])[0]
-            granularity = (query.get("granularity") or ["day"])[0]
-            date_from = (query.get("date_from") or ["2026-03-01"])[0]
-            date_to = (query.get("date_to") or ["2026-03-31"])[0]
-            return json_response(route, trend_payload(period, granularity, date_from, date_to))
 
         if path == "/api/v1/dashboard/analytics/positions" and method == "GET":
             period = (query.get("period") or ["month"])[0]
@@ -993,12 +950,12 @@ def test_mobile_analytics_structure_all_time_period_loads_without_error(page_wit
 
 
 @pytest.mark.e2e
-def test_mobile_analytics_trend_period_arrows_update_visible_label(page_with_analytics_api_mock, static_server_url: str):
+def test_mobile_structure_period_arrows_update_visible_label(page_with_analytics_api_mock, static_server_url: str):
     page = page_with_analytics_api_mock
 
     _open_mobile_analytics(page, static_server_url)
     page.locator("button[data-analytics-tab='structure']").click()
-    page.wait_for_selector("#analyticsTrendsPanel:not(.hidden)")
+    page.wait_for_selector("#analyticsStructurePanel:not(.hidden)")
     expect(page.locator("#analyticsGlobalPeriodControlLabel")).to_have_text("01.03.2026 - 31.03.2026")
 
     page.locator("button[data-analytics-period-step='-1']").click()
@@ -1009,7 +966,6 @@ def test_mobile_analytics_trend_period_arrows_update_visible_label(page_with_ana
     previous_month_start = previous_month_end.replace(day=1)
     expected_range = f"{previous_month_start:%d.%m.%Y} - {previous_month_end:%d.%m.%Y}"
     expect(page.locator("#analyticsGlobalPeriodControlLabel")).to_have_text(expected_range)
-    expect(page.locator("#analyticsTrendRangeLabel")).to_contain_text(expected_range)
 
 
 @pytest.mark.e2e
@@ -1362,8 +1318,6 @@ def test_opening_analytics_calendar_does_not_fail_when_other_tabs_endpoints_are_
             )
         if path == "/api/v1/dashboard/analytics/highlights" and method == "GET":
             return json_response(route, {"detail": "highlights unavailable"}, status=503)
-        if path == "/api/v1/dashboard/analytics/trend" and method == "GET":
-            return json_response(route, {"detail": "trend unavailable"}, status=503)
         return json_response(route, {"detail": f"Unhandled mock route: {method} {path}"}, status=404)
 
     _set_mock_telegram(page)
@@ -1841,19 +1795,26 @@ def test_catalog_discount_custom_period_and_analytics_ownership(page_with_analyt
     page.evaluate("window.App.getRuntimeModule('navigation').switchSection('analytics')")
     page.locator('[data-analytics-tab="structure"]').click()
     expect(page.locator('#analyticsSection #analyticsGlobalScopePanel')).to_be_visible()
-    expect(page.locator('#analyticsTrendsPanel')).to_be_visible()
+    expect(page.locator('#analyticsTrendsPanel')).to_have_count(0)
     assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
 
 
 @pytest.mark.e2e
-def test_structure_remains_available_when_trend_fails(page_with_analytics_api_mock, static_server_url):
+@pytest.mark.parametrize('width', [320, 1440])
+def test_structure_has_no_trend_chart_or_request(page_with_analytics_api_mock, static_server_url, width):
     page = page_with_analytics_api_mock
-    page.route('**/api/v1/dashboard/analytics/trend?*', lambda route: route.fulfill(status=503, json={'detail':'Temporary outage'}))
+    requests = []
+    page.on('request', lambda request: requests.append(request.url))
     _open_mobile_analytics(page, static_server_url)
+    page.set_viewport_size({'width': width, 'height': 900})
     page.locator('[data-analytics-tab="structure"]').click()
     expect(page.locator('#analyticsCategoryBreakdownList')).to_contain_text('Еда')
-    expect(page.locator('#analyticsTrendRangeLabel')).to_contain_text('Не удалось загрузить график')
-    expect(page.locator('#analyticsTrendChart .trend-bucket')).to_have_count(0)
+    expect(page.locator('#analyticsTrendsPanel, #analyticsTrendChart, #analyticsGranularityTabs')).to_have_count(0)
+    page.locator('button[data-analytics-period-step="-1"]').click()
+    expect(page.locator('#analyticsCategoryBreakdownList')).to_contain_text('Еда')
+    assert not any('/analytics/trend' in url or 'app-features-analytics-trend.js' in url for url in requests)
+    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
+    page.screenshot(path=f'/tmp/fa-structure-no-chart-{width}.png')
 
 
 @pytest.mark.e2e
@@ -1865,19 +1826,17 @@ def test_shared_structure_period_ignores_late_report_responses(page_with_analyti
     base = page.evaluate('window.App.state.analyticsHighlightsData')
     pending = []
     page.route('**/api/v1/dashboard/analytics/highlights?*', lambda route: pending.append(route))
-    page.route('**/api/v1/dashboard/analytics/trend?*', lambda route: pending.append(route))
     for month in ['04', '05']:
         page.evaluate('''month => {
             Object.assign(window.App.state, {analyticsGlobalPeriod:'custom', analyticsGlobalDateFrom:`2026-${month}-01`, analyticsGlobalDateTo:`2026-${month}-28`});
             window.App.getRuntimeModule('analytics').loadAnalyticsSection({force:true});
         }''', month)
         page.wait_for_timeout(150)
-    assert len(pending) == 4
+    assert len(pending) == 2
     for month in ['05', '04']:
         for route in [r for r in pending if f'2026-{month}-01' in r.request.url]:
-            payload = dict(base) if '/highlights?' in route.request.url else {'points':[], 'granularity':'day'}
+            payload = dict(base)
             payload.update(date_from=f'2026-{month}-01', date_to=f'2026-{month}-28', period='custom')
             route.fulfill(json=payload)
         page.wait_for_timeout(150)
     expect(page.locator('#analyticsGlobalPeriodControlLabel')).to_have_text('01.05.2026 - 28.05.2026')
-    expect(page.locator('#analyticsTrendRangeLabel')).to_contain_text('01.05.2026 - 28.05.2026')

@@ -240,9 +240,6 @@
     flex-wrap: wrap;
   }
 
-  .analytics-trend-legend {
-    flex-wrap: wrap;
-  }
 
   .analytics-year-grid {
     grid-template-columns: 1fr;
@@ -283,7 +280,6 @@
     align-items: flex-start;
   }
 
-  .dashboard-analytics-grid,
   .dashboard-debt-row {
     grid-template-columns: 1fr;
   }

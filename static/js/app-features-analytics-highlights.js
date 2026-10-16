@@ -11,7 +11,6 @@
   function getAnalyticsModules() {
     return {
       calendar: window.App.getRuntimeModule?.("analytics-calendar-module"),
-      trend: window.App.getRuntimeModule?.("analytics-trend-module"),
     };
   }
 
@@ -81,8 +80,7 @@
       params.set("date_to", dateTo);
     }
     const cacheKey = `dashboard:highlights:${params.toString()}`;
-    const trendModule = getAnalyticsModules().trend;
-    const formatPct = trendModule?.formatPct || ((v) => String(v ?? "нет базы"));
+    const formatPct = window.App.analyticsShared?.formatPct || ((v) => String(v ?? "нет базы"));
     if (!force) {
       const cached = core.getUiRequestCache(cacheKey, HIGHLIGHTS_CACHE_TTL_MS);
       if (cached) {

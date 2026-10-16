@@ -65,7 +65,6 @@
     "/static/js/app-features-dashboard.js",
     "/static/js/app-features-analytics-calendar.js",
     "/static/js/app-features-analytics-shared.js",
-    "/static/js/app-features-analytics-trend.js",
     "/static/js/app-features-analytics-positions.js",
     "/static/js/app-features-analytics-commerce.js",
     "/static/js/app-features-analytics-currency-trades.js",

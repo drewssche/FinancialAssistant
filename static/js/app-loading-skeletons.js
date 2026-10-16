@@ -292,67 +292,6 @@
     }
   }
 
-  function renderAnalyticsTrendSkeleton() {
-    if (el.analyticsTrendRangeLabel) {
-      el.analyticsTrendRangeLabel.innerHTML = inlineLine("skeleton-w-72", "skeleton-line-sm");
-    }
-    if (el.analyticsTrendChart) {
-      el.analyticsTrendChart.classList.add("analytics-trend-chart-skeleton");
-      el.analyticsTrendChart.innerHTML = `
-        <defs>
-          <linearGradient id="analyticsTrendSkeletonFill" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stop-color="rgba(72, 92, 128, 0.18)" />
-            <stop offset="45%" stop-color="rgba(232, 239, 255, 0.14)" />
-            <stop offset="100%" stop-color="rgba(72, 92, 128, 0.18)" />
-            <animateTransform
-              attributeName="gradientTransform"
-              type="translate"
-              from="-1 0"
-              to="1 0"
-              dur="1.4s"
-              repeatCount="indefinite"
-            />
-          </linearGradient>
-        </defs>
-        <rect x="0" y="0" width="980" height="280" rx="18" fill="rgba(57, 74, 104, 0.12)"></rect>
-        ${Array.from({ length: 8 }, (_, idx) => `
-          <rect
-            x="${idx * 122 + 14}"
-            y="24"
-            width="94"
-            height="232"
-            rx="14"
-            fill="rgba(108, 167, 255, 0.06)"
-          ></rect>
-        `).join("")}
-        <rect x="0" y="146" width="980" height="2" fill="rgba(141,160,190,0.28)"></rect>
-        <path
-          d="M 20 170 C 120 150, 180 110, 280 132 S 460 200, 580 144 S 760 92, 960 126"
-          fill="none"
-          stroke="url(#analyticsTrendSkeletonFill)"
-          stroke-width="8"
-          stroke-linecap="round"
-        ></path>
-      `;
-    }
-    if (el.analyticsIncomeDelta) {
-      el.analyticsIncomeDelta.innerHTML = inlineLine("skeleton-w-48", "skeleton-line-money");
-    }
-    if (el.analyticsExpenseDelta) {
-      el.analyticsExpenseDelta.innerHTML = inlineLine("skeleton-w-48", "skeleton-line-money");
-    }
-    if (el.analyticsBalanceDelta) {
-      el.analyticsBalanceDelta.innerHTML = inlineLine("skeleton-w-48", "skeleton-line-money");
-    }
-    if (el.analyticsOpsDelta) {
-      el.analyticsOpsDelta.innerHTML = inlineLine("skeleton-w-32", "skeleton-line-lg");
-    }
-  }
-
-  function clearAnalyticsTrendSkeletonState() {
-    el.analyticsTrendChart?.classList.remove("analytics-trend-chart-skeleton");
-  }
-
   function renderDebtsSectionSkeleton() {
     if (el.deleteAllDebtsBtn) {
       el.deleteAllDebtsBtn.disabled = true;
@@ -621,8 +560,6 @@
     renderAnalyticsStructureSkeleton,
     clearAnalyticsStructureSkeletonState,
     renderAnalyticsCalendarSkeleton,
-    renderAnalyticsTrendSkeleton,
-    clearAnalyticsTrendSkeletonState,
     renderAnalyticsCurrencySkeleton,
     clearAnalyticsCurrencySkeletonState,
   };

@@ -91,10 +91,6 @@
               state.analyticsGlobalDateFrom = "";
               state.analyticsGlobalDateTo = "";
             }
-            if ((value === "year" || value === "all_time") && state.analyticsGranularity === "day") {
-              state.analyticsGranularity = "week";
-              core.syncSegmentedActive(el.analyticsGranularityTabs, "analytics-granularity", state.analyticsGranularity);
-            }
           },
           syncContainer: el.analyticsGlobalPeriodTabs,
           syncAttr: "analytics-global-period",
@@ -414,18 +410,6 @@
       bindDashboardBreakdownHover(el.dashboardCategoryBreakdownChart);
       bindDashboardBreakdownHover(el.dashboardCategoryBreakdownList);
     }
-    if (el.analyticsTrendChart && actions.openOperationsForAnalyticsRange) {
-      el.analyticsTrendChart.addEventListener("click", (event) => {
-        const node = event.target.closest("[data-analytics-bucket-start][data-analytics-bucket-end]");
-        if (!node) {
-          return;
-        }
-        core.runAction({
-          errorPrefix: "Ошибка перехода в операции",
-          action: () => actions.openOperationsForAnalyticsRange(node.dataset.analyticsBucketStart, node.dataset.analyticsBucketEnd),
-        });
-      });
-    }
     if (el.analyticsViewTabs && actions.setAnalyticsTab) {
       el.analyticsViewTabs.addEventListener("click", (event) => {
         const btn = event.target.closest("button[data-analytics-tab]");
@@ -440,25 +424,6 @@
           },
           errorPrefix: "Ошибка загрузки аналитики",
           action: () => actions.loadAnalyticsSection({ force: true }),
-        });
-      });
-    }
-    if (el.analyticsGranularityTabs && actions.loadAnalyticsTrend) {
-      el.analyticsGranularityTabs.addEventListener("click", (event) => {
-        const btn = event.target.closest("button[data-analytics-granularity]");
-        if (!btn) {
-          return;
-        }
-        coordinator.applySegmentedSelection({
-          currentValue: state.analyticsGranularity,
-          nextValue: btn.dataset.analyticsGranularity,
-          assignValue: (value) => {
-            state.analyticsGranularity = value;
-          },
-          syncContainer: el.analyticsGranularityTabs,
-          syncAttr: "analytics-granularity",
-          errorPrefix: "Ошибка загрузки тренда",
-          action: () => actions.loadAnalyticsTrend({ force: true }),
         });
       });
     }

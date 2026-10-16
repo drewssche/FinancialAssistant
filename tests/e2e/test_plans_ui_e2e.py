@@ -342,25 +342,6 @@ def page_with_plans_api_mock(page):
                     "price_increases": [],
                 },
             )
-        if path == "/api/v1/dashboard/analytics/trend" and method == "GET":
-            return _json_response(
-                route,
-                {
-                    "period": "month",
-                    "granularity": "day",
-                    "date_from": "2026-03-01",
-                    "date_to": "2026-03-31",
-                    "income_total": "0.00",
-                    "expense_total": "0.00",
-                    "balance": "0.00",
-                    "operations_count": 0,
-                    "prev_income_total": "0.00",
-                    "prev_expense_total": "0.00",
-                    "prev_balance": "0.00",
-                    "prev_operations_count": 0,
-                    "points": [],
-                },
-            )
         if path == "/api/v1/operations" and method == "GET":
             return _json_response(route, {"items": mock_state["operations"], "total": len(mock_state["operations"]), "page": 1, "page_size": 20})
         if path == "/api/v1/debts/cards" and method == "GET":

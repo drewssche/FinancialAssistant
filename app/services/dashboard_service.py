@@ -253,41 +253,6 @@ class DashboardService:
         )
         return payload
 
-    def get_analytics_trend(
-        self,
-        *,
-        user_id: int,
-        period: str = "month",
-        date_from: date | None = None,
-        date_to: date | None = None,
-        granularity: str = "day",
-    ) -> dict:
-        cache_key = build_dashboard_analytics_cache_key(
-            user_id=user_id,
-            view="trend",
-            period=period,
-            date_from=date_from,
-            date_to=date_to,
-            granularity=granularity,
-        )
-        cached = get_json(cache_key)
-        if cached:
-            return cached
-
-        payload = self.analytics.get_trend(
-            user_id=user_id,
-            period=period,
-            date_from=date_from,
-            date_to=date_to,
-            granularity=granularity,
-        )
-        set_json(
-            cache_key,
-            payload,
-            ttl_seconds=get_namespace_ttl_seconds("dashboard_analytics"),
-        )
-        return payload
-
     def get_analytics_highlights(
         self,
         *,

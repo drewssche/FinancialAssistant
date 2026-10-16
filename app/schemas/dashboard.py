@@ -202,51 +202,6 @@ class AnalyticsCalendarYearOut(BaseModel):
     months: list[AnalyticsCalendarYearMonth]
 
 
-class AnalyticsTrendPoint(BaseModel):
-    bucket_start: str
-    bucket_end: str
-    label: str
-    income_total: Decimal
-    expense_total: Decimal
-    balance: Decimal
-    debt_cashflow_total: Decimal = Decimal("0")
-    debt_events_count: int = 0
-    fx_cashflow_total: Decimal = Decimal("0")
-    fx_events_count: int = 0
-    cashflow_total: Decimal = Decimal("0")
-    cashflow_events_count: int = 0
-    operations_count: int
-
-
-class AnalyticsTrendOut(BaseModel):
-    period: str
-    granularity: str
-    date_from: str
-    date_to: str
-    income_total: Decimal
-    expense_total: Decimal
-    balance: Decimal
-    debt_cashflow_total: Decimal = Decimal("0")
-    fx_cashflow_total: Decimal = Decimal("0")
-    cashflow_total: Decimal = Decimal("0")
-    operations_count: int
-    prev_income_total: Decimal
-    prev_expense_total: Decimal
-    prev_balance: Decimal
-    prev_debt_cashflow_total: Decimal = Decimal("0")
-    prev_fx_cashflow_total: Decimal = Decimal("0")
-    prev_cashflow_total: Decimal = Decimal("0")
-    prev_operations_count: int
-    income_change_pct: float | None
-    expense_change_pct: float | None
-    balance_change_pct: float | None
-    debt_cashflow_change_pct: float | None = None
-    fx_cashflow_change_pct: float | None = None
-    cashflow_change_pct: float | None = None
-    operations_change_pct: float | None
-    points: list[AnalyticsTrendPoint]
-
-
 class AnalyticsTopOperation(BaseModel):
     operation_id: int
     operation_date: str

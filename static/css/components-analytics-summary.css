@@ -1,11 +1,3 @@
-.dashboard-analytics-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
-  gap: var(--space-3);
-  align-items: stretch;
-}
-
-.dashboard-analytics-chart-wrap,
 .analytics-trend-chart-wrap {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -14,21 +6,6 @@
   position: relative;
 }
 
-.dashboard-analytics-chart-wrap {
-  display: grid;
-  align-items: center;
-}
-
-.dashboard-analytics-empty {
-  min-height: 6rem;
-  display: grid;
-  place-content: center;
-  gap: var(--space-1);
-  text-align: center;
-  color: #cfdbf5;
-}
-
-.dashboard-analytics-sparkline,
 .analytics-trend-chart {
   width: 100%;
   height: 100%;
@@ -249,53 +226,6 @@
   font-variant-numeric: tabular-nums lining-nums;
   font-weight: 500;
   white-space: normal;
-}
-
-.analytics-trend-legend {
-  margin-top: var(--space-3);
-  display: flex;
-  gap: calc(var(--space-3) + 0.125rem);
-  color: var(--muted);
-  font-size: 0.75rem;
-  letter-spacing: 0.01em;
-}
-
-.legend-dot {
-  display: inline-block;
-  width: 0.56rem;
-  height: 0.56rem;
-  border-radius: var(--radius-pill);
-  margin-right: calc(var(--space-1) + 0.125rem);
-}
-
-.legend-income {
-  background: #3bc47b;
-}
-
-.legend-expense {
-  background: #ff7a7a;
-}
-
-.legend-balance {
-  background: #6ca7ff;
-}
-
-.analytics-trend-deltas,
-.analytics-trend-kpis {
-  margin-top: var(--space-3);
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-3);
-}
-
-.analytics-trend-kpis .analytics-kpi-card strong {
-  line-height: 1.35;
-  font-size: 1.15rem;
-}
-
-.analytics-trend-kpis .analytics-kpi-card {
-  gap: calc(var(--space-1) + 0.125rem);
-  min-height: 84px;
 }
 
 .analytics-kpi-grid {

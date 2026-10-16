@@ -592,7 +592,6 @@
       ? prefs.data.analytics.breakdown_level
       : "category";
     state.analyticsStructureHidden = normalizeStructureHidden(prefs.data?.analytics?.structure_hidden);
-    state.analyticsGranularity = prefs.data?.analytics?.granularity || "day";
     state.analyticsPositionsPeriod = ["day", "week", "month", "year"].includes(prefs.data?.analytics?.positions_period)
       ? prefs.data.analytics.positions_period
       : "month";
@@ -600,9 +599,6 @@
     state.analyticsPositionsMetric = window.App.purchaseMetrics.normalizeMetric(prefs.data?.analytics?.positions_metric);
     state.analyticsPositionsLimit = prefs.data?.analytics?.positions_limit === "all" ? "all" : "top";
     state.analyticsPositionsSort = prefs.data?.analytics?.positions_sort === "asc" ? "asc" : "desc";
-    if ((state.analyticsGlobalPeriod === "year" || state.analyticsGlobalPeriod === "all_time") && state.analyticsGranularity === "day") {
-      state.analyticsGranularity = "week";
-    }
     state.dashboardAnalyticsPeriod = prefs.data?.dashboard?.analytics_period || "month";
     state.dashboardAnalyticsDateFrom = prefs.data?.dashboard?.analytics_date_from || "";
     state.dashboardAnalyticsDateTo = prefs.data?.dashboard?.analytics_date_to || "";
@@ -640,7 +636,6 @@
     core.syncSegmentedActive(el.analyticsGlobalPeriodTabs, "analytics-global-period", state.analyticsGlobalPeriod);
     core.syncSegmentedActive(el.analyticsBreakdownLevelTabs, "analytics-breakdown-level", state.analyticsBreakdownLevel);
     core.syncSegmentedActive(el.analyticsCategoryKindTabs, "analytics-category-kind", state.analyticsCategoryKind);
-    core.syncSegmentedActive(el.analyticsGranularityTabs, "analytics-granularity", state.analyticsGranularity);
     core.syncSegmentedActive(el.analyticsPositionsMetricTabs, "analytics-positions-metric", state.analyticsPositionsMetric);
     core.syncSegmentedActive(el.analyticsPositionsLimitTabs, "analytics-positions-limit", state.analyticsPositionsLimit);
     core.syncSegmentedActive(el.dashboardAnalyticsPeriodTabs, "dashboard-analytics-period", state.dashboardAnalyticsPeriod);
@@ -756,7 +751,6 @@
           breakdown_level: state.analyticsBreakdownLevel || "category",
           structure_hidden: normalizeStructureHidden(state.analyticsStructureHidden),
           category_kind: state.analyticsCategoryKind || "expense",
-          granularity: state.analyticsGranularity || "day",
           positions_period: state.analyticsPositionsPeriod || "month",
           positions_anchor: state.analyticsPositionsAnchor || "",
           positions_metric: state.analyticsPositionsMetric || "purchases",

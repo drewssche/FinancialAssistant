@@ -744,8 +744,7 @@
   }
 
 
-  .analytics-trend-chart-wrap,
-  .dashboard-analytics-chart-wrap {
+  .analytics-trend-chart-wrap {
     padding: var(--space-2);
   }
 

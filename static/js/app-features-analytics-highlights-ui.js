@@ -183,8 +183,7 @@
   }
 
   function renderAnalyticsHighlights(data) {
-    const trendModule = window.App.getRuntimeModule?.("analytics-trend-module");
-    const formatPct = trendModule?.formatPct || ((v) => String(v ?? "нет базы"));
+    const formatPct = window.App.analyticsShared?.formatPct || ((v) => String(v ?? "нет базы"));
     if (el.analyticsGlobalRangeLabel) {
       const label = `${core.formatDateRu(data.date_from)} - ${core.formatDateRu(data.date_to)}`;
       el.analyticsGlobalRangeLabel.textContent = label;
