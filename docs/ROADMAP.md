@@ -688,3 +688,7 @@ Automatic GitHub CI runs on pushes and pull requests are disabled at the owner�
 - [x] Keep one save action, now visible at the right of the Offers footer as well as Product. Cancel/tab switching retain existing draft semantics; missing required product name returns to Product without losing code edits. New products use the existing save/add-source flow. No backend or data migration changes.
 - [x] Validation: 21 API/frontend checks and 13 browser cases pass, including 320/390/1440 px, shared and distinct package codes, SKU isolation, saving from Offers, invalid input, cancel/reopen, load/retry, size edits and required-name focus. Mobile/desktop previews, JavaScript syntax and diff checks pass.
 - [ ] Publication pending the previously requested explicit authorization; server unchanged.
+
+### Standing publication authorization — 2026-10-16
+
+User explicitly authorized the full cycle after every completed iteration: local commit → GitHub main → server pull and application update. This supersedes the pending-approval release notes above; publication is now authorized. The workflow is recorded in AGENTS.md, with preflight, app-only deployment, rollback image and verification.
