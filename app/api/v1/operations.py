@@ -340,6 +340,7 @@ def create_catalog_product(
         return CatalogProductService(db).create(
             user_id=user_id,
             name=payload.name,
+            codes=payload.codes.model_dump() if payload.codes else None,
             brand_id=payload.brand_id,
             category_id=payload.category_id,
             sale_unit=payload.sale_unit,

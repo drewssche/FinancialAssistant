@@ -172,3 +172,13 @@
 .product-price-chart:focus-visible {outline:2px solid var(--accent);outline-offset:2px;border-radius:8px;}
 .product-price-chart [data-price-index] {transition:r .1s ease;}
 @media(prefers-reduced-motion:reduce){.product-price-chart-host .analytics-chart-tooltip,.product-price-chart [data-price-index] {transition:none;}}
+
+.catalog-product-codes-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.catalog-product-codes-grid > div {display:grid;align-content:start;gap:8px;min-width:0;}
+.catalog-product-codes .field[hidden] {display:none;}
+.catalog-product-codes small {display:block;margin-top:6px;}
+@media(max-width:600px){.catalog-product-codes-grid {grid-template-columns:minmax(0,1fr);}}
+
+.catalog-code-context {display:flex;align-items:center;gap:8px;justify-content:space-between;}
+.catalog-code-context[hidden] {display:none;}
+.catalog-code-context small {margin:0;}

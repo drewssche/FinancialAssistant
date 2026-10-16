@@ -30,7 +30,9 @@
     node("catalogIdentityVariant").value = mapped;
     node('catalogVariantList').innerHTML = (data?.variants || []).map(v => `<button type="button" class="package-list-row" data-edit-variant="${Number(v.id)}"><span><strong>${esc(v.name)}</strong><small>${esc(window.App.measurements.summary(v))}${v.codes?.length?' · '+esc(v.codes.join(', ')):''}${v.is_archived?' · архив':''}</small></span>${window.App.icons.svg('edit')}</button>`).join('') || '<p class="muted-small">Дополнительных размеров нет. Обычный размер укажите во вкладке «Товар».</p>';
   }
+  const quick = () => window.App.getRuntimeModule("catalog-product-codes");
   async function load() {
+    quick().loading();
     controller?.abort(); controller = new AbortController();
     const token = ++generation;
     node("catalogIdentityStatus").textContent = "Загрузка…";
@@ -38,15 +40,15 @@
     try {
       const payload = await core.requestJson(`${url()}/identity`, {headers: core.authHeaders(), signal: controller.signal});
       if (token !== generation) return;
-      data = payload; dirtyForms.clear(); variantDrafts.clear();
+      data = payload; quick().accept(data); dirtyForms.clear(); variantDrafts.clear();
       node("catalogIdentityStatus").textContent = "";
       node("catalogIdentityOffer").innerHTML = (product.offers || []).map((o) => `<option value="${Number(o.template_id)}">${esc(o.source_name || "Без источника")} · ${esc(o.name)}</option>`).join("");
       node("catalogOfferIdentityForm").classList.toggle("hidden", !(product.offers || []).length);
       options(); variantForm(); offerForm();
       node("catalogIdentityForms").classList.remove("hidden");
     } catch (error) {
-      if (token === generation && error.name !== "AbortError") node("catalogIdentityStatus").textContent = `Не удалось загрузить: ${error.message}. Вернитесь на вкладку для повтора.`;
-    }
+      if (token === generation && error.name !== "AbortError") {quick().failed(); node("catalogIdentityStatus").textContent = `Не удалось загрузить: ${error.message}. Вернитесь на вкладку для повтора.`;}
+    } finally {if(token===generation)controller=null;}
   }
   async function save(form, variant) {
     if (!product || !data) return;
@@ -66,7 +68,7 @@
       const response = await core.requestJson(path, {method, headers: {...core.authHeaders(), "Content-Type": "application/json"}, body: JSON.stringify(payload)});
       window.App.getRuntimeModule("catalog-products").invalidate();
       if (token !== generation) return;
-      data = response; dirtyForms.delete(form.id);
+      data = response; quick().accept(data); dirtyForms.delete(form.id);
       if (variant) variantDrafts.delete(id);
       if (variantDrafts.size) dirtyForms.add("catalogVariantForm");
       options();
@@ -107,11 +109,11 @@
     node("catalogOfferIdentityForm").addEventListener("submit", (e) => {e.preventDefault(); save(e.currentTarget, false);});
   }
   let active = false;
-  function activate(value) { active = value; if (active && product && !data && !dirtyForms.size) load(); }
-  function close() {active = false;generation++; controller?.abort(); product = null; data = null; dirtyForms.clear(); variantDrafts.clear();}
+  function activate(value) { active = value; if (active && product && !data && !controller && !dirtyForms.size) load(); }
+  function close() {quick().close();active = false;generation++; controller?.abort(); controller=null; product = null; data = null; dirtyForms.clear(); variantDrafts.clear();}
   window.App.registerRuntimeModule("catalog-identity", {
-    open(value) {close(); bind(); showVariant(false); document.querySelector('[data-package-task="sizes"]').click(); product = value; node("catalogIdentityDetails").classList.toggle("hidden", !value); node("catalogVariantSelect").value = ""; node("catalogIdentityForms").querySelectorAll('button[type="submit"]').forEach((b) => b.disabled = false);},
-    refresh(value) {product = value; if (dirtyForms.size) return; data = null; if (active) load();},
-    activate, close, cleanup: close,
+    open(value) {close(); bind(); showVariant(false); document.querySelector('[data-package-task="sizes"]').click(); product = value; quick().open(value); if(value)load(); node("catalogIdentityDetails").classList.toggle("hidden", !value); node("catalogVariantSelect").value = ""; node("catalogIdentityForms").querySelectorAll('button[type="submit"]').forEach((b) => b.disabled = false);},
+    refresh(value) {product = value; quick().refresh(value); if (dirtyForms.size) return; data = null; load();},
+    reload: load, activate, close, cleanup: close,
   });
 })();

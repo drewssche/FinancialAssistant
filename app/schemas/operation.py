@@ -304,7 +304,24 @@ class OperationItemTemplateListOut(BaseModel):
     page_size: int = Field(ge=1)
 
 
+class ProductBarcodeEdit(BaseModel):
+    variant_id: int | None = Field(default=None, ge=1)
+    codes: list[str] = Field(default_factory=list, max_length=30)
+
+
+class ProductRetailerEdit(BaseModel):
+    template_id: int | None = Field(default=None, ge=1)
+    shop_name: str | None = Field(default=None, max_length=160)
+    retailer_code: str = Field(default='', max_length=160)
+
+
+class ProductCodesEdit(BaseModel):
+    barcodes: list[ProductBarcodeEdit] = Field(default_factory=list, max_length=30)
+    retailers: list[ProductRetailerEdit] = Field(default_factory=list, max_length=30)
+
+
 class CatalogProductCreate(MeasurementFields):
+    codes: ProductCodesEdit | None = None
     name: str = Field(min_length=1, max_length=160)
     brand_id: int | None = Field(default=None, ge=1)
     category_id: int | None = Field(default=None, ge=1)
@@ -318,6 +335,7 @@ class CatalogProductSourceCreate(BaseModel):
 
 
 class CatalogProductUpdate(MeasurementFields):
+    codes: ProductCodesEdit | None = None
     name: str | None = Field(default=None, min_length=1, max_length=160)
     brand_id: int | None = Field(default=None, ge=1)
     category_id: int | None = Field(default=None, ge=1)

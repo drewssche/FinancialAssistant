@@ -7,7 +7,6 @@
   let purchaseRows = [], purchaseTotal = 0, nestedOperation = false, returnTarget = null, purchasesDirty = false;
   let offerReturnId = null, workspaceGeneration = 0;
   let preferredPriceSeries = null;
-  const rememberedTabs = new Map();
   const visible = () => product && !el.catalogProductModal.classList.contains("hidden");
 
   function cancel() { generation += 1; controller?.abort(); controller = null; }
@@ -77,7 +76,6 @@
   function select(next, offerId) {
     cancel();
     tab = product && ["product", "offers", "prices", "purchases", "packages"].includes(next) ? next : "product";
-    if (product) rememberedTabs.set(product.id, tab);
     window.App.getRuntimeModule("catalog-identity").activate(tab === "packages");
     window.App.getRuntimeModule("catalog-replacements").activate(tab === "packages");
     for (const panel of el.catalogProductModal.querySelectorAll("[data-product-panel]")) panel.classList.toggle("hidden", panel.dataset.productPanel !== tab);
@@ -205,9 +203,9 @@
     const summary = node("catalogProductComparisonSummary");
     summary.innerHTML = options.comparisonHtml || "";
     summary.classList.toggle("hidden", !options.comparisonHtml);
-    resetOptions(); select(options.tab || rememberedTabs.get(product?.id) || "product", options.offerId);
+    resetOptions(); select(options.tab || "product", options.offerId);
   }
   function close() { window.App.getRuntimeModule("catalog-replacements").close(); window.App.getRuntimeModule("catalog-identity").close(); window.App.getRuntimeModule("catalog-price-history").cleanup(); workspaceGeneration += 1; cancel(); product = null; nestedOperation = false; returnTarget = null; }
   function refresh(value) { window.App.getRuntimeModule("catalog-replacements").refresh(value); window.App.getRuntimeModule("catalog-identity").refresh(value); product = value; resetOptions(); select(tab); }
-  window.App.registerRuntimeModule("catalog-product-details", {open, close, refresh, select, cleanup: () => {close(); rememberedTabs.clear();}});
+  window.App.registerRuntimeModule("catalog-product-details", {open, close, refresh, select, cleanup: close});
 })();

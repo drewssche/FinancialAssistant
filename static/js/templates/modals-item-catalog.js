@@ -136,6 +136,23 @@
             <span>Название товара</span>
             <input id="catalogProductName" type="text" maxlength="160" placeholder="Например, Сырок с печеньем клубника 40 г" required />
           </label>
+          <section class="catalog-product-codes" aria-label="Коды товара">
+            <div class="catalog-product-codes-grid">
+              <div>
+                <label class="field"><span>Штрихкод</span><input id="catalogProductBarcode" type="text" maxlength="480" placeholder="Например, 4006381333931" autocomplete="off" /></label>
+                <div id="catalogProductCodeVariantHint" class="catalog-code-context" hidden><small></small><button type="button" class="btn btn-secondary btn-xs">Изменить</button></div>
+                <label id="catalogProductCodeVariantField" class="field" hidden><span>Фасовка штрихкода</span><select id="catalogProductCodeVariant"></select></label>
+              </div>
+              <div>
+                <label class="field"><span>Артикул магазина</span><input id="catalogProductSku" type="text" maxlength="160" placeholder="Например, 000-42" autocomplete="off" /></label>
+                <div id="catalogProductCodeOfferHint" class="catalog-code-context" hidden><small></small><button type="button" class="btn btn-secondary btn-xs">Изменить</button></div>
+                <label id="catalogProductCodeOfferField" class="field" hidden><span>Магазин</span><select id="catalogProductCodeOffer"></select></label>
+                <label id="catalogProductCodeShopField" class="field" hidden><span>Магазин для артикула</span><input id="catalogProductCodeShop" type="text" maxlength="160" placeholder="Например, Green" /></label>
+              </div>
+            </div>
+            <small id="catalogProductCodesStatus" class="muted-small" role="status"></small>
+            <button id="catalogProductCodesRetry" type="button" class="btn btn-secondary btn-xs" hidden>Повторить загрузку кодов</button>
+          </section>
           <section class="catalog-product-measurements" aria-label="Единицы и фасовка">
             <div class="form-grid">
               <label class="field"><span>Единица продажи</span><select id="catalogProductSaleUnit"><option value="">Не указана</option><option value="piece">шт.</option><option value="pack">упак.</option><option value="kg">кг</option><option value="g">г</option><option value="l">л</option><option value="ml">мл</option></select></label>

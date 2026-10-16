@@ -569,6 +569,7 @@
     if (!name) return;
     const payload = {
       name,
+      codes: window.App.getRuntimeModule("catalog-product-codes").payload(),
       brand_id: asId(el.catalogProductBrand?.value),
       category_id: asId(el.catalogProductCategory?.value),
       sale_unit: el.catalogProductSaleUnit.value || null,

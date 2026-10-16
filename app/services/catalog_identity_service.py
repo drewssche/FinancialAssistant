@@ -42,7 +42,7 @@ class CatalogIdentityService:
         return {'variants': [dict(id=v.id, name=v.name, is_archived=v.is_archived, **measurement_snapshot(v, json_safe=True), codes=codes.get(v.id, [])) for v in variants],
                 'offers': [dict(template_id=m.template_id, variant_id=m.variant_id, retailer_code=m.retailer_code, external_name=m.external_name, product_url=m.product_url) for m in mappings]}
 
-    def save_variant(self, *, user_id, product_id, data, variant_id=None):
+    def save_variant(self, *, user_id, product_id, data, variant_id=None, commit=True):
         product = self.product(user_id, product_id, lock=True)
         if product.is_archived:
             raise ValueError('Сначала восстановите товар из архива')
@@ -72,14 +72,15 @@ class CatalogIdentityService:
             self.db.execute(delete(CatalogVariantCode).where(CatalogVariantCode.variant_id == row.id, CatalogVariantCode.user_id == user_id))
             self.db.add_all([CatalogVariantCode(user_id=user_id, variant_id=row.id, code=code, gtin14=canonical) for canonical,code in codes.items()])
             ActivityService(self.db).record(user_id=user_id, actor_user_id=user_id, entity_type='catalog_product', entity_id=product_id, event_type='updated', title='Фасовка и штрихкоды сохранены', metadata={'variant_id':row.id, 'name':name, 'codes':list(codes.values()), 'is_archived':row.is_archived})
-            self.db.commit()
+            self.db.flush()
+            if commit: self.db.commit()
         except IntegrityError as exc:
             self.db.rollback()
             raise ValueError('Штрихкод уже занят другой фасовкой. Обновите карточку.') from exc
-        CatalogProductService(self.db)._invalidate(user_id)
+        if commit: CatalogProductService(self.db)._invalidate(user_id)
         return self.get(user_id=user_id, product_id=product_id)
 
-    def save_offer(self, *, user_id, product_id, template_id, data):
+    def save_offer(self, *, user_id, product_id, template_id, data, commit=True):
         self.product(user_id, product_id)
         offer = self.db.scalar(select(OperationItemTemplate).where(OperationItemTemplate.id == template_id, OperationItemTemplate.product_id == product_id, OperationItemTemplate.user_id == user_id))
         if offer is None:
@@ -99,6 +100,51 @@ class CatalogIdentityService:
             value = data[key]
             setattr(row,key,str(value).strip() or None if value is not None else None)
         ActivityService(self.db).record(user_id=user_id, actor_user_id=user_id, entity_type='catalog_product', entity_id=product_id, event_type='updated', title='Соответствие предложения сохранено', metadata={'template_id':template_id,'variant_id':row.variant_id,'retailer_code':row.retailer_code,'product_url':row.product_url})
-        self.db.commit()
-        CatalogProductService(self.db)._invalidate(user_id)
+        if commit: self.db.commit()
+        if commit: CatalogProductService(self.db)._invalidate(user_id)
         return self.get(user_id=user_id, product_id=product_id)
+
+    def save_product_codes(self, *, user_id, product_id, data):
+        """Join the product save transaction; identifiers never outlive a failed save."""
+        from app.services.item_source_service import ItemSourceService
+        from app.db.models.item_source import ItemSource
+        product = self.product(user_id, product_id, lock=True)
+        if product.is_archived:
+            raise ValueError('Сначала восстановите товар из архива')
+        for edit in data.get('barcodes', []):
+            variant_id = edit.get('variant_id')
+            if variant_id:
+                variant = self.db.scalar(select(CatalogVariant).where(CatalogVariant.id == variant_id, CatalogVariant.user_id == user_id, CatalogVariant.product_id == product_id, CatalogVariant.is_archived.is_(False)))
+                if variant is None:
+                    raise ValueError('Выберите действующую фасовку этого товара')
+            else:
+                matches = [v for v in self.db.scalars(select(CatalogVariant).where(CatalogVariant.user_id == user_id, CatalogVariant.product_id == product_id, CatalogVariant.is_archived.is_(False))) if measurement_snapshot(v) == measurement_snapshot(product)]
+                if len(matches) > 1:
+                    raise ValueError('Выберите фасовку для штрихкода')
+                variant = matches[0] if matches else None
+                if variant and self.db.scalar(select(CatalogVariantCode.id).where(CatalogVariantCode.variant_id == variant.id)):
+                    raise ValueError('У этого размера уже есть штрихкоды. Выберите его для изменения.')
+            if variant is None and not edit['codes']: continue
+            self.save_variant(user_id=user_id, product_id=product_id, variant_id=variant.id if variant else None,
+                data=dict(name=variant.name if variant else product.name[:160], codes=edit['codes'], is_archived=False, **measurement_snapshot(variant or product)), commit=False)
+        for edit in data.get('retailers', []):
+            code = edit['retailer_code'].strip()
+            if edit.get('template_id'):
+                offer = self.db.scalar(select(OperationItemTemplate).where(OperationItemTemplate.id == edit['template_id'], OperationItemTemplate.product_id == product_id, OperationItemTemplate.user_id == user_id, OperationItemTemplate.is_archived.is_(False)))
+                if offer is None: raise ValueError('Предложение магазина не найдено')
+            else:
+                if not code: continue
+                source = ItemSourceService(self.db).resolve(user_id=user_id, source_id=None, shop_name=edit.get('shop_name'))
+                if source is None: raise ValueError('Укажите магазин для артикула')
+                offers = list(self.db.scalars(select(OperationItemTemplate).where(OperationItemTemplate.user_id == user_id, OperationItemTemplate.product_id == product_id, OperationItemTemplate.source_id == source.id, OperationItemTemplate.is_archived.is_(False))))
+                if len(offers) > 1: raise ValueError('Выберите предложение этого магазина')
+                offer = offers[0] if offers else OperationItemTemplate(user_id=user_id, product_id=product_id, source_id=source.id, shop_name=source.name, shop_name_ci=source.name_ci, name=product.name, name_ci=product.name_ci, brand_id=product.brand_id, last_category_id=product.category_id, image_id=product.image_id)
+                if not offers: self.db.add(offer); self.db.flush()
+            if not offer.source_id: raise ValueError('У предложения не указан магазин')
+            self.db.scalar(select(ItemSource).where(ItemSource.id == offer.source_id, ItemSource.user_id == user_id).with_for_update())
+            if code and self.db.scalar(select(CatalogOfferIdentity).join(OperationItemTemplate, OperationItemTemplate.id == CatalogOfferIdentity.template_id).where(CatalogOfferIdentity.user_id == user_id, OperationItemTemplate.source_id == offer.source_id, CatalogOfferIdentity.retailer_code == code, CatalogOfferIdentity.template_id != offer.id)):
+                raise ValueError('Артикул этого магазина уже закреплён за другим товаром')
+            mapping = self.db.get(CatalogOfferIdentity, offer.id)
+            self.save_offer(user_id=user_id, product_id=product_id, template_id=offer.id, data=dict(
+                retailer_code=code, variant_id=mapping.variant_id if mapping else None,
+                external_name=mapping.external_name if mapping else None, product_url=mapping.product_url if mapping else None), commit=False)

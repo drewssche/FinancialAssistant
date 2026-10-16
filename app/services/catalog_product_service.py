@@ -145,6 +145,7 @@ class CatalogProductService:
         *,
         user_id: int,
         name: str,
+        codes: dict | None = None,
         brand_id: int | None,
         category_id: int | None,
         sale_unit: str | None = None,
@@ -163,6 +164,9 @@ class CatalogProductService:
             category_id=category_id,
             measurement=measurement,
         )
+        if codes:
+            from app.services.catalog_identity_service import CatalogIdentityService
+            CatalogIdentityService(self.db).save_product_codes(user_id=user_id, product_id=product.id, data=codes)
         self.db.commit()
         self._invalidate(user_id)
         return self.get(user_id=user_id, product_id=int(product.id))
@@ -372,6 +376,9 @@ class CatalogProductService:
             labels=self.ACTIVITY_LABELS,
             title="Товар изменён",
         )
+        if updates.get("codes"):
+            from app.services.catalog_identity_service import CatalogIdentityService
+            CatalogIdentityService(self.db).save_product_codes(user_id=user_id, product_id=product.id, data=updates["codes"])
         self.db.commit()
         self._invalidate(user_id)
         return self.get(user_id=user_id, product_id=product_id)
