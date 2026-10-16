@@ -28,7 +28,7 @@
     node("catalogIdentityVariant").innerHTML = '<option value="">Без связи с фасовкой</option>'+variants;
     node("catalogVariantSelect").value = selected;
     node("catalogIdentityVariant").value = mapped;
-    node('catalogVariantList').innerHTML = (data?.variants || []).map(v => `<button type="button" class="package-list-row" data-edit-variant="${Number(v.id)}"><span><strong>${esc(v.name)}</strong><small>${esc(window.App.measurements.summary(v))}${v.is_archived?' · архив':''}</small></span>${window.App.icons.svg('edit')}</button>`).join('') || '<p class="muted-small">Дополнительных размеров нет. Обычный размер укажите во вкладке «Товар».</p>';
+    node('catalogVariantList').innerHTML = (data?.variants || []).map(v => `<button type="button" class="package-list-row" data-edit-variant="${Number(v.id)}"><span><strong>${esc(v.name)}</strong><small>${esc(window.App.measurements.summary(v))}${v.codes?.length?' · '+esc(v.codes.join(', ')):''}${v.is_archived?' · архив':''}</small></span>${window.App.icons.svg('edit')}</button>`).join('') || '<p class="muted-small">Дополнительных размеров нет. Обычный размер укажите во вкладке «Товар».</p>';
   }
   async function load() {
     controller?.abort(); controller = new AbortController();

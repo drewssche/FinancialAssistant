@@ -160,7 +160,7 @@
     node('scanRows').replaceChildren();
     draft.rows.forEach((row,index)=>{
       const el=document.createElement('section');el.className='scan-row';
-      el.innerHTML=`<div class="scan-name"><label class="field"><span>Товар ${index+1}</span><input data-scan-field="name" maxlength="160" placeholder="Найти или ввести товар" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="scanCatalog${index}" required></label><div id="scanCatalog${index}" class="scan-catalog-list app-popover hidden" role="listbox" hidden></div></div>${iconButton('', 'trash', 'Удалить позицию '+(index+1))}<div class="scan-match"></div><label class="field scan-category"><span>Категория</span><select data-scan-category aria-label="Категория позиции"></select></label><div class="scan-sale-units" role="group" aria-label="Единица цены и количества"></div><div class="scan-row-numbers">${[['price','Цена за ед.'],['quantity','Кол-во'],['discount','Скидка, сумма'],['total','Оплачено']].map(([field,label])=>`<label class="field"><span>${label}</span><input data-scan-field="${field}" inputmode="decimal" aria-describedby="scanMathHint" required></label>`).join('')}</div><label class="field scan-discount-type"><span>Тип скидки</span><select data-scan-field="discount_type"><option value="promo">Акция</option><option value="loyalty_points">Баллы</option><option value="coupon">Купон</option></select></label>`;
+      el.innerHTML=`<div class="scan-name"><label class="field"><span>Товар ${index+1}</span><input data-scan-field="name" maxlength="160" placeholder="Найти или ввести товар" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="scanCatalog${index}" required></label><div id="scanCatalog${index}" class="scan-catalog-list app-popover hidden" role="listbox" hidden></div></div>${iconButton('', 'trash', 'Удалить позицию '+(index+1))}<div class="scan-match"></div><div class="scan-codes-host"></div><label class="field scan-category"><span>Категория</span><select data-scan-category aria-label="Категория позиции"></select></label><div class="scan-sale-units" role="group" aria-label="Единица цены и количества"></div><div class="scan-row-numbers">${[['price','Цена за ед.'],['quantity','Кол-во'],['discount','Скидка, сумма'],['total','Оплачено']].map(([field,label])=>`<label class="field"><span>${label}</span><input data-scan-field="${field}" inputmode="decimal" aria-describedby="scanMathHint" required></label>`).join('')}</div><label class="field scan-discount-type"><span>Тип скидки</span><select data-scan-field="discount_type"><option value="promo">Акция</option><option value="loyalty_points">Баллы</option><option value="coupon">Купон</option></select></label>`;
       const name=el.querySelector('[data-scan-field=name]'), list=el.querySelector('.scan-catalog-list'), match=el.querySelector('.scan-match');
       name.value=row.name;name.title=row.source||'';
       el.querySelector('[data-scan-field=price]').title='Цена за единицу до скидки';
@@ -174,7 +174,7 @@
       const unitTitle=document.createElement('span');unitTitle.textContent='Единица цены';unitHost.append(unitTitle);
       for(const [unit,label] of [['','Не указана'],...Object.entries(window.App.measurements.units)]){
         const button=document.createElement('button');button.type='button';button.className='btn btn-secondary measurement-unit';button.dataset.scanUnit=unit;button.textContent=label;
-        button.onclick=()=>{row.sale_unit=unit||null;row.measurement_touched=true;refreshUnits();node('scanConfirmed').checked=false;validate();};unitHost.append(button);
+        button.onclick=()=>{row.sale_unit=unit||null;row.variant_id=null;row.variant_snapshot=null;row.code_save=false;row.measurement_touched=true;refreshUnits();node('scanConfirmed').checked=false;validate();};unitHost.append(button);
       }
       function refreshUnits(){
         unitHost.querySelectorAll('button').forEach(button=>{const active=button.dataset.scanUnit===(row.sale_unit||'');button.classList.toggle('is-active',active);button.setAttribute('aria-pressed',String(active));});
@@ -183,10 +183,11 @@
           input.previousElementSibling.textContent=field==='price'?window.App.measurements.priceLabel(row):window.App.measurements.quantityLabel(row);
         }
       }
-      function unlink(){delete row.catalog;refreshCategory();if(!row.measurement_touched)row.sale_unit=null;refreshUnits();}
+      function unlink(){delete row.catalog;row.variant_id=null;row.variant_snapshot=null;row.code_match_label='';row.code_save=false;refreshCategory();if(!row.measurement_touched)row.sale_unit=null;refreshUnits();}
       refreshUnits();
       let options=[],active=-1;
       function choose(item){
+        unlink();
         row.catalog=catalog().identity(item,node('scanShop').value);
         row.name=row.catalog.name;name.value=row.name;refreshCategory();
         if(!row.measurement_touched)row.sale_unit=row.catalog.sale_unit;
@@ -206,7 +207,7 @@
       el.refreshCatalog=()=>{
         match.replaceChildren();match.classList.toggle('is-linked',!!row.catalog);
         if(row.catalog){
-          const label=document.createElement('span');label.textContent='Из каталога · '+(row.catalog.product_name||row.name);match.append(label);
+          const label=document.createElement('span');label.textContent=(row.code_match_label||'Из каталога')+' · '+(row.catalog.product_name||row.name);match.append(label);
           const clear=document.createElement('button');clear.type='button';clear.className='btn btn-secondary btn-icon';window.App.icons.apply(clear,'unlink','Отвязать товар каталога');clear.onclick=()=>{unlink();node('scanConfirmed').checked=false;el.refreshCatalog();validate();};match.append(clear);
         }else if(row.name.trim()){
           const candidates=catalog().suggestions(row.name,node('scanShop').value,3);
@@ -249,6 +250,17 @@
       });
       el.querySelector(':scope > button').onclick=()=>{draft.rows.splice(index,1);node('scanConfirmed').checked=false;renderRows();validate();};
       el.unlinkCatalog=unlink;node('scanRows').append(el);el.refreshCatalog();
+      el.refreshCodes=()=>{
+        const key=JSON.stringify([node('scanShop').value,(row.code_entries||[]).map(e=>[e.code,e.manual_kind?e.kind:'auto'])]);
+        const auto=!row.catalog&&row.code_auto_attempted!==key;row.code_auto_attempted=key;
+        window.App.receiptCodes.mount(el.querySelector('.scan-codes-host'),{row,shop:()=>node('scanShop').value,auto,
+          onChange:()=>{node('scanConfirmed').checked=false;validate();},
+          onSelect:found=>{
+            window.App.receiptCodes.apply(row,found);row.catalog={...found};name.value=row.name;
+            refreshCategory();refreshUnits();el.refreshCatalog();closeCatalogLists();node('scanConfirmed').checked=false;validate();
+          },
+        });
+      };el.refreshCodes();
     });
   }
   dialog.addEventListener('pointerdown',e=>{if(!e.target.closest('.scan-name'))closeCatalogLists();});
@@ -259,7 +271,7 @@
     node('scanArithmetic').classList.toggle('scan-error',!!errors.length);
     node('scanTransfer').disabled=errors.length>0||!node('scanConfirmed').checked||transferred;return errors;
   }
-  for(const id of ['scanDate','scanShop','scanTotal','scanCurrency'])node(id).addEventListener('input',()=>{node('scanConfirmed').checked=false;if(id==='scanShop'){node('scanRows').querySelectorAll('.scan-row').forEach(el=>el.unlinkCatalog());refreshCatalog();}validate();});
+  for(const id of ['scanDate','scanShop','scanTotal','scanCurrency'])node(id).addEventListener('input',()=>{node('scanConfirmed').checked=false;if(id==='scanShop'){node('scanRows').querySelectorAll('.scan-row').forEach(el=>{el.unlinkCatalog();el.refreshCodes?.();});refreshCatalog();}validate();});
   function commitCalculation(input) {
     const quantity=input.dataset.scanField==='quantity';
     const result=inputNumber(input.value,quantity);
@@ -287,7 +299,7 @@
     modal.setOperationKind('create','expense');
     node('opDate').value=draft.date;node('opDate').dispatchEvent(new Event('change',{bubbles:true}));
     node('opCurrency').value=node('scanCurrency').value;node('opCurrency').dispatchEvent(new Event('change',{bubbles:true}));
-    state.createReceiptItems=draft.rows.map(r=>modal.createReceiptDraft({...r.catalog,category_id:r.category_touched?r.category_id:r.catalog?.category_id,category_touched:Boolean(r.category_touched),name:r.name,quantity:r.quantity,shop_name:draft.shop,sale_unit:r.sale_unit||null,measurement_touched:true,
+    state.createReceiptItems=draft.rows.map(r=>modal.createReceiptDraft({...r.catalog,category_id:r.category_touched?r.category_id:r.catalog?.category_id,category_touched:Boolean(r.category_touched),name:r.name,quantity:r.quantity,shop_name:draft.shop,...window.App.measurements.snapshot(r),variant_id:r.variant_id||null,variant_snapshot:r.variant_snapshot||null,code_entries:r.code_entries||[],code_save:Boolean(r.code_save),code_match_label:r.code_match_label||'',measurement_touched:true,
       unit_price:r.price/100, is_discounted:r.discount>0, regular_unit_price:r.discount>0?r.price/100:null,
       discount_mode:r.discount>0?'amount':null, discount_value:r.discount>0?r.discount/100:null,
       discount_type:r.discount>0?r.discount_type||'promo':null,note:('OCR: '+r.source).slice(0,300)},'create'));

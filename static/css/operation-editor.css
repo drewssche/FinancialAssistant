@@ -43,7 +43,7 @@
 }
 :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .is-compact.receipt-item-known .receipt-item-identity { display: none; }
 :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .is-compact:not(.receipt-item-known) .receipt-item-identity { grid-template-columns: 1fr; grid-template-areas: "name"; }
-:is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .is-compact :is(.receipt-shop-cell, .receipt-brand-cell, .receipt-category-cell, .receipt-measurements, .receipt-price-hint) { display: none; }
+:is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .is-compact :is(.receipt-shop-cell, .receipt-brand-cell, .receipt-category-cell, .receipt-measurements, .receipt-price-hint, .receipt-codes-host) { display: none; }
 :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-name-input { width: 100%; max-width: none; min-height: 42px; }
 :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-item-money {
   grid-area: money; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .8fr) minmax(60px, .8fr) 36px; gap: 8px; align-items: start;
@@ -221,3 +221,22 @@
  :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-item-row.is-compact.discount-open:not(.receipt-item-known):not(.receipt-item-empty) {grid-template-areas:"summary money details" "identity money ." "discount discount discount";}
  :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-item-row.is-compact.receipt-item-known.discount-open {grid-template-areas:"summary money details" "discount discount discount";}
 }
+
+.receipt-codes-host {grid-column:1 / -1;min-width:0;}
+.receipt-codes {min-width:0;font-size:13px;}
+.receipt-codes summary {cursor:pointer;color:var(--text-muted);padding:8px 0;}
+.receipt-code-fields {display:grid;gap:8px;}
+.receipt-code-line {display:grid;grid-template-columns:minmax(0,1fr) 130px 40px;gap:8px;align-items:center;}
+.receipt-code-line input,.receipt-code-line select {min-width:0;width:100%;}
+.receipt-code-actions {display:flex;gap:8px;margin:8px 0;flex-wrap:wrap;}
+.receipt-code-save {display:flex;gap:8px;align-items:center;margin:8px 0;}
+.receipt-code-save input {width:auto;}
+.receipt-code-results {display:grid;gap:8px;}
+.receipt-code-result {display:flex;flex-direction:column;align-items:flex-start;text-align:left;white-space:normal;}
+.receipt-code-result small {opacity:.8;}
+@media(max-width:480px){.receipt-code-line {grid-template-columns:minmax(0,1fr) 40px;}.receipt-code-line select{grid-row:2;grid-column:1 / -1;}.receipt-code-line .btn{grid-row:1;grid-column:2;}}
+
+:is(#createModal, #editModal).operation-editor .receipt-code-save input {width:auto;}
+:is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-code-save {display:flex;align-items:center;justify-content:flex-start;gap:8px;}
+:is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-code-save input {flex:0 0 18px;width:18px;height:18px;min-height:18px;margin:0;}
+.receipt-codes .muted-small {margin:8px 0;line-height:1.4;}

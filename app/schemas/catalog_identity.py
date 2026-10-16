@@ -1,3 +1,4 @@
+from typing import Literal
 from pydantic import BaseModel, Field, HttpUrl, field_validator
 from app.schemas.operation import MeasurementFields
 
@@ -20,3 +21,14 @@ class OfferIdentityInput(BaseModel):
         if value and (value.username or value.password or len(str(value)) > 2048):
             raise ValueError('Ссылка не должна содержать логин/пароль и должна быть короче 2048 символов')
         return value
+
+
+class LookupCodeInput(BaseModel):
+    kind: Literal['barcode', 'retailer', 'unknown'] = 'unknown'
+    code: str = Field(min_length=1, max_length=160)
+
+
+class ReceiptCodeLookupInput(BaseModel):
+    codes: list[LookupCodeInput] = Field(min_length=1, max_length=10)
+    shop_name: str = Field(default='', max_length=160)
+    source_id: int | None = Field(default=None, gt=0)

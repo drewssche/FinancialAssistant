@@ -1540,6 +1540,7 @@ class OperationService:
                     "category_touched": bool(item.get("category_touched")),
                     "shop_name": shop_name,
                     "name": name,
+                    "catalog_codes": item.get("catalog_codes") or [],
                     **normalize_measurement(item),
                     **variant_snapshot(item),
                     **({"variant_id": int(item["variant_id"])} if item.get("variant_id") is not None else {}),

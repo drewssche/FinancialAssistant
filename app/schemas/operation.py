@@ -32,7 +32,13 @@ class ReceiptVariantSnapshot(BaseModel):
     codes: list[Annotated[str, Field(min_length=8, max_length=14, pattern=r"^[0-9]+$")]] = Field(default_factory=list, max_length=30)
 
 
+class ReceiptCodeIn(BaseModel):
+    kind: Literal["barcode", "retailer"]
+    code: str = Field(min_length=1, max_length=160)
+
+
 class OperationReceiptItemIn(MeasurementFields):
+    catalog_codes: list[ReceiptCodeIn] = Field(default_factory=list, max_length=10)
     variant_id: int | None = Field(default=None, ge=1)
     variant_snapshot: ReceiptVariantSnapshot | None = None
     template_id: int | None = Field(default=None, ge=1)

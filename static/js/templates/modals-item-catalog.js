@@ -187,9 +187,9 @@
                 <label class="field"><span>Предложение магазина</span><select id="catalogIdentityOffer"></select></label>
                 <label class="field"><span>Размер упаковки</span><select id="catalogIdentityVariant"></select></label>
                 <label class="field"><span>Код товара в магазине</span><input id="catalogIdentityCode" maxlength="160" /></label>
-                <label class="field"><span>Название на сайте / в чеке</span><input id="catalogIdentityName" maxlength="320" /></label>
+                <details class="catalog-code-extra"><summary>Ссылка и название на сайте</summary><label class="field"><span>Название на сайте / в чеке</span><input id="catalogIdentityName" maxlength="320" /></label>
                 <label class="field"><span>Ссылка на товар</span><input id="catalogIdentityUrl" type="url" maxlength="2048" placeholder="https://…" /></label>
-                <small class="muted-small">Ссылка для сопоставления; автоматическая проверка цен пока не подключена.</small>
+                <small class="muted-small">Ссылка для сопоставления; автоматическая проверка цен пока не подключена.</small></details>
                 <button type="submit" class="btn btn-secondary btn-icon" title="Сохранить соответствие" aria-label="Сохранить соответствие">${window.App.icons.svg("save")}</button>
               </form>
             </div>

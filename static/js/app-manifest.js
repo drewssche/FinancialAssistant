@@ -19,6 +19,7 @@
     "/static/js/app-purchase-metrics.js",
     "/static/js/app-core-utils.js",
     "/static/js/app-core-actions.js",
+    "/static/js/app-receipt-codes.js",
     "/static/js/app-runtime-registry.js",
     "/static/js/app-choice-dialog.js",
     "/static/js/app-context-actions.js",

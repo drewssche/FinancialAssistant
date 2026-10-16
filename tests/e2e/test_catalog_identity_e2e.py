@@ -49,6 +49,8 @@ def test_variant_codes_offer_mapping_and_parent_draft(static_server_url,page_wit
     page.locator('[data-package-task="shops"]').click()
     page.locator('#catalogIdentityVariant').select_option('1')
     page.locator('#catalogIdentityCode').fill('000-42')
+    expect(page.locator('#catalogIdentityUrl')).to_be_hidden()
+    page.locator('.catalog-code-extra summary').click()
     page.locator('#catalogIdentityName').fill('МОЛОКО 900МЛ')
     page.locator('#catalogIdentityUrl').fill('https://example.com/item/42')
     page.evaluate("value => window.App.getRuntimeModule('catalog-identity').refresh(window.App.getRuntimeModule('catalog-products').normalizeProduct(value))", product)

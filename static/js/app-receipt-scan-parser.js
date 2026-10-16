@@ -3,7 +3,18 @@
   const money = value => /^\d{1,7}[.,]\d{2}$/.test(String(value).trim()) ? Math.round(Number(String(value).replace(',', '.')) * 100) : null;
   const subtotal = (price, quantity) => Number((BigInt(price) * BigInt(Math.round(quantity * 1000)) + 500n) / 1000n);
   const amountAtEnd = line => money(line.match(/(?:^|[^\d.,])(\d{1,7}[.,]\d{2})\s*$/)?.[1] || '');
-  const cleanName = line => line.replace(/^\d{5,14}\s+(?=[а-яa-z])/i, '').replace(/(?:^|\s)\d{8,14}(?=\s|$)/g, ' ').replace(/\s+/g, ' ').trim();
+  const cleanName = line => line.replace(/(?:артикул|арт\.|код товара)\s*[:№]?\s*[a-zа-я0-9_-]+/gi, '').replace(/^\d{4,14}\s+(?=[а-яa-z])/i, '').replace(/(?:^|\s)\d{8,14}(?=\s|$)/g, ' ').replace(/\s+/g, ' ').trim();
+  function extractCodes(source) {
+    const found=new Map();
+    for(const line of source.split('\n')){
+      for(const match of line.matchAll(/(?<![\d.,])\d{8,14}(?![\d.,])/g))found.set(match[0],{kind:'unknown',code:match[0]});
+      const prefix=line.match(/^\s*(\d{4,7})\s+(?=[а-яa-z])/i);
+      if(prefix)found.set(prefix[1],{kind:'unknown',code:prefix[1]});
+      const labelled=line.match(/(?:артикул|арт\.|код товара)\s*[:№]?\s*([a-zа-я0-9_-]+)/i);
+      if(labelled)found.set(labelled[1],{kind:'retailer',code:labelled[1],manual_kind:true});
+    }
+    return [...found.values()].slice(0,10);
+  }
   function validDate(value) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
     const d = new Date(`${value}T12:00:00Z`);
@@ -75,10 +86,12 @@
         // turn OCR lookalikes (!/I/O) into digits or infer price from the total.
         if(rows.length<151)rows.push({name:names.map(cleanName).join(' '),price:null,quantity:null,printed_total:amountAtEnd(normalized),total:amountAtEnd(normalized),discount:0,discount_type:null,source:[...names,rawLine].join('\n'),issue:'Проверьте нераспознанную строку'});
         names=[];pendingDiscount=false;
-      } else if (/^[\d\s.,*xх−-]+$/.test(line)) continue;
+      } else if (/^\d{5,14}$/.test(line) && names.length) names.push(line);
+      else if (/^[\d\s.,*xх−-]+$/.test(line)) continue;
       else if (/упн|скко|платеж|документ|^[№N]\s*док|кол.?во|^цена|^г\.\s*минск|^чек:|^касса/i.test(line)) names = [];
       else if (/[а-яa-z]/i.test(line)) names = [...names, rawLine].slice(-4);
     }
+    for(const row of rows) row.code_entries=extractCodes(row.source);
     if (dates.size !== 1) warnings.push('Проверьте дату покупки по чеку');
     if (totals.size !== 1) warnings.push('Проверьте итог к оплате');
     if (!rows.length) warnings.push('Строки не распознаны — исправьте текст или добавьте вручную');

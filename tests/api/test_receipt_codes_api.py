@@ -1,0 +1,108 @@
+from app.main import app
+from app.api.deps import get_current_user_id
+from tests.api.test_catalog_product_linkage_api import client, _source
+from tests.api.test_catalog_identity_api import product, variant, get, CODE
+
+
+def lookup(client,codes,shop='Green'):
+    result=client.post('/api/v1/operations/catalog-products/lookup-codes',json={'codes':codes,'shop_name':shop})
+    assert result.status_code==200,result.text
+    return result.json()
+
+
+def receipt(client,entries,**fields):
+    row={'name':'Молоко','shop_name':'Green','quantity':'2','unit_price':'3.10',
+         'sale_unit':'pack','package_quantity':'900','package_unit':'ml','catalog_codes':entries,**fields}
+    return client.post('/api/v1/operations',json={'kind':'expense','operation_date':'2026-10-16','receipt_items':[row]})
+
+
+def test_atomic_codes_new_product_exact_lookup_and_repeat_edit(client):
+    codes=[{'kind':'barcode','code':'0'+CODE},{'kind':'retailer','code':'000-42'}]
+    result=receipt(client,codes)
+    assert result.status_code==201,result.text
+    operation=result.json();row=operation['receipt_items'][0];p=row['product_id']
+    assert str(operation['receipt_total'])=='6.20'
+    assert row['variant_snapshot']['codes']==['0'+CODE]
+    identity=get(client,p)
+    assert identity['offers'][0]['retailer_code']=='000-42'
+    matched=lookup(client,[{'kind':'barcode','code':CODE},{'kind':'retailer','code':'000-42'}])
+    assert matched['auto_match'] and len(matched['items'])==1
+    assert matched['items'][0]['product_id']==p
+    assert set(matched['items'][0]['matched_by'])=={'barcode','retailer'}
+    assert matched['items'][0]['package_quantity']=='900.000'
+    assert not lookup(client,[{'kind':'retailer','code':'000-42'}],'Соседи')['items']
+    # Repeat an existing receipt save: append-only registration must not duplicate codes or change money.
+    updated=client.patch(f"/api/v1/operations/{operation['id']}",json={'receipt_items':[{**row,'catalog_codes':codes}]})
+    assert updated.status_code==200,updated.text
+    assert updated.json()['receipt_total']==operation['receipt_total']
+    assert len(get(client,p)['variants'])==1
+    app.dependency_overrides[get_current_user_id]=lambda:2
+    assert lookup(client,codes)['items']==[]
+
+
+def test_conflicting_codes_roll_back_all_receipt_changes(client):
+    p=product(client);assert variant(client,p).status_code==201
+    before=client.get('/api/v1/operations').json()['total']
+    rejected=receipt(client,[{'kind':'barcode','code':CODE},{'kind':'retailer','code':'new-sku'}],name='Другой товар')
+    assert rejected.status_code==400,rejected.text
+    assert client.get('/api/v1/operations').json()['total']==before
+    assert lookup(client,[{'kind':'retailer','code':'new-sku'}])['items']==[]
+    assert len(get(client,p)['variants'])==1
+
+
+def test_sku_is_source_scoped_and_ambiguity_never_auto_matches(client):
+    first=receipt(client,[{'kind':'retailer','code':'00042'}]);assert first.status_code==201,first.text
+    second=receipt(client,[{'kind':'barcode','code':CODE},{'kind':'retailer','code':'00042'}],name='Другое молоко',shop_name='Соседи')
+    assert second.status_code==201,second.text
+    assert lookup(client,[{'kind':'retailer','code':'00042'}])['items'][0]['product_id']==first.json()['receipt_items'][0]['product_id']
+    assert lookup(client,[{'kind':'retailer','code':'00042'}],'Соседи')['items'][0]['product_id']==second.json()['receipt_items'][0]['product_id']
+    result=lookup(client,[{'kind':'barcode','code':CODE},{'kind':'retailer','code':'00042'}])
+    assert len(result['items'])==2 and not result['auto_match']
+    assert not lookup(client,[{'kind':'unknown','code':'000042'}])['items']
+
+
+def test_invalid_archived_weight_and_foreign_variants(client):
+    p=product(client);v=variant(client,p).json()['variants'][0]
+    bad=lookup(client,[{'kind':'barcode','code':'4006381333932'}])
+    assert bad['warnings'] and not bad['auto_match'] and not bad['items']
+    assert receipt(client,[{'kind':'barcode','code':'4006381333932'}]).status_code==400
+    client.put(f"/api/v1/operations/catalog-products/{p}/variants/{v['id']}",json={**v,'is_archived':True})
+    assert not lookup(client,[{'kind':'barcode','code':CODE}])['items']
+    prefix='223186022940'
+    weight=prefix+str((10-sum(int(n)*(3 if i%2==0 else 1) for i,n in enumerate(reversed(prefix)))%10)%10)
+    weighted=receipt(client,[{'kind':'barcode','code':weight}],name='Колбаса')
+    assert weighted.status_code==201,weighted.text
+    result=lookup(client,[{'kind':'barcode','code':weight}])
+    assert len(result['items'])==1 and not result['auto_match'] and result['warnings']
+
+
+def test_plan_code_registration_and_confirmation_preserve_identity(client):
+    result=client.post('/api/v1/plans',json={'kind':'expense','scheduled_date':'2026-10-20','receipt_items':[
+        {'name':'Молоко','shop_name':'Green','quantity':'1','unit_price':'3.10','catalog_codes':[{'kind':'barcode','code':CODE}]}]})
+    assert result.status_code==201,result.text
+    row=result.json()['receipt_items'][0]
+    assert row['variant_snapshot']['codes']==[CODE]
+    assert lookup(client,[{'kind':'barcode','code':CODE}])['items'][0]['product_id']==row['product_id']
+    confirmed=client.post(f"/api/v1/plans/{result.json()['id']}/confirm")
+    assert confirmed.status_code==200,confirmed.text
+    saved=confirmed.json()['operation']['receipt_items'][0]
+    assert saved['product_id']==row['product_id']
+    assert saved['variant_snapshot']==row['variant_snapshot']
+
+
+def test_existing_sku_without_variant_corroborates_barcode_and_conflicts_do_not_reassign(client):
+    p=product(client);s=_source(client,'Green')
+    from tests.api.test_catalog_product_linkage_api import _operation
+    op=_operation(client,product_id=p,source_id=s,name='Молоко',price='3',operation_date='2026-10-01')
+    offer=op['receipt_items'][0]['template_id']
+    assert variant(client,p).status_code==201
+    endpoint=f'/api/v1/operations/catalog-products/{p}/offers/{offer}/identity'
+    assert client.put(endpoint,json={'retailer_code':'sku-1'}).status_code==200
+    result=lookup(client,[{'kind':'barcode','code':CODE},{'kind':'retailer','code':'sku-1'}])
+    assert len(result['items'])==1 and result['auto_match']
+    assert set(result['items'][0]['matched_by'])=={'barcode','retailer'}
+    denied=receipt(client,[{'kind':'retailer','code':'sku-1'}],name='Другой товар')
+    assert denied.status_code==400,denied.text
+    assert get(client,p)['offers'][0]['retailer_code']=='sku-1'
+    # A direct type choice is required to persist a damaged/uncertain OCR candidate.
+    assert receipt(client,[{'kind':'unknown','code':'1234567'}]).status_code==422

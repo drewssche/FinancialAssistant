@@ -157,3 +157,25 @@ def test_unreadable_discount_is_unknown_not_zero():
     d=run('ООО Тест\n№ ДОК\nХлеб\n1.99 x1.000 1.99\nСкидка -0.7\nИТОГО К ОПЛАТЕ 1.99\n14.10.2026 12:00:00')
     assert d['draft']['rows'][0]['discount'] is None and d['draft']['rows'][0]['total'] is None
     assert d['errors']
+
+
+def test_item_codes_preserve_zeroes_and_exclude_receipt_metadata():
+    parsed=run('''ООО ГРИНРОЗНИЦА
+УНП 191634233
+№ ДОК 123456789
+0012345 Пельмени 430г
+04006381333931 7.11 x1.000 7.11
+Скидка -0.71
+Молоко
+арт. AB-0042
+4006381333931
+3.00 x1.000 3.00
+ИТОГО К ОПЛАТЕ 9.40
+13.10.2026 18:24:04
+Карта 1234567890123''')['draft']
+    first,second=parsed['rows']
+    assert first['code_entries']==[{'kind':'unknown','code':'0012345'},{'kind':'unknown','code':'04006381333931'}]
+    assert {e['code'] for e in second['code_entries']}=={'AB-0042','4006381333931'}
+    assert second['code_entries'][0]['kind']=='retailer'
+    assert second['name']=='Молоко'
+    assert first['price']==711 and first['total']==640

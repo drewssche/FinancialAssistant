@@ -702,6 +702,9 @@ class OperationItemTemplateService:
                 user_id=user_id,
                 template=template,
             )
+            if item.get("catalog_codes"):
+                from app.services.receipt_code_service import ReceiptCodeService
+                ReceiptCodeService(self.db).attach(user_id=user_id, product=product, template=template, item=item)
             self._resolve_receipt_variant(user_id=user_id, product_id=int(product.id), item=item)
             previous_categories = self._apply_receipt_product_metadata(
                 user_id=user_id,
@@ -866,6 +869,9 @@ class OperationItemTemplateService:
                 user_id=user_id,
                 template=template,
             )
+            if item.get("catalog_codes"):
+                from app.services.receipt_code_service import ReceiptCodeService
+                ReceiptCodeService(self.db).attach(user_id=user_id, product=product, template=template, item=item)
             self._resolve_receipt_variant(user_id=user_id, product_id=int(product.id), item=item)
             previous_categories = self._apply_receipt_product_metadata(
                 user_id=user_id,

@@ -160,6 +160,9 @@
       state[ctx.seqKey] = Number(state[ctx.seqKey] || 0) + 1;
       return {
         draft_id: state[ctx.seqKey],
+        code_entries: structuredClone(seed.code_entries || seed.catalog_codes || (seed.variant_snapshot?.codes || []).map(code=>({kind:"barcode",code}))),
+        code_save: Boolean(seed.code_save),
+        code_match_label: seed.code_match_label || "",
         details_expanded: Boolean(seed.details_expanded),
         discount_expanded: false,
         template_id: seed.template_id || null,
@@ -201,6 +204,8 @@
     }
 
     function unlinkReceiptTemplateIdentity(item, options = {}) {
+      item.code_save=false;item.code_match_label="";
+      item.code_entries=(item.code_entries||[]).filter(e=>!e.from_catalog);item.codes_loaded_entity=null;
       item.template_id = null;
       if (!options.preserveProduct) {
         item.product_id = null;
@@ -451,7 +456,7 @@
       const name = normalizeReceiptName(item?.name || "");
       const qty = asQty(item?.quantity || 0);
       const price = asMoney(item?.unit_price || 0);
-      return !shopName && !brandId && !brandName && !name && qty <= 0 && price <= 0;
+      return !shopName && !brandId && !brandName && !name && qty <= 0 && price <= 0 && !item.code_entries?.some(e=>e.code.trim());
     }
 
     function hasReceiptRowName(item) {
@@ -631,11 +636,12 @@
           <div class="receipt-item-row ${known ? "receipt-item-known" : ""} ${compact ? "is-compact" : ""} ${!item.name && !item.is_discounted && !item.unit_price && !item.quantity ? "receipt-item-empty" : ""} ${item.discount_expanded ? "discount-open" : ""} ${item.is_discounted ? "receipt-item-row-discounted" : ""} ${hasOpenPicker ? "has-open-popover" : ""}" data-receipt-mode="${mode}" data-receipt-item-id="${item.draft_id}">
             ${known ? `<div class="receipt-compact-heading">
               <div><button class="receipt-compact-name" type="button" ${item.product_id ? `data-open-receipt-product-card="${Number(item.product_id)}"` : `data-open-receipt-template-card="${Number(item.template_id)}"`}>${esc(item.product_name || item.name)}</button>
-              <small>${esc([brandName, item.shop_name || "Без источника", item.variant_snapshot?.name, (item.sale_unit || item.package_quantity ? window.App.measurements.summary(item) : "")].filter(Boolean).join(" · "))}</small></div>
+              <small>${esc([brandName, item.shop_name || "Без источника", item.code_match_label, item.variant_snapshot?.name, (item.sale_unit || item.package_quantity ? window.App.measurements.summary(item) : "")].filter(Boolean).join(" · "))}</small></div>
             </div>` : ""}
             ${!known ? `<div class="receipt-compact-heading receipt-new-heading"><span>${item.name ? "Новый товар" : "Добавить товар"}</span></div>` : ""}
             <button class="btn btn-secondary btn-xs ${compact ? "" : "is-active"}" type="button" data-receipt-details-toggle="${item.draft_id}" aria-label="Подробности товара" aria-expanded="${!compact}" title="${compact ? "Показать подробности товара" : "Скрыть подробности товара"}">Детали</button>
             <div class="receipt-item-identity">
+              <div class="receipt-codes-host"></div>
               <div class="receipt-shop-cell ${shopPickerOpen ? "has-open-popover" : ""}">
                 <input type="text" data-receipt-field="shop_name" value="${esc(item.shop_name || "")}" placeholder="Источник" title="${esc(item.shop_name || "Источник")}" autocomplete="off" aria-label="Источник позиции" />
                 <div class="receipt-shop-picker app-popover ${shopPickerOpen ? "" : "hidden"}"></div>
@@ -718,6 +724,13 @@
           </div>
         `;
       }).join("");
+      ctx.listNode.querySelectorAll('.receipt-codes-host').forEach(host => {
+        const id=Number(host.closest('[data-receipt-item-id]').dataset.receiptItemId);
+        const item=getReceiptItems(mode).find(item=>item.draft_id===id);
+        window.App.receiptCodes.mount(host,{row:item,shop:()=>item.shop_name||'',loadKnown:item.details_expanded,
+          onSelect:found=>{const empty=!hasReceiptRowName(item);window.App.receiptCodes.apply(item,found);if(empty&&!item.quantity)item.quantity=1;ensureTrailingReceiptRow(mode);renderReceiptItems(mode);renderReceiptSummary(mode);ctx.listNode.querySelector(`[data-receipt-item-id="${id}"] .receipt-codes summary`)?.focus({preventScroll:true});},
+        });
+      });
       ctx.listNode.querySelectorAll('[data-receipt-field="category_search"]').forEach(input => {
         core.setCategoryInputIcon(input, state.categories.find(category => Number(category.id) === Number(input.dataset.receiptEffectiveCategoryId)));
       });
@@ -1006,6 +1019,7 @@
           name: normalizeReceiptName(item.name),
           ...(item.note ? { note: item.note } : {}),
           ...window.App.measurements.snapshot(item),
+          catalog_codes: window.App.receiptCodes.payload(item),
           variant_id: item.variant_id || null,
           variant_snapshot: item.variant_snapshot || null,
           quantity: String(asQty(item.quantity || 0)),
@@ -1037,6 +1051,7 @@
           name: normalizeReceiptName(item.name),
           ...(item.note ? { note: item.note } : {}),
           ...window.App.measurements.snapshot(item),
+          catalog_codes: window.App.receiptCodes.payload(item),
           variant_id: item.variant_id || null,
           variant_snapshot: item.variant_snapshot || null,
           quantity: String(asQty(item.quantity || 0)),

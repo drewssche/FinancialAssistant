@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.api.deps import get_current_user_id
 from app.db.session import get_db
-from app.schemas.catalog_identity import VariantInput, OfferIdentityInput
+from app.schemas.catalog_identity import VariantInput, OfferIdentityInput, ReceiptCodeLookupInput
+from app.services.receipt_code_service import ReceiptCodeService
 from app.services.catalog_identity_service import CatalogIdentityService
 
 router = APIRouter(prefix='/operations/catalog-products', tags=['operations'])
@@ -17,6 +18,11 @@ def run(action):
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post('/lookup-codes')
+def lookup_receipt_codes(payload: ReceiptCodeLookupInput, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    return run(lambda: ReceiptCodeService(db).lookup(user_id=user_id, **payload.model_dump()))
 
 
 @router.get('/{product_id}/identity')
