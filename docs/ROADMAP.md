@@ -681,3 +681,10 @@ Automatic GitHub CI runs on pushes and pull requests are disabled at the owner�
 - [x] Saving a changed size records “Размер товара изменён” in existing product activity with old/new values and timestamp; unchanged saves do not duplicate it. Existing receipt snapshots, registry data and backend compatibility endpoints remain intact. This records an edit, without inventing a market replacement date or a confirmed shrinkflation relationship.
 - [x] Validation: 32 distinct API/frontend checks and 20 browser scenarios pass across scoped runs. Covers size-history before/after values, unchanged saves, failed-code rollback, old receipt amount/size preservation, new-product entry order, cancel/reopen, 320/390/1440 px, and receipt-code scan/selection regression. Desktop/mobile previews, JavaScript syntax and diff checks pass.
 - [ ] Publication still requires the explicit main/server authorization requested after the earlier automatic review rejection. Local implementation only.
+
+### Codes inside source cards — 2026-10-16
+
+- [x] Move barcode/SKU entry out of Product and directly into each source card in Offers. The card supplies store context, eliminating a separate source selector. Respect a source's linked size when present; otherwise use the current product size. Shared-size barcode drafts stay synchronized across source cards; store SKUs remain independent.
+- [x] Keep one save action, now visible at the right of the Offers footer as well as Product. Cancel/tab switching retain existing draft semantics; missing required product name returns to Product without losing code edits. New products use the existing save/add-source flow. No backend or data migration changes.
+- [x] Validation: 21 API/frontend checks and 13 browser cases pass, including 320/390/1440 px, shared and distinct package codes, SKU isolation, saving from Offers, invalid input, cancel/reopen, load/retry, size edits and required-name focus. Mobile/desktop previews, JavaScript syntax and diff checks pass.
+- [ ] Publication pending the previously requested explicit authorization; server unchanged.

@@ -135,22 +135,6 @@
             <span>Название товара</span>
             <input id="catalogProductName" type="text" maxlength="160" placeholder="Например, Сырок с печеньем клубника 40 г" required />
           </label>
-          <section class="catalog-product-codes" aria-label="Коды товара">
-            <div class="catalog-product-codes-grid">
-              <div>
-                <label class="field"><span>Штрихкод</span><input id="catalogProductBarcode" type="text" maxlength="480" placeholder="Например, 4006381333931" autocomplete="off" /></label>
-                <label id="catalogProductCodeVariantField" class="field" hidden><span>Запись для этого размера</span><select id="catalogProductCodeVariant"></select></label>
-              </div>
-              <div>
-                <label class="field"><span>Артикул магазина</span><input id="catalogProductSku" type="text" maxlength="160" placeholder="Например, 000-42" autocomplete="off" /></label>
-                <div id="catalogProductCodeOfferHint" class="catalog-code-context" hidden><small></small><button type="button" class="btn btn-secondary btn-xs">Изменить</button></div>
-                <label id="catalogProductCodeOfferField" class="field" hidden><span>Магазин</span><select id="catalogProductCodeOffer"></select></label>
-                <label id="catalogProductCodeShopField" class="field" hidden><span>Магазин для артикула</span><input id="catalogProductCodeShop" type="text" maxlength="160" placeholder="Например, Green" /></label>
-              </div>
-            </div>
-            <small id="catalogProductCodesStatus" class="muted-small" role="status"></small>
-            <button id="catalogProductCodesRetry" type="button" class="btn btn-secondary btn-xs" hidden>Повторить загрузку кодов</button>
-          </section>
           <section class="catalog-product-measurements" aria-label="Единицы и фасовка">
             <div class="form-grid">
               <label class="field"><span>Единица продажи</span><select id="catalogProductSaleUnit"><option value="">Не указана</option><option value="piece">шт.</option><option value="pack">упак.</option><option value="kg">кг</option><option value="g">г</option><option value="l">л</option><option value="ml">мл</option></select></label>
@@ -184,6 +168,8 @@
               <button id="addCatalogProductSourceBtn" class="btn-icon btn btn-primary btn-xs" type="button" title="Добавить источник" aria-label="Добавить источник">${window.App.icons.svg("plus")}</button>
             </div>
           </div>
+          <p id="catalogProductCodesStatus" class="muted-small" role="status"></p>
+          <button id="catalogProductCodesRetry" type="button" class="btn btn-secondary btn-xs" hidden>Повторить загрузку кодов</button>
           <div id="catalogProductOffersList" class="catalog-product-offers-list"></div>
         </section>
         <section data-product-panel="prices" class="catalog-product-detail-panel hidden">
@@ -206,7 +192,7 @@
           <button id="catalogProductMorePurchases" class="btn-icon btn btn-secondary hidden" type="button" title="Показать ещё покупки" aria-label="Показать ещё покупки">${window.App.icons.svg("down")}</button>
           <button id="openCatalogProductOperationsBtn" class="btn-icon btn btn-secondary" type="button" title="Открыть операции товара" aria-label="Открыть операции товара">${window.App.icons.svg("receipt")}</button>
         </section>
-        <div data-product-panel="product" class="modal-footer catalog-product-modal-footer">
+        <div data-product-panel="product offers" class="modal-footer catalog-product-modal-footer">
           <button id="deleteCatalogProductBtn" class="btn-icon btn btn-danger hidden" type="button" title="Удалить товар" aria-label="Удалить товар">${window.App.icons.svg("trash")}</button>
           <button id="submitCatalogProductBtn" class="btn-icon btn btn-cta modal-main-cta" type="submit" form="catalogProductForm" title="Сохранить товар" aria-label="Сохранить товар">${window.App.icons.svg("save")}</button>
         </div>

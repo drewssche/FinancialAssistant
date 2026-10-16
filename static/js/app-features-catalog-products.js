@@ -460,6 +460,7 @@
             <button class="btn-icon btn btn-danger btn-xs" type="button" data-product-offer-action="detach" data-template-id="${offer.template_id}" data-product-id="${product.id}" title="Отделить предложение" aria-label="Отделить предложение">${window.App.icons.svg("unlink")}</button>
 
         </div>
+        <div class="catalog-offer-codes" data-offer-codes="${offer.template_id}"></div>
       </article>`).join("") || "<div class='empty'>Предложений пока нет. Нажмите «Добавить источник» или выберите этот товар в чеке магазина.</div>";
     media().hydrate?.(el.catalogProductOffersList);
   }

@@ -31,88 +31,107 @@ def setup(page,url,width,*,many=False):
     return writes
 
 
+
+def card(p,id=501):return p.locator(f'[data-modal-offer-id="{id}"]')
+def barcode(p,id=501):return card(p,id).locator('[data-code=barcode]')
+def sku(p,id=501):return card(p,id).locator('[data-code=sku]')
+
+
 @pytest.mark.e2e
 @pytest.mark.parametrize('width',[320,390,1440])
-def test_codes_visible_on_product_tab_and_save_with_product(static_server_url,page_with_receipt_api_mock,width):
+def test_codes_in_source_cards_only_and_save_together(static_server_url,page_with_receipt_api_mock,width):
     p=page_with_receipt_api_mock;writes=setup(p,static_server_url,width)
-    expect(p.locator('#catalogProductBarcode')).to_be_visible();expect(p.locator('#catalogProductBarcode')).to_have_value(CODE)
-    expect(p.locator('#catalogProductSku')).to_have_value('000-42')
-    expect(p.locator('#catalogProductCodeVariant')).to_be_hidden();expect(p.locator('#catalogProductCodeOffer')).to_be_hidden()
-    p.locator('#catalogProductBarcode').fill('0'+CODE);p.locator('#catalogProductSku').fill('000-43')
-    p.locator('#catalogProductName').fill('Молоко новое')
-    p.locator('[data-product-tab=offers]').click();p.locator('[data-product-tab=product]').click()
-    expect(p.locator('#catalogProductSku')).to_have_value('000-43')
-    for selector in ['#catalogProductBarcode','#catalogProductSku','#catalogProductCodeOfferHint']:
-        box=p.locator(selector).bounding_box();assert box['x']>=0 and box['x']+box['width']<=width+1
-    p.locator('.catalog-product-codes').scroll_into_view_if_needed();p.screenshot(path=f'/tmp/fa-primary-codes-{width}.png')
+    expect(p.locator('#catalogProductForm [data-code]')).to_have_count(0)
+    expect(barcode(p)).not_to_be_visible()
+    p.locator('[data-product-tab=offers]').click()
+    expect(barcode(p)).to_have_value(CODE);expect(sku(p)).to_have_value('000-42')
+    barcode(p).fill('0'+CODE);sku(p).fill('000-43')
+    p.locator('[data-product-tab=product]').click();p.locator('#catalogProductName').fill('Молоко новое')
+    p.locator('[data-product-tab=offers]').click()
+    expect(barcode(p)).to_have_value('0'+CODE);expect(sku(p)).to_have_value('000-43')
+    for field in [barcode(p),sku(p)]:
+        box=field.bounding_box();assert box['x']>=0 and box['x']+box['width']<=width+1
+    card(p).scroll_into_view_if_needed();p.screenshot(path=f'/tmp/fa-offer-codes-{width}.png')
     assert writes==[]
-    p.locator('#submitCatalogProductBtn').click()
-    expect(p.locator('#catalogProductModal')).to_be_hidden()
-    assert writes[-1]['name']=='Молоко новое'
-    assert writes[-1]['codes']=={'barcodes':[{'variant_id':41,'codes':['0'+CODE]}],'retailers':[{'template_id':501,'shop_name':'','retailer_code':'000-43'}]}
-
-
-@pytest.mark.e2e
-def test_multiple_packages_and_stores_keep_separate_drafts_and_cancel(static_server_url,page_with_receipt_api_mock):
-    p=page_with_receipt_api_mock;writes=setup(p,static_server_url,390,many=True)
-    expect(p.locator('#catalogProductBarcode')).to_have_value(CODE)
-    expect(p.locator('#catalogProductCodeVariant')).to_be_hidden()
-    expect(p.locator('#catalogProductSku')).to_be_disabled()
-    size=p.locator('.catalog-product-measurements .measurement-editor input')
-    size.fill('800')
-    expect(p.locator('#catalogProductBarcode')).to_have_value('')
-    size.fill('900')
-    expect(p.locator('#catalogProductBarcode')).to_have_value(CODE)
-    p.locator('#catalogProductCodeOffer').select_option('501');p.locator('#catalogProductSku').fill('00043')
-    p.locator('#catalogProductCodeOffer').select_option('502');expect(p.locator('#catalogProductSku')).to_have_value('002')
-    p.locator('#catalogProductCodeOffer').select_option('501');expect(p.locator('#catalogProductSku')).to_have_value('00043')
-    p.locator('#closeCatalogProductModalBtn').click()
-    assert writes==[]
-    p.evaluate("window.App.getRuntimeModule('catalog-products').openEditor(401)")
-    expect(p.locator('#catalogProductBarcode')).to_have_value(CODE)
-    p.locator('#catalogProductCodeOffer').select_option('501');expect(p.locator('#catalogProductSku')).to_have_value('000-42')
-
-
-@pytest.mark.e2e
-def test_new_product_supports_barcode_and_shop_sku_without_tabs(static_server_url,page_with_receipt_api_mock):
-    p=page_with_receipt_api_mock;writes=setup(p,static_server_url,390)
-    p.locator('#closeCatalogProductModalBtn').click();p.evaluate("window.App.getRuntimeModule('catalog-products').openEditor()")
-    expect(p.locator('#catalogProductCodeVariant')).to_be_hidden()
-    p.locator('#catalogProductName').fill('Новый товар');p.locator('#catalogProductBarcode').fill(CODE)
-    p.locator('.catalog-product-measurements .measurement-editor input').fill('250')
-    p.locator('.catalog-product-measurements [data-unit=g]').click()
-    expect(p.locator('#catalogProductBarcode')).to_have_value(CODE)
-    p.locator('#catalogProductSku').fill('000123');p.locator('#catalogProductCodeShop').fill('Green')
+    footer=p.locator('.catalog-product-modal-footer').bounding_box();save=p.locator('#submitCatalogProductBtn').bounding_box()
+    assert save['x']+save['width']>footer['x']+footer['width']-24
     p.locator('#submitCatalogProductBtn').click();expect(p.locator('#catalogProductModal')).to_be_hidden()
-    assert writes[-1]['codes']=={'barcodes':[{'variant_id':None,'codes':[CODE]}],'retailers':[{'template_id':None,'retailer_code':'000123','shop_name':'Green'}]}
+    assert writes[-1]['name']=='Молоко новое'
+    assert writes[-1]['codes']=={'barcodes':[{'variant_id':41,'codes':['0'+CODE]}],'retailers':[{'template_id':501,'retailer_code':'000-43'}]}
 
 
 @pytest.mark.e2e
-def test_invalid_code_does_not_save_and_single_store_can_change(static_server_url,page_with_receipt_api_mock):
+def test_shared_barcode_but_independent_store_skus(static_server_url,page_with_receipt_api_mock):
+    p=page_with_receipt_api_mock;writes=setup(p,static_server_url,390,many=True)
+    p.locator('[data-product-tab=offers]').click()
+    expect(barcode(p,502)).to_have_value(CODE)
+    barcode(p).fill('0'+CODE);expect(barcode(p,502)).to_have_value('0'+CODE)
+    sku(p).fill('00043');expect(sku(p,502)).to_have_value('002')
+    sku(p,502).fill('003');expect(sku(p)).to_have_value('00043')
+    p.locator('#submitCatalogProductBtn').click();expect(p.locator('#catalogProductModal')).to_be_hidden()
+    assert writes[-1]['codes']=={'barcodes':[{'variant_id':41,'codes':['0'+CODE]}],'retailers':[{'template_id':501,'retailer_code':'00043'},{'template_id':502,'retailer_code':'003'}]}
+
+
+@pytest.mark.e2e
+def test_cancel_and_new_product_no_code_form(static_server_url,page_with_receipt_api_mock):
     p=page_with_receipt_api_mock;writes=setup(p,static_server_url,390)
-    expect(p.locator('#catalogProductBarcode')).to_have_value(CODE)
-    p.locator('#catalogProductCodeOfferHint button').click();p.locator('#catalogProductCodeOffer').select_option('new')
-    p.locator('#catalogProductSku').fill('0009');p.locator('#catalogProductCodeShop').fill('Соседи')
-    p.locator('#catalogProductBarcode').fill('123')
-    p.locator('#submitCatalogProductBtn').click()
-    expect(p.get_by_text('Проверьте штрихкод:',exact=False)).to_be_visible()
+    p.locator('[data-product-tab=offers]').click();expect(barcode(p)).to_have_value(CODE)
+    sku(p).fill('999');p.locator('#closeCatalogProductModalBtn').click()
+    p.evaluate("window.App.getRuntimeModule('catalog-products').openEditor(401)")
+    p.locator('[data-product-tab=offers]').click();expect(sku(p)).to_have_value('000-42')
     assert writes==[]
-    p.locator('#catalogProductBarcode').fill(CODE);p.locator('#submitCatalogProductBtn').click()
+    p.locator('#closeCatalogProductModalBtn').click();p.evaluate("window.App.getRuntimeModule('catalog-products').openEditor()")
+    expect(p.locator('#catalogProductForm [data-code]')).to_have_count(0)
+    p.locator('#catalogProductName').fill('Новый товар');p.locator('#submitCatalogProductBtn').click()
+    expect(p.locator('#catalogProductModal')).to_be_hidden();assert 'codes' not in writes[-1]
+
+
+@pytest.mark.e2e
+def test_invalid_barcode_blocks_save_in_offers_tab(static_server_url,page_with_receipt_api_mock):
+    p=page_with_receipt_api_mock;writes=setup(p,static_server_url,390)
+    p.locator('[data-product-tab=offers]').click();expect(barcode(p)).to_have_value(CODE)
+    barcode(p).fill('123');p.locator('#submitCatalogProductBtn').click()
+    expect(p.get_by_text('Проверьте штрихкод:',exact=False)).to_be_visible();assert writes==[]
+    barcode(p).fill(CODE);sku(p).fill('0009');p.locator('#submitCatalogProductBtn').click()
     expect(p.locator('#catalogProductModal')).to_be_hidden()
-    assert writes[-1]['codes']['retailers']==[{'template_id':None,'shop_name':'Соседи','retailer_code':'0009'}]
+    assert writes[-1]['codes']['retailers']==[{'template_id':501,'retailer_code':'0009'}]
 
 
 @pytest.mark.e2e
 def test_code_load_failure_retry_preserves_product_draft(static_server_url,page_with_receipt_api_mock):
     p=page_with_receipt_api_mock;setup(p,static_server_url,390)
-    expect(p.locator('#catalogProductBarcode')).to_have_value(CODE)
+    p.locator('[data-product-tab=offers]').click();expect(barcode(p)).to_have_value(CODE)
     p.route('**/catalog-products/401/identity',lambda r:r.fulfill(status=500,json={'detail':'offline'}))
     p.evaluate("window.App.getRuntimeModule('catalog-product-codes').reload()")
-    expect(p.locator('#catalogProductCodesRetry')).to_be_visible()
-    expect(p.locator('#catalogProductBarcode')).to_be_disabled()
-    p.locator('#catalogProductName').fill('Несохранённое имя')
-    p.unroute('**/catalog-products/401/identity')
-    p.locator('#catalogProductCodesRetry').click()
-    expect(p.locator('#catalogProductBarcode')).to_be_enabled()
-    expect(p.locator('#catalogProductBarcode')).to_have_value(CODE)
-    expect(p.locator('#catalogProductName')).to_have_value('Несохранённое имя')
+    expect(p.locator('#catalogProductCodesRetry')).to_be_visible();expect(barcode(p)).to_be_disabled()
+    p.locator('[data-product-tab=product]').click();p.locator('#catalogProductName').fill('Несохранённое имя')
+    p.unroute('**/catalog-products/401/identity');p.locator('[data-product-tab=offers]').click();p.locator('#catalogProductCodesRetry').click()
+    expect(barcode(p)).to_be_enabled();expect(barcode(p)).to_have_value(CODE)
+    p.locator('[data-product-tab=product]').click();expect(p.locator('#catalogProductName')).to_have_value('Несохранённое имя')
+
+
+@pytest.mark.e2e
+def test_linked_offer_size_keeps_its_own_barcode(static_server_url,page_with_receipt_api_mock):
+    p=page_with_receipt_api_mock;writes=setup(p,static_server_url,1440,many=True)
+    expect(barcode(p)).to_have_value(CODE)
+    p.route('**/catalog-products/401/identity',lambda r:r.fulfill(json={'variants':[
+        {'id':41,'name':'900 мл','sale_unit':'pack','package_quantity':'900','package_unit':'ml','codes':[CODE]},
+        {'id':42,'name':'1 л','sale_unit':'pack','package_quantity':'1','package_unit':'l','codes':['5901234123457']}],
+        'offers':[{'template_id':501,'variant_id':41,'retailer_code':'001'},{'template_id':502,'variant_id':42,'retailer_code':'002'}]}))
+    p.evaluate("window.App.getRuntimeModule('catalog-product-codes').reload()")
+    p.locator('[data-product-tab=offers]').click();expect(barcode(p,502)).to_have_value('5901234123457')
+    barcode(p).fill('0'+CODE);expect(barcode(p,502)).to_have_value('5901234123457')
+    p.locator('#submitCatalogProductBtn').click();expect(p.locator('#catalogProductModal')).to_be_hidden()
+    assert writes[-1]['codes']['barcodes']==[{'variant_id':41,'codes':['0'+CODE]}]
+
+
+@pytest.mark.e2e
+def test_missing_product_name_returns_to_main_tab_without_losing_codes(static_server_url,page_with_receipt_api_mock):
+    p=page_with_receipt_api_mock;writes=setup(p,static_server_url,390)
+    p.locator('#catalogProductName').fill('')
+    p.locator('[data-product-tab=offers]').click();expect(sku(p)).to_have_value('000-42')
+    sku(p).fill('000-43');p.locator('#submitCatalogProductBtn').click()
+    expect(p.locator('#catalogProductName')).to_be_visible();assert writes==[]
+    p.locator('#catalogProductName').fill('Молоко')
+    p.locator('[data-product-tab=offers]').click();expect(sku(p)).to_have_value('000-43')
+    p.locator('#submitCatalogProductBtn').click();expect(p.locator('#catalogProductModal')).to_be_hidden()

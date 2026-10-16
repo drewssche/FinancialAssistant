@@ -76,7 +76,8 @@
   function select(next, offerId) {
     cancel();
     tab = product && ["product", "offers", "prices", "purchases"].includes(next) ? next : "product";
-    for (const panel of el.catalogProductModal.querySelectorAll("[data-product-panel]")) panel.classList.toggle("hidden", panel.dataset.productPanel !== tab);
+    for (const panel of el.catalogProductModal.querySelectorAll("[data-product-panel]")) panel.classList.toggle("hidden", !panel.dataset.productPanel.split(" ").includes(tab));
+    node("deleteCatalogProductBtn").classList.toggle("hidden", !product || tab !== "product");
     for (const button of node("catalogProductTabs").querySelectorAll("button")) {
       button.classList.toggle("active", button.dataset.productTab === tab);
       button.setAttribute("aria-pressed", String(button.dataset.productTab === tab));
@@ -116,6 +117,7 @@
   }
   function bind() {
     if (bound) return; bound = true;
+    el.catalogProductForm.addEventListener("invalid", () => select("product"), true);
     const conditions = window.App.taskDialogs.attach(node('catalogProductHistoryControls').querySelector('.product-price-controls'), 'Сравнение и период', node('catalogProductHistoryControls'));
     conditions.id = 'catalogProductConditionsDialog'; conditions.trigger.id = 'catalogProductConditionsButton';
     el.catalogProductModal.addEventListener("change", event => { if (event.target.closest('[data-product-panel="prices"]')) node("catalogProductComparisonSummary").classList.add("hidden"); });
