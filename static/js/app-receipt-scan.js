@@ -212,13 +212,25 @@
       refreshUnits();
       let options=[],active=-1;
       function choose(item){
-        unlink();
+        row.catalog_new=false;unlink();
         row.catalog=catalog().identity(item,node('scanShop').value);
         row.name=row.catalog.name;name.value=row.name;refreshCategory();
         if(!row.measurement_touched){Object.assign(row,window.App.measurements.snapshot(row.catalog));row.variant_id=row.catalog.variant_id||null;}
         refreshUnits();
         closeCatalogLists();node('scanConfirmed').checked=false;el.refreshCatalog();validate();name.focus();closeCatalogLists();
       }
+      function createNew(){
+        if(!name.value.trim())return;
+        unlink();row.catalog_new=true;row.name=name.value.trim();name.value=row.name;
+        closeCatalogLists();node('scanConfirmed').checked=false;el.refreshCatalog();el.refreshCodes?.();validate();
+        name.focus({preventScroll:true});closeCatalogLists();
+      }
+      function createButton(inList=false){
+        const button=document.createElement('button');button.type='button';button.className=inList?'scan-catalog-create':'btn btn-secondary scan-create-new';
+        button.innerHTML=icons.svg('plus');const label=document.createElement('span');label.textContent='Создать новый товар';button.append(label);
+        button.title=`Создать «${name.value.trim()}» при сохранении операции`;button.onclick=createNew;return button;
+      }
+      function searchAgain(){row.catalog_new=false;el.refreshCatalog();name.focus();search();}
       function suggestionButton(item){
         const b=document.createElement('button');b.type='button';b.className='scan-catalog-option';
         const title=document.createElement('strong');title.textContent=item.name;
@@ -230,34 +242,42 @@
         b.append(title,sub);b.onclick=()=>choose(item);return b;
       }
       el.refreshCatalog=()=>{
-        match.replaceChildren();match.classList.toggle('is-linked',!!row.catalog);
+        match.replaceChildren();match.classList.toggle('is-linked',!!row.catalog||!!row.catalog_new);
         if(row.catalog){
           const label=document.createElement('span');label.textContent=(row.code_match_label||'Из каталога')+' · '+(row.catalog.product_name||row.name);match.append(label);
           const clear=document.createElement('button');clear.type='button';clear.className='btn btn-secondary btn-icon';window.App.icons.apply(clear,'unlink','Отвязать товар каталога');clear.onclick=()=>{unlink();node('scanConfirmed').checked=false;el.refreshCatalog();validate();};match.append(clear);
+        }else if(row.catalog_new){
+          const label=document.createElement('span');label.textContent='Новый товар';match.append(label);
+          const change=document.createElement('button');change.type='button';change.className='btn btn-secondary btn-icon';icons.apply(change,'search','Выбрать из каталога');change.onclick=searchAgain;match.append(change);
         }else if(row.name.trim()){
           const candidates=catalog().suggestions(row.name,node('scanShop').value,3);
           const heading=document.createElement('div');heading.className='scan-match-heading';
           const label=document.createElement('span');label.textContent=catalogNotice()||(candidates.length?'Варианты из каталога':'В каталоге нет совпадений по словам');heading.append(label);
-          const more=document.createElement('button');more.type='button';more.className='btn btn-secondary btn-icon';icons.apply(more,'search','Искать товар в каталоге');more.onclick=async()=>{if(catalog().status().incomplete){await catalog().load();refreshCatalog();}name.focus();search();};heading.append(more);match.append(heading);
+          const more=document.createElement('button');more.type='button';more.className='btn btn-secondary btn-icon';icons.apply(more,'search','Искать товар в каталоге');more.onclick=async()=>{if(catalog().status().incomplete){await catalog().load();refreshCatalog();}name.focus();search();};heading.append(more);match.append(heading);if(!candidates.some(item=>item.scan_match?.exact))match.append(createButton());
           candidates.forEach(candidate=>{const b=suggestionButton(candidate);b.classList.add('scan-suggestion');b.title='Выбрать товар из каталога';match.append(b);});
         }
         match.hidden=!match.childElementCount;
       };
       function search(){
+        if(row.catalog_new){closeCatalogLists();return;}
         closeCatalogLists();options=catalog().suggestions(name.value,node('scanShop').value,8);active=-1;list.replaceChildren();
         options.forEach((item,i)=>{const b=suggestionButton(item);b.id=`scanOption${index}-${i}`;b.setAttribute('role','option');b.setAttribute('aria-selected','false');b.tabIndex=-1;list.append(b);});
         if(!options.length){const empty=document.createElement('span');empty.className='muted-small';empty.textContent=catalogNotice()||'В каталоге нет совпадений по словам';list.append(empty);}
+        if(name.value.trim()&&!options.some(item=>item.scan_match?.exact)){
+          const create=createButton(true);create.id=`scanOption${index}-new`;create.setAttribute('role','option');create.setAttribute('aria-selected','false');create.tabIndex=-1;list.append(create);
+        }
         setCatalogOpen(list,true);
       }
       el.refreshSearch=()=>{if(document.activeElement===name&&!list.hidden)search();};
       name.onfocus=search;
       name.onkeydown=e=>{
         if(['ArrowDown','ArrowUp'].includes(e.key)){
-          e.preventDefault();if(list.hidden)search();if(!options.length)return;
-          active=active<0?(e.key==='ArrowDown'?0:options.length-1):(active+(e.key==='ArrowDown'?1:-1)+options.length)%options.length;
-          Array.from(list.children).forEach((b,i)=>b.setAttribute('aria-selected',String(i===active)));
-          name.setAttribute('aria-activedescendant',list.children[active].id);list.children[active].scrollIntoView({block:'nearest'});
-        }else if(e.key==='Enter'&&!list.hidden){e.preventDefault();if(active>=0)choose(options[active]);}
+          e.preventDefault();if(row.catalog_new)searchAgain();else if(list.hidden)search();
+          const choices=[...list.querySelectorAll('[role=option]')];if(!choices.length)return;
+          active=active<0?(e.key==='ArrowDown'?0:choices.length-1):(active+(e.key==='ArrowDown'?1:-1)+choices.length)%choices.length;
+          choices.forEach((b,i)=>b.setAttribute('aria-selected',String(i===active)));
+          name.setAttribute('aria-activedescendant',choices[active].id);choices[active].scrollIntoView({block:'nearest'});
+        }else if(e.key==='Enter'&&!list.hidden){e.preventDefault();if(active>=0)list.querySelectorAll('[role=option]')[active]?.click();}
       };
       el.addEventListener('focusout',()=>setTimeout(()=>{if(!el.querySelector('.scan-name').contains(document.activeElement)){setCatalogOpen(list,false);}},0));
       for(const field of ['price','quantity','discount','total']){const input=el.querySelector(`[data-scan-field=${field}]`);input.value=field==='quantity'?row.quantity??'':decimal(row[field]);input.placeholder='Не распознано';}
@@ -265,7 +285,7 @@
       el.addEventListener('input',e=>{
         const field=e.target.dataset.scanField;if(!field)return;
         row[field]=field==='name'||field==='discount_type'?e.target.value:field==='quantity'?inputNumber(e.target.value,true):inputMoney(e.target.value);
-        if(field==='name'){unlink();el.refreshCatalog();search();}
+        if(field==='name'){row.catalog_new=false;unlink();el.refreshCatalog();search();}
         if(field==='total')row.autoTotal=false;
         if(row.autoTotal&&['price','quantity','discount'].includes(field)){
           row.total=rowTotal(row);
@@ -277,11 +297,11 @@
       el.unlinkCatalog=unlink;node('scanRows').append(el);el.refreshCatalog();
       el.refreshCodes=()=>{
         const key=codeLookupKey(row);
-        const auto=!row.catalog&&row.code_auto_attempted!==key;row.code_auto_attempted=key;
+        const auto=!row.catalog_new&&!row.catalog&&row.code_auto_attempted!==key;row.code_auto_attempted=key;
         window.App.receiptCodes.mount(el.querySelector('.scan-codes-host'),{row,shop:()=>node('scanShop').value,auto,
           onChange:()=>{node('scanConfirmed').checked=false;validate();},
           onSelect:found=>{
-            window.App.receiptCodes.apply(row,found);row.catalog={...found};name.value=row.name;
+            row.catalog_new=false;window.App.receiptCodes.apply(row,found);row.catalog={...found};name.value=row.name;
             refreshCategory();refreshUnits();el.refreshCatalog();closeCatalogLists();node('scanConfirmed').checked=false;validate();
           },
         });

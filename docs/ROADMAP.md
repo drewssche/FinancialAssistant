@@ -17,6 +17,11 @@
 - Keep Telegram-specific behavior in the client runtime; backend contracts stay shared between Web UI and Telegram.
 
 ## Current Sprint
+### Explicit new product choice during receipt scan — 2026-10-17
+- [x] Scan review offers “Создать новый товар” both in the suggestions and below the name. Selection marks the draft as new, closes suggestions and prevents delayed barcode matching from overriding the decision. Search can be reopened explicitly; changing the name starts a fresh choice. An exact existing name offers catalog selection instead of a duplicate-creation action.
+- [x] Keep receipt amounts, quantities, discounts and codes until the operation is saved; the action itself writes nothing to the catalog. Splitting merged rows preserves the new-product choice. Name suggestions still search the entire active product catalog; the selected store supplies the matching offer, without importing another store's price.
+- [x] 60 parser/frontend contract checks and 23 distinct browser scenarios passed across scoped runs, covering keyboard navigation, desktop/mobile layout, pending code lookups, transfer and other-store products. Corrected an outdated weighted-item test fixture with an invalid barcode checksum. Mobile new-product layout reviewed. No database migration.
+
 ### Receipt code conflicts in the operation editor — 2026-10-16
 - [x] Entered/scanned barcode and store SKU fields stay visible in compact receipt rows. Saving reports the exact position/code and the owner product; only affected fields are highlighted and focused. The matching catalog item can be selected in place without changing receipt prices, quantities or discounts.
 - [x] Operation and plan API errors include owner-scoped structured conflict details. Failed saves remain atomic; a delayed response cannot mark a code that the user already changed. Existing catalog identity ownership is never silently reassigned.

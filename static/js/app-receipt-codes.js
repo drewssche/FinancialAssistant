@@ -74,7 +74,7 @@
     const status=document.createElement('p');status.className='muted-small';status.setAttribute('role','status');details.append(status);
     const results=document.createElement('div');results.className='receipt-code-results';details.append(results);host.replaceChildren(details);
     let timer,seq=0;
-    const signature=()=>JSON.stringify([shop(),list,row.name,window.App.measurements.snapshot(row)]);
+    const signature=()=>JSON.stringify([shop(),list,row.name,row.catalog_new,window.App.measurements.snapshot(row)]);
     function changed(){seq++;row.code_errors=[];row.code_match_label='';results.replaceChildren();status.textContent='';refreshCodes();onChange();}
     function draw(){
       fields.replaceChildren();

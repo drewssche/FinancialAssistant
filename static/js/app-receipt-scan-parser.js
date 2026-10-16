@@ -159,7 +159,7 @@
   function splitMergedRow(row){
     if(!row.merged_rows?.length)return [structuredClone(row)];
     // Keep catalog/category/code edits on every restored line. Money comes from the photo.
-    const shared=['catalog','product_id','product_name','template_id','source_id','brand_id','category_id','category_touched',
+    const shared=['catalog','catalog_new','product_id','product_name','template_id','source_id','brand_id','category_id','category_touched',
       'sale_unit','package_quantity','package_unit','measurement_touched','variant_id','variant_snapshot',
       'code_entries','code_match_label','code_auto_attempted'];
     return row.merged_rows.map(original=>{

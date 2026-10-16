@@ -67,7 +67,7 @@ def test_manual_row_search_keyboard_and_change_shop_unlinks(static_server_url,pa
     expect(row.locator('.scan-catalog-list')).to_be_visible()
     name.fill('пицца')
     name.press('ArrowUp')
-    expect(row.locator('.scan-catalog-option[role=option]').last).to_have_attribute('aria-selected','true')
+    expect(row.locator('.scan-catalog-create[role=option]')).to_have_attribute('aria-selected','true')
     name.fill('uhb,yjq') # грибной, wrong layout
     expect(row.locator('.scan-catalog-option[role=option]')).to_have_count(1)
     name.press('ArrowDown');name.press('Enter')
@@ -185,14 +185,16 @@ def test_catalog_failure_is_not_reported_as_no_matches(static_server_url,page_wi
 WEIGHTED='''ООО ГРИНРОЗНИЦА
 № ДОК 179487
 Колбаса Рубленая варено-копченая в/с
-2231860229407 18.69 x0.530 9.91
+2231860229401 18.69 x0.530 9.91
 ИТОГО К ОПЛАТЕ 9.91
 13.10.2026 15:07:01'''
 
 @pytest.mark.e2e
 @pytest.mark.parametrize('width',[320,390,1440])
 def test_new_scan_weighted_unit_transfer_and_live_operation_labels(static_server_url,page_with_receipt_api_mock,width):
-    p=page_with_receipt_api_mock;start(p,static_server_url,width);stub(p,WEIGHTED);upload(p);p.click('#scanRun')
+    p=page_with_receipt_api_mock;start(p,static_server_url,width)
+    p.route('**/lookup-codes',lambda r:r.fulfill(json={'items':[],'auto_match':False,'warnings':[],'unmatched':[]}))
+    stub(p,WEIGHTED);upload(p);p.click('#scanRun')
     row=p.locator('.scan-row')
     expect(row.locator('[data-scan-unit=""]')).to_have_attribute('aria-pressed','true')
     row.locator('[data-scan-unit=kg]').click()
@@ -264,3 +266,74 @@ def test_scan_category_search_manual_priority_and_transfer(static_server_url,pag
     item=p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[0]")
     assert item['category_id']==chosen['id'] and item['category_touched'] is True
     assert not item.get('product_id') and float(item['unit_price'])==4.99
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width',[320,1440])
+def test_explicit_new_scan_product_preserves_fields_and_can_resume_search(static_server_url,page_with_receipt_api_mock,width):
+    p=page_with_receipt_api_mock;start(p,static_server_url,width);seed_catalog(p)
+    writes=[]
+    p.on('request',lambda r:writes.append(r.url) if r.method in ('PUT','PATCH','DELETE') or (r.method=='POST' and not r.url.endswith('/lookup-codes')) else None)
+    p.route('**/lookup-codes',lambda r:r.fulfill(json={'items':[],'auto_match':False,'warnings':[],'unmatched':[]}))
+    stub(p,PIZZA.replace('4.99 x1.000','4816058610995 4.99 x1.000'));upload(p);p.click('#scanRun')
+    row=p.locator('.scan-row');name=row.locator('[data-scan-field=name]')
+    name.fill('Пицца новая 200г')
+    expect(row.locator('.scan-catalog-option[role=option]')).to_have_count(2)
+    create=row.locator('.scan-catalog-create')
+    expect(create).to_have_text('Создать новый товар')
+    create.click()
+    expect(row.locator('.scan-match')).to_contain_text('Новый товар')
+    expect(row.locator('.scan-catalog-list')).to_be_hidden()
+    expect(row.locator('.scan-suggestion')).to_have_count(0)
+    name.press('Tab');name.focus()
+    expect(row.locator('.scan-catalog-list')).to_be_hidden()
+    expect(row.locator('[data-scan-field=price]')).to_have_value('4.99')
+    expect(row.locator('[data-scan-field=quantity]')).to_have_value('1')
+    expect(row.locator('[data-scan-field=total]')).to_have_value('4.99')
+    expect(row.get_by_role('textbox',name='Код товара',exact=True)).to_have_value('4816058610995')
+    assert not writes
+    row.get_by_role('button',name='Выбрать из каталога',exact=True).click()
+    expect(row.locator('.scan-catalog-option[role=option]')).to_have_count(2)
+    # Explicit new creation also works from the keyboard.
+    name.press('ArrowUp');name.press('Enter')
+    expect(row.locator('.scan-match')).to_contain_text('Новый товар')
+    row.screenshot(path=f'/tmp/fa-scan-new-product-{width}.png')
+    assert row.evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+    p.locator('#scanConfirmed').check();p.click('#scanTransfer')
+    item=p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[0]")
+    assert item['name']=='Пицца новая 200г' and not item.get('product_id') and not item.get('template_id')
+    assert item['catalog_codes']==[{'kind':'barcode','code':'4816058610995'}]
+    assert float(item['unit_price'])==4.99 and float(item['quantity'])==1
+
+
+@pytest.mark.e2e
+def test_scan_search_includes_products_from_other_stores(static_server_url,page_with_receipt_api_mock):
+    p=page_with_receipt_api_mock;start(p,static_server_url);seed_catalog(p)
+    p.evaluate("window.App.state.receiptProductHints.push({id:903,name:'Пицца только Green',offers:[{id:704,template_id:704,source_id:302,shop_name:'Green',name:'Пицца только Green',latest_unit_price:99}]})")
+    stub(p,PIZZA);upload(p);p.click('#scanRun')
+    row=p.locator('.scan-row');row.locator('[data-scan-field=name]').fill('Пицца только Green')
+    row.locator('.scan-catalog-option[role=option]').filter(has_text='Пицца только Green').click()
+    expect(row.locator('[data-scan-field=price]')).to_have_value('4.99')
+    p.locator('#scanConfirmed').check();p.click('#scanTransfer')
+    item=p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[0]")
+    assert item['product_id']==903 and not item.get('template_id') and item['shop_name']=='Соседи'
+
+
+@pytest.mark.e2e
+def test_new_product_choice_survives_pending_barcode_lookup(static_server_url,page_with_receipt_api_mock):
+    from tests.e2e.test_receipt_codes_e2e import FOUND, TEXT
+    p=page_with_receipt_api_mock;start(p,static_server_url);pending=[]
+    p.route('**/lookup-codes',lambda route:pending.append(route))
+    stub(p,TEXT);upload(p)
+    with p.expect_request(lambda r:r.url.endswith('/lookup-codes')):p.click('#scanRun')
+    row=p.locator('.scan-row');name=row.locator('[data-scan-field=name]');original=name.input_value()
+    row.get_by_role('button',name='Создать новый товар',exact=True).click()
+    pending[0].fulfill(json={'items':[FOUND],'auto_match':True,'warnings':[],'unmatched':[]})
+    # Wait until the old response has been handled; it must not undo the explicit choice.
+    p.wait_for_timeout(200)
+    expect(row.locator('.scan-match')).to_contain_text('Новый товар')
+    expect(name).to_have_value(original)
+    expect(row.locator('[data-scan-field=total]')).to_have_value('6.00')
+    name.fill('Ручное новое название')
+    expect(row.locator('.scan-catalog-create')).to_be_visible()
+    expect(row.locator('.scan-match')).not_to_contain_text('Новый товар')

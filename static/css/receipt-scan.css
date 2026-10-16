@@ -136,3 +136,8 @@
 .scan-merged-actions {display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:8px;}
 .scan-split-confirm {display:flex;align-items:center;flex-wrap:wrap;gap:8px;width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;}
 .scan-split-confirm small {flex-basis:100%;}
+
+.scan-catalog-create {position:sticky;bottom:0;display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);text-align:left;cursor:pointer;}
+.scan-catalog-create:is(:hover,[aria-selected=true],:focus-visible) {background:#244878;border-color:#79acff;}
+.scan-create-new {justify-self:start;display:flex;align-items:center;gap:8px;white-space:normal;text-align:left;}
+:is(.scan-catalog-create,.scan-create-new) .action-icon {width:18px;height:18px;flex:none;}
