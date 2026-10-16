@@ -109,7 +109,7 @@
         <div class="activity-center-head">
           <div>
             <h3>Последние действия</h3>
-            <p class="muted-small">Недавние изменения в сервисе</p>
+
           </div>
           <button id="activityCenterCloseBtn" class="activity-center-icon-btn" type="button" aria-label="Свернуть последние действия" title="Свернуть">
             <span aria-hidden="true">×</span>
@@ -137,7 +137,7 @@
         <div class="finance-calculator-head">
           <div>
             <h3>Калькулятор</h3>
-            <p class="muted-small">Скидки, изменения цены и быстрые расчеты</p>
+
           </div>
           <button id="financeCalculatorClose" class="btn btn-secondary finance-calculator-close" data-modal-close type="button" aria-label="Закрыть калькулятор">×</button>
         </div>

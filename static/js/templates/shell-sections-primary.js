@@ -8,7 +8,7 @@
             <div class="panel-head row between">
               <div>
                 <h3>Валютный портфель</h3>
-                <p class="subtitle">Позиции и курсы по отслеживаемым валютам</p>
+
               </div>
               <div class="toolbar">
                 <button id="dashboardCurrencyActivityBtn" class="btn-icon btn btn-secondary btn-xs hidden" type="button" aria-label="Журнал валюты" title="Журнал валюты">${window.App.icons.svg("history")}</button>
@@ -81,7 +81,7 @@
             <div class="panel-head row between">
               <div>
                 <h3>Активные долги</h3>
-                <p class="subtitle">Краткий список по контрагентам</p>
+
               </div>
               <button id="openDebtsTabBtn" class="btn-icon btn btn-secondary" type="button" aria-label="Открыть долги" title="Открыть долги">${window.App.icons.svg("forward")}</button>
             </div>

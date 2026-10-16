@@ -54,7 +54,7 @@ def test_scan_review_to_unsaved_operation(static_server_url,page_with_receipt_ap
     assert len(payload)==2 and payload[0]['name']=='Молоко 1 л'
     assert payload[0]['quantity']=='2' and payload[0]['discount_mode']=='amount'
     assert float(payload[0]['discount_value'])==.5 and payload[0]['package_unit'] is None
-    assert payload[0]['note'].startswith('OCR: ')
+    assert not payload[0].get('note')
     assert payload[0].get('template_id') is None and payload[0].get('variant_id') is None
     expect(page.locator('#opAmount')).to_have_value('7.50')
     expect(page.locator('#opDate')).to_have_value('2026-10-12')

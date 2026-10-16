@@ -39,7 +39,7 @@
                 <div class="row between"><span>Выполнение плана часов</span><strong id="workStatisticsProgressLabel">0%</strong></div>
                 <div class="work-statistics-progress"><i id="workStatisticsProgressBar"></i></div>
               </article>
-              <div class="panel-head"><div><h3>Динамика по месяцам</h3><p class="subtitle">Рабочие часы и фактические выплаты</p></div></div>
+              <div class="panel-head"><div><h3>Динамика по месяцам</h3></div></div>
               <div id="workStatisticsMonths" class="work-statistics-months"></div>
             </div>
 
@@ -96,7 +96,7 @@
                   <label class="field"><span>Начало обеда</span><input id="workLunchStartTime" type="time" step="60" value="13:00" /></label>
                   <label class="field"><span>Конец обеда</span><input id="workLunchEndTime" type="time" step="60" value="14:00" /></label>
                 </div>
-                <p class="muted-small work-schedule-hint">Часы текущей смены обновляются автоматически, без обеда. Ручное исключение имеет приоритет.</p>
+
                 <div class="work-weekday-picker" id="workWeekdayPicker">
                   <label><input type="checkbox" value="0" checked /> Пн</label><label><input type="checkbox" value="1" checked /> Вт</label>
                   <label><input type="checkbox" value="2" checked /> Ср</label><label><input type="checkbox" value="3" checked /> Чт</label>
@@ -106,7 +106,7 @@
               </section>
               <section class="settings-block">
                 <h3>Связь с финансовыми планами</h3>
-                <p class="muted-small">Номинальные даты сохраняются. Если они нерабочие, выплата переносится только назад до первого рабочего дня.</p>
+
                 <div class="settings-grid-2">
                   <label class="field"><span>План основной части</span><select id="workSalaryPlan"><option value="">Не связан</option></select></label>
                   <label class="field"><span>Номинальный день</span><input id="workSalaryDay" type="number" min="1" max="31" value="5" /></label>
@@ -119,7 +119,7 @@
 
             <div id="workCompaniesView" class="hidden">
               <div class="panel-head">
-                <div><h3>Компании</h3><p class="subtitle">Фактический заработок по операциям категории «Зарплата» и периодам работы</p></div>
+                <div><h3>Компании</h3></div>
               </div>
               <div id="workCompaniesGrid" class="work-companies-grid"></div>
               <div id="workCompanyDetails" class="work-company-details"></div>
@@ -128,12 +128,12 @@
             <div id="workPaymentsView" class="hidden">
               <section class="work-actual-payments-section">
                 <div class="panel-head row between work-payment-history-head">
-                  <div><h3>Фактические выплаты</h3><p class="subtitle">Полученные деньги из подтверждённых планов и операций, связанных вручную</p></div>
+                  <div><h3>Фактические выплаты</h3></div>
                   <button id="workPaymentLinkToggle" class="btn btn-secondary btn-icon" type="button" aria-expanded="false" aria-controls="workPaymentLinkPanel" aria-label="Связать операцию" title="Связать операцию">${window.App.icons.svg("link")}</button>
                 </div>
                 <section id="workPaymentLinkPanel" class="work-payment-link-panel hidden">
                   <div class="panel-head row between">
-                    <div><h3>Связать доходную операцию</h3><p class="subtitle">Выберите выплату и укажите, чем она является</p></div>
+                    <div><h3>Связать доходную операцию</h3></div>
                     <button id="workPaymentLinkClose" class="btn btn-ghost btn-xs btn-icon" type="button" aria-label="Закрыть" title="Закрыть">${window.App.icons.svg("close")}</button>
                   </div>
                   <div id="workPaymentLinkRole" class="segmented work-payment-link-role" role="group" aria-label="Роль выплаты">
@@ -645,7 +645,7 @@
           </section>
             <section id="catalogPriceChanges" class="panel catalog-price-changes hidden">
               <h3>Изменения цен</h3>
-              <p class="muted-small">По покупкам · дата чека, а не изменения магазинной цены</p>
+
               <form id="catalogPriceChangesForm" class="catalog-price-changes-filters">
                 <label class="field"><span>Товар или магазин</span><input name="q" type="search" maxlength="160" placeholder="Поиск в изменениях цен" /></label>
                 <label class="field"><span>Сравнение</span><select name="comparison"><option value="period">От первой до последней покупки</option><option value="previous">Последняя с предыдущей</option></select></label>
@@ -884,7 +884,7 @@
                 </section>
                 <section class="settings-block">
                   <h3>Банковские курсы</h3>
-                  <p class="muted-small">Для сводки курсов и уведомлений.</p>
+
                   <div id="bankRateBanksWrap" class="settings-grid-2">
                     ${[
                       ["priorbank", "Приорбанк · онлайн"],
@@ -979,7 +979,7 @@
                   <div class="settings-alert-section-head">
                     <div>
                       <span>Курсы банков</span>
-                      <p class="muted-small">Покупка — банк покупает у вас; продажа — продаёт вам.</p>
+
                     </div>
                     <button id="addBankCurrencyAlertBtn" class="btn btn-secondary btn-xs" type="button">Добавить алерт</button>
                   </div>

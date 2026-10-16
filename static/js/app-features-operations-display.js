@@ -114,7 +114,7 @@
             <div class="operation-receipt-meta muted-small">
               ${esc(core.formatAmount(qty))} × ${core.formatMoney(price, { currency: receiptCurrency })}${regularPrice}
             </div>
-            ${row.note ? `<div class="muted-small">${esc(row.note)}</div>` : ""}
+            ${row.note && !/^OCR:\s/.test(row.note) ? `<div class="muted-small">${esc(row.note)}</div>` : ""}
           </article>
         `;
       }).join("");

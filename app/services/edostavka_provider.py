@@ -63,3 +63,58 @@ def fetch_product(value: str) -> dict:
         return parse_product(parts.decode('utf-8'), url)
     except (httpx.HTTPError, UnicodeError, ValueError) as exc:
         raise RetailerUnavailable('Е-доставка временно недоступна или изменила карточку. Повторим проверку позже.') from exc
+
+
+def parse_search(html: str, query: str) -> list[dict]:
+    """Search hits are candidates, never proof of barcode identity."""
+    try:
+        match = re.search(r'<script\b[^>]*\bid="__NEXT_DATA__"[^>]*>(.*?)</script>', html, re.S)
+        data = json.loads(match[1])
+        props = data['props']['pageProps']
+        if data['page'] != '/search' or props['search']['query'] != query:
+            raise ValueError('Unexpected search page')
+        raw_ids = props['search']['productIds']
+        products = props['listing']['products']
+        if not isinstance(raw_ids, list) or not isinstance(products, list):
+            raise ValueError('Invalid listing')
+        ids = {str(i) for i in raw_ids}
+        result = []
+        for p in products:
+            if not isinstance(p, dict):
+                raise ValueError('Invalid product')
+            product_id = str(p.get('productId', ''))
+            # Exclude recommendations and construct URLs ourselves.
+            if product_id not in ids or not re.fullmatch(r'[1-9][0-9]{0,9}', product_id):
+                continue
+            price = Decimal(str(p['price']['discountedPrice']))
+            if not price.is_finite() or not 0 < price < 1000000:
+                continue
+            result.append({'url': f'https://edostavka.by/product/{product_id}',
+                           'name': str(p['productName'])[:320], 'price': str(price),
+                           'unit': str(p['quantityInfo']['measure'])[:30],
+                           'available': p['restInformation']['isAvailable'] is True,
+                           'article': product_id})
+            if len(result) == 8:
+                break
+        return result
+    except (KeyError, TypeError, ValueError, IndexError, InvalidOperation) as exc:
+        raise RetailerUnavailable('Не удалось прочитать результаты поиска Е-доставки.') from exc
+
+
+def search_products(query: str) -> list[dict]:
+    query = query.strip()
+    if not 2 <= len(query) <= 160 or any(ord(c) < 32 for c in query):
+        raise ValueError('Введите от 2 до 160 символов для поиска.')
+    try:
+        with httpx.Client(timeout=10, follow_redirects=False, trust_env=False) as client:
+            with client.stream('GET', 'https://edostavka.by/search', params={'query': query},
+                               headers={'User-Agent': 'FinancialAssistant price watch/1.0'}) as response:
+                response.raise_for_status()
+                parts = bytearray()
+                for part in response.iter_bytes():
+                    parts.extend(part)
+                    if len(parts) > 3_000_000:
+                        raise ValueError('Page too large')
+        return parse_search(parts.decode('utf-8'), query)
+    except (httpx.HTTPError, UnicodeError, ValueError) as exc:
+        raise RetailerUnavailable('Поиск Е-доставки временно недоступен. Повторите позже.') from exc

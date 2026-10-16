@@ -203,3 +203,12 @@
 .offer-size-toggle input { width: 18px; height: 18px; accent-color: #ff942c; }
 .offer-size-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 @media(max-width:600px) { .offer-size-fields { grid-template-columns: 1fr; } }
+
+.catalog-product-watch { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+.watch-alternative { margin:8px 0; }
+.watch-alternative summary, .watch-conditions summary { cursor:pointer; color:var(--muted); font-size:12px; }
+.watch-alternative[open] summary { margin-bottom:10px; }
+.watch-search-results { display:grid; gap:8px; margin-top:10px; }
+.watch-search-card { display:grid; gap:6px; border:1px solid var(--border); border-radius:10px; padding:12px; overflow-wrap:anywhere; }
+.watch-search-card button { justify-self:end; }
+[data-catalog-image-status]:empty, #catalogProductCodesStatus:empty { display:none; }

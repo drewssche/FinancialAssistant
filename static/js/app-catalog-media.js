@@ -243,7 +243,7 @@
           ? "Изображение будет удалено после сохранения"
           : picker.imageId
             ? picker.framingError || (picker.framingReady ? "Изображение загружено" : "Загрузка настроек изображения…")
-            : "JPEG, PNG или WebP · до 8 МБ";
+            : "";
     }
     updateFramingPreview(name);
     hydrate(preview || root);

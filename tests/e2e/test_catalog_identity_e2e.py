@@ -16,7 +16,7 @@ def test_size_edit_is_main_form_only_and_keeps_original_barcode(static_server_ur
     size=p.locator('.catalog-product-measurements .measurement-editor input')
     size.fill('800')
     expect(barcode(p)).to_have_value('')
-    expect(p.locator('#catalogProductSizeNote')).to_contain_text('Размер изменён')
+    expect(p.locator('#catalogProductSizeNote')).to_have_count(0)
     p.locator('[data-product-tab=offers]').click()
     barcode(p).fill('5901234123457')
     p.locator('[data-product-tab=offers]').click();p.locator('[data-product-tab=product]').click()

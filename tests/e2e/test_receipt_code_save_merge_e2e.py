@@ -15,7 +15,7 @@ def test_save_codes_explains_unrecognized_type_and_syncs_after_unit_change(stati
     row=p.locator('.scan-row');save=row.locator('.receipt-code-save input');hint=row.locator('.receipt-code-save-hint')
     expect(save).to_be_disabled();expect(hint).to_contain_text('Для кода 2186323 выберите тип')
     row.get_by_role('combobox',name='Тип кода').first.select_option('retailer')
-    expect(save).to_be_enabled();save.check();expect(hint).to_contain_text('вместе с сохранением операции')
+    expect(save).to_be_enabled();save.check();expect(hint).to_be_hidden()
     save.uncheck();expect(save).not_to_be_checked();save.check()
     row.locator('[data-scan-unit=pack]').click();expect(save).not_to_be_checked()
     save.check();row.locator('.receipt-codes').screenshot(path=f'/tmp/fa-code-save-{width}.png')
@@ -55,6 +55,7 @@ def test_merge_four_barcoded_items_preserves_receipt_total_and_transfer(static_s
     assert p.locator('#receiptScanDialog').evaluate('n=>n.scrollWidth<=n.clientWidth+1')
     p.locator('#scanConfirmed').check();p.click('#scanTransfer')
     items=p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
+    assert all(not item.get('note') for item in items)
     assert len(items)==2 and items[1]['quantity']=='4' and float(items[1]['unit_price'])==1.1
     expect(p.locator('#opAmount')).to_have_value('10.39')
 

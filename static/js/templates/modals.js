@@ -383,7 +383,7 @@
         </div>
         <form id="batchCreateForm" class="category-modal-form">
           <p class="subtitle">Одна строка: <code>дата;тип;[группа];[категория];сумма;комментарий</code>.</p>
-          <p id="batchCreateHint" class="muted-small">Дата: <code>ДД.ММ.ГГГГ</code>. Тип: расход/доход или expense/income. Группа и категория опциональны, пустые значения можно оставить как <code>;;</code>. Сумма: <code>01,23</code> или <code>01.23</code>. Комментарий опционален и не должен содержать <code>;</code>.</p>
+          <details><summary>Формат импорта</summary><p id="batchCreateHint" class="muted-small">Дата: <code>ДД.ММ.ГГГГ</code>. Тип: расход/доход или expense/income. Группа и категория опциональны, пустые значения можно оставить как <code>;;</code>. Сумма: <code>01,23</code> или <code>01.23</code>. Комментарий опционален и не должен содержать <code>;</code>.</p></details>
           <textarea id="batchCreateInput" rows="8" placeholder="04.03.2026;Расход;Транспорт;Такси;150,50;Поездка&#10;05.03.2026;Доход;;;1000;Аванс"></textarea>
           <div id="batchCreateFeedback" class="status-box hidden"></div>
           <div id="batchCreatePreview" class="bulk-import-preview hidden">
@@ -517,7 +517,7 @@
         <form id="editOperationForm" class="form-grid modal-grid edit-modal-grid">
           <div id="editDebtMovementInfo" class="hidden">
             <strong id="editDebtMovementContext"></strong>
-            <p class="muted-small">Дата, сумма и комментарий относятся к этому движению. Остаток долга пересчитается после сохранения.</p>
+
           </div>
           <div class="segmented compact-segmented" id="editOperationModeSwitch" aria-label="Формат операции">
             <button class="segmented-btn active" data-operation-mode="common" type="button">Без позиций</button>
@@ -559,7 +559,7 @@
             <div class="fx-policy-head">
               <div>
                 <strong>Пересчёт в BYN</strong>
-                <div class="muted-small">Сохранённый курс не обновляется без вашего действия</div>
+
               </div>
               <button id="editFxRateRefreshBtn" class="btn btn-secondary fx-policy-refresh" type="button">Обновить курс</button>
             </div>

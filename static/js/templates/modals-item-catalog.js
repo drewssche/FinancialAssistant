@@ -16,7 +16,7 @@
           </div>
         </div>
         <form id="itemTemplateForm" class="category-modal-form">
-          <p class="muted-small item-template-product-help">Предложение магазина. Бренд, категория и фото общие с товаром; операция не создаётся.</p>
+
           <section class="catalog-image-field" data-catalog-image-picker="item-template" aria-label="Фотография позиции">
             <div class="catalog-image-picker-preview" data-catalog-image-preview></div>
             <div class="catalog-image-picker-actions">
@@ -28,7 +28,7 @@
                 </label>
                 <button class="btn btn-danger btn-icon hidden" data-catalog-image-remove type="button" title="Удалить фото" aria-label="Удалить фото">${window.App.icons.svg("trash")}</button>
               </div>
-              <small class="muted-small" data-catalog-image-status>JPEG, PNG или WebP · до 8 МБ</small>
+              <small class="muted-small" data-catalog-image-status></small>
             </div>
           </section>
           <input id="itemTemplateSource" type="hidden" />
@@ -129,7 +129,7 @@
                 </label>
                 <button class="btn btn-danger btn-icon hidden" data-catalog-image-remove type="button" title="Удалить фото" aria-label="Удалить фото">${window.App.icons.svg("trash")}</button>
               </div>
-              <small class="muted-small" data-catalog-image-status>JPEG, PNG или WebP · до 8 МБ</small>
+              <small class="muted-small" data-catalog-image-status></small>
             </div>
           </section>
           <label class="field">
@@ -143,7 +143,7 @@
               <label class="field"><span>Единица содержимого</span><select id="catalogProductPackageUnit"><option value="">Не указана</option><option value="piece">шт.</option><option value="kg">кг</option><option value="g">г</option><option value="l">л</option><option value="ml">мл</option></select></label>
             </div>
           </section>
-          <p id="catalogProductSizeNote" class="muted-small">Изменение размера сохраняется в истории товара. В старых чеках остаётся прежний размер.</p>
+
           <div class="form-grid catalog-product-meta-grid">
             <div id="catalogProductBrandField" class="field create-category-field">
               <label for="catalogProductBrandSearch">Бренд</label>
@@ -188,7 +188,7 @@
         </section>
         <section data-product-panel="purchases" class="catalog-product-detail-panel hidden">
           <label class="field"><span>Предложения</span><select id="catalogProductPurchaseOffer" aria-label="Предложения в покупках"></select></label>
-          <p class="muted-small">За всё время. Суммы указаны за операции целиком; откройте операцию, чтобы увидеть чек.</p>
+
           <div id="catalogProductPurchasesList" aria-live="polite"></div>
           <button id="catalogProductMorePurchases" class="btn-icon btn btn-secondary hidden" type="button" title="Показать ещё покупки" aria-label="Показать ещё покупки">${window.App.icons.svg("down")}</button>
           <button id="openCatalogProductOperationsBtn" class="btn-icon btn btn-secondary" type="button" title="Открыть операции товара" aria-label="Открыть операции товара">${window.App.icons.svg("receipt")}</button>
@@ -241,7 +241,7 @@
                 </label>
                 <button class="btn btn-danger btn-icon hidden" data-catalog-image-remove type="button" title="Удалить фото" aria-label="Удалить фото">${window.App.icons.svg("trash")}</button>
               </div>
-              <small class="muted-small" data-catalog-image-status>JPEG, PNG или WebP · до 8 МБ</small>
+              <small class="muted-small" data-catalog-image-status></small>
             </div>
           </section>
           <label class="field">
@@ -315,7 +315,7 @@
                 </label>
                 <button class="btn btn-danger btn-icon hidden" data-catalog-image-remove type="button" title="Удалить фото" aria-label="Удалить фото">${window.App.icons.svg("trash")}</button>
               </div>
-              <small class="muted-small" data-catalog-image-status>JPEG, PNG или WebP · до 8 МБ</small>
+              <small class="muted-small" data-catalog-image-status></small>
             </div>
           </section>
           <label class="field"><span>Название</span><input id="sourceGroupName" type="text" placeholder="Название источника" required /></label>

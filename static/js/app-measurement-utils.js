@@ -32,7 +32,6 @@
     const [sale, quantity, unit] = controls;
     const editor = document.createElement('div'); editor.className = 'measurement-editor';
     let weighted = ['kg','g','l','ml'].includes(sale.value);
-    const current = () => Object.fromEntries(fields.map((key,i) => [key, controls[i].value]));
     function write(values) {
       for (const [key,value] of Object.entries(values)) {
         const control = controls[fields.indexOf(key)];
@@ -43,7 +42,7 @@
       }
     }
     function render() {
-      editor.innerHTML = `<div class="measurement-kind segmented" role="group" aria-label="Как продаётся товар"><button type="button" class="segmented-btn ${!weighted?'active':''}" aria-pressed="${!weighted}" data-measure-kind="pack">Упаковка / штука</button><button type="button" class="segmented-btn ${weighted?'active':''}" aria-pressed="${weighted}" data-measure-kind="weight">На вес / розлив</button></div><div class="measurement-size"><label class="field"><span>${weighted?'Цена за единицу веса / объёма':'Размер одной упаковки'}</span>${weighted?'': '<input type="number" min="0.001" step="0.001" placeholder="Например, 1" aria-label="Размер одной упаковки">'}</label><div class="measurement-units" role="group" aria-label="Единица размера"></div></div><small class="muted-small measurement-example"></small>`;
+      editor.innerHTML = `<div class="measurement-kind segmented" role="group" aria-label="Как продаётся товар"><button type="button" class="segmented-btn ${!weighted?'active':''}" aria-pressed="${!weighted}" data-measure-kind="pack">Упаковка / штука</button><button type="button" class="segmented-btn ${weighted?'active':''}" aria-pressed="${weighted}" data-measure-kind="weight">На вес / розлив</button></div><div class="measurement-size"><label class="field"><span>${weighted?'Цена за единицу веса / объёма':'Размер одной упаковки'}</span>${weighted?'': '<input type="number" min="0.001" step="0.001" placeholder="Например, 1" aria-label="Размер одной упаковки">'}</label><div class="measurement-units" role="group" aria-label="Единица размера"></div></div>`;
       const input = editor.querySelector('input');
       if (input) {
         input.value = quantity.value;
@@ -74,9 +73,7 @@
         const active=button.dataset.unit===(weighted?sale.value:unit.value);
         button.classList.toggle('is-active',active); button.setAttribute('aria-pressed',String(active));
       });
-      editor.querySelector('.measurement-example').textContent = weighted
-        ? `Цена за 1 ${units[sale.value] || 'кг'} · количество — фактический вес / объём`
-        : quantity.value && unit.value ? `${summary(current())} · количество в чеке — число упаковок` : 'Необязательно · например, 1 л молока или 90 г пюре';
+
     }
     container.append(editor); render();
   }

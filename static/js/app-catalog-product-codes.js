@@ -24,7 +24,7 @@
     const label=document.createElement('label');label.className='offer-size-toggle';
     const toggle=document.createElement('input');toggle.type='checkbox';toggle.dataset.offerOwnSize='';toggle.checked=Boolean(current.own);toggle.disabled=!data;
     label.append(toggle,document.createTextNode('Свой размер для этого источника'));section.append(label);
-    const note=document.createElement('small');note.className='muted-small';note.textContent=current.own?'Этот размер применяется только к выбранному источнику.':'Из товара: '+window.App.measurements.summary(measurement());section.append(note);
+    const note=document.createElement('small');note.className='muted-small';note.textContent=current.own?'':'Из товара: '+window.App.measurements.summary(measurement());if(note.textContent)section.append(note);
     toggle.onchange=()=>{sizes.set(id,toggle.checked?{...measurement(),sale_unit:measurement().sale_unit||'piece'}:null);choices.delete(id);render();};
     if(current.own){
       const grid=document.createElement('div');grid.className='offer-size-fields';
@@ -41,7 +41,7 @@
     host.append(section);
   }
   function status(){
-    node('catalogProductCodesStatus').textContent=failed?'Не удалось загрузить коды.':!data&&product?'Загружаю коды…':hosts().length?'Размеры и коды сохраняются общей кнопкой. Штрихкод одного размера общий для магазинов; артикул — свой у каждого источника.':'';
+    node('catalogProductCodesStatus').textContent=failed?'Не удалось загрузить коды.':!data&&product?'Загружаю коды…':'';
     node('catalogProductCodesRetry').hidden=!failed;
   }
   function syncBarcode(key,value,except){
@@ -74,11 +74,10 @@
         select.value=variant?String(variant.id):'';select.onchange=()=>{choices.set(id,select.value);render();};
         label.append(title,select);host.append(label);
       }
-      const note=document.createElement('small');note.className='muted-small offer-code-size';
-      note.textContent=variant?.is_archived?'Штрихкод архивного размера':window.App.measurements.summary(selected.size);host.append(note);
+      if(variant?.is_archived){const note=document.createElement('small');note.className='muted-small offer-code-size';note.textContent='Штрихкод архивного размера';host.append(note);}
     }
     status();
-    node('catalogProductSizeNote').textContent=product&&sizeKey(product)!==sizeKey(measurement())?'Размер изменён. После сохранения изменение появится в истории товара; старые чеки сохранят прежний размер.':'Изменение размера сохраняется в истории товара. В старых чеках остаётся прежний размер.';
+
   }
   function bind(){
     if(bound)return;bound=true;

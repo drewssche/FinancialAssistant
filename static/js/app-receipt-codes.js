@@ -63,7 +63,7 @@
       save.disabled=Boolean(reason);
       if(reason)row.code_save=false;
       save.checked=Boolean(row.code_save);
-      saveHint.textContent=reason||(row.code_save?'Коды будут добавлены в каталог вместе с сохранением операции. Отмена черновика ничего не изменит.':'Включите, чтобы запомнить новые коды для следующих чеков. Уже сохранённые коды повторно добавлять не нужно.');
+      saveHint.textContent=reason;saveHint.hidden=!reason;
     }
     host.refreshCodeState=refreshSave;
     const status=document.createElement('p');status.className='muted-small';status.setAttribute('role','status');details.append(status);
