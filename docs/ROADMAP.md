@@ -656,7 +656,7 @@ Automatic GitHub CI runs on pushes and pull requests are disabled at the owner�
 - [x] Restore category icons in scan/native selects, shared choice dialog, operation and receipt category search fields, product/source editors, bulk edit and active filters. Use the category icon, falling back to its group; keep plain input names and stable relation IDs. Restore history/payment chips using an unambiguous same-kind catalog name when the API supplies only the name.
 - [x] Allow numeric expressions in scan price, quantity, discount, paid amount and receipt total using the existing safe expression parser. Support decimal commas, parentheses and +/−/×/÷ (* and /); normalize on Enter/blur. Reject invalid, negative or excessive results, preserve manual/printed totals, and calculate missing totals from price × quantity − discount. Merely focusing/blurring an automatic total does not disable calculation.
 - [x] Validation: 67 distinct browser cases passed across scan, receipt/editor, catalog, bulk category choice, plan history and work payments. New checks cover category/group/no-icon variants, selected-value geometry at 320/1440 px, arithmetic/invalid input and exact transfer payloads. 41 frontend contract checks pass. Two pre-existing source-string checks in `test_frontend_modal_contract.py` still fail (old activity CSS cache token and old discount label); reproduced both against pristine HEAD `7ec936a`. JavaScript syntax, diff checks and mobile/desktop screenshots pass.
-- [ ] Release pending explicit user approval: automatic approval review rejected direct push to main as a high-risk default-branch update without explicit authorization. No push or server deployment performed. Prepared assets `20261016-category-icons`; deploy only app, verify served hashes and unchanged schema/companion services after approval.
+- [x] Published in consolidated release `d2c695b` on 2026-10-16 after explicit user authorization. See the verified release entry below.
 
 ### Receipt identifier matching — 2026-10-16
 
@@ -666,29 +666,35 @@ Automatic GitHub CI runs on pushes and pull requests are disabled at the owner�
 - [x] Simplify the product identity editor; validate API, parser and browser flows before release. Camera barcode decoding and retailer polling remain separate later work.
 
 - [x] Validation: 75 distinct API/parser/frontend contract checks and 57 browser cases across scoped runs. Final 12-case browser run covers exact/ambiguous codes, leading zeros, saved SKU loading, stale responses, size conflicts, cancel, and desktop/mobile layouts. Six identifier API cases include atomic rollback, source/owner isolation, archives, weighted codes and plan confirmation snapshots. JavaScript syntax and diff checks pass.
-- [ ] Release pending explicit approval for the previously blocked default-branch push; this implementation and the preceding category/arithmetic changes are local. No schema migration is needed. Camera decoding and store-site price monitoring are not included in this stage.
+- [x] Published in consolidated release `d2c695b` on 2026-10-16 after explicit user authorization. See the verified release entry below.
 
 ### Product-tab barcode and store SKU — 2026-10-16
 
 - [x] Correct the earlier simplification: barcode and store SKU are visible directly below the name in the Product tab, for both existing and new products. One package/store is selected automatically and shown as a compact context label; Change reveals selection. Multiple matches require an explicit selection. A new store can be entered here without visiting Offers. Product opens on its main tab unless a specific destination was requested.
 - [x] Save code edits with the main product request in one transaction, including creation of the first package/store offer. Preserve other package measurements and offer URL/external name, leading zeros, and historical receipt snapshots. Conflicts roll back the entire save. Cancel and tab navigation do not write identities; drafts stay separate per package and store.
 - [x] Validation: 31 API/frontend contract checks and 19 distinct browser cases pass across scoped runs, including final 10-case product/advanced-identity verification. Tested 320/390/1440 px, new products/stores, multiple package/store drafts, invalid codes, cancellation, loading failure/retry, conflict rollback, receipt matching, and existing advanced identity forms. Desktop/mobile previews, JavaScript syntax and diff checks pass.
-- [ ] Publication remains pending the explicit authorization requested for the previously rejected push to main; no server changes in this stage.
+- [x] Published in consolidated release `d2c695b` on 2026-10-16 after explicit user authorization. See the verified release entry below.
 
 ### One size field; retire package workspace — 2026-10-16
 
 - [x] Remove the Packages tab, all its sub-tabs/forms, and their browser modules. Keep Product, Offers, Prices and Purchases. The main size field is the single normal editing path; barcode selection follows its current size, with a selector only for ambiguous legacy records of exactly that size. A new size does not inherit an old size's barcode. Barcode drafts entered before setting the size of a new product follow that draft size.
 - [x] Saving a changed size records “Размер товара изменён” in existing product activity with old/new values and timestamp; unchanged saves do not duplicate it. Existing receipt snapshots, registry data and backend compatibility endpoints remain intact. This records an edit, without inventing a market replacement date or a confirmed shrinkflation relationship.
 - [x] Validation: 32 distinct API/frontend checks and 20 browser scenarios pass across scoped runs. Covers size-history before/after values, unchanged saves, failed-code rollback, old receipt amount/size preservation, new-product entry order, cancel/reopen, 320/390/1440 px, and receipt-code scan/selection regression. Desktop/mobile previews, JavaScript syntax and diff checks pass.
-- [ ] Publication still requires the explicit main/server authorization requested after the earlier automatic review rejection. Local implementation only.
+- [x] Published in consolidated release `d2c695b` on 2026-10-16 after explicit user authorization. See the verified release entry below.
 
 ### Codes inside source cards — 2026-10-16
 
 - [x] Move barcode/SKU entry out of Product and directly into each source card in Offers. The card supplies store context, eliminating a separate source selector. Respect a source's linked size when present; otherwise use the current product size. Shared-size barcode drafts stay synchronized across source cards; store SKUs remain independent.
 - [x] Keep one save action, now visible at the right of the Offers footer as well as Product. Cancel/tab switching retain existing draft semantics; missing required product name returns to Product without losing code edits. New products use the existing save/add-source flow. No backend or data migration changes.
 - [x] Validation: 21 API/frontend checks and 13 browser cases pass, including 320/390/1440 px, shared and distinct package codes, SKU isolation, saving from Offers, invalid input, cancel/reopen, load/retry, size edits and required-name focus. Mobile/desktop previews, JavaScript syntax and diff checks pass.
-- [ ] Publication pending the previously requested explicit authorization; server unchanged.
+- [x] Published in consolidated release `d2c695b` on 2026-10-16 after explicit user authorization. See the verified release entry below.
 
 ### Standing publication authorization — 2026-10-16
 
 User explicitly authorized the full cycle after every completed iteration: local commit → GitHub main → server pull and application update. This supersedes the pending-approval release notes above; publication is now authorized. The workflow is recorded in AGENTS.md, with preflight, app-only deployment, rollback image and verification.
+
+### Consolidated identifiers release — 2026-10-16
+
+- [x] Published the accumulated category icons/arithmetic, receipt identifier matching, main size/history simplification and final Offers-card code placement through GitHub main → clean server fast-forward pull → app-only build/recreate. Application code commit: `d2c695b` (includes implementation through `7cc4a26` and the standing authorization workflow).
+- [x] Verified all 27 changed static file hashes from the running application, including assets `20261016-offer-codes`. `/ready` reports ready, database OK and unchanged schema `20261013_0050`. All six containers healthy. App started `2026-10-16T08:07:33.987087731Z`, restarts 0. The other five containers retain exactly their previous image/start/restart state. Rollback image: `financialassistant-app:before-offer-codes-20261016`.
+- [x] The first asset probe overlapped startup and received a closed connection; the post-readiness verification completed successfully. No schema migration or companion-service restart was needed. This documentation-only release record is published and pulled after verification; the application image remains the verified code build above.
