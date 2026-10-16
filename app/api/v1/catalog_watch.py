@@ -94,3 +94,12 @@ def search(product_id: int, template_id: int, payload: SearchInput, user_id: int
                 results.setdefault(hit['url'], hit)
         return {'items': list(results.values())[:8]}
     return run(action)
+
+
+@router.post('/{product_id}/offers/{template_id}/autolink')
+def autolink(product_id: int, template_id: int, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    from app.services.catalog_match_service import CatalogMatchService
+    def action():
+        CatalogMatchService(db).queue(user_id, product_id, template_id)
+        return CatalogWatchService(db).detail(user_id, product_id)
+    return run(action)

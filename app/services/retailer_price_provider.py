@@ -89,7 +89,7 @@ def parse_green(html, url):
                         [p['id'], p.get('gtin'), p['unit']], store_id,
                         store.get('additionalAddressInfo') or store['name'],
                         normalized=str(p.get('volume') or '')[:160],
-                        extra='Скидка по карте и кешбэк не включены.')
+                        extra='Скидка по карте и кешбэк не включены.') | {'identifiers': {'article': str(p['vendorCode']), 'barcodes': [str(p.get('gtin') or '')]}}
     except (KeyError, TypeError, ValueError, IndexError, ArithmeticError) as exc:
         raise RetailerUnavailable('Green: не удалось проверить цену, фасовку и наличие. Последняя цена сохранена.') from exc
 
@@ -116,7 +116,7 @@ def parse_sosedi(html, url):
         size = [str(weight), p['liter'], p['isWeightGoods'], p.get('servingWeight'), p.get('maxServingWeight')]
         return snapshot('sosedi', url, p['name'], price, regular,
                         p['status'] == 1 and not p['isWait'] and number(p['qty'], signed=True) > 0,
-                        unit, size, [p['id'], p.get('cod'), p['name']], store['id'], store['name'])
+                        unit, size, [p['id'], p.get('cod'), p['name']], store['id'], store['name']) | {'identifiers': {'article': str(p['id']), 'barcodes': [str(p.get('cod') or '')]}}
     except (KeyError, TypeError, ValueError, IndexError, AttributeError, ArithmeticError) as exc:
         raise RetailerUnavailable('Соседи: не удалось проверить цену, фасовку и наличие. Последняя цена сохранена.') from exc
 

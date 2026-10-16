@@ -2,7 +2,8 @@
   const {core} = window.App;
   const esc = v => String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
   const api = '/api/v1/catalog-watches';
-  let product = null, generation = 0, dashboardSeq = 0;
+  let product = null, generation = 0, dashboardSeq = 0, matchingTimer = null;
+  const matchLabels = {pending:"Подбираем страницу по коду…", choice:"Выберите подходящую карточку", not_found:"По кодам пока не найдено", missing_codes:"Добавьте штрихкод или артикул", error:"Не удалось проверить сайт · повторим позже", paused:"Автоподключение отключено", linked:"Страница подключена"};
   const request = (path, method='GET', body) => core.requestJson(api+path,{method,headers:core.authHeaders(),...(body?{body:JSON.stringify(body)}:{})});
   const date = v => v ? core.formatDateTimeRu(v) : 'ещё не проверено';
   function quote(s){
@@ -54,6 +55,16 @@
           for(const button of result.querySelectorAll('[data-watch-select]'))button.onclick=()=>guarded(button,()=>previewCard(found.items[Number(button.dataset.watchSelect)].url));
         }catch(e){if(current(n)){result.textContent='Не удалось выполнить поиск. Повторите позже.';throw e;}}
       };
+      const matching=meta.matching;
+      if(matching){
+        result.innerHTML=`<div class="row between"><span class="muted-small">${esc(matchLabels[matching.state]||'')}</span>${['error','not_found','paused'].includes(matching.state)?'<button type="button" class="btn btn-secondary btn-xs" data-match-retry>Повторить подбор</button>':''}</div>`;
+        if(matching.candidates?.length){
+          result.insertAdjacentHTML('beforeend','<div class="watch-search-results">'+matching.candidates.map((hit,i)=>`<article class="watch-search-card"><strong>${esc(hit.name)}</strong><span>${esc(hit.price)} BYN / ${esc(hit.unit)}</span><small>${hit.conflict?'Коды расходятся':hit.exact?'Код подтверждён':'Совпадение кода не подтверждено'}</small><button type="button" class="btn btn-secondary btn-xs" data-match-select="${i}">Выбрать</button></article>`).join('')+'</div>');
+          for(const button of result.querySelectorAll('[data-match-select]'))button.onclick=()=>guarded(button,()=>previewCard(matching.candidates[Number(button.dataset.matchSelect)].url));
+        }
+        const retry=result.querySelector('[data-match-retry]');
+        if(retry)retry.onclick=()=>guarded(retry,async()=>{const d=await request(`/${id}/offers/${offerId}/autolink`,'POST');if(token===generation)render(d);});
+      }
       const searchButton=target.querySelector('[data-watch-search]');
       if(searchButton)searchButton.onclick=()=>guarded(searchButton,async()=>{
         const codesHost=document.querySelector(`[data-offer-codes="${offerId}"]`);
@@ -72,6 +83,10 @@
       if(savedButton)savedButton.onclick=()=>guarded(savedButton,()=>previewCard(meta.saved_url));
       const preview=target.querySelector('[data-watch-preview]');
       preview.onclick=()=>guarded(preview,()=>previewCard(target.querySelector('[data-watch-url]').value));
+    }
+    clearTimeout(matchingTimer);
+    if(Object.entries(data.supported_offers||{}).some(([tid,meta])=>meta.matching?.state==='pending'&&!data.offers.some(o=>String(o.template_id)===tid))){
+      matchingTimer=setTimeout(()=>{if(token===generation&&!document.querySelector('[data-watch-confirm]')&&!document.activeElement?.closest('.catalog-offer-watch'))open(product);},15000);
     }
   }
   async function open(p){
@@ -99,9 +114,9 @@
       appendEvents(data);
       if(!data.events.length)eventHost.innerHTML='<p class="muted-small">Изменений цен пока нет</p>';
       if(data.offers.length)host.insertAdjacentHTML('beforeend',`<details><summary>Предложения с уведомлениями (${data.offers.length})</summary><div class="watch-grid">${data.offers.map(o=>`<article class="watch-card"><button type="button" class="catalog-product-name-btn" data-watch-open="${o.product_id}">${esc(o.product_name)}</button>${quote(o.snapshot)}<small class="muted-small">${esc(date(o.checked_at))}${o.error?' · '+esc(o.error):''}</small></article>`).join('')}</div></details>`);
-      host.insertAdjacentHTML('beforeend',data.unlinked.map(p=>`<p class="muted-small"><button type="button" class="btn btn-secondary btn-xs" data-watch-open="${p.product_id}">${esc(p.name)}</button> · подключите страницу магазина</p>`).join(''));
+      host.insertAdjacentHTML('beforeend',data.unlinked.map(p=>`<p class="muted-small"><button type="button" class="btn btn-secondary btn-xs" data-watch-open="${p.product_id}">${esc(p.name)}</button> · ${esc(matchLabels[p.matching_state]||'Подбираем страницу по коду…')}</p>`).join(''));
       bindOpen();
     }catch(e){if(token===dashboardSeq&&authToken===window.App.state.token){host.innerHTML='<h3>Уведомления о ценах</h3><span class="muted-small">Не удалось загрузить предложения.</span> <button type="button" class="btn btn-secondary">Повторить</button>';host.querySelector('button').onclick=loadDashboard;}}
   }
-  window.App.registerRuntimeModule('catalog-watch',{open,close(){generation++;product=null;},loadDashboard});
+  window.App.registerRuntimeModule('catalog-watch',{open,close(){generation++;product=null;clearTimeout(matchingTimer);},loadDashboard});
 })();

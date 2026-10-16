@@ -89,6 +89,8 @@ class CatalogWatchService:
             if not acquired:
                 raise ValueError('Идёт проверка предложения. Повторите через несколько секунд.')
             w = self.db.get(CatalogOfferWatch, template_id)
+            from app.services.catalog_match_service import CatalogMatchService
+            CatalogMatchService(self.db).pause(self.offer(user_id, product_id, template_id))
             if w:
                 self.db.delete(w)
             self.db.execute(update(CatalogPriceEvent).where(CatalogPriceEvent.user_id == user_id, CatalogPriceEvent.template_id == template_id, CatalogPriceEvent.telegram_sent_at.is_(None)).values(telegram_sent_at=now()))
@@ -118,7 +120,8 @@ class CatalogWatchService:
                     _, url = provider.identify_url(identity.product_url)
                 except ValueError:
                     pass
-            supported[t.id] = dict(provider.PROVIDERS[key], provider=key, saved_url=url)
+            from app.services.catalog_match_service import CatalogMatchService
+            supported[t.id] = dict(provider.PROVIDERS[key], provider=key, saved_url=url, matching=CatalogMatchService(self.db).status(t))
         return {'supported_offer_ids': list(supported), 'supported_offers': supported, 'enabled': bool(w and w.enabled), 'telegram_connected': bool(self.db.scalar(select(AuthIdentity.id).where(AuthIdentity.user_id == user_id, AuthIdentity.provider == 'telegram').limit(1))),
                 'offers': [self.serialize(o) for o in self.db.scalars(self.valid_offers().where(CatalogOfferWatch.user_id == user_id, CatalogOfferWatch.product_id == product_id))]}
 
@@ -134,7 +137,17 @@ class CatalogWatchService:
             stmt = stmt.where(CatalogPriceEvent.id < before_id)
         page = list(self.db.scalars(stmt.order_by(CatalogPriceEvent.id.desc()).limit(21)))
         events = page[:20]
-        return {'tracked_count': len(ids), 'offers': offers, 'events': [dict(e.data, id=e.id, product_id=e.product_id, created_at=e.created_at) for e in events], 'unlinked': [{'product_id': i, 'name': names[i]} for i in ids if i not in connected_ids], 'next_cursor': events[-1].id if len(page) > 20 else None}
+        from app.services.catalog_match_service import CatalogMatchService
+        unresolved = []
+        for product_id in ids:
+            states = []
+            for offer in self.db.scalars(select(OperationItemTemplate).where(OperationItemTemplate.user_id == user_id, OperationItemTemplate.product_id == product_id, OperationItemTemplate.is_archived.is_(False))):
+                if self.supports(offer) and not self.db.get(CatalogOfferWatch, offer.id):
+                    states.append(CatalogMatchService(self.db).status(offer)['state'])
+            if states or product_id not in connected_ids:
+                state = next((s for s in ('choice', 'pending', 'error', 'not_found', 'missing_codes', 'paused') if s in states), 'missing_codes')
+                unresolved.append({'product_id': product_id, 'name': names[product_id], 'matching_state': state})
+        return {'tracked_count': len(ids), 'offers': offers, 'events': [dict(e.data, id=e.id, product_id=e.product_id, created_at=e.created_at) for e in events], 'unlinked': unresolved, 'next_cursor': events[-1].id if len(page) > 20 else None}
 
     def record(self, w, snapshot):
         previous = w.snapshot or {}

@@ -1,4 +1,4 @@
-from app.db.models.catalog_watch import CatalogWatch, CatalogOfferWatch, CatalogPriceEvent
+from app.db.models.catalog_watch import CatalogWatch, CatalogOfferWatch, CatalogPriceEvent, CatalogOfferMatch
 from app.db.models.catalog_package_replacement import CatalogPackageReplacement
 from app.db.models.catalog_identity import CatalogVariant, CatalogVariantCode, CatalogOfferIdentity
 from app.db.models.auth_identity import AuthIdentity

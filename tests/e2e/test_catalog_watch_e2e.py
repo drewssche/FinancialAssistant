@@ -173,3 +173,56 @@ def test_dashboard_notification_history_with_toggle_off_and_pagination(static_se
     expect(host.get_by_role('button',name='Ещё изменения')).to_have_count(0)
     assert host.evaluate('n=>n.scrollWidth<=n.clientWidth+1')
     host.scroll_into_view_if_needed();p.screenshot(path=f'/tmp/fa-watch-history-{width}.png')
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width',[320,1440])
+def test_automatic_candidates_visible_without_search(static_server_url,page_with_receipt_api_mock,width):
+    p=page_with_receipt_api_mock
+    candidates=[{'url':f'https://green-dostavka.by/product/milk-{i}/','name':f'Молоко вариант {i}','price':'2.99','unit':'шт.','available':True,'exact':True,'conflict':False} for i in (1,2)]
+    data={'enabled':True,'telegram_connected':True,'supported_offer_ids':[501], 'supported_offers':{'501':{'source':'Green','provider':'green','search':True,'matching':{'state':'choice','candidates':candidates}}},'offers':[]}
+    snapshot={**candidates[1],'regular_price':'3.49','comparison_key':'second','conditions':'Цена сайта'}
+    writes=[]
+    def route(r,req):
+        path=urlparse(req.url).path
+        if path.endswith('/catalog-watches'):
+            return r.fulfill(json={'tracked_count':1,'offers':[],'events':[],'unlinked':[{'product_id':401,'name':'Молоко','matching_state':'choice'}]})
+        if path.endswith('/preview'):return r.fulfill(json=snapshot)
+        if req.method=='PUT':
+            writes.append(req.post_data_json)
+            data['offers']=[{'template_id':501,'snapshot':snapshot}]
+        return r.fulfill(json=data)
+    p.route(re.compile(r'.*/api/v1/catalog-watches(?:/.*)?$'),route)
+    setup(p,static_server_url,width)
+    p.locator('[data-product-tab=offers]').click()
+    host=p.locator('[data-offer-watch="501"]')
+    expect(host.locator('[data-match-select]')).to_have_count(2)
+    expect(host).to_contain_text('Выберите подходящую карточку')
+    assert writes==[]
+    host.scroll_into_view_if_needed()
+    p.screenshot(path=f'/tmp/fa-auto-match-{width}.png')
+    assert host.evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+    host.locator('[data-match-select="1"]').click()
+    expect(host.locator('[data-watch-confirm]')).to_be_visible()
+    host.locator('[data-watch-confirm]').click()
+    expect(host.locator('[data-watch-remove]')).to_be_visible()
+    assert writes[0]['url']==candidates[1]['url']
+
+
+@pytest.mark.e2e
+def test_retry_discovery_targets_only_selected_source(static_server_url,page_with_receipt_api_mock):
+    p=page_with_receipt_api_mock;posts=[]
+    data={'enabled':True,'telegram_connected':True,'supported_offer_ids':[501], 'supported_offers':{'501':{'source':'Green','provider':'green','search':True,'matching':{'state':'paused','candidates':[]}}},'offers':[]}
+    def route(r,req):
+        path=urlparse(req.url).path
+        if path.endswith('/catalog-watches'):
+            return r.fulfill(json={'tracked_count':0,'offers':[],'events':[],'unlinked':[]})
+        if req.method=='POST':
+            posts.append(path);data['supported_offers']['501']['matching']['state']='pending'
+        return r.fulfill(json=data)
+    p.route(re.compile(r'.*/api/v1/catalog-watches(?:/.*)?$'),route)
+    setup(p,static_server_url,390)
+    p.locator('[data-product-tab=offers]').click()
+    p.locator('[data-match-retry]').click()
+    expect(p.locator('[data-offer-watch="501"]')).to_contain_text('Подбираем страницу по коду')
+    assert posts==['/api/v1/catalog-watches/401/offers/501/autolink']

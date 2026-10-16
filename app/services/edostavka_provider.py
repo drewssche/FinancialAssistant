@@ -30,8 +30,12 @@ def parse_product(html: str, url: str) -> dict:
         if not isinstance(available, bool):
             raise ValueError('Unknown availability')
         size = []
+        barcodes = []
         for group in p.get('additionalProperties', []):
             for prop in group.get('groupProperty', []):
+                if prop.get('propertyName') in ('Штрихкод', 'Штрих-код', 'EAN', 'GTIN'):
+                    values = prop.get('propertyValue', [])
+                    barcodes.extend(str(v) for v in (values if isinstance(values, list) else [values]))
                 if prop.get('propertyName') in ('Вес, гр', 'Объем, л', 'Объем, мл', 'Вес, кг'):
                     size.append([prop['propertyName'], prop['propertyValue']])
         measure = str(p['quantityInfo']['measure'])
@@ -41,6 +45,7 @@ def parse_product(html: str, url: str) -> dict:
         return {'provider': 'edostavka', 'source': 'Е-доставка', 'url': url,
                 'name': str(p['productName'])[:320], 'price': str(price), 'regular_price': str(regular),
                 'currency': 'BYN', 'available': available, 'unit': measure,
+                'identifiers': {'article': str(p['productId']), 'barcodes': barcodes},
                 'conditions_key': json.dumps([p.get('optDiscounts', []), p.get('messages', [])], ensure_ascii=False, sort_keys=True),
                 'size': size, 'comparison_key': json.dumps([url, measure, p.get('soldByWeight'), size], ensure_ascii=False, sort_keys=True),
                 'normalized': str(p['price'].get('measurePrice') or '')[:160], 'conditions': conditions}

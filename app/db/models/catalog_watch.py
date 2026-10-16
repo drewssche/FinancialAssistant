@@ -34,3 +34,15 @@ class CatalogPriceEvent(Base):
     data: Mapped[dict] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     telegram_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class CatalogOfferMatch(Base):
+    """Durable discovery result, scoped to an offer and its current codes."""
+    __tablename__ = 'catalog_offer_matches'
+    template_id: Mapped[int] = mapped_column(ForeignKey('operation_item_templates.id', ondelete='CASCADE'), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'), index=True)
+    fingerprint: Mapped[str] = mapped_column(String(64))
+    state: Mapped[str] = mapped_column(String(24), default='pending')
+    candidates: Mapped[list] = mapped_column(JSON, default=list)
+    error: Mapped[str | None] = mapped_column(String(300))
+    next_check_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, server_default=func.now())
