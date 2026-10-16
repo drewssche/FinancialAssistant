@@ -1,11 +1,11 @@
 from typing import Literal
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from app.api.deps import get_current_user_id
 from app.db.session import get_db
 from app.services.catalog_watch_service import CatalogWatchService
-from app.services.edostavka_provider import search_products
+from app.services.retailer_price_provider import search_products
 from app.services.retailer_price_provider import fetch_product
 from app.services.catalog_identity_service import normalize_codes
 from app.api.v1.catalog_identity import run
@@ -28,8 +28,8 @@ class PreviewInput(BaseModel):
 
 
 @router.get('')
-def dashboard(user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
-    return CatalogWatchService(db).dashboard(user_id)
+def dashboard(before_id: int | None = Query(default=None, gt=0), user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    return CatalogWatchService(db).dashboard(user_id, before_id)
 
 
 @router.get('/{product_id}')
@@ -73,8 +73,9 @@ def search(product_id: int, template_id: int, payload: SearchInput, user_id: int
     def action():
         service = CatalogWatchService(db)
         offer = service.offer(user_id, product_id, template_id)
-        if service.provider(offer) != 'edostavka':
-            raise ValueError('Поиск доступен для источника Е-доставка или Евроопт.')
+        provider_key = service.provider(offer)
+        if not provider_key:
+            raise ValueError('Поиск для этого источника пока не подключён.')
         if bool(payload.codes) == bool(payload.name):
             raise ValueError('Укажите коды или название для поиска.')
         queries = []
@@ -88,7 +89,7 @@ def search(product_id: int, template_id: int, payload: SearchInput, user_id: int
             queries.append((payload.name.strip(), 'name'))
         results = {}
         for query, kind in queries:
-            for hit in search_products(query):
+            for hit in search_products(provider_key, query, kind):
                 hit = dict(hit, matched_query=query, match_kind=kind)
                 results.setdefault(hit['url'], hit)
         return {'items': list(results.values())[:8]}

@@ -122,14 +122,19 @@ class CatalogWatchService:
         return {'supported_offer_ids': list(supported), 'supported_offers': supported, 'enabled': bool(w and w.enabled), 'telegram_connected': bool(self.db.scalar(select(AuthIdentity.id).where(AuthIdentity.user_id == user_id, AuthIdentity.provider == 'telegram').limit(1))),
                 'offers': [self.serialize(o) for o in self.db.scalars(self.valid_offers().where(CatalogOfferWatch.user_id == user_id, CatalogOfferWatch.product_id == product_id))]}
 
-    def dashboard(self, user_id):
+    def dashboard(self, user_id, before_id=None):
         watches = list(self.db.scalars(select(CatalogWatch).join(CatalogProduct, CatalogProduct.id == CatalogWatch.product_id).where(CatalogWatch.user_id == user_id, CatalogWatch.enabled.is_(True), CatalogProduct.is_archived.is_(False))))
         ids = [w.product_id for w in watches]
         names = dict(self.db.execute(select(CatalogProduct.id, CatalogProduct.name).where(CatalogProduct.id.in_(ids))).all())
         offers = [dict(self.serialize(o), product_name=names[o.product_id]) for o in self.db.scalars(self.valid_offers().where(CatalogOfferWatch.user_id == user_id, CatalogOfferWatch.product_id.in_(ids)).order_by(CatalogOfferWatch.checked_at.desc()).limit(60))]
         connected_ids = set(self.db.scalars(self.valid_offers().with_only_columns(CatalogOfferWatch.product_id).where(CatalogOfferWatch.user_id == user_id, CatalogOfferWatch.product_id.in_(ids))))
-        events = self.db.scalars(select(CatalogPriceEvent).join(CatalogWatch, CatalogWatch.product_id == CatalogPriceEvent.product_id).where(CatalogPriceEvent.user_id == user_id, CatalogPriceEvent.product_id.in_(ids), CatalogPriceEvent.created_at >= CatalogWatch.enabled_at).order_by(CatalogPriceEvent.id.desc()).limit(20))
-        return {'tracked_count': len(ids), 'offers': offers, 'events': [dict(e.data, id=e.id, product_id=e.product_id, created_at=e.created_at) for e in events], 'unlinked': [{'product_id': i, 'name': names[i]} for i in ids if i not in connected_ids]}
+        # Dashboard history survives Telegram delivery, unsubscribe and later resubscribe.
+        stmt = select(CatalogPriceEvent).where(CatalogPriceEvent.user_id == user_id)
+        if before_id is not None:
+            stmt = stmt.where(CatalogPriceEvent.id < before_id)
+        page = list(self.db.scalars(stmt.order_by(CatalogPriceEvent.id.desc()).limit(21)))
+        events = page[:20]
+        return {'tracked_count': len(ids), 'offers': offers, 'events': [dict(e.data, id=e.id, product_id=e.product_id, created_at=e.created_at) for e in events], 'unlinked': [{'product_id': i, 'name': names[i]} for i in ids if i not in connected_ids], 'next_cursor': events[-1].id if len(page) > 20 else None}
 
     def record(self, w, snapshot):
         previous = w.snapshot or {}
@@ -148,7 +153,7 @@ class CatalogWatchService:
         self.db.commit()
 
     def refresh_due(self, limit=3):
-        rows = list(self.db.scalars(self.valid_offers().join(CatalogWatch, CatalogWatch.product_id == CatalogOfferWatch.product_id).where(CatalogWatch.enabled.is_(True), CatalogOfferWatch.next_check_at <= now()).order_by(CatalogOfferWatch.next_check_at).limit(limit)))
+        rows = list(self.db.scalars(self.valid_offers().where(CatalogOfferWatch.next_check_at <= now()).order_by(CatalogOfferWatch.next_check_at).limit(limit)))
         for w in rows:
             with try_background_job_lock(self.db, f'catalog_offer_watch:{w.template_id}') as acquired:
                 if not acquired:
@@ -167,13 +172,17 @@ class CatalogWatchService:
                     self.db.commit()
 
     def deliveries(self):
-        stmt = select(CatalogPriceEvent).join(CatalogWatch, CatalogWatch.product_id == CatalogPriceEvent.product_id).join(CatalogProduct, CatalogProduct.id == CatalogPriceEvent.product_id).join(OperationItemTemplate, OperationItemTemplate.id == CatalogPriceEvent.template_id).join(CatalogOfferWatch, CatalogOfferWatch.template_id == CatalogPriceEvent.template_id).where(CatalogWatch.enabled.is_(True), CatalogProduct.is_archived.is_(False), OperationItemTemplate.is_archived.is_(False), OperationItemTemplate.product_id == CatalogPriceEvent.product_id, CatalogPriceEvent.telegram_sent_at.is_(None), CatalogPriceEvent.created_at >= CatalogWatch.enabled_at, CatalogPriceEvent.created_at >= now()-timedelta(days=2)).order_by(CatalogPriceEvent.id)
+        stmt = select(CatalogPriceEvent).join(CatalogWatch, CatalogWatch.product_id == CatalogPriceEvent.product_id).join(CatalogProduct, CatalogProduct.id == CatalogPriceEvent.product_id).join(OperationItemTemplate, OperationItemTemplate.id == CatalogPriceEvent.template_id).join(CatalogOfferWatch, CatalogOfferWatch.template_id == CatalogPriceEvent.template_id).where(CatalogWatch.enabled.is_(True), CatalogProduct.is_archived.is_(False), OperationItemTemplate.is_archived.is_(False), OperationItemTemplate.product_id == CatalogPriceEvent.product_id, CatalogPriceEvent.telegram_sent_at.is_(None), CatalogPriceEvent.created_at >= CatalogWatch.enabled_at).order_by(CatalogPriceEvent.id)
         eligible = select(AuthIdentity.user_id).join(User, User.id == AuthIdentity.user_id).where(AuthIdentity.provider == 'telegram', User.status.in_(['approved', 'active']))
         stmt = stmt.where(CatalogPriceEvent.user_id.in_(eligible))
         grouped = {}
-        for e in self.db.scalars(stmt.limit(200)):
+        for e in self.db.scalars(stmt):
             grouped.setdefault(e.user_id, []).append(e)
         for user_id, events in grouped.items():
+            stamps = [e.created_at.replace(tzinfo=timezone.utc) if e.created_at.tzinfo is None else e.created_at for e in events]
+            # Gather a refresh wave, but cap the wait when changes keep arriving.
+            if now() - max(stamps) < timedelta(minutes=15) and now() - min(stamps) < timedelta(hours=1):
+                continue
             chat = self.db.scalar(select(AuthIdentity.provider_user_id).join(User, User.id == AuthIdentity.user_id).where(AuthIdentity.user_id == user_id, AuthIdentity.provider == 'telegram', User.status.in_(['approved', 'active'])).limit(1))
             if not chat:
                 continue
@@ -190,7 +199,7 @@ class CatalogWatchService:
 
     @staticmethod
     def message(events):
-        lines = ['Изменения цен', '']
+        lines = ['Дайджест цен на товары', '']
         for event in events:
             d = event.data
             stamp = event.created_at

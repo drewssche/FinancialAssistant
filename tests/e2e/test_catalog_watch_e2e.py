@@ -40,16 +40,18 @@ def test_watch_link_preview_confirm_toggle_dashboard(static_server_url,page_with
     host.locator('[data-watch-remove]').click();expect(host.locator('[data-watch-search]')).to_be_visible()
     assert data['offers']==[]
     p.locator('#closeCatalogProductModalBtn').click()
-    expect(p.locator('#dashboardProductWatches')).to_contain_text('Нет отслеживаемых товаров')
+    expect(p.locator('#dashboardProductWatches')).to_contain_text('Изменений цен пока нет')
 
 
 @pytest.mark.e2e
 @pytest.mark.parametrize('width',[320,1440])
-def test_search_current_source_codes_preview_then_confirm(static_server_url,page_with_receipt_api_mock,width):
+@pytest.mark.parametrize('retailer,source,link',[('edostavka','Е-доставка','https://edostavka.by/product/2186323'),('green','Green','https://green-dostavka.by/product/pelmeni-2186323/'),('sosedi','Соседи','https://sosedi-dostavka.by/products/pelmeni-2186323')])
+def test_search_current_source_codes_preview_then_confirm(static_server_url,page_with_receipt_api_mock,width,retailer,source,link):
     p=page_with_receipt_api_mock
     hit={'url':'https://edostavka.by/product/2186323','name':'Пельмени Бульварские 430 г','price':'6.71','unit':'шт','available':True,'matched_query':'2186323','match_kind':'retailer'}
+    hit['url']=link
     snapshot={**hit,'regular_price':'6.71','normalized':'15,60 BYN/кг','conditions':'Цена сайта без адреса доставки','comparison_key':'size-430g'}
-    data={'enabled':False,'telegram_connected':True,'supported_offer_ids':[501],'offers':[]};searches=[];writes=[]
+    data={'enabled':False,'telegram_connected':True,'supported_offer_ids':[501],'supported_offers':{'501':{'provider':retailer,'source':source,'search':True,'example_url':link}},'offers':[]};searches=[];writes=[]
     def route(r,req):
         path=urlparse(req.url).path
         if path.endswith('/search'):
@@ -145,3 +147,29 @@ def test_green_sosedi_saved_links_and_source_labels(static_server_url,page_with_
     p.locator('#closeCatalogProductModalBtn').click()
     dashboard=p.locator('#dashboardProductWatches');expect(dashboard).to_contain_text('Green');expect(dashboard).to_contain_text('Соседи');expect(dashboard).not_to_contain_text('Е-доставка')
     assert len(writes)==2
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width',[320,1440])
+def test_dashboard_notification_history_with_toggle_off_and_pagination(static_server_url,page_with_receipt_api_mock,width):
+    p=page_with_receipt_api_mock
+    events=[{'id':i,'product_id':401,'product_name':'Молоко','source':'Green' if i%2 else 'Соседи','old_price':'3.49','price':'2.79','unit':'шт.','percent':'-20.1','direction':'down','created_at':'2026-10-16T10:00:00Z'} for i in range(25,0,-1)]
+    def route(r,req):
+        from urllib.parse import parse_qs
+        u=urlparse(req.url)
+        if u.path.endswith('/catalog-watches'):
+            cursor=int(parse_qs(u.query).get('before_id',['100'])[0]);rows=[e for e in events if e['id']<cursor]
+            return r.fulfill(json={'tracked_count':0,'offers':[],'events':rows[:20],'next_cursor':rows[19]['id'] if len(rows)>20 else None,'unlinked':[]})
+        return r.fulfill(json={'enabled':False,'telegram_connected':True,'supported_offer_ids':[],'offers':[]})
+    p.route(re.compile(r'.*/api/v1/catalog-watches(?:[/?].*)?$'),route)
+    setup(p,static_server_url,width)
+    expect(p.locator('#catalogProductWatch')).to_contain_text('Уведомлять об изменении цены')
+    p.locator('#closeCatalogProductModalBtn').click()
+    host=p.locator('#dashboardProductWatches')
+    expect(host).to_contain_text('Включено товаров: 0')
+    expect(host.locator('[data-watch-events] .watch-card')).to_have_count(20)
+    host.get_by_role('button',name='Ещё изменения').click()
+    expect(host.locator('[data-watch-events] .watch-card')).to_have_count(25)
+    expect(host.get_by_role('button',name='Ещё изменения')).to_have_count(0)
+    assert host.evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+    host.scroll_into_view_if_needed();p.screenshot(path=f'/tmp/fa-watch-history-{width}.png')

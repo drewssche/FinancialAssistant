@@ -212,3 +212,5 @@
 .watch-search-card { display:grid; gap:6px; border:1px solid var(--border); border-radius:10px; padding:12px; overflow-wrap:anywhere; }
 .watch-search-card button { justify-self:end; }
 [data-catalog-image-status]:empty, #catalogProductCodesStatus:empty { display:none; }
+
+[data-watch-events] { max-height: min(60vh, 480px); overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }

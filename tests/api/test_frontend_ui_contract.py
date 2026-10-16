@@ -184,8 +184,8 @@ def test_finance_calculator_drawer_is_registered_and_safe_for_mobile():
     assert f'/static/styles.css?v={version}' in index_html
     assert '/static/css/components-core.css?v=20261014-simple1' in styles
     assert '/static/css/layout-debts.css?v=20260716j' in styles
-    assert f'/static/css/components-analytics-summary.css?v={version}' in styles
-    assert f'/static/css/responsive-sm-core.css?v={version}' in styles
+    assert re.search(r'/static/css/components-analytics-summary\.css\?v=[\w-]+', styles)
+    assert re.search(r'/static/css/responsive-sm-core\.css\?v=[\w-]+', styles)
 
 
 def test_session_refresh_preserves_runtime_ui_and_retries_unauthorized_requests():

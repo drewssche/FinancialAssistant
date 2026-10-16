@@ -76,12 +76,15 @@ def test_changes_errors_dedupe_and_unsubscribe(client,linked,monkeypatch):
         service.record(w,snapshot());assert list(service.deliveries())==[]
         service.record(w,snapshot('6.99'));service.record(w,snapshot('6.99'))
         events=list(db.scalars(select(CatalogPriceEvent)));assert len(events)==1
+        monkeypatch.setattr('app.services.catalog_watch_service.now',lambda: now()+timedelta(minutes=16))
         deliveries=list(service.deliveries());assert len(deliveries)==1 and '7.99 → 6.99' in deliveries[0][2]
         events[0].telegram_sent_at=now();db.commit();assert list(service.deliveries())==[]
         # An unavailable/changed-size price is not a comparable price drop.
         service.record(w,snapshot('6.99',False));service.record(w,snapshot('5.99'))
         service.record(w,snapshot('4.99',size='100'));assert len(list(db.scalars(select(CatalogPriceEvent))))==1
-        service.record(w,snapshot('5.99',size='100'));assert len(list(service.deliveries()))==1
+        service.record(w,snapshot('5.99',size='100'))
+        monkeypatch.setattr('app.services.catalog_watch_service.now',lambda: now()+timedelta(minutes=32))
+        assert len(list(service.deliveries()))==1
         monkeypatch.setattr(provider,'fetch_product',lambda url:(_ for _ in ()).throw(provider.RetailerUnavailable('Недоступен')))
         old=deepcopy(w.snapshot);w.next_check_at=now()-timedelta(hours=1);db.commit();service.refresh_due()
         assert w.snapshot==old and w.error=='Недоступен'
@@ -118,6 +121,7 @@ def test_telegram_failure_retains_pending_then_success_acknowledges(client,linke
         service=CatalogWatchService(db);w=db.get(CatalogOfferWatch,tid)
         db.add(AuthIdentity(user_id=1,provider='telegram',provider_user_id='123'));db.commit()
         service.record(w,snapshot('6.99'))
+    monkeypatch.setattr('app.services.catalog_watch_service.now',lambda: now()+timedelta(minutes=16))
     monkeypatch.setattr(bot,'SessionLocal',database)
     class Transport:
         fail=True
@@ -133,3 +137,40 @@ def test_telegram_failure_retains_pending_then_success_acknowledges(client,linke
     with database() as db:assert list(CatalogWatchService(db).deliveries())==[]
     asyncio.run(bot.process_catalog_watches(transport));assert len(transport.calls)==2
     assert transport.calls[1]['chat_id']=='123' and '6.99' in transport.calls[1]['text']
+
+
+def test_background_refresh_without_notifications_and_permanent_history(client,linked,monkeypatch):
+    pid,tid=linked
+    clock=[now()]
+    monkeypatch.setattr('app.services.catalog_watch_service.now',lambda:clock[0])
+    with database() as db:
+        service=CatalogWatchService(db);w=db.get(CatalogOfferWatch,tid)
+        # No CatalogWatch row at all: linking alone is enough for background prices.
+        monkeypatch.setattr(provider,'fetch_product',lambda url:snapshot('6.99'))
+        w.next_check_at=clock[0]-timedelta(seconds=1);db.commit();service.refresh_due()
+        assert w.snapshot['price']=='6.99' and not list(db.scalars(select(CatalogPriceEvent)))
+        service.set_enabled(1,pid,True)
+        db.add(AuthIdentity(user_id=1,provider='telegram',provider_user_id='123'));db.commit()
+        service.record(w,snapshot('5.99'))
+        assert list(service.deliveries())==[]
+        clock[0]+=timedelta(minutes=10);service.record(w,snapshot('5.49'))
+        clock[0]+=timedelta(minutes=10);assert list(service.deliveries())==[]
+        clock[0]+=timedelta(minutes=6)
+        batch=list(service.deliveries());assert len(batch)==1 and len(batch[0][1])==2
+        for event in batch[0][1]:event.telegram_sent_at=clock[0]
+        db.commit();assert list(service.deliveries())==[]
+        service.set_enabled(1,pid,False)
+        service.record(w,snapshot('4.99'))
+        assert w.snapshot['price']=='4.99' and len(service.dashboard(1)['events'])==2
+        service.set_enabled(1,pid,True)
+        assert list(service.deliveries())==[] and len(service.dashboard(1)['events'])==2
+        # Cursor history is permanent and isolated by owner.
+        for i in range(23):service.record(w,snapshot(str(Decimal('4.98')-Decimal(i)/100)))
+        first=service.dashboard(1);second=service.dashboard(1,first['next_cursor'])
+        assert len(first['events'])==20 and len(second['events'])==5 and second['next_cursor'] is None
+        assert not ({e['id'] for e in first['events']} & {e['id'] for e in second['events']})
+        assert service.dashboard(2)['events']==[]
+        # Even when changes keep coming, the oldest event is delivered within an hour.
+        clock[0]+=timedelta(hours=1)
+        service.record(w,snapshot('3.99'))
+        assert list(service.deliveries())

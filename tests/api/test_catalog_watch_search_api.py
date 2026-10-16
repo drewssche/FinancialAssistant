@@ -45,7 +45,9 @@ def test_search_owner_source_validation_dedup_and_no_link_write(client,monkeypat
     p=create(client,codes={'retailers':[{'shop_name':'Е-доставка','retailer_code':'2186323'}]}).json()
     pid=p['id'];tid=p['offers'][0]['id'];base=f'/api/v1/catalog-watches/{pid}'
     calls=[]
-    def search(q):calls.append(q);return provider.parse_search(page(query=q),q)
+    def search(key,q,kind):
+        assert key=='edostavka'
+        calls.append(q);return provider.parse_search(page(query=q),q)
     monkeypatch.setattr('app.api.v1.catalog_watch.search_products',search)
     payload={'codes':[{'kind':'barcode','code':'4811040140757'},{'kind':'retailer','code':'2186323'}]}
     r=client.post(base+f'/offers/{tid}/search',json=payload)
@@ -63,9 +65,21 @@ def test_search_owner_source_validation_dedup_and_no_link_write(client,monkeypat
 
 
 def test_search_wrong_offer_and_source_never_fetch(client,monkeypatch):
-    p=create(client,codes={'retailers':[{'shop_name':'Green','retailer_code':'123'}]}).json()
+    p=create(client,codes={'retailers':[{'shop_name':'Другой магазин','retailer_code':'123'}]}).json()
     monkeypatch.setattr('app.api.v1.catalog_watch.search_products',lambda q:pytest.fail('must validate before fetch'))
     payload={'codes':[{'kind':'retailer','code':'123'}]}
     base=f"/api/v1/catalog-watches/{p['id']}/offers/"
     assert client.post(base+str(p['offers'][0]['id'])+'/search',json=payload).status_code==400
     assert client.post(base+'999999/search',json=payload).status_code==404
+
+
+@pytest.mark.parametrize('source,key',[('Green','green'),('Соседи','sosedi')])
+def test_search_routes_codes_only_to_selected_retailer(client,monkeypatch,source,key):
+    p=create(client,codes={'retailers':[{'shop_name':source,'retailer_code':'123'}]}).json()
+    calls=[]
+    def search(provider_key,query,kind):
+        calls.append((provider_key,query,kind));return []
+    monkeypatch.setattr('app.api.v1.catalog_watch.search_products',search)
+    base=f"/api/v1/catalog-watches/{p['id']}/offers/{p['offers'][0]['id']}/search"
+    assert client.post(base,json={'codes':[{'kind':'barcode','code':'4811040140757'},{'kind':'retailer','code':'123'}]}).status_code==200
+    assert calls==[(key,'4811040140757','barcode'),(key,'123','retailer')]

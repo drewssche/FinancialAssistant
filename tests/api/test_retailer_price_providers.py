@@ -118,7 +118,6 @@ def test_multi_source_refresh_dashboard_delivery_and_failure(client,monkeypatch)
     for tid,url in zip(tids,[GREEN,SOSEDI]):
         s=snapshots[url]
         assert client.put(base+f'/offers/{tid}',json={'url':url,'expected_key':s['comparison_key'],'expected_name':s['name']}).status_code==200
-        assert client.post(base+f'/offers/{tid}/search',json={'name':'Молоко'}).status_code==400
     assert client.get('/api/v1/catalog-watches').json()['events']==[]
     client.put(base,json={'enabled':True})
     with database() as db:
@@ -128,6 +127,7 @@ def test_multi_source_refresh_dashboard_delivery_and_failure(client,monkeypatch)
         for tid in tids:db.get(CatalogOfferWatch,tid).next_check_at=now()-timedelta(minutes=1)
         db.commit();service.refresh_due()
         events=list(db.scalars(select(CatalogPriceEvent)));assert len(events)==2
+        monkeypatch.setattr('app.services.catalog_watch_service.now',lambda: now()+timedelta(minutes=16))
         message=list(service.deliveries())[0][2]
         assert 'Green' in message and 'Соседи' in message and '2.99 → 2.79' in message and '2.99 → 3.19' in message
         assert len(message)<4096
@@ -158,6 +158,7 @@ def test_telegram_batches_long_store_urls(client,monkeypatch):
         service=CatalogWatchService(db);w=db.get(CatalogOfferWatch,tid)
         for price in ['2.79','2.59','2.39','2.19']:
             service.record(w,{**s,'price':price,'url':'https://green-dostavka.by/product/'+'a'*1700+'-123/'})
+        monkeypatch.setattr('app.services.catalog_watch_service.now',lambda: now()+timedelta(minutes=16))
         deliveries=list(service.deliveries())
         assert len(deliveries)==4
         assert sum(len(batch) for _,batch,_ in deliveries)==4
@@ -169,3 +170,10 @@ def test_decimal_size_in_url_is_valid_but_path_traversal_is_not():
     assert provider.identify_url(url)==('sosedi',url)
     for path in ['../orbit-123','x/../orbit-123','orbit%2f-123']:
         with pytest.raises(ValueError):provider.identify_url('https://sosedi-dostavka.by/products/'+path)
+
+
+def test_green_unicode_slug_roundtrips_encoded_browser_url():
+    from urllib.parse import quote
+    url='https://green-dostavka.by/product/moloko-№1-123/'
+    assert provider.identify_url(quote(url,safe=':/'))==('green',url)
+    with pytest.raises(ValueError):provider.identify_url('https://green-dostavka.by/product/x%2f..%2fy-123/')
