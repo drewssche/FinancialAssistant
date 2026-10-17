@@ -194,7 +194,7 @@ def search_products(provider, query, kind='name'):
     if provider not in PROVIDERS or kind not in ('name', 'barcode', 'retailer'):
         raise ValueError('Неизвестный источник или тип кода.')
     if provider == 'edostavka':
-        return edostavka_provider.search_products(query)
+        return edostavka_provider.search_products(query, kind)
     try:
         if provider == 'green':
             return parse_green_search(read_public('https://green-dostavka.by/search/', {'search': query}), query, kind)

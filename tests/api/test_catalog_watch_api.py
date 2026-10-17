@@ -217,3 +217,26 @@ def test_bot_refresh_fits_two_connection_pool(client, linked, monkeypatch):
         assert watch.snapshot['price'] == '6.49'
         assert not watch.error
         assert not list(db.scalars(select(CatalogPriceEvent)))
+
+
+def test_unavailable_zero_price_is_missing_not_a_free_product():
+    s=provider.parse_product(document('0',False).replace('10.99','0'),URL)
+    assert s['price'] is None and s['regular_price'] is None and not s['available']
+    assert s['identifiers']['article']=='870666' and s['size']==[['Вес, гр',['125']]]
+    for html in [document('0',True).replace('10.99','0'),document('0',False),document('-1',False),document('NaN',False)]:
+        with pytest.raises(provider.RetailerUnavailable):provider.parse_product(html,URL)
+
+
+def test_missing_stock_price_never_creates_zero_price_notifications(client,linked):
+    pid,tid=linked
+    client.put(f'/api/v1/catalog-watches/{pid}',json={'enabled':True})
+    with database() as db:
+        service=CatalogWatchService(db);w=db.get(CatalogOfferWatch,tid)
+        service.record(w,provider.parse_product(document('0',False).replace('10.99','0'),URL))
+        assert w.snapshot['price'] is None and w.error is None
+        assert not list(db.scalars(select(CatalogPriceEvent)))
+        service.record(w,snapshot('5.99'))
+        assert not list(db.scalars(select(CatalogPriceEvent)))
+        service.record(w,snapshot('5.49'))
+        events=list(db.scalars(select(CatalogPriceEvent)))
+        assert len(events)==1 and events[0].data['old_price']=='5.99' and events[0].data['price']=='5.49'

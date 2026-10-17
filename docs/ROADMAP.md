@@ -17,6 +17,11 @@
 - Keep Telegram-specific behavior in the client runtime; backend contracts stay shared between Web UI and Telegram.
 
 ## Current Sprint
+### E-delivery exact articles and unavailable cards — 2026-10-17
+- [x] E-delivery store articles resolve through the exact public `/product/{article}` card instead of relying on search results. The parsed product ID must match; barcode conflicts and ambiguous matches still require selection. Missing cards return no hit, while redirects and transient fetch failures remain errors.
+- [x] Explicitly unavailable cards publishing zero base/discounted prices retain their identity with a missing price (`null`), never a zero-price offer. Dashboard, preview and candidate cards say “Цена не указана” / “Нет в наличии”; linking and future checks continue without false discount notifications or changes to purchase history.
+- [x] Validation: 53 provider/matching/watch API tests, 55 frontend contracts and 5 browser scenarios passed. Covered direct article lookup despite empty search, unavailable baseline, price return and subsequent changes, invalid prices, missing/wrong/redirected cards, mobile/desktop rendering and ordinary linking. No schema change. The fix affects both web API and the bot's background matching worker.
+
 ### Receipt line arithmetic and a single quantity after merging — 2026-10-17
 - [x] Editing price, quantity or discount recalculates the paid amount, including rows with a recognized OCR total. Editing the paid amount derives the discount when price/quantity are known; impossible totals remain invalid. Recognized amounts remain intact until an edit, and the receipt header remains an independent reconciliation total. Expressions use shared calculator parsing and cent rounding; fixed the core wrapper dropping three-decimal weight precision.
 - [x] Duplicate barcodes sum quantity and amounts into one ordinary item. Removed the merged-row label and redundant count; quantity is the only multiplier and merge metadata never enters the operation payload. A compact split icon beside delete retains reversal, with confirmation before restoring edited amounts.

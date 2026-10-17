@@ -1,4 +1,5 @@
 from copy import deepcopy
+import json
 from datetime import timedelta
 from sqlalchemy import select
 import pytest
@@ -154,3 +155,25 @@ def test_dashboard_names_unresolved_source_when_another_is_connected(client,monk
     dashboard=client.get('/api/v1/catalog-watches').json()
     assert len(dashboard['offers'])==1
     assert dashboard['unlinked'][0]['matching_sources']==['Е-доставка']
+
+
+def test_edostavka_article_autolinks_unavailable_product_missing_from_search(client,monkeypatch):
+    import httpx
+    from tests.api.test_catalog_watch_api import document
+    p=create(client,codes={'barcodes':[{'codes':[CODE]}],'retailers':[{'shop_name':'Евроопт','retailer_code':'870666'}]}).json()
+    pid,tid=p['id'],p['offers'][0]['id']
+    real=httpx.Client;paths=[]
+    def handler(request):
+        paths.append(request.url.path)
+        if request.url.path=='/search':
+            return httpx.Response(200,text='<script id="__NEXT_DATA__">'+json.dumps({'page':'/search','props':{'pageProps':{'search':{'query':CODE,'productIds':[]},'listing':{'products':[]}}}})+'</script>')
+        assert request.url.path=='/product/870666'
+        return httpx.Response(200,text=document('0',False).replace('10.99','0'))
+    monkeypatch.setattr(provider.httpx,'Client',lambda **kw:real(transport=httpx.MockTransport(handler),**kw))
+    assert run(tid)
+    with database() as db:
+        w=db.get(CatalogOfferWatch,tid)
+        assert w.url=='https://edostavka.by/product/870666' and w.snapshot['price'] is None
+        assert db.get(CatalogOfferMatch,tid).state=='linked'
+        assert not list(db.scalars(select(CatalogPriceEvent)))
+    assert paths==['/search','/product/870666','/product/870666']

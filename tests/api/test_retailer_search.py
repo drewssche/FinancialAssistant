@@ -68,3 +68,26 @@ def test_sitemap_accepts_only_fixed_product_urls(monkeypatch):
     assert saved
     monkeypatch.setattr(provider,'sosedi_product_index',lambda:{'456':'https://evil.test/products/x-456'})
     with pytest.raises(ValueError):provider.search_sosedi('456','retailer')
+
+
+def test_edostavka_article_reads_exact_card_even_when_search_omits_it(monkeypatch):
+    from tests.api.test_catalog_watch_api import document
+    real=httpx.Client;requests=[]
+    html=document('0',False).replace('10.99','0')
+    def handler(request):
+        requests.append(request)
+        assert str(request.url)=='https://edostavka.by/product/870666'
+        return httpx.Response(200,text=html)
+    monkeypatch.setattr(provider.httpx,'Client',lambda **kw:real(transport=httpx.MockTransport(handler),**kw))
+    hit=provider.search_products('edostavka','870666','retailer')[0]
+    assert hit['article']=='870666' and hit['price'] is None and not hit['available']
+    assert len(requests)==1
+    for bad in ['https://evil.test','../123','12?x=1','000123']:
+        assert provider.search_products('edostavka',bad,'retailer')==[]
+    assert len(requests)==1
+    for status in [404,410]:
+        monkeypatch.setattr(provider.httpx,'Client',lambda **kw:real(transport=httpx.MockTransport(lambda req:httpx.Response(status)),**kw))
+        assert provider.search_products('edostavka','870666','retailer')==[]
+    for response in [httpx.Response(302,headers={'location':'http://127.0.0.1'}),httpx.Response(503),httpx.Response(200,text=html.replace('870666','870667'))]:
+        monkeypatch.setattr(provider.httpx,'Client',lambda **kw:real(transport=httpx.MockTransport(lambda req:response),**kw))
+        with pytest.raises(provider.RetailerUnavailable):provider.search_products('edostavka','870666','retailer')

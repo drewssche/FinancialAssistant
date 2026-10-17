@@ -268,3 +268,29 @@ def test_dashboard_product_cards_tabs_and_price_conditions(static_server_url,pag
     host.locator('[data-watch-open]').click()
     expect(p.locator('#catalogProductModal')).to_be_visible()
     expect(p.locator('[data-product-tab=offers]')).to_have_class(re.compile('active'))
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width',[320,1440])
+def test_connected_out_of_stock_article_has_no_fake_zero_price(static_server_url,page_with_receipt_api_mock,width):
+    p=page_with_receipt_api_mock
+    snapshot={'source':'Е-доставка','name':'Сырок 45 г','price':None,'regular_price':None,'unit':'шт',
+              'available':False,'normalized':'','conditions':'Адрес доставки не выбран.',
+              'url':'https://edostavka.by/product/1751767'}
+    offer={'template_id':501,'product_id':401,'product_name':'Сырок 45 г','snapshot':snapshot,'error':None,'checked_at':'2026-10-17T10:00:00Z'}
+    def route(r,req):
+        if urlparse(req.url).path.endswith('/catalog-watches'):
+            return r.fulfill(json={'tracked_count':1,'offers':[offer],'events':[],'unlinked':[]})
+        return r.fulfill(json={'enabled':True,'telegram_connected':True,'supported_offer_ids':[501],'offers':[offer]})
+    p.route(re.compile(r'.*/api/v1/catalog-watches(?:/.*)?$'),route)
+    setup(p,static_server_url,width);p.locator('[data-product-tab=offers]').click()
+    host=p.locator('[data-offer-watch="501"]')
+    expect(host).to_contain_text('Цена не указана');expect(host).to_contain_text('Нет в наличии')
+    expect(host.locator('.watch-quote-actions a')).to_have_attribute('href',snapshot['url'])
+    expect(host.locator('.watch-down')).to_have_count(0)
+    p.locator('#closeCatalogProductModalBtn').click()
+    dashboard=p.locator('#dashboardProductWatches')
+    expect(dashboard).to_contain_text('Цена не указана');expect(dashboard).to_contain_text('Нет в наличии')
+    expect(dashboard).not_to_contain_text('0 BYN')
+    expect(dashboard).not_to_contain_text('По кодам пока не найдено')
+    dashboard.screenshot(path=f'/tmp/fa-edostavka-unavailable-{width}.png')

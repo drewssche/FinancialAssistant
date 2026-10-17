@@ -6,11 +6,12 @@
   const matchLabels = {pending:"Подбираем страницу по коду…", choice:"Выберите подходящую карточку", not_found:"По кодам пока не найдено", missing_codes:"Добавьте штрихкод или артикул", error:"Не удалось проверить сайт · повторим позже", paused:"Автоподключение отключено", linked:"Страница подключена"};
   const request = (path, method='GET', body) => core.requestJson(api+path,{method,headers:core.authHeaders(),...(body?{body:JSON.stringify(body)}:{})});
   const date = v => v ? core.formatDateTimeRu(v) : 'ещё не проверено';
+  const priceText = s => s.price == null ? 'Цена не указана' : `${s.price} BYN / ${s.unit}`;
   function quote(s, compact=false){
     const source=s.source||'Е-доставка';
     const info=s.conditions?`<button type="button" class="btn btn-secondary btn-icon" title="Условия цены" aria-label="Условия цены" data-help-title="Условия цены" data-help-text="${esc(s.conditions)}">${window.App.icons.svg("info")}</button>`:'';
     const external=`<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-icon" aria-label="Открыть на сайте магазина" title="Открыть на сайте магазина">${window.App.icons.svg("external")}</a>`;
-    return `<div class="watch-quote"><div class="watch-quote-head"><strong>${esc(compact?source:s.name)}</strong><div class="watch-quote-actions">${info}${external}</div></div><div class="watch-quote-price"><b>${esc(s.price)} BYN / ${esc(s.unit)}</b> ${Number(s.regular_price)>Number(s.price)?`<s>${esc(s.regular_price)}</s><span class="watch-down"> −${Math.round((1-Number(s.price)/Number(s.regular_price))*100)}%</span>`:''}</div><small>${[compact?'':source,s.normalized,s.available?'В наличии':'Нет в наличии'].filter(Boolean).map(esc).join(' · ')}</small></div>`;
+    return `<div class="watch-quote"><div class="watch-quote-head"><strong>${esc(compact?source:s.name)}</strong><div class="watch-quote-actions">${info}${external}</div></div><div class="watch-quote-price"><b>${esc(priceText(s))}</b> ${Number(s.regular_price)>Number(s.price)?`<s>${esc(s.regular_price)}</s><span class="watch-down"> −${Math.round((1-Number(s.price)/Number(s.regular_price))*100)}%</span>`:''}</div><small>${[compact?'':source,s.normalized,s.available?'В наличии':'Нет в наличии'].filter(Boolean).map(esc).join(' · ')}</small></div>`;
   }
   function decorateActions(host) {
     const actions = {'watch-remove':['unlink','Отключить страницу'], 'watch-saved':['link','Подключить цену сайта'], 'watch-search':['search','Найти по кодам'], 'watch-name-search':['search','Найти по названию'], 'watch-preview':['eye','Проверить ссылку'], 'watch-confirm':['save','Подключить этот товар и размер'], 'watch-select':['link','Выбрать товар'], 'match-select':['link','Выбрать товар'], 'match-retry':['refresh','Повторить подбор']};
@@ -68,7 +69,7 @@
           const found=await request(`/${id}/offers/${offerId}/search`,'POST',body);
           if(!current(n))return;
           if(!found.items.length){result.textContent=body.name?'По названию ничего не найдено.':'По кодам ничего не найдено. Можно попробовать название.';return;}
-          result.innerHTML='<div class="watch-search-results">'+found.items.map((hit,i)=>`<article class="watch-search-card"><strong>${esc(hit.name)}</strong><span>${esc(hit.price)} BYN / ${esc(hit.unit)} · ${hit.available?'В наличии':'Нет в наличии'}</span><small class="muted-small">${hit.match_kind==='barcode'?'Поиск по штрихкоду':hit.match_kind==='retailer'?'Поиск по артикулу':'Поиск по названию'}: ${esc(hit.matched_query)}</small><button type="button" class="btn btn-secondary btn-xs" data-watch-select="${i}">Выбрать</button></article>`).join('')+'</div>';
+          result.innerHTML='<div class="watch-search-results">'+found.items.map((hit,i)=>`<article class="watch-search-card"><strong>${esc(hit.name)}</strong><span>${esc(priceText(hit))} · ${hit.available?'В наличии':'Нет в наличии'}</span><small class="muted-small">${hit.match_kind==='barcode'?'Поиск по штрихкоду':hit.match_kind==='retailer'?'Поиск по артикулу':'Поиск по названию'}: ${esc(hit.matched_query)}</small><button type="button" class="btn btn-secondary btn-xs" data-watch-select="${i}">Выбрать</button></article>`).join('')+'</div>';
           decorateActions(result);
           for(const button of result.querySelectorAll('[data-watch-select]'))button.onclick=()=>guarded(button,()=>previewCard(found.items[Number(button.dataset.watchSelect)].url));
         }catch(e){if(current(n)){result.textContent='Не удалось выполнить поиск. Повторите позже.';throw e;}}
@@ -77,7 +78,7 @@
       if(matching){
         result.innerHTML=`<div class="row between"><span class="muted-small">${esc(matchLabels[matching.state]||'')}</span>${['error','not_found','paused'].includes(matching.state)?'<button type="button" class="btn btn-secondary btn-xs" data-match-retry>Повторить подбор</button>':''}</div>`;
         if(matching.candidates?.length){
-          result.insertAdjacentHTML('beforeend','<div class="watch-search-results">'+matching.candidates.map((hit,i)=>`<article class="watch-search-card"><strong>${esc(hit.name)}</strong><span>${esc(hit.price)} BYN / ${esc(hit.unit)}</span><small>${hit.conflict?'Коды расходятся':hit.exact?'Код подтверждён':'Совпадение кода не подтверждено'}</small><button type="button" class="btn btn-secondary btn-xs" data-match-select="${i}">Выбрать</button></article>`).join('')+'</div>');
+          result.insertAdjacentHTML('beforeend','<div class="watch-search-results">'+matching.candidates.map((hit,i)=>`<article class="watch-search-card"><strong>${esc(hit.name)}</strong><span>${esc(priceText(hit))}</span><small>${hit.conflict?'Коды расходятся':hit.exact?'Код подтверждён':'Совпадение кода не подтверждено'}</small><button type="button" class="btn btn-secondary btn-xs" data-match-select="${i}">Выбрать</button></article>`).join('')+'</div>');
           for(const button of result.querySelectorAll('[data-match-select]'))button.onclick=()=>guarded(button,()=>previewCard(matching.candidates[Number(button.dataset.matchSelect)].url));
         }
         decorateActions(result);

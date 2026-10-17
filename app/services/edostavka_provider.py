@@ -24,11 +24,16 @@ def parse_product(html: str, url: str) -> dict:
             raise ValueError('Wrong product')
         price = Decimal(str(p['price']['discountedPrice']))
         regular = Decimal(str(p['price']['basePrice']))
-        if not price.is_finite() or not regular.is_finite() or not 0 < price <= regular < 1000000:
-            raise ValueError('Invalid price')
         available = p['restInformation']['isAvailable']
         if not isinstance(available, bool):
             raise ValueError('Unknown availability')
+        if not price.is_finite() or not regular.is_finite():
+            raise ValueError('Invalid price')
+        # Out-of-stock cards stay addressable by article, but publish zero as
+        # a placeholder. It is missing price evidence, never a free product.
+        missing_price = not available and price == regular == 0
+        if not missing_price and not 0 < price <= regular < 1000000:
+            raise ValueError('Invalid price')
         size = []
         barcodes = []
         for group in p.get('additionalProperties', []):
@@ -43,7 +48,8 @@ def parse_product(html: str, url: str) -> dict:
         if p.get('optDiscounts') or p.get('messages'):
             conditions += ' Есть дополнительные условия/предложения на странице.'
         return {'provider': 'edostavka', 'source': 'Е-доставка', 'url': url,
-                'name': str(p['productName'])[:320], 'price': str(price), 'regular_price': str(regular),
+                'name': str(p['productName'])[:320], 'price': None if missing_price else str(price),
+                'regular_price': None if missing_price else str(regular),
                 'currency': 'BYN', 'available': available, 'unit': measure,
                 'identifiers': {'article': str(p['productId']), 'barcodes': barcodes},
                 'conditions_key': json.dumps([p.get('optDiscounts', []), p.get('messages', [])], ensure_ascii=False, sort_keys=True),
@@ -106,10 +112,24 @@ def parse_search(html: str, query: str) -> list[dict]:
         raise RetailerUnavailable('Не удалось прочитать результаты поиска Е-доставки.') from exc
 
 
-def search_products(query: str) -> list[dict]:
+def search_products(query: str, kind: str = 'name') -> list[dict]:
     query = query.strip()
     if not 2 <= len(query) <= 160 or any(ord(c) < 32 for c in query):
         raise ValueError('Введите от 2 до 160 символов для поиска.')
+    if kind == 'retailer':
+        # The article is the product ID; site search excludes some unavailable
+        # products. Read the exact card and verify its ID in parse_product.
+        if not re.fullmatch(r'[1-9][0-9]{0,9}', query):
+            return []
+        try:
+            product = fetch_product(f'https://edostavka.by/product/{query}')
+        except RetailerUnavailable as exc:
+            cause = exc.__cause__
+            if isinstance(cause, httpx.HTTPStatusError) and cause.response.status_code in (404, 410):
+                return []
+            raise
+        return [{key: product[key] for key in ('url', 'name', 'price', 'unit', 'available')} |
+                {'article': product['identifiers']['article']}]
     try:
         with httpx.Client(timeout=10, follow_redirects=False, trust_env=False) as client:
             with client.stream('GET', 'https://edostavka.by/search', params={'query': query},
