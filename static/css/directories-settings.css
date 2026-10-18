@@ -19,7 +19,7 @@
 #settingsSection .danger-zone-actions { flex-wrap: wrap; }
 #settingsSection .danger-zone-actions input { min-width: 0; }
 #adminViewTabs { width: fit-content; margin-bottom: 16px; }
-#adminSection .admin-row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+#adminSection .admin-row-actions { opacity: 1; pointer-events: auto; transform: none; display: flex; flex-wrap: wrap; gap: 6px; }
 #adminSection #adminCurrencyDiagnosticsKpi { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 16px 0; }
 #adminSection .kpi-card { min-height: 0; }
 #adminSection .kpi-value { font-size: 22px; }
@@ -28,8 +28,8 @@
 #categoriesSection .categories-search-row { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; border: 0; box-shadow: none; background: none; position: static; }
 #categoriesSection #categorySearchQ { flex: 1 1 180px; min-width: 0; }
 #categoriesSection .category-group-controls { flex: 0 0 auto; display: flex; gap: 6px; }
-#categoriesSection #categoriesKpiGrid { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 14px 0; color: var(--muted); font-size: 13px; }
-#categoriesSection #categoriesKpiGrid strong { color: var(--text); margin-left: 4px; }
+#categoriesSection #categoriesKpiGrid { margin: 14px 0; color: var(--muted); font-size: 13px; }
+#categoriesSection #categoriesKpiGrid strong { color: var(--text); }
 #categoriesSection .category-direct-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 #categoriesSection .category-direct-actions .category-direct-actions { display: contents; }
 #categoriesSection .category-table-group-wrap { gap: 12px; }

@@ -49,7 +49,7 @@
 #analyticsPositionsPanel .analytics-position-ranking-block,
 #analyticsPositionsPanel .analytics-positions-mobile-focus { border: 0; background: none; padding: 0; }
 #analyticsCommercePanel .analytics-position-ranking-row,
-#analyticsPositionsPanel .analytics-position-ranking-row { border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none; padding: 10px 0; }
+#analyticsPositionsPanel .analytics-position-ranking-row { border: 0; border-bottom: 1px solid var(--border); border-radius: var(--radius-sm); background: none; padding: 10px 8px; }
 #analyticsCommercePanel .analytics-position-ranking-copy > i,
 #analyticsPositionsPanel .analytics-position-ranking-copy > i { display: none; }
 #analyticsPositionsPanel .analytics-positions-toolbar { align-items: end; }
@@ -217,15 +217,19 @@
 .plan-forecast p { grid-column:1 / -1; margin:0; }
 #dashboardPlansKpi { gap:6px 16px; font-size:13px; }
 .receipt-price-stack { display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
-#catalogProductsKpiGrid, #itemCatalogKpiGrid, #itemBrandsKpiGrid, #itemBrandDetailKpiGrid { display:flex; flex-wrap:wrap; gap:8px 18px; }
-#catalogProductsKpiGrid .analytics-kpi-card, #itemCatalogKpiGrid .analytics-kpi-card,
-#itemBrandsKpiGrid .analytics-kpi-card, #itemBrandDetailKpiGrid .analytics-kpi-card {
- display:flex; flex-direction:row; align-items:baseline; gap:6px; border:0; padding:0; background:none; box-shadow:none; min-height:0;
+/* Compact summaries keep the shared KPI surface, including inside dialogs. */
+:is(#categoriesKpiGrid, #catalogProductsKpiGrid, #itemCatalogKpiGrid, #itemBrandsKpiGrid, #itemBrandDetailKpiGrid,
+    #analyticsPositionsSummary, #analyticsCommerceSummary, #usageKpi) {
+ display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));gap:10px;
 }
-#catalogProductsKpiGrid strong, #itemCatalogKpiGrid strong, #itemBrandsKpiGrid strong, #itemBrandDetailKpiGrid strong { font-size:14px; }
-#analyticsPositionsSummary, #analyticsCommerceSummary, #usageKpi { display:flex; flex-wrap:wrap; gap:8px 18px; font-size:13px; }
-#analyticsPositionsSummary .analytics-position-kpi, #analyticsCommerceSummary .analytics-position-kpi { display:flex; flex-direction:row; gap:6px; padding:0; border:0; background:none; }
-#analyticsPositionsSummary strong, #analyticsCommerceSummary strong { font-size:14px; }
+:is(#categoriesKpiGrid, #catalogProductsKpiGrid, #itemCatalogKpiGrid, #itemBrandsKpiGrid, #itemBrandDetailKpiGrid,
+    #analyticsPositionsSummary, #analyticsCommerceSummary, #usageKpi) > :is(.analytics-kpi-card,.analytics-position-kpi) {
+ display:grid;gap:6px;min-height:0;align-content:start;
+}
+:is(#categoriesKpiGrid, #catalogProductsKpiGrid, #itemCatalogKpiGrid, #itemBrandsKpiGrid, #itemBrandDetailKpiGrid,
+    #analyticsPositionsSummary, #analyticsCommerceSummary, #usageKpi) strong {font-size:16px;overflow-wrap:anywhere;}
+#dashboardPlansKpi > .analytics-kpi-card {flex:1 1 160px;min-height:0;gap:6px;}
+#dashboardPlansKpi > .muted-small {flex-basis:100%;}
 @media(max-width:600px) {
  #dashboardKpiPrimary, #operationsSummaryGrid, #analyticsCalendarTotals { grid-template-columns:1fr; }
  .plan-forecast strong { font-size:17px; }

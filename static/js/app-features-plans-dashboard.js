@@ -66,7 +66,7 @@ function createPlansDashboardFeature({
     const summary = summarizePlans(periodItems);
     const generation = ++forecastGeneration, owner = state.token;
     const counts = `<span class="muted-small">Планов: ${summary.activeCount}${summary.todayCount ? ` · Сегодня: ${summary.todayCount}` : ""}${summary.overdueCount ? ` · Просрочено: ${summary.overdueCount}` : ""}</span>`;
-    const sums = (income, expense) => `<span>Получить <b>${core.formatMoney(income)}</b></span><span>Заплатить <b>${core.formatMoney(expense)}</b></span>`;
+    const sums = (income, expense) => `<article class="analytics-kpi-card analytics-kpi-income"><span class="muted-small">Получить</span><strong>${core.formatMoney(income)}</strong></article><article class="analytics-kpi-card analytics-kpi-expense"><span class="muted-small">Заплатить</span><strong>${core.formatMoney(expense)}</strong></article>`;
     el.dashboardPlansKpi.innerHTML = counts;
     if (state.dashboardPlansPeriod === "all_time") {
       el.dashboardPlansKpi.innerHTML += sums(summary.potentialIncome, summary.potentialExpense);

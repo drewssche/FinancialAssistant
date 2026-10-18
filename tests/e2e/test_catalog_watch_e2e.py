@@ -166,7 +166,7 @@ def test_dashboard_notification_history_with_toggle_off_and_pagination(static_se
     expect(p.locator('#catalogProductWatch')).to_contain_text('Уведомлять об изменении цены')
     p.locator('#closeCatalogProductModalBtn').click()
     host=p.locator('#dashboardProductWatches')
-    expect(host).to_contain_text('Включено товаров: 0')
+    expect(host.locator('[data-watch-view="products"]')).to_contain_text('Товары · 0')
     expect(host.locator('[data-watch-events] .watch-card')).to_have_count(20)
     host.get_by_role('button',name='Ещё изменения').click()
     expect(host.locator('[data-watch-events] .watch-card')).to_have_count(25)

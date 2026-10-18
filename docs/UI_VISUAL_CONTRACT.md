@@ -194,3 +194,11 @@
 ## 18.10.2026 — KPI and chip audit
 
 Primary dashboard summary: three period totals (Пришло / Ушло / Разница), preceding exchange rates. Secondary counts are compact text, not additional large KPI cards. Keep removable chips only for context not already represented by visible controls. Show each currency change once, scaled like the displayed quote. Plans use future 7/30-day inflow/outflow, without a cumulative cash-balance forecast. Shared shop identity belongs to the receipt header; discounts sit with the line total. Never hide a required action or a meaningful failure state while removing duplicate labels.
+
+
+## 18.10.2026 — единые поверхности КПИ и текстовых действий
+
+- Для показателя с подписью и значением используем `analytics-kpi-card` (включая прогноз, категории, каталог, бренды и окна истории использования). Компактный режим меняет сетку, высоту и размер текста, но не обнуляет фон, рамку, скругление или внутренний отступ. Общая поверхность задаётся в `kpi-cards.css` также для модалок и диалогов.
+- Текстовое действие без стандартной кнопочной оболочки использует `text-action` или уже подключённый общий класс названия/ссылки. Отступ 4 × 6 px существует постоянно, а не появляется на hover. Подсветка не меняет размеры. Сокращение длинного заголовка выполняется на внутреннем элементе, чтобы не обрезать отступы.
+- У иконок фиксированного размера, чипов с собственным внутренним отступом, графических отметок и составных переключателей сохраняется их геометрия.
+- Проверка охватывает дашборд, аналитику, операции, валюты, планы, долги, категории, товары/источники/бренды, табель, настройки, администрирование и вложенные окна. Общая сетка проверяется на узком и широком экранах; каталожные таблицы — также с длинными названиями, табель — с заполненными выплатами.

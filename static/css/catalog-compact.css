@@ -25,9 +25,8 @@
 .catalog-price-caution { color: #ffd18a; }
 .catalog-comparison-summary { padding: 0 0 10px; border-bottom: 1px solid var(--border); font-size: 13px; line-height: 1.5; }
 .catalog-comparison-summary p { margin: 6px 0; }
-/* Counts are secondary labels, not four dashboard cards before every list. */
-#itemCatalogSection .catalog-compact-kpis { display: flex; flex-wrap: wrap; gap: 10px 22px; padding: 0; }
-#itemCatalogSection .catalog-compact-kpis > article { display: flex; flex-direction: row; align-items: baseline; flex-wrap: wrap; gap: 5px; min-height: 0; }
+/* Compact KPI layout is shared with the other sections. */
+#itemCatalogSection .catalog-compact-kpis { padding: 0; }
 #itemCatalogSection .catalog-compact-kpis .kpi-value { font-size: 14px; line-height: 1.4; }
 #itemCatalogSection .catalog-compact-kpis .kpi-label { font-size: 12px; }
 #itemCatalogSection .catalog-compact-kpis .kpi-meta { font-size: 11px; }
@@ -78,7 +77,6 @@
   .catalog-product-modal-card .catalog-product-tabs { display: flex; width: 100%; }
 }
 .btn.btn-icon[hidden] { display: none; }
-#itemCatalogSection .catalog-compact-kpis > article > strong { font-size: 14px; }
 
 .catalog-product-modal-card .modal-head-actions { display: flex; flex-direction: row; flex-wrap: nowrap; gap: 6px; }
 .catalog-product-modal-card .panel-head > div:first-child { min-width: 0; }

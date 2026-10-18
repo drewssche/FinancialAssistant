@@ -90,14 +90,13 @@
     const expense = Number(summary?.expense_total || 0);
     const balance = Number(summary?.balance || 0);
     const lastUsed = Array.isArray(items) && items.length ? items[0]?.event_date : "";
-    const balanceTone = balance > 0.000001
-      ? "analytics-kpi-chip-positive"
-      : balance < -0.000001
-        ? "analytics-kpi-chip-negative"
-        : "analytics-kpi-chip-neutral";
-    el.usageKpi.innerHTML = income === 0
-      ? `<span>Покупок: <b>${count}</b></span><span>Потрачено: <b>${core.formatMoney(expense)}</b></span><span>Последняя покупка: ${formatDate(lastUsed)}</span>`
-      : `<span>Операций: <b>${count}</b></span><span>Пришло: <b>${core.formatMoney(income)}</b></span><span>Ушло: <b>${core.formatMoney(expense)}</b></span><span>Разница: <b>${core.formatMoney(balance)}</b></span><span>Последнее: ${formatDate(lastUsed)}</span>`;
+    const metrics = income === 0
+      ? [["Покупок", count], ["Потрачено", core.formatMoney(expense)], ["Последняя покупка", formatDate(lastUsed)]]
+      : [["Операций", count], ["Пришло", core.formatMoney(income)], ["Ушло", core.formatMoney(expense)],
+         ["Разница", core.formatMoney(balance)], ["Последнее", formatDate(lastUsed)]];
+    el.usageKpi.innerHTML = metrics.map(([label,value]) =>
+      `<article class="analytics-kpi-card"><span class="muted-small">${core.escapeHtml(label)}</span><strong>${core.escapeHtml(String(value))}</strong></article>`
+    ).join("");
   }
 
   function renderUsageList(items, emptyText) {

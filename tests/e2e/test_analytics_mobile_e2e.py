@@ -1073,13 +1073,12 @@ def test_mobile_position_analytics_renders_matrix_and_drills_into_operations(pag
         "templateId": 11,
         "templateName": "Кофе зерновой",
     }
-    expect(page.locator("#operationsKindFilterChip")).to_be_visible()
+    expect(page.locator("#operationsKindFilterChip")).to_be_hidden()
+    expect(page.locator('#kindFilters [data-kind="expense"]')).to_have_class(re.compile(r"\bactive\b"))
     assert page.evaluate("() => window.scrollY") <= 1
-    expect(page.locator("#operationsKindFilterChip > span")).to_have_text("Тип")
-    expect(page.locator("#operationsKindFilterChip > strong")).to_have_text("Только оттоки")
     expect(page.locator("#operationsItemTemplateFilterChip > strong")).to_have_text("Кофе зерновой")
     page.screenshot(path="/tmp/finasist-operations-filters-back-mobile.png", full_page=False)
-    page.locator("#operationsKindFilterChip").click()
+    page.locator('#kindFilters [data-kind=""]').click()
     expect(page.locator("#operationsKindFilterChip")).to_be_hidden()
     expect(page.locator("#operationsItemTemplateFilterChip")).to_be_visible()
     expect(page.locator("#sectionBackBtn")).to_be_visible()

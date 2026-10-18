@@ -20,6 +20,8 @@ def _json_response(route, payload: dict | list, status: int = 200):
 
 
 def _set_mock_telegram(page):
+    page.route("https://telegram.org/js/telegram-web-app.js", lambda route: route.fulfill(
+        content_type="application/javascript", body="/* Telegram is mocked by this fixture. */"))
     page.add_init_script(
         """
         window.Telegram = {
@@ -50,6 +52,7 @@ def _restore_mock_telegram(page):
 
 
 def _login_via_mock_telegram(page):
+    page.wait_for_function("typeof window.App?.getRuntimeModule === 'function' && !!window.App.getRuntimeModule('session')")
     _restore_mock_telegram(page)
     page.evaluate("() => window.App.getRuntimeModule('session')?.refreshTelegramLoginUi?.()")
     try:

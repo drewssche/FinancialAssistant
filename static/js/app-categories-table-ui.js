@@ -420,7 +420,7 @@
           .map((item) => Number(item.group_id || 0))
           .filter((groupId) => Number.isFinite(groupId) && groupId > 0),
       );
-      el.categoriesKpiGrid.innerHTML = `<span>Категории <strong>${visibleCategories.length}</strong></span><span>Расход <strong>${expenseCount}</strong></span><span>Доход <strong>${incomeCount}</strong></span><span>Группы <strong>${activeGroupIds.size}</strong></span>`;
+      el.categoriesKpiGrid.innerHTML = [["Категории",visibleCategories.length],["Расход",expenseCount],["Доход",incomeCount],["Группы",activeGroupIds.size]].map(([label,value]) => `<article class="analytics-kpi-card"><span class="muted-small">${label}</span> <strong>${value}</strong></article>`).join("");
     }
     syncCategoryGroupControls(queryActive, groups);
     categoriesUiCoordinator.renderGroupedCategoryTable?.({
