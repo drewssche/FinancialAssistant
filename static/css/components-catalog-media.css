@@ -147,6 +147,7 @@
 .catalog-item-open,
 .operation-receipt-item-open {
   min-width: 0;
+  border-radius: 0.55rem;
   padding: 0;
   border: 0;
   background: transparent;
@@ -169,7 +170,7 @@
 .receipt-linked-thumb:focus-visible {
   outline: 2px solid rgba(98, 145, 226, 0.78);
   outline-offset: 2px;
-  border-radius: 0.4rem;
+  border-radius: 0.55rem;
 }
 
 .catalog-source-identity .catalog-media-thumb,

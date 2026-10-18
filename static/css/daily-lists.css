@@ -143,6 +143,21 @@
 :is(#plansSection, #dashboardPlansList) .plan-card:has(.plan-card-row) {
  display:grid;padding:14px;margin:0;border:1px solid var(--border);border-radius:12px;background:var(--surface);box-shadow:none;min-width:0;
 }
+/* Keep the highlight inside the card's rounded border; nested actions stay independent. */
+:is(#plansSection, #dashboardPlansList) .plan-card-interactive:has(.plan-card-row) { transform: none; }
+:is(#plansSection, #dashboardPlansList) .plan-card-interactive:has(.plan-card-row):focus-within {
+ background: linear-gradient(rgba(143,184,244,.08),rgba(143,184,244,.08)),var(--surface);
+ border-color:rgba(143,184,244,.65);box-shadow:inset 0 0 0 1px rgba(143,184,244,.25);
+}
+@media (hover: hover) {
+ :is(#plansSection, #dashboardPlansList) .plan-card-interactive:has(.plan-card-row):hover {
+  background:linear-gradient(rgba(143,184,244,.08),rgba(143,184,244,.08)),var(--surface);
+  border-color:rgba(143,184,244,.65);box-shadow:inset 0 0 0 1px rgba(143,184,244,.25);
+ }
+}
+@media (prefers-reduced-motion: reduce) {
+ :is(#plansSection, #dashboardPlansList) .plan-card-interactive { transition:none; }
+}
 :is(#plansSection, #dashboardPlansList) .plan-card-row {
  display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"date amount" "context context" "meta actions";grid-template-rows:auto 1fr auto;gap:10px 12px;align-items:start;
 }

@@ -189,6 +189,8 @@
   #analyticsCalendarPanel #analyticsCalendarTotals strong { font-size: .95rem; overflow-wrap: anywhere; }
 }
 /* Highlight real controls without making static cards look clickable. */
+/* Low specificity preserves the explicit corners of joined controls and rows. */
+:where(button, a[href], [role="button"], [role="option"]) { border-radius: var(--radius-sm); }
 @media (hover: hover) {
   :where(button, a[href], [role="button"], [role="option"], select):not(:disabled):not([aria-disabled="true"]):hover {
     filter: brightness(1.16);
