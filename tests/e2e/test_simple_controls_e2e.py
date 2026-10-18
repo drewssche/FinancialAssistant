@@ -78,13 +78,14 @@ def test_milk_litre_weight_and_untouched_snapshot(static_server_url, page_with_r
     }''')
     row = page.locator('#receiptItemsList .receipt-item-row').first
     size = row.locator('.measurement-editor')
+    size.locator('[data-sale-unit=piece]').click()
     size.get_by_role('spinbutton').fill('1')
     size.locator('[data-unit=l]').click()
     payload = page.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[0]")
     assert payload['sale_unit'] == 'piece' and payload['package_unit'] == 'l'
     assert payload['package_quantity'] == '1' and payload['quantity'] == '2' and float(payload['unit_price']) == 3
     page.screenshot(path=f'/tmp/fa-simple-milk-{width}.png')
-    size.locator('[data-measure-kind=weight]').click()
+    size.locator('[data-sale-unit=kg]').click()
     row.locator('[data-receipt-field=quantity]').fill('0.242')
     payload = page.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[0]")
     assert payload['sale_unit'] == 'kg' and payload['package_quantity'] is None and payload['package_unit'] is None

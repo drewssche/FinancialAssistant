@@ -272,11 +272,19 @@
       refreshCategory();
       category.onchange=()=>{row.category_id=Number(category.value)||null;row.category_touched=true;node('scanConfirmed').checked=false;validate();};
       const unitHost=el.querySelector('.scan-sale-units');
-      const unitTitle=document.createElement('span');unitTitle.textContent='Единица цены';unitHost.append(unitTitle);
-      window.App.measurements.renderUnitButtons(unitHost,{choices:[['','Не указана'],...Object.entries(window.App.measurements.units)],dataset:'scanUnit',
-        onSelect:unit=>{row.sale_unit=unit||null;row.package_quantity=null;row.package_unit=null;row.variant_id=null;row.variant_snapshot=null;row.measurement_touched=true;refreshUnits();node('scanConfirmed').checked=false;validate();}});
+      const measurementControls=window.App.measurements.fields.map(key=>{
+        const label=document.createElement('label'),input=document.createElement('input');
+        input.value=row[key]??'';label.hidden=true;label.append(input);unitHost.append(label);
+        input.addEventListener('input',()=>{
+          Object.assign(row,Object.fromEntries(window.App.measurements.fields.map((field,i)=>[field,measurementControls[i].value||null])));
+          row.variant_id=null;row.variant_snapshot=null;row.measurement_touched=true;
+          refreshUnits();node('scanConfirmed').checked=false;validate();
+        });return input;
+      });
+      const measurementEditor=window.App.measurements.mount(unitHost,measurementControls,{unitDataset:'scanUnit'});
       function refreshUnits(){
-        unitHost.querySelectorAll('button').forEach(button=>{const active=button.dataset.scanUnit===(row.sale_unit||'');button.classList.toggle('is-active',active);button.setAttribute('aria-pressed',String(active));});
+        measurementControls.forEach((input,i)=>{input.value=row[window.App.measurements.fields[i]]??'';});
+        measurementEditor.refresh();
         for(const field of ['price','quantity']){
           const input=el.querySelector(`[data-scan-field=${field}]`);
           input.previousElementSibling.textContent=field==='price'?window.App.measurements.priceLabel(row):window.App.measurements.quantityLabel(row);

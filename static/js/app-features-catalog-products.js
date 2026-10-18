@@ -621,7 +621,7 @@
         <label class="catalog-product-merge-option">
           <input type="radio" name="catalogProductMergeTarget" value="${product.id}" ${index === 0 ? "checked" : ""} />
           ${media().renderThumb?.(product.image_id, { kind: "item", size: "picker", alt: product.name, fallback: product.name.slice(0, 1) }) || ""}
-          <span><strong>${esc(product.name)}</strong><small class="catalog-product-merge-sources">${esc(productOfferSummary(product))}</small><small>${product.offers_count} предл. · ${product.sources_count} источн.</small></span>
+          <span><strong>${esc(product.name)}</strong><small class="catalog-product-merge-sources">${esc(productOfferSummary(product))}</small><small>${product.offers_count} предл. · ${product.sources_count} источн. · ${esc(window.App.measurements.units[product.sale_unit] || "Единица не указана")} · ${esc(window.App.measurements.summary(product))}</small></span>
         </label>`).join("");
     }
     if (el.catalogProductMergeWarning) {
@@ -640,6 +640,8 @@
         ? `Обратите внимание: у выбранных карточек совпадают ${conflicts} источн. После объединения предложения каждого магазина останутся отдельными — цены и история не потеряются.`
         : "";
     }
+    const error = document.getElementById('catalogProductMergeError');
+    error.hidden = true; error.textContent = '';
     el.catalogProductMergeModal.dataset.productIds = ids.join(",");
     el.catalogProductMergeModal?.classList.remove("hidden");
     core.bringModalToFront?.(el.catalogProductMergeModal);
@@ -783,7 +785,15 @@
       openProductUsage(editorProduct);
     });
     el.closeCatalogProductMergeModalBtn?.addEventListener("click", closeMerge);
-    el.catalogProductMergeForm?.addEventListener("submit", (event) => core.runAction({ errorPrefix: "Не удалось объединить товары", action: () => merge(event) }));
+    el.catalogProductMergeForm?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const error = document.getElementById('catalogProductMergeError');
+      error.hidden = true; error.textContent = '';
+      core.runAction({button: document.getElementById('submitCatalogProductMergeBtn'), errorPrefix: "Не удалось объединить товары", action: async () => {
+        try { await merge(event); }
+        catch (err) { error.textContent = typeof err.detail === 'string' ? err.detail : core.errorMessage(err); error.hidden = false; throw err; }
+      }});
+    });
     for (const modal of [el.catalogProductModal, el.catalogProductMergeModal]) {
       modal?.addEventListener("click", (event) => { if (event.target === modal) (modal === el.catalogProductModal ? closeEditor : closeMerge)(); });
     }

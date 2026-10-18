@@ -431,8 +431,19 @@ class CatalogProductService:
         )
         if target is None or len(sources) != len(source_ids):
             raise LookupError("One or more catalog products were not found")
-        if any(measurement_snapshot(source) != measurement_snapshot(target) for source in sources):
-            raise ValueError("Нельзя объединять товары с разными единицами или фасовкой; сохраните их отдельными карточками")
+        target_measurement = measurement_snapshot(target)
+        def compatible(source):
+            measurement = measurement_snapshot(source)
+            if measurement == target_measurement:
+                return True
+            # A boxed item can be priced per piece or per pack in different stores.
+            # Keep those units on the offers; never infer or convert package sizes.
+            return (measurement["sale_unit"] in {"piece", "pack"}
+                    and target_measurement["sale_unit"] in {"piece", "pack"}
+                    and all(measurement[key] == target_measurement[key]
+                            for key in ("package_quantity", "package_unit")))
+        if any(not compatible(source) for source in sources):
+            raise ValueError("Размеры упаковки или единицы веса различаются. Проверьте их в карточках товаров перед объединением.")
         source_by_id = {int(product.id): product for product in sources}
         ordered_sources = [source_by_id[product_id] for product_id in source_ids]
         if target.brand_id is None:
@@ -470,6 +481,32 @@ class CatalogProductService:
             int(offer.id): offer.last_category_id for offer in offers
         }
         conflicts = self._source_conflicts(offers=offers)
+        # Offers without their own variant inherit the product's defaults. Freeze
+        # the old defaults before moving them to a target with a different unit.
+        for source in ordered_sources:
+            measurement = measurement_snapshot(source)
+            if measurement == target_measurement:
+                continue
+            inherited = []
+            for offer in offers:
+                if offer.product_id != source.id:
+                    continue
+                identity = self.db.get(CatalogOfferIdentity, offer.id)
+                mapped = self.db.get(CatalogVariant, identity.variant_id) if identity and identity.variant_id else None
+                if mapped is None or mapped.is_archived:
+                    inherited.append((offer, identity))
+            if not inherited:
+                continue
+            variant = CatalogVariant(user_id=user_id, product_id=target_product_id,
+                                     name=source.name[:160], **measurement)
+            self.db.add(variant)
+            self.db.flush()
+            for offer, identity in inherited:
+                if identity is None:
+                    identity = CatalogOfferIdentity(user_id=user_id, template_id=offer.id)
+                    self.db.add(identity)
+                identity.variant_id = variant.id
+            self.db.flush()
         reassigned = self.repo.reassign_offers(
             user_id=user_id,
             source_product_ids=source_ids,

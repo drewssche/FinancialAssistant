@@ -34,8 +34,8 @@
 @import url("./css/kpi-cards.css?v=20261016-card-consistency");
 @import url("./css/secondary-editors.css?v=20261014-secondary1");
 @import url("./css/ui-final-audit.css?v=20261014-audit1");
-@import url("./css/ui-simplification.css?v=20261017-scan-shared-controls");
-@import url("/static/css/receipt-scan.css?v=20261018-receipt-recovery");
+@import url("./css/ui-simplification.css?v=20261018-measurements");
+@import url("/static/css/receipt-scan.css?v=20261018-measurements");
 @import url("/static/css/ui-consistency.css?v=20261017-scan-shared-controls");
 /* Work timesheet */
 .work-section-head { gap: 16px; align-items: flex-start; }

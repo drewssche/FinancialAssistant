@@ -155,3 +155,44 @@ def test_new_plan_product_inherits_explicit_unit(client):
     assert response.status_code == 201, response.text
     row = response.json()['receipt_items'][0]
     assert client.get(f"/api/v1/operations/catalog-products/{row['product_id']}").json()['sale_unit'] == 'kg'
+
+
+@pytest.mark.parametrize('target_unit,source_unit', [('piece','pack'),('pack','piece')])
+@pytest.mark.parametrize('own_variant', [False, True, 'archived'])
+def test_merge_piece_and_pack_keeps_offer_measurements_codes_and_history(client,target_unit,source_unit,own_variant):
+    target=product(client,**{**PACK,'sale_unit':target_unit})
+    source=product(client,**{**PACK,'sale_unit':source_unit})
+    purchase=operation(client,[line(product_id=source['id'],shop_name='Green',**{**PACK,'sale_unit':source_unit})])
+    offer=purchase['receipt_items'][0]['template_id']
+    variant_id=None
+    if own_variant:
+        r=client.post(f"/api/v1/operations/catalog-products/{source['id']}/variants",json={
+            'name':'Размер источника','sale_unit':source_unit,'package_quantity':'800','package_unit':'g','codes':['4006381333931'],'is_archived':False})
+        assert r.status_code==201,r.text
+        variant_id=r.json()['variants'][0]['id']
+    r=client.put(f"/api/v1/operations/catalog-products/{source['id']}/offers/{offer}/identity",json={
+        'variant_id':variant_id,'retailer_code':'000-42','product_url':'https://green-dostavka.by/product/test','external_name':'Крупа магазина'})
+    assert r.status_code==200,r.text
+    if own_variant=='archived':
+        r=client.put(f"/api/v1/operations/catalog-products/{source['id']}/variants/{variant_id}",json={
+            'name':'Размер источника','sale_unit':source_unit,'package_quantity':'800','package_unit':'g','codes':['4006381333931'],'is_archived':True})
+        assert r.status_code==200,r.text
+    r=client.post(f"/api/v1/operations/catalog-products/{target['id']}/merge",json={'source_product_ids':[source['id']]})
+    assert r.status_code==200,r.text
+    merged=client.get(f"/api/v1/operations/catalog-products/{target['id']}").json()
+    assert merged['sale_unit']==target_unit
+    merged_offer=next(o for o in merged['offers'] if o['id']==offer)
+    assert merged_offer['sale_unit']==source_unit
+    identity=client.get(f"/api/v1/operations/catalog-products/{target['id']}/identity").json()
+    mapping=next(m for m in identity['offers'] if m['template_id']==offer)
+    assert mapping['retailer_code']=='000-42' and mapping['product_url']=='https://green-dostavka.by/product/test'
+    v=next(v for v in identity['variants'] if v['id']==mapping['variant_id'])
+    assert v['sale_unit']==source_unit and Decimal(v['package_quantity'])==Decimal('800' if own_variant is True else '900')
+    if own_variant is True: assert v['id']==variant_id and v['codes']==['4006381333931']
+    if own_variant=='archived':
+        archived=next(v for v in identity['variants'] if v['id']==variant_id)
+        assert archived['is_archived'] and archived['codes']==['4006381333931']
+    saved=client.get(f"/api/v1/operations/{purchase['id']}").json()
+    assert saved['amount']==purchase['amount']
+    for key in (*FIELDS,'quantity','unit_price','line_total','variant_snapshot'):
+        assert saved['receipt_items'][0].get(key)==purchase['receipt_items'][0].get(key)

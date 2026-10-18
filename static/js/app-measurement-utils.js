@@ -31,53 +31,54 @@
   }
   // One visible editor, backed by the existing three persisted fields.
   // Mounting is read-only: legacy units and frozen receipt snapshots are preserved.
-  function mount(container, controls) {
+  function mount(container, controls, {unitDataset = 'saleUnit'} = {}) {
     if (!container || controls.some(control => !control)) return;
     container.querySelector('.measurement-editor')?.remove();
     controls.forEach(control => { control.closest('label').hidden = true; });
     const [sale, quantity, unit] = controls;
     const editor = document.createElement('div'); editor.className = 'measurement-editor';
-    let weighted = ['kg','g','l','ml'].includes(sale.value);
     function write(values) {
+      const changed=[];
       for (const [key,value] of Object.entries(values)) {
         const control = controls[fields.indexOf(key)];
         if (control.value === value) continue;
-        control.value = value;
+        control.value = value; changed.push(control);
+      }
+      for (const control of changed) {
         control.dispatchEvent(new Event('input', {bubbles:true}));
         control.dispatchEvent(new Event('change', {bubbles:true}));
       }
     }
-    function render() {
-      editor.innerHTML = `<div class="measurement-kind segmented" role="group" aria-label="Как продаётся товар"><button type="button" class="segmented-btn ${!weighted?'active':''}" aria-pressed="${!weighted}" data-measure-kind="pack">Упаковка / штука</button><button type="button" class="segmented-btn ${weighted?'active':''}" aria-pressed="${weighted}" data-measure-kind="weight">На вес / розлив</button></div><div class="measurement-size"><label class="field"><span>${weighted?'Цена за единицу веса / объёма':'Размер одной упаковки'}</span>${weighted?'': '<input type="number" min="0.001" step="0.001" placeholder="Например, 1" aria-label="Размер одной упаковки">'}</label><div class="measurement-units" role="group" aria-label="Единица размера"></div></div>`;
-      const input = editor.querySelector('input');
-      if (input) {
-        input.value = quantity.value;
-        input.addEventListener('input', () => {write({sale_unit: ['piece','pack'].includes(sale.value)?sale.value:'piece', package_quantity:input.value, package_unit:unit.value}); sync();});
-      }
-      const unitsNode = editor.querySelector('.measurement-units');
-      renderUnitButtons(unitsNode,{choices:(weighted ? ['kg','g','l','ml'] : ['g','kg','ml','l','piece']).map(key=>[key,units[key]]),
-        onSelect:key=>{write(weighted?{sale_unit:key,package_quantity:'',package_unit:''}:{sale_unit:['piece','pack'].includes(sale.value)?sale.value:'piece',package_unit:key});sync();}});
-      editor.querySelectorAll('[data-measure-kind]').forEach(button => button.addEventListener('click', () => {
-        const next = button.dataset.measureKind==='weight'; if (next===weighted) return;
-        weighted=next;
-        write(weighted?{sale_unit:'kg',package_quantity:'',package_unit:''}:{sale_unit:'piece',package_quantity:'',package_unit:''}); render();
-      }));
-      const clear = document.createElement('button'); clear.type='button'; clear.className='btn btn-secondary btn-icon';
-      clear.title='Не указывать размер'; clear.setAttribute('aria-label',clear.title); clear.innerHTML=window.App.icons.svg('close');
-      clear.addEventListener('click', () => {write({sale_unit:'',package_quantity:'',package_unit:''}); weighted=false; render();});
-      editor.querySelector('.measurement-size').append(clear);
-      sync();
-    }
+    editor.innerHTML = `<div class="measurement-sale"><span class="muted-small">Единица цены</span><div class="measurement-units" role="group" aria-label="Единица цены"></div></div><div class="measurement-size"><label class="field"><span>Размер одной упаковки</span><input type="number" min="0.001" step="0.001" placeholder="Например, 250" aria-label="Размер одной упаковки"></label><div class="measurement-units" role="group" aria-label="Единица размера"></div></div>`;
+    const input=editor.querySelector('input'), size=editor.querySelector('.measurement-size');
+    const saleButtons=editor.querySelector('.measurement-sale .measurement-units');
+    renderUnitButtons(saleButtons,{choices:[['','Не указана'],...Object.entries(units)],dataset:unitDataset,onSelect:key=>{
+      const packed=['piece','pack'].includes(key);
+      write(packed?{sale_unit:key}:{sale_unit:key,package_quantity:'',package_unit:''}); sync();
+    }});
+    input.addEventListener('input',()=>{write({package_quantity:input.value});sync();});
+    renderUnitButtons(size.querySelector('.measurement-units'),{choices:['g','kg','ml','l','piece'].map(key=>[key,units[key]]),onSelect:key=>{write({package_unit:key});sync();}});
+    const clear=document.createElement('button');clear.type='button';clear.className='btn btn-secondary btn-icon';
+    window.App.icons.apply(clear,'close','Не указывать размер');
+    clear.addEventListener('click',()=>{write({package_quantity:'',package_unit:''});sync();});size.append(clear);
     function sync() {
-      const input=editor.querySelector('input');
-      if(input) {input.required=Boolean(unit.value); input.setCustomValidity(quantity.value && !unit.value ? 'Выберите единицу размера: г, кг, мл, л или шт.' : '');}
-      editor.querySelectorAll('[data-unit]').forEach(button => {
-        const active=button.dataset.unit===(weighted?sale.value:unit.value);
-        button.classList.toggle('is-active',active); button.setAttribute('aria-pressed',String(active));
+      const packed=['piece','pack'].includes(sale.value);
+      size.hidden=!packed;
+      input.disabled=!packed;
+      input.value=quantity.value;
+      input.required=packed&&Boolean(unit.value);
+      input.setCustomValidity(packed&&quantity.value&&!unit.value?'Выберите единицу размера: г, кг, мл, л или шт.':'');
+      saleButtons.querySelectorAll('button').forEach(button=>{
+        const active=button.dataset[unitDataset]===sale.value;
+        button.classList.toggle('is-active',active);button.setAttribute('aria-pressed',String(active));
       });
-
+      size.querySelectorAll('[data-unit]').forEach(button=>{
+        const active=button.dataset.unit===unit.value;
+        button.classList.toggle('is-active',active);button.setAttribute('aria-pressed',String(active));
+      });
     }
-    container.append(editor); render();
+    container.append(editor);sync();
+    return {refresh:sync};
   }
   window.App = window.App || {};
   window.App.measurements = { fields, units, snapshot, options, summary, priceLabel, quantityLabel, renderUnitButtons, mount };

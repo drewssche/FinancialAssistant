@@ -2209,6 +2209,7 @@ def test_catalog_measurements_save_optional_defaults(static_server_url, page_wit
     _ensure_categories_loaded(page)
     page.evaluate("window.App.getRuntimeModule('catalog-products').openEditor()")
     page.locator('#catalogProductName').fill('Молоко')
+    page.locator('.catalog-product-measurements [data-sale-unit=piece]').click()
     page.locator('.catalog-product-measurements .measurement-editor input').fill('0.9')
     page.locator('.catalog-product-measurements [data-unit="l"]').click()
     page.locator('#submitCatalogProductBtn').click()

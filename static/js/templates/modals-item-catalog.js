@@ -212,6 +212,7 @@
         <form id="catalogProductMergeForm" class="catalog-product-merge-form">
           <div id="catalogProductMergeOptions" class="catalog-product-merge-options"></div>
           <div id="catalogProductMergeWarning" class="catalog-product-merge-warning hidden"></div>
+          <p id="catalogProductMergeError" class="form-error" role="alert" hidden></p>
           <p class="muted-small">Все предложения и история операций перейдут в выбранную карточку. Отменить объединение целиком нельзя, но отдельное предложение можно отделить.</p>
         </form>
         <div class="modal-footer">

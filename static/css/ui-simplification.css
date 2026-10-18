@@ -10,7 +10,8 @@
 .choice-option[aria-pressed="true"] { background: #284771; box-shadow: inset 3px 0 #79acff; }
 .choice-dialog [role="status"]:empty { display: none; }
 .measurement-editor { display: grid; gap: 10px; grid-column: 1 / -1; min-width: 0; }
-.measurement-kind.segmented { display: flex; width: fit-content; max-width: 100%; }
+.measurement-sale { display: grid; gap: 6px; }
+.measurement-size[hidden], .measurement-editor ~ label[hidden] { display: none !important; }
 .measurement-size { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
 .measurement-size .field { flex: 1 1 150px; max-width: 240px; }
 .measurement-units { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -42,8 +43,6 @@
 #dashboardDebtsList .debt-direct-actions { max-width: none; min-width: 0; }
 @media (max-width: 640px) {
   .choice-dialog { padding: 16px; }
-  .measurement-kind.segmented { width: 100%; }
-  .measurement-kind .segmented-btn { flex: 1; padding: 8px; min-height: 44px; }
   .measurement-unit.btn { min-width: 44px; min-height: 44px; padding: 8px; }
   .measurement-size .field { max-width: none; }
   .catalog-price-changes-advanced, .product-price-controls { grid-template-columns: minmax(0,1fr); }
