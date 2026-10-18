@@ -74,10 +74,12 @@ def test_failed_save_keeps_attachment_and_retry_sends_it_atomically(static_serve
         requests.append(route.request.post_data_json)
         route.fulfill(status=400 if len(requests)==1 else 201,json={'detail':'Проверочная ошибка'} if len(requests)==1 else {'id':77})
     page.route('**/api/v1/operations',save)
+    page.evaluate("window.App.state.createReceiptItems[0].code_entries=[]")
     page.click('#submitCreateOperationBtn')
     expect(page.locator('#createModal')).to_be_visible()
     expect(page.locator('#submitCreateOperationBtn')).to_be_enabled()
     assert requests[0]['receipt_scan']['original_text']==TEXT
+    assert requests[0]['receipt_scan']['review']['rows'][0]['code_entries']==[]
     page.click('#openReceiptScan');expect(page.locator('#scanReview')).to_be_visible();page.click('#scanClose')
     page.click('#submitCreateOperationBtn')
     expect(page.locator('#createModal')).to_be_hidden()

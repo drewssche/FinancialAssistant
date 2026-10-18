@@ -54,17 +54,22 @@
     node('scanDate').value=draft.date||'';node('scanShop').value=draft.shop||'';node('scanTotal').value=decimal(draft.total);
     node('scanConfirmed').checked=false;renderRows();validate();
   }
-  function syncOperation(){
-    const mode=context==='create'?'create':'edit', prefix=mode==='create'?'op':'edit';
-    const rows=state[mode+'ReceiptItems']?.filter(r=>r.name);
-    if(!rows?.length)return;
-    draft={date:node(prefix+'Date').value,shop:rows[0].shop_name||'',total:inputMoney(node(prefix+'Amount').value),rows:rows.map((r,index)=>{
+  function operationReview(mode, previous, keepSavedCodes=false){
+    const prefix=mode==='create'?'op':'edit', rows=state[mode+'ReceiptItems']?.filter(r=>r.name);
+    if(!rows?.length)return previous;
+    return {date:node(prefix+'Date').value,shop:rows[0].shop_name||'',total:inputMoney(node(prefix+'Amount').value),currency:node(prefix+'Currency').value,rows:rows.map((r,index)=>{
       const money=window.App.receiptPricing.calculate(r), price=Number(r.regular_unit_price||r.unit_price);
-      const previous=draft?.rows?.[index];
-      return {...r,code_entries:r.code_entries?.length?r.code_entries:previous?.name===r.name?previous.code_entries||[]:[],catalog:r.product_id||r.template_id?{...r}:null,category_touched:true,price:Math.round(price*100),
+      const old=previous?.rows?.[index];
+      const codes=keepSavedCodes&&!r.code_entries?.length&&old?.name===r.name?old.code_entries:r.code_entries;
+      return {...r,code_errors:[],code_entries:codes||[],catalog:r.product_id||r.template_id?{...r}:null,category_touched:true,price:Math.round(price*100),
         quantity:Number(r.quantity),discount:Math.max(0,Math.round(((money.subtotal??money.total)-money.total)*100)),total:Math.round(money.total*100)};
     })};
-    node('scanCurrency').value=node(prefix+'Currency').value;renderDraft();applied=false;
+  }
+  function syncOperation(keepSavedCodes=false){
+    const mode=context==='create'?'create':'edit';
+    draft=operationReview(mode,draft,keepSavedCodes);
+    if(!draft)return;
+    node('scanCurrency').value=draft.currency||'BYN';renderDraft();applied=false;
   }
   function scanPayload(){
     readMeta();
@@ -112,7 +117,7 @@
         else if(next!=='create'){
           const saved=await core.requestJson(`/api/v1/operations/${next}/receipt-scan`,{headers:core.authHeaders()});
           if(token!==openGeneration)return;
-          await restore(saved);syncOperation();
+          await restore(saved);syncOperation(true);
         }
       }
       if(token!==openGeneration||node(mode==='create'?'createModal':'editModal').classList.contains('hidden'))return;
@@ -427,7 +432,12 @@
   window.App.registerRuntimeModule('receipt-scan',{
     beginOperation(){pending.create=null;applied=false;if(context==='create')transferred=false;else if(createRecovery)createRecovery.applied=false;refreshEntry();},
     editOperation(item){openGeneration++;savedButton.hidden=!item.has_receipt_scan;pending.edit=null;if(context!=='create'){cleanup();context='';}},
-    payload(mode){const entry=pending[mode];return entry&&(mode==='create'||entry.id===String(state.editOperationId))?entry.value:null;},
+    payload(mode){
+      const entry=pending[mode];
+      if(!entry||(mode==='edit'&&entry.id!==String(state.editOperationId)))return null;
+      // Keep corrections made in the operation (including removed conflicting codes).
+      return {...entry.value,review:operationReview(mode,entry.value.review)};
+    },
     saved(mode){pending[mode]=null;if(mode==='create'){createRecovery=null;if(context==='create')cleanup();}else if(context!=='create'){cleanup();context='';}refreshEntry();},
     photosDeleted(){
       // Never re-upload a removed saved photo from the open editor's cached attachment.
