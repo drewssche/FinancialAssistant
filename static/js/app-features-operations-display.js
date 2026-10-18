@@ -107,7 +107,7 @@
                 ${itemName}
                 ${discountChip}
               </div>
-              <span class="muted-small">${core.formatMoney(total, { currency: receiptCurrency })}</span>
+              <strong class="operation-receipt-total">${core.formatMoney(total, { currency: receiptCurrency })}</strong>
             </div>
             ${shopChip}
             ${categoryChip}

@@ -75,13 +75,13 @@ def test_changes_errors_dedupe_and_unsubscribe(client,linked,monkeypatch):
         db.add(AuthIdentity(user_id=1,provider='telegram',provider_user_id='12345'));db.commit()
         service.record(w,snapshot());assert list(service.deliveries())==[]
         service.record(w,snapshot('6.99'));service.record(w,snapshot('6.99'))
-        events=list(db.scalars(select(CatalogPriceEvent)));assert len(events)==1
+        events=list(db.scalars(select(CatalogPriceEvent).where(CatalogWatchService.notification_events())));assert len(events)==1
         monkeypatch.setattr('app.services.catalog_watch_service.now',lambda: now()+timedelta(minutes=16))
         deliveries=list(service.deliveries());assert len(deliveries)==1 and '7.99 → 6.99' in deliveries[0][2]
         events[0].telegram_sent_at=now();db.commit();assert list(service.deliveries())==[]
         # An unavailable/changed-size price is not a comparable price drop.
         service.record(w,snapshot('6.99',False));service.record(w,snapshot('5.99'))
-        service.record(w,snapshot('4.99',size='100'));assert len(list(db.scalars(select(CatalogPriceEvent))))==1
+        service.record(w,snapshot('4.99',size='100'));assert len(list(db.scalars(select(CatalogPriceEvent).where(CatalogWatchService.notification_events()))))==1
         service.record(w,snapshot('5.99',size='100'))
         monkeypatch.setattr('app.services.catalog_watch_service.now',lambda: now()+timedelta(minutes=32))
         assert len(list(service.deliveries()))==1
@@ -148,7 +148,7 @@ def test_background_refresh_without_notifications_and_permanent_history(client,l
         # No CatalogWatch row at all: linking alone is enough for background prices.
         monkeypatch.setattr(provider,'fetch_product',lambda url:snapshot('6.99'))
         w.next_check_at=clock[0]-timedelta(seconds=1);db.commit();service.refresh_due()
-        assert w.snapshot['price']=='6.99' and not list(db.scalars(select(CatalogPriceEvent)))
+        assert w.snapshot['price']=='6.99' and not list(db.scalars(select(CatalogPriceEvent).where(CatalogWatchService.notification_events())))
         service.set_enabled(1,pid,True)
         db.add(AuthIdentity(user_id=1,provider='telegram',provider_user_id='123'));db.commit()
         service.record(w,snapshot('5.99'))
@@ -216,7 +216,7 @@ def test_bot_refresh_fits_two_connection_pool(client, linked, monkeypatch):
         watch = db.get(CatalogOfferWatch, tid)
         assert watch.snapshot['price'] == '6.49'
         assert not watch.error
-        assert not list(db.scalars(select(CatalogPriceEvent)))
+        assert not list(db.scalars(select(CatalogPriceEvent).where(CatalogWatchService.notification_events())))
 
 
 def test_unavailable_zero_price_is_missing_not_a_free_product():
@@ -234,9 +234,54 @@ def test_missing_stock_price_never_creates_zero_price_notifications(client,linke
         service=CatalogWatchService(db);w=db.get(CatalogOfferWatch,tid)
         service.record(w,provider.parse_product(document('0',False).replace('10.99','0'),URL))
         assert w.snapshot['price'] is None and w.error is None
-        assert not list(db.scalars(select(CatalogPriceEvent)))
+        assert not list(db.scalars(select(CatalogPriceEvent).where(CatalogWatchService.notification_events())))
         service.record(w,snapshot('5.99'))
-        assert not list(db.scalars(select(CatalogPriceEvent)))
+        assert not list(db.scalars(select(CatalogPriceEvent).where(CatalogWatchService.notification_events())))
         service.record(w,snapshot('5.49'))
-        events=list(db.scalars(select(CatalogPriceEvent)))
+        events=list(db.scalars(select(CatalogPriceEvent).where(CatalogWatchService.notification_events())))
         assert len(events)==1 and events[0].data['old_price']=='5.99' and events[0].data['price']=='5.49'
+
+
+def test_site_history_without_notifications_dedupe_and_ownership(client, linked):
+    pid, tid = linked
+    url = f'/api/v1/catalog-watches/{pid}/offers/{tid}/history'
+    with database() as db:
+        service = CatalogWatchService(db); w = db.get(CatalogOfferWatch, tid)
+        service.record(w, snapshot('6.99'))
+        service.record(w, snapshot('6.99'))
+        service.record(w, snapshot('6.99', False))
+        service.record(w, snapshot('5.99', size='100'))
+        assert list(service.deliveries()) == []
+        assert service.dashboard(1)['events'] == []
+        saved = list(db.scalars(select(CatalogPriceEvent)))
+        assert len(saved) == 4  # baseline, price, availability, new package
+        assert all(e.data['notification'] is False for e in saved)
+    response = client.get(url)
+    assert response.status_code == 200
+    records = response.json()['items']
+    assert {r['price'] for r in records} >= {'7.99', '6.99', '5.99'}
+    assert any(not r['available'] for r in records)
+    assert len({r['comparison_key'] for r in records}) == 2
+    assert response.json()['next_cursor'] is None
+    assert client.delete(f'/api/v1/catalog-watches/{pid}/offers/{tid}').status_code == 200
+    assert len(client.get(url).json()['items']) == 4  # detach retains recorded history
+    app.dependency_overrides[get_current_user_id] = lambda: 2
+    assert client.get(url).status_code == 404
+
+
+def test_site_history_cursor_and_legacy_notification(client, linked):
+    pid, tid = linked
+    with database() as db:
+        service = CatalogWatchService(db); w = db.get(CatalogOfferWatch, tid)
+        for i in range(202):
+            service.record(w, snapshot(str(Decimal('8') + Decimal(i) / 100)))
+        # Legacy notifications (no new flag) remain visible, observations never leak.
+        db.add(CatalogPriceEvent(user_id=1, product_id=pid, template_id=tid,
+                                created_at=now(), data=dict(snapshot(), direction='up')))
+        db.commit()
+        assert len(service.dashboard(1)['events']) == 1
+    url = f'/api/v1/catalog-watches/{pid}/offers/{tid}/history'
+    first = client.get(url).json(); second = client.get(url, params={'before_id': first['next_cursor']}).json()
+    ids = [r['id'] for r in first['items'] + second['items'] if r['id']]
+    assert len(ids) == 204 and len(set(ids)) == 204
+    assert second['next_cursor'] is None

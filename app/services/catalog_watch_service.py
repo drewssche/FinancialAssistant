@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from zoneinfo import ZoneInfo
-from sqlalchemy import select, update
+from sqlalchemy import select, update, or_
 from app.db.models.catalog_product import CatalogProduct
 from app.db.models.operation_item_template import OperationItemTemplate
 from app.db.models.catalog_watch import CatalogWatch, CatalogOfferWatch, CatalogPriceEvent
@@ -74,6 +74,7 @@ class CatalogWatchService:
                 w = CatalogOfferWatch(template_id=template_id, product_id=product_id, user_id=user_id)
                 self.db.add(w)
             w.product_id = product_id
+            self.observe(w, snapshot)
             w.url = snapshot['url']
             w.snapshot = snapshot
             w.checked_at = now()
@@ -132,7 +133,7 @@ class CatalogWatchService:
         offers = [dict(self.serialize(o), product_name=names[o.product_id]) for o in self.db.scalars(self.valid_offers().where(CatalogOfferWatch.user_id == user_id, CatalogOfferWatch.product_id.in_(ids)).order_by(CatalogOfferWatch.checked_at.desc()).limit(60))]
         connected_ids = set(self.db.scalars(self.valid_offers().with_only_columns(CatalogOfferWatch.product_id).where(CatalogOfferWatch.user_id == user_id, CatalogOfferWatch.product_id.in_(ids))))
         # Dashboard history survives Telegram delivery, unsubscribe and later resubscribe.
-        stmt = select(CatalogPriceEvent).where(CatalogPriceEvent.user_id == user_id)
+        stmt = select(CatalogPriceEvent).where(CatalogPriceEvent.user_id == user_id, self.notification_events())
         if before_id is not None:
             stmt = stmt.where(CatalogPriceEvent.id < before_id)
         page = list(self.db.scalars(stmt.order_by(CatalogPriceEvent.id.desc()).limit(21)))
@@ -151,16 +152,53 @@ class CatalogWatchService:
                 unresolved.append({'product_id': product_id, 'name': names[product_id], 'matching_state': state, 'matching_sources': sorted(set(sources.get(state, [])))})
         return {'tracked_count': len(ids), 'offers': offers, 'events': [dict(e.data, id=e.id, product_id=e.product_id, created_at=e.created_at) for e in events], 'unlinked': unresolved, 'next_cursor': events[-1].id if len(page) > 20 else None}
 
+    @staticmethod
+    def notification_events():
+        # Missing flag identifies notifications created before independent site history.
+        flag = CatalogPriceEvent.data['notification'].as_boolean()
+        return or_(flag.is_(None), flag.is_(True))
+
+    def observe(self, w, snapshot, *, stamp=None, notification=False, extra=None):
+        self.db.add(CatalogPriceEvent(user_id=w.user_id, product_id=w.product_id,
+            template_id=w.template_id, created_at=stamp or now(),
+            telegram_sent_at=None if notification else now(),
+            data={**snapshot, **(extra or {}), 'notification': notification}))
+
+    def history(self, user_id, product_id, template_id, before_id=None):
+        self.offer(user_id, product_id, template_id)
+        stmt = select(CatalogPriceEvent).where(CatalogPriceEvent.user_id == user_id,
+            CatalogPriceEvent.template_id == template_id)
+        if before_id:
+            stmt = stmt.where(CatalogPriceEvent.id < before_id)
+        page = list(self.db.scalars(stmt.order_by(CatalogPriceEvent.id.desc()).limit(201)))
+        rows = [dict(e.data, id=e.id, recorded_at=e.created_at) for e in page[:200]]
+        # Existing links have a real last observation even before history was enabled.
+        w = self.db.get(CatalogOfferWatch, template_id)
+        if not before_id and w and w.user_id == user_id and w.snapshot:
+            rows.insert(0, dict(w.snapshot, id=None, recorded_at=w.checked_at))
+        return {'items': rows, 'next_cursor': page[199].id if len(page) > 200 else None}
+
     def record(self, w, snapshot):
         previous = w.snapshot or {}
         # Availability, package changes, and conditional terms cannot create a price-drop claim.
         comparable = previous.get('comparison_key') == snapshot['comparison_key'] and previous.get('conditions_key') == snapshot.get('conditions_key')
         changed = comparable and previous.get('available') and snapshot['available'] and Decimal(previous['price']) != Decimal(snapshot['price'])
         enabled = self.db.get(CatalogWatch, w.product_id)
-        if changed and enabled and enabled.enabled:
-            old, new = Decimal(previous['price']), Decimal(snapshot['price'])
-            p = self.product(w.user_id, w.product_id)
-            self.db.add(CatalogPriceEvent(user_id=w.user_id, product_id=w.product_id, template_id=w.template_id, created_at=now(), data={**snapshot, 'product_name': p.name, 'old_price': str(old), 'percent': str(((new-old)/old*100).quantize(Decimal('.1'))), 'direction': 'down' if new < old else 'up'}))
+        latest = self.db.scalar(select(CatalogPriceEvent.id).where(
+            CatalogPriceEvent.user_id == w.user_id, CatalogPriceEvent.template_id == w.template_id).limit(1))
+        if not latest and previous:
+            self.observe(w, previous, stamp=w.checked_at)
+        keys = ('price', 'regular_price', 'available', 'comparison_key', 'conditions_key', 'url')
+        if not previous or any(previous.get(k) != snapshot.get(k) for k in keys):
+            notify = bool(changed and enabled and enabled.enabled)
+            extra = {}
+            if changed:
+                old, new = Decimal(previous['price']), Decimal(snapshot['price'])
+                extra = {'product_name': self.product(w.user_id, w.product_id).name,
+                         'old_price': str(old),
+                         'percent': str(((new-old)/old*100).quantize(Decimal('.1'))) if old else None,
+                         'direction': 'down' if new < old else 'up'}
+            self.observe(w, snapshot, notification=notify, extra=extra)
         w.snapshot = snapshot
         w.checked_at = now()
         w.next_check_at = now() + timedelta(hours=6)
@@ -189,7 +227,7 @@ class CatalogWatchService:
     def deliveries(self):
         stmt = select(CatalogPriceEvent).join(CatalogWatch, CatalogWatch.product_id == CatalogPriceEvent.product_id).join(CatalogProduct, CatalogProduct.id == CatalogPriceEvent.product_id).join(OperationItemTemplate, OperationItemTemplate.id == CatalogPriceEvent.template_id).join(CatalogOfferWatch, CatalogOfferWatch.template_id == CatalogPriceEvent.template_id).where(CatalogWatch.enabled.is_(True), CatalogProduct.is_archived.is_(False), OperationItemTemplate.is_archived.is_(False), OperationItemTemplate.product_id == CatalogPriceEvent.product_id, CatalogPriceEvent.telegram_sent_at.is_(None), CatalogPriceEvent.created_at >= CatalogWatch.enabled_at).order_by(CatalogPriceEvent.id)
         eligible = select(AuthIdentity.user_id).join(User, User.id == AuthIdentity.user_id).where(AuthIdentity.provider == 'telegram', User.status.in_(['approved', 'active']))
-        stmt = stmt.where(CatalogPriceEvent.user_id.in_(eligible))
+        stmt = stmt.where(CatalogPriceEvent.user_id.in_(eligible), self.notification_events())
         grouped = {}
         for e in self.db.scalars(stmt):
             grouped.setdefault(e.user_id, []).append(e)

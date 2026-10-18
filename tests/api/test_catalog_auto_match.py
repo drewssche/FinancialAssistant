@@ -9,7 +9,7 @@ from app.db.models.catalog_watch import CatalogOfferMatch, CatalogOfferWatch, Ca
 from app.db.models.operation_item_template import OperationItemTemplate
 from app.db.models.catalog_identity import CatalogOfferIdentity, CatalogVariantCode
 from app.services.catalog_match_service import CatalogMatchService
-from app.services.catalog_watch_service import now
+from app.services.catalog_watch_service import now, CatalogWatchService
 from app.services import retailer_price_provider as provider
 from tests.api.test_catalog_product_linkage_api import client
 from tests.api.test_product_primary_codes_api import create
@@ -46,7 +46,7 @@ def test_exact_automatic_baseline_no_notification_and_no_overwrite(client,monkey
     assert data['offers'][0]['snapshot']['price']=='2.99'
     with database() as db:
         assert db.get(CatalogOfferMatch,tid).state=='linked'
-        assert not list(db.scalars(select(CatalogPriceEvent)))
+        assert not list(db.scalars(select(CatalogPriceEvent).where(CatalogWatchService.notification_events())))
     monkeypatch.setattr(provider,'fetch_product',lambda url:pytest.fail('Existing connection is preserved'))
     assert not run(tid)
 
@@ -175,5 +175,5 @@ def test_edostavka_article_autolinks_unavailable_product_missing_from_search(cli
         w=db.get(CatalogOfferWatch,tid)
         assert w.url=='https://edostavka.by/product/870666' and w.snapshot['price'] is None
         assert db.get(CatalogOfferMatch,tid).state=='linked'
-        assert not list(db.scalars(select(CatalogPriceEvent)))
+        assert not list(db.scalars(select(CatalogPriceEvent).where(CatalogWatchService.notification_events())))
     assert paths==['/search','/product/870666','/product/870666']

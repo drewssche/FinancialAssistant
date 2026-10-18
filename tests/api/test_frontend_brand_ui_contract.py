@@ -181,7 +181,8 @@ def test_brand_filters_have_distinct_all_kind_keys_and_survive_back_navigation()
 
     assert 'selectedKind === "all" ? `${brandKey}:${item.category_kind || "expense"}` : brandKey' in shared
     assert "breakdownItemKey(selectedLevel, normalizedItem, selectedKind)" in snapshot
-    assert analytics.count("clearOperationsBrandFilter();") == 4
+    # Day, product and category transitions; the removed trend chart has no transition.
+    assert analytics.count("clearOperationsBrandFilter();") == 3
     assert "operationsBrandFilterId: state.operationsBrandFilterId" in navigation
     assert "operationsBrandFilterName: state.operationsBrandFilterName" in navigation
     assert "state.operationsBrandFilterId = snapshot.operationsBrandFilterId ?? null" in navigation

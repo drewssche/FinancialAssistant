@@ -103,3 +103,10 @@ def autolink(product_id: int, template_id: int, user_id: int = Depends(get_curre
         CatalogMatchService(db).queue(user_id, product_id, template_id)
         return CatalogWatchService(db).detail(user_id, product_id)
     return run(action)
+
+
+@router.get('/{product_id}/offers/{template_id}/history')
+def history(product_id: int, template_id: int,
+            before_id: int | None = Query(default=None, gt=0),
+            user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    return run(lambda: CatalogWatchService(db).history(user_id, product_id, template_id, before_id))

@@ -239,6 +239,7 @@
                   <div class="segmented" id="analyticsCalendarViewTabs" role="tablist" aria-label="Вид календарной сетки">
                     <button class="segmented-btn active" data-analytics-calendar-view="month" type="button">Месяц</button>
                     <button class="segmented-btn" data-analytics-calendar-view="year" type="button">Год</button>
+                    <button class="segmented-btn" data-analytics-calendar-view="all_time" type="button">За всё время</button>
                   </div>
                 </div>
                 <div class="analytics-switch-group">

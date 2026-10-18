@@ -253,6 +253,9 @@ class DashboardService:
         )
         return payload
 
+    def get_analytics_calendar_all_time(self, *, user_id: int) -> dict:
+        return self.analytics.get_calendar_all_time(user_id=user_id)
+
     def get_analytics_highlights(
         self,
         *,

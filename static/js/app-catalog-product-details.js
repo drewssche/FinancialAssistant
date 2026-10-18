@@ -6,7 +6,7 @@
   let product = null, tab = "product", controller = null, generation = 0, page = 0, bound = false;
   let purchaseRows = [], purchaseTotal = 0, nestedOperation = false, returnTarget = null, purchasesDirty = false;
   let offerReturnId = null, workspaceGeneration = 0;
-  let preferredPriceSeries = null;
+  let preferredPriceSeries = null, websiteRows = [];
   const visible = () => product && !el.catalogProductModal.classList.contains("hidden");
 
   function cancel() { generation += 1; controller?.abort(); controller = null; }
@@ -21,23 +21,29 @@
   function errorHtml(error) {
     return `<div class="form-error">Не удалось загрузить данные: ${esc(error?.message || error)}</div><button class="btn btn-secondary btn-icon" type="button" data-product-detail-retry title="Повторить" aria-label="Повторить">${window.App.icons.svg("refresh")}</button>`;
   }
-  async function loadPrices({preserve = false} = {}) {
+  async function loadPrices({preserve = false, beforeId = null} = {}) {
     cancel();
     const token = generation, target = node("catalogProductPricesList");
     const offerId = Number(node("catalogProductPriceOffer").value);
     if (!offerId) { target.innerHTML = '<div class="empty">Добавьте предложение во вкладке «Предложения».</div>'; return; }
-    const purchases = node("catalogProductPriceMode").value === "purchases";
+    const mode = node("catalogProductPriceMode").value;
+    const purchases = mode === "purchases", website = mode === "website";
     node("catalogProductHistoryControls").classList.toggle("hidden", !purchases);
-    node("catalogProductLegacyPriceNote").classList.toggle("hidden", purchases);
+    node("catalogProductLegacyPriceNote").classList.toggle("hidden", mode !== "offers");
     const params = new URLSearchParams({template_id: offerId, basis: node("catalogProductPriceBasis").value, price_kind: node("catalogProductPriceKind").value});
     if (node("catalogProductPriceFrom").value) params.set("date_from", node("catalogProductPriceFrom").value);
     if (node("catalogProductPriceTo").value) params.set("date_to", node("catalogProductPriceTo").value);
     controller = new AbortController();
     target.innerHTML = '<div class="muted-small">Загрузка цен…</div>';
     try {
-      const url = purchases ? `/api/v1/operations/catalog-products/${product.id}/price-observations?${params}` : `/api/v1/operations/item-templates/${offerId}/prices?limit=200`;
+      const url = website ? `/api/v1/catalog-watches/${product.id}/offers/${offerId}/history${beforeId ? `?before_id=${beforeId}` : ""}` : purchases ? `/api/v1/operations/catalog-products/${product.id}/price-observations?${params}` : `/api/v1/operations/item-templates/${offerId}/prices?limit=200`;
       const rows = await core.requestJson(url, {headers: core.authHeaders(), signal: controller.signal});
       if (token !== generation || !visible()) return;
+      if (website) {
+        websiteRows = beforeId ? [...websiteRows, ...(rows.items || [])] : (rows.items || []);
+        window.App.getRuntimeModule("catalog-price-history").renderWebsite(websiteRows, rows.next_cursor, Boolean(beforeId));
+        return;
+      }
       if (purchases) { window.App.getRuntimeModule("catalog-price-history").render(rows, preserve, preferredPriceSeries); preferredPriceSeries = null; return; }
       target.innerHTML = (rows || []).map((row) => `<article class="catalog-product-price-row"><span>${esc(core.formatDateRu(row.recorded_at))}</span><strong>${core.formatMoney(row.unit_price)}</strong><button class="btn btn-danger btn-icon" title="Удалить цену" aria-label="Удалить цену" type="button" data-product-price-delete="${Number(row.id)}" data-offer-id="${offerId}">${window.App.icons.svg("trash")}</button></article>`).join("") || '<div class="empty">История цен пока пустая</div>';
       if (rows?.length === 200) target.insertAdjacentHTML("beforeend", '<p class="muted-small">Показаны последние 200 записей.</p>');
@@ -145,6 +151,8 @@
       if (offerButton) offerReturnId = Number(offerButton.dataset.templateId);
       if (event.target.closest("#addCatalogProductSourceBtn")) offerReturnId = null;
       if (event.target.closest("[data-product-detail-retry]")) select(tab);
+      const earlier = event.target.closest('[data-site-history-more]');
+      if (earlier) loadPrices({beforeId: Number(earlier.dataset.siteHistoryMore)});
       const price = event.target.closest("[data-product-price-delete]");
       if (price) core.runAction({errorPrefix: "Не удалось удалить цену", action: () => removePrice(price)});
       const purchase = event.target.closest("[data-product-purchase-id]");

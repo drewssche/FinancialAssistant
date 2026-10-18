@@ -124,6 +124,8 @@ class DashboardDebtPreviewCard(BaseModel):
 class AnalyticsCalendarDay(BaseModel):
     date: str
     in_month: bool
+    cashflow_income_total: Decimal | None = None
+    cashflow_expense_total: Decimal | None = None
     income_total: Decimal
     expense_total: Decimal
     balance: Decimal
@@ -139,6 +141,8 @@ class AnalyticsCalendarDay(BaseModel):
 class AnalyticsCalendarWeek(BaseModel):
     week_start: str
     week_end: str
+    cashflow_income_total: Decimal | None = None
+    cashflow_expense_total: Decimal | None = None
     income_total: Decimal
     expense_total: Decimal
     balance: Decimal
@@ -156,6 +160,8 @@ class AnalyticsCalendarOut(BaseModel):
     month: str
     month_start: str
     month_end: str
+    cashflow_income_total: Decimal | None = None
+    cashflow_expense_total: Decimal | None = None
     income_total: Decimal
     expense_total: Decimal
     balance: Decimal
@@ -173,6 +179,8 @@ class AnalyticsCalendarYearMonth(BaseModel):
     month: str
     month_start: str
     month_end: str
+    cashflow_income_total: Decimal | None = None
+    cashflow_expense_total: Decimal | None = None
     income_total: Decimal
     expense_total: Decimal
     balance: Decimal
@@ -189,6 +197,8 @@ class AnalyticsCalendarYearOut(BaseModel):
     year: int
     year_start: str
     year_end: str
+    cashflow_income_total: Decimal | None = None
+    cashflow_expense_total: Decimal | None = None
     income_total: Decimal
     expense_total: Decimal
     balance: Decimal
@@ -421,3 +431,29 @@ class AnalyticsHighlightsOut(BaseModel):
     frequent_positions: list[AnalyticsFrequentPosition] = Field(default_factory=list)
     price_increases: list[AnalyticsPriceIncrease]
     top_discount_savings: list[AnalyticsTopDiscountSaving] = Field(default_factory=list)
+
+
+class AnalyticsCalendarAllTimeYear(BaseModel):
+    year: int
+    income_total: Decimal
+    expense_total: Decimal
+    balance: Decimal
+    operations_count: int
+    cashflow_income_total: Decimal
+    cashflow_expense_total: Decimal
+    cashflow_total: Decimal
+    cashflow_events_count: int
+
+
+class AnalyticsCalendarAllTimeOut(BaseModel):
+    date_from: date
+    date_to: date
+    income_total: Decimal
+    expense_total: Decimal
+    balance: Decimal
+    operations_count: int
+    cashflow_income_total: Decimal
+    cashflow_expense_total: Decimal
+    cashflow_total: Decimal
+    cashflow_events_count: int
+    years: list[AnalyticsCalendarAllTimeYear]

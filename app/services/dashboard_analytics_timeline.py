@@ -19,6 +19,8 @@ class DashboardAnalyticsTimelineService:
     @staticmethod
     def _empty_cashflow_bucket() -> dict:
         return {
+            "cashflow_income_total": Decimal("0"),
+            "cashflow_expense_total": Decimal("0"),
             "debt_cashflow_total": Decimal("0"),
             "debt_events_count": 0,
             "fx_cashflow_total": Decimal("0"),
@@ -68,6 +70,9 @@ class DashboardAnalyticsTimelineService:
                 return
             bucket = overlay[event_date]
             amount = self._money(signed_amount)
+            for target in (bucket, totals):
+                target["cashflow_income_total"] += max(amount, Decimal("0"))
+                target["cashflow_expense_total"] += max(-amount, Decimal("0"))
             bucket["cashflow_total"] = self._money(bucket["cashflow_total"] + amount)
             bucket["cashflow_events_count"] += 1
             totals["cashflow_total"] = self._money(totals["cashflow_total"] + amount)
@@ -306,6 +311,8 @@ class DashboardAnalyticsTimelineService:
                     week_cashflow_events += cashflow_events_count
                 week_days.append(
                     {
+                        "cashflow_income_total": income_total + cash_stats["cashflow_income_total"] if in_month else Decimal("0"),
+                        "cashflow_expense_total": expense_total + cash_stats["cashflow_expense_total"] if in_month else Decimal("0"),
                         "date": cursor.isoformat(),
                         "in_month": in_month,
                         "income_total": income_total,
@@ -326,6 +333,8 @@ class DashboardAnalyticsTimelineService:
             total_ops += week_ops
             weeks.append(
                 {
+                    "cashflow_income_total": sum(d["cashflow_income_total"] for d in week_days),
+                    "cashflow_expense_total": sum(d["cashflow_expense_total"] for d in week_days),
                     "week_start": week_days[0]["date"],
                     "week_end": week_days[-1]["date"],
                     "income_total": week_income,
@@ -343,6 +352,8 @@ class DashboardAnalyticsTimelineService:
             )
 
         return {
+            "cashflow_income_total": total_income + cashflow_totals["cashflow_income_total"],
+            "cashflow_expense_total": total_expense + cashflow_totals["cashflow_expense_total"],
             "month": month_start.strftime("%Y-%m"),
             "month_start": month_start.isoformat(),
             "month_end": month_end.isoformat(),
@@ -377,6 +388,8 @@ class DashboardAnalyticsTimelineService:
 
         by_month: dict[int, dict] = defaultdict(
             lambda: {
+                "cashflow_income_total": Decimal("0"),
+                "cashflow_expense_total": Decimal("0"),
                 "income_total": Decimal("0"),
                 "expense_total": Decimal("0"),
                 "operations_count": 0,
@@ -395,6 +408,8 @@ class DashboardAnalyticsTimelineService:
         for event_date, row in cashflow_overlay.items():
             month_index = int(event_date.month)
             bucket = by_month[month_index]
+            bucket["cashflow_income_total"] += row["cashflow_income_total"]
+            bucket["cashflow_expense_total"] += row["cashflow_expense_total"]
             bucket["debt_cashflow_total"] += Decimal(row["debt_cashflow_total"] or 0)
             bucket["debt_events_count"] += int(row["debt_events_count"] or 0)
             bucket["fx_cashflow_total"] += Decimal(row["fx_cashflow_total"] or 0)
@@ -428,6 +443,8 @@ class DashboardAnalyticsTimelineService:
             total_fx_events += fx_events_count
             months.append(
                 {
+                    "cashflow_income_total": income_total + stats["cashflow_income_total"],
+                    "cashflow_expense_total": expense_total + stats["cashflow_expense_total"],
                     "month": month_start.strftime("%Y-%m"),
                     "month_start": month_start.isoformat(),
                     "month_end": month_end.isoformat(),
@@ -445,6 +462,8 @@ class DashboardAnalyticsTimelineService:
             )
 
         return {
+            "cashflow_income_total": sum(m["cashflow_income_total"] for m in months),
+            "cashflow_expense_total": sum(m["cashflow_expense_total"] for m in months),
             "year": year,
             "year_start": year_start.isoformat(),
             "year_end": year_end.isoformat(),
@@ -460,3 +479,32 @@ class DashboardAnalyticsTimelineService:
             "cashflow_events_count": total_ops + total_debt_events + total_fx_events,
             "months": months,
         }
+
+
+    def get_calendar_all_time(self, *, user_id: int) -> dict:
+        end = date.today()
+        start = min(self.first_cashflow_date(user_id=user_id) or end, end)
+        rows = self.repo.aggregate_daily_for_period(user_id=user_id, date_from=start, date_to=end)
+        overlay, _ = self._build_cashflow_overlay(user_id=user_id, date_from=start, date_to=end)
+        def empty():
+            return dict(self._empty_cashflow_bucket(), income_total=Decimal("0"),
+                        expense_total=Decimal("0"), balance=Decimal("0"), operations_count=0)
+        years = defaultdict(empty)
+        for row in rows:
+            bucket = years[row["operation_date"].year]
+            for key in ("income_total", "expense_total", "operations_count"):
+                bucket[key] += row[key] or 0
+        for event_date, row in overlay.items():
+            for key, value in row.items():
+                years[event_date.year][key] += value
+        totals = empty()
+        for year, bucket in years.items():
+            bucket["balance"] = bucket["income_total"] - bucket["expense_total"]
+            bucket["cashflow_total"] += bucket["balance"]
+            bucket["cashflow_income_total"] += bucket["income_total"]
+            bucket["cashflow_expense_total"] += bucket["expense_total"]
+            bucket["cashflow_events_count"] += bucket["operations_count"]
+            for key in totals:
+                totals[key] += bucket[key]
+        return dict(totals, date_from=start.isoformat(), date_to=end.isoformat(),
+                    years=[dict(year=year, **values) for year, values in sorted(years.items(), reverse=True)])

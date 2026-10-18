@@ -175,7 +175,8 @@
         </section>
         <section data-product-panel="prices" class="catalog-product-detail-panel hidden">
           <label class="field"><span>Предложение магазина</span><select id="catalogProductPriceOffer" aria-label="Предложение для истории цен"></select></label>
-          <label class="field"><span>История</span><select id="catalogProductPriceMode"><option value="purchases">По покупкам</option><option value="offers">Сохранённые цены предложения</option></select></label>
+          <label class="field"><span>История</span><select id="catalogProductPriceMode"><option value="purchases">По покупкам</option>
+                    <option value="website">На сайте магазина</option><option value="offers">Сохранённые цены предложения</option></select></label>
           <section id="catalogProductHistoryControls"><div class="product-price-controls">
             <label class="field"><span>Цена</span><select id="catalogProductPriceKind"><option value="paid">Фактически оплаченная</option><option value="regular">Обычная, если указана</option></select></label>
             <label class="field"><span>Сравнение</span><select id="catalogProductPriceBasis"><option value="unit">За единицу продажи / упаковку</option><option value="normalized">За кг / л / штуку содержимого</option></select></label>

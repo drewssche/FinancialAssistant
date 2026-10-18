@@ -164,9 +164,11 @@ class CatalogMatchService:
                     return False
                 if len(exact) == 1 and not incomplete:
                     snapshot = next(iter(exact.values()))
-                    self.db.add(CatalogOfferWatch(template_id=offer.id, user_id=offer.user_id,
+                    watch = CatalogOfferWatch(template_id=offer.id, user_id=offer.user_id,
                         product_id=offer.product_id, url=snapshot['url'], snapshot=snapshot,
-                        checked_at=now(), next_check_at=now()+timedelta(hours=6)))
+                        checked_at=now(), next_check_at=now()+timedelta(hours=6))
+                    self.db.add(watch)
+                    self.watch.observe(watch, snapshot)
                     state = 'linked'
                 else:
                     state = 'choice' if hits else 'not_found'

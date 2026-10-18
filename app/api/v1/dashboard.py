@@ -9,6 +9,7 @@ from app.core.metrics import get_dashboard_summary_metrics
 from app.db.session import get_db
 from app.schemas.dashboard import (
     AnalyticsCalendarOut,
+    AnalyticsCalendarAllTimeOut,
     AnalyticsCalendarYearOut,
     AnalyticsHighlightsOut,
     AnalyticsPositionsOut,
@@ -122,3 +123,8 @@ def get_analytics_positions(
         return service.get_analytics_positions(user_id=user_id, period=period, anchor=anchor)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/analytics/calendar/all-time", response_model=AnalyticsCalendarAllTimeOut)
+def get_analytics_calendar_all_time(user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    return DashboardService(db).get_analytics_calendar_all_time(user_id=user_id)

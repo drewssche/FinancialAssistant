@@ -174,3 +174,29 @@
   #dashboardSection #dashboardCurrencyPanel .panel-head > div { width: 100%; }
   #dashboardSection #dashboardCurrencyPanel .toolbar { display: flex; flex-wrap: nowrap; }
 }
+
+/* Keep the rate status on the card edge, independently of its refresh action. */
+#dashboardSection .dashboard-currency-rate-card > .dashboard-currency-rate-head { grid-column: 1 / -1; }
+#dashboardSection .dashboard-currency-rate-actions { grid-row: 2 / span 3; }
+#analyticsCalendarPanel #analyticsCalendarTotals { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#analyticsCalendarTotalsSecondary { font-size: .75rem; color: var(--muted); }
+#analyticsYearGrid:has([data-calendar-year]) { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+[data-calendar-year] { display: grid; gap: 8px; text-align: left; }
+.operation-receipt-total { font-size: 1.125rem; font-weight: 750; color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+@media (max-width: 480px) {
+  .operation-receipt-head { flex-wrap: wrap; }
+  .operation-receipt-total { margin-left: auto; }
+  #analyticsCalendarPanel #analyticsCalendarTotals .analytics-kpi-card { padding: 8px; }
+  #analyticsCalendarPanel #analyticsCalendarTotals strong { font-size: .95rem; overflow-wrap: anywhere; }
+}
+/* Highlight real controls without making static cards look clickable. */
+@media (hover: hover) {
+  :where(button, a[href], [role="button"], [role="option"], select):not(:disabled):not([aria-disabled="true"]):hover {
+    filter: brightness(1.16);
+    box-shadow: inset 0 0 0 1px rgba(143, 184, 244, .52);
+  }
+  :where(input:not([type="hidden"]), textarea):not(:disabled):hover { border-color: rgba(143, 184, 244, .65); }
+}
+.product-price-events article.catalog-product-purchase-row { cursor: default; }
+.product-price-events article.catalog-product-purchase-row:hover { border-color: var(--border); }
+#analyticsYearGrid [data-calendar-year] { height: auto; min-height: 140px; padding: 14px; white-space: normal; justify-content: stretch; }

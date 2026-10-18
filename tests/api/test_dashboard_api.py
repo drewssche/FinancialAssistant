@@ -1840,3 +1840,28 @@ def test_dashboard_does_not_cache_optional_panel_failure_as_zero(client: TestCli
     assert first.json()["debt_summary_available"] is False
     assert second.json()["debt_summary_available"] is False
     assert calls["count"] == 2
+
+
+def test_calendar_gross_flows_and_all_time_are_consistent(client):
+    from decimal import Decimal
+    borrowed = client.post('/api/v1/debts', json={'counterparty': 'Gross', 'direction': 'borrow',
+        'principal': '90.00', 'currency': 'BYN', 'start_date': '2025-02-01'}).json()
+    assert client.post(f"/api/v1/debts/{borrowed['id']}/repayments", json={
+        'amount': '30.00', 'repayment_date': '2025-02-02'}).status_code == 201
+    for kind, amount in [('income', '100'), ('expense', '40')]:
+        r = client.post('/api/v1/operations', json={'kind': kind, 'amount': amount, 'operation_date': '2025-02-03'})
+        assert r.status_code == 201, r.text
+    month = client.get('/api/v1/dashboard/analytics/calendar?month=2025-02').json()
+    year = client.get('/api/v1/dashboard/analytics/calendar/year?year=2025').json()
+    response = client.get('/api/v1/dashboard/analytics/calendar/all-time')
+    assert response.status_code == 200, response.text
+    all_time = response.json()
+    for data in [month, year, all_time, all_time['years'][0]]:
+        assert Decimal(str(data['cashflow_income_total'])) == 190
+        assert Decimal(str(data['cashflow_expense_total'])) == 70
+        assert Decimal(str(data['cashflow_total'])) == 120
+    assert sum(Decimal(w['cashflow_income_total']) for w in month['weeks']) == 190
+    assert all_time['date_from'] == '2025-02-01'
+    app.dependency_overrides[get_current_user_id] = lambda: 2
+    empty = client.get('/api/v1/dashboard/analytics/calendar/all-time').json()
+    assert empty['years'] == [] and Decimal(str(empty['cashflow_total'])) == 0

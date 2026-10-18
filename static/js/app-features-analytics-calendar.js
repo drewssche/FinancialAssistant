@@ -160,6 +160,8 @@
 
   function applyCalendarViewUi() {
     const view = state.analyticsCalendarView || "month";
+    for (const button of [el.analyticsPrevGridBtn, el.analyticsNextGridBtn, el.analyticsTodayGridBtn]) button?.classList.toggle("hidden", view === "all_time");
+    closeAnalyticsGridPopovers();
     core.syncSegmentedActive(el.analyticsCalendarViewTabs, "analytics-calendar-view", view);
     if (el.analyticsPrevGridBtn) {
       window.App.icons.apply(el.analyticsPrevGridBtn, "back", view === "year" ? "Предыдущий год" : "Предыдущий месяц");
@@ -174,7 +176,7 @@
       el.analyticsMonthGridWrap.classList.toggle("hidden", view !== "month");
     }
     if (el.analyticsYearGridWrap) {
-      el.analyticsYearGridWrap.classList.toggle("hidden", view !== "year");
+      el.analyticsYearGridWrap.classList.toggle("hidden", view === "month");
     }
     if (el.analyticsGridMonthPickerWrap) {
       el.analyticsGridMonthPickerWrap.classList.add("hidden");
@@ -291,8 +293,8 @@
     const debtCashflow = Number(item?.debt_cashflow_total || 0);
     const fxCashflow = Number(item?.fx_cashflow_total || 0);
     return {
-      incomeTotal: operationIncome + Math.max(0, debtCashflow) + Math.max(0, fxCashflow),
-      expenseTotal: operationExpense + Math.abs(Math.min(0, debtCashflow)) + Math.abs(Math.min(0, fxCashflow)),
+      incomeTotal: Number(item?.cashflow_income_total ?? (operationIncome + Math.max(0, debtCashflow) + Math.max(0, fxCashflow))),
+      expenseTotal: Number(item?.cashflow_expense_total ?? (operationExpense + Math.abs(Math.min(0, debtCashflow)) + Math.abs(Math.min(0, fxCashflow)))),
       resultTotal: Number(item?.cashflow_total ?? (operationIncome - operationExpense + debtCashflow + fxCashflow)),
       operationsCount: Number(item?.operations_count || 0),
       eventsCount: Number(item?.cashflow_events_count || item?.operations_count || 0),
@@ -404,10 +406,10 @@
     }
     const isYear = view === "year";
     if (el.analyticsCalendarTotalsTitle) {
-      el.analyticsCalendarTotalsTitle.textContent = isYear ? "Итоги года" : "Итоги месяца";
+      el.analyticsCalendarTotalsTitle.textContent = view === "all_time" ? "За всё время" : isYear ? "Итоги года" : "Итоги месяца";
     }
-    const rangeStart = isYear ? data.year_start : data.month_start;
-    const rangeEnd = isYear ? data.year_end : data.month_end;
+    const rangeStart = data.date_from || (isYear ? data.year_start : data.month_start);
+    const rangeEnd = data.date_to || (isYear ? data.year_end : data.month_end);
     if (el.analyticsCalendarTotalsRangeLabel && rangeStart && rangeEnd) {
       el.analyticsCalendarTotalsRangeLabel.textContent = `${core.formatDateRu(rangeStart)} - ${core.formatDateRu(rangeEnd)}`;
     }
@@ -416,10 +418,9 @@
     const operatingResult = resolveOperatingResult(data);
     const result = describeResult(cashflow.resultTotal);
     const primary = [
-      { label: "Приток", value: core.formatMoney(cashflow.incomeTotal), tone: "income" },
-      { label: "Отток", value: core.formatMoney(cashflow.expenseTotal), tone: "expense" },
-      { label: operatingResult.presentation.label, value: core.formatMoney(operatingResult.presentation.amount), tone: operatingResult.presentation.tone },
-      { label: "События", value: String(cashflow.eventsCount || 0), tone: "neutral" },
+      { label: "Пришло", value: core.formatMoney(cashflow.incomeTotal), tone: "income" },
+      { label: "Ушло", value: core.formatMoney(cashflow.expenseTotal), tone: "expense" },
+      { label: "Разница", value: core.formatMoney(cashflow.resultTotal), tone: result.tone },
     ];
     el.analyticsCalendarTotals.innerHTML = primary
       .map(
@@ -432,23 +433,7 @@
       )
       .join("");
 
-    const chips = [
-      `<span class="analytics-kpi-chip analytics-kpi-chip-${operatingResult.presentation.tone}">${escapeHtml(operatingResult.presentation.label)} по операциям: ${escapeHtml(core.formatMoney(operatingResult.presentation.amount))}</span>`,
-      `<span class="analytics-kpi-chip analytics-kpi-chip-${result.tone}">Денежный поток: ${escapeHtml(core.formatMoney(cashflow.resultTotal))}</span>`,
-    ];
-    if (cashflow.debtEventsCount > 0) {
-      const debtResult = describeResult(cashflow.debtCashflow);
-      chips.push(
-        `<span class="analytics-kpi-chip analytics-kpi-chip-${debtResult.tone}">Долги в потоке: ${escapeHtml(core.formatMoney(cashflow.debtCashflow))} · ${escapeHtml(String(cashflow.debtEventsCount))} событ.</span>`,
-      );
-    }
-    if (cashflow.fxEventsCount > 0) {
-      const fxResult = describeResult(cashflow.fxCashflow);
-      chips.push(
-        `<span class="analytics-kpi-chip analytics-kpi-chip-${fxResult.tone}">Валюта в потоке: ${escapeHtml(core.formatMoney(cashflow.fxCashflow))} · ${escapeHtml(String(cashflow.fxEventsCount))} событ.</span>`,
-      );
-    }
-    el.analyticsCalendarTotalsSecondary.innerHTML = chips.join("");
+    el.analyticsCalendarTotalsSecondary.textContent = `${cashflow.eventsCount} операций · ${core.formatDateRu(rangeStart)} — ${core.formatDateRu(rangeEnd)}`;
   }
 
   function renderAnalyticsCalendarMonth(data) {
@@ -543,6 +528,16 @@
     window.requestAnimationFrame(syncCalendarScrollFade);
   }
 
+  function renderCalendarAllTime(data) {
+    if (el.analyticsMonthLabel) el.analyticsMonthLabel.textContent = "За всё время";
+    el.analyticsYearGrid.innerHTML = (data.years || []).map(row => {
+      const flow = resolveCashflowTotals(row);
+      return `<button type="button" class="analytics-year-card btn btn-secondary" data-calendar-year="${Number(row.year)}"><strong>${Number(row.year)}</strong><span class="analytics-income">Пришло: ${escapeHtml(core.formatMoney(flow.incomeTotal))}</span><span class="analytics-expense">Ушло: ${escapeHtml(core.formatMoney(flow.expenseTotal))}</span><strong>Разница: ${escapeHtml(core.formatMoney(flow.resultTotal))}</strong></button>`;
+    }).join("") || '<p class="empty">Операций пока нет</p>';
+    for (const button of el.analyticsYearGrid.querySelectorAll('[data-calendar-year]')) button.addEventListener('click', () => core.runAction({errorPrefix: "Не удалось открыть год", action: () => setAnalyticsGridYearAnchor(button.dataset.calendarYear)}));
+    renderCalendarTotals(data, "all_time");
+  }
+
   async function loadAnalyticsCalendar(options = {}) {
     bindCalendarScrollUi();
     bindCalendarTooltipUi();
@@ -565,6 +560,11 @@
     }
 
     try {
+      if (view === "all_time") {
+        const data = await core.requestJson('/api/v1/dashboard/analytics/calendar/all-time', {headers: core.authHeaders()});
+        if (state.analyticsCalendarView !== view) return;
+        renderCalendarAllTime(data); state.analyticsCalendarHydrated = true; return data;
+      }
       if (view === "year") {
         const year = anchor.getUTCFullYear();
         const cacheKey = `analytics:calendar-year:${year}`;
@@ -588,6 +588,7 @@
             headers: core.authHeaders(),
           }).catch(() => null),
         ]);
+        if ((state.analyticsCalendarView || "month") !== view) return;
         core.setUiRequestCache(cacheKey, data);
         core.setUiRequestCache(currencyCacheKey, currencyOverview);
         renderAnalyticsCalendarYear(data);
@@ -618,6 +619,7 @@
           headers: core.authHeaders(),
         }).catch(() => null),
       ]);
+      if ((state.analyticsCalendarView || "month") !== view) return;
       core.setUiRequestCache(cacheKey, data);
       core.setUiRequestCache(currencyCacheKey, currencyOverview);
       renderAnalyticsCalendarMonth(data);
@@ -669,7 +671,7 @@
   }
 
   async function setAnalyticsCalendarView(view) {
-    const allowed = new Set(["month", "year"]);
+    const allowed = new Set(["month", "year", "all_time"]);
     state.analyticsCalendarView = allowed.has(view) ? view : "month";
     applyCalendarViewUi();
     await loadAnalyticsCalendar({ force: true });

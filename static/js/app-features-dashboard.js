@@ -254,7 +254,7 @@
         <article class="dashboard-currency-rate-card">
           <div class="dashboard-currency-rate-head">
             <strong>${core.escapeHtml ? core.escapeHtml(currencyLabel) : currencyLabel}</strong>
-            <span class="dashboard-currency-rate-badge dashboard-currency-rate-badge-${deltaTone}">
+            <span class="dashboard-currency-rate-badge dashboard-currency-rate-badge-${deltaTone}" title="${isStale ? "Последний доступный официальный курс: за сегодня ещё не опубликован" : "Изменение официального курса"}">
               ${isStale ? "последний" : (hasDelta ? formatSignedRate(item.change_value) : "новый")}
             </span>
           </div>

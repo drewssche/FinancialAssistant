@@ -1,7 +1,7 @@
 """User-visible search parity, pagination and tenant boundaries."""
 import pytest
 
-from app.api.deps import get_current_user_id
+from app.api.deps import get_current_user_id, get_current_admin_user
 from app.core.cache import reset_cache_for_tests
 from app.db.models import User
 from app.db.session import get_db
@@ -113,6 +113,7 @@ def test_plans_history_debts_and_categories(client):
 
 
 def test_work_payment_candidates_keyboard_and_date_filter(client):
+    app.dependency_overrides[get_current_admin_user] = lambda: User(id=1, status="active")
     operation = post(client, 'operations', {'kind': 'income', 'amount': '100', 'operation_date': '2026-03-01', 'note': 'Премия'})
     post(client, 'operations', {'kind': 'expense', 'amount': '10', 'operation_date': '2026-03-01', 'note': 'Премия'})
     data = get(client, 'work/payments/candidates', q='ghtvbz', date_from='2026-03-01', date_to='2026-03-31')

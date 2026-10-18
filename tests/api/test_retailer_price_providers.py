@@ -126,20 +126,20 @@ def test_multi_source_refresh_dashboard_delivery_and_failure(client,monkeypatch)
         for url,price in [(GREEN,'2.79'),(SOSEDI,'3.19')]:snapshots[url]['price']=price
         for tid in tids:db.get(CatalogOfferWatch,tid).next_check_at=now()-timedelta(minutes=1)
         db.commit();service.refresh_due()
-        events=list(db.scalars(select(CatalogPriceEvent)));assert len(events)==2
+        events=list(db.scalars(select(CatalogPriceEvent).where(CatalogWatchService.notification_events())));assert len(events)==2
         monkeypatch.setattr('app.services.catalog_watch_service.now',lambda: now()+timedelta(minutes=16))
         message=list(service.deliveries())[0][2]
         assert 'Green' in message and 'Соседи' in message and '2.99 → 2.79' in message and '2.99 → 3.19' in message
         assert len(message)<4096
         # No duplicate or synthetic decrease on failures, changed size/store or unavailability.
         for tid in tids:service.record(db.get(CatalogOfferWatch,tid),snapshots[db.get(CatalogOfferWatch,tid).url])
-        assert len(list(db.scalars(select(CatalogPriceEvent))))==2
+        assert len(list(db.scalars(select(CatalogPriceEvent).where(CatalogWatchService.notification_events()))))==2
         w=db.get(CatalogOfferWatch,tids[0]);old=deepcopy(w.snapshot)
         monkeypatch.setattr(provider,'fetch_product',lambda url:(_ for _ in ()).throw(ValueError('Недоступен')))
         w.next_check_at=now()-timedelta(minutes=1);db.commit();service.refresh_due()
         assert w.snapshot==old and w.error=='Недоступен'
         changed={**old,'price':'1.00','comparison_key':'different store'};service.record(w,changed)
-        assert len(list(db.scalars(select(CatalogPriceEvent))))==2
+        assert len(list(db.scalars(select(CatalogPriceEvent).where(CatalogWatchService.notification_events()))))==2
     dashboard=client.get('/api/v1/catalog-watches').json()
     assert {e['source'] for e in dashboard['events']}=={'Green','Соседи'}
     client.put(base,json={'enabled':False})
