@@ -147,8 +147,8 @@
 .catalog-item-open,
 .operation-receipt-item-open {
   min-width: 0;
-  border-radius: 0.55rem;
-  padding: 0;
+  border-radius: 0.75rem;
+  padding: 4px 6px;
   border: 0;
   background: transparent;
   color: inherit;
@@ -172,6 +172,9 @@
   outline-offset: 2px;
   border-radius: 0.55rem;
 }
+
+.catalog-item-open:focus-visible,
+.operation-receipt-item-open:focus-visible { border-radius: 0.75rem; }
 
 .catalog-source-identity .catalog-media-thumb,
 .item-catalog-group-main .catalog-media-thumb {
