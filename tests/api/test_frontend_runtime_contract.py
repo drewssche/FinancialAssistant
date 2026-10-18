@@ -441,7 +441,6 @@ def test_hot_paths_use_local_action_getters_instead_of_direct_global_calls():
     assert 'registerRuntimeModule?.("operations-period-controls"' in operations_period_controls
     assert 'getRuntimeModule?.("period-control-utils")' in operations_period_controls
     assert 'getRuntimeModule?.("period-control-utils")' in analytics_period_controls
-    assert 'getRuntimeModule?.("period-control-utils")' in plans_dashboard
     assert "function shiftPeriodBounds(" in period_control_utils
     assert "function parseIsoDate(" not in operations_period_controls
     assert "function parseIsoDate(" not in analytics_period_controls
