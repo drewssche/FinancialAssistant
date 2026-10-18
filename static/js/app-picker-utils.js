@@ -124,7 +124,9 @@
     }
     popover.__appPopoverPortalParent = popover.parentNode || null;
     popover.__appPopoverPortalNextSibling = popover.nextSibling || null;
-    document.body.appendChild(popover);
+    // A native dialog makes body siblings inert; keep its picker in the same layer.
+    const dialog = popover.closest('dialog[open]');
+    (dialog || document.body).appendChild(popover);
     popover.__appPopoverPortalActive = true;
   }
 

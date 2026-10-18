@@ -15,13 +15,14 @@
     <button type="button" id="scanDropzone" class="scan-dropzone">${icons.svg('upload')}<strong>Выберите или перетащите фото чека</strong><span>Или вставьте из буфера: <kbd>Ctrl+V</kbd> / <kbd>⌘V</kbd></span><small>JPG, PNG, WebP · до 20 МБ</small></button>
     <div class="scan-toolbar" id="scanPhotoTools">${iconButton('scanBack','back','Изменить фото и распознать заново')}${iconButton('scanUpload','upload','Загрузить фото чека')}${iconButton('scanRotate','refresh','Повернуть фото')}${iconButton('scanReset','expand','Сбросить углы')}<input id="scanFile" type="file" accept="image/jpeg,image/png,image/webp" hidden><span id="scanStep" class="muted-small">Загрузите фото или вставьте Ctrl+V / ⌘V · до 20 МБ</span></div>
     <div id="scanPasteReplace" class="scan-toolbar" hidden><span>Заменить фото и сбросить текущий черновик?</span>${iconButton("scanPasteAccept","save","Заменить фото")}${iconButton("scanPasteDismiss","close","Оставить текущий чек")}</div><div id="scanWorkspace" hidden><div class="scan-image-column"><div id="scanImageFrame"><canvas id="scanCanvas"></canvas><div id="scanNoPhoto" hidden>Фото чека не сохранено или удалено</div><svg id="scanOutline" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polygon fill="#79acff18" stroke="#79acff" stroke-width=".5"/></svg>${[0,1,2,3].map((i)=>`<button type="button" class="scan-corner" data-corner="${i}" aria-label="Угол ${i+1} чека">${i+1}</button>`).join('')}</div><p id="scanCropHint" class="muted-small">Подвиньте углы к краям чека</p></div>
-    <form id="scanReview" hidden><div class="scan-meta"><label class="field"><span>Дата покупки</span><input id="scanDate" type="date" required></label><label class="field"><span>Магазин</span><input id="scanShop" maxlength="160" required></label><label class="field"><span>Итого по чеку</span><input id="scanTotal" inputmode="decimal" aria-describedby="scanMathHint" required></label><label class="field"><span>Валюта</span><select id="scanCurrency"><option>BYN</option><option>RUB</option><option>USD</option><option>EUR</option></select></label></div>
+    <form id="scanReview" hidden><div class="scan-meta"><label class="field"><span>Дата покупки</span><input id="scanDate" type="date" required></label><label class="field"><span>Магазин</span><input id="scanShop" maxlength="160" placeholder="Выбрать или ввести магазин" autocomplete="off" required></label><label class="field"><span>Итого по чеку</span><input id="scanTotal" inputmode="decimal" aria-describedby="scanMathHint" required></label><label class="field"><span>Валюта</span><select id="scanCurrency"><option>BYN</option><option>RUB</option><option>USD</option><option>EUR</option></select></label></div>
     <div class="scan-review-toolbar"><strong>Позиции</strong>${iconButton('scanAddRow','plus','Добавить строку')}${iconButton('scanShowText','receipt','Распознанный текст')}</div><p class="sr-only" id="scanMathHint">Можно вводить вычисления: 7,11 − 0,71 · Enter — получить результат.</p><div id="scanRows"></div>
     <p id="scanArithmetic" role="status"></p><div id="scanReplaceOperation" class="scan-toolbar" hidden><span>Заменить заполненные поля операции данными этого чека?</span>${iconButton('scanReplaceYes','save','Заменить данные операции')}${iconButton('scanReplaceNo','close','Оставить операцию')}</div><label class="scan-confirm"><input id="scanConfirmed" type="checkbox">Проверил дату, магазин, валюту и позиции</label>
     <footer><button type="submit" class="btn btn-primary btn-icon" id="scanTransfer" aria-label="В черновик операции" title="В черновик операции" disabled>${icons.svg("save")}</button></footer></form></div>
     <p id="scanStatus" class="muted-small" role="status"></p><footer id="scanRunBar"><button id="scanCancel" type="button" class="btn btn-secondary btn-icon" aria-label="Отменить распознавание" title="Отменить распознавание" hidden>${icons.svg("close")}</button><button id="scanRun" type="button" class="btn btn-primary btn-icon" aria-label="Распознать чек" title="Распознать чек" disabled>${icons.svg("receipt")}</button></footer>
     <dialog id="scanTextDialog" class="choice-dialog task-dialog"><header><h3>Распознанный текст</h3>${iconButton('scanTextClose','close','Закрыть текст')}</header><div class="segmented" id="scanTextModes"><button type="button" class="segmented-btn active" data-text-mode="edited">Уточнённый</button><button type="button" class="segmented-btn" data-text-mode="original">Исходный</button></div><textarea id="scanText" rows="15" maxlength="80000" aria-label="Распознанный текст"></textarea><button id="scanReparse" class="btn btn-primary btn-icon" type="button" aria-label="Разобрать исправленный текст" title="Разобрать исправленный текст">${icons.svg("refresh")}</button></dialog>`;
   document.body.append(dialog);
+  const storePicker=window.App.getRuntimeModule('operation-store-picker').bind(node('scanShop').closest('.field'),'scan');
   let source=null, points=[], draft=null, job=null, generation=0, transferred=false, originalText='', busy=false, pendingPaste=null;
   let originalTextMode=false, editedText='', storedImage=null;
   const reviewText=()=>originalTextMode?editedText:node('scanText').value;
@@ -105,7 +106,7 @@
   }
   function invalidateReview(){storedImage=null;dialog.dataset.stage=source?'crop':'upload';node('scanStep').textContent='Границы чека';draft=null;node('scanReview').hidden=true;node('scanConfirmed').checked=false;transferred=false;}
   function cancel(){generation++;job?.cancel();job=null;setBusy(false);status('Распознавание отменено');}
-  function cleanup(){originalTextMode=false;editedText='';node('scanText').readOnly=false;node('scanReparse').hidden=false;node('scanTextModes').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.textMode==='edited'));dialog.classList.remove('scan-drag-over');pendingPaste=null;node('scanPasteReplace').hidden=true;cancel();node('scanTextDialog').close();source=null;canvas.width=canvas.height=1;canvas.hidden=false;node('scanNoPhoto').hidden=true;node('scanBack').hidden=false;node('scanFile').value='';node('scanText').value='';node('scanRows').replaceChildren();originalText='';invalidateReview();node('scanWorkspace').hidden=true;setBusy(false);status('');}
+  function cleanup(){storePicker.close();originalTextMode=false;editedText='';node('scanText').readOnly=false;node('scanReparse').hidden=false;node('scanTextModes').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.textMode==='edited'));dialog.classList.remove('scan-drag-over');pendingPaste=null;node('scanPasteReplace').hidden=true;cancel();node('scanTextDialog').close();source=null;canvas.width=canvas.height=1;canvas.hidden=false;node('scanNoPhoto').hidden=true;node('scanBack').hidden=false;node('scanFile').value='';node('scanText').value='';node('scanRows').replaceChildren();originalText='';invalidateReview();node('scanWorkspace').hidden=true;setBusy(false);status('');}
   async function open(mode='create'){
     if(mode==='edit'&&state.editDebtMovement)return;
     const next=mode==='create'?'create':String(state.editOperationId), token=++openGeneration;
@@ -125,16 +126,17 @@
       transferred=false;if(draft)validate();
       if(!dialog.open)dialog.showModal();
       (draft?node('scanDate'):node('scanDropzone')).focus();
-      catalog().load().then(()=>{if(draft)refreshCatalog();}).catch(()=>{});
+      catalog().load().then(()=>{if(draft)refreshCatalog();storePicker.refresh();}).catch(()=>{});
     }catch(error){if(token!==openGeneration)return;if(mode==='edit')context='';core.notify(error.message||'Не удалось открыть чек',{type:'error'});}
   }
   node('scanClose').onclick=()=>dialog.close();
-  dialog.addEventListener('close',()=>{if(busy)cancel();node('scanTextDialog').close();closeCatalogLists();refreshEntry();});
+  dialog.addEventListener('close',()=>{storePicker.close();if(busy)cancel();node('scanTextDialog').close();closeCatalogLists();refreshEntry();});
   dialog.addEventListener('click',e=>{const r=dialog.getBoundingClientRect();if(e.target===dialog&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom))dialog.close();});
   // Installed before the global choice listener: Escape in a nested choice belongs to it.
   document.addEventListener('keydown',e=>{
     if(e.key!=='Escape'||!dialog.open||node('appChoiceDialog')?.open)return;
     e.preventDefault();e.stopImmediatePropagation();
+    if(storePicker.isOpen()&&!node('scanTextDialog').open){storePicker.close();return;}
     const list=dialog.querySelector('.scan-catalog-list:not([hidden])');
     if(list&&!node('scanTextDialog').open){closeCatalogLists();return;}
     if(node('scanTextDialog').open)node('scanTextDialog').close();else dialog.close();
@@ -368,7 +370,15 @@
     node('scanArithmetic').classList.toggle('scan-error',!!errors.length);
     node('scanTransfer').disabled=errors.length>0||!node('scanConfirmed').checked||transferred;return errors;
   }
-  for(const id of ['scanDate','scanShop','scanTotal','scanCurrency'])node(id).addEventListener('input',()=>{node('scanConfirmed').checked=false;if(id==='scanShop'){node('scanRows').querySelectorAll('.scan-row').forEach(el=>{el.unlinkCatalog();el.refreshCodes?.();});refreshCatalog();}validate();});
+  function metaChanged(id){
+    node('scanConfirmed').checked=false;
+    if(id==='scanShop'&&draft?.shop!==node('scanShop').value){
+      node('scanRows').querySelectorAll('.scan-row').forEach(el=>{el.unlinkCatalog();el.refreshCodes?.();});refreshCatalog();
+    }
+    validate();
+  }
+  for(const id of ['scanDate','scanShop','scanTotal','scanCurrency'])node(id).addEventListener('input',()=>metaChanged(id));
+  node('scanShop').addEventListener('change',()=>metaChanged('scanShop'));
   function commitCalculation(input) {
     const quantity=input.dataset.scanField==='quantity';
     const result=inputNumber(input.value,quantity);

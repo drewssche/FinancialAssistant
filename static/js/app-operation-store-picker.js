@@ -95,9 +95,10 @@
     // Also close company suggestions when their work view or section is hidden.
     for (let parent = owner; parent; parent = parent.parentElement) {
       const container = parent;
-      new MutationObserver(() => { if (container.classList.contains('hidden')) close(); })
-        .observe(container, {attributes: true, attributeFilter: ['class']});
+      new MutationObserver(() => { if (container.classList.contains('hidden') || (container.tagName === 'DIALOG' && !container.open)) close(); })
+        .observe(container, {attributes: true, attributeFilter: ['class', 'open']});
     }
+    return {close, isOpen: () => !popup.classList.contains('hidden'), refresh: () => {if (!popup.classList.contains('hidden')) render(input.value);}};
   }
   window.App.registerRuntimeModule('operation-store-picker', {bind});
 })();

@@ -148,6 +148,44 @@
     }
   }
 
+  // A drag from a field to the backdrop produces a click on their common
+  // ancestor. Only a press AND release on the same backdrop may dismiss it.
+  const backdropSelector = '.modal, [data-modal-layer], dialog';
+  function backdropAt(event) {
+    const target = event.target;
+    if (!target?.matches?.(backdropSelector)) return null;
+    if (target.tagName === 'DIALOG') {
+      const rect = target.getBoundingClientRect();
+      if (event.clientX >= rect.left && event.clientX <= rect.right &&
+          event.clientY >= rect.top && event.clientY <= rect.bottom) return null;
+    }
+    return target;
+  }
+  let backdropGesture = null;
+  document.addEventListener('pointerdown', event => {
+    backdropGesture = event.isPrimary && event.button === 0 ? {
+      backdrop: backdropAt(event), id: event.pointerId,
+      x: event.clientX, y: event.clientY, released: false,
+    } : null;
+  }, true);
+  document.addEventListener('pointerup', event => {
+    if (!backdropGesture || event.pointerId !== backdropGesture.id) return;
+    backdropGesture.released = backdropAt(event) === backdropGesture.backdrop &&
+      Math.hypot(event.clientX - backdropGesture.x, event.clientY - backdropGesture.y) <= 8;
+  }, true);
+  document.addEventListener('pointercancel', () => {backdropGesture = null;}, true);
+  window.addEventListener('blur', () => {backdropGesture = null;});
+  document.addEventListener('click', event => {
+    const gesture = backdropGesture;
+    backdropGesture = null;
+    // Preserve keyboard activation and explicit programmatic clicks.
+    if (!event.detail || !event.target?.matches?.(backdropSelector)) return;
+    if (!gesture?.released || !gesture.backdrop || gesture.backdrop !== backdropAt(event)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  }, true);
+
   let modalStackCounter = 0;
   let modalStackObserver = null;
   const MODAL_STACK_BASE_Z_INDEX = 200;
