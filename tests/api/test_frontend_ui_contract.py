@@ -247,7 +247,7 @@ def test_analytics_year_view_groups_months_by_quarter_without_extra_api_calls():
     assert "/api/v1/dashboard/analytics/calendar/quarter" not in analytics_calendar
     assert ".analytics-year-quarter {" in analytics_css
     assert ".analytics-year-quarter-totals" in analytics_css
-    assert "grid-template-columns: repeat(5, minmax(8.5rem, 1fr));" in analytics_css
+    assert "grid-template-columns: repeat(4, minmax(8.5rem, 1fr));" in analytics_css
     assert "grid-template-columns: repeat(3, minmax(0, 1fr));" in analytics_css
     assert "min-width: 980px;" in analytics_css
 

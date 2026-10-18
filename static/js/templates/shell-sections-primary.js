@@ -281,11 +281,10 @@
                       <th>Пт</th>
                       <th>Сб</th>
                       <th>Вс</th>
-                      <th>Итог приток</th>
-                      <th>Итог отток</th>
+                      <th>Пришло</th>
+                      <th>Ушло</th>
                       <th>События</th>
-                      <th>Профицит / Дефицит</th>
-                      <th>Денежный поток</th>
+                      <th>Разница</th>
                     </tr>
                   </thead>
                   <tbody id="analyticsCalendarBody"></tbody>

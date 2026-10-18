@@ -1839,3 +1839,54 @@ def test_shared_structure_period_ignores_late_report_responses(page_with_analyti
             route.fulfill(json=payload)
         page.wait_for_timeout(150)
     expect(page.locator('#analyticsGlobalPeriodControlLabel')).to_have_text('01.05.2026 - 28.05.2026')
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize("width", [390, 1440])
+def test_calendar_uses_one_cashflow_difference_at_every_level(static_server_url, page_with_analytics_api_mock, width):
+    page = page_with_analytics_api_mock
+    # Ordinary result is +60, but debt/FX movements make the full result -30.
+    totals = dict(income_total="100", expense_total="40", balance="60",
+                  cashflow_income_total="190", cashflow_expense_total="220", cashflow_total="-30",
+                  operations_count=2, cashflow_events_count=5, debt_events_count=2, debt_cashflow_total="-80",
+                  fx_events_count=1, fx_cashflow_total="-10")
+
+    def month_response(route):
+        month = parse_qs(urlparse(route.request.url).query)["month"][0]
+        day = dict(totals, date=f"{month}-01", in_month=True)
+        route.fulfill(json=dict(totals, month=month, month_start=f"{month}-01", month_end=f"{month}-28",
+                               weeks=[dict(totals, days=[day])]))
+
+    def year_response(route):
+        year = int(parse_qs(urlparse(route.request.url).query)["year"][0])
+        months = [dict(totals, month=f"{year}-{month:02d}") for month in range(1, 13)]
+        route.fulfill(json=dict(totals, year=year, year_start=f"{year}-01-01", year_end=f"{year}-12-31", months=months))
+
+    page.route("**/dashboard/analytics/calendar?*", month_response)
+    page.route("**/dashboard/analytics/calendar/year?*", year_response)
+    _open_mobile_analytics(page, static_server_url)
+    page.set_viewport_size({"width": width, "height": 1000})
+    page.locator('[data-analytics-tab="calendar"]').click()
+    day = page.locator("#analyticsCalendarBody .analytics-day-btn").first
+    expect(day).to_contain_text("Разница: -30")
+    assert day.inner_text().count("Разница") == 1
+    assert day.get_attribute("data-analytics-calendar-tooltip").count("Разница") == 1
+    week = page.locator("#analyticsCalendarBody tr").first
+    assert week.locator(".analytics-week-total").count() == 4
+    expect(week.locator(".analytics-week-total").last).to_contain_text("Разница: -30")
+    assert page.locator("#analyticsMonthGridWrap th").all_text_contents()[-4:] == ["Пришло", "Ушло", "События", "Разница"]
+    page.locator('[data-analytics-calendar-view="year"]').click()
+    quarter = page.locator('[data-analytics-quarter="1"]')
+    expect(quarter).to_be_visible()
+    summary = quarter.locator(".analytics-year-quarter-totals")
+    expect(summary).to_contain_text("-90")
+    assert summary.inner_text().count("Разница") == 1
+    assert summary.locator(".analytics-year-quarter-total").count() == 4
+    for month in quarter.locator(".analytics-year-card").all():
+        assert month.inner_text().count("Разница") == 1
+        expect(month).to_contain_text("Пришло: 190")
+        expect(month).to_contain_text("Ушло: 220")
+        expect(month.locator(".analytics-negative")).to_contain_text("Разница: -30")
+    expect(page.locator("#analyticsCalendarTotals .analytics-kpi-card")).to_have_count(3)
+    expect(page.locator(".toast-text")).to_have_count(0)
+    page.locator("#analyticsCalendarPanel").screenshot(path=f"/tmp/fa-calendar-difference-{width}.png")

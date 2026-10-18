@@ -305,14 +305,6 @@
     };
   }
 
-  function resolveOperatingResult(item) {
-    const value = Number(item?.balance ?? (Number(item?.income_total || 0) - Number(item?.expense_total || 0)));
-    return {
-      value,
-      presentation: describeResult(value),
-    };
-  }
-
   function quarterLabel(index) {
     return ["I", "II", "III", "IV"][index] || String(index + 1);
   }
@@ -334,12 +326,10 @@
     return months.reduce(
       (summary, item) => {
         const cashflow = resolveCashflowTotals(item);
-        const operating = resolveOperatingResult(item);
         summary.incomeTotal += cashflow.incomeTotal;
         summary.expenseTotal += cashflow.expenseTotal;
         summary.eventsCount += cashflow.eventsCount;
         summary.resultTotal += cashflow.resultTotal;
-        summary.operatingTotal += operating.value;
         return summary;
       },
       {
@@ -347,14 +337,13 @@
         expenseTotal: 0,
         eventsCount: 0,
         resultTotal: 0,
-        operatingTotal: 0,
       },
     );
   }
 
   function renderAnalyticsYearMonthCard(item, currentMonth) {
     const cashflow = resolveCashflowTotals(item);
-    const operatingResult = resolveOperatingResult(item);
+    const result = describeResult(cashflow.resultTotal);
     const monthDate = parseMonthAnchor(item.month);
     const label = monthDate
       ? monthDate.toLocaleDateString("ru-RU", { month: "short", year: "numeric", timeZone: "UTC" })
@@ -366,17 +355,15 @@
           <strong>${escapeHtml(label)}</strong>
           <span class="muted-small analytics-ops">${escapeHtml(String(cashflow.eventsCount))} событ.</span>
         </div>
-        <div class="muted-small analytics-income">Приток: ${escapeHtml(core.formatMoney(cashflow.incomeTotal))}</div>
-        <div class="muted-small analytics-expense">Отток: ${escapeHtml(core.formatMoney(cashflow.expenseTotal))}</div>
-        <div class="muted-small analytics-${operatingResult.presentation.tone}">${escapeHtml(operatingResult.presentation.label)}: ${escapeHtml(core.formatMoney(operatingResult.presentation.amount))}</div>
-        <div class="muted-small analytics-balance">Разница: ${escapeHtml(core.formatMoney(cashflow.resultTotal))}</div>
+        <div class="muted-small analytics-income">Пришло: ${escapeHtml(core.formatMoney(cashflow.incomeTotal))}</div>
+        <div class="muted-small analytics-expense">Ушло: ${escapeHtml(core.formatMoney(cashflow.expenseTotal))}</div>
+        <div class="muted-small analytics-${result.tone}">Разница: ${escapeHtml(core.formatMoney(cashflow.resultTotal))}</div>
       </article>
     `;
   }
 
   function renderAnalyticsYearQuarter(months, index, currentMonth) {
     const summary = summarizeQuarterMonths(months);
-    const operatingResult = describeResult(summary.operatingTotal);
     const cashflowResult = describeResult(summary.resultTotal);
     return `
       <section class="analytics-year-quarter" data-analytics-quarter="${index + 1}">
@@ -386,10 +373,9 @@
             <span class="muted-small">${escapeHtml(formatMonthRange(months))}</span>
           </div>
           <div class="analytics-year-quarter-totals" aria-label="Итоги квартала">
-            <div class="analytics-year-quarter-total analytics-income"><span>Приток</span><strong>${escapeHtml(core.formatMoney(summary.incomeTotal))}</strong></div>
-            <div class="analytics-year-quarter-total analytics-expense"><span>Отток</span><strong>${escapeHtml(core.formatMoney(summary.expenseTotal))}</strong></div>
+            <div class="analytics-year-quarter-total analytics-income"><span>Пришло</span><strong>${escapeHtml(core.formatMoney(summary.incomeTotal))}</strong></div>
+            <div class="analytics-year-quarter-total analytics-expense"><span>Ушло</span><strong>${escapeHtml(core.formatMoney(summary.expenseTotal))}</strong></div>
             <div class="analytics-year-quarter-total analytics-ops"><span>События</span><strong>${escapeHtml(String(summary.eventsCount))}</strong></div>
-            <div class="analytics-year-quarter-total analytics-${operatingResult.tone}"><span>${escapeHtml(operatingResult.label)}</span><strong>${escapeHtml(core.formatMoney(operatingResult.amount))}</strong></div>
             <div class="analytics-year-quarter-total analytics-${cashflowResult.tone}"><span>Разница</span><strong>${escapeHtml(core.formatMoney(summary.resultTotal))}</strong></div>
           </div>
         </div>
@@ -415,7 +401,6 @@
     }
 
     const cashflow = resolveCashflowTotals(data);
-    const operatingResult = resolveOperatingResult(data);
     const result = describeResult(cashflow.resultTotal);
     const primary = [
       { label: "Пришло", value: core.formatMoney(cashflow.incomeTotal), tone: "income" },
@@ -447,7 +432,6 @@
     for (const week of data.weeks || []) {
       const tr = document.createElement("tr");
       const weekCashflow = resolveCashflowTotals(week);
-      const weekOperatingResult = resolveOperatingResult(week);
       const weekResult = describeResult(weekCashflow.resultTotal);
       for (const day of week.days || []) {
         const cell = document.createElement("td");
@@ -468,12 +452,11 @@
           if (cashflow.fxEventsCount > 0) {
             markerBits.push(`FX ${core.formatMoney(cashflow.fxCashflow)}`);
           }
-          const operatingResult = resolveOperatingResult(day);
+          const result = describeResult(cashflow.resultTotal);
           const titleBits = [
             core.formatDateRu(day.date),
-            `Приток ${core.formatMoney(cashflow.incomeTotal)}`,
-            `Отток ${core.formatMoney(cashflow.expenseTotal)}`,
-            `${operatingResult.presentation.label} по операциям ${core.formatMoney(operatingResult.presentation.amount)}`,
+            `Пришло ${core.formatMoney(cashflow.incomeTotal)}`,
+            `Ушло ${core.formatMoney(cashflow.expenseTotal)}`,
             `Разница ${core.formatMoney(cashflow.resultTotal)}`,
             `${cashflow.eventsCount} событ.`,
           ];
@@ -492,7 +475,7 @@
               <div class="analytics-day-date">${new Date(`${day.date}T00:00:00`).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}</div>
               <div class="analytics-day-money analytics-income">+${core.formatMoney(cashflow.incomeTotal)}</div>
               <div class="analytics-day-money analytics-expense">-${core.formatMoney(cashflow.expenseTotal)}</div>
-              <div class="muted-small analytics-day-meta analytics-${operatingResult.presentation.tone}">${operatingResult.presentation.label}: ${core.formatMoney(operatingResult.presentation.amount)}</div>
+              <div class="muted-small analytics-day-meta analytics-${result.tone}">Разница: ${core.formatMoney(cashflow.resultTotal)}</div>
               <div class="muted-small">${cashflow.eventsCount} событ.</div>
             </button>
           `;
@@ -503,7 +486,6 @@
         <td class="analytics-week-total analytics-income">${core.formatMoney(weekCashflow.incomeTotal)}</td>
         <td class="analytics-week-total analytics-expense">${core.formatMoney(weekCashflow.expenseTotal)}</td>
         <td class="analytics-week-total">${weekCashflow.eventsCount}</td>
-        <td class="analytics-week-total analytics-${weekOperatingResult.presentation.tone}">${weekOperatingResult.presentation.label}: ${core.formatMoney(weekOperatingResult.presentation.amount)}</td>
         <td class="analytics-week-total">
           <span class="analytics-kpi-chip analytics-kpi-chip-${weekResult.tone}">
             Разница: ${core.formatMoney(weekCashflow.resultTotal)}
