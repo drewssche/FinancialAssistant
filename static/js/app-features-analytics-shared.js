@@ -16,12 +16,12 @@
   function describeResult(balanceRaw) {
     const balance = Number(balanceRaw || 0);
     if (balance > 0) {
-      return { label: "Профицит", tone: "positive", cardClass: "positive", amount: balance };
+      return { label: "Разница", tone: "positive", cardClass: "positive", amount: balance };
     }
     if (balance < 0) {
-      return { label: "Дефицит", tone: "negative", cardClass: "negative", amount: Math.abs(balance) };
+      return { label: "Разница", tone: "negative", cardClass: "negative", amount: balance };
     }
-    return { label: "Ноль", tone: "neutral", cardClass: "neutral", amount: 0 };
+    return { label: "Разница", tone: "neutral", cardClass: "neutral", amount: 0 };
   }
 
   function metricTone(valueRaw) {
@@ -94,107 +94,33 @@
       rangeLabelEl.textContent = `${label}: ${core.formatDateRu(data.date_from)} - ${core.formatDateRu(data.date_to)}`;
     }
 
+    const incoming = Number(data.cashflow_income_total ?? data.income_total ?? 0);
+    const outgoing = Number(data.cashflow_expense_total ?? data.expense_total ?? 0);
+    const previousIn = Number(data.prev_cashflow_income_total ?? data.prev_income_total ?? 0);
+    const previousOut = Number(data.prev_cashflow_expense_total ?? data.prev_expense_total ?? 0);
+    const result = Number(data.cashflow_total ?? incoming - outgoing);
+    const previousResult = Number(data.prev_cashflow_total ?? previousIn - previousOut);
+    const compare = data.period !== "all_time";
+    const signed = value => `${value > 0 ? "+" : ""}${core.formatMoney(value)}`;
+    const rows = [
+      ["Пришло", incoming, previousIn, "income"],
+      ["Ушло", outgoing, previousOut, "expense"],
+      ["Разница", result, previousResult, metricTone(result)],
+    ];
     if (primaryContainer) {
-      const discountBreakdown = Array.isArray(data.discount_savings_by_type)
-        ? data.discount_savings_by_type.filter((item) => Number(item?.savings_total || 0) > 0)
-        : [];
-      const operatingValue = Number(data?.balance ?? 0);
-      const operatingPrevious = Number(data?.prev_balance ?? 0);
-      const operatingDelta = data?.balance_change_pct ?? null;
-      const cashflowMetric = resolveResultMetric(data);
-      const primary = [
-        {
-          label: "Доход",
-          value: core.formatMoney(data.income_total),
-          delta: formatPct(data.income_change_pct),
-          previous: core.formatMoney(data.prev_income_total || 0),
-          cardClass: "income",
-        },
-        {
-          label: "Расход",
-          value: core.formatMoney(data.expense_total),
-          delta: formatPct(data.expense_change_pct),
-          previous: core.formatMoney(data.prev_expense_total || 0),
-          cardClass: "expense",
-        },
-        {
-          label: "Сэкономлено на скидках",
-          value: core.formatMoney(data.discount_savings_total || 0),
-          delta: String(data.discount_items_count || 0),
-          previous: data.discount_savings_rate_pct === null || data.discount_savings_rate_pct === undefined
-            ? "нет расходов"
-            : formatPct(data.discount_savings_rate_pct),
-          deltaLabel: "Позиций со скидкой",
-          previousLabel: "К расходам",
-          cardClass: "income",
-          extraHtml: discountBreakdown.length
-            ? `<div class="analytics-kpi-breakdown">${discountBreakdown.map((entry) => `
-              <span><b>${escapeHtml(entry.label || "Скидка")}</b>${escapeHtml(core.formatMoney(entry.savings_total || 0))}</span>
-            `).join("")}</div>`
-            : "",
-        },
-        {
-          label: "Операционный результат",
-          value: core.formatMoney(operatingValue),
-          delta: formatPct(operatingDelta),
-          previous: core.formatMoney(operatingPrevious),
-          cardClass: metricTone(operatingValue),
-        },
-        {
-          label: "Денежный поток",
-          value: core.formatMoney(cashflowMetric.value),
-          delta: formatPct(cashflowMetric.delta),
-          previous: core.formatMoney(cashflowMetric.previous || 0),
-          cardClass: metricTone(cashflowMetric.value),
-        },
-        {
-          label: "Операций за период",
-          value: String(data.operations_count || 0),
-          delta: formatPct(data.operations_change_pct),
-          previous: String(data.prev_operations_count || 0),
-          cardClass: "neutral",
-        },
-      ];
-      primaryContainer.innerHTML = primary
-        .map((item) => {
-          const deltaLabel = item.deltaLabel || "К прошлому периоду";
-          const previousLabel = item.previousLabel || "Было";
-          return `
-          <article class="analytics-kpi-card analytics-kpi-${item.cardClass}">
-            <div class="muted-small">${escapeHtml(item.label)}</div>
-            <strong>${escapeHtml(item.value)}</strong>
-            <span class="analytics-kpi-delta">${escapeHtml(deltaLabel)}: ${escapeHtml(item.delta)}</span>
-            <span class="muted-small">${escapeHtml(previousLabel)}: ${escapeHtml(item.previous)}</span>
-            ${item.extraHtml || ""}
-          </article>
-        `;
-        })
-        .join("");
+      primaryContainer.innerHTML = rows.map(([label, value, previous, tone], index) => {
+        const pct = previous > 0 && index < 2 ? ` · ${formatPct((value - previous) / previous * 100)}` : "";
+        const parts = index === 2 && (Number(data.debt_cashflow_total) || Number(data.fx_cashflow_total))
+          ? `<div class="period-result-parts"><span>Операции <b>${escapeHtml(signed(Number(data.balance || 0)))}</b></span>${Number(data.debt_cashflow_total) ? `<span>Долги <b>${escapeHtml(signed(Number(data.debt_cashflow_total)))}</b></span>` : ""}${Number(data.fx_cashflow_total) ? `<span>Обмен валют <b>${escapeHtml(signed(Number(data.fx_cashflow_total)))}</b></span>` : ""}</div>` : "";
+        return `<article class="analytics-kpi-card analytics-kpi-${tone}"><div class="muted-small">${label}</div><strong>${escapeHtml(core.formatMoney(value))}</strong>${compare ? `<span class="muted-small">К прошлому периоду: ${escapeHtml(signed(value - previous) + pct)}</span>` : ""}${parts}</article>`;
+      }).join("");
     }
-
     if (secondaryContainer) {
-      const chips = [
-        { text: `Средний расход/день: ${core.formatMoney(data.avg_daily_expense || 0)}`, tone: "neutral" },
-        {
-          text: data.max_expense_day_date
-            ? `Самый затратный день: ${core.formatDateRu(data.max_expense_day_date)} · ${core.formatMoney(data.max_expense_day_total)}`
-            : "Самый затратный день: нет данных",
-          tone: "neutral",
-        },
-      ];
-      const debtCashflowChip = describeDebtCashflow(data.debt_cashflow_total);
-      if (debtCashflowChip) {
-        debtCashflowChip.text = debtCashflowChip.text.replace("С учетом долгов", "Долги в потоке");
-        chips.push(debtCashflowChip);
-      }
-      const fxCashflowChip = describeFxCashflow(data.fx_cashflow_total);
-      if (fxCashflowChip) {
-        fxCashflowChip.text = fxCashflowChip.text.replace("С учетом валютных сделок", "Валюта в потоке");
-        chips.push(fxCashflowChip);
-      }
-      secondaryContainer.innerHTML = chips
-        .map((item) => `<span class="analytics-kpi-chip analytics-kpi-chip-${item.tone}">${escapeHtml(item.text)}</span>`)
-        .join("");
+      const comparison = compare && data.comparison_date_from
+        ? ` · Сравнение: ${core.formatDateRu(data.comparison_date_from)} — ${core.formatDateRu(data.comparison_date_to)}` : "";
+      const changes = compare ? (data.category_breakdown || []).filter(c => Number(c.change_amount) && c.category_kind === "expense")
+        .sort((a,b) => Math.abs(Number(b.change_amount)) - Math.abs(Number(a.change_amount))).slice(0,3) : [];
+      secondaryContainer.innerHTML = `<div class="muted-small period-summary-meta">${Number(data.cashflow_events_count ?? data.operations_count ?? 0)} операций · Расходы в день: ${escapeHtml(core.formatMoney(data.avg_daily_expense || 0))}${escapeHtml(comparison)}</div>${changes.length ? `<div class="period-category-changes"><span class="muted-small">Изменение расходов</span>${changes.map(c => `<span>${escapeHtml(c.category_name)} <b>${escapeHtml(signed(Number(c.change_amount)))}</b></span>`).join("")}</div>` : ""}`;
     }
   }
 

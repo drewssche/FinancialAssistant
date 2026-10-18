@@ -4,25 +4,6 @@
   window.App.templates.shellSectionsPrimary = `
 
         <section id="dashboardSection" class="section-block">
-<section id="dashboardCurrencyPanel" class="panel dashboard-currency-panel hidden">
-            <div class="panel-head row between">
-              <div>
-                <h3>Валютный портфель</h3>
-
-              </div>
-              <div class="toolbar">
-                <button id="dashboardCurrencyActivityBtn" class="btn-icon btn btn-secondary btn-xs hidden" type="button" aria-label="Журнал валюты" title="Журнал валюты">${window.App.icons.svg("history")}</button>
-                <button id="dashboardRefreshAllCurrencyRatesBtn" class="btn-icon btn btn-secondary btn-xs" type="button" aria-label="Обновить курсы" title="Обновить курсы">${window.App.icons.svg("refresh")}</button>
-                <button id="dashboardSendCurrencyDigestBtn" class="btn-icon btn btn-secondary btn-xs" type="button" aria-label="Отправить дайджест" title="Отправить дайджест">${window.App.icons.svg("send")}</button>
-                <button id="openCurrencyTabBtn" class="btn-icon btn btn-secondary" type="button" aria-label="Открыть валюту" title="Открыть валюту">${window.App.icons.svg("forward")}</button>
-              </div>
-            </div>
-            <div id="dashboardCurrencyKpiGrid" class="analytics-kpi-grid"></div>
-            <div id="dashboardCurrencyBalances" class="currency-balance-grid"></div>
-            <div id="dashboardCurrencyRates" class="dashboard-currency-rates-grid"></div>
-            <div id="dashboardCurrencyPositions" class="analytics-kpi-secondary"></div>
-          </section>
-<section id="dashboardProductWatches" class="panel"></section>
 <section id="dashboardAnalyticsPanel" class="panel">
             <div class="panel-head row between">
               <div>
@@ -54,6 +35,25 @@
             <div id="dashboardKpiPrimary" class="analytics-kpi-grid"></div>
             <div id="dashboardKpiSecondary" class="analytics-kpi-secondary"></div>
           </section>
+<section id="dashboardCurrencyPanel" class="panel dashboard-currency-panel hidden">
+            <div class="panel-head row between">
+              <div>
+                <h3>Курсы валют</h3>
+
+              </div>
+              <div class="toolbar">
+                <button id="dashboardCurrencyActivityBtn" class="btn-icon btn btn-secondary btn-xs hidden" type="button" aria-label="Журнал валюты" title="Журнал валюты">${window.App.icons.svg("history")}</button>
+                <button id="dashboardRefreshAllCurrencyRatesBtn" class="btn-icon btn btn-secondary btn-xs" type="button" aria-label="Обновить курсы" title="Обновить курсы">${window.App.icons.svg("refresh")}</button>
+                <button id="dashboardSendCurrencyDigestBtn" class="btn-icon btn btn-secondary btn-xs" type="button" aria-label="Отправить дайджест" title="Отправить дайджест">${window.App.icons.svg("send")}</button>
+                <button id="openCurrencyTabBtn" class="btn-icon btn btn-secondary" type="button" aria-label="Открыть валюту" title="Открыть валюту">${window.App.icons.svg("forward")}</button>
+              </div>
+            </div>
+            <div id="dashboardCurrencyKpiGrid" class="analytics-kpi-grid"></div>
+            <div id="dashboardCurrencyBalances" class="currency-balance-grid"></div>
+            <div id="dashboardCurrencyRates" class="dashboard-currency-rates-grid"></div>
+            <div id="dashboardCurrencyPositions" class="analytics-kpi-secondary"></div>
+          </section>
+<section id="dashboardProductWatches" class="panel"></section>
 <section id="dashboardPlansPanel" class="panel">
             <div class="panel-head row between">
               <div>
@@ -62,9 +62,9 @@
               </div>
               <div class="panel-controls">
                 <div class="segmented" id="dashboardPlansPeriodTabs" role="tablist" aria-label="Период планов на дашборде">
-                  <button class="segmented-btn" data-dashboard-plans-period="week" type="button">Эта неделя</button>
-                  <button class="segmented-btn active" data-dashboard-plans-period="month" type="button">Этот месяц</button>
-                  <button class="segmented-btn" data-dashboard-plans-period="all_time" type="button">Все время</button>
+                  <button class="segmented-btn" data-dashboard-plans-period="week" type="button">7 дней</button>
+                  <button class="segmented-btn active" data-dashboard-plans-period="month" type="button">30 дней</button>
+                  <button class="segmented-btn" data-dashboard-plans-period="all_time" type="button">Все планы</button>
                 </div>
                 <div id="dashboardPlansPeriodPopover" class="app-popover app-popover-floating period-control-popover hidden" role="dialog" aria-label="Быстрый выбор периода планов">
                   <div id="dashboardPlansPeriodOptions" class="settings-picker-options"></div>
@@ -94,10 +94,7 @@
                 <h3>Я должен</h3>
                 <p id="debtBorrowTotal">0.00</p>
               </article>
-              <article id="dashboardDebtNetKpi" class="kpi-card dashboard-debt-kpi">
-                <h3>Чистая позиция по долгам</h3>
-                <p id="debtNetTotal">0.00</p>
-              </article>
+
             </div>
             <div id="dashboardDebtsList" class="debt-cards debt-cards-compact"></div>
           </section>
@@ -389,22 +386,19 @@
             </div>
             <div id="operationsSummaryGrid" class="analytics-kpi-grid operations-summary-grid">
               <article class="analytics-kpi-card analytics-kpi-income">
-                <div id="operationsIncomeLabel" class="muted-small">Доход по выборке</div>
+                <div id="operationsIncomeLabel" class="muted-small">Пришло</div>
                 <strong id="operationsIncomeTotal">0</strong>
               </article>
               <article class="analytics-kpi-card analytics-kpi-expense">
-                <div id="operationsExpenseLabel" class="muted-small">Расход по выборке</div>
+                <div id="operationsExpenseLabel" class="muted-small">Ушло</div>
                 <strong id="operationsExpenseTotal">0</strong>
               </article>
               <article id="operationsResultCard" class="analytics-kpi-card analytics-kpi-neutral">
-                <div id="operationsResultLabel" class="muted-small">Операционный результат по выборке</div>
+                <div id="operationsResultLabel" class="muted-small">Разница</div>
                 <strong id="operationsBalanceTotal">0</strong>
               </article>
-              <article class="analytics-kpi-card analytics-kpi-neutral">
-                <div id="operationsTotalCountLabel" class="muted-small">Операций найдено</div>
-                <strong id="operationsTotalCount">0</strong>
-              </article>
             </div>
+            <div class="muted-small operations-count"><span id="operationsTotalCountLabel">Операций найдено</span>: <span id="operationsTotalCount">0</span></div>
             <div class="table-search-row sticky-search operations-search-row">
               <input id="filterQ" class="table-search-input" type="text" placeholder="Поиск" />
             </div>

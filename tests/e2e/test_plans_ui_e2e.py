@@ -239,6 +239,9 @@ def page_with_plans_api_mock(page):
         query = parse_qs(parsed.query)
         method = request.method.upper()
 
+        if path == "/api/v1/plans/forecast":
+            return _json_response(route, {"date_from": date.today().isoformat(), "date_to": date.today().isoformat(),
+                "income_total": "0", "expense_total": "0", "occurrences_count": 0, "overdue_count": 0})
         if path == "/api/v1/auth/public-config":
             return _json_response(route, {"telegram_bot_username": None, "browser_login_available": False})
         if path == "/api/v1/auth/telegram" and method == "POST":

@@ -97,6 +97,7 @@ class DashboardAnalyticsHighlightsService:
                 "operation_ids": set(),
                 "template_ids": set(),
                 "price_history": [],
+                "comparison_keys": set(),
             }
         )
         for item in operations:
@@ -137,6 +138,8 @@ class DashboardAnalyticsHighlightsService:
                         bucket["template_ids"].add(int(row.template_id))
                     price_for_history = self.resolve_receipt_price_for_history(row)
                     if price_for_history is not None:
+                        bucket["comparison_keys"].add((item.get("currency"), getattr(row, "sale_unit", None),
+                            getattr(row, "package_quantity", None), getattr(row, "package_unit", None)))
                         bucket["max_unit_price"] = max(bucket["max_unit_price"], price_for_history)
                         bucket["unit_price_sum"] += price_for_history
                         bucket["unit_price_count"] += 1
@@ -319,9 +322,21 @@ class DashboardAnalyticsHighlightsService:
                 date_to=date_to,
             )
         month_start, month_end = self.timeline.month_bounds(resolved_from)
+        requested_to = resolved_to
+        if resolved_from <= date.today() < resolved_to:
+            resolved_to = date.today()
         span_days = (resolved_to - resolved_from).days + 1
         prev_to = resolved_from - timedelta(days=1)
         prev_from = prev_to - timedelta(days=max(0, span_days - 1))
+        if period == "month" and resolved_from.day == 1:
+            prev_from = prev_to.replace(day=1)
+            if resolved_to < requested_to:
+                prev_to = min(prev_to, prev_from + timedelta(days=span_days - 1))
+        elif period == "year" and resolved_from.month == 1 and resolved_from.day == 1:
+            import calendar
+            prev_from = resolved_from.replace(year=resolved_from.year - 1)
+            prev_to = resolved_to.replace(year=resolved_to.year - 1,
+                day=min(resolved_to.day, calendar.monthrange(resolved_to.year - 1, resolved_to.month)[1]))
 
         operations = self.repo.list_snapshot_for_period(user_id=user_id, date_from=resolved_from, date_to=resolved_to)
         prev_operations = self.repo.list_snapshot_for_period(user_id=user_id, date_from=prev_from, date_to=prev_to)
@@ -564,6 +579,9 @@ class DashboardAnalyticsHighlightsService:
             previous_item = previous_position_stats.get(key)
             if not previous_item:
                 continue
+            if (len(current_item["comparison_keys"]) != 1
+                    or current_item["comparison_keys"] != previous_item["comparison_keys"]):
+                continue
             prev_count = int(previous_item["unit_price_count"] or 0)
             curr_count = int(current_item["unit_price_count"] or 0)
             if prev_count <= 0 or curr_count <= 0:
@@ -607,6 +625,13 @@ class DashboardAnalyticsHighlightsService:
         )
         return {
             "period": period,
+            "comparison_date_from": prev_from.isoformat(),
+            "comparison_date_to": prev_to.isoformat(),
+            "cashflow_income_total": income_total + cashflow_totals["cashflow_income_total"],
+            "cashflow_expense_total": expense_total + cashflow_totals["cashflow_expense_total"],
+            "prev_cashflow_income_total": prev_income_total + prev_cashflow_totals["cashflow_income_total"],
+            "prev_cashflow_expense_total": prev_expense_total + prev_cashflow_totals["cashflow_expense_total"],
+            "cashflow_events_count": operations_count + cashflow_totals["cashflow_events_count"],
             "category_breakdown_kind": category_kind,
             "category_breakdown_level": category_breakdown_level,
             "date_from": resolved_from.isoformat(),
@@ -673,6 +698,7 @@ class DashboardAnalyticsHighlightsService:
                         if category_breakdown_total > 0
                         else 0.0
                     ),
+                    "change_amount": bucket["total_amount"] - previous_category_totals[key],
                     "change_pct": self.timeline.percent_change(bucket["total_amount"], previous_category_totals[key]),
                     "operations_count": int(bucket["operations_count"]),
                 }
@@ -713,6 +739,7 @@ class DashboardAnalyticsHighlightsService:
                         if category_breakdown_total > 0
                         else 0.0
                     ),
+                    "change_amount": bucket["total_amount"] - previous_category_totals[key],
                     "change_pct": self.timeline.percent_change(bucket["total_amount"], previous_category_totals[key]),
                     "operations_count": int(bucket["operations_count"]),
                 }

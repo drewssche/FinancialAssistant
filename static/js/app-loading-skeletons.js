@@ -14,7 +14,7 @@
       el.dashboardAnalyticsPeriodLabel.innerHTML = inlineLine("skeleton-w-72", "skeleton-line-sm");
     }
     if (el.dashboardKpiPrimary) {
-      el.dashboardKpiPrimary.innerHTML = Array.from({ length: 4 }, () => `
+      el.dashboardKpiPrimary.innerHTML = Array.from({ length: 3 }, () => `
         <article class="analytics-kpi-card skeleton-card-block skeleton-stack-md">
           ${line("skeleton-w-40", "skeleton-line-xs")}
           ${line("skeleton-w-72", "skeleton-line-lg")}

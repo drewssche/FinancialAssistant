@@ -226,7 +226,7 @@
     const hasKind = Boolean(kindValue);
     const hasCurrencyScope = Boolean(currencyScopeValue);
     const hasSource = Boolean(sourceValue);
-    const hasAny = hasCategory || hasItemTemplate || hasProduct || hasBrand || hasQuickView || hasKind || hasCurrencyScope || hasSource;
+    const hasAny = hasCategory || hasItemTemplate || hasProduct || hasBrand;
     const renderChip = (node, label, value, visible) => {
       if (!node) return;
       node.classList.toggle("hidden", !visible);
@@ -237,10 +237,10 @@
       node.setAttribute("aria-label", visible ? `Снять фильтр ${label}: ${value}` : label);
     };
     el.operationsActiveFilters.classList.toggle("hidden", !hasAny);
-    renderChip(el.operationsKindFilterChip, "Тип", kindValue, hasKind);
-    renderChip(el.operationsSourceFilterChip, "Источник", sourceValue, hasSource);
-    renderChip(el.operationsQuickViewChip, "Срез", quickViewValue, hasQuickView);
-    renderChip(el.operationsCurrencyScopeChip, "Валюта", currencyScopeValue, hasCurrencyScope);
+    renderChip(el.operationsKindFilterChip, "Тип", kindValue, false);
+    renderChip(el.operationsSourceFilterChip, "Источник", sourceValue, false);
+    renderChip(el.operationsQuickViewChip, "Срез", quickViewValue, false);
+    renderChip(el.operationsCurrencyScopeChip, "Валюта", currencyScopeValue, false);
     const filterCategory = state.categories.find(category => String(category.id) === String(state.operationsCategoryFilterId));
     renderChip(el.operationsCategoryFilterChip, "Категория", filterCategory ? core.categoryLabel(filterCategory) : state.operationsCategoryFilterName || `#${state.operationsCategoryFilterId}`, hasCategory);
     renderChip(
@@ -274,7 +274,7 @@
       el.operationsResultCard.classList.add(`analytics-kpi-${resultTone}`);
     }
     if (el.operationsResultLabel) {
-      el.operationsResultLabel.textContent = isMoneyFlowMode ? "Денежный поток по выборке" : "Операционный результат по выборке";
+      el.operationsResultLabel.textContent = "Разница";
     }
     if (el.operationsIncomeTotal) {
       el.operationsIncomeTotal.textContent = core.formatMoney(data?.income_total || 0);
@@ -289,10 +289,10 @@
       el.operationsTotalCount.textContent = String(data?.total || 0);
     }
     if (el.operationsIncomeLabel) {
-      el.operationsIncomeLabel.textContent = `${isMoneyFlowMode ? "Приток" : "Доход"} по выборке`;
+      el.operationsIncomeLabel.textContent = "Пришло";
     }
     if (el.operationsExpenseLabel) {
-      el.operationsExpenseLabel.textContent = `${isMoneyFlowMode ? "Отток" : "Расход"} по выборке`;
+      el.operationsExpenseLabel.textContent = "Ушло";
     }
     if (el.operationsTotalCountLabel) {
       el.operationsTotalCountLabel.textContent = `${isMoneyFlowMode ? "Событий" : "Операций"} найдено`;

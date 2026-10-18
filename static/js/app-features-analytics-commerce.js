@@ -80,19 +80,12 @@
         <span class="analytics-position-kpi"><span>Позиций</span><strong>${rows.length}</strong></span>
         <span class="analytics-position-kpi"><span>Экономия</span><strong>${core.formatMoney(savings)}</strong></span>
         <span class="analytics-position-kpi"><span>Покупок позиций</span><strong>${purchases}</strong></span>
-        <span class="analytics-position-kpi"><span>Доля расходов</span><strong>${data.discount_savings_rate_pct == null ? "Нет базы" : `${formatPercent(data.discount_savings_rate_pct)}%`}</strong></span>
+
       `;
       return;
     }
     const reliable = rows.filter((item) => Number(item.current_purchases_count || 0) >= 2 && Number(item.previous_purchases_count || 0) >= 2).length;
-    const averageChange = rows.length
-      ? rows.reduce((sum, item) => sum + Number(item.change_pct || 0), 0) / rows.length
-      : 0;
-    el.analyticsCommerceSummary.innerHTML = `
-      <span class="analytics-position-kpi"><span>Подорожаний</span><strong>${rows.length}</strong></span>
-      <span class="analytics-position-kpi"><span>Средний рост</span><strong>${core.formatAmount(averageChange)}%</strong></span>
-      <span class="analytics-position-kpi"><span>С повторными покупками</span><strong>${reliable}</strong></span>
-    `;
+    el.analyticsCommerceSummary.innerHTML = `<span>Подорожания от 10%: <b>${rows.length}</b> из топ-10</span><span>С повторными покупками: <b>${reliable}</b></span>`;
   }
 
   function renderRanking(rows) {

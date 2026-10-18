@@ -30,7 +30,7 @@ def test_plan_cards_share_compact_grid_and_currency_is_first(static_server_url, 
     page.route('**/api/v1/operations/catalog-products*', lambda route: route.fulfill(json={'items':[], 'total':0, 'page':1, 'page_size':100}))
     _login_and_open_dashboard(page, static_server_url)
     expect(page.locator('#dashboardPlansList .plan-card')).to_have_count(3)
-    assert page.locator('#dashboardSection').evaluate("n=>n.firstElementChild.id") == 'dashboardCurrencyPanel'
+    assert page.locator('#dashboardSection').evaluate("n=>n.firstElementChild.id") == 'dashboardAnalyticsPanel'
     rates=page.locator('#dashboardCurrencyRates .dashboard-currency-rate-card')
     expect(rates).to_have_count(3)
     for rate in rates.all():

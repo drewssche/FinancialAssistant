@@ -150,7 +150,11 @@ class CatalogWatchService:
             if states or product_id not in connected_ids:
                 state = next((s for s in ('choice', 'pending', 'error', 'not_found', 'missing_codes', 'paused') if s in states), 'missing_codes')
                 unresolved.append({'product_id': product_id, 'name': names[product_id], 'matching_state': state, 'matching_sources': sorted(set(sources.get(state, [])))})
-        return {'tracked_count': len(ids), 'offers': offers, 'events': [dict(e.data, id=e.id, product_id=e.product_id, created_at=e.created_at) for e in events], 'unlinked': unresolved, 'next_cursor': events[-1].id if len(page) > 20 else None}
+        all_offers = list(self.db.scalars(self.valid_offers().where(CatalogOfferWatch.user_id == user_id)))
+        monitoring = {'connected': len(all_offers),
+                      'checked': sum(bool(o.checked_at and not o.error) for o in all_offers),
+                      'errors': sum(bool(o.error) for o in all_offers)}
+        return {'monitoring': monitoring, 'tracked_count': len(ids), 'offers': offers, 'events': [dict(e.data, id=e.id, product_id=e.product_id, created_at=e.created_at) for e in events], 'unlinked': unresolved, 'next_cursor': events[-1].id if len(page) > 20 else None}
 
     @staticmethod
     def notification_events():

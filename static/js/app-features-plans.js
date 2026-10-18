@@ -198,71 +198,38 @@
     });
   }
 
-  function planNetMeta(summary) {
-    const expense = Number(summary?.potentialExpense || 0);
-    const income = Number(summary?.potentialIncome || 0);
-    if (income > 0.000001 && expense > 0.000001) {
-      return `Доход: ${core.formatMoney(income)} | Расход: ${core.formatMoney(expense)}`;
-    }
-    if (income > 0.000001) {
-      return `Потенциальный доход: ${core.formatMoney(income)}`;
-    }
-    if (expense > 0.000001) {
-      return `Потенциальный расход: ${core.formatMoney(expense)}`;
-    }
-    return "Планов пока нет";
-  }
-
-  async function ensurePlansAllTimeBalance(force = false) {
-    if (!force && Number.isFinite(Number(state.plansAllTimeBalance))) {
-      return Number(state.plansAllTimeBalance || 0);
-    }
-    let data = null;
+  let forecastDays = 30;
+  let forecastGeneration = 0;
+  async function renderForecast() {
+    const host = document.getElementById("plansForecast");
+    if (!host) return;
+    const token = ++forecastGeneration, owner = state.token;
+    host.textContent = "Загружаю планы…";
     try {
-      data = await (dashboardData.loadAllTimeSummary
-        ? dashboardData.loadAllTimeSummary({ force })
-        : core.requestJson("/api/v1/dashboard/summary?period=all_time", { headers: core.authHeaders() }));
-    } catch (err) {
-      if (core.isAbortError?.(err)) {
-        throw err;
-      }
-      state.plansAllTimeBalance = 0;
-      return 0;
+      const data = await core.requestJson(`/api/v1/plans/forecast?days=${forecastDays}`, { headers: core.authHeaders() });
+      if (token !== forecastGeneration || owner !== state.token) return;
+      if (data.income_total == null) { host.textContent = "Нет данных прогноза"; return; }
+      host.innerHTML = `<div><span>Ожидается получить</span><strong class="amount-income">${core.formatMoney(data.income_total)}</strong></div><div><span>Ожидается заплатить</span><strong class="amount-expense">${core.formatMoney(data.expense_total)}</strong></div><p class="muted-small">${core.formatDateRu(data.date_from)} — ${core.formatDateRu(data.date_to)} · ${Number(data.occurrences_count)} платежей${data.unpriced_count ? ` · Без курса: ${Number(data.unpriced_count)}, не включены в суммы` : ""}${data.overdue_count ? ` · Просрочено планов: ${Number(data.overdue_count)}` : ""}</p>`;
+    } catch (error) {
+      if (token === forecastGeneration && owner === state.token) host.textContent = "Не удалось загрузить прогноз";
     }
-    state.plansAllTimeBalance = Number(data?.balance || 0);
-    return state.plansAllTimeBalance;
   }
+  document.addEventListener("click", event => {
+    const button = event.target.closest("[data-plans-horizon]");
+    if (!button) return;
+    forecastDays = Number(button.dataset.plansHorizon);
+    for (const node of document.querySelectorAll("[data-plans-horizon]")) node.classList.toggle("active", node === button);
+    void renderForecast();
+  });
 
   async function renderPlansSection() {
     const isHistoryTab = (state.plansTab || "due") === "history";
     const items = isHistoryTab ? getFilteredHistoryItems() : getFilteredPlans();
-    const summary = summarizePlans(getPlanItems().filter((item) => item.status !== "confirmed" && item.status !== "skipped"));
-    const baseBalance = await ensurePlansAllTimeBalance();
-    const projectedBalance = baseBalance + Number(summary.netPlanned || 0);
-    if (el.plansDueChip) {
-      el.plansDueChip.textContent = `Активных: ${summary.activeCount}`;
-    }
-    if (el.plansTodayChip) {
-      el.plansTodayChip.textContent = `Сегодня: ${summary.todayCount}`;
-    }
-    if (el.plansOverdueChip) {
-      el.plansOverdueChip.textContent = `Просрочено: ${summary.overdueCount}`;
-    }
-    if (el.plansFinancialValue) {
-      el.plansFinancialValue.textContent = `${baseBalance < 0 ? "-" : ""}${core.formatMoney(Math.abs(baseBalance))}`;
-    }
-    if (el.plansFinancialDelta) {
-      const netDelta = Number(summary.netPlanned || 0);
-      const positive = netDelta > 0.000001;
-      const negative = netDelta < -0.000001;
-      el.plansFinancialDelta.textContent = `${negative ? "-" : positive ? "+" : ""}${core.formatMoney(Math.abs(netDelta))}`;
-      el.plansFinancialDelta.classList.toggle("plans-financial-kpi-delta-positive", positive);
-      el.plansFinancialDelta.classList.toggle("plans-financial-kpi-delta-negative", negative);
-      el.plansFinancialDelta.classList.toggle("plans-financial-kpi-delta-neutral", !positive && !negative);
-    }
-    if (el.plansFinancialMeta) {
-      el.plansFinancialMeta.textContent = `${projectedBalance < 0 ? "-" : ""}${core.formatMoney(Math.abs(projectedBalance))}`;
-    }
+    const summary = summarizePlans(getPlanItems().filter(item => !["confirmed", "skipped"].includes(item.status)));
+    const labels = { all: `Все сроки · ${summary.activeCount}`, overdue: `Просрочено${summary.overdueCount ? ` · ${summary.overdueCount}` : ""}`, due: `Сегодня${summary.todayCount ? ` · ${summary.todayCount}` : ""}`, upcoming: `Впереди · ${summary.upcomingCount}` };
+    el.plansStatusTabs?.querySelectorAll("[data-plan-status]").forEach(button => { button.textContent = labels[button.dataset.planStatus]; });
+    document.getElementById("plansKpiGrid")?.classList.toggle("hidden", isHistoryTab);
+    if (!isHistoryTab) void renderForecast();
     if (!el.plansList) {
       return;
     }
@@ -291,7 +258,7 @@
       state.itemBrandsLoaded = false;
     }
     if (confirmed) {
-      state.plansAllTimeBalance = null;
+
       dashboardData.invalidateSummaryCache?.();
     }
     await loadPlans({ force: true });

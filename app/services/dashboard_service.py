@@ -269,7 +269,7 @@ class DashboardService:
     ) -> dict:
         cache_key = build_dashboard_analytics_cache_key(
             user_id=user_id,
-            view="highlights",
+            view="highlights-period-v2",
             period=period,
             date_from=date_from,
             date_to=date_to,

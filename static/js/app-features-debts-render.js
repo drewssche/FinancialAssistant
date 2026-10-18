@@ -209,12 +209,6 @@
       return;
     }
     const summary = summarizeDebtCards(cards);
-    const netTone = summary.netTotal > 0.000001
-      ? "analytics-kpi-positive"
-      : summary.netTotal < -0.000001
-        ? "analytics-kpi-negative"
-        : "analytics-kpi-neutral";
-    const netPrefix = summary.netTotal > 0.000001 ? "+" : summary.netTotal < -0.000001 ? "-" : "";
     el.debtsSectionKpi.innerHTML = `
       <article class="analytics-kpi-card analytics-kpi-negative">
         <div class="muted-small">Я должен</div>
@@ -223,14 +217,6 @@
       <article class="analytics-kpi-card analytics-kpi-positive">
         <div class="muted-small">Мне должны</div>
         <strong>${formatDebtMoney(summary.lendTotal, summary.baseCurrency)}</strong>
-      </article>
-      <article class="analytics-kpi-card ${netTone}">
-        <div class="muted-small">Чистая позиция</div>
-        <strong>${netPrefix}${formatDebtMoney(Math.abs(summary.netTotal), summary.baseCurrency)}</strong>
-      </article>
-      <article class="analytics-kpi-card analytics-kpi-neutral">
-        <div class="muted-small">Активных карточек</div>
-        <strong>${summary.activeCardCount}</strong>
       </article>
     `;
   }

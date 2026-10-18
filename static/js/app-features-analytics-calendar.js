@@ -6,12 +6,12 @@
   const describeResult = shared.describeResult || ((balanceRaw) => {
     const balance = Number(balanceRaw || 0);
     if (balance > 0) {
-      return { label: "Профицит", tone: "positive", cardClass: "positive", amount: balance };
+      return { label: "Разница", tone: "positive", cardClass: "positive", amount: balance };
     }
     if (balance < 0) {
-      return { label: "Дефицит", tone: "negative", cardClass: "negative", amount: Math.abs(balance) };
+      return { label: "Разница", tone: "negative", cardClass: "negative", amount: balance };
     }
-    return { label: "Ноль", tone: "neutral", cardClass: "neutral", amount: 0 };
+    return { label: "Разница", tone: "neutral", cardClass: "neutral", amount: 0 };
   });
   let calendarTooltipUiBound = false;
   const pickerUtils = window.App.getRuntimeModule?.("picker-utils") || {};
@@ -369,7 +369,7 @@
         <div class="muted-small analytics-income">Приток: ${escapeHtml(core.formatMoney(cashflow.incomeTotal))}</div>
         <div class="muted-small analytics-expense">Отток: ${escapeHtml(core.formatMoney(cashflow.expenseTotal))}</div>
         <div class="muted-small analytics-${operatingResult.presentation.tone}">${escapeHtml(operatingResult.presentation.label)}: ${escapeHtml(core.formatMoney(operatingResult.presentation.amount))}</div>
-        <div class="muted-small analytics-balance">Денежный поток: ${escapeHtml(core.formatMoney(cashflow.resultTotal))}</div>
+        <div class="muted-small analytics-balance">Разница: ${escapeHtml(core.formatMoney(cashflow.resultTotal))}</div>
       </article>
     `;
   }
@@ -390,7 +390,7 @@
             <div class="analytics-year-quarter-total analytics-expense"><span>Отток</span><strong>${escapeHtml(core.formatMoney(summary.expenseTotal))}</strong></div>
             <div class="analytics-year-quarter-total analytics-ops"><span>События</span><strong>${escapeHtml(String(summary.eventsCount))}</strong></div>
             <div class="analytics-year-quarter-total analytics-${operatingResult.tone}"><span>${escapeHtml(operatingResult.label)}</span><strong>${escapeHtml(core.formatMoney(operatingResult.amount))}</strong></div>
-            <div class="analytics-year-quarter-total analytics-${cashflowResult.tone}"><span>Денежный поток</span><strong>${escapeHtml(core.formatMoney(summary.resultTotal))}</strong></div>
+            <div class="analytics-year-quarter-total analytics-${cashflowResult.tone}"><span>Разница</span><strong>${escapeHtml(core.formatMoney(summary.resultTotal))}</strong></div>
           </div>
         </div>
         <div class="analytics-year-quarter-months">
@@ -474,7 +474,7 @@
             `Приток ${core.formatMoney(cashflow.incomeTotal)}`,
             `Отток ${core.formatMoney(cashflow.expenseTotal)}`,
             `${operatingResult.presentation.label} по операциям ${core.formatMoney(operatingResult.presentation.amount)}`,
-            `Денежный поток ${core.formatMoney(cashflow.resultTotal)}`,
+            `Разница ${core.formatMoney(cashflow.resultTotal)}`,
             `${cashflow.eventsCount} событ.`,
           ];
           if (markerBits.length) {
@@ -506,7 +506,7 @@
         <td class="analytics-week-total analytics-${weekOperatingResult.presentation.tone}">${weekOperatingResult.presentation.label}: ${core.formatMoney(weekOperatingResult.presentation.amount)}</td>
         <td class="analytics-week-total">
           <span class="analytics-kpi-chip analytics-kpi-chip-${weekResult.tone}">
-            Денежный поток: ${core.formatMoney(weekCashflow.resultTotal)}
+            Разница: ${core.formatMoney(weekCashflow.resultTotal)}
           </span>
         </td>
       `;

@@ -95,13 +95,9 @@
       : balance < -0.000001
         ? "analytics-kpi-chip-negative"
         : "analytics-kpi-chip-neutral";
-    el.usageKpi.innerHTML = `
-      <span class="analytics-kpi-chip analytics-kpi-chip-neutral">Операций: ${count}</span>
-      <span class="analytics-kpi-chip analytics-kpi-chip-positive">Приток: ${core.formatMoney(income)}</span>
-      <span class="analytics-kpi-chip analytics-kpi-chip-negative">Отток: ${core.formatMoney(expense)}</span>
-      <span class="analytics-kpi-chip ${balanceTone}">Поток: ${core.formatMoney(balance)}</span>
-      <span class="analytics-kpi-chip analytics-kpi-chip-neutral">Последнее: ${formatDate(lastUsed)}</span>
-    `;
+    el.usageKpi.innerHTML = income === 0
+      ? `<span>Покупок: <b>${count}</b></span><span>Потрачено: <b>${core.formatMoney(expense)}</b></span><span>Последняя покупка: ${formatDate(lastUsed)}</span>`
+      : `<span>Операций: <b>${count}</b></span><span>Пришло: <b>${core.formatMoney(income)}</b></span><span>Ушло: <b>${core.formatMoney(expense)}</b></span><span>Разница: <b>${core.formatMoney(balance)}</b></span><span>Последнее: ${formatDate(lastUsed)}</span>`;
   }
 
   function renderUsageList(items, emptyText) {

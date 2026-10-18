@@ -309,6 +309,7 @@ class AnalyticsTopCategory(BaseModel):
     total_amount: Decimal
     total_expense: Decimal
     share_pct: float
+    change_amount: Decimal = Decimal("0")
     change_pct: float | None
     operations_count: int
 
@@ -381,6 +382,13 @@ class AnalyticsDiscountBreakdownItem(BaseModel):
 
 
 class AnalyticsHighlightsOut(BaseModel):
+    comparison_date_from: str | None = None
+    comparison_date_to: str | None = None
+    cashflow_income_total: Decimal | None = None
+    cashflow_expense_total: Decimal | None = None
+    prev_cashflow_income_total: Decimal | None = None
+    prev_cashflow_expense_total: Decimal | None = None
+    cashflow_events_count: int | None = None
     period: str
     category_breakdown_kind: str
     category_breakdown_level: str = "category"

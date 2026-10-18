@@ -73,10 +73,8 @@ def test_currency_status_aligns_right_and_actions_highlight(static_server_url, p
         'tracked_currencies':['USD'], 'current_rates':[dict(currency='USD', rate='3.0091',change_value='0',change_percent='0',rate_date='2025-01-01',source='nbrb_auto_unit')], 'bank_rates':[]}))
     _login_and_open_dashboard(p, static_server_url)
     card = p.locator('.dashboard-currency-rate-card').first
-    badge = card.locator('.dashboard-currency-rate-badge')
-    expect(badge).to_contain_text('последний')
-    head = card.locator('.dashboard-currency-rate-head')
-    assert abs(badge.bounding_box()['x'] + badge.bounding_box()['width'] - (head.bounding_box()['x'] + head.bounding_box()['width'])) < 2
+    expect(card.locator('.dashboard-currency-rate-badge')).to_have_count(0)
+    expect(card.locator('.dashboard-currency-rate-meta')).to_contain_text('01.01.2025')
     refresh = card.locator('button').first
     refresh.hover()
     assert refresh.evaluate('n=>getComputedStyle(n).boxShadow') != 'none'

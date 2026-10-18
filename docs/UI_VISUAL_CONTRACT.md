@@ -190,3 +190,7 @@
 - Интерактивные кнопки, ссылки и поля имеют заметный hover; выключенные элементы исключены. Подсветка не сдвигает разметку и дополняет существующий клавиатурный focus.
 - Сумма позиции в просмотре чека — самостоятельный контрастный акцент. Статичные строки истории сайта не оформляются как переход в покупку.
 - Чип «последний» в валютной карточке расположен у правого края заголовка и означает последний доступный официальный курс, датированный раньше сегодняшнего дня.
+
+## 18.10.2026 — KPI and chip audit
+
+Primary dashboard summary: three period totals (Пришло / Ушло / Разница), preceding exchange rates. Secondary counts are compact text, not additional large KPI cards. Keep removable chips only for context not already represented by visible controls. Show each currency change once, scaled like the displayed quote. Plans use future 7/30-day inflow/outflow, without a cumulative cash-balance forecast. Shared shop identity belongs to the receipt header; discounts sit with the line total. Never hide a required action or a meaningful failure state while removing duplicate labels.

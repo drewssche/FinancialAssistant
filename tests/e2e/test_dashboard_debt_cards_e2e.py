@@ -10,6 +10,7 @@ def test_dashboard_debts_share_section_rows_and_resize(static_server_url, page_w
     errors=[];p.on('pageerror',lambda e:errors.append(str(e)))
     p.route('**/api/v1/operations/catalog-products*',lambda route:route.fulfill(json={'items':[],'total':0,'page':1,'page_size':100}))
     p.goto(static_server_url+'/static/index.html');_login_via_mock_telegram(p)
+    p.locator("#dashboardDebtsPanel").scroll_into_view_if_needed()
     action=p.locator('[data-dashboard-history-debt-id="9001"]');expect(action).to_be_visible()
     root=p.locator('#dashboardDebtsList')
     expect(root.locator('table')).to_have_count(0 if width<=640 else 1)

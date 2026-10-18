@@ -37,8 +37,7 @@
 #dashboardSection .currency-rate-card { border-radius: 8px; }
 #currencyWorkspaceTabs { width: fit-content; margin-bottom: 14px; }
 #currencySection #analyticsCurrencyKpiGrid,
-#currencySection #analyticsCurrencyBalancesRow,
-#currencySection #analyticsCurrencySecondary { display: none; }
+#currencySection #analyticsCurrencyBalancesRow { display: none; }
 #currencySection .currency-chart-controls { border: 0; padding: 0; background: none; }
 #currencySection .currency-chart-controls-head { gap: 10px; }
 #currencySection .currency-chart-controls-head > div:first-child > strong { display: none; }
@@ -200,3 +199,36 @@
 .product-price-events article.catalog-product-purchase-row { cursor: default; }
 .product-price-events article.catalog-product-purchase-row:hover { border-color: var(--border); }
 #analyticsYearGrid [data-calendar-year] { height: auto; min-height: 140px; padding: 14px; white-space: normal; justify-content: stretch; }
+
+/* One primary period summary; other totals remain local, compact context. */
+#dashboardKpiPrimary, #operationsSummaryGrid, #analyticsCalendarTotals { grid-template-columns: repeat(3,minmax(0,1fr)); }
+#dashboardDebtKpiGrid, #debtsSectionKpi { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.period-result-parts { display:flex; flex-wrap:wrap; gap:4px 12px; font-size:12px; margin-top:6px; }
+.period-result-parts span { display:flex; gap:6px; }
+.period-summary-meta { width:100%; }
+.period-category-changes { display:flex; flex-wrap:wrap; gap:6px 18px; font-size:13px; }
+.period-category-changes b { font-weight:600; }
+.operations-count { margin:8px 0; }
+.plan-forecast { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 20px; margin-top:12px; }
+.plan-forecast > div { display:flex; flex-direction:column; gap:5px; font-size:13px; }
+.plan-forecast strong { font-size:20px; }
+.plan-forecast p { grid-column:1 / -1; margin:0; }
+#dashboardPlansKpi { gap:6px 16px; font-size:13px; }
+.receipt-price-stack { display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+#catalogProductsKpiGrid, #itemCatalogKpiGrid, #itemBrandsKpiGrid, #itemBrandDetailKpiGrid { display:flex; flex-wrap:wrap; gap:8px 18px; }
+#catalogProductsKpiGrid .analytics-kpi-card, #itemCatalogKpiGrid .analytics-kpi-card,
+#itemBrandsKpiGrid .analytics-kpi-card, #itemBrandDetailKpiGrid .analytics-kpi-card {
+ display:flex; flex-direction:row; align-items:baseline; gap:6px; border:0; padding:0; background:none; box-shadow:none; min-height:0;
+}
+#catalogProductsKpiGrid strong, #itemCatalogKpiGrid strong, #itemBrandsKpiGrid strong, #itemBrandDetailKpiGrid strong { font-size:14px; }
+#analyticsPositionsSummary, #analyticsCommerceSummary, #usageKpi { display:flex; flex-wrap:wrap; gap:8px 18px; font-size:13px; }
+#analyticsPositionsSummary .analytics-position-kpi, #analyticsCommerceSummary .analytics-position-kpi { display:flex; flex-direction:row; gap:6px; padding:0; border:0; background:none; }
+#analyticsPositionsSummary strong, #analyticsCommerceSummary strong { font-size:14px; }
+@media(max-width:600px) {
+ #dashboardKpiPrimary, #operationsSummaryGrid, #analyticsCalendarTotals { grid-template-columns:1fr; }
+ .plan-forecast strong { font-size:17px; }
+}
+
+#dashboardSection #dashboardKpiPrimary { grid-template-columns:repeat(3,minmax(0,1fr)); }
+@media(max-width:600px) { #dashboardSection #dashboardKpiPrimary { grid-template-columns:1fr; } }
+#currencySection #analyticsCurrencySecondary > .table-wrap { width:100%; }

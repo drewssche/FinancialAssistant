@@ -462,7 +462,7 @@
     const flowDirection = String(item?.flow_direction || "outflow");
     const kindClass = flowDirection === "inflow" ? "income" : "expense";
     const sourceKind = String(item?.source_kind || "operation");
-    const directionLabel = flowDirection === "inflow" ? "Приток" : "Отток";
+    const directionLabel = flowDirection === "inflow" ? "Пришло" : "Ушло";
     const sourceLabel = sourceKind === "debt"
       ? "Долг"
       : sourceKind === "fx"
@@ -481,25 +481,22 @@
       ? getReceiptCategoryMetas(item?.receipt_items, item?.category_id, null)
       : [];
     const eventChips = [];
-    if (sourceKind === "debt") {
+    if (sourceKind === "debt" && item?.category_name) {
       eventChips.push(renderMetaChip(title, eventTone));
-    } else if (sourceKind === "fx") {
-      eventChips.push(renderMetaChip(String(item?.trade_side || "") === "sell" ? "FX: Продажа" : "FX: Покупка", eventTone));
+    } else if (sourceKind === "fx" && item?.category_name) {
+      eventChips.push(renderMetaChip(`${String(item?.trade_side || "") === "sell" ? "Продажа" : "Покупка"} ${item.asset_currency || "валюты"}`, eventTone));
     } else {
       if (Number(item?.source_plan_id || 0) > 0) {
         eventChips.push(
           `<button class="meta-chip-btn meta-chip-btn-neutral" type="button" data-open-source-kind="plan" data-open-source-id="${Number(item.source_plan_id)}">Из плана #${Number(item.source_plan_id)}</button>`,
         );
       }
-      if (item?.has_fx_settlement) {
-        const settlementCurrency = String(item?.settlement_asset_currency || "").toUpperCase();
-        eventChips.push(renderMetaChip(settlementCurrency ? `Валютная карта · ${settlementCurrency}` : "Валютная карта", "info"));
-      }
+
     }
     if (item?.counterparty_name && sourceKind !== "debt") {
       eventChips.push(renderMetaChip(item.counterparty_name, "neutral"));
     }
-    if (item?.asset_currency && item?.quote_currency) {
+    if (sourceKind !== "fx" && item?.asset_currency && item?.quote_currency) {
       eventChips.push(renderMetaChip(`${item.asset_currency}/${item.quote_currency}`, "info"));
     }
     const categoryMeta = item?.category_name
@@ -534,7 +531,6 @@
         : `<div class="money-flow-context">${contextTitleHtml}${contextSubtitleHtml}</div>`;
     const sourceCellHtml = `
       <div class="operation-category-stack money-flow-source-stack">
-        ${renderMetaChip(sourceLabel, sourceTone)}
         ${eventChips.join("")}
       </div>
     `;
@@ -542,7 +538,7 @@
     const hasReceiptItems = sourceKind === "operation" && Array.isArray(item?.receipt_items) && item.receipt_items.length > 0;
     if (sourceKind === "operation" && item?.source_id) {
       menuItems = [
-        ...(hasReceiptItems ? [`<button class="btn btn-secondary btn-icon" type="button" data-receipt-view-id="${item.source_id || ""}" aria-label="Позиции" title="Позиции">${window.App.icons.svg("receipt")}</button>`] : []),
+
         `<button class="btn btn-secondary btn-icon" type="button" data-activity-entity-type="operation" data-activity-entity-id="${item.source_id || ""}" aria-label="Журнал" title="Журнал">${window.App.icons.svg("history")}</button>`,
         `<button class="btn btn-secondary btn-icon" type="button" data-open-source-kind="operation" data-open-source-id="${item.source_id || ""}" aria-label="Редактировать" title="Редактировать">${window.App.icons.svg("edit")}</button>`,
         `<button class="btn btn-danger btn-icon" type="button" data-delete-operation-source-id="${item.source_id || ""}" aria-label="Удалить" title="Удалить">${window.App.icons.svg("trash")}</button>`,

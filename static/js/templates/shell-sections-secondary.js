@@ -185,20 +185,11 @@
               </div>
             </div>
             <div id="plansKpiGrid" class="plans-kpi-shell">
-              <article class="kpi-card plans-financial-kpi-card">
-                <div class="plans-financial-kpi-head">
-                  <div id="plansStatusChips" class="analytics-kpi-secondary plans-status-chips">
-                    <span id="plansDueChip" class="analytics-kpi-chip analytics-kpi-chip-neutral">Активных: 0</span>
-                    <span id="plansTodayChip" class="analytics-kpi-chip analytics-kpi-chip-neutral">Сегодня: 0</span>
-                    <span id="plansOverdueChip" class="analytics-kpi-chip analytics-kpi-chip-negative">Просрочено: 0</span>
-                  </div>
-                </div>
-                <div class="plans-financial-kpi-line">
-                  <div class="plans-summary-item"><span class="muted-small">Результат операций</span><div id="plansFinancialValue" class="plans-financial-kpi-value">0,00&nbsp;\uE901</div></div>
-                  <div class="plans-summary-item"><span class="muted-small">Активные планы</span><div id="plansFinancialDelta" class="plans-financial-kpi-delta">+0,00&nbsp;\uE901</div></div>
-                </div>
-                <div class="plans-summary-item"><span class="muted-small">После планов</span><div id="plansFinancialMeta" class="subtitle plans-financial-kpi-meta">0,00&nbsp;\uE901</div></div>
-              </article>
+              <div class="segmented" aria-label="Горизонт планов">
+                <button type="button" class="segmented-btn" data-plans-horizon="7">7 дней</button>
+                <button type="button" class="segmented-btn active" data-plans-horizon="30">30 дней</button>
+              </div>
+              <div id="plansForecast" class="plan-forecast"></div>
             </div>
             <div class="plans-controls-row">
               <div class="toolbar section-action-toolbar search-toolbar plans-toolbar">

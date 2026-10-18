@@ -748,8 +748,8 @@
       ["План", `${formatHours(data.planned_hours)} ч`, `${data.planned_days || 0} рабочих дней`],
       ["Отработано", `${formatHours(data.actual_hours)} ч`, `${data.completed_days || 0} дней`],
       ["Оплачиваемые", `${formatHours(data.credited_hours)} ч`, `будущий план: ${formatHours(data.future_planned_hours)} ч`],
-      ["Отпуск и сикдей", `${data.vacation_days || 0} / ${data.sick_days || 0}`, `исключений: ${data.override_days || 0}`],
-      ["Сверх плана", `${formatHours(data.overtime_hours)} ч`, `${data.calendar_days || 0} календарных дней`],
+      ...(Number(data.vacation_days) || Number(data.sick_days) ? [["Отпуск и сикдей", `${data.vacation_days || 0} / ${data.sick_days || 0}`, ""]] : []),
+      ...(Number(data.overtime_hours) > 0 ? [["Сверх плана", `${formatHours(data.overtime_hours)} ч`, ""]] : []),
     ];
     nodes.workStatisticsKpi.innerHTML = cards.map(([title, value, meta]) => `
       <article class="analytics-kpi-card analytics-kpi-neutral"><div class="muted-small">${escape(title)}</div><strong>${escape(value)}</strong><div class="muted-small">${escape(meta)}</div></article>

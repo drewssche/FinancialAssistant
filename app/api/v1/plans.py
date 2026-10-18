@@ -89,6 +89,15 @@ def create_plan(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
+@router.get("/forecast")
+def plan_forecast(days: int = Query(default=30, ge=1, le=366),
+                  user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    try:
+        return PlanService(db).forecast(user_id=user_id, days=days)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.get("/{plan_id}", response_model=PlanOut)
 def get_plan(
     plan_id: int,

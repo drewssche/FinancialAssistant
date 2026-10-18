@@ -76,93 +76,9 @@
 
   function renderDashboardCurrencySummary(summary) {
     const currencyPrefs = state.preferences?.data?.currency || {};
-    const unrealizedTone = getResultPresentation(summary.currency_unrealized_result_value || summary.currency_result_value || 0);
-    const realizedTone = getResultPresentation(summary.currency_realized_result_value || 0);
-    const totalTone = getResultPresentation(summary.currency_total_result_value || summary.currency_result_value || 0);
-    if (el.dashboardCurrencyPanel) {
-      el.dashboardCurrencyPanel.classList.toggle("hidden", currencyPrefs.show_dashboard_kpi === false);
-    }
-    if (el.dashboardCurrencyKpiGrid) {
-      el.dashboardCurrencyKpiGrid.innerHTML = "";
-      el.dashboardCurrencyKpiGrid.classList.add("hidden");
-    }
-    if (el.dashboardCurrencyBalances) {
-      const positions = Array.isArray(summary.tracked_currency_positions) ? summary.tracked_currency_positions : [];
-      const positionsByCurrency = new Map(positions.map((item) => [core.normalizeCurrencyCode?.(item.currency, "") || "", item]));
-      const trackedCurrencies = getTrackedCurrencies();
-      const baseCurrency = core.getCurrencyConfig?.().code || "BYN";
-      const baseCurrencySymbol = core.formatCurrencySymbol?.(baseCurrency) || baseCurrency;
-      const portfolioCurrentValue = Number(summary.currency_current_value || 0);
-      const portfolioBookValue = Number(summary.currency_book_value || 0);
-      const portfolioTotalResultValue = Number(summary.currency_total_result_value || summary.currency_result_value || 0);
-      const hasPortfolioActivity = (
-        Math.abs(portfolioCurrentValue) > 0.000001
-        || Math.abs(portfolioBookValue) > 0.000001
-        || Math.abs(portfolioTotalResultValue) > 0.000001
-        || Number(summary.active_currency_positions || 0) > 0
-        || positions.some((item) => Math.abs(Number(item?.quantity || 0)) > 0.000001 || Math.abs(Number(item?.current_value || 0)) > 0.000001)
-      );
-      el.dashboardCurrencyBalances.classList.toggle("hidden", !hasPortfolioActivity);
-      if (!hasPortfolioActivity) {
-        el.dashboardCurrencyBalances.innerHTML = "";
-      } else {
-        const portfolioCard = `
-          <article class="currency-balance-card">
-            <div class="muted-small">Оценка валютного портфеля</div>
-            <strong>${core.formatMoney(portfolioCurrentValue, { currency: baseCurrency })}</strong>
-            <div class="currency-balance-secondary">Вложено ${core.formatMoney(portfolioBookValue, { currency: baseCurrency })} · итоговый результат ${core.formatMoney(portfolioTotalResultValue, { currency: baseCurrency })}</div>
-          </article>
-        `;
-        const positionCards = trackedCurrencies.map((currency) => {
-          const item = positionsByCurrency.get(currency) || null;
-          const currencyLabel = core.formatCurrencyLabel(currency);
-          const quantity = Number(item?.quantity || 0);
-          const currentRate = Number(item?.current_rate || 0);
-          const currentValue = Number(item?.current_value || 0);
-          if (Math.abs(quantity) <= 0.000001 && Math.abs(currentValue) <= 0.000001) {
-            return "";
-          }
-          const currentRateDate = item?.current_rate_date ? core.formatDateRu(item.current_rate_date) : "";
-          const currentRateLabel = currentRate > 0
-            ? `${core.formatRateDisplay?.(currentRate, 4, 6)} ${baseCurrencySymbol}${currentRateDate ? ` · ${currentRateDate}` : ""}`
-            : "Курс не задан";
-          const currentValueLabel = currentValue > 0
-            ? `≈ ${core.formatMoney(currentValue, { currency: baseCurrency })}`
-            : `≈ ${core.formatMoney(0, { currency: baseCurrency })}`;
-          return `
-            <article class="currency-balance-card">
-              <div class="muted-small">${core.escapeHtml ? core.escapeHtml(currencyLabel) : currencyLabel}</div>
-              <strong>${core.formatAmount(quantity)} ${core.escapeHtml ? core.escapeHtml(currency) : currency}</strong>
-              <div class="currency-balance-secondary">Курс: ${currentRateLabel}</div>
-              <div class="currency-balance-secondary">${currentValueLabel} по текущему курсу</div>
-            </article>
-          `;
-        }).filter(Boolean);
-        el.dashboardCurrencyBalances.innerHTML = [portfolioCard, ...positionCards].join("");
-      }
-    }
-    if (el.dashboardCurrencyPositions) {
-      const positions = Array.isArray(summary.tracked_currency_positions) ? summary.tracked_currency_positions : [];
-      const hasPortfolioActivity = (
-        Math.abs(Number(summary.currency_current_value || 0)) > 0.000001
-        || Math.abs(Number(summary.currency_book_value || 0)) > 0.000001
-        || Math.abs(Number(summary.currency_total_result_value || summary.currency_result_value || 0)) > 0.000001
-        || Number(summary.active_currency_positions || 0) > 0
-        || positions.some((item) => Math.abs(Number(item?.quantity || 0)) > 0.000001 || Math.abs(Number(item?.current_value || 0)) > 0.000001)
-      );
-      el.dashboardCurrencyPositions.classList.toggle("hidden", !hasPortfolioActivity);
-      if (!hasPortfolioActivity) {
-        el.dashboardCurrencyPositions.innerHTML = "";
-        return;
-      }
-      const summaryChips = [
-        `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Вложено: ${core.formatMoney(summary.currency_book_value || 0)}</span>`,
-        `<span class="analytics-kpi-chip analytics-kpi-chip-${unrealizedTone.chipClass}">Нереализованный: ${core.formatMoney(summary.currency_unrealized_result_value || summary.currency_result_value || 0)}</span>`,
-        `<span class="analytics-kpi-chip analytics-kpi-chip-${realizedTone.chipClass}">Реализованный: ${core.formatMoney(summary.currency_realized_result_value || 0)}</span>`,
-        `<span class="analytics-kpi-chip analytics-kpi-chip-${totalTone.chipClass}">Итог: ${core.formatMoney(summary.currency_total_result_value || summary.currency_result_value || 0)}</span>`,
-        `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Открытых позиций: ${String(summary.active_currency_positions || 0)}</span>`,
-      ];
-      el.dashboardCurrencyPositions.innerHTML = summaryChips.join("");
+    el.dashboardCurrencyPanel?.classList.toggle("hidden", currencyPrefs.show_dashboard_kpi === false);
+    for (const node of [el.dashboardCurrencyKpiGrid, el.dashboardCurrencyBalances, el.dashboardCurrencyPositions]) {
+      if (node) { node.replaceChildren(); node.classList.add("hidden"); }
     }
   }
 
@@ -254,9 +170,7 @@
         <article class="dashboard-currency-rate-card">
           <div class="dashboard-currency-rate-head">
             <strong>${core.escapeHtml ? core.escapeHtml(currencyLabel) : currencyLabel}</strong>
-            <span class="dashboard-currency-rate-badge dashboard-currency-rate-badge-${deltaTone}" title="${isStale ? "Последний доступный официальный курс: за сегодня ещё не опубликован" : "Изменение официального курса"}">
-              ${isStale ? "последний" : (hasDelta ? formatSignedRate(item.change_value) : "новый")}
-            </span>
+
           </div>
           <div class="dashboard-currency-rate-value-row">
             <div class="dashboard-currency-rate-value">${core.formatRateDisplay?.(Number(item.rate || 0) * displayScale, 4, 6)}</div>

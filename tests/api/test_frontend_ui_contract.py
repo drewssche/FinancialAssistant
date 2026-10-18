@@ -116,7 +116,6 @@ def test_byn_uses_compact_currency_symbol_in_frontend_formatters():
     assert r"`${formatted}\u00A0${cfg.symbol}`" in core_utils
     assert '<option value="BYN">BYN (\\uE901)</option>' in modal_templates
     assert "Пример: 1 234,56&nbsp;\\uE901" in secondary_templates
-    assert 'id="plansFinancialValue" class="plans-financial-kpi-value">0,00&nbsp;\\uE901' in secondary_templates
     assert "button,\ninput," not in controls_css
     assert "button {\n  font-family: var(--ui-font-family);\n}" in controls_css
     assert "font-family: var(--ui-font-family);" in controls_css
@@ -326,8 +325,8 @@ def test_dashboard_summary_retry_and_plan_fallback_are_non_blocking():
     assert "data-dashboard-retry" in dashboard
     assert "bindDashboardRetryActions" in dashboard
     assert "data-plans-retry" in plans
-    assert "state.plansAllTimeBalance = 0;" in plans
-    assert "return 0;" in plans
+    assert "Не удалось загрузить прогноз" in plans
+    assert "plansAllTimeBalance" not in plans
 
 
 def test_operations_section_is_money_flow_first_without_bulk_select():
@@ -556,7 +555,7 @@ def test_debts_section_has_filtered_base_currency_kpi():
     assert "renderDebtsSectionKpi(visibleCards);" in debts_render
     assert "Я должен" in debts_render
     assert "Мне должны" in debts_render
-    assert "Чистая позиция" in debts_render
+    assert "Чистая позиция" not in debts_render
     assert "analytics-kpi-card analytics-kpi-negative" in debts_render
     assert ".debts-section-kpi" in debts_css
 

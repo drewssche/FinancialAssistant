@@ -58,12 +58,14 @@
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#39;");
+      const shops = [...new Set(item.receipt_items.map(r => r.shop_name || ""))];
+      const commonShop = shops.length === 1 ? shops[0] : "";
       if (el.operationReceiptMeta) {
         const note = item.note ? ` · ${item.note}` : "";
         const money = item.currency && item.base_currency && item.currency !== item.base_currency
           ? `${core.formatMoney(item.original_amount || item.amount, { currency: item.currency })} · ≈ ${core.formatMoney(item.amount, { currency: item.base_currency })}`
           : core.formatMoney(item.amount, { currency: item.base_currency || item.currency || undefined });
-        el.operationReceiptMeta.textContent = `${core.formatDateRu(item.operation_date)} · ${money}${note}`;
+        el.operationReceiptMeta.textContent = `${core.formatDateRu(item.operation_date)} · ${money}${commonShop ? ` · ${commonShop}` : ""}${note}`;
       }
       el.operationReceiptItems.innerHTML = item.receipt_items.map((row) => {
         const qty = Number(row.quantity || 0);
@@ -71,14 +73,14 @@
         const total = Number(row.line_total || qty * price || 0);
         const receiptCurrency = String(item.currency || item.base_currency || core.getCurrencyConfig?.().code || "BYN").toUpperCase();
         const media = window.App.getRuntimeModule?.("catalog-media") || {};
-        const shopChip = row.shop_name
+        const shopChip = row.shop_name && !commonShop
           ? `<div class="operation-receipt-shop catalog-source-identity">${media.renderThumb?.(row.source_image_id, { kind: "source", size: "chip", alt: row.shop_name, fallback: String(row.shop_name).slice(0, 1) }) || ""}${core.renderCategoryChip({ name: row.shop_name, icon: null, accent_color: null }, "")}</div>`
           : "";
         const categoryChip = row.category_id
           ? `<div class="operation-receipt-shop">${core.renderCategoryChip(getCategoryMetaById(row.category_id), "")}</div>`
           : "";
         const brandRenderer = window.App.getRuntimeModule?.("item-brands")?.renderBrandChip;
-        const brandChip = row.brand_name
+        const brandChip = row.brand_name && !String(row.product_name || row.name || "").toLowerCase().includes(String(row.brand_name).toLowerCase())
           ? `<span class="operation-receipt-brand">${typeof brandRenderer === "function" ? brandRenderer({ name: row.brand_name, accent_color: row.brand_accent_color || null, image_id: row.brand_image_id || null }) : core.renderCategoryChip({ name: row.brand_name, icon: null, accent_color: row.brand_accent_color || null }, "")}</span>`
           : "";
         const discountLabel = receiptDiscountLabel(row);
@@ -105,9 +107,8 @@
               <div class="operation-receipt-title">
                 ${brandChip}
                 ${itemName}
-                ${discountChip}
               </div>
-              <strong class="operation-receipt-total">${core.formatMoney(total, { currency: receiptCurrency })}</strong>
+              <div class="receipt-price-stack"><strong class="operation-receipt-total">${core.formatMoney(total, { currency: receiptCurrency })}</strong>${discountChip}</div>
             </div>
             ${shopChip}
             ${categoryChip}

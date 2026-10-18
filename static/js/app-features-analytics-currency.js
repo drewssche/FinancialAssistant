@@ -604,60 +604,11 @@
         : `Курс, позиция и сделки по ${core.formatCurrencyLabel(state.analyticsCurrencyFilter)} ${periodLabels[state.analyticsCurrencyPeriod] || ""}`.trim();
     }
     if (el.analyticsCurrencyBalancesRow) {
-      const positions = Array.isArray(overview.positions) ? overview.positions : [];
-      const positionsByCurrency = new Map(positions.map((item) => [core.normalizeCurrencyCode?.(item.currency, "") || "", item]));
-      const currentRates = Array.isArray(overview.current_rates) ? overview.current_rates : [];
-      const currentRatesByCurrency = new Map(currentRates.map((item) => [core.normalizeCurrencyCode?.(item.currency, "") || "", item]));
-      const trackedCurrencies = Array.isArray(overview.tracked_currencies) && overview.tracked_currencies.length
-        ? overview.tracked_currencies.map((item) => core.normalizeCurrencyCode?.(item, "") || "").filter(Boolean)
-        : getTrackedCurrencies();
-      const baseCurrency = core.normalizeCurrencyCode?.(overview.base_currency || (core.getCurrencyConfig?.().code || "BYN"), "BYN") || "BYN";
-      const bynCard = `
-        <article class="currency-balance-card">
-          <div class="muted-small">${core.formatCurrencyLabel(baseCurrency)}</div>
-          <strong>${core.formatMoney(overview.total_current_value || 0, { currency: baseCurrency })}</strong>
-          <div class="currency-balance-secondary">Текущая оценка валютных позиций в аналитике</div>
-        </article>
-      `;
-      const positionCards = trackedCurrencies.map((currency) => {
-        const item = positionsByCurrency.get(currency) || null;
-        const currentRate = currentRatesByCurrency.get(currency) || null;
-        return `
-        <article class="currency-balance-card">
-          <div class="muted-small">${core.formatCurrencyLabel(currency)}</div>
-          <strong>${core.formatAmount(item?.quantity || 0)}</strong>
-          <div class="currency-balance-secondary">${core.formatMoney(item?.current_value || 0, { currency: baseCurrency })} по текущему курсу${currentRate?.rate ? ` · ${core.formatRateDisplay?.(currentRate.rate || 0, 4, 6)}` : ""}</div>
-        </article>
-      `;
-      });
-      el.analyticsCurrencyBalancesRow.innerHTML = [bynCard, ...positionCards].join("");
+      el.analyticsCurrencyBalancesRow.replaceChildren();
+      el.analyticsCurrencyBalancesRow.classList.add("hidden");
     }
     if (el.analyticsCurrencySecondary) {
-      const positions = Array.isArray(overview.positions) ? overview.positions : [];
-      if (!positions.length) {
-        const trackedCurrencies = Array.isArray(overview.tracked_currencies) && overview.tracked_currencies.length
-          ? overview.tracked_currencies.map((item) => core.formatCurrencyLabel(item)).join(", ")
-          : getTrackedCurrencies().map((item) => core.formatCurrencyLabel(item)).join(", ");
-        el.analyticsCurrencySecondary.innerHTML = `
-          <span class="analytics-kpi-chip analytics-kpi-chip-neutral">
-            Открытых позиций пока нет. Отслеживаются: ${trackedCurrencies}
-          </span>
-        `;
-        return;
-      }
-      el.analyticsCurrencySecondary.innerHTML = positions.map((item) => {
-        const resultTone = getResultPresentation(item.result_value || 0);
-        const currentRateDate = item.current_rate_date ? core.formatDateRu(item.current_rate_date) : "курс не задан";
-        return `
-          <span class="analytics-kpi-chip currency-position-compact ${resultTone.chipClass}">
-            <span class="currency-position-primary">${core.formatCurrencyLabel(item.currency)}: ${core.formatAmount(item.quantity || 0)}</span>
-            <span class="currency-position-secondary">${core.formatMoney(item.current_value || 0)} · средняя ${core.formatRateDisplay?.(item.average_buy_rate || 0, 4, 6)} · текущий ${core.formatRateDisplay?.(item.current_rate || 0, 4, 6)} · ${currentRateDate}</span>
-          </span>
-        `;
-      }).concat([
-        `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Покупки: ${core.formatMoney(overview.buy_volume_base || 0)} · ${String(overview.buy_trades_count || 0)} сделок · средняя ${core.formatRateDisplay?.(overview.buy_average_rate || 0, 4, 6)}</span>`,
-        `<span class="analytics-kpi-chip analytics-kpi-chip-neutral">Продажи: ${core.formatMoney(overview.sell_volume_base || 0)} · ${String(overview.sell_trades_count || 0)} сделок · средняя ${core.formatRateDisplay?.(overview.sell_average_rate || 0, 4, 6)}</span>`,
-      ]).join("");
+      el.analyticsCurrencySecondary.innerHTML = `<div class="table-wrap"><table class="table compact-trade-summary"><thead><tr><th>Сделки</th><th>Объём</th><th>Количество</th></tr></thead><tbody>${[["Покупки", "buy"],["Продажи", "sell"]].map(([label,key]) => `<tr><td>${label}</td><td>${core.formatMoney(overview[key + "_volume_base"] || 0)}</td><td>${Number(overview[key + "_trades_count"] || 0)}</td></tr>`).join("")}</tbody></table></div>`;
     }
   }
 

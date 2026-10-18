@@ -9,58 +9,19 @@ function createPlansDashboardFeature({
   renderPlanCard,
   loadPlans,
 }) {
-  const periodControlUtils = window.App.getRuntimeModule?.("period-control-utils") || {};
-
-  function getDashboardPlansPeriodBounds(period = state.dashboardPlansPeriod || "month", anchor = state.dashboardPlansPeriodAnchor || "current") {
-    if (period === "all_time") {
-      return null;
-    }
-    const current = core.getPeriodBounds ? core.getPeriodBounds(period) : null;
-    if (!current?.dateFrom || !current?.dateTo || anchor !== "previous") {
-      return current;
-    }
-    return periodControlUtils.shiftPeriodBounds?.({
-      period,
-      direction: -1,
-      currentBounds: current,
-      getPeriodBounds: (value) => core.getPeriodBounds(value),
-    }) || current;
+  let forecastGeneration = 0;
+  function getDashboardPlansPeriodBounds(period = state.dashboardPlansPeriod || "month") {
+    if (period === "all_time") return null;
+    const start = core.getTodayIso();
+    const end = new Date(start + "T12:00:00Z");
+    end.setUTCDate(end.getUTCDate() + (period === "week" ? 6 : 29));
+    return { dateFrom: start, dateTo: end.toISOString().slice(0,10) };
   }
 
   function closeDashboardPlansPeriodPopover() {
     getPickerUtils().setPopoverOpen?.(el.dashboardPlansPeriodPopover, false, {
       owners: [el.dashboardPlansPeriodTabs].filter(Boolean),
     });
-  }
-
-  function renderDashboardPlansPeriodOptions(period = state.dashboardPlansPeriod || "month") {
-    if (!el.dashboardPlansPeriodOptions) {
-      return;
-    }
-    const currentBounds = getDashboardPlansPeriodBounds(period, "current");
-    const previousBounds = getDashboardPlansPeriodBounds(period, "previous");
-    const currentLabel = period === "week" ? "Эта неделя" : "Этот месяц";
-    const previousLabel = period === "week" ? "Прошлая неделя" : "Прошлый месяц";
-    el.dashboardPlansPeriodOptions.innerHTML = [
-      `
-        <button class="btn btn-secondary settings-picker-option active" type="button" data-dashboard-plans-quick-period="${period}" data-dashboard-plans-quick-anchor="current">
-          ${currentLabel}
-          <span class="muted-small">${core.formatPeriodLabel(currentBounds?.dateFrom || "", currentBounds?.dateTo || "")}</span>
-        </button>
-      `,
-      `
-        <button class="btn btn-secondary settings-picker-option" type="button" data-dashboard-plans-quick-period="${period}" data-dashboard-plans-quick-anchor="previous">
-          ${previousLabel}
-          <span class="muted-small">${core.formatPeriodLabel(previousBounds?.dateFrom || "", previousBounds?.dateTo || "")}</span>
-        </button>
-      `,
-      `
-        <button class="btn btn-secondary settings-picker-option" type="button" data-dashboard-plans-quick-period="all_time" data-dashboard-plans-quick-anchor="current">
-          Все активные планы
-          <span class="muted-small">Без ограничения по периоду</span>
-        </button>
-      `,
-    ].join("");
   }
 
   function getDashboardPlansPeriodFilteredItems() {
@@ -83,20 +44,8 @@ function createPlansDashboardFeature({
   }
 
   function getDashboardPlansPeriodLabel() {
-    const period = state.dashboardPlansPeriod || "month";
-    if (period === "all_time") {
-      return "Все активные планы";
-    }
-    const anchor = state.dashboardPlansPeriodAnchor || "current";
-    const bounds = getDashboardPlansPeriodBounds(period, anchor);
-    if (!bounds?.dateFrom || !bounds?.dateTo) {
-      return period === "week" ? "Планы на текущую неделю" : "Планы на текущий месяц";
-    }
-    const base = core.formatPeriodLabel ? core.formatPeriodLabel(bounds.dateFrom, bounds.dateTo) : `${bounds.dateFrom} - ${bounds.dateTo}`;
-    if (period === "week") {
-      return anchor === "previous" ? `Планы за прошлую неделю: ${base}` : `Планы на неделю: ${base}`;
-    }
-    return anchor === "previous" ? `Планы за прошлый месяц: ${base}` : `Планы на месяц: ${base}`;
+    const bounds = getDashboardPlansPeriodBounds();
+    return bounds ? `${core.formatDateRu(bounds.dateFrom)} — ${core.formatDateRu(bounds.dateTo)}` : "Ближайшие платежи всех активных планов";
   }
 
   function renderDashboardPlans() {
@@ -110,30 +59,31 @@ function createPlansDashboardFeature({
     if (el.dashboardPlansPeriodLabel) {
       el.dashboardPlansPeriodLabel.textContent = getDashboardPlansPeriodLabel();
     }
-    const items = getDashboardPlansPeriodFilteredItems()
+    const periodItems = getDashboardPlansPeriodFilteredItems();
+    const items = [...periodItems]
       .sort((a, b) => String(a.scheduled_date || a.due_date || a.operation_date || "").localeCompare(String(b.scheduled_date || b.due_date || b.operation_date || "")))
       .slice(0, ui?.dashboardOperationsLimit || 8);
-    const summary = summarizePlans(items);
-    el.dashboardPlansKpi.innerHTML = `
-      <span class="analytics-kpi-chip analytics-kpi-chip-neutral">Активных: ${summary.activeCount}</span>
-      <span class="analytics-kpi-chip analytics-kpi-chip-neutral">Сегодня: ${summary.todayCount}</span>
-      <span class="analytics-kpi-chip analytics-kpi-chip-negative">Просрочено: ${summary.overdueCount}</span>
-      <span class="analytics-kpi-chip ${summary.netPlanned >= 0 ? "analytics-kpi-chip-positive" : "analytics-kpi-chip-negative"}">Плановый сдвиг: ${summary.netPlanned < 0 ? "-" : "+"}${core.formatMoney(Math.abs(summary.netPlanned))}</span>
-    `;
+    const summary = summarizePlans(periodItems);
+    const generation = ++forecastGeneration, owner = state.token;
+    const counts = `<span class="muted-small">Планов: ${summary.activeCount}${summary.todayCount ? ` · Сегодня: ${summary.todayCount}` : ""}${summary.overdueCount ? ` · Просрочено: ${summary.overdueCount}` : ""}</span>`;
+    const sums = (income, expense) => `<span>Получить <b>${core.formatMoney(income)}</b></span><span>Заплатить <b>${core.formatMoney(expense)}</b></span>`;
+    el.dashboardPlansKpi.innerHTML = counts;
+    if (state.dashboardPlansPeriod === "all_time") {
+      el.dashboardPlansKpi.innerHTML += sums(summary.potentialIncome, summary.potentialExpense);
+    } else {
+      const days = state.dashboardPlansPeriod === "week" ? 7 : 30;
+      core.requestJson(`/api/v1/plans/forecast?days=${days}`, { headers: core.authHeaders() }).then(data => {
+        if (generation !== forecastGeneration || owner !== state.token) return;
+        el.dashboardPlansKpi.innerHTML = counts + (data.income_total == null ? '<span class="muted-small">Прогноз недоступен</span>' : sums(data.income_total, data.expense_total) + `<span class="muted-small">${Number(data.occurrences_count)} платежей${data.unpriced_count ? ` · Без курса: ${Number(data.unpriced_count)}` : ""}</span>`);
+      }).catch(() => { if (generation === forecastGeneration && owner === state.token) el.dashboardPlansKpi.innerHTML = counts + '<span class="muted-small">Прогноз недоступен</span>'; });
+    }
     el.dashboardPlansList.innerHTML = items.length
       ? items.map((item) => renderPlanCard(item, { dashboardCompact: true })).join("")
       : "<div class='muted-small'>Планов пока нет</div>";
   }
 
-  function openDashboardPlansPeriodPopover(period, trigger) {
-    if (!["week", "month"].includes(period) || !el.dashboardPlansPeriodPopover) {
-      return;
-    }
-    renderDashboardPlansPeriodOptions(period);
-    getPickerUtils().setPopoverOpen?.(el.dashboardPlansPeriodPopover, true, {
-      owners: [trigger || el.dashboardPlansPeriodTabs].filter(Boolean),
-      onClose: () => closeDashboardPlansPeriodPopover(),
-    });
+  function openDashboardPlansPeriodPopover(period) {
+    void setDashboardPlansPeriod(period);
   }
 
   async function setDashboardPlansPeriod(value, anchor = "current") {

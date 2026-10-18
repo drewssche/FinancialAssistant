@@ -88,7 +88,7 @@
         const sideClass = isLinkedSettlement || item.side === "sell" ? "expense" : "income";
         const sideLabel = isLinkedSettlement ? "Оплата картой" : item.side === "sell" ? "Продажа" : "Покупка";
         const linkedMeta = isLinkedSettlement
-          ? `<div class="currency-trade-meta"><span class="meta-chip meta-chip-info">Связано с операцией</span><button class="meta-chip-btn meta-chip-btn-neutral" type="button" data-open-linked-operation-id="${Number(item.linked_operation_id)}">Открыть</button></div>`
+          ? `<div class="currency-trade-meta"><button class="meta-chip-btn meta-chip-btn-neutral" type="button" data-open-linked-operation-id="${Number(item.linked_operation_id)}">Связанная операция</button></div>`
           : "";
         const menuItems = isLinkedSettlement
           ? [
