@@ -114,12 +114,11 @@
 
 .scan-codes-host {grid-column:1 / -1;min-width:0;}
 
-#createModal .receipt-scan-entry { display: flex; align-items: center; justify-content: flex-start; gap: 12px; width: 100%; padding: 14px 16px; margin: 4px 0 16px; border: 1px solid #b47b39; background: linear-gradient(110deg, #54371d, #202d42); text-align: left; white-space: normal; }
-#createModal .receipt-scan-entry[hidden] { display: none; }
-.receipt-scan-entry svg { width: 26px; height: 26px; flex-shrink: 0; color: #ffaf58; }
-.receipt-scan-entry span { display: grid; gap: 4px; }
-.receipt-scan-entry strong { font-size: 15px; }
-.receipt-scan-entry small { color: var(--muted); font-weight: 400; }
+#createModal .receipt-scan-entry, #editModal .receipt-scan-entry {display:inline-flex;align-items:center;gap:8px;width:fit-content;max-width:100%;height:42px;padding:0 14px;margin:4px 0 16px;border:1px solid #b47b39;background:#54371d;color:var(--text);font-size:14px;white-space:nowrap;}
+#createModal .receipt-scan-entry:hover {background:#684521;}
+.receipt-scan-entry[hidden] {display:none !important;}
+.receipt-scan-entry svg {width:20px;height:20px;flex-shrink:0;color:#ffaf58;}
+#scanNoPhoto {display:grid;place-items:center;min-height:220px;padding:24px;border:1px dashed var(--border);border-radius:12px;color:var(--muted);text-align:center;}
 
 .scan-row-actions {display:flex;align-items:center;gap:6px;}
 .scan-split-confirm {grid-column:1/-1;display:flex;align-items:center;flex-wrap:wrap;gap:8px;width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;}
@@ -132,3 +131,5 @@
 @media(max-width:700px){.scan-catalog-list {width:calc(100% + 54px);}}
 
 @media(max-width:700px){.scan-row:has([data-scan-split]) .scan-catalog-list {width:calc(100% + 104px);}}
+
+.editing-debt-movement #openSavedReceiptScan {display:none !important;}

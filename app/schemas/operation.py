@@ -112,6 +112,13 @@ class OperationFxSettlementOut(BaseModel):
     note: str | None = None
 
 
+class ReceiptScanIn(BaseModel):
+    image: str | None = Field(default=None, max_length=5600000)
+    original_text: str = Field(default="", max_length=80000)
+    text: str = Field(default="", max_length=80000)
+    review: dict = Field(default_factory=dict)
+
+
 class OperationCreate(BaseModel):
     kind: str
     amount: Decimal | None = None
@@ -126,6 +133,7 @@ class OperationCreate(BaseModel):
     operation_date: date
     category_id: int | None = None
     note: str | None = None
+    receipt_scan: ReceiptScanIn | None = None
     receipt_items: list[OperationReceiptItemIn] = []
     fx_settlement: OperationFxSettlementIn | None = None
 
@@ -145,11 +153,13 @@ class OperationUpdate(BaseModel):
     operation_date: date | None = None
     category_id: int | None = None
     note: str | None = None
+    receipt_scan: ReceiptScanIn | None = None
     receipt_items: list[OperationReceiptItemIn] | None = None
     fx_settlement: OperationFxSettlementIn | None = None
 
 
 class OperationOut(BaseModel):
+    has_receipt_scan: bool = False
     id: int
     kind: str
     amount: Decimal

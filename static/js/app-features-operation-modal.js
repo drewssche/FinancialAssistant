@@ -424,10 +424,11 @@
       el.createEntryModeSwitch.classList.remove("hidden");
     }
     const dateInput = document.getElementById("opDate");
-    if (!dateInput.value) {
-      core.syncDateFieldValue(dateInput, core.getTodayIso());
-    }
-    setOperationKind("create", el.opKind.value || "expense");
+    core.syncDateFieldValue(dateInput, core.getTodayIso());
+    document.getElementById("opAmount").value = "";
+    document.getElementById("opNote").value = "";
+    window.App.getRuntimeModule?.("receipt-scan")?.beginOperation?.();
+    setOperationKind("create", "expense");
     el.opCategory.value = "";
     el.opCategorySearch.value = "";
     clearReceiptItems("create");
@@ -637,6 +638,7 @@
     window.App.getRuntimeModule?.("debt-movement-editor")?.reset();
     await ensureCategoryCatalogReady("edit");
     state.editOperationId = item.id;
+    window.App.getRuntimeModule?.("receipt-scan")?.editOperation?.(item);
     setEditModalActivity("operation", item.id);
     document.getElementById("editAmount").value = item.original_amount || item.amount;
     syncSelectableCurrencyFields({ editCurrency: item.currency || "" });

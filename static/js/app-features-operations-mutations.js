@@ -312,11 +312,14 @@
         return;
       }
       const payload = getValidatedCreateOperationPayload();
+      const scan = window.App.getRuntimeModule("receipt-scan").payload("create");
+      if (scan) payload.receipt_scan = scan;
       await window.App.receiptCodes.saveRequest("/api/v1/operations", {
         method: "POST",
         headers: core.authHeaders(),
         body: JSON.stringify(payload),
       }, "create", payload.receipt_items);
+      window.App.getRuntimeModule("receipt-scan").saved("create");
       const dashboardData = getDashboardData();
       core.invalidateUiRequestCache("operations");
       dashboardData.invalidateSummaryCache?.();
@@ -342,11 +345,14 @@
         return;
       }
       const payload = getValidatedUpdateOperationPayload();
+      const scan = window.App.getRuntimeModule("receipt-scan").payload("edit");
+      if (scan) payload.receipt_scan = scan;
       await window.App.receiptCodes.saveRequest(`/api/v1/operations/${state.editOperationId}`, {
         method: "PATCH",
         headers: core.authHeaders(),
         body: JSON.stringify(payload),
       }, "edit", payload.receipt_items);
+      window.App.getRuntimeModule("receipt-scan").saved("edit");
       const dashboardData = getDashboardData();
       core.invalidateUiRequestCache("operations");
       dashboardData.invalidateSummaryCache?.();

@@ -1,3 +1,4 @@
+from app.services.receipt_scan_storage import prepare_scan, attach_scan
 from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_UP
 import re
@@ -124,9 +125,11 @@ class OperationService:
         fx_payment_mode: str | None = None,
         receipt_items: list[dict] | None = None,
         fx_settlement: dict | None = None,
+        receipt_scan: dict | None = None,
         fx_policy_snapshot: dict | None = None,
         commit: bool = True,
     ):
+        prepared_scan = prepare_scan(receipt_scan)
         self._validate_kind(kind)
         normalized_items, receipt_total = self._normalize_receipt_items(receipt_items or [])
         category_id = self._resolve_effective_operation_category_id(
@@ -281,6 +284,7 @@ class OperationService:
                 "has_fx_settlement": bool(fx_settlement),
             },
         )
+        attach_scan(item, prepared_scan)
         if commit:
             self.db.commit()
             self._invalidate_caches(user_id)
@@ -615,6 +619,8 @@ class OperationService:
             raise ValueError("Сначала отвяжите операцию от выплаты, затем измените её тип")
         before_activity = ActivityService.snapshot(item, self.ACTIVITY_FIELDS)
 
+        scan_input = updates.pop("receipt_scan", None)
+        prepared_scan = prepare_scan(scan_input, item.receipt_scan_image if scan_input else None)
         receipt_items_input = updates.pop("receipt_items", None) if "receipt_items" in updates else None
         fx_settlement_input = updates.pop("fx_settlement", None) if "fx_settlement" in updates else None
         fx_manual_rate_present = "fx_manual_rate" in updates
@@ -939,6 +945,7 @@ class OperationService:
                     "fx_settlement_updated": "fx_settlement" in logged_fields,
                 },
             )
+        attach_scan(item, prepared_scan)
         self.db.commit()
         self._invalidate_caches(user_id)
         self.db.refresh(item)
@@ -1435,6 +1442,7 @@ class OperationService:
             "category_icon": operation_category_meta.get("icon"),
             "category_accent_color": operation_category_meta.get("accent_color"),
             "note": operation.note,
+            "has_receipt_scan": bool(getattr(operation, "has_receipt_scan", False)),
             "receipt_items": receipt_payload,
             "receipt_total": receipt_total_value,
             "receipt_discrepancy": discrepancy,

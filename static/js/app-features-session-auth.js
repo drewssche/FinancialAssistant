@@ -450,6 +450,7 @@
     localStorage.removeItem("access_token");
     state.token = "";
     state.isAdmin = false;
+    window.App.getRuntimeModule?.("receipt-scan")?.reset?.();
     state.currentUserId = null;
     stopSessionMonitor();
     hideSessionRecovery();

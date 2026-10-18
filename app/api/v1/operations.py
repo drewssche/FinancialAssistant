@@ -290,6 +290,7 @@ def create_operation(
             operation_date=payload.operation_date,
             category_id=payload.category_id,
             note=payload.note,
+            receipt_scan=payload.receipt_scan.model_dump() if payload.receipt_scan else None,
             receipt_items=[_dump_receipt_item(item) for item in payload.receipt_items],
             fx_settlement=payload.fx_settlement.model_dump() if payload.fx_settlement else None,
         )
@@ -1087,6 +1088,29 @@ def delete_all_operation_item_templates(
     service = OperationService(db)
     deleted = service.delete_all_item_templates(user_id=user_id)
     return OperationItemTemplateDeleteAllOut(deleted=deleted)
+
+
+@router.get("/receipt-photos/storage")
+def receipt_photo_storage(user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    from app.services.receipt_scan_storage import photo_stats
+    return photo_stats(db, user_id)
+
+
+@router.delete("/receipt-photos/storage")
+def delete_receipt_photos(user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    from app.services.receipt_scan_storage import delete_photos
+    return delete_photos(db, user_id)
+
+
+@router.get("/{operation_id}/receipt-scan")
+def get_receipt_scan(operation_id: int, response: Response,
+                     user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    from app.services.receipt_scan_storage import read_scan
+    response.headers["Cache-Control"] = "no-store"
+    result = read_scan(db, user_id, operation_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Чек не найден")
+    return result
 
 
 @router.get("/{operation_id}", response_model=OperationOut)

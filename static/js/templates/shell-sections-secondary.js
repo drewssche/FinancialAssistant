@@ -990,6 +990,10 @@
               <div class="settings-actions"><button id="saveSettingsBtn" class="btn btn-primary btn-icon" type="submit" aria-label="Сохранить настройки" title="Сохранить настройки">${window.App.icons.svg("save")}</button></div>
             </form>
               <div id="settings-data" data-settings-panel="data" class="settings-page hidden">
+            <section class="panel">
+              <div class="row between"><h3>Фото чеков</h3><button id="deleteReceiptPhotos" type="button" class="btn btn-danger btn-icon" aria-label="Удалить фото чеков" title="Удалить фото чеков" disabled>${window.App.icons.svg("trash")}</button></div>
+              <p id="receiptPhotoStorage" class="muted-small" role="status"></p>
+            </section>
             <section class="panel danger-zone">
               <h3>Удаление аккаунта</h3>
               <p class="subtitle">Удаление аккаунта удалит все операции, долги, категории и настройки без возможности восстановления.</p>

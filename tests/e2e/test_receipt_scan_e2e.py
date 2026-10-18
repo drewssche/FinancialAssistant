@@ -58,9 +58,13 @@ def test_scan_review_to_unsaved_operation(static_server_url,page_with_receipt_ap
     assert payload[0].get('template_id') is None and payload[0].get('variant_id') is None
     expect(page.locator('#opAmount')).to_have_value('7.50')
     expect(page.locator('#opDate')).to_have_value('2026-10-12')
-    # Transfer is a draft-only action, and another scan cannot overwrite it.
-    page.click('#openReceiptScan');stub(page);upload(page);page.click('#scanRun');page.locator('#scanConfirmed').check();page.click('#scanTransfer')
-    expect(page.locator('#scanStatus')).to_contain_text('уже есть данные')
+    # Review survives closing and follows edits made in the operation.
+    page.click('#openReceiptScan')
+    expect(page.locator('#scanReview')).to_be_visible()
+    expect(page.locator('#scanTotal')).to_have_value('7.50')
+    page.locator('#scanConfirmed').check();page.click('#scanTransfer')
+    expect(page.locator('#scanReplaceOperation')).to_be_visible()
+    page.click('#scanReplaceNo');page.click('#scanClose')
     assert page.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()") == payload
     assert writes==[] and errors==[]
 

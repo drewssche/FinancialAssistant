@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, func
+from sqlalchemy import Boolean, JSON, LargeBinary, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -35,4 +35,7 @@ class Operation(Base):
     fx_payment_mode: Mapped[str] = mapped_column(String(24), default="valuation", server_default="valuation")
     operation_date: Mapped[date] = mapped_column(Date, index=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    has_receipt_scan: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    receipt_scan_data: Mapped[dict | None] = mapped_column(JSON, nullable=True, deferred=True)
+    receipt_scan_image: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True, deferred=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
