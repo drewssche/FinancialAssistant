@@ -187,4 +187,13 @@ class ReceiptCodeService:
                 raise ValueError('Артикул уже связан с другой фасовкой')
             mapping.retailer_code = code
             if variant: mapping.variant_id = variant.id
+        elif variant:
+            # A barcode alone also identifies this shop's package. Preserve an
+            # explicit existing mapping when an older receipt is edited.
+            mapping = self.db.get(CatalogOfferIdentity, template.id)
+            if mapping is None:
+                mapping = CatalogOfferIdentity(template_id=template.id, user_id=user_id)
+                self.db.add(mapping)
+            if mapping.variant_id is None:
+                mapping.variant_id = variant.id
         self.db.flush()

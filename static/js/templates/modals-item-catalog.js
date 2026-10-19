@@ -172,6 +172,7 @@
           <p id="catalogProductCodesStatus" class="muted-small" role="status"></p>
           <button id="catalogProductCodesRetry" type="button" class="btn btn-secondary btn-xs btn-icon" hidden title="Повторить загрузку кодов" aria-label="Повторить загрузку кодов">${window.App.icons.svg("refresh")}</button>
           <div id="catalogProductOffersList" class="catalog-product-offers-list"></div>
+          <div id="catalogProductOtherCodes" class="catalog-product-offers-list hidden"></div>
         </section>
         <section data-product-panel="prices" class="catalog-product-detail-panel hidden">
           <label class="field"><span>Предложение магазина</span><select id="catalogProductPriceOffer" aria-label="Предложение для истории цен"></select></label>

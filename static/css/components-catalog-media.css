@@ -379,7 +379,7 @@
 #operationReceiptModal .btn:not(.modal-close-btn) {
   height: var(--catalog-control-height);
   min-height: var(--catalog-control-height);
-  padding-inline: 0.65rem;
+  padding-inline: var(--category-input-padding-start, 0.65rem) 0.65rem;
   font-size: 0.78rem;
 }
 

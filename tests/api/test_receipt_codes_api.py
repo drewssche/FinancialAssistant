@@ -155,3 +155,48 @@ def test_existing_sku_without_variant_corroborates_barcode_and_conflicts_do_not_
     assert get(client,p)['offers'][0]['retailer_code']=='sku-1'
     # A direct type choice is required to persist a damaged/uncertain OCR candidate.
     assert receipt(client,[{'kind':'unknown','code':'1234567'}]).status_code==422
+
+
+def test_barcode_without_sku_links_existing_product_offer_and_survives_card_save(client):
+    from tests.api.test_product_primary_codes_api import create
+    p = create(client, sale_unit='piece', package_quantity='45', package_unit='g').json()['id']
+    saved = receipt(client, [{'kind':'barcode','code':CODE}], product_id=p,
+                    sale_unit=None, package_quantity=None, package_unit=None)
+    assert saved.status_code == 201, saved.text
+    row = saved.json()['receipt_items'][0]
+    identity = get(client, p)
+    v = identity['variants'][0]
+    mapping = identity['offers'][0]
+    assert mapping['template_id'] == row['template_id']
+    assert mapping['variant_id'] == v['id'] == row['variant_snapshot']['variant_id']
+    assert mapping['retailer_code'] is None
+    assert v['codes'] == [CODE] and v['package_quantity'] is None
+    found = lookup(client, [{'kind':'barcode','code':CODE}])
+    assert found['items'][0]['template_id'] == row['template_id']
+    edited = client.patch(f'/api/v1/operations/catalog-products/{p}', json={
+        'codes': {'barcodes':[{'variant_id':v['id'], 'codes':[CODE]}]}})
+    assert edited.status_code == 200, edited.text
+    assert edited.json()['package_quantity'] == '45.000'
+    assert get(client, p)['variants'][0]['codes'] == [CODE]
+    old = client.get(f"/api/v1/operations/{saved.json()['id']}").json()
+    assert old['receipt_items'][0]['variant_snapshot'] == row['variant_snapshot']
+    assert old['receipt_total'] == saved.json()['receipt_total']
+
+
+def test_barcode_only_fills_empty_mapping_without_overwriting_existing_metadata_or_package(client):
+    from tests.api.test_product_primary_codes_api import create
+    p = create(client, codes={'retailers':[{'shop_name':'Green','retailer_code':'sku-1'}]}).json()['id']
+    mapping = get(client, p)['offers'][0]
+    endpoint = f"/api/v1/operations/catalog-products/{p}/offers/{mapping['template_id']}/identity"
+    assert client.put(endpoint, json={'retailer_code':'sku-1','external_name':'Milk','product_url':'https://example.com/milk'}).status_code == 200
+    saved = receipt(client, [{'kind':'barcode','code':CODE}], product_id=p)
+    assert saved.status_code == 201, saved.text
+    first = get(client, p)['offers'][0]
+    assert first['variant_id'] is not None
+    assert first['retailer_code'] == 'sku-1' and first['external_name'] == 'Milk'
+    assert first['product_url'] == 'https://example.com/milk'
+    # A receipt for another package must not silently replace the shop's explicit mapping.
+    other = receipt(client, [{'kind':'barcode','code':'5901234123457'}], product_id=p, package_quantity='1000')
+    assert other.status_code == 201, other.text
+    assert get(client, p)['offers'][0] == first
+    assert other.json()['receipt_items'][0]['variant_snapshot']['variant_id'] != first['variant_id']

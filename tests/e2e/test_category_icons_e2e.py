@@ -54,3 +54,21 @@ def test_category_icon_selection_search_group_fallback_and_bulk(static_server_ur
     choice.click()
     expect(select).to_have_value('102')
     expect(select.locator('option:checked')).to_have_text('🧭 Транспорт')
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width', [390, 1440])
+def test_source_offer_category_icon_has_room_in_compact_editor(static_server_url, page_with_receipt_api_mock, width):
+    p = page_with_receipt_api_mock
+    open_editor(p, static_server_url, width)
+    p.keyboard.press('Escape')
+    p.evaluate("""() => window.App.getRuntimeModule('item-catalog').openItemTemplateModal({
+        id:1, name:'Сырок Бабушкина Крынка кокос 45г', shop_name:'Соседи', last_category_id:101
+    })""")
+    field = p.locator('#itemTemplateCategorySearch')
+    expect(field).to_have_value('Еда')
+    assert_field_icon(field, '🍔')
+    p.locator('#itemTemplateModal').screenshot(path=f'/tmp/fa-source-category-{width}.png')
+    field.fill('Коф')
+    expect(field.locator('..').locator('.category-field-icon')).to_be_hidden()
+    assert field.evaluate('n=>parseFloat(getComputedStyle(n).paddingLeft)') < 38

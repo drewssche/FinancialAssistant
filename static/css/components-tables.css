@@ -849,6 +849,6 @@
 /* Category search keeps its plain text value; the selected icon is decorative. */
 .category-input-control {position:relative;display:flex;min-width:0;width:100%;}
 .category-input-control > input {width:100%;min-width:0;flex:1;}
-.category-input-control.has-category-icon > input {padding-inline-start:38px;}
+.category-input-control.has-category-icon > input {--category-input-padding-start:38px;padding-inline-start:var(--category-input-padding-start);}
 .category-field-icon {position:absolute;inset-inline-start:12px;top:50%;transform:translateY(-50%);width:20px;text-align:center;pointer-events:none;font-size:16px;line-height:1;}
 .category-field-icon:empty {display:none;}

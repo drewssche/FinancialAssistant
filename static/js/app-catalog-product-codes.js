@@ -87,8 +87,27 @@
       }
       if(variant?.is_archived){const note=document.createElement('small');note.className='muted-small offer-code-size';note.textContent='Штрихкод архивного размера';host.append(note);}
     }
+    renderOtherCodes();
     status();
 
+  }
+  function renderOtherCodes(){
+    const host=node('catalogProductOtherCodes');
+    if(!host)return;
+    host.replaceChildren();
+    const shown=new Set(hosts().map(h=>h.dataset.codeKey));
+    const remaining=(data?.variants||[]).filter(v=>!shown.has(String(v.id))&&((v.codes||[]).length||barcodes.has(String(v.id))));
+    host.classList.toggle('hidden',!remaining.length);
+    if(!remaining.length)return;
+    const heading=document.createElement('strong');heading.textContent='Штрихкоды других фасовок';host.append(heading);
+    for(const variant of remaining){
+      const key=String(variant.id),row=document.createElement('div');row.dataset.otherVariantCodes=key;
+      const size=window.App.measurements.summary(variant);
+      const input=inputField(row,'barcode',`${size}${variant.is_archived?' · Архив':''}`,480);
+      input.value=(barcodes.get(key)||variant.codes||[]).join(', ');input.disabled=Boolean(variant.is_archived);
+      input.oninput=()=>{barcodes.set(key,input.value.split(/[\s,;]+/).filter(Boolean));};
+      host.append(row);
+    }
   }
   function bind(){
     if(bound)return;bound=true;
@@ -99,6 +118,7 @@
   function open(value){close();bind();product=value;render();if(product)load();}
   function payload(){
     const keys=new Set(hosts().map(h=>h.dataset.codeKey)),ids=new Set(hosts().map(h=>Number(h.dataset.offerCodes)));
+    for(const row of document.querySelectorAll('[data-other-variant-codes]'))keys.add(row.dataset.otherVariantCodes);
     const standardKey='new:'+sizeKey(measurement());
     const result={barcodes:[...barcodes].filter(([key])=>keys.has(key)&&(!key.startsWith('new:')||key===standardKey)).map(([key,codes])=>({variant_id:key.startsWith('new:')?null:Number(key),codes})),retailers:[...retailers].filter(([id])=>ids.has(id)).map(([template_id,retailer_code])=>({template_id,retailer_code}))};
     const offerSizes=[];

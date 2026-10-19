@@ -156,3 +156,30 @@ def test_missing_product_name_returns_to_main_tab_without_losing_codes(static_se
     p.locator('#catalogProductName').fill('Молоко')
     p.locator('[data-product-tab=offers]').click();expect(sku(p)).to_have_value('000-43')
     p.locator('#submitCatalogProductBtn').click();expect(p.locator('#catalogProductModal')).to_be_hidden()
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('linked', [False, True])
+@pytest.mark.parametrize('width', [390, 1440])
+def test_receipt_barcode_with_unknown_size_is_visible_and_editable(static_server_url, page_with_receipt_api_mock, linked, width):
+    p = page_with_receipt_api_mock
+    writes = setup(p, static_server_url, width)
+    p.route('**/catalog-products/401/identity', lambda r: r.fulfill(json={
+        'variants':[{'id':334,'name':'Молоко','sale_unit':None,'package_quantity':None,'package_unit':None,'codes':[CODE]}],
+        'offers':[{'template_id':501,'variant_id':334,'retailer_code':None}] if linked else []}))
+    p.evaluate("window.App.getRuntimeModule('catalog-product-codes').reload()")
+    p.locator('[data-product-tab=offers]').click()
+    field = barcode(p) if linked else p.locator('[data-other-variant-codes="334"] input')
+    expect(field).to_be_visible()
+    expect(field).to_have_value(CODE)
+    if not linked:
+        expect(p.locator('#catalogProductOtherCodes')).to_contain_text('Размер не указан')
+    else:
+        expect(p.locator('[data-other-variant-codes]')).to_have_count(0)
+    field.fill('0'+CODE)
+    box = field.bounding_box()
+    assert box['x'] >= 0 and box['x']+box['width'] <= width+1
+    p.locator('#catalogProductModal').screenshot(path=f'/tmp/fa-receipt-code-card-{linked}-{width}.png')
+    p.locator('#submitCatalogProductBtn').click()
+    expect(p.locator('#catalogProductModal')).to_be_hidden()
+    assert writes[-1]['codes'] == {'barcodes':[{'variant_id':334,'codes':['0'+CODE]}], 'retailers':[]}
