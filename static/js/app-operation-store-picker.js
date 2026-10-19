@@ -16,6 +16,20 @@
     input.setAttribute('aria-expanded', 'false');
     let active = -1;
     let options = [];
+    let loading = false;
+    let currentQuery = "";
+    const canonical = value => !config.getNames && /(?:^|[^а-яё])либрет[ие]к(?:$|[^а-яё])/i.test(value) ? 'Соседи' : value;
+    async function ensureSources() {
+      if (config.getNames || loading) return;
+      loading = true;
+      try {
+        await window.App.getRuntimeModule('item-catalog')?.loadItemSources?.();
+      } catch (_) { /* The existing names and explicit creation stay available. */ }
+      finally {
+        loading = false;
+        if (owner.isConnected && !popup.classList.contains('hidden')) render(currentQuery);
+      }
+    }
     function close() {
       utils.setPopoverOpen(popup, false, {owners: [input]});
       input.setAttribute('aria-expanded', 'false');
@@ -23,12 +37,14 @@
       active = -1;
     }
     function choose(name) {
-      input.value = name;
+      input.value = canonical(name);
       input.dispatchEvent(new Event('change', {bubbles: true}));
       input.focus({preventScroll: true});
       close();
     }
     function render(query = '') {
+      currentQuery = query;
+      query = canonical(query);
       const names = [...new Set((config.getNames?.() || (window.App.state.itemSources || []).map(item => item.name)).filter(Boolean))];
       const matches = names.filter(name => window.App.search.matches(name, query))
         .sort((a, b) => window.App.search.compare(query, [a], [b]) || a.localeCompare(b, 'ru'));
@@ -66,9 +82,9 @@
       utils.setPopoverOpen(popup, true, {owners: [input], outsideScopes: [owner], onClose: close});
       input.setAttribute('aria-expanded', 'true');
     }
-    input.addEventListener('focus', () => render());
+    input.addEventListener('focus', () => { render(); ensureSources(); });
     input.addEventListener('click', () => { if (popup.classList.contains('hidden')) render(); });
-    input.addEventListener('input', () => render(input.value));
+    input.addEventListener('input', () => { render(input.value); ensureSources(); });
     input.addEventListener('keydown', event => {
       if (event.isComposing) return;
       if (event.key === 'Escape' && !popup.classList.contains('hidden')) {
@@ -85,7 +101,8 @@
         selected.scrollIntoView({block: 'nearest'});
       } else if (event.key === 'Enter') {
         event.preventDefault();
-        choose(active >= 0 ? options[active].name : input.value.trim());
+        const option = active >= 0 ? options[active] : options.find(item => !item.custom);
+        if (option) choose(option.name);
       } else if (event.key === 'Tab') close();
     });
     input.addEventListener('blur', event => {
@@ -98,7 +115,7 @@
       new MutationObserver(() => { if (container.classList.contains('hidden') || (container.tagName === 'DIALOG' && !container.open)) close(); })
         .observe(container, {attributes: true, attributeFilter: ['class', 'open']});
     }
-    return {close, isOpen: () => !popup.classList.contains('hidden'), refresh: () => {if (!popup.classList.contains('hidden')) render(input.value);}};
+    return {close, isOpen: () => !popup.classList.contains('hidden'), refresh: () => {if (!popup.classList.contains('hidden')) render(currentQuery);}};
   }
   window.App.registerRuntimeModule('operation-store-picker', {bind});
 })();

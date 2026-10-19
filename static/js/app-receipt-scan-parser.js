@@ -34,7 +34,7 @@
         if (stamp) { const date = `${stamp[3]}-${stamp[2]}-${stamp[1]}`; if (validDate(date)) dates.add(date); }
       }
       if (!ended && !rows.length) {
-        const merchant = /гринрозница/i.test(line) ? 'Green' : /евроторг/i.test(line) ? 'Евроопт' : /соседи/i.test(line) ? 'Соседи' : '';
+        const merchant = /гринрозница/i.test(line) ? 'Green' : /евроторг/i.test(line) ? 'Евроопт' : /соседи|либрет[ие]к/i.test(line) ? 'Соседи' : '';
         if (merchant) shop = merchant;
         else if (!shop && /(?:ООО|ОАО|000\s*["«]|ЧТУП|магазин|аптека|общество с)/i.test(line)) shop = line;
       }

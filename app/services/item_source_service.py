@@ -1,4 +1,6 @@
 import unicodedata
+import re
+
 
 from app.core.cache import (
     invalidate_dashboard_analytics_cache,
@@ -9,6 +11,10 @@ from app.core.cache import (
 from app.repositories.item_source_repo import ItemSourceRepository
 from app.services.activity_service import ActivityService
 
+
+def canonical_source_name(name):
+    """Receipt legal entity names are aliases, not separate shops."""
+    return "Соседи" if re.search(r"(?<![а-яё])либрет[ие]к(?![а-яё])", str(name or ""), re.I) else name
 
 class ItemSourceService:
     ACTIVITY_FIELDS = ["name", "image_id", "is_archived"]
@@ -106,7 +112,7 @@ class ItemSourceService:
             return source
         if not str(shop_name or "").strip():
             return None
-        name, name_ci = self.normalize_name(str(shop_name))
+        name, name_ci = self.normalize_name(str(canonical_source_name(shop_name)))
         source = self.repo.get_by_name_ci(
             user_id=user_id, name_ci=name_ci, include_archived=True
         )

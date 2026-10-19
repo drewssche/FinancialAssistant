@@ -38,6 +38,7 @@ class ReceiptCodeIn(BaseModel):
 
 
 class OperationReceiptItemIn(MeasurementFields):
+    site_selection: str | None = Field(default=None, max_length=16000)
     catalog_codes: list[ReceiptCodeIn] = Field(default_factory=list, max_length=10)
     variant_id: int | None = Field(default=None, ge=1)
     variant_snapshot: ReceiptVariantSnapshot | None = None

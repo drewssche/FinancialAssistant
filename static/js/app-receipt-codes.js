@@ -1,6 +1,16 @@
 (() => {
   const {core} = window.App;
   let codeHintId=0;
+  const siteQueue=[];let siteActive=0;
+  function siteRequest(run){
+    return new Promise((resolve,reject)=>{siteQueue.push({run,resolve,reject});drainSites();});
+  }
+  function drainSites(){
+    while(siteActive<2&&siteQueue.length){
+      const job=siteQueue.shift();siteActive++;
+      Promise.resolve().then(job.run).then(job.resolve,job.reject).finally(()=>{siteActive--;drainSites();});
+    }
+  }
   function validBarcode(value) {
     if (!/^(?:\d{8}|\d{12,14})$/.test(value) || !Number(value)) return false;
     const digits=[...value].map(Number),check=digits.pop();
@@ -37,6 +47,7 @@
     if(Number(row.template_id)!==Number(found.template_id)){
       const list=entries(row),kept=list.filter(e=>!e.from_catalog);list.splice(0,list.length,...kept);row.codes_loaded_entity=null;
     }
+    row.site_selection=null;row.site_name='';
     row.code_errors=[];row.variant_id=null;row.variant_snapshot=null;row.variant_options=null;row.variant_status='';row.brand_touched=false;
     for(const key of ['product_id','product_name','name','template_id','source_id','brand_id']) row[key]=found[key]??null;
     if(!row.category_touched) row.category_id=found.category_id||null;
@@ -48,7 +59,7 @@
     row.brand_name=brand?.name||'';row.brand_accent_color=brand?.accent_color||null;row.brand_image_id=brand?.image_id||null;
     row.code_match_label=found.matched_by.includes('barcode')?'Найден по штрихкоду':'Найден по артикулу магазина';
   }
-  function mount(host,{row,shop,onSelect,onChange=()=>{},auto=false,loadKnown=false}) {
+  function mount(host,{row,shop,onSelect,onChange=()=>{},auto=false,loadKnown=false,siteSearch=false,onSiteSelect=()=>{},isActive=()=>true}) {
     const list=entries(row);
     const details=document.createElement('section');details.className='receipt-codes';
     const heading=document.createElement('strong');heading.textContent='Коды товара';details.append(heading);
@@ -70,12 +81,49 @@
         input.setAttribute('aria-invalid',String(invalid));input.closest('.receipt-code-line').classList.toggle('is-invalid',invalid);
       }
     }
+    const connected=()=>details.isConnected&&isActive();
     host.refreshCodeState=refreshCodes;
     const status=document.createElement('p');status.className='muted-small';status.setAttribute('role','status');details.append(status);
     const results=document.createElement('div');results.className='receipt-code-results';details.append(results);host.replaceChildren(details);
+    const siteStatus=document.createElement('p');siteStatus.className='muted-small';siteStatus.setAttribute('role','status');
+    const siteResults=document.createElement('div');siteResults.className='receipt-code-results';
+    if(siteSearch)details.append(siteStatus,siteResults);
+    if(row.site_selection)siteStatus.textContent='На сайте: '+(row.site_name||row.name);
     let timer,seq=0;
+    host.invalidateSite=()=>{seq++;row.site_selection=null;row.site_name='';siteStatus.textContent='';siteResults.replaceChildren();};
+    async function lookupSite(){
+      if(!siteSearch||row.site_selection||!connected())return;
+      const codes=payload(row);
+      if(!codes.length||validationError(codes,shop()))return;
+      const token=seq,before=signature();siteStatus.textContent='Ищу на сайте магазина…';siteResults.replaceChildren();
+      try{
+        const data=await siteRequest(()=>{if(token!==seq||!connected()||before!==signature())return null;return core.requestJson('/api/v1/operations/catalog-products/lookup-site-codes',{method:'POST',headers:{...core.authHeaders(),'Content-Type':'application/json'},body:JSON.stringify({codes,shop_name:shop()||''})});});
+        if(!data||token!==seq||!connected()||before!==signature())return;
+        const items=data.items||[];
+        function choose(found){
+          row.site_selection=found.site_selection;row.site_name=found.name;
+          siteStatus.textContent='На сайте: '+found.name;siteResults.replaceChildren();onSiteSelect(found);onChange();
+        }
+        // Unknown package information never replaces the receipt's units or size.
+        const sizeMismatch=found=>{
+          const size=text=>String(text||'').match(/(?:^|[^\p{L}\d])(\d+(?:[.,]\d+)?)\s*(кг|мл|г|л)(?=$|[^\p{L}])/iu);
+          const named=size(row.name),site=size(found.name);
+          const units={kg:['g',1000],кг:['g',1000],g:['g',1],г:['g',1],l:['ml',1000],л:['ml',1000],ml:['ml',1],мл:['ml',1]};
+          const current=row.package_quantity&&units[row.package_unit]?[Number(row.package_quantity),row.package_unit]:named?[Number(named[1].replace(',','.')),named[2].toLowerCase()]:null;
+          return Boolean(current&&site&&(units[current[1]][0]!==units[site[2].toLowerCase()][0]||Math.abs(current[0]*units[current[1]][1]-Number(site[1].replace(',','.'))*units[site[2].toLowerCase()][1])>.001));
+        };
+        if(data.auto_match&&items.length===1&&!sizeMismatch(items[0])){choose(items[0]);return;}
+        siteStatus.textContent=items.length?'Товары на сайте — выберите подходящий':data.state==='unavailable'?'Сайт временно недоступен. Поиск можно повторить.':data.state==='not_found'?'На сайте по кодам не найдено':'';
+        for(const found of items){
+          const button=document.createElement('button');button.type='button';button.className='btn btn-secondary receipt-code-result';
+          const title=document.createElement('strong');title.textContent=found.name;
+          const detail=document.createElement('small');detail.textContent=sizeMismatch(found)?'Другая фасовка — проверьте товар':data.source;
+          button.append(title,detail);button.onclick=()=>choose(found);siteResults.append(button);
+        }
+      }catch(error){if(token===seq&&connected()&&before===signature())siteStatus.textContent='Не удалось проверить сайт. Повторите поиск.';}
+    }
     const signature=()=>JSON.stringify([shop(),list,row.name,row.catalog_new,window.App.measurements.snapshot(row)]);
-    function changed(){seq++;row.code_errors=[];row.code_match_label='';results.replaceChildren();status.textContent='';refreshCodes();onChange();}
+    function changed(){seq++;row.site_selection=null;row.site_name='';siteStatus.textContent='';siteResults.replaceChildren();row.code_errors=[];row.code_match_label='';results.replaceChildren();status.textContent='';refreshCodes();onChange();}
     function draw(){
       fields.replaceChildren();
       list.forEach((entry,index)=>{
@@ -100,40 +148,42 @@
       const token=++seq, before=signature();status.textContent='Ищу по кодам…';results.replaceChildren();
       try{
         const data=await core.requestJson('/api/v1/operations/catalog-products/lookup-codes',{method:'POST',headers:{...core.authHeaders(),'Content-Type':'application/json'},body:JSON.stringify({codes,shop_name:shop()||''})});
-        if(token!==seq||!host.isConnected||before!==signature())return;
+        if(token!==seq||!connected()||before!==signature())return;
         const items=data.items||[];
         status.textContent=[...(data.warnings||[]),...(data.unmatched?.length?['Не найдены коды: '+data.unmatched.join(', ')]:[]),items.length>1?'Найдены разные варианты — выберите подходящий':items.length?'':'Совпадений по кодам нет. Можно выбрать товар по названию.'].filter(Boolean).join(' · ');
         function choose(found,automatic=false){
           for(const entry of list){if((entry.kind==='unknown'||!entry.manual_kind)&&found.matched_codes.includes(entry.code)&&found.matched_by.length===1)entry.kind=found.matched_by[0];}
-          onSelect(found);status.textContent=row.code_match_label||'Товар выбран по коду';results.replaceChildren();draw();if(!automatic&&host.isConnected)add.focus({preventScroll:true});
+          onSelect(found);status.textContent=row.code_match_label||'Товар выбран по коду';results.replaceChildren();draw();if(!automatic&&connected())add.focus({preventScroll:true});
         }
-        if(allowAuto&&data.auto_match&&!conflict(row,items[0])){choose(items[0],true);return;}
+        if(allowAuto&&data.auto_match&&!conflict(row,items[0])){choose(items[0],true);lookupSite();return;}
         if(items.length===1&&Number(row.product_id)===Number(items[0].product_id)&&Number(row.variant_id||0)===Number(items[0].variant_id||0)&&!conflict(row,items[0])){
-          status.textContent=[status.textContent,'Код соответствует выбранному товару'].filter(Boolean).join(' · ');return;
+          status.textContent=[status.textContent,'Код соответствует выбранному товару'].filter(Boolean).join(' · ');lookupSite();return;
         }
         for(const found of items){
           const button=document.createElement('button');button.type='button';button.className='btn btn-secondary receipt-code-result';
           const title=document.createElement('strong');title.textContent=found.product_name;
           const detail=document.createElement('small');detail.textContent=[found.variant_snapshot?.name,window.App.measurements.summary(found),found.matched_by.includes('barcode')?'Штрихкод совпадает':'Артикул совпадает',conflict(row,found)?'Другая фасовка — выбор заменит единицы и размер':''].filter(Boolean).join(' · ');
-          button.append(title,detail);button.onclick=()=>choose(found);results.append(button);
+          button.append(title,detail);button.onclick=()=>{choose(found);lookupSite();};results.append(button);
         }
-      }catch(error){if(token===seq&&host.isConnected)status.textContent='Не удалось проверить коды. Повторите поиск: '+error.message;}
+        if(!items.length)lookupSite();
+      }catch(error){if(token===seq&&connected())status.textContent='Не удалось проверить коды. Повторите поиск: '+error.message;}
     }
     add.onclick=()=>{list.push({kind:'unknown',code:''});changed();draw();fields.lastElementChild.querySelector('input').focus();};
     search.onclick=()=>{clearTimeout(timer);lookup(false);};
     host.lookupCodes=()=>lookup(false);
-    draw();if(auto&&list.some(e=>e.code))lookup(true);
+    draw();if(auto&&list.some(e=>e.code))timer=setTimeout(()=>{if(connected())lookup(true);},500);
+    else if(siteSearch&&list.some(e=>e.code))timer=setTimeout(()=>{if(connected())lookupSite();},500);
     const entity=String(row.product_id||'')+':'+String(row.template_id||'');
     if(loadKnown&&row.product_id&&row.template_id&&row.codes_loaded_entity!==entity){
       const before=signature();
       core.requestJson(`/api/v1/operations/catalog-products/${row.product_id}/identity`,{headers:core.authHeaders()}).then(data=>{
-        if(!host.isConnected||before!==signature())return;
+        if(!connected()||before!==signature())return;
         row.codes_loaded_entity=entity;
         const saved=data.offers?.find(offer=>Number(offer.template_id)===Number(row.template_id));
         if(saved?.retailer_code&&!list.some(e=>e.code===saved.retailer_code)){
           list.push({kind:'retailer',code:saved.retailer_code,from_catalog:true});draw();
         }
-      }).catch(()=>{if(host.isConnected)status.textContent='Не удалось загрузить сохранённые коды. Можно повторить, открыв детали заново.';});
+      }).catch(()=>{if(connected())status.textContent='Не удалось загрузить сохранённые коды. Можно повторить, открыв детали заново.';});
     }
   }
   async function saveRequest(url, options, mode, items) {

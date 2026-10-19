@@ -104,6 +104,7 @@
         rowItem.variant_id = offer?.variant_id || template.variant_id || null;
         rowItem.variant_snapshot = null;
       }
+      rowItem.site_selection=null;rowItem.site_name="";
       rowItem.product_id = productId;
       rowItem.product_name = normalizeReceiptName(template.product_name || product?.name || template.name || "");
       rowItem.product_image_id = template.product_image_id || product?.image_id || null;

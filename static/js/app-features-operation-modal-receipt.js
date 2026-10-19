@@ -162,6 +162,8 @@
         draft_id: state[ctx.seqKey],
         code_entries: structuredClone(seed.code_entries || seed.catalog_codes || (seed.variant_snapshot?.codes || []).map(code=>({kind:"barcode",code,from_catalog:true}))),
         code_match_label: seed.code_match_label || "",
+        site_selection: seed.site_selection || null,
+        site_name: seed.site_name || "",
         details_expanded: Boolean(seed.details_expanded),
         discount_expanded: false,
         template_id: seed.template_id || null,
@@ -203,6 +205,7 @@
     }
 
     function unlinkReceiptTemplateIdentity(item, options = {}) {
+      item.site_selection=null;item.site_name="";
       item.code_match_label="";item.code_errors=[];
       item.code_entries=(item.code_entries||[]).filter(e=>!e.from_catalog);item.codes_loaded_entity=null;
       item.template_id = null;
@@ -1019,6 +1022,7 @@
           ...(item.note ? { note: item.note } : {}),
           ...window.App.measurements.snapshot(item),
           catalog_codes: window.App.receiptCodes.payload(item),
+          site_selection: item.site_selection || null,
           variant_id: item.variant_id || null,
           variant_snapshot: item.variant_snapshot || null,
           quantity: String(asQty(item.quantity || 0)),
@@ -1051,6 +1055,7 @@
           ...(item.note ? { note: item.note } : {}),
           ...window.App.measurements.snapshot(item),
           catalog_codes: window.App.receiptCodes.payload(item),
+          site_selection: item.site_selection || null,
           variant_id: item.variant_id || null,
           variant_snapshot: item.variant_snapshot || null,
           quantity: String(asQty(item.quantity || 0)),

@@ -72,11 +72,18 @@
     if(!draft)return;
     node('scanCurrency').value=draft.currency||'BYN';renderDraft();applied=false;
   }
+  function savedReview(value){
+    const review=structuredClone(value);
+    for(const row of review?.rows||[]){
+      delete row.merged_rows;delete row.source;delete row.code_match_result;delete row.site_selection;
+      if(row.catalog)delete row.catalog.site_selection;
+    }
+    return review;
+  }
   function scanPayload(){
     readMeta();
     // Catalog lookup state and OCR source lines aren't needed in the saved review.
-    const review=JSON.parse(JSON.stringify({...draft,currency:node('scanCurrency').value}));
-    for(const row of review.rows){delete row.merged_rows;delete row.source;delete row.code_match_result;}
+    const review=savedReview({...draft,currency:node('scanCurrency').value});
     return {image:canvas.width>1&&!canvas.hidden?(storedImage||canvas.toDataURL('image/webp',.9).split(',')[1]):null,
       original_text:originalText,text:reviewText(),review};
   }
@@ -290,7 +297,7 @@
           input.previousElementSibling.textContent=field==='price'?window.App.measurements.priceLabel(row):window.App.measurements.quantityLabel(row);
         }
       }
-      function unlink(){delete row.catalog;row.variant_id=null;row.variant_snapshot=null;row.code_match_label='';refreshCategory();if(!row.measurement_touched)Object.assign(row,window.App.measurements.snapshot());refreshUnits();}
+      function unlink(){el.querySelector('.scan-codes-host').invalidateSite?.();row.site_selection=null;row.site_name='';delete row.catalog;row.variant_id=null;row.variant_snapshot=null;row.code_match_label='';refreshCategory();if(!row.measurement_touched)Object.assign(row,window.App.measurements.snapshot());refreshUnits();}
       refreshUnits();
       let options=[],active=-1;
       function choose(item){
@@ -299,7 +306,7 @@
         row.name=row.catalog.name;name.value=row.name;refreshCategory();
         if(!row.measurement_touched){Object.assign(row,window.App.measurements.snapshot(row.catalog));row.variant_id=row.catalog.variant_id||null;}
         refreshUnits();
-        closeCatalogLists();node('scanConfirmed').checked=false;el.refreshCatalog();validate();name.focus();closeCatalogLists();
+        closeCatalogLists();node('scanConfirmed').checked=false;el.refreshCatalog();el.refreshCodes?.();validate();name.focus();closeCatalogLists();
       }
       function createNew(){
         if(!name.value.trim())return;
@@ -346,7 +353,7 @@
       el.addEventListener('input',e=>{
         const field=e.target.dataset.scanField;if(!field)return;
         row[field]=field==='name'||field==='discount_type'?e.target.value:field==='quantity'?inputNumber(e.target.value,true):inputMoney(e.target.value);
-        if(field==='name'){row.catalog_new=false;unlink();el.refreshCatalog();search();}
+        if(field==='name'){row.name_touched=true;row.catalog_new=false;unlink();el.refreshCatalog();search();}
         for(const changed of parser.recalculateRow(row,field)){
           const input=el.querySelector(`[data-scan-field=${changed}]`);input.value=decimal(row[changed]);
           input.setAttribute('aria-invalid',String(row[changed]==null||row[changed]<0||(changed==='total'&&row[changed]===0)));
@@ -358,7 +365,8 @@
       el.refreshCodes=()=>{
         const key=codeLookupKey(row);
         const auto=!row.catalog_new&&!row.catalog&&row.code_auto_attempted!==key;row.code_auto_attempted=key;
-        window.App.receiptCodes.mount(el.querySelector('.scan-codes-host'),{row,shop:()=>node('scanShop').value,auto,
+        window.App.receiptCodes.mount(el.querySelector('.scan-codes-host'),{row,shop:()=>node('scanShop').value,auto,siteSearch:true,isActive:()=>dialog.open&&!transferred,
+          onSiteSelect:found=>{if(!row.catalog&&!row.catalog_new&&!row.name_touched){row.name=found.name.slice(0,160);name.value=row.name;el.refreshCatalog();}},
           onChange:()=>{node('scanConfirmed').checked=false;validate();},
           onSelect:found=>{
             row.catalog_new=false;window.App.receiptCodes.apply(row,found);row.catalog={...found};name.value=row.name;
@@ -429,7 +437,7 @@
     modal.setOperationKind(mode,'expense');
     node(prefix+'Date').value=draft.date;node(prefix+'Date').dispatchEvent(new Event('change',{bubbles:true}));
     node(prefix+'Currency').value=node('scanCurrency').value;node(prefix+'Currency').dispatchEvent(new Event('change',{bubbles:true}));
-    state[mode+'ReceiptItems']=draft.rows.map(r=>modal.createReceiptDraft({...r.catalog,category_id:r.category_touched?r.category_id:r.catalog?.category_id,category_touched:Boolean(r.category_touched),name:r.name,quantity:r.quantity,shop_name:draft.shop,...window.App.measurements.snapshot(r),variant_id:r.variant_id||null,variant_snapshot:r.variant_snapshot||null,code_entries:r.code_entries||[],code_match_label:r.code_match_label||'',measurement_touched:true,
+    state[mode+'ReceiptItems']=draft.rows.map(r=>modal.createReceiptDraft({...r.catalog,category_id:r.category_touched?r.category_id:r.catalog?.category_id,category_touched:Boolean(r.category_touched),name:r.name,quantity:r.quantity,shop_name:draft.shop,...window.App.measurements.snapshot(r),variant_id:r.variant_id||null,variant_snapshot:r.variant_snapshot||null,site_selection:r.site_selection||null,site_name:r.site_name||'',code_entries:r.code_entries||[],code_match_label:r.code_match_label||'',measurement_touched:true,
       unit_price:r.price/100, is_discounted:r.discount>0, regular_unit_price:r.discount>0?r.price/100:null,
       discount_mode:r.discount>0?'amount':null, discount_value:r.discount>0?r.discount/100:null,
       discount_type:r.discount>0?r.discount_type||'promo':null,note:r.note||null},mode));
@@ -454,7 +462,7 @@
       const entry=pending[mode];
       if(!entry||(mode==='edit'&&entry.id!==String(state.editOperationId)))return null;
       // Keep corrections made in the operation (including removed conflicting codes).
-      return {...entry.value,review:operationReview(mode,entry.value.review)};
+      return {...entry.value,review:savedReview(operationReview(mode,entry.value.review))};
     },
     saved(mode){pending[mode]=null;if(mode==='create'){createRecovery=null;if(context==='create')cleanup();}else if(context!=='create'){cleanup();context='';}refreshEntry();},
     photosDeleted(){

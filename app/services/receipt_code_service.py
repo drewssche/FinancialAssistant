@@ -25,6 +25,8 @@ class ReceiptCodeService:
         self.db = db
 
     def lookup(self, *, user_id, codes, shop_name='', source_id=None):
+        from app.services.item_source_service import canonical_source_name
+        shop_name = canonical_source_name(shop_name)
         source_query = select(ItemSource).where(ItemSource.user_id == user_id, ItemSource.is_archived.is_(False))
         source = self.db.scalar(source_query.where(ItemSource.id == source_id)) if source_id else self.db.scalar(source_query.where(ItemSource.name_ci == ' '.join((shop_name or '').split()).casefold()))
         results, warnings, matched = {}, [], set()

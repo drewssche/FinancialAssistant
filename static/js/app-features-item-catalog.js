@@ -13,6 +13,7 @@
   let itemCatalogBaseTotal = 0;
   let itemCatalogBaseFresh = false;
   let itemSourcesRequestController = null;
+  let itemSourcesRequestPromise = null;
   const ITEM_CATALOG_CACHE_TTL_MS = 20000;
   const ITEM_CATALOG_NO_SHOP_KEY = "__no_shop__";
 
@@ -85,7 +86,15 @@
     state.preferences.data.ui.item_catalog_sources = items;
   }
 
-  async function loadItemSources(options = {}) {
+  function loadItemSources(options = {}) {
+    if (itemSourcesRequestPromise && !options.force) return itemSourcesRequestPromise;
+    const request = fetchItemSources(options);
+    itemSourcesRequestPromise = request;
+    request.finally(() => { if (itemSourcesRequestPromise === request) itemSourcesRequestPromise = null; }).catch(() => {});
+    return request;
+  }
+
+  async function fetchItemSources(options = {}) {
     if (!options.force && state.itemSourcesLoaded) {
       return state.itemSources || [];
     }
@@ -458,6 +467,7 @@
     }
     itemSourcesRequestController?.abort();
     itemSourcesRequestController = null;
+    itemSourcesRequestPromise = null;
     itemCatalogRequestSeq = 0;
     itemCatalogBaseFresh = false;
     itemCatalogBaseItems = [];

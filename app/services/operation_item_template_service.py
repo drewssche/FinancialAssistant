@@ -706,6 +706,9 @@ class OperationItemTemplateService:
                 from app.services.receipt_code_service import ReceiptCodeService
                 ReceiptCodeService(self.db).attach(user_id=user_id, product=product, template=template, item=item, item_index=receipt_index)
             self._resolve_receipt_variant(user_id=user_id, product_id=int(product.id), item=item)
+            if item.get("site_selection"):
+                from app.services.receipt_site_service import ReceiptSiteService
+                ReceiptSiteService(self.db).attach(user_id=user_id, template=template, item=item)
             previous_categories = self._apply_receipt_product_metadata(
                 user_id=user_id,
                 product=product,
@@ -873,6 +876,9 @@ class OperationItemTemplateService:
                 from app.services.receipt_code_service import ReceiptCodeService
                 ReceiptCodeService(self.db).attach(user_id=user_id, product=product, template=template, item=item, item_index=receipt_index)
             self._resolve_receipt_variant(user_id=user_id, product_id=int(product.id), item=item)
+            if item.get("site_selection"):
+                from app.services.receipt_site_service import ReceiptSiteService
+                ReceiptSiteService(self.db).attach(user_id=user_id, template=template, item=item)
             previous_categories = self._apply_receipt_product_metadata(
                 user_id=user_id,
                 product=product,

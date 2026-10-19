@@ -25,6 +25,12 @@ def lookup_receipt_codes(payload: ReceiptCodeLookupInput, user_id: int = Depends
     return run(lambda: ReceiptCodeService(db).lookup(user_id=user_id, **payload.model_dump()))
 
 
+@router.post('/lookup-site-codes')
+def lookup_site_codes(payload: ReceiptCodeLookupInput, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    from app.services.receipt_site_service import ReceiptSiteService
+    return run(lambda: ReceiptSiteService(db).lookup(user_id=user_id, **payload.model_dump()))
+
+
 @router.get('/{product_id}/identity')
 def get_identity(product_id: int, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
     return run(lambda: CatalogIdentityService(db).get(user_id=user_id, product_id=product_id))

@@ -22,7 +22,8 @@ ALIASES = {
 
 
 def source_provider(name):
-    normalized = re.sub(r'[^a-zа-яё]', '', (name or '').lower())
+    from app.services.item_source_service import canonical_source_name
+    normalized = re.sub(r'[^a-zа-яё]', '', (canonical_source_name(name) or '').lower())
     return next((key for key, names in ALIASES.items() if normalized in names), None)
 
 
