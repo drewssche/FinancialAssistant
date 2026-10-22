@@ -625,6 +625,22 @@
         }) || "" : "";
         const known = Boolean(item.product_id || item.template_id);
         const compact = !item.details_expanded;
+        const emptyRow = !item.name && !item.is_discounted && !item.unit_price && !item.quantity;
+        const categoryControl = `<div class="receipt-category-cell ${categoryMeta ? "" : "is-missing-category"} ${categoryPickerOpen ? "has-open-popover" : ""}">
+                <span class="receipt-category-badge ${categorySource === "default" ? "" : "hidden"}">По умолчанию</span>
+                <input
+                  type="text"
+                  data-receipt-field="category_search"
+                  value="${esc(categoryMeta?.name || "")}"
+                  data-receipt-category-source="${categorySource}"
+                  data-receipt-effective-category-id="${effectiveCategoryId || ""}"
+                  placeholder="Выбрать категорию"
+                  title="${esc(categoryMeta?.name || "Категория не выбрана")}"
+                  autocomplete="off"
+                  aria-label="Категория позиции"
+                />
+                <div class="receipt-category-picker app-popover ${categoryPickerOpen ? "" : "hidden"}"></div>
+              </div>`;
         const discountTypeButtons = RECEIPT_DISCOUNT_TYPES.map((entry) => `
           <button
             class="receipt-discount-type-chip ${activeDiscountType === entry.value ? "is-active" : ""}"
@@ -635,10 +651,10 @@
           >${esc(entry.label)}</button>
         `).join("");
         return `
-          <div class="receipt-item-row ${known ? "receipt-item-known" : ""} ${compact ? "is-compact" : ""} ${!item.name && !item.is_discounted && !item.unit_price && !item.quantity ? "receipt-item-empty" : ""} ${item.discount_expanded ? "discount-open" : ""} ${item.is_discounted ? "receipt-item-row-discounted" : ""} ${hasOpenPicker ? "has-open-popover" : ""}" data-receipt-mode="${mode}" data-receipt-item-id="${item.draft_id}">
+          <div class="receipt-item-row ${known ? "receipt-item-known" : ""} ${compact ? "is-compact" : ""} ${emptyRow ? "receipt-item-empty" : ""} ${item.discount_expanded ? "discount-open" : ""} ${item.is_discounted ? "receipt-item-row-discounted" : ""} ${hasOpenPicker ? "has-open-popover" : ""}" data-receipt-mode="${mode}" data-receipt-item-id="${item.draft_id}">
             ${known ? `<div class="receipt-compact-heading">
               <div><button class="receipt-compact-name" type="button" ${item.product_id ? `data-open-receipt-product-card="${Number(item.product_id)}"` : `data-open-receipt-template-card="${Number(item.template_id)}"`}>${esc(item.product_name || item.name)}</button>
-              <small>${esc([brandName, item.shop_name || "Без источника", item.code_match_label, item.variant_snapshot?.name, (item.sale_unit || item.package_quantity ? window.App.measurements.summary(item) : "")].filter(Boolean).join(" · "))}</small></div>
+              <small>${esc([brandName, item.shop_name || "Без источника", item.code_match_label, item.variant_snapshot?.name, (item.sale_unit || item.package_quantity ? window.App.measurements.summary(item) : "")].filter(Boolean).join(" · "))}</small>${categoryControl}</div>
             </div>` : ""}
             ${!known ? `<div class="receipt-compact-heading receipt-new-heading"><span>${item.name ? "Новый товар" : "Добавить товар"}</span></div>` : ""}
             <button class="btn btn-secondary btn-xs btn-icon ${compact ? "" : "is-active"}" type="button" data-receipt-details-toggle="${item.draft_id}" aria-label="Подробности товара" aria-expanded="${!compact}" title="${compact ? "Показать подробности товара" : "Скрыть подробности товара"}">${window.App.icons.svg("sliders")}</button>
@@ -662,21 +678,7 @@
                 <span class="receipt-new-badge ${item.name && !item.template_id ? "" : "hidden"}">${item.product_id ? "Новое предложение" : "Новая позиция"}</span>
                 <div class="receipt-name-picker app-popover ${namePickerOpen ? "" : "hidden"}"></div>
               </div>
-              <div class="receipt-category-cell ${categoryPickerOpen ? "has-open-popover" : ""}">
-                <span class="receipt-category-badge ${categorySource === "default" ? "" : "hidden"}">По умолчанию</span>
-                <input
-                  type="text"
-                  data-receipt-field="category_search"
-                  value="${esc(categoryMeta?.name || "")}"
-                  data-receipt-category-source="${categorySource}"
-                  data-receipt-effective-category-id="${effectiveCategoryId || ""}"
-                  placeholder="Категория"
-                  title="${esc(categoryMeta?.name || "Категория не выбрана")}"
-                  autocomplete="off"
-                  aria-label="Категория позиции"
-                />
-                <div class="receipt-category-picker app-popover ${categoryPickerOpen ? "" : "hidden"}"></div>
-              </div>
+              ${!known ? categoryControl : ""}
             </div>
             <section class="receipt-measurements">
               <div class="receipt-variant-controls">
