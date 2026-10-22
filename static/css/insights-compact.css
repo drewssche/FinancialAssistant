@@ -211,7 +211,7 @@
 .period-category-changes { display:flex; flex-wrap:wrap; gap:6px 18px; font-size:13px; }
 .period-category-changes b { font-weight:600; }
 .operations-count { margin:8px 0; }
-.plan-forecast { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 20px; margin-top:12px; }
+.plan-forecast { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px 20px; margin-top:12px; }
 .plan-forecast > .analytics-kpi-card { gap:6px; min-height:80px; }
 .plan-forecast strong { font-size:20px; }
 .plan-forecast p { grid-column:1 / -1; margin:0; }
@@ -232,6 +232,8 @@
 #dashboardPlansKpi > .muted-small {flex-basis:100%;}
 @media(max-width:600px) {
  #dashboardKpiPrimary, #operationsSummaryGrid, #analyticsCalendarTotals { grid-template-columns:1fr; }
+ .plan-forecast { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .plan-forecast [data-plans-net] { grid-column:1 / -1; }
  .plan-forecast strong { font-size:17px; }
 }
 

@@ -218,6 +218,10 @@
         <div class="muted-small">Мне должны</div>
         <strong>${formatDebtMoney(summary.lendTotal, summary.baseCurrency)}</strong>
       </article>
+      <article class="analytics-kpi-card" data-debts-net title="Мне должны минус я должен по выбранным долгам">
+        <div class="muted-small">Итог по долгам</div>
+        <strong class="${summary.netTotal > 0 ? "amount-income" : summary.netTotal < 0 ? "amount-expense" : ""}">${formatDebtMoney(summary.netTotal, summary.baseCurrency)}</strong>
+      </article>
     `;
   }
 

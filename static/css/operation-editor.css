@@ -249,3 +249,7 @@
 :is(#createModal, #editModal).operation-editor .receipt-item-empty.is-compact .receipt-category-cell {display:none;}
 
 :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-item-empty.is-compact .receipt-item-identity {grid-template-areas:"name";}
+
+/* Date buttons are centred on the input, not on a stretched grid row or its text baseline. */
+#createDebtFields .date-input-wrap { align-self: start; min-width: 0; }
+#createDebtFields .date-input-wrap > input[type="date"] { display: block; }

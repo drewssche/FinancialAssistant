@@ -11,6 +11,7 @@
 #dashboardSection .analytics-kpi-card > strong { margin: 0; }
 #operationsSection .operations-summary-grid,
 #debtsSection .debts-section-kpi { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+#debtsSection .debts-section-kpi { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 #plansSection .plans-summary-item { flex: 1 1 180px; gap: 6px; }
 #workSection #workSummaryGrid { gap: 12px; }
 #workSection #workSummaryGrid > article { flex: 1 1 180px; }
@@ -22,6 +23,7 @@
   :is(.section-block, .modal, dialog) :is(.analytics-kpi-card, .kpi-card, .analytics-position-kpi, .work-money-kpi-card, .work-time-kpi-rate, .plans-summary-item, .currency-balance-card, .dashboard-currency-rate-card) { padding: 10px; }
   #operationsSection .operations-summary-grid,
   #debtsSection .debts-section-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  #debtsSection [data-debts-net] { grid-column: 1 / -1; }
   #dashboardSection #dashboardKpiPrimary { gap: 8px; }
   #dashboardSection .analytics-kpi-card strong { overflow-wrap: anywhere; }
 }
