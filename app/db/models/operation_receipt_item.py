@@ -27,6 +27,7 @@ class OperationReceiptItem(Base):
         index=True,
     )
     shop_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    receipt_codes: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
     variant_snapshot: Mapped[dict | None] = mapped_column(JSON(none_as_null=True), nullable=True)
     sale_unit: Mapped[str | None] = mapped_column(String(8), nullable=True)
     package_quantity: Mapped[Decimal | None] = mapped_column(Numeric(14, 3), nullable=True)

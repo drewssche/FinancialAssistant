@@ -122,7 +122,9 @@ def test_invalid_archived_weight_and_foreign_variants(client):
     weighted=receipt(client,[{'kind':'barcode','code':weight}],name='Колбаса')
     assert weighted.status_code==201,weighted.text
     result=lookup(client,[{'kind':'barcode','code':weight}])
-    assert len(result['items'])==1 and not result['auto_match'] and result['warnings']
+    assert not result['items'] and not result['auto_match'] and result['warnings']
+    assert weighted.json()['receipt_items'][0]['receipt_codes']==[{'kind':'barcode','code':weight}]
+    assert receipt(client,[{'kind':'barcode','code':weight}],name='Другой весовой товар',shop_name='Соседи').status_code==201
 
 
 def test_plan_code_registration_and_confirmation_preserve_identity(client):
@@ -202,27 +204,64 @@ def test_barcode_only_fills_empty_mapping_without_overwriting_existing_metadata_
     assert other.json()['receipt_items'][0]['variant_snapshot']['variant_id'] != first['variant_id']
 
 
-def test_confirmed_internal_receipt_code_is_store_scoped_and_not_a_global_gtin(client):
-    code='2237310222750'
-    assert receipt(client,[{'kind':'barcode','code':code}],name='Лук красный').status_code==400
-    codes=[{'kind':'retailer','code':code}]
-    response=receipt(client,codes,name='Лук красный',quantity='0.370',unit_price='3.66',sale_unit='kg',package_quantity=None,package_unit=None)
+def test_internal_receipt_codes_preserve_stable_sku_and_money(client):
+    # Actual 14-digit code printed by the till, plus a subsequent purchase code.
+    original=receipt(client,[{'kind':'retailer','code':'1582951'}],name='Лук красный',
+                     sale_unit='kg',package_quantity=None,package_unit=None)
+    assert original.status_code==201,original.text
+    owner=original.json()['receipt_items'][0]
+    before=get(client,owner['product_id'])
+    for code in ['22373102227750','2237310222750']:
+        assert receipt(client,[{'kind':'barcode','code':code}]).status_code==400
+        codes=[{'kind':'retailer','code':code}]
+        response=receipt(client,codes,name='Лук красный',product_id=owner['product_id'],template_id=owner['template_id'],
+                         quantity='0.370',unit_price='3.66',sale_unit='kg',package_quantity=None,package_unit=None)
+        assert response.status_code==201,response.text
+        operation=response.json();row=operation['receipt_items'][0]
+        assert operation['receipt_total']=='1.35'
+        assert float(row['quantity'])==.37 and row['unit_price']=='3.66'
+        assert row['receipt_codes']==codes
+        assert get(client,owner['product_id'])==before
+        found=lookup(client,codes)
+        assert not found['items'] and not found['auto_match'] and found['warnings']
+        saved=client.get(f"/api/v1/operations/{operation['id']}").json()
+        assert saved['receipt_items'][0]['receipt_codes']==codes
+        stale={k:v for k,v in saved['receipt_items'][0].items() if k!='receipt_codes'}
+        assert client.patch(f"/api/v1/operations/{operation['id']}",json={'receipt_items':[stale]}).status_code==400
+        result=client.patch(f"/api/v1/operations/{operation['id']}",json={'receipt_items':saved['receipt_items']})
+        assert result.status_code==200,result.text
+        assert result.json()['receipt_total']=='1.35'
+        assert result.json()['receipt_items'][0]['receipt_codes']==codes
+        # The digits are not claimed as a globally or source-unique catalog identifier.
+        other=receipt(client,codes,name='Другой весовой товар',shop_name='Green')
+        assert other.status_code==201,other.text
+        assert not any(v['codes'] for v in get(client,other.json()['receipt_items'][0]['product_id'])['variants'])
+    # Genuine SKU conflicts remain actionable and atomic.
+    denied=receipt(client,[{'kind':'retailer','code':'another-sku'}],name='Лук красный',
+                   product_id=owner['product_id'],template_id=owner['template_id'])
+    assert denied.status_code==400,denied.text
+    assert '1582951' in denied.json()['detail']['message']
+    assert get(client,owner['product_id'])==before
+
+
+def test_internal_codes_survive_plan_confirmation_and_can_be_removed(client):
+    codes=[{'kind':'retailer','code':'22373102227750'}]
+    response=client.post('/api/v1/plans',json={'kind':'expense','scheduled_date':'2026-10-23','receipt_items':[
+        {'name':'Лук','shop_name':'Green','quantity':'.37','unit_price':'3.66','sale_unit':'kg','catalog_codes':codes}]})
     assert response.status_code==201,response.text
-    operation=response.json();row=operation['receipt_items'][0]
-    assert operation['receipt_total']=='1.35'
-    assert float(row['quantity'])==.37 and row['unit_price']=='3.66'
-    identity=get(client,row['product_id'])
-    assert identity['offers'][0]['retailer_code']==code
-    assert not any(v['codes'] for v in identity['variants'])
-    found=lookup(client,codes)
-    assert found['items'][0]['product_id']==row['product_id']
-    assert not found['auto_match'] and found['warnings']
-    assert not lookup(client,codes,shop='Соседи')['items']
-    # The same local digits can represent a different product at another store.
-    other=receipt(client,codes,name='Другой товар',shop_name='Соседи')
-    assert other.status_code==201,other.text
-    assert lookup(client,codes,shop='Соседи')['items'][0]['product_id']!=row['product_id']
-    saved=client.get(f"/api/v1/operations/{operation['id']}").json()
-    result=client.patch(f"/api/v1/operations/{operation['id']}",json={'receipt_items':[{**saved['receipt_items'][0],'catalog_codes':codes}]})
-    assert result.status_code==200,result.text
-    assert result.json()['receipt_total']=='1.35'
+    plan=response.json()
+    assert plan['receipt_items'][0]['receipt_codes']==codes
+    confirmed=client.post(f"/api/v1/plans/{plan['id']}/confirm")
+    assert confirmed.status_code==200,confirmed.text
+    operation=confirmed.json()['operation'];row=operation['receipt_items'][0]
+    assert row['receipt_codes']==codes and operation['receipt_total']=='1.35'
+    changed=client.patch(f"/api/v1/operations/{operation['id']}",json={'receipt_items':[{**row,'catalog_codes':[],'receipt_codes':[]}]})
+    assert changed.status_code==200,changed.text
+    assert changed.json()['receipt_items'][0]['receipt_codes']==[]
+
+
+def test_internal_classifier_does_not_capture_valid_gtin14():
+    from app.services.receipt_code_service import variable_code
+    assert variable_code('22373102227750') and variable_code('02237310222750')
+    assert not variable_code('24006381333935')  # Valid GTIN-14 with an indicator digit.
+    assert not variable_code('1582951') and not variable_code('2not-a-code00')

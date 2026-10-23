@@ -5,7 +5,7 @@ from sqlalchemy import and_, delete, desc, or_, select, update
 from sqlalchemy.orm import Session, aliased
 
 from app.core.receipt_pricing import pricing_snapshot
-from app.core.receipt_variant import variant_snapshot
+from app.core.receipt_variant import receipt_code_snapshot, variant_snapshot
 from app.core.measurement import normalize_measurement
 from app.repositories.search import search_any, search_order
 
@@ -145,6 +145,7 @@ class PlanRepository:
                 category_id=item.get("category_id"),
                 shop_name=item.get("shop_name"),
                 **normalize_measurement(item),
+                **receipt_code_snapshot(item),
                 **variant_snapshot(item),
                 **pricing_snapshot(item),
                 name=item["name"],

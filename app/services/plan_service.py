@@ -7,7 +7,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.core.receipt_pricing import PRICING_INPUT_FIELDS, guard_pricing_replacement, pricing_snapshot
-from app.core.receipt_variant import guard_variant_replacement, variant_snapshot
+from app.core.receipt_variant import guard_receipt_code_replacement, receipt_code_snapshot, guard_variant_replacement, variant_snapshot
 from app.core.measurement import MEASUREMENT_FIELDS, guard_measurement_replacement, measurement_snapshot
 from app.core.cache import (
     build_plans_cache_key,
@@ -314,10 +314,11 @@ class PlanService:
         normalized_items = None
         receipt_total = None
         if receipt_items_input is not None:
-            if any(not all(key in row for key in ("variant_snapshot", *MEASUREMENT_FIELDS, *PRICING_INPUT_FIELDS)) for row in receipt_items_input):
+            if any(not all(key in row for key in ("receipt_codes", "variant_snapshot", *MEASUREMENT_FIELDS, *PRICING_INPUT_FIELDS)) for row in receipt_items_input):
                 existing = self.repo.list_receipt_items_for_plans(
                     user_id=user_id, plan_ids=[plan_id],
                 ).get(plan_id, [])
+                guard_receipt_code_replacement(receipt_items_input, existing)
                 guard_variant_replacement(receipt_items_input, existing)
                 guard_measurement_replacement(receipt_items_input, existing)
                 guard_pricing_replacement(receipt_items_input, existing)
@@ -589,6 +590,7 @@ class PlanService:
                     "shop_name": row_item.shop_name,
                     "name": row_item.name,
                     **measurement_snapshot(row_item),
+                    **receipt_code_snapshot(row_item),
                     **variant_snapshot(row_item),
                     **pricing_snapshot(row_item),
                     "quantity": row_item.quantity,
@@ -843,6 +845,7 @@ class PlanService:
                     "shop_name": receipt_item.shop_name,
                     "name": receipt_item.name,
                     **measurement_snapshot(receipt_item),
+                    **receipt_code_snapshot(receipt_item),
                     **variant_snapshot(receipt_item),
                     **pricing_snapshot(receipt_item),
                     "quantity": self.operation_service._qty(receipt_item.quantity),

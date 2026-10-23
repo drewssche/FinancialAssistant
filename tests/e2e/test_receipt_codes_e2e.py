@@ -123,7 +123,7 @@ def test_late_code_lookup_cannot_replace_edited_scan_name(static_server_url,page
     stub(p,TEXT);upload(p)
     with p.expect_request(lambda request:request.url.endswith('/lookup-codes')):
         p.click('#scanRun')
-    expect(p.locator('#receiptScanDialog .receipt-codes [role=status]')).to_contain_text('Ищу')
+    expect(p.locator('#receiptScanDialog .receipt-codes [role=status]').first).to_contain_text('Ищу')
     assert pending
     row=p.locator('.scan-row');row.locator('[data-scan-field=name]').fill('Ручное исправление')
     pending[0].fulfill(status=200,content_type='application/json',body=json.dumps({'items':[FOUND],'auto_match':True,'warnings':[],'unmatched':[]}))

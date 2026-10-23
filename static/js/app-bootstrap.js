@@ -1,6 +1,6 @@
 (() => {
   const manifest = Array.isArray(window.__APP_SCRIPT_MANIFEST__) ? window.__APP_SCRIPT_MANIFEST__ : [];
-  const assetVersion = "20261023-receipt-card-edits";
+  const assetVersion = "20261023-receipt-internal-codes";
 
   function showBootstrapError(message) {
     const text = String(message || "Не удалось загрузить приложение.");

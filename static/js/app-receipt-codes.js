@@ -16,6 +16,10 @@
     const digits=[...value].map(Number),check=digits.pop();
     return (10-digits.reverse().reduce((sum,n,i)=>sum+n*(i%2?1:3),0)%10)%10===check;
   }
+  function internalRetailerCode(code) {
+    const value=code.length===14&&code.startsWith('0')?code.slice(1):code;
+    return /^2\d{12}$/.test(value)||(/^2\d{13}$/.test(value)&&!validBarcode(value));
+  }
   function entries(row) {
     return row.code_entries ||= (row.catalog_codes || []).map(e=>({...e}));
   }
@@ -25,10 +29,20 @@
   function payload(row) {
     return entries(row).filter(e=>e.code.trim()&&!e.from_catalog).map(e=>({kind:e.kind==='unknown'?inferKind(e.code.trim()):e.kind,code:e.code.trim()}));
   }
+  function receiptPayload(row) {
+    return entries(row).filter(e=>e.code.trim()&&(!e.from_catalog||e.from_receipt)).map(e=>({kind:e.kind==='unknown'?inferKind(e.code.trim()):e.kind,code:e.code.trim()}));
+  }
+  function savedEntries(seed) {
+    const saved=(seed.receipt_codes||[]).map(e=>({...e,from_catalog:true,from_receipt:true}));
+    for(const code of seed.variant_snapshot?.codes||[]){
+      if(!saved.some(e=>e.kind==='barcode'&&e.code===code))saved.push({kind:'barcode',code,from_catalog:true});
+    }
+    return saved;
+  }
   function validationError(codes, shop) {
     const invalid=codes.find(e=>e.kind==='barcode'&&!validBarcode(e.code));
     const unknown=codes.find(e=>!['barcode','retailer'].includes(e.kind));
-    const retailers=new Set(codes.filter(e=>e.kind==='retailer').map(e=>e.code));
+    const retailers=new Set(codes.filter(e=>e.kind==='retailer'&&!internalRetailerCode(e.code)).map(e=>e.code));
     return invalid?`Проверьте длину и контрольную цифру штрихкода ${invalid.code}.`:unknown?`Выберите тип кода ${unknown.code}.`:retailers.size>1?'Оставьте один артикул этого магазина.':retailers.size&&!shop?.trim()?'Укажите магазин для артикула.':'';
   }
   function conflict(row, found) {
@@ -45,7 +59,7 @@
   }
   function apply(row,found) {
     if(Number(row.template_id)!==Number(found.template_id)){
-      const list=entries(row),kept=list.filter(e=>!e.from_catalog);list.splice(0,list.length,...kept);row.codes_loaded_entity=null;
+      const list=entries(row),kept=list.filter(e=>!e.from_catalog||e.from_receipt).map(e=>e.from_receipt?{...e,from_catalog:false}:e);list.splice(0,list.length,...kept);row.codes_loaded_entity=null;
     }
     row.catalog_name_touched=false;row.catalog_measurement_touched=false;row.catalog_edit_variant_id=null;
     row.site_selection=null;row.site_name='';
@@ -70,6 +84,7 @@
     const search=document.createElement('button');search.type='button';search.className='btn btn-secondary btn-xs';window.App.icons.apply(search,'search','Найти по коду');
     actions.append(add,search);heading.after(actions);
     const hint=document.createElement('p');hint.className='form-error receipt-code-error';hint.id='receiptCodeError'+(++codeHintId);hint.setAttribute('aria-live','polite');details.append(hint);
+    const internalNotice=document.createElement('p');internalNotice.className='muted-small';internalNotice.hidden=true;details.append(internalNotice);
     const codeRecovery=document.createElement('div');codeRecovery.className='receipt-code-actions';codeRecovery.hidden=true;details.append(codeRecovery);
     function refreshCodes(){
       const reason=validationError(payload(row),shop());
@@ -77,6 +92,8 @@
       const conflicts=(row.code_errors||[]).filter(error=>list.some(entry=>entry.code.trim()===error.code&&entry.kind===error.kind));
       const messages=conflicts.map(error=>`${error.kind==='barcode'?'Штрихкод':'Артикул'} ${error.code}: ${error.message}${error.product_name?' · '+error.product_name:''}`);
       const invalidBarcodes=list.filter(e=>!e.from_catalog&&e.kind==='barcode'&&e.code.trim()&&!validBarcode(e.code.trim()));
+      const internal=list.some(e=>internalRetailerCode(e.code.trim())&&(e.kind==='retailer'||(e.kind==='barcode'&&validBarcode(e.code.trim()))));
+      internalNotice.textContent=internal?'Внутренний код сохранится в чеке. Артикул товара в каталоге останется прежним.':'';internalNotice.hidden=!internal;
       const explanation=invalidBarcodes.length?'Если цифры совпадают с чеком, сохраните внутренний код как артикул магазина.':'';
       hint.textContent=[reason,explanation,...new Set(messages)].filter(Boolean).join(' · ');hint.hidden=!hint.textContent;
       codeRecovery.replaceChildren();codeRecovery.hidden=!invalidBarcodes.length;
@@ -226,5 +243,5 @@
       throw error;
     }
   }
-  window.App.receiptCodes={validBarcode,entries,payload,validationError,mount,apply,conflict,saveRequest};
+  window.App.receiptCodes={validBarcode,entries,payload,receiptPayload,savedEntries,validationError,mount,apply,conflict,saveRequest};
 })();

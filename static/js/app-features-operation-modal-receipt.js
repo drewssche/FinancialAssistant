@@ -160,7 +160,7 @@
       state[ctx.seqKey] = Number(state[ctx.seqKey] || 0) + 1;
       return {
         draft_id: state[ctx.seqKey],
-        code_entries: structuredClone(seed.code_entries || seed.catalog_codes || (seed.variant_snapshot?.codes || []).map(code=>({kind:"barcode",code,from_catalog:true}))),
+        code_entries: structuredClone(seed.code_entries || seed.catalog_codes || window.App.receiptCodes.savedEntries(seed)),
         code_match_label: seed.code_match_label || "",
         site_selection: seed.site_selection || null,
         site_name: seed.site_name || "",
@@ -212,7 +212,7 @@
       item.catalog_name_touched=false;item.catalog_measurement_touched=false;item.catalog_edit_variant_id=null;
       item.site_selection=null;item.site_name="";
       item.code_match_label="";item.code_errors=[];
-      item.code_entries=(item.code_entries||[]).filter(e=>!e.from_catalog);item.codes_loaded_entity=null;
+      item.code_entries=(item.code_entries||[]).filter(e=>!e.from_catalog||e.from_receipt).map(e=>e.from_receipt?{...e,from_catalog:false}:e);item.codes_loaded_entity=null;
       item.template_id = null;
       if (!options.preserveProduct) {
         item.product_id = null;
@@ -1035,6 +1035,7 @@
           ...(item.note ? { note: item.note } : {}),
           ...window.App.measurements.snapshot(item),
           catalog_codes: window.App.receiptCodes.payload(item),
+          receipt_codes: window.App.receiptCodes.receiptPayload(item),
           site_selection: item.site_selection || null,
           variant_id: item.variant_id || null,
           variant_snapshot: item.variant_snapshot || null,
@@ -1071,6 +1072,7 @@
           ...(item.note ? { note: item.note } : {}),
           ...window.App.measurements.snapshot(item),
           catalog_codes: window.App.receiptCodes.payload(item),
+          receipt_codes: window.App.receiptCodes.receiptPayload(item),
           site_selection: item.site_selection || null,
           variant_id: item.variant_id || null,
           variant_snapshot: item.variant_snapshot || null,

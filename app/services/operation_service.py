@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.receipt_pricing import calculate_line_pricing, guard_pricing_replacement, pricing_snapshot
-from app.core.receipt_variant import guard_variant_replacement, variant_snapshot
+from app.core.receipt_variant import guard_receipt_code_replacement, receipt_code_snapshot, guard_variant_replacement, variant_snapshot
 from app.core.measurement import guard_measurement_replacement, measurement_snapshot, normalize_measurement
 from app.core.cache import (
     build_operations_cache_key,
@@ -635,6 +635,7 @@ class OperationService:
                 user_id=user_id,
                 operation_ids=[int(item.id)],
             ).get(int(item.id), [])
+            guard_receipt_code_replacement(receipt_items_input, before_receipt_items)
             guard_variant_replacement(receipt_items_input, before_receipt_items)
             guard_measurement_replacement(receipt_items_input, before_receipt_items)
             guard_pricing_replacement(receipt_items_input, before_receipt_items)
@@ -1058,6 +1059,7 @@ class OperationService:
                 "shop_name": row.shop_name,
                 "name": row.name,
                 **measurement_snapshot(row, json_safe=True),
+                **receipt_code_snapshot(row),
                 **variant_snapshot(row),
                 **pricing_snapshot(row, json_safe=True),
                 "quantity": str(row.quantity),
@@ -1372,6 +1374,7 @@ class OperationService:
                     "shop_name": row.shop_name,
                     "name": row.name,
                     **measurement_snapshot(row),
+                    **receipt_code_snapshot(row),
                     **variant_snapshot(row),
                     **pricing_snapshot(row),
                     "quantity": self._qty(row.quantity),
@@ -1554,6 +1557,7 @@ class OperationService:
                     "catalog_codes": item.get("catalog_codes") or [],
                     "site_selection": item.get("site_selection"),
                     **normalize_measurement(item),
+                    "receipt_codes": item.get("receipt_codes") if "receipt_codes" in item else item.get("catalog_codes") or [],
                     **variant_snapshot(item),
                     **({"variant_id": int(item["variant_id"])} if item.get("variant_id") is not None else {}),
                     "quantity": quantity,

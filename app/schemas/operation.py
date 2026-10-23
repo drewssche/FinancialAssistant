@@ -38,6 +38,7 @@ class ReceiptCodeIn(BaseModel):
 
 
 class OperationReceiptItemIn(MeasurementFields):
+    receipt_codes: list[ReceiptCodeIn] = Field(default_factory=list, max_length=10)
     catalog_name_touched: bool = False
     catalog_measurement_touched: bool = False
     catalog_edit_variant_id: int | None = Field(default=None, ge=1)
@@ -64,6 +65,7 @@ class OperationReceiptItemIn(MeasurementFields):
 
 
 class OperationReceiptItemOut(MeasurementFields):
+    receipt_codes: list[ReceiptCodeIn] = Field(default_factory=list, max_length=10)
     variant_snapshot: ReceiptVariantSnapshot | None = None
     id: int
     template_id: int | None

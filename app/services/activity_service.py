@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.receipt_pricing import PRICING_FIELDS, pricing_snapshot
-from app.core.receipt_variant import variant_snapshot
+from app.core.receipt_variant import receipt_code_snapshot, variant_snapshot
 from app.core.measurement import MEASUREMENT_FIELDS, measurement_snapshot
 from app.db.models import (
     ActivityEvent,
@@ -584,6 +584,7 @@ class ActivityService:
             "shop_name": str(get("shop_name") or ""),
             "name": str(get("name") or "Без названия"),
             **measurement_snapshot(row, json_safe=True),
+            **receipt_code_snapshot(row),
             **variant_snapshot(row),
             **pricing_snapshot(row, json_safe=True),
             "quantity": str(get("quantity") or "0"),

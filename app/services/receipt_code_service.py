@@ -9,7 +9,18 @@ from app.services.catalog_identity_service import normalize_codes
 
 def variable_code(code):
     if len(code) == 14 and code.startswith('0'): code = code[1:]
-    return len(code) == 13 and code.isascii() and code.isdigit() and code[:2] in {str(n) for n in range(20, 30)}
+    if not (code.isascii() and code.isdigit() and code[:2] in {str(n) for n in range(20, 30)}):
+        return False
+    if len(code) == 13:
+        return True
+    # Some tills print a 14-digit local identifier, not a valid GTIN-14.
+    # Do not classify valid GTIN-14 shipping identifiers as variable codes.
+    if len(code) == 14:
+        try:
+            normalize_codes([code])
+        except ValueError:
+            return True
+    return False
 
 
 class ReceiptCodeConflict(ValueError):
@@ -129,8 +140,10 @@ class ReceiptCodeService:
         # Serialize competing attachments to this product; GTIN also has a global per-owner unique constraint.
         self.db.scalar(select(CatalogProduct).where(CatalogProduct.id == product.id, CatalogProduct.user_id == user_id).with_for_update())
         barcode_values = [e['code'] for e in entries if e['kind'] == 'barcode']
-        codes = normalize_codes(barcode_values)
-        retailers = {e['code'].strip() for e in entries if e['kind'] == 'retailer'}
+        codes = {gtin: code for gtin, code in normalize_codes(barcode_values).items() if not variable_code(code)}
+        # Restricted receipt codes may include purchase-specific information. Keep
+        # them on the receipt; never replace or claim a shop's stable product SKU.
+        retailers = {e['code'].strip() for e in entries if e['kind'] == 'retailer' and not variable_code(e['code'].strip())}
         if len(retailers) > 1: raise ValueError('Укажите один артикул магазина для предложения')
         if any(not e['code'].strip() or e['kind'] not in ('barcode','retailer') for e in entries):
             raise ValueError('Подтвердите тип каждого кода: штрихкод или артикул')
@@ -181,7 +194,9 @@ class ReceiptCodeService:
                 raise ReceiptCodeConflict('Артикул этого магазина закреплён за другим предложением', [{"kind":"retailer", "code":code}], owners)
             mapping = self.db.get(CatalogOfferIdentity, template.id)
             if mapping and mapping.retailer_code and mapping.retailer_code != code:
-                raise ValueError('У предложения уже другой артикул. Измените его в карточке товара.')
+                raise ReceiptCodeConflict(
+                    f'У предложения уже есть артикул {mapping.retailer_code}. Проверьте код из чека.',
+                    [{"kind": "retailer", "code": code}])
             if mapping is None:
                 mapping = CatalogOfferIdentity(template_id=template.id,user_id=user_id)
                 self.db.add(mapping)
