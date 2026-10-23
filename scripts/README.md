@@ -182,3 +182,44 @@ Notes:
 - when Redis is unavailable, the worker now sends an admin-only advisory about `local fallback` mode with a built-in `12h` cooldown and health-check guidance
 - for local Web/API checks, the worker is optional; use `docker compose up --build -d app db` and keep `bot` stopped when local `.env` does not contain a valid Telegram token
 - Telegram `401/403` polling responses are treated as invalid token/configuration and park the worker instead of busy-retrying
+
+## Moderate backup / bot incident notifications (2026-10-24)
+
+`financialassistant-monitor.timer` samples once per minute on the host. Install
+both units from `deploy/systemd/`, then `systemctl daemon-reload` and
+`systemctl enable --now financialassistant-monitor.timer`. The collector uses
+only local backup evidence and a narrowly formatted `docker inspect`; it makes
+no extra Yandex requests, reads no container environment, and performs no restart.
+It sends a small JSON sample through stdin to the existing app container. Docker
+socket access is not granted to the app; mail/Telegram credentials stay there.
+
+Policy:
+- Backup: warn after 15 minutes of continuous failure/unknown evidence, or when
+  the confirmed external snapshot is over 36 hours old. Failed retention is
+  included as an operational problem. A local pending archive is not proof of
+  an external backup. Recovery requires five minutes of successful evidence.
+- Bot: warn after ten minutes continuously unhealthy/missing, or a burst of at
+  least three observed restarts/recreations in 30 minutes persisting for ten
+  minutes. The initial lifetime restart count is a baseline, not an incident.
+  Recovery requires five minutes healthy and outside the restart-burst window.
+- One warning per ongoing incident, one recovery only for channels that received
+  (or have an uncertain crash outcome for) the warning. Recovery before a delayed
+  warning is sent produces no messages. Repeated healthy/failed samples stay quiet.
+- Backup and bot transitions eligible together are combined. Both use the
+  **same** per-destination quota as security: one attempt/hour, six/day in Minsk,
+  including failed sends. No additional quota is created by this monitor.
+- Failed delivery retries at most three times per state/channel; successful
+  channels are not retried. Quotas and incident/delivery states persist in
+  `security-alerts.sqlite3`. Unknown in-flight results after a crash are logged
+  and not replayed, to avoid duplicates (a notification can be lost in that case).
+- Gaps over three minutes reset the continuity test; stale samples cannot trigger
+  notifications. Transitions and delivery outcomes are in `security.jsonl`;
+  sampler success/failure is in `journalctl -u financialassistant-monitor.service`.
+
+This is local monitoring, not independent uptime monitoring: if the server,
+Docker, app alert worker or outbound network is down, it cannot deliver an alert
+at that moment. The timer retries sampling automatically; the current state is
+re-evaluated after recovery. No synthetic Telegram/email smoke messages are sent
+by installation. Existing real Yandex failure will produce one ordinary warning
+when it passes the debounce and shared quota. It does not change the 04:15 Minsk
+backup schedule or make unavailable Yandex storage healthy.

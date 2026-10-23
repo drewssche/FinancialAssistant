@@ -1,0 +1,11 @@
+[Unit]
+Description=FinancialAssistant backup and bot incident sampler
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/FinancialAssistant
+ExecStart=/usr/bin/python3 -m scripts.monitor_operational_health
+TimeoutStartSec=60
+UMask=0077
+Nice=10

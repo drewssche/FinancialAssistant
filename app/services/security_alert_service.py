@@ -16,6 +16,7 @@ from zoneinfo import ZoneInfo
 import httpx
 
 from app.core.config import get_settings
+from app.services import operations_alert_service as operations
 
 LOG = logging.getLogger(__name__)
 BATCH_SECONDS = 900
@@ -84,6 +85,7 @@ class SecurityAlerts:
                 next_at REAL NOT NULL DEFAULT 0, day TEXT NOT NULL DEFAULT '',
                 attempts INTEGER NOT NULL DEFAULT 0)''')
             db.execute('CREATE TABLE IF NOT EXISTS access_events (id INTEGER PRIMARY KEY, payload TEXT NOT NULL)')
+            operations.initialize(db)
             for channel in self.channels:
                 db.execute('INSERT OR IGNORE INTO channels(channel) VALUES (?)', (channel,))
         self.path.chmod(0o600)
@@ -138,6 +140,8 @@ class SecurityAlerts:
             for row in rows:
                 payload = json.loads(row['inflight'])
                 self.audit('security_notification_unknown_after_restart', row['channel'], notification_id=payload['id'])
+                if payload.get('operations'):
+                    operations.acknowledge(db, row['channel'], payload['operations'])
                 db.execute('UPDATE channels SET inflight=NULL WHERE channel=?', (row['channel'],))
 
     def tick(self, *, force_batch=False):
@@ -190,6 +194,8 @@ class SecurityAlerts:
                 with self.connect() as db:
                     db.execute('UPDATE channels SET inflight=NULL WHERE channel=?', (channel,))
 
+        operations.tick(self, cooldown=COOLDOWN_SECONDS, daily_limit=DAILY_LIMIT)
+
     def deliver(self, channel, text):
         s = self.settings
         if channel.startswith('telegram:'):
@@ -201,7 +207,7 @@ class SecurityAlerts:
                     raise RuntimeError('Telegram delivery not acknowledged')
             return
         message = EmailMessage()
-        message['Subject'] = 'ФинАсист: сводка безопасности'
+        message['Subject'] = 'ФинАсист: состояние сервисов' if text.startswith('ФинАсист — состояние сервисов') else 'ФинАсист: сводка безопасности'
         message['From'], message['To'] = s.smtp_from, s.security_alert_email
         message.set_content(text)
         context = ssl.create_default_context()

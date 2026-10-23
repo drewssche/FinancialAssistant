@@ -29,6 +29,13 @@ Stage 1 implemented: passive signals, bounded journal, dry-run limits and produc
 - [ ] After observation, introduce short, expiring blocks for repeated abuse with an operator unblock/rollback mechanism; never permanent bans on a single request or user-agent string.
 - [ ] Before activation, test normal/pending/rejected/admin sessions, spoofed forwarding headers, event flooding, log injection, shared IPs, expiry/unblock and graceful proxy rollback. Enable notifications and enforcement as a separately reviewed iteration.
 
+## Operational incident notifications — 2026-10-24
+
+- [x] Add local backup freshness/failure and bot health/restart-burst sampling with durable incident state. Reuse security transports and quotas (one attempt/hour, six/day/channel); suppress repeated states and unannounced recoveries. Retry failed channels at most three times.
+- [x] Cover transient failure, continuous failure, recovery, sampling gaps, stale samples, lifetime restart baseline, grouped incidents, shared quota, partial delivery and crash uncertainty with isolated tests.
+- [ ] Yandex reliable scheduled upload and a subsequent restore remain pending provider recovery. Monitoring does not replace a confirmed external backup.
+- [ ] OS maintenance/reboot and independent server uptime monitoring remain separate; no reboot or automatic blocking in this iteration.
+
 ## Current Sprint
 ### E-delivery exact articles and unavailable cards — 2026-10-17
 - [x] E-delivery store articles resolve through the exact public `/product/{article}` card instead of relying on search results. The parsed product ID must match; barcode conflicts and ambiguous matches still require selection. Missing cards return no hit, while redirects and transient fetch failures remain errors.
@@ -139,7 +146,7 @@ Stage 1 implemented: passive signals, bounded journal, dry-run limits and produc
 - [x] Update current architecture, product semantics, documentation status and release/VPS checks against `e5eaee1`; distinguish incomplete price history from future observation history.
 - [x] Diagnose external providers without modifying them: Sber API host has no address records in checked DNS responses; Yandex quota succeeds while file-resource API returns 410, including direct API access.
 - [x] Implement and deploy (`c86c196`): bot non-text/service-message guard, isolated update handling, bounded retries and event-type diagnostics. Retry response delivery after a completed action without replaying the action; tested against a real plan confirmation transaction. Post-release app/bot health checks passed.
-- [ ] Worker progress/poll freshness healthcheck deployed and healthy. Remaining: restart-burst monitoring and alert delivery; Docker healthcheck alone does not notify/restart.
+- [x] Worker progress/poll freshness healthcheck plus persistent incident/restart-burst alerts implemented. Host minute sampler, ten-minute debounce, one warning/recovery per incident, shared Telegram/email quotas. Docker healthcheck does not restart containers; independent host uptime monitoring remains separate.
 - [ ] Verify a supported Sber cash-rate source; bounded provider backoff and DNS/network/HTTP/parse diagnostics are deployed without changing historical FX snapshots. The replacement endpoint is still unverified.
 - [ ] Encrypted retry spool, separate upload/retention status and backup-age check deployed. On 24 October, Yandex REST still returned 410; WebDAV with a dedicated app password accepted a fresh archive despite a late upload error. Downloaded SHA-256 matched and isolated PostgreSQL 16 restore passed (42 tables, revision 20261023_0055, validated foreign keys). Backup delivery now requires SHA-256 read-back, including after ambiguous provider errors, and prioritizes the newest snapshot. The subsequent automatic-service test still failed (HTTP 500, uploaded object unavailable); eight encrypted archives remained queued. See scripts/README.md for configuration and evidence. Remaining: restore reliable automatic delivery and integrate backup-age alerts. Regular retention remains 30 days.
 - [ ] Refresh the generated architecture graph with verified scope and commit metadata; current graph remains historical rather than being relabeled as up to date.
