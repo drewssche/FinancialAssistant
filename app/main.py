@@ -17,6 +17,7 @@ from app.api.router import api_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging, log_api_request_completion
 from app.core.metrics import record_http_request, record_http_response_size
+from app.core.security_observation import SecurityJournal, SecurityObserver, documentation_options, normalized_path
 from app.db.session import get_db
 
 settings = get_settings()
@@ -28,7 +29,11 @@ index_file = static_dir / "index.html"
 alembic_config = Config(str(base_dir / "alembic.ini"))
 expected_database_revision = ScriptDirectory.from_config(alembic_config).get_current_head()
 
-app = FastAPI(title=settings.app_name)
+app = FastAPI(title=settings.app_name, **documentation_options(settings.is_production))
+security_observer = SecurityObserver(
+    SecurityJournal(settings.security_event_log_path) if settings.security_event_log_path else lambda event: None,
+    trusted_proxy_ips=[ip.strip() for ip in settings.security_trusted_proxy_ips.split(",") if ip.strip()],
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -42,7 +47,8 @@ app.mount("/static", StaticFiles(directory=str(static_dir), check_dir=False), na
 
 @app.middleware("http")
 async def http_metrics_middleware(request, call_next):
-    request_id = request.headers.get("X-Request-ID") or str(uuid4())
+    # An untrusted request ID must not inject text into logs or response headers.
+    request_id = str(uuid4())
     request.state.request_id = request_id
     started_at = perf_counter()
     status_code = 500
@@ -52,13 +58,15 @@ async def http_metrics_middleware(request, call_next):
         status_code = response.status_code
         return response
     finally:
-        record_http_request(path=request.url.path, method=request.method)
+        observed_path = normalized_path(request)
+        security_observer.observe(request, status_code)
+        record_http_request(path=observed_path, method=request.method)
         if response is not None:
             try:
                 response_size = int(response.headers.get("Content-Length", "0"))
             except ValueError:
                 response_size = 0
-            record_http_response_size(path=request.url.path, method=request.method, size_bytes=response_size)
+            record_http_response_size(path=observed_path, method=request.method, size_bytes=response_size)
             response.headers["X-Request-ID"] = request_id
             response.headers["Content-Security-Policy"] = (
                 "default-src 'self'; "
@@ -80,7 +88,7 @@ async def http_metrics_middleware(request, call_next):
                 response.headers["Cache-Control"] = "no-cache"
         log_api_request_completion(
             method=request.method,
-            path=request.url.path,
+            path=observed_path,
             status_code=status_code,
             duration_ms=(perf_counter() - started_at) * 1000.0,
             request_id=request_id,

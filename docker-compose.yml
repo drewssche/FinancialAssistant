@@ -10,6 +10,9 @@ services:
       - .env
     environment:
       PYTHONPATH: /app
+      SECURITY_EVENT_LOG_PATH: /var/log/financialassistant/security.jsonl
+    volumes:
+      - security_logs:/var/log/financialassistant
     ports:
       - "127.0.0.1:8001:8000"
     depends_on:
@@ -28,7 +31,9 @@ services:
       timeout: 6s
       retries: 12
       start_period: 20s
-    command: sh -lc "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    # Preserve the socket peer so only explicit SECURITY_TRUSTED_PROXY_IPS can
+    # supply client metadata. Nginx overwrites those headers at the edge.
+    command: sh -lc "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-proxy-headers --no-access-log"
 
   bot:
     build: .
@@ -110,3 +115,4 @@ services:
 
 volumes:
   postgres_data:
+  security_logs:

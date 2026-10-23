@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+from uuid import UUID
 
 from app.main import app
 
@@ -12,13 +13,14 @@ def test_health_response_exposes_request_id_header():
     assert response.headers.get("X-Request-ID")
 
 
-def test_request_id_header_is_preserved_when_provided_by_client():
+def test_request_id_is_generated_by_server_instead_of_trusting_client():
     client = TestClient(app)
 
     response = client.get("/health", headers={"X-Request-ID": "req-123"})
 
     assert response.status_code == 200
-    assert response.headers.get("X-Request-ID") == "req-123"
+    assert response.headers.get("X-Request-ID") != "req-123"
+    UUID(response.headers["X-Request-ID"])
 
 
 def test_frontend_entrypoint_and_scripts_revalidate_after_deploy():
@@ -71,4 +73,5 @@ def test_api_request_completion_is_logged_with_request_context(caplog):
     assert any("api_request_completed" in message for message in messages)
     assert any("path=/health" in message for message in messages)
     assert any("status_code=200" in message for message in messages)
-    assert any("request_id=req-log" in message for message in messages)
+    assert any(f"request_id={response.headers['X-Request-ID']}" in message for message in messages)
+    assert not any("req-log" in message for message in messages)

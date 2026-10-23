@@ -1,4 +1,4 @@
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -15,9 +15,14 @@ from app.services.auth_context_service import (
 def get_current_user(
     authorization: str | None = Header(default=None),
     db: Session = Depends(get_db),
+    request: Request = None,
 ) -> User:
     try:
-        return AuthContextService(db).resolve_user_from_authorization_header(authorization)
+        user = AuthContextService(db).resolve_user_from_authorization_header(authorization)
+        if request is not None:
+            request.state.authenticated_user_id = user.id
+            request.state.access_not_approved = user.status not in {"approved", "active"}
+        return user
     except (
         InvalidAuthorizationHeaderError,
         InvalidAccessTokenError,

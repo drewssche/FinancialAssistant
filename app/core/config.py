@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     app_secret_key: str = Field(default="change_me", alias="APP_SECRET_KEY")
     app_access_token_expire_minutes: int = Field(default=30, alias="APP_ACCESS_TOKEN_EXPIRE_MINUTES")
     app_session_max_hours: int = Field(default=12, alias="APP_SESSION_MAX_HOURS")
+    security_trusted_proxy_ips: str = Field(default="", alias="SECURITY_TRUSTED_PROXY_IPS")
+    security_event_log_path: str = Field(default="", alias="SECURITY_EVENT_LOG_PATH")
 
     postgres_user: str = Field(default="fin_user", alias="POSTGRES_USER")
     postgres_password: str = Field(default="fin_pass", alias="POSTGRES_PASSWORD")
