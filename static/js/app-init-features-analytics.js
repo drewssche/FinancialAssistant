@@ -1,6 +1,5 @@
 (() => {
   const { state, el, core, actions } = window.App;
-  const hoverCoordinator = getAnalyticsHoverCoordinator();
   const coordinator = getAnalyticsUiCoordinator();
   const pickerUtils = getPickerUtils();
   const periodControls = getAnalyticsPeriodControls({
@@ -384,32 +383,6 @@
         actions.showAllCategoryBreakdownItems();
       });
     }
-    if (actions.setCategoryBreakdownHover && actions.clearCategoryBreakdownHover) {
-      const bindCategoryHover = (container) => {
-        hoverCoordinator.bindIndexedHover({
-          container,
-          itemSelector: "[data-analytics-category-index]",
-          getIndex: (node) => node.dataset.analyticsCategoryIndex,
-          setHover: (index) => actions.setCategoryBreakdownHover(index),
-          clearHover: () => actions.clearCategoryBreakdownHover(),
-        });
-      };
-      bindCategoryHover(el.analyticsCategoryBreakdownChart);
-      bindCategoryHover(el.analyticsCategoryBreakdownList);
-    }
-    if (el.dashboardCategoryBreakdownList && actions.loadDashboardAnalyticsPreview) {
-      const bindDashboardBreakdownHover = (container) => {
-        hoverCoordinator.bindIndexedHover({
-          container,
-          itemSelector: "[data-dashboard-category-index]",
-          getIndex: (node) => node.dataset.dashboardCategoryIndex,
-          setHover: (index) => getAnalyticsHighlightsModule()?.setDashboardBreakdownHover?.(index),
-          clearHover: () => getAnalyticsHighlightsModule()?.clearDashboardBreakdownHover?.(),
-        });
-      };
-      bindDashboardBreakdownHover(el.dashboardCategoryBreakdownChart);
-      bindDashboardBreakdownHover(el.dashboardCategoryBreakdownList);
-    }
     if (el.analyticsViewTabs && actions.setAnalyticsTab) {
       el.analyticsViewTabs.addEventListener("click", (event) => {
         const btn = event.target.closest("button[data-analytics-tab]");
@@ -621,51 +594,6 @@ function createAnalyticsPeriodControlsFallback() {
     openQuickPeriodPopover() {},
     shiftAnalyticsGlobalPeriod() {},
   };
-}
-
-function getAnalyticsHoverCoordinator() {
-  return (
-    window.App.getRuntimeModule?.("analytics-hover-coordinator") || {
-      bindIndexedHover({ container, itemSelector, getIndex, setHover, clearHover }) {
-        if (!container) {
-          return;
-        }
-        container.addEventListener("mouseover", (event) => {
-          const node = event.target.closest(itemSelector);
-          if (!node) {
-            return;
-          }
-          setHover(getIndex(node));
-        });
-        container.addEventListener("focusin", (event) => {
-          const node = event.target.closest(itemSelector);
-          if (!node) {
-            return;
-          }
-          setHover(getIndex(node));
-        });
-        container.addEventListener("mouseout", (event) => {
-          const current = event.target.closest(itemSelector);
-          const related = event.relatedTarget instanceof Element ? event.relatedTarget.closest(itemSelector) : null;
-          if (!current || (related && getIndex(related) === getIndex(current))) {
-            return;
-          }
-          if (!container.contains(event.relatedTarget)) {
-            clearHover();
-          }
-        });
-        container.addEventListener("focusout", (event) => {
-          if (container.contains(event.relatedTarget)) {
-            return;
-          }
-          clearHover();
-        });
-        container.addEventListener("mouseleave", () => {
-          clearHover();
-        });
-      },
-    }
-  );
 }
 
 function getAnalyticsHighlightsModule() {

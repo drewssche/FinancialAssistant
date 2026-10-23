@@ -111,7 +111,7 @@
       primaryContainer.innerHTML = rows.map(([label, value, previous, tone], index) => {
         const pct = previous > 0 && index < 2 ? ` · ${formatPct((value - previous) / previous * 100)}` : "";
         const parts = index === 2 && (Number(data.debt_cashflow_total) || Number(data.fx_cashflow_total))
-          ? `<div class="period-result-parts"><span>Операции <b>${escapeHtml(signed(Number(data.balance || 0)))}</b></span>${Number(data.debt_cashflow_total) ? `<span>Долги <b>${escapeHtml(signed(Number(data.debt_cashflow_total)))}</b></span>` : ""}${Number(data.fx_cashflow_total) ? `<span>Обмен валют <b>${escapeHtml(signed(Number(data.fx_cashflow_total)))}</b></span>` : ""}</div>` : "";
+          ? `<div class="period-result-parts"><span class="meta-chip meta-chip-neutral">Операции <b>${escapeHtml(signed(Number(data.balance || 0)))}</b></span>${Number(data.debt_cashflow_total) ? `<span class="meta-chip meta-chip-neutral">Долги <b>${escapeHtml(signed(Number(data.debt_cashflow_total)))}</b></span>` : ""}${Number(data.fx_cashflow_total) ? `<span class="meta-chip meta-chip-neutral">Обмен валют <b>${escapeHtml(signed(Number(data.fx_cashflow_total)))}</b></span>` : ""}</div>` : "";
         return `<article class="analytics-kpi-card analytics-kpi-${tone}"><div class="muted-small">${label}</div><strong>${escapeHtml(core.formatMoney(value))}</strong>${compare ? `<span class="muted-small">К прошлому периоду: ${escapeHtml(signed(value - previous) + pct)}</span>` : ""}${parts}</article>`;
       }).join("");
     }
@@ -120,7 +120,7 @@
         ? ` · Сравнение: ${core.formatDateRu(data.comparison_date_from)} — ${core.formatDateRu(data.comparison_date_to)}` : "";
       const changes = compare ? (data.category_breakdown || []).filter(c => Number(c.change_amount) && c.category_kind === "expense")
         .sort((a,b) => Math.abs(Number(b.change_amount)) - Math.abs(Number(a.change_amount))).slice(0,3) : [];
-      secondaryContainer.innerHTML = `<div class="muted-small period-summary-meta">${Number(data.cashflow_events_count ?? data.operations_count ?? 0)} операций · Расходы в день: ${escapeHtml(core.formatMoney(data.avg_daily_expense || 0))}${escapeHtml(comparison)}</div>${changes.length ? `<div class="period-category-changes"><span class="muted-small">Изменение расходов</span>${changes.map(c => `<span>${escapeHtml(c.category_name)} <b>${escapeHtml(signed(Number(c.change_amount)))}</b></span>`).join("")}</div>` : ""}`;
+      secondaryContainer.innerHTML = `<div class="muted-small period-summary-meta">${Number(data.cashflow_events_count ?? data.operations_count ?? 0)} операций · Расходы в день: ${escapeHtml(core.formatMoney(data.avg_daily_expense || 0))}${escapeHtml(comparison)}</div>${changes.length ? `<div class="period-category-changes"><span class="muted-small">Изменение расходов</span>${changes.map(c => `<span class="meta-chip meta-chip-neutral">${escapeHtml(c.category_name)} <b>${escapeHtml(signed(Number(c.change_amount)))}</b></span>`).join("")}</div>` : ""}`;
     }
   }
 

@@ -16,7 +16,7 @@
 #analyticsSection .analytics-category-donut,
 #dashboardSection .analytics-category-donut { width: min(100%, 520px); height: auto; aspect-ratio: 1; }
 #analyticsSection .analytics-insight-item,
-#dashboardSection .analytics-insight-item { background: none; border-radius: 0; box-shadow: none; }
+#dashboardSection .analytics-insight-item { background: none; border-radius: var(--radius-sm); box-shadow: none; }
 #analyticsCalendarPanel .panel-head > .toolbar { display: flex; flex-wrap: wrap; gap: 10px; }
 #analyticsCalendarPanel .analytics-switch-group > .muted-small { display: none; }
 #analyticsCalendarPanel .analytics-switch-group { gap: 0; }
@@ -84,7 +84,7 @@
   #analyticsPositionsMetricTabs > button { min-width: 0; white-space: normal; }
   #currencySection .panel-head > .toolbar { flex-direction: row; flex-wrap: wrap; justify-content: flex-start; }
 }
-#analyticsCategoryBreakdownList .analytics-insight-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; border: 0; border-bottom: 1px solid var(--border); padding: 12px 0; }
+#analyticsCategoryBreakdownList .analytics-insight-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; border: 1px solid var(--border); padding: 12px; }
 #analyticsCategoryBreakdownList .analytics-insight-head { grid-column: 1; display: flex; flex-wrap: wrap; flex-direction: row; justify-content: space-between; gap: 4px 10px; }
 #analyticsCategoryBreakdownList .analytics-insight-item > .muted-small { grid-column: 1; font-size: 11px; }
 #analyticsCategoryBreakdownList .analytics-insight-actions { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: row; align-items: center; gap: 5px; }
@@ -205,10 +205,11 @@
 /* One primary period summary; other totals remain local, compact context. */
 #dashboardKpiPrimary, #operationsSummaryGrid, #analyticsCalendarTotals { grid-template-columns: repeat(3,minmax(0,1fr)); }
 #dashboardDebtKpiGrid, #debtsSectionKpi { grid-template-columns: repeat(2,minmax(0,1fr)); }
-.period-result-parts { display:flex; flex-wrap:wrap; gap:4px 12px; font-size:12px; margin-top:6px; }
-.period-result-parts span { display:flex; gap:6px; }
+.period-result-parts { display:flex; flex-wrap:wrap; gap:6px; font-size:12px; margin-top:6px; }
+.period-result-parts .meta-chip, .period-category-changes .meta-chip { gap:6px; padding:4px 10px; max-width:100%; white-space:normal; overflow-wrap:anywhere; line-height:1.4; }
+.period-result-parts b, .period-category-changes b { flex-shrink:0; white-space:nowrap; }
 .period-summary-meta { width:100%; }
-.period-category-changes { display:flex; flex-wrap:wrap; gap:6px 18px; font-size:13px; }
+.period-category-changes { display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:13px; }
 .period-category-changes b { font-weight:600; }
 .operations-count { margin:8px 0; }
 .plan-forecast { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px 20px; margin-top:12px; }
@@ -240,3 +241,10 @@
 #dashboardSection #dashboardKpiPrimary { grid-template-columns:repeat(3,minmax(0,1fr)); }
 @media(max-width:600px) { #dashboardSection #dashboardKpiPrimary { grid-template-columns:1fr; } }
 #currencySection #analyticsCurrencySecondary > .table-wrap { width:100%; }
+
+/* The category lists share the same padded hover surface as the dashboard. */
+:is(#dashboardCategoryBreakdownList, #analyticsCategoryBreakdownList) .analytics-category-breakdown-item.is-active {
+  border-color: rgba(255, 179, 71, .45);
+  background: rgba(109, 141, 189, .08);
+  box-shadow: inset 0 0 0 1px rgba(255, 179, 71, .16);
+}

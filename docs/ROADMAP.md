@@ -36,6 +36,13 @@ Stage 1 implemented: passive signals, bounded journal, dry-run limits and produc
 - [ ] Yandex reliable scheduled upload and a subsequent restore remain pending provider recovery. Monitoring does not replace a confirmed external backup.
 - [ ] OS maintenance/reboot and independent server uptime monitoring remain separate; no reboot or automatic blocking in this iteration.
 
+## Dashboard summary chips and consistent structure hover — 2026-10-24
+
+- [x] Show category expense changes and result components (operations/debts/FX) as existing informational chips, wrapping long labels without changing calculations.
+- [x] Use one idempotent delegated hover binding for both structure diagrams/lists; remove duplicate per-render and initialization listeners. Align list borders/padding, rounded corners and active highlight with the dashboard.
+- [x] Verify narrow/mobile/laptop/desktop layouts at 320, 390, 1024 and 1440 px, with long labels and hover/reset on both surfaces.
+- [ ] Read-only review of this user's uncategorized 2026 allocations, including receipt rows and any unallocated receipt remainder; present proposed categories before changing records. Screenshot reference: 12 operations / 162.96 BYN for 2026-01-01 through 2026-10-23. Do not equate all parent receipts with null category to uncategorized allocations.
+
 ## Current Sprint
 ### E-delivery exact articles and unavailable cards — 2026-10-17
 - [x] E-delivery store articles resolve through the exact public `/product/{article}` card instead of relying on search results. The parsed product ID must match; barcode conflicts and ambiguous matches still require selection. Missing cards return no hit, while redirects and transient fetch failures remain errors.

@@ -812,7 +812,7 @@ def test_desktop_breakdown_lists_match_chart_height(page_with_analytics_api_mock
     assert abs(analytics_geometry["chartHeight"] - analytics_geometry["listHeight"]) <= 1
     assert analytics_geometry["donutTop"] >= analytics_geometry["chartTop"] - 1
     assert analytics_geometry["donutBottom"] <= analytics_geometry["chartBottom"] + 1
-    page.locator("#analyticsCategoryBreakdownSvg .analytics-category-slice").first.dispatch_event("pointerenter")
+    page.locator("#analyticsCategoryBreakdownList .analytics-insight-item").first.hover()
     page.wait_for_selector("#analyticsCategoryBreakdownSvg .analytics-category-slice.is-active")
     hover_geometry = page.evaluate(
         """
@@ -1890,3 +1890,49 @@ def test_calendar_uses_one_cashflow_difference_at_every_level(static_server_url,
     expect(page.locator("#analyticsCalendarTotals .analytics-kpi-card")).to_have_count(3)
     expect(page.locator(".toast-text")).to_have_count(0)
     page.locator("#analyticsCalendarPanel").screenshot(path=f"/tmp/fa-calendar-difference-{width}.png")
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width', [320, 390, 1024, 1440])
+def test_summary_chips_and_shared_hover(page_with_analytics_api_mock, static_server_url, width):
+    page = page_with_analytics_api_mock
+    _open_desktop_app(page, static_server_url)
+    page.set_viewport_size({'width': width, 'height': 900})
+    page.wait_for_selector('#dashboardKpiPrimary .analytics-kpi-card')
+    page.evaluate('''() => {
+      const a = window.App.analyticsShared;
+      a.renderPeriodKpiBlocks(document.getElementById('dashboardKpiPrimary'), document.getElementById('dashboardKpiSecondary'), null, {
+        period:'month', cashflow_income_total:2000, cashflow_expense_total:1304.07,
+        cashflow_total:695.93, balance:1416.32, debt_cashflow_total:-720.39,
+        cashflow_events_count:83, avg_daily_expense:108.49,
+        category_breakdown:[{category_name:'Подписки',category_kind:'expense',change_amount:-402.57},
+          {category_name:'Одежда',category_kind:'expense',change_amount:355.56},
+          {category_name:'Баня/сауна и оздоровительные процедуры',category_kind:'expense',change_amount:80}]
+      }, a.formatPct);
+    }''')
+    expect(page.locator('.period-result-parts .meta-chip')).to_have_count(2)
+    expect(page.locator('.period-category-changes .meta-chip')).to_have_count(3)
+    assert page.evaluate('''() => [...document.querySelectorAll('.period-result-parts .meta-chip,.period-category-changes .meta-chip')].every(n => {
+        const r=n.getBoundingClientRect(); return r.left>=0 && r.right<=innerWidth && n.scrollWidth<=n.clientWidth+1;
+    })''')
+    page.locator('#dashboardAnalyticsPanel').screenshot(path=f'/tmp/fa-summary-chips-{width}.png')
+    profiles = []
+    for surface in ['dashboard', 'analytics']:
+        if surface == 'analytics':
+            page.evaluate('''async () => {
+              window.App.state.activeSection='analytics'; window.App.state.analyticsTab='structure';
+              document.getElementById('dashboardSection').classList.add('hidden');
+              document.getElementById('analyticsSection').classList.remove('hidden');
+              window.App.getRuntimeModule('analytics').applyAnalyticsTabUi();
+              await window.App.getRuntimeModule('analytics').loadAnalyticsSection({force:true});
+            }''')
+        row = page.locator(f'#{surface}CategoryBreakdownList .analytics-insight-item').first
+        row.hover()
+        active = page.locator(f'#{surface}CategoryBreakdownSvg .analytics-category-slice.is-active')
+        expect(active).to_have_count(1)
+        profiles.append(active.evaluate('(n) => {const s=getComputedStyle(n);return [s.transitionDuration,s.transitionTimingFunction,s.strokeWidth];}'))
+        page.locator(f'#{surface}StructurePanel').screenshot(path=f'/tmp/fa-hover-{surface}-{width}.png')
+        row.dispatch_event('mouseleave')
+        page.mouse.move(0, 0)
+        expect(active).to_have_count(0)
+    assert profiles[0] == profiles[1]
