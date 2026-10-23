@@ -80,6 +80,7 @@ def test_manual_row_search_keyboard_and_change_shop_unlinks(static_server_url,pa
     expect(p.locator('#scanConfirmed')).not_to_be_checked()
     expect(row.locator('.scan-match')).not_to_contain_text('Из каталога')
     name.fill('черри');row.locator('.receipt-template-suggestion[role=option]').first.click()
+    row.get_by_role('button',name='Отвязать товар каталога').click()
     name.fill('Ручное название без каталога')
     name.press('Escape')
     expect(p.locator('#receiptScanDialog')).to_be_visible()
@@ -259,7 +260,8 @@ def test_scan_category_search_manual_priority_and_transfer(static_server_url,pag
     expect(category).to_have_value(str(chosen['id']))
     row.locator('[data-scan-field=name]').focus();row.locator('.receipt-template-suggestion').first.click()
     expect(category).to_have_value(str(chosen['id']))
-    # New, uncatalogued items retain the user's category after editing the name.
+    # Explicit unlink keeps category but permits a genuinely new product.
+    row.get_by_role('button',name='Отвязать товар каталога').click()
     row.locator('[data-scan-field=name]').fill('Новая пицца')
     row.locator('[data-scan-field=name]').press('Escape')
     expect(category).to_have_value(str(chosen['id']))

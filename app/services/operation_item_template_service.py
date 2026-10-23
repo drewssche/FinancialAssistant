@@ -15,7 +15,7 @@ from app.core.cache import (
     set_json,
 )
 from app.core.measurement import normalize_measurement
-from app.db.models import CatalogProduct, Category
+from app.db.models import CatalogProduct, Category, OperationReceiptItem, PlanReceiptItem
 from app.repositories.catalog_product_repo import CatalogProductRepository
 from app.repositories.item_brand_repo import ItemBrandRepository
 from app.repositories.operation_repo import OperationRepository
@@ -702,6 +702,8 @@ class OperationItemTemplateService:
                 user_id=user_id,
                 template=template,
             )
+            from app.services.receipt_catalog_edit_service import ReceiptCatalogEditService
+            ReceiptCatalogEditService(self.db).apply(user_id=user_id, product=product, template=template, item=item)
             if item.get("catalog_codes"):
                 from app.services.receipt_code_service import ReceiptCodeService
                 ReceiptCodeService(self.db).attach(user_id=user_id, product=product, template=template, item=item, item_index=receipt_index)
@@ -716,8 +718,9 @@ class OperationItemTemplateService:
                 fallback_category_id=category_id,
             )
             template.is_archived = False
-            if template.name != name:
+            if template.name != name and not item.get("template_id"):
                 template.name = name
+                template.name_ci = name.casefold()
             if template.shop_name != shop_name:
                 template.shop_name = shop_name
                 template.shop_name_ci = shop_name_ci
@@ -872,6 +875,8 @@ class OperationItemTemplateService:
                 user_id=user_id,
                 template=template,
             )
+            from app.services.receipt_catalog_edit_service import ReceiptCatalogEditService
+            ReceiptCatalogEditService(self.db).apply(user_id=user_id, product=product, template=template, item=item)
             if item.get("catalog_codes"):
                 from app.services.receipt_code_service import ReceiptCodeService
                 ReceiptCodeService(self.db).attach(user_id=user_id, product=product, template=template, item=item, item_index=receipt_index)
@@ -1165,7 +1170,15 @@ class OperationItemTemplateService:
                 shop_name.casefold() if shop_name else None,
             )
             template_key = (str(template.name_ci), template.shop_name_ci)
-            if key != template_key:
+            rename = bool(item.get("catalog_name_touched")) and item.get("product_id") == template.product_id
+            historical_name = False
+            if key != template_key and not rename and key[1] == template_key[1]:
+                # A renamed offer must not make its historical receipts uneditable.
+                historical_name = any(self.db.scalar(select(cls.id).where(
+                    cls.user_id == user_id, cls.template_id == template.id,
+                    cls.name == item["name"]).limit(1)) is not None
+                    for cls in (OperationReceiptItem, PlanReceiptItem))
+            if key != template_key and not ((rename or historical_name) and key[1] == template_key[1]):
                 raise ValueError("Selected item template does not match source and name")
             requested_product_id = item.get("product_id")
             if (

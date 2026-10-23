@@ -85,6 +85,7 @@
       if (!rowItem || !template) {
         return;
       }
+      rowItem.catalog_name_touched=false;rowItem.catalog_measurement_touched=false;rowItem.catalog_edit_variant_id=null;
       rowItem.code_errors=[];
       rowItem.code_match_label="";
       rowItem.details_expanded = false;
@@ -198,7 +199,9 @@
       if (field === "name") {
         const token = normalizeReceiptName(event.target.value).toLowerCase();
         const matched = getReceiptTemplateMatch(token, updated.item.shop_name || "", updated.item.brand_id, updated.item.source_id);
-        if (matched) {
+        if (updated.item.catalog_editable && updated.item.product_id) {
+          updated.item.catalog_name_touched=true;updated.item.site_selection=null;
+        } else if (matched) {
           applyReceiptTemplateToItem(updated.item, matched);
           // Typing an exact name must keep its picker/editor open until selection.
           updated.item.details_expanded = true;

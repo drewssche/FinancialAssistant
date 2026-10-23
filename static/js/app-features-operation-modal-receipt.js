@@ -181,6 +181,10 @@
         brand_touched: Boolean(seed.brand_touched),
         category_id: seed.category_id ? Number(seed.category_id) : null,
         category_touched: Boolean(seed.category_touched),
+        catalog_editable: Boolean(seed.catalog_editable),
+        catalog_name_touched: Boolean(seed.catalog_name_touched),
+        catalog_measurement_touched: Boolean(seed.catalog_measurement_touched),
+        catalog_edit_variant_id: seed.catalog_edit_variant_id || null,
         shop_name: normalizeReceiptName(seed.shop_name || ""),
         shop_name_inherited: Boolean(seed.shop_name_inherited),
         name: normalizeReceiptName(seed.name || ""),
@@ -205,6 +209,7 @@
     }
 
     function unlinkReceiptTemplateIdentity(item, options = {}) {
+      item.catalog_name_touched=false;item.catalog_measurement_touched=false;item.catalog_edit_variant_id=null;
       item.site_selection=null;item.site_name="";
       item.code_match_label="";item.code_errors=[];
       item.code_entries=(item.code_entries||[]).filter(e=>!e.from_catalog);item.codes_loaded_entity=null;
@@ -339,6 +344,7 @@
       if (window.App.measurements.fields.includes(key)) {
         item[key] = value || null;
         item.measurement_touched = true;
+        if(item.catalog_editable && item.product_id){item.catalog_edit_variant_id ||= item.variant_id||item.variant_snapshot?.variant_id||null;item.catalog_measurement_touched=true;item.site_selection=null;}
         item.variant_id = null;
         item.variant_snapshot = null;
         item.variant_status = "";
@@ -407,7 +413,9 @@
         const nextName = normalizeReceiptName(value);
         const identityChanged = normalizeReceiptName(item.name || "").toLowerCase() !== nextName.toLowerCase();
         item.name = nextName;
-        if (identityChanged) {
+        if (identityChanged && item.catalog_editable && item.product_id) {
+          item.catalog_name_touched=true;item.site_selection=null;
+        } else if (identityChanged) {
           item.item_image_id = null;
           if (unlinkReceiptTemplateIdentity(item)) {
             syncReceiptBrandField(item, mode);
@@ -1019,6 +1027,9 @@
           ...(item.brand_touched ? { brand_id: item.brand_id ? Number(item.brand_id) : null } : {}),
           category_id: resolveReceiptPayloadCategoryId(item, "create", defaultCategoryId),
           category_touched: Boolean(item.category_touched),
+          catalog_name_touched: Boolean(item.catalog_name_touched),
+          catalog_measurement_touched: Boolean(item.catalog_measurement_touched),
+          catalog_edit_variant_id: item.catalog_edit_variant_id || null,
           shop_name: normalizeReceiptName(item.shop_name || "") || null,
           name: normalizeReceiptName(item.name),
           ...(item.note ? { note: item.note } : {}),
@@ -1052,6 +1063,9 @@
           ...(item.brand_touched ? { brand_id: item.brand_id ? Number(item.brand_id) : null } : {}),
           category_id: resolveReceiptPayloadCategoryId(item, "edit", defaultCategoryId),
           category_touched: Boolean(item.category_touched),
+          catalog_name_touched: Boolean(item.catalog_name_touched),
+          catalog_measurement_touched: Boolean(item.catalog_measurement_touched),
+          catalog_edit_variant_id: item.catalog_edit_variant_id || null,
           shop_name: normalizeReceiptName(item.shop_name || "") || null,
           name: normalizeReceiptName(item.name),
           ...(item.note ? { note: item.note } : {}),

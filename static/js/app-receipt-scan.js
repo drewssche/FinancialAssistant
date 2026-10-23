@@ -134,7 +134,7 @@
       transferred=false;if(draft)validate();
       if(!dialog.open)dialog.showModal();
       (draft?node('scanDate'):node('scanDropzone')).focus();
-      catalog().load().then(()=>{if(draft)refreshCatalog();storePicker.refresh();}).catch(()=>{});
+      Promise.all([catalog().load(),window.App.getRuntimeModule('item-brands').ensureItemBrandsLoaded()]).then(()=>{if(draft)refreshCatalog();storePicker.refresh();}).catch(()=>{});
     }catch(error){if(token!==openGeneration)return;if(mode==='edit')context='';core.notify(error.message||'Не удалось открыть чек',{type:'error'});}
   }
   node('scanClose').onclick=()=>dialog.close();
@@ -243,13 +243,13 @@
     dialog.querySelectorAll('.scan-catalog-list').forEach(n=>setCatalogOpen(n,false));
   }
   function refreshCatalog(){
-    node('scanRows').querySelectorAll('.scan-row').forEach(el=>{el.refreshCategory?.();el.refreshCatalog?.();el.refreshSearch?.();});
+    node('scanRows').querySelectorAll('.scan-row').forEach(el=>{el.refreshCategory?.();el.refreshBrand?.();el.refreshCatalog?.();el.refreshSearch?.();});
   }
   function renderRows(){
     node('scanRows').replaceChildren();
     draft.rows.forEach((row,index)=>{
       const el=document.createElement('section');el.className='scan-row';
-      el.innerHTML=`<div class="scan-name"><label class="field"><span>Товар ${index+1}</span><input data-scan-field="name" maxlength="160" placeholder="Найти или ввести товар" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="scanCatalog${index}" required></label><div id="scanCatalog${index}" class="scan-catalog-list receipt-name-picker app-popover hidden" role="listbox" hidden></div></div><div class="scan-row-actions">${iconButton('', 'trash', 'Удалить позицию '+(index+1))}</div><div class="scan-match"></div><div class="scan-codes-host"></div><label class="field scan-category"><span>Категория</span><select data-scan-category aria-label="Категория позиции"></select></label><div class="scan-sale-units" role="group" aria-label="Единица цены и количества"></div><div class="scan-row-numbers">${[['price','Цена за ед.'],['quantity','Кол-во'],['discount','Скидка, сумма'],['total','Оплачено']].map(([field,label])=>`<label class="field"><span>${label}</span><input data-scan-field="${field}" inputmode="decimal" aria-describedby="scanMathHint" required></label>`).join('')}</div><label class="field scan-discount-type"><span>Тип скидки</span><select data-scan-field="discount_type"><option value="promo">Акция</option><option value="loyalty_points">Баллы</option><option value="coupon">Купон</option></select></label>`;
+      el.innerHTML=`<div class="scan-name"><label class="field"><span>Товар ${index+1}</span><input data-scan-field="name" maxlength="160" placeholder="Найти или ввести товар" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="scanCatalog${index}" required></label><div id="scanCatalog${index}" class="scan-catalog-list receipt-name-picker app-popover hidden" role="listbox" hidden></div></div><div class="scan-row-actions">${iconButton('', 'trash', 'Удалить позицию '+(index+1))}</div><div class="scan-match"></div><div class="scan-codes-host"></div><label class="field scan-category"><span>Категория</span><select data-scan-category aria-label="Категория позиции"></select></label><label class="field scan-brand"><span>Бренд</span><select data-scan-brand aria-label="Бренд товара"></select></label><div class="scan-sale-units" role="group" aria-label="Единица цены и количества"></div><div class="scan-row-numbers">${[['price','Цена за ед.'],['quantity','Кол-во'],['discount','Скидка, сумма'],['total','Оплачено']].map(([field,label])=>`<label class="field"><span>${label}</span><input data-scan-field="${field}" inputmode="decimal" aria-describedby="scanMathHint" required></label>`).join('')}</div><label class="field scan-discount-type"><span>Тип скидки</span><select data-scan-field="discount_type"><option value="promo">Акция</option><option value="loyalty_points">Баллы</option><option value="coupon">Купон</option></select></label>`;
       const name=el.querySelector('[data-scan-field=name]'), list=el.querySelector('.scan-catalog-list'), match=el.querySelector('.scan-match');
       name.value=row.name;name.title=row.source||'';
       if(row.merged_rows?.length){
@@ -284,13 +284,24 @@
       el.refreshCategory=refreshCategory;
       refreshCategory();
       category.onchange=()=>{row.category_id=Number(category.value)||null;row.category_touched=true;refreshCategory();node('scanConfirmed').checked=false;validate();};
+      const brand=el.querySelector('[data-scan-brand]');
+      const refreshBrand=()=>{
+        brand.replaceChildren(new Option('Без бренда',''));
+        (state.itemBrands||[]).filter(b=>!b.is_archived).forEach(b=>brand.add(new Option(b.name,String(b.id))));
+        const id=row.brand_touched?row.brand_id:row.catalog?.brand_id;
+        if(id&&![...brand.options].some(o=>o.value===String(id)))brand.add(new Option(row.catalog?.brand_name||row.brand_name||'Выбранный бренд',String(id)));
+        brand.value=String(id||'');
+      };
+      el.refreshBrand=refreshBrand;refreshBrand();
+      brand.onchange=()=>{row.brand_id=Number(brand.value)||null;row.brand_touched=true;node('scanConfirmed').checked=false;validate();};
       const unitHost=el.querySelector('.scan-sale-units');
       const measurementControls=window.App.measurements.fields.map(key=>{
         const label=document.createElement('label'),input=document.createElement('input');
         input.value=row[key]??'';label.hidden=true;label.append(input);unitHost.append(label);
         input.addEventListener('input',()=>{
           Object.assign(row,Object.fromEntries(window.App.measurements.fields.map((field,i)=>[field,measurementControls[i].value||null])));
-          row.variant_id=null;row.variant_snapshot=null;row.measurement_touched=true;
+          if(row.catalog){row.catalog_edit_variant_id ||= row.catalog.variant_id||row.variant_snapshot?.variant_id||null;row.catalog_measurement_touched=true;}
+          row.site_selection=null;row.variant_id=null;row.variant_snapshot=null;row.measurement_touched=true;
           refreshUnits();node('scanConfirmed').checked=false;validate();
         });return input;
       });
@@ -303,13 +314,13 @@
           input.previousElementSibling.textContent=field==='price'?window.App.measurements.priceLabel(row):window.App.measurements.quantityLabel(row);
         }
       }
-      function unlink(){el.querySelector('.scan-codes-host').invalidateSite?.();row.site_selection=null;row.site_name='';delete row.catalog;row.variant_id=null;row.variant_snapshot=null;row.code_match_label='';refreshCategory();if(!row.measurement_touched)Object.assign(row,window.App.measurements.snapshot());refreshUnits();}
+      function unlink(){row.catalog_name_touched=false;row.catalog_measurement_touched=false;row.catalog_edit_variant_id=null;el.querySelector('.scan-codes-host').invalidateSite?.();row.site_selection=null;row.site_name='';delete row.catalog;row.variant_id=null;row.variant_snapshot=null;row.code_match_label='';refreshCategory();refreshBrand();if(!row.measurement_touched)Object.assign(row,window.App.measurements.snapshot());refreshUnits();}
       refreshUnits();
       let options=[],active=-1;
       function choose(item){
         row.catalog_new=false;unlink();
         row.catalog=catalog().identity(item,node('scanShop').value);
-        row.name=row.catalog.name;name.value=row.name;refreshCategory();
+        row.name=row.catalog.name;name.value=row.name;refreshCategory();refreshBrand();
         if(!row.measurement_touched){Object.assign(row,window.App.measurements.snapshot(row.catalog));row.variant_id=row.catalog.variant_id||null;}
         refreshUnits();
         closeCatalogLists();node('scanConfirmed').checked=false;el.refreshCatalog();el.refreshCodes?.();validate();name.focus();closeCatalogLists();
@@ -333,7 +344,7 @@
         match.hidden=!match.childElementCount;
       };
       function search(){
-        if(row.catalog_new){closeCatalogLists();return;}
+        if(row.catalog_new||row.catalog){closeCatalogLists();return;}
         closeCatalogLists();options=catalog().suggestions(name.value,node('scanShop').value,8);active=-1;
         catalog().renderOptions(list,{suggestions:options,query:name.value.trim(),allowCreate:!options.some(item=>item.scan_match?.exact),showPrices:false,emptyText:catalogNotice()||'Нет совпадений'});
         list.querySelectorAll('.receipt-template-suggestion').forEach((button,i)=>{button.onclick=()=>choose(options[i]);});
@@ -359,7 +370,7 @@
       el.addEventListener('input',e=>{
         const field=e.target.dataset.scanField;if(!field)return;
         row[field]=field==='name'||field==='discount_type'?e.target.value:field==='quantity'?inputNumber(e.target.value,true):inputMoney(e.target.value);
-        if(field==='name'){row.name_touched=true;row.catalog_new=false;unlink();el.refreshCatalog();search();}
+        if(field==='name'){row.name_touched=true;row.catalog_new=false;if(row.catalog){row.catalog_name_touched=true;row.site_selection=null;closeCatalogLists();}else unlink();el.refreshCatalog();search();}
         for(const changed of parser.recalculateRow(row,field)){
           const input=el.querySelector(`[data-scan-field=${changed}]`);input.value=decimal(row[changed]);
           input.setAttribute('aria-invalid',String(row[changed]==null||row[changed]<0||(changed==='total'&&row[changed]===0)));
@@ -376,7 +387,7 @@
           onChange:()=>{node('scanConfirmed').checked=false;validate();},
           onSelect:found=>{
             row.catalog_new=false;window.App.receiptCodes.apply(row,found);row.catalog={...found};name.value=row.name;
-            refreshCategory();refreshUnits();el.refreshCatalog();closeCatalogLists();node('scanConfirmed').checked=false;validate();
+            row.catalog_name_touched=false;row.catalog_measurement_touched=false;row.catalog_edit_variant_id=null;refreshCategory();refreshBrand();refreshUnits();el.refreshCatalog();closeCatalogLists();node('scanConfirmed').checked=false;validate();
           },
         });
       };el.refreshCodes();
@@ -443,7 +454,7 @@
     modal.setOperationKind(mode,'expense');
     node(prefix+'Date').value=draft.date;node(prefix+'Date').dispatchEvent(new Event('change',{bubbles:true}));
     node(prefix+'Currency').value=node('scanCurrency').value;node(prefix+'Currency').dispatchEvent(new Event('change',{bubbles:true}));
-    state[mode+'ReceiptItems']=draft.rows.map(r=>modal.createReceiptDraft({...r.catalog,category_id:categoryChoice(r).id,category_touched:Boolean(r.category_touched||categoryChoice(r).reason),name:r.name,quantity:r.quantity,shop_name:draft.shop,...window.App.measurements.snapshot(r),variant_id:r.variant_id||null,variant_snapshot:r.variant_snapshot||null,site_selection:r.site_selection||null,site_name:r.site_name||'',code_entries:r.code_entries||[],code_match_label:r.code_match_label||'',measurement_touched:true,
+    state[mode+'ReceiptItems']=draft.rows.map(r=>modal.createReceiptDraft({...r.catalog,catalog_editable:Boolean(r.catalog),catalog_name_touched:Boolean(r.catalog_name_touched),catalog_measurement_touched:Boolean(r.catalog_measurement_touched),catalog_edit_variant_id:r.catalog_edit_variant_id||null,...(r.brand_touched?{brand_id:r.brand_id,brand_touched:true}:{}),category_id:categoryChoice(r).id,category_touched:Boolean(r.category_touched||categoryChoice(r).reason),name:r.name,quantity:r.quantity,shop_name:draft.shop,...window.App.measurements.snapshot(r),variant_id:r.variant_id||null,variant_snapshot:r.variant_snapshot||null,site_selection:r.site_selection||null,site_name:r.site_name||'',code_entries:r.code_entries||[],code_match_label:r.code_match_label||'',measurement_touched:true,
       unit_price:r.price/100, is_discounted:r.discount>0, regular_unit_price:r.discount>0?r.price/100:null,
       discount_mode:r.discount>0?'amount':null, discount_value:r.discount>0?r.discount/100:null,
       discount_type:r.discount>0?r.discount_type||'promo':null,note:r.note||null},mode));

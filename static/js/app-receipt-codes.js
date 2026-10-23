@@ -47,6 +47,7 @@
     if(Number(row.template_id)!==Number(found.template_id)){
       const list=entries(row),kept=list.filter(e=>!e.from_catalog);list.splice(0,list.length,...kept);row.codes_loaded_entity=null;
     }
+    row.catalog_name_touched=false;row.catalog_measurement_touched=false;row.catalog_edit_variant_id=null;
     row.site_selection=null;row.site_name='';
     row.code_errors=[];row.variant_id=null;row.variant_snapshot=null;row.variant_options=null;row.variant_status='';row.brand_touched=false;
     for(const key of ['product_id','product_name','name','template_id','source_id','brand_id']) row[key]=found[key]??null;

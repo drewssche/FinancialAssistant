@@ -1546,6 +1546,9 @@ class OperationService:
                 {
                     "category_id": item.get("category_id"),
                     "category_touched": bool(item.get("category_touched")),
+                    "catalog_name_touched": bool(item.get("catalog_name_touched")),
+                    "catalog_measurement_touched": bool(item.get("catalog_measurement_touched")),
+                    "catalog_edit_variant_id": item.get("catalog_edit_variant_id"),
                     "shop_name": shop_name,
                     "name": name,
                     "catalog_codes": item.get("catalog_codes") or [],

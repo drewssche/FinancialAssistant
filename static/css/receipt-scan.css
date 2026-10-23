@@ -127,3 +127,5 @@
 @media(max-width:700px){.scan-row:has([data-scan-split]) .scan-catalog-list {width:calc(100% + 104px);}}
 
 .editing-debt-movement #openSavedReceiptScan {display:none !important;}
+
+.scan-brand {grid-column:1/-1;}
