@@ -51,9 +51,10 @@ services:
         max-file: "3"
     command: python scripts/run_telegram_admin_bot.py
     healthcheck:
-      test: ["CMD", "python", "scripts/check_telegram_bot_health.py"]
+      # The probe only needs stdlib; avoid site initialization under the 0.15 CPU quota.
+      test: ["CMD", "python", "-S", "scripts/check_telegram_bot_health.py"]
       interval: 60s
-      timeout: 5s
+      timeout: 15s
       retries: 3
       start_period: 120s
 
