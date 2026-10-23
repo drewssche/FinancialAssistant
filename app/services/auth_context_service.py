@@ -62,4 +62,6 @@ class AuthContextService:
         user = self.repo.get_by_id(user_id)
         if not user:
             raise AuthenticatedUserNotFoundError("User not found")
+        if user.status == "rejected":
+            raise InvalidAccessTokenError("Access revoked")
         return user

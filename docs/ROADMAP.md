@@ -18,14 +18,15 @@
 
 ## Security signals and staged request throttling — 2026-10-23
 
-Stage 1 implemented: passive signals, bounded journal, dry-run limits and production docs closure. See [SECURITY_OBSERVATION.md](SECURITY_OBSERVATION.md). Notifications and bans remain disabled.
+Stage 1 implemented: passive signals, bounded journal, dry-run limits and production docs closure. See [SECURITY_OBSERVATION.md](SECURITY_OBSERVATION.md). Stage 2 adds invitation-only registration and batched Telegram/email delivery with persistent quotas; SMTP requires private configuration. Automatic bans remain disabled.
 
 - [x] Add passive signals for nonexistent login routes observed in the access logs, including `/api/v1/auth/admin/login`, `/api/v1/auth/signin` and `/api/v1/auth/user/login`. Keep ordinary 404 responses; do not expose a working alternate login.
 - [x] Correlate repeated probes across distinct paths and repeated authentication/authorization failures. Treat a source IP as a correlation signal, not proof of a person's identity; use user IDs only after successful authentication. Do not flag every ordinary 404 or pending-user response as an attack.
 - [x] Add bounded, structured security events: UTC timestamp (localize in the UI), method, normalized path, response status, request ID, trusted proxy-derived IP and verified user ID when available. Exclude tokens, cookies, authorization headers, query secrets and request bodies; limit retention, field lengths and event volume.
 - [x] Configure Nginx login/API rate limits in `limit_req_dry_run` first. Verify trusted client-IP handling and tune thresholds using normal Mini App/browser traffic, shared IPs and reconnect bursts. Preserve health/readiness checks and legitimate callbacks.
 - [x] Restrict anonymous production `/docs`, `/redoc` and `/openapi.json` after checking integration dependencies. Keep authentication and authorization as the actual access boundary.
-- [ ] Group repeated signals into a single admin notification with a cooldown. After observation, introduce short, expiring blocks for repeated abuse with an operator unblock/rollback mechanism; never permanent bans on a single request or user-agent string.
+- [x] Group repeated signals into moderate Telegram/email digests with persistent cooldowns and delivery audit; keep channels independent.
+- [ ] After observation, introduce short, expiring blocks for repeated abuse with an operator unblock/rollback mechanism; never permanent bans on a single request or user-agent string.
 - [ ] Before activation, test normal/pending/rejected/admin sessions, spoofed forwarding headers, event flooding, log injection, shared IPs, expiry/unblock and graceful proxy rollback. Enable notifications and enforcement as a separately reviewed iteration.
 
 ## Current Sprint

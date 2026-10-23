@@ -1,6 +1,7 @@
 from pathlib import Path
 from time import perf_counter
 from uuid import uuid4
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi import Depends
@@ -19,6 +20,7 @@ from app.core.logging import configure_logging, log_api_request_completion
 from app.core.metrics import record_http_request, record_http_response_size
 from app.core.security_observation import SecurityJournal, SecurityObserver, documentation_options, normalized_path
 from app.db.session import get_db
+from app.services.security_alert_service import SecurityAlerts
 
 settings = get_settings()
 settings.validate_runtime_requirements()
@@ -29,9 +31,28 @@ index_file = static_dir / "index.html"
 alembic_config = Config(str(base_dir / "alembic.ini"))
 expected_database_revision = ScriptDirectory.from_config(alembic_config).get_current_head()
 
-app = FastAPI(title=settings.app_name, **documentation_options(settings.is_production))
+security_journal = SecurityJournal(settings.security_event_log_path) if settings.security_event_log_path else lambda event: None
+security_alerts = SecurityAlerts(settings, security_journal) if settings.security_alerts_enabled and settings.security_event_log_path else None
+
+
+def record_security_event(event):
+    security_journal(event)
+    if security_alerts:
+        security_alerts.record(event)
+
+
+@asynccontextmanager
+async def lifespan(app):
+    if security_alerts:
+        security_alerts.start()
+    yield
+    if security_alerts:
+        security_alerts.stop()
+
+
+app = FastAPI(title=settings.app_name, lifespan=lifespan, **documentation_options(settings.is_production))
 security_observer = SecurityObserver(
-    SecurityJournal(settings.security_event_log_path) if settings.security_event_log_path else lambda event: None,
+    record_security_event,
     trusted_proxy_ips=[ip.strip() for ip in settings.security_trusted_proxy_ips.split(",") if ip.strip()],
 )
 app.add_middleware(

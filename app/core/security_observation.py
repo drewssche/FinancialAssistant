@@ -4,6 +4,7 @@ from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from ipaddress import ip_address
+import fcntl
 import json
 import logging
 from logging.handlers import RotatingFileHandler
@@ -70,10 +71,16 @@ class SecurityJournal:
         self.path = Path(filename)
         self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.path.parent.chmod(0o700)
-        self.prune()
+        self.lock_path = self.path.with_suffix('.lock')
+        with self.lock_path.open('a') as lock_file:
+            self.lock_path.chmod(0o600)
+            fcntl.flock(lock_file, fcntl.LOCK_EX)
+            self.prune()
+            fcntl.flock(lock_file, fcntl.LOCK_UN)
         self.handler = RotatingFileHandler(filename, maxBytes=2 * 1024 * 1024, backupCount=3, delay=True)
         self.handler.setFormatter(logging.Formatter("%(message)s"))
         self.last_prune = monotonic()
+        self.lock = Lock()
 
     def prune(self):
         for path in [self.path, *(Path(str(self.path) + f".{n}") for n in range(1, 4))]:
@@ -81,6 +88,21 @@ class SecurityJournal:
                 path.unlink()
 
     def __call__(self, event: dict):
+        with self.lock:
+            with self.lock_path.open('a') as lock_file:
+                self.lock_path.chmod(0o600)
+                fcntl.flock(lock_file, fcntl.LOCK_EX)
+                try:
+                    # Another process (the operator smoke test) may rotate the
+                    # file. Reopen under the shared lock before every append.
+                    if self.handler.stream:
+                        self.handler.stream.close()
+                        self.handler.stream = None
+                    self.write(event)
+                finally:
+                    fcntl.flock(lock_file, fcntl.LOCK_UN)
+
+    def write(self, event: dict):
         if monotonic() - self.last_prune >= 3600:
             if self.handler.stream:
                 self.handler.stream.close()

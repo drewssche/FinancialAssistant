@@ -13,6 +13,10 @@ from app.services.telegram_admin_notifier import notify_new_pending_user
 from app.repositories.user_repo import UserRepository
 
 
+class RegistrationClosedError(Exception):
+    pass
+
+
 class AuthService:
     def __init__(self, db: Session):
         self.db = db
@@ -39,6 +43,14 @@ class AuthService:
         created = False
 
         user = self.user_repo.get_by_telegram_id(telegram_id)
+        if self.settings.registration_mode == "invitation" and not self._is_admin_telegram_id(telegram_id):
+            invited = telegram_id in {
+                item.strip() for item in self.settings.registration_allowed_telegram_ids.split(",") if item.strip()
+            }
+            approved = user is not None and user.status in {"approved", "active"}
+            if (not invited and not approved) or (user is not None and user.status == "rejected"):
+                log_auth_event("registration_denied", reason="invitation_required")
+                raise RegistrationClosedError("Доступ только по приглашению администратора")
         if not user:
             created = True
             user = self.user_repo.create_with_telegram_identity(

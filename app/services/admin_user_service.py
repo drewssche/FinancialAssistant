@@ -7,6 +7,7 @@ from app.db.models import User
 from app.repositories.user_repo import UserRepository
 from app.schemas.admin import AdminUserItem, AdminUsersOut
 from app.services.user_cleanup_service import hard_delete_user
+from app.services.security_alert_service import record_access_change
 
 
 class AdminUserServiceError(Exception):
@@ -82,6 +83,9 @@ class AdminUserService:
             )
         user.status = next_status
         self.db.commit()
+        if previous_status != next_status:
+            record_access_change(admin_id=current_admin_id, target_user_id=user_id,
+                previous_status=previous_status, next_status=next_status)
         self.db.refresh(user)
         return self._to_admin_user_item(user)
 

@@ -44,6 +44,9 @@ services:
       - .env
     environment:
       PYTHONPATH: /app
+      SECURITY_EVENT_LOG_PATH: /var/log/financialassistant/security.jsonl
+    volumes:
+      - security_logs:/var/log/financialassistant
     depends_on:
       app:
         condition: service_healthy

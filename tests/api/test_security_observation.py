@@ -127,7 +127,7 @@ def test_storage_rotates_is_private_and_survives_reopening(tmp_path):
     for n in range(30):
         journal({'event': 'signal_route', 'n': n, 'path': '/login'})
     journal.handler.close()
-    assert len(list(path.parent.iterdir())) == 4
+    assert len(list(path.parent.glob('security.jsonl*'))) == 4
     assert path.stat().st_mode & 0o777 == 0o600
     assert path.parent.stat().st_mode & 0o777 == 0o700
     reopened = SecurityJournal(str(path))
@@ -137,8 +137,21 @@ def test_storage_rotates_is_private_and_survives_reopening(tmp_path):
     for item in path.parent.iterdir():
         os.utime(item, (0, 0))
     expired = SecurityJournal(str(path))
-    assert not list(path.parent.iterdir())
+    assert not list(path.parent.glob('security.jsonl*'))
     expired.handler.close()
+
+
+def test_journal_reopens_after_another_writer_rotates(tmp_path):
+    path = tmp_path / 'security.jsonl'
+    first, second = SecurityJournal(str(path)), SecurityJournal(str(path))
+    first.handler.maxBytes = second.handler.maxBytes = 100
+    first({'event': 'initial'})
+    for n in range(8):
+        second({'event': 'rotating', 'n': n})
+    first({'event': 'after_rotation'})
+    assert json.loads(path.read_text().splitlines()[-1]) == {'event': 'after_rotation'}
+    first.handler.close()
+    second.handler.close()
 
 
 def test_journal_failure_does_not_break_request():

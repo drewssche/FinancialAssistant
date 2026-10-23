@@ -10,7 +10,7 @@ from app.db.models import User
 from app.db.session import get_db
 from app.schemas.auth import AuthPublicConfig, TelegramAuthRequest, TelegramBrowserAuthRequest, TokenResponse
 from app.services.auth_context_service import AuthContextService
-from app.services.auth_service import AuthService
+from app.services.auth_service import AuthService, RegistrationClosedError
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -34,6 +34,8 @@ def auth_telegram(payload: TelegramAuthRequest, db: Session = Depends(get_db)):
     service = AuthService(db)
     try:
         token = service.login_with_telegram(payload.init_data)
+    except RegistrationClosedError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return _token_response(token)
@@ -50,6 +52,8 @@ def auth_telegram_browser(payload: TelegramBrowserAuthRequest, db: Session = Dep
     service = AuthService(db)
     try:
         token = service.login_with_telegram_browser(payload.model_dump())
+    except RegistrationClosedError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return _token_response(token)

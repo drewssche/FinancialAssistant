@@ -1,7 +1,8 @@
 # Passive security observation
 
-Stage 1, 2026-10-23. No notifications, request delays, automatic bans, account
-rejections or enforcement are enabled. IP correlation does not identify a person.
+Stages 1–2, 2026-10-23. Request limits remain observational: no delays or automatic
+bans. Stage 2 adds invitation-only registration and optional moderated alerts.
+IP correlation does not identify a person.
 
 ## Signals and journal
 
@@ -42,7 +43,7 @@ cd /root/FinancialAssistant
 docker compose exec -T app tail -n 50 /var/log/financialassistant/security.jsonl
 ```
 
-There is no new public endpoint or Telegram notification for this journal.
+There is no new public endpoint for this journal. Stage 2 sends selected summaries.
 Do not remove Docker volumes during a normal release.
 
 ## Proxy configuration
@@ -100,6 +101,63 @@ remain the actual data-access boundary; hiding documentation is supplemental.
    redeploy the saved app image. Retain `security_logs`. Disabling observation
    does not require banning/unbanning anyone.
 
-Enforcement/alerts require a separate reviewed iteration after observing real
+Enforcement requires a separate reviewed iteration after observing real
 traffic, shared-IP use, reconnect bursts and false positives. No claims are made
 that the observation thresholds are already tuned for enforcement.
+
+## Stage 2: invitations and moderate notifications
+
+`REGISTRATION_MODE=invitation` rejects new uninvited Telegram identities **after**
+Telegram signature verification but **before** creating a user or token. Existing
+approved/active users and configured admins keep access. Add numeric Telegram IDs
+to `REGISTRATION_ALLOWED_TELEGRAM_IDS` to permit a new access request; an invited
+new user still needs approval. Rejected users cannot log in, and existing tokens
+stop working on their next authenticated request. Approval mode remains available
+for other deployments. No country/IP-based blocking is enabled.
+
+With `SECURITY_ALERTS_ENABLED=true`, app runs one background digest worker. Both
+app and bot enqueue access-status changes into `security-alerts.sqlite3` in the
+private shared `security_logs` volume. Bot must be updated with app for its approval
+buttons to generate these audit events. Delivery never runs in an HTTP request.
+The request journal also feeds repeated failures, at least three distinct suspicious
+paths or ten signals in a source's observation window into digests. A lone 404 is
+quiet. These are sampled observation counts, not exact total request counts.
+
+- Batch window: 15 minutes from the first queued event.
+- Maximum one attempt/hour and six attempts/calendar day (Europe/Minsk), separately
+  for each admin Telegram destination and the email destination. No empty digests.
+- Counters and pending summaries survive app replacement. Lists in summaries are
+  capped at ten entries, access-audit queue at 100 entries; this is not a full SIEM.
+- Delivery errors are retried at most three times, subject to the same limits.
+  One channel's failure does not repeat a successful delivery on another channel.
+- The journal records attempted/sent/failed/unconfigured/abandoned outcomes.
+  "Sent" means acceptance by Telegram API or SMTP, not proof of inbox delivery.
+- After a crash during sending, the unknown outcome is recorded without automatic
+  replay to avoid duplicate messages. New events continue to aggregate. This can
+  lose a notification in a crash window; the security event journal remains the
+  source for review. Email without SMTP settings is explicitly unconfigured.
+- No automatic banning or Nginx enforcement is enabled in this stage. Thresholds
+  still need review against normal usage before enabling enforcement.
+
+Email uses TLS only (`SMTP_SECURITY=ssl` or `starttls`) and a fixed recipient from
+`SECURITY_ALERT_EMAIL`. Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`,
+`SMTP_PASSWORD`, `SMTP_FROM` in the private server `.env`; do not put credentials
+in Git, chat, command arguments or diagnostic output. Telegram uses existing bot
+and admin settings. A browser Gmail session does not supply server SMTP credentials.
+
+Explicit delivery checks (send a real message, retaining cooldown/day limits):
+
+```sh
+docker compose exec -T app python scripts/test_security_notifications.py --channel telegram
+docker compose exec -T app python scripts/test_security_notifications.py --channel email
+```
+
+These checks skip only the 15-minute batch delay. Review the journal for confirmed
+acceptance; a queued/skipped test is not a successful send. If configuring SMTP
+for a previously unconfigured channel, reset that channel's `next_at` under an
+operator-controlled change so its one-day configuration-error cooldown does not
+postpone the first check. Do not reset successful-delivery quotas.
+
+Release app and bot without dependencies, preserve both old images, verify app
+readiness and bot polling health, and keep neighboring projects untouched. Neither
+this deployment nor the worker changes SSH, the firewall or OS reboot policy.

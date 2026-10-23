@@ -162,5 +162,5 @@ def test_refresh_rejects_unapproved_and_deleted_users(client_and_sessionmaker):
         headers={"Authorization": f"Bearer {deleted_token}"},
     )
 
-    assert rejected_response.status_code == 403
+    assert rejected_response.status_code == 401  # Rejected accounts revoke existing tokens.
     assert deleted_response.status_code == 401
