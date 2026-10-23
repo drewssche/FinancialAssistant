@@ -592,7 +592,35 @@
     return row;
   }
 
+  function renderPlansForecastKpi(data, { showDates = true } = {}) {
+    const net = Number(data.income_total) - Number(data.expense_total);
+    const tone = net > 0 ? "amount-income" : net < 0 ? "amount-expense" : "";
+    const period = showDates && data.date_from && data.date_to
+      ? `${core.formatDateRu(data.date_from)} — ${core.formatDateRu(data.date_to)} · ` : "";
+    return `<article class="analytics-kpi-card analytics-kpi-income"><span class="muted-small">Ожидается получить</span><strong class="amount-income">${core.formatMoney(data.income_total)}</strong></article>
+      <article class="analytics-kpi-card analytics-kpi-expense"><span class="muted-small">Ожидается заплатить</span><strong class="amount-expense">${core.formatMoney(data.expense_total)}</strong></article>
+      <article class="analytics-kpi-card" data-plans-net title="Ожидается получить минус ожидается заплатить за выбранный период"><span class="muted-small">Итог планов</span><strong class="${tone}">${core.formatMoney(net)}</strong></article>
+      <p class="muted-small">${period}${Number(data.occurrences_count)} платежей${data.unpriced_count ? ` · Без курса: ${Number(data.unpriced_count)}, не включены в суммы` : ""}${data.overdue_count ? ` · Просрочено планов: ${Number(data.overdue_count)}` : ""}</p>`;
+  }
+
+  function renderDebtSummaryKpi({ lendTotal = 0, borrowTotal = 0, baseCurrency } = {}, { dashboard = false } = {}) {
+    const net = Number(lendTotal) - Number(borrowTotal);
+    const money = value => core.formatMoney(value, baseCurrency ? { currency: baseCurrency } : {});
+    const netTone = net > 0 ? "amount-income" : net < 0 ? "amount-expense" : "";
+    return `<article class="analytics-kpi-card analytics-kpi-negative" ${dashboard ? 'id="dashboardDebtBorrowKpi"' : ""}>
+        <span class="muted-small">Я должен</span><strong class="amount-expense" ${dashboard ? 'id="debtBorrowTotal"' : ""}>${money(borrowTotal)}</strong>
+      </article>
+      <article class="analytics-kpi-card analytics-kpi-positive" ${dashboard ? 'id="dashboardDebtLendKpi"' : ""}>
+        <span class="muted-small">Мне должны</span><strong class="amount-income" ${dashboard ? 'id="debtLendTotal"' : ""}>${money(lendTotal)}</strong>
+      </article>
+      <article class="analytics-kpi-card" data-debts-net title="Мне должны минус я должен по выбранным долгам" ${dashboard ? 'id="dashboardDebtNetKpi"' : ""}>
+        <span class="muted-small">Итог по долгам</span><strong class="${netTone}" ${dashboard ? 'id="debtNetTotal"' : ""}>${money(net)}</strong>
+      </article>`;
+  }
+
   Object.assign(core, {
+    renderPlansForecastKpi,
+    renderDebtSummaryKpi,
     escapeHtml,
     highlightText,
     categoryIcon,

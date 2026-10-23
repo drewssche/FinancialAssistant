@@ -72,7 +72,7 @@
                 <button id="openPlansTabBtn" class="btn-icon btn btn-secondary" type="button" aria-label="Открыть планы" title="Открыть планы">${window.App.icons.svg("forward")}</button>
               </div>
             </div>
-            <div id="dashboardPlansKpi" class="analytics-kpi-secondary dashboard-plans-kpi"></div>
+            <div id="dashboardPlansKpi" class="plan-forecast dashboard-plans-kpi"></div>
             <div id="dashboardPlansList" class="plans-list dashboard-plans-list">
               <div class="muted-small">Планов пока нет</div>
             </div>
@@ -85,17 +85,7 @@
               </div>
               <button id="openDebtsTabBtn" class="btn-icon btn btn-secondary" type="button" aria-label="Открыть долги" title="Открыть долги">${window.App.icons.svg("forward")}</button>
             </div>
-            <div id="dashboardDebtKpiGrid" class="kpi-grid dashboard-debts-summary">
-              <article id="dashboardDebtLendKpi" class="kpi-card dashboard-debt-kpi">
-                <h3>Мне должны</h3>
-                <p id="debtLendTotal">0.00</p>
-              </article>
-              <article id="dashboardDebtBorrowKpi" class="kpi-card dashboard-debt-kpi">
-                <h3>Я должен</h3>
-                <p id="debtBorrowTotal">0.00</p>
-              </article>
-
-            </div>
+            <div id="dashboardDebtKpiGrid" class="analytics-kpi-grid dashboard-debts-summary"></div>
             <div id="dashboardDebtsList" class="debt-cards debt-cards-compact"></div>
           </section>
 <section id="dashboardStructurePanel" class="panel">

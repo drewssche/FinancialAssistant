@@ -52,6 +52,7 @@ def test_section_kpi_cards_and_mobile_debt_search_contract():
     )
     elements = (REPO_ROOT / "static" / "js" / "app-core-elements.js").read_text(encoding="utf-8")
     debts_render = (REPO_ROOT / "static" / "js" / "app-features-debts-render.js").read_text(encoding="utf-8")
+    shared_render = (REPO_ROOT / "static" / "js" / "app-renderers.js").read_text(encoding="utf-8")
     categories_table = (REPO_ROOT / "static" / "js" / "app-categories-table-ui.js").read_text(encoding="utf-8")
     item_catalog_render = (REPO_ROOT / "static" / "js" / "app-item-catalog-render-coordinator.js").read_text(
         encoding="utf-8"
@@ -66,7 +67,8 @@ def test_section_kpi_cards_and_mobile_debt_search_contract():
     assert 'id="debtsSectionKpi" class="analytics-kpi-grid section-kpi-grid debts-section-kpi"' in shell_secondary
     assert 'categoriesKpiGrid: document.getElementById("categoriesKpiGrid")' in elements
     assert 'itemCatalogKpiGrid: document.getElementById("itemCatalogKpiGrid")' in elements
-    assert "analytics-kpi-card analytics-kpi-negative" in debts_render
+    assert "analytics-kpi-card analytics-kpi-negative" in shared_render
+    assert "core.renderDebtSummaryKpi(summary)" in debts_render
     assert "el.categoriesKpiGrid.innerHTML" in categories_table
     assert "visibleCategories" in categories_table
     assert "activeGroupIds.size" in categories_table
@@ -546,6 +548,7 @@ def test_debts_section_has_filtered_base_currency_kpi():
     )
     elements = (REPO_ROOT / "static" / "js" / "app-core-elements.js").read_text(encoding="utf-8")
     debts_render = (REPO_ROOT / "static" / "js" / "app-features-debts-render.js").read_text(encoding="utf-8")
+    shared_render = (REPO_ROOT / "static" / "js" / "app-renderers.js").read_text(encoding="utf-8")
     debts_css = (REPO_ROOT / "static" / "css" / "layout-debts.css").read_text(encoding="utf-8")
 
     assert 'id="debtsSectionKpi"' in secondary_template
@@ -553,10 +556,11 @@ def test_debts_section_has_filtered_base_currency_kpi():
     assert "function summarizeDebtCards(cards)" in debts_render
     assert "debt.current_base_outstanding_total ?? debt.outstanding_total" in debts_render
     assert "renderDebtsSectionKpi(visibleCards);" in debts_render
-    assert "Я должен" in debts_render
-    assert "Мне должны" in debts_render
+    assert "Я должен" in shared_render
+    assert "Мне должны" in shared_render
     assert "Чистая позиция" not in debts_render
-    assert "analytics-kpi-card analytics-kpi-negative" in debts_render
+    assert "analytics-kpi-card analytics-kpi-negative" in shared_render
+    assert "core.renderDebtSummaryKpi(summary)" in debts_render
     assert ".debts-section-kpi" in debts_css
 
 

@@ -262,19 +262,6 @@
     }
   }
 
-  function setDebtKpiTone(node, tone = "neutral") {
-    if (!node) return;
-    node.classList.toggle("is-positive", tone === "positive");
-    node.classList.toggle("is-negative", tone === "negative");
-  }
-
-  function renderDebtKpiTones({ lend = 0, borrow = 0, net = 0 } = {}) {
-    const epsilon = 0.000001;
-    setDebtKpiTone(el.dashboardDebtLendKpi, Number(lend) > epsilon ? "positive" : "neutral");
-    setDebtKpiTone(el.dashboardDebtBorrowKpi, Number(borrow) > epsilon ? "negative" : "neutral");
-    setDebtKpiTone(el.dashboardDebtNetKpi, Number(net) > epsilon ? "positive" : Number(net) < -epsilon ? "negative" : "neutral");
-  }
-
   function dashboardPanelError(message) {
     return `<div class="panel-load-state panel-load-state-error" role="alert">
       <span>${core.escapeHtml?.(message) || message}</span>
@@ -308,16 +295,9 @@
     if (el.dashboardDebtsList) {
       el.dashboardDebtsList.innerHTML = dashboardPanelError("Не удалось загрузить активные долги");
     }
-    if (el.debtLendTotal) {
-      el.debtLendTotal.textContent = core.formatMoney(0);
+    if (el.dashboardDebtKpiGrid) {
+      el.dashboardDebtKpiGrid.innerHTML = dashboardPanelError("Не удалось загрузить итоги долгов");
     }
-    if (el.debtBorrowTotal) {
-      el.debtBorrowTotal.textContent = core.formatMoney(0);
-    }
-    if (el.debtNetTotal) {
-      el.debtNetTotal.textContent = core.formatMoney(0);
-    }
-    renderDebtKpiTones();
     getLoadingSkeletons().clearDashboardAnalyticsSkeletonState?.();
   }
 
@@ -377,30 +357,15 @@
       if (!isCurrentDashboardLoad()) {
         return;
       }
-      if (el.debtLendTotal) {
-        el.debtLendTotal.textContent = core.formatMoney(data.debt_lend_outstanding);
+      if (el.dashboardDebtKpiGrid) {
+        el.dashboardDebtKpiGrid.classList.remove("hidden");
+        el.dashboardDebtKpiGrid.innerHTML = data.debt_summary_available === false
+          ? dashboardPanelError("Не удалось загрузить итоги долгов")
+          : core.renderDebtSummaryKpi({ lendTotal: data.debt_lend_outstanding, borrowTotal: data.debt_borrow_outstanding }, { dashboard: true });
       }
-      if (el.debtBorrowTotal) {
-        el.debtBorrowTotal.textContent = core.formatMoney(data.debt_borrow_outstanding);
-      }
-      if (el.debtNetTotal) {
-        el.debtNetTotal.textContent = core.formatMoney(data.debt_net_position);
-      }
-      renderDebtKpiTones({
-        lend: data.debt_lend_outstanding,
-        borrow: data.debt_borrow_outstanding,
-        net: data.debt_net_position,
-      });
       state.dashboardSummaryHydrated = true;
       setDashboardPanelState(el.dashboardDebtsPanel, "ready");
       setDashboardPanelState(el.dashboardCurrencyPanel, "ready");
-      if (el.dashboardDebtKpiGrid) {
-        const lendTotal = Number(data.debt_lend_outstanding || 0);
-        const borrowTotal = Number(data.debt_borrow_outstanding || 0);
-        const netTotal = Number(data.debt_net_position || 0);
-        const hasDebtKpi = Math.abs(lendTotal) > 0.000001 || Math.abs(borrowTotal) > 0.000001 || Math.abs(netTotal) > 0.000001;
-        el.dashboardDebtKpiGrid.classList.toggle("hidden", !hasDebtKpi);
-      }
       if (data.debt_summary_available === false) {
         state.dashboardDebtSummaryLoaded = false;
       }

@@ -70,14 +70,9 @@
     if (el.dashboardDebtKpiGrid) {
       el.dashboardDebtKpiGrid.classList.remove("hidden");
     }
-    if (el.debtLendTotal) {
-      el.debtLendTotal.innerHTML = inlineLine("skeleton-w-56", "skeleton-line-money");
-    }
-    if (el.debtBorrowTotal) {
-      el.debtBorrowTotal.innerHTML = inlineLine("skeleton-w-56", "skeleton-line-money");
-    }
-    if (el.debtNetTotal) {
-      el.debtNetTotal.innerHTML = inlineLine("skeleton-w-56", "skeleton-line-money");
+    if (el.dashboardDebtKpiGrid) {
+      el.dashboardDebtKpiGrid.innerHTML = Array.from({ length: 3 }, () =>
+        `<article class="analytics-kpi-card">${line("skeleton-w-48", "skeleton-line-xs")}${inlineLine("skeleton-w-56", "skeleton-line-money")}</article>`).join("");
     }
     if (el.dashboardDebtsList) {
       el.dashboardDebtsList.innerHTML = `

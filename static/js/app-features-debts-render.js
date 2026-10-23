@@ -209,20 +209,7 @@
       return;
     }
     const summary = summarizeDebtCards(cards);
-    el.debtsSectionKpi.innerHTML = `
-      <article class="analytics-kpi-card analytics-kpi-negative">
-        <div class="muted-small">Я должен</div>
-        <strong>${formatDebtMoney(summary.borrowTotal, summary.baseCurrency)}</strong>
-      </article>
-      <article class="analytics-kpi-card analytics-kpi-positive">
-        <div class="muted-small">Мне должны</div>
-        <strong>${formatDebtMoney(summary.lendTotal, summary.baseCurrency)}</strong>
-      </article>
-      <article class="analytics-kpi-card" data-debts-net title="Мне должны минус я должен по выбранным долгам">
-        <div class="muted-small">Итог по долгам</div>
-        <strong class="${summary.netTotal > 0 ? "amount-income" : summary.netTotal < 0 ? "amount-expense" : ""}">${formatDebtMoney(summary.netTotal, summary.baseCurrency)}</strong>
-      </article>
-    `;
+    el.debtsSectionKpi.innerHTML = core.renderDebtSummaryKpi(summary);
   }
 
   function renderDebtActions(debt, {dashboard=false} = {}) {

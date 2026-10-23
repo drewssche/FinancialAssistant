@@ -855,9 +855,9 @@ def test_dashboard_position_ranking_routes_to_operations_and_full_analytics(page
     )
     assert "nbrb" in ranking_currency_font
     assert page.evaluate("() => document.fonts.check('10px nbrb', '\ue901')") is True
-    expect(page.locator("#dashboardDebtLendKpi")).to_have_class(re.compile(r"\bis-positive\b"))
-    expect(page.locator("#dashboardDebtBorrowKpi")).to_have_class(re.compile(r"\bis-negative\b"))
-    expect(page.locator("#dashboardDebtNetKpi")).to_have_class(re.compile(r"\bis-negative\b"))
+    expect(page.locator("#dashboardDebtLendKpi strong")).to_have_class("amount-income")
+    expect(page.locator("#dashboardDebtBorrowKpi strong")).to_have_class("amount-expense")
+    expect(page.locator("#dashboardDebtNetKpi strong")).to_have_class("amount-expense")
     page.screenshot(path="/tmp/finasist-dashboard-ranking.png", full_page=True)
 
     page.locator("#dashboardPositionsRanking .analytics-position-ranking-row").first.click()

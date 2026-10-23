@@ -65,17 +65,20 @@ function createPlansDashboardFeature({
       .slice(0, ui?.dashboardOperationsLimit || 8);
     const summary = summarizePlans(periodItems);
     const generation = ++forecastGeneration, owner = state.token;
-    const counts = `<span class="muted-small">Планов: ${summary.activeCount}${summary.todayCount ? ` · Сегодня: ${summary.todayCount}` : ""}${summary.overdueCount ? ` · Просрочено: ${summary.overdueCount}` : ""}</span>`;
-    const sums = (income, expense) => `<article class="analytics-kpi-card analytics-kpi-income"><span class="muted-small">Получить</span><strong>${core.formatMoney(income)}</strong></article><article class="analytics-kpi-card analytics-kpi-expense"><span class="muted-small">Заплатить</span><strong>${core.formatMoney(expense)}</strong></article>`;
+    const counts = `<p class="muted-small">Планов: ${summary.activeCount}${summary.todayCount ? ` · Сегодня: ${summary.todayCount}` : ""}</p>`;
+
     el.dashboardPlansKpi.innerHTML = counts;
     if (state.dashboardPlansPeriod === "all_time") {
-      el.dashboardPlansKpi.innerHTML += sums(summary.potentialIncome, summary.potentialExpense);
+      el.dashboardPlansKpi.innerHTML += core.renderPlansForecastKpi({ income_total: summary.potentialIncome, expense_total: summary.potentialExpense, occurrences_count: summary.activeCount, overdue_count: summary.overdueCount }, { showDates: false });
     } else {
       const days = state.dashboardPlansPeriod === "week" ? 7 : 30;
       core.requestJson(`/api/v1/plans/forecast?days=${days}`, { headers: core.authHeaders() }).then(data => {
         if (generation !== forecastGeneration || owner !== state.token) return;
-        el.dashboardPlansKpi.innerHTML = counts + (data.income_total == null ? '<span class="muted-small">Прогноз недоступен</span>' : sums(data.income_total, data.expense_total) + `<span class="muted-small">${Number(data.occurrences_count)} платежей${data.unpriced_count ? ` · Без курса: ${Number(data.unpriced_count)}` : ""}</span>`);
-      }).catch(() => { if (generation === forecastGeneration && owner === state.token) el.dashboardPlansKpi.innerHTML = counts + '<span class="muted-small">Прогноз недоступен</span>'; });
+        if (data.date_from && data.date_to && el.dashboardPlansPeriodLabel) {
+          el.dashboardPlansPeriodLabel.textContent = `${core.formatDateRu(data.date_from)} — ${core.formatDateRu(data.date_to)}`;
+        }
+        el.dashboardPlansKpi.innerHTML = counts + (data.income_total == null ? '<p class="muted-small">Прогноз недоступен</p>' : core.renderPlansForecastKpi(data, { showDates: false }));
+      }).catch(() => { if (generation === forecastGeneration && owner === state.token) el.dashboardPlansKpi.innerHTML = counts + '<p class="muted-small">Прогноз недоступен</p>'; });
     }
     el.dashboardPlansList.innerHTML = items.length
       ? items.map((item) => renderPlanCard(item, { dashboardCompact: true })).join("")

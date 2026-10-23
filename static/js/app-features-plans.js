@@ -209,9 +209,7 @@
       const data = await core.requestJson(`/api/v1/plans/forecast?days=${forecastDays}`, { headers: core.authHeaders() });
       if (token !== forecastGeneration || owner !== state.token) return;
       if (data.income_total == null) { host.textContent = "Нет данных прогноза"; return; }
-      const netTotal = Number(data.income_total) - Number(data.expense_total);
-      const netClass = netTotal > 0 ? "amount-income" : netTotal < 0 ? "amount-expense" : "";
-      host.innerHTML = `<article class="analytics-kpi-card analytics-kpi-income"><span class="muted-small">Ожидается получить</span><strong class="amount-income">${core.formatMoney(data.income_total)}</strong></article><article class="analytics-kpi-card analytics-kpi-expense"><span class="muted-small">Ожидается заплатить</span><strong class="amount-expense">${core.formatMoney(data.expense_total)}</strong></article><article class="analytics-kpi-card" data-plans-net title="Ожидается получить минус ожидается заплатить за выбранный период"><span class="muted-small">Итог планов</span><strong class="${netClass}">${core.formatMoney(netTotal)}</strong></article><p class="muted-small">${core.formatDateRu(data.date_from)} — ${core.formatDateRu(data.date_to)} · ${Number(data.occurrences_count)} платежей${data.unpriced_count ? ` · Без курса: ${Number(data.unpriced_count)}, не включены в суммы` : ""}${data.overdue_count ? ` · Просрочено планов: ${Number(data.overdue_count)}` : ""}</p>`;
+      host.innerHTML = core.renderPlansForecastKpi(data);
     } catch (error) {
       if (token === forecastGeneration && owner === state.token) host.textContent = "Не удалось загрузить прогноз";
     }
