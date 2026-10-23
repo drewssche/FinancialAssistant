@@ -183,3 +183,19 @@ def test_receipt_barcode_with_unknown_size_is_visible_and_editable(static_server
     p.locator('#submitCatalogProductBtn').click()
     expect(p.locator('#catalogProductModal')).to_be_hidden()
     assert writes[-1]['codes'] == {'barcodes':[{'variant_id':334,'codes':['0'+CODE]}], 'retailers':[]}
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width',[320,1440])
+def test_internal_codes_are_editable_per_source_without_replacing_sku(static_server_url,page_with_receipt_api_mock,width,tmp_path):
+    p=page_with_receipt_api_mock;writes=setup(p,static_server_url,width,many=True)
+    p.locator('[data-product-tab=offers]').click()
+    field=card(p).locator('[data-code=internal]');expect(field).to_be_enabled()
+    field.fill('22373102227750, 0012345')
+    expect(card(p,502).locator('[data-code=internal]')).to_have_value('')
+    expect(sku(p)).to_have_value('000-42')
+    box=field.bounding_box();assert box['x']>=0 and box['x']+box['width']<=width+1
+    card(p).screenshot(path=str(tmp_path/f'internal-source-{width}.png'))
+    p.locator('#submitCatalogProductBtn').click();expect(p.locator('#catalogProductModal')).to_be_hidden()
+    assert writes[-1]['codes']['internals']==[{'template_id':501,'codes':['22373102227750','0012345']}]
+    assert writes[-1]['codes']['retailers']==[]

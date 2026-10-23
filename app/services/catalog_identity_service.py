@@ -40,7 +40,7 @@ class CatalogIdentityService:
                 codes.setdefault(row.variant_id, []).append(row.code)
         mappings = self.db.scalars(select(CatalogOfferIdentity).join(OperationItemTemplate, OperationItemTemplate.id == CatalogOfferIdentity.template_id).where(CatalogOfferIdentity.user_id == user_id, OperationItemTemplate.user_id == user_id, OperationItemTemplate.product_id == product_id))
         return {'variants': [dict(id=v.id, name=v.name, is_archived=v.is_archived, **measurement_snapshot(v, json_safe=True), codes=codes.get(v.id, [])) for v in variants],
-                'offers': [dict(template_id=m.template_id, variant_id=m.variant_id, retailer_code=m.retailer_code, external_name=m.external_name, product_url=m.product_url) for m in mappings]}
+                'offers': [dict(template_id=m.template_id, variant_id=m.variant_id, retailer_code=m.retailer_code, internal_codes=m.internal_codes or [], external_name=m.external_name, product_url=m.product_url) for m in mappings]}
 
     def save_variant(self, *, user_id, product_id, data, variant_id=None, commit=True):
         product = self.product(user_id, product_id, lock=True)
@@ -95,11 +95,14 @@ class CatalogIdentityService:
         if row is None:
             row = CatalogOfferIdentity(template_id=template_id, user_id=user_id)
             self.db.add(row)
+        if data.get('internal_codes') is not None:
+            from app.services.catalog_internal_code_service import CatalogInternalCodeService
+            CatalogInternalCodeService(self.db).save(user_id=user_id, template=offer, codes=data['internal_codes'])
         row.variant_id = data['variant_id']
         for key in ('retailer_code','external_name','product_url'):
             value = data[key]
             setattr(row,key,str(value).strip() or None if value is not None else None)
-        ActivityService(self.db).record(user_id=user_id, actor_user_id=user_id, entity_type='catalog_product', entity_id=product_id, event_type='updated', title='Соответствие предложения сохранено', metadata={'template_id':template_id,'variant_id':row.variant_id,'retailer_code':row.retailer_code,'product_url':row.product_url})
+        ActivityService(self.db).record(user_id=user_id, actor_user_id=user_id, entity_type='catalog_product', entity_id=product_id, event_type='updated', title='Соответствие предложения сохранено', metadata={'template_id':template_id,'variant_id':row.variant_id,'retailer_code':row.retailer_code,'internal_codes':row.internal_codes or [],'product_url':row.product_url})
         if commit: self.db.commit()
         if commit: CatalogProductService(self.db)._invalidate(user_id)
         return self.get(user_id=user_id, product_id=product_id)
@@ -148,6 +151,15 @@ class CatalogIdentityService:
             self.save_offer(user_id=user_id, product_id=product_id, template_id=offer.id, data=dict(
                 retailer_code=code, variant_id=mapping.variant_id if mapping else None,
                 external_name=mapping.external_name if mapping else None, product_url=mapping.product_url if mapping else None), commit=False)
+
+        for edit in data.get('internals', []):
+            offer = self.db.scalar(select(OperationItemTemplate).where(OperationItemTemplate.id == edit['template_id'],
+                OperationItemTemplate.user_id == user_id, OperationItemTemplate.product_id == product_id,
+                OperationItemTemplate.is_archived.is_(False)))
+            if offer is None:
+                raise ValueError('Предложение магазина не найдено')
+            from app.services.catalog_internal_code_service import CatalogInternalCodeService
+            CatalogInternalCodeService(self.db).save(user_id=user_id, template=offer, codes=edit['codes'])
 
         for edit in data.get('offer_sizes', []):
             offer = self.db.scalar(select(OperationItemTemplate).where(OperationItemTemplate.id == edit['template_id'], OperationItemTemplate.product_id == product_id, OperationItemTemplate.user_id == user_id, OperationItemTemplate.is_archived.is_(False)))

@@ -24,26 +24,27 @@
     return row.code_entries ||= (row.catalog_codes || []).map(e=>({...e}));
   }
   function inferKind(code) {
-    return !code.trim()?'unknown':validBarcode(code)||/^(?:\d{8}|\d{12,14})$/.test(code)?'barcode':'retailer';
+    return !code.trim()?'unknown':internalRetailerCode(code)?'internal':validBarcode(code)||/^(?:\d{8}|\d{12,14})$/.test(code)?'barcode':'retailer';
   }
   function payload(row) {
-    return entries(row).filter(e=>e.code.trim()&&!e.from_catalog).map(e=>({kind:e.kind==='unknown'?inferKind(e.code.trim()):e.kind,code:e.code.trim()}));
+    return entries(row).filter(e=>e.code.trim()&&!e.from_catalog).map(e=>({kind:internalRetailerCode(e.code.trim())?'internal':e.kind==='unknown'?inferKind(e.code.trim()):e.kind,code:e.code.trim()}));
   }
   function receiptPayload(row) {
-    return entries(row).filter(e=>e.code.trim()&&(!e.from_catalog||e.from_receipt)).map(e=>({kind:e.kind==='unknown'?inferKind(e.code.trim()):e.kind,code:e.code.trim()}));
+    return entries(row).filter(e=>e.code.trim()&&(!e.from_catalog||e.from_receipt)).map(e=>({kind:internalRetailerCode(e.code.trim())?'internal':e.kind==='unknown'?inferKind(e.code.trim()):e.kind,code:e.code.trim()}));
   }
   function savedEntries(seed) {
-    const saved=(seed.receipt_codes||[]).map(e=>({...e,from_catalog:true,from_receipt:true}));
+    const saved=(seed.receipt_codes||[]).map(e=>({...e,kind:internalRetailerCode(e.code)?'internal':e.kind,from_catalog:true,from_receipt:true}));
     for(const code of seed.variant_snapshot?.codes||[]){
       if(!saved.some(e=>e.kind==='barcode'&&e.code===code))saved.push({kind:'barcode',code,from_catalog:true});
     }
     return saved;
   }
   function validationError(codes, shop) {
-    const invalid=codes.find(e=>e.kind==='barcode'&&!validBarcode(e.code));
-    const unknown=codes.find(e=>!['barcode','retailer'].includes(e.kind));
+    const invalid=codes.find(e=>e.kind==='barcode'&&!internalRetailerCode(e.code)&&!validBarcode(e.code));
+    const badInternal=codes.find(e=>e.kind==='internal'&&!/^[0-9]{1,32}$/.test(e.code));
+    const unknown=codes.find(e=>!['barcode','retailer','internal'].includes(e.kind));
     const retailers=new Set(codes.filter(e=>e.kind==='retailer'&&!internalRetailerCode(e.code)).map(e=>e.code));
-    return invalid?`Проверьте длину и контрольную цифру штрихкода ${invalid.code}.`:unknown?`Выберите тип кода ${unknown.code}.`:retailers.size>1?'Оставьте один артикул этого магазина.':retailers.size&&!shop?.trim()?'Укажите магазин для артикула.':'';
+    return invalid?`Проверьте длину и контрольную цифру штрихкода ${invalid.code}.`:badInternal?'Внутренний штрихкод должен содержать от 1 до 32 цифр.':codes.some(e=>e.kind==='internal')&&!shop?.trim()?'Выберите магазин для внутреннего штрихкода.':unknown?`Выберите тип кода ${unknown.code}.`:retailers.size>1?'Оставьте один артикул этого магазина.':retailers.size&&!shop?.trim()?'Укажите магазин для артикула.':'';
   }
   function conflict(row, found) {
     const current=window.App.measurements.snapshot(row);
@@ -72,7 +73,7 @@
     row.price_touched=true;
     const brand=window.App.state.itemBrands?.find(b=>Number(b.id)===Number(found.brand_id));
     row.brand_name=brand?.name||'';row.brand_accent_color=brand?.accent_color||null;row.brand_image_id=brand?.image_id||null;
-    row.code_match_label=found.matched_by.includes('barcode')?'Найден по штрихкоду':'Найден по артикулу магазина';
+    row.code_match_label=found.matched_by.includes('internal')?'Найден по внутреннему штрихкоду':found.matched_by.includes('barcode')?'Найден по штрихкоду':'Найден по артикулу магазина';
   }
   function mount(host,{row,shop,onSelect,onChange=()=>{},auto=false,loadKnown=false,siteSearch=false,onSiteSelect=()=>{},isActive=()=>true}) {
     const list=entries(row);
@@ -84,25 +85,22 @@
     const search=document.createElement('button');search.type='button';search.className='btn btn-secondary btn-xs';window.App.icons.apply(search,'search','Найти по коду');
     actions.append(add,search);heading.after(actions);
     const hint=document.createElement('p');hint.className='form-error receipt-code-error';hint.id='receiptCodeError'+(++codeHintId);hint.setAttribute('aria-live','polite');details.append(hint);
-    const internalNotice=document.createElement('p');internalNotice.className='muted-small';internalNotice.hidden=true;details.append(internalNotice);
     const codeRecovery=document.createElement('div');codeRecovery.className='receipt-code-actions';codeRecovery.hidden=true;details.append(codeRecovery);
     function refreshCodes(){
       const reason=validationError(payload(row),shop());
       search.hidden=!list.length;
       const conflicts=(row.code_errors||[]).filter(error=>list.some(entry=>entry.code.trim()===error.code&&entry.kind===error.kind));
-      const messages=conflicts.map(error=>`${error.kind==='barcode'?'Штрихкод':'Артикул'} ${error.code}: ${error.message}${error.product_name?' · '+error.product_name:''}`);
+      const messages=conflicts.map(error=>`${error.kind==='internal'?'Внутренний штрихкод':error.kind==='barcode'?'Штрихкод':'Артикул'} ${error.code}: ${error.message}${error.product_name?' · '+error.product_name:''}`);
       const invalidBarcodes=list.filter(e=>!e.from_catalog&&e.kind==='barcode'&&e.code.trim()&&!validBarcode(e.code.trim()));
-      const internal=list.some(e=>internalRetailerCode(e.code.trim())&&(e.kind==='retailer'||(e.kind==='barcode'&&validBarcode(e.code.trim()))));
-      internalNotice.textContent=internal?'Внутренний код сохранится в чеке. Артикул товара в каталоге останется прежним.':'';internalNotice.hidden=!internal;
-      const explanation=invalidBarcodes.length?'Если цифры совпадают с чеком, сохраните внутренний код как артикул магазина.':'';
+      const explanation=invalidBarcodes.length?'Если цифры совпадают с чеком, выберите тип «Внутренний штрихкод».':'';
       hint.textContent=[reason,explanation,...new Set(messages)].filter(Boolean).join(' · ');hint.hidden=!hint.textContent;
       codeRecovery.replaceChildren();codeRecovery.hidden=!invalidBarcodes.length;
       for(const entry of invalidBarcodes){
         const button=document.createElement('button');button.type='button';button.className='btn btn-secondary btn-xs';
-        button.textContent='Использовать как код магазина'+(invalidBarcodes.length>1?' · '+entry.code:'');
-        button.disabled=!shop()?.trim();button.title=button.disabled?'Сначала укажите магазин':'Сохранить исходные цифры как артикул выбранного магазина';
+        button.textContent='Использовать как внутренний штрихкод'+(invalidBarcodes.length>1?' · '+entry.code:'');
+        button.disabled=!shop()?.trim();button.title=button.disabled?'Сначала укажите магазин':'Сохранить исходные цифры как внутренний штрихкод выбранного магазина';
         button.dataset.receiptCodeAsRetailer=entry.code;
-        button.onclick=()=>{entry.kind='retailer';entry.manual_kind=true;entry.from_catalog=false;changed();draw();lookup(false);};
+        button.onclick=()=>{entry.kind='internal';entry.manual_kind=true;entry.from_catalog=false;changed();draw();lookup(false);};
         codeRecovery.append(button);
       }
       for(const [index,input] of [...fields.querySelectorAll('input')].entries()){
@@ -157,11 +155,11 @@
     function draw(){
       fields.replaceChildren();
       list.forEach((entry,index)=>{
-        if(!entry.manual_kind&&entry.kind==='unknown')entry.kind=inferKind(entry.code);
+        if(internalRetailerCode(entry.code))entry.kind='internal';else if(!entry.manual_kind&&entry.kind==='unknown')entry.kind=inferKind(entry.code);
         const line=document.createElement('div');line.className='receipt-code-line';
         const input=document.createElement('input');input.type='text';input.maxLength=160;input.autocomplete='off';input.value=entry.code;input.placeholder='Штрихкод или артикул';input.setAttribute('aria-label','Код товара');
         const type=document.createElement('select');type.setAttribute('aria-label','Тип кода');
-        for(const [value,label] of [['unknown','Определить'],['barcode','Штрихкод'],['retailer','Артикул']])type.add(new Option(label,value));
+        for(const [value,label] of [['unknown','Определить'],['barcode','Штрихкод'],['internal','Внутренний штрихкод'],['retailer','Артикул']])type.add(new Option(label,value));
         type.value=entry.kind||'unknown';
         const remove=document.createElement('button');remove.type='button';remove.className='btn btn-secondary btn-icon';window.App.icons.apply(remove,'close','Удалить код');
         input.oninput=()=>{entry.code=input.value.trim();entry.from_catalog=false;if(!entry.manual_kind){entry.kind=inferKind(entry.code);type.value=entry.kind;}changed();clearTimeout(timer);timer=setTimeout(()=>lookup(false),300);};
@@ -192,7 +190,7 @@
         for(const found of items){
           const button=document.createElement('button');button.type='button';button.className='btn btn-secondary receipt-code-result';
           const title=document.createElement('strong');title.textContent=found.product_name;
-          const detail=document.createElement('small');detail.textContent=[found.variant_snapshot?.name,window.App.measurements.summary(found),found.matched_by.includes('barcode')?'Штрихкод совпадает':'Артикул совпадает',conflict(row,found)?'Другая фасовка — выбор заменит единицы и размер':''].filter(Boolean).join(' · ');
+          const detail=document.createElement('small');detail.textContent=[found.variant_snapshot?.name,window.App.measurements.summary(found),found.matched_by.includes('internal')?'Внутренний штрихкод совпадает':found.matched_by.includes('barcode')?'Штрихкод совпадает':'Артикул совпадает',conflict(row,found)?'Другая фасовка — выбор заменит единицы и размер':''].filter(Boolean).join(' · ');
           button.append(title,detail);button.onclick=()=>{choose(found);lookupSite();};results.append(button);
         }
         if(!items.length)lookupSite();
@@ -210,6 +208,8 @@
         if(!connected()||before!==signature())return;
         row.codes_loaded_entity=entity;
         const saved=data.offers?.find(offer=>Number(offer.template_id)===Number(row.template_id));
+        for(const code of saved?.internal_codes||[]){if(!list.some(e=>e.code===code))list.push({kind:'internal',code,from_catalog:true});}
+        draw();
         if(saved?.retailer_code&&!list.some(e=>e.code===saved.retailer_code)){
           list.push({kind:'retailer',code:saved.retailer_code,from_catalog:true});draw();
         }

@@ -29,6 +29,9 @@ def code_context(codes):
         if not code:
             continue
         kind = entry['kind']
+        # Internal store labels are not a website's stable SKU or global GTIN.
+        if kind == 'internal' or variable_code(code):
+            continue
         canonical = barcodes([code]) if kind in ('barcode', 'unknown') else set()
         if kind == 'barcode' and not canonical:
             raise ValueError('Проверьте контрольную цифру штрихкода')

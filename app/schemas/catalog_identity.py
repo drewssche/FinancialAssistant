@@ -10,6 +10,7 @@ class VariantInput(MeasurementFields):
 
 
 class OfferIdentityInput(BaseModel):
+    internal_codes: list[str] | None = Field(default=None, max_length=100)
     variant_id: int | None = Field(default=None, gt=0)
     retailer_code: str | None = Field(default=None, max_length=160)
     external_name: str | None = Field(default=None, max_length=320)
@@ -24,7 +25,7 @@ class OfferIdentityInput(BaseModel):
 
 
 class LookupCodeInput(BaseModel):
-    kind: Literal['barcode', 'retailer', 'unknown'] = 'unknown'
+    kind: Literal['barcode', 'retailer', 'internal', 'unknown'] = 'unknown'
     code: str = Field(min_length=1, max_length=160)
 
 

@@ -1,7 +1,7 @@
 (() => {
   const node=id=>document.getElementById(id);
   let product=null,data=null,bound=false,generation=0,controller=null,failed=false;
-  const barcodes=new Map(),retailers=new Map(),choices=new Map(),sizes=new Map();
+  const barcodes=new Map(),retailers=new Map(),internals=new Map(),choices=new Map(),sizes=new Map();
   const hosts=()=>[...document.querySelectorAll('[data-offer-codes]')];
   const sizeKey=value=>JSON.stringify([value.sale_unit||null,Number(value.package_quantity)||null,value.package_unit||null]);
   const measurement=()=>window.App.measurements.snapshot({sale_unit:node('catalogProductSaleUnit').value,package_quantity:node('catalogProductPackageQuantity').value,package_unit:node('catalogProductPackageUnit').value});
@@ -66,6 +66,9 @@
       const sku=inputField(host,'sku','Артикул магазина',160);
       sku.value=retailers.get(id)??data?.offers?.find(o=>Number(o.template_id)===id)?.retailer_code??'';sku.placeholder='Например, 000-42';sku.disabled=!data;
       sku.oninput=()=>retailers.set(id,sku.value);
+      const internal=inputField(host,'internal','Внутренние штрихкоды магазина',3300);
+      internal.value=(internals.get(id)??data?.offers?.find(o=>Number(o.template_id)===id)?.internal_codes??[]).join(', ');internal.placeholder='Коды через запятую';internal.disabled=!data;
+      internal.oninput=()=>internals.set(id,internal.value.split(/[\s,;]+/).filter(Boolean));
       const productUrl=data?.offers?.find(o=>Number(o.template_id)===id)?.product_url;
       if(productUrl){
         try{
@@ -114,13 +117,13 @@
     for(const id of ['catalogProductSaleUnit','catalogProductPackageQuantity','catalogProductPackageUnit'])for(const event of ['input','change'])node(id).addEventListener(event,render);
     node('catalogProductCodesRetry').addEventListener('click',load);
   }
-  function close(){generation++;controller?.abort();product=null;data=null;failed=false;barcodes.clear();retailers.clear();choices.clear();sizes.clear();}
+  function close(){generation++;controller?.abort();product=null;data=null;failed=false;barcodes.clear();retailers.clear();internals.clear();choices.clear();sizes.clear();}
   function open(value){close();bind();product=value;render();if(product)load();}
   function payload(){
     const keys=new Set(hosts().map(h=>h.dataset.codeKey)),ids=new Set(hosts().map(h=>Number(h.dataset.offerCodes)));
     for(const row of document.querySelectorAll('[data-other-variant-codes]'))keys.add(row.dataset.otherVariantCodes);
     const standardKey='new:'+sizeKey(measurement());
-    const result={barcodes:[...barcodes].filter(([key])=>keys.has(key)&&(!key.startsWith('new:')||key===standardKey)).map(([key,codes])=>({variant_id:key.startsWith('new:')?null:Number(key),codes})),retailers:[...retailers].filter(([id])=>ids.has(id)).map(([template_id,retailer_code])=>({template_id,retailer_code}))};
+    const result={internals:[...internals].filter(([id])=>ids.has(id)).map(([template_id,codes])=>({template_id,codes})),barcodes:[...barcodes].filter(([key])=>keys.has(key)&&(!key.startsWith('new:')||key===standardKey)).map(([key,codes])=>({variant_id:key.startsWith('new:')?null:Number(key),codes})),retailers:[...retailers].filter(([id])=>ids.has(id)).map(([template_id,retailer_code])=>({template_id,retailer_code}))};
     const offerSizes=[];
     for(const id of ids){
       const selected=selection(id),codes=barcodes.get(selected.key);
@@ -132,7 +135,9 @@
     }
     if(offerSizes.length)result.offer_sizes=offerSizes;
     if([...result.barcodes,...offerSizes].some(v=>(v.codes||[]).some(code=>!window.App.receiptCodes.validBarcode(code))))throw new Error('Проверьте штрихкод: нужны 8, 12, 13 или 14 цифр с верной контрольной цифрой.');
-    return result.barcodes.length||result.retailers.length||offerSizes.length?result:undefined;
+    if(result.internals.some(v=>v.codes.length>100||v.codes.some(code=>!/^\d{1,32}$/.test(code))))throw new Error('Внутренний штрихкод: от 1 до 32 цифр.');
+    if(!result.internals.length)delete result.internals;
+    return result.internals?.length||result.barcodes.length||result.retailers.length||offerSizes.length?result:undefined;
   }
 
   async function load(){

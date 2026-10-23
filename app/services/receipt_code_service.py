@@ -5,6 +5,7 @@ from app.db.models import CatalogProduct, CatalogVariant, CatalogVariantCode, Ca
 from app.db.models.item_source import ItemSource
 from app.core.measurement import normalize_measurement, measurement_snapshot
 from app.services.catalog_identity_service import normalize_codes
+from app.services.catalog_internal_code_service import CatalogInternalCodeService, normalize_internal_codes
 
 
 def variable_code(code):
@@ -41,19 +42,18 @@ class ReceiptCodeService:
         source_query = select(ItemSource).where(ItemSource.user_id == user_id, ItemSource.is_archived.is_(False))
         source = self.db.scalar(source_query.where(ItemSource.id == source_id)) if source_id else self.db.scalar(source_query.where(ItemSource.name_ci == ' '.join((shop_name or '').split()).casefold()))
         results, warnings, matched = {}, [], set()
-        restricted = False
         for index, entry in enumerate(codes):
             code, kind = entry['code'].strip(), entry['kind']
             canonical = None
-            if kind in ('barcode', 'unknown'):
+            internal = kind == 'internal' or variable_code(code)
+            if kind in ('barcode', 'unknown') and not internal:
                 try:
                     canonical = next(iter(normalize_codes([code])))
                 except ValueError:
                     if kind == 'barcode':
                         warnings.append(f'{code}: проверьте цифры штрихкода')
-            if variable_code(code):
-                warnings.append(f'{code}: внутренний или весовой код магазина, подтвердите товар вручную')
-                restricted = True
+            if internal and not source:
+                warnings.append('Для внутреннего штрихкода выберите магазин')
             variants = []
             if canonical:
                 variants = self.db.scalars(select(CatalogVariant).join(CatalogVariantCode, CatalogVariantCode.variant_id == CatalogVariant.id).where(
@@ -66,7 +66,12 @@ class ReceiptCodeService:
                     OperationItemTemplate.source_id == source.id, OperationItemTemplate.is_archived.is_(False),
                     or_(CatalogOfferIdentity.variant_id.is_(None), CatalogOfferIdentity.variant_id == variant.id))).all() if source else []
                 pairs.extend((variant, offer, 'barcode') for offer in (offers or [None]))
-            if kind in ('retailer', 'unknown') and source:
+            if source and (internal or kind == 'unknown'):
+                for mapping, offer, product in CatalogInternalCodeService(self.db).matches(user_id=user_id, source_id=source.id, codes=[code]):
+                    variant = self.db.scalar(select(CatalogVariant).where(CatalogVariant.id == mapping.variant_id, CatalogVariant.product_id == offer.product_id, CatalogVariant.user_id == user_id, CatalogVariant.is_archived.is_(False))) if mapping.variant_id else None
+                    if not mapping.variant_id or variant is not None:
+                        pairs.append((variant, offer, 'internal'))
+            if kind in ('retailer', 'unknown') and source and not internal:
                 rows = self.db.execute(select(CatalogOfferIdentity, OperationItemTemplate).join(OperationItemTemplate, CatalogOfferIdentity.template_id == OperationItemTemplate.id).where(
                     CatalogOfferIdentity.user_id == user_id, OperationItemTemplate.user_id == user_id,
                     OperationItemTemplate.source_id == source.id, OperationItemTemplate.is_archived.is_(False),
@@ -107,7 +112,7 @@ class ReceiptCodeService:
                 del results[key]
         items = list(results.values())
         # Two codes resolving to different variants/offers must not silently select one.
-        return dict(items=items[:20], auto_match=len(items) == 1 and len(matched) == len(codes) and not restricted,
+        return dict(items=items[:20], auto_match=len(items) == 1 and len(matched) == len(codes),
                     warnings=list(dict.fromkeys(warnings)), unmatched=[c['code'] for i,c in enumerate(codes) if i not in matched])
 
     def attach(self, *, user_id, product, template, item, item_index=None):
@@ -139,14 +144,14 @@ class ReceiptCodeService:
         if not entries: return
         # Serialize competing attachments to this product; GTIN also has a global per-owner unique constraint.
         self.db.scalar(select(CatalogProduct).where(CatalogProduct.id == product.id, CatalogProduct.user_id == user_id).with_for_update())
-        barcode_values = [e['code'] for e in entries if e['kind'] == 'barcode']
+        internal_values = normalize_internal_codes([e['code'] for e in entries if e['kind'] == 'internal' or variable_code(e['code'].strip())])
+        barcode_values = [e['code'] for e in entries if e['kind'] == 'barcode' and not variable_code(e['code'].strip())]
         codes = {gtin: code for gtin, code in normalize_codes(barcode_values).items() if not variable_code(code)}
-        # Restricted receipt codes may include purchase-specific information. Keep
-        # them on the receipt; never replace or claim a shop's stable product SKU.
+        # Internal barcodes have their own store-scoped registry, separate from SKUs.
         retailers = {e['code'].strip() for e in entries if e['kind'] == 'retailer' and not variable_code(e['code'].strip())}
         if len(retailers) > 1: raise ValueError('Укажите один артикул магазина для предложения')
-        if any(not e['code'].strip() or e['kind'] not in ('barcode','retailer') for e in entries):
-            raise ValueError('Подтвердите тип каждого кода: штрихкод или артикул')
+        if any(not e['code'].strip() or e['kind'] not in ('barcode','retailer','internal') for e in entries):
+            raise ValueError('Подтвердите тип каждого кода: штрихкод, внутренний штрихкод или артикул')
         variant = None
         variant_id = item.get('variant_id') or (item.get('variant_snapshot') or {}).get('variant_id')
         if variant_id:
@@ -213,4 +218,12 @@ class ReceiptCodeService:
                 self.db.add(mapping)
             if mapping.variant_id is None:
                 mapping.variant_id = variant.id
+        if internal_values:
+            try:
+                CatalogInternalCodeService(self.db).save(user_id=user_id, template=template, codes=internal_values, append=True)
+            except ReceiptCodeConflict as error:
+                # Old tabs may still submit these digits as barcode/retailer.
+                for entry in error.detail['codes']:
+                    entry['kind'] = next(e['kind'] for e in entries if e['code'].strip() == entry['code'])
+                raise
         self.db.flush()

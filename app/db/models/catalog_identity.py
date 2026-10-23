@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, UniqueConstraint, func
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Numeric, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 
@@ -34,6 +34,7 @@ class CatalogOfferIdentity(Base):
     template_id: Mapped[int] = mapped_column(ForeignKey('operation_item_templates.id', ondelete='CASCADE'), primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'), index=True)
     variant_id: Mapped[int | None] = mapped_column(ForeignKey('catalog_variants.id', ondelete='SET NULL'), index=True)
+    internal_codes: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
     retailer_code: Mapped[str | None] = mapped_column(String(160))
     external_name: Mapped[str | None] = mapped_column(String(320))
     product_url: Mapped[str | None] = mapped_column(String(2048))

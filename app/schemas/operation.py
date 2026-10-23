@@ -33,7 +33,7 @@ class ReceiptVariantSnapshot(BaseModel):
 
 
 class ReceiptCodeIn(BaseModel):
-    kind: Literal["barcode", "retailer"]
+    kind: Literal["barcode", "retailer", "internal"]
     code: str = Field(min_length=1, max_length=160)
 
 
@@ -331,6 +331,11 @@ class ProductRetailerEdit(BaseModel):
     retailer_code: str = Field(default='', max_length=160)
 
 
+class ProductInternalCodesEdit(BaseModel):
+    template_id: int = Field(ge=1)
+    codes: list[Annotated[str, Field(min_length=1, max_length=32, pattern=r"^[0-9]+$")]] = Field(default_factory=list, max_length=100)
+
+
 class ProductOfferSizeEdit(MeasurementFields):
     template_id: int = Field(ge=1)
     variant_id: int | None = Field(default=None, ge=1)
@@ -339,6 +344,7 @@ class ProductOfferSizeEdit(MeasurementFields):
 
 
 class ProductCodesEdit(BaseModel):
+    internals: list[ProductInternalCodesEdit] = Field(default_factory=list, max_length=100)
     offer_sizes: list[ProductOfferSizeEdit] = Field(default_factory=list, max_length=100)
     barcodes: list[ProductBarcodeEdit] = Field(default_factory=list, max_length=30)
     retailers: list[ProductRetailerEdit] = Field(default_factory=list, max_length=30)

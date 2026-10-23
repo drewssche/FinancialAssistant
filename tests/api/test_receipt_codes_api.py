@@ -122,7 +122,8 @@ def test_invalid_archived_weight_and_foreign_variants(client):
     weighted=receipt(client,[{'kind':'barcode','code':weight}],name='Колбаса')
     assert weighted.status_code==201,weighted.text
     result=lookup(client,[{'kind':'barcode','code':weight}])
-    assert not result['items'] and not result['auto_match'] and result['warnings']
+    assert len(result['items'])==1 and result['auto_match']
+    assert result['items'][0]['matched_by']==['internal']
     assert weighted.json()['receipt_items'][0]['receipt_codes']==[{'kind':'barcode','code':weight}]
     assert receipt(client,[{'kind':'barcode','code':weight}],name='Другой весовой товар',shop_name='Соседи').status_code==201
 
@@ -212,7 +213,6 @@ def test_internal_receipt_codes_preserve_stable_sku_and_money(client):
     owner=original.json()['receipt_items'][0]
     before=get(client,owner['product_id'])
     for code in ['22373102227750','2237310222750']:
-        assert receipt(client,[{'kind':'barcode','code':code}]).status_code==400
         codes=[{'kind':'retailer','code':code}]
         response=receipt(client,codes,name='Лук красный',product_id=owner['product_id'],template_id=owner['template_id'],
                          quantity='0.370',unit_price='3.66',sale_unit='kg',package_quantity=None,package_unit=None)
@@ -221,9 +221,13 @@ def test_internal_receipt_codes_preserve_stable_sku_and_money(client):
         assert operation['receipt_total']=='1.35'
         assert float(row['quantity'])==.37 and row['unit_price']=='3.66'
         assert row['receipt_codes']==codes
-        assert get(client,owner['product_id'])==before
+        identity=get(client,owner['product_id'])
+        assert identity['offers'][0]['retailer_code']=='1582951'
+        assert code in identity['offers'][0]['internal_codes']
         found=lookup(client,codes)
-        assert not found['items'] and not found['auto_match'] and found['warnings']
+        assert found['auto_match'] and found['items'][0]['product_id']==owner['product_id']
+        assert found['items'][0]['matched_by']==['internal']
+        assert not lookup(client,codes,shop='Соседи')['items']
         saved=client.get(f"/api/v1/operations/{operation['id']}").json()
         assert saved['receipt_items'][0]['receipt_codes']==codes
         stale={k:v for k,v in saved['receipt_items'][0].items() if k!='receipt_codes'}
@@ -232,8 +236,10 @@ def test_internal_receipt_codes_preserve_stable_sku_and_money(client):
         assert result.status_code==200,result.text
         assert result.json()['receipt_total']=='1.35'
         assert result.json()['receipt_items'][0]['receipt_codes']==codes
-        # The digits are not claimed as a globally or source-unique catalog identifier.
-        other=receipt(client,codes,name='Другой весовой товар',shop_name='Green')
+        # Exact full codes are unique within a store; other stores can reuse them.
+        rejected=receipt(client,codes,name='Другой весовой товар',shop_name='Green')
+        assert rejected.status_code==400,rejected.text
+        other=receipt(client,codes,name='Другой весовой товар',shop_name='Соседи')
         assert other.status_code==201,other.text
         assert not any(v['codes'] for v in get(client,other.json()['receipt_items'][0]['product_id'])['variants'])
     # Genuine SKU conflicts remain actionable and atomic.
@@ -241,7 +247,7 @@ def test_internal_receipt_codes_preserve_stable_sku_and_money(client):
                    product_id=owner['product_id'],template_id=owner['template_id'])
     assert denied.status_code==400,denied.text
     assert '1582951' in denied.json()['detail']['message']
-    assert get(client,owner['product_id'])==before
+    assert get(client,owner['product_id'])['offers'][0]['retailer_code']=='1582951'
 
 
 def test_internal_codes_survive_plan_confirmation_and_can_be_removed(client):
@@ -265,3 +271,78 @@ def test_internal_classifier_does_not_capture_valid_gtin14():
     assert variable_code('22373102227750') and variable_code('02237310222750')
     assert not variable_code('24006381333935')  # Valid GTIN-14 with an indicator digit.
     assert not variable_code('1582951') and not variable_code('2not-a-code00')
+
+
+def test_explicit_internal_code_accepts_non_gtin_lengths_and_is_owner_scoped(client):
+    codes=[{'kind':'internal','code':'0012345'}]
+    response=receipt(client,codes)
+    assert response.status_code==201,response.text
+    row=response.json()['receipt_items'][0]
+    assert lookup(client,codes)['auto_match']
+    assert lookup(client,[{'kind':'unknown','code':'0012345'}])['auto_match']
+    assert lookup(client,codes)['items'][0]['product_id']==row['product_id']
+    assert receipt(client,[{'kind':'barcode','code':'4006381333932'}],name='Ошибка OCR').status_code==400
+    assert receipt(client,[{'kind':'internal','code':'bad-code'}]).status_code==400
+    assert receipt(client,[{'kind':'internal','code':'12345'}],shop_name='').status_code==400
+    app.dependency_overrides[get_current_user_id]=lambda:2
+    assert not lookup(client,codes)['items']
+    assert receipt(client,codes,name='Другой пользователь').status_code==201
+
+
+def test_internal_code_from_old_barcode_tab_and_catalog_editor(client):
+    code='22373102227750'
+    response=receipt(client,[{'kind':'barcode','code':code}],name='Лук',sale_unit='kg',package_quantity=None,package_unit=None)
+    assert response.status_code==201,response.text
+    row=response.json()['receipt_items'][0];p=row['product_id'];offer=row['template_id']
+    identity=get(client,p)
+    assert identity['offers'][0]['internal_codes']==[code]
+    assert not any(v['codes'] for v in identity['variants'])
+    endpoint=f'/api/v1/operations/catalog-products/{p}'
+    updated=client.patch(endpoint,json={'codes':{'internals':[{'template_id':offer,'codes':[code,'00012345']}]}})
+    assert updated.status_code==200,updated.text
+    assert lookup(client,[{'kind':'internal','code':'00012345'}])['auto_match']
+    assert not lookup(client,[{'kind':'internal','code':'12345'}])['items']
+    other=receipt(client,[],name='Другой товар').json()['receipt_items'][0]
+    rejected=client.patch(f"/api/v1/operations/catalog-products/{other['product_id']}",json={'name':'Не сохранять','codes':{'internals':[{'template_id':other['template_id'],'codes':[code]}]}})
+    assert rejected.status_code==400,rejected.text
+    assert client.get(f"/api/v1/operations/catalog-products/{other['product_id']}").json()['name']=='Другой товар'
+    foreign=client.patch(endpoint,json={'codes':{'internals':[{'template_id':other['template_id'],'codes':['456']}]}})
+    assert foreign.status_code==400
+    cleared=client.patch(endpoint,json={'codes':{'internals':[{'template_id':offer,'codes':[]}]}})
+    assert cleared.status_code==200,cleared.text
+    assert not lookup(client,[{'kind':'internal','code':code}])['items']
+    assert client.get(f"/api/v1/operations/{response.json()['id']}").json()['receipt_items'][0]['receipt_codes']==[{'kind':'barcode','code':code}]
+
+
+def test_mixed_codes_share_one_offer_identity_and_internal_save_api(client):
+    codes=[{'kind':'barcode','code':CODE},{'kind':'internal','code':'22373102227750'}]
+    response=receipt(client,codes)
+    assert response.status_code==201,response.text
+    row=response.json()['receipt_items'][0]
+    found=lookup(client,codes)
+    assert found['auto_match'] and set(found['items'][0]['matched_by'])=={'barcode','internal'}
+    assert len(get(client,row['product_id'])['offers'])==1
+    other=receipt(client,[],name='Хлеб').json()['receipt_items'][0]
+    endpoint=f"/api/v1/operations/catalog-products/{other['product_id']}/offers/{other['template_id']}/identity"
+    saved=client.put(endpoint,json={'internal_codes':['000123']})
+    assert saved.status_code==200,saved.text
+    assert lookup(client,[{'kind':'internal','code':'000123'}])['auto_match']
+    assert client.put(endpoint,json={'retailer_code':'sku'}).status_code==200
+    assert get(client,other['product_id'])['offers'][0]['internal_codes']==['000123']
+
+
+def test_ambiguous_imported_internal_codes_never_auto_match(client):
+    from app.db.session import get_db
+    from app.db.models import CatalogOfferIdentity
+    first=receipt(client,[{'kind':'internal','code':'00123'}]).json()['receipt_items'][0]
+    second=receipt(client,[],name='Другой товар').json()['receipt_items'][0]
+    generator=app.dependency_overrides[get_db]()
+    db=next(generator)
+    try:
+        db.add(CatalogOfferIdentity(user_id=1,template_id=second['template_id'],internal_codes=['00123']))
+        db.commit()
+    finally:
+        generator.close()
+    found=lookup(client,[{'kind':'internal','code':'00123'}])
+    assert not found['auto_match'] and len(found['items'])==2
+    assert {r['product_id'] for r in found['items']}=={first['product_id'],second['product_id']}

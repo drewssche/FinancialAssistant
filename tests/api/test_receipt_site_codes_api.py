@@ -123,9 +123,9 @@ def test_changed_article_prevents_silent_link_even_when_barcode_matches(client):
     assert len(data['items'])==1 and not data['auto_match']
 
 
-def test_restricted_internal_article_requires_manual_site_selection(client,monkeypatch):
+def test_internal_store_code_is_not_searched_as_website_article(client,monkeypatch):
     code='2237310222750'
     monkeypatch.setattr(site.provider,'fetch_product',lambda url:{'url':url,'name':'Лук красный','identifiers':{'article':code,'barcodes':[]}})
     result=lookup(client,codes=[{'kind':'retailer','code':code}])
     assert result.status_code==200,result.text
-    assert len(result.json()['items'])==1 and not result.json()['auto_match']
+    assert not result.json()['items'] and result.json()['state']=='missing_codes'

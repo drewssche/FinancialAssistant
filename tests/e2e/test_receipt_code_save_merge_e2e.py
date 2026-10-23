@@ -145,16 +145,12 @@ def test_merged_quantity_is_the_only_multiplier_when_edited(static_server_url,pa
 
 @pytest.mark.e2e
 @pytest.mark.parametrize('width',[390,1440])
-def test_internal_code_can_be_confirmed_without_editing_digits_or_receipt_money(static_server_url,page_with_receipt_api_mock,width,tmp_path):
+def test_internal_code_is_accepted_without_workarounds_or_money_changes(static_server_url,page_with_receipt_api_mock,width,tmp_path):
     p=page_with_receipt_api_mock;start(p,static_server_url,width);respond(p,[],False)
     text='ООО ГРИНРОЗНИЦА\n№ ДОК 118861\nЛук репчатый красный вес\n22373102227750 3.66 x0.370 1.35\nИТОГО К ОПЛАТЕ 1.35\n22.10.2026 20:33:06'
     stub(p,text);upload(p);p.click('#scanRun')
     row=p.locator('.scan-row');button=row.locator('[data-receipt-code-as-retailer]')
-    expect(row.locator('.receipt-code-error')).to_contain_text('контрольную цифру')
-    expect(button).to_be_visible()
-    p.locator('#scanConfirmed').check();expect(p.locator('#scanTransfer')).to_be_disabled()
-    button.click()
-    expect(row.get_by_role('combobox',name='Тип кода')).to_have_value('retailer')
+    expect(row.get_by_role('combobox',name='Тип кода')).to_have_value('internal')
     expect(row.get_by_role('textbox',name='Код товара',exact=True)).to_have_value('22373102227750')
     expect(row.locator('.receipt-code-error')).to_be_hidden()
     expect(button).to_have_count(0)
@@ -163,9 +159,8 @@ def test_internal_code_can_be_confirmed_without_editing_digits_or_receipt_money(
     row.screenshot(path=str(tmp_path/f'internal-code-{width}.png'))
     p.click('#scanTransfer')
     item=p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[0]")
-    assert item['catalog_codes']==[{'kind':'retailer','code':'22373102227750'}]
+    assert item['catalog_codes']==[{'kind':'internal','code':'22373102227750'}]
     assert item['receipt_codes']==item['catalog_codes']
-    expect(p.locator('#receiptItemsList').get_by_text('Внутренний код сохранится в чеке.',exact=False)).to_be_visible()
     assert float(item['quantity'])==.37 and float(item['unit_price'])==3.66
     expect(p.locator('#opAmount')).to_have_value('1.35')
 
@@ -182,5 +177,24 @@ def test_saved_internal_code_reopens_with_stable_catalog_sku(static_server_url,p
     }""")
     assert len(result['codes'])==2
     assert result['payload']==[]
-    assert result['receipt']==[{'kind':'retailer','code':'22373102227750'}]
+    assert result['receipt']==[{'kind':'internal','code':'22373102227750'}]
     assert not result['error']
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width',[390,1440])
+def test_repeat_internal_code_auto_selects_catalog_product_without_changing_money(static_server_url,page_with_receipt_api_mock,width):
+    p=page_with_receipt_api_mock;start(p,static_server_url,width)
+    found={**FOUND,'name':'Лук красный','product_name':'Лук красный','sale_unit':'kg','package_quantity':None,'package_unit':None,
+           'variant_id':None,'variant_snapshot':None,'matched_by':['internal'],'matched_codes':['22373102227750']}
+    requests=respond(p,[found],True)
+    text='ООО ГРИНРОЗНИЦА\n№ ДОК 118861\nЛук репчатый красный вес\n22373102227750 3.66 x0.370 1.35\nИТОГО К ОПЛАТЕ 1.35\n22.10.2026 20:33:06'
+    stub(p,text);upload(p);p.click('#scanRun')
+    row=p.locator('.scan-row')
+    expect(row.locator('.scan-match')).to_contain_text('Найден по внутреннему штрихкоду')
+    assert requests[0]['shop_name']=='Green'
+    p.locator('#scanConfirmed').check();p.click('#scanTransfer')
+    item=p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[0]")
+    assert item['product_id']==901 and item['template_id']==701
+    assert float(item['quantity'])==.37 and float(item['unit_price'])==3.66
+    expect(p.locator('#opAmount')).to_have_value('1.35')
