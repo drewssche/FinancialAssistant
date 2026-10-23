@@ -41,7 +41,8 @@ Stage 1 implemented: passive signals, bounded journal, dry-run limits and produc
 - [x] Show category expense changes and result components (operations/debts/FX) as existing informational chips, wrapping long labels without changing calculations.
 - [x] Use one idempotent delegated hover binding for both structure diagrams/lists; remove duplicate per-render and initialization listeners. Align list borders/padding, rounded corners and active highlight with the dashboard.
 - [x] Verify narrow/mobile/laptop/desktop layouts at 320, 390, 1024 and 1440 px, with long labels and hover/reset on both surfaces.
-- [ ] Read-only review of this user's uncategorized 2026 allocations, including receipt rows and any unallocated receipt remainder; present proposed categories before changing records. Screenshot reference: 12 operations / 162.96 BYN for 2026-01-01 through 2026-10-23. Do not equate all parent receipts with null category to uncategorized allocations.
+- [x] Read-only review completed against the verified 2026-10-23T22:32Z backup while SSH remained unavailable. Reproduced the screenshot bucket exactly: its allocations are receipt remainders, while the recorded receipt rows already have categories. Private findings are presented to the owner; no records changed. Recheck live data before any assignment.
+- [ ] Deploy this UI iteration together with the previously published incident monitor when server access returns; SSH banner exchange still times out before any server mutation.
 
 ## Current Sprint
 ### E-delivery exact articles and unavailable cards — 2026-10-17
