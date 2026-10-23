@@ -108,6 +108,35 @@ systemctl status financialassistant-backup.service
 journalctl -u financialassistant-backup.service -n 50 --no-pager
 ```
 
+Yandex recovery (24 October 2026): the REST remote returns HTTP 410. The replacement
+uses the official HTTPS WebDAV endpoint with a dedicated **Files WebDAV** app
+password, stored only in `/root/.config/financialassistant-webdav.conf` (0600).
+The timer environment `/root/.config/financialassistant-backup.env` selects
+`RCLONE_CONFIG=/root/.config/financialassistant-webdav.conf` and
+`BACKUP_REMOTE_DIR=yandex_backup_webdav:ФинАсист/PostgreSQL`. Keep the original
+REST configuration and a private copy of the timer environment for rollback.
+The destination folder, 04:15 Minsk schedule and 30-day retention are unchanged.
+
+The provider may return 500 or time out before its uploaded object becomes
+visible. Each transfer now requires downloading the encrypted body and comparing
+SHA-256 before removing the queued source. Verification makes at most three
+attempts (15/45-second pauses, 90-second command deadlines). A late upload error
+is accepted only if the downloaded content matches; otherwise the archive stays
+queued and the run fails. `last-upload.json` records `verification=sha256_readback`
+and the digest. Newest snapshots are sent first, and retrying older ones never
+replaces the latest-snapshot evidence. This verifies file integrity, not database
+restorability; restore drills remain a separate requirement.
+
+Verified restore evidence: `financialassistant-20261023T223235829323Z.dump.enc`
+(24 October 01:32 Minsk), 3,092,464 bytes, SHA-256
+`cc50a88b879a9d8b3b4a31ec6451a09e552d9c96aa70fe3e905b116dbeaa341e`.
+Downloaded from Yandex, decrypted with the separately stored recovery key and
+restored in a temporary local PostgreSQL 16 cluster with TCP disabled. All 42
+tables restored; revision `20261023_0055`, users present, foreign keys validated.
+The temporary cluster was stopped and removed. Production database was not a
+restore target. Older objects can still be unavailable while Yandex restores its
+service; a successful new copy does not establish the health of every old backup.
+
 Run `./.venv/bin/python scripts/runtime_preflight.py` before enabling stricter production configuration checks. It prints only non-secret status and does not change `.env`.
 - `GET /api/v1/dashboard/summary` is available for authenticated user
 - `GET /api/v1/dashboard/summary/metrics` returns valid telemetry and basic thresholds

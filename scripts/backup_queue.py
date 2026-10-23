@@ -6,6 +6,7 @@ No remote/provider credentials or subprocess output are written to status/logs.
 from __future__ import annotations
 
 import fcntl
+import hashlib
 import json
 import os
 import re
@@ -14,7 +15,7 @@ import shutil
 import subprocess
 import tempfile
 from datetime import datetime, timezone
-from time import time
+from time import time, sleep
 
 
 PREFIX = "financialassistant-"
@@ -105,21 +106,78 @@ def create_archive(spool: Path, *, max_bytes: int) -> Path:
     return target
 
 
+def archive_hash(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open('rb') as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def verify_remote_archive(path: Path, remote_object: str) -> tuple[bool, str]:
+    """A provider can finish PUT after returning 500. Only read-back proves it.
+
+    The download is encrypted, temporary and outside the retry queue. Never
+    delete the source based on an HTTP acknowledgement or remote size alone.
+    """
+    expected = archive_hash(path)
+    error = 'readback_hash_mismatch'
+    with tempfile.TemporaryDirectory(prefix='.verifying-', dir=path.parent) as directory:
+        downloaded = Path(directory) / 'archive.enc'
+        for delay in (0, 15, 45):
+            if delay:
+                sleep(delay)
+            try:
+                with downloaded.open('wb') as stream:
+                    downloaded.chmod(0o600)
+                    run_command([
+                        'rclone', 'cat', remote_object, '--retries', '1',
+                        '--low-level-retries', '1', '--contimeout', '15s', '--timeout', '30s',
+                    ], timeout=90, stdout=stream)
+            except (subprocess.SubprocessError, OSError) as exc:
+                error = failure_reason(exc)
+            # A transfer may report a late error after returning the full body.
+            if downloaded.exists() and downloaded.stat().st_size == path.stat().st_size:
+                if archive_hash(downloaded) == expected:
+                    return True, ''
+                error = 'readback_hash_mismatch'
+    return False, error
+
+
 def upload_queue(spool: Path, remote: str, status: dict) -> bool:
-    for path in archives(spool):
+    # A historical object must not prevent today's snapshot from being uploaded.
+    for path in reversed(archives(spool)):
+        remote_object = f"{remote.rstrip('/')}/{path.name}"
+        upload_error = None
         try:
             run_command([
-                "rclone", "copyto", str(path), f"{remote.rstrip('/')}/{path.name}",
-                "--retries", "2", "--low-level-retries", "2",
+                "rclone", "copyto", str(path), remote_object,
+                "--retries", "1", "--low-level-retries", "1",
                 "--contimeout", "15s", "--timeout", "60s",
-            ], stdout=subprocess.DEVNULL)
+            ], timeout=180, stdout=subprocess.DEVNULL)
         except (subprocess.SubprocessError, OSError) as exc:
+            upload_error = failure_reason(exc)
+        verified, verification_error = verify_remote_archive(path, remote_object)
+        if not verified:
             status["upload"] = "failed"
-            status["upload_error"] = failure_reason(exc)
+            status["upload_error"] = upload_error or verification_error
+            status["verification_error"] = verification_error
             status["failed_object"] = path.name
             return False
-        atomic_json(spool / "last-upload.json", {"object": path.name, "uploaded_at": time()})
-        path.unlink()  # Only after a successful external upload and durable record.
+        if upload_error:
+            status['verified_after_upload_error'] = status.get('verified_after_upload_error', 0) + 1
+        try:
+            previous = json.loads((spool / 'last-upload.json').read_text())
+        except (OSError, ValueError):
+            previous = {}
+        if not isinstance(previous, dict):
+            previous = {}
+        if path.name >= str(previous.get('object', '')):
+            atomic_json(spool / "last-upload.json", {
+                "object": path.name, "uploaded_at": time(), "verification": "sha256_readback",
+                "sha256": archive_hash(path),
+            })
+        path.unlink()  # Only after verified read-back and a durable record.
         status["uploaded_count"] += 1
     status["upload"] = "ok"
     return True

@@ -15,6 +15,7 @@ from scripts.check_backup_health import check_backup_health
 
 @pytest.fixture
 def spool(tmp_path, monkeypatch):
+    monkeypatch.setattr(backup, 'sleep', lambda seconds: None)
     monkeypatch.setenv("BACKUP_REMOTE_DIR", "test:backups")
     monkeypatch.setenv("POSTGRES_USER", "test")
     monkeypatch.setenv("POSTGRES_DB", "test")
@@ -26,7 +27,8 @@ def spool(tmp_path, monkeypatch):
     return tmp_path
 
 
-def commands(*, fail_upload=False, fail_retention=False, fail_dump=False):
+def commands(*, fail_upload=False, fail_retention=False, fail_dump=False, late_error=False, corrupt=False):
+    remote = {}
     def run(args, **kwargs):
         if args[0] == "docker":
             if fail_dump:
@@ -34,8 +36,16 @@ def commands(*, fail_upload=False, fail_retention=False, fail_dump=False):
             kwargs["stdout"].write(b"PGDMP private content")
         elif args[0] == "openssl":
             Path(args[args.index("-out") + 1]).write_bytes(b"encrypted" * 8)
-        elif args[:2] == ["rclone", "copyto"] and fail_upload:
-            raise subprocess.CalledProcessError(1, "rclone")
+        elif args[:2] == ["rclone", "copyto"]:
+            if fail_upload:
+                raise subprocess.CalledProcessError(1, "rclone")
+            remote[args[3]] = Path(args[2]).read_bytes()
+            if late_error:
+                raise subprocess.CalledProcessError(1, "rclone", stderr=b'500 Server Error')
+        elif args[:2] == ['rclone', 'cat']:
+            if args[2] not in remote:
+                raise subprocess.CalledProcessError(1, 'rclone', stderr=b'404')
+            kwargs['stdout'].write(b'corrupt' if corrupt else remote[args[2]])
         elif args[:2] == ["rclone", "delete"] and fail_retention:
             raise subprocess.CalledProcessError(1, "rclone")
     return run
@@ -100,3 +110,37 @@ def test_fresh_upload_of_old_snapshot_is_still_stale(spool):
 def test_remote_failure_reason_does_not_expose_stderr():
     error = subprocess.CalledProcessError(1, "rclone", stderr=b"private remote: 410 Gone token=secret")
     assert backup.failure_reason(error) == "http_410"
+
+
+def test_late_provider_error_requires_matching_download(spool, monkeypatch):
+    monkeypatch.setattr(backup, 'run_command', commands(late_error=True))
+    assert backup.backup(spool) == 0
+    assert not backup.archives(spool)
+    status = json.loads((spool / 'last-run.json').read_text())
+    assert status['verified_after_upload_error'] == 1
+    evidence = json.loads((spool / 'last-upload.json').read_text())
+    assert evidence['verification'] == 'sha256_readback'
+
+
+def test_successful_upload_with_corrupt_readback_keeps_source(spool, monkeypatch):
+    monkeypatch.setattr(backup, 'run_command', commands(corrupt=True))
+    assert backup.backup(spool) == 1
+    assert len(backup.archives(spool)) == 1
+    assert not (spool / 'last-upload.json').exists()
+    assert not list(spool.glob('.verifying-*'))
+
+
+def test_newest_snapshot_is_sent_first_and_stays_latest_evidence(spool, monkeypatch):
+    older = spool / 'financialassistant-20261022T010000Z.dump.enc'
+    newer = spool / 'financialassistant-20261023T010000Z.dump.enc'
+    older.write_bytes(b'old'); newer.write_bytes(b'new')
+    sent = []
+    run = commands()
+    def observe(args, **kwargs):
+        if args[:2] == ['rclone', 'copyto']:
+            sent.append(Path(args[2]).name)
+        run(args, **kwargs)
+    monkeypatch.setattr(backup, 'run_command', observe)
+    assert backup.upload_queue(spool, 'test:backups', {'uploaded_count': 0})
+    assert sent == [newer.name, older.name]
+    assert json.loads((spool / 'last-upload.json').read_text())['object'] == newer.name
