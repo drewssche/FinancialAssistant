@@ -77,6 +77,7 @@ class AuthService:
                 username=telegram_user.get("username"),
                 telegram_id=telegram_id,
                 created_at=user.created_at,
+                db=self.db,
             )
         log_auth_event(
             "login_succeeded",
