@@ -121,3 +121,11 @@ def test_selected_retailer_is_used_and_link_saved_for_both_networks(client,monke
 def test_changed_article_prevents_silent_link_even_when_barcode_matches(client):
     data=lookup(client,codes=[CODES[0],{'kind':'retailer','code':'different-article'}]).json()
     assert len(data['items'])==1 and not data['auto_match']
+
+
+def test_restricted_internal_article_requires_manual_site_selection(client,monkeypatch):
+    code='2237310222750'
+    monkeypatch.setattr(site.provider,'fetch_product',lambda url:{'url':url,'name':'Лук красный','identifiers':{'article':code,'barcodes':[]}})
+    result=lookup(client,codes=[{'kind':'retailer','code':code}])
+    assert result.status_code==200,result.text
+    assert len(result.json()['items'])==1 and not result.json()['auto_match']

@@ -141,3 +141,28 @@ def test_merged_quantity_is_the_only_multiplier_when_edited(static_server_url,pa
     assert item['quantity']=='3' and float(item['unit_price'])==1.1
     assert 'merged_count' not in item and 'merged_rows' not in item
     expect(p.locator('#opAmount')).to_have_value('9.29')
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width',[390,1440])
+def test_internal_code_can_be_confirmed_without_editing_digits_or_receipt_money(static_server_url,page_with_receipt_api_mock,width,tmp_path):
+    p=page_with_receipt_api_mock;start(p,static_server_url,width);respond(p,[],False)
+    text='ООО ГРИНРОЗНИЦА\n№ ДОК 118861\nЛук репчатый красный вес\n2237310222750 3.66 x0.370 1.35\nИТОГО К ОПЛАТЕ 1.35\n22.10.2026 20:33:06'
+    stub(p,text);upload(p);p.click('#scanRun')
+    row=p.locator('.scan-row');button=row.locator('[data-receipt-code-as-retailer]')
+    expect(row.locator('.receipt-code-error')).to_contain_text('контрольную цифру')
+    expect(button).to_be_visible()
+    p.locator('#scanConfirmed').check();expect(p.locator('#scanTransfer')).to_be_disabled()
+    button.click()
+    expect(row.get_by_role('combobox',name='Тип кода')).to_have_value('retailer')
+    expect(row.get_by_role('textbox',name='Код товара',exact=True)).to_have_value('2237310222750')
+    expect(row.locator('.receipt-code-error')).to_be_hidden()
+    expect(button).to_have_count(0)
+    row.locator('[data-scan-unit=kg]').click()
+    p.locator('#scanConfirmed').check();expect(p.locator('#scanTransfer')).to_be_enabled()
+    row.screenshot(path=str(tmp_path/f'internal-code-{width}.png'))
+    p.click('#scanTransfer')
+    item=p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[0]")
+    assert item['catalog_codes']==[{'kind':'retailer','code':'2237310222750'}]
+    assert float(item['quantity'])==.37 and float(item['unit_price'])==3.66
+    expect(p.locator('#opAmount')).to_have_value('1.35')

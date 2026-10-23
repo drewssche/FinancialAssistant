@@ -69,12 +69,24 @@
     const search=document.createElement('button');search.type='button';search.className='btn btn-secondary btn-xs';window.App.icons.apply(search,'search','Найти по коду');
     actions.append(add,search);heading.after(actions);
     const hint=document.createElement('p');hint.className='form-error receipt-code-error';hint.id='receiptCodeError'+(++codeHintId);hint.setAttribute('aria-live','polite');details.append(hint);
+    const codeRecovery=document.createElement('div');codeRecovery.className='receipt-code-actions';codeRecovery.hidden=true;details.append(codeRecovery);
     function refreshCodes(){
       const reason=validationError(payload(row),shop());
       search.hidden=!list.length;
       const conflicts=(row.code_errors||[]).filter(error=>list.some(entry=>entry.code.trim()===error.code&&entry.kind===error.kind));
       const messages=conflicts.map(error=>`${error.kind==='barcode'?'Штрихкод':'Артикул'} ${error.code}: ${error.message}${error.product_name?' · '+error.product_name:''}`);
-      hint.textContent=[reason,...new Set(messages)].filter(Boolean).join(' · ');hint.hidden=!hint.textContent;
+      const invalidBarcodes=list.filter(e=>!e.from_catalog&&e.kind==='barcode'&&e.code.trim()&&!validBarcode(e.code.trim()));
+      const explanation=invalidBarcodes.length?'Если цифры совпадают с чеком, сохраните внутренний код как артикул магазина.':'';
+      hint.textContent=[reason,explanation,...new Set(messages)].filter(Boolean).join(' · ');hint.hidden=!hint.textContent;
+      codeRecovery.replaceChildren();codeRecovery.hidden=!invalidBarcodes.length;
+      for(const entry of invalidBarcodes){
+        const button=document.createElement('button');button.type='button';button.className='btn btn-secondary btn-xs';
+        button.textContent='Использовать как код магазина'+(invalidBarcodes.length>1?' · '+entry.code:'');
+        button.disabled=!shop()?.trim();button.title=button.disabled?'Сначала укажите магазин':'Сохранить исходные цифры как артикул выбранного магазина';
+        button.dataset.receiptCodeAsRetailer=entry.code;
+        button.onclick=()=>{entry.kind='retailer';entry.manual_kind=true;entry.from_catalog=false;changed();draw();lookup(false);};
+        codeRecovery.append(button);
+      }
       for(const [index,input] of [...fields.querySelectorAll('input')].entries()){
         input.setAttribute('aria-describedby',hint.id);
         const entry=list[index], invalid=Boolean(reason && (validationError([{kind:entry.kind,code:entry.code}],shop()) || (entry.kind==='retailer'&&reason.startsWith('Оставьте')))) || conflicts.some(error=>error.code===entry.code.trim()&&error.kind===entry.kind);

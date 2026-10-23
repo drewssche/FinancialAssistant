@@ -52,7 +52,7 @@ def discover(key, queries, bucket):
             hits[url] = hit
     requested_barcodes = {code for kind, code in queries if kind == 'barcode'}
     articles = {code for kind, code in queries if kind == 'retailer'}
-    incomplete |= len(hits) > 8 or any(variable_code(c) for c in requested_barcodes)
+    incomplete |= len(hits) > 8 or any(variable_code(c) for _, c in queries)
     for url in list(hits)[:8]:
         snapshot = provider.fetch_product(url)
         actual_key, actual_url = provider.identify_url(snapshot['url'])

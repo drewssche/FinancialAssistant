@@ -200,3 +200,29 @@ def test_barcode_only_fills_empty_mapping_without_overwriting_existing_metadata_
     assert other.status_code == 201, other.text
     assert get(client, p)['offers'][0] == first
     assert other.json()['receipt_items'][0]['variant_snapshot']['variant_id'] != first['variant_id']
+
+
+def test_confirmed_internal_receipt_code_is_store_scoped_and_not_a_global_gtin(client):
+    code='2237310222750'
+    assert receipt(client,[{'kind':'barcode','code':code}],name='Лук красный').status_code==400
+    codes=[{'kind':'retailer','code':code}]
+    response=receipt(client,codes,name='Лук красный',quantity='0.370',unit_price='3.66',sale_unit='kg',package_quantity=None,package_unit=None)
+    assert response.status_code==201,response.text
+    operation=response.json();row=operation['receipt_items'][0]
+    assert operation['receipt_total']=='1.35'
+    assert float(row['quantity'])==.37 and row['unit_price']=='3.66'
+    identity=get(client,row['product_id'])
+    assert identity['offers'][0]['retailer_code']==code
+    assert not any(v['codes'] for v in identity['variants'])
+    found=lookup(client,codes)
+    assert found['items'][0]['product_id']==row['product_id']
+    assert not found['auto_match'] and found['warnings']
+    assert not lookup(client,codes,shop='Соседи')['items']
+    # The same local digits can represent a different product at another store.
+    other=receipt(client,codes,name='Другой товар',shop_name='Соседи')
+    assert other.status_code==201,other.text
+    assert lookup(client,codes,shop='Соседи')['items'][0]['product_id']!=row['product_id']
+    saved=client.get(f"/api/v1/operations/{operation['id']}").json()
+    result=client.patch(f"/api/v1/operations/{operation['id']}",json={'receipt_items':[{**saved['receipt_items'][0],'catalog_codes':codes}]})
+    assert result.status_code==200,result.text
+    assert result.json()['receipt_total']=='1.35'

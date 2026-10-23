@@ -9,7 +9,7 @@ from app.services.catalog_identity_service import normalize_codes
 
 def variable_code(code):
     if len(code) == 14 and code.startswith('0'): code = code[1:]
-    return len(code) == 13 and code[:2] in {str(n) for n in range(20, 30)}
+    return len(code) == 13 and code.isascii() and code.isdigit() and code[:2] in {str(n) for n in range(20, 30)}
 
 
 class ReceiptCodeConflict(ValueError):
@@ -40,9 +40,9 @@ class ReceiptCodeService:
                 except ValueError:
                     if kind == 'barcode':
                         warnings.append(f'{code}: проверьте цифры штрихкода')
-                if variable_code(code):
-                    warnings.append(f'{code}: весовой код, подтвердите товар вручную')
-                    restricted = True
+            if variable_code(code):
+                warnings.append(f'{code}: внутренний или весовой код магазина, подтвердите товар вручную')
+                restricted = True
             variants = []
             if canonical:
                 variants = self.db.scalars(select(CatalogVariant).join(CatalogVariantCode, CatalogVariantCode.variant_id == CatalogVariant.id).where(
