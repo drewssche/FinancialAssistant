@@ -137,6 +137,18 @@ The temporary cluster was stopped and removed. Production database was not a
 restore target. Older objects can still be unavailable while Yandex restores its
 service; a successful new copy does not establish the health of every old backup.
 
+**Operational result, 24 October:** the manual round-trip/restore above succeeded,
+but the subsequent scheduled-service test did **not** recover reliable delivery.
+Creation succeeded; upload returned HTTP 500 and the new object remained 404 on
+direct HEAD/GET after bounded retries. Eight encrypted archives stayed queued;
+retention did not run. The 10 October archive was listed but its download failed.
+WebDAV authentication and directory listing work; replacing the password again is
+not currently indicated. The timer now selects WebDAV and keeps its normal daily
+schedule, but is not to be reported healthy until a full service run succeeds.
+No application containers were restarted. The private server
+`last-restore.json` records the successful manual restore independently of the
+failed `last-run.json`; it must not be treated as successful automatic delivery.
+
 Run `./.venv/bin/python scripts/runtime_preflight.py` before enabling stricter production configuration checks. It prints only non-secret status and does not change `.env`.
 - `GET /api/v1/dashboard/summary` is available for authenticated user
 - `GET /api/v1/dashboard/summary/metrics` returns valid telemetry and basic thresholds
