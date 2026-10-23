@@ -1,6 +1,7 @@
 (() => {
   const {icons, state, core} = window.App;
   const parser = window.App.receiptScanParser;
+  const categoryChoice = row => window.App.receiptCategories.resolve(row, state.categories || [], state.receiptProductHints || []);
   function inputNumber(value, quantity = false) {
     const result = core.evaluateMathExpression(String(value).replace(/−/g, '-').replace(/×/g, '*').replace(/÷/g, '/'), quantity ? 3 : 2);
     return result.ok && result.value >= 0 && result.value <= (quantity ? 100000 : 9999999.99) ? result.value : null;
@@ -242,7 +243,7 @@
     dialog.querySelectorAll('.scan-catalog-list').forEach(n=>setCatalogOpen(n,false));
   }
   function refreshCatalog(){
-    node('scanRows').querySelectorAll('.scan-row').forEach(el=>{el.refreshCatalog?.();el.refreshSearch?.();});
+    node('scanRows').querySelectorAll('.scan-row').forEach(el=>{el.refreshCategory?.();el.refreshCatalog?.();el.refreshSearch?.();});
   }
   function renderRows(){
     node('scanRows').replaceChildren();
@@ -275,9 +276,14 @@
       const category=el.querySelector('[data-scan-category]');
       category.add(new Option('Без категории', ''));
       (state.categories||[]).filter(c=>c.kind==='expense').sort((a,b)=>a.name.localeCompare(b.name,'ru')).forEach(c=>category.add(core.createCategoryOption(c)));
-      const refreshCategory=()=>{category.value=String(row.category_touched?row.category_id||'':row.catalog?.category_id||'');};
+      const refreshCategory=()=>{
+        const choice=categoryChoice(row);category.value=String(choice.id||'');
+        category.previousElementSibling.textContent=choice.reason?'Категория · предложена':'Категория';
+        category.title=choice.reason||'';
+      };
+      el.refreshCategory=refreshCategory;
       refreshCategory();
-      category.onchange=()=>{row.category_id=Number(category.value)||null;row.category_touched=true;node('scanConfirmed').checked=false;validate();};
+      category.onchange=()=>{row.category_id=Number(category.value)||null;row.category_touched=true;refreshCategory();node('scanConfirmed').checked=false;validate();};
       const unitHost=el.querySelector('.scan-sale-units');
       const measurementControls=window.App.measurements.fields.map(key=>{
         const label=document.createElement('label'),input=document.createElement('input');
@@ -366,7 +372,7 @@
         const key=codeLookupKey(row);
         const auto=!row.catalog_new&&!row.catalog&&row.code_auto_attempted!==key;row.code_auto_attempted=key;
         window.App.receiptCodes.mount(el.querySelector('.scan-codes-host'),{row,shop:()=>node('scanShop').value,auto,siteSearch:true,isActive:()=>dialog.open&&!transferred,
-          onSiteSelect:found=>{if(!row.catalog&&!row.catalog_new&&!row.name_touched){row.name=found.name.slice(0,160);name.value=row.name;el.refreshCatalog();}},
+          onSiteSelect:found=>{if(!row.catalog&&!row.catalog_new&&!row.name_touched){row.name=found.name.slice(0,160);name.value=row.name;refreshCategory();el.refreshCatalog();}},
           onChange:()=>{node('scanConfirmed').checked=false;validate();},
           onSelect:found=>{
             row.catalog_new=false;window.App.receiptCodes.apply(row,found);row.catalog={...found};name.value=row.name;
@@ -437,7 +443,7 @@
     modal.setOperationKind(mode,'expense');
     node(prefix+'Date').value=draft.date;node(prefix+'Date').dispatchEvent(new Event('change',{bubbles:true}));
     node(prefix+'Currency').value=node('scanCurrency').value;node(prefix+'Currency').dispatchEvent(new Event('change',{bubbles:true}));
-    state[mode+'ReceiptItems']=draft.rows.map(r=>modal.createReceiptDraft({...r.catalog,category_id:r.category_touched?r.category_id:r.catalog?.category_id,category_touched:Boolean(r.category_touched),name:r.name,quantity:r.quantity,shop_name:draft.shop,...window.App.measurements.snapshot(r),variant_id:r.variant_id||null,variant_snapshot:r.variant_snapshot||null,site_selection:r.site_selection||null,site_name:r.site_name||'',code_entries:r.code_entries||[],code_match_label:r.code_match_label||'',measurement_touched:true,
+    state[mode+'ReceiptItems']=draft.rows.map(r=>modal.createReceiptDraft({...r.catalog,category_id:categoryChoice(r).id,category_touched:Boolean(r.category_touched||categoryChoice(r).reason),name:r.name,quantity:r.quantity,shop_name:draft.shop,...window.App.measurements.snapshot(r),variant_id:r.variant_id||null,variant_snapshot:r.variant_snapshot||null,site_selection:r.site_selection||null,site_name:r.site_name||'',code_entries:r.code_entries||[],code_match_label:r.code_match_label||'',measurement_touched:true,
       unit_price:r.price/100, is_discounted:r.discount>0, regular_unit_price:r.discount>0?r.price/100:null,
       discount_mode:r.discount>0?'amount':null, discount_value:r.discount>0?r.discount/100:null,
       discount_type:r.discount>0?r.discount_type||'promo':null,note:r.note||null},mode));
