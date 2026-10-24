@@ -249,7 +249,7 @@
     node('scanRows').replaceChildren();
     draft.rows.forEach((row,index)=>{
       const el=document.createElement('section');el.className='scan-row';
-      el.innerHTML=`<div class="scan-name"><label class="field"><span>Товар ${index+1}</span><input data-scan-field="name" maxlength="160" placeholder="Найти или ввести товар" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="scanCatalog${index}" required></label><div id="scanCatalog${index}" class="scan-catalog-list receipt-name-picker app-popover hidden" role="listbox" hidden></div></div><div class="scan-row-actions">${iconButton('', 'trash', 'Удалить позицию '+(index+1))}</div><div class="scan-match"></div><div class="scan-codes-host"></div><label class="field scan-category"><span>Категория</span><select data-scan-category aria-label="Категория позиции"></select></label><label class="field scan-brand"><span>Бренд</span><select data-scan-brand aria-label="Бренд товара"></select></label><div class="scan-sale-units" role="group" aria-label="Единица цены и количества"></div><div class="scan-row-numbers">${[['price','Цена за ед.'],['quantity','Кол-во'],['discount','Скидка, сумма'],['total','Оплачено']].map(([field,label])=>`<label class="field"><span>${label}</span><input data-scan-field="${field}" inputmode="decimal" aria-describedby="scanMathHint" required></label>`).join('')}</div><label class="field scan-discount-type"><span>Тип скидки</span><select data-scan-field="discount_type"><option value="promo">Акция</option><option value="loyalty_points">Баллы</option><option value="coupon">Купон</option></select></label>`;
+      el.innerHTML=`<div class="scan-name"><label class="field"><span>Товар ${index+1}</span><input data-scan-field="name" maxlength="160" placeholder="Найти или ввести товар" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="scanCatalog${index}" required></label><div id="scanCatalog${index}" class="scan-catalog-list receipt-name-picker app-popover hidden" role="listbox" hidden></div></div><div class="scan-row-actions">${iconButton('', 'trash', 'Удалить позицию '+(index+1))}</div><div class="scan-match"></div><div class="scan-codes-host"></div><label class="field scan-category"><span>Категория</span><select data-scan-category aria-label="Категория позиции"></select></label><label class="field scan-brand"><span>Бренд</span><select data-scan-brand aria-label="Бренд товара"></select></label><div class="scan-sale-units" role="group" aria-label="Единица цены и количества"></div><div class="scan-catalog-reference" role="status" hidden></div><div class="scan-row-numbers">${[['price','Цена за ед.'],['quantity','Кол-во'],['discount','Скидка, сумма'],['total','Оплачено']].map(([field,label])=>`<label class="field"><span>${label}</span><input data-scan-field="${field}" inputmode="decimal" aria-describedby="scanMathHint" required></label>`).join('')}</div><label class="field scan-discount-type"><span>Тип скидки</span><select data-scan-field="discount_type"><option value="promo">Акция</option><option value="loyalty_points">Баллы</option><option value="coupon">Купон</option></select></label>`;
       const name=el.querySelector('[data-scan-field=name]'), list=el.querySelector('.scan-catalog-list'), match=el.querySelector('.scan-match');
       name.value=row.name;name.title=row.source||'';
       if(row.merged_rows?.length){
@@ -301,27 +301,51 @@
         input.addEventListener('input',()=>{
           Object.assign(row,Object.fromEntries(window.App.measurements.fields.map((field,i)=>[field,measurementControls[i].value||null])));
           if(row.catalog){row.catalog_edit_variant_id ||= row.catalog.variant_id||row.variant_snapshot?.variant_id||null;row.catalog_measurement_touched=true;}
-          row.site_selection=null;row.variant_id=null;row.variant_snapshot=null;row.measurement_touched=true;
+          row.site_selection=null;row.variant_id=null;row.variant_snapshot=null;row.measurement_touched=true;row.measurement_user_edited=true;row.catalog_size_from_name=false;
           refreshUnits();node('scanConfirmed').checked=false;validate();
         });return input;
       });
       const measurementEditor=window.App.measurements.mount(unitHost,measurementControls,{unitDataset:'scanUnit'});
+      function refreshReference(){
+        const host=el.querySelector('.scan-catalog-reference');host.replaceChildren();
+        const reference=row.catalog?.catalog_price;
+        if(reference&&Number(reference.amount)>0){
+          const heading=document.createElement('span');heading.textContent='Цена в каталоге';
+          const value=document.createElement('strong');value.textContent=Number(reference.amount).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2})+(reference.currency?' '+reference.currency:'');
+          const date=document.createElement('small');date.textContent=[node('scanShop').value,reference.recorded_at?.split('-').reverse().join('.')].filter(Boolean).join(' · ');
+          host.title='Последняя сохранённая цена выбранного магазина. На цену, скидку и оплату по чеку не влияет.';
+          host.append(heading,value,date);
+        }
+        if(row.catalog&&row.catalog_size_from_name){const hint=document.createElement('small');hint.textContent='Размер упаковки подставлен из названия товара в каталоге';host.append(hint);}
+        host.hidden=!host.childElementCount;
+      }
+      function fillCatalogMeasurement(){
+        if(!row.measurement_user_edited){
+          row.catalog_size_from_name=false;
+          Object.assign(row,parser.catalogMeasurement(row.catalog));
+          row.variant_id=row.catalog.variant_id||null;row.variant_snapshot=row.catalog.variant_snapshot||null;
+        }
+        if(row.measurement_user_edited||row.catalog_size_from_name){
+          row.catalog_measurement_touched=true;row.catalog_edit_variant_id=row.catalog.variant_id||null;
+          row.variant_id=null;row.variant_snapshot=null;
+        }
+      }
       function refreshUnits(){
         measurementControls.forEach((input,i)=>{input.value=row[window.App.measurements.fields[i]]??'';});
-        measurementEditor.refresh();
+        measurementEditor.refresh();refreshReference();
         for(const field of ['price','quantity']){
           const input=el.querySelector(`[data-scan-field=${field}]`);
           input.previousElementSibling.textContent=field==='price'?window.App.measurements.priceLabel(row):window.App.measurements.quantityLabel(row);
         }
       }
-      function unlink(){row.catalog_name_touched=false;row.catalog_measurement_touched=false;row.catalog_edit_variant_id=null;el.querySelector('.scan-codes-host').invalidateSite?.();row.site_selection=null;row.site_name='';delete row.catalog;row.variant_id=null;row.variant_snapshot=null;row.code_match_label='';refreshCategory();refreshBrand();if(!row.measurement_touched)Object.assign(row,window.App.measurements.snapshot());refreshUnits();}
+      function unlink(){row.catalog_name_touched=false;row.catalog_measurement_touched=false;row.catalog_edit_variant_id=null;el.querySelector('.scan-codes-host').invalidateSite?.();row.site_selection=null;row.site_name='';delete row.catalog;row.variant_id=null;row.variant_snapshot=null;row.code_match_label='';refreshCategory();refreshBrand();if(!row.measurement_user_edited)Object.assign(row,window.App.measurements.snapshot(),{catalog_size_from_name:false,measurement_touched:false});refreshUnits();}
       refreshUnits();
       let options=[],active=-1;
       function choose(item){
         row.catalog_new=false;unlink();
         row.catalog=catalog().identity(item,node('scanShop').value);
         row.name=row.catalog.name;name.value=row.name;refreshCategory();refreshBrand();
-        if(!row.measurement_touched){Object.assign(row,window.App.measurements.snapshot(row.catalog));row.variant_id=row.catalog.variant_id||null;}
+        fillCatalogMeasurement();
         refreshUnits();
         closeCatalogLists();node('scanConfirmed').checked=false;el.refreshCatalog();el.refreshCodes?.();validate();name.focus();closeCatalogLists();
       }
@@ -386,8 +410,11 @@
           onSiteSelect:found=>{if(!row.catalog&&!row.catalog_new&&!row.name_touched){row.name=found.name.slice(0,160);name.value=row.name;refreshCategory();el.refreshCatalog();}},
           onChange:()=>{node('scanConfirmed').checked=false;validate();},
           onSelect:found=>{
+            const manualSize=row.measurement_user_edited?window.App.measurements.snapshot(row):null;
             row.catalog_new=false;window.App.receiptCodes.apply(row,found);row.catalog={...found};name.value=row.name;
-            row.catalog_name_touched=false;row.catalog_measurement_touched=false;row.catalog_edit_variant_id=null;refreshCategory();refreshBrand();refreshUnits();el.refreshCatalog();closeCatalogLists();node('scanConfirmed').checked=false;validate();
+            row.catalog_name_touched=false;row.catalog_measurement_touched=false;row.catalog_edit_variant_id=null;
+            if(manualSize)Object.assign(row,manualSize);fillCatalogMeasurement();
+            refreshCategory();refreshBrand();refreshUnits();el.refreshCatalog();closeCatalogLists();node('scanConfirmed').checked=false;validate();
           },
         });
       };el.refreshCodes();

@@ -347,3 +347,59 @@ def test_new_product_choice_survives_pending_barcode_lookup(static_server_url,pa
     name.fill('Ручное новое название')
     expect(row.locator('[data-receipt-create-name]')).to_be_visible()
     expect(row.locator('.scan-match')).not_to_contain_text('Новый товар')
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width',[320,1440])
+def test_scan_catalog_reference_and_named_size_leave_receipt_money_intact(static_server_url,page_with_receipt_api_mock,width):
+    from tests.e2e.test_receipt_codes_e2e import respond, FOUND, CODE
+    p=page_with_receipt_api_mock;start(p,static_server_url,width)
+    found={**FOUND,'name':'Укроп 40г','product_name':'Укроп 40г','package_quantity':None,'package_unit':None,
+           'variant_snapshot':{'variant_id':41,'name':'Укроп 40г','codes':[CODE]},
+           'catalog_price':{'amount':'2.99','currency':'BYN','recorded_at':'2026-10-16'}}
+    respond(p,items=[found])
+    text=f'ООО ГРИНРОЗНИЦА\nУкроп 40г\n{CODE} 2.29 x1.000 2.29\nИТОГО К ОПЛАТЕ 2.29\n24.10.2026 14:31:41'
+    stub(p,text);upload(p);p.click('#scanRun')
+    row=p.locator('.scan-row').first
+    expect(row.locator('.scan-catalog-reference')).to_contain_text('2,99 BYN')
+    expect(row.locator('.scan-catalog-reference')).to_contain_text('16.10.2026')
+    expect(row.locator('.scan-catalog-reference')).to_contain_text('из названия')
+    expect(row.locator('[data-scan-field=price]')).to_have_value('2.29')
+    expect(row.locator('[data-scan-field=total]')).to_have_value('2.29')
+    expect(row.locator('[data-scan-field=discount]')).to_have_value('0.00')
+    # Existing paid/discount arithmetic stays connected after importing metadata.
+    row.locator('[data-scan-field=total]').fill('2.00')
+    expect(row.locator('[data-scan-field=discount]')).to_have_value('0.29')
+    p.fill('#scanTotal','2.00')
+    row.locator('.scan-catalog-reference').scroll_into_view_if_needed()
+    p.screenshot(path=f'/tmp/fa-scan-reference-{width}.png')
+    assert p.locator('#receiptScanDialog').evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+    p.locator('#scanConfirmed').check();p.click('#scanTransfer')
+    item=p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[0]")
+    assert float(item['package_quantity'])==40 and item['package_unit']=='g'
+    assert item['catalog_measurement_touched'] and item['catalog_edit_variant_id']==41
+    assert float(item['unit_price'])==2 and float(item['discount_value'])==.29
+
+
+@pytest.mark.e2e
+def test_name_selection_shows_only_selected_stores_catalog_price(static_server_url,page_with_receipt_api_mock):
+    p=page_with_receipt_api_mock;start(p,static_server_url);seed_catalog(p)
+    p.evaluate("""()=>{const product=window.App.state.receiptProductHints[0];
+      product.sale_unit='piece';product.package_quantity=200;product.package_unit='g';
+      product.offers[0].catalog_price={amount:'9.99',currency:'BYN',recorded_at:'2026-10-01'};
+    }""")
+    stub(p,PIZZA);upload(p);p.click('#scanRun')
+    row=p.locator('.scan-row').first
+    row.locator('[data-scan-field=name]').focus();row.locator('.receipt-template-suggestion').first.click()
+    expect(row.locator('.scan-catalog-reference')).to_contain_text('9,99 BYN')
+    expect(row.locator('[data-scan-field=price]')).to_have_value('4.99')
+    size=row.get_by_role('spinbutton',name='Размер одной упаковки',exact=True)
+    expect(size).to_have_value('200')
+    size.fill('180')
+    row.get_by_role('button',name='Отвязать товар каталога').click()
+    row.locator('[data-scan-field=name]').focus();row.locator('.receipt-template-suggestion').first.click()
+    expect(size).to_have_value('180')
+    p.fill('#scanShop','Другой магазин')
+    expect(row.locator('.scan-catalog-reference')).to_be_hidden()
+    row.locator('[data-scan-field=name]').focus();row.locator('.receipt-template-suggestion').first.click()
+    expect(row.locator('.scan-catalog-reference')).to_be_hidden()

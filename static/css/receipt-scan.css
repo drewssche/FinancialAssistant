@@ -129,3 +129,8 @@
 .editing-debt-movement #openSavedReceiptScan {display:none !important;}
 
 .scan-brand {grid-column:1/-1;}
+
+.scan-catalog-reference {grid-column:1/-1;display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 12px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);font-size:.8rem;}
+.scan-catalog-reference > span,.scan-catalog-reference small {color:var(--muted);}
+.scan-catalog-reference strong {font-variant-numeric:tabular-nums;color:var(--text);}
+.scan-catalog-reference small {flex-basis:100%;overflow-wrap:anywhere;}

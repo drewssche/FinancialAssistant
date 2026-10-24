@@ -4,6 +4,12 @@
 
 - [x] 2026-09-10: completed plans open for editing directly from operation source chips, plan history, and the activity journal. Enabling recurrence offers the next date and an explicit “Сохранить и возобновить” action; saving reactivates the same plan with its history and linked operations preserved. A read-only server preview and locked save validate dates/end dates, prevent replay of completed occurrences and duplicate reactivation, and refresh reminders. Ordinary edits keep completed plans completed.
 
+## Receipt scan catalog reference — 2026-10-24
+
+- [x] Show the selected store's latest saved catalog price, currency and date separately from OCR price, discount and paid total. Barcode/SKU lookup and name selection use the same read-only reference; another store's price is not inherited.
+- [x] Reuse the selected package dimensions. For piece/pack items with no saved size, fill one unambiguous size from the selected catalog name and label its origin. Do not infer weighted goods, multipacks or ambiguous sizes; retain manual edits.
+- [x] Save inferred missing sizes through the existing receipt/catalog transaction, preserving historical sizes and barcode ownership. Receipt arithmetic and payment amounts remain unchanged.
+
 ## Product Scope
 - MVP-1 is implemented: Telegram auth, dashboard summary, operations CRUD, categories/groups, batch operation creation, receipt items, item catalog, debts, plans, currency/FX, admin access states, persisted UI preferences, and Docker Compose runtime.
 - MVP-2 backlog: Google auth provider, budgets/limits, richer reports/charts, export/import.

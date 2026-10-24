@@ -212,3 +212,22 @@ def test_edit_rounding_unknown_values_and_no_invented_price_or_quantity():
     assert data['incomplete']['total'] is None
     assert data['overdiscount']['total']==-1
     assert data['unrelated']['total']==99
+
+
+def test_selected_catalog_size_fallback_is_conservative():
+    items=[
+        {'name':'Укроп 40г','sale_unit':'pack'},
+        {'name':'Сок 0,75 л','sale_unit':'piece'},
+        {'name':'Яйцо перепелиное 20шт','sale_unit':'pack'},
+        {'name':'Лук 1кг','sale_unit':'kg'},
+        {'name':'Кофе 2 x 40г','sale_unit':'pack'},
+        {'name':'Набор 40г + 20г','sale_unit':'pack'},
+        {'name':'Укроп 40г','sale_unit':'pack','package_quantity':50,'package_unit':'g'},
+        {'name':'Название 40г','sale_unit':'pack','variant_snapshot':{'name':'Фасовка 30г'}},
+    ]
+    script='global.window={App:{}};'+PARSER+'\nconsole.log(JSON.stringify('+json.dumps(items,ensure_ascii=False)+'.map(window.App.receiptScanParser.catalogMeasurement)));'
+    rows=json.loads(subprocess.check_output(['node','-e',script],text=True))
+    assert [(r['package_quantity'],r['package_unit']) for r in rows[:3]]==[(40,'g'),(.75,'l'),(20,'piece')]
+    assert all(rows[i]['package_quantity'] is None for i in [3,4,5])
+    assert rows[6]['package_quantity']==50 and not rows[6].get('catalog_size_from_name')
+    assert rows[7]['package_quantity']==30

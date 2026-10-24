@@ -111,6 +111,11 @@ class ReceiptCodeService:
                 target['matched_codes'] = list(dict.fromkeys(target['matched_codes'] + entry['matched_codes']))
                 del results[key]
         items = list(results.values())
+        from app.repositories.catalog_price_reference_repo import offer_price_references
+        prices = offer_price_references(self.db, user_id=user_id,
+                                        template_ids=[i['template_id'] for i in items if i['template_id']])
+        for item in items:
+            item['catalog_price'] = prices.get(item['template_id'])
         # Two codes resolving to different variants/offers must not silently select one.
         return dict(items=items[:20], auto_match=len(items) == 1 and len(matched) == len(codes),
                     warnings=list(dict.fromkeys(warnings)), unmatched=[c['code'] for i,c in enumerate(codes) if i not in matched])

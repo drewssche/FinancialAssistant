@@ -172,7 +172,7 @@
     if(!row.merged_rows?.length)return [structuredClone(row)];
     // Keep catalog/category/code edits on every restored line. Money comes from the photo.
     const shared=['catalog','catalog_new','product_id','product_name','template_id','source_id','brand_id','category_id','category_touched',
-      'sale_unit','package_quantity','package_unit','measurement_touched','variant_id','variant_snapshot',
+      'sale_unit','package_quantity','package_unit','measurement_touched','measurement_user_edited','catalog_size_from_name','catalog_measurement_touched','catalog_edit_variant_id','variant_id','variant_snapshot',
       'code_entries','code_match_label','code_auto_attempted'];
     return row.merged_rows.map(original=>{
       const restored=structuredClone(original);
@@ -182,5 +182,18 @@
       return restored;
     });
   }
-  window.App.receiptScanParser = {parse, validate, money, recalculateRow, mergeDuplicates, mergedMoneyChanged, splitMergedRow};
+  function catalogMeasurement(item) {
+    const result=Object.fromEntries(['sale_unit','package_quantity','package_unit'].map(key=>[key,item[key]??null]));
+    // Only a deliberately selected catalog item may supply a named package size.
+    // Weighted goods, multipacks and ambiguous names must remain explicit choices.
+    if(!['piece','pack'].includes(result.sale_unit)||result.package_quantity!=null||result.package_unit!=null)return result;
+    const name=String(item.variant_snapshot?.name||item.name||item.product_name||'');
+    if(/\d\s*[xх×*]\s*\d/iu.test(name))return result;
+    const sizes=[...name.matchAll(/(?<![\p{L}\d.,])(\d+(?:[.,]\d+)?)\s*(кг|мл|шт\.?|г|л)(?!\p{L})/giu)];
+    if(sizes.length!==1)return result;
+    const quantity=Number(sizes[0][1].replace(',','.'));
+    if(!(quantity>0&&quantity<1e8)||Math.abs(quantity*1000-Math.round(quantity*1000))>1e-6)return result;
+    return {...result,package_quantity:quantity,package_unit:({кг:'kg',г:'g',мл:'ml',л:'l',шт:'piece'})[sizes[0][2].toLowerCase().replace('.','')],catalog_size_from_name:true};
+  }
+  window.App.receiptScanParser = {parse, validate, money, recalculateRow, mergeDuplicates, mergedMoneyChanged, splitMergedRow, catalogMeasurement};
 })();

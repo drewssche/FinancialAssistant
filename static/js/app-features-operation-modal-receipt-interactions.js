@@ -123,6 +123,7 @@
       rowItem.brand_image_id = template.brand_image_id || null;
       rowItem.brand_is_archived = Boolean(template.brand_is_archived);
       rowItem.brand_touched = false;
+      rowItem.catalog_price = offer?.catalog_price || null;
       if (!rowItem.category_id && (template.category_id || template.last_category_id)) {
         rowItem.category_id = Number(template.category_id || template.last_category_id);
         rowItem.category_touched = false;
@@ -755,7 +756,7 @@
           // Explicit catalog choice uses the selected source size; OCR money remains untouched.
           const item = {shop_name: shop, price_touched: true, measurement_touched: false};
           applyReceiptTemplateToItem(item, template);
-          const keys = ['name', 'template_id', 'product_id', 'product_name', 'product_image_id', 'item_image_id', 'source_id', 'source_image_id', 'brand_id', 'brand_name', 'brand_accent_color', 'brand_image_id', 'category_id'];
+          const keys = ['name', 'template_id', 'product_id', 'product_name', 'product_image_id', 'item_image_id', 'source_id', 'source_image_id', 'brand_id', 'brand_name', 'brand_accent_color', 'brand_image_id', 'category_id', 'catalog_price', 'shop_name'];
           return {...Object.fromEntries(keys.map(key => [key, item[key] ?? null])), ...window.App.measurements.snapshot(item), variant_id:item.variant_id||null};
         },
       },

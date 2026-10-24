@@ -346,3 +346,30 @@ def test_ambiguous_imported_internal_codes_never_auto_match(client):
     found=lookup(client,[{'kind':'internal','code':'00123'}])
     assert not found['auto_match'] and len(found['items'])==2
     assert {r['product_id'] for r in found['items']}=={first['product_id'],second['product_id']}
+
+
+def test_code_and_name_catalog_prices_are_offer_scoped_and_read_only(client):
+    saved=receipt(client,[{'kind':'barcode','code':CODE}],unit_price='3.10').json()
+    row=saved['receipt_items'][0]
+    hit=lookup(client,[{'kind':'barcode','code':CODE}])['items'][0]
+    assert hit['catalog_price']=={'amount':'3.10','currency':'BYN','recorded_at':'2026-10-16'}
+    named=client.get(f"/api/v1/operations/catalog-products/{row['product_id']}").json()
+    assert named['offers'][0]['catalog_price']==hit['catalog_price']
+    other=lookup(client,[{'kind':'barcode','code':CODE}],shop='Соседи')['items'][0]
+    assert other['template_id'] is None and other['catalog_price'] is None
+    assert client.get(f"/api/v1/operations/{saved['id']}").json()==saved
+    app.dependency_overrides[get_current_user_id]=lambda:2
+    assert lookup(client,[{'kind':'barcode','code':CODE}])['items']==[]
+
+
+def test_named_size_can_be_saved_without_barcode_conflict_and_preserves_history(client):
+    old=receipt(client,[{'kind':'barcode','code':CODE}],name='Укроп 40г',sale_unit='pack',package_quantity=None,package_unit=None).json()
+    row=old['receipt_items'][0]
+    new=receipt(client,[{'kind':'barcode','code':CODE}],name='Укроп 40г',product_id=row['product_id'],template_id=row['template_id'],
+                sale_unit='pack',package_quantity='40',package_unit='g',catalog_measurement_touched=True,
+                catalog_edit_variant_id=row['variant_snapshot']['variant_id'])
+    assert new.status_code==201,new.text
+    assert new.json()['receipt_total']==old['receipt_total']
+    assert lookup(client,[{'kind':'barcode','code':CODE}])['items'][0]['package_quantity']=='40.000'
+    historic=client.get(f"/api/v1/operations/{old['id']}").json()['receipt_items'][0]
+    assert historic['package_quantity'] is None
