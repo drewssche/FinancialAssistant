@@ -121,6 +121,8 @@ class SourceWindow:
     started: float
     requests: int = 0
     failures: int = 0
+    login_failures: int = 0
+    critical_emitted: bool = False
     paths: set[str] = field(default_factory=set)
     emitted: int = 0
     minute: int = -1
@@ -169,6 +171,8 @@ class SecurityObserver:
                 self.sources[client] = source
             source.requests += 1
             source.failures += int(failure)
+            source.login_failures += int(failure and request.method == 'POST'
+                and path in AUTH_PATHS - {'/api/v1/auth/refresh'})
             if len(source.paths) < 32:
                 source.paths.add(path)
             if self.minute != minute:
@@ -180,7 +184,8 @@ class SecurityObserver:
                 return
             # Log each probe path once/minute; repeated failures/rate hits are
             # summarized once/minute per source, without affecting traffic.
-            key = path if kind == "signal_route" else kind
+            critical = source.login_failures >= 50 and failure and request.method == 'POST' and path in AUTH_PATHS - {'/api/v1/auth/refresh'}
+            key = 'login_attack' if critical and not source.critical_emitted else path if kind == "signal_route" else kind
             if key in source.last_events and now - source.last_events[key] < 60:
                 self.suppressed += 1
                 return
@@ -188,6 +193,8 @@ class SecurityObserver:
                 self.suppressed += 1
                 return
             source.last_events[key] = now
+            if critical:
+                source.critical_emitted = True
             self.emitted += 1
             source.emitted += 1
             user_id = getattr(request.state, "authenticated_user_id", None)
@@ -200,6 +207,7 @@ class SecurityObserver:
                 "user_id": user_id if isinstance(user_id, int) else None,
                 "rate_status": rate, "signals_in_window": source.requests,
                 "failures_in_window": source.failures, "distinct_paths": len(source.paths),
+                "login_failures_in_window": source.login_failures,
                 "suppressed_since_last_event": self.suppressed,
             }
             self.suppressed = 0

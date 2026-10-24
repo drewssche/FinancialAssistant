@@ -105,7 +105,7 @@ Enforcement requires a separate reviewed iteration after observing real
 traffic, shared-IP use, reconnect bursts and false positives. No claims are made
 that the observation thresholds are already tuned for enforcement.
 
-## Stage 2: invitations and moderate notifications
+## Stage 2: invitations and critical notifications
 
 `REGISTRATION_MODE=invitation` rejects new uninvited Telegram identities **after**
 Telegram signature verification but **before** creating a user or token. Existing
@@ -119,13 +119,27 @@ With `SECURITY_ALERTS_ENABLED=true`, app runs one background digest worker. Both
 app and bot enqueue access-status changes into `security-alerts.sqlite3` in the
 private shared `security_logs` volume. Bot must be updated with app for its approval
 buttons to generate these audit events. Delivery never runs in an HTTP request.
-The request journal also feeds repeated failures, at least three distinct suspicious
-paths or ten signals in a source's observation window into digests. A lone 404 is
-quiet. These are sampled observation counts, not exact total request counts.
+Policy revised after noisy deliveries on 2026-10-24:
 
-- Batch window: 15 minutes from the first queued event.
-- Maximum one attempt/hour and six attempts/calendar day (Europe/Minsk), separately
-  for each admin Telegram destination and the email destination. No empty digests.
+- Ordinary probes, closed documentation, dry-run rate hits, expired sessions,
+  refresh failures and access-status changes remain journal-only. No scheduled
+  security digests or recovery messages are sent.
+- Alert only on at least **50 failed POST logins to the actual Telegram login
+  endpoints within five minutes from one address**. Refresh is excluded. The
+  threshold crossing is retained even during per-minute log sampling. This is
+  evidence of mass login attempts, not proof of successful intrusion.
+- Batch window: one minute. One alert per continuing security incident, across
+  sources and app restarts; rearm only after six hours without a qualifying signal.
+  Unsent incidents that have been quiet for six hours expire; delivery retries
+  retain their separate bounded retry policy.
+- Maximum one attempt/hour and **two attempts/calendar day** (Europe/Minsk), per
+  Telegram destination/email destination, shared with operational incidents.
+  These are ceilings, not a schedule; failed deliveries also consume quota. A
+  distinct incident can be delayed by the shared cap.
+- On policy upgrade, discard old informational pending digests and reset the old
+  delivery quota once. Retain journals and uncertain deliveries. Legacy queues
+  written by an older bot are discarded by the new app worker as well. Access
+  changes continue to be journaled without requiring a bot restart.
 - Counters and pending summaries survive app replacement. Lists in summaries are
   capped at ten entries, access-audit queue at 100 entries; this is not a full SIEM.
 - Delivery errors are retried at most three times, subject to the same limits.
@@ -152,7 +166,7 @@ docker compose exec -T app python scripts/test_security_notifications.py --chann
 docker compose exec -T app python scripts/test_security_notifications.py --channel email
 ```
 
-These checks skip only the 15-minute batch delay. Review the journal for confirmed
+These checks skip only the one-minute batch delay. Review the journal for confirmed
 acceptance; a queued/skipped test is not a successful send. If configuring SMTP
 for a previously unconfigured channel, reset that channel's `next_at` under an
 operator-controlled change so its one-day configuration-error cooldown does not

@@ -14,8 +14,8 @@ from app.core.security_observation import (
 )
 
 
-def request(path='/api/v1/auth/admin/login', *, peer='192.0.2.1', headers=()):
-    result = StarletteRequest({'type': 'http', 'method': 'GET', 'path': path,
+def request(path='/api/v1/auth/admin/login', *, peer='192.0.2.1', headers=(), method='GET'):
+    result = StarletteRequest({'type': 'http', 'method': method, 'path': path,
         'query_string': b'secret=should-not-appear', 'headers': headers,
         'client': (peer, 1234), 'server': ('test', 80), 'scheme': 'http'})
     result.state.request_id = 'server-generated-id'
@@ -57,6 +57,7 @@ def test_failures_are_correlated_but_pending_denials_are_ignored():
     for _ in range(4):
         observer.observe(req, 400)
     assert events == []
+
     observer.observe(req, 422)
     assert events[0]['event'] == 'repeated_access_failure'
     assert events[0]['failures_in_window'] == 5
@@ -67,6 +68,20 @@ def test_failures_are_correlated_but_pending_denials_are_ignored():
     for _ in range(30):
         observer.observe(req, 403)
     assert events == []
+
+
+def test_login_attack_threshold_is_not_lost_to_minute_sampling():
+    from app.services.security_alert_service import qualifies
+    events=[]
+    observer=SecurityObserver(events.append,clock=lambda:1)
+    req=request('/api/v1/auth/telegram',method='POST')
+    for _ in range(50):observer.observe(req,401)
+    assert len([e for e in events if qualifies(e)])==1
+    assert events[-1]['login_failures_in_window']==50
+    events.clear()
+    observer=SecurityObserver(events.append,clock=lambda:1)
+    for _ in range(100):observer.observe(request('/api/v1/auth/refresh',method='POST'),401)
+    assert not any(qualifies(e) for e in events)
 
 
 def test_verified_identity_is_attached_only_by_auth_dependency(monkeypatch):

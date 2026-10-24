@@ -33,7 +33,7 @@ def test_short_failure_and_unannounced_recovery_are_silent(tmp_path):
     assert not sent
 
 
-def test_persistent_outage_once_then_recovery_once_survives_restart(tmp_path):
+def test_persistent_outage_once_and_silent_recovery_survives_restart(tmp_path):
     a, now, sent, audit = harness(tmp_path)
     sample(a, healthy=False)
     advance(a, now, 600, healthy=False)
@@ -43,10 +43,10 @@ def test_persistent_outage_once_then_recovery_once_survives_restart(tmp_path):
     advance(a, now, 86400, healthy=False)
     assert len(sent) == 2
     advance(a, now, 360)
-    assert len(sent) == 4
-    assert 'снова стабильно' in sent[-1][1]
+    assert len(sent) == 2
+    assert any(e['event'] == 'operational_incident_recovered' for e in audit)
     advance(a, now, 3600)
-    assert len(sent) == 4
+    assert len(sent) == 2
 
 
 def test_backup_and_bot_grouped_and_share_security_cooldown(tmp_path):
@@ -58,7 +58,7 @@ def test_backup_and_bot_grouped_and_share_security_cooldown(tmp_path):
     assert len(sent) == 2
     advance(a, now, 1800, backup='unknown', healthy=False)
     assert len(sent) == 4
-    assert 'Резервная копия' in sent[-1][1] and 'Telegram-бот' in sent[-1][1]
+    assert 'Резервная копия' not in sent[-1][1] and 'Telegram-бот' in sent[-1][1]
     advance(a, now, 86400, backup='unknown', healthy=False)
     assert len(sent) == 4
 
@@ -82,7 +82,7 @@ def test_three_new_restarts_not_lifetime_count_trigger_once(tmp_path):
     advance(a, now, 600, restarts=6003)
     assert len(sent) == 2 and 'трёх перезапусков' in sent[-1][1]
     advance(a, now, 3600, restarts=6003)
-    assert len(sent) == 4
+    assert len(sent) == 2
 
 
 def test_gap_does_not_prove_continuous_failure_and_stale_sample_cannot_send(tmp_path):
@@ -108,13 +108,13 @@ def test_failed_channel_retries_bounded_without_repeating_success(tmp_path):
         if channel == 'email':
             raise RuntimeError('password-secret')
     a, now, _, audit = harness(tmp_path, send)
-    sample(a, backup='stale')
-    advance(a, now, 15000, backup='stale')
+    sample(a, healthy=False)
+    advance(a, now, 90000, healthy=False)
     assert attempts.count('telegram:123') == 1
     assert attempts.count('email') == 3
     assert 'password-secret' not in json.dumps(audit)
     advance(a, now, 3600)
-    assert attempts.count('telegram:123') == 2
+    assert attempts.count('telegram:123') == 1
     assert attempts.count('email') == 3 # no recovery for a channel that never received warning
 
 
@@ -138,6 +138,20 @@ def test_daily_quota_already_used_by_security_blocks_operations(tmp_path):
     day = datetime.fromtimestamp(now[0], ZoneInfo('Europe/Minsk')).date().isoformat()
     with a.connect() as db:
         db.execute('UPDATE channels SET day=?,attempts=?', (day, DAILY_LIMIT))
-    sample(a, backup='failed')
-    advance(a, now, 1800, backup='failed')
+    sample(a, healthy=False)
+    advance(a, now, 1800, healthy=False)
     assert not sent
+
+
+def test_recent_backup_job_failures_are_quiet_and_missing_copy_needs_three_days(tmp_path):
+    a,now,sent,_=harness(tmp_path)
+    for status in ['failed','retention','unknown']:
+        advance(a,now,1800,backup=status)
+    assert not sent
+    # Model 72 hours of continuous observations without waiting in real time.
+    with a.connect() as db:
+        db.execute("UPDATE operational_state SET since=? WHERE issue='backup'", (now[0]-72*3600+60,))
+    advance(a,now,60,backup='unknown')
+    assert len(sent)==2 and 'Резервная копия' in sent[-1][1]
+    advance(a,now,600)
+    assert len(sent)==2

@@ -193,21 +193,18 @@ no extra Yandex requests, reads no container environment, and performs no restar
 It sends a small JSON sample through stdin to the existing app container. Docker
 socket access is not granted to the app; mail/Telegram credentials stay there.
 
-Policy:
-- Backup: warn after 15 minutes of continuous failure/unknown evidence, or when
-  the confirmed external snapshot is over 36 hours old. Failed retention is
-  included as an operational problem. A local pending archive is not proof of
-  an external backup. Recovery requires five minutes of successful evidence.
+Policy (critical-only, revised 2026-10-24):
+- Backup: warn after 72 continuous hours without usable offsite-copy evidence,
+  or 36 continuous hours of stale-copy evidence (already older than 36 hours).
+  A failed retry/retention job while a recent external copy exists is journal-only.
+  Replacing an old low-threshold backup incident restarts this confirmation period.
 - Bot: warn after ten minutes continuously unhealthy/missing, or a burst of at
   least three observed restarts/recreations in 30 minutes persisting for ten
   minutes. The initial lifetime restart count is a baseline, not an incident.
-  Recovery requires five minutes healthy and outside the restart-burst window.
-- One warning per ongoing incident, one recovery only for channels that received
-  (or have an uncertain crash outcome for) the warning. Recovery before a delayed
-  warning is sent produces no messages. Repeated healthy/failed samples stay quiet.
-- Backup and bot transitions eligible together are combined. Both use the
-  **same** per-destination quota as security: one attempt/hour, six/day in Minsk,
-  including failed sends. No additional quota is created by this monitor.
+- One warning per ongoing incident. Recovery is journal-only after five minutes
+  of stable healthy samples. No hourly/daily reminders or healthy-status reports.
+- Eligible incidents are combined and share the security cap: one attempt/hour,
+  two/day per destination, including failed attempts.
 - Failed delivery retries at most three times per state/channel; successful
   channels are not retried. Quotas and incident/delivery states persist in
   `security-alerts.sqlite3`. Unknown in-flight results after a crash are logged
@@ -220,6 +217,6 @@ This is local monitoring, not independent uptime monitoring: if the server,
 Docker, app alert worker or outbound network is down, it cannot deliver an alert
 at that moment. The timer retries sampling automatically; the current state is
 re-evaluated after recovery. No synthetic Telegram/email smoke messages are sent
-by installation. Existing real Yandex failure will produce one ordinary warning
-when it passes the debounce and shared quota. It does not change the 04:15 Minsk
+by installation. An ongoing Yandex problem produces one warning only after the critical
+confirmation period and shared quota allow it. It does not change the 04:15 Minsk
 backup schedule or make unavailable Yandex storage healthy.

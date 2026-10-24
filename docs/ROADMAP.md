@@ -4,6 +4,12 @@
 
 - [x] 2026-09-10: completed plans open for editing directly from operation source chips, plan history, and the activity journal. Enabling recurrence offers the next date and an explicit “Сохранить и возобновить” action; saving reactivates the same plan with its history and linked operations preserved. A read-only server preview and locked save validate dates/end dates, prevent replay of completed occurrences and duplicate reactivation, and refresh reminders. Ordinary edits keep completed plans completed.
 
+## Critical notification policy — 2026-10-24
+
+- [x] Stop routine security digests and recovery messages in Telegram/email. Expired sessions, probes and access administration remain journal-only.
+- [x] Notify on mass login failures and sustained critical service/backup incidents; persist incident deduplication across restarts, cap delivery attempts at two/day per destination, and discard old pending informational summaries.
+- [ ] Independent external uptime monitoring: the host-local collector cannot report a total VPS/network/Docker/app-worker outage while it is happening.
+
 ## Receipt scan catalog reference — 2026-10-24
 
 - [x] Show the selected store's latest saved catalog price, currency and date separately from OCR price, discount and paid total. Barcode/SKU lookup and name selection use the same read-only reference; another store's price is not inherited.

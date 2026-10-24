@@ -1,4 +1,4 @@
-"""Bounded persistent digests; network delivery happens outside HTTP requests."""
+"""Critical incident alerts; routine observations remain in the journal only."""
 from datetime import datetime, timezone
 from contextlib import contextmanager
 from email.message import EmailMessage
@@ -19,18 +19,20 @@ from app.core.config import get_settings
 from app.services import operations_alert_service as operations
 
 LOG = logging.getLogger(__name__)
-BATCH_SECONDS = 900
+BATCH_SECONDS = 60
 COOLDOWN_SECONDS = 3600
-DAILY_LIMIT = 6
+DAILY_LIMIT = 2
+INCIDENT_QUIET_SECONDS = 6 * 3600
+POLICY_VERSION = 2
 
 
 def qualifies(event):
-    return (
-        event.get('event') in {'access_status_changed', 'security_notification_test'}
-        or event.get('event') == 'repeated_access_failure'
-        or event.get('distinct_paths', 0) >= 3
-        or event.get('signals_in_window', 0) >= 10
-    )
+    return event.get('event') == 'security_notification_test' or (
+        event.get('event') in {'repeated_access_failure', 'rate_would_limit'}
+        and event.get('method') == 'POST'
+        and event.get('path') in {'/api/v1/auth/telegram', '/api/v1/auth/telegram/browser'}
+        and event.get('status') in {400, 401, 403, 422}
+        and event.get('login_failures_in_window', 0) >= 50)
 
 
 def merge(left, right):
@@ -41,11 +43,12 @@ def merge(left, right):
     for key in ('sources', 'paths', 'kinds', 'users', 'changes'):
         result[key] = sorted(set(result.get(key, [])) | set(right.get(key, [])))[:10]
     result['retries'] = max(result.get('retries', 0), right.get('retries', 0))
+    result['policy'] = right.get('policy')
     return result
 
 
 def summarize(event, now):
-    return {'first': now, 'last': now, 'samples': 1,
+    return {'policy': POLICY_VERSION, 'first': now, 'last': now, 'samples': 1,
         'sources': [str(event['client_ip'])[:64]] if event.get('client_ip') else [],
         'paths': [str(event['path'])[:160]] if event.get('path') else [],
         'kinds': [str(event.get('event', 'security_event'))[:64]],
@@ -58,7 +61,9 @@ def build_text(payload):
     zone = ZoneInfo('Europe/Minsk')
     start = datetime.fromtimestamp(payload['first'], zone).strftime('%d.%m %H:%M')
     end = datetime.fromtimestamp(payload['last'], zone).strftime('%d.%m %H:%M')
-    heading = 'ФинАсист — проверка доставки уведомлений' if payload['kinds'] == ['security_notification_test'] else 'ФинАсист — сводка безопасности'
+    heading = 'ФинАсист — проверка доставки уведомлений' if payload['kinds'] == ['security_notification_test'] else 'ФинАсист — массовые попытки входа'
+    basis = ('Ручная проверка канала доставки.' if payload['kinds'] == ['security_notification_test']
+             else 'Основание: не менее 50 отказов входа за 5 минут с одного адреса.')
     return (heading + '\n'
         f'Период: {start} — {end} (Минск)\n'
         f'Записей наблюдения: {payload["samples"]} (повторы могут быть объединены)\n'
@@ -67,7 +72,8 @@ def build_text(payload):
         f'Маршруты: {", ".join(payload["paths"]) or "—"}\n'
         f'Проверенные User ID: {", ".join(payload["users"]) or "—"}\n\n'
         f'Изменения доступа: {"; ".join(payload.get("changes", [])) or "—"}\n'
-        'Это сигналы для проверки, не подтверждение взлома. Автоблокировки выключены.\n'
+        f'{basis}\n'
+        'Это не подтверждение успешного взлома. Автоблокировки выключены. Повторы инцидента остаются в журнале.\n'
         'Подробности: серверный журнал security.jsonl.')
 
 
@@ -80,14 +86,24 @@ class SecurityAlerts:
         self.stop_event = Event()
         self.thread = None
         with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
             db.execute('''CREATE TABLE IF NOT EXISTS channels (
                 channel TEXT PRIMARY KEY, pending TEXT, inflight TEXT,
                 next_at REAL NOT NULL DEFAULT 0, day TEXT NOT NULL DEFAULT '',
                 attempts INTEGER NOT NULL DEFAULT 0)''')
             db.execute('CREATE TABLE IF NOT EXISTS access_events (id INTEGER PRIMARY KEY, payload TEXT NOT NULL)')
+            db.execute('CREATE TABLE IF NOT EXISTS alert_policy (version INTEGER PRIMARY KEY)')
+            db.execute('CREATE TABLE IF NOT EXISTS security_incidents (channel TEXT PRIMARY KEY, last_seen REAL NOT NULL)')
             operations.initialize(db)
             for channel in self.channels:
                 db.execute('INSERT OR IGNORE INTO channels(channel) VALUES (?)', (channel,))
+            if not db.execute('SELECT 1 FROM alert_policy WHERE version=?', (POLICY_VERSION,)).fetchone():
+                # Old informational summaries must not arrive after the policy change.
+                # Keep the journal and uncertain in-flight deliveries for recovery.
+                db.execute("UPDATE channels SET pending=NULL,next_at=0,day='',attempts=0")
+                db.execute("DELETE FROM operational_delivery WHERE issue='backup'")
+                db.execute("DELETE FROM operational_state WHERE issue='backup'")
+                db.execute('INSERT INTO alert_policy VALUES (?)', (POLICY_VERSION,))
         self.path.chmod(0o600)
 
     @property
@@ -110,7 +126,8 @@ class SecurityAlerts:
             'event': event, 'channel': channel, **details})
 
     def record(self, event):
-        if not qualifies(event):
+        critical = qualifies(event)
+        if not critical and event.get('event') != 'access_status_changed':
             return
         payload = summarize(event, self.clock())
         try:
@@ -119,9 +136,19 @@ class SecurityAlerts:
                 if event.get('event') == 'access_status_changed':
                     db.execute('INSERT INTO access_events(payload) VALUES (?)', (json.dumps(event),))
                     db.execute('DELETE FROM access_events WHERE id NOT IN (SELECT id FROM access_events ORDER BY id DESC LIMIT 100)')
+                if not critical:
+                    return
                 for channel in self.channels:
                     row = db.execute('SELECT pending FROM channels WHERE channel=?', (channel,)).fetchone()
-                    combined = merge(json.loads(row['pending']) if row['pending'] else {}, payload)
+                    pending = json.loads(row['pending']) if row['pending'] else {}
+                    if pending.get('policy') != POLICY_VERSION:
+                        pending = {}
+                    if event.get('event') != 'security_notification_test':
+                        previous = db.execute('SELECT last_seen FROM security_incidents WHERE channel=?', (channel,)).fetchone()
+                        db.execute('INSERT OR REPLACE INTO security_incidents VALUES (?,?)', (channel, self.clock()))
+                        if previous and self.clock() - previous['last_seen'] < INCIDENT_QUIET_SECONDS and not pending:
+                            continue
+                    combined = merge(pending, payload)
                     db.execute('UPDATE channels SET pending=? WHERE channel=?', (json.dumps(combined), channel))
         except (OSError, sqlite3.Error):
             LOG.error('security_alert_queue_write_failed')
@@ -156,9 +183,18 @@ class SecurityAlerts:
             with self.connect() as db:
                 db.execute('BEGIN IMMEDIATE')
                 row = db.execute('SELECT * FROM channels WHERE channel=?', (channel,)).fetchone()
-                if not row['pending'] or row['inflight'] or now < row['next_at']:
+                if not row['pending'] or row['inflight']:
                     continue
                 payload = json.loads(row['pending'])
+                if payload.get('policy') != POLICY_VERSION:
+                    db.execute('UPDATE channels SET pending=NULL WHERE channel=?', (channel,))
+                    continue
+                if not payload.get('retries') and payload['kinds'] != ['security_notification_test'] and now - payload['last'] >= INCIDENT_QUIET_SECONDS:
+                    self.audit('security_notification_expired', channel)
+                    db.execute('UPDATE channels SET pending=NULL WHERE channel=?', (channel,))
+                    continue
+                if now < row['next_at']:
+                    continue
                 if not force_batch and now < payload['first'] + BATCH_SECONDS:
                     continue
                 attempts = row['attempts'] if row['day'] == day else 0
@@ -207,7 +243,7 @@ class SecurityAlerts:
                     raise RuntimeError('Telegram delivery not acknowledged')
             return
         message = EmailMessage()
-        message['Subject'] = 'ФинАсист: состояние сервисов' if text.startswith('ФинАсист — состояние сервисов') else 'ФинАсист: сводка безопасности'
+        message['Subject'] = text.splitlines()[0].replace(' — ', ': ', 1)
         message['From'], message['To'] = s.smtp_from, s.security_alert_email
         message.set_content(text)
         context = ssl.create_default_context()

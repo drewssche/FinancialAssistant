@@ -8,8 +8,8 @@ LABELS = {
     'bot': ('Telegram-бот', 'Бот снова стабильно работает.'),
 }
 REASONS = {
-    'backup_unknown': 'Нет подтверждения свежей автоматической копии вне сервера.',
-    'backup_stale': 'Подтверждённая внешняя копия старше 36 часов.',
+    'backup_unknown': 'Не менее 72 часов нет подтверждения свежей автоматической копии вне сервера.',
+    'backup_stale': 'Не менее 36 часов подтверждается устаревшая внешняя копия (старше 36 часов).',
     'backup_failed': 'Последняя попытка резервного копирования завершилась с ошибкой.',
     'backup_retention': 'Не удалось выполнить очистку старых внешних копий.',
     'bot_unhealthy': 'Бот не работает или его healthcheck не подтверждает работоспособность.',
@@ -51,7 +51,8 @@ def observe(alerts, sample):
             events.append(now)
         db.execute('INSERT OR REPLACE INTO operational_probe VALUES (1,?)',
             (json.dumps({**bot, 'events': events[-3:]}),))
-        reasons = {'backup': '' if sample['backup'] == 'ok' else 'backup_' + sample['backup'],
+        # A failed retry/retention job with a recent offsite copy is journal-only.
+        reasons = {'backup': 'backup_' + sample['backup'] if sample['backup'] in {'unknown', 'stale'} else '',
             'bot': 'bot_unhealthy' if not bot['healthy'] else ('bot_restarts' if len(events) >= 3 else '')}
         for issue, reason in reasons.items():
             bad = int(bool(reason))
@@ -59,7 +60,8 @@ def observe(alerts, sample):
             active = row['active'] if row else 0
             # A gap in sampling does not prove continuous failure or recovery.
             since = row['since'] if row and row['candidate'] == bad and 0 <= now - row['last_seen'] <= 180 else now
-            delay = (900 if issue == 'backup' else 600) if bad else 300
+            delay = ((36 * 3600 if reason == 'backup_stale' else 72 * 3600)
+                     if issue == 'backup' else 600) if bad else 300
             changed = row['changed'] if row else now
             if bad != active and now - since >= delay:
                 active, changed = bad, now
@@ -73,9 +75,12 @@ def observe(alerts, sample):
 
 
 def pending(db, channel, now):
+    # Recovery is recorded, but never creates another email/Telegram message.
+    db.execute('''UPDATE operational_delivery SET notified=0 WHERE channel=?
+        AND issue IN (SELECT issue FROM operational_state WHERE active=0)''', (channel,))
     return [dict(row) for row in db.execute('''SELECT s.issue,s.active,s.reason,s.changed FROM operational_state s
         JOIN operational_delivery d ON d.issue=s.issue WHERE d.channel=?
-        AND d.notified<>s.active AND d.attempts<3 AND s.last_seen>=?
+        AND s.active=1 AND d.notified<>s.active AND d.attempts<3 AND s.last_seen>=?
         AND s.candidate=s.active ORDER BY s.issue''', (channel, now - 180))]
 
 

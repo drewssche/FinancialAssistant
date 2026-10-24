@@ -13,7 +13,8 @@ def settings(tmp_path):
 
 def event(**fields):
     return {'event': 'repeated_access_failure', 'client_ip': '192.0.2.1',
-        'path': '/api/v1/auth/telegram', 'signals_in_window': 5, **fields}
+        'path': '/api/v1/auth/telegram', 'method':'POST', 'status':401,
+        'login_failures_in_window':50, 'signals_in_window': 50, **fields}
 
 
 def test_digest_waits_coalesces_and_survives_restart(tmp_path):
@@ -38,10 +39,10 @@ def test_single_probe_is_quiet_and_sources_bounded(tmp_path):
     alerts.record(event(event='signal_route', signals_in_window=1, distinct_paths=1))
     with alerts.connect() as db:
         assert all(row['pending'] is None for row in db.execute('SELECT pending FROM channels'))
-    for n in range(200): alerts.record(event(client_ip=f'192.0.2.{n}', path=f'/known/{n}'))
+    for n in range(200): alerts.record(event(client_ip=f'192.0.2.{n}'))
     with alerts.connect() as db:
         payload = json.loads(db.execute('SELECT pending FROM channels LIMIT 1').fetchone()[0])
-    assert len(payload['sources']) == len(payload['paths']) == 10
+    assert len(payload['sources']) == 10 and len(payload['paths']) == 1
 
 
 def test_cooldown_and_daily_caps_persist(tmp_path):
@@ -49,7 +50,7 @@ def test_cooldown_and_daily_caps_persist(tmp_path):
     s = settings(tmp_path)
     for n in range(10):
         alerts = SecurityAlerts(s, lambda e: None, clock=lambda: now[0], send=lambda *args: sends.append(args))
-        alerts.record(event())
+        alerts.record(event(event='security_notification_test'))
         now[0] += 901
         alerts.tick()
         now[0] += 2699
@@ -69,7 +70,7 @@ def test_channel_failure_does_not_repeat_success_or_expose_secrets(tmp_path):
     now[0] += 901
     alerts.tick()
     for _ in range(3):
-        now[0] += 3600
+        now[0] += 43200
         alerts.tick()
     assert sends.count('telegram:123') == 1
     assert sends.count('email') == 3
@@ -136,3 +137,45 @@ def test_smtp_requires_tls_and_uses_fixed_recipient(monkeypatch, tmp_path):
     SecurityAlerts(settings(tmp_path), lambda e: None).deliver('email', 'test')
     assert observed[0][-1] is True
     assert observed[-1] == ('message', 'owner@example.org', 'sender@example.org')
+
+
+def test_routine_scans_expired_sessions_and_access_changes_never_notify(tmp_path):
+    from app.services.security_alert_service import qualifies
+    for ordinary in [event(path='/api/v1/auth/refresh'), event(method='GET'),
+                     event(login_failures_in_window=49),
+                     event(event='signal_route', distinct_paths=32, signals_in_window=10000),
+                     event(path='/api/v1/operations')]:
+        assert not qualifies(ordinary)
+    assert qualifies(event())
+
+
+def test_continuous_attack_is_one_incident_across_days_and_restarts(tmp_path):
+    now, sent = [1792776000.0], []
+    s=settings(tmp_path)
+    for _ in range(30):
+        a=SecurityAlerts(s,lambda e:None,clock=lambda:now[0],send=lambda *x:sent.append(x))
+        a.record(event());now[0]+=61;a.tick();now[0]+=3600
+    assert len(sent)==2
+    now[0]+=6*3600
+    a.record(event());now[0]+=61;a.tick()
+    assert len(sent)==4
+
+
+def test_legacy_pending_summaries_are_discarded_even_from_old_bot(tmp_path):
+    a=SecurityAlerts(settings(tmp_path),lambda e:None,send=lambda *x:(_ for _ in ()).throw(AssertionError('must not send')))
+    with a.connect() as db:
+        db.execute('UPDATE channels SET pending=?', (json.dumps({'first':0,'kinds':['access_status_changed']}),))
+    a.tick(force_batch=True)
+    with a.connect() as db:
+        assert all(r[0] is None for r in db.execute('SELECT pending FROM channels'))
+
+
+def test_quota_delayed_incident_expires_instead_of_sending_old_night_report(tmp_path):
+    now,sent=[1792776000.0],[]
+    a=SecurityAlerts(settings(tmp_path),lambda e:None,clock=lambda:now[0],send=lambda *x:sent.append(x))
+    a.record(event())
+    now[0]+=6*3600
+    a.tick()
+    assert not sent
+    with a.connect() as db:
+        assert all(r[0] is None for r in db.execute('SELECT pending FROM channels'))
