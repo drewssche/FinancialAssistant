@@ -130,7 +130,28 @@ class CatalogWatchService:
         watches = list(self.db.scalars(select(CatalogWatch).join(CatalogProduct, CatalogProduct.id == CatalogWatch.product_id).where(CatalogWatch.user_id == user_id, CatalogWatch.enabled.is_(True), CatalogProduct.is_archived.is_(False))))
         ids = [w.product_id for w in watches]
         names = dict(self.db.execute(select(CatalogProduct.id, CatalogProduct.name).where(CatalogProduct.id.in_(ids))).all())
-        offers = [dict(self.serialize(o), product_name=names[o.product_id]) for o in self.db.scalars(self.valid_offers().where(CatalogOfferWatch.user_id == user_id, CatalogOfferWatch.product_id.in_(ids)).order_by(CatalogOfferWatch.checked_at.desc()).limit(60))]
+        # Several receipt names can point to the same retailer page. The dashboard
+        # shows its newest observation once; catalog links/history remain separate.
+        offers, seen = [], set()
+        rows = self.db.scalars(self.valid_offers().where(
+            CatalogOfferWatch.user_id == user_id, CatalogOfferWatch.product_id.in_(ids)
+        ).order_by(CatalogOfferWatch.checked_at.desc().nulls_last(), CatalogOfferWatch.template_id.desc()))
+        for offer in rows:
+            snapshot = offer.snapshot or {}
+            key = ('offer', offer.template_id)
+            comparison = snapshot.get('comparison_key')
+            if isinstance(comparison, str) and comparison:
+                try:
+                    site, url = provider.identify_url(offer.url)
+                    key = (offer.product_id, site, url, comparison)
+                except ValueError:
+                    pass
+            if key in seen:
+                continue
+            seen.add(key)
+            offers.append(dict(self.serialize(offer), product_name=names[offer.product_id]))
+            if len(offers) == 60:
+                break
         connected_ids = set(self.db.scalars(self.valid_offers().with_only_columns(CatalogOfferWatch.product_id).where(CatalogOfferWatch.user_id == user_id, CatalogOfferWatch.product_id.in_(ids))))
         # Dashboard history survives Telegram delivery, unsubscribe and later resubscribe.
         stmt = select(CatalogPriceEvent).where(CatalogPriceEvent.user_id == user_id, self.notification_events())

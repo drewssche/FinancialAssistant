@@ -285,3 +285,33 @@ def test_site_history_cursor_and_legacy_notification(client, linked):
     ids = [r['id'] for r in first['items'] + second['items'] if r['id']]
     assert len(ids) == 204 and len(set(ids)) == 204
     assert second['next_cursor'] is None
+
+@pytest.mark.parametrize('difference',['none','url_alias','page','package','store','unknown'])
+def test_dashboard_deduplicates_same_page_and_context_but_keeps_history(client,linked,difference):
+    from app.db.models.operation_item_template import OperationItemTemplate
+    pid,tid=linked
+    client.put(f'/api/v1/catalog-watches/{pid}',json={'enabled':True})
+    with database() as db:
+        original=db.get(CatalogOfferWatch,tid)
+        original.checked_at=now()-timedelta(hours=2)
+        latest=deepcopy(original.snapshot)
+        latest['price']='6.99'
+        url=original.url
+        if difference=='url_alias':url+='?utm_source=receipt'
+        if difference=='page':url='https://edostavka.by/product/870667';latest['url']=url
+        if difference in ('package','store'):latest['comparison_key']+=':'+difference
+        if difference=='unknown':latest.pop('comparison_key')
+        template=OperationItemTemplate(user_id=1,product_id=pid,name='Сыр, название из другого чека',name_ci='сыр, название из другого чека')
+        db.add(template);db.flush();second=template.id
+        db.add(CatalogOfferWatch(template_id=second,user_id=1,product_id=pid,url=url,snapshot=latest,checked_at=now()))
+        db.commit()
+    result=client.get('/api/v1/catalog-watches').json()
+    offers=result['offers']
+    assert len(offers)==(1 if difference in ('none','url_alias') else 2)
+    assert offers[0]['template_id']==second and offers[0]['snapshot']['price']=='6.99'
+    # Dashboard grouping never merges or deletes editable offers or observations.
+    detail=client.get(f'/api/v1/catalog-watches/{pid}').json()
+    assert {o['template_id'] for o in detail['offers']}=={tid,second}
+    assert next(o for o in detail['offers'] if o['template_id']==tid)['snapshot']['price']=='7.99'
+    app.dependency_overrides[get_current_user_id]=lambda:2
+    assert client.get('/api/v1/catalog-watches').json()['offers']==[]
