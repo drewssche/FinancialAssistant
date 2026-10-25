@@ -134,3 +134,6 @@
 .scan-catalog-reference > span,.scan-catalog-reference small {color:var(--muted);}
 .scan-catalog-reference strong {font-variant-numeric:tabular-nums;color:var(--text);}
 .scan-catalog-reference small {flex-basis:100%;overflow-wrap:anywhere;}
+
+.scan-row.has-error {border-color:#a35f6d;}
+.scan-row-error {grid-column:1/-1;margin:0;padding:10px 12px;border:1px solid #784552;border-radius:10px;background:#a63d5014;font-size:.8rem;line-height:1.45;overflow-wrap:anywhere;}

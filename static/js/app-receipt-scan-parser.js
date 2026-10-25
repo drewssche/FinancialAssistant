@@ -112,22 +112,24 @@
     }
     return [];
   }
-  function validate(draft) {
+  function validationIssues(draft) {
     const errors = [];
-    if (draft.unsupported) errors.push('Возврат или отрицательная позиция: используйте ручной ввод операции');
-    if (!validDate(draft.date)) errors.push('Укажите дату покупки');
-    if (!draft.shop.trim() || draft.shop.length > 160) errors.push('Укажите магазин');
-    if (!Number.isInteger(draft.total) || draft.total <= 0) errors.push('Укажите итог чека');
-    if (!draft.rows.length || draft.rows.length > 150) errors.push('В чеке должно быть от 1 до 150 позиций');
+    const add=(message,rowIndex=null)=>errors.push({message,rowIndex});
+    if (draft.unsupported) add('Возврат или отрицательная позиция: используйте ручной ввод операции');
+    if (!validDate(draft.date)) add('Укажите дату покупки');
+    if (!draft.shop.trim() || draft.shop.length > 160) add('Укажите магазин');
+    if (!Number.isInteger(draft.total) || draft.total <= 0) add('Укажите итог чека');
+    if (!draft.rows.length || draft.rows.length > 150) add('В чеке должно быть от 1 до 150 позиций');
     let sum = 0;
     draft.rows.forEach((r, i) => {
-      if (!r.name.trim() || r.name.length > 160 || !Number.isFinite(r.quantity) || r.quantity <= 0 || r.quantity > 100000 || Math.abs(r.quantity * 1000 - Math.round(r.quantity * 1000)) > 1e-6 || !Number.isInteger(r.price) || r.price <= 0 || !Number.isInteger(r.discount) || r.discount < 0 || !Number.isInteger(r.total) || r.total <= 0) errors.push(`Проверьте поля позиции ${i + 1}`);
-      else if (subtotal(r.price, r.quantity) - r.discount !== r.total) errors.push(`Проверьте цену, количество и скидку позиции ${i + 1}`);
+      if (!r.name.trim() || r.name.length > 160 || !Number.isFinite(r.quantity) || r.quantity <= 0 || r.quantity > 100000 || Math.abs(r.quantity * 1000 - Math.round(r.quantity * 1000)) > 1e-6 || !Number.isInteger(r.price) || r.price <= 0 || !Number.isInteger(r.discount) || r.discount < 0 || !Number.isInteger(r.total) || r.total <= 0) add(`Проверьте поля позиции ${i + 1}`,i);
+      else if (subtotal(r.price, r.quantity) - r.discount !== r.total) add(`Проверьте цену, количество и скидку позиции ${i + 1}`,i);
       sum += r.total || 0;
     });
-    if (sum !== draft.total) errors.push(`Сумма позиций ${(sum / 100).toFixed(2)} не совпадает с итогом чека`);
+    if (sum !== draft.total) add(`Сумма позиций ${(sum / 100).toFixed(2)} не совпадает с итогом чека`);
     return errors;
   }
+  function validate(draft) { return validationIssues(draft).map(issue=>issue.message); }
   // Group only compatible rows and retain independent originals for reversal.
   function mergeDuplicates(rows, validBarcode) {
     if(rows.length>150)return rows;
@@ -195,5 +197,5 @@
     if(!(quantity>0&&quantity<1e8)||Math.abs(quantity*1000-Math.round(quantity*1000))>1e-6)return result;
     return {...result,package_quantity:quantity,package_unit:({кг:'kg',г:'g',мл:'ml',л:'l',шт:'piece'})[sizes[0][2].toLowerCase().replace('.','')],catalog_size_from_name:true};
   }
-  window.App.receiptScanParser = {parse, validate, money, recalculateRow, mergeDuplicates, mergedMoneyChanged, splitMergedRow, catalogMeasurement};
+  window.App.receiptScanParser = {parse, validate, validationIssues, money, recalculateRow, mergeDuplicates, mergedMoneyChanged, splitMergedRow, catalogMeasurement};
 })();

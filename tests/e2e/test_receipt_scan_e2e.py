@@ -262,7 +262,7 @@ def test_scanned_amount_recalculates_on_edits_and_preserves_receipt_header(stati
     paid.fill('4,80');expect(discount).to_have_value('0.00')
     expect(row.locator('.scan-discount-type')).to_be_hidden()
     paid.fill('5');expect(discount).to_have_value('0.00')
-    expect(p.locator('#scanArithmetic')).to_contain_text('Проверьте цену, количество и скидку')
+    expect(row.locator('.scan-row-error')).to_contain_text('Проверьте цену, количество и скидку')
     p.locator('#scanConfirmed').check();expect(p.locator('#scanTransfer')).to_be_disabled()
     paid.fill('4,80');qty.fill('');expect(paid).to_have_value('')
     expect(p.locator('#scanTransfer')).to_be_disabled()
@@ -276,3 +276,38 @@ def test_scanned_amount_recalculates_on_edits_and_preserves_receipt_header(stati
     assert float(item['quantity'])==.32 and float(item['regular_unit_price'])==15
     assert float(item['discount_value'])==.13 and item['sale_unit']=='kg'
     expect(p.locator('#opAmount')).to_have_value('4.67')
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width',[320,1440])
+def test_scan_errors_stay_with_their_rows_and_reindex_after_delete(static_server_url,page_with_receipt_api_mock,width):
+    p=page_with_receipt_api_mock;start(p,static_server_url,width)
+    lines=['ООО Соседи','№ ДОК 123']
+    for n in range(1,10):
+        lines.extend([f'Йогурт номер {n}',f'3.00 x1.000 {4 if n in (2,9) else 3}.00'])
+    lines.extend(['ИТОГО К ОПЛАТЕ 29.00','25.10.2026 12:00:00'])
+    stub(p,'\n'.join(lines));upload(p);p.click('#scanRun')
+    rows=p.locator('#scanRows .scan-row')
+    expect(rows).to_have_count(9)
+    expect(p.locator('.scan-row-error:visible')).to_have_count(2)
+    expect(rows.nth(1).locator('.scan-row-error')).to_contain_text('позиции 2')
+    expect(rows.nth(8).locator('.scan-row-error')).to_contain_text('позиции 9')
+    expect(p.locator('#scanArithmetic')).to_be_hidden()
+    expect(p.locator('#scanTransfer')).to_be_disabled()
+    rows.nth(1).locator('.scan-row-error').scroll_into_view_if_needed()
+    p.screenshot(path=f'/tmp/fa-scan-row-errors-{width}.png')
+    assert p.locator('#receiptScanDialog').evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+    rows.nth(1).locator('[data-scan-field=price]').fill('4')
+    expect(rows.nth(1).locator('.scan-row-error')).to_be_hidden()
+    expect(p.locator('.scan-row-error:visible')).to_have_count(1)
+    p.get_by_role('button',name='Удалить позицию 1',exact=True).click()
+    expect(rows).to_have_count(8)
+    expect(rows.nth(7).locator('.scan-row-error')).to_contain_text('позиции 8')
+    expect(p.locator('#scanArithmetic')).to_contain_text('не совпадает с итогом чека')
+    expect(p.locator('#scanArithmetic')).not_to_contain_text('Проверьте цену')
+    rows.nth(7).locator('[data-scan-field=price]').fill('4')
+    p.fill('#scanTotal','26.00')
+    expect(p.locator('.scan-row-error:visible')).to_have_count(0)
+    expect(p.locator('#scanArithmetic')).to_contain_text('Суммы сходятся')
+    p.locator('#scanConfirmed').check()
+    expect(p.locator('#scanTransfer')).to_be_enabled()

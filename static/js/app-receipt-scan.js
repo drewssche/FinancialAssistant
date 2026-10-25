@@ -249,9 +249,10 @@
     node('scanRows').replaceChildren();
     draft.rows.forEach((row,index)=>{
       const el=document.createElement('section');el.className='scan-row';
-      el.innerHTML=`<div class="scan-name"><label class="field"><span>Товар ${index+1}</span><input data-scan-field="name" maxlength="160" placeholder="Найти или ввести товар" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="scanCatalog${index}" required></label><div id="scanCatalog${index}" class="scan-catalog-list receipt-name-picker app-popover hidden" role="listbox" hidden></div></div><div class="scan-row-actions">${iconButton('', 'trash', 'Удалить позицию '+(index+1))}</div><div class="scan-match"></div><div class="scan-codes-host"></div><label class="field scan-category"><span>Категория</span><select data-scan-category aria-label="Категория позиции"></select></label><label class="field scan-brand"><span>Бренд</span><select data-scan-brand aria-label="Бренд товара"></select></label><div class="scan-sale-units" role="group" aria-label="Единица цены и количества"></div><div class="scan-catalog-reference" role="status" hidden></div><div class="scan-row-numbers">${[['price','Цена за ед.'],['quantity','Кол-во'],['discount','Скидка, сумма'],['total','Оплачено']].map(([field,label])=>`<label class="field"><span>${label}</span><input data-scan-field="${field}" inputmode="decimal" aria-describedby="scanMathHint" required></label>`).join('')}</div><label class="field scan-discount-type"><span>Тип скидки</span><select data-scan-field="discount_type"><option value="promo">Акция</option><option value="loyalty_points">Баллы</option><option value="coupon">Купон</option></select></label>`;
+      el.innerHTML=`<div class="scan-name"><label class="field"><span>Товар ${index+1}</span><input data-scan-field="name" maxlength="160" placeholder="Найти или ввести товар" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="scanCatalog${index}" required></label><div id="scanCatalog${index}" class="scan-catalog-list receipt-name-picker app-popover hidden" role="listbox" hidden></div></div><div class="scan-row-actions">${iconButton('', 'trash', 'Удалить позицию '+(index+1))}</div><div class="scan-match"></div><div class="scan-codes-host"></div><label class="field scan-category"><span>Категория</span><select data-scan-category aria-label="Категория позиции"></select></label><label class="field scan-brand"><span>Бренд</span><select data-scan-brand aria-label="Бренд товара"></select></label><div class="scan-sale-units" role="group" aria-label="Единица цены и количества"></div><div class="scan-catalog-reference" role="status" hidden></div><div class="scan-row-numbers">${[['price','Цена за ед.'],['quantity','Кол-во'],['discount','Скидка, сумма'],['total','Оплачено']].map(([field,label])=>`<label class="field"><span>${label}</span><input data-scan-field="${field}" inputmode="decimal" aria-describedby="scanMathHint" required></label>`).join('')}</div><p class="scan-row-error scan-error" id="scanRowError${index}" role="status" hidden></p><label class="field scan-discount-type"><span>Тип скидки</span><select data-scan-field="discount_type"><option value="promo">Акция</option><option value="loyalty_points">Баллы</option><option value="coupon">Купон</option></select></label>`;
       const name=el.querySelector('[data-scan-field=name]'), list=el.querySelector('.scan-catalog-list'), match=el.querySelector('.scan-match');
       name.value=row.name;name.title=row.source||'';
+      el.querySelectorAll('[data-scan-field]').forEach(input=>input.setAttribute('aria-describedby',[input.getAttribute('aria-describedby'),`scanRowError${index}`].filter(Boolean).join(' ')));
       if(row.merged_rows?.length){
         const split=document.createElement('button');split.type='button';split.className='btn btn-secondary btn-xs';window.App.icons.apply(split,'split','Разделить обратно');split.dataset.scanSplit='';
         const confirmation=document.createElement('div');confirmation.className='scan-split-confirm';confirmation.hidden=true;
@@ -423,13 +424,22 @@
   dialog.addEventListener('pointerdown',e=>{if(!e.target.closest('.scan-name'))closeCatalogLists();});
   function readMeta(){if(!draft)return;draft.date=node('scanDate').value;draft.shop=node('scanShop').value;draft.total=inputMoney(node('scanTotal').value);}
   function validate(){
-    if(!draft)return;readMeta();const errors=parser.validate(draft);
-    draft.rows.forEach((row,index)=>{const reason=window.App.receiptCodes.validationError(window.App.receiptCodes.payload(row),draft.shop);if(reason)errors.push(`Позиция ${index+1}: ${reason}`);});
-    node('scanRows').querySelectorAll('.scan-codes-host').forEach(host=>host.refreshCodeState?.());
-    node('scanArithmetic').textContent=errors.length?errors.join(' · '):'Суммы сходятся. Сверьте названия и цифры с фото.';
-    node('scanArithmetic').classList.toggle('scan-error',!!errors.length);
+    if(!draft)return;readMeta();const issues=parser.validationIssues(draft);
+    const errors=issues.map(issue=>issue.message),globalErrors=issues.filter(issue=>issue.rowIndex===null).map(issue=>issue.message);
+    const codeErrors=draft.rows.map(row=>window.App.receiptCodes.validationError(window.App.receiptCodes.payload(row),draft.shop));
+    codeErrors.forEach((reason,index)=>{if(reason)errors.push(`Позиция ${index+1}: ${reason}`);});
+    node('scanRows').querySelectorAll('.scan-row').forEach((el,index)=>{
+      const messages=issues.filter(issue=>issue.rowIndex===index).map(issue=>issue.message),hint=el.querySelector('.scan-row-error');
+      hint.textContent=messages.join(' · ');hint.hidden=!messages.length;
+      el.classList.toggle('has-error',Boolean(messages.length||codeErrors[index]));
+      el.querySelector('.scan-codes-host').refreshCodeState?.();
+    });
+    const summary=node('scanArithmetic');
+    summary.textContent=globalErrors.length?globalErrors.join(' · '):errors.length?'':'Суммы сходятся. Сверьте названия и цифры с фото.';
+    summary.hidden=!summary.textContent;summary.classList.toggle('scan-error',!!globalErrors.length);
     node('scanTransfer').disabled=errors.length>0||!node('scanConfirmed').checked||transferred;return errors;
   }
+
   function metaChanged(id){
     node('scanConfirmed').checked=false;
     if(id==='scanShop'&&draft?.shop!==node('scanShop').value){
