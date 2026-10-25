@@ -27,6 +27,8 @@ def open_app(page, url, width):
     _open_app(page,url)
     page.evaluate("window.App.getRuntimeModule('operation-modal').openCreateModal()")
     page.wait_for_selector('#createModal.operation-editor')
+    page.wait_for_selector('#scanDate', state='attached')
+    page.evaluate('async()=>{await document.fonts.ready;await new Promise(requestAnimationFrame);}')
 
 
 @pytest.mark.e2e

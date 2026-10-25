@@ -52,7 +52,7 @@ def test_weighted_line_discount_modes_and_edit_roundtrip(static_server_url, page
     row.locator('[data-receipt-field="discount_value"]').fill('3.65')
     row.locator('[data-receipt-field="quantity"]').fill('0.242')
     expect(row.locator('.receipt-line-total strong')).to_contain_text('3,65')
-    expect(row.locator('.receipt-pricing-explanation')).to_contain_text('введённый итог сохраняется')
+    expect(row.locator('.receipt-pricing-explanation')).to_contain_text('Итог фиксирован.')
     payload = page.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()[0]")
     for control in row.locator('.receipt-discount-calculation input, .receipt-discount-calculation select').all():
         box = control.bounding_box()

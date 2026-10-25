@@ -361,7 +361,8 @@
       if (n.refresh) {
         n.refresh.classList.toggle("hidden", source === "manual");
         n.refresh.disabled = uiState[mode].pending !== null;
-        n.refresh.textContent = uiState[mode].pending ? "Обновляем…" : "Обновить курс";
+        window.App.icons.apply(n.refresh, "refresh", uiState[mode].pending ? "Обновляем…" : "Обновить курс");
+        n.refresh.setAttribute("aria-busy", String(uiState[mode].pending !== null));
       }
       if (n.rateLabel) {
         n.rateLabel.textContent = `Курс ${context.baseCurrency} за ${context.scale} ${context.currency}`;

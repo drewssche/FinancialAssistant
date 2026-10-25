@@ -268,3 +268,22 @@
 #createCurrencyFields .currency-modal-row:has(#currencyTradeDateField) {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
 }
+
+@media (max-width: 400px) {
+  :is(#createModal, #editModal).operation-editor :is(#opDateField, #editDateField, #createKindSwitch, #editKindSwitch) {
+    grid-column: 1 / -1;
+  }
+  :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-item-identity {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "shop" "brand" "name" "category";
+  }
+  /* Keep price + discount and quantity usable; total and removal move below. */
+  :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-item-money {
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    align-items: end;
+    gap: 10px;
+  }
+  :is(#createModal, #editModal).operation-editor :is(#opReceiptFields, #editReceiptFields) .receipt-remove-btn {
+    justify-self: end;
+  }
+}
