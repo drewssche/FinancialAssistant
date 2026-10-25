@@ -403,3 +403,33 @@ def test_name_selection_shows_only_selected_stores_catalog_price(static_server_u
     expect(row.locator('.scan-catalog-reference')).to_be_hidden()
     row.locator('[data-scan-field=name]').focus();row.locator('.receipt-template-suggestion').first.click()
     expect(row.locator('.scan-catalog-reference')).to_be_hidden()
+
+@pytest.mark.e2e
+def test_loaded_catalog_preserves_price_and_size_when_template_hints_overlap(static_server_url,page_with_receipt_api_mock):
+    p=page_with_receipt_api_mock
+    offer={'id':55,'product_id':51,'product_name':'Капучино (M)','name':'Капучино (M)',
+           'shop_name':'Green','source_id':5,'latest_unit_price':'3.39','use_count':1}
+    enriched={**offer,'catalog_price':{'amount':'3.39','currency':'BYN','recorded_at':'2026-03-31'},
+              'sale_unit':'piece','package_quantity':'300','package_unit':'ml','measurement_source':'offer'}
+    p.route('**/item-templates?**',lambda r:r.fulfill(json={'items':[offer],'total':1,'page':1,'page_size':200}))
+    p.route('**/catalog-products?**',lambda r:r.fulfill(json={'items':[{'id':51,'name':'Капучино (M)','category_id':103,'offers':[enriched]}],'total':1,'page':1,'page_size':200}))
+    p.route('**/lookup-codes',lambda r:r.fulfill(json={'items':[],'auto_match':False}))
+    p.route('**/lookup-site-codes',lambda r:r.fulfill(json={'items':[],'state':'not_found'}))
+    start(p,static_server_url,390)
+    p.evaluate("window.App.getRuntimeModule('operation-modal').receiptCatalog.load()")
+    stub(p,'ООО ГРИНРОЗНИЦА\n№ ДОК 123\nКапуч\n4816413213090 3.39\nИТОГО К ОПЛАТЕ 3.39\n25.10.2026 12:00:00')
+    upload(p);p.click('#scanRun')
+    row=p.locator('.scan-row').first
+    expect(p.locator('#scanShop')).to_have_value('Green')
+    row.locator('[data-scan-field=name]').focus();row.locator('.receipt-template-suggestion').first.click()
+    expect(row.locator('.scan-catalog-reference')).to_contain_text('3,39 BYN')
+    expect(row.locator('.scan-catalog-reference')).to_contain_text('Green · 31.03.2026')
+    expect(row.get_by_role('spinbutton',name='Размер одной упаковки',exact=True)).to_have_value('300')
+    expect(row.locator('[data-scan-field=price]')).to_have_value('')
+    expect(row.locator('[data-scan-field=quantity]')).to_have_value('')
+    expect(row.locator('[data-scan-field=total]')).to_have_value('3.39')
+    row.locator('.scan-catalog-reference').scroll_into_view_if_needed()
+    p.screenshot(path='/tmp/fa-scan-catalog-price-fix.png')
+    p.fill('#scanShop','Другой магазин')
+    row.locator('[data-scan-field=name]').focus();row.locator('.receipt-template-suggestion').first.click()
+    expect(row.locator('.scan-catalog-reference')).to_be_hidden()

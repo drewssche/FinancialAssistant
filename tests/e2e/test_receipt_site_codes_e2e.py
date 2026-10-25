@@ -132,6 +132,13 @@ def test_preview_is_read_only_responsive_and_other_store_never_links(static_serv
     expect(card).to_contain_text('Другой магазин · для сверки')
     expect(card.get_by_role('button',name='Выбрать ссылку')).to_have_count(0)
     expect(p.get_by_role('link',name='Поиск в интернете',exact=True)).to_have_attribute('href','https://www.google.com/search?q=%224811040140757%22')
+    web=p.get_by_role('link',name='Поиск в интернете',exact=True)
+    web.scroll_into_view_if_needed()
+    assert web.evaluate('''n=>{const range=document.createRange();range.selectNodeContents(n);
+      const text=range.getBoundingClientRect(),box=n.getBoundingClientRect();
+      return Math.abs(text.y+text.height/2-box.y-box.height/2)<2
+        && Math.abs(text.x+text.width/2-box.x-box.width/2)<2;}''')
+    p.screenshot(path=f'/tmp/fa-preview-button-fix-{width}.png')
     p.locator('#scanConfirmed').check();p.click('#scanTransfer')
     data=p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
     assert not data[0]['site_selection'] and float(data[0]['unit_price'])==5.99

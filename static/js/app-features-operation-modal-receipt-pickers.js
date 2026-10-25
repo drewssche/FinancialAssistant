@@ -202,7 +202,9 @@
         const offerById = new Map();
         for (const offer of [...(previous?.offers || []), ...(product.offers || [])]) {
           const offerId = Number(offer?.template_id || offer?.id || 0);
-          if (offerId) offerById.set(offerId, { ...offer, id: offerId, template_id: offerId });
+          // Template hints are shorter than product offers. Keep enriched price
+          // and package metadata when the same offer appears in both responses.
+          if (offerId) offerById.set(offerId, { ...offerById.get(offerId), ...offer, id: offerId, template_id: offerId });
         }
         byId.set(productId, {
           ...previous,
