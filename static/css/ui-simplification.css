@@ -35,7 +35,7 @@
 #catalogProductHistoryControls, .catalog-price-changes-options { border: 0; padding: 0; grid-column: 1 / -1; }
 .catalog-price-changes-advanced, .product-price-controls { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
 #dashboardDebtsList { display: grid; grid-template-columns: minmax(0,1fr); gap: 16px; }
-:is(#debtsSection, #dashboardDebtsList) .debt-mobile-entry { padding: 12px 0; background: none; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; }
+:is(#debtsSection, #dashboardDebtsList) .debt-mobile-entry { padding: 12px 10px; background: none; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; }
 :is(#debtsSection, #dashboardDebtsList) .debt-mobile-entry-body { margin: 8px 0; padding: 0; background: none; border: 0; }
 :is(#debtsSection, #dashboardDebtsList) .debt-mobile-entry-stats { display: flex; flex-wrap: wrap; gap: 6px 16px; }
 :is(#debtsSection, #dashboardDebtsList) .debt-mobile-entry-topline { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }

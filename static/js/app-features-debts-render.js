@@ -410,9 +410,9 @@
                     <span class="muted-small">Погашено: <strong class="debt-amount-repaid ${repaidClass}">${formatDebtMoney(debt.repaid_total, debt.currency || "BYN")}</strong></span>
                     ${debtClosureMeta(debt)}
                   </div>
-                  ${noteText ? `<div class="muted-small debt-mobile-entry-note">${noteText}</div>` : ""}
                 </div>
                 ${renderDebtActions(debt, {dashboard})}
+                ${noteText ? `<div class="muted-small debt-mobile-entry-note">${noteText}</div>` : ""}
               </article>
             `;
   }

@@ -53,7 +53,7 @@
 :is(#debtsSection, #dashboardDebtsList) .debt-card { padding: 12px 0 0; background: none; border: 0; border-top: 1px solid var(--border); border-radius: 0; box-shadow: none; }
 :is(#debtsSection, #dashboardDebtsList) .debt-card-children-wrap { margin-top: 8px; border: 0; border-radius: 0; }
 :is(#debtsSection, #dashboardDebtsList) .debt-card h3 { font-size: 16px; overflow-wrap: anywhere; }
-:is(#debtsSection, #dashboardDebtsList) .debt-card .table td { vertical-align: middle; }
+:is(#debtsSection, #dashboardDebtsList) .debt-card .table td { vertical-align: top; }
 :is(#debtsSection, #dashboardDebtsList) .debt-direct-actions { max-width: 180px; min-width: 134px; margin-left: auto; }
 .debt-list-maintenance { display: flex; justify-content: flex-end; margin-top: 24px; }
 @media (max-width: 1100px) {
@@ -92,7 +92,7 @@
   #debtsSection .debt-toolbar-search { flex: 1 1 100%; width: 100%; }
   #debtsSection .debt-toolbar .segmented { display: flex; width: 100%; }
   #debtsSection .debt-toolbar .segmented-btn { flex: 1; min-height: 44px; }
-  :is(#debtsSection, #dashboardDebtsList) .debt-mobile-entry { padding: 12px 0; background: none; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; }
+  :is(#debtsSection, #dashboardDebtsList) .debt-mobile-entry { padding: 12px 10px; min-width:0; grid-template-columns:minmax(0,1fr); background: none; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; }
   :is(#debtsSection, #dashboardDebtsList) .debt-mobile-entry-head { display: block; }
   :is(#debtsSection, #dashboardDebtsList) .debt-mobile-entry-body { margin: 8px 0; padding: 0; border: 0; }
   :is(#debtsSection, #dashboardDebtsList) .debt-direct-actions { max-width: none; min-width: 0; justify-content: flex-start; margin: 8px 0 0; }
@@ -209,8 +209,14 @@
 #dashboardDebtsList .debt-card th:nth-child(7) {width:104px;}
 :is(#debtsSection, #dashboardDebtsList) .debt-card td {overflow-wrap:anywhere;}
 :is(#debtsSection, #dashboardDebtsList) .debt-card :is(.debt-amount-principal,.debt-amount-repaid,.debt-amount-outstanding) {white-space:normal;overflow-wrap:anywhere;}
-:is(#debtsSection, #dashboardDebtsList) .debt-due-head {flex-wrap:wrap;}
+:is(#debtsSection, #dashboardDebtsList) .debt-due-head {flex-wrap:wrap;align-items:flex-start;}
 @media (min-width:641px) and (max-width:1200px) {
   :is(#debtsSection, #dashboardDebtsList) .debt-card th:nth-child(2) {width:21%;}
   :is(#debtsSection, #dashboardDebtsList) .debt-card th:nth-child(5) {width:22%;}
 }
+
+/* Notes may grow below the fixed entry header and actions. */
+:is(#debtsSection, #dashboardDebtsList) .debt-due-days-badge {max-width:100%;overflow-wrap:anywhere;}
+:is(#debtsSection, #dashboardDebtsList) .debt-mobile-card-title-block {grid-template-columns:minmax(0,1fr) auto;align-items:start;}
+:is(#debtsSection, #dashboardDebtsList) .debt-closed-toggle {grid-column:1 / -1;max-width:100%;white-space:normal;}
+:is(#debtsSection, #dashboardDebtsList) .debt-mobile-entry-note {min-width:0;overflow-wrap:anywhere;}

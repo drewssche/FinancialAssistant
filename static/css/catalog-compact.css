@@ -175,3 +175,15 @@
 }
 
 #itemBrandsView .item-brands-heading { flex-direction: row; align-items: center; }
+
+/* Long titles stay in their own column; controls anchor to the row's top. */
+#itemCatalogSection :is(.catalog-product-row,.catalog-product-offer-row) > td,
+#itemCatalogBody > tr > td, #itemBrandsBody > tr > td {vertical-align:top;}
+#itemCatalogSection .catalog-product-offer-row td[data-label="Предложение"] {white-space:normal;overflow-wrap:anywhere;}
+.catalog-product-modal-offer {align-items:start;}
+.catalog-product-modal-offer > .catalog-product-offer-menu {align-self:start;}
+.catalog-product-candidate {align-items:flex-start;}
+.catalog-product-candidate > button {flex-shrink:0;}
+@media(max-width:600px) {
+ .catalog-product-candidate {align-items:stretch;}
+}

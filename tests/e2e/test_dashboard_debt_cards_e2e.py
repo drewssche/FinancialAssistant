@@ -63,6 +63,13 @@ def test_counterparty_columns_align_with_different_amounts_notes_and_due_dates(s
                 for actual,expected in zip(group,positions[0]):
                     assert abs(actual['x']-expected['x'])<1 and abs(actual['w']-expected['w'])<1
             assert root.locator('td').evaluate_all('cells=>cells.every(c=>!c.getBoundingClientRect().width||c.scrollWidth<=c.clientWidth+1)')
+        if width > 640:
+            offsets = root.locator('tr.debt-record-row').evaluate_all("""rows => rows.map(row =>
+                row.querySelector('.debt-direct-actions').getBoundingClientRect().top - row.getBoundingClientRect().top)""")
+            assert max(offsets) - min(offsets) < 1
+        else:
+            for entry in root.locator('.debt-mobile-entry').all():
+                assert entry.locator('.debt-mobile-entry-note').bounding_box()['y'] >= entry.locator('.debt-direct-actions').bounding_box()['y'] + entry.locator('.debt-direct-actions').bounding_box()['height']
         for button in root.locator('.debt-direct-actions button').all():
             b=button.bounding_box();box=root.bounding_box()
             assert b and b['x']>=box['x']-1 and b['x']+b['width']<=box['x']+box['width']+1

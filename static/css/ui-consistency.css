@@ -154,3 +154,14 @@
  padding:4px 6px;border-radius:12px;box-sizing:border-box;
 }
 .item-brand-name-button {border-radius:var(--radius-pill);}
+
+/* Shared title tracks keep quote controls aligned in adjacent catalog cards. */
+.watch-product-sources {display:grid;gap:8px;align-content:start;min-width:0;}
+.watch-product-source {min-width:0;overflow-wrap:anywhere;}
+.watch-quote-head {align-items:flex-start;}
+#dashboardProductWatches .watch-card {align-content:start;}
+#dashboardProductWatches .watch-card > .catalog-product-name-btn {align-self:start;white-space:normal;overflow-wrap:anywhere;}
+@supports(grid-template-rows:subgrid) {
+ #dashboardProductWatches [data-watch-products] > .watch-product-card {display:grid;grid-row:span 2;grid-template-rows:subgrid;}
+ #dashboardProductWatches [data-watch-events] > .watch-card {display:grid;grid-row:span 3;grid-template-rows:subgrid;}
+}

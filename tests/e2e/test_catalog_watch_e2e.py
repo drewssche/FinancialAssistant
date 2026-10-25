@@ -238,6 +238,10 @@ def test_dashboard_product_cards_tabs_and_price_conditions(static_server_url,pag
     name='Сырок творожный глазированный Ясь Белоус Фундук-какао 45г'
     snapshot={'name':name,'source':'Green','price':'1.10','regular_price':'1.49','unit':'шт.', 'available':True,'conditions':'Цена сайта без адреса доставки','url':'https://green-dostavka.by/product/cheese/'}
     data={'tracked_count':1,'offers':[{'product_id':401,'product_name':name,'snapshot':snapshot,'checked_at':'2026-10-16T10:00:00Z'}],'unlinked':[{'product_id':401,'name':name,'matching_state':'not_found','matching_sources':['Е-доставка']}],'events':[]}
+    data['tracked_count']=3
+    for pid, title in [(402, 'Молоко'), (403, name * 4)]:
+        data['offers'].append({'product_id':pid,'product_name':title,
+            'snapshot':{**snapshot,'name':title},'checked_at':'2026-10-16T10:00:00Z'})
     def route(r,req):
         if urlparse(req.url).path.endswith('/catalog-watches'):return r.fulfill(json=data)
         return r.fulfill(json={'enabled':True,'telegram_connected':True,'supported_offer_ids':[],'offers':[]})
@@ -245,27 +249,37 @@ def test_dashboard_product_cards_tabs_and_price_conditions(static_server_url,pag
     setup(p,static_server_url,width)
     p.locator('#closeCatalogProductModalBtn').click()
     host=p.locator('#dashboardProductWatches')
-    expect(host.get_by_role('tab',name='Товары · 1')).to_have_attribute('aria-selected','true')
+    expect(host.get_by_role('tab',name='Товары · 3')).to_have_attribute('aria-selected','true')
     expect(host.locator('details, summary')).to_have_count(0)
-    expect(host.locator('.watch-product-card')).to_have_count(1)
+    expect(host.locator('.watch-product-card')).to_have_count(3)
     expect(host.locator('.watch-match-state')).to_be_visible()
     expect(host.locator('.watch-match-state')).to_contain_text('По кодам пока не найдено')
-    expect(host.locator('.watch-product-source')).to_contain_text('Green')
+    expect(host.locator('.watch-product-source').first).to_contain_text('Green')
     assert host.evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+    cards=host.locator('.watch-product-card')
+    for c in cards.all():
+        assert c.evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+        box=c.bounding_box()
+        for button in c.locator('button,a').all():
+            bb=button.bounding_box()
+            assert bb['x']>=box['x']-1 and bb['x']+bb['width']<=box['x']+box['width']+1
+    if width>=1440:
+        actions=cards.locator('.watch-quote-actions').evaluate_all('nodes=>nodes.map(n=>n.getBoundingClientRect().top)')
+        assert max(actions)-min(actions)<2
     host.scroll_into_view_if_needed();host.screenshot(path=f'/tmp/fa-explicit-dashboard-{width}.png')
-    info=host.get_by_role('button',name='Условия цены',exact=True)
+    info=host.get_by_role('button',name='Условия цены',exact=True).first
     info.click()
     dialog=p.get_by_role('dialog',name='Условия цены',exact=True)
     expect(dialog).to_be_visible();expect(dialog).to_contain_text(snapshot['conditions'])
     p.keyboard.press('Escape');expect(dialog).to_be_hidden();expect(info).to_be_focused()
-    host.get_by_role('tab',name='Товары · 1').focus();p.keyboard.press('ArrowLeft')
+    host.get_by_role('tab',name='Товары · 3').focus();p.keyboard.press('ArrowLeft')
     expect(host.get_by_role('tab',name='Изменения')).to_be_focused()
     expect(host.locator('#watchChangesPanel')).to_be_visible()
     expect(host.locator('#watchProductsPanel')).to_be_hidden()
     p.evaluate("window.App.getRuntimeModule('catalog-watch').loadDashboard()")
     expect(host.get_by_role('tab',name='Изменения')).to_have_attribute('aria-selected','true')
-    host.get_by_role('tab',name='Товары · 1').click()
-    host.locator('[data-watch-open]').click()
+    host.get_by_role('tab',name='Товары · 3').click()
+    host.locator('[data-watch-open]').first.click()
     expect(p.locator('#catalogProductModal')).to_be_visible()
     expect(p.locator('[data-product-tab=offers]')).to_have_class(re.compile('active'))
 
