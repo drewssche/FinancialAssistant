@@ -1068,3 +1068,32 @@ def test_past_nbrb_preview_uses_as_of_option_and_ignores_manual_history_row(
     assert metrics["last_rate_options_as_of"] == "2026-03-05"
     assert metrics["history_fill_calls"] == 1
     assert metrics["generic_history_calls"] == 0
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width',[320,390,800,1440])
+def test_compact_debt_movement_date_is_readable_and_controls_fit(static_server_url,page_with_money_flow_api_mock,width):
+    page=page_with_money_flow_api_mock
+    page.set_viewport_size({'width':width,'height':950})
+    _open_app(page,static_server_url)
+    page.evaluate("window.App.getRuntimeModule('debt-movement-editor').open(9001,'debt-repayment:9102')")
+    sync_api.expect(page.locator('#editModal')).to_be_visible()
+    page.locator('#editDate').fill('2026-10-25')
+    date=page.locator('#editDate');date_box=date.bounding_box()
+    assert date.evaluate('''n=>{
+      const s=getComputedStyle(n),c=document.createElement('canvas').getContext('2d');c.font=s.font;
+      return n.clientWidth-parseFloat(s.paddingLeft)-parseFloat(s.paddingRight)>=c.measureText('25.10.2026').width+12;
+    }''')
+    amount=page.locator('#editAmountCompound').bounding_box()
+    assert amount['y']>=date_box['y']+date_box['height']+4
+    for button in page.locator('#editDateField button').all():
+        if not button.is_visible():continue
+        b=button.bounding_box()
+        assert b['x']>=date_box['x']+4 and b['x']+b['width']<=date_box['x']+date_box['width']-4
+        assert b['y']>=date_box['y']+3 and b['y']+b['height']<=date_box['y']+date_box['height']-3
+    if page.locator('#editDateField .date-step-btn-next').is_visible():
+        page.locator('#editDateField .date-step-btn-next').click()
+        sync_api.expect(date).to_have_value('2026-10-26')
+    card=page.locator('#editModal .operation-modal-card')
+    assert card.evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+    page.screenshot(path=f'/tmp/fa-debt-movement-date-{width}.png')

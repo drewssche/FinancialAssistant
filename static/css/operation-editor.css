@@ -253,3 +253,13 @@
 /* Date buttons are centred on the input, not on a stretched grid row or its text baseline. */
 #createDebtFields .date-input-wrap { align-self: start; min-width: 0; }
 #createDebtFields .date-input-wrap > input[type="date"] { display: block; }
+
+/* This editor stays compact even on desktop: do not squeeze its date into
+   the ordinary operation form's four-column slot. */
+#editModal.operation-editor.editing-debt-movement :is(#editDateField, #editAmountCompound) {
+  grid-column: 1 / -1;
+}
+#editModal.operation-editor.editing-debt-movement #editDateField {
+  width: 100%;
+  min-width: 0;
+}
