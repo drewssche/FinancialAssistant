@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.api.deps import get_current_user_id
 from app.db.session import get_db
-from app.schemas.catalog_identity import VariantInput, OfferIdentityInput, ReceiptCodeLookupInput
+from app.schemas.catalog_identity import VariantInput, OfferIdentityInput, ReceiptCodeLookupInput, ReceiptSiteLookupInput, ReceiptThumbnailInput
 from app.services.receipt_code_service import ReceiptCodeService
 from app.services.catalog_identity_service import CatalogIdentityService
 
@@ -26,9 +26,15 @@ def lookup_receipt_codes(payload: ReceiptCodeLookupInput, user_id: int = Depends
 
 
 @router.post('/lookup-site-codes')
-def lookup_site_codes(payload: ReceiptCodeLookupInput, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+def lookup_site_codes(payload: ReceiptSiteLookupInput, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
     from app.services.receipt_site_service import ReceiptSiteService
     return run(lambda: ReceiptSiteService(db).lookup(user_id=user_id, **payload.model_dump()))
+
+
+@router.post('/receipt-thumbnail')
+def receipt_thumbnail(payload: ReceiptThumbnailInput, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    from app.services.receipt_site_service import ReceiptSiteService
+    return ReceiptSiteService(db).image(user_id=user_id, token=payload.token)
 
 
 @router.get('/{product_id}/identity')

@@ -231,3 +231,11 @@ def test_selected_catalog_size_fallback_is_conservative():
     assert all(rows[i]['package_quantity'] is None for i in [3,4,5])
     assert rows[6]['package_quantity']==50 and not rows[6].get('catalog_size_from_name')
     assert rows[7]['package_quantity']==30
+
+
+def test_euroopt_article_without_barcode_and_article_before_amount():
+    for item in ['2229644 Пицца Микс 170г\n3.99 x1.000 3.99', 'Пицца Микс 170г\n2229644 3.99 x1.000 3.99']:
+        data=run('ООО Евроторг\n№ ДОК 123\n'+item+'\nИТОГО К ОПЛАТЕ 3.99\n23.10.2026 12:00:00')['draft']
+        assert data['shop']=='Евроопт'
+        assert data['rows'][0]['code_entries']==[{'kind':'unknown','code':'2229644'}]
+        assert data['rows'][0]['total']==399

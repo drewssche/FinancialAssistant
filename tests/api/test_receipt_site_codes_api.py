@@ -13,8 +13,8 @@ URL = 'https://edostavka.by/product/2186323'
 @pytest.fixture(autouse=True)
 def retailer(monkeypatch):
     site.discover.cache_clear()
-    monkeypatch.setattr(site.provider, 'search_products', lambda key, query, kind: [{'url': URL}])
-    monkeypatch.setattr(site.provider, 'fetch_product', lambda url: {
+    monkeypatch.setattr(site.preview, 'search_products', lambda key, query, kind: [{'url': URL}])
+    monkeypatch.setattr(site.preview, 'fetch_product', lambda url: {
         'url': url, 'name': 'Пельмени 430 г', 'price': '99.00', 'unit': 'шт.',
         'identifiers': {'article': '2186323', 'barcodes': [CODE]}})
     yield
@@ -30,7 +30,7 @@ def test_preview_read_only_and_save_atomic_without_changing_receipt_price(client
     result = lookup(client)
     assert result.status_code == 200, result.text
     data = result.json()
-    assert data['auto_match'] and len(data['items']) == 1
+    assert not data['auto_match'] and len(data['items']) == 1
     assert client.get('/api/v1/operations/catalog-products').json()['total'] == 0
     token = data['items'][0]['site_selection']
     response = receipt(client, CODES, shop_name='Евроопт', site_selection=token)
@@ -62,19 +62,19 @@ def test_selection_context_and_signature_reject_without_partial_save(client, cha
 
 
 def test_multiple_exact_candidates_require_choice(client, monkeypatch):
-    monkeypatch.setattr(site.provider, 'search_products', lambda *args: [{'url': URL}, {'url': 'https://edostavka.by/product/42'}])
+    monkeypatch.setattr(site.preview, 'search_products', lambda *args: [{'url': URL}, {'url': 'https://edostavka.by/product/42'}])
     result = lookup(client).json()
     assert not result['auto_match'] and len(result['items']) == 2
 
 
 def test_conflicting_barcode_even_with_matching_article_never_selected(client, monkeypatch):
-    monkeypatch.setattr(site.provider, 'fetch_product', lambda url: {'url': url, 'name': 'Другой', 'identifiers': {'article': '2186323', 'barcodes': ['4810729017151']}})
+    monkeypatch.setattr(site.preview, 'fetch_product', lambda url: {'url': url, 'name': 'Другой', 'identifiers': {'article': '2186323', 'barcodes': ['4810729017151']}})
     assert lookup(client).json()['items'] == []
 
 
 def test_unavailable_and_unsupported_sites_do_not_block_receipt(client, monkeypatch):
     def fail(*args): raise site.provider.RetailerUnavailable('unavailable')
-    monkeypatch.setattr(site.provider, 'search_products', fail)
+    monkeypatch.setattr(site.preview, 'search_products', fail)
     assert lookup(client).json()['state'] == 'unavailable'
     assert lookup(client, shop_name='Маяк').json()['state'] == 'unsupported'
     assert receipt(client, CODES, shop_name='Евроопт').status_code == 201
@@ -83,7 +83,7 @@ def test_unavailable_and_unsupported_sites_do_not_block_receipt(client, monkeypa
 @pytest.mark.parametrize('name', ['Либретик', 'Либретек', 'ООО «Либретик»'])
 def test_alias_reuses_sosedi_source_and_search_provider(client, monkeypatch, name):
     source_id = _source(client, 'Соседи'); calls = []
-    monkeypatch.setattr(site.provider, 'search_products', lambda key, query, kind: calls.append(key) or [])
+    monkeypatch.setattr(site.preview, 'search_products', lambda key, query, kind: calls.append(key) or [])
     assert lookup(client, shop_name=name).status_code == 200
     assert calls and set(calls) == {'sosedi'}
     response = receipt(client, CODES, shop_name=name)
@@ -97,7 +97,7 @@ def test_alias_reuses_sosedi_source_and_search_provider(client, monkeypatch, nam
 def test_other_users_source_not_queried(client, monkeypatch):
     source_id = _source(client, 'Соседи')
     app.dependency_overrides[get_current_user_id] = lambda: 2
-    monkeypatch.setattr(site.provider, 'search_products', lambda *args: pytest.fail('must not fetch'))
+    monkeypatch.setattr(site.preview, 'search_products', lambda *args: pytest.fail('must not fetch'))
     assert lookup(client, source_id=source_id).status_code == 404
 
 
@@ -107,9 +107,9 @@ def test_other_users_source_not_queried(client, monkeypatch):
 ])
 def test_selected_retailer_is_used_and_link_saved_for_both_networks(client,monkeypatch,shop,key,url):
     calls=[]
-    monkeypatch.setattr(site.provider,'search_products',lambda actual_key,query,kind:calls.append(actual_key) or [{'url':url}])
+    monkeypatch.setattr(site.preview,'search_products',lambda actual_key,query,kind:calls.append(actual_key) or [{'url':url}])
     data=lookup(client,shop_name=shop).json()
-    assert data['auto_match'] and set(calls)=={key}
+    assert not data['auto_match'] and set(calls)=={key}
     response=receipt(client,CODES,shop_name=shop,site_selection=data['items'][0]['site_selection'])
     assert response.status_code==201,response.text
     assert response.json()['receipt_total']=='6.20'
@@ -125,7 +125,7 @@ def test_changed_article_prevents_silent_link_even_when_barcode_matches(client):
 
 def test_internal_store_code_is_not_searched_as_website_article(client,monkeypatch):
     code='2237310222750'
-    monkeypatch.setattr(site.provider,'fetch_product',lambda url:{'url':url,'name':'Лук красный','identifiers':{'article':code,'barcodes':[]}})
+    monkeypatch.setattr(site.preview,'fetch_product',lambda url:{'url':url,'name':'Лук красный','identifiers':{'article':code,'barcodes':[]}})
     result=lookup(client,codes=[{'kind':'retailer','code':code}])
     assert result.status_code==200,result.text
     assert not result.json()['items'] and result.json()['state']=='missing_codes'

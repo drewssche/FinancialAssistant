@@ -33,3 +33,12 @@ class ReceiptCodeLookupInput(BaseModel):
     codes: list[LookupCodeInput] = Field(min_length=1, max_length=10)
     shop_name: str = Field(default='', max_length=160)
     source_id: int | None = Field(default=None, gt=0)
+
+
+class ReceiptSiteLookupInput(ReceiptCodeLookupInput):
+    template_id: int | None = Field(default=None, gt=0)
+    other_sources: bool = False
+
+
+class ReceiptThumbnailInput(BaseModel):
+    token: str = Field(min_length=1, max_length=8192)

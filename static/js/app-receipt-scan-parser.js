@@ -8,7 +8,7 @@
     const found=new Map();
     for(const line of source.split('\n')){
       for(const match of line.matchAll(/(?<![\d.,])\d{8,14}(?![\d.,])/g))found.set(match[0],{kind:'unknown',code:match[0]});
-      const prefix=line.match(/^\s*(\d{4,7})\s+(?=[а-яa-z])/i);
+      const prefix=line.match(/^\s*(\d{4,7})\s+(?=[а-яa-z])/i)||line.match(/^\s*(\d{4,7})\s+(?=\d+[.,]\d{2}\s*[xх×*])/i);
       if(prefix)found.set(prefix[1],{kind:'unknown',code:prefix[1]});
       const labelled=line.match(/(?:артикул|арт\.|код товара)\s*[:№]?\s*([a-zа-я0-9_-]+)/i);
       if(labelled)found.set(labelled[1],{kind:'retailer',code:labelled[1],manual_kind:true});

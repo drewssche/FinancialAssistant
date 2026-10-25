@@ -1,6 +1,7 @@
 (() => {
   const {core} = window.App;
   let codeHintId=0;
+  const thumbnails=new Map();
   const siteQueue=[];let siteActive=0;
   function siteRequest(run){
     return new Promise((resolve,reject)=>{siteQueue.push({run,resolve,reject});drainSites();});
@@ -63,7 +64,7 @@
       const list=entries(row),kept=list.filter(e=>!e.from_catalog||e.from_receipt).map(e=>e.from_receipt?{...e,from_catalog:false}:e);list.splice(0,list.length,...kept);row.codes_loaded_entity=null;
     }
     row.catalog_name_touched=false;row.catalog_measurement_touched=false;row.catalog_edit_variant_id=null;
-    row.site_selection=null;row.site_name='';
+    row.site_selection=null;row.site_name='';row.site_preview=null;
     row.code_errors=[];row.variant_id=null;row.variant_snapshot=null;row.variant_options=null;row.variant_status='';row.brand_touched=false;
     for(const key of ['product_id','product_name','name','template_id','source_id','brand_id']) row[key]=found[key]??null;
     if(!row.category_touched) row.category_id=found.category_id||null;
@@ -116,42 +117,84 @@
     const siteStatus=document.createElement('p');siteStatus.className='muted-small';siteStatus.setAttribute('role','status');
     const siteResults=document.createElement('div');siteResults.className='receipt-code-results';
     if(siteSearch)details.append(siteStatus,siteResults);
-    if(row.site_selection)siteStatus.textContent='На сайте: '+(row.site_name||row.name);
+    const siteActions=document.createElement('div');siteActions.className='receipt-preview-actions';
+    if(siteSearch)details.append(siteActions);
+    function webActions(){
+      siteActions.replaceChildren();
+      const codes=payload(row),barcode=codes.find(e=>e.kind==='barcode'&&validBarcode(e.code)&&!internalRetailerCode(e.code));
+      if(!barcode)return;
+      const others=document.createElement('button');others.type='button';others.className='btn btn-secondary btn-xs';others.textContent='Другие магазины';
+      others.onclick=()=>lookupSite(true,true);siteActions.append(others);
+      const web=document.createElement('a');web.className='btn btn-secondary btn-xs';web.textContent='Поиск в интернете';
+      web.href='https://www.google.com/search?q='+encodeURIComponent('"'+barcode.code+'"');web.target='_blank';web.rel='noopener noreferrer';siteActions.append(web);
+    }
+    function showPreview(items){
+      siteResults.replaceChildren();
+      for(const found of items){
+        const card=document.createElement('article');card.className='receipt-product-preview';
+        const photo=document.createElement('div');photo.className='receipt-preview-photo';photo.textContent='Нет фото';
+        const body=document.createElement('div');body.className='receipt-preview-body';
+        const title=document.createElement('strong');title.textContent=found.name;
+        const source=document.createElement('small');source.className='muted-small';
+        source.textContent=[found.source,found.reference_only?'Другой магазин · для сверки':'Сайт выбранного источника'].filter(Boolean).join(' · ');
+        const match=document.createElement('small');match.textContent=(found.matched_by==='retailer'?'Артикул совпадает':'Штрихкод совпадает')+(found.matched_code?' · '+found.matched_code.replace(/^0(?=\d{13}$)/,''):'');
+        const size=document.createElement('small');
+        const named=String(found.size_label||found.name||'').match(/(?:^|[^\p{L}\d])(\d+(?:[.,]\d+)?)\s*(кг|мл|г|л)(?=$|[^\p{L}])/iu);
+        if(named)size.textContent='Фасовка на сайте: '+named[1]+' '+named[2];
+        if(found.brand)size.textContent=[found.brand,size.textContent].filter(Boolean).join(' · ');
+        const warning=document.createElement('small');warning.className='receipt-preview-warning';
+        warning.textContent=[found.code_warning,sizeMismatch(found)?'Другая фасовка — проверьте товар':''].filter(Boolean).join(' · ');
+        const actions=document.createElement('div');actions.className='receipt-preview-actions';
+        let safeUrl=null;try{const u=new URL(found.url);if(u.protocol==='https:'&&!u.username&&!u.password)safeUrl=u.href;}catch{}
+        if(safeUrl){const link=document.createElement('a');link.href=safeUrl;link.target='_blank';link.rel='noopener noreferrer';link.className='btn btn-secondary btn-xs';link.textContent='Открыть страницу';actions.append(link);}
+        if(found.site_selection){
+          const select=document.createElement('button');select.type='button';select.className='btn btn-secondary btn-xs';
+          select.textContent=row.site_selection===found.site_selection?'Ссылка выбрана':'Выбрать ссылку';select.disabled=row.site_selection===found.site_selection;
+          select.onclick=()=>{row.site_selection=found.site_selection;row.site_name=found.name;row.site_preview=items;showPreview(items);onChange();};actions.append(select);
+        }
+        // Public metadata is a proposal: never replace receipt fields automatically.
+        const use=document.createElement('button');use.type='button';use.className='btn btn-secondary btn-xs';use.textContent='Использовать название';
+        use.onclick=()=>{onSiteSelect({...found,use_name:true});onChange();};actions.append(use);
+        body.append(title,source,match);if(size.textContent)body.append(size);if(warning.textContent)body.append(warning);body.append(actions);card.append(photo,body);siteResults.append(card);
+        if(found.image_token){
+          const expected=seq;
+          const render=data=>{if(!connected()||expected!==seq||!photo.isConnected||!data?.image?.startsWith('data:image/jpeg;base64,'))return;
+            const img=document.createElement('img');img.src=data.image;img.alt=found.name;img.width=80;img.height=80;photo.replaceChildren(img);};
+          if(thumbnails.has(found.image_token))render(thumbnails.get(found.image_token));
+          else siteRequest(()=>core.requestJson('/api/v1/operations/catalog-products/receipt-thumbnail',{method:'POST',headers:{...core.authHeaders(),'Content-Type':'application/json'},body:JSON.stringify({token:found.image_token})}))
+            .then(data=>{if(thumbnails.size>=32)thumbnails.delete(thumbnails.keys().next().value);thumbnails.set(found.image_token,data);render(data);}).catch(()=>{});
+        }
+      }
+    }
+    const sizeMismatch=found=>{
+      const size=text=>String(text||'').match(/(?:^|[^\p{L}\d])(\d+(?:[.,]\d+)?)\s*(кг|мл|г|л)(?=$|[^\p{L}])/iu);
+      const named=size(row.name),site=size(found.size_label||found.name);
+      const units={kg:['g',1000],кг:['g',1000],g:['g',1],г:['g',1],l:['ml',1000],л:['ml',1000],ml:['ml',1],мл:['ml',1]};
+      const current=row.package_quantity&&units[row.package_unit]?[Number(row.package_quantity),row.package_unit]:named?[Number(named[1].replace(',','.')),named[2].toLowerCase()]:null;
+      return Boolean(current&&site&&(units[current[1]][0]!==units[site[2].toLowerCase()][0]||Math.abs(current[0]*units[current[1]][1]-Number(site[1].replace(',','.'))*units[site[2].toLowerCase()][1])>.001));
+    };
     let timer,seq=0;
-    host.invalidateSite=()=>{seq++;row.site_selection=null;row.site_name='';siteStatus.textContent='';siteResults.replaceChildren();};
-    async function lookupSite(){
-      if(!siteSearch||row.site_selection||!connected())return;
+    host.invalidateSite=()=>{seq++;row.site_selection=null;row.site_name='';row.site_preview=null;siteStatus.textContent='';siteResults.replaceChildren();siteActions.replaceChildren();};
+    async function lookupSite(otherSources=false,force=false){
+      if(!siteSearch||!connected())return;
+      if(!force&&row.site_preview?.length){showPreview(row.site_preview);webActions();return;}
       const codes=payload(row);
       if(!codes.length||validationError(codes,shop()))return;
-      const token=seq,before=signature();siteStatus.textContent='Ищу на сайте магазина…';siteResults.replaceChildren();
+      const token=++seq,before=signature();siteStatus.textContent=otherSources?'Ищу по штрихкоду в других магазинах…':'Ищу на сайте магазина…';siteResults.replaceChildren();siteActions.replaceChildren();
       try{
-        const data=await siteRequest(()=>{if(token!==seq||!connected()||before!==signature())return null;return core.requestJson('/api/v1/operations/catalog-products/lookup-site-codes',{method:'POST',headers:{...core.authHeaders(),'Content-Type':'application/json'},body:JSON.stringify({codes,shop_name:shop()||''})});});
+        const template=row.template_id||row.catalog?.template_id;
+        const request={codes,shop_name:shop()||'',...(template?{template_id:Number(template)}:{}),...(otherSources?{other_sources:true}:{})};
+        const data=await siteRequest(()=>{if(token!==seq||!connected()||before!==signature())return null;return core.requestJson('/api/v1/operations/catalog-products/lookup-site-codes',{timeoutMs:60000,method:'POST',headers:{...core.authHeaders(),'Content-Type':'application/json'},body:JSON.stringify(request)});});
         if(!data||token!==seq||!connected()||before!==signature())return;
         const items=data.items||[];
-        function choose(found){
-          row.site_selection=found.site_selection;row.site_name=found.name;
-          siteStatus.textContent='На сайте: '+found.name;siteResults.replaceChildren();onSiteSelect(found);onChange();
-        }
-        // Unknown package information never replaces the receipt's units or size.
-        const sizeMismatch=found=>{
-          const size=text=>String(text||'').match(/(?:^|[^\p{L}\d])(\d+(?:[.,]\d+)?)\s*(кг|мл|г|л)(?=$|[^\p{L}])/iu);
-          const named=size(row.name),site=size(found.name);
-          const units={kg:['g',1000],кг:['g',1000],g:['g',1],г:['g',1],l:['ml',1000],л:['ml',1000],ml:['ml',1],мл:['ml',1]};
-          const current=row.package_quantity&&units[row.package_unit]?[Number(row.package_quantity),row.package_unit]:named?[Number(named[1].replace(',','.')),named[2].toLowerCase()]:null;
-          return Boolean(current&&site&&(units[current[1]][0]!==units[site[2].toLowerCase()][0]||Math.abs(current[0]*units[current[1]][1]-Number(site[1].replace(',','.'))*units[site[2].toLowerCase()][1])>.001));
-        };
-        if(data.auto_match&&items.length===1&&!sizeMismatch(items[0])){choose(items[0]);return;}
-        siteStatus.textContent=items.length?'Товары на сайте — выберите подходящий':data.state==='unavailable'?'Сайт временно недоступен. Поиск можно повторить.':data.state==='not_found'?'На сайте по кодам не найдено':'';
-        for(const found of items){
-          const button=document.createElement('button');button.type='button';button.className='btn btn-secondary receipt-code-result';
-          const title=document.createElement('strong');title.textContent=found.name;
-          const detail=document.createElement('small');detail.textContent=sizeMismatch(found)?'Другая фасовка — проверьте товар':data.source;
-          button.append(title,detail);button.onclick=()=>choose(found);siteResults.append(button);
-        }
-      }catch(error){if(token===seq&&connected()&&before===signature())siteStatus.textContent='Не удалось проверить сайт. Повторите поиск.';}
+        row.site_preview=items;
+        siteStatus.textContent=items.length?(otherSources?'Найдено в других магазинах — для сверки':'Найдено на сайте источника'):data.state==='unavailable'?'Не удалось проверить сайт или прочитать карточку. Повторите поиск или проверьте другие магазины.':data.state==='not_found'?'На сайте точных совпадений по коду не найдено':data.state==='unsupported'?'Поиск на сайте этого источника пока не поддерживается.':data.state==='missing_codes'?'Внутренние коды проверяются только в каталоге выбранного магазина.':'';
+        if(data.partial&&items.length)siteStatus.textContent+=' · Поиск выполнен не полностью';
+        showPreview(items);webActions();
+      }catch(error){if(token===seq&&connected()&&before===signature()){siteStatus.textContent='Не удалось проверить сайт. Повторите поиск.';webActions();}}
     }
     const signature=()=>JSON.stringify([shop(),list,row.name,row.catalog_new,window.App.measurements.snapshot(row)]);
-    function changed(){seq++;row.site_selection=null;row.site_name='';siteStatus.textContent='';siteResults.replaceChildren();row.code_errors=[];row.code_match_label='';results.replaceChildren();status.textContent='';refreshCodes();onChange();}
+    function changed(){seq++;row.site_selection=null;row.site_name='';row.site_preview=null;siteStatus.textContent='';siteResults.replaceChildren();siteActions.replaceChildren();row.code_errors=[];row.code_match_label='';results.replaceChildren();status.textContent='';refreshCodes();onChange();}
     function draw(){
       fields.replaceChildren();
       list.forEach((entry,index)=>{
@@ -197,7 +240,7 @@
       }catch(error){if(token===seq&&connected())status.textContent='Не удалось проверить коды. Повторите поиск: '+error.message;}
     }
     add.onclick=()=>{list.push({kind:'unknown',code:''});changed();draw();fields.lastElementChild.querySelector('input').focus();};
-    search.onclick=()=>{clearTimeout(timer);lookup(false);};
+    search.onclick=()=>{clearTimeout(timer);row.site_preview=null;lookup(false);};
     host.lookupCodes=()=>lookup(false);
     draw();if(auto&&list.some(e=>e.code))timer=setTimeout(()=>{if(connected())lookup(true);},500);
     else if(siteSearch&&list.some(e=>e.code))timer=setTimeout(()=>{if(connected())lookupSite();},500);

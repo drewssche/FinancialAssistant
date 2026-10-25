@@ -76,8 +76,8 @@
   function savedReview(value){
     const review=structuredClone(value);
     for(const row of review?.rows||[]){
-      delete row.merged_rows;delete row.source;delete row.code_match_result;delete row.site_selection;
-      if(row.catalog)delete row.catalog.site_selection;
+      delete row.merged_rows;delete row.source;delete row.code_match_result;delete row.site_selection;delete row.site_preview;
+      if(row.catalog){delete row.catalog.site_selection;delete row.catalog.site_preview;}
     }
     return review;
   }
@@ -408,7 +408,7 @@
         const key=codeLookupKey(row);
         const auto=!row.catalog_new&&!row.catalog&&row.code_auto_attempted!==key;row.code_auto_attempted=key;
         window.App.receiptCodes.mount(el.querySelector('.scan-codes-host'),{row,shop:()=>node('scanShop').value,auto,siteSearch:true,isActive:()=>dialog.open&&!transferred,
-          onSiteSelect:found=>{if(!row.catalog&&!row.catalog_new&&!row.name_touched){row.name=found.name.slice(0,160);name.value=row.name;refreshCategory();el.refreshCatalog();}},
+          onSiteSelect:found=>{if(found.use_name){row.name=found.name.slice(0,160);row.name_touched=true;if(row.catalog)row.catalog_name_touched=true;name.value=row.name;refreshCategory();el.refreshCatalog();}},
           onChange:()=>{node('scanConfirmed').checked=false;validate();},
           onSelect:found=>{
             const manualSize=row.measurement_user_edited?window.App.measurements.snapshot(row):null;
@@ -491,7 +491,7 @@
     modal.setOperationKind(mode,'expense');
     node(prefix+'Date').value=draft.date;node(prefix+'Date').dispatchEvent(new Event('change',{bubbles:true}));
     node(prefix+'Currency').value=node('scanCurrency').value;node(prefix+'Currency').dispatchEvent(new Event('change',{bubbles:true}));
-    state[mode+'ReceiptItems']=draft.rows.map(r=>modal.createReceiptDraft({...r.catalog,catalog_editable:Boolean(r.catalog),catalog_name_touched:Boolean(r.catalog_name_touched),catalog_measurement_touched:Boolean(r.catalog_measurement_touched),catalog_edit_variant_id:r.catalog_edit_variant_id||null,...(r.brand_touched?{brand_id:r.brand_id,brand_touched:true}:{}),category_id:categoryChoice(r).id,category_touched:Boolean(r.category_touched||categoryChoice(r).reason),name:r.name,quantity:r.quantity,shop_name:draft.shop,...window.App.measurements.snapshot(r),variant_id:r.variant_id||null,variant_snapshot:r.variant_snapshot||null,site_selection:r.site_selection||null,site_name:r.site_name||'',code_entries:r.code_entries||[],code_match_label:r.code_match_label||'',measurement_touched:true,
+    state[mode+'ReceiptItems']=draft.rows.map(r=>modal.createReceiptDraft({...r.catalog,catalog_editable:Boolean(r.catalog),catalog_name_touched:Boolean(r.catalog_name_touched),catalog_measurement_touched:Boolean(r.catalog_measurement_touched),catalog_edit_variant_id:r.catalog_edit_variant_id||null,...(r.brand_touched?{brand_id:r.brand_id,brand_touched:true}:{}),category_id:categoryChoice(r).id,category_touched:Boolean(r.category_touched||categoryChoice(r).reason),name:r.name,quantity:r.quantity,shop_name:draft.shop,...window.App.measurements.snapshot(r),variant_id:r.variant_id||null,variant_snapshot:r.variant_snapshot||null,site_selection:r.site_selection||null,site_name:r.site_name||'',site_preview:r.site_preview||null,code_entries:r.code_entries||[],code_match_label:r.code_match_label||'',measurement_touched:true,
       unit_price:r.price/100, is_discounted:r.discount>0, regular_unit_price:r.discount>0?r.price/100:null,
       discount_mode:r.discount>0?'amount':null, discount_value:r.discount>0?r.discount/100:null,
       discount_type:r.discount>0?r.discount_type||'promo':null,note:r.note||null},mode));

@@ -164,6 +164,7 @@
         code_match_label: seed.code_match_label || "",
         site_selection: seed.site_selection || null,
         site_name: seed.site_name || "",
+        site_preview: seed.site_preview || null,
         details_expanded: Boolean(seed.details_expanded),
         discount_expanded: false,
         template_id: seed.template_id || null,

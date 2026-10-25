@@ -4,6 +4,13 @@
 
 - [x] 2026-09-10: completed plans open for editing directly from operation source chips, plan history, and the activity journal. Enabling recurrence offers the next date and an explicit “Сохранить и возобновить” action; saving reactivates the same plan with its history and linked operations preserved. A read-only server preview and locked save validate dates/end dates, prevent replay of completed occurrences and duplicate reactivation, and refresh reminders. Ordinary edits keep completed plans completed.
 
+## Receipt product previews — 2026-10-25
+
+- [x] Show a persistent inline product card during receipt review: verified code, retailer, name, brand/size when published, safe thumbnail and source link. Apply name/link only on explicit action; receipt amounts remain unchanged. Identity search no longer requires price/stock parsing.
+- [x] Prefer the user's saved matching retailer URL, then that retailer's code search. Offer reference-only exact-barcode results from other supported retailers and an external exact-code search link, without a new search subscription. Store articles never cross retailer boundaries; internal labels stay in the local store catalog.
+- [x] Confirm saved Euroopt receipts contain article-only items (e.g. pizza 2229644). Support article prefixes before names or price/quantity lines. Missing retailer pages differ from network/parser failures; partial failures retain verified candidates.
+- [ ] General search-engine results inside the application require a separate API integration; postponed by user choice.
+
 ## Critical incident infographics — 2026-10-25
 
 - [x] Deliver one PNG with a short caption in Telegram and an inline PNG with a plain-text alternative in email. Use real bounded login-window snapshots and observed service timestamps; mark manual delivery checks as tests. Preserve existing journal, quotas, incident deduplication and policy version. Rendering errors may fall back to text before transport; no second text message after a photo transport failure.
