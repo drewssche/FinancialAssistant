@@ -263,3 +263,8 @@
   width: 100%;
   min-width: 0;
 }
+
+/* The date and its three buttons need room even between mobile breakpoints. */
+#createCurrencyFields .currency-modal-row:has(#currencyTradeDateField) {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+}

@@ -4,6 +4,10 @@
 
 - [x] 2026-09-10: completed plans open for editing directly from operation source chips, plan history, and the activity journal. Enabling recurrence offers the next date and an explicit “Сохранить и возобновить” action; saving reactivates the same plan with its history and linked operations preserved. A read-only server preview and locked save validate dates/end dates, prevent replay of completed occurrences and duplicate reactivation, and refresh reminders. Ordinary edits keep completed plans completed.
 
+## Modal date layout audit — 2026-10-25
+
+- [x] Audit all 19 modal date fields at 320–1440px, including intermediate breakpoints. Let recurring-plan fields and the currency trade date row wrap based on available width; verify calendar-button routing and next-day controls in operation, debt, currency and plan editors.
+
 ## Compact debt date layout — 2026-10-25
 
 - [x] Give the date picker its own full-width row in the compact debt-movement editor, with amount/currency beneath it. Verify readable dates and contained controls at 320–1440px, debt movement saving and the existing new-debt date fields.

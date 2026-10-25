@@ -496,7 +496,7 @@
 
 .plan-recurrence-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
   gap: var(--space-3);
   align-items: start;
   width: 100%;
