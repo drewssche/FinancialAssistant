@@ -126,7 +126,7 @@ def test_real_snapshot_is_owner_scoped_and_includes_plan_receipt_name(db):
     assert db.get(PlanOperation,1).scheduled_date==date(2020,10,28)
     png,plain=render_report(result)
     image=Image.open(BytesIO(png))
-    assert image.width==1080 and 1800<image.height<6400
+    assert image.width==1080 and 900<image.height<3000
     assert 'Eleven · На месяц' in plain and '99999' not in plain
     assert 'ДЕМО' not in plain and 'Пример' not in plain
 
@@ -206,3 +206,49 @@ def test_email_contains_inline_png_and_plain_accessible_report(monkeypatch):
     assert 'cid:financial-report' in message.get_body(preferencelist=('html',)).get_content()
     image_parts=[x for x in message.walk() if x.get_content_type()=='image/png']
     assert len(image_parts)==1 and image_parts[0].get_payload(decode=True)==b'png-content'
+
+
+@pytest.mark.parametrize('kind,start,end', [
+    ('week', '2019-12-23', '2019-12-29'),
+    ('month', '2019-12-01', '2019-12-31'),
+    ('year', '2019-01-01', '2019-12-31'),
+])
+def test_compact_layouts_handle_empty_periods_offline(db, monkeypatch, kind, start, end):
+    import socket
+    monkeypatch.setattr(socket, 'create_connection', lambda *a, **k: pytest.fail('Renderer must stay offline'))
+    period = ReportPeriod(kind, date.fromisoformat(start), date.fromisoformat(end), date(2020,1,1))
+    result = collect_report(db, 2, period, today=period.due)
+    png, plain = render_report(result)
+    image = Image.open(BytesIO(png))
+    assert image.width == 1080 and 900 < image.height < 3000
+    assert 'Пришло: 0,00' in plain and 'Ушло: 0,00' in plain
+    assert 'Разница: 0,00' in plain and 'За период расходов нет.' in plain
+    if kind == 'year':
+        assert all(month+': 0,00' in plain for month in ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'])
+
+
+def test_ring_keeps_operating_expenses_distinct_from_total_outflow_and_keeps_remainder(db):
+    result = collect_report(db, 1, ReportPeriod('month',date(2020,10,1),date(2020,10,31),date(2020,11,1)),today=date(2020,11,1))
+    current = result['current']
+    current.update(cashflow_expense_total=Decimal('260'), expense_total=Decimal('210'), cashflow_total=Decimal('-160'))
+    current['category_breakdown'] = [dict(category_name='Новая категория '+str(i), total_amount=Decimal(i*10)) for i in range(1,7)]
+    png, plain = render_report(result)
+    assert 'Ушло: 260,00' in plain and 'Расходы по операциям: 210,00' in plain
+    assert 'Разница: -160,00' in plain and 'Остальные категории: 10,00' in plain
+    assert Image.open(BytesIO(png)).height < 3000
+
+
+def test_renderer_update_does_not_replace_cached_image_or_resend_delivered_channel(db,tmp_path,monkeypatch):
+    import scripts.run_financial_reports as runner
+    from sqlalchemy.orm import sessionmaker
+    settings=SimpleNamespace(financial_reports_enabled=True,financial_reports_start_date=date(2020,10,26),
+        financial_reports_state_dir=str(tmp_path),financial_reports_telegram_id='123')
+    transport=Transport(); transport.preflight_fail='email'
+    now=datetime(2020,10,26,9,tzinfo=ZONE); factory=sessionmaker(bind=db.get_bind())
+    assert runner.run(settings,now,factory,transport)['channels']=={'telegram':'sent','email':'preflight_failed'}
+    cached=(tmp_path/'1-2020-10-26'/'report.png').read_bytes()
+    monkeypatch.setattr(runner,'render_report',lambda report: pytest.fail('Existing delivery must reuse its image'))
+    transport.preflight_fail=None
+    assert runner.run(settings,now,factory,transport)['channels']=={'telegram':'sent','email':'sent'}
+    assert transport.calls==['telegram','email']
+    assert (tmp_path/'1-2020-10-26'/'report.png').read_bytes()==cached

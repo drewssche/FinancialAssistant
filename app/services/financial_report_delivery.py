@@ -142,7 +142,7 @@ class ReportTransport:
         cur = report['current']; currency = report['currency']
         caption = (f"{title}\n{period}\n\nПришло {money(cur['cashflow_income_total'])} {currency}\n"
                    f"Ушло {money(cur['cashflow_expense_total'])} {currency}\nРазница {money(cur['cashflow_total'], True)} {currency}\n\n"
-                   'Категории, крупные траты и ближайшие планы — на инфографике.')
+                   'Итоги периода, категории и ближайший план — на инфографике.')
         if channel == 'telegram':
             with httpx.Client(timeout=45, follow_redirects=False) as client:
                 response = client.post(f'https://api.telegram.org/bot{s.telegram_bot_token}/sendPhoto',
@@ -160,8 +160,8 @@ class ReportTransport:
         message['Message-ID'] = f'<financial-report-{identity}@financialassistant.local>'
         message.set_content(text)
         message.add_alternative(f'''<html><body style="margin:0;background:#080e18;color:#f1f5fc;font-family:Arial,sans-serif">
-<div style="max-width:720px;margin:auto;padding:16px"><h2>{escape(title)}</h2><p>{escape(period)}</p>
-<img src="cid:financial-report" width="720" style="display:block;width:100%;height:auto" alt="{escape(caption, quote=True)}">
+<div style="max-width:480px;margin:auto;padding:16px"><h2>{escape(title)}</h2><p>{escape(period)}</p>
+<img src="cid:financial-report" width="480" style="display:block;width:100%;height:auto" alt="{escape(caption, quote=True)}">
 <details><summary>Текст отчёта</summary><pre style="white-space:pre-wrap;font:15px Arial">{escape(text)}</pre></details>
 </div></body></html>''', subtype='html')
         message.get_payload()[-1].add_related(png, maintype='image', subtype='png', cid='<financial-report>', filename='financial-report.png', disposition='inline')

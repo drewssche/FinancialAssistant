@@ -1,15 +1,22 @@
-"""Readable financial PNGs and equivalent plain text, with no invented insights."""
+"""Offline PNG layouts: Express weekly, Ring monthly, Pulse yearly."""
 from datetime import date
 from decimal import Decimal
+from functools import lru_cache
 from io import BytesIO
+from pathlib import Path
 import textwrap
 
 from PIL import Image, ImageDraw
-from app.services.incident_infographic import font, BG, SURFACE, EDGE, TEXT, MUTED, RED, ORANGE, CYAN
+from app.services.incident_infographic import font
 
-GREEN = '#7addb4'
+BG, SURFACE, EDGE = '#0e1726', '#19263b', '#2a3b53'
+TEXT, MUTED = '#f0f5fe', '#a8b8cf'
+GREEN, RED, ORANGE, BLUE, PURPLE = '#7addb4', '#ff8b9e', '#ffab52', '#8eaff5', '#c1a1e6'
 MONTHS = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
 TITLES = {'week': 'Итоги недели', 'month': 'Итоги месяца', 'year': 'Итоги года'}
+REPORT_STYLES = {'week': 'Экспресс', 'month': 'Кольцо', 'year': 'Пульс'}
+ICON_DIR = Path(__file__).resolve().parents[1] / 'assets' / 'report_icons'
+COLORS = [ORANGE, BLUE, PURPLE, GREEN, RED, EDGE]
 
 
 def dec(value):
@@ -33,233 +40,301 @@ def short(value):
     return f'{day(value):%d.%m}'
 
 
+def category_icon(label):
+    """Known meanings get a pictogram; unfamiliar categories keep a neutral tag."""
+    label = str(label).casefold()
+    for terms, name in [
+        (('баня', 'сауна'), 'bath'), (('ставки',), 'dice-5'),
+        (('праздник', 'костюм'), 'party-popper'), (('кофе',), 'coffee'),
+        (('подписк',), 'repeat-2'), (('одежд', 'обувь'), 'shirt'),
+        (('сигарет', 'табак'), 'cigarette'), (('сыр', 'молоч'), 'milk'),
+        (('перевод', 'валют'), 'arrow-left-right'), (('аптек', 'лекар'), 'pill'),
+        (('такси', 'транспорт', 'авто'), 'car'), (('ремонт', 'сервис'), 'wrench'),
+        (('жиль', 'коммун', 'недвиж'), 'house'), (('путешеств', 'отдых'), 'plane'),
+        (('еда', 'продукт', 'ресторан'), 'utensils'), (('долг',), 'handshake'),
+    ]:
+        if any(term in label for term in terms):
+            return name
+    return 'tag'
+
+
+@lru_cache(maxsize=128)
+def icon_image(name, size, color):
+    with Image.open(ICON_DIR / f'{name}.png') as source:
+        alpha = source.getchannel('A').resize((size, size), Image.Resampling.LANCZOS)
+    image = Image.new('RGBA', (size, size), color)
+    image.putalpha(alpha)
+    return image
+
+
+def top_categories(report, count):
+    rows = report['current'].get('category_breakdown', [])
+    return sorted((r for r in rows if dec(r['total_amount']) > 0),
+                  key=lambda r: dec(r['total_amount']), reverse=True)[:count]
+
+
 class ReportCanvas:
-    def __init__(self):
-        self.image = Image.new('RGB', (1080, 6500), BG)
+    def __init__(self, report):
+        self.image = Image.new('RGB', (1080, 5000), BG)
         self.draw = ImageDraw.Draw(self.image)
-        self.draw.rectangle((24, 24, 1056, 6476), fill=SURFACE)
-        self.lines = []
-        self.y = 52
+        self.lines = [TITLES[report['kind']], span(report['start'], report['end']), report['currency']]
+        self.y = 200
+        self.text(62, 40, 'Φ', 69, ORANGE, True)
+        self.text(143, 67, 'ФинАсист', 34, bold=True, width=300)
+        self.text(1018, 57, span(report['start'], report['end']), 27, MUTED, right=True, width=570)
+        self.text(1018, 101, TITLES[report['kind']]+' · '+report['currency'], 27, MUTED, right=True, width=570)
 
-    def box(self, rect, color='#152238'):
-        self.draw.rounded_rectangle(rect, radius=20, fill=color, outline=EDGE, width=2)
-
-    def text(self, x, y, value, size=26, color=TEXT, bold=False, *, right=False, width=952):
+    def text(self, x, y, value, size=30, color=TEXT, bold=False, *, right=False, center=False, width=956):
         value = ' '.join(str(value).split())
-        while size > 16 and self.draw.textlength(value, font=font(size, bold)) > width:
+        while size > 22 and self.draw.textlength(value, font=font(size, bold)) > width:
             size -= 1
         if self.draw.textlength(value, font=font(size, bold)) > width:
-            while value and self.draw.textlength(value + '…', font=font(size, bold)) > width:
+            while value and self.draw.textlength(value+'…', font=font(size, bold)) > width:
                 value = value[:-1]
             value += '…'
-        if right:
-            x -= self.draw.textlength(value, font=font(size, bold))
+        length = self.draw.textlength(value, font=font(size, bold))
+        x -= length if right else length/2 if center else 0
         self.draw.text((x, y), value, font=font(size, bold), fill=color)
 
-    def paragraph(self, value, *, size=25, color=MUTED, bold=False, max_lines=4, x=64, width=952):
+    def paragraph(self, value, *, x=62, width=956, size=27, color=MUTED, max_lines=2, bold=False):
         original = ' '.join(str(value).split())
-        words = original.split()
         rows, row = [], ''
-        for word in words:
-            # Split unbroken URLs/identifiers too; never draw beyond a card.
-            for piece in textwrap.wrap(word, max(10, int(width / size * 1.6))) or ['']:
-                next_row = (row + ' ' + piece).strip()
-                if self.draw.textlength(next_row, font=font(size, bold)) > width and row:
+        for word in original.split():
+            for piece in textwrap.wrap(word, max(10, int(width/size*1.6))) or ['']:
+                candidate = (row+' '+piece).strip()
+                if row and self.draw.textlength(candidate, font=font(size, bold)) > width:
                     rows.append(row); row = piece
                 else:
-                    row = next_row
+                    row = candidate
         if row:
             rows.append(row)
+        visible = rows[:max_lines]
         if len(rows) > max_lines:
-            rows = rows[:max_lines]; rows[-1] += '…'
-        for row in rows:
+            visible[-1] += '…'
+        for row in visible:
             self.text(x, self.y, row, size, color, bold, width=width)
-            self.y += size + 9
+            self.y += size+10
         self.lines.append(original)
 
-    def heading(self, value):
-        self.y += 24
-        self.paragraph(value, size=31, color=TEXT, bold=True, max_lines=2)
-        self.y += 12
+    def box(self, rect, color=SURFACE, radius=36):
+        self.draw.rounded_rectangle(rect, radius=radius, fill=color)
 
-    def pair(self, label, value, *, color=TEXT, note=None):
-        self.text(64, self.y, label, 26, width=640)
-        self.text(1016, self.y, value, 28, color, True, right=True, width=294)
-        self.lines.append(f'{label}: {value}')
-        self.y += 43
-        if note:
-            self.paragraph(note, size=22, max_lines=2)
-        self.y += 7
+    def icon(self, name, x, y, *, color=ORANGE, size=50, tile=False):
+        if tile:
+            self.box((x-14, y-14, x+size+14, y+size+14), radius=24)
+        image = icon_image(name, size, color)
+        self.image.paste(image, (int(x), int(y)), image)
+
+    def heading(self, label, right=''):
+        self.y += 30
+        self.text(62, self.y, label, 29, MUTED, width=730)
+        self.text(1018, self.y, right, 26, MUTED, right=True, width=215)
+        self.y += 65
+
+    def hero(self, current, label):
+        value = dec(current['cashflow_total'])
+        self.icon('equal', 80, self.y+47, color=GREEN if value >= 0 else RED, size=60, tile=True)
+        self.text(187, self.y, label, 28, MUTED)
+        self.text(187, self.y+47, money(value, True), 88, GREEN if value >= 0 else RED, True, width=830)
+        self.lines.append('Разница: '+money(value, True))
+        self.y += 185
+
+    def totals(self, current, *, bars=False):
+        maximum = max(dec(current['cashflow_income_total']), dec(current['cashflow_expense_total']), Decimal(1))
+        for i, (label, key, color, icon) in enumerate([
+            ('Пришло', 'cashflow_income_total', GREEN, 'arrow-down-left'),
+            ('Ушло', 'cashflow_expense_total', RED, 'arrow-up-right'),
+        ]):
+            value = dec(current[key])
+            if bars:
+                y = self.y+i*128
+                self.icon(icon, 66, y+6, color=color, size=42)
+                self.text(144, y+3, label, 36)
+                self.text(1018, y, money(value), 48, TEXT, True, right=True, width=560)
+                self.box((144, y+78, 1018, y+94), radius=8)
+                if value > 0:
+                    self.box((144, y+78, 144+float(value/maximum)*874, y+94), color, radius=8)
+            else:
+                x = 62+i*490
+                self.box((x, self.y, x+466, self.y+180))
+                self.icon(icon, x+28, self.y+30, color=MUTED, size=34)
+                self.text(x+78, self.y+28, label, 29, MUTED, width=350)
+                self.text(x+30, self.y+88, money(value), 55, color, True, width=406)
+            self.lines.append(label+': '+money(value))
+        self.y += 256 if bars else 200
+
+    def net_strip(self, value):
+        self.box((62, self.y, 1018, self.y+124))
+        self.icon('equal', 90, self.y+40, color=GREEN if dec(value) >= 0 else RED, size=40)
+        self.text(162, self.y+40, 'Разница', 32, width=250)
+        self.text(988, self.y+28, money(value, True), 59, GREEN if dec(value) >= 0 else RED, True, right=True, width=560)
+        self.lines.append('Разница: '+money(value, True))
+        self.y += 150
 
     def finish(self):
         self.y += 22
-        self.draw.line((64, self.y, 1016, self.y), fill=EDGE, width=2)
-        self.y += 22
-        self.paragraph('Категории — расходы по операциям. «Пришло» и «Ушло» включают движения по долгам и валюте.', size=21)
-        self.paragraph('Разница — результат периода, не остаток на счетах. Даты и время — Минск.', size=21)
-        bottom = self.y + 32
-        if bottom > 6400:
+        self.paragraph('Пришло / ушло — с долгами и валютой.', size=25)
+        self.paragraph('Разница — итог периода, не остаток на счетах.', size=25)
+        bottom = self.y+55
+        if bottom > 4900:
             raise ValueError('Financial report exceeds safe image height')
         image = self.image.crop((0, 0, 1080, bottom))
+        ImageDraw.Draw(image).rounded_rectangle((1, 1, 1078, bottom-2), radius=55, outline=EDGE, width=3)
         out = BytesIO(); image.save(out, format='PNG', optimize=True)
         if len(out.getvalue()) > 8_000_000:
             raise ValueError('Financial report exceeds photo size limit')
         return out.getvalue(), '\n'.join(self.lines)
 
 
+def draw_top_categories(c, report, *, tiles=False):
+    rows = top_categories(report, 3)
+    c.heading('Топ расходов', f"{report['current']['operations_count']} операций" if tiles else report['currency'])
+    if not rows:
+        c.paragraph('За период расходов нет.')
+        return
+    maximum = dec(rows[0]['total_amount'])
+    for i, row in enumerate(rows):
+        name = row['category_name'] or 'Без категории'
+        value = dec(row['total_amount'])
+        if tiles:
+            x = 62+i*326
+            c.box((x, c.y, x+304, c.y+260))
+            c.icon(category_icon(name), x+125, c.y+33, color=COLORS[i], size=54)
+            c.text(x+152, c.y+111, money(value), 43, TEXT, True, center=True, width=278)
+            saved = c.y; c.y += 178
+            c.paragraph(name, x=x+18, width=268, size=25, max_lines=2)
+            c.y = saved
+        else:
+            y = c.y+i*115
+            c.icon(category_icon(name), 78, y+9, size=45, tile=True)
+            c.text(165, y, name, 34, width=620)
+            c.text(1018, y+5, money(value), 43, TEXT, True, right=True, width=215)
+            c.box((165, y+66, 790, y+79), radius=6)
+            c.box((165, y+66, 165+float(value/maximum)*625, y+79), ORANGE, radius=6)
+        c.lines.append(name+': '+money(value))
+    c.y += 280 if tiles else len(rows)*115
+
+
+def draw_express(c, report):
+    current, previous = report['current'], report['previous']
+    c.hero(current, 'Разница за неделю')
+    c.totals(current, bars=True)
+    draw_top_categories(c, report)
+    if int(previous.get('cashflow_events_count') or 0):
+        delta = dec(current['cashflow_expense_total'])-dec(previous['cashflow_expense_total'])
+        c.box((62, c.y, 1018, c.y+104))
+        c.icon('trending-up' if delta >= 0 else 'trending-down', 86, c.y+32, color=RED if delta > 0 else GREEN, size=44)
+        c.text(160, c.y+35, 'Ушло к прошлой неделе', 28, width=560)
+        c.text(988, c.y+28, money(delta, True), 41, TEXT, True, right=True, width=260)
+        c.lines.append('Ушло к прошлой неделе: '+money(delta, True))
+        c.y += 128
+
+
+def draw_ring(c, report):
+    c.totals(report['current'])
+    total = dec(report['current']['expense_total'])
+    rows = [(r['category_name'] or 'Без категории', dec(r['total_amount'])) for r in top_categories(report, 5)]
+    rest = total-sum(value for _, value in rows)
+    if rest > 0:
+        rows.append(('Остальные категории', rest))
+    top = c.y+30
+    c.draw.ellipse((295, top, 785, top+490), fill=EDGE)
+    start = -90
+    for i, (_, value) in enumerate(rows):
+        end = start+float(value/total)*360 if total > 0 else start
+        c.draw.pieslice((295, top, 785, top+490), start, end, fill=COLORS[i])
+        start = end
+    c.draw.ellipse((352, top+57, 728, top+433), fill=BG)
+    c.text(540, top+136, 'Расходы', 31, MUTED, center=True, width=350)
+    c.text(540, top+192, money(total), 60, TEXT, True, center=True, width=350)
+    c.text(540, top+276, 'по операциям · '+report['currency'], 26, MUTED, center=True, width=350)
+    c.lines.append('Расходы по операциям: '+money(total))
+    c.y = top+540
+    for i, (name, value) in enumerate(rows):
+        c.icon('ellipsis' if name == 'Остальные категории' else category_icon(name), 66, c.y, color=COLORS[i] if i<5 else MUTED, size=40)
+        c.text(132, c.y, name, 31, width=610)
+        c.text(1018, c.y, money(value), 35, TEXT, True, right=True, width=250)
+        c.lines.append(name+': '+money(value)); c.y += 73
+    if not rows:
+        c.paragraph('За период расходов нет.')
+    c.y += 18
+    c.net_strip(report['current']['cashflow_total'])
+
+
+def draw_pulse(c, report):
+    c.hero(report['current'], 'Разница за период')
+    c.totals(report['current'])
+    c.heading('Разница по месяцам', report['currency'])
+    series = report['series']
+    if series:
+        values = [dec(row['cashflow_total']) for row in series]
+        maximum = max([abs(v) for v in values]+[Decimal(1)])
+        step = 956/len(series); baseline = c.y+155
+        c.draw.line((62, baseline, 1018, baseline), fill=EDGE, width=2)
+        for i, (row, value) in enumerate(zip(series, values)):
+            x = 62+step*(i+.5); height = float(abs(value)/maximum)*145
+            if value:
+                rect = (x-step*.34, baseline-height if value>0 else baseline, x+step*.34, baseline if value>0 else baseline+height)
+                c.box(rect, GREEN if value>0 else RED, radius=min(7, height/2))
+            label = MONTHS[day(row['date_from']).month-1]
+            c.text(x, baseline+170, label, 25, MUTED, center=True, width=step-6)
+            c.lines.append(label+': '+money(value, True))
+        c.y = baseline+235
+        # Actual extrema, not hardcoded January/October from the approved preview.
+        for i, index in enumerate(dict.fromkeys((values.index(min(values)), values.index(max(values))))):
+            value = values[index]; label = MONTHS[day(series[index]['date_from']).month-1]
+            c.text(62 if i==0 else 1018, c.y, label+' '+money(value, True), 29, GREEN if value>=0 else RED,
+                   right=i>0, width=465)
+        c.y += 50
+    draw_top_categories(c, report, tiles=True)
+
+
+def draw_plans(c, report):
+    plans = report['plans']
+    c.y += 22
+    c.draw.line((62, c.y, 1018, c.y), fill=EDGE, width=2)
+    c.y += 45
+    items = sorted(plans.get('occurrences', []), key=lambda item: day(item['scheduled_date']))
+    if items:
+        item = items[0]
+        c.icon('calendar-clock', 78, c.y+8, color=BLUE, tile=True)
+        c.text(1018, c.y+8, money(item['original_amount'])+' '+item['currency'], 38, TEXT, True, right=True, width=280)
+        c.paragraph(item['report_label'], x=166, width=550, size=32, color=TEXT, bold=True)
+        direction = 'получить' if item['kind']=='income' else 'заплатить'
+        c.paragraph(short(item['scheduled_date'])+' · '+direction, x=166, width=550, size=27)
+        if len(items)>1:
+            c.paragraph(f'Ещё в ближайшие 7 дней: {len(items)-1}', x=166, width=850, size=25)
+        c.lines.append(f"{short(item['scheduled_date'])}: {direction} {money(item['original_amount'])} {item['currency']}")
+    else:
+        c.icon('calendar-clock', 78, c.y+8, color=BLUE, tile=True)
+        c.paragraph('На ближайшие 7 дней платежей в планах нет.', x=166, width=850, size=28)
+    if plans.get('unpriced_count'):
+        c.paragraph('Для части планов нет курса.', color=ORANGE, size=25)
+    overdue = plans.get('overdue_items', [])
+    if overdue:
+        c.y += 15
+        c.paragraph(f'Проверить планы: {len(overdue)} с прошедшей датой', color=ORANGE, size=25)
+        # Keep full detail accessible without expanding the compact graphic.
+        for item in overdue:
+            c.lines.append(f"Проверить {short(item['scheduled_date'])}: {item['report_label']} · {money(item['original_amount'])} {item['currency']}")
+    for extra in report.get('supplements', []):
+        c.y += 18
+        c.box((62, c.y, 1018, c.y+153))
+        c.text(88, c.y+18, extra['label'], 29, MUTED, width=550)
+        data = extra['data']
+        c.text(988, c.y+16, money(data['cashflow_total'], True), 37, GREEN if dec(data['cashflow_total'])>=0 else RED,
+               True, right=True, width=370)
+        c.text(88, c.y+77, 'Пришло '+money(data['cashflow_income_total']), 28, width=430)
+        c.text(988, c.y+77, 'Ушло '+money(data['cashflow_expense_total']), 28, right=True, width=430)
+        c.lines.append(extra['label']+': пришло '+money(data['cashflow_income_total'])+', ушло '+money(data['cashflow_expense_total'])+', разница '+money(data['cashflow_total'], True))
+        c.y += 168
+
+
 def render_report(report):
-    """Visual hierarchy: KPI, comparisons, trend, composition, changes, timeline."""
-    c=ReportCanvas(); cur=report['current']; prev=report['previous']; currency=report['currency']
-    colors=[CYAN,ORANGE,'#a99ded','#ee8da8','#84ace6','#4e627d']
-    c.text(64,50,'Φ',55,ORANGE,True);c.draw.ellipse((98,103,110,115),fill=GREEN)
-    c.text(130,73,'ФинАсист',29,TEXT,True);c.text(1016,81,'ЛИЧНЫЙ ОТЧЁТ',19,MUTED,right=True)
-    c.y=151;c.paragraph(TITLES[report['kind']],size=48,color=TEXT,bold=True)
-    c.paragraph(span(report['start'],report['end']),size=27);c.y+=20
-    for i,(label,key,color) in enumerate([('Пришло','cashflow_income_total',GREEN),('Ушло','cashflow_expense_total',RED),('Разница','cashflow_total',GREEN if dec(cur['cashflow_total'])>=0 else RED)]):
-        x=64+i*324;c.box((x,c.y,x+304,c.y+140))
-        c.text(x+20,c.y+18,label,25,MUTED,width=264)
-        c.text(x+20,c.y+65,money(cur[key],i==2),38,color,True,width=264)
-        c.lines.append(f'{label}: {money(cur[key])} {currency}')
-    c.y+=160;c.paragraph(f"{currency} · {cur['cashflow_events_count']} событий · {cur['operations_count']} операций",size=23)
-
-    if int(prev.get('cashflow_events_count') or 0):
-        c.heading('Ушло: сравнение периодов')
-        maximum=max(dec(cur['cashflow_expense_total']),dec(prev['cashflow_expense_total']),Decimal(1))
-        for label,data,color in [('Предыдущий',prev,'#526983'),('Текущий',cur,CYAN)]:
-            value=dec(data['cashflow_expense_total'])
-            c.text(64,c.y,f"{label} · {span(data['date_from'], data['date_to'])}",23,MUTED,width=690)
-            c.text(1016,c.y,money(value),28,TEXT,True,right=True)
-            c.draw.rounded_rectangle((64,c.y+43,1016,c.y+66),radius=10,fill='#1d2a3e')
-            if value>0:c.draw.rounded_rectangle((64,c.y+43,64+max(3,float(value/maximum)*952),c.y+66),radius=10,fill=color)
-            c.lines.append(f"{label}: {span(data['date_from'],data['date_to'])}, ушло {money(value)} {currency}");c.y+=86
-        delta=dec(cur['cashflow_expense_total'])-dec(prev['cashflow_expense_total'])
-        c.text(64,c.y,'Изменение оттока',24,MUTED);c.text(1016,c.y,money(delta,True)+' '+currency,31,ORANGE if delta>0 else GREEN,True,right=True)
-        c.lines.append(f'Изменение оттока: {money(delta,True)} {currency}');c.y+=45
-
-    yearly=report['kind']=='year'
-    c.heading('Результат по месяцам' if yearly else 'Ушло по дням' if report['kind']=='week' else 'Динамика расходов и других списаний')
-    series=report['series'];key='cashflow_total' if yearly else 'cashflow_expense_total'
-    values=[dec(row[key]) for row in series];maximum=max([abs(v) for v in values]+[Decimal(1)])
-    top=c.y+32;baseline=top+170;step=952/max(1,len(values))
-    c.draw.line((64,baseline,1016,baseline),fill=EDGE,width=2)
-    for i,(row,v) in enumerate(zip(series,values)):
-        x=64+step*(i+.5);height=float(abs(v)/maximum)*148;col=GREEN if yearly and v>=0 else RED if yearly else CYAN
-        if v:c.draw.rounded_rectangle((x-22,baseline-height if v>=0 else baseline,x+22,baseline if v>=0 else baseline+height),radius=min(7,height/2),fill=col)
-        value=f'{v:,.0f}'.replace(',',' ') if yearly else money(v)
-        size=20 if yearly else 23;length=c.draw.textlength(value,font=font(size,True))
-        c.text(x-length/2,baseline-height-35 if v>=0 else baseline+height+9,value,size,col,True,width=step-8)
-        label=MONTHS[day(row['date_from']).month-1] if yearly else short(row['date_from']) if report['kind']=='week' else f"{day(row['date_from']).day}–{day(row['date_to']).day}"
-        length=c.draw.textlength(label,font=font(20));c.text(x-length/2,baseline+197 if yearly else baseline+22,label,20,MUTED,width=step-8)
-        c.lines.append(f"{span(row['date_from'],row['date_to'])}: {money(v)} {currency}")
-    c.y=baseline+(235 if yearly else 66)
-    if yearly:c.paragraph('На графике — округлённые суммы в '+currency,size=20)
-
-    c.heading('Движение денег')
-    maximum=max(dec(cur['cashflow_income_total']),dec(cur['cashflow_expense_total']),Decimal(1))
-    for label,total_key,operations_key,col in [('Пришло','cashflow_income_total','income_total',GREEN),('Ушло','cashflow_expense_total','expense_total',RED)]:
-        total=dec(cur[total_key]);ops=dec(cur[operations_key]);other=total-ops
-        c.text(64,c.y,label,24,MUTED);c.text(1016,c.y,money(total),28,col,True,right=True)
-        left=64;c.draw.rounded_rectangle((64,c.y+40,1016,c.y+72),radius=8,fill='#1d2a3e')
-        for value,color in [(ops,col),(other,ORANGE)]:
-            width=max(0,float(value/maximum)*952)
-            if width:c.draw.rectangle((left,c.y+40,left+width,c.y+72),fill=color)
-            left+=width
-        c.text(64,c.y+88,'Операции '+money(ops),21,col)
-        c.text(1016,c.y+88,'Долги / валюта '+money(other),21,ORANGE,right=True)
-        c.lines.append(f'{label}: операции {money(ops)}, долги / валюта {money(other)} {currency}');c.y+=132
-    # Small signed component cards explain the net without paragraphs or duplicate KPIs.
-    parts=[('Операции',dec(cur['income_total'])-dec(cur['expense_total'])),('Долги',dec(cur['debt_cashflow_total'])),('Валюта',dec(cur['fx_cashflow_total']))]
-    for i,(label,value) in enumerate(parts):
-        x=64+i*324;c.box((x,c.y,x+304,c.y+96));c.text(x+16,c.y+12,label+' · итог',21,MUTED,width=272)
-        c.text(x+16,c.y+45,money(value,True),30,GREEN if value>0 else RED if value<0 else MUTED,True,width=272)
-        c.lines.append(f'{label} · итог: {money(value,True)} {currency}')
-    c.y+=110
-
-    categories=cur.get('category_breakdown',[])
-    c.heading('Структура расходов')
-    c.paragraph('По операциям · '+money(cur['expense_total'])+' '+currency,size=24)
-    if categories and dec(cur['expense_total'])>0:
-        rows=[(x['category_name'] or 'Без категории',dec(x['total_amount'])) for x in categories[:5]]
-        rest=sum(dec(x['total_amount']) for x in categories[5:])
-        if rest:rows.append(('Остальные категории',rest))
-        cy=c.y+18;start=-90
-        for i,(label,value) in enumerate(rows):
-            end=start+float(value/dec(cur['expense_total']))*360
-            c.draw.pieslice((64,cy,444,cy+380),start,end,fill=colors[i]);start=end
-        c.draw.ellipse((140,cy+76,368,cy+304),fill=SURFACE)
-        total=money(cur['expense_total']);length=c.draw.textlength(total,font=font(31,True))
-        c.text(254-length/2,cy+154,total,31,TEXT,True,width=220);c.text(231,cy+201,currency,23,MUTED)
-        for i,(label,v) in enumerate(rows):
-            y=cy+i*65;c.draw.ellipse((482,y+10,496,y+24),fill=colors[i])
-            c.text(513,y,label,24,TEXT,width=503)
-            share=float(v/dec(cur['expense_total']))*100
-            c.text(513,y+31,f'{share:.1f}%'.replace('.',','),22,MUTED)
-            c.text(1016,y+31,money(v),25,TEXT,True,right=True,width=330)
-            c.lines.append(f'{label}: {money(v)} {currency} ({share:.1f}%)')
-        c.y=cy+max(396,len(rows)*65)+15
-    else:c.paragraph('За период расходов нет.')
-
-    if int(prev.get('cashflow_events_count') or 0):
-        before={x['category_id']:x for x in prev.get('category_breakdown',[])};after={x['category_id']:x for x in categories}
-        changes=[]
-        for key in before.keys()|after.keys():
-            v=dec(after.get(key,{}).get('total_amount'));old=dec(before.get(key,{}).get('total_amount'))
-            if v!=old:changes.append((v-old,(after.get(key) or before[key])['category_name'] or 'Без категории',old,v))
-        if changes:
-            c.heading('Что изменилось сильнее всего')
-            for i,(delta,label,old,v) in enumerate(sorted(changes,key=lambda x:abs(x[0]),reverse=True)[:2]):
-                x=64+i*486;y=c.y;c.box((x,y,x+466,y+195));col=ORANGE if delta>0 else GREEN
-                c.text(x+20,y+16,label,24,TEXT,True,width=426);c.text(x+20,y+55,money(delta,True),36,col,True,width=426)
-                mx=max(old,v,Decimal(1))
-                for yy,value,color in [(y+112,old,'#526983'),(y+131,v,col)]:
-                    c.draw.rounded_rectangle((x+20,yy,x+20+max(3,float(value/mx)*426),yy+10),radius=4,fill=color)
-                c.text(x+20,y+157,money(old)+' → '+money(v),23,MUTED,width=426)
-                c.lines.append(f'{label}: {money(old)} → {money(v)}, изменение {money(delta,True)} {currency}')
-            c.y+=212
-
-    operations=cur.get('top_operations',[])[:2]
-    if operations:
-        c.heading('Крупные траты')
-        top=c.y;bottom=top
-        for i,item in enumerate(operations):
-            x=64+i*486;y=top;c.box((x,y,x+466,y+213))
-            c.text(x+20,y+15,short(item['operation_date']),23,MUTED)
-            c.text(x+446,y+15,money(item['amount']),31,RED,True,right=True,width=300)
-            c.y=y+69
-            c.paragraph(item.get('report_label') or item.get('note') or 'Расход без комментария',size=24,color=TEXT,max_lines=2,x=x+20,width=426)
-            if item.get('receipt_summary'):
-                c.paragraph(item['receipt_summary'],size=20,max_lines=2,x=x+20,width=426)
-            c.lines.append(f"{short(item['operation_date'])}: {money(item['amount'])} {currency}")
-            bottom=max(bottom,y+230)
-        c.y=bottom
-
-    plans=report['plans'];c.heading('Планы · '+short(plans['date_from'])+' — '+short(plans['date_to']))
-    for i,(label,key,col) in enumerate([('Получить','income_total',GREEN),('Заплатить','expense_total',RED)]):
-        x=64+i*486;c.box((x,c.y,x+466,c.y+100));c.text(x+20,c.y+12,label,23,MUTED)
-        c.text(x+20,c.y+47,money(plans[key])+' '+currency,32,col,True,width=426)
-        c.lines.append(f'{label} по планам: {money(plans[key])} {currency}')
-    c.y+=125
-    for item in plans['occurrences'][:3]:
-        y=c.y;c.draw.ellipse((65,y+8,80,y+23),fill=GREEN if item['kind']=='income' else ORANGE)
-        c.draw.line((72,y+25,72,y+103),fill=EDGE,width=2)
-        c.text(99,y,short(item['scheduled_date']),25,MUTED)
-        c.text(1016,y,money(item['original_amount'])+' '+item['currency'],30,GREEN if item['kind']=='income' else ORANGE,True,right=True,width=650)
-        c.lines.append(f"{short(item['scheduled_date'])}: {money(item['original_amount'])} {item['currency']}")
-        c.y+=43;c.paragraph(item['report_label'],size=27,color=TEXT,max_lines=2,x=99,width=917)
-        if item['currency']!=currency:c.paragraph('≈ '+money(item['current_base_amount'])+' '+currency+' · прогноз',size=21,x=99,width=917)
-        c.y+=19
-    if not plans['occurrences']:c.paragraph('На ближайшие 7 дней платежей в планах нет.')
-    if len(plans['occurrences'])>3:c.paragraph(f"Ещё платежей: {len(plans['occurrences'])-3} · подробнее в разделе «Планы»",size=23)
-    if plans['unpriced_count']:c.paragraph('Итог неполный: для части платежей нет курса.',color=ORANGE,size=23)
-    if plans['overdue_items']:
-        item=plans['overdue_items'][0];c.y+=12
-        c.paragraph(f"Проверить план · {short(item['scheduled_date'])} · {money(item['original_amount'])} {item['currency']}",color=ORANGE,bold=True,size=25)
-        c.paragraph(item['report_label'],color=ORANGE,size=24,max_lines=2)
-        c.paragraph(f"Неподтверждённых планов с прошедшей датой: {len(plans['overdue_items'])}",size=21)
-    uncategorized=sum(dec(x['total_amount']) for x in categories if x['category_id'] is None)
-    if uncategorized:c.paragraph(f'Без категории: {money(uncategorized)} {currency}',color=ORANGE)
-    for extra in report.get('supplements',[]):
-        data=extra['data'];c.heading(extra['label'])
-        c.pair('Пришло / ушло',money(data['cashflow_income_total'])+' / '+money(data['cashflow_expense_total']))
-        c.pair('Разница',money(data['cashflow_total'],True))
+    """Only presentation varies; dates, snapshot, recipients and ledger stay upstream."""
+    renderers = {'week': draw_express, 'month': draw_ring, 'year': draw_pulse}
+    renderer = renderers[report['kind']]
+    c = ReportCanvas(report)
+    renderer(c, report)
+    draw_plans(c, report)
     return c.finish()
