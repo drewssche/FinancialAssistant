@@ -114,7 +114,7 @@ class PlanService:
         set_json(cache_key, {"items": items, "total": len(items)}, ttl_seconds=get_namespace_ttl_seconds("plans"))
         return items, len(items)
 
-    def forecast(self, *, user_id: int, days: int = 30, today: date | None = None) -> dict:
+    def forecast(self, *, user_id: int, days: int = 30, today: date | None = None, include_details: bool = False) -> dict:
         """Project occurrences without advancing plans or creating operations."""
         start = today or date.today()
         end = date.fromordinal(start.toordinal() + days - 1)
@@ -122,19 +122,28 @@ class PlanService:
         count = overdue = unpriced = 0
         profile = self.db.scalar(select(WorkProfile).where(WorkProfile.user_id == user_id))
         payroll_ids = {profile.advance_plan_id, profile.salary_plan_id} if profile else set()
-        for row in self.repo.list_for_user(user_id=user_id):
+        rows = self.repo.list_for_user(user_id=user_id)
+        receipts = self.repo.list_receipt_items_for_plans(
+            user_id=user_id, plan_ids=[int(row.PlanOperation.id) for row in rows],
+        ) if include_details else {}
+        occurrences, overdue_items = [], []
+        for row in rows:
             item = row.PlanOperation
             if item.status != "active":
                 continue
-            payload = self._serialize_plan_row(row=row, receipt_items=[])
+            payload = self._serialize_plan_row(row=row, receipt_items=receipts.get(int(item.id), []))
             amount = Decimal(str(payload["current_base_amount"]))
             missing_rate = payload["current_rate"] is None
             overdue += int(item.scheduled_date < start)
+            if include_details and item.scheduled_date < start:
+                overdue_items.append(payload)
             cursor = item.scheduled_date
             for _ in range(10000):
                 if cursor > end or (item.recurrence_end_date and cursor > item.recurrence_end_date):
                     break
                 if cursor >= start:
+                    if include_details:
+                        occurrences.append({**payload, "scheduled_date": cursor})
                     count += 1
                     unpriced += int(missing_rate)
                     if item.kind == "income":
@@ -155,8 +164,12 @@ class PlanService:
                 cursor = next_date
             else:
                 raise ValueError("Plan recurrence exceeds forecast range")
-        return dict(date_from=start, date_to=end, income_total=incoming, expense_total=outgoing,
-                    occurrences_count=count, overdue_count=overdue, unpriced_count=unpriced)
+        result = dict(date_from=start, date_to=end, income_total=incoming, expense_total=outgoing,
+                      occurrences_count=count, overdue_count=overdue, unpriced_count=unpriced)
+        if include_details:
+            result.update(occurrences=sorted(occurrences, key=lambda item: item["scheduled_date"]),
+                          overdue_items=sorted(overdue_items, key=lambda item: item["scheduled_date"]))
+        return result
 
     def get_plan(self, *, user_id: int, plan_id: int) -> dict:
         row = self.repo.get_by_id(user_id=user_id, plan_id=plan_id)

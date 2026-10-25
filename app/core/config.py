@@ -1,4 +1,5 @@
 from functools import lru_cache
+from datetime import date
 from typing import List, Literal
 
 from pydantic import Field, field_validator
@@ -26,6 +27,11 @@ class Settings(BaseSettings):
     smtp_password: str = Field(default="", alias="SMTP_PASSWORD")
     smtp_from: str = Field(default="", alias="SMTP_FROM")
     smtp_security: Literal["ssl", "starttls"] = Field(default="ssl", alias="SMTP_SECURITY")
+    financial_reports_enabled: bool = Field(default=False, alias="FINANCIAL_REPORTS_ENABLED")
+    financial_reports_telegram_id: str = Field(default="", alias="FINANCIAL_REPORTS_TELEGRAM_ID")
+    financial_reports_email: str = Field(default="", alias="FINANCIAL_REPORTS_EMAIL")
+    financial_reports_start_date: date | None = Field(default=None, alias="FINANCIAL_REPORTS_START_DATE")
+    financial_reports_state_dir: str = Field(default="/var/log/financialassistant/reports", alias="FINANCIAL_REPORTS_STATE_DIR")
 
     postgres_user: str = Field(default="fin_user", alias="POSTGRES_USER")
     postgres_password: str = Field(default="fin_pass", alias="POSTGRES_PASSWORD")

@@ -1,0 +1,12 @@
+[Unit]
+Description=Check financial reports due at 09:00 Europe/Minsk
+
+[Timer]
+OnBootSec=3min
+OnCalendar=*-*-* *:00/15:00
+Persistent=true
+AccuracySec=10s
+Unit=financialassistant-reports.service
+
+[Install]
+WantedBy=timers.target

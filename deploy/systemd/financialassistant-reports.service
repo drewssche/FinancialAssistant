@@ -1,0 +1,12 @@
+[Unit]
+Description=FinancialAssistant scheduled financial infographics
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/FinancialAssistant
+ExecStart=/usr/bin/docker compose exec -T app python -m scripts.run_financial_reports
+TimeoutStartSec=10min
+UMask=0077
+Nice=10
