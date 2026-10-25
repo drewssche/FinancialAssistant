@@ -188,3 +188,21 @@
 #dashboardDebtsList .debt-card .debt-mobile-entry {padding-left:10px;}
 
 #dashboardPlansPanel .panel-controls {display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+
+/* Separate counterparty tables share column sizes, independent of their content. */
+:is(#debtsSection, #dashboardDebtsList) .debt-card {min-width:0;overflow-wrap:anywhere;}
+:is(#debtsSection, #dashboardDebtsList) .debt-card .table {table-layout:fixed;}
+:is(#debtsSection, #dashboardDebtsList) .debt-card th:nth-child(1) {width:11%;}
+:is(#debtsSection, #dashboardDebtsList) .debt-card th:nth-child(2) {width:13%;}
+:is(#debtsSection, #dashboardDebtsList) .debt-card th:nth-child(3),
+:is(#debtsSection, #dashboardDebtsList) .debt-card th:nth-child(4),
+:is(#debtsSection, #dashboardDebtsList) .debt-card th:nth-child(5) {width:12%;}
+:is(#debtsSection, #dashboardDebtsList) .debt-card th:nth-child(7) {width:160px;}
+#dashboardDebtsList .debt-card th:nth-child(7) {width:104px;}
+:is(#debtsSection, #dashboardDebtsList) .debt-card td {overflow-wrap:anywhere;}
+:is(#debtsSection, #dashboardDebtsList) .debt-card :is(.debt-amount-principal,.debt-amount-repaid,.debt-amount-outstanding) {white-space:normal;overflow-wrap:anywhere;}
+:is(#debtsSection, #dashboardDebtsList) .debt-due-head {flex-wrap:wrap;}
+@media (min-width:641px) and (max-width:1200px) {
+  :is(#debtsSection, #dashboardDebtsList) .debt-card th:nth-child(2) {width:21%;}
+  :is(#debtsSection, #dashboardDebtsList) .debt-card th:nth-child(5) {width:22%;}
+}
