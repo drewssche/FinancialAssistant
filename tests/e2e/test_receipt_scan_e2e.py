@@ -257,8 +257,8 @@ def test_scanned_amount_recalculates_on_edits_and_preserves_receipt_header(stati
     discount.fill('0,73');expect(paid).to_have_value('4.00')
     paid.fill('4-0,01');paid.press('Enter');expect(discount).to_have_value('0.74')
     expect(paid).to_have_value('3.99')
-    qty.fill('0,32');expect(paid).to_have_value('3.93')
-    price.fill('15');expect(paid).to_have_value('4.06')
+    qty.fill('0,32');expect(paid).to_have_value('3.94')  # Discount scales with weight: 0.74 → 0.73.
+    price.fill('15');expect(paid).to_have_value('4.07')
     paid.fill('4,80');expect(discount).to_have_value('0.00')
     expect(row.locator('.scan-discount-type')).to_be_hidden()
     paid.fill('5');expect(discount).to_have_value('0.00')

@@ -152,7 +152,7 @@ class ReceiptSiteService:
                     'snapshot': snapshot, 'exp': now() + timedelta(days=7)}, signing_key(), algorithm='HS256')
                 image_token = jwt.encode({'user_id': user_id, 'purpose': 'receipt-thumbnail', 'url': snapshot['image_url'],
                     'exp': now() + timedelta(hours=1)}, signing_key(), algorithm='HS256') if snapshot.get('image_url') else None
-                items.append({field: snapshot.get(field) for field in ('name', 'url', 'source', 'matched_by', 'matched_code', 'size_label', 'brand', 'code_warning')} |
+                items.append({field: snapshot.get(field) for field in ('name', 'url', 'source', 'matched_by', 'matched_code', 'size_label', 'brand', 'code_warning', 'measurement', 'site_price')} |
                     {'site_selection': selection, 'image_token': image_token, 'reference_only': other_sources})
         return {'items': items[:8], 'auto_match': False,
                 'state': 'found' if items else 'unavailable' if failures else 'not_found',

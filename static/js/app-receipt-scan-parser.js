@@ -99,12 +99,25 @@
     return {unsupported: unsupported || warnings.includes('Отрицательные позиции требуют ручного ввода'), date: dates.size === 1 ? [...dates][0] : '', shop, total: totals.size === 1 ? [...totals][0] : null, rows, warnings};
   }
   // Recalculate only after a user edits a number. Printed OCR values stay intact on load.
-  function recalculateRow(row, field) {
+  function recalculateRow(row, field, previousQuantity=null) {
+    const changed=[];
     const validQuantity=Number.isFinite(row.quantity)&&row.quantity>0&&row.quantity<=100000&&Math.abs(row.quantity*1000-Math.round(row.quantity*1000))<=1e-6;
+    if(['price','discount','total'].includes(field))delete row.discount_basis;
+    if(field==='quantity'&&Number.isSafeInteger(row.discount)&&row.discount>=0){
+      if(!row.discount_basis&&Number.isFinite(previousQuantity)&&previousQuantity>0&&previousQuantity<=100000){
+        row.discount_basis={quantity:Math.round(previousQuantity*1000),amount:row.discount};
+      }
+      const basis=row.discount_basis;
+      if(validQuantity&&basis&&Number.isSafeInteger(basis.quantity)&&basis.quantity>0&&Number.isSafeInteger(basis.amount)&&basis.amount>=0){
+        const denominator=BigInt(basis.quantity);
+        row.discount=Number((BigInt(basis.amount)*BigInt(Math.round(row.quantity*1000))*2n+denominator)/(2n*denominator));
+        changed.push('discount');
+      }
+    }
     const gross=Number.isSafeInteger(row.price)&&row.price>0&&row.price<=999999999&&validQuantity ? subtotal(row.price,row.quantity) : null;
     if(['price','quantity','discount'].includes(field)){
       row.total=gross!==null&&Number.isSafeInteger(row.discount)&&row.discount>=0 ? gross-row.discount : null;
-      return ['total'];
+      return [...changed,'total'];
     }
     if(field==='total'&&gross!==null&&Number.isSafeInteger(row.total)&&row.total>=0&&row.total<=gross){
       row.discount=gross-row.total;
@@ -197,5 +210,5 @@
     if(!(quantity>0&&quantity<1e8)||Math.abs(quantity*1000-Math.round(quantity*1000))>1e-6)return result;
     return {...result,package_quantity:quantity,package_unit:({кг:'kg',г:'g',мл:'ml',л:'l',шт:'piece'})[sizes[0][2].toLowerCase().replace('.','')],catalog_size_from_name:true};
   }
-  window.App.receiptScanParser = {parse, validate, validationIssues, money, recalculateRow, mergeDuplicates, mergedMoneyChanged, splitMergedRow, catalogMeasurement};
+  window.App.receiptScanParser = {parse, validate, validationIssues, money, subtotal, recalculateRow, mergeDuplicates, mergedMoneyChanged, splitMergedRow, catalogMeasurement};
 })();

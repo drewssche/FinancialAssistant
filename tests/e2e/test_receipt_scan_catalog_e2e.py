@@ -433,3 +433,20 @@ def test_loaded_catalog_preserves_price_and_size_when_template_hints_overlap(sta
     p.fill('#scanShop','Другой магазин')
     row.locator('[data-scan-field=name]').focus();row.locator('.receipt-template-suggestion').first.click()
     expect(row.locator('.scan-catalog-reference')).to_be_hidden()
+
+@pytest.mark.e2e
+def test_quantity_rescales_discount_per_unit_and_total(static_server_url,page_with_receipt_api_mock):
+    p=page_with_receipt_api_mock;start(p,static_server_url,390)
+    stub(p,PIZZA.replace('4.99 x1.000 4.99','1.85 x1.000 1.85\nСкидка -0.36').replace('К ОПЛАТЕ 4.99','К ОПЛАТЕ 1.49'))
+    upload(p);p.click('#scanRun');row=p.locator('.scan-row').first
+    expect(row.locator('[data-scan-field=discount]')).to_have_value('0.36')
+    qty=row.locator('[data-scan-field=quantity]');qty.fill('2')
+    expect(row.locator('[data-scan-field=discount]')).to_have_value('0.72')
+    expect(row.locator('[data-scan-field=total]')).to_have_value('2.98')
+    expect(row.locator('.scan-row-calculation')).to_contain_text('1.85 × 2 − 0.72 = 2.98 BYN')
+    qty.fill('');qty.fill('1')
+    expect(row.locator('[data-scan-field=discount]')).to_have_value('0.36')
+    expect(row.locator('[data-scan-field=total]')).to_have_value('1.49')
+    row.locator('[data-scan-field=total]').fill('1.50');qty.fill('2')
+    expect(row.locator('[data-scan-field=discount]')).to_have_value('0.70')
+    expect(row.locator('[data-scan-field=total]')).to_have_value('3.00')

@@ -153,3 +153,51 @@ def test_sosedi_photo_uses_verified_product_path_only():
     for value in ['https://127.0.0.1/x','images/../../admin.png','//evil.test/x.jpg']:
         data['product']['img']=value
         assert preview.parse_product(sosedi_html(data),SOSEDI)['image_url'] is None
+
+@pytest.mark.parametrize('url,html,price,regular', [
+    (GREEN,green_html(green_data()),'2.99','3.59'),
+    (SOSEDI,sosedi_html(sosedi_data()),'2.99','3.59'),
+    (URL,document(),'7.99','10.99'),
+])
+def test_preview_exposes_public_regular_and_discounted_prices(url,html,price,regular):
+    result=preview.parse_product(html,url)
+    assert result['site_price']['price']==price
+    assert result['site_price']['regular_price']==regular
+    assert result['site_price']['currency']=='BYN'
+    assert result['site_price']['conditions'] and result['site_price']['unit']
+    assert result['site_price']['checked_at']
+    assert result['measurement']['package_quantity'] in ('900','125')
+
+@pytest.mark.parametrize('label,name,expected', [
+    ('90 г','Пюре',{'package_quantity':'90','package_unit':'g'}),
+    ('0,9 л','Молоко',{'package_quantity':'900','package_unit':'ml'}),
+    ('','Яйца 20шт',{'package_quantity':'20','package_unit':'piece'}),
+    ('','Пюре 2 × 90 г',None),
+    ('2x90 г','Пюре',None),
+    ('90 г','Пюре 2 × 90 г',None),
+    ('90 г','Пюре 120 г',None),
+    ('90 г / 120 г','Пюре',None),
+    ('','Пюре',None),
+    ('0 г','Пюре',None),
+])
+def test_package_measurement_requires_one_size(label,name,expected):
+    assert preview.package_measurement(label,name)==expected
+    assert preview.package_measurement(label,name,weighted=True) is None
+
+
+def test_invalid_optional_price_does_not_break_identity_or_size():
+    data=green_data();preview.retailer.unpack(data['product'])['storeProduct']['priceWithSale']='NaN'
+    result=preview.parse_product(green_html(data),GREEN)
+    assert result['site_price'] is None and result['measurement']['package_quantity']=='900'
+
+
+def test_lookup_returns_measurement_and_site_price_without_writing(client,retailer,monkeypatch):
+    product=preview.parse_product(document(),URL)
+    product['identifiers']={'barcodes':[CODES[0]['code']],'article':CODES[1]['code']}
+    product['url']=site_tests.URL
+    monkeypatch.setattr(preview,'fetch_product',lambda url:product)
+    site.discover.cache_clear()
+    hit=lookup(client).json()['items'][0]
+    assert hit['measurement']=={'package_quantity':'125','package_unit':'g'}
+    assert hit['site_price']['price']=='7.99'
+    assert client.get('/api/v1/operations/catalog-products').json()['total']==0

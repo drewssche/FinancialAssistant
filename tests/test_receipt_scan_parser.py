@@ -239,3 +239,20 @@ def test_euroopt_article_without_barcode_and_article_before_amount():
         assert data['shop']=='Евроопт'
         assert data['rows'][0]['code_entries']==[{'kind':'unknown','code':'2229644'}]
         assert data['rows'][0]['total']==399
+
+
+def test_quantity_discount_scaling_preserves_original_basis_and_rounds_cents():
+    script='global.window={App:{}};'+PARSER+r'''
+    const calc=window.App.receiptScanParser.recalculateRow;
+    const row={price:185,quantity:3,discount:100,total:455};
+    const result=[];
+    for(const qty of [1,2,null,3,.5,3]){
+      const previous=row.quantity;row.quantity=qty;calc(row,'quantity',previous);
+      result.push({discount:row.discount,total:row.total});
+    }
+    row.discount=72;calc(row,'discount');
+    row.quantity=6;calc(row,'quantity',3);result.push({discount:row.discount,total:row.total});
+    console.log(JSON.stringify(result));'''
+    data=json.loads(subprocess.check_output(['node','-e',script],text=True))
+    assert [r['discount'] for r in data]==[33,67,67,100,17,100,144]
+    assert [r['total'] for r in data]==[152,303,None,455,76,455,966]

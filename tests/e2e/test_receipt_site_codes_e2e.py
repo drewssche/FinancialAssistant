@@ -162,3 +162,67 @@ def test_article_only_preview_stays_inside_selected_store(static_server_url,page
     p.locator('#scanConfirmed').check();p.click('#scanTransfer')
     data=p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
     assert data[0]['site_selection']=='article-selection' and float(data[0]['unit_price'])==3.99
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('width',[320,390,1440])
+def test_site_package_autofill_and_price_discount_are_separate_from_receipt(static_server_url,page_with_receipt_api_mock,width):
+    p=page_with_receipt_api_mock
+    p.set_viewport_size({'width':width,'height':1000})
+    found={'name':'Пельмени 430 г','url':'https://sosedi-dostavka.by/products/pelmeni-42','source':'Соседи',
+           'matched_by':'barcode','matched_code':'4811040140757','measurement':{'package_quantity':'430','package_unit':'g'},
+           'site_price':{'price':'1.49','regular_price':'1.85','currency':'BYN','unit':'шт.',
+                         'available':True,'conditions':'Публичная цена сайта.','checked_at':'2026-10-25T17:33:08Z'}}
+    p.route('**/lookup-codes',lambda r:r.fulfill(json={'items':[],'auto_match':False}))
+    p.route('**/lookup-site-codes',lambda r:r.fulfill(json={'items':[found]}))
+    start(p,static_server_url,width);stub(p,TEXT);upload(p);p.click('#scanRun')
+    row=p.locator('.scan-row').first
+    size=row.get_by_role('spinbutton',name='Размер одной упаковки',exact=True)
+    expect(size).to_have_value('430')
+    expect(row.locator('.scan-catalog-reference')).to_contain_text('Фасовка подставлена с сайта')
+    expect(row.locator('.receipt-preview-price')).to_contain_text('1,49 BYN')
+    expect(row.locator('.receipt-preview-price s')).to_have_text('1,85 BYN')
+    expect(row.locator('.receipt-preview-price')).to_contain_text('Скидка 0,36 BYN')
+    expect(row.locator('[data-scan-field=price]')).to_have_value('5.99')
+    expect(row.locator('[data-scan-field=total]')).to_have_value('5.99')
+    expect(row.locator('[data-scan-field=discount]')).to_have_value('0.00')
+    price=row.locator('.receipt-preview-price');price.scroll_into_view_if_needed()
+    assert row.evaluate('n=>n.scrollWidth<=n.clientWidth+1')
+    p.screenshot(path=f'/tmp/fa-site-size-price-{width}.png')
+    # Explicit user edits survive later source/code changes.
+    size.fill('450');p.fill('#scanShop','Другой магазин')
+    expect(size).to_have_value('450')
+    p.locator('#scanConfirmed').check();p.click('#scanTransfer')
+    data=p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")
+    assert float(data[0]['package_quantity'])==450 and float(data[0]['unit_price'])==5.99
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize('case',['catalog','catalog_empty','multiple','other','partial','weighted','changed_codes'])
+def test_site_autofill_does_not_replace_catalog_or_use_ambiguous_results(static_server_url,page_with_receipt_api_mock,case):
+    p=page_with_receipt_api_mock
+    found={'name':'Пельмени','matched_by':'barcode','measurement':{'package_quantity':'430','package_unit':'g'},'reference_only':case=='other'}
+    data={'items':[found,found] if case=='multiple' else [found],'partial':case=='partial'}
+    catalog={'name':'Пельмени','product_name':'Пельмени','product_id':901,'template_id':701,'source_id':301,
+             'sale_unit':'kg' if case=='weighted' else 'piece','package_quantity':'500' if case=='catalog' else None,
+             'package_unit':'g' if case=='catalog' else None,'matched_by':['barcode'],'matched_codes':['4811040140757']}
+    p.route('**/lookup-codes',lambda r:r.fulfill(json={'items':[catalog] if case in ('catalog','catalog_empty','weighted') else [],'auto_match':case in ('catalog','catalog_empty','weighted')}))
+    p.route('**/lookup-site-codes',lambda r:r.fulfill(json=data))
+    start(p,static_server_url);stub(p,TEXT.replace('Пельмени 430г','Пельмени'));upload(p);p.click('#scanRun')
+    row=p.locator('.scan-row').first
+    expect(row.locator('.receipt-product-preview').first).to_be_visible()
+    if case=='catalog_empty':
+        expect(row.get_by_role('spinbutton',name='Размер одной упаковки',exact=True)).to_have_value('430')
+        p.locator('#scanConfirmed').check();p.click('#scanTransfer')
+        payload=p.evaluate("window.App.getRuntimeModule('operation-modal').getCreateReceiptPayload()")[0]
+        assert payload['catalog_measurement_touched'] and float(payload['package_quantity'])==430
+        assert payload['product_id']==901 and float(payload['unit_price'])==5.99
+        return
+    if case=='changed_codes':
+        expect(row.get_by_role('spinbutton',name='Размер одной упаковки',exact=True)).to_have_value('430')
+        row.get_by_role('textbox',name='Код товара',exact=True).fill('')
+        expect(row.locator('.scan-catalog-reference')).not_to_contain_text('Фасовка подставлена с сайта')
+    elif case=='catalog':
+        expect(row.get_by_role('spinbutton',name='Размер одной упаковки',exact=True)).to_have_value('500')
+    else:
+        expect(row.locator('.scan-catalog-reference')).not_to_contain_text('Фасовка подставлена с сайта')
+    expect(row.locator('[data-scan-field=total]')).to_have_value('5.99')
