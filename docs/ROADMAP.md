@@ -4,6 +4,11 @@
 
 - [x] 2026-09-10: completed plans open for editing directly from operation source chips, plan history, and the activity journal. Enabling recurrence offers the next date and an explicit “Сохранить и возобновить” action; saving reactivates the same plan with its history and linked operations preserved. A read-only server preview and locked save validate dates/end dates, prevent replay of completed occurrences and duplicate reactivation, and refresh reminders. Ordinary edits keep completed plans completed.
 
+## Critical incident infographics — 2026-10-25
+
+- [x] Deliver one PNG with a short caption in Telegram and an inline PNG with a plain-text alternative in email. Use real bounded login-window snapshots and observed service timestamps; mark manual delivery checks as tests. Preserve existing journal, quotas, incident deduplication and policy version. Rendering errors may fall back to text before transport; no second text message after a photo transport failure.
+- [ ] External availability monitoring remains separate; no host-down alerts are claimed from the host-local worker.
+
 ## Modal controls audit — 2026-10-25
 
 - [x] Check modal fields, selects and sibling buttons at 320–1440px, including filled receipts, catalog tabs and nested pickers. Keep the FX refresh icon during loading/error states. At up to 400px, give the date and direction switch separate rows, stack receipt identity fields and move total/removal below price and quantity. Preserve calculation and submission behavior.

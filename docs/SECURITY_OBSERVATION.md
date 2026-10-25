@@ -153,6 +153,35 @@ Policy revised after noisy deliveries on 2026-10-24:
 - No automatic banning or Nginx enforcement is enabled in this stage. Thresholds
   still need review against normal usage before enabling enforcement.
 
+### Incident images (2026-10-25)
+
+The app delivery worker sends a single `sendPhoto` message with a short caption
+in Telegram and a single multipart email containing an inline PNG, full details
+and a plain-text alternative. Images are generated in memory with Pillow and the
+DejaVu Cyrillic fonts already bundled in the app image. They are not publicly
+hosted. All dates use Europe/Minsk.
+
+Login images show the largest observed **single-source window snapshot**, not a
+sum of overlapping samples or a count of journal lines. Five bounded counters in
+the existing observer window count failed POST Telegram logins before log sampling;
+refresh failures do not contribute. Only elapsed minute buckets appear, with dashes
+for unobserved future buckets. Missing legacy histograms are explicitly unavailable.
+Repeated snapshots, retries and multiple sources are never added into a fabricated
+total. The window/threshold and event sampling behavior are unchanged.
+
+Operational images group the already-eligible bot/backup incidents into one card,
+using confirmation and latest observation timestamps. They do not infer a cause,
+claim successful intrusion, or claim that external website probes exist. A test
+notification is clearly labeled as a delivery test and contains no fake incident.
+
+Rendering failure is journaled and falls back to text **before** any network send.
+A photo transport failure never triggers an extra text message; normal bounded
+retry/crash handling applies. Media acceptance is recorded in the journal. This
+release does not bump policy version, reset quotas/queues, replay previously
+notified incidents, enable recoveries/digests, or require a bot restart.
+External uptime monitoring remains unconfigured; a host-local worker cannot report
+its own total host/network outage.
+
 Email uses TLS only (`SMTP_SECURITY=ssl` or `starttls`) and a fixed recipient from
 `SECURITY_ALERT_EMAIL`. Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`,
 `SMTP_PASSWORD`, `SMTP_FROM` in the private server `.env`; do not put credentials

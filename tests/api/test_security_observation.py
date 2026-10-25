@@ -218,3 +218,22 @@ def test_spoofed_rate_header_does_not_create_an_event():
     SecurityObserver(events.append).observe(request('/health', headers=[
         (b'x-real-ip', b'203.0.113.5'), (b'x-fa-rate-observation', b'REJECTED_DRY_RUN')]), 200)
     assert events == []
+
+
+def test_histogram_counts_login_failures_before_sampling_and_resets_with_window():
+    events=[];now=[1.0]
+    observer=SecurityObserver(events.append,clock=lambda:now[0])
+    req=request('/api/v1/auth/telegram',method='POST')
+    for minute,count in enumerate([8,11,9,15,13]):
+        now[0]=1.0+60*minute
+        for _ in range(count):observer.observe(req,401)
+    # A threshold crossing emits a snapshot even when other events were sampled.
+    snapshot=next(e for e in events if e['login_failures_in_window']>=50)
+    assert snapshot['login_failure_buckets']==[8,11,9,15,7]
+    assert sum(snapshot['login_failure_buckets'])==50
+    assert observer.sources['192.0.2.1'].login_failure_buckets==[8,11,9,15,13]
+    for _ in range(30):observer.observe(request('/api/v1/auth/refresh',method='POST'),401)
+    assert observer.sources['192.0.2.1'].login_failure_buckets==[8,11,9,15,13]
+    now[0]=302
+    for _ in range(50):observer.observe(req,401)
+    assert events[-1]['login_failure_buckets']==[50]

@@ -2,7 +2,7 @@
 
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from ipaddress import ip_address
 import fcntl
 import json
@@ -122,6 +122,7 @@ class SourceWindow:
     requests: int = 0
     failures: int = 0
     login_failures: int = 0
+    login_failure_buckets: list[int] = field(default_factory=lambda: [0] * 5)
     critical_emitted: bool = False
     paths: set[str] = field(default_factory=set)
     emitted: int = 0
@@ -171,8 +172,9 @@ class SecurityObserver:
                 self.sources[client] = source
             source.requests += 1
             source.failures += int(failure)
-            source.login_failures += int(failure and request.method == 'POST'
-                and path in AUTH_PATHS - {'/api/v1/auth/refresh'})
+            login_failure = failure and request.method == 'POST' and path in AUTH_PATHS - {'/api/v1/auth/refresh'}
+            source.login_failures += int(login_failure)
+            source.login_failure_buckets[min(4, max(0, int((now - source.started) // 60)))] += int(login_failure)
             if len(source.paths) < 32:
                 source.paths.add(path)
             if self.minute != minute:
@@ -208,6 +210,8 @@ class SecurityObserver:
                 "rate_status": rate, "signals_in_window": source.requests,
                 "failures_in_window": source.failures, "distinct_paths": len(source.paths),
                 "login_failures_in_window": source.login_failures,
+                "login_failure_buckets": source.login_failure_buckets[:min(5, max(1, int((now - source.started) // 60) + 1))],
+                "login_window_started_at": (datetime.now(timezone.utc) - timedelta(seconds=now - source.started)).isoformat(),
                 "suppressed_since_last_event": self.suppressed,
             }
             self.suppressed = 0

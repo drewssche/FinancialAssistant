@@ -2,6 +2,8 @@
 from datetime import datetime, timezone
 from contextlib import contextmanager
 from email.message import EmailMessage
+from email.utils import make_msgid
+from html import escape
 import json
 import logging
 from pathlib import Path
@@ -44,17 +46,29 @@ def merge(left, right):
         result[key] = sorted(set(result.get(key, [])) | set(right.get(key, [])))[:10]
     result['retries'] = max(result.get('retries', 0), right.get('retries', 0))
     result['policy'] = right.get('policy')
+    snapshots = [p['login_snapshot'] for p in (left or {}, right) if p.get('login_snapshot')]
+    if snapshots:
+        result['login_snapshot'] = max(snapshots, key=lambda p: (p['count'], p['at']))
     return result
 
 
 def summarize(event, now):
-    return {'policy': POLICY_VERSION, 'first': now, 'last': now, 'samples': 1,
+    payload = {'policy': POLICY_VERSION, 'first': now, 'last': now, 'samples': 1,
         'sources': [str(event['client_ip'])[:64]] if event.get('client_ip') else [],
         'paths': [str(event['path'])[:160]] if event.get('path') else [],
         'kinds': [str(event.get('event', 'security_event'))[:64]],
         'users': [str(event['user_id'])[:20]] if isinstance(event.get('user_id'), int) else [],
         'changes': [f"User {event['target_user_id']}: {event['previous_status']} -> {event['next_status']}"] if event.get('event') == 'access_status_changed' else [],
         'retries': 0}
+    if type(event.get('login_failures_in_window')) is int and event['login_failures_in_window'] >= 50:
+        buckets = event.get('login_failure_buckets')
+        valid = (isinstance(buckets, list) and 1 <= len(buckets) <= 5
+                 and all(type(v) is int and v >= 0 for v in buckets)
+                 and sum(buckets) == event['login_failures_in_window'])
+        payload['login_snapshot'] = {'count': event['login_failures_in_window'], 'at': now,
+            'source': str(event.get('client_ip', '—'))[:64],
+            'buckets': buckets if valid else [], 'window_started_at': event.get('login_window_started_at')}
+    return payload
 
 
 def build_text(payload):
@@ -64,9 +78,14 @@ def build_text(payload):
     heading = 'ФинАсист — проверка доставки уведомлений' if payload['kinds'] == ['security_notification_test'] else 'ФинАсист — массовые попытки входа'
     basis = ('Ручная проверка канала доставки.' if payload['kinds'] == ['security_notification_test']
              else 'Основание: не менее 50 отказов входа за 5 минут с одного адреса.')
+    snapshot = payload.get('login_snapshot')
+    observed = (f'Максимальный срез: {snapshot["count"]} отказов входа с {snapshot["source"]} '
+                f'в окне до 5 минут; {datetime.fromtimestamp(snapshot["at"], zone).strftime("%d.%m %H:%M")} (Минск).\n'
+                if snapshot and payload['kinds'] != ['security_notification_test'] else '')
     return (heading + '\n'
         f'Период: {start} — {end} (Минск)\n'
         f'Записей наблюдения: {payload["samples"]} (повторы могут быть объединены)\n'
+        f'{observed}'
         f'События: {", ".join(payload["kinds"])}\n'
         f'Источники: {", ".join(payload["sources"]) or "—"}\n'
         f'Маршруты: {", ".join(payload["paths"]) or "—"}\n'
@@ -80,7 +99,7 @@ def build_text(payload):
 class SecurityAlerts:
     def __init__(self, settings, journal, *, clock=time, send=None):
         self.settings, self.journal, self.clock = settings, journal, clock
-        self.send = send or self.deliver
+        self.send = send
         self.path = Path(settings.security_event_log_path).with_name('security-alerts.sqlite3')
         self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.stop_event = Event()
@@ -209,7 +228,7 @@ class SecurityAlerts:
                     (json.dumps(payload), now + COOLDOWN_SECONDS, day, attempts + 1, channel))
             self.audit('security_notification_attempted', channel, notification_id=payload['id'])
             try:
-                self.send(channel, build_text(payload))
+                self.send_notification(channel, build_text(payload), payload)
             except Exception as exc:
                 # Never log exception text: HTTP errors may contain bot tokens,
                 # SMTP responses may contain addresses or authentication data.
@@ -232,20 +251,51 @@ class SecurityAlerts:
 
         operations.tick(self, cooldown=COOLDOWN_SECONDS, daily_limit=DAILY_LIMIT)
 
-    def deliver(self, channel, text):
+    def send_notification(self, channel, text, payload):
+        if self.send is not None:
+            return self.send(channel, text)
+        return self.deliver(channel, text, payload=payload)
+
+    def deliver(self, channel, text, *, payload=None):
         s = self.settings
+        png = None
+        caption = text
+        if payload is not None:
+            try:
+                from app.services.incident_infographic import render_notification
+                png, caption = render_notification(payload)
+            except Exception as exc:
+                # Fallback is only safe BEFORE contacting either delivery service.
+                self.audit('notification_image_failed', channel, error=type(exc).__name__)
         if channel.startswith('telegram:'):
             with httpx.Client(timeout=8, follow_redirects=False) as client:
-                response = client.post(f'https://api.telegram.org/bot{s.telegram_bot_token}/sendMessage', json={
-                    'chat_id': channel.split(':', 1)[1], 'text': text[:3900], 'disable_web_page_preview': True})
+                if png:
+                    response = client.post(f'https://api.telegram.org/bot{s.telegram_bot_token}/sendPhoto',
+                        data={'chat_id': channel.split(':', 1)[1], 'caption': caption[:1000]},
+                        files={'photo': ('finassist-incident.png', png, 'image/png')})
+                else:
+                    response = client.post(f'https://api.telegram.org/bot{s.telegram_bot_token}/sendMessage', json={
+                        'chat_id': channel.split(':', 1)[1], 'text': text[:3900], 'disable_web_page_preview': True})
                 response.raise_for_status()
-                if response.json().get('ok') is not True:
+                body = response.json()
+                if body.get('ok') is not True or (png and not body.get('result', {}).get('photo')):
                     raise RuntimeError('Telegram delivery not acknowledged')
+            self.audit('notification_media_accepted', channel, media='photo' if png else 'text')
             return
         message = EmailMessage()
         message['Subject'] = text.splitlines()[0].replace(' — ', ': ', 1)
         message['From'], message['To'] = s.smtp_from, s.security_alert_email
+        message['Message-ID'] = make_msgid()
         message.set_content(text)
+        if png:
+            cid = make_msgid()
+            message.add_alternative(
+                '<!doctype html><html lang="ru"><body style="margin:0;padding:20px;background:#080e18;color:#f1f5fc;font-family:Arial,sans-serif">'
+                '<div style="max-width:600px;margin:auto">'
+                f'<img src="cid:{cid[1:-1]}" width="600" style="width:100%;height:auto;display:block" alt="{escape(caption, quote=True)}">'
+                f'<p style="white-space:pre-wrap;font-size:15px;line-height:1.5;color:#a5b7ce">{escape(text)}</p>'
+                '</div></body></html>', subtype='html')
+            message.get_payload()[-1].add_related(png, maintype='image', subtype='png', cid=cid, disposition='inline')
         context = ssl.create_default_context()
         if s.smtp_security == 'ssl':
             client = smtplib.SMTP_SSL(s.smtp_host, s.smtp_port, timeout=8, context=context)
@@ -259,6 +309,7 @@ class SecurityAlerts:
             client.login(s.smtp_username, s.smtp_password)
             if client.send_message(message):
                 raise RuntimeError('SMTP recipient rejected')
+        self.audit('notification_media_accepted', channel, media='inline_png' if png else 'text')
 
     def run(self):
         try:

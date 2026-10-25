@@ -78,7 +78,7 @@ def pending(db, channel, now):
     # Recovery is recorded, but never creates another email/Telegram message.
     db.execute('''UPDATE operational_delivery SET notified=0 WHERE channel=?
         AND issue IN (SELECT issue FROM operational_state WHERE active=0)''', (channel,))
-    return [dict(row) for row in db.execute('''SELECT s.issue,s.active,s.reason,s.changed FROM operational_state s
+    return [dict(row) for row in db.execute('''SELECT s.issue,s.active,s.reason,s.changed,s.since,s.last_seen FROM operational_state s
         JOIN operational_delivery d ON d.issue=s.issue WHERE d.channel=?
         AND s.active=1 AND d.notified<>s.active AND d.attempts<3 AND s.last_seen>=?
         AND s.candidate=s.active ORDER BY s.issue''', (channel, now - 180))]
@@ -124,7 +124,7 @@ def tick(alerts, *, cooldown, daily_limit):
                 db.execute('UPDATE operational_delivery SET attempts=attempts+1 WHERE channel=? AND issue=?', (channel, item['issue']))
         alerts.audit('operational_notification_attempted', channel, notification_id=payload['id'])
         try:
-            alerts.send(channel, build_text(operations))
+            alerts.send_notification(channel, build_text(operations), payload)
         except Exception as exc:
             alerts.audit('operational_notification_failed', channel, notification_id=payload['id'], error=type(exc).__name__)
         else:
