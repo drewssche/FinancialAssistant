@@ -181,7 +181,7 @@ def _make_plan_item(plan: dict) -> dict:
         "category_icon": None,
         "category_accent_color": None,
         "note": plan.get("note"),
-        "receipt_items": [],
+        "receipt_items": list(plan.get("receipt_items") or []),
         "receipt_total": None,
         "recurrence_enabled": bool(plan.get("recurrence_enabled")),
         "recurrence_frequency": plan.get("recurrence_frequency"),
@@ -240,7 +240,7 @@ def page_with_plans_api_mock(page):
         method = request.method.upper()
 
         if path == "/api/v1/plans/forecast":
-            return _json_response(route, {"date_from": date.today().isoformat(), "date_to": date.today().isoformat(),
+            return _json_response(route, {"date_from": date.today().isoformat(), "date_to": (date.today() + timedelta(days=int(query.get("days", ["30"])[0]) - 1)).isoformat(),
                 "income_total": "0", "expense_total": "0", "occurrences_count": 0, "overdue_count": 0})
         if path == "/api/v1/auth/public-config":
             return _json_response(route, {"telegram_bot_username": None, "browser_login_available": False})
@@ -995,7 +995,7 @@ def test_dashboard_plans_period_tabs_switch_and_filter(static_server_url: str, p
     today = date.today()
     start_of_week = today - timedelta(days=today.weekday())
     current_week_item = today + timedelta(days=1 if today.weekday() < 6 else 0)
-    next_month_anchor = (today.replace(day=28) + timedelta(days=4)).replace(day=5)
+    next_month_anchor = today + timedelta(days=40)  # Outside the rolling 30-day window.
     overdue_item = today - timedelta(days=3)
     mock_state["plans"][:] = [
         {
@@ -1065,19 +1065,19 @@ def test_dashboard_plans_period_tabs_switch_and_filter(static_server_url: str, p
     page.wait_for_function(
         "() => { const text = document.querySelector('#dashboardPlansList')?.textContent || ''; return text.includes('Просроченный план') && text.includes('План недели') && !text.includes('План всех времен'); }"
     )
-    assert "Планы на месяц:" in (page.locator("#dashboardPlansPeriodLabel").text_content() or "")
+    page.wait_for_function("expected => document.querySelector('#dashboardPlansPeriodLabel')?.textContent.includes(expected)", arg=(today + timedelta(days=29)).strftime("%d.%m.%Y"))
 
     page.click('button[data-dashboard-plans-period="all_time"]')
     page.wait_for_function(
         "() => { const text = document.querySelector('#dashboardPlansList')?.textContent || ''; return text.includes('План всех времен'); }"
     )
-    assert "Все активные планы" in (page.locator("#dashboardPlansPeriodLabel").text_content() or "")
+    assert "всех активных планов" in (page.locator("#dashboardPlansPeriodLabel").text_content() or "")
 
     page.click('button[data-dashboard-plans-period="week"]')
     page.wait_for_function(
         "() => { const text = document.querySelector('#dashboardPlansList')?.textContent || ''; return text.includes('Просроченный план') && text.includes('План недели') && !text.includes('План всех времен'); }"
     )
-    assert "Планы на неделю:" in (page.locator("#dashboardPlansPeriodLabel").text_content() or "")
+    page.wait_for_function("expected => document.querySelector('#dashboardPlansPeriodLabel')?.textContent.includes(expected)", arg=(today + timedelta(days=6)).strftime("%d.%m.%Y"))
 
 
 @pytest.mark.e2e

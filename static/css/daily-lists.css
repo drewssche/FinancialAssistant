@@ -159,27 +159,35 @@
  :is(#plansSection, #dashboardPlansList) .plan-card-interactive { transition:none; }
 }
 :is(#plansSection, #dashboardPlansList) .plan-card-row {
- display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"date amount" "context context" "meta actions";grid-template-rows:auto 1fr auto;gap:10px 12px;align-items:start;
+ display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"date amount" "categories categories" "note note" "meta actions";grid-template-rows:auto auto 1fr auto;gap:10px 12px;align-items:start;
 }
 :is(#plansSection, #dashboardPlansList) :is(.plan-card-primary,.plan-card-summary,.plan-card-side) {display:contents;}
 :is(#plansSection, #dashboardPlansList) .plan-card-date {grid-area:date;align-self:start;padding-top:2px;}
 :is(#plansSection, #dashboardPlansList) .plan-card-amount-block {grid-area:amount;justify-items:end;text-align:right;max-width:260px;}
 :is(#plansSection, #dashboardPlansList) .plan-card-amount {justify-items:end;font-size:17px;}
-:is(#plansSection, #dashboardPlansList) .plan-card-context {grid-area:context;gap:4px;align-content:start;}
-:is(#plansSection, #dashboardPlansList) .plan-card-title-row {gap:6px;min-height:28px;}
-:is(#plansSection, #dashboardPlansList) .plan-card-meta {overflow-wrap:anywhere;}
-:is(#plansSection, #dashboardPlansList) .plan-card-top-meta {grid-area:meta;gap:5px 8px;margin:0;align-items:center;align-self:end;}
+:is(#plansSection, #dashboardPlansList) .plan-card-context {display:contents;}
+:is(#plansSection, #dashboardPlansList) .plan-card-title-row {grid-area:categories;gap:6px;min-height:28px;align-self:stretch;}
+:is(#plansSection, #dashboardPlansList) .plan-card-meta {grid-area:note;min-width:0;overflow-wrap:anywhere;}
+:is(#plansSection, #dashboardPlansList) .plan-card-top-meta {grid-area:meta;display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr);gap:5px 8px;margin:0;align-items:start;align-content:start;align-self:start;justify-items:start;}
+:is(#plansSection, #dashboardPlansList) .plan-card-top-meta > .meta-chip {grid-column:1 / -1;}
 :is(#plansSection, #dashboardPlansList) .plan-card-actions {grid-area:actions;justify-content:flex-end;align-self:end;}
 :is(#plansSection, #dashboardPlansList) .plan-card-actions .btn-icon {width:36px;height:36px;min-width:36px;min-height:36px;padding:0;}
 :is(#plansSection, #dashboardPlansList) .plan-card-row:has(.plan-card-amount-secondary) {grid-template-columns:minmax(95px,1fr) minmax(0,1fr);}
-@media(min-width:1100px){
- :is(#plansList, #dashboardPlansList):has(.plan-card-row) {grid-auto-rows:1fr;}
+/* Share content tracks within each visual row, without fixed heights or clipping.
+   Both nested grids participate so comments and FX notes cannot move sibling chips. */
+@supports (grid-template-rows:subgrid) {
+ :is(#plansSection, #dashboardPlansList) .plan-card:has(.plan-card-row) {grid-row:span 4;grid-template-rows:subgrid;row-gap:10px;}
+ :is(#plansSection, #dashboardPlansList) .plan-card-row {grid-row:1 / -1;grid-template-rows:subgrid;}
 }
 @media(max-width:640px){
- :is(#plansSection, #dashboardPlansList) .plan-card-row {grid-template-rows:auto 1fr auto auto;grid-template-areas:"date amount" "context context" "meta meta" "actions actions";}
+ :is(#plansSection, #dashboardPlansList) .plan-card-row {grid-template-rows:auto auto 1fr auto auto;grid-template-areas:"date amount" "categories categories" "note note" "meta meta" "actions actions";}
  :is(#plansSection, #dashboardPlansList) .plan-card-actions .btn-icon {width:44px;height:44px;min-width:44px;min-height:44px;}
  :is(#plansSection, #dashboardPlansList) .plan-card-amount-block {max-width:160px;}
  :is(#plansSection, #dashboardPlansList) .plan-card-date strong {font-size:13px;}
+ @supports (grid-template-rows:subgrid) {
+  :is(#plansSection, #dashboardPlansList) .plan-card:has(.plan-card-row) {grid-row:span 5;}
+  :is(#plansSection, #dashboardPlansList) .plan-card-row {grid-template-rows:subgrid;}
+ }
 }
 /* Dashboard rows share the section table; the short action set stays together. */
 #dashboardDebtsList .debt-card .table {min-width:0;width:100%;}

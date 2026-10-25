@@ -13,7 +13,7 @@ def test_plan_cards_share_compact_grid_and_currency_is_first(static_server_url, 
     page.set_viewport_size({'width': width, 'height': 1000})
     today = date.today().isoformat()
     state['plans'][:] = [dict(id=i, kind='expense', amount='2.99', scheduled_date=today,
-        note='Подписка' if i != 2 else 'Оплата подписки с длинным комментарием для проверки переноса строки',
+        note='' if i != 2 else 'Оплата подписки с длинным комментарием для проверки переноса строки',
         recurrence_enabled=True, recurrence_frequency='monthly', recurrence_interval=1,
         recurrence_weekdays=[], recurrence_workdays_only=False, recurrence_month_end=False,
         recurrence_end_date=None, status='upcoming', confirm_count=0, skip_count=0,
@@ -21,7 +21,7 @@ def test_plan_cards_share_compact_grid_and_currency_is_first(static_server_url, 
     state['plans'][1].update(currency='EUR',base_currency='BYN',original_amount='23.00',amount='77.74',
         fx_rate_source='bank',fx_bank_code='technobank',fx_bank_name='Технобанк',fx_bank_channel='cash',
         fx_rate_kind='sell',fx_payment_mode='direct_conversion',current_rate='3.38',current_rate_date=today,
-        current_base_amount='77.74')
+        current_base_amount='77.74', receipt_items=[dict(name='Подписка', quantity='1', unit_price='23', line_total='23')])
     page.route('**/api/v1/currency/overview?*',lambda route:route.fulfill(json={
         'tracked_currencies':['USD','EUR','RUB'], 'current_rates':[
             dict(currency=c,rate=r,change_value=d,change_percent='.13',rate_date=today,source='nbrb_auto_unit')
@@ -51,6 +51,7 @@ def test_plan_cards_share_compact_grid_and_currency_is_first(static_server_url, 
         page.evaluate("name=>window.App.getRuntimeModule('navigation').switchSection(name)",section)
         cards=page.locator(selector+' .plan-card')
         expect(cards).to_have_count(3)
+        expect(cards.locator('[data-plan-receipt-view-id]')).to_have_count(1)
         cards.first.scroll_into_view_if_needed()
         for card in cards.all():
             box=card.bounding_box()
@@ -60,9 +61,18 @@ def test_plan_cards_share_compact_grid_and_currency_is_first(static_server_url, 
                 b=child.bounding_box()
                 assert b['x']>=box['x']-1 and b['x']+b['width']<=box['x']+box['width']+1
             assert card.evaluate('n=>n.scrollWidth<=n.clientWidth+1')
-        if width>=1100:
-            heights=[c.bounding_box()['height'] for c in cards.all()]
-            assert max(heights)-min(heights)<2
+        # Adjacent cards share rows despite missing notes, long FX explanations,
+        # and the receipt button making one category row taller.
+        rows = cards.evaluate_all("""cards => cards.map(c => {
+            const y = s => c.querySelector(s)?.getBoundingClientRect().top;
+            return {top:c.getBoundingClientRect().top, height:c.getBoundingClientRect().height,
+                category:y('.kind-pill'), meta:y('.plan-card-top-meta'), reminder:y('.meta-chip')};
+        })""")
+        for row in rows:
+            peers = [r for r in rows if abs(r['top'] - row['top']) < 2]
+            for key in ('height', 'category', 'meta', 'reminder'):
+                values = [r[key] for r in peers if r[key] is not None]
+                assert not values or max(values) - min(values) < 2, (section, width, key, peers)
         offsets=cards.evaluate_all("cards=>cards.map(c=>c.querySelector('.plan-card-date').getBoundingClientRect().top-c.getBoundingClientRect().top)")
         assert max(offsets)-min(offsets)<2
         layouts.append(cards.first.locator('.plan-card-row').evaluate('n=>getComputedStyle(n).gridTemplateAreas'))
